@@ -21,7 +21,9 @@
 		defaultPlanWeeks,
 		isUltraDistance,
 		walkRunDefaultWeeks,
+		WALK_RUN_MAX_DAYS_PER_WEEK,
 		generatePlan,
+		fmtHms,
 		formatISO,
 		parseISO,
 		type UltraPresetId,
@@ -34,15 +36,23 @@
 		WorkoutKind,
 		TrainingGender,
 	} from '#lib/training/training.ts';
-	import { isSundayIso, nextSundayIso } from '#lib/training/plan_start.ts';
+	import {
+		alignPlanStartIso,
+		defaultPlanStartIso,
+		planStartAllowedIso,
+	} from '#lib/training/plan_start.ts';
+	import { capReturnRamp, returningFromBreak, LAYOFF_MAX_DAYS } from '#lib/training/comeback.ts';
+	import { goalAheadOfRecentRuns, type EffortForPrediction } from '#lib/training/race_predictor.ts';
+	import { qualifyingRuns } from '#lib/training/fitness.ts';
 	import {
 		CHRONIC_WINDOW_WEEKS,
+		MIN_ACTIVE_WEEKS,
 		openingWeekVolumeM,
 		peakWeekVolumeM,
 		planRampCheck,
 		recentRunVolume,
 		shouldSurfaceRampNote,
-		type RecentVolume,
+		type RunForVolume,
 	} from '#lib/training/plan_ramp.ts';
 	import { parsePlanMarkdown, parsePlanJson } from '#lib/training/plan_serialize.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -78,11 +88,15 @@
 	// age is an Art 9 health inference, so the date comes through
 	// `healthUseDob` rather than off the age record directly (§ 722).
 	let viewerAge = $state<number | null>(null);
-	// The runner's chronic weekly volume, so the preview can say whether the
-	// plan's opening week is a step the runner's current training supports.
-	// Null until loaded (and on failure) — the note self-hides rather than
-	// grading against a base it doesn't have.
-	let recentVolume = $state<RecentVolume | null>(null);
+	// The runner's running history, far enough back to see the break a
+	// returning runner is coming back from as well as the four weeks the ramp
+	// check grades against. Null until loaded (and on failure): every note
+	// built from it self-hides rather than grading against a base it doesn't
+	// have.
+	let recentRuns = $state<RunForVolume[] | null>(null);
+	// The last 90 days' qualifying efforts, for checking a goal time against
+	// what the runner has actually run. Empty until loaded, and on failure.
+	let recentEfforts = $state<EffortForPrediction[]>([]);
 	onMount(async () => {
 		if (!auth.user) return;
 		// Self-read via get_my_profile(): gender / the age record / the consent
@@ -105,18 +119,52 @@
 	onMount(async () => {
 		if (!auth.user) return;
 		try {
+			// A break of up to LAYOFF_MAX_DAYS plus the four-week base before it.
 			const fromIso = new Date(
-				Date.now() - CHRONIC_WINDOW_WEEKS * 7 * 86_400_000,
+				Date.now() - (LAYOFF_MAX_DAYS + CHRONIC_WINDOW_WEEKS * 7 + 1) * 86_400_000,
 			).toISOString();
-			const runs = await fetchRuns({
+			recentRuns = await fetchRuns({
 				columns: ['started_at', 'distance_m', 'activity_type'] as const,
 				startedAtFrom: fromIso,
 			});
-			recentVolume = recentRunVolume(runs, Date.now());
 		} catch (e) {
 			console.error('Recent-volume read for the plan ramp note failed', e);
 		}
 	});
+
+	onMount(async () => {
+		if (!auth.user) return;
+		try {
+			const now = Date.now();
+			const runs = await fetchRuns({
+				columns: [
+					'started_at',
+					'distance_m',
+					'duration_s',
+					'activity_type',
+					'metadata',
+					'source',
+				] as const,
+				startedAtFrom: new Date(now - GOAL_CHECK_WINDOW_DAYS * 86_400_000).toISOString(),
+			});
+			recentEfforts = qualifyingRuns(runs).map((r) => ({
+				distanceM: r.distance_m,
+				durationS: r.duration_s,
+				ageDays: Math.max(0, (now - Date.parse(r.started_at)) / 86_400_000),
+			}));
+		} catch (e) {
+			console.error('Recent-efforts read for the plan goal check failed', e);
+		}
+	});
+
+	/// The window the goal check reads efforts from: the same 90 days
+	/// `currentVdot` takes the runner's fitness from.
+	const GOAL_CHECK_WINDOW_DAYS = 90;
+
+	let recentVolume = $derived(recentRuns ? recentRunVolume(recentRuns, Date.now()) : null);
+	let returning = $derived(recentRuns ? returningFromBreak(recentRuns, Date.now()) : null);
+	// A returning runner's plan is eased in unless they turn it off.
+	let easeBack = $state(true);
 
 	const METRES_PER_MILE = 1609.344;
 	let distanceUnit = $derived(getUnit());
@@ -204,7 +252,9 @@
 		ultraChoice = null;
 		goalEvent = value as GoalEvent;
 	}
-	let startDate = $state(untrack(() => initialStartDate ?? defaultStart()));
+	let startDate = $state(
+		untrack(() => initialStartDate ?? defaultPlanStartIso(todayIso(), initialBeginnerWalkRun ?? false)),
+	);
 	let daysPerWeek = $state(4);
 
 	let targetHours = $state<number | null>(null);
@@ -216,10 +266,32 @@
 	// Returning runners type an old PR; the engine would treat it as current
 	// fitness and prescribe paces that are too fast (injury risk — comeback
 	// persona #24). The time only anchors paces once the runner confirms it
-	// reflects current fitness; otherwise we fall back to goal-based paces.
+	// reflects current fitness; otherwise paces come from the goal time, which
+	// is no safer when the goal is ambitious — hence the goal check below.
 	let recent5kConfirmed = $state(false);
 	// Beginner / return-to-run: generate a C25K-style walk-run plan (persona #22).
 	let beginnerWalkRun = $state(untrack(() => initialBeginnerWalkRun ?? false));
+	// The wizard's first question. It decides which fields apply: a runner
+	// who has never run gets the walk-run plan and none of the race fields; a
+	// runner building up picks a distance but no goal time; a runner training
+	// for a race sees everything.
+	type StartingPoint = 'new' | 'building' | 'race';
+	let startingPoint = $state<StartingPoint>(untrack(() => (initialBeginnerWalkRun ? 'new' : 'race')));
+	const STARTING_POINTS: { value: StartingPoint; label: MessageKey; hint: MessageKey }[] = [
+		{ value: 'new', label: 'planEditor.startingPointNew', hint: 'planEditor.startingPointNewHint' },
+		{ value: 'building', label: 'planEditor.startingPointBuilding', hint: 'planEditor.startingPointBuildingHint' },
+		{ value: 'race', label: 'planEditor.startingPointRace', hint: 'planEditor.startingPointRaceHint' },
+	];
+	// Every day a walk-run week can hold, and nothing it would cut.
+	const WALK_RUN_DAY_OPTIONS = Array.from(
+		{ length: WALK_RUN_MAX_DAYS_PER_WEEK - 1 },
+		(_, i) => i + 2,
+	);
+	const DAY_OPTIONS = [3, 4, 5, 6, 7];
+	let dayOptions = $derived(beginnerWalkRun ? WALK_RUN_DAY_OPTIONS : DAY_OPTIONS);
+	let showGoalRace = $derived(startingPoint !== 'new');
+	let showGoalTime = $derived(startingPoint === 'race' && !beginnerWalkRun);
+	let showRecent5k = $derived(startingPoint !== 'new' && !beginnerWalkRun);
 
 	let weekOverride = $state<number | null>(untrack(() => initialWeeks ?? null));
 	let busy = $state(false);
@@ -297,20 +369,25 @@
 
 	function applyPlanInputs(inputs: PlanRequestInputs) {
 		exitImportMode();
+		const wasDefaultStart = startDate === defaultPlanStartIso(todayIso(), beginnerWalkRun);
 		beginnerWalkRun = inputs.beginnerWalkRun;
+		// A walk-run description is a runner who has never run; a goal time
+		// is a race, and has to land somewhere the runner can see it.
+		if (inputs.beginnerWalkRun) startingPoint = 'new';
+		else if (startingPoint === 'new' || inputs.goalTimeSec != null) startingPoint = 'race';
 		goalEvent = inputs.goalEvent;
 		// An ultra arrives as `custom` plus its distance and selects the
 		// matching Ultra entry, so the distance field shows what was heard.
 		const ultra = inputs.goalEvent === 'custom' && inputs.goalDistanceM != null;
 		ultraChoice = ultra ? (ultraPresetFor(inputs.goalDistanceM!) ?? 'ultra_other') : null;
 		if (ultra) ultraDistanceM = inputs.goalDistanceM;
-		daysPerWeek = inputs.daysPerWeek;
+		daysPerWeek = clampDays(inputs.daysPerWeek, inputs.beginnerWalkRun);
 		// A fill replaces the shape of the plan, not just the fields this
 		// description happened to name: a second fill must not inherit the
 		// first one's length, race start or goal time.
 		weekOverride = inputs.weeks;
-		if (!inputs.raceDate && aiRaceStart !== null && startDate === aiRaceStart) {
-			startDate = defaultStart();
+		if ((!inputs.raceDate && aiRaceStart !== null && startDate === aiRaceStart) || wasDefaultStart) {
+			startDate = defaultPlanStartIso(todayIso(), beginnerWalkRun);
 		}
 		aiRaceStart = null;
 		if (inputs.goalTimeSec != null) {
@@ -326,8 +403,8 @@
 			recent5kMin = Math.floor(inputs.recent5kSec / 60);
 			recent5kSec = inputs.recent5kSec % 60;
 			// Never ticked for the runner: whether the time reflects their
-			// fitness today is theirs to confirm, and an unconfirmed time keeps
-			// the paces on the conservative goal-based fallback.
+			// fitness today is theirs to confirm, and an unconfirmed time leaves
+			// the paces on the goal time (or the cautious default without one).
 			recent5kConfirmed = false;
 		}
 		if (inputs.planName && (!nameTouched || !name.trim())) name = inputs.planName;
@@ -433,6 +510,7 @@
 			startDate = parsed.startDate;
 			importedGoalDistanceM = parsed.goalDistanceM;
 			if (parsed.goalTimeSec != null && parsed.goalTimeSec > 0) {
+				startingPoint = 'race';
 				targetHours = Math.floor(parsed.goalTimeSec / 3600);
 				targetMin = Math.floor((parsed.goalTimeSec % 3600) / 60);
 				targetSec = parsed.goalTimeSec % 60;
@@ -498,18 +576,39 @@
 	// longer than 5K, so it never clobbers a deliberate 5K choice and never
 	// stops them re-picking 10K afterwards.
 	function onBeginnerToggle(e: Event) {
-		beginnerWalkRun = (e.currentTarget as HTMLInputElement).checked;
-		if (beginnerWalkRun && goalDistance > GOAL_DISTANCES_M.distance_5k) {
+		setWalkRun((e.currentTarget as HTMLInputElement).checked);
+	}
+
+	/// The one place the walk-run choice changes, so the fields that depend on
+	/// it follow: the goal drops to 5K, the training days fit a walk-run week,
+	/// and a start date the runner never touched moves to the new default.
+	function setWalkRun(on: boolean) {
+		exitImportMode();
+		const wasDefaultStart = startDate === defaultPlanStartIso(todayIso(), beginnerWalkRun);
+		beginnerWalkRun = on;
+		if (on && goalDistance > GOAL_DISTANCES_M.distance_5k) {
 			goalEvent = 'distance_5k';
 			ultraChoice = null;
 		}
+		daysPerWeek = clampDays(daysPerWeek, on);
+		if (wasDefaultStart) {
+			startDate = defaultPlanStartIso(todayIso(), on);
+			startSnapped = false;
+		} else {
+			alignStart();
+		}
 	}
 
-	function defaultStart(): string {
-		const d = new Date();
-		d.setDate(d.getDate() + 7);
-		d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
-		return formatISO(d);
+	function clampDays(days: number, walkRun: boolean): number {
+		const options = walkRun ? WALK_RUN_DAY_OPTIONS : DAY_OPTIONS;
+		return Math.min(Math.max(days, options[0]), options[options.length - 1]);
+	}
+
+	function setStartingPoint(next: StartingPoint) {
+		const was = startingPoint;
+		startingPoint = next;
+		if (next === 'new') setWalkRun(true);
+		else if (was === 'new') setWalkRun(false);
 	}
 
 	// The generator hard-anchors day 0 of the start week to the Sunday long
@@ -518,15 +617,16 @@
 	// type="date"> can't restrict to Sundays, so snap the chosen date
 	// forward to the upcoming Sunday on change — the reactive preview then
 	// regenerates from the aligned date, keeping what the user sees in sync
-	// with what's saved. (Persona round-5 intermediate.)
+	// with what's saved. (Persona round-5 intermediate.) A walk-run plan has
+	// no weekday roles, so its date is left where the runner put it.
 	let startSnapped = $state(false);
-	function alignStartToSunday() {
+	function alignStart() {
 		if (!startDate) return;
-		if (isSundayIso(startDate)) {
+		if (planStartAllowedIso(startDate, beginnerWalkRun)) {
 			startSnapped = false;
 			return;
 		}
-		startDate = nextSundayIso(startDate);
+		startDate = alignPlanStartIso(startDate, beginnerWalkRun);
 		startSnapped = true;
 	}
 
@@ -550,8 +650,10 @@
 			(beginnerWalkRun ? walkRunDefaultWeeks() : defaultPlanWeeks(goalEvent, goalDistance))
 	);
 
+	// A hidden goal time is not applied: a runner who typed one and then said
+	// they are not training for a race gets the plan they now describe.
 	let goalTimeSec = $derived(
-		targetHours != null || targetMin != null || targetSec != null
+		showGoalTime && (targetHours != null || targetMin != null || targetSec != null)
 			? (targetHours ?? 0) * 3600 + (targetMin ?? 0) * 60 + (targetSec ?? 0)
 			: null
 	);
@@ -563,8 +665,13 @@
 	// Only anchor paces on the entered time once the runner confirms it's
 	// current. An entered-but-unconfirmed time is treated as absent so paces
 	// stay on the conservative goal-based fallback.
-	let recent5kApplied = $derived(recent5kConfirmed ? recent5kTotal : null);
-	let recent5kNeedsConfirm = $derived(recent5kTotal != null && !recent5kConfirmed);
+	let recent5kApplied = $derived(recent5kConfirmed && showRecent5k ? recent5kTotal : null);
+	// Shown only once the time is a whole one: a warning on the first digit
+	// typed is noise, and a time under a minute is not a 5K.
+	let recent5kComplete = $derived(
+		recent5kMin != null && recent5kMin > 0 && recent5kSec != null,
+	);
+	let recent5kNeedsConfirm = $derived(recent5kComplete && !recent5kConfirmed);
 
 	// A beginner walk-run plan is duration-based intervals, not pace-based —
 	// the VDOT badge and the five Daniels pace zones are jargon the runner who
@@ -587,6 +694,39 @@
 				)
 			: null
 	);
+	// The opening-week ceiling the plan is eased in under, or null when it is
+	// not: no break to come back from, the runner turned it off, or a
+	// walk-run plan, whose opening week is already far below it.
+	let returnCapM = $derived(
+		returning && easeBack && !beginnerWalkRun ? returning.openingCapM : null,
+	);
+	let returnMessage = $derived(
+		returning && !isWalkRunPlan
+			? t('planEditor.returnBody', {
+					weeks: returning.layoffWeeks,
+					pre: fmtKm(returning.preLayoffWeeklyM, 0),
+					cap: fmtKm(returning.openingCapM, 0),
+				})
+			: null,
+	);
+	// The ramp check has nothing to grade a runner with too little recent
+	// running against. Said out loud rather than left silent, because that
+	// runner is the one a big first week hurts — unless the plan is walk-run,
+	// which is the gentle start this note would suggest.
+	let thinHistoryMessage = $derived(
+		plan && recentVolume && !returning && !isWalkRunPlan && recentVolume.activeWeeks < MIN_ACTIVE_WEEKS
+			? t('planEditor.thinHistory', { opening: fmtKm(openingWeekVolumeM(plan.weeks), 0) })
+			: null,
+	);
+	// Paces come from the goal time unless a recent 5K is confirmed, so an
+	// ambitious goal makes every pace too fast. Checked against what the
+	// runner has run lately; silent without a confident projection.
+	let goalAhead = $derived(
+		plan && !isWalkRunPlan && recent5kApplied == null
+			? goalAheadOfRecentRuns(goalDistance, goalTimeSec, recentEfforts)
+			: null,
+	);
+
 	let rampMessage = $derived.by(() => {
 		if (!rampCheck || !shouldSurfaceRampNote(rampCheck, { beginnerWalkRun: isWalkRunPlan })) {
 			return null;
@@ -610,7 +750,7 @@
 	// until they touch a top-level input again.
 	$effect(() => {
 		// Read every input we care about so the effect tracks them.
-		void [goalEvent, goalDistance, ultraDistanceInvalid, goalTimeSec, recent5kApplied, startDate, daysPerWeek, weeks, viewerGender, beginnerWalkRun, importedMode];
+		void [goalEvent, goalDistance, ultraDistanceInvalid, goalTimeSec, recent5kApplied, startDate, daysPerWeek, weeks, viewerGender, beginnerWalkRun, importedMode, returnCapM];
 		// A pasted plan owns `plan` until the runner edits a core input
 		// (which flips importedMode off and re-runs this effect).
 		if (importedMode) return;
@@ -619,7 +759,7 @@
 			return;
 		}
 		try {
-			plan = generatePlan({
+			const generated = generatePlan({
 				goalEvent,
 				goalDistanceM: goalDistance,
 				goalTimeSec,
@@ -631,6 +771,13 @@
 				age: viewerAge,
 				beginnerWalkRun,
 			});
+			plan =
+				returnCapM == null
+					? generated
+					: {
+							...generated,
+							weeks: capReturnRamp(generated.weeks, returnCapM, generated.paces.easy),
+						};
 			expandedWeek = null;
 		} catch (_) {
 			plan = null;
@@ -687,8 +834,8 @@
 		// onchange), snap now and re-show the preview rather than persisting
 		// a misaligned plan. The reactive preview regenerates from the
 		// aligned date, so ask the user to submit once more.
-		if (!importedMode && startDate && !isSundayIso(startDate)) {
-			alignStartToSunday();
+		if (!importedMode && startDate && !planStartAllowedIso(startDate, beginnerWalkRun)) {
+			alignStart();
 			error = t('planEditor.errorStartMovedToSunday');
 			return;
 		}
@@ -818,6 +965,26 @@
 				<p class="imported-note" role="status">{t('planEditor.importedNote')}</p>
 			{/if}
 
+			<fieldset class="starting-point" data-testid="plan-starting-point">
+				<legend>{t('planEditor.startingPoint')}</legend>
+				{#each STARTING_POINTS as sp (sp.value)}
+					<label class="starting-point-option">
+						<input
+							type="radio"
+							name="plan-starting-point"
+							value={sp.value}
+							checked={startingPoint === sp.value}
+							onchange={() => setStartingPoint(sp.value)}
+							aria-describedby="starting-point-{sp.value}-hint"
+						/>
+						<span>
+							<span class="starting-point-title">{t(sp.label)}</span>
+							<span class="hint" id="starting-point-{sp.value}-hint">{t(sp.hint)}</span>
+						</span>
+					</label>
+				{/each}
+			</fieldset>
+
 			<div class="field">
 				<label>
 					<span>{t('planEditor.planName')}</span>
@@ -834,6 +1001,7 @@
 				<p class="hint" id="plan-name-hint">{t('planEditor.planNameHint')}</p>
 			</div>
 
+			{#if showGoalRace}
 			<div class="field">
 				<label>
 					<span>{t('planEditor.goalRace')}</span>
@@ -877,15 +1045,19 @@
 					{/if}
 				</div>
 			{/if}
+			{/if}
 
 			<div class="field">
 				<label>
-					<span>{t('planEditor.startDate')} <span class="optional">{t('planEditor.firstWeekBeginsSunday')}</span></span>
+					<span>
+						{t('planEditor.startDate')}
+						{#if !beginnerWalkRun}<span class="optional">{t('planEditor.firstWeekBeginsSunday')}</span>{/if}
+					</span>
 					<input
 						type="date"
 						bind:value={startDate}
 						min={importedMode ? undefined : todayIso()}
-						onchange={() => { exitImportMode(); alignStartToSunday(); }}
+						onchange={() => { exitImportMode(); alignStart(); }}
 						required
 						aria-describedby="start-date-hint"
 					/>
@@ -893,21 +1065,26 @@
 						<span class="field-note">{t('planEditor.movedToNextSunday')}</span>
 					{/if}
 				</label>
-				<p class="hint" id="start-date-hint">{t('planEditor.startDateHint')}</p>
+				<p class="hint" id="start-date-hint">
+					{t(beginnerWalkRun ? 'planEditor.startDateHintWalkRun' : 'planEditor.startDateHint')}
+				</p>
 			</div>
 
 			<div class="field">
 				<label>
 					<span>{t('planEditor.daysPerWeek')}</span>
 					<select bind:value={daysPerWeek} onchange={exitImportMode} aria-describedby="days-per-week-hint">
-						{#each [3, 4, 5, 6, 7] as n}
+						{#each dayOptions as n (n)}
 							<option value={n}>{t('planEditor.nDays', { n })}</option>
 						{/each}
 					</select>
 				</label>
-				<p class="hint" id="days-per-week-hint">{t('planEditor.daysPerWeekHint')}</p>
+				<p class="hint" id="days-per-week-hint">
+					{t(beginnerWalkRun ? 'planEditor.daysPerWeekWalkRunHint' : 'planEditor.daysPerWeekHint')}
+				</p>
 			</div>
 
+			{#if showGoalTime}
 			<fieldset>
 				<legend>{t('planEditor.goalTime')} <span class="optional">{t('planEditor.optional')}</span></legend>
 				<p class="hint" id="goal-time-hint">{t('planEditor.goalTimeHint')}</p>
@@ -918,8 +1095,15 @@
 					<span>:</span>
 					<input type="number" min="0" max="59" bind:value={targetSec} placeholder={t('planEditor.placeholderSeconds')} aria-describedby="goal-time-hint" />
 				</div>
+				{#if goalAhead}
+					<p class="hint warn" role="status" data-testid="plan-goal-ahead">
+						{t('planEditor.goalAheadOfRecent', { predicted: fmtHms(goalAhead.predictedSec) })}
+					</p>
+				{/if}
 			</fieldset>
+			{/if}
 
+			{#if startingPoint !== 'new'}
 			<label class="beginner-toggle">
 				<input type="checkbox" checked={beginnerWalkRun} onchange={onBeginnerToggle} />
 				<span>
@@ -929,7 +1113,9 @@
 					</span>
 				</span>
 			</label>
+			{/if}
 
+			{#if showRecent5k}
 			<fieldset>
 				<legend>{t('planEditor.recent5kTime')} <span class="optional">{t('planEditor.optional')}</span></legend>
 				<p class="hint" id="recent-5k-hint"><MetricLabel metric="riegel" sentence="planEditor.recent5kHint" /></p>
@@ -938,7 +1124,7 @@
 					<span>:</span>
 					<input type="number" min="0" max="59" bind:value={recent5kSec} placeholder={t('planEditor.placeholderSeconds')} aria-describedby="recent-5k-hint" />
 				</div>
-				{#if recent5kTotal != null}
+				{#if recent5kComplete}
 					<label class="confirm-recent">
 						<input type="checkbox" bind:checked={recent5kConfirmed} />
 						<span>
@@ -953,6 +1139,7 @@
 					</p>
 				{/if}
 			</fieldset>
+			{/if}
 
 			<div class="field">
 				<label>
@@ -1006,10 +1193,30 @@
 					{/if}
 				{/if}
 
-				{#if rampMessage}
+				{#if returnMessage}
+					<div class="ramp-note" role="status" data-testid="plan-return-note">
+						<h3>{t('planEditor.returnTitle')}</h3>
+						<p>{returnMessage}</p>
+						<label class="confirm-recent">
+							<input type="checkbox" bind:checked={easeBack} />
+							<span>{t('planEditor.returnEaseBack')}</span>
+						</label>
+						<button type="button" class="btn btn-secondary" onclick={() => setWalkRun(true)}>
+							{t('planEditor.returnWalkRun')}
+						</button>
+					</div>
+				{:else if rampMessage}
 					<div class="ramp-note" role="status">
 						<h3>{t('planEditor.rampLabel')}</h3>
 						<p>{rampMessage}</p>
+					</div>
+				{:else if thinHistoryMessage}
+					<div class="ramp-note" role="status" data-testid="plan-thin-history-note">
+						<h3>{t('planEditor.rampLabel')}</h3>
+						<p>{thinHistoryMessage}</p>
+						<button type="button" class="btn btn-secondary" onclick={() => setWalkRun(true)}>
+							{t('planEditor.thinHistoryWalkRun')}
+						</button>
 					</div>
 				{/if}
 
@@ -1222,6 +1429,21 @@
 		gap: 0.6rem;
 	}
 	.beginner-toggle input { margin-top: 0.2rem; }
+	.starting-point {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+	.starting-point-option {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.6rem;
+		font-weight: 400;
+	}
+	.starting-point-option input { margin-top: 0.2rem; }
+	.starting-point-title { display: block; font-weight: 600; }
+	.starting-point-option .hint { display: block; margin-bottom: 0; }
+	.ramp-note .btn { margin-top: 0.5rem; }
 	.beginner-title { display: block; font-weight: 600; }
 	.confirm-recent input {
 		margin-top: 0.15rem;

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../lib/comeback.dart';
 import '../lib/plan_ramp.dart';
 import '../lib/self_load.dart';
+import '../lib/training.dart';
 import '../lib/training_load.dart' show kLayoffResetDays;
 
 const int _dayMs = 86400000;
@@ -254,5 +255,132 @@ void main() {
     };
     expect(verdict, 'steep');
     expect(shouldSurfaceComeback(comebackLoad(const [], _now)), isFalse);
+  });
+
+  group('returningFromBreak', () {
+    /// Four 40 km weeks ending [lastRunDaysAgo] days ago, and nothing since.
+    List<RunForVolume> openBreakRunner(num lastRunDaysAgo,
+            [double baseWeeklyM = 40000]) =>
+        [for (final w in [0, 7, 14, 21]) _run(lastRunDaysAgo + w, baseWeeklyM)];
+
+    test('reads a break that is still open, before the first run back', () {
+      final r = returningFromBreak(openBreakRunner(60), _now);
+      expect(r, isNotNull);
+      expect(r!.layoffDays, 60);
+      expect(r.layoffWeeks, 9);
+      expect(r.preLayoffWeeklyM, 40000);
+      expect(r.openingCapM, 40000 * kReturnWeekShare);
+      // comebackLoad has nothing to grade until the runner runs again.
+      expect(comebackLoad(openBreakRunner(60), _now).verdict,
+          ComebackVerdict.insufficient);
+    });
+
+    test('agrees with comebackLoad on a break the runner has ended', () {
+      final runs = _comebackRunner(60, 5000);
+      final r = returningFromBreak(runs, _now);
+      expect(r, isNotNull);
+      expect(r!.layoffDays, comebackLoad(runs, _now).layoffDays);
+      expect(r.preLayoffWeeklyM, comebackLoad(runs, _now).preLayoffWeeklyM);
+    });
+
+    test('is null for a runner training consistently now', () {
+      final runs = [for (final d in [1, 8, 15, 22]) _run(d, 30000)];
+      expect(returningFromBreak(runs, _now), isNull);
+    });
+
+    test('is null with no running history at all', () {
+      expect(returningFromBreak(const [], _now), isNull);
+      expect(returningFromBreak([_run(3, 20000, 'cycle')], _now), isNull);
+    });
+
+    test('is null for a break too old to anchor against', () {
+      expect(returningFromBreak(openBreakRunner(kLayoffMaxDays + 1), _now),
+          isNull);
+      expect(
+          returningFromBreak(openBreakRunner(kLayoffMaxDays), _now), isNotNull);
+    });
+
+    test('is null when the pre-break base is a single run', () {
+      expect(returningFromBreak([_run(60, 40000)], _now), isNull);
+    });
+  });
+
+  group('capReturnRamp', () {
+    final day = DateTime(2026, 6, 7);
+    GeneratedWorkout workout(WorkoutKind kind, double? metres) =>
+        GeneratedWorkout(
+          scheduledDate: day,
+          kind: kind,
+          targetDistanceM: metres,
+          targetPaceSecPerKm: kind == WorkoutKind.rest ? null : 300,
+          targetPaceToleranceSec: kind == WorkoutKind.rest ? null : 8,
+          structure: kind == WorkoutKind.interval
+              ? const WorkoutStructure(repeats: {'count': 5})
+              : null,
+          notes: kind == WorkoutKind.interval ? '5 x 1 km' : null,
+        );
+    GeneratedWeek week(int index, List<GeneratedWorkout> workouts) =>
+        GeneratedWeek(
+          weekIndex: index,
+          phase: PlanPhase.build,
+          targetVolumeM:
+              workouts.fold(0.0, (s, w) => s + (w.targetDistanceM ?? 0)),
+          workouts: workouts,
+        );
+
+    test(
+        'caps week 1, lets later weeks grow 10%, and leaves the rest of the plan alone',
+        () {
+      final weeks = [
+        week(0, [
+          workout(WorkoutKind.long, 12000),
+          workout(WorkoutKind.rest, null),
+          workout(WorkoutKind.interval, 8000),
+        ]),
+        week(1, [
+          workout(WorkoutKind.long, 12000),
+          workout(WorkoutKind.rest, null),
+          workout(WorkoutKind.easy, 8000),
+        ]),
+        week(2, [
+          workout(WorkoutKind.long, 10000),
+          workout(WorkoutKind.race, 5000),
+        ]),
+      ];
+      final capped = capReturnRamp(weeks, 10000, 420);
+      // Week 1: 20 km against a 10 km cap, so every session halves.
+      expect(capped[0].targetVolumeM, 10000);
+      expect(capped[0].workouts[0].targetDistanceM, 6000);
+      expect(capped[0].workouts[2].targetDistanceM, 4000);
+      // The interval session is an easy run at the easy pace now.
+      expect(capped[0].workouts[2].kind, WorkoutKind.easy);
+      expect(capped[0].workouts[2].targetPaceSecPerKm, 420);
+      expect(capped[0].workouts[2].structure, isNull);
+      expect(capped[0].workouts[2].notes, isNull);
+      expect(identical(capped[0].workouts[1], weeks[0].workouts[1]), isTrue);
+      // Week 2: capped at 10 km x 1.1 = 11 km, to the nearest 100 m per session.
+      expect(10000 * kReturnWeeklyGrowth, 11000);
+      expect(capped[1].workouts[0].targetDistanceM, 6600);
+      expect(capped[1].workouts[2].targetDistanceM, 4400);
+      expect(capped[1].targetVolumeM, 11000);
+      // Week 3: 15 km is under its 12.1 km cap only once the race is set
+      // aside, so the long run takes the whole cut and the race keeps its 5 km.
+      expect(identical(capped[2].workouts[1], weeks[2].workouts[1]), isTrue);
+      expect(capped[2].workouts[0].targetDistanceM, 7100);
+      // The input is untouched.
+      expect(weeks[0].targetVolumeM, 20000);
+      expect(weeks[0].workouts[2].kind, WorkoutKind.interval);
+    });
+
+    test(
+        'leaves a week under its cap, and every week for a cap that is not positive',
+        () {
+      final weeks = [
+        week(0, [workout(WorkoutKind.easy, 5000)]),
+      ];
+      expect(identical(capReturnRamp(weeks, 10000, 420)[0], weeks[0]), isTrue);
+      expect(identical(capReturnRamp(weeks, 0, 420), weeks), isTrue);
+      expect(identical(capReturnRamp(weeks, double.nan, 420), weeks), isTrue);
+    });
   });
 }

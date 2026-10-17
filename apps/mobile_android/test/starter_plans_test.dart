@@ -47,4 +47,22 @@ void main() {
     expect(plan, isNotNull);
     expect(plan!.endDate.isAfter(DateTime(2026, 7, 1)), isTrue);
   });
+
+  test('starterSummary describes C25K as 9 weeks, 3 days a week, 30-45 minute sessions',
+      () {
+    // The shortest session is week 1 (28.5 min) and the longest week 7
+    // (44 min), each rounded to the nearest 5.
+    final s = starterSummary('c25k')!;
+    expect(s.weeks, 9);
+    expect(s.daysPerWeek, 3);
+    expect(s.sessionMinutes, (min: 30, max: 45));
+  });
+
+  test('starterSummary gives a distance-based starter no session length', () {
+    final s = starterSummary('half_12wk')!;
+    expect(s.weeks, 12);
+    expect(s.daysPerWeek, 4);
+    expect(s.sessionMinutes, isNull);
+    expect(starterSummary('nope'), isNull);
+  });
 }

@@ -21,7 +21,7 @@
 		fetchGymExerciseNames,
 		publishGymRoutineAsTemplate,
 	} from '#lib/core/data.ts';
-	import { STARTER_PLANS, starterById, instantiateStarter } from '#lib/training/starter_plans.ts';
+	import { STARTER_PLANS, starterById, instantiateStarter, starterSummary } from '#lib/training/starter_plans.ts';
 	import { PRIMARY_GOAL_VALUES, planPresetForGoal, type PrimaryGoal } from '#lib/settings/onboarding.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -308,6 +308,17 @@
 		}
 	}
 
+	/// What the chosen starter asks of the runner, under its name.
+	function starterSummaryText(id: string): string | null {
+		const summary = starterSummary(id);
+		if (!summary) return null;
+		const params = { weeks: summary.weeks, days: summary.daysPerWeek };
+		return summary.sessionMinutes
+			? m('plansNew.starterSummaryTimed', { ...params, ...summary.sessionMinutes })
+			: m('plansNew.starterSummary', params);
+	}
+	let selectedStarterSummary = $derived(selectedStarterId ? starterSummaryText(selectedStarterId) : null);
+
 	async function createFromStarter() {
 		if (!selectedStarterId || !startDate || creatingStarter) return;
 		const starterId = selectedStarterId;
@@ -423,7 +434,10 @@
 		<div class="picker-row">
 			<label class="picker-field">
 				<span>{m('plansNew.starterLabel')}</span>
-				<select bind:value={selectedStarterId} aria-describedby="starter-hint">
+				<select
+					bind:value={selectedStarterId}
+					aria-describedby={selectedStarterSummary ? 'starter-hint starter-summary' : 'starter-hint'}
+				>
 					<option value="">{m('plansNew.selectPlaceholder')}</option>
 					{#each STARTER_PLANS as s (s.id)}
 						<option value={s.id}>{starterName(s.id)}</option>
@@ -448,6 +462,11 @@
 				{/if}
 			</button>
 		</div>
+		{#if selectedStarterSummary}
+			<p class="picker-hint field-hint" id="starter-summary" data-testid="starter-summary">
+				{selectedStarterSummary}
+			</p>
+		{/if}
 		<p class="picker-hint field-hint" id="starter-start-date-hint">{m('plansNew.startDateHint')}</p>
 	</section>
 

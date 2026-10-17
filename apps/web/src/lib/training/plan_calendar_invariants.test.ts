@@ -294,3 +294,24 @@ test('a snapped start date is a Sunday in whichever zone the runner is standing 
 		});
 	}
 });
+
+test('a walk-run plan has no weekday role, so a midweek start shifts nothing', () => {
+	// The measured fact `planStartAllowedIso` exempts walk-run on: its sessions
+	// are offsets 0/2/4 with rest between and no long run, whatever weekday day
+	// 0 falls on. 2026-06-03 is a Wednesday.
+	for (const startDate of ['2026-06-03', '2026-06-07']) {
+		const plan = generatePlan({
+			goalEvent: 'distance_5k',
+			daysPerWeek: 3,
+			startDate,
+			beginnerWalkRun: true,
+		});
+		for (const week of plan.weeks) {
+			const runOffsets = week.workouts
+				.map((w, i) => (w.kind === 'walk_run' ? i : -1))
+				.filter((i) => i >= 0);
+			assert.deepEqual(runOffsets, [0, 2, 4], `week ${week.week_index} from ${startDate}`);
+			assert.ok(week.workouts.every((w) => w.kind === 'walk_run' || w.kind === 'rest'));
+		}
+	}
+});

@@ -9,6 +9,7 @@ function fakeClock(start: Date) {
 	let pending: { at: number; fn: () => void; id: number } | null = null;
 	let nextId = 1;
 	const listeners = new Map<string, () => void>();
+	const winListeners = new Map<string, () => void>();
 	let visibility = 'visible';
 	const deps: DayTickerDeps = {
 		now: () => new Date(now),
@@ -30,6 +31,14 @@ function fakeClock(start: Date) {
 				return visibility;
 			},
 		},
+		win: {
+			addEventListener: (type, fn) => {
+				winListeners.set(type, fn);
+			},
+			removeEventListener: (type) => {
+				winListeners.delete(type);
+			},
+		},
 	};
 	return {
 		deps,
@@ -49,11 +58,14 @@ function fakeClock(start: Date) {
 			visibility = 'visible';
 			listeners.get('visibilitychange')?.();
 		},
+		fire(type: 'focus' | 'pageshow') {
+			winListeners.get(type)?.();
+		},
 		get armed() {
 			return pending !== null;
 		},
 		get listening() {
-			return listeners.has('visibilitychange');
+			return listeners.has('visibilitychange') || winListeners.size > 0;
 		},
 	};
 }
@@ -79,6 +91,17 @@ test('startLocalDayTicker catches up on visibility after the machine slept throu
 	assert.deepEqual(days, ['2026-10-17']);
 	clock.show();
 	assert.deepEqual(days, ['2026-10-17', '2026-10-18']);
+});
+
+test('startLocalDayTicker catches up on focus and pageshow when the tab stayed visible through a suspend', () => {
+	for (const event of ['focus', 'pageshow'] as const) {
+		const clock = fakeClock(new Date(2026, 9, 17, 22, 0));
+		const days: string[] = [];
+		startLocalDayTicker((iso) => days.push(iso), clock.deps);
+		clock.sleep(5 * 3600_000);
+		clock.fire(event);
+		assert.deepEqual(days, ['2026-10-17', '2026-10-18'], event);
+	}
 });
 
 test('startLocalDayTicker teardown clears the timer and the listener', () => {

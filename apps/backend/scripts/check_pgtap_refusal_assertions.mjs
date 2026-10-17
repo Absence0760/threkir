@@ -1916,6 +1916,15 @@ export const FILTERED_RPC_ARGUMENTS = [
       'plan\'s shifted window.',
   },
   {
+    file: 'walk_run_two_days_test.sql',
+    description: 'a two-day walk-run plan saves',
+    columns: ['training_plans.goal_event', 'training_plans.notes', 'training_plans.vdot'],
+    reason:
+      'The subject is that the two-day floor admits a walk-run plan, which the days_per_week ' +
+      'read-back after it states. The cast columns are atomic_plan_create_test.sql\'s trim case\'s ' +
+      'claim, read back there for the same function.',
+  },
+  {
     file: 'plan_chaining_edges_test.sql',
     description: 'a create with replace over two active plans succeeds',
     columns: ['training_plans.goal_event', 'training_plans.notes', 'training_plans.vdot'],

@@ -17247,17 +17247,29 @@ abstract class AppLocalizations {
   /// **'Workout complete. Nice work.'**
   String get ttsWorkoutComplete;
 
-  /// Spoken in-step progress cue at the halfway point
+  /// Spoken in-step progress cue at the halfway point of a paced interval rep (never on a warm-up, recovery, steady block or walk-run interval)
   ///
   /// In en, this message translates to:
   /// **'Halfway through this rep'**
   String get ttsStepHalfway;
 
-  /// Spoken in-step progress cue near the end of a rep
+  /// Spoken in-step progress cue in the last 50 m of a distance rep, for a runner who uses kilometres
   ///
   /// In en, this message translates to:
   /// **'Fifty metres to go'**
   String get ttsStepLastFifty;
+
+  /// Spoken in-step progress cue near the end of a distance rep, for a runner who uses miles (the cue fires inside the last 50 m, about 55 yards)
+  ///
+  /// In en, this message translates to:
+  /// **'Fifty yards to go'**
+  String get ttsStepLastFiftyYards;
+
+  /// Spoken in-step progress cue in the last ten seconds of a timed step (a walk-run interval, a timed rep or a timed warm-up)
+  ///
+  /// In en, this message translates to:
+  /// **'Ten seconds to go'**
+  String get ttsStepLastTenSeconds;
 
   /// Spoken nudge when the runner is ahead of target pace by delta seconds per km
   ///

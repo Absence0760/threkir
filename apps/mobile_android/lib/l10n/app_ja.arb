@@ -2910,6 +2910,8 @@
   "ttsWorkoutComplete": "ワークアウト完了。お疲れさまでした。",
   "ttsStepHalfway": "このレップの折り返しです",
   "ttsStepLastFifty": "残り五十メートル",
+  "ttsStepLastFiftyYards": "残り五十ヤード",
+  "ttsStepLastTenSeconds": "残り十秒",
   "ttsPaceDriftAhead": "少し緩めましょう — {delta}秒速すぎます。",
   "ttsPaceDriftBehind": "少し上げましょう — {delta}秒遅れています。",
   "ttsSpeedKm": "速度、時速{value}キロメートル",

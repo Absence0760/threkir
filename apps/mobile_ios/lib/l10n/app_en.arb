@@ -14146,11 +14146,19 @@
   },
   "ttsStepHalfway": "Halfway through this rep",
   "@ttsStepHalfway": {
-    "description": "Spoken in-step progress cue at the halfway point"
+    "description": "Spoken in-step progress cue at the halfway point of a paced interval rep (never on a warm-up, recovery, steady block or walk-run interval)"
   },
   "ttsStepLastFifty": "Fifty metres to go",
   "@ttsStepLastFifty": {
-    "description": "Spoken in-step progress cue near the end of a rep"
+    "description": "Spoken in-step progress cue in the last 50 m of a distance rep, for a runner who uses kilometres"
+  },
+  "ttsStepLastFiftyYards": "Fifty yards to go",
+  "@ttsStepLastFiftyYards": {
+    "description": "Spoken in-step progress cue near the end of a distance rep, for a runner who uses miles (the cue fires inside the last 50 m, about 55 yards)"
+  },
+  "ttsStepLastTenSeconds": "Ten seconds to go",
+  "@ttsStepLastTenSeconds": {
+    "description": "Spoken in-step progress cue in the last ten seconds of a timed step (a walk-run interval, a timed rep or a timed warm-up)"
   },
   "ttsPaceDriftAhead": "Ease up — {delta} seconds ahead pace.",
   "@ttsPaceDriftAhead": {

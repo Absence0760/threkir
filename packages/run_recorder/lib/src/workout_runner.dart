@@ -144,12 +144,17 @@ class WorkoutRunner {
     final stepDist = stepDistanceMetres;
     final stepSecs = stepElapsed.inSeconds;
 
-    // Halfway cue — branches on step axis. Duration steps hit half on
-    // time elapsed; distance steps on distance covered.
+    // Halfway cue — only on a paced work rep, the one step where "halfway
+    // through this rep" is both true and worth hearing. A warm-up, a
+    // recovery, a steady block or a walk-run interval is not a rep, and the
+    // band already shows how much of it is left. Branches on step axis.
     final halfwayHit = step.isDurationBased
         ? stepSecs >= step.targetDurationSec! / 2
         : stepDist >= step.targetDistanceMetres * 0.5;
-    if (!_firedHalfway && halfwayHit) {
+    if (!_firedHalfway &&
+        halfwayHit &&
+        step.kind == WorkoutStepKind.rep &&
+        step.paced) {
       _firedHalfway = true;
       _events.add(StepProgressEvent(
         step: step,
@@ -160,7 +165,9 @@ class WorkoutRunner {
 
     // End-of-step warning cue. For distance steps: last 50 m, gated to
     // steps longer than 100 m (else cue collides with halfway). For
-    // duration steps: last 10 s, gated to durations longer than 20 s.
+    // duration steps: last 10 s, gated to durations longer than 20 s. The
+    // kind names the axis so the speech can say "ten seconds" on a timed
+    // step instead of a distance the runner was never measuring.
     final lastWindowHit = step.isDurationBased
         ? (step.targetDurationSec! - stepSecs <= 10 &&
             step.targetDurationSec! > 20)
@@ -171,7 +178,9 @@ class WorkoutRunner {
       _events.add(StepProgressEvent(
         step: step,
         index: _idx,
-        kind: StepProgressKind.lastFiftyMetres,
+        kind: step.isDurationBased
+            ? StepProgressKind.lastTenSeconds
+            : StepProgressKind.lastFiftyMetres,
       ));
     }
 
@@ -543,7 +552,7 @@ class StepTransitionEvent extends WorkoutExecEvent {
   });
 }
 
-enum StepProgressKind { halfway, lastFiftyMetres }
+enum StepProgressKind { halfway, lastFiftyMetres, lastTenSeconds }
 
 class StepProgressEvent extends WorkoutExecEvent {
   final WorkoutStep step;

@@ -10548,6 +10548,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get ttsStepLastFifty => 'Quedan cincuenta metros';
 
   @override
+  String get ttsStepLastFiftyYards => 'Quedan cincuenta yardas';
+
+  @override
+  String get ttsStepLastTenSeconds => 'Quedan diez segundos';
+
+  @override
   String ttsPaceDriftAhead(int delta) {
     return 'Afloja un poco — $delta segundos demasiado rápido.';
   }

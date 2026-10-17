@@ -10029,6 +10029,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get ttsStepLastFifty => '残り五十メートル';
 
   @override
+  String get ttsStepLastFiftyYards => '残り五十ヤード';
+
+  @override
+  String get ttsStepLastTenSeconds => '残り十秒';
+
+  @override
   String ttsPaceDriftAhead(int delta) {
     return '少し緩めましょう — $delta秒速すぎます。';
   }

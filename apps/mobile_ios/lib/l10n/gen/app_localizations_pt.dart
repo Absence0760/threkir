@@ -10551,6 +10551,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get ttsStepLastFifty => 'Faltam cinquenta metros';
 
   @override
+  String get ttsStepLastFiftyYards => 'Faltam cinquenta jardas';
+
+  @override
+  String get ttsStepLastTenSeconds => 'Faltam dez segundos';
+
+  @override
   String ttsPaceDriftAhead(int delta) {
     return 'Alivie um pouco — $delta segundos demasiado depressa.';
   }
@@ -27389,6 +27395,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get ttsStepLastFifty => 'Faltam cinquenta metros';
+
+  @override
+  String get ttsStepLastFiftyYards => 'Faltam cinquenta jardas';
+
+  @override
+  String get ttsStepLastTenSeconds => 'Faltam dez segundos';
 
   @override
   String ttsPaceDriftAhead(int delta) {

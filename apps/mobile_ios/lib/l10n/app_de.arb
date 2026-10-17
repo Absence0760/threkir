@@ -2910,6 +2910,8 @@
   "ttsWorkoutComplete": "Training abgeschlossen. Gut gemacht.",
   "ttsStepHalfway": "Halbzeit in dieser Wiederholung",
   "ttsStepLastFifty": "Noch fünfzig Meter",
+  "ttsStepLastFiftyYards": "Noch fünfzig Yards",
+  "ttsStepLastTenSeconds": "Noch zehn Sekunden",
   "ttsPaceDriftAhead": "Etwas lockerer — {delta} Sekunden zu schnell.",
   "ttsPaceDriftBehind": "Etwas schneller — {delta} Sekunden zu langsam.",
   "ttsSpeedKm": "Tempo, {value} Stundenkilometer",

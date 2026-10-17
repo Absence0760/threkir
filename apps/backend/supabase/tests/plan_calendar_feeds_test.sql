@@ -11,12 +11,13 @@
 --     nothing, no client can read or write the row;
 --   * the feed body (service role only) carries the active plan's non-rest
 --     workouts and nothing from another plan, and never a note or race name;
+--     with chained active plans, only the current one (20270915000007);
 --   * the anonymous caller can reach none of the three functions;
 --   * deleting the auth user cascades the feed away (Art 17).
 
 begin;
 
-select plan(28);
+select plan(30);
 
 insert into auth.users (id, email, encrypted_password, email_confirmed_at, instance_id, aud, role)
 values
@@ -248,6 +249,51 @@ select throws_like(
 );
 reset role;
 set local "request.jwt.claims" = '';
+
+-- ── chained plans: only the current one ──
+
+insert into auth.users (id, email, encrypted_password, email_confirmed_at, instance_id, aud, role)
+values ('ca1e0000-0000-4000-8000-00000000000c', 'cal-c@example.com', '', now(),
+        '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated');
+insert into public.user_profiles (id, preferred_unit)
+values ('ca1e0000-0000-4000-8000-00000000000c', 'km')
+on conflict (id) do nothing;
+insert into public.user_settings (user_id, prefs)
+values ('ca1e0000-0000-4000-8000-00000000000c', '{"time_zone": "UTC"}')
+on conflict (user_id) do update set prefs = excluded.prefs;
+insert into public.training_plans (id, user_id, name, goal_event, goal_distance_m, start_date, end_date, status)
+values
+  ('ca1e0001-0000-4000-8000-00000000000c', 'ca1e0000-0000-4000-8000-00000000000c',
+   'Now', 'distance_5k', 5000, current_date - 3, current_date + 3, 'active'),
+  ('ca1e0001-0000-4000-8000-00000000000d', 'ca1e0000-0000-4000-8000-00000000000c',
+   'Next', 'distance_5k', 5000, current_date + 4, current_date + 10, 'active');
+insert into public.plan_weeks (id, plan_id, week_index)
+values ('ca1e0002-0000-4000-8000-00000000000c', 'ca1e0001-0000-4000-8000-00000000000c', 0),
+       ('ca1e0002-0000-4000-8000-00000000000d', 'ca1e0001-0000-4000-8000-00000000000d', 0);
+insert into public.plan_workouts (id, week_id, scheduled_date, kind, target_distance_m)
+values ('ca1e0003-0000-4000-8000-00000000000c', 'ca1e0002-0000-4000-8000-00000000000c', current_date + 1, 'easy', 5000),
+       ('ca1e0003-0000-4000-8000-00000000000d', 'ca1e0002-0000-4000-8000-00000000000d', current_date + 5, 'easy', 6000);
+insert into public.plan_calendar_feeds (user_id, secret_hash)
+values ('ca1e0000-0000-4000-8000-00000000000c', sha256('chained'::bytea));
+
+select is(
+  (select jsonb_agg(w ->> 'id')
+     from jsonb_array_elements(public.plan_calendar_feed_events(
+       (select id from public.plan_calendar_feeds where user_id = 'ca1e0000-0000-4000-8000-00000000000c')) -> 'workouts') w),
+  '["ca1e0003-0000-4000-8000-00000000000c"]'::jsonb,
+  'with two chained active plans the feed carries the one covering today, not the queued one'
+);
+update public.training_plans set start_date = current_date - 10, end_date = current_date - 4
+ where id = 'ca1e0001-0000-4000-8000-00000000000c';
+update public.plan_workouts set scheduled_date = current_date - 5 where id = 'ca1e0003-0000-4000-8000-00000000000c';
+update public.training_plans set start_date = current_date + 1 where id = 'ca1e0001-0000-4000-8000-00000000000d';
+select is(
+  (select jsonb_agg(w ->> 'id')
+     from jsonb_array_elements(public.plan_calendar_feed_events(
+       (select id from public.plan_calendar_feeds where user_id = 'ca1e0000-0000-4000-8000-00000000000c')) -> 'workouts') w),
+  '["ca1e0003-0000-4000-8000-00000000000c"]'::jsonb,
+  'between two plans the feed follows pickCurrentPlan: the latest-ended one'
+);
 
 -- ── Art 17 ──
 

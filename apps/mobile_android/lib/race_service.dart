@@ -63,6 +63,11 @@ class RaceResultForRun {
   final int? ageGroupPlace;
   final String? ageGroup;
 
+  /// The award division (masters, overall top N, weight class) that lifted
+  /// the runner out of their age group, with their place in it.
+  final int? divisionAwardPlace;
+  final String? divisionAward;
+
   const RaceResultForRun({
     required this.listing,
     required this.raceName,
@@ -72,6 +77,8 @@ class RaceResultForRun {
     required this.overallPlace,
     required this.ageGroupPlace,
     required this.ageGroup,
+    this.divisionAwardPlace,
+    this.divisionAward,
   });
 
   bool get hasResult =>
@@ -468,6 +475,8 @@ class RaceService extends ChangeNotifier {
       overallPlace: (meta['overall_place'] as num?)?.toInt(),
       ageGroupPlace: (meta['age_group_place'] as num?)?.toInt(),
       ageGroup: meta['age_group'] as String?,
+      divisionAwardPlace: (meta['division_award_place'] as num?)?.toInt(),
+      divisionAward: meta['division_award'] as String?,
     );
   }
 

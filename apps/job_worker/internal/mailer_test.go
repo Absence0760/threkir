@@ -37,7 +37,7 @@ func pushPrefs(mode string) map[string]interface{} {
 }
 
 func TestShouldEmail_Matrix(t *testing.T) {
-	important := []string{"event_reminder", "event_cancel", "plan_update", "message", "data_export_ready", "refund_failed", "event_waitlist_slot", "mention", "follow_request"}
+	important := []string{"event_reminder", "event_cancel", "plan_update", "message", "data_export_ready", "refund_failed", "event_waitlist_slot", "mention", "follow_request", "workout_reminder"}
 	social := []string{"kudos", "comment", "comment_reply", "follow", "club_post", "run_completed", "event_rsvp", "reaction", "comment_like"}
 
 	for _, k := range important {
@@ -209,6 +209,7 @@ func TestRenderNotificationEmail_AllKinds(t *testing.T) {
 		{"event_waitlist_slot", NotificationRow{Kind: "event_waitlist_slot", EventID: &ev}, base + "/events/evt-1"},
 		{"plan_update", NotificationRow{Kind: "plan_update"}, base + "/plans"},
 		{"plan_assigned", NotificationRow{Kind: "plan_assigned"}, base + "/plans"},
+		{"workout_reminder", NotificationRow{Kind: "workout_reminder"}, base + "/plans"},
 		{"message", NotificationRow{Kind: "message"}, base + "/messages"},
 		{"club_post", NotificationRow{Kind: "club_post", ClubID: &club}, base + "/clubs/club-1"},
 		{"run_completed", NotificationRow{Kind: "run_completed", UserID: "usr-1", RunID: &run}, base + "/share/run/run-1"},
@@ -315,6 +316,7 @@ func TestPathForKind(t *testing.T) {
 		// was a dead deep link).
 		{"plan_update → /plans", "plan_update", NotificationRow{}, base + "/plans"},
 		{"plan_assigned → /plans", "plan_assigned", NotificationRow{}, base + "/plans"},
+		{"workout_reminder → /plans", "workout_reminder", NotificationRow{}, base + "/plans"},
 		// Club → the club id in the /clubs/[slug] slot; that page falls back to
 		// an id lookup and redirects to the canonical slug URL.
 		{"club_post", "club_post", NotificationRow{ClubID: &club}, base + "/clubs/c1"},

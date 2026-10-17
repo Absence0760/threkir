@@ -64,6 +64,7 @@ export const MIGRATIONS = 'apps/backend/supabase/migrations';
 export const EXCLUDED_JOBS = [
 	{ name: 'enqueue-token-refresh', reason: 'Enqueues integration token refreshes; deletes nothing.' },
 	{ name: 'enqueue-event-reminders', reason: 'Enqueues reminder emails; deletes nothing.' },
+	{ name: 'enqueue-workout-reminders', reason: "Raises today's-workout reminders; deletes nothing." },
 	{ name: 'enqueue-weekly-digest', reason: 'Enqueues the weekly digest email; deletes nothing.' },
 	{ name: 'enqueue-lifecycle-drip', reason: 'Enqueues lifecycle emails; deletes nothing.' },
 	{

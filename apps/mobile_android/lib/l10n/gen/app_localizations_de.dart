@@ -4849,6 +4849,10 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get profileNotifWorkoutReminder =>
+      'Dein Training für heute wartet in deinem Plan';
+
+  @override
   String profileNotifEventCancelTitled(String title) {
     return 'Ein Termin von „$title“ wurde abgesagt';
   }
@@ -5798,7 +5802,8 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get plansAbandonBody => 'Danach kannst du einen neuen Plan erstellen.';
+  String get plansAbandonBody =>
+      'Wochen, Trainingseinheiten und verknüpfte Läufe des Plans bleiben erhalten. Danach kannst du einen neuen Plan erstellen.';
 
   @override
   String plansActionFailed(String error) {
@@ -5806,19 +5811,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String plansDaysPerWeek(int count) {
-    return '$count Tage/Wo.';
-  }
-
-  @override
   String get plansStatusUpcoming => 'geplant';
-
-  @override
-  String get plansSignInTitle => 'Melde dich an, um Trainingspläne zu nutzen';
-
-  @override
-  String get plansSignInBody =>
-      'Pläne werden mit deinem Konto synchronisiert und folgen dir über alle Geräte. Gehe zu Einstellungen → Anmelden, um dich zu verbinden.';
 
   @override
   String get plansEmptyTitle => 'Noch keine Pläne.';
@@ -5834,6 +5827,89 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get plansLoadError =>
       'Trainingspläne konnten nicht geladen werden. Tippe auf Wiederholen, um es erneut zu versuchen.';
+
+  @override
+  String plansStarterStartsOn(String date) {
+    return 'Jeder Plan beginnt am $date.';
+  }
+
+  @override
+  String get plansStatusActive => 'aktiv';
+
+  @override
+  String get plansStatusPaused => 'pausiert';
+
+  @override
+  String get plansStatusCompleted => 'abgeschlossen';
+
+  @override
+  String get plansStatusAbandoned => 'abgebrochen';
+
+  @override
+  String get plansFilterGroupLabel => 'Pläne nach Status filtern';
+
+  @override
+  String get plansFilterAll => 'Alle';
+
+  @override
+  String get plansFilterActive => 'Aktiv';
+
+  @override
+  String get plansFilterPaused => 'Pausiert';
+
+  @override
+  String get plansFilterCompleted => 'Abgeschlossen';
+
+  @override
+  String get plansFilterAbandoned => 'Abgebrochen';
+
+  @override
+  String plansNoFilteredPlans(String status) {
+    return 'Keine $status-Pläne.';
+  }
+
+  @override
+  String get plansShowAllPlans => 'Alle Pläne anzeigen';
+
+  @override
+  String get plansHeroGoal => 'Ziel';
+
+  @override
+  String get plansHeroTarget => 'Zielzeit';
+
+  @override
+  String get plansGoalFinish => 'Ankommen';
+
+  @override
+  String get plansEventHalf => 'Halbmarathon';
+
+  @override
+  String get plansEventFull => 'Marathon';
+
+  @override
+  String get plansEventCustom => 'Individuell';
+
+  @override
+  String plansWeekOf(int week, int total) {
+    return 'Woche $week von $total';
+  }
+
+  @override
+  String get plansEnded => 'Beendet';
+
+  @override
+  String get plansProgressLabel => 'Planfortschritt';
+
+  @override
+  String plansMetaWeeks(int weeks, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks Wochen · $days Tage/Woche',
+      one: '$weeks Woche · $days Tage/Woche',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get planNewTitle => 'Neuer Plan';
@@ -6192,16 +6268,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get planLibraryAnonymous => 'einem Läufer';
 
   @override
-  String planLibraryWeeks(int weeks) {
-    return '$weeks Wochen';
-  }
-
-  @override
-  String planLibraryDaysPerWeek(int days) {
-    return '$days×/Woche';
-  }
-
-  @override
   String get planLibraryClone => 'In meine Pläne klonen';
 
   @override
@@ -6228,6 +6294,17 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String planLibraryPreviewWeek(int n) {
     return 'Woche $n';
+  }
+
+  @override
+  String planLibraryPreviewWeekRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Läufe',
+      one: '$count Lauf',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -8843,6 +8920,13 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get prefsEmailNewDeviceAlertsHint =>
       'Per E-Mail benachrichtigen, wenn sich mein Konto zum ersten Mal über einen Browser oder ein Gerät anmeldet, das es bisher nicht verwendet hat. Hinweise zu Passwortänderungen werden immer gesendet und lassen sich nicht abschalten.';
+
+  @override
+  String get prefsNotifyWorkoutReminder => 'Training für heute';
+
+  @override
+  String get prefsNotifyWorkoutReminderHint =>
+      'Am Morgen einer geplanten Einheit im Posteingang sowie per E-Mail und Push erinnern.';
 
   @override
   String get prefsEmailReOptInFailed =>
@@ -13725,6 +13809,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get racesAgeGroupPlace => 'Platzierung Altersklasse';
+
+  @override
+  String get racesDivisionAwardPlace => 'Platzierung Sonderwertung';
 
   @override
   String get racesAgeGroup => 'Altersklasse';

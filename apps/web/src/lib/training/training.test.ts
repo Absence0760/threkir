@@ -114,6 +114,16 @@ test('minDaysPerWeek: a two-day walk-run plan may run two days, a road plan need
 	assert.equal(minDaysPerWeek(road.weeks), 3);
 });
 
+test('generatePlan(beginnerWalkRun, 2 days): sessions sit three days apart, never five', () => {
+	const plan = generatePlan({ goalEvent: 'distance_5k', startDate: '2026-06-01', daysPerWeek: 2, beginnerWalkRun: true });
+	const days = plan.weeks
+		.flatMap((w) => w.workouts)
+		.filter((w) => w.kind === 'walk_run')
+		.map((w) => parseISO(w.scheduled_date).getTime() / 86_400_000);
+	assert.deepEqual(plan.weeks[0].workouts.map((w) => w.kind === 'walk_run'), [true, false, false, true, false, false, false]);
+	for (let i = 1; i < days.length; i++) assert.ok(Math.round(days[i] - days[i - 1]) <= 4);
+});
+
 test('minDaysPerWeek: a walk-run plan with a goal race stays walk-run; one road session does not', () => {
 	const wo = (kind: string) => ({ kind });
 	assert.equal(minDaysPerWeek([{ workouts: [wo('walk_run'), wo('rest'), wo('race')] }]), 2);

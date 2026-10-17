@@ -683,7 +683,10 @@ function generateWalkRunPlan(
 	// Beginners train 3 days/week; respect a lower request but cap at 3.
 	const runDays = Math.max(1, Math.min(input.daysPerWeek, WALK_RUN_MAX_DAYS_PER_WEEK));
 	// Spread run days across Mon/Wed/Fri-style offsets.
-	const dayOffsets = [0, 2, 4, 1, 3, 5, 6].slice(0, runDays).sort((a, b) => a - b);
+	// Two sessions sit three days apart (0/3) rather than 0/2, which would
+	// leave a five-day gap before the next week's first session.
+	const dayOffsets =
+		runDays === 2 ? [0, 3] : [0, 2, 4, 1, 3, 5, 6].slice(0, runDays).sort((a, b) => a - b);
 	const weeks: GeneratedWeek[] = [];
 	for (let i = 0; i < totalWeeks; i++) {
 		const weekStart = addDays(startDate, i * 7);

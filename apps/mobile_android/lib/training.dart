@@ -731,7 +731,11 @@ GeneratedPlan _generateWalkRunPlan(GeneratePlanInput input,
   final totalWeeks =
       max(input.weeks ?? kWalkRunProgression.length, kWalkRunProgression.length);
   final runDays = input.daysPerWeek.clamp(1, kWalkRunMaxDaysPerWeek);
-  final dayOffsets = [0, 2, 4, 1, 3, 5, 6].sublist(0, runDays)..sort();
+  // Two sessions sit three days apart (0/3) rather than 0/2, which would
+  // leave a five-day gap before the next week's first session.
+  final dayOffsets = runDays == 2
+      ? [0, 3]
+      : ([0, 2, 4, 1, 3, 5, 6].sublist(0, runDays)..sort());
   final runSet = dayOffsets.toSet();
   final weeks = <GeneratedWeek>[];
   for (var i = 0; i < totalWeeks; i++) {

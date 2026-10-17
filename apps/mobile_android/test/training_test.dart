@@ -71,6 +71,24 @@ void main() {
       expect(minDaysPerWeek(road.weeks), 3);
     });
 
+    test('generatePlan(beginnerWalkRun, 2 days): sessions sit three days apart, never five', () {
+      final plan = generatePlan(GeneratePlanInput(
+        goalEvent: GoalEvent.distance5k,
+        startDate: DateTime(2026, 6, 1),
+        daysPerWeek: 2,
+        beginnerWalkRun: true,
+      ));
+      expect(plan.weeks.first.workouts.map((w) => w.kind == WorkoutKind.walkRun).toList(),
+          [true, false, false, true, false, false, false]);
+      final days = [
+        for (final w in plan.weeks.expand((w) => w.workouts))
+          if (w.kind == WorkoutKind.walkRun) w.scheduledDate,
+      ];
+      for (var i = 1; i < days.length; i++) {
+        expect(days[i].difference(days[i - 1]).inHours / 24, lessThanOrEqualTo(4.0));
+      }
+    });
+
     test('minDaysPerWeek: a walk-run plan with a goal race stays walk-run; one road session does not', () {
       GeneratedWeek week(List<WorkoutKind> kinds) => GeneratedWeek(
             weekIndex: 0,

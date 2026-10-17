@@ -3861,6 +3861,7 @@
   "planLinkDismiss": "Nicht dieses",
   "planLinkLinked": "Mit deinem Plan verknüpft.",
   "planLinkFailed": "Verknüpfen mit deinem Plan fehlgeschlagen. Versuch es noch einmal.",
+  "planLinkDismissFailed": "Antwort konnte nicht gespeichert werden. Du wirst eventuell erneut gefragt.",
   "racesOfficialResult": "Offizielles Ergebnis",
   "racesChipTime": "Nettozeit",
   "racesGunTime": "Bruttozeit",

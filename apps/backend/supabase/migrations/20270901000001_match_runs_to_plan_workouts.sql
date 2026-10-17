@@ -10,8 +10,9 @@
 -- `skipped_at` set on mobile, and let the first run saved on a day keep the
 -- workout over a closer one saved later.
 --
--- One statement-level AFTER trigger pair on `runs` now does it for every
--- writer:
+-- Statement-level AFTER INSERT / UPDATE / DELETE triggers on `runs` now do
+-- it for every writer (a delete re-matches the deleted run's day, since a
+-- shorter run that lost the workout to it may now be the closest):
 --
 -- 1. An explicit link first. A run carrying `metadata.plan_workout_id`
 --    (started from that workout) is linked to it at any distance when the
@@ -66,6 +67,7 @@ create table private.plan_workout_auto_links (
 );
 
 revoke all on private.plan_workout_auto_links from public, anon, authenticated;
+alter table private.plan_workout_auto_links enable row level security;
 
 comment on table private.plan_workout_auto_links is
   'Plan workouts whose completed_run_id the run-to-workout matcher set '
@@ -81,6 +83,7 @@ create table private.plan_workout_link_refusals (
 create index plan_workout_link_refusals_run on private.plan_workout_link_refusals (run_id);
 
 revoke all on private.plan_workout_link_refusals from public, anon, authenticated;
+alter table private.plan_workout_link_refusals enable row level security;
 
 comment on table private.plan_workout_link_refusals is
   'A run the runner took off a planned workout (unlink, relink, skip). The '
@@ -357,7 +360,16 @@ declare
 begin
   -- The transition tables differ per operation, and plpgsql plans a query
   -- whole, so each operation reads only the tables it has.
-  if tg_op = 'INSERT' then
+  if tg_op = 'DELETE' then
+    -- A deleted run reopened its workout (on delete set null); another run
+    -- that day may now be the closest.
+    select coalesce(array_agg(o.user_id), '{}'),
+           coalesce(array_agg(private.athlete_local_date(us.prefs ->> 'time_zone', o.started_at)), '{}'),
+           coalesce(array_agg(1), '{}')
+      into v_users, v_days, v_phases
+    from old_runs o
+    left join user_settings us on us.user_id = o.user_id;
+  elsif tg_op = 'INSERT' then
     select coalesce(array_agg(n.id), '{}'),
            coalesce(array_agg(n.user_id), '{}'),
            coalesce(array_agg((n.metadata ->> 'plan_workout_id')::uuid), '{}')
@@ -436,7 +448,10 @@ begin
     select u as user_id, d as day
     from unnest(v_users, v_days, v_phases) as x(u, d, p)
     group by u, d
-    order by min(p), u, d
+    -- One user at a time, in a fixed order, so two statements touching the
+    -- same users take their advisory locks in the same order. Within a user
+    -- a run's old day still goes first.
+    order by u, min(p), d
   loop
     begin
       perform private.rematch_plan_day(v_rec.user_id, v_rec.day);
@@ -462,5 +477,12 @@ drop trigger if exists runs_match_plan_workouts_update on runs;
 create trigger runs_match_plan_workouts_update
   after update on runs
   referencing old table as old_runs new table as new_runs
+  for each statement
+  execute function private.match_runs_to_plan_workouts();
+
+drop trigger if exists runs_match_plan_workouts_delete on runs;
+create trigger runs_match_plan_workouts_delete
+  after delete on runs
+  referencing old table as old_runs
   for each statement
   execute function private.match_runs_to_plan_workouts();

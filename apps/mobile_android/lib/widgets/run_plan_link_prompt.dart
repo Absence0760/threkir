@@ -14,18 +14,21 @@ import 'top_banner.dart';
 ///
 /// The database links a run on its own local day only (decisions § 2079); a
 /// workout within two days either side is asked about here and never linked
-/// without a tap. "Not this one" moves on to the next candidate. The fetch is
+/// without a tap. "Not this one" is remembered server-side and moves on to
+/// the next candidate. The fetch is
 /// an L4 effect: a failure shows nothing and never touches the rest of run
 /// detail.
 class RunPlanLinkPrompt extends StatefulWidget {
   final Future<List<PlanWorkoutLinkCandidate>> Function() load;
   final Future<void> Function(String workoutId) link;
+  final Future<void> Function(String workoutId) dismiss;
   final VoidCallback? onLinked;
 
   const RunPlanLinkPrompt({
     super.key,
     required this.load,
     required this.link,
+    required this.dismiss,
     this.onLinked,
   });
 
@@ -67,6 +70,17 @@ class _RunPlanLinkPromptState extends State<RunPlanLinkPrompt> {
       if (mounted) showTopBanner(context, l10n.planLinkFailed);
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _dismiss(PlanWorkoutLinkCandidate c) async {
+    final l10n = AppLocalizations.of(context);
+    setState(() => _candidates = _candidates.sublist(1));
+    try {
+      await widget.dismiss(c.workoutId);
+    } catch (e) {
+      debugPrint('RunPlanLinkPrompt: dismiss failed: $e');
+      if (mounted) showTopBanner(context, l10n.planLinkDismissFailed);
     }
   }
 
@@ -117,10 +131,7 @@ class _RunPlanLinkPromptState extends State<RunPlanLinkPrompt> {
               spacing: 8,
               children: [
                 TextButton(
-                  onPressed: _busy
-                      ? null
-                      : () => setState(
-                          () => _candidates = _candidates.sublist(1)),
+                  onPressed: _busy ? null : () => _dismiss(c),
                   child: Text(l10n.planLinkDismiss),
                 ),
                 FilledButton(

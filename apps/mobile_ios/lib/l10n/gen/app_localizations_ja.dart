@@ -12978,6 +12978,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planLinkFailed => 'プランにリンクできませんでした。もう一度お試しください。';
 
   @override
+  String get planLinkDismissFailed => '回答を保存できませんでした。もう一度確認される場合があります。';
+
+  @override
   String get racesOfficialResult => '公式結果';
 
   @override

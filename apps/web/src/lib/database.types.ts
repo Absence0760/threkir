@@ -6206,6 +6206,10 @@ export type Database = {
           id: string
         }[]
       }
+      dismiss_plan_workout_link: {
+        Args: { p_run_id: string; p_workout_id: string }
+        Returns: undefined
+      }
       dm_threads: {
         Args: never
         Returns: {

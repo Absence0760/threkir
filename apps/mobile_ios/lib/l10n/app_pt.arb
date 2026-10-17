@@ -3861,6 +3861,7 @@
   "planLinkDismiss": "Não é este",
   "planLinkLinked": "Associado ao seu plano.",
   "planLinkFailed": "Não foi possível associar ao seu plano. Tente novamente.",
+  "planLinkDismissFailed": "Não foi possível guardar a resposta. Poderemos voltar a perguntar.",
   "racesOfficialResult": "Resultado oficial",
   "racesChipTime": "Tempo de chip",
   "racesGunTime": "Tempo oficial",

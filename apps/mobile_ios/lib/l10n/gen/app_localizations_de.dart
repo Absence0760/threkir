@@ -13615,6 +13615,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Verknüpfen mit deinem Plan fehlgeschlagen. Versuch es noch einmal.';
 
   @override
+  String get planLinkDismissFailed =>
+      'Antwort konnte nicht gespeichert werden. Du wirst eventuell erneut gefragt.';
+
+  @override
   String get racesOfficialResult => 'Offizielles Ergebnis';
 
   @override

@@ -3908,6 +3908,7 @@ export const messages = {
 	"planLink.dismiss": "これではない",
 	"planLink.linked": "プランにリンクしました。",
 	"planLink.failed": "プランにリンクできませんでした。もう一度お試しください。",
+	"planLink.dismissFailed": "回答を保存できませんでした。もう一度確認される場合があります。",
 	"races.officialResult": "公式記録",
 	"races.chipTime": "ネットタイム",
 	"races.gunTime": "グロスタイム",

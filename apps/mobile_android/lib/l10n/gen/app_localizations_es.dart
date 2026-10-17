@@ -13605,6 +13605,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo vincular a tu plan. Inténtalo de nuevo.';
 
   @override
+  String get planLinkDismissFailed =>
+      'No se pudo guardar la respuesta. Puede que te lo volvamos a preguntar.';
+
+  @override
   String get racesOfficialResult => 'Resultado oficial';
 
   @override

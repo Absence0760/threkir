@@ -12,7 +12,7 @@ import { USER_B } from '../fixtures/users';
  * database matches a run on its own local day only (migration
  * 20270901000001), and run detail asks about a workout within two days
  * (`plan_workout_link_candidates`, 20270901000002). Yes links it; "Not this
- * one" moves on and links nothing. USER_B has no plan of their own, so the
+ * one" moves on, links nothing, and is not asked again. USER_B has no plan of their own, so the
  * spec owns the whole plan it asks about.
  */
 
@@ -108,15 +108,22 @@ test.describe('Run detail cross-day workout prompt', () => {
 			.toBe(runId);
 	});
 
-	test('"Not this one" moves to the next workout and links nothing', async ({ page }) => {
+	test('"Not this one" moves to the next workout, is remembered, and links nothing', async ({ page }) => {
 		await page.goto(`/runs/${runId}`);
 		const prompt = page.getByTestId('plan-link-prompt');
 		await expect(prompt).toBeVisible({ timeout: 10_000 });
 		await expect(page.getByTestId('plan-link-detail')).toContainText('Long run');
 
-		await page.getByTestId('plan-link-dismiss').click();
+		const dismissed = () =>
+			page.waitForResponse((r) => r.url().includes('/rpc/dismiss_plan_workout_link') && r.ok());
+		await Promise.all([dismissed(), page.getByTestId('plan-link-dismiss').click()]);
 		await expect(page.getByTestId('plan-link-detail')).toContainText('Easy');
-		await page.getByTestId('plan-link-dismiss').click();
+		await Promise.all([dismissed(), page.getByTestId('plan-link-dismiss').click()]);
+		await expect(prompt).toBeHidden();
+
+		// Remembered server-side: the question does not come back.
+		await page.reload();
+		await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible({ timeout: 10_000 });
 		await expect(prompt).toBeHidden();
 
 		const admin = getAdminClient();

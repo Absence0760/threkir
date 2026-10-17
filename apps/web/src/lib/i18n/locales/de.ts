@@ -3913,6 +3913,7 @@ export const messages = {
 	"planLink.dismiss": "Nicht dieses",
 	"planLink.linked": "Mit deinem Plan verknüpft.",
 	"planLink.failed": "Verknüpfen mit deinem Plan fehlgeschlagen. Versuch es noch einmal.",
+	"planLink.dismissFailed": "Antwort konnte nicht gespeichert werden. Du wirst eventuell erneut gefragt.",
 	"races.officialResult": "Offizielles Ergebnis",
 	"races.chipTime": "Netto-Zeit",
 	"races.gunTime": "Brutto-Zeit",

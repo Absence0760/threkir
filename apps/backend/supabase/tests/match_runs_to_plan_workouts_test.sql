@@ -4,7 +4,7 @@
 -- only in active non-template plans, never on a skipped workout, with the
 -- closest run winning, and never stealing a link the runner made by hand.
 begin;
-select plan(37);
+select plan(43);
 
 set local timezone = 'UTC';
 
@@ -323,6 +323,62 @@ select is((select v from t where k = 'unlinked_after_short'), null,
   'a run the runner unlinked is never put back by a later write that day');
 select is(pg_temp.linked((select v from t where k = 'unlinked')), (select v from t where k = 'unlinked_b'),
   'another qualifying run can still take the unlinked workout');
+
+-- ─────────── a delete re-matches the day ───────────
+
+do $$
+declare
+  w uuid;
+  u uuid;
+begin
+  u := pg_temp.mk_user('11860000-0000-0000-0000-0000000000a4', 'UTC');
+  w := pg_temp.mk_plan(u, 'active');
+  insert into t values ('del', pg_temp.mk_workout(w, '2031-01-10', 'long', 10000));
+  insert into t values ('del_closer', pg_temp.mk_run(u, '2031-01-10 07:00:00+00', 10000));
+  insert into t values ('del_shorter', pg_temp.mk_run(u, '2031-01-10 18:00:00+00', 8000));
+  insert into t values ('del_before', pg_temp.linked((select v from t where k = 'del')));
+  delete from runs where id = (select v from t where k = 'del_closer');
+end;
+$$;
+
+select is((select v from t where k = 'del_before'), (select v from t where k = 'del_closer'),
+  'the closer run held the workout');
+select is(pg_temp.linked((select v from t where k = 'del')), (select v from t where k = 'del_shorter'),
+  'deleting it hands the workout to the next closest run that day');
+
+-- ─────────── a matcher failure is a warning, never a lost run ───────────
+
+create function public.t1186_refuse_plan_workout_update() returns trigger
+language plpgsql as $$ begin raise exception 'simulated plan_workouts failure'; end; $$;
+create trigger t1186_refuse before update on plan_workouts
+  for each row execute function public.t1186_refuse_plan_workout_update();
+
+do $$
+declare
+  u uuid := pg_temp.mk_user('11860000-0000-0000-0000-0000000000a5', 'UTC');
+begin
+  insert into t values ('boom', pg_temp.mk_workout(pg_temp.mk_plan(u, 'active'), '2031-01-10', 'easy', 5000));
+end;
+$$;
+
+select lives_ok(
+  $$ insert into t values ('boom_run', pg_temp.mk_run('11860000-0000-0000-0000-0000000000a5', '2031-01-10 08:00:00+00', 5000,
+       jsonb_build_object('plan_workout_id', (select v from t where k = 'boom')))) $$,
+  'a run insert survives the explicit link and the re-match both failing'
+);
+select ok(exists (select 1 from runs where id = (select v from t where k = 'boom_run')),
+  'the run is saved');
+select ok(pg_temp.linked((select v from t where k = 'boom')) is null
+          and coalesce(current_setting('threkir.plan_matcher', true), '') <> 'on',
+  'nothing was linked, and the failed step did not leave the matcher flag on');
+
+drop trigger t1186_refuse on plan_workouts;
+
+select ok(
+  (select bool_and(relrowsecurity) from pg_class
+   where oid in ('private.plan_workout_auto_links'::regclass, 'private.plan_workout_link_refusals'::regclass)),
+  'both private tables have RLS enabled'
+);
 
 -- ─────────── the core write never fails on matching ───────────
 

@@ -2810,6 +2810,45 @@ DateTime heatmapGridStart(DateTime now, int weeks,
       weekStart.year, weekStart.month, weekStart.day - 7 * (weeks - 1));
 }
 
+/// Today | Trends (multi_modal.md § Home, section rhythm): a hairline with a
+/// quiet label riding it, not a shouting header. Web twin: `.trends-divider`.
+class _TrendsDivider extends StatelessWidget {
+  final String label;
+  const _TrendsDivider({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      key: const Key('dashboardTrendsDivider'),
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Flexible(
+            child: Semantics(
+              header: true,
+              child: Text(
+                label,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: theme.colorScheme.outlineVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _RunHeatmap extends StatelessWidget {
   final List<Run> runs;
   final int weeks;
@@ -3051,43 +3090,4 @@ class _HeatmapPainter extends CustomPainter {
       old.emptyFill != emptyFill ||
       old.emptyStroke != emptyStroke ||
       old.ramp.last != ramp.last;
-}
-
-/// Today | Trends (multi_modal.md § Home, section rhythm): a hairline with a
-/// quiet label riding it, not a shouting header. Web twin: `.trends-divider`.
-class _TrendsDivider extends StatelessWidget {
-  final String label;
-  const _TrendsDivider({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      key: const Key('dashboardTrendsDivider'),
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        children: [
-          Flexible(
-            child: Semantics(
-              header: true,
-              child: Text(
-                label,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Divider(
-              height: 1,
-              thickness: 1,
-              color: theme.colorScheme.outlineVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

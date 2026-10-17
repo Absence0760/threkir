@@ -55,6 +55,19 @@ export function defaultPlanWeeks(goal: GoalEvent, distanceM?: number | null): nu
 /// runner pick a number this would silently cut. Mirrors training.dart.
 export const WALK_RUN_MAX_DAYS_PER_WEEK = 3;
 
+/// The fewest training days a week a plan may carry. A walk-run plan (at
+/// least one walk_run session and nothing but walk_run, rest and race) may run
+/// 2, which the wizard offers; every other plan needs 3. create_training_plan
+/// applies the same rule (migration 20270915000001). Mirrors training.dart.
+export function minDaysPerWeek(
+	weeks: ReadonlyArray<{ workouts: ReadonlyArray<{ kind: string }> }>
+): number {
+	const kinds = weeks.flatMap((w) => w.workouts.map((wo) => wo.kind));
+	const walkRun =
+		kinds.includes('walk_run') && kinds.every((k) => k === 'walk_run' || k === 'rest' || k === 'race');
+	return walkRun ? 2 : 3;
+}
+
 /// Default week count for a beginner C25K walk-run plan. The continuous-run
 /// default (`defaultPlanWeeks('distance_5k')` = 8) is one week shorter than
 /// the `WALK_RUN_PROGRESSION` table, so feeding it to the walk-run generator

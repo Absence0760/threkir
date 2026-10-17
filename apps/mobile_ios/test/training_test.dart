@@ -50,6 +50,46 @@ void main() {
       expect(walkRunDefaultWeeks(), 9);
     });
 
+    test('minDaysPerWeek: a two-day walk-run plan may run two days, a road plan needs three', () {
+      final walkRun = generatePlan(GeneratePlanInput(
+        goalEvent: GoalEvent.distance5k,
+        startDate: DateTime(2026, 6, 1),
+        daysPerWeek: 2,
+        beginnerWalkRun: true,
+      ));
+      expect(
+          walkRun.weeks.first.workouts
+              .where((w) => w.kind == WorkoutKind.walkRun)
+              .length,
+          2);
+      expect(minDaysPerWeek(walkRun.weeks), 2);
+      final road = generatePlan(GeneratePlanInput(
+        goalEvent: GoalEvent.distance5k,
+        startDate: DateTime(2026, 6, 1),
+        daysPerWeek: 3,
+      ));
+      expect(minDaysPerWeek(road.weeks), 3);
+    });
+
+    test('minDaysPerWeek: a walk-run plan with a goal race stays walk-run; one road session does not', () {
+      GeneratedWeek week(List<WorkoutKind> kinds) => GeneratedWeek(
+            weekIndex: 0,
+            phase: PlanPhase.build,
+            targetVolumeM: 0,
+            workouts: [
+              for (final k in kinds)
+                GeneratedWorkout(scheduledDate: DateTime(2026, 6, 1), kind: k),
+            ],
+          );
+      expect(
+          minDaysPerWeek([
+            week([WorkoutKind.walkRun, WorkoutKind.rest, WorkoutKind.race])
+          ]),
+          2);
+      expect(minDaysPerWeek([week([WorkoutKind.walkRun, WorkoutKind.easy])]), 3);
+      expect(minDaysPerWeek([week([WorkoutKind.rest])]), 3);
+    });
+
     test('generatePlan(beginnerWalkRun, weeks=8) keeps the graduation week', () {
       final plan = generatePlan(GeneratePlanInput(
         goalEvent: GoalEvent.distance5k,

@@ -183,6 +183,7 @@ insert into server_only (fn, keeps_service_role) values
   ('jobs_stuck_summary', true),
   ('map_match_track_source', true),
   ('notify_data_export_ready', true),
+  ('plan_calendar_feed_events', true),
   ('privacy_aware_route_geom', false),
   ('privacy_aware_start_point', false),
   ('privacy_coarsen_coord', false),

@@ -16,7 +16,7 @@
 
 begin;
 
-select plan(27);
+select plan(28);
 
 insert into auth.users (id, email, encrypted_password, email_confirmed_at, instance_id, aud, role)
 values
@@ -234,6 +234,20 @@ select is(
   0,
   'revoke deletes the row'
 );
+
+-- ── rotate is rate-limited ──
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"ca1e0000-0000-4000-8000-00000000000a","role":"authenticated"}';
+select throws_like(
+  $$ do $d$ begin
+       for i in 1..21 loop perform public.rotate_plan_calendar_feed(); end loop;
+     end $d$ $$,
+  'rate limit exceeded for plan_calendar_rotate%',
+  'minting is capped at 20 an hour, so a hijacked session cannot churn links'
+);
+reset role;
+set local "request.jwt.claims" = '';
 
 -- ── Art 17 ──
 

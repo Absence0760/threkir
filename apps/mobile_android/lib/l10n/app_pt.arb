@@ -4839,5 +4839,18 @@
   "workoutMoveHint": "Escolha um dia desta semana. Um treino que já esteja nesse dia passa para o dia que este deixa.",
   "workoutMoveSwapsWith": "Troca com {kind}",
   "workoutMoveError": "Não foi possível mover este treino: {error}",
-  "workoutMoveSaveFirst": "Guarde ou descarte as suas alterações antes de mover este treino."
+  "workoutMoveSaveFirst": "Guarde ou descarte as suas alterações antes de mover este treino.",
+  "workoutKindShortEasy": "L",
+  "workoutKindShortLong": "Lg",
+  "workoutKindShortRecovery": "Rec",
+  "workoutKindShortTempo": "T",
+  "workoutKindShortInterval": "Int",
+  "workoutKindShortMarathonPace": "RM",
+  "workoutKindShortWalkRun": "C/C",
+  "workoutKindShortRace": "Prova",
+  "workoutKindShortRest": "Desc",
+  "planDetailAriaCompletedSuffix": ", concluído",
+  "planDetailAriaSkippedSuffix": ", ignorado",
+  "planDetailAriaMissedSuffix": ", falhado",
+  "planDetailAriaTodaySuffix": ", hoje"
 }

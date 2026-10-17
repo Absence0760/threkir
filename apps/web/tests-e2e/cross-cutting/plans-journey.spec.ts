@@ -5,7 +5,7 @@ import { USER_A } from '../fixtures/users';
 
 /**
  * Plans journey — mark 2 workouts done in a row, then revert 1, and
- * watch BOTH the day-grid `.day.completed` count and the hero
+ * watch BOTH the day-grid `.day[data-status="done"]` count and the hero
  * progress ring `.pct` value stay in sync at every step.
  *
  * Same shape as cross-cutting/dashboard-journey.spec.ts: snapshot →
@@ -46,7 +46,7 @@ test.describe('plans journey', () => {
 			.toBeVisible({ timeout: 10_000 });
 
 		const pct = page.locator('.pct');
-		const completedCount = page.locator('.day.completed');
+		const completedCount = page.locator('.day[data-status="done"]');
 
 		const readPct = async (): Promise<number> => {
 			const txt = (await pct.textContent()) ?? '';
@@ -108,7 +108,7 @@ test.describe('plans journey', () => {
 		// order, but day-of-week within a week varies — safest to
 		// just iterate).
 		await test.step('revert one of the test-marked workouts via the editor', async () => {
-			const completedDays = page.locator('.day.completed:not(.rest) .day-link');
+			const completedDays = page.locator('.day[data-status="done"]:not(.rest) .day-link');
 			const total = await completedDays.count();
 			let reverted = false;
 			for (let i = total - 1; i >= 0; i--) {

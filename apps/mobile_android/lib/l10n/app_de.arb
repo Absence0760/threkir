@@ -4839,5 +4839,18 @@
   "workoutMoveHint": "Wähle einen Tag dieser Woche. Ein Training, das schon an dem Tag liegt, übernimmt den bisherigen Tag dieses Trainings.",
   "workoutMoveSwapsWith": "Tauscht mit {kind}",
   "workoutMoveError": "Training konnte nicht verschoben werden: {error}",
-  "workoutMoveSaveFirst": "Speichere oder verwirf deine Änderungen, bevor du dieses Training verschiebst."
+  "workoutMoveSaveFirst": "Speichere oder verwirf deine Änderungen, bevor du dieses Training verschiebst.",
+  "workoutKindShortEasy": "Lo",
+  "workoutKindShortLong": "LL",
+  "workoutKindShortRecovery": "Erh",
+  "workoutKindShortTempo": "T",
+  "workoutKindShortInterval": "Int",
+  "workoutKindShortMarathonPace": "MT",
+  "workoutKindShortWalkRun": "G/L",
+  "workoutKindShortRace": "WK",
+  "workoutKindShortRest": "Ruhe",
+  "planDetailAriaCompletedSuffix": ", abgeschlossen",
+  "planDetailAriaSkippedSuffix": ", übersprungen",
+  "planDetailAriaMissedSuffix": ", verpasst",
+  "planDetailAriaTodaySuffix": ", heute"
 }

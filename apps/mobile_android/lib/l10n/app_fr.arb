@@ -4839,5 +4839,18 @@
   "workoutMoveHint": "Choisis un jour de cette semaine. Une séance déjà prévue ce jour-là prend le jour que celle-ci libère.",
   "workoutMoveSwapsWith": "Échange avec {kind}",
   "workoutMoveError": "Impossible de déplacer cette séance : {error}",
-  "workoutMoveSaveFirst": "Enregistre ou annule tes modifications avant de déplacer cette séance."
+  "workoutMoveSaveFirst": "Enregistre ou annule tes modifications avant de déplacer cette séance.",
+  "workoutKindShortEasy": "EF",
+  "workoutKindShortLong": "SL",
+  "workoutKindShortRecovery": "Réc",
+  "workoutKindShortTempo": "T",
+  "workoutKindShortInterval": "Fr",
+  "workoutKindShortMarathonPace": "AM",
+  "workoutKindShortWalkRun": "M/C",
+  "workoutKindShortRace": "Crs",
+  "workoutKindShortRest": "Rep",
+  "planDetailAriaCompletedSuffix": ", terminé",
+  "planDetailAriaSkippedSuffix": ", ignoré",
+  "planDetailAriaMissedSuffix": ", manqué",
+  "planDetailAriaTodaySuffix": ", aujourd'hui"
 }

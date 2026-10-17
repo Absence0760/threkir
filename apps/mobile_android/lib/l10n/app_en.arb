@@ -22232,5 +22232,57 @@
   "workoutMoveSaveFirst": "Save or discard your changes before moving this workout.",
   "@workoutMoveSaveFirst": {
     "description": "Shown when the runner taps Move with unsaved edits in the workout editor"
+  },
+  "workoutKindShortEasy": "E",
+  "@workoutKindShortEasy": {
+    "description": "Abbreviation of the Easy workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortLong": "L",
+  "@workoutKindShortLong": {
+    "description": "Abbreviation of the Long run workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortRecovery": "Rec",
+  "@workoutKindShortRecovery": {
+    "description": "Abbreviation of the Recovery workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortTempo": "T",
+  "@workoutKindShortTempo": {
+    "description": "Abbreviation of the Tempo workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortInterval": "Int",
+  "@workoutKindShortInterval": {
+    "description": "Abbreviation of the Intervals workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortMarathonPace": "MP",
+  "@workoutKindShortMarathonPace": {
+    "description": "Abbreviation of the Marathon pace workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortWalkRun": "W/R",
+  "@workoutKindShortWalkRun": {
+    "description": "Abbreviation of the Walk-run workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortRace": "Race",
+  "@workoutKindShortRace": {
+    "description": "Abbreviation of the Race workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "workoutKindShortRest": "Rest",
+  "@workoutKindShortRest": {
+    "description": "Abbreviation of the Rest workout kind for a narrow plan-calendar cell (2-4 characters)"
+  },
+  "planDetailAriaCompletedSuffix": ", completed",
+  "@planDetailAriaCompletedSuffix": {
+    "description": "Appended to a plan workout's screen-reader label when it is done"
+  },
+  "planDetailAriaSkippedSuffix": ", skipped",
+  "@planDetailAriaSkippedSuffix": {
+    "description": "Appended to a plan workout's screen-reader label when it was skipped"
+  },
+  "planDetailAriaMissedSuffix": ", missed",
+  "@planDetailAriaMissedSuffix": {
+    "description": "Appended to a plan workout's screen-reader label when its day has passed and it was neither done nor skipped"
+  },
+  "planDetailAriaTodaySuffix": ", today",
+  "@planDetailAriaTodaySuffix": {
+    "description": "Appended to a plan workout's screen-reader label when it is scheduled today"
   }
 }

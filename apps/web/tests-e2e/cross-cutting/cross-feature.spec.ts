@@ -114,7 +114,7 @@ test.describe('runs ↔ plans on /plans/[id]', () => {
 			.eq('manually_completed', true);
 	});
 
-	test('Mark-as-done in the plan grid flips the day cell to .completed', async ({
+	test('Mark-as-done in the plan grid flips the day cell to done', async ({
 		page
 	}) => {
 		await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
@@ -123,9 +123,9 @@ test.describe('runs ↔ plans on /plans/[id]', () => {
 		).toBeVisible({ timeout: 10_000 });
 
 		// Snapshot the seeded completion count. The seed marks two
-		// .day.completed via completed_run_id — the week-0 (2026-03-29)
+		// .day[data-status="done"] via completed_run_id — the week-0 (2026-03-29)
 		// and week-1 (2026-04-05) long-run matches in seed.sql.
-		const completedBefore = await page.locator('.day.completed').count();
+		const completedBefore = await page.locator('.day[data-status="done"]').count();
 		expect(completedBefore).toBe(2);
 
 		// Click the first non-rest, non-completed day-link. Day order
@@ -146,7 +146,7 @@ test.describe('runs ↔ plans on /plans/[id]', () => {
 		// `onSaved` handler in /plans/[id]/+page.svelte). The freshly
 		// completed workout's day cell now carries .completed.
 		await expect(modal).toHaveCount(0);
-		await expect(page.locator('.day.completed')).toHaveCount(
+		await expect(page.locator('.day[data-status="done"]')).toHaveCount(
 			completedBefore + 1,
 			{ timeout: 10_000 }
 		);

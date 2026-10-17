@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { isPlanOverlapError, thrownMessage } from '#lib/core/supabase_error.ts';
-	import { activeFormatLocale, formatDuration } from '#lib/format/time.ts';
+	import { activeFormatLocale, formatDateShort, formatDuration } from '#lib/format/time.ts';
 	import { onMount, tick } from 'svelte';
 	import { afterNavigate, goto, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
@@ -85,6 +85,8 @@
 	import { nextRace, planRaces } from '#lib/training/plan_races.ts';
 	import { planSlug } from '#lib/training/plan_slug.ts';
 	import { workoutKindLabel, planPhaseLabel } from '#lib/training/workout_labels.ts';
+	import { planWorkoutAriaLabel, planWorkoutStatusOf } from '#lib/training/plan_workout_view.ts';
+	import { planWorkoutStatusLook } from '#lib/training/plan_workout_status_style.ts';
 	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { loadSettings, effective } from '#lib/settings/settings.ts';
@@ -1189,15 +1191,17 @@
 	}
 
 	function workoutAriaLabel(wo: PlanWorkout): string {
-		const dow = dayOfWeek(wo.scheduled_date);
-		const kind = workoutKindLabel(wo.kind);
-		const dist = wo.target_distance_m != null ? `, ${fmtKm(wo.target_distance_m)}` : '';
-		const status = isWorkoutCompleted(wo)
-			? m('planDetail.ariaCompletedSuffix')
-			: isWorkoutSkipped(wo)
-				? m('planDetail.ariaSkippedSuffix')
-				: '';
-		return `${dow}: ${kind}${dist}${status}`;
+		return planWorkoutAriaLabel(
+			wo,
+			today,
+			{
+				day: `${dayOfWeek(wo.scheduled_date)} ${formatDateShort(wo.scheduled_date)}`,
+				kind: workoutKindLabel(wo.kind),
+				distance:
+					wo.target_distance_m != null && wo.kind !== 'rest' ? fmtKm(wo.target_distance_m) : null
+			},
+			m
+		);
 	}
 </script>
 
@@ -1517,7 +1521,7 @@
 							{workoutKindLabel(nextWorkout.kind)}
 						</span>
 						<div class="today-meta">
-							<span>{dayOfWeek(nextWorkout.scheduled_date)} · {nextWorkout.scheduled_date}</span>
+							<span>{dayOfWeek(nextWorkout.scheduled_date)} · {formatDateShort(nextWorkout.scheduled_date)}</span>
 							{#if nextWorkout.target_distance_m != null}
 								<span>{fmtKm(nextWorkout.target_distance_m)}</span>
 							{/if}
@@ -1724,6 +1728,7 @@
 				{workouts}
 				planId={plan.id}
 				{weekStart}
+				{today}
 				onSelect={openWorkout}
 			/>
 		</DisclosureSection>
@@ -1792,14 +1797,19 @@
 					{/if}
 					<div class="day-grid">
 						{#each weekWorkouts as wo (wo.id)}
+							{@const status = planWorkoutStatusOf(wo, today)}
+							{@const look = planWorkoutStatusLook(status)}
 							<div
 								class="day"
 								class:today={wo.scheduled_date === today}
-								class:completed={isWorkoutCompleted(wo)}
-								class:skipped={isWorkoutSkipped(wo)}
+								class:skipped={status === 'skipped'}
 								class:rest={wo.kind === 'rest'}
-								class:past={wo.scheduled_date < today}
+								data-status={status}
 								style="--kind-color: {workoutKindMarkVar(wo.kind)}"
+								style:--wo-bg={look.bg}
+								style:--wo-border={look.border}
+								style:--wo-border-style={look.borderStyle}
+								style:--wo-glyph={look.glyphColor}
 							>
 								<button
 									class="day-link"
@@ -1814,10 +1824,8 @@
 									{#if wo.target_distance_m != null && wo.kind !== 'rest'}
 										<span class="dist">{fmtKm(wo.target_distance_m, 1)}</span>
 									{/if}
-									{#if isWorkoutCompleted(wo)}
-										<span class="material-symbols check" aria-hidden="true">check_circle</span>
-									{:else if isWorkoutSkipped(wo)}
-										<span class="material-symbols skip-glyph" aria-hidden="true">skip_next</span>
+									{#if look.glyph}
+										<span class="material-symbols check" aria-hidden="true">{look.glyph}</span>
 									{/if}
 								</button>
 							</div>
@@ -2854,14 +2862,14 @@
 		}
 	}
 	.day {
-		--day-line: var(--color-border);
+		--day-line: var(--wo-border, var(--color-border));
 		display: flex;
 		flex-direction: column;
 		gap: 0.15rem;
 		padding: 0.5rem 0.55rem;
-		background: var(--color-bg-secondary);
+		background: var(--wo-bg, var(--color-bg-secondary));
 		border-radius: var(--radius-md);
-		border: 1px solid var(--day-line);
+		border: 1px var(--wo-border-style, solid) var(--day-line);
 		color: inherit;
 		font-size: 0.8rem;
 		border-top: 3px solid var(--kind-color, var(--day-line));
@@ -2888,10 +2896,6 @@
 	.day.rest {
 		opacity: 0.55;
 	}
-	.day.past {
-		opacity: 0.7;
-	}
-	.day.past.completed,
 	.day.today {
 		opacity: 1;
 	}
@@ -2900,12 +2904,8 @@
 		border-color: var(--color-primary);
 		box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 30%, transparent);
 	}
-	.day.completed {
-		--day-line: color-mix(in srgb, var(--color-success) 30%, var(--color-border));
-		background: color-mix(in srgb, var(--color-success) 12%, var(--color-surface));
-	}
-	.day.skipped {
-		opacity: 0.55;
+	.day.today[data-status='done'] {
+		background: var(--wo-bg);
 	}
 	.day.skipped .kind {
 		text-decoration: line-through;
@@ -2929,14 +2929,7 @@
 		position: absolute;
 		top: 0.3rem;
 		inset-inline-end: 0.3rem;
-		color: var(--color-success-text);
-		font-size: 1rem;
-	}
-	.day .skip-glyph {
-		position: absolute;
-		top: 0.3rem;
-		inset-inline-end: 0.3rem;
-		color: var(--color-text-tertiary);
+		color: var(--wo-glyph);
 		font-size: 1rem;
 	}
 	.coach-link {

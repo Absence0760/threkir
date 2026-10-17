@@ -236,7 +236,7 @@ test.describe('plan progress journey', () => {
 			};
 			const initialPct = await readPct();
 			expect(initialPct).toBeGreaterThanOrEqual(0);
-			const completedCells = page.locator('.day.completed');
+			const completedCells = page.locator('.day[data-status="done"]');
 			const initialCompleted = await completedCells.count();
 
 			// Open today's cell (the only workout scheduled today) and mark

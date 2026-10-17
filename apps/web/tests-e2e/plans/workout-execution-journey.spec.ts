@@ -357,7 +357,7 @@ test.describe('structured workout execution → plan progress journey', () => {
 
 			// The day-grid interval cell flipped to .completed (carries the
 			// Interval label) — the downstream of linking the run.
-			const intervalCell = page.locator('.day.completed', {
+			const intervalCell = page.locator('.day[data-status="done"]', {
 				hasText: /Interval/i
 			});
 			await expect(intervalCell.first()).toBeVisible({ timeout: 10_000 });

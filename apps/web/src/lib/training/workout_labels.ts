@@ -20,6 +20,22 @@ const WORKOUT_KIND_KEY: Record<WorkoutKind, MessageKey> = {
 	rest: 'workoutKind.rest',
 };
 
+// The compact form a 7-column grid cell can hold below ~600 px, where the
+// full word is cut to an ellipsis and the 3 px colour edge (six marks for nine
+// kinds) was left to name the kind. The full label stays in the cell's
+// accessible name.
+const WORKOUT_KIND_SHORT_KEY: Record<WorkoutKind, MessageKey> = {
+	easy: 'workoutKindShort.easy',
+	long: 'workoutKindShort.long',
+	recovery: 'workoutKindShort.recovery',
+	tempo: 'workoutKindShort.tempo',
+	interval: 'workoutKindShort.interval',
+	marathon_pace: 'workoutKindShort.marathon_pace',
+	walk_run: 'workoutKindShort.walk_run',
+	race: 'workoutKindShort.race',
+	rest: 'workoutKindShort.rest',
+};
+
 const PLAN_PHASE_KEY: Record<PlanPhase, MessageKey> = {
 	base: 'planPhase.base',
 	build: 'planPhase.build',
@@ -31,6 +47,11 @@ const PLAN_PHASE_KEY: Record<PlanPhase, MessageKey> = {
 
 export function workoutKindLabel(kind: string): string {
 	const key = WORKOUT_KIND_KEY[kind as WorkoutKind];
+	return key ? m(key) : kind;
+}
+
+export function workoutKindShortLabel(kind: string): string {
+	const key = WORKOUT_KIND_SHORT_KEY[kind as WorkoutKind];
 	return key ? m(key) : kind;
 }
 

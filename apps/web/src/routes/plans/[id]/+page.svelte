@@ -2,7 +2,7 @@
 	import { isPlanOverlapError, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale, formatDuration } from '#lib/format/time.ts';
 	import { onMount, tick } from 'svelte';
-	import { afterNavigate, replaceState } from '$app/navigation';
+	import { afterNavigate, goto, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
 		fetchPlan,
@@ -20,6 +20,7 @@
 		pausePlan,
 		resumePlan,
 		ActivePlanExistsError,
+		isActiveCoachOf,
 	} from '#lib/core/data.ts';
 	import { recoveryWorkoutPatch } from '#lib/training/plan_bulk_ops.ts';
 	import { planShiftImpact } from '#lib/training/plan_shift.ts';
@@ -107,6 +108,19 @@
 	let weekStart = $state<WeekStart>('monday');
 
 	let isOwner = $derived(plan != null && plan.user_id === auth.user?.id);
+	// Coach RLS lets an athlete's active coach edit the workouts of a
+	// non-template plan; nobody else may, so nobody else gets the editor.
+	let coachesOwner = $state(false);
+	let canEditWorkouts = $derived(
+		plan != null && (isOwner || (coachesOwner && !plan.is_template))
+	);
+	function openWorkout(wo: PlanWorkout): void {
+		if (canEditWorkouts) {
+			editing = wo;
+		} else if (plan) {
+			void goto(`/plans/${plan.id}/workouts/${wo.id}`);
+		}
+	}
 
 	// ─── Named disclosures (#905 workstream 3) ───
 	// Today's session and this week lead the page; everything else sits behind
@@ -831,6 +845,15 @@
 			loadError = thrownMessage(e);
 		}
 		loading = false;
+		coachesOwner = false;
+		if (loadError === null && plan != null && !plan.is_template && plan.user_id !== auth.user?.id) {
+			try {
+				coachesOwner = await isActiveCoachOf(plan.user_id);
+			} catch (e) {
+				// Fails closed: without the link the editor stays shut.
+				console.error('isActiveCoachOf failed', e);
+			}
+		}
 		if (loadError === null && plan != null && plan.user_id === auth.user?.id) {
 			// Owner-only: the recent runs feed both the Race Day Riegel
 			// projection (within 21 days) and the current-week adherence
@@ -1443,7 +1466,7 @@
 					class="today-link"
 					type="button"
 					aria-label={m('planDetail.editTodayWorkoutAria', { kind: workoutKindLabel(todayWorkout.kind) })}
-					onclick={() => (editing = todayWorkout)}
+					onclick={() => todayWorkout && openWorkout(todayWorkout)}
 				>
 					<div class="today-icon" class:done={isWorkoutCompleted(todayWorkout)}>
 						{#if isWorkoutCompleted(todayWorkout)}
@@ -1483,7 +1506,7 @@
 					class="today-link"
 					type="button"
 					aria-label={m('planDetail.editNextWorkoutAria')}
-					onclick={() => (editing = nextWorkout)}
+					onclick={() => nextWorkout && openWorkout(nextWorkout)}
 				>
 					<div class="today-icon">
 						<span class="material-symbols">event_upcoming</span>
@@ -1541,7 +1564,7 @@
 			weekWorkouts={currentWeek ? (workoutsByWeek.get(currentWeek.id) ?? []) : []}
 			{today}
 			{weekStart}
-			onSelect={(wo) => (editing = wo)}
+			onSelect={openWorkout}
 		/>
 
 		{#if currentWeekDrift || missedLongRun}
@@ -1701,7 +1724,7 @@
 				{workouts}
 				planId={plan.id}
 				{weekStart}
-				onSelect={(wo) => (editing = wo)}
+				onSelect={openWorkout}
 			/>
 		</DisclosureSection>
 
@@ -1782,7 +1805,7 @@
 									class="day-link"
 									type="button"
 									aria-label={workoutAriaLabel(wo)}
-									onclick={() => (editing = wo)}
+									onclick={() => openWorkout(wo)}
 								>
 									<span class="dow">{dayOfWeek(wo.scheduled_date)}</span>
 									<span class="kind">

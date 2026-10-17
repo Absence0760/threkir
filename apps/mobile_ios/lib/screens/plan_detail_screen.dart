@@ -125,6 +125,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
   List<PlanWeekRow> _weeks = const [];
   Map<String, List<PlanWorkoutRow>> _byWeek = const {};
   bool _loading = true;
+  bool _coachesOwner = false;
   _PlanDetailLoadError? _error;
   bool _publishing = false;
   bool _bulkBusy = false;
@@ -190,6 +191,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       });
       _loadRecentRuns();
       _loadPublishedState();
+      _loadCoachesOwner();
     } on TimeoutException catch (e) {
       debugPrint('PlanDetailScreen._load timed out: $e');
       if (mounted) {
@@ -224,6 +226,26 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       /* L4 best-effort — leave the adherence surfaces hidden. */
     }
   }
+
+  /// Coach RLS lets an athlete's active coach edit the workouts of a
+  /// non-template plan. Fails closed: without the link the editor stays shut.
+  Future<void> _loadCoachesOwner() async {
+    final plan = _plan;
+    if (plan == null || plan.isTemplate || _isOwner(plan)) return;
+    try {
+      final coaches = await widget.training
+          .isActiveCoachOf(plan.userId)
+          .timeout(kBackendLoadTimeout);
+      if (mounted && coaches != _coachesOwner) {
+        setState(() => _coachesOwner = coaches);
+      }
+    } catch (e) {
+      debugPrint('PlanDetailScreen._loadCoachesOwner failed: $e');
+    }
+  }
+
+  bool _canEditWorkouts(TrainingPlanRow plan) =>
+      _isOwner(plan) || (_coachesOwner && !plan.isTemplate);
 
   String? _viewerId() {
     final override = widget.viewerIdOverride;
@@ -1700,7 +1722,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
         wo.scheduledDate, localeToTag(Localizations.localeOf(context)));
     return InkWell(
       onTap: isRest ? null : () => _openWorkout(wo),
-      onLongPress: () => _editWorkout(wo),
+      onLongPress: _canEditWorkouts(p) ? () => _editWorkout(wo) : null,
       borderRadius: BorderRadius.circular(8),
       child: Container(
         margin: const EdgeInsets.only(top: 4),
@@ -1760,7 +1782,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
               Icon(Icons.skip_next, color: theme.colorScheme.outline, size: 16),
             // Inline edit affordance — discoverable button alongside the
             // long-press gesture. Hidden on rest days; nothing to edit.
-            if (!isRest)
+            if (!isRest && _canEditWorkouts(p))
               IconButton(
                 iconSize: 16,
                 padding: EdgeInsets.zero,

@@ -10689,6 +10689,23 @@ export async function fetchMyAthletes(): Promise<CoachAthleteLink[]> {
 	return (await fetchMyAthletesWithError()).athletes;
 }
 
+/// True when the signed-in viewer actively coaches [athleteId]: the test the
+/// coach RLS policies on plan_workouts run (`private.is_active_coach_of`), so
+/// a surface can offer an edit only where the write will be allowed.
+export async function isActiveCoachOf(athleteId: string): Promise<boolean> {
+	const userId = auth.user?.id;
+	if (!userId || userId === athleteId) return false;
+	const { data, error } = await supabase
+		.from(TABLES.coach_athletes)
+		.select('id')
+		.eq('coach_id', userId)
+		.eq('athlete_id', athleteId)
+		.eq('status', 'active')
+		.limit(1);
+	if (error) throw error;
+	return (data ?? []).length > 0;
+}
+
 /// One row of the multi-athlete coach roster (coach_roster.md). The shape is
 /// the bespoke `coach_roster_summary` RPC projection — NOT a base-table row —
 /// so it lives here next to CoachAthleteLink rather than as a types.ts overlay.

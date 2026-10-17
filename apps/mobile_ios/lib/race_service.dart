@@ -337,8 +337,12 @@ class RaceService extends ChangeNotifier {
     String? mapTilerKey,
     Future<GeocodedPlace?> Function(String)? geocoder,
     int limit = 60,
+    bool newestFirst = false,
   }) async {
     final params = <String, dynamic>{'p_limit': limit};
+    // The server sorts before it caps, so a past window asked newest first
+    // keeps its latest races (decisions § 2083).
+    if (newestFirst) params['p_newest_first'] = true;
     final term = query?.trim();
     if (term != null && term.isNotEmpty) params['p_query'] = term;
     if (distance != null && distance.isNotEmpty) params['p_distance'] = distance;

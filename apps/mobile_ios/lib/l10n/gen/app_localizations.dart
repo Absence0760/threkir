@@ -22298,6 +22298,36 @@ abstract class AppLocalizations {
   /// **'Train for this race'**
   String get racesTrainForThis;
 
+  /// Races screen: accessibility label for the Upcoming / Recent results choice
+  ///
+  /// In en, this message translates to:
+  /// **'When'**
+  String get racesWhenGroup;
+
+  /// Races screen: show races from today on
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming'**
+  String get racesWhenUpcoming;
+
+  /// Races screen: show races from the last few weeks, newest first, to import a result
+  ///
+  /// In en, this message translates to:
+  /// **'Recent results'**
+  String get racesWhenRecent;
+
+  /// Races screen: explains the Recent results choice; {days} is the look-back window in days
+  ///
+  /// In en, this message translates to:
+  /// **'Recent results lists races from the last {days} days, newest first, so you can find a race you ran and import your result.'**
+  String racesWhenHint(int days);
+
+  /// Races screen: no recent races match; {days} is the look-back window in days
+  ///
+  /// In en, this message translates to:
+  /// **'No races in the last {days} days match these filters.'**
+  String racesEmptyRecent(int days);
+
   /// Race detail screen: the listing failed to load
   ///
   /// In en, this message translates to:

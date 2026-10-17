@@ -13617,6 +13617,25 @@ class AppLocalizationsFr extends AppLocalizations {
   String get racesTrainForThis => 'S\'entraîner pour cette course';
 
   @override
+  String get racesWhenGroup => 'Période';
+
+  @override
+  String get racesWhenUpcoming => 'À venir';
+
+  @override
+  String get racesWhenRecent => 'Résultats récents';
+
+  @override
+  String racesWhenHint(int days) {
+    return 'Résultats récents liste les courses des $days derniers jours, les plus récentes d\'abord, pour que vous retrouviez une course que vous avez courue et importiez votre résultat.';
+  }
+
+  @override
+  String racesEmptyRecent(int days) {
+    return 'Aucune course des $days derniers jours ne correspond à ces filtres.';
+  }
+
+  @override
   String get racesDetailLoadFailed =>
       'Impossible de charger cette course. Vérifiez votre connexion et réessayez.';
 

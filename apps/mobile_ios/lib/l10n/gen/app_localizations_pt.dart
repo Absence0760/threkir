@@ -13594,6 +13594,25 @@ class AppLocalizationsPt extends AppLocalizations {
   String get racesTrainForThis => 'Treinar para esta prova';
 
   @override
+  String get racesWhenGroup => 'Quando';
+
+  @override
+  String get racesWhenUpcoming => 'Próximas';
+
+  @override
+  String get racesWhenRecent => 'Resultados recentes';
+
+  @override
+  String racesWhenHint(int days) {
+    return 'Resultados recentes mostra as provas dos últimos $days dias, as mais recentes primeiro, para que encontre uma prova que correu e importe o seu resultado.';
+  }
+
+  @override
+  String racesEmptyRecent(int days) {
+    return 'Nenhuma prova dos últimos $days dias corresponde a estes filtros.';
+  }
+
+  @override
   String get racesDetailLoadFailed =>
       'Não foi possível carregar esta prova. Verifique a sua ligação e tente novamente.';
 
@@ -30611,6 +30630,25 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get racesTrainForThis => 'Treinar para esta corrida';
+
+  @override
+  String get racesWhenGroup => 'Quando';
+
+  @override
+  String get racesWhenUpcoming => 'Próximas';
+
+  @override
+  String get racesWhenRecent => 'Resultados recentes';
+
+  @override
+  String racesWhenHint(int days) {
+    return 'Resultados recentes mostra as corridas dos últimos $days dias, as mais recentes primeiro, para você encontrar uma corrida que fez e importar seu resultado.';
+  }
+
+  @override
+  String racesEmptyRecent(int days) {
+    return 'Nenhuma corrida dos últimos $days dias corresponde a estes filtros.';
+  }
 
   @override
   String get racesDetailLoadFailed =>

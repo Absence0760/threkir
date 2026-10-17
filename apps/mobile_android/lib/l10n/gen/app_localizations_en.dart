@@ -13454,6 +13454,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get racesTrainForThis => 'Train for this race';
 
   @override
+  String get racesWhenGroup => 'When';
+
+  @override
+  String get racesWhenUpcoming => 'Upcoming';
+
+  @override
+  String get racesWhenRecent => 'Recent results';
+
+  @override
+  String racesWhenHint(int days) {
+    return 'Recent results lists races from the last $days days, newest first, so you can find a race you ran and import your result.';
+  }
+
+  @override
+  String racesEmptyRecent(int days) {
+    return 'No races in the last $days days match these filters.';
+  }
+
+  @override
   String get racesDetailLoadFailed =>
       'Couldn\'t load this race. Check your connection and try again.';
 

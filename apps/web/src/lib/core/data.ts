@@ -5533,11 +5533,15 @@ export async function deleteClubPost(id: string): Promise<void> {
 export async function fetchMyPlansWithError(
 	limit = 100
 ): Promise<{ plans: TrainingPlan[]; error: string | null }> {
-	// Templates live in the same table; filter them out of the
-	// user-facing plan list (decisions §35).
+	// RLS also lets a coach read their linked athletes' plans, so the owner
+	// filter is what keeps those out of the coach's own list; templates live
+	// in the same table and are filtered out too (decisions §35).
+	const userId = await currentViewerId();
+	if (!userId) return { plans: [], error: 'Not signed in' };
 	const { data, error } = await supabase
 		.from('training_plans')
 		.select('*')
+		.eq('user_id', userId)
 		.eq('is_template', false)
 		.order('created_at', { ascending: false })
 		.limit(limit);
@@ -6002,7 +6006,7 @@ async function planOverviewFor(userId: string): Promise<PlanOverviewRead> {
 
 /// What creating or cloning a plan does to the active plans its window
 /// overlaps: 'refuse' (fail with a PlanOverlapError, the default, so nothing
-/// the runner did not name is changed), 'replace' (complete them) or 'trim'
+/// the runner did not name is changed), 'replace' (abandon them) or 'trim'
 /// (end each the day before the new plan starts). Decisions § 2050.
 export type PlanOverlapChoice = 'refuse' | 'replace' | 'trim';
 
@@ -6130,6 +6134,19 @@ export async function deletePlan(id: string): Promise<void> {
 /// 'paused', which frees the one-active slot so the runner can resume later.
 export async function pausePlan(id: string): Promise<void> {
 	await updatePlanStatus(id, 'paused');
+}
+
+/// File an active plan whose dates have run out under Completed (the "Finish
+/// plan" prompt, `isPlanFinished`). Scoped to `status = 'active'` so a plan
+/// paused or abandoned in another tab is never relabelled as finished.
+export async function finishPlan(id: string): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase
+		.from('training_plans')
+		.update({ status: 'completed' })
+		.eq('id', id)
+		.eq('status', 'active');
+	if (error) throw dbError(error);
 }
 
 /// Thrown by resumePlan when another active plan overlaps the paused plan's
@@ -6414,6 +6431,33 @@ export async function updatePlanWorkout(
 		update.race_priority = null;
 	}
 	const { error } = await supabase.from('plan_workouts').update(update).eq('id', id);
+	if (error) throw dbError(error);
+}
+
+/// Move one planned workout to another day of its week (`move_plan_workout`,
+/// decisions § 2073). When the day already holds a row, the two trade days;
+/// the swapped workout's id is returned, or null when the day was free.
+export async function movePlanWorkout(workoutId: string, date: string): Promise<string | null> {
+	const { data, error } = await supabase.rpc('move_plan_workout', {
+		p_workout_id: workoutId,
+		p_date: date
+	});
+	if (error) throw dbError(error);
+	return data ?? null;
+}
+
+/// Set the dates of several workouts of one plan in one transaction
+/// (`reschedule_plan_workouts`, decisions § 2073), so moves and swaps that
+/// pass through each other's days land together or not at all.
+export async function reschedulePlanWorkouts(
+	planId: string,
+	moves: { id: string; date: string }[]
+): Promise<void> {
+	if (moves.length === 0) return;
+	const { error } = await supabase.rpc('reschedule_plan_workouts', {
+		p_plan_id: planId,
+		p_moves: moves
+	});
 	if (error) throw dbError(error);
 }
 
@@ -10574,6 +10618,23 @@ export async function fetchMyAthletesWithError(): Promise<{
 
 export async function fetchMyAthletes(): Promise<CoachAthleteLink[]> {
 	return (await fetchMyAthletesWithError()).athletes;
+}
+
+/// True when the signed-in viewer actively coaches [athleteId]: the test the
+/// coach RLS policies on plan_workouts run (`private.is_active_coach_of`), so
+/// a surface can offer an edit only where the write will be allowed.
+export async function isActiveCoachOf(athleteId: string): Promise<boolean> {
+	const userId = auth.user?.id;
+	if (!userId || userId === athleteId) return false;
+	const { data, error } = await supabase
+		.from(TABLES.coach_athletes)
+		.select('id')
+		.eq('coach_id', userId)
+		.eq('athlete_id', athleteId)
+		.eq('status', 'active')
+		.limit(1);
+	if (error) throw error;
+	return (data ?? []).length > 0;
 }
 
 /// One row of the multi-athlete coach roster (coach_roster.md). The shape is

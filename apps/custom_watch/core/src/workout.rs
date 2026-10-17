@@ -20,8 +20,14 @@
 //! - **The halfway progress cue** — a display-only banner has no chime to
 //!   carry it, and the page's live progress already says "past half". The
 //!   end-of-step warning IS ported (it is the time-critical one: get ready).
-//! - **Pace-drift events** — the configured pace-band alert and this page's
-//!   adherence flag own that surface on the watch.
+//! - **Pace-drift events** — this page's adherence flag owns that surface on
+//!   the watch. The configured pace-band alert stands down while a workout
+//!   is live, the phone's `ownsPaceCues` (decisions § 2076), and an unpaced
+//!   (walk-run) step flags no adherence at all (§ 2074).
+//! - **The "Warm-up walk" / "Cool-down walk" wording** — the phone says it so
+//!   a beginner doesn't start running on "Warmup". The watch banner keeps the
+//!   kind's WARMUP / COOLDOWN: the kind byte carries no `paced` bit, and a
+//!   silent banner the runner glances at is not the cue that sets them off.
 //! - **The Dart event stream** — a `no_std` core carries no streams. Edges
 //!   travel as monotonic counters in [`WorkoutView`] ([`transition_seq`,
 //!   `ending_seq`](WorkoutView)); the alert engine fires a banner when one
@@ -114,6 +120,11 @@ pub struct WorkoutStep {
     pub target_duration_s: u16,
     pub target_pace_s_per_km: u16,
     pub tolerance_s_per_km: u16,
+    /// False on every step of a walk-run (C25K) session, the phone's
+    /// `WorkoutStep.paced`: the step reports no adherence, because a
+    /// beginner's run and walk intervals are effort-led, not a pace test.
+    /// Carried on the wire as the frame-level `WORKOUT_FLAG_UNPACED` bit.
+    pub paced: bool,
 }
 
 impl WorkoutStep {
@@ -296,6 +307,9 @@ impl WorkoutRunner {
         let Some(step) = self.steps.get(self.idx) else {
             return PaceAdherence::OnPace;
         };
+        if !step.paced {
+            return PaceAdherence::OnPace;
+        }
         let Some(actual) = self.step_pace_s_per_km() else {
             return PaceAdherence::OnPace;
         };
@@ -620,6 +634,7 @@ mod tests {
             target_duration_s: 0,
             target_pace_s_per_km: 240,
             tolerance_s_per_km: 10,
+            paced: true,
         }
     }
 
@@ -632,6 +647,7 @@ mod tests {
             target_duration_s: duration_s,
             target_pace_s_per_km: 240,
             tolerance_s_per_km: 10,
+            paced: true,
         }
     }
 
@@ -855,6 +871,18 @@ mod tests {
     }
 
     #[test]
+    fn an_unpaced_walk_run_step_never_flags_adherence() {
+        // The same 35 s/km miss on a walk-run step reads on pace: the phone's
+        // `WorkoutStep.paced == false` contract.
+        let mut step = dist_step(1000);
+        step.paced = false;
+        let mut r = WorkoutRunner::new(&[step]).unwrap();
+        r.on_totals(0.0, 0);
+        r.on_totals(400.0, 110);
+        assert_eq!(r.view().adherence, PaceAdherence::OnPace);
+    }
+
+    #[test]
     fn adherence_bands_split_at_one_and_two_tolerances() {
         let mut r = WorkoutRunner::new(&[dist_step(10_000)]).unwrap();
         r.on_totals(0.0, 0);
@@ -940,6 +968,7 @@ mod tests {
                 target_duration_s: 0,
                 target_pace_s_per_km: 360,
                 tolerance_s_per_km: 10,
+                paced: true,
             },
             dist_step(400),
         ];
@@ -994,6 +1023,7 @@ mod tests {
                 target_duration_s: 0,
                 target_pace_s_per_km: 400,
                 tolerance_s_per_km: 10,
+                paced: true,
             },
         ];
         let mut r = WorkoutRunner::new(&steps).unwrap();

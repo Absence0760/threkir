@@ -9,7 +9,12 @@
 	// options exactly as they were.
 	import { onMount, tick } from 'svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
-	import { markWorkoutSkipped, updatePlanWeek, updatePlanWorkout } from '#lib/core/data.ts';
+	import {
+		markWorkoutSkipped,
+		reschedulePlanWorkouts,
+		updatePlanWeek,
+		updatePlanWorkout
+	} from '#lib/core/data.ts';
 	import { AI_CONSENT_HREF } from '#lib/core/ai_disclosure.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
@@ -130,9 +135,20 @@
 		saving = true;
 		const { application } = result;
 		try {
+			// Dates first and together: a swap, or a move onto a day another
+			// row is leaving, passes through an occupied day, which only the
+			// one-transaction reschedule can do (decisions § 2073).
+			await reschedulePlanWorkouts(
+				plan.id,
+				application.workouts
+					.filter((c) => c.patch?.scheduled_date !== undefined)
+					.map((c) => ({ id: c.workoutId, date: c.patch!.scheduled_date! })),
+			);
 			await Promise.all([
 				...application.workouts.map(async (c) => {
-					if (c.patch) await updatePlanWorkout(c.workoutId, c.patch);
+					const fields = { ...c.patch };
+					delete fields.scheduled_date;
+					if (Object.keys(fields).length > 0) await updatePlanWorkout(c.workoutId, fields);
 					if (c.skip) await markWorkoutSkipped(c.workoutId, true);
 				}),
 				...application.weeks.map((w) => updatePlanWeek(w.weekId, { target_volume_m: w.afterVolumeM })),

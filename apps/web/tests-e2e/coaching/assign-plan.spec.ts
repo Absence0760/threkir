@@ -92,4 +92,31 @@ test.describe('/coaching/athletes/[id] — assign a plan', () => {
 		await expect(page.getByLabel('Start date')).toHaveValue(browserDate(21));
 		await expect(page.getByText(/already has an active plan/i)).toHaveCount(0);
 	});
+
+	test("the coach's plan lists hold only the coach's own plans, never the athlete's", async ({ page }) => {
+		// Coach RLS can read a linked athlete's plans, so an unscoped list read
+		// would offer the athlete's plan back to them and show it on /plans.
+		await getAdminClient().from('training_plans').insert({
+			user_id: USER_C_PRO.id,
+			name: 'Athlete own plan',
+			goal_event: 'distance_5k',
+			goal_distance_m: 5000,
+			start_date: browserDate(-5),
+			end_date: browserDate(20),
+			status: 'active'
+		});
+
+		await page.goto(`/coaching/athletes/${USER_C_PRO.id}`);
+		const picker = page.getByLabel('Plan to assign');
+		await expect(picker.locator('option', { hasText: SOURCE_PLAN_NAME })).toHaveCount(1, {
+			timeout: 10_000
+		});
+		await expect(picker.locator('option', { hasText: 'Athlete own plan' })).toHaveCount(0);
+
+		await page.goto('/plans');
+		await expect(page.getByRole('heading', { name: SOURCE_PLAN_NAME })).toBeVisible({
+			timeout: 10_000
+		});
+		await expect(page.getByRole('heading', { name: 'Athlete own plan' })).toHaveCount(0);
+	});
 });

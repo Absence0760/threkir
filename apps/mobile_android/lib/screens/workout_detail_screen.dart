@@ -99,14 +99,21 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   // Unlinking the matched run resets the plan's progress for this workout,
   // so it confirms first (parity with web's ConfirmDialog) and surfaces a
   // failure instead of swallowing it. Guarded against a double-tap.
-  Future<void> _confirmUnlink() async {
+  //
+  // A workout marked done by hand has no run to unlink; the same path clears
+  // the mark, under copy that says so. Mobile has no "mark done", so the
+  // confirm stays: the runner could not put it back from here.
+  Future<void> _confirmUnlink(PlanWorkoutRow w) async {
     if (_unlinking) return;
     final l10n = AppLocalizations.of(context);
+    final hasRun = w.completedRunId != null;
     final ok = await showDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
-            title: Text(l10n.workoutUnlinkTitle),
-            content: Text(l10n.workoutUnlinkBody),
+            title: Text(
+                hasRun ? l10n.workoutUnlinkTitle : l10n.workoutMarkNotDoneTitle),
+            content: Text(
+                hasRun ? l10n.workoutUnlinkBody : l10n.workoutMarkNotDoneBody),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
@@ -116,7 +123,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 onPressed: () => Navigator.pop(context, true),
                 style: TextButton.styleFrom(
                     foregroundColor: Theme.of(context).colorScheme.error),
-                child: Text(l10n.workoutUnlink),
+                child: Text(
+                    hasRun ? l10n.workoutUnlink : l10n.workoutMarkNotDone),
               ),
             ],
           ),
@@ -129,7 +137,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       await _load();
     } catch (e, s) {
       debugPrint('WorkoutDetailScreen._confirmUnlink failed: $e\n$s');
-      if (mounted) showTopBanner(context, l10n.workoutUnlinkError);
+      if (mounted) {
+        showTopBanner(context,
+            hasRun ? l10n.workoutUnlinkError : l10n.workoutMarkNotDoneError);
+      }
     } finally {
       if (mounted) setState(() => _unlinking = false);
     }
@@ -238,7 +249,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 ),
             ],
           ),
-          if (w.completedRunId != null) ...[
+          if (isWorkoutCompleted(w)) ...[
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
@@ -258,13 +269,16 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                         fontWeight: FontWeight.w700,
                       )),
                   const SizedBox(width: 12),
+                  if (w.completedRunId != null)
+                    TextButton(
+                      onPressed: () => _openRelinkPicker(w),
+                      child: Text(l10n.workoutRelink),
+                    ),
                   TextButton(
-                    onPressed: () => _openRelinkPicker(w),
-                    child: Text(l10n.workoutRelink),
-                  ),
-                  TextButton(
-                    onPressed: _unlinking ? null : _confirmUnlink,
-                    child: Text(l10n.workoutUnlink),
+                    onPressed: _unlinking ? null : () => _confirmUnlink(w),
+                    child: Text(w.completedRunId != null
+                        ? l10n.workoutUnlink
+                        : l10n.workoutMarkNotDone),
                   ),
                 ],
               ),
@@ -373,7 +387,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     ?.copyWith(fontWeight: FontWeight.w700)),
             if (tolerance != null) ...[
               const SizedBox(width: 4),
-              Text('±${tolerance}s',
+              Text(fmtPaceTolerance(tolerance),
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   )),
@@ -436,30 +450,47 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
     if (s.warmup != null) {
       add(l10n.workoutStructWarmup,
-          l10n.workoutStructWarmupValue(fmtKm(s.warmup!['distance_m'] as num, 1)));
+          l10n.workoutStructWarmupValue(_stepAmount(s.warmup!, 1)));
     }
     if (s.repeats != null) {
       final r = s.repeats!;
-      add(l10n.workoutStructRepeats,
-          '${r['count']}× ${fmtKm(r['distance_m'] as num, 2)} @ '
-          '${fmtPace((r['pace_sec_per_km'] as num).toInt())} with '
-          '${fmtKm(r['recovery_distance_m'] as num, 2)} ${r['recovery_pace']}');
+      final pace = r['pace_sec_per_km'] as num?;
+      final hasRecovery =
+          r['recovery_distance_m'] != null || r['recovery_duration_s'] != null;
+      add(
+          l10n.workoutStructRepeats,
+          '${r['count']}× ${_stepAmount(r, 2)} @ '
+          '${fmtPace(pace?.toInt())}'
+          '${hasRecovery ? ' with ${_stepAmount(r, 2, recovery: true)} ${r['recovery_pace'] ?? ''}' : ''}');
     }
     if (s.steady != null) {
       final st = s.steady!;
       add(l10n.workoutStructSteady,
-          '${fmtKm(st['distance_m'] as num, 1)} @ '
-          '${fmtPace((st['pace_sec_per_km'] as num).toInt())}');
+          '${_stepAmount(st, 1)} @ '
+          '${fmtPace((st['pace_sec_per_km'] as num?)?.toInt())}');
     }
     if (s.cooldown != null) {
       add(l10n.workoutStructCooldown,
-          l10n.workoutStructCooldownValue(
-              fmtKm(s.cooldown!['distance_m'] as num, 1)));
+          l10n.workoutStructCooldownValue(_stepAmount(s.cooldown!, 1)));
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: items,
     );
+  }
+
+  // A step reads as its distance when it has one, else its duration: the
+  // walk-run generator writes only `duration_s`, and a hard `as num` cast on
+  // the missing `distance_m` threw. Mirrors web's `stepAmount`.
+  String _stepAmount(Map<String, dynamic> step, int digits,
+      {bool recovery = false}) {
+    final distance =
+        step[recovery ? 'recovery_distance_m' : 'distance_m'] as num?;
+    if (distance != null) return fmtKm(distance, digits);
+    final duration =
+        step[recovery ? 'recovery_duration_s' : 'duration_s'] as num?;
+    if (duration != null) return fmtHms(duration.toInt());
+    return '—';
   }
 
   String _advice(AppLocalizations l10n, WorkoutKind k) => switch (k) {

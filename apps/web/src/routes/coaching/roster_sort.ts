@@ -39,10 +39,16 @@ export function sortRoster(
 	return [...rows].sort((a, b) => {
 		let cmp = 0;
 		switch (sortKey) {
-			case 'risk':
+			case 'risk': {
 				cmp = RISK_RANK[rosterRisk(a)] - RISK_RANK[rosterRisk(b)];
-				if (cmp === 0) cmp = lastRunMs(a) - lastRunMs(b);
+				if (cmp !== 0) return cmp * dir;
+				// Within a band, the athlete who went quiet longest (or never ran)
+				// comes first in either direction: that is who needs a coach's
+				// attention, and flipping the risk column must not bury them.
+				const staleness = lastRunMs(a) - lastRunMs(b);
+				if (staleness !== 0) return staleness;
 				break;
+			}
 			case 'lastRun':
 				cmp = lastRunMs(a) - lastRunMs(b);
 				break;

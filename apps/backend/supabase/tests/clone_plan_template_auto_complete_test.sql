@@ -76,12 +76,13 @@ end $$;
 
 reset role;
 
--- 1. The previous active plan is now `completed`.
+-- 1. The previous active plan is retired. Since 20270903000001 a replace
+-- writes `abandoned`, not `completed`: the runner dropped it to adopt another.
 select is(
   (select status from training_plans
    where id = current_setting('persona.active_plan', true)::uuid),
-  'completed',
-  'Existing active plan auto-completes when Adopt clones a new one'
+  'abandoned',
+  'Existing active plan is retired as abandoned when Adopt clones a new one'
 );
 
 -- 2. The new clone is `active`.

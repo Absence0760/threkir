@@ -1,6 +1,8 @@
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../lib/preferences.dart';
 import '../lib/training.dart' show WorkoutKind;
 import '../lib/training_service.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -11,6 +13,7 @@ class _FakeTraining extends TrainingService {
     String workoutId,
     String? kind,
     String? fromKind,
+    PlanWorkoutTargets? targets,
     double? targetDistanceM,
     int? targetPaceSecPerKm,
     String? notes,
@@ -23,8 +26,7 @@ class _FakeTraining extends TrainingService {
     String workoutId, {
     String? kind,
     String? fromKind,
-    double? targetDistanceM,
-    int? targetPaceSecPerKm,
+    PlanWorkoutTargets? targets,
     String? notes,
     PlanWorkoutRaceFields? race,
   }) async {
@@ -33,8 +35,9 @@ class _FakeTraining extends TrainingService {
       workoutId: workoutId,
       kind: kind,
       fromKind: fromKind,
-      targetDistanceM: targetDistanceM,
-      targetPaceSecPerKm: targetPaceSecPerKm,
+      targets: targets,
+      targetDistanceM: targets?.distanceM,
+      targetPaceSecPerKm: targets?.paceSecPerKm,
       notes: notes,
       race: race,
     );
@@ -396,4 +399,98 @@ void main() {
       expect(training.lastUpdate, isNull);
     });
   });
+
+  group('WorkoutEditSheet — clearing, rest and units', () {
+    Future<void> withUnit(bool miles) async {
+      SharedPreferences.setMockInitialValues({'use_miles': miles});
+      final prefs = Preferences();
+      await prefs.init();
+      registerActivePreferences(prefs);
+    }
+
+    tearDown(() async => withUnit(false));
+
+    Future<void> save(WidgetTester tester) async {
+      await tester.ensureVisible(find.text('Save'));
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('emptying distance and pace clears both targets',
+        (tester) async {
+      // A null used to mean "leave it", so an emptied field kept its target.
+      final training = _FakeTraining();
+      await _pumpSheet(tester, _workout(), training);
+      await tester.enterText(
+          find.byKey(const Key('workoutEditDistance')), '');
+      await tester.enterText(find.byKey(const Key('workoutEditPace')), '');
+      await save(tester);
+      expect(training.lastUpdate!.targets, isNotNull);
+      expect(training.lastUpdate!.targets!.distanceM, isNull);
+      expect(training.lastUpdate!.targets!.paceSecPerKm, isNull);
+      expect(
+        planWorkoutPatch(targets: training.lastUpdate!.targets),
+        {'target_distance_m': null, 'target_pace_sec_per_km': null},
+      );
+    });
+
+    testWidgets('an untouched form re-saves the stored values exactly',
+        (tester) async {
+      final training = _FakeTraining();
+      await _pumpSheet(
+          tester, _workout(targetDistanceM: 8050, targetPaceSecPerKm: 301),
+          training);
+      await save(tester);
+      expect(training.lastUpdate!.targetDistanceM, 8050);
+      expect(training.lastUpdate!.targetPaceSecPerKm, 301);
+    });
+
+    testWidgets('switching to rest disables the targets and clears them',
+        (tester) async {
+      final training = _FakeTraining();
+      await _pumpSheet(tester, _workout(), training);
+      await tester.tap(find.text('Tempo'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rest').last);
+      await tester.pumpAndSettle();
+      expect(
+          tester
+              .widget<TextField>(find.byKey(const Key('workoutEditDistance')))
+              .enabled,
+          isFalse);
+      await save(tester);
+      expect(training.lastUpdate!.kind, 'rest');
+      final patch = planWorkoutPatch(
+        kind: training.lastUpdate!.kind,
+        targets: training.lastUpdate!.targets,
+      );
+      expect(patch['target_distance_m'], isNull);
+      expect(patch['target_pace_sec_per_km'], isNull);
+      expect(patch.containsKey('target_pace_tolerance_sec'), isTrue);
+      expect(patch.containsKey('structure'), isTrue);
+    });
+
+    testWidgets('miles mode labels, shows and reads targets in miles',
+        (tester) async {
+      await tester.runAsync(() => withUnit(true));
+      final training = _FakeTraining();
+      // 8046.72 m = 5.0 mi; 300 s/km = 8:03/mi.
+      await _pumpSheet(
+          tester, _workout(targetDistanceM: 8046.72, targetPaceSecPerKm: 300),
+          training);
+      expect(find.text('Target distance (mi)'), findsOneWidget);
+      expect(find.text('Target pace (mm:ss /mi)'), findsOneWidget);
+      expect(find.text('5.0'), findsOneWidget);
+      expect(find.text('8:03'), findsOneWidget);
+
+      await tester.enterText(
+          find.byKey(const Key('workoutEditDistance')), '10');
+      await tester.enterText(find.byKey(const Key('workoutEditPace')), '8:00');
+      await save(tester);
+      expect(training.lastUpdate!.targetDistanceM, closeTo(16093.44, 0.01));
+      // 480 s/mi / 1.609344 = 298.26 s/km.
+      expect(training.lastUpdate!.targetPaceSecPerKm, 298);
+    });
+  });
+
 }

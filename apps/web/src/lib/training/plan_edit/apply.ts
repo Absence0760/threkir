@@ -21,11 +21,13 @@
 //   - a week newly ELEVATED, or newly stacked hard days, needs a second,
 //     explicit confirmation naming what got harder.
 //
-// Pure: no Supabase, no DOM. The page persists the returned patches through
+// Pure: no Supabase, no DOM. The page persists the date changes together through
+// `reschedulePlanWorkouts`, then the other fields through
 // `updatePlanWorkout` / `updatePlanWeek` / `markWorkoutSkipped`.
 
 import { injuryRiskBand, type InjuryRiskBand } from '../coach_load';
 import { recoveryWeekVolume, recoveryWorkoutPatch } from '../plan_bulk_ops';
+import { canDisplaceForMove } from '../plan_move';
 import { MIN_ACTIVE_WEEKS, type RecentVolume } from '../plan_ramp';
 import {
 	isEditableWorkout,
@@ -145,6 +147,15 @@ export function applyPlanEditOps(
 			case 'move_workout': {
 				const w = editable(op.workoutId);
 				if (!w) break;
+				// One row per day per week: a move onto an occupied day trades
+				// the two days, exactly as `move_plan_workout` does on save
+				// (decisions § 2073). A day held by a completed workout or a race
+				// is not the AI's to take.
+				const occupant = after.workouts.find(
+					(o) => o.id !== w.id && o.week_id === w.week_id && o.scheduled_date === op.date,
+				);
+				if (occupant && !canDisplaceForMove(occupant)) break;
+				if (occupant) occupant.scheduled_date = w.scheduled_date;
 				w.scheduled_date = op.date;
 				applied++;
 				break;

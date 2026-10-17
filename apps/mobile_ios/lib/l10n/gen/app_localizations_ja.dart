@@ -14722,6 +14722,11 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String rateLimitRotateCalendarLink(String wait) {
+    return 'カレンダーリンクの作成が速すぎます。$wait待ってから、もう一度お試しください。';
+  }
+
+  @override
   String rateLimitSendMessage(String wait) {
     return 'メッセージの送信が速すぎます。$wait待ってから、もう一度お試しください。';
   }
@@ -16336,4 +16341,88 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get workoutMoveSaveFirst => 'このワークアウトを移動する前に、変更を保存するか破棄してください。';
+
+  @override
+  String get planCalendarFeedTitle => 'トレーニングプランのカレンダー';
+
+  @override
+  String get planCalendarFeedTileSubtitle =>
+      'プランのワークアウトを Google・Apple・Outlook のカレンダーに表示';
+
+  @override
+  String get planCalendarFeedDescription =>
+      'Google カレンダー、Apple カレンダー、Outlook で購読すると、実施中のプランのワークアウトが終日の予定として表示されます。プランを変更すると予定にも反映されます。';
+
+  @override
+  String get planCalendarFeedLoadFailed => 'カレンダーリンクを読み込めませんでした。';
+
+  @override
+  String get planCalendarFeedRetry => '再試行';
+
+  @override
+  String get planCalendarFeedCreate => 'カレンダーリンクを作成';
+
+  @override
+  String get planCalendarFeedCreateFailed => 'カレンダーリンクを作成できませんでした。もう一度お試しください。';
+
+  @override
+  String get planCalendarFeedRevokeFailed =>
+      'カレンダーリンクを無効にできませんでした。もう一度お試しください。';
+
+  @override
+  String get planCalendarFeedUrlLabel => 'カレンダーリンク';
+
+  @override
+  String get planCalendarFeedShownOnce =>
+      'このリンクを今すぐコピーしてください。表示されるのは一度だけです。なくした場合は新しいリンクを作成してください。';
+
+  @override
+  String get planCalendarFeedCopy => 'リンクをコピー';
+
+  @override
+  String get planCalendarFeedCopied => 'リンクをコピーしました';
+
+  @override
+  String get planCalendarFeedSubscribe => 'カレンダーアプリで開く';
+
+  @override
+  String planCalendarFeedActiveSince(String date) {
+    return 'カレンダーリンクの作成：$date';
+  }
+
+  @override
+  String planCalendarFeedLastRead(String date) {
+    return 'カレンダーによる最終読み込み：$date';
+  }
+
+  @override
+  String get planCalendarFeedNeverRead => 'まだどのカレンダーにも読み込まれていません。';
+
+  @override
+  String get planCalendarFeedLostLink =>
+      'リンクは再表示できません。必要なら新しいリンクを作成してください。古いリンクは使えなくなります。';
+
+  @override
+  String get planCalendarFeedRotate => '新しいリンクを作成';
+
+  @override
+  String get planCalendarFeedRevoke => '無効にする';
+
+  @override
+  String get planCalendarFeedRotateTitle => '新しいカレンダーリンクを作成しますか？';
+
+  @override
+  String get planCalendarFeedRotateMessage =>
+      '現在のリンクはすぐに使えなくなります。購読中のカレンダーは、新しいリンクで購読し直すまで更新されません。';
+
+  @override
+  String get planCalendarFeedRevokeTitle => 'カレンダーリンクを無効にしますか？';
+
+  @override
+  String get planCalendarFeedRevokeMessage =>
+      'リンクはすぐに使えなくなり、購読中のカレンダーは更新されなくなります。すでに取り込まれた予定は、カレンダーが次に更新されるまで残ることがあります。';
+
+  @override
+  String get planCalendarFeedPrivacy =>
+      'リンクを知っている人は誰でも、ワークアウトの日付・種類・目標を見られます。場所、メモ、プラン名は含まれません。誤って共有した場合は新しいリンクを作成してください。';
 }

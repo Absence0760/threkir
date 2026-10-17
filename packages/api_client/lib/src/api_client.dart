@@ -426,6 +426,32 @@ class ApiClient {
     return cleared is int ? cleared : 0;
   }
 
+  /// The caller's plan calendar feed as its two timestamps
+  /// (`created_at`, `last_fetched_at`), or null when there is no feed
+  /// (migration 20270910000001). The token itself can never be read back.
+  Future<Map<String, dynamic>?> planCalendarFeedStatus() async {
+    final rows = await _client.rpc('plan_calendar_feed_status', params: const {}, get: true);
+    if (rows is List && rows.isNotEmpty && rows.first is Map) {
+      return Map<String, dynamic>.from(rows.first as Map);
+    }
+    return null;
+  }
+
+  /// Mints a new feed token, replacing any existing feed so the previous URL
+  /// stops working at once. The return value is the only copy of the token.
+  Future<String> rotatePlanCalendarFeed() async {
+    final token = await _client.rpc('rotate_plan_calendar_feed');
+    if (token is! String) {
+      throw StateError('rotate_plan_calendar_feed returned no token');
+    }
+    return token;
+  }
+
+  /// Deletes the caller's feed; its URL stops working at once.
+  Future<void> revokePlanCalendarFeed() async {
+    await _client.rpc('revoke_plan_calendar_feed');
+  }
+
   /// Exchange a Google ID token (obtained by the host app via the native
   /// Android `google_sign_in` flow) for a Supabase session. Returns the
   /// user ID.

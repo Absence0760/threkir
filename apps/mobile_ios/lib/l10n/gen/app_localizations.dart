@@ -25376,6 +25376,12 @@ abstract class AppLocalizations {
   /// **'You\'re publishing routines too quickly — please wait {wait} and try again.'**
   String rateLimitPublishRoutine(String wait);
 
+  /// Rate-limit refusal when the plan_calendar_rotate bucket is spent (making a new training-plan calendar link)
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re making new calendar links too quickly — please wait {wait} and try again.'**
+  String rateLimitRotateCalendarLink(String wait);
+
   /// Rate-limit refusal when either direct-message send bucket is spent
   ///
   /// In en, this message translates to:
@@ -28068,6 +28074,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Save or discard your changes before moving this workout.'**
   String get workoutMoveSaveFirst;
+
+  /// Heading of the training-plan calendar feed screen and its Integrations tile
+  ///
+  /// In en, this message translates to:
+  /// **'Training plan calendar'**
+  String get planCalendarFeedTitle;
+
+  /// Subtitle of the Integrations tile that opens the plan calendar feed screen
+  ///
+  /// In en, this message translates to:
+  /// **'Your plan\'s workouts in Google, Apple or Outlook calendar'**
+  String get planCalendarFeedTileSubtitle;
+
+  /// Explains what subscribing to the plan calendar feed does
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribe from Google Calendar, Apple Calendar or Outlook to see your active plan\'s workouts as all-day entries. They follow your plan as it changes.'**
+  String get planCalendarFeedDescription;
+
+  /// Shown when the calendar feed status could not be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your calendar link.'**
+  String get planCalendarFeedLoadFailed;
+
+  /// Button to retry loading the calendar feed status
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get planCalendarFeedRetry;
+
+  /// Button that creates the secret calendar subscription link
+  ///
+  /// In en, this message translates to:
+  /// **'Create calendar link'**
+  String get planCalendarFeedCreate;
+
+  /// Shown when creating or replacing the calendar link failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t create a calendar link. Try again.'**
+  String get planCalendarFeedCreateFailed;
+
+  /// Shown when turning off the calendar link failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t turn off the calendar link. Try again.'**
+  String get planCalendarFeedRevokeFailed;
+
+  /// Label above the freshly created calendar link
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar link'**
+  String get planCalendarFeedUrlLabel;
+
+  /// Warns that the calendar link is displayed only once
+  ///
+  /// In en, this message translates to:
+  /// **'Copy this link now. It is shown only once; if you lose it, make a new one.'**
+  String get planCalendarFeedShownOnce;
+
+  /// Button that copies the calendar link
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get planCalendarFeedCopy;
+
+  /// Confirmation after the calendar link was copied
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied'**
+  String get planCalendarFeedCopied;
+
+  /// Button that opens the calendar link in a calendar app as a subscription
+  ///
+  /// In en, this message translates to:
+  /// **'Open in calendar app'**
+  String get planCalendarFeedSubscribe;
+
+  /// When the active calendar link was created; date is a formatted date and time
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar link created: {date}'**
+  String planCalendarFeedActiveSince(String date);
+
+  /// When a calendar app last downloaded the feed; date is a formatted date and time
+  ///
+  /// In en, this message translates to:
+  /// **'Last read by a calendar: {date}'**
+  String planCalendarFeedLastRead(String date);
+
+  /// Shown when no calendar app has downloaded the feed yet
+  ///
+  /// In en, this message translates to:
+  /// **'No calendar has read it yet.'**
+  String get planCalendarFeedNeverRead;
+
+  /// Explains the existing link cannot be shown again and how to get a new one
+  ///
+  /// In en, this message translates to:
+  /// **'The link can\'t be shown again. Make a new one if you need it; the old one then stops working.'**
+  String get planCalendarFeedLostLink;
+
+  /// Button that replaces the calendar link with a new one, killing the old one
+  ///
+  /// In en, this message translates to:
+  /// **'Make a new link'**
+  String get planCalendarFeedRotate;
+
+  /// Button that turns off the calendar link
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off'**
+  String get planCalendarFeedRevoke;
+
+  /// Confirm dialog title before replacing the calendar link
+  ///
+  /// In en, this message translates to:
+  /// **'Make a new calendar link?'**
+  String get planCalendarFeedRotateTitle;
+
+  /// Confirm dialog body before replacing the calendar link
+  ///
+  /// In en, this message translates to:
+  /// **'The current link stops working right away. A calendar subscribed to it stops updating until you subscribe again with the new link.'**
+  String get planCalendarFeedRotateMessage;
+
+  /// Confirm dialog title before turning off the calendar link
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off the calendar link?'**
+  String get planCalendarFeedRevokeTitle;
+
+  /// Confirm dialog body before turning off the calendar link
+  ///
+  /// In en, this message translates to:
+  /// **'The link stops working right away and subscribed calendars stop updating. Entries a calendar already copied can stay until it next refreshes.'**
+  String get planCalendarFeedRevokeMessage;
+
+  /// Privacy note: what someone holding the link can and cannot see
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone with the link can see your workout dates, types and targets. It carries no location, notes or plan name. Make a new link if you shared it by mistake.'**
+  String get planCalendarFeedPrivacy;
 }
 
 class _AppLocalizationsDelegate

@@ -15425,6 +15425,11 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String rateLimitRotateCalendarLink(String wait) {
+    return 'Está a criar ligações de calendário demasiado depressa — aguarde $wait e tente novamente.';
+  }
+
+  @override
   String rateLimitSendMessage(String wait) {
     return 'Está a enviar mensagens demasiado depressa — aguarde $wait e tente novamente.';
   }
@@ -17135,6 +17140,94 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get workoutMoveSaveFirst =>
       'Guarde ou descarte as suas alterações antes de mover este treino.';
+
+  @override
+  String get planCalendarFeedTitle => 'Calendário do plano de treino';
+
+  @override
+  String get planCalendarFeedTileSubtitle =>
+      'Os treinos do seu plano no Google Calendar, Calendário da Apple ou Outlook';
+
+  @override
+  String get planCalendarFeedDescription =>
+      'Subscreva no Google Calendar, no Calendário da Apple ou no Outlook para ver os treinos do seu plano ativo como eventos de dia inteiro. Acompanham o plano quando ele muda.';
+
+  @override
+  String get planCalendarFeedLoadFailed =>
+      'Não foi possível carregar a sua ligação de calendário.';
+
+  @override
+  String get planCalendarFeedRetry => 'Tentar novamente';
+
+  @override
+  String get planCalendarFeedCreate => 'Criar ligação de calendário';
+
+  @override
+  String get planCalendarFeedCreateFailed =>
+      'Não foi possível criar a ligação de calendário. Tente novamente.';
+
+  @override
+  String get planCalendarFeedRevokeFailed =>
+      'Não foi possível desativar a ligação de calendário. Tente novamente.';
+
+  @override
+  String get planCalendarFeedUrlLabel => 'Ligação de calendário';
+
+  @override
+  String get planCalendarFeedShownOnce =>
+      'Copie esta ligação agora. Só é mostrada uma vez; se a perder, crie uma nova.';
+
+  @override
+  String get planCalendarFeedCopy => 'Copiar ligação';
+
+  @override
+  String get planCalendarFeedCopied => 'Ligação copiada';
+
+  @override
+  String get planCalendarFeedSubscribe => 'Abrir na app de calendário';
+
+  @override
+  String planCalendarFeedActiveSince(String date) {
+    return 'Ligação de calendário criada: $date';
+  }
+
+  @override
+  String planCalendarFeedLastRead(String date) {
+    return 'Última leitura por um calendário: $date';
+  }
+
+  @override
+  String get planCalendarFeedNeverRead => 'Nenhum calendário a leu ainda.';
+
+  @override
+  String get planCalendarFeedLostLink =>
+      'A ligação não pode ser mostrada novamente. Crie uma nova se precisar; a antiga deixa de funcionar.';
+
+  @override
+  String get planCalendarFeedRotate => 'Criar nova ligação';
+
+  @override
+  String get planCalendarFeedRevoke => 'Desativar';
+
+  @override
+  String get planCalendarFeedRotateTitle =>
+      'Criar uma nova ligação de calendário?';
+
+  @override
+  String get planCalendarFeedRotateMessage =>
+      'A ligação atual deixa de funcionar de imediato. Um calendário subscrito deixa de ser atualizado até subscrever novamente com a nova ligação.';
+
+  @override
+  String get planCalendarFeedRevokeTitle =>
+      'Desativar a ligação de calendário?';
+
+  @override
+  String get planCalendarFeedRevokeMessage =>
+      'A ligação deixa de funcionar de imediato e os calendários subscritos deixam de ser atualizados. Os eventos já copiados podem ficar até o calendário atualizar.';
+
+  @override
+  String get planCalendarFeedPrivacy =>
+      'Quem tiver a ligação vê as datas, os tipos e os objetivos dos seus treinos. Não inclui local, notas nem o nome do plano. Crie uma nova ligação se a partilhou por engano.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -32548,6 +32641,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
+  String rateLimitRotateCalendarLink(String wait) {
+    return 'Você está criando links de calendário rápido demais — espere $wait e tente de novo.';
+  }
+
+  @override
   String rateLimitSendMessage(String wait) {
     return 'Você está enviando mensagens rápido demais — espere $wait e tente de novo.';
   }
@@ -34256,4 +34354,90 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get workoutMoveSaveFirst =>
       'Salve ou descarte suas alterações antes de mover este treino.';
+
+  @override
+  String get planCalendarFeedTitle => 'Calendário do plano de treino';
+
+  @override
+  String get planCalendarFeedTileSubtitle =>
+      'Os treinos do seu plano no Google Agenda, Calendário da Apple ou Outlook';
+
+  @override
+  String get planCalendarFeedDescription =>
+      'Assine pelo Google Agenda, Calendário da Apple ou Outlook para ver os treinos do seu plano ativo como eventos de dia inteiro. Eles acompanham o plano quando ele muda.';
+
+  @override
+  String get planCalendarFeedLoadFailed =>
+      'Não foi possível carregar seu link de calendário.';
+
+  @override
+  String get planCalendarFeedRetry => 'Tentar de novo';
+
+  @override
+  String get planCalendarFeedCreate => 'Criar link de calendário';
+
+  @override
+  String get planCalendarFeedCreateFailed =>
+      'Não foi possível criar o link de calendário. Tente de novo.';
+
+  @override
+  String get planCalendarFeedRevokeFailed =>
+      'Não foi possível desativar o link de calendário. Tente de novo.';
+
+  @override
+  String get planCalendarFeedUrlLabel => 'Link de calendário';
+
+  @override
+  String get planCalendarFeedShownOnce =>
+      'Copie este link agora. Ele só aparece uma vez; se você perdê-lo, crie um novo.';
+
+  @override
+  String get planCalendarFeedCopy => 'Copiar link';
+
+  @override
+  String get planCalendarFeedCopied => 'Link copiado';
+
+  @override
+  String get planCalendarFeedSubscribe => 'Abrir no app de calendário';
+
+  @override
+  String planCalendarFeedActiveSince(String date) {
+    return 'Link de calendário criado: $date';
+  }
+
+  @override
+  String planCalendarFeedLastRead(String date) {
+    return 'Última leitura por um calendário: $date';
+  }
+
+  @override
+  String get planCalendarFeedNeverRead => 'Nenhum calendário o leu ainda.';
+
+  @override
+  String get planCalendarFeedLostLink =>
+      'O link não pode ser mostrado de novo. Crie um novo se precisar; o antigo deixa de funcionar.';
+
+  @override
+  String get planCalendarFeedRotate => 'Criar novo link';
+
+  @override
+  String get planCalendarFeedRevoke => 'Desativar';
+
+  @override
+  String get planCalendarFeedRotateTitle => 'Criar um novo link de calendário?';
+
+  @override
+  String get planCalendarFeedRotateMessage =>
+      'O link atual deixa de funcionar na hora. Um calendário assinado nele para de atualizar até você assinar de novo com o novo link.';
+
+  @override
+  String get planCalendarFeedRevokeTitle => 'Desativar o link de calendário?';
+
+  @override
+  String get planCalendarFeedRevokeMessage =>
+      'O link deixa de funcionar na hora e os calendários assinados param de atualizar. Eventos já copiados podem ficar até o calendário atualizar.';
+
+  @override
+  String get planCalendarFeedPrivacy =>
+      'Quem tiver o link vê as datas, os tipos e as metas dos seus treinos. Ele não traz local, anotações nem o nome do plano. Crie um novo link se você o compartilhou por engano.';
 }

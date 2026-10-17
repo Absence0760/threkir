@@ -20090,6 +20090,15 @@
       }
     }
   },
+  "rateLimitRotateCalendarLink": "You're making new calendar links too quickly — please wait {wait} and try again.",
+  "@rateLimitRotateCalendarLink": {
+    "description": "Rate-limit refusal when the plan_calendar_rotate bucket is spent (making a new training-plan calendar link)",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
   "rateLimitSendMessage": "You're sending messages too quickly — please wait {wait} and try again.",
   "@rateLimitSendMessage": {
     "description": "Rate-limit refusal when either direct-message send bucket is spent",
@@ -22340,5 +22349,111 @@
   "workoutMoveSaveFirst": "Save or discard your changes before moving this workout.",
   "@workoutMoveSaveFirst": {
     "description": "Shown when the runner taps Move with unsaved edits in the workout editor"
+  },
+  "planCalendarFeedTitle": "Training plan calendar",
+  "@planCalendarFeedTitle": {
+    "description": "Heading of the training-plan calendar feed screen and its Integrations tile"
+  },
+  "planCalendarFeedTileSubtitle": "Your plan's workouts in Google, Apple or Outlook calendar",
+  "@planCalendarFeedTileSubtitle": {
+    "description": "Subtitle of the Integrations tile that opens the plan calendar feed screen"
+  },
+  "planCalendarFeedDescription": "Subscribe from Google Calendar, Apple Calendar or Outlook to see your active plan's workouts as all-day entries. They follow your plan as it changes.",
+  "@planCalendarFeedDescription": {
+    "description": "Explains what subscribing to the plan calendar feed does"
+  },
+  "planCalendarFeedLoadFailed": "Couldn't load your calendar link.",
+  "@planCalendarFeedLoadFailed": {
+    "description": "Shown when the calendar feed status could not be loaded"
+  },
+  "planCalendarFeedRetry": "Try again",
+  "@planCalendarFeedRetry": {
+    "description": "Button to retry loading the calendar feed status"
+  },
+  "planCalendarFeedCreate": "Create calendar link",
+  "@planCalendarFeedCreate": {
+    "description": "Button that creates the secret calendar subscription link"
+  },
+  "planCalendarFeedCreateFailed": "Couldn't create a calendar link. Try again.",
+  "@planCalendarFeedCreateFailed": {
+    "description": "Shown when creating or replacing the calendar link failed"
+  },
+  "planCalendarFeedRevokeFailed": "Couldn't turn off the calendar link. Try again.",
+  "@planCalendarFeedRevokeFailed": {
+    "description": "Shown when turning off the calendar link failed"
+  },
+  "planCalendarFeedUrlLabel": "Calendar link",
+  "@planCalendarFeedUrlLabel": {
+    "description": "Label above the freshly created calendar link"
+  },
+  "planCalendarFeedShownOnce": "Copy this link now. It is shown only once; if you lose it, make a new one.",
+  "@planCalendarFeedShownOnce": {
+    "description": "Warns that the calendar link is displayed only once"
+  },
+  "planCalendarFeedCopy": "Copy link",
+  "@planCalendarFeedCopy": {
+    "description": "Button that copies the calendar link"
+  },
+  "planCalendarFeedCopied": "Link copied",
+  "@planCalendarFeedCopied": {
+    "description": "Confirmation after the calendar link was copied"
+  },
+  "planCalendarFeedSubscribe": "Open in calendar app",
+  "@planCalendarFeedSubscribe": {
+    "description": "Button that opens the calendar link in a calendar app as a subscription"
+  },
+  "planCalendarFeedActiveSince": "Calendar link created: {date}",
+  "@planCalendarFeedActiveSince": {
+    "description": "When the active calendar link was created; date is a formatted date and time",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planCalendarFeedLastRead": "Last read by a calendar: {date}",
+  "@planCalendarFeedLastRead": {
+    "description": "When a calendar app last downloaded the feed; date is a formatted date and time",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planCalendarFeedNeverRead": "No calendar has read it yet.",
+  "@planCalendarFeedNeverRead": {
+    "description": "Shown when no calendar app has downloaded the feed yet"
+  },
+  "planCalendarFeedLostLink": "The link can't be shown again. Make a new one if you need it; the old one then stops working.",
+  "@planCalendarFeedLostLink": {
+    "description": "Explains the existing link cannot be shown again and how to get a new one"
+  },
+  "planCalendarFeedRotate": "Make a new link",
+  "@planCalendarFeedRotate": {
+    "description": "Button that replaces the calendar link with a new one, killing the old one"
+  },
+  "planCalendarFeedRevoke": "Turn off",
+  "@planCalendarFeedRevoke": {
+    "description": "Button that turns off the calendar link"
+  },
+  "planCalendarFeedRotateTitle": "Make a new calendar link?",
+  "@planCalendarFeedRotateTitle": {
+    "description": "Confirm dialog title before replacing the calendar link"
+  },
+  "planCalendarFeedRotateMessage": "The current link stops working right away. A calendar subscribed to it stops updating until you subscribe again with the new link.",
+  "@planCalendarFeedRotateMessage": {
+    "description": "Confirm dialog body before replacing the calendar link"
+  },
+  "planCalendarFeedRevokeTitle": "Turn off the calendar link?",
+  "@planCalendarFeedRevokeTitle": {
+    "description": "Confirm dialog title before turning off the calendar link"
+  },
+  "planCalendarFeedRevokeMessage": "The link stops working right away and subscribed calendars stop updating. Entries a calendar already copied can stay until it next refreshes.",
+  "@planCalendarFeedRevokeMessage": {
+    "description": "Confirm dialog body before turning off the calendar link"
+  },
+  "planCalendarFeedPrivacy": "Anyone with the link can see your workout dates, types and targets. It carries no location, notes or plan name. Make a new link if you shared it by mistake.",
+  "@planCalendarFeedPrivacy": {
+    "description": "Privacy note: what someone holding the link can and cannot see"
   }
 }

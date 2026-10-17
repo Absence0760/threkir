@@ -15264,6 +15264,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String rateLimitRotateCalendarLink(String wait) {
+    return 'You\'re making new calendar links too quickly — please wait $wait and try again.';
+  }
+
+  @override
   String rateLimitSendMessage(String wait) {
     return 'You\'re sending messages too quickly — please wait $wait and try again.';
   }
@@ -16955,4 +16960,89 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get workoutMoveSaveFirst =>
       'Save or discard your changes before moving this workout.';
+
+  @override
+  String get planCalendarFeedTitle => 'Training plan calendar';
+
+  @override
+  String get planCalendarFeedTileSubtitle =>
+      'Your plan\'s workouts in Google, Apple or Outlook calendar';
+
+  @override
+  String get planCalendarFeedDescription =>
+      'Subscribe from Google Calendar, Apple Calendar or Outlook to see your active plan\'s workouts as all-day entries. They follow your plan as it changes.';
+
+  @override
+  String get planCalendarFeedLoadFailed => 'Couldn\'t load your calendar link.';
+
+  @override
+  String get planCalendarFeedRetry => 'Try again';
+
+  @override
+  String get planCalendarFeedCreate => 'Create calendar link';
+
+  @override
+  String get planCalendarFeedCreateFailed =>
+      'Couldn\'t create a calendar link. Try again.';
+
+  @override
+  String get planCalendarFeedRevokeFailed =>
+      'Couldn\'t turn off the calendar link. Try again.';
+
+  @override
+  String get planCalendarFeedUrlLabel => 'Calendar link';
+
+  @override
+  String get planCalendarFeedShownOnce =>
+      'Copy this link now. It is shown only once; if you lose it, make a new one.';
+
+  @override
+  String get planCalendarFeedCopy => 'Copy link';
+
+  @override
+  String get planCalendarFeedCopied => 'Link copied';
+
+  @override
+  String get planCalendarFeedSubscribe => 'Open in calendar app';
+
+  @override
+  String planCalendarFeedActiveSince(String date) {
+    return 'Calendar link created: $date';
+  }
+
+  @override
+  String planCalendarFeedLastRead(String date) {
+    return 'Last read by a calendar: $date';
+  }
+
+  @override
+  String get planCalendarFeedNeverRead => 'No calendar has read it yet.';
+
+  @override
+  String get planCalendarFeedLostLink =>
+      'The link can\'t be shown again. Make a new one if you need it; the old one then stops working.';
+
+  @override
+  String get planCalendarFeedRotate => 'Make a new link';
+
+  @override
+  String get planCalendarFeedRevoke => 'Turn off';
+
+  @override
+  String get planCalendarFeedRotateTitle => 'Make a new calendar link?';
+
+  @override
+  String get planCalendarFeedRotateMessage =>
+      'The current link stops working right away. A calendar subscribed to it stops updating until you subscribe again with the new link.';
+
+  @override
+  String get planCalendarFeedRevokeTitle => 'Turn off the calendar link?';
+
+  @override
+  String get planCalendarFeedRevokeMessage =>
+      'The link stops working right away and subscribed calendars stop updating. Entries a calendar already copied can stay until it next refreshes.';
+
+  @override
+  String get planCalendarFeedPrivacy =>
+      'Anyone with the link can see your workout dates, types and targets. It carries no location, notes or plan name. Make a new link if you shared it by mistake.';
 }

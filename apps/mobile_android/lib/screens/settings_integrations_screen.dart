@@ -30,6 +30,7 @@ import '../widgets/info_tip.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/ultrasignup_link.dart';
 import 'parkrun_barcode_screen.dart';
+import 'plan_calendar_feed_screen.dart';
 import 'races_screen.dart';
 import 'watch_live_screen.dart';
 
@@ -636,6 +637,26 @@ class _SettingsIntegrationsScreenState
                 trailing: const Icon(Icons.chevron_right),
                 onTap: _openParkrunBarcode,
               ),
+              if (widget.apiClient case final api?)
+                ListTile(
+                  key: const ValueKey('integrations-plan-calendar-feed'),
+                  leading: const Icon(Icons.calendar_month),
+                  title: Text(l10n.planCalendarFeedTitle),
+                  subtitle: Text(l10n.planCalendarFeedTileSubtitle),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => PlanCalendarFeedScreen(
+                        loadStatus: api.planCalendarFeedStatus,
+                        rotate: api.rotatePlanCalendarFeed,
+                        revoke: api.revokePlanCalendarFeed,
+                        supabaseUrl: dotenv.isInitialized
+                            ? dotenv.env['SUPABASE_URL']
+                            : null,
+                      ),
+                    ),
+                  ),
+                ),
               // Each race tile used to stay tappable whatever its probe said,
               // on the reasoning that it is a secondary deep link into the race
               // calendar and the calendar's search never needed a provider key

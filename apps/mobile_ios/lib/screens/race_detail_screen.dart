@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ActivityLoaderKind, FullBodyLoader;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/gen/app_localizations.dart';
@@ -170,7 +171,7 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(race?.name ?? l.racesTitle)),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? FullBodyLoader(kind: ActivityLoaderKind.run, label: l.commonLoading)
           : _loadFailed
               ? ErrorState(message: l.racesDetailLoadFailed, onRetry: _load)
               : race == null

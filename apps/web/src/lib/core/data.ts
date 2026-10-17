@@ -10741,7 +10741,7 @@ export async function isActiveCoachOf(athleteId: string): Promise<boolean> {
 		.eq('athlete_id', athleteId)
 		.eq('status', 'active')
 		.limit(1);
-	if (error) throw error;
+	if (error) throw dbError(error);
 	return (data ?? []).length > 0;
 }
 

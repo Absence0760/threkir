@@ -5735,7 +5735,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get plansAbandonBody => 'You can create a new plan after.';
+  String get plansAbandonBody =>
+      'Its weeks, workouts and linked runs are kept. You can create a new plan after.';
 
   @override
   String plansActionFailed(String error) {
@@ -5743,19 +5744,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String plansDaysPerWeek(int count) {
-    return '$count days/wk';
-  }
-
-  @override
   String get plansStatusUpcoming => 'upcoming';
-
-  @override
-  String get plansSignInTitle => 'Sign in to use training plans';
-
-  @override
-  String get plansSignInBody =>
-      'Plans sync to your account so they follow you across devices. Head to Settings → Sign in to connect.';
 
   @override
   String get plansEmptyTitle => 'No plans yet.';
@@ -5771,6 +5760,89 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get plansLoadError =>
       'Couldn\'t load training plans. Tap retry to try again.';
+
+  @override
+  String plansStarterStartsOn(String date) {
+    return 'Each starts on $date.';
+  }
+
+  @override
+  String get plansStatusActive => 'active';
+
+  @override
+  String get plansStatusPaused => 'paused';
+
+  @override
+  String get plansStatusCompleted => 'completed';
+
+  @override
+  String get plansStatusAbandoned => 'abandoned';
+
+  @override
+  String get plansFilterGroupLabel => 'Filter plans by status';
+
+  @override
+  String get plansFilterAll => 'All';
+
+  @override
+  String get plansFilterActive => 'Active';
+
+  @override
+  String get plansFilterPaused => 'Paused';
+
+  @override
+  String get plansFilterCompleted => 'Completed';
+
+  @override
+  String get plansFilterAbandoned => 'Abandoned';
+
+  @override
+  String plansNoFilteredPlans(String status) {
+    return 'No $status plans.';
+  }
+
+  @override
+  String get plansShowAllPlans => 'Show all plans';
+
+  @override
+  String get plansHeroGoal => 'Goal';
+
+  @override
+  String get plansHeroTarget => 'Target';
+
+  @override
+  String get plansGoalFinish => 'Finish';
+
+  @override
+  String get plansEventHalf => 'Half marathon';
+
+  @override
+  String get plansEventFull => 'Marathon';
+
+  @override
+  String get plansEventCustom => 'Custom';
+
+  @override
+  String plansWeekOf(int week, int total) {
+    return 'Week $week of $total';
+  }
+
+  @override
+  String get plansEnded => 'Ended';
+
+  @override
+  String get plansProgressLabel => 'Plan progress';
+
+  @override
+  String plansMetaWeeks(int weeks, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks weeks · $days days/week',
+      one: '$weeks week · $days days/week',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get planNewTitle => 'New plan';
@@ -6125,16 +6197,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planLibraryAnonymous => 'a runner';
 
   @override
-  String planLibraryWeeks(int weeks) {
-    return '$weeks weeks';
-  }
-
-  @override
-  String planLibraryDaysPerWeek(int days) {
-    return '$days×/week';
-  }
-
-  @override
   String get planLibraryClone => 'Clone into my plans';
 
   @override
@@ -6161,6 +6223,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String planLibraryPreviewWeek(int n) {
     return 'Week $n';
+  }
+
+  @override
+  String planLibraryPreviewWeekRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count runs',
+      one: '$count run',
+    );
+    return '$_temp0';
   }
 
   @override

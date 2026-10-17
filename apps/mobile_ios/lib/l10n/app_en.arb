@@ -7751,9 +7751,9 @@
       }
     }
   },
-  "plansAbandonBody": "You can create a new plan after.",
+  "plansAbandonBody": "Its weeks, workouts and linked runs are kept. You can create a new plan after.",
   "@plansAbandonBody": {
-    "description": "Confirm-abandon dialog body for an active plan"
+    "description": "Confirm-abandon dialog body for an active or paused plan: what is kept"
   },
   "plansActionFailed": "Couldn't update the plan: {error}",
   "@plansActionFailed": {
@@ -7764,26 +7764,9 @@
       }
     }
   },
-  "plansDaysPerWeek": "{count} days/wk",
-  "@plansDaysPerWeek": {
-    "description": "Days-per-week meta chip on a plan tile",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "plansStatusUpcoming": "upcoming",
   "@plansStatusUpcoming": {
     "description": "Status pill on a plan tile for an active plan that starts after today (queued behind the current plan). Lowercase to match the other status pills"
-  },
-  "plansSignInTitle": "Sign in to use training plans",
-  "@plansSignInTitle": {
-    "description": "Sign-in prompt title on plans list"
-  },
-  "plansSignInBody": "Plans sync to your account so they follow you across devices. Head to Settings → Sign in to connect.",
-  "@plansSignInBody": {
-    "description": "Sign-in prompt body on plans list"
   },
   "plansEmptyTitle": "No plans yet.",
   "@plansEmptyTitle": {
@@ -7800,6 +7783,124 @@
   "plansLoadError": "Couldn't load training plans. Tap retry to try again.",
   "@plansLoadError": {
     "description": "Plans list generic load error"
+  },
+  "plansStarterStartsOn": "Each starts on {date}.",
+  "@plansStarterStartsOn": {
+    "description": "Hint under the built-in starter plans on the empty plans list. {date} is a localized short date, always a Sunday",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "plansStatusActive": "active",
+  "@plansStatusActive": {
+    "description": "Status pill on an active plan in the plans list. Lowercase, like the other status pills"
+  },
+  "plansStatusPaused": "paused",
+  "@plansStatusPaused": {
+    "description": "Status pill on a paused plan in the plans list. Lowercase"
+  },
+  "plansStatusCompleted": "completed",
+  "@plansStatusCompleted": {
+    "description": "Status pill on a completed plan in the plans list. Lowercase"
+  },
+  "plansStatusAbandoned": "abandoned",
+  "@plansStatusAbandoned": {
+    "description": "Status pill on an abandoned plan in the plans list. Lowercase"
+  },
+  "plansFilterGroupLabel": "Filter plans by status",
+  "@plansFilterGroupLabel": {
+    "description": "Screen-reader label of the status filter chips above the plans list"
+  },
+  "plansFilterAll": "All",
+  "@plansFilterAll": {
+    "description": "Status filter chip on the plans list: every plan"
+  },
+  "plansFilterActive": "Active",
+  "@plansFilterActive": {
+    "description": "Status filter chip on the plans list: active plans"
+  },
+  "plansFilterPaused": "Paused",
+  "@plansFilterPaused": {
+    "description": "Status filter chip on the plans list: paused plans"
+  },
+  "plansFilterCompleted": "Completed",
+  "@plansFilterCompleted": {
+    "description": "Status filter chip on the plans list: completed plans"
+  },
+  "plansFilterAbandoned": "Abandoned",
+  "@plansFilterAbandoned": {
+    "description": "Status filter chip on the plans list: abandoned plans"
+  },
+  "plansNoFilteredPlans": "No {status} plans.",
+  "@plansNoFilteredPlans": {
+    "description": "Shown when the selected status filter matches no plan. {status} is the lowercase status label (plansStatus*)",
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "plansShowAllPlans": "Show all plans",
+  "@plansShowAllPlans": {
+    "description": "Button under plansNoFilteredPlans that resets the status filter to All"
+  },
+  "plansHeroGoal": "Goal",
+  "@plansHeroGoal": {
+    "description": "Label above the goal race (5K, Marathon…) on a plan card"
+  },
+  "plansHeroTarget": "Target",
+  "@plansHeroTarget": {
+    "description": "Label above the goal time on a plan card"
+  },
+  "plansGoalFinish": "Finish",
+  "@plansGoalFinish": {
+    "description": "Target value on a plan card when the plan has no goal time: the goal is simply to finish"
+  },
+  "plansEventHalf": "Half marathon",
+  "@plansEventHalf": {
+    "description": "Goal race name: half marathon"
+  },
+  "plansEventFull": "Marathon",
+  "@plansEventFull": {
+    "description": "Goal race name: marathon"
+  },
+  "plansEventCustom": "Custom",
+  "@plansEventCustom": {
+    "description": "Goal race name for a plan with a custom distance and no stored distance"
+  },
+  "plansWeekOf": "Week {week} of {total}",
+  "@plansWeekOf": {
+    "description": "Progress line on an active plan card",
+    "placeholders": {
+      "week": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "plansEnded": "Ended",
+  "@plansEnded": {
+    "description": "Countdown on an active plan card whose race day has passed"
+  },
+  "plansProgressLabel": "Plan progress",
+  "@plansProgressLabel": {
+    "description": "Screen-reader label of the calendar progress bar on an active plan card"
+  },
+  "plansMetaWeeks": "{weeks, plural, one{{weeks} week · {days} days/week} other{{weeks} weeks · {days} days/week}}",
+  "@plansMetaWeeks": {
+    "description": "Plan length on the plans list, the library card and the library preview: weeks and training days per week",
+    "placeholders": {
+      "weeks": {
+        "type": "int"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
   },
   "planNewTitle": "New plan",
   "@planNewTitle": {
@@ -8261,24 +8362,6 @@
   "@planLibraryAnonymous": {
     "description": "Public plan library"
   },
-  "planLibraryWeeks": "{weeks} weeks",
-  "@planLibraryWeeks": {
-    "description": "Public plan library",
-    "placeholders": {
-      "weeks": {
-        "type": "int"
-      }
-    }
-  },
-  "planLibraryDaysPerWeek": "{days}×/week",
-  "@planLibraryDaysPerWeek": {
-    "description": "Public plan library",
-    "placeholders": {
-      "days": {
-        "type": "int"
-      }
-    }
-  },
   "planLibraryClone": "Clone into my plans",
   "@planLibraryClone": {
     "description": "Public plan library"
@@ -8317,6 +8400,15 @@
     "description": "Public plan library",
     "placeholders": {
       "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planLibraryPreviewWeekRuns": "{count, plural, one{{count} run} other{{count} runs}}",
+  "@planLibraryPreviewWeekRuns": {
+    "description": "Per-week summary in the public plan library preview: running days (non-rest workouts) that week",
+    "placeholders": {
+      "count": {
         "type": "int"
       }
     }

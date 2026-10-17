@@ -21,6 +21,7 @@ import '../plan_start.dart';
 import '../pro_sellable.dart';
 import '../race_plan_preset.dart';
 import '../social_service.dart' show ClubView, SocialService;
+import '../plan_labels.dart';
 import '../starter_plans.dart';
 import '../training.dart';
 import '../training_labels.dart';
@@ -520,7 +521,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     if (widget.initialGoal != null || widget.initialBeginnerWalkRun) {
       _nameDefaulted = true;
       final l10n = AppLocalizations.of(context);
-      final goal = goalEventLabel(_goal);
+      final goal = goalEventLabel(l10n, _goal);
       _nameCtrl.text = _beginnerWalkRun
           ? l10n.planNewDefaultNameBeginner(goal)
           : l10n.planNewDefaultName(goal);
@@ -886,7 +887,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
               ])
                 DropdownMenuItem(
                     value: goalEventDbValue(g),
-                    child: Text(goalEventLabel(g))),
+                    child: Text(goalEventLabel(l10n, g))),
               for (final p in kUltraPresets)
                 DropdownMenuItem(
                     value: p.id, child: Text(_kUltraLabels[p.id]!)),

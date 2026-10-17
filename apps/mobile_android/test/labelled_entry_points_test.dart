@@ -85,14 +85,18 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   });
 
-  testWidgets('plans names the library instead of an Icons.public glyph',
+  testWidgets('plans names the library beside New plan, not as a glyph',
       (tester) async {
     await _pump(
       tester,
       PlansScreen(training: TrainingService(), apiClient: _SignedInApi()),
     );
-    expect(_peerLabels(tester), ['Training plans', 'Browse library']);
-    expect(find.byIcon(Icons.public), findsNothing);
+    // A labelled action next to New plan, as on web — not a peer tab, which
+    // repeated the AppBar title as a selected chip (issue #1186).
+    expect(find.widgetWithText(OutlinedButton, 'Browse library'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'New plan'), findsOneWidget);
+    expect(find.byType(SurfacePeerStrip), findsNothing);
+    expect(find.widgetWithIcon(IconButton, Icons.public), findsNothing);
   });
 
   testWidgets('the routine library names the public library',

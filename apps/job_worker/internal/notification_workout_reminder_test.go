@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// A workout_reminder row (migration 20270909000001) is raised once a local
+// A workout_reminder row (migration 20270913000001) is raised once a local
 // morning for the runner's active plan when today holds an outstanding
 // workout. Every outbound rail carries its own copy and lands on the plan the
 // row names.

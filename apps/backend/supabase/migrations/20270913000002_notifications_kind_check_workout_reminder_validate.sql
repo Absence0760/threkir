@@ -1,6 +1,6 @@
--- Second half of 20270909000001: validate the widened notifications_kind_check.
+-- Second half of 20270913000001: validate the widened notifications_kind_check.
 --
--- 20270909000001 re-emitted the kind union with `workout_reminder` added, as
+-- 20270913000001 re-emitted the kind union with `workout_reminder` added, as
 -- `ADD ... NOT VALID`, so new rows were checked at once and no existing row was
 -- scanned under the ACCESS EXCLUSIVE its DROP CONSTRAINT took. This file is the
 -- scan, in its own transaction: VALIDATE CONSTRAINT holds SHARE UPDATE

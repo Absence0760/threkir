@@ -45,7 +45,7 @@
 -- deleting the notification, which a unique index on the row would not.
 --
 -- The `notifications_kind_check` widen is the DROP + ADD ... NOT VALID half
--- only; the VALIDATE is 20270909000002 in its own transaction.
+-- only; the VALIDATE is 20270913000002 in its own transaction.
 --
 -- Locks: the CHECK swap takes a brief ACCESS EXCLUSIVE on notifications with
 -- no scan; CREATE TABLE, its index, and the functions are catalogue-only.
@@ -89,7 +89,7 @@ create index workout_reminder_claims_workout_date_idx
 comment on table private.workout_reminder_claims is
   'One row per (user, local date) a workout_reminder was raised for; '
   'enqueue_workout_reminders inserts a reminder only for a claim it wins. '
-  'Swept daily once the date is past. 20270909000001.';
+  'Swept daily once the date is past. 20270913000001.';
 
 alter table private.workout_reminder_claims enable row level security;
 revoke all on table private.workout_reminder_claims

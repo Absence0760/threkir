@@ -1,4 +1,4 @@
--- Pins migration 20270909000001: enqueue_workout_reminders() raises one
+-- Pins migration 20270913000001: enqueue_workout_reminders() raises one
 -- `workout_reminder` per runner per LOCAL morning (07:00-11:59 in
 -- prefs.time_zone, UTC when unset), only for the active plan (a template
 -- can never be active: training_plans_template_status), never on a rest day

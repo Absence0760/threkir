@@ -96,7 +96,7 @@ class SettingsKeys {
   /// (default `'on'`; only the literal `'off'` mutes). Read by
   /// `enqueue_workout_reminders()`, which raises no notification at all for a
   /// muted runner, and by the Go worker's `kindMuted` on email and push
-  /// (migration 20270909000001).
+  /// (migration 20270913000001).
   static const notifyWorkoutReminder = 'notify_workout_reminder';
   /// The user's preferred language for server-sent email, as a BCP-47 tag
   /// (`en`/`de`/`fr`/`es`/`ja`/`pt-BR`). Written by the clients as a side

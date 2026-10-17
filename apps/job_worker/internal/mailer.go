@@ -341,7 +341,7 @@ var importantKinds = map[string]bool{
 	"follow_request": true,
 	// The runner's own plan, on the morning it asks something of them —
 	// an event_reminder for a session they scheduled. At most one a day,
-	// and only on a day with an outstanding workout (20270909000001).
+	// and only on a day with an outstanding workout (20270913000001).
 	"workout_reminder": true,
 }
 

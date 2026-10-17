@@ -1084,8 +1084,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     } else if (e is PaceDriftEvent) {
       // Pace-drift nudge — also dropped in minimal mode.
       if (widget.preferences.audioCues && _workoutCuesEnabled && _voiceVerbose) {
-        _ttsCue('announceWorkoutPaceDrift',
-            () => widget.audioCues.announceWorkoutPaceDrift(e));
+        _ttsCue(
+            'announceWorkoutPaceDrift',
+            () => widget.audioCues
+                .announceWorkoutPaceDrift(e, widget.preferences.unit));
       }
     } else if (e is WorkoutCompleteEvent) {
       _publishWorkoutBand();
@@ -2935,7 +2937,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       // L4 — Pace alert (skip for cycling — pace target doesn't apply).
       // With an active race-strategy phase the phase's derived target pace
       // takes over from the static preference, and the cue speaks
-      // the correction amount instead of a bare "speed up".
+      // the correction amount instead of a bare "speed up". While a
+      // structured workout is live its runner owns the pace cues — each
+      // step's own target and tolerance, or none on a walk-run — so this
+      // alert stands down until the workout completes or is abandoned
+      // (decisions § 2075).
       try {
         final phaseTarget = _phasePlan.isNotEmpty && _phaseIndex >= 0
             ? phaseTargetPaceSecPerKm(
@@ -2948,7 +2954,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
             _pace != null &&
             widget.preferences.audioCues &&
             widget.preferences.voiceCueEnabled(VoiceCue.paceAlerts) &&
-            !_paceCuesMuted) {
+            !_paceCuesMuted &&
+            !(_workoutRunner?.ownsPaceCues ?? false)) {
           final diff = _pace! - target;
           final lastAlert = _lastPaceAlertAt;
           final canAlert = lastAlert == null ||

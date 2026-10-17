@@ -10561,13 +10561,23 @@ class AppLocalizationsPt extends AppLocalizations {
   String get ttsStepLastTenSeconds => 'Faltam dez segundos';
 
   @override
-  String ttsPaceDriftAhead(int delta) {
-    return 'Alivie um pouco — $delta segundos demasiado depressa.';
+  String ttsPaceDriftAheadKm(int delta) {
+    return 'Alivie um pouco — $delta segundos por quilómetro demasiado depressa.';
   }
 
   @override
-  String ttsPaceDriftBehind(int delta) {
-    return 'Acelere um pouco — $delta segundos demasiado devagar.';
+  String ttsPaceDriftAheadMi(int delta) {
+    return 'Alivie um pouco — $delta segundos por milha demasiado depressa.';
+  }
+
+  @override
+  String ttsPaceDriftBehindKm(int delta) {
+    return 'Acelere um pouco — $delta segundos por quilómetro demasiado devagar.';
+  }
+
+  @override
+  String ttsPaceDriftBehindMi(int delta) {
+    return 'Acelere um pouco — $delta segundos por milha demasiado devagar.';
   }
 
   @override
@@ -27411,13 +27421,23 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get ttsStepLastTenSeconds => 'Faltam dez segundos';
 
   @override
-  String ttsPaceDriftAhead(int delta) {
-    return 'Alivie um pouco — $delta segundos rápido demais.';
+  String ttsPaceDriftAheadKm(int delta) {
+    return 'Alivie um pouco — $delta segundos por quilômetro rápido demais.';
   }
 
   @override
-  String ttsPaceDriftBehind(int delta) {
-    return 'Acelere um pouco — $delta segundos lento demais.';
+  String ttsPaceDriftAheadMi(int delta) {
+    return 'Alivie um pouco — $delta segundos por milha rápido demais.';
+  }
+
+  @override
+  String ttsPaceDriftBehindKm(int delta) {
+    return 'Acelere um pouco — $delta segundos por quilômetro lento demais.';
+  }
+
+  @override
+  String ttsPaceDriftBehindMi(int delta) {
+    return 'Acelere um pouco — $delta segundos por milha lento demais.';
   }
 
   @override

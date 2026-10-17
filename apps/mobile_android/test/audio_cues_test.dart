@@ -23,7 +23,7 @@ import 'dart:io';
 import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:run_recorder/run_recorder.dart'
-    show StepProgressKind, WorkoutStep, WorkoutStepKind;
+    show PaceDriftEvent, StepProgressKind, WorkoutStep, WorkoutStepKind;
 
 import '../lib/audio_cues.dart';
 import '../lib/preferences.dart';
@@ -457,6 +457,52 @@ void main() {
           workoutStepProgressUtterance(
               StepProgressKind.lastTenSeconds, DistanceUnit.km, 'de'),
           'Noch zehn Sekunden');
+    });
+  });
+
+  group('workoutPaceDriftUtterance', () {
+    PaceDriftEvent drift({required bool ahead, required int delta}) =>
+        PaceDriftEvent(
+          step: const WorkoutStep(
+            kind: WorkoutStepKind.rep,
+            targetDistanceMetres: 800,
+            targetPaceSecPerKm: 240,
+            label: 'Rep 1/6',
+          ),
+          index: 1,
+          ahead: ahead,
+          deltaSecPerKm: delta,
+        );
+
+    test('km mode names the unit', () {
+      expect(workoutPaceDriftUtterance(drift(ahead: false, delta: 25),
+              DistanceUnit.km, 'en'),
+          'Pick it up — 25 seconds per kilometre behind pace.');
+      expect(workoutPaceDriftUtterance(drift(ahead: true, delta: 31),
+              DistanceUnit.km, 'en'),
+          'Ease up — 30 seconds per kilometre ahead of pace.');
+    });
+
+    test('mi mode converts the per-km miss to per mile', () {
+      // 25 s/km × 1.609344 = 40.2 s/mi → 40.
+      expect(workoutPaceDriftUtterance(drift(ahead: false, delta: 25),
+              DistanceUnit.mi, 'en'),
+          'Pick it up — 40 seconds per mile behind pace.');
+      expect(workoutPaceDriftUtterance(drift(ahead: true, delta: 25),
+              DistanceUnit.mi, 'en'),
+          'Ease up — 40 seconds per mile ahead of pace.');
+    });
+
+    test('never rounds a real miss down to zero', () {
+      expect(workoutPaceDriftUtterance(drift(ahead: false, delta: 2),
+              DistanceUnit.km, 'en'),
+          'Pick it up — 5 seconds per kilometre behind pace.');
+    });
+
+    test('is translated', () {
+      expect(workoutPaceDriftUtterance(drift(ahead: false, delta: 25),
+              DistanceUnit.mi, 'de'),
+          'Etwas schneller — 40 Sekunden pro Meile zu langsam.');
     });
   });
 

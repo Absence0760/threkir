@@ -4,22 +4,27 @@ import 'package:flutter/material.dart';
 import '../auth_error.dart';
 import '../goal_time.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../plan_move.dart';
 import '../plan_races.dart';
 import '../training.dart';
 import '../training_labels.dart';
 import '../training_service.dart';
 import '../typed_decimal.dart';
 import 'full_screen_form.dart';
+import 'workout_move_sheet.dart';
 
 /// Full-screen dialog for inline editing of a planned workout's kind,
 /// target distance, target pace, and notes, plus — on a `race` workout — the
 /// race's name, A/B/C priority and goal time. The caller is responsible
 /// for refreshing the plan view after the sheet returns. Presentation
 /// goes through [showFullScreenForm], the shared create/edit-entity wrapper.
+/// A non-empty [moveDays] (from `workoutMoveDays`) adds "Move to another
+/// day", which opens [showWorkoutMoveSheet].
 Future<bool> showWorkoutEditSheet(
   BuildContext context, {
   required PlanWorkoutRow workout,
   required TrainingService training,
+  List<WorkoutMoveDay> moveDays = const [],
 }) async {
   final formKey = GlobalKey<_WorkoutEditSheetState>();
   final ok = await showFullScreenForm<bool>(
@@ -30,6 +35,7 @@ Future<bool> showWorkoutEditSheet(
       key: formKey,
       workout: workout,
       training: training,
+      moveDays: moveDays,
     ),
   );
   return ok == true;
@@ -38,10 +44,12 @@ Future<bool> showWorkoutEditSheet(
 class _WorkoutEditSheet extends StatefulWidget {
   final PlanWorkoutRow workout;
   final TrainingService training;
+  final List<WorkoutMoveDay> moveDays;
   const _WorkoutEditSheet({
     super.key,
     required this.workout,
     required this.training,
+    required this.moveDays,
   });
 
   @override
@@ -168,6 +176,18 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
             maxLines: 2,
             decoration: InputDecoration(labelText: l10n.workoutEditNotesLabel),
           ),
+          if (widget.moveDays.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                key: const Key('workoutEditMove'),
+                onPressed: _saving ? null : _openMove,
+                icon: const Icon(Icons.event_repeat),
+                label: Text(l10n.workoutMoveAction),
+              ),
+            ),
+          ],
           if (_error != null) ...[
             const SizedBox(height: 8),
             Text(_error!,
@@ -248,6 +268,22 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
           },
         ),
       ];
+
+  /// The move saves on its own, so unsaved edits would be lost with the
+  /// form; ask for them to be saved or discarded first.
+  Future<void> _openMove() async {
+    if (isDirty) {
+      setState(() => _error = AppLocalizations.of(context).workoutMoveSaveFirst);
+      return;
+    }
+    final moved = await showWorkoutMoveSheet(
+      context,
+      workout: widget.workout,
+      days: widget.moveDays,
+      training: widget.training,
+    );
+    if (moved && mounted) Navigator.of(context).pop(true);
+  }
 
   Future<void> _save() async {
     final l10n = AppLocalizations.of(context);

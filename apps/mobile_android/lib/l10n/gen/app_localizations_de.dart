@@ -16888,4 +16888,25 @@ class AppLocalizationsDe extends AppLocalizations {
   String seasonPlanRowInvalid(int n) {
     return 'Rennen $n braucht einen Namen, einen Renntag, eine Distanz und entweder keine Zielzeit oder eine im Format h:mm:ss.';
   }
+
+  @override
+  String get workoutMoveAction => 'Auf einen anderen Tag verschieben';
+
+  @override
+  String get workoutMoveHint =>
+      'Wähle einen Tag dieser Woche. Ein Training, das schon an dem Tag liegt, übernimmt den bisherigen Tag dieses Trainings.';
+
+  @override
+  String workoutMoveSwapsWith(String kind) {
+    return 'Tauscht mit $kind';
+  }
+
+  @override
+  String workoutMoveError(String error) {
+    return 'Training konnte nicht verschoben werden: $error';
+  }
+
+  @override
+  String get workoutMoveSaveFirst =>
+      'Speichere oder verwirf deine Änderungen, bevor du dieses Training verschiebst.';
 }

@@ -4796,5 +4796,10 @@
   "seasonPlanReviewDisclosure": "AI に関する説明を確認",
   "seasonPlanRaceDatePick": "レース日を選択",
   "seasonPlanRaceGoalHint": "h:mm:ss（例：3:45:00）。目標タイムがなければ空欄のままにしてください。",
-  "seasonPlanRowInvalid": "レース {n} には名前・レース日・距離が必要です。目標タイムは空欄にするか h:mm:ss で入力してください。"
+  "seasonPlanRowInvalid": "レース {n} には名前・レース日・距離が必要です。目標タイムは空欄にするか h:mm:ss で入力してください。",
+  "workoutMoveAction": "別の日に移動",
+  "workoutMoveHint": "この週の日を選んでください。移動先の日にすでにワークアウトがある場合は、日付が入れ替わります。",
+  "workoutMoveSwapsWith": "{kind}と入れ替え",
+  "workoutMoveError": "このワークアウトを移動できませんでした: {error}",
+  "workoutMoveSaveFirst": "このワークアウトを移動する前に、変更を保存するか破棄してください。"
 }

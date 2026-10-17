@@ -4796,5 +4796,10 @@
   "seasonPlanReviewDisclosure": "KI-Hinweis ansehen",
   "seasonPlanRaceDatePick": "Renntag wählen",
   "seasonPlanRaceGoalHint": "h:mm:ss, z. B. 3:45:00. Leer lassen für keine Zielzeit.",
-  "seasonPlanRowInvalid": "Rennen {n} braucht einen Namen, einen Renntag, eine Distanz und entweder keine Zielzeit oder eine im Format h:mm:ss."
+  "seasonPlanRowInvalid": "Rennen {n} braucht einen Namen, einen Renntag, eine Distanz und entweder keine Zielzeit oder eine im Format h:mm:ss.",
+  "workoutMoveAction": "Auf einen anderen Tag verschieben",
+  "workoutMoveHint": "Wähle einen Tag dieser Woche. Ein Training, das schon an dem Tag liegt, übernimmt den bisherigen Tag dieses Trainings.",
+  "workoutMoveSwapsWith": "Tauscht mit {kind}",
+  "workoutMoveError": "Training konnte nicht verschoben werden: {error}",
+  "workoutMoveSaveFirst": "Speichere oder verwirf deine Änderungen, bevor du dieses Training verschiebst."
 }

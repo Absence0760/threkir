@@ -16881,6 +16881,27 @@ class AppLocalizationsPt extends AppLocalizations {
   String seasonPlanRowInvalid(int n) {
     return 'A prova $n precisa de um nome, um dia de prova, uma distância e, ou nenhum tempo objetivo, ou um no formato h:mm:ss.';
   }
+
+  @override
+  String get workoutMoveAction => 'Mover para outro dia';
+
+  @override
+  String get workoutMoveHint =>
+      'Escolha um dia desta semana. Um treino que já esteja nesse dia passa para o dia que este deixa.';
+
+  @override
+  String workoutMoveSwapsWith(String kind) {
+    return 'Troca com $kind';
+  }
+
+  @override
+  String workoutMoveError(String error) {
+    return 'Não foi possível mover este treino: $error';
+  }
+
+  @override
+  String get workoutMoveSaveFirst =>
+      'Guarde ou descarte as suas alterações antes de mover este treino.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -33745,4 +33766,25 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String seasonPlanRowInvalid(int n) {
     return 'A prova $n precisa de nome, dia da prova, distância e, ou nenhum tempo-alvo, ou um no formato h:mm:ss.';
   }
+
+  @override
+  String get workoutMoveAction => 'Mover para outro dia';
+
+  @override
+  String get workoutMoveHint =>
+      'Escolha um dia desta semana. Um treino que já esteja nesse dia passa para o dia que este deixa.';
+
+  @override
+  String workoutMoveSwapsWith(String kind) {
+    return 'Troca com $kind';
+  }
+
+  @override
+  String workoutMoveError(String error) {
+    return 'Não foi possível mover este treino: $error';
+  }
+
+  @override
+  String get workoutMoveSaveFirst =>
+      'Salve ou descarte suas alterações antes de mover este treino.';
 }

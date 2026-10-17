@@ -19,6 +19,7 @@ import '../plan_adherence.dart';
 import '../plan_progress.dart';
 import '../plan_replan.dart';
 import '../plan_adaptive_replan.dart';
+import '../plan_move.dart';
 import '../plan_races.dart';
 import '../plan_week.dart';
 import '../race_taper.dart';
@@ -1756,11 +1757,28 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     );
   }
 
+  /// The days [wo] may move to (decisions § 2073); only the owner moves.
+  List<WorkoutMoveDay> _moveDaysFor(PlanWorkoutRow wo) {
+    final plan = _plan;
+    if (plan == null || !_isOwner(plan)) return const [];
+    final week = _weeks.where((w) => w.id == wo.weekId).firstOrNull;
+    if (week == null) return const [];
+    return workoutMoveDays(
+      planStartIso: toIsoDate(plan.startDate),
+      planEndIso: toIsoDate(plan.endDate),
+      weekIndex: week.weekIndex,
+      workout: wo,
+      workouts: _byWeek[wo.weekId] ?? const [],
+      todayIso: toIsoDate(widget.now()),
+    );
+  }
+
   Future<void> _editWorkout(PlanWorkoutRow wo) async {
     final ok = await showWorkoutEditSheet(
       context,
       workout: wo,
       training: widget.training,
+      moveDays: _moveDaysFor(wo),
     );
     if (ok) await _load();
   }

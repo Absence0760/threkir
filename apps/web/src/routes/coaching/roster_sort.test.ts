@@ -94,3 +94,21 @@ test('sortRoster does not mutate the roster it was handed', () => {
 		['c', 'a'],
 	);
 });
+
+test('within a risk band the most-stale athlete comes first, in either direction', () => {
+	// Reason: the risk tiebreak used to run under `* dir`, so the default
+	// risk/desc order put the most RECENT runner first and the athlete who had
+	// gone quiet last — the opposite of who a coach needs to look at.
+	const rows = [
+		row({ athlete_id: 'fresh', last_run_at: '2026-10-15T07:00:00Z' }),
+		row({ athlete_id: 'never' }),
+		row({ athlete_id: 'quiet', last_run_at: '2026-09-01T07:00:00Z' }),
+	];
+	for (const dir of ['asc', 'desc'] as const) {
+		assert.deepEqual(
+			sortRoster(rows, 'risk', dir).map((r) => r.athlete_id),
+			['never', 'quiet', 'fresh'],
+			`risk/${dir}`,
+		);
+	}
+});

@@ -1245,7 +1245,7 @@
 										<span>{fmtKm(t.target_distance_m)}</span>
 									{/if}
 									{#if t.target_pace_sec_per_km}
-										<span>@ {fmtPace(t.target_pace_sec_per_km)}</span>
+										<span>{m('workoutDetail.atPace', { pace: fmtPace(t.target_pace_sec_per_km) })}</span>
 									{/if}
 									{#if todayDone}
 										<span class="plan-hero-today-done">{m('dash.completed')}</span>

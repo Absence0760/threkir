@@ -25,7 +25,8 @@
 		paceZoneName,
 		structureSegments,
 		structureTotal,
-		walkRunPattern
+		walkRunPattern,
+		type SegmentRole
 	} from '#lib/training/workout_summary.ts';
 	import {
 		formatPaceZone,
@@ -159,7 +160,6 @@
 	}
 
 	let walkRun = $derived(walkRunPattern(structure));
-	let isWalkRunSession = $derived(walkRun != null);
 
 	function recoveryEffort(pace: string | undefined): string | null {
 		switch (pace) {
@@ -167,9 +167,33 @@
 				return t('workoutDetail.effortJog');
 			case 'easy':
 				return t('workoutDetail.effortEasy');
+			case 'walk':
+				return t('workoutDetail.effortWalk');
 			default:
 				return null;
 		}
+	}
+
+	function segmentLabel(role: SegmentRole): string {
+		switch (role) {
+			case 'warmup':
+				return t('workoutDetail.warmup');
+			case 'work':
+				return t('workoutDetail.repeats');
+			case 'recovery':
+				return t('workoutDetail.recovery');
+			case 'steady':
+				return t('workoutDetail.steady');
+			case 'cooldown':
+				return t('workoutDetail.cooldown');
+		}
+	}
+
+	function recoveryLabel(r: NonNullable<WorkoutStructure['repeats']>): string | null {
+		if (r.recovery_distance_m == null && r.recovery_duration_s == null) return null;
+		const distance = stepAmount(r.recovery_distance_m, r.recovery_duration_s, 2);
+		const effort = recoveryEffort(r.recovery_pace);
+		return effort ? t('workoutDetail.recoveryDetail', { distance, effort }) : distance;
 	}
 
 	function fmtIsoDate(iso: string): string {
@@ -276,7 +300,7 @@
 							<span class="pattern">{formatWalkRunPattern(t, walkRun)}</span>
 						</div>
 					{:else}
-					{#if workout.target_distance_m != null}
+						{#if workout.target_distance_m != null}
 						<div class="metric">
 							<span class="m-label">{t('workoutDetail.distance')}</span>
 							<strong>{fmtKm(workout.target_distance_m, 2)}</strong>
@@ -362,7 +386,7 @@
 						<span
 							class="tl-seg tl-{seg.role}"
 							style="flex: {Math.max(seg.fraction, 0.01)};"
-							title={seg.role}
+							title={segmentLabel(seg.role)}
 						></span>
 					{/each}
 				</div>
@@ -377,30 +401,24 @@
 						</li>
 					{/if}
 					{#if structure.repeats}
+						{@const reps = structure.repeats}
+						{@const recovery = recoveryLabel(reps)}
 						<li class="step step-work">
 							<span class="step-kind">{t('workoutDetail.repeats')}</span>
 							<span class="step-body">
 								<span class="step-main">
-									{#if structure.repeats.recovery_distance_m != null || structure.repeats.recovery_duration_s != null}
-										{t('workoutDetail.repeatsDetail', {
-											count: structure.repeats.count,
-											distance: stepAmount(structure.repeats.distance_m, structure.repeats.duration_s, 2),
-											pace: fmtPace(structure.repeats.pace_sec_per_km),
-											recoveryDistance: stepAmount(
-												structure.repeats.recovery_distance_m,
-												structure.repeats.recovery_duration_s,
-												2
-											),
-											recoveryPace: structure.repeats.recovery_pace ?? ''
-										})}
-									{:else}
-										{t('workoutDetail.repeatsDetailNoRecovery', {
-											count: structure.repeats.count,
-											distance: stepAmount(structure.repeats.distance_m, structure.repeats.duration_s, 2),
-											pace: fmtPace(structure.repeats.pace_sec_per_km)
-										})}
-									{/if}
+									{t('workoutDetail.repeatsMain', {
+										count: reps.count,
+										distance: stepAmount(reps.distance_m, reps.duration_s, 2)
+									})}
 								</span>
+								<span class="step-pace">{t('workoutDetail.atPace', { pace: fmtPace(reps.pace_sec_per_km) })}</span>
+								{#if recovery}
+									<span class="step-sub" data-testid="step-recovery">
+										<span class="sub-label">{t('workoutDetail.recovery')}</span>
+										<span>{recovery}</span>
+									</span>
+								{/if}
 							</span>
 						</li>
 					{/if}
@@ -464,6 +482,8 @@
 				<p>
 					{t('workoutDetail.adviceMarathonPace')}
 				</p>
+			{:else if workout.kind === 'walk_run'}
+				<p>{t('workoutDetail.adviceWalkRun')}</p>
 			{:else if workout.kind === 'race'}
 				<p>{t('workoutDetail.adviceRace')}</p>
 			{:else}
@@ -831,6 +851,23 @@
 	.step-pace {
 		color: var(--color-text-secondary);
 		font-variant-numeric: tabular-nums;
+		font-size: 0.92rem;
+	}
+	.step-sub {
+		flex-basis: 100%;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		color: var(--color-text-secondary);
+		font-size: 0.92rem;
+		font-variant-numeric: tabular-nums;
+	}
+	.sub-label {
+		font-weight: 600;
+	}
+	.session-metric .pattern {
+		display: block;
+		color: var(--color-text-secondary);
 		font-size: 0.92rem;
 	}
 	.total {

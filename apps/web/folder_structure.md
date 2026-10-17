@@ -78,6 +78,7 @@ src/
     training/training.ts     # VDOT, Riegel, plan generator, week phasing, predictionConfidence (race-predictor data-quality grade)
     training/training.test.ts  # node:test suite for the training engine — `npx tsx --test`
     training/workout_summary.ts  # display derivations for one planned workout (segment timeline + total, walk-run pattern, pace-zone name); parity pair with mobile workout_summary.dart
+    training/workout_summary_format.ts  # catalogue half of workout_summary.ts: walk-run pattern, its length and the explained zone chip, rendered through a passed-in translator
     training/plan_adherence.ts  # pure weeklyDrift (>20% over/under plan) + missedWorkoutAdvice (make-up/skip a missed long run). Web-first; mounted on /plans/[id]. 11 unit tests.
     training/relink_candidates.ts  # pure filterRelinkCandidates — eligible runs to re-link a planned workout to (±7-day window, excludes runs already linked to another workout so plan_progress can't double-count, keeps the current run). Backs the Re-link picker on /plans/[id]/workouts/[wid]; fetchRelinkCandidateRuns in core/data.ts does the owner-scoped fetch. TS↔Dart parity pair (relink_candidates.dart). 9 unit tests.
     training/plan_progress.ts   # pure orderedPlanPhases (base→build→peak→taper marker) + longestCompletedLongRunMetres + planDistanceBanked (plan-wide km banked vs planned — mileage view of the workout-count ring, skipped excluded, actual linked-run distance preferred). Mounted on the /plans/[id] header. 16 unit tests.

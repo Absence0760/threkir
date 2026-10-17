@@ -7160,6 +7160,7 @@ export type Database = {
           p_distance?: string
           p_from?: string
           p_limit?: number
+          p_newest_first?: boolean
           p_query?: string
           p_radius_m?: number
           p_to?: string

@@ -89,6 +89,30 @@ void main() {
     expect(find.text('3:21:45'), findsOneWidget);
   });
 
+  testWidgets('shows the award division that replaced the age-group place',
+      (tester) async {
+    final service = _FakeRaceService(
+      result: const RaceResultForRun(
+        listing: null,
+        raceName: 'Richmond Marathon',
+        bib: '41',
+        chipTime: '3:02:10',
+        gunTime: null,
+        overallPlace: 9,
+        ageGroupPlace: null,
+        ageGroup: null,
+        divisionAwardPlace: 2,
+        divisionAward: 'M Masters',
+      ),
+    );
+    await tester.pumpWidget(
+        _app(service, startedAt: '2027-11-13T13:00:00.000Z', distanceM: 42195));
+    await tester.pumpAndSettle();
+    expect(find.text('Award place'), findsOneWidget);
+    expect(find.text('2 (M Masters)'), findsOneWidget);
+    expect(find.text('Age-group place'), findsNothing);
+  });
+
   testWidgets('offers the auto-match prompt for a same-day, same-band listing',
       (tester) async {
     final service = _FakeRaceService(

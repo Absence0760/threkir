@@ -439,7 +439,7 @@ Pure-function tests for `parseBleHeartRateMeasurement` in `lib/ble_heart_rate.da
 - Truncated payload returns null
 - Single-byte payload returns null
 
-### `apps/mobile_android/test/training_test.dart` — 85 tests
+### `apps/mobile_android/test/training_test.dart` — 86 tests
 
 Dart mirror of `apps/web/src/lib/training/training.test.ts`. The Dart engine (`lib/training.dart`) must produce the same paces and phase assignments as the TypeScript engine for the same inputs. Covers the same functions:
 
@@ -563,7 +563,7 @@ The centre button's long-press start-options sheet (decisions § 1892, § 1897):
 
 The minimum-data account on every mobile surface that derives a number from a run (issue #1161 round 3): run detail, a history row, the history list sorted fastest-first, and Home's card stack, each fed a 10 s / 3 m run over a two-point, one-point or empty track, a 0 m run with a one-point or empty track, and a 0 s / 0 m run, in km and in mi, as a run and as a ride, and on Home under a weekly goal on every target, once for every fixture and once for a week of only 0 m runs. Each case asserts no exception, the honest missing-value spelling (`--:--` for a pace, `--` for a speed), and a clean text sweep. The sweep is `test/rendered_text_sweep.dart`: it collects every `RichText`, `EditableText`, `Semantics` label and `Tooltip` message, offstage included, and fails on `NaN`, `Infinity`, `∞` or a negative zero (`-0`, `-0.00`, `-0:00`, U+2212 too) while letting a date, `UTC-0`, `-0.05` and a `-0:30` delta through; the suite's first two tests pin that pattern so a sweep that matches nothing cannot pass silently. The surfaces are pumped on a 400 × 9000 surface so every lazily-built list child is laid out and swept. Nine declarations, 41 cases once the fixture loops expand.
 
-### `apps/mobile_ios/test/` — 697 files, byte-for-byte
+### `apps/mobile_ios/test/` — 698 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 
@@ -619,7 +619,7 @@ Pure-parser coverage for `RouteParser` (GPX/KML/TCX/GeoJSON) and `FitParser`. GP
 
 Regression for the `RunSource.watch` enum-map regen. Constructs a `Run` with `source: RunSource.watch`, asserts `toJson()['source'] == 'watch'` and `fromJson({'source': 'watch'}).source == RunSource.watch`. Existed to catch the crash that would otherwise hit `_$RunSourceEnumMap[instance.source]!` on any serialisation of a watch-originated run.
 
-### `apps/web/src/lib/training/training.test.ts` — 87 tests
+### `apps/web/src/lib/training/training.test.ts` — 88 tests
 
 TypeScript unit tests for the training plan engine, written against Node's `node:test` API (no test runner dependency). Run with `npx tsx --test src/lib/training/training.test.ts` from `apps/web`.
 
@@ -1265,7 +1265,7 @@ The behavioural guard on the § 1286 / § 1489 negative: no uniqueness on `gym_r
 
 Pins migration `20270808000011` (decisions § 1918). The gate: no API role can run `private.remap_recurrence_wallclock` or close the transition window, nothing in the database calls the remap, and its default call is a dry run that reports the real counts and moves and records nothing; a dry run (or dry-run sweep) smaller than the series it would select is refused `22023`, so a batched dry-run loop cannot spin, while one covering them all runs. The window: the migration seeds `recurrence_utc_clock_legacy` enabled and a deleted row reads strict; before the close `is_event_occurrence` accepts both the UTC-clock and the wall-clock instant on its default and only the wall-clock one for a strict caller, and after it only the wall-clock one; the close refuses while a row still sits on a UTC-clock-only instant and, when it succeeds, leaves the flag disabled. The remap: a New York Wednesday-evening series pairs each Tuesday row with the Wednesday after it (shift 1) across attendees, the cancellation, the reminder, the event post and the host photo; an adjacent MO/TU series moves seven rows through a chain of instants without a primary-key or result unique-key collision; the monthly 28 February clamp and the April EDT move; the 07:00 fall-back move; a row whose target its owner already holds stays and is counted while the others at that instant move; a paid order written on an old instant moves onto the wall-clock one through the strict occurrence trigger; a UTC series moves nothing. A second run is a no-op, and a sweep moves only the rows an old build wrote afterwards, leaving a wall-clock RSVP whose instant is also a UTC-clock one where it is. Every one of the fifteen mutations recorded in § 1918 fails it, the vectors file or `event_order_occurrence_test.sql`.
 
-### `apps/backend/supabase/functions/**/*.test.ts` — 1407 deno tests across 105 files
+### `apps/backend/supabase/functions/**/*.test.ts` — 1411 deno tests across 105 files
 
 Run the pure-helper slices with `cd apps/backend && deno test --no-check supabase/functions/_shared/*.test.ts` plus the per-function `lib.test.ts` / `wiring.test.ts` / `handler.test.ts` files (`auth-email`, `delete-account`, `donations-checkout`, `events-cancel`, `events-checkout`, `events-connect-onboard`, `events-refund-sweep`, `export-data`, `parkrun-import`, `race-results-import`, `refresh-tokens`, `revenuecat-webhook`, `strava-clubs`, `strava-import`, `strava-webhook`, `stripe-events-webhook`); the network-touching ones (e.g. `_shared/handler_envelope.test.ts`) need `SUPABASE_TEST_URL=http://127.0.0.1:24321 supabase functions serve --env-file .env.local` and the `--allow-net --allow-env` flags. The `edge-functions` CI job runs all of them on every PR.
 
@@ -1481,6 +1481,7 @@ tests-e2e/
     notifications-event-lines.spec.ts (u/) — the refunded `event_cancel` line says the payment is being refunded while a plain cancel beside it does not, and an `event_waitlist_slot` line reads as a held place and opens its event (marking the row read), on both the inbox and the bell.
     ultrasignup-person-states.spec.ts (races/) — the UltraSignup link's edges beside `ultrasignup-person-import.spec.ts`: a name nobody answers to says so; a 502 or a 503 from the lookup is a toast and a form that still searches (one declaration, run twice); namesakes are told apart and the picked one is stored; unlink is undoable and a committed unlink can re-link as someone else; a double press searches once and links once; an import whose stored person is gone points back to Settings rather than "try again".
     race-result-gun-chip.spec.ts (races/) — a result pasted on /races with both chip and gun time lands them as separate `runs.metadata` keys (chip timing the run) and RunRaceResult shows each under its own label; a gun time alone times the run and draws no chip row.
+    race-result-division-award.spec.ts (races/) — a RunSignUp award division (`division_award` + `division_award_place`, decisions § 2086) renders on /runs/[id] as its own award-place row with no age-group row, and a label without its place draws nothing.
     runsignup-near-me.spec.ts (races/) — a RunSignUp listing placed from its ZIP's `us_zcta_points` centroid, the way race-listings-sync writes it, is listed by a geolocated "near me" search with its date and register link, while a far one drops out (decisions § 1901)
   cross-cutting/               — span >1 page or >1 session
     danger-zone.spec.ts        — whole-entity deletes are never a primary action (decisions § 1634): Delete club is absent from the /clubs/[slug] hero and sits in the Danger zone after the tabs, Delete challenge is absent from the /challenges/[id] Leave / Edit row and follows the leaderboard, Delete Account keeps its zone on /settings/account; each asks first and Cancel is a no-op

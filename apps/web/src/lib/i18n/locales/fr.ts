@@ -3948,6 +3948,7 @@ export const messages = {
 	"races.gunTime": "Temps officiel",
 	"races.overallPlace": "Classement général",
 	"races.ageGroupPlace": "Classement par catégorie d'âge",
+	"races.divisionAwardPlace": "Classement dans la catégorie primée",
 	"races.ageGroup": "Catégorie d'âge",
 	"races.bib": "Dossard",
 	"races.runSignUpBibHint": "Saisissez votre dossard pour n'importer que votre résultat, pas tout le classement.",

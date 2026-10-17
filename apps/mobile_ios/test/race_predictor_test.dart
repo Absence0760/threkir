@@ -107,6 +107,34 @@ void main() {
     expect(out!.anchor.ageDays, -3);
   });
 
+  // Mirrors the web pair's Infinity cases. durationS is an int here, so only
+  // the distance can be infinite; `> 0` admits it and it would otherwise still
+  // count toward the pool size that grades every rung's confidence.
+  test('an effort with an infinite distance or duration is filtered out, not counted',
+      () {
+    const real = EffortForPrediction(distanceM: 10000, durationS: 2700, ageDays: 3);
+    final out = predictRaceLadder([
+      real,
+      const EffortForPrediction(
+          distanceM: double.infinity, durationS: 2700, ageDays: 1),
+    ]);
+    expect(out, isNotNull);
+    expect(out!.qualifyingCount, 1);
+    expect([out.anchor.distanceM, out.anchor.durationS, out.anchor.ageDays],
+        [real.distanceM, real.durationS, real.ageDays]);
+    expect(out.rungs.map((r) => r.predictedSec).toList(),
+        predictRaceLadder([real])!.rungs.map((r) => r.predictedSec).toList());
+  });
+
+  test('a pool of only infinite efforts is empty: null, not a throw', () {
+    expect(
+        predictRaceLadder([
+          const EffortForPrediction(
+              distanceM: double.infinity, durationS: 1200, ageDays: 1),
+        ]),
+        isNull);
+  });
+
   group('goalAheadOfRecentRuns', () {
     // Three recent 10 km runs in 50:00, so a 10K goal projects to 3000 s off
     // a well-sampled, recent, same-distance anchor (high confidence).

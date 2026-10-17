@@ -918,7 +918,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       context: context,
       initialDate: _startDate.isBefore(today) ? today : _startDate,
       firstDate: today,
-      lastDate: today.add(const Duration(days: 365)),
+      lastDate: DateTime(today.year, today.month, today.day + 365),
       helpText: _beginnerWalkRun
           ? l10n.planNewStartDatePickerHelpWalkRun
           : l10n.planNewStartDatePickerHelp,

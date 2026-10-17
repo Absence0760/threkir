@@ -4827,7 +4827,7 @@ export const messages = {
 	"prefs.hrMedicationAffected": "A minha frequência cardíaca é afetada por medicação",
 	"prefs.hrMedicationAffectedHint": "Por exemplo, um betabloqueante. As zonas pela idade e a carga de treino por frequência cardíaca ficam baixas, por isso a carga aparece como menos fiável. É um dado de saúde e é apagado se retirar o consentimento.",
 	"prefs.hrMedicationNeedsConsent": "É um dado de saúde, por isso primeiro precisa do seu consentimento de dados de saúde.",
-	"prefs.hrMedicationConsentLink": "Dar o consentimento em Dados corporais",
+	"prefs.hrMedicationGiveConsent": "Dar o consentimento em Dados corporais",
 	"prefs.hrMedicationSetMaxHr": "Indique acima uma frequência cardíaca máxima medida, num esforço intenso ou num teste, para que as suas zonas se ajustem a si.",
 	"prefs.demographicsHeading": "Dados demográficos e corporais",
 	"prefs.demographicsDesc": "Opcional. Género e faixa etária alimentam os filtros das classificações de segmentos (os mesmos grupos que o Strava utiliza); altura e peso alimentam as suas metas de calorias e macros de nutrição. Deixe qualquer campo em branco para saltar esse uso.",

@@ -94,6 +94,12 @@ var exportGuardExclusions = map[string]string{
 	// grant. Taken and revoked on deletion (Art 17).
 	"apple_sign_in_tokens": "Sign in with Apple revocation credential (Vault ref); not subject-provided data, and exporting it would leak a live token — revoked and deleted on account deletion",
 
+	// The private calendar-subscription link for the subject's plans. The
+	// row holds only the SHA-256 of the URL secret plus when it was made and
+	// last read — a credential's hash, not data the subject provided
+	// (docs/compliance/retention.md). Cascades away with the account (Art 17).
+	"plan_calendar_feeds": "hash of the plan calendar link's URL secret plus its made/last-read stamps; a credential, not subject-provided data (docs/compliance/retention.md) — cascades away on deletion",
+
 	"clubs": "shared collective entity (owner_id is the founder); the subject's link ships via club_members — not Art-20 portable personal data of the subject",
 }
 

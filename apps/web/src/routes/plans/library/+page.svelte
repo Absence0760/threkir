@@ -6,6 +6,7 @@
 		type PublicPlanLibraryEntry,
 	} from '#lib/core/data.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
 	import { goalEventLabel, planLengthLabel } from '#lib/training/goal_event_label.ts';
 
 	let plans = $state<PublicPlanLibraryEntry[]>([]);
@@ -95,8 +96,8 @@
 							})}
 						</span>
 						<span class="plan-meta">
-							<span class="chip">{goalEventLabel(p.goal_event, p.goal_distance_m)}</span>
-							<span class="chip">{planLengthLabel(weeksOf(p), p.days_per_week)}</span>
+							<span class="chip">{goalEventLabel(m, formatDistance, p.goal_event, p.goal_distance_m)}</span>
+							<span class="chip">{planLengthLabel(m, weeksOf(p), p.days_per_week)}</span>
 						</span>
 						<span class="plan-cta">{m('planLibrary.preview')}</span>
 					</a>

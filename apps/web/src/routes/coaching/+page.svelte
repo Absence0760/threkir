@@ -671,7 +671,7 @@
 	}
 	.flag-chip {
 		display: inline-block;
-		margin-left: var(--space-2xs);
+		margin-inline-start: var(--space-2xs);
 		padding: 0.1rem 0.5rem;
 		border-radius: var(--radius-sm);
 		font-size: 0.76rem;

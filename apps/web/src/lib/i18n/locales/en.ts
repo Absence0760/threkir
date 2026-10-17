@@ -4846,7 +4846,7 @@ export const en = {
 	"prefs.hrMedicationAffected": "My heart rate is affected by medication",
 	"prefs.hrMedicationAffectedHint": "For example a beta blocker. Age-based zones and the heart-rate training load read low, so the training load is marked as less reliable. This is health data, and it is cleared if you withdraw consent.",
 	"prefs.hrMedicationNeedsConsent": "This is health data, so it needs your health-data consent first.",
-	"prefs.hrMedicationConsentLink": "Give consent in Body metrics",
+	"prefs.hrMedicationGiveConsent": "Give consent in Body metrics",
 	"prefs.hrMedicationSetMaxHr": "Set a measured max heart rate above, from a hard effort or a test, so your zones fit you.",
 	"prefs.demographicsHeading": "Demographics & body metrics",
 	"prefs.demographicsDesc": "Optional. Gender and age band power segment-leaderboard filters (the same buckets Strava uses); height and weight power your nutrition calorie + macro targets. Leave any field blank to skip that use.",

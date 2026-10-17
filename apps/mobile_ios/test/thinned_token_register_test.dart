@@ -57,13 +57,6 @@ const _register = <String, int>{
   // entry's derivation already used. Not the cue: the row carries a `navYou`
   // label beside the name and the name goes w700.
   'lib/screens/global_segments_screen.dart': 1,
-  // The plan-detail "today" row fill (1.003/1.140). Not the cue: the row's
-  // leading slot carries a dot labelled `planDetailToday` and its weekday
-  // abbreviation goes w700.
-  'lib/screens/plan_detail_screen.dart': 1,
-  // The two create-plan card fills (1.065/1.256). Washes now that each card's
-  // border is full `primary` and carries the boundary at 10.337/7.260.
-  'lib/screens/plan_new_screen.dart': 2,
   // A privacy-zone disc drawn on basemap TILES, so no ratio is computable at
   // all. The same call sets `borderColor` to full `primary` at 2 px, and a
   // full-strength cancel glyph sits at the centre — the boundary is carried by

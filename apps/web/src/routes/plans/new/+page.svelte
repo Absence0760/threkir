@@ -437,7 +437,7 @@
 				<select
 					bind:value={selectedStarterId}
 					onchange={onStarterChange}
-					aria-describedby={selectedStarterSummary ? 'starter-hint starter-summary' : 'starter-hint'}
+					aria-describedby="starter-hint starter-summary"
 				>
 					<option value="">{m('plansNew.selectPlaceholder')}</option>
 					{#each STARTER_PLANS as s (s.id)}
@@ -471,11 +471,9 @@
 				{/if}
 			</button>
 		</div>
-		{#if selectedStarterSummary}
-			<p class="picker-hint field-hint" id="starter-summary" data-testid="starter-summary">
-				{selectedStarterSummary}
-			</p>
-		{/if}
+		<p class="picker-hint field-hint" id="starter-summary" data-testid="starter-summary" hidden={!selectedStarterSummary}>
+			{selectedStarterSummary ?? ''}
+		</p>
 		<p class="picker-hint field-hint" id="starter-start-date-hint">{m('plansNew.startDateHint')}</p>
 	</section>
 

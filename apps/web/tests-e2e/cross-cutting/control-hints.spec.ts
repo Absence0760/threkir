@@ -82,11 +82,14 @@ test.describe('every swept control renders its explanation', () => {
 		).toBeVisible({ timeout: 10_000 });
 		await expect(page.locator('.plan-editor')).toBeVisible({ timeout: 5_000 });
 
-		// The recent-5K confirm checkbox only mounts once a time is entered,
-		// and the week grid only once a week is expanded — both are controls
-		// the sweep covers, so open them before reading the page.
+		// The recent-5K confirm checkbox only mounts once a whole time —
+		// minutes and seconds — is entered, and the week grid only once a week
+		// is expanded; both are controls the sweep covers, so open them before
+		// reading the page.
 		const recent = page.locator('.plan-editor fieldset', { hasText: 'Recent 5K time' });
-		await recent.locator('input[type="number"]').first().fill('25');
+		const [minutes, seconds] = await recent.locator('input[type="number"]').all();
+		await minutes.fill('25');
+		await seconds.fill('0');
 		await expect(recent.getByRole('checkbox')).toBeVisible({ timeout: 5_000 });
 
 		const firstWeek = page.locator('.plan-editor .week-item').first();

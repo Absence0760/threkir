@@ -149,8 +149,8 @@
 				})}
 			</p>
 			<div class="chips">
-				<span class="chip">{goalEventLabel(plan.goal_event, plan.goal_distance_m)}</span>
-				<span class="chip">{planLengthLabel(weeks.length, plan.days_per_week)}</span>
+				<span class="chip">{goalEventLabel(m, formatDistance, plan.goal_event, plan.goal_distance_m)}</span>
+				<span class="chip">{planLengthLabel(m, weeks.length, plan.days_per_week)}</span>
 			</div>
 		</header>
 

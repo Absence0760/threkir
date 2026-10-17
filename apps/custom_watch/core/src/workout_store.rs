@@ -473,7 +473,10 @@ mod tests {
         );
         let decoded = decode(&frame).expect("decodes");
         assert_eq!(decoded.as_slice(), &steps[..]);
-        assert_eq!(frame_crc(&steps), Some(crc32(&frame[..frame.len() - WORKOUT_CRC_LEN])));
+        assert_eq!(
+            frame_crc(&steps),
+            Some(crc32(&frame[..frame.len() - WORKOUT_CRC_LEN]))
+        );
     }
 
     #[test]

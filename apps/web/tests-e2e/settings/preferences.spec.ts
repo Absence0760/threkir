@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 import { getAdminClient } from '../fixtures/local-supabase';
+import { readRow } from '../fixtures/db-read';
 import { USER_A } from '../fixtures/users';
 import { acceptCookieConsent } from '../fixtures/helpers';
 
@@ -538,8 +539,11 @@ test.describe('settings preference pages', () => {
 		// decisions § 2092: Art 9, behind PUBLIC_HR_PRESCRIPTION_ENABLED (on in
 		// .env.development) and the health-data consent USER_A has in the seed.
 		const admin = getAdminClient();
-		const { data: before } = await admin.from('user_settings').select('prefs').eq('user_id', USER_A.id).single();
-		const original = (before?.prefs as Record<string, unknown>) ?? {};
+		const before = await readRow(
+			'user_settings before the HR-medication toggle',
+			admin.from('user_settings').select('prefs').eq('user_id', USER_A.id).single()
+		);
+		const original = (before.prefs as Record<string, unknown>) ?? {};
 		const start = { ...original };
 		delete start.hr_medication_affected;
 		delete start.max_hr_bpm;
@@ -562,8 +566,11 @@ test.describe('settings preference pages', () => {
 
 			await page.reload();
 			await expect(page.getByTestId('hr-medication-toggle')).toBeChecked({ timeout: 10_000 });
-			const { data } = await admin.from('user_settings').select('prefs').eq('user_id', USER_A.id).single();
-			expect((data?.prefs as Record<string, unknown>).hr_medication_affected).toBe(true);
+			const after = await readRow(
+				'user_settings after the HR-medication toggle',
+				admin.from('user_settings').select('prefs').eq('user_id', USER_A.id).single()
+			);
+			expect((after.prefs as Record<string, unknown>).hr_medication_affected).toBe(true);
 		} finally {
 			await admin.from('user_settings').update({ prefs: original }).eq('user_id', USER_A.id);
 		}

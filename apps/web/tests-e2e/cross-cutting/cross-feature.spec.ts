@@ -1,10 +1,17 @@
+import type { Browser, BrowserContext, Page } from '@playwright/test';
+
 import { expect, test } from '../fixtures/test';
 
-import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A, USER_B } from '../fixtures/users';
-import { setStorageOnLoad } from '../fixtures/helpers';
+import { acceptCookieConsent, setStorageOnLoad } from '../fixtures/helpers';
+import {
+	createThrowawayPlan,
+	deleteThrowawayPlan,
+	THROWAWAY_PLAN_DONE,
+	type ThrowawayPlan
+} from '../fixtures/throwaway-plan';
 
 /**
  * Inter-feature interaction tests — surfaces where two product
@@ -20,7 +27,6 @@ import { setStorageOnLoad } from '../fixtures/helpers';
  * cross-user/kudos but not on the run page itself).
  */
 
-const SYDNEY_HALF_PLAN_ID = 'a1a1eada-aaaa-0000-0000-000000000001';
 const GOAL_KEY = `run_app.goals_v1:${USER_A.id}`;
 
 test.describe('runs ↔ goals on /dashboard', () => {
@@ -93,40 +99,45 @@ test.describe('runs ↔ goals on /dashboard', () => {
 });
 
 test.describe('runs ↔ plans on /plans/[id]', () => {
-	test.use({ storageState: USER_A.storageStatePath });
+	// A plan and an account of their own per test (fixtures/throwaway-plan.ts),
+	// so a re-run on a used database, or another spec's completion on the
+	// seeded plan, cannot move the counts asserted here.
+	test.describe.configure({ timeout: 90_000 });
 
+	let plan: ThrowawayPlan | undefined;
+	let ctx: BrowserContext | undefined;
+	test.beforeEach(async () => {
+		plan = await createThrowawayPlan('e2e runs and plans');
+	});
 	test.afterEach(async () => {
-		// Clear any manually_completed=true row on the Richmond Half plan
-		// — the seed has zero (the one seeded completion uses
-		// completed_run_id, not manually_completed), so this scoops
-		// up exactly the workout the test marked.
-		const admin = getAdminClient();
-		const { data: weeks } = await admin
-			.from('plan_weeks')
-			.select('id')
-			.eq('plan_id', SYDNEY_HALF_PLAN_ID);
-		const weekIds = (weeks ?? []).map((w) => (w as { id: string }).id);
-		if (weekIds.length === 0) return;
-		await admin
-			.from('plan_workouts')
-			.update({ manually_completed: false })
-			.in('week_id', weekIds)
-			.eq('manually_completed', true);
+		await ctx?.close();
+		ctx = undefined;
+		await deleteThrowawayPlan(plan);
+		plan = undefined;
 	});
 
+	async function openPlan(browser: Browser): Promise<Page> {
+		ctx = await browser.newContext({ storageState: plan!.user.storageStatePath });
+		await acceptCookieConsent(ctx);
+		const page = await ctx.newPage();
+		await page.goto(`/plans/${plan!.planId}`);
+		return page;
+	}
+
 	test('Mark-as-done in the plan grid flips the day cell to done', async ({
-		page
+		browser
 	}) => {
-		await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
+		const page = await openPlan(browser);
 		await expect(
-			page.getByRole('heading', { level: 1, name: /Richmond Half 2026/ })
+			page.getByRole('heading', { level: 1, name: plan!.name })
 		).toBeVisible({ timeout: 10_000 });
 
-		// Snapshot the seeded completion count. The seed marks two
-		// .day[data-status="done"] via completed_run_id — the week-0 (2026-03-29)
-		// and week-1 (2026-04-05) long-run matches in seed.sql.
-		const completedBefore = await page.locator('.day-grid .day[data-status="done"]').count();
-		expect(completedBefore).toBe(2);
+		// The plan's first two long runs are done through a linked run.
+		await expect(page.locator('.day-grid .day[data-status="done"]')).toHaveCount(
+			THROWAWAY_PLAN_DONE,
+			{ timeout: 10_000 }
+		);
+		const completedBefore = THROWAWAY_PLAN_DONE;
 
 		// Click the first non-rest, non-completed day-link. Day order
 		// matches workout-scheduled-date order, so picking .first()
@@ -153,7 +164,7 @@ test.describe('runs ↔ plans on /plans/[id]', () => {
 	});
 
 	test('Mark-as-done in /plans/[id] propagates to the progress circle (.pct)', async ({
-		page
+		browser
 	}) => {
 		// The plan-detail page renders a progress ring with
 		// `<span class="pct">{pct}%</span>` and `<span class="done">
@@ -172,7 +183,7 @@ test.describe('runs ↔ plans on /plans/[id]', () => {
 		// ring), and the same `markWorkoutCompleted` → `load()`
 		// pipeline is what would feed the dashboard if a today-
 		// workout were present.
-		await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
+		const page = await openPlan(browser);
 		await expect(page.locator('.pct')).toBeVisible({ timeout: 10_000 });
 		const beforeText = (await page.locator('.pct').textContent()) ?? '';
 		const beforePct = parseInt(beforeText.match(/(\d+)/)?.[1] ?? '-1', 10);

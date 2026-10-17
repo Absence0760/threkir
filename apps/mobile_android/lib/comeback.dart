@@ -25,7 +25,12 @@ import 'dart:math' as math;
 
 import 'plan_ramp.dart';
 import 'training.dart'
-    show GeneratedWeek, GeneratedWorkout, WorkoutKind;
+    show
+        GeneratedWeek,
+        GeneratedWorkout,
+        WorkoutKind,
+        kEasyRunFloorKm,
+        kRecoveryRunMaxKm;
 import 'training_load.dart' show kLayoffResetDays;
 
 const int _dayMs = 86400000;
@@ -226,7 +231,10 @@ const double kReturnWeeklyGrowth = 1.1;
 /// run, which is when a capped opening week helps most. So this reads the
 /// break the runner is in or has just ended, whether or not they have run this
 /// week: still open when the latest run is a layoff ago, otherwise the most
-/// recent run-less stretch long enough to count.
+/// recent run-less stretch long enough to count, provided it ended inside the
+/// chronic window. A break that ended longer ago than that is history the
+/// runner has been running through, sporadically or not, and its base is too
+/// old to cap a plan against.
 ///
 /// The same gates as [comebackLoad] otherwise: only below [kMinActiveWeeks]
 /// (above it `plan_ramp` grades the plan against real recent training), a
@@ -264,6 +272,7 @@ ReturnFromBreak? returningFromBreak(List<RunForVolume> runs, int nowMs) {
     }
     if (gapIndex < 0) return null;
     endMs = samples[gapIndex].startedMs;
+    if (nowMs - endMs >= kChronicWindowWeeks * _weekMs) return null;
     anchorMs = samples[gapIndex + 1].startedMs;
   }
   final layoffDays = (endMs - anchorMs) ~/ _dayMs;
@@ -300,61 +309,81 @@ const _kQualityKinds = {
 /// generator's own easy run (training.dart `_easy`).
 const int _kEasyToleranceSec = 30;
 
+bool _isFixed(WorkoutKind k) => k == WorkoutKind.race || k == WorkoutKind.rest;
+
 /// Ease a generated plan in for a runner coming back from a break.
 ///
-/// Week 1 may ask for at most [openingCapM], and each week after it at most
-/// [kReturnWeeklyGrowth] times the cap before it, so the plan climbs from half
-/// the runner's pre-break volume by about 10% a week until it meets its own
-/// schedule, and is left alone from there. A week over its cap has every
-/// runnable session scaled by the same factor (distance to the nearest 100 m,
-/// duration to the second), so the week's shape survives. Its tempo, interval
-/// and marathon-pace sessions become easy runs, because the first weeks back
-/// rebuild volume before intensity. A race is never touched, and rest stays
-/// rest. The week's stated volume is re-summed from what it now prescribes.
+/// Week 1 may ask for at most [openingCapM] of running, and each week after it
+/// at most [kReturnWeeklyGrowth] times the cap before it, so the plan climbs
+/// from half the runner's pre-break volume by about 10% a week. The first week
+/// whose own schedule fits under its cap ends the climb: it and every week
+/// after are left exactly as generated. A race is never counted against a cap
+/// or touched, and rest stays rest.
+///
+/// Every week before that point is a return week:
+/// - its tempo, interval and marathon-pace sessions become easy runs, because
+///   the first weeks back rebuild volume before intensity;
+/// - its sessions scale by one factor to fit the cap (distance to the nearest
+///   100 m, duration to the second), so the week keeps its shape;
+/// - a session the scaling would take under the generator's 3 km floor is
+///   dropped to rest, shortest first, and the cap is shared among the rest.
+///   The last session standing is kept whatever its length;
+/// - an easy run under 4 km is labelled recovery, as the generator labels it.
+/// The week's stated volume is re-summed from what it now prescribes.
 ///
 /// Pure: returns new weeks and leaves the input alone. A cap that is not a
-/// positive number returns the weeks unchanged.
+/// positive number returns the weeks unchanged. Mirrors `capReturnRamp` in
+/// comeback.ts.
 List<GeneratedWeek> capReturnRamp(
   List<GeneratedWeek> weeks,
   double openingCapM,
   int easyPaceSecPerKm,
 ) {
   if (!openingCapM.isFinite || openingCapM <= 0 || weeks.isEmpty) return weeks;
-  final firstIndex = weeks.map((w) => w.weekIndex).reduce(math.min);
-  return [
-    for (final week in weeks)
-      _capWeek(
-        week,
-        openingCapM *
-            math.pow(kReturnWeeklyGrowth, week.weekIndex - firstIndex),
-        easyPaceSecPerKm,
-      ),
-  ];
+  final ordered = [...weeks]..sort((a, b) => a.weekIndex.compareTo(b.weekIndex));
+  final firstIndex = ordered.first.weekIndex;
+  final capped = <GeneratedWeek, GeneratedWeek>{};
+  for (final week in ordered) {
+    final capM = openingCapM *
+        math.pow(kReturnWeeklyGrowth, week.weekIndex - firstIndex);
+    final runningM = week.workouts.fold<double>(
+        0, (s, wo) => s + (_isFixed(wo.kind) ? 0 : (wo.targetDistanceM ?? 0)));
+    if (runningM <= capM) break;
+    capped[week] = _capWeek(week, capM, easyPaceSecPerKm);
+  }
+  return [for (final w in weeks) capped[w] ?? w];
 }
 
 GeneratedWeek _capWeek(GeneratedWeek week, double capM, int easyPace) {
-  if (!(week.targetVolumeM > capM)) return week;
-  var fixedM = 0.0;
-  var scalableM = 0.0;
-  for (final wo in week.workouts) {
-    final m = wo.targetDistanceM ?? 0;
-    if (wo.kind == WorkoutKind.race || wo.kind == WorkoutKind.rest) {
-      fixedM += m;
-    } else {
-      scalableM += m;
+  final kept = <int>{
+    for (var i = 0; i < week.workouts.length; i++)
+      if (!_isFixed(week.workouts[i].kind)) i,
+  };
+  double distanceOf(int i) => week.workouts[i].targetDistanceM ?? 0;
+  double keptM() => kept.fold<double>(0, (s, i) => s + distanceOf(i));
+  var factor = capM / keptM();
+  for (;;) {
+    final measured = kept.where((i) => distanceOf(i) > 0).toList()
+      ..sort((a, b) => distanceOf(a).compareTo(distanceOf(b)));
+    if (measured.length <= 1 ||
+        distanceOf(measured.first) * factor >= kEasyRunFloorKm * 1000) {
+      break;
     }
+    kept.remove(measured.first);
+    factor = capM / keptM();
   }
-  if (scalableM <= 0) return week;
-  final factor = math.min(1.0, math.max(0.0, capM - fixedM) / scalableM);
+  factor = math.min(1.0, factor);
   final workouts = <GeneratedWorkout>[
-    for (final wo in week.workouts)
-      if (wo.kind == WorkoutKind.race || wo.kind == WorkoutKind.rest)
-        wo
+    for (var i = 0; i < week.workouts.length; i++)
+      if (_isFixed(week.workouts[i].kind))
+        week.workouts[i]
+      else if (!kept.contains(i))
+        _toRest(week.workouts[i])
       else
-        _scaleWorkout(wo, factor, easyPace),
+        _scaleWorkout(week.workouts[i], factor, easyPace),
   ];
   final volume =
-      workouts.fold(0.0, (s, wo) => s + (wo.targetDistanceM ?? 0));
+      workouts.fold<double>(0, (s, wo) => s + (wo.targetDistanceM ?? 0));
   return GeneratedWeek(
     weekIndex: week.weekIndex,
     phase: week.phase,
@@ -363,6 +392,14 @@ GeneratedWeek _capWeek(GeneratedWeek week, double capM, int easyPace) {
     workouts: workouts,
   );
 }
+
+GeneratedWorkout _toRest(GeneratedWorkout wo) => GeneratedWorkout(
+      scheduledDate: wo.scheduledDate,
+      kind: WorkoutKind.rest,
+      raceName: wo.raceName,
+      racePriority: wo.racePriority,
+      raceTaperAppliedAt: wo.raceTaperAppliedAt,
+    );
 
 GeneratedWorkout _scaleWorkout(
     GeneratedWorkout wo, double factor, int easyPace) {
@@ -373,9 +410,15 @@ GeneratedWorkout _scaleWorkout(
       ? null
       : (wo.targetDurationSeconds! * factor).round();
   final quality = _kQualityKinds.contains(wo.kind);
+  var kind = quality ? WorkoutKind.easy : wo.kind;
+  if (kind == WorkoutKind.easy &&
+      metres != null &&
+      metres < kRecoveryRunMaxKm * 1000) {
+    kind = WorkoutKind.recovery;
+  }
   return GeneratedWorkout(
     scheduledDate: wo.scheduledDate,
-    kind: quality ? WorkoutKind.easy : wo.kind,
+    kind: kind,
     targetDistanceM: metres,
     targetDurationSeconds: seconds,
     targetPaceSecPerKm: quality ? easyPace : wo.targetPaceSecPerKm,

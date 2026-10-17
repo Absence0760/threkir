@@ -300,6 +300,21 @@ void main() {
           returningFromBreak(openBreakRunner(kLayoffMaxDays), _now), isNotNull);
     });
 
+    test('is null for a break that ended more than four weeks ago', () {
+      // Four 40 km weeks ending 380 days ago, then a run a fortnight for the
+      // last 100 days: the break ended long enough ago that its base no
+      // longer describes the runner, however sporadic the running since.
+      final since = [
+        for (final d in [2, 16, 30, 44, 58, 72, 86, 100]) _run(d, 5000)
+      ];
+      expect(returningFromBreak([...since, ...openBreakRunner(380)], _now),
+          isNull);
+      // The same break ending 20 days ago still counts.
+      final recent = [for (final d in [2, 20]) _run(d, 5000)];
+      expect(returningFromBreak([...recent, ...openBreakRunner(200)], _now),
+          isNotNull);
+    });
+
     test('is null when the pre-break base is a single run', () {
       expect(returningFromBreak([_run(60, 40000)], _now), isNull);
     });
@@ -328,8 +343,7 @@ void main() {
           workouts: workouts,
         );
 
-    test(
-        'caps week 1, lets later weeks grow 10%, and leaves the rest of the plan alone',
+    test('caps week 1, lets the next grow 10%, and stops at the first week that fits',
         () {
       final weeks = [
         week(0, [
@@ -355,21 +369,79 @@ void main() {
       // The interval session is an easy run at the easy pace now.
       expect(capped[0].workouts[2].kind, WorkoutKind.easy);
       expect(capped[0].workouts[2].targetPaceSecPerKm, 420);
+      expect(capped[0].workouts[2].targetPaceToleranceSec, 30);
       expect(capped[0].workouts[2].structure, isNull);
       expect(capped[0].workouts[2].notes, isNull);
       expect(identical(capped[0].workouts[1], weeks[0].workouts[1]), isTrue);
-      // Week 2: capped at 10 km x 1.1 = 11 km, to the nearest 100 m per session.
+      // Week 2: capped at 10 km x 1.1 = 11 km, to the nearest 100 m.
       expect(10000 * kReturnWeeklyGrowth, 11000);
       expect(capped[1].workouts[0].targetDistanceM, 6600);
       expect(capped[1].workouts[2].targetDistanceM, 4400);
       expect(capped[1].targetVolumeM, 11000);
-      // Week 3: 15 km is under its 12.1 km cap only once the race is set
-      // aside, so the long run takes the whole cut and the race keeps its 5 km.
-      expect(identical(capped[2].workouts[1], weeks[2].workouts[1]), isTrue);
-      expect(capped[2].workouts[0].targetDistanceM, 7100);
+      // Week 3: 10 km of running fits its 12.1 km cap (the race is not
+      // counted), so the climb ends there and the week is as generated.
+      expect(identical(capped[2], weeks[2]), isTrue);
       // The input is untouched.
       expect(weeks[0].targetVolumeM, 20000);
       expect(weeks[0].workouts[2].kind, WorkoutKind.interval);
+    });
+
+    test('leaves every week after the first that fits alone, speed work and all',
+        () {
+      // 40 / 44 / 36 / 48 km against caps of 35 / 38.5 / 42.35 / 46.585 km:
+      // the step-back third week fits, so the fourth keeps its intervals and
+      // its 48 km even though that is over the cap the climb would have hit.
+      final weeks = [
+        for (final (i, m) in [40000.0, 44000.0, 36000.0, 48000.0].indexed)
+          week(i, [
+            workout(WorkoutKind.long, m - 8000),
+            workout(WorkoutKind.interval, 8000),
+          ]),
+      ];
+      final capped = capReturnRamp(weeks, 35000, 420);
+      expect(capped[0].workouts[1].kind, WorkoutKind.easy);
+      expect(capped[1].workouts[1].kind, WorkoutKind.easy);
+      expect(identical(capped[2], weeks[2]), isTrue);
+      expect(identical(capped[3], weeks[3]), isTrue);
+      expect(capped[3].workouts[1].kind, WorkoutKind.interval);
+    });
+
+    test('drops sessions the cap would take under 3 km to rest, shortest first',
+        () {
+      // 20 km over four runs against a 6 km cap: scaling alone would ask for
+      // a 900 m run. The 3, 4 and 5 km runs drop in turn and the long run
+      // takes the whole 6 km.
+      final weeks = [
+        week(0, [
+          workout(WorkoutKind.long, 8000),
+          workout(WorkoutKind.easy, 5000),
+          workout(WorkoutKind.easy, 4000),
+          workout(WorkoutKind.easy, 3000),
+        ]),
+      ];
+      final w = capReturnRamp(weeks, 6000, 420).single;
+      expect(w.workouts[0].targetDistanceM, 6000);
+      for (final dropped in w.workouts.skip(1)) {
+        expect(dropped.kind, WorkoutKind.rest);
+        expect(dropped.targetDistanceM, isNull);
+        expect(dropped.targetPaceSecPerKm, isNull);
+      }
+      expect(w.targetVolumeM, 6000);
+    });
+
+    test('labels an easy run it shortens under 4 km a recovery run', () {
+      // Two 6 km easy runs against a 7 km cap become two 3.5 km runs.
+      final w = capReturnRamp([
+        week(0, [
+          workout(WorkoutKind.easy, 6000),
+          workout(WorkoutKind.easy, 6000),
+        ]),
+      ], 7000, 420)
+          .single;
+      expect(
+        [for (final wo in w.workouts) (wo.kind, wo.targetDistanceM)],
+        [(WorkoutKind.recovery, 3500.0), (WorkoutKind.recovery, 3500.0)],
+      );
     });
 
     test(

@@ -359,9 +359,49 @@ import WatchConnectivity
             }
             WCSession.default.transferUserInfo(payload)
             result(nil)
+        case "push_workout":
+            guard let args = call.arguments as? [String: Any],
+                  let payload = Self.workoutUserInfo(from: args) else {
+                result(FlutterError(
+                    code: "bad_workout",
+                    message: "Workout payload rejected",
+                    details: nil
+                ))
+                return
+            }
+            guard Self.canPushRoute() else {
+                result(FlutterError(
+                    code: "watch_unavailable",
+                    message: "No paired Apple Watch running the app",
+                    details: nil
+                ))
+                return
+            }
+            WCSession.default.transferUserInfo(payload)
+            result(nil)
         default:
             result(FlutterMethodNotImplemented)
         }
+    }
+
+    /// Today's planned workout, phone to wrist (`watch_workout_push.dart`).
+    ///
+    /// Forwarded as the JSON TEXT the Dart side built, under one key, so the
+    /// watch's `PushedWorkout.decode` parses the same bytes Wear OS's
+    /// `parseWorkoutPush` does and `fixtures/watch_workout_payload.json` holds
+    /// both. Only the envelope is checked here — an object with the version
+    /// the watch decodes — for the `routeUserInfo` reason: a payload that
+    /// reaches `transferUserInfo` is retried durably against a watch that
+    /// would refuse it every time. The step rules are the watch's.
+    static let workoutPayloadVersion = 1
+
+    static func workoutUserInfo(from args: [String: Any]) -> [String: Any]? {
+        guard let json = args["workout_json"] as? String,
+              let data = json.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              (object["v"] as? NSNumber)?.intValue == workoutPayloadVersion
+        else { return nil }
+        return ["todays_workout": json]
     }
 
     // MARK: - Preference push (phone -> watch)
@@ -593,6 +633,13 @@ import WatchConnectivity
         if let v = metadata["distance_estimator"] { payload["distance_estimator"] = v }
         if let v = metadata["distance_step_filled_m"] { payload["distance_step_filled_m"] = v }
         if let v = metadata["track_complete"] { payload["track_complete"] = v }
+        // The planned-vs-actual trail of a run started from a pushed workout.
+        // `plan_workout_id` is what the database matcher links the workout by
+        // (decisions § 2079); the other two are the review the run detail
+        // renders. Forwarded verbatim; `runFromWatchPayload` validates them.
+        if let v = metadata["plan_workout_id"] { payload["plan_workout_id"] = v }
+        if let v = metadata["workout_step_results"] { payload["workout_step_results"] = v }
+        if let v = metadata["workout_adherence"] { payload["workout_adherence"] = v }
         payload["track"] = track
         return payload
     }

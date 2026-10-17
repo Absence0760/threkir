@@ -220,6 +220,31 @@ String workoutStepProgressUtterance(StepProgressKind kind, DistanceUnit unit,
   };
 }
 
+/// The structured-workout pace-drift nudge, fired when the step's average
+/// pace sits beyond twice its tolerance. The runner measures the miss per
+/// kilometre; a miles runner hears it converted to per mile, and both units
+/// say which one they mean. Rounded to 5 s like the general pace alert,
+/// because sub-5 s residue isn't actionable mid-step — and never below 5 s,
+/// since the cue only fires on a miss of at least twice the tolerance.
+String workoutPaceDriftUtterance(PaceDriftEvent e, DistanceUnit unit,
+    [String? localeTag]) {
+  final l10n = ttsL10n(localeTag ?? activeLocaleTag);
+  const kmPerMile = 1.609344;
+  final perUnit = unit == DistanceUnit.mi
+      ? e.deltaSecPerKm * kmPerMile
+      : e.deltaSecPerKm.toDouble();
+  final rounded = (perUnit / 5).round() * 5;
+  final delta = rounded < 5 ? 5 : rounded;
+  if (unit == DistanceUnit.mi) {
+    return e.ahead
+        ? l10n.ttsPaceDriftAheadMi(delta)
+        : l10n.ttsPaceDriftBehindMi(delta);
+  }
+  return e.ahead
+      ? l10n.ttsPaceDriftAheadKm(delta)
+      : l10n.ttsPaceDriftBehindKm(delta);
+}
+
 /// How far the runner has covered at a split, as the spoken count plus
 /// whether the unit word should be singular. The tick interval is in METRES
 /// and the unit word comes from the runner's preference, so the count has to
@@ -611,15 +636,12 @@ class AudioCues {
     await _tts.speak(workoutStepProgressUtterance(kind, unit, activeLocaleTag));
   }
 
-  /// Pace-drift nudge when the runner has been more than the tolerance
-  /// off pace for ~45 s. Verb is signed.
-  Future<void> announceWorkoutPaceDrift(PaceDriftEvent e) async {
+  /// Pace-drift nudge — see [workoutPaceDriftUtterance].
+  Future<void> announceWorkoutPaceDrift(
+      PaceDriftEvent e, DistanceUnit unit) async {
     await _init();
     await _applyLanguage();
-    final l10n = ttsL10n(activeLocaleTag);
-    await _tts.speak(e.ahead
-        ? l10n.ttsPaceDriftAhead(e.deltaSecPerKm)
-        : l10n.ttsPaceDriftBehind(e.deltaSecPerKm));
+    await _tts.speak(workoutPaceDriftUtterance(e, unit, activeLocaleTag));
   }
 
   /// Final cue when the last step's auto-advance fires.

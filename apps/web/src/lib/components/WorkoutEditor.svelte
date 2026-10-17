@@ -1,16 +1,24 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { appErrorMessage } from '#lib/core/supabase_error.ts';
-	import { markWorkoutCompleted, markWorkoutSkipped, updatePlanWorkout } from '#lib/core/data.ts';
+	import {
+		markWorkoutCompleted,
+		markWorkoutSkipped,
+		movePlanWorkout,
+		updatePlanWorkout
+	} from '#lib/core/data.ts';
 	import {
 		isWorkoutCompleted,
 		isWorkoutSkipped,
+		parseISO,
 		type WorkoutKind,
 		type WorkoutStructure
 	} from '#lib/training/training.ts';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
 	import { RACE_GOAL_MAX_HOURS, RACE_PRIORITIES, type RacePriority } from '#lib/training/plan_races.ts';
 	import { raceGoalInputSeconds } from '#lib/training/race_goal_input.ts';
+	import type { WorkoutMoveDay } from '#lib/training/plan_move.ts';
+	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { getUnit } from '#lib/format/units.svelte.ts';
 	import { paceParts } from '#lib/format/pace_format.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
@@ -22,10 +30,12 @@
 
 	interface Props {
 		workout: PlanWorkout;
+		/// Days this workout may move to (plan_move.ts); none hides the field.
+		moveDays?: WorkoutMoveDay<PlanWorkout>[];
 		onClose: () => void;
 		onSaved: () => void;
 	}
-	let { workout, onClose, onSaved }: Props = $props();
+	let { workout, moveDays = [], onClose, onSaved }: Props = $props();
 	const uid = $props.id();
 
 	// All inputs are rendered + stored in the user's preferred unit so
@@ -177,8 +187,19 @@
 
 	let busy = $state(false);
 	let error = $state<string | null>(null);
+	/// The day to move to; '' keeps the workout where it is.
+	let moveTo = $state('');
+
+	function dayLabel(iso: string): string {
+		return parseISO(iso).toLocaleDateString(activeFormatLocale(), {
+			weekday: 'short',
+			day: 'numeric',
+			month: 'short'
+		});
+	}
 
 	const dirty = trackDirty(() => ({
+		moveTo,
 		kind,
 		distance,
 		paceMin,
@@ -316,6 +337,10 @@
 		}
 		busy = true;
 		try {
+			// Move first: it is the step the server may refuse (the day was
+			// taken by a completed workout since the page loaded), and a
+			// refusal then leaves the rest of the form unsaved with it.
+			if (moveTo) await movePlanWorkout(workout.id, moveTo);
 			const paceStartUnit =
 				paceMin != null ? paceMin * 60 + (paceSec ?? 0) : null;
 			const paceEndUnit =
@@ -377,6 +402,31 @@
 	onclose={onClose}
 >
 	<div class="editor-form">
+		{#if moveDays.length > 0}
+			<div class="field">
+				<label class="field-label" for="{uid}-move">{t('workoutEditor.moveDay')}</label>
+				<select
+					id="{uid}-move"
+					bind:value={moveTo}
+					aria-describedby="wo-move-hint"
+					data-testid="workout-move-day"
+				>
+					<option value="">{dayLabel(workout.scheduled_date)}</option>
+					{#each moveDays as d (d.date)}
+						<option value={d.date}>
+							{d.occupant
+								? t('workoutEditor.moveDaySwap', {
+										day: dayLabel(d.date),
+										kind: workoutKindLabel(d.occupant.kind)
+									})
+								: dayLabel(d.date)}
+						</option>
+					{/each}
+				</select>
+				<span class="hint" id="wo-move-hint">{t('workoutEditor.moveDayHint')}</span>
+			</div>
+		{/if}
+
 		<div class="field">
 			<label class="field-label" for="{uid}-kind">{t('workoutEditor.kind')}</label>
 			<select id="{uid}-kind" bind:value={kind} aria-describedby="wo-kind-hint">

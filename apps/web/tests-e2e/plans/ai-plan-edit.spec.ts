@@ -110,6 +110,63 @@ test.describe('/plans/[id] — Adjust with AI', () => {
 		await expect(page.getByTestId('ai-adjust')).toHaveCount(0);
 	});
 
+	test('on a generated week of seven rows, a swap and a move onto a rest day save together', async ({
+		page,
+		mockRoute,
+	}) => {
+		// A generated week stores a row on every day, rest days included, and a
+		// day holds one row. Trading two occupied days used to collide on the
+		// per-day uniqueness every time (issue #1186, decisions § 2073).
+		const week0 = (await admin.from('plan_workouts').select('week_id').eq('id', easyId).single()).data!
+			.week_id;
+		const restIds = [0, 2, 4, 6].map(() => crypto.randomUUID());
+		const { error: restErr } = await admin.from('plan_workouts').insert(
+			[0, 2, 4, 6].map((day, i) => ({
+				id: restIds[i],
+				week_id: week0,
+				scheduled_date: browserDate(day),
+				kind: 'rest',
+				target_distance_m: null,
+			})),
+		);
+		expect(restErr).toBeNull();
+
+		await mockRoute(page, '**/api/coach/plan-edit', async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					ops: [
+						{ op: 'swap_days', workoutId: easyId, otherWorkoutId: tempoId },
+						{ op: 'move_workout', workoutId: longId, date: browserDate(6) },
+					],
+					dropped: 0,
+					notes: [],
+					today: browserDate(0),
+				}),
+			});
+		});
+
+		const box = await openAiAdjust(page);
+		await box.getByRole('textbox', { name: 'Adjust with AI' }).fill('swap my easy run and tempo, long run on Sunday');
+		await box.getByRole('button', { name: 'Suggest changes' }).click();
+		await expect(box).toContainText('Suggested changes', { timeout: 10_000 });
+
+		await box.getByRole('button', { name: 'Apply AI-suggested changes' }).click();
+		await expect(page.getByTestId('ai-adjust')).toHaveCount(0, { timeout: 10_000 });
+
+		expect(await readDate(easyId)).toBe(browserDate(3));
+		expect(await readDate(tempoId)).toBe(browserDate(1));
+		expect(await readDate(longId)).toBe(browserDate(6));
+		expect(await readDate(restIds[3])).toBe(browserDate(5));
+		const rows = await readRows(
+			'plan_workouts of week 0',
+			admin.from('plan_workouts').select('scheduled_date').eq('week_id', week0),
+		);
+		expect(rows).toHaveLength(7);
+		expect(new Set(rows.map((r) => r.scheduled_date)).size).toBe(7);
+	});
+
 	test('a skip and an eased week are saved on Apply', async ({ page, mockRoute }) => {
 		// Only week 1 stays, so easing it cannot raise a later week's load band
 		// against whatever recent runs the shared user carries.

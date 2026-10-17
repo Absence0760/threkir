@@ -99,6 +99,14 @@ class WorkoutRunner {
     return (stepDistanceMetres / target).clamp(0.0, 1.0);
   }
 
+  /// True from the start until the workout completes or is abandoned: the
+  /// window in which this runner owns the run's pace cues. The run screen's
+  /// general pace alert stands down for it, because that alert targets the
+  /// saved pace or a race strategy rather than the current step, and would
+  /// otherwise double up on the step's own drift cue, or tell a walk-run
+  /// runner to speed up through every walk interval.
+  bool get ownsPaceCues => !isComplete;
+
   PaceAdherence get paceAdherence {
     final s = currentStep;
     if (s == null || !s.paced) return PaceAdherence.onPace;

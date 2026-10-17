@@ -14176,18 +14176,36 @@
   "@ttsStepLastTenSeconds": {
     "description": "Spoken in-step progress cue in the last ten seconds of a timed step (a walk-run interval, a timed rep or a timed warm-up)"
   },
-  "ttsPaceDriftAhead": "Ease up — {delta} seconds ahead pace.",
-  "@ttsPaceDriftAhead": {
-    "description": "Spoken nudge when the runner is ahead of target pace by delta seconds per km",
+  "ttsPaceDriftAheadKm": "Ease up — {delta} seconds per kilometre ahead of pace.",
+  "@ttsPaceDriftAheadKm": {
+    "description": "Spoken nudge during a structured-workout step when the runner is ahead of the step's target pace by delta seconds per kilometre",
     "placeholders": {
       "delta": {
         "type": "int"
       }
     }
   },
-  "ttsPaceDriftBehind": "Pick it up — {delta} seconds behind pace.",
-  "@ttsPaceDriftBehind": {
-    "description": "Spoken nudge when the runner is behind target pace by delta seconds per km",
+  "ttsPaceDriftAheadMi": "Ease up — {delta} seconds per mile ahead of pace.",
+  "@ttsPaceDriftAheadMi": {
+    "description": "Spoken nudge during a structured-workout step when the runner is ahead of the step's target pace by delta seconds per mile",
+    "placeholders": {
+      "delta": {
+        "type": "int"
+      }
+    }
+  },
+  "ttsPaceDriftBehindKm": "Pick it up — {delta} seconds per kilometre behind pace.",
+  "@ttsPaceDriftBehindKm": {
+    "description": "Spoken nudge during a structured-workout step when the runner is behind the step's target pace by delta seconds per kilometre",
+    "placeholders": {
+      "delta": {
+        "type": "int"
+      }
+    }
+  },
+  "ttsPaceDriftBehindMi": "Pick it up — {delta} seconds per mile behind pace.",
+  "@ttsPaceDriftBehindMi": {
+    "description": "Spoken nudge during a structured-workout step when the runner is behind the step's target pace by delta seconds per mile",
     "placeholders": {
       "delta": {
         "type": "int"

@@ -10593,13 +10593,23 @@ class AppLocalizationsFr extends AppLocalizations {
   String get ttsStepLastTenSeconds => 'Plus que dix secondes';
 
   @override
-  String ttsPaceDriftAhead(int delta) {
-    return 'Relâchez un peu — $delta secondes trop rapide.';
+  String ttsPaceDriftAheadKm(int delta) {
+    return 'Relâchez un peu — $delta secondes par kilomètre trop rapide.';
   }
 
   @override
-  String ttsPaceDriftBehind(int delta) {
-    return 'Accélérez un peu — $delta secondes trop lent.';
+  String ttsPaceDriftAheadMi(int delta) {
+    return 'Relâchez un peu — $delta secondes par mile trop rapide.';
+  }
+
+  @override
+  String ttsPaceDriftBehindKm(int delta) {
+    return 'Accélérez un peu — $delta secondes par kilomètre trop lent.';
+  }
+
+  @override
+  String ttsPaceDriftBehindMi(int delta) {
+    return 'Accélérez un peu — $delta secondes par mile trop lent.';
   }
 
   @override

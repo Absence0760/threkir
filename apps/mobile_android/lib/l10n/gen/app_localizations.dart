@@ -17295,17 +17295,29 @@ abstract class AppLocalizations {
   /// **'Ten seconds to go'**
   String get ttsStepLastTenSeconds;
 
-  /// Spoken nudge when the runner is ahead of target pace by delta seconds per km
+  /// Spoken nudge during a structured-workout step when the runner is ahead of the step's target pace by delta seconds per kilometre
   ///
   /// In en, this message translates to:
-  /// **'Ease up — {delta} seconds ahead pace.'**
-  String ttsPaceDriftAhead(int delta);
+  /// **'Ease up — {delta} seconds per kilometre ahead of pace.'**
+  String ttsPaceDriftAheadKm(int delta);
 
-  /// Spoken nudge when the runner is behind target pace by delta seconds per km
+  /// Spoken nudge during a structured-workout step when the runner is ahead of the step's target pace by delta seconds per mile
   ///
   /// In en, this message translates to:
-  /// **'Pick it up — {delta} seconds behind pace.'**
-  String ttsPaceDriftBehind(int delta);
+  /// **'Ease up — {delta} seconds per mile ahead of pace.'**
+  String ttsPaceDriftAheadMi(int delta);
+
+  /// Spoken nudge during a structured-workout step when the runner is behind the step's target pace by delta seconds per kilometre
+  ///
+  /// In en, this message translates to:
+  /// **'Pick it up — {delta} seconds per kilometre behind pace.'**
+  String ttsPaceDriftBehindKm(int delta);
+
+  /// Spoken nudge during a structured-workout step when the runner is behind the step's target pace by delta seconds per mile
+  ///
+  /// In en, this message translates to:
+  /// **'Pick it up — {delta} seconds per mile behind pace.'**
+  String ttsPaceDriftBehindMi(int delta);
 
   /// Spoken speed in km/h appended to a split cue
   ///

@@ -120,12 +120,15 @@ test('spokenDuration: minutes, seconds, or both', () => {
 	assert.deepEqual(spokenDuration(90), { unit: 'sec', seconds: 90 });
 	assert.deepEqual(spokenDuration(45), { unit: 'sec', seconds: 45 });
 	assert.deepEqual(spokenDuration(150), { unit: 'minSec', minutes: 2, seconds: 30 });
+	assert.deepEqual(spokenDuration(Number.NaN), { unit: 'sec', seconds: 0 });
+	assert.deepEqual(spokenDuration(-5), { unit: 'sec', seconds: 0 });
 });
 
 test('aboutMinutes: rounds to whole minutes, never below one', () => {
 	assert.equal(aboutMinutes(1710), 29);
 	assert.equal(aboutMinutes(1680), 28);
 	assert.equal(aboutMinutes(10), 1);
+	assert.equal(aboutMinutes(Number.POSITIVE_INFINITY), 1);
 });
 
 test('paceZoneName: Daniels codes and words, case-insensitive', () => {
@@ -135,5 +138,6 @@ test('paceZoneName: Daniels codes and words, case-insensitive', () => {
 	assert.equal(paceZoneName('r'), 'repetition');
 	assert.equal(paceZoneName('E'), 'easy');
 	assert.equal(paceZoneName('Z2'), null);
+	assert.equal(paceZoneName('\u0085t'), null);
 	assert.equal(paceZoneName(null), null);
 });

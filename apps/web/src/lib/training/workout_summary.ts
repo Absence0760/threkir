@@ -143,7 +143,7 @@ export type SpokenDuration =
 /// How an interval length reads aloud: whole minutes as minutes, anything
 /// under two minutes that isn't whole as seconds ("90 s"), else both.
 export function spokenDuration(totalSeconds: number): SpokenDuration {
-	const sec = Math.max(0, Math.round(totalSeconds));
+	const sec = Number.isFinite(totalSeconds) ? Math.max(0, Math.round(totalSeconds)) : 0;
 	if (sec >= 60 && sec % 60 === 0) return { unit: 'min', minutes: sec / 60 };
 	if (sec < 120) return { unit: 'sec', seconds: sec };
 	return { unit: 'minSec', minutes: Math.floor(sec / 60), seconds: sec % 60 };
@@ -151,7 +151,7 @@ export function spokenDuration(totalSeconds: number): SpokenDuration {
 
 /// A session length rounded to whole minutes, never below one.
 export function aboutMinutes(totalSeconds: number): number {
-	return Math.max(1, Math.round(totalSeconds / 60));
+	return Number.isFinite(totalSeconds) ? Math.max(1, Math.round(totalSeconds / 60)) : 1;
 }
 
 export type PaceZoneName = 'easy' | 'marathon' | 'tempo' | 'interval' | 'repetition';
@@ -176,5 +176,5 @@ const ZONE_NAMES: Record<string, PaceZoneName> = {
 /// free text the editor let a coach type.
 export function paceZoneName(zone: string | null | undefined): PaceZoneName | null {
 	if (!zone) return null;
-	return ZONE_NAMES[zone.trim().toLowerCase()] ?? null;
+	return ZONE_NAMES[zone.replace(/^\s+|\s+$/g, '').toLowerCase()] ?? null;
 }

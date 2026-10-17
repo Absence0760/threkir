@@ -243,7 +243,7 @@ class SpokenMinSec extends SpokenDuration {
 /// How an interval length reads aloud: whole minutes as minutes, anything
 /// under two minutes that isn't whole as seconds ("90 s"), else both.
 SpokenDuration spokenDuration(num totalSeconds) {
-  final sec = totalSeconds < 0 ? 0 : totalSeconds.round();
+  final sec = !totalSeconds.isFinite || totalSeconds < 0 ? 0 : totalSeconds.round();
   if (sec >= 60 && sec % 60 == 0) return SpokenMinutes(sec ~/ 60);
   if (sec < 120) return SpokenSeconds(sec);
   return SpokenMinSec(sec ~/ 60, sec % 60);
@@ -251,11 +251,16 @@ SpokenDuration spokenDuration(num totalSeconds) {
 
 /// A session length rounded to whole minutes, never below one.
 int aboutMinutes(num totalSeconds) {
+  if (!totalSeconds.isFinite) return 1;
   final m = (totalSeconds / 60).round();
   return m < 1 ? 1 : m;
 }
 
 enum PaceZoneName { easy, marathon, tempo, interval, repetition }
+
+// JS-regex whitespace on both halves: Dart's trim() also strips U+0085,
+// which JavaScript's does not.
+final _edgeSpace = RegExp(r'^\s+|\s+$');
 
 const _zoneNames = <String, PaceZoneName>{
   'e': PaceZoneName.easy,
@@ -277,5 +282,5 @@ const _zoneNames = <String, PaceZoneName>{
 /// free text the editor let a coach type.
 PaceZoneName? paceZoneName(String? zone) {
   if (zone == null) return null;
-  return _zoneNames[zone.trim().toLowerCase()];
+  return _zoneNames[zone.replaceAll(_edgeSpace, '').toLowerCase()];
 }

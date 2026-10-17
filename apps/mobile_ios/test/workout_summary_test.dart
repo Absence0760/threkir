@@ -126,12 +126,15 @@ void main() {
     expect(spokenDuration(90), const SpokenSeconds(90));
     expect(spokenDuration(45), const SpokenSeconds(45));
     expect(spokenDuration(150), const SpokenMinSec(2, 30));
+    expect(spokenDuration(double.nan), const SpokenSeconds(0));
+    expect(spokenDuration(-5), const SpokenSeconds(0));
   });
 
   test('aboutMinutes: rounds to whole minutes, never below one', () {
     expect(aboutMinutes(1710), 29);
     expect(aboutMinutes(1680), 28);
     expect(aboutMinutes(10), 1);
+    expect(aboutMinutes(double.infinity), 1);
   });
 
   test('paceZoneName: Daniels codes and words, case-insensitive', () {
@@ -141,6 +144,7 @@ void main() {
     expect(paceZoneName('r'), PaceZoneName.repetition);
     expect(paceZoneName('E'), PaceZoneName.easy);
     expect(paceZoneName('Z2'), isNull);
+    expect(paceZoneName('\u0085t'), isNull);
     expect(paceZoneName(null), isNull);
   });
 }

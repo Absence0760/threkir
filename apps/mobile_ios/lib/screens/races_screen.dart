@@ -109,9 +109,12 @@ class _RacesScreenState extends State<RacesScreen> {
         query: _query,
         distance: _distance.isEmpty ? null : _distance,
         from: _recent
-            ? toIsoDate(today.subtract(const Duration(days: recentWindowDays)))
+            ? toIsoDate(
+                DateTime(today.year, today.month, today.day - recentWindowDays))
             : null,
-        to: _recent ? toIsoDate(today.subtract(const Duration(days: 1))) : null,
+        to: _recent
+            ? toIsoDate(DateTime(today.year, today.month, today.day - 1))
+            : null,
         newestFirst: _recent,
         nearPlace: _nearPlace.isEmpty ? null : _nearPlace,
         mapTilerKey: widget.mapTilerKey,

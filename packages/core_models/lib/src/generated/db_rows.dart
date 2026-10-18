@@ -7138,6 +7138,7 @@ class TrainingPlanRow {
   static const String colIsPublicTemplate = 'is_public_template';
   static const String colTrimmedAt = 'trimmed_at';
   static const String colPausedAt = 'paused_at';
+  static const String colRaceListingId = 'race_listing_id';
 
   final String id;
   final String userId;
@@ -7163,6 +7164,7 @@ class TrainingPlanRow {
   final bool isPublicTemplate;
   final DateTime? trimmedAt;
   final DateTime? pausedAt;
+  final String? raceListingId;
 
   const TrainingPlanRow({
     required this.id,
@@ -7189,6 +7191,7 @@ class TrainingPlanRow {
     required this.isPublicTemplate,
     this.trimmedAt,
     this.pausedAt,
+    this.raceListingId,
   });
 
   factory TrainingPlanRow.fromJson(Map<String, dynamic> json) => TrainingPlanRow(
@@ -7216,6 +7219,7 @@ class TrainingPlanRow {
     isPublicTemplate: (json['is_public_template'] as bool?) ?? false,
     trimmedAt: parseIsoStrictValue(json['trimmed_at']),
     pausedAt: parseIsoStrictValue(json['paused_at']),
+    raceListingId: json['race_listing_id'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -7243,6 +7247,7 @@ class TrainingPlanRow {
     colIsPublicTemplate: isPublicTemplate,
     colTrimmedAt: trimmedAt?.toIso8601String(),
     colPausedAt: pausedAt?.toIso8601String(),
+    colRaceListingId: raceListingId,
   };
 
   TrainingPlanRow copyWith({
@@ -7270,6 +7275,7 @@ class TrainingPlanRow {
     bool? isPublicTemplate,
     DateTime? trimmedAt,
     DateTime? pausedAt,
+    String? raceListingId,
   }) => TrainingPlanRow(
     id: id ?? this.id,
     userId: userId ?? this.userId,
@@ -7295,6 +7301,7 @@ class TrainingPlanRow {
     isPublicTemplate: isPublicTemplate ?? this.isPublicTemplate,
     trimmedAt: trimmedAt ?? this.trimmedAt,
     pausedAt: pausedAt ?? this.pausedAt,
+    raceListingId: raceListingId ?? this.raceListingId,
   );
 }
 

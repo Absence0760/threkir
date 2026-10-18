@@ -4882,6 +4882,7 @@ export type Database = {
           notes: string | null
           parent_template_id: string | null
           paused_at: string | null
+          race_listing_id: string | null
           rules: Json | null
           source: string
           start_date: string
@@ -4908,6 +4909,7 @@ export type Database = {
           notes?: string | null
           parent_template_id?: string | null
           paused_at?: string | null
+          race_listing_id?: string | null
           rules?: Json | null
           source?: string
           start_date: string
@@ -4934,6 +4936,7 @@ export type Database = {
           notes?: string | null
           parent_template_id?: string | null
           paused_at?: string | null
+          race_listing_id?: string | null
           rules?: Json | null
           source?: string
           start_date?: string
@@ -4956,6 +4959,20 @@ export type Database = {
             columns: ["parent_template_id"]
             isOneToOne: false
             referencedRelation: "training_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_plans_race_listing_id_fkey"
+            columns: ["race_listing_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_plans_race_listing_id_fkey"
+            columns: ["race_listing_id"]
+            isOneToOne: false
+            referencedRelation: "race_listings"
             referencedColumns: ["id"]
           },
         ]

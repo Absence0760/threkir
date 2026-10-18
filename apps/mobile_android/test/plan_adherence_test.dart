@@ -200,6 +200,49 @@ void main() {
       expect(d.plannedMetres, 8000);
       expect(d.direction, DriftDirection.onTrack);
     });
+
+    // A couch-to-5K week: three walk-run sessions whose distances are
+    // estimates at the fallback pace, the runner's real distance nowhere
+    // near them.
+    const walkRunWeek = [
+      DriftWorkout(
+          scheduledDate: '2026-03-02', kind: 'walk_run', targetDistanceM: 2050),
+      DriftWorkout(
+          scheduledDate: '2026-03-03', kind: 'rest', targetDistanceM: null),
+      DriftWorkout(
+          scheduledDate: '2026-03-04', kind: 'walk_run', targetDistanceM: 2050),
+      DriftWorkout(
+          scheduledDate: '2026-03-05', kind: 'rest', targetDistanceM: null),
+      DriftWorkout(
+          scheduledDate: '2026-03-06', kind: 'walk_run', targetDistanceM: 2050),
+    ];
+
+    test('weekJudgedByDistance: a week holding a walk-run session is not', () {
+      expect(weekJudgedByDistance(['easy', 'rest', 'long']), true);
+      expect(weekJudgedByDistance(const []), true);
+      expect(weekJudgedByDistance(['walk_run', 'rest']), false);
+      expect(weekJudgedByDistance(['easy', 'walk_run']), false);
+    });
+
+    test('a walk-run week is never flagged in distance', () {
+      // Twice the estimate on both sessions so far, against a declared volume.
+      final over = weeklyDriftToDate(
+        workouts: walkRunWeek,
+        runs: const [
+          DriftRun(date: '2026-03-02', distanceM: 4100),
+          DriftRun(date: '2026-03-04', distanceM: 4100),
+        ],
+        today: '2026-03-07',
+        weekTargetVolumeM: 6150,
+      );
+      expect(over.plannedMetres, 0);
+      expect(over.flagged, false);
+      // Nothing run at all: a missed session is the prompt's, not a km gap.
+      final none = weeklyDriftToDate(
+          workouts: walkRunWeek, runs: const [], today: '2026-03-07');
+      expect(none.direction, DriftDirection.onTrack);
+      expect(none.flagged, false);
+    });
   });
 
   group('missedWorkoutAdvice', () {
@@ -236,6 +279,19 @@ void main() {
             kind: kind, isTaper: false, recoveryWeekImminent: false));
         expect(a.recommendation, MakeUpRecommendation.skip);
         expect(a.reason, MissedWorkoutReason.notLongRun);
+      }
+    });
+
+    test('a missed walk-run session repeats the week, whatever the phase', () {
+      for (final isTaper in [false, true]) {
+        for (final recoveryWeekImminent in [false, true, null]) {
+          final a = missedWorkoutAdvice(MissedWorkoutInput(
+              kind: 'walk_run',
+              isTaper: isTaper,
+              recoveryWeekImminent: recoveryWeekImminent));
+          expect(a.recommendation, MakeUpRecommendation.skip);
+          expect(a.reason, MissedWorkoutReason.repeatWeek);
+        }
       }
     });
   });

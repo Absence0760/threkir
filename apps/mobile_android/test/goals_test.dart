@@ -380,8 +380,9 @@ void main() {
     _Done done(String date,
             {double? targetDistanceM = 5000,
             bool manuallyCompleted = true,
-            String? completedRunId}) =>
-        _Done(date, targetDistanceM, manuallyCompleted, completedRunId);
+            String? completedRunId,
+            String? kind}) =>
+        _Done(date, targetDistanceM, manuallyCompleted, completedRunId, kind);
 
     test(
         'markedDoneTally counts hand-marked sessions from the period start '
@@ -402,6 +403,20 @@ void main() {
       );
       expect(tally.distanceM, 11000);
       expect(tally.count, 3);
+    });
+
+    test('markedDoneTally: a walk-run session marked done counts, but adds no distance',
+        () {
+      final tally = markedDoneTally(
+        [
+          done('2026-04-13', kind: 'walk_run', targetDistanceM: 2050),
+          done('2026-04-14', kind: 'easy', targetDistanceM: 6000),
+        ],
+        goalPeriodStart(GoalPeriod.week, now),
+        now,
+      );
+      expect(tally.distanceM, 6000);
+      expect(tally.count, 2);
     });
 
     test(
@@ -710,6 +725,9 @@ class _Done implements PlanCompletion {
   final bool manuallyCompleted;
   @override
   final String? completedRunId;
+  @override
+  final String? kind;
   const _Done(this.scheduledDate, this.targetDistanceM, this.manuallyCompleted,
-      this.completedRunId);
+      this.completedRunId,
+      [this.kind]);
 }

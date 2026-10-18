@@ -147,6 +147,7 @@ class _MissedWorkoutPromptCardState extends State<MissedWorkoutPromptCard> {
       MissedWorkoutReason.taper => l10n.missedPromptTaperBody,
       MissedWorkoutReason.recoverySoon => l10n.missedPromptRecoveryBody,
       MissedWorkoutReason.notLongRun => l10n.missedPromptLetGoBody,
+      MissedWorkoutReason.repeatWeek => l10n.missedPromptRepeatWeekBody,
     };
   }
 

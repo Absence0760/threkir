@@ -5151,5 +5151,12 @@
   "missedPromptRecommended": "Recomendado",
   "missedPromptLetGoDone": "Feito. O seu plano continua como estava.",
   "missedPromptSaveFailed": "Não foi possível guardar a sua resposta: {error}",
-  "missedPromptNothingToMakeUp": "Já não há nada para compensar."
+  "missedPromptNothingToMakeUp": "Já não há nada para compensar.",
+  "missedPromptRepeatWeekBody": "Falhar uma sessão não lhe custa nada. Continue, ou, se esta semana lhe pareceu difícil, repita-a antes de avançar. Repetir uma semana não tem qualquer penalização.",
+  "walkRunGraduationTitle": "Conseguiu: do sofá aos 5 km",
+  "walkRunGraduationBodyFiveK": "Correu 5 km sem parar. Começou com um minuto de corrida entre caminhadas.",
+  "walkRunGraduationBodyFinished": "Terminou o plano a correr do princípio ao fim, sem pausas para caminhar. Começou com um minuto de corrida entre caminhadas.",
+  "walkRunGraduationNextTitle": "E agora?",
+  "walkRunGraduationTenK": "Treinar para 10 km",
+  "walkRunGraduationKeepRunning": "Ou mantenha o hábito: três corridas fáceis por semana conservam o que construiu, sem precisar de plano."
 }

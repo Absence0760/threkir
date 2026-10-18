@@ -24,6 +24,7 @@
 library;
 
 import 'current_week.dart' show WeekStart;
+import 'plan_adherence.dart' show weekJudgedByDistance;
 import 'goals.dart'
     show GoalPeriod, PlanCompletion, RunGoal, markedDoneTally, weekStartLocal;
 
@@ -37,6 +38,7 @@ class LeadPlanWorkout implements PlanCompletion {
   final String? id;
   @override
   final String scheduledDate;
+  @override
   final String kind;
   @override
   final double? targetDistanceM;
@@ -46,6 +48,11 @@ class LeadPlanWorkout implements PlanCompletion {
   final String? completedRunId;
   final String? skippedAt;
 
+  /// Carried for the next-session line (`plannedWorkoutSize`), which states
+  /// a walk-run session in minutes. Web reads them off the row it passes.
+  final int? targetDurationSeconds;
+  final Object? structure;
+
   const LeadPlanWorkout({
     this.id,
     required this.scheduledDate,
@@ -54,6 +61,8 @@ class LeadPlanWorkout implements PlanCompletion {
     this.manuallyCompleted = false,
     this.completedRunId,
     this.skippedAt,
+    this.targetDurationSeconds,
+    this.structure,
   });
 }
 
@@ -215,19 +224,26 @@ WeeklyGoalTarget? weeklyGoalTarget(List<RunGoal> goals) {
       : WeeklyGoalTarget(distanceM: distanceM, runCount: runCount);
 }
 
+/// The plan's distance for the calendar week, or 0 when the week cannot be
+/// judged in distance ([weekJudgedByDistance]: it holds a walk-run session,
+/// whose distance is an estimate), so the lead falls back to the runner's own
+/// yardstick rather than a number the plan made up.
 double plannedDistanceForWeek(
   List<LeadPlanWorkout> workouts,
   DateTime thisWeekStart,
 ) {
   final first = _localIso(thisWeekStart);
   final last = _localIso(_addDays(thisWeekStart, 6));
+  final inWeek = [
+    for (final w in workouts)
+      if (w.scheduledDate.compareTo(first) >= 0 &&
+          w.scheduledDate.compareTo(last) <= 0)
+        w,
+  ];
+  if (!weekJudgedByDistance(inWeek.map((w) => w.kind))) return 0;
   var total = 0.0;
-  for (final w in workouts) {
+  for (final w in inWeek) {
     if (w.kind == 'rest') continue;
-    if (w.scheduledDate.compareTo(first) < 0 ||
-        w.scheduledDate.compareTo(last) > 0) {
-      continue;
-    }
     total += w.targetDistanceM ?? 0;
   }
   return total;

@@ -5151,5 +5151,12 @@
   "missedPromptRecommended": "Empfohlen",
   "missedPromptLetGoDone": "Ausgelassen. Dein Plan läuft unverändert weiter.",
   "missedPromptSaveFailed": "Deine Antwort konnte nicht gespeichert werden: {error}",
-  "missedPromptNothingToMakeUp": "Es gibt nichts mehr nachzuholen."
+  "missedPromptNothingToMakeUp": "Es gibt nichts mehr nachzuholen.",
+  "missedPromptRepeatWeekBody": "Eine verpasste Einheit kostet dich nichts. Mach einfach weiter, oder wiederhole die Woche, wenn sie dir schwergefallen ist, bevor du die nächste Stufe angehst. Eine Woche zu wiederholen ist kein Rückschritt.",
+  "walkRunGraduationTitle": "Geschafft: vom Sofa zu 5 km",
+  "walkRunGraduationBodyFiveK": "Du bist 5 km am Stück gelaufen. Angefangen hast du mit einer Minute Laufen zwischen Gehpausen.",
+  "walkRunGraduationBodyFinished": "Du hast den Plan durchgehend laufend beendet, ganz ohne Gehpausen. Angefangen hast du mit einer Minute Laufen zwischen Gehpausen.",
+  "walkRunGraduationNextTitle": "Wie geht es weiter?",
+  "walkRunGraduationTenK": "Für 10 km trainieren",
+  "walkRunGraduationKeepRunning": "Oder bleib einfach dran: Drei lockere Läufe pro Woche halten, was du dir aufgebaut hast, ganz ohne Plan."
 }

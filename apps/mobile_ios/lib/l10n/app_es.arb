@@ -5151,5 +5151,12 @@
   "missedPromptRecommended": "Recomendado",
   "missedPromptLetGoDone": "Hecho. Tu plan sigue igual.",
   "missedPromptSaveFailed": "No se pudo guardar tu respuesta: {error}",
-  "missedPromptNothingToMakeUp": "Ya no queda nada que recuperar."
+  "missedPromptNothingToMakeUp": "Ya no queda nada que recuperar.",
+  "missedPromptRepeatWeekBody": "Saltarte una sesión no te cuesta nada. Sigue adelante o, si esta semana se te hizo dura, repítela antes de subir de nivel. Repetir una semana no te penaliza.",
+  "walkRunGraduationTitle": "Lo lograste: del sofá a los 5 km",
+  "walkRunGraduationBodyFiveK": "Corriste 5 km sin parar. Empezaste con un minuto de carrera entre tramos caminando.",
+  "walkRunGraduationBodyFinished": "Terminaste el plan corriendo todo el rato, sin pausas para caminar. Empezaste con un minuto de carrera entre tramos caminando.",
+  "walkRunGraduationNextTitle": "¿Y ahora qué?",
+  "walkRunGraduationTenK": "Entrenar para 10 km",
+  "walkRunGraduationKeepRunning": "O mantén el hábito: tres carreras suaves por semana conservan lo que has construido, sin necesidad de plan."
 }

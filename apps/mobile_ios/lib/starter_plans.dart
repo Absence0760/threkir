@@ -76,7 +76,7 @@ class StarterSummary {
   /// The shortest and longest session, in whole minutes rounded to the nearest
   /// 5, for a starter whose sessions are timed (walk-run). Null for a
   /// distance-based starter, whose session length depends on the runner's
-  /// pace.
+  /// pace; for the same reason the walk-run graduation 5K is left out.
   final ({int min, int max})? sessionMinutes;
 
   const StarterSummary({
@@ -100,7 +100,8 @@ StarterSummary? starterSummary(String id) {
       for (final w in plan.weeks)
         for (final wo in w.workouts)
           if (wo.kind == WorkoutKind.walkRun &&
-              wo.targetDurationSeconds != null)
+              wo.targetDurationSeconds != null &&
+              wo.structure?.repeats?['distance_m'] == null)
             wo.targetDurationSeconds!,
     ];
     if (seconds.isNotEmpty) {

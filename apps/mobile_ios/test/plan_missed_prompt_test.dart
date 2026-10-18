@@ -224,4 +224,21 @@ void main() {
     expect(p?.makeUp?.toMetres, 20700);
     expect(p?.makeUpAnswers, ['old', 'new']);
   });
+
+  test('a missed walk-run session is answered with repeating the week, never a make-up',
+      () {
+    final weeks = [
+      _week(0, 'build', 0, [
+        _wo('wr-9', '2026-03-09', 'walk_run', 2050),
+        _wo('wr-11', '2026-03-11', 'walk_run', 2050),
+      ]),
+      _week(1, 'graduation', 0, [_wo('wr-16', '2026-03-16', 'walk_run', 2050)]),
+    ];
+    final p = missedWorkoutPrompt(weeks: weeks, today: _today);
+    expect(p?.workoutId, 'wr-9');
+    expect(p?.advice.recommendation, MakeUpRecommendation.skip);
+    expect(p?.advice.reason, MissedWorkoutReason.repeatWeek);
+    expect(p?.makeUp, isNull);
+    expect(p?.makeUpAnswers, isEmpty);
+  });
 }

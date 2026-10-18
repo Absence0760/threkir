@@ -17458,4 +17458,29 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get missedPromptNothingToMakeUp => '埋め合わせるものはもうありません。';
+
+  @override
+  String get missedPromptRepeatWeekBody =>
+      '1回休んでも失うものはありません。そのまま続けるか、今週がきつかったら次に進む前にもう一度繰り返しましょう。週を繰り返してもペナルティはありません。';
+
+  @override
+  String get walkRunGraduationTitle => '達成：ゼロから5km';
+
+  @override
+  String get walkRunGraduationBodyFiveK =>
+      '5kmを止まらずに走りきりました。始めはウォークの合間に1分走るところからでした。';
+
+  @override
+  String get walkRunGraduationBodyFinished =>
+      'ウォーク休憩なしで、最後まで走りきってプランを終えました。始めはウォークの合間に1分走るところからでした。';
+
+  @override
+  String get walkRunGraduationNextTitle => '次のステップ';
+
+  @override
+  String get walkRunGraduationTenK => '10kmに向けて練習する';
+
+  @override
+  String get walkRunGraduationKeepRunning =>
+      'または習慣を続けましょう。週3回の楽なランで、プランなしでも身につけた力を保てます。';
 }

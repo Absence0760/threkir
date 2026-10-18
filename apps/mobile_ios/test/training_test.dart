@@ -213,11 +213,63 @@ void main() {
       final wk9 = plan.weeks[8].workouts
           .firstWhere((w) => w.kind == WorkoutKind.walkRun);
       expect(wk9.structure!.repeats!['count'], 1);
+      expect(wk9.structure!.repeats!['duration_s'], 1800);
       expect(wk9.structure!.repeats!.containsKey('recovery_duration_s'), isFalse);
       // #273: the final week is a graduation, not a race — a beginner walk-run
       // plan has no goal race, so labelling it 'race' ("Race week") misleads.
       expect(plan.weeks[8].phase, PlanPhase.graduation);
       expect(plan.weeks[0].phase, PlanPhase.build);
+    });
+
+    test('generatePlan(beginnerWalkRun): the last session is a 5K ended by distance, and the only one', () {
+      for (final daysPerWeek in [1, 2, 3]) {
+        for (final weeks in [9, 12]) {
+          final plan = generatePlan(GeneratePlanInput(
+            goalEvent: GoalEvent.distance5k,
+            startDate: DateTime(2026, 6, 1),
+            daysPerWeek: daysPerWeek,
+            weeks: weeks,
+            beginnerWalkRun: true,
+          ));
+          final sessions = plan.weeks
+              .expand((w) => w.workouts)
+              .where((w) => w.kind == WorkoutKind.walkRun)
+              .toList();
+          final last = sessions.last;
+          expect(last.structure!.repeats!['count'], 1);
+          expect(last.structure!.repeats!['distance_m'], kWalkRunGraduationM);
+          expect(last.structure!.repeats!.containsKey('duration_s'), isFalse);
+          // A walk recovery keeps the whole session unpaced (decisions § 2074).
+          expect(last.structure!.repeats!['recovery_pace'], 'walk');
+          expect(last.structure!.warmup!['duration_s'], 300);
+          expect(last.structure!.cooldown!['duration_s'], 300);
+          expect(
+              last.scheduledDate,
+              plan.weeks.last.workouts
+                  .where((w) => w.kind == WorkoutKind.walkRun)
+                  .last
+                  .scheduledDate);
+          expect(
+              sessions
+                  .where((w) => w.structure!.repeats!['distance_m'] != null)
+                  .length,
+              1);
+        }
+      }
+      // At the 12:12/km fallback the run is 61 min of the 71-min session, and
+      // the distance counts the walking either side at 11:40/km.
+      final fallback = generatePlan(GeneratePlanInput(
+        goalEvent: GoalEvent.distance5k,
+        startDate: DateTime(2026, 6, 1),
+        daysPerWeek: 3,
+        beginnerWalkRun: true,
+      ));
+      final fiveK = fallback.weeks[8].workouts
+          .where((w) => w.kind == WorkoutKind.walkRun)
+          .last;
+      expect(fiveK.targetPaceSecPerKm, fallback.paces.easy);
+      expect(fiveK.targetDurationSeconds, (5 * fallback.paces.easy).round() + 600);
+      expect(fiveK.targetDistanceM, 5857);
     });
   });
 

@@ -18322,4 +18322,29 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get missedPromptNothingToMakeUp => 'Ya no queda nada que recuperar.';
+
+  @override
+  String get missedPromptRepeatWeekBody =>
+      'Saltarte una sesión no te cuesta nada. Sigue adelante o, si esta semana se te hizo dura, repítela antes de subir de nivel. Repetir una semana no te penaliza.';
+
+  @override
+  String get walkRunGraduationTitle => 'Lo lograste: del sofá a los 5 km';
+
+  @override
+  String get walkRunGraduationBodyFiveK =>
+      'Corriste 5 km sin parar. Empezaste con un minuto de carrera entre tramos caminando.';
+
+  @override
+  String get walkRunGraduationBodyFinished =>
+      'Terminaste el plan corriendo todo el rato, sin pausas para caminar. Empezaste con un minuto de carrera entre tramos caminando.';
+
+  @override
+  String get walkRunGraduationNextTitle => '¿Y ahora qué?';
+
+  @override
+  String get walkRunGraduationTenK => 'Entrenar para 10 km';
+
+  @override
+  String get walkRunGraduationKeepRunning =>
+      'O mantén el hábito: tres carreras suaves por semana conservan lo que has construido, sin necesidad de plan.';
 }

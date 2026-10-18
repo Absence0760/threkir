@@ -130,6 +130,13 @@ void main() {
     expect(workoutOverrunMetres(10000, null), isNull);
   });
 
+  test('workoutOverrunMetres: a walk-run session never over-runs its estimate',
+      () {
+    expect(workoutOverrunMetres(2050, 6000, 'walk_run'), isNull);
+    expect(workoutOverrunMetres(5857, 9000, 'walk_run'), isNull);
+    expect(workoutOverrunMetres(10000, 13000, 'easy'), 3000);
+  });
+
   test(
       'overrunDigits: whole units at ten or more, or when a decimal would read .0',
       () {
@@ -187,6 +194,42 @@ void main() {
     expect(weeks[1].actualMetres, 6000);
     expect(weeks[1].isComplete, isFalse);
     expect(weeks[1].workouts[0].isPast, isFalse);
+  });
+
+  test(
+      'buildReplanWeeks: a walk-run week plans no distance, so it never reads as over or under',
+      () {
+    final weeks = buildReplanWeeks(
+      startDate: _start,
+      today: '2026-06-15',
+      weeks: [
+        NudgeInputWeek(weekIndex: 0, phase: 'build', targetVolumeM: 6150, workouts: [
+          _wo('a', '2026-06-01', 'walk_run', 2050),
+          _wo('b', '2026-06-03', 'walk_run', 2050),
+        ]),
+        NudgeInputWeek(
+            weekIndex: 1,
+            phase: 'build',
+            targetVolumeM: null,
+            workouts: [_wo('c', '2026-06-08', 'walk_run', 2050)]),
+      ],
+      runs: [_run('2026-06-01', 5000), _run('2026-06-08', 5000)],
+    );
+    expect(weeks[0].plannedMetres, 0);
+    expect(weeks[0].actualMetres, 5000);
+    expect(weeks[1].plannedMetres, 0);
+    final n = planNudge(
+      planId: 'p',
+      status: 'active',
+      isTemplate: false,
+      startDate: _start,
+      endDate: '2026-08-30',
+      today: '2026-06-15',
+      weeks: weeks,
+      runDates: const [],
+      dismissed: const [],
+    );
+    expect(n, isNull);
   });
 
   test(

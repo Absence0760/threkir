@@ -369,11 +369,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             if (walkRun != null) ...[
               const SizedBox(height: 12),
               _label(theme, l10n.workoutMetricSession),
-              Text(formatWalkRunTotal(l10n, walkRun),
+              Text(formatWalkRunTotal(l10n, walkRun, (m) => fmtOverrun(m.toDouble())),
                   key: const Key('walkRunTotal'),
                   style: theme.textTheme.headlineMedium
                       ?.copyWith(fontWeight: FontWeight.w700)),
-              Text(formatWalkRunPattern(l10n, walkRun),
+              Text(formatWalkRunPattern(l10n, walkRun, (m) => fmtOverrun(m.toDouble())),
                   key: const Key('walkRunPattern'),
                   style: theme.textTheme.bodyMedium),
             ] else if (hasPace) ...[
@@ -513,7 +513,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     if (isWorkoutCompleted(w)) {
       final overrunM = w.completedRunId != null &&
               w.completedRunId == _linkedDistanceRunId
-          ? workoutOverrunMetres(w.targetDistanceM, _linkedDistance)
+          ? workoutOverrunMetres(w.targetDistanceM, _linkedDistance, w.kind)
           : null;
       final overrun = overrunM == null ? null : fmtOverrun(overrunM);
       return panel(

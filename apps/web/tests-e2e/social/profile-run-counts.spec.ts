@@ -56,7 +56,7 @@ test.describe('profile run counts', () => {
 		await expect(page.getByTestId('profile-run-count')).toHaveText(String(PUBLIC_RUNS));
 		const note = page.getByTestId('profile-private-runs-note');
 		await expect(note).toContainText(`${PRIVATE_RUNS} of your runs aren't public`);
-		await expect(note.getByRole('link', { name: 'View all in History' })).toHaveAttribute('href', '/history');
+		await expect(note.getByRole('link', { name: 'View all in Runs' })).toHaveAttribute('href', '/runs?view=list');
 		await ctx.close();
 	});
 

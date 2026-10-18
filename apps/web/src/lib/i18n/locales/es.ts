@@ -879,7 +879,7 @@ export const messages = {
 	"profile.openRunHistory": "Abrir historial de carreras",
 	"profile.privateRunsNoteOne": "1 de tus carreras no es pública, así que no aparece aquí.",
 	"profile.privateRunsNoteMany": "{n} de tus carreras no son públicas, así que no aparecen aquí.",
-	"profile.privateRunsNoteLink": "Ver todas en el historial",
+	"profile.privateRunsNoteLink": "Ver todas en Carreras",
 	"profile.connectIntegration": "Conectar una integración",
 	"profile.runsEmptyTitle": "Aún no hay carreras públicas",
 	"profile.runsEmptyTextPrefix": "{name} aún no ha compartido ninguna carrera pública. Síguelo para ver carreras privadas en tu feed cuando lo haga.",

@@ -879,7 +879,7 @@ export const messages = {
 	"profile.openRunHistory": "Ouvrir l'historique des courses",
 	"profile.privateRunsNoteOne": "1 de vos courses n'est pas publique, elle n'apparaît donc pas ici.",
 	"profile.privateRunsNoteMany": "{n} de vos courses ne sont pas publiques, elles n'apparaissent donc pas ici.",
-	"profile.privateRunsNoteLink": "Tout voir dans l'historique",
+	"profile.privateRunsNoteLink": "Tout voir dans Courses",
 	"profile.connectIntegration": "Connecter une intégration",
 	"profile.runsEmptyTitle": "Aucune course publique pour l'instant",
 	"profile.runsEmptyTextPrefix": "{name} n'a pas encore partagé de course publique. Abonnez-vous pour voir ses courses privées dans votre fil dès qu'il en partagera.",

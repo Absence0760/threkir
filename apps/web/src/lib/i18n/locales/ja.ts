@@ -874,7 +874,7 @@ export const messages = {
 	"profile.openRunHistory": "ラン履歴を開く",
 	"profile.privateRunsNoteOne": "あなたのランのうち1件は公開されていないため、ここには表示されません。",
 	"profile.privateRunsNoteMany": "あなたのランのうち{n}件は公開されていないため、ここには表示されません。",
-	"profile.privateRunsNoteLink": "履歴ですべて表示",
+	"profile.privateRunsNoteLink": "ランですべて表示",
 	"profile.connectIntegration": "連携を接続",
 	"profile.runsEmptyTitle": "公開ランはまだありません",
 	"profile.runsEmptyTextPrefix": "{name}はまだ公開ランを共有していません。フォローすると、共有されたときにプライベートなランがフィードに表示されます。",

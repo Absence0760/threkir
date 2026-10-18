@@ -71,7 +71,7 @@ test.describe('gym and nutrition visibility switches', () => {
 		return page.locator('nav.sidebar .nav-label', { hasText: new RegExp(`^${label}$`) });
 	}
 
-	test('a fresh account sees neither Gym nor Nutrition, and History offers only Log run', async ({
+	test('a fresh account sees neither Gym nor Nutrition, and History sends it to the run list', async ({
 		browser,
 	}) => {
 		await clearChoices();
@@ -84,12 +84,13 @@ test.describe('gym and nutrition visibility switches', () => {
 			await expect(navLabel(page, 'Runs')).toBeVisible();
 			await expect(navLabel(page, 'Gym')).toHaveCount(0);
 			await expect(navLabel(page, 'Nutrition')).toHaveCount(0);
+			// No lift and no meal, so History would only repeat /runs
+			// (decisions § 2114): no nav item, and a direct visit lands on the
+			// run list's day view.
+			await expect(navLabel(page, 'History')).toHaveCount(0);
 
 			await page.goto('/history');
-			await expect(page.getByRole('button', { name: 'Log run', exact: true })).toBeVisible({
-				timeout: 15_000,
-			});
-			await expect(page.getByRole('button', { name: 'Log', exact: true })).toHaveCount(0);
+			await expect(page).toHaveURL(/\/runs\?view=list$/, { timeout: 15_000 });
 		} finally {
 			await page.context().close();
 		}

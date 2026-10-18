@@ -878,7 +878,7 @@ export const messages = {
 	"profile.openRunHistory": "Abrir histórico de corridas",
 	"profile.privateRunsNoteOne": "1 das suas corridas não é pública, por isso não aparece aqui.",
 	"profile.privateRunsNoteMany": "{n} das suas corridas não são públicas, por isso não aparecem aqui.",
-	"profile.privateRunsNoteLink": "Ver todas no histórico",
+	"profile.privateRunsNoteLink": "Ver todas em Corridas",
 	"profile.connectIntegration": "Conectar uma integração",
 	"profile.runsEmptyTitle": "Nenhuma corrida pública ainda",
 	"profile.runsEmptyTextPrefix": "{name} ainda não partilhou nenhuma corrida pública. Siga para ver corridas privadas no seu feed quando ele partilhar.",

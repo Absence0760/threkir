@@ -892,7 +892,7 @@ export const en = {
 	"profile.openRunHistory": "Open run history",
 	"profile.privateRunsNoteOne": "1 of your runs isn't public, so it isn't listed here.",
 	"profile.privateRunsNoteMany": "{n} of your runs aren't public, so they aren't listed here.",
-	"profile.privateRunsNoteLink": "View all in History",
+	"profile.privateRunsNoteLink": "View all in Runs",
 	"profile.connectIntegration": "Connect an integration",
 	"profile.runsEmptyTitle": "No public runs yet",
 	"profile.runsEmptyTextPrefix": "{name} hasn't shared a public run. Follow them to see private runs in your feed when they do.",

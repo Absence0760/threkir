@@ -19,7 +19,7 @@
 	import { goto } from '$app/navigation';
 	import { formatWeight } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
-	import { modalityVisible } from '#lib/stores/modality_visibility.svelte.ts';
+	import { hasNonRunData, modalityVisible } from '#lib/stores/modality_visibility.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import type { Snapshot } from './$types';
 	import { isListStale, listToken } from '#lib/core/list_freshness.ts';
@@ -83,6 +83,16 @@
 			(item) => item.startedAt,
 		),
 	);
+
+	// A runner who has logged nothing but runs gets nothing here that /runs
+	// does not already show, so the sidebar hides History for them and a
+	// direct visit lands on the run list's day-grouped view instead
+	// (decisions § 2114). Waits for the presence reads: null is "not known
+	// yet", never "no".
+	let runOnly = $derived(auth.user != null && hasNonRunData() === false);
+	$effect(() => {
+		if (runOnly) void goto('/runs?view=list', { replaceState: true });
+	});
 	function activitySummary(a: ActivityRow): { primary: string; secondary: string } {
 		const s = a.summary;
 		if (a.kind === 'lift') {
@@ -395,7 +405,7 @@
 		<p class="sr-only" role="status">{m('runs.loadingRuns')}</p>
 	{/snippet}
 
-	{#if !activitiesReady}
+	{#if !activitiesReady || runOnly}
 		{@render timelineSkeleton()}
 	{:else}
 		<!-- One consistent header per tab: kind chips on the leading edge (only

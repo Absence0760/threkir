@@ -879,7 +879,7 @@ export const messages = {
 	"profile.openRunHistory": "Laufhistorie öffnen",
 	"profile.privateRunsNoteOne": "1 deiner Läufe ist nicht öffentlich und wird hier deshalb nicht aufgeführt.",
 	"profile.privateRunsNoteMany": "{n} deiner Läufe sind nicht öffentlich und werden hier deshalb nicht aufgeführt.",
-	"profile.privateRunsNoteLink": "Alle im Verlauf ansehen",
+	"profile.privateRunsNoteLink": "Alle unter Läufe ansehen",
 	"profile.connectIntegration": "Integration verbinden",
 	"profile.runsEmptyTitle": "Noch keine öffentlichen Läufe",
 	"profile.runsEmptyTextPrefix": "{name} hat noch keinen öffentlichen Lauf geteilt. Folge ihm, um private Läufe in deinem Feed zu sehen, sobald welche da sind.",

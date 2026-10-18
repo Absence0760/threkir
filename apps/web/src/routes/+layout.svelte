@@ -22,6 +22,7 @@
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import {
+		hasNonRunData,
 		hydrateModalityVisibility,
 		modalityVisible,
 		resetModalityVisibility,
@@ -212,6 +213,9 @@
 	// `modalityVisible` says so: the runner's show_gym / show_nutrition choice,
 	// or, with none made, whether that modality has data (decisions § 1739).
 	// Hiding takes away the entry point, not the page: /gym still loads by URL.
+	// History appears only once a lift or a meal has been logged, whatever the
+	// toggles say: for a runner with runs alone it repeats /runs, and /history
+	// sends them to the run list's day view (decisions § 2114).
 	// `section` names the --section-<x> / --section-<x>-ink token pair in
 	// app.css. The hue cannot live here as a hex: the ink half has to flip per
 	// theme and a TS string cannot, which is how all seven glyphs came to read
@@ -233,6 +237,7 @@
 	const navItems = $derived(
 		navItemsBase.filter((item) => {
 			if (item.href === '/coach') return coachEnabled();
+			if (item.href === '/history') return hasNonRunData() === true;
 			const modality = NAV_MODALITY[item.href];
 			return modality === undefined || modalityVisible(modality);
 		}),

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { monthNames } from '#lib/format/calendar.ts';
@@ -38,10 +39,14 @@
 	let parts = $state<DateParts>(splitIsoDate(value));
 
 	// A value set from outside (the page's async profile load, a reset) wins
-	// over whatever is half-picked here.
+	// over whatever is half-picked here. Only `value` is tracked: tracking
+	// `parts` too re-ran this on every pick, and a half-picked date, which
+	// leaves `value` alone, was put straight back to the stored one.
 	$effect(() => {
 		const incoming = value;
-		if (incoming !== (composeIsoDate(parts) ?? '')) parts = splitIsoDate(incoming);
+		untrack(() => {
+			if (incoming !== (composeIsoDate(parts) ?? '')) parts = splitIsoDate(incoming);
+		});
 	});
 
 	const partial = $derived(isPartial(parts));

@@ -23602,5 +23602,13 @@
   "planDetailRaceDateOverlap": "The new race date runs into another active plan. Move or end that plan first.",
   "@planDetailRaceDateOverlap": {
     "description": "A later race date runs into another active plan"
+  },
+  "phoneSurfaceVibrationCues": "Vibration cues",
+  "@phoneSurfaceVibrationCues": {
+    "description": "Settings toggle title: vibrate the phone on workout step changes, workout completion and pace alerts during a run"
+  },
+  "phoneSurfaceVibrationCuesSubtitle": "Buzz when a workout step changes, when a workout ends and with pace alerts, even with the screen off.",
+  "@phoneSurfaceVibrationCuesSubtitle": {
+    "description": "Subtitle of the vibration-cues toggle"
   }
 }

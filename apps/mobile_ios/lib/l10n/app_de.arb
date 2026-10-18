@@ -5085,5 +5085,7 @@
   "planDetailRestartBeforeTodayError": "Dieses Startdatum liegt vor dem heutigen Tag in der Zeitzone deines Kontos. Wähle ein späteres Datum.",
   "planDetailRestartConfirm": "Plan neu starten",
   "planDetailRestartDone": "Plan neu gestartet. Das ist deine neue Kopie.",
-  "dashboardPlanPausedBody": "Pausiert. Setze ihn fort, um weiterzumachen; die verpassten Wochen rücken nach hinten."
+  "dashboardPlanPausedBody": "Pausiert. Setze ihn fort, um weiterzumachen; die verpassten Wochen rücken nach hinten.",
+  "phoneSurfaceVibrationCues": "Vibrationssignale",
+  "phoneSurfaceVibrationCuesSubtitle": "Vibriert bei jedem Wechsel des Trainingsabschnitts, am Ende des Trainings und bei Pace-Warnungen, auch bei ausgeschaltetem Bildschirm."
 }

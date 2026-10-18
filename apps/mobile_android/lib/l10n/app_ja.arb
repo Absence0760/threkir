@@ -5085,5 +5085,7 @@
   "planDetailRestartBeforeTodayError": "その開始日は、アカウントのタイムゾーンでは今日より前です。もっと後の日付を選んでください。",
   "planDetailRestartConfirm": "プランをやり直す",
   "planDetailRestartDone": "プランをやり直しました。これが新しいコピーです。",
-  "dashboardPlanPausedBody": "一時停止中です。再開すると続きから始まり、休んだ週は後ろにずれます。"
+  "dashboardPlanPausedBody": "一時停止中です。再開すると続きから始まり、休んだ週は後ろにずれます。",
+  "phoneSurfaceVibrationCues": "バイブレーション通知",
+  "phoneSurfaceVibrationCuesSubtitle": "ワークアウトのステップが切り替わったとき、ワークアウトの終了時、ペースアラートのときに、画面がオフでも振動します。"
 }

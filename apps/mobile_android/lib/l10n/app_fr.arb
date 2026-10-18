@@ -5085,5 +5085,7 @@
   "planDetailRestartBeforeTodayError": "Cette date de début est antérieure à aujourd'hui dans le fuseau horaire de votre compte. Choisissez une date plus tardive.",
   "planDetailRestartConfirm": "Recommencer le plan",
   "planDetailRestartDone": "Plan recommencé. Voici votre nouvelle copie.",
-  "dashboardPlanPausedBody": "En pause. Reprenez-le pour continuer ; les semaines manquées sont décalées."
+  "dashboardPlanPausedBody": "En pause. Reprenez-le pour continuer ; les semaines manquées sont décalées.",
+  "phoneSurfaceVibrationCues": "Signaux par vibration",
+  "phoneSurfaceVibrationCuesSubtitle": "Vibre à chaque changement d'étape de la séance, à la fin de la séance et lors des alertes d'allure, même écran éteint."
 }

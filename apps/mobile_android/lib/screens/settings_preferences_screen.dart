@@ -1601,6 +1601,16 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                         await _roamPush(widget.settingsSync?.pushAudioCues);
                       },
                     ),
+                    SwitchListTile(
+                      title: Text(l10n.phoneSurfaceVibrationCues),
+                      subtitle: Text(l10n.phoneSurfaceVibrationCuesSubtitle),
+                      value: prefs.hapticFeedback,
+                      onChanged: (v) async {
+                        await prefs.setHapticFeedback(v);
+                        await _roamPush(
+                            widget.settingsSync?.pushHapticFeedback);
+                      },
+                    ),
                     if (prefs.audioCues)
                       SwitchListTile(
                         title: Text(l10n.prefsMinimalVoiceCues),

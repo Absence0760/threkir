@@ -14,6 +14,7 @@ import type { PreferredUnit } from '../types';
 import { currentLocale } from '../i18n/store.svelte';
 import { formatDecimal, formatInteger } from './number';
 import { paceMinutesSeconds, isMeaningfulPace, paceToleranceLabel } from './pace_format';
+import { overrunDigits } from '../training/plan_nudges';
 import {
 	type WeightUnit,
 	parseWeightUnit,
@@ -148,6 +149,12 @@ export function fmtKm(metres: number | null | undefined, digits = 1): string {
 	const loc = currentLocale();
 	if (unit.value === 'mi') return `${formatDecimal(metres / METRES_PER_MILE, digits, loc)} mi`;
 	return `${formatDecimal(metres / 1000, digits, loc)} km`;
+}
+
+/// How far a workout ran past its target, for "Done · +3 km": whole units
+/// unless a tenth says something (`overrunDigits`, plan_nudges.ts).
+export function fmtOverrun(metres: number): string {
+	return fmtKm(metres, overrunDigits(distanceInPreferred(metres).value));
 }
 
 const FEET_PER_METRE = 3.28084;

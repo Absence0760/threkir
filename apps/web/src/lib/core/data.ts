@@ -6032,6 +6032,21 @@ export async function fetchWorkout(
 	return { workout: (data as PlanWorkout | null) ?? null, error: error?.message ?? null };
 }
 
+/// Distances of the runs linked to plan workouts, by run id, for the
+/// "Done · +3 km" status. Ids the caller cannot read (a coach looking at an
+/// athlete's plan, a deleted run) are simply absent.
+export async function fetchRunDistances(ids: readonly string[]): Promise<Map<string, number>> {
+	const wanted = [...new Set(ids)];
+	const rows = await readChunked(wanted, async (part) => {
+		const { data, error } = await supabase.from(TABLES.runs).select('id, distance_m').in('id', part);
+		if (error) throw dbError(error);
+		return data ?? [];
+	});
+	const out = new Map<string, number>();
+	for (const r of rows) if (r.distance_m != null) out.set(r.id, r.distance_m);
+	return out;
+}
+
 /// Who owns a plan, for the "updated by your coach" line on a workout
 /// (`isEditedByCoach`). Null when the row can't be read; the line then stays
 /// hidden rather than guessing.

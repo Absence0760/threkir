@@ -2324,7 +2324,7 @@
 									title={m('planDetail.repeatWeekHint')}
 								>
 									<span class="material-symbols">replay</span>
-									{m('planDetail.repeatWeek')}
+									{m('planDetail.repeatWeekAction')}
 								</button>
 							{/if}
 							{#if isOwner && !plan.is_template}

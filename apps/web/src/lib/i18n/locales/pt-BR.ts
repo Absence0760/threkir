@@ -6587,7 +6587,7 @@ export const messages = {
 	"planDetail.ariaMissedSuffix": ", não realizado",
 	"planDetail.ariaTodaySuffix": ", hoje",
 	"planDetail.repeatWeek": "Repetir esta semana",
-	"planDetail.repeatWeekHint": "Pesado demais? Repita esta semana na próxima e adie o resto do plano em uma semana.",
+	"planDetail.repeatWeekHint": "Pesado demais? Repita a semana na próxima e adie o resto do plano em uma semana.",
 	"planDetail.repeatWeekOfferTitle": "Pesado demais?",
 	"planDetail.repeatWeekOfferBody": "Repita esta semana na próxima. O que você já fez continua feito, e o resto do plano é adiado em uma semana.",
 	"planDetail.repeatWeekConfirmTitle": "Repetir a semana {n}?",

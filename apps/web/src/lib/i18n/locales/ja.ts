@@ -6583,7 +6583,7 @@ export const messages = {
 	"planDetail.ariaMissedSuffix": "、未実施",
 	"planDetail.ariaTodaySuffix": "、今日",
 	"planDetail.repeatWeek": "今週をもう一度",
-	"planDetail.repeatWeekHint": "きつすぎましたか？今週の内容を来週もう一度行い、残りのプランを1週間後ろにずらします。",
+	"planDetail.repeatWeekHint": "きつすぎましたか？この週の内容を来週もう一度行い、残りのプランを1週間後ろにずらします。",
 	"planDetail.repeatWeekOfferTitle": "きつすぎましたか？",
 	"planDetail.repeatWeekOfferBody": "今週の内容を来週もう一度行います。完了したものはそのまま残り、残りのプランは1週間後ろにずれます。",
 	"planDetail.repeatWeekConfirmTitle": "第{n}週をもう一度行いますか？",

@@ -6618,7 +6618,7 @@ export const en = {
 	"planDetail.ariaMissedSuffix": ", missed",
 	"planDetail.ariaTodaySuffix": ", today",
 	"planDetail.repeatWeek": "Repeat this week",
-	"planDetail.repeatWeekHint": "Too hard? Run this week again next week and push the rest of the plan back a week.",
+	"planDetail.repeatWeekHint": "Too hard? Run it again next week and push the rest of the plan back a week.",
 	"planDetail.repeatWeekOfferTitle": "Too hard?",
 	"planDetail.repeatWeekOfferBody": "Run this week again next week. What you've done stays done, and the rest of the plan moves back a week.",
 	"planDetail.repeatWeekConfirmTitle": "Repeat week {n}?",

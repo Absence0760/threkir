@@ -23413,5 +23413,111 @@
   "dashboardPlanPausedBody": "Paused. Resume to pick it up again; the weeks you missed move back.",
   "@dashboardPlanPausedBody": {
     "description": "Subtitle of Home's paused-plan card; tapping it opens the plan with the resume confirm"
+  },
+  "planDetailChangeRaceDate": "Change race date…",
+  "@planDetailChangeRaceDate": {
+    "description": "App-bar menu item opening the race date picker"
+  },
+  "planDetailRaceDatePickerHelp": "New race date",
+  "@planDetailRaceDatePickerHelp": {
+    "description": "Help text on the race date picker"
+  },
+  "planDetailRaceDateConfirmTitle": "Change race date?",
+  "@planDetailRaceDateConfirmTitle": {
+    "description": "Confirm title for changing the race date"
+  },
+  "planDetailRaceDateConfirmLater": "{n, plural, one{Your race moves to {date}. {n} build week is added before the taper, which stays as it is. Weeks you have already started don't change.} other{Your race moves to {date}. {n} build weeks are added before the taper, which stays as it is. Weeks you have already started don't change.}}",
+  "@planDetailRaceDateConfirmLater": {
+    "description": "Confirm body; date the new race day, n build weeks added",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRaceDateConfirmEarlier": "{n, plural, one{Your race moves to {date}. {n} build week is cut, and the taper stays as it is. Weeks you have already started don't change.} other{Your race moves to {date}. {n} build weeks are cut, and the taper stays as it is. Weeks you have already started don't change.}}",
+  "@planDetailRaceDateConfirmEarlier": {
+    "description": "Confirm body; date the new race day, n build weeks cut",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRaceDateConfirmSameWeek": "Your race moves to {date}, in the same week. No weeks are added or cut, and the taper stays as it is.",
+  "@planDetailRaceDateConfirmSameWeek": {
+    "description": "Confirm body when the race moves within its week",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRaceDateApply": "Change race date",
+  "@planDetailRaceDateApply": {
+    "description": "Confirm button for changing the race date"
+  },
+  "planDetailRaceDateDone": "Race date changed to {date}",
+  "@planDetailRaceDateDone": {
+    "description": "Banner after the race date changed",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRaceDateTooSoon": "{date} is too soon to keep your taper, even with the build cut. The earliest race date this plan can reach is {earliest}.",
+  "@planDetailRaceDateTooSoon": {
+    "description": "Refusal: date the picked day, earliest the first reachable race day",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "earliest": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRaceDatePast": "Pick a race date after today.",
+  "@planDetailRaceDatePast": {
+    "description": "Refusal: race date today or earlier"
+  },
+  "planDetailRaceDateInvalid": "That isn't a valid date.",
+  "@planDetailRaceDateInvalid": {
+    "description": "Refusal: unusable date"
+  },
+  "planDetailRaceDateUnchanged": "Your race is already on that day.",
+  "@planDetailRaceDateUnchanged": {
+    "description": "Refusal: same day as now"
+  },
+  "planDetailRaceDateNoRace": "This plan has no race ahead to move.",
+  "@planDetailRaceDateNoRace": {
+    "description": "Refusal: plan has no race ahead"
+  },
+  "planDetailRaceDateWeekStarted": "Race week has started, so no weeks can go in front of it. Pick a day this week, or start a new plan for the later race.",
+  "@planDetailRaceDateWeekStarted": {
+    "description": "Refusal: race week has started"
+  },
+  "planDetailRaceDateTooFar": "That is more than a year further out. Start a new plan for that race instead.",
+  "@planDetailRaceDateTooFar": {
+    "description": "Refusal: more than a year later"
+  },
+  "planDetailRaceDateNoBuild": "This plan has no build week to repeat, so it can't be made longer.",
+  "@planDetailRaceDateNoBuild": {
+    "description": "Refusal: no build week to repeat"
+  },
+  "planDetailRaceDateInTheWay": "Another race or a completed session sits in the weeks that would move. Change that first.",
+  "@planDetailRaceDateInTheWay": {
+    "description": "Refusal: another race or completed session would move"
+  },
+  "planDetailRaceDateOverlap": "The new race date runs into another active plan. Move or end that plan first.",
+  "@planDetailRaceDateOverlap": {
+    "description": "A later race date runs into another active plan"
   }
 }

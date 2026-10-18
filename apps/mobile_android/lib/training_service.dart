@@ -12,6 +12,7 @@ import 'backend_timeout.dart';
 import 'health_consent.dart';
 import 'nutrition_targets.dart' show ageFromDob;
 import 'plan_bulk_ops.dart';
+import 'plan_race_date.dart' show RaceDateChange;
 import 'plan_resume.dart';
 import 'plan_copy.dart';
 import 'plan_current.dart';
@@ -747,6 +748,29 @@ class TrainingService extends ChangeNotifier {
         'p_plan_id': planId,
         'p_days': days,
         'p_shift_following': shiftFollowing,
+      });
+    } catch (e, s) {
+      Error.throwWithStackTrace(planWriteError(e), s);
+    }
+    notifyListeners();
+  }
+
+  /// Re-anchors a plan on a new race date: [change] (`raceDateChange`) names
+  /// the weeks to drop or repeat and `change_plan_race_date` applies them in
+  /// one transaction (decisions § 2120). A later end that runs into another
+  /// active plan surfaces as [ActivePlanExistsError] via [planWriteError].
+  Future<void> changePlanRaceDate(
+      String planId, RaceDateChange change, String todayIso) async {
+    try {
+      await _c.rpc('change_plan_race_date', params: {
+        'p_plan_id': planId,
+        'p_race_date': change.raceDateIso,
+        'p_today': todayIso,
+        'p_drop_week_ids': change.dropWeekIds,
+        'p_insert_at': change.insertAt,
+        'p_insert_count': change.insertCount,
+        'p_repeat_week_id': change.repeatWeekId,
+        'p_race_workout_id': change.raceWorkoutId,
       });
     } catch (e, s) {
       Error.throwWithStackTrace(planWriteError(e), s);

@@ -17928,4 +17928,91 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get dashboardPlanPausedBody =>
       'Pausiert. Setze ihn fort, um weiterzumachen; die verpassten Wochen rücken nach hinten.';
+
+  @override
+  String get planDetailChangeRaceDate => 'Wettkampfdatum ändern…';
+
+  @override
+  String get planDetailRaceDatePickerHelp => 'Neues Wettkampfdatum';
+
+  @override
+  String get planDetailRaceDateConfirmTitle => 'Wettkampfdatum ändern?';
+
+  @override
+  String planDetailRaceDateConfirmLater(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Dein Wettkampf rückt auf den $date. $n Aufbauwochen kommen vor dem Tapering hinzu, das bleibt, wie es ist. Bereits begonnene Wochen ändern sich nicht.',
+      one:
+          'Dein Wettkampf rückt auf den $date. $n Aufbauwoche kommt vor dem Tapering hinzu, das bleibt, wie es ist. Bereits begonnene Wochen ändern sich nicht.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailRaceDateConfirmEarlier(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Dein Wettkampf rückt auf den $date. $n Aufbauwochen fallen weg, das Tapering bleibt, wie es ist. Bereits begonnene Wochen ändern sich nicht.',
+      one:
+          'Dein Wettkampf rückt auf den $date. $n Aufbauwoche fällt weg, das Tapering bleibt, wie es ist. Bereits begonnene Wochen ändern sich nicht.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailRaceDateConfirmSameWeek(String date) {
+    return 'Dein Wettkampf rückt auf den $date, in derselben Woche. Es kommen keine Wochen hinzu oder fallen weg, das Tapering bleibt, wie es ist.';
+  }
+
+  @override
+  String get planDetailRaceDateApply => 'Wettkampfdatum ändern';
+
+  @override
+  String planDetailRaceDateDone(String date) {
+    return 'Wettkampfdatum auf $date geändert';
+  }
+
+  @override
+  String planDetailRaceDateTooSoon(String date, String earliest) {
+    return 'Der $date ist zu früh, um dein Tapering zu behalten, selbst wenn der Aufbau wegfällt. Das früheste Wettkampfdatum für diesen Plan ist der $earliest.';
+  }
+
+  @override
+  String get planDetailRaceDatePast => 'Wähle ein Wettkampfdatum nach heute.';
+
+  @override
+  String get planDetailRaceDateInvalid => 'Das ist kein gültiges Datum.';
+
+  @override
+  String get planDetailRaceDateUnchanged =>
+      'Dein Wettkampf ist bereits an diesem Tag.';
+
+  @override
+  String get planDetailRaceDateNoRace =>
+      'Dieser Plan hat keinen bevorstehenden Wettkampf, der sich verlegen ließe.';
+
+  @override
+  String get planDetailRaceDateWeekStarted =>
+      'Die Wettkampfwoche hat begonnen, davor können keine Wochen mehr hinzukommen. Wähle einen Tag in dieser Woche oder starte einen neuen Plan für den späteren Wettkampf.';
+
+  @override
+  String get planDetailRaceDateTooFar =>
+      'Das liegt mehr als ein Jahr weiter in der Zukunft. Starte stattdessen einen neuen Plan für diesen Wettkampf.';
+
+  @override
+  String get planDetailRaceDateNoBuild =>
+      'Dieser Plan hat keine Aufbauwoche zum Wiederholen und kann daher nicht verlängert werden.';
+
+  @override
+  String get planDetailRaceDateInTheWay =>
+      'In den Wochen, die sich verschieben würden, liegt ein anderer Wettkampf oder eine erledigte Einheit. Ändere das zuerst.';
+
+  @override
+  String get planDetailRaceDateOverlap =>
+      'Das neue Wettkampfdatum reicht in einen anderen aktiven Plan hinein. Verschiebe oder beende jenen Plan zuerst.';
 }

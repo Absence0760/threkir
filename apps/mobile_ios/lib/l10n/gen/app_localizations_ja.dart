@@ -17076,4 +17076,81 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get dashboardPlanPausedBody => '一時停止中です。再開すると続きから始まり、休んだ週は後ろにずれます。';
+
+  @override
+  String get planDetailChangeRaceDate => 'レース日を変更…';
+
+  @override
+  String get planDetailRaceDatePickerHelp => '新しいレース日';
+
+  @override
+  String get planDetailRaceDateConfirmTitle => 'レース日を変更しますか？';
+
+  @override
+  String planDetailRaceDateConfirmLater(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'レースは$dateに移ります。テーパーの前にビルド週を$n週追加し、テーパーはそのまま残します。すでに始まった週は変わりません。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailRaceDateConfirmEarlier(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'レースは$dateに移ります。ビルド週を$n週削減し、テーパーはそのまま残します。すでに始まった週は変わりません。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailRaceDateConfirmSameWeek(String date) {
+    return 'レースは同じ週の$dateに移ります。週の追加や削減はなく、テーパーはそのまま残します。';
+  }
+
+  @override
+  String get planDetailRaceDateApply => 'レース日を変更';
+
+  @override
+  String planDetailRaceDateDone(String date) {
+    return 'レース日を$dateに変更しました';
+  }
+
+  @override
+  String planDetailRaceDateTooSoon(String date, String earliest) {
+    return '$dateはビルドを削ってもテーパーを残すには早すぎます。このプランで設定できる最も早いレース日は$earliestです。';
+  }
+
+  @override
+  String get planDetailRaceDatePast => '今日より後のレース日を選んでください。';
+
+  @override
+  String get planDetailRaceDateInvalid => '有効な日付ではありません。';
+
+  @override
+  String get planDetailRaceDateUnchanged => 'レースはすでにその日です。';
+
+  @override
+  String get planDetailRaceDateNoRace => 'このプランには移動できる今後のレースがありません。';
+
+  @override
+  String get planDetailRaceDateWeekStarted =>
+      'レース週が始まっているため、その前に週を追加できません。今週の日を選ぶか、後のレースに向けて新しいプランを作成してください。';
+
+  @override
+  String get planDetailRaceDateTooFar => '1年以上先になります。そのレースには新しいプランを作成してください。';
+
+  @override
+  String get planDetailRaceDateNoBuild => 'このプランには繰り返せるビルド週がないため、延長できません。';
+
+  @override
+  String get planDetailRaceDateInTheWay =>
+      '移動する週に別のレースか完了済みのセッションがあります。先にそちらを変更してください。';
+
+  @override
+  String get planDetailRaceDateOverlap =>
+      '新しいレース日が別の有効なプランと重なります。先にそのプランを移動するか終了してください。';
 }

@@ -56,6 +56,7 @@ import 'profile_screen.dart';
 import '../backend_timeout.dart';
 import '../disclosure_state.dart';
 import '../widgets/finish_plan_card.dart';
+import '../widgets/plan_recap_card.dart';
 import '../widgets/walk_run_graduation_card.dart';
 import 'plan_new_screen.dart';
 import '../widgets/plan_break_card.dart';
@@ -2200,6 +2201,18 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
             onFinished: _load,
           ),
         ],
+        if (_isOwner(p) &&
+            PlanRecapCard.shows(status: p.status, isTemplate: p.isTemplate)) ...[
+          const SizedBox(height: 12),
+          PlanRecapCard(
+            key: ValueKey('planDetailRecap-${p.id}'),
+            training: widget.training,
+            plan: p,
+            workouts: allWorkouts,
+            now: widget.now(),
+            onBuildNext: _openNextPlan,
+          ),
+        ],
         if (_breakState(p).showing) ...[
           const SizedBox(height: 12),
           PlanBreakCard(
@@ -3399,6 +3412,18 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   /// lives on the Run tab — popping back to root and signalling
   /// `pendingStartWorkout` lets HomeScreen switch tabs and RunScreen
   /// load the workout.
+  /// The recap's "Build your next plan": the wizard on the start past the
+  /// race's recovery, with the race's 5K equivalent filled but unconfirmed.
+  void _openNextPlan(String startIso, int? seed5kSec) {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => PlanNewScreen(
+        training: widget.training,
+        initialRecent5kSec: seed5kSec,
+        initialStartDate: parseIsoDate(startIso),
+      ),
+    ));
+  }
+
   Future<void> _openWorkout(PlanWorkoutRow wo) async {
     final result = await Navigator.of(context).push(
       MaterialPageRoute<PlanWorkoutRow?>(

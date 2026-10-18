@@ -131,6 +131,18 @@
 		return isPlausibleRecent5k(n) ? n : undefined;
 	})();
 
+	// `?start=<yyyy-mm-dd>` (the plan recap's "Build your next plan") opens the
+	// wizard on the first Sunday after the race's recovery. Snapped to a Sunday
+	// like a picked date, and ignored when it is earlier than the wizard's own
+	// default, so a stale link never offers a start the wizard would refuse.
+	const startParam = page.url.searchParams.get('start')?.trim();
+	const initialStartFromLink = (() => {
+		if (!startParam || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(startParam)) return undefined;
+		if (Number.isNaN(Date.parse(`${startParam}T00:00:00`))) return undefined;
+		const aligned = alignPlanStartIso(startParam, false);
+		return aligned > defaultPlanStartIso(todayISO(), false) ? aligned : undefined;
+	})();
+
 	let kind = $state<PlanKind>(initialKind());
 
 	let templates = $state<TemplateOption[]>([]);
@@ -566,7 +578,7 @@
 		initialGoalDistanceM={racePreset?.ok && racePreset.preset.goalEvent == null ? raceDistanceM : null}
 		initialBeginnerWalkRun={goalPreset?.beginnerWalkRun}
 		{initialName}
-		initialStartDate={racePreset?.ok ? racePreset.preset.startDate : undefined}
+		initialStartDate={racePreset?.ok ? racePreset.preset.startDate : initialStartFromLink}
 		initialWeeks={racePreset?.ok ? racePreset.preset.weeks : undefined}
 		notBeforeIso={notBeforeParam}
 		initialDescription={describeParam}

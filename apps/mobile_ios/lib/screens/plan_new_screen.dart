@@ -114,6 +114,11 @@ class PlanNewScreen extends StatefulWidget {
   /// turns on the confirm switch.
   final int? initialRecent5kSec;
 
+  /// A start to open on (the plan recap's "Build your next plan", past the
+  /// race's recovery). Snapped to a Sunday like a picked date, and ignored
+  /// when it is earlier than the wizard's own default. Web: `?start=`.
+  final DateTime? initialStartDate;
+
   /// Used to open the AI disclosure when the plan assistant is refused for
   /// consent. Null resolves the global client at tap time.
   final ApiClient? apiClient;
@@ -137,6 +142,7 @@ class PlanNewScreen extends StatefulWidget {
     this.notBeforeIso,
     this.initialDescription,
     this.initialRecent5kSec,
+    this.initialStartDate,
     this.apiClient,
     this.loadAiPlanAvailable,
     this.requestPlanInputsFn,
@@ -355,6 +361,13 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       _startingPoint = _StartingPoint.newRunner;
       _daysPerWeek = _clampDays(_daysPerWeek, true);
       _startDate = defaultPlanStart(_today(), walkRun: true);
+    }
+    final linkedStart = widget.initialStartDate;
+    if (linkedStart != null) {
+      final aligned = alignPlanStart(linkedStart, walkRun: false);
+      if (aligned.isAfter(defaultPlanStart(_today(), walkRun: false))) {
+        _startDate = aligned;
+      }
     }
     _applyRacePreset();
     final suggested = widget.initialRecent5kSec;

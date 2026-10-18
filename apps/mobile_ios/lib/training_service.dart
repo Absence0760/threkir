@@ -14,6 +14,7 @@ import 'nutrition_targets.dart' show ageFromDob;
 import 'plan_bulk_ops.dart';
 import 'plan_break.dart' show BreakChange;
 import 'plan_race_date.dart' show RaceDateChange;
+import 'plan_recap.dart' show PlanRecapRecord, PlanRecapRun;
 import 'plan_repeat_week.dart' show RepeatWeekChange;
 import 'plan_resume.dart';
 import 'plan_copy.dart';
@@ -988,6 +989,60 @@ class TrainingService extends ChangeNotifier {
         if (r['distance_m'] is num)
           r['id'] as String: (r['distance_m'] as num).toDouble(),
     };
+  }
+
+  /// The runs and records the end-of-plan recap (`assemblePlanRecap`) reads,
+  /// each dated on the runner's local day. Runs reach two days past either
+  /// end of the plan, the run-to-workout matcher's cross-day reach (decisions
+  /// § 2079), so a linked run on the window's edge is still found by id.
+  /// Throws, so the card can say the recap failed. Web twin:
+  /// `fetchPlanRecapSources` in data.ts.
+  Future<({List<PlanRecapRun> runs, List<PlanRecapRecord> records})>
+      fetchPlanRecapSources(String startIso, String endIso) async {
+    final uid = _uid;
+    if (uid == null) {
+      return (runs: <PlanRecapRun>[], records: <PlanRecapRecord>[]);
+    }
+    final from = parseIsoDate(shiftIsoDate(startIso, -2)).toUtc();
+    final before = parseIsoDate(shiftIsoDate(endIso, 3)).toUtc();
+    final results = await Future.wait([
+      _c
+          .from('runs')
+          .select('id, started_at, distance_m, duration_s, activity_type, is_dnf')
+          .eq('user_id', uid)
+          .gte('started_at', from.toIso8601String())
+          .lt('started_at', before.toIso8601String()),
+      _c
+          .from('personal_records')
+          .select('distance, best_time_s, achieved_at, run_id')
+          .eq('user_id', uid),
+    ]);
+    final runs = <PlanRecapRun>[];
+    for (final r in (results[0] as List).cast<Map<String, dynamic>>()) {
+      final started = DateTime.tryParse(r['started_at'] as String? ?? '');
+      if (started == null) continue;
+      runs.add(PlanRecapRun(
+        id: r['id'] as String,
+        date: toIsoDate(started.toLocal()),
+        distanceM: (r['distance_m'] as num?)?.toDouble(),
+        durationS: (r['duration_s'] as num?)?.round(),
+        activityType: r['activity_type'] as String?,
+        isDnf: r['is_dnf'] as bool?,
+      ));
+    }
+    final records = <PlanRecapRecord>[];
+    for (final r in (results[1] as List).cast<Map<String, dynamic>>()) {
+      final achieved = DateTime.tryParse(r['achieved_at'] as String? ?? '');
+      final time = (r['best_time_s'] as num?)?.round();
+      if (achieved == null || time == null) continue;
+      records.add(PlanRecapRecord(
+        distance: r['distance'] as String,
+        timeS: time,
+        date: toIsoDate(achieved.toLocal()),
+        runId: r['run_id'] as String?,
+      ));
+    }
+    return (runs: runs, records: records);
   }
 
   /// The viewer's active, non-template plans. Several can be active at once

@@ -65,6 +65,7 @@
 	import { isAdaptiveFitnessGateEnabled } from '#lib/training/adaptive_fitness_flag.ts';
 	import WorkoutEditor from '#lib/components/WorkoutEditor.svelte';
 	import FinishPlanPrompt from '#lib/components/FinishPlanPrompt.svelte';
+	import PlanRecapCard from '#lib/components/PlanRecapCard.svelte';
 	import PlanBreakCard from '#lib/components/PlanBreakCard.svelte';
 	import { loadBreakContext } from '#lib/core/plan_break_context.ts';
 	import { breakState, type BreakContext } from '#lib/training/plan_break_state.ts';
@@ -1946,6 +1947,10 @@
 
 		{#if isOwner && !plan.is_template && isPlanFinished(plan, today)}
 			<div class="finish-plan-slot"><FinishPlanPrompt {plan} onfinished={load} /></div>
+		{/if}
+
+		{#if isOwner && !plan.is_template && plan.status === 'completed'}
+			<PlanRecapCard {plan} {workouts} />
 		{/if}
 
 		{#if planBreak?.showing && planBreak.found && breakContext}

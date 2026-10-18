@@ -56,6 +56,7 @@ import type { RaceDateChange } from '../training/plan_race_date';
 import type { BreakChange } from '../training/plan_break';
 import type { RepeatWeekChange } from '../training/plan_repeat_week';
 import { shiftIsoDate } from '../training/plan_bulk_ops';
+import type { PlanRecapRecord, PlanRecapRun } from '../training/plan_recap';
 import {
 	EVENT_PHOTO_WINDOW_AFTER_MS,
 	EVENT_PHOTO_WINDOW_BEFORE_MS,
@@ -164,7 +165,7 @@ import {
 	DEFAULT_RELINK_WINDOW_DAYS,
 	type RelinkCandidateRun
 } from '../training/relink_candidates';
-import type { GeneratedPlan, GoalEvent, PlanPhase } from '../training/training';
+import { formatISO, parseISO, type GeneratedPlan, type GoalEvent, type PlanPhase } from '../training/training';
 import type { RacePriority } from '../training/plan_races';
 import { parseRosterRecentWorkouts, type RosterRecentWorkout } from '../training/coach_load';
 import { auth } from '../stores/auth.svelte';
@@ -6112,6 +6113,47 @@ export async function fetchRunDistances(ids: readonly string[]): Promise<Map<str
 	const out = new Map<string, number>();
 	for (const r of rows) if (r.distance_m != null) out.set(r.id, r.distance_m);
 	return out;
+}
+
+/// The runs and records the end-of-plan recap (`assemblePlanRecap`) reads,
+/// each dated on the runner's local day. Runs reach two days past either end
+/// of the plan, the run-to-workout matcher's cross-day reach (decisions
+/// § 2079), so a linked run on the window's edge is still found by id.
+export async function fetchPlanRecapSources(
+	startIso: string,
+	endIso: string,
+): Promise<{ runs: PlanRecapRun[]; records: PlanRecapRecord[] }> {
+	const userId = auth.user?.id;
+	if (!userId) return { runs: [], records: [] };
+	const [runs, recordsRes] = await Promise.all([
+		fetchRuns({
+			columns: ['id', 'started_at', 'distance_m', 'duration_s', 'activity_type', 'is_dnf'] as const,
+			startedAtFrom: parseISO(shiftIsoDate(startIso, -2)).toISOString(),
+			startedAtBefore: parseISO(shiftIsoDate(endIso, 3)).toISOString(),
+			throwOnError: true,
+		}),
+		supabase
+			.from(TABLES.personal_records)
+			.select('distance, best_time_s, achieved_at, run_id')
+			.eq('user_id', userId),
+	]);
+	if (recordsRes.error) throw dbError(recordsRes.error);
+	return {
+		runs: runs.map((r) => ({
+			id: r.id,
+			date: formatISO(new Date(r.started_at)),
+			distanceM: r.distance_m,
+			durationS: r.duration_s,
+			activityType: r.activity_type,
+			isDnf: r.is_dnf,
+		})),
+		records: (recordsRes.data ?? []).map((r) => ({
+			distance: r.distance,
+			timeS: r.best_time_s,
+			date: formatISO(new Date(r.achieved_at)),
+			runId: r.run_id,
+		})),
+	};
 }
 
 /// Who owns a plan, for the "updated by your coach" line on a workout

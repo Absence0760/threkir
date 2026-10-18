@@ -18506,4 +18506,154 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get walkRunGraduationKeepRunning =>
       'O mantén el hábito: tres carreras suaves por semana conservan lo que has construido, sin necesidad de plan.';
+
+  @override
+  String planRecapTitle(String name) {
+    return 'Así fue $name';
+  }
+
+  @override
+  String get planRecapLoading => 'Cargando el resumen…';
+
+  @override
+  String get planRecapLoadFailed => 'No se pudo cargar el resumen.';
+
+  @override
+  String get planRecapRetry => 'Reintentar';
+
+  @override
+  String get planRecapSessionsLabel => 'Sesiones';
+
+  @override
+  String planRecapSessionsValue(int done, int total) {
+    return '$done de $total';
+  }
+
+  @override
+  String planRecapSessionsPct(int pct) {
+    return '$pct % hecho';
+  }
+
+  @override
+  String planRecapSkipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count omitidas',
+      one: '$count omitida',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planRecapMissed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count perdidas',
+      one: '$count perdida',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planRecapLongRunsLabel => 'Tiradas largas';
+
+  @override
+  String planRecapLongRunsRange(String first, String longest) {
+    return 'De $first a $longest';
+  }
+
+  @override
+  String planRecapLongRunsLongest(String longest) {
+    return 'La más larga: $longest';
+  }
+
+  @override
+  String get planRecapDistanceLabel => 'Distancia';
+
+  @override
+  String get planRecapTimeLabel => 'Tiempo';
+
+  @override
+  String planRecapVolumeValue(String done, String planned) {
+    return '$done de $planned';
+  }
+
+  @override
+  String planRecapTimeValue(int h, int m) {
+    return '$h h $m min';
+  }
+
+  @override
+  String get planRecapRaceLabel => 'Día de carrera';
+
+  @override
+  String planRecapRaceRun(String time, String distance) {
+    return '$time en $distance';
+  }
+
+  @override
+  String get planRecapRaceDnf => 'No terminó';
+
+  @override
+  String get planRecapRaceNoRun => 'Marcada como hecha, sin carrera vinculada';
+
+  @override
+  String get planRecapRaceNotRun => 'Ninguna carrera el día de la prueba';
+
+  @override
+  String get planRecapRecordsLabel => 'Récords personales';
+
+  @override
+  String get planRecapRecordsNone =>
+      'Ningún récord personal nuevo durante este plan.';
+
+  @override
+  String get planRecapBracketMile => 'Milla';
+
+  @override
+  String get planRecapBracket5k => '5 km';
+
+  @override
+  String get planRecapBracket8k => '8 km';
+
+  @override
+  String get planRecapBracket10k => '10 km';
+
+  @override
+  String get planRecapBracket12k => '12 km';
+
+  @override
+  String get planRecapBracketHalf => 'Medio maratón';
+
+  @override
+  String get planRecapBracketMarathon => 'Maratón';
+
+  @override
+  String get planRecapNextTitle => 'Qué sigue';
+
+  @override
+  String planRecapRecovery(int days, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days días suaves',
+      one: '$days día suave',
+    );
+    return 'Primero recupera: $_temp0, hasta el $date.';
+  }
+
+  @override
+  String planRecapNextPlan(String date) {
+    return 'Tu próximo plan puede empezar el $date.';
+  }
+
+  @override
+  String planRecapNextPlanSeeded(String date, String time) {
+    return 'Tu próximo plan puede empezar el $date, con ritmos de un 5 km en $time, el equivalente de tu carrera. Lo confirmas en el asistente.';
+  }
+
+  @override
+  String get planRecapNextPlanCta => 'Crear tu próximo plan';
 }

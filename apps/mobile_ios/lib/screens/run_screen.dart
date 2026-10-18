@@ -78,6 +78,7 @@ import 'route_picker_screen.dart';
 import '../background_location_nudge.dart';
 import '../battery_optimisation_hint.dart';
 import '../live_activity_bridge.dart';
+import '../lock_screen_step.dart';
 import '../run_notification_bridge.dart';
 import '../run_stats.dart';
 import '../share_sheet.dart';
@@ -3203,7 +3204,19 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       paceText: _activityType.usesSpeed
           ? '${UnitFormat.speed(_pace, unit)} ${UnitFormat.speedLabel(unit)}'
           : '${UnitFormat.pace(_pace, unit)} ${UnitFormat.paceLabel(unit)}',
+      step: _lockScreenWorkoutStep(unit),
     );
+  }
+
+  /// Its own catch so a workout-runner fault costs the step line, not the
+  /// time / distance / pace beside it.
+  LockScreenStep? _lockScreenWorkoutStep(DistanceUnit unit) {
+    try {
+      return lockScreenStep(_workoutRunner, l10n: _l10n, unit: unit);
+    } catch (e) {
+      debugPrint('lock-screen workout step failed: $e');
+      return null;
+    }
   }
 
   /// Push the current stats to the native lock-screen notification,
@@ -3219,12 +3232,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _lastNotificationAt = now;
 
     final frame = _lockScreenFrame();
+    final content = runNotificationContent(frame);
     _lockScreen.update(
-      title: frame.title,
-      text: '${frame.elapsedText}  •  ${frame.distanceText}  •  ${frame.paceText}',
-      bigText: '${frame.timeLabel}: ${frame.elapsedText}\n'
-          '${frame.distanceLabel}: ${frame.distanceText}\n'
-          '${frame.paceLabel}: ${frame.paceText}',
+      title: content.title,
+      text: content.text,
+      bigText: content.bigText,
       paused: _manualPaused,
     );
     // iOS's half of the same surface. Offered at this 1 Hz rate and dropped

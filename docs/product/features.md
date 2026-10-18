@@ -89,7 +89,7 @@ On hold-to-stop: the run finalises, the in-progress save file is cleared, and th
 - The finished-run screen shows both Time (elapsed) and Moving (derived from the track), with pace computed against moving time
 - Hold-to-stop prevents accidental ends and the user can still reach it from the collapsed stats bar
 - A force-killed run is recovered on next launch with all its data
-- A persistent notification showing live time, distance, and pace appears in the notification shade and on the lock screen for the entire duration of the run (Android; iOS not yet implemented)
+- A persistent notification showing live time, distance, and pace appears in the notification shade and on the lock screen for the entire duration of the run (Android ongoing notification; iOS Live Activity). During a structured workout it also shows the current step: "Rep 3 of 6 · 400 m to go · @ 4:00 /km"
 
 See [run_recording.md](../features/run_recording.md) for the full technical reference.
 

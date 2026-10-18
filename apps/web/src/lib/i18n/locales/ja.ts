@@ -6612,4 +6612,11 @@ export const messages = {
 	"walkRunGraduation.nextTitle": "次のステップ",
 	"walkRunGraduation.tenK": "10kmに向けて練習する",
 	"walkRunGraduation.keepRunning": "または習慣を続けましょう。週3回の楽なランで、プランなしでも身につけた力を保てます。",
+	"planDetail.replanAnchor": "{from} → {to} — 実際に走った量から積み上げ直す",
+	"planDetail.anchorUnderNote": "最後に走った週は{km}で、計画を大きく下回りました。これからの週はそこから週に約10%ずつ積み上げ直し、計画に追いつくまで続けます。テーパーは計画どおりです。",
+	"planDetail.anchorReturnNote": "{n, plural, other {#週間}}プランから離れていました。これからの週は最後に1週間で走った{km}の約半分から再開し、週に約10%ずつ増やします。テーパーは計画どおりです。",
+	"planNudge.anchorUnderTitle": "先週は予定より少なめでした",
+	"planNudge.anchorUnderBody": "この先の週は、実際に走った量ではなく計画を基準に増えていきます。先週の量から積み上げ直す変更案があります。",
+	"planNudge.anchorReturnTitle": "無理なくプランに戻りましょう",
+	"planNudge.anchorReturnBody": "{n, plural, other {#週間}}プランから離れていました。この先の週を最後に走った量から積み上げ直す変更案があります。",
 } satisfies Messages;

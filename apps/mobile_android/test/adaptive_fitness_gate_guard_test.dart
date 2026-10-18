@@ -153,4 +153,45 @@ void main() {
     expect(RegExp(r'\b(tsb|atl|ctl)\b').hasMatch(outside), false,
         reason: 'a load value appears on the plan screen outside _adaptiveFitnessInput()');
   });
+
+  test('the comeback ramp is reached only through the gate (decisions § 2090)',
+      () {
+    String code(String path) => _read(path)
+        .split('\n')
+        .where((l) => !RegExp(r'^\s*//').hasMatch(l))
+        .join('\n');
+    final callers = <String>[];
+    for (final e in Directory('lib').listSync(recursive: true)) {
+      if (e is! File || !e.path.endsWith('.dart')) continue;
+      if (e.path.endsWith('plan_volume_anchor.dart')) continue;
+      if (RegExp(r'\banchorToActualVolume\(').hasMatch(code(e.path))) {
+        callers.add(e.path.replaceAll('\\', '/'));
+      }
+    }
+    expect(callers..sort(),
+        ['lib/plan_nudges.dart', 'lib/screens/plan_detail_screen.dart']);
+
+    final screen = code('lib/screens/plan_detail_screen.dart');
+    expect(RegExp(r'\banchorToActualVolume\(').allMatches(screen).length, 1,
+        reason: 'the plan screen must call anchorToActualVolume only inside _volumeAnchor()');
+    expect(
+        RegExp(r'VolumeAnchor\? _volumeAnchor\([^)]*\) \{\s*if \(!adaptiveFitnessGate\) return null;\s*return anchorToActualVolume\(')
+            .hasMatch(screen),
+        true,
+        reason: '_volumeAnchor() must return null before anchoring while the gate is off');
+
+    expect(
+        code('lib/plan_nudges.dart').contains(
+            'anchorVolume ? anchorToActualVolume(weeks: sorted) : null'),
+        true,
+        reason: 'planNudge must anchor only when the caller passes anchorVolume: true');
+    expect(RegExp(r'bool anchorVolume = false').hasMatch(code('lib/plan_nudges.dart')),
+        true,
+        reason: 'an absent anchorVolume must read as off');
+    expect(
+        code('lib/screens/dashboard_screen.dart')
+            .contains('final anchorVolume = adaptiveFitnessGate;'),
+        true,
+        reason: 'Home passes the gate itself as anchorVolume');
+  });
 }

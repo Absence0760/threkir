@@ -61,7 +61,9 @@ export interface ReplanWeek {
 	workouts: ReplanWorkout[];
 }
 
-export type ReplanReason = 'make_up_long' | 'ease_over_running';
+/// `anchor_actual_volume` is proposed by `plan_volume_anchor.ts`, never by
+/// `replanRemaining`; it shares this shape so it previews and applies the same way.
+export type ReplanReason = 'make_up_long' | 'ease_over_running' | 'anchor_actual_volume';
 
 export interface ReplanChange {
 	workoutId: string;

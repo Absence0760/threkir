@@ -6617,4 +6617,11 @@ export const messages = {
 	"walkRunGraduation.nextTitle": "¿Y ahora qué?",
 	"walkRunGraduation.tenK": "Entrenar para 10 km",
 	"walkRunGraduation.keepRunning": "O mantén el hábito: tres carreras suaves por semana conservan lo que has construido, sin necesidad de plan.",
+	"planDetail.replanAnchor": "{from} → {to} — reconstruir desde lo que corriste",
+	"planDetail.anchorUnderNote": "Tu última semana corriendo se quedó en {km}, muy por debajo del plan. Estas semanas ahora se reconstruyen desde ahí, alrededor de un 10 % por semana, hasta volver a encajar con el plan. La puesta a punto se mantiene como estaba.",
+	"planDetail.anchorReturnNote": "Has estado fuera del plan {n, plural, one {# semana} other {# semanas}}. Estas semanas vuelven a empezar en aproximadamente la mitad de los {km} que corriste en tu última semana y suben alrededor de un 10 % por semana. La puesta a punto se mantiene como estaba.",
+	"planNudge.anchorUnderTitle": "La semana pasada se quedó corta",
+	"planNudge.anchorUnderBody": "Las próximas semanas siguen subiendo desde el plan, no desde lo que corriste. Hay un cambio sugerido para reconstruir desde la semana pasada.",
+	"planNudge.anchorReturnTitle": "Volver al plan poco a poco",
+	"planNudge.anchorReturnBody": "Has estado fuera del plan {n, plural, one {# semana} other {# semanas}}. Hay un cambio sugerido para que las próximas semanas se reconstruyan desde lo último que corriste.",
 } satisfies Messages;

@@ -5,6 +5,7 @@
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { formatISO, isWorkoutCompleted, isWorkoutSkipped } from '#lib/training/training.ts';
+	import { isAdaptiveFitnessGateEnabled } from '#lib/training/adaptive_fitness_flag.ts';
 	import {
 		buildReplanWeeks,
 		DISMISSED_NUDGES_KEY,
@@ -15,7 +16,8 @@
 	import type { PlanWeek, PlanWorkout, TrainingPlan } from '#lib/types.ts';
 
 	/// The one plan card Home shows unprompted (`planNudge`): an existing
-	/// re-plan proposal worth a look, or the rest-day-runs note. Review opens
+	/// re-plan proposal worth a look (the anchored one opens through the plain
+	/// re-plan review, which prefers it), or the rest-day-runs note. Review opens
 	/// the plan's own preview; nothing here proposes or writes a change. Both
 	/// Review and Dismiss file the occurrence in `plan_nudges_dismissed`, so
 	/// it is not offered again on any device until a new week brings one.
@@ -81,7 +83,8 @@
 				runDates: runRows.map((r) => r.date),
 				dismissed: saved,
 				breakFromIso: breakWindow?.fromIso ?? null,
-				breakUntilIso: breakWindow?.untilIso ?? null
+				breakUntilIso: breakWindow?.untilIso ?? null,
+				anchorVolume: isAdaptiveFitnessGateEnabled()
 			});
 		} catch (e) {
 			console.error('Working out the plan card failed', e);
@@ -124,18 +127,26 @@
 		</span>
 		<div class="plan-nudge-body">
 			<h3 id="plan-nudge-title">
-				{n.kind === 'adaptive_under'
-					? m('planNudge.underTitle')
-					: n.kind === 'ease_over'
-						? m('planNudge.easeTitle')
-						: m('planNudge.restTitle')}
+				{n.kind === 'anchor_under'
+					? m('planNudge.anchorUnderTitle')
+					: n.kind === 'anchor_return'
+						? m('planNudge.anchorReturnTitle')
+						: n.kind === 'adaptive_under'
+							? m('planNudge.underTitle')
+							: n.kind === 'ease_over'
+								? m('planNudge.easeTitle')
+								: m('planNudge.restTitle')}
 			</h3>
 			<p>
-				{n.kind === 'adaptive_under'
-					? m('planNudge.underBody', { n: n.weeks, total: n.ofWeeks })
-					: n.kind === 'ease_over'
-						? m('planNudge.easeBody')
-						: m('planNudge.restBody', { n: n.weeks, total: n.ofWeeks })}
+				{n.kind === 'anchor_under'
+					? m('planNudge.anchorUnderBody')
+					: n.kind === 'anchor_return'
+						? m('planNudge.anchorReturnBody', { n: n.weeks })
+						: n.kind === 'adaptive_under'
+							? m('planNudge.underBody', { n: n.weeks, total: n.ofWeeks })
+							: n.kind === 'ease_over'
+								? m('planNudge.easeBody')
+								: m('planNudge.restBody', { n: n.weeks, total: n.ofWeeks })}
 			</p>
 		</div>
 		<div class="plan-nudge-actions">

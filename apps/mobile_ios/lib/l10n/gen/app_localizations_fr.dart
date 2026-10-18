@@ -6712,6 +6712,28 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get planNudgeAnchorUnderTitle =>
+      'Semaine dernière plus courte que prévu';
+
+  @override
+  String get planNudgeAnchorUnderBody =>
+      'Les semaines à venir progressent encore à partir du plan, pas de ce que vous avez couru. Une modification est proposée pour repartir plutôt de la semaine dernière.';
+
+  @override
+  String get planNudgeAnchorReturnTitle => 'Reprendre votre plan en douceur';
+
+  @override
+  String planNudgeAnchorReturnBody(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '# semaines',
+      one: '# semaine',
+    );
+    return 'Vous avez quitté le plan pendant $_temp0. Une modification est proposée pour que les semaines à venir repartent de ce que vous avez couru en dernier.';
+  }
+
+  @override
   String get planNudgeEaseTitle => 'Une grosse semaine';
 
   @override
@@ -6755,6 +6777,27 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String planDetailReplanMakeUp(String from, String to) {
     return 'Sortie longue $from → $to — rattraper une sortie longue manquée';
+  }
+
+  @override
+  String planDetailReplanAnchor(String from, String to) {
+    return '$from → $to — repartir de ce que vous avez couru';
+  }
+
+  @override
+  String planDetailAnchorUnderNote(String km) {
+    return 'Votre dernière semaine de course s\'est terminée à $km, bien en dessous du plan. Ces semaines repartent désormais de là, à environ 10 % de plus par semaine, jusqu\'à rejoindre le plan. L\'affûtage reste tel que prévu.';
+  }
+
+  @override
+  String planDetailAnchorReturnNote(int n, String km) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '# semaines',
+      one: '# semaine',
+    );
+    return 'Vous avez quitté le plan pendant $_temp0. Ces semaines reprennent à environ la moitié des $km courus lors de votre dernière semaine, puis progressent d\'environ 10 % par semaine. L\'affûtage reste tel que prévu.';
   }
 
   @override

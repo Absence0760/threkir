@@ -10,7 +10,8 @@ import '../training_service.dart' show ActivePlanOverview;
 import 'top_banner.dart';
 
 /// The one plan card Home shows unprompted ([planNudge]): an existing re-plan
-/// proposal worth a look, or the rest-day-runs note. Review hands the plan's
+/// proposal worth a look (the anchored one opens through the plain re-plan
+/// review, which prefers it), or the rest-day-runs note. Review hands the plan's
 /// own preview the job ([onReview]); nothing here proposes or writes a change.
 /// Both Review and Dismiss file the occurrence in `plan_nudges_dismissed`, so
 /// it is not offered again on any device until a new week brings one. Web
@@ -28,6 +29,9 @@ class PlanNudgeCard extends StatefulWidget {
   /// The days a break covered (`breakWindow`): no nudge judges them.
   final ({String fromIso, String untilIso})? breakWindow;
 
+  /// The comeback ramp's deploy gate; the host passes `adaptiveFitnessGate`.
+  final bool anchorVolume;
+
   const PlanNudgeCard({
     super.key,
     required this.overview,
@@ -37,6 +41,7 @@ class PlanNudgeCard extends StatefulWidget {
     required this.onReview,
     this.hidden = false,
     this.breakWindow,
+    this.anchorVolume = false,
   });
 
   /// The dismissed occurrences in the prefs bag.
@@ -51,6 +56,7 @@ class PlanNudgeCard extends StatefulWidget {
     required List<String> dismissed,
     required DateTime now,
     ({String fromIso, String untilIso})? breakWindow,
+    bool anchorVolume = false,
   }) {
     try {
       final o = overview;
@@ -103,6 +109,7 @@ class PlanNudgeCard extends StatefulWidget {
         dismissed: dismissed,
         breakFromIso: breakWindow?.fromIso,
         breakUntilIso: breakWindow?.untilIso,
+        anchorVolume: anchorVolume,
       );
     } catch (e) {
       debugPrint('PlanNudgeCard: working out the card failed: $e');
@@ -126,6 +133,7 @@ class _PlanNudgeCardState extends State<PlanNudgeCard> {
         dismissed: _dismissed,
         now: widget.now,
         breakWindow: widget.breakWindow,
+        anchorVolume: widget.anchorVolume,
       );
 
   Future<bool> _file(String key) async {
@@ -161,6 +169,14 @@ class _PlanNudgeCardState extends State<PlanNudgeCard> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final (title, body) = switch (n.kind) {
+      PlanNudgeKind.anchorUnder => (
+          l10n.planNudgeAnchorUnderTitle,
+          l10n.planNudgeAnchorUnderBody
+        ),
+      PlanNudgeKind.anchorReturn => (
+          l10n.planNudgeAnchorReturnTitle,
+          l10n.planNudgeAnchorReturnBody(n.weeks)
+        ),
       PlanNudgeKind.adaptiveUnder => (
           l10n.planNudgeUnderTitle,
           l10n.planNudgeUnderBody(n.weeks, n.ofWeeks)

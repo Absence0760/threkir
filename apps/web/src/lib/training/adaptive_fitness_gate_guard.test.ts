@@ -137,3 +137,35 @@ test('the plan page reads the gate only through the flag module and holds no loa
 	assert.equal(/\b(tsb|atl|ctl)\b/.test(outside), false,
 		'a load value appears on the plan page outside adaptiveFitnessInput()');
 });
+
+test('the comeback ramp is reached only through the gate (decisions § 2090)', () => {
+	const callers: string[] = [];
+	const walk = (dir: string): void => {
+		for (const e of readdirSync(resolve(dir), { withFileTypes: true })) {
+			const p = `${dir}/${e.name}`;
+			if (e.isDirectory()) {
+				if (e.name !== 'node_modules') walk(p);
+			} else if (/\.(ts|svelte)$/.test(e.name) && !/\.test\.ts$/.test(e.name)) {
+				if (/\banchorToActualVolume\(/.test(stripComments(read(p))) && !p.endsWith('training/plan_volume_anchor.ts')) {
+					callers.push(p);
+				}
+			}
+		}
+	};
+	walk('src');
+	assert.deepEqual(callers.sort(), ['src/lib/training/plan_nudges.ts', 'src/routes/plans/[id]/+page.svelte']);
+
+	const page = read('src/routes/plans/[id]/+page.svelte');
+	assert.equal((page.match(/\banchorToActualVolume\(/g) ?? []).length, 1,
+		'the plan page must call anchorToActualVolume only inside volumeAnchor()');
+	assert.match(page,
+		/function volumeAnchor\([^)]*\)[^{]*\{\s*if \(!isAdaptiveFitnessGateEnabled\(\)\) return null;\s*return anchorToActualVolume\(/,
+		'volumeAnchor() must return null before anchoring while the gate is off');
+
+	const nudges = stripComments(read('src/lib/training/plan_nudges.ts'));
+	assert.match(nudges, /input\.anchorVolume === true \? anchorToActualVolume\(\{ weeks \}\) : null/,
+		'planNudge must anchor only when the caller passes anchorVolume: true');
+	const card = read('src/lib/components/PlanNudgeCard.svelte');
+	assert.match(card, /anchorVolume:\s*isAdaptiveFitnessGateEnabled\(\)/,
+		'Home passes the gate itself as anchorVolume');
+});

@@ -8961,6 +8961,27 @@
       }
     }
   },
+  "planNudgeAnchorUnderTitle": "Last week came in short",
+  "@planNudgeAnchorUnderTitle": {
+    "description": "Home plan card title: last week came in well under plan (comeback ramp)"
+  },
+  "planNudgeAnchorUnderBody": "The weeks ahead still step up from the plan, not from what you ran. There's a suggested change to build back from last week instead.",
+  "@planNudgeAnchorUnderBody": {
+    "description": "Home plan card body: last week came in well under plan (comeback ramp)"
+  },
+  "planNudgeAnchorReturnTitle": "Easing back into your plan",
+  "@planNudgeAnchorReturnTitle": {
+    "description": "Home plan card title: back after weeks away from the plan (comeback ramp)"
+  },
+  "planNudgeAnchorReturnBody": "You've been away from the plan for {n, plural, one {# week} other {# weeks}}. There's a suggested change so the weeks ahead build back up from what you last ran.",
+  "@planNudgeAnchorReturnBody": {
+    "description": "Home plan card body: back after n weeks away from the plan (comeback ramp)",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "planNudgeEaseTitle": "A big week",
   "@planNudgeEaseTitle": {
     "description": "Home plan card title: last week well over plan"
@@ -9031,6 +9052,39 @@
         "type": "String"
       },
       "to": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailReplanAnchor": "{from} → {to} — build back from what you ran",
+  "@planDetailReplanAnchor": {
+    "description": "Plan-detail re-plan preview row: a session lowered so the weeks ahead build back from the volume actually run (comeback ramp)",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailAnchorUnderNote": "Your last week of running came in at {km}, well under plan. These weeks now build back from that, about 10% a week, until the plan fits again. The taper stays as planned.",
+  "@planDetailAnchorUnderNote": {
+    "description": "Plan-detail re-plan preview note: the last week came in well under plan, km is what was run that week",
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailAnchorReturnNote": "You've been away from the plan for {n, plural, one {# week} other {# weeks}}. These weeks restart at about half of the {km} you last ran in a week and build about 10% a week. The taper stays as planned.",
+  "@planDetailAnchorReturnNote": {
+    "description": "Plan-detail re-plan preview note after weeks away from the plan: n weeks away, km is the last week run",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "km": {
         "type": "String"
       }
     }

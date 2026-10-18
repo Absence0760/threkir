@@ -6329,6 +6329,22 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get planNudgeAnchorUnderTitle => '先週は予定より少なめでした';
+
+  @override
+  String get planNudgeAnchorUnderBody =>
+      'この先の週は、実際に走った量ではなく計画を基準に増えていきます。先週の量から積み上げ直す変更案があります。';
+
+  @override
+  String get planNudgeAnchorReturnTitle => '無理なくプランに戻りましょう';
+
+  @override
+  String planNudgeAnchorReturnBody(int n) {
+    String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '#週間');
+    return '$_temp0プランから離れていました。この先の週を最後に走った量から積み上げ直す変更案があります。';
+  }
+
+  @override
   String get planNudgeEaseTitle => '走り込んだ1週間';
 
   @override
@@ -6371,6 +6387,22 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String planDetailReplanMakeUp(String from, String to) {
     return 'ロング走 $from → $to — 逃したロング走を取り戻す';
+  }
+
+  @override
+  String planDetailReplanAnchor(String from, String to) {
+    return '$from → $to — 実際に走った量から積み上げ直す';
+  }
+
+  @override
+  String planDetailAnchorUnderNote(String km) {
+    return '最後に走った週は$kmで、計画を大きく下回りました。これからの週はそこから週に約10%ずつ積み上げ直し、計画に追いつくまで続けます。テーパーは計画どおりです。';
+  }
+
+  @override
+  String planDetailAnchorReturnNote(int n, String km) {
+    String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '#週間');
+    return '$_temp0プランから離れていました。これからの週は最後に1週間で走った$kmの約半分から再開し、週に約10%ずつ増やします。テーパーは計画どおりです。';
   }
 
   @override

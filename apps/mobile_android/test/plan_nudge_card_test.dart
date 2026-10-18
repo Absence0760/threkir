@@ -116,6 +116,13 @@ final _overRuns = [
   _run('r2', _day(2, 6), 36000),
 ];
 
+/// Weeks 0 and 1 on plan, week 2 run 10 km against 28 km: the anchor.
+final _shortRuns = [
+  _run('r0', _day(0, 6), 28000),
+  _run('r1', _day(1, 6), 28000),
+  _run('r2', _day(2, 6), 10000),
+];
+
 /// On plan every week, but runs on a rest day in weeks 0 and 1.
 final _restRuns = [
   _run('r0', _day(0, 6), 20000),
@@ -131,6 +138,7 @@ Future<List<PlanNudge>> _pump(
   required ActivePlanOverview overview,
   required List<Run> runs,
   required _FakeSettingsSync sync,
+  bool anchorVolume = false,
 }) async {
   final reviewed = <PlanNudge>[];
   await tester.pumpWidget(MaterialApp(
@@ -143,6 +151,7 @@ Future<List<PlanNudge>> _pump(
         settingsSync: sync,
         now: _now,
         onReview: reviewed.add,
+        anchorVolume: anchorVolume,
       ),
     ),
   ));
@@ -314,5 +323,31 @@ void main() {
     expect(reviewed.single.kind, PlanNudgeKind.easeOver);
     expect(reviewed.single.key, 'plan-1:ease_over:2');
     expect(sync.writes.single[SettingsKeys.planNudgesDismissed], ['plan-1:ease_over:2']);
+  });
+
+  testWidgets('with the comeback ramp on, a short week offers to build back '
+      'from it, and Review hands it to the host', (tester) async {
+    final sync = _FakeSettingsSync(_FakeSettingsService({}));
+    final reviewed = await _pump(tester,
+        overview: _overview(), runs: _shortRuns, sync: sync, anchorVolume: true);
+    expect(find.text('Last week came in short'), findsOneWidget);
+    expect(
+        find.text(
+            "The weeks ahead still step up from the plan, not from what you ran. There's a suggested change to build back from last week instead."),
+        findsOneWidget);
+    await tester.runAsync(() async {
+      await tester.tap(find.byKey(const Key('planNudgeReview')));
+    });
+    await pumpUntil(tester, () => sync.writes.isNotEmpty,
+        describe: 'the reviewed occurrence to be filed');
+    expect(reviewed.single.kind, PlanNudgeKind.anchorUnder);
+    expect(reviewed.single.key, 'plan-1:anchor_under:2');
+  });
+
+  testWidgets('with the comeback ramp off, the same short week shows nothing',
+      (tester) async {
+    final sync = _FakeSettingsSync(_FakeSettingsService({}));
+    await _pump(tester, overview: _overview(), runs: _shortRuns, sync: sync);
+    expect(find.byKey(const Key('planNudgeCard')), findsNothing);
   });
 }

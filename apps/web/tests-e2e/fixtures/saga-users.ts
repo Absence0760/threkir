@@ -45,7 +45,12 @@ const PASSWORD = 'sagatest123';
 
 export async function createSagaUsers(
 	count: number,
-	opts?: { displayNames?: string[] }
+	opts?: {
+		displayNames?: string[];
+		/// The lane's own base URL, for a secondary lane that boots its dev
+		/// server elsewhere (the configured lane); the sharded lane's otherwise.
+		baseURL?: string;
+	}
 ): Promise<SagaUser[]> {
 	if (count < 1) throw new Error('createSagaUsers: count must be >= 1');
 	const admin = getAdminClient();
@@ -114,10 +119,10 @@ export async function createSagaUsers(
 
 	// 2) sign each user in via the form to capture storage state.
 	//    Single browser process, parallel contexts. ~1.5s for 3 users.
-	// The sharded lane's base URL: this fixture signs its users in from a
-	// plain chromium.launch() with no `baseURL` fixture in scope. No
-	// secondary lane (livehub / exporthub / sso) uses saga users.
-	const baseURL = resolveBaseUrl();
+	// This fixture signs its users in from a plain chromium.launch() with no
+	// `baseURL` fixture in scope, so a secondary lane passes its own; the
+	// sharded lane's is the default.
+	const baseURL = opts?.baseURL ?? resolveBaseUrl();
 	const browser = await chromium.launch();
 	try {
 		await Promise.all(

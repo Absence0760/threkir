@@ -223,6 +223,64 @@ test('planNudge: an under-run trend with nothing safe to change says nothing', (
 	assert.equal(nudge(weeks, runs), null);
 });
 
+test('planNudge: a week well under plan anchors the weeks ahead, and outranks the trend card', () => {
+	const runs = [
+		{ date: '2026-06-02', distanceM: 8_000 },
+		{ date: '2026-06-14', distanceM: 20_000 },
+		{ date: '2026-06-21', distanceM: 12_000 },
+	];
+	const weeks = plan([40_000, 40_000, 40_000]);
+	assert.deepEqual(nudge(weeks, runs, { anchorVolume: true }), {
+		kind: 'anchor_under',
+		weekIndex: 2,
+		key: 'p:anchor_under:2',
+		weeks: 1,
+		ofWeeks: 1,
+	});
+	// The trend card would open the same anchored proposal, so it is not
+	// offered in its place once this one is dismissed.
+	assert.equal(nudge(weeks, runs, { anchorVolume: true, dismissed: ['p:anchor_under:2'] }), null);
+});
+
+test('planNudge: with the gate off no week is anchored, and the trend card is offered as before', () => {
+	const runs = [
+		{ date: '2026-06-02', distanceM: 8_000 },
+		{ date: '2026-06-14', distanceM: 20_000 },
+		{ date: '2026-06-21', distanceM: 12_000 },
+	];
+	const weeks = plan([40_000, 40_000, 40_000]);
+	assert.equal(nudge(weeks, runs)?.kind, 'adaptive_under');
+	assert.equal(nudge(weeks, runs, { anchorVolume: false })?.kind, 'adaptive_under');
+	assert.equal(nudge(weeks, runs, { dismissed: ['p:adaptive_under:2'] }), null);
+});
+
+test('planNudge: weeks away from a resumed plan re-anchor it, whatever the last week ran', () => {
+	const runs = [
+		{ date: '2026-06-02', distanceM: 8_000 },
+		{ date: '2026-06-07', distanceM: 26_000 },
+		{ date: '2026-06-09', distanceM: 8_000 },
+		{ date: '2026-06-14', distanceM: 20_000 },
+		{ date: '2026-06-16', distanceM: 8_000 },
+		{ date: '2026-06-21', distanceM: 20_000 },
+	];
+	// A resume pushed weeks 3 and 4 back four weeks, to indices 7 and 8.
+	const weeks = plan([34_000, 28_000, 28_000], [
+		{},
+		{},
+		{},
+		{ weekIndex: 7, workouts: [wo('e7', '2026-07-21', 'easy', 8_000), wo('l7', '2026-07-26', 'long', 22_000)] },
+		{ weekIndex: 8, workouts: [wo('e8', '2026-07-28', 'easy', 10_000), wo('l8', '2026-08-02', 'long', 22_000)] },
+	]);
+	assert.equal(nudge(weeks, runs, { today: '2026-07-15' }), null);
+	assert.deepEqual(nudge(weeks, runs, { today: '2026-07-15', anchorVolume: true }), {
+		kind: 'anchor_return',
+		weekIndex: 2,
+		key: 'p:anchor_return:2',
+		weeks: 4,
+		ofWeeks: 4,
+	});
+});
+
 test('planNudge: one week more than 20% over plan proposes the ease-off', () => {
 	const runs = [
 		{ date: '2026-06-07', distanceM: 28_000 },

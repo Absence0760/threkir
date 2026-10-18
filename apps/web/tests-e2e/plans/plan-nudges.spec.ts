@@ -2,7 +2,7 @@ import type { BrowserContext, Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/test';
 
-import { browserDate, noonOnBrowserDay } from '../fixtures/dates';
+import { browserDate, browserDayStart, noonOnBrowserDay } from '../fixtures/dates';
 import { readMaybeRow, readRow, readRows } from '../fixtures/db-read';
 import { acceptCookieConsent } from '../fixtures/helpers';
 import { getAdminClient } from '../fixtures/local-supabase';
@@ -310,6 +310,41 @@ test.describe('Home plan card and the over-run status', () => {
 			clientWidth: document.documentElement.clientWidth
 		}));
 		expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+	});
+
+	test('with the comeback ramp gate off, a single short week offers no card and resuming offers no re-anchor', async () => {
+		// The gate-on half lives in configured/plan-volume-anchor.spec.ts.
+		const short = await plantPlan('e2e nudge anchor off', [
+			{ volume: 28_000 },
+			{ volume: 28_000 },
+			{ volume: 28_000 },
+			{ volume: 28_000 },
+			{ volume: 28_000 }
+		]);
+		await run(day(0, 6), 28_000);
+		await run(day(1, 6), 28_000);
+		await run(day(2, 6), 10_000);
+
+		const page = await openHome();
+		await expect(page.locator('.plan-hero')).toBeVisible({ timeout: 15_000 });
+		await expect(page.getByTestId('plan-nudge')).toHaveCount(0);
+		await deletePlan(short.planId);
+
+		const { planId } = await plantPlan(
+			'e2e nudge resume off',
+			[{ volume: 28_000 }, { volume: 28_000 }, { volume: 28_000 }, { volume: 28_000 }, { volume: 28_000 }],
+			{ status: 'paused' }
+		);
+		const { error } = await getAdminClient()
+			.from('training_plans')
+			.update({ paused_at: browserDayStart(day(1, 1)) })
+			.eq('id', planId);
+		if (error) throw error;
+		await page.goto(`/plans/${planId}?resume=1`);
+		await expect(page.getByText(/move back 2 weeks/)).toBeVisible({ timeout: 15_000 });
+		await page.getByRole('button', { name: 'Apply' }).click();
+		await expect(page.getByText('Plan resumed and pushed back 2 weeks.')).toBeVisible();
+		await expect(page.locator('.replan-preview')).toHaveCount(0);
 	});
 
 	test('a paused plan gets no card', async () => {

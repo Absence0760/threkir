@@ -956,6 +956,24 @@ class AppLocalizationsDe extends AppLocalizations {
       'Dient zur Schätzung deiner täglichen Kalorien- und Makroziele.';
 
   @override
+  String get bodyMetricsSaveHint =>
+      'Dieser Abschnitt wird erst gespeichert, wenn du auf „Speichern“ tippst.';
+
+  @override
+  String get bodyMetricsUnsaved => 'Nicht gespeicherte Änderungen';
+
+  @override
+  String get bodyMetricsNutritionHeading => 'Ernährungsziele';
+
+  @override
+  String get bodyMetricsAutosaveHint =>
+      'Änderungen hier werden automatisch gespeichert.';
+
+  @override
+  String get bodyMetricsLeaveMessage =>
+      'Du hast deine Körperdaten geändert, aber nicht gespeichert. Ohne Speichern verlassen?';
+
+  @override
   String get bodyMetricsConsentRequired =>
       'Aktiviere die Speicherung von Gesundheitsdaten, um Größe und Gewicht zu sichern.';
 

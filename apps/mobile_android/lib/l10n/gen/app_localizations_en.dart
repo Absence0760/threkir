@@ -946,6 +946,23 @@ class AppLocalizationsEn extends AppLocalizations {
       'Used to estimate your daily calorie and macro targets.';
 
   @override
+  String get bodyMetricsSaveHint =>
+      'This section saves only when you tap Save.';
+
+  @override
+  String get bodyMetricsUnsaved => 'Unsaved changes';
+
+  @override
+  String get bodyMetricsNutritionHeading => 'Nutrition targets';
+
+  @override
+  String get bodyMetricsAutosaveHint => 'Changes here save automatically.';
+
+  @override
+  String get bodyMetricsLeaveMessage =>
+      'You changed your body metrics but haven\'t saved them. Leave without saving?';
+
+  @override
   String get bodyMetricsConsentRequired =>
       'Turn on health-data storage to save height and weight.';
 

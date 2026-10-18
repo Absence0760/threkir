@@ -955,6 +955,24 @@ class AppLocalizationsPt extends AppLocalizations {
       'Utilizado para estimar as suas metas diárias de calorias e macros.';
 
   @override
+  String get bodyMetricsSaveHint =>
+      'Esta secção só é guardada quando tocar em «Guardar».';
+
+  @override
+  String get bodyMetricsUnsaved => 'Alterações por guardar';
+
+  @override
+  String get bodyMetricsNutritionHeading => 'Metas de nutrição';
+
+  @override
+  String get bodyMetricsAutosaveHint =>
+      'As alterações aqui são guardadas automaticamente.';
+
+  @override
+  String get bodyMetricsLeaveMessage =>
+      'Alterou as suas medidas corporais mas não as guardou. Sair sem guardar?';
+
+  @override
   String get bodyMetricsConsentRequired =>
       'Ative o armazenamento de dados de saúde para guardar altura e peso.';
 
@@ -18827,6 +18845,24 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get bodyMetricsTargetsHint =>
       'Usado para estimar suas metas diárias de calorias e macros.';
+
+  @override
+  String get bodyMetricsSaveHint =>
+      'Esta seção só é salva quando você toca em “Salvar”.';
+
+  @override
+  String get bodyMetricsUnsaved => 'Alterações não salvas';
+
+  @override
+  String get bodyMetricsNutritionHeading => 'Metas de nutrição';
+
+  @override
+  String get bodyMetricsAutosaveHint =>
+      'As alterações aqui são salvas automaticamente.';
+
+  @override
+  String get bodyMetricsLeaveMessage =>
+      'Você alterou suas medidas corporais, mas não salvou. Sair sem salvar?';
 
   @override
   String get bodyMetricsConsentRequired =>

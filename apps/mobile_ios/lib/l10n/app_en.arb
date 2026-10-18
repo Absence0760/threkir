@@ -1242,6 +1242,26 @@
   "@bodyMetricsTargetsHint": {
     "description": "Helper text explaining what body metrics are used for"
   },
+  "bodyMetricsSaveHint": "This section saves only when you tap Save.",
+  "@bodyMetricsSaveHint": {
+    "description": "Hint under the body-metrics Save button saying the consent, height and weight section saves only on that button"
+  },
+  "bodyMetricsUnsaved": "Unsaved changes",
+  "@bodyMetricsUnsaved": {
+    "description": "Shown in place of the save hint when the body-metrics height, weight or consent fields hold edits that have not been saved"
+  },
+  "bodyMetricsNutritionHeading": "Nutrition targets",
+  "@bodyMetricsNutritionHeading": {
+    "description": "Header of the body-metrics section holding activity level and weight goal"
+  },
+  "bodyMetricsAutosaveHint": "Changes here save automatically.",
+  "@bodyMetricsAutosaveHint": {
+    "description": "Note in the body-metrics nutrition section saying activity level and goal save as soon as they are picked"
+  },
+  "bodyMetricsLeaveMessage": "You changed your body metrics but haven't saved them. Leave without saving?",
+  "@bodyMetricsLeaveMessage": {
+    "description": "Body of the confirm dialog shown when leaving body metrics with unsaved height, weight or consent edits"
+  },
   "bodyMetricsConsentRequired": "Turn on health-data storage to save height and weight.",
   "bodyMetricsWithdrawTitle": "Withdraw health-data consent?",
   "bodyMetricsWithdrawBody": "This permanently erases your saved height and your entire weight history. This can't be undone.",

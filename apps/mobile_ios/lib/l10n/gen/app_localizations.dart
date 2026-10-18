@@ -1619,6 +1619,36 @@ abstract class AppLocalizations {
   /// **'Used to estimate your daily calorie and macro targets.'**
   String get bodyMetricsTargetsHint;
 
+  /// Hint under the body-metrics Save button saying the consent, height and weight section saves only on that button
+  ///
+  /// In en, this message translates to:
+  /// **'This section saves only when you tap Save.'**
+  String get bodyMetricsSaveHint;
+
+  /// Shown in place of the save hint when the body-metrics height, weight or consent fields hold edits that have not been saved
+  ///
+  /// In en, this message translates to:
+  /// **'Unsaved changes'**
+  String get bodyMetricsUnsaved;
+
+  /// Header of the body-metrics section holding activity level and weight goal
+  ///
+  /// In en, this message translates to:
+  /// **'Nutrition targets'**
+  String get bodyMetricsNutritionHeading;
+
+  /// Note in the body-metrics nutrition section saying activity level and goal save as soon as they are picked
+  ///
+  /// In en, this message translates to:
+  /// **'Changes here save automatically.'**
+  String get bodyMetricsAutosaveHint;
+
+  /// Body of the confirm dialog shown when leaving body metrics with unsaved height, weight or consent edits
+  ///
+  /// In en, this message translates to:
+  /// **'You changed your body metrics but haven\'t saved them. Leave without saving?'**
+  String get bodyMetricsLeaveMessage;
+
   /// Error shown when saving body data without consent
   ///
   /// In en, this message translates to:

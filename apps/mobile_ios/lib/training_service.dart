@@ -10,6 +10,7 @@ import 'backend_timeout.dart';
 import 'comeback.dart' show kLayoffMaxDays;
 import 'cycle_plan.dart';
 import 'fitness.dart' show qualifyingRuns;
+import 'offline_sync_store.dart' show parseServerTimestamp;
 import 'plan_break.dart' show BreakChange;
 import 'plan_bulk_ops.dart';
 import 'plan_calibration.dart';
@@ -1002,7 +1003,7 @@ class TrainingService extends ChangeNotifier {
     ]);
     final runs = <PlanRecapRun>[];
     for (final r in (results[0] as List).cast<Map<String, dynamic>>()) {
-      final started = DateTime.tryParse(r['started_at'] as String? ?? '');
+      final started = parseServerTimestamp(r['started_at']);
       if (started == null) continue;
       runs.add(PlanRecapRun(
         id: r['id'] as String,
@@ -1015,7 +1016,7 @@ class TrainingService extends ChangeNotifier {
     }
     final records = <PlanRecapRecord>[];
     for (final r in (results[1] as List).cast<Map<String, dynamic>>()) {
-      final achieved = DateTime.tryParse(r['achieved_at'] as String? ?? '');
+      final achieved = parseServerTimestamp(r['achieved_at']);
       final time = (r['best_time_s'] as num?)?.round();
       if (achieved == null || time == null) continue;
       records.add(PlanRecapRecord(

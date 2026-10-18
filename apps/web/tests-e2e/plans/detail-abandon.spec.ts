@@ -4,7 +4,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
 
 /**
- * /plans/[id] Abandon (#1186). A paused plan used to be abandonable only from
+ * /plans/[id] Abandon. A paused plan used to be abandonable only from
  * the list; detail had no way out. Adjust plan now lists Abandon for an active
  * or paused plan, behind a ConfirmDialog that says what is kept, and the page
  * reflects the new status once it lands. The active plan is seeded well past

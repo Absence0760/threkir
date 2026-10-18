@@ -1,5 +1,5 @@
 // Plan detail's app-bar menu: Abandon for an active or paused plan, and the
-// coach's profile on a coach-assigned one (issue #1186).
+// coach's profile on a coach-assigned one.
 
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
@@ -214,6 +214,27 @@ void main() {
       expect(training.statusCalls, [('plan-1', 'abandoned')]);
       expect(training.status, 'active');
       expect(find.textContaining("Couldn't update the plan"), findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
+      await _openMenu(tester);
+      expect(find.byKey(const Key('planDetailMenuAbandon')), findsOneWidget);
+    });
+    testWidgets('a failed abandon of a paused plan leaves it paused',
+        (tester) async {
+      final training =
+          _FakeTraining(status: 'paused', updateError: Exception('offline'));
+      await _pump(tester, training);
+      expect(find.byKey(const Key('planDetailPaused')), findsOneWidget);
+      await _openMenu(tester);
+      await tester.tap(find.text('Abandon plan'));
+      await tester.pumpAndSettle();
+      await tester.tap(_inDialog('Abandon'));
+      await tester.pumpAndSettle();
+
+      expect(training.statusCalls, [('plan-1', 'abandoned')]);
+      expect(training.status, 'paused');
+      expect(find.textContaining("Couldn't update the plan"), findsOneWidget);
+      expect(find.byKey(const Key('planDetailPaused')), findsOneWidget);
       await tester.pump(const Duration(seconds: 4));
       await tester.pumpAndSettle();
       await _openMenu(tester);

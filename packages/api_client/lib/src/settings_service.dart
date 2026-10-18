@@ -220,6 +220,11 @@ class SettingsKeys {
   /// web and phone agree. Only a run started after it brings the suggestion
   /// back (`pickRecent5k`, `recent_5k_suggestion.dart`).
   static const planSuggestionDismissedAt = 'plan_suggestion_dismissed_at';
+
+  /// Home plan-card occurrences the runner dismissed or reviewed, each
+  /// `<plan id>:<kind>:<week index>`, newest last, at most 20
+  /// (`withDismissedNudge`, `plan_nudges.dart`).
+  static const planNudgesDismissed = 'plan_nudges_dismissed';
 }
 
 /// Pluggable on-device cache for the two prefs bags. The mobile app

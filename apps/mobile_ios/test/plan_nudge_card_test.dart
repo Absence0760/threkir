@@ -178,7 +178,7 @@ void main() {
   testWidgets('an occurrence already in the prefs bag shows nothing',
       (tester) async {
     final sync = _FakeSettingsSync(_FakeSettingsService({
-      dismissedNudgesKey: ['plan-1:ease_over:2'],
+      SettingsKeys.planNudgesDismissed: ['plan-1:ease_over:2'],
     }));
     await _pump(tester, overview: _overview(), runs: _overRuns, sync: sync);
     expect(find.byKey(const Key('planNudgeCard')), findsNothing);
@@ -210,7 +210,7 @@ void main() {
         describe: 'the dismissal to reach the prefs bag');
     await tester.pump();
     expect(sync.writes.single, {
-      dismissedNudgesKey: ['plan-1:ease_over:2'],
+      SettingsKeys.planNudgesDismissed: ['plan-1:ease_over:2'],
     });
     expect(find.byKey(const Key('planNudgeCard')), findsNothing);
   });
@@ -233,6 +233,74 @@ void main() {
     await tester.pump(const Duration(seconds: 7));
   });
 
+  testWidgets('a refused filing on Review still opens the review and keeps '
+      'the card for next time', (tester) async {
+    final sync = _FakeSettingsSync(_FakeSettingsService({}))
+      ..writeError = Exception('permission denied');
+    final reviewed =
+        await _pump(tester, overview: _overview(), runs: _overRuns, sync: sync);
+    await tester.runAsync(() async {
+      await tester.tap(find.byKey(const Key('planNudgeReview')));
+    });
+    await tester.pump();
+    expect(reviewed.single.key, 'plan-1:ease_over:2');
+    expect(sync.writes, isEmpty);
+    expect(find.text('A big week'), findsOneWidget);
+  });
+
+  testWidgets('at 320 dp and text x2.0 the card lays out without overflow',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final sync = _FakeSettingsSync(_FakeSettingsService({}));
+    await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: MediaQuery(
+        data: const MediaQueryData(
+            size: Size(320, 800), textScaler: TextScaler.linear(2.0)),
+        child: Scaffold(
+          body: SingleChildScrollView(
+            child: PlanNudgeCard(
+              overview: _overview(),
+              runs: _overRuns,
+              settingsSync: sync,
+              now: _now,
+              onReview: (_) {},
+            ),
+          ),
+        ),
+      ),
+    ));
+    expect(tester.takeException(), isNull);
+    expect(find.text('A big week'), findsOneWidget);
+    for (final key in ['planNudgeDismiss', 'planNudgeReview']) {
+      final r = tester.getRect(find.byKey(Key(key)));
+      expect(r.left, greaterThanOrEqualTo(0));
+      expect(r.right, lessThanOrEqualTo(320));
+    }
+  });
+
+  testWidgets('the host can hide the card', (tester) async {
+    final sync = _FakeSettingsSync(_FakeSettingsService({}));
+    await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: PlanNudgeCard(
+          overview: _overview(),
+          runs: _overRuns,
+          settingsSync: sync,
+          now: _now,
+          onReview: (_) {},
+          hidden: true,
+        ),
+      ),
+    ));
+    expect(find.byKey(const Key('planNudgeCard')), findsNothing);
+  });
+
   testWidgets('Review hands the occurrence to the host and files it',
       (tester) async {
     final sync = _FakeSettingsSync(_FakeSettingsService({}));
@@ -245,6 +313,6 @@ void main() {
         describe: 'the reviewed occurrence to be filed');
     expect(reviewed.single.kind, PlanNudgeKind.easeOver);
     expect(reviewed.single.key, 'plan-1:ease_over:2');
-    expect(sync.writes.single[dismissedNudgesKey], ['plan-1:ease_over:2']);
+    expect(sync.writes.single[SettingsKeys.planNudgesDismissed], ['plan-1:ease_over:2']);
   });
 }

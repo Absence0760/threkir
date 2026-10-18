@@ -1044,10 +1044,12 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   /// Home's plan card (`planNudge`): null when there is nothing to say, the
   /// plan's dates have run out, or there is no service to open the plan with.
-  Widget? _planNudgeCard(List<Run> runs, DateTime now) {
+  ///
+  /// [hidden] is the one switch a card that outranks this one flips.
+  Widget? _planNudgeCard(List<Run> runs, DateTime now, {bool hidden = false}) {
     final p = _planOverview;
     final svc = widget.training;
-    if (p == null || svc == null || _planFinished(now)) return null;
+    if (hidden || p == null || svc == null || _planFinished(now)) return null;
     final nudge = PlanNudgeCard.nudgeFor(
       overview: p,
       runs: runs,
@@ -1072,6 +1074,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         builder: (_) => PlanDetailScreen(
           training: svc,
           planId: planId,
+          runStore: widget.runStore,
           openReview: n.kind == PlanNudgeKind.adaptiveUnder
               ? PlanReview.adaptive
               : PlanReview.replan,

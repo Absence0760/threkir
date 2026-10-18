@@ -6,6 +6,7 @@ import { readRow } from '../fixtures/db-read';
 import { USER_A } from '../fixtures/users';
 import { acceptCookieConsent } from '../fixtures/helpers';
 import { dateOfBirth, fillDateOfBirth } from '../fixtures/date-of-birth';
+import { browserDate, browserYear } from '../fixtures/dates';
 
 /**
  * The preference pages /settings/preferences was split into (issue #905) —
@@ -831,7 +832,10 @@ test.describe('settings preference pages', () => {
 		// only: nothing is saved, so USER_A's stored DOB is untouched.
 		await page.goto('/settings/body');
 		const dob = dateOfBirth(page);
-		const thisYear = new Date().getFullYear();
+		const thisYear = browserYear();
+		// The page paints a skeleton first and evaluateAll does not wait, so
+		// wait for the full list: the placeholder plus 121 years.
+		await expect(dob.year.locator('option')).toHaveCount(122);
 		const years = await dob.year.locator('option').evaluateAll((os) =>
 			os.map((o) => (o as HTMLOptionElement).value).filter(Boolean).map(Number),
 		);
@@ -858,7 +862,7 @@ test.describe('settings preference pages', () => {
 		await dob.year.selectOption(String(thisYear));
 		await dob.month.selectOption('12');
 		await dob.day.selectOption('31');
-		const todayIsLastDay = new Date().getMonth() === 11 && new Date().getDate() === 31;
+		const todayIsLastDay = browserDate().endsWith('-12-31');
 		if (!todayIsLastDay) await expect(page.getByTestId('date-of-birth-error')).toBeVisible();
 	});
 });

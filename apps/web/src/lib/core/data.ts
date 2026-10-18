@@ -158,7 +158,6 @@ import {
 	type RelinkCandidateRun
 } from '../training/relink_candidates';
 import type { GeneratedPlan, GoalEvent, PlanPhase } from '../training/training';
-import { minDaysPerWeek } from '../training/training';
 import type { RacePriority } from '../training/plan_races';
 import { parseRosterRecentWorkouts, type RosterRecentWorkout } from '../training/coach_load';
 import { auth } from '../stores/auth.svelte';
@@ -6144,6 +6143,9 @@ export async function createTrainingPlan(input: {
 	// readable message here beats a raw 22023 / 23xxx code.
 	if (!input.name.trim()) throw new Error('Name is required.');
 	if (!(input.goalDistanceM > 0)) throw new Error('Goal distance must be positive.');
+	// Imported here, not at the top: a static import pulls the whole plan
+	// generator into this module's chunk, which nearly every route loads.
+	const { minDaysPerWeek } = await import('../training/training');
 	const minDays = minDaysPerWeek(input.generated.weeks);
 	if (input.daysPerWeek < minDays || input.daysPerWeek > 7) {
 		throw new Error(`Days per week must be between ${minDays} and 7.`);

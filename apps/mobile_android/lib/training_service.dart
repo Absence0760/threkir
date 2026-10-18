@@ -790,7 +790,7 @@ class TrainingService extends ChangeNotifier {
 
   /// Re-anchors a plan on a new race date: [change] (`raceDateChange`) names
   /// the weeks to drop or repeat and `change_plan_race_date` applies them in
-  /// one transaction (decisions § 2120). A later end that runs into another
+  /// one transaction. A later end that runs into another
   /// active plan surfaces as [ActivePlanExistsError] via [planWriteError].
   Future<void> changePlanRaceDate(
       String planId, RaceDateChange change, String todayIso) async {

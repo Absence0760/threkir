@@ -6386,7 +6386,7 @@ export async function shiftTrainingPlan(
 }
 
 /// Re-anchor a plan on a new race date (`raceDateChange` picks the weeks;
-/// `change_plan_race_date` applies them in one transaction, decisions § 2120).
+/// `change_plan_race_date` applies them in one transaction).
 export async function changePlanRaceDate(
 	planId: string,
 	change: RaceDateChange,

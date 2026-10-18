@@ -479,6 +479,12 @@ class LiveRunMap extends StatefulWidget {
   /// precise current position.
   final bool coarsePosition;
 
+  /// The live run records under an approximate location grant. With no fix
+  /// to centre on, the empty map says so instead of a "Waiting for GPS"
+  /// spinner, because no precise fix is coming until the runner turns
+  /// precision on; the run screen's strip carries the settings action.
+  final bool approximateLocation;
+
   const LiveRunMap({
     super.key,
     required this.track,
@@ -498,6 +504,7 @@ class LiveRunMap extends StatefulWidget {
     this.hoverIdx,
     this.previewPosition,
     this.coarsePosition = false,
+    this.approximateLocation = false,
     this.courseMarkers = const [],
     this.markerPlacing = false,
     this.onMarkerPlace,
@@ -1055,6 +1062,24 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
 
     // No GPS fix yet and no planned route — wait for GPS
     if (currentLatLng == null && plannedLatLngs.isEmpty) {
+      if (widget.approximateLocation) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.location_disabled),
+                const SizedBox(height: 12),
+                Text(
+                  AppLocalizations.of(context).liveRunMapApproximateLocation,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        );
+      }
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,

@@ -212,7 +212,13 @@ Shared pieces:
   public run; that fixed the surface, not the reason this link points at
   `/share`.) Each kind targets the same entity `apps/web`'s `notificationLinkFor`
   does — `/plans/{plan_id}`, `/challenges/{challenge_id}`,
-  `/share/badge/{achievement_id}` — which needs `plan_id`, `achievement_id` and
+  `/share/badge/{achievement_id}` — though not always the same page: the
+  in-app inbox opens `run_completed` at `/runs/{id}` and `achievement` at the
+  recipient's `/u/{id}?tab=achievements&badge={id}`, since its reader is
+  signed in (decisions § 2152), and the phone's `push_target.dart` maps the
+  worker's `/share/run` and `/share/badge` URLs onto those same in-app
+  screens. The share page itself offers a signed-in visitor a way back into
+  the app. The worker's links need `plan_id`, `achievement_id` and
   `challenge_id` in all three `FetchNotificationFor*` projections; a partial
   projection silently degrades one channel to the list-page fallback, since one
   `pathForKind` serves all three renders. Every arm degrades to a list page or

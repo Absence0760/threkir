@@ -123,6 +123,48 @@ dual-mode), rendered in the club header on web `/clubs/[slug]` + mobile
 `clubs.strava_club_id`, the verified link to a Strava club described in
 [Your Strava clubs](#your-strava-clubs).
 
+### Club logo
+
+`clubs.avatar_url` is the club's logo. On web `/clubs/[slug]` the owner and
+admins see an **Add logo** / **Change logo** button and, once one is set,
+**Remove logo** under the header circle (`ClubLogoControl`). A picked image
+goes through the profile photo's crop step (`AvatarCropDialog`, 20 MB source
+cap, re-encoded square JPEG with EXIF dropped), then `uploadClubLogo` stores it
+in the public `avatars` bucket at `clubs/{club_id}/logo.{jpg|png|webp}` and
+writes the public URL (with a `?v=` cache-bust) to `clubs.avatar_url`. Remove
+confirms first, because the Storage delete cannot be undone, then
+`removeClubLogo` deletes the objects and nulls the column. The Storage policies
+(migration `20270918000007`) admit only that exact filename and only for
+`private.is_club_admin(club_id)`, the same oracle the `clubs` UPDATE policy
+uses for the column itself; see `api_database.md § Storage`. `ClubAvatar` draws
+the logo, falling back to the seeded initial, in the club header and on the
+My clubs / Browse cards; it accepts an `http` URL only on this project's own
+club-logo path (`clubLogoSrc`), so the local stack shows the logos it stores.
+The share page and its OG image already read the column. **Mobile has no logo
+control yet and still draws the initial** (`parity.md`). A deleted club's logo
+object is not swept (followups).
+
+### Verifying a club (operator)
+
+`clubs.is_verified` (the verified badge) is set by an operator, not by the
+club. Two triggers guard it: `freeze_club_managed_columns` discards a write from
+an `anon` / `authenticated` session, and `clubs_protect_is_verified`
+(migration `20260909_001`) refuses any change unless `auth.role()` is
+`service_role`. The Supabase SQL editor sends no JWT, so a plain
+`update public.clubs set is_verified = true …` there silently leaves the flag
+false. Until the admin review page planned in #1190 exists, run it as one
+transaction that sets the role claim first:
+
+```sql
+begin;
+select set_config('request.jwt.claims', '{"role":"service_role"}', true);
+update public.clubs set is_verified = true where slug = '<slug>' returning id, slug, is_verified;
+commit;
+```
+
+The `returning` row should read `is_verified = true`; the `true` third argument
+to `set_config` scopes the claim to that transaction.
+
 ## Data model
 
 Tables: `clubs`, `club_members`, `events`, `event_attendees`, `event_exceptions`, `club_posts`, `event_results`. `event_results` is **account-optional** since `20261028_001` (persona #43) — surrogate `id` PK, nullable `user_id`, `bib` + `finisher_name` for imported non-account finishers, an additive `event_results_insert_organiser` policy for bulk import, and a CHECK requiring an account OR a bib+name; see `api_database.md § event_results`. Full definitions + RLS in `api_database.md § clubs / club_members / events / event_attendees / club_posts`. `clubs.requires_activity_waiver` + `club_members.activity_waiver_ack_at` (`20261023_001`) back the optional activity-risk waiver: an admin can require it at create time, and a member's acknowledgement timestamp is stamped on join (parkrun persona #45; per-event RSVP waiver is a follow-up). Since `20270801000001` the database enforces it on every join path (§ 1864): the self-join INSERT policies refuse a waiver club's row without `activity_waiver_ack_at`, and `join_club_by_token` refuses with `activity_waiver_required` until the caller passes `activity_waiver_ack => true`, which the web invite page and the phone (its invite screen and the club page's Join button) ask for in an acknowledgement step before joining. `event_exceptions` (`20261019_001`) is the per-instance cancellation/audit table — `(event_id, instance_start)` pkey + `cancelled_by` / `cancelled_at` / `reason`; organiser-only writes via `is_event_organiser`, readable with the parent event. Phase 1 migration: `apps/backend/supabase/migrations/20260416_001_clubs_and_events.sql`. Phase 2 migration: `20260417_001_phase2_social.sql` — adds recurrence columns on `events`, `instance_start` + composite pkey on `event_attendees`, `join_policy` + `invite_token` on `clubs`, `status` on `club_members`, `parent_post_id` + `event_instance_start` on `club_posts`, and the `join_club_by_token` RPC.

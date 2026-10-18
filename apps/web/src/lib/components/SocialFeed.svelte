@@ -266,7 +266,7 @@
 		{#if badgeAwards.length > 0}
 			<section class="badge-strip" aria-label={m('badges.section.title')}>
 				{#each badgeAwards as b (b.badge.id)}
-					<a class="badge-chip tier-{b.badge.tier}" href="/share/badge/{b.badge.id}">
+					<a class="badge-chip tier-{b.badge.tier}" href="/u/{b.authorId}?tab=achievements&badge={b.badge.id}">
 						<span class="material-symbols" aria-hidden="true">{badgeIcon(b)}</span>
 						<span class="badge-chip-text">
 							{m('badges.feedEarned', {
@@ -322,7 +322,7 @@
 						     a "Run not found" page. The public share page is the run
 						     surface a non-owner can actually read — same target the
 						     lift card above and mobile's PublicRunScreen use. -->
-						<a class="entry-body" href="/share/run/{entry.id}">
+						<a class="entry-body" href="/runs/{entry.id}">
 							{#if entry.has_track}
 								<div class="entry-map">
 									<!-- public_runs dropped track_url; the non-owner clip
@@ -368,7 +368,7 @@
 								</span>
 								<span>{eng.kudos_count}</span>
 							</button>
-							<a class="comment-pill" href="/share/run/{entry.id}" aria-label={m('socialFeed.viewComments')}>
+							<a class="comment-pill" href="/runs/{entry.id}" aria-label={m('socialFeed.viewComments')}>
 								<span class="material-symbols" aria-hidden="true">chat_bubble_outline</span>
 								<span>{eng.comment_count}</span>
 							</a>

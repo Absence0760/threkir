@@ -989,6 +989,7 @@
 					isOwner={isSelf}
 					onToggleVisibility={toggleBadgeVisibility}
 					onShare={shareBadge}
+					focusId={page.url.searchParams.get('badge')}
 				/>
 			{/if}
 		{:else if tab === 'followers'}

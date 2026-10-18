@@ -58,23 +58,23 @@ test.describe('/social?tab=feed — feed surface', () => {
 		});
 	});
 
-	test('a followed runner entry opens the public run page, not the auth-gated one', async ({
+	test('a followed runner entry opens the run inside the app, not the public share page', async ({
 		page
 	}) => {
-		// The feed shows other people's runs. /share/run/[id] is the right
-		// destination because it is anon-reachable and indexable; /runs/[id]
-		// sits behind the layout auth-gate. (It no longer 404s a non-owner
-		// either — issue #666 gave it a non-owner branch — but the feed link
-		// must survive being opened by a logged-out visitor.)
+		// The feed is a signed-in surface, so its links stay in the app shell:
+		// /runs/[id] serves a non-owner the clipped shared view of a run their
+		// audience admits (issue #666). /share/run/[id] is the logged-out page
+		// and used to drop the reader out of the app with no way back.
 		await page.goto('/social?tab=feed');
 		const card = page.locator(`article.entry a.entry-body[href$="${plantedRunId}"]`);
-		await expect(card).toHaveAttribute('href', `/share/run/${plantedRunId}`, {
+		await expect(card).toHaveAttribute('href', `/runs/${plantedRunId}`, {
 			timeout: 10_000
 		});
 		await card.click();
-		await expect(page).toHaveURL(new RegExp(`/share/run/${plantedRunId}$`), {
+		await expect(page).toHaveURL(new RegExp(`/runs/${plantedRunId}$`), {
 			timeout: 10_000
 		});
+		await expect(page.locator('nav.sidebar')).toBeVisible();
 		await expect(page.getByText(/Run not found/i)).toHaveCount(0);
 	});
 

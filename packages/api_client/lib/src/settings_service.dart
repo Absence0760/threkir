@@ -225,6 +225,10 @@ class SettingsKeys {
   /// `<plan id>:<kind>:<week index>`, newest last, at most 20
   /// (`withDismissedNudge`, `plan_nudges.dart`).
   static const planNudgesDismissed = 'plan_nudges_dismissed';
+  /// The last break-of-a-week-or-more offer the runner answered, as
+  /// `{plan_id, from, until}` (decisions § 2128). Universal so web and phone
+  /// stop offering the same break, and so the plan nudge skips its weeks.
+  static const planBreakDismissed = 'plan_break_dismissed';
 }
 
 /// Pluggable on-device cache for the two prefs bags. The mobile app

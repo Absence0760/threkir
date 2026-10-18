@@ -11,13 +11,14 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
 import type { Database } from '../_shared/database.ts';
 import { checkRateLimit } from '../_shared/rate_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { withCors } from '../_shared/cors.ts';
 import { refreshStravaToken } from '../_shared/strava.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
 import { type LinkOutcome, makeStravaClubsHandler } from './handler.ts';
 
 const LINK_OUTCOMES: readonly LinkOutcome[] = ['ok', 'not_club_admin', 'already_linked', 'invalid_strava_club'];
 
-Deno.serve(withSentry('strava-clubs', (req: Request) => {
+Deno.serve(withCors(withSentry('strava-clubs', (req: Request) => {
 	const url = Deno.env.get('SUPABASE_URL')!;
 	const authHeader = req.headers.get('Authorization') ?? '';
 	const userClient = createClient<Database>(url, publishableKey(), {
@@ -69,4 +70,4 @@ Deno.serve(withSentry('strava-clubs', (req: Request) => {
 		fetch: (input, init) => fetch(input, init),
 		now: () => Date.now(),
 	})(req);
-}));
+})));

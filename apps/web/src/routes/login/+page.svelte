@@ -21,6 +21,7 @@
 	import { defaultUnitForLocale } from '#lib/format/locale_defaults.ts';
 	import { verifyConsentStamped } from '#lib/core/auth_confirmation.ts';
 	import { safeReturnTo as resolveReturnTo } from '#lib/core/safe_redirect.ts';
+	import { postAuthDestination } from '#lib/core/post_auth_route.ts';
 	import { googleAuthEnabled } from '#lib/core/google_auth_flag.ts';
 	import { appleAuthEnabled } from '#lib/core/apple_auth_flag.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -76,9 +77,16 @@
 		return returnToOnMount;
 	}
 
+	// Where the signed-in account goes next. A fresh account lands on
+	// /onboarding directly rather than painting the dashboard first; the
+	// decision waits for the profile, which the layout holds the shell for.
+	function destination(): string {
+		return postAuthDestination(auth.user, safeReturnTo());
+	}
+
 	$effect(() => {
-		if (browser && !auth.loading && auth.loggedIn) {
-			goto(safeReturnTo(), { replace: true });
+		if (browser && !auth.loading && auth.loggedIn && (auth.user != null || auth.profileFailed)) {
+			goto(destination(), { replaceState: true });
 		}
 	});
 
@@ -239,12 +247,12 @@
 				const consent = await verifyConsentStamped(() =>
 					supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle(),
 				);
-				goto(consent === 'ok' ? safeReturnTo() : '/auth/confirm-age');
+				goto(consent === 'ok' ? destination() : '/auth/confirm-age');
 			} else {
 				const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 				if (signInError) throw dbError(signInError);
 				await auth.refreshSession();
-				goto(safeReturnTo());
+				goto(destination());
 			}
 		} catch (err) {
 			// Classified into a localized, user-facing message — raw

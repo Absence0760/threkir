@@ -188,3 +188,29 @@ export function isBreakDismissed(pref: unknown, planId: string, fromIso: string)
 	const p = pref as Record<string, unknown>;
 	return p.plan_id === planId && p.from === fromIso;
 }
+
+/// Whether the break offer is on screen: a break to offer that the runner has
+/// not answered. While it is, a host shows neither the missed-workout prompt
+/// nor the plan nudge card, and a make-up deep link only opens the plan: those
+/// judge the missed weeks one workout or one week at a time, while the break
+/// offer re-runs them whole.
+export function breakOfferShowing(found: PlanBreak | null, dismissedPref: unknown, planId: string): boolean {
+	return found != null && !isBreakDismissed(dismissedPref, planId, found.fromIso);
+}
+
+/// The days a break covered, for a judge that must not read them as missed
+/// training: the break on now, from its first day to today, or else the last
+/// one the runner answered in this plan (`plan_break_dismissed` with its
+/// `until`). Null when there is neither.
+export function breakWindow(
+	found: PlanBreak | null,
+	dismissedPref: unknown,
+	planId: string,
+	todayIso: string
+): { fromIso: string; untilIso: string } | null {
+	if (found) return { fromIso: found.fromIso, untilIso: todayIso };
+	if (dismissedPref == null || typeof dismissedPref !== 'object' || Array.isArray(dismissedPref)) return null;
+	const p = dismissedPref as Record<string, unknown>;
+	if (p.plan_id !== planId || typeof p.from !== 'string' || typeof p.until !== 'string') return null;
+	return { fromIso: p.from, untilIso: p.until };
+}

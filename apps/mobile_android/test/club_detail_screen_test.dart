@@ -348,6 +348,28 @@ GymRoutineRow _routine(String id, String title, int count) => GymRoutineRow(
   createdAt: DateTime.utc(2026, 5, 1),
 );
 
+/// A member club whose one post's author has uploaded an avatar.
+class _AvatarPostSocial extends _ReplySocial {
+  @override
+  Future<List<ClubPostView>> fetchClubPosts(
+    String clubId, {
+    int limit = 20,
+  }) async => [
+    ClubPostView(
+      row: ClubPostRow(
+        id: 'post-1',
+        clubId: 'club-1',
+        authorId: 'someone',
+        body: 'Saturday long run?',
+        createdAt: DateTime.utc(2026, 5, 1),
+      ),
+      authorName: 'Sam',
+      authorAvatarUrl: 'https://example.test/sam.jpg',
+      replyCount: 0,
+    ),
+  ];
+}
+
 void main() {
   setUpAll(_ensureSupabase);
 
@@ -638,6 +660,32 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
       expect(social.denyCalls, 1);
+    });
+  });
+
+  group('ClubDetailScreen — post author avatar', () {
+    // fetchClubPosts selected only display_name, so a member who had uploaded
+    // a photo still showed an initial beside every post (web had the same
+    // gap on its feed and Members tab).
+    realtimeWidgetTest('a post renders its author avatar url', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ClubDetailScreen(
+            social: _AvatarPostSocial(),
+            training: _FakeTraining(),
+            slug: 'track-club',
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final author = tester
+          .widgetList<IdentityAvatar>(find.byType(IdentityAvatar))
+          .where((a) => a.seed == 'someone');
+      expect(author, hasLength(1));
+      expect(author.single.imageUrl, 'https://example.test/sam.jpg');
     });
   });
 

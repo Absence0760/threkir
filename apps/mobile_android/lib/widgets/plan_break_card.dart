@@ -1,3 +1,4 @@
+import 'package:api_client/api_client.dart' show SettingsKeys;
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 
@@ -13,8 +14,6 @@ import '../training_service.dart';
 import 'confirm_destructive.dart';
 import 'top_banner.dart';
 
-const String kPlanBreakDismissedKey = 'plan_break_dismissed';
-
 /// What the settings bag says about the last answered break: [loaded] false
 /// until the bag has loaded, when the card stays hidden rather than offer a
 /// break the runner may already have answered on another device.
@@ -24,14 +23,14 @@ PlanBreakDismissal _activeDismissal() {
   final s = activeSettingsService();
   return (
     loaded: s != null,
-    value: s?.effective<Object>(kPlanBreakDismissedKey),
+    value: s?.effective<Object>(SettingsKeys.planBreakDismissed),
   );
 }
 
 Future<void> _writeActiveDismissal(Map<String, dynamic> value) async {
   final s = activeSettingsService();
   if (s == null) throw StateError('settings not loaded');
-  await s.updateUniversal({kPlanBreakDismissedKey: value});
+  await s.updateUniversal({SettingsKeys.planBreakDismissed: value});
 }
 
 /// Where the card reads and writes the dismissal: the app's settings bag.
@@ -41,6 +40,20 @@ PlanBreakDismissal Function() planBreakDismissalReader = _activeDismissal;
 @visibleForTesting
 Future<void> Function(Map<String, dynamic>) planBreakDismissalWriter =
     _writeActiveDismissal;
+
+/// A host's view of the break offer (decisions § 2128): the break found, if
+/// any; whether the offer shows, when the host shows neither the
+/// missed-workout prompt nor the plan nudge (`breakOfferShowing`); and the
+/// days the break covered, which the nudge does not judge (`breakWindow`).
+class PlanBreakState {
+  final PlanBreak? found;
+  final bool showing;
+  final ({String fromIso, String untilIso})? window;
+
+  const PlanBreakState({this.found, this.showing = false, this.window});
+
+  static const none = PlanBreakState();
+}
 
 /// A break of a week or more in the runner's own active plan (decisions
 /// § 2128): one calm offer to run the missed weeks again, previewed and
@@ -60,6 +73,10 @@ class PlanBreakCard extends StatefulWidget {
   /// Runs after a change applied, so the host can re-read the plan.
   final Future<void> Function() onApplied;
 
+  /// Runs once the runner answered (applied or kept the plan), so the host
+  /// can stop holding back the cards the offer outranks.
+  final VoidCallback? onAnswered;
+
   const PlanBreakCard({
     super.key,
     required this.training,
@@ -69,23 +86,56 @@ class PlanBreakCard extends StatefulWidget {
     required this.runStarts,
     required this.now,
     required this.onApplied,
+    this.onAnswered,
   });
 
-  /// Whether a card built from these would show: a break to offer that the
-  /// runner has not already answered. Hosts check it so an absent card leaves
-  /// no gap.
-  static bool shows({
+  /// The break state for a plan. [runStarts] null (the runs are not known
+  /// yet) or a settings bag that has not loaded shows no offer. Auxiliary
+  /// (L4): a malformed row costs the offer, never the host's build.
+  static PlanBreakState stateFor({
     required TrainingPlanRow plan,
     required List<PlanWeekRow> weeks,
     required List<PlanWorkoutRow> workouts,
     required List<DateTime>? runStarts,
     required DateTime now,
   }) {
-    final found = _detectFor(plan, weeks, workouts, runStarts, now);
-    if (found == null) return false;
-    final d = planBreakDismissalReader();
-    return d.loaded && !isBreakDismissed(d.value, plan.id, found.fromIso);
+    try {
+      final found = _detectFor(plan, weeks, workouts, runStarts, now);
+      final d = planBreakDismissalReader();
+      final today = toIsoDate(now);
+      if (!d.loaded) {
+        return PlanBreakState(
+          found: found,
+          window: breakWindow(found, null, plan.id, today),
+        );
+      }
+      return PlanBreakState(
+        found: found,
+        showing: breakOfferShowing(found, d.value, plan.id),
+        window: breakWindow(found, d.value, plan.id, today),
+      );
+    } catch (e) {
+      debugPrint('plan break: working out the break failed: $e');
+      return PlanBreakState.none;
+    }
   }
+
+  /// Whether a card built from these would show. Hosts check it so an absent
+  /// card leaves no gap.
+  static bool shows({
+    required TrainingPlanRow plan,
+    required List<PlanWeekRow> weeks,
+    required List<PlanWorkoutRow> workouts,
+    required List<DateTime>? runStarts,
+    required DateTime now,
+  }) =>
+      stateFor(
+        plan: plan,
+        weeks: weeks,
+        workouts: workouts,
+        runStarts: runStarts,
+        now: now,
+      ).showing;
 
   @override
   State<PlanBreakCard> createState() => _PlanBreakCardState();
@@ -144,26 +194,45 @@ class _PlanBreakCardState extends State<PlanBreakCard> {
 
   String get _todayIso => toIsoDate(widget.now);
 
-  PlanBreak? _detect() => _detectFor(
-    widget.plan,
-    widget.weeks,
-    widget.workouts,
-    widget.runStarts,
-    widget.now,
-  );
+  PlanBreak? _detect() {
+    try {
+      return _detectFor(
+        widget.plan,
+        widget.weeks,
+        widget.workouts,
+        widget.runStarts,
+        widget.now,
+      );
+    } catch (e) {
+      debugPrint('plan break: working out the break failed: $e');
+      return null;
+    }
+  }
+
+  Map<String, dynamic> _answer(PlanBreak found) => {
+    'plan_id': widget.plan.id,
+    'from': found.fromIso,
+    'until': _todayIso,
+  };
 
   Future<void> _propose(PlanBreak found, int k) async {
     if (_busy) return;
     final l10n = AppLocalizations.of(context);
     final tag = localeToTag(Localizations.localeOf(context));
-    final change = planBreakChange(
-      plan: _planOf(widget.plan),
-      weeks: _weeksOf(widget.weeks),
-      workouts: _workoutsOf(widget.workouts),
-      runDatesIso: _datesOf(widget.runStarts),
-      todayIso: _todayIso,
-      weeksToRepeat: k,
-    );
+    BreakChange? change;
+    try {
+      change = planBreakChange(
+        plan: _planOf(widget.plan),
+        weeks: _weeksOf(widget.weeks),
+        workouts: _workoutsOf(widget.workouts),
+        runDatesIso: _datesOf(widget.runStarts),
+        todayIso: _todayIso,
+        weeksToRepeat: k,
+      );
+    } catch (e) {
+      debugPrint('plan break: working out the change failed: $e');
+      change = null;
+    }
     if (change == null) {
       showTopBanner(context, l10n.planBreakUnavailable);
       return;
@@ -208,10 +277,7 @@ class _PlanBreakCardState extends State<PlanBreakCard> {
       return;
     }
     try {
-      await planBreakDismissalWriter({
-        'plan_id': widget.plan.id,
-        'from': found.fromIso,
-      });
+      await planBreakDismissalWriter(_answer(found));
     } catch (e) {
       debugPrint('plan break: local dismissal write failed: $e');
     }
@@ -221,6 +287,7 @@ class _PlanBreakCardState extends State<PlanBreakCard> {
       _hidden = true;
     });
     showTopBanner(context, l10n.planBreakApplied(end));
+    widget.onAnswered?.call();
     await widget.onApplied();
   }
 
@@ -229,10 +296,7 @@ class _PlanBreakCardState extends State<PlanBreakCard> {
     final l10n = AppLocalizations.of(context);
     setState(() => _busy = true);
     try {
-      await planBreakDismissalWriter({
-        'plan_id': widget.plan.id,
-        'from': found.fromIso,
-      });
+      await planBreakDismissalWriter(_answer(found));
     } catch (e) {
       debugPrint('plan break dismiss failed: $e');
       if (mounted) {
@@ -249,6 +313,7 @@ class _PlanBreakCardState extends State<PlanBreakCard> {
         _busy = false;
         _hidden = true;
       });
+      widget.onAnswered?.call();
     }
   }
 

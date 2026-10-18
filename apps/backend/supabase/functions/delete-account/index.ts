@@ -3,6 +3,7 @@ import type { Database, DbClient } from '../_shared/database.ts';
 import { checkRateLimit } from '../_shared/rate_limit.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { withCors } from '../_shared/cors.ts';
 import {
   type DeletionAuditResult,
   FCM_BATCH_REMOVE_URL,
@@ -524,7 +525,7 @@ async function recordAudit(
   }
 }
 
-Deno.serve(withSentry('delete-account', async (req: Request) => {
+Deno.serve(withCors(withSentry('delete-account', async (req: Request) => {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
@@ -835,4 +836,4 @@ Deno.serve(withSentry('delete-account', async (req: Request) => {
     thirdPartyOutcomes,
   );
   return Response.json({ ok: true });
-}));
+})));

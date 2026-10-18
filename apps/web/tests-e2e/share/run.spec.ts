@@ -449,3 +449,57 @@ test.describe('/share/run/[id] — a still-running broadcast (issue #666 A2)', (
 		await expect(page.getByTestId('share-run-live-cta')).toHaveCount(0);
 	});
 });
+
+/**
+ * The way back into the app from a share page. The share pages are the
+ * logged-out surface, so a signed-in reader who reaches one — from an email,
+ * a pasted link, an older in-app link — gets a header control to return:
+ * history back when they came from inside the app, otherwise "Open in
+ * Threkir" to the in-app view of the same run. An anonymous visitor (and so
+ * a crawler) never sees it.
+ */
+test.describe('/share/run/[id] — signed-in way back into the app', () => {
+	test.describe('anonymous', () => {
+		test.use({ storageState: { cookies: [], origins: [] } });
+
+		test('sees no return control', async ({ page }) => {
+			await page.goto(`/share/run/${RUNNER_PUBLIC_RUN_ID}`);
+			await expect(page.locator('.share-logo')).toBeVisible({ timeout: 10_000 });
+			await expect(page.locator('.share-footer')).toBeVisible();
+			await expect(page.getByTestId('share-return')).toHaveCount(0);
+		});
+	});
+
+	test.describe('signed in', () => {
+		test.use({ storageState: USER_B.storageStatePath });
+
+		test('arriving directly offers "Open in Threkir" to the in-app run', async ({ page }) => {
+			await page.goto(`/share/run/${RUNNER_PUBLIC_RUN_ID}`);
+			const control = page.getByTestId('share-return');
+			await expect(control).toBeVisible({ timeout: 10_000 });
+			await expect(control).toHaveText(/Open in Threkir/);
+			await expect(control).toHaveAttribute('href', `/runs/${RUNNER_PUBLIC_RUN_ID}`);
+
+			await control.click();
+			await expect(page).toHaveURL(new RegExp(`/runs/${RUNNER_PUBLIC_RUN_ID}$`));
+			await expect(page.locator('nav.sidebar')).toBeVisible({ timeout: 10_000 });
+		});
+
+		test('arriving from inside the app offers Back, which returns there', async ({ page }) => {
+			await page.goto('/dashboard');
+			await expect(page.locator('nav.sidebar')).toBeVisible({ timeout: 10_000 });
+			// A full navigation, so the share page sees a same-origin referrer
+			// and a history entry behind it, as it does when the app opens it.
+			await page.evaluate((id) => {
+				location.href = `/share/run/${id}`;
+			}, RUNNER_PUBLIC_RUN_ID);
+			await expect(page).toHaveURL(new RegExp(`/share/run/${RUNNER_PUBLIC_RUN_ID}$`));
+
+			const control = page.getByTestId('share-return');
+			await expect(control).toBeVisible({ timeout: 10_000 });
+			await expect(control).toHaveText(/Back/);
+			await control.click();
+			await expect(page).toHaveURL(/\/dashboard$/);
+		});
+	});
+});

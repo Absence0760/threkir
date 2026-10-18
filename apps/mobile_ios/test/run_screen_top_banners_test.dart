@@ -13,7 +13,8 @@ Future<void> _pump(
   bool permissionLost = false,
   bool gpsLost = false,
   bool weakGps = false,
-  bool weakGpsApproximate = false,
+  bool approximateLocation = false,
+  VoidCallback? onTurnOnPreciseLocation,
   bool safetyNudgeVisible = false,
 }) {
   return tester.pumpWidget(
@@ -28,7 +29,8 @@ Future<void> _pump(
             permissionLost: permissionLost,
             gpsLost: gpsLost,
             weakGps: weakGps,
-            weakGpsApproximate: weakGpsApproximate,
+            approximateLocation: approximateLocation,
+            onTurnOnPreciseLocation: onTurnOnPreciseLocation,
             safetyNudgeVisible: safetyNudgeVisible,
             onSafetyNudgeShare: () {},
             onSafetyNudgeDismiss: () {},
@@ -73,13 +75,43 @@ void main() {
 
   testWidgets('a weak-GPS stall under an approximate grant names the grant',
       (tester) async {
-    await _pump(tester, weakGps: true, weakGpsApproximate: true);
+    await _pump(tester, weakGps: true, approximateLocation: true);
     expect(find.text('Approximate location — distance paused'),
         findsOneWidget);
     expect(find.text('Weak GPS — distance paused'), findsNothing);
 
     await _pump(tester, weakGps: true);
     expect(find.text('Weak GPS — distance paused'), findsOneWidget);
+    expect(find.text('Approximate location — distance paused'), findsNothing);
+  });
+
+  testWidgets('an approximate grant shows its strip with no fix rejected yet',
+      (tester) async {
+    // The grant may deliver no fix at all, so the strip cannot wait for the
+    // accuracy gate to reject one.
+    await _pump(tester, approximateLocation: true);
+    expect(find.text('Approximate location — distance paused'),
+        findsOneWidget);
+    expect(find.byType(Card), findsOneWidget);
+  });
+
+  testWidgets('the approximate strip offers the precise-location settings',
+      (tester) async {
+    var opened = 0;
+    await _pump(tester,
+        approximateLocation: true, onTurnOnPreciseLocation: () => opened++);
+    await tester.tap(find.text('Turn on precise location'));
+    await tester.pump();
+    expect(opened, 1);
+
+    await _pump(tester, approximateLocation: true);
+    expect(find.text('Turn on precise location'), findsNothing,
+        reason: 'no opener, no dead button');
+  });
+
+  testWidgets('GPS lost still outranks the approximate strip', (tester) async {
+    await _pump(tester, gpsLost: true, approximateLocation: true);
+    expect(find.text(_gpsLost), findsOneWidget);
     expect(find.text('Approximate location — distance paused'), findsNothing);
   });
 

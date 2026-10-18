@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
 	BREAK_MIN_DAYS,
+	breakOfferShowing,
+	breakWindow,
 	detectPlanBreak,
 	isBreakDismissed,
 	planBreakChange,
@@ -163,4 +165,22 @@ test('a dismissal answers only the same plan and the same break', () => {
 	assert.equal(isBreakDismissed(null, 'p', '2026-06-15'), false);
 	assert.equal(isBreakDismissed('p', 'p', '2026-06-15'), false);
 	assert.equal(isBreakDismissed([pref], 'p', '2026-06-15'), false);
+});
+
+test('the offer shows for a break nobody answered, and only then', () => {
+	const found = detectPlanBreak(input());
+	assert.equal(breakOfferShowing(found, null, 'p'), true);
+	assert.equal(breakOfferShowing(found, { plan_id: 'p', from: shiftIsoDate(S, 8) }, 'p'), false);
+	assert.equal(breakOfferShowing(found, { plan_id: 'q', from: shiftIsoDate(S, 8) }, 'p'), true);
+	assert.equal(breakOfferShowing(null, null, 'p'), false);
+});
+
+test('the break window is the break on now, else the last one answered in this plan', () => {
+	const found = detectPlanBreak(input());
+	const answered = { plan_id: 'p', from: '2026-05-01', until: '2026-05-20' };
+	assert.deepEqual(breakWindow(found, answered, 'p', TODAY), { fromIso: shiftIsoDate(S, 8), untilIso: TODAY });
+	assert.deepEqual(breakWindow(null, answered, 'p', TODAY), { fromIso: '2026-05-01', untilIso: '2026-05-20' });
+	assert.equal(breakWindow(null, answered, 'q', TODAY), null);
+	assert.equal(breakWindow(null, { plan_id: 'p', from: '2026-05-01' }, 'p', TODAY), null);
+	assert.equal(breakWindow(null, null, 'p', TODAY), null);
 });

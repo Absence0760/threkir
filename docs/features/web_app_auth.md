@@ -36,6 +36,7 @@ import { auth } from '#lib/stores/auth.svelte';
 | `auth.user` | `User \| null` | Current user profile (null while loading or signed out) |
 | `auth.loggedIn` | `boolean` | Whether a Supabase session exists |
 | `auth.loading` | `boolean` | True during the initial `getSession()` round-trip |
+| `auth.profileFailed` | `boolean` | The first profile read for a signed-in session failed, or was still unanswered after 10 s, with no profile hydrated. Releases the layout's shell hold (below); it never routes anyone to a gate |
 
 ### `User` shape
 
@@ -270,6 +271,19 @@ The redirects above fire only on the sign-in hop — `/auth/callback` and `/logi
 Mobile carries the same gate: `HomeScreen` pushes `ConfirmAgeScreen` (the twin of `/auth/confirm-age` — two checkboxes, Continue, or Sign out; the back gesture cannot dismiss it) whenever the signed-in profile records no consent, before the setup wizard. The sign-up screen's Apple / Google buttons collect the affirmation before the tap, so they pass `affirmedAgeAndTerms: true` and `ApiClient` stamps it inside the sign-in call; the gate awaits `ApiClient.consentStampSettled` before reading, so it never re-asks someone who just answered.
 
 Pinned by `tests-e2e/auth/consent-gate.spec.ts` (web), `test/home_screen_test.dart` + `test/confirm_age_screen_test.dart` (mobile). Decisions §1758.
+
+---
+
+## Post-auth routing: no app page paints before the gates resolve
+
+Both layout gates (consent, then onboarding) can only decide once the profile has hydrated, and `auth.loading` turns false as soon as the session is known, a round-trip before that. A brand-new account signing in therefore used to land on `/dashboard`, paint it inside the app shell, and only then bounce to `/onboarding`. Two pieces, both reading the pure `lib/core/post_auth_route.ts`, now close it:
+
+- **The sign-in hops pick the destination.** `/login` (its post-sign-in `$effect` and both submit branches) and `/auth/callback` navigate to `postAuthDestination(auth.user, target)`, and the `/login` effect waits for the profile before it fires. The default landing (`/dashboard`) is diverted to `/auth/confirm-age` or `/onboarding` when the profile owes one (`pendingGate`); an explicit `return_to` is left alone, because it may name a surface the layout exempts from the gates (a club invite, a share page) and a gated one is covered by the hold below. A profile that failed to load diverts nowhere, so a read failure never sends an onboarded account through the wizard.
+- **The layout holds the shell.** For a signed-in session on any path outside `isAnonAllowed`, `holdAppShell` renders the existing loading screen (`data-testid="app-shell-hold"`) instead of the shell and page while the profile is unknown or owes a gate, so a reload, a deep link or a second tab cannot flash a page either. Signed-out visitors and every anon-allowed surface (landing, `/login`, `/learn`, `/share`, legal pages, public clubs) render immediately as before. The gates navigate with `replaceState`, so the held URL leaves no history entry to bounce back through.
+
+The hold is fail-safe: `auth.profileFailed` releases it when `get_my_profile` or the bootstrap insert fails, a profile load throws, or no answer arrives within 10 s. The shell then renders as it did before the hold existed (the profile-load toast, the gates no-op on a null user), rather than stranding the user on a spinner.
+
+Pinned by `src/lib/core/post_auth_route.test.ts` and `tests-e2e/onboarding/no-dashboard-flash.spec.ts`, which observes the DOM from before the first page script and fails if `.app-shell` is ever attached on the way to the wizard. Decisions § 2149.
 
 ---
 

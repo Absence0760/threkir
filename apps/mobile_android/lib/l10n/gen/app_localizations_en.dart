@@ -1989,6 +1989,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runWeakGpsApproximate => 'Approximate location — distance paused';
 
   @override
+  String get runTurnOnPreciseLocation => 'Turn on precise location';
+
+  @override
   String get runA11yStarted => 'Run started';
 
   @override
@@ -10654,6 +10657,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get liveRunMapWaitingGps => 'Waiting for GPS...';
+
+  @override
+  String get liveRunMapApproximateLocation =>
+      'Precise location is off — the map can\'t show where you are';
 
   @override
   String get liveRunMapRecentre => 'Re-centre on my location';

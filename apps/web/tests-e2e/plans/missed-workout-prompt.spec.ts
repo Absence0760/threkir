@@ -17,6 +17,9 @@ import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/sag
  * Runs as a throwaway runner whose plans are cleared after every test. Each
  * plan starts 14 days ago, one week per 7 days, every week `build` at 30 km
  * unless the test says otherwise, so no recovery week is ever imminent.
+ * Every plan holds something done in the last week: a week or more with
+ * nothing done is a break, and the break offer outranks this prompt
+ * (decisions § 2128, `plans/break-reschedule.spec.ts`).
  */
 
 let runner: SagaUser;
@@ -244,6 +247,7 @@ test.describe('the missed-workout prompt', () => {
 
 	test('Home: a missed easy run is let go, once, and the answer holds after a reload', async ({ browser }) => {
 		const { ids } = await plantPlan([
+			{ key: 'ran', offset: -6, kind: 'easy', distanceM: 6_000, done: true },
 			{ key: 'missed', offset: -2, kind: 'easy', distanceM: 6_000 },
 			{ key: 'next', offset: 4, kind: 'long', distanceM: 14_000 }
 		]);
@@ -304,6 +308,7 @@ test.describe('the missed-workout prompt', () => {
 
 	test('a missed tempo is dropped, never offered as a make-up', async ({ browser }) => {
 		const { planId } = await plantPlan([
+			{ key: 'ran', offset: -6, kind: 'easy', distanceM: 6_000, done: true },
 			{ key: 'missed', offset: -1, kind: 'tempo', distanceM: 8_000 },
 			{ key: 'next', offset: 4, kind: 'long', distanceM: 14_000 }
 		]);
@@ -376,7 +381,10 @@ test.describe('the missed-workout prompt', () => {
 	});
 
 	test('a failed save says so, keeps the question and records nothing', async ({ browser }) => {
-		const { planId, ids } = await plantPlan([{ key: 'missed', offset: -2, kind: 'easy', distanceM: 6_000 }]);
+		const { planId, ids } = await plantPlan([
+			{ key: 'ran', offset: -6, kind: 'easy', distanceM: 6_000, done: true },
+			{ key: 'missed', offset: -2, kind: 'easy', distanceM: 6_000 }
+		]);
 		const page = await open(browser, `/plans/${planId}`);
 		try {
 			await page.route('**/rest/v1/rpc/answer_missed_workouts', (route) =>

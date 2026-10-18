@@ -4,7 +4,8 @@
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
 	import { dmUnreadStore } from '#lib/stores/dm_unread.svelte.ts';
 	import { onMount, tick } from 'svelte';
-	import { initial } from '#lib/format/avatar.ts';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { hashHue } from '#lib/format/avatar.ts';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -238,7 +239,7 @@
 									class:active={t.partnerId === activeId}
 									href={`/messages/${t.partnerId}`}
 								>
-									<span class="avatar">{initial(t.partnerName)}</span>
+									<Avatar url={t.partnerAvatar} name={t.partnerName} size="2.2rem" font="0.9rem" bg="seed" seedHue={hashHue(t.partnerId)} />
 									<span class="thread-body">
 										<span class="thread-top">
 											<strong>{t.partnerName ?? tr('messages.runnerFallback')}</strong>
@@ -390,17 +391,6 @@
 	.thread:hover,
 	.thread.active {
 		background: var(--color-bg-secondary);
-	}
-	.avatar {
-		flex: 0 0 auto;
-		width: 2.2rem;
-		height: 2.2rem;
-		border-radius: 50%;
-		background: var(--color-primary);
-		color: var(--color-bg);
-		display: grid;
-		place-items: center;
-		font-weight: 700;
 	}
 	.thread-body {
 		min-width: 0;

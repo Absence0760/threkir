@@ -15,7 +15,8 @@ import 'sync_service.dart'
         drainPendingDeletes,
         drainPendingRouteDeletes,
         drainUnsyncedRoutes,
-        filterRunsForCurrentUser;
+        filterRunsForCurrentUser,
+        pushPendingRunEdits;
 
 const backgroundSyncTaskName = 'com.threkir.backgroundSync';
 
@@ -134,6 +135,11 @@ Future<void> runBackgroundSyncCycle(
     } catch (e) {
       debugPrint('Background sync batch failed: $e');
     }
+  }
+  try {
+    await pushPendingRunEdits(api, store);
+  } catch (e) {
+    debugPrint('Background sync edit push failed: $e');
   }
   try {
     await drainPendingDeletes(api, store);

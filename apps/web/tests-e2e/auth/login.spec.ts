@@ -182,19 +182,24 @@ test.describe('/login', () => {
 			if (createErr || !created?.user) throw createErr ?? new Error('createUser failed');
 			userId = created.user.id;
 
-			// Stamp `onboarded_at` on the auto-created user_profiles
-			// row so the layout-level onboarding gate doesn't redirect
-			// the sign-in to /onboarding (the test is about password
-			// rotation, not the wizard). Migration 20261016_001 added
-			// the column. Same pattern as the saga-users fixture.
-			await admin
+			// Stamp `onboarded_at` and both consent stamps on the
+			// auto-created user_profiles row so neither the onboarding
+			// gate nor the Art 8 age gate owes this account a stop: the
+			// sign-in hop routes an account that owes one straight to it
+			// rather than through /dashboard (decisions § 2149), and the
+			// test is about password rotation. Same stamps as the
+			// saga-users fixture.
+			const { error: profileErr } = await admin
 				.from('user_profiles')
 				.upsert({
 					id: userId,
 					preferred_unit: 'km',
 					subscription_tier: 'free',
-					onboarded_at: new Date().toISOString()
+					onboarded_at: new Date().toISOString(),
+					age_confirmed_at: new Date().toISOString(),
+					terms_accepted_at: new Date().toISOString()
 				});
+			expect(profileErr).toBeNull();
 
 			await clearMailpit();
 

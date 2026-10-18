@@ -101,6 +101,11 @@ jobs:
           # confirmation and password-reset mail when the function is absent.
           # `supabase functions deploy` reads each function's verify_jwt from
           # config.toml, so no per-function flags are needed here.
+          # --use-api bundles on Supabase's side. The Docker bundler pulls
+          # edge-runtime from public ECR anonymously, and that pull was refused
+          # (`toomanyrequests`) twice running on backend@1.0.28, leaving the
+          # new migrations live with none of the functions deployed
+          # (decisions § 2112).
           shopt -s nullglob
           deployed=0
           for dir in supabase/functions/*/; do
@@ -108,7 +113,7 @@ jobs:
             [ "$fn" = "_shared" ] && continue
             [ -f "$dir/index.ts" ] || continue
             echo "::group::deploy $fn"
-            supabase functions deploy "$fn" --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+            supabase functions deploy "$fn" --use-api --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
             echo "::endgroup::"
             deployed=$((deployed + 1))
           done

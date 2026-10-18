@@ -21,9 +21,12 @@ import 'training.dart' show toIsoDate;
 ///
 /// Deliberately absent: `vdot`, `current_5k_seconds` and `notes` are the
 /// publisher's private fields, stripped on publish (each caller writes them
-/// null, and the trigger in migration 20270508_001 enforces it). `status`,
-/// `is_template`, `is_public_template`, `club_id` and `parent_template_id`
-/// make the row a template, so each caller states them itself.
+/// null, and the trigger in migration 20270508_001 enforces it).
+/// `race_listing_id` is the race the publisher built the plan for, equally
+/// their own business: the trigger nulls it on every template
+/// (20270924000001), so it is never copied. `status`, `is_template`,
+/// `is_public_template`, `club_id` and `parent_template_id` make the row a
+/// template, so each caller states them itself.
 Map<String, Object?> planHeadCopyFields(TrainingPlanRow src) => {
       'name': src.name,
       'goal_event': src.goalEvent,

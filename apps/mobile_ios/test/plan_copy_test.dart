@@ -203,6 +203,7 @@ void main() {
       'updated_at', // server-maintained
       'trimmed_at', // the owner's plan state, not the design
       'paused_at', // the owner's plan state: a template is never paused
+      'race_listing_id', // the owner's own race: nulled on every template
     };
     expect(
         _missing(_sourcePlan.toJson(), planHeadCopyFields(_sourcePlan), excused),

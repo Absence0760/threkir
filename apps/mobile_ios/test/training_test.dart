@@ -213,11 +213,63 @@ void main() {
       final wk9 = plan.weeks[8].workouts
           .firstWhere((w) => w.kind == WorkoutKind.walkRun);
       expect(wk9.structure!.repeats!['count'], 1);
+      expect(wk9.structure!.repeats!['duration_s'], 1800);
       expect(wk9.structure!.repeats!.containsKey('recovery_duration_s'), isFalse);
       // #273: the final week is a graduation, not a race — a beginner walk-run
       // plan has no goal race, so labelling it 'race' ("Race week") misleads.
       expect(plan.weeks[8].phase, PlanPhase.graduation);
       expect(plan.weeks[0].phase, PlanPhase.build);
+    });
+
+    test('generatePlan(beginnerWalkRun): the last session is a 5K ended by distance, and the only one', () {
+      for (final daysPerWeek in [1, 2, 3]) {
+        for (final weeks in [9, 12]) {
+          final plan = generatePlan(GeneratePlanInput(
+            goalEvent: GoalEvent.distance5k,
+            startDate: DateTime(2026, 6, 1),
+            daysPerWeek: daysPerWeek,
+            weeks: weeks,
+            beginnerWalkRun: true,
+          ));
+          final sessions = plan.weeks
+              .expand((w) => w.workouts)
+              .where((w) => w.kind == WorkoutKind.walkRun)
+              .toList();
+          final last = sessions.last;
+          expect(last.structure!.repeats!['count'], 1);
+          expect(last.structure!.repeats!['distance_m'], kWalkRunGraduationM);
+          expect(last.structure!.repeats!.containsKey('duration_s'), isFalse);
+          // A walk recovery keeps the whole session unpaced (decisions § 2074).
+          expect(last.structure!.repeats!['recovery_pace'], 'walk');
+          expect(last.structure!.warmup!['duration_s'], 300);
+          expect(last.structure!.cooldown!['duration_s'], 300);
+          expect(
+              last.scheduledDate,
+              plan.weeks.last.workouts
+                  .where((w) => w.kind == WorkoutKind.walkRun)
+                  .last
+                  .scheduledDate);
+          expect(
+              sessions
+                  .where((w) => w.structure!.repeats!['distance_m'] != null)
+                  .length,
+              1);
+        }
+      }
+      // At the 12:12/km fallback the run is 61 min of the 71-min session, and
+      // the distance counts the walking either side at 11:40/km.
+      final fallback = generatePlan(GeneratePlanInput(
+        goalEvent: GoalEvent.distance5k,
+        startDate: DateTime(2026, 6, 1),
+        daysPerWeek: 3,
+        beginnerWalkRun: true,
+      ));
+      final fiveK = fallback.weeks[8].workouts
+          .where((w) => w.kind == WorkoutKind.walkRun)
+          .last;
+      expect(fiveK.targetPaceSecPerKm, fallback.paces.easy);
+      expect(fiveK.targetDurationSeconds, (5 * fallback.paces.easy).round() + 600);
+      expect(fiveK.targetDistanceM, 5857);
     });
   });
 
@@ -1063,6 +1115,71 @@ void main() {
         );
         expect(masters.weeks[2].notes, contains('Step-back'));
       }
+    });
+
+    // Mirrors the extra-recovery tests in
+    // apps/web/src/lib/training/training.test.ts.
+    List<Object?> shape(GeneratedPlan p) => [
+          for (final w in p.weeks)
+            [
+              w.phase,
+              w.targetVolumeM,
+              w.notes,
+              for (final x in w.workouts)
+                [
+                  x.scheduledDate,
+                  x.kind,
+                  x.targetDistanceM,
+                  x.targetDurationSeconds,
+                  x.targetPaceSecPerKm,
+                  x.notes,
+                ],
+            ],
+        ];
+
+    test(
+        'usesMastersRecovery: extra recovery applies at any age and never removes it from a masters runner',
+        () {
+      expect(usesMastersRecovery(34, true), isTrue);
+      expect(usesMastersRecovery(null, true), isTrue);
+      expect(usesMastersRecovery(34, false), isFalse);
+      expect(usesMastersRecovery(null, null), isFalse);
+      expect(usesMastersRecovery(58, false), isTrue);
+      expect(usesMastersRecovery(58, null), isTrue);
+    });
+
+    test(
+        'extra recovery gives a sub-masters or ageless runner the masters schedule',
+        () {
+      GeneratePlanInput input({int? age, bool extra = false}) =>
+          GeneratePlanInput(
+            goalEvent: GoalEvent.distanceFull,
+            startDate: DateTime(2026, 6, 7),
+            daysPerWeek: 5,
+            recent5kSec: 24 * 60,
+            age: age,
+            extraRecovery: extra,
+          );
+      final masters = shape(generatePlan(input(age: 58)));
+      expect(shape(generatePlan(input(age: 34, extra: true))), masters);
+      expect(shape(generatePlan(input(extra: true))), masters);
+      expect(shape(generatePlan(input(age: 34))), isNot(masters));
+    });
+
+    test('extra recovery reaches the ultra schedule too', () {
+      GeneratePlanInput input({int? age, bool extra = false}) =>
+          GeneratePlanInput(
+            goalEvent: GoalEvent.custom,
+            goalDistanceM: 100000,
+            startDate: DateTime(2026, 6, 7),
+            daysPerWeek: 5,
+            recent5kSec: 24 * 60,
+            age: age,
+            extraRecovery: extra,
+          );
+      final masters = shape(generatePlan(input(age: 61)));
+      expect(shape(generatePlan(input(extra: true))), masters);
+      expect(shape(generatePlan(input())), isNot(masters));
     });
   });
 

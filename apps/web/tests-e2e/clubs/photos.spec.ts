@@ -61,7 +61,7 @@ test.describe('/clubs/[slug] — ClubPhotos upload + delete (member/owner)', () 
 			timeout: 10_000
 		});
 
-		await page.locator('input[type="file"]').setInputFiles({
+		await page.getByTestId('club-photos-file-input').setInputFiles({
 			name: 'e2e-club-photo.png',
 			mimeType: 'image/png',
 			buffer: ONE_PIXEL_PNG

@@ -1601,6 +1601,16 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                         await _roamPush(widget.settingsSync?.pushAudioCues);
                       },
                     ),
+                    SwitchListTile(
+                      title: Text(l10n.phoneSurfaceVibrationCues),
+                      subtitle: Text(l10n.phoneSurfaceVibrationCuesSubtitle),
+                      value: prefs.hapticFeedback,
+                      onChanged: (v) async {
+                        await prefs.setHapticFeedback(v);
+                        await _roamPush(
+                            widget.settingsSync?.pushHapticFeedback);
+                      },
+                    ),
                     if (prefs.audioCues)
                       SwitchListTile(
                         title: Text(l10n.prefsMinimalVoiceCues),
@@ -1949,6 +1959,17 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                             ? (_) => _editExcludeGymFromReadiness()
                             : null,
                       ),
+                    SwitchListTile(
+                      key: const Key('prefsExtraRecovery'),
+                      title: Text(l10n.prefsExtraRecovery),
+                      subtitle: Text(l10n.prefsExtraRecoveryHint),
+                      value:
+                          _bagValue<Object>(SettingsKeys.extraRecovery) == true,
+                      onChanged: _bagReady
+                          ? (on) =>
+                              _putUniversal(SettingsKeys.extraRecovery, on)
+                          : null,
+                    ),
                   ],
                 ),
                 (

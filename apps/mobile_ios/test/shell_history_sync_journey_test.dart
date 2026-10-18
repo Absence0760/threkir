@@ -124,10 +124,15 @@ class _JourneyApi extends ApiClient {
   );
 
   @override
+  Future<({List<cm.Run> runs, DateTime? cursor})> getRunsModifiedSince(
+    DateTime? cursor,
+  ) async =>
+      (runs: const <cm.Run>[], cursor: cursor);
+
+  @override
   Future<List<cm.Run>> getRuns({
     int limit = 50,
     DateTime? before,
-    DateTime? updatedSince,
   }) async => const <cm.Run>[];
 
   @override

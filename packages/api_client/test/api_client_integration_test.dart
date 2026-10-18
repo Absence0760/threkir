@@ -356,44 +356,39 @@ void main() {
       expect(downloaded.last.lng, closeTo(8.56, 0.001));
     });
 
-    test('getRuns(updatedSince:) delta filter matches metadata.last_modified_at',
+    test('getRunsModifiedSince returns a new write and advances the cursor',
         () async {
-      // Regression: the PostgREST filter key was written as
-      // `metadata->>'last_modified_at'` — the quoted key is treated as a
-      // literal JSON key named `'last_modified_at'` (quotes included),
-      // which matches nothing, so EVERY delta pull silently returned []
-      // and multi-device edits never arrived after the cold load.
+      // The delta keys on the server-stamped `runs.updated_at` (migration
+      // 20270918000005, decisions § 2118), so the write needs no client
+      // stamp at all to be returned, and the cursor it hands back is a
+      // server instant.
+      final before = await api.getRunsModifiedSince(null);
       final id = '00000000-0000-0000-0001-' + DateTime.now()
               .microsecondsSinceEpoch
               .toRadixString(16)
               .padLeft(12, '0')
               .substring(0, 12);
-      final stamp = DateTime.now().toUtc();
       final run = Run(
         id: id,
-        startedAt: stamp,
+        startedAt: DateTime.utc(2024, 1, 1, 7),
         duration: const Duration(minutes: 30),
         distanceMetres: 6000,
         track: const [],
         source: RunSource.app,
-        metadata: {
-          'activity_type': 'run',
-          'last_modified_at': stamp.toIso8601String(),
-        },
+        metadata: {'activity_type': 'run'},
       );
       inserted.add(id);
       await api.saveRun(run);
 
-      final since = stamp.subtract(const Duration(minutes: 1));
-      final delta = await api.getRuns(limit: 200, updatedSince: since);
-      expect(delta.map((r) => r.id), contains(id),
-          reason: 'a run stamped after `updatedSince` must be returned '
-              'by the delta pull.');
-
-      final afterStamp = stamp.add(const Duration(minutes: 1));
-      final none = await api.getRuns(limit: 200, updatedSince: afterStamp);
-      expect(none.map((r) => r.id), isNot(contains(id)),
-          reason: 'a run stamped before `updatedSince` must be excluded.');
+      final delta = await api.getRunsModifiedSince(before.cursor);
+      expect(delta.runs.map((r) => r.id), contains(id),
+          reason: 'a run written after the cursor must be returned, even one '
+              'started long ago and carrying no last_modified_at.');
+      expect(delta.cursor, isNotNull);
+      if (before.cursor != null) {
+        expect(delta.cursor!.isAfter(before.cursor!), isTrue,
+            reason: 'the cursor is the newest server updated_at seen');
+      }
     });
 
     test(

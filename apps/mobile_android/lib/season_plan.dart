@@ -300,6 +300,7 @@ SeasonBuildResult buildSeason({
   int? recent5kSec,
   TrainingGender gender,
   int? age,
+  bool extraRecovery = false,
 }) {
   if (races.isEmpty) {
     return const SeasonBuildResult.refused(SeasonRefusal.empty);
@@ -366,6 +367,7 @@ SeasonBuildResult buildSeason({
       weeks: weeks,
       gender: gender,
       age: age,
+      extraRecovery: extraRecovery,
     ));
     final m = _Mutable(generated);
     _fitToARace(m, race, goal.goalDistanceM);

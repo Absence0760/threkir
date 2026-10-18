@@ -36,6 +36,7 @@ import { auth } from '#lib/stores/auth.svelte';
 | `auth.user` | `User \| null` | Current user profile (null while loading or signed out) |
 | `auth.loggedIn` | `boolean` | Whether a Supabase session exists |
 | `auth.loading` | `boolean` | True during the initial `getSession()` round-trip |
+| `auth.profileFailed` | `boolean` | The first profile read for a signed-in session failed, or was still unanswered after 10 s, with no profile hydrated. Releases the layout's shell hold (below); it never routes anyone to a gate |
 
 ### `User` shape
 
@@ -104,7 +105,7 @@ The "Sign-in Methods" card on `/settings/account` lists every identity attached 
 ### Wire format
 
 - **Read**: `supabase.auth.getUserIdentities()` → `{ identities: [{ provider, identity_data, created_at, ... }] }`
-- **Link**: `supabase.auth.linkIdentity({ provider, options: { redirectTo: '/auth/callback' } })` — kicks off an OAuth round-trip identical to fresh sign-in. On return, the new identity is attached to the existing `user_id`.
+- **Link**: `supabase.auth.linkIdentity({ provider, options: { redirectTo: '/auth/callback' } })` — kicks off an OAuth round-trip identical to fresh sign-in. On return, the new identity is attached to the existing `user_id`. Before the redirect the card stashes the provider under `oauth_link_provider` in `sessionStorage` (`OAUTH_LINK_STASH_KEY`, `lib/core/auth_redirect_error.ts`), which is how the callback tells a link from a sign-in: a link returns to `/settings/account#sign-in-methods`, refused or not, instead of `/dashboard`. An OAuth sign-in button clears a stale marker an abandoned link left behind.
 - **Unlink**: `supabase.auth.unlinkIdentity(identity)`. Supabase blocks unlinking the last remaining identity; the UI also disables the button client-side with a "you need at least one" tooltip.
 
 ### Supabase prerequisites
@@ -118,6 +119,19 @@ Identity linking is **opt-in** in Supabase. If `linkIdentity()` returns `manual_
 - Brand-true SVG icons for Google (4-colour G) and Apple (white-on-black wordmark), reused from `/login`
 - Provider rows show provider label + email from `identity_data` + linked-on date
 - Per-provider unlink button, disabled when only one identity remains
+- A refused link's reason, above the identity list (see below)
+
+### Refused OAuth redirects
+
+GoTrue refuses an OAuth sign-in or an identity link by redirecting to `/auth/callback` with `error`, `error_code` and `error_description` instead of a `code` — in the query for PKCE, in the fragment for the implicit flow. supabase-js's own URL detection keeps an existing session through such a refusal, so the callback used to fail the exchange, find the runner's still-valid session, call it success and navigate on: a refused link was a silent redirect. The callback now parses the refusal first (`authRedirectError`, query overriding fragment per key, as supabase-js does), strips it from the address bar, and never exchanges or consults the session for success:
+
+- **A link** (the `oauth_link_provider` marker is present and a session exists): the refusal is handed to the account page under `oauth_link_refusal` and shown in the Sign-in methods card, read once. The message is chosen by code (`lib/core/link_refusal_message.ts`, the code strings from `@supabase/auth-js` `lib/error-codes.d.ts`):
+  - `identity_already_exists` → `settingsAccount.linkIdentityTaken`: that Google / Apple account already signs in to a different Threkir account; to link it, sign in with it, take a **Download full backup** there, **Delete Account**, then sign back in here and link again. The provider and the two button labels are interpolated, so the steps name what the page actually shows.
+  - `identity_not_found` → `settingsAccount.linkIdentityNotFound`; `single_identity_not_deletable` → `settingsAccount.needOneMethod`; `manual_linking_disabled` → `settingsAccount.linkingDisabled`.
+  - anything else → `settingsAccount.linkFailed` with GoTrue's description.
+- **A sign-in** (no marker, or no session): the callback shows `authCallback.failed` with the description and the Back to login link.
+
+There is no automatic fix for `identity_already_exists`: the identity belongs to another user, and moving it would leave that account's runs behind a login nobody can use (decisions § 2119). Pinned by `lib/core/auth_redirect_error.test.ts` and `tests-e2e/auth/oauth-redirect-refusal.spec.ts`.
 
 ---
 
@@ -257,6 +271,19 @@ The redirects above fire only on the sign-in hop — `/auth/callback` and `/logi
 Mobile carries the same gate: `HomeScreen` pushes `ConfirmAgeScreen` (the twin of `/auth/confirm-age` — two checkboxes, Continue, or Sign out; the back gesture cannot dismiss it) whenever the signed-in profile records no consent, before the setup wizard. The sign-up screen's Apple / Google buttons collect the affirmation before the tap, so they pass `affirmedAgeAndTerms: true` and `ApiClient` stamps it inside the sign-in call; the gate awaits `ApiClient.consentStampSettled` before reading, so it never re-asks someone who just answered.
 
 Pinned by `tests-e2e/auth/consent-gate.spec.ts` (web), `test/home_screen_test.dart` + `test/confirm_age_screen_test.dart` (mobile). Decisions §1758.
+
+---
+
+## Post-auth routing: no app page paints before the gates resolve
+
+Both layout gates (consent, then onboarding) can only decide once the profile has hydrated, and `auth.loading` turns false as soon as the session is known, a round-trip before that. A brand-new account signing in therefore used to land on `/dashboard`, paint it inside the app shell, and only then bounce to `/onboarding`. Two pieces, both reading the pure `lib/core/post_auth_route.ts`, now close it:
+
+- **The sign-in hops pick the destination.** `/login` (its post-sign-in `$effect` and both submit branches) and `/auth/callback` navigate to `postAuthDestination(auth.user, target)`, and the `/login` effect waits for the profile before it fires. The default landing (`/dashboard`) is diverted to `/auth/confirm-age` or `/onboarding` when the profile owes one (`pendingGate`); an explicit `return_to` is left alone, because it may name a surface the layout exempts from the gates (a club invite, a share page) and a gated one is covered by the hold below. A profile that failed to load diverts nowhere, so a read failure never sends an onboarded account through the wizard.
+- **The layout holds the shell.** For a signed-in session on any path outside `isAnonAllowed`, `holdAppShell` renders the existing loading screen (`data-testid="app-shell-hold"`) instead of the shell and page while the profile is unknown or owes a gate, so a reload, a deep link or a second tab cannot flash a page either. Signed-out visitors and every anon-allowed surface (landing, `/login`, `/learn`, `/share`, legal pages, public clubs) render immediately as before. The gates navigate with `replaceState`, so the held URL leaves no history entry to bounce back through.
+
+The hold is fail-safe: `auth.profileFailed` releases it when `get_my_profile` or the bootstrap insert fails, a profile load throws, or no answer arrives within 10 s. The shell then renders as it did before the hold existed (the profile-load toast, the gates no-op on a null user), rather than stranding the user on a spinner.
+
+Pinned by `src/lib/core/post_auth_route.test.ts` and `tests-e2e/onboarding/no-dashboard-flash.spec.ts`, which observes the DOM from before the first page script and fails if `.app-shell` is ever attached on the way to the wizard. Decisions § 2149.
 
 ---
 

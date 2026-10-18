@@ -12,6 +12,7 @@ import { SELECT_SEPARATOR, type Join } from './database';
 import type { Insertable, Updatable } from './database';
 import type { JsonObject, TrackPoint } from '../types';
 import { isEntityId } from './entity_id';
+import { saveRunEdit, type RunEditFields, type RunEditOutcome } from './run_edit_cas';
 import { markListsStale } from './list_freshness';
 import {
 	keysetAfter,
@@ -49,6 +50,13 @@ import {
 import { challengesToRecomputeForRun } from '../social/challenge_progress';
 import { mergeMyProgress } from '../social/challenge_list';
 import { selectEffectivePricing } from '../social/event_instance';
+import type { RepacePatch } from '../training/plan_repace';
+import type { ResumeShift } from '../training/plan_resume';
+import type { RaceDateChange } from '../training/plan_race_date';
+import type { BreakChange } from '../training/plan_break';
+import type { RepeatWeekChange } from '../training/plan_repeat_week';
+import { shiftIsoDate } from '../training/plan_bulk_ops';
+import type { PlanRecapRecord, PlanRecapRun } from '../training/plan_recap';
 import {
 	EVENT_PHOTO_WINDOW_AFTER_MS,
 	EVENT_PHOTO_WINDOW_BEFORE_MS,
@@ -216,7 +224,6 @@ import {
 } from '../social/dm_thread';
 import type { ParsedResultRow } from '../runs/event_results_csv';
 import {
-	applyRunMetadataPatch,
 	normalisePlanWorkoutNotes,
 	shouldRescoreGlobalSegments,
 	stampGlobalSegmentsScored,
@@ -450,10 +457,11 @@ export async function fetchRunsWithError(
 /// contract + rationale in `./dashboard_runs`); the select carries exactly
 /// the columns the dashboard's consumers read (streaks, training-load,
 /// race-predictor, consistency, intensity, trend, goals, snapshot,
-/// this-week, weekly mileage chart, recent list) — `metadata` stays because those consumers
+/// this-week, weekly mileage chart, recent list, the no-plan recent-5K
+/// suggestion) — `metadata` stays because those consumers
 /// read `avg_bpm` / `elevation_m` / `indoor` from it. `track` is NOT set — it
 /// is a lazy Storage download rather than a column, so it is not one of the
-/// ten and `DashboardRun` does not declare it. `fetchRuns` answers the same
+/// eleven and `DashboardRun` does not declare it. `fetchRuns` answers the same
 /// way for a narrowed read and sets it only for `select('*')`, whose row type
 /// is the whole of `Run`.
 /// The `started_at desc` order means the PostgREST 1000-row cap, if a
@@ -474,6 +482,7 @@ export const DASHBOARD_RUN_COLUMNS = [
 	'is_dnf',
 	'elevation_gain_m',
 	'metadata',
+	'fastest_5k_s',
 ] as const satisfies RunColumns;
 
 /// What the dashboard read carries, and what `fetchRunsForDashboard` declares.
@@ -505,7 +514,7 @@ export async function fetchRunsForDashboard(): Promise<{
 		// `text` and `metadata` is jsonb, so the generated row types them
 		// `string` / `string` / `Json` while the client unions promise less; the
 		// widening cast this replaced meant the dashboard was the one read that
-		// applied none of them. `track` is NOT set — it is not one of the ten
+		// applied none of them. `track` is NOT set — it is not one of the eleven
 		// columns, so `DashboardRun` does not carry it.
 		runs: data.map((r) => ({
 			...r,
@@ -1878,36 +1887,48 @@ async function gzipBytes(data: Uint8Array): Promise<Uint8Array> {
 	return out;
 }
 
-/// `isDnf` rides the same round-trip when the edit dialog changed it:
-/// `runs.is_dnf` is a real column (20261207_001), not a metadata key, and
-/// setting it true drops the run from personal-records scoring.
+/// Save the run-detail edit made on [loaded], the row as the page last read
+/// it, as a compare-and-swap on its server `updated_at` (decisions § 2147):
+/// an edit never writes over a change made elsewhere since the page loaded
+/// to a field it also changes, and reports that as a `conflict` with the
+/// server's copy instead. `isDnf` rides the same write when the dialog
+/// changed it: `runs.is_dnf` is a real column (20261207_001), and setting it
+/// true drops the run from personal-records scoring.
+///
+/// Title / notes are trimmed and an empty-after-trim key is removed from the
+/// bag rather than left as `""`; mobile's run-detail edit applies the same
+/// normalisation (`data_normalise.ts` holds the contract).
 export async function updateRunMetadata(
-	id: string,
-	fields: { title?: string; notes?: string },
+	loaded: Run,
+	fields: RunEditFields,
 	isDnf?: boolean,
-): Promise<void> {
-	const { data: run } = await supabase
-		.from(TABLES.runs)
-		.select('metadata')
-		.eq('id', id)
-		.single();
-	if (!run) throw new Error('Run not found');
-	// Trim + drop empty-after-trim keys so clearing a field via the
-	// edit dialog actually removes the key from the metadata bag
-	// instead of leaving `notes: ""` behind. Mobile's run-detail
-	// edit dialog applies the same normalisation. Logic lives in
-	// data_normalise.ts so the contract can be unit-tested.
-	const next = applyRunMetadataPatch(
-		run.metadata as JsonObject | null | undefined,
+): Promise<RunEditOutcome<Run>> {
+	return saveRunEdit<Run>(
+		{
+			swap: async (patch, base) => {
+				markListsStale('runs', 'history', 'routes');
+				const filtered = supabase.from(TABLES.runs).update(patch).eq('id', loaded.id);
+				const { data, error } = await (base === null
+					? filtered.is('updated_at', null)
+					: filtered.eq('updated_at', base)
+				).select('*');
+				if (error) throw dbError(error);
+				return (data ?? []).map((row) => asRun(row, loaded.track));
+			},
+			reload: async () => {
+				const { data, error } = await supabase
+					.from(TABLES.runs)
+					.select('*')
+					.eq('id', loaded.id)
+					.maybeSingle();
+				if (error) throw dbError(error);
+				return data ? asRun(data, loaded.track) : null;
+			},
+		},
+		loaded,
 		fields,
-		new Date().toISOString(),
+		isDnf,
 	);
-	markListsStale('runs', 'history', 'routes');
-	const { error } = await supabase
-		.from(TABLES.runs)
-		.update(isDnf === undefined ? { metadata: next } : { metadata: next, is_dnf: isDnf })
-		.eq('id', id);
-	if (error) throw dbError(error);
 }
 
 // --- Route reviews ---
@@ -2838,6 +2859,16 @@ export interface RaceListingDetail {
 	entry_url: string | null;
 	results_url: string | null;
 	is_verified: boolean;
+	/// The linked course's summary. The view fills it only while the route is
+	/// public, so null covers "no course" and "a course nobody may see" alike
+	/// (decisions § 2157).
+	course: RaceListingCourse | null;
+}
+
+export interface RaceListingCourse {
+	distanceM: number | null;
+	ascentM: number | null;
+	surface: string | null;
 }
 
 export async function fetchRaceListing(id: string): Promise<RaceListingDetail | null> {
@@ -2845,12 +2876,14 @@ export async function fetchRaceListing(id: string): Promise<RaceListingDetail | 
 	const { data, error } = await supabase
 		.from('public_race_listings')
 		.select(
-			'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified'
+			'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface'
 		)
 		.eq('id', id)
 		.maybeSingle();
 	if (error) throw dbError(error);
 	if (!data || !data.id || !data.name || !data.race_date || !data.provider) return null;
+	const hasCourse =
+		data.course_distance_m != null || data.course_elevation_m != null || data.course_surface != null;
 	return {
 		id: data.id,
 		provider: data.provider,
@@ -2860,7 +2893,14 @@ export async function fetchRaceListing(id: string): Promise<RaceListingDetail | 
 		location_label: data.location_label,
 		entry_url: data.entry_url,
 		results_url: data.results_url,
-		is_verified: data.is_verified ?? false
+		is_verified: data.is_verified ?? false,
+		course: hasCourse
+			? {
+					distanceM: data.course_distance_m,
+					ascentM: data.course_elevation_m,
+					surface: data.course_surface
+				}
+			: null
 	};
 }
 
@@ -3222,7 +3262,7 @@ async function isProviderGateRefusal(error: unknown): Promise<boolean> {
 /// The matched-race view for a run: the run's owner-only race metadata + its
 /// linked listing (when any). Owner-scoped — reads the base runs row.
 export interface RaceResultForRun {
-	race_listing: RaceListing | null;
+	race_listing: RaceListingDetail | null;
 	race_name: string | null;
 	bib: string | null;
 	chip_time: string | null;
@@ -3242,14 +3282,15 @@ export async function fetchRaceResultForRun(runId: string): Promise<RaceResultFo
 		.maybeSingle();
 	if (error || !data) return null;
 	const meta = (data.metadata as Record<string, unknown> | null) ?? {};
-	let listing: RaceListing | null = null;
+	let listing: RaceListingDetail | null = null;
 	if (data.race_listing_id) {
-		const { data: l } = await supabase
-			.from('public_race_listings')
-			.select('*')
-			.eq('id', data.race_listing_id as string)
-			.maybeSingle();
-		listing = (l as RaceListing) ?? null;
+		// The listing only adds the results link; a failed read of it must not
+		// hide the official result already stamped on the run.
+		try {
+			listing = await fetchRaceListing(data.race_listing_id);
+		} catch (e) {
+			console.warn('fetchRaceResultForRun: listing read failed', e);
+		}
 	}
 	return {
 		race_listing: listing,
@@ -3612,6 +3653,56 @@ export async function deleteClub(id: string): Promise<void> {
 		if (error.message === PAID_EVENT_DELETE_REFUSAL) throw new Error(PAID_EVENT_DELETE_REFUSAL);
 		throw dbError(error);
 	}
+}
+
+// Club logos share the public `avatars` bucket (and its 2 MB / JPEG-PNG-WebP
+// limits) under `clubs/{club_id}/logo.{ext}`; the Storage policies admit only
+// that exact filename, written by the club's owners and admins (migration
+// 20270918000007).
+const clubLogoPathsFor = (clubId: string): string[] =>
+	Object.values(AVATAR_MIME_TO_EXT).map((e) => `clubs/${clubId}/logo.${e}`);
+
+/// Upload a club logo and point `clubs.avatar_url` at it. Same shape as
+/// `uploadAvatar`: EXIF stripped client-side (the bucket is public with no
+/// strip worker), remove-then-insert at a stable path, `?v=` cache-bust.
+export async function uploadClubLogo(clubId: string, file: File): Promise<string> {
+	if (file.size > AVATAR_MAX_BYTES) throw new Error('Image too large (2 MB max)');
+	const clean = await stripExifFromFile(file);
+	if (!clean) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	const ext = AVATAR_MIME_TO_EXT[clean.type];
+	if (!ext) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	const storagePath = `clubs/${clubId}/logo.${ext}`;
+
+	await supabase.storage.from(BUCKETS.avatars).remove(clubLogoPathsFor(clubId));
+
+	const { error: upErr } = await supabase.storage
+		.from(BUCKETS.avatars)
+		.upload(storagePath, clean, { contentType: clean.type, upsert: false });
+	if (upErr) throw dbError(upErr);
+
+	const { data: pub } = supabase.storage.from(BUCKETS.avatars).getPublicUrl(storagePath);
+	const url = `${pub.publicUrl}?v=${Date.now()}`;
+
+	const { error: clubErr } = await supabase
+		.from('clubs')
+		.update({ avatar_url: url })
+		.eq('id', clubId);
+	if (clubErr) {
+		await supabase.storage.from(BUCKETS.avatars).remove([storagePath]);
+		throw dbError(clubErr);
+	}
+	return url;
+}
+
+/// Remove a club's logo: drops every stored logo object and clears
+/// `clubs.avatar_url` so renderers fall back to the initial.
+export async function removeClubLogo(clubId: string): Promise<void> {
+	const { error: rmErr } = await supabase.storage
+		.from(BUCKETS.avatars)
+		.remove(clubLogoPathsFor(clubId));
+	if (rmErr) throw dbError(rmErr);
+	const { error } = await supabase.from('clubs').update({ avatar_url: null }).eq('id', clubId);
+	if (error) throw dbError(error);
 }
 
 export async function joinClub(
@@ -5988,38 +6079,29 @@ export async function fetchPlan(id: string): Promise<{
 	workouts: PlanWorkout[];
 	error: string | null;
 }> {
-	const [planRes, weeksRes] = await Promise.all([
-		supabase.from('training_plans').select('*').eq('id', id).maybeSingle(),
-		supabase
-			.from('plan_weeks')
-			.select('*')
-			.eq('plan_id', id)
-			.order('week_index', { ascending: true })
-	]);
+	// One round trip: the embed needs no `in (...)` list of week ids, so no
+	// chunking either. Ordered here because an embed's order is per parent.
+	const { data, error } = await supabase
+		.from('training_plans')
+		.select('*, plan_weeks(*, plan_workouts(*))')
+		.eq('id', id)
+		.maybeSingle();
 	// Surface a query error so the detail page can show a "couldn't load —
 	// retry" state instead of the not-found page (a real error otherwise
-	// reads as a missing plan when the rows just come back null).
-	const error = planRes.error?.message ?? weeksRes.error?.message ?? null;
-	const plan = (planRes.data ?? null) as TrainingPlan | null;
-	const weeks = (weeksRes.data ?? []) as PlanWeek[];
-	if (!plan || weeks.length === 0) {
-		return { plan, weeks, workouts: [], error };
+	// reads as a missing plan when the row just comes back null).
+	if (!data) return { plan: null, weeks: [], workouts: [], error: error?.message ?? null };
+	const { plan_weeks: weekRows, ...plan } = data;
+	const weeks: PlanWeek[] = [];
+	const workouts: PlanWorkout[] = [];
+	for (const { plan_workouts: woRows, ...week } of weekRows ?? []) {
+		weeks.push(week as PlanWeek);
+		workouts.push(...((woRows ?? []) as PlanWorkout[]));
 	}
-	const weekIds = weeks.map((w) => w.id);
-	const { data: woData, error: woErr } = await queryChunked(weekIds, (part) =>
-		supabase.from('plan_workouts').select('*').in('week_id', part)
+	weeks.sort((a, b) => a.week_index - b.week_index);
+	workouts.sort((a, b) =>
+		a.scheduled_date < b.scheduled_date ? -1 : a.scheduled_date > b.scheduled_date ? 1 : 0
 	);
-	// Ordered here rather than per chunk: each chunk's order says nothing
-	// about where its rows sit against another chunk's.
-	const workouts = ((woData ?? []) as PlanWorkout[])
-		.slice()
-		.sort((a, b) => (a.scheduled_date < b.scheduled_date ? -1 : a.scheduled_date > b.scheduled_date ? 1 : 0));
-	return {
-		plan,
-		weeks,
-		workouts,
-		error: error ?? woErr?.message ?? null
-	};
+	return { plan: plan as TrainingPlan, weeks, workouts, error: null };
 }
 
 export async function fetchWorkout(
@@ -6035,6 +6117,65 @@ export async function fetchWorkout(
 		.eq('id', id)
 		.maybeSingle();
 	return { workout: (data as PlanWorkout | null) ?? null, error: error?.message ?? null };
+}
+
+/// Distances of the runs linked to plan workouts, by run id, for the
+/// "Done · +3 km" status. Ids the caller cannot read (a coach looking at an
+/// athlete's plan, a deleted run) are simply absent.
+export async function fetchRunDistances(ids: readonly string[]): Promise<Map<string, number>> {
+	const wanted = [...new Set(ids)];
+	const rows = await readChunked(wanted, async (part) => {
+		const { data, error } = await supabase.from(TABLES.runs).select('id, distance_m').in('id', part);
+		if (error) throw dbError(error);
+		return data ?? [];
+	});
+	const out = new Map<string, number>();
+	for (const r of rows) if (r.distance_m != null) out.set(r.id, r.distance_m);
+	return out;
+}
+
+/// The runs and records the end-of-plan recap (`assemblePlanRecap`) reads,
+/// each dated on the runner's local day. Runs reach two days past either end
+/// of the plan, the run-to-workout matcher's cross-day reach (decisions
+/// § 2079), so a linked run on the window's edge is still found by id.
+export async function fetchPlanRecapSources(
+	startIso: string,
+	endIso: string,
+): Promise<{ runs: PlanRecapRun[]; records: PlanRecapRecord[] }> {
+	const userId = auth.user?.id;
+	if (!userId) return { runs: [], records: [] };
+	// Imported here, not at the top: a static import pulls the whole plan
+	// generator into this module's chunk, which nearly every route loads.
+	const { formatISO, parseISO } = await import('../training/training');
+	const [runs, recordsRes] = await Promise.all([
+		fetchRuns({
+			columns: ['id', 'started_at', 'distance_m', 'duration_s', 'activity_type', 'is_dnf'] as const,
+			startedAtFrom: parseISO(shiftIsoDate(startIso, -2)).toISOString(),
+			startedAtBefore: parseISO(shiftIsoDate(endIso, 3)).toISOString(),
+			throwOnError: true,
+		}),
+		supabase
+			.from(TABLES.personal_records)
+			.select('distance, best_time_s, achieved_at, run_id')
+			.eq('user_id', userId),
+	]);
+	if (recordsRes.error) throw dbError(recordsRes.error);
+	return {
+		runs: runs.map((r) => ({
+			id: r.id,
+			date: formatISO(new Date(r.started_at)),
+			distanceM: r.distance_m,
+			durationS: r.duration_s,
+			activityType: r.activity_type,
+			isDnf: r.is_dnf,
+		})),
+		records: (recordsRes.data ?? []).map((r) => ({
+			distance: r.distance,
+			timeS: r.best_time_s,
+			date: formatISO(new Date(r.achieved_at)),
+			runId: r.run_id,
+		})),
+	};
 }
 
 /// Who owns a plan, for the "updated by your coach" line on a workout
@@ -6053,12 +6194,33 @@ export async function fetchPlanOwnerId(planId: string): Promise<string | null> {
 /// A plan overview read. `error` is set when a read failed, so a caller can
 /// say "couldn't load your plan" instead of showing the no-plan state over a
 /// plan that exists.
-export type PlanOverviewRead = { overview: ActivePlanOverview | null; error: string | null };
+export type PlanOverviewRead = {
+	overview: ActivePlanOverview | null;
+	error: string | null;
+	/// The runner's most recently paused plan, read only when there is no
+	/// active one to show, so Home can offer to resume it instead of acting
+	/// as though they have no plan.
+	paused?: Pick<TrainingPlan, 'id' | 'name'> | null;
+};
 
 export async function fetchActivePlanOverview(): Promise<PlanOverviewRead> {
 	const userId = auth.user?.id;
 	if (!userId) return { overview: null, error: null };
-	return planOverviewFor(userId);
+	const read = await planOverviewFor(userId);
+	if (read.overview || read.error) return read;
+	const { data, error } = await supabase
+		.from('training_plans')
+		.select('id, name')
+		.eq('user_id', userId)
+		.eq('status', 'paused')
+		.eq('is_template', false)
+		.order('paused_at', { ascending: false, nullsFirst: false })
+		.limit(1)
+		.maybeSingle();
+	// A failed read of the paused plan is not a failed plan load: the
+	// dashboard falls back to the no-plan card, as it did before.
+	if (error) console.error('Reading the paused plan failed', { message: error.message });
+	return { ...read, paused: data ?? null };
 }
 
 /// The overview of `userId`'s current plan (plan_current.ts), or of the next
@@ -6128,6 +6290,9 @@ export async function createTrainingPlan(input: {
 	daysPerWeek: number;
 	notes?: string;
 	generated: GeneratedPlan;
+	/// The race listing the plan is built for. The RPC writes null for an id
+	/// that names no listing rather than refusing the plan.
+	raceListingId?: string | null;
 	overlap?: PlanOverlapChoice;
 }): Promise<TrainingPlan> {
 	// Read the id from the session directly rather than from the auth store.
@@ -6184,7 +6349,8 @@ export async function createTrainingPlan(input: {
 			days_per_week: input.daysPerWeek,
 			vdot: input.generated.vdot ?? null,
 			current_5k_seconds: input.recent5kSec ?? null,
-			notes: input.notes?.trim() || null
+			notes: input.notes?.trim() || null,
+			race_listing_id: input.raceListingId ?? null
 		},
 		p_weeks: input.generated.weeks.map((w) => ({
 			week_index: w.week_index,
@@ -6303,7 +6469,15 @@ async function fetchOverlappingActivePlans(
 /// Resume a paused plan back to 'active'. Refuses (throws
 /// ActivePlanExistsError) when another active plan overlaps its window; a
 /// plan queued before or after it does not block. Non-destructive by design.
-export async function resumePlan(id: string, userId: string): Promise<void> {
+/// Resume a paused plan through `resume_training_plan`, pushing the weeks
+/// `shift` names back when the runner's pause spanned whole weeks
+/// (`resumeShift`), so they come back as upcoming rather than missed. The
+/// overlap pre-check covers the end date the shift will give the plan.
+export async function resumePlan(
+	id: string,
+	userId: string,
+	shift: ResumeShift | null = null
+): Promise<void> {
 	const { data: plan, error: planErr } = await supabase
 		.from('training_plans')
 		.select('start_date, end_date')
@@ -6311,11 +6485,18 @@ export async function resumePlan(id: string, userId: string): Promise<void> {
 		.maybeSingle();
 	if (planErr) throw dbError(planErr);
 	if (!plan) throw new Error('Plan not found.');
-	const others = (await fetchOverlappingActivePlans(userId, plan.start_date, plan.end_date)).filter(
+	const endDate = shift ? shiftIsoDate(plan.end_date, 7 * shift.weeks) : plan.end_date;
+	const others = (await fetchOverlappingActivePlans(userId, plan.start_date, endDate)).filter(
 		(p) => p.id !== id
 	);
 	if (others.length > 0) throw new ActivePlanExistsError();
-	await updatePlanStatus(id, 'active');
+	markListsStale('plans');
+	const { error } = await supabase.rpc('resume_training_plan', {
+		p_plan_id: id,
+		p_from_week_index: shift?.fromWeekIndex ?? null,
+		p_shift_weeks: shift?.weeks ?? 0
+	});
+	if (error) throw dbError(error);
 }
 
 /// The signed-in user's active plans, for checking a date shift against the
@@ -6350,6 +6531,64 @@ export async function shiftTrainingPlan(
 		p_plan_id: planId,
 		p_days: days,
 		p_shift_following: shiftFollowing
+	});
+	if (error) throw dbError(error);
+}
+
+/// Re-anchor a plan on a new race date (`raceDateChange` picks the weeks;
+/// `change_plan_race_date` applies them in one transaction).
+export async function changePlanRaceDate(
+	planId: string,
+	change: RaceDateChange,
+	todayIso: string
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('change_plan_race_date', {
+		p_plan_id: planId,
+		p_race_date: change.raceDateIso,
+		p_today: todayIso,
+		p_drop_week_ids: change.dropWeekIds,
+		p_insert_at: change.insertAt,
+		p_insert_count: change.insertCount,
+		p_repeat_week_id: change.repeatWeekId,
+		p_race_workout_id: change.raceWorkoutId
+	});
+	if (error) throw dbError(error);
+}
+
+/// Runs the latest weeks again after a break and records the offer as
+/// answered (`planBreakChange`, decisions § 2128), in one transaction.
+export async function reschedulePlanAfterBreak(
+	planId: string,
+	change: BreakChange,
+	breakFromIso: string,
+	todayIso: string
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('reschedule_plan_after_break', {
+		p_plan_id: planId,
+		p_today: todayIso,
+		p_break_from: breakFromIso,
+		p_repeat_week_ids: change.repeatWeekIds,
+		p_drop_week_ids: change.dropWeekIds
+	});
+	if (error) throw dbError(error);
+}
+
+/// "Too hard? Repeat this week": runs the week again next week and pushes the
+/// rest back one, keeping race day by dropping `change.dropWeekId`
+/// (`repeatWeekChange`), in one transaction.
+export async function repeatPlanWeek(
+	planId: string,
+	change: RepeatWeekChange,
+	todayIso: string
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('repeat_plan_week', {
+		p_plan_id: planId,
+		p_today: todayIso,
+		p_week_id: change.weekId,
+		p_drop_week_id: change.dropWeekId
 	});
 	if (error) throw dbError(error);
 }
@@ -6644,6 +6883,24 @@ export async function applyWorkoutAdjustments(
 	if (error) throw dbError(error);
 }
 
+/// Record the runner's answer to the missed-workout prompt on each named
+/// workout (`answer_missed_workouts`, decisions § 2122), so it is never asked
+/// again on any device. "Make it up" passes the previewed make-up as
+/// `changes`; it is written in the same transaction as the answer, so the two
+/// land together or not at all.
+export async function answerMissedWorkouts(
+	planId: string,
+	workoutIds: string[],
+	changes: WorkoutAdjustment[] = []
+): Promise<void> {
+	const { error } = await supabase.rpc('answer_missed_workouts', {
+		p_plan_id: planId,
+		p_workout_ids: workoutIds,
+		p_changes: changes
+	});
+	if (error) throw dbError(error);
+}
+
 export async function updatePlanWeek(
 	id: string,
 	patch: Partial<{ phase: PlanPhase; target_volume_m: number | null; notes: string | null }>
@@ -6666,6 +6923,43 @@ export async function updatePlanMeta(
 ): Promise<void> {
 	markListsStale('plans');
 	const { error } = await supabase.from('training_plans').update(patch).eq('id', id);
+	if (error) throw dbError(error);
+}
+
+/// Restart one of the runner's plans as a fresh active copy starting on
+/// `startIso` (`restart_training_plan`). The overlapped active plans and the
+/// source, while live, are retired as abandoned in the same transaction; the
+/// source keeps its history. Returns the new plan's id.
+export async function restartTrainingPlan(planId: string, startIso: string): Promise<string> {
+	markListsStale('plans');
+	const { data, error } = await supabase.rpc('restart_training_plan', {
+		p_plan_id: planId,
+		p_start_date: startIso
+	});
+	if (error) {
+		const friendly = rateLimitErrorMessage(m, error);
+		if (friendly) throw new Error(friendly);
+		throw dbError(error);
+	}
+	return data;
+}
+
+/// Set a plan's goal time with the re-derived workout paces
+/// (`goalTimeRepacePatches`) and VDOT in one transaction
+/// (`set_plan_goal_time`), so the goal and the paces never disagree.
+export async function setPlanGoalTime(
+	planId: string,
+	goalTimeSec: number | null,
+	vdot: number | null,
+	changes: RepacePatch[]
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('set_plan_goal_time', {
+		p_plan_id: planId,
+		p_goal_time_seconds: goalTimeSec,
+		p_vdot: vdot,
+		p_changes: changes as unknown as Json
+	});
 	if (error) throw dbError(error);
 }
 
@@ -7587,6 +7881,32 @@ export async function fetchPublicRunsByUser(userId: string, limit = 20): Promise
 		.limit(limit);
 	if (error) throw dbError(error);
 	return (data ?? []) as Run[];
+}
+
+export interface ProfileRunCounts {
+	/** Runs anyone can see on the profile. */
+	publicCount: number;
+	/** The owner's runs that are NOT on the profile; null for any other viewer. */
+	privateCount: number | null;
+}
+
+/// Head counts for the profile header. The header used to show the length of
+/// the loaded run page, which capped at its limit and gave the owner no hint
+/// that their private runs exist but aren't listed.
+export async function fetchProfileRunCounts(userId: string, isSelf: boolean): Promise<ProfileRunCounts> {
+	const [pub, priv] = await Promise.all([
+		supabase.from('public_runs').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+		isSelf
+			? supabase
+					.from(TABLES.runs)
+					.select('id', { count: 'exact', head: true })
+					.eq('user_id', userId)
+					.or('is_public.is.null,is_public.eq.false')
+			: Promise.resolve({ count: null, error: null }),
+	]);
+	if (pub.error) throw dbError(pub.error);
+	if (priv.error) throw dbError(priv.error);
+	return { publicCount: pub.count ?? 0, privateCount: isSelf ? (priv.count ?? 0) : null };
 }
 
 // ─────────────────────── Kudos + comments on runs (decisions §32) ───────────────────────
@@ -10199,8 +10519,6 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 	// seconds, and `runs.metadata` is a whole-column jsonb write. Merging the
 	// stale copy would silently revert any title / notes edit the owner made
 	// inside that window — the run-detail edit dialog writes the same column.
-	// Keeping the read adjacent to the write is the same discipline
-	// `updateRunMetadata` follows.
 	const { data: freshRow } = await supabase
 		.from(TABLES.runs)
 		.select('metadata')

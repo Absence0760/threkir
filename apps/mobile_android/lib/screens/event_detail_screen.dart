@@ -1258,6 +1258,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   userId: a.userId,
                   status: a.status,
                   displayName: a.displayName,
+                  avatarUrl: a.avatarUrl,
                   attendance: next,
                 )
               else
@@ -1602,6 +1603,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           IdentityAvatar(
                               seed: a.userId,
                               name: a.displayName,
+                              imageUrl: a.avatarUrl,
                               size: 18,
                               fontSize: 10),
                           const SizedBox(width: 6),

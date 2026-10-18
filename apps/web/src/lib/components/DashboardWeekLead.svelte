@@ -4,6 +4,8 @@
 	import { fmtKm, formatDistance } from '#lib/format/units.svelte.ts';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
 	import { weekLead, type LeadActivity, type WeeklyGoalTarget } from '#lib/training/week_lead.ts';
+	import { plannedWorkoutSize } from '#lib/training/workout_summary.ts';
+	import { formatPlannedSize } from '#lib/training/workout_summary_format.ts';
 	import type { WeekStart } from '#lib/training/current_week.ts';
 	import type { PlanWorkout } from '#lib/types.ts';
 
@@ -31,6 +33,17 @@
 			aria: c.kind === 'plan' ? m('dash.leadPlanProgressAria') : m('dash.leadGoalProgressAria'),
 		};
 	});
+
+	/// A walk-run session in minutes, never its estimated distance.
+	function sizeLabel(w: PlanWorkout): string | null {
+		const size = plannedWorkoutSize({
+			kind: w.kind,
+			targetDistanceM: w.target_distance_m,
+			targetDurationS: w.target_duration_seconds,
+			structure: w.structure
+		});
+		return size == null ? null : formatPlannedSize(m, size, (metres) => fmtKm(metres));
+	}
 
 	function whenLabel(iso: string, inDays: number | null): string {
 		if (inDays === 0) return m('dash.today');
@@ -113,8 +126,8 @@
 					<span class="week-lead-session-body">
 						<span class="week-lead-session-when">{whenLabel(w.scheduled_date, lead.nextInDays)}</span>
 						<span class="week-lead-session-kind">
-							{workoutKindLabel(w.kind)}{#if w.target_distance_m != null}
-								&middot; {fmtKm(w.target_distance_m)}{/if}
+							{workoutKindLabel(w.kind)}{#if sizeLabel(w) != null}
+								&middot; {sizeLabel(w)}{/if}
 						</span>
 					</span>
 					<span class="material-symbols" aria-hidden="true">chevron_right</span>

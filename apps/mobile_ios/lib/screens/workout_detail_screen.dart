@@ -4,9 +4,12 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart';
 
+import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/date_format.dart';
 import '../l10n/locale_support.dart';
+import '../overrun_format.dart';
+import '../plan_nudges.dart' show workoutOverrunMetres;
 import '../plan_races.dart';
 import '../relink_candidates.dart';
 import '../training.dart';
@@ -27,6 +30,10 @@ class WorkoutDetailScreen extends StatefulWidget {
   final String planId;
   final String workoutId;
 
+  /// The row the caller already holds. Drawn at once and refreshed behind it,
+  /// so the workout reads, and Start works, without signal.
+  final PlanWorkoutRow? initial;
+
   /// The heart-rate prescription gate (decisions § 2092); null reads the
   /// deploy flag. A test passes it directly.
   final bool? hrPrescription;
@@ -35,6 +42,7 @@ class WorkoutDetailScreen extends StatefulWidget {
     required this.training,
     required this.planId,
     required this.workoutId,
+    this.initial,
     this.hrPrescription,
   });
 
@@ -43,13 +51,18 @@ class WorkoutDetailScreen extends StatefulWidget {
 }
 
 class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
-  PlanWorkoutRow? _workout;
+  late PlanWorkoutRow? _workout = widget.initial;
   late final bool _hrPrescription = widget.hrPrescription ?? hrPrescriptionGate;
 
   /// Whether the athlete's coach made the last edit. Auxiliary: a failed
   /// owner read leaves the line hidden and never touches the workout.
   bool _editedByCoach = false;
-  bool _loading = true;
+
+  /// The linked run's distance and the run it was read for, for
+  /// "Done · +3 km". Auxiliary: a failed read leaves the plain "Done".
+  double? _linkedDistance;
+  String? _linkedDistanceRunId;
+  late bool _loading = widget.initial == null;
   bool _unlinking = false;
   bool _skipping = false;
   _WorkoutLoadError? _error;
@@ -61,8 +74,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   Future<void> _load() async {
+    // A workout already on screen stays there while it refreshes; a failed
+    // refresh is a banner over it, so Start still works offline.
+    final refreshing = _workout != null;
     setState(() {
-      _loading = true;
+      if (!refreshing) _loading = true;
       _error = null;
     });
     try {
@@ -75,22 +91,54 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         _loading = false;
       });
       unawaited(_loadProvenance(w));
-    } on TimeoutException catch (e) {
-      debugPrint('WorkoutDetailScreen._load timed out: $e');
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = _WorkoutLoadError.timeout;
-        });
-      }
+      unawaited(_loadLinkedDistance(w));
     } catch (e, s) {
       debugPrint('WorkoutDetailScreen._load failed: $e\n$s');
-      if (mounted) {
+      if (!mounted) return;
+      final kind = e is TimeoutException
+          ? _WorkoutLoadError.timeout
+          : classifyAuthError(e) == AuthErrorKind.offline
+              ? _WorkoutLoadError.offline
+              : _WorkoutLoadError.generic;
+      if (refreshing) {
+        final l10n = AppLocalizations.of(context);
+        showTopBanner(
+          context,
+          kind == _WorkoutLoadError.generic
+              ? l10n.commonStaleRefreshFailed
+              : l10n.commonStaleOffline,
+        );
+        return;
+      }
+      setState(() {
+        _loading = false;
+        _error = kind;
+      });
+    }
+  }
+
+  Future<void> _loadLinkedDistance(PlanWorkoutRow? w) async {
+    final runId = w?.completedRunId;
+    if (runId == null) {
+      if (_linkedDistanceRunId != null) {
         setState(() {
-          _loading = false;
-          _error = _WorkoutLoadError.generic;
+          _linkedDistance = null;
+          _linkedDistanceRunId = null;
         });
       }
+      return;
+    }
+    try {
+      final d = await widget.training
+          .fetchRunDistances([runId])
+          .timeout(kBackendLoadTimeout);
+      if (!mounted || _workout?.completedRunId != runId) return;
+      setState(() {
+        _linkedDistance = d[runId];
+        _linkedDistanceRunId = runId;
+      });
+    } catch (e) {
+      debugPrint('WorkoutDetailScreen._loadLinkedDistance failed: $e');
     }
   }
 
@@ -194,9 +242,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       return Scaffold(
         appBar: AppBar(),
         body: ErrorState(
-            message: _error == _WorkoutLoadError.timeout
-                ? l10n.workoutTimeoutError
-                : l10n.workoutLoadError,
+            message: switch (_error!) {
+              _WorkoutLoadError.timeout => l10n.workoutTimeoutError,
+              _WorkoutLoadError.offline => l10n.authErrorOffline,
+              _WorkoutLoadError.generic => l10n.workoutLoadError,
+            },
             onRetry: _load),
       );
     }
@@ -319,11 +369,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             if (walkRun != null) ...[
               const SizedBox(height: 12),
               _label(theme, l10n.workoutMetricSession),
-              Text(formatWalkRunTotal(l10n, walkRun),
+              Text(formatWalkRunTotal(l10n, walkRun, (m) => fmtOverrun(m.toDouble())),
                   key: const Key('walkRunTotal'),
                   style: theme.textTheme.headlineMedium
                       ?.copyWith(fontWeight: FontWeight.w700)),
-              Text(formatWalkRunPattern(l10n, walkRun),
+              Text(formatWalkRunPattern(l10n, walkRun, (m) => fmtOverrun(m.toDouble())),
                   key: const Key('walkRunPattern'),
                   style: theme.textTheme.bodyMedium),
             ] else if (hasPace) ...[
@@ -428,6 +478,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             required Color fg,
             required IconData icon,
             required String label,
+            String? semanticsLabel,
             required List<Widget> actions}) =>
         Container(
           key: key,
@@ -448,6 +499,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(label,
+                        key: const Key('workoutDetailStatusLabel'),
+                        semanticsLabel: semanticsLabel,
                         style: TextStyle(color: fg, fontWeight: FontWeight.w700)),
                   ),
                 ],
@@ -458,12 +511,22 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         );
 
     if (isWorkoutCompleted(w)) {
+      final overrunM = w.completedRunId != null &&
+              w.completedRunId == _linkedDistanceRunId
+          ? workoutOverrunMetres(w.targetDistanceM, _linkedDistance, w.kind)
+          : null;
+      final overrun = overrunM == null ? null : fmtOverrun(overrunM);
       return panel(
         key: const Key('workoutDetailCompleted'),
         bg: theme.colorScheme.primaryContainer,
         fg: theme.colorScheme.onPrimaryContainer,
         icon: Icons.check_circle,
-        label: l10n.workoutCompleted,
+        label: overrun == null
+            ? l10n.workoutCompleted
+            : '${l10n.workoutCompleted} · ${l10n.planWorkoutOverrun(overrun)}',
+        semanticsLabel: overrun == null
+            ? null
+            : '${l10n.workoutCompleted}, ${l10n.planWorkoutOverrunA11y(overrun)}',
         actions: [
           if (w.completedRunId != null)
             TextButton(
@@ -791,7 +854,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       };
 }
 
-enum _WorkoutLoadError { timeout, generic }
+enum _WorkoutLoadError { timeout, offline, generic }
 
 class _RelinkPickerDialog extends StatefulWidget {
   final TrainingService training;

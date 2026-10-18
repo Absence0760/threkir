@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
 	weeklyDrift,
 	weeklyDriftToDate,
+	weekJudgedByDistance,
 	missedWorkoutAdvice,
 	PLAN_DRIFT_THRESHOLD,
 } from './plan_adherence';
@@ -196,6 +197,42 @@ test('weeklyDriftToDate: a rest day carrying a distance is excluded from the bas
 	assert.equal(d.direction, 'on_track');
 });
 
+// A couch-to-5K week: three walk-run sessions whose distances are estimates
+// at the fallback pace, the runner's real distance nowhere near them.
+const WALK_RUN_WEEK = [
+	{ scheduledDate: '2026-03-02', kind: 'walk_run', targetDistanceM: 2_050 },
+	{ scheduledDate: '2026-03-03', kind: 'rest', targetDistanceM: null },
+	{ scheduledDate: '2026-03-04', kind: 'walk_run', targetDistanceM: 2_050 },
+	{ scheduledDate: '2026-03-05', kind: 'rest', targetDistanceM: null },
+	{ scheduledDate: '2026-03-06', kind: 'walk_run', targetDistanceM: 2_050 },
+];
+
+test('weekJudgedByDistance: a week holding a walk-run session is not', () => {
+	assert.equal(weekJudgedByDistance(['easy', 'rest', 'long']), true);
+	assert.equal(weekJudgedByDistance([]), true);
+	assert.equal(weekJudgedByDistance(['walk_run', 'rest']), false);
+	assert.equal(weekJudgedByDistance(['easy', 'walk_run']), false);
+});
+
+test('weeklyDriftToDate: a walk-run week is never flagged in distance', () => {
+	// Twice the estimate on both sessions so far, against a declared volume.
+	const over = weeklyDriftToDate({
+		workouts: WALK_RUN_WEEK,
+		runs: [
+			{ date: '2026-03-02', distanceM: 4_100 },
+			{ date: '2026-03-04', distanceM: 4_100 },
+		],
+		today: '2026-03-07',
+		weekTargetVolumeM: 6_150,
+	});
+	assert.equal(over.plannedMetres, 0);
+	assert.equal(over.flagged, false);
+	// Nothing run at all: a missed session is the prompt's, not a km gap.
+	const none = weeklyDriftToDate({ workouts: WALK_RUN_WEEK, runs: [], today: '2026-03-07' });
+	assert.equal(none.direction, 'on_track');
+	assert.equal(none.flagged, false);
+});
+
 // ─────────────────────── missedWorkoutAdvice ───────────────────────
 
 test('missedWorkoutAdvice: base/build long run is worth making up', () => {
@@ -242,5 +279,15 @@ test('missedWorkoutAdvice: a missed quality session is just skipped', () => {
 		const a = missedWorkoutAdvice({ kind, isTaper: false, recoveryWeekImminent: false });
 		assert.equal(a.recommendation, 'skip');
 		assert.equal(a.reason, 'not_long_run');
+	}
+});
+
+test('missedWorkoutAdvice: a missed walk-run session repeats the week, whatever the phase', () => {
+	for (const isTaper of [false, true]) {
+		for (const recoveryWeekImminent of [false, true, null]) {
+			const a = missedWorkoutAdvice({ kind: 'walk_run', isTaper, recoveryWeekImminent });
+			assert.equal(a.recommendation, 'skip');
+			assert.equal(a.reason, 'repeat_week');
+		}
 	}
 });

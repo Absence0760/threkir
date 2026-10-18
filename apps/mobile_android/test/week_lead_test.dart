@@ -288,6 +288,22 @@ void main() {
     expect(total, 15000);
   });
 
+  test(
+      'plannedDistanceForWeek: a walk-run week plans no distance, so the lead never measures it in km',
+      () {
+    final walkRun = [
+      _wo('2026-06-08', kind: 'walk_run', targetDistanceM: 2050),
+      _wo('2026-06-10', kind: 'walk_run', targetDistanceM: 2050),
+      _wo('2026-06-11', kind: 'rest', targetDistanceM: null),
+    ];
+    expect(plannedDistanceForWeek(walkRun, _mon), 0);
+    // A walk-run session in an earlier week does not cost this week its plan.
+    expect(
+        plannedDistanceForWeek(
+            [_wo('2026-06-01', kind: 'walk_run'), _wo('2026-06-09')], _mon),
+        5000);
+  });
+
   test('nextPlanSession: the earliest open, non-rest session from today on', () {
     final next = nextPlanSession(
       [

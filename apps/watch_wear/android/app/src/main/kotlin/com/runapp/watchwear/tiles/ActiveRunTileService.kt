@@ -3,6 +3,7 @@ package com.runapp.watchwear.tiles
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import androidx.wear.protolayout.ColorBuilders.argb
 import androidx.wear.protolayout.DimensionBuilders.dp
 import androidx.wear.protolayout.DimensionBuilders.sp
@@ -20,6 +21,7 @@ import androidx.wear.tiles.TileBuilders.Tile
 import androidx.wear.tiles.TileService
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.SettableFuture
 import com.runapp.watchwear.MainActivity
 import com.runapp.watchwear.R
 import com.runapp.watchwear.recording.DistanceUnit
@@ -27,10 +29,15 @@ import com.runapp.watchwear.recording.RecordingRepository
 import com.runapp.watchwear.recording.formatDistance
 import com.runapp.watchwear.recording.paceSecPerUnit
 import java.util.Locale
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 /// Glanceable tile that shows the active-run summary on the runner's
-/// watch face. Exists in two visual states — chosen at request time
-/// from `RecordingRepository.metrics.value`:
+/// watch face. Exists in three visual states — chosen at request time
+/// from `RecordingRepository.metrics.value` and today's pushed workout:
 ///
 ///   - **Idle**: a single "Tap to start" prompt. Tapping the tile
 ///     opens the app on the pre-run screen so the runner can pick
@@ -38,6 +45,14 @@ import java.util.Locale
 ///     a one-tap-start affordance; runners often pick a route from
 ///     the watch list, and a one-tap "this starts a run NOW" tile
 ///     would be a foot-gun for a casual swipe.
+///   - **Today**: the idle state on a day the paired phone has pushed a
+///     planned workout for (`/todays_workout`, read by [loadTodayGlance]):
+///     its kind, its shape ("6 × 400 m") and step count. Tapping opens the
+///     pre-run screen with that workout armed. The entry carries a validity
+///     that ends at the watch's next local midnight, with the plain idle
+///     layout as the timeline's default, so the renderer drops yesterday's
+///     workout at midnight without asking for a new tile; a new push wakes
+///     [TodaysWorkoutListenerService], which asks for one.
 ///   - **Active** (Recording or Paused): elapsed time as the headline
 ///     plus distance + pace as a stat row. Tapping resumes / opens
 ///     the running screen.
@@ -57,37 +72,59 @@ import java.util.Locale
 /// shows when adding the tile.
 class ActiveRunTileService : TileService() {
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     override fun onTileRequest(
         requestParams: RequestBuilders.TileRequest,
     ): ListenableFuture<Tile> {
         val metrics = RecordingRepository.metrics.value
-        val layout = if (metrics.isActive) {
-            buildActiveLayout(this, metrics)
-        } else {
-            buildIdleLayout(this)
-        }
-        val tile = Tile.Builder()
-            .setResourcesVersion(RESOURCES_VERSION)
-            .setTileTimeline(
-                TimelineBuilders.Timeline.Builder()
-                    .addTimelineEntry(
-                        TimelineBuilders.TimelineEntry.Builder()
-                            .setLayout(
-                                LayoutElementBuilders.Layout.Builder()
-                                    .setRoot(layout)
-                                    .build(),
-                            )
-                            .build(),
-                    )
-                    .build(),
+        if (metrics.isActive) {
+            val tile = tileOf(
+                listOf(timelineEntry(buildActiveLayout(this, metrics))),
+                // Re-request the tile after this many ms so a runner who
+                // glances at the tile mid-run sees stats no older than 30
+                // seconds without us waking up the recording service to
+                // push every tick.
+                freshnessMs = 30_000L,
             )
-            // Re-request the tile after this many ms so a runner who
-            // glances at the tile mid-run sees stats no older than 30
-            // seconds without us waking up the recording service to
-            // push every tick.
-            .setFreshnessIntervalMillis(if (metrics.isActive) 30_000L else 0L)
-            .build()
-        return Futures.immediateFuture(tile)
+            return Futures.immediateFuture(tile)
+        }
+        val future = SettableFuture.create<Tile>()
+        scope.launch {
+            // Whatever goes wrong, the future is completed with a tile: an
+            // unset one leaves the host waiting on a tile that never comes.
+            val tile = try {
+                idleTile(System.currentTimeMillis())
+            } catch (e: Throwable) {
+                Log.w(TAG, "today's workout not rendered; showing the idle tile", e)
+                tileOf(listOf(timelineEntry(buildIdleLayout(this@ActiveRunTileService))), freshnessMs = 0L)
+            }
+            future.set(tile)
+        }
+        return future
+    }
+
+    /// The idle tile, with today's workout on top of it when there is one.
+    /// The plain idle entry has no validity, so it is the default the
+    /// renderer falls back to the moment the "today" entry's day ends:
+    /// midnight drops yesterday's workout without a new request.
+    private suspend fun idleTile(now: Long): Tile {
+        val idle = timelineEntry(buildIdleLayout(this))
+        val glance = loadTodayGlance(this, now)
+        if (glance == null || glance.validUntilEpochMs <= now) return tileOf(listOf(idle), freshnessMs = 0L)
+        val today = timelineEntry(
+            buildTodayLayout(this, glance),
+            TimelineBuilders.TimeInterval.Builder()
+                .setStartMillis(now)
+                .setEndMillis(glance.validUntilEpochMs)
+                .build(),
+        )
+        return tileOf(listOf(today, idle), freshnessMs = 0L)
+    }
+
+    override fun onDestroy() {
+        scope.cancel()
+        super.onDestroy()
     }
 
     override fun onTileResourcesRequest(
@@ -100,7 +137,6 @@ class ActiveRunTileService : TileService() {
     }
 
     companion object {
-        private const val RESOURCES_VERSION = "1"
         private const val TAG = "ActiveRunTile"
 
         /// Tell the platform to re-fetch the tile because the underlying
@@ -134,6 +170,121 @@ class ActiveRunTileService : TileService() {
             }
         }
     }
+}
+
+private fun timelineEntry(
+    root: LayoutElementBuilders.LayoutElement,
+    validity: TimelineBuilders.TimeInterval? = null,
+): TimelineBuilders.TimelineEntry {
+    val builder = TimelineBuilders.TimelineEntry.Builder()
+        .setLayout(LayoutElementBuilders.Layout.Builder().setRoot(root).build())
+    if (validity != null) builder.setValidity(validity)
+    return builder.build()
+}
+
+private fun tileOf(entries: List<TimelineBuilders.TimelineEntry>, freshnessMs: Long): Tile {
+    val timeline = TimelineBuilders.Timeline.Builder()
+    entries.forEach { timeline.addTimelineEntry(it) }
+    return Tile.Builder()
+        .setResourcesVersion(RESOURCES_VERSION)
+        .setTileTimeline(timeline.build())
+        .setFreshnessIntervalMillis(freshnessMs)
+        .build()
+}
+
+private const val RESOURCES_VERSION = "1"
+
+/// The "today" variant of the idle tile: what the plan has on for today, and
+/// a tap that opens the pre-run screen with that workout armed
+/// ([MainActivity.EXTRA_TODAY_WORKOUT_ID]). Still not a one-tap start, for
+/// the same reason the idle tile is not.
+private fun buildTodayLayout(
+    context: Context,
+    glance: TodayGlance,
+): LayoutElementBuilders.LayoutElement {
+    val tapModifier = ModifiersBuilders.Modifiers.Builder()
+        .setClickable(
+            ModifiersBuilders.Clickable.Builder()
+                .setId("today_tap")
+                .setOnClick(
+                    androidx.wear.protolayout.ActionBuilders.LaunchAction.Builder()
+                        .setAndroidActivity(
+                            androidx.wear.protolayout.ActionBuilders.AndroidActivity.Builder()
+                                .setClassName(MainActivity::class.java.name)
+                                .setPackageName(context.packageName)
+                                .addKeyToExtraMapping(
+                                    MainActivity.EXTRA_TODAY_WORKOUT_ID,
+                                    androidx.wear.protolayout.ActionBuilders.stringExtra(glance.planWorkoutId),
+                                )
+                                .build(),
+                        )
+                        .build(),
+                )
+                .build(),
+        )
+        .build()
+
+    val steps = context.resources.getQuantityString(
+        R.plurals.workout_step_count,
+        glance.stepCount,
+        glance.stepCount,
+    )
+
+    return LayoutElementBuilders.Box.Builder()
+        .setWidth(androidx.wear.protolayout.DimensionBuilders.expand())
+        .setHeight(androidx.wear.protolayout.DimensionBuilders.expand())
+        .setHorizontalAlignment(HORIZONTAL_ALIGN_CENTER)
+        .setVerticalAlignment(LayoutElementBuilders.VERTICAL_ALIGN_CENTER)
+        .setModifiers(tapModifier)
+        .addContent(
+            LayoutElementBuilders.Column.Builder()
+                .setHorizontalAlignment(HORIZONTAL_ALIGN_CENTER)
+                .addContent(
+                    Text.Builder(context, context.getString(R.string.tile_today))
+                        .setTypography(Typography.TYPOGRAPHY_CAPTION2)
+                        .setColor(argb(Colors.DEFAULT.primary))
+                        .build(),
+                )
+                .addContent(verticalSpacer(4))
+                .addContent(
+                    Text.Builder(context, context.getString(planKindLabel(glance.kind)))
+                        .setTypography(Typography.TYPOGRAPHY_TITLE3)
+                        .setColor(argb(Colors.DEFAULT.onSurface))
+                        .setMaxLines(1)
+                        .build(),
+                )
+                .addContent(verticalSpacer(4))
+                .addContent(
+                    Text.Builder(context, "${glance.headline} · $steps")
+                        .setTypography(Typography.TYPOGRAPHY_BODY2)
+                        .setColor(argb(Colors.DEFAULT.onSurface))
+                        .setMaxLines(1)
+                        .build(),
+                )
+                .addContent(verticalSpacer(8))
+                .addContent(
+                    Text.Builder(context, context.getString(R.string.tile_tap_to_start))
+                        .setTypography(Typography.TYPOGRAPHY_CAPTION1)
+                        .setColor(argb(Colors.DEFAULT.primary))
+                        .build(),
+                )
+                .build(),
+        )
+        .build()
+}
+
+/// The full label for a plan workout kind. Shared with the complication's
+/// long form, so both glances name a session the same way.
+internal fun planKindLabel(kind: PlanKind): Int = when (kind) {
+    PlanKind.EASY -> R.string.workout_kind_easy
+    PlanKind.LONG -> R.string.workout_kind_long
+    PlanKind.RECOVERY -> R.string.workout_kind_recovery
+    PlanKind.TEMPO -> R.string.workout_kind_tempo
+    PlanKind.INTERVAL -> R.string.workout_kind_interval
+    PlanKind.MARATHON_PACE -> R.string.workout_kind_marathon_pace
+    PlanKind.WALK_RUN -> R.string.workout_kind_walk_run
+    PlanKind.RACE -> R.string.workout_kind_race
+    PlanKind.OTHER -> R.string.workout
 }
 
 private fun buildIdleLayout(context: Context): LayoutElementBuilders.LayoutElement {

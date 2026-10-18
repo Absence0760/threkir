@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:core_models/core_models.dart'
-    show DistanceUnit, kMetresPerMile;
+    show DistanceUnit, kMetresPerMile, parseIsoStrictValue;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -147,6 +147,11 @@ class Preferences extends ChangeNotifier {
   // on a long run. Defaults false — the historical behaviour is a
   // full-brightness screen.
   static const _kDimScreenWhileRecording = 'dim_screen_while_recording';
+  // Mirrors the device-scoped `haptic_feedback_enabled` settings-bag key:
+  // vibrate on workout step changes, workout completion and pace alerts.
+  // Defaults true — the buzz is the cue that still reaches a runner with
+  // the audio off or the voice set to minimal.
+  static const _kHapticFeedback = 'haptic_feedback_enabled';
   // Per-device, never synced: write completed runs back to Android
   // Health Connect so they flow on to Google Fit / Samsung Health / etc.
   // Off by default — writing user data to a third-party store is opt-in
@@ -156,7 +161,7 @@ class Preferences extends ChangeNotifier {
   // Timestamp of the last successful runs-list fetch. Drives the
   // delta-fetch path in RunsScreen so refreshes only pull rows modified
   // since, instead of re-paging the entire history every time.
-  static const _kRunsLastFetchedAt = 'runs_last_fetched_at';
+  static const _kRunsSyncCursor = 'runs_sync_cursor';
 
   static const _kBatteryOptHintShown = 'battery_opt_hint_shown';
 
@@ -275,6 +280,7 @@ class Preferences extends ChangeNotifier {
   String _voiceFeedbackVerbosity = 'full';
   bool _keepScreenOn = true;
   bool _dimScreenWhileRecording = false;
+  bool _hapticFeedback = true;
   bool _writeToHealthConnect = false;
   ThemeMode _themeMode = ThemeMode.dark;
   Locale? _locale;
@@ -301,6 +307,8 @@ class Preferences extends ChangeNotifier {
     String? defaultActivityType,
     String? privacyDefault,
     List<int>? hrZoneCutoffs,
+    String? voiceFeedbackVerbosity,
+    bool? workoutStepCues,
   }) appleWatchPrefsPush = AppleWatchPrefsBridge.push;
 
   /// The zone ladder the wrist badges live heart rate against, resolved by
@@ -350,6 +358,12 @@ class Preferences extends ChangeNotifier {
   /// screen already allowed to sleep there is nothing to dim). Mirrors
   /// the device-scoped `dim_screen_while_recording` settings-bag key.
   bool get dimScreenWhileRecording => _dimScreenWhileRecording;
+
+  /// Whether the run screen vibrates on workout step changes, workout
+  /// completion and pace alerts. Independent of [audioCues] and the voice
+  /// verbosity: it is the non-audio channel. Mirrors the device-scoped
+  /// `haptic_feedback_enabled` settings-bag key.
+  bool get hapticFeedback => _hapticFeedback;
 
   /// Whether completed runs are written back to Android Health Connect
   /// (persona #36). Local-only, off by default, Android-only at the call
@@ -552,25 +566,31 @@ class Preferences extends ChangeNotifier {
     }
   }
 
-  /// Timestamp of the last successful `getRuns` call. Used to drive the
-  /// delta-fetch path so refreshing the Runs tab only pulls rows updated
-  /// since the last visit. Null means "never fetched" — the first fetch
-  /// is full, subsequent ones are deltas.
-  DateTime? get runsLastFetchedAt {
-    final iso = _prefs.getString(_kRunsLastFetchedAt);
-    return iso == null ? null : DateTime.tryParse(iso);
+  /// The largest server `runs.updated_at` the delta pull has seen — a SERVER
+  /// instant, never the device clock, so skew cannot open a gap
+  /// (`ApiClient.getRunsModifiedSince`). Null means "never pulled", and the
+  /// next pull walks every owned row.
+  ///
+  /// A new key rather than the old `runs_last_fetched_at`: that one was a
+  /// device instant compared against the phone-only `last_modified_at`
+  /// stamp, and a device upgrading from it holds copies of runs edited on
+  /// web that no `updated_at` cursor would ever return. Starting from null
+  /// re-reads them once (decisions § 2118).
+  DateTime? get runsSyncCursor {
+    final iso = _prefs.getString(_kRunsSyncCursor);
+    return iso == null ? null : parseIsoStrictValue(iso);
   }
 
-  Future<void> setRunsLastFetchedAt(DateTime when) async {
-    await _prefs.setString(_kRunsLastFetchedAt, when.toIso8601String());
+  Future<void> setRunsSyncCursor(DateTime when) async {
+    await _prefs.setString(_kRunsSyncCursor, when.toUtc().toIso8601String());
   }
 
   /// Back to "never fetched" so the next signed-in account's first runs
   /// fetch takes the FULL path — a delta fetch against the prior
   /// account's watermark would silently skip the new account's older
   /// history on this device (issue #231).
-  Future<void> clearRunsLastFetchedAt() async {
-    await _prefs.remove(_kRunsLastFetchedAt);
+  Future<void> clearRunsSyncCursor() async {
+    await _prefs.remove(_kRunsSyncCursor);
   }
 
   /// Reset every account-scoped preference — the local mirrors of the
@@ -597,7 +617,7 @@ class Preferences extends ChangeNotifier {
     await setShowGym(null);
     await setShowNutrition(null);
     await clearGoals();
-    await clearRunsLastFetchedAt();
+    await clearRunsSyncCursor();
     // The deferred-onboarding flag belongs to the account that dismissed
     // the wizard offline — the next account must get its own gate decision.
     await setSetupWizardDismissed(false);
@@ -609,6 +629,7 @@ class Preferences extends ChangeNotifier {
     await setSplitPaceMode(SplitPaceMode.split);
     await setKeepScreenOn(true);
     await setDimScreenWhileRecording(false);
+    await setHapticFeedback(true);
     await clearVoiceCueTypes();
   }
 
@@ -714,6 +735,7 @@ class Preferences extends ChangeNotifier {
     _keepScreenOn = _prefs.getBool(_kKeepScreenOn) ?? true;
     _dimScreenWhileRecording =
         _prefs.getBool(_kDimScreenWhileRecording) ?? false;
+    _hapticFeedback = _prefs.getBool(_kHapticFeedback) ?? true;
     _themeMode = _themeModeFromString(_prefs.getString(_kThemeMode));
     _locale = localeFromTag(_prefs.getString(_kLocale));
     final bw = _prefs.getDouble(_kBodyWeightKg);
@@ -808,6 +830,8 @@ class Preferences extends ChangeNotifier {
         defaultActivityType: _defaultActivityType,
         privacyDefault: _privacyDefault,
         hrZoneCutoffs: _appleWatchHrZoneCutoffs,
+        voiceFeedbackVerbosity: _voiceFeedbackVerbosity,
+        workoutStepCues: voiceCueEnabled(VoiceCue.workoutSteps),
       );
     } catch (e) {
       debugPrint('Apple Watch preference push failed: $e');
@@ -832,6 +856,7 @@ class Preferences extends ChangeNotifier {
     _voiceCueTypes = {..._voiceCueTypes, cueId: v};
     await _prefs.setString(_kVoiceCueTypes, jsonEncode(_voiceCueTypes));
     notifyListeners();
+    await _pushAppleWatchPrefs();
   }
 
   /// Overlay the device-bag `voice_cue_types` map onto the local mirror
@@ -842,6 +867,7 @@ class Preferences extends ChangeNotifier {
     _voiceCueTypes = {..._voiceCueTypes, ...incoming};
     await _prefs.setString(_kVoiceCueTypes, jsonEncode(_voiceCueTypes));
     notifyListeners();
+    await _pushAppleWatchPrefs();
   }
 
   /// Sign-out reset. Because [applyVoiceCueTypes] merges without erasing,
@@ -851,6 +877,7 @@ class Preferences extends ChangeNotifier {
     _voiceCueTypes = {};
     await _prefs.remove(_kVoiceCueTypes);
     notifyListeners();
+    await _pushAppleWatchPrefs();
   }
 
   Future<void> setOnboarded(bool v) async {
@@ -900,6 +927,7 @@ class Preferences extends ChangeNotifier {
     _voiceFeedbackVerbosity = v;
     await _prefs.setString(_kVoiceFeedbackVerbosity, v);
     notifyListeners();
+    await _pushAppleWatchPrefs();
   }
 
   Future<void> setSentryOptOut(bool v) async {
@@ -917,6 +945,12 @@ class Preferences extends ChangeNotifier {
   Future<void> setDimScreenWhileRecording(bool v) async {
     _dimScreenWhileRecording = v;
     await _prefs.setBool(_kDimScreenWhileRecording, v);
+    notifyListeners();
+  }
+
+  Future<void> setHapticFeedback(bool v) async {
+    _hapticFeedback = v;
+    await _prefs.setBool(_kHapticFeedback, v);
     notifyListeners();
   }
 

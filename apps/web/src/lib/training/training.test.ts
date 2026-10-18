@@ -30,8 +30,10 @@ import {
 	peakVolumeKm,
 	mileageFraction,
 	isMastersAge,
+	usesMastersRecovery,
 	defaultPlanWeeks,
 	walkRunDefaultWeeks,
+	WALK_RUN_GRADUATION_M,
 	minDaysPerWeek,
 	GOAL_DISTANCES_M,
 	formatISO,
@@ -96,14 +98,47 @@ test('generatePlan(beginnerWalkRun): every session is a walk_run workout', () =>
 	assert.equal(wk1.structure?.repeats?.duration_s, 60);
 	assert.equal(wk1.structure?.repeats?.recovery_duration_s, 90);
 	assert.equal(wk1.structure?.repeats?.count, 8);
-	// Graduation week: a single continuous run, no recovery interval.
+	// Graduation week: a single continuous 30-minute run, no recovery interval.
 	const wk9 = plan.weeks[8].workouts.find((w) => w.kind === 'walk_run')!;
 	assert.equal(wk9.structure?.repeats?.count, 1);
+	assert.equal(wk9.structure?.repeats?.duration_s, 1800);
 	assert.equal(wk9.structure?.repeats?.recovery_duration_s, undefined);
 	// #273: the final week is a graduation, not a race — a beginner walk-run
 	// plan has no goal race, so labelling it 'race' ("Race week") misleads.
 	assert.equal(plan.weeks[8].phase, 'graduation');
 	assert.equal(plan.weeks[0].phase, 'build');
+});
+
+test('generatePlan(beginnerWalkRun): the last session is a 5K ended by distance, and the only one', () => {
+	for (const daysPerWeek of [1, 2, 3]) {
+		for (const weeks of [9, 12]) {
+			const plan = generatePlan({
+				goalEvent: 'distance_5k',
+				startDate: '2026-06-01',
+				daysPerWeek,
+				weeks,
+				beginnerWalkRun: true
+			});
+			const sessions = plan.weeks.flatMap((w) => w.workouts).filter((w) => w.kind === 'walk_run');
+			const last = sessions[sessions.length - 1];
+			assert.equal(last.structure?.repeats?.count, 1);
+			assert.equal(last.structure?.repeats?.distance_m, WALK_RUN_GRADUATION_M);
+			assert.equal(last.structure?.repeats?.duration_s, undefined);
+			// A walk recovery keeps the whole session unpaced (decisions § 2074).
+			assert.equal(last.structure?.repeats?.recovery_pace, 'walk');
+			assert.equal(last.structure?.warmup?.duration_s, 300);
+			assert.equal(last.structure?.cooldown?.duration_s, 300);
+			assert.equal(last.scheduled_date, plan.weeks[plan.weeks.length - 1].workouts.filter((w) => w.kind === 'walk_run').at(-1)!.scheduled_date);
+			assert.equal(sessions.filter((w) => w.structure?.repeats?.distance_m != null).length, 1);
+		}
+	}
+	// At the 12:12/km fallback the run is 61 min of the 71-min session, and the
+	// distance counts the walking either side at 11:40/km.
+	const fallback = generatePlan({ goalEvent: 'distance_5k', startDate: '2026-06-01', daysPerWeek: 3, beginnerWalkRun: true });
+	const fiveK = fallback.weeks[8].workouts.filter((w) => w.kind === 'walk_run').at(-1)!;
+	assert.equal(fiveK.target_pace_sec_per_km, fallback.paces.easy);
+	assert.equal(fiveK.target_duration_seconds, Math.round(5 * fallback.paces.easy) + 600);
+	assert.equal(fiveK.target_distance_m, 5857);
 });
 
 test('minDaysPerWeek: a two-day walk-run plan may run two days, a road plan needs three', () => {
@@ -887,6 +922,41 @@ test('generatePlan: a sub-masters age leaves the standard Tue/Thu schedule intac
 	});
 	const week = plan.weeks.find((w) => dayOffsetInWeek(w, QUALITY_KINDS) != null)!;
 	assert.equal(dayOffsetInWeek(week, QUALITY_KINDS), 2);
+});
+
+test('usesMastersRecovery: extra recovery applies at any age and never removes it from a masters runner', () => {
+	assert.equal(usesMastersRecovery(34, true), true);
+	assert.equal(usesMastersRecovery(null, true), true);
+	assert.equal(usesMastersRecovery(34, false), false);
+	assert.equal(usesMastersRecovery(undefined, undefined), false);
+	assert.equal(usesMastersRecovery(58, false), true);
+	assert.equal(usesMastersRecovery(58, null), true);
+});
+
+test('generatePlan: extra recovery gives a sub-masters or ageless runner the masters schedule', () => {
+	const base = {
+		goalEvent: 'distance_full' as const,
+		startDate: '2026-06-07',
+		daysPerWeek: 5,
+		recent5kSec: 24 * 60
+	};
+	const masters = generatePlan({ ...base, age: 58 });
+	assert.deepEqual(generatePlan({ ...base, age: 34, extraRecovery: true }), masters);
+	assert.deepEqual(generatePlan({ ...base, age: null, extraRecovery: true }), masters);
+	assert.notDeepEqual(generatePlan({ ...base, age: 34 }), masters);
+});
+
+test('generatePlan: extra recovery reaches the ultra schedule too', () => {
+	const base = {
+		goalEvent: 'custom' as const,
+		goalDistanceM: 100_000,
+		startDate: '2026-06-07',
+		daysPerWeek: 5,
+		recent5kSec: 24 * 60
+	};
+	const masters = generatePlan({ ...base, age: 61 });
+	assert.deepEqual(generatePlan({ ...base, extraRecovery: true }), masters);
+	assert.notDeepEqual(generatePlan(base), masters);
 });
 
 

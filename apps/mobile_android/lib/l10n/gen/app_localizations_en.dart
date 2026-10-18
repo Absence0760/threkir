@@ -946,6 +946,23 @@ class AppLocalizationsEn extends AppLocalizations {
       'Used to estimate your daily calorie and macro targets.';
 
   @override
+  String get bodyMetricsSaveHint =>
+      'This section saves only when you tap Save.';
+
+  @override
+  String get bodyMetricsUnsaved => 'Unsaved changes';
+
+  @override
+  String get bodyMetricsNutritionHeading => 'Nutrition targets';
+
+  @override
+  String get bodyMetricsAutosaveHint => 'Changes here save automatically.';
+
+  @override
+  String get bodyMetricsLeaveMessage =>
+      'You changed your body metrics but haven\'t saved them. Leave without saving?';
+
+  @override
   String get bodyMetricsConsentRequired =>
       'Turn on health-data storage to save height and weight.';
 
@@ -1970,6 +1987,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runWeakGpsApproximate => 'Approximate location — distance paused';
+
+  @override
+  String get runTurnOnPreciseLocation => 'Turn on precise location';
 
   @override
   String get runA11yStarted => 'Run started';
@@ -4602,6 +4622,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileRunsEmptyOther => 'No public runs yet.';
 
   @override
+  String profilePrivateRunsNote(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count of your runs aren\'t public, so they aren\'t listed here.',
+      one: '1 of your runs isn\'t public, so it isn\'t listed here.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get profilePrivateRunsNoteLink => 'View all in Runs';
+
+  @override
   String get profileFollowersEmpty => 'No followers yet.';
 
   @override
@@ -5924,6 +5958,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String planNewRaceChained(String date) {
+    return 'Starts $date, after your current plan and its recovery days.';
+  }
+
+  @override
   String get planNewRacePast =>
       'That race has already been run, so the dates below are the usual defaults.';
 
@@ -6588,11 +6627,99 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get planNudgeUnderTitle => 'Running a little less than planned';
+
+  @override
+  String planNudgeUnderBody(int n, int total) {
+    return 'You\'ve run less than planned in $n of the last $total weeks. There\'s a suggested adjustment to the weeks ahead.';
+  }
+
+  @override
+  String get planNudgeAnchorUnderTitle => 'Last week came in short';
+
+  @override
+  String get planNudgeAnchorUnderBody =>
+      'The weeks ahead still step up from the plan, not from what you ran. There\'s a suggested change to build back from last week instead.';
+
+  @override
+  String get planNudgeAnchorReturnTitle => 'Easing back into your plan';
+
+  @override
+  String planNudgeAnchorReturnBody(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '# weeks',
+      one: '# week',
+    );
+    return 'You\'ve been away from the plan for $_temp0. There\'s a suggested change so the weeks ahead build back up from what you last ran.';
+  }
+
+  @override
+  String get planNudgeEaseTitle => 'A big week';
+
+  @override
+  String get planNudgeEaseBody =>
+      'You ran well over plan last week. Easing next week\'s shorter runs helps your body absorb it.';
+
+  @override
+  String get planNudgeRestTitle => 'Running on rest days';
+
+  @override
+  String planNudgeRestBody(int n, int total) {
+    return 'You\'ve run on rest days in $n of the last $total weeks. Those runs count toward your week, but rest days are where the training sinks in.';
+  }
+
+  @override
+  String get planNudgeReview => 'Review the changes';
+
+  @override
+  String get planNudgeDismiss => 'Dismiss';
+
+  @override
+  String get planNudgeDismissA11y => 'Dismiss this suggestion';
+
+  @override
+  String get planNudgeDismissFailed =>
+      'Couldn\'t hide that suggestion. Try again.';
+
+  @override
+  String planWorkoutOverrun(String distance) {
+    return '+$distance';
+  }
+
+  @override
+  String planWorkoutOverrunA11y(String distance) {
+    return '$distance more than planned';
+  }
+
+  @override
   String get planDetailReplanPreviewTitle => 'Proposed changes';
 
   @override
   String planDetailReplanMakeUp(String from, String to) {
     return 'Long run $from → $to — make up a missed long run';
+  }
+
+  @override
+  String planDetailReplanAnchor(String from, String to) {
+    return '$from → $to — build back from what you ran';
+  }
+
+  @override
+  String planDetailAnchorUnderNote(String km) {
+    return 'Your last week of running came in at $km, well under plan. These weeks now build back from that, about 10% a week, until the plan fits again. The taper stays as planned.';
+  }
+
+  @override
+  String planDetailAnchorReturnNote(int n, String km) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '# weeks',
+      one: '# week',
+    );
+    return 'You\'ve been away from the plan for $_temp0. These weeks restart at about half of the $km you last ran in a week and build about 10% a week. The taper stays as planned.';
   }
 
   @override
@@ -10579,6 +10706,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get liveRunMapWaitingGps => 'Waiting for GPS...';
 
   @override
+  String get liveRunMapApproximateLocation =>
+      'Precise location is off — the map can\'t show where you are';
+
+  @override
   String get liveRunMapRecentre => 'Re-centre on my location';
 
   @override
@@ -13579,6 +13710,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String get racesSearchPlaceholder => 'Search races by name…';
 
   @override
+  String get racesFilters => 'Filters';
+
+  @override
+  String racesFiltersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Filters, $count on',
+      one: 'Filters, 1 on',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String racesRemoveFilter(String filter) {
+    return 'Remove filter: $filter';
+  }
+
+  @override
+  String racesNearChip(String place) {
+    return 'Near $place';
+  }
+
+  @override
+  String get racesFiltersDone => 'Done';
+
+  @override
+  String get racesDistanceGroup => 'Distance';
+
+  @override
   String get racesNearPlace => 'Near a place…';
 
   @override
@@ -13609,6 +13770,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get racesTrainForThis => 'Train for this race';
+
+  @override
+  String get racesBuildPlan => 'Build a plan for this race';
+
+  @override
+  String get racesTailorWithAi => 'Tailor it with AI';
+
+  @override
+  String get racesAddToSeason => 'Add to my season';
+
+  @override
+  String racesAddToSeasonHint(String plan, String date, String days) {
+    return 'Starts after $plan ends on $date, with $days days to recover.';
+  }
 
   @override
   String get racesWhenGroup => 'When';
@@ -13655,6 +13830,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get racesDetailYourRuns => 'Your runs at this race';
+
+  @override
+  String get racesCourseHeading => 'Course';
+
+  @override
+  String racesCourseGain(String value) {
+    return '$value elevation gain';
+  }
 
   @override
   String get racesDetailRunsFailed => 'Couldn\'t load your runs for this race.';
@@ -17240,6 +17423,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planDetailAssignedByCoach => 'Assigned by your coach';
 
   @override
+  String planDetailBuiltForRace(String race, String date) {
+    return 'Built for $race · $date';
+  }
+
+  @override
   String planDetailWeekOfN(int week, int total) {
     return 'Week $week of $total';
   }
@@ -17425,6 +17613,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String rateLimitRestartPlan(String wait) {
+    return 'You\'re restarting plans too quickly — please wait $wait and try again.';
+  }
+
+  @override
   String get planCalendarFeedTitle => 'Training plan calendar';
 
   @override
@@ -17508,4 +17701,815 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get planCalendarFeedPrivacy =>
       'Anyone with the link can see your workout dates, types and targets. It carries no location, notes or plan name. Make a new link if you shared it by mistake.';
+
+  @override
+  String get commonStaleOffline =>
+      'You\'re offline. Showing what was last loaded.';
+
+  @override
+  String get commonStaleRefreshFailed =>
+      'Couldn\'t refresh. Showing what was last loaded.';
+
+  @override
+  String get planDetailMoreActions => 'More plan actions';
+
+  @override
+  String planDetailWeekActions(int n) {
+    return 'Week $n actions';
+  }
+
+  @override
+  String get planDetailShiftDates => 'Shift dates…';
+
+  @override
+  String get planDetailShiftTitle => 'Shift the whole plan?';
+
+  @override
+  String get planDetailShiftMessage =>
+      'This moves every workout and your race date. You can shift again to undo it.';
+
+  @override
+  String get planDetailShiftDaysLabel =>
+      'Days to shift (negative moves earlier)';
+
+  @override
+  String get planDetailShiftDaysInvalid =>
+      'Enter a whole number of days from -366 to 366, other than 0.';
+
+  @override
+  String get planDetailShiftApply => 'Shift dates';
+
+  @override
+  String planDetailShiftDone(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plan shifted by $n days',
+      one: 'Plan shifted by $n day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShiftFollowingTitle =>
+      'Move the plans after this one too?';
+
+  @override
+  String planDetailShiftFollowingMessage(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Shifting by $n days runs into the plans queued after this one. Moving them by the same amount keeps their spacing.',
+      one:
+          'Shifting by $n day runs into the plans queued after this one. Moving them by the same amount keeps their spacing.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShiftFollowingApply => 'Move them too';
+
+  @override
+  String get planDetailShiftBlocked =>
+      'These dates run into a plan that comes before this one. Pick a smaller shift, or end that plan earlier first.';
+
+  @override
+  String get planDetailMarkRecovery => 'Make recovery week';
+
+  @override
+  String get planDetailRecoveryConfirmTitle => 'Make this a recovery week?';
+
+  @override
+  String planDetailRecoveryConfirmMessage(int n) {
+    return 'This eases week $n\'s volume to about 60% and turns its quality sessions into easy runs. The original paces and distances can\'t be restored.';
+  }
+
+  @override
+  String get planDetailRecoveryDone => 'Week eased to a recovery week';
+
+  @override
+  String get planDetailExportMarkdown => 'Export as Markdown';
+
+  @override
+  String get planDetailExportJson => 'Export as JSON';
+
+  @override
+  String get planDetailAbandonPlan => 'Abandon plan';
+
+  @override
+  String get planDetailDeletePlan => 'Delete plan';
+
+  @override
+  String get planDetailEditDetails => 'Edit plan details';
+
+  @override
+  String get planDetailGoalTimeInvalid =>
+      'Enter a goal time above zero, with minutes and seconds up to 59.';
+
+  @override
+  String get planDetailGoalTimeRepaceHint =>
+      'Changing it re-derives the pace targets of the workouts still ahead. Past, done and skipped ones keep theirs, and a plan built from a recent 5K keeps its paces.';
+
+  @override
+  String get planDetailNotesLabel => 'Notes';
+
+  @override
+  String get planDetailRulesLabel => 'Plan rules, one per line';
+
+  @override
+  String get planDetailSaveDetails => 'Save';
+
+  @override
+  String get planDetailDetailsSaved => 'Plan updated.';
+
+  @override
+  String planDetailDetailsSavedRepaced(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plan updated. Paces re-derived for $n upcoming workouts.',
+      one: 'Plan updated. Paces re-derived for $n upcoming workout.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailCycleAdjustCycle => 'Adjust for my cycle';
+
+  @override
+  String get planDetailCycleAdjustPregnancy => 'Adjust for pregnancy';
+
+  @override
+  String get planDetailCycleAdjustConfirmTitle => 'Adjust remaining weeks?';
+
+  @override
+  String get planDetailCycleAdjustConfirmCycle =>
+      'Upcoming workouts on your menstrual and late-luteal days will be eased — a modest volume trim, with quality sessions run by feel. Past workouts are unchanged.';
+
+  @override
+  String get planDetailCycleAdjustConfirmPregnancy =>
+      'Upcoming workouts will be adjusted for pregnancy: hard sessions and races become easy runs and volume tapers by trimester. This is not medical advice — follow your healthcare provider. Past workouts are unchanged.';
+
+  @override
+  String get planDetailCycleAdjustDone => 'Upcoming weeks adjusted.';
+
+  @override
+  String get planDetailCycleAdjustNone =>
+      'No upcoming workouts needed adjusting.';
+
+  @override
+  String get planDetailAdjustCycleDesc =>
+      'Eases upcoming sessions on the menstrual and late-luteal days of your cycle. Past sessions stay as they are.';
+
+  @override
+  String get planDetailAdjustPregnancyDesc =>
+      'Turns hard upcoming sessions into easy runs and eases volume by trimester. Past sessions stay as they are.';
+
+  @override
+  String get planDetailResumeShiftTitle => 'Resume and push back?';
+
+  @override
+  String planDetailResumeShiftMessage(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'This plan becomes your active plan again. The weeks you had not started move back $n weeks, so it picks up next week instead of counting them as missed. It now ends on $date.',
+      one:
+          'This plan becomes your active plan again. The weeks you had not started move back $n week, so it picks up next week instead of counting them as missed. It now ends on $date.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailResumeShiftedDone(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plan resumed and pushed back $n weeks.',
+      one: 'Plan resumed and pushed back $n week.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailRestartPlan => 'Restart plan…';
+
+  @override
+  String get planDetailRestartTitle => 'Restart this plan';
+
+  @override
+  String get planDetailRestartChangeDate => 'Change start date';
+
+  @override
+  String planDetailRestartConfirmLive(String date, String end) {
+    return 'The new copy starts on $date and ends on $end. This plan, and any active plan those dates overlap, is retired as abandoned. Its weeks, workouts and run links are kept.';
+  }
+
+  @override
+  String planDetailRestartConfirmOver(String date, String end) {
+    return 'The new copy starts on $date and ends on $end. Any active plan those dates overlap is retired as abandoned. This plan keeps its weeks, workouts and run links.';
+  }
+
+  @override
+  String planDetailRestartRaceMoves(String date) {
+    return 'Race day moves to $date.';
+  }
+
+  @override
+  String planDetailRestartRaceAhead(String date) {
+    return 'This plan\'s race on $date is still ahead. Restarting would move race day, so change the race date or start a new plan instead.';
+  }
+
+  @override
+  String get planDetailRestartRaceAheadError =>
+      'This plan has a race still ahead, so it can\'t be restarted.';
+
+  @override
+  String get planDetailRestartBeforeTodayError =>
+      'That start date is before today where your account\'s time zone is set. Pick a later date.';
+
+  @override
+  String get planDetailRestartConfirm => 'Restart plan';
+
+  @override
+  String get planDetailRestartDone => 'Plan restarted. This is your new copy.';
+
+  @override
+  String get dashboardPlanPausedBody =>
+      'Paused. Resume to pick it up again; the weeks you missed move back.';
+
+  @override
+  String get planDetailChangeRaceDate => 'Change race date…';
+
+  @override
+  String get planDetailRaceDatePickerHelp => 'New race date';
+
+  @override
+  String get planDetailRaceDateConfirmTitle => 'Change race date?';
+
+  @override
+  String planDetailRaceDateConfirmLater(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Your race moves to $date. $n build weeks are added before the taper, which stays as it is. Weeks you have already started don\'t change.',
+      one:
+          'Your race moves to $date. $n build week is added before the taper, which stays as it is. Weeks you have already started don\'t change.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailRaceDateConfirmEarlier(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Your race moves to $date. $n build weeks are cut, and the taper stays as it is. Weeks you have already started don\'t change.',
+      one:
+          'Your race moves to $date. $n build week is cut, and the taper stays as it is. Weeks you have already started don\'t change.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailRaceDateConfirmSameWeek(String date) {
+    return 'Your race moves to $date, in the same week. No weeks are added or cut, and the taper stays as it is.';
+  }
+
+  @override
+  String get planDetailRaceDateApply => 'Change race date';
+
+  @override
+  String planDetailRaceDateDone(String date) {
+    return 'Race date changed to $date';
+  }
+
+  @override
+  String planDetailRaceDateTooSoon(String date, String earliest) {
+    return '$date is too soon to keep your taper, even with the build cut. The earliest race date this plan can reach is $earliest.';
+  }
+
+  @override
+  String get planDetailRaceDatePast => 'Pick a race date after today.';
+
+  @override
+  String get planDetailRaceDateInvalid => 'That isn\'t a valid date.';
+
+  @override
+  String get planDetailRaceDateUnchanged => 'Your race is already on that day.';
+
+  @override
+  String get planDetailRaceDateNoRace => 'This plan has no race ahead to move.';
+
+  @override
+  String get planDetailRaceDateWeekStarted =>
+      'Race week has started, so no weeks can go in front of it. Pick a day this week, or start a new plan for the later race.';
+
+  @override
+  String get planDetailRaceDateTooFar =>
+      'That is more than a year further out. Start a new plan for that race instead.';
+
+  @override
+  String get planDetailRaceDateNoBuild =>
+      'This plan has no build week to repeat, so it can\'t be made longer.';
+
+  @override
+  String get planDetailRaceDateInTheWay =>
+      'Another race or a completed session sits in the weeks that would move. Change that first.';
+
+  @override
+  String get planDetailRaceDateOverlap =>
+      'The new race date runs into another active plan. Move or end that plan first.';
+
+  @override
+  String get phoneSurfaceVibrationCues => 'Vibration cues';
+
+  @override
+  String get phoneSurfaceVibrationCuesSubtitle =>
+      'Buzz when a workout step changes, when a workout ends and with pace alerts, even with the screen off.';
+
+  @override
+  String get phoneSurfaceWidgetHeader => 'Today';
+
+  @override
+  String get phoneSurfaceWidgetNoPlan => 'No training plan';
+
+  @override
+  String get phoneSurfaceWidgetNoPlanAction => 'Pick a plan';
+
+  @override
+  String get phoneSurfaceWidgetNothingScheduled => 'Nothing scheduled';
+
+  @override
+  String get phoneSurfaceWidgetStale => 'Open Threkir to update';
+
+  @override
+  String get phoneSurfaceWidgetRestDay => 'Rest day';
+
+  @override
+  String get phoneSurfaceWidgetDone => 'Done';
+
+  @override
+  String get phoneSurfaceWidgetSkipped => 'Skipped';
+
+  @override
+  String get dashboardTrainForSomething => 'Train for something';
+
+  @override
+  String get dashboardTrainForSomethingBody =>
+      'Pick a race or a distance and get a week-by-week plan with paces matched to your fitness.';
+
+  @override
+  String dashboardRecent5kTitle(String time, String date) {
+    return 'Your 5K of $time on $date';
+  }
+
+  @override
+  String get dashboardRecent5kBody =>
+      'Build a plan from it. You confirm it still reflects your fitness before it sets any paces.';
+
+  @override
+  String get dashboardRecent5kCta => 'Build a plan from it';
+
+  @override
+  String get dashboardRecent5kDismiss => 'Not now';
+
+  @override
+  String get dashboardRecent5kDismissFailed =>
+      'Couldn\'t save that, so the suggestion may come back.';
+
+  @override
+  String get planNewRecent5kSuggested =>
+      'Filled in from your recent 5K. Turn on the switch below only if it reflects your fitness today.';
+
+  @override
+  String get planBreakTitle => 'Coming back after a break';
+
+  @override
+  String planBreakBody(int days, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days',
+      one: '$days day',
+    );
+    return 'No run or plan workout logged for $_temp0, since $date.';
+  }
+
+  @override
+  String planBreakHintRace(String date) {
+    return 'You can pick the plan up where you left off. Race day stays $date and the taper is kept; a later build week makes room for each week you run again.';
+  }
+
+  @override
+  String get planBreakHintNoRace =>
+      'You can pick the plan up where you left off; the rest of the plan moves back to make room.';
+
+  @override
+  String get planBreakRepeat => 'Repeat this week';
+
+  @override
+  String get planBreakWeeksLabel => 'Weeks';
+
+  @override
+  String get planBreakPushBack => 'Push the plan back';
+
+  @override
+  String get planBreakShortenBuild => 'Shorten the build';
+
+  @override
+  String get planBreakDismiss => 'Keep the plan as it is';
+
+  @override
+  String get planBreakConfirmTitle => 'Change your plan?';
+
+  @override
+  String get planBreakConfirmApply => 'Change plan';
+
+  @override
+  String planBreakPreviewRepeat(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'The last $n weeks run again, starting next week.',
+      one: 'This week runs again next week.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planBreakPreviewDropped(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n later build weeks are',
+      one: '$n later build week is',
+    );
+    return '$_temp0 taken out to make room; the taper stays as it is.';
+  }
+
+  @override
+  String planBreakPreviewRaceDay(String date) {
+    return 'Race day stays $date.';
+  }
+
+  @override
+  String planBreakPreviewEnd(String date) {
+    return 'The weeks after move back, and the plan now ends $date.';
+  }
+
+  @override
+  String get planBreakPreviewPast =>
+      'Weeks you have already run and anything you have done don\'t change.';
+
+  @override
+  String planBreakApplied(String date) {
+    return 'Plan updated. It ends $date.';
+  }
+
+  @override
+  String planBreakFailed(String error) {
+    return 'Couldn\'t change the plan: $error';
+  }
+
+  @override
+  String planBreakDismissFailed(String error) {
+    return 'Couldn\'t save that: $error';
+  }
+
+  @override
+  String get planBreakUnavailable =>
+      'That many weeks can\'t be run again in this plan.';
+
+  @override
+  String get planBreakWeeksFewer => 'One week fewer';
+
+  @override
+  String get planBreakWeeksMore => 'One week more';
+
+  @override
+  String missedPromptTitle(String kind, String day) {
+    return 'Missed: $kind on $day';
+  }
+
+  @override
+  String missedPromptMakeUpBody(String from, String to) {
+    return 'Make it up by stretching your next long run from $from to $to. You\'ll see the change before it\'s saved.';
+  }
+
+  @override
+  String get missedPromptCoveredBody =>
+      'Your next long run already covers it, so there\'s nothing to add.';
+
+  @override
+  String get missedPromptTaperBody =>
+      'You\'re tapering, so let it go: being fresh on race day matters more than one more long run.';
+
+  @override
+  String get missedPromptRecoveryBody =>
+      'A recovery week is next, so let it go and let that week absorb it.';
+
+  @override
+  String get missedPromptLetGoBody =>
+      'Only a long run is worth making up. Let this one go rather than crowding it into the days ahead.';
+
+  @override
+  String get missedPromptMakeUp => 'Make it up';
+
+  @override
+  String get missedPromptLetGo => 'Let it go';
+
+  @override
+  String get missedPromptRecommended => 'Recommended';
+
+  @override
+  String get missedPromptLetGoDone => 'Let go. Your plan carries on as it was.';
+
+  @override
+  String missedPromptSaveFailed(String error) {
+    return 'Couldn\'t save your answer: $error';
+  }
+
+  @override
+  String get missedPromptNothingToMakeUp => 'There\'s nothing left to make up.';
+
+  @override
+  String get planDetailRepeatWeek => 'Repeat this week';
+
+  @override
+  String get planDetailRepeatWeekOfferTitle => 'Too hard?';
+
+  @override
+  String get planDetailRepeatWeekOfferBody =>
+      'Run this week again next week. What you\'ve done stays done, and the rest of the plan moves back a week.';
+
+  @override
+  String planDetailRepeatWeekConfirmTitle(int n) {
+    return 'Repeat week $n?';
+  }
+
+  @override
+  String planDetailRepeatWeekConfirmMessage(
+    int n,
+    int copy,
+    String start,
+    String end,
+  ) {
+    return 'Week $n runs again as week $copy, from $start. Every week after it moves back one, and the plan now ends on $end. Workouts you\'ve done stay as they are.';
+  }
+
+  @override
+  String planDetailRepeatWeekConfirmRace(
+    int n,
+    int copy,
+    String start,
+    String race,
+  ) {
+    return 'Week $n runs again as week $copy, from $start. To keep race day on $race, one later week before the taper comes out. Workouts you\'ve done stay as they are.';
+  }
+
+  @override
+  String get planDetailRepeatWeekAction => 'Repeat week';
+
+  @override
+  String planDetailRepeatWeekDone(int n, String start) {
+    return 'Week $n runs again from $start.';
+  }
+
+  @override
+  String get planDetailRepeatWeekNoRoom =>
+      'There\'s no week left before the taper to make room, so repeating this week would move race day. Change the race date instead.';
+
+  @override
+  String get planDetailRepeatWeekInTheWay =>
+      'A week that would move holds a race or a workout you\'ve done, so this week can\'t be repeated.';
+
+  @override
+  String get planDetailRepeatWeekLastWeek =>
+      'This is the plan\'s last week, so there\'s nothing to push back.';
+
+  @override
+  String get planDetailRepeatWeekNotNow =>
+      'Only this week or last week of an active plan can run again.';
+
+  @override
+  String rateLimitRepeatWeek(String wait) {
+    return 'You\'re repeating plan weeks too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String get planDetailRepeatWeekOverlap =>
+      'Repeating this week would run the plan into another active plan. Move or end that plan first.';
+
+  @override
+  String get missedPromptRepeatWeekBody =>
+      'Missing a session costs you nothing. Carry on, or if this week felt hard, run it again before moving up. There\'s no penalty for repeating a week.';
+
+  @override
+  String get walkRunGraduationTitle => 'You did it: couch to 5K';
+
+  @override
+  String get walkRunGraduationBodyFiveK =>
+      'You ran 5K without stopping. You started with one-minute runs between walks.';
+
+  @override
+  String get walkRunGraduationBodyFinished =>
+      'You finished the plan running the whole way, with no walk breaks. You started with one-minute runs between walks.';
+
+  @override
+  String get walkRunGraduationNextTitle => 'What next?';
+
+  @override
+  String get walkRunGraduationTenK => 'Train for a 10K';
+
+  @override
+  String get walkRunGraduationKeepRunning =>
+      'Or keep the habit: three easy runs a week hold on to what you\'ve built, no plan needed.';
+
+  @override
+  String planRecapTitle(String name) {
+    return 'How $name went';
+  }
+
+  @override
+  String get planRecapLoading => 'Loading your recap…';
+
+  @override
+  String get planRecapLoadFailed => 'Couldn\'t load the recap.';
+
+  @override
+  String get planRecapRetry => 'Try again';
+
+  @override
+  String get planRecapSessionsLabel => 'Sessions';
+
+  @override
+  String planRecapSessionsValue(int done, int total) {
+    return '$done of $total';
+  }
+
+  @override
+  String planRecapSessionsPct(int pct) {
+    return '$pct% done';
+  }
+
+  @override
+  String planRecapSkipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count skipped',
+      one: '$count skipped',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planRecapMissed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count missed',
+      one: '$count missed',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planRecapLongRunsLabel => 'Long runs';
+
+  @override
+  String planRecapLongRunsRange(String first, String longest) {
+    return 'From $first up to $longest';
+  }
+
+  @override
+  String planRecapLongRunsLongest(String longest) {
+    return 'Longest $longest';
+  }
+
+  @override
+  String get planRecapDistanceLabel => 'Distance';
+
+  @override
+  String get planRecapTimeLabel => 'Time';
+
+  @override
+  String planRecapVolumeValue(String done, String planned) {
+    return '$done of $planned';
+  }
+
+  @override
+  String planRecapTimeValue(int h, int m) {
+    return '$h h $m min';
+  }
+
+  @override
+  String get planRecapRaceLabel => 'Race day';
+
+  @override
+  String planRecapRaceRun(String time, String distance) {
+    return '$time for $distance';
+  }
+
+  @override
+  String get planRecapRaceDnf => 'Did not finish';
+
+  @override
+  String get planRecapRaceNoRun => 'Marked done, no run linked';
+
+  @override
+  String get planRecapRaceNotRun => 'No run on race day';
+
+  @override
+  String get planRecapRecordsLabel => 'Personal records';
+
+  @override
+  String get planRecapRecordsNone =>
+      'No new personal records during this plan.';
+
+  @override
+  String get planRecapBracketMile => 'Mile';
+
+  @override
+  String get planRecapBracket5k => '5K';
+
+  @override
+  String get planRecapBracket8k => '8K';
+
+  @override
+  String get planRecapBracket10k => '10K';
+
+  @override
+  String get planRecapBracket12k => '12K';
+
+  @override
+  String get planRecapBracketHalf => 'Half marathon';
+
+  @override
+  String get planRecapBracketMarathon => 'Marathon';
+
+  @override
+  String get planRecapNextTitle => 'What\'s next';
+
+  @override
+  String planRecapRecovery(int days, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days easy days',
+      one: '$days easy day',
+    );
+    return 'Recover first: $_temp0, through $date.';
+  }
+
+  @override
+  String planRecapNextPlan(String date) {
+    return 'Your next plan can start on $date.';
+  }
+
+  @override
+  String planRecapNextPlanSeeded(String date, String time) {
+    return 'Your next plan can start on $date, with paces from a $time 5K, your race\'s equivalent. You confirm it in the wizard.';
+  }
+
+  @override
+  String get planRecapNextPlanCta => 'Build your next plan';
+
+  @override
+  String get prefsExtraRecovery => 'More recovery between hard days';
+
+  @override
+  String get prefsExtraRecoveryHint =>
+      'New plans leave 72 hours between your long run and the next hard session, and ease off every third week instead of every fourth. Plans already do this from age 50 when your date of birth is on record.';
+
+  @override
+  String get planNewExtraRecoveryHint =>
+      'Spaces hard sessions further apart and eases off every third week. Saved to your training settings, so every new plan uses it.';
+
+  @override
+  String get planNewExtraRecoverySaveFailed =>
+      'Couldn\'t save that setting. Try again.';
+
+  @override
+  String get planNewMastersRecoveryApplied =>
+      'Because you\'re 50 or over, this plan spaces hard sessions further apart and eases off every third week.';
+
+  @override
+  String get planNewDobHintAbsent =>
+      'Plans give runners aged 50 and over more recovery automatically.';
+
+  @override
+  String get planNewDobHintAbsentAction => 'Add your date of birth';
+
+  @override
+  String get planNewDobHintHealthData =>
+      'Plans can only use your date of birth to adjust for age with your consent to health-data use.';
+
+  @override
+  String get planNewDobHintHealthDataAction => 'Review consent';
 }

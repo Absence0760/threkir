@@ -2,9 +2,12 @@
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
+	import { isEntityId } from '#lib/core/entity_id.ts';
 	import { todayISO } from '#lib/training/training.ts';
+	import { formatDate } from '#lib/format/time.ts';
 	import { alignPlanStartIso, defaultPlanStartIso } from '#lib/training/plan_start.ts';
 	import { racePlanPreset } from '#lib/training/race_plan_preset.ts';
+	import { isPlausibleRecent5k } from '#lib/training/recent_5k_suggestion.ts';
 	import { goto, afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import PlanEditor from '#lib/components/PlanEditor.svelte';
@@ -23,6 +26,8 @@
 		publishGymRoutineAsTemplate,
 	} from '#lib/core/data.ts';
 	import { STARTER_PLANS, starterById, instantiateStarter } from '#lib/training/starter_plans.ts';
+	import { loadPlanCalibration } from '#lib/training/plan_calibration_load.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { starterName, starterSummaryText } from '#lib/training/starter_labels.ts';
 	import { PRIMARY_GOAL_VALUES, planPresetForGoal, type PrimaryGoal } from '#lib/settings/onboarding.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -89,11 +94,19 @@
 		const n = Number(raceDistanceParam);
 		return Number.isFinite(n) ? n : null;
 	})();
+	// `?notBefore=` (a race page's "Add to my season") floors the start after
+	// the runner's current plan and its recovery days, so the new plan queues
+	// behind it instead of overlapping it.
+	const notBeforeParam = page.url.searchParams.get('notBefore')?.trim() || null;
+	// `?raceListing=` names the calendar listing the race facts came from, so
+	// the created plan links back to that race (decisions § 2156).
+	const raceListingParam = page.url.searchParams.get('raceListing')?.trim() || null;
 	const racePreset = raceDateParam
 		? racePlanPreset({
 				raceDateIso: raceDateParam,
 				distanceM: raceDistanceM,
 				todayIso: todayISO(),
+				notBeforeIso: notBeforeParam,
 			})
 		: null;
 	// A refusal still renders the wizard on its own defaults — we just say
@@ -113,6 +126,28 @@
 				: racePreset.reason === 'too_soon'
 					? 'plansNew.raceTooSoon'
 					: 'plansNew.raceUnreadable';
+
+	// `?recent5k=<seconds>` (Home's "build a plan from your recent 5K") fills
+	// the wizard's recent-5K field. It stays unconfirmed: PlanEditor only lets
+	// it set paces once the runner ticks that it reflects their fitness today.
+	const recent5kParam = page.url.searchParams.get('recent5k')?.trim();
+	const initialRecent5kSec = (() => {
+		if (!recent5kParam || !/^[0-9]+$/.test(recent5kParam)) return undefined;
+		const n = Number(recent5kParam);
+		return isPlausibleRecent5k(n) ? n : undefined;
+	})();
+
+	// `?start=<yyyy-mm-dd>` (the plan recap's "Build your next plan") opens the
+	// wizard on the first Sunday after the race's recovery. Snapped to a Sunday
+	// like a picked date, and ignored when it is earlier than the wizard's own
+	// default, so a stale link never offers a start the wizard would refuse.
+	const startParam = page.url.searchParams.get('start')?.trim();
+	const initialStartFromLink = (() => {
+		if (!startParam || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(startParam)) return undefined;
+		if (Number.isNaN(Date.parse(`${startParam}T00:00:00`))) return undefined;
+		const aligned = alignPlanStartIso(startParam, false);
+		return aligned > defaultPlanStartIso(todayISO(), false) ? aligned : undefined;
+	})();
 
 	let kind = $state<PlanKind>(initialKind());
 
@@ -324,8 +359,12 @@
 		const starterId = selectedStarterId;
 		const start = startDate;
 		const starter = starterById(starterId);
-		const generated = instantiateStarter(starterId, start);
-		if (!starter || !generated) return;
+		if (!starter) return;
+		creatingStarter = true;
+		const c = auth.user ? await loadPlanCalibration(auth.user.id) : null;
+		creatingStarter = false;
+		const generated = instantiateStarter(starterId, start, c?.age, c?.extraRecovery);
+		if (!generated) return;
 		const run = async (overlap: PlanOverlapChoice): Promise<void> => {
 			creatingStarter = true;
 			try {
@@ -529,6 +568,11 @@
 		<p class="picker-hint race-preset-note" data-testid="race-preset-note">
 			{m('plansNew.raceAnchored', { weeks: String(racePreset.preset.weeks) })}
 		</p>
+		{#if notBeforeParam}
+			<p class="picker-hint race-preset-note" data-testid="race-preset-chained">
+				{m('plansNew.raceChained', { date: formatDate(racePreset.preset.startDate) })}
+			</p>
+		{/if}
 	{:else if raceRefusalKey}
 		<p class="picker-hint race-preset-note" data-testid="race-preset-refusal">
 			{m(raceRefusalKey)}
@@ -544,9 +588,12 @@
 		initialGoalDistanceM={racePreset?.ok && racePreset.preset.goalEvent == null ? raceDistanceM : null}
 		initialBeginnerWalkRun={goalPreset?.beginnerWalkRun}
 		{initialName}
-		initialStartDate={racePreset?.ok ? racePreset.preset.startDate : undefined}
+		initialStartDate={racePreset?.ok ? racePreset.preset.startDate : initialStartFromLink}
 		initialWeeks={racePreset?.ok ? racePreset.preset.weeks : undefined}
+		notBeforeIso={notBeforeParam}
+		raceListingId={racePreset?.ok && isEntityId(raceListingParam) ? raceListingParam : null}
 		initialDescription={describeParam}
+		{initialRecent5kSec}
 	/>
 	{:else if kind === 'session'}
 		<div class="form-branch">

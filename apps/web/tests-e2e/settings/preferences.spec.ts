@@ -5,6 +5,8 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { readRow } from '../fixtures/db-read';
 import { USER_A } from '../fixtures/users';
 import { acceptCookieConsent } from '../fixtures/helpers';
+import { dateOfBirth, fillDateOfBirth } from '../fixtures/date-of-birth';
+import { browserDate, browserYear } from '../fixtures/dates';
 
 /**
  * The preference pages /settings/preferences was split into (issue #905) —
@@ -681,6 +683,30 @@ test.describe('settings preference pages', () => {
 		await consent.uncheck();
 	});
 
+	test('each body-metrics card says how it saves, and the explicit one says when it is unsaved', async ({
+		page
+	}) => {
+		// The demographics card saves on its button (Art 9) and the nutrition
+		// card saves on change. Side by side with nothing saying so, a runner
+		// who changed the activity level reached for Save demographics, and one
+		// who changed a birth date assumed it had saved like the card below.
+		// In-memory only for demographics; the activity level is put back.
+		await page.goto('/settings/body');
+		const hint = page.getByTestId('demographics-save-hint');
+		await expect(hint).toContainText('saves only when you press Save demographics');
+		await expect(page.getByTestId('nutrition-save-status')).toContainText('save automatically');
+
+		await page.getByTestId('date-of-birth-year').selectOption('1950');
+		await expect(hint).toContainText('Unsaved changes');
+
+		const level = page.getByTestId('activity-level');
+		const before = await level.inputValue();
+		await level.selectOption(before === 'light' ? 'moderate' : 'light');
+		await expect(page.getByTestId('nutrition-save-status')).toContainText('Saved');
+		await level.selectOption(before);
+		await expect(page.getByTestId('nutrition-save-status')).toContainText('Saved');
+	});
+
 	test('an out-of-range height or weight is refused in the field, not by postgres', async ({
 		page
 	}) => {
@@ -734,7 +760,9 @@ test.describe('settings preference pages', () => {
 			.locator('input[type="checkbox"]');
 		if (await consent.isChecked()) await consent.uncheck();
 
-		await expect(page.getByTestId('date-of-birth')).toBeEnabled();
+		await expect(page.getByTestId('date-of-birth-year')).toBeEnabled();
+		await expect(page.getByTestId('date-of-birth-month')).toBeEnabled();
+		await expect(page.getByTestId('date-of-birth-day')).toBeEnabled();
 		await expect(page.getByTestId('height-cm')).toBeDisabled();
 		await expect(page.getByTestId('weight')).toBeDisabled();
 		// The purpose line has to say why an ungated field is asking.
@@ -795,21 +823,47 @@ test.describe('settings preference pages', () => {
 		).toBeVisible();
 	});
 
-	test('Date of birth input caps at today and leaves birth years unbounded', async ({
+	test('Date of birth is picked by year, not paged back from today, and refuses half or future dates', async ({
 		page
 	}) => {
-		// A birth year decades back must stay reachable through the native
-		// picker: no `min` fencing off realistic birth years, and a `max`
-		// of today blocking future DOBs — mirrors the /onboarding DOB
-		// field (issue #222).
+		// The native `<input type="date">` popup opened on the current month,
+		// so reaching a birth year meant scrolling back through decades. The
+		// field is now three selects with the year newest-first. In-memory
+		// only: nothing is saved, so USER_A's stored DOB is untouched.
 		await page.goto('/settings/body');
-		const dob = page.getByLabel('Date of birth', { exact: true });
-		const max = await dob.getAttribute('max');
-		expect(max).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-		expect(Math.abs(Date.parse(`${max}T00:00:00Z`) - Date.now())).toBeLessThan(
-			48 * 3600 * 1000
+		const dob = dateOfBirth(page);
+		const thisYear = browserYear();
+		// The page paints a skeleton first and evaluateAll does not wait, so
+		// wait for the full list: the placeholder plus 121 years.
+		await expect(dob.year.locator('option')).toHaveCount(122);
+		const years = await dob.year.locator('option').evaluateAll((os) =>
+			os.map((o) => (o as HTMLOptionElement).value).filter(Boolean).map(Number),
 		);
-		expect(await dob.getAttribute('min')).toBeNull();
+		expect(years[0]).toBe(thisYear);
+		expect(years.at(-1)).toBe(thisYear - 120);
+
+		await fillDateOfBirth(page, '1979-02-28');
+		await expect(dob.month).toHaveValue('2');
+		await expect(dob.day).toHaveValue('28');
+		await expect(page.getByTestId('date-of-birth-error')).toHaveCount(0);
+
+		// Clearing one part reports the half-picked date instead of saving it.
+		await dob.day.selectOption('');
+		await expect(page.getByTestId('date-of-birth-error')).toBeVisible();
+		await expect(dob.group).toHaveAttribute('aria-describedby', /^dob-purpose \S+-error$/);
+
+		// A day the new month lacks clamps to its last day.
+		await dob.month.selectOption('1');
+		await dob.day.selectOption('31');
+		await dob.month.selectOption('4');
+		await expect(dob.day).toHaveValue('30');
+
+		// No birth date can be after today.
+		await dob.year.selectOption(String(thisYear));
+		await dob.month.selectOption('12');
+		await dob.day.selectOption('31');
+		const todayIsLastDay = browserDate().endsWith('-12-31');
+		if (!todayIsLastDay) await expect(page.getByTestId('date-of-birth-error')).toBeVisible();
 	});
 });
 

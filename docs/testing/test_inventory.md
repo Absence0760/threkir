@@ -109,7 +109,7 @@ Closes the documented "typed errors thrown from `prepare()`" gap. Replaces `Geol
 
 Six cases added 2026-10-15 for `preciseLocationOff` ([decisions § 1985](../architecture/decisions.md)): an Android approximate-only grant sets the flag without a second request; on iOS a reduced grant asks once for temporary full accuracy under `PreciseRunTracking` and clears the flag when granted, and keeps it set when declined; an already-precise grant asks nothing; an unreadable accuracy status reads as precise and the run still records; and a later precise `prepare()` clears a flag an earlier one set.
 
-### `apps/mobile_android/test/local_run_store_test.dart` — 98 tests
+### `apps/mobile_android/test/local_run_store_test.dart` — 97 tests
 
 Persistence round-trips against a real temporary filesystem directory. Tests inject a tempDir via `LocalRunStore.init(overrideDirectory: ...)` so they never touch `path_provider` or the platform channel.
 
@@ -269,7 +269,7 @@ Comprehensive coverage for `StravaImporter.importFromZip`. Complements the small
 
 **Metadata + compression (3 tests):** `imported_from`/`strava_activity_type`/`title`/`activity_type`/`imported_at` populate, blank activity name falls back to "Strava import", `.gpx.gz` is decompressed before parsing.
 
-### `apps/mobile_android/test/settings_sync_test.dart` — 45 tests
+### `apps/mobile_android/test/settings_sync_test.dart` — 46 tests
 
 Covers the universal-bag and device-bag overlay logic on `SettingsSyncService` via two new `@visibleForTesting` delegates (`debugApplyUniversal`, `debugApplyDevice`). The applied-bag flow is the substantive logic — `pushX` / `updateX` are passthroughs to `SettingsService` which needs Supabase to test. Uses a real `Preferences` instance backed by `SharedPreferences.setMockInitialValues({})`.
 
@@ -283,7 +283,7 @@ Covers the universal-bag and device-bag overlay logic on `SettingsSyncService` v
 
 **Sign-out account reset (3 tests):** issue #231 — bag-mirrored `Preferences` reset to defaults, the prior user's cached bags dropped when the id is known, idempotent with no cache / no prior id.
 
-### `apps/mobile_android/test/run_screen_recording_flow_test.dart` — 53 tests
+### `apps/mobile_android/test/run_screen_recording_flow_test.dart` — 54 tests
 
 Drives the full RunScreen UI flow on top of the existing data-pipeline integration test. Adds a mock-everything setUp that closes every platform-channel surface RunScreen touches when transitioning out of idle:
 
@@ -299,7 +299,7 @@ Tests: tapping START transitions the screen into countdown state (text "3" appea
 
 Live race (decisions § 1843), three more: Stop during a hosted race pauses and opens the Resume race / Finish race sheet without saving, and Resume race closes it with the race still hosted; Finish race stops, saves the run and submits a `manual` finish (no course resolved, so the 90% gate passes); after the host ends the race, Stop stops outright, still saves the run, and submits nothing.
 
-Precise location (decisions § 1985), one more: an approximate-only grant still starts the run past the countdown and shows the `runPreciseLocationOff` banner with its Settings action.
+Precise location (decisions § 1985), one more: an approximate-only grant still starts the run past the countdown and shows the `runPreciseLocationOff` banner with its Settings action. Decisions § 2151 adds one: an approximate grant that never delivers a fix shows the approximate strip and the map's precise-location-off state from the first second, its "Turn on precise location" action opens app settings, and a precise fix clears the strip.
 
 ### `apps/mobile_android/test/recording_integration_test.dart` — 3 tests
 
@@ -380,7 +380,7 @@ Pure-function tests for the period summary screen's extracted helpers in `lib/sc
 - `shortDate`: day + abbreviated month
 - `monthName`: full month name for all positions
 
-### `apps/mobile_android/test/goals_test.dart` — 35 tests
+### `apps/mobile_android/test/goals_test.dart` — 36 tests
 
 Pure-function tests for `evaluateGoal` and `RunGoal` JSON serialisation in `lib/goals.dart`:
 - Period bounds (week start = Monday 00:00, month end wraps to next year), and `weekStartLocal` across a late-Saturday / early-Sunday seam on both week starts
@@ -439,7 +439,7 @@ Pure-function tests for `parseBleHeartRateMeasurement` in `lib/ble_heart_rate.da
 - Truncated payload returns null
 - Single-byte payload returns null
 
-### `apps/mobile_android/test/training_test.dart` — 89 tests
+### `apps/mobile_android/test/training_test.dart` — 93 tests
 
 Dart mirror of `apps/web/src/lib/training/training.test.ts`. The Dart engine (`lib/training.dart`) must produce the same paces and phase assignments as the TypeScript engine for the same inputs. Covers the same functions:
 
@@ -563,7 +563,7 @@ The centre button's long-press start-options sheet (decisions § 1892, § 1897):
 
 The minimum-data account on every mobile surface that derives a number from a run (issue #1161 round 3): run detail, a history row, the history list sorted fastest-first, and Home's card stack, each fed a 10 s / 3 m run over a two-point, one-point or empty track, a 0 m run with a one-point or empty track, and a 0 s / 0 m run, in km and in mi, as a run and as a ride, and on Home under a weekly goal on every target, once for every fixture and once for a week of only 0 m runs. Each case asserts no exception, the honest missing-value spelling (`--:--` for a pace, `--` for a speed), and a clean text sweep. The sweep is `test/rendered_text_sweep.dart`: it collects every `RichText`, `EditableText`, `Semantics` label and `Tooltip` message, offstage included, and fails on `NaN`, `Infinity`, `∞` or a negative zero (`-0`, `-0.00`, `-0:00`, U+2212 too) while letting a date, `UTC-0`, `-0.05` and a `-0:30` delta through; the suite's first two tests pin that pattern so a sweep that matches nothing cannot pass silently. The surfaces are pumped on a 400 × 9000 surface so every lazily-built list child is laid out and swept. Nine declarations, 41 cases once the fixture loops expand.
 
-### `apps/mobile_ios/test/` — 708 files, byte-for-byte
+### `apps/mobile_ios/test/` — 759 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 
@@ -619,7 +619,7 @@ Pure-parser coverage for `RouteParser` (GPX/KML/TCX/GeoJSON) and `FitParser`. GP
 
 Regression for the `RunSource.watch` enum-map regen. Constructs a `Run` with `source: RunSource.watch`, asserts `toJson()['source'] == 'watch'` and `fromJson({'source': 'watch'}).source == RunSource.watch`. Existed to catch the crash that would otherwise hit `_$RunSourceEnumMap[instance.source]!` on any serialisation of a watch-originated run.
 
-### `apps/web/src/lib/training/training.test.ts` — 91 tests
+### `apps/web/src/lib/training/training.test.ts` — 95 tests
 
 TypeScript unit tests for the training plan engine, written against Node's `node:test` API (no test runner dependency). Run with `npx tsx --test src/lib/training/training.test.ts` from `apps/web`.
 
@@ -875,7 +875,7 @@ The Dart twin of the spec above for `widgets/pacing_strategy_section.dart`: hidd
 
 Web-only (no Dart twin — mobile does not read `event_exceptions` outside its own event-detail screen). Pure tests for `lib/social/event_occurrence.ts`, the layer that subtracts cancelled occurrences from a recurrence expansion. `isOccurrenceCancelled` covers both ISO renderings of one instant matching (PostgREST `+00:00` vs a client `.000Z`), a different instant / empty list / null / undefined not matching, and an unparseable cancelled instant never matching. `nextLiveInstance` covers the nothing-cancelled fast path, skipping the cancelled next occurrence, skipping a run of consecutive cancellations, a cancellation further out leaving the next one alone, already-past cancellations not eating the search budget, every remaining occurrence cancelled returning null, an exhausted series returning null either way, and a cancelled one-off. `upcomingCancelledOccurrences` covers future-only + oldest-first ordering, an unparseable instant being dropped rather than sorted to an edge, and an occurrence starting exactly now counting as ahead.
 
-### `apps/web/src/lib/training/goals.test.ts` — 33 tests
+### `apps/web/src/lib/training/goals.test.ts` — 34 tests
 
 Mirror of `apps/mobile_android/test/goals_test.dart`. Pure tests for `lib/goals.ts`. `weekStartLocal` is pinned across a late-Saturday / early-Sunday seam on both week starts; `periodStart` / `periodEnd` cover Monday-default + Sunday-override week anchoring, month start = 1st, week end = start + 7 days, December → January wrap. `formatPaceSecPerKm` covers em-dash for non-positive / non-finite, m:ss/km formatting with zero-padded seconds, half-up rounding. `evaluateGoal` covers empty list = 0%, runs outside the period excluded, distance target accumulation + complete-on-hit, pace target excluding cycling rides from the distance-weighted average, pace target with no qualifying runs reporting 0% + em-dash currentLabel, lower-is-better partial progress, time + runCount targets, multi-target complete-only-when-every-hit, `overallPercent` as the mean of target percents, and zero / negative targets being filtered out of the targets list. `markedDoneTally` counts hand-marked sessions from the period start through today only, and `evaluateGoal` adds them to the distance and run-count targets but not time or pace (decisions § 1813). `newGoalId` covers uniqueness across 100 calls. `loadGoals` / `saveGoals` cover empty when no data, save / load round-trip preservation, per-user keying isolating two users on the same browser, null userId returns empty, the legacy unscoped-key migration on first load (with the legacy key removed afterwards), accepting both legacy camelCase and canonical snake_case wire shapes, and corrupt-JSON returning empty.
 
@@ -1000,7 +1000,7 @@ Every static-map image on web renders through `StaticMapImage.svelte`, which swa
 
 `activityUsesSpeed`: only `cycle` reads by speed, the twin of core_models' `ActivityType.usesSpeed`, and an untagged or unknown activity reads by pace. Drives the pace-or-speed key-stat tile on `/runs/[id]`.
 
-### `apps/watch_wear/android/app/src/test/kotlin/**/*Test.kt` — 1057 Wear OS Kotlin/JUnit tests across 99 files
+### `apps/watch_wear/android/app/src/test/kotlin/**/*Test.kt` — 1119 Wear OS Kotlin/JUnit tests across 104 files
 
 Run with `cd apps/watch_wear/android && ./gradlew testDebugUnitTest`. Pure-JVM tests — no Android instrumentation, no Robolectric. **Six of them read files outside this Gradle build** (the phone's two `Wear*Bridge.kt`, `apps/web/src/lib/core/env_flag.ts`, `docs/backend/metadata.md`, the `activity_type` migration and the two client label catalogues), plus the manifest, and none was a declared input of the test task until [decisions § 946](../architecture/decisions.md) — so a local run reported UP-TO-DATE and SUCCESSFUL on exactly the drift those guards exist to catch. They are declared now; if you add a guard that reads anything outside `app/src`, add it to `guardedCrossTreeFiles` / `guardedCrossTreeSets` in `app/build.gradle.kts` in the same change or it will not re-run when its subject changes. `ScreenWiringTest` also now pins the pre-run signed-out notice ([decisions § 948](../architecture/decisions.md)): the `!authed` branch renders `not_signed_in` and NOT `offline`, read branch-scoped so the sibling `!online && authed` branch a few lines above cannot satisfy it — two conditions sharing one string breaks nothing, so only an assertion about which branch says which can see it. The team deliberately avoided UI-test infrastructure (see `apps/watch_wear/CLAUDE.md`'s "layouts can't be unit-tested without Robolectric"); the pattern is to extract pure helpers from the Android-bound classes and exercise them at the JVM level.
 
@@ -1319,7 +1319,7 @@ The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets
 
 The runtime half of the guard `build-web` runs over the build output (`scripts/check_web_removed_kit_apis.mjs`). web@1.12.0 resolved @sentry/sveltekit's Svelte 4 tracing variant, which subscribes to `$app/stores` — a stub that throws on Kit 3 — and `hooks.client.ts` runs `Sentry.init` only when `!dev && PUBLIC_SENTRY_DSN && hasAcceptedConsent()`, so every reader who accepted error reporting got a blank page while every `vite dev` lane stayed green ([decisions § 1896](../architecture/decisions.md)). Runs under `playwright.built.config.ts`: a production build with a dummy DSN, served as CloudFront serves it by `tests-e2e/scripts/serve-build.mjs`. One case seeds consent the way `consent.set('accepted')` stores it and loads `/` (prerendered — the uncaught-error check is what fails there), `/help` and `/login` (the SPA shell — a throw leaves them blank); the other accepts through the banner itself, which reloads the page, and asserts it still renders. Both require a `*.sentry.io` request to have been answered, so neither can pass without `Sentry.init` having run. Against the pre-fix `vite.config.ts` (no `sentrySvelteKit()` plugin) both fail on the `app_stores_removed` page error.
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 2,220 declared tests across 585 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 2,321 declared tests across 609 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 
@@ -1462,14 +1462,14 @@ tests-e2e/
     licenses.spec.ts           — open-source license list
     upgrade.spec.ts            — Pro pricing, the Yearly / Monthly plan picker (yearly preselected with the 33% saving, monthly reprices the card + CTA, no picker for a Pro user), the RevenueCat checkout redirect (intercepted; App User ID path segment, `package_id`, `redirect_url`) against the e2e fixture link
   share/
-    run.spec.ts                — /share/run/[id] anon + authed-non-owner view; private-run not-found for anon; sign-up CTA click-through; run-meta render
+    run.spec.ts                — /share/run/[id] anon + authed-non-owner view; private-run not-found for anon; sign-up CTA click-through; run-meta render; the signed-in way back into the app (none for anon, "Open in Threkir" to /runs/[id] on a direct arrival, Back from inside the app)
     route.spec.ts              — /share/route/[id] anon view
     badge.spec.ts              — /share/badge/[id] share-page chrome: header logo + footer home/sign-in links on both the found and not-available states
   built/                       — NOT run by the sharded suite (testIgnore'd); only by `playwright.built.config.ts`, the one lane on a PRODUCTION build (CI job `e2e-web-built`, unsharded, no Supabase)
     sentry-consent.spec.ts     — error reporting accepted on a build carrying a dummy PUBLIC_SENTRY_DSN: `/`, /help and /login render with no uncaught error and no `svelte.dev/e/kit` console error, and accepting through the consent banner reloads into a page that still renders (decisions § 1896). Every off-origin request is answered in-test; each case requires Sentry to have sent, so it cannot pass without Sentry.init having run. Run locally: `pnpm test:e2e:built`.
   u/
     profile.spec.ts            — /u/[id] (self vs cross-user view, Followers + Following tab list rendering + click-through)
-    notifications.spec.ts      — /u/[me]?tab=notifications inbox: list renders, Mark all read empties Unread filter
+    notifications.spec.ts      — /u/[me]?tab=notifications inbox: list renders, Mark all read empties Unread filter; run_completed opens /runs/[id] inside the app shell; achievement opens the own Achievements tab with the badge focused
   cross-user/                  — multi-context (two browsers, two users)
     kudos.spec.ts              — alex kudos runner, reload persists, rescind
     comments.spec.ts           — top-level + nested-reply round-trips

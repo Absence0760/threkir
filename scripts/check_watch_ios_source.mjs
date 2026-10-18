@@ -239,8 +239,9 @@
 //       without failing anything else.
 //  (20) The SETTINGS envelope going to the wrist — the runner's distance
 //       unit, their audio-cue switch, their default activity, their privacy
-//       default and the resolved heart-rate zone ladder — read from all three
-//       of its ends.
+//       default, the resolved heart-rate zone ladder, and the voice verbosity
+//       and workout-step cue switch a structured workout's spoken cues answer
+//       to — read from all three of its ends.
 //       Three hand-written key lists in three languages, the same shape as
 //       claim (7): `apple_watch_prefs_bridge.dart` names them as
 //       method-channel arguments, `WatchIngestBridge.prefsContext` lifts

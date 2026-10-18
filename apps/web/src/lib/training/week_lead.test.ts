@@ -216,6 +216,17 @@ test('plannedDistanceForWeek: ignores rest days and workouts outside the calenda
 	assert.equal(total, 15_000);
 });
 
+test('plannedDistanceForWeek: a walk-run week plans no distance, so the lead never measures it in km', () => {
+	const walkRun = [
+		wo('2026-06-08', { kind: 'walk_run', target_distance_m: 2050 }),
+		wo('2026-06-10', { kind: 'walk_run', target_distance_m: 2050 }),
+		wo('2026-06-11', { kind: 'rest', target_distance_m: null }),
+	];
+	assert.equal(plannedDistanceForWeek(walkRun, MON), 0);
+	// A walk-run session in an earlier week does not cost this week its plan.
+	assert.equal(plannedDistanceForWeek([wo('2026-06-01', { kind: 'walk_run' }), wo('2026-06-09')], MON), 5000);
+});
+
 test('nextPlanSession: the earliest open, non-rest session from today on', () => {
 	const next = nextPlanSession(
 		[

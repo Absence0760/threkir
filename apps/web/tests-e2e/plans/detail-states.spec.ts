@@ -47,7 +47,7 @@ test.describe('/plans/[id] — workout and plan states', () => {
 		await expect(missedDays.first()).toHaveCSS('border-left-style', 'dashed');
 	});
 
-	test('a coach-assigned plan names the coach and links to coaching', async ({ page }) => {
+	test('a coach-assigned plan names the coach and links to their profile', async ({ page }) => {
 		const admin = getAdminClient();
 		const profile = await readMaybeRow(
 			'coach display name',
@@ -64,7 +64,9 @@ test.describe('/plans/[id] — workout and plan states', () => {
 			await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
 			const chip = page.getByTestId('assigned-by-coach');
 			await expect(chip).toContainText(`Assigned by ${coachName}`, { timeout: 10_000 });
-			await expect(chip).toHaveAttribute('href', '/coaching');
+			await expect(chip).toHaveAttribute('href', `/u/${USER_B.id}`);
+			await chip.click();
+			await expect(page).toHaveURL(new RegExp(`/u/${USER_B.id}$`));
 		} finally {
 			await admin
 				.from('training_plans')

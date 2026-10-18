@@ -1,20 +1,30 @@
+import 'dart:async';
+
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'training.dart' show TrainingGender;
-
-import 'health_consent.dart';
-import 'nutrition_targets.dart' show ageFromDob;
+import 'active_plan_cache.dart';
+import 'backend_timeout.dart';
+import 'comeback.dart' show kLayoffMaxDays;
+import 'cycle_plan.dart';
+import 'fitness.dart' show qualifyingRuns;
+import 'offline_sync_store.dart' show parseServerTimestamp;
+import 'plan_break.dart' show BreakChange;
+import 'plan_bulk_ops.dart';
+import 'plan_calibration.dart';
 import 'plan_copy.dart';
 import 'plan_current.dart';
-import 'comeback.dart' show kLayoffMaxDays;
-import 'fitness.dart' show qualifyingRuns;
+import 'plan_race_date.dart' show RaceDateChange;
 import 'plan_ramp.dart';
-import 'race_predictor.dart' show EffortForPrediction;
+import 'plan_recap.dart' show PlanRecapRecord, PlanRecapRun;
+import 'plan_repeat_week.dart' show RepeatWeekChange;
+import 'plan_resume.dart';
 import 'plan_week.dart';
+import 'race_predictor.dart' show EffortForPrediction;
 import 'relink_candidates.dart';
+import 'settings_sync.dart' show activeSetting, updateActiveUniversal;
 import 'training.dart';
 
 /// The window the goal-time check reads efforts from: the same 90 days the
@@ -282,6 +292,26 @@ class PlanTrimBlockedError implements Exception {
   String toString() => 'plan_trim_blocked';
 }
 
+/// A restart refused because the plan has a race on or after today
+/// (`restart_training_plan`'s SQLSTATE RR001): moving the plan would move
+/// race day off the real date. Nothing changed.
+class PlanRestartRaceAheadError implements Exception {
+  const PlanRestartRaceAheadError();
+
+  @override
+  String toString() => 'plan_restart_race_ahead';
+}
+
+/// A restart refused because its start is before the runner's today in their
+/// stored time zone (`restart_training_plan`'s SQLSTATE RR002), which can be
+/// ahead of the device's date the dialog checked against. Nothing changed.
+class PlanRestartBeforeTodayError implements Exception {
+  const PlanRestartBeforeTodayError();
+
+  @override
+  String toString() => 'plan_restart_before_today';
+}
+
 class TrainingService extends ChangeNotifier {
   final SupabaseClient? _override;
 
@@ -294,6 +324,24 @@ class TrainingService extends ChangeNotifier {
   /// methods can be driven without booting `Supabase.initialize`.
   @visibleForTesting
   TrainingService.withClient(SupabaseClient client) : _override = client;
+
+  Listenable? _runsLanded;
+
+  /// Notifies this service's listeners whenever [runsLanded] fires, so every
+  /// screen showing plan completion re-reads it. The server links a run to
+  /// its workout as the row is written (decisions § 2079); without this a
+  /// plain run that satisfied today's workout left every open plan surface
+  /// showing it as still to do. Replaces any source passed earlier.
+  void followRunsLanded(Listenable runsLanded) {
+    _runsLanded?.removeListener(notifyListeners);
+    _runsLanded = runsLanded..addListener(notifyListeners);
+  }
+
+  @override
+  void dispose() {
+    _runsLanded?.removeListener(notifyListeners);
+    super.dispose();
+  }
 
   SupabaseClient get _c {
     final override = _override;
@@ -314,47 +362,46 @@ class TrainingService extends ChangeNotifier {
   /// bootstrap bug, not a signed-out viewer, and must not read as one.
   String? get currentUserId => _uid;
 
-  /// The viewer's own `user_profiles` row, or null. Goes through
-  /// `get_my_profile()` (SECURITY DEFINER) because neither `gender` nor
-  /// `date_of_birth` nor `health_data_consent_at` is in the cross-user column
-  /// grant (20260707_001 / 20270408_001): a direct `.select('gender')` is
-  /// rejected outright with 42501, so the reads this replaced could only ever
-  /// report "unset" — the same defect `ApiClient.fetchAiDisclosure` records.
+  /// The runner facts every plan built for the viewer calibrates on —
+  /// gender, age and the `extra_recovery` setting — graded by
+  /// [planCalibrationFrom]. Mirror of web `loadPlanCalibration`.
   ///
-  /// L4 best-effort by contract: the plan wizard's initState awaits the two
-  /// callers without blocking, and any failure only costs the calibration.
-  /// The try/catch must therefore wrap BOTH the `_uid` access (which touches
-  /// `_c`, which throws `StateError` in widget tests that don't initialise
-  /// Supabase) AND the network read. A regression that narrowed the catch to
-  /// the inner read alone surfaced as `plan_new_screen_test` failing with
-  /// "TrainingService called before Supabase.initialize() resolved" in CI.
-  Future<UserProfileRow?> _fetchMyProfile() async {
+  /// The profile goes through `get_my_profile()` (SECURITY DEFINER) because
+  /// neither `gender` nor `date_of_birth` nor `health_data_consent_at` is in
+  /// the cross-user column grant (20260707_001 / 20270408_001). Reshaping a
+  /// plan around the runner's age is an Art 9 health inference, so the date
+  /// is resolved through `healthUseDob` inside [planCalibrationFrom] (§ 722).
+  ///
+  /// L4 best-effort by contract, and each read is its own failure domain: a
+  /// failed profile read keeps the setting, and an unloaded settings bag
+  /// keeps the age. The try/catch wraps BOTH the `_uid` access (which
+  /// touches `_c`, which throws `StateError` in widget tests that don't
+  /// initialise Supabase) AND the network read.
+  Future<PlanCalibration> fetchPlanCalibration() async {
+    UserProfileRow? profile;
+    var profileRead = true;
     try {
-      if (_uid == null) return null;
-      final row = ApiClient.profileRowFrom(
-          await _c.rpc('get_my_profile', params: const {}, get: true));
-      if (row == null) return null;
-      return UserProfileRow.fromJson(row);
-    } catch (_) {
-      /* L4 best-effort — fall back to null on any failure,
-         including the not-yet-initialised StateError thrown by
-         the _c getter in widget tests. */
+      if (_uid != null) {
+        final row = ApiClient.profileRowFrom(
+            await _c.rpc('get_my_profile', params: const {}, get: true));
+        if (row != null) profile = UserProfileRow.fromJson(row);
+      }
+    } catch (e) {
+      debugPrint('fetchPlanCalibration: profile read failed: $e');
+      profileRead = false;
     }
-    return null;
+    return planCalibrationFrom(
+      profile: profile,
+      profileRead: profileRead,
+      extraRecoverySetting: activeSetting(SettingsKeys.extraRecovery),
+      nowMs: DateTime.now().millisecondsSinceEpoch,
+    );
   }
 
-  /// Persona-hunt Round 3 finding Woman #3. Reads the viewer's
-  /// `user_profiles.gender` so the plan wizard can apply the
-  /// gender-aware pace calibration. Returns null when the column is
-  /// unset (the default) — pacesFromGoalPace then uses the
-  /// male-derived curve unchanged. Mirror of the inline supabase
-  /// read on web `PlanEditor.svelte`. Gender carries its own consent
-  /// term at every write path, so the read needs none.
-  Future<TrainingGender> fetchViewerGender() async {
-    final g = (await _fetchMyProfile())?.gender;
-    if (g == 'male' || g == 'female' || g == 'prefer_not_to_say') return g;
-    return null;
-  }
+  /// Turn `extra_recovery` on or off in the universal settings bag, the
+  /// same switch as Settings → Preferences. Throws when the write fails.
+  Future<void> setExtraRecovery(bool on) =>
+      updateActiveUniversal({SettingsKeys.extraRecovery: on});
 
   /// The viewer's running history as the plan wizard reads it: far enough
   /// back ([kLayoffMaxDays] plus the four-week base before it) to see the
@@ -362,7 +409,7 @@ class TrainingService extends ChangeNotifier {
   /// the ramp check grades against, and the last [kGoalCheckWindowDays] of
   /// qualifying efforts the goal-time check projects from. Mirrors the two
   /// reads on web `PlanEditor.svelte`. Same L4 best-effort contract as
-  /// [fetchViewerGender]: null on any failure, and every note built from it
+  /// [fetchPlanCalibration]: null on any failure, and every note built from it
   /// then self-hides rather than grading against a base it doesn't have.
   Future<PlanRunHistory?> fetchPlanRunHistory() async {
     try {
@@ -385,20 +432,6 @@ class TrainingService extends ChangeNotifier {
       debugPrint('fetchPlanRunHistory failed: $e');
     }
     return null;
-  }
-
-  /// Persona-hunt finding Older #30. Returns the viewer's whole-year age so
-  /// the plan wizard can apply the masters recovery calibration (50+), or
-  /// null — generatePlan then uses the standard younger-physiology schedule.
-  ///
-  /// Reshaping a training plan around the runner's age is an Art 9 health
-  /// inference, and the age record itself carries no consent term because the
-  /// under-18 search floor depends on it (§ 718). So the date comes through
-  /// [healthUseDob] rather than off the row, matching web's PlanEditor
-  /// (§ 722). Same L4 best-effort contract as [fetchViewerGender].
-  Future<int?> fetchViewerAge() async {
-    final dob = healthUseDob(await _fetchMyProfile());
-    return ageFromDob(dob, DateTime.now().millisecondsSinceEpoch);
   }
 
   /// Plan templates owned by `clubId`. Visible to club members per RLS.
@@ -693,6 +726,179 @@ class TrainingService extends ChangeNotifier {
     return newId as String;
   }
 
+  /// Writes the plan-details fields that change nothing else: the name,
+  /// notes, days per week and rules. The goal time goes through
+  /// [setPlanGoalTime], because it carries the paces with it. Mirrors web
+  /// `core/data.ts:updatePlanMeta`.
+  Future<void> updatePlanMeta(
+    String planId, {
+    required String name,
+    required String? notes,
+    required int daysPerWeek,
+    required List<String>? rules,
+  }) async {
+    await _c.from(TrainingPlanRow.table).update({
+      TrainingPlanRow.colName: name,
+      TrainingPlanRow.colNotes: notes,
+      TrainingPlanRow.colDaysPerWeek: daysPerWeek,
+      TrainingPlanRow.colRules: rules,
+    }).eq(TrainingPlanRow.colId, planId);
+    notifyListeners();
+  }
+
+  /// Sets a plan's goal time with the re-derived workout paces
+  /// (`goalTimeRepacePatches`) and VDOT in one transaction
+  /// (`set_plan_goal_time`), so the goal and the paces never disagree.
+  /// Mirrors web `core/data.ts:setPlanGoalTime`.
+  Future<void> setPlanGoalTime(String planId, int? goalTimeSec, double? vdot,
+      List<Map<String, Object?>> changes) async {
+    await _c.rpc('set_plan_goal_time', params: {
+      'p_plan_id': planId,
+      'p_goal_time_seconds': goalTimeSec,
+      'p_vdot': vdot,
+      'p_changes': changes,
+    });
+    notifyListeners();
+  }
+
+  /// Restarts the caller's plan [planId] as a fresh active copy starting on
+  /// [startIso], retiring the plans it replaces as abandoned in the same
+  /// transaction (`restart_training_plan`). Returns the new plan's id. A race
+  /// still ahead surfaces as [PlanRestartRaceAheadError], a start before the
+  /// server's today as [PlanRestartBeforeTodayError].
+  Future<String> restartPlan(String planId, String startIso) async {
+    final Object? id;
+    try {
+      id = await _c.rpc('restart_training_plan', params: {
+        'p_plan_id': planId,
+        'p_start_date': startIso,
+      });
+    } catch (e, s) {
+      if (e is PostgrestException && e.code == 'RR001') {
+        Error.throwWithStackTrace(const PlanRestartRaceAheadError(), s);
+      }
+      if (e is PostgrestException && e.code == 'RR002') {
+        Error.throwWithStackTrace(const PlanRestartBeforeTodayError(), s);
+      }
+      Error.throwWithStackTrace(planWriteError(e), s);
+    }
+    notifyListeners();
+    return id! as String;
+  }
+
+  /// Moves every workout and the plan's start / end by [days] (the race
+  /// moved, the runner started late) in one transaction, with the plans
+  /// queued after it when [shiftFollowing]. A shift into another active
+  /// plan's window surfaces as [ActivePlanExistsError]. Mirrors web
+  /// `core/data.ts:shiftTrainingPlan`.
+  Future<void> shiftTrainingPlan(
+      String planId, int days, {bool shiftFollowing = false}) async {
+    try {
+      await _c.rpc('shift_training_plan', params: {
+        'p_plan_id': planId,
+        'p_days': days,
+        'p_shift_following': shiftFollowing,
+      });
+    } catch (e, s) {
+      Error.throwWithStackTrace(planWriteError(e), s);
+    }
+    notifyListeners();
+  }
+
+  /// Re-anchors a plan on a new race date: [change] (`raceDateChange`) names
+  /// the weeks to drop or repeat and `change_plan_race_date` applies them in
+  /// one transaction. A later end that runs into another
+  /// active plan surfaces as [ActivePlanExistsError] via [planWriteError].
+  Future<void> changePlanRaceDate(
+      String planId, RaceDateChange change, String todayIso) async {
+    try {
+      await _c.rpc('change_plan_race_date', params: {
+        'p_plan_id': planId,
+        'p_race_date': change.raceDateIso,
+        'p_today': todayIso,
+        'p_drop_week_ids': change.dropWeekIds,
+        'p_insert_at': change.insertAt,
+        'p_insert_count': change.insertCount,
+        'p_repeat_week_id': change.repeatWeekId,
+        'p_race_workout_id': change.raceWorkoutId,
+      });
+    } catch (e, s) {
+      Error.throwWithStackTrace(planWriteError(e), s);
+    }
+    notifyListeners();
+  }
+
+  /// Runs the latest weeks again after a break and records the offer as
+  /// answered (`planBreakChange`, decisions § 2128), in one transaction.
+  /// Web twin: `reschedulePlanAfterBreak` in `core/data.ts`.
+  Future<void> reschedulePlanAfterBreak(String planId, BreakChange change,
+      String breakFromIso, String todayIso) async {
+    try {
+      await _c.rpc('reschedule_plan_after_break', params: {
+        'p_plan_id': planId,
+        'p_today': todayIso,
+        'p_break_from': breakFromIso,
+        'p_repeat_week_ids': change.repeatWeekIds,
+        'p_drop_week_ids': change.dropWeekIds,
+      });
+    } catch (e, s) {
+      Error.throwWithStackTrace(planWriteError(e), s);
+    }
+    notifyListeners();
+  }
+
+  /// "Too hard? Repeat this week": runs [change]'s week again next week and
+  /// pushes the rest back one, keeping race day by dropping
+  /// `change.dropWeekId` (`repeatWeekChange`), in one transaction
+  /// (`repeat_plan_week`). Web twin: `repeatPlanWeek` in `core/data.ts`.
+  Future<void> repeatPlanWeek(
+      String planId, RepeatWeekChange change, String todayIso) async {
+    try {
+      await _c.rpc('repeat_plan_week', params: {
+        'p_plan_id': planId,
+        'p_today': todayIso,
+        'p_week_id': change.weekId,
+        'p_drop_week_id': change.dropWeekId,
+      });
+    } catch (e, s) {
+      Error.throwWithStackTrace(planWriteError(e), s);
+    }
+    notifyListeners();
+  }
+
+  /// Eases [workouts] dated [todayIso] or later for [cfg]'s cycle or
+  /// pregnancy (`cyclePlanWorkoutPatch`, decisions § 231) through
+  /// [_applyWorkoutAdjustments]; the past is history and is not rewritten.
+  /// Returns how many workouts changed. Art 9: the caller holds the
+  /// cycle-plans gate. Mirrors web `applyCycleAdjustment` on the plan page.
+  Future<int> applyCycleAdjustment(String planId,
+      List<PlanWorkoutRow> workouts, CyclePlanConfig cfg, String todayIso) async {
+    final patches = <String, Map<String, Object?>>{};
+    for (final w in workouts) {
+      final date = toIsoDate(w.scheduledDate);
+      if (date.compareTo(todayIso) < 0) continue;
+      final patch = cyclePlanWorkoutPatch(w.kind, w.targetDistanceM, date, cfg);
+      if (patch != null && !patch.isEmpty) patches[w.id] = patch.fields;
+    }
+    await _applyWorkoutAdjustments(planId, patches);
+    return patches.length;
+  }
+
+  /// Turns [workouts] — one week's — into a recovery week through
+  /// [_applyWorkoutAdjustments], which restates the week's volume in the same
+  /// transaction. Returns how many workouts changed. Mirrors web
+  /// `markWeekRecovery` on the plan page.
+  Future<int> markWeekRecovery(
+      String planId, List<PlanWorkoutRow> workouts) async {
+    final patches = <String, Map<String, Object?>>{
+      for (final w in workouts)
+        if (recoveryWorkoutPatch(w.kind, w.targetDistanceM) case final p?)
+          w.id: p,
+    };
+    await _applyWorkoutAdjustments(planId, patches);
+    return patches.length;
+  }
+
   Future<List<TrainingPlanRow>> fetchMyPlans() async {
     final uid = _uid;
     if (uid == null) return const [];
@@ -711,48 +917,22 @@ class TrainingService extends ChangeNotifier {
 
   Future<({TrainingPlanRow? plan, List<PlanWeekRow> weeks, List<PlanWorkoutRow> workouts})>
       fetchPlan(String id) async {
-    final planRow = await _c
+    // One round trip, not three: the detail screen gives the whole load one
+    // timeout, and three sequential queries spent it three times over on a
+    // slow link.
+    final row = await _c
         .from('training_plans')
-        .select()
+        .select('*, plan_weeks(*, plan_workouts(*))')
         .eq('id', id)
         .maybeSingle();
-    if (planRow == null) {
+    if (row == null) {
       return (
         plan: null,
         weeks: <PlanWeekRow>[],
         workouts: <PlanWorkoutRow>[],
       );
     }
-    final weekRows = await _c
-        .from('plan_weeks')
-        .select()
-        .eq('plan_id', id)
-        .order('week_index', ascending: true);
-    final weeks = (weekRows as List)
-        .cast<Map<String, dynamic>>()
-        .map(PlanWeekRow.fromJson)
-        .toList();
-    if (weeks.isEmpty) {
-      return (
-        plan: TrainingPlanRow.fromJson(planRow),
-        weeks: <PlanWeekRow>[],
-        workouts: <PlanWorkoutRow>[],
-      );
-    }
-    final woRows = await _c
-        .from('plan_workouts')
-        .select()
-        .inFilter('week_id', weeks.map((w) => w.id).toList())
-        .order('scheduled_date', ascending: true);
-    final workouts = (woRows as List)
-        .cast<Map<String, dynamic>>()
-        .map(PlanWorkoutRow.fromJson)
-        .toList();
-    return (
-      plan: TrainingPlanRow.fromJson(planRow),
-      weeks: weeks,
-      workouts: workouts,
-    );
+    return planDetailFromRow(row);
   }
 
   /// Who owns a plan, for the "updated by your coach" line on a workout
@@ -775,6 +955,80 @@ class TrainingService extends ChangeNotifier {
     return row == null ? null : PlanWorkoutRow.fromJson(row);
   }
 
+  /// Distances of the runs linked to plan workouts, by run id, for the
+  /// "Done · +3 km" status. Ids the viewer cannot read (a coach looking at an
+  /// athlete's plan, a deleted run) are simply absent. Web twin:
+  /// `fetchRunDistances` in data.ts.
+  Future<Map<String, double>> fetchRunDistances(List<String> ids) async {
+    final wanted = ids.toSet().toList();
+    final rows = await readChunked(
+      wanted,
+      (chunk) async => List<Map<String, dynamic>>.from(await _c
+          .from('runs')
+          .select('id, distance_m')
+          .inFilter('id', chunk)),
+    );
+    return {
+      for (final r in rows)
+        if (r['distance_m'] is num)
+          r['id'] as String: (r['distance_m'] as num).toDouble(),
+    };
+  }
+
+  /// The runs and records the end-of-plan recap (`assemblePlanRecap`) reads,
+  /// each dated on the runner's local day. Runs reach two days past either
+  /// end of the plan, the run-to-workout matcher's cross-day reach (decisions
+  /// § 2079), so a linked run on the window's edge is still found by id.
+  /// Throws, so the card can say the recap failed. Web twin:
+  /// `fetchPlanRecapSources` in data.ts.
+  Future<({List<PlanRecapRun> runs, List<PlanRecapRecord> records})>
+      fetchPlanRecapSources(String startIso, String endIso) async {
+    final uid = _uid;
+    if (uid == null) {
+      return (runs: <PlanRecapRun>[], records: <PlanRecapRecord>[]);
+    }
+    final from = parseIsoDate(shiftIsoDate(startIso, -2)).toUtc();
+    final before = parseIsoDate(shiftIsoDate(endIso, 3)).toUtc();
+    final results = await Future.wait([
+      _c
+          .from('runs')
+          .select('id, started_at, distance_m, duration_s, activity_type, is_dnf')
+          .eq('user_id', uid)
+          .gte('started_at', from.toIso8601String())
+          .lt('started_at', before.toIso8601String()),
+      _c
+          .from('personal_records')
+          .select('distance, best_time_s, achieved_at, run_id')
+          .eq('user_id', uid),
+    ]);
+    final runs = <PlanRecapRun>[];
+    for (final r in (results[0] as List).cast<Map<String, dynamic>>()) {
+      final started = parseServerTimestamp(r['started_at']);
+      if (started == null) continue;
+      runs.add(PlanRecapRun(
+        id: r['id'] as String,
+        date: toIsoDate(started.toLocal()),
+        distanceM: (r['distance_m'] as num?)?.toDouble(),
+        durationS: (r['duration_s'] as num?)?.round(),
+        activityType: r['activity_type'] as String?,
+        isDnf: r['is_dnf'] as bool?,
+      ));
+    }
+    final records = <PlanRecapRecord>[];
+    for (final r in (results[1] as List).cast<Map<String, dynamic>>()) {
+      final achieved = parseServerTimestamp(r['achieved_at']);
+      final time = (r['best_time_s'] as num?)?.round();
+      if (achieved == null || time == null) continue;
+      records.add(PlanRecapRecord(
+        distance: r['distance'] as String,
+        timeS: time,
+        date: toIsoDate(achieved.toLocal()),
+        runId: r['run_id'] as String?,
+      ));
+    }
+    return (runs: runs, records: records);
+  }
+
   /// The viewer's active, non-template plans. Several can be active at once
   /// when their date windows don't overlap.
   Future<List<TrainingPlanRow>> fetchActivePlans() async {
@@ -795,48 +1049,47 @@ class TrainingService extends ChangeNotifier {
   /// The overview of the current plan — the one covering today, else the
   /// latest-ended — or, before any has started, of the queued one.
   Future<ActivePlanOverview?> fetchActiveOverview() async {
+    final uid = _uid;
+    if (uid == null) return null;
+    try {
+      // One deadline for the whole read, owned here rather than by each
+      // caller, so a slow link still reaches the saved copy below.
+      final snapshot = await _fetchActivePlanSnapshot().timeout(kBackendLoadTimeout);
+      unawaited(writeActivePlanCache(uid, snapshot));
+      return activeOverviewFrom(snapshot, DateTime.now());
+    } catch (e) {
+      final saved = await readActivePlanCache(uid);
+      if (saved == null) rethrow;
+      debugPrint('fetchActiveOverview failed, using the saved copy: $e');
+      return activeOverviewFrom(saved, DateTime.now());
+    }
+  }
+
+  Future<ActivePlanSnapshot> _fetchActivePlanSnapshot() async {
     final activePlans = await fetchActivePlans();
-    final today = toIsoDate(DateTime.now());
-    final plan = currentOrUpcomingPlan(activePlans, today);
-    if (plan == null) return null;
-    final upcoming = pickCurrentPlan(
-      [for (final p in activePlans) if (p.id != plan.id) p],
-      planRowStartIso(plan).compareTo(today) > 0 ? planRowStartIso(plan) : today,
-      start: planRowStartIso,
-      end: planRowEndIso,
-    ).upcoming;
-    final res = await fetchPlan(plan.id);
-    if (res.plan == null) return null;
-    final todayWorkout = res.workouts
-        .where((w) =>
-            toIsoDate(w.scheduledDate) == today && w.kind != 'rest')
-        .cast<PlanWorkoutRow?>()
-        .firstOrNull;
-    final active = res.workouts.where((w) => w.kind != 'rest').toList();
-    final done = active
-        .where(isWorkoutCompleted)
-        .length;
-    final pct = active.isEmpty ? 0 : (100 * done / active.length).round();
-    // Whole-epoch-day bucketing, not a wall-clock difference: a start→today
-    // span crossing a DST transition is 167/169 h, so `inDays` truncates a day
-    // short and reports the previous week (#338). A plan whose weeks failed to
-    // load has no valid index — the helper's `weekCount - 1` would be -1.
-    final currentWeek = res.weeks.isEmpty
-        ? 0
-        : currentPlanWeekIndex(
-            toIsoDate(plan.startDate),
-            today,
-            res.weeks.length,
-          );
-    return ActivePlanOverview(
-      plan: plan,
-      weeks: res.weeks,
-      workouts: res.workouts,
-      todayWorkout: todayWorkout,
-      completionPct: pct,
-      currentWeekIndex: currentWeek,
-      upcomingPlan: upcoming,
+    final plan = currentOrUpcomingPlan(activePlans, toIsoDate(DateTime.now()));
+    return ActivePlanSnapshot(
+      activePlans: activePlans,
+      detail: plan == null ? null : await fetchPlan(plan.id),
     );
+  }
+
+  /// The runner's most recently paused plan, so Home can offer to resume it
+  /// when there is no active one instead of acting as though there is no
+  /// plan. Mirrors the `paused` half of web `fetchActivePlanOverview`.
+  Future<TrainingPlanRow?> fetchPausedPlan() async {
+    final uid = _uid;
+    if (uid == null) return null;
+    final row = await _c
+        .from(TrainingPlanRow.table)
+        .select()
+        .eq('user_id', uid)
+        .eq('status', 'paused')
+        .eq('is_template', false)
+        .order('paused_at', ascending: false, nullsFirst: false)
+        .limit(1)
+        .maybeSingle();
+    return row == null ? null : TrainingPlanRow.fromJson(row);
   }
 
   /// Write a freshly generated plan — plan row, weeks, workouts — through
@@ -853,6 +1106,9 @@ class TrainingService extends ChangeNotifier {
     required int daysPerWeek,
     String? notes,
     required GeneratedPlan generated,
+    // The race listing the plan is built for; the RPC writes null for an id
+    // that names no listing rather than refusing the plan.
+    String? raceListingId,
     PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
     final uid = _uid;
@@ -914,6 +1170,7 @@ class TrainingService extends ChangeNotifier {
           // Match web's `notes?.trim() || null` — whitespace-only collapses
           // to null so the column stays clean for `IS NOT NULL` filters.
           'notes': _trimToNull(notes),
+          'race_listing_id': raceListingId,
         },
         'p_weeks': [
           for (final w in generated.weeks)
@@ -987,7 +1244,11 @@ class TrainingService extends ChangeNotifier {
   /// runner as an unexplained failure rather than "that plan is in the way".
   /// A plan queued before or after it doesn't block. Web twin: `resumePlan` +
   /// `ActivePlanExistsError`.
-  Future<void> resumePlan(String id) async {
+  /// Resumes a paused plan through `resume_training_plan`, pushing the weeks
+  /// [shift] names back when the pause spanned whole weeks (`resumeShift`),
+  /// so they come back as upcoming rather than missed. The overlap pre-check
+  /// covers the end date the shift gives the plan. Mirrors web `resumePlan`.
+  Future<void> resumePlan(String id, {ResumeShift? shift}) async {
     final uid = _uid;
     if (uid == null) throw StateError('resumePlan called with no signed-in user.');
     final row = await _c
@@ -997,21 +1258,29 @@ class TrainingService extends ChangeNotifier {
         .maybeSingle();
     if (row == null) throw StateError('resumePlan: plan $id not found.');
     final plan = TrainingPlanRow.fromJson(row);
+    final endIso = shift == null
+        ? planRowEndIso(plan)
+        : shiftIsoDate(planRowEndIso(plan), 7 * shift.weeks);
     final others = [
       for (final p in await fetchActivePlans())
         if (p.id != id) p
     ];
-    if (overlappingActivePlans(others, planRowStartIso(plan), planRowEndIso(plan))
-        .isNotEmpty) {
+    if (overlappingActivePlans(others, planRowStartIso(plan), endIso).isNotEmpty) {
       throw const ActivePlanExistsError();
     }
     try {
-      await updateStatus(id, 'active');
+      await _c.rpc('resume_training_plan', params: {
+        'p_plan_id': id,
+        'p_from_week_index': shift?.fromWeekIndex,
+        'p_shift_weeks': shift?.weeks ?? 0,
+      });
     } catch (e) {
       if (_isOverlapViolation(e)) throw const ActivePlanExistsError();
       rethrow;
     }
+    notifyListeners();
   }
+
 
   Future<void> deletePlan(String id) async {
     await _c.from('training_plans').delete().eq('id', id);
@@ -1198,6 +1467,27 @@ class TrainingService extends ChangeNotifier {
           e.key: {PlanWorkoutRow.colTargetDistanceM: e.value},
       });
 
+  /// Records the runner's answer to the missed-workout prompt on each of
+  /// [workoutIds] (`answer_missed_workouts`, decisions § 2122), so it is never
+  /// asked again on any device. "Make it up" passes the previewed make-up as
+  /// [distances]; they are written in the same transaction as the answer.
+  /// Mirrors web `answerMissedWorkouts`.
+  Future<void> answerMissedWorkouts({
+    required String planId,
+    required List<String> workoutIds,
+    Map<String, double> distances = const {},
+  }) async {
+    await _c.rpc('answer_missed_workouts', params: {
+      'p_plan_id': planId,
+      'p_workout_ids': workoutIds,
+      'p_changes': [
+        for (final e in distances.entries)
+          {'id': e.key, PlanWorkoutRow.colTargetDistanceM: e.value},
+      ],
+    });
+    notifyListeners();
+  }
+
   /// One `apply_workout_adjustments` call: it writes every patch and
   /// restates each touched week's `target_volume_m` in one transaction, so a
   /// failure changes nothing (decisions § 2061).
@@ -1362,4 +1652,73 @@ class PlanWorkoutLinkCandidate {
         targetDurationSeconds: (json['target_duration_seconds'] as num?)?.toInt(),
         dayOffset: (json['day_offset'] as num).toInt(),
       );
+}
+
+/// Splits one `training_plans` row carrying a `plan_weeks(*, plan_workouts(*))`
+/// embed into the plan, its weeks and its workouts. Ordered here because an
+/// embed is ordered per parent, so neither list arrives in plan order.
+({TrainingPlanRow plan, List<PlanWeekRow> weeks, List<PlanWorkoutRow> workouts})
+    planDetailFromRow(Map<String, dynamic> row) {
+  final planRow = Map<String, dynamic>.of(row);
+  final weekRows = ((planRow.remove('plan_weeks') as List?) ?? const [])
+      .cast<Map<String, dynamic>>();
+  final weeks = <PlanWeekRow>[];
+  final workouts = <PlanWorkoutRow>[];
+  for (final w in weekRows) {
+    final weekRow = Map<String, dynamic>.of(w);
+    final woRows = ((weekRow.remove('plan_workouts') as List?) ?? const [])
+        .cast<Map<String, dynamic>>();
+    weeks.add(PlanWeekRow.fromJson(weekRow));
+    workouts.addAll(woRows.map(PlanWorkoutRow.fromJson));
+  }
+  weeks.sort((a, b) => a.weekIndex.compareTo(b.weekIndex));
+  workouts.sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
+  return (plan: TrainingPlanRow.fromJson(planRow), weeks: weeks, workouts: workouts);
+}
+
+/// The overview [snapshot] describes as of [now]: the current plan (the one
+/// covering today, else the latest-ended, else the queued one), today's
+/// workout, the completion figure and the current week. Pure, so a saved
+/// snapshot reads today correctly whenever it was saved.
+ActivePlanOverview? activeOverviewFrom(ActivePlanSnapshot snapshot, DateTime now) {
+  final activePlans = snapshot.activePlans;
+  final today = toIsoDate(now);
+  final plan = currentOrUpcomingPlan(activePlans, today);
+  final res = snapshot.detail;
+  if (plan == null || res == null || res.plan == null || res.plan!.id != plan.id) {
+    return null;
+  }
+  final upcoming = pickCurrentPlan(
+    [for (final p in activePlans) if (p.id != plan.id) p],
+    planRowStartIso(plan).compareTo(today) > 0 ? planRowStartIso(plan) : today,
+    start: planRowStartIso,
+    end: planRowEndIso,
+  ).upcoming;
+  final todayWorkout = res.workouts
+      .where((w) => toIsoDate(w.scheduledDate) == today && w.kind != 'rest')
+      .cast<PlanWorkoutRow?>()
+      .firstOrNull;
+  final active = res.workouts.where((w) => w.kind != 'rest').toList();
+  final done = active.where(isWorkoutCompleted).length;
+  final pct = active.isEmpty ? 0 : (100 * done / active.length).round();
+  // Whole-epoch-day bucketing, not a wall-clock difference: a start→today
+  // span crossing a DST transition is 167/169 h, so `inDays` truncates a day
+  // short and reports the previous week (#338). A plan whose weeks failed to
+  // load has no valid index — the helper's `weekCount - 1` would be -1.
+  final currentWeek = res.weeks.isEmpty
+      ? 0
+      : currentPlanWeekIndex(
+          toIsoDate(plan.startDate),
+          today,
+          res.weeks.length,
+        );
+  return ActivePlanOverview(
+    plan: plan,
+    weeks: res.weeks,
+    workouts: res.workouts,
+    todayWorkout: todayWorkout,
+    completionPct: pct,
+    currentWeekIndex: currentWeek,
+    upcomingPlan: upcoming,
+  );
 }

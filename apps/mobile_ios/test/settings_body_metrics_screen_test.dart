@@ -11,6 +11,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/settings_body_metrics_screen.dart';
 import '../lib/settings_sync.dart';
+import 'pump_until.dart';
 
 /// A settings-sync whose universal-bag write always fails — drives the
 /// _putBag error-surfacing path for the activity / goal pickers.
@@ -534,6 +535,153 @@ void main() {
       expect(prefs.bodyWeightKg, 70.0);
 
       await tester.pump(const Duration(seconds: 4));
+    });
+  });
+
+  group('SettingsBodyMetricsScreen — each section says how it saves', () {
+    Future<void> pumpScreen(WidgetTester tester,
+        {ApiClient? api, SettingsSyncService? sync}) async {
+      final prefs = await _prefs();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsBodyMetricsScreen(
+            api: api,
+            settingsSync: sync ?? (api == null ? null : _RecordingSync(prefs)),
+            preferences: prefs,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    testWidgets('Save sits under the demographics, above the auto-saving tiles',
+        (tester) async {
+      // Below the activity + goal tiles, Save read as covering them, though
+      // those tiles had already saved on pick.
+      await pumpScreen(tester, api: _ConsentedSaveApi());
+      final save = tester.getTopLeft(find.widgetWithText(FilledButton, 'Save'));
+      expect(save.dy,
+          greaterThan(tester.getTopLeft(find.widgetWithText(TextField, 'Weight')).dy));
+      expect(save.dy, lessThan(tester.getTopLeft(find.text('Activity level')).dy));
+      expect(save.dy, lessThan(tester.getTopLeft(find.text('Nutrition targets')).dy));
+      expect(find.text('Changes here save automatically.'), findsOneWidget);
+    });
+
+    testWidgets('editing height flips the save hint to Unsaved changes',
+        (tester) async {
+      await pumpScreen(tester, api: _ConsentedSaveApi());
+      expect(find.text('This section saves only when you tap Save.'),
+          findsOneWidget);
+      expect(find.text('Unsaved changes'), findsNothing);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Height'), '180');
+      await tester.pump();
+      expect(find.text('Unsaved changes'), findsOneWidget);
+      expect(find.text('This section saves only when you tap Save.'),
+          findsNothing);
+
+      // Back to the loaded value is nothing to save.
+      await tester.enterText(find.widgetWithText(TextField, 'Height'), '175');
+      await tester.pump();
+      expect(find.text('Unsaved changes'), findsNothing);
+    });
+
+    testWidgets('a successful Save re-takes the baseline', (tester) async {
+      await pumpScreen(tester, api: _ConsentedSaveApi());
+      await tester.enterText(find.widgetWithText(TextField, 'Weight'), '81.5');
+      await tester.pump();
+      expect(find.text('Unsaved changes'), findsOneWidget);
+
+      await tester
+          .runAsync(() => tester.tap(find.widgetWithText(FilledButton, 'Save')));
+      await pumpUntil(
+        tester,
+        () => find.text('Unsaved changes').evaluate().isEmpty,
+        describe: 'the hint to drop Unsaved changes after the save',
+      );
+      expect(find.text('This section saves only when you tap Save.'),
+          findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets('picking an activity level says Saved in the nutrition section',
+        (tester) async {
+      final prefs = await _prefs();
+      final sync = _RecordingSync(prefs);
+      await pumpScreen(tester, sync: sync);
+
+      await tester.tap(find.text('Activity level'));
+      await tester.pumpAndSettle();
+      await tester.runAsync(
+          () => tester.tap(find.text('Mostly sitting (desk job)')));
+      final saved = find.byKey(const ValueKey('body-metrics-pref-saved'));
+      await pumpUntil(
+        tester,
+        () => saved.evaluate().isNotEmpty,
+        describe: 'the nutrition section to confirm the pick saved',
+      );
+      expect(find.descendant(of: saved, matching: find.text('Saved')),
+          findsOneWidget);
+      expect(find.text('Changes here save automatically.'), findsNothing);
+      expect(
+          sync.writes.any(
+              (w) => w[SettingsKeys.nutritionActivityLevel] == 'sedentary'),
+          isTrue);
+      // An auto-saved pick is not a demographics edit.
+      expect(find.text('Unsaved changes'), findsNothing);
+
+      await tester.pump(const Duration(seconds: 3));
+      expect(saved, findsNothing);
+      expect(find.text('Changes here save automatically.'), findsOneWidget);
+    });
+
+    testWidgets('leaving with unsaved demographics asks first', (tester) async {
+      final prefs = await _prefs();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => SettingsBodyMetricsScreen(
+                  api: _ConsentedSaveApi(),
+                  settingsSync: _RecordingSync(prefs),
+                  preferences: prefs,
+                ),
+              )),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await pumpUntil(
+        tester,
+        () => find.widgetWithText(TextField, 'Height').evaluate().isNotEmpty,
+        describe: 'the body-metrics form to load',
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Height'), '180');
+      await tester.pump();
+      await tester.pageBack();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Discard changes?'), findsOneWidget);
+      expect(
+          find.text("You changed your body metrics but haven't saved them. "
+              'Leave without saving?'),
+          findsOneWidget);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Discard'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byType(SettingsBodyMetricsScreen), findsNothing);
+      expect(find.text('open'), findsOneWidget);
     });
   });
 }

@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { USER_A } from '../fixtures/users';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { readMaybeRow, readRow } from '../fixtures/db-read';
+import { dateOfBirth, fillDateOfBirth } from '../fixtures/date-of-birth';
 
 /**
  * /onboarding — post-signup wizard.
@@ -378,7 +379,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		await expect(
 			page.getByRole('heading', { name: /A bit about you/i })
 		).toBeVisible();
-		await page.getByLabel(/Date of birth/i).fill('2010-06-15');
+		await fillDateOfBirth(page, '2010-06-15');
 		// Do NOT tick the consent row.
 		await page.getByRole('button', { name: 'Continue' }).click();
 
@@ -483,7 +484,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		await expect(
 			page.getByRole('heading', { name: /A bit about you/i })
 		).toBeVisible();
-		await page.getByLabel(/Date of birth/i).fill('1994-03-02');
+		await fillDateOfBirth(page, '1994-03-02');
 		await page.getByLabel(/Body weight in kg/i).fill('72');
 		await page.getByRole('button', { name: 'Skip', exact: true }).click();
 
@@ -516,7 +517,9 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		await expect(
 			page.getByRole('heading', { name: /A bit about you/i })
 		).toBeVisible();
-		await expect(page.getByLabel(/Date of birth/i)).toHaveValue('');
+		await expect(dateOfBirth(page).year).toHaveValue('');
+		await expect(dateOfBirth(page).month).toHaveValue('');
+		await expect(dateOfBirth(page).day).toHaveValue('');
 		await expect(page.getByLabel(/Body weight in kg/i)).toHaveValue('');
 		await page.getByRole('button', { name: 'Continue' }).click();
 		await page.getByRole('button', { name: 'Continue' }).click();

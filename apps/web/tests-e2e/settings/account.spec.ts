@@ -3,6 +3,8 @@ import type { MockRoute } from '../fixtures/mock-route';
 
 import { USER_A } from '../fixtures/users';
 import { setStorageOnLoad } from '../fixtures/helpers';
+import { dateOfBirth } from '../fixtures/date-of-birth';
+import { browserDate, browserYear } from '../fixtures/dates';
 
 /**
  * /settings/account — profile + email / password / parkrun number /
@@ -204,20 +206,28 @@ test.describe('/settings/account', () => {
 		});
 	});
 
-	test('Date of birth input caps at today and leaves birth years unbounded', async ({
+	test('Date of birth picker reaches 120 years back and refuses a date after today', async ({
 		page
 	}) => {
-		// Mirrors /settings/body + /onboarding: `max` of today
-		// blocks a future DOB, and no `min` fences off realistic birth
-		// years decades back (issue #222).
+		// Mirrors /settings/body + /onboarding: the year list starts at this
+		// year and reaches 120 years back, so no realistic birth year is fenced
+		// off (issue #222), and a date after today is refused, not saved.
 		await page.goto('/settings/account');
-		const dob = page.getByLabel('Date of Birth', { exact: true });
-		const max = await dob.getAttribute('max');
-		expect(max).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-		expect(Math.abs(Date.parse(`${max}T00:00:00Z`) - Date.now())).toBeLessThan(
-			48 * 3600 * 1000
+		const dob = dateOfBirth(page);
+		const thisYear = browserYear();
+		await expect(dob.year.locator('option')).toHaveCount(122);
+		await expect(dob.year.locator('option').nth(1)).toHaveAttribute('value', String(thisYear));
+		await expect(dob.year.locator('option').last()).toHaveAttribute(
+			'value',
+			String(thisYear - 120)
 		);
-		expect(await dob.getAttribute('min')).toBeNull();
+
+		await dob.year.selectOption(String(thisYear));
+		await dob.month.selectOption('12');
+		await dob.day.selectOption('31');
+		if (!browserDate().endsWith('-12-31')) {
+			await expect(page.getByTestId('date-of-birth-error')).toBeVisible();
+		}
 	});
 
 	test('the DOB field is not disabled by the health-data consent box', async ({
@@ -235,7 +245,9 @@ test.describe('/settings/account', () => {
 			.first();
 		const startedChecked = await consent.isChecked();
 		if (startedChecked) await consent.uncheck();
-		await expect(page.getByTestId('date-of-birth')).toBeEnabled();
+		await expect(page.getByTestId('date-of-birth-year')).toBeEnabled();
+		await expect(page.getByTestId('date-of-birth-month')).toBeEnabled();
+		await expect(page.getByTestId('date-of-birth-day')).toBeEnabled();
 		if (startedChecked) await consent.check();
 	});
 

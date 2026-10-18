@@ -3,6 +3,7 @@
 	import { TEXT_LIMITS } from '#lib/core/text_limits.ts';
 	import { onMount, tick } from 'svelte';
 	import AuthShell from '#lib/components/auth/AuthShell.svelte';
+	import DateOfBirthInput from '#lib/components/DateOfBirthInput.svelte';
 	import { browser } from '$app/env';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { defaultUnitForLocale } from '#lib/format/locale_defaults.ts';
@@ -566,15 +567,9 @@
 							<option value="male">{m('onboarding.genderMale')}</option>
 						</select>
 					</label>
-					<label class="field">
-						<span class="label-text">{m('onboarding.dobLabel')}</span>
-						<input
-							type="date"
-							bind:value={dateOfBirth}
-							max={new Date().toISOString().slice(0, 10)}
-							aria-describedby="onboarding-dob-note"
-						/>
-					</label>
+					<div class="field">
+						<DateOfBirthInput bind:value={dateOfBirth} label={m('onboarding.dobLabel')} describedby="onboarding-dob-note" size="lg" />
+					</div>
 				</div>
 				<p class="field-note" id="onboarding-dob-note">{m('onboarding.dobNote')}</p>
 				<label class="field">

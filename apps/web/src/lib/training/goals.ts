@@ -205,6 +205,8 @@ export function formatPaceSecPerKm(secPerKm: number): string {
 /// own input type both satisfy it.
 export interface PlanCompletion {
 	scheduled_date: string;
+	/// The workout kind; a `walk_run` session's distance is an estimate.
+	kind?: string;
 	target_distance_m: number | null;
 	manually_completed: boolean;
 	completed_run_id: string | null;
@@ -224,9 +226,11 @@ function localIsoDate(d: Date): string {
 /// dashboard's This Week card has always counted it, with its target distance
 /// standing in for the distance nobody recorded. A workout with a linked run
 /// is left out because that run is already counted, and a future-dated one
-/// because a mark on a day that has not happened is not activity yet. The one
-/// definition behind both the week lead and the Goals section (decisions
-/// § 1813).
+/// because a mark on a day that has not happened is not activity yet. A
+/// walk-run session counts as a session but adds no distance: its target is
+/// an estimate at a pace nobody chose, not a distance the runner covered.
+/// The one definition behind both the week lead and the Goals section
+/// (decisions § 1813).
 export function markedDoneTally(
 	workouts: readonly PlanCompletion[],
 	from: Date,
@@ -239,7 +243,7 @@ export function markedDoneTally(
 	for (const w of workouts) {
 		if (!(w.manually_completed === true && w.completed_run_id == null)) continue;
 		if (w.scheduled_date < first || w.scheduled_date > last) continue;
-		distanceM += w.target_distance_m ?? 0;
+		if (w.kind !== 'walk_run') distanceM += w.target_distance_m ?? 0;
 		count += 1;
 	}
 	return { distanceM, count };

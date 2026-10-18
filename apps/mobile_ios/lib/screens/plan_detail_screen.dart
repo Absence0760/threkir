@@ -9,6 +9,21 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../adaptive_fitness_flag.dart';
 import '../adaptive_width.dart';
 import '../auth_error.dart';
+import '../widgets/confirm_destructive.dart';
+import '../widgets/plan_details_sheet.dart';
+import '../plan_repace.dart';
+import '../plan_bulk_ops.dart' show shiftIsoDate;
+import '../plan_race_date.dart';
+import '../plan_repeat_week.dart';
+import '../plan_resume.dart';
+import '../plan_volume_anchor.dart';
+import '../plan_restart.dart';
+import '../planned_size_label.dart';
+import '../rate_limit_message.dart' show rateLimitErrorMessage;
+import '../cycle_plan.dart' show CyclePlanConfig, CyclePlanMode;
+import '../cycle_plan_config.dart';
+import '../share_sheet.dart';
+import '../plan_serialize.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
@@ -20,9 +35,12 @@ import '../plan_current.dart';
 import '../plan_progress.dart';
 import '../plan_replan.dart';
 import '../plan_adaptive_replan.dart';
+import '../plan_nudges.dart';
+import '../overrun_format.dart';
 import '../plan_move.dart';
 import '../plan_races.dart';
 import '../plan_week.dart';
+import '../race_service.dart';
 import '../race_taper.dart';
 import '../social_service.dart' show ClubView, RecentRunRow, SocialService;
 import '../metrics.dart';
@@ -35,9 +53,17 @@ import '../settings_sync.dart' show activeWeekStartDay;
 import '../preferences.dart' show activePreferences;
 import 'package:api_client/api_client.dart' show ApiClient;
 import 'coaching_screen.dart';
+import 'profile_screen.dart';
+import 'race_detail_screen.dart';
 import '../backend_timeout.dart';
 import '../disclosure_state.dart';
 import '../widgets/finish_plan_card.dart';
+import '../widgets/plan_recap_card.dart';
+import '../widgets/walk_run_graduation_card.dart';
+import 'plan_new_screen.dart';
+import '../widgets/plan_break_card.dart';
+import '../widgets/missed_workout_prompt_card.dart';
+import '../plan_missed_prompt.dart';
 import '../widgets/error_state.dart';
 import '../widgets/current_week_strip.dart';
 import '../widgets/next_race_card.dart';
@@ -55,9 +81,13 @@ import 'workout_detail_screen.dart';
 /// more room than a prose column.
 const double _kExpandedBodyMaxWidth = 900;
 
+/// Which existing re-plan preview to open on arrival: Home's plan card
+/// (`PlanNudgeCard`) lands here with one. Web twin: `?review=`.
+enum PlanReview { adaptive, replan }
+
 /// The whole-plan changes the Adjust plan dialog offers. Web twin: the option
 /// list in `apps/web/src/routes/plans/[id]/+page.svelte` (decisions § 1635).
-enum _PlanAdjustment { replan, adaptiveReplan, raceTaper, pause, resume }
+enum _PlanAdjustment { replan, adaptiveReplan, raceTaper, cycle, pause, resume }
 
 /// Today's session and this week lead the screen; everything else sits behind
 /// a named expander whose open/closed state is remembered per account. Every
@@ -114,6 +144,37 @@ class PlanDetailScreen extends StatefulWidget {
   /// in seven. Production leaves the default.
   final DateTime Function() now;
 
+  /// The runner's cycle / pregnancy adjustment config, read under the
+  /// cycle-plans gate (`readCyclePlanConfig`). A test passes its own.
+  final CyclePlanConfig? Function() cyclePlanConfig;
+
+  /// Open with the resume confirm up, when the plan is paused and the viewer
+  /// owns it: Home's paused-plan card lands here. Web twin: `?resume=1`.
+  final bool openResume;
+
+  /// Open with the missed-workout make-up previewed, when the viewer owns the
+  /// plan and it has one: Home's "Make it up" lands here. Web twin:
+  /// `?makeup=1`.
+  final bool openMakeUp;
+
+  /// Open with that re-plan preview up, when the plan is active and the
+  /// viewer owns it.
+  final PlanReview? openReview;
+
+  /// Opens a user's profile. Production leaves it null and pushes
+  /// [ProfileScreen]; a test passes its own to see where the coach entry goes.
+  @visibleForTesting
+  final void Function(BuildContext context, String userId)? openProfileOverride;
+
+  /// Reads the calendar race a plan was built for. Null constructs one
+  /// against the global client, only when the plan has a race link.
+  final RaceService? raceService;
+
+  /// Opens a race's detail screen. Production leaves it null and pushes
+  /// [RaceDetailScreen]; a test passes its own to see which race it opens.
+  @visibleForTesting
+  final void Function(BuildContext context, String listingId)? openRaceOverride;
+
   const PlanDetailScreen({
     super.key,
     required this.training,
@@ -122,6 +183,13 @@ class PlanDetailScreen extends StatefulWidget {
     this.viewerIdOverride,
     this.runStore,
     this.now = DateTime.now,
+    this.cyclePlanConfig = readCyclePlanConfig,
+    this.openResume = false,
+    this.openMakeUp = false,
+    this.openReview,
+    this.openProfileOverride,
+    this.raceService,
+    this.openRaceOverride,
   });
 
   @override
@@ -134,6 +202,21 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   List<PlanWeekRow> _weeks = const [];
   Map<String, List<PlanWorkoutRow>> _byWeek = const {};
   bool _loading = true;
+
+  /// [PlanDetailScreen.openResume] fires once, not on every reload.
+  bool _resumeOffered = false;
+
+  /// [PlanDetailScreen.openMakeUp] fires once, not on every reload.
+  bool _makeUpOffered = false;
+
+  /// Set only while the re-plan preview is the missed-workout prompt's
+  /// make-up: the misses its apply answers (decisions § 2122).
+  List<String>? _makeUpAnswers;
+  /// [PlanDetailScreen.openReview] fires once, not on every reload.
+  bool _reviewOffered = false;
+
+  /// Run distances behind each done workout, for "Done · +3 km".
+  Map<String, double> _linkedRunDistances = const {};
   bool _coachesOwner = false;
   _PlanDetailLoadError? _error;
   bool _publishing = false;
@@ -141,6 +224,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   bool _libraryBusy = false;
   String? _publishedTemplateId;
   List<RecentRunRow> _recentRuns = const [];
+  bool _recentRunsLoaded = false;
   List<ReplanChange>? _replanPreview;
   // The B/C race taper's proposals (decisions § 2051), previewed like a
   // re-plan and applied only on the runner's say-so.
@@ -154,6 +238,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   // Finished weeks fold into one summary row until the runner opens them.
   bool _showEarlierWeeks = false;
   String? _assigningCoachName;
+
+  /// The calendar race this plan was built for (decisions § 2156).
+  RaceListingView? _linkedRace;
+  RaceService? _raceService;
+  RaceService get _races => _raceService ??= widget.raceService ?? RaceService();
   // "Today" is derived on every build from widget.now(); these rebuild the
   // screen when the day turns over while it is open, or when it resumes.
   Timer? _midnight;
@@ -229,6 +318,51 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     }
   }
 
+  // Auxiliary: a failed read leaves the plan without its race line.
+  Future<void> _loadLinkedRace() async {
+    final listingId = _plan?.raceListingId;
+    if (listingId == null) {
+      if (_linkedRace != null) setState(() => _linkedRace = null);
+      return;
+    }
+    try {
+      final race =
+          await _races.fetchRaceListing(listingId).timeout(kBackendLoadTimeout);
+      if (mounted && _plan?.raceListingId == listingId) {
+        setState(() => _linkedRace = race);
+      }
+    } catch (e) {
+      debugPrint('PlanDetailScreen._loadLinkedRace failed: $e');
+    }
+  }
+
+  void _openLinkedRace(RaceListingView race) {
+    final override = widget.openRaceOverride;
+    if (override != null) {
+      override(context, race.id);
+      return;
+    }
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => RaceDetailScreen(
+        service: _races,
+        listingId: race.id,
+        training: widget.training,
+      ),
+    ));
+  }
+
+  void _openCoachProfile(String coachId) {
+    final override = widget.openProfileOverride;
+    if (override != null) {
+      override(context, coachId);
+      return;
+    }
+    if (!ApiClient.isInitialized) return;
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => ProfileScreen(api: ApiClient(), userId: coachId),
+    ));
+  }
+
   void _openCoaching() {
     final prefs = activePreferences;
     if (prefs == null || !ApiClient.isInitialized) return;
@@ -253,8 +387,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   }
 
   Future<void> _load() async {
+    // A plan already on screen stays there while it refreshes: no full-body
+    // loader, no scroll reset, and a failed refresh is a banner over the
+    // stale plan rather than an error page in its place.
+    final refreshing = _plan != null;
     setState(() {
-      _loading = true;
+      if (!refreshing) _loading = true;
       _error = null;
     });
     try {
@@ -272,27 +410,110 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         _byWeek = byWeek;
         _loading = false;
       });
-      _loadRecentRuns();
+      final runsLoaded = _loadRecentRuns();
+      _loadLinkedRunDistances();
       _loadPublishedState();
       _loadCoachesOwner();
       _loadAssigningCoach();
-    } on TimeoutException catch (e) {
-      debugPrint('PlanDetailScreen._load timed out: $e');
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = _PlanDetailLoadError.timeout;
+      unawaited(_loadLinkedRace());
+      final loaded = _plan;
+      if (widget.openResume &&
+          !_resumeOffered &&
+          loaded != null &&
+          loaded.status == 'paused' &&
+          _isOwner(loaded)) {
+        _resumeOffered = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _setPlanPaused(loaded, paused: false);
         });
+      }
+      if (widget.openMakeUp && !_makeUpOffered && loaded != null) {
+        _makeUpOffered = true;
+        // The break offer outranks the prompt; its runs must be known first.
+        if (widget.runStore == null) await runsLoaded;
+        if (!mounted) return;
+        if (_missedPromptShown(loaded)) {
+          final prompt = _missedPrompt();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            if (prompt == null) {
+              showTopBanner(context,
+                  AppLocalizations.of(context).missedPromptNothingToMakeUp);
+            } else {
+              _chooseMakeUp(loaded, prompt);
+            }
+          });
+        }
+      }
+      final review = widget.openReview;
+      if (review != null &&
+          !_reviewOffered &&
+          loaded != null &&
+          loaded.status == 'active' &&
+          !loaded.isTemplate &&
+          _isOwner(loaded)) {
+        _reviewOffered = true;
+        await runsLoaded;
+        if (!mounted || _plan == null) return;
+        if (review == PlanReview.adaptive) {
+          _proposeAdaptiveReplan(_plan!);
+        } else {
+          _proposeReplan(_plan!);
+        }
       }
     } catch (e, s) {
       debugPrint('PlanDetailScreen._load failed: $e\n$s');
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = _PlanDetailLoadError.generic;
-        });
+      if (!mounted) return;
+      final kind = e is TimeoutException
+          ? _PlanDetailLoadError.timeout
+          : classifyAuthError(e) == AuthErrorKind.offline
+              ? _PlanDetailLoadError.offline
+              : _PlanDetailLoadError.generic;
+      if (refreshing) {
+        final l10n = AppLocalizations.of(context);
+        showTopBanner(
+          context,
+          kind == _PlanDetailLoadError.generic
+              ? l10n.commonStaleRefreshFailed
+              : l10n.commonStaleOffline,
+        );
+        return;
       }
+      setState(() {
+        _loading = false;
+        _error = kind;
+      });
     }
+  }
+
+  /// Best-effort read of the distances behind each run-linked workout, for
+  /// "Done · +3 km". L4: a failure leaves the plain "Done".
+  Future<void> _loadLinkedRunDistances() async {
+    final ids = [
+      for (final w in _byWeek.values.expand((x) => x))
+        if (w.completedRunId != null) w.completedRunId!,
+    ];
+    if (ids.isEmpty) {
+      if (_linkedRunDistances.isNotEmpty) {
+        setState(() => _linkedRunDistances = const {});
+      }
+      return;
+    }
+    try {
+      final d = await widget.training
+          .fetchRunDistances(ids)
+          .timeout(kBackendLoadTimeout);
+      if (mounted) setState(() => _linkedRunDistances = d);
+    } catch (e) {
+      debugPrint('PlanDetailScreen._loadLinkedRunDistances failed: $e');
+    }
+  }
+
+  double? _overrunOf(PlanWorkoutRow w) {
+    final runId = w.completedRunId;
+    if (runId == null) return null;
+    return workoutOverrunMetres(
+        w.targetDistanceM, _linkedRunDistances[runId], w.kind);
   }
 
   /// Best-effort fetch of the viewer's recent runs so the adherence banner
@@ -305,10 +526,23 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       final runs =
           await _social.fetchRecentRuns(limit: 50).timeout(kBackendLoadTimeout);
       if (!mounted) return;
-      setState(() => _recentRuns = runs);
+      setState(() {
+        _recentRuns = runs;
+        _recentRunsLoaded = true;
+      });
     } catch (_) {
       /* L4 best-effort — leave the adherence surfaces hidden. */
     }
+  }
+
+  /// When the runner's runs started, for the break card: the local store
+  /// when the host passed one (it holds unsynced runs too), else the recent
+  /// runs once they loaded; null until then, which keeps the card hidden.
+  List<DateTime>? get _breakRunStarts {
+    final store = widget.runStore;
+    if (store != null) return [for (final r in store.summaryRuns) r.startedAt];
+    if (!_recentRunsLoaded) return null;
+    return [for (final r in _recentRuns) r.startedAt];
   }
 
   /// Coach RLS lets an athlete's active coach edit the workouts of a
@@ -375,21 +609,6 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       }
     }
     return runs;
-  }
-
-  /// Summed actual run mileage dated inside `[weekIndex]`'s 7-day window.
-  double _actualMetresForWeek(TrainingPlanRow plan, int weekIndex) =>
-      _runsForWeek(plan, weekIndex).fold(0.0, (s, r) => s + r.distanceM);
-
-  double _plannedMetresForWeek(PlanWeekRow week) {
-    var planned = week.targetVolumeM ?? 0;
-    if (!(planned > 0)) {
-      planned = 0;
-      for (final wo in _byWeek[week.id] ?? const <PlanWorkoutRow>[]) {
-        if (wo.kind != 'rest') planned += wo.targetDistanceM ?? 0;
-      }
-    }
-    return planned;
   }
 
   /// Current-week mileage drift vs the plan TO DATE, or null when on-track /
@@ -462,32 +681,55 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     return longestCompletedLongRunMetres(workouts, actualById);
   }
 
-  List<ReplanWeek> _buildReplanInput(TrainingPlanRow plan) {
-    final today = toIsoDate(widget.now());
-    final todayD = widget.now();
-    return _weeks.map((w) {
-      final weekStart = addDays(plan.startDate, w.weekIndex * 7);
-      final weekEnd = addDays(weekStart, 7);
-      return ReplanWeek(
-        weekIndex: w.weekIndex,
-        phase: w.phase,
-        plannedMetres: _plannedMetresForWeek(w),
-        actualMetres: _actualMetresForWeek(plan, w.weekIndex),
-        isComplete: !weekEnd.isAfter(todayD),
-        workouts: (_byWeek[w.id] ?? const <PlanWorkoutRow>[])
-            .map((x) => ReplanWorkout(
-                  id: x.id,
-                  scheduledDate: toIsoDate(x.scheduledDate),
-                  kind: x.kind,
-                  targetDistanceM: x.targetDistanceM,
-                  completed: isWorkoutCompleted(x),
-                  skipped: _isWorkoutSkipped(x),
-                  isPast: toIsoDate(x.scheduledDate).compareTo(today) < 0,
-                ))
-            .toList(),
-      );
-    }).toList();
+  /// The runs the re-plan judges by: the device's run store when the host
+  /// handed one over, which is what Home's plan card judged by, so a card's
+  /// Review opens the same proposal; the recent-runs read otherwise.
+  List<NudgeInputRun> get _replanRuns {
+    final store = widget.runStore;
+    if (store != null) {
+      return [
+        for (final r in store.summaryRuns)
+          NudgeInputRun(
+            date: toIsoDate(r.startedAt.toLocal()),
+            distanceM: r.distanceMetres,
+          ),
+      ];
+    }
+    return [
+      for (final r in _recentRuns)
+        NudgeInputRun(
+          date: toIsoDate(r.startedAt.toLocal()),
+          distanceM: r.distanceM,
+        ),
+    ];
   }
+
+  List<ReplanWeek> _buildReplanInput(TrainingPlanRow plan) =>
+      buildReplanWeeks(
+        startDate: toIsoDate(plan.startDate),
+        today: toIsoDate(widget.now()),
+        runs: _replanRuns,
+        weeks: [
+          for (final w in _weeks)
+            NudgeInputWeek(
+              weekIndex: w.weekIndex,
+              phase: w.phase,
+              targetVolumeM: w.targetVolumeM,
+              workouts: [
+                for (final x in _byWeek[w.id] ?? const <PlanWorkoutRow>[])
+                  NudgeInputWorkout(
+                    id: x.id,
+                    scheduledDate: toIsoDate(x.scheduledDate),
+                    kind: x.kind,
+                    targetDistanceM: x.targetDistanceM,
+                    completed: isWorkoutCompleted(x),
+                    skipped: _isWorkoutSkipped(x),
+                    answered: x.missedAckAt != null,
+                  ),
+              ],
+            ),
+        ],
+      );
 
   /// Every race the plan builds toward (plan_races.dart, decisions § 2009).
   List<PlanRace> _planRacesFor(TrainingPlanRow p) => planRaces(
@@ -543,6 +785,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     );
     setState(() {
       _replanPreview = null;
+      _makeUpAnswers = null;
       _adaptiveInfo = null;
       _taperPreview = changes.isEmpty ? null : changes;
     });
@@ -604,21 +847,106 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     };
   }
 
+  /// The missed-workout prompt is the owner's, and only while the plan is
+  /// running: never for a coach viewing an athlete, a template, or a paused,
+  /// finished or abandoned plan.
+  bool _missedPromptShown(TrainingPlanRow p) =>
+      _isOwner(p) &&
+      !p.isTemplate &&
+      p.status == 'active' &&
+      !FinishPlanCard.shows(
+          status: p.status, endDate: p.endDate, now: widget.now()) &&
+      !_breakState(p).showing;
+
+  /// The break offer (decisions § 2128), for the owner's active plan only.
+  /// While it shows it outranks the missed-workout prompt, here and for
+  /// Home's `openMakeUp`, which then only opens the plan.
+  PlanBreakState _breakState(TrainingPlanRow p) {
+    if (!_isOwner(p) || p.status != 'active') return PlanBreakState.none;
+    return PlanBreakCard.stateFor(
+      plan: p,
+      weeks: _weeks,
+      workouts: _byWeek.values.expand((x) => x).toList(),
+      runStarts: _breakRunStarts,
+      now: widget.now(),
+    );
+  }
+
+  MissedPrompt? _missedPrompt() => MissedWorkoutPromptCard.promptFor(
+        weeks: _weeks,
+        workouts: _byWeek.values.expand((x) => x).toList(),
+        now: widget.now(),
+      );
+
+  /// The missed-workout prompt's "Make it up" (decisions § 2122): the
+  /// stretched next long run, previewed like a re-plan. Applying it records
+  /// the answer for every miss it honours, in the same transaction.
+  void _chooseMakeUp(TrainingPlanRow plan, MissedPrompt prompt) {
+    if (!_isOwner(plan) || _bulkBusy) return;
+    final makeUp = prompt.makeUp;
+    if (makeUp == null) {
+      showTopBanner(
+          context, AppLocalizations.of(context).missedPromptNothingToMakeUp);
+      return;
+    }
+    setState(() {
+      _taperPreview = null;
+      _adaptiveInfo = null;
+      _replanPreview = [makeUp];
+      _makeUpAnswers = prompt.makeUpAnswers;
+    });
+    _reveal(_replanPreviewKey);
+  }
+
+  /// The comeback ramp, only while `ADAPTIVE_FITNESS_GATE` is on (decisions
+  /// § 2090); off, every path below behaves as it did without it.
+  VolumeAnchor? _volumeAnchor(List<ReplanWeek> input) {
+    if (!adaptiveFitnessGate) return null;
+    return anchorToActualVolume(weeks: input);
+  }
+
   void _proposeReplan(TrainingPlanRow plan) {
     if (!_isOwner(plan) || _bulkBusy) return;
+    _makeUpAnswers = null;
     final l10n = AppLocalizations.of(context);
-    final res = replanRemaining(
-        weeks: _buildReplanInput(plan), today: toIsoDate(widget.now()));
-    if (res.onTrack || res.changes.isEmpty) {
+    final input = _buildReplanInput(plan);
+    final changes = preferVolumeAnchor(
+      _volumeAnchor(input),
+      replanRemaining(weeks: input, today: toIsoDate(widget.now())).changes,
+    );
+    if (changes.isEmpty) {
       setState(() => _replanPreview = null);
       showTopBanner(context, l10n.planDetailReplanOnTrack);
       return;
     }
     setState(() {
       _adaptiveInfo = null;
-      _replanPreview = res.changes;
+      _replanPreview = changes;
     });
     _reveal(_replanPreviewKey);
+  }
+
+  /// After a resume or a break reschedule, the weeks ahead are offered
+  /// re-anchored to what the runner last ran, through the same preview. It
+  /// proposes only; nothing changes until Apply.
+  void _offerAnchor() {
+    final p = _plan;
+    if (!mounted || p == null || !_isOwner(p) || p.isTemplate) return;
+    if (p.status != 'active') return;
+    final anchor = _volumeAnchor(_buildReplanInput(p));
+    if (anchor == null) return;
+    setState(() {
+      _taperPreview = null;
+      _makeUpAnswers = null;
+      _adaptiveInfo = null;
+      _replanPreview = anchor.changes;
+    });
+    _reveal(_replanPreviewKey);
+  }
+
+  Future<void> _reloadAndOfferAnchor() async {
+    await _load();
+    _offerAnchor();
   }
 
   /// P2 (gated): the runner's latest training-load point as the fitness input.
@@ -640,9 +968,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   /// weeks show a sustained drift, suppressing single-week noise.
   void _proposeAdaptiveReplan(TrainingPlanRow plan) {
     if (!_isOwner(plan) || _bulkBusy) return;
+    _makeUpAnswers = null;
     final l10n = AppLocalizations.of(context);
+    final input = _buildReplanInput(plan);
     final res = adaptiveReplanRemaining(
-      weeks: _buildReplanInput(plan),
+      weeks: input,
       today: toIsoDate(widget.now()),
       fitness: _adaptiveFitnessInput(),
     );
@@ -676,7 +1006,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       showTopBanner(context, l10n.planDetailAdaptiveOnTrack);
       return;
     }
-    if (res.changes.isEmpty) {
+    // An under-run trend is answered by building back from what was run
+    // (`plan_volume_anchor`), not by stretching a missed long run.
+    final changes = res.reason == AdaptiveReason.trendUnderfitness
+        ? preferVolumeAnchor(_volumeAnchor(input), res.changes)
+        : res.changes;
+    if (changes.isEmpty) {
       setState(() {
         _replanPreview = null;
         _adaptiveInfo = null;
@@ -686,7 +1021,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     }
     setState(() {
       _adaptiveInfo = (reason: res.reason, confidence: res.confidence);
-      _replanPreview = res.changes;
+      _replanPreview = changes;
     });
     _reveal(_replanPreviewKey);
   }
@@ -707,6 +1042,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   Future<void> _openAdjustPlan(TrainingPlanRow p) async {
     if (!_isOwner(p) || p.isTemplate) return;
     final l10n = AppLocalizations.of(context);
+    // Art 9: the cycle and pregnancy settings are read only under the gate.
+    final cycleConfig = widget.cyclePlanConfig();
     final choice = await showDialog<_PlanAdjustment>(
       context: context,
       builder: (ctx) {
@@ -748,6 +1085,18 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                     title: l10n.planDetailRaceTaper,
                     description: l10n.planDetailAdjustRaceTaperDesc,
                     value: _PlanAdjustment.raceTaper,
+                  ),
+                if (cycleConfig != null)
+                  _adjustOption(
+                    ctx,
+                    icon: Icons.favorite_border,
+                    title: cycleConfig.mode == CyclePlanMode.cycle
+                        ? l10n.planDetailCycleAdjustCycle
+                        : l10n.planDetailCycleAdjustPregnancy,
+                    description: cycleConfig.mode == CyclePlanMode.cycle
+                        ? l10n.planDetailAdjustCycleDesc
+                        : l10n.planDetailAdjustPregnancyDesc,
+                    value: _PlanAdjustment.cycle,
                   ),
                 if (p.status == 'paused')
                   _adjustOption(
@@ -792,6 +1141,49 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         await _setPlanPaused(p, paused: true);
       case _PlanAdjustment.resume:
         await _setPlanPaused(p, paused: false);
+      case _PlanAdjustment.cycle:
+        await _applyCycleAdjustment(p, cycleConfig!);
+    }
+  }
+
+  /// Eases the upcoming workouts for the runner's cycle or pregnancy after
+  /// a confirm that says what changes. Web twin: `applyCycleAdjustment`.
+  Future<void> _applyCycleAdjustment(
+      TrainingPlanRow p, CyclePlanConfig cfg) async {
+    if (_bulkBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final ok = await confirmDestructive(
+      context,
+      title: l10n.planDetailCycleAdjustConfirmTitle,
+      body: cfg.mode == CyclePlanMode.cycle
+          ? l10n.planDetailCycleAdjustConfirmCycle
+          : l10n.planDetailCycleAdjustConfirmPregnancy,
+      confirmLabel: cfg.mode == CyclePlanMode.cycle
+          ? l10n.planDetailCycleAdjustCycle
+          : l10n.planDetailCycleAdjustPregnancy,
+      cancelLabel: l10n.plansCancel,
+    );
+    if (!ok || !mounted) return;
+    setState(() => _bulkBusy = true);
+    try {
+      final changed = await widget.training
+          .applyCycleAdjustment(p.id, _byWeek.values.expand((x) => x).toList(),
+              cfg, toIsoDate(widget.now()))
+          .timeout(kBackendLoadTimeout);
+      if (!mounted) return;
+      showTopBanner(
+          context,
+          changed > 0
+              ? l10n.planDetailCycleAdjustDone
+              : l10n.planDetailCycleAdjustNone);
+      if (changed > 0) await _load();
+    } catch (e) {
+      debugPrint('plan cycle adjustment failed: $e');
+      if (mounted) {
+        showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+      }
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
     }
   }
 
@@ -820,18 +1212,53 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       {required bool paused}) async {
     if (!_isOwner(p) || _bulkBusy) return;
     final l10n = AppLocalizations.of(context);
+    // The weeks the runner had not started move back by the whole weeks the
+    // plan sat paused, so they come back as upcoming rather than missed.
+    final shift = paused
+        ? null
+        : resumeShift(
+            startIso: toIsoDate(p.startDate),
+            pausedOnIso:
+                p.pausedAt == null ? null : toIsoDate(p.pausedAt!.toLocal()),
+            todayIso: toIsoDate(widget.now()),
+            weekCount: _weeks.length,
+          );
+    if (shift != null) {
+      final ok = await confirmDestructive(
+        context,
+        title: l10n.planDetailResumeShiftTitle,
+        body: l10n.planDetailResumeShiftMessage(
+          shift.weeks,
+          formatDateShort(
+              parseIsoDate(shiftIsoDate(toIsoDate(p.endDate), 7 * shift.weeks)),
+              localeToTag(Localizations.localeOf(context))),
+        ),
+        confirmLabel: l10n.planDetailResumePlan,
+        cancelLabel: l10n.plansCancel,
+      );
+      if (!ok || !mounted) return;
+    }
     setState(() => _bulkBusy = true);
     try {
       if (paused) {
         await widget.training.pausePlan(p.id);
       } else {
-        await widget.training.resumePlan(p.id);
+        await widget.training.resumePlan(p.id, shift: shift);
       }
       if (!mounted) return;
       setState(() => _bulkBusy = false);
-      showTopBanner(context,
-          paused ? l10n.planDetailPauseDone : l10n.planDetailResumeDone);
-      await _load();
+      showTopBanner(
+          context,
+          paused
+              ? l10n.planDetailPauseDone
+              : shift != null
+                  ? l10n.planDetailResumeShiftedDone(shift.weeks)
+                  : l10n.planDetailResumeDone);
+      if (paused) {
+        await _load();
+      } else {
+        await _reloadAndOfferAnchor();
+      }
     } on ActivePlanExistsError {
       if (!mounted) return;
       setState(() => _bulkBusy = false);
@@ -850,17 +1277,24 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     final changes = _replanPreview;
     if (changes == null || _bulkBusy) return;
     final l10n = AppLocalizations.of(context);
+    final answers = _makeUpAnswers;
     setState(() => _bulkBusy = true);
     try {
-      await widget.training
-          .applyReplan(
-            planId: plan.id,
-            distances: {for (final c in changes) c.workoutId: c.toMetres},
-          )
+      await (answers != null
+              ? widget.training.answerMissedWorkouts(
+                  planId: plan.id,
+                  workoutIds: answers,
+                  distances: {for (final c in changes) c.workoutId: c.toMetres},
+                )
+              : widget.training.applyReplan(
+                  planId: plan.id,
+                  distances: {for (final c in changes) c.workoutId: c.toMetres},
+                ))
           .timeout(kBackendLoadTimeout);
       if (!mounted) return;
       setState(() {
         _replanPreview = null;
+        _makeUpAnswers = null;
         _adaptiveInfo = null;
         _bulkBusy = false;
       });
@@ -871,11 +1305,628 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       if (!mounted) return;
       setState(() {
         _replanPreview = null;
+        _makeUpAnswers = null;
         _adaptiveInfo = null;
         _bulkBusy = false;
       });
-      showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+      showTopBanner(
+          context,
+          answers != null
+              ? l10n.missedPromptSaveFailed(friendlyError(l10n, e))
+              : l10n.planDetailBulkFailed(friendlyError(l10n, e)));
       await _load();
+    }
+  }
+
+  void _onPlanMenu(_PlanMenu action, TrainingPlanRow p) {
+    switch (action) {
+      case _PlanMenu.adjust:
+        _openAdjustPlan(p);
+      case _PlanMenu.editDetails:
+        _editPlanDetails(p);
+      case _PlanMenu.shift:
+        _shiftPlan(p);
+      case _PlanMenu.raceDate:
+        _changeRaceDate(p);
+      case _PlanMenu.exportMarkdown:
+        _exportPlan(p, json: false);
+      case _PlanMenu.exportJson:
+        _exportPlan(p, json: true);
+      case _PlanMenu.abandon:
+        _abandonPlan(p);
+      case _PlanMenu.coach:
+        final coachId = p.assignedByCoachId;
+        if (coachId != null) _openCoachProfile(coachId);
+      case _PlanMenu.restart:
+        _restartPlan(p);
+      case _PlanMenu.delete:
+        _deletePlan(p);
+    }
+  }
+
+  /// Restarts the plan as a fresh active copy on a date the runner picks
+  /// (`restart_training_plan`), then opens the copy in this screen's place.
+  /// The plans it replaces are retired as abandoned by the same RPC; this one
+  /// keeps its history.
+  Future<void> _restartPlan(TrainingPlanRow p) async {
+    if (!_isOwner(p) || _bulkBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final workouts = [
+      for (final w in _byWeek.values.expand((x) => x))
+        RestartWorkout(kind: w.kind, scheduledDate: toIsoDate(w.scheduledDate)),
+    ];
+    final startIso = await showDialog<String>(
+      context: context,
+      builder: (_) => _RestartPlanDialog(
+        plan: p,
+        workouts: workouts,
+        todayIso: toIsoDate(widget.now()),
+      ),
+    );
+    if (startIso == null || !mounted) return;
+    setState(() => _bulkBusy = true);
+    final String newId;
+    try {
+      newId = await widget.training
+          .restartPlan(p.id, startIso)
+          .timeout(kBackendLoadTimeout);
+    } on PlanRestartRaceAheadError {
+      if (!mounted) return;
+      setState(() => _bulkBusy = false);
+      showTopBanner(context, l10n.planDetailRestartRaceAheadError);
+      return;
+    } on PlanRestartBeforeTodayError {
+      if (!mounted) return;
+      setState(() => _bulkBusy = false);
+      showTopBanner(context, l10n.planDetailRestartBeforeTodayError);
+      return;
+    } catch (e, s) {
+      debugPrint('restart plan failed: $e\n$s');
+      if (!mounted) return;
+      setState(() => _bulkBusy = false);
+      final friendly = e is PostgrestException
+          ? rateLimitErrorMessage(l10n, code: e.code, message: e.message)
+          : null;
+      showTopBanner(
+          context, friendly ?? l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+      return;
+    }
+    if (!mounted) return;
+    showTopBanner(context, l10n.planDetailRestartDone);
+    unawaited(Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
+      builder: (_) => PlanDetailScreen(
+        training: widget.training,
+        planId: newId,
+        social: widget.social,
+        viewerIdOverride: widget.viewerIdOverride,
+        runStore: widget.runStore,
+        now: widget.now,
+        cyclePlanConfig: widget.cyclePlanConfig,
+      ),
+    )));
+  }
+
+  /// Edits the plan's name, days per week, goal time, notes and rules. A new
+  /// goal time re-derives the paces still ahead (`plan_repace`) and is written
+  /// with them in one transaction; the other fields are a plain update. Web
+  /// twin: `PlanMetaEditor.svelte`.
+  Future<void> _editPlanDetails(TrainingPlanRow p) async {
+    if (_bulkBusy) return;
+    final edit = await showPlanDetailsSheet(context, p);
+    if (edit == null || !mounted) return;
+    final l10n = AppLocalizations.of(context);
+    setState(() => _bulkBusy = true);
+    try {
+      var repaced = 0;
+      if (edit.goalTimeSec != p.goalTimeSeconds) {
+        final changes = goalTimeRepacePatches(
+          goalDistanceM: p.goalDistanceM,
+          oldGoalTimeSec: p.goalTimeSeconds,
+          newGoalTimeSec: edit.goalTimeSec,
+          recent5kSec: p.current5kSeconds,
+          todayIso: toIsoDate(widget.now()),
+          workouts: _byWeek.values.expand((x) => x).toList(),
+        );
+        final goal = edit.goalTimeSec;
+        final vdot = goal != null && p.current5kSeconds == null
+            ? (vdotFromRace(p.goalDistanceM, goal) * 100).round() / 100
+            : null;
+        await widget.training
+            .setPlanGoalTime(p.id, goal, vdot, changes)
+            .timeout(kBackendLoadTimeout);
+        repaced = changes.length;
+      }
+      await widget.training
+          .updatePlanMeta(p.id,
+              name: edit.name,
+              notes: edit.notes,
+              daysPerWeek: edit.daysPerWeek,
+              rules: edit.rules)
+          .timeout(kBackendLoadTimeout);
+      if (!mounted) return;
+      showTopBanner(
+        context,
+        repaced > 0
+            ? l10n.planDetailDetailsSavedRepaced(repaced)
+            : l10n.planDetailDetailsSaved,
+      );
+      await _load();
+    } catch (e) {
+      debugPrint('plan details save failed: $e');
+      if (mounted) {
+        showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+        await _load();
+      }
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
+    }
+  }
+
+  /// Moves the whole plan by a number of days the runner types (the race
+  /// moved, they started late). A forward shift that runs into the plans
+  /// queued after this one offers to move them by the same amount; a shift
+  /// into an earlier plan is refused with what to do instead. Web twin:
+  /// `shiftPlan` on the plan page.
+  Future<void> _shiftPlan(TrainingPlanRow plan) async {
+    if (_bulkBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final days = await showDialog<int>(
+      context: context,
+      builder: (_) => const _ShiftDatesDialog(),
+    );
+    if (days == null || !mounted) return;
+    setState(() => _bulkBusy = true);
+    var shiftFollowing = false;
+    try {
+      while (true) {
+        try {
+          await widget.training
+              .shiftTrainingPlan(plan.id, days, shiftFollowing: shiftFollowing)
+              .timeout(kBackendLoadTimeout);
+          break;
+        } on ActivePlanExistsError {
+          if (!mounted) return;
+          if (days < 0 || shiftFollowing) {
+            showTopBanner(context, l10n.planDetailShiftBlocked);
+            return;
+          }
+          final moveThem = await confirmDestructive(
+            context,
+            title: l10n.planDetailShiftFollowingTitle,
+            body: l10n.planDetailShiftFollowingMessage(days.abs()),
+            confirmLabel: l10n.planDetailShiftFollowingApply,
+            cancelLabel: l10n.plansCancel,
+          );
+          if (!moveThem || !mounted) return;
+          shiftFollowing = true;
+        }
+      }
+      if (!mounted) return;
+      showTopBanner(context, l10n.planDetailShiftDone(days.abs()));
+      await _load();
+    } catch (e) {
+      debugPrint('plan shift failed: $e');
+      if (mounted) {
+        showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+      }
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
+    }
+  }
+
+  RaceDatePlan _raceDatePlan(TrainingPlanRow p) => RaceDatePlan(
+        startDate: toIsoDate(p.startDate),
+        endDate: toIsoDate(p.endDate),
+        trimmedAt: p.trimmedAt?.toIso8601String(),
+        status: p.status,
+        isTemplate: p.isTemplate,
+      );
+
+  List<RaceDateWeek> get _raceDateWeeks => [
+        for (final w in _weeks)
+          RaceDateWeek(id: w.id, weekIndex: w.weekIndex, phase: w.phase)
+      ];
+
+  /// The race day the owner can move, or null for a plan with no race still
+  /// ahead (a walk-run plan, one ended early, one whose race has passed).
+  String? _raceDateOffer(TrainingPlanRow p) {
+    final d = planRaceDate(_raceDatePlan(p), _raceDateWeeks);
+    return d != null && d.compareTo(toIsoDate(widget.now())) >= 0 ? d : null;
+  }
+
+  String _raceDateRefusal(AppLocalizations l10n, RaceDateResult r, String date,
+      String locale) {
+    switch (r.reason!) {
+      case RaceDateRefusal.tooSoon:
+        return l10n.planDetailRaceDateTooSoon(
+            formatDateShort(parseIsoDate(date), locale),
+            r.earliestIso == null
+                ? ''
+                : formatDateShort(parseIsoDate(r.earliestIso!), locale));
+      case RaceDateRefusal.past:
+        return l10n.planDetailRaceDatePast;
+      case RaceDateRefusal.invalid:
+        return l10n.planDetailRaceDateInvalid;
+      case RaceDateRefusal.unchanged:
+        return l10n.planDetailRaceDateUnchanged;
+      case RaceDateRefusal.noRace:
+        return l10n.planDetailRaceDateNoRace;
+      case RaceDateRefusal.raceWeekStarted:
+        return l10n.planDetailRaceDateWeekStarted;
+      case RaceDateRefusal.tooFar:
+        return l10n.planDetailRaceDateTooFar;
+      case RaceDateRefusal.noBuildWeek:
+        return l10n.planDetailRaceDateNoBuild;
+      case RaceDateRefusal.inTheWay:
+        return l10n.planDetailRaceDateInTheWay;
+    }
+  }
+
+  /// Moves the plan's race to a day the runner picks: the weeks still ahead
+  /// are re-anchored so the plan ends on it, build weeks added or cut and the
+  /// taper kept (`raceDateChange`). A day the plan cannot reach with its
+  /// taper, or a later end that runs into another active plan, is refused
+  /// before anything is asked.
+  Future<void> _changeRaceDate(TrainingPlanRow p) async {
+    if (_bulkBusy) return;
+    final current = _raceDateOffer(p);
+    if (current == null) return;
+    final l10n = AppLocalizations.of(context);
+    final locale = localeToTag(Localizations.localeOf(context));
+    final todayIso = toIsoDate(widget.now());
+    final tomorrow = parseIsoDate(shiftIsoDate(todayIso, 1));
+    final initial = parseIsoDate(current);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial.isBefore(tomorrow) ? tomorrow : initial,
+      firstDate: tomorrow,
+      lastDate: parseIsoDate(shiftIsoDate(todayIso, 3 * 366)),
+      helpText: l10n.planDetailRaceDatePickerHelp,
+    );
+    if (picked == null || !mounted) return;
+    final date = toIsoDate(picked);
+    final result = raceDateChange(
+      plan: _raceDatePlan(p),
+      weeks: _raceDateWeeks,
+      workouts: [
+        for (final w in _byWeek.values.expand((x) => x))
+          RaceDateWorkout(
+            id: w.id,
+            weekId: w.weekId,
+            scheduledDate: toIsoDate(w.scheduledDate),
+            kind: w.kind,
+            racePriority: w.racePriority,
+            completedRunId: w.completedRunId,
+            manuallyCompleted: w.manuallyCompleted,
+          )
+      ],
+      raceDateIso: date,
+      todayIso: todayIso,
+    );
+    if (!result.ok) {
+      showTopBanner(context, _raceDateRefusal(l10n, result, date, locale));
+      return;
+    }
+    if (p.status == 'active' && date.compareTo(toIsoDate(p.endDate)) > 0) {
+      final List<TrainingPlanRow> others;
+      try {
+        others = [
+          for (final o in await widget.training
+              .fetchActivePlans()
+              .timeout(kBackendLoadTimeout))
+            if (o.id != p.id) o
+        ];
+      } catch (e) {
+        debugPrint('plan race date overlap check failed: $e');
+        if (mounted) {
+          showTopBanner(
+              context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+        }
+        return;
+      }
+      if (!mounted) return;
+      if (overlappingActivePlans(others, toIsoDate(p.startDate), date)
+          .isNotEmpty) {
+        showTopBanner(context, l10n.planDetailRaceDateOverlap);
+        return;
+      }
+    }
+    final change = result.change!;
+    final shown = formatDateShort(parseIsoDate(date), locale);
+    final ok = await confirmDestructive(
+      context,
+      title: l10n.planDetailRaceDateConfirmTitle,
+      body: change.weekDelta > 0
+          ? l10n.planDetailRaceDateConfirmLater(change.weekDelta, shown)
+          : change.weekDelta < 0
+              ? l10n.planDetailRaceDateConfirmEarlier(-change.weekDelta, shown)
+              : l10n.planDetailRaceDateConfirmSameWeek(shown),
+      confirmLabel: l10n.planDetailRaceDateApply,
+      cancelLabel: l10n.plansCancel,
+    );
+    if (!ok || !mounted) return;
+    setState(() => _bulkBusy = true);
+    try {
+      await widget.training
+          .changePlanRaceDate(p.id, change, todayIso)
+          .timeout(kBackendLoadTimeout);
+      if (!mounted) return;
+      showTopBanner(context, l10n.planDetailRaceDateDone(shown));
+      await _load();
+    } on ActivePlanExistsError {
+      if (mounted) showTopBanner(context, l10n.planDetailRaceDateOverlap);
+    } catch (e) {
+      debugPrint('plan race date change failed: $e');
+      if (mounted) {
+        showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+      }
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
+    }
+  }
+
+  /// "Too hard? Repeat this week" for [w]: the change, or a refusal worth
+  /// explaining (a race plan with no room, a done workout in the way). Null
+  /// where it could never apply: not the owner's plan, not this week or last
+  /// week, a taper week. Web twin: `repeatOffer` on the plan page.
+  RepeatWeekResult? _repeatOffer(TrainingPlanRow p, PlanWeekRow w) {
+    if (!_isOwner(p) || p.isTemplate) return null;
+    final r = repeatWeekChange(
+      plan: _raceDatePlan(p),
+      weeks: _raceDateWeeks,
+      workouts: [
+        for (final wo in _byWeek.values.expand((x) => x))
+          RaceDateWorkout(
+            id: wo.id,
+            weekId: wo.weekId,
+            scheduledDate: toIsoDate(wo.scheduledDate),
+            kind: wo.kind,
+            racePriority: wo.racePriority,
+            completedRunId: wo.completedRunId,
+            manuallyCompleted: wo.manuallyCompleted,
+          )
+      ],
+      weekId: w.id,
+      todayIso: toIsoDate(widget.now()),
+    );
+    if (r.ok ||
+        r.reason == RepeatWeekRefusal.noRoom ||
+        r.reason == RepeatWeekRefusal.inTheWay) {
+      return r;
+    }
+    return null;
+  }
+
+  bool _walkRunOfferShows(TrainingPlanRow p, int currentWeek) {
+    if (_weeks.isEmpty || currentWeek >= _weeks.length) return false;
+    final workouts = [
+      for (final w in _byWeek.values.expand((x) => x))
+        RestartWorkout(kind: w.kind, scheduledDate: toIsoDate(w.scheduledDate)),
+    ];
+    return isWalkRunPlan(workouts) &&
+        (_repeatOffer(p, _weeks[currentWeek])?.ok ?? false);
+  }
+
+  String _repeatWeekRefusal(AppLocalizations l10n, RepeatWeekRefusal r) =>
+      switch (r) {
+        RepeatWeekRefusal.noRoom => l10n.planDetailRepeatWeekNoRoom,
+        RepeatWeekRefusal.inTheWay => l10n.planDetailRepeatWeekInTheWay,
+        RepeatWeekRefusal.lastWeek => l10n.planDetailRepeatWeekLastWeek,
+        RepeatWeekRefusal.notActive ||
+        RepeatWeekRefusal.notRepeatable =>
+          l10n.planDetailRepeatWeekNotNow,
+      };
+
+  /// Runs [w] again next week and pushes the rest back one week, after a
+  /// confirm that names the new end date, or the race day a race plan keeps.
+  /// A later end is checked against the runner's other active plans first.
+  /// Web twin: `chooseRepeatWeek` + `applyRepeatWeek` on the plan page.
+  Future<void> _repeatWeek(TrainingPlanRow p, PlanWeekRow w) async {
+    if (_bulkBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final locale = localeToTag(Localizations.localeOf(context));
+    final todayIso = toIsoDate(widget.now());
+    final r = _repeatOffer(p, w);
+    if (r == null) return;
+    if (!r.ok) {
+      showTopBanner(context, _repeatWeekRefusal(l10n, r.reason!));
+      return;
+    }
+    final change = r.change!;
+    if (change.endIso.compareTo(toIsoDate(p.endDate)) > 0) {
+      final List<TrainingPlanRow> others;
+      try {
+        others = [
+          for (final o in await widget.training
+              .fetchActivePlans()
+              .timeout(kBackendLoadTimeout))
+            if (o.id != p.id) o
+        ];
+      } catch (e) {
+        debugPrint('plan repeat week overlap check failed: $e');
+        if (mounted) {
+          showTopBanner(
+              context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+        }
+        return;
+      }
+      if (!mounted) return;
+      if (overlappingActivePlans(others, toIsoDate(p.startDate), change.endIso)
+          .isNotEmpty) {
+        showTopBanner(context, l10n.planDetailRepeatWeekOverlap);
+        return;
+      }
+    }
+    final start = formatDateShort(parseIsoDate(change.copyStartIso), locale);
+    final race = change.raceDateIso;
+    final ok = await confirmDestructive(
+      context,
+      title: l10n.planDetailRepeatWeekConfirmTitle(w.weekIndex + 1),
+      body: race != null
+          ? l10n.planDetailRepeatWeekConfirmRace(w.weekIndex + 1,
+              change.copyIndex + 1, start,
+              formatDateShort(parseIsoDate(race), locale))
+          : l10n.planDetailRepeatWeekConfirmMessage(w.weekIndex + 1,
+              change.copyIndex + 1, start,
+              formatDateShort(parseIsoDate(change.endIso), locale)),
+      confirmLabel: l10n.planDetailRepeatWeekAction,
+      cancelLabel: l10n.plansCancel,
+    );
+    if (!ok || !mounted) return;
+    setState(() => _bulkBusy = true);
+    try {
+      await widget.training
+          .repeatPlanWeek(p.id, change, todayIso)
+          .timeout(kBackendLoadTimeout);
+      if (!mounted) return;
+      showTopBanner(
+          context, l10n.planDetailRepeatWeekDone(w.weekIndex + 1, start));
+      await _load();
+    } on ActivePlanExistsError {
+      if (mounted) showTopBanner(context, l10n.planDetailRepeatWeekOverlap);
+    } catch (e) {
+      debugPrint('plan repeat week failed: $e');
+      if (mounted) {
+        final friendly = e is PostgrestException
+            ? rateLimitErrorMessage(l10n, code: e.code, message: e.message)
+            : null;
+        showTopBanner(context,
+            friendly ?? l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+      }
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
+    }
+  }
+
+  /// Eases one week to a recovery week: about 60% volume, quality sessions
+  /// turned into easy runs. Not reversible, so it confirms first. Web twin:
+  /// `markWeekRecovery` on the plan page.
+  Future<void> _markWeekRecovery(TrainingPlanRow plan, PlanWeekRow week) async {
+    if (_bulkBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final ok = await confirmDestructive(
+      context,
+      title: l10n.planDetailRecoveryConfirmTitle,
+      body: l10n.planDetailRecoveryConfirmMessage(week.weekIndex + 1),
+      confirmLabel: l10n.planDetailMarkRecovery,
+      cancelLabel: l10n.plansCancel,
+    );
+    if (!ok || !mounted) return;
+    setState(() => _bulkBusy = true);
+    try {
+      await widget.training
+          .markWeekRecovery(plan.id, _byWeek[week.id] ?? const [])
+          .timeout(kBackendLoadTimeout);
+      if (!mounted) return;
+      showTopBanner(context, l10n.planDetailRecoveryDone);
+      await _load();
+    } catch (e) {
+      debugPrint('plan recovery week failed: $e');
+      if (mounted) {
+        showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+      }
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
+    }
+  }
+
+  /// The plan in web's export shape (`plan_serialize`'s `ExportPlan`).
+  Map<String, dynamic> _exportShape(TrainingPlanRow p) {
+    final weekIndexById = {for (final w in _weeks) w.id: w.weekIndex};
+    return {
+      'name': p.name,
+      'goalEvent': p.goalEvent,
+      'goalDistanceM': p.goalDistanceM,
+      'goalTimeSec': p.goalTimeSeconds,
+      'startDate': toIsoDate(p.startDate),
+      'workouts': [
+        for (final w in _byWeek.values.expand((x) => x))
+          {
+            'week_index': weekIndexById[w.weekId] ?? 0,
+            'scheduled_date': toIsoDate(w.scheduledDate),
+            'kind': w.kind,
+            'target_distance_m': w.targetDistanceM,
+            'target_pace_sec_per_km': w.targetPaceSecPerKm,
+            'notes': w.notes,
+            'target_duration_seconds': w.targetDurationSeconds,
+            'race_name': w.raceName,
+            'race_priority': w.racePriority,
+            'race_taper_applied_at': w.raceTaperAppliedAt?.toUtc().toIso8601String(),
+          },
+      ],
+    };
+  }
+
+  /// Hands the plan to the share sheet as the Markdown table or the JSON
+  /// file web exports, so it can be saved, sent, or pasted into the plan
+  /// import on either app.
+  Future<void> _exportPlan(TrainingPlanRow p, {required bool json}) async {
+    final shape = _exportShape(p);
+    try {
+      await shareTextFrom(
+        context,
+        text: json ? planToJson(shape) : planToMarkdown(shape),
+        subject: p.name,
+      );
+    } catch (e) {
+      debugPrint('plan export share failed: $e');
+      if (mounted) {
+        final l10n = AppLocalizations.of(context);
+        showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+      }
+    }
+  }
+
+  /// Abandon an active or paused plan. Not reversible from the UI, so it
+  /// confirms first; the reload then drops every active/paused-only action.
+  /// Web twin: the Abandon option in `/plans/[id]`'s Adjust plan dialog.
+  Future<void> _abandonPlan(TrainingPlanRow p) async {
+    if (_bulkBusy || (p.status != 'active' && p.status != 'paused')) return;
+    final l10n = AppLocalizations.of(context);
+    final ok = await confirmDestructive(
+      context,
+      title: l10n.plansAbandonTitle(p.name),
+      body: l10n.plansAbandonBody,
+      confirmLabel: l10n.plansAbandon,
+      cancelLabel: l10n.plansCancel,
+    );
+    if (!ok || !mounted) return;
+    setState(() => _bulkBusy = true);
+    try {
+      await widget.training
+          .updateStatus(p.id, 'abandoned')
+          .timeout(kBackendLoadTimeout);
+    } catch (e) {
+      debugPrint('plan abandon failed: $e');
+      if (!mounted) return;
+      setState(() => _bulkBusy = false);
+      showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _bulkBusy = false);
+    await _load();
+  }
+
+  Future<void> _deletePlan(TrainingPlanRow p) async {
+    final l10n = AppLocalizations.of(context);
+    final ok = await confirmDestructive(
+      context,
+      title: l10n.plansDeleteTitle(p.name),
+      body: l10n.plansDeleteBody,
+      confirmLabel: l10n.plansDelete,
+      cancelLabel: l10n.plansCancel,
+    );
+    if (!ok || !mounted) return;
+    setState(() => _bulkBusy = true);
+    try {
+      await widget.training.deletePlan(p.id).timeout(kBackendLoadTimeout);
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      debugPrint('plan delete failed: $e');
+      if (!mounted) return;
+      setState(() => _bulkBusy = false);
+      showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
     }
   }
 
@@ -1063,9 +2114,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       return Scaffold(
         appBar: AppBar(),
         body: ErrorState(
-            message: _error == _PlanDetailLoadError.timeout
-                ? l10n.planDetailTimeoutError
-                : l10n.planDetailLoadError,
+            message: switch (_error!) {
+              _PlanDetailLoadError.timeout => l10n.planDetailTimeoutError,
+              _PlanDetailLoadError.offline => l10n.authErrorOffline,
+              _PlanDetailLoadError.generic => l10n.planDetailLoadError,
+            },
             onRetry: _load),
       );
     }
@@ -1098,7 +2151,60 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         theme, l10n, p, pct, done, allActive.length, currentWeek, todayWorkout);
 
     return Scaffold(
-      appBar: AppBar(title: Text(p.name)),
+      appBar: AppBar(
+        title: Text(p.name),
+        actions: [
+          if (_isOwner(p) && !p.isTemplate)
+            PopupMenuButton<_PlanMenu>(
+              key: const Key('planDetailMenu'),
+              tooltip: l10n.planDetailMoreActions,
+              enabled: !_bulkBusy,
+              onSelected: (a) => _onPlanMenu(a, p),
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                    value: _PlanMenu.adjust,
+                    child: Text(l10n.planDetailAdjustPlan)),
+                PopupMenuItem(
+                    value: _PlanMenu.editDetails,
+                    child: Text(l10n.planDetailEditDetails)),
+                PopupMenuItem(
+                    value: _PlanMenu.shift,
+                    child: Text(l10n.planDetailShiftDates)),
+                if (_raceDateOffer(p) != null)
+                  PopupMenuItem(
+                      key: const Key('planDetailChangeRaceDate'),
+                      value: _PlanMenu.raceDate,
+                      child: Text(l10n.planDetailChangeRaceDate)),
+                PopupMenuItem(
+                    value: _PlanMenu.exportMarkdown,
+                    child: Text(l10n.planDetailExportMarkdown)),
+                PopupMenuItem(
+                    value: _PlanMenu.exportJson,
+                    child: Text(l10n.planDetailExportJson)),
+                PopupMenuItem(
+                    value: _PlanMenu.restart,
+                    child: Text(l10n.planDetailRestartPlan)),
+                if (p.assignedByCoachId != null &&
+                    p.assignedByCoachId != _viewerId() &&
+                    _assigningCoachName != null)
+                  PopupMenuItem(
+                      key: const Key('planDetailMenuCoach'),
+                      value: _PlanMenu.coach,
+                      child: Text(
+                          l10n.planDetailAssignedBy(_assigningCoachName!))),
+                const PopupMenuDivider(),
+                if (p.status == 'active' || p.status == 'paused')
+                  PopupMenuItem(
+                      key: const Key('planDetailMenuAbandon'),
+                      value: _PlanMenu.abandon,
+                      child: Text(l10n.planDetailAbandonPlan)),
+                PopupMenuItem(
+                    value: _PlanMenu.delete,
+                    child: Text(l10n.planDetailDeletePlan)),
+              ],
+            ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: _load,
         child: contentColumn(context, body, maxWidth: _kExpandedBodyMaxWidth),
@@ -1111,11 +2217,32 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       PlanWorkoutRow? todayWorkout) {
     final allWorkouts = _byWeek.values.expand((x) => x).toList();
     final races = _planRacesFor(p);
+    final graduation = _isOwner(p) && !p.isTemplate
+        ? WalkRunGraduationCard.fromRows(allWorkouts)
+        : null;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
         _heroCard(theme, l10n, p, pct, done, total,
             heroRace: _heroRace(p, races)),
+        if (_linkedRace != null) ...[
+          const SizedBox(height: 8),
+          _linkedRaceRow(theme, l10n, _linkedRace!),
+        ],
+        if (graduation != null) ...[
+          const SizedBox(height: 12),
+          WalkRunGraduationCard(
+            graduation: graduation,
+            onTrainForTenK: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => PlanNewScreen(
+                  training: widget.training,
+                  initialGoal: GoalEvent.distance10k,
+                ),
+              ),
+            ),
+          ),
+        ],
         if (_isOwner(p) &&
             !p.isTemplate &&
             FinishPlanCard.shows(
@@ -1128,6 +2255,34 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
             planName: p.name,
             endDate: p.endDate,
             onFinished: _load,
+          ),
+        ],
+        if (_isOwner(p) &&
+            PlanRecapCard.shows(status: p.status, isTemplate: p.isTemplate)) ...[
+          const SizedBox(height: 12),
+          PlanRecapCard(
+            key: ValueKey('planDetailRecap-${p.id}'),
+            training: widget.training,
+            plan: p,
+            workouts: allWorkouts,
+            now: widget.now(),
+            onBuildNext: _openNextPlan,
+          ),
+        ],
+        if (_breakState(p).showing) ...[
+          const SizedBox(height: 12),
+          PlanBreakCard(
+            key: const Key('planDetailPlanBreak'),
+            training: widget.training,
+            plan: p,
+            weeks: _weeks,
+            workouts: allWorkouts,
+            runStarts: _breakRunStarts,
+            now: widget.now(),
+            onApplied: _reloadAndOfferAnchor,
+            onAnswered: () {
+              if (mounted) setState(() {});
+            },
           ),
         ],
         if (PlanRacesList.shows(races)) ...[
@@ -1145,9 +2300,22 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
           ),
         ],
         const SizedBox(height: 12),
+        if (_missedPromptShown(p))
+          if (_missedPrompt() case final prompt?) ...[
+            MissedWorkoutPromptCard(
+              key: ValueKey('planDetailMissedPrompt-${prompt.workoutId}'),
+              training: widget.training,
+              planId: p.id,
+              prompt: prompt,
+              onMakeUp: () => _chooseMakeUp(p, prompt),
+              onAnswered: _load,
+            ),
+            const SizedBox(height: 12),
+          ],
         if (todayWorkout != null)
           TodaysWorkoutCard(
             workout: todayWorkout,
+            overrunMetres: _overrunOf(todayWorkout),
             onTap: () => _openWorkout(todayWorkout),
             // Only the plan's runner starts its workout: a coach or a
             // template viewer reading the plan has nothing to record.
@@ -1167,6 +2335,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
             title: _notStarted(p) ? l10n.planDetailFirstWeek : null,
             onSelect: _openWorkout,
           ),
+        ],
+        if (_walkRunOfferShows(p, currentWeek)) ...[
+          const SizedBox(height: 12),
+          _repeatWeekOffer(theme, l10n, p, _weeks[currentWeek]),
         ],
         // Adherence flags and the re-plan preview stay uncollapsed: a warning
         // that only renders when something is wrong is signal, and the
@@ -1260,8 +2432,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     if (next != null && !restToday) {
       final parts = [
         formatDowDateShort(next.scheduledDate, tag),
-        if (next.targetDistanceM != null) fmtKm(next.targetDistanceM),
-        if (next.targetPaceSecPerKm != null)
+        ?plannedSizeLabel(l10n, next),
+        if (next.targetPaceSecPerKm != null && next.kind != 'walk_run')
           l10n.todaysWorkoutAtPace(fmtPace(next.targetPaceSecPerKm)),
       ];
       return card(
@@ -1636,6 +2808,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     if (!_isOwner(p) || p.isTemplate) return const [];
     final preview = _replanPreview;
     final taper = _taperPreview;
+    final anchorInfo = preview != null &&
+            preview.any((c) => c.reason == ReplanReason.anchorActualVolume)
+        ? _volumeAnchor(_buildReplanInput(p))
+        : null;
     return [
       const SizedBox(height: 12),
       Align(
@@ -1732,6 +2908,20 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                       fontWeight: FontWeight.w600,
                     )),
               ],
+              if (anchorInfo != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  anchorInfo.returning
+                      ? l10n.planDetailAnchorReturnNote(
+                          anchorInfo.idleWeeks, fmtKm(anchorInfo.anchorMetres))
+                      : l10n.planDetailAnchorUnderNote(
+                          fmtKm(anchorInfo.anchorMetres)),
+                  key: const Key('planDetailReplanAnchorNote'),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
               const SizedBox(height: 8),
               for (final c in preview)
                 Padding(
@@ -1750,11 +2940,15 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                       ),
                       Expanded(
                         child: Text(
-                          c.reason == ReplanReason.makeUpLong
-                              ? l10n.planDetailReplanMakeUp(
-                                  fmtKm(c.fromMetres), fmtKm(c.toMetres))
-                              : l10n.planDetailReplanEase(
+                          switch (c.reason) {
+                            ReplanReason.makeUpLong => l10n.planDetailReplanMakeUp(
+                                fmtKm(c.fromMetres), fmtKm(c.toMetres)),
+                            ReplanReason.anchorActualVolume =>
+                              l10n.planDetailReplanAnchor(
                                   fmtKm(c.fromMetres), fmtKm(c.toMetres)),
+                            ReplanReason.easeOverRunning => l10n.planDetailReplanEase(
+                                fmtKm(c.fromMetres), fmtKm(c.toMetres)),
+                          },
                           style: theme.textTheme.bodySmall,
                         ),
                       ),
@@ -1770,6 +2964,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                         ? null
                         : () => setState(() {
                               _replanPreview = null;
+                              _makeUpAnswers = null;
                               _adaptiveInfo = null;
                             }),
                     child: Text(l10n.planDetailReplanCancel),
@@ -1905,6 +3100,23 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     );
   }
 
+  Widget _linkedRaceRow(
+      ThemeData theme, AppLocalizations l10n, RaceListingView race) {
+    final tag = localeToTag(Localizations.localeOf(context));
+    final date = formatDateMed(parseIsoDate(race.raceDate), tag);
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        key: const Key('planDetailLinkedRace'),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+        leading: const Icon(Icons.flag_outlined),
+        title: Text(l10n.planDetailBuiltForRace(race.name, date)),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => _openLinkedRace(race),
+      ),
+    );
+  }
+
   Widget _pill(ThemeData theme, String text,
       {Key? key, IconData? icon, bool emphasised = false}) {
     final fg = emphasised
@@ -1998,6 +3210,33 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     );
   }
 
+  Widget _repeatWeekOffer(ThemeData theme, AppLocalizations l10n,
+      TrainingPlanRow p, PlanWeekRow week) {
+    return Container(
+      key: const Key('planDetailRepeatWeekOffer'),
+      padding: const EdgeInsets.all(12),
+      decoration: planCardDecoration(theme),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.planDetailRepeatWeekOfferTitle,
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text(l10n.planDetailRepeatWeekOfferBody,
+              style: theme.textTheme.bodyMedium),
+          const SizedBox(height: 8),
+          FilledButton.tonalIcon(
+            key: const Key('planDetailRepeatWeekOfferButton'),
+            onPressed: _bulkBusy ? null : () => _repeatWeek(p, week),
+            icon: const Icon(Icons.replay),
+            label: Text(l10n.planDetailRepeatWeek),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _weekCard(ThemeData theme, AppLocalizations l10n, TrainingPlanRow p,
       PlanWeekRow w, int currentWeek) {
     final phase = planPhaseFromDb(w.phase);
@@ -2028,20 +3267,37 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                       fontWeight: FontWeight.w700,
                     )),
               ),
-              Text(fmtKm(w.targetVolumeM, 0),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  )),
+              if (weekJudgedByDistance(workouts.map((x) => x.kind)))
+                Text(fmtKm(w.targetVolumeM, 0),
+                    key: ValueKey('planDetailWeekVolume-${w.weekIndex}'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    )),
               if (_isOwner(p) && !p.isTemplate)
-                IconButton(
-                  iconSize: 16,
-                  padding: EdgeInsets.zero,
-                  constraints:
-                      const BoxConstraints(minWidth: 48, minHeight: 48),
-                  tooltip: l10n.planDetailDuplicateWeek,
-                  icon: Icon(Icons.content_copy,
-                      color: theme.colorScheme.outline),
-                  onPressed: _bulkBusy ? null : () => _duplicateWeek(p, w),
+                PopupMenuButton<_WeekMenu>(
+                  key: ValueKey('planDetailWeekMenu-${w.weekIndex}'),
+                  tooltip: l10n.planDetailWeekActions(w.weekIndex + 1),
+                  enabled: !_bulkBusy,
+                  icon: Icon(Icons.more_vert,
+                      size: 18, color: theme.colorScheme.outline),
+                  onSelected: (a) => switch (a) {
+                    _WeekMenu.duplicate => _duplicateWeek(p, w),
+                    _WeekMenu.recovery => _markWeekRecovery(p, w),
+                    _WeekMenu.repeat => _repeatWeek(p, w),
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                        value: _WeekMenu.duplicate,
+                        child: Text(l10n.planDetailDuplicateWeek)),
+                    PopupMenuItem(
+                        value: _WeekMenu.recovery,
+                        child: Text(l10n.planDetailMarkRecovery)),
+                    if (_repeatOffer(p, w) != null)
+                      PopupMenuItem(
+                          key: ValueKey('planDetailRepeatWeek-${w.weekIndex}'),
+                          value: _WeekMenu.repeat,
+                          child: Text(l10n.planDetailRepeatWeekAction)),
+                  ],
                 ),
             ],
           ),
@@ -2080,6 +3336,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     final tag = localeToTag(Localizations.localeOf(context));
     final dow = formatDow(wo.scheduledDate, tag);
     final radius = BorderRadius.circular(AppRadius.sm);
+    final overrunM =
+        status == PlanWorkoutStatus.done ? _overrunOf(wo) : null;
+    final overrun = overrunM == null ? null : fmtOverrun(overrunM);
+    final size = plannedSizeLabel(l10n, wo);
     Widget row = Container(
       margin: const EdgeInsets.only(top: 4),
       padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
@@ -2126,9 +3386,19 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
               ),
             ),
           ),
-          if (wo.targetDistanceM != null && !isRest) ...[
-            Text(fmtKm(wo.targetDistanceM, 1),
+          if (size != null) ...[
+            Text(size,
+                key: ValueKey('planDetailWorkoutSize-${wo.id}'),
                 style: theme.textTheme.bodySmall),
+            const SizedBox(width: 6),
+          ],
+          if (overrun != null) ...[
+            Text(
+              l10n.planWorkoutOverrun(overrun),
+              key: ValueKey('planDetailOverrun-${wo.id}'),
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
             const SizedBox(width: 6),
           ],
           if (look.glyph != null)
@@ -2148,16 +3418,18 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       today,
       day: formatDowDateShort(wo.scheduledDate, tag),
       kind: workoutKindLabel(l10n, kind),
-      distance:
-          wo.targetDistanceM != null && !isRest ? fmtKm(wo.targetDistanceM, 1) : null,
+      distance: size,
     );
+    final semanticsLabel = overrun == null
+        ? label
+        : '$label, ${l10n.planWorkoutOverrunA11y(overrun)}';
     return Row(
       key: ValueKey('planDetailWorkoutRow-${wo.id}'),
       children: [
         Expanded(
           child: Semantics(
             button: !isRest,
-            label: label,
+            label: semanticsLabel,
             excludeSemantics: true,
             child: InkWell(
               onTap: isRest ? null : () => _openWorkout(wo),
@@ -2213,6 +3485,18 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   /// lives on the Run tab — popping back to root and signalling
   /// `pendingStartWorkout` lets HomeScreen switch tabs and RunScreen
   /// load the workout.
+  /// The recap's "Build your next plan": the wizard on the start past the
+  /// race's recovery, with the race's 5K equivalent filled but unconfirmed.
+  void _openNextPlan(String startIso, int? seed5kSec) {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => PlanNewScreen(
+        training: widget.training,
+        initialRecent5kSec: seed5kSec,
+        initialStartDate: parseIsoDate(startIso),
+      ),
+    ));
+  }
+
   Future<void> _openWorkout(PlanWorkoutRow wo) async {
     final result = await Navigator.of(context).push(
       MaterialPageRoute<PlanWorkoutRow?>(
@@ -2220,6 +3504,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
           training: widget.training,
           planId: widget.planId,
           workoutId: wo.id,
+          initial: wo,
         ),
       ),
     );
@@ -2237,7 +3522,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   }
 }
 
-enum _PlanDetailLoadError { timeout, generic }
+enum _PlanDetailLoadError { timeout, offline, generic }
 
 // A workout row carries a 4 dp top margin, so the dash is drawn below it.
 class _TopInsetDashedOutline extends CustomPainter {
@@ -2320,6 +3605,191 @@ class PublishClubPicker extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+enum _PlanMenu {
+  adjust,
+  editDetails,
+  shift,
+  raceDate,
+  exportMarkdown,
+  exportJson,
+  restart,
+  coach,
+  abandon,
+  delete,
+}
+
+/// Picks the restarted copy's start date and confirms the restart. Pops the
+/// start date, or nothing on cancel. A plan with a race still ahead gets the
+/// refusal and no confirm (`upcomingRaceIso`).
+class _RestartPlanDialog extends StatefulWidget {
+  final TrainingPlanRow plan;
+  final List<RestartWorkout> workouts;
+  final String todayIso;
+
+  const _RestartPlanDialog({
+    required this.plan,
+    required this.workouts,
+    required this.todayIso,
+  });
+
+  @override
+  State<_RestartPlanDialog> createState() => _RestartPlanDialogState();
+}
+
+class _RestartPlanDialogState extends State<_RestartPlanDialog> {
+  late final String _sourceStart = toIsoDate(widget.plan.startDate);
+  late final bool _walkRun = isWalkRunPlan(widget.workouts);
+  late String _start =
+      defaultRestartStartIso(_sourceStart, widget.todayIso, _walkRun);
+
+  Future<void> _pickDate() async {
+    final today = parseIsoDate(widget.todayIso);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: parseIsoDate(_start),
+      firstDate: today,
+      lastDate: DateTime(today.year + 2, today.month, today.day),
+      selectableDayPredicate: (d) => restartStartAllowed(
+          toIsoDate(d), _sourceStart, widget.todayIso, _walkRun),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _start =
+        alignRestartStartIso(toIsoDate(picked), _sourceStart, _walkRun));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final tag = localeToTag(Localizations.localeOf(context));
+    String fmt(String iso) => formatDateShort(parseIsoDate(iso), tag);
+    final raceAhead = upcomingRaceIso(widget.workouts, widget.todayIso);
+    if (raceAhead != null) {
+      return AlertDialog(
+        title: Text(l10n.planDetailRestartTitle),
+        content: Text(l10n.planDetailRestartRaceAhead(fmt(raceAhead))),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.plansCancel),
+          ),
+        ],
+      );
+    }
+    final end = restartedDateIso(
+        toIsoDate(widget.plan.endDate), _sourceStart, _start);
+    final races = [
+      for (final w in widget.workouts)
+        if (w.kind == 'race') w.scheduledDate
+    ]..sort();
+    final live =
+        widget.plan.status == 'active' || widget.plan.status == 'paused';
+    final message = live
+        ? l10n.planDetailRestartConfirmLive(fmt(_start), fmt(end))
+        : l10n.planDetailRestartConfirmOver(fmt(_start), fmt(end));
+    final raceLine = races.isEmpty
+        ? ''
+        : ' ${l10n.planDetailRestartRaceMoves(fmt(restartedDateIso(races.last, _sourceStart, _start)))}';
+    return AlertDialog(
+      title: Text(l10n.planDetailRestartTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('$message$raceLine', key: const Key('planDetailRestartMessage')),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            key: const Key('planDetailRestartPickDate'),
+            onPressed: _pickDate,
+            icon: const Icon(Icons.event),
+            label: Text(l10n.planDetailRestartChangeDate),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.plansCancel),
+        ),
+        FilledButton(
+          key: const Key('planDetailRestartConfirm'),
+          onPressed: () => Navigator.pop(context, _start),
+          child: Text(l10n.planDetailRestartConfirm),
+        ),
+      ],
+    );
+  }
+}
+
+enum _WeekMenu { duplicate, recovery, repeat }
+
+/// Asks how many days to move the plan by. Pops the signed day count, or
+/// nothing on cancel. The RPC's own bound is ±366 and zero is a no-op.
+class _ShiftDatesDialog extends StatefulWidget {
+  const _ShiftDatesDialog();
+
+  @override
+  State<_ShiftDatesDialog> createState() => _ShiftDatesDialogState();
+}
+
+class _ShiftDatesDialogState extends State<_ShiftDatesDialog> {
+  final _ctrl = TextEditingController(text: '7');
+  String? _error;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final n = int.tryParse(_ctrl.text.trim());
+    if (n == null || n == 0 || n.abs() > 366) {
+      setState(() => _error = AppLocalizations.of(context).planDetailShiftDaysInvalid);
+      return;
+    }
+    Navigator.pop(context, n);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return AlertDialog(
+      title: Text(l10n.planDetailShiftTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.planDetailShiftMessage),
+          const SizedBox(height: 12),
+          TextField(
+            key: const Key('planDetailShiftDays'),
+            controller: _ctrl,
+            autofocus: true,
+            keyboardType:
+                const TextInputType.numberWithOptions(signed: true),
+            decoration: InputDecoration(
+              labelText: l10n.planDetailShiftDaysLabel,
+              errorText: _error,
+              errorMaxLines: 3,
+            ),
+            onSubmitted: (_) => _submit(),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.plansCancel),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: Text(l10n.planDetailShiftApply),
+        ),
+      ],
     );
   }
 }

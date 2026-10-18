@@ -504,8 +504,20 @@ redaction-boundary guarantees are pinned by
 > page (`/runs`, `/gym`, `/nutrition`) plus the single matching Log action.
 > Each Log opens the shared editor in an in-place modal (`RunEditor` /
 > `GymEditor` / `FoodLogEditor`) and refreshes the feed on save — no
-> navigation. A pure runner (no second modality) sees a chip-less run timeline
-> and reaches the full list via the sidebar `Runs` item.
+> navigation.
+>
+> **History is data-gated on web (decisions § 2117).** For a pure runner — no
+> lift and no meal logged — the timeline was a plainer copy of `/runs`, so the
+> sidebar shows the History item only once `hasNonRunData()` (the gym + food
+> presence reads in `lib/stores/modality_visibility.svelte.ts`) is true, the
+> same rule the kind chips use, and independent of the `show_gym` /
+> `show_nutrition` switches. A pure runner who opens `/history` directly lands
+> on `/runs?view=list&range=all` once both reads have answered (never while
+> one is pending) — all time, as History was, not the list's own default of
+> today; `/runs` applies a linked `?range=` once and drops it from the URL. `/runs` carries the day-grouped read instead: a **List / Grid**
+> toggle, where List renders the same rows through the shared
+> `TimelineDayList.svelte` over `timeline/day_groups.ts`. Multi-modal runners
+> keep this timeline unchanged.
 >
 > **Status (mobile shipped):** `runs_screen.dart` (the History tab) gains the
 > same All/Runs/Lifts/Meals chips + a day-grouped unified timeline
@@ -549,8 +561,9 @@ redaction-boundary guarantees are pinned by
 > stores). The only place the inline run list still shows on the History tab is
 > a genuine **pure runner** (no lift/meal logged at all — nothing else to put on
 > a timeline) or a run-only mount with no gym store; that's not an offline
-> fallback, just "there is only one modality." Web, having no offline concern
-> and a sidebar, shows the timeline even for a pure runner. Both correct per
+> fallback, just "there is only one modality." Web reaches the same end its own
+> way: a pure runner has no History item and `/history` forwards to
+> `/runs?view=list&range=all` (decisions § 2117). Both correct per
 > [§ 24](../architecture/decisions.md#24-web-is-the-canonical-feature-surface-mobile-and-watches-are-platform-additive).
 
 ```

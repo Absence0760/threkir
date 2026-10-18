@@ -1,9 +1,6 @@
-// Mirrors the parse cases of apps/web/src/lib/training/plan_serialize.test.ts.
-// The two export-only web cases ("emits a header table", "adds Race, Priority
-// and Goal columns only when a race carries one") have no counterpart here:
-// mobile ports the parse half only (decisions § 2053). Where a web case
-// round-trips through planToMarkdown, the Markdown below is the text that
-// function writes for the same plan, so web's export format is pinned too.
+// Mirrors apps/web/src/lib/training/plan_serialize.test.ts case for case. The
+// Markdown below is the text web's planToMarkdown writes for the same plan,
+// so the Dart writer is pinned to web's export format byte for byte.
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -280,6 +277,39 @@ void main() {
   });
 
   // ─────────────────────── JSON round-trip ───────────────────────
+
+  test('planToMarkdown emits a header table + one row per workout', () {
+    final md = planToMarkdown(_sample);
+    expect(md, _sampleMarkdown, reason: "web's export, byte for byte");
+    expect(md, startsWith('# Spring Marathon'));
+    expect(md, contains('| Week | Date | Type | Distance | Pace | Notes |'));
+    final rows = md.split('\n').where((l) =>
+        l.startsWith('| ') && !l.contains('Week | Date') && !l.contains('---'));
+    expect(rows.length, (_sample['workouts'] as List).length);
+  });
+
+  test('planToMarkdown adds Race, Priority and Goal columns only when a race carries one',
+      () {
+    expect(planToMarkdown(_racePlan), _racePlanMarkdown);
+    expect(planToMarkdown(_racePlan),
+        contains('| Week | Date | Type | Distance | Pace | Notes | Race | Priority | Goal |'));
+    expect(planToMarkdown(_sample), isNot(contains('Priority')));
+  });
+
+  test('planToJson writes whole-number doubles as integers, as JSON.stringify does',
+      () {
+    final json = planToJson({
+      ..._sample,
+      'goalDistanceM': 42195.0,
+      'workouts': [
+        {...(_sample['workouts'] as List).first as Map<String, dynamic>,
+          'target_distance_m': 24000.0},
+      ],
+    });
+    expect(json, contains('"goalDistanceM": 42195,'));
+    expect(json, contains('"target_distance_m": 24000,'));
+    expect(json, startsWith('{\n  "name": "Spring Marathon",'));
+  });
 
   test('planToJson → parsePlanJson round-trips the workouts', () {
     final parsed = parsePlanJson(jsonEncode(_sample));

@@ -6,7 +6,7 @@
 /// function untouched (even under `verify_jwt = true`), and a handler that
 /// answers it 405 — or reaches its auth check and answers 401 — makes the
 /// browser report "Failed to fetch" for a function that works fine from
-/// Dart, which sends no preflight (decisions § 2121).
+/// Dart, which sends no preflight (decisions § 2148).
 ///
 /// Usage, outermost so even withSentry's 500 carries the header:
 ///

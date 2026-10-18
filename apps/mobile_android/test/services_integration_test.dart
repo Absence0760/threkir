@@ -9,6 +9,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/geocoding.dart';
 import '../lib/social_service.dart';
 import '../lib/training.dart';
+import '../lib/cycle_plan.dart';
+import '../lib/plan_resume.dart';
 import '../lib/training_service.dart';
 
 // Known seed IDs / slugs — kept here so an unintended seed change shows
@@ -791,6 +793,197 @@ void main() {
           (await training.fetchMyPlans()).map((p) => p.id).toSet();
       expect(restored.contains(newId), isFalse,
           reason: 'deletePlan must remove the row');
+    });
+
+    test('shiftTrainingPlan and markWeekRecovery write through their RPCs',
+        () async {
+      // A throwaway far-future plan, so the shift and the deload never touch
+      // the seeded one. Both calls go through RPCs whose parameter names a
+      // fake cannot vouch for.
+      String? newId;
+      try {
+        final start = DateTime.utc(2031, 1, 5);
+        final created = await training.createPlan(
+          name: 'integration-test shift plan',
+          goalEvent: GoalEvent.distance10k,
+          goalDistanceM: 10_000,
+          startDate: start,
+          daysPerWeek: 4,
+          recent5kSec: 1500,
+          generated: generatePlan(GeneratePlanInput(
+            goalEvent: GoalEvent.distance10k,
+            recent5kSec: 1500,
+            startDate: start,
+            daysPerWeek: 4,
+          )),
+        );
+        newId = created.id;
+        final before = await training.fetchPlan(created.id);
+
+        await training.shiftTrainingPlan(created.id, 3);
+        final shifted = await training.fetchPlan(created.id);
+        expect(shifted.plan!.startDate,
+            before.plan!.startDate.add(const Duration(days: 3)));
+        expect(shifted.workouts.first.scheduledDate,
+            before.workouts.first.scheduledDate.add(const Duration(days: 3)));
+
+        final quality = shifted.workouts.firstWhere(
+            (w) => const {'tempo', 'interval', 'marathon_pace'}.contains(w.kind));
+        final week = shifted.weeks.firstWhere((w) => w.id == quality.weekId);
+        final weekWorkouts =
+            shifted.workouts.where((w) => w.weekId == week.id).toList();
+        final changed = await training.markWeekRecovery(created.id, weekWorkouts);
+        expect(changed, greaterThan(0));
+
+        final eased = await training.fetchPlan(created.id);
+        final q = eased.workouts.firstWhere((w) => w.id == quality.id);
+        expect(q.kind, 'recovery');
+        expect(q.targetPaceSecPerKm, isNull);
+        expect(q.structure, isNull);
+        final easedWeek = eased.weeks.firstWhere((w) => w.id == week.id);
+        expect(easedWeek.targetVolumeM, lessThan(week.targetVolumeM!),
+            reason: 'the RPC restates the week volume from its workouts');
+      } finally {
+        if (newId != null) await training.deletePlan(newId);
+      }
+    });
+
+    test('setPlanGoalTime and updatePlanMeta write through', () async {
+      String? newId;
+      try {
+        final start = DateTime.utc(2032, 2, 1);
+        final created = await training.createPlan(
+          name: 'integration-test goal plan',
+          goalEvent: GoalEvent.distance10k,
+          goalDistanceM: 10_000,
+          startDate: start,
+          daysPerWeek: 4,
+          goalTimeSec: 3000,
+          generated: generatePlan(GeneratePlanInput(
+            goalEvent: GoalEvent.distance10k,
+            goalTimeSec: 3000,
+            startDate: start,
+            daysPerWeek: 4,
+          )),
+        );
+        newId = created.id;
+        final before = await training.fetchPlan(created.id);
+        final paced =
+            before.workouts.firstWhere((w) => w.targetPaceSecPerKm != null);
+
+        await training.setPlanGoalTime(created.id, 2700, 42.5, [
+          {'id': paced.id, 'target_pace_sec_per_km': 250},
+        ]);
+        await training.updatePlanMeta(created.id,
+            name: 'integration-test goal plan (renamed)',
+            notes: 'note',
+            daysPerWeek: 5,
+            rules: ['Long run on Sunday']);
+
+        final after = await training.fetchPlan(created.id);
+        expect(after.plan!.goalTimeSeconds, 2700);
+        expect(after.plan!.vdot, 42.5);
+        expect(after.plan!.name, 'integration-test goal plan (renamed)');
+        expect(after.plan!.notes, 'note');
+        expect(after.plan!.daysPerWeek, 5);
+        expect(after.plan!.rules, ['Long run on Sunday']);
+        expect(
+            after.workouts.firstWhere((w) => w.id == paced.id).targetPaceSecPerKm,
+            250);
+      } finally {
+        if (newId != null) await training.deletePlan(newId);
+      }
+    });
+
+    test('applyCycleAdjustment writes through apply_workout_adjustments',
+        () async {
+      String? newId;
+      try {
+        final start = DateTime.utc(2033, 4, 3);
+        final created = await training.createPlan(
+          name: 'integration-test cycle plan',
+          goalEvent: GoalEvent.distance10k,
+          goalDistanceM: 10_000,
+          startDate: start,
+          daysPerWeek: 4,
+          recent5kSec: 1500,
+          generated: generatePlan(GeneratePlanInput(
+            goalEvent: GoalEvent.distance10k,
+            recent5kSec: 1500,
+            startDate: start,
+            daysPerWeek: 4,
+          )),
+        );
+        newId = created.id;
+        final before = await training.fetchPlan(created.id);
+        // Due a month after the plan starts: every week is third trimester
+        // or later, so hard sessions become easy runs.
+        final changed = await training.applyCycleAdjustment(
+          created.id,
+          before.workouts,
+          const CyclePlanConfig.pregnancy(dueDateIso: '2033-05-01'),
+          '2033-04-01',
+        );
+        expect(changed, greaterThan(0));
+        final after = await training.fetchPlan(created.id);
+        expect(
+            after.workouts.where((w) =>
+                const {'tempo', 'interval', 'marathon_pace'}.contains(w.kind) &&
+                w.scheduledDate.isBefore(DateTime.utc(2033, 5, 1))),
+            isEmpty,
+            reason: 'no hard session survives inside the pregnancy window');
+      } finally {
+        if (newId != null) await training.deletePlan(newId);
+      }
+    });
+
+    test('pause stamps paused_at; resumePlan pushes the unstarted weeks back',
+        () async {
+      String? newId;
+      try {
+        final start = DateTime.utc(2034, 3, 5);
+        final created = await training.createPlan(
+          name: 'integration-test resume plan',
+          goalEvent: GoalEvent.distance10k,
+          goalDistanceM: 10_000,
+          startDate: start,
+          daysPerWeek: 4,
+          recent5kSec: 1500,
+          generated: generatePlan(GeneratePlanInput(
+            goalEvent: GoalEvent.distance10k,
+            recent5kSec: 1500,
+            startDate: start,
+            daysPerWeek: 4,
+          )),
+        );
+        newId = created.id;
+        await training.pausePlan(created.id);
+        final paused = await training.fetchPlan(created.id);
+        expect(paused.plan!.status, 'paused');
+        expect(paused.plan!.pausedAt, isNotNull);
+        final week1 = paused.weeks.firstWhere((w) => w.weekIndex == 1);
+        final week1Workout =
+            paused.workouts.firstWhere((w) => w.weekId == week1.id);
+
+        await training.resumePlan(created.id,
+            shift: const ResumeShift(fromWeekIndex: 1, weeks: 2));
+        final resumed = await training.fetchPlan(created.id);
+        expect(resumed.plan!.status, 'active');
+        expect(resumed.plan!.pausedAt, isNull);
+        // Calendar days, not a Duration: 14 x 24 h crosses a DST change.
+        String plus14(DateTime d) =>
+            DateTime(d.year, d.month, d.day + 14).toIso8601String().substring(0, 10);
+        String day(DateTime d) => d.toIso8601String().substring(0, 10);
+        expect(day(resumed.plan!.endDate), plus14(paused.plan!.endDate));
+        expect(resumed.weeks.firstWhere((w) => w.id == week1.id).weekIndex, 3);
+        expect(
+            day(resumed.workouts
+                .firstWhere((w) => w.id == week1Workout.id)
+                .scheduledDate),
+            plus14(week1Workout.scheduledDate));
+      } finally {
+        if (newId != null) await training.deletePlan(newId);
+      }
     });
 
     test('markCompleted toggles the completion fields', () async {

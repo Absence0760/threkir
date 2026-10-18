@@ -16,6 +16,7 @@ import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/plan_detail_screen.dart';
 import '../lib/screens/run_detail_screen.dart';
 import 'pump_until.dart';
 import '../lib/training_service.dart';
@@ -111,6 +112,27 @@ class _FakeTraining extends TrainingService {
   Future<ActivePlanOverview?> fetchActiveOverview() async => overview;
 }
 
+/// No active plan, one paused: Home must keep it reachable.
+class _PausedTraining extends TrainingService {
+  @override
+  Future<ActivePlanOverview?> fetchActiveOverview() async => null;
+  @override
+  Future<TrainingPlanRow?> fetchPausedPlan() async => TrainingPlanRow(
+        id: 'plan-paused',
+        userId: 'u1',
+        name: 'Autumn Half',
+        goalEvent: 'distance_half',
+        goalDistanceM: 21097.5,
+        startDate: DateTime(2026, 9, 1),
+        endDate: DateTime(2026, 11, 22),
+        daysPerWeek: 4,
+        status: 'paused',
+        source: 'generated',
+        isTemplate: false,
+        isPublicTemplate: false,
+      );
+}
+
 /// A plan whose dates ran out two days ago, still `active`: nothing writes
 /// `completed` on a clock, so Home asks the runner to finish it.
 class _FinishableTraining extends TrainingService {
@@ -196,6 +218,79 @@ ActivePlanOverview _overviewWithTodayWorkout({String kind = 'long'}) {
     currentWeekIndex: 4,
   );
 }
+
+/// A plan that started 23 days ago (weeks 0-2 complete, week 3 current), each
+/// week an easy run on day 3 and a long run on day 6, with a 10 km tempo
+/// today linked to `today-run` (decisions § 2125-2126).
+DateTime _nudgeDay(int week, int d) {
+  final now = DateTime.now();
+  return DateTime(now.year, now.month, now.day - 23 + week * 7 + d);
+}
+
+ActivePlanOverview _nudgeOverview() {
+  final weeks = <PlanWeekRow>[];
+  final workouts = <PlanWorkoutRow>[];
+  for (var k = 0; k < 5; k++) {
+    weeks.add(PlanWeekRow(
+        id: 'nw$k',
+        planId: 'plan-n',
+        weekIndex: k,
+        phase: 'build',
+        targetVolumeM: 28000));
+    workouts.add(PlanWorkoutRow(
+        id: 'ne$k',
+        weekId: 'nw$k',
+        scheduledDate: _nudgeDay(k, 3),
+        kind: 'easy',
+        targetDistanceM: 8000,
+        manuallyCompleted: false));
+    workouts.add(PlanWorkoutRow(
+        id: 'nl$k',
+        weekId: 'nw$k',
+        scheduledDate: _nudgeDay(k, 6),
+        kind: 'long',
+        targetDistanceM: 20000,
+        manuallyCompleted: k < 3));
+  }
+  final today = PlanWorkoutRow(
+      id: 'n-today',
+      weekId: 'nw3',
+      scheduledDate: _nudgeDay(3, 2),
+      kind: 'tempo',
+      targetDistanceM: 10000,
+      completedRunId: 'today-run',
+      manuallyCompleted: false);
+  workouts.add(today);
+  return ActivePlanOverview(
+    plan: TrainingPlanRow(
+      id: 'plan-n',
+      userId: 'u1',
+      name: 'Nudge Half',
+      goalEvent: 'distance_half',
+      goalDistanceM: 21097,
+      startDate: _nudgeDay(0, 0),
+      endDate: _nudgeDay(5, -1),
+      daysPerWeek: 3,
+      status: 'active',
+      source: 'app',
+      isTemplate: false,
+      isPublicTemplate: false,
+    ),
+    weeks: weeks,
+    workouts: workouts,
+    todayWorkout: today,
+    completionPct: 40,
+    currentWeekIndex: 3,
+  );
+}
+
+Run _runOn(String id, DateTime day, double metres) => Run(
+      id: id,
+      startedAt: DateTime(day.year, day.month, day.day, 12),
+      duration: const Duration(minutes: 60),
+      distanceMetres: metres,
+      source: RunSource.app,
+    );
 
 Directory? _runsDir;
 
@@ -831,6 +926,65 @@ void main() {
       });
     });
 
+    testWidgets(
+        'Home shows a week well over plan as a card that opens the re-plan, '
+        'and today\'s long run as DONE TODAY · +3 km', (tester) async {
+      await tester.runAsync(() async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = Preferences();
+        await prefs.init();
+        final dir = Directory.systemTemp.createTempSync('dashboard_nudge_');
+        try {
+          final seedStore = LocalRunStore();
+          await seedStore.init(overrideDirectory: dir);
+          await seedStore.save(_runOn('w0', _nudgeDay(0, 6), 28000));
+          await seedStore.save(_runOn('w1', _nudgeDay(1, 6), 28000));
+          await seedStore.save(_runOn('w2', _nudgeDay(2, 6), 36000));
+          await seedStore.save(_runOn('today-run', _nudgeDay(3, 2), 13000));
+          final runStore = LocalRunStore();
+          await runStore.init(overrideDirectory: dir);
+
+          await tester.pumpWidget(
+            MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: DashboardScreen(
+                runStore: runStore,
+                routeStore: LocalRouteStore(),
+                gymStore: LocalGymStore(),
+                foodStore: LocalFoodStore(),
+                preferences: prefs,
+                training: _FakeTraining(_nudgeOverview()),
+              ),
+            ),
+          );
+          await tester.pump();
+          await tester.pump();
+          await tester.pump();
+
+          expect(find.text('DONE TODAY · +3 km'), findsOneWidget);
+          final card = find.byKey(const Key('planNudgeCard'));
+          await tester.scrollUntilVisible(card, 200,
+              scrollable: find.byType(Scrollable).first);
+          expect(find.descendant(of: card, matching: find.text('A big week')),
+              findsOneWidget);
+
+          final review = find.byKey(const Key('planNudgeReview'));
+          await tester.ensureVisible(review);
+          await tester.pump();
+          await tester.tap(review);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 400));
+          final detail =
+              tester.widget<PlanDetailScreen>(find.byType(PlanDetailScreen));
+          expect(detail.planId, 'plan-n');
+          expect(detail.openReview, PlanReview.replan);
+        } finally {
+          dir.deleteSync(recursive: true);
+        }
+      });
+    });
+
     testWidgets('an ended plan asks to be finished, and finishing clears it',
         (tester) async {
       final training = _FinishableTraining(_endedOverview());
@@ -887,6 +1041,57 @@ void main() {
       });
       // Let the confirmation banner's auto-dismiss timer run out.
       await tester.pump(const Duration(seconds: 6));
+    });
+
+    testWidgets('a paused plan stays on Home and opens with the resume confirm',
+        (tester) async {
+      await tester.runAsync(() async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = Preferences();
+        await prefs.init();
+        final dir = Directory.systemTemp.createTempSync('dashboard_paused_plan_');
+        try {
+          final seedStore = LocalRunStore();
+          await seedStore.init(overrideDirectory: dir);
+          await seedStore.save(_run(id: 'r1'));
+          final runStore = LocalRunStore();
+          await runStore.init(overrideDirectory: dir);
+
+          await tester.pumpWidget(
+            MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: DashboardScreen(
+                runStore: runStore,
+                routeStore: LocalRouteStore(),
+                gymStore: LocalGymStore(),
+                foodStore: LocalFoodStore(),
+                preferences: prefs,
+                training: _PausedTraining(),
+              ),
+            ),
+          );
+          await tester.pump();
+          await tester.pump();
+          await tester.pump();
+
+          final card = find.byKey(const Key('dashboardPausedPlan'));
+          await tester.scrollUntilVisible(card, 200,
+              scrollable: find.byType(Scrollable).first);
+          expect(find.descendant(of: card, matching: find.text('Autumn Half')),
+              findsOneWidget);
+
+          await tester.tap(card);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 400));
+          final detail =
+              tester.widget<PlanDetailScreen>(find.byType(PlanDetailScreen));
+          expect(detail.planId, 'plan-paused');
+          expect(detail.openResume, isTrue);
+        } finally {
+          dir.deleteSync(recursive: true);
+        }
+      });
     });
 
     testWidgets(

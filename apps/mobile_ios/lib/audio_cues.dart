@@ -6,13 +6,13 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:run_recorder/run_recorder.dart' show
     PaceDriftEvent,
     StepProgressKind,
-    WorkoutStep,
-    WorkoutStepKind;
+    WorkoutStep;
 
 import 'l10n/gen/app_localizations.dart';
 import 'l10n/locale_support.dart';
 import 'race_phases.dart' show RacePhaseIntent;
 import 'turn_cues.dart' show TurnDirection;
+import 'workout_step_name.dart';
 import 'preferences.dart';
 
 /// Speaks running stats out loud (km splits, etc.) using text-to-speech.
@@ -179,31 +179,10 @@ String formatWorkoutStepUtterance(WorkoutStep step, DistanceUnit unit,
           ? l10n.ttsStepPaceKmWhole(paceM)
           : l10n.ttsStepPaceKm(paceM, paceS));
   final dist = formatSpokenDistance(step.targetDistanceMetres, unit, tag);
-  // A duration-based work rep is a walk-run "Run" interval; a distance-based
-  // one is an interval "Rep" (persona #22).
-  final durationBased = step.isDurationBased;
-  final hasIdx = step.repIndex != null && step.repTotal != null;
-  // An unpaced warm-up / cool-down is the walking one of a walk-run session:
-  // say so, or a beginner hears "Warmup" and starts running.
-  final intro = switch (step.kind) {
-    WorkoutStepKind.warmup =>
-      step.paced ? l10n.ttsStepWarmup : l10n.ttsStepWarmupWalk,
-    WorkoutStepKind.rep => hasIdx
-        ? (durationBased
-            ? l10n.ttsStepRunOf(step.repIndex!, step.repTotal!)
-            : l10n.ttsStepRepOf(step.repIndex!, step.repTotal!))
-        : (durationBased ? l10n.ttsStepRun : l10n.ttsStepRep),
-    WorkoutStepKind.recovery => l10n.ttsStepRecovery,
-    WorkoutStepKind.walk => hasIdx
-        ? l10n.ttsStepWalkOf(step.repIndex!, step.repTotal!)
-        : l10n.ttsStepWalk,
-    WorkoutStepKind.steady => l10n.ttsStepSteady,
-    WorkoutStepKind.cooldown =>
-      step.paced ? l10n.ttsStepCooldown : l10n.ttsStepCooldownWalk,
-  };
+  final intro = workoutStepName(step, l10n);
   // Time-based steps (walk-run intervals, timed warmup/cooldown) announce
   // their duration; distance-based steps announce distance + pace.
-  if (durationBased) {
+  if (step.isDurationBased) {
     return l10n.ttsStepDuration(intro, _spokenDuration(step.targetDurationSec!, l10n));
   }
   return l10n.ttsStepDistancePace(intro, dist, paceTail);

@@ -15,6 +15,9 @@
 	import { valueLimit, withinValueLimit } from '#lib/core/column_limits.ts';
 	import { ACTIVITY_LEVELS, type ActivityLevel, type WeightGoal } from '#lib/nutrition/nutrition_targets.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import UnsavedChangesGuard from '#lib/components/UnsavedChangesGuard.svelte';
+	import { trackDirty } from '#lib/core/form_dirty.ts';
+	import DateOfBirthInput from '#lib/components/DateOfBirthInput.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import type { Updatable } from '#lib/core/database.ts';
 	import { createPrefsPage } from '#lib/settings/prefs_page.svelte.ts';
@@ -63,6 +66,7 @@
 	let nutritionActivityLevel = $state<ActivityLevel>('moderate');
 	let nutritionGoal = $state<WeightGoal>('maintain');
 
+
 	const prefs = createPrefsPage(async ({ settings, preferredUnit }) => {
 		const storedWeightUnit = effective<string>(settings, 'weight_unit');
 		weightUnit =
@@ -95,7 +99,24 @@
 		loadedWeightKg = await fetchLatestWeightKg();
 		weightInput =
 			loadedWeightKg != null ? roundWeight(kgToDisplay(loadedWeightKg, weightUnit)) : null;
+		// The form is behind the loading skeleton until this resolves, so
+		// nothing typed can be absorbed into the baseline.
+		rebaselineDemographics();
 	});
+
+	// The two cards save differently on purpose (Art 9 demographics behind an
+	// explicit button, nutrition effort labels on change), so each card says
+	// which it is, and the explicit one says when it holds unsaved edits.
+	const demographics = trackDirty(() => ({ gender, dateOfBirth, heightCm, weightInput, healthDataConsent }));
+	let demographicsBaseline = $state(0);
+	const demographicsDirty = $derived.by(() => {
+		void demographicsBaseline;
+		return prefs.phase === 'ready' && demographics.isDirty();
+	});
+	function rebaselineDemographics() {
+		demographics.rebaseline();
+		demographicsBaseline++;
+	}
 
 	// Withdrawing consent (Art 7(3)) erases the saved height + the entire
 	// weight time-series — irreversible, so confirm before running the save.
@@ -217,6 +238,7 @@
 				await updateUniversal(auth.user.id, { body_weight_kg: kg });
 			}
 			demographicsSaved = true;
+			rebaselineDemographics();
 			showToast(m('prefs.demographicsSavedToast'), 'success');
 			setTimeout(() => (demographicsSaved = false), 2000);
 		} catch (e) {
@@ -257,16 +279,7 @@
 				<p class="hint" id="gender-hint">{m('prefs.genderHint')}</p>
 			</div>
 			<div class="field">
-				<label>
-					<span class="label-text">{m('prefs.dateOfBirth')}</span>
-					<input
-						type="date"
-						bind:value={dateOfBirth}
-						max={new Date().toISOString().slice(0, 10)}
-						aria-describedby="dob-purpose"
-						data-testid="date-of-birth"
-					/>
-				</label>
+				<DateOfBirthInput bind:value={dateOfBirth} label={m('prefs.dateOfBirth')} describedby="dob-purpose" />
 				<p class="hint" id="dob-purpose">{m('prefs.dateOfBirthPurpose')}</p>
 			</div>
 			<div class="field">
@@ -322,22 +335,44 @@
 		<!-- Unlike the other preference pages, demographics do NOT auto-save:
 		     they are Art 9 special-category data, so persisting them is a
 		     deliberate, consent-gated action behind this button. -->
-		<button
-			class="btn btn-primary btn-save"
-			type="button"
-			onclick={requestSaveDemographics}
-			disabled={savingDemographics || weightOutOfRange || heightOutOfRange}
-			data-testid="save-demographics"
-		>
-			{savingDemographics ? m('prefs.saving') : demographicsSaved ? m('prefs.demographicsSavedBtn') : m('prefs.saveDemographics')}
-		</button>
+		<div class="save-row">
+			<button
+				class="btn btn-primary btn-save"
+				type="button"
+				onclick={requestSaveDemographics}
+				disabled={savingDemographics || weightOutOfRange || heightOutOfRange}
+				aria-describedby="demographics-save-hint"
+				data-testid="save-demographics"
+			>
+				{savingDemographics ? m('prefs.saving') : demographicsSaved ? m('prefs.demographicsSavedBtn') : m('prefs.saveDemographics')}
+			</button>
+			<p class="save-hint" id="demographics-save-hint" role="status" data-testid="demographics-save-hint">
+				{#if demographicsDirty}
+					<span class="material-symbols" aria-hidden="true">edit_note</span>
+					<strong>{m('prefs.demographicsUnsaved')}</strong>
+				{:else}
+					{m('prefs.demographicsSaveHint')}
+				{/if}
+			</p>
+		</div>
 	</section>
 
 	<!-- Activity level + weight goal feed the Mifflin-St Jeor target on
 	     /nutrition. Effort labels, not body measurements, so they auto-save
 	     and aren't consent-gated. -->
 	<section class="card">
-		<h2>{m('prefs.nutritionTargetsHeading')}</h2>
+		<div class="card-head">
+			<h2>{m('prefs.nutritionTargetsHeading')}</h2>
+			<p class="autosave-note" role="status" aria-live="polite" data-testid="nutrition-save-status">
+				{#if prefs.status === 'saving'}
+					<span class="material-symbols spin" aria-hidden="true">progress_activity</span> {m('prefs.saving')}
+				{:else if prefs.status === 'saved'}
+					<span class="material-symbols" aria-hidden="true">check_circle</span> {m('prefs.saved')}
+				{:else}
+					{m('prefs.nutritionAutosaveHint')}
+				{/if}
+			</p>
+		</div>
 		<div class="form-grid">
 			<div class="field">
 				<label>
@@ -376,6 +411,8 @@
 	</section>
 </PrefsPage>
 
+<UnsavedChangesGuard isDirty={() => demographicsDirty} message={m('prefs.demographicsLeaveMessage')} />
+
 <ConfirmDialog
 	open={showWithdrawConfirm}
 	title={m('prefs.withdrawConsentTitle')}
@@ -391,4 +428,33 @@
 
 <style>
 	.btn-save { width: auto; }
+	.save-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-sm) var(--space-md);
+	}
+	.save-hint,
+	.autosave-note {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2xs);
+		margin: 0;
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+	}
+	.save-hint strong { color: var(--color-text); font-weight: 600; }
+	.save-hint .material-symbols,
+	.autosave-note .material-symbols { font-size: 1.1rem; }
+	.card-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: var(--space-xs) var(--space-md);
+	}
+	.card-head h2 { margin-bottom: 0; }
+	.spin { animation: spin 1s linear infinite; }
+	@keyframes spin { to { transform: rotate(360deg); } }
+	@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
 </style>

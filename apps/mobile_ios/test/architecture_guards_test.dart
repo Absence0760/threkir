@@ -885,6 +885,8 @@ void main() {
       r'Future<void> markSynced\(String runId\)',
       r'Future<void> markManySynced\(Iterable<Run> pushed\)',
       r'Future<void> clearPendingRemoteDelete\(String runId\)',
+      r'Future<void> adoptPushedEdit\(Run landed, PendingRunEdit sent\)',
+      r'Future<void> rebasePendingEdit\(Run server\)',
     ];
     for (final signature in runEntryPoints) {
       test('LocalRunStore.$signature is serialised', () {
@@ -1087,68 +1089,61 @@ void main() {
       );
     });
 
-    test('save() stamps metadata.last_modified_at', () {
-      // Reason: sync uses `metadata.last_modified_at` for newer-wins
-      // conflict resolution (see saveFromRemote). A local save that
-      // doesn't stamp can be silently clobbered by the next remote pull
-      // if the remote carries a later timestamp from a different device.
-      final body = _extractMethodBody(
-        source,
+    test('save() and update() stamp the device write clock', () {
+      // Reason: `metadata.last_modified_at` orders the summary index between
+      // this device's two isolates (`_persistIndex`); without it a background
+      // isolate's stale snapshot of an edited run wins the index merge. It no
+      // longer decides anything against the server (decisions § 2147).
+      for (final signature in [
         r'Future<Run> _save\(Run run\)\s*async\s*\{',
-      );
-      expect(
-        body,
-        contains('_withLastModified('),
-        reason: 'save() must route the incoming run through '
-            '_withLastModified so metadata.last_modified_at is set. '
-            'Without this, conflict resolution degrades to '
-            'created_at / started_at — incorrect after any local edit.',
-      );
+        r'Future<void> _update\(Run updated\)\s*async\s*\{',
+      ]) {
+        expect(
+          _extractMethodBody(source, signature),
+          contains('_withLastModified('),
+          reason: '$signature must stamp the write clock the index merge '
+              'orders on',
+        );
+      }
     });
 
-    test('update() stamps metadata.last_modified_at', () {
-      // Reason: same as save(). Edit-dialog changes (title, notes) flow
-      // through update(). If this stops stamping, web/watch edits to the
-      // same run can race and the older write silently wins.
+    test('the remote merge decides by pending edit, never by a clock', () {
+      // Reason: two devices' clocks disagree, so comparing their stamps let
+      // a stale copy beat a newer edit (decisions § 2147). A pulled row
+      // replaces a synced copy unless that copy has a pending edit, whose
+      // fields are laid on top of the row.
+      final body = _extractMethodBody(
+        source,
+        r'Future<\(\{Run merged, bool windowedOut\}\)\?> _mergeRemote\(Run run\)\s*async\s*\{',
+      );
+      expect(
+        body.contains('_lastModifiedOf('),
+        isFalse,
+        reason: 'no device clock may decide which copy of a run survives',
+      );
+      expect(body, contains('_pendingEdits'));
+      expect(body, contains('applyRunEditFields('));
+      for (final signature in [
+        r'Future<void> _saveFromRemote\(Run run\)\s*async\s*\{',
+        r'Future<bool> _writeRemoteBatch\(List<Run> runs\)\s*async\s*\{',
+      ]) {
+        final caller = _extractMethodBody(source, signature);
+        expect(caller, contains('_mergeRemote('),
+            reason: '$signature must take the one merge rule');
+        expect(caller.contains('_lastModifiedOf('), isFalse);
+      }
+    });
+
+    test('update() of a synced run records a pending field edit', () {
+      // Reason: the whole-row upsert re-uploads the track and writes every
+      // field back over whatever another device changed. A synced run's edit
+      // is pushed as a compare-and-swap of the fields it changed.
       final body = _extractMethodBody(
         source,
         r'Future<void> _update\(Run updated\)\s*async\s*\{',
       );
-      expect(
-        body,
-        contains('_withLastModified('),
-        reason: 'update() must call _withLastModified on the incoming '
-            'run. Newer-wins sync depends on this stamp — see '
-            'saveFromRemote for the counterparty.',
-      );
-    });
-
-    test('saveFromRemote() compares timestamps and preserves remote', () {
-      // Reason: this is the counterparty to save/update. The remote copy
-      // carries its own `last_modified_at`; overwriting it here would
-      // collapse the whole newer-wins mechanism into "last writer wins".
-      // The regex looks for the timestamp comparison that gates the
-      // preserve-local branch.
-      final body = _extractMethodBody(
-        source,
-        r'Future<void> _saveFromRemote\(Run run\)\s*async\s*\{',
-      );
-      expect(
-        body,
-        contains('_lastModifiedOf('),
-        reason: 'saveFromRemote() must call _lastModifiedOf() on both '
-            'the local and remote copies to decide which to keep. If '
-            'someone drops this comparison, the cloud will clobber '
-            'local-only edits on every sync.',
-      );
-      expect(
-        body.contains('_withLastModified('),
-        isFalse,
-        reason: 'saveFromRemote() must NOT stamp — it preserves the '
-            "remote's timestamp. Stamping here would make the local "
-            "copy look newer than the write that produced it, "
-            'breaking newer-wins on the NEXT sync.',
-      );
+      expect(body, contains('changedRunFields('));
+      expect(body, contains('PendingRunEdit('));
     });
   });
 
@@ -3905,6 +3900,35 @@ void main() {
     });
 
     test(
+      'fetchActiveOverview bounds its own read, so its saved-copy fallback '
+      'runs before any caller gives up',
+      () {
+        // A caller-side .timeout of the same length fires first and skips
+        // the fallback to the saved active plan (active_plan_cache.dart), so
+        // the deadline lives in the service and the callers await it bare.
+        final source = File('lib/training_service.dart').readAsStringSync();
+        final at = source.indexOf('Future<ActivePlanOverview?> fetchActiveOverview()');
+        expect(at, greaterThan(0));
+        final body = source.substring(at, source.indexOf('\n  }\n', at));
+        expect(body, contains('.timeout(kBackendLoadTimeout)'));
+        expect(body, contains('readActivePlanCache('));
+        for (final caller in const [
+          'lib/screens/run_screen.dart',
+          'lib/screens/home_screen.dart',
+          'lib/screens/dashboard_screen.dart',
+        ]) {
+          expect(
+            RegExp(r'fetchActiveOverview\(\)\s*\.timeout\(')
+                .hasMatch(File(caller).readAsStringSync()),
+            isFalse,
+            reason: '$caller wraps fetchActiveOverview in its own timeout, '
+                'which races the service deadline and loses the offline copy',
+          );
+        }
+      },
+    );
+
+    test(
       'run_screen.dart bounds every Supabase / training / social await '
       'with kBackendLoadTimeout',
       () {
@@ -3942,7 +3966,6 @@ void main() {
           'makeRunPrivate',
           'concludeLiveBroadcast',
           'fetchPlanForWorkout',
-          'fetchActiveOverview',
           'fetchNextRsvpedEvent',
           'fetchMyClubs',
         ];
@@ -5518,6 +5541,12 @@ void main() {
       'screens/nutrition_screen.dart::l10n.nutritionSaveAsRecipeTitle': 1,
       // Copies rather than replaces; the source plan is untouched.
       'screens/plan_detail_screen.dart::dl10n.planDetailDuplicateConfirmTitle': 1,
+      // Moves dates only; shifting back by the same amount restores them.
+      'screens/plan_detail_screen.dart::l10n.planDetailShiftTitle': 1,
+      // Restart copies the plan and retires the live one as abandoned, a
+      // status change that keeps its history; the second dialog is the
+      // race-ahead refusal, whose only action is dismissal.
+      'screens/plan_detail_screen.dart::l10n.planDetailRestartTitle': 2,
       // Abandon: a status change, not a deletion.
       'screens/plans_screen.dart::title': 1,
       // Visibility toggles and a share that only widens visibility.
@@ -5797,11 +5826,11 @@ void main() {
   // to reach. The rule is narrow: whatever the body interpolates, it may not
   // be a bare English label.
   test('the lock-screen notification body carries no English literal', () {
-    final src = File('lib/screens/run_screen.dart').readAsStringSync();
-    final match = RegExp(r'bigText:([\s\S]{0,400}?),\n\s*paused:').firstMatch(src);
+    final src = File('lib/run_notification_bridge.dart').readAsStringSync();
+    final match = RegExp(r'final statsBig =([\s\S]{0,400}?);\n').firstMatch(src);
     expect(match, isNotNull,
-        reason: 'could not find the bigText argument in run_screen.dart — if '
-            'the lock-screen body moved, move this guard with it');
+        reason: 'could not find the statsBig body in run_notification_bridge.dart '
+            '— if the lock-screen body moved, move this guard with it');
     final body = match!.group(1)!;
     for (final label in ['Time:', 'Distance:', 'Speed:', 'Pace:']) {
       expect(

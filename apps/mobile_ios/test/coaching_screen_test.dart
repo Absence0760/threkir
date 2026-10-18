@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ui_kit/ui_kit.dart' show IdentityAvatar;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
@@ -40,7 +41,8 @@ class _FakeApi extends ApiClient {
   Future<List<CoachRosterRow>> fetchCoachRosterSummary() async => roster;
 }
 
-CoachAthleteLink _link(String id, String userId, String? name) =>
+CoachAthleteLink _link(String id, String userId, String? name,
+        {String? avatarUrl}) =>
     CoachAthleteLink(
       id: id,
       status: 'active',
@@ -49,7 +51,7 @@ CoachAthleteLink _link(String id, String userId, String? name) =>
       acceptedAt: DateTime.utc(2026, 1, 2),
       userId: userId,
       displayName: name,
-      avatarUrl: null,
+      avatarUrl: avatarUrl,
     );
 
 Future<Preferences> _prefs() async {
@@ -193,6 +195,32 @@ void main() {
     await _pump(tester, api, prefs);
     expect(find.text('Alice Runner'), findsOneWidget);
     expect(find.text('Coach Bob'), findsOneWidget);
+  });
+
+  // The rows drew a bare CircleAvatar initial while the link already carried
+  // the uploaded photo's URL; web's coaching page had the same gap.
+  testWidgets('athlete and coach rows hand their avatar url to IdentityAvatar',
+      (tester) async {
+    final prefs = await _prefs();
+    final api = _FakeApi(
+      athletes: [
+        _link('l1', 'a1', 'Alice Runner',
+            avatarUrl: 'https://example.test/alice.jpg'),
+      ],
+      coaches: [
+        _link('l2', 'c1', 'Coach Bob',
+            avatarUrl: 'https://example.test/bob.jpg'),
+      ],
+    );
+    await _pump(tester, api, prefs);
+    final urls = tester
+        .widgetList<IdentityAvatar>(find.byType(IdentityAvatar))
+        .map((a) => a.imageUrl)
+        .toSet();
+    expect(urls, containsAll(<String>[
+      'https://example.test/alice.jpg',
+      'https://example.test/bob.jpg',
+    ]));
   });
 
   testWidgets('shows a pending invite with copy/share/revoke actions',

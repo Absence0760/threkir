@@ -112,6 +112,14 @@ class SettingsKeys {
   static const timeZone = 'time_zone';
   static const weeklyMileageGoalMetres = 'weekly_mileage_goal_m';
   static const weekStartDay = 'week_start_day';
+  /// GDPR Art 9 reproductive-health settings behind the cycle / pregnancy
+  /// plan adjustment (decisions § 231): written only under the cycle-plans
+  /// gate AND health-data consent, nulled on withdrawal, so a value present
+  /// here is consented data. Read on mobile only under `cyclePlansGate`.
+  static const cycleTrackingMode = 'cycle_tracking_mode';
+  static const cycleLengthDays = 'cycle_length_days';
+  static const cycleLastPeriodStart = 'cycle_last_period_start';
+  static const pregnancyDueDate = 'pregnancy_due_date';
   static const mapStyle = 'map_style';
   static const unitsPaceFormat = 'units_pace_format';
   /// Display + entry unit for body weight and lift weights (Phase 4
@@ -154,6 +162,10 @@ class SettingsKeys {
   /// measured max. Server-gated on health-data consent and dropped on its
   /// withdrawal (decisions § 2092). Web twin: `hr_medication_affected`.
   static const hrMedicationAffected = 'hr_medication_affected';
+  /// Ask new training plans for the masters recovery calibration (72 h
+  /// hard-day spacing + a 3-week cycle) at any age; it only ever adds
+  /// recovery (decisions § 93). Web twin: `EXTRA_RECOVERY_KEY`.
+  static const extraRecovery = 'extra_recovery';
   /// Explicit show/hide choice for the mobile Gym surfaces (Fitness hub tab,
   /// Log action, Home cards). Absent = shown only once a lift is logged.
   /// Mobile-only reader; web has no equivalent toggle (settings.md).
@@ -206,6 +218,21 @@ class SettingsKeys {
   /// property of the recording phone. L4 (read/write failure never
   /// touches the recording).
   static const safetyNudgeDismissedAt = 'safety_nudge_dismissed_at';
+
+  /// When the runner last dismissed Home's "build a plan from your recent
+  /// 5K" suggestion, as a UTC ISO-8601 instant; absent = never. Universal so
+  /// web and phone agree. Only a run started after it brings the suggestion
+  /// back (`pickRecent5k`, `recent_5k_suggestion.dart`).
+  static const planSuggestionDismissedAt = 'plan_suggestion_dismissed_at';
+
+  /// Home plan-card occurrences the runner dismissed or reviewed, each
+  /// `<plan id>:<kind>:<week index>`, newest last, at most 20
+  /// (`withDismissedNudge`, `plan_nudges.dart`).
+  static const planNudgesDismissed = 'plan_nudges_dismissed';
+  /// The last break-of-a-week-or-more offer the runner answered, as
+  /// `{plan_id, from, until}` (decisions § 2128). Universal so web and phone
+  /// stop offering the same break, and so the plan nudge skips its weeks.
+  static const planBreakDismissed = 'plan_break_dismissed';
 }
 
 /// Pluggable on-device cache for the two prefs bags. The mobile app

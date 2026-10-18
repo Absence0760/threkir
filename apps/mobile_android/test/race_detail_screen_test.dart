@@ -1,4 +1,5 @@
 import 'package:api_client/api_client.dart' show UltraSignUpPersonLink;
+import 'package:core_models/core_models.dart' show TrainingPlanRow;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -6,6 +7,17 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/race_service.dart';
 import '../lib/screens/race_detail_screen.dart';
 import '../lib/training.dart' show toIsoDate;
+import '../lib/training_service.dart';
+
+class _FakeTraining extends TrainingService {
+  List<TrainingPlanRow> plans = const [];
+
+  @override
+  Future<List<TrainingPlanRow>> fetchMyPlans() async => plans;
+
+  @override
+  Future<PlanRunHistory?> fetchPlanRunHistory() async => null;
+}
 
 class _FakeRaceService extends RaceService {
   RaceListingView? listing;
@@ -66,6 +78,7 @@ RaceListingView _listing({
   String provider = 'manual',
   required String raceDate,
   String? entryUrl,
+  RaceListingCourse? course,
 }) =>
     RaceListingView(
       id: '11111111-1111-4111-8111-111111111111',
@@ -79,16 +92,39 @@ RaceListingView _listing({
       resultsUrl: null,
       isVerified: true,
       distanceMAway: null,
+      course: course,
     );
 
-Widget _app(RaceService service) => MaterialApp(
+Widget _app(RaceService service, {_FakeTraining? training, bool aiPlan = false}) =>
+    MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: RaceDetailScreen(
         service: service,
         listingId: '11111111-1111-4111-8111-111111111111',
+        training: training ?? _FakeTraining(),
+        loadAiPlanAvailable: () async => aiPlan,
       ),
     );
+
+TrainingPlanRow _activePlan({required String name, required int endsInDays}) {
+  final end = DateTime.now().add(Duration(days: endsInDays));
+  return TrainingPlanRow(
+    id: 'plan-before',
+    userId: 'user-a',
+    name: name,
+    goalEvent: 'distance_10k',
+    goalDistanceM: 10000,
+    startDate: end.subtract(const Duration(days: 55)),
+    endDate: end,
+    daysPerWeek: 4,
+    status: 'active',
+    source: 'generated',
+    rules: const [],
+    isTemplate: false,
+    isPublicTemplate: false,
+  );
+}
 
 void main() {
   testWidgets('a future race offers the race page and says when the import opens',
@@ -146,6 +182,43 @@ void main() {
     await tester.pump(const Duration(seconds: 4));
   });
 
+  testWidgets('a listing on a public course shows the course summary',
+      (tester) async {
+    final service = _FakeRaceService(
+      listing: _listing(
+        raceDate: _isoDaysOut(60),
+        course: const RaceListingCourse(
+            distanceM: 42195, ascentM: 180, surface: 'road'),
+      ),
+    );
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    await tester.pump();
+
+    final course = find.byKey(const Key('race-detail-course'));
+    expect(course, findsOneWidget);
+    expect(find.descendant(of: course, matching: find.text('Course')),
+        findsOneWidget);
+    expect(
+      find.descendant(
+          of: course, matching: find.textContaining('180 m elevation gain')),
+      findsOneWidget,
+    );
+    expect(find.descendant(of: course, matching: find.textContaining('Road')),
+        findsOneWidget);
+  });
+
+  testWidgets('a listing with no visible course shows no course section',
+      (tester) async {
+    final service = _FakeRaceService(listing: _listing(raceDate: _isoDaysOut(60)));
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Moab Marathon'), findsWidgets);
+    expect(find.byKey(const Key('race-detail-course')), findsNothing);
+  });
+
   testWidgets('a listing that no longer exists reads as not found', (tester) async {
     final service = _FakeRaceService(listing: null);
     await tester.pumpWidget(_app(service));
@@ -170,6 +243,46 @@ void main() {
     await tester.pump();
     expect(service.listingCalls, 2);
     expect(find.text('Added by a runner'), findsOneWidget);
+  });
+
+  testWidgets('a future race offers one primary build action and no AI action while it is off',
+      (tester) async {
+    final service = _FakeRaceService(listing: _listing(raceDate: _isoDaysOut(120)));
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.widgetWithText(FilledButton, 'Build a plan for this race'), findsOneWidget);
+    expect(find.byKey(const Key('race-detail-tailor-ai')), findsNothing);
+    expect(find.byKey(const Key('race-detail-add-to-season')), findsNothing);
+    expect(find.byKey(const Key('race-detail-season-hint')), findsNothing);
+  });
+
+  testWidgets('with the AI plan assistant live, "Tailor it with AI" sits beside it',
+      (tester) async {
+    final service = _FakeRaceService(listing: _listing(raceDate: _isoDaysOut(120)));
+    await tester.pumpWidget(_app(service, aiPlan: true));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.widgetWithText(FilledButton, 'Build a plan for this race'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Tailor it with AI'), findsOneWidget);
+  });
+
+  testWidgets('an active plan ending before the race offers "Add to my season" first',
+      (tester) async {
+    final service = _FakeRaceService(listing: _listing(raceDate: _isoDaysOut(120)));
+    final training = _FakeTraining()
+      ..plans = [_activePlan(name: 'Autumn 10k', endsInDays: 30)];
+    await tester.pumpWidget(_app(service, training: training));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.widgetWithText(FilledButton, 'Add to my season'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Build a plan for this race'), findsOneWidget);
+    expect(find.textContaining('Starts after Autumn 10k ends on'), findsOneWidget);
+    expect(find.textContaining('with 3 days to recover'), findsOneWidget);
   });
 
   test('raceShareUrl points at the public share page', () {

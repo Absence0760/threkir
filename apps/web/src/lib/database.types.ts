@@ -3097,6 +3097,7 @@ export type Database = {
           id: string
           kind: Database["public"]["Enums"]["workout_kind"]
           manually_completed: boolean
+          missed_ack_at: string | null
           notes: string | null
           pace_zone: string | null
           race_name: string | null
@@ -3124,6 +3125,7 @@ export type Database = {
           id?: string
           kind: Database["public"]["Enums"]["workout_kind"]
           manually_completed?: boolean
+          missed_ack_at?: string | null
           notes?: string | null
           pace_zone?: string | null
           race_name?: string | null
@@ -3151,6 +3153,7 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["workout_kind"]
           manually_completed?: boolean
+          missed_ack_at?: string | null
           notes?: string | null
           pace_zone?: string | null
           race_name?: string | null
@@ -3272,6 +3275,7 @@ export type Database = {
           provider_race_id: string | null
           race_date: string
           results_url: string | null
+          route_id: string | null
           submitted_by: string | null
           updated_at: string
         }
@@ -3288,6 +3292,7 @@ export type Database = {
           provider_race_id?: string | null
           race_date: string
           results_url?: string | null
+          route_id?: string | null
           submitted_by?: string | null
           updated_at?: string
         }
@@ -3304,10 +3309,33 @@ export type Database = {
           provider_race_id?: string | null
           race_date?: string
           results_url?: string | null
+          route_id?: string | null
           submitted_by?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "race_listings_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "race_listings_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "race_listings_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "shared_routes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       race_pings: {
         Row: {
@@ -4878,6 +4906,8 @@ export type Database = {
           name: string
           notes: string | null
           parent_template_id: string | null
+          paused_at: string | null
+          race_listing_id: string | null
           rules: Json | null
           source: string
           start_date: string
@@ -4903,6 +4933,8 @@ export type Database = {
           name: string
           notes?: string | null
           parent_template_id?: string | null
+          paused_at?: string | null
+          race_listing_id?: string | null
           rules?: Json | null
           source?: string
           start_date: string
@@ -4928,6 +4960,8 @@ export type Database = {
           name?: string
           notes?: string | null
           parent_template_id?: string | null
+          paused_at?: string | null
+          race_listing_id?: string | null
           rules?: Json | null
           source?: string
           start_date?: string
@@ -4950,6 +4984,20 @@ export type Database = {
             columns: ["parent_template_id"]
             isOneToOne: false
             referencedRelation: "training_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_plans_race_listing_id_fkey"
+            columns: ["race_listing_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_plans_race_listing_id_fkey"
+            columns: ["race_listing_id"]
+            isOneToOne: false
+            referencedRelation: "race_listings"
             referencedColumns: ["id"]
           },
         ]
@@ -5483,6 +5531,9 @@ export type Database = {
       }
       public_race_listings: {
         Row: {
+          course_distance_m: number | null
+          course_elevation_m: number | null
+          course_surface: string | null
           created_at: string | null
           distance_m: number | null
           entry_url: string | null
@@ -5496,36 +5547,6 @@ export type Database = {
           race_date: string | null
           results_url: string | null
           updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          distance_m?: number | null
-          entry_url?: string | null
-          id?: string | null
-          is_verified?: boolean | null
-          location_label?: string | null
-          location_point?: unknown
-          name?: string | null
-          provider?: string | null
-          provider_race_id?: string | null
-          race_date?: string | null
-          results_url?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          distance_m?: number | null
-          entry_url?: string | null
-          id?: string | null
-          is_verified?: boolean | null
-          location_label?: string | null
-          location_point?: unknown
-          name?: string | null
-          provider?: string | null
-          provider_race_id?: string | null
-          race_date?: string | null
-          results_url?: string | null
-          updated_at?: string | null
         }
         Relationships: []
       }
@@ -5912,6 +5933,10 @@ export type Database = {
       }
       ai_disclosure_current_version: { Args: never; Returns: number }
       am_i_admin: { Args: never; Returns: boolean }
+      answer_missed_workouts: {
+        Args: { p_changes?: Json; p_plan_id: string; p_workout_ids: string[] }
+        Returns: undefined
+      }
       apply_workout_adjustments: {
         Args: { p_changes: Json; p_plan_id: string }
         Returns: undefined
@@ -6031,6 +6056,19 @@ export type Database = {
           user_id: string
           value: number
         }[]
+      }
+      change_plan_race_date: {
+        Args: {
+          p_drop_week_ids?: string[]
+          p_insert_at?: number
+          p_insert_count?: number
+          p_plan_id: string
+          p_race_date: string
+          p_race_workout_id?: string
+          p_repeat_week_id?: string
+          p_today: string
+        }
+        Returns: undefined
       }
       check_rate_limit: {
         Args: {
@@ -6962,11 +7000,30 @@ export type Database = {
         Args: { p_bucket: string; p_spend_id: string; p_user_id: string }
         Returns: boolean
       }
+      repeat_plan_week: {
+        Args: {
+          p_drop_week_id?: string
+          p_plan_id: string
+          p_today: string
+          p_week_id: string
+        }
+        Returns: string
+      }
       request_distance_recompute: {
         Args: { p_run_id: string }
         Returns: undefined
       }
       request_follow: { Args: { p_target: string }; Returns: string }
+      reschedule_plan_after_break: {
+        Args: {
+          p_break_from: string
+          p_drop_week_ids?: string[]
+          p_plan_id: string
+          p_repeat_week_ids: string[]
+          p_today: string
+        }
+        Returns: undefined
+      }
       reschedule_plan_workouts: {
         Args: { p_moves: Json; p_plan_id: string }
         Returns: undefined
@@ -6979,6 +7036,18 @@ export type Database = {
           p_target_kind: string
         }
         Returns: number
+      }
+      restart_training_plan: {
+        Args: { p_plan_id: string; p_start_date: string }
+        Returns: string
+      }
+      resume_training_plan: {
+        Args: {
+          p_from_week_index?: number
+          p_plan_id: string
+          p_shift_weeks?: number
+        }
+        Returns: undefined
       }
       revoke_plan_calendar_feed: { Args: never; Returns: boolean }
       revoke_unmet_distance_achievements: {
@@ -7311,6 +7380,15 @@ export type Database = {
         Returns: boolean
       }
       set_my_handle: { Args: { p_handle: string }; Returns: string }
+      set_plan_goal_time: {
+        Args: {
+          p_changes: Json
+          p_goal_time_seconds: number
+          p_plan_id: string
+          p_vdot: number
+        }
+        Returns: undefined
+      }
       set_push_subscription: {
         Args: {
           p_device_id: string

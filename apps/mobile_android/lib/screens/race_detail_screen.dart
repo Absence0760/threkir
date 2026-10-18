@@ -1,10 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show ActivityLoaderKind, FullBodyLoader;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/gen/app_localizations.dart';
-import '../preferences.dart' show formatDistanceForPref, formatEffortTime;
+import '../preferences.dart'
+    show formatDistanceForPref, formatEffortTime, formatElevationForPref;
+import '../pro_sellable.dart' show fetchAiPlanAvailable;
+import '../race_plan_prefill.dart';
 import '../race_plan_preset.dart';
+import '../race_predictor.dart' show predictRaceLadder;
 import '../race_service.dart';
 import '../share_sheet.dart';
 import '../training.dart' show toIsoDate;
@@ -12,6 +18,7 @@ import '../training_service.dart';
 import '../web_base_url.dart';
 import '../widgets/error_state.dart';
 import '../widgets/top_banner.dart';
+import 'global_segments_screen.dart' show catalogueSurfaceLabel;
 import 'plan_new_screen.dart';
 import 'races_screen.dart' show showRaceImportSheet;
 
@@ -50,11 +57,15 @@ class RaceDetailScreen extends StatefulWidget {
   /// Test-only DI seam for the plan wizard the train action opens.
   final TrainingService? training;
 
+  /// Test-only DI seam for whether the AI plan assistant is live.
+  final Future<bool> Function()? loadAiPlanAvailable;
+
   const RaceDetailScreen({
     super.key,
     required this.service,
     required this.listingId,
     this.training,
+    this.loadAiPlanAvailable,
   });
 
   @override
@@ -67,6 +78,11 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
   bool _loadFailed = false;
   List<RaceListingRun> _runs = const [];
   bool _runsFailed = false;
+  List<RacePlanOwnPlan> _ownPlans = const [];
+  RacePlanEffort? _recentEffort;
+  // Fail-closed: the AI action stays hidden until the deploy says the
+  // assistant is live.
+  bool _aiPlan = false;
 
   late final TrainingService _training = widget.training ?? TrainingService();
 
@@ -95,7 +111,53 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
       _loadFailed = failed;
       _loading = false;
     });
-    if (race != null) await _loadRuns();
+    if (race != null) {
+      unawaited(_loadPlanContext());
+      await _loadRuns();
+    }
+  }
+
+  // Auxiliary to the race-to-plan actions: a failed read leaves the plain
+  // "Build a plan" action, never an error on the race screen.
+  Future<void> _loadPlanContext() async {
+    try {
+      final plans = await _training.fetchMyPlans();
+      if (!mounted) return;
+      setState(() => _ownPlans = [
+            for (final p in plans)
+              RacePlanOwnPlan(
+                id: p.id,
+                name: p.name,
+                status: p.status,
+                endDateIso: toIsoDate(p.endDate),
+                goalDistanceM: p.goalDistanceM,
+                goalTimeSeconds: p.goalTimeSeconds,
+              ),
+          ]);
+    } catch (e) {
+      debugPrint('RaceDetailScreen: plan read failed: $e');
+    }
+    var ai = false;
+    try {
+      ai = await (widget.loadAiPlanAvailable ?? fetchAiPlanAvailable)();
+    } catch (e) {
+      debugPrint('RaceDetailScreen: AI plan capability lookup failed: $e');
+    }
+    if (!mounted || !ai) return;
+    setState(() => _aiPlan = true);
+    try {
+      final history = await _training.fetchPlanRunHistory();
+      final anchor =
+          history == null ? null : predictRaceLadder(history.efforts)?.anchor;
+      if (!mounted || anchor == null) return;
+      setState(() => _recentEffort = RacePlanEffort(
+            distanceM: anchor.distanceM,
+            durationS: anchor.durationS,
+            ageDays: anchor.ageDays,
+          ));
+    } catch (e) {
+      debugPrint('RaceDetailScreen: recent-effort read failed: $e');
+    }
   }
 
   Future<void> _loadRuns() async {
@@ -111,7 +173,11 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
     }
   }
 
-  Future<void> _trainFor(RaceListingView race) async {
+  Future<void> _trainFor(
+    RaceListingView race, {
+    String? notBeforeIso,
+    String? describe,
+  }) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => PlanNewScreen(
@@ -119,6 +185,10 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
           raceDateIso: race.raceDate,
           raceName: race.name,
           raceDistanceM: race.distanceM,
+          raceListingId: race.id,
+          notBeforeIso: notBeforeIso,
+          initialDescription: describe,
+          loadAiPlanAvailable: widget.loadAiPlanAvailable,
         ),
       ),
     );
@@ -198,6 +268,38 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
       distanceM: race.distanceM,
       todayIso: today,
     ).ok;
+    final planRace = RacePlanRace(
+      name: race.name,
+      raceDateIso: race.raceDate,
+      distanceM: race.distanceM,
+    );
+    // A plan ending before this race: the new plan queues behind it rather
+    // than replacing or trimming it (decisions § 2008, § 2154).
+    final chain = canTrainFor ? racePlanChain(_ownPlans, planRace, today) : null;
+    final course = race.course;
+    final describe = canTrainFor && _aiPlan
+        ? racePlanDescribe(
+            race: planRace,
+            goalTimeS: racePlanGoalTimeS(_ownPlans, race.raceDate),
+            recentEffort: _recentEffort,
+            course: course == null
+                ? null
+                : RacePlanCourse(
+                    ascentM: course.ascentM,
+                    surface: course.surface,
+                  ),
+          )
+        : null;
+    final courseParts = <String>[
+      if (course != null) ...[
+        if ((course.distanceM ?? 0) > 0)
+          formatDistanceForPref(course.distanceM!),
+        if ((course.ascentM ?? 0) > 0)
+          l.racesCourseGain(formatElevationForPref(course.ascentM)),
+        if ((course.surface ?? '').isNotEmpty)
+          catalogueSurfaceLabel(l, course.surface!),
+      ],
+    ];
     final meta = <String>[
       race.raceDate,
       if (race.distanceM != null) formatDistanceForPref(race.distanceM!.toDouble()),
@@ -225,10 +327,31 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            if (canTrainFor)
+            if (chain != null)
+              FilledButton(
+                key: const Key('race-detail-add-to-season'),
+                onPressed: () =>
+                    _trainFor(race, notBeforeIso: chain.notBeforeIso),
+                child: Text(l.racesAddToSeason),
+              ),
+            if (canTrainFor && chain != null)
               OutlinedButton(
+                key: const Key('race-detail-train'),
                 onPressed: () => _trainFor(race),
-                child: Text(l.racesTrainForThis),
+                child: Text(l.racesBuildPlan),
+              )
+            else if (canTrainFor)
+              FilledButton(
+                key: const Key('race-detail-train'),
+                onPressed: () => _trainFor(race),
+                child: Text(l.racesBuildPlan),
+              ),
+            if (describe != null)
+              OutlinedButton(
+                key: const Key('race-detail-tailor-ai'),
+                onPressed: () => _trainFor(race,
+                    notBeforeIso: chain?.notBeforeIso, describe: describe),
+                child: Text(l.racesTailorWithAi),
               ),
             if (race.entryUrl != null)
               OutlinedButton(
@@ -253,6 +376,16 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
               ),
           ],
         ),
+        if (chain != null)
+          Padding(
+            key: const Key('race-detail-season-hint'),
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              l.racesAddToSeasonHint(
+                  chain.planName, chain.planEndIso, '${chain.recoveryDays}'),
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
         if (!canImport)
           Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -261,6 +394,18 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
               style: theme.textTheme.bodySmall,
             ),
           ),
+        if (courseParts.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Column(
+            key: const Key('race-detail-course'),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l.racesCourseHeading, style: theme.textTheme.titleMedium),
+              const SizedBox(height: 4),
+              Text(courseParts.join(' · '), style: theme.textTheme.bodyMedium),
+            ],
+          ),
+        ],
         const SizedBox(height: 24),
         Text(l.racesDetailYourRuns, style: theme.textTheme.titleMedium),
         const SizedBox(height: 8),

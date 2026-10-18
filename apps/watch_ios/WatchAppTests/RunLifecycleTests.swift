@@ -61,7 +61,7 @@ final class RunLifecycleTests: XCTestCase {
 
     private func silentAnnouncer() -> RunAnnouncer {
         let announcer = RunAnnouncer()
-        announcer.speak = { _ in }
+        announcer.speak = { _, _ in }
         announcer.isEnabled = { true }
         announcer.prefersMiles = { false }
         return announcer

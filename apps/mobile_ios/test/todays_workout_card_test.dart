@@ -11,6 +11,8 @@ PlanWorkoutRow _workout({
   int? targetPaceSecPerKm = 330,
   String? completedRunId,
   DateTime? skippedAt,
+  int? targetDurationSeconds,
+  Object? structure,
 }) =>
     PlanWorkoutRow(
       id: 'wo1',
@@ -22,6 +24,8 @@ PlanWorkoutRow _workout({
       completedRunId: completedRunId,
       skippedAt: skippedAt,
       manuallyCompleted: false,
+      targetDurationSeconds: targetDurationSeconds,
+      structure: structure,
     );
 
 Future<void> _pump(
@@ -29,6 +33,7 @@ Future<void> _pump(
   PlanWorkoutRow workout, {
   VoidCallback? onTap,
   VoidCallback? onStart,
+  double? overrunMetres,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -39,6 +44,7 @@ Future<void> _pump(
           workout: workout,
           onTap: onTap,
           onStart: onStart,
+          overrunMetres: overrunMetres,
         ),
       ),
     ),
@@ -47,6 +53,40 @@ Future<void> _pump(
 
 void main() {
   group('TodaysWorkoutCard', () {
+    testWidgets('a walk-run session reads as its minutes, with no km and no pace',
+        (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pump(
+        tester,
+        _workout(
+          kind: 'walk_run',
+          targetDistanceM: 2050,
+          targetPaceSecPerKm: 732,
+          targetDurationSeconds: 1710,
+          structure: {
+            'warmup': {'duration_s': 300, 'pace': 'easy'},
+            'repeats': {
+              'count': 8,
+              'duration_s': 60,
+              'recovery_duration_s': 90,
+              'recovery_pace': 'walk',
+            },
+            'cooldown': {'duration_s': 300, 'pace': 'easy'},
+          },
+        ),
+        onTap: () {},
+      );
+      expect(
+          find.descendant(
+              of: find.byKey(const Key('todaysWorkoutSize')),
+              matching: find.text('29 min')),
+          findsOneWidget);
+      expect(find.textContaining('km'), findsNothing);
+      expect(find.textContaining('/km'), findsNothing);
+      expect(find.bySemanticsLabel(RegExp(r'Walk-run, 29 min$')), findsOneWidget);
+      semantics.dispose();
+    });
+
     testWidgets('renders "TODAY\'S WORKOUT" label for an incomplete workout',
         (tester) async {
       await _pump(tester, _workout());
@@ -58,6 +98,25 @@ void main() {
       await _pump(tester, _workout(completedRunId: 'run-1'));
       expect(find.text('DONE TODAY'), findsOneWidget);
       expect(find.byIcon(Icons.check_circle), findsOneWidget);
+    });
+
+    testWidgets('a done workout run long reads "DONE TODAY · +3 km"',
+        (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pump(tester, _workout(completedRunId: 'run-1'),
+          onTap: () {}, overrunMetres: 3000);
+      expect(find.text('DONE TODAY · +3 km'), findsOneWidget);
+      expect(
+          find.bySemanticsLabel(
+              RegExp(r'^DONE TODAY, 3 km more than planned, Tempo, ')),
+          findsOneWidget);
+      semantics.dispose();
+    });
+
+    testWidgets('an over-run is not shown on a workout not yet done',
+        (tester) async {
+      await _pump(tester, _workout(), overrunMetres: 3000);
+      expect(find.textContaining('+3 km'), findsNothing);
     });
 
     testWidgets('renders the workout kind label', (tester) async {

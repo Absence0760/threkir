@@ -2,7 +2,7 @@
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount, tick } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';
-	import { formatDate, formatDuration } from '#lib/format/time.ts';
+	import { formatDuration } from '#lib/format/time.ts';
 	import {
 		fetchActivities,
 		fetchActivitiesWithError,
@@ -14,10 +14,12 @@
 	import GymEditor from '#lib/components/GymEditor.svelte';
 	import LogFoodPanel from '#lib/components/LogFoodPanel.svelte';
 	import Modal from '#lib/components/Modal.svelte';
+	import TimelineDayList, { type TimelineItem } from '#lib/components/TimelineDayList.svelte';
+	import { groupByLocalDay } from '#lib/timeline/day_groups.ts';
 	import { goto } from '$app/navigation';
 	import { formatWeight } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
-	import { modalityVisible } from '#lib/stores/modality_visibility.svelte.ts';
+	import { hasNonRunData, modalityVisible } from '#lib/stores/modality_visibility.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import type { Snapshot } from './$types';
 	import { isListStale, listToken } from '#lib/core/list_freshness.ts';
@@ -64,27 +66,32 @@
 	let timelineRows = $derived(
 		kindFilter === 'all' ? activityFeed : activityFeed.filter((a) => a.kind === kindFilter),
 	);
-	let timelineGroups = $derived.by(() => {
-		const today = new Date();
-		today.setHours(0, 0, 0, 0);
-		const yesterday = new Date(today);
-		yesterday.setDate(yesterday.getDate() - 1);
-		const groups: { key: string; label: string; rows: ActivityRow[] }[] = [];
-		let cur: { key: string; label: string; rows: ActivityRow[] } | null = null;
-		for (const a of timelineRows) {
-			const d = new Date(a.started_at);
-			d.setHours(0, 0, 0, 0);
-			let label: string;
-			if (d.getTime() === today.getTime()) label = m('history.today');
-			else if (d.getTime() === yesterday.getTime()) label = m('history.yesterday');
-			else label = formatDate(a.started_at);
-			if (!cur || cur.key !== label) {
-				cur = { key: label, label, rows: [] };
-				groups.push(cur);
-			}
-			cur.rows.push(a);
-		}
-		return groups;
+	let timelineGroups = $derived(
+		groupByLocalDay(
+			timelineRows.map((a): TimelineItem & { startedAt: string } => {
+				const sum = activitySummary(a);
+				return {
+					id: a.id,
+					kind: a.kind,
+					glyph: activityGlyph(a.kind),
+					href: activityHref(a),
+					primary: sum.primary,
+					secondary: sum.secondary,
+					startedAt: a.started_at,
+				};
+			}),
+			(item) => item.startedAt,
+		),
+	);
+
+	// A runner who has logged nothing but runs gets nothing here that /runs
+	// does not already show, so the sidebar hides History for them and a
+	// direct visit lands on the run list's day-grouped view instead, over all
+	// time as History was (decisions § 2117). Waits for the presence reads:
+	// null is "not known yet", never "no".
+	let runOnly = $derived(auth.user != null && hasNonRunData() === false);
+	$effect(() => {
+		if (runOnly) void goto('/runs?view=list&range=all', { replace: true });
 	});
 	function activitySummary(a: ActivityRow): { primary: string; secondary: string } {
 		const s = a.summary;
@@ -394,28 +401,11 @@
 	<h1 class="visually-hidden">{m('history.timelineHeading')}</h1>
 
 	{#snippet timelineSkeleton()}
-		<div class="timeline timeline-skel" aria-hidden="true">
-			{#each Array(2) as _, g (g)}
-				<div class="timeline-group">
-					<span class="skel skel-line skel-day"></span>
-					<ul class="timeline-list card-elevated">
-						{#each Array(4) as _, i (i)}
-							<li class="timeline-item">
-								<span class="skel skel-glyph"></span>
-								<span class="skel-rows">
-									<span class="skel skel-line skel-w-50"></span>
-									<span class="skel skel-line skel-w-30"></span>
-								</span>
-							</li>
-						{/each}
-					</ul>
-				</div>
-			{/each}
-		</div>
+		<TimelineDayList groups={[]} placeholder />
 		<p class="sr-only" role="status">{m('runs.loadingRuns')}</p>
 	{/snippet}
 
-	{#if !activitiesReady}
+	{#if !activitiesReady || runOnly}
 		{@render timelineSkeleton()}
 	{:else}
 		<!-- One consistent header per tab: kind chips on the leading edge (only
@@ -525,41 +515,7 @@
 			     Each row taps through to its own detail route; meals have no
 			     detail screen yet (nutrition module pending) so they render
 			     read-only rather than linking to a 404. -->
-			<div class="timeline">
-				{#each timelineGroups as g (g.key)}
-					<section class="timeline-group">
-						<h2 class="timeline-day">{g.label}</h2>
-						<ul class="timeline-list card-elevated">
-							{#each g.rows as a (a.id)}
-								{@const sum = activitySummary(a)}
-								{@const href = activityHref(a)}
-								<li class="timeline-item">
-									<svelte:element
-										this={href ? 'a' : 'div'}
-										href={href ?? undefined}
-										class="timeline-row"
-										class:timeline-row-link={href != null}
-										data-kind={a.kind}
-									>
-										<span class="timeline-glyph" data-kind={a.kind} aria-hidden="true">
-											<span class="material-symbols">{activityGlyph(a.kind)}</span>
-										</span>
-										<span class="timeline-main">
-											<span class="timeline-primary">{sum.primary}</span>
-											{#if sum.secondary}
-												<span class="timeline-secondary">{sum.secondary}</span>
-											{/if}
-										</span>
-										{#if href}
-											<span class="material-symbols timeline-arrow" aria-hidden="true">chevron_right</span>
-										{/if}
-									</svelte:element>
-								</li>
-							{/each}
-						</ul>
-					</section>
-				{/each}
-			</div>
+			<TimelineDayList groups={timelineGroups} />
 		{/if}
 	{/if}
 </div>
@@ -773,108 +729,7 @@
 		}
 	}
 
-	/* --- Timeline --- */
-	/* Day groups flow into a responsive multi-column grid on wide canvases
-	   so the timeline fills the page instead of stranding the right ~40% as
-	   dead space, while each day card keeps a readable row width. Collapses to
-	   one column below ~64rem (and on mobile). Most-recent day is top-left;
-	   cells read left-to-right, top-to-bottom. */
-	.timeline {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(min(30rem, 100%), 1fr));
-		gap: var(--space-xl);
-		align-items: start;
-	}
-	.timeline-group {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-sm);
-	}
-	.timeline-day {
-		font-size: 0.75rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--color-text-tertiary);
-		margin: 0;
-		padding-inline-start: var(--space-2xs);
-	}
-	/* One elevated panel per day; rows are separated by hairline
-	   dividers rather than each being its own bordered box. */
-	.timeline-list {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		overflow: hidden;
-	}
-	.timeline-item + .timeline-item {
-		border-top: 1px solid var(--color-border);
-	}
-	.timeline-row {
-		display: flex;
-		align-items: center;
-		gap: var(--space-md);
-		padding: var(--space-sm) var(--space-md);
-		text-decoration: none;
-		color: inherit;
-		transition: background var(--transition-fast);
-	}
-	.timeline-row-link:hover { background: var(--color-bg-secondary); }
-	.timeline-row-link:focus-visible {
-		outline: 2px solid var(--color-primary);
-		outline-offset: -2px;
-		border-radius: var(--radius-sm);
-	}
-	/* card-elevated gives the resting shadow + border; zero its default
-	   padding so timeline rows fill edge to edge. */
-	.timeline-list.card-elevated {
-		padding: 0;
-	}
-	.timeline-glyph {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 2.25rem;
-		height: 2.25rem;
-		border-radius: 50%;
-		flex-shrink: 0;
-		color: var(--color-text-secondary);
-		background: var(--color-bg-tertiary);
-	}
-	/* Per-kind accent on the glyph chip — a secondary cue; the glyph
-	   shape + the row text carry the type, never colour alone. Each kind
-	   reads the shared --section-* pair, so a chip here is the same hue as
-	   its sidebar entry; the fixed inks these replaced were 2.359 / 2.396:1
-	   on the dark card (decisions § 529). */
-	.timeline-glyph[data-kind='lift'] { color: var(--section-gym-ink); background: color-mix(in srgb, var(--section-gym) 18%, transparent); }
-	.timeline-glyph[data-kind='meal'] { color: var(--section-nutrition-ink); background: color-mix(in srgb, var(--section-nutrition) 20%, transparent); }
-	.timeline-glyph[data-kind='run'] { color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 12%, transparent); }
-	.timeline-glyph .material-symbols { font-size: 1.25rem; }
-	.timeline-main {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		gap: 1px;
-		min-width: 0;
-	}
-	.timeline-primary {
-		font-weight: 600;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.timeline-secondary {
-		font-size: 0.85rem;
-		color: var(--color-text-secondary);
-		font-variant-numeric: tabular-nums;
-	}
-	.timeline-arrow {
-		color: var(--color-text-tertiary);
-		font-size: 1.2rem;
-		flex-shrink: 0;
-	}
-
-	/* --- Empty + skeleton --- */
+	/* --- Empty --- */
 	.empty {
 		text-align: center;
 		padding: var(--space-2xl) var(--space-md);
@@ -921,51 +776,6 @@
 	}
 	.load-error .btn {
 		margin-top: var(--space-sm);
-	}
-
-	/* Skeleton mirrors the timeline shape so the page renders to roughly its
-	   true height immediately — no shift when the feed lands. */
-	.timeline-skel .timeline-item {
-		display: flex;
-		align-items: center;
-		gap: var(--space-md);
-		padding: var(--space-sm) var(--space-md);
-	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		border-radius: var(--radius-sm);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line { height: 0.75rem; }
-	.skel-day { width: 6rem; height: 0.7rem; }
-	.skel-glyph {
-		width: 2.25rem;
-		height: 2.25rem;
-		border-radius: 50%;
-		flex-shrink: 0;
-	}
-	.skel-rows {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-xs);
-	}
-	.skel-w-30 { width: 30%; }
-	.skel-w-50 { width: 50%; }
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
 	}
 
 	/* .modal-* + .card-elevated classes live in app.css. */

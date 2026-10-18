@@ -248,6 +248,13 @@ data class UiState(
     /// recording service, which owns the TTS engine; nothing on the watch
     /// itself can set it, because the watch has no settings screen.
     val voiceFeedbackEnabled: Boolean = true,
+    /// Universal `voice_feedback_verbosity`, handed to the recording service
+    /// with [voiceFeedbackEnabled] so a spoken workout cue is gated the way
+    /// the phone gates it.
+    val voiceFeedbackVerbosity: com.runapp.watchwear.workout.VoiceVerbosity =
+        com.runapp.watchwear.workout.VoiceVerbosity.FULL,
+    /// `voice_cue_types.workout_steps` from the universal bag (absent = on).
+    val workoutStepCuesEnabled: Boolean = true,
     /// Distance-display unit resolved from `user_settings.prefs
     /// .preferred_unit`. Drives the distance / pace read-outs on the
     /// running + post-run screens and the route "to go" badge. Defaults
@@ -647,6 +654,17 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             java.time.LocalDate.now(),
         )?.takeIf { it.planWorkoutId != startedWorkoutId }
         _state.value = _state.value.copy(todaysWorkout = offered)
+    }
+
+    /// The "today" tile's tap: land on the pre-run screen with [planWorkoutId]
+    /// armed, even if the runner had switched the chip to a free run earlier
+    /// in this process. Only when it is still the workout on offer — a tap on
+    /// a tile rendered before midnight, or before a newer push, arms nothing.
+    fun followWorkoutFromTile(planWorkoutId: String) {
+        if (_state.value.stage != Stage.PreRun) return
+        refreshTodaysWorkout()
+        if (_state.value.todaysWorkout?.planWorkoutId != planWorkoutId) return
+        _state.value = _state.value.copy(followWorkout = true)
     }
 
     /// The pre-run chip: follow today's workout, or run free.
@@ -1489,6 +1507,8 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                 bodyWeightKg = settings.bodyWeightKg,
                 showCalories = settings.showCalories,
                 voiceFeedbackEnabled = settings.voiceFeedbackEnabled,
+                voiceFeedbackVerbosity = settings.voiceFeedbackVerbosity,
+                workoutStepCuesEnabled = settings.workoutStepCuesEnabled,
                 preferredUnit = com.runapp.watchwear.recording.DistanceUnit
                     .fromPref(settings.preferredUnit),
             )
@@ -1566,6 +1586,8 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             preferredUnit = _state.value.preferredUnit,
             privacyDefault = universalPrivacyDefault,
             voiceFeedbackEnabled = _state.value.voiceFeedbackEnabled,
+            voiceFeedbackVerbosity = _state.value.voiceFeedbackVerbosity,
+            workoutStepCuesEnabled = _state.value.workoutStepCuesEnabled,
             workoutJson = workoutJson,
         )
     }
@@ -1915,12 +1937,14 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     durationS = durationS,
                     unit = if (m.preferredUnit == com.runapp.watchwear.recording.DistanceUnit.MI) "mi" else "km",
                     finishedAtMs = System.currentTimeMillis(),
+                    planWorkoutId = m.workoutReview?.planWorkoutId,
                 ),
             )
         } catch (e: Throwable) {
             Log.w(TAG, "last run not kept for the complication", e)
         }
         com.runapp.watchwear.complications.ActiveRunComplicationService.requestUpdate(getApplication())
+        com.runapp.watchwear.tiles.ActiveRunTileService.requestUpdate(getApplication())
     }
 
     private suspend fun forgetLastRun(clear: suspend () -> Unit) {
@@ -1930,6 +1954,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             Log.w(TAG, "last run not cleared from the complication", e)
         }
         com.runapp.watchwear.complications.ActiveRunComplicationService.requestUpdate(getApplication())
+        com.runapp.watchwear.tiles.ActiveRunTileService.requestUpdate(getApplication())
     }
 
     fun sync() {

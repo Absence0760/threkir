@@ -26,8 +26,14 @@ import 'pump_until.dart';
 
 const _uid = 'owner-uuid';
 
+/// The screen's clock, pinned. Which plan week a seeded run lands in turns on
+/// the weekday, so a wall-clock "today" made each case a different fixture on
+/// a Monday than on a Sunday. A Wednesday puts runs on both sides of the week
+/// boundary for the six-day deep-fatigue block.
+final _today = DateTime(2026, 6, 17, 12);
+
 DateTime _mondayThisWeek() {
-  final now = DateTime.now();
+  final now = _today;
   final d = DateTime(now.year, now.month, now.day);
   return d.subtract(Duration(days: d.weekday - DateTime.monday));
 }
@@ -40,11 +46,13 @@ class _FakeTraining extends TrainingService {
 
   @override
   Future<
-      ({
-        TrainingPlanRow? plan,
-        List<PlanWeekRow> weeks,
-        List<PlanWorkoutRow> workouts
-      })> fetchPlan(String id) async {
+    ({
+      TrainingPlanRow? plan,
+      List<PlanWeekRow> weeks,
+      List<PlanWorkoutRow> workouts,
+    })
+  >
+  fetchPlan(String id) async {
     return (plan: plan, weeks: weeks, workouts: workouts);
   }
 }
@@ -57,33 +65,42 @@ class _FakeSocial extends SocialService {
 }
 
 TrainingPlanRow _plan(DateTime start) => TrainingPlanRow(
-      id: 'plan-1',
-      userId: _uid,
-      name: 'Test Plan',
-      goalEvent: 'distance_half',
-      goalDistanceM: 21097.5,
-      startDate: start,
-      endDate: start.add(const Duration(days: 56)),
-      daysPerWeek: 4,
-      status: 'active',
-      source: 'generated',
-      isTemplate: false,
-      isPublicTemplate: false,
-    );
+  id: 'plan-1',
+  userId: _uid,
+  name: 'Test Plan',
+  goalEvent: 'distance_half',
+  goalDistanceM: 21097.5,
+  startDate: start,
+  endDate: start.add(const Duration(days: 56)),
+  daysPerWeek: 4,
+  status: 'active',
+  source: 'generated',
+  isTemplate: false,
+  isPublicTemplate: false,
+);
 
 PlanWeekRow _week(String id, int idx, double vol) => PlanWeekRow(
-    id: id, planId: 'plan-1', weekIndex: idx, phase: 'build', targetVolumeM: vol);
+  id: id,
+  planId: 'plan-1',
+  weekIndex: idx,
+  phase: 'build',
+  targetVolumeM: vol,
+);
 
-PlanWorkoutRow _wo(String id, String weekId, DateTime date, String kind,
-        double? dist) =>
-    PlanWorkoutRow(
-      id: id,
-      weekId: weekId,
-      scheduledDate: date,
-      kind: kind,
-      targetDistanceM: dist,
-      manuallyCompleted: false,
-    );
+PlanWorkoutRow _wo(
+  String id,
+  String weekId,
+  DateTime date,
+  String kind,
+  double? dist,
+) => PlanWorkoutRow(
+  id: id,
+  weekId: weekId,
+  scheduledDate: date,
+  kind: kind,
+  targetDistanceM: dist,
+  manuallyCompleted: false,
+);
 
 void main() {
   final tmpDirs = <Directory>[];
@@ -101,13 +118,13 @@ void main() {
     return d;
   }
 
-  // Three completed under-run weeks (planned 40k, actual ~10k each) + a future
-  // long run that an under-trend re-plan would bump. Anchored two weeks back so
-  // weeks 0-2 are complete + in the past and week 3 holds the future long.
-  ({
-    _FakeTraining training,
-    DateTime start,
-  }) underTrendPlan() {
+  // Three completed 40 km weeks + a future long run that an under-trend
+  // re-plan would bump. Anchored three weeks back so weeks 0-2 are complete
+  // and week 3 is the current one. The run store supplies the actuals: the
+  // mild runner's 28 km under-runs all three; the deep block leaves weeks 0-1
+  // empty and puts 45 km in week 2 (Friday-Sunday, inside the 20% band), so
+  // two of three weeks are flagged under.
+  ({_FakeTraining training, DateTime start}) underTrendPlan() {
     final start = _mondayThisWeek().subtract(const Duration(days: 21));
     final weeks = [
       _week('w0', 0, 40000),
@@ -119,15 +136,28 @@ void main() {
       _wo('missed', 'w0', start.add(const Duration(days: 1)), 'long', 28000),
       // Clearly in the future (next week) regardless of which weekday the test
       // runs, so it qualifies as a make-up target for the missed long.
-      _wo('next', 'w3', _mondayThisWeek().add(const Duration(days: 9)), 'long',
-          22000),
+      _wo(
+        'next',
+        'w3',
+        _mondayThisWeek().add(const Duration(days: 9)),
+        'long',
+        22000,
+      ),
       // A future NON-long workout, so a deload has something to ease. Long runs
       // are never eased, so which of the two moves tells the two directions
       // apart in the assertions below.
-      _wo('easy', 'w3', _mondayThisWeek().add(const Duration(days: 10)), 'easy',
-          8000),
+      _wo(
+        'easy',
+        'w3',
+        _mondayThisWeek().add(const Duration(days: 10)),
+        'easy',
+        8000,
+      ),
     ];
-    return (training: _FakeTraining(_plan(start), weeks, workouts), start: start);
+    return (
+      training: _FakeTraining(_plan(start), weeks, workouts),
+      start: start,
+    );
   }
 
   /// Seed a store with `days` consecutive daily runs of `metres`, newest today.
@@ -139,7 +169,7 @@ void main() {
   }) async {
     final store = LocalRunStore();
     await store.init(overrideDirectory: tmp(prefix));
-    final now = DateTime.now();
+    final now = _today;
     final runs = [
       for (var i = 0; i < days; i++)
         Run(
@@ -162,10 +192,14 @@ void main() {
       seededStore(tester, 'fitness_gate_deep_', days: 6, metres: 15000);
 
   /// Three months of steady daily running: CTL has caught up, so the latest
-  /// load point is TSB ≈ -9 with ACWR ≈ 1.13 — negative form, but nowhere near
-  /// the deload thresholds. The arm-1 hold, not the arm-2 override.
+  /// load point is TSB ≈ -4.7 with ACWR ≈ 1.13 — negative form, but nowhere
+  /// near the deload thresholds. The arm-1 hold, not the arm-2 override.
+  ///
+  /// The store is also what the re-plan reads each week's actual volume from,
+  /// so it has to under-run the plan for there to be an add-volume trend to
+  /// hold: 4 km a day is 28 km against the 40 km weeks, 30% under.
   Future<LocalRunStore> mildlyFatiguedStore(WidgetTester tester) =>
-      seededStore(tester, 'fitness_gate_mild_', days: 90, metres: 8000);
+      seededStore(tester, 'fitness_gate_mild_', days: 90, metres: 4000);
 
   Future<void> pump(
     WidgetTester tester, {
@@ -173,19 +207,25 @@ void main() {
     required _FakeSocial social,
     LocalRunStore? runStore,
   }) async {
-    await tester.pumpWidget(MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: PlanDetailScreen(
-        training: training,
-        planId: 'plan-1',
-        social: social,
-        viewerIdOverride: _uid,
-        runStore: runStore,
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: PlanDetailScreen(
+          training: training,
+          planId: 'plan-1',
+          social: social,
+          viewerIdOverride: _uid,
+          now: () => _today,
+          runStore: runStore,
+        ),
       ),
-    ));
-    await pumpUntil(tester, () => !tester.any(find.byType(FullBodyLoader)),
-        describe: 'the plan fetch to replace the full-body loader');
+    );
+    await pumpUntil(
+      tester,
+      () => !tester.any(find.byType(FullBodyLoader)),
+      describe: 'the plan fetch to replace the full-body loader',
+    );
     await tester.pump();
   }
 
@@ -197,40 +237,50 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     final option = find.descendant(
-        of: find.byType(AlertDialog), matching: find.text(label));
+      of: find.byType(AlertDialog),
+      matching: find.text(label),
+    );
     await tester.ensureVisible(option);
     await tester.tap(option);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
   }
 
-  testWidgets('gate ON + deeply fatigued runner deloads instead of adding volume',
-      (tester) async {
-    dotenv.loadFromString(envString: 'ADAPTIVE_FITNESS_GATE=true');
-    final p = underTrendPlan();
-    final store = await deeplyFatiguedStore(tester);
-    await pump(
-      tester,
-      training: p.training,
-      social: _FakeSocial(const []),
-      runStore: store,
-    );
+  testWidgets(
+    'gate ON + deeply fatigued runner deloads instead of adding volume',
+    (tester) async {
+      dotenv.loadFromString(envString: 'ADAPTIVE_FITNESS_GATE=true');
+      final p = underTrendPlan();
+      final store = await deeplyFatiguedStore(tester);
+      await pump(
+        tester,
+        training: p.training,
+        social: _FakeSocial(const []),
+        runStore: store,
+      );
 
-    await chooseAdjustment(tester, 'Adaptive re-plan');
+      await chooseAdjustment(tester, 'Adaptive re-plan');
 
-    // Held banner shown, and the preview is the ease-off — never the make-up.
-    expect(
-      find.textContaining('carrying fatigue', findRichText: true),
-      findsOneWidget,
-    );
-    expect(find.text('Proposed changes'), findsOneWidget);
-    expect(find.textContaining('ease off', findRichText: true), findsOneWidget);
-    expect(find.textContaining('make up a missed long run', findRichText: true),
-        findsNothing);
-  });
+      // Held banner shown, and the preview is the ease-off — never the make-up.
+      expect(
+        find.textContaining('carrying fatigue', findRichText: true),
+        findsOneWidget,
+      );
+      expect(find.text('Proposed changes'), findsOneWidget);
+      expect(
+        find.textContaining('ease off', findRichText: true),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('make up a missed long run', findRichText: true),
+        findsNothing,
+      );
+    },
+  );
 
-  testWidgets('gate ON + mildly fatigued runner holds, proposing nothing',
-      (tester) async {
+  testWidgets('gate ON + mildly fatigued runner holds, proposing nothing', (
+    tester,
+  ) async {
     dotenv.loadFromString(envString: 'ADAPTIVE_FITNESS_GATE=true');
     final p = underTrendPlan();
     final store = await mildlyFatiguedStore(tester);
@@ -251,26 +301,32 @@ void main() {
     await tester.pump(const Duration(seconds: 4));
   });
 
-  testWidgets('gate OFF (default) ignores fitness — under-trend still proposes',
-      (tester) async {
-    // No dotenv flag → _adaptiveFitnessInput returns null → P1 behaviour.
-    final p = underTrendPlan();
-    final store = await deeplyFatiguedStore(tester);
-    await pump(
-      tester,
-      training: p.training,
-      social: _FakeSocial(const []),
-      runStore: store,
-    );
+  testWidgets(
+    'gate OFF (default) ignores fitness — under-trend still proposes',
+    (tester) async {
+      // No dotenv flag → _adaptiveFitnessInput returns null → P1 behaviour.
+      final p = underTrendPlan();
+      final store = await deeplyFatiguedStore(tester);
+      await pump(
+        tester,
+        training: p.training,
+        social: _FakeSocial(const []),
+        runStore: store,
+      );
 
-    await chooseAdjustment(tester, 'Adaptive re-plan');
+      await chooseAdjustment(tester, 'Adaptive re-plan');
 
-    // No held banner; the under-trend proposes the make-up, not a deload.
-    expect(find.textContaining('carrying fatigue', findRichText: true),
-        findsNothing);
-    expect(find.text('Proposed changes'), findsOneWidget);
-    expect(find.textContaining('make up a missed long run', findRichText: true),
-        findsOneWidget);
-    await tester.pump(const Duration(seconds: 4));
-  });
+      // No held banner; the under-trend proposes the make-up, not a deload.
+      expect(
+        find.textContaining('carrying fatigue', findRichText: true),
+        findsNothing,
+      );
+      expect(find.text('Proposed changes'), findsOneWidget);
+      expect(
+        find.textContaining('make up a missed long run', findRichText: true),
+        findsOneWidget,
+      );
+      await tester.pump(const Duration(seconds: 4));
+    },
+  );
 }

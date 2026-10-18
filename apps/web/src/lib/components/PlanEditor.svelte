@@ -23,6 +23,7 @@
 		walkRunDefaultWeeks,
 		WALK_RUN_MAX_DAYS_PER_WEEK,
 		generatePlan,
+		isMastersAge,
 		fmtHms,
 		formatISO,
 		parseISO,
@@ -56,9 +57,10 @@
 	} from '#lib/training/plan_ramp.ts';
 	import { parsePlanMarkdown, parsePlanJson } from '#lib/training/plan_serialize.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
-	import { ageFromDob } from '#lib/nutrition/nutrition_targets.ts';
-	import { healthUseDob } from '#lib/core/health_consent.ts';
-	import { supabase } from '#lib/core/supabase.ts';
+	import { EXTRA_RECOVERY_KEY } from '#lib/training/plan_calibration.ts';
+	import { loadPlanCalibration } from '#lib/training/plan_calibration_load.ts';
+	import { updateUniversal } from '#lib/settings/settings.ts';
+	import type { HealthUseDobState } from '#lib/core/health_consent.ts';
 	import { fmtKm, fmtPace, getUnit } from '#lib/format/units.svelte.ts';
 	import { paceMinutesSeconds } from '#lib/format/pace_format.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
@@ -88,6 +90,18 @@
 	// age is an Art 9 health inference, so the date comes through
 	// `healthUseDob` rather than off the age record directly (§ 722).
 	let viewerAge = $state<number | null>(null);
+	// Null until the profile read lands, and on failure: the hint to add a
+	// date of birth then stays hidden rather than tell a runner with one on
+	// record that it is missing.
+	let viewerDobState = $state<HealthUseDobState | null>(null);
+	// `extra_recovery` (settings.md): the masters recovery calibration for a
+	// runner under 50 or with no age on record. A universal setting, so the
+	// toggle here and the one in Settings → Training are the same switch.
+	let extraRecovery = $state(false);
+	let extraRecoveryLoaded = $state(false);
+	let extraRecoverySaving = $state(false);
+	let extraRecoveryError = $state(false);
+	const viewerIsMasters = $derived(isMastersAge(viewerAge));
 	// The runner's running history, far enough back to see the break a
 	// returning runner is coming back from as well as the four weeks the ramp
 	// check grades against. Null until loaded (and on failure): every note
@@ -99,19 +113,32 @@
 	let recentEfforts = $state<EffortForPrediction[]>([]);
 	onMount(async () => {
 		if (!auth.user) return;
-		// Self-read via get_my_profile(): gender / the age record / the consent
-		// stamp are all deny-by-default for direct authenticated SELECTs
-		// (column lockdown, 20260707_001), and the RPC returns the whole row so
-		// the stamp arrives with the date.
-		const { data } = await supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle();
-		const g = (data as { gender?: string | null } | null)?.gender;
-		if (g === 'male' || g === 'female' || g === 'prefer_not_to_say') viewerGender = g;
-		// Parse by calendar components — new Date('YYYY-MM-DD') is UTC midnight,
-		// and reading it back through local getters shifts the birthday a day
-		// early in negative-UTC offsets, misfiring the masters (50) gate.
-		const age = ageFromDob(healthUseDob(data), Date.now());
-		if (age !== null) viewerAge = age;
+		const c = await loadPlanCalibration(auth.user.id);
+		viewerGender = c.gender;
+		viewerAge = c.age;
+		viewerDobState = c.dobState;
+		extraRecovery = c.extraRecovery;
+		extraRecoveryLoaded = true;
 	});
+
+	async function onExtraRecoveryToggle(e: Event) {
+		const uid = auth.user?.id;
+		if (!uid || extraRecoverySaving) return;
+		const on = (e.currentTarget as HTMLInputElement).checked;
+		const before = extraRecovery;
+		extraRecovery = on;
+		extraRecoverySaving = true;
+		extraRecoveryError = false;
+		try {
+			await updateUniversal(uid, { [EXTRA_RECOVERY_KEY]: on });
+		} catch (err) {
+			console.error('plan wizard: extra_recovery save failed', { message: thrownMessage(err) });
+			extraRecovery = before;
+			extraRecoveryError = true;
+		} finally {
+			extraRecoverySaving = false;
+		}
+	}
 
 	// Its own mount effect, and its own catch: the volume read is an advisory
 	// layer over the wizard, so neither a profile failure above nor a failure
@@ -200,10 +227,19 @@
 		initialName?: string;
 		initialStartDate?: string;
 		initialWeeks?: number;
+		/// The chained start floor a race page's "Add to my season" hands over;
+		/// an AI fill that re-derives the dates from a race keeps to it too.
+		notBeforeIso?: string | null;
+		/// The race listing the plan is built for; the created plan links to it.
+		raceListingId?: string | null;
 		// A plain-English plan description handed over by a deep link (the
 		// coach's plan handoff). With the assistant live it prefills the box
 		// and runs one fill on mount; with it off it is ignored.
 		initialDescription?: string;
+		/// A measured 5K to fill the recent-5K field with (Home's recent-5K
+		/// suggestion). Filled, never confirmed: it sets no paces until the
+		/// runner ticks the confirm box.
+		initialRecent5kSec?: number;
 	}
 	let {
 		oncreated,
@@ -214,7 +250,10 @@
 		initialName,
 		initialStartDate,
 		initialWeeks,
+		notBeforeIso,
+		raceListingId,
 		initialDescription,
+		initialRecent5kSec,
 	}: Props = $props();
 
 	// The initial* props seed the form once; the fields are edited locally after.
@@ -261,8 +300,9 @@
 	let targetMin = $state<number | null>(null);
 	let targetSec = $state<number | null>(null);
 
-	let recent5kMin = $state<number | null>(null);
-	let recent5kSec = $state<number | null>(null);
+	const suggestedRecent5k = untrack(() => initialRecent5kSec ?? null);
+	let recent5kMin = $state<number | null>(suggestedRecent5k == null ? null : Math.floor(suggestedRecent5k / 60));
+	let recent5kSec = $state<number | null>(suggestedRecent5k == null ? null : suggestedRecent5k % 60);
 	// Returning runners type an old PR; the engine would treat it as current
 	// fitness and prescribe paces that are too fast (injury risk — comeback
 	// persona #24). The time only anchors paces once the runner confirms it
@@ -349,6 +389,7 @@
 			raceDateIso: raceDate,
 			distanceM: goalDistance,
 			todayIso: todayIso(),
+			notBeforeIso,
 		});
 		if (!result.ok) return t(RACE_REFUSAL_KEYS[result.reason]);
 		let { weeks: presetWeeks, startDate: presetStart } = result.preset;
@@ -769,6 +810,7 @@
 				weeks,
 				gender: viewerGender,
 				age: viewerAge,
+				extraRecovery,
 				beginnerWalkRun,
 			});
 			plan =
@@ -866,6 +908,7 @@
 						startDate,
 						daysPerWeek,
 						generated: plan!,
+						raceListingId,
 						overlap,
 					}),
 				() => fetchMyOverlappingActivePlans(startDate, endDate)
@@ -1085,6 +1128,43 @@
 				</p>
 			</div>
 
+			{#if !beginnerWalkRun}
+			<div class="field" data-testid="plan-recovery">
+				{#if viewerIsMasters}
+					<p class="hint" data-testid="plan-recovery-masters">{t('planEditor.mastersRecoveryApplied')}</p>
+				{:else}
+					<label class="beginner-toggle">
+						<input
+							type="checkbox"
+							checked={extraRecovery}
+							disabled={!extraRecoveryLoaded || extraRecoverySaving}
+							onchange={onExtraRecoveryToggle}
+							aria-describedby="plan-extra-recovery-hint"
+							data-testid="plan-extra-recovery"
+						/>
+						<span>
+							<span class="beginner-title">{t('prefs.extraRecovery')}</span>
+							<span class="hint" id="plan-extra-recovery-hint">{t('planEditor.extraRecoveryHint')}</span>
+						</span>
+					</label>
+					{#if extraRecoveryError}
+						<p class="error" role="alert" data-testid="plan-extra-recovery-error">{t('planEditor.extraRecoverySaveFailed')}</p>
+					{/if}
+					{#if viewerDobState === 'absent'}
+						<p class="hint" data-testid="plan-dob-hint">
+							{t('planEditor.dobHintAbsent')}
+							<a href="/settings/body#body-metrics">{t('planEditor.dobHintAbsentLink')}</a>
+						</p>
+					{:else if viewerDobState === 'consent_withheld'}
+						<p class="hint" data-testid="plan-dob-consent-hint">
+							{t('planEditor.dobHintHealthData')}
+							<a href="/settings/body#body-metrics">{t('planEditor.dobHintHealthDataLink')}</a>
+						</p>
+					{/if}
+				{/if}
+			</div>
+			{/if}
+
 			{#if showGoalTime}
 			<fieldset>
 				<legend>{t('planEditor.goalTime')} <span class="optional">{t('planEditor.optional')}</span></legend>
@@ -1125,6 +1205,9 @@
 					<span>:</span>
 					<input type="number" min="0" max="59" bind:value={recent5kSec} placeholder={t('planEditor.placeholderSeconds')} aria-describedby="recent-5k-hint" />
 				</div>
+				{#if suggestedRecent5k != null && recent5kTotal === suggestedRecent5k && !recent5kConfirmed}
+					<p class="hint" role="status" data-testid="plan-recent-5k-suggested">{t('planEditor.recent5kSuggested')}</p>
+				{/if}
 				{#if recent5kComplete}
 					<label class="confirm-recent">
 						<input type="checkbox" bind:checked={recent5kConfirmed} />

@@ -22,9 +22,12 @@ import type { PlanWeek, PlanWorkout, TrainingPlan } from '../types';
 /// Deliberately absent: `vdot`, `current_5k_seconds` and `notes` are the
 /// publisher's private fields (fitness proxies and their own free text) and
 /// are stripped on publish — set to null by each caller and enforced by the
-/// trigger in migration 20270508_001. `status`, `is_template`,
-/// `is_public_template`, `club_id` and `parent_template_id` are what makes a
-/// row a template at all, so each caller states them itself.
+/// trigger in migration 20270508_001. `race_listing_id` is the race the
+/// publisher built the plan for, equally their own business: the trigger
+/// nulls it on every template (20270924000001), so it is never copied.
+/// `status`, `is_template`, `is_public_template`, `club_id` and
+/// `parent_template_id` are what makes a row a template at all, so each
+/// caller states them itself.
 export function planHeadCopyFields(src: TrainingPlan): {
 	name: string;
 	goal_event: TrainingPlan['goal_event'];

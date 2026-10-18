@@ -69,6 +69,11 @@ test('fetchRunsForDashboard is bounded + column-narrowed, not the unbounded sele
 			`DASHBOARD_RUN_COLUMNS must carry ${c} — every card on /dashboard derives from it.`,
 		);
 	}
+	assert.match(
+		dashTuple[1],
+		/'fastest_5k_s'/,
+		'DASHBOARD_RUN_COLUMNS must carry fastest_5k_s — the no-plan recent-5K plan suggestion reads it.',
+	);
 	// The dashboard page must call the bounded reader, not the unbounded one.
 	const page = read('src/routes/dashboard/+page.svelte');
 	assert.match(
@@ -594,6 +599,38 @@ test('deleteNotifications is one delete_notifications RPC call, guards empty, su
 	);
 });
 
+test('answerMissedWorkouts sends the stretch and the answer in one RPC, and surfaces errors', () => {
+	// Reason: "Make it up" stretches the next long run AND records the miss as
+	// answered (decisions § 2122). Two calls — apply_workout_adjustments, then
+	// an answer write — could land the stretch and lose the answer, and the
+	// prompt would ask again and stretch the same run a second time. The RPC
+	// applies both in one transaction only if the wrapper hands it both.
+	const source = read('src/lib/core/data.ts');
+	const fnMatch = source.match(/export async function answerMissedWorkouts[\s\S]*?\n}/);
+	assert.ok(fnMatch, 'Could not locate answerMissedWorkouts — rename?');
+	const body = fnMatch![0];
+	assert.match(
+		body,
+		/supabase\.rpc\('answer_missed_workouts', \{\s*p_plan_id: planId,\s*p_workout_ids: workoutIds,\s*p_changes: changes\s*\}\)/,
+		'answerMissedWorkouts must pass the plan, the answered ids and the make-up to answer_missed_workouts together.',
+	);
+	assert.match(
+		body,
+		/changes: WorkoutAdjustment\[\] = \[\]/,
+		'"Let it go" sends no changes — the default must be an empty list, never undefined.',
+	);
+	assert.equal(
+		(body.match(/await /g) ?? []).length,
+		1,
+		'answerMissedWorkouts must await exactly one call — a second round-trip is a second transaction.',
+	);
+	assert.match(
+		body,
+		/if \(error\) throw dbError\(error\);/,
+		'answerMissedWorkouts must throw — the prompt keeps its question and says the save failed only if the error reaches it.',
+	);
+});
+
 test('NotificationsList dismisses a whole group in one batched delete, not one per member', () => {
 	// Reason: removeGroup awaited remove(row.id) for every member of a
 	// collapsed group — N sequential DELETEs (issue #350). Both the single
@@ -911,8 +948,7 @@ test('computeGlobalSegmentEffortsForRun re-reads runs.metadata immediately befor
 	// writing the stamp back. Merging the stamp into that stale copy
 	// silently reverts any title / notes edit the owner made in the window —
 	// the run-detail edit dialog writes the same column. The bag must be
-	// re-read immediately before the write, the same read-adjacent-to-write
-	// discipline updateRunMetadata follows.
+	// re-read immediately before the write.
 	const source = read('src/lib/core/data.ts');
 	const start = source.indexOf('export async function computeGlobalSegmentEffortsForRun');
 	assert.ok(start >= 0, 'Could not locate computeGlobalSegmentEffortsForRun — rename?');
@@ -2293,4 +2329,27 @@ test('joinClubByToken raises the waiver refusal as an Error the join page can re
 		source,
 		/export function isActivityWaiverRequired\(e: unknown\): boolean \{\s*return e instanceof Error && e\.message === ACTIVITY_WAIVER_REQUIRED;/,
 	);
+});
+
+test('reschedulePlanAfterBreak sends the previewed change as one RPC and surfaces a refusal', () => {
+	// The break offer applies exactly what its preview showed, in one
+	// transaction (decisions § 2128): the client passes the weeks it chose and
+	// never writes weeks or workouts itself, and a refusal (23P01 overlap,
+	// 22023) must reach the card as a thrown error, not a silent no-op.
+	const source = read('src/lib/core/data.ts');
+	const fnMatch = source.match(/export async function reschedulePlanAfterBreak[\s\S]*?\n}/);
+	assert.ok(fnMatch, 'Could not locate reschedulePlanAfterBreak — rename?');
+	const body = fnMatch![0];
+	assert.match(body, /supabase\.rpc\('reschedule_plan_after_break', \{/);
+	for (const [param, value] of [
+		['p_plan_id', 'planId'],
+		['p_today', 'todayIso'],
+		['p_break_from', 'breakFromIso'],
+		['p_repeat_week_ids', 'change\\.repeatWeekIds'],
+		['p_drop_week_ids', 'change\\.dropWeekIds']
+	]) {
+		assert.match(body, new RegExp(`${param}: ${value}\\b`), `${param} must carry ${value}`);
+	}
+	assert.match(body, /if \(error\) throw dbError\(error\);/);
+	assert.doesNotMatch(body, /\.from\(/, 'the reschedule must not write tables around the RPC');
 });

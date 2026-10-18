@@ -245,6 +245,7 @@ test('every plan_workouts column is either copied on publish or excused', () => 
 		['completed_run_id', "points at the publisher's own run"],
 		['manually_completed', 'completion state — a template starts fresh'],
 		['skipped_at', 'completion state — a template starts fresh'],
+		['missed_ack_at', "the publisher's answer to a missed workout — a template starts fresh (decisions § 2122)"],
 		['updated_at', 'server-maintained'],
 		['updated_by', 'server-maintained'],
 		['target_hr_min_bpm', "Art 9: one person's heart-rate prescription, refused on a template (decisions § 2092)"],
@@ -289,6 +290,8 @@ test('every training_plans column is either copied on publish or excused', () =>
 		['created_at', 'server-maintained'],
 		['updated_at', 'server-maintained'],
 		['trimmed_at', "publisher-private plan state: when the owner ended the plan early — the published copy was never trimmed"],
+		['paused_at', "publisher-private plan state: when the owner paused it — a template is never paused"],
+		['race_listing_id', "publisher-private: the race the owner built the plan for — the trigger nulls it on every template"],
 	]);
 	const copied = planHeadCopyFields(sourcePlan);
 	const missing = rowColumns('training_plans').filter(

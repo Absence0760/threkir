@@ -167,6 +167,7 @@ void main() {
       'completed_run_id', // points at the publisher's own run
       'manually_completed', // completion state
       'skipped_at', // completion state
+      'missed_ack_at', // the publisher's answer to a missed workout (decisions § 2122)
       'updated_at', // server-maintained
       'updated_by', // server-maintained
       'target_hr_min_bpm', // Art 9, refused on a template (decisions § 2092)
@@ -201,6 +202,8 @@ void main() {
       'created_at', // server-maintained
       'updated_at', // server-maintained
       'trimmed_at', // the owner's plan state, not the design
+      'paused_at', // the owner's plan state: a template is never paused
+      'race_listing_id', // the owner's own race: nulled on every template
     };
     expect(
         _missing(_sourcePlan.toJson(), planHeadCopyFields(_sourcePlan), excused),

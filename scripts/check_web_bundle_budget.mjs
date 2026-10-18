@@ -193,6 +193,37 @@
 // chunk most routes load (49.9 -> 55.8 KB); it is imported lazily now (50.7).
 // The rest is route-split feature code, so the ceiling moves by what was
 // measured and keeps the same 5 KB of cover (decisions § 2109).
+// Raised to 2330 for round 2 wave 2 of the plan testing fixes (PR #1191),
+// which measured 2280 -> 2322 KB (489 -> 502 files) on the production build
+// against origin/main 851d4b3fe, same placeholder env as CI; CI read 2319 for
+// a tree this build read as 2316, so the CI-equivalent figure is 2325.
+// Attributed by vite's client manifest, gzip per entry: /plans/[id] +7.2 (the
+// recap, break, repeat-week, race-date and volume-anchor surfaces), a chunk
+// /dashboard and /plans/[id] share +4.9 (missed-workout prompt, plan-break
+// card, adaptive-fitness flag), the plan-nudge/replan chunk 4.1 (code that
+// sat inside /plans/[id] before), the avatar crop dialog 3.6, the timeline day
+// list 2.7, /dashboard +2.5, the date-of-birth input 2.3, race_predictor 2.0,
+// season_plan 1.7, the data chunk +1.1, RaceImportDialog +1.1, and under 1
+// each across /races/[id], /settings/body, /runs, /races, /clubs/[slug] and
+// /plans/new; /plans/[id]/workouts/[wid], /history and /plans/season
+// shrank. That is ~35 KB exact; the rest is the per-file round-up on 13 more
+// files. No dependency changed and no module is duplicated.
+// Two imports were real costs and were fixed rather than paid for, both in
+// the root layout's static graph, so every reader downloaded them:
+// core/data.ts imported formatISO/parseISO from training.ts at the top again,
+// the § 2109 regression a second time, and format/units.svelte.ts imported
+// plan_nudges.ts for one rounding rule, which brought the replan, adaptive
+// replan, adherence, volume-anchor, comeback and training-load modules along.
+// Together they put ~31 KB raw of plan code in the shell; the shell (entry +
+// root layout static closure) measured 207.3 KB gzipped on main, 220.4 on
+// the branch and 210.6 after the fix, so every reader saves 9.8 KB. The
+// summed total does not show it — splitting adds three chunks, +1.2 KB exact
+// and ~6 KB after the round-up — which is the arithmetic this ceiling is
+// meant to have. `src/lib/shell_import_graph_guard.test.ts` now walks the
+// shell's static imports and fails naming the chain, so a third time is a
+// unit failure rather than a budget total. The rest is route-split feature
+// code, so the ceiling moves by what was measured and keeps the same 5 KB of
+// cover (decisions § 2215).
 // MAX_LARGEST_CHUNK_KB stays 350, unchanged: 245 KB * the 33% headroom that
 // number was always justified by is 326, so the existing figure still states
 // the rule. What changed is the population it measures, not the ceiling.
@@ -227,7 +258,7 @@ export const CLIENT_MANIFEST = join(
 );
 export const LOCALES_DIR = join(WEB_DIR, 'src', 'lib', 'i18n', 'locales');
 
-export const MAX_CODE_KB = 2288;
+export const MAX_CODE_KB = 2330;
 export const MAX_CORE_CATALOGUE_KB = 13;
 export const MAX_AREA_CATALOGUE_KB = 14;
 export const MAX_LARGEST_CHUNK_KB = 350;

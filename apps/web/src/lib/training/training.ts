@@ -249,6 +249,18 @@ export function isMastersAge(age: number | null | undefined): boolean {
 	return age != null && age >= MASTERS_AGE;
 }
 
+/// Whether a plan takes the masters recovery calibration: the runner is 50+,
+/// or they asked for it (`extra_recovery`, a training preference any runner
+/// can set — a comeback runner, or one with no date of birth on record).
+/// The preference only ever adds recovery; it never removes it from a
+/// masters runner.
+export function usesMastersRecovery(
+	age: number | null | undefined,
+	extraRecovery: boolean | null | undefined
+): boolean {
+	return extraRecovery === true || isMastersAge(age);
+}
+
 /**
  * Derive the five Daniels intensity-zone paces as multipliers of goal-race
  * pace. Numbers chosen so the output sits close to Daniels' published tables
@@ -474,6 +486,9 @@ export interface GeneratePlanInput {
 	/// hard-day spacing + a 3-week build/recover cycle. Persona-hunt
 	/// finding Older #30.
 	age?: number | null;
+	/// The runner's `extra_recovery` setting: apply the masters recovery
+	/// calibration whatever `age` says. See `usesMastersRecovery`.
+	extraRecovery?: boolean;
 	/// When true, produce a beginner C25K-style walk-run plan instead of the
 	/// continuous-running plan. The goal stays a 5k; every session is a
 	/// `walk_run` workout of timed run/walk intervals (persona #22).
@@ -547,7 +562,7 @@ export function generatePlan(input: GeneratePlanInput): GeneratedPlan {
 	}
 
 	const weeks: GeneratedWeek[] = [];
-	const masters = isMastersAge(input.age);
+	const masters = usesMastersRecovery(input.age, input.extraRecovery);
 
 	for (let i = 0; i < totalWeeks; i++) {
 		const phase = phaseFor(i, totalWeeks);
@@ -603,8 +618,9 @@ export function generatePlan(input: GeneratePlanInput): GeneratedPlan {
 
 /// Simplified, monotonic C25K-style progression: each week is a uniform
 /// run/walk interval that lengthens the run and trims the walk, graduating
-/// to a continuous ~25-minute run. `count - 1` walk breaks sit between the
-/// runs; week 9 has a single continuous run (no recovery). Real C25K mixes
+/// to a continuous 30-minute run. `count - 1` walk breaks sit between the
+/// runs; week 9 has a single continuous run (no recovery), and the plan's
+/// very last session is the 5K itself (`WALK_RUN_GRADUATION_M`). Real C25K mixes
 /// interval lengths mid-program; we keep it uniform-per-week so the plan is
 /// legible and the TS↔Dart parity stays tractable.
 export const WALK_RUN_PROGRESSION: ReadonlyArray<{
@@ -620,11 +636,16 @@ export const WALK_RUN_PROGRESSION: ReadonlyArray<{
 	{ runSec: 480, walkSec: 150, count: 3 },
 	{ runSec: 600, walkSec: 120, count: 3 },
 	{ runSec: 900, walkSec: 180, count: 2 },
-	{ runSec: 1500, walkSec: 0, count: 1 }
+	{ runSec: 1800, walkSec: 0, count: 1 }
 ];
 const WALK_RUN_WARMUP_S = 300;
 const WALK_RUN_COOLDOWN_S = 300;
 const WALK_PACE_SEC_PER_KM = 700; // ~11:40/km brisk walk, for distance estimates
+
+/// The distance a couch-to-5K plan's last session runs. Every other session
+/// is prescribed in time; this one ends on the distance the plan is named
+/// for, so finishing the plan means having run a 5K.
+export const WALK_RUN_GRADUATION_M = 5000;
 
 function walkRunWorkout(
 	scheduledDate: string,
@@ -664,6 +685,33 @@ function walkRunWorkout(
 	};
 }
 
+/// The graduation run: a walking warm-up, 5 km run continuously, a walking
+/// cool-down. Unpaced like every walk-run step (decisions § 2074), since it
+/// is the runner's first 5K rather than a pace test; the easy pace only sizes
+/// the time and distance estimates.
+function walkRunGraduationWorkout(scheduledDate: string, easyPaceSecPerKm: number): GeneratedWorkout {
+	const walkSec = WALK_RUN_WARMUP_S + WALK_RUN_COOLDOWN_S;
+	return {
+		scheduled_date: scheduledDate,
+		kind: 'walk_run',
+		target_distance_m: Math.round(WALK_RUN_GRADUATION_M + (walkSec * 1000) / WALK_PACE_SEC_PER_KM),
+		target_duration_seconds: Math.round((WALK_RUN_GRADUATION_M * easyPaceSecPerKm) / 1000) + walkSec,
+		target_pace_sec_per_km: easyPaceSecPerKm,
+		target_pace_tolerance_sec: null,
+		structure: {
+			warmup: { duration_s: WALK_RUN_WARMUP_S, pace: 'easy' },
+			repeats: {
+				count: 1,
+				distance_m: WALK_RUN_GRADUATION_M,
+				pace_sec_per_km: easyPaceSecPerKm,
+				recovery_pace: 'walk'
+			},
+			cooldown: { duration_s: WALK_RUN_COOLDOWN_S, pace: 'easy' }
+		},
+		notes: null
+	};
+}
+
 function generateWalkRunPlan(
 	input: GeneratePlanInput,
 	goalDistanceM: number,
@@ -688,6 +736,7 @@ function generateWalkRunPlan(
 	const dayOffsets =
 		runDays === 2 ? [0, 3] : [0, 2, 4, 1, 3, 5, 6].slice(0, runDays).sort((a, b) => a - b);
 	const weeks: GeneratedWeek[] = [];
+	const lastRunDay = dayOffsets[dayOffsets.length - 1];
 	for (let i = 0; i < totalWeeks; i++) {
 		const weekStart = addDays(startDate, i * 7);
 		const runSet = new Set(dayOffsets);
@@ -695,7 +744,11 @@ function generateWalkRunPlan(
 		for (let d = 0; d < 7; d++) {
 			const date = formatISO(addDays(weekStart, d));
 			if (runSet.has(d)) {
-				workouts.push(walkRunWorkout(date, i, paces.easy));
+				workouts.push(
+					i === totalWeeks - 1 && d === lastRunDay
+						? walkRunGraduationWorkout(date, paces.easy)
+						: walkRunWorkout(date, i, paces.easy)
+				);
 			} else {
 				workouts.push({
 					scheduled_date: date,
@@ -715,7 +768,7 @@ function generateWalkRunPlan(
 			target_volume_m: workouts.reduce((s, w) => s + (w.target_distance_m ?? 0), 0),
 			notes:
 				i === totalWeeks - 1
-					? 'Final week — you can run the distance continuously now.'
+					? 'Final week — it ends with your first 5K.'
 					: 'Take the walk breaks even when you feel good — they make the runs sustainable.',
 			workouts
 		});
@@ -970,7 +1023,7 @@ interface UltraPlanContext {
 
 function generateUltraPlan(input: GeneratePlanInput, ctx: UltraPlanContext): GeneratedPlan {
 	const { goalDistanceM, totalWeeks, paces, startDate } = ctx;
-	const masters = isMastersAge(input.age);
+	const masters = usesMastersRecovery(input.age, input.extraRecovery);
 	const backToBack = goalDistanceM >= ULTRA_BACK_TO_BACK_MIN_M;
 	const peakKm = peakVolumeKm(
 		goalDistanceM,

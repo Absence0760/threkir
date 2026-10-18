@@ -15,6 +15,7 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { stripComments } from '../core/strip_comments';
 
 function read(...parts: string[]): string {
 	return readFileSync(resolve(...parts), 'utf-8');
@@ -93,10 +94,12 @@ test('the fitness snapshot is never stored, logged, or persisted by the plan pag
 		'the apply path must not carry a load value');
 });
 
-test('the plan page is the only caller of the engine, so no second call site escapes these guards', () => {
+test('the plan page is the only caller that can pass fitness, so no second call site escapes these guards', () => {
 	// Every property above is pinned on ONE call site. A second caller (a
 	// dashboard card, the coach, a notification) would pass whatever it liked
-	// and none of this would see it (decisions § 1977).
+	// and none of this would see it (decisions § 1977). Home's plan card is the
+	// one admitted second caller, and only because the next test pins that it
+	// passes no fitness at all (decisions § 2125).
 	const callers: string[] = [];
 	const walk = (dir: string): void => {
 		for (const e of readdirSync(resolve(dir), { withFileTypes: true })) {
@@ -111,7 +114,17 @@ test('the plan page is the only caller of the engine, so no second call site esc
 		}
 	};
 	walk('src');
-	assert.deepEqual(callers, ['src/routes/plans/[id]/+page.svelte']);
+	assert.deepEqual(callers.sort(), ['src/lib/training/plan_nudges.ts', 'src/routes/plans/[id]/+page.svelte']);
+});
+
+test("Home's plan card calls the engine with no fitness and holds no load value", () => {
+	const code = stripComments(read('src/lib/training/plan_nudges.ts'));
+	const calls = code.match(/\badaptiveReplanRemaining\(([^)]*)\)/g) ?? [];
+	assert.equal(calls.length, 1, 'plan_nudges.ts must call adaptiveReplanRemaining exactly once');
+	assert.equal(calls[0], 'adaptiveReplanRemaining({ weeks, today: input.today })',
+		'the Home card must pass only the weeks and today, never a fitness snapshot');
+	assert.equal(/\b(fitness|tsb|atl|ctl|AdaptiveFitness)\b/i.test(code), false,
+		'a load value or fitness input appears in plan_nudges.ts');
 });
 
 test('the plan page reads the gate only through the flag module and holds no load value', () => {
@@ -123,4 +136,36 @@ test('the plan page reads the gate only through the flag module and holds no loa
 	const outside = page.replace(fitnessInputBody(page), '');
 	assert.equal(/\b(tsb|atl|ctl)\b/.test(outside), false,
 		'a load value appears on the plan page outside adaptiveFitnessInput()');
+});
+
+test('the comeback ramp is reached only through the gate (decisions § 2090)', () => {
+	const callers: string[] = [];
+	const walk = (dir: string): void => {
+		for (const e of readdirSync(resolve(dir), { withFileTypes: true })) {
+			const p = `${dir}/${e.name}`;
+			if (e.isDirectory()) {
+				if (e.name !== 'node_modules') walk(p);
+			} else if (/\.(ts|svelte)$/.test(e.name) && !/\.test\.ts$/.test(e.name)) {
+				if (/\banchorToActualVolume\(/.test(stripComments(read(p))) && !p.endsWith('training/plan_volume_anchor.ts')) {
+					callers.push(p);
+				}
+			}
+		}
+	};
+	walk('src');
+	assert.deepEqual(callers.sort(), ['src/lib/training/plan_nudges.ts', 'src/routes/plans/[id]/+page.svelte']);
+
+	const page = read('src/routes/plans/[id]/+page.svelte');
+	assert.equal((page.match(/\banchorToActualVolume\(/g) ?? []).length, 1,
+		'the plan page must call anchorToActualVolume only inside volumeAnchor()');
+	assert.match(page,
+		/function volumeAnchor\([^)]*\)[^{]*\{\s*if \(!isAdaptiveFitnessGateEnabled\(\)\) return null;\s*return anchorToActualVolume\(/,
+		'volumeAnchor() must return null before anchoring while the gate is off');
+
+	const nudges = stripComments(read('src/lib/training/plan_nudges.ts'));
+	assert.match(nudges, /input\.anchorVolume === true \? anchorToActualVolume\(\{ weeks \}\) : null/,
+		'planNudge must anchor only when the caller passes anchorVolume: true');
+	const card = read('src/lib/components/PlanNudgeCard.svelte');
+	assert.match(card, /anchorVolume:\s*isAdaptiveFitnessGateEnabled\(\)/,
+		'Home passes the gate itself as anchorVolume');
 });

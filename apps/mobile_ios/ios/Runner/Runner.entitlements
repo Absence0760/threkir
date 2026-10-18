@@ -24,16 +24,25 @@
 	     § 1740. -->
 	<key>aps-environment</key>
 	<string>$(APS_ENVIRONMENT)</string>
-	<!-- Shared container the Share Extension writes a shared route file into
-	     and this app reads it back out of. Deliberately a second group rather
-	     than the watch complication's `group.com.threkir.app.activerun`: the
-	     extension clears this container's root on every activation, which
-	     would be destructive to a group holding anything else. Both this
-	     file and ShareExtension.entitlements must carry it, and the id must
-	     match Info.plist's AppGroupId and SharedRouteHandoff.appGroup. -->
+	<!-- `group.com.threkir.app.share`: the shared container the Share
+	     Extension writes a shared route file into and this app reads it back
+	     out of. Deliberately a second group rather than the watch
+	     complication's `group.com.threkir.app.activerun`: the extension clears
+	     this container's root on every activation, which would be destructive
+	     to a group holding anything else. Both this file and
+	     ShareExtension.entitlements must carry it, and the id must match
+	     Info.plist's AppGroupId and SharedRouteHandoff.appGroup.
+
+	     `group.com.threkir.app.widget`: the Today widget's snapshot, written
+	     here by HomeWidgetBridge and read by the RunActivity extension. Its
+	     own group for the same reason: the share group's root is wiped on
+	     every share. This file and RunActivity/RunActivity.entitlements must
+	     carry it, and it must match TodayWidget.appGroup —
+	     TodayWidgetSnapshotTests compares the three. -->
 	<key>com.apple.security.application-groups</key>
 	<array>
 		<string>group.com.threkir.app.share</string>
+		<string>group.com.threkir.app.widget</string>
 	</array>
 	<!-- Universal links: https://threkir.com/clubs/join/<token>, /runs/<uuid>
 	     and /routes/<uuid> open here through app_links once iOS has fetched

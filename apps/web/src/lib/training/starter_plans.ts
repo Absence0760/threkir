@@ -46,7 +46,8 @@ export function starterById(id: string): StarterPlan | undefined {
 export function instantiateStarter(
 	id: string,
 	startDate: string,
-	age?: number | null
+	age?: number | null,
+	extraRecovery?: boolean
 ): GeneratedPlan | null {
 	const starter = starterById(id);
 	if (!starter) return null;
@@ -56,7 +57,8 @@ export function instantiateStarter(
 		daysPerWeek: starter.daysPerWeek,
 		weeks: starter.weeks,
 		beginnerWalkRun: starter.beginnerWalkRun,
-		age: age ?? null
+		age: age ?? null,
+		extraRecovery
 	});
 }
 
@@ -66,7 +68,8 @@ export interface StarterSummary {
 	/// The shortest and longest session, in whole minutes rounded to the
 	/// nearest 5, for a starter whose sessions are timed (walk-run). Null for
 	/// a distance-based starter, whose session length depends on the
-	/// runner's pace.
+	/// runner's pace; for the same reason the walk-run graduation 5K is left
+	/// out.
 	sessionMinutes: { min: number; max: number } | null;
 }
 
@@ -82,7 +85,12 @@ export function starterSummary(id: string): StarterSummary | null {
 	if (starter.beginnerWalkRun) {
 		const seconds = plan.weeks
 			.flatMap((w) => w.workouts)
-			.filter((wo) => wo.kind === 'walk_run' && wo.target_duration_seconds != null)
+			.filter(
+				(wo) =>
+					wo.kind === 'walk_run' &&
+					wo.target_duration_seconds != null &&
+					wo.structure?.repeats?.distance_m == null
+			)
 			.map((wo) => wo.target_duration_seconds as number);
 		if (seconds.length > 0) {
 			const toFive = (s: number) => Math.round(s / 300) * 5;

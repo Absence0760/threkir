@@ -513,6 +513,22 @@ void main() {
       expect(prefs.keepScreenOn, isFalse);
     });
 
+    test('haptic_feedback_enabled round-trips, a non-bool is dropped',
+        () async {
+      final prefs = await freshPrefs();
+      expect(prefs.hapticFeedback, isTrue);
+      final svc = SettingsSyncService(preferences: prefs);
+
+      svc.debugApplyDevice({SettingsKeys.hapticFeedbackEnabled: false});
+      expect(prefs.hapticFeedback, isFalse);
+
+      svc.debugApplyDevice({SettingsKeys.hapticFeedbackEnabled: 'on'});
+      expect(prefs.hapticFeedback, isFalse);
+
+      svc.debugApplyDevice({SettingsKeys.hapticFeedbackEnabled: true});
+      expect(prefs.hapticFeedback, isTrue);
+    });
+
     test('empty device bag is a no-op', () async {
       final prefs = await freshPrefs();
       await prefs.setAudioCues(true);
@@ -639,7 +655,7 @@ void main() {
         period: GoalPeriod.week,
         distanceMetres: 40000,
       ));
-      await prefs.setRunsLastFetchedAt(DateTime.utc(2026, 7, 1));
+      await prefs.setRunsSyncCursor(DateTime.utc(2026, 7, 1));
 
       await svc.onSignedOut();
 
@@ -656,7 +672,7 @@ void main() {
       expect(prefs.splitIntervalMetres, 0);
       expect(prefs.goals, isEmpty,
           reason: "A's goals must not render as B's");
-      expect(prefs.runsLastFetchedAt, isNull,
+      expect(prefs.runsSyncCursor, isNull,
           reason: "clearing the watermark forces B's first fetch down the "
               'FULL path — a delta against A\'s timestamp would skip '
               "B's older history");
@@ -751,12 +767,16 @@ Future<bool> Function({
   String? defaultActivityType,
   String? privacyDefault,
   List<int>? hrZoneCutoffs,
+  String? voiceFeedbackVerbosity,
+  bool? workoutStepCues,
 }) _recordZones(List<List<int>?> into) => ({
       required preferredUnit,
       required audioCues,
       defaultActivityType,
       privacyDefault,
       hrZoneCutoffs,
+      voiceFeedbackVerbosity,
+      workoutStepCues,
     }) async {
       into.add(hrZoneCutoffs);
       return true;

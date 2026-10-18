@@ -6,6 +6,7 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../column_limits.dart';
 import '../comeback.dart';
+import '../health_consent.dart' show HealthUseDobState;
 import '../preferences.dart' show activeDistanceUnit;
 import '../backend_timeout.dart';
 import '../auth_error.dart';
@@ -22,6 +23,7 @@ import '../plan_start.dart';
 import '../pro_sellable.dart';
 import '../race_plan_preset.dart';
 import '../race_predictor.dart' show EffortForPrediction, goalAheadOfRecentRuns;
+import '../settings_destination.dart';
 import '../social_service.dart' show ClubView, SocialService;
 import '../plan_labels.dart';
 import '../starter_plans.dart';
@@ -100,10 +102,28 @@ class PlanNewScreen extends StatefulWidget {
   final String? raceName;
   final num? raceDistanceM;
 
+  /// The calendar listing those facts came from, so the created plan links
+  /// back to the race (decisions § 2156).
+  final String? raceListingId;
+
+  /// The chained start floor a race's "Add to my season" hands over, so the
+  /// plan queues after the runner's current one; an AI fill keeps to it too.
+  final String? notBeforeIso;
+
   /// A plain-English description to prefill the "Describe the plan you want"
   /// box with (the Coach's "Build this plan" link). When the box is
   /// available it fills the form once after the first frame.
   final String? initialDescription;
+
+  /// A measured 5K to fill the recent-5K field with (Home's recent-5K
+  /// suggestion). Filled, never confirmed: it sets no paces until the runner
+  /// turns on the confirm switch.
+  final int? initialRecent5kSec;
+
+  /// A start to open on (the plan recap's "Build your next plan", past the
+  /// race's recovery). Snapped to a Sunday like a picked date, and ignored
+  /// when it is earlier than the wizard's own default. Web: `?start=`.
+  final DateTime? initialStartDate;
 
   /// Used to open the AI disclosure when the plan assistant is refused for
   /// consent. Null resolves the global client at tap time.
@@ -125,7 +145,11 @@ class PlanNewScreen extends StatefulWidget {
     this.raceDateIso,
     this.raceName,
     this.raceDistanceM,
+    this.raceListingId,
+    this.notBeforeIso,
     this.initialDescription,
+    this.initialRecent5kSec,
+    this.initialStartDate,
     this.apiClient,
     this.loadAiPlanAvailable,
     this.requestPlanInputsFn,
@@ -182,6 +206,17 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
   // calibration (72h hard-day spacing + 3-week cycle). Null → standard
   // schedule.
   int? _viewerAge;
+  // Null until the profile read lands, and on failure: the hint to add a
+  // date of birth then stays hidden rather than tell a runner with one on
+  // record that it is missing.
+  HealthUseDobState? _viewerDobState;
+  // `extra_recovery` (settings.md): the masters recovery calibration for a
+  // runner under 50 or with no age on record. A universal setting, so this
+  // switch and the one in Settings → Preferences are the same switch.
+  bool _extraRecovery = false;
+  bool _calibrationLoaded = false;
+  bool _extraRecoverySaving = false;
+  bool _extraRecoveryError = false;
   // The runner's chronic weekly volume, so the preview can say whether the
   // plan's opening week is a step their current training supports. Null until
   // loaded (and on failure) — the note self-hides rather than grading against
@@ -345,7 +380,21 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       _daysPerWeek = _clampDays(_daysPerWeek, true);
       _startDate = defaultPlanStart(_today(), walkRun: true);
     }
+    final linkedStart = widget.initialStartDate;
+    if (linkedStart != null) {
+      final aligned = alignPlanStart(linkedStart, walkRun: false);
+      if (aligned.isAfter(defaultPlanStart(_today(), walkRun: false))) {
+        _startDate = aligned;
+      }
+    }
     _applyRacePreset();
+    final suggested = widget.initialRecent5kSec;
+    if (suggested != null) {
+      _recent5kMin = suggested ~/ 60;
+      _recent5kSec = suggested % 60;
+      _recent5kMinCtrl.text = '$_recent5kMin';
+      _recent5kSecCtrl.text = '$_recent5kSec';
+    }
     final description = widget.initialDescription?.trim();
     if (description != null && description.isNotEmpty) {
       _aiCtrl.text = description.length > kPlanDescriptionMaxChars
@@ -353,13 +402,15 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
           : description;
     }
     _loadAiPlanAvailability();
-    widget.training.fetchViewerGender().then((g) {
+    widget.training.fetchPlanCalibration().then((c) {
       if (!mounted) return;
-      setState(() => _viewerGender = g);
-    });
-    widget.training.fetchViewerAge().then((a) {
-      if (!mounted) return;
-      setState(() => _viewerAge = a);
+      setState(() {
+        _viewerGender = c.gender;
+        _viewerAge = c.age;
+        _viewerDobState = c.dobState;
+        _extraRecovery = c.extraRecovery;
+        _calibrationLoaded = true;
+      });
     });
     widget.training.fetchPlanRunHistory().then((h) {
       if (!mounted || h == null) return;
@@ -515,6 +566,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       raceDateIso: raceDate,
       distanceM: _goalDistanceM,
       todayIso: toIsoDate(DateTime.now()),
+      notBeforeIso: widget.notBeforeIso,
     );
     final preset = result.preset;
     if (preset == null) return result.reason ?? RacePlanRefusal.invalid;
@@ -566,6 +618,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       raceDateIso: raceDateIso,
       distanceM: widget.raceDistanceM,
       todayIso: toIsoDate(DateTime.now()),
+      notBeforeIso: widget.notBeforeIso,
     );
     _racePreset = result;
     final preset = result.preset;
@@ -725,7 +778,12 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     final start = _startIsDefault
         ? starterStartDate(picked.id, _today())
         : alignPlanStart(_startDate, walkRun: picked.beginnerWalkRun);
-    final generated = instantiateStarter(picked.id, start, age: _viewerAge);
+    final generated = instantiateStarter(
+      picked.id,
+      start,
+      age: _viewerAge,
+      extraRecovery: _extraRecovery,
+    );
     if (generated == null) return;
     final action = await _confirmOverlap(
       toIsoDate(generated.endDate),
@@ -837,6 +895,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
           weeks: _weekOverride,
           gender: _viewerGender,
           age: _viewerAge,
+          extraRecovery: _extraRecovery,
           beginnerWalkRun: _beginnerWalkRun,
         ),
       );
@@ -877,6 +936,8 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
             startDate: _startDate,
             daysPerWeek: _daysPerWeek,
             generated: preview,
+            raceListingId:
+                _racePreset?.ok == true ? widget.raceListingId : null,
             onOverlap: action,
           )
           .timeout(kBackendLoadTimeout);
@@ -1217,6 +1278,10 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                       subtitle: Text(l10n.planNewBeginnerSubtitle),
                     ),
                   ],
+                  if (!_beginnerWalkRun) ...[
+                    const SizedBox(height: 12),
+                    ..._recoveryBlock(theme, l10n),
+                  ],
                   // A walk-run plan is duration-based intervals: its paces are
                   // not anchored on a 5K time, and a runner who has never run
                   // has no recent 5K to enter.
@@ -1254,6 +1319,15 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                       sentence: 'plan',
                       style: muted,
                     ),
+                    if (widget.initialRecent5kSec != null &&
+                        _recent5kTotal == widget.initialRecent5kSec &&
+                        !_recent5kConfirmed)
+                      Padding(
+                        key: const Key('plan-new-recent5k-suggested'),
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(l10n.planNewRecent5kSuggested,
+                            style: muted),
+                      ),
                     if (_recent5kComplete)
                       SwitchListTile(
                         key: const Key('plan-new-recent5k-confirm'),
@@ -1642,7 +1716,12 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     final result = _racePreset;
     if (result == null) return null;
     final preset = result.preset;
-    if (preset != null) return l10n.planNewRaceAnchored(preset.weeks);
+    if (preset != null) {
+      final anchored = l10n.planNewRaceAnchored(preset.weeks);
+      return widget.notBeforeIso == null
+          ? anchored
+          : '$anchored ${l10n.planNewRaceChained(preset.startDate)}';
+    }
     return switch (result.reason!) {
       RacePlanRefusal.past => l10n.planNewRacePast,
       RacePlanRefusal.tooSoon => l10n.planNewRaceTooSoon,
@@ -1966,6 +2045,107 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
             ),
       ],
     );
+  }
+
+  Future<void> _onExtraRecoveryChanged(bool on) async {
+    if (_extraRecoverySaving) return;
+    final before = _extraRecovery;
+    setState(() {
+      _extraRecovery = on;
+      _extraRecoverySaving = true;
+      _extraRecoveryError = false;
+    });
+    try {
+      await widget.training.setExtraRecovery(on).timeout(kBackendLoadTimeout);
+    } catch (e) {
+      debugPrint('PlanNewScreen: extra_recovery save failed: $e');
+      if (mounted) {
+        setState(() {
+          _extraRecovery = before;
+          _extraRecoveryError = true;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _extraRecoverySaving = false);
+    }
+  }
+
+  /// The recovery block: a 50+ runner is told the masters calibration is
+  /// already on; anyone else gets the `extra_recovery` switch, plus a hint
+  /// when no usable date of birth is on record. Mirrors web PlanEditor.
+  List<Widget> _recoveryBlock(ThemeData theme, AppLocalizations l10n) {
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    if (isMastersAge(_viewerAge)) {
+      return [
+        Text(
+          l10n.planNewMastersRecoveryApplied,
+          key: const Key('plan-new-recovery-masters'),
+          style: muted,
+        ),
+      ];
+    }
+    Widget hint(Key key, String text, String action, SettingsDestination to) =>
+        Padding(
+          key: key,
+          padding: const EdgeInsets.only(top: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(text, style: muted),
+              TextButton(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  minimumSize: const Size(0, 44),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: () => openSettings(to),
+                child: Text(action),
+              ),
+            ],
+          ),
+        );
+    return [
+      SwitchListTile(
+        key: const Key('plan-new-extra-recovery'),
+        value: _extraRecovery,
+        onChanged: _calibrationLoaded && !_extraRecoverySaving
+            ? _onExtraRecoveryChanged
+            : null,
+        contentPadding: EdgeInsets.zero,
+        title: Text(l10n.prefsExtraRecovery),
+        subtitle: Text(l10n.planNewExtraRecoveryHint),
+      ),
+      if (_extraRecoveryError)
+        Padding(
+          key: const Key('plan-new-extra-recovery-error'),
+          padding: const EdgeInsets.only(top: 4),
+          child: Semantics(
+            liveRegion: true,
+            child: Text(
+              l10n.planNewExtraRecoverySaveFailed,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.error,
+              ),
+            ),
+          ),
+        ),
+      if (_viewerDobState == HealthUseDobState.absent)
+        hint(
+          const Key('plan-new-dob-hint'),
+          l10n.planNewDobHintAbsent,
+          l10n.planNewDobHintAbsentAction,
+          SettingsDestination.preferences,
+        )
+      else if (_viewerDobState == HealthUseDobState.consentWithheld)
+        hint(
+          const Key('plan-new-dob-consent-hint'),
+          l10n.planNewDobHintHealthData,
+          l10n.planNewDobHintHealthDataAction,
+          SettingsDestination.bodyMetrics,
+        ),
+    ];
   }
 
   Widget _numField(

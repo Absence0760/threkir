@@ -58,7 +58,8 @@ test.describe('/races — calendar discovery', () => {
 			'https://example.com/register'
 		);
 
-		// Half-marathon band keeps it; 5K drops it.
+		// Half-marathon band keeps it; 5K drops it. The bands sit behind Filters.
+		await page.getByTestId('races-filters-toggle').click();
 		await page.getByTestId('races-dist-half').click();
 		await expect(card).toBeVisible();
 		await page.getByTestId('races-dist-5k').click();

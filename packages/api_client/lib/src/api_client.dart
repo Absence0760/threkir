@@ -1031,21 +1031,39 @@ class ApiClient {
     );
   }
 
-  /// Patch the editable columns of a run row in place — duration, distance,
-  /// the promoted `is_dnf` flag, and the metadata bag — WITHOUT re-uploading
-  /// the track. The web run-detail `saveEdit` writes these columns directly;
-  /// the mobile edit dialog mirrors it so a DNF / title / notes / stat edit
-  /// is reflected on other clients immediately instead of waiting for the
-  /// next batch sync (which would re-gzip + re-upload the whole track for a
-  /// one-flag change). Owner-only by RLS. Best-effort caller — a failure
-  /// just leaves the change to land on the next batch sync.
-  Future<void> updateRunFields(Run run) async {
-    await _client.from(RunRow.table).update({
-      RunRow.colDurationS: run.duration.inSeconds,
-      RunRow.colDistanceM: run.distanceMetres,
-      RunRow.colIsDnf: run.metadata?['is_dnf'] == true,
-      RunRow.colMetadata: runMetadataForRow(run.metadata),
-    }).eq(RunRow.colId, run.id);
+  /// Push a local edit to a synced run as a compare-and-swap: an UPDATE of
+  /// only the columns [fields] live in ([runEditPatch]), filtered on the id
+  /// AND on `updated_at` still being [baseUpdatedAt], the server stamp of the
+  /// copy the edit was made on (decisions § 2147). Returns the row as the
+  /// server now holds it, carrying its new `updated_at`, or null when no row
+  /// matched — the row moved since the base was read, or is gone — which the
+  /// caller resolves by reading it again ([getRunsByIds]) and re-basing.
+  ///
+  /// The base is sent back exactly as the server sent it. A null base matches
+  /// only a row whose `updated_at` is null, a row no write has touched since
+  /// the column became server-stamped. Owner-filtered by RLS and by the
+  /// explicit `user_id` clause, the same coach-visibility reason [getRuns]
+  /// gives. Never re-uploads the track.
+  Future<Run?> updateRunFieldsIfUnchanged(
+    Run run, {
+    required Set<String> fields,
+    required String? baseUpdatedAt,
+  }) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    final patch = runEditPatch(run, fields, userId: userId);
+    if (patch.isEmpty) return null;
+    final filtered = _client
+        .from(RunRow.table)
+        .update(patch)
+        .eq(RunRow.colId, run.id)
+        .eq(RunRow.colUserId, userId);
+    final rows = await (baseUpdatedAt == null
+            ? filtered.isFilter(RunRow.colUpdatedAt, null)
+            : filtered.eq(RunRow.colUpdatedAt, baseUpdatedAt))
+        .select();
+    if (rows.isEmpty) return null;
+    return _runFromRow(rows.first);
   }
 
   /// Mark a run as publicly visible so it can be viewed at
@@ -1556,12 +1574,6 @@ class ApiClient {
   /// [before] paginates backwards — pass the `startedAt` of the oldest
   /// row from a previous page to get the next older batch.
   ///
-  /// [updatedSince] enables delta fetches: only rows whose `last_modified_at`
-  /// (in metadata) is newer than the supplied timestamp are returned. The
-  /// caller stores its `lastFetchedAt` locally and passes it on subsequent
-  /// opens so we don't re-fetch the entire history on every Runs tab
-  /// visit.
-  ///
   /// Owner-only, filtered by `user_id` rather than left to RLS: the `runs`
   /// SELECT policy also admits every run of an athlete the caller actively
   /// coaches, and those would land in a coach's own run store, history and
@@ -1569,7 +1581,6 @@ class ApiClient {
   Future<List<Run>> getRuns({
     int limit = 50,
     DateTime? before,
-    DateTime? updatedSince,
   }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
@@ -1579,25 +1590,83 @@ class ApiClient {
     if (before != null) {
       query = query.lt(RunRow.colStartedAt, before.toIso8601String());
     }
-    if (updatedSince != null) {
-      // `last_modified_at` lives in metadata as an ISO-8601 string stamped
-      // by LocalRunStore on every write. `->>` projects the JSON field as
-      // text; Postgres lexicographic-compares ISO-8601 strings correctly.
-      // The key must NOT be quoted in PostgREST filter syntax — a quoted
-      // key is treated as the literal JSON key `'last_modified_at'`
-      // (quotes included), which matches nothing and silently turns every
-      // delta pull into an empty result.
-      query = query.gt(
-        '${RunRow.colMetadata}->>last_modified_at',
-        updatedSince.toIso8601String(),
-      );
-    }
 
     final data = await query
         .order(RunRow.colStartedAt, ascending: false)
         .limit(limit);
 
     return data.map<Run>((row) => _runFromRow(row)).toList();
+  }
+
+  /// How far behind its cursor [getRunsModifiedSince] re-reads. `updated_at`
+  /// is the writing transaction's START (`now()`, decisions § 2118), so a
+  /// write can commit after a later-starting one whose stamp the cursor has
+  /// already passed, carrying a stamp below it. Re-reading a window behind
+  /// the cursor catches it; the rows read twice are harmless, because the
+  /// local merge keeps a copy that is already current.
+  static const Duration runsDeltaOverlap = Duration(minutes: 5);
+
+  /// Every run of the caller's whose server `updated_at` is later than
+  /// [cursor] minus [runsDeltaOverlap], and the cursor to pass next time.
+  ///
+  /// `runs.updated_at` is stamped by the server on every insert and update
+  /// (migration `20270918000005`), so it sees a change made by any writer —
+  /// web, an import, a restore, a job — where the `metadata.last_modified_at`
+  /// stamp this pull used to key on is written by the phone alone (§ 2116).
+  /// The returned cursor is the largest `updated_at` the server sent, never
+  /// the device clock, so clock skew cannot open a gap; with no rows it is
+  /// [cursor] unchanged.
+  ///
+  /// A null [cursor] walks every owned row. Walked by keyset on
+  /// `(updated_at, id)` rather than capped: a statement stamps all its rows
+  /// with one value, so a page boundary inside a tie would skip the rest of
+  /// it under a plain `updated_at >` cursor, and a cap would leave whatever
+  /// it cut off behind the cursor it returned. Owner-filtered for the same
+  /// coach-visibility reason as [getRuns].
+  Future<({List<Run> runs, DateTime? cursor})> getRunsModifiedSince(
+    DateTime? cursor,
+  ) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    final from = cursor?.toUtc().subtract(runsDeltaOverlap).toIso8601String();
+    final rows = await _walk(_runsModifiedOrder, () {
+      final q =
+          _client.from(RunRow.table).select().eq(RunRow.colUserId, userId);
+      return from == null ? q : q.gt(RunRow.colUpdatedAt, from);
+    });
+    var next = cursor;
+    for (final row in rows) {
+      final stamp = parseIsoStrictValue(row[RunRow.colUpdatedAt]);
+      if (stamp != null && (next == null || stamp.isAfter(next))) next = stamp;
+    }
+    return (runs: rows.map<Run>(_runFromRow).toList(), cursor: next);
+  }
+
+  /// Oldest change first, `id` breaking the ties one statement's shared
+  /// `now()` produces. `updated_at` is nullable on a row no write has touched
+  /// since the column became server-stamped; nulls sort last, so the walk
+  /// from a null cursor still reads them.
+  static const List<KeysetKey> _runsModifiedOrder = [
+    KeysetKey(RunRow.colUpdatedAt, ascending: true, nullsFirst: false),
+    KeysetKey(RunRow.colId, ascending: true, nullsFirst: false),
+  ];
+
+  /// The signed-in user's runs among [ids], as track-less [Run]s like
+  /// [getRuns] returns. An id the caller does not own, or that no longer
+  /// exists, is simply absent. Owner-filtered for the same coach-visibility
+  /// reason as [getRuns], and chunked because the ids ride the request URL.
+  Future<List<Run>> getRunsByIds(Iterable<String> ids) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    final rows = await readChunked(
+      ids.toSet().toList(),
+      (chunk) async => _client
+          .from(RunRow.table)
+          .select()
+          .eq(RunRow.colUserId, userId)
+          .inFilter(RunRow.colId, chunk),
+    );
+    return rows.map<Run>((row) => _runFromRow(row)).toList();
   }
 
   /// Download and decode the GPS track for a single run of the signed-in
@@ -3598,6 +3667,36 @@ class ApiClient {
         .order(RunRow.colStartedAt, ascending: false)
         .limit(limit);
     return data.map<RunRow>((r) => RunRow.fromJson(r)).toList();
+  }
+
+  /// Head counts for the profile header, so it can show a total rather than
+  /// the length of the capped page [fetchPublicRunsByUser] returns.
+  ///
+  /// `publicCount` reads the same `public_runs` view the Runs tab lists, so a
+  /// private profile or a followers-only audience is honoured exactly as the
+  /// list honours it; for the owner that is their `is_public = true` runs.
+  /// `privateCount` is the owner's remaining runs (`is_public` false or null)
+  /// and is null for any other viewer. Mirrors web `fetchProfileRunCounts`.
+  Future<({int publicCount, int? privateCount})> fetchProfileRunCounts(
+    String userId, {
+    required bool isSelf,
+  }) async {
+    final counts = await Future.wait<int>([
+      _client
+          .from('public_runs')
+          .count(CountOption.exact)
+          .eq(RunRow.colUserId, userId),
+      if (isSelf)
+        _client
+            .from(RunRow.table)
+            .count(CountOption.exact)
+            .eq(RunRow.colUserId, userId)
+            .or('${RunRow.colIsPublic}.is.null,${RunRow.colIsPublic}.eq.false'),
+    ]);
+    return (
+      publicCount: counts[0],
+      privateCount: isSelf ? counts[1] : null,
+    );
   }
 
   /// Public profile lookup by user ID. Returns null when the row
@@ -6768,6 +6867,14 @@ class ApiClient {
     if (r.elevationGainM != null) {
       metadata[MetadataKeys.elevationM] = r.elevationGainM;
     }
+    // The base a local edit is compare-and-swapped against (decisions
+    // § 2147). The raw string, not `r.updatedAt`: the push sends it back for
+    // an equality match, and a value re-formatted through `DateTime` is not
+    // guaranteed to be the one Postgres compares.
+    final updatedAt = row[RunRow.colUpdatedAt];
+    if (updatedAt is String && updatedAt.isNotEmpty) {
+      metadata[MetadataKeys.serverUpdatedAt] = updatedAt;
+    }
 
     return Run(
       id: r.id,
@@ -9578,8 +9685,8 @@ class ActivityRow {
 ///
 /// Stripping nulls means an upsert can only ever ADD or CHANGE a value, never
 /// clear one. That is the same trade-off `buildSaveRouteBody` already takes,
-/// and targeted clears go through `updateRunFields`, which sends only the keys
-/// it means to write.
+/// and targeted clears go through `updateRunFieldsIfUnchanged`, which sends
+/// only the columns it means to write.
 ///
 /// `followers_only` is NOT NULL, so the row always carries a value and the
 /// null strip cannot protect it: a re-sync would write `false` over a

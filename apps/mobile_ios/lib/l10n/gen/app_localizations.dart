@@ -1619,6 +1619,36 @@ abstract class AppLocalizations {
   /// **'Used to estimate your daily calorie and macro targets.'**
   String get bodyMetricsTargetsHint;
 
+  /// Hint under the body-metrics Save button saying the consent, height and weight section saves only on that button
+  ///
+  /// In en, this message translates to:
+  /// **'This section saves only when you tap Save.'**
+  String get bodyMetricsSaveHint;
+
+  /// Shown in place of the save hint when the body-metrics height, weight or consent fields hold edits that have not been saved
+  ///
+  /// In en, this message translates to:
+  /// **'Unsaved changes'**
+  String get bodyMetricsUnsaved;
+
+  /// Header of the body-metrics section holding activity level and weight goal
+  ///
+  /// In en, this message translates to:
+  /// **'Nutrition targets'**
+  String get bodyMetricsNutritionHeading;
+
+  /// Note in the body-metrics nutrition section saying activity level and goal save as soon as they are picked
+  ///
+  /// In en, this message translates to:
+  /// **'Changes here save automatically.'**
+  String get bodyMetricsAutosaveHint;
+
+  /// Body of the confirm dialog shown when leaving body metrics with unsaved height, weight or consent edits
+  ///
+  /// In en, this message translates to:
+  /// **'You changed your body metrics but haven\'t saved them. Leave without saving?'**
+  String get bodyMetricsLeaveMessage;
+
   /// Error shown when saving body data without consent
   ///
   /// In en, this message translates to:
@@ -3424,6 +3454,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Approximate location — distance paused'**
   String get runWeakGpsApproximate;
+
+  /// Action on the mid-run approximate-location strip; opens the app's location settings so the runner can turn precise location on
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on precise location'**
+  String get runTurnOnPreciseLocation;
 
   /// Screen-reader status announcement when recording begins
   ///
@@ -7660,6 +7696,18 @@ abstract class AppLocalizations {
   /// **'No public runs yet.'**
   String get profileRunsEmptyOther;
 
+  /// Owner-only note on their own profile's Runs tab: how many of their runs are not public and so are not listed there
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 of your runs isn\'t public, so it isn\'t listed here.} other{{count} of your runs aren\'t public, so they aren\'t listed here.}}'**
+  String profilePrivateRunsNote(int count);
+
+  /// Link under the private-runs note that opens the owner's full run list
+  ///
+  /// In en, this message translates to:
+  /// **'View all in Runs'**
+  String get profilePrivateRunsNoteLink;
+
   /// Empty state for the followers tab
   ///
   /// In en, this message translates to:
@@ -9808,6 +9856,12 @@ abstract class AppLocalizations {
   /// **'Sized for your race: a {weeks}-week plan whose final week is race week. Adjust anything below before creating it.'**
   String planNewRaceAnchored(int weeks);
 
+  /// Plan wizard: note when the race plan starts after the runner's current plan. date is the start date.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts {date}, after your current plan and its recovery days.'**
+  String planNewRaceChained(String date);
+
   /// Note shown when the race the wizard was opened from has already been run
   ///
   /// In en, this message translates to:
@@ -10804,6 +10858,102 @@ abstract class AppLocalizations {
   /// **'{n, plural, one{Adjusted 1 workout} other{Adjusted {n} workouts}}'**
   String planDetailReplanApplied(int n);
 
+  /// Home plan card title: under-run trend
+  ///
+  /// In en, this message translates to:
+  /// **'Running a little less than planned'**
+  String get planNudgeUnderTitle;
+
+  /// Home plan card body: under-run trend. n of the last total completed weeks were under plan
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve run less than planned in {n} of the last {total} weeks. There\'s a suggested adjustment to the weeks ahead.'**
+  String planNudgeUnderBody(int n, int total);
+
+  /// Home plan card title: last week came in well under plan (comeback ramp)
+  ///
+  /// In en, this message translates to:
+  /// **'Last week came in short'**
+  String get planNudgeAnchorUnderTitle;
+
+  /// Home plan card body: last week came in well under plan (comeback ramp)
+  ///
+  /// In en, this message translates to:
+  /// **'The weeks ahead still step up from the plan, not from what you ran. There\'s a suggested change to build back from last week instead.'**
+  String get planNudgeAnchorUnderBody;
+
+  /// Home plan card title: back after weeks away from the plan (comeback ramp)
+  ///
+  /// In en, this message translates to:
+  /// **'Easing back into your plan'**
+  String get planNudgeAnchorReturnTitle;
+
+  /// Home plan card body: back after n weeks away from the plan (comeback ramp)
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve been away from the plan for {n, plural, one {# week} other {# weeks}}. There\'s a suggested change so the weeks ahead build back up from what you last ran.'**
+  String planNudgeAnchorReturnBody(int n);
+
+  /// Home plan card title: last week well over plan
+  ///
+  /// In en, this message translates to:
+  /// **'A big week'**
+  String get planNudgeEaseTitle;
+
+  /// Home plan card body: last week more than 20% over plan, next week's shorter runs eased
+  ///
+  /// In en, this message translates to:
+  /// **'You ran well over plan last week. Easing next week\'s shorter runs helps your body absorb it.'**
+  String get planNudgeEaseBody;
+
+  /// Home plan card title: runs on rest days
+  ///
+  /// In en, this message translates to:
+  /// **'Running on rest days'**
+  String get planNudgeRestTitle;
+
+  /// Home plan card body: runs on rest days in n of the last total completed weeks
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve run on rest days in {n} of the last {total} weeks. Those runs count toward your week, but rest days are where the training sinks in.'**
+  String planNudgeRestBody(int n, int total);
+
+  /// Home plan card: open the existing re-plan preview
+  ///
+  /// In en, this message translates to:
+  /// **'Review the changes'**
+  String get planNudgeReview;
+
+  /// Home plan card: dismiss
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get planNudgeDismiss;
+
+  /// Accessible name of the dismiss control
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss this suggestion'**
+  String get planNudgeDismissA11y;
+
+  /// Dismissing the plan card could not be saved
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t hide that suggestion. Try again.'**
+  String get planNudgeDismissFailed;
+
+  /// How far a done workout ran past its target, shown after Done, e.g. +3 km
+  ///
+  /// In en, this message translates to:
+  /// **'+{distance}'**
+  String planWorkoutOverrun(String distance);
+
+  /// Screen-reader text for the over-run, e.g. 3 km more than planned
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} more than planned'**
+  String planWorkoutOverrunA11y(String distance);
+
   /// Plan-detail adherence/replan/duplicate
   ///
   /// In en, this message translates to:
@@ -10815,6 +10965,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Long run {from} → {to} — make up a missed long run'**
   String planDetailReplanMakeUp(String from, String to);
+
+  /// Plan-detail re-plan preview row: a session lowered so the weeks ahead build back from the volume actually run (comeback ramp)
+  ///
+  /// In en, this message translates to:
+  /// **'{from} → {to} — build back from what you ran'**
+  String planDetailReplanAnchor(String from, String to);
+
+  /// Plan-detail re-plan preview note: the last week came in well under plan, km is what was run that week
+  ///
+  /// In en, this message translates to:
+  /// **'Your last week of running came in at {km}, well under plan. These weeks now build back from that, about 10% a week, until the plan fits again. The taper stays as planned.'**
+  String planDetailAnchorUnderNote(String km);
+
+  /// Plan-detail re-plan preview note after weeks away from the plan: n weeks away, km is the last week run
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve been away from the plan for {n, plural, one {# week} other {# weeks}}. These weeks restart at about half of the {km} you last ran in a week and build about 10% a week. The taper stays as planned.'**
+  String planDetailAnchorReturnNote(int n, String km);
 
   /// Plan-detail adherence/replan/duplicate
   ///
@@ -17451,6 +17619,12 @@ abstract class AppLocalizations {
   /// **'Waiting for GPS...'**
   String get liveRunMapWaitingGps;
 
+  /// Live map placeholder shown instead of liveRunMapWaitingGps while the run records under an approximate location grant and no fix has arrived
+  ///
+  /// In en, this message translates to:
+  /// **'Precise location is off — the map can\'t show where you are'**
+  String get liveRunMapApproximateLocation;
+
   /// Tooltip on the re-centre map button
   ///
   /// In en, this message translates to:
@@ -22466,6 +22640,42 @@ abstract class AppLocalizations {
   /// **'Search races by name…'**
   String get racesSearchPlaceholder;
 
+  /// Label of the button that opens the race calendar's filter sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Filters'**
+  String get racesFilters;
+
+  /// Screen-reader label of the Filters button when filters are on. {count} is how many.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Filters, 1 on} other{Filters, {count} on}}'**
+  String racesFiltersCount(int count);
+
+  /// Tooltip and screen-reader label of the remove action on an active race-calendar filter chip. {filter} is the chip's own label.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove filter: {filter}'**
+  String racesRemoveFilter(String filter);
+
+  /// Active-filter chip for the near-a-place filter. {place} is what the runner typed.
+  ///
+  /// In en, this message translates to:
+  /// **'Near {place}'**
+  String racesNearChip(String place);
+
+  /// Button that closes the race calendar's filter sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get racesFiltersDone;
+
+  /// Heading over the distance-band chips in the race calendar filter sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get racesDistanceGroup;
+
   /// Placeholder for the near-a-place geocode field
   ///
   /// In en, this message translates to:
@@ -22525,6 +22735,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Train for this race'**
   String get racesTrainForThis;
+
+  /// Race detail: primary action opening the plan builder prefilled for this race.
+  ///
+  /// In en, this message translates to:
+  /// **'Build a plan for this race'**
+  String get racesBuildPlan;
+
+  /// Race detail: secondary action opening the AI plan assistant prefilled with this race. Shown only while the AI plan assistant is live.
+  ///
+  /// In en, this message translates to:
+  /// **'Tailor it with AI'**
+  String get racesTailorWithAi;
+
+  /// Race detail: action that builds a plan for this race starting after the runner's current plan ends.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to my season'**
+  String get racesAddToSeason;
+
+  /// Race detail: explains when a chained plan starts. plan is the earlier plan's name, date its end date, days the recovery days (always 3 or more).
+  ///
+  /// In en, this message translates to:
+  /// **'Starts after {plan} ends on {date}, with {days} days to recover.'**
+  String racesAddToSeasonHint(String plan, String date, String days);
 
   /// Races screen: accessibility label for the Upcoming / Recent results choice
   ///
@@ -22597,6 +22831,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your runs at this race'**
   String get racesDetailYourRuns;
+
+  /// Race detail: heading over the race's course summary (distance, elevation gain, surface)
+  ///
+  /// In en, this message translates to:
+  /// **'Course'**
+  String get racesCourseHeading;
+
+  /// Race detail: the course's total elevation gain in the course summary. value is the formatted gain with its unit, e.g. 180 m.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} elevation gain'**
+  String racesCourseGain(String value);
 
   /// Race detail screen: the runner's linked runs failed to load
   ///
@@ -28501,6 +28747,12 @@ abstract class AppLocalizations {
   /// **'Assigned by your coach'**
   String get planDetailAssignedByCoach;
 
+  /// Plan detail: the calendar race the plan was built for, linking to that race. race is the race's name, date its race day.
+  ///
+  /// In en, this message translates to:
+  /// **'Built for {race} · {date}'**
+  String planDetailBuiltForRace(String race, String date);
+
   /// Plan-detail header: which week of the plan today is in
   ///
   /// In en, this message translates to:
@@ -28777,6 +29029,12 @@ abstract class AppLocalizations {
   /// **'You\'re making new calendar links too quickly — please wait {wait} and try again.'**
   String rateLimitRotateCalendarLink(String wait);
 
+  /// Rate-limit refusal when the restart_training_plan bucket is spent (restarting a training plan)
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re restarting plans too quickly — please wait {wait} and try again.'**
+  String rateLimitRestartPlan(String wait);
+
   /// Heading of the training-plan calendar feed screen and its Integrations tile
   ///
   /// In en, this message translates to:
@@ -28920,6 +29178,1156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Anyone with the link can see your workout dates, types and targets. It carries no location, notes or plan name. Make a new link if you shared it by mistake.'**
   String get planCalendarFeedPrivacy;
+
+  /// Top banner when a screen already showing data fails to refresh because the device is offline; the old data stays on screen
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re offline. Showing what was last loaded.'**
+  String get commonStaleOffline;
+
+  /// Top banner when a screen already showing data fails to refresh for a reason other than being offline; the old data stays on screen
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t refresh. Showing what was last loaded.'**
+  String get commonStaleRefreshFailed;
+
+  /// Tooltip on the plan detail app-bar overflow menu
+  ///
+  /// In en, this message translates to:
+  /// **'More plan actions'**
+  String get planDetailMoreActions;
+
+  /// Tooltip on a week's overflow menu in the week-by-week list
+  ///
+  /// In en, this message translates to:
+  /// **'Week {n} actions'**
+  String planDetailWeekActions(int n);
+
+  /// Plan menu item that opens the shift-dates dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Shift dates…'**
+  String get planDetailShiftDates;
+
+  /// Shift dates dialog title
+  ///
+  /// In en, this message translates to:
+  /// **'Shift the whole plan?'**
+  String get planDetailShiftTitle;
+
+  /// Shift dates dialog body
+  ///
+  /// In en, this message translates to:
+  /// **'This moves every workout and your race date. You can shift again to undo it.'**
+  String get planDetailShiftMessage;
+
+  /// Label of the days field in the shift dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Days to shift (negative moves earlier)'**
+  String get planDetailShiftDaysLabel;
+
+  /// Validation error for the shift days field
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a whole number of days from -366 to 366, other than 0.'**
+  String get planDetailShiftDaysInvalid;
+
+  /// Confirm button of the shift dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Shift dates'**
+  String get planDetailShiftApply;
+
+  /// Banner after the plan was shifted; n is the absolute number of days
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{Plan shifted by {n} day} other{Plan shifted by {n} days}}'**
+  String planDetailShiftDone(int n);
+
+  /// Dialog title when a forward shift runs into later plans
+  ///
+  /// In en, this message translates to:
+  /// **'Move the plans after this one too?'**
+  String get planDetailShiftFollowingTitle;
+
+  /// Dialog body when a forward shift runs into later plans
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{Shifting by {n} day runs into the plans queued after this one. Moving them by the same amount keeps their spacing.} other{Shifting by {n} days runs into the plans queued after this one. Moving them by the same amount keeps their spacing.}}'**
+  String planDetailShiftFollowingMessage(int n);
+
+  /// Confirm button: shift the later plans as well
+  ///
+  /// In en, this message translates to:
+  /// **'Move them too'**
+  String get planDetailShiftFollowingApply;
+
+  /// Banner when a shift runs into an earlier plan
+  ///
+  /// In en, this message translates to:
+  /// **'These dates run into a plan that comes before this one. Pick a smaller shift, or end that plan earlier first.'**
+  String get planDetailShiftBlocked;
+
+  /// Week menu item and confirm button: turn a week into a recovery week
+  ///
+  /// In en, this message translates to:
+  /// **'Make recovery week'**
+  String get planDetailMarkRecovery;
+
+  /// Recovery week confirm title
+  ///
+  /// In en, this message translates to:
+  /// **'Make this a recovery week?'**
+  String get planDetailRecoveryConfirmTitle;
+
+  /// Recovery week confirm body; n is the 1-based week number
+  ///
+  /// In en, this message translates to:
+  /// **'This eases week {n}\'s volume to about 60% and turns its quality sessions into easy runs. The original paces and distances can\'t be restored.'**
+  String planDetailRecoveryConfirmMessage(int n);
+
+  /// Banner after a week was eased
+  ///
+  /// In en, this message translates to:
+  /// **'Week eased to a recovery week'**
+  String get planDetailRecoveryDone;
+
+  /// Plan menu item: share the plan as a Markdown table
+  ///
+  /// In en, this message translates to:
+  /// **'Export as Markdown'**
+  String get planDetailExportMarkdown;
+
+  /// Plan menu item: share the plan as JSON
+  ///
+  /// In en, this message translates to:
+  /// **'Export as JSON'**
+  String get planDetailExportJson;
+
+  /// Plan menu item: abandon an active or paused plan (confirms first; weeks, workouts and linked runs are kept)
+  ///
+  /// In en, this message translates to:
+  /// **'Abandon plan'**
+  String get planDetailAbandonPlan;
+
+  /// Plan menu item: delete the plan (confirms first)
+  ///
+  /// In en, this message translates to:
+  /// **'Delete plan'**
+  String get planDetailDeletePlan;
+
+  /// Plan menu item and title of the plan-details sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Edit plan details'**
+  String get planDetailEditDetails;
+
+  /// Validation error for the goal time fields in the plan-details sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a goal time above zero, with minutes and seconds up to 59.'**
+  String get planDetailGoalTimeInvalid;
+
+  /// Hint under the goal time fields: what a change does to the paces
+  ///
+  /// In en, this message translates to:
+  /// **'Changing it re-derives the pace targets of the workouts still ahead. Past, done and skipped ones keep theirs, and a plan built from a recent 5K keeps its paces.'**
+  String get planDetailGoalTimeRepaceHint;
+
+  /// Label of the plan notes field
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get planDetailNotesLabel;
+
+  /// Label of the plan rules field
+  ///
+  /// In en, this message translates to:
+  /// **'Plan rules, one per line'**
+  String get planDetailRulesLabel;
+
+  /// Save button of the plan-details sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get planDetailSaveDetails;
+
+  /// Banner after the plan details were saved
+  ///
+  /// In en, this message translates to:
+  /// **'Plan updated.'**
+  String get planDetailDetailsSaved;
+
+  /// Banner after the plan details were saved and a new goal time re-derived n workouts' paces
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{Plan updated. Paces re-derived for {n} upcoming workout.} other{Plan updated. Paces re-derived for {n} upcoming workouts.}}'**
+  String planDetailDetailsSavedRepaced(int n);
+
+  /// Adjust plan option and confirm button: ease the plan for the menstrual cycle (Art 9, behind the cycle-plans gate)
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust for my cycle'**
+  String get planDetailCycleAdjustCycle;
+
+  /// Adjust plan option and confirm button: adjust the plan for pregnancy
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust for pregnancy'**
+  String get planDetailCycleAdjustPregnancy;
+
+  /// Cycle / pregnancy adjustment confirm title
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust remaining weeks?'**
+  String get planDetailCycleAdjustConfirmTitle;
+
+  /// Confirm body for the cycle adjustment
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming workouts on your menstrual and late-luteal days will be eased — a modest volume trim, with quality sessions run by feel. Past workouts are unchanged.'**
+  String get planDetailCycleAdjustConfirmCycle;
+
+  /// Confirm body for the pregnancy adjustment; not medical advice
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming workouts will be adjusted for pregnancy: hard sessions and races become easy runs and volume tapers by trimester. This is not medical advice — follow your healthcare provider. Past workouts are unchanged.'**
+  String get planDetailCycleAdjustConfirmPregnancy;
+
+  /// Banner after the adjustment changed workouts
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming weeks adjusted.'**
+  String get planDetailCycleAdjustDone;
+
+  /// Banner when no upcoming workout needed adjusting
+  ///
+  /// In en, this message translates to:
+  /// **'No upcoming workouts needed adjusting.'**
+  String get planDetailCycleAdjustNone;
+
+  /// Description under the cycle option in the Adjust plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Eases upcoming sessions on the menstrual and late-luteal days of your cycle. Past sessions stay as they are.'**
+  String get planDetailAdjustCycleDesc;
+
+  /// Description under the pregnancy option in the Adjust plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Turns hard upcoming sessions into easy runs and eases volume by trimester. Past sessions stay as they are.'**
+  String get planDetailAdjustPregnancyDesc;
+
+  /// Title of the resume confirm when the paused weeks will move
+  ///
+  /// In en, this message translates to:
+  /// **'Resume and push back?'**
+  String get planDetailResumeShiftTitle;
+
+  /// Resume confirm body; n whole weeks the unstarted weeks move, date the plan's new end
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{This plan becomes your active plan again. The weeks you had not started move back {n} week, so it picks up next week instead of counting them as missed. It now ends on {date}.} other{This plan becomes your active plan again. The weeks you had not started move back {n} weeks, so it picks up next week instead of counting them as missed. It now ends on {date}.}}'**
+  String planDetailResumeShiftMessage(int n, String date);
+
+  /// Banner after resuming with the weeks moved
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{Plan resumed and pushed back {n} week.} other{Plan resumed and pushed back {n} weeks.}}'**
+  String planDetailResumeShiftedDone(int n);
+
+  /// Plan detail app-bar menu item that restarts the plan as a fresh copy
+  ///
+  /// In en, this message translates to:
+  /// **'Restart plan…'**
+  String get planDetailRestartPlan;
+
+  /// Title of the restart-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Restart this plan'**
+  String get planDetailRestartTitle;
+
+  /// Button in the restart dialog that opens the start-date picker
+  ///
+  /// In en, this message translates to:
+  /// **'Change start date'**
+  String get planDetailRestartChangeDate;
+
+  /// Restart confirm for an active or paused plan; date and end are the copy's start and end dates
+  ///
+  /// In en, this message translates to:
+  /// **'The new copy starts on {date} and ends on {end}. This plan, and any active plan those dates overlap, is retired as abandoned. Its weeks, workouts and run links are kept.'**
+  String planDetailRestartConfirmLive(String date, String end);
+
+  /// Restart confirm for a completed or abandoned plan; date and end are the copy's start and end dates
+  ///
+  /// In en, this message translates to:
+  /// **'The new copy starts on {date} and ends on {end}. Any active plan those dates overlap is retired as abandoned. This plan keeps its weeks, workouts and run links.'**
+  String planDetailRestartConfirmOver(String date, String end);
+
+  /// Restart confirm addendum: where the plan's past race lands in the copy
+  ///
+  /// In en, this message translates to:
+  /// **'Race day moves to {date}.'**
+  String planDetailRestartRaceMoves(String date);
+
+  /// Restart dialog body when the plan has a race still ahead; date is that race
+  ///
+  /// In en, this message translates to:
+  /// **'This plan\'s race on {date} is still ahead. Restarting would move race day, so change the race date or start a new plan instead.'**
+  String planDetailRestartRaceAhead(String date);
+
+  /// Banner when the server refuses a restart because a race is still ahead
+  ///
+  /// In en, this message translates to:
+  /// **'This plan has a race still ahead, so it can\'t be restarted.'**
+  String get planDetailRestartRaceAheadError;
+
+  /// Banner when the server refuses a restart's start date as before today in the account's stored time zone
+  ///
+  /// In en, this message translates to:
+  /// **'That start date is before today where your account\'s time zone is set. Pick a later date.'**
+  String get planDetailRestartBeforeTodayError;
+
+  /// Confirm button in the restart dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Restart plan'**
+  String get planDetailRestartConfirm;
+
+  /// Banner after a plan is restarted; the new copy is now showing
+  ///
+  /// In en, this message translates to:
+  /// **'Plan restarted. This is your new copy.'**
+  String get planDetailRestartDone;
+
+  /// Subtitle of Home's paused-plan card; tapping it opens the plan with the resume confirm
+  ///
+  /// In en, this message translates to:
+  /// **'Paused. Resume to pick it up again; the weeks you missed move back.'**
+  String get dashboardPlanPausedBody;
+
+  /// App-bar menu item opening the race date picker
+  ///
+  /// In en, this message translates to:
+  /// **'Change race date…'**
+  String get planDetailChangeRaceDate;
+
+  /// Help text on the race date picker
+  ///
+  /// In en, this message translates to:
+  /// **'New race date'**
+  String get planDetailRaceDatePickerHelp;
+
+  /// Confirm title for changing the race date
+  ///
+  /// In en, this message translates to:
+  /// **'Change race date?'**
+  String get planDetailRaceDateConfirmTitle;
+
+  /// Confirm body; date the new race day, n build weeks added
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{Your race moves to {date}. {n} build week is added before the taper, which stays as it is. Weeks you have already started don\'t change.} other{Your race moves to {date}. {n} build weeks are added before the taper, which stays as it is. Weeks you have already started don\'t change.}}'**
+  String planDetailRaceDateConfirmLater(int n, String date);
+
+  /// Confirm body; date the new race day, n build weeks cut
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{Your race moves to {date}. {n} build week is cut, and the taper stays as it is. Weeks you have already started don\'t change.} other{Your race moves to {date}. {n} build weeks are cut, and the taper stays as it is. Weeks you have already started don\'t change.}}'**
+  String planDetailRaceDateConfirmEarlier(int n, String date);
+
+  /// Confirm body when the race moves within its week
+  ///
+  /// In en, this message translates to:
+  /// **'Your race moves to {date}, in the same week. No weeks are added or cut, and the taper stays as it is.'**
+  String planDetailRaceDateConfirmSameWeek(String date);
+
+  /// Confirm button for changing the race date
+  ///
+  /// In en, this message translates to:
+  /// **'Change race date'**
+  String get planDetailRaceDateApply;
+
+  /// Banner after the race date changed
+  ///
+  /// In en, this message translates to:
+  /// **'Race date changed to {date}'**
+  String planDetailRaceDateDone(String date);
+
+  /// Refusal: date the picked day, earliest the first reachable race day
+  ///
+  /// In en, this message translates to:
+  /// **'{date} is too soon to keep your taper, even with the build cut. The earliest race date this plan can reach is {earliest}.'**
+  String planDetailRaceDateTooSoon(String date, String earliest);
+
+  /// Refusal: race date today or earlier
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a race date after today.'**
+  String get planDetailRaceDatePast;
+
+  /// Refusal: unusable date
+  ///
+  /// In en, this message translates to:
+  /// **'That isn\'t a valid date.'**
+  String get planDetailRaceDateInvalid;
+
+  /// Refusal: same day as now
+  ///
+  /// In en, this message translates to:
+  /// **'Your race is already on that day.'**
+  String get planDetailRaceDateUnchanged;
+
+  /// Refusal: plan has no race ahead
+  ///
+  /// In en, this message translates to:
+  /// **'This plan has no race ahead to move.'**
+  String get planDetailRaceDateNoRace;
+
+  /// Refusal: race week has started
+  ///
+  /// In en, this message translates to:
+  /// **'Race week has started, so no weeks can go in front of it. Pick a day this week, or start a new plan for the later race.'**
+  String get planDetailRaceDateWeekStarted;
+
+  /// Refusal: more than a year later
+  ///
+  /// In en, this message translates to:
+  /// **'That is more than a year further out. Start a new plan for that race instead.'**
+  String get planDetailRaceDateTooFar;
+
+  /// Refusal: no build week to repeat
+  ///
+  /// In en, this message translates to:
+  /// **'This plan has no build week to repeat, so it can\'t be made longer.'**
+  String get planDetailRaceDateNoBuild;
+
+  /// Refusal: another race or completed session would move
+  ///
+  /// In en, this message translates to:
+  /// **'Another race or a completed session sits in the weeks that would move. Change that first.'**
+  String get planDetailRaceDateInTheWay;
+
+  /// A later race date runs into another active plan
+  ///
+  /// In en, this message translates to:
+  /// **'The new race date runs into another active plan. Move or end that plan first.'**
+  String get planDetailRaceDateOverlap;
+
+  /// Settings toggle title: vibrate the phone on workout step changes, workout completion and pace alerts during a run
+  ///
+  /// In en, this message translates to:
+  /// **'Vibration cues'**
+  String get phoneSurfaceVibrationCues;
+
+  /// Subtitle of the vibration-cues toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Buzz when a workout step changes, when a workout ends and with pace alerts, even with the screen off.'**
+  String get phoneSurfaceVibrationCuesSubtitle;
+
+  /// Home-screen widget header above today's planned session
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get phoneSurfaceWidgetHeader;
+
+  /// Home-screen widget: the runner has no active training plan
+  ///
+  /// In en, this message translates to:
+  /// **'No training plan'**
+  String get phoneSurfaceWidgetNoPlan;
+
+  /// Home-screen widget: tap prompt that opens the plan list when there is no plan
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a plan'**
+  String get phoneSurfaceWidgetNoPlanAction;
+
+  /// Home-screen widget: the active plan has nothing on today's date
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing scheduled'**
+  String get phoneSurfaceWidgetNothingScheduled;
+
+  /// Home-screen widget: the saved snapshot no longer covers today; opening the app refreshes it
+  ///
+  /// In en, this message translates to:
+  /// **'Open Threkir to update'**
+  String get phoneSurfaceWidgetStale;
+
+  /// Home-screen widget: today is a planned rest day
+  ///
+  /// In en, this message translates to:
+  /// **'Rest day'**
+  String get phoneSurfaceWidgetRestDay;
+
+  /// Home-screen widget: today's planned session is done
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get phoneSurfaceWidgetDone;
+
+  /// Home-screen widget: the runner skipped today's planned session
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get phoneSurfaceWidgetSkipped;
+
+  /// Home plan entry for a runner with no training plan; opens the plan wizard
+  ///
+  /// In en, this message translates to:
+  /// **'Train for something'**
+  String get dashboardTrainForSomething;
+
+  /// Body under the Home "Train for something" plan entry
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a race or a distance and get a week-by-week plan with paces matched to your fitness.'**
+  String get dashboardTrainForSomethingBody;
+
+  /// Home suggestion naming the runner's recent measured 5K, e.g. "Your 5K of 24:10 on 3 Oct"
+  ///
+  /// In en, this message translates to:
+  /// **'Your 5K of {time} on {date}'**
+  String dashboardRecent5kTitle(String time, String date);
+
+  /// Body of the Home recent-5K plan suggestion
+  ///
+  /// In en, this message translates to:
+  /// **'Build a plan from it. You confirm it still reflects your fitness before it sets any paces.'**
+  String get dashboardRecent5kBody;
+
+  /// Button on the Home recent-5K suggestion that opens the plan wizard pre-filled
+  ///
+  /// In en, this message translates to:
+  /// **'Build a plan from it'**
+  String get dashboardRecent5kCta;
+
+  /// Button that dismisses the Home recent-5K plan suggestion
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get dashboardRecent5kDismiss;
+
+  /// Banner when dismissing the recent-5K suggestion could not be saved
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save that, so the suggestion may come back.'**
+  String get dashboardRecent5kDismissFailed;
+
+  /// Plan wizard note under a recent-5K time filled in from the Home suggestion
+  ///
+  /// In en, this message translates to:
+  /// **'Filled in from your recent 5K. Turn on the switch below only if it reflects your fitness today.'**
+  String get planNewRecent5kSuggested;
+
+  /// Plan break card title: the runner has had a week or more without running inside their plan
+  ///
+  /// In en, this message translates to:
+  /// **'Coming back after a break'**
+  String get planBreakTitle;
+
+  /// Plan break card body: days without a run or plan workout, since date (the first quiet day)
+  ///
+  /// In en, this message translates to:
+  /// **'No run or plan workout logged for {days, plural, one {{days} day} other {{days} days}}, since {date}.'**
+  String planBreakBody(int days, String date);
+
+  /// Plan break card hint for a plan ending on a race: date is race day, which never moves
+  ///
+  /// In en, this message translates to:
+  /// **'You can pick the plan up where you left off. Race day stays {date} and the taper is kept; a later build week makes room for each week you run again.'**
+  String planBreakHintRace(String date);
+
+  /// Plan break card hint for a plan without a race
+  ///
+  /// In en, this message translates to:
+  /// **'You can pick the plan up where you left off; the rest of the plan moves back to make room.'**
+  String get planBreakHintNoRace;
+
+  /// Plan break action: run the current week again next week
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat this week'**
+  String get planBreakRepeat;
+
+  /// Label of the number field choosing how many weeks to run again
+  ///
+  /// In en, this message translates to:
+  /// **'Weeks'**
+  String get planBreakWeeksLabel;
+
+  /// Plan break action for a plan without a race: run the chosen weeks again and move the rest back
+  ///
+  /// In en, this message translates to:
+  /// **'Push the plan back'**
+  String get planBreakPushBack;
+
+  /// Plan break action for a race plan: run the chosen weeks again and drop later build weeks so race day holds
+  ///
+  /// In en, this message translates to:
+  /// **'Shorten the build'**
+  String get planBreakShortenBuild;
+
+  /// Plan break action: hide the card and leave the plan unchanged
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the plan as it is'**
+  String get planBreakDismiss;
+
+  /// Title of the plan break preview dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Change your plan?'**
+  String get planBreakConfirmTitle;
+
+  /// Confirm button of the plan break preview dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Change plan'**
+  String get planBreakConfirmApply;
+
+  /// Preview line: how many weeks run again from next week
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {This week runs again next week.} other {The last {n} weeks run again, starting next week.}}'**
+  String planBreakPreviewRepeat(int n);
+
+  /// Preview line for a race plan: how many later build weeks are removed
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {{n} later build week is} other {{n} later build weeks are}} taken out to make room; the taper stays as it is.'**
+  String planBreakPreviewDropped(int n);
+
+  /// Preview line for a race plan: race day is unchanged
+  ///
+  /// In en, this message translates to:
+  /// **'Race day stays {date}.'**
+  String planBreakPreviewRaceDay(String date);
+
+  /// Preview line for a plan without a race: its new end date
+  ///
+  /// In en, this message translates to:
+  /// **'The weeks after move back, and the plan now ends {date}.'**
+  String planBreakPreviewEnd(String date);
+
+  /// Preview line: nothing already done changes
+  ///
+  /// In en, this message translates to:
+  /// **'Weeks you have already run and anything you have done don\'t change.'**
+  String get planBreakPreviewPast;
+
+  /// Banner after the plan break change applied; date is the plan end
+  ///
+  /// In en, this message translates to:
+  /// **'Plan updated. It ends {date}.'**
+  String planBreakApplied(String date);
+
+  /// Banner when the plan break change failed; nothing changed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t change the plan: {error}'**
+  String planBreakFailed(String error);
+
+  /// Banner when hiding the plan break card could not be saved
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save that: {error}'**
+  String planBreakDismissFailed(String error);
+
+  /// Banner when the chosen number of weeks cannot be run again
+  ///
+  /// In en, this message translates to:
+  /// **'That many weeks can\'t be run again in this plan.'**
+  String get planBreakUnavailable;
+
+  /// Accessible label of the button lowering how many weeks run again
+  ///
+  /// In en, this message translates to:
+  /// **'One week fewer'**
+  String get planBreakWeeksFewer;
+
+  /// Accessible label of the button raising how many weeks run again
+  ///
+  /// In en, this message translates to:
+  /// **'One week more'**
+  String get planBreakWeeksMore;
+
+  /// Heading of the missed-workout prompt on the Today card: the workout kind and the weekday + date it was scheduled
+  ///
+  /// In en, this message translates to:
+  /// **'Missed: {kind} on {day}'**
+  String missedPromptTitle(String kind, String day);
+
+  /// Missed-workout prompt body when the engine offers a make-up: the next long run is stretched from one distance to another; the change is previewed before saving
+  ///
+  /// In en, this message translates to:
+  /// **'Make it up by stretching your next long run from {from} to {to}. You\'ll see the change before it\'s saved.'**
+  String missedPromptMakeUpBody(String from, String to);
+
+  /// Missed-workout prompt body: a missed long run that the next long run already covers, so no make-up is added
+  ///
+  /// In en, this message translates to:
+  /// **'Your next long run already covers it, so there\'s nothing to add.'**
+  String get missedPromptCoveredBody;
+
+  /// Missed-workout prompt body: a missed long run during the taper is let go
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re tapering, so let it go: being fresh on race day matters more than one more long run.'**
+  String get missedPromptTaperBody;
+
+  /// Missed-workout prompt body: a missed long run right before a recovery week is let go
+  ///
+  /// In en, this message translates to:
+  /// **'A recovery week is next, so let it go and let that week absorb it.'**
+  String get missedPromptRecoveryBody;
+
+  /// Missed-workout prompt body for a missed non-long session (easy, tempo, intervals): it is let go, never moved
+  ///
+  /// In en, this message translates to:
+  /// **'Only a long run is worth making up. Let this one go rather than crowding it into the days ahead.'**
+  String get missedPromptLetGoBody;
+
+  /// Missed-workout prompt button: preview the make-up (a longer next long run)
+  ///
+  /// In en, this message translates to:
+  /// **'Make it up'**
+  String get missedPromptMakeUp;
+
+  /// Missed-workout prompt button: drop the missed workout and record the answer
+  ///
+  /// In en, this message translates to:
+  /// **'Let it go'**
+  String get missedPromptLetGo;
+
+  /// Tag on the missed-workout prompt button the plan engine recommends
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get missedPromptRecommended;
+
+  /// Banner after the runner let a missed workout go
+  ///
+  /// In en, this message translates to:
+  /// **'Let go. Your plan carries on as it was.'**
+  String get missedPromptLetGoDone;
+
+  /// Error banner when the answer to the missed-workout prompt could not be saved; nothing changed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save your answer: {error}'**
+  String missedPromptSaveFailed(String error);
+
+  /// Banner when a make-up was requested but there is no missed long run left to make up
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s nothing left to make up.'**
+  String get missedPromptNothingToMakeUp;
+
+  /// Button on the walk-run 'too hard' offer: run the current week again next week
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat this week'**
+  String get planDetailRepeatWeek;
+
+  /// Lead of the walk-run 'too hard' offer on plan detail
+  ///
+  /// In en, this message translates to:
+  /// **'Too hard?'**
+  String get planDetailRepeatWeekOfferTitle;
+
+  /// Body of the walk-run 'too hard' offer on plan detail
+  ///
+  /// In en, this message translates to:
+  /// **'Run this week again next week. What you\'ve done stays done, and the rest of the plan moves back a week.'**
+  String get planDetailRepeatWeekOfferBody;
+
+  /// Confirm title for repeating a plan week; n is the week number
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat week {n}?'**
+  String planDetailRepeatWeekConfirmTitle(int n);
+
+  /// Confirm body for repeating a week of a plan without a race; n the week, copy its new week number, start the copy's first day, end the plan's new end date
+  ///
+  /// In en, this message translates to:
+  /// **'Week {n} runs again as week {copy}, from {start}. Every week after it moves back one, and the plan now ends on {end}. Workouts you\'ve done stay as they are.'**
+  String planDetailRepeatWeekConfirmMessage(
+    int n,
+    int copy,
+    String start,
+    String end,
+  );
+
+  /// Confirm body for repeating a week of a race plan; race is the race day it keeps
+  ///
+  /// In en, this message translates to:
+  /// **'Week {n} runs again as week {copy}, from {start}. To keep race day on {race}, one later week before the taper comes out. Workouts you\'ve done stay as they are.'**
+  String planDetailRepeatWeekConfirmRace(
+    int n,
+    int copy,
+    String start,
+    String race,
+  );
+
+  /// Week menu item and confirm button: repeat this week next week
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat week'**
+  String get planDetailRepeatWeekAction;
+
+  /// Banner after a week was repeated; n the week, start the copy's first day
+  ///
+  /// In en, this message translates to:
+  /// **'Week {n} runs again from {start}.'**
+  String planDetailRepeatWeekDone(int n, String start);
+
+  /// Refusal: a race plan has no pre-taper week left to drop
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s no week left before the taper to make room, so repeating this week would move race day. Change the race date instead.'**
+  String get planDetailRepeatWeekNoRoom;
+
+  /// Refusal: a week that would move holds a race or a done workout
+  ///
+  /// In en, this message translates to:
+  /// **'A week that would move holds a race or a workout you\'ve done, so this week can\'t be repeated.'**
+  String get planDetailRepeatWeekInTheWay;
+
+  /// Refusal: the plan's last week has nothing after it
+  ///
+  /// In en, this message translates to:
+  /// **'This is the plan\'s last week, so there\'s nothing to push back.'**
+  String get planDetailRepeatWeekLastWeek;
+
+  /// Refusal: only this week or last week of an active plan can run again
+  ///
+  /// In en, this message translates to:
+  /// **'Only this week or last week of an active plan can run again.'**
+  String get planDetailRepeatWeekNotNow;
+
+  /// Rate-limit refusal when the repeat_plan_week bucket is spent (repeating a plan week)
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re repeating plan weeks too quickly — please wait {wait} and try again.'**
+  String rateLimitRepeatWeek(String wait);
+
+  /// Refusal: repeating the week would end the plan inside another active plan
+  ///
+  /// In en, this message translates to:
+  /// **'Repeating this week would run the plan into another active plan. Move or end that plan first.'**
+  String get planDetailRepeatWeekOverlap;
+
+  /// Missed-workout prompt body for a missed walk-run (couch-to-5K) session: no make-up, carry on or repeat the week, with no penalty
+  ///
+  /// In en, this message translates to:
+  /// **'Missing a session costs you nothing. Carry on, or if this week felt hard, run it again before moving up. There\'s no penalty for repeating a week.'**
+  String get missedPromptRepeatWeekBody;
+
+  /// Heading of the card shown on a couch-to-5K plan once its last session, the 5K, is done
+  ///
+  /// In en, this message translates to:
+  /// **'You did it: couch to 5K'**
+  String get walkRunGraduationTitle;
+
+  /// Graduation card body when the last session was the continuous 5K
+  ///
+  /// In en, this message translates to:
+  /// **'You ran 5K without stopping. You started with one-minute runs between walks.'**
+  String get walkRunGraduationBodyFiveK;
+
+  /// Graduation card body for an older walk-run plan whose last session was a timed continuous run rather than a 5K
+  ///
+  /// In en, this message translates to:
+  /// **'You finished the plan running the whole way, with no walk breaks. You started with one-minute runs between walks.'**
+  String get walkRunGraduationBodyFinished;
+
+  /// Graduation card sub-heading above the next-step choices
+  ///
+  /// In en, this message translates to:
+  /// **'What next?'**
+  String get walkRunGraduationNextTitle;
+
+  /// Graduation card button that starts a 10K training plan
+  ///
+  /// In en, this message translates to:
+  /// **'Train for a 10K'**
+  String get walkRunGraduationTenK;
+
+  /// Graduation card line offering the alternative of keeping the running habit without a plan
+  ///
+  /// In en, this message translates to:
+  /// **'Or keep the habit: three easy runs a week hold on to what you\'ve built, no plan needed.'**
+  String get walkRunGraduationKeepRunning;
+
+  /// Heading of the end-of-plan recap on a completed plan. name is the plan's name
+  ///
+  /// In en, this message translates to:
+  /// **'How {name} went'**
+  String planRecapTitle(String name);
+
+  /// Shown while the plan recap's runs and records load
+  ///
+  /// In en, this message translates to:
+  /// **'Loading your recap…'**
+  String get planRecapLoading;
+
+  /// Error when the plan recap's runs and records could not be read
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the recap.'**
+  String get planRecapLoadFailed;
+
+  /// Button that retries loading the plan recap
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get planRecapRetry;
+
+  /// Plan recap label for the sessions-done stat
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions'**
+  String get planRecapSessionsLabel;
+
+  /// Plan recap count of sessions or long runs done out of those planned
+  ///
+  /// In en, this message translates to:
+  /// **'{done} of {total}'**
+  String planRecapSessionsValue(int done, int total);
+
+  /// Plan recap share of planned sessions done
+  ///
+  /// In en, this message translates to:
+  /// **'{pct}% done'**
+  String planRecapSessionsPct(int pct);
+
+  /// Plan recap count of sessions the runner skipped
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} skipped} other {{count} skipped}}'**
+  String planRecapSkipped(int count);
+
+  /// Plan recap count of sessions whose day passed without being done or skipped
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} missed} other {{count} missed}}'**
+  String planRecapMissed(int count);
+
+  /// Plan recap label for the long-run stat
+  ///
+  /// In en, this message translates to:
+  /// **'Long runs'**
+  String get planRecapLongRunsLabel;
+
+  /// Plan recap long-run progression: the first long run done and the longest. Both are formatted distances
+  ///
+  /// In en, this message translates to:
+  /// **'From {first} up to {longest}'**
+  String planRecapLongRunsRange(String first, String longest);
+
+  /// Plan recap longest long run, when it was also the first. longest is a formatted distance
+  ///
+  /// In en, this message translates to:
+  /// **'Longest {longest}'**
+  String planRecapLongRunsLongest(String longest);
+
+  /// Plan recap label for the distance stat
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get planRecapDistanceLabel;
+
+  /// Plan recap label for the time stat on a walk-run plan
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get planRecapTimeLabel;
+
+  /// Plan recap distance or time done out of planned; both are formatted
+  ///
+  /// In en, this message translates to:
+  /// **'{done} of {planned}'**
+  String planRecapVolumeValue(String done, String planned);
+
+  /// A duration in hours and minutes on the plan recap
+  ///
+  /// In en, this message translates to:
+  /// **'{h} h {m} min'**
+  String planRecapTimeValue(int h, int m);
+
+  /// Plan recap race heading when the race has no name
+  ///
+  /// In en, this message translates to:
+  /// **'Race day'**
+  String get planRecapRaceLabel;
+
+  /// Plan recap race result: finish time and distance run
+  ///
+  /// In en, this message translates to:
+  /// **'{time} for {distance}'**
+  String planRecapRaceRun(String time, String distance);
+
+  /// Plan recap race result when the race run is marked did not finish
+  ///
+  /// In en, this message translates to:
+  /// **'Did not finish'**
+  String get planRecapRaceDnf;
+
+  /// Plan recap race result when the race was ticked done with no run linked
+  ///
+  /// In en, this message translates to:
+  /// **'Marked done, no run linked'**
+  String get planRecapRaceNoRun;
+
+  /// Plan recap race result when no run stands for the race
+  ///
+  /// In en, this message translates to:
+  /// **'No run on race day'**
+  String get planRecapRaceNotRun;
+
+  /// Plan recap heading for personal records set during the plan
+  ///
+  /// In en, this message translates to:
+  /// **'Personal records'**
+  String get planRecapRecordsLabel;
+
+  /// Plan recap line when no personal record was set during the plan
+  ///
+  /// In en, this message translates to:
+  /// **'No new personal records during this plan.'**
+  String get planRecapRecordsNone;
+
+  /// Personal-record bracket: one mile
+  ///
+  /// In en, this message translates to:
+  /// **'Mile'**
+  String get planRecapBracketMile;
+
+  /// Personal-record bracket: 5 km
+  ///
+  /// In en, this message translates to:
+  /// **'5K'**
+  String get planRecapBracket5k;
+
+  /// Personal-record bracket: 8 km
+  ///
+  /// In en, this message translates to:
+  /// **'8K'**
+  String get planRecapBracket8k;
+
+  /// Personal-record bracket: 10 km
+  ///
+  /// In en, this message translates to:
+  /// **'10K'**
+  String get planRecapBracket10k;
+
+  /// Personal-record bracket: 12 km
+  ///
+  /// In en, this message translates to:
+  /// **'12K'**
+  String get planRecapBracket12k;
+
+  /// Personal-record bracket: half marathon
+  ///
+  /// In en, this message translates to:
+  /// **'Half marathon'**
+  String get planRecapBracketHalf;
+
+  /// Personal-record bracket: marathon
+  ///
+  /// In en, this message translates to:
+  /// **'Marathon'**
+  String get planRecapBracketMarathon;
+
+  /// Plan recap heading for what to do after the plan
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s next'**
+  String get planRecapNextTitle;
+
+  /// Plan recap recovery advice after the race. date is the formatted last recovery day
+  ///
+  /// In en, this message translates to:
+  /// **'Recover first: {days, plural, one {{days} easy day} other {{days} easy days}}, through {date}.'**
+  String planRecapRecovery(int days, String date);
+
+  /// Plan recap line saying when the next plan can start. date is formatted
+  ///
+  /// In en, this message translates to:
+  /// **'Your next plan can start on {date}.'**
+  String planRecapNextPlan(String date);
+
+  /// Plan recap line when the next plan's paces come from the race's 5K equivalent. time is a 5K time
+  ///
+  /// In en, this message translates to:
+  /// **'Your next plan can start on {date}, with paces from a {time} 5K, your race\'s equivalent. You confirm it in the wizard.'**
+  String planRecapNextPlanSeeded(String date, String time);
+
+  /// Button on the plan recap that opens the new-plan wizard
+  ///
+  /// In en, this message translates to:
+  /// **'Build your next plan'**
+  String get planRecapNextPlanCta;
+
+  /// Switch label: ask new training plans for the masters (50+) recovery schedule at any age.
+  ///
+  /// In en, this message translates to:
+  /// **'More recovery between hard days'**
+  String get prefsExtraRecovery;
+
+  /// No description provided for @prefsExtraRecoveryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'New plans leave 72 hours between your long run and the next hard session, and ease off every third week instead of every fourth. Plans already do this from age 50 when your date of birth is on record.'**
+  String get prefsExtraRecoveryHint;
+
+  /// No description provided for @planNewExtraRecoveryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Spaces hard sessions further apart and eases off every third week. Saved to your training settings, so every new plan uses it.'**
+  String get planNewExtraRecoveryHint;
+
+  /// No description provided for @planNewExtraRecoverySaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save that setting. Try again.'**
+  String get planNewExtraRecoverySaveFailed;
+
+  /// No description provided for @planNewMastersRecoveryApplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Because you\'re 50 or over, this plan spaces hard sessions further apart and eases off every third week.'**
+  String get planNewMastersRecoveryApplied;
+
+  /// No description provided for @planNewDobHintAbsent.
+  ///
+  /// In en, this message translates to:
+  /// **'Plans give runners aged 50 and over more recovery automatically.'**
+  String get planNewDobHintAbsent;
+
+  /// Button opening Settings → Preferences, where the date of birth is edited.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your date of birth'**
+  String get planNewDobHintAbsentAction;
+
+  /// No description provided for @planNewDobHintHealthData.
+  ///
+  /// In en, this message translates to:
+  /// **'Plans can only use your date of birth to adjust for age with your consent to health-data use.'**
+  String get planNewDobHintHealthData;
+
+  /// Button opening Settings → Body metrics, where health-data consent is reviewed.
+  ///
+  /// In en, this message translates to:
+  /// **'Review consent'**
+  String get planNewDobHintHealthDataAction;
 }
 
 class _AppLocalizationsDelegate

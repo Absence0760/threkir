@@ -23,6 +23,7 @@ import { stripSvelteComments } from '../../lib/core/strip_comments';
 import { WEEKLY_GOAL_KEY } from '../../lib/settings/weekly_goal';
 import { PRIVACY_ZONES_KEY } from '../../lib/routes/privacy';
 import { DISCLOSURE_LEVEL_KEY } from '../../lib/settings/disclosure';
+import { EXTRA_RECOVERY_KEY } from '../../lib/training/plan_calibration';
 
 const SETTINGS_DIR = dirname(fileURLToPath(import.meta.url));
 const SRC_DIR = resolve(SETTINGS_DIR, '../..');
@@ -112,12 +113,18 @@ const HOMES: Record<string, Home> = {
 	show_nutrition: { page: 'display' },
 	exclude_gym_from_readiness: { page: 'training' },
 	hr_medication_affected: { page: 'training' },
+	extra_recovery: { page: 'training', via: 'EXTRA_RECOVERY_KEY' },
 	week_start_day: { page: 'display' },
 	privacy_zones: { page: 'privacy', via: 'PRIVACY_ZONES_KEY' },
 	safety_overdue_minutes: { page: 'safety' },
 	safety_off_route_alerts: { page: 'safety' },
 	auto_live_share: { none: 'device-only recording preference, edited on mobile' },
 	safety_nudge_dismissed_at: { none: 'written by the mobile run screen, not a control' },
+	plan_suggestion_dismissed_at: {
+		none: "the Home recent-5K plan suggestion's own dismissal stamp, not a control",
+	},
+	plan_nudges_dismissed: { none: "written by Home's plan card, not a settings control" },
+	plan_break_dismissed: { none: "written by the plan break card's dismiss and apply, not a settings control" },
 };
 
 function registryKeys(): string[] {
@@ -170,6 +177,7 @@ test('the key constants a page names a setting through still spell that key', ()
 	assert.equal(WEEKLY_GOAL_KEY, 'weekly_mileage_goal_m');
 	assert.equal(PRIVACY_ZONES_KEY, 'privacy_zones');
 	assert.equal(DISCLOSURE_LEVEL_KEY, 'disclosure_level');
+	assert.equal(EXTRA_RECOVERY_KEY, 'extra_recovery');
 });
 
 test('every setting is edited on exactly the settings pages declared for it', () => {

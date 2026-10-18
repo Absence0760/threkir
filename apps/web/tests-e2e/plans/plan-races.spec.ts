@@ -254,7 +254,11 @@ test.describe('races in a plan', () => {
 		const preview = page.getByTestId('race-taper-preview');
 		await expect(preview).toBeVisible();
 
-		const reload = page.waitForRequest((req) => req.method() === 'GET' && /\/rest\/v1\/plan_workouts/.test(req.url()));
+		// fetchPlan reads the plan, its weeks and its workouts as one embedded
+		// select on training_plans.
+		const reload = page.waitForRequest(
+			(req) => req.method() === 'GET' && /\/rest\/v1\/training_plans\?.*plan_weeks/.test(req.url())
+		);
 		await preview.getByRole('button', { name: 'Apply' }).click();
 		await expect(page.locator('.toast.toast-error')).toContainText("Couldn't update the plan", { timeout: 5_000 });
 		await reload;

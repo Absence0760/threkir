@@ -102,6 +102,10 @@ export interface WalkRunPattern {
 	walkS: number | null;
 	cooldownS: number | null;
 	totalS: number;
+	/// Set when the session's one run ends on a distance rather than a time
+	/// (the graduation 5K). `runS` is then 0, and `totalS` counts only the
+	/// timed walking either side, since the run lasts as long as it takes.
+	runM: number | null;
 }
 
 function timeOnly(step: Measured | null | undefined): number | null | 'mixed' {
@@ -112,12 +116,14 @@ function timeOnly(step: Measured | null | undefined): number | null | 'mixed' {
 
 /// The timed pattern of a walk-run session (a repeats block whose recovery
 /// is a walk, the same test expandWorkoutSteps uses), or null for any other
-/// session and for one that measures a step by distance.
+/// session and for one that measures a step by distance. The one exception
+/// is a single run ended by distance (the graduation 5K), read as `runM`.
 export function walkRunPattern(s: WorkoutStructure | null | undefined): WalkRunPattern | null {
 	const r = s?.repeats;
 	if (!s || !r || r.recovery_pace !== 'walk') return null;
-	const runS = timeOnly(r);
 	const count = repCount(r);
+	const runM = count === 1 ? positive(r.distance_m) : null;
+	const runS = runM != null ? 0 : timeOnly(r);
 	if (runS == null || runS === 'mixed' || count === 0) return null;
 	if (positive(r.recovery_distance_m) != null) return null;
 	const warmupS = timeOnly(s.warmup);
@@ -131,8 +137,35 @@ export function walkRunPattern(s: WorkoutStructure | null | undefined): WalkRunP
 		runS,
 		walkS,
 		cooldownS,
-		totalS: (warmupS ?? 0) + count * runS + (walkS != null ? (count - 1) * walkS : 0) + (cooldownS ?? 0)
+		totalS: (warmupS ?? 0) + count * runS + (walkS != null ? (count - 1) * walkS : 0) + (cooldownS ?? 0),
+		runM
 	};
+}
+
+/// What a plan card states a session's size as. A walk-run session is
+/// prescribed in time (decisions § 91) and its `target_distance_m` is an
+/// estimate at a pace nobody chose, so it reads as its minutes; the
+/// graduation 5K reads as the distance it ends on. Any other session reads
+/// as its target distance. Null for a rest day or nothing to state.
+export function plannedWorkoutSize(w: {
+	kind: string;
+	targetDistanceM: number | null | undefined;
+	targetDurationS: number | null | undefined;
+	structure: unknown;
+}): StructureTotal | null {
+	if (w.kind === 'rest') return null;
+	if (w.kind !== 'walk_run') {
+		const metres = positive(w.targetDistanceM);
+		return metres == null ? null : { kind: 'distance', metres };
+	}
+	const s =
+		w.structure != null && typeof w.structure === 'object' && !Array.isArray(w.structure)
+			? (w.structure as WorkoutStructure)
+			: null;
+	const p = walkRunPattern(s);
+	if (p?.runM != null) return { kind: 'distance', metres: p.runM };
+	const seconds = p != null ? positive(p.totalS) : positive(w.targetDurationS);
+	return seconds == null ? null : { kind: 'duration', seconds };
 }
 
 export type SpokenDuration =

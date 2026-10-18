@@ -14,28 +14,48 @@ import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/runs_screen.dart';
+import '../lib/widgets/run_list_tile.dart';
 import '../lib/screens/add_run_screen.dart';
+import 'pump_until.dart';
 
-/// A signed-in fake whose `getRuns` always returns an empty delta page —
-/// the realistic "nothing changed since last visit" shape a returning
-/// user's session takes. Used to drive `_fetchRemote()`'s delta-sync
-/// branch (`runsLastFetchedAt` already set) without a real network call.
+/// A signed-in fake whose delta pull returns [deltaRuns] (empty by default:
+/// the realistic "nothing changed since last visit" shape a returning user's
+/// session takes) and [deltaCursor] as the server's newest `updated_at`, or
+/// the cursor it was asked from when that is null. Drives `_fetchRemote()`
+/// without a real network call.
 class _FakeSignedInApi extends ApiClient {
-  int getRunsCalls = 0;
-  DateTime? lastUpdatedSince;
+  int deltaCalls = 0;
+  DateTime? lastCursor;
+  List<Run> deltaRuns = const [];
+  DateTime? deltaCursor;
 
   @override
   String? get userId => 'me';
 
   @override
-  Future<List<Run>> getRuns({
-    int limit = 50,
-    DateTime? before,
-    DateTime? updatedSince,
-  }) async {
-    getRunsCalls++;
-    lastUpdatedSince = updatedSince;
-    return const [];
+  Future<({List<Run> runs, DateTime? cursor})> getRunsModifiedSince(
+    DateTime? cursor,
+  ) async {
+    deltaCalls++;
+    lastCursor = cursor;
+    return (runs: deltaRuns, cursor: deltaCursor ?? cursor);
+  }
+
+  /// Runs the server holds that the delta does not return — rows whose
+  /// `updated_at` is already behind the cursor.
+  List<Run> serverOnly = const [];
+  Set<String> ownedLocal = const {};
+  List<String> requestedIds = const [];
+
+  @override
+  Future<Set<String>> fetchOwnedRunIds() async =>
+      {...ownedLocal, for (final r in serverOnly) r.id};
+
+  @override
+  Future<List<Run>> getRunsByIds(Iterable<String> ids) async {
+    requestedIds = ids.toList();
+    final want = ids.toSet();
+    return [for (final r in serverOnly) if (want.contains(r.id)) r];
   }
 }
 
@@ -48,12 +68,10 @@ class _SyncFailApi extends ApiClient {
   String? get userId => 'me';
 
   @override
-  Future<List<Run>> getRuns({
-    int limit = 50,
-    DateTime? before,
-    DateTime? updatedSince,
-  }) async =>
-      const [];
+  Future<({List<Run> runs, DateTime? cursor})> getRunsModifiedSince(
+    DateTime? cursor,
+  ) async =>
+      (runs: const <Run>[], cursor: cursor);
 
   @override
   Future<RunPushOutcome> saveRunsBatch(
@@ -680,11 +698,11 @@ void main() {
         'Load more button hidden for a returning user (delta-sync branch) '
         'with fewer rows than page size', (tester) async {
       // Regression: _remoteHasMore defaults to true on every fresh
-      // mount, and only the very-first-ever fetch (runsLastFetchedAt ==
-      // null) corrected it — a returning user (runsLastFetchedAt
-      // already set from a prior session) takes the delta-sync branch
-      // instead, which never touched it, so the button stayed stuck on
-      // forever for anyone with under one page of runs.
+      // mount, and only the very-first-ever fetch (no cursor) corrected it
+      // — a returning user (cursor already set from a prior session) takes
+      // the delta-sync branch instead, which never touched it, so the
+      // button stayed stuck on forever for anyone with under one page of
+      // runs.
       SharedPreferences.setMockInitialValues({
         'runs_filters_v1': jsonEncode({'range': 'all', 'sort': 'newest'}),
       });
@@ -693,8 +711,7 @@ void main() {
       // Simulate "already synced before" — this is what routes
       // _fetchRemote() into the delta-sync branch instead of the
       // first-page fetch.
-      await prefs.setRunsLastFetchedAt(
-          DateTime.now().toUtc().subtract(const Duration(hours: 1)));
+      await prefs.setRunsSyncCursor(DateTime.utc(2026, 7, 1, 12));
       _runsDir = Directory.systemTemp.createTempSync('runs_screen_test_');
       // ignore: invalid_use_of_visible_for_testing_member
       final runStore = LocalRunStore()..debugSeed(_makeRuns(5), dir: _runsDir);
@@ -717,10 +734,10 @@ void main() {
       // fake) resolve and its setState land.
       await tester.pump(const Duration(milliseconds: 50));
 
-      expect(api.getRunsCalls, 1);
-      expect(api.lastUpdatedSince, isNotNull,
-          reason: 'runsLastFetchedAt was pre-set, so this must be the '
-              'delta-sync branch, not the first-page fetch.');
+      expect(api.deltaCalls, 1);
+      expect(api.lastCursor, DateTime.utc(2026, 7, 1, 12),
+          reason: 'the stored cursor was pre-set, so this must be a delta '
+              'from it, not a full walk.');
       // The footer row can sit just below the fold even with only 5
       // rows (header + tiles eat the viewport) — scroll to the bottom
       // before asserting absence, or a false _remoteHasMore=true could
@@ -728,9 +745,159 @@ void main() {
       await tester.drag(find.byType(Scrollable).first, const Offset(0, -2000));
       await tester.pump();
       expect(find.text('Load 20 more'), findsNothing,
-          reason: '5 local runs (under the 20-row page size) means '
-              'there is provably no next page, regardless of which '
-              'fetch branch ran.');
+          reason: 'the membership reconcile completed, so the device '
+              'holds every owned run and there is no next page.');
+    });
+
+    testWidgets(
+        'a server run no delta pull returns still reaches the list '
+        '(restored on web, archive timestamps older than the watermark)',
+        (tester) async {
+      // Production: a web backup restore upserted runs whose metadata has no
+      // last_modified_at (or an archive-era one). The delta pull filters on
+      // that key, so the phone showed 10 runs of 93 forever.
+      SharedPreferences.setMockInitialValues({
+        'runs_filters_v1': jsonEncode({'range': 'all', 'sort': 'newest'}),
+      });
+      final prefs = Preferences();
+      await prefs.init();
+      await prefs.setRunsSyncCursor(DateTime.utc(2026, 7, 1, 12));
+      _runsDir = Directory.systemTemp.createTempSync('runs_screen_test_');
+      final local = _makeRuns(2);
+      // ignore: invalid_use_of_visible_for_testing_member
+      final runStore = LocalRunStore()..debugSeed(local, dir: _runsDir);
+      final restored = Run(
+        id: 'restored-garmin',
+        startedAt: DateTime.now().subtract(const Duration(minutes: 1)),
+        duration: const Duration(minutes: 40),
+        distanceMetres: 8000,
+        source: RunSource.garmin,
+        createdAt: DateTime.utc(2026, 2, 1),
+      );
+      final api = _FakeSignedInApi()
+        ..ownedLocal = {for (final r in local) r.id}
+        ..serverOnly = [restored];
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RunsScreen(
+            apiClient: api,
+            runStore: runStore,
+            routeStore: LocalRouteStore(),
+            preferences: prefs,
+          ),
+        ),
+      );
+      // The list itself is the signal: the store's summary lands before its
+      // index persist and the notify that rebuilds the screen, so waiting on
+      // the summary asserted before the list could have changed.
+      await pumpUntil(
+        tester,
+        () => find.byKey(ValueKey(restored.id)).evaluate().isNotEmpty,
+        describe: 'the restored run to reach the list',
+      );
+
+      expect(api.lastCursor, isNotNull,
+          reason: 'the delta branch ran and returned nothing');
+      expect(api.requestedIds, [restored.id],
+          reason: 'only the gap is fetched in full, never the held rows');
+      expect(runStore.summaries.map((s) => s.id), contains(restored.id));
+      expect(find.byType(RunListTile), findsNWidgets(3));
+    });
+
+    testWidgets(
+        'an edit made on web to a run the phone holds replaces the held copy, '
+        'and the cursor becomes the server updated_at', (tester) async {
+      // Decisions § 2118: the delta used to key on the phone-only
+      // metadata.last_modified_at, so a web edit to a held run never came
+      // back. It now keys on the server-stamped updated_at, and the cursor it
+      // stores is the server's instant rather than the device clock.
+      SharedPreferences.setMockInitialValues({
+        'runs_filters_v1': jsonEncode({'range': 'all', 'sort': 'newest'}),
+      });
+      final prefs = Preferences();
+      await prefs.init();
+      await prefs.setRunsSyncCursor(DateTime.utc(2026, 7, 1, 12));
+      _runsDir = Directory.systemTemp.createTempSync('runs_screen_test_');
+      final held = _makeRuns(1).single;
+      // ignore: invalid_use_of_visible_for_testing_member
+      final runStore = LocalRunStore()..debugSeed([held], dir: _runsDir);
+      final serverCursor = DateTime.utc(2026, 7, 1, 12, 3, 0, 123, 456);
+      final api = _FakeSignedInApi()
+        ..ownedLocal = {held.id}
+        ..deltaRuns = [
+          Run(
+            id: held.id,
+            startedAt: held.startedAt,
+            duration: held.duration,
+            distanceMetres: 7777,
+            source: held.source,
+          ),
+        ]
+        ..deltaCursor = serverCursor;
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RunsScreen(
+            apiClient: api,
+            runStore: runStore,
+            routeStore: LocalRouteStore(),
+            preferences: prefs,
+          ),
+        ),
+      );
+      await pumpUntil(
+        tester,
+        () => prefs.runsSyncCursor == serverCursor,
+        describe: 'the delta to land and store its cursor',
+      );
+      await tester.pump();
+
+      expect(api.lastCursor, DateTime.utc(2026, 7, 1, 12));
+      expect(runStore.summaries.single.distanceMetres, 7777,
+          reason: 'the web edit replaces the copy the phone already held');
+      expect(prefs.runsSyncCursor, serverCursor,
+          reason: 'the cursor is what the server sent, never DateTime.now()');
+    });
+
+    testWidgets(
+        'a device upgrading off the old device-clock watermark walks every '
+        'owned row once', (tester) async {
+      // The old key held a device instant compared against last_modified_at.
+      // Copies of runs edited on web before the trigger shipped are stale and
+      // no updated_at cursor would return them, so the new cursor starts
+      // empty and the first pull is a full walk (decisions § 2118).
+      SharedPreferences.setMockInitialValues({
+        'runs_filters_v1': jsonEncode({'range': 'all', 'sort': 'newest'}),
+        'runs_last_fetched_at': '2026-07-01T12:00:00.000Z',
+      });
+      final prefs = Preferences();
+      await prefs.init();
+      _runsDir = Directory.systemTemp.createTempSync('runs_screen_test_');
+      // ignore: invalid_use_of_visible_for_testing_member
+      final runStore = LocalRunStore()..debugSeed(_makeRuns(2), dir: _runsDir);
+      final api = _FakeSignedInApi();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RunsScreen(
+            apiClient: api,
+            runStore: runStore,
+            routeStore: LocalRouteStore(),
+            preferences: prefs,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(api.deltaCalls, 1);
+      expect(api.lastCursor, isNull,
+          reason: 'the legacy watermark is not a server instant and must not '
+              'seed the updated_at cursor');
     });
 
     testWidgets('tapping Load more reveals the next local page',
@@ -772,6 +939,68 @@ void main() {
 
       // 30 ≤ 40 (next page), apiClient is null → no further button.
       expect(find.text('Load 20 more'), findsNothing);
+    });
+  });
+
+  group('RunsScreen month headers', () {
+    Future<void> pumpWithSort(WidgetTester tester, String sort) async {
+      SharedPreferences.setMockInitialValues({
+        'runs_filters_v1': jsonEncode({'range': 'all', 'sort': sort}),
+      });
+      final prefs = Preferences();
+      await prefs.init();
+      _runsDir = Directory.systemTemp.createTempSync('runs_screen_months_');
+      final now = DateTime.now();
+      // Forty days apart always straddles a month boundary; the OLDER run is
+      // the longer one, so a longest-first list runs against the calendar.
+      final runs = [
+        Run(
+          id: 'recent-short',
+          startedAt: now.subtract(const Duration(days: 1)),
+          duration: const Duration(minutes: 30),
+          distanceMetres: 5000,
+          source: RunSource.app,
+        ),
+        Run(
+          id: 'older-long',
+          startedAt: now.subtract(const Duration(days: 41)),
+          duration: const Duration(hours: 2),
+          distanceMetres: 21500,
+          source: RunSource.app,
+        ),
+      ];
+      // ignore: invalid_use_of_visible_for_testing_member
+      final runStore = LocalRunStore()..debugSeed(runs, dir: _runsDir);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RunsScreen(
+            apiClient: null,
+            runStore: runStore,
+            routeStore: LocalRouteStore(),
+            preferences: prefs,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    final monthHeader = find.byWidgetPredicate(
+        (w) => w.runtimeType.toString() == '_MonthHeaderRow');
+
+    testWidgets('newest-first groups by month', (tester) async {
+      await pumpWithSort(tester, 'newest');
+      expect(monthHeader, findsNWidgets(2));
+    });
+
+    testWidgets('longest-first drops month headers instead of interleaving '
+        'them', (tester) async {
+      // Production: the ranked list read JULY above OCTOBER.
+      await pumpWithSort(tester, 'longest');
+      expect(monthHeader, findsNothing);
+      expect(find.byType(RunListTile), findsNWidgets(2));
     });
   });
 
@@ -817,7 +1046,7 @@ void main() {
       expect(find.byType(ListView), findsNothing);
       // Tiles flow into columns: the first two rows sit side by side at
       // the same vertical offset (impossible in the single-column list).
-      final tiles = find.byType(ListTile);
+      final tiles = find.byType(RunListTile);
       expect(tiles, findsAtLeastNWidgets(2));
       final first = tester.getTopLeft(tiles.at(0));
       final second = tester.getTopLeft(tiles.at(1));
@@ -853,7 +1082,7 @@ void main() {
       await pumpSized(tester, runStore);
       expect(find.text(l10n.historySelectionHint), findsOneWidget);
 
-      await tester.longPress(find.byType(ListTile).first);
+      await tester.longPress(find.byType(RunListTile).first);
       await tester.pump();
       expect(find.text(l10n.historySelectionHint), findsNothing);
     });
@@ -866,7 +1095,7 @@ void main() {
       final runStore = await seedThirty();
       await pumpSized(tester, runStore);
 
-      await tester.longPress(find.byType(ListTile).first);
+      await tester.longPress(find.byType(RunListTile).first);
       await tester.pump();
       expect(find.text('1 selected'), findsOneWidget);
     });
@@ -1359,10 +1588,6 @@ void main() {
       expect(at2x.height, lessThanOrEqualTo(36));
       expect(at2x.height, greaterThan(at1x.height));
 
-      // Material pins its own PopupMenuItem ListTile at 56 px, which stripes
-      // at 2x. That is a framework-managed internal, explicitly out of scope
-      // per decisions §486; consume it so this test speaks only to the dot.
-      tester.takeException();
     });
   });
 }

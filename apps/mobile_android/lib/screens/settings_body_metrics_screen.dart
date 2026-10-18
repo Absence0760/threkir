@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
@@ -11,6 +13,7 @@ import '../nutrition_targets.dart' show activityLevels, goalKcalDelta;
 import '../preferences.dart';
 import '../settings_sync.dart';
 import '../typed_decimal.dart';
+import '../widgets/confirm_discard.dart';
 import '../widgets/error_state.dart';
 import '../widgets/top_banner.dart';
 
@@ -18,20 +21,20 @@ import '../widgets/top_banner.dart';
 /// `NutritionTargetsScreen`, which shows the same lever, so the two surfaces
 /// cannot name the same stored value differently.
 String activityLevelLabel(AppLocalizations l10n, String key) => switch (key) {
-      'sedentary' => l10n.activitySedentary,
-      'light' => l10n.activityLight,
-      'active' => l10n.activityVeryActive,
-      'very_active' => l10n.activityExtraActive,
-      _ => l10n.activityModerate,
-    };
+  'sedentary' => l10n.activitySedentary,
+  'light' => l10n.activityLight,
+  'active' => l10n.activityVeryActive,
+  'very_active' => l10n.activityExtraActive,
+  _ => l10n.activityModerate,
+};
 
 /// Localized label for a `nutrition_goal` bag value. See
 /// [activityLevelLabel].
 String weightGoalLabel(AppLocalizations l10n, String key) => switch (key) {
-      'lose' => l10n.goalLose,
-      'gain' => l10n.goalGain,
-      _ => l10n.goalMaintain,
-    };
+  'lose' => l10n.goalLose,
+  'gain' => l10n.goalGain,
+  _ => l10n.goalMaintain,
+};
 
 /// Settings → Body metrics (multi_modal.md § "Body metrics & sensitive
 /// data"). Height + weight are special-category health data (GDPR Art 9):
@@ -74,6 +77,13 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
   String _activity = 'moderate';
   String _goal = 'maintain';
 
+  // The two sections save differently on purpose (Art 9 demographics behind
+  // the explicit button, nutrition effort labels on pick), so each says which
+  // it is, and the explicit one says when it holds edits Save hasn't taken.
+  ({bool consent, String height, String weight})? _baseline;
+  bool _prefSaved = false;
+  Timer? _prefSavedTimer;
+
   WeightUnit get _unit => widget.preferences.weightUnit;
 
   @override
@@ -110,8 +120,23 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
     return w != null && !withinColumnLimit(_weightKey, w);
   }
 
+  ({bool consent, String height, String weight}) get _demographics => (
+    consent: _consent,
+    height: _heightCtl.text.trim(),
+    weight: _weightCtl.text.trim(),
+  );
+
+  void _rebaseline() => _baseline = _demographics;
+
+  bool get _demographicsDirty =>
+      !_loading &&
+      !_loadFailed &&
+      _baseline != null &&
+      _demographics != _baseline;
+
   @override
   void dispose() {
+    _prefSavedTimer?.cancel();
     _heightCtl.removeListener(_onFieldChanged);
     _weightCtl.removeListener(_onFieldChanged);
     _heightCtl.dispose();
@@ -124,8 +149,9 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
     final settings = widget.settingsSync?.service;
     _activity =
         settings?.effective<String>(SettingsKeys.nutritionActivityLevel) ??
-            'moderate';
-    _goal = settings?.effective<String>(SettingsKeys.nutritionGoal) ?? 'maintain';
+        'moderate';
+    _goal =
+        settings?.effective<String>(SettingsKeys.nutritionGoal) ?? 'maintain';
     final api = widget.api;
     if (api != null && api.userId != null) {
       try {
@@ -148,6 +174,7 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
         _loadFailed = true;
       }
     }
+    if (!_loadFailed) _rebaseline();
     if (mounted) setState(() => _loading = false);
   }
 
@@ -169,10 +196,14 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
     // outside the column's range cannot reach the insert through any other
     // path into this handler.
     if (_heightError || _weightError) {
-      _snack(_heightError
-          ? l10n.limitsHeightOutOfRange(
-              _bound(columnMin(_heightKey)), _bound(columnMax(_heightKey)))
-          : _weightRangeMessage(l10n));
+      _snack(
+        _heightError
+            ? l10n.limitsHeightOutOfRange(
+                _bound(columnMin(_heightKey)),
+                _bound(columnMax(_heightKey)),
+              )
+            : _weightRangeMessage(l10n),
+      );
       return;
     }
     final h = _typedHeight;
@@ -186,9 +217,11 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
     }
     // Withdrawing consent erases the saved height + the entire weight
     // time-series (Art 7(3)) — irreversible, so confirm first.
-    final withdrawing = !_consent && (_consentAt != null || _loadedWeightKg != null);
+    final withdrawing =
+        !_consent && (_consentAt != null || _loadedWeightKg != null);
     if (withdrawing) {
-      final ok = await showDialog<bool>(
+      final ok =
+          await showDialog<bool>(
             context: context,
             builder: (_) => AlertDialog(
               title: Text(l10n.bodyMetricsWithdrawTitle),
@@ -201,7 +234,8 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
                 TextButton(
                   onPressed: () => Navigator.pop(context, true),
                   style: TextButton.styleFrom(
-                      foregroundColor: Theme.of(context).colorScheme.error),
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                  ),
                   child: Text(l10n.bodyMetricsWithdrawConfirm),
                 ),
               ],
@@ -231,9 +265,9 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
         // screen (decisions § 1811). Written even when unchanged so a re-save
         // repairs a stale mirror.
         if (weightVal != null) {
-          await widget.settingsSync?.updateUniversal(
-            <String, dynamic>{SettingsKeys.bodyWeightKg: weightVal},
-          );
+          await widget.settingsSync?.updateUniversal(<String, dynamic>{
+            SettingsKeys.bodyWeightKg: weightVal,
+          });
           await widget.preferences.setBodyWeightKg(weightVal);
         }
       } else {
@@ -260,6 +294,7 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
         });
         if (withdrawing) await widget.preferences.setBodyWeightKg(null);
       }
+      _rebaseline();
       _snack(l10n.bodyMetricsSaved);
     } catch (e) {
       debugPrint('body metrics save failed: $e');
@@ -272,13 +307,19 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
   /// A bound rendered the way the field's own value reads: whole numbers
   /// without a `.0`, a converted one to a single decimal, both through the
   /// active locale's separator.
-  static String _bound(num v) =>
-      formatFixed(v.toDouble(), v == v.roundToDouble() ? 0 : 1, activeLocaleTag);
+  static String _bound(num v) => formatFixed(
+    v.toDouble(),
+    v == v.roundToDouble() ? 0 : 1,
+    activeLocaleTag,
+  );
 
   String _weightRangeMessage(AppLocalizations l10n) {
     final b = WeightFormat.boundsIn(_weightKey, _unit);
     return l10n.limitsWeightOutOfRange(
-        _bound(b.min), _bound(b.max), WeightFormat.label(_unit));
+      _bound(b.min),
+      _bound(b.max),
+      WeightFormat.label(_unit),
+    );
   }
 
   Future<void> _putBag(String key, String value) async {
@@ -286,10 +327,26 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
       await widget.settingsSync?.updateUniversal(<String, dynamic>{key: value});
     } catch (e) {
       debugPrint('body metrics pref save failed: $e');
-      if (mounted) _snack(AppLocalizations.of(context).bodyMetricsPrefSaveFailed(friendlyError(AppLocalizations.of(context), e)));
+      if (mounted)
+        _snack(
+          AppLocalizations.of(context).bodyMetricsPrefSaveFailed(
+            friendlyError(AppLocalizations.of(context), e),
+          ),
+        );
       return;
     }
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    // No sync service means the pick was kept only for this screen's
+    // lifetime, so claiming it saved would be untrue.
+    if (widget.settingsSync == null) {
+      setState(() {});
+      return;
+    }
+    _prefSavedTimer?.cancel();
+    setState(() => _prefSaved = true);
+    _prefSavedTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _prefSaved = false);
+    });
   }
 
   Future<void> _pickActivity() async {
@@ -348,7 +405,7 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    return Scaffold(
+    final scaffold = Scaffold(
       appBar: AppBar(title: Text(l10n.bodyMetricsTitle)),
       body: _loading
           ? ListSkeleton(
@@ -358,10 +415,7 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
               hasLeading: false,
             )
           : _loadFailed
-          ? ErrorState(
-              message: l10n.bodyMetricsLoadError,
-              onRetry: _retryLoad,
-            )
+          ? ErrorState(message: l10n.bodyMetricsLoadError, onRetry: _retryLoad)
           : ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
@@ -376,15 +430,17 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                     child: TextField(
                       controller: _heightCtl,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: InputDecoration(
                         labelText: l10n.bodyMetricsHeight,
                         suffixText: 'cm',
                         errorText: _heightError
                             ? l10n.limitsHeightOutOfRange(
                                 _bound(columnMin(_heightKey)),
-                                _bound(columnMax(_heightKey)))
+                                _bound(columnMax(_heightKey)),
+                              )
                             : null,
                       ),
                     ),
@@ -393,17 +449,103 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: TextField(
                       controller: _weightCtl,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: InputDecoration(
                         labelText: l10n.bodyMetricsWeight,
                         suffixText: WeightFormat.label(_unit),
-                        errorText:
-                            _weightError ? _weightRangeMessage(l10n) : null,
+                        errorText: _weightError
+                            ? _weightRangeMessage(l10n)
+                            : null,
                       ),
                     ),
                   ),
                 ],
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: FilledButton(
+                    onPressed: _saving || _heightError || _weightError
+                        ? null
+                        : _save,
+                    child: Text(l10n.prefsSave),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: _demographicsDirty
+                        ? Row(
+                            children: [
+                              Icon(
+                                Icons.edit_note,
+                                size: 18,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  l10n.bodyMetricsUnsaved,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurface,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Text(
+                            l10n.bodyMetricsSaveHint,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                  ),
+                ),
+                const Divider(height: 24),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: Semantics(
+                    header: true,
+                    child: Text(
+                      l10n.bodyMetricsNutritionHeading,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: _prefSaved
+                        ? Row(
+                            key: const ValueKey('body-metrics-pref-saved'),
+                            children: [
+                              Icon(
+                                Icons.check_circle,
+                                size: 18,
+                                color: theme.colorScheme.primary,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                l10n.bodyMetricsSaved,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                            ],
+                          )
+                        : Text(
+                            l10n.bodyMetricsAutosaveHint,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                  ),
+                ),
                 ListTile(
                   title: Text(l10n.bodyMetricsActivityLevel),
                   subtitle: Text(activityLevelLabel(l10n, _activity)),
@@ -420,20 +562,18 @@ class _SettingsBodyMetricsScreenState extends State<SettingsBodyMetricsScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   child: Text(
                     l10n.bodyMetricsTargetsHint,
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: FilledButton(
-                    onPressed:
-                        _saving || _heightError || _weightError ? null : _save,
-                    child: Text(l10n.prefsSave),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ],
             ),
+    );
+    return DiscardGuard(
+      isDirty: () => _demographicsDirty,
+      confirmBody: l10n.bodyMetricsLeaveMessage,
+      child: scaffold,
     );
   }
 }

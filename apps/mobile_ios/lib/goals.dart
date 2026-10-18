@@ -167,6 +167,10 @@ class GoalProgress {
 /// hands the same list to the lead and to [evaluateGoal].
 abstract interface class PlanCompletion {
   String get scheduledDate;
+
+  /// The workout kind; a `walk_run` session's distance is an estimate. Null
+  /// when the caller does not know it.
+  String? get kind;
   double? get targetDistanceM;
   bool get manuallyCompleted;
   String? get completedRunId;
@@ -185,7 +189,9 @@ String _localIsoDate(DateTime d) {
 /// This Week card has always counted it, with its target distance standing in
 /// for the distance nobody recorded. A workout with a linked run is left out
 /// because that run is already counted, and a future-dated one because a mark
-/// on a day that has not happened is not activity yet. The one definition
+/// on a day that has not happened is not activity yet. A walk-run session
+/// counts as a session but adds no distance: its target is an estimate at a
+/// pace nobody chose, not a distance the runner covered. The one definition
 /// behind both the week lead and the Goals section (decisions § 1813).
 ({double distanceM, int count}) markedDoneTally(
   List<PlanCompletion> workouts,
@@ -202,7 +208,7 @@ String _localIsoDate(DateTime d) {
         w.scheduledDate.compareTo(last) > 0) {
       continue;
     }
-    distanceM += w.targetDistanceM ?? 0;
+    if (w.kind != 'walk_run') distanceM += w.targetDistanceM ?? 0;
     count += 1;
   }
   return (distanceM: distanceM, count: count);

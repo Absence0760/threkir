@@ -19,7 +19,9 @@
 // The moderation and derived-cache columns stay in the sets on purpose. They
 // are frozen server-side by 20270704000003, which REVERTS a non-service-role
 // write rather than raising, so listing them costs nothing and re-spelling the
-// freeze list here would be a second copy of it to drift.
+// freeze list here would be a second copy of it to drift. `runs.updated_at`
+// stays for the same reason: since 20270918000005 the server stamps it on every
+// write, so an archive's value is overwritten rather than refused.
 
 import type { Insertable } from '../core/database';
 import type { JsonObject } from '../types';

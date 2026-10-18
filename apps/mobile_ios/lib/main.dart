@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart';
 
+import 'active_plan_cache.dart';
 import 'apple_watch_route_bridge.dart';
 import 'audio_cues.dart';
 import 'background_sync.dart';
@@ -45,6 +46,7 @@ import 'ble_heart_rate.dart';
 import 'ble_treadmill.dart';
 import 'tile_cache.dart';
 import 'training_service.dart';
+import 'today_widget.dart' show TodayWidgetBridge;
 import 'watch_ingest.dart';
 import 'watch_ingest_queue.dart';
 import 'wear_auth_bridge.dart';
@@ -167,6 +169,7 @@ void main() async {
   const adaptiveFitnessGateDef = String.fromEnvironment('ADAPTIVE_FITNESS_GATE');
   const weighInGateDef = String.fromEnvironment('WEIGH_IN_GATE');
   const weightFluidDef = String.fromEnvironment('WEIGHT_FLUID_ENABLED');
+  const cyclePlansDef = String.fromEnvironment('CYCLE_PLANS_ENABLED');
   const tileUrlTemplateDef = String.fromEnvironment('TILE_URL_TEMPLATE');
   const usdaFdcApiKeyDef = String.fromEnvironment('USDA_FDC_API_KEY');
   dotenv.loadFromString(
@@ -196,6 +199,7 @@ void main() async {
         'ADAPTIVE_FITNESS_GATE=$adaptiveFitnessGateDef',
       if (weighInGateDef.isNotEmpty) 'WEIGH_IN_GATE=$weighInGateDef',
       if (weightFluidDef.isNotEmpty) 'WEIGHT_FLUID_ENABLED=$weightFluidDef',
+      if (cyclePlansDef.isNotEmpty) 'CYCLE_PLANS_ENABLED=$cyclePlansDef',
       if (tileUrlTemplateDef.isNotEmpty) 'TILE_URL_TEMPLATE=$tileUrlTemplateDef',
       if (usdaFdcApiKeyDef.isNotEmpty) 'USDA_FDC_API_KEY=$usdaFdcApiKeyDef',
     ].join('\n'),
@@ -291,6 +295,11 @@ void main() async {
 
   syncActiveLocaleTag();
   localeNotifier.addListener(syncActiveLocaleTag);
+
+  // The home-screen widget's snapshot carries strings already translated and
+  // unit-formatted, so a locale or unit change re-renders it. Registered
+  // after the tag sync above, which has to run first.
+  TodayWidgetBridge().refreshOn(Listenable.merge([prefs, localeNotifier]));
 
   // Recover a run that was in progress when the app was last killed
   // (crash, force-stop, OOM). We promote the partial data to a regular
@@ -408,7 +417,8 @@ void main() async {
   if (hasSupabase && api != null) {
     unawaited(raceController.start());
   }
-  final training = TrainingService();
+  final training = TrainingService()
+    ..followRunsLanded(Listenable.merge([store.landed, watchQueue.landed]));
   final heartRate = BleHeartRate();
   // Kick off auto-reconnect in the background. If the user has paired a
   // strap previously, HR is ready when they tap Start; otherwise it's a
@@ -539,6 +549,11 @@ void main() async {
         // stores aren't user-namespaced on disk (decisions §73/§122 deferred
         // the `created_by_user_id` tag), so sign-out wipes them outright,
         // mirroring the settings cache's drop-on-sign-out (§72).
+        // The active plan saved for offline reads (today's workout on Home,
+        // the Run tab and the dashboard) belongs to the departing account.
+        unawaited(clearActivePlanCache());
+        // So is the week the home-screen widget shows.
+        unawaited(TodayWidgetBridge().clear());
         for (final s in <OfflineSyncStore>[gearStore, gymStore, foodStore]) {
           s.clear().catchError((Object e) {
             debugPrint('Offline store clear on signedOut failed: $e');
@@ -713,7 +728,11 @@ void main() async {
   // `com.threkir.app://runs|routes/<id>` scheme), the links an owner hands out
   // to followers and named people: HomeScreen drains pendingEntityLink.
   try {
-    final entityLinks = EntityLinkService()..start();
+    // Plan links (the home-screen widget's `com.threkir.app://plans/...`)
+    // take the push-target handoff, which already opens plan screens.
+    final entityLinks = EntityLinkService(
+      onPlanLink: (target) => pendingPushTarget.value = target,
+    )..start();
     unawaited(entityLinks.processInitial());
   } catch (e) {
     debugPrint('entity link init failed: $e');

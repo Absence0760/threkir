@@ -1,6 +1,6 @@
 /// Run with `cd apps/backend && deno test --no-check --allow-read supabase/functions/_shared/cors_wiring.test.ts`.
 ///
-/// Source guard for decisions § 2121. Every Edge Function the web app
+/// Source guard for decisions § 2148. Every Edge Function the web app
 /// fetches from the browser is cross-origin and preflighted, and none of
 /// that is visible locally or in the e2e lanes (see the backend CLAUDE.md
 /// gotcha), so the set is derived from the call sites in apps/web/src and

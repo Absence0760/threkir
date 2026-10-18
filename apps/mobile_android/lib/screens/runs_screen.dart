@@ -22,6 +22,7 @@ import '../local_food_store.dart';
 import '../local_gym_store.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
+import '../missing_run_pull.dart';
 import '../preferences.dart';
 import '../runs_history_items.dart';
 import '../settings_sync.dart';
@@ -686,46 +687,49 @@ class _RunsScreenState extends State<RunsScreen>
     if (api == null || api.userId == null) return;
     setState(() => _fetching = true);
     try {
-      // Two distinct paths, both bounded:
-      //
-      // - First load (since == null): fetch the first page only — same
-      //   shape as the web app's `/runs` initial load. Older runs come
-      //   in via "Load more" rather than a 200-row up-front pull. Sets
-      //   `_remoteHasMore` based on whether the page filled, so the
-      //   button knows when to stop.
-      //
-      // - Delta sync (since != null): pull every row modified since
-      //   the last successful fetch. The cap is generous (200) because
-      //   this catches up from a multi-device edit burst, not a cold
-      //   library load — and the cap is one trip, not per-paint. This
-      //   path never touches `_remoteHasMore` on its own — it isn't a
-      //   paginated fetch, so a delta page filling or not says nothing
-      //   about whether older history remains unfetched.
-      final since = widget.preferences.runsLastFetchedAt;
-      final fetchStartedAt = DateTime.now().toUtc();
-      final remote = since == null
-          ? await api.getRuns(limit: _kRunsPageSize)
-          : await api.getRuns(limit: 200, updatedSince: since);
-      await widget.runStore.saveManyFromRemote(remote);
-      await widget.preferences.setRunsLastFetchedAt(fetchStartedAt);
+      // One pull, keyed on the server's own modification clock: every owned
+      // run whose `updated_at` moved since the cursor, so an edit made on
+      // web, by an import or by a job reaches the phone. With no cursor yet
+      // (first sign-in, or the upgrade off the old device-clock watermark) it
+      // walks every owned row, which is also what heals copies the old
+      // watermark left stale (decisions § 2118).
+      final userId = api.userId;
+      final since = widget.preferences.runsSyncCursor;
+      final delta = await api.getRunsModifiedSince(since);
+      // A sign-out or account switch during the read would otherwise write
+      // the previous account's rows into the next one's store.
+      if (api.userId != userId) return;
+      // A delete queued while the rows were in flight must win, as in the
+      // reconcile below.
+      final pending = widget.runStore.pendingRemoteDeleteIds;
+      await widget.runStore.saveManyFromRemote([
+        for (final r in delta.runs)
+          if (!pending.contains(r.id)) r,
+      ]);
+      final cursor = delta.cursor;
+      if (cursor != null) await widget.preferences.setRunsSyncCursor(cursor);
+      // The membership reconcile stays as the net under the delta: a run the
+      // phone does not hold whose `updated_at` is already behind the cursor
+      // is never returned by it again.
+      // Its own catch: a failed reconcile must not undo or mislabel the
+      // delta that already landed.
+      var reconciled = false;
+      try {
+        final pulled = await pullMissingRuns(api, widget.runStore);
+        if (pulled > 0) debugPrint('RunsScreen: pulled $pulled missing runs');
+        reconciled = true;
+      } catch (e) {
+        debugPrint('RunsScreen: missing-run reconcile failed: $e');
+      }
       if (mounted) {
         setState(() {
-          if (since == null) {
-            _remoteHasMore = remote.length == _kRunsPageSize;
-          }
-          // Returning-user regression fix: `_remoteHasMore` resets to
-          // its conservative `true` default on every fresh mount (app
-          // restart, tab remount, …), but a returning user almost
-          // always takes the delta-sync branch above, which never
-          // corrects it — so the Load-more button stayed stuck on
-          // forever for anyone with under one page of runs. The local
-          // store's full history is authoritative here regardless of
-          // which branch ran (saveManyFromRemote just folded in
-          // anything new from any device): fewer than a page total
-          // means there is provably no next page to fetch.
-          if (widget.runStore.summaries.length < _kRunsPageSize) {
-            _remoteHasMore = false;
-          }
+          // A walk from no cursor read every owned row.
+          if (since == null) _remoteHasMore = false;
+          // A completed reconcile means the device holds every owned run,
+          // so no older page exists — the only proof of that. A local count
+          // under one page is not: it read 10 restored-on-web runs' worth of
+          // history as complete and hid Load more over the gap.
+          if (reconciled) _remoteHasMore = false;
         });
       }
     } catch (e) {
@@ -1602,7 +1606,9 @@ class _RunsScreenState extends State<RunsScreen>
         ? const <HistoryItem>[]
         : buildHistoryItems(_visible,
             now: DateTime.now(),
-            localeTag: localeToTag(Localizations.localeOf(context)));
+            localeTag: localeToTag(Localizations.localeOf(context)),
+            groupByMonth:
+                _sort == _RunsSort.newest || _sort == _RunsSort.oldest);
     if (widthClassOf(context) == WidthClass.expanded) {
       return _buildRunGrid(theme, l10n, unit, items,
           emptyAfterFilter: emptyAfterFilter, showLoadMore: showLoadMore);

@@ -3,7 +3,7 @@
 	import { parseImportCompleteness } from '#lib/integrations/import_completeness.ts';
 	import { normalizeParkrunAthleteNumber } from '#lib/integrations/parkrun_barcode.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -14,6 +14,14 @@
 	import { AVATAR_SOURCE_MAX_BYTES } from '#lib/util/avatar_render.ts';
 	import AiDisclosureNotice from '#lib/components/AiDisclosureNotice.svelte';
 	import { supabase } from '#lib/core/supabase.ts';
+	import {
+		LINK_REFUSAL_STASH_KEY,
+		OAUTH_LINK_STASH_KEY,
+		authRedirectErrorDetail,
+		decodeLinkRefusal,
+		type LinkRefusal,
+	} from '#lib/core/auth_redirect_error.ts';
+	import { linkRefusalMessageKey } from '#lib/core/link_refusal_message.ts';
 	import {
 		AI_DISCLOSURE_CURRENT_VERSION,
 		aiDisclosureFromProfileRow,
@@ -61,6 +69,7 @@
 	} from '#lib/backup/cloud_export_helpers.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import PasswordInput from '#lib/components/PasswordInput.svelte';
+	import DateOfBirthInput from '#lib/components/DateOfBirthInput.svelte';
 	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
 	import { numberInputValue } from '#lib/settings/number_input.ts';
 	import type { PrefsBag } from '#lib/settings/settings.ts';
@@ -311,6 +320,7 @@
 		if (!auth.user) return;
 		await loadProfile();
 		await loadIdentities();
+		await showLinkRefusal();
 		await refreshPushState();
 		await resumeExportJob();
 	});
@@ -1099,8 +1109,47 @@
 		}
 	}
 
+	// Set by /auth/callback when GoTrue refused a link; shown apart from
+	// identityError so a later identity reload cannot wipe it.
+	let linkRefusal = $state<string | null>(null);
+
+	function linkRefusalText(refusal: LinkRefusal): string {
+		return m(linkRefusalMessageKey(refusal.code), {
+			provider: PROVIDER_LABEL[refusal.provider],
+			backup: m('settingsAccount.downloadBackup'),
+			delete: m('settingsAccount.deleteAccount'),
+			error: authRedirectErrorDetail(refusal),
+		});
+	}
+
+	async function showLinkRefusal() {
+		let raw: string | null = null;
+		try {
+			raw = sessionStorage.getItem(LINK_REFUSAL_STASH_KEY);
+			sessionStorage.removeItem(LINK_REFUSAL_STASH_KEY);
+		} catch (_) {
+			return;
+		}
+		const refusal = decodeLinkRefusal(raw);
+		if (!refusal) return;
+		linkRefusal = linkRefusalText(refusal);
+		await tick();
+		document.getElementById('sign-in-methods')?.scrollIntoView({ block: 'start' });
+	}
+
+	function setLinkMarker(provider: LinkableProvider | null) {
+		try {
+			if (provider) sessionStorage.setItem(OAUTH_LINK_STASH_KEY, provider);
+			else sessionStorage.removeItem(OAUTH_LINK_STASH_KEY);
+		} catch (e) {
+			console.error('settings/account: could not stash the link marker:', e);
+		}
+	}
+
 	async function linkProvider(provider: LinkableProvider) {
 		linkingProvider = provider;
+		linkRefusal = null;
+		setLinkMarker(provider);
 		try {
 			const { error } = await supabase.auth.linkIdentity({
 				provider,
@@ -1110,6 +1159,7 @@
 			// Successful path navigates away to the OAuth provider. If we
 			// reach here without redirect, surface a generic failure.
 		} catch (e) {
+			setLinkMarker(null);
 			identityError = m('settingsAccount.linkFailed', { provider: PROVIDER_LABEL[provider], error: thrownMessage(e) });
 			linkingProvider = null;
 		}
@@ -1392,13 +1442,10 @@
 						</button>
 					{/if}
 				</label>
-				<label>
-					<span class="label-text">{m('settingsAccount.dateOfBirth')}</span>
-					<!-- Not consent-disabled: the column it writes is the under-18
-					     discoverability floor's age record (§ 718). Consent gates
-					     the Art 9 prefs mirror, not the field. -->
-					<input type="date" bind:value={dateOfBirth} max={new Date().toISOString().slice(0, 10)} data-testid="date-of-birth" />
-				</label>
+				<!-- Not consent-disabled: the column it writes is the under-18
+				     discoverability floor's age record (§ 718). Consent gates
+				     the Art 9 prefs mirror, not the field. -->
+				<DateOfBirthInput bind:value={dateOfBirth} label={m('settingsAccount.dateOfBirth')} />
 				<label>
 					<span class="label-text">{m('settingsAccount.restingHr')}</span>
 					<input type="number" bind:value={restingHr} placeholder={m('settingsAccount.restingHrPlaceholder')} min={RESTING_HR_BPM_MIN} max={RESTING_HR_BPM_MAX} aria-invalid={restingHrOutOfRange} data-testid="resting-hr" />
@@ -1470,11 +1517,13 @@
 	</section>
 
 	<!-- Sign-in methods -->
-	<section class="card">
+	<section class="card" id="sign-in-methods">
 		<h2>{m('settingsAccount.signinMethodsHeading')}</h2>
 		<p class="section-desc">
 			{m('settingsAccount.signinMethodsDesc')}
 		</p>
+
+		{#if linkRefusal}<p class="error-text" role="alert" data-testid="link-refusal">{linkRefusal}</p>{/if}
 
 		{#if identitiesLoading}
 			<p class="muted">{m('shell.loading')}</p>

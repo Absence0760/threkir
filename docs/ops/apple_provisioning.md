@@ -36,6 +36,7 @@ Last moved: **2026-10-06**.
 | — | Developer Program enrollment | — | **Active** — App Store Connect reachable 2026-09-19 |
 | 1 | Team ID + renewal reminder | Bitwarden | **Done 2026-10-05** — Team ID confirmed; renewal reminder on the owner's calendar (auto-renew is on) |
 | 2 | App Groups `group.com.threkir.app.activerun` + `group.com.threkir.app.share` | Apple portal | **Done 2026-10-05** |
+| 2b | App Group `group.com.threkir.app.widget` (Today widget), assigned to `com.threkir.app` **and** `com.threkir.app.RunActivity` | Apple portal | ☐ — owed before the next `mobile_ios@` release: `Runner.entitlements` and `RunActivity.entitlements` declare it, so the step-15 phone and Live Activity profiles must be regenerated with it and re-uploaded |
 | 3 | App IDs `com.threkir.app` + `com.threkir.app.ShareExtension` + `com.threkir.app.RunActivity` | Apple portal | **Done 2026-10-05** — both groups on `com.threkir.app`, the share group on `ShareExtension`, nothing on `RunActivity`; **Associated Domains** added to `com.threkir.app` 2026-10-14 for universal links ([decisions § 1924](../architecture/decisions.md)) |
 | 4 | Watch App IDs `com.threkir.app.watchapp` + `com.threkir.app.watchapp.widget` | Apple portal | **Done 2026-10-05** — `.widget`, not `.complication`, which Apple reported unavailable ([decisions § 1754](../architecture/decisions.md)); `activerun` on both |
 | 5 | Services ID `com.threkir.web` | Apple portal | ☐ |
@@ -265,10 +266,11 @@ and the App ID is not finished until it has.
 
 **Identifiers** → click **`com.threkir.app`** in the list → scroll to
 **Capabilities** → the **App Groups** row now carries an **Edit** (on some
-accounts **Configure**) button → click it → tick **both**
-`group.com.threkir.app.activerun` and `group.com.threkir.app.share` →
-**Continue** → **Save**. `Runner.entitlements` declares the share group
-today, so a phone profile without it fails to sign the app.
+accounts **Configure**) button → click it → tick **all three**
+`group.com.threkir.app.activerun`, `group.com.threkir.app.share` and
+`group.com.threkir.app.widget` → **Continue** → **Save**. `Runner.entitlements`
+declares the share and widget groups, so a phone profile without either fails
+to sign the app.
 
 Reopen the App ID once more and confirm the group is named on the row. An App
 Groups capability with no group selected is the state that compiles, installs,
@@ -279,6 +281,25 @@ anywhere in that chain.
 does not exist. Go to **Identifiers**, switch the **pop-up menu at the top
 right** to **App Groups**, and check `group.com.threkir.app.activerun` is
 listed. Apple offers nothing to select when the list is empty.
+
+### Then the Today widget's App Group
+
+Same flow, a third group:
+
+| Field | Value |
+|---|---|
+| Description | `Threkir today widget` |
+| Identifier | `group.com.threkir.app.widget` |
+
+The phone app writes the Today widget's snapshot here and the widget, which
+runs in the Live Activity extension, reads it back. Its own group because the
+share group's root is wiped on every share. The spelling is centralised in
+[`TodayWidgetSnapshot.swift`](../../apps/mobile_ios/ios/RunActivity/TodayWidgetSnapshot.swift)
+(`TodayWidget.appGroup`) and declared by `Runner.entitlements` and
+`RunActivity/RunActivity.entitlements`; `TodayWidgetSnapshotTests` holds the
+three together. Assign it to **both** `com.threkir.app` (in the second pass
+below, beside the other two) and `com.threkir.app.RunActivity`, then
+regenerate those two App Store profiles (step 15).
 
 ### Then the share extension's App ID
 
@@ -309,9 +330,12 @@ App ID of its own too. Same flow again:
 | Description | `Threkir Run Activity` |
 | Bundle ID | **Explicit App ID** — `com.threkir.app.RunActivity` |
 
-Capabilities: **none** — tick nothing, **Continue** → **Register**, and there
-is no second pass. The extension has no entitlements file, and a Live Activity
-is not a portal capability: it is licensed by `NSSupportsLiveActivities` in the
+Capabilities: **App Groups**, assigned to `group.com.threkir.app.widget` in a
+second pass, and nothing else. The group is for the Today widget, which shares
+this extension (`RunActivity/RunActivity.entitlements` declares it); until
+2026-10-18 the extension had no entitlements and this App ID no capability.
+The Live Activity itself needs none, because a Live
+Activity is not a portal capability: it is licensed by `NSSupportsLiveActivities` in the
 *host* app's `Info.plist`, which is committed. The card is updated locally by
 `LiveActivityBridge.swift` (no ActivityKit push token is requested), so the
 extension needs no Push Notifications either. It still needs this App ID,

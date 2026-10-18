@@ -99,6 +99,8 @@ test.describe('/races — a zip-placed RunSignUp race shows near me', () => {
 		await expect(near).toBeVisible({ timeout: 15_000 });
 		await expect(far).toBeVisible();
 
+		// "Near me" sits behind Filters with the other filters.
+		await page.getByTestId('races-filters-toggle').click();
 		await page.getByTestId('races-use-location').click();
 		await expect(page.getByTestId('races-near-clear')).toBeVisible({ timeout: 10_000 });
 

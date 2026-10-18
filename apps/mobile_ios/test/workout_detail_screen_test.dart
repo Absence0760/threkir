@@ -293,15 +293,16 @@ void main() {
   group('WorkoutDetailScreen — walk-run structure', () {
     // The C25K generator writes only duration_s / recovery_duration_s; the
     // structure list cast `distance_m as num` and threw on null.
-    PlanWorkoutRow walkRunRow(int weekIndex) {
+    PlanWorkoutRow walkRunRow(int weekIndex, {bool last = false}) {
       final plan = generatePlan(GeneratePlanInput(
         goalEvent: GoalEvent.distance5k,
         startDate: DateTime(2026, 6, 1),
         daysPerWeek: 3,
         beginnerWalkRun: true,
       ));
-      final g = plan.weeks[weekIndex].workouts
-          .firstWhere((w) => w.kind == WorkoutKind.walkRun);
+      final sessions = plan.weeks[weekIndex].workouts
+          .where((w) => w.kind == WorkoutKind.walkRun);
+      final g = last ? sessions.last : sessions.first;
       return PlanWorkoutRow(
         id: 'fake-workout-id',
         weekId: 'week-1',
@@ -353,11 +354,24 @@ void main() {
       await _pumpWith(tester, _FakeTraining(walkRunRow(8), const []));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
-      expect(find.text('1× 25:00'), findsOneWidget);
+      expect(find.text('1× 30:00'), findsOneWidget);
       expect(find.byKey(const Key('workoutStepRecovery')), findsNothing);
       expect(
           tester.widget<Text>(find.byKey(const Key('walkRunPattern'))).data,
-          contains('25 min run'));
+          contains('30 min run'));
+    });
+
+    testWidgets('the plan ends on a 5K, read as a distance, not minutes',
+        (tester) async {
+      await _pumpWith(
+          tester, _FakeTraining(walkRunRow(8, last: true), const []));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(tester.widget<Text>(find.byKey(const Key('walkRunTotal'))).data,
+          '5 km run');
+      expect(
+          tester.widget<Text>(find.byKey(const Key('walkRunPattern'))).data,
+          '5 min warm-up, 5 km run, 5 min cool-down');
     });
   });
 

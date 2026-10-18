@@ -221,6 +221,24 @@ test('a window spanning a DST transition is still counted in whole weeks', () =>
 	assert.equal(preset.startDate, '2026-08-23');
 });
 
+test('a chained floor starts the plan on the Sunday on or after it, and can refuse', () => {
+	const base = { raceDateIso: '2026-12-06', distanceM: 42_195, todayIso: '2026-08-14' };
+	const chained = ok(racePlanPreset({ ...base, notBeforeIso: '2026-09-02' }));
+	assert.equal(chained.startDate, '2026-09-06');
+	assert.equal(chained.weeks, 14);
+	assertAnchoring(chained, '2026-12-06');
+	// A floor already behind today changes nothing.
+	assert.deepEqual(racePlanPreset({ ...base, notBeforeIso: '2026-08-01' }), racePlanPreset(base));
+	assert.deepEqual(racePlanPreset({ ...base, notBeforeIso: '2026-11-20' }), {
+		ok: false,
+		reason: 'too_soon',
+	});
+	assert.deepEqual(racePlanPreset({ ...base, notBeforeIso: 'nope' }), {
+		ok: false,
+		reason: 'invalid',
+	});
+});
+
 test('the anchoring invariant holds for every weekday and a year of race dates', () => {
 	const start = utcDay('2026-08-15');
 	for (let offset = 0; offset < 400; offset++) {

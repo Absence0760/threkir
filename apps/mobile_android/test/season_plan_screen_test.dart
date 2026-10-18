@@ -7,6 +7,7 @@ import '../lib/plan_request_client.dart';
 import '../lib/screens/season_plan_screen.dart';
 import '../lib/season_types.dart';
 import '../lib/training.dart';
+import '../lib/plan_calibration.dart';
 import '../lib/training_service.dart';
 
 const _today = '2026-08-14';
@@ -24,10 +25,8 @@ class _FakeTraining extends TrainingService {
   Future<List<TrainingPlanRow>> fetchActivePlans() async => active;
 
   @override
-  Future<TrainingGender> fetchViewerGender() async => null;
-
-  @override
-  Future<int?> fetchViewerAge() async => null;
+  Future<PlanCalibration> fetchPlanCalibration() async =>
+      PlanCalibration.unknown;
 
   @override
   Future<
@@ -49,6 +48,7 @@ class _FakeTraining extends TrainingService {
     required int daysPerWeek,
     String? notes,
     required GeneratedPlan generated,
+    String? raceListingId,
     PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
     final call = _calls++;

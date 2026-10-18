@@ -3,6 +3,7 @@ import {
 	MODALITY_VISIBILITY_KEYS,
 	explicitModalityChoice,
 	modalityShown,
+	nonRunDataPresence,
 	type Modality,
 } from '#lib/settings/modality_visibility.ts';
 import type { LoadedSettings } from '#lib/settings/settings_overlay.ts';
@@ -20,8 +21,9 @@ import { thrownMessage } from '../core/supabase_error';
 /// `hasData` is null until the one-row presence read lands, and reads as no
 /// data meanwhile: a runner with lifts sees Gym appear a beat after first
 /// paint, which is the cheaper failure than flashing it at every runner who
-/// has none. The read is skipped for a modality with an explicit choice,
-/// since the data cannot change the answer.
+/// has none. The read runs even under an explicit choice: the choice settles
+/// the modality's own entry points, but History is gated on what was logged,
+/// whatever the toggles say (`hasNonRunData`, decisions § 2117).
 interface Slot {
 	explicit: boolean | null;
 	hasData: boolean | null;
@@ -36,6 +38,12 @@ const state = $state<{ userId: string | null } & Record<Modality, Slot>>({
 export function modalityVisible(modality: Modality): boolean {
 	const slot = state[modality];
 	return modalityShown({ explicit: slot.explicit, hasData: slot.hasData ?? false });
+}
+
+/// Whether the runner has logged a lift or a meal: the gate on the History
+/// nav item and on /history itself. Null until both presence reads land.
+export function hasNonRunData(): boolean | null {
+	return nonRunDataPresence(state.gym.hasData, state.nutrition.hasData);
 }
 
 /// The explicit choice alone. A first-run "log a lift" prompt reads this so a
@@ -55,7 +63,7 @@ export async function hydrateModalityVisibility(
 	await Promise.all(
 		MODALITIES.map(async (modality) => {
 			const slot = state[modality];
-			if (slot.explicit !== null || slot.hasData !== null) return;
+			if (slot.hasData !== null) return;
 			let hasData: boolean;
 			try {
 				hasData = await fetchModalityHasData(userId, modality);

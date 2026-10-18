@@ -3,6 +3,7 @@
 	import { formatDate } from '#lib/format/time.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { racePlanPreset } from '#lib/training/race_plan_preset.ts';
+	import { racePlanHref } from '#lib/training/race_plan_prefill.ts';
 	import { todayISO } from '#lib/training/training.ts';
 	import type { RaceListingResult } from '#lib/core/data.ts';
 
@@ -33,13 +34,9 @@
 			todayIso: todayISO()
 		});
 		if (!preset.ok) return null;
-		const q = new URLSearchParams({
-			type: 'training',
-			raceDate: race.race_date,
-			raceName: race.name
+		return racePlanHref({
+			race: { name: race.name, raceDateIso: race.race_date, distanceM: race.distance_m }
 		});
-		if (race.distance_m != null) q.set('raceDistance', String(race.distance_m));
-		return `/plans/new?${q}`;
 	});
 </script>
 
@@ -104,6 +101,7 @@
 	.race {
 		position: relative;
 		display: flex;
+		flex-wrap: wrap;
 		justify-content: space-between;
 		align-items: center;
 		gap: var(--space-md);
@@ -120,6 +118,7 @@
 		outline-offset: 2px;
 	}
 	.race-main {
+		flex: 1 1 18rem;
 		display: flex;
 		flex-direction: column;
 		gap: 0.2rem;
@@ -130,6 +129,15 @@
 		font-weight: 700;
 		color: var(--color-text);
 		text-decoration: none;
+		/* Two lines, then an ellipsis: a long event name no longer pushes the
+		   date and distance off the first screen. The full name is the detail
+		   page's heading. Overflow here does not clip the stretched ::after,
+		   whose containing block is the positioned card. */
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		overflow: hidden;
+		overflow-wrap: anywhere;
 	}
 	.race-title::after {
 		content: '';
@@ -147,6 +155,7 @@
 	.race-meta {
 		font-size: 0.85rem;
 		color: var(--color-text-secondary);
+		overflow-wrap: anywhere;
 	}
 	.race-away {
 		font-weight: 600;
@@ -164,12 +173,26 @@
 	.race-actions {
 		display: flex;
 		gap: 0.4rem;
-		flex-shrink: 0;
 		flex-wrap: wrap;
 		justify-content: flex-end;
+	}
+	.race-actions:empty {
+		display: none;
 	}
 	.race-actions > :global(*) {
 		position: relative;
 		z-index: 1;
+	}
+	@media (max-width: 40rem) {
+		.race {
+			padding: var(--space-md);
+			gap: var(--space-sm);
+		}
+		.race-actions {
+			justify-content: flex-start;
+		}
+		.race-actions > :global(*) {
+			min-height: var(--tap-target-min);
+		}
 	}
 </style>

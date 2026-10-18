@@ -25,6 +25,7 @@ import '../plan_labels.dart';
 import '../plan_week.dart';
 import '../starter_plans.dart';
 import '../training.dart';
+import '../plan_calibration.dart' show PlanCalibration;
 import '../training_service.dart';
 import '../backend_timeout.dart';
 import '../widgets/confirm_destructive.dart';
@@ -154,13 +155,20 @@ class _PlansScreenState extends State<PlansScreen> {
     final start = starterStartDate(starter.id, DateTime.now());
     setState(() => _creatingStarterId = starter.id);
     try {
-      int? age;
+      var calibration = PlanCalibration.unknown;
       try {
-        age = await widget.training.fetchViewerAge().timeout(kBackendLoadTimeout);
+        calibration = await widget.training
+            .fetchPlanCalibration()
+            .timeout(kBackendLoadTimeout);
       } catch (e) {
-        debugPrint('starter age lookup failed: $e');
+        debugPrint('starter calibration lookup failed: $e');
       }
-      final generated = instantiateStarter(starter.id, start, age: age);
+      final generated = instantiateStarter(
+        starter.id,
+        start,
+        age: calibration.age,
+        extraRecovery: calibration.extraRecovery,
+      );
       if (generated == null) return;
       final plan = await widget.training
           .createPlan(

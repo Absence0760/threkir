@@ -110,10 +110,12 @@ void main() {
         reason: 'the apply path must not carry a load value');
   });
 
-  test('the plan screen is the only caller of the engine, so no second call site escapes these guards',
+  test('the plan screen is the only caller that can pass fitness, so no second call site escapes these guards',
       () {
     // Every property above is pinned on ONE call site; a second caller would
     // pass whatever it liked and none of this would see it (decisions § 1977).
+    // Home's plan card is the one admitted second caller, and only because the
+    // next test pins that it passes no fitness at all (decisions § 2125).
     final callers = <String>[];
     for (final e in Directory('lib').listSync(recursive: true)) {
       if (e is! File || !e.path.endsWith('.dart')) continue;
@@ -122,7 +124,27 @@ void main() {
         callers.add(e.path.replaceAll('\\', '/'));
       }
     }
-    expect(callers, ['lib/screens/plan_detail_screen.dart']);
+    expect(callers..sort(),
+        ['lib/plan_nudges.dart', 'lib/screens/plan_detail_screen.dart']);
+  });
+
+  test("Home's plan card calls the engine with no fitness and holds no load value",
+      () {
+    final code = _read('lib/plan_nudges.dart')
+        .split('\n')
+        .where((l) => !RegExp(r'^\s*//').hasMatch(l))
+        .join('\n');
+    final calls = RegExp(r'\badaptiveReplanRemaining\(([^)]*)\)')
+        .allMatches(code)
+        .map((m) => m.group(0))
+        .toList();
+    expect(calls, ['adaptiveReplanRemaining(weeks: sorted, today: today)'],
+        reason: 'the Home card must pass only the weeks and today, never a fitness snapshot');
+    expect(
+        RegExp(r'\b(fitness|tsb|atl|ctl|AdaptiveFitness)\b', caseSensitive: false)
+            .hasMatch(code),
+        false,
+        reason: 'a load value or fitness input appears in plan_nudges.dart');
   });
 
   test('the plan screen holds no load value outside _adaptiveFitnessInput', () {
@@ -130,5 +152,46 @@ void main() {
     final outside = screen.replaceFirst(_fitnessInputBody(screen), '');
     expect(RegExp(r'\b(tsb|atl|ctl)\b').hasMatch(outside), false,
         reason: 'a load value appears on the plan screen outside _adaptiveFitnessInput()');
+  });
+
+  test('the comeback ramp is reached only through the gate (decisions § 2090)',
+      () {
+    String code(String path) => _read(path)
+        .split('\n')
+        .where((l) => !RegExp(r'^\s*//').hasMatch(l))
+        .join('\n');
+    final callers = <String>[];
+    for (final e in Directory('lib').listSync(recursive: true)) {
+      if (e is! File || !e.path.endsWith('.dart')) continue;
+      if (e.path.endsWith('plan_volume_anchor.dart')) continue;
+      if (RegExp(r'\banchorToActualVolume\(').hasMatch(code(e.path))) {
+        callers.add(e.path.replaceAll('\\', '/'));
+      }
+    }
+    expect(callers..sort(),
+        ['lib/plan_nudges.dart', 'lib/screens/plan_detail_screen.dart']);
+
+    final screen = code('lib/screens/plan_detail_screen.dart');
+    expect(RegExp(r'\banchorToActualVolume\(').allMatches(screen).length, 1,
+        reason: 'the plan screen must call anchorToActualVolume only inside _volumeAnchor()');
+    expect(
+        RegExp(r'VolumeAnchor\? _volumeAnchor\([^)]*\) \{\s*if \(!adaptiveFitnessGate\) return null;\s*return anchorToActualVolume\(')
+            .hasMatch(screen),
+        true,
+        reason: '_volumeAnchor() must return null before anchoring while the gate is off');
+
+    expect(
+        code('lib/plan_nudges.dart').contains(
+            'anchorVolume ? anchorToActualVolume(weeks: sorted) : null'),
+        true,
+        reason: 'planNudge must anchor only when the caller passes anchorVolume: true');
+    expect(RegExp(r'bool anchorVolume = false').hasMatch(code('lib/plan_nudges.dart')),
+        true,
+        reason: 'an absent anchorVolume must read as off');
+    expect(
+        code('lib/screens/dashboard_screen.dart')
+            .contains('final anchorVolume = adaptiveFitnessGate;'),
+        true,
+        reason: 'Home passes the gate itself as anchorVolume');
   });
 }

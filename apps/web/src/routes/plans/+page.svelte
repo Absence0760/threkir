@@ -20,6 +20,8 @@
 	import { todayISO } from '#lib/training/training.ts';
 	import { goalEventLabel, planLengthLabel } from '#lib/training/goal_event_label.ts';
 	import { STARTER_PLANS, instantiateStarter } from '#lib/training/starter_plans.ts';
+	import { loadPlanCalibration } from '#lib/training/plan_calibration_load.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { starterName, starterStartIso, starterSummaryText } from '#lib/training/starter_labels.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 
@@ -64,7 +66,10 @@
 		// Snapshot restore (below) repopulates `plans` synchronously
 		// when navigating back, so skip the fetch — otherwise a flash
 		// of "loading" replaces the restored list and breaks scroll.
-		if (!(plans.length > 0 && !loading)) await load();
+		if (!(plans.length > 0 && !loading)) {
+			await auth.ready();
+			await load();
+		}
 		// Deep-link from the dashboard's "Pick a goal race" CTA: opening
 		// `/plans?new=1` lands here with the create-plan modal already
 		// open. Strip the query so a refresh doesn't re-open the modal.
@@ -220,9 +225,14 @@
 		if (creatingStarterId) return;
 		const starter = STARTER_PLANS.find((s) => s.id === id);
 		const start = starterStartIso(id, todayISO());
-		const generated = instantiateStarter(id, start);
-		if (!starter || !generated) return;
+		if (!starter) return;
 		creatingStarterId = id;
+		const c = auth.user ? await loadPlanCalibration(auth.user.id) : null;
+		const generated = instantiateStarter(id, start, c?.age, c?.extraRecovery);
+		if (!generated) {
+			creatingStarterId = null;
+			return;
+		}
 		try {
 			const plan = await createTrainingPlan({
 				name: starterName(id),

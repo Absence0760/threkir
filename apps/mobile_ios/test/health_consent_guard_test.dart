@@ -18,10 +18,36 @@ const _healthUseSurfaces = <String>[
   'lib/screens/dashboard_screen.dart',
   'lib/screens/nutrition_screen.dart',
   'lib/screens/nutrition_targets_screen.dart',
-  'lib/training_service.dart',
+  'lib/plan_calibration.dart',
+];
+
+// Every surface that builds a plan for the signed-in runner takes gender, age
+// and `extra_recovery` from one read, so a new plan surface cannot skip the
+// masters recovery calibration (decisions § 93) or derive the age on its own.
+const _planBuildingSurfaces = <String>[
+  'lib/screens/plan_new_screen.dart',
+  'lib/screens/plans_screen.dart',
+  'lib/screens/season_plan_screen.dart',
 ];
 
 void main() {
+  for (final path in _planBuildingSurfaces) {
+    test('$path calibrates its plans through fetchPlanCalibration', () {
+      final source = File(path).readAsStringSync();
+      expect(
+        source.contains('fetchPlanCalibration('),
+        isTrue,
+        reason: '$path builds a plan without fetchPlanCalibration',
+      );
+      expect(
+        source.contains('ageFromDob'),
+        isFalse,
+        reason: '$path derives the age itself instead of through '
+            'fetchPlanCalibration',
+      );
+    });
+  }
+
   for (final path in _healthUseSurfaces) {
     test('$path takes the age for health use through healthUseDob', () {
       // The settings-bag key is the consent-gated mirror, not the age

@@ -275,3 +275,15 @@ test('the race list order does not matter', () => {
 		b.plans.map((p) => [p.name, p.startDate, p.endDate])
 	);
 });
+
+test('extra recovery shapes every plan in the season the way a masters age does', () => {
+	const volumes = (r: SeasonBuildResult) =>
+		ok(r).plans.map((p) => p.generated.weeks.map((w) => w.target_volume_m));
+	const races = [RICHMOND, COMRADES];
+	const masters = volumes(buildSeason({ races, todayIso: TODAY, daysPerWeek: 4, age: 60 }));
+	assert.deepEqual(
+		volumes(buildSeason({ races, todayIso: TODAY, daysPerWeek: 4, extraRecovery: true })),
+		masters
+	);
+	assert.notDeepEqual(volumes(build(races)), masters);
+});

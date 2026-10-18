@@ -6,6 +6,7 @@
 	import { browser } from '$app/env';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { accountLabel } from '#lib/format/account_label.ts';
+	import Avatar from '#lib/components/Avatar.svelte';
 	import { initTheme } from '#lib/settings/theme.ts';
 	import { setMapStyle, type MapStyle } from '#lib/routes/map-style.svelte.ts';
 	import { setUnit, setWeightUnit } from '#lib/format/units.svelte.ts';
@@ -22,12 +23,14 @@
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import {
+		hasNonRunData,
 		hydrateModalityVisibility,
 		modalityVisible,
 		resetModalityVisibility,
 	} from '#lib/stores/modality_visibility.svelte.ts';
 	import type { Modality } from '#lib/settings/modality_visibility.ts';
 	import { strayConfirmationTarget } from '#lib/core/auth_confirmation.ts';
+	import { CONSENT_PATH, ONBOARDING_PATH, holdAppShell } from '#lib/core/post_auth_route.ts';
 	import { PUBLIC_SUPABASE_URL } from '$app/env/public';
 
 	// Warm the connection to the Supabase origin every page hits on
@@ -212,6 +215,9 @@
 	// `modalityVisible` says so: the runner's show_gym / show_nutrition choice,
 	// or, with none made, whether that modality has data (decisions § 1739).
 	// Hiding takes away the entry point, not the page: /gym still loads by URL.
+	// History appears only once a lift or a meal has been logged, whatever the
+	// toggles say: for a runner with runs alone it repeats /runs, and /history
+	// sends them to the run list's day view (decisions § 2117).
 	// `section` names the --section-<x> / --section-<x>-ink token pair in
 	// app.css. The hue cannot live here as a hex: the ink half has to flip per
 	// theme and a TS string cannot, which is how all seven glyphs came to read
@@ -233,6 +239,7 @@
 	const navItems = $derived(
 		navItemsBase.filter((item) => {
 			if (item.href === '/coach') return coachEnabled();
+			if (item.href === '/history') return hasNonRunData() === true;
 			const modality = NAV_MODALITY[item.href];
 			return modality === undefined || modalityVisible(modality);
 		}),
@@ -356,9 +363,9 @@
 		if (auth.loading || !auth.loggedIn || !auth.user) return;
 		if (auth.user.consent_recorded) return;
 		const path = page.url.pathname;
-		if (path === '/auth/confirm-age') return;
+		if (path === CONSENT_PATH) return;
 		if (isAnonAllowed(path)) return;
-		goto('/auth/confirm-age');
+		goto(CONSENT_PATH, { replaceState: true });
 	});
 
 	// Onboarding gate — a signed-in user whose `user_profiles.onboarded_at`
@@ -375,10 +382,27 @@
 		if (auth.user.onboarded_at != null) return;
 		if (!auth.user.consent_recorded) return;
 		const path = page.url.pathname;
-		if (path === '/onboarding') return;
+		if (path === ONBOARDING_PATH) return;
 		if (isAnonAllowed(path)) return;
-		goto('/onboarding');
+		goto(ONBOARDING_PATH, { replaceState: true });
 	});
+
+	// The two gates above only run once the profile has hydrated, which is
+	// after the requested page would already have painted. Until a signed-in
+	// session's profile says it owes neither gate, a gated path renders the
+	// loading screen instead of the shell, so a reload, deep link or second
+	// tab cannot flash the dashboard at a fresh account (decisions § 2149).
+	// The gates navigate with replaceState so the held URL leaves no history
+	// entry to bounce back through.
+	const shellHeld = $derived(
+		browser &&
+			holdAppShell({
+				loggedIn: auth.loggedIn,
+				gatedPath: !isAnonAllowed(page.url.pathname),
+				profile: auth.user,
+				profileFailed: auth.profileFailed,
+			}),
+	);
 
 	let showLogoutModal = $state(false);
 	// Profile popover focus management. audit/accessibility (May 2026)
@@ -547,8 +571,8 @@
 	<main id="main-content">
 		<slot />
 	</main>
-{:else if auth.loading}
-	<div class="loading-screen">
+{:else if auth.loading || shellHeld}
+	<div class="loading-screen" data-testid="app-shell-hold">
 		<span class="loading-text">{m('shell.loading')}</span>
 	</div>
 {:else if auth.loggedIn}
@@ -607,9 +631,9 @@
 						title={sidebarCollapsed ? accountLabel(auth.user.display_name) : undefined}
 						bind:this={profileBtnEl}
 					>
-						<div class="user-avatar">
-							{auth.user.display_name?.[0]?.toUpperCase() ?? '?'}
-						</div>
+						<span class="user-avatar" data-testid="sidebar-avatar">
+							<Avatar url={auth.user.avatar_url} name={auth.user.display_name} size="2.25rem" font="0.85rem" />
+						</span>
 						<div class="user-details">
 							<span class="user-name">{accountLabel(auth.user.display_name)}</span>
 							<span class="user-email">{auth.user.email}</span>
@@ -650,9 +674,9 @@
 		<div class="popover-backdrop" onclick={() => (showLogoutModal = false)} role="presentation"></div>
 		<div class="popover" bind:this={popoverEl}>
 			<div class="popover-header">
-				<div class="popover-avatar">
-					{auth.user?.display_name?.[0]?.toUpperCase() ?? '?'}
-				</div>
+				<span class="popover-avatar" data-testid="account-menu-avatar">
+					<Avatar url={auth.user?.avatar_url} name={auth.user?.display_name} size="2rem" font="0.8rem" />
+				</span>
 				<div class="popover-info">
 					<span class="popover-name">{accountLabel(auth.user?.display_name)}</span>
 					<span class="popover-email">{auth.user?.email}</span>
@@ -1013,16 +1037,8 @@
 	}
 
 	.user-avatar {
-		width: 2.25rem;
-		height: 2.25rem;
-		border-radius: 50%;
-		background: var(--gradient-avatar);
-		color: var(--color-on-primary);
 		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 0.85rem;
-		font-weight: 700;
+		border-radius: 50%;
 		flex-shrink: 0;
 		box-shadow: var(--shadow-sm);
 	}
@@ -1084,16 +1100,7 @@
 		padding: var(--space-sm);
 	}
 	.popover-avatar {
-		width: 2rem;
-		height: 2rem;
-		border-radius: 50%;
-		background: var(--gradient-avatar);
-		color: var(--color-on-primary);
 		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 0.8rem;
-		font-weight: 700;
 		flex-shrink: 0;
 	}
 	.popover-info {

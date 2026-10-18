@@ -1242,6 +1242,26 @@
   "@bodyMetricsTargetsHint": {
     "description": "Helper text explaining what body metrics are used for"
   },
+  "bodyMetricsSaveHint": "This section saves only when you tap Save.",
+  "@bodyMetricsSaveHint": {
+    "description": "Hint under the body-metrics Save button saying the consent, height and weight section saves only on that button"
+  },
+  "bodyMetricsUnsaved": "Unsaved changes",
+  "@bodyMetricsUnsaved": {
+    "description": "Shown in place of the save hint when the body-metrics height, weight or consent fields hold edits that have not been saved"
+  },
+  "bodyMetricsNutritionHeading": "Nutrition targets",
+  "@bodyMetricsNutritionHeading": {
+    "description": "Header of the body-metrics section holding activity level and weight goal"
+  },
+  "bodyMetricsAutosaveHint": "Changes here save automatically.",
+  "@bodyMetricsAutosaveHint": {
+    "description": "Note in the body-metrics nutrition section saying activity level and goal save as soon as they are picked"
+  },
+  "bodyMetricsLeaveMessage": "You changed your body metrics but haven't saved them. Leave without saving?",
+  "@bodyMetricsLeaveMessage": {
+    "description": "Body of the confirm dialog shown when leaving body metrics with unsaved height, weight or consent edits"
+  },
   "bodyMetricsConsentRequired": "Turn on health-data storage to save height and weight.",
   "bodyMetricsWithdrawTitle": "Withdraw health-data consent?",
   "bodyMetricsWithdrawBody": "This permanently erases your saved height and your entire weight history. This can't be undone.",
@@ -2564,6 +2584,10 @@
   "runWeakGpsApproximate": "Approximate location — distance paused",
   "@runWeakGpsApproximate": {
     "description": "Banner shown mid-run instead of runWeakGps when distance has stalled because the location grant is approximate (Precise Location off / Approximate only)"
+  },
+  "runTurnOnPreciseLocation": "Turn on precise location",
+  "@runTurnOnPreciseLocation": {
+    "description": "Action on the mid-run approximate-location strip; opens the app's location settings so the runner can turn precise location on"
   },
   "runA11yStarted": "Run started",
   "@runA11yStarted": {
@@ -6128,6 +6152,19 @@
   "@profileRunsEmptyOther": {
     "description": "Empty runs tab on another user's profile"
   },
+  "profilePrivateRunsNote": "{count, plural, one{1 of your runs isn't public, so it isn't listed here.} other{{count} of your runs aren't public, so they aren't listed here.}}",
+  "@profilePrivateRunsNote": {
+    "description": "Owner-only note on their own profile's Runs tab: how many of their runs are not public and so are not listed there",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "profilePrivateRunsNoteLink": "View all in Runs",
+  "@profilePrivateRunsNoteLink": {
+    "description": "Link under the private-runs note that opens the owner's full run list"
+  },
   "profileFollowersEmpty": "No followers yet.",
   "@profileFollowersEmpty": {
     "description": "Empty state for the followers tab"
@@ -8011,6 +8048,15 @@
       }
     }
   },
+  "planNewRaceChained": "Starts {date}, after your current plan and its recovery days.",
+  "@planNewRaceChained": {
+    "description": "Plan wizard: note when the race plan starts after the runner's current plan. date is the start date.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "planNewRacePast": "That race has already been run, so the dates below are the usual defaults.",
   "@planNewRacePast": {
     "description": "Note shown when the race the wizard was opened from has already been run"
@@ -8899,6 +8945,101 @@
       }
     }
   },
+  "planNudgeUnderTitle": "Running a little less than planned",
+  "@planNudgeUnderTitle": {
+    "description": "Home plan card title: under-run trend"
+  },
+  "planNudgeUnderBody": "You've run less than planned in {n} of the last {total} weeks. There's a suggested adjustment to the weeks ahead.",
+  "@planNudgeUnderBody": {
+    "description": "Home plan card body: under-run trend. n of the last total completed weeks were under plan",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "planNudgeAnchorUnderTitle": "Last week came in short",
+  "@planNudgeAnchorUnderTitle": {
+    "description": "Home plan card title: last week came in well under plan (comeback ramp)"
+  },
+  "planNudgeAnchorUnderBody": "The weeks ahead still step up from the plan, not from what you ran. There's a suggested change to build back from last week instead.",
+  "@planNudgeAnchorUnderBody": {
+    "description": "Home plan card body: last week came in well under plan (comeback ramp)"
+  },
+  "planNudgeAnchorReturnTitle": "Easing back into your plan",
+  "@planNudgeAnchorReturnTitle": {
+    "description": "Home plan card title: back after weeks away from the plan (comeback ramp)"
+  },
+  "planNudgeAnchorReturnBody": "You've been away from the plan for {n, plural, one {# week} other {# weeks}}. There's a suggested change so the weeks ahead build back up from what you last ran.",
+  "@planNudgeAnchorReturnBody": {
+    "description": "Home plan card body: back after n weeks away from the plan (comeback ramp)",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planNudgeEaseTitle": "A big week",
+  "@planNudgeEaseTitle": {
+    "description": "Home plan card title: last week well over plan"
+  },
+  "planNudgeEaseBody": "You ran well over plan last week. Easing next week's shorter runs helps your body absorb it.",
+  "@planNudgeEaseBody": {
+    "description": "Home plan card body: last week more than 20% over plan, next week's shorter runs eased"
+  },
+  "planNudgeRestTitle": "Running on rest days",
+  "@planNudgeRestTitle": {
+    "description": "Home plan card title: runs on rest days"
+  },
+  "planNudgeRestBody": "You've run on rest days in {n} of the last {total} weeks. Those runs count toward your week, but rest days are where the training sinks in.",
+  "@planNudgeRestBody": {
+    "description": "Home plan card body: runs on rest days in n of the last total completed weeks",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "planNudgeReview": "Review the changes",
+  "@planNudgeReview": {
+    "description": "Home plan card: open the existing re-plan preview"
+  },
+  "planNudgeDismiss": "Dismiss",
+  "@planNudgeDismiss": {
+    "description": "Home plan card: dismiss"
+  },
+  "planNudgeDismissA11y": "Dismiss this suggestion",
+  "@planNudgeDismissA11y": {
+    "description": "Accessible name of the dismiss control"
+  },
+  "planNudgeDismissFailed": "Couldn't hide that suggestion. Try again.",
+  "@planNudgeDismissFailed": {
+    "description": "Dismissing the plan card could not be saved"
+  },
+  "planWorkoutOverrun": "+{distance}",
+  "@planWorkoutOverrun": {
+    "description": "How far a done workout ran past its target, shown after Done, e.g. +3 km",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "planWorkoutOverrunA11y": "{distance} more than planned",
+  "@planWorkoutOverrunA11y": {
+    "description": "Screen-reader text for the over-run, e.g. 3 km more than planned",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
   "planDetailReplanPreviewTitle": "Proposed changes",
   "@planDetailReplanPreviewTitle": {
     "description": "Plan-detail adherence/replan/duplicate"
@@ -8911,6 +9052,39 @@
         "type": "String"
       },
       "to": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailReplanAnchor": "{from} → {to} — build back from what you ran",
+  "@planDetailReplanAnchor": {
+    "description": "Plan-detail re-plan preview row: a session lowered so the weeks ahead build back from the volume actually run (comeback ramp)",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailAnchorUnderNote": "Your last week of running came in at {km}, well under plan. These weeks now build back from that, about 10% a week, until the plan fits again. The taper stays as planned.",
+  "@planDetailAnchorUnderNote": {
+    "description": "Plan-detail re-plan preview note: the last week came in well under plan, km is what was run that week",
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailAnchorReturnNote": "You've been away from the plan for {n, plural, one {# week} other {# weeks}}. These weeks restart at about half of the {km} you last ran in a week and build about 10% a week. The taper stays as planned.",
+  "@planDetailAnchorReturnNote": {
+    "description": "Plan-detail re-plan preview note after weeks away from the plan: n weeks away, km is the last week run",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "km": {
         "type": "String"
       }
     }
@@ -14346,6 +14520,10 @@
   "@liveRunMapWaitingGps": {
     "description": "Overlay shown while waiting for the first GPS fix"
   },
+  "liveRunMapApproximateLocation": "Precise location is off — the map can't show where you are",
+  "@liveRunMapApproximateLocation": {
+    "description": "Live map placeholder shown instead of liveRunMapWaitingGps while the run records under an approximate location grant and no fix has arrived"
+  },
   "liveRunMapRecentre": "Re-centre on my location",
   "@liveRunMapRecentre": {
     "description": "Tooltip on the re-centre map button"
@@ -18100,6 +18278,45 @@
   "@racesSearchPlaceholder": {
     "description": "Placeholder for the race name search field"
   },
+  "racesFilters": "Filters",
+  "@racesFilters": {
+    "description": "Label of the button that opens the race calendar's filter sheet"
+  },
+  "racesFiltersCount": "{count, plural, one{Filters, 1 on} other{Filters, {count} on}}",
+  "@racesFiltersCount": {
+    "description": "Screen-reader label of the Filters button when filters are on. {count} is how many.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "racesRemoveFilter": "Remove filter: {filter}",
+  "@racesRemoveFilter": {
+    "description": "Tooltip and screen-reader label of the remove action on an active race-calendar filter chip. {filter} is the chip's own label.",
+    "placeholders": {
+      "filter": {
+        "type": "String"
+      }
+    }
+  },
+  "racesNearChip": "Near {place}",
+  "@racesNearChip": {
+    "description": "Active-filter chip for the near-a-place filter. {place} is what the runner typed.",
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "racesFiltersDone": "Done",
+  "@racesFiltersDone": {
+    "description": "Button that closes the race calendar's filter sheet"
+  },
+  "racesDistanceGroup": "Distance",
+  "@racesDistanceGroup": {
+    "description": "Heading over the distance-band chips in the race calendar filter sheet"
+  },
   "racesNearPlace": "Near a place…",
   "@racesNearPlace": {
     "description": "Placeholder for the near-a-place geocode field"
@@ -18144,6 +18361,33 @@
   "racesTrainForThis": "Train for this race",
   "@racesTrainForThis": {
     "description": "Race card action that opens the plan wizard sized around that race"
+  },
+  "racesBuildPlan": "Build a plan for this race",
+  "@racesBuildPlan": {
+    "description": "Race detail: primary action opening the plan builder prefilled for this race."
+  },
+  "racesTailorWithAi": "Tailor it with AI",
+  "@racesTailorWithAi": {
+    "description": "Race detail: secondary action opening the AI plan assistant prefilled with this race. Shown only while the AI plan assistant is live."
+  },
+  "racesAddToSeason": "Add to my season",
+  "@racesAddToSeason": {
+    "description": "Race detail: action that builds a plan for this race starting after the runner's current plan ends."
+  },
+  "racesAddToSeasonHint": "Starts after {plan} ends on {date}, with {days} days to recover.",
+  "@racesAddToSeasonHint": {
+    "description": "Race detail: explains when a chained plan starts. plan is the earlier plan's name, date its end date, days the recovery days (always 3 or more).",
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      },
+      "days": {
+        "type": "String"
+      }
+    }
   },
   "racesWhenGroup": "When",
   "@racesWhenGroup": {
@@ -18212,6 +18456,19 @@
   "racesDetailYourRuns": "Your runs at this race",
   "@racesDetailYourRuns": {
     "description": "Race detail screen: heading over the runner's own runs linked to this race"
+  },
+  "racesCourseHeading": "Course",
+  "@racesCourseHeading": {
+    "description": "Race detail: heading over the race's course summary (distance, elevation gain, surface)"
+  },
+  "racesCourseGain": "{value} elevation gain",
+  "@racesCourseGain": {
+    "description": "Race detail: the course's total elevation gain in the course summary. value is the formatted gain with its unit, e.g. 180 m.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
   },
   "racesDetailRunsFailed": "Couldn't load your runs for this race.",
   "@racesDetailRunsFailed": {
@@ -22799,6 +23056,18 @@
   "@planDetailAssignedByCoach": {
     "description": "Chip on a coach-assigned plan when the coach's name is unknown"
   },
+  "planDetailBuiltForRace": "Built for {race} · {date}",
+  "@planDetailBuiltForRace": {
+    "description": "Plan detail: the calendar race the plan was built for, linking to that race. race is the race's name, date its race day.",
+    "placeholders": {
+      "race": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "planDetailWeekOfN": "Week {week} of {total}",
   "@planDetailWeekOfN": {
     "description": "Plan-detail header: which week of the plan today is in",
@@ -23065,6 +23334,15 @@
       }
     }
   },
+  "rateLimitRestartPlan": "You're restarting plans too quickly — please wait {wait} and try again.",
+  "@rateLimitRestartPlan": {
+    "description": "Rate-limit refusal when the restart_training_plan bucket is spent (restarting a training plan)",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
   "planCalendarFeedTitle": "Training plan calendar",
   "@planCalendarFeedTitle": {
     "description": "Heading of the training-plan calendar feed screen and its Integrations tile"
@@ -23170,5 +23448,1056 @@
   "planCalendarFeedPrivacy": "Anyone with the link can see your workout dates, types and targets. It carries no location, notes or plan name. Make a new link if you shared it by mistake.",
   "@planCalendarFeedPrivacy": {
     "description": "Privacy note: what someone holding the link can and cannot see"
+  },
+  "commonStaleOffline": "You're offline. Showing what was last loaded.",
+  "@commonStaleOffline": {
+    "description": "Top banner when a screen already showing data fails to refresh because the device is offline; the old data stays on screen"
+  },
+  "commonStaleRefreshFailed": "Couldn't refresh. Showing what was last loaded.",
+  "@commonStaleRefreshFailed": {
+    "description": "Top banner when a screen already showing data fails to refresh for a reason other than being offline; the old data stays on screen"
+  },
+  "planDetailMoreActions": "More plan actions",
+  "@planDetailMoreActions": {
+    "description": "Tooltip on the plan detail app-bar overflow menu"
+  },
+  "planDetailWeekActions": "Week {n} actions",
+  "@planDetailWeekActions": {
+    "description": "Tooltip on a week's overflow menu in the week-by-week list",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planDetailShiftDates": "Shift dates…",
+  "@planDetailShiftDates": {
+    "description": "Plan menu item that opens the shift-dates dialog"
+  },
+  "planDetailShiftTitle": "Shift the whole plan?",
+  "@planDetailShiftTitle": {
+    "description": "Shift dates dialog title"
+  },
+  "planDetailShiftMessage": "This moves every workout and your race date. You can shift again to undo it.",
+  "@planDetailShiftMessage": {
+    "description": "Shift dates dialog body"
+  },
+  "planDetailShiftDaysLabel": "Days to shift (negative moves earlier)",
+  "@planDetailShiftDaysLabel": {
+    "description": "Label of the days field in the shift dialog"
+  },
+  "planDetailShiftDaysInvalid": "Enter a whole number of days from -366 to 366, other than 0.",
+  "@planDetailShiftDaysInvalid": {
+    "description": "Validation error for the shift days field"
+  },
+  "planDetailShiftApply": "Shift dates",
+  "@planDetailShiftApply": {
+    "description": "Confirm button of the shift dialog"
+  },
+  "planDetailShiftDone": "{n, plural, one{Plan shifted by {n} day} other{Plan shifted by {n} days}}",
+  "@planDetailShiftDone": {
+    "description": "Banner after the plan was shifted; n is the absolute number of days",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planDetailShiftFollowingTitle": "Move the plans after this one too?",
+  "@planDetailShiftFollowingTitle": {
+    "description": "Dialog title when a forward shift runs into later plans"
+  },
+  "planDetailShiftFollowingMessage": "{n, plural, one{Shifting by {n} day runs into the plans queued after this one. Moving them by the same amount keeps their spacing.} other{Shifting by {n} days runs into the plans queued after this one. Moving them by the same amount keeps their spacing.}}",
+  "@planDetailShiftFollowingMessage": {
+    "description": "Dialog body when a forward shift runs into later plans",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planDetailShiftFollowingApply": "Move them too",
+  "@planDetailShiftFollowingApply": {
+    "description": "Confirm button: shift the later plans as well"
+  },
+  "planDetailShiftBlocked": "These dates run into a plan that comes before this one. Pick a smaller shift, or end that plan earlier first.",
+  "@planDetailShiftBlocked": {
+    "description": "Banner when a shift runs into an earlier plan"
+  },
+  "planDetailMarkRecovery": "Make recovery week",
+  "@planDetailMarkRecovery": {
+    "description": "Week menu item and confirm button: turn a week into a recovery week"
+  },
+  "planDetailRecoveryConfirmTitle": "Make this a recovery week?",
+  "@planDetailRecoveryConfirmTitle": {
+    "description": "Recovery week confirm title"
+  },
+  "planDetailRecoveryConfirmMessage": "This eases week {n}'s volume to about 60% and turns its quality sessions into easy runs. The original paces and distances can't be restored.",
+  "@planDetailRecoveryConfirmMessage": {
+    "description": "Recovery week confirm body; n is the 1-based week number",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planDetailRecoveryDone": "Week eased to a recovery week",
+  "@planDetailRecoveryDone": {
+    "description": "Banner after a week was eased"
+  },
+  "planDetailExportMarkdown": "Export as Markdown",
+  "@planDetailExportMarkdown": {
+    "description": "Plan menu item: share the plan as a Markdown table"
+  },
+  "planDetailExportJson": "Export as JSON",
+  "@planDetailExportJson": {
+    "description": "Plan menu item: share the plan as JSON"
+  },
+  "planDetailAbandonPlan": "Abandon plan",
+  "@planDetailAbandonPlan": {
+    "description": "Plan menu item: abandon an active or paused plan (confirms first; weeks, workouts and linked runs are kept)"
+  },
+  "planDetailDeletePlan": "Delete plan",
+  "@planDetailDeletePlan": {
+    "description": "Plan menu item: delete the plan (confirms first)"
+  },
+  "planDetailEditDetails": "Edit plan details",
+  "@planDetailEditDetails": {
+    "description": "Plan menu item and title of the plan-details sheet"
+  },
+  "planDetailGoalTimeInvalid": "Enter a goal time above zero, with minutes and seconds up to 59.",
+  "@planDetailGoalTimeInvalid": {
+    "description": "Validation error for the goal time fields in the plan-details sheet"
+  },
+  "planDetailGoalTimeRepaceHint": "Changing it re-derives the pace targets of the workouts still ahead. Past, done and skipped ones keep theirs, and a plan built from a recent 5K keeps its paces.",
+  "@planDetailGoalTimeRepaceHint": {
+    "description": "Hint under the goal time fields: what a change does to the paces"
+  },
+  "planDetailNotesLabel": "Notes",
+  "@planDetailNotesLabel": {
+    "description": "Label of the plan notes field"
+  },
+  "planDetailRulesLabel": "Plan rules, one per line",
+  "@planDetailRulesLabel": {
+    "description": "Label of the plan rules field"
+  },
+  "planDetailSaveDetails": "Save",
+  "@planDetailSaveDetails": {
+    "description": "Save button of the plan-details sheet"
+  },
+  "planDetailDetailsSaved": "Plan updated.",
+  "@planDetailDetailsSaved": {
+    "description": "Banner after the plan details were saved"
+  },
+  "planDetailDetailsSavedRepaced": "{n, plural, one{Plan updated. Paces re-derived for {n} upcoming workout.} other{Plan updated. Paces re-derived for {n} upcoming workouts.}}",
+  "@planDetailDetailsSavedRepaced": {
+    "description": "Banner after the plan details were saved and a new goal time re-derived n workouts' paces",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planDetailCycleAdjustCycle": "Adjust for my cycle",
+  "@planDetailCycleAdjustCycle": {
+    "description": "Adjust plan option and confirm button: ease the plan for the menstrual cycle (Art 9, behind the cycle-plans gate)"
+  },
+  "planDetailCycleAdjustPregnancy": "Adjust for pregnancy",
+  "@planDetailCycleAdjustPregnancy": {
+    "description": "Adjust plan option and confirm button: adjust the plan for pregnancy"
+  },
+  "planDetailCycleAdjustConfirmTitle": "Adjust remaining weeks?",
+  "@planDetailCycleAdjustConfirmTitle": {
+    "description": "Cycle / pregnancy adjustment confirm title"
+  },
+  "planDetailCycleAdjustConfirmCycle": "Upcoming workouts on your menstrual and late-luteal days will be eased — a modest volume trim, with quality sessions run by feel. Past workouts are unchanged.",
+  "@planDetailCycleAdjustConfirmCycle": {
+    "description": "Confirm body for the cycle adjustment"
+  },
+  "planDetailCycleAdjustConfirmPregnancy": "Upcoming workouts will be adjusted for pregnancy: hard sessions and races become easy runs and volume tapers by trimester. This is not medical advice — follow your healthcare provider. Past workouts are unchanged.",
+  "@planDetailCycleAdjustConfirmPregnancy": {
+    "description": "Confirm body for the pregnancy adjustment; not medical advice"
+  },
+  "planDetailCycleAdjustDone": "Upcoming weeks adjusted.",
+  "@planDetailCycleAdjustDone": {
+    "description": "Banner after the adjustment changed workouts"
+  },
+  "planDetailCycleAdjustNone": "No upcoming workouts needed adjusting.",
+  "@planDetailCycleAdjustNone": {
+    "description": "Banner when no upcoming workout needed adjusting"
+  },
+  "planDetailAdjustCycleDesc": "Eases upcoming sessions on the menstrual and late-luteal days of your cycle. Past sessions stay as they are.",
+  "@planDetailAdjustCycleDesc": {
+    "description": "Description under the cycle option in the Adjust plan dialog"
+  },
+  "planDetailAdjustPregnancyDesc": "Turns hard upcoming sessions into easy runs and eases volume by trimester. Past sessions stay as they are.",
+  "@planDetailAdjustPregnancyDesc": {
+    "description": "Description under the pregnancy option in the Adjust plan dialog"
+  },
+  "planDetailResumeShiftTitle": "Resume and push back?",
+  "@planDetailResumeShiftTitle": {
+    "description": "Title of the resume confirm when the paused weeks will move"
+  },
+  "planDetailResumeShiftMessage": "{n, plural, one{This plan becomes your active plan again. The weeks you had not started move back {n} week, so it picks up next week instead of counting them as missed. It now ends on {date}.} other{This plan becomes your active plan again. The weeks you had not started move back {n} weeks, so it picks up next week instead of counting them as missed. It now ends on {date}.}}",
+  "@planDetailResumeShiftMessage": {
+    "description": "Resume confirm body; n whole weeks the unstarted weeks move, date the plan's new end",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailResumeShiftedDone": "{n, plural, one{Plan resumed and pushed back {n} week.} other{Plan resumed and pushed back {n} weeks.}}",
+  "@planDetailResumeShiftedDone": {
+    "description": "Banner after resuming with the weeks moved",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planDetailRestartPlan": "Restart plan…",
+  "@planDetailRestartPlan": {
+    "description": "Plan detail app-bar menu item that restarts the plan as a fresh copy"
+  },
+  "planDetailRestartTitle": "Restart this plan",
+  "@planDetailRestartTitle": {
+    "description": "Title of the restart-plan dialog"
+  },
+  "planDetailRestartChangeDate": "Change start date",
+  "@planDetailRestartChangeDate": {
+    "description": "Button in the restart dialog that opens the start-date picker"
+  },
+  "planDetailRestartConfirmLive": "The new copy starts on {date} and ends on {end}. This plan, and any active plan those dates overlap, is retired as abandoned. Its weeks, workouts and run links are kept.",
+  "@planDetailRestartConfirmLive": {
+    "description": "Restart confirm for an active or paused plan; date and end are the copy's start and end dates",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRestartConfirmOver": "The new copy starts on {date} and ends on {end}. Any active plan those dates overlap is retired as abandoned. This plan keeps its weeks, workouts and run links.",
+  "@planDetailRestartConfirmOver": {
+    "description": "Restart confirm for a completed or abandoned plan; date and end are the copy's start and end dates",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRestartRaceMoves": "Race day moves to {date}.",
+  "@planDetailRestartRaceMoves": {
+    "description": "Restart confirm addendum: where the plan's past race lands in the copy",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRestartRaceAhead": "This plan's race on {date} is still ahead. Restarting would move race day, so change the race date or start a new plan instead.",
+  "@planDetailRestartRaceAhead": {
+    "description": "Restart dialog body when the plan has a race still ahead; date is that race",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRestartRaceAheadError": "This plan has a race still ahead, so it can't be restarted.",
+  "@planDetailRestartRaceAheadError": {
+    "description": "Banner when the server refuses a restart because a race is still ahead"
+  },
+  "planDetailRestartBeforeTodayError": "That start date is before today where your account's time zone is set. Pick a later date.",
+  "@planDetailRestartBeforeTodayError": {
+    "description": "Banner when the server refuses a restart's start date as before today in the account's stored time zone"
+  },
+  "planDetailRestartConfirm": "Restart plan",
+  "@planDetailRestartConfirm": {
+    "description": "Confirm button in the restart dialog"
+  },
+  "planDetailRestartDone": "Plan restarted. This is your new copy.",
+  "@planDetailRestartDone": {
+    "description": "Banner after a plan is restarted; the new copy is now showing"
+  },
+  "dashboardPlanPausedBody": "Paused. Resume to pick it up again; the weeks you missed move back.",
+  "@dashboardPlanPausedBody": {
+    "description": "Subtitle of Home's paused-plan card; tapping it opens the plan with the resume confirm"
+  },
+  "planDetailChangeRaceDate": "Change race date…",
+  "@planDetailChangeRaceDate": {
+    "description": "App-bar menu item opening the race date picker"
+  },
+  "planDetailRaceDatePickerHelp": "New race date",
+  "@planDetailRaceDatePickerHelp": {
+    "description": "Help text on the race date picker"
+  },
+  "planDetailRaceDateConfirmTitle": "Change race date?",
+  "@planDetailRaceDateConfirmTitle": {
+    "description": "Confirm title for changing the race date"
+  },
+  "planDetailRaceDateConfirmLater": "{n, plural, one{Your race moves to {date}. {n} build week is added before the taper, which stays as it is. Weeks you have already started don't change.} other{Your race moves to {date}. {n} build weeks are added before the taper, which stays as it is. Weeks you have already started don't change.}}",
+  "@planDetailRaceDateConfirmLater": {
+    "description": "Confirm body; date the new race day, n build weeks added",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRaceDateConfirmEarlier": "{n, plural, one{Your race moves to {date}. {n} build week is cut, and the taper stays as it is. Weeks you have already started don't change.} other{Your race moves to {date}. {n} build weeks are cut, and the taper stays as it is. Weeks you have already started don't change.}}",
+  "@planDetailRaceDateConfirmEarlier": {
+    "description": "Confirm body; date the new race day, n build weeks cut",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRaceDateConfirmSameWeek": "Your race moves to {date}, in the same week. No weeks are added or cut, and the taper stays as it is.",
+  "@planDetailRaceDateConfirmSameWeek": {
+    "description": "Confirm body when the race moves within its week",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRaceDateApply": "Change race date",
+  "@planDetailRaceDateApply": {
+    "description": "Confirm button for changing the race date"
+  },
+  "planDetailRaceDateDone": "Race date changed to {date}",
+  "@planDetailRaceDateDone": {
+    "description": "Banner after the race date changed",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRaceDateTooSoon": "{date} is too soon to keep your taper, even with the build cut. The earliest race date this plan can reach is {earliest}.",
+  "@planDetailRaceDateTooSoon": {
+    "description": "Refusal: date the picked day, earliest the first reachable race day",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "earliest": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRaceDatePast": "Pick a race date after today.",
+  "@planDetailRaceDatePast": {
+    "description": "Refusal: race date today or earlier"
+  },
+  "planDetailRaceDateInvalid": "That isn't a valid date.",
+  "@planDetailRaceDateInvalid": {
+    "description": "Refusal: unusable date"
+  },
+  "planDetailRaceDateUnchanged": "Your race is already on that day.",
+  "@planDetailRaceDateUnchanged": {
+    "description": "Refusal: same day as now"
+  },
+  "planDetailRaceDateNoRace": "This plan has no race ahead to move.",
+  "@planDetailRaceDateNoRace": {
+    "description": "Refusal: plan has no race ahead"
+  },
+  "planDetailRaceDateWeekStarted": "Race week has started, so no weeks can go in front of it. Pick a day this week, or start a new plan for the later race.",
+  "@planDetailRaceDateWeekStarted": {
+    "description": "Refusal: race week has started"
+  },
+  "planDetailRaceDateTooFar": "That is more than a year further out. Start a new plan for that race instead.",
+  "@planDetailRaceDateTooFar": {
+    "description": "Refusal: more than a year later"
+  },
+  "planDetailRaceDateNoBuild": "This plan has no build week to repeat, so it can't be made longer.",
+  "@planDetailRaceDateNoBuild": {
+    "description": "Refusal: no build week to repeat"
+  },
+  "planDetailRaceDateInTheWay": "Another race or a completed session sits in the weeks that would move. Change that first.",
+  "@planDetailRaceDateInTheWay": {
+    "description": "Refusal: another race or completed session would move"
+  },
+  "planDetailRaceDateOverlap": "The new race date runs into another active plan. Move or end that plan first.",
+  "@planDetailRaceDateOverlap": {
+    "description": "A later race date runs into another active plan"
+  },
+  "phoneSurfaceVibrationCues": "Vibration cues",
+  "@phoneSurfaceVibrationCues": {
+    "description": "Settings toggle title: vibrate the phone on workout step changes, workout completion and pace alerts during a run"
+  },
+  "phoneSurfaceVibrationCuesSubtitle": "Buzz when a workout step changes, when a workout ends and with pace alerts, even with the screen off.",
+  "@phoneSurfaceVibrationCuesSubtitle": {
+    "description": "Subtitle of the vibration-cues toggle"
+  },
+  "phoneSurfaceWidgetHeader": "Today",
+  "@phoneSurfaceWidgetHeader": {
+    "description": "Home-screen widget header above today's planned session"
+  },
+  "phoneSurfaceWidgetNoPlan": "No training plan",
+  "@phoneSurfaceWidgetNoPlan": {
+    "description": "Home-screen widget: the runner has no active training plan"
+  },
+  "phoneSurfaceWidgetNoPlanAction": "Pick a plan",
+  "@phoneSurfaceWidgetNoPlanAction": {
+    "description": "Home-screen widget: tap prompt that opens the plan list when there is no plan"
+  },
+  "phoneSurfaceWidgetNothingScheduled": "Nothing scheduled",
+  "@phoneSurfaceWidgetNothingScheduled": {
+    "description": "Home-screen widget: the active plan has nothing on today's date"
+  },
+  "phoneSurfaceWidgetStale": "Open Threkir to update",
+  "@phoneSurfaceWidgetStale": {
+    "description": "Home-screen widget: the saved snapshot no longer covers today; opening the app refreshes it"
+  },
+  "phoneSurfaceWidgetRestDay": "Rest day",
+  "@phoneSurfaceWidgetRestDay": {
+    "description": "Home-screen widget: today is a planned rest day"
+  },
+  "phoneSurfaceWidgetDone": "Done",
+  "@phoneSurfaceWidgetDone": {
+    "description": "Home-screen widget: today's planned session is done"
+  },
+  "phoneSurfaceWidgetSkipped": "Skipped",
+  "@phoneSurfaceWidgetSkipped": {
+    "description": "Home-screen widget: the runner skipped today's planned session"
+  },
+  "dashboardTrainForSomething": "Train for something",
+  "@dashboardTrainForSomething": {
+    "description": "Home plan entry for a runner with no training plan; opens the plan wizard"
+  },
+  "dashboardTrainForSomethingBody": "Pick a race or a distance and get a week-by-week plan with paces matched to your fitness.",
+  "@dashboardTrainForSomethingBody": {
+    "description": "Body under the Home \"Train for something\" plan entry"
+  },
+  "dashboardRecent5kTitle": "Your 5K of {time} on {date}",
+  "@dashboardRecent5kTitle": {
+    "description": "Home suggestion naming the runner's recent measured 5K, e.g. \"Your 5K of 24:10 on 3 Oct\"",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "24:10"
+      },
+      "date": {
+        "type": "String",
+        "example": "3 Oct"
+      }
+    }
+  },
+  "dashboardRecent5kBody": "Build a plan from it. You confirm it still reflects your fitness before it sets any paces.",
+  "@dashboardRecent5kBody": {
+    "description": "Body of the Home recent-5K plan suggestion"
+  },
+  "dashboardRecent5kCta": "Build a plan from it",
+  "@dashboardRecent5kCta": {
+    "description": "Button on the Home recent-5K suggestion that opens the plan wizard pre-filled"
+  },
+  "dashboardRecent5kDismiss": "Not now",
+  "@dashboardRecent5kDismiss": {
+    "description": "Button that dismisses the Home recent-5K plan suggestion"
+  },
+  "dashboardRecent5kDismissFailed": "Couldn't save that, so the suggestion may come back.",
+  "@dashboardRecent5kDismissFailed": {
+    "description": "Banner when dismissing the recent-5K suggestion could not be saved"
+  },
+  "planNewRecent5kSuggested": "Filled in from your recent 5K. Turn on the switch below only if it reflects your fitness today.",
+  "@planNewRecent5kSuggested": {
+    "description": "Plan wizard note under a recent-5K time filled in from the Home suggestion"
+  },
+  "planBreakTitle": "Coming back after a break",
+  "@planBreakTitle": {
+    "description": "Plan break card title: the runner has had a week or more without running inside their plan"
+  },
+  "planBreakBody": "No run or plan workout logged for {days, plural, one {{days} day} other {{days} days}}, since {date}.",
+  "@planBreakBody": {
+    "description": "Plan break card body: days without a run or plan workout, since date (the first quiet day)",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planBreakHintRace": "You can pick the plan up where you left off. Race day stays {date} and the taper is kept; a later build week makes room for each week you run again.",
+  "@planBreakHintRace": {
+    "description": "Plan break card hint for a plan ending on a race: date is race day, which never moves",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planBreakHintNoRace": "You can pick the plan up where you left off; the rest of the plan moves back to make room.",
+  "@planBreakHintNoRace": {
+    "description": "Plan break card hint for a plan without a race"
+  },
+  "planBreakRepeat": "Repeat this week",
+  "@planBreakRepeat": {
+    "description": "Plan break action: run the current week again next week"
+  },
+  "planBreakWeeksLabel": "Weeks",
+  "@planBreakWeeksLabel": {
+    "description": "Label of the number field choosing how many weeks to run again"
+  },
+  "planBreakPushBack": "Push the plan back",
+  "@planBreakPushBack": {
+    "description": "Plan break action for a plan without a race: run the chosen weeks again and move the rest back"
+  },
+  "planBreakShortenBuild": "Shorten the build",
+  "@planBreakShortenBuild": {
+    "description": "Plan break action for a race plan: run the chosen weeks again and drop later build weeks so race day holds"
+  },
+  "planBreakDismiss": "Keep the plan as it is",
+  "@planBreakDismiss": {
+    "description": "Plan break action: hide the card and leave the plan unchanged"
+  },
+  "planBreakConfirmTitle": "Change your plan?",
+  "@planBreakConfirmTitle": {
+    "description": "Title of the plan break preview dialog"
+  },
+  "planBreakConfirmApply": "Change plan",
+  "@planBreakConfirmApply": {
+    "description": "Confirm button of the plan break preview dialog"
+  },
+  "planBreakPreviewRepeat": "{n, plural, one {This week runs again next week.} other {The last {n} weeks run again, starting next week.}}",
+  "@planBreakPreviewRepeat": {
+    "description": "Preview line: how many weeks run again from next week",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planBreakPreviewDropped": "{n, plural, one {{n} later build week is} other {{n} later build weeks are}} taken out to make room; the taper stays as it is.",
+  "@planBreakPreviewDropped": {
+    "description": "Preview line for a race plan: how many later build weeks are removed",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planBreakPreviewRaceDay": "Race day stays {date}.",
+  "@planBreakPreviewRaceDay": {
+    "description": "Preview line for a race plan: race day is unchanged",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planBreakPreviewEnd": "The weeks after move back, and the plan now ends {date}.",
+  "@planBreakPreviewEnd": {
+    "description": "Preview line for a plan without a race: its new end date",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planBreakPreviewPast": "Weeks you have already run and anything you have done don't change.",
+  "@planBreakPreviewPast": {
+    "description": "Preview line: nothing already done changes"
+  },
+  "planBreakApplied": "Plan updated. It ends {date}.",
+  "@planBreakApplied": {
+    "description": "Banner after the plan break change applied; date is the plan end",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planBreakFailed": "Couldn't change the plan: {error}",
+  "@planBreakFailed": {
+    "description": "Banner when the plan break change failed; nothing changed",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "planBreakDismissFailed": "Couldn't save that: {error}",
+  "@planBreakDismissFailed": {
+    "description": "Banner when hiding the plan break card could not be saved",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "planBreakUnavailable": "That many weeks can't be run again in this plan.",
+  "@planBreakUnavailable": {
+    "description": "Banner when the chosen number of weeks cannot be run again"
+  },
+  "planBreakWeeksFewer": "One week fewer",
+  "@planBreakWeeksFewer": {
+    "description": "Accessible label of the button lowering how many weeks run again"
+  },
+  "planBreakWeeksMore": "One week more",
+  "@planBreakWeeksMore": {
+    "description": "Accessible label of the button raising how many weeks run again"
+  },
+  "missedPromptTitle": "Missed: {kind} on {day}",
+  "@missedPromptTitle": {
+    "description": "Heading of the missed-workout prompt on the Today card: the workout kind and the weekday + date it was scheduled",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      },
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "missedPromptMakeUpBody": "Make it up by stretching your next long run from {from} to {to}. You'll see the change before it's saved.",
+  "@missedPromptMakeUpBody": {
+    "description": "Missed-workout prompt body when the engine offers a make-up: the next long run is stretched from one distance to another; the change is previewed before saving",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "missedPromptCoveredBody": "Your next long run already covers it, so there's nothing to add.",
+  "@missedPromptCoveredBody": {
+    "description": "Missed-workout prompt body: a missed long run that the next long run already covers, so no make-up is added"
+  },
+  "missedPromptTaperBody": "You're tapering, so let it go: being fresh on race day matters more than one more long run.",
+  "@missedPromptTaperBody": {
+    "description": "Missed-workout prompt body: a missed long run during the taper is let go"
+  },
+  "missedPromptRecoveryBody": "A recovery week is next, so let it go and let that week absorb it.",
+  "@missedPromptRecoveryBody": {
+    "description": "Missed-workout prompt body: a missed long run right before a recovery week is let go"
+  },
+  "missedPromptLetGoBody": "Only a long run is worth making up. Let this one go rather than crowding it into the days ahead.",
+  "@missedPromptLetGoBody": {
+    "description": "Missed-workout prompt body for a missed non-long session (easy, tempo, intervals): it is let go, never moved"
+  },
+  "missedPromptMakeUp": "Make it up",
+  "@missedPromptMakeUp": {
+    "description": "Missed-workout prompt button: preview the make-up (a longer next long run)"
+  },
+  "missedPromptLetGo": "Let it go",
+  "@missedPromptLetGo": {
+    "description": "Missed-workout prompt button: drop the missed workout and record the answer"
+  },
+  "missedPromptRecommended": "Recommended",
+  "@missedPromptRecommended": {
+    "description": "Tag on the missed-workout prompt button the plan engine recommends"
+  },
+  "missedPromptLetGoDone": "Let go. Your plan carries on as it was.",
+  "@missedPromptLetGoDone": {
+    "description": "Banner after the runner let a missed workout go"
+  },
+  "missedPromptSaveFailed": "Couldn't save your answer: {error}",
+  "@missedPromptSaveFailed": {
+    "description": "Error banner when the answer to the missed-workout prompt could not be saved; nothing changed",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "missedPromptNothingToMakeUp": "There's nothing left to make up.",
+  "@missedPromptNothingToMakeUp": {
+    "description": "Banner when a make-up was requested but there is no missed long run left to make up"
+  },
+  "planDetailRepeatWeek": "Repeat this week",
+  "@planDetailRepeatWeek": {
+    "description": "Button on the walk-run 'too hard' offer: run the current week again next week"
+  },
+  "planDetailRepeatWeekOfferTitle": "Too hard?",
+  "@planDetailRepeatWeekOfferTitle": {
+    "description": "Lead of the walk-run 'too hard' offer on plan detail"
+  },
+  "planDetailRepeatWeekOfferBody": "Run this week again next week. What you've done stays done, and the rest of the plan moves back a week.",
+  "@planDetailRepeatWeekOfferBody": {
+    "description": "Body of the walk-run 'too hard' offer on plan detail"
+  },
+  "planDetailRepeatWeekConfirmTitle": "Repeat week {n}?",
+  "@planDetailRepeatWeekConfirmTitle": {
+    "description": "Confirm title for repeating a plan week; n is the week number",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planDetailRepeatWeekConfirmMessage": "Week {n} runs again as week {copy}, from {start}. Every week after it moves back one, and the plan now ends on {end}. Workouts you've done stay as they are.",
+  "@planDetailRepeatWeekConfirmMessage": {
+    "description": "Confirm body for repeating a week of a plan without a race; n the week, copy its new week number, start the copy's first day, end the plan's new end date",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "copy": {
+        "type": "int"
+      },
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRepeatWeekConfirmRace": "Week {n} runs again as week {copy}, from {start}. To keep race day on {race}, one later week before the taper comes out. Workouts you've done stay as they are.",
+  "@planDetailRepeatWeekConfirmRace": {
+    "description": "Confirm body for repeating a week of a race plan; race is the race day it keeps",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "copy": {
+        "type": "int"
+      },
+      "start": {
+        "type": "String"
+      },
+      "race": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRepeatWeekAction": "Repeat week",
+  "@planDetailRepeatWeekAction": {
+    "description": "Week menu item and confirm button: repeat this week next week"
+  },
+  "planDetailRepeatWeekDone": "Week {n} runs again from {start}.",
+  "@planDetailRepeatWeekDone": {
+    "description": "Banner after a week was repeated; n the week, start the copy's first day",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "start": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRepeatWeekNoRoom": "There's no week left before the taper to make room, so repeating this week would move race day. Change the race date instead.",
+  "@planDetailRepeatWeekNoRoom": {
+    "description": "Refusal: a race plan has no pre-taper week left to drop"
+  },
+  "planDetailRepeatWeekInTheWay": "A week that would move holds a race or a workout you've done, so this week can't be repeated.",
+  "@planDetailRepeatWeekInTheWay": {
+    "description": "Refusal: a week that would move holds a race or a done workout"
+  },
+  "planDetailRepeatWeekLastWeek": "This is the plan's last week, so there's nothing to push back.",
+  "@planDetailRepeatWeekLastWeek": {
+    "description": "Refusal: the plan's last week has nothing after it"
+  },
+  "planDetailRepeatWeekNotNow": "Only this week or last week of an active plan can run again.",
+  "@planDetailRepeatWeekNotNow": {
+    "description": "Refusal: only this week or last week of an active plan can run again"
+  },
+  "rateLimitRepeatWeek": "You're repeating plan weeks too quickly — please wait {wait} and try again.",
+  "@rateLimitRepeatWeek": {
+    "description": "Rate-limit refusal when the repeat_plan_week bucket is spent (repeating a plan week)",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRepeatWeekOverlap": "Repeating this week would run the plan into another active plan. Move or end that plan first.",
+  "@planDetailRepeatWeekOverlap": {
+    "description": "Refusal: repeating the week would end the plan inside another active plan"
+  },
+  "missedPromptRepeatWeekBody": "Missing a session costs you nothing. Carry on, or if this week felt hard, run it again before moving up. There's no penalty for repeating a week.",
+  "@missedPromptRepeatWeekBody": {
+    "description": "Missed-workout prompt body for a missed walk-run (couch-to-5K) session: no make-up, carry on or repeat the week, with no penalty"
+  },
+  "walkRunGraduationTitle": "You did it: couch to 5K",
+  "@walkRunGraduationTitle": {
+    "description": "Heading of the card shown on a couch-to-5K plan once its last session, the 5K, is done"
+  },
+  "walkRunGraduationBodyFiveK": "You ran 5K without stopping. You started with one-minute runs between walks.",
+  "@walkRunGraduationBodyFiveK": {
+    "description": "Graduation card body when the last session was the continuous 5K"
+  },
+  "walkRunGraduationBodyFinished": "You finished the plan running the whole way, with no walk breaks. You started with one-minute runs between walks.",
+  "@walkRunGraduationBodyFinished": {
+    "description": "Graduation card body for an older walk-run plan whose last session was a timed continuous run rather than a 5K"
+  },
+  "walkRunGraduationNextTitle": "What next?",
+  "@walkRunGraduationNextTitle": {
+    "description": "Graduation card sub-heading above the next-step choices"
+  },
+  "walkRunGraduationTenK": "Train for a 10K",
+  "@walkRunGraduationTenK": {
+    "description": "Graduation card button that starts a 10K training plan"
+  },
+  "walkRunGraduationKeepRunning": "Or keep the habit: three easy runs a week hold on to what you've built, no plan needed.",
+  "@walkRunGraduationKeepRunning": {
+    "description": "Graduation card line offering the alternative of keeping the running habit without a plan"
+  },
+  "planRecapTitle": "How {name} went",
+  "@planRecapTitle": {
+    "description": "Heading of the end-of-plan recap on a completed plan. name is the plan's name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "planRecapLoading": "Loading your recap…",
+  "@planRecapLoading": {
+    "description": "Shown while the plan recap's runs and records load"
+  },
+  "planRecapLoadFailed": "Couldn't load the recap.",
+  "@planRecapLoadFailed": {
+    "description": "Error when the plan recap's runs and records could not be read"
+  },
+  "planRecapRetry": "Try again",
+  "@planRecapRetry": {
+    "description": "Button that retries loading the plan recap"
+  },
+  "planRecapSessionsLabel": "Sessions",
+  "@planRecapSessionsLabel": {
+    "description": "Plan recap label for the sessions-done stat"
+  },
+  "planRecapSessionsValue": "{done} of {total}",
+  "@planRecapSessionsValue": {
+    "description": "Plan recap count of sessions or long runs done out of those planned",
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "planRecapSessionsPct": "{pct}% done",
+  "@planRecapSessionsPct": {
+    "description": "Plan recap share of planned sessions done",
+    "placeholders": {
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "planRecapSkipped": "{count, plural, one {{count} skipped} other {{count} skipped}}",
+  "@planRecapSkipped": {
+    "description": "Plan recap count of sessions the runner skipped",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planRecapMissed": "{count, plural, one {{count} missed} other {{count} missed}}",
+  "@planRecapMissed": {
+    "description": "Plan recap count of sessions whose day passed without being done or skipped",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planRecapLongRunsLabel": "Long runs",
+  "@planRecapLongRunsLabel": {
+    "description": "Plan recap label for the long-run stat"
+  },
+  "planRecapLongRunsRange": "From {first} up to {longest}",
+  "@planRecapLongRunsRange": {
+    "description": "Plan recap long-run progression: the first long run done and the longest. Both are formatted distances",
+    "placeholders": {
+      "first": {
+        "type": "String"
+      },
+      "longest": {
+        "type": "String"
+      }
+    }
+  },
+  "planRecapLongRunsLongest": "Longest {longest}",
+  "@planRecapLongRunsLongest": {
+    "description": "Plan recap longest long run, when it was also the first. longest is a formatted distance",
+    "placeholders": {
+      "longest": {
+        "type": "String"
+      }
+    }
+  },
+  "planRecapDistanceLabel": "Distance",
+  "@planRecapDistanceLabel": {
+    "description": "Plan recap label for the distance stat"
+  },
+  "planRecapTimeLabel": "Time",
+  "@planRecapTimeLabel": {
+    "description": "Plan recap label for the time stat on a walk-run plan"
+  },
+  "planRecapVolumeValue": "{done} of {planned}",
+  "@planRecapVolumeValue": {
+    "description": "Plan recap distance or time done out of planned; both are formatted",
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "planned": {
+        "type": "String"
+      }
+    }
+  },
+  "planRecapTimeValue": "{h} h {m} min",
+  "@planRecapTimeValue": {
+    "description": "A duration in hours and minutes on the plan recap",
+    "placeholders": {
+      "h": {
+        "type": "int"
+      },
+      "m": {
+        "type": "int"
+      }
+    }
+  },
+  "planRecapRaceLabel": "Race day",
+  "@planRecapRaceLabel": {
+    "description": "Plan recap race heading when the race has no name"
+  },
+  "planRecapRaceRun": "{time} for {distance}",
+  "@planRecapRaceRun": {
+    "description": "Plan recap race result: finish time and distance run",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "planRecapRaceDnf": "Did not finish",
+  "@planRecapRaceDnf": {
+    "description": "Plan recap race result when the race run is marked did not finish"
+  },
+  "planRecapRaceNoRun": "Marked done, no run linked",
+  "@planRecapRaceNoRun": {
+    "description": "Plan recap race result when the race was ticked done with no run linked"
+  },
+  "planRecapRaceNotRun": "No run on race day",
+  "@planRecapRaceNotRun": {
+    "description": "Plan recap race result when no run stands for the race"
+  },
+  "planRecapRecordsLabel": "Personal records",
+  "@planRecapRecordsLabel": {
+    "description": "Plan recap heading for personal records set during the plan"
+  },
+  "planRecapRecordsNone": "No new personal records during this plan.",
+  "@planRecapRecordsNone": {
+    "description": "Plan recap line when no personal record was set during the plan"
+  },
+  "planRecapBracketMile": "Mile",
+  "@planRecapBracketMile": {
+    "description": "Personal-record bracket: one mile"
+  },
+  "planRecapBracket5k": "5K",
+  "@planRecapBracket5k": {
+    "description": "Personal-record bracket: 5 km"
+  },
+  "planRecapBracket8k": "8K",
+  "@planRecapBracket8k": {
+    "description": "Personal-record bracket: 8 km"
+  },
+  "planRecapBracket10k": "10K",
+  "@planRecapBracket10k": {
+    "description": "Personal-record bracket: 10 km"
+  },
+  "planRecapBracket12k": "12K",
+  "@planRecapBracket12k": {
+    "description": "Personal-record bracket: 12 km"
+  },
+  "planRecapBracketHalf": "Half marathon",
+  "@planRecapBracketHalf": {
+    "description": "Personal-record bracket: half marathon"
+  },
+  "planRecapBracketMarathon": "Marathon",
+  "@planRecapBracketMarathon": {
+    "description": "Personal-record bracket: marathon"
+  },
+  "planRecapNextTitle": "What's next",
+  "@planRecapNextTitle": {
+    "description": "Plan recap heading for what to do after the plan"
+  },
+  "planRecapRecovery": "Recover first: {days, plural, one {{days} easy day} other {{days} easy days}}, through {date}.",
+  "@planRecapRecovery": {
+    "description": "Plan recap recovery advice after the race. date is the formatted last recovery day",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planRecapNextPlan": "Your next plan can start on {date}.",
+  "@planRecapNextPlan": {
+    "description": "Plan recap line saying when the next plan can start. date is formatted",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planRecapNextPlanSeeded": "Your next plan can start on {date}, with paces from a {time} 5K, your race's equivalent. You confirm it in the wizard.",
+  "@planRecapNextPlanSeeded": {
+    "description": "Plan recap line when the next plan's paces come from the race's 5K equivalent. time is a 5K time",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "planRecapNextPlanCta": "Build your next plan",
+  "@planRecapNextPlanCta": {
+    "description": "Button on the plan recap that opens the new-plan wizard"
+  },
+  "prefsExtraRecovery": "More recovery between hard days",
+  "@prefsExtraRecovery": {
+    "description": "Switch label: ask new training plans for the masters (50+) recovery schedule at any age."
+  },
+  "prefsExtraRecoveryHint": "New plans leave 72 hours between your long run and the next hard session, and ease off every third week instead of every fourth. Plans already do this from age 50 when your date of birth is on record.",
+  "planNewExtraRecoveryHint": "Spaces hard sessions further apart and eases off every third week. Saved to your training settings, so every new plan uses it.",
+  "planNewExtraRecoverySaveFailed": "Couldn't save that setting. Try again.",
+  "planNewMastersRecoveryApplied": "Because you're 50 or over, this plan spaces hard sessions further apart and eases off every third week.",
+  "planNewDobHintAbsent": "Plans give runners aged 50 and over more recovery automatically.",
+  "planNewDobHintAbsentAction": "Add your date of birth",
+  "@planNewDobHintAbsentAction": {
+    "description": "Button opening Settings → Preferences, where the date of birth is edited."
+  },
+  "planNewDobHintHealthData": "Plans can only use your date of birth to adjust for age with your consent to health-data use.",
+  "planNewDobHintHealthDataAction": "Review consent",
+  "@planNewDobHintHealthDataAction": {
+    "description": "Button opening Settings → Body metrics, where health-data consent is reviewed."
   }
 }

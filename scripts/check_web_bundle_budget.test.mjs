@@ -147,20 +147,20 @@ test('twenty more languages move no budget, where the retired total ceiling fail
 
 test('a rogue dep the retired total ceiling had room for trips the code budget', () => {
 	const rogue = fixture({
-		extraCode: [{ path: '_app/immutable/chunks/rogue-dep.js', kb: 240 }],
+		extraCode: [{ path: '_app/immutable/chunks/rogue-dep.js', kb: 280 }],
 	});
 
 	assert.equal(
 		retiredTotalPasses(rogue.files),
 		true,
-		'2057 + 162 KB of catalogue parts + 240 = 2459 sits under 2700 — the catalogues ' +
+		'2057 + 162 KB of catalogue parts + 280 = 2499 sits under 2700 — the catalogues ' +
 			'in that total were the cover the dep hid behind',
 	);
 
 	const { errors } = checkBudgets(rogue);
 	assert.equal(errors.length, 1);
 	assert.equal(errors[0].budget, 'code');
-	assert.match(errors[0].message, /code is 2297 KB gzipped, over the 2288 KB ceiling by 9 KB/);
+	assert.match(errors[0].message, /code is 2337 KB gzipped, over the 2330 KB ceiling by 7 KB/);
 	assert.match(
 		errors[0].message,
 		/a new locale cannot have caused it/,
@@ -358,7 +358,7 @@ test('gzipKb rounds a part-kilobyte up', () => {
 
 test('the summary states the catalogue total without gating on it', () => {
 	const text = renderSummary(checkBudgets(fixture()).summary);
-	assert.match(text, /Code \(every reader, any language\) \| 2057 KB across 9 files \| 2288 KB/);
+	assert.match(text, /Code \(every reader, any language\) \| 2057 KB across 9 files \| 2330 KB/);
 	assert.match(text, /Largest core catalogue \(de\) \| 10 KB \| 13 KB, per core/);
 	assert.match(text, /Largest area catalogue \(de\/settings\) \| 11 KB \| 14 KB, per area/);
 	assert.match(text, /ungated in total \(162 KB across 27 parts; a reader fetches one core/);
@@ -367,7 +367,7 @@ test('the summary states the catalogue total without gating on it', () => {
 });
 
 test('the shipped ceilings are the ones this suite reasons about', () => {
-	assert.equal(MAX_CODE_KB, 2288);
+	assert.equal(MAX_CODE_KB, 2330);
 	assert.equal(MAX_CORE_CATALOGUE_KB, 13);
 	assert.equal(MAX_AREA_CATALOGUE_KB, 14);
 	assert.equal(MAX_LARGEST_CHUNK_KB, 350);

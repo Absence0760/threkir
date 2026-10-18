@@ -43,7 +43,7 @@ create table runs (
   safety_audience boolean not null default false, -- a live stub shared with the owner's confirmed safety contacts only, through per-contact links minted at escalation (20270821000001, decisions § 1964); never public; stored false while the safety_audience gate is closed
   concluded_at  timestamptz,                 -- positive live-broadcast terminal marker; stamped by concludeLiveBroadcast on stop, null while live or never broadcast. Exposed via public_runs so spectators detect finish honestly. 20270427_001 (issue #613)
   created_at    timestamptz default now(),
-  updated_at    timestamptz default now()
+  updated_at    timestamptz default now()  -- server-owned: runs_stamp_updated_at sets now() on every INSERT/UPDATE (20270918000005)
 );
 -- NB: there is no `kind` column. 20261204_001 added one as a future
 -- modality discriminator; 20261206_001 (F1/D1) dropped it as vestigial —
@@ -58,6 +58,8 @@ create unique index runs_external_id on runs (external_id) where external_id is 
 -- Index for public share pages
 create index runs_public on runs (is_public, started_at desc) where is_public = true;
 ```
+
+**`runs.updated_at` is a server-maintained modification clock** (migration `20270918000005`, [decisions § 2118](../architecture/decisions.md)). The `runs_stamp_updated_at` BEFORE INSERT OR UPDATE row trigger (`private.stamp_updated_at()`, EXECUTE revoked `from public, anon, authenticated`) overwrites it with `now()` on every write, so a value a client or a restored archive supplies is ignored rather than refused. It is the clock mobile's run delta pull keys on (`ApiClient.getRunsModifiedSince`, keyset on `(updated_at, id)` with a five-minute overlap behind the cursor). It deliberately has **no index**: the pull is already bounded to one runner's rows by `runs_user_started_at`, and an index on a column every update changes would make every run update non-HOT, besides a write-blocking build. Rows untouched since the migration keep their old value, which may be null. pgTAP `runs_updated_at_server_stamped_test.sql`.
 
 **`runs_user_started_at` is NOT redundant with `runs_user_source`** (F2f, verified by EXPLAIN). The audit hypothesised that `runs_user_source (user_id, source, started_at DESC)` (migration `20260407_001`) might subsume `runs_user_started_at (user_id, started_at DESC)`. It does not: the history / dashboard list query filters on `user_id` and orders by `started_at DESC` with **no `source` predicate**, and `started_at` is the *third* column of `runs_user_source` (behind `source`), so that index can't supply the ordering without a `source` equality. EXPLAIN over 5 000 synthetic runs picks `runs_user_started_at` for the no-source query; dropping it forces a Seq Scan + top-N Sort (cost ~222 vs ~6), and even with `enable_seqscan=off` the planner falls back to a bitmap scan on `runs_user_distance` + Sort — it never chooses `runs_user_source` for an ordered scan. Both indexes are kept: `runs_user_source` serves the source-filtered dashboard query, `runs_user_started_at` serves the unfiltered timeline.
 
@@ -2329,10 +2331,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 136 migrations write a function-level `from public, anon` revoke
-today (119 as `revoke execute`, 21 as `revoke all`); it is the house form for
+trigger calls). 139 migrations write a function-level `from public, anon` revoke
+today (122 as `revoke execute`, 21 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 594 migrations in version order and fails the PR on
+keeps it — it replays all 597 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts

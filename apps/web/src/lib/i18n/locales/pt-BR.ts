@@ -6572,4 +6572,11 @@ export const messages = {
 	"workoutKindShort.rest": "Desc",
 	"planDetail.ariaMissedSuffix": ", não realizado",
 	"planDetail.ariaTodaySuffix": ", hoje",
+	"planDetail.replanAnchor": "{from} → {to} — reconstruir a partir do que você correu",
+	"planDetail.anchorUnderNote": "Sua última semana de corrida ficou em {km}, bem abaixo do plano. Estas semanas agora reconstroem a partir daí, cerca de 10 % por semana, até o plano voltar a encaixar. O polimento continua como planejado.",
+	"planDetail.anchorReturnNote": "Você ficou fora do plano por {n, plural, one {# semana} other {# semanas}}. Estas semanas recomeçam em cerca de metade dos {km} que você correu na sua última semana e sobem cerca de 10 % por semana. O polimento continua como planejado.",
+	"planNudge.anchorUnderTitle": "A semana passada ficou abaixo",
+	"planNudge.anchorUnderBody": "As próximas semanas ainda sobem a partir do plano, não do que você correu. Há uma mudança sugerida para reconstruir a partir da semana passada.",
+	"planNudge.anchorReturnTitle": "Voltando ao plano com calma",
+	"planNudge.anchorReturnBody": "Você ficou fora do plano por {n, plural, one {# semana} other {# semanas}}. Há uma mudança sugerida para que as próximas semanas voltem a subir a partir do que você correu por último.",
 } satisfies Messages;

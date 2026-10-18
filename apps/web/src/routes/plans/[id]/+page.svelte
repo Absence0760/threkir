@@ -43,6 +43,7 @@
 	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
 	import { replanRemaining, type ReplanChange, type ReplanWeek } from '#lib/training/plan_replan.ts';
 	import { buildReplanWeeks, workoutOverrunMetres } from '#lib/training/plan_nudges.ts';
+	import { anchorToActualVolume, preferVolumeAnchor } from '#lib/training/plan_volume_anchor.ts';
 	import {
 		raceTaperAdjustments,
 		raceTaperProposals,
@@ -847,7 +848,7 @@
 			const shift = resumeOffer;
 			await resumePlan(plan.id, auth.user.id, shift);
 			showToast(shift ? m('planDetail.resumeShiftedDone', { n: shift.weeks }) : m('planDetail.resumeDone'));
-			await load();
+			await reloadAndOfferAnchor();
 		} catch (e) {
 			// The pre-check and the constraint say the same thing; the
 			// constraint catches a plan created between the two.
@@ -932,8 +933,12 @@
 	function proposeReplan(): void {
 		if (!plan || !isOwner || bulkBusy) return;
 		makeUpAnswers = null;
-		const { changes, onTrack } = replanRemaining({ weeks: buildReplanInput(), today });
-		if (onTrack || changes.length === 0) {
+		const input = buildReplanInput();
+		const changes = preferVolumeAnchor(
+			anchorToActualVolume({ weeks: input }),
+			replanRemaining({ weeks: input, today }).changes
+		);
+		if (changes.length === 0) {
 			showToast(m('planDetail.replanOnTrack'));
 			replanPreview = null;
 			adaptiveInfo = null;
@@ -956,8 +961,9 @@
 	function proposeAdaptiveReplan(): void {
 		if (!plan || !isOwner || bulkBusy) return;
 		makeUpAnswers = null;
+		const input = buildReplanInput();
 		const r = adaptiveReplanRemaining({
-			weeks: buildReplanInput(),
+			weeks: input,
 			today,
 			fitness: adaptiveFitnessInput()
 		});
@@ -985,7 +991,13 @@
 			adaptiveInfo = null;
 			return;
 		}
-		if (r.changes.length === 0) {
+		// An under-run trend is answered by building back from what was run
+		// (`plan_volume_anchor`), not by stretching a missed long run.
+		const changes =
+			reason === 'trend_underfitness'
+				? preferVolumeAnchor(anchorToActualVolume({ weeks: input }), r.changes)
+				: r.changes;
+		if (changes.length === 0) {
 			// A real multi-week trend, but the conservative rules prescribe no
 			// safe change (e.g. under-running easy volume is never crammed).
 			showToast(m('planDetail.adaptiveNoSafeChange'));
@@ -994,7 +1006,7 @@
 			return;
 		}
 		adaptiveInfo = { reason, confidence: r.confidence };
-		replanPreview = r.changes;
+		replanPreview = changes;
 	}
 
 	function adaptiveBadgeText(info: AdaptiveTrendInfo): string {
@@ -1043,9 +1055,36 @@
 	function replanChangeLabel(c: ReplanChange): string {
 		const from = fmtKm(c.fromMetres);
 		const to = fmtKm(c.toMetres);
-		return c.reason === 'make_up_long'
-			? m('planDetail.replanMakeUp', { from, to })
-			: m('planDetail.replanEase', { from, to });
+		if (c.reason === 'make_up_long') return m('planDetail.replanMakeUp', { from, to });
+		if (c.reason === 'anchor_actual_volume') return m('planDetail.replanAnchor', { from, to });
+		return m('planDetail.replanEase', { from, to });
+	}
+
+	/// Set while the preview is the anchor's: what it builds back from.
+	let anchorInfo = $derived(
+		replanPreview?.some((c) => c.reason === 'anchor_actual_volume')
+			? anchorToActualVolume({ weeks: buildReplanInput() })
+			: null
+	);
+
+	/// After a resume or a break reschedule, the weeks ahead are offered
+	/// re-anchored to what the runner last ran, through the same preview. It
+	/// proposes only; nothing changes until Apply.
+	async function offerAnchor(): Promise<void> {
+		if (!plan || !isOwner || plan.is_template || plan.status !== 'active') return;
+		const anchor = anchorToActualVolume({ weeks: buildReplanInput() });
+		if (!anchor) return;
+		taperPreview = null;
+		makeUpAnswers = null;
+		adaptiveInfo = null;
+		replanPreview = anchor.changes;
+		await tick();
+		replanPreviewHeading?.focus();
+	}
+
+	async function reloadAndOfferAnchor(): Promise<void> {
+		await load();
+		await offerAnchor();
 	}
 
 	function handleBack(e: MouseEvent): void {
@@ -1765,7 +1804,7 @@
 		{/if}
 
 		{#if isOwner && plan.status === 'active'}
-			<PlanBreakCard {plan} {weeks} {workouts} {today} onapplied={load} />
+			<PlanBreakCard {plan} {weeks} {workouts} {today} onapplied={reloadAndOfferAnchor} />
 		{/if}
 
 		{#if isOwner && !plan.is_template && replanPreview}
@@ -1773,6 +1812,16 @@
 				<h3 tabindex="-1" bind:this={replanPreviewHeading}>{m('planDetail.replanPreviewTitle')}</h3>
 				{#if adaptiveInfo}
 					<p class="replan-adaptive-badge">{adaptiveBadgeText(adaptiveInfo)}</p>
+				{/if}
+				{#if anchorInfo}
+					<p class="replan-anchor-note" data-testid="replan-anchor-note">
+						{anchorInfo.returning
+							? m('planDetail.anchorReturnNote', {
+									n: anchorInfo.idleWeeks,
+									km: fmtKm(anchorInfo.anchorMetres)
+								})
+							: m('planDetail.anchorUnderNote', { km: fmtKm(anchorInfo.anchorMetres) })}
+					</p>
 				{/if}
 				<ul>
 					{#each replanPreview as c (c.workoutId)}
@@ -3210,6 +3259,10 @@
 	.replan-preview h3 {
 		margin: 0 0 var(--space-sm);
 		font-size: 0.95rem;
+	}
+	.replan-anchor-note {
+		margin: 0 0 var(--space-sm);
+		color: var(--color-text-secondary);
 	}
 	.replan-adaptive-badge {
 		margin: 0 0 var(--space-sm);

@@ -6603,4 +6603,11 @@ export const en = {
 	"workoutKindShort.rest": "Rest",
 	"planDetail.ariaMissedSuffix": ", missed",
 	"planDetail.ariaTodaySuffix": ", today",
+	"planDetail.replanAnchor": "{from} → {to} — build back from what you ran",
+	"planDetail.anchorUnderNote": "Your last week of running came in at {km}, well under plan. These weeks now build back from that, about 10% a week, until the plan fits again. The taper stays as planned.",
+	"planDetail.anchorReturnNote": "You've been away from the plan for {n, plural, one {# week} other {# weeks}}. These weeks restart at about half of the {km} you last ran in a week and build about 10% a week. The taper stays as planned.",
+	"planNudge.anchorUnderTitle": "Last week came in short",
+	"planNudge.anchorUnderBody": "The weeks ahead still step up from the plan, not from what you ran. There's a suggested change to build back from last week instead.",
+	"planNudge.anchorReturnTitle": "Easing back into your plan",
+	"planNudge.anchorReturnBody": "You've been away from the plan for {n, plural, one {# week} other {# weeks}}. There's a suggested change so the weeks ahead build back up from what you last ran.",
 } satisfies Record<string, string>;

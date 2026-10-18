@@ -2,7 +2,7 @@ import type { BrowserContext, Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/test';
 
-import { browserDate, noonOnBrowserDay } from '../fixtures/dates';
+import { browserDate, browserDayStart, noonOnBrowserDay } from '../fixtures/dates';
 import { readMaybeRow, readRow, readRows } from '../fixtures/db-read';
 import { acceptCookieConsent } from '../fixtures/helpers';
 import { getAdminClient } from '../fixtures/local-supabase';
@@ -310,6 +310,92 @@ test.describe('Home plan card and the over-run status', () => {
 			clientWidth: document.documentElement.clientWidth
 		}));
 		expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+	});
+
+	test('a week well under plan offers to build back from it; Review opens the anchored preview and applying caps the weeks ahead', async () => {
+		const { planId, workoutIds } = await plantPlan('e2e nudge anchor', [
+			{ volume: 28_000 },
+			{ volume: 28_000 },
+			{ volume: 28_000 },
+			{ volume: 28_000 },
+			{ volume: 28_000 }
+		]);
+		await run(day(0, 6), 28_000);
+		await run(day(1, 6), 28_000);
+		await run(day(2, 6), 10_000);
+
+		const page = await openHome();
+		const card = page.getByTestId('plan-nudge');
+		await expect(card).toBeVisible({ timeout: 15_000 });
+		await expect(card).toHaveAttribute('data-kind', 'anchor_under');
+		await expect(card).toContainText('Last week came in short');
+
+		await card.getByRole('button', { name: 'Review the changes' }).click();
+		await expect(page).toHaveURL(new RegExp(`/plans/${planId}`));
+		const preview = page.locator('.replan-preview');
+		await expect(preview).toBeVisible({ timeout: 15_000 });
+		await expect(preview.getByTestId('replan-anchor-note')).toContainText('came in at 10.0 km');
+		// Week 3 may ask for 11 km: its 8 + 20 km scale by 11/28 to the 100 m.
+		await expect(preview).toContainText('8.0 km → 3.1 km');
+		await expect(preview).toContainText('20.0 km → 7.8 km');
+		await expect.poll(dismissed).toEqual([`${planId}:anchor_under:2`]);
+
+		await preview.getByRole('button', { name: 'Apply changes' }).click();
+		const target = async (key: string) =>
+			(
+				await readRow(
+					key,
+					getAdminClient().from('plan_workouts').select('target_distance_m').eq('id', workoutIds.get(key)!).single()
+				)
+			).target_distance_m;
+		await expect.poll(() => target('easy3')).toBe(3_100);
+		await expect.poll(() => target('long3')).toBe(7_800);
+		// Week 4 climbs 10% on week 3's 10.9 km: 11.99 km over 28 km.
+		await expect.poll(() => target('long4')).toBe(8_500);
+
+		await page.goto('/dashboard');
+		await expect(page.locator('.plan-hero')).toBeVisible({ timeout: 15_000 });
+		await expect(page.getByTestId('plan-nudge')).toHaveCount(0);
+	});
+
+	test('resuming a plan offers the weeks ahead re-anchored to the last week run, and nothing changes until Apply', async () => {
+		const { planId, workoutIds } = await plantPlan(
+			'e2e nudge resume',
+			[{ volume: 28_000 }, { volume: 28_000 }, { volume: 28_000 }, { volume: 28_000 }, { volume: 28_000 }],
+			{ status: 'paused' }
+		);
+		const { error } = await getAdminClient()
+			.from('training_plans')
+			.update({ paused_at: browserDayStart(day(1, 1)) })
+			.eq('id', planId);
+		if (error) throw error;
+		await run(day(0, 6), 28_000);
+		await run(day(1, 0), 8_000);
+
+		const page = await ctx!.newPage();
+		await page.goto(`/plans/${planId}?resume=1`);
+		await expect(page.getByText(/move back 2 weeks/)).toBeVisible({ timeout: 15_000 });
+		await page.getByRole('button', { name: 'Apply' }).click();
+		await expect(page.getByText('Plan resumed and pushed back 2 weeks.')).toBeVisible();
+
+		const preview = page.locator('.replan-preview');
+		await expect(preview).toBeVisible({ timeout: 15_000 });
+		await expect(preview.getByTestId('replan-anchor-note')).toContainText('came in at 8.0 km');
+		// The first week back may ask for 8.8 km: the long run scales to 6.2 km
+		// and the easy run holds at the 3 km floor.
+		await expect(preview).toContainText('20.0 km → 6.2 km');
+		const target = async (key: string) =>
+			(
+				await readRow(
+					key,
+					getAdminClient().from('plan_workouts').select('target_distance_m').eq('id', workoutIds.get(key)!).single()
+				)
+			).target_distance_m;
+		expect(await target('long2')).toBe(20_000);
+
+		await preview.getByRole('button', { name: 'Apply changes' }).click();
+		await expect.poll(() => target('long2')).toBe(6_200);
+		await expect.poll(() => target('easy2')).toBe(3_000);
 	});
 
 	test('a paused plan gets no card', async () => {

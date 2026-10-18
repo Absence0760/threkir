@@ -6573,4 +6573,11 @@ export const messages = {
 	"workoutKindShort.rest": "Ruhe",
 	"planDetail.ariaMissedSuffix": ", verpasst",
 	"planDetail.ariaTodaySuffix": ", heute",
+	"planDetail.replanAnchor": "{from} → {to} — von deinem tatsächlichen Umfang aus wieder aufbauen",
+	"planDetail.anchorUnderNote": "Deine letzte Laufwoche kam auf {km}, deutlich unter Plan. Diese Wochen bauen jetzt von dort aus wieder auf, etwa 10 % pro Woche, bis der Plan wieder passt. Das Tapering bleibt wie geplant.",
+	"planDetail.anchorReturnNote": "Du warst {n, plural, one {# Woche} other {# Wochen}} raus aus dem Plan. Diese Wochen starten wieder bei etwa der Hälfte der {km}, die du zuletzt in einer Woche gelaufen bist, und steigern sich um etwa 10 % pro Woche. Das Tapering bleibt wie geplant.",
+	"planNudge.anchorUnderTitle": "Letzte Woche fiel kürzer aus",
+	"planNudge.anchorUnderBody": "Die kommenden Wochen steigern sich noch vom Plan aus, nicht von dem, was du gelaufen bist. Es gibt einen Vorschlag, stattdessen von der letzten Woche aus wieder aufzubauen.",
+	"planNudge.anchorReturnTitle": "Sanft zurück in deinen Plan",
+	"planNudge.anchorReturnBody": "Du warst {n, plural, one {# Woche} other {# Wochen}} raus aus dem Plan. Es gibt einen Vorschlag, damit die kommenden Wochen von deinem letzten Umfang aus wieder aufbauen.",
 } satisfies Messages;

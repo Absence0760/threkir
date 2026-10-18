@@ -12,6 +12,7 @@
 
 import { adaptiveReplanRemaining } from './plan_adaptive_replan';
 import { replanRemaining, type ReplanWeek } from './plan_replan';
+import { anchorToActualVolume } from './plan_volume_anchor';
 
 /// A run past its target by less than this is not worth a word: GPS drift
 /// and a loop home add a few hundred metres to most runs.
@@ -33,7 +34,12 @@ export const DISMISSED_NUDGES_CAP = 20;
 /// The `user_settings.prefs` key holding dismissed occurrences.
 export const DISMISSED_NUDGES_KEY = 'plan_nudges_dismissed';
 
-export type PlanNudgeKind = 'adaptive_under' | 'ease_over' | 'rest_day_runs';
+export type PlanNudgeKind =
+	| 'anchor_under'
+	| 'anchor_return'
+	| 'adaptive_under'
+	| 'ease_over'
+	| 'rest_day_runs';
 
 export interface PlanNudge {
 	kind: PlanNudgeKind;
@@ -42,7 +48,8 @@ export interface PlanNudge {
 	/// Identity of this occurrence, as stored when it is dismissed.
 	key: string;
 	/// Weeks in the trend window that showed the signal, and the window size.
-	/// `ease_over` is one week by definition: 1 of 1.
+	/// `ease_over` and `anchor_under` are one week by definition: 1 of 1;
+	/// `anchor_return` carries the weeks away from the plan in both.
 	weeks: number;
 	ofWeeks: number;
 }
@@ -192,11 +199,16 @@ function restDayRunWeeks(
 /// non-template plan qualifies (the caller owns the "is the viewer the owner"
 /// check). In order, the first occurrence not yet dismissed wins:
 ///
-///  1. `adaptive_under` — the adaptive re-plan's 2-of-3 under-run trend, and
-///     only when it has a change to propose;
-///  2. `ease_over` — the last completed week ran over plan and the re-plan
+///  1. `anchor_under` / `anchor_return` — the last completed week ran under
+///     plan, or the runner has been away from it for a layoff, and the weeks
+///     ahead ask for more than 10% over what they last ran
+///     (`anchorToActualVolume`). It outranks the trend card, whose review
+///     would open the same anchored proposal;
+///  2. `adaptive_under` — the adaptive re-plan's 2-of-3 under-run trend, and
+///     only when it has a change to propose and no anchor applies;
+///  3. `ease_over` — the last completed week ran over plan and the re-plan
 ///     eases next week;
-///  3. `rest_day_runs` — runs on rest days in 2 of the last 3 completed weeks.
+///  4. `rest_day_runs` — runs on rest days in 2 of the last 3 completed weeks.
 export function planNudge(input: {
 	planId: string;
 	status: string;
@@ -217,10 +229,23 @@ export function planNudge(input: {
 	const dismissed = new Set(input.dismissed);
 	const candidates: PlanNudge[] = [];
 
+	const anchor = anchorToActualVolume({ weeks });
+	if (anchor) {
+		const kind = anchor.returning ? 'anchor_return' : 'anchor_under';
+		const n = anchor.returning ? anchor.idleWeeks : 1;
+		candidates.push({
+			kind,
+			weekIndex: at,
+			key: planNudgeKey(input.planId, kind, at),
+			weeks: n,
+			ofWeeks: n,
+		});
+	}
+
 	// P1 only, by construction: no fitness snapshot reaches Home (decisions
 	// § 2125), so the gated P2 load input keeps its one call site.
 	const adaptive = adaptiveReplanRemaining({ weeks, today: input.today });
-	if (adaptive.reason === 'trend_underfitness' && adaptive.changes.length > 0) {
+	if (!anchor && adaptive.reason === 'trend_underfitness' && adaptive.changes.length > 0) {
 		candidates.push({
 			kind: 'adaptive_under',
 			weekIndex: at,

@@ -149,6 +149,63 @@ test.describe('the missed-workout prompt', () => {
 		}
 	});
 
+	// An answered miss is off the books (decisions § 2125): once the make-up is
+	// applied, Re-plan must not stretch the same long run a second time.
+	test('after Make it up is applied, Re-plan proposes no second stretch', async ({ browser }) => {
+		const { planId, ids } = await plantPlan([
+			{ key: 'missed', offset: -3, kind: 'long', distanceM: 20_000 },
+			{ key: 'easy', offset: -1, kind: 'easy', distanceM: 6_000, done: true },
+			{ key: 'next', offset: 4, kind: 'long', distanceM: 14_000 }
+		]);
+		const page = await open(browser, `/plans/${planId}`);
+		try {
+			await page.getByTestId('missed-prompt-make-up').click({ timeout: 15_000 });
+			const preview = page.getByRole('region', { name: 'Proposed plan changes' });
+			await expect(preview).toContainText('Long run 14.0 km → 16.1 km');
+			await preview.getByRole('button', { name: 'Apply changes' }).click();
+			await expect(page.getByTestId('missed-prompt')).toHaveCount(0, { timeout: 10_000 });
+			expect((await workout(ids.next)).target_distance_m).toBe(16_100);
+
+			await page.getByRole('button', { name: 'Adjust plan' }).click();
+			await page
+				.getByTestId('adjust-plan-dialog')
+				.getByRole('button', { name: 'Re-plan remaining weeks' })
+				.click();
+			await expect(page.getByText("Your plan's on track — nothing to adjust.")).toBeVisible();
+			await expect(preview).toHaveCount(0);
+			expect((await workout(ids.next)).target_distance_m).toBe(16_100);
+		} finally {
+			await page.context().close();
+		}
+	});
+
+	test('a Re-plan opened over an unapplied make-up applies as a re-plan, not as an answer', async ({
+		browser
+	}) => {
+		const { planId, ids } = await plantPlan(LONG_MISS);
+		const page = await open(browser, `/plans/${planId}`);
+		try {
+			await page.getByTestId('missed-prompt-make-up').click({ timeout: 15_000 });
+			const preview = page.getByRole('region', { name: 'Proposed plan changes' });
+			await expect(preview).toContainText('Long run 14.0 km → 16.0 km');
+
+			await page.getByRole('button', { name: 'Adjust plan' }).click();
+			await page
+				.getByTestId('adjust-plan-dialog')
+				.getByRole('button', { name: 'Re-plan remaining weeks' })
+				.click();
+			await expect(preview).toContainText('16.0 km');
+			await preview.getByRole('button', { name: 'Apply changes' }).click();
+			await expect
+				.poll(async () => (await workout(ids.next)).target_distance_m, { timeout: 10_000 })
+				.toBe(16_000);
+			// Only the make-up preview answers the miss; a plain re-plan leaves it asked.
+			expect((await workout(ids.missed)).missed_ack_at).toBeNull();
+		} finally {
+			await page.context().close();
+		}
+	});
+
 	test('cancelling the make-up preview records nothing and keeps the question', async ({ browser }) => {
 		const { planId, ids } = await plantPlan(LONG_MISS);
 		const page = await open(browser, `/plans/${planId}`);

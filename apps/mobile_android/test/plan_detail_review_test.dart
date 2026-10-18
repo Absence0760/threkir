@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart' show FullBodyLoader;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/local_run_store.dart';
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
@@ -132,6 +136,7 @@ Future<void> _pump(
   required _FakeTraining training,
   List<RecentRunRow> runs = const [],
   PlanReview? openReview,
+  LocalRunStore? runStore,
 }) async {
   await tester.pumpWidget(MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -143,6 +148,7 @@ Future<void> _pump(
       viewerIdOverride: _uid,
       now: () => _now,
       openReview: openReview,
+      runStore: runStore,
     ),
   ));
   await pumpUntil(tester, () => !tester.any(find.byType(FullBodyLoader)),
@@ -202,6 +208,54 @@ void main() {
             skipOffstage: false),
         findsOneWidget);
     expect(training.updated, isEmpty);
+  });
+
+  // Home's card judged by the device's run store; the review must judge by
+  // the same runs, or the card files itself and the preview says "on track".
+  testWidgets('openReview judges by the run store Home judged by',
+      (tester) async {
+    final dir = Directory.systemTemp.createTempSync('plan_review_store_');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final store = LocalRunStore();
+    await tester.runAsync(() async {
+      SharedPreferences.setMockInitialValues({});
+      await store.init(overrideDirectory: dir);
+      for (final (id, day, m) in [
+        ('r0', _day(0, 6), 28000.0),
+        ('r1', _day(1, 6), 28000.0),
+        ('r2', _day(2, 6), 36000.0),
+      ]) {
+        await store.save(Run(
+          id: id,
+          startedAt: DateTime(day.year, day.month, day.day, 12),
+          duration: const Duration(minutes: 60),
+          distanceMetres: m,
+          source: RunSource.app,
+        ));
+      }
+    });
+    final training = _training();
+    await _pump(tester,
+        training: training, openReview: PlanReview.replan, runStore: store);
+    await pumpUntil(tester, () => tester.any(find.text('Proposed changes')),
+        describe: 'the re-plan preview to open from the run store');
+    expect(
+        find.text('8.0 km → 6.8 km — ease off after over-running',
+            skipOffstage: false),
+        findsOneWidget);
+  });
+
+  test('the adaptive proposal clears a pending make-up only past its guard',
+      () {
+    final src = File('lib/screens/plan_detail_screen.dart').readAsStringSync();
+    final start = src.indexOf('void _proposeAdaptiveReplan(');
+    final body = src.substring(start, src.indexOf('\n  }\n', start));
+    final guard = body.indexOf('if (!_isOwner(plan) || _bulkBusy) return;');
+    final clear = body.indexOf('_makeUpAnswers = null;');
+    expect(guard, isNonNegative);
+    expect(clear, greaterThan(guard),
+        reason: 'a busy or non-owner early return must leave a pending '
+            "make-up's answers alone, as _proposeReplan does");
   });
 
   testWidgets('openReview does nothing on a paused plan', (tester) async {

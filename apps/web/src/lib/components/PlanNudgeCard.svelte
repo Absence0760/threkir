@@ -26,14 +26,18 @@
 		runs: { started_at: string; distance_m: number | null }[];
 		dismissed: string[];
 		today: string;
+		/// The host's veto: true renders nothing, whatever the plan says
+		/// (another card that outranks this one is showing).
+		hidden?: boolean;
 	}
-	let { plan, weeks, workouts, runs, dismissed, today }: Props = $props();
+	let { plan, weeks, workouts, runs, dismissed, today, hidden = false }: Props = $props();
 
 	let filed = $state<string[] | null>(null);
 	let saved = $derived(filed ?? dismissed);
 
 	/// Auxiliary (L4): a malformed row must cost the card, never Home.
 	let nudge = $derived.by((): PlanNudge | null => {
+		if (hidden) return null;
 		try {
 			const byWeek = new Map<string, PlanWorkout[]>();
 			for (const w of workouts) {
@@ -59,7 +63,8 @@
 						kind: x.kind,
 						targetDistanceM: x.target_distance_m,
 						completed: isWorkoutCompleted(x),
-						skipped: isWorkoutSkipped(x)
+						skipped: isWorkoutSkipped(x),
+						answered: x.missed_ack_at != null
 					}))
 				}))
 			});
@@ -153,7 +158,7 @@
 		align-items: flex-start;
 		gap: var(--space-md);
 		flex-wrap: wrap;
-		padding: var(--space-md) var(--space-lg);
+		padding: var(--space-md);
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-md);
@@ -163,8 +168,9 @@
 		color: var(--color-primary);
 	}
 	.plan-nudge-body {
-		flex: 1;
-		min-width: 12rem;
+		flex: 1 1 10rem;
+		min-width: 0;
+		overflow-wrap: anywhere;
 	}
 	.plan-nudge-body h3 {
 		margin: 0;

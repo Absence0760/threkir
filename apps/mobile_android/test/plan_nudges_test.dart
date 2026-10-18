@@ -8,6 +8,7 @@ NudgeInputWorkout _wo(
   double? targetDistanceM, {
   bool completed = false,
   bool skipped = false,
+  bool answered = false,
 }) =>
     NudgeInputWorkout(
       id: id,
@@ -16,6 +17,7 @@ NudgeInputWorkout _wo(
       targetDistanceM: targetDistanceM,
       completed: completed,
       skipped: skipped,
+      answered: answered,
     );
 
 NudgeInputRun _run(String date, double distanceM) =>
@@ -199,6 +201,26 @@ void main() {
     expect(n.key, 'p:adaptive_under:2');
     expect(n.weeks, 2);
     expect(n.ofWeeks, 3);
+  });
+
+  test(
+      'planNudge: a missed long run the runner already answered is not made up again',
+      () {
+    final runs = [
+      _run('2026-06-02', 8000),
+      _run('2026-06-14', 20000),
+      _run('2026-06-09', 8000),
+      _run('2026-06-21', 20000),
+      _run('2026-06-16', 8000),
+    ];
+    final weeks = _plan([40000, 40000, 28000], week0Workouts: [
+      _wo('l0', '2026-06-07', 'long', 26000, answered: true),
+      _wo('e0', '2026-06-02', 'easy', 8000),
+    ]);
+    final built = buildReplanWeeks(
+        startDate: _start, today: _today, weeks: weeks, runs: runs);
+    expect(built[0].workouts[0].skipped, isTrue);
+    expect(_nudge(weeks, runs), isNull);
   });
 
   test('planNudge: an under-run trend with nothing safe to change says nothing',

@@ -1,3 +1,4 @@
+import 'package:api_client/api_client.dart' show SettingsKeys;
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 
@@ -21,6 +22,10 @@ class PlanNudgeCard extends StatefulWidget {
   final DateTime now;
   final void Function(PlanNudge nudge) onReview;
 
+  /// The host's veto: true renders nothing, whatever the plan says (another
+  /// card that outranks this one is showing).
+  final bool hidden;
+
   const PlanNudgeCard({
     super.key,
     required this.overview,
@@ -28,11 +33,12 @@ class PlanNudgeCard extends StatefulWidget {
     required this.settingsSync,
     required this.now,
     required this.onReview,
+    this.hidden = false,
   });
 
   /// The dismissed occurrences in the prefs bag.
   static List<String> dismissedIn(SettingsSyncService? sync) =>
-      parseDismissedNudges(sync?.service?.effective<Object>(dismissedNudgesKey));
+      parseDismissedNudges(sync?.service?.effective<Object>(SettingsKeys.planNudgesDismissed));
 
   /// The card's occurrence, or null when there is nothing to say. Auxiliary
   /// (L4): a malformed row must cost the card, never Home.
@@ -75,6 +81,7 @@ class PlanNudgeCard extends StatefulWidget {
                     targetDistanceM: x.targetDistanceM,
                     completed: isWorkoutCompleted(x),
                     skipped: x.skippedAt != null,
+                    answered: x.missedAckAt != null,
                   ),
               ],
             ),
@@ -121,7 +128,7 @@ class _PlanNudgeCardState extends State<PlanNudgeCard> {
     setState(() => _filed = next);
     try {
       if (sync == null) throw StateError('no settings sync');
-      await sync.updateUniversal(<String, dynamic>{dismissedNudgesKey: next});
+      await sync.updateUniversal(<String, dynamic>{SettingsKeys.planNudgesDismissed: next});
       return true;
     } catch (e) {
       debugPrint('PlanNudgeCard: saving the dismissal failed: $e');
@@ -142,7 +149,7 @@ class _PlanNudgeCardState extends State<PlanNudgeCard> {
 
   @override
   Widget build(BuildContext context) {
-    final n = _nudge();
+    final n = widget.hidden ? null : _nudge();
     if (n == null) return const SizedBox.shrink();
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);

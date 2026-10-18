@@ -73,12 +73,12 @@ import 'workout_detail_screen.dart';
 /// more room than a prose column.
 const double _kExpandedBodyMaxWidth = 900;
 
-/// The whole-plan changes the Adjust plan dialog offers. Web twin: the option
-/// list in `apps/web/src/routes/plans/[id]/+page.svelte` (decisions § 1635).
 /// Which existing re-plan preview to open on arrival: Home's plan card
 /// (`PlanNudgeCard`) lands here with one. Web twin: `?review=`.
 enum PlanReview { adaptive, replan }
 
+/// The whole-plan changes the Adjust plan dialog offers. Web twin: the option
+/// list in `apps/web/src/routes/plans/[id]/+page.svelte` (decisions § 1635).
 enum _PlanAdjustment { replan, adaptiveReplan, raceTaper, cycle, pause, resume }
 
 /// Today's session and this week lead the screen; everything else sits behind
@@ -148,6 +148,7 @@ class PlanDetailScreen extends StatefulWidget {
   /// plan and it has one: Home's "Make it up" lands here. Web twin:
   /// `?makeup=1`.
   final bool openMakeUp;
+
   /// Open with that re-plan preview up, when the plan is active and the
   /// viewer owns it.
   final PlanReview? openReview;
@@ -618,17 +619,34 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     return longestCompletedLongRunMetres(workouts, actualById);
   }
 
+  /// The runs the re-plan judges by: the device's run store when the host
+  /// handed one over, which is what Home's plan card judged by, so a card's
+  /// Review opens the same proposal; the recent-runs read otherwise.
+  List<NudgeInputRun> get _replanRuns {
+    final store = widget.runStore;
+    if (store != null) {
+      return [
+        for (final r in store.summaryRuns)
+          NudgeInputRun(
+            date: toIsoDate(r.startedAt.toLocal()),
+            distanceM: r.distanceMetres,
+          ),
+      ];
+    }
+    return [
+      for (final r in _recentRuns)
+        NudgeInputRun(
+          date: toIsoDate(r.startedAt.toLocal()),
+          distanceM: r.distanceM,
+        ),
+    ];
+  }
+
   List<ReplanWeek> _buildReplanInput(TrainingPlanRow plan) =>
       buildReplanWeeks(
         startDate: toIsoDate(plan.startDate),
         today: toIsoDate(widget.now()),
-        runs: [
-          for (final r in _recentRuns)
-            NudgeInputRun(
-              date: toIsoDate(r.startedAt.toLocal()),
-              distanceM: r.distanceM,
-            ),
-        ],
+        runs: _replanRuns,
         weeks: [
           for (final w in _weeks)
             NudgeInputWeek(
@@ -644,6 +662,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                     targetDistanceM: x.targetDistanceM,
                     completed: isWorkoutCompleted(x),
                     skipped: _isWorkoutSkipped(x),
+                    answered: x.missedAckAt != null,
                   ),
               ],
             ),
@@ -838,8 +857,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   /// Adaptive (trend-based) re-plan: only proposes when the last few completed
   /// weeks show a sustained drift, suppressing single-week noise.
   void _proposeAdaptiveReplan(TrainingPlanRow plan) {
-    _makeUpAnswers = null;
     if (!_isOwner(plan) || _bulkBusy) return;
+    _makeUpAnswers = null;
     final l10n = AppLocalizations.of(context);
     final res = adaptiveReplanRemaining(
       weeks: _buildReplanInput(plan),

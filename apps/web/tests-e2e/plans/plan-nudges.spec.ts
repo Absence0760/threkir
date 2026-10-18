@@ -278,6 +278,40 @@ test.describe('Home plan card and the over-run status', () => {
 		expect(await dismissed()).toBeUndefined();
 	});
 
+	test('at 300px the card wraps instead of scrolling the page', async ({ browser }) => {
+		await plantPlan('e2e nudge narrow', [
+			{ volume: 28_000 },
+			{ volume: 28_000 },
+			{ volume: 28_000 },
+			{ volume: 28_000 },
+			{ volume: 28_000 }
+		]);
+		await run(day(0, 6), 28_000);
+		await run(day(1, 6), 28_000);
+		await run(day(2, 6), 36_000);
+		await ctx?.close();
+		ctx = await browser.newContext({ storageState: user.storageStatePath, viewport: { width: 300, height: 720 } });
+		await acceptCookieConsent(ctx);
+		const page = await openHome();
+		const card = page.getByTestId('plan-nudge');
+		await expect(card).toBeVisible({ timeout: 15_000 });
+		for (const box of [
+			await card.boundingBox(),
+			await card.locator('.plan-nudge-body').boundingBox(),
+			await card.getByRole('button', { name: 'Dismiss this suggestion' }).boundingBox(),
+			await card.getByRole('button', { name: 'Review the changes' }).boundingBox()
+		]) {
+			expect(box).not.toBeNull();
+			expect(box!.x).toBeGreaterThanOrEqual(0);
+			expect(box!.x + box!.width).toBeLessThanOrEqual(300);
+		}
+		const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+			scrollWidth: document.documentElement.scrollWidth,
+			clientWidth: document.documentElement.clientWidth
+		}));
+		expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+	});
+
 	test('a paused plan gets no card', async () => {
 		await plantPlan(
 			'e2e nudge paused',

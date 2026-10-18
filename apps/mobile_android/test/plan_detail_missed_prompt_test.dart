@@ -23,9 +23,10 @@ final DateTime _today = DateTime(2026, 3, 11);
 final DateTime _start = DateTime(2026, 2, 23);
 
 class _Training extends TrainingService {
-  _Training(this.plan, {this.fail = false});
+  _Training(this.plan, {this.fail = false, this.missedM = 16000});
   final TrainingPlanRow plan;
   final bool fail;
+  final double missedM;
   final answers = <({List<String> ids, Map<String, double> distances})>[];
   final replans = <Map<String, double>>[];
 
@@ -53,7 +54,7 @@ class _Training extends TrainingService {
           weekId: 'w1',
           scheduledDate: DateTime(2026, 3, 8),
           kind: 'long',
-          targetDistanceM: 16000,
+          targetDistanceM: missedM,
           manuallyCompleted: false,
           missedAckAt: answered.contains('missed') ? _today : null,
         ),
@@ -148,6 +149,22 @@ Future<void> _scrollBackTo(WidgetTester tester, Finder f) =>
     tester.scrollUntilVisible(f, -200,
         scrollable: find.byType(Scrollable).first);
 
+/// Adjust plan, then its Re-plan option. The dialog title and the page's
+/// button share a label, so the option is found inside the dialog.
+Future<void> _chooseReplan(WidgetTester tester, AppLocalizations l10n) async {
+  final adjust = find.text(l10n.planDetailAdjustPlan);
+  if (!tester.any(adjust)) await _scrollBackTo(tester, adjust);
+  await _tapVisible(tester, adjust.first);
+  await tester.pump(const Duration(milliseconds: 400));
+  final option = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.text(l10n.planDetailReplan));
+  await tester.ensureVisible(option);
+  await tester.tap(option);
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
+}
+
 void main() {
   setUpAll(() => initializeDateFormatting());
 
@@ -218,6 +235,50 @@ void main() {
     await tester.pump();
     expect(_preview(l10n), findsOneWidget);
     expect(training.answers, isEmpty);
+  });
+
+  // A make-up the runner already accepted is answered (`missed_ack_at`), so
+  // no re-plan may stretch the same long run for it again (decisions § 2125).
+  testWidgets('after Make it up is applied, Re-plan proposes no second stretch',
+      (tester) async {
+    final training = _Training(_plan(), missedM: 20000);
+    final l10n = await _pump(tester, training);
+    await _tapVisible(tester, find.byKey(const Key('missedPromptMakeUp')));
+    await _tapVisible(tester, find.text(l10n.planDetailReplanApply));
+    await pumpUntil(tester, () => training.answers.isNotEmpty,
+        describe: 'the make-up to be applied');
+    expect(training.answers.single.distances, {'next': 16100.0});
+    await pumpUntil(
+        tester,
+        () => !tester
+            .any(find.byKey(const ValueKey('planDetailMissedPrompt-missed'))),
+        describe: 'the reload after the make-up');
+    await tester.pump(const Duration(seconds: 6));
+
+    await _chooseReplan(tester, l10n);
+    expect(find.text(l10n.planDetailReplanOnTrack), findsOneWidget);
+    expect(find.text(l10n.planDetailReplanPreviewTitle), findsNothing);
+    expect(training.replans, isEmpty);
+    await tester.pump(const Duration(seconds: 6));
+  });
+
+  testWidgets(
+      'a Re-plan opened over an unapplied make-up applies as a re-plan, '
+      'not as an answer', (tester) async {
+    final training = _Training(_plan());
+    final l10n = await _pump(tester, training);
+    await _tapVisible(tester, find.byKey(const Key('missedPromptMakeUp')));
+    expect(_preview(l10n), findsOneWidget);
+
+    await _chooseReplan(tester, l10n);
+    expect(_preview(l10n), findsOneWidget);
+    await _tapVisible(tester, find.text(l10n.planDetailReplanApply));
+    await pumpUntil(tester, () => training.replans.isNotEmpty,
+        describe: 'the re-plan to be applied');
+    expect(training.replans.single, {'next': 16000.0});
+    expect(training.answers, isEmpty,
+        reason: 'only the make-up preview answers the missed workout');
+    await tester.pump(const Duration(seconds: 6));
   });
 
   testWidgets('a paused plan asks nothing', (tester) async {

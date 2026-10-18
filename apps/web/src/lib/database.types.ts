@@ -3031,6 +3031,30 @@ export type Database = {
           },
         ]
       }
+      plan_calendar_feeds: {
+        Row: {
+          created_at: string
+          id: string
+          last_fetched_at: string | null
+          secret_hash: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_fetched_at?: string | null
+          secret_hash: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_fetched_at?: string | null
+          secret_hash?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       plan_weeks: {
         Row: {
           id: string
@@ -3083,9 +3107,13 @@ export type Database = {
           structure: Json | null
           target_distance_m: number | null
           target_duration_seconds: number | null
+          target_hr_max_bpm: number | null
+          target_hr_min_bpm: number | null
           target_pace_end_sec_per_km: number | null
           target_pace_sec_per_km: number | null
           target_pace_tolerance_sec: number | null
+          target_rpe_max: number | null
+          target_rpe_min: number | null
           updated_at: string | null
           updated_by: string | null
           week_id: string
@@ -3106,9 +3134,13 @@ export type Database = {
           structure?: Json | null
           target_distance_m?: number | null
           target_duration_seconds?: number | null
+          target_hr_max_bpm?: number | null
+          target_hr_min_bpm?: number | null
           target_pace_end_sec_per_km?: number | null
           target_pace_sec_per_km?: number | null
           target_pace_tolerance_sec?: number | null
+          target_rpe_max?: number | null
+          target_rpe_min?: number | null
           updated_at?: string | null
           updated_by?: string | null
           week_id: string
@@ -3129,9 +3161,13 @@ export type Database = {
           structure?: Json | null
           target_distance_m?: number | null
           target_duration_seconds?: number | null
+          target_hr_max_bpm?: number | null
+          target_hr_min_bpm?: number | null
           target_pace_end_sec_per_km?: number | null
           target_pace_sec_per_km?: number | null
           target_pace_tolerance_sec?: number | null
+          target_rpe_max?: number | null
+          target_rpe_min?: number | null
           updated_at?: string | null
           updated_by?: string | null
           week_id?: string
@@ -6113,13 +6149,16 @@ export type Database = {
         Returns: {
           active_plan_id: string
           athlete_id: string
+          athlete_today: string
           avatar_url: string
           display_name: string
           distance_7d_m: number
+          easy_hr_drift_pct: number
           last_run_at: string
           load_acute: number
           load_chronic: number
           plan_completion_pct: number
+          recent_workouts: Json
           runs_7d: number
         }[]
       }
@@ -6206,6 +6245,10 @@ export type Database = {
           id: string
         }[]
       }
+      dismiss_plan_workout_link: {
+        Args: { p_run_id: string; p_workout_id: string }
+        Returns: undefined
+      }
       dm_threads: {
         Args: never
         Returns: {
@@ -6246,6 +6289,7 @@ export type Database = {
       enqueue_run_rematch: { Args: { p_run_id: string }; Returns: Json }
       enqueue_safety_overdue_emails: { Args: never; Returns: undefined }
       enqueue_weekly_digests: { Args: never; Returns: number }
+      enqueue_workout_reminders: { Args: { p_now?: string }; Returns: number }
       escalate_run_off_route: { Args: { p_run_id: string }; Returns: boolean }
       event_gallery_photos: {
         Args: { p_event_id: string; p_instance: string; p_limit?: number }
@@ -6584,6 +6628,7 @@ export type Database = {
           unsettled_cents: number
         }[]
       }
+      hr_prescription_enabled: { Args: never; Returns: boolean }
       increment_coach_usage: { Args: { p_user_id: string }; Returns: number }
       invoke_event_refund_sweep: { Args: never; Returns: number }
       invoke_race_listings_sweep: { Args: never; Returns: number }
@@ -6673,6 +6718,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      move_plan_workout: {
+        Args: { p_date: string; p_workout_id: string }
+        Returns: string
+      }
       my_active_challenges: {
         Args: never
         Returns: {
@@ -6747,6 +6796,26 @@ export type Database = {
           achieved_at: string
           best_time_s: number
           distance: string
+        }[]
+      }
+      plan_calendar_feed_events: { Args: { p_feed_id: string }; Returns: Json }
+      plan_calendar_feed_status: {
+        Args: never
+        Returns: {
+          created_at: string
+          last_fetched_at: string
+        }[]
+      }
+      plan_workout_link_candidates: {
+        Args: { p_run_id: string }
+        Returns: {
+          day_offset: number
+          kind: Database["public"]["Enums"]["workout_kind"]
+          plan_id: string
+          scheduled_date: string
+          target_distance_m: number
+          target_duration_seconds: number
+          workout_id: string
         }[]
       }
       popular_route_tags: {
@@ -6898,6 +6967,10 @@ export type Database = {
         Returns: undefined
       }
       request_follow: { Args: { p_target: string }; Returns: string }
+      reschedule_plan_workouts: {
+        Args: { p_moves: Json; p_plan_id: string }
+        Returns: undefined
+      }
       resolve_target_reports: {
         Args: {
           p_resolution?: string
@@ -6907,10 +6980,12 @@ export type Database = {
         }
         Returns: number
       }
+      revoke_plan_calendar_feed: { Args: never; Returns: boolean }
       revoke_unmet_distance_achievements: {
         Args: { p_user: string }
         Returns: number
       }
+      rotate_plan_calendar_feed: { Args: never; Returns: string }
       route_conditions_for_viewer: {
         Args: { p_route_id: string }
         Returns: {
@@ -7136,6 +7211,7 @@ export type Database = {
           p_distance?: string
           p_from?: string
           p_limit?: number
+          p_newest_first?: boolean
           p_query?: string
           p_radius_m?: number
           p_to?: string

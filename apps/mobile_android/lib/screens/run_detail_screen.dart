@@ -50,7 +50,9 @@ import '../widgets/live_run_map.dart';
 import '../widgets/pace_segments.dart' show paceGradientRamp;
 import '../widgets/track_segment.dart';
 import '../race_service.dart';
+import '../training_service.dart';
 import '../widgets/run_gear_chips.dart';
+import '../widgets/run_plan_link_prompt.dart';
 import '../widgets/run_race_section.dart';
 import '../widgets/run_photos.dart';
 import '../widgets/run_segment_efforts.dart';
@@ -137,6 +139,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   late Run run = widget.run;
   late final SocialService _social = SocialService();
   final RaceService _raceService = RaceService();
+  late final TrainingService _training = TrainingService();
   bool _loadingTrack = false;
   bool _trackFetchFailed = false;
   /// Indoor/treadmill HR sidecar samples (bpm + timestamp, no coordinates),
@@ -1543,6 +1546,12 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       // Local RunDetail only opens runs owned by the viewer, so the
       // viewer is also the run owner — gates "delete any comment".
       if (widget.apiClient != null && widget.apiClient!.userId != null) ...[
+        RunPlanLinkPrompt(
+          load: () => _training.fetchLinkCandidates(run.id),
+          link: (workoutId) => _training.markCompleted(workoutId, run.id),
+          dismiss: (workoutId) =>
+              _training.dismissLinkCandidate(workoutId, run.id),
+        ),
         RunRaceSection(
           service: _raceService,
           runId: run.id,

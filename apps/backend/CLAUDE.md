@@ -39,6 +39,7 @@ apps/backend/
         ├── delete-account/index.ts
         ├── export-data/index.ts
         ├── parkrun-import/index.ts
+        ├── plan-calendar/{index,handler,lib}.ts   # subscribable plan .ics behind a revocable URL token
         ├── refresh-tokens/index.ts
         ├── revenuecat-webhook/index.ts
         ├── strava-import/index.ts + backfill.ts

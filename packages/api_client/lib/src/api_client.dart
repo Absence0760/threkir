@@ -426,6 +426,32 @@ class ApiClient {
     return cleared is int ? cleared : 0;
   }
 
+  /// The caller's plan calendar feed as its two timestamps
+  /// (`created_at`, `last_fetched_at`), or null when there is no feed
+  /// (migration 20270910000001). The token itself can never be read back.
+  Future<Map<String, dynamic>?> planCalendarFeedStatus() async {
+    final rows = await _client.rpc('plan_calendar_feed_status', params: const {}, get: true);
+    if (rows is List && rows.isNotEmpty && rows.first is Map) {
+      return Map<String, dynamic>.from(rows.first as Map);
+    }
+    return null;
+  }
+
+  /// Mints a new feed token, replacing any existing feed so the previous URL
+  /// stops working at once. The return value is the only copy of the token.
+  Future<String> rotatePlanCalendarFeed() async {
+    final token = await _client.rpc('rotate_plan_calendar_feed');
+    if (token is! String) {
+      throw StateError('rotate_plan_calendar_feed returned no token');
+    }
+    return token;
+  }
+
+  /// Deletes the caller's feed; its URL stops working at once.
+  Future<void> revokePlanCalendarFeed() async {
+    await _client.rpc('revoke_plan_calendar_feed');
+  }
+
   /// Exchange a Google ID token (obtained by the host app via the native
   /// Android `google_sign_in` flow) for a Supabase session. Returns the
   /// user ID.
@@ -1003,15 +1029,6 @@ class ApiClient {
           ? '${RunRow.colUserId},${RunRow.colExternalId}'
           : null,
     );
-    // L4 — best-effort plan-workout link. Mirrors `apps/web/src/lib/core/data.ts`
-    // `saveRun` / `createManualRun`. A match failure must not break the core
-    // upsert above (layered-resilience contract).
-    try {
-      await autoMatchRunToPlanWorkout(
-          run.id, run.startedAt.toUtc(), run.distanceMetres);
-    } catch (e) {
-      debugPrint('autoMatchRunToPlanWorkout failed: $e');
-    }
   }
 
   /// Patch the editable columns of a run row in place — duration, distance,
@@ -1182,33 +1199,6 @@ class ApiClient {
       }
       saved += chunk.length;
       onProgress?.call(saved);
-    }
-    // L4 — best-effort plan-workout link for batch ingest (Strava ZIP,
-    // Health Connect, etc.). Same auto-match the web `saveRun` path
-    // uses; a per-row match failure must not break the batch upsert.
-    // Skip auto-match for runs whose track upload failed — their row
-    // wasn't upserted, so the link would dangle.
-    // The plan/week scope is identical for every run in the batch, so
-    // fetch it once here instead of once per run (a bulk import used to
-    // re-query training_plans N times). If the prefetch itself fails,
-    // fall back to the per-run fetch so a transient error can't silence
-    // matching for the whole batch.
-    List<String>? batchWeekIds;
-    try {
-      batchWeekIds = await _planWeekIdsForUser(userId);
-    } catch (e) {
-      debugPrint('saveRunsBatch: plan week prefetch failed: $e');
-    }
-    if (batchWeekIds == null || batchWeekIds.isNotEmpty) {
-      for (final run in eligibleRuns) {
-        try {
-          await autoMatchRunToPlanWorkout(
-              run.id, run.startedAt.toUtc(), run.distanceMetres,
-              planWeekIds: batchWeekIds);
-        } catch (e) {
-          debugPrint('autoMatchRunToPlanWorkout failed: $e');
-        }
-      }
     }
     return _outcome(trackFailures, blocked);
   }
@@ -2645,6 +2635,21 @@ class ApiClient {
         .eq(RouteRow.colId, routeId);
   }
 
+  /// Whether the heart-rate prescription surfaces are live: the server's
+  /// `hr_prescription` gate, the same row the database enforces on every
+  /// write (decisions § 2108). Mirror of web `hrPrescriptionEnabled`. Fail
+  /// closed: any read failure is "off".
+  Future<bool> hrPrescriptionEnabled() async {
+    try {
+      final result = await _client
+          .rpc('hr_prescription_enabled', params: const {}, get: true);
+      return result == true;
+    } catch (e) {
+      debugPrint('hr_prescription_enabled failed: $e');
+      return false;
+    }
+  }
+
   // ────────────────── Audience sharing ──────────────────
   //
   // Mirror of `apps/web/src/lib/core/data.ts` `audienceSharingEnabled` /
@@ -3397,84 +3402,6 @@ class ApiClient {
     final label = await _client.rpc('my_discoverable_area',
         params: const {}, get: true);
     return label as String?;
-  }
-
-  /// Best-effort auto-link of a freshly-saved run to a plan workout
-  /// scheduled for the same calendar date, matched within 25% of the
-  /// workout's target distance. Client-side mirror of
-  /// `autoMatchRunToPlanWorkout` in `apps/web/src/lib/core/data.ts` —
-  /// there is no `auto_match_run_to_plan_workout` RPC; web does this with
-  /// direct queries and so do we. Returns the matched workout id, or null
-  /// when nothing matches.
-  Future<String?> autoMatchRunToPlanWorkout(
-    String runId,
-    DateTime runDate,
-    double runDistanceM, {
-    List<String>? planWeekIds,
-  }) async {
-    final userId = _client.auth.currentUser?.id;
-    if (userId == null) return null;
-    final isoDate = '${runDate.year.toString().padLeft(4, '0')}-'
-        '${runDate.month.toString().padLeft(2, '0')}-'
-        '${runDate.day.toString().padLeft(2, '0')}';
-
-    // [planWeekIds] lets batch callers (saveRunsBatch) fetch the plan/week
-    // scope once for the whole batch instead of once per run.
-    final weekIds = planWeekIds ?? await _planWeekIdsForUser(userId);
-    if (weekIds.isEmpty) return null;
-
-    final candidates = await readChunked(
-      weekIds,
-      (chunk) async => _client
-          .from(PlanWorkoutRow.table)
-          .select(
-              '${PlanWorkoutRow.colId}, ${PlanWorkoutRow.colTargetDistanceM}, '
-              '${PlanWorkoutRow.colCompletedRunId}, ${PlanWorkoutRow.colWeekId}')
-          .inFilter(PlanWorkoutRow.colWeekId, chunk)
-          .eq(PlanWorkoutRow.colScheduledDate, isoDate)
-          .isFilter(PlanWorkoutRow.colCompletedRunId, null),
-    );
-
-    // Closest target distance within 25% wins (mirrors web's sort-by-delta).
-    String? bestId;
-    double? bestDelta;
-    for (final c in candidates as List) {
-      final target = (c as Map)[PlanWorkoutRow.colTargetDistanceM];
-      if (target is! num || target <= 0) continue;
-      final delta = (target.toDouble() - runDistanceM).abs();
-      if (delta / target > 0.25) continue;
-      if (bestDelta == null || delta < bestDelta) {
-        bestId = c[PlanWorkoutRow.colId] as String;
-        bestDelta = delta;
-      }
-    }
-    if (bestId == null) return null;
-
-    await _client.from(PlanWorkoutRow.table).update({
-      PlanWorkoutRow.colCompletedRunId: runId,
-      PlanWorkoutRow.colManuallyCompleted: false,
-      PlanWorkoutRow.colCompletedAt: DateTime.now().toUtc().toIso8601String(),
-    }).eq(PlanWorkoutRow.colId, bestId);
-    return bestId;
-  }
-
-  /// The caller's plan-week ids, used to constrain the auto-match workout
-  /// query with `inFilter(week_id, ...)`. RLS on `plan_workouts` already
-  /// chains through `plan_weeks -> training_plans.user_id`, but the explicit
-  /// scope is defence in depth: without it a future RLS edit that broke
-  /// the chain could match a run to another user's workout. Mirrors the
-  /// web client-realtime H2 data-isolation fix.
-  Future<List<String>> _planWeekIdsForUser(String userId) async {
-    final plans = await _client
-        .from(TrainingPlanRow.table)
-        .select(
-            '${TrainingPlanRow.colId}, ${PlanWeekRow.table}(${PlanWeekRow.colId})')
-        .eq(TrainingPlanRow.colUserId, userId);
-    return <String>[
-      for (final p in plans as List)
-        for (final w in ((p as Map)[PlanWeekRow.table] as List? ?? const []))
-          (w as Map)[PlanWeekRow.colId] as String,
-    ];
   }
 
   /// Recent public runs from a single user — drives the runs tab on
@@ -8692,6 +8619,9 @@ class ApiClient {
         loadChronic: (r['load_chronic'] as num?)?.toDouble() ?? 0,
         activePlanId: r['active_plan_id'] as String?,
         planCompletionPct: (r['plan_completion_pct'] as num?)?.toInt() ?? 0,
+        athleteToday: r['athlete_today'] as String?,
+        recentWorkouts: r['recent_workouts'],
+        easyHrDriftPct: (r['easy_hr_drift_pct'] as num?)?.toDouble(),
       );
     }).toList();
   }
@@ -8899,6 +8829,7 @@ class ApiClient {
         .from(TrainingPlanRow.table)
         .select()
         .eq(TrainingPlanRow.colUserId, uid)
+        .eq(TrainingPlanRow.colIsTemplate, false)
         .order(TrainingPlanRow.colCreatedAt, ascending: false)
         .limit(limit);
     return (rows as List)
@@ -9342,6 +9273,17 @@ class CoachRosterRow {
   final String? activePlanId;
   final int planCompletionPct;
 
+  /// The athlete's local date, the `today` the miss count is derived against.
+  final String? athleteToday;
+
+  /// The current plan's non-rest workouts over the last 28 local days, raw;
+  /// the app reads them with `parseRosterRecentWorkouts` (coach_load.dart).
+  final Object? recentWorkouts;
+
+  /// Easy-run efficiency drift, per cent. Null without health-data consent
+  /// or too few runs to compare (decisions § 2092).
+  final double? easyHrDriftPct;
+
   const CoachRosterRow({
     required this.athleteId,
     required this.displayName,
@@ -9353,6 +9295,9 @@ class CoachRosterRow {
     required this.loadChronic,
     required this.activePlanId,
     required this.planCompletionPct,
+    this.athleteToday,
+    this.recentWorkouts,
+    this.easyHrDriftPct,
   });
 }
 

@@ -52,7 +52,7 @@ test.describe('/races paste → /runs/[id] — gun and chip time', () => {
 		const listingId = await insertRaceListing({
 			provider: 'manual',
 			name: raceName,
-			race_date: browserDate(10),
+			race_date: browserDate(0),
 			distance_m: 21_097
 		});
 		listings.push(listingId);

@@ -488,7 +488,7 @@ test.describe('plan chaining', () => {
 		await dialog.getByRole('button', { name: 'Replace plan' }).click();
 		await page.waitForURL(/\/plans\/[0-9a-f-]+$/, { timeout: 15_000 });
 
-		expect((await planStatus(planId)).status).toBe('completed');
+		expect((await planStatus(planId)).status).toBe('abandoned');
 	});
 
 	test('a public-library clone over an active plan can end that plan early', async ({ page }) => {

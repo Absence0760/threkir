@@ -35,10 +35,12 @@
 	// Hide the "Ask the Coach" promo when the Coach is off (rock-bottom deploy).
 	const coachOn = coachEnabled();
 	import { computeReadiness, type ReadinessContributorKind } from '#lib/training/readiness.ts';
-	import { computeTrainingLoadSeries, hasTrimpSignal } from '#lib/training/training_load.ts';
+	import { computeTrainingLoadSeries, hasTrimpSignal, isTrimpLowConfidence } from '#lib/training/training_load.ts';
+	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_gate.ts';
 	import { planRaceCountdown } from '#lib/training/plan_week.ts';
 	import { nextRace, planRaces } from '#lib/training/plan_races.ts';
 	import { formatISO } from '#lib/training/training.ts';
+	import { goalEventLabel } from '#lib/training/goal_event_label.ts';
 	import {
 		DISCLOSURE_LEVEL_KEY,
 		resolveDisclosureLevel,
@@ -76,6 +78,8 @@
 		revealOnNavigate,
 	} from '#lib/stores/modality_visibility.svelte.ts';
 	import DashboardWeekLead from '#lib/components/DashboardWeekLead.svelte';
+	import FinishPlanPrompt from '#lib/components/FinishPlanPrompt.svelte';
+	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import { weeklyGoalTarget } from '#lib/training/week_lead.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
@@ -83,6 +87,12 @@
 	import PeriodSummary from '#lib/components/PeriodSummary.svelte';
 	import ThisWeekStrip from '#lib/components/ThisWeekStrip.svelte';
 	import ChallengesPanel from '#lib/components/ChallengesPanel.svelte';
+	import DisclosureSection from '#lib/components/DisclosureSection.svelte';
+	import {
+		readDisclosureState,
+		writeDisclosureState,
+		type DisclosureState,
+	} from '#lib/util/disclosure_state.ts';
 	import Modal from '#lib/components/Modal.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import UnsavedChangesGuard from '#lib/components/UnsavedChangesGuard.svelte';
@@ -91,7 +101,7 @@
 	import { loadSettings, peekCachedSettings, effective, updateUniversal } from '#lib/settings/settings.ts';
 	import { relativeAge } from '#lib/runs/pr_recency.ts';
 	import type { LoadedSettings } from '#lib/settings/settings.ts';
-	import { fmtKm, fmtPace, formatElevation, formatWeight, setUnit } from '#lib/format/units.svelte.ts';
+	import { fmtKm, fmtPace, formatDistance as formatUnitDistance, formatElevation, formatWeight, setUnit } from '#lib/format/units.svelte.ts';
 	import { paceMinutesSeconds } from '#lib/format/pace_format.ts';
 	import { formatSignedInteger } from '#lib/format/number.ts';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
@@ -305,6 +315,39 @@
 	/// Not a control, so it has no settings page — see settings.md.
 	const TRAINING_LOAD_EXPANDED_KEY = 'dashboard_training_load_expanded';
 
+	// ─── Trend groups (multi_modal.md § Home, contract v1) ───
+	// Below the Today | Trends divider each group of trend cards folds to its
+	// one-line heading, remembered per account on this device. Every default
+	// is open: a runner who reads these cards today must not find them gone on
+	// the first visit after this shipped (decisions § 2080). The memory is what
+	// makes a collapse stick, not the default. Mobile twin: dashboard_screen.dart.
+	const TREND_SCOPE = 'dashboard_trends';
+	const TREND_DEFAULTS: DisclosureState = {
+		volume: true,
+		fitness: true,
+		performance: true,
+		effort: true,
+		recent: true,
+	};
+	let trendOpen = $state<DisclosureState>({ ...TREND_DEFAULTS });
+
+	// Keyed on the account, and `auth.ready()` can resolve before `auth.user`
+	// is set, so read once the id is known rather than once on mount: a read
+	// under 'anon' would hand back the defaults over a remembered fold.
+	let trendOwner: string | undefined;
+	$effect(() => {
+		const uid = auth.user?.id;
+		if (!uid || uid === trendOwner) return;
+		trendOwner = uid;
+		trendOpen = readDisclosureState(TREND_SCOPE, uid, TREND_DEFAULTS);
+	});
+
+	function setTrendOpen(key: string, open: boolean): void {
+		if (trendOpen[key] === open) return;
+		trendOpen = { ...trendOpen, [key]: open };
+		writeDisclosureState(TREND_SCOPE, auth.user?.id, trendOpen);
+	}
+
 	let storedDisclosure = $state<string | undefined>(undefined);
 	let primaryGoal = $state<string | null>(null);
 	let trainingLoadExpanded = $state(false);
@@ -321,6 +364,14 @@
 	);
 
 	let trainingLoadHasHr = $derived(hasTrimpSignal(runs, trimpPrefs));
+	let hrPrescription = $state(false);
+	onMount(() => {
+		void hrPrescriptionEnabled().then((on) => (hrPrescription = on));
+	});
+	let hrMedicationAffected = $state(false);
+	let trainingLoadLowConfidence = $derived(
+		hrPrescription && isTrimpLowConfidence(trainingLoadHasHr, hrMedicationAffected)
+	);
 	// Single source of truth for CTL/ATL/TSB on this page. The fitness
 	// card's numbers, the recovery advice, and the readiness ring used to
 	// read computeSnapshot (fitness.ts) while the chart below read
@@ -750,6 +801,7 @@
 			max_hr_bpm: effective<number>(settings, 'max_hr_bpm') ?? null,
 		};
 		excludeGymFromReadiness = effective<boolean>(settings, 'exclude_gym_from_readiness') === true;
+		hrMedicationAffected = effective<boolean>(settings, 'hr_medication_affected') === true;
 		storedDisclosure = effective<string>(settings, DISCLOSURE_LEVEL_KEY);
 		primaryGoal = effective<string>(settings, PRIMARY_GOAL_KEY) ?? null;
 		trainingLoadExpanded = effective<boolean>(settings, TRAINING_LOAD_EXPANDED_KEY) === true;
@@ -837,23 +889,6 @@
 	/// relation). Inlined here rather than lifted to #lib so the only
 	/// other caller — the plan list — keeps owning its own copy until a
 	/// third surface needs them.
-	/// Locale-aware goal-event label. 5K / 10K are language-neutral
-	/// race distances and stay verbatim; the rest route through the
-	/// message catalogue. Unknown events fall back to "Custom".
-	function goalEventLabel(event: string): string {
-		switch (event) {
-			case 'distance_5k':
-				return '5K';
-			case 'distance_10k':
-				return '10K';
-			case 'distance_half':
-				return m('dash.goalHalfMarathon');
-			case 'distance_full':
-				return m('dash.goalMarathon');
-			default:
-				return m('dash.goalCustom');
-		}
-	}
 	function planMidnight(iso: string): Date {
 		const [y, m, d] = iso.split('-').map(Number);
 		return new Date(y, (m ?? 1) - 1, d ?? 1);
@@ -869,6 +904,11 @@
 		planOverview
 			? nextRace(planRaces(planOverview.plan, planOverview.workouts), formatISO(todayMidnight))
 			: null
+	);
+	/// The shown plan's dates have run out but the runner has not filed it yet:
+	/// the hero asks them to, and the week lead stops offering its sessions.
+	let planFinished = $derived(
+		planOverview != null && isPlanFinished(planOverview.plan, formatISO(todayMidnight))
 	);
 	let planPosition = $derived.by(() => {
 		const overview = planOverview;
@@ -1150,7 +1190,7 @@
 		{#if hasRuns}
 			<DashboardWeekLead
 				activities={runs}
-				planWorkouts={planOverview?.workouts ?? null}
+				planWorkouts={planFinished ? null : (planOverview?.workouts ?? null)}
 				weeklyGoal={weeklyGoalTarget(displayGoals)}
 				weekStart={weekStartDay}
 				{now}
@@ -1169,7 +1209,7 @@
 						<div class="plan-hero-goal">
 							<span>
 								<span class="material-symbols">flag</span>
-								{heroRace?.name ?? goalEventLabel(planOverview.plan.goal_event)}
+								{heroRace?.name ?? goalEventLabel(m, formatUnitDistance, planOverview.plan.goal_event, planOverview.plan.goal_distance_m)}
 							</span>
 							{#if raceGoal}
 								<span>
@@ -1218,6 +1258,9 @@
 					</span>
 				</div>
 
+				{#if planFinished}
+					<FinishPlanPrompt plan={planOverview.plan} onfinished={reloadPlanOverview} />
+				{:else}
 				<div class="plan-hero-today">
 					{#if t}
 						<button
@@ -1245,7 +1288,7 @@
 										<span>{fmtKm(t.target_distance_m)}</span>
 									{/if}
 									{#if t.target_pace_sec_per_km}
-										<span>@ {fmtPace(t.target_pace_sec_per_km)}</span>
+										<span>{m('workoutDetail.atPace', { pace: fmtPace(t.target_pace_sec_per_km) })}</span>
 									{/if}
 									{#if todayDone}
 										<span class="plan-hero-today-done">{m('dash.completed')}</span>
@@ -1269,6 +1312,7 @@
 						</div>
 					{/if}
 				</div>
+				{/if}
 
 				{#if planOverview.upcoming}
 					<a class="plan-hero-next" href="/plans/{planOverview.upcoming.id}" data-testid="plan-hero-next">
@@ -1387,6 +1431,12 @@
 			     Year-recap link rides on the right side of the same row so
 			     the dashboard doesn't burn two horizontal rails on a single
 			     line of controls. -->
+			<!-- Today | Trends (multi_modal.md § Home, section rhythm): a hairline
+			     and a quiet label, not a shouting header. Everything above is
+			     about today; everything below is the runner's history. -->
+			<h2 class="trends-divider" data-testid="dash-trends-divider">
+				<span>{m('dash.trendsDivider')}</span>
+			</h2>
 			<div class="filter-row">
 				{#if visibleSources.length > 0}
 					<div class="filter-chips">
@@ -1675,420 +1725,466 @@
 
 			{#snippet trainingLoadChart()}
 				<section class="fitness-card">
-					<TrainingLoadChart points={trainingLoadSeries} hasHr={trainingLoadHasHr} />
+					<TrainingLoadChart
+						points={trainingLoadSeries}
+						hasHr={trainingLoadHasHr}
+						lowConfidence={trainingLoadLowConfidence}
+					/>
 				</section>
 			{/snippet}
 
-			<div class="metric-band">
-			<!-- Readiness-to-run — single 0-100 number with band-aware
-			     accent. Inputs today are TSB-only; sleep + resting-HR pipe
-			     through the `readiness.ts` helper unchanged once Health
-			     Connect / HealthKit reads land. Hide entirely when there's
-			     nothing to score (no TSB, no qualifying runs). -->
-			{#if loadNow != null}
-				<section class="readiness-card readiness-{readiness.band}">
-					<div class="readiness-head">
-						<span class="readiness-label">{m('dash.readinessLabel')}</span>
-						<span class="readiness-band">{readiness.band}</span>
-					</div>
-					<div class="readiness-score">{readiness.score}</div>
-					<p class="readiness-advice">{readiness.advice}</p>
-					{#if readiness.contributors.length > 0}
-						<ul class="readiness-contribs">
-							{#each readiness.contributors as c (c.kind)}
-								<li>
-									<span class="contrib-name">{m(CONTRIBUTOR_NAMES[c.kind])}</span>
-									<span class="contrib-delta" class:positive={c.delta > 0} class:negative={c.delta < 0}>
-										{c.delta > 0 ? '+' : ''}{c.delta}
-									</span>
-								</li>
-							{/each}
-						</ul>
-					{/if}
-				</section>
-			{/if}
+			<!-- The trend cards, grouped. Each group folds to its one-line heading
+			     (multi_modal.md § Home, contract v1). A group is mounted only when
+			     at least one card in it is sure to render, so a fold never opens on
+			     nothing; the cards that self-hide still do so inside it. Order is
+			     volume, fitness, performance, effort, recent — the same on mobile. -->
+			<DisclosureSection
+				id="dash-trend-volume"
+				title={m('dash.trendGroupVolume')}
+				hint={m('dash.trendGroupVolumeHint')}
+				open={trendOpen.volume}
+				ontoggle={(o) => setTrendOpen('volume', o)}
+				sectionClass="trend-group"
+			>
+				<div class="metric-band">
+					<!-- Mileage chart -->
+					<section class="card-elevated">
+						<div class="chart-header">
+							<h2>{m('dash.mileageTitle')}</h2>
+							<div class="view-toggle">
+								<button class:active={mileageView === 'weekly'} onclick={() => (mileageView = 'weekly')}>{m('dash.viewWeek')}</button>
+								<button class:active={mileageView === 'monthly'} onclick={() => (mileageView = 'monthly')}>{m('dash.viewMonth')}</button>
+								<button class:active={mileageView === 'yearly'} onclick={() => (mileageView = 'yearly')}>{m('dash.viewYear')}</button>
+							</div>
+						</div>
+						{#if mileageData.length === 0}
+							<p class="empty-text">{m('dash.mileageEmpty')}</p>
+						{:else}
+							<!-- A readout rail above the chart, the shape ElevationProfile
+							     uses, rather than a tooltip per bar. A tooltip centred on
+							     its column overhung the card once the window became twelve
+							     narrow weeks: the last bar's label ran past a 300px
+							     viewport and scrolled the page sideways even at opacity 0,
+							     because a transparent box still has layout. The rail is in
+							     flow, reserves its line so the bars never jump, and wraps
+							     inside the card in any locale. -->
+							<p class="chart-readout" data-testid="mileage-readout">
+								{#if inspectedBar}{inspectedBar.week} · {formatDistance(inspectedBar.distance_m)}{/if}
+							</p>
+							<!-- A list of named weeks, so the figures the readout shows on
+							     hover are also what a screen reader reads per bar. -->
+							<div
+								class="chart"
+								role="list"
+								bind:clientWidth={chartWidth}
+								onpointerleave={(e) => {
+									// A touch lifts before it leaves, so clearing on a touch
+									// pointerleave would wipe the reading the tap just made.
+									if (e.pointerType !== 'touch') mileageInspect = null;
+								}}
+							>
+								{#each mileageData as week, i (week.week)}
+									<!-- `class:empty` rather than a hidden column: a week with
+									     no run is the chart's most load-bearing datum, and the
+									     slot has to be visibly there for the gap to read as a
+									     gap. The bar keeps its zero height and the column
+									     shows a baseline tick instead. -->
+									<div
+										class="bar-col"
+										role="listitem"
+										aria-label="{week.week} · {formatDistance(week.distance_m)}"
+										class:empty={week.distance_m === 0}
+										class:inspected={mileageInspect === i}
+										onpointerenter={() => (mileageInspect = i)}
+										onpointerdown={() => (mileageInspect = i)}
+									>
+										<div
+											class="bar"
+											style="height: {(week.distance_m / maxBar) * 100}%"
+										></div>
+										<span
+											class="bar-label"
+											class:thinned={(mileageData.length - 1 - i) % axisLabelStep !== 0}
+											bind:offsetWidth={axisLabelWidths[i]}>{week.axis}</span
+										>
+									</div>
+								{/each}
+							</div>
+						{/if}
+					</section>
 
-			{#if disclosure !== 'simple' && (liveSnap.vo2Max != null || loadNow != null)}
-				{@render fitnessSnapshot()}
-			{/if}
+					<!-- Training consistency — the fraction of the last 12 calendar weeks
+					     with any activity, the trailing active-week streak, and whether
+					     weekly volume is steady or spiky. A distinct signal from VDOT
+					     (fitness ceiling), the load trio (acute fatigue/form), and the
+					     day-streak (consecutive days). Scoped to filteredRuns so the
+					     source filter + activity-type view carry through, like the week
+					     strip + streak card. Self-hides with < 2 active weeks. Backlog #11
+					     (advanced analytics polish). -->
+					<ConsistencyCard activities={filteredRuns} weekStart={weekStartDay} {now} />
+				</div>
+			</DisclosureSection>
+			{#if liveSnap.vo2Max != null || loadNow != null || runs.length > 0}
+				<DisclosureSection
+					id="dash-trend-fitness"
+					title={m('dash.trendGroupFitness')}
+					hint={m('dash.trendGroupFitnessHint')}
+					open={trendOpen.fitness}
+					ontoggle={(o) => setTrendOpen('fitness', o)}
+					sectionClass="trend-group"
+				>
+					<div class="metric-band">
+						<!-- Readiness-to-run — single 0-100 number with band-aware
+						     accent. Inputs today are TSB-only; sleep + resting-HR pipe
+						     through the `readiness.ts` helper unchanged once Health
+						     Connect / HealthKit reads land. Hide entirely when there's
+						     nothing to score (no TSB, no qualifying runs). -->
+						{#if loadNow != null}
+							<section class="readiness-card readiness-{readiness.band}">
+								<div class="readiness-head">
+									<span class="readiness-label">{m('dash.readinessLabel')}</span>
+									<span class="readiness-band">{readiness.band}</span>
+								</div>
+								<div class="readiness-score">{readiness.score}</div>
+								<p class="readiness-advice">{readiness.advice}</p>
+								{#if readiness.contributors.length > 0}
+									<ul class="readiness-contribs">
+										{#each readiness.contributors as c (c.kind)}
+											<li>
+												<span class="contrib-name">{m(CONTRIBUTOR_NAMES[c.kind])}</span>
+												<span class="contrib-delta" class:positive={c.delta > 0} class:negative={c.delta < 0}>
+													{c.delta > 0 ? '+' : ''}{c.delta}
+												</span>
+											</li>
+										{/each}
+									</ul>
+								{/if}
+								{#if readiness.contributors.every((c) => c.kind === 'form')}
+									<p class="readiness-source" data-testid="readiness-load-only">
+										{m('dash.readinessFromLoadOnly')}
+									</p>
+								{/if}
+							</section>
+						{/if}
 
-			</div>
-
-			<!-- Analytics band: every card-weight block between here and the
-			     intensity card. Each was a full-width slab in one flex column,
-			     so a 1,440 px screen showed a single column of them and the
-			     page ran to ~3,900 px — three screens of scrolling for what
-			     fits in one and a half. Most of them self-hide, which is why
-			     the band is auto-fit rather than a fixed span count: what
-			     renders decides the shape.
-
-			     auto-fit rather than auto-fill: with a short final row
-			     auto-fill keeps the empty tracks and the last card sits in a
-			     24rem slot beside a void, which is the defect § 901 fixed on
-			     the Learn hub. -->
-			<div class="metric-band">
-			<!-- Training-load curves over the last 90 days (decisions §34).
-			     Uses TRIMP when avg_bpm + HR prefs are available, distance
-			     fallback otherwise. Hides when there's nothing to plot. -->
-			{#if disclosure === 'simple'}
-				<!-- Progressive disclosure (#905): at `simple` the fitness snapshot
-				     and the load curve are FOLDED, never dropped — one expander, named
-				     for what is inside it, remembering per account whether it was
-				     opened. At `standard` / `full` the page is exactly as it was.
-				     The override on /settings/display is what makes folding safe. -->
-				{#if liveSnap.vo2Max != null || loadNow != null || runs.length > 0}
-					<details
-						class="load-disclosure"
-						open={trainingLoadExpanded}
-						ontoggle={(e) => setTrainingLoadExpanded(e.currentTarget.open)}
-						data-testid="training-load-disclosure"
-					>
-						<summary>
-							<span class="material-symbols" aria-hidden="true">expand_more</span>
-							<span class="load-disclosure-text">
-								<span class="load-disclosure-title">{m('dash.trainingLoadSection')}</span>
-								<span class="load-disclosure-sub">{m('dash.trainingLoadSectionHint')}</span>
-							</span>
-						</summary>
-						{#if liveSnap.vo2Max != null || loadNow != null}
+						{#if disclosure !== 'simple' && (liveSnap.vo2Max != null || loadNow != null)}
 							{@render fitnessSnapshot()}
 						{/if}
-						{#if runs.length > 0}
+
+						<!-- Training-load curves over the last 90 days (decisions §34).
+						     Uses TRIMP when avg_bpm + HR prefs are available, distance
+						     fallback otherwise. Hides when there's nothing to plot. -->
+						{#if disclosure === 'simple'}
+							<!-- Progressive disclosure (#905): at `simple` the fitness snapshot
+							     and the load curve are FOLDED, never dropped — one expander, named
+							     for what is inside it, remembering per account whether it was
+							     opened. At `standard` / `full` the page is exactly as it was.
+							     The override on /settings/display is what makes folding safe. -->
+							{#if liveSnap.vo2Max != null || loadNow != null || runs.length > 0}
+								<details
+									class="load-disclosure"
+									open={trainingLoadExpanded}
+									ontoggle={(e) => setTrainingLoadExpanded(e.currentTarget.open)}
+									data-testid="training-load-disclosure"
+								>
+									<summary>
+										<span class="material-symbols" aria-hidden="true">expand_more</span>
+										<span class="load-disclosure-text">
+											<span class="load-disclosure-title">{m('dash.trainingLoadSection')}</span>
+											<span class="load-disclosure-sub">{m('dash.trainingLoadSectionHint')}</span>
+										</span>
+									</summary>
+									{#if liveSnap.vo2Max != null || loadNow != null}
+										{@render fitnessSnapshot()}
+									{/if}
+									{#if runs.length > 0}
+										{@render trainingLoadChart()}
+									{/if}
+								</details>
+							{/if}
+						{:else if runs.length > 0}
 							{@render trainingLoadChart()}
 						{/if}
-					</details>
-				{/if}
-			{:else if runs.length > 0}
-				{@render trainingLoadChart()}
-			{/if}
 
-			<!-- Multi-distance race-time predictor — projects the 5K / 10K / Half /
-			     Marathon ladder from recency-weighted qualifying efforts, each rung
-			     graded for confidence. Self-hides when no run qualifies (its own
-			     null return). Backlog #11 (advanced analytics polish). -->
-			<RacePredictorCard {runs} />
+						<!-- Training-load ramp — the runner's own acute:chronic workload ratio
+						     and its injury-risk band. The same ACWR policy the coach roster
+						     classifies athletes through (lib/training/coach_load.ts), finally
+						     shown to the runner it describes; most runners have no coach, so
+						     this signal had no reader. Distinct from the readiness ring, which
+						     scores TODAY (form + sleep + resting HR) rather than the last
+						     month's ramp. Scoped to filteredRuns like its neighbours;
+						     self-hides below MIN_ACTIVE_WEEKS of history rather than dividing
+						     by a base that isn't there. Pure derivation in
+						     lib/training/self_load.ts. -->
+						<LoadRampCard runs={filteredRuns} />
 
-			<!-- Training consistency — the fraction of the last 12 calendar weeks
-			     with any activity, the trailing active-week streak, and whether
-			     weekly volume is steady or spiky. A distinct signal from VDOT
-			     (fitness ceiling), the load trio (acute fatigue/form), and the
-			     day-streak (consecutive days). Scoped to filteredRuns so the
-			     source filter + activity-type view carry through, like the week
-			     strip + streak card. Self-hides with < 2 active weeks. Backlog #11
-			     (advanced analytics polish). -->
-			<ConsistencyCard activities={filteredRuns} weekStart={weekStartDay} {now} />
-
-			<!-- Easy / hard intensity balance — the time-weighted easy vs hard
-			     split against the ~80/20 polarised-training guideline, with a
-			     verdict (on guideline / too hard / all easy). Classifies each run
-			     by pace against the runner's own VDOT-derived threshold (same
-			     anchor as the load trio). Self-hides when no threshold derives or
-			     the sample is too small. Pure derivation in
-			     lib/training/intensity.ts. Backlog #11. -->
-			<IntensityBalanceCard runs={filteredRuns} />
-
-			<!-- Training-load ramp — the runner's own acute:chronic workload ratio
-			     and its injury-risk band. The same ACWR policy the coach roster
-			     classifies athletes through (lib/training/coach_load.ts), finally
-			     shown to the runner it describes; most runners have no coach, so
-			     this signal had no reader. Distinct from the readiness ring, which
-			     scores TODAY (form + sleep + resting HR) rather than the last
-			     month's ramp. Scoped to filteredRuns like its neighbours;
-			     self-hides below MIN_ACTIVE_WEEKS of history rather than dividing
-			     by a base that isn't there. Pure derivation in
-			     lib/training/self_load.ts. -->
-			<LoadRampCard runs={filteredRuns} />
-
-			<!-- The same question for the runner the ratio above refuses to grade:
-			     back from a break, no chronic month to divide by, and so no card at
-			     all in exactly the case that most warrants one. Anchored on their
-			     own pre-break weekly average instead of a near-empty one. Mutually
-			     exclusive with LoadRampCard by construction (same activeWeeks gate,
-			     read the other way), pinned by a unit test. Pure derivation in
-			     lib/training/comeback.ts. -->
-			<ComebackCard runs={filteredRuns} />
-
-			<!-- Mileage chart -->
-			<section class="card-elevated">
-				<div class="chart-header">
-					<h2>{m('dash.mileageTitle')}</h2>
-					<div class="view-toggle">
-						<button class:active={mileageView === 'weekly'} onclick={() => (mileageView = 'weekly')}>{m('dash.viewWeek')}</button>
-						<button class:active={mileageView === 'monthly'} onclick={() => (mileageView = 'monthly')}>{m('dash.viewMonth')}</button>
-						<button class:active={mileageView === 'yearly'} onclick={() => (mileageView = 'yearly')}>{m('dash.viewYear')}</button>
+						<!-- The same question for the runner the ratio above refuses to grade:
+						     back from a break, no chronic month to divide by, and so no card at
+						     all in exactly the case that most warrants one. Anchored on their
+						     own pre-break weekly average instead of a near-empty one. Mutually
+						     exclusive with LoadRampCard by construction (same activeWeeks gate,
+						     read the other way), pinned by a unit test. Pure derivation in
+						     lib/training/comeback.ts. -->
+						<ComebackCard runs={filteredRuns} />
 					</div>
-				</div>
-				{#if mileageData.length === 0}
-					<p class="empty-text">{m('dash.mileageEmpty')}</p>
-				{:else}
-					<!-- A readout rail above the chart, the shape ElevationProfile
-					     uses, rather than a tooltip per bar. A tooltip centred on
-					     its column overhung the card once the window became twelve
-					     narrow weeks: the last bar's label ran past a 300px
-					     viewport and scrolled the page sideways even at opacity 0,
-					     because a transparent box still has layout. The rail is in
-					     flow, reserves its line so the bars never jump, and wraps
-					     inside the card in any locale. -->
-					<p class="chart-readout" data-testid="mileage-readout">
-						{#if inspectedBar}{inspectedBar.week} · {formatDistance(inspectedBar.distance_m)}{/if}
-					</p>
-					<!-- A list of named weeks, so the figures the readout shows on
-					     hover are also what a screen reader reads per bar. -->
-					<div
-						class="chart"
-						role="list"
-						bind:clientWidth={chartWidth}
-						onpointerleave={(e) => {
-							// A touch lifts before it leaves, so clearing on a touch
-							// pointerleave would wipe the reading the tap just made.
-							if (e.pointerType !== 'touch') mileageInspect = null;
-						}}
-					>
-						{#each mileageData as week, i (week.week)}
-							<!-- `class:empty` rather than a hidden column: a week with
-							     no run is the chart's most load-bearing datum, and the
-							     slot has to be visibly there for the gap to read as a
-							     gap. The bar keeps its zero height and the column
-							     shows a baseline tick instead. -->
-							<div
-								class="bar-col"
-								role="listitem"
-								aria-label="{week.week} · {formatDistance(week.distance_m)}"
-								class:empty={week.distance_m === 0}
-								class:inspected={mileageInspect === i}
-								onpointerenter={() => (mileageInspect = i)}
-								onpointerdown={() => (mileageInspect = i)}
-							>
-								<div
-									class="bar"
-									style="height: {(week.distance_m / maxBar) * 100}%"
-								></div>
-								<span
-									class="bar-label"
-									class:thinned={(mileageData.length - 1 - i) % axisLabelStep !== 0}
-									bind:offsetWidth={axisLabelWidths[i]}>{week.axis}</span
-								>
+				</DisclosureSection>
+			{/if}
+			<DisclosureSection
+				id="dash-trend-performance"
+				title={m('dash.trendGroupPerformance')}
+				hint={m('dash.trendGroupPerformanceHint')}
+				open={trendOpen.performance}
+				ontoggle={(o) => setTrendOpen('performance', o)}
+				sectionClass="trend-group"
+			>
+				<div class="metric-band">
+					<!-- Multi-distance race-time predictor — projects the 5K / 10K / Half /
+					     Marathon ladder from recency-weighted qualifying efforts, each rung
+					     graded for confidence. Self-hides when no run qualifies (its own
+					     null return). Backlog #11 (advanced analytics polish). -->
+					<RacePredictorCard {runs} />
+
+					<!-- Personal records -->
+					<section class="card-elevated">
+						<h2>{m('dash.personalRecordsTitle')}</h2>
+						{#if visiblePrs.length > 0}
+							{#if isReturningRunner && allPrsStale}
+								<p class="pr-stale-note">
+									{m('dash.prStaleNote')}
+								</p>
+							{/if}
+							<div class="table-scroll" tabindex="0">
+								<table class="pr-table">
+									<thead>
+										<tr>
+											<th>{m('dash.prColDistance')}</th>
+											<th>{m('dash.prColTime')}</th>
+											<th>{m('dash.prColDate')}</th>
+											{#if showAgeGradeCol}
+												<th class="pr-age-grade-th"><MetricLabel metric="ageGrade" /></th>
+											{/if}
+											<th></th>
+										</tr>
+									</thead>
+									<tbody>
+										{#each visiblePrs as pr}
+											<tr>
+												<td class="pr-distance">{pr.distance}</td>
+												<td class="pr-time">{formatDuration(pr.time_s)}</td>
+												<td class="pr-date">
+													{formatDate(pr.date)}
+													<span class="pr-age">{relativeAge(pr.date)}</span>
+												</td>
+												{#if showAgeGradeCol}
+													<td class="pr-age-grade">
+														{prAgeGrades[pr.key] ?? '—'}
+													</td>
+												{/if}
+												<td>
+													<button
+														type="button"
+														class="pr-hide"
+														title={m('dash.hideRecordTitle')}
+														aria-label={m('dash.hideRecordAria', { distance: pr.distance })}
+														onclick={() => hidePr(pr.key)}>×</button
+													>
+												</td>
+											</tr>
+										{/each}
+									</tbody>
+								</table>
 							</div>
-						{/each}
-					</div>
-				{/if}
-			</section>
-
-			<!-- Training intensity — time in HR zones over the last 30/365 days
-			     (window mirrors the Mileage view). Empty state links to
-			     /settings/training#heart-rate-zones when the user hasn't set zones,
-			     or to the same anchor with a "no HR data" hint when zones
-			     are set but no run in window carries avg_bpm.
-			     Layered resilience: hrZones load is wrapped in onMount; a
-			     failure leaves the card in its empty state and never blocks
-			     the rest of the dashboard. Per-point analysis from the
-			     gzipped track is the eventual accuracy upgrade. -->
-			{#if runs.length > 0}
-			<section class="card-elevated intensity-card">
-				<div class="card-head">
-					<h2>{m('dash.trainingIntensityTitle')}</h2>
-					{#if hrZones && intensityBreakdown && intensityBreakdown.total > 0}
-						<span class="intensity-window">
-							{intensityWindow === '30d'
-								? m('dash.windowLast30Days')
-								: intensityWindow === '90d'
-									? m('dash.windowLast90Days')
-									: m('dash.windowLast12Months')}
-							· {intensityBreakdown.hrTrackedRuns === 1
-								? m('dash.runsWithHrOne', { n: intensityBreakdown.hrTrackedRuns })
-								: m('dash.runsWithHrOther', { n: intensityBreakdown.hrTrackedRuns })}
-						</span>
-					{/if}
+						{:else if personalRecords.length === 0}
+							<p class="empty-text">{m('dash.prEmptyNoRuns')}</p>
+						{:else}
+							<p class="empty-text">{m('dash.prAllHidden')}</p>
+						{/if}
+						{#if hiddenPrRows.length > 0}
+							<button
+								type="button"
+								class="pr-show-hidden"
+								onclick={() => (showHiddenPrs = !showHiddenPrs)}
+								aria-expanded={showHiddenPrs}
+							>
+								{showHiddenPrs ? m('dash.hideHidden') : m('dash.showHidden', { n: hiddenPrRows.length })}
+							</button>
+							{#if showHiddenPrs}
+								<ul class="pr-hidden-list">
+									{#each hiddenPrRows as pr}
+										<li>
+											<span>{pr.distance} · {formatDuration(pr.time_s)}</span>
+											<button type="button" class="pr-unhide" onclick={() => unhidePr(pr.key)}>
+												{m('dash.unhide')}
+											</button>
+										</li>
+									{/each}
+								</ul>
+							{/if}
+						{/if}
+					</section>
 				</div>
-				{#if !hrZones}
-					<div class="intensity-empty">
-						<span class="material-symbols intensity-empty-icon">favorite</span>
-						<div class="intensity-empty-body">
-							<strong>{m('dash.setHrZonesTitle')}</strong>
-							<p>{m('dash.setHrZonesBody')}</p>
-						</div>
-						<a class="btn btn-primary btn-sm" href="/settings/training#heart-rate-zones">
-							{m('dash.setZones')}
-						</a>
-					</div>
-				{:else if !intensityBreakdown || intensityBreakdown.total === 0}
-					<div class="intensity-empty">
-						<span class="material-symbols intensity-empty-icon">monitoring</span>
-						<div class="intensity-empty-body">
-							<strong>{m('dash.noHrDataTitle')}</strong>
-							<p>{m('dash.noHrDataBody')}</p>
-						</div>
-						<a class="btn btn-secondary btn-sm" href="/settings/training#heart-rate-zones">
-							{m('dash.reviewZones')}
-						</a>
-					</div>
-				{:else}
-					{@const zb = intensityBreakdown}
-					<ul class="zone-list">
-						{#each zb.zoneSeconds as secs, i}
-							{@const pct = secs / zb.total}
-							<li class="zone-row zone-row-{i + 1}">
-								<span class="zone-name">{m(ZONE_NAMES[i])}</span>
-								<div class="zone-bar-wrap">
-									<div class="zone-bar" style="width: {Math.max(pct * 100, secs > 0 ? 1.5 : 0)}%"></div>
+			</DisclosureSection>
+			{#if runs.length > 0}
+				<DisclosureSection
+					id="dash-trend-effort"
+					title={m('dash.trendGroupEffort')}
+					hint={m('dash.trendGroupEffortHint')}
+					open={trendOpen.effort}
+					ontoggle={(o) => setTrendOpen('effort', o)}
+					sectionClass="trend-group"
+				>
+					<div class="metric-band">
+						<!-- Easy / hard intensity balance — the time-weighted easy vs hard
+						     split against the ~80/20 polarised-training guideline, with a
+						     verdict (on guideline / too hard / all easy). Classifies each run
+						     by pace against the runner's own VDOT-derived threshold (same
+						     anchor as the load trio). Self-hides when no threshold derives or
+						     the sample is too small. Pure derivation in
+						     lib/training/intensity.ts. Backlog #11. -->
+						<IntensityBalanceCard runs={filteredRuns} />
+
+						<!-- Training intensity — time in HR zones over the last 30/365 days
+						     (window mirrors the Mileage view). Empty state links to
+						     /settings/training#heart-rate-zones when the user hasn't set zones,
+						     or to the same anchor with a "no HR data" hint when zones
+						     are set but no run in window carries avg_bpm.
+						     Layered resilience: hrZones load is wrapped in onMount; a
+						     failure leaves the card in its empty state and never blocks
+						     the rest of the dashboard. Per-point analysis from the
+						     gzipped track is the eventual accuracy upgrade. -->
+						<section class="card-elevated intensity-card">
+							<div class="card-head">
+								<h2>{m('dash.trainingIntensityTitle')}</h2>
+								{#if hrZones && intensityBreakdown && intensityBreakdown.total > 0}
+									<span class="intensity-window">
+										{intensityWindow === '30d'
+											? m('dash.windowLast30Days')
+											: intensityWindow === '90d'
+												? m('dash.windowLast90Days')
+												: m('dash.windowLast12Months')}
+										· {intensityBreakdown.hrTrackedRuns === 1
+											? m('dash.runsWithHrOne', { n: intensityBreakdown.hrTrackedRuns })
+											: m('dash.runsWithHrOther', { n: intensityBreakdown.hrTrackedRuns })}
+									</span>
+								{/if}
+							</div>
+							{#if !hrZones}
+								<div class="intensity-empty">
+									<span class="material-symbols intensity-empty-icon">favorite</span>
+									<div class="intensity-empty-body">
+										<strong>{m('dash.setHrZonesTitle')}</strong>
+										<p>{m('dash.setHrZonesBody')}</p>
+									</div>
+									<a class="btn btn-primary btn-sm" href="/settings/training#heart-rate-zones">
+										{m('dash.setZones')}
+									</a>
 								</div>
-								<span class="zone-duration">{fmtCompactDuration(secs)}</span>
-								<span class="zone-pct">{Math.round(pct * 100)}%</span>
-							</li>
-						{/each}
-					</ul>
-					<p class="intensity-foot">
-						{m('dash.intensityFoot', { total: fmtCompactDuration(zb.total) })}
-					</p>
-				{/if}
-			</section>
+							{:else if !intensityBreakdown || intensityBreakdown.total === 0}
+								<div class="intensity-empty">
+									<span class="material-symbols intensity-empty-icon">monitoring</span>
+									<div class="intensity-empty-body">
+										<strong>{m('dash.noHrDataTitle')}</strong>
+										<p>{m('dash.noHrDataBody')}</p>
+									</div>
+									<a class="btn btn-secondary btn-sm" href="/settings/training#heart-rate-zones">
+										{m('dash.reviewZones')}
+									</a>
+								</div>
+							{:else}
+								{@const zb = intensityBreakdown}
+								<ul class="zone-list">
+									{#each zb.zoneSeconds as secs, i}
+										{@const pct = secs / zb.total}
+										<li class="zone-row zone-row-{i + 1}">
+											<span class="zone-name">{m(ZONE_NAMES[i])}</span>
+											<div class="zone-bar-wrap">
+												<div class="zone-bar" style="width: {Math.max(pct * 100, secs > 0 ? 1.5 : 0)}%"></div>
+											</div>
+											<span class="zone-duration">{fmtCompactDuration(secs)}</span>
+											<span class="zone-pct">{Math.round(pct * 100)}%</span>
+										</li>
+									{/each}
+								</ul>
+								<p class="intensity-foot">
+									{m('dash.intensityFoot', { total: fmtCompactDuration(zb.total) })}
+								</p>
+							{/if}
+						</section>
+					</div>
+				</DisclosureSection>
 			{/if}
-
-			</div>
-
-			<div class="two-col">
-				<!-- Personal records -->
-				<section class="card-elevated">
-					<h2>{m('dash.personalRecordsTitle')}</h2>
-					{#if visiblePrs.length > 0}
-						{#if isReturningRunner && allPrsStale}
-							<p class="pr-stale-note">
-								{m('dash.prStaleNote')}
+			<DisclosureSection
+				id="dash-trend-recent"
+				title={m('dash.trendGroupRecent')}
+				hint={m('dash.trendGroupRecentHint')}
+				open={trendOpen.recent}
+				ontoggle={(o) => setTrendOpen('recent', o)}
+				sectionClass="trend-group"
+			>
+				<div class="metric-band">
+					<!-- Recent runs -->
+					<section class="card-elevated">
+						<h2>{m('dash.recentRunsTitle')}</h2>
+						{#if filteredRuns.length > 0}
+							<div class="run-list">
+								{#each filteredRuns.slice(0, 7) as run}
+									<a href="/runs/{run.id}" class="run-row">
+										<div class="run-info">
+											<span class="run-date">{formatDateShort(run.started_at)}</span>
+											<span class="run-distance">{formatDistance(run.distance_m)}</span>
+										</div>
+										<div class="run-meta">
+											<span class="run-pace">{formatPace(run.duration_s, run.distance_m)}</span>
+											<span class="source-badge" style="background: {sourceColor(run.source)}; color: {sourceInk(run.source)}">{sourceLabel(run.source)}</span>
+										</div>
+									</a>
+								{/each}
+							</div>
+						{:else if sourceFilter === 'all'}
+							<p class="empty-text">
+								{m('dash.recentEmptyAll')}
+							</p>
+							<div class="recent-empty-actions">
+								<a class="btn btn-primary btn-sm" href="/runs/new">{m('dash.addARun')}</a>
+								<a class="btn btn-outline btn-sm" href="/settings/integrations">{m('dash.importFromStravaGarmin')}</a>
+							</div>
+						{:else}
+							<p class="empty-text">
+								{m('dash.recentEmptyFiltered', {
+									source: sourceChipLabel(sources.find((s) => s.value === sourceFilter)?.label ?? sourceFilter),
+								})}
 							</p>
 						{/if}
-						<div class="table-scroll" tabindex="0">
-							<table class="pr-table">
-								<thead>
-									<tr>
-										<th>{m('dash.prColDistance')}</th>
-										<th>{m('dash.prColTime')}</th>
-										<th>{m('dash.prColDate')}</th>
-										{#if showAgeGradeCol}
-											<th class="pr-age-grade-th"><MetricLabel metric="ageGrade" /></th>
-										{/if}
-										<th></th>
-									</tr>
-								</thead>
-								<tbody>
-									{#each visiblePrs as pr}
-										<tr>
-											<td class="pr-distance">{pr.distance}</td>
-											<td class="pr-time">{formatDuration(pr.time_s)}</td>
-											<td class="pr-date">
-												{formatDate(pr.date)}
-												<span class="pr-age">{relativeAge(pr.date)}</span>
-											</td>
-											{#if showAgeGradeCol}
-												<td class="pr-age-grade">
-													{prAgeGrades[pr.key] ?? '—'}
-												</td>
+					</section>
+					<!-- Recent lifts — gym trend card (multi_modal.md § Home). Self-
+					     hides unless the user has logged a session. Mirrors the
+					     "Recent runs" list above it. -->
+					{#if gymWorkouts.length > 0 && gymShown}
+						<section class="card-elevated">
+							<div class="card-head">
+								<h2>{m('dash.recentLiftsTitle')}</h2>
+								<a class="link-btn" href="/gym">{m('dash.viewAllGym')}</a>
+							</div>
+							<div class="run-list">
+								{#each gymWorkouts.slice(0, 5) as w (w.id)}
+									<a href="/gym/{w.id}" class="run-row">
+										<div class="run-info">
+											<span class="run-date">{formatDateShort(w.started_at)}</span>
+											<span class="run-distance">{w.title || m('gym.untitled')}</span>
+										</div>
+										<div class="run-meta lift-row-meta">
+											<span class="run-pace">{m('gym.exercisesShort', { count: liftExerciseCount(w.id) })}</span>
+											{#if liftVolume(w.id) > 0}
+												<span class="lift-volume">{formatWeight(liftVolume(w.id))}</span>
 											{/if}
-											<td>
-												<button
-													type="button"
-													class="pr-hide"
-													title={m('dash.hideRecordTitle')}
-													aria-label={m('dash.hideRecordAria', { distance: pr.distance })}
-													onclick={() => hidePr(pr.key)}>×</button
-												>
-											</td>
-										</tr>
-									{/each}
-								</tbody>
-							</table>
-						</div>
-					{:else if personalRecords.length === 0}
-						<p class="empty-text">{m('dash.prEmptyNoRuns')}</p>
-					{:else}
-						<p class="empty-text">{m('dash.prAllHidden')}</p>
-					{/if}
-					{#if hiddenPrRows.length > 0}
-						<button
-							type="button"
-							class="pr-show-hidden"
-							onclick={() => (showHiddenPrs = !showHiddenPrs)}
-							aria-expanded={showHiddenPrs}
-						>
-							{showHiddenPrs ? m('dash.hideHidden') : m('dash.showHidden', { n: hiddenPrRows.length })}
-						</button>
-						{#if showHiddenPrs}
-							<ul class="pr-hidden-list">
-								{#each hiddenPrRows as pr}
-									<li>
-										<span>{pr.distance} · {formatDuration(pr.time_s)}</span>
-										<button type="button" class="pr-unhide" onclick={() => unhidePr(pr.key)}>
-											{m('dash.unhide')}
-										</button>
-									</li>
+										</div>
+									</a>
 								{/each}
-							</ul>
-						{/if}
+							</div>
+						</section>
 					{/if}
-				</section>
-
-				<!-- Recent runs -->
-				<section class="card-elevated">
-					<h2>{m('dash.recentRunsTitle')}</h2>
-					{#if filteredRuns.length > 0}
-						<div class="run-list">
-							{#each filteredRuns.slice(0, 7) as run}
-								<a href="/runs/{run.id}" class="run-row">
-									<div class="run-info">
-										<span class="run-date">{formatDateShort(run.started_at)}</span>
-										<span class="run-distance">{formatDistance(run.distance_m)}</span>
-									</div>
-									<div class="run-meta">
-										<span class="run-pace">{formatPace(run.duration_s, run.distance_m)}</span>
-										<span class="source-badge" style="background: {sourceColor(run.source)}; color: {sourceInk(run.source)}">{sourceLabel(run.source)}</span>
-									</div>
-								</a>
-							{/each}
-						</div>
-					{:else if sourceFilter === 'all'}
-						<p class="empty-text">
-							{m('dash.recentEmptyAll')}
-						</p>
-						<div class="recent-empty-actions">
-							<a class="btn btn-primary btn-sm" href="/runs/new">{m('dash.addARun')}</a>
-							<a class="btn btn-outline btn-sm" href="/settings/integrations">{m('dash.importFromStravaGarmin')}</a>
-						</div>
-					{:else}
-						<p class="empty-text">
-							{m('dash.recentEmptyFiltered', {
-								source: sourceChipLabel(sources.find((s) => s.value === sourceFilter)?.label ?? sourceFilter),
-							})}
-						</p>
-					{/if}
-				</section>
-			</div>
-
-			<!-- Recent lifts — gym trend card (multi_modal.md § Home). Self-
-			     hides unless the user has logged a session. Mirrors the
-			     "Recent runs" list above it. -->
-			{#if gymWorkouts.length > 0 && gymShown}
-				<section class="card-elevated">
-					<div class="card-head">
-						<h2>{m('dash.recentLiftsTitle')}</h2>
-						<a class="link-btn" href="/gym">{m('dash.viewAllGym')}</a>
-					</div>
-					<div class="run-list">
-						{#each gymWorkouts.slice(0, 5) as w (w.id)}
-							<a href="/gym/{w.id}" class="run-row">
-								<div class="run-info">
-									<span class="run-date">{formatDateShort(w.started_at)}</span>
-									<span class="run-distance">{w.title || m('gym.untitled')}</span>
-								</div>
-								<div class="run-meta lift-row-meta">
-									<span class="run-pace">{m('gym.exercisesShort', { count: liftExerciseCount(w.id) })}</span>
-									{#if liftVolume(w.id) > 0}
-										<span class="lift-volume">{formatWeight(liftVolume(w.id))}</span>
-									{/if}
-								</div>
-							</a>
-						{/each}
-					</div>
-				</section>
-			{/if}
+				</div>
+			</DisclosureSection>
 
 			<!-- First-run gym affordance — one slim line, below the fold, for a
 			     runner who hasn't logged a lift yet (the web equivalent of
@@ -3189,6 +3285,11 @@
 		gap: var(--space-xs);
 		align-items: baseline;
 	}
+	.readiness-source {
+		margin: 0;
+		font-size: var(--font-size-section-label);
+		color: var(--color-text-tertiary);
+	}
 	.contrib-delta { font-variant-numeric: tabular-nums; font-weight: 700; }
 	.contrib-delta.positive { color: var(--color-success-text); }
 	.contrib-delta.negative { color: var(--color-danger-text); }
@@ -3782,13 +3883,23 @@
 		visibility: hidden;
 	}
 
-	.two-col {
-		display: grid;
-		/* A bare `1fr` track floors at the column's min-content, so a
-		   table or a long row inside widens the page instead of being
-		   held to the track. */
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: var(--space-lg);
+	/* Today | Trends: a hairline with a quiet label riding it. Not caps, not
+	   a section title's weight — the contract asks for rhythm, not a header. */
+	.trends-divider {
+		display: flex;
+		align-items: center;
+		gap: var(--space-sm);
+		margin: var(--space-sm) 0 0;
+		font-size: var(--font-size-section-label);
+		font-weight: 500;
+		text-transform: none;
+		letter-spacing: normal;
+		color: var(--color-text-tertiary);
+	}
+	.trends-divider::after {
+		content: '';
+		flex: 1;
+		border-top: 1px solid var(--color-border);
 	}
 
 	.pr-table { width: 100%; border-collapse: collapse; }
@@ -3957,7 +4068,6 @@
 	}
 	@media (max-width: 768px) {
 		.stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-		.two-col { grid-template-columns: minmax(0, 1fr); }
 		.plan-hero,
 		.plan-promo {
 			padding: var(--space-md) var(--space-lg);

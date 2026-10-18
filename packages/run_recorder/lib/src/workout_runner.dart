@@ -99,9 +99,17 @@ class WorkoutRunner {
     return (stepDistanceMetres / target).clamp(0.0, 1.0);
   }
 
+  /// True from the start until the workout completes or is abandoned: the
+  /// window in which this runner owns the run's pace cues. The run screen's
+  /// general pace alert stands down for it, because that alert targets the
+  /// saved pace or a race strategy rather than the current step, and would
+  /// otherwise double up on the step's own drift cue, or tell a walk-run
+  /// runner to speed up through every walk interval.
+  bool get ownsPaceCues => !isComplete;
+
   PaceAdherence get paceAdherence {
     final s = currentStep;
-    if (s == null) return PaceAdherence.onPace;
+    if (s == null || !s.paced) return PaceAdherence.onPace;
     final actual = stepAveragePaceSecPerKm;
     if (actual == null) return PaceAdherence.onPace;
     final diff = actual - s.targetPaceSecPerKm; // positive = slower
@@ -144,12 +152,17 @@ class WorkoutRunner {
     final stepDist = stepDistanceMetres;
     final stepSecs = stepElapsed.inSeconds;
 
-    // Halfway cue — branches on step axis. Duration steps hit half on
-    // time elapsed; distance steps on distance covered.
+    // Halfway cue — only on a paced work rep, the one step where "halfway
+    // through this rep" is both true and worth hearing. A warm-up, a
+    // recovery, a steady block or a walk-run interval is not a rep, and the
+    // band already shows how much of it is left. Branches on step axis.
     final halfwayHit = step.isDurationBased
         ? stepSecs >= step.targetDurationSec! / 2
         : stepDist >= step.targetDistanceMetres * 0.5;
-    if (!_firedHalfway && halfwayHit) {
+    if (!_firedHalfway &&
+        halfwayHit &&
+        step.kind == WorkoutStepKind.rep &&
+        step.paced) {
       _firedHalfway = true;
       _events.add(StepProgressEvent(
         step: step,
@@ -160,7 +173,9 @@ class WorkoutRunner {
 
     // End-of-step warning cue. For distance steps: last 50 m, gated to
     // steps longer than 100 m (else cue collides with halfway). For
-    // duration steps: last 10 s, gated to durations longer than 20 s.
+    // duration steps: last 10 s, gated to durations longer than 20 s. The
+    // kind names the axis so the speech can say "ten seconds" on a timed
+    // step instead of a distance the runner was never measuring.
     final lastWindowHit = step.isDurationBased
         ? (step.targetDurationSec! - stepSecs <= 10 &&
             step.targetDurationSec! > 20)
@@ -171,7 +186,9 @@ class WorkoutRunner {
       _events.add(StepProgressEvent(
         step: step,
         index: _idx,
-        kind: StepProgressKind.lastFiftyMetres,
+        kind: step.isDurationBased
+            ? StepProgressKind.lastTenSeconds
+            : StepProgressKind.lastFiftyMetres,
       ));
     }
 
@@ -455,6 +472,11 @@ class WorkoutStep {
   final int targetPaceSecPerKm;
   final int toleranceSecPerKm;
   final String label;
+  // False for every step of a walk-run (C25K) session: the runner reports
+  // no adherence and emits no drift cue, because a beginner's run and walk
+  // intervals are effort-led, not a pace test. [targetPaceSecPerKm] still
+  // carries the plan's easy pace for distance estimates.
+  final bool paced;
 
   const WorkoutStep({
     required this.kind,
@@ -465,6 +487,7 @@ class WorkoutStep {
     required this.targetPaceSecPerKm,
     this.toleranceSecPerKm = 10,
     required this.label,
+    this.paced = true,
   });
 
   bool get isDurationBased =>
@@ -537,7 +560,7 @@ class StepTransitionEvent extends WorkoutExecEvent {
   });
 }
 
-enum StepProgressKind { halfway, lastFiftyMetres }
+enum StepProgressKind { halfway, lastFiftyMetres, lastTenSeconds }
 
 class StepProgressEvent extends WorkoutExecEvent {
   final WorkoutStep step;
@@ -623,6 +646,18 @@ List<WorkoutStep> expandWorkoutSteps({
     return paces[fallbackKey ?? 'easy'] ?? 360;
   }
 
+  // Walk-run sessions (recovery_pace == 'walk') relabel the work/rest
+  // intervals as Run / Walk and tag the rest step as a walk so the
+  // recorder's TTS announces "Run"/"Walk" instead of "Rep"/"Recovery"
+  // (persona #22). Every step of one, the walking warm-up and cool-down
+  // included, is unpaced.
+  final repeats = structure['repeats'];
+  final isWalkRun = repeats is Map &&
+      (repeats['rep'] is Map
+          ? (repeats['recovery'] is Map &&
+              (repeats['recovery'] as Map)['pace'] == 'walk')
+          : repeats['recovery_pace'] == 'walk');
+
   // Read either `distance_m` (legacy + Phase 2 default) or `duration_s`
   // (v2 — time-based steps). When both are present, distance wins so
   // existing plans don't change behaviour. Returns null if neither is
@@ -646,6 +681,7 @@ List<WorkoutStep> expandWorkoutSteps({
         targetPaceSecPerKm: resolvePaceFrom(block, paceFallback),
         toleranceSecPerKm: toleranceSecPerKm,
         label: label,
+        paced: !isWalkRun,
       );
     }
     if (dur != null && dur > 0) {
@@ -658,6 +694,7 @@ List<WorkoutStep> expandWorkoutSteps({
         targetPaceSecPerKm: resolvePaceFrom(block, paceFallback),
         toleranceSecPerKm: toleranceSecPerKm,
         label: label,
+        paced: !isWalkRun,
       );
     }
     return null;
@@ -682,7 +719,6 @@ List<WorkoutStep> expandWorkoutSteps({
   //      recovery_distance_m | recovery_duration_s, recovery_pace}`
   // Both shapes can now use `duration_s` instead of `distance_m` for
   // either the rep or the recovery (v2 time-based reps).
-  final repeats = structure['repeats'];
   if (repeats is Map) {
     final count = (repeats['count'] as num?)?.toInt() ?? 0;
     if (count > 0) {
@@ -710,11 +746,6 @@ List<WorkoutStep> expandWorkoutSteps({
         if (recBlock.isEmpty) recBlock = null;
       }
 
-      // Walk-run sessions (recovery_pace == 'walk') relabel the work/rest
-      // intervals as Run / Walk and tag the rest step as a walk so the
-      // recorder's TTS announces "Run"/"Walk" instead of "Rep"/"Recovery"
-      // (persona #22).
-      final isWalkRun = recBlock != null && recBlock['pace'] == 'walk';
       for (var i = 0; i < count; i++) {
         final repStep = buildStep(
           block: repBlock,

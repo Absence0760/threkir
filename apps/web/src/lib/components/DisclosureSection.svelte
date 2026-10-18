@@ -21,8 +21,27 @@
 </script>
 
 <section class="disclosure {sectionClass}" aria-labelledby="{id}-title">
-	<details {open} ontoggle={(e) => ontoggle(e.currentTarget.open)}>
-		<summary class="disclosure-summary">
+	<!-- The reader's choice is read off the summary click, not the toggle
+	     event. A toggle is queued for every change of `open`, the host's own
+	     included, and a click can land on a <details> the page re-renders
+	     away before that event fires, so the choice was lost (or a stale
+	     element reported its old state). The click is the intent; the toggle
+	     handler only catches the browser opening a section itself (find in
+	     page), and only from a live element that disagrees with the prop. -->
+	<details
+		{open}
+		ontoggle={(e) => {
+			const el = e.currentTarget;
+			if (el.isConnected && el.open !== open) ontoggle(el.open);
+		}}
+	>
+		<summary
+			class="disclosure-summary"
+			onclick={(e) => {
+				e.preventDefault();
+				ontoggle(!open);
+			}}
+		>
 			<span class="material-symbols disclosure-chevron" aria-hidden="true">expand_more</span>
 			<h2 class="section-title" id="{id}-title">{title}</h2>
 			{#if hint}

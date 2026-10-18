@@ -42,6 +42,7 @@ Future<void> _pumpBand(
   VoidCallback? onSkip,
   VoidCallback? onRewind,
   VoidCallback? onAbandon,
+  String? effortTarget,
 }) {
   final notifier = ValueNotifier<WorkoutBandState>(state);
   return tester.pumpWidget(
@@ -54,6 +55,7 @@ Future<void> _pumpBand(
           onSkip: onSkip ?? () {},
           onRewind: onRewind ?? () {},
           onAbandon: onAbandon ?? () {},
+          effortTarget: effortTarget,
         ),
       ),
     ),
@@ -95,6 +97,27 @@ void main() {
       expect(find.text('300 m to go'), findsOneWidget);
       // Pace pip shows signed delta.
       expect(find.text('−5s'), findsOneWidget);
+    });
+
+    testWidgets('carries the workout\'s effort target line (decisions § 2092)',
+        (tester) async {
+      await _pumpBand(
+        tester,
+        state: WorkoutBandState(
+          step: _step(),
+          totalSteps: 14,
+          currentIndex: 4,
+          progress: 0.25,
+          remainingMetres: 300,
+          actualPaceSecPerKm: 235,
+          adherence: PaceAdherence.ahead,
+          complete: false,
+          abandoned: false,
+        ),
+        effortTarget: 'Effort 3–4/10 · Cap 125 bpm',
+      );
+      expect(find.byKey(const Key('workoutBandEffortTarget')), findsOneWidget);
+      expect(find.text('Effort 3–4/10 · Cap 125 bpm'), findsOneWidget);
     });
 
     testWidgets('Skip and Abandon trigger callbacks', (tester) async {
@@ -283,6 +306,33 @@ void main() {
         ),
       );
       expect(find.text('—'), findsOneWidget);
+    });
+
+    testWidgets('an unpaced walk-run step shows no pace pip', (tester) async {
+      await _pumpBand(
+        tester,
+        state: const WorkoutBandState(
+          step: WorkoutStep(
+            kind: WorkoutStepKind.walk,
+            targetDistanceMetres: 0,
+            targetDurationSec: 90,
+            targetPaceSecPerKm: 300,
+            label: 'Walk 1/7',
+            paced: false,
+          ),
+          totalSteps: 17,
+          currentIndex: 2,
+          progress: 0.5,
+          remainingMetres: 0,
+          remainingDuration: Duration(seconds: 45),
+          actualPaceSecPerKm: 720,
+          adherence: PaceAdherence.onPace,
+          complete: false,
+          abandoned: false,
+        ),
+      );
+      expect(find.text('+420s'), findsNothing);
+      expect(find.textContaining('Walk 1/7'), findsOneWidget);
     });
   });
 

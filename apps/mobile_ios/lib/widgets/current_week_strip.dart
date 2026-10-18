@@ -6,49 +6,45 @@ import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../training.dart';
-import '../training_labels.dart';
-import '../workout_kind_color.dart';
-
-/// Web `isWorkoutCompleted` twin — a planned workout is done when a tracked
-/// run is linked OR the runner manually marked it complete.
-bool _isWorkoutCompleted(PlanWorkoutRow wo) =>
-    wo.completedRunId != null || wo.manuallyCompleted;
+import 'plan_day_cell.dart';
 
 /// Focused current-week 7-day ribbon for `plan_detail_screen`, mirroring web's
 /// `CurrentWeekStrip.svelte`. The 7-day window is anchored to the plan's
 /// CURRENT week bucket (`startDate + weekIndex*7`), NOT the real calendar week,
-/// so the strip's completion count matches the week card's count exactly. The
-/// row is Monday-first to match the month `PlanCalendar` on the same screen.
+/// so the strip's completion count matches the week card's count exactly. That
+/// is also why it starts on the plan's first weekday rather than on the
+/// runner's `week_start_day`: a plan week is not a calendar week.
 class CurrentWeekStrip extends StatelessWidget {
   final DateTime startDate;
   final int weekIndex;
   final List<PlanWorkoutRow> weekWorkouts;
   final void Function(PlanWorkoutRow workout)? onSelect;
 
+  /// The runner's local day, from the screen's injected clock.
+  final DateTime today;
+
+  /// Heading override: before the plan starts the strip shows its first week,
+  /// which is not "This week".
+  final String? title;
+
   const CurrentWeekStrip({
     super.key,
     required this.startDate,
     required this.weekIndex,
     required this.weekWorkouts,
+    required this.today,
+    this.title,
     this.onSelect,
   });
 
-  static String _toIso(DateTime d) {
-    final y = d.year.toString().padLeft(4, '0');
-    final m = d.month.toString().padLeft(2, '0');
-    final dd = d.day.toString().padLeft(2, '0');
-    return '$y-$m-$dd';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final tag = localeToTag(Localizations.localeOf(context));
-    final today = _toIso(DateTime.now());
+    final todayIso = toIsoDate(today);
 
     final byDate = <String, PlanWorkoutRow>{
-      for (final w in weekWorkouts) _toIso(w.scheduledDate): w,
+      for (final w in weekWorkouts) toIsoDate(w.scheduledDate): w,
     };
     // Calendar days, not 24-hour blocks: `add(Duration(days:))` walks absolute
     // time, so across a DST fall-back a local midnight lands at 23:00 the
@@ -60,7 +56,7 @@ class CurrentWeekStrip extends StatelessWidget {
       for (var i = 0; i < 7; i++) addDays(weekStart, i),
     ];
 
-    final done = weekWorkouts.where(_isWorkoutCompleted).length;
+    final done = weekWorkouts.where(isWorkoutCompleted).length;
     final active = weekWorkouts
         .where((w) => w.kind != 'rest' && !isWorkoutSkipped(w.skippedAt))
         .length;
@@ -71,109 +67,27 @@ class CurrentWeekStrip extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(bottom: 6),
           child: ChartCardHeader(
-            title: l10n.planDetailCurrentWeek,
-            note: '$done / $active',
+            title: title ?? l10n.planDetailCurrentWeek,
+            note: l10n.planDetailWeekDoneCount(done, active),
           ),
         ),
         Row(
           children: [
             for (final d in cells)
               Expanded(
-                child: _buildCell(
-                  theme,
-                  l10n,
-                  tag,
-                  d,
-                  byDate[_toIso(d)],
-                  today,
+                child: PlanDayCell(
+                  header: formatDow(d, tag),
+                  workout: byDate[toIsoDate(d)],
+                  todayIso: todayIso,
+                  isToday: toIsoDate(d) == todayIso,
+                  semanticsDay: formatDowDateShort(d, tag),
+                  minHeight: 60,
+                  onSelect: onSelect,
                 ),
               ),
           ],
         ),
       ],
-    );
-  }
-
-  Widget _buildCell(
-    ThemeData theme,
-    AppLocalizations l10n,
-    String tag,
-    DateTime day,
-    PlanWorkoutRow? wo,
-    String today,
-  ) {
-    final isToday = _toIso(day) == today;
-    final kind = wo == null ? null : workoutKindFromDb(wo.kind);
-    final kindMark = kind == null ? null : workoutKindMarkColor(theme, kind);
-    final isDone = wo != null && _isWorkoutCompleted(wo);
-
-    final base = Container(
-      margin: const EdgeInsets.all(2),
-      padding: const EdgeInsets.all(4),
-      constraints: const BoxConstraints(minHeight: 60),
-      decoration: BoxDecoration(
-        color: wo == null
-            ? Colors.transparent
-            : (isDone
-                ? theme.colorScheme.tertiaryContainer
-                : theme.colorScheme.surfaceContainerHigh),
-        border: Border.all(
-          color: isToday ? theme.colorScheme.primary : theme.dividerColor,
-          width: isToday ? 1.5 : 1,
-        ),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      foregroundDecoration: wo != null
-          ? BoxDecoration(
-              border: Border(left: BorderSide(color: kindMark!, width: 3)),
-              borderRadius: BorderRadius.circular(8),
-            )
-          : null,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            formatDow(day, tag),
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.4,
-            ),
-          ),
-          if (wo != null) ...[
-            Text(
-              workoutKindLabel(l10n, kind!).toUpperCase(),
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurface,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.4,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            if (wo.targetDistanceM != null && wo.kind != 'rest')
-              Text(
-                fmtKm(wo.targetDistanceM, 1),
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            if (isDone)
-              Align(
-                alignment: Alignment.bottomRight,
-                child: Icon(Icons.check_circle,
-                    size: 14, color: theme.colorScheme.tertiary),
-              ),
-          ],
-        ],
-      ),
-    );
-
-    if (wo == null) return base;
-    return InkWell(
-      onTap: onSelect == null ? null : () => onSelect!(wo),
-      borderRadius: BorderRadius.circular(8),
-      child: base,
     );
   }
 }

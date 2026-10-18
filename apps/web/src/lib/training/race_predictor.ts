@@ -168,3 +168,45 @@ export function predictRaceLadder(efforts: EffortForPrediction[]): RacePredictio
 		rungs,
 	};
 }
+
+/// How much faster than the recent-runs projection a goal has to be before the
+/// plan wizard says so. Generous on purpose: the anchor is usually a training
+/// run rather than a race, so it under-reads race fitness, and a goal a few
+/// percent quicker than it is an ordinary race goal, not an ambitious one.
+export const GOAL_AHEAD_MARGIN = 0.1;
+
+/**
+ * Is a plan's goal time faster than the runner's recent running supports?
+ *
+ * With no confirmed recent 5K, the plan sets every pace from the goal time, so
+ * an ambitious or stale goal gives easy and interval paces that are too fast.
+ * This projects the goal distance from the same recency-weighted anchor the
+ * race predictor uses and returns that projection when the goal beats it by
+ * more than `GOAL_AHEAD_MARGIN`, or null otherwise.
+ *
+ * Fail-closed: no usable effort, a non-positive goal, or a projection whose
+ * confidence is `low` (a far extrapolation, a stale anchor, a thin pool) all
+ * return null. Telling a runner their goal is unrealistic off a guess would be
+ * worse than saying nothing.
+ */
+export function goalAheadOfRecentRuns(
+	goalDistanceM: number,
+	goalTimeSec: number | null,
+	efforts: EffortForPrediction[],
+): { predictedSec: number } | null {
+	if (goalTimeSec == null || !Number.isFinite(goalTimeSec) || goalTimeSec <= 0) return null;
+	if (!Number.isFinite(goalDistanceM) || goalDistanceM <= 0) return null;
+	const prediction = predictRaceLadder(efforts);
+	if (prediction == null) return null;
+	const { anchor, qualifyingCount } = prediction;
+	const quality = predictionConfidence({
+		knownDistanceM: anchor.distanceM,
+		targetDistanceM: goalDistanceM,
+		daysSinceBest: Math.round(anchor.ageDays),
+		qualifyingRunCount: qualifyingCount,
+	});
+	if (quality.confidence === 'low') return null;
+	const predictedSec = riegelPredict(anchor.distanceM, anchor.durationS, goalDistanceM);
+	if (goalTimeSec >= predictedSec * (1 - GOAL_AHEAD_MARGIN)) return null;
+	return { predictedSec };
+}

@@ -154,6 +154,13 @@ function trustedClientIp(raw: string | null): string | null {
   return value;
 }
 
+/// The client IP the trusted header establishes, or null when it does not.
+/// For a limiter that would rather skip its per-address bucket than drop
+/// every header-less caller into `UNKNOWN_IP_BUCKET` together.
+export function trustedRequestIp(req: Request): string | null {
+  return trustedClientIp(req.headers.get(trustedIpHeaderName()));
+}
+
 /// Derive a synthetic UUID from the request's client IP. Used for
 /// IP-keyed rate-limiting on EFs that accept anon callers (e.g.
 /// `clip-public-track`) — the `rate_limits` table is `user_id uuid`,

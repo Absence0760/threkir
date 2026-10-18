@@ -64,12 +64,14 @@ class _FakeTraining extends TrainingService {
     String workoutId, {
     String? kind,
     String? fromKind,
-    double? targetDistanceM,
-    int? targetPaceSecPerKm,
+    PlanWorkoutTargets? targets,
     String? notes,
     PlanWorkoutRaceFields? race,
+    PlanWorkoutRange? rpe,
+    PlanWorkoutRange? hr,
   }) async {
-    if (targetDistanceM != null) updated[workoutId] = targetDistanceM;
+    final distanceM = targets?.distanceM;
+    if (distanceM != null) updated[workoutId] = distanceM;
   }
 
   @override

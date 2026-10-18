@@ -341,6 +341,15 @@ var importantKinds = map[string]bool{
 	"follow_request": true,
 }
 
+// pushImportantKinds are carried by the default "important" PUSH mode but not
+// by the default email mode. workout_reminder is the runner's own plan on the
+// morning it asks something of them, at most one a day (20270913000001): a
+// push is the right weight for that, and a daily email by default is not, so
+// email is opt-in through email_notifications = all (decisions § 2098).
+var pushImportantKinds = map[string]bool{
+	"workout_reminder": true,
+}
+
 // kindMutePrefKey maps a notification kind to the user_settings.prefs key
 // that silences it on the OUTBOUND channels — email and both pushes. The
 // inbox row is never withheld; this is the same scope
@@ -374,6 +383,11 @@ var kindMutePrefKey = map[string]string{
 	// Important for the same reason a mention is, and raised by someone else,
 	// so the owner needs a control narrower than the whole channel.
 	"follow_request": "notify_follow_request",
+	// A daily reminder in the default set needs a control narrower than the
+	// channel. enqueue_workout_reminders reads the same key and raises no row
+	// at all for a muted runner; this entry holds the mute for a row that was
+	// raised before the runner turned it off.
+	"workout_reminder": "notify_workout_reminder",
 }
 
 // kindMuted reports whether the recipient silenced this one kind. Only the
@@ -504,6 +518,11 @@ func pathForKind(kind, base string, n NotificationRow) string {
 		// edit someone else made; notify_plan_assigned notifies the athlete,
 		// who owns the assigned plan), so the owner-scoped detail page is
 		// correct for each.
+		return planPath(base, n)
+	case "workout_reminder":
+		// The runner's active plan, whose detail page opens on the current
+		// week with today's workout in it. The row carries plan_id and the
+		// recipient owns the plan.
 		return planPath(base, n)
 	case "message":
 		return base + "/messages"

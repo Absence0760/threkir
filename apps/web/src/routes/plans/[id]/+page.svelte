@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { isPlanOverlapError, thrownMessage } from '#lib/core/supabase_error.ts';
-	import { activeFormatLocale, formatDuration } from '#lib/format/time.ts';
+	import { activeFormatLocale, formatDateShort, formatDuration } from '#lib/format/time.ts';
 	import { onMount, tick } from 'svelte';
-	import { afterNavigate, replaceState } from '$app/navigation';
+	import { afterNavigate, goto, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import {
 		fetchPlan,
 		fetchMyClubs,
 		fetchRuns,
+		fetchDisplayName,
 		publishPlanAsTemplate,
 		publishPlanToLibrary,
 		unpublishFromLibrary,
@@ -20,9 +21,12 @@
 		pausePlan,
 		resumePlan,
 		ActivePlanExistsError,
+		isActiveCoachOf,
 	} from '#lib/core/data.ts';
 	import { recoveryWorkoutPatch } from '#lib/training/plan_bulk_ops.ts';
 	import { planShiftImpact } from '#lib/training/plan_shift.ts';
+	import { workoutMoveDays } from '#lib/training/plan_move.ts';
+	import { startLocalDayTicker } from '#lib/format/local_day_ticker.ts';
 	import { cyclePlanWorkoutPatch, type CyclePlanConfig } from '#lib/training/cycle_plan.ts';
 	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
 	import { replanRemaining, type ReplanChange, type ReplanWeek } from '#lib/training/plan_replan.ts';
@@ -40,6 +44,8 @@
 	import { workoutKindMarkVar } from '#lib/training/workout_kind_color.ts';
 	import { isAdaptiveFitnessGateEnabled } from '#lib/training/adaptive_fitness_flag.ts';
 	import WorkoutEditor from '#lib/components/WorkoutEditor.svelte';
+	import FinishPlanPrompt from '#lib/components/FinishPlanPrompt.svelte';
+	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import PlanAiAdjust from '#lib/components/PlanAiAdjust.svelte';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
@@ -81,6 +87,8 @@
 	import { nextRace, planRaces } from '#lib/training/plan_races.ts';
 	import { planSlug } from '#lib/training/plan_slug.ts';
 	import { workoutKindLabel, planPhaseLabel } from '#lib/training/workout_labels.ts';
+	import { planWorkoutAriaLabel, planWorkoutStatusOf } from '#lib/training/plan_workout_view.ts';
+	import { planWorkoutStatusLook } from '#lib/training/plan_workout_status_style.ts';
 	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { loadSettings, effective } from '#lib/settings/settings.ts';
@@ -104,6 +112,19 @@
 	let weekStart = $state<WeekStart>('monday');
 
 	let isOwner = $derived(plan != null && plan.user_id === auth.user?.id);
+	// Coach RLS lets an athlete's active coach edit the workouts of a
+	// non-template plan; nobody else may, so nobody else gets the editor.
+	let coachesOwner = $state(false);
+	let canEditWorkouts = $derived(
+		plan != null && (isOwner || (coachesOwner && !plan.is_template))
+	);
+	function openWorkout(wo: PlanWorkout): void {
+		if (canEditWorkouts) {
+			editing = wo;
+		} else if (plan) {
+			void goto(`/plans/${plan.id}/workouts/${wo.id}`);
+		}
+	}
 
 	// ─── Named disclosures (#905 workstream 3) ───
 	// Today's session and this week lead the page; everything else sits behind
@@ -813,6 +834,9 @@
 		}
 	}
 
+	/// Who assigned this plan, when a coach did and it is not the viewer.
+	let assigningCoachName = $state<string | null>(null);
+
 	async function load() {
 		loading = true;
 		loadError = null;
@@ -828,6 +852,24 @@
 			loadError = thrownMessage(e);
 		}
 		loading = false;
+		assigningCoachName = null;
+		const coachId = plan?.assigned_by_coach_id;
+		if (loadError === null && coachId && coachId !== auth.user?.id) {
+			fetchDisplayName(coachId)
+				.then((name) => {
+					if (plan?.assigned_by_coach_id === coachId) assigningCoachName = name;
+				})
+				.catch((e) => console.error('fetchDisplayName failed', e));
+		}
+		coachesOwner = false;
+		if (loadError === null && plan != null && !plan.is_template && plan.user_id !== auth.user?.id) {
+			try {
+				coachesOwner = await isActiveCoachOf(plan.user_id);
+			} catch (e) {
+				// Fails closed: without the link the editor stays shut.
+				console.error('isActiveCoachOf failed', e);
+			}
+		}
 		if (loadError === null && plan != null && plan.user_id === auth.user?.id) {
 			// Owner-only: the recent runs feed both the Race Day Riegel
 			// projection (within 21 days) and the current-week adherence
@@ -956,7 +998,20 @@
 		return m;
 	});
 
-	let today = $derived(todayISO());
+	// Rolls over at local midnight (local_day_ticker.ts), so a tab left open
+	// overnight stops calling yesterday today.
+	let today = $state(todayISO());
+	onMount(() => startLocalDayTicker((iso) => (today = iso)));
+
+	/// The days the workout being edited can move to (plan_move.ts, decisions
+	/// § 2073). Only the owner is offered the move.
+	let editingMoveDays = $derived.by(() => {
+		const wo = editing;
+		if (!plan || !wo || !isOwner) return [];
+		const week = weeks.find((w) => w.id === wo.week_id);
+		if (!week) return [];
+		return workoutMoveDays(plan.start_date, plan.end_date, week.week_index, wo, workouts, today);
+	});
 
 	/// Every race the plan builds toward (plan_races.ts, decisions § 2009); the
 	/// countdown, race-week panel and hero relation follow the next one, so a
@@ -1153,15 +1208,17 @@
 	}
 
 	function workoutAriaLabel(wo: PlanWorkout): string {
-		const dow = dayOfWeek(wo.scheduled_date);
-		const kind = workoutKindLabel(wo.kind);
-		const dist = wo.target_distance_m != null ? `, ${fmtKm(wo.target_distance_m)}` : '';
-		const status = isWorkoutCompleted(wo)
-			? m('planDetail.ariaCompletedSuffix')
-			: isWorkoutSkipped(wo)
-				? m('planDetail.ariaSkippedSuffix')
-				: '';
-		return `${dow}: ${kind}${dist}${status}`;
+		return planWorkoutAriaLabel(
+			wo,
+			today,
+			{
+				day: `${dayOfWeek(wo.scheduled_date)} ${formatDateShort(wo.scheduled_date)}`,
+				kind: workoutKindLabel(wo.kind),
+				distance:
+					wo.target_distance_m != null && wo.kind !== 'rest' ? fmtKm(wo.target_distance_m) : null
+			},
+			m
+		);
 	}
 </script>
 
@@ -1256,6 +1313,14 @@
 					{/if}
 				</div>
 				<div class="hero-chips">
+					{#if plan.assigned_by_coach_id && plan.assigned_by_coach_id !== auth.user?.id}
+						<a class="chip chip-link" href="/coaching" data-testid="assigned-by-coach">
+							<span class="material-symbols" aria-hidden="true">sports</span>
+							{assigningCoachName
+								? m('planDetail.assignedBy', { name: assigningCoachName })
+								: m('planDetail.assignedByCoach')}
+						</a>
+					{/if}
 					{#if plan.parent_template_id}
 						<a class="chip chip-link" href="/plans/{plan.parent_template_id}">
 							<span class="material-symbols">link</span>
@@ -1321,9 +1386,11 @@
 			</div>
 			<div class="hero-position">
 				{#if planPosition}
-					<span class="week-pill">
-						{m('planDetail.weekPillPrefix', { n: planPosition.weekIndex })} <em>{m('planDetail.weekPillOf', { total: planPosition.totalWeeks })}</em>
-					</span>
+					{#if today >= plan.start_date}
+						<span class="week-pill" data-testid="week-pill">
+							{m('planDetail.weekPillPrefix', { n: planPosition.weekIndex })} <em>{m('planDetail.weekPillOf', { total: planPosition.totalWeeks })}</em>
+						</span>
+					{/if}
 					<span
 						class="relation-pill"
 						class:race-today={planPosition.raceState === 'today'}
@@ -1348,6 +1415,10 @@
 				</div>
 			</div>
 		</header>
+
+		{#if isOwner && !plan.is_template && isPlanFinished(plan, today)}
+			<div class="finish-plan-slot"><FinishPlanPrompt {plan} onfinished={load} /></div>
+		{/if}
 
 		{#if isOwner && !plan.is_template && replanPreview}
 			<section class="replan-preview" aria-label={m('planDetail.replanPreviewAria')}>
@@ -1426,11 +1497,17 @@
 					class="today-link"
 					type="button"
 					aria-label={m('planDetail.editTodayWorkoutAria', { kind: workoutKindLabel(todayWorkout.kind) })}
-					onclick={() => (editing = todayWorkout)}
+					onclick={() => todayWorkout && openWorkout(todayWorkout)}
 				>
-					<div class="today-icon" class:done={isWorkoutCompleted(todayWorkout)}>
+					<div
+						class="today-icon"
+						class:done={isWorkoutCompleted(todayWorkout)}
+						class:skipped={isWorkoutSkipped(todayWorkout)}
+					>
 						{#if isWorkoutCompleted(todayWorkout)}
 							<span class="material-symbols">check_circle</span>
+						{:else if isWorkoutSkipped(todayWorkout)}
+							<span class="material-symbols">skip_next</span>
 						{:else if todayWorkout.kind === 'rest'}
 							<span class="material-symbols">self_improvement</span>
 						{:else}
@@ -1447,10 +1524,12 @@
 								<span>{fmtKm(todayWorkout.target_distance_m)}</span>
 							{/if}
 							{#if todayWorkout.target_pace_sec_per_km}
-								<span>@ {fmtPace(todayWorkout.target_pace_sec_per_km)}</span>
+								<span>{m('workoutDetail.atPace', { pace: fmtPace(todayWorkout.target_pace_sec_per_km) })}</span>
 							{/if}
 							{#if isWorkoutCompleted(todayWorkout)}
 								<span class="today-done">{m('planDetail.completed')}</span>
+							{:else if isWorkoutSkipped(todayWorkout)}
+								<span class="today-skipped">{m('planDetail.skippedLabel')}</span>
 							{/if}
 						</div>
 						{#if todayWorkout.notes}
@@ -1466,7 +1545,7 @@
 					class="today-link"
 					type="button"
 					aria-label={m('planDetail.editNextWorkoutAria')}
-					onclick={() => (editing = nextWorkout)}
+					onclick={() => nextWorkout && openWorkout(nextWorkout)}
 				>
 					<div class="today-icon">
 						<span class="material-symbols">event_upcoming</span>
@@ -1477,12 +1556,12 @@
 							{workoutKindLabel(nextWorkout.kind)}
 						</span>
 						<div class="today-meta">
-							<span>{dayOfWeek(nextWorkout.scheduled_date)} · {nextWorkout.scheduled_date}</span>
+							<span>{dayOfWeek(nextWorkout.scheduled_date)} · {formatDateShort(nextWorkout.scheduled_date)}</span>
 							{#if nextWorkout.target_distance_m != null}
 								<span>{fmtKm(nextWorkout.target_distance_m)}</span>
 							{/if}
 							{#if nextWorkout.target_pace_sec_per_km}
-								<span>@ {fmtPace(nextWorkout.target_pace_sec_per_km)}</span>
+								<span>{m('workoutDetail.atPace', { pace: fmtPace(nextWorkout.target_pace_sec_per_km) })}</span>
 							{/if}
 						</div>
 					</div>
@@ -1519,12 +1598,13 @@
 		{/if}
 
 		<CurrentWeekStrip
+			title={today < plan.start_date ? m('planDetail.firstWeek') : undefined}
 			startDate={plan.start_date}
 			{currentWeek}
 			weekWorkouts={currentWeek ? (workoutsByWeek.get(currentWeek.id) ?? []) : []}
 			{today}
 			{weekStart}
-			onSelect={(wo) => (editing = wo)}
+			onSelect={openWorkout}
 		/>
 
 		{#if currentWeekDrift || missedLongRun}
@@ -1684,7 +1764,8 @@
 				{workouts}
 				planId={plan.id}
 				{weekStart}
-				onSelect={(wo) => (editing = wo)}
+				{today}
+				onSelect={openWorkout}
 			/>
 		</DisclosureSection>
 
@@ -1752,20 +1833,25 @@
 					{/if}
 					<div class="day-grid">
 						{#each weekWorkouts as wo (wo.id)}
+							{@const status = planWorkoutStatusOf(wo, today)}
+							{@const look = planWorkoutStatusLook(status)}
 							<div
 								class="day"
 								class:today={wo.scheduled_date === today}
-								class:completed={isWorkoutCompleted(wo)}
-								class:skipped={isWorkoutSkipped(wo)}
+								class:skipped={status === 'skipped'}
 								class:rest={wo.kind === 'rest'}
-								class:past={wo.scheduled_date < today}
+								data-status={status}
 								style="--kind-color: {workoutKindMarkVar(wo.kind)}"
+								style:--wo-bg={look.bg}
+								style:--wo-border={look.border}
+								style:--wo-border-style={look.borderStyle}
+								style:--wo-glyph={look.glyphColor}
 							>
 								<button
 									class="day-link"
 									type="button"
 									aria-label={workoutAriaLabel(wo)}
-									onclick={() => (editing = wo)}
+									onclick={() => openWorkout(wo)}
 								>
 									<span class="dow">{dayOfWeek(wo.scheduled_date)}</span>
 									<span class="kind">
@@ -1774,10 +1860,8 @@
 									{#if wo.target_distance_m != null && wo.kind !== 'rest'}
 										<span class="dist">{fmtKm(wo.target_distance_m, 1)}</span>
 									{/if}
-									{#if isWorkoutCompleted(wo)}
-										<span class="material-symbols check" aria-hidden="true">check_circle</span>
-									{:else if isWorkoutSkipped(wo)}
-										<span class="material-symbols skip-glyph" aria-hidden="true">skip_next</span>
+									{#if look.glyph}
+										<span class="material-symbols check" aria-hidden="true">{look.glyph}</span>
 									{/if}
 								</button>
 							</div>
@@ -1856,6 +1940,7 @@
 {#if editing}
 	<WorkoutEditor
 		workout={editing}
+		moveDays={editingMoveDays}
 		onClose={() => (editing = null)}
 		onSaved={async () => {
 			editing = null;
@@ -2069,6 +2154,9 @@
 <style>
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
+	}
+	.finish-plan-slot {
+		margin: var(--space-lg) 0;
 	}
 	.back {
 		display: inline-flex;
@@ -2687,6 +2775,10 @@
 		background: color-mix(in srgb, var(--color-success) 18%, transparent);
 		color: var(--color-success-text);
 	}
+	.today-icon.skipped {
+		background: color-mix(in srgb, var(--color-text-tertiary) 14%, transparent);
+		color: var(--color-text-tertiary);
+	}
 	.today-icon .material-symbols { font-size: 1.5rem; }
 	.today-static .today-icon {
 		background: color-mix(in srgb, var(--color-text-tertiary) 14%, transparent);
@@ -2722,6 +2814,10 @@
 	}
 	.today-done {
 		color: var(--color-success-text);
+		font-weight: 600;
+	}
+	.today-skipped {
+		color: var(--color-text-secondary);
 		font-weight: 600;
 	}
 	.today-notes {
@@ -2810,14 +2906,14 @@
 		}
 	}
 	.day {
-		--day-line: var(--color-border);
+		--day-line: var(--wo-border, var(--color-border));
 		display: flex;
 		flex-direction: column;
 		gap: 0.15rem;
 		padding: 0.5rem 0.55rem;
-		background: var(--color-bg-secondary);
+		background: var(--wo-bg, var(--color-bg-secondary));
 		border-radius: var(--radius-md);
-		border: 1px solid var(--day-line);
+		border: 1px var(--wo-border-style, solid) var(--day-line);
 		color: inherit;
 		font-size: 0.8rem;
 		border-top: 3px solid var(--kind-color, var(--day-line));
@@ -2844,10 +2940,6 @@
 	.day.rest {
 		opacity: 0.55;
 	}
-	.day.past {
-		opacity: 0.7;
-	}
-	.day.past.completed,
 	.day.today {
 		opacity: 1;
 	}
@@ -2856,12 +2948,8 @@
 		border-color: var(--color-primary);
 		box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 30%, transparent);
 	}
-	.day.completed {
-		--day-line: color-mix(in srgb, var(--color-success) 30%, var(--color-border));
-		background: color-mix(in srgb, var(--color-success) 12%, var(--color-surface));
-	}
-	.day.skipped {
-		opacity: 0.55;
+	.day.today[data-status='done'] {
+		background: var(--wo-bg);
 	}
 	.day.skipped .kind {
 		text-decoration: line-through;
@@ -2885,14 +2973,7 @@
 		position: absolute;
 		top: 0.3rem;
 		inset-inline-end: 0.3rem;
-		color: var(--color-success-text);
-		font-size: 1rem;
-	}
-	.day .skip-glyph {
-		position: absolute;
-		top: 0.3rem;
-		inset-inline-end: 0.3rem;
-		color: var(--color-text-tertiary);
+		color: var(--wo-glyph);
 		font-size: 1rem;
 	}
 	.coach-link {

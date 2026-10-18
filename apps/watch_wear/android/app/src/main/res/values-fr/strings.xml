@@ -199,4 +199,22 @@
     <string name="tts_run_complete_mi">Course terminée. %1$s miles en %2$d minutes.</string>
     <string name="tts_pace_alert_fast">Accélérez</string>
     <string name="tts_pace_alert_slow">Ralentissez</string>
+
+    <!-- Today's workout, pushed by the phone (WorkoutBridge) -->
+    <string name="workout">Séance</string>
+    <string name="workout_off">Désactivée</string>
+    <plurals name="workout_step_count">
+        <item quantity="one">%1$d étape</item>
+        <item quantity="other">%1$d étapes</item>
+    </plurals>
+    <string name="cd_workout_on">Séance du jour, %1$s, activée, touchez pour courir librement</string>
+    <string name="cd_workout_off">Séance du jour, désactivée, touchez pour la suivre</string>
+    <string name="workout_step_warmup">Échauffement</string>
+    <string name="workout_step_rep">Rép.</string>
+    <string name="workout_step_recovery">Récup.</string>
+    <string name="workout_step_walk">Marche</string>
+    <string name="workout_step_steady">Constant</string>
+    <string name="workout_step_cooldown">Retour au calme</string>
+    <string name="workout_done">Séance terminée</string>
+    <string name="cd_mark_lap_skip_step">Marquer un tour et passer à l\'étape suivante</string>
 </resources>

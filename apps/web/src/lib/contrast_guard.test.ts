@@ -25,6 +25,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(resolve(__dirname, '../app.css'), 'utf-8');
 
 import { RUN_SOURCES, sourceColor, sourceInk } from './runs/source_badge.js';
+import { planWorkoutStatusLook } from './training/plan_workout_status_style.js';
 
 /** The four surfaces that render a `.source-badge`. */
 const BADGE_SURFACES = [
@@ -1293,18 +1294,73 @@ test('every boundary drawn on a tinted surface clears 3:1 where it lands', () =>
 	);
 });
 
-// Count-pinned so the one shape the scan cannot resolve stays the one shape it
-// cannot resolve. A new `var(--x, var(--color-border))` edge on a tinted surface
-// fails here rather than passing silently.
-test('exactly one tinted-surface boundary defers to a per-instance fallback', () => {
+// Count-pinned so the shape the scan cannot resolve stays absent. The one it
+// used to defer, the plan grid's kind stripe over the done tint, went when the
+// plan-workout state fills moved into plan_workout_status_style.ts (decisions
+// § 2084), which the plan-workout status test below resolves instead. A new
+// `var(--x, var(--color-border))` edge on a tinted surface fails here rather
+// than passing silently.
+test('no tinted-surface boundary defers to a per-instance fallback', () => {
 	const { deferred } = tintedBoundaryFindings();
 	assert.equal(
 		deferred.length,
-		1,
-		`the tinted-boundary scan defers ${deferred.length} declaration(s), expected 1 ` +
-			`(the plan grid's kind stripe):\n${deferred.join('\n')}`,
+		0,
+		`the tinted-boundary scan defers ${deferred.length} declaration(s):\n${deferred.join('\n')}`,
 	);
-	assert.match(deferred[0], /plans\/\[id\]\/\+page\.svelte/);
+});
+
+// One paint expression from plan_workout_status_style.ts, as hex over the
+// surface the cell sits on: a #hex or rgba() token, a two-token color-mix, or
+// transparent.
+function resolvePlanPaint(marker: string, expr: string, surface: string): string {
+	const e = expr.trim();
+	if (e === 'transparent') return surface;
+	const mix = e.match(/^color-mix\(in srgb, var\(--([\w-]+)\) ([\d.]+)%, var\(--([\w-]+)\)\)$/);
+	if (mix) {
+		return mixOverHex(
+			resolvePlanPaint(marker, `var(--${mix[1]})`, surface),
+			parseFloat(mix[2]),
+			resolvePlanPaint(marker, `var(--${mix[3]})`, surface),
+		);
+	}
+	const name = e.match(/^var\(--([\w-]+)\)$/)?.[1];
+	assert.ok(name, `plan status paint "${e}" is not a shape this guard resolves`);
+	const themeBlock = marker === ':root {' ? block(':root {') : block(marker);
+	const src =
+		themeBlock.match(new RegExp(`--${name}:\\s*([^;]+);`))?.[1]?.trim() ??
+		block(':root {').match(new RegExp(`--${name}:\\s*([^;]+);`))?.[1]?.trim();
+	const rgba = src?.match(/^rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)$/);
+	if (rgba) {
+		const hex = '#' + [rgba[1], rgba[2], rgba[3]].map((n) => Number(n).toString(16).padStart(2, '0')).join('');
+		return mixOverHex(hex, parseFloat(rgba[4]) * 100, surface);
+	}
+	return resolveToken(marker, name!);
+}
+
+// The plan-workout states (done / missed / skipped) are told apart by their
+// glyph and, for missed, by its dashed outline, so both are state-carrying
+// graphics under WCAG 1.4.11 and must clear 3:1 against the cell they sit in,
+// on every surface a plan cell is drawn over, in every theme.
+test('plan-workout status glyphs and the missed outline clear 3:1 on every plan surface', () => {
+	const bad: string[] = [];
+	for (const { label, marker } of THEMES) {
+		for (const surfaceName of ['color-bg', 'color-bg-secondary', 'color-surface']) {
+			const surface = resolveToken(marker, surfaceName);
+			for (const status of ['done', 'missed', 'skipped', 'upcoming', 'rest'] as const) {
+				const look = planWorkoutStatusLook(status);
+				const bg = look.bg ? resolvePlanPaint(marker, look.bg, surface) : surface;
+				if (look.glyph) {
+					const ratio = contrastRatio(resolvePlanPaint(marker, look.glyphColor, bg), bg);
+					if (ratio < AA_NON_TEXT) bad.push(`${status} glyph on --${surfaceName} [${label}]: ${ratio.toFixed(3)}:1`);
+				}
+				if (status === 'missed') {
+					const ratio = contrastRatio(resolvePlanPaint(marker, look.border!, bg), bg);
+					if (ratio < AA_NON_TEXT) bad.push(`missed outline on --${surfaceName} [${label}]: ${ratio.toFixed(3)}:1`);
+				}
+			}
+		}
+	}
+	assert.deepEqual(bad, []);
 });
 
 // The scan's own machinery, in both directions. Each of these is a bug it had

@@ -6,12 +6,21 @@
 	import { formatDateShort } from '#lib/format/time.ts';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { fetchMyPlansWithError, deletePlan, updatePlanStatus } from '#lib/core/data.ts';
+	import {
+		fetchMyPlansWithError,
+		deletePlan,
+		updatePlanStatus,
+		createTrainingPlan
+	} from '#lib/core/data.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
 	import { currentPlanWeekIndex } from '#lib/training/plan_week.ts';
 	import { todayISO } from '#lib/training/training.ts';
+	import { goalEventLabel, planLengthLabel } from '#lib/training/goal_event_label.ts';
+	import { STARTER_PLANS, instantiateStarter } from '#lib/training/starter_plans.ts';
+	import { starterName, starterStartIso, starterSummaryText } from '#lib/training/starter_labels.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
@@ -81,14 +90,6 @@
 			loadedToken = s.listToken;
 			loading = false;
 		}
-	};
-
-	const eventLabels: Record<string, () => string> = {
-		distance_5k: () => '5K',
-		distance_10k: () => '10K',
-		distance_half: () => m('plansPage.eventHalf'),
-		distance_full: () => m('plansPage.eventFull'),
-		custom: () => m('plansPage.eventCustom')
 	};
 
 	const statusIcon: Record<PlanStatus, string> = {
@@ -202,6 +203,42 @@
 		for (const p of plans) c[p.status] = (c[p.status] ?? 0) + 1;
 		return c;
 	});
+
+	/// A paused plan is still a plan the runner has not finished with, so it
+	/// can be abandoned like an active one; only a plan that is already over
+	/// (completed or abandoned) offers Delete. One action per card.
+	function canAbandon(p: TrainingPlan): boolean {
+		return p.status === 'active' || p.status === 'paused';
+	}
+
+	let creatingStarterId = $state<string | null>(null);
+
+	/// The list is empty, so there is no plan of the runner's own for the new
+	/// one to overlap: the server is asked to refuse one anyway, and a refusal
+	/// (a plan created in another tab since) lands as the create-failed toast.
+	async function createStarter(id: string) {
+		if (creatingStarterId) return;
+		const starter = STARTER_PLANS.find((s) => s.id === id);
+		const start = starterStartIso(id, todayISO());
+		const generated = instantiateStarter(id, start);
+		if (!starter || !generated) return;
+		creatingStarterId = id;
+		try {
+			const plan = await createTrainingPlan({
+				name: starterName(id),
+				goalEvent: starter.goalEvent,
+				goalDistanceM: generated.goalDistanceM,
+				startDate: start,
+				daysPerWeek: starter.daysPerWeek,
+				generated,
+				overlap: 'refuse'
+			});
+			goto(`/plans/${plan.id}`);
+		} catch (e) {
+			showToast(m('plansNew.toastCreateFailed', { error: thrownMessage(e) }), 'error');
+			creatingStarterId = null;
+		}
+	}
 
 	function abandon(p: TrainingPlan) {
 		confirmTarget = p;
@@ -338,6 +375,30 @@
 			{#if showAiPlan}
 				<a href={AI_PLAN_HREF}>{m('plansPage.describeWithAi')}</a>
 			{/if}
+			<div class="starters" role="group" aria-labelledby="starters-heading">
+				<h3 id="starters-heading">{m('plansNew.starterHeading')}</h3>
+				<ul class="starter-list">
+					{#each STARTER_PLANS as s (s.id)}
+						<li class="starter">
+							<button
+								class="btn btn-outline"
+								type="button"
+								disabled={creatingStarterId !== null}
+								aria-busy={creatingStarterId === s.id}
+								aria-describedby="starter-{s.id}-summary"
+								onclick={() => createStarter(s.id)}
+							>
+								{creatingStarterId === s.id ? m('plansNew.creating') : starterName(s.id)}
+							</button>
+							<span class="starters-hint" id="starter-{s.id}-summary">
+								{starterSummaryText(s.id)} · {m('plansPage.starterStarts', {
+									date: formatDateShort(starterStartIso(s.id, todayISO()))
+								})}
+							</span>
+						</li>
+					{/each}
+				</ul>
+			</div>
 		</section>
 	{:else}
 		<div class="grid">
@@ -366,7 +427,7 @@
 					<div class="hero">
 						<div class="hero-metric">
 							<span class="section-label">{m('plansPage.heroGoal')}</span>
-							<span class="hero-value">{eventLabels[p.goal_event]?.() ?? p.goal_event}</span>
+							<span class="hero-value">{goalEventLabel(m, formatDistance, p.goal_event, p.goal_distance_m)}</span>
 						</div>
 						<div class="hero-metric">
 							<span class="section-label">{m('plansPage.heroTarget')}</span>
@@ -387,9 +448,7 @@
 						</span>
 						<span class="meta-item">
 							<span class="material-symbols">view_week</span>
-							{total === 1
-								? m('plansPage.metaWeeksSingular', { days: p.days_per_week })
-								: m('plansPage.metaWeeksPlural', { total, days: p.days_per_week })}
+							{planLengthLabel(m, total, p.days_per_week)}
 						</span>
 					</div>
 
@@ -412,7 +471,7 @@
 					{/if}
 
 					<div class="card-actions">
-						{#if isActive}
+						{#if canAbandon(p)}
 							<button
 								class="card-action-btn"
 								type="button"
@@ -439,7 +498,9 @@
 		{#if filteredPlans.length === 0}
 			<div class="filter-empty">
 				<span class="material-symbols empty-icon" aria-hidden="true">filter_alt_off</span>
-				<p class="empty-text">{m('plansPage.noFilteredPlans', { status: statusFilter })}</p>
+				<p class="empty-text">{m('plansPage.noFilteredPlans', {
+						status: statusFilter === 'all' ? '' : statusLabel(statusFilter)
+					})}</p>
 				<button class="link-btn" type="button" onclick={() => (statusFilter = 'all')}>
 					{m('plansPage.showAllPlans')}
 				</button>
@@ -673,6 +734,10 @@
 		background: var(--color-bg-tertiary);
 		color: var(--color-text-secondary);
 	}
+	.status-paused {
+		background: var(--color-warning-light);
+		color: var(--color-warning-text);
+	}
 	.status-completed {
 		background: var(--color-success-light);
 		color: var(--color-success-text);
@@ -815,6 +880,40 @@
 		max-width: 32rem;
 	}
 
+	.starters {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--space-sm);
+		margin-top: var(--space-md);
+		padding-top: var(--space-md);
+		border-top: 1px solid var(--color-border);
+		width: 100%;
+	}
+	.starters h3 {
+		font-size: 1rem;
+		font-weight: 600;
+	}
+	.starters-hint {
+		color: var(--color-text-secondary);
+		font-size: 0.85rem;
+	}
+	.starter-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--space-sm);
+	}
+	.starter {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--space-2xs);
+		text-align: center;
+	}
 	.filter-empty {
 		display: flex;
 		flex-direction: column;

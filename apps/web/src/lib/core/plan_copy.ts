@@ -77,6 +77,10 @@ export function planWeekCopyRows(
 /// race fields are: a B race in the middle of a block is part of the design,
 /// and the clone RPCs carry them on, so dropping them here would turn every
 /// published tune-up race into an unnamed A race.
+///
+/// The RPE range is carried; the bpm range never is. A heart-rate target is
+/// one person's Art 9 prescription and a template is copied to other people,
+/// so the database refuses one on a template outright (decisions § 2092).
 export function planWorkoutCopyRows(
 	workouts: PlanWorkout[],
 	newWeekIdByOldId: Map<string, string>,
@@ -95,6 +99,8 @@ export function planWorkoutCopyRows(
 	race_name: string | null;
 	race_priority: PlanWorkout['race_priority'];
 	race_taper_applied_at: string | null;
+	target_rpe_min: number | null;
+	target_rpe_max: number | null;
 }[] {
 	const rows = [];
 	for (const w of workouts) {
@@ -115,6 +121,8 @@ export function planWorkoutCopyRows(
 			race_name: w.race_name,
 			race_priority: w.race_priority,
 			race_taper_applied_at: w.race_taper_applied_at,
+			target_rpe_min: w.target_rpe_min,
+			target_rpe_max: w.target_rpe_max,
 		});
 	}
 	return rows;

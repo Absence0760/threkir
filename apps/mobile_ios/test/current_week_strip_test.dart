@@ -27,6 +27,8 @@ Future<void> _pump(
   required List<PlanWorkoutRow> workouts,
   void Function(PlanWorkoutRow)? onSelect,
   ThemeData? theme,
+  DateTime? today,
+  String? title,
 }) async {
   await tester.pumpWidget(MaterialApp(
     theme: theme,
@@ -37,6 +39,8 @@ Future<void> _pump(
         startDate: start,
         weekIndex: weekIndex,
         weekWorkouts: workouts,
+        today: today ?? start,
+        title: title,
         onSelect: onSelect,
       ),
     ),
@@ -45,8 +49,8 @@ Future<void> _pump(
 }
 
 void main() {
-  // Past-dated start so the "today" highlight doesn't depend on the
-  // wall-clock; the strip's window is anchored to startDate + weekIndex*7.
+  // "Today" is injected, so nothing here depends on the wall clock; the
+  // strip's window is anchored to startDate + weekIndex*7.
   final start = DateTime(2024, 4, 1); // a Monday
 
   testWidgets('renders the heading + a row of seven day cells', (tester) async {
@@ -77,6 +81,7 @@ void main() {
               startDate: start,
               weekIndex: 0,
               weekWorkouts: [_wo('a', DateTime(2024, 4, 2), 'tempo', 10000)],
+              today: start,
             ),
           ),
         ),
@@ -102,7 +107,7 @@ void main() {
       ],
     );
     // 1 completed of 2 active (rest excluded), mirroring the week card.
-    expect(find.text('1 / 2'), findsOneWidget);
+    expect(find.text('1 / 2 done'), findsOneWidget);
     expect(find.byIcon(Icons.check_circle), findsOneWidget);
   });
 
@@ -121,7 +126,7 @@ void main() {
       ],
     );
     // 1 completed of 2 active (rest AND the skipped tempo both excluded).
-    expect(find.text('1 / 2'), findsOneWidget);
+    expect(find.text('1 / 2 done'), findsOneWidget);
   });
 
   testWidgets('tapping a workout cell fires onSelect', (tester) async {
@@ -249,4 +254,35 @@ void main() {
     );
     await _expectSevenDistinctDays(tester);
   }, tags: 'tz');
+
+  testWidgets('a past open workout is missed, a done one is done, by the '
+      'injected day', (tester) async {
+    await _pump(
+      tester,
+      start: start,
+      weekIndex: 0,
+      today: DateTime(2024, 4, 5),
+      workouts: [
+        _wo('m', DateTime(2024, 4, 2), 'tempo', 10000),
+        _wo('d', DateTime(2024, 4, 3), 'easy', 6000, done: true),
+        _wo('u', DateTime(2024, 4, 6), 'long', 18000),
+      ],
+    );
+    expect(find.byIcon(Icons.event_busy), findsOneWidget);
+    expect(find.byIcon(Icons.check_circle), findsOneWidget);
+  });
+
+  testWidgets('before the plan starts the strip is titled as its first week',
+      (tester) async {
+    await _pump(
+      tester,
+      start: start,
+      weekIndex: 0,
+      today: DateTime(2024, 3, 25),
+      title: 'First week',
+      workouts: [_wo('a', DateTime(2024, 4, 2), 'tempo', 10000)],
+    );
+    expect(find.text('First week'), findsOneWidget);
+    expect(find.text('This week'), findsNothing);
+  });
 }

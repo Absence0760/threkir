@@ -16,9 +16,11 @@ import '../l10n/number_format.dart';
 import '../local_run_store.dart';
 import '../main.dart' show pendingStartWorkout;
 import '../plan_adherence.dart';
+import '../plan_current.dart';
 import '../plan_progress.dart';
 import '../plan_replan.dart';
 import '../plan_adaptive_replan.dart';
+import '../plan_move.dart';
 import '../plan_races.dart';
 import '../plan_week.dart';
 import '../race_taper.dart';
@@ -29,13 +31,22 @@ import '../training.dart';
 import '../training_labels.dart';
 import '../training_load.dart';
 import '../training_service.dart';
+import '../settings_sync.dart' show activeWeekStartDay;
+import '../preferences.dart' show activePreferences;
+import 'package:api_client/api_client.dart' show ApiClient;
+import 'coaching_screen.dart';
 import '../backend_timeout.dart';
 import '../disclosure_state.dart';
+import '../widgets/finish_plan_card.dart';
 import '../widgets/error_state.dart';
 import '../widgets/current_week_strip.dart';
+import '../widgets/next_race_card.dart';
+import '../widgets/plan_card.dart';
+import '../widgets/plan_workout_status_style.dart';
 import '../widgets/disclosure_section.dart';
 import '../widgets/plan_calendar.dart';
 import '../widgets/plan_races_list.dart';
+import '../widgets/todays_workout_card.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/workout_edit_sheet.dart';
 import 'workout_detail_screen.dart';
@@ -61,11 +72,6 @@ const DisclosureState _kDisclosureDefaults = {
   'weeks': true,
   'share': true,
 };
-
-/// Web `isWorkoutCompleted` twin — a planned workout is done when a tracked
-/// run is linked OR the runner manually marked it complete.
-bool _isWorkoutCompleted(PlanWorkoutRow wo) =>
-    wo.completedRunId != null || wo.manuallyCompleted;
 
 /// Web `isWorkoutSkipped` twin — deliberately dropped, off the books.
 bool _isWorkoutSkipped(PlanWorkoutRow wo) => isWorkoutSkipped(wo.skippedAt);
@@ -122,11 +128,13 @@ class PlanDetailScreen extends StatefulWidget {
   State<PlanDetailScreen> createState() => _PlanDetailScreenState();
 }
 
-class _PlanDetailScreenState extends State<PlanDetailScreen> {
+class _PlanDetailScreenState extends State<PlanDetailScreen>
+    with WidgetsBindingObserver {
   TrainingPlanRow? _plan;
   List<PlanWeekRow> _weeks = const [];
   Map<String, List<PlanWorkoutRow>> _byWeek = const {};
   bool _loading = true;
+  bool _coachesOwner = false;
   _PlanDetailLoadError? _error;
   bool _publishing = false;
   bool _bulkBusy = false;
@@ -143,6 +151,25 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
   DisclosureState _disclosure = Map.of(_kDisclosureDefaults);
   // A toggle made before the stored state arrives wins over it.
   bool _disclosureTouched = false;
+  // Finished weeks fold into one summary row until the runner opens them.
+  bool _showEarlierWeeks = false;
+  String? _assigningCoachName;
+  // "Today" is derived on every build from widget.now(); these rebuild the
+  // screen when the day turns over while it is open, or when it resumes.
+  Timer? _midnight;
+  // A proposal renders below the Adjust button, often under the fold; it is
+  // scrolled into view when it appears, as web moves focus to its heading.
+  final GlobalKey _taperPreviewKey = GlobalKey();
+  final GlobalKey _replanPreviewKey = GlobalKey();
+
+  void _reveal(GlobalKey key) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = key.currentContext;
+      if (ctx != null && mounted) {
+        Scrollable.ensureVisible(ctx, alignment: 0.1);
+      }
+    });
+  }
 
   // Lazily construct a SocialService against the global Supabase client
   // when none was injected. Tests pass a fake via the constructor.
@@ -151,8 +178,63 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _scheduleMidnight();
     _load();
     _loadDisclosure();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _midnight?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      setState(() {});
+      _scheduleMidnight();
+    }
+  }
+
+  void _scheduleMidnight() {
+    _midnight?.cancel();
+    final now = widget.now();
+    final next = DateTime(now.year, now.month, now.day + 1);
+    _midnight = Timer(next.difference(now) + const Duration(seconds: 1), () {
+      if (!mounted) return;
+      setState(() {});
+      _scheduleMidnight();
+    });
+  }
+
+  bool _notStarted(TrainingPlanRow p) =>
+      toIsoDate(widget.now()).compareTo(toIsoDate(p.startDate)) < 0;
+
+  /// Who assigned this plan, when a coach did and it is not the viewer.
+  Future<void> _loadAssigningCoach() async {
+    final coachId = _plan?.assignedByCoachId;
+    if (coachId == null || coachId == _viewerId()) return;
+    try {
+      final name = await widget.training
+          .fetchDisplayName(coachId)
+          .timeout(kBackendLoadTimeout);
+      if (mounted && _plan?.assignedByCoachId == coachId) {
+        setState(() => _assigningCoachName = name);
+      }
+    } catch (e) {
+      debugPrint('PlanDetailScreen._loadAssigningCoach failed: $e');
+    }
+  }
+
+  void _openCoaching() {
+    final prefs = activePreferences;
+    if (prefs == null || !ApiClient.isInitialized) return;
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => CoachingScreen(api: ApiClient(), preferences: prefs),
+    ));
   }
 
   Future<void> _loadDisclosure() async {
@@ -192,6 +274,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       });
       _loadRecentRuns();
       _loadPublishedState();
+      _loadCoachesOwner();
+      _loadAssigningCoach();
     } on TimeoutException catch (e) {
       debugPrint('PlanDetailScreen._load timed out: $e');
       if (mounted) {
@@ -226,6 +310,26 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       /* L4 best-effort — leave the adherence surfaces hidden. */
     }
   }
+
+  /// Coach RLS lets an athlete's active coach edit the workouts of a
+  /// non-template plan. Fails closed: without the link the editor stays shut.
+  Future<void> _loadCoachesOwner() async {
+    final plan = _plan;
+    if (plan == null || plan.isTemplate || _isOwner(plan)) return;
+    try {
+      final coaches = await widget.training
+          .isActiveCoachOf(plan.userId)
+          .timeout(kBackendLoadTimeout);
+      if (mounted && coaches != _coachesOwner) {
+        setState(() => _coachesOwner = coaches);
+      }
+    } catch (e) {
+      debugPrint('PlanDetailScreen._loadCoachesOwner failed: $e');
+    }
+  }
+
+  bool _canEditWorkouts(TrainingPlanRow plan) =>
+      _isOwner(plan) || (_coachesOwner && !plan.isTemplate);
 
   String? _viewerId() {
     final override = widget.viewerIdOverride;
@@ -323,7 +427,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     final missed = (_byWeek[week.id] ?? const <PlanWorkoutRow>[]).where((w) =>
         w.kind == 'long' &&
         toIsoDate(w.scheduledDate).compareTo(today) < 0 &&
-        !_isWorkoutCompleted(w) &&
+        !isWorkoutCompleted(w) &&
         !_isWorkoutSkipped(w));
     if (missed.isEmpty) return null;
     final next = idx + 1 < _weeks.length ? _weeks[idx + 1] : null;
@@ -376,7 +480,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
                   scheduledDate: toIsoDate(x.scheduledDate),
                   kind: x.kind,
                   targetDistanceM: x.targetDistanceM,
-                  completed: _isWorkoutCompleted(x),
+                  completed: isWorkoutCompleted(x),
                   skipped: _isWorkoutSkipped(x),
                   isPast: toIsoDate(x.scheduledDate).compareTo(today) < 0,
                 ))
@@ -429,7 +533,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
               structure: x.structure,
               notes: x.notes,
               phase: w.phase,
-              completed: _isWorkoutCompleted(x),
+              completed: isWorkoutCompleted(x),
               skipped: _isWorkoutSkipped(x),
               taperApplied: x.raceTaperAppliedAt != null,
             ),
@@ -442,7 +546,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       _adaptiveInfo = null;
       _taperPreview = changes.isEmpty ? null : changes;
     });
-    if (changes.isEmpty) showTopBanner(context, l10n.planDetailRaceTaperNone);
+    if (changes.isEmpty) {
+      showTopBanner(context, l10n.planDetailRaceTaperNone);
+    } else {
+      _reveal(_taperPreviewKey);
+    }
   }
 
   /// Writes every proposed patch in one transaction; the server restates
@@ -510,6 +618,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       _adaptiveInfo = null;
       _replanPreview = res.changes;
     });
+    _reveal(_replanPreviewKey);
   }
 
   /// P2 (gated): the runner's latest training-load point as the fitness input.
@@ -545,6 +654,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
         _adaptiveInfo = null;
         _replanPreview = res.changes.isEmpty ? null : res.changes;
       });
+      if (res.changes.isNotEmpty) _reveal(_replanPreviewKey);
       showTopBanner(context, l10n.planDetailAdaptiveFitnessHeld);
       return;
     }
@@ -578,6 +688,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       _adaptiveInfo = (reason: res.reason, confidence: res.confidence);
       _replanPreview = res.changes;
     });
+    _reveal(_replanPreviewKey);
   }
 
   String _adaptiveBadgeText(AppLocalizations l10n) {
@@ -980,7 +1091,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
         .expand((x) => x)
         .where((w) => w.kind != 'rest' && !_isWorkoutSkipped(w))
         .toList();
-    final done = allActive.where(_isWorkoutCompleted).length;
+    final done = allActive.where(isWorkoutCompleted).length;
     final pct =
         allActive.isEmpty ? 0 : (100 * done / allActive.length).round();
     final body = _bodyList(
@@ -1005,6 +1116,20 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       children: [
         _heroCard(theme, l10n, p, pct, done, total,
             heroRace: _heroRace(p, races)),
+        if (_isOwner(p) &&
+            !p.isTemplate &&
+            FinishPlanCard.shows(
+                status: p.status, endDate: p.endDate, now: widget.now())) ...[
+          const SizedBox(height: 12),
+          FinishPlanCard(
+            key: const Key('planDetailFinishPlan'),
+            training: widget.training,
+            planId: p.id,
+            planName: p.name,
+            endDate: p.endDate,
+            onFinished: _load,
+          ),
+        ],
         if (PlanRacesList.shows(races)) ...[
           const SizedBox(height: 12),
           PlanRacesList(
@@ -1019,16 +1144,27 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
             },
           ),
         ],
-        if (todayWorkout != null) ...[
-          const SizedBox(height: 12),
-          _todayCard(theme, l10n, p, todayWorkout),
-        ],
+        const SizedBox(height: 12),
+        if (todayWorkout != null)
+          TodaysWorkoutCard(
+            workout: todayWorkout,
+            onTap: () => _openWorkout(todayWorkout),
+            // Only the plan's runner starts its workout: a coach or a
+            // template viewer reading the plan has nothing to record.
+            onStart: _isOwner(p) && !p.isTemplate
+                ? () => _startWorkout(todayWorkout)
+                : null,
+          )
+        else
+          _todayFallback(theme, l10n, p, allWorkouts),
         if (_weeks.isNotEmpty) ...[
           const SizedBox(height: 16),
           CurrentWeekStrip(
             startDate: p.startDate,
             weekIndex: _weeks[currentWeek].weekIndex,
             weekWorkouts: _byWeek[_weeks[currentWeek].id] ?? const [],
+            today: widget.now(),
+            title: _notStarted(p) ? l10n.planDetailFirstWeek : null,
             onSelect: _openWorkout,
           ),
         ],
@@ -1039,6 +1175,110 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
         ..._replanSection(theme, l10n, p),
         ..._disclosures(theme, l10n, p, currentWeek),
       ],
+    );
+  }
+
+  /// What the Today slot says when today has no session: the next one, race
+  /// day, or a rest day, so the slot never silently vanishes. Web twin: the
+  /// next up / race day / rest day branches on `/plans/[id]`.
+  Widget _todayFallback(ThemeData theme, AppLocalizations l10n,
+      TrainingPlanRow p, List<PlanWorkoutRow> all) {
+    final today = toIsoDate(widget.now());
+    final tag = localeToTag(Localizations.localeOf(context));
+    final next = (all
+            .where((w) =>
+                toIsoDate(w.scheduledDate).compareTo(today) > 0 &&
+                w.kind != 'rest')
+            .toList()
+          ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate)))
+        .firstOrNull;
+    final raceToday = planRaceCountdown(
+                toIsoDate(p.startDate), toIsoDate(p.endDate), today)
+            .kind ==
+        PlanRaceCountdownKind.raceDay;
+
+    Widget card({
+      required Key key,
+      required IconData icon,
+      required String label,
+      required String title,
+      String? meta,
+      VoidCallback? onTap,
+    }) =>
+        Card(
+          key: key,
+          margin: EdgeInsets.zero,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(icon,
+                      size: AppIconSize.material,
+                      color: theme.colorScheme.primary),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(label,
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            )),
+                        Text(title,
+                            style: theme.textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w700)),
+                        if (meta != null)
+                          Text(meta,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              )),
+                      ],
+                    ),
+                  ),
+                  if (onTap != null)
+                    Icon(Icons.chevron_right,
+                        color: theme.colorScheme.onSurfaceVariant),
+                ],
+              ),
+            ),
+          ),
+        );
+
+    if (raceToday) {
+      return card(
+        key: const Key('planDetailTodayRaceDay'),
+        icon: Icons.emoji_events_outlined,
+        label: l10n.planDetailRaceDayTitle,
+        title: l10n.planDetailGoAndRunIt,
+      );
+    }
+    final restToday = all.any(
+        (w) => w.kind == 'rest' && toIsoDate(w.scheduledDate) == today);
+    if (next != null && !restToday) {
+      final parts = [
+        formatDowDateShort(next.scheduledDate, tag),
+        if (next.targetDistanceM != null) fmtKm(next.targetDistanceM),
+        if (next.targetPaceSecPerKm != null)
+          l10n.todaysWorkoutAtPace(fmtPace(next.targetPaceSecPerKm)),
+      ];
+      return card(
+        key: const Key('planDetailTodayNextUp'),
+        icon: Icons.event_available,
+        label: l10n.planDetailNextUp,
+        title: workoutKindLabel(l10n, workoutKindFromDb(next.kind)),
+        meta: parts.join(' · '),
+        onTap: () => _openWorkout(next),
+      );
+    }
+    return card(
+      key: const Key('planDetailTodayRest'),
+      icon: Icons.self_improvement,
+      label: l10n.planDetailTodayLabel,
+      title: l10n.planDetailRestDayTitle,
+      meta: l10n.planDetailRestDayHint,
     );
   }
 
@@ -1077,6 +1317,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
           startDate: p.startDate,
           endDate: p.endDate,
           workouts: _byWeek.values.expand((x) => x).toList(),
+          today: widget.now(),
+          weekStartDay: activeWeekStartDay(),
           onSelect: _openWorkout,
         ),
       ),
@@ -1085,12 +1327,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
         'weeks',
         l10n.planDetailSectionWeeksTitle,
         l10n.planDetailSectionWeeksHint(_weeks.length),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final w in _weeks) _weekCard(theme, l10n, p, w, currentWeek),
-          ],
-        ),
+        _weeksList(theme, l10n, p, currentWeek),
       ),
       if (_isOwner(p) && !p.isTemplate) ...[
         const SizedBox(height: 16),
@@ -1099,6 +1336,78 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       ],
     ];
   }
+
+  /// Finished weeks fold into one summary row, so the current week leads the
+  /// section instead of sitting eighteen cards down.
+  Widget _weeksList(ThemeData theme, AppLocalizations l10n, TrainingPlanRow p,
+      int currentWeek) {
+    final started = !_notStarted(p);
+    final earlier =
+        started ? _weeks.where((w) => w.weekIndex < currentWeek).toList() : const <PlanWeekRow>[];
+    final rest = _weeks.where((w) => !earlier.contains(w)).toList();
+    final earlierWorkouts = [
+      for (final w in earlier) ...(_byWeek[w.id] ?? const <PlanWorkoutRow>[]),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (earlier.isNotEmpty) ...[
+          Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              key: const Key('planDetailEarlierWeeks'),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              onTap: () =>
+                  setState(() => _showEarlierWeeks = !_showEarlierWeeks),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+                decoration: planCardDecoration(theme),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Wrap(
+                        spacing: 8,
+                        children: [
+                          Text(l10n.planDetailEarlierWeeks(earlier.length),
+                              style: theme.textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w700)),
+                          Text(
+                              l10n.planDetailWeekDoneCount(
+                                  earlierWorkouts
+                                      .where(isWorkoutCompleted)
+                                      .length,
+                                  _activeCount(earlierWorkouts)),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              )),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      _showEarlierWeeks ? Icons.expand_less : Icons.expand_more,
+                      semanticLabel: _showEarlierWeeks
+                          ? l10n.planDetailHideEarlierWeeks
+                          : l10n.planDetailShowEarlierWeeks,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (_showEarlierWeeks)
+            for (final w in earlier) _weekCard(theme, l10n, p, w, currentWeek),
+        ],
+        for (final w in rest) _weekCard(theme, l10n, p, w, currentWeek),
+      ],
+    );
+  }
+
+  int _activeCount(List<PlanWorkoutRow> workouts) => workouts
+      .where((w) => w.kind != 'rest' && !_isWorkoutSkipped(w))
+      .length;
 
   /// `training_plans.rules` is an untyped jsonb column; web renders it as a
   /// list of strings, so anything else is treated as no rules.
@@ -1114,11 +1423,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
   Widget _rulesCard(ThemeData theme, List<String> rules) {
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        border: Border.all(color: theme.dividerColor),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: planCardDecoration(theme),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1149,11 +1454,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
         );
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        border: Border.all(color: theme.dividerColor),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: planCardDecoration(theme),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1216,14 +1517,18 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
               : l10n.planDetailMissedLongMakeUp;
       flags.add(_adherenceFlag(theme, Icons.event_busy, text));
     }
+    final warning = (theme.extension<AppSemanticColors>() ??
+            (theme.brightness == Brightness.dark
+                ? AppSemanticColors.dark
+                : AppSemanticColors.light))
+        .warning;
     return [
       const SizedBox(height: 12),
       Container(
+        key: const Key('planDetailAdherence'),
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest,
-          border: Border.all(color: theme.dividerColor),
-          borderRadius: BorderRadius.circular(12),
+        decoration: planCardDecoration(theme).copyWith(
+          border: Border.all(color: warning),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1232,6 +1537,15 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
               if (i > 0) const SizedBox(height: 8),
               flags[i],
             ],
+            if (_isOwner(p) && !p.isTemplate)
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: TextButton(
+                  key: const Key('planDetailAdherenceAdjust'),
+                  onPressed: _bulkBusy ? null : () => _openAdjustPlan(p),
+                  child: Text(l10n.planDetailAdjustPlan),
+                ),
+              ),
           ],
         ),
       ),
@@ -1245,11 +1559,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     if (phases.length <= 1 && longest == null) return null;
     return Container(
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest,
-          border: Border.all(color: theme.dividerColor),
-          borderRadius: BorderRadius.circular(12),
-        ),
+        decoration: planCardDecoration(theme),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1304,10 +1614,15 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
   }
 
   Widget _adherenceFlag(ThemeData theme, IconData icon, String text) {
+    final warning = (theme.extension<AppSemanticColors>() ??
+            (theme.brightness == Brightness.dark
+                ? AppSemanticColors.dark
+                : AppSemanticColors.light))
+        .warning;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 18, color: theme.colorScheme.primary),
+        Icon(icon, size: AppIconSize.standard, color: warning),
         const SizedBox(width: 8),
         Expanded(
           child: Text(text, style: theme.textTheme.bodySmall),
@@ -1332,15 +1647,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
         ),
       ),
       if (taper != null) ...[
-        const SizedBox(height: 10),
+        SizedBox(key: _taperPreviewKey, height: 10),
         Container(
           key: const Key('planDetailRaceTaperPreview'),
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest,
-            border: Border.all(color: theme.dividerColor),
-            borderRadius: BorderRadius.circular(12),
-          ),
+          decoration: planCardDecoration(theme),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1356,7 +1667,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
                     children: [
                       TextLane(
                         width: 92,
-                        child: Text(c.scheduledDate,
+                        child: Text(
+                            formatDowDateShort(parseIsoDate(c.scheduledDate),
+                                localeToTag(Localizations.localeOf(context))),
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             )),
@@ -1401,14 +1714,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
         ),
       ],
       if (preview != null) ...[
-        const SizedBox(height: 10),
+        SizedBox(key: _replanPreviewKey, height: 10),
         Container(
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest,
-            border: Border.all(color: theme.dividerColor),
-            borderRadius: BorderRadius.circular(12),
-          ),
+          decoration: planCardDecoration(theme),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1432,7 +1741,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
                     children: [
                       TextLane(
                         width: 92,
-                        child: Text(c.scheduledDate,
+                        child: Text(
+                            formatDowDateShort(parseIsoDate(c.scheduledDate),
+                                localeToTag(Localizations.localeOf(context))),
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             )),
@@ -1479,100 +1790,187 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
 
   Widget _heroCard(ThemeData theme, AppLocalizations l10n, TrainingPlanRow p,
       int pct, int done, int total, {PlanRace? heroRace}) {
+    final tag = localeToTag(Localizations.localeOf(context));
+    final today = toIsoDate(widget.now());
     final goalDistanceM = heroRace != null ? heroRace.distanceM : p.goalDistanceM;
     final goalTimeSec = heroRace != null ? heroRace.goalTimeSec : p.goalTimeSeconds;
+    final raceIso = heroRace?.date ?? toIsoDate(p.endDate);
+    final countdown =
+        planRaceCountdown(toIsoDate(p.startDate), raceIso, today);
+    final relation = NextRaceCard.relation(l10n, countdown);
+    final notStarted = _notStarted(p);
+    final coachId = p.assignedByCoachId;
+    final assigned = coachId != null && coachId != _viewerId();
+    final pills = <Widget>[
+      if (!notStarted && _weeks.isNotEmpty)
+        _pill(theme,
+            l10n.planDetailWeekOfN(_currentWeekIndex(p) + 1, _weeks.length),
+            key: const Key('planDetailWeekOfN')),
+      if (relation.isNotEmpty)
+        _pill(theme, relation,
+            key: const Key('planDetailCountdown'),
+            emphasised: countdown.kind == PlanRaceCountdownKind.raceDay),
+      if (p.status == 'paused')
+        _pill(theme, l10n.planDetailPausedChip,
+            key: const Key('planDetailPaused'), icon: Icons.pause),
+    ];
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        border: Border.all(color: theme.dividerColor),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
+      decoration: planCardDecoration(theme),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (heroRace != null) ...[
-                  Text(
-                    l10n.planDetailHeroNextRace(heroRace.name ?? p.name),
-                    key: const Key('planDetailHeroNextRace'),
-                    style: theme.textTheme.titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 4),
-                ],
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 4,
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (goalDistanceM != null)
-                      _chip(theme, Icons.flag_outlined, fmtKm(goalDistanceM, 1)),
-                    if (goalTimeSec != null)
-                      _chip(
-                          theme,
-                          Icons.timer,
-                          heroRace != null && goalTimeSec > 0
-                              ? formatRaceGoalTimeS(goalTimeSec)
-                              : fmtHms(goalTimeSec)),
-                    if (p.vdot != null)
-                      _chip(
-                          theme,
-                          Icons.trending_up,
-                          metricText(l10n, Metric.vdot, variant: 'value', args: {
-                            'value': formatFixed(p.vdot!, 1, activeLocaleTag)
-                          })),
+                    if (heroRace != null) ...[
+                      Text(
+                        l10n.planDetailHeroNextRace(heroRace.name ?? p.name),
+                        key: const Key('planDetailHeroNextRace'),
+                        style: theme.textTheme.titleSmall
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 4,
+                      children: [
+                        if (goalDistanceM != null)
+                          _chip(theme, Icons.flag_outlined,
+                              fmtKm(goalDistanceM, 1)),
+                        if (goalTimeSec != null)
+                          _chip(
+                              theme,
+                              Icons.timer,
+                              heroRace != null && goalTimeSec > 0
+                                  ? formatRaceGoalTimeS(goalTimeSec)
+                                  : fmtHms(goalTimeSec)),
+                        if (p.vdot != null)
+                          _chip(
+                              theme,
+                              Icons.trending_up,
+                              metricText(l10n, Metric.vdot,
+                                  variant: 'value',
+                                  args: {
+                                    'value': formatFixed(
+                                        p.vdot!, 1, activeLocaleTag)
+                                  })),
+                        _chip(theme, Icons.event,
+                            formatDateMed(parseIsoDate(raceIso), tag),
+                            key: const Key('planDetailRaceDate')),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${formatDateShort(p.startDate, tag)} → '
+                      '${formatDateMed(p.endDate, tag)} · '
+                      '${l10n.planDetailDaysPerWeek(p.daysPerWeek)}',
+                      key: const Key('planDetailDateRange'),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                if (heroRace != null) ...[
-                  _chip(theme, Icons.event, heroRace.date),
-                  const SizedBox(height: 4),
-                ],
-                Text(
-                  '${toIsoDate(p.startDate)} → ${toIsoDate(p.endDate)} · '
-                  '${l10n.planDetailDaysPerWeek(p.daysPerWeek)}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 12),
+              _progressRing(theme, l10n, pct, done, total),
+            ],
+          ),
+          if (pills.isNotEmpty || assigned) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                ...pills,
+                if (assigned)
+                  ActionChip(
+                    key: const Key('planDetailAssignedBy'),
+                    avatar: const Icon(Icons.sports, size: AppIconSize.inline),
+                    label: Text(_assigningCoachName != null
+                        ? l10n.planDetailAssignedBy(_assigningCoachName!)
+                        : l10n.planDetailAssignedByCoach),
+                    onPressed: _openCoaching,
                   ),
-                ),
               ],
             ),
-          ),
-          const SizedBox(width: 12),
-          _progressRing(theme, pct, done, total),
+          ],
         ],
       ),
     );
   }
 
-  Widget _chip(ThemeData theme, IconData icon, String text) {
+  Widget _pill(ThemeData theme, String text,
+      {Key? key, IconData? icon, bool emphasised = false}) {
+    final fg = emphasised
+        ? theme.colorScheme.onPrimaryContainer
+        : theme.colorScheme.onSurface;
+    return Container(
+      key: key,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: emphasised
+            ? theme.colorScheme.primaryContainer
+            : theme.colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: AppIconSize.dense, color: fg),
+            const SizedBox(width: 4),
+          ],
+          Flexible(
+            child: Text(text,
+                style: theme.textTheme.labelMedium
+                    ?.copyWith(color: fg, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(ThemeData theme, IconData icon, String text, {Key? key}) {
     return Row(
+      key: key,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: theme.colorScheme.outline),
+        Icon(icon, size: AppIconSize.dense, color: theme.colorScheme.outline),
         const SizedBox(width: 3),
         Text(text, style: theme.textTheme.bodySmall),
       ],
     );
   }
 
-  Widget _progressRing(ThemeData theme, int pct, int done, int total) {
-    return SizedBox(
-      width: 64,
-      height: 64,
+  Widget _progressRing(
+      ThemeData theme, AppLocalizations l10n, int pct, int done, int total) {
+    final tag = localeToTag(Localizations.localeOf(context));
+    return Semantics(
+      label: l10n.planDetailWorkoutCompletion,
+      value: '${formatPercent(pct / 100, tag)}, $done / $total',
+      excludeSemantics: true,
+      child: SizedBox(
+      width: AppIconSize.hero,
+      height: AppIconSize.hero,
       child: Stack(
         alignment: Alignment.center,
         children: [
           SizedBox(
-            width: 64,
-            height: 64,
+            width: AppIconSize.hero,
+            height: AppIconSize.hero,
             child: CircularProgressIndicator(
               value: pct / 100,
               strokeWidth: 5,
               color: theme.colorScheme.primary,
-              backgroundColor: theme.dividerColor,
+              // `outline` clears 3:1 against the card in both themes, where
+              // the divider colour read at about 2.5:1 in dark mode.
+              backgroundColor: theme.colorScheme.outline,
             ),
           ),
           // The ring's diameter is fixed by the header layout, so its caption
@@ -1584,7 +1982,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text('$pct%',
+                Text(formatPercent(pct / 100, tag),
                     style: theme.textTheme.titleSmall
                         ?.copyWith(fontWeight: FontWeight.w700)),
                 Text('$done/$total',
@@ -1596,71 +1994,6 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _todayCard(ThemeData theme, AppLocalizations l10n, TrainingPlanRow p,
-      PlanWorkoutRow wo) {
-    final kind = workoutKindFromDb(wo.kind);
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () => _openWorkout(wo),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              theme.colorScheme.primaryContainer,
-              theme.colorScheme.surfaceContainerHighest,
-            ],
-          ),
-          border: Border.all(color: theme.dividerColor),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(l10n.planDetailToday,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  letterSpacing: 0.8,
-                  fontWeight: FontWeight.w700,
-                )),
-            const SizedBox(height: 4),
-            Text(workoutKindLabel(l10n, kind),
-                style: theme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                if (wo.targetDistanceM != null) ...[
-                  Text(fmtKm(wo.targetDistanceM)),
-                  const SizedBox(width: 8),
-                ],
-                if (wo.targetPaceSecPerKm != null)
-                  Text(
-                    '@ ${fmtPace(wo.targetPaceSecPerKm)}',
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                if (_isWorkoutCompleted(wo)) ...[
-                  const SizedBox(width: 10),
-                  Icon(Icons.check_circle,
-                      color: theme.colorScheme.primary, size: 18),
-                  const SizedBox(width: 3),
-                  Flexible(
-                    child: Text(l10n.planDetailCompleted,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: theme.colorScheme.primary)),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -1669,21 +2002,13 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       PlanWeekRow w, int currentWeek) {
     final phase = planPhaseFromDb(w.phase);
     final today = toIsoDate(widget.now());
-    final workouts = _byWeek[w.id] ?? const [];
-    final isCurrent = w.weekIndex == currentWeek;
+    final workouts = _byWeek[w.id] ?? const <PlanWorkoutRow>[];
+    final isCurrent = w.weekIndex == currentWeek && !_notStarted(p);
     return Container(
+      key: ValueKey('planDetailWeek-${w.weekIndex}'),
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        border: Border.all(
-          color: isCurrent
-              ? theme.colorScheme.primary
-              : theme.dividerColor,
-          width: isCurrent ? 1.5 : 1,
-        ),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: planCardDecoration(theme, emphasised: isCurrent),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1720,6 +2045,14 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
                 ),
             ],
           ),
+          Text(
+              l10n.planDetailWeekDoneCount(
+                  workouts.where(isWorkoutCompleted).length,
+                  _activeCount(workouts)),
+              key: ValueKey('planDetailWeekCount-${w.weekIndex}'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              )),
           if (w.notes != null && w.notes!.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 2),
@@ -1740,86 +2073,128 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       PlanWorkoutRow wo, String today) {
     final kind = workoutKindFromDb(wo.kind);
     final isRest = kind == WorkoutKind.rest;
-    final isSkipped = _isWorkoutSkipped(wo);
+    final status = planWorkoutStatusOf(wo, today);
+    final look = planWorkoutStatusLook(theme, status);
+    final isSkipped = status == PlanWorkoutStatus.skipped;
     final isToday = toIsoDate(wo.scheduledDate) == today;
-    final dow = formatDow(
-        wo.scheduledDate, localeToTag(Localizations.localeOf(context)));
-    return InkWell(
-      onTap: isRest ? null : () => _openWorkout(wo),
-      onLongPress: () => _editWorkout(wo),
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        margin: const EdgeInsets.only(top: 4),
-        padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
-        decoration: BoxDecoration(
+    final tag = localeToTag(Localizations.localeOf(context));
+    final dow = formatDow(wo.scheduledDate, tag);
+    final radius = BorderRadius.circular(AppRadius.sm);
+    Widget row = Container(
+      margin: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+      decoration: BoxDecoration(
+        color: look.fill,
+        borderRadius: radius,
+        border: Border.all(
           color: isToday
-              ? theme.colorScheme.primaryContainer.withOpacity(0.5)
-              : null,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: theme.dividerColor),
-        ),
-        child: Row(
-          children: [
-            // The tint above is 1.003:1 light / 1.140:1 dark against the row
-            // beside it, so it cannot be what says "today" — the dot and the
-            // weight are.
-            SizedBox(
-              width: 12,
-              child: isToday
-                  ? Semantics(
-                      label: l10n.planDetailToday,
-                      // A 6 px bullet, not an icon on the scale: it marks the
-                      // today row's tint (1.003:1 against its neighbour) and is
-                      // sized as a dot rather than as a glyph.
-                      child: Icon(Icons.circle,
-                          size: 6, color: theme.colorScheme.primary),
-                    )
-                  : null,
-            ),
-            TextLane(
-                width: 34,
-                child: Text(dow,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontWeight: isToday ? FontWeight.w700 : null,
-                    ))),
-            Expanded(
-              child: Text(
-                workoutKindLabel(l10n, kind),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: (isRest || isSkipped)
-                      ? theme.colorScheme.onSurfaceVariant
-                      : null,
-                  fontWeight: isRest ? FontWeight.w400 : FontWeight.w600,
-                  decoration: isSkipped ? TextDecoration.lineThrough : null,
-                ),
-              ),
-            ),
-            if (wo.targetDistanceM != null && !isRest) ...[
-              Text(fmtKm(wo.targetDistanceM, 1),
-                  style: theme.textTheme.bodySmall),
-              const SizedBox(width: 6),
-            ],
-            if (_isWorkoutCompleted(wo))
-              Icon(Icons.check_circle, color: theme.colorScheme.primary, size: 16)
-            else if (isSkipped)
-              Icon(Icons.skip_next, color: theme.colorScheme.outline, size: 16),
-            // Inline edit affordance — discoverable button alongside the
-            // long-press gesture. Hidden on rest days; nothing to edit.
-            if (!isRest)
-              IconButton(
-                iconSize: 16,
-                padding: EdgeInsets.zero,
-                constraints:
-                    const BoxConstraints(minWidth: 48, minHeight: 48),
-                tooltip: l10n.planDetailEditTooltip,
-                icon: Icon(Icons.edit_outlined,
-                    color: theme.colorScheme.outline),
-                onPressed: () => _editWorkout(wo),
-              ),
-          ],
+              ? theme.colorScheme.primary
+              // An upcoming row draws no box of its own inside the week card;
+              // only a state (done, missed) earns an outline.
+              : look.dashed
+                  ? Colors.transparent
+                  : (look.outline ?? Colors.transparent),
+          width: isToday ? 1.5 : 1,
         ),
       ),
+      child: Row(
+        children: [
+          // The today row's outline is what says "today"; the dot and the
+          // weight repeat it for a reader who cannot tell the outline apart.
+          SizedBox(
+            width: 12,
+            child: isToday
+                ? Icon(Icons.circle, size: 6, color: theme.colorScheme.primary)
+                : null,
+          ),
+          TextLane(
+              width: 34,
+              child: Text(dow,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: isToday ? FontWeight.w700 : null,
+                  ))),
+          Expanded(
+            child: Text(
+              workoutKindLabel(l10n, kind),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: (isRest || isSkipped)
+                    ? theme.colorScheme.onSurfaceVariant
+                    : null,
+                fontWeight: isRest ? FontWeight.w400 : FontWeight.w600,
+                decoration: isSkipped ? TextDecoration.lineThrough : null,
+              ),
+            ),
+          ),
+          if (wo.targetDistanceM != null && !isRest) ...[
+            Text(fmtKm(wo.targetDistanceM, 1),
+                style: theme.textTheme.bodySmall),
+            const SizedBox(width: 6),
+          ],
+          if (look.glyph != null)
+            Icon(look.glyph, color: look.glyphColor, size: AppIconSize.inline),
+        ],
+      ),
+    );
+    if (look.dashed && !isToday) {
+      row = CustomPaint(
+        foregroundPainter: _TopInsetDashedOutline(look.outline!),
+        child: row,
+      );
+    }
+    final label = planWorkoutSemanticsLabel(
+      l10n,
+      wo,
+      today,
+      day: formatDowDateShort(wo.scheduledDate, tag),
+      kind: workoutKindLabel(l10n, kind),
+      distance:
+          wo.targetDistanceM != null && !isRest ? fmtKm(wo.targetDistanceM, 1) : null,
+    );
+    return Row(
+      key: ValueKey('planDetailWorkoutRow-${wo.id}'),
+      children: [
+        Expanded(
+          child: Semantics(
+            button: !isRest,
+            label: label,
+            excludeSemantics: true,
+            child: InkWell(
+              onTap: isRest ? null : () => _openWorkout(wo),
+              onLongPress: _canEditWorkouts(p) ? () => _editWorkout(wo) : null,
+              borderRadius: radius,
+              child: row,
+            ),
+          ),
+        ),
+        // Inline edit affordance — discoverable button alongside the
+        // long-press gesture. Hidden on rest days; nothing to edit.
+        if (!isRest && _canEditWorkouts(p))
+          IconButton(
+            iconSize: AppIconSize.inline,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            tooltip: l10n.planDetailEditTooltip,
+            icon: Icon(Icons.edit_outlined, color: theme.colorScheme.outline),
+            onPressed: () => _editWorkout(wo),
+          ),
+      ],
+    );
+  }
+
+  /// The days [wo] may move to (decisions § 2073); only the owner moves.
+  List<WorkoutMoveDay> _moveDaysFor(PlanWorkoutRow wo) {
+    final plan = _plan;
+    if (plan == null || !_isOwner(plan)) return const [];
+    final week = _weeks.where((w) => w.id == wo.weekId).firstOrNull;
+    if (week == null) return const [];
+    return workoutMoveDays(
+      planStartIso: toIsoDate(plan.startDate),
+      planEndIso: toIsoDate(plan.endDate),
+      weekIndex: week.weekIndex,
+      workout: wo,
+      workouts: _byWeek[wo.weekId] ?? const [],
+      todayIso: toIsoDate(widget.now()),
     );
   }
 
@@ -1828,6 +2203,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
       context,
       workout: wo,
       training: widget.training,
+      moveDays: _moveDaysFor(wo),
     );
     if (ok) await _load();
   }
@@ -1849,15 +2225,37 @@ class _PlanDetailScreenState extends State<PlanDetailScreen> {
     );
     if (!mounted) return;
     if (result != null) {
-      pendingStartWorkout.value = result;
-      Navigator.of(context).popUntil((r) => r.isFirst);
+      _startWorkout(result);
       return;
     }
     _load();
   }
+
+  void _startWorkout(PlanWorkoutRow wo) {
+    pendingStartWorkout.value = wo;
+    Navigator.of(context).popUntil((r) => r.isFirst);
+  }
 }
 
 enum _PlanDetailLoadError { timeout, generic }
+
+// A workout row carries a 4 dp top margin, so the dash is drawn below it.
+class _TopInsetDashedOutline extends CustomPainter {
+  final Color color;
+  const _TopInsetDashedOutline(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.translate(0, 4);
+    DashedOutlinePainter(color: color)
+        .paint(canvas, Size(size.width, size.height - 4));
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_TopInsetDashedOutline old) => old.color != color;
+}
 
 /// Modal that lists the viewer's admin-able clubs and pops the picked
 /// club id (or `null` on cancel). Pure presentation — the parent does

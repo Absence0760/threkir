@@ -1,7 +1,10 @@
 <script lang="ts">
 	import type { PlanWorkout } from '#lib/types.ts';
-	import { isWorkoutCompleted, parseISO, todayISO, formatISO } from '#lib/training/training.ts';
-	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
+	import { parseISO, todayISO, formatISO } from '#lib/training/training.ts';
+	import { workoutKindLabel, workoutKindShortLabel } from '#lib/training/workout_labels.ts';
+	import { planWorkoutAriaLabel, planWorkoutStatusOf } from '#lib/training/plan_workout_view.ts';
+	import { planWorkoutStatusLook } from '#lib/training/plan_workout_status_style.ts';
+	import { formatDateShort } from '#lib/format/time.ts';
 	import { workoutKindMarkVar } from '#lib/training/workout_kind_color.ts';
 	import { fmtKm } from '#lib/format/units.svelte.ts';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
@@ -16,13 +19,25 @@
 		/// `week_start_day` preference. Defaults to Monday so the component
 		/// stays standalone-friendly.
 		weekStart?: WeekStart;
+		/// The runner's local day (yyyy-mm-dd): marks today's cell, decides
+		/// which workouts are missed, and picks the month the calendar opens
+		/// on. Defaults to the browser's day so the component stays standalone.
+		today?: string;
 		/// Called when the user clicks a workout cell. Hosts pass an
 		/// inline-editor opener (sets `editing = wo` on the plan page).
 		/// When omitted, falls back to navigating to the workout
 		/// detail route — keeps the component standalone-friendly.
 		onSelect?: (workout: PlanWorkout) => void;
 	};
-	let { startDate, endDate, workouts, planId, weekStart = 'monday', onSelect }: Props = $props();
+	let {
+		startDate,
+		endDate,
+		workouts,
+		planId,
+		weekStart = 'monday',
+		today = todayISO(),
+		onSelect
+	}: Props = $props();
 
 	let workoutByDate = $derived.by(() => {
 		const m = new Map<string, PlanWorkout>();
@@ -44,10 +59,15 @@
 		return out;
 	});
 
+	/// The month holding today; before the plan the first month, after it the
+	/// last, so a finished plan opens on its race rather than on week 1.
 	function initialIdx(): number {
-		const today = new Date();
+		if (months.length === 0) return 0;
+		if (today < startDate) return 0;
+		if (today > endDate) return months.length - 1;
+		const t = parseISO(today);
 		const idx = months.findIndex(
-			({ year, month }) => year === today.getFullYear() && month === today.getMonth()
+			({ year, month }) => year === t.getFullYear() && month === t.getMonth()
 		);
 		return idx >= 0 ? idx : 0;
 	}
@@ -55,8 +75,6 @@
 	let currentIdx = $state(initialIdx());
 
 	let current = $derived(months[currentIdx]);
-
-	let today = $derived(todayISO());
 
 	type Cell = {
 		iso: string;
@@ -149,6 +167,8 @@
 		{#each grid as c (c.iso)}
 			{@const wo = workoutByDate.get(c.iso)}
 			{#if wo && c.inPlan}
+				{@const status = planWorkoutStatusOf(wo, today)}
+				{@const look = planWorkoutStatusLook(status)}
 				<svelte:element
 					this={onSelect ? 'button' : 'a'}
 					role={onSelect ? 'button' : 'link'}
@@ -158,18 +178,37 @@
 					class="cell has-workout"
 					class:out-month={!c.inMonth}
 					class:today={c.iso === today}
-					class:done={isWorkoutCompleted(wo)}
+					data-status={status}
 					style="--kind: {workoutKindMarkVar(wo.kind)}"
+					style:--wo-bg={look.bg}
+					style:--wo-border={look.border}
+					style:--wo-border-style={look.borderStyle}
+					style:--wo-glyph={look.glyphColor}
+					aria-label={planWorkoutAriaLabel(
+						wo,
+						today,
+						{
+							day: formatDateShort(c.iso),
+							kind: workoutKindLabel(wo.kind),
+							distance:
+								wo.target_distance_m != null && wo.kind !== 'rest'
+									? fmtKm(wo.target_distance_m, 1)
+									: null
+						},
+						m
+					)}
 				>
-					<span class="day-num">{c.day}</span>
-					<span class="kind-pill">
-						{workoutKindLabel(wo.kind)}
-					</span>
+					<span class="day-num" aria-hidden="true">{c.day}</span>
+					<span
+						class="kind-pill"
+						aria-hidden="true"
+						data-short={workoutKindShortLabel(wo.kind)}
+					><span class="kind-full">{workoutKindLabel(wo.kind)}</span></span>
 					{#if wo.target_distance_m != null && wo.kind !== 'rest'}
-						<span class="dist">{fmtKm(wo.target_distance_m, 1)}</span>
+						<span class="dist" aria-hidden="true">{fmtKm(wo.target_distance_m, 1)}</span>
 					{/if}
-					{#if isWorkoutCompleted(wo)}
-						<span class="material-symbols check">check</span>
+					{#if look.glyph}
+						<span class="material-symbols check" aria-hidden="true">{look.glyph}</span>
 					{/if}
 				</svelte:element>
 			{:else}
@@ -274,7 +313,13 @@
 		border-color: var(--color-primary);
 		box-shadow: 0 0 0 1px var(--color-primary);
 	}
+	.cell.has-workout:not(.today) {
+		border-color: var(--wo-border, var(--color-border));
+		border-style: var(--wo-border-style);
+		border-inline-start: 3px solid var(--kind);
+	}
 	.cell.has-workout {
+		background: var(--wo-bg, var(--color-bg));
 		border-inline-start: 3px solid var(--kind);
 		cursor: pointer;
 		transition: transform var(--transition-fast), box-shadow var(--transition-fast);
@@ -282,9 +327,6 @@
 	.cell.has-workout:hover {
 		transform: translateY(-1px);
 		box-shadow: var(--shadow-sm);
-	}
-	.cell.done {
-		background: var(--color-success-light);
 	}
 	.day-num {
 		font-size: var(--font-size-section-label);
@@ -314,8 +356,9 @@
 		inset-inline-end: 0.3rem;
 		font-family: 'Material Symbols Outlined';
 		font-size: 0.95rem;
-		color: var(--color-success-text);
+		color: var(--wo-glyph);
 	}
+
 	/* The narrow-viewport cell tightens its box, not its type: the kind pill
 	   and the distance used to drop to 0.55rem / 0.6rem (8.8 / 9.6 px), under
 	   mobile's 11 px labelSmall floor (§ 482), on the one plan surface every
@@ -327,6 +370,20 @@
 		.cell {
 			min-height: 3.5rem;
 			padding: 0.2rem;
+		}
+	}
+	/* Below ~600 px a cell holds about 29 px of text, so "INTERVALS" or
+	   "WALK-RUN" was cut to an ellipsis and the 3 px edge, six marks for nine
+	   kinds, was left to name the kind. The abbreviation fits; the full word
+	   stays in the cell's accessible name. */
+	@media (max-width: 37.5rem) {
+		.kind-full {
+			display: none;
+		}
+		/* A pseudo-element, so the cell's text content stays the full word. */
+		.kind-pill::after {
+			content: attr(data-short);
+			letter-spacing: 0;
 		}
 	}
 </style>

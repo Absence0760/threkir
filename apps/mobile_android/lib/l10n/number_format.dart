@@ -43,3 +43,15 @@ String formatFixed(double value, int digits, String localeTag) {
   }
   return fmt.format(value);
 }
+
+final Map<String, NumberFormat> _percentFormatters = <String, NumberFormat>{};
+
+/// [fraction] (0.42) as a whole percentage in [localeTag]'s pattern: `42%`
+/// (en), `42 %` (de, fr), `42%` (ja). Replaces `'$pct%'`, which put the sign
+/// where English does in every language.
+String formatPercent(double fraction, String localeTag) {
+  if (!fraction.isFinite) return '—';
+  final fmt = _percentFormatters.putIfAbsent(
+      localeTag, () => NumberFormat.percentPattern(localeTag));
+  return fmt.format(fraction);
+}

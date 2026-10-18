@@ -2262,7 +2262,10 @@ BEGIN
               'expected_return_at', '2026-05-01T01:00:00Z',
               -- 20270627000001 / 20270628000001 strip-list additions:
               'guided_run_id', 'easy-30',
-              'indoor_source', 'treadmill'
+              'indoor_source', 'treadmill',
+              -- 20270909000001 strip-list additions:
+              'division_award', 'M Masters',
+              'division_award_place', 2
             ))
     RETURNING id INTO v_run_id;
 
@@ -2316,7 +2319,9 @@ BEGIN
      OR v_public_metadata ? 'safety_escalated_at'
      OR v_public_metadata ? 'expected_return_at'
      OR v_public_metadata ? 'guided_run_id'
-     OR v_public_metadata ? 'indoor_source' THEN
+     OR v_public_metadata ? 'indoor_source'
+     OR v_public_metadata ? 'division_award'
+     OR v_public_metadata ? 'division_award_place' THEN
     RAISE EXCEPTION 'public_runs: metadata strip list incomplete — leaked at least one denylisted key';
   END IF;
 
@@ -2833,6 +2838,17 @@ INSERT INTO runs (user_id, started_at, duration_s, distance_m, source, is_public
   ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', now() - interval '3 hours', 1980, 8000.0, 'app', false,
     '{"activity_type":"run","title":"Morning easy 8K","avg_bpm":148,"steps":9800}'::jsonb);
 
+-- The database matcher (20270901000001) links this run to today's planned
+-- easy 8 km. Unlink it, as the Unlink control would, so today's workout stays
+-- open and the start-from-today path stays exercisable out of the box.
+UPDATE plan_workouts
+SET completed_run_id = null, completed_at = null
+WHERE completed_run_id IN (
+  SELECT id FROM runs
+  WHERE user_id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+    AND metadata->>'title' = 'Morning easy 8K'
+);
+
 -- ════════════════════════════════════════════════════════════════════════════
 -- Club templates for Richmond Run Club — so the Templates tab is populated.
 --
@@ -3055,4 +3071,15 @@ insert into private.feature_flags (name, enabled) values ('safety_audience', tru
 -- the CISO / Security Analyst sign-off in docs/features/coach_roster.md.
 -- Local stacks and CI open it so the coach view and its specs exercise it.
 insert into private.feature_flags (name, enabled) values ('coach_run_map', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Heart-rate prescription gate (20270915000004) ───────────────────
+--
+-- bpm targets, the hr_medication_affected pref and the roster HR drift are
+-- fail-closed behind a private.feature_flags row no migration writes, so prod
+-- stays off until the CISO + counsel sign-off in docs/features/coach_roster.md.
+-- Local stacks and CI open it, and both clients read this same row
+-- (hr_prescription_enabled(), 20270917000004), so the HR surfaces and their
+-- specs exercise it.
+insert into private.feature_flags (name, enabled) values ('hr_prescription', true)
   on conflict (name) do update set enabled = excluded.enabled, updated_at = now();

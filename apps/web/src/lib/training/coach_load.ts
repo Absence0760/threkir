@@ -12,6 +12,8 @@
  * algorithm, band edges, and test counts in lockstep).
  */
 
+import { isWorkoutMissed } from './plan_current';
+
 export type InjuryRiskBand = 'insufficient' | 'low' | 'optimal' | 'elevated' | 'high';
 export type LoadTrend = 'ramping' | 'steady' | 'tapering';
 
@@ -62,4 +64,65 @@ export function loadTrend(acute7d: number, chronic28dAvg: number): LoadTrend {
 	if (ratio <= TREND_TAPER_MAX) return 'tapering';
 	if (ratio >= TREND_RAMP_MIN) return 'ramping';
 	return 'steady';
+}
+
+/// One of an athlete's recent planned workouts as `coach_roster_summary`
+/// returns it in `recent_workouts` — the shape `isWorkoutMissed` takes.
+export interface RosterRecentWorkout {
+	scheduled_date: string;
+	kind: string;
+	completed: boolean;
+	skipped: boolean;
+}
+
+/// Read `recent_workouts` off a roster row. An element missing its date or
+/// kind drops out instead of failing the whole row; a non-array reads as none.
+export function parseRosterRecentWorkouts(json: unknown): RosterRecentWorkout[] {
+	if (!Array.isArray(json)) return [];
+	const out: RosterRecentWorkout[] = [];
+	for (const e of json) {
+		if (!e || typeof e !== 'object') continue;
+		const r = e as Record<string, unknown>;
+		if (typeof r.scheduled_date !== 'string' || typeof r.kind !== 'string') continue;
+		out.push({
+			scheduled_date: r.scheduled_date,
+			kind: r.kind,
+			completed: r.completed === true,
+			skipped: r.skipped === true
+		});
+	}
+	return out;
+}
+
+/// Consecutive misses at or above which the roster flags the athlete.
+export const CONSECUTIVE_MISS_FLAG = 2;
+
+/// The athlete's current run of missed workouts, counting back from their
+/// local yesterday. "Missed" is `isWorkoutMissed` from the plan_current pair,
+/// never restated here, so the roster agrees with the athlete's own plan. A
+/// done workout ends the run; a skipped one (an intentional change) and a rest
+/// day neither count nor end it. Order of `recent` does not matter.
+export function consecutiveMissedWorkouts(recent: RosterRecentWorkout[], todayIso: string): number {
+	const past = recent
+		.filter((w) => w.scheduled_date < todayIso)
+		.sort((a, b) => (a.scheduled_date < b.scheduled_date ? 1 : a.scheduled_date > b.scheduled_date ? -1 : 0));
+	let run = 0;
+	for (const w of past) {
+		if (isWorkoutMissed(w, todayIso)) {
+			run += 1;
+		} else if (w.completed) {
+			break;
+		}
+	}
+	return run;
+}
+
+/// Easy-run heart-rate drift (per cent) at or above which the roster flags it.
+/// The RPC computes it as the change in mean heart rate on the athlete's
+/// planned easy runs held within 15 s/km of their median easy pace, recent 14
+/// days against the 42 before, only under health-data consent.
+export const EASY_HR_DRIFT_FLAG_PCT = 5;
+
+export function isEasyHrDriftFlagged(driftPct: number | null | undefined): boolean {
+	return driftPct != null && Number.isFinite(driftPct) && driftPct >= EASY_HR_DRIFT_FLAG_PCT;
 }

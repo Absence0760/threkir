@@ -15,6 +15,7 @@
 	import { attemptPlanCreate, clonedPlanEndIso, type OverlapPlan } from '#lib/training/plan_overlap.ts';
 	import { formatDistance } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { goalEventLabel, planLengthLabel } from '#lib/training/goal_event_label.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import type { TrainingPlan, PlanWeek, PlanWorkout } from '#lib/types.ts';
 
@@ -37,17 +38,14 @@
 		return formatISO(d);
 	}
 
-	const eventLabels: Record<string, () => string> = {
-		distance_5k: () => '5K',
-		distance_10k: () => '10K',
-		distance_half: () => m('plansPage.eventHalf'),
-		distance_full: () => m('plansPage.eventFull'),
-		custom: () => m('plansPage.eventCustom'),
-	};
-
-	function goalLabel(p: TrainingPlan): string {
-		const named = eventLabels[p.goal_event];
-		return named ? named() : formatDistance(p.goal_distance_m);
+	/// What a week asks of the runner: its running days and their planned
+	/// distance. Rest rows are skipped — the generator writes one per day, so
+	/// a raw row count reads 7 for every week.
+	function weekSummary(weekId: string): string {
+		const runs = (workoutsByWeek.get(weekId) ?? []).filter((w) => w.kind !== 'rest');
+		const metres = runs.reduce((sum, w) => sum + (w.target_distance_m ?? 0), 0);
+		const count = m('planLibrary.previewWeekRuns', { n: runs.length });
+		return metres > 0 ? `${count} · ${formatDistance(metres)}` : count;
 	}
 
 	const workoutsByWeek = $derived.by(() => {
@@ -151,9 +149,8 @@
 				})}
 			</p>
 			<div class="chips">
-				<span class="chip">{goalLabel(plan)}</span>
-				<span class="chip">{m('planLibrary.weeksLabel', { weeks: weeks.length })}</span>
-				<span class="chip">{m('planLibrary.daysPerWeek', { days: plan.days_per_week })}</span>
+				<span class="chip">{goalEventLabel(m, formatDistance, plan.goal_event, plan.goal_distance_m)}</span>
+				<span class="chip">{planLengthLabel(m, weeks.length, plan.days_per_week)}</span>
 			</div>
 		</header>
 
@@ -173,9 +170,7 @@
 				{#each weeks as w (w.id)}
 					<li>
 						<span class="week-label">{m('planLibrary.previewWeek', { n: w.week_index + 1 })}</span>
-						<span class="week-count">
-							{(workoutsByWeek.get(w.id) ?? []).length}
-						</span>
+						<span class="week-count">{weekSummary(w.id)}</span>
 					</li>
 				{/each}
 			</ol>

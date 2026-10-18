@@ -124,7 +124,10 @@ const NOT_SPENT_BY_SPECS: Record<string, string> = {
 	clone_public_plan: 'Same as clone_plan_template — pgtap only.',
 	clone_session_template: 'Same as clone_plan_template — pgtap only.',
 	clone_gym_routine_template: 'Same as clone_plan_template — pgtap only.',
-	publish_gym_routine_as_template: 'Same as clone_plan_template — pgtap only.'
+	publish_gym_routine_as_template: 'Same as clone_plan_template — pgtap only.',
+	plan_calendar_rotate:
+		'settings/plan-calendar-feed.spec.ts mints and replaces the link only as an ephemeral ' +
+		'saga user, so the bucket it spends is its own; pgtap covers the cap itself.'
 };
 
 function walk(dir: string, ext: string, out: string[] = []): string[] {

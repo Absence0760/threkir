@@ -1,6 +1,8 @@
 import { expect, test } from '../fixtures/test';
 
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
+import { getAdminClient } from '../fixtures/local-supabase';
+import { readRow } from '../fixtures/db-read';
 import { USER_A } from '../fixtures/users';
 import { acceptCookieConsent } from '../fixtures/helpers';
 
@@ -229,21 +231,21 @@ test.describe('settings preference pages', () => {
 		await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
 	});
 
-	test('the mention / reaction / comment-like / follow-request mutes save off and survive a reload', async ({
+	test('the mention / reaction / comment-like / follow-request / workout-reminder mutes save off and survive a reload', async ({
 		page
 	}) => {
 		// decisions § 1971: opt-OUT per-kind mutes the worker's kindMuted
 		// reads. Absent reads as on; unticking writes the literal 'off'.
 		await page.goto('/settings/notifications');
 		await page.waitForLoadState('networkidle');
-		for (const id of ['notify-mention', 'notify-reaction', 'notify-comment-like', 'notify-follow-request']) {
+		for (const id of ['notify-mention', 'notify-reaction', 'notify-comment-like', 'notify-follow-request', 'notify-workout-reminder']) {
 			const box = page.getByTestId(id);
 			await expect(box).toBeChecked();
 			await box.uncheck();
 			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
 		}
 		await page.reload();
-		for (const id of ['notify-mention', 'notify-reaction', 'notify-comment-like', 'notify-follow-request']) {
+		for (const id of ['notify-mention', 'notify-reaction', 'notify-comment-like', 'notify-follow-request', 'notify-workout-reminder']) {
 			const box = page.getByTestId(id);
 			await expect(box).not.toBeChecked();
 			await box.check();
@@ -529,6 +531,73 @@ test.describe('settings preference pages', () => {
 		await page.reload();
 		await expect(resting).toHaveValue('');
 		await expect(max).toHaveValue('');
+	});
+
+	test('the heart-rate medication flag saves and asks for a measured max', async ({
+		page
+	}) => {
+		// decisions § 2092: Art 9, behind the server's hr_prescription gate (open
+		// in the seed) and the health-data consent USER_A has in the seed.
+		const admin = getAdminClient();
+		const before = await readRow(
+			'user_settings before the HR-medication toggle',
+			admin.from('user_settings').select('prefs').eq('user_id', USER_A.id).single()
+		);
+		const original = (before.prefs as Record<string, unknown>) ?? {};
+		const start = { ...original };
+		delete start.hr_medication_affected;
+		delete start.max_hr_bpm;
+		await admin.from('user_settings').update({ prefs: start }).eq('user_id', USER_A.id);
+		try {
+			await page.goto('/settings/training');
+			const toggle = page.getByTestId('hr-medication-toggle');
+			await expect(toggle).toBeEnabled({ timeout: 10_000 });
+			await expect(toggle).not.toBeChecked();
+			await expect(page.getByTestId('hr-medication-max-prompt')).toHaveCount(0);
+
+			await toggle.check();
+			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+			await expect(page.getByTestId('hr-medication-max-prompt')).toBeVisible();
+
+			await page.getByTestId('max-hr').fill('150');
+			await page.getByTestId('max-hr').blur();
+			await expect(page.getByTestId('hr-medication-max-prompt')).toHaveCount(0);
+			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+
+			await page.reload();
+			await expect(page.getByTestId('hr-medication-toggle')).toBeChecked({ timeout: 10_000 });
+			const after = await readRow(
+				'user_settings after the HR-medication toggle',
+				admin.from('user_settings').select('prefs').eq('user_id', USER_A.id).single()
+			);
+			expect((after.prefs as Record<string, unknown>).hr_medication_affected).toBe(true);
+		} finally {
+			await admin.from('user_settings').update({ prefs: original }).eq('user_id', USER_A.id);
+		}
+	});
+
+	test('a failed health-consent read shuts the medication toggle and loads the rest of the page', async ({
+		page
+	}) => {
+		// The consent read decides only whether the Art 9 medication toggle may
+		// be turned on (decisions § 2092). It used to throw out of the page
+		// loader, so one failed read left every training preference unloaded.
+		// The app shell reads the same RPC for the signed-in profile, so the
+		// failure is armed only once the shell has loaded, and the page is then
+		// reached by a client-side navigation that reads it again.
+		await page.goto('/settings/display');
+		await expect(page.getByRole('button', { name: 'Miles', exact: true })).toBeVisible({ timeout: 10_000 });
+		await page.route('**/rest/v1/rpc/get_my_profile**', (route) =>
+			route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"boom"}' })
+		);
+		await page.locator('a[href="/settings/training"]').first().click();
+		await expect(page).toHaveURL(/\/settings\/training$/);
+		await expect(page.getByTestId('hr-medication-consent-failed')).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByTestId('hr-medication-toggle')).toBeDisabled();
+		// The form rendered at all: a loader throw leaves the page in its
+		// failed phase, with an alert and no fields.
+		await expect(page.getByTestId('carbs-per-hour')).toBeVisible();
+		await expect(page.getByTestId('max-hr')).toBeVisible();
 	});
 
 	test('theme toggle: Dark applies html[data-theme] + survives reload', async ({

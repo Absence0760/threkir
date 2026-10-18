@@ -139,6 +139,23 @@ Deno.test('a RunSignUp row without a name or a date becomes nothing', () => {
   assertEquals(readRunSignUpRace({}), null);
 });
 
+Deno.test('a RunSignUp race dated null on both keys is excluded, not unusable', () => {
+  // Every date-less row in the 2026-10-17 live Utah window had this shape: an
+  // ongoing virtual challenge with both date keys present and null.
+  const undated = { race_id: 178886, name: 'Coin Challenge', next_date: null, last_date: null };
+  assertEquals(readRunSignUpRace(undated), EXCLUDED);
+  // Either key missing is a moved field, not a statement about the race.
+  assertEquals(readRunSignUpRace({ race_id: 1, name: 'R', next_date: null }), null);
+  assertEquals(readRunSignUpRace({ race_id: 1, name: 'R', last_date: null }), null);
+  // A date present but unparseable is a reformatted field.
+  assertEquals(
+    readRunSignUpRace({ race_id: 1, name: 'R', next_date: '20/06/2027', last_date: null }),
+    null,
+  );
+  // No name stays unreadable whatever the dates say.
+  assertEquals(readRunSignUpRace({ race_id: 1, next_date: null, last_date: null }), null);
+});
+
 Deno.test('the live RunSignUp payload maps, race by race', () => {
   const rows = extractProviderRaces(LIVE);
   assertEquals(rows.length, 3, 'every `races[].race` is unwrapped');

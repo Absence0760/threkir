@@ -9,10 +9,80 @@ import 'health_consent.dart';
 import 'nutrition_targets.dart' show ageFromDob;
 import 'plan_copy.dart';
 import 'plan_current.dart';
+import 'comeback.dart' show kLayoffMaxDays;
+import 'fitness.dart' show qualifyingRuns;
 import 'plan_ramp.dart';
+import 'race_predictor.dart' show EffortForPrediction;
 import 'plan_week.dart';
 import 'relink_candidates.dart';
 import 'training.dart';
+
+/// The window the goal-time check reads efforts from: the same 90 days the
+/// runner's fitness is taken from. Mirrors `GOAL_CHECK_WINDOW_DAYS` on web
+/// `PlanEditor.svelte`.
+const int kGoalCheckWindowDays = 90;
+
+/// What the plan wizard reads off the runner's history: every run in the
+/// window as [RunForVolume] (the ramp check and the break detection), and
+/// the qualifying efforts of the last [kGoalCheckWindowDays] (the goal check).
+class PlanRunHistory {
+  final List<RunForVolume> runs;
+  final List<EffortForPrediction> efforts;
+
+  const PlanRunHistory({required this.runs, required this.efforts});
+}
+
+/// Rows of `runs` (id, started_at, distance_m, duration_s, activity_type,
+/// source, metadata) to a [PlanRunHistory]. Efforts go through the same
+/// [qualifyingRuns] gate the fitness card and race predictor use.
+PlanRunHistory planRunHistoryFromRows(
+    List<Map<String, dynamic>> rows, int nowMs) {
+  final runs = <RunForVolume>[];
+  final candidates = <Run>[];
+  for (final r in rows) {
+    final startedAt = r['started_at'] as String? ?? '';
+    final distanceM = (r['distance_m'] as num?)?.toDouble();
+    final activityType = r['activity_type'] as String?;
+    runs.add(RunForVolume(
+      startedAt: startedAt,
+      distanceM: distanceM,
+      activityType: activityType,
+    ));
+    final started = parseIsoStrictValue(startedAt);
+    if (started == null ||
+        nowMs - started.millisecondsSinceEpoch >
+            kGoalCheckWindowDays * 86400000) {
+      continue;
+    }
+    candidates.add(Run(
+      id: r['id'] as String? ?? '',
+      startedAt: started,
+      duration: Duration(seconds: (r['duration_s'] as num?)?.round() ?? 0),
+      distanceMetres: distanceM ?? 0,
+      source: RunSource.values.firstWhere(
+        (s) => s.name == r['source'],
+        orElse: () => RunSource.app,
+      ),
+      metadata: {
+        ...?(r['metadata'] as Map?)?.cast<String, dynamic>(),
+        'activity_type': activityType,
+      },
+    ));
+  }
+  return PlanRunHistory(
+    runs: runs,
+    efforts: [
+      for (final run in qualifyingRuns(candidates))
+        EffortForPrediction(
+          distanceM: run.distanceMetres,
+          durationS: run.duration.inSeconds,
+          ageDays: ((nowMs - run.startedAt.millisecondsSinceEpoch) / 86400000)
+              .clamp(0, double.infinity)
+              .toDouble(),
+        ),
+    ],
+  );
+}
 
 /// View-model pairing a plan row with its current-week index + today's
 /// workout + completion percentage. Used by the dashboard/Run-tab card.
@@ -48,23 +118,40 @@ typedef PlanWorkoutRaceFields = ({
   int? goalTimeSec,
 });
 
+/// A workout's distance and pace targets, written together by
+/// [TrainingService.updateWorkout]: a null field clears its column, so an
+/// emptied field in the edit sheet removes the target instead of keeping it.
+typedef PlanWorkoutTargets = ({double? distanceM, int? paceSecPerKm});
+
+/// A workout's effort range (RPE 1..10) or heart-rate range (bpm), written
+/// together by [TrainingService.updateWorkout]. Either end may be null, and a
+/// null end clears its column (decisions § 2092).
+typedef PlanWorkoutRange = ({int? min, int? max});
+
 /// The `plan_workouts` patch [TrainingService.updateWorkout] sends. A null
-/// argument leaves its column alone, except inside [race]: that writes the
-/// race name, priority and goal time as given, nulls included. A [kind]
+/// argument leaves its column alone, except inside [race] and [targets]:
+/// those write their columns as given, nulls included. A `rest` [kind]
+/// clears every target (distance, pace, pace range, tolerance, zone and
+/// structure), as web's `WorkoutEditor` does, so a day switched to rest
+/// cannot keep the tempo it used to be. A [kind]
 /// other than `race` clears the race name and priority instead, since the
 /// table allows them only on race rows (23514 otherwise), and when the row
 /// was a race ([fromKind]) it clears the race's goal time too, so a former
 /// race does not keep its finish time as a duration target. Matches web's
 /// `WorkoutEditor` save. [notes] is
 /// trimmed and an empty result nulls the column, matching web's
-/// `updatePlanWorkout`.
+/// `updatePlanWorkout`. [rpe] and [hr] write the effort and heart-rate
+/// ranges as given; a null argument leaves them alone, which is how the
+/// sheet keeps a bpm target it may not show (the deploy gate is off). A rest
+/// day clears both, since the table allows neither on one.
 Map<String, dynamic> planWorkoutPatch({
   String? kind,
   String? fromKind,
-  double? targetDistanceM,
-  int? targetPaceSecPerKm,
+  PlanWorkoutTargets? targets,
   String? notes,
   PlanWorkoutRaceFields? race,
+  PlanWorkoutRange? rpe,
+  PlanWorkoutRange? hr,
 }) {
   final patch = <String, dynamic>{};
   if (kind != null) patch[PlanWorkoutRow.colKind] = kind;
@@ -79,11 +166,30 @@ Map<String, dynamic> planWorkoutPatch({
     patch[PlanWorkoutRow.colRacePriority] = race.priority;
     patch[PlanWorkoutRow.colTargetDurationSeconds] = race.goalTimeSec;
   }
-  if (targetDistanceM != null) {
-    patch[PlanWorkoutRow.colTargetDistanceM] = targetDistanceM;
-  }
-  if (targetPaceSecPerKm != null) {
-    patch[PlanWorkoutRow.colTargetPaceSecPerKm] = targetPaceSecPerKm;
+  if (kind == 'rest') {
+    patch[PlanWorkoutRow.colTargetDistanceM] = null;
+    patch[PlanWorkoutRow.colTargetPaceSecPerKm] = null;
+    patch[PlanWorkoutRow.colTargetPaceEndSecPerKm] = null;
+    patch[PlanWorkoutRow.colTargetPaceToleranceSec] = null;
+    patch[PlanWorkoutRow.colPaceZone] = null;
+    patch[PlanWorkoutRow.colStructure] = null;
+    patch[PlanWorkoutRow.colTargetRpeMin] = null;
+    patch[PlanWorkoutRow.colTargetRpeMax] = null;
+    patch[PlanWorkoutRow.colTargetHrMinBpm] = null;
+    patch[PlanWorkoutRow.colTargetHrMaxBpm] = null;
+  } else {
+    if (targets != null) {
+      patch[PlanWorkoutRow.colTargetDistanceM] = targets.distanceM;
+      patch[PlanWorkoutRow.colTargetPaceSecPerKm] = targets.paceSecPerKm;
+    }
+    if (rpe != null) {
+      patch[PlanWorkoutRow.colTargetRpeMin] = rpe.min;
+      patch[PlanWorkoutRow.colTargetRpeMax] = rpe.max;
+    }
+    if (hr != null) {
+      patch[PlanWorkoutRow.colTargetHrMinBpm] = hr.min;
+      patch[PlanWorkoutRow.colTargetHrMaxBpm] = hr.max;
+    }
   }
   if (notes != null) {
     patch[PlanWorkoutRow.colNotes] = TrainingService.trimToNull(notes);
@@ -94,7 +200,7 @@ Map<String, dynamic> planWorkoutPatch({
 /// What creating or cloning a plan does to the active plans its window
 /// overlaps, resolved by the server in the same transaction as the write
 /// (decisions § 2050). [refuse] fails with [ActivePlanExistsError] so nothing
-/// the runner did not name changes; [replace] marks them completed; [trim]
+/// the runner did not name changes; [replace] marks them abandoned; [trim]
 /// ends the one plan that started before the new plan on the day before it
 /// starts. [name] is the RPC's `p_overlap` value.
 enum PlanOverlapAction { refuse, replace, trim }
@@ -250,36 +356,33 @@ class TrainingService extends ChangeNotifier {
     return null;
   }
 
-  /// The viewer's chronic weekly running volume over the ramp check's
-  /// trailing window, so the plan wizard can say whether the plan it just
-  /// generated is a step the runner's current training supports. Same L4
-  /// best-effort contract as [fetchViewerGender]: null on any failure, and
-  /// the note then self-hides rather than grading against a base it doesn't
-  /// have.
-  Future<RecentVolume?> fetchRecentRunVolume() async {
+  /// The viewer's running history as the plan wizard reads it: far enough
+  /// back ([kLayoffMaxDays] plus the four-week base before it) to see the
+  /// break a returning runner is coming back from as well as the four weeks
+  /// the ramp check grades against, and the last [kGoalCheckWindowDays] of
+  /// qualifying efforts the goal-time check projects from. Mirrors the two
+  /// reads on web `PlanEditor.svelte`. Same L4 best-effort contract as
+  /// [fetchViewerGender]: null on any failure, and every note built from it
+  /// then self-hides rather than grading against a base it doesn't have.
+  Future<PlanRunHistory?> fetchPlanRunHistory() async {
     try {
       final uid = _uid;
       if (uid == null) return null;
       final nowMs = DateTime.now().millisecondsSinceEpoch;
       final from = DateTime.fromMillisecondsSinceEpoch(
-        nowMs - kChronicWindowWeeks * 7 * 86400000,
+        nowMs - (kLayoffMaxDays + kChronicWindowWeeks * 7 + 1) * 86400000,
         isUtc: true,
       );
       final rows = await _c
           .from('runs')
-          .select('started_at, distance_m, activity_type')
+          .select(
+              'id, started_at, distance_m, duration_s, activity_type, source, metadata')
           .eq('user_id', uid)
           .gte('started_at', from.toIso8601String());
-      final runs = (rows as List).cast<Map<String, dynamic>>().map((r) {
-        return RunForVolume(
-          startedAt: r['started_at'] as String? ?? '',
-          distanceM: (r['distance_m'] as num?)?.toDouble(),
-          activityType: r['activity_type'] as String?,
-        );
-      }).toList();
-      return recentRunVolume(runs, nowMs);
-    } catch (_) {
-      /* L4 best-effort — null on any failure. */
+      return planRunHistoryFromRows(
+          (rows as List).cast<Map<String, dynamic>>(), nowMs);
+    } catch (e) {
+      debugPrint('fetchPlanRunHistory failed: $e');
     }
     return null;
   }
@@ -593,10 +696,12 @@ class TrainingService extends ChangeNotifier {
   Future<List<TrainingPlanRow>> fetchMyPlans() async {
     final uid = _uid;
     if (uid == null) return const [];
+    // Published templates live in the same table (decisions §35).
     final rows = await _c
         .from('training_plans')
         .select()
         .eq('user_id', uid)
+        .eq('is_template', false)
         .order('created_at', ascending: false);
     return (rows as List)
         .cast<Map<String, dynamic>>()
@@ -650,6 +755,17 @@ class TrainingService extends ChangeNotifier {
     );
   }
 
+  /// Who owns a plan, for the "updated by your coach" line on a workout
+  /// (`isEditedByCoach`). Web `fetchPlanOwnerId` twin.
+  Future<String?> fetchPlanOwnerId(String planId) async {
+    final row = await _c
+        .from(TrainingPlanRow.table)
+        .select(TrainingPlanRow.colUserId)
+        .eq(TrainingPlanRow.colId, planId)
+        .maybeSingle();
+    return row?[TrainingPlanRow.colUserId] as String?;
+  }
+
   Future<PlanWorkoutRow?> fetchWorkout(String id) async {
     final row = await _c
         .from('plan_workouts')
@@ -698,7 +814,7 @@ class TrainingService extends ChangeNotifier {
         .firstOrNull;
     final active = res.workouts.where((w) => w.kind != 'rest').toList();
     final done = active
-        .where((w) => w.completedRunId != null || w.manuallyCompleted)
+        .where(isWorkoutCompleted)
         .length;
     final pct = active.isEmpty ? 0 : (100 * done / active.length).round();
     // Whole-epoch-day bucketing, not a wall-clock difference: a start→today
@@ -754,8 +870,9 @@ class TrainingService extends ChangeNotifier {
     if (goalDistanceM <= 0) {
       throw Exception('Goal distance must be positive.');
     }
-    if (daysPerWeek < 3 || daysPerWeek > 7) {
-      throw Exception('Days per week must be between 3 and 7.');
+    final minDays = minDaysPerWeek(generated.weeks);
+    if (daysPerWeek < minDays || daysPerWeek > 7) {
+      throw Exception('Days per week must be between $minDays and 7.');
     }
     if (goalTimeSec != null && goalTimeSec <= 0) {
       throw Exception('Goal time must be positive.');
@@ -846,6 +963,19 @@ class TrainingService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// File an active plan whose dates have run out under Completed (the
+  /// "Finish plan" prompt, [isPlanFinished]). Scoped to `status = 'active'`
+  /// so a plan paused or abandoned on another device is never relabelled as
+  /// finished. Web twin: `finishPlan` in `data.ts`.
+  Future<void> finishPlan(String id) async {
+    await _c
+        .from('training_plans')
+        .update({'status': 'completed'})
+        .eq('id', id)
+        .eq('status', 'active');
+    notifyListeners();
+  }
+
   /// Pause an active plan — reversible by [resumePlan], and distinct from
   /// abandon/complete. Frees its dates so another plan can be active on them.
   /// Web twin: `pausePlan` in `apps/web/src/lib/core/data.ts`.
@@ -911,6 +1041,62 @@ class TrainingService extends ChangeNotifier {
       debugPrint('[TrainingService.fetchPlanForWorkout] $e');
       return null;
     }
+  }
+
+  /// True when the viewer actively coaches [athleteId]: the test the coach
+  /// RLS policies on `plan_workouts` run (`private.is_active_coach_of`), so a
+  /// screen offers an edit only where the write will be allowed. Mirrors web
+  /// `isActiveCoachOf`.
+  /// One user's display name, or null when the profile is unreadable or
+  /// unnamed. Web twin `fetchDisplayName` in `core/data.ts`.
+  Future<String?> fetchDisplayName(String userId) async {
+    final row = await _c
+        .from('user_profiles')
+        .select('display_name')
+        .eq('id', userId)
+        .maybeSingle();
+    return row?['display_name'] as String?;
+  }
+
+  Future<bool> isActiveCoachOf(String athleteId) async {
+    final uid = _uid;
+    if (uid == null || uid == athleteId) return false;
+    final rows = await _c
+        .from(CoachAthleteRow.table)
+        .select(CoachAthleteRow.colId)
+        .eq(CoachAthleteRow.colCoachId, uid)
+        .eq(CoachAthleteRow.colAthleteId, athleteId)
+        .eq(CoachAthleteRow.colStatus, 'active')
+        .limit(1);
+    return (rows as List).isNotEmpty;
+  }
+
+  /// Planned workouts within two days of a run that it could have been, for
+  /// the run-detail prompt (`plan_workout_link_candidates`, decisions § 2079).
+  /// The database links a run on its own local day only; these are linked
+  /// only when the runner says yes, through [markCompleted]. Empty unless the
+  /// caller owns the run and it is not linked yet. Nearest day first. Mirrors
+  /// web `fetchPlanWorkoutLinkCandidates`.
+  Future<List<PlanWorkoutLinkCandidate>> fetchLinkCandidates(
+      String runId) async {
+    final rows = await _c.rpc(
+      'plan_workout_link_candidates',
+      params: {'p_run_id': runId},
+      get: true,
+    );
+    return [
+      for (final r in rows as List)
+        PlanWorkoutLinkCandidate.fromJson(r as Map<String, dynamic>),
+    ];
+  }
+
+  /// "Not this one" on that prompt: the pair is never offered again. Mirrors
+  /// web `dismissPlanWorkoutLink`.
+  Future<void> dismissLinkCandidate(String workoutId, String runId) async {
+    await _c.rpc(
+      'dismiss_plan_workout_link',
+      params: {'p_workout_id': workoutId, 'p_run_id': runId},
+    );
   }
 
   Future<void> markCompleted(
@@ -1098,22 +1284,37 @@ class TrainingService extends ChangeNotifier {
     String workoutId, {
     String? kind,
     String? fromKind,
-    double? targetDistanceM,
-    int? targetPaceSecPerKm,
+    PlanWorkoutTargets? targets,
     String? notes,
     PlanWorkoutRaceFields? race,
+    PlanWorkoutRange? rpe,
+    PlanWorkoutRange? hr,
   }) async {
     final patch = planWorkoutPatch(
       kind: kind,
       fromKind: fromKind,
-      targetDistanceM: targetDistanceM,
-      targetPaceSecPerKm: targetPaceSecPerKm,
+      targets: targets,
       notes: notes,
       race: race,
+      rpe: rpe,
+      hr: hr,
     );
     if (patch.isEmpty) return;
     await _c.from(PlanWorkoutRow.table).update(patch).eq('id', workoutId);
     notifyListeners();
+  }
+
+  /// Move a planned workout to another day of its week through
+  /// `move_plan_workout` (decisions § 2073). When [dateIso] already holds a
+  /// row, the two trade days; returns the swapped workout's id, or null when
+  /// the day was free. Web `movePlanWorkout` twin.
+  Future<String?> moveWorkout(String workoutId, String dateIso) async {
+    final swapped = await _c.rpc('move_plan_workout', params: {
+      'p_workout_id': workoutId,
+      'p_date': dateIso,
+    });
+    notifyListeners();
+    return swapped as String?;
   }
 
   /// Pure helper: trim a string then collapse empty-after-trim to
@@ -1130,4 +1331,35 @@ class TrainingService extends ChangeNotifier {
   // Internal alias for the public helper above. Keeps callers inside
   // this file short while the public name stays explicit.
   static String? _trimToNull(String? s) => trimToNull(s);
+}
+
+/// One row of `plan_workout_link_candidates`: a planned workout [dayOffset]
+/// days from the run's local day (positive = scheduled after it, so the run
+/// was early).
+class PlanWorkoutLinkCandidate {
+  final String workoutId;
+  final String scheduledDate;
+  final String kind;
+  final double? targetDistanceM;
+  final int? targetDurationSeconds;
+  final int dayOffset;
+
+  const PlanWorkoutLinkCandidate({
+    required this.workoutId,
+    required this.scheduledDate,
+    required this.kind,
+    this.targetDistanceM,
+    this.targetDurationSeconds,
+    required this.dayOffset,
+  });
+
+  factory PlanWorkoutLinkCandidate.fromJson(Map<String, dynamic> json) =>
+      PlanWorkoutLinkCandidate(
+        workoutId: json['workout_id'] as String,
+        scheduledDate: json['scheduled_date'] as String,
+        kind: json['kind'] as String,
+        targetDistanceM: (json['target_distance_m'] as num?)?.toDouble(),
+        targetDurationSeconds: (json['target_duration_seconds'] as num?)?.toInt(),
+        dayOffset: (json['day_offset'] as num).toInt(),
+      );
 }

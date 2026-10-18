@@ -24,7 +24,7 @@ test.describe('ChronoTrack gate (unconfigured credentials)', () => {
 		listingId = await insertRaceListing({
 			provider: 'chronotrack',
 			name: raceName,
-			race_date: browserDate(30),
+			race_date: browserDate(0),
 			provider_race_id: 'e2e-chronotrack-1'
 		});
 	});

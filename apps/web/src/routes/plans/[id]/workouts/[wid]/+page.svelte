@@ -5,6 +5,7 @@
 	import { afterNavigate } from '$app/navigation';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
+		fetchPlanOwnerId,
 		fetchWorkout,
 		markWorkoutCompleted,
 		markWorkoutSkipped,
@@ -13,7 +14,10 @@
 	} from '#lib/core/data.ts';
 	import { fmtHms, isWorkoutCompleted, isWorkoutSkipped } from '#lib/training/training.ts';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
-	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
+	import { isEditedByCoach } from '#lib/training/workout_prescription.ts';
+	import { hrTargetLabel, rpeTargetLabel } from '#lib/training/workout_target_label.ts';
+	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_gate.ts';
+	import { fmtKm, fmtPace, fmtPaceTolerance } from '#lib/format/units.svelte.ts';
 	import { formatDateShort } from '#lib/format/time.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import Modal from '#lib/components/Modal.svelte';
@@ -21,10 +25,27 @@
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import type { PlanWorkout } from '#lib/types.ts';
 	import type { WorkoutStructure } from '#lib/training/training.ts';
+	import {
+		paceZoneName,
+		structureSegments,
+		structureTotal,
+		walkRunPattern,
+		type SegmentRole
+	} from '#lib/training/workout_summary.ts';
+	import {
+		formatPaceZone,
+		formatWalkRunPattern,
+		formatWalkRunTotal
+	} from '#lib/training/workout_summary_format.ts';
 
 	let planId = $derived(page.params.id as string);
 	let wid = $derived(page.params.wid as string);
 	let workout = $state<PlanWorkout | null>(null);
+	let ownerId = $state<string | null>(null);
+	let hrPrescription = $state(false);
+	onMount(() => {
+		void hrPrescriptionEnabled().then((on) => (hrPrescription = on));
+	});
 	let loading = $state(true);
 	let loadError = $state(false);
 	let showUnlinkConfirm = $state(false);
@@ -51,8 +72,9 @@
 	async function load() {
 		loading = true;
 		loadError = false;
-		const res = await fetchWorkout(wid);
+		const [res, owner] = await Promise.all([fetchWorkout(wid), fetchPlanOwnerId(planId)]);
 		workout = res.workout;
+		ownerId = owner;
 		loadError = res.error !== null;
 		loading = false;
 	}
@@ -61,6 +83,12 @@
 		await auth.ready();
 		await load();
 	});
+
+	let rpeLabel = $derived(workout ? rpeTargetLabel(workout.target_rpe_min, workout.target_rpe_max) : null);
+	let hrLabel = $derived(
+		workout && hrPrescription ? hrTargetLabel(workout.target_hr_min_bpm, workout.target_hr_max_bpm) : null
+	);
+	let editedByCoach = $derived(workout != null && isEditedByCoach(workout, ownerId, auth.user?.id));
 
 	let structure = $derived(
 		(workout?.structure as unknown as WorkoutStructure | null) ?? null
@@ -133,50 +161,55 @@
 		}
 	}
 
-	// A step's "magnitude" for the proportional bar: distance when present,
-	// else duration (walk-run sessions are fully time-based — see training.md).
-	function mag(b: { distance_m?: number; duration_s?: number } | undefined): number {
-		if (!b) return 0;
-		return b.distance_m ?? b.duration_s ?? 0;
-	}
-	function repMag(r: WorkoutStructure['repeats']): number {
-		return r?.distance_m ?? r?.duration_s ?? 0;
-	}
-	function recMag(r: WorkoutStructure['repeats']): number {
-		return r?.recovery_distance_m ?? r?.recovery_duration_s ?? 0;
+	// A step reads as its distance when it has one, else its duration: a
+	// walk-run session carries only duration_s, and "—" told a beginner nothing.
+	function stepAmount(distanceM: number | undefined, durationS: number | undefined, digits: number): string {
+		if (distanceM != null) return fmtKm(distanceM, digits);
+		if (durationS != null) return fmtHms(durationS);
+		return '—';
 	}
 
-	function intervalTotal(s: WorkoutStructure): number {
-		return (
-			mag(s.warmup) +
-			(s.repeats ? s.repeats.count * (repMag(s.repeats) + recMag(s.repeats)) : 0) +
-			mag(s.steady) +
-			mag(s.cooldown)
-		);
+	function totalLabel(s: WorkoutStructure): string | null {
+		const total = structureTotal(s);
+		if (!total) return null;
+		return total.kind === 'distance' ? fmtKm(total.metres, 2) : fmtHms(total.seconds);
 	}
 
-	type SegmentVisual = {
-		role: 'warmup' | 'work' | 'recovery' | 'steady' | 'cooldown';
-		fraction: number;
-	};
+	let walkRun = $derived(walkRunPattern(structure));
 
-	function segmentVisuals(s: WorkoutStructure): SegmentVisual[] {
-		const total = intervalTotal(s);
-		if (total <= 0) return [];
-		const out: SegmentVisual[] = [];
-		if (s.warmup) out.push({ role: 'warmup', fraction: mag(s.warmup) / total });
-		if (s.repeats) {
-			for (let i = 0; i < s.repeats.count; i++) {
-				out.push({ role: 'work', fraction: repMag(s.repeats) / total });
-				if (i < s.repeats.count - 1) {
-					out.push({ role: 'recovery', fraction: recMag(s.repeats) / total });
-				}
-			}
-			out.push({ role: 'recovery', fraction: recMag(s.repeats) / total });
+	function recoveryEffort(pace: string | undefined): string | null {
+		switch (pace) {
+			case 'jog':
+				return t('workoutDetail.effortJog');
+			case 'easy':
+				return t('workoutDetail.effortEasy');
+			case 'walk':
+				return t('workoutDetail.effortWalk');
+			default:
+				return null;
 		}
-		if (s.steady) out.push({ role: 'steady', fraction: mag(s.steady) / total });
-		if (s.cooldown) out.push({ role: 'cooldown', fraction: mag(s.cooldown) / total });
-		return out;
+	}
+
+	function segmentLabel(role: SegmentRole): string {
+		switch (role) {
+			case 'warmup':
+				return t('workoutDetail.warmup');
+			case 'work':
+				return t('workoutDetail.repeats');
+			case 'recovery':
+				return t('workoutDetail.recovery');
+			case 'steady':
+				return t('workoutDetail.steady');
+			case 'cooldown':
+				return t('workoutDetail.cooldown');
+		}
+	}
+
+	function recoveryLabel(r: NonNullable<WorkoutStructure['repeats']>): string | null {
+		if (r.recovery_distance_m == null && r.recovery_duration_s == null) return null;
+		const distance = stepAmount(r.recovery_distance_m, r.recovery_duration_s, 2);
+		const effort = recoveryEffort(r.recovery_pace);
+		return effort ? t('workoutDetail.recoveryDetail', { distance, effort }) : distance;
 	}
 
 	function fmtIsoDate(iso: string): string {
@@ -259,7 +292,9 @@
 				<span class="kicker">{fmtIsoDate(workout.scheduled_date)}</span>
 				<h1>{workoutKindLabel(workout.kind)}</h1>
 				<p class="tagline">
-					{#if structure}
+					{#if workout.kind === 'walk_run'}
+						{t('workoutDetail.taglineWalkRun')}
+					{:else if structure}
 						{t('workoutDetail.taglineStructured')}
 					{:else if workout.kind === 'easy' || workout.kind === 'recovery'}
 						{t('workoutDetail.taglineEasy')}
@@ -274,7 +309,14 @@
 					{/if}
 				</p>
 				<div class="meta">
-					{#if workout.target_distance_m != null}
+					{#if walkRun}
+						<div class="metric session-metric" data-testid="walk-run-summary">
+							<span class="m-label">{t('workoutDetail.session')}</span>
+							<strong>{formatWalkRunTotal(t, walkRun)}</strong>
+							<span class="walk-run-pattern">{formatWalkRunPattern(t, walkRun)}</span>
+						</div>
+					{:else}
+						{#if workout.target_distance_m != null}
 						<div class="metric">
 							<span class="m-label">{t('workoutDetail.distance')}</span>
 							<strong>{fmtKm(workout.target_distance_m, 2)}</strong>
@@ -298,15 +340,36 @@
 							</strong>
 							<span class="pace-extras">
 								{#if workout.target_pace_tolerance_sec}
-									<span class="tol">±{workout.target_pace_tolerance_sec}s</span>
+									<span class="tol">{fmtPaceTolerance(workout.target_pace_tolerance_sec)}</span>
 								{/if}
 								{#if workout.pace_zone}
-									<span class="zone">{workout.pace_zone}</span>
+									<span class="zone" data-testid="pace-zone">
+										{formatPaceZone(t, workout.pace_zone, paceZoneName(workout.pace_zone))}
+									</span>
 								{/if}
 							</span>
 						</div>
 					{/if}
+					{/if}
+					{#if rpeLabel}
+						<div class="metric" data-testid="workout-rpe-target">
+							<span class="m-label">{t('workoutDetail.effort')}</span>
+							<strong>{rpeLabel}</strong>
+						</div>
+					{/if}
+					{#if hrPrescription && hrLabel}
+						<div class="metric" data-testid="workout-hr-target">
+							<span class="m-label">{t('workoutDetail.heartRate')}</span>
+							<strong>{hrLabel}</strong>
+						</div>
+					{/if}
 				</div>
+				{#if editedByCoach && workout.updated_at}
+					<p class="provenance" data-testid="workout-coach-edited">
+						<span class="material-symbols" aria-hidden="true">sports</span>
+						{t('workoutDetail.updatedByCoach', { date: formatDateShort(workout.updated_at) })}
+					</p>
+				{/if}
 			</div>
 			{#if isWorkoutCompleted(workout)}
 				<div class="completed-card">
@@ -353,11 +416,11 @@
 			<section class="card structure-card">
 				<h3>{t('workoutDetail.structure')}</h3>
 				<div class="timeline" role="img" aria-label={t('workoutDetail.segmentTimeline')}>
-					{#each segmentVisuals(structure) as seg, i (i)}
+					{#each structureSegments(structure) as seg, i (i)}
 						<span
 							class="tl-seg tl-{seg.role}"
 							style="flex: {Math.max(seg.fraction, 0.01)};"
-							title={seg.role}
+							title={segmentLabel(seg.role)}
 						></span>
 					{/each}
 				</div>
@@ -366,24 +429,30 @@
 						<li class="step step-warmup">
 							<span class="step-kind">{t('workoutDetail.warmup')}</span>
 							<span class="step-body">
-								<span class="step-main">{fmtKm(structure.warmup.distance_m, 1)}</span>
+								<span class="step-main">{stepAmount(structure.warmup.distance_m, structure.warmup.duration_s, 1)}</span>
 								<span class="step-pace">{t('workoutDetail.atEasy')}</span>
 							</span>
 						</li>
 					{/if}
 					{#if structure.repeats}
+						{@const reps = structure.repeats}
+						{@const recovery = recoveryLabel(reps)}
 						<li class="step step-work">
 							<span class="step-kind">{t('workoutDetail.repeats')}</span>
 							<span class="step-body">
 								<span class="step-main">
-									{t('workoutDetail.repeatsDetail', {
-										count: structure.repeats.count,
-										distance: fmtKm(structure.repeats.distance_m, 2),
-										pace: fmtPace(structure.repeats.pace_sec_per_km),
-										recoveryDistance: fmtKm(structure.repeats.recovery_distance_m, 2),
-										recoveryPace: structure.repeats.recovery_pace ?? ''
+									{t('workoutDetail.repeatsMain', {
+										count: reps.count,
+										distance: stepAmount(reps.distance_m, reps.duration_s, 2)
 									})}
 								</span>
+								<span class="step-pace">{t('workoutDetail.atPace', { pace: fmtPace(reps.pace_sec_per_km) })}</span>
+								{#if recovery}
+									<span class="step-sub" data-testid="step-recovery">
+										<span class="sub-label">{t('workoutDetail.recovery')}</span>
+										<span>{recovery}</span>
+									</span>
+								{/if}
 							</span>
 						</li>
 					{/if}
@@ -391,7 +460,7 @@
 						<li class="step step-steady">
 							<span class="step-kind">{t('workoutDetail.steady')}</span>
 							<span class="step-body">
-								<span class="step-main">{fmtKm(structure.steady.distance_m, 1)}</span>
+								<span class="step-main">{stepAmount(structure.steady.distance_m, structure.steady.duration_s, 1)}</span>
 								<span class="step-pace">{t('workoutDetail.atPace', { pace: fmtPace(structure.steady.pace_sec_per_km) })}</span>
 							</span>
 						</li>
@@ -400,13 +469,17 @@
 						<li class="step step-cooldown">
 							<span class="step-kind">{t('workoutDetail.cooldown')}</span>
 							<span class="step-body">
-								<span class="step-main">{fmtKm(structure.cooldown.distance_m, 1)}</span>
+								<span class="step-main">{stepAmount(structure.cooldown.distance_m, structure.cooldown.duration_s, 1)}</span>
 								<span class="step-pace">{t('workoutDetail.atEasy')}</span>
 							</span>
 						</li>
 					{/if}
 				</ol>
-				<p class="total">{t('workoutDetail.total', { value: fmtKm(intervalTotal(structure), 2) })}</p>
+				{#if totalLabel(structure)}
+					<p class="total" data-testid="structure-total">
+						{t('workoutDetail.total', { value: totalLabel(structure) ?? '' })}
+					</p>
+				{/if}
 			</section>
 		{:else if workout.kind !== 'rest'}
 			<section class="card structure-empty">
@@ -443,6 +516,8 @@
 				<p>
 					{t('workoutDetail.adviceMarathonPace')}
 				</p>
+			{:else if workout.kind === 'walk_run'}
+				<p>{t('workoutDetail.adviceWalkRun')}</p>
 			{:else if workout.kind === 'race'}
 				<p>{t('workoutDetail.adviceRace')}</p>
 			{:else}
@@ -453,9 +528,11 @@
 
 <ConfirmDialog
 	open={showUnlinkConfirm}
-	title={t('workoutDetail.unlinkRunTitle')}
-	message={t('workoutDetail.unlinkRunMessage')}
-	confirmLabel={t('workoutDetail.unlink')}
+	title={workout?.completed_run_id ? t('workoutDetail.unlinkRunTitle') : t('workoutDetail.markNotDoneTitle')}
+	message={workout?.completed_run_id
+		? t('workoutDetail.unlinkRunMessage')
+		: t('workoutDetail.markNotDoneMessage')}
+	confirmLabel={workout?.completed_run_id ? t('workoutDetail.unlink') : t('workoutDetail.markNotDone')}
 	onconfirm={confirmUnlink}
 	oncancel={() => showUnlinkConfirm = false}
 	danger
@@ -582,6 +659,17 @@
 		flex-wrap: wrap;
 		gap: 2rem;
 		margin-top: var(--space-2xs);
+	}
+	.provenance {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2xs);
+		margin: var(--space-xs) 0 0 0;
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
+	}
+	.provenance .material-symbols {
+		font-size: 1.1rem;
 	}
 	.metric {
 		display: flex;
@@ -808,6 +896,23 @@
 	.step-pace {
 		color: var(--color-text-secondary);
 		font-variant-numeric: tabular-nums;
+		font-size: 0.92rem;
+	}
+	.step-sub {
+		flex-basis: 100%;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		color: var(--color-text-secondary);
+		font-size: 0.92rem;
+		font-variant-numeric: tabular-nums;
+	}
+	.sub-label {
+		font-weight: 600;
+	}
+	.session-metric .walk-run-pattern {
+		display: block;
+		color: var(--color-text-secondary);
 		font-size: 0.92rem;
 	}
 	.total {

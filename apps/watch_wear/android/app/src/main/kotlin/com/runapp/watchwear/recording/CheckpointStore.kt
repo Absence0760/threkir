@@ -69,6 +69,10 @@ data class Checkpoint(
     // ones flagged. False on a checkpoint from a build that stored only the
     // fixes inside the 30 m gate, so its recovered run claims nothing.
     val trackComplete: Boolean = false,
+    // The workout review so far, the step in progress as a skipped row, so a
+    // recovered run keeps its link to the plan workout and reads `partial`.
+    // Null on a free run or an older checkpoint.
+    val workoutReview: com.runapp.watchwear.workout.WorkoutReview? = null,
 )
 
 @Serializable

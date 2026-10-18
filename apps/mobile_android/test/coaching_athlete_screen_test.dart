@@ -14,6 +14,7 @@ import '../lib/l10n/date_format.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/coaching_athlete_screen.dart';
+import '../lib/training_service.dart';
 
 class _FakeApi extends ApiClient {
   _FakeApi({
@@ -260,6 +261,8 @@ Future<void> _pump(
   ApiClient api,
   Preferences prefs, {
   Locale? locale,
+  TrainingService? training,
+  bool? hrPrescription,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -272,11 +275,33 @@ Future<void> _pump(
         athleteId: 'a1',
         displayName: 'Alice Runner',
         acceptedAt: DateTime.utc(2026, 1, 2),
+        training: training,
+        hrPrescription: hrPrescription,
       ),
     ),
   );
   await tester.pump();
   await tester.pump();
+}
+
+class _EditTraining extends TrainingService {
+  String? editedId;
+  PlanWorkoutRange? rpe;
+
+  @override
+  Future<void> updateWorkout(
+    String workoutId, {
+    String? kind,
+    String? fromKind,
+    PlanWorkoutTargets? targets,
+    String? notes,
+    PlanWorkoutRaceFields? race,
+    PlanWorkoutRange? rpe,
+    PlanWorkoutRange? hr,
+  }) async {
+    editedId = workoutId;
+    this.rpe = rpe;
+  }
 }
 
 void main() {
@@ -477,6 +502,85 @@ void main() {
     await _pump(tester, _FakeApi(overview: overview), prefs);
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     expect(find.text(l10n.coachingAthleteAssignedByYou), findsOneWidget);
+  });
+
+  testWidgets('a past skipped workout reads Skipped, not Missed, and is off '
+      'the books', (tester) async {
+    final prefs = await _prefs();
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    final overview = AthletePlanOverview(
+      plan: _plan('p1', 'My Plan'),
+      weeks: const [],
+      workouts: [
+        PlanWorkoutRow(
+          id: 'skipped',
+          weekId: 'wk1',
+          scheduledDate: yesterday,
+          kind: 'easy',
+          manuallyCompleted: false,
+          skippedAt: yesterday,
+        ),
+        PlanWorkoutRow(
+          id: 'missed',
+          weekId: 'wk1',
+          scheduledDate: yesterday,
+          kind: 'tempo',
+          manuallyCompleted: false,
+        ),
+      ],
+      completionPct: 0,
+    );
+    await _pump(tester, _FakeApi(overview: overview), prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(find.text(l10n.coachingAthleteStatusSkipped), findsOneWidget);
+    expect(find.text(l10n.coachingAthleteStatusMissed), findsOneWidget);
+    expect(
+      find.textContaining(l10n.coachingAthleteDoneCount(0, 1), findRichText: true),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining(l10n.coachingAthleteMissedCount(1), findRichText: true),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+      'a workout row shows its effort targets and opens the edit sheet for '
+      'the coach (decisions § 2092)', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(500, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final prefs = await _prefs();
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final overview = AthletePlanOverview(
+      plan: _plan('p1', 'My Plan'),
+      weeks: const [],
+      workouts: [
+        PlanWorkoutRow(
+          id: 'easy-1',
+          weekId: 'wk1',
+          scheduledDate: tomorrow,
+          kind: 'easy',
+          targetRpeMin: 3,
+          targetRpeMax: 4,
+          targetHrMaxBpm: 125,
+          manuallyCompleted: false,
+        ),
+      ],
+      completionPct: 0,
+    );
+    final training = _EditTraining();
+    await _pump(tester, _FakeApi(overview: overview), prefs,
+        training: training, hrPrescription: true);
+    expect(find.textContaining('Effort 3–4/10 · Cap 125 bpm'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('coachWorkoutRow-easy-1')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('workoutEditRpeMax')), '5');
+    await tester.ensureVisible(find.text('Save'));
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(training.editedId, 'easy-1');
+    expect(training.rpe, (min: 3, max: 5));
   });
 
   testWidgets('every workout kind renders the catalogue label, not the raw '

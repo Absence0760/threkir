@@ -82,11 +82,14 @@ test.describe('every swept control renders its explanation', () => {
 		).toBeVisible({ timeout: 10_000 });
 		await expect(page.locator('.plan-editor')).toBeVisible({ timeout: 5_000 });
 
-		// The recent-5K confirm checkbox only mounts once a time is entered,
-		// and the week grid only once a week is expanded — both are controls
-		// the sweep covers, so open them before reading the page.
+		// The recent-5K confirm checkbox only mounts once a whole time —
+		// minutes and seconds — is entered, and the week grid only once a week
+		// is expanded; both are controls the sweep covers, so open them before
+		// reading the page.
 		const recent = page.locator('.plan-editor fieldset', { hasText: 'Recent 5K time' });
-		await recent.locator('input[type="number"]').first().fill('25');
+		const [minutes, seconds] = await recent.locator('input[type="number"]').all();
+		await minutes.fill('25');
+		await seconds.fill('0');
 		await expect(recent.getByRole('checkbox')).toBeVisible({ timeout: 5_000 });
 
 		const firstWeek = page.locator('.plan-editor .week-item').first();
@@ -273,7 +276,7 @@ test.describe('every swept gym and session control renders its explanation', () 
 		// shapes render different fields, so walk an interval workout through
 		// both rather than reading whichever kind the seed happened to put
 		// under the cursor.
-		await form.locator('select').first().selectOption('interval');
+		await form.getByLabel('Kind', { exact: true }).selectOption('interval');
 		await expect(form.locator('fieldset.structure')).toBeVisible({ timeout: 5_000 });
 		await assertEveryControlExplained(form, 'WorkoutEditor (repeats)');
 

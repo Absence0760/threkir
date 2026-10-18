@@ -1,6 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { acwr, injuryRiskBand, loadTrend } from './coach_load';
+import {
+	acwr,
+	consecutiveMissedWorkouts,
+	injuryRiskBand,
+	isEasyHrDriftFlagged,
+	loadTrend,
+	parseRosterRecentWorkouts,
+	type RosterRecentWorkout
+} from './coach_load';
 
 // ─────────────────────── acwr ───────────────────────
 
@@ -68,4 +76,61 @@ test('loadTrend: within the deadband is steady', () => {
 
 test('loadTrend: no chronic base is steady (one week is not a trend)', () => {
 	assert.equal(loadTrend(50, 0), 'steady');
+});
+
+// ─────────────────────── consecutiveMissedWorkouts ───────────────────────
+
+function wo(scheduled_date: string, over: Partial<RosterRecentWorkout> = {}): RosterRecentWorkout {
+	return { scheduled_date, kind: 'easy', completed: false, skipped: false, ...over };
+}
+
+test('consecutiveMissedWorkouts: counts back from yesterday until a done workout', () => {
+	const recent = [wo('2031-03-09'), wo('2031-03-08'), wo('2031-03-07', { completed: true }), wo('2031-03-06')];
+	assert.equal(consecutiveMissedWorkouts(recent, '2031-03-10'), 2);
+});
+
+test('consecutiveMissedWorkouts: a skipped workout and a rest day neither count nor end the run', () => {
+	const recent = [
+		wo('2031-03-09'),
+		wo('2031-03-08', { skipped: true }),
+		wo('2031-03-07', { kind: 'rest' }),
+		wo('2031-03-06'),
+		wo('2031-03-05', { completed: true })
+	];
+	assert.equal(consecutiveMissedWorkouts(recent, '2031-03-10'), 2);
+});
+
+test('consecutiveMissedWorkouts: today and later are not misses, and order does not matter', () => {
+	const recent = [wo('2031-03-11'), wo('2031-03-10'), wo('2031-03-08'), wo('2031-03-09', { completed: true })];
+	assert.equal(consecutiveMissedWorkouts(recent, '2031-03-10'), 0);
+	assert.equal(consecutiveMissedWorkouts([wo('2031-03-08'), wo('2031-03-09')], '2031-03-10'), 2);
+	assert.equal(consecutiveMissedWorkouts([], '2031-03-10'), 0);
+});
+
+test('parseRosterRecentWorkouts: drops a malformed element, reads a non-array as none', () => {
+	assert.deepEqual(
+		parseRosterRecentWorkouts([
+			{ scheduled_date: '2031-03-09', kind: 'easy', completed: true, skipped: false },
+			{ kind: 'easy' },
+			'junk',
+			{ scheduled_date: '2031-03-08', kind: 'tempo' }
+		]),
+		[
+			{ scheduled_date: '2031-03-09', kind: 'easy', completed: true, skipped: false },
+			{ scheduled_date: '2031-03-08', kind: 'tempo', completed: false, skipped: false }
+		]
+	);
+	assert.deepEqual(parseRosterRecentWorkouts(null), []);
+	assert.deepEqual(parseRosterRecentWorkouts({}), []);
+});
+
+// ─────────────────────── isEasyHrDriftFlagged ───────────────────────
+
+test('isEasyHrDriftFlagged: flags at 5 % and above, never on null', () => {
+	assert.equal(isEasyHrDriftFlagged(5), true);
+	assert.equal(isEasyHrDriftFlagged(6.7), true);
+	assert.equal(isEasyHrDriftFlagged(4.99), false);
+	assert.equal(isEasyHrDriftFlagged(-8), false);
+	assert.equal(isEasyHrDriftFlagged(null), false);
+	assert.equal(isEasyHrDriftFlagged(Number.NaN), false);
 });

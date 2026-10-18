@@ -3,6 +3,7 @@
 // assignments as the TS engine for the same inputs.
 
 import 'dart:math';
+import 'package:core_models/core_models.dart' show PlanWorkoutRow;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/preferences.dart';
@@ -49,6 +50,64 @@ void main() {
       expect(walkRunDefaultWeeks(), 9);
     });
 
+    test('minDaysPerWeek: a two-day walk-run plan may run two days, a road plan needs three', () {
+      final walkRun = generatePlan(GeneratePlanInput(
+        goalEvent: GoalEvent.distance5k,
+        startDate: DateTime(2026, 6, 1),
+        daysPerWeek: 2,
+        beginnerWalkRun: true,
+      ));
+      expect(
+          walkRun.weeks.first.workouts
+              .where((w) => w.kind == WorkoutKind.walkRun)
+              .length,
+          2);
+      expect(minDaysPerWeek(walkRun.weeks), 2);
+      final road = generatePlan(GeneratePlanInput(
+        goalEvent: GoalEvent.distance5k,
+        startDate: DateTime(2026, 6, 1),
+        daysPerWeek: 3,
+      ));
+      expect(minDaysPerWeek(road.weeks), 3);
+    });
+
+    test('generatePlan(beginnerWalkRun, 2 days): sessions sit three days apart, never five', () {
+      final plan = generatePlan(GeneratePlanInput(
+        goalEvent: GoalEvent.distance5k,
+        startDate: DateTime(2026, 6, 1),
+        daysPerWeek: 2,
+        beginnerWalkRun: true,
+      ));
+      expect(plan.weeks.first.workouts.map((w) => w.kind == WorkoutKind.walkRun).toList(),
+          [true, false, false, true, false, false, false]);
+      final days = [
+        for (final w in plan.weeks.expand((w) => w.workouts))
+          if (w.kind == WorkoutKind.walkRun) w.scheduledDate,
+      ];
+      for (var i = 1; i < days.length; i++) {
+        expect(days[i].difference(days[i - 1]).inHours / 24, lessThanOrEqualTo(4.0));
+      }
+    });
+
+    test('minDaysPerWeek: a walk-run plan with a goal race stays walk-run; one road session does not', () {
+      GeneratedWeek week(List<WorkoutKind> kinds) => GeneratedWeek(
+            weekIndex: 0,
+            phase: PlanPhase.build,
+            targetVolumeM: 0,
+            workouts: [
+              for (final k in kinds)
+                GeneratedWorkout(scheduledDate: DateTime(2026, 6, 1), kind: k),
+            ],
+          );
+      expect(
+          minDaysPerWeek([
+            week([WorkoutKind.walkRun, WorkoutKind.rest, WorkoutKind.race])
+          ]),
+          2);
+      expect(minDaysPerWeek([week([WorkoutKind.walkRun, WorkoutKind.easy])]), 3);
+      expect(minDaysPerWeek([week([WorkoutKind.rest])]), 3);
+    });
+
     test('generatePlan(beginnerWalkRun, weeks=8) keeps the graduation week', () {
       final plan = generatePlan(GeneratePlanInput(
         goalEvent: GoalEvent.distance5k,
@@ -63,7 +122,40 @@ void main() {
       expect(wkLast.structure!.repeats!['count'], 1);
       expect(wkLast.structure!.repeats!.containsKey('recovery_duration_s'),
           isFalse);
-      expect(wkLast.notes, contains('Graduation week'));
+      expect(plan.weeks.last.phase, PlanPhase.graduation);
+    });
+
+    // Mirrors the no-generated-note test in training.test.ts.
+    test('no road-plan workout carries a generated note', () {
+      final plans = [
+        generatePlan(GeneratePlanInput(
+            goalEvent: GoalEvent.distance5k,
+            startDate: DateTime(2026, 6, 1),
+            daysPerWeek: 3,
+            beginnerWalkRun: true)),
+        generatePlan(GeneratePlanInput(
+            goalEvent: GoalEvent.distance10k,
+            startDate: DateTime(2026, 6, 7),
+            daysPerWeek: 5,
+            goalTimeSec: 50 * 60)),
+        generatePlan(GeneratePlanInput(
+            goalEvent: GoalEvent.distanceHalf,
+            startDate: DateTime(2026, 6, 7),
+            daysPerWeek: 5,
+            goalTimeSec: 105 * 60)),
+        generatePlan(GeneratePlanInput(
+            goalEvent: GoalEvent.distanceFull,
+            startDate: DateTime(2026, 6, 7),
+            daysPerWeek: 6,
+            goalTimeSec: 4 * 3600)),
+      ];
+      for (final plan in plans) {
+        for (final week in plan.weeks) {
+          for (final w in week.workouts) {
+            expect(w.notes, isNull, reason: '${w.kind} on ${w.scheduledDate}');
+          }
+        }
+      }
     });
 
     // Persona round-5 runner-comeback. Mirrors the pacesAreFallback test in
@@ -865,6 +957,32 @@ void main() {
       expect(isMastersAge(50), isTrue);
       expect(isMastersAge(72), isTrue);
       expect(isMastersAge(null), isFalse);
+    });
+
+    // Mirrors isWorkoutCompleted in apps/web/src/lib/training/training.test.ts.
+    PlanWorkoutRow row({String? runId, bool manual = false}) => PlanWorkoutRow(
+          id: 'w',
+          weekId: 'wk',
+          scheduledDate: DateTime(2026, 6, 13),
+          kind: 'easy',
+          completedRunId: runId,
+          manuallyCompleted: manual,
+        );
+
+    test('isWorkoutCompleted: false when neither flag set', () {
+      expect(isWorkoutCompleted(row()), isFalse);
+    });
+
+    test('isWorkoutCompleted: true when run is linked', () {
+      expect(isWorkoutCompleted(row(runId: 'run-123')), isTrue);
+    });
+
+    test('isWorkoutCompleted: true when manually marked', () {
+      expect(isWorkoutCompleted(row(manual: true)), isTrue);
+    });
+
+    test('isWorkoutCompleted: true when both set', () {
+      expect(isWorkoutCompleted(row(runId: 'run-1', manual: true)), isTrue);
     });
 
     // Mirrors isWorkoutSkipped in apps/web/src/lib/training/training.test.ts.

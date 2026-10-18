@@ -6,17 +6,20 @@ import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../training.dart';
-import '../training_labels.dart';
-import '../workout_kind_color.dart';
+import 'plan_card.dart';
+import 'plan_day_cell.dart';
 
 /// Month-by-month calendar projection of a training plan, mirroring the
 /// web's `PlanCalendar.svelte`. Each day cell shows the workout kind +
-/// target distance when one is scheduled; completed workouts get a
-/// green tick; out-of-plan days are blank and out-of-month days without a
-/// workout are dimmed. A cell that DOES carry a workout is never dimmed: the
-/// dim is a 0.55 opacity over the whole subtree, which drops even
-/// `onSurfaceVariant` to 2.582:1 on the light card, and a planned session on
-/// the first or last row of the grid is content, not chrome.
+/// target distance when one is scheduled, drawn in its done / missed /
+/// skipped state by [PlanDayCell]; out-of-plan days are blank and
+/// out-of-month days without a workout are dimmed. A cell that DOES carry a
+/// workout is never dimmed: the dim is `AppTheme.dimmedSubtreeOpacity` over
+/// the whole subtree, and a planned session on the first or last row of the
+/// grid is content, not chrome.
+///
+/// The grid follows the runner's `week_start_day` ([weekStartDay]), as web's
+/// does; "today" comes from [today], the screen's injected clock.
 ///
 /// `onSelect` is invoked when the user taps a workout cell. Hosts pass
 /// the same handler they use for the weekly grid (push the workout
@@ -28,11 +31,19 @@ class PlanCalendar extends StatefulWidget {
   final List<PlanWorkoutRow> workouts;
   final void Function(PlanWorkoutRow workout)? onSelect;
 
+  /// 'monday' or 'sunday'.
+  final String weekStartDay;
+
+  /// The runner's local day.
+  final DateTime today;
+
   const PlanCalendar({
     super.key,
     required this.startDate,
     required this.endDate,
     required this.workouts,
+    required this.today,
+    this.weekStartDay = 'monday',
     this.onSelect,
   });
 
@@ -60,11 +71,16 @@ class _PlanCalendarState extends State<PlanCalendar> {
     return out;
   }
 
+  /// The month holding today; before the plan the first month, after it the
+  /// last, so a finished plan opens on its race rather than on week 1.
   int _initialIdx() {
-    final today = DateTime.now();
     final m = _months;
-    final idx = m.indexWhere(
-        (e) => e.year == today.year && e.month == today.month - 1);
+    if (m.isEmpty) return 0;
+    final today = _toIso(widget.today);
+    if (today.compareTo(_toIso(widget.startDate)) < 0) return 0;
+    if (today.compareTo(_toIso(widget.endDate)) > 0) return m.length - 1;
+    final idx = m.indexWhere((e) =>
+        e.year == widget.today.year && e.month == widget.today.month - 1);
     return idx >= 0 ? idx : 0;
   }
 
@@ -75,23 +91,20 @@ class _PlanCalendarState extends State<PlanCalendar> {
     final tag = localeToTag(Localizations.localeOf(context));
     final months = _months;
     if (months.isEmpty) return const SizedBox.shrink();
-    final current = months[_currentIdx];
-    final today = _toIso(DateTime.now());
+    final current = months[_currentIdx.clamp(0, months.length - 1)];
+    final today = _toIso(widget.today);
+    final sundayFirst = widget.weekStartDay == 'sunday';
 
     final byDate = <String, PlanWorkoutRow>{
       for (final w in widget.workouts) _toIso(w.scheduledDate): w,
     };
 
-    final cells = _buildGrid(current.year, current.month);
+    final cells = _buildGrid(current.year, current.month, sundayFirst);
     final startIso = _toIso(widget.startDate);
     final endIso = _toIso(widget.endDate);
 
     return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border.all(color: theme.dividerColor),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: planCardDecoration(theme),
       padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -130,8 +143,10 @@ class _PlanCalendarState extends State<PlanCalendar> {
                 Expanded(
                   child: Center(
                     child: Text(
-                      // 2026-01-05 is a Monday; step i days for a Monday-first row.
-                      formatDow(addDays(DateTime(2026, 1, 5), i), tag),
+                      // 2026-01-04 is a Sunday, 2026-01-05 a Monday.
+                      formatDow(
+                          addDays(DateTime(2026, 1, sundayFirst ? 4 : 5), i),
+                          tag),
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w600,
@@ -155,7 +170,7 @@ class _PlanCalendarState extends State<PlanCalendar> {
                     Expanded(
                       child: _buildCell(
                         theme,
-                        l10n,
+                        tag,
                         cells[r + i],
                         byDate[cells[r + i].iso],
                         today,
@@ -173,7 +188,7 @@ class _PlanCalendarState extends State<PlanCalendar> {
 
   Widget _buildCell(
     ThemeData theme,
-    AppLocalizations l10n,
+    String tag,
     _Cell cell,
     PlanWorkoutRow? wo,
     String today,
@@ -182,94 +197,36 @@ class _PlanCalendarState extends State<PlanCalendar> {
   ) {
     final inPlan = cell.iso.compareTo(startIso) >= 0 &&
         cell.iso.compareTo(endIso) <= 0;
-    final isToday = cell.iso == today;
-    final outOfMonth = !cell.inMonth;
     final hasWorkout = wo != null && inPlan;
-
-    final kind = wo == null ? null : workoutKindFromDb(wo.kind);
-    final kindMark = kind == null ? null : workoutKindMarkColor(theme, kind);
-    final isDone =
-        hasWorkout && (wo.completedRunId != null || wo.manuallyCompleted);
-
-    final base = Container(
-      margin: const EdgeInsets.all(2),
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: !inPlan
-            ? Colors.transparent
-            : (isDone
-                ? theme.colorScheme.tertiaryContainer
-                : theme.colorScheme.surfaceContainerHigh),
-        border: Border.all(
-          color: !inPlan
-              ? Colors.transparent
-              : (isToday ? theme.colorScheme.primary : theme.dividerColor),
-          width: isToday ? 1.5 : 1,
-        ),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      foregroundDecoration: hasWorkout
-          ? BoxDecoration(
-              border: Border(
-                left: BorderSide(color: kindMark!, width: 3),
-              ),
-              borderRadius: BorderRadius.circular(8),
-            )
-          : null,
-      constraints: const BoxConstraints(minHeight: 56),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              '${cell.day}',
+    final day = DateTime.parse(cell.iso);
+    final dayCell = PlanDayCell(
+      header: '${cell.day}',
+      workout: hasWorkout ? wo : null,
+      todayIso: today,
+      isToday: inPlan && cell.iso == today,
+      semanticsDay: formatDowDateShort(day, tag),
+      onSelect: widget.onSelect,
+    );
+    if (!inPlan) {
+      return Opacity(
+        opacity: cell.inMonth ? 1 : AppTheme.dimmedSubtreeOpacity,
+        child: Container(
+          margin: const EdgeInsets.all(2),
+          padding: const EdgeInsets.all(4),
+          constraints: const BoxConstraints(minHeight: 56),
+          child: Text('${cell.day}',
               style: theme.textTheme.labelSmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          if (hasWorkout) ...[
-            Text(
-              workoutKindLabel(l10n, kind!).toUpperCase(),
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurface,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.4,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            if (wo.targetDistanceM != null && wo.kind != 'rest')
-              Text(
-                fmtKm(wo.targetDistanceM, 1),
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            if (isDone)
-              Align(
-                alignment: Alignment.bottomRight,
-                child: Icon(Icons.check_circle,
-                    size: 14, color: theme.colorScheme.tertiary),
-              ),
-          ],
-        ],
-      ),
-    );
-
-    if (!hasWorkout) {
-      return Opacity(
-          opacity: outOfMonth ? AppTheme.dimmedSubtreeOpacity : 1,
-          child: base);
+              )),
+        ),
+      );
     }
-
-    return InkWell(
-      onTap: widget.onSelect == null ? null : () => widget.onSelect!(wo),
-      borderRadius: BorderRadius.circular(8),
-      child: base,
-    );
+    if (!hasWorkout && !cell.inMonth) {
+      return Opacity(
+          opacity: AppTheme.dimmedSubtreeOpacity, child: dayCell);
+    }
+    return dayCell;
   }
 
   static String _toIso(DateTime d) {
@@ -280,13 +237,14 @@ class _PlanCalendarState extends State<PlanCalendar> {
   }
 
   /// Build the 6-row × 7-col cell grid for the given month, padded with
-  /// trailing days from the previous and following months. Monday-first.
-  List<_Cell> _buildGrid(int year, int month) {
+  /// trailing days from the previous and following months, starting the row
+  /// on Monday or, when [sundayFirst], on Sunday.
+  List<_Cell> _buildGrid(int year, int month, bool sundayFirst) {
     final first = DateTime(year, month + 1, 1); // 1-indexed month
     final last = DateTime(year, month + 2, 0); // last day of this month
     final lastDay = last.day;
-    // Monday-first: first.weekday is Mon=1..Sun=7 → leadDow 0..6
-    final leadDow = (first.weekday - 1) % 7;
+    // first.weekday is Mon=1..Sun=7.
+    final leadDow = sundayFirst ? first.weekday % 7 : (first.weekday - 1) % 7;
 
     final cells = <_Cell>[];
     final prevLast = DateTime(year, month + 1, 0).day;

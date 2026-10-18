@@ -5,7 +5,7 @@
 // suites. See docs/features/training.md.
 
 import 'dart:math';
-import 'package:core_models/core_models.dart' show DistanceUnit;
+import 'package:core_models/core_models.dart' show DistanceUnit, PlanWorkoutRow;
 
 import 'l10n/locale_support.dart' show activeLocaleTag;
 import 'l10n/number_format.dart' show formatFixed;
@@ -60,6 +60,26 @@ int defaultPlanWeeks(GoalEvent g, [double? distanceM]) {
 /// round-5 runner-new.
 int walkRunDefaultWeeks() => kWalkRunProgression.length;
 
+/// The most training days a walk-run plan schedules. Every session is followed
+/// by a rest day, so a week holds three (offsets 0/2/4); a request for more is
+/// clamped here. The wizard offers 2 or 3 rather than letting a runner pick a
+/// number this would silently cut. Mirrors training.ts.
+const int kWalkRunMaxDaysPerWeek = 3;
+
+/// The fewest training days a week a plan may carry. A walk-run plan (at
+/// least one walk-run session and nothing but walk-run, rest and race) may run
+/// 2, which the wizard offers; every other plan needs 3. create_training_plan
+/// applies the same rule (migration 20270915000001). Mirrors training.ts.
+int minDaysPerWeek(List<GeneratedWeek> weeks) {
+  final kinds = [for (final w in weeks) for (final wo in w.workouts) wo.kind];
+  final walkRun = kinds.contains(WorkoutKind.walkRun) &&
+      kinds.every((k) =>
+          k == WorkoutKind.walkRun ||
+          k == WorkoutKind.rest ||
+          k == WorkoutKind.race);
+  return walkRun ? 2 : 3;
+}
+
 String goalEventDbValue(GoalEvent g) => switch (g) {
       GoalEvent.distance5k => 'distance_5k',
       GoalEvent.distance10k => 'distance_10k',
@@ -74,14 +94,6 @@ GoalEvent goalEventFromDb(String s) => switch (s) {
       'distance_half' => GoalEvent.distanceHalf,
       'distance_full' => GoalEvent.distanceFull,
       _ => GoalEvent.custom,
-    };
-
-String goalEventLabel(GoalEvent g) => switch (g) {
-      GoalEvent.distance5k => '5K',
-      GoalEvent.distance10k => '10K',
-      GoalEvent.distanceHalf => 'Half marathon',
-      GoalEvent.distanceFull => 'Marathon',
-      GoalEvent.custom => 'Custom',
     };
 
 WorkoutKind workoutKindFromDb(String s) => switch (s) {
@@ -263,6 +275,13 @@ bool isMastersAge(int? age) => age != null && age >= kMastersAge;
 /// achievement (it isn't done). Read sites that filter the active
 /// to-do set exclude skipped alongside completed.
 bool isWorkoutSkipped(DateTime? skippedAt) => skippedAt != null;
+
+/// Web `isWorkoutCompleted` twin — a planned workout is done when a tracked
+/// run is linked to it OR the runner marked it done by hand. Every surface
+/// that says "done" reads it through here, so the workout screen, the plan
+/// rows, the calendar, the strip and the Today card cannot disagree.
+bool isWorkoutCompleted(PlanWorkoutRow wo) =>
+    wo.completedRunId != null || wo.manuallyCompleted;
 
 TrainingPaces pacesFromGoalPace(
   double goalPaceSecPerKm, [
@@ -696,9 +715,6 @@ GeneratedWorkout _walkRunWorkout(
       repeats: repeats,
       cooldown: {'duration_s': _kWalkRunCooldownS, 'pace': 'easy'},
     ),
-    notes: hasRecovery
-        ? 'Walk ${_kWalkRunWarmupS ~/ 60} min, then run ${prog.runSec}s / walk ${prog.walkSec}s × ${prog.count}, walk ${_kWalkRunCooldownS ~/ 60} min.'
-        : 'Walk ${_kWalkRunWarmupS ~/ 60} min, run ${(prog.runSec / 60).round()} min continuous, walk ${_kWalkRunCooldownS ~/ 60} min. Graduation week.',
   );
 }
 
@@ -714,8 +730,12 @@ GeneratedPlan _generateWalkRunPlan(GeneratePlanInput input,
   // in _walkRunWorkout). Mirrors training.ts.
   final totalWeeks =
       max(input.weeks ?? kWalkRunProgression.length, kWalkRunProgression.length);
-  final runDays = input.daysPerWeek.clamp(1, 3);
-  final dayOffsets = [0, 2, 4, 1, 3, 5, 6].sublist(0, runDays)..sort();
+  final runDays = input.daysPerWeek.clamp(1, kWalkRunMaxDaysPerWeek);
+  // Two sessions sit three days apart (0/3) rather than 0/2, which would
+  // leave a five-day gap before the next week's first session.
+  final dayOffsets = runDays == 2
+      ? [0, 3]
+      : ([0, 2, 4, 1, 3, 5, 6].sublist(0, runDays)..sort());
   final runSet = dayOffsets.toSet();
   final weeks = <GeneratedWeek>[];
   for (var i = 0; i < totalWeeks; i++) {
@@ -1076,7 +1096,7 @@ List<GeneratedWorkout> _generateUltraWeek({
   final easySlots =
       max(0, daysPerWeek - daysUsed.where((d) => d != restDow).length);
   final easyDays =
-      min(easySlots, (remainingKm / _kEasyRunFloorKm).floor());
+      min(easySlots, (remainingKm / kEasyRunFloorKm).floor());
   final easyTotalKm = easyDays > 0
       ? min(remainingKm, (easyDays * _kUltraEasyMaxSec) / easyPace).floor()
       : 0;
@@ -1230,7 +1250,7 @@ List<GeneratedWorkout> _generateWeek({
   // slightly over its nominal target (persona #23 — daysPerWeek is a promise
   // the training-load phases keep).
   final easyDays = isRaceWeek
-      ? min(easySlots, (remaining / _kEasyRunFloorKm).floor())
+      ? min(easySlots, (remaining / kEasyRunFloorKm).floor())
       : easySlots;
   final easyKm = easyDays > 0 ? remaining / easyDays : 0.0;
 
@@ -1252,7 +1272,6 @@ List<GeneratedWorkout> _generateWeek({
           targetDistanceM: goalDistanceM,
           targetPaceSecPerKm: goalPaceSecPerKm.round(),
           targetPaceToleranceSec: 5,
-          notes: 'Race day. Execute the plan.',
         ));
       } else {
         workouts.add(_longRun(date, longKm, paces));
@@ -1322,13 +1341,17 @@ GeneratedWorkout _longRun(DateTime date, int km, TrainingPaces p) => GeneratedWo
 
 // The shortest distance an easy/recovery run is ever prescribed at. Below this
 // there is no point emitting a run, so the race-week shakeout budget is
-// measured in whole floor-length days.
-const int _kEasyRunFloorKm = 3;
+// measured in whole floor-length days. Public so a pass that rescales a
+// generated plan (comeback.dart `capReturnRamp`) keeps to the same floor.
+const int kEasyRunFloorKm = 3;
+
+/// An easy run shorter than this is labelled a recovery run.
+const int kRecoveryRunMaxKm = 4;
 
 GeneratedWorkout _easy(DateTime date, double km, TrainingPaces p) => GeneratedWorkout(
       scheduledDate: date,
-      kind: km < 4 ? WorkoutKind.recovery : WorkoutKind.easy,
-      targetDistanceM: max(_kEasyRunFloorKm, km.round()) * 1000.0,
+      kind: km < kRecoveryRunMaxKm ? WorkoutKind.recovery : WorkoutKind.easy,
+      targetDistanceM: max(kEasyRunFloorKm, km.round()) * 1000.0,
       targetPaceSecPerKm: p.easy,
       targetPaceToleranceSec: 30,
     );
@@ -1346,7 +1369,6 @@ GeneratedWorkout _tempo(DateTime date, int totalKm, TrainingPaces p) {
       steady: {'distance_m': steady * 1000, 'pace_sec_per_km': p.tempo},
       cooldown: {'distance_m': 1500, 'pace': 'easy'},
     ),
-    notes: 'Tempo: $steady km @ threshold.',
   );
 }
 
@@ -1369,7 +1391,6 @@ GeneratedWorkout _intervals(DateTime date, TrainingPaces p) {
       },
       cooldown: {'distance_m': 1500, 'pace': 'easy'},
     ),
-    notes: '$reps× $repDistance m @ VO2 with $recovery m jog.',
   );
 }
 
@@ -1381,8 +1402,8 @@ GeneratedWorkout _marathonPace(
 ) {
   final isLongGoal = goalDistanceM >= 21000;
   final mpKm = isLongGoal ? 10 : 5;
-  // On a half/marathon plan this session IS goal-pace practice — the note says
-  // so, and that is why it doubles to 10 km. On a 5K/10K plan it is a steady
+  // On a half/marathon plan this session IS goal-pace practice, which is why
+  // it doubles to 10 km. On a 5K/10K plan it is a steady
   // aerobic session at marathon *effort*, which is genuinely slower than the
   // goal, so the training band is the right prescription there.
   final steadyPace = isLongGoal ? goalPaceSecPerKm.round() : p.marathon;
@@ -1397,7 +1418,6 @@ GeneratedWorkout _marathonPace(
       steady: {'distance_m': mpKm * 1000, 'pace_sec_per_km': steadyPace},
       cooldown: {'distance_m': 1500, 'pace': 'easy'},
     ),
-    notes: '$mpKm km @ goal marathon pace.',
   );
 }
 
@@ -1456,6 +1476,14 @@ String fmtPace(int? secPerKm) {
   final m = secPerKm ~/ 60;
   final s = (secPerKm % 60).toString().padLeft(2, '0');
   return '$m:$s/km';
+}
+
+/// A pace tolerance is stored as seconds per km. Next to a /mi pace it has
+/// to be per mile too, and say so. Mirrors web `fmtPaceTolerance`.
+String fmtPaceTolerance(int secPerKm) {
+  final unit = activeDistanceUnit;
+  final sec = unit == DistanceUnit.mi ? secPerKm * (1609.344 / 1000) : secPerKm;
+  return '±${sec.round()}s/${unit == DistanceUnit.mi ? 'mi' : 'km'}';
 }
 
 String fmtKm(num? metres, [int digits = 1]) {

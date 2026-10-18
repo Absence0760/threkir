@@ -182,7 +182,7 @@ test.describe('Workout structured-interval edit (web)', () => {
 
 			const modal = page.locator('.modal');
 			await expect(modal).toBeVisible({ timeout: 5_000 });
-			await modal.locator('select').first().selectOption('easy');
+			await modal.getByLabel('Kind', { exact: true }).selectOption('easy');
 			await modal.getByRole('button', { name: /^Save/ }).click();
 			await expect(modal).toHaveCount(0);
 

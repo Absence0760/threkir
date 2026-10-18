@@ -1808,6 +1808,44 @@ export function stampedThroughRpc(landings, stamped) {
  */
 export const FILTERED_RPC_ARGUMENTS = [
   {
+    file: 'plan_workout_effort_targets_test.sql',
+    description: 'the owner duplicates the week',
+    columns: ['plan_weeks.week_index'],
+    readBack: "duplicate_plan_week carries both ranges within the owner's own plan",
+    reason:
+      'The copy lands one week after the source (week_index + 1, dates + 7). The read-back finds ' +
+      'it by the source date plus seven days, which a server that stopped computing the next ' +
+      'week would not have written.',
+  },
+  {
+    file: 'move_plan_workout_test.sql',
+    description: 'a dense plan shifts by a single day',
+    columns: [
+      'plan_workouts.scheduled_date',
+      'training_plans.end_date',
+      'training_plans.start_date',
+    ],
+    readBack: 'the plan window moved two days earlier with its workouts',
+    reason:
+      'The `lives_ok` measures that a +1 shift on a plan with a workout every day no longer meets ' +
+      'the next day\'s row. The dates are `+ p_days` over the stored ones, never the argument ' +
+      'itself; the net of both shifts is read back as the plan window here and as the workouts\' ' +
+      'span in the assertion before it.',
+  },
+  {
+    file: 'move_plan_workout_test.sql',
+    description: 'and back by three',
+    columns: [
+      'plan_workouts.scheduled_date',
+      'training_plans.end_date',
+      'training_plans.start_date',
+    ],
+    readBack: 'every row moved two days earlier and none was lost',
+    reason:
+      'Same shift, the other direction; the two read-backs after it state the net -2 days for ' +
+      'both the workouts and the plan window, which neither shift alone would produce.',
+  },
+  {
     file: 'atomic_plan_create_test.sql',
     description: 'an overlapping create with trim succeeds',
     columns: ['training_plans.goal_event', 'training_plans.notes', 'training_plans.vdot'],
@@ -1876,6 +1914,15 @@ export const FILTERED_RPC_ARGUMENTS = [
       'The subject is that a paused plan holds no dates against the active one it now overlaps. ' +
       'The dates are `+ p_days` over the stored ones, and the named read-back states the paused ' +
       'plan\'s shifted window.',
+  },
+  {
+    file: 'walk_run_two_days_test.sql',
+    description: 'a two-day walk-run plan saves',
+    columns: ['training_plans.goal_event', 'training_plans.notes', 'training_plans.vdot'],
+    reason:
+      'The subject is that the two-day floor admits a walk-run plan, which the days_per_week ' +
+      'read-back after it states. The cast columns are atomic_plan_create_test.sql\'s trim case\'s ' +
+      'claim, read back there for the same function.',
   },
   {
     file: 'plan_chaining_edges_test.sql',

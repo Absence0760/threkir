@@ -4678,6 +4678,10 @@ class PlanWorkoutRow {
   static const String colRaceName = 'race_name';
   static const String colRacePriority = 'race_priority';
   static const String colRaceTaperAppliedAt = 'race_taper_applied_at';
+  static const String colTargetRpeMin = 'target_rpe_min';
+  static const String colTargetRpeMax = 'target_rpe_max';
+  static const String colTargetHrMinBpm = 'target_hr_min_bpm';
+  static const String colTargetHrMaxBpm = 'target_hr_max_bpm';
 
   final String id;
   final String weekId;
@@ -4700,6 +4704,10 @@ class PlanWorkoutRow {
   final String? raceName;
   final String? racePriority;
   final DateTime? raceTaperAppliedAt;
+  final int? targetRpeMin;
+  final int? targetRpeMax;
+  final int? targetHrMinBpm;
+  final int? targetHrMaxBpm;
 
   const PlanWorkoutRow({
     required this.id,
@@ -4723,6 +4731,10 @@ class PlanWorkoutRow {
     this.raceName,
     this.racePriority,
     this.raceTaperAppliedAt,
+    this.targetRpeMin,
+    this.targetRpeMax,
+    this.targetHrMinBpm,
+    this.targetHrMaxBpm,
   });
 
   factory PlanWorkoutRow.fromJson(Map<String, dynamic> json) => PlanWorkoutRow(
@@ -4747,6 +4759,10 @@ class PlanWorkoutRow {
     raceName: json['race_name'] as String?,
     racePriority: json['race_priority'] as String?,
     raceTaperAppliedAt: parseIsoStrictValue(json['race_taper_applied_at']),
+    targetRpeMin: (json['target_rpe_min'] as num?)?.toInt(),
+    targetRpeMax: (json['target_rpe_max'] as num?)?.toInt(),
+    targetHrMinBpm: (json['target_hr_min_bpm'] as num?)?.toInt(),
+    targetHrMaxBpm: (json['target_hr_max_bpm'] as num?)?.toInt(),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -4771,6 +4787,10 @@ class PlanWorkoutRow {
     colRaceName: raceName,
     colRacePriority: racePriority,
     colRaceTaperAppliedAt: raceTaperAppliedAt?.toIso8601String(),
+    colTargetRpeMin: targetRpeMin,
+    colTargetRpeMax: targetRpeMax,
+    colTargetHrMinBpm: targetHrMinBpm,
+    colTargetHrMaxBpm: targetHrMaxBpm,
   };
 
   PlanWorkoutRow copyWith({
@@ -4795,6 +4815,10 @@ class PlanWorkoutRow {
     String? raceName,
     String? racePriority,
     DateTime? raceTaperAppliedAt,
+    int? targetRpeMin,
+    int? targetRpeMax,
+    int? targetHrMinBpm,
+    int? targetHrMaxBpm,
   }) => PlanWorkoutRow(
     id: id ?? this.id,
     weekId: weekId ?? this.weekId,
@@ -4817,6 +4841,10 @@ class PlanWorkoutRow {
     raceName: raceName ?? this.raceName,
     racePriority: racePriority ?? this.racePriority,
     raceTaperAppliedAt: raceTaperAppliedAt ?? this.raceTaperAppliedAt,
+    targetRpeMin: targetRpeMin ?? this.targetRpeMin,
+    targetRpeMax: targetRpeMax ?? this.targetRpeMax,
+    targetHrMinBpm: targetHrMinBpm ?? this.targetHrMinBpm,
+    targetHrMaxBpm: targetHrMaxBpm ?? this.targetHrMaxBpm,
   );
 }
 

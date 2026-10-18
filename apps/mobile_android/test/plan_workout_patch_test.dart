@@ -62,9 +62,70 @@ void main() {
 
   test('planWorkoutPatch: absent arguments leave their columns alone', () {
     expect(planWorkoutPatch(), isEmpty);
-    expect(planWorkoutPatch(targetDistanceM: 8000, notes: '  '), {
-      'target_distance_m': 8000.0,
-      'notes': null,
+    expect(
+        planWorkoutPatch(
+            targets: (distanceM: 8000, paceSecPerKm: null), notes: '  '),
+        {
+          'target_distance_m': 8000.0,
+          'target_pace_sec_per_km': null,
+          'notes': null,
+        });
+  });
+
+  test('planWorkoutPatch: a rest kind clears every target', () {
+    expect(
+      planWorkoutPatch(
+        kind: 'rest',
+        fromKind: 'tempo',
+        targets: (distanceM: 8000, paceSecPerKm: 300),
+      ),
+      {
+        'kind': 'rest',
+        'race_name': null,
+        'race_priority': null,
+        'target_distance_m': null,
+        'target_pace_sec_per_km': null,
+        'target_pace_end_sec_per_km': null,
+        'target_pace_tolerance_sec': null,
+        'pace_zone': null,
+        'structure': null,
+        'target_rpe_min': null,
+        'target_rpe_max': null,
+        'target_hr_min_bpm': null,
+        'target_hr_max_bpm': null,
+      },
+    );
+  });
+
+  test(
+      'planWorkoutPatch: effort and heart-rate ranges are written as given, '
+      'and left alone when not passed', () {
+    expect(
+      planWorkoutPatch(
+        rpe: (min: 3, max: 4),
+        hr: (min: null, max: 125),
+      ),
+      {
+        'target_rpe_min': 3,
+        'target_rpe_max': 4,
+        'target_hr_min_bpm': null,
+        'target_hr_max_bpm': 125,
+      },
+    );
+    expect(planWorkoutPatch(rpe: (min: null, max: null)), {
+      'target_rpe_min': null,
+      'target_rpe_max': null,
     });
+  });
+
+  test('planWorkoutPatch: a rest day clears the ranges it was handed', () {
+    final patch = planWorkoutPatch(
+      kind: 'rest',
+      rpe: (min: 3, max: 4),
+      hr: (min: null, max: 125),
+    );
+    expect(patch['target_rpe_min'], isNull);
+    expect(patch['target_hr_max_bpm'], isNull);
+    expect(patch.containsKey('target_hr_max_bpm'), isTrue);
   });
 }

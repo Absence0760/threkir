@@ -74,3 +74,55 @@ List<T> overlappingPlans<T>(
         if (start(p).compareTo(endIso) <= 0 && end(p).compareTo(startIso) >= 0)
           p,
     ];
+
+/// An `active` plan whose last day is behind [todayIso] (the runner's local
+/// day): its dates have run out but nothing has written `completed`, which
+/// only the runner confirming "Finish plan" does. A paused, completed or
+/// abandoned plan is never finished in this sense, and the end day itself is
+/// still inside the plan.
+bool isPlanFinished({
+  required String status,
+  required String endIso,
+  required String todayIso,
+}) =>
+    status == 'active' && endIso.compareTo(todayIso) < 0;
+
+
+/// Where a planned workout stands against the runner's local day. `done` and
+/// `skipped` are written facts; `missed` is derived, never stored: a past,
+/// non-rest workout that is neither done nor skipped once its day has ended in
+/// the runner's time zone. The scheduled day itself is never missed, so a
+/// workout still due tonight reads `upcoming`. Done wins over skipped, which
+/// the write layer keeps exclusive anyway.
+enum PlanWorkoutStatus { done, skipped, missed, upcoming, rest }
+
+PlanWorkoutStatus planWorkoutStatus({
+  required String scheduledIso,
+  required String kind,
+  required bool completed,
+  required bool skipped,
+  required String todayIso,
+}) {
+  if (completed) return PlanWorkoutStatus.done;
+  if (skipped) return PlanWorkoutStatus.skipped;
+  if (kind == 'rest') return PlanWorkoutStatus.rest;
+  return scheduledIso.compareTo(todayIso) < 0
+      ? PlanWorkoutStatus.missed
+      : PlanWorkoutStatus.upcoming;
+}
+
+bool isWorkoutMissed({
+  required String scheduledIso,
+  required String kind,
+  required bool completed,
+  required bool skipped,
+  required String todayIso,
+}) =>
+    planWorkoutStatus(
+      scheduledIso: scheduledIso,
+      kind: kind,
+      completed: completed,
+      skipped: skipped,
+      todayIso: todayIso,
+    ) ==
+    PlanWorkoutStatus.missed;

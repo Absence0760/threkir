@@ -272,6 +272,28 @@ $neutralised$;`,
     },
   ],
   [
+    'plan_calendar_feed_status',
+    {
+      why: 'drops `f.user_id = auth.uid()`, the whole access control here; the function takes no argument, so there is no subject selector to keep',
+      sql: `create or replace function public.plan_calendar_feed_status()
+ returns table(created_at timestamptz, last_fetched_at timestamptz)
+ language sql stable security definer set search_path to 'public'
+as $neutralised$
+  select f.created_at, f.last_fetched_at
+  from public.plan_calendar_feeds f
+  where ${mine('f')};
+$neutralised$;`,
+      subject: 'plan_calendar_feeds f',
+      witness: {
+        setup: `insert into plan_calendar_feeds (user_id, secret_hash)
+                 values ((select id from auth.users order by id limit 1),
+                         sha256(convert_to('pgtap guard witness', 'UTF8')))
+                 on conflict (user_id) do update set secret_hash = excluded.secret_hash;`,
+        probe: `select count(*) from plan_calendar_feed_status();`,
+      },
+    },
+  ],
+  [
     'my_pending_safety_requests',
     {
       why: "drops the `lower(contact_email) = lower(me.email)` match against the caller — the whole access control here — and the `auth.users` join that carries it; keeps `confirmed_at is null`, which is what makes a request pending",
@@ -1103,12 +1125,13 @@ $neutralised$;`,
       sql: `create or replace function public.coach_roster_summary()
  returns table(athlete_id uuid, display_name text, avatar_url text, last_run_at timestamptz,
                runs_7d integer, distance_7d_m double precision, load_acute double precision,
-               load_chronic double precision, active_plan_id uuid, plan_completion_pct integer)
+               load_chronic double precision, active_plan_id uuid, plan_completion_pct integer,
+               athlete_today date, recent_workouts jsonb, easy_hr_drift_pct double precision)
  language sql stable security definer set search_path to 'public'
 as $neutralised$
   select p.id, p.display_name, p.avatar_url, null::timestamptz,
          0, 0::double precision, 0::double precision, 0::double precision,
-         null::uuid, 0
+         null::uuid, 0, null::date, '[]'::jsonb, null::double precision
   from coach_athletes ca
   join user_profiles p on p.id = ca.athlete_id
   where ${mine('ca')};
@@ -1244,6 +1267,77 @@ $neutralised$;`,
                  where id = (select id from runs order by id limit 1);`,
         probe: `select count(*) from coached_runs
                  where id = (select id from runs order by id limit 1);`,
+      },
+    },
+  ],
+  [
+    'plan_workout_link_candidates',
+    {
+      why: "drops the two `= auth.uid()` gates — that the caller owns the run, and that the plans offered are the caller's — and the not-authenticated guard above them. The plans are still the RUN OWNER'S (`tp.user_id = r.user_id`), because whose plans a run is matched against is the subject, not a permission; the ride, already-linked, open-workout, two-day window, refusal and 75% fit filters are all kept, since each says which workouts the assertion is asking about",
+      sql: `create or replace function public.plan_workout_link_candidates(p_run_id uuid)
+ returns table(workout_id uuid, plan_id uuid, scheduled_date date, kind workout_kind,
+               target_distance_m numeric, target_duration_seconds integer, day_offset integer)
+ language sql stable security definer set search_path to 'public', 'pg_catalog'
+as $neutralised$
+  with run as (
+    select r.id, r.user_id, r.distance_m, r.duration_s,
+           private.athlete_local_date(us.prefs ->> 'time_zone', r.started_at) as day
+      from runs r
+      left join user_settings us on us.user_id = r.user_id
+     where r.id = p_run_id
+       and r.activity_type is distinct from 'cycle'
+       and not exists (select 1 from plan_workouts l where l.completed_run_id = p_run_id)
+  )
+  select pw.id, tp.id, pw.scheduled_date, pw.kind, pw.target_distance_m,
+         pw.target_duration_seconds, (pw.scheduled_date - run.day)::integer
+    from run
+    join training_plans tp on tp.user_id = run.user_id
+    join plan_weeks wk on wk.plan_id = tp.id
+    join plan_workouts pw on pw.week_id = wk.id
+   where tp.status = 'active'
+     and not tp.is_template
+     and pw.scheduled_date between run.day - 2 and run.day + 2
+     and pw.scheduled_date <> run.day
+     and pw.kind <> 'rest'
+     and pw.skipped_at is null
+     and not pw.manually_completed
+     and pw.completed_run_id is null
+     and not exists (
+       select 1 from private.plan_workout_link_refusals f
+        where f.workout_id = pw.id and f.run_id = p_run_id
+     )
+     and private.plan_match_score(pw.target_distance_m, pw.target_duration_seconds,
+                                  run.distance_m, run.duration_s) is not null
+     and ${mine('pw')};
+$neutralised$;`,
+      subject: 'plan_workouts pw — the workouts offered, not the run they are offered for',
+      witness: {
+        // Its own owner, plan and run rather than the seed's: the owner is a
+        // user no seed row names, so no committed plan can overlap the window
+        // or answer the probe. The run is at 00:00 UTC, so its local day is
+        // the 5th or the 4th in any zone, and the workout on the 6th is never
+        // on the run's own day, where the matcher would link it on insert.
+        setup: `insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
+                  values ('00000000-0000-0000-0000-00000000c0a1', 'authenticated', 'authenticated',
+                          'pgtap-guard-witness@local', '', now(), now());
+                insert into user_profiles (id, display_name, age_confirmed_at)
+                  values ('00000000-0000-0000-0000-00000000c0a1', 'Guard witness', now())
+                  on conflict (id) do update set age_confirmed_at = excluded.age_confirmed_at;
+                insert into training_plans (id, user_id, name, goal_event, goal_distance_m, start_date,
+                                            end_date, days_per_week, status)
+                  values ('00000000-0000-0000-0000-00000000c0a2', '00000000-0000-0000-0000-00000000c0a1',
+                          'Guard witness', 'distance_10k', 10000, '2041-03-01', '2041-03-28', 4, 'active');
+                insert into plan_weeks (id, plan_id, week_index)
+                  values ('00000000-0000-0000-0000-00000000c0a3', '00000000-0000-0000-0000-00000000c0a2', 0);
+                insert into plan_workouts (id, week_id, scheduled_date, kind, target_distance_m)
+                  values ('00000000-0000-0000-0000-00000000c0a4', '00000000-0000-0000-0000-00000000c0a3',
+                          '2041-03-06', 'easy', 10000);
+                insert into runs (id, user_id, started_at, duration_s, distance_m, source, activity_type)
+                  values ('00000000-0000-0000-0000-00000000c0a5', '00000000-0000-0000-0000-00000000c0a1',
+                          '2041-03-05 00:00:00+00', 3000, 10000, 'app', 'run');
+                select set_config('request.jwt.claims',
+                  '{"sub":"00000000-0000-0000-0000-00000000c0b1","role":"authenticated"}', true);`,
+        probe: `select count(*) from plan_workout_link_candidates('00000000-0000-0000-0000-00000000c0a5');`,
       },
     },
   ],

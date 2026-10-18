@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deletePlan, deleteRun, insertRun, setPlanStatus } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { browserDayAt } from '../fixtures/dates';
 
 /**
  * Plan PROGRESS / COMPLETION / ADHERENCE / RE-PLAN journey.
@@ -33,10 +34,10 @@ import { USER_A } from '../fixtures/users';
  *      specs each seed their own throwaway plan for one slice — here
  *      we drive them all on the lifecycle plan.)
  *   4. Complete a workout by MARKING IT DONE in the day-grid modal
- *      (WorkoutEditor → markWorkoutCompleted(manual)). The web
- *      auto-complete-from-run write path is unwired
- *      (auto-complete-from-run.spec.ts), so mark-done is the real UI
- *      completion path. Verify the day flips to .completed and the
+ *      (WorkoutEditor → markWorkoutCompleted(manual)), the completion
+ *      path a runner drives by hand (a same-day run links in the
+ *      database, auto-complete-from-run.spec.ts). Verify the day flips
+ *      to data-status="done" and the
  *      progress ring pct ticks up.
  *   5. Verify the adherence banner renders: the over-running drift
  *      flag (.adherence-flag.drift-over) and the missed-long-run
@@ -206,11 +207,14 @@ test.describe('plan progress journey', () => {
 			]);
 
 			// Two real runs inside week 0 summing ~52 km → +30% over the
-			// 40 km plan → the drift-over flag.
+			// 40 km plan → the drift-over flag. Both on a day with no
+			// workout: the database matcher (migration 20270901000001)
+			// would otherwise link one to yesterday's long run and clear
+			// the missed-long flag this spec is about.
 			for (let i = 0; i < 2; i++) {
 				const id = await insertRun({
 					user_id: USER_A.id,
-					started_at: new Date(Date.now() - (i + 1) * DAY_MS).toISOString(),
+					started_at: browserDayAt(-2, 8 + i * 4),
 					distance_m: 26_000,
 					duration_s: 7800
 				});
@@ -232,7 +236,7 @@ test.describe('plan progress journey', () => {
 			};
 			const initialPct = await readPct();
 			expect(initialPct).toBeGreaterThanOrEqual(0);
-			const completedCells = page.locator('.day.completed');
+			const completedCells = page.locator('.day-grid .day[data-status="done"]');
 			const initialCompleted = await completedCells.count();
 
 			// Open today's cell (the only workout scheduled today) and mark

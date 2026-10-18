@@ -1,11 +1,18 @@
 import { expect, test } from '../fixtures/test';
 
-import { getAdminClient } from '../fixtures/local-supabase';
-import { USER_A } from '../fixtures/users';
+import type { BrowserContext } from '@playwright/test';
+
+import { acceptCookieConsent } from '../fixtures/helpers';
+import {
+	createThrowawayPlan,
+	deleteThrowawayPlan,
+	THROWAWAY_PLAN_DONE,
+	type ThrowawayPlan
+} from '../fixtures/throwaway-plan';
 
 /**
  * Plans journey — mark 2 workouts done in a row, then revert 1, and
- * watch BOTH the day-grid `.day.completed` count and the hero
+ * watch BOTH the day-grid `.day[data-status="done"]` count and the hero
  * progress ring `.pct` value stay in sync at every step.
  *
  * Same shape as cross-cutting/dashboard-journey.spec.ts: snapshot →
@@ -13,40 +20,39 @@ import { USER_A } from '../fixtures/users';
  * `markWorkoutCompleted` → `load()` → re-render pipeline against the
  * cumulative case (one mark, then another, then unmark) — the
  * batch-14 day-cell test only covered a single mark.
+ *
+ * Each run gets a plan and an account of its own (fixtures/throwaway-plan.ts),
+ * so the spec re-runs on a used database and no other spec's completions on
+ * the seeded plan reach its counts.
  */
 
-const SYDNEY_HALF_PLAN_ID = 'a1a1eada-aaaa-0000-0000-000000000001';
-
 test.describe('plans journey', () => {
-	test.use({ storageState: USER_A.storageStatePath });
+	test.describe.configure({ timeout: 90_000 });
 
+	let plan: ThrowawayPlan | undefined;
+	let ctx: BrowserContext | undefined;
+	test.beforeEach(async () => {
+		plan = await createThrowawayPlan('e2e plans journey');
+	});
 	test.afterEach(async () => {
-		// Clear every manually_completed=true row on the plan. The
-		// seed has zero (its one completion is via completed_run_id),
-		// so this scoops up exactly the workouts the test marked.
-		const admin = getAdminClient();
-		const { data: weeks } = await admin
-			.from('plan_weeks')
-			.select('id')
-			.eq('plan_id', SYDNEY_HALF_PLAN_ID);
-		const weekIds = (weeks ?? []).map((w) => (w as { id: string }).id);
-		if (weekIds.length === 0) return;
-		await admin
-			.from('plan_workouts')
-			.update({ manually_completed: false })
-			.in('week_id', weekIds)
-			.eq('manually_completed', true);
+		await ctx?.close();
+		ctx = undefined;
+		await deleteThrowawayPlan(plan);
+		plan = undefined;
 	});
 
 	test('mark 2 workouts done in sequence, revert 1 — pct + day-grid stay in lockstep', async ({
-		page
+		browser
 	}) => {
-		await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
-		await expect(page.getByRole('heading', { level: 1, name: /Richmond Half 2026/ }))
+		ctx = await browser.newContext({ storageState: plan!.user.storageStatePath });
+		await acceptCookieConsent(ctx);
+		const page = await ctx.newPage();
+		await page.goto(`/plans/${plan!.planId}`);
+		await expect(page.getByRole('heading', { level: 1, name: plan!.name }))
 			.toBeVisible({ timeout: 10_000 });
 
 		const pct = page.locator('.pct');
-		const completedCount = page.locator('.day.completed');
+		const completedCount = page.locator('.day-grid .day[data-status="done"]');
 
 		const readPct = async (): Promise<number> => {
 			const txt = (await pct.textContent()) ?? '';
@@ -55,17 +61,16 @@ test.describe('plans journey', () => {
 		};
 
 		// ── Snapshot ───────────────────────────────────────────────
-		// The seed marks two long runs completed (week-0 2026-03-29 +
-		// week-1 2026-04-05, via completed_run_id in seed.sql).
-		const initialCompleted = await completedCount.count();
-		expect(initialCompleted).toBe(2);
+		// The plan's first two long runs are done through a linked run.
+		await expect(completedCount).toHaveCount(THROWAWAY_PLAN_DONE, { timeout: 10_000 });
+		const initialCompleted = THROWAWAY_PLAN_DONE;
 		const initialPct = await readPct();
 		expect(initialPct).toBeGreaterThanOrEqual(0);
 
 		// ── Mark workout 1 done ────────────────────────────────────
 		await test.step('mark first non-rest, non-completed workout done', async () => {
 			await page
-				.locator('.day:not(.rest):not(.completed) .day-link')
+				.locator('.day-grid .day:not(.rest):not([data-status="done"]) .day-link')
 				.first()
 				.click();
 			const modal = page.locator('.modal');
@@ -81,7 +86,7 @@ test.describe('plans journey', () => {
 		// ── Mark workout 2 done ────────────────────────────────────
 		await test.step('mark a second non-rest, non-completed workout done', async () => {
 			await page
-				.locator('.day:not(.rest):not(.completed) .day-link')
+				.locator('.day-grid .day:not(.rest):not([data-status="done"]) .day-link')
 				.first()
 				.click();
 			const modal = page.locator('.modal');
@@ -95,20 +100,20 @@ test.describe('plans journey', () => {
 		const afterSecondPct = await readPct();
 
 		// ── Revert one via UI ──────────────────────────────────────
-		// Tricky bit: the seed completion is via `completed_run_id`
+		// Tricky bit: the planted completions are via `completed_run_id`
 		// (a real run linked); its modal disables "Mark not done"
 		// with the title "A run is linked — unlink it from the
-		// workout detail page first." So the seed completed cell
+		// workout detail page first." So the planted completed cells
 		// can NOT be reverted from the editor. The two cells the
 		// test marked use `manually_completed=true` and CAN.
 		//
 		// Pick the completed cell whose editor exposes an enabled
 		// "Mark not done" button. Walking from .last() backward (the
-		// test marks are later than the seed completion in week
+		// test marks are later than the planted completions in week
 		// order, but day-of-week within a week varies — safest to
 		// just iterate).
 		await test.step('revert one of the test-marked workouts via the editor', async () => {
-			const completedDays = page.locator('.day.completed:not(.rest) .day-link');
+			const completedDays = page.locator('.day-grid .day[data-status="done"]:not(.rest) .day-link');
 			const total = await completedDays.count();
 			let reverted = false;
 			for (let i = total - 1; i >= 0; i--) {

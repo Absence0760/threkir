@@ -9,12 +9,11 @@ import { acceptCookieConsent } from '../fixtures/helpers';
 /**
  * Auto-complete a planned workout from a matching logged run.
  *
- * `autoMatchRunToPlanWorkout` (apps/web/src/lib/core/data.ts)
- * implements the canonical match algorithm (same user, same calendar
- * date, target distance within ±25%, sorted by delta) and is invoked
- * after a successful insert by both `createManualRun` (/runs/new) and
- * `saveRun` (importer path), wrapped in its own try/catch so a match
- * failure never blocks the run save. The first test drives the full
+ * The database matches every run write (a trigger on `runs`, migration
+ * 20270901000001, pinned rule by rule in
+ * apps/backend/supabase/tests/match_runs_to_plan_workouts_test.sql): the
+ * runner's local day, at least 75% of the target, the closest run winning,
+ * and a matching failure never blocks the run save. The first test drives the full
  * end-to-end saga: log a run via /runs/new → today's matching plan
  * workout flips `completed_run_id`.
  *

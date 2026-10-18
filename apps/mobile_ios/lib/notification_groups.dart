@@ -67,6 +67,10 @@ String _targetKeyFor(NotificationRow n) {
       return n.challengeId != null ? 'challenge:${n.challengeId}' : solo;
     case 'message':
       return n.actorId != null ? 'message:${n.actorId}' : solo;
+    case 'workout_reminder':
+      // One a day, each about that day's session: yesterday's is not a
+      // second actor on today's, so they never collapse.
+      return solo;
     default:
       return solo;
   }

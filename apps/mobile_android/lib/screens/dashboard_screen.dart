@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
@@ -18,8 +20,10 @@ import '../ai_disclosure_memo.dart';
 import '../auth_change_aware.dart';
 import '../current_week.dart' show WeekStart;
 import '../device_timezone.dart';
+import '../disclosure_state.dart';
 import '../goals.dart';
 import '../health_consent.dart';
+import '../hr_prescription_gate.dart';
 import '../l10n/date_format.dart' show formatDowDateShort;
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart' show activeLocaleTag;
@@ -43,6 +47,7 @@ import '../plan_ramp.dart' show RunForVolume;
 import '../training_service.dart';
 import '../week_lead.dart';
 import '../widgets/comeback_card.dart';
+import '../widgets/disclosure_section.dart';
 import '../widgets/fitness_card.dart';
 import '../widgets/load_ramp_card.dart';
 import '../widgets/race_predictor_card.dart';
@@ -60,6 +65,7 @@ import '../widgets/run_list_tile.dart';
 import '../widgets/this_week_strip.dart';
 import '../widgets/goal_editor_sheet.dart';
 import '../widgets/todays_workout_card.dart';
+import '../widgets/finish_plan_card.dart';
 import '../widgets/next_race_card.dart';
 import '../widgets/up_next_plan_card.dart';
 import '../widgets/training_load_chart.dart';
@@ -79,6 +85,20 @@ import 'workout_detail_screen.dart';
 
 const _kCardPadding = EdgeInsets.all(16);
 const _kSectionGap = SizedBox(height: 24);
+
+/// The trend groups below the Today | Trends divider (multi_modal.md § Home,
+/// contract v1): each folds to its one-line heading, remembered per account on
+/// this device. Every default is open, so a runner who reads these cards today
+/// finds them where they were; the memory is what makes a fold stick, not the
+/// default (decisions § 2080). Web twin: `/dashboard`'s `TREND_DEFAULTS`.
+const String _kTrendScope = 'dashboard_trends';
+const DisclosureState _kTrendDefaults = {
+  'volume': true,
+  'fitness': true,
+  'performance': true,
+  'effort': true,
+  'recent': true,
+};
 
 /// Metres for each best-effort PB label (both the offline track-scan keys and
 /// the server `personal_records` labels). Used to age-grade a timed PB via the
@@ -203,6 +223,11 @@ class _DashboardScreenState extends State<DashboardScreen>
   /// dressing the local figure up as one (`streak_card.dart`).
   RunStreaks? _allTimeStreaks;
 
+  DisclosureState _trendOpen = Map.of(_kTrendDefaults);
+
+  /// Set once the reader toggles a group, so a slow first read can't undo it.
+  bool _trendTouched = false;
+
   @override
   void initState() {
     super.initState();
@@ -217,6 +242,22 @@ class _DashboardScreenState extends State<DashboardScreen>
     _loadPersonalRecords();
     _loadViewerProfile();
     _loadRunStreaks();
+    _loadTrendOpen();
+  }
+
+  Future<void> _loadTrendOpen() async {
+    final stored = await readDisclosureState(
+        _kTrendScope, widget.apiClient?.userId, _kTrendDefaults);
+    if (!mounted || _trendTouched) return;
+    setState(() => _trendOpen = stored);
+  }
+
+  void _setTrendOpen(String key, bool open) {
+    if (_trendOpen[key] == open) return;
+    _trendTouched = true;
+    setState(() => _trendOpen = {..._trendOpen, key: open});
+    unawaited(writeDisclosureState(
+        _kTrendScope, widget.apiClient?.userId, _trendOpen));
   }
 
   @override
@@ -263,7 +304,10 @@ class _DashboardScreenState extends State<DashboardScreen>
       _allTimeStreaks = null;
       _history = _AccountHistory.unknown;
       _bestEffortCache.clear();
+      _trendOpen = Map.of(_kTrendDefaults);
+      _trendTouched = false;
     });
+    _loadTrendOpen();
     _refreshPlanOverview();
     _hydrateModalities();
     _loadPersonalRecords();
@@ -631,7 +675,9 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Widget _weekLeadCard(
       List<Run> runs, List<RunGoal> goals, DistanceUnit unit, DateTime now) {
-    final planWorkouts = _leadPlanWorkouts();
+    // A finished plan has no sessions left to offer; Home asks to file it
+    // instead (FinishPlanCard), so the lead says nothing about the plan.
+    final planWorkouts = _planFinished(now) ? null : _leadPlanWorkouts();
     final lead = weekLead(
       activities: [
         for (final r in runs)
@@ -657,20 +703,42 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
+  /// The shown plan's dates have run out but the runner has not filed it.
+  bool _planFinished(DateTime now) {
+    final p = _planOverview;
+    return p != null &&
+        FinishPlanCard.shows(
+            status: p.plan.status, endDate: p.plan.endDate, now: now);
+  }
+
   /// The shown plan's race-day countdown (or "starts in" before it begins),
-  /// with the plan queued after it beneath. Null with neither: no active
-  /// plan, or a race day passed with nothing queued.
+  /// or the Finish plan card once its dates have run out, with the plan
+  /// queued after it beneath. Null with neither: no active plan, or a race
+  /// day passed with nothing queued.
   Widget? _nextRaceCard(DateTime now) {
     final p = _planOverview;
     if (p == null) return null;
-    final race = NextRaceCard.shows(p, now)
-        ? NextRaceCard(
-            key: const Key('dashboardNextRace'),
-            overview: p,
-            now: now,
-            onTap: _openTodayWorkout,
-          )
-        : null;
+    final training = widget.training;
+    final Widget? race;
+    if (_planFinished(now) && training != null) {
+      race = FinishPlanCard(
+        key: const Key('dashboardFinishPlan'),
+        training: training,
+        planId: p.plan.id,
+        planName: p.plan.name,
+        endDate: p.plan.endDate,
+        onFinished: _refreshPlanOverview,
+      );
+    } else if (NextRaceCard.shows(p, now)) {
+      race = NextRaceCard(
+        key: const Key('dashboardNextRace'),
+        overview: p,
+        now: now,
+        onTap: _openTodayWorkout,
+      );
+    } else {
+      race = null;
+    }
     final upNext = UpNextPlanCard.shows(p)
         ? UpNextPlanCard(
             key: const Key('dashboardUpNextPlan'),
@@ -847,10 +915,16 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Widget _buildTrainingLoadChart(
       List<Run> runs, DateTime now, List<TrainingLoadPoint> series) {
+    final hasHr = hasTrimpSignal(runs, _hrPrefs());
+    final medicationAffected = widget.settingsSync?.service
+            ?.effective<bool>(SettingsKeys.hrMedicationAffected) ==
+        true;
     return TrainingLoadChart(
       points: series,
-      hasHr: hasTrimpSignal(runs, _hrPrefs()),
+      hasHr: hasHr,
       includesLifts: series.any((p) => p.liftStress > 0),
+      lowConfidence:
+          hrPrescriptionGate && isTrimpLowConfidence(hasHr, medicationAffected),
     );
   }
 
@@ -1043,7 +1117,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     // exists and neither is a derived metric.
     final heroWorkoutCard = _planOverview?.todayWorkout != null
         ? TodaysWorkoutCard(
-            overview: _planOverview!,
+            workout: _planOverview!.todayWorkout!,
             onTap: _openTodayWorkout,
           )
         : null;
@@ -1086,6 +1160,9 @@ class _DashboardScreenState extends State<DashboardScreen>
         ],
       );
     } else if (!hasLocalHistory) {
+      // A plan that has not started yet has no workout today, but its
+      // "Starts in N days" card still sits above the welcome block.
+      final raceCard = _nextRaceCard(now);
       content = CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
@@ -1105,7 +1182,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ),
                 // Onboarding can mint a plan before the first run, so its
                 // race day shows here too, not only once there is history.
-                if (_nextRaceCard(now) case final raceCard?)
+                if (raceCard != null)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                     child: raceCard,
@@ -1125,7 +1202,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             hasScrollBody: false,
             child: _WelcomeEmpty(
               theme: theme,
-              planAbove: heroWorkoutCard != null,
+              planAbove: heroWorkoutCard != null || raceCard != null,
               onStartRun: widget.onStartRun,
               // Hidden only from the account that said it does not lift (the
               // setup wizard's track step, or Settings); that is the one answer
@@ -1367,6 +1444,55 @@ class _DashboardScreenState extends State<DashboardScreen>
             )
           : null;
 
+      // The trend groups, in web's order (volume, fitness, performance, effort,
+      // recent). A group mounts only when a card in it is sure to draw, so a
+      // fold never opens on nothing; a member that self-hides still does so
+      // inside it, and without the group it renders bare (and hides alone).
+      Widget group(String key, String title, String hint, List<Widget> cards) =>
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: DisclosureSection(
+              key: ValueKey('dashboard-trend-$key'),
+              title: title,
+              hint: hint,
+              open: _trendOpen[key] ?? true,
+              onToggle: (open) => _setTrendOpen(key, open),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: cards,
+              ),
+            ),
+          );
+      final trendGroups = <Widget>[
+        group('volume', l10n.dashboardTrendGroupVolume,
+            l10n.dashboardTrendGroupVolumeHint, [mileageCard, heatmapCard]),
+        // The load chart always draws (it has its own empty state), so this
+        // group always mounts.
+        group('fitness', l10n.dashboardTrendGroupFitness,
+            l10n.dashboardTrendGroupFitnessHint, [
+          fitnessCard,
+          readinessCard,
+          loadRampCard,
+          comebackCard,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [loadChart, ?gymNote],
+          ),
+        ]),
+        if (pbCard != null)
+          group('performance', l10n.dashboardTrendGroupPerformance,
+              l10n.dashboardTrendGroupPerformanceHint, [pbCard, predictorCard])
+        else
+          predictorCard,
+        if (intensityCard.hasContent)
+          group('effort', l10n.dashboardTrendGroupEffort,
+              l10n.dashboardTrendGroupEffortHint, [intensityCard]),
+        if (liftsCard != null)
+          group('recent', l10n.dashboardTrendGroupRecent,
+              l10n.dashboardTrendGroupRecentHint, [liftsCard]),
+      ];
+      final trendsDivider = _TrendsDivider(label: l10n.dashboardTrendsDivider);
+
       if (widthClassOf(context) == WidthClass.expanded) {
         // Tablet-landscape recomposition (mirrors web /dashboard's
         // multi-column card grid): the lead cards pair up with goals,
@@ -1397,20 +1523,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         }
 
         addBlock(streakCard);
-        addBlock(mileageCard);
-        addBlock(heatmapCard);
-        if (pbCard != null) addBlock(pbCard);
-        addBlock(fitnessCard);
-        addBlock(predictorCard);
-        addBlock(readinessCard);
-        addBlock(loadRampCard);
-        addBlock(comebackCard);
-        addBlock(intensityCard);
-        addBlock(Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [loadChart, if (gymNote != null) gymNote],
-        ));
-        if (liftsCard != null) addBlock(liftsCard);
+        trendGroups.forEach(addBlock);
 
         content = contentColumn(
           context,
@@ -1436,6 +1549,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               else if (leadColumn ?? goalsSection case final lead?)
                 lead,
               if (leadColumn != null || goalsSection != null) _kSectionGap,
+              trendsDivider,
               periodRow,
               if (periodLinks != null) periodLinks,
               _kSectionGap,
@@ -1480,6 +1594,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             // logged today, so a pure runner sees nothing new here
             // (multi_modal.md § Home, anti-clutter checklist).
             ..._todayModalitySection(),
+            trendsDivider,
             if (goalsSection != null) ...[goalsSection, _kSectionGap],
             periodRow,
             if (periodLinks != null) periodLinks,
@@ -1490,18 +1605,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             // — a group of cards under one heading, or a non-card block.
             thisWeekCard,
             streakCard,
-            mileageCard,
-            heatmapCard,
-            if (pbCard != null) pbCard,
-            fitnessCard,
-            predictorCard,
-            readinessCard,
-            loadRampCard,
-            comebackCard,
-            intensityCard,
-            loadChart,
-            if (gymNote != null) gymNote,
-            if (liftsCard != null) liftsCard,
+            ...trendGroups,
           ],
         );
       }
@@ -2714,6 +2818,45 @@ DateTime heatmapGridStart(DateTime now, int weeks,
   // heatmap, and the week a tap resolves to, one day off the calendar.
   return DateTime(
       weekStart.year, weekStart.month, weekStart.day - 7 * (weeks - 1));
+}
+
+/// Today | Trends (multi_modal.md § Home, section rhythm): a hairline with a
+/// quiet label riding it, not a shouting header. Web twin: `.trends-divider`.
+class _TrendsDivider extends StatelessWidget {
+  final String label;
+  const _TrendsDivider({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      key: const Key('dashboardTrendsDivider'),
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Flexible(
+            child: Semantics(
+              header: true,
+              child: Text(
+                label,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: theme.colorScheme.outlineVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _RunHeatmap extends StatelessWidget {

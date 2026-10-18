@@ -20,11 +20,12 @@ import { acceptCookieConsent } from '../fixtures/helpers';
  *
  * On WEB the equivalent end-to-end arc is "preview the planned structured
  * workout → run it for real → link the completed run back to the planned
- * workout → watch the plan's progress surface reflect it". The web
- * auto-complete-from-run write path is unwired (plans/auto-complete-from-
- * run.spec.ts), so the genuine run→workout LINKING path on web is the
- * Re-link picker on /plans/[id]/workouts/[wid] (markWorkoutCompleted with
- * a runId, fetchRelinkCandidateRuns → filterRelinkCandidates).
+ * workout → watch the plan's progress surface reflect it". The database
+ * links a same-day run itself (migration 20270901000001,
+ * plans/auto-complete-from-run.spec.ts); the run→workout LINKING path a
+ * runner drives by hand is the Re-link picker on
+ * /plans/[id]/workouts/[wid] (markWorkoutCompleted with a runId,
+ * fetchRelinkCandidateRuns → filterRelinkCandidates), which this spec walks.
  *
  * The existing specs each pin one slice in isolation: workout-runner-
  * surfaces.spec.ts (structure preview + WorkoutEditor mark-done),
@@ -42,7 +43,7 @@ import { acceptCookieConsent } from '../fixtures/helpers';
  *      jog + cooldown 1.5 km) and a long run today.
  *   2. Open the interval workout's detail page and verify the runner's
  *      "what am I about to run" half: the structure breakdown renders
- *      (warmup + repeats + cooldown rows, total ~11 km).
+ *      (warmup + repeats + cooldown rows, total 9.6 km).
  *   3. Log the run for real via simulate.insertRun (the mobile recorder's
  *      job — done service-side per the simulate.ts contract).
  *   4. Link that run to the interval workout through the Re-link picker
@@ -51,7 +52,7 @@ import { acceptCookieConsent } from '../fixtures/helpers';
  *      detail completed-card surfaces.
  *   5. Likewise complete the long run by linking the same-day run.
  *   6. Navigate to /plans/[id] and verify the DOWNSTREAM progress
- *      propagation: the day-grid interval cell flips to .completed, the
+ *      propagation: the day-grid interval cell flips to data-status="done", the
  *      progress ring pct is non-zero and matches completed/totalActive,
  *      the phase marker renders (≥2 phases), and the "Longest long run"
  *      stat reflects the linked run's ACTUAL distance (not the planned
@@ -66,10 +67,9 @@ const DAY_MS = 24 * 3600 * 1000;
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 // 5×1000 m interval: warmup 1.5 km + 5×1000 m + 4×400 m jog recovery +
-// cooldown 1.5 km. intervalTotal on the detail page = warmup + repeats
-// (count × (rep + recovery)) + cooldown = 1500 + 5×(1000+400) + 1500 =
-// 1500 + 7000 + 1500 = 10000 m. The detail page renders the recovery
-// inside the repeats descriptor, so the rendered total is 10 km.
+// cooldown 1.5 km. The detail page's total counts one recovery between each
+// pair of reps, none after the last: 1500 + 5×1000 + 4×400 + 1500 =
+// 1500 + 5000 + 1600 + 1500 = 9600 m, rendered as 9.6 km.
 const INTERVAL_STRUCTURE = {
 	warmup: { distance_m: 1500 },
 	repeats: {
@@ -197,8 +197,9 @@ test.describe('structured workout execution → plan progress journey', () => {
 			// Repeats descriptor: 5× · 1 km · jog recovery.
 			await expect(steps.nth(1)).toContainText(/5×/);
 			await expect(steps.nth(1)).toContainText(/jog/i);
-			// Rendered total = warmup + 5×(rep+recovery) + cooldown = 10 km.
-			await expect(page.locator('.total')).toContainText('10');
+			// A recovery sits between reps, never after the last:
+			// 1.5 + 5 × 1 + 4 × 0.4 + 1.5 = 9.6 km.
+			await expect(page.locator('.total')).toContainText('9.60');
 			// Not yet completed → no completed-card.
 			await expect(page.locator('.completed-card')).toHaveCount(0);
 		});
@@ -356,7 +357,7 @@ test.describe('structured workout execution → plan progress journey', () => {
 
 			// The day-grid interval cell flipped to .completed (carries the
 			// Interval label) — the downstream of linking the run.
-			const intervalCell = page.locator('.day.completed', {
+			const intervalCell = page.locator('.day-grid .day[data-status="done"]', {
 				hasText: /Interval/i
 			});
 			await expect(intervalCell.first()).toBeVisible({ timeout: 10_000 });

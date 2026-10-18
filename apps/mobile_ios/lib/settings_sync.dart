@@ -494,3 +494,19 @@ class SettingsSyncService extends ChangeNotifier {
     return Platform.operatingSystemVersion;
   }
 }
+
+// The app's one SettingsSyncService, for screens deep in a navigation stack
+// that read a universal setting without threading the service through every
+// constructor (the same pattern as `registerActivePreferences`).
+SettingsSyncService? _activeSettingsSync;
+
+void registerActiveSettingsSync(SettingsSyncService? s) {
+  _activeSettingsSync = s;
+}
+
+/// The runner's `week_start_day` ('monday' | 'sunday'), Monday until the
+/// settings bag has loaded.
+String activeWeekStartDay() =>
+    _activeSettingsSync?.service
+        ?.effective<String>(SettingsKeys.weekStartDay) ??
+    'monday';

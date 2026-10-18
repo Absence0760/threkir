@@ -5,27 +5,14 @@
 		fetchPublicPlanLibrary,
 		type PublicPlanLibraryEntry,
 	} from '#lib/core/data.ts';
-	import { formatDistance } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { goalEventLabel, planLengthLabel } from '#lib/training/goal_event_label.ts';
 
 	let plans = $state<PublicPlanLibraryEntry[]>([]);
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);
 	let query = $state('');
-
-	const eventLabels: Record<string, () => string> = {
-		distance_5k: () => '5K',
-		distance_10k: () => '10K',
-		distance_half: () => m('plansPage.eventHalf'),
-		distance_full: () => m('plansPage.eventFull'),
-		custom: () => m('plansPage.eventCustom'),
-	};
-
-	function goalLabel(p: PublicPlanLibraryEntry): string {
-		const named = eventLabels[p.goal_event];
-		if (named) return named();
-		return formatDistance(p.goal_distance_m);
-	}
 
 	function weeksOf(p: PublicPlanLibraryEntry): number {
 		const start = new Date(p.start_date).getTime();
@@ -40,13 +27,23 @@
 		searchTimer = setTimeout(load, 250);
 	}
 
+	/// Bumped per request, so a slow earlier search can never overwrite the
+	/// answer to a newer one.
+	let requestSeq = 0;
+	/// True only until the first answer lands. A search after that keeps the
+	/// current results on screen (marked busy) instead of blanking them.
+	let loaded = $state(false);
+
 	async function load() {
+		const seq = ++requestSeq;
 		loading = true;
 		loadError = null;
 		const res = await fetchPublicPlanLibrary(query);
+		if (seq !== requestSeq) return;
 		plans = res.plans;
 		loadError = res.error;
 		loading = false;
+		loaded = true;
 	}
 
 	onMount(load);
@@ -74,7 +71,7 @@
 		/>
 	</label>
 
-	{#if loading}
+	{#if loading && !loaded}
 		<p class="state">{m('planLibrary.loading')}</p>
 	{:else if loadError}
 		<div class="state error">
@@ -88,7 +85,7 @@
 			{query.trim() ? m('planLibrary.emptySearch', { query }) : m('planLibrary.empty')}
 		</p>
 	{:else}
-		<ul class="plan-grid">
+		<ul class="plan-grid" aria-busy={loading}>
 			{#each plans as p (p.id)}
 				<li>
 					<a class="plan-card" href="/plans/library/{p.id}">
@@ -99,9 +96,8 @@
 							})}
 						</span>
 						<span class="plan-meta">
-							<span class="chip">{goalLabel(p)}</span>
-							<span class="chip">{m('planLibrary.weeksLabel', { weeks: weeksOf(p) })}</span>
-							<span class="chip">{m('planLibrary.daysPerWeek', { days: p.days_per_week })}</span>
+							<span class="chip">{goalEventLabel(m, formatDistance, p.goal_event, p.goal_distance_m)}</span>
+							<span class="chip">{planLengthLabel(m, weeksOf(p), p.days_per_week)}</span>
 						</span>
 						<span class="plan-cta">{m('planLibrary.preview')}</span>
 					</a>

@@ -9,8 +9,11 @@
 	interface Props {
 		points: TrainingLoadPoint[];
 		hasHr: boolean;
+		/// The runner said their heart rate is medication-affected and the
+		/// curve reads it (`isTrimpLowConfidence`, decisions § 2092).
+		lowConfidence?: boolean;
 	}
-	let { points, hasHr }: Props = $props();
+	let { points, hasHr, lowConfidence = false }: Props = $props();
 
 	// Fixed viewBox; we let the host stretch the SVG and use
 	// preserveAspectRatio so points stay legible at any width.
@@ -101,6 +104,11 @@
 				{t('trainingLoad.hintVolume')}
 			{/if}
 		</p>
+		{#if lowConfidence}
+			<p class="hint hint-low-confidence" data-testid="training-load-low-confidence">
+				{t('trainingLoad.lowConfidenceMedication')}
+			</p>
+		{/if}
 		{#if hasLiftLoad}
 			<p class="hint hint-lifts">{t('trainingLoad.includesLifts')}</p>
 		{/if}

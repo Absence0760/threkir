@@ -1,6 +1,7 @@
 import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
+import { browserDate } from '../fixtures/dates';
 import { USER_A } from '../fixtures/users';
 
 /**
@@ -82,7 +83,8 @@ test.describe('Modal focus trap — /races dialogs', () => {
 			.insert({
 				provider: 'manual',
 				name: raceName,
-				race_date: '2027-11-06',
+				// The calendar card offers the import only from race day on.
+				race_date: browserDate(0),
 				distance_m: 21097,
 				location_label: 'Richmond, VA',
 				is_verified: true

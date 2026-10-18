@@ -9,7 +9,7 @@ import '../lib/training.dart';
 import '../lib/training_service.dart';
 
 class _FakeTraining extends TrainingService {
-  ({String name, GoalEvent goal, int days})? created;
+  ({String name, GoalEvent goal, int days, DateTime start})? created;
   PlanOverlapAction? overlap;
 
   @override
@@ -46,7 +46,8 @@ class _FakeTraining extends TrainingService {
     required GeneratedPlan generated,
     PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
-    created = (name: name, goal: goalEvent, days: daysPerWeek);
+    created =
+        (name: name, goal: goalEvent, days: daysPerWeek, start: startDate);
     overlap = onOverlap;
     return TrainingPlanRow(
       id: 'new-plan',
@@ -77,21 +78,27 @@ Widget _host(TrainingService t, SocialService s) => MaterialApp(
     );
 
 void main() {
-  testWidgets('starter card renders and opens the picker', (tester) async {
+  testWidgets('one ready-made card opens every starter with what it asks',
+      (tester) async {
     final t = _FakeTraining();
     await tester.pumpWidget(_host(t, _FakeSocial()));
     await tester.pump();
 
-    expect(find.text('Start from a built-in plan'), findsOneWidget);
-    expect(find.text('Browse starter plans'), findsOneWidget);
-
-    await tester.tap(find.text('Browse starter plans'));
+    expect(find.text('Start from a ready-made plan'), findsOneWidget);
+    await tester.tap(find.text('Browse ready-made plans'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Choose a starter plan'), findsOneWidget);
+    expect(find.text('Built-in plans'), findsOneWidget);
     expect(find.text('Couch to 5K (beginner walk-run)'), findsOneWidget);
     expect(find.text('Half Marathon — 12 weeks'), findsOneWidget);
     expect(find.text('Marathon — 16 weeks'), findsOneWidget);
+    expect(
+        find.textContaining(
+            RegExp(r'^9 weeks · 3 days a week · \d+–\d+ min a session$')),
+        findsOneWidget);
+    expect(find.text('16 weeks · 5 days a week'), findsOneWidget);
+    // No club templates, so no club section.
+    expect(find.text('From your clubs'), findsNothing);
   });
 
   testWidgets('picking a starter creates a plan from its preset', (tester) async {
@@ -99,7 +106,7 @@ void main() {
     await tester.pumpWidget(_host(t, _FakeSocial()));
     await tester.pump();
 
-    await tester.tap(find.text('Browse starter plans'));
+    await tester.tap(find.text('Browse ready-made plans'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Marathon — 16 weeks'));
     await tester.pump();
@@ -108,7 +115,24 @@ void main() {
     expect(t.created!.name, 'Marathon — 16 weeks');
     expect(t.created!.goal, GoalEvent.distanceFull);
     expect(t.created!.days, 5);
+    expect(t.created!.start.weekday, DateTime.sunday);
     expect(t.overlap, PlanOverlapAction.refuse);
+  });
+
+  testWidgets('Couch to 5K starts tomorrow, not on the next Sunday',
+      (tester) async {
+    final t = _FakeTraining();
+    await tester.pumpWidget(_host(t, _FakeSocial()));
+    await tester.pump();
+
+    await tester.tap(find.text('Browse ready-made plans'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Couch to 5K (beginner walk-run)'));
+    await tester.pump();
+
+    final now = DateTime.now();
+    expect(t.created!.start, DateTime(now.year, now.month, now.day + 1));
+    expect(t.created!.days, 3);
   });
 
   testWidgets('Plan a season opens the season planner', (tester) async {

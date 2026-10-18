@@ -43,6 +43,16 @@ class IntensityCard extends StatelessWidget {
     this.settingsSync,
   });
 
+  /// Whether [build] draws anything, so a host can leave out a heading that
+  /// would otherwise sit over nothing (the dashboard's Effort group).
+  bool get hasContent {
+    final zones = hrZones ?? _deriveZonesFromSettings();
+    if (zones == null) return false;
+    return computeIntensityBreakdown(runs, zones, windowDays: windowDays, now: now)
+            .hrTrackedRuns >
+        0;
+  }
+
   @override
   Widget build(BuildContext context) {
     // Prefer explicitly-passed zones; else derive age-estimated fallback

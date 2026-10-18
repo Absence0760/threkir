@@ -3,7 +3,7 @@
 -- workouts in one transaction, and the clone RPCs take the same p_overlap.
 
 begin;
-select plan(20);
+select plan(25);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -99,8 +99,8 @@ select throws_ok(
 );
 select throws_ok(
   $$ select create_training_plan(plan, weeks) from apc_args where label = 'two_days' $$,
-  '22023', 'create_training_plan: days per week must be between 3 and 7',
-  'two days a week is refused'
+  '22023', 'create_training_plan: only a walk-run plan may train two days a week; other plans need 3 to 7',
+  'two days a week is refused for a road plan'
 );
 select throws_ok(
   $$ select create_training_plan(plan, weeks, 'merge') from apc_args where label = 'free' $$,
@@ -141,7 +141,8 @@ select is(
   'its weeks and workouts, race fields included, were written'
 );
 
--- 6. replace completes the overlapped plan.
+-- 6. replace retires the overlapped plan as abandoned, not completed: the
+-- runner dropped it, they did not finish it (20270903000001).
 delete from training_plans where name = 'Autumn half';
 set local role authenticated;
 select lives_ok(
@@ -151,8 +152,8 @@ select lives_ok(
 reset role;
 select is(
   (select status from training_plans where id = 'acacacac-0000-0000-0000-0000000b0001'),
-  'completed',
-  'replace completes the overlapped plan'
+  'abandoned',
+  'replace retires the overlapped plan as abandoned'
 );
 
 -- 7. user_id is always the caller, whatever p_plan says.
@@ -181,6 +182,40 @@ select throws_ok(
   'clone_public_plan with refuse will not clone over an active plan'
 );
 reset role;
+
+-- 9. The clone RPCs' replace retires as abandoned too.
+create temp table apc_overlapped as
+  select id from training_plans
+  where user_id = 'abababab-0000-0000-0000-0000000a0001' and status = 'active'
+    and daterange(start_date, end_date, '[]') && daterange('2031-07-13', '2031-07-26', '[]');
+select ok((select count(*) from apc_overlapped) > 0, 'the clone dates overlap an active plan');
+set local role authenticated;
+select lives_ok(
+  $$ select clone_plan_template('acacacac-0000-0000-0000-0000000b0009', '2031-07-13', 'replace') $$,
+  'clone_plan_template with replace succeeds over an active plan'
+);
+reset role;
+select is(
+  (select array_agg(distinct status) from training_plans where id in (select id from apc_overlapped)),
+  array['abandoned'],
+  'clone_plan_template replace retires the overlapped plans as abandoned'
+);
+truncate apc_overlapped;
+insert into apc_overlapped
+  select id from training_plans
+  where user_id = 'abababab-0000-0000-0000-0000000a0001' and status = 'active'
+    and daterange(start_date, end_date, '[]') && daterange('2031-07-13', '2031-07-26', '[]');
+set local role authenticated;
+select lives_ok(
+  $$ select clone_public_plan('acacacac-0000-0000-0000-0000000b0009', '2031-07-13', 'replace') $$,
+  'clone_public_plan with replace succeeds over the clone it overlaps'
+);
+reset role;
+select is(
+  (select array_agg(distinct status) from training_plans where id in (select id from apc_overlapped)),
+  array['abandoned'],
+  'clone_public_plan replace retires the overlapped plan as abandoned'
+);
 
 select * from finish();
 rollback;

@@ -154,6 +154,141 @@ test.describe('/plans/[id]/workouts/[wid]', () => {
 		}
 	});
 
+	test('a walk-run session reads as time, not as a dash or a bogus distance', async ({
+		page
+	}) => {
+		// The C25K generator writes only duration_s on every step. The page
+		// used to print "—" for each step and sum the seconds as metres into
+		// "Total: 1.98 km". Borrow one seeded workout, give it a walk-run
+		// structure, and put it back afterwards.
+		const admin = getAdminClient();
+		const weekRow = await readMaybeRow(
+			'plan_weeks by plan_id+week_index',
+			admin
+				.from('plan_weeks')
+				.select('id')
+				.eq('plan_id', SEED_PLAN_ID)
+				.eq('week_index', 0)
+				.maybeSingle()
+		);
+		const woRow = await readMaybeRow(
+			'plan_workouts by week_id',
+			admin
+				.from('plan_workouts')
+				.select('id, structure')
+				.eq('week_id', (weekRow as { id: string }).id)
+				.neq('kind', 'rest')
+				.order('scheduled_date', { ascending: false })
+				.limit(1)
+				.maybeSingle()
+		);
+		expect(woRow).not.toBeNull();
+		const wo = woRow as { id: string; structure: unknown };
+
+		try {
+			await admin
+				.from('plan_workouts')
+				.update({
+					structure: {
+						warmup: { duration_s: 300, pace: 'easy' },
+						repeats: {
+							count: 8,
+							duration_s: 60,
+							pace_sec_per_km: 420,
+							recovery_pace: 'walk',
+							recovery_duration_s: 90
+						},
+						cooldown: { duration_s: 300, pace: 'easy' }
+					}
+				})
+				.eq('id', wo.id);
+
+			await page.goto(`/plans/${SEED_PLAN_ID}/workouts/${wo.id}`);
+
+			const steps = page.locator('ol.steps');
+			await expect(steps).toBeVisible({ timeout: 10_000 });
+			await expect(steps.locator('.step-warmup .step-main')).toHaveText('5:00');
+			await expect(steps.locator('.step-cooldown .step-main')).toHaveText('5:00');
+			await expect(steps.locator('.step-work .step-main')).toHaveText('8× 1:00');
+			await expect(steps.getByTestId('step-recovery')).toHaveText(/Recovery\s*1:30 walk/);
+			await expect(steps).not.toContainText('—');
+			// A recovery sits between reps, never after the last:
+			// 300 + 8 × 60 + 7 × 90 + 300 = 1710 s.
+			await expect(page.getByTestId('structure-total')).toHaveText('Total: 28:30');
+			const summary = page.getByTestId('walk-run-summary');
+			await expect(summary).toContainText('about 29 min');
+			await expect(summary).toContainText(
+				'5 min warm-up, 8 × (1 min run / 90 s walk), 5 min cool-down'
+			);
+		} finally {
+			await admin.from('plan_workouts').update({ structure: wo.structure }).eq('id', wo.id);
+		}
+	});
+
+	test('a hand-marked done workout is cleared under "Mark not done" copy', async ({
+		page
+	}) => {
+		// With no run linked, the confirm used to say "Unlink the matched
+		// run?", a run that does not exist.
+		const admin = getAdminClient();
+		const weekRow = await readMaybeRow(
+			'plan_weeks by plan_id+week_index',
+			admin
+				.from('plan_weeks')
+				.select('id')
+				.eq('plan_id', SEED_PLAN_ID)
+				.eq('week_index', 0)
+				.maybeSingle()
+		);
+		const woRow = await readMaybeRow(
+			'plan_workouts by week_id',
+			admin
+				.from('plan_workouts')
+				.select('id')
+				.eq('week_id', (weekRow as { id: string }).id)
+				.neq('kind', 'rest')
+				.is('completed_run_id', null)
+				.order('scheduled_date', { ascending: false })
+				.range(1, 1)
+				.maybeSingle()
+		);
+		expect(woRow).not.toBeNull();
+		const wo = woRow as { id: string };
+
+		try {
+			await admin
+				.from('plan_workouts')
+				.update({
+					manually_completed: true,
+					completed_at: new Date().toISOString(),
+					skipped_at: null
+				})
+				.eq('id', wo.id);
+
+			await page.goto(`/plans/${SEED_PLAN_ID}/workouts/${wo.id}`);
+			await page.getByRole('button', { name: /^Mark not done$/ }).click();
+			const dialog = page.getByRole('dialog');
+			await expect(dialog.getByText('Mark not done?')).toBeVisible();
+			await expect(dialog.getByText('The workout will show as not yet done.')).toBeVisible();
+			await expect(dialog.getByText(/matched run/)).toHaveCount(0);
+			await dialog.getByRole('button', { name: /^Mark not done$/ }).click();
+			await expect(page.getByRole('button', { name: /^Skip this workout$/i })).toBeVisible({
+				timeout: 10_000
+			});
+
+			const after = await readMaybeRow(
+				'plan_workouts by id',
+				admin.from('plan_workouts').select('manually_completed').eq('id', wo.id).maybeSingle()
+			);
+			expect((after as { manually_completed: boolean }).manually_completed).toBe(false);
+		} finally {
+			await admin
+				.from('plan_workouts')
+				.update({ manually_completed: false, completed_at: null })
+				.eq('id', wo.id);
+		}
+	});
+
 	test('not-found: visiting a missing workout id renders "Workout not found"', async ({
 		page
 	}) => {

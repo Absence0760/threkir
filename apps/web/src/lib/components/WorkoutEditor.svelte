@@ -1,16 +1,32 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
-	import { appErrorMessage } from '#lib/core/supabase_error.ts';
-	import { markWorkoutCompleted, markWorkoutSkipped, updatePlanWorkout } from '#lib/core/data.ts';
+	import { onMount, untrack } from 'svelte';
+	import { appErrorMessage, DbError } from '#lib/core/supabase_error.ts';
+	import {
+		markWorkoutCompleted,
+		markWorkoutSkipped,
+		movePlanWorkout,
+		updatePlanWorkout
+	} from '#lib/core/data.ts';
 	import {
 		isWorkoutCompleted,
 		isWorkoutSkipped,
+		parseISO,
 		type WorkoutKind,
 		type WorkoutStructure
 	} from '#lib/training/training.ts';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
 	import { RACE_GOAL_MAX_HOURS, RACE_PRIORITIES, type RacePriority } from '#lib/training/plan_races.ts';
 	import { raceGoalInputSeconds } from '#lib/training/race_goal_input.ts';
+	import {
+		parseTargetRange,
+		RPE_BOUNDS,
+		TARGET_HR_BOUNDS,
+		type ParsedRange,
+		type RangeBounds
+	} from '#lib/training/workout_prescription.ts';
+	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_gate.ts';
+	import type { WorkoutMoveDay } from '#lib/training/plan_move.ts';
+	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { getUnit } from '#lib/format/units.svelte.ts';
 	import { paceParts } from '#lib/format/pace_format.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
@@ -22,10 +38,12 @@
 
 	interface Props {
 		workout: PlanWorkout;
+		/// Days this workout may move to (plan_move.ts); none hides the field.
+		moveDays?: WorkoutMoveDay<PlanWorkout>[];
 		onClose: () => void;
 		onSaved: () => void;
 	}
-	let { workout, onClose, onSaved }: Props = $props();
+	let { workout, moveDays = [], onClose, onSaved }: Props = $props();
 	const uid = $props.id();
 
 	// All inputs are rendered + stored in the user's preferred unit so
@@ -88,6 +106,14 @@
 		initialGoal != null ? Math.floor((initialGoal % 3600) / 60) : null
 	);
 	let goalSec = $state<number | null>(initialGoal != null ? initialGoal % 60 : null);
+	let rpeMin = $state<number | null>(untrack(() => workout.target_rpe_min ?? null));
+	let rpeMax = $state<number | null>(untrack(() => workout.target_rpe_max ?? null));
+	let hrPrescription = $state(false);
+	onMount(() => {
+		void hrPrescriptionEnabled().then((on) => (hrPrescription = on));
+	});
+	let hrMin = $state<number | null>(untrack(() => workout.target_hr_min_bpm ?? null));
+	let hrMax = $state<number | null>(untrack(() => workout.target_hr_max_bpm ?? null));
 
 	const initialStructure = untrack(
 		() => (workout.structure as WorkoutStructure | null) ?? null
@@ -177,8 +203,19 @@
 
 	let busy = $state(false);
 	let error = $state<string | null>(null);
+	/// The day to move to; '' keeps the workout where it is.
+	let moveTo = $state('');
+
+	function dayLabel(iso: string): string {
+		return parseISO(iso).toLocaleDateString(activeFormatLocale(), {
+			weekday: 'short',
+			day: 'numeric',
+			month: 'short'
+		});
+	}
 
 	const dirty = trackDirty(() => ({
+		moveTo,
 		kind,
 		distance,
 		paceMin,
@@ -193,6 +230,10 @@
 		goalHours,
 		goalMin,
 		goalSec,
+		rpeMin,
+		rpeMax,
+		hrMin,
+		hrMax,
 		mode,
 		warmupDistance,
 		cooldownDistance,
@@ -307,6 +348,12 @@
 		return hasAny ? next : null;
 	}
 
+	function rangeError(range: ParsedRange, bounds: RangeBounds): string | null {
+		if (range.ok) return null;
+		if (range.reason === 'reversed') return t('workoutEditor.targetRangeReversed');
+		return t('workoutEditor.targetRangeOutOfBounds', { min: bounds.min, max: bounds.max });
+	}
+
 	async function save() {
 		error = null;
 		const goal = raceGoalInputSeconds(goalHours, goalMin, goalSec);
@@ -314,8 +361,27 @@
 			error = t('workoutEditor.raceGoalInvalid', { max: RACE_GOAL_MAX_HOURS });
 			return;
 		}
+		const isRestKind = kind === 'rest';
+		const rpe = isRestKind
+			? ({ ok: true, min: null, max: null } as const)
+			: parseTargetRange(rpeMin, rpeMax, RPE_BOUNDS);
+		const hr = isRestKind
+			? ({ ok: true, min: null, max: null } as const)
+			: parseTargetRange(hrMin, hrMax, TARGET_HR_BOUNDS);
+		if (!rpe.ok) {
+			error = rangeError(rpe, RPE_BOUNDS);
+			return;
+		}
+		if (hrPrescription && !hr.ok) {
+			error = rangeError(hr, TARGET_HR_BOUNDS);
+			return;
+		}
 		busy = true;
 		try {
+			// Move first: it is the step the server may refuse (the day was
+			// taken by a completed workout since the page loaded), and a
+			// refusal then leaves the rest of the form unsaved with it.
+			if (moveTo) await movePlanWorkout(workout.id, moveTo);
 			const paceStartUnit =
 				paceMin != null ? paceMin * 60 + (paceSec ?? 0) : null;
 			const paceEndUnit =
@@ -358,11 +424,21 @@
 				structure: isUnstructured
 					? null
 					: (nextStructure as unknown as JsonObject | null),
+				target_rpe_min: rpe.min,
+				target_rpe_max: rpe.max,
+				...(hrPrescription && hr.ok
+					? { target_hr_min_bpm: hr.min, target_hr_max_bpm: hr.max }
+					: isRestKind
+						? { target_hr_min_bpm: null, target_hr_max_bpm: null }
+						: {})
 			});
 			dirty.rebaseline();
 			onSaved();
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? t('workoutEditor.saveFailed');
+			error =
+				e instanceof DbError && e.code === '42501' && (hrMin != null || hrMax != null)
+					? t('workoutEditor.hrTargetNeedsConsent')
+					: (appErrorMessage(e) ?? t('workoutEditor.saveFailed'));
 		} finally {
 			busy = false;
 		}
@@ -377,6 +453,31 @@
 	onclose={onClose}
 >
 	<div class="editor-form">
+		{#if moveDays.length > 0}
+			<div class="field">
+				<label class="field-label" for="{uid}-move">{t('workoutEditor.moveDay')}</label>
+				<select
+					id="{uid}-move"
+					bind:value={moveTo}
+					aria-describedby="wo-move-hint"
+					data-testid="workout-move-day"
+				>
+					<option value="">{dayLabel(workout.scheduled_date)}</option>
+					{#each moveDays as d (d.date)}
+						<option value={d.date}>
+							{d.occupant
+								? t('workoutEditor.moveDaySwap', {
+										day: dayLabel(d.date),
+										kind: workoutKindLabel(d.occupant.kind)
+									})
+								: dayLabel(d.date)}
+						</option>
+					{/each}
+				</select>
+				<span class="hint" id="wo-move-hint">{t('workoutEditor.moveDayHint')}</span>
+			</div>
+		{/if}
+
 		<div class="field">
 			<label class="field-label" for="{uid}-kind">{t('workoutEditor.kind')}</label>
 			<select id="{uid}-kind" bind:value={kind} aria-describedby="wo-kind-hint">
@@ -541,6 +642,68 @@
 				</label>
 				<span class="hint" id="wo-zone-hint">{t('workoutEditor.zoneMeaningHint')}</span>
 			</div>
+
+			<fieldset data-testid="workout-rpe-target">
+				<legend>{t('workoutEditor.rpeTarget')}</legend>
+				<div class="pace-row">
+					<input
+						type="number"
+						inputmode="numeric"
+						min={RPE_BOUNDS.min}
+						max={RPE_BOUNDS.max}
+						step="1"
+						bind:value={rpeMin}
+						placeholder={t('workoutEditor.rangeFrom')}
+						aria-label={t('workoutEditor.rpeTargetFrom')}
+						aria-describedby="wo-rpe-hint"
+					/>
+					<span class="arrow">–</span>
+					<input
+						type="number"
+						inputmode="numeric"
+						min={RPE_BOUNDS.min}
+						max={RPE_BOUNDS.max}
+						step="1"
+						bind:value={rpeMax}
+						placeholder={t('workoutEditor.rangeTo')}
+						aria-label={t('workoutEditor.rpeTargetTo')}
+						aria-describedby="wo-rpe-hint"
+					/>
+				</div>
+				<p class="hint" id="wo-rpe-hint">{t('workoutEditor.rpeTargetHint')}</p>
+			</fieldset>
+
+			{#if hrPrescription}
+				<fieldset data-testid="workout-hr-target">
+					<legend>{t('workoutEditor.hrTarget')}</legend>
+					<div class="pace-row">
+						<input
+							type="number"
+							inputmode="numeric"
+							min={TARGET_HR_BOUNDS.min}
+							max={TARGET_HR_BOUNDS.max}
+							step="1"
+							bind:value={hrMin}
+							placeholder={t('workoutEditor.rangeFrom')}
+							aria-label={t('workoutEditor.hrTargetFrom')}
+							aria-describedby="wo-hr-hint"
+						/>
+						<span class="arrow">–</span>
+						<input
+							type="number"
+							inputmode="numeric"
+							min={TARGET_HR_BOUNDS.min}
+							max={TARGET_HR_BOUNDS.max}
+							step="1"
+							bind:value={hrMax}
+							placeholder={t('workoutEditor.rangeTo')}
+							aria-label={t('workoutEditor.hrTargetTo')}
+							aria-describedby="wo-hr-hint"
+						/>
+					</div>
+					<p class="hint" id="wo-hr-hint">{t('workoutEditor.hrTargetHint')}</p>
+				</fieldset>
+			{/if}
 		{/if}
 
 		{#if showStructure}

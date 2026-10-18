@@ -28,6 +28,8 @@ enum Metric {
   riegel,
   e1rm,
   rpe,
+  easyHrDrift,
+  missStreak,
 }
 
 /// Pre-formatted values a catalogue string interpolates, keyed by placeholder.
@@ -208,6 +210,24 @@ final Map<Metric, MetricEntry> kMetrics = {
       'gymRoutineProgressionRpeAutoreg':
           'a dropdown row naming a progression scheme, which cannot hold a '
               'disclosure; the scheme\'s own fields carry one',
+    },
+  ),
+  Metric.easyHrDrift: MetricEntry(
+    label: L10nKey('metricEasyHrDriftLabel', (l, a) => l.metricEasyHrDriftLabel),
+    definition: L10nKey(
+        'coachingRosterHrDriftHint', (l, a) => l.coachingRosterHrDriftHint),
+    variants: {
+      'chip': L10nKey('coachingRosterHrDrift',
+          (l, a) => l.coachingRosterHrDrift(int.parse(a['pct']!))),
+    },
+  ),
+  Metric.missStreak: MetricEntry(
+    label: L10nKey('metricMissStreakLabel', (l, a) => l.metricMissStreakLabel),
+    definition: L10nKey(
+        'metricMissStreakDefinition', (l, a) => l.metricMissStreakDefinition),
+    variants: {
+      'chip': L10nKey('coachingRosterMissStreak',
+          (l, a) => l.coachingRosterMissStreak(int.parse(a['n']!))),
     },
   ),
 };

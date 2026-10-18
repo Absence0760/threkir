@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
@@ -26,6 +27,7 @@
 	import FundraiserSection from '#lib/components/FundraiserSection.svelte';
 	import RunGearChips from '#lib/components/RunGearChips.svelte';
 	import RunRaceResult from '#lib/components/RunRaceResult.svelte';
+	import RunPlanWorkoutPrompt from '#lib/components/RunPlanWorkoutPrompt.svelte';
 	import RunSegmentEfforts from '#lib/components/RunSegmentEfforts.svelte';
 	import RouteHistory from '#lib/components/RouteHistory.svelte';
 	import SplitPane from '#lib/components/SplitPane.svelte';
@@ -2114,6 +2116,8 @@
 			<RunGearChips runId={run.id} runOwnerId={run.user_id} />
 		</section>
 
+		<RunPlanWorkoutPrompt runId={run.id} runOwnerId={run.user_id} />
+
 		<RunRaceResult
 			runId={run.id}
 			runOwnerId={run.user_id}
@@ -2187,7 +2191,7 @@
 				</header>
 				{#if linkedWorkout}
 					<p class="workout-name">
-						{linkedWorkout.notes ?? linkedWorkout.kind}
+						{workoutKindLabel(linkedWorkout.kind)}
 						<span class="workout-target">
 							· {m('runDetail.plannedDistance', { distance: formatDistance(linkedWorkout.target_distance_m ?? 0) })}
 						</span>

@@ -49,6 +49,25 @@ export function defaultPlanWeeks(goal: GoalEvent, distanceM?: number | null): nu
 	return distanceM != null && isUltraDistance(distanceM) ? ultraDefaultWeeks(distanceM) : 12;
 }
 
+/// The most training days a walk-run plan schedules. Every session is
+/// followed by a rest day, so a week holds three (offsets 0/2/4); a request
+/// for more is clamped here. The wizard offers 2 or 3 rather than letting a
+/// runner pick a number this would silently cut. Mirrors training.dart.
+export const WALK_RUN_MAX_DAYS_PER_WEEK = 3;
+
+/// The fewest training days a week a plan may carry. A walk-run plan (at
+/// least one walk_run session and nothing but walk_run, rest and race) may run
+/// 2, which the wizard offers; every other plan needs 3. create_training_plan
+/// applies the same rule (migration 20270915000001). Mirrors training.dart.
+export function minDaysPerWeek(
+	weeks: ReadonlyArray<{ workouts: ReadonlyArray<{ kind: string }> }>
+): number {
+	const kinds = weeks.flatMap((w) => w.workouts.map((wo) => wo.kind));
+	const walkRun =
+		kinds.includes('walk_run') && kinds.every((k) => k === 'walk_run' || k === 'rest' || k === 'race');
+	return walkRun ? 2 : 3;
+}
+
 /// Default week count for a beginner C25K walk-run plan. The continuous-run
 /// default (`defaultPlanWeeks('distance_5k')` = 8) is one week shorter than
 /// the `WALK_RUN_PROGRESSION` table, so feeding it to the walk-run generator
@@ -641,9 +660,7 @@ function walkRunWorkout(
 			repeats,
 			cooldown: { duration_s: WALK_RUN_COOLDOWN_S, pace: 'easy' }
 		},
-		notes: hasRecovery
-			? `Walk ${WALK_RUN_WARMUP_S / 60} min, then run ${prog.runSec}s / walk ${prog.walkSec}s × ${prog.count}, walk ${WALK_RUN_COOLDOWN_S / 60} min.`
-			: `Walk ${WALK_RUN_WARMUP_S / 60} min, run ${Math.round(prog.runSec / 60)} min continuous, walk ${WALK_RUN_COOLDOWN_S / 60} min. Graduation week.`
+		notes: null
 	};
 }
 
@@ -664,9 +681,12 @@ function generateWalkRunPlan(
 	// stage repeats for the extra weeks via the index clamp in walkRunWorkout).
 	const totalWeeks = Math.max(input.weeks ?? WALK_RUN_PROGRESSION.length, WALK_RUN_PROGRESSION.length);
 	// Beginners train 3 days/week; respect a lower request but cap at 3.
-	const runDays = Math.max(1, Math.min(input.daysPerWeek, 3));
+	const runDays = Math.max(1, Math.min(input.daysPerWeek, WALK_RUN_MAX_DAYS_PER_WEEK));
 	// Spread run days across Mon/Wed/Fri-style offsets.
-	const dayOffsets = [0, 2, 4, 1, 3, 5, 6].slice(0, runDays).sort((a, b) => a - b);
+	// Two sessions sit three days apart (0/3) rather than 0/2, which would
+	// leave a five-day gap before the next week's first session.
+	const dayOffsets =
+		runDays === 2 ? [0, 3] : [0, 2, 4, 1, 3, 5, 6].slice(0, runDays).sort((a, b) => a - b);
 	const weeks: GeneratedWeek[] = [];
 	for (let i = 0; i < totalWeeks; i++) {
 		const weekStart = addDays(startDate, i * 7);
@@ -1216,8 +1236,12 @@ interface WeekGenInput {
 
 // The shortest distance an easy/recovery run is ever prescribed at. Below this
 // there is no point emitting a run, so the race-week shakeout budget is
-// measured in whole floor-length days.
-const EASY_RUN_FLOOR_KM = 3;
+// measured in whole floor-length days. Exported so a pass that rescales a
+// generated plan (comeback.ts `capReturnRamp`) keeps to the same floor.
+export const EASY_RUN_FLOOR_KM = 3;
+
+/// An easy run shorter than this is labelled a recovery run.
+export const RECOVERY_RUN_MAX_KM = 4;
 
 function generateWeek(w: WeekGenInput): GeneratedWorkout[] {
 	const workouts: GeneratedWorkout[] = [];
@@ -1292,7 +1316,7 @@ function generateWeek(w: WeekGenInput): GeneratedWorkout[] {
 					target_pace_sec_per_km: Math.round(w.goalPaceSecPerKm),
 					target_pace_tolerance_sec: 5,
 					structure: null,
-					notes: 'Race day. Execute the plan.'
+					notes: null
 				});
 			} else {
 				workouts.push(longRunWorkout(date, longRunKm, w));
@@ -1378,7 +1402,7 @@ function easyWorkout(
 ): GeneratedWorkout {
 	return {
 		scheduled_date: date,
-		kind: km < 4 ? 'recovery' : 'easy',
+		kind: km < RECOVERY_RUN_MAX_KM ? 'recovery' : 'easy',
 		target_distance_m: Math.max(EASY_RUN_FLOOR_KM, Math.round(km)) * 1000,
 		target_duration_seconds: null,
 		target_pace_sec_per_km: paces.easy,
@@ -1442,7 +1466,7 @@ function tempoWorkout(
 			steady: { distance_m: steady * 1000, pace_sec_per_km: paces.tempo },
 			cooldown: { distance_m: 1500, pace: 'easy' }
 		},
-		notes: `Tempo: ${steady} km @ threshold.`
+		notes: null
 	};
 }
 
@@ -1468,7 +1492,7 @@ function intervalsWorkout(date: string, paces: TrainingPaces): GeneratedWorkout 
 			},
 			cooldown: { distance_m: 1500, pace: 'easy' }
 		},
-		notes: `${reps}× ${repDistance} m @ VO2 with ${recovery} m jog.`
+		notes: null
 	};
 }
 
@@ -1480,8 +1504,8 @@ function marathonPaceWorkout(
 ): GeneratedWorkout {
 	const isLongGoal = goalDistanceM >= 21_000;
 	const mpKm = isLongGoal ? 10 : 5;
-	// On a half/marathon plan this session IS goal-pace practice — the note
-	// says so, and that is why it doubles to 10 km. On a 5K/10K plan it is a
+	// On a half/marathon plan this session IS goal-pace practice, which is
+	// why it doubles to 10 km. On a 5K/10K plan it is a
 	// steady aerobic session at marathon *effort*, which is genuinely slower
 	// than the goal, so the training band is the right prescription there.
 	const steadyPace = isLongGoal ? Math.round(goalPaceSecPerKm) : paces.marathon;
@@ -1497,7 +1521,7 @@ function marathonPaceWorkout(
 			steady: { distance_m: mpKm * 1000, pace_sec_per_km: steadyPace },
 			cooldown: { distance_m: 1500, pace: 'easy' }
 		},
-		notes: `${mpKm} km @ goal marathon pace.`
+		notes: null
 	};
 }
 

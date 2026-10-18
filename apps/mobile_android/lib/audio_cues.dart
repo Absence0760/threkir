@@ -183,8 +183,11 @@ String formatWorkoutStepUtterance(WorkoutStep step, DistanceUnit unit,
   // one is an interval "Rep" (persona #22).
   final durationBased = step.isDurationBased;
   final hasIdx = step.repIndex != null && step.repTotal != null;
+  // An unpaced warm-up / cool-down is the walking one of a walk-run session:
+  // say so, or a beginner hears "Warmup" and starts running.
   final intro = switch (step.kind) {
-    WorkoutStepKind.warmup => l10n.ttsStepWarmup,
+    WorkoutStepKind.warmup =>
+      step.paced ? l10n.ttsStepWarmup : l10n.ttsStepWarmupWalk,
     WorkoutStepKind.rep => hasIdx
         ? (durationBased
             ? l10n.ttsStepRunOf(step.repIndex!, step.repTotal!)
@@ -195,7 +198,8 @@ String formatWorkoutStepUtterance(WorkoutStep step, DistanceUnit unit,
         ? l10n.ttsStepWalkOf(step.repIndex!, step.repTotal!)
         : l10n.ttsStepWalk,
     WorkoutStepKind.steady => l10n.ttsStepSteady,
-    WorkoutStepKind.cooldown => l10n.ttsStepCooldown,
+    WorkoutStepKind.cooldown =>
+      step.paced ? l10n.ttsStepCooldown : l10n.ttsStepCooldownWalk,
   };
   // Time-based steps (walk-run intervals, timed warmup/cooldown) announce
   // their duration; distance-based steps announce distance + pace.
@@ -203,6 +207,46 @@ String formatWorkoutStepUtterance(WorkoutStep step, DistanceUnit unit,
     return l10n.ttsStepDuration(intro, _spokenDuration(step.targetDurationSec!, l10n));
   }
   return l10n.ttsStepDistancePace(intro, dist, paceTail);
+}
+
+/// The in-step progress cue: "Halfway through this rep", the last-50 m
+/// warning in the runner's own unit ("Fifty yards to go" in miles — the
+/// window is 50 m, about 55 yd), or "Ten seconds to go" on a timed step.
+String workoutStepProgressUtterance(StepProgressKind kind, DistanceUnit unit,
+    [String? localeTag]) {
+  final l10n = ttsL10n(localeTag ?? activeLocaleTag);
+  return switch (kind) {
+    StepProgressKind.halfway => l10n.ttsStepHalfway,
+    StepProgressKind.lastFiftyMetres => unit == DistanceUnit.mi
+        ? l10n.ttsStepLastFiftyYards
+        : l10n.ttsStepLastFifty,
+    StepProgressKind.lastTenSeconds => l10n.ttsStepLastTenSeconds,
+  };
+}
+
+/// The structured-workout pace-drift nudge, fired when the step's average
+/// pace sits beyond twice its tolerance. The runner measures the miss per
+/// kilometre; a miles runner hears it converted to per mile, and both units
+/// say which one they mean. Rounded to 5 s like the general pace alert,
+/// because sub-5 s residue isn't actionable mid-step — and never below 5 s,
+/// since the cue only fires on a miss of at least twice the tolerance.
+String workoutPaceDriftUtterance(PaceDriftEvent e, DistanceUnit unit,
+    [String? localeTag]) {
+  final l10n = ttsL10n(localeTag ?? activeLocaleTag);
+  const kmPerMile = 1.609344;
+  final perUnit = unit == DistanceUnit.mi
+      ? e.deltaSecPerKm * kmPerMile
+      : e.deltaSecPerKm.toDouble();
+  final rounded = (perUnit / 5).round() * 5;
+  final delta = rounded < 5 ? 5 : rounded;
+  if (unit == DistanceUnit.mi) {
+    return e.ahead
+        ? l10n.ttsPaceDriftAheadMi(delta)
+        : l10n.ttsPaceDriftBehindMi(delta);
+  }
+  return e.ahead
+      ? l10n.ttsPaceDriftAheadKm(delta)
+      : l10n.ttsPaceDriftBehindKm(delta);
 }
 
 /// How far the runner has covered at a split, as the spoken count plus
@@ -588,28 +632,20 @@ class AudioCues {
     await _tts.speak(formatWorkoutStepUtterance(step, unit, activeLocaleTag));
   }
 
-  /// In-step progress cue ("halfway" / "fifty metres to go").
+  /// In-step progress cue — see [workoutStepProgressUtterance].
   Future<void> announceWorkoutStepProgress(
-      WorkoutStep step, StepProgressKind kind) async {
+      StepProgressKind kind, DistanceUnit unit) async {
     await _init();
     await _applyLanguage();
-    final l10n = ttsL10n(activeLocaleTag);
-    final phrase = switch (kind) {
-      StepProgressKind.halfway => l10n.ttsStepHalfway,
-      StepProgressKind.lastFiftyMetres => l10n.ttsStepLastFifty,
-    };
-    await _tts.speak(phrase);
+    await _tts.speak(workoutStepProgressUtterance(kind, unit, activeLocaleTag));
   }
 
-  /// Pace-drift nudge when the runner has been more than the tolerance
-  /// off pace for ~45 s. Verb is signed.
-  Future<void> announceWorkoutPaceDrift(PaceDriftEvent e) async {
+  /// Pace-drift nudge — see [workoutPaceDriftUtterance].
+  Future<void> announceWorkoutPaceDrift(
+      PaceDriftEvent e, DistanceUnit unit) async {
     await _init();
     await _applyLanguage();
-    final l10n = ttsL10n(activeLocaleTag);
-    await _tts.speak(e.ahead
-        ? l10n.ttsPaceDriftAhead(e.deltaSecPerKm)
-        : l10n.ttsPaceDriftBehind(e.deltaSecPerKm));
+    await _tts.speak(workoutPaceDriftUtterance(e, unit, activeLocaleTag));
   }
 
   /// Final cue when the last step's auto-advance fires.

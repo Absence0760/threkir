@@ -6,13 +6,16 @@ import 'package:flutter/services.dart';
 
 import '../auth_error.dart';
 import '../coach_load.dart';
+import '../hr_prescription_gate.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/date_format.dart';
 import '../l10n/locale_support.dart';
+import '../metrics.dart';
 import '../preferences.dart';
 import '../share_sheet.dart';
 import '../web_base_url.dart';
 import '../widgets/confirm_destructive.dart';
+import '../widgets/metric_label.dart';
 import '../widgets/top_banner.dart';
 import 'coaching_athlete_screen.dart';
 
@@ -21,14 +24,43 @@ import 'coaching_athlete_screen.dart';
 /// shareable invite links + manages their athlete roster; an athlete sees the
 /// coaches they're linked to. Reads/writes through [ApiClient]'s coaching
 /// methods. DISTINCT from `coach_screen.dart`, which is the AI-chat coach.
+/// The roster in the order a coach should read it: riskiest band first, then
+/// within a band the athlete who went quiet longest (a never-ran athlete
+/// first of all), then the id so the order is total. Mirrors web
+/// `sortRoster(rows, 'risk', 'desc')` in `routes/coaching/roster_sort.ts`.
+List<CoachRosterRow> sortRosterByAttention(List<CoachRosterRow> roster) {
+  const rank = {
+    InjuryRiskBand.high: 4,
+    InjuryRiskBand.elevated: 3,
+    InjuryRiskBand.optimal: 2,
+    InjuryRiskBand.low: 1,
+    InjuryRiskBand.insufficient: 0,
+  };
+  return [...roster]..sort((a, b) {
+      final byRisk = (rank[injuryRiskBand(b.loadAcute, b.loadChronic)] ?? 0) -
+          (rank[injuryRiskBand(a.loadAcute, a.loadChronic)] ?? 0);
+      if (byRisk != 0) return byRisk;
+      final aMs = a.lastRunAt?.millisecondsSinceEpoch ?? 0;
+      final bMs = b.lastRunAt?.millisecondsSinceEpoch ?? 0;
+      final byStaleness = aMs.compareTo(bMs);
+      if (byStaleness != 0) return byStaleness;
+      return a.athleteId.compareTo(b.athleteId);
+    });
+}
+
 class CoachingScreen extends StatefulWidget {
   final ApiClient api;
   final Preferences preferences;
+
+  /// The heart-rate prescription gate (decisions § 2092); null reads the
+  /// deploy flag. A test passes it directly.
+  final bool? hrPrescription;
 
   const CoachingScreen({
     super.key,
     required this.api,
     required this.preferences,
+    this.hrPrescription,
   });
 
   @override
@@ -44,6 +76,7 @@ String coachInviteLink(String token, {String? webBase}) {
 }
 
 class _CoachingScreenState extends State<CoachingScreen> {
+  late final bool _hrPrescription = widget.hrPrescription ?? hrPrescriptionGate;
   bool _loading = true;
   bool _minting = false;
   List<CoachAthleteLink> _athletes = const [];
@@ -216,24 +249,7 @@ class _CoachingScreenState extends State<CoachingScreen> {
   Widget _rosterCard(AppLocalizations l10n) {
     final theme = Theme.of(context);
     final unit = widget.preferences.unit;
-    // Risk-first, then most-stale last-run first, so the athletes who need
-    // attention float to the top (mirrors the web roster sort default).
-    const rank = {
-      InjuryRiskBand.high: 4,
-      InjuryRiskBand.elevated: 3,
-      InjuryRiskBand.optimal: 2,
-      InjuryRiskBand.low: 1,
-      InjuryRiskBand.insufficient: 0,
-    };
-    final rows = [..._roster];
-    rows.sort((a, b) {
-      final byRisk = (rank[injuryRiskBand(b.loadAcute, b.loadChronic)] ?? 0) -
-          (rank[injuryRiskBand(a.loadAcute, a.loadChronic)] ?? 0);
-      if (byRisk != 0) return byRisk;
-      final aMs = a.lastRunAt?.millisecondsSinceEpoch ?? 0;
-      final bMs = b.lastRunAt?.millisecondsSinceEpoch ?? 0;
-      return bMs.compareTo(aMs);
-    });
+    final rows = sortRosterByAttention(_roster);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -265,19 +281,75 @@ class _CoachingScreenState extends State<CoachingScreen> {
     final plan = r.activePlanId == null
         ? l10n.coachingRosterNoPlan
         : '${r.planCompletionPct}%';
+    final today = r.athleteToday;
+    final misses = r.activePlanId == null || today == null
+        ? 0
+        : consecutiveMissedWorkouts(
+            parseRosterRecentWorkouts(r.recentWorkouts), today);
+    final drift = _hrPrescription && isEasyHrDriftFlagged(r.easyHrDriftPct);
+    final summary = Text(
+      '$lastRun · ${UnitFormat.distance(r.distance7dM, unit)} · $plan',
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
+    );
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
       leading: CircleAvatar(child: Text(_initial(r.displayName))),
       title: Text(r.displayName ?? l10n.coachingRunner,
           maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        '$lastRun · ${UnitFormat.distance(r.distance7dM, unit)} · $plan',
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-      ),
+      subtitle: misses < consecutiveMissFlag && !drift
+          ? summary
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                summary,
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    if (misses >= consecutiveMissFlag)
+                      _metricFlag(
+                          metricText(l10n, Metric.missStreak,
+                              variant: 'chip', args: {'n': '$misses'}),
+                          const MetricInfoButton(metric: Metric.missStreak),
+                          key: Key('rosterMissFlag-${r.athleteId}')),
+                    if (drift)
+                      _metricFlag(
+                          metricText(l10n, Metric.easyHrDrift,
+                              variant: 'chip',
+                              args: {'pct': '${r.easyHrDriftPct!.round()}'}),
+                          const MetricInfoButton(metric: Metric.easyHrDrift),
+                          key: Key('rosterHrDriftFlag-${r.athleteId}')),
+                  ],
+                ),
+              ],
+            ),
       trailing: _riskChip(band, l10n),
       onTap: () => _openAthleteById(r.athleteId, r.displayName),
+    );
+  }
+
+  Widget _metricFlag(String label, Widget disclosure, {required Key key}) =>
+      Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [_flagChip(label, key: key), disclosure],
+      );
+
+  Widget _flagChip(String label, {Key? key}) {
+    final theme = Theme.of(context);
+    return Container(
+      key: key,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.tertiaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(label,
+          style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onTertiaryContainer,
+              fontWeight: FontWeight.w700)),
     );
   }
 
@@ -331,6 +403,7 @@ class _CoachingScreenState extends State<CoachingScreen> {
           athleteId: athleteId,
           displayName: displayName,
           acceptedAt: null,
+          hrPrescription: _hrPrescription,
         ),
       ),
     );
@@ -413,7 +486,7 @@ class _CoachingScreenState extends State<CoachingScreen> {
           children: [
             IconButton(
               tooltip: l10n.coachingCopyLink,
-              icon: const Icon(Icons.copy_outlined),
+              icon: const Icon(Icons.copy),
               onPressed: () => _copyLink(inv.inviteToken),
             ),
             IconButton(
@@ -465,6 +538,7 @@ class _CoachingScreenState extends State<CoachingScreen> {
           athleteId: a.userId,
           displayName: a.displayName,
           acceptedAt: a.acceptedAt,
+          hrPrescription: _hrPrescription,
         ),
       ),
     );

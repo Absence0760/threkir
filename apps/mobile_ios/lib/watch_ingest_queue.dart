@@ -464,6 +464,14 @@ cm.Run runFromWatchPayload(Map<String, dynamic> raw) {
   if (workout is Map) {
     metadata[cm.MetadataKeys.watchWorkout] = Map<String, dynamic>.from(workout);
   }
+  // The planned-vs-actual review of an Apple Watch run started from today's
+  // workout, the shape the phone's own runner writes. The three keys travel
+  // as a group or not at all: `plan_workout_id` links the run to the plan
+  // workout in the database matcher (decisions § 2079), and a link with no
+  // review, or a review naming no workout, would render half a workout
+  // section. A malformed group is dropped, never the run.
+  final review = _workoutReviewFromWatch(raw);
+  if (review != null) metadata.addAll(review);
 
   return cm.Run(
     id: id,
@@ -493,6 +501,25 @@ cm.RunSource parseRunSource(String raw) {
     if (s.name == raw) return s;
   }
   return cm.RunSource.watch;
+}
+
+Map<String, dynamic>? _workoutReviewFromWatch(Map<String, dynamic> raw) {
+  final id = raw['plan_workout_id'];
+  final adherence = raw['workout_adherence'];
+  final steps = raw['workout_step_results'];
+  if (id is! String || id.isEmpty) return null;
+  if (adherence is! String ||
+      !const {'completed', 'partial', 'abandoned'}.contains(adherence)) {
+    return null;
+  }
+  if (steps is! List || steps.any((e) => e is! Map)) return null;
+  return <String, dynamic>{
+    cm.MetadataKeys.planWorkoutId: id,
+    cm.MetadataKeys.workoutAdherence: adherence,
+    cm.MetadataKeys.workoutStepResults: [
+      for (final e in steps) Map<String, dynamic>.from(e as Map),
+    ],
+  };
 }
 
 double? _finiteOrNull(Object? v) =>

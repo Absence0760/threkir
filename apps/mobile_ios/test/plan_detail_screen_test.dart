@@ -239,8 +239,8 @@ void main() {
     });
 
     testWidgets(
-        'the today workout row carries a labelled dot and a heavier weekday, '
-        'because its tint is 1.003:1 against the row beside it', (tester) async {
+        'the today workout row carries a dot, a heavier weekday and an '
+        'accessible name that says today', (tester) async {
       tester.view.physicalSize = const Size(400, 1600);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -272,12 +272,13 @@ void main() {
       expect(
         find.ancestor(
           of: dots,
-          matching: find.byWidgetPredicate(
-              (w) => w is Semantics && w.properties.label == 'TODAY'),
+          matching: find.byWidgetPredicate((w) =>
+              w is Semantics &&
+              (w.properties.label ?? '').endsWith(', today')),
         ),
         findsOneWidget,
-        reason: 'a dot with no accessible name is a cue only a sighted user '
-            'gets',
+        reason: 'the row says "today" to a screen reader, not only to a '
+            'sighted user',
       );
 
       final weights = tester

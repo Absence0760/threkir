@@ -63,6 +63,7 @@ const HOMES: Record<string, Home> = {
 	notify_reaction: { page: 'notifications' },
 	notify_comment_like: { page: 'notifications' },
 	notify_follow_request: { page: 'notifications' },
+	notify_workout_reminder: { page: 'notifications' },
 	email_new_device_alerts: { page: 'notifications' },
 	locale: {
 		page: 'display',
@@ -110,6 +111,7 @@ const HOMES: Record<string, Home> = {
 	show_gym: { page: 'display' },
 	show_nutrition: { page: 'display' },
 	exclude_gym_from_readiness: { page: 'training' },
+	hr_medication_affected: { page: 'training' },
 	week_start_day: { page: 'display' },
 	privacy_zones: { page: 'privacy', via: 'PRIVACY_ZONES_KEY' },
 	safety_overdue_minutes: { page: 'safety' },

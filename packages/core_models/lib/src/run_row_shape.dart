@@ -33,8 +33,21 @@ const Map<String, String> kRunMirroredMetadataColumns = <String, String>{
   MetadataKeys.elevationM: RunRow.colElevationGainM,
 };
 
-/// The bag as it is persisted: every [kRunPromotedMetadataColumns] key
-/// removed, and every non-finite number dropped wherever it sits.
+/// Metadata keys the client keeps for itself and never persists (decisions
+/// § 2120). `server_updated_at` is the row's server `updated_at` as the
+/// server sent it (`ApiClient._runFromRow`), the base a local edit is
+/// compare-and-swapped against; it is named apart from the column so it is
+/// not a promoted key. `last_modified_at` is the phone's own write clock,
+/// which now orders only its local index between its own two isolates: no
+/// reader of the row consults it, so it is no longer sent.
+const Set<String> kRunClientOnlyMetadataKeys = <String>{
+  MetadataKeys.serverUpdatedAt,
+  MetadataKeys.lastModifiedAt,
+};
+
+/// The bag as it is persisted: every [kRunPromotedMetadataColumns] and
+/// [kRunClientOnlyMetadataKeys] key removed, and every non-finite number
+/// dropped wherever it sits.
 ///
 /// The bag is jsonb with no schema and its values come from importers, from
 /// other clients and from the recorder, so a `double.tryParse('NaN')` upstream
@@ -47,7 +60,9 @@ const Map<String, String> kRunMirroredMetadataColumns = <String, String>{
 Map<String, dynamic>? runMetadataForRow(Map<String, dynamic>? metadata) {
   if (metadata == null) return null;
   final out = Map<String, dynamic>.from(metadata)
-    ..removeWhere((k, _) => kRunPromotedMetadataColumns.containsKey(k));
+    ..removeWhere((k, _) =>
+        kRunPromotedMetadataColumns.containsKey(k) ||
+        kRunClientOnlyMetadataKeys.contains(k));
   final scrubbed = _dropNonFinite(out) as Map<String, dynamic>;
   return scrubbed.isEmpty ? null : scrubbed;
 }

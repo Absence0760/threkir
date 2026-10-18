@@ -77,24 +77,53 @@ Run _run({
               : const []),
     );
 
-/// Signed-in fake whose column-only edit push succeeds.
+/// Signed-in fake whose compare-and-swap edit push lands. The seeded copy
+/// carries no server stamp, so the push reads the row first.
 class _EditOkApi extends ApiClient {
   final List<String> updated = [];
+  final List<Set<String>> fields = [];
   int attempts = 0;
 
   @override
   String? get userId => 'user-1';
 
   @override
-  Future<void> updateRunFields(Run run) async {
+  Future<List<Run>> getRunsByIds(Iterable<String> ids) async => [
+        for (final id in ids)
+          Run(
+            id: id,
+            startedAt: DateTime.utc(2026, 4, 15, 7, 30),
+            duration: const Duration(minutes: 25),
+            distanceMetres: 5000,
+            source: RunSource.app,
+            metadata: const {
+              'title': 'Morning Tempo',
+              'activity_type': 'run',
+              MetadataKeys.serverUpdatedAt: '2026-04-15T08:00:00.000001+00:00',
+            },
+          ),
+      ];
+
+  @override
+  Future<Run?> updateRunFieldsIfUnchanged(
+    Run run, {
+    required Set<String> fields,
+    required String? baseUpdatedAt,
+  }) async {
     attempts++;
     updated.add(run.id);
+    this.fields.add(fields);
+    return run;
   }
 }
 
 class _EditFailApi extends _EditOkApi {
   @override
-  Future<void> updateRunFields(Run run) async {
+  Future<Run?> updateRunFieldsIfUnchanged(
+    Run run, {
+    required Set<String> fields,
+    required String? baseUpdatedAt,
+  }) async {
     attempts++;
     throw Exception('offline');
   }
@@ -1498,35 +1527,34 @@ void main() {
         await tester.tap(find.byTooltip('Edit run'));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 400));
+        await tester.enterText(
+            find.widgetWithText(TextField, 'Title'), 'Evening Tempo');
         await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       });
       await pumpUntil(tester, until, describe: describe);
     }
 
-    testWidgets('a successful updateRunFields leaves nothing to re-upload',
+    testWidgets('a landed edit push leaves nothing pending or to re-upload',
         (tester) async {
-      // M2: update() marks the run unsynced (durably, since H1), and the
-      // column-only push covers every field the dialog can change — so
-      // leaving it unsynced makes the next drain call saveRunsBatch and
-      // re-gzip + re-upload the entire GPS track for a title edit.
+      // M2: the whole-row drain would re-gzip + re-upload the entire GPS track
+      // for a title edit. A synced run's edit is a pending field edit, pushed
+      // as a compare-and-swap of the title alone (decisions § 2120).
       final run = _run(title: 'Morning Tempo', withTrack: true);
       final api = _EditOkApi();
       final runStore = await pumpForEdit(tester, run, api);
 
-      // `pumpForEdit` leaves the run already synced, so an empty
-      // `unsyncedRuns` is true before the save as well as after it. The push
-      // having happened is what makes the second half a real claim.
       await saveViaEditDialog(tester,
-          until: () => api.attempts > 0 && runStore.unsyncedRuns.isEmpty,
-          describe: 'the column push to land and settle the run as synced');
+          until: () => api.attempts > 0 && runStore.pendingEdit(run.id) == null,
+          describe: 'the edit push to land and clear the pending edit');
 
       expect(api.updated, [run.id]);
+      expect(api.fields.single, {RunEditField.metadata('title')});
       expect(runStore.unsyncedRuns, isEmpty,
-          reason: 'the server row is current after the column push');
+          reason: 'nothing is left for the whole-row drain');
       await pumpUntilStoreWritesSettle(tester);
     });
 
-    testWidgets('a failed updateRunFields leaves the run queued for the drain',
+    testWidgets('a failed edit push leaves the edit pending for the next sync',
         (tester) async {
       final run = _run(title: 'Morning Tempo', withTrack: true);
       final api = _EditFailApi();
@@ -1534,10 +1562,11 @@ void main() {
 
       await saveViaEditDialog(tester,
           until: () => api.attempts > 0,
-          describe: 'the column push to be attempted and fail');
+          describe: 'the edit push to be attempted and fail');
 
-      expect(runStore.unsyncedRuns.map((r) => r.id), [run.id]);
-
+      expect(runStore.pendingEdit(run.id)?.fields,
+          {RunEditField.metadata('title')});
+      expect(runStore.unsyncedRuns, isEmpty);
     });
   });
 

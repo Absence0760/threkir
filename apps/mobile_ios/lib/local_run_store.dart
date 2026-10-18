@@ -52,6 +52,13 @@ class LocalRunStore extends ChangeNotifier {
   // tagging shipped, or queued while signed-out) — those drain under
   // whichever user is signed in next, matching the run adoption rule.
   final Map<String, String?> _pendingRemoteDeletes = {};
+  // Local edits to runs that have already reached the server, by run id: the
+  // fields changed and the server `updated_at` they were made on. Such a run
+  // stays synced — its row exists — and is pushed by
+  // `pushPendingRunEdits` as a compare-and-swap of only those columns, never
+  // by the whole-row upsert, which would re-upload its track and write every
+  // other field back over whatever another device changed (decisions § 2120).
+  final Map<String, PendingRunEdit> _pendingEdits = {};
 
   /// Serialises every operation that mutates this store's DIRECTORY, on the
   /// shared per-directory chain (`serialiseStoreWrite`, § 828). Unserialised, a
@@ -115,6 +122,9 @@ class LocalRunStore extends ChangeNotifier {
   // this one answers "will trying again help", and folding the second into the
   // first would make an unparked run indistinguishable from a synced one.
   static const _blockedRunsFilename = 'blocked_runs.json';
+  // Sidecar of [_pendingEdits]. Absent on a store written before § 2120,
+  // which reads as no pending edit.
+  static const _pendingEditsFilename = 'pending_edits.json';
   // Compact on-disk projection of every run (one RunSummary each). Read first
   // on cold-load so a large history doesn't pay N file decodes up front.
   static const _indexFilename = 'index.json';
@@ -124,6 +134,7 @@ class LocalRunStore extends ChangeNotifier {
   File get _pendingRemoteDeletesFile =>
       File('${_dir.path}/$_pendingRemoteDeletesFilename');
   File get _blockedRunsFile => File('${_dir.path}/$_blockedRunsFilename');
+  File get _pendingEditsFile => File('${_dir.path}/$_pendingEditsFilename');
   File get _indexFile => File('${_dir.path}/$_indexFilename');
 
   // Per-active-run waypoint cursor — how many waypoints of the
@@ -301,8 +312,8 @@ class LocalRunStore extends ChangeNotifier {
     return run;
   }
 
-  /// Unfiltered resolve for the store's own ingest paths (the newer-wins
-  /// merge must see another account's local copy to avoid clobbering it).
+  /// Unfiltered resolve for the store's own ingest paths (the remote merge
+  /// must see another account's local copy to avoid clobbering it).
   Future<Run?> _runByIdRaw(String id) async {
     for (final r in _runs) {
       if (r.id == id) return r;
@@ -419,8 +430,7 @@ class LocalRunStore extends ChangeNotifier {
     await _serialised(_loadAll);
   }
 
-  /// Save a freshly-recorded run locally. Stamps `last_modified_at` and marks
-  /// it as unsynced.
+  /// Save a freshly-recorded run locally and mark it unsynced.
   ///
   /// Returns the RESIDENT instance — the stamped/owner-tagged copy actually
   /// held in `_runs`, not the argument. [markManySynced] identifies rows by
@@ -465,9 +475,13 @@ class LocalRunStore extends ChangeNotifier {
     // was never in the set: the terminal run save stays one write.
     final wasSynced = _syncedIds.remove(stamped.id);
     final wasBlocked = _clearBlockedInMemory([stamped.id]);
+    // The whole-row upsert this queues carries every field, so a pending
+    // field edit to the same id has nothing left to say.
+    final hadPendingEdit = _clearPendingEditsInMemory([stamped.id]);
     _upsertSummary(stamped, synced: false);
     if (wasSynced) await _persistSyncedIds();
     if (wasBlocked) await _persistBlockedRuns();
+    if (hadPendingEdit) await _persistPendingEdits();
     await _persistIndex();
     notifyListeners();
     return stamped;
@@ -504,58 +518,15 @@ class LocalRunStore extends ChangeNotifier {
 
   /// Save a run that came from the backend. Marks it as already synced.
   ///
-  /// Conflict resolution:
-  /// - If a local copy already exists with a newer `last_modified_at`, the
-  ///   remote copy is ignored. This prevents the cloud from clobbering local
-  ///   edits that haven't been pushed yet.
-  /// - Remote runs come back with an empty `track` (tracks are stored in
-  ///   Storage and lazy-loaded). If the local copy already has the full track,
-  ///   we preserve it so we don't drop GPS data when syncing.
+  /// The merge is [_mergeRemote]'s; no device clock decides it.
   Future<void> saveFromRemote(Run run) =>
       _serialised(() => _saveFromRemote(run));
 
   Future<void> _saveFromRemote(Run run) async {
-    final existing = _runs.where((r) => r.id == run.id).firstOrNull;
-    // Newer-wins must also catch a synced run that's been windowed out of
-    // `_runs` — its summary still carries the modification clock. Without this,
-    // a delta fetch would silently clobber a locally-newer out-of-window edit.
-    final existingSummary = existing == null
-        ? _summaries.where((s) => s.id == run.id).firstOrNull
-        : null;
-    final localTs = existing != null
-        ? _lastModifiedOf(existing)
-        : (existingSummary != null
-            ? _lastModifiedOf(existingSummary.toRun())
-            : null);
-    if (localTs != null && localTs.isAfter(_lastModifiedOf(run))) {
-      // Local is newer — keep it.
-      return;
-    }
-
-    // Preserve the local track if the remote one is empty (tracks live in
-    // Storage now and aren't returned by getRuns). The resident copy has it in
-    // memory; an out-of-window copy is hydrated from disk.
-    Run? existingFull = existing;
-    if (run.track.isEmpty && existingFull == null && existingSummary != null) {
-      existingFull = await _runByIdRaw(run.id);
-    }
-    final merged = (run.track.isEmpty &&
-            existingFull != null &&
-            existingFull.track.isNotEmpty)
-        ? Run(
-            id: run.id,
-            startedAt: run.startedAt,
-            duration: run.duration,
-            distanceMetres: run.distanceMetres,
-            track: existingFull.track,
-            routeId: run.routeId,
-            source: run.source,
-            externalId: run.externalId,
-            metadata: run.metadata,
-            createdAt: run.createdAt,
-          )
-        : run;
-
+    final rebasedBefore = _pendingEdits[run.id];
+    final result = await _mergeRemote(run);
+    if (result == null) return;
+    final merged = result.merged;
     final file = File('${_dir.path}/${merged.id}.json');
     final data = {
       kLocalStoreVersionKey: kLocalStoreSchemaVersion,
@@ -565,12 +536,70 @@ class LocalRunStore extends ChangeNotifier {
     await writeJsonAtomic(file, data);
     _runs.removeWhere((r) => r.id == merged.id);
     _runs.insert(0, merged);
-    _syncedIds.add(merged.id);
     _runs.sort((a, b) => b.startedAt.compareTo(a.startedAt));
+    _syncedIds.add(merged.id);
     _upsertSummary(merged, synced: true);
+    if (!identical(rebasedBefore, _pendingEdits[run.id])) {
+      await _persistPendingEdits();
+    }
     await _persistIndex();
     notifyListeners();
   }
+
+  /// What a pulled server row becomes locally, or null to keep the local copy.
+  ///
+  /// No device clock takes part (decisions § 2120). A local copy the server
+  /// has not confirmed — a run not pushed yet, a whole-row rewrite such as a
+  /// re-import, a parked run — is kept, and its own upsert carries it. A
+  /// synced copy with a pending edit takes the server row with the edit's
+  /// fields laid on top, so the server's changes to every other field land,
+  /// and the edit is re-based onto the row's `updated_at` and stays pending.
+  /// Any other copy is replaced by the server row outright. Either way a
+  /// local track survives a pulled row that carries none (tracks live in
+  /// Storage and are lazy-loaded); an out-of-window copy is hydrated for it
+  /// and stays out of the window.
+  Future<({Run merged, bool windowedOut})?> _mergeRemote(Run run) async {
+    final existing = _runs.where((r) => r.id == run.id).firstOrNull;
+    final known = existing != null || _summaries.any((s) => s.id == run.id);
+    if (known && !_syncedIds.contains(run.id)) return null;
+    final windowedOut = existing == null && known;
+    final pending = _pendingEdits[run.id];
+    var local = existing;
+    if (local == null && known && (pending != null || run.track.isEmpty)) {
+      local = await _runByIdRaw(run.id);
+    }
+    final now = DateTime.now();
+    if (pending != null && local != null) {
+      _pendingEdits[run.id] = PendingRunEdit(
+        fields: pending.fields,
+        baseUpdatedAt: serverUpdatedAtOf(run),
+      );
+      return (
+        merged: _withLastModified(
+            applyRunEditFields(
+                local: local, server: run, fields: pending.fields),
+            now),
+        windowedOut: windowedOut,
+      );
+    }
+    final merged = (run.track.isEmpty && local != null && local.track.isNotEmpty)
+        ? _withTrack(run, local.track)
+        : run;
+    return (merged: _withLastModified(merged, now), windowedOut: windowedOut);
+  }
+
+  static Run _withTrack(Run run, List<Waypoint> track) => Run(
+        id: run.id,
+        startedAt: run.startedAt,
+        duration: run.duration,
+        distanceMetres: run.distanceMetres,
+        track: track,
+        routeId: run.routeId,
+        source: run.source,
+        externalId: run.externalId,
+        metadata: run.metadata,
+        createdAt: run.createdAt,
+      );
 
   /// Bulk variant of [saveFromRemote] used by the runs-screen pull-to-refresh
   /// path. Calling [saveFromRemote] in a loop fired N file writes plus N
@@ -610,44 +639,16 @@ class LocalRunStore extends ChangeNotifier {
   Future<bool> _writeRemoteBatch(List<Run> runs) async {
     final toWrite = <Run>[];
     final windowedOut = <String>{};
+    var rebased = false;
     for (final run in runs) {
-      final existing = _runs.where((r) => r.id == run.id).firstOrNull;
-      // Newer-wins also against an out-of-window synced run via its summary
-      // clock; preserve a local track by hydrating the evicted copy from disk.
-      final existingSummary = existing == null
-          ? _summaries.where((s) => s.id == run.id).firstOrNull
-          : null;
-      final localTs = existing != null
-          ? _lastModifiedOf(existing)
-          : (existingSummary != null
-              ? _lastModifiedOf(existingSummary.toRun())
-              : null);
-      if (localTs != null && localTs.isAfter(_lastModifiedOf(run))) continue;
-      if (existing == null && existingSummary != null) {
-        windowedOut.add(run.id);
-      }
-      Run? existingFull = existing;
-      if (run.track.isEmpty && existingFull == null && existingSummary != null) {
-        existingFull = await _runByIdRaw(run.id);
-      }
-      final merged = (run.track.isEmpty &&
-              existingFull != null &&
-              existingFull.track.isNotEmpty)
-          ? Run(
-              id: run.id,
-              startedAt: run.startedAt,
-              duration: run.duration,
-              distanceMetres: run.distanceMetres,
-              track: existingFull.track,
-              routeId: run.routeId,
-              source: run.source,
-              externalId: run.externalId,
-              metadata: run.metadata,
-              createdAt: run.createdAt,
-            )
-          : run;
-      toWrite.add(merged);
+      final before = _pendingEdits[run.id];
+      final result = await _mergeRemote(run);
+      if (result == null) continue;
+      if (!identical(before, _pendingEdits[run.id])) rebased = true;
+      if (result.windowedOut) windowedOut.add(run.id);
+      toWrite.add(result.merged);
     }
+    if (rebased) await _persistPendingEdits();
     if (toWrite.isEmpty) return false;
     await Future.wait(toWrite.map((merged) {
       final file = File('${_dir.path}/${merged.id}.json');
@@ -673,15 +674,43 @@ class LocalRunStore extends ChangeNotifier {
   bool contains(String runId) => _runs.any((r) => r.id == runId);
 
   /// Replace an existing run with updated data (same id, new metadata).
-  /// Stamps `last_modified_at = now` and marks the run unsynced so it gets
-  /// pushed on the next sync.
+  ///
+  /// A run the server already holds stays synced and records a
+  /// [PendingRunEdit] — the fields this edit changed, on top of any still
+  /// pending, and the server `updated_at` of the copy it was made on — which
+  /// `pushPendingRunEdits` sends as a compare-and-swap of those columns
+  /// alone (decisions § 2120). A run the server has not confirmed is marked
+  /// unsynced, and its next push upserts the whole row as before.
   Future<void> update(Run updated) => _serialised(() => _update(updated));
 
   Future<void> _update(Run updated) async {
     final file = File('${_dir.path}/${updated.id}.json');
     if (!file.existsSync()) return;
 
+    final previous = await _runByIdRaw(updated.id);
+    // A copy that cannot be read cannot say what changed, so it takes the
+    // whole-row path, which needs no diff.
+    final asFieldEdit = previous != null && _syncedIds.contains(updated.id);
     final stamped = _withLastModified(updated, DateTime.now());
+    final stored = asFieldEdit
+        ? _withServerUpdatedAt(stamped, serverUpdatedAtOf(previous))
+        : stamped;
+    if (asFieldEdit) {
+      final pending = _pendingEdits[updated.id];
+      final fields = {
+        ...?pending?.fields,
+        ...changedRunFields(previous, stored),
+      };
+      if (fields.isNotEmpty) {
+        _pendingEdits[updated.id] = PendingRunEdit(
+          fields: fields,
+          baseUpdatedAt: pending != null
+              ? pending.baseUpdatedAt
+              : serverUpdatedAtOf(previous),
+        );
+        _clearedPendingEdits.remove(updated.id);
+      }
+    }
     // Build the envelope fresh rather than decoding the existing file: every
     // field below is overwritten, so nothing from the old map survives. Reading
     // it back added no data and made a malformed on-disk file (partial write,
@@ -689,29 +718,34 @@ class LocalRunStore extends ChangeNotifier {
     // every sibling read path here, which recovers. Mirrors save()/saveFromRemote.
     final data = {
       kLocalStoreVersionKey: kLocalStoreSchemaVersion,
-      'run': stamped.toJson(),
-      'synced': false,
+      'run': stored.toJson(),
+      'synced': asFieldEdit,
     };
     await writeJsonAtomic(file, data);
 
-    final idx = _runs.indexWhere((r) => r.id == stamped.id);
+    final idx = _runs.indexWhere((r) => r.id == stored.id);
     if (idx >= 0) {
-      _runs[idx] = stamped;
+      _runs[idx] = stored;
     } else {
       // Residency invariant (§135): every unsynced run must be resident,
       // because `unsyncedRuns` — and so the whole drain — reads `_runs`, never
       // the track-less summaries. An edit to a windowed-out run would
       // otherwise be invisible to sync for the rest of the session.
-      _runs.add(stamped);
+      _runs.add(stored);
       _runs.sort((a, b) => b.startedAt.compareTo(a.startedAt));
     }
-    _syncedIds.remove(stamped.id);
-    final wasBlocked = _clearBlockedInMemory([stamped.id]);
-    _upsertSummary(stamped, synced: false);
-    // `synced_ids.json` is authoritative on cold load and OVERRIDES the index's
-    // flag, so the un-sync has to be durable here: otherwise the next launch
-    // silently re-marks the run synced and the edit can never leave the phone.
-    await _persistSyncedIds();
+    final wasBlocked = _clearBlockedInMemory([stored.id]);
+    _upsertSummary(stored, synced: asFieldEdit);
+    if (asFieldEdit) {
+      await _persistPendingEdits();
+    } else {
+      _syncedIds.remove(stored.id);
+      // `synced_ids.json` is authoritative on cold load and OVERRIDES the
+      // index's flag, so the un-sync has to be durable here: otherwise the next
+      // launch silently re-marks the run synced and the edit can never leave
+      // the phone.
+      await _persistSyncedIds();
+    }
     // Same durability argument for the park: a run whose track the user just
     // dropped must not still be parked on the next launch.
     if (wasBlocked) await _persistBlockedRuns();
@@ -719,7 +753,10 @@ class LocalRunStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Run _withLastModified(Run run, DateTime ts) {
+  /// Stamp this device's write clock. It orders only the summary index
+  /// between this device's own two isolates ([_persistIndex]); it decides no
+  /// merge with the server and is never sent ([kRunClientOnlyMetadataKeys]).
+  static Run _withLastModified(Run run, DateTime ts) {
     final metadata = Map<String, dynamic>.from(run.metadata ?? {});
     metadata[MetadataKeys.lastModifiedAt] = ts.toUtc().toIso8601String();
     return Run(
@@ -737,27 +774,175 @@ class LocalRunStore extends ChangeNotifier {
   }
 
   static DateTime _lastModifiedOf(Run run) {
-    // Read through the strict parser, not `DateTime.tryParse`: an impossible
-    // stamp there is not an error to that call, it is a rolled-over date
-    // (`2026-06-32` is the 2nd of July), and this clock decides which copy of a
-    // run survives a merge. A stamp far enough in the future wins every
-    // subsequent comparison and the server copy can never reach the phone
-    // again — the § 1342 shape. The fallback below is a real instant this run
-    // actually carries, which is what an unreadable stamp should degrade to
-    // (decisions § 1377). The cast is gone with it: a stamp of the wrong TYPE
-    // used to throw out of a merge rather than read as absent.
+    // The strict parser: `DateTime.tryParse` reads `2026-06-32` as the 2nd of
+    // July, and a stamp in the future would win every index merge after it
+    // (decisions § 1377). A stamp of the wrong type reads as absent.
     final parsed =
         parseIsoStrictValue(run.metadata?[MetadataKeys.lastModifiedAt]);
     if (parsed != null) return parsed;
-    // Fall back to startedAt, NOT createdAt. `createdAt` is the server's
-    // `created_at` insert timestamp — it's null for an offline run and,
-    // for a synced run, reflects when the row first reached the server
-    // rather than when the user last touched it, so it's ambiguous as a
-    // modification clock. `startedAt` is the client's run-start instant:
-    // stable, always present, and the same value on every device. Used
-    // only for a legacy run that predates the metadata.last_modified_at
-    // stamp; every save/update since stamps the key explicitly.
+    // A copy written before this device stamped one: its start instant is
+    // stable and the same in both isolates, so neither side wins on it alone.
     return run.startedAt;
+  }
+
+  static Run _withServerUpdatedAt(Run run, String? serverUpdatedAt) {
+    final metadata = Map<String, dynamic>.from(run.metadata ?? {});
+    if (serverUpdatedAt == null) {
+      metadata.remove(MetadataKeys.serverUpdatedAt);
+    } else {
+      metadata[MetadataKeys.serverUpdatedAt] = serverUpdatedAt;
+    }
+    return Run(
+      id: run.id,
+      startedAt: run.startedAt,
+      duration: run.duration,
+      distanceMetres: run.distanceMetres,
+      track: run.track,
+      routeId: run.routeId,
+      source: run.source,
+      externalId: run.externalId,
+      metadata: metadata.isEmpty ? null : metadata,
+      createdAt: run.createdAt,
+    );
+  }
+
+  /// The edit to [runId] still waiting to reach the server, if any.
+  PendingRunEdit? pendingEdit(String runId) => _pendingEdits[runId];
+
+  /// Ids of every run with a pending field edit.
+  List<String> get pendingEditIds => List.unmodifiable(_pendingEdits.keys);
+
+  /// Adopt the row a compare-and-swap push of [sent] returned. When [sent] is
+  /// still the pending edit, the edit has landed: it is cleared and the
+  /// server row replaces the local copy. When the runner edited again while it
+  /// was in flight, the newer edit stays pending on top of the returned row,
+  /// re-based onto its `updated_at`.
+  Future<void> adoptPushedEdit(Run landed, PendingRunEdit sent) =>
+      _serialised(() => _adoptServerRow(landed, landed: sent));
+
+  /// Re-base the pending edit to [server]'s run onto [server], a fresh read
+  /// of the row after a compare-and-swap found it moved.
+  Future<void> rebasePendingEdit(Run server) =>
+      _serialised(() => _adoptServerRow(server));
+
+  Future<void> _adoptServerRow(Run server, {PendingRunEdit? landed}) async {
+    final id = server.id;
+    final current = _pendingEdits[id];
+    if (landed != null && identical(current, landed)) {
+      _pendingEdits.remove(id);
+      _clearedPendingEdits.add(id);
+    }
+    final local = await _runByIdRaw(id);
+    if (local == null) {
+      if (_clearPendingEditsInMemory([id])) await _persistPendingEdits();
+      return;
+    }
+    final pending = _pendingEdits[id];
+    final Run adopted;
+    if (pending != null) {
+      _pendingEdits[id] = PendingRunEdit(
+        fields: pending.fields,
+        baseUpdatedAt: serverUpdatedAtOf(server),
+      );
+      adopted = applyRunEditFields(
+          local: local, server: server, fields: pending.fields);
+    } else {
+      adopted = server.track.isEmpty && local.track.isNotEmpty
+          ? _withTrack(server, local.track)
+          : server;
+    }
+    final merged = _withLastModified(adopted, DateTime.now());
+    await writeJsonAtomic(File('${_dir.path}/$id.json'), {
+      kLocalStoreVersionKey: kLocalStoreSchemaVersion,
+      'run': merged.toJson(),
+      'synced': true,
+    });
+    final idx = _runs.indexWhere((r) => r.id == id);
+    if (idx >= 0) _runs[idx] = merged;
+    _syncedIds.add(id);
+    _upsertSummary(merged, synced: true);
+    await _persistPendingEdits();
+    await _persistIndex();
+    notifyListeners();
+  }
+
+  /// Ids this process has cleared since its last successful sidecar write,
+  /// for the same cross-process reason as [_clearedBlocked].
+  final Set<String> _clearedPendingEdits = <String>{};
+
+  bool _clearPendingEditsInMemory(Iterable<String> runIds) {
+    var changed = false;
+    for (final id in runIds) {
+      if (_pendingEdits.remove(id) == null) continue;
+      _clearedPendingEdits.add(id);
+      changed = true;
+    }
+    return changed;
+  }
+
+  Future<void> _persistPendingEdits() async {
+    final liveIds = _summaries.map((s) => s.id).toSet();
+    _pendingEdits.removeWhere((id, _) => !liveIds.contains(id));
+    await _serialised(() async {
+      // Merge, never replace, as [_persistBlockedRuns] does: the WorkManager
+      // isolate keeps its own store over this directory and loaded its copy of
+      // this file before any edit made since, so a whole-file write from it
+      // would drop that edit. Fields are unioned for the same reason. An edit
+      // pushed twice because one process had not heard the other clear it is
+      // harmless: the second compare-and-swap loses, re-reads the row and
+      // lands the same values.
+      final disk = await _readPendingEdits() ?? const <String, PendingRunEdit>{};
+      final merged = <String, PendingRunEdit>{
+        for (final e in disk.entries)
+          if (!_clearedPendingEdits.contains(e.key) &&
+              File('${_dir.path}/${e.key}.json').existsSync())
+            e.key: e.value,
+      };
+      _pendingEdits.forEach((id, edit) {
+        final other = merged[id];
+        merged[id] = other == null
+            ? edit
+            : PendingRunEdit(
+                fields: {...other.fields, ...edit.fields},
+                baseUpdatedAt: edit.baseUpdatedAt,
+              );
+      });
+      try {
+        if (merged.isEmpty) {
+          if (_pendingEditsFile.existsSync()) await _pendingEditsFile.delete();
+          _clearedPendingEdits.clear();
+          return;
+        }
+        await writeJsonAtomic(_pendingEditsFile, {
+          kLocalStoreVersionKey: kLocalStoreSchemaVersion,
+          'edits': {for (final e in merged.entries) e.key: e.value.toJson()},
+        });
+        _clearedPendingEdits.clear();
+      } catch (e) {
+        debugPrint('Failed to persist pending_edits sidecar: $e');
+      }
+    });
+  }
+
+  Future<Map<String, PendingRunEdit>?> _readPendingEdits() async {
+    final file = _pendingEditsFile;
+    if (!file.existsSync()) return null;
+    try {
+      final data = jsonDecode(await file.readAsString());
+      final raw = data is Map ? data['edits'] : null;
+      if (raw is! Map) {
+        debugPrint('pending_edits sidecar has an unexpected shape');
+        return null;
+      }
+      return {
+        for (final entry in raw.entries)
+          if (entry.key is String && PendingRunEdit.fromJson(entry.value) != null)
+            entry.key as String: PendingRunEdit.fromJson(entry.value)!,
+      };
+    } catch (e) {
+      debugPrint('Failed to read pending_edits sidecar: $e');
+      return null;
+    }
   }
 
   /// Delete a run from local storage.
@@ -772,6 +957,7 @@ class LocalRunStore extends ChangeNotifier {
     _summaries.removeWhere((s) => s.id == runId);
     _syncedIds.remove(runId);
     if (_clearBlockedInMemory([runId])) await _persistBlockedRuns();
+    if (_clearPendingEditsInMemory([runId])) await _persistPendingEdits();
     await _persistIndex();
     notifyListeners();
   }
@@ -798,6 +984,7 @@ class LocalRunStore extends ChangeNotifier {
     _summaries.removeWhere((s) => ids.contains(s.id));
     _syncedIds.removeAll(ids);
     if (_clearBlockedInMemory(ids)) await _persistBlockedRuns();
+    if (_clearPendingEditsInMemory(ids)) await _persistPendingEdits();
     await _persistIndex();
     notifyListeners();
   }
@@ -959,7 +1146,7 @@ class LocalRunStore extends ChangeNotifier {
   /// still resident unchanged. `saveRunsBatch` uploads N gzipped tracks and can
   /// run for minutes; marking by id alone flipped whatever was resident at that
   /// later moment, so a title edited DURING the push was recorded as synced and
-  /// never sent — and `saveFromRemote`'s newer-wins then preserved the local
+  /// never sent — and the clock-based remote merge of the time kept the local
   /// copy, leaving a divergence that is permanent and invisible on both sides.
   ///
   /// [update] installs a NEW Run instance for every mutation, so identity is an
@@ -1254,8 +1441,9 @@ class LocalRunStore extends ChangeNotifier {
       };
       for (final s in _summaries) {
         final disk = merged[s.id];
-        // Per-id newest-wins on the same modification clock `saveFromRemote`
-        // uses; a tie goes to this process, which just wrote the file.
+        // Per-id newest-wins on this device's write clock: both processes are
+        // on one device, so it orders their two snapshots of a file one of
+        // them wrote. A tie goes to this process, which just wrote the file.
         if (disk == null ||
             !_lastModifiedOf(disk.toRun()).isAfter(_lastModifiedOf(s.toRun()))) {
           merged[s.id] = s.withSynced(_syncedIds.contains(s.id));
@@ -1466,7 +1654,11 @@ class LocalRunStore extends ChangeNotifier {
     _clearedBlocked.clear();
     _pendingRemoteDeletes.clear();
     _clearedRemoteDeletes.clear();
+    _pendingEdits.clear();
+    _clearedPendingEdits.clear();
 
+    final pendingEdits = await _readPendingEdits();
+    if (pendingEdits != null) _pendingEdits.addAll(pendingEdits);
     final pendingDeletes = await _readPendingRemoteDeletes();
     if (pendingDeletes != null) _pendingRemoteDeletes.addAll(pendingDeletes);
     // Read BEFORE the residency decision below — a parked run is excluded from
@@ -1493,6 +1685,7 @@ class LocalRunStore extends ChangeNotifier {
         .where((f) => !f.path.endsWith(_syncedIdsFilename))
         .where((f) => !f.path.endsWith(_pendingRemoteDeletesFilename))
         .where((f) => !f.path.endsWith(_blockedRunsFilename))
+        .where((f) => !f.path.endsWith(_pendingEditsFilename))
         .where((f) => !f.path.endsWith(_indexFilename))
         .toList();
     final fileById = {for (final f in files) _runIdFromPath(f.path): f};

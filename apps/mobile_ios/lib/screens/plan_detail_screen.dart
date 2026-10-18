@@ -12,6 +12,8 @@ import '../auth_error.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/plan_details_sheet.dart';
 import '../plan_repace.dart';
+import '../plan_bulk_ops.dart' show shiftIsoDate;
+import '../plan_resume.dart';
 import '../cycle_plan.dart' show CyclePlanConfig, CyclePlanMode;
 import '../cycle_plan_config.dart';
 import '../share_sheet.dart';
@@ -899,17 +901,48 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       {required bool paused}) async {
     if (!_isOwner(p) || _bulkBusy) return;
     final l10n = AppLocalizations.of(context);
+    // The weeks the runner had not started move back by the whole weeks the
+    // plan sat paused, so they come back as upcoming rather than missed.
+    final shift = paused
+        ? null
+        : resumeShift(
+            startIso: toIsoDate(p.startDate),
+            pausedOnIso:
+                p.pausedAt == null ? null : toIsoDate(p.pausedAt!.toLocal()),
+            todayIso: toIsoDate(widget.now()),
+            weekCount: _weeks.length,
+          );
+    if (shift != null) {
+      final ok = await confirmDestructive(
+        context,
+        title: l10n.planDetailResumeShiftTitle,
+        body: l10n.planDetailResumeShiftMessage(
+          shift.weeks,
+          formatDateShort(
+              parseIsoDate(shiftIsoDate(toIsoDate(p.endDate), 7 * shift.weeks)),
+              localeToTag(Localizations.localeOf(context))),
+        ),
+        confirmLabel: l10n.planDetailResumePlan,
+        cancelLabel: l10n.plansCancel,
+      );
+      if (!ok || !mounted) return;
+    }
     setState(() => _bulkBusy = true);
     try {
       if (paused) {
         await widget.training.pausePlan(p.id);
       } else {
-        await widget.training.resumePlan(p.id);
+        await widget.training.resumePlan(p.id, shift: shift);
       }
       if (!mounted) return;
       setState(() => _bulkBusy = false);
-      showTopBanner(context,
-          paused ? l10n.planDetailPauseDone : l10n.planDetailResumeDone);
+      showTopBanner(
+          context,
+          paused
+              ? l10n.planDetailPauseDone
+              : shift != null
+                  ? l10n.planDetailResumeShiftedDone(shift.weeks)
+                  : l10n.planDetailResumeDone);
       await _load();
     } on ActivePlanExistsError {
       if (!mounted) return;

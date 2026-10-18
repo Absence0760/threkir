@@ -5040,5 +5040,8 @@
   "planDetailCycleAdjustDone": "Semanas próximas ajustadas.",
   "planDetailCycleAdjustNone": "Ningún entrenamiento próximo necesitaba ajuste.",
   "planDetailAdjustCycleDesc": "Suaviza los próximos entrenamientos en los días menstruales y de fase lútea tardía de tu ciclo. Los entrenamientos pasados no cambian.",
-  "planDetailAdjustPregnancyDesc": "Convierte los próximos entrenamientos duros en rodajes suaves y reduce el volumen por trimestre. Los entrenamientos pasados no cambian."
+  "planDetailAdjustPregnancyDesc": "Convierte los próximos entrenamientos duros en rodajes suaves y reduce el volumen por trimestre. Los entrenamientos pasados no cambian.",
+  "planDetailResumeShiftTitle": "¿Reanudar y retrasar?",
+  "planDetailResumeShiftMessage": "{n, plural, one{Este plan vuelve a ser tu plan activo. Las semanas que no habías empezado se retrasan {n} semana, así que retoma la semana que viene en vez de contarlas como perdidas. Ahora termina el {date}.} other{Este plan vuelve a ser tu plan activo. Las semanas que no habías empezado se retrasan {n} semanas, así que retoma la semana que viene en vez de contarlas como perdidas. Ahora termina el {date}.}}",
+  "planDetailResumeShiftedDone": "{n, plural, one{Plan reanudado y retrasado {n} semana.} other{Plan reanudado y retrasado {n} semanas.}}"
 }

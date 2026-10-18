@@ -5040,5 +5040,8 @@
   "planDetailCycleAdjustDone": "Semaines à venir adaptées.",
   "planDetailCycleAdjustNone": "Aucune séance à venir n'avait besoin d'être adaptée.",
   "planDetailAdjustCycleDesc": "Allège les prochaines séances pendant les jours de règles et de fin de phase lutéale de votre cycle. Les séances passées ne changent pas.",
-  "planDetailAdjustPregnancyDesc": "Transforme les prochaines séances difficiles en footings faciles et réduit le volume par trimestre. Les séances passées ne changent pas."
+  "planDetailAdjustPregnancyDesc": "Transforme les prochaines séances difficiles en footings faciles et réduit le volume par trimestre. Les séances passées ne changent pas.",
+  "planDetailResumeShiftTitle": "Reprendre et décaler ?",
+  "planDetailResumeShiftMessage": "{n, plural, one{Ce plan redevient votre plan actif. Les semaines que vous n'aviez pas commencées sont décalées de {n} semaine, pour reprendre la semaine prochaine au lieu de les compter comme manquées. Il se termine désormais le {date}.} other{Ce plan redevient votre plan actif. Les semaines que vous n'aviez pas commencées sont décalées de {n} semaines, pour reprendre la semaine prochaine au lieu de les compter comme manquées. Il se termine désormais le {date}.}}",
+  "planDetailResumeShiftedDone": "{n, plural, one{Plan repris et décalé de {n} semaine.} other{Plan repris et décalé de {n} semaines.}}"
 }

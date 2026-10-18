@@ -17843,4 +17843,31 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get planDetailAdjustPregnancyDesc =>
       'Convierte los próximos entrenamientos duros en rodajes suaves y reduce el volumen por trimestre. Los entrenamientos pasados no cambian.';
+
+  @override
+  String get planDetailResumeShiftTitle => '¿Reanudar y retrasar?';
+
+  @override
+  String planDetailResumeShiftMessage(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Este plan vuelve a ser tu plan activo. Las semanas que no habías empezado se retrasan $n semanas, así que retoma la semana que viene en vez de contarlas como perdidas. Ahora termina el $date.',
+      one:
+          'Este plan vuelve a ser tu plan activo. Las semanas que no habías empezado se retrasan $n semana, así que retoma la semana que viene en vez de contarlas como perdidas. Ahora termina el $date.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailResumeShiftedDone(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plan reanudado y retrasado $n semanas.',
+      one: 'Plan reanudado y retrasado $n semana.',
+    );
+    return '$_temp0';
+  }
 }

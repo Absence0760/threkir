@@ -29136,6 +29136,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Turns hard upcoming sessions into easy runs and eases volume by trimester. Past sessions stay as they are.'**
   String get planDetailAdjustPregnancyDesc;
+
+  /// Title of the resume confirm when the paused weeks will move
+  ///
+  /// In en, this message translates to:
+  /// **'Resume and push back?'**
+  String get planDetailResumeShiftTitle;
+
+  /// Resume confirm body; n whole weeks the unstarted weeks move, date the plan's new end
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{This plan becomes your active plan again. The weeks you had not started move back {n} week, so it picks up next week instead of counting them as missed. It now ends on {date}.} other{This plan becomes your active plan again. The weeks you had not started move back {n} weeks, so it picks up next week instead of counting them as missed. It now ends on {date}.}}'**
+  String planDetailResumeShiftMessage(int n, String date);
+
+  /// Banner after resuming with the weeks moved
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{Plan resumed and pushed back {n} week.} other{Plan resumed and pushed back {n} weeks.}}'**
+  String planDetailResumeShiftedDone(int n);
 }
 
 class _AppLocalizationsDelegate

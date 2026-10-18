@@ -17011,4 +17011,28 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get planDetailAdjustPregnancyDesc =>
       '今後のハードなワークアウトをイージーランに変え、三半期ごとに量を減らします。過去のワークアウトは変更されません。';
+
+  @override
+  String get planDetailResumeShiftTitle => '再開して後ろにずらしますか？';
+
+  @override
+  String planDetailResumeShiftMessage(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'このプランが再びアクティブなプランになります。まだ始めていなかった週は$n週後ろにずれ、未実施として数えずに来週から再開します。終了日は$dateになります。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailResumeShiftedDone(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'プランを再開し、$n週後ろにずらしました。',
+    );
+    return '$_temp0';
+  }
 }

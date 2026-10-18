@@ -5,6 +5,7 @@ import 'package:ui_kit/ui_kit.dart' show FullBodyLoader;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/social_service.dart';
+import '../lib/plan_resume.dart';
 import '../lib/training_service.dart';
 import 'pump_until.dart';
 
@@ -54,7 +55,7 @@ class _FakeTraining extends TrainingService {
   Future<void> pausePlan(String id) async => paused.add(id);
 
   @override
-  Future<void> resumePlan(String id) async {
+  Future<void> resumePlan(String id, {ResumeShift? shift}) async {
     if (resumeBlocked) throw const ActivePlanExistsError();
     resumed.add(id);
   }

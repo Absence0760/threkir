@@ -17853,4 +17853,31 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get planDetailAdjustPregnancyDesc =>
       'Macht aus harten kommenden Einheiten lockere Läufe und reduziert den Umfang nach Trimester. Vergangene Einheiten bleiben unverändert.';
+
+  @override
+  String get planDetailResumeShiftTitle => 'Fortsetzen und verschieben?';
+
+  @override
+  String planDetailResumeShiftMessage(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Dieser Plan wird wieder dein aktiver Plan. Die Wochen, die du noch nicht begonnen hattest, rücken $n Wochen nach hinten, damit es nächste Woche weitergeht, statt sie als verpasst zu zählen. Er endet jetzt am $date.',
+      one:
+          'Dieser Plan wird wieder dein aktiver Plan. Die Wochen, die du noch nicht begonnen hattest, rücken $n Woche nach hinten, damit es nächste Woche weitergeht, statt sie als verpasst zu zählen. Er endet jetzt am $date.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailResumeShiftedDone(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plan fortgesetzt und um $n Wochen verschoben.',
+      one: 'Plan fortgesetzt und um $n Woche verschoben.',
+    );
+    return '$_temp0';
+  }
 }

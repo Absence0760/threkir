@@ -17881,4 +17881,31 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get planDetailAdjustPregnancyDesc =>
       'Transforme les prochaines séances difficiles en footings faciles et réduit le volume par trimestre. Les séances passées ne changent pas.';
+
+  @override
+  String get planDetailResumeShiftTitle => 'Reprendre et décaler ?';
+
+  @override
+  String planDetailResumeShiftMessage(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Ce plan redevient votre plan actif. Les semaines que vous n\'aviez pas commencées sont décalées de $n semaines, pour reprendre la semaine prochaine au lieu de les compter comme manquées. Il se termine désormais le $date.',
+      one:
+          'Ce plan redevient votre plan actif. Les semaines que vous n\'aviez pas commencées sont décalées de $n semaine, pour reprendre la semaine prochaine au lieu de les compter comme manquées. Il se termine désormais le $date.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailResumeShiftedDone(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plan repris et décalé de $n semaines.',
+      one: 'Plan repris et décalé de $n semaine.',
+    );
+    return '$_temp0';
+  }
 }

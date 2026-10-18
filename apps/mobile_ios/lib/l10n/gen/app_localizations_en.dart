@@ -17659,4 +17659,31 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get planDetailAdjustPregnancyDesc =>
       'Turns hard upcoming sessions into easy runs and eases volume by trimester. Past sessions stay as they are.';
+
+  @override
+  String get planDetailResumeShiftTitle => 'Resume and push back?';
+
+  @override
+  String planDetailResumeShiftMessage(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'This plan becomes your active plan again. The weeks you had not started move back $n weeks, so it picks up next week instead of counting them as missed. It now ends on $date.',
+      one:
+          'This plan becomes your active plan again. The weeks you had not started move back $n week, so it picks up next week instead of counting them as missed. It now ends on $date.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailResumeShiftedDone(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plan resumed and pushed back $n weeks.',
+      one: 'Plan resumed and pushed back $n week.',
+    );
+    return '$_temp0';
+  }
 }

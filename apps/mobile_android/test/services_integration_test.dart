@@ -10,6 +10,7 @@ import '../lib/geocoding.dart';
 import '../lib/social_service.dart';
 import '../lib/training.dart';
 import '../lib/cycle_plan.dart';
+import '../lib/plan_resume.dart';
 import '../lib/training_service.dart';
 
 // Known seed IDs / slugs — kept here so an unintended seed change shows
@@ -931,6 +932,55 @@ void main() {
                 w.scheduledDate.isBefore(DateTime.utc(2033, 5, 1))),
             isEmpty,
             reason: 'no hard session survives inside the pregnancy window');
+      } finally {
+        if (newId != null) await training.deletePlan(newId);
+      }
+    });
+
+    test('pause stamps paused_at; resumePlan pushes the unstarted weeks back',
+        () async {
+      String? newId;
+      try {
+        final start = DateTime.utc(2034, 3, 5);
+        final created = await training.createPlan(
+          name: 'integration-test resume plan',
+          goalEvent: GoalEvent.distance10k,
+          goalDistanceM: 10_000,
+          startDate: start,
+          daysPerWeek: 4,
+          recent5kSec: 1500,
+          generated: generatePlan(GeneratePlanInput(
+            goalEvent: GoalEvent.distance10k,
+            recent5kSec: 1500,
+            startDate: start,
+            daysPerWeek: 4,
+          )),
+        );
+        newId = created.id;
+        await training.pausePlan(created.id);
+        final paused = await training.fetchPlan(created.id);
+        expect(paused.plan!.status, 'paused');
+        expect(paused.plan!.pausedAt, isNotNull);
+        final week1 = paused.weeks.firstWhere((w) => w.weekIndex == 1);
+        final week1Workout =
+            paused.workouts.firstWhere((w) => w.weekId == week1.id);
+
+        await training.resumePlan(created.id,
+            shift: const ResumeShift(fromWeekIndex: 1, weeks: 2));
+        final resumed = await training.fetchPlan(created.id);
+        expect(resumed.plan!.status, 'active');
+        expect(resumed.plan!.pausedAt, isNull);
+        // Calendar days, not a Duration: 14 x 24 h crosses a DST change.
+        String plus14(DateTime d) =>
+            DateTime(d.year, d.month, d.day + 14).toIso8601String().substring(0, 10);
+        String day(DateTime d) => d.toIso8601String().substring(0, 10);
+        expect(day(resumed.plan!.endDate), plus14(paused.plan!.endDate));
+        expect(resumed.weeks.firstWhere((w) => w.id == week1.id).weekIndex, 3);
+        expect(
+            day(resumed.workouts
+                .firstWhere((w) => w.id == week1Workout.id)
+                .scheduledDate),
+            plus14(week1Workout.scheduledDate));
       } finally {
         if (newId != null) await training.deletePlan(newId);
       }

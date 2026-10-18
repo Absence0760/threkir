@@ -12,6 +12,7 @@ import 'backend_timeout.dart';
 import 'health_consent.dart';
 import 'nutrition_targets.dart' show ageFromDob;
 import 'plan_bulk_ops.dart';
+import 'plan_resume.dart';
 import 'plan_copy.dart';
 import 'plan_current.dart';
 import 'comeback.dart' show kLayoffMaxDays;
@@ -1034,7 +1035,11 @@ class TrainingService extends ChangeNotifier {
   /// runner as an unexplained failure rather than "that plan is in the way".
   /// A plan queued before or after it doesn't block. Web twin: `resumePlan` +
   /// `ActivePlanExistsError`.
-  Future<void> resumePlan(String id) async {
+  /// Resumes a paused plan through `resume_training_plan`, pushing the weeks
+  /// [shift] names back when the pause spanned whole weeks (`resumeShift`),
+  /// so they come back as upcoming rather than missed. The overlap pre-check
+  /// covers the end date the shift gives the plan. Mirrors web `resumePlan`.
+  Future<void> resumePlan(String id, {ResumeShift? shift}) async {
     final uid = _uid;
     if (uid == null) throw StateError('resumePlan called with no signed-in user.');
     final row = await _c
@@ -1044,21 +1049,29 @@ class TrainingService extends ChangeNotifier {
         .maybeSingle();
     if (row == null) throw StateError('resumePlan: plan $id not found.');
     final plan = TrainingPlanRow.fromJson(row);
+    final endIso = shift == null
+        ? planRowEndIso(plan)
+        : shiftIsoDate(planRowEndIso(plan), 7 * shift.weeks);
     final others = [
       for (final p in await fetchActivePlans())
         if (p.id != id) p
     ];
-    if (overlappingActivePlans(others, planRowStartIso(plan), planRowEndIso(plan))
-        .isNotEmpty) {
+    if (overlappingActivePlans(others, planRowStartIso(plan), endIso).isNotEmpty) {
       throw const ActivePlanExistsError();
     }
     try {
-      await updateStatus(id, 'active');
+      await _c.rpc('resume_training_plan', params: {
+        'p_plan_id': id,
+        'p_from_week_index': shift?.fromWeekIndex,
+        'p_shift_weeks': shift?.weeks ?? 0,
+      });
     } catch (e) {
       if (_isOverlapViolation(e)) throw const ActivePlanExistsError();
       rethrow;
     }
+    notifyListeners();
   }
+
 
   Future<void> deletePlan(String id) async {
     await _c.from('training_plans').delete().eq('id', id);

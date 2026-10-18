@@ -17844,6 +17844,33 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get planDetailAdjustPregnancyDesc =>
       'Transforma os próximos treinos duros em corridas leves e reduz o volume por trimestre. Os treinos passados não mudam.';
+
+  @override
+  String get planDetailResumeShiftTitle => 'Retomar e adiar?';
+
+  @override
+  String planDetailResumeShiftMessage(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Este plano volta a ser o seu plano ativo. As semanas que ainda não tinha começado passam $n semanas para a frente, para retomar na próxima semana em vez de as contar como falhadas. Agora termina a $date.',
+      one:
+          'Este plano volta a ser o seu plano ativo. As semanas que ainda não tinha começado passam $n semana para a frente, para retomar na próxima semana em vez de as contar como falhadas. Agora termina a $date.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailResumeShiftedDone(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plano retomado e adiado $n semanas.',
+      one: 'Plano retomado e adiado $n semana.',
+    );
+    return '$_temp0';
+  }
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -35673,4 +35700,31 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get planDetailAdjustPregnancyDesc =>
       'Transforma os próximos treinos duros em corridas leves e reduz o volume por trimestre. Treinos passados não mudam.';
+
+  @override
+  String get planDetailResumeShiftTitle => 'Retomar e adiar?';
+
+  @override
+  String planDetailResumeShiftMessage(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Este plano volta a ser seu plano ativo. As semanas que você ainda não tinha começado passam $n semanas para frente, para retomar na próxima semana em vez de contá-las como perdidas. Agora ele termina em $date.',
+      one:
+          'Este plano volta a ser seu plano ativo. As semanas que você ainda não tinha começado passam $n semana para frente, para retomar na próxima semana em vez de contá-las como perdidas. Agora ele termina em $date.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailResumeShiftedDone(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plano retomado e adiado $n semanas.',
+      one: 'Plano retomado e adiado $n semana.',
+    );
+    return '$_temp0';
+  }
 }

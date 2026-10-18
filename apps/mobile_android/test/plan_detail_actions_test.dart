@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart' show FullBodyLoader;
 import '../lib/cycle_plan.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/plan_resume.dart';
 import '../lib/plan_serialize.dart';
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/social_service.dart';
@@ -20,17 +21,23 @@ import 'pump_until.dart';
 const _owner = 'owner-uuid';
 final DateTime _today = DateTime(2026, 3, 11);
 
-TrainingPlanRow _plan({bool template = false}) => TrainingPlanRow(
+TrainingPlanRow _plan(
+        {bool template = false,
+        String status = 'active',
+        DateTime? start,
+        DateTime? pausedAt}) =>
+    TrainingPlanRow(
       id: 'plan-1',
       userId: _owner,
       name: 'Spring Half',
       goalEvent: 'distance_half',
       goalDistanceM: 21097.5,
       goalTimeSeconds: 7200,
-      startDate: DateTime(2026, 3, 9),
-      endDate: DateTime(2026, 3, 22),
+      startDate: start ?? DateTime(2026, 3, 9),
+      endDate: (start ?? DateTime(2026, 3, 9)).add(const Duration(days: 13)),
       daysPerWeek: 4,
-      status: template ? 'template' : 'active',
+      status: template ? 'template' : status,
+      pausedAt: pausedAt,
       source: 'generated',
       rules: const [],
       isTemplate: template,
@@ -60,6 +67,14 @@ final _workouts = [
 
 class _FakeTraining extends TrainingService {
   final bool template;
+  final String status;
+  final DateTime? start;
+  final DateTime? pausedAt;
+  final resumeCalls = <ResumeShift?>[];
+
+  @override
+  Future<void> resumePlan(String id, {ResumeShift? shift}) async =>
+      resumeCalls.add(shift);
 
   /// What each shift call does, in order: null succeeds, an object throws.
   final List<Object?> shiftOutcomes;
@@ -68,7 +83,13 @@ class _FakeTraining extends TrainingService {
   final deleted = <String>[];
   int fetchCalls = 0;
 
-  _FakeTraining({this.template = false, this.shiftOutcomes = const [null]});
+  _FakeTraining({
+    this.template = false,
+    this.shiftOutcomes = const [null],
+    this.status = 'active',
+    this.start,
+    this.pausedAt,
+  });
 
   @override
   Future<
@@ -81,7 +102,8 @@ class _FakeTraining extends TrainingService {
   fetchPlan(String id) async {
     fetchCalls++;
     return (
-      plan: _plan(template: template),
+      plan: _plan(
+          template: template, status: status, start: start, pausedAt: pausedAt),
       weeks: const [
         PlanWeekRow(id: 'w1', planId: 'plan-1', weekIndex: 0, phase: 'base'),
         PlanWeekRow(id: 'w2', planId: 'plan-1', weekIndex: 1, phase: 'build'),
@@ -496,6 +518,63 @@ void main() {
           of: find.byType(AlertDialog), matching: find.text('Adjust for my cycle')));
       await tester.pumpAndSettle();
       expect(find.text('No upcoming workouts needed adjusting.'), findsOneWidget);
+      await _drainBanner(tester);
+    });
+  });
+
+  group('resume a paused plan', () {
+    Future<void> resume(WidgetTester tester) async {
+      await _openPlanMenu(tester, 'Adjust plan');
+      await tester.tap(find.text('Resume plan'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('weeks paused through move back, after a confirm that says so',
+        (tester) async {
+      // Started 2026-02-23, paused on its second day, resumed 2026-03-11:
+      // two whole plan weeks went by, so week 1 on moves back two weeks.
+      final training = _FakeTraining(
+        status: 'paused',
+        start: DateTime(2026, 2, 23),
+        pausedAt: DateTime(2026, 2, 24, 9),
+      );
+      await _pump(tester, training);
+      await resume(tester);
+
+      expect(find.text('Resume and push back?'), findsOneWidget);
+      expect(find.textContaining('move back 2 weeks'), findsOneWidget);
+      expect(training.resumeCalls, isEmpty);
+
+      await tester.tap(find.descendant(
+          of: find.byType(AlertDialog), matching: find.text('Resume plan')));
+      await tester.pumpAndSettle();
+      expect(training.resumeCalls,
+          [const ResumeShift(fromWeekIndex: 1, weeks: 2)]);
+      expect(find.text('Plan resumed and pushed back 2 weeks.'), findsOneWidget);
+      await _drainBanner(tester);
+    });
+
+    testWidgets('cancelling the confirm leaves the plan paused', (tester) async {
+      final training = _FakeTraining(
+        status: 'paused',
+        start: DateTime(2026, 2, 23),
+        pausedAt: DateTime(2026, 2, 24, 9),
+      );
+      await _pump(tester, training);
+      await resume(tester);
+      await tester.tap(find.text('Cancel').last);
+      await tester.pumpAndSettle();
+      expect(training.resumeCalls, isEmpty);
+    });
+
+    testWidgets('a pause inside the same plan week resumes with nothing moved',
+        (tester) async {
+      final training = _FakeTraining(
+          status: 'paused', pausedAt: DateTime(2026, 3, 10, 9));
+      await _pump(tester, training);
+      await resume(tester);
+      expect(find.text('Resume and push back?'), findsNothing);
+      expect(training.resumeCalls, [null]);
       await _drainBanner(tester);
     });
   });

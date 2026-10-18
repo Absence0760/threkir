@@ -4878,6 +4878,7 @@ export type Database = {
           name: string
           notes: string | null
           parent_template_id: string | null
+          paused_at: string | null
           rules: Json | null
           source: string
           start_date: string
@@ -4903,6 +4904,7 @@ export type Database = {
           name: string
           notes?: string | null
           parent_template_id?: string | null
+          paused_at?: string | null
           rules?: Json | null
           source?: string
           start_date: string
@@ -4928,6 +4930,7 @@ export type Database = {
           name?: string
           notes?: string | null
           parent_template_id?: string | null
+          paused_at?: string | null
           rules?: Json | null
           source?: string
           start_date?: string
@@ -6978,6 +6981,14 @@ export type Database = {
           p_target_kind: string
         }
         Returns: number
+      }
+      resume_training_plan: {
+        Args: {
+          p_from_week_index?: number
+          p_plan_id: string
+          p_shift_weeks?: number
+        }
+        Returns: undefined
       }
       revoke_plan_calendar_feed: { Args: never; Returns: boolean }
       revoke_unmet_distance_achievements: {

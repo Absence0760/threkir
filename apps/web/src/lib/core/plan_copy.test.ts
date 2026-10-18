@@ -272,6 +272,7 @@ test('every training_plans column is either copied on publish or excused', () =>
 		['created_at', 'server-maintained'],
 		['updated_at', 'server-maintained'],
 		['trimmed_at', "publisher-private plan state: when the owner ended the plan early — the published copy was never trimmed"],
+		['paused_at', "publisher-private plan state: when the owner paused it — a template is never paused"],
 	]);
 	const copied = planHeadCopyFields(sourcePlan);
 	const missing = rowColumns('training_plans').filter(

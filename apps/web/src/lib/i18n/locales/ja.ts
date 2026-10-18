@@ -6568,4 +6568,11 @@ export const messages = {
 	"workoutKindShort.rest": "休",
 	"planDetail.ariaMissedSuffix": "、未実施",
 	"planDetail.ariaTodaySuffix": "、今日",
+	"missedPrompt.repeatWeekBody": "1回休んでも失うものはありません。そのまま続けるか、今週がきつかったら次に進む前にもう一度繰り返しましょう。週を繰り返してもペナルティはありません。",
+	"walkRunGraduation.title": "達成：ゼロから5km",
+	"walkRunGraduation.bodyFiveK": "5kmを止まらずに走りきりました。始めはウォークの合間に1分走るところからでした。",
+	"walkRunGraduation.bodyFinished": "ウォーク休憩なしで、最後まで走りきってプランを終えました。始めはウォークの合間に1分走るところからでした。",
+	"walkRunGraduation.nextTitle": "次のステップ",
+	"walkRunGraduation.tenK": "10kmに向けて練習する",
+	"walkRunGraduation.keepRunning": "または習慣を続けましょう。週3回の楽なランで、プランなしでも身につけた力を保てます。",
 } satisfies Messages;

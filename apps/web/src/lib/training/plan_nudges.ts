@@ -10,6 +10,7 @@
  * (TS↔Dart parity pair, equal test counts).
  */
 
+import { weekJudgedByDistance } from './plan_adherence';
 import { adaptiveReplanRemaining } from './plan_adaptive_replan';
 import { replanRemaining, type ReplanWeek } from './plan_replan';
 
@@ -125,7 +126,9 @@ export interface NudgeInputRun {
 /// The re-plan engine's input, built the one way every caller builds it:
 /// planned volume is the week's target or, when unset, its non-rest
 /// distances; actual volume is every run on a local day inside the week; a
-/// week is complete once its last day has ended.
+/// week is complete once its last day has ended. A week
+/// `weekJudgedByDistance` refuses (a walk-run week) plans no volume, so no
+/// drift, ease-off or under-run trend is ever read off its estimates.
 export function buildReplanWeeks(input: {
 	startDate: string;
 	today: string;
@@ -133,8 +136,9 @@ export function buildReplanWeeks(input: {
 	runs: NudgeInputRun[];
 }): ReplanWeek[] {
 	return input.weeks.map((w) => {
-		let planned = w.targetVolumeM ?? 0;
-		if (!(planned > 0)) {
+		const judged = weekJudgedByDistance(w.workouts.map((x) => x.kind));
+		let planned = judged ? (w.targetVolumeM ?? 0) : 0;
+		if (judged && !(planned > 0)) {
 			planned = w.workouts.reduce(
 				(s, x) => s + (x.kind !== 'rest' ? (x.targetDistanceM ?? 0) : 0),
 				0,

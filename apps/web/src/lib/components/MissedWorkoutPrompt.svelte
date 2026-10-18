@@ -112,6 +112,8 @@
 				return m('missedPrompt.recoveryBody');
 			case 'not_long_run':
 				return m('missedPrompt.letGoBody');
+			case 'repeat_week':
+				return m('missedPrompt.repeatWeekBody');
 		}
 	}
 

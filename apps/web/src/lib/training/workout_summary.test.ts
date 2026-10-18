@@ -73,7 +73,8 @@ test('walkRunPattern: week 1 reads as its timed intervals', () => {
 		runS: 60,
 		walkS: 90,
 		cooldownS: 300,
-		totalS: 1710
+		totalS: 1710,
+		runM: null
 	});
 });
 
@@ -88,6 +89,25 @@ test('walkRunPattern: the graduation run has no walk', () => {
 	assert.equal(p?.totalS, 2100);
 });
 
+test('walkRunPattern: the graduation 5K ends on its distance, its walks still timed', () => {
+	const fiveK: WorkoutStructure = {
+		warmup: { duration_s: 300, pace: 'easy' },
+		repeats: { count: 1, distance_m: 5000, pace_sec_per_km: 420, recovery_pace: 'walk' },
+		cooldown: { duration_s: 300, pace: 'easy' }
+	};
+	assert.deepEqual(walkRunPattern(fiveK), {
+		warmupS: 300,
+		count: 1,
+		runS: 0,
+		walkS: null,
+		cooldownS: 300,
+		totalS: 600,
+		runM: 5000
+	});
+	// A distance only ends a single run; repeated distance reps are not a walk-run pattern.
+	assert.equal(walkRunPattern({ ...fiveK, repeats: { ...fiveK.repeats!, count: 2 } }), null);
+});
+
 test('walkRunPattern: matches the generator for every C25K week', () => {
 	const plan = generatePlan({
 		goalEvent: 'distance_5k',
@@ -97,7 +117,10 @@ test('walkRunPattern: matches the generator for every C25K week', () => {
 	});
 	for (const week of plan.weeks) {
 		for (const w of week.workouts.filter((x) => x.kind === 'walk_run')) {
-			assert.equal(walkRunPattern(w.structure)?.totalS, w.target_duration_seconds);
+			const p = walkRunPattern(w.structure);
+			assert.ok(p);
+			if (p.runM != null) assert.equal(p.runM, w.structure?.repeats?.distance_m);
+			else assert.equal(p.totalS, w.target_duration_seconds);
 		}
 	}
 });

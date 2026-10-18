@@ -6603,4 +6603,11 @@ export const en = {
 	"workoutKindShort.rest": "Rest",
 	"planDetail.ariaMissedSuffix": ", missed",
 	"planDetail.ariaTodaySuffix": ", today",
+	"missedPrompt.repeatWeekBody": "Missing a session costs you nothing. Carry on, or if this week felt hard, run it again before moving up. There's no penalty for repeating a week.",
+	"walkRunGraduation.title": "You did it: couch to 5K",
+	"walkRunGraduation.bodyFiveK": "You ran 5K without stopping. You started with one-minute runs between walks.",
+	"walkRunGraduation.bodyFinished": "You finished the plan running the whole way, with no walk breaks. You started with one-minute runs between walks.",
+	"walkRunGraduation.nextTitle": "What next?",
+	"walkRunGraduation.tenK": "Train for a 10K",
+	"walkRunGraduation.keepRunning": "Or keep the habit: three easy runs a week hold on to what you've built, no plan needed.",
 } satisfies Record<string, string>;

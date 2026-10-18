@@ -147,6 +147,33 @@ test('buildReplanWeeks: falls back to the non-rest distances, sums runs by local
 	assert.equal(weeks[1].workouts[0].isPast, false);
 });
 
+test('buildReplanWeeks: a walk-run week plans no distance, so it never reads as over or under', () => {
+	const weeks = buildReplanWeeks({
+		startDate: START,
+		today: '2026-06-15',
+		weeks: [
+			{ weekIndex: 0, phase: 'build', targetVolumeM: 6_150, workouts: [wo('a', '2026-06-01', 'walk_run', 2_050), wo('b', '2026-06-03', 'walk_run', 2_050)] },
+			{ weekIndex: 1, phase: 'build', targetVolumeM: null, workouts: [wo('c', '2026-06-08', 'walk_run', 2_050)] },
+		],
+		runs: [{ date: '2026-06-01', distanceM: 5_000 }, { date: '2026-06-08', distanceM: 5_000 }],
+	});
+	assert.equal(weeks[0].plannedMetres, 0);
+	assert.equal(weeks[0].actualMetres, 5_000);
+	assert.equal(weeks[1].plannedMetres, 0);
+	const n = planNudge({
+		planId: 'p',
+		status: 'active',
+		isTemplate: false,
+		startDate: START,
+		endDate: '2026-08-30',
+		today: '2026-06-15',
+		weeks,
+		runDates: [],
+		dismissed: [],
+	});
+	assert.equal(n, null);
+});
+
 test('planNudge: under plan in 2 of the last 3 weeks with a missed long run proposes the adaptive review', () => {
 	const runs = [
 		{ date: '2026-06-02', distanceM: 8_000 },

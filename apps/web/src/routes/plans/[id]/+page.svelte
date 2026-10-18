@@ -60,6 +60,7 @@
 	import FinishPlanPrompt from '#lib/components/FinishPlanPrompt.svelte';
 	import PlanBreakCard from '#lib/components/PlanBreakCard.svelte';
 	import MissedWorkoutPrompt, { missedPromptFromRows } from '#lib/components/MissedWorkoutPrompt.svelte';
+	import WalkRunGraduationCard, { graduationFromRows } from '#lib/components/WalkRunGraduationCard.svelte';
 	import type { MissedPrompt } from '#lib/training/plan_missed_prompt.ts';
 	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
@@ -1261,6 +1262,11 @@
 	let restartBusy = $state(false);
 	let restartStart = $state('');
 	let restartWalkRun = $derived(isWalkRunPlan(workouts));
+	/// The couch-to-5K completion moment, once the plan's last walk-run
+	/// session is done. Owner-only, like the rest of the plan's coaching.
+	let walkRunGraduation = $derived(
+		plan && isOwner && !plan.is_template ? graduationFromRows(workouts) : null
+	);
 	let restartRaceAhead = $derived(upcomingRaceIso(workouts, today));
 	let restartEnd = $derived(
 		plan && restartStart ? restartedDateIso(plan.end_date, plan.start_date, restartStart) : null
@@ -1759,6 +1765,10 @@
 				</div>
 			</div>
 		</header>
+
+		{#if walkRunGraduation}
+			<WalkRunGraduationCard graduation={walkRunGraduation} />
+		{/if}
 
 		{#if isOwner && !plan.is_template && isPlanFinished(plan, today)}
 			<div class="finish-plan-slot"><FinishPlanPrompt {plan} onfinished={load} /></div>

@@ -34,20 +34,35 @@ const graduation: WorkoutStructure = {
 	repeats: { count: 1, duration_s: 1800, pace_sec_per_km: 420, recovery_duration_s: 90, recovery_pace: 'walk' }
 };
 
+const fiveK: WorkoutStructure = {
+	warmup: { duration_s: 300, pace: 'easy' },
+	repeats: { count: 1, distance_m: 5000, pace_sec_per_km: 420, recovery_pace: 'walk' },
+	cooldown: { duration_s: 300, pace: 'easy' }
+};
+
+const km = (m: number) => `${m / 1000} km`;
+
 test('en: a week-1 walk-run reads as its pattern and its length', async () => {
 	const t = await translatorFor('en');
 	const p = walkRunPattern(week1)!;
 	assert.equal(
-		formatWalkRunPattern(t, p),
+		formatWalkRunPattern(t, p, km),
 		'5 min warm-up, 8 × (1 min run / 90 s walk), 5 min cool-down'
 	);
 	// 300 + 8 × 60 + 7 × 90 + 300 = 1710 s, 28.5 min rounds to 29.
-	assert.equal(formatWalkRunTotal(t, p), 'about 29 min');
+	assert.equal(formatWalkRunTotal(t, p, km), 'about 29 min');
 });
 
 test('en: the graduation week is one continuous run, no walk breaks', async () => {
 	const t = await translatorFor('en');
-	assert.equal(formatWalkRunPattern(t, walkRunPattern(graduation)!), '30 min run');
+	assert.equal(formatWalkRunPattern(t, walkRunPattern(graduation)!, km), '30 min run');
+});
+
+test('en: the graduation 5K reads as a distance, with no minutes for the run', async () => {
+	const t = await translatorFor('en');
+	const p = walkRunPattern(fiveK)!;
+	assert.equal(formatWalkRunPattern(t, p, km), '5 min warm-up, 5 km run, 5 min cool-down');
+	assert.equal(formatWalkRunTotal(t, p, km), '5 km run');
 });
 
 test('en: a Daniels code is named, free text is shown as typed', async () => {
@@ -60,7 +75,7 @@ test('fr + pt-BR: the walk-run wording the translation review settled on', async
 	const fr = await translatorFor('fr');
 	assert.equal(fr('workoutDetail.effortJog'), 'footing');
 	assert.equal(
-		formatWalkRunPattern(fr, walkRunPattern(week1)!),
+		formatWalkRunPattern(fr, walkRunPattern(week1)!, km),
 		"5 min d'échauffement, 8 × (1 min de course / 90 s de marche), 5 min de retour au calme"
 	);
 	const ptBR = await translatorFor('pt-BR');
@@ -70,9 +85,9 @@ test('fr + pt-BR: the walk-run wording the translation review settled on', async
 test('every locale renders the pattern with no unfilled placeholder', async () => {
 	for (const loc of Object.keys(CATALOGUE_LOADERS) as Locale[]) {
 		const t = await translatorFor(loc);
-		for (const s of [week1, graduation]) {
+		for (const s of [week1, graduation, fiveK]) {
 			const p = walkRunPattern(s)!;
-			for (const out of [formatWalkRunPattern(t, p), formatWalkRunTotal(t, p)]) {
+			for (const out of [formatWalkRunPattern(t, p, km), formatWalkRunTotal(t, p, km)]) {
 				assert.doesNotMatch(out, /[{}]/, `${loc}: ${out}`);
 			}
 		}

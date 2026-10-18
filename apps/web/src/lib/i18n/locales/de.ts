@@ -6573,4 +6573,11 @@ export const messages = {
 	"workoutKindShort.rest": "Ruhe",
 	"planDetail.ariaMissedSuffix": ", verpasst",
 	"planDetail.ariaTodaySuffix": ", heute",
+	"missedPrompt.repeatWeekBody": "Eine verpasste Einheit kostet dich nichts. Mach einfach weiter, oder wiederhole die Woche, wenn sie dir schwergefallen ist, bevor du die nächste Stufe angehst. Eine Woche zu wiederholen ist kein Rückschritt.",
+	"walkRunGraduation.title": "Geschafft: vom Sofa zu 5 km",
+	"walkRunGraduation.bodyFiveK": "Du bist 5 km am Stück gelaufen. Angefangen hast du mit einer Minute Laufen zwischen Gehpausen.",
+	"walkRunGraduation.bodyFinished": "Du hast den Plan durchgehend laufend beendet, ganz ohne Gehpausen. Angefangen hast du mit einer Minute Laufen zwischen Gehpausen.",
+	"walkRunGraduation.nextTitle": "Wie geht es weiter?",
+	"walkRunGraduation.tenK": "Für 10 km trainieren",
+	"walkRunGraduation.keepRunning": "Oder bleib einfach dran: Drei lockere Läufe pro Woche halten, was du dir aufgebaut hast, ganz ohne Plan.",
 } satisfies Messages;

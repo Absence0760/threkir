@@ -54,7 +54,8 @@ test('an instantiated starter anchors at the given start date', () => {
 
 test('starterSummary describes C25K as 9 weeks, 3 days a week, 30-45 minute sessions', () => {
 	// The shortest session is week 1 (28.5 min) and the longest week 7
-	// (44 min), each rounded to the nearest 5.
+	// (44 min), each rounded to the nearest 5. The graduation 5K lasts as
+	// long as the runner takes, so it does not stretch the range.
 	assert.deepEqual(starterSummary('c25k'), {
 		weeks: 9,
 		daysPerWeek: 3,

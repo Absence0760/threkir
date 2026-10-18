@@ -145,7 +145,7 @@
 				{#if makeUpHref}
 					<a class="btn btn-primary btn-sm" href={makeUpHref} data-testid="missed-prompt-make-up">
 						{m('missedPrompt.makeUp')}
-						<span class="missed-prompt-rec">{m('missedPrompt.recommended')}</span>
+						<span class="missed-prompt-rec" data-testid="missed-prompt-recommended">{m('missedPrompt.recommended')}</span>
 					</a>
 				{:else}
 					<button
@@ -156,7 +156,7 @@
 						data-testid="missed-prompt-make-up"
 					>
 						{m('missedPrompt.makeUp')}
-						<span class="missed-prompt-rec">{m('missedPrompt.recommended')}</span>
+						<span class="missed-prompt-rec" data-testid="missed-prompt-recommended">{m('missedPrompt.recommended')}</span>
 					</button>
 				{/if}
 			{/if}
@@ -169,7 +169,7 @@
 			>
 				{m('missedPrompt.letGo')}
 				{#if !recommendMakeUp}
-					<span class="missed-prompt-rec">{m('missedPrompt.recommended')}</span>
+					<span class="missed-prompt-rec" data-testid="missed-prompt-recommended">{m('missedPrompt.recommended')}</span>
 				{/if}
 			</button>
 		</div>

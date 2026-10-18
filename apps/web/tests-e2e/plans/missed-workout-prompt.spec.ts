@@ -126,8 +126,11 @@ test.describe('the missed-workout prompt', () => {
 				"Make it up by stretching your next long run from 14.0 km to 16.0 km. You'll see the change before it's saved."
 			);
 			const makeUp = page.getByTestId('missed-prompt-make-up');
-			await expect(makeUp).toContainText('Recommended');
-			await expect(page.getByTestId('missed-prompt-let-go')).not.toContainText('Recommended');
+			// The engine's choice for a build-phase long run is the make-up, and
+			// only that button carries the tag.
+			await expect(prompt.getByTestId('missed-prompt-recommended')).toHaveCount(1);
+			await expect(makeUp.getByTestId('missed-prompt-recommended')).toHaveText('Recommended');
+			await expect(page.getByTestId('missed-prompt-let-go').getByTestId('missed-prompt-recommended')).toHaveCount(0);
 
 			await makeUp.click();
 			const preview = page.getByRole('region', { name: 'Proposed plan changes' });
@@ -196,7 +199,8 @@ test.describe('the missed-workout prompt', () => {
 			);
 			await expect(page.getByTestId('missed-prompt-make-up')).toHaveCount(0);
 			const letGo = page.getByTestId('missed-prompt-let-go');
-			await expect(letGo).toContainText('Recommended');
+			await expect(prompt.getByTestId('missed-prompt-recommended')).toHaveCount(1);
+			await expect(letGo.getByTestId('missed-prompt-recommended')).toHaveText('Recommended');
 			await letGo.click();
 			await expect(page.getByText('Let go. Your plan carries on as it was.')).toBeVisible();
 			await expect(prompt).toHaveCount(0);
@@ -211,7 +215,7 @@ test.describe('the missed-workout prompt', () => {
 		}
 	});
 
-	test('at 300px the prompt wraps inside the plan hero instead of scrolling the page', async ({ browser }) => {
+	test('at 300px the prompt and its buttons stay inside the plan hero', async ({ browser }) => {
 		await plantPlan(LONG_MISS);
 		const context = await browser.newContext({
 			storageState: runner.storageStatePath,
@@ -221,11 +225,21 @@ test.describe('the missed-workout prompt', () => {
 		try {
 			await page.goto('/dashboard');
 			await expect(page.getByTestId('missed-prompt-make-up')).toBeVisible({ timeout: 15_000 });
-			const { scrollWidth, clientWidth } = await page.evaluate(() => ({
-				scrollWidth: document.documentElement.scrollWidth,
-				clientWidth: document.documentElement.clientWidth
-			}));
-			expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+			// Measured on the prompt itself: whether the page as a whole scrolls
+			// also depends on every other card the hero holds.
+			const { right, heroRight, clientWidth } = await page.getByTestId('missed-prompt').evaluate((el) => {
+				const widest = Math.max(
+					el.getBoundingClientRect().right,
+					...[...el.querySelectorAll('*')].map((c) => c.getBoundingClientRect().right)
+				);
+				return {
+					right: widest,
+					heroRight: el.closest('.plan-hero')!.getBoundingClientRect().right,
+					clientWidth: document.documentElement.clientWidth
+				};
+			});
+			expect(right).toBeLessThanOrEqual(heroRight);
+			expect(right).toBeLessThanOrEqual(clientWidth);
 		} finally {
 			await context.close();
 		}
@@ -242,7 +256,9 @@ test.describe('the missed-workout prompt', () => {
 				timeout: 15_000
 			});
 			await expect(page.getByTestId('missed-prompt-make-up')).toHaveCount(0);
-			await expect(page.getByTestId('missed-prompt-let-go')).toContainText('Recommended');
+			await expect(
+				page.getByTestId('missed-prompt-let-go').getByTestId('missed-prompt-recommended')
+			).toHaveText('Recommended');
 		} finally {
 			await page.context().close();
 		}

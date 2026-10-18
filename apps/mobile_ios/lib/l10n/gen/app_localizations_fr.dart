@@ -4677,6 +4677,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String get profileRunsEmptyOther => 'Aucune course publique pour le moment.';
 
   @override
+  String profilePrivateRunsNote(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count de vos courses ne sont pas publiques, elles n\'apparaissent donc pas ici.',
+      one:
+          '1 de vos courses n\'est pas publique, elle n\'apparaît donc pas ici.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get profilePrivateRunsNoteLink => 'Tout voir dans l\'historique';
+
+  @override
   String get profileFollowersEmpty => 'Aucun abonné pour le moment.';
 
   @override

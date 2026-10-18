@@ -1310,6 +1310,8 @@
   "profileFollow": "Seguir",
   "profileRunsEmptySelf": "Aún no has compartido ninguna carrera.",
   "profileRunsEmptyOther": "Aún no hay carreras públicas.",
+  "profilePrivateRunsNote": "{count, plural, one{1 de tus carreras no es pública, así que no aparece aquí.} other{{count} de tus carreras no son públicas, así que no aparecen aquí.}}",
+  "profilePrivateRunsNoteLink": "Ver todas en el historial",
   "profileFollowersEmpty": "Aún no hay seguidores.",
   "profileFollowingEmpty": "Aún no sigues a nadie.",
   "profileLoadMore": "Cargar {count} más",

@@ -3600,6 +3600,36 @@ class ApiClient {
     return data.map<RunRow>((r) => RunRow.fromJson(r)).toList();
   }
 
+  /// Head counts for the profile header, so it can show a total rather than
+  /// the length of the capped page [fetchPublicRunsByUser] returns.
+  ///
+  /// `publicCount` reads the same `public_runs` view the Runs tab lists, so a
+  /// private profile or a followers-only audience is honoured exactly as the
+  /// list honours it; for the owner that is their `is_public = true` runs.
+  /// `privateCount` is the owner's remaining runs (`is_public` false or null)
+  /// and is null for any other viewer. Mirrors web `fetchProfileRunCounts`.
+  Future<({int publicCount, int? privateCount})> fetchProfileRunCounts(
+    String userId, {
+    required bool isSelf,
+  }) async {
+    final counts = await Future.wait<int>([
+      _client
+          .from('public_runs')
+          .count(CountOption.exact)
+          .eq(RunRow.colUserId, userId),
+      if (isSelf)
+        _client
+            .from(RunRow.table)
+            .count(CountOption.exact)
+            .eq(RunRow.colUserId, userId)
+            .or('${RunRow.colIsPublic}.is.null,${RunRow.colIsPublic}.eq.false'),
+    ]);
+    return (
+      publicCount: counts[0],
+      privateCount: isSelf ? counts[1] : null,
+    );
+  }
+
   /// Public profile lookup by user ID. Returns null when the row
   /// doesn't exist or RLS hides it. Returns only the columns that are
   /// column-level granted to `authenticated`/`anon` on `user_profiles`:

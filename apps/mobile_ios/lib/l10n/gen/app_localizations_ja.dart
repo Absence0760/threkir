@@ -4392,6 +4392,19 @@ class AppLocalizationsJa extends AppLocalizations {
   String get profileRunsEmptyOther => '公開ランはまだありません。';
 
   @override
+  String profilePrivateRunsNote(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'あなたのランのうち$count件は公開されていないため、ここには表示されません。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get profilePrivateRunsNoteLink => '履歴ですべて表示';
+
+  @override
   String get profileFollowersEmpty => 'フォロワーはまだいません。';
 
   @override

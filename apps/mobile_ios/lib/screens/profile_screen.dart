@@ -6,6 +6,8 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../auth_error.dart';
 import '../entity_link.dart';
+import '../help_destination.dart';
+import '../help_guides.dart' show HelpDestination;
 import '../l10n/gen/app_localizations.dart';
 import '../notification_groups.dart';
 import '../preferences.dart';
@@ -41,8 +43,9 @@ const int _kFollowsPageSize = 20;
 /// was inserted ahead of it).
 enum ProfileTab { runs, badges, followers, following, notifications }
 
-/// How many public runs the Runs tab reads. The header's run count is the
-/// length of that page, so a full page is shown as "30+" rather than as a
+/// How many public runs the Runs tab reads. The header's run count comes from
+/// `fetchProfileRunCounts`; only when that call fails does it fall back to the
+/// length of this page, so a full page is then shown as "30+" rather than as a
 /// total it is not.
 const int _kProfileRunsLimit = 30;
 
@@ -92,6 +95,9 @@ class _ProfileScreenState extends State<ProfileScreen>
   bool _runsLoading = true;
   Object? _runsError;
   List<RunRow> _runs = const [];
+  // Null until the head counts land, or when they fail: the header then falls
+  // back to the loaded page's length.
+  ({int publicCount, int? privateCount})? _runCounts;
 
   bool _followersLoading = true;
   Object? _followersError;
@@ -168,6 +174,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     await Future.wait([
       _loadSummary(),
       _loadRuns(),
+      _loadRunCounts(),
       _loadFollowers(),
       _loadFollowing(),
       _loadBadges(),
@@ -228,6 +235,21 @@ class _ProfileScreenState extends State<ProfileScreen>
         _runsError = e;
         _runsLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadRunCounts() async {
+    try {
+      final counts = await widget.api.fetchProfileRunCounts(
+        widget.userId,
+        isSelf: _isSelf,
+      );
+      if (!mounted) return;
+      setState(() => _runCounts = counts);
+    } catch (e) {
+      debugPrint('profile run counts failed: $e');
+      if (!mounted) return;
+      setState(() => _runCounts = null);
     }
   }
 
@@ -425,6 +447,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         if (summary.profilePrivate && mounted) {
           setState(() {
             _runs = const [];
+            _runCounts = null;
             _followers = const [];
             _following = const [];
           });
@@ -756,11 +779,14 @@ class _ProfileScreenState extends State<ProfileScreen>
     final l10n = AppLocalizations.of(context);
     final s = _summary!;
     final signedIn = widget.api.userId != null;
-    final runsLabel = _runsLoading || _runsError != null
-        ? '–'
-        : _runs.length >= _kProfileRunsLimit
-            ? '$_kProfileRunsLimit+'
-            : '${_runs.length}';
+    final counts = _runCounts;
+    final runsLabel = counts != null
+        ? '${counts.publicCount}'
+        : _runsLoading || _runsError != null
+            ? '–'
+            : _runs.length >= _kProfileRunsLimit
+                ? '$_kProfileRunsLimit+'
+                : '${_runs.length}';
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Column(
@@ -927,7 +953,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           loading: _runsLoading,
           error: _runsError,
           onRetry: _loadRuns,
-          child: () => _buildRunsTab(theme),
+          child: () => _buildRunsTab(theme, l10n),
         ),
         ProfileTab.badges => _tabScope(
           loading: _badgesLoading,
@@ -985,13 +1011,70 @@ class _ProfileScreenState extends State<ProfileScreen>
     return child();
   }
 
-  Widget _buildRunsTab(ThemeData theme) {
+  Widget _buildRunsTab(ThemeData theme, AppLocalizations l10n) {
+    final list = _buildRunsList(l10n);
+    final privateCount = _isSelf ? _runCounts?.privateCount ?? 0 : 0;
+    if (privateCount == 0) return list;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _privateRunsNote(theme, l10n, privateCount),
+        Expanded(child: list),
+      ],
+    );
+  }
+
+  /// Owner-only: the profile lists public runs alone, so say how many of
+  /// theirs are not here and hand them to the full run list. Mirrors the web
+  /// profile's note under the tabs.
+  Widget _privateRunsNote(
+    ThemeData theme,
+    AppLocalizations l10n,
+    int privateCount,
+  ) {
+    final muted = theme.colorScheme.onSurfaceVariant;
+    return Padding(
+      key: const ValueKey('profile-private-runs-note'),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(Icons.lock_outline, size: 18, color: muted),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.profilePrivateRunsNote(privateCount),
+                  style: theme.textTheme.bodyMedium?.copyWith(color: muted),
+                ),
+                TextButton(
+                  key: const ValueKey('profile-private-runs-link'),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(48, 48),
+                    alignment: Alignment.centerLeft,
+                  ),
+                  onPressed: () => openHelpDestination(HelpDestination.runs),
+                  child: Text(l10n.profilePrivateRunsNoteLink),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRunsList(AppLocalizations l10n) {
     if (_runs.isEmpty) {
       return EmptyState(
         icon: Icons.directions_run,
-        title: _isSelf
-            ? AppLocalizations.of(context).profileRunsEmptySelf
-            : AppLocalizations.of(context).profileRunsEmptyOther,
+        title: _isSelf ? l10n.profileRunsEmptySelf : l10n.profileRunsEmptyOther,
       );
     }
     return RefreshIndicator(

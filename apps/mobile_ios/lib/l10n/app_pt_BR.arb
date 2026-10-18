@@ -1310,6 +1310,8 @@
   "profileFollow": "Seguir",
   "profileRunsEmptySelf": "Você ainda não compartilhou nenhuma corrida.",
   "profileRunsEmptyOther": "Nenhuma corrida pública ainda.",
+  "profilePrivateRunsNote": "{count, plural, one{1 das suas corridas não é pública, por isso não aparece aqui.} other{{count} das suas corridas não são públicas, por isso não aparecem aqui.}}",
+  "profilePrivateRunsNoteLink": "Ver todas no histórico",
   "profileFollowersEmpty": "Nenhum seguidor ainda.",
   "profileFollowingEmpty": "Você ainda não segue ninguém.",
   "profileLoadMore": "Carregar mais {count}",

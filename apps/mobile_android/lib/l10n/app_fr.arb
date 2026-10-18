@@ -5087,5 +5087,13 @@
   "planDetailRestartDone": "Plan recommencé. Voici votre nouvelle copie.",
   "dashboardPlanPausedBody": "En pause. Reprenez-le pour continuer ; les semaines manquées sont décalées.",
   "phoneSurfaceVibrationCues": "Signaux par vibration",
-  "phoneSurfaceVibrationCuesSubtitle": "Vibre à chaque changement d'étape de la séance, à la fin de la séance et lors des alertes d'allure, même écran éteint."
+  "phoneSurfaceVibrationCuesSubtitle": "Vibre à chaque changement d'étape de la séance, à la fin de la séance et lors des alertes d'allure, même écran éteint.",
+  "phoneSurfaceWidgetHeader": "Aujourd'hui",
+  "phoneSurfaceWidgetNoPlan": "Aucun plan d'entraînement",
+  "phoneSurfaceWidgetNoPlanAction": "Choisir un plan",
+  "phoneSurfaceWidgetNothingScheduled": "Rien de prévu",
+  "phoneSurfaceWidgetStale": "Ouvrez Threkir pour actualiser",
+  "phoneSurfaceWidgetRestDay": "Jour de repos",
+  "phoneSurfaceWidgetDone": "Fait",
+  "phoneSurfaceWidgetSkipped": "Sauté"
 }

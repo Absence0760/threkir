@@ -23610,5 +23610,37 @@
   "phoneSurfaceVibrationCuesSubtitle": "Buzz when a workout step changes, when a workout ends and with pace alerts, even with the screen off.",
   "@phoneSurfaceVibrationCuesSubtitle": {
     "description": "Subtitle of the vibration-cues toggle"
+  },
+  "phoneSurfaceWidgetHeader": "Today",
+  "@phoneSurfaceWidgetHeader": {
+    "description": "Home-screen widget header above today's planned session"
+  },
+  "phoneSurfaceWidgetNoPlan": "No training plan",
+  "@phoneSurfaceWidgetNoPlan": {
+    "description": "Home-screen widget: the runner has no active training plan"
+  },
+  "phoneSurfaceWidgetNoPlanAction": "Pick a plan",
+  "@phoneSurfaceWidgetNoPlanAction": {
+    "description": "Home-screen widget: tap prompt that opens the plan list when there is no plan"
+  },
+  "phoneSurfaceWidgetNothingScheduled": "Nothing scheduled",
+  "@phoneSurfaceWidgetNothingScheduled": {
+    "description": "Home-screen widget: the active plan has nothing on today's date"
+  },
+  "phoneSurfaceWidgetStale": "Open Threkir to update",
+  "@phoneSurfaceWidgetStale": {
+    "description": "Home-screen widget: the saved snapshot no longer covers today; opening the app refreshes it"
+  },
+  "phoneSurfaceWidgetRestDay": "Rest day",
+  "@phoneSurfaceWidgetRestDay": {
+    "description": "Home-screen widget: today is a planned rest day"
+  },
+  "phoneSurfaceWidgetDone": "Done",
+  "@phoneSurfaceWidgetDone": {
+    "description": "Home-screen widget: today's planned session is done"
+  },
+  "phoneSurfaceWidgetSkipped": "Skipped",
+  "@phoneSurfaceWidgetSkipped": {
+    "description": "Home-screen widget: the runner skipped today's planned session"
   }
 }

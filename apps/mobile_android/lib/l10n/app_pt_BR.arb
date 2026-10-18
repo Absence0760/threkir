@@ -5087,5 +5087,13 @@
   "planDetailRestartDone": "Plano recomeçado. Esta é a sua nova cópia.",
   "dashboardPlanPausedBody": "Pausado. Retome para continuar; as semanas que você perdeu passam para frente.",
   "phoneSurfaceVibrationCues": "Alertas por vibração",
-  "phoneSurfaceVibrationCuesSubtitle": "Vibra quando a etapa do treino muda, quando o treino termina e com os alertas de ritmo, mesmo com a tela apagada."
+  "phoneSurfaceVibrationCuesSubtitle": "Vibra quando a etapa do treino muda, quando o treino termina e com os alertas de ritmo, mesmo com a tela apagada.",
+  "phoneSurfaceWidgetHeader": "Hoje",
+  "phoneSurfaceWidgetNoPlan": "Sem plano de treino",
+  "phoneSurfaceWidgetNoPlanAction": "Escolha um plano",
+  "phoneSurfaceWidgetNothingScheduled": "Nada agendado",
+  "phoneSurfaceWidgetStale": "Abra o Threkir para atualizar",
+  "phoneSurfaceWidgetRestDay": "Dia de descanso",
+  "phoneSurfaceWidgetDone": "Feito",
+  "phoneSurfaceWidgetSkipped": "Pulado"
 }

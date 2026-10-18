@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/entity_link.dart';
+import '../lib/push_target.dart';
 
 void main() {
   const id = '0b6f2f4e-8c1d-4a7e-9f3b-2d5c6a7b8c9d';
@@ -60,6 +61,39 @@ void main() {
     });
   });
 
+  group('parsePlanLink', () {
+    const wo = '1c7a3f5e-9d2e-4b8f-8a4c-3e6d7b8c9d0e';
+    PushTarget? parse(String s) => parsePlanLink(Uri.parse(s));
+
+    test('the three links the home-screen widget opens', () {
+      expect(parse('com.threkir.app://plans'),
+          const PushTarget(PushTargetKind.plans));
+      expect(parse('com.threkir.app://plans/$id'),
+          const PushTarget(PushTargetKind.plan, id));
+      expect(parse('com.threkir.app://plans/$id/workouts/$wo'),
+          const PushTarget(PushTargetKind.planWorkout, id, wo));
+    });
+
+    test('the same paths on the web host', () {
+      expect(parse('https://threkir.com/plans/$id/workouts/$wo'),
+          const PushTarget(PushTargetKind.planWorkout, id, wo));
+      expect(parse('https://preview.threkir.com/plans/$id/'),
+          const PushTarget(PushTargetKind.plan, id));
+    });
+
+    test('anything not under /plans is not a plan link', () {
+      expect(parse('com.threkir.app://runs/$id'), isNull);
+      expect(parse('https://example.com/plans/$id'), isNull);
+      expect(parse('threkir://plans/$id'), isNull);
+      expect(parse('com.threkir.app://login-callback'), isNull);
+    });
+
+    test('a run link is not taken for a plan', () {
+      expect(parseEntityLink(Uri.parse('com.threkir.app://plans/$id')),
+          isNull);
+    });
+  });
+
   group('EntityLinkService', () {
     tearDown(() => pendingEntityLink.value = null);
 
@@ -99,6 +133,55 @@ void main() {
       await links.close();
     });
 
+    test('a stream-first cold start drops the initial echo', () async {
+      final links = StreamController<Uri>();
+      final uri = Uri.parse('com.threkir.app://runs/$id');
+      final initial = Completer<Uri?>();
+      final service = EntityLinkService(
+        links: links.stream,
+        initialLink: () => initial.future,
+      )..start();
+      links.add(uri);
+      await Future<void>.delayed(Duration.zero);
+      expect(pendingEntityLink.value, const EntityLink(EntityLinkKind.run, id));
+      pendingEntityLink.value = null;
+      initial.complete(uri);
+      await service.processInitial();
+      expect(pendingEntityLink.value, isNull);
+      await service.dispose();
+      await links.close();
+    });
+
+    test('the same link tapped again later opens again', () async {
+      final links = StreamController<Uri>();
+      final uri = Uri.parse('com.threkir.app://runs/$id');
+      final service = EntityLinkService(
+        links: links.stream,
+        initialLink: () async => null,
+      )..start();
+      await service.processInitial();
+      for (var i = 0; i < 2; i++) {
+        links.add(uri);
+        await Future<void>.delayed(Duration.zero);
+        expect(pendingEntityLink.value,
+            const EntityLink(EntityLinkKind.run, id));
+        pendingEntityLink.value = null;
+      }
+      await service.dispose();
+      await links.close();
+    });
+
+    test('a plan link goes to onPlanLink, not the pending entity link', () {
+      final got = <PushTarget>[];
+      EntityLinkService(
+        links: const Stream<Uri>.empty(),
+        initialLink: () async => null,
+        onPlanLink: got.add,
+      ).handle(Uri.parse('com.threkir.app://plans/$id'));
+      expect(got, [const PushTarget(PushTargetKind.plan, id)]);
+      expect(pendingEntityLink.value, isNull);
+    });
+
     test('a failing initial-link read does not throw', () async {
       final service = EntityLinkService(
         links: const Stream<Uri>.empty(),
@@ -119,6 +202,8 @@ void main() {
           contains('android:scheme="com.threkir.app" android:host="runs"'));
       expect(body,
           contains('android:scheme="com.threkir.app" android:host="routes"'));
+      expect(body,
+          contains('android:scheme="com.threkir.app" android:host="plans"'));
       expect(
         body,
         contains('android:scheme="https" android:host="threkir.com" '

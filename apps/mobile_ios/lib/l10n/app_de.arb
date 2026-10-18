@@ -5087,5 +5087,13 @@
   "planDetailRestartDone": "Plan neu gestartet. Das ist deine neue Kopie.",
   "dashboardPlanPausedBody": "Pausiert. Setze ihn fort, um weiterzumachen; die verpassten Wochen rücken nach hinten.",
   "phoneSurfaceVibrationCues": "Vibrationssignale",
-  "phoneSurfaceVibrationCuesSubtitle": "Vibriert bei jedem Wechsel des Trainingsabschnitts, am Ende des Trainings und bei Pace-Warnungen, auch bei ausgeschaltetem Bildschirm."
+  "phoneSurfaceVibrationCuesSubtitle": "Vibriert bei jedem Wechsel des Trainingsabschnitts, am Ende des Trainings und bei Pace-Warnungen, auch bei ausgeschaltetem Bildschirm.",
+  "phoneSurfaceWidgetHeader": "Heute",
+  "phoneSurfaceWidgetNoPlan": "Kein Trainingsplan",
+  "phoneSurfaceWidgetNoPlanAction": "Plan auswählen",
+  "phoneSurfaceWidgetNothingScheduled": "Nichts geplant",
+  "phoneSurfaceWidgetStale": "Öffne Threkir zum Aktualisieren",
+  "phoneSurfaceWidgetRestDay": "Ruhetag",
+  "phoneSurfaceWidgetDone": "Erledigt",
+  "phoneSurfaceWidgetSkipped": "Ausgelassen"
 }

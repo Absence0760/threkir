@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -18064,4 +18063,28 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get phoneSurfaceVibrationCuesSubtitle =>
       'Vibra en cada cambio de fase del entrenamiento, al terminarlo y con las alertas de ritmo, incluso con la pantalla apagada.';
+
+  @override
+  String get phoneSurfaceWidgetHeader => 'Hoy';
+
+  @override
+  String get phoneSurfaceWidgetNoPlan => 'Sin plan de entrenamiento';
+
+  @override
+  String get phoneSurfaceWidgetNoPlanAction => 'Elige un plan';
+
+  @override
+  String get phoneSurfaceWidgetNothingScheduled => 'Nada programado';
+
+  @override
+  String get phoneSurfaceWidgetStale => 'Abre Threkir para actualizar';
+
+  @override
+  String get phoneSurfaceWidgetRestDay => 'Día de descanso';
+
+  @override
+  String get phoneSurfaceWidgetDone => 'Hecho';
+
+  @override
+  String get phoneSurfaceWidgetSkipped => 'Omitido';
 }

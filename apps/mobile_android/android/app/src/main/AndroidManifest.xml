@@ -212,6 +212,17 @@
                 <data android:scheme="com.threkir.app" android:host="runs" />
                 <data android:scheme="com.threkir.app" android:host="routes" />
             </intent-filter>
+            <!-- Plan links (lib/entity_link.dart parsePlanLink): the
+                 home-screen widget's `com.threkir.app://plans`,
+                 `plans/<id>` and `plans/<id>/workouts/<id>`. App scheme
+                 only; the widget's taps target this activity explicitly,
+                 and the filter lets any other in-app surface use them. -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.threkir.app" android:host="plans" />
+            </intent-filter>
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -335,6 +346,26 @@
         <receiver
             android:name=".RunActionReceiver"
             android:exported="false" />
+        <!-- Today's-workout home-screen widget (TodayWorkoutWidgetProvider).
+             Exported because the launcher delivers APPWIDGET_UPDATE; the
+             clock broadcasts are system-only, and DATE_CHANGED is not
+             delivered to a manifest receiver on Android 8+, which is why the
+             provider also arms its own midnight alarm. -->
+        <receiver
+            android:name=".TodayWorkoutWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_today_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/today_workout_widget_info" />
+        </receiver>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

@@ -159,4 +159,42 @@ void main() {
     expect(const PushTarget(PushTargetKind.run, 'a').hashCode,
         const PushTarget(PushTargetKind.run, 'a').hashCode);
   });
+
+  group('plan paths', () {
+    const plan = '0b6f2f4e-8c1d-4a7e-9f3b-2d5c6a7b8c9d';
+    const wo = '1c7a3f5e-9d2e-4b8f-8a4c-3e6d7b8c9d0e';
+
+    test('a plan push opens that plan', () {
+      expect(pushTargetFromUrl('$_base/plans/$plan'),
+          const PushTarget(PushTargetKind.plan, plan));
+    });
+
+    test('a workout path opens that workout of its plan', () {
+      expect(pushTargetFromUrl('$_base/plans/$plan/workouts/$wo'),
+          const PushTarget(PushTargetKind.planWorkout, plan, wo));
+    });
+
+    test('an upper-case id is normalised', () {
+      expect(pushTargetFromUrl('$_base/plans/${plan.toUpperCase()}'),
+          const PushTarget(PushTargetKind.plan, plan));
+    });
+
+    test('other plan pages degrade to the list, or to the plan they name',
+        () {
+      for (final path in ['plans/new', 'plans/season', 'plans/library/x']) {
+        expect(pushTargetFromUrl('$_base/$path'),
+            const PushTarget(PushTargetKind.plans),
+            reason: path);
+      }
+      expect(pushTargetFromUrl('$_base/plans/$plan/workouts'),
+          const PushTarget(PushTargetKind.plan, plan));
+      expect(pushTargetFromUrl('$_base/plans/$plan/workouts/not-a-uuid'),
+          const PushTarget(PushTargetKind.plan, plan));
+    });
+
+    test('the workout id is part of equality', () {
+      expect(const PushTarget(PushTargetKind.planWorkout, plan, wo),
+          isNot(const PushTarget(PushTargetKind.planWorkout, plan, plan)));
+    });
+  });
 }

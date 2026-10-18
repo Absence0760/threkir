@@ -18064,6 +18064,30 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get phoneSurfaceVibrationCuesSubtitle =>
       'Vibra quando muda a etapa do treino, quando o treino termina e com os alertas de ritmo, mesmo com o ecrã desligado.';
+
+  @override
+  String get phoneSurfaceWidgetHeader => 'Hoje';
+
+  @override
+  String get phoneSurfaceWidgetNoPlan => 'Sem plano de treino';
+
+  @override
+  String get phoneSurfaceWidgetNoPlanAction => 'Escolher um plano';
+
+  @override
+  String get phoneSurfaceWidgetNothingScheduled => 'Nada agendado';
+
+  @override
+  String get phoneSurfaceWidgetStale => 'Abra o Threkir para atualizar';
+
+  @override
+  String get phoneSurfaceWidgetRestDay => 'Dia de descanso';
+
+  @override
+  String get phoneSurfaceWidgetDone => 'Feito';
+
+  @override
+  String get phoneSurfaceWidgetSkipped => 'Saltado';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -36113,4 +36137,28 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get phoneSurfaceVibrationCuesSubtitle =>
       'Vibra quando a etapa do treino muda, quando o treino termina e com os alertas de ritmo, mesmo com a tela apagada.';
+
+  @override
+  String get phoneSurfaceWidgetHeader => 'Hoje';
+
+  @override
+  String get phoneSurfaceWidgetNoPlan => 'Sem plano de treino';
+
+  @override
+  String get phoneSurfaceWidgetNoPlanAction => 'Escolha um plano';
+
+  @override
+  String get phoneSurfaceWidgetNothingScheduled => 'Nada agendado';
+
+  @override
+  String get phoneSurfaceWidgetStale => 'Abra o Threkir para atualizar';
+
+  @override
+  String get phoneSurfaceWidgetRestDay => 'Dia de descanso';
+
+  @override
+  String get phoneSurfaceWidgetDone => 'Feito';
+
+  @override
+  String get phoneSurfaceWidgetSkipped => 'Pulado';
 }

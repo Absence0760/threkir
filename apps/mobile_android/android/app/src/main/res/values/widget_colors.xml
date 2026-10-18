@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The today's-workout widget, light. The app's own palette
+     (packages/ui_kit AppTheme): snow surface, ink text, coralDeep accent. -->
+<resources>
+    <color name="widget_today_surface">#FFFAF9FB</color>
+    <color name="widget_today_on_surface">#FF1A1722</color>
+    <color name="widget_today_muted">#FF504B5B</color>
+    <color name="widget_today_accent">#FFC24E24</color>
+    <color name="widget_today_badge_bg">#FFECE9F1</color>
+</resources>

@@ -5087,5 +5087,13 @@
   "planDetailRestartDone": "プランをやり直しました。これが新しいコピーです。",
   "dashboardPlanPausedBody": "一時停止中です。再開すると続きから始まり、休んだ週は後ろにずれます。",
   "phoneSurfaceVibrationCues": "バイブレーション通知",
-  "phoneSurfaceVibrationCuesSubtitle": "ワークアウトのステップが切り替わったとき、ワークアウトの終了時、ペースアラートのときに、画面がオフでも振動します。"
+  "phoneSurfaceVibrationCuesSubtitle": "ワークアウトのステップが切り替わったとき、ワークアウトの終了時、ペースアラートのときに、画面がオフでも振動します。",
+  "phoneSurfaceWidgetHeader": "今日",
+  "phoneSurfaceWidgetNoPlan": "トレーニングプランなし",
+  "phoneSurfaceWidgetNoPlanAction": "プランを選ぶ",
+  "phoneSurfaceWidgetNothingScheduled": "予定なし",
+  "phoneSurfaceWidgetStale": "Threkirを開いて更新",
+  "phoneSurfaceWidgetRestDay": "休養日",
+  "phoneSurfaceWidgetDone": "完了",
+  "phoneSurfaceWidgetSkipped": "スキップ"
 }

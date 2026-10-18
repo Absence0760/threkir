@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -17211,4 +17210,28 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get phoneSurfaceVibrationCuesSubtitle =>
       'ワークアウトのステップが切り替わったとき、ワークアウトの終了時、ペースアラートのときに、画面がオフでも振動します。';
+
+  @override
+  String get phoneSurfaceWidgetHeader => '今日';
+
+  @override
+  String get phoneSurfaceWidgetNoPlan => 'トレーニングプランなし';
+
+  @override
+  String get phoneSurfaceWidgetNoPlanAction => 'プランを選ぶ';
+
+  @override
+  String get phoneSurfaceWidgetNothingScheduled => '予定なし';
+
+  @override
+  String get phoneSurfaceWidgetStale => 'Threkirを開いて更新';
+
+  @override
+  String get phoneSurfaceWidgetRestDay => '休養日';
+
+  @override
+  String get phoneSurfaceWidgetDone => '完了';
+
+  @override
+  String get phoneSurfaceWidgetSkipped => 'スキップ';
 }

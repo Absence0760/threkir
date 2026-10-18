@@ -165,7 +165,7 @@ import {
 	DEFAULT_RELINK_WINDOW_DAYS,
 	type RelinkCandidateRun
 } from '../training/relink_candidates';
-import { formatISO, parseISO, type GeneratedPlan, type GoalEvent, type PlanPhase } from '../training/training';
+import type { GeneratedPlan, GoalEvent, PlanPhase } from '../training/training';
 import type { RacePriority } from '../training/plan_races';
 import { parseRosterRecentWorkouts, type RosterRecentWorkout } from '../training/coach_load';
 import { auth } from '../stores/auth.svelte';
@@ -6144,6 +6144,9 @@ export async function fetchPlanRecapSources(
 ): Promise<{ runs: PlanRecapRun[]; records: PlanRecapRecord[] }> {
 	const userId = auth.user?.id;
 	if (!userId) return { runs: [], records: [] };
+	// Imported here, not at the top: a static import pulls the whole plan
+	// generator into this module's chunk, which nearly every route loads.
+	const { formatISO, parseISO } = await import('../training/training');
 	const [runs, recordsRes] = await Promise.all([
 		fetchRuns({
 			columns: ['id', 'started_at', 'distance_m', 'duration_s', 'activity_type', 'is_dnf'] as const,

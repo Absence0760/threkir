@@ -39,6 +39,7 @@ import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { isValidUuid } from '../_shared/input_validation.ts';
 import { checkRateLimit, ipBucketKey } from '../_shared/rate_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { withCors } from '../_shared/cors.ts';
 import { validateReturnUrl } from '../events-connect-onboard/lib.ts';
 import {
   buildDonationSessionParams,
@@ -78,7 +79,7 @@ interface DonationBody {
   cancel_url?: string;
 }
 
-Deno.serve(withSentry('donations-checkout', async (req: Request) => {
+Deno.serve(withCors(withSentry('donations-checkout', async (req: Request) => {
   if (req.method !== 'POST') {
     return Response.json({ error: 'method_not_allowed' }, { status: 405 });
   }
@@ -347,4 +348,4 @@ Deno.serve(withSentry('donations-checkout', async (req: Request) => {
   }
 
   return Response.json({ checkout_url: session.url, donation_id: donationId });
-}));
+})));

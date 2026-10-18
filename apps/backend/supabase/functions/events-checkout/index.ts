@@ -45,6 +45,7 @@ import { readPlatformFeeBps } from '../_shared/platform_fees.ts';
 import { isValidTimestamptz, isValidUuid } from '../_shared/input_validation.ts';
 import { checkRateLimit } from '../_shared/rate_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { withCors } from '../_shared/cors.ts';
 import {
   buildCheckoutSessionParams,
   checkoutExpiresAtUnix,
@@ -81,7 +82,7 @@ interface CheckoutBody {
   cancel_url?: string;
 }
 
-Deno.serve(withSentry('events-checkout', async (req: Request) => {
+Deno.serve(withCors(withSentry('events-checkout', async (req: Request) => {
   if (req.method !== 'POST') {
     return Response.json({ error: 'method_not_allowed' }, { status: 405 });
   }
@@ -390,4 +391,4 @@ Deno.serve(withSentry('events-checkout', async (req: Request) => {
   }
 
   return Response.json({ checkout_url: session.url, order_id: orderId });
-}));
+})));

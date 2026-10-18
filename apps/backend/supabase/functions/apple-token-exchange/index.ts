@@ -17,6 +17,7 @@ import type { Database } from '../_shared/database.ts';
 import { checkRateLimit } from '../_shared/rate_limit.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { withCors } from '../_shared/cors.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
 import {
   appleClientsFromEnv,
@@ -26,7 +27,7 @@ import {
 } from '../_shared/apple_auth.ts';
 import { appleSubjectOf, clientIdFor, parseAppleTokenRequest } from './lib.ts';
 
-Deno.serve(withSentry('apple-token-exchange', async (req: Request) => {
+Deno.serve(withCors(withSentry('apple-token-exchange', async (req: Request) => {
   if (req.method !== 'POST') {
     return Response.json({ error: 'method_not_allowed' }, { status: 405 });
   }
@@ -93,4 +94,4 @@ Deno.serve(withSentry('apple-token-exchange', async (req: Request) => {
     return Response.json({ error: 'store_failed' }, { status: 500 });
   }
   return new Response(null, { status: 204 });
-}));
+})));

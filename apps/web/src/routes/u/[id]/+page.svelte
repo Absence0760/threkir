@@ -902,7 +902,7 @@
 						{runCounts.privateCount === 1
 							? m('profile.privateRunsNoteOne')
 							: m('profile.privateRunsNoteMany', { n: runCounts.privateCount })}
-						<a href="/history">{m('profile.privateRunsNoteLink')}</a>
+						<a href="/runs?view=list">{m('profile.privateRunsNoteLink')}</a>
 					</span>
 				</p>
 			{/if}
@@ -919,7 +919,7 @@
 							{m('profile.runsEmptySelfText')}
 						</p>
 						<div class="empty-actions">
-							<a href="/history" class="btn btn-primary">
+							<a href="/runs" class="btn btn-primary">
 								<span class="material-symbols" aria-hidden="true">history</span>
 								{m('profile.openRunHistory')}
 							</a>

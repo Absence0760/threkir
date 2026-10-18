@@ -34,3 +34,14 @@ export function explicitModalityChoice(settings: LoadedSettings, modality: Modal
 	const raw = settings.universal[MODALITY_VISIBILITY_KEYS[modality]];
 	return typeof raw === 'boolean' ? raw : null;
 }
+
+/// Whether anything but runs has been logged, from the two presence reads.
+/// One known `true` answers it while the other read is still out; a `false`
+/// needs both. History is shown and kept only on `true`: for a runner with
+/// runs alone it repeats /runs (decisions § 2117). Mobile reaches the same
+/// end by showing its run list inline under History.
+export function nonRunDataPresence(gym: boolean | null, nutrition: boolean | null): boolean | null {
+	if (gym === true || nutrition === true) return true;
+	if (gym === null || nutrition === null) return null;
+	return false;
+}

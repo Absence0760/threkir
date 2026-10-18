@@ -5,6 +5,7 @@ import {
 	MODALITY_VISIBILITY_KEYS,
 	explicitModalityChoice,
 	modalityShown,
+	nonRunDataPresence,
 } from './modality_visibility';
 
 test('unset: hidden for a runner with no data, shown once there is some', () => {
@@ -36,4 +37,18 @@ test('an explicit choice is read from the universal bag only, and only as a bool
 	assert.equal(read({ show_gym: 0 }), null);
 	assert.equal(read({}, { show_gym: true }), null, 'a device bag cannot carry a universal key');
 	assert.equal(explicitModalityChoice({ universal: { show_nutrition: true }, device: {} }, 'nutrition'), true);
+});
+
+test('non-run data: one lift or meal is enough, even before the other read lands', () => {
+	assert.equal(nonRunDataPresence(true, null), true);
+	assert.equal(nonRunDataPresence(null, true), true);
+	assert.equal(nonRunDataPresence(true, false), true);
+	assert.equal(nonRunDataPresence(false, true), true);
+});
+
+test('non-run data: "none" needs both reads, so a pending one is never read as no', () => {
+	assert.equal(nonRunDataPresence(false, false), false);
+	assert.equal(nonRunDataPresence(false, null), null);
+	assert.equal(nonRunDataPresence(null, false), null);
+	assert.equal(nonRunDataPresence(null, null), null);
 });

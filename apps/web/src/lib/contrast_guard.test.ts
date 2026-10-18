@@ -1907,7 +1907,9 @@ for (const { label, marker } of THEMES) {
 const SECTION_ACCENT_SURFACES: Array<[file: string, tokens: string[]]> = [
 	['routes/+layout.svelte', ['--section-dashboard', '--section-dashboard-ink', '--section-on-accent']],
 	['routes/dashboard/+page.svelte', ['--section-gym', '--section-gym-ink']],
-	['routes/history/+page.svelte', ['--section-gym-ink', '--section-nutrition-ink']],
+	// The timeline rows moved out of /history into the component it shares with
+	// the /runs list view (decisions § 2117); the accent moved with them.
+	['lib/components/TimelineDayList.svelte', ['--section-gym-ink', '--section-nutrition-ink']],
 ];
 
 test('the surfaces that mark a modality still read the section pairs', () => {

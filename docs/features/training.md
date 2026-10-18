@@ -272,6 +272,26 @@ Pausing sets `status = 'paused'`; a trigger stamps `training_plans.paused_at`. R
 
 The start date follows the creation wizard (`plan_start`), generalised to the source plan's own start weekday: the default is that weekday at least a week out, and a picked date snaps forward to it. A walk-run plan (`isWalkRunPlan`, the test `create_training_plan` applies) may start any day from today and defaults to tomorrow. The confirm names the new start and end dates, says what is retired, and, for a plan whose races are behind it, where race day moves. A plan with a race on or after today is refused (`upcomingRaceIso` on the client, `RR001` from the RPC): shifting the plan would move race day off the real date, so the dialog points the runner at changing the race date or starting a new plan instead. The server checks the start against the runner's today in their stored time zone, which can run ahead of the device's date; that refusal (`RR002`) gets its own message rather than a generic failure. Templates are not restartable; a coach-assigned plan is, and the copy does not carry `assigned_by_coach_id`. Rate-limited with the other create paths (`restart_training_plan`, 20 an hour).
 
+## First-time plan discovery
+
+The `recent_5k_suggestion` pair (`recent_5k_suggestion.ts` ↔ `recent_5k_suggestion.dart`, decisions § 2131). A runner with no plan always has a way to start one on Home. "No plan" means the plan reads answered: no active plan (a plan that has not started yet counts as one, and keeps its "Starts in N days" card) and no paused plan (which keeps its resume card). A failed plan read offers nothing, so Home never invites someone to start a plan they may already have.
+
+- **Web `/dashboard`:** the plan slot's existing promo ("Pick a goal race and we'll schedule the weeks", `/plans?new=1`) is the plain entry; the first-run state shows it above `DashboardFirstRun`.
+- **Mobile Home:** the runless welcome (`_WelcomeEmpty`) carries a **Train for something** button, and an account with history gets a `TrainForSomethingCard` in the plan slot. Both open `PlanNewScreen`.
+
+**The recent-5K suggestion** takes the plain entry's place when the runner has a measured 5K worth offering: "Your 5K of 24:10 on 3 Oct" with **Build a plan from it** and **Not now** (web `Recent5kPlanCard.svelte`, mobile `Recent5kPlanCard`). `pickRecent5k` chooses the fastest `runs.fastest_5k_s` (the fastest 5 km window measured inside a run) that is:
+
+- from a run, not a walk, hike, ride or stroller run (a row with no `activity_type` counts as a run), and not a DNF;
+- a time the wizard can take, 12:00 to 59:59 in whole seconds;
+- from a run started in the last **56 days** (eight weeks) and not in the future;
+- from a run started after the last dismissal.
+
+Ties go to the newer run. Web reads `fastest_5k_s` off the dashboard's own run read (`DASHBOARD_RUN_COLUMNS`); mobile reads the run store's resident runs, because the summaries Home charts from do not carry it, and the newest 200 runs reach back past eight weeks for anyone running fewer than three times a day.
+
+**Building from it** opens the wizard (web `/plans/new?type=training&recent5k=<seconds>`, mobile `PlanNewScreen(initialRecent5kSec:)`) with the recent-5K field filled in and the "this reflects my fitness today" box **unticked**, plus a note saying so. That box is the existing `recent5kConfirmed` gate, and its semantics are unchanged: until the runner ticks it, the time sets no paces, and they come from the goal time or the cautious default. A URL time the wizard cannot take fills nothing.
+
+**Not now** stamps `plan_suggestion_dismissed_at` (UTC) in the universal settings bag ([settings.md](../backend/settings.md)), so web and phone agree. Only a run started after the stamp can bring the suggestion back, so a newer measured 5K re-offers it, even a slower one, and the one waved away does not. A refused write says the suggestion may come back. While the settings bag is unknown (web: no server read and no cached copy; mobile: no settings service yet), no suggestion shows and the plain entry does, because an unknown answer must not re-show a suggestion the runner dismissed. A failed runs read leaves the dashboard on its own load error; the suggestion's own computation failing hides only the suggestion.
+
 ## Pace derivation — why multipliers, not Daniels tables
 
 Daniels' official training paces are derived from VDOT via the same implicit equation used for VDOT itself. There's no closed-form inverse; real implementations lookup the paces in a published table. For v1 we anchor training paces on goal pace directly (`easy = 1.22 × goal`, `tempo = 0.97 × goal`, etc.) — these multipliers land within ~5 s/km of the Daniels tables across the 3:00-5:00/km goal band, which is well inside the tolerance band a plan runner expects.

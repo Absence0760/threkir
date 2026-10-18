@@ -18,6 +18,11 @@
 		A5CD1E000000000000000005 /* RunActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000013 /* RunActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A5CD1E000000000000000002 /* RunActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000011 /* RunActivityWidget.swift */; };
 		A5CD1E000000000000000006 /* LiveActivityBridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CD1E000000000000000016 /* LiveActivityBridgeTests.swift */; };
+		B7D0A1E00000000000000001 /* TodayWidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7D0A1E00000000000000011 /* TodayWidgetSnapshot.swift */; };
+		B7D0A1E00000000000000002 /* TodayWidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7D0A1E00000000000000011 /* TodayWidgetSnapshot.swift */; };
+		B7D0A1E00000000000000003 /* TodayWorkoutWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7D0A1E00000000000000012 /* TodayWorkoutWidget.swift */; };
+		B7D0A1E00000000000000004 /* HomeWidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7D0A1E00000000000000013 /* HomeWidgetBridge.swift */; };
+		B7D0A1E00000000000000005 /* TodayWidgetSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7D0A1E00000000000000014 /* TodayWidgetSnapshotTests.swift */; };
 		7884EB0101012EC3CC00C636 /* ActiveRunComplication.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EB0102012EC3CC00C636 /* ActiveRunComplication.swift */; };
 		7884EB0101022EC3CC00C636 /* ActiveRunBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA00012EC3CC00C636F4 /* ActiveRunBridge.swift */; };
 		7884EB0101072EC3CC00C636 /* RunFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884EA000A2EC3CC00C636F4 /* RunFormat.swift */; };
@@ -190,6 +195,11 @@
 		A5CD1E000000000000000015 /* RunActivity.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = RunActivity.xcconfig; path = Flutter/RunActivity.xcconfig; sourceTree = "<group>"; };
 		A5CD1E000000000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A5CD1E000000000000000016 /* LiveActivityBridgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityBridgeTests.swift; sourceTree = "<group>"; };
+		B7D0A1E00000000000000011 /* TodayWidgetSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayWidgetSnapshot.swift; sourceTree = "<group>"; };
+		B7D0A1E00000000000000012 /* TodayWorkoutWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayWorkoutWidget.swift; sourceTree = "<group>"; };
+		B7D0A1E00000000000000013 /* HomeWidgetBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeWidgetBridge.swift; sourceTree = "<group>"; };
+		B7D0A1E00000000000000014 /* TodayWidgetSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayWidgetSnapshotTests.swift; sourceTree = "<group>"; };
+		B7D0A1E00000000000000015 /* RunActivity.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = RunActivity.entitlements; sourceTree = "<group>"; };
 		A5CD1E000000000000000013 /* RunActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RunActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		7884EB0102012EC3CC00C636 /* ActiveRunComplication.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveRunComplication.swift; sourceTree = "<group>"; };
 		7884EB0102042EC3CC00C636 /* ActiveRunTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveRunTimeline.swift; sourceTree = "<group>"; };
@@ -335,7 +345,10 @@
 				DE4035427B1150B51529A31C /* PrivacyInfo.xcprivacy */,
 				A5CD1E000000000000000010 /* RunActivityAttributes.swift */,
 				A5CD1E000000000000000011 /* RunActivityWidget.swift */,
+				B7D0A1E00000000000000011 /* TodayWidgetSnapshot.swift */,
+				B7D0A1E00000000000000012 /* TodayWorkoutWidget.swift */,
 				A5CD1E000000000000000012 /* Info.plist */,
+				B7D0A1E00000000000000015 /* RunActivity.entitlements */,
 			);
 			path = RunActivity;
 			sourceTree = "<group>";
@@ -370,6 +383,7 @@
 				5AE0C0DE0000000000000015 /* ShareExtensionHandoffTests.swift */,
 				A5CD1E000000000000000016 /* LiveActivityBridgeTests.swift */,
 				D0C0BE000000000000000012 /* DocumentOpenHandoffTests.swift */,
+				B7D0A1E00000000000000014 /* TodayWidgetSnapshotTests.swift */,
 			);
 			path = RunnerTests;
 			sourceTree = "<group>";
@@ -451,6 +465,7 @@
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				A5CD1E000000000000000014 /* LiveActivityBridge.swift */,
 				D0C0BE000000000000000011 /* DocumentOpenHandoff.swift */,
+				B7D0A1E00000000000000013 /* HomeWidgetBridge.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -889,6 +904,8 @@
 			files = (
 				A5CD1E000000000000000001 /* RunActivityAttributes.swift in Sources */,
 				A5CD1E000000000000000002 /* RunActivityWidget.swift in Sources */,
+				B7D0A1E00000000000000001 /* TodayWidgetSnapshot.swift in Sources */,
+				B7D0A1E00000000000000003 /* TodayWorkoutWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -912,6 +929,7 @@
 				5AE0C0DE0000000000000004 /* ShareExtensionHandoffTests.swift in Sources */,
 				A5CD1E000000000000000006 /* LiveActivityBridgeTests.swift in Sources */,
 				D0C0BE000000000000000002 /* DocumentOpenHandoffTests.swift in Sources */,
+				B7D0A1E00000000000000005 /* TodayWidgetSnapshotTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -928,6 +946,8 @@
 				A5CD1E000000000000000003 /* RunActivityAttributes.swift in Sources */,
 				5AE0C0DE0000000000000003 /* SharedRouteHandoff.swift in Sources */,
 				D0C0BE000000000000000001 /* DocumentOpenHandoff.swift in Sources */,
+				B7D0A1E00000000000000002 /* TodayWidgetSnapshot.swift in Sources */,
+				B7D0A1E00000000000000004 /* HomeWidgetBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1037,6 +1057,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = A5CD1E000000000000000015 /* RunActivity.xcconfig */;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = RunActivity/RunActivity.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = RunActivity/Info.plist;
@@ -1060,6 +1081,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = A5CD1E000000000000000015 /* RunActivity.xcconfig */;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = RunActivity/RunActivity.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = RunActivity/Info.plist;
@@ -1082,6 +1104,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = A5CD1E000000000000000015 /* RunActivity.xcconfig */;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = RunActivity/RunActivity.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = RunActivity/Info.plist;

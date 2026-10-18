@@ -148,6 +148,33 @@ worker-side setting to match. What must still match the build is the
 (`decisions.md § 742`). See
 [`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate).
 
+## Today widget (home screen + lock screen)
+
+The `TodayWorkoutWidget` ships in the Live Activity's extension
+(`ios/RunActivity/TodayWorkoutWidget.swift`). It reads the snapshot Dart writes
+over `run_app/home_widget` into the `group.com.threkir.app.widget` App Group,
+so it needs a build whose signature carries that group on BOTH the app and the
+extension — automatic signing picks it up once the group exists in the
+developer portal and is assigned to `com.threkir.app` and
+`com.threkir.app.RunActivity` ([`apple_provisioning.md`](../../docs/ops/apple_provisioning.md) step 2).
+
+1. Run the app signed in, with an active plan, and open Home so the plan
+   overview loads (that is what writes the snapshot).
+2. Long-press the home screen → **Edit** → **Add Widget** → **Threkir**: the
+   small and medium sizes should show today's workout, rest day or "nothing
+   scheduled" in the app's language. Tap it: the app opens on that workout
+   (or the plan, or the plans list).
+3. Lock screen → **Customize** → add the rectangular, inline and circular
+   families.
+4. Sign out: the widget drops to the bare Threkir mark.
+5. Midnight rollover: set the simulator's clock forward a day (or wait) — the
+   widget moves to the next day's entry without the app running, and shows
+   the "open the app" line once the week the snapshot covers has passed.
+
+The decode and day-selection rules are covered by
+`ios/RunnerTests/TodayWidgetSnapshotTests.swift`; the views are not tested
+anywhere.
+
 ## Simulating GPS
 
 The iOS simulator doesn't have real GPS. To test run recording and route navigation:

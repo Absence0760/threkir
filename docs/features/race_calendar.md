@@ -285,7 +285,7 @@ The import dialog is one component on web, `RaceImportDialog.svelte`, used by bo
 
 **A listing can have a course** ([decisions § 2157](../architecture/decisions.md)). `race_listings.route_id` names the route the race is run on, one per edition. The race detail page shows a **Course** section with the course's distance, elevation gain and surface, and passes the gain and surface to `racePlanDescribe`, so the AI plan description carries the course line. Both read the summary from `public_race_listings`, which fills it only while the route is public and not moderated away: a listing linked to a private route shows no course and sends none, to every reader including the route's owner. The calendar list is unchanged, and the route's id is not exposed, so there is no course map or route link yet (that is the #1190 course-map slice). Descent is not sent: routes store only total ascent.
 
-**Linking a course is an operator task until the organiser claim flow in #1190.** Only the service role may write `route_id`: a submitter's insert drops it and their update keeps the stored value. The Supabase SQL editor sends no JWT, so set the role claim first, in one transaction:
+**Linking a course is an operator task until the organiser claim flow in #1190.** Only the service role may write `route_id`: a submitter's insert drops it and their update keeps the stored value. Deleting the linked route clears the link and leaves the listing, including its verified flag, as it was: the guard holds only a direct write, not the foreign key's `on delete set null`. The Supabase SQL editor sends no JWT, so set the role claim first, in one transaction:
 
 ```sql
 begin;

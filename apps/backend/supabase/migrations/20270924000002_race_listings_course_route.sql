@@ -13,8 +13,14 @@
 -- non-service-role write, BEFORE INSERT OR UPDATE (the shape
 -- 20270704000003 names as the one that holds); it now also drops route_id on
 -- such an insert and keeps the stored value on such an update, silently, like
--- the flag beside it. The verified-organiser claim flow in #1190 is where a
--- client write path will be opened, deliberately. Until then an operator links
+-- the flag beside it. Only a direct write is held to this
+-- (pg_trigger_depth() = 1, the guard event_attendees_course_guard uses for the
+-- same reason): the ON DELETE SET NULL cascade from a route's owner deleting
+-- the route reaches this trigger under the owner's claims, and reverting its
+-- null would refuse the delete on the foreign key, while reverting is_verified
+-- would unverify a race because someone deleted a route. The
+-- verified-organiser claim flow in #1190 is where a client write path will be
+-- opened, deliberately. Until then an operator links
 -- a course from the SQL editor, in a transaction that sets the service-role
 -- claim first: the editor sends no JWT, so a plain update is reverted by the
 -- trigger (docs/features/race_calendar.md has the statement).
@@ -54,7 +60,8 @@ create or replace function force_unverified_listing()
   set search_path = public
 as $$
 begin
-  if current_setting('role', true) is distinct from 'service_role'
+  if pg_trigger_depth() = 1
+     and current_setting('role', true) is distinct from 'service_role'
      and (select auth.role()) is distinct from 'service_role' then
     new.is_verified := false;
     if tg_op = 'INSERT' then

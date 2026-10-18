@@ -846,6 +846,53 @@ void main() {
       }
     });
 
+    test('setPlanGoalTime and updatePlanMeta write through', () async {
+      String? newId;
+      try {
+        final start = DateTime.utc(2032, 2, 1);
+        final created = await training.createPlan(
+          name: 'integration-test goal plan',
+          goalEvent: GoalEvent.distance10k,
+          goalDistanceM: 10_000,
+          startDate: start,
+          daysPerWeek: 4,
+          goalTimeSec: 3000,
+          generated: generatePlan(GeneratePlanInput(
+            goalEvent: GoalEvent.distance10k,
+            goalTimeSec: 3000,
+            startDate: start,
+            daysPerWeek: 4,
+          )),
+        );
+        newId = created.id;
+        final before = await training.fetchPlan(created.id);
+        final paced =
+            before.workouts.firstWhere((w) => w.targetPaceSecPerKm != null);
+
+        await training.setPlanGoalTime(created.id, 2700, 42.5, [
+          {'id': paced.id, 'target_pace_sec_per_km': 250},
+        ]);
+        await training.updatePlanMeta(created.id,
+            name: 'integration-test goal plan (renamed)',
+            notes: 'note',
+            daysPerWeek: 5,
+            rules: ['Long run on Sunday']);
+
+        final after = await training.fetchPlan(created.id);
+        expect(after.plan!.goalTimeSeconds, 2700);
+        expect(after.plan!.vdot, 42.5);
+        expect(after.plan!.name, 'integration-test goal plan (renamed)');
+        expect(after.plan!.notes, 'note');
+        expect(after.plan!.daysPerWeek, 5);
+        expect(after.plan!.rules, ['Long run on Sunday']);
+        expect(
+            after.workouts.firstWhere((w) => w.id == paced.id).targetPaceSecPerKm,
+            250);
+      } finally {
+        if (newId != null) await training.deletePlan(newId);
+      }
+    });
+
     test('markCompleted toggles the completion fields', () async {
       // Pick a workout that the seed leaves un-completed so we have
       // a clean baseline. Restore in finally.

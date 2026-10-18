@@ -17784,4 +17784,39 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planDetailDeletePlan => 'Plan löschen';
+
+  @override
+  String get planDetailEditDetails => 'Plandetails bearbeiten';
+
+  @override
+  String get planDetailGoalTimeInvalid =>
+      'Gib eine Zielzeit über null ein, Minuten und Sekunden höchstens 59.';
+
+  @override
+  String get planDetailGoalTimeRepaceHint =>
+      'Eine Änderung berechnet die Tempo-Vorgaben der noch anstehenden Einheiten neu. Vergangene, erledigte und übersprungene behalten ihre, und ein Plan auf Basis eines aktuellen 5-km-Ergebnisses behält seine Tempos.';
+
+  @override
+  String get planDetailNotesLabel => 'Notizen';
+
+  @override
+  String get planDetailRulesLabel => 'Planregeln, eine pro Zeile';
+
+  @override
+  String get planDetailSaveDetails => 'Speichern';
+
+  @override
+  String get planDetailDetailsSaved => 'Plan aktualisiert.';
+
+  @override
+  String planDetailDetailsSavedRepaced(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Plan aktualisiert. Tempos für $n anstehende Einheiten neu berechnet.',
+      one: 'Plan aktualisiert. Tempos für $n anstehende Einheit neu berechnet.',
+    );
+    return '$_temp0';
+  }
 }

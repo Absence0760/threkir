@@ -17777,6 +17777,40 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planDetailDeletePlan => 'Eliminar plano';
+
+  @override
+  String get planDetailEditDetails => 'Editar detalhes do plano';
+
+  @override
+  String get planDetailGoalTimeInvalid =>
+      'Introduza um tempo-alvo acima de zero, com minutos e segundos até 59.';
+
+  @override
+  String get planDetailGoalTimeRepaceHint =>
+      'Alterá-lo recalcula os ritmos-alvo dos treinos que faltam. Os passados, feitos e saltados mantêm os seus, e um plano criado a partir de um 5K recente mantém os ritmos.';
+
+  @override
+  String get planDetailNotesLabel => 'Notas';
+
+  @override
+  String get planDetailRulesLabel => 'Regras do plano, uma por linha';
+
+  @override
+  String get planDetailSaveDetails => 'Guardar';
+
+  @override
+  String get planDetailDetailsSaved => 'Plano atualizado.';
+
+  @override
+  String planDetailDetailsSavedRepaced(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plano atualizado. Ritmos recalculados para $n treinos futuros.',
+      one: 'Plano atualizado. Ritmos recalculados para $n treino futuro.',
+    );
+    return '$_temp0';
+  }
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -35539,4 +35573,38 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planDetailDeletePlan => 'Excluir plano';
+
+  @override
+  String get planDetailEditDetails => 'Editar detalhes do plano';
+
+  @override
+  String get planDetailGoalTimeInvalid =>
+      'Digite um tempo-alvo acima de zero, com minutos e segundos até 59.';
+
+  @override
+  String get planDetailGoalTimeRepaceHint =>
+      'Alterar recalcula os ritmos-alvo dos treinos que ainda faltam. Os passados, feitos e pulados mantêm os seus, e um plano criado a partir de um 5K recente mantém os ritmos.';
+
+  @override
+  String get planDetailNotesLabel => 'Notas';
+
+  @override
+  String get planDetailRulesLabel => 'Regras do plano, uma por linha';
+
+  @override
+  String get planDetailSaveDetails => 'Salvar';
+
+  @override
+  String get planDetailDetailsSaved => 'Plano atualizado.';
+
+  @override
+  String planDetailDetailsSavedRepaced(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plano atualizado. Ritmos recalculados para $n treinos futuros.',
+      one: 'Plano atualizado. Ritmos recalculados para $n treino futuro.',
+    );
+    return '$_temp0';
+  }
 }

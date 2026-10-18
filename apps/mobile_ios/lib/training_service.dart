@@ -698,6 +698,41 @@ class TrainingService extends ChangeNotifier {
     return newId as String;
   }
 
+  /// Writes the plan-details fields that change nothing else: the name,
+  /// notes, days per week and rules. The goal time goes through
+  /// [setPlanGoalTime], because it carries the paces with it. Mirrors web
+  /// `core/data.ts:updatePlanMeta`.
+  Future<void> updatePlanMeta(
+    String planId, {
+    required String name,
+    required String? notes,
+    required int daysPerWeek,
+    required List<String>? rules,
+  }) async {
+    await _c.from(TrainingPlanRow.table).update({
+      TrainingPlanRow.colName: name,
+      TrainingPlanRow.colNotes: notes,
+      TrainingPlanRow.colDaysPerWeek: daysPerWeek,
+      TrainingPlanRow.colRules: rules,
+    }).eq(TrainingPlanRow.colId, planId);
+    notifyListeners();
+  }
+
+  /// Sets a plan's goal time with the re-derived workout paces
+  /// (`goalTimeRepacePatches`) and VDOT in one transaction
+  /// (`set_plan_goal_time`), so the goal and the paces never disagree.
+  /// Mirrors web `core/data.ts:setPlanGoalTime`.
+  Future<void> setPlanGoalTime(String planId, int? goalTimeSec, double? vdot,
+      List<Map<String, Object?>> changes) async {
+    await _c.rpc('set_plan_goal_time', params: {
+      'p_plan_id': planId,
+      'p_goal_time_seconds': goalTimeSec,
+      'p_vdot': vdot,
+      'p_changes': changes,
+    });
+    notifyListeners();
+  }
+
   /// Moves every workout and the plan's start / end by [days] (the race
   /// moved, the runner started late) in one transaction, with the plans
   /// queued after it when [shiftFollowing]. A shift into another active

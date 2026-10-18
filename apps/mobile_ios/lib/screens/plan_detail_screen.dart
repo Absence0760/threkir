@@ -10,6 +10,8 @@ import '../adaptive_fitness_flag.dart';
 import '../adaptive_width.dart';
 import '../auth_error.dart';
 import '../widgets/confirm_destructive.dart';
+import '../widgets/plan_details_sheet.dart';
+import '../plan_repace.dart';
 import '../share_sheet.dart';
 import '../plan_serialize.dart';
 import '../l10n/date_format.dart';
@@ -896,6 +898,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     switch (action) {
       case _PlanMenu.adjust:
         _openAdjustPlan(p);
+      case _PlanMenu.editDetails:
+        _editPlanDetails(p);
       case _PlanMenu.shift:
         _shiftPlan(p);
       case _PlanMenu.exportMarkdown:
@@ -904,6 +908,62 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         _exportPlan(p, json: true);
       case _PlanMenu.delete:
         _deletePlan(p);
+    }
+  }
+
+  /// Edits the plan's name, days per week, goal time, notes and rules. A new
+  /// goal time re-derives the paces still ahead (`plan_repace`) and is written
+  /// with them in one transaction; the other fields are a plain update. Web
+  /// twin: `PlanMetaEditor.svelte`.
+  Future<void> _editPlanDetails(TrainingPlanRow p) async {
+    if (_bulkBusy) return;
+    final edit = await showPlanDetailsSheet(context, p);
+    if (edit == null || !mounted) return;
+    final l10n = AppLocalizations.of(context);
+    setState(() => _bulkBusy = true);
+    try {
+      var repaced = 0;
+      if (edit.goalTimeSec != p.goalTimeSeconds) {
+        final changes = goalTimeRepacePatches(
+          goalDistanceM: p.goalDistanceM,
+          oldGoalTimeSec: p.goalTimeSeconds,
+          newGoalTimeSec: edit.goalTimeSec,
+          recent5kSec: p.current5kSeconds,
+          todayIso: toIsoDate(widget.now()),
+          workouts: _byWeek.values.expand((x) => x).toList(),
+        );
+        final goal = edit.goalTimeSec;
+        final vdot = goal != null && p.current5kSeconds == null
+            ? (vdotFromRace(p.goalDistanceM, goal) * 100).round() / 100
+            : null;
+        await widget.training
+            .setPlanGoalTime(p.id, goal, vdot, changes)
+            .timeout(kBackendLoadTimeout);
+        repaced = changes.length;
+      }
+      await widget.training
+          .updatePlanMeta(p.id,
+              name: edit.name,
+              notes: edit.notes,
+              daysPerWeek: edit.daysPerWeek,
+              rules: edit.rules)
+          .timeout(kBackendLoadTimeout);
+      if (!mounted) return;
+      showTopBanner(
+        context,
+        repaced > 0
+            ? l10n.planDetailDetailsSavedRepaced(repaced)
+            : l10n.planDetailDetailsSaved,
+      );
+      await _load();
+    } catch (e) {
+      debugPrint('plan details save failed: $e');
+      if (mounted) {
+        showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+        await _load();
+      }
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
     }
   }
 
@@ -1294,6 +1354,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                 PopupMenuItem(
                     value: _PlanMenu.adjust,
                     child: Text(l10n.planDetailAdjustPlan)),
+                PopupMenuItem(
+                    value: _PlanMenu.editDetails,
+                    child: Text(l10n.planDetailEditDetails)),
                 PopupMenuItem(
                     value: _PlanMenu.shift,
                     child: Text(l10n.planDetailShiftDates)),
@@ -2546,7 +2609,7 @@ class PublishClubPicker extends StatelessWidget {
   }
 }
 
-enum _PlanMenu { adjust, shift, exportMarkdown, exportJson, delete }
+enum _PlanMenu { adjust, editDetails, shift, exportMarkdown, exportJson, delete }
 
 enum _WeekMenu { duplicate, recovery }
 

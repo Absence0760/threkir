@@ -5023,5 +5023,13 @@
   "planDetailRecoveryDone": "Semana tornada de recuperação",
   "planDetailExportMarkdown": "Exportar como Markdown",
   "planDetailExportJson": "Exportar como JSON",
-  "planDetailDeletePlan": "Eliminar plano"
+  "planDetailDeletePlan": "Eliminar plano",
+  "planDetailEditDetails": "Editar detalhes do plano",
+  "planDetailGoalTimeInvalid": "Introduza um tempo-alvo acima de zero, com minutos e segundos até 59.",
+  "planDetailGoalTimeRepaceHint": "Alterá-lo recalcula os ritmos-alvo dos treinos que faltam. Os passados, feitos e saltados mantêm os seus, e um plano criado a partir de um 5K recente mantém os ritmos.",
+  "planDetailNotesLabel": "Notas",
+  "planDetailRulesLabel": "Regras do plano, uma por linha",
+  "planDetailSaveDetails": "Guardar",
+  "planDetailDetailsSaved": "Plano atualizado.",
+  "planDetailDetailsSavedRepaced": "{n, plural, one{Plano atualizado. Ritmos recalculados para {n} treino futuro.} other{Plano atualizado. Ritmos recalculados para {n} treinos futuros.}}"
 }

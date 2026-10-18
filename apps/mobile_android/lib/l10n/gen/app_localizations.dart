@@ -29034,6 +29034,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete plan'**
   String get planDetailDeletePlan;
+
+  /// Plan menu item and title of the plan-details sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Edit plan details'**
+  String get planDetailEditDetails;
+
+  /// Validation error for the goal time fields in the plan-details sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a goal time above zero, with minutes and seconds up to 59.'**
+  String get planDetailGoalTimeInvalid;
+
+  /// Hint under the goal time fields: what a change does to the paces
+  ///
+  /// In en, this message translates to:
+  /// **'Changing it re-derives the pace targets of the workouts still ahead. Past, done and skipped ones keep theirs, and a plan built from a recent 5K keeps its paces.'**
+  String get planDetailGoalTimeRepaceHint;
+
+  /// Label of the plan notes field
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get planDetailNotesLabel;
+
+  /// Label of the plan rules field
+  ///
+  /// In en, this message translates to:
+  /// **'Plan rules, one per line'**
+  String get planDetailRulesLabel;
+
+  /// Save button of the plan-details sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get planDetailSaveDetails;
+
+  /// Banner after the plan details were saved
+  ///
+  /// In en, this message translates to:
+  /// **'Plan updated.'**
+  String get planDetailDetailsSaved;
+
+  /// Banner after the plan details were saved and a new goal time re-derived n workouts' paces
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{Plan updated. Paces re-derived for {n} upcoming workout.} other{Plan updated. Paces re-derived for {n} upcoming workouts.}}'**
+  String planDetailDetailsSavedRepaced(int n);
 }
 
 class _AppLocalizationsDelegate

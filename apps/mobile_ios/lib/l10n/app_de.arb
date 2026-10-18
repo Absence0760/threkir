@@ -5023,5 +5023,13 @@
   "planDetailRecoveryDone": "Woche zur Erholungswoche gemacht",
   "planDetailExportMarkdown": "Als Markdown exportieren",
   "planDetailExportJson": "Als JSON exportieren",
-  "planDetailDeletePlan": "Plan löschen"
+  "planDetailDeletePlan": "Plan löschen",
+  "planDetailEditDetails": "Plandetails bearbeiten",
+  "planDetailGoalTimeInvalid": "Gib eine Zielzeit über null ein, Minuten und Sekunden höchstens 59.",
+  "planDetailGoalTimeRepaceHint": "Eine Änderung berechnet die Tempo-Vorgaben der noch anstehenden Einheiten neu. Vergangene, erledigte und übersprungene behalten ihre, und ein Plan auf Basis eines aktuellen 5-km-Ergebnisses behält seine Tempos.",
+  "planDetailNotesLabel": "Notizen",
+  "planDetailRulesLabel": "Planregeln, eine pro Zeile",
+  "planDetailSaveDetails": "Speichern",
+  "planDetailDetailsSaved": "Plan aktualisiert.",
+  "planDetailDetailsSavedRepaced": "{n, plural, one{Plan aktualisiert. Tempos für {n} anstehende Einheit neu berechnet.} other{Plan aktualisiert. Tempos für {n} anstehende Einheiten neu berechnet.}}"
 }

@@ -5023,5 +5023,13 @@
   "planDetailRecoveryDone": "Semaine passée en récupération",
   "planDetailExportMarkdown": "Exporter en Markdown",
   "planDetailExportJson": "Exporter en JSON",
-  "planDetailDeletePlan": "Supprimer le plan"
+  "planDetailDeletePlan": "Supprimer le plan",
+  "planDetailEditDetails": "Modifier les détails du plan",
+  "planDetailGoalTimeInvalid": "Saisissez un temps objectif supérieur à zéro, minutes et secondes jusqu'à 59.",
+  "planDetailGoalTimeRepaceHint": "La modifier recalcule les allures cibles des séances à venir. Les séances passées, faites ou sautées gardent les leurs, et un plan construit à partir d'un 5 km récent garde ses allures.",
+  "planDetailNotesLabel": "Notes",
+  "planDetailRulesLabel": "Règles du plan, une par ligne",
+  "planDetailSaveDetails": "Enregistrer",
+  "planDetailDetailsSaved": "Plan mis à jour.",
+  "planDetailDetailsSavedRepaced": "{n, plural, one{Plan mis à jour. Allures recalculées pour {n} séance à venir.} other{Plan mis à jour. Allures recalculées pour {n} séances à venir.}}"
 }

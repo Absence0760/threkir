@@ -23266,5 +23266,42 @@
   "planDetailDeletePlan": "Delete plan",
   "@planDetailDeletePlan": {
     "description": "Plan menu item: delete the plan (confirms first)"
+  },
+  "planDetailEditDetails": "Edit plan details",
+  "@planDetailEditDetails": {
+    "description": "Plan menu item and title of the plan-details sheet"
+  },
+  "planDetailGoalTimeInvalid": "Enter a goal time above zero, with minutes and seconds up to 59.",
+  "@planDetailGoalTimeInvalid": {
+    "description": "Validation error for the goal time fields in the plan-details sheet"
+  },
+  "planDetailGoalTimeRepaceHint": "Changing it re-derives the pace targets of the workouts still ahead. Past, done and skipped ones keep theirs, and a plan built from a recent 5K keeps its paces.",
+  "@planDetailGoalTimeRepaceHint": {
+    "description": "Hint under the goal time fields: what a change does to the paces"
+  },
+  "planDetailNotesLabel": "Notes",
+  "@planDetailNotesLabel": {
+    "description": "Label of the plan notes field"
+  },
+  "planDetailRulesLabel": "Plan rules, one per line",
+  "@planDetailRulesLabel": {
+    "description": "Label of the plan rules field"
+  },
+  "planDetailSaveDetails": "Save",
+  "@planDetailSaveDetails": {
+    "description": "Save button of the plan-details sheet"
+  },
+  "planDetailDetailsSaved": "Plan updated.",
+  "@planDetailDetailsSaved": {
+    "description": "Banner after the plan details were saved"
+  },
+  "planDetailDetailsSavedRepaced": "{n, plural, one{Plan updated. Paces re-derived for {n} upcoming workout.} other{Plan updated. Paces re-derived for {n} upcoming workouts.}}",
+  "@planDetailDetailsSavedRepaced": {
+    "description": "Banner after the plan details were saved and a new goal time re-derived n workouts' paces",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
   }
 }

@@ -25,6 +25,7 @@ TrainingPlanRow _plan({bool template = false}) => TrainingPlanRow(
       name: 'Spring Half',
       goalEvent: 'distance_half',
       goalDistanceM: 21097.5,
+      goalTimeSeconds: 7200,
       startDate: DateTime(2026, 3, 9),
       endDate: DateTime(2026, 3, 22),
       daysPerWeek: 4,
@@ -51,6 +52,7 @@ final _workouts = [
     scheduledDate: DateTime(2026, 3, 22),
     kind: 'long',
     targetDistanceM: 16000,
+    targetPaceSecPerKm: 330,
     manuallyCompleted: false,
   ),
 ];
@@ -108,6 +110,22 @@ class _FakeTraining extends TrainingService {
 
   @override
   Future<void> deletePlan(String id) async => deleted.add(id);
+
+  final metaCalls = <(String, String?, int, List<String>?)>[];
+  final goalCalls = <(int?, double?, List<Map<String, Object?>>)>[];
+
+  @override
+  Future<void> updatePlanMeta(String planId,
+          {required String name,
+          required String? notes,
+          required int daysPerWeek,
+          required List<String>? rules}) async =>
+      metaCalls.add((name, notes, daysPerWeek, rules));
+
+  @override
+  Future<void> setPlanGoalTime(String planId, int? goalTimeSec, double? vdot,
+          List<Map<String, Object?>> changes) async =>
+      goalCalls.add((goalTimeSec, vdot, changes));
 }
 
 class _FakeSocial extends SocialService {
@@ -352,6 +370,73 @@ void main() {
       final parsed = parsePlanJson(text);
       expect(parsed.goalEvent, GoalEvent.distanceHalf);
       expect(parsed.generated.weeks.expand((w) => w.workouts), hasLength(2));
+    });
+  });
+
+  group('edit plan details', () {
+    Future<void> openSheet(WidgetTester tester) async {
+      await _openPlanMenu(tester, 'Edit plan details');
+      expect(find.byKey(const Key('planDetailsSave')), findsOneWidget);
+    }
+
+    Future<void> save(WidgetTester tester) async {
+      await tester.ensureVisible(find.byKey(const Key('planDetailsSave')));
+      await tester.tap(find.byKey(const Key('planDetailsSave')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a rename writes the details and leaves the paces alone',
+        (tester) async {
+      final training = _FakeTraining();
+      await _pump(tester, training);
+      await openSheet(tester);
+
+      await tester.enterText(find.byKey(const Key('planDetailsName')), 'Autumn Half');
+      await save(tester);
+
+      expect(training.metaCalls, [('Autumn Half', null, 4, null)]);
+      expect(training.goalCalls, isEmpty,
+          reason: 'an unchanged goal time re-derives nothing');
+      expect(find.text('Plan updated.'), findsOneWidget);
+      await _drainBanner(tester);
+    });
+
+    testWidgets('a faster goal re-derives the paces still ahead with it',
+        (tester) async {
+      final training = _FakeTraining();
+      await _pump(tester, training);
+      await openSheet(tester);
+
+      await tester.enterText(find.byKey(const Key('planDetailsGoalHours')), '1');
+      await tester.enterText(find.byKey(const Key('planDetailsGoalMinutes')), '48');
+      await save(tester);
+
+      final (goal, vdot, changes) = training.goalCalls.single;
+      expect(goal, 6480);
+      expect(vdot, isNotNull, reason: 'a goal-anchored plan takes the new VDOT');
+      expect(changes, [
+        {'id': 'wo-long', 'target_pace_sec_per_km': 297}
+      ], reason: 'the past tempo keeps its pace; 1:48 / 2:00 is 0.9');
+      expect(training.metaCalls, hasLength(1));
+      expect(find.text('Plan updated. Paces re-derived for 1 upcoming workout.'),
+          findsOneWidget);
+      await _drainBanner(tester);
+    });
+
+    testWidgets('an impossible goal time or an empty name is refused in the sheet',
+        (tester) async {
+      final training = _FakeTraining();
+      await _pump(tester, training);
+      await openSheet(tester);
+
+      await tester.enterText(find.byKey(const Key('planDetailsGoalMinutes')), '75');
+      await tester.enterText(find.byKey(const Key('planDetailsName')), '  ');
+      await save(tester);
+
+      expect(find.textContaining('minutes and seconds up to 59'), findsOneWidget);
+      expect(find.text('Add a plan name.'), findsOneWidget);
+      expect(training.metaCalls, isEmpty);
+      expect(training.goalCalls, isEmpty);
     });
   });
 

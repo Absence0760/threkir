@@ -17774,4 +17774,40 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planDetailDeletePlan => 'Eliminar plan';
+
+  @override
+  String get planDetailEditDetails => 'Editar detalles del plan';
+
+  @override
+  String get planDetailGoalTimeInvalid =>
+      'Introduce un tiempo objetivo mayor que cero, con minutos y segundos hasta 59.';
+
+  @override
+  String get planDetailGoalTimeRepaceHint =>
+      'Cambiarlo recalcula los ritmos objetivo de los entrenamientos que quedan. Los pasados, hechos y saltados conservan los suyos, y un plan creado a partir de un 5K reciente conserva sus ritmos.';
+
+  @override
+  String get planDetailNotesLabel => 'Notas';
+
+  @override
+  String get planDetailRulesLabel => 'Reglas del plan, una por línea';
+
+  @override
+  String get planDetailSaveDetails => 'Guardar';
+
+  @override
+  String get planDetailDetailsSaved => 'Plan actualizado.';
+
+  @override
+  String planDetailDetailsSavedRepaced(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Plan actualizado. Ritmos recalculados para $n entrenamientos próximos.',
+      one:
+          'Plan actualizado. Ritmos recalculados para $n entrenamiento próximo.',
+    );
+    return '$_temp0';
+  }
 }

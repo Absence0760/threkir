@@ -5023,5 +5023,13 @@
   "planDetailRecoveryDone": "回復週にしました",
   "planDetailExportMarkdown": "Markdownでエクスポート",
   "planDetailExportJson": "JSONでエクスポート",
-  "planDetailDeletePlan": "プランを削除"
+  "planDetailDeletePlan": "プランを削除",
+  "planDetailEditDetails": "プランの詳細を編集",
+  "planDetailGoalTimeInvalid": "0より大きい目標タイムを入力してください（分と秒は59まで）。",
+  "planDetailGoalTimeRepaceHint": "変更すると、これからのワークアウトのペース目標を再計算します。過去・完了・スキップ済みのものはそのままで、最近の5kmの記録から作ったプランはペースが変わりません。",
+  "planDetailNotesLabel": "メモ",
+  "planDetailRulesLabel": "プランのルール（1行に1つ）",
+  "planDetailSaveDetails": "保存",
+  "planDetailDetailsSaved": "プランを更新しました。",
+  "planDetailDetailsSavedRepaced": "{n, plural, other{プランを更新しました。今後の{n}件のワークアウトのペースを再計算しました。}}"
 }

@@ -17814,4 +17814,38 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planDetailDeletePlan => 'Supprimer le plan';
+
+  @override
+  String get planDetailEditDetails => 'Modifier les détails du plan';
+
+  @override
+  String get planDetailGoalTimeInvalid =>
+      'Saisissez un temps objectif supérieur à zéro, minutes et secondes jusqu\'à 59.';
+
+  @override
+  String get planDetailGoalTimeRepaceHint =>
+      'La modifier recalcule les allures cibles des séances à venir. Les séances passées, faites ou sautées gardent les leurs, et un plan construit à partir d\'un 5 km récent garde ses allures.';
+
+  @override
+  String get planDetailNotesLabel => 'Notes';
+
+  @override
+  String get planDetailRulesLabel => 'Règles du plan, une par ligne';
+
+  @override
+  String get planDetailSaveDetails => 'Enregistrer';
+
+  @override
+  String get planDetailDetailsSaved => 'Plan mis à jour.';
+
+  @override
+  String planDetailDetailsSavedRepaced(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plan mis à jour. Allures recalculées pour $n séances à venir.',
+      one: 'Plan mis à jour. Allures recalculées pour $n séance à venir.',
+    );
+    return '$_temp0';
+  }
 }

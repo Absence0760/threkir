@@ -16948,4 +16948,36 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get planDetailDeletePlan => 'プランを削除';
+
+  @override
+  String get planDetailEditDetails => 'プランの詳細を編集';
+
+  @override
+  String get planDetailGoalTimeInvalid => '0より大きい目標タイムを入力してください（分と秒は59まで）。';
+
+  @override
+  String get planDetailGoalTimeRepaceHint =>
+      '変更すると、これからのワークアウトのペース目標を再計算します。過去・完了・スキップ済みのものはそのままで、最近の5kmの記録から作ったプランはペースが変わりません。';
+
+  @override
+  String get planDetailNotesLabel => 'メモ';
+
+  @override
+  String get planDetailRulesLabel => 'プランのルール（1行に1つ）';
+
+  @override
+  String get planDetailSaveDetails => '保存';
+
+  @override
+  String get planDetailDetailsSaved => 'プランを更新しました。';
+
+  @override
+  String planDetailDetailsSavedRepaced(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'プランを更新しました。今後の$n件のワークアウトのペースを再計算しました。',
+    );
+    return '$_temp0';
+  }
 }

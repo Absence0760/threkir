@@ -17456,6 +17456,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String rateLimitRestartPlan(String wait) {
+    return 'You\'re restarting plans too quickly — please wait $wait and try again.';
+  }
+
+  @override
   String get planCalendarFeedTitle => 'Training plan calendar';
 
   @override
@@ -17730,6 +17735,45 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get planDetailRestartPlan => 'Restart plan…';
+
+  @override
+  String get planDetailRestartTitle => 'Restart this plan';
+
+  @override
+  String get planDetailRestartChangeDate => 'Change start date';
+
+  @override
+  String planDetailRestartConfirmLive(String date, String end) {
+    return 'The new copy starts on $date and ends on $end. This plan, and any active plan those dates overlap, is retired as abandoned. Its weeks, workouts and run links are kept.';
+  }
+
+  @override
+  String planDetailRestartConfirmOver(String date, String end) {
+    return 'The new copy starts on $date and ends on $end. Any active plan those dates overlap is retired as abandoned. This plan keeps its weeks, workouts and run links.';
+  }
+
+  @override
+  String planDetailRestartRaceMoves(String date) {
+    return 'Race day moves to $date.';
+  }
+
+  @override
+  String planDetailRestartRaceAhead(String date) {
+    return 'This plan\'s race on $date is still ahead. Restarting would move race day, so change the race date or start a new plan instead.';
+  }
+
+  @override
+  String get planDetailRestartRaceAheadError =>
+      'This plan has a race still ahead, so it can\'t be restarted.';
+
+  @override
+  String get planDetailRestartConfirm => 'Restart plan';
+
+  @override
+  String get planDetailRestartDone => 'Plan restarted. This is your new copy.';
 
   @override
   String get dashboardPlanPausedBody =>

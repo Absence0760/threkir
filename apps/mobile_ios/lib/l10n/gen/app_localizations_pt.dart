@@ -17639,6 +17639,11 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String rateLimitRestartPlan(String wait) {
+    return 'Está a recomeçar planos demasiado depressa — aguarde $wait e tente novamente.';
+  }
+
+  @override
   String get planCalendarFeedTitle => 'Calendário do plano de treino';
 
   @override
@@ -17917,6 +17922,46 @@ class AppLocalizationsPt extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get planDetailRestartPlan => 'Recomeçar o plano…';
+
+  @override
+  String get planDetailRestartTitle => 'Recomeçar este plano';
+
+  @override
+  String get planDetailRestartChangeDate => 'Alterar a data de início';
+
+  @override
+  String planDetailRestartConfirmLive(String date, String end) {
+    return 'A nova cópia começa a $date e termina a $end. Este plano, e qualquer plano ativo com que essas datas se sobreponham, é arquivado como abandonado. As suas semanas, treinos e ligações a corridas são mantidos.';
+  }
+
+  @override
+  String planDetailRestartConfirmOver(String date, String end) {
+    return 'A nova cópia começa a $date e termina a $end. Qualquer plano ativo com que essas datas se sobreponham é arquivado como abandonado. Este plano mantém as suas semanas, treinos e ligações a corridas.';
+  }
+
+  @override
+  String planDetailRestartRaceMoves(String date) {
+    return 'O dia da prova passa para $date.';
+  }
+
+  @override
+  String planDetailRestartRaceAhead(String date) {
+    return 'A prova deste plano, a $date, ainda está para vir. Recomeçar mudaria o dia da prova, por isso altere antes a data da prova ou comece um novo plano.';
+  }
+
+  @override
+  String get planDetailRestartRaceAheadError =>
+      'Este plano tem uma prova ainda por vir, por isso não pode ser recomeçado.';
+
+  @override
+  String get planDetailRestartConfirm => 'Recomeçar o plano';
+
+  @override
+  String get planDetailRestartDone =>
+      'Plano recomeçado. Esta é a sua nova cópia.';
 
   @override
   String get dashboardPlanPausedBody =>
@@ -35633,6 +35678,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
+  String rateLimitRestartPlan(String wait) {
+    return 'Você está recomeçando planos rápido demais — espere $wait e tente de novo.';
+  }
+
+  @override
   String get planCalendarFeedTitle => 'Calendário do plano de treino';
 
   @override
@@ -35910,6 +35960,46 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     );
     return '$_temp0';
   }
+
+  @override
+  String get planDetailRestartPlan => 'Recomeçar o plano…';
+
+  @override
+  String get planDetailRestartTitle => 'Recomeçar este plano';
+
+  @override
+  String get planDetailRestartChangeDate => 'Alterar a data de início';
+
+  @override
+  String planDetailRestartConfirmLive(String date, String end) {
+    return 'A nova cópia começa em $date e termina em $end. Este plano, e qualquer plano ativo com que essas datas se sobreponham, é arquivado como abandonado. As semanas, os treinos e os vínculos com corridas dele são mantidos.';
+  }
+
+  @override
+  String planDetailRestartConfirmOver(String date, String end) {
+    return 'A nova cópia começa em $date e termina em $end. Qualquer plano ativo com que essas datas se sobreponham é arquivado como abandonado. Este plano mantém as semanas, os treinos e os vínculos com corridas dele.';
+  }
+
+  @override
+  String planDetailRestartRaceMoves(String date) {
+    return 'O dia da prova passa para $date.';
+  }
+
+  @override
+  String planDetailRestartRaceAhead(String date) {
+    return 'A prova deste plano, em $date, ainda não aconteceu. Recomeçar mudaria o dia da prova, então altere a data da prova ou comece um novo plano.';
+  }
+
+  @override
+  String get planDetailRestartRaceAheadError =>
+      'Este plano tem uma prova que ainda não aconteceu, então não pode ser recomeçado.';
+
+  @override
+  String get planDetailRestartConfirm => 'Recomeçar o plano';
+
+  @override
+  String get planDetailRestartDone =>
+      'Plano recomeçado. Esta é a sua nova cópia.';
 
   @override
   String get dashboardPlanPausedBody =>

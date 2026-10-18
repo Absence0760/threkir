@@ -4988,6 +4988,7 @@
   "planNewBuildOwn": "または自分で作成",
   "planNewSummary": "{weeks, plural, other{{weeks}週間}}・{date}終了",
   "rateLimitRotateCalendarLink": "カレンダーリンクの作成が速すぎます。{wait}待ってから、もう一度お試しください。",
+  "rateLimitRestartPlan": "プランのやり直しが速すぎます。{wait}待ってから、もう一度お試しください。",
   "planCalendarFeedTitle": "トレーニングプランのカレンダー",
   "planCalendarFeedTileSubtitle": "プランのワークアウトを Google・Apple・Outlook のカレンダーに表示",
   "planCalendarFeedDescription": "Google カレンダー、Apple カレンダー、Outlook で購読すると、実施中のプランのワークアウトが終日の予定として表示されます。プランを変更すると予定にも反映されます。",
@@ -5055,7 +5056,6 @@
   "planDetailResumeShiftTitle": "再開して後ろにずらしますか？",
   "planDetailResumeShiftMessage": "{n, plural, other{このプランが再びアクティブなプランになります。まだ始めていなかった週は{n}週後ろにずれ、未実施として数えずに来週から再開します。終了日は{date}になります。}}",
   "planDetailResumeShiftedDone": "{n, plural, other{プランを再開し、{n}週後ろにずらしました。}}",
-  "dashboardPlanPausedBody": "一時停止中です。再開すると続きから始まり、休んだ週は後ろにずれます。",
   "planDetailChangeRaceDate": "レース日を変更…",
   "planDetailRaceDatePickerHelp": "新しいレース日",
   "planDetailRaceDateConfirmTitle": "レース日を変更しますか？",
@@ -5073,5 +5073,16 @@
   "planDetailRaceDateTooFar": "1年以上先になります。そのレースには新しいプランを作成してください。",
   "planDetailRaceDateNoBuild": "このプランには繰り返せるビルド週がないため、延長できません。",
   "planDetailRaceDateInTheWay": "移動する週に別のレースか完了済みのセッションがあります。先にそちらを変更してください。",
-  "planDetailRaceDateOverlap": "新しいレース日が別の有効なプランと重なります。先にそのプランを移動するか終了してください。"
+  "planDetailRaceDateOverlap": "新しいレース日が別の有効なプランと重なります。先にそのプランを移動するか終了してください。",
+  "planDetailRestartPlan": "プランをやり直す…",
+  "planDetailRestartTitle": "このプランをやり直す",
+  "planDetailRestartChangeDate": "開始日を変更",
+  "planDetailRestartConfirmLive": "新しいコピーは{date}に始まり{end}に終わります。このプランと、その期間に重なるアクティブなプランは中止として終了します。週、ワークアウト、ランとのリンクはそのまま残ります。",
+  "planDetailRestartConfirmOver": "新しいコピーは{date}に始まり{end}に終わります。その期間に重なるアクティブなプランは中止として終了します。このプランの週、ワークアウト、ランとのリンクはそのまま残ります。",
+  "planDetailRestartRaceMoves": "レース日は{date}に移ります。",
+  "planDetailRestartRaceAhead": "このプランのレース（{date}）はまだ先です。やり直すとレース日がずれるため、代わりにレース日を変更するか、新しいプランを始めてください。",
+  "planDetailRestartRaceAheadError": "このプランにはまだ先のレースがあるため、やり直せません。",
+  "planDetailRestartConfirm": "プランをやり直す",
+  "planDetailRestartDone": "プランをやり直しました。これが新しいコピーです。",
+  "dashboardPlanPausedBody": "一時停止中です。再開すると続きから始まり、休んだ週は後ろにずれます。"
 }

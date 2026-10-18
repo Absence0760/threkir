@@ -4988,6 +4988,7 @@
   "planNewBuildOwn": "Ou créez le vôtre",
   "planNewSummary": "{weeks, plural, one{{weeks} semaine} other{{weeks} semaines}} · se termine le {date}",
   "rateLimitRotateCalendarLink": "Vous créez de nouveaux liens de calendrier trop rapidement — veuillez patienter {wait} et réessayer.",
+  "rateLimitRestartPlan": "Vous recommencez des plans trop rapidement — veuillez patienter {wait} et réessayer.",
   "planCalendarFeedTitle": "Calendrier du plan d'entraînement",
   "planCalendarFeedTileSubtitle": "Les séances de votre plan dans Google Agenda, Apple Calendrier ou Outlook",
   "planCalendarFeedDescription": "Abonnez-vous depuis Google Agenda, Apple Calendrier ou Outlook pour voir les séances de votre plan actif en événements sur la journée. Elles suivent votre plan quand il change.",
@@ -5055,7 +5056,6 @@
   "planDetailResumeShiftTitle": "Reprendre et décaler ?",
   "planDetailResumeShiftMessage": "{n, plural, one{Ce plan redevient votre plan actif. Les semaines que vous n'aviez pas commencées sont décalées de {n} semaine, pour reprendre la semaine prochaine au lieu de les compter comme manquées. Il se termine désormais le {date}.} other{Ce plan redevient votre plan actif. Les semaines que vous n'aviez pas commencées sont décalées de {n} semaines, pour reprendre la semaine prochaine au lieu de les compter comme manquées. Il se termine désormais le {date}.}}",
   "planDetailResumeShiftedDone": "{n, plural, one{Plan repris et décalé de {n} semaine.} other{Plan repris et décalé de {n} semaines.}}",
-  "dashboardPlanPausedBody": "En pause. Reprenez-le pour continuer ; les semaines manquées sont décalées.",
   "planDetailChangeRaceDate": "Changer la date de course…",
   "planDetailRaceDatePickerHelp": "Nouvelle date de course",
   "planDetailRaceDateConfirmTitle": "Changer la date de course ?",
@@ -5073,5 +5073,16 @@
   "planDetailRaceDateTooFar": "C’est plus d’un an plus tard. Créez plutôt un nouveau plan pour cette course.",
   "planDetailRaceDateNoBuild": "Ce plan n’a aucune semaine de développement à répéter, il ne peut donc pas être allongé.",
   "planDetailRaceDateInTheWay": "Une autre course ou une séance terminée se trouve dans les semaines qui seraient déplacées. Modifiez-la d’abord.",
-  "planDetailRaceDateOverlap": "La nouvelle date de course empiète sur un autre plan actif. Déplacez ou terminez d’abord ce plan."
+  "planDetailRaceDateOverlap": "La nouvelle date de course empiète sur un autre plan actif. Déplacez ou terminez d’abord ce plan.",
+  "planDetailRestartPlan": "Recommencer le plan…",
+  "planDetailRestartTitle": "Recommencer ce plan",
+  "planDetailRestartChangeDate": "Changer la date de début",
+  "planDetailRestartConfirmLive": "La nouvelle copie commence le {date} et se termine le {end}. Ce plan, ainsi que tout plan actif que ces dates chevauchent, est classé comme abandonné. Ses semaines, séances et liens vers vos sorties sont conservés.",
+  "planDetailRestartConfirmOver": "La nouvelle copie commence le {date} et se termine le {end}. Tout plan actif que ces dates chevauchent est classé comme abandonné. Ce plan conserve ses semaines, séances et liens vers vos sorties.",
+  "planDetailRestartRaceMoves": "Le jour de course passe au {date}.",
+  "planDetailRestartRaceAhead": "La course de ce plan, le {date}, est encore à venir. Recommencer déplacerait le jour de course : changez plutôt la date de course ou commencez un nouveau plan.",
+  "planDetailRestartRaceAheadError": "Ce plan comporte une course encore à venir, il ne peut donc pas être recommencé.",
+  "planDetailRestartConfirm": "Recommencer le plan",
+  "planDetailRestartDone": "Plan recommencé. Voici votre nouvelle copie.",
+  "dashboardPlanPausedBody": "En pause. Reprenez-le pour continuer ; les semaines manquées sont décalées."
 }

@@ -15,6 +15,8 @@ import '../plan_repace.dart';
 import '../plan_bulk_ops.dart' show shiftIsoDate;
 import '../plan_race_date.dart';
 import '../plan_resume.dart';
+import '../plan_restart.dart';
+import '../rate_limit_message.dart' show rateLimitErrorMessage;
 import '../cycle_plan.dart' show CyclePlanConfig, CyclePlanMode;
 import '../cycle_plan_config.dart';
 import '../share_sheet.dart';
@@ -1049,9 +1051,69 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       case _PlanMenu.coach:
         final coachId = p.assignedByCoachId;
         if (coachId != null) _openCoachProfile(coachId);
+      case _PlanMenu.restart:
+        _restartPlan(p);
       case _PlanMenu.delete:
         _deletePlan(p);
     }
+  }
+
+  /// Restarts the plan as a fresh active copy on a date the runner picks
+  /// (`restart_training_plan`, decisions § 2121), then opens the copy in
+  /// this screen's place. The plans it replaces are retired as abandoned by
+  /// the same RPC; this one keeps its history. Web twin: the Restart plan
+  /// option in `/plans/[id]`'s Adjust plan dialog.
+  Future<void> _restartPlan(TrainingPlanRow p) async {
+    if (!_isOwner(p) || _bulkBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final workouts = [
+      for (final w in _byWeek.values.expand((x) => x))
+        RestartWorkout(kind: w.kind, scheduledDate: toIsoDate(w.scheduledDate)),
+    ];
+    final startIso = await showDialog<String>(
+      context: context,
+      builder: (_) => _RestartPlanDialog(
+        plan: p,
+        workouts: workouts,
+        todayIso: toIsoDate(widget.now()),
+      ),
+    );
+    if (startIso == null || !mounted) return;
+    setState(() => _bulkBusy = true);
+    final String newId;
+    try {
+      newId = await widget.training
+          .restartPlan(p.id, startIso)
+          .timeout(kBackendLoadTimeout);
+    } on PlanRestartRaceAheadError {
+      if (!mounted) return;
+      setState(() => _bulkBusy = false);
+      showTopBanner(context, l10n.planDetailRestartRaceAheadError);
+      return;
+    } catch (e, s) {
+      debugPrint('restart plan failed: $e\n$s');
+      if (!mounted) return;
+      setState(() => _bulkBusy = false);
+      final friendly = e is PostgrestException
+          ? rateLimitErrorMessage(l10n, code: e.code, message: e.message)
+          : null;
+      showTopBanner(
+          context, friendly ?? l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+      return;
+    }
+    if (!mounted) return;
+    showTopBanner(context, l10n.planDetailRestartDone);
+    unawaited(Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
+      builder: (_) => PlanDetailScreen(
+        training: widget.training,
+        planId: newId,
+        social: widget.social,
+        viewerIdOverride: widget.viewerIdOverride,
+        runStore: widget.runStore,
+        now: widget.now,
+        cyclePlanConfig: widget.cyclePlanConfig,
+      ),
+    )));
   }
 
   /// Edits the plan's name, days per week, goal time, notes and rules. A new
@@ -1672,6 +1734,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                 PopupMenuItem(
                     value: _PlanMenu.exportJson,
                     child: Text(l10n.planDetailExportJson)),
+                PopupMenuItem(
+                    value: _PlanMenu.restart,
+                    child: Text(l10n.planDetailRestartPlan)),
                 if (p.assignedByCoachId != null &&
                     p.assignedByCoachId != _viewerId() &&
                     _assigningCoachName != null)
@@ -2935,9 +3000,112 @@ enum _PlanMenu {
   raceDate,
   exportMarkdown,
   exportJson,
+  restart,
   coach,
   abandon,
   delete,
+}
+
+/// Picks the restarted copy's start date and confirms the restart. Pops the
+/// start date, or nothing on cancel. A plan with a race still ahead gets the
+/// refusal and no confirm (`upcomingRaceIso`).
+class _RestartPlanDialog extends StatefulWidget {
+  final TrainingPlanRow plan;
+  final List<RestartWorkout> workouts;
+  final String todayIso;
+
+  const _RestartPlanDialog({
+    required this.plan,
+    required this.workouts,
+    required this.todayIso,
+  });
+
+  @override
+  State<_RestartPlanDialog> createState() => _RestartPlanDialogState();
+}
+
+class _RestartPlanDialogState extends State<_RestartPlanDialog> {
+  late final String _sourceStart = toIsoDate(widget.plan.startDate);
+  late final bool _walkRun = isWalkRunPlan(widget.workouts);
+  late String _start =
+      defaultRestartStartIso(_sourceStart, widget.todayIso, _walkRun);
+
+  Future<void> _pickDate() async {
+    final today = parseIsoDate(widget.todayIso);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: parseIsoDate(_start),
+      firstDate: today,
+      lastDate: DateTime(today.year + 2, today.month, today.day),
+      selectableDayPredicate: (d) => restartStartAllowed(
+          toIsoDate(d), _sourceStart, widget.todayIso, _walkRun),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _start =
+        alignRestartStartIso(toIsoDate(picked), _sourceStart, _walkRun));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final tag = localeToTag(Localizations.localeOf(context));
+    String fmt(String iso) => formatDateShort(parseIsoDate(iso), tag);
+    final raceAhead = upcomingRaceIso(widget.workouts, widget.todayIso);
+    if (raceAhead != null) {
+      return AlertDialog(
+        title: Text(l10n.planDetailRestartTitle),
+        content: Text(l10n.planDetailRestartRaceAhead(fmt(raceAhead))),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.plansCancel),
+          ),
+        ],
+      );
+    }
+    final end = restartedDateIso(
+        toIsoDate(widget.plan.endDate), _sourceStart, _start);
+    final races = [
+      for (final w in widget.workouts)
+        if (w.kind == 'race') w.scheduledDate
+    ]..sort();
+    final live =
+        widget.plan.status == 'active' || widget.plan.status == 'paused';
+    final message = live
+        ? l10n.planDetailRestartConfirmLive(fmt(_start), fmt(end))
+        : l10n.planDetailRestartConfirmOver(fmt(_start), fmt(end));
+    final raceLine = races.isEmpty
+        ? ''
+        : ' ${l10n.planDetailRestartRaceMoves(fmt(restartedDateIso(races.last, _sourceStart, _start)))}';
+    return AlertDialog(
+      title: Text(l10n.planDetailRestartTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('$message$raceLine', key: const Key('planDetailRestartMessage')),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            key: const Key('planDetailRestartPickDate'),
+            onPressed: _pickDate,
+            icon: const Icon(Icons.event),
+            label: Text(l10n.planDetailRestartChangeDate),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.plansCancel),
+        ),
+        FilledButton(
+          key: const Key('planDetailRestartConfirm'),
+          onPressed: () => Navigator.pop(context, _start),
+          child: Text(l10n.planDetailRestartConfirm),
+        ),
+      ],
+    );
+  }
 }
 
 enum _WeekMenu { duplicate, recovery }

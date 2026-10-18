@@ -6721,6 +6721,24 @@ export async function updatePlanMeta(
 	if (error) throw dbError(error);
 }
 
+/// Restart one of the runner's plans as a fresh active copy starting on
+/// `startIso` (`restart_training_plan`, decisions § 2121). The overlapped
+/// active plans and the source, while live, are retired as abandoned in the
+/// same transaction; the source keeps its history. Returns the new plan's id.
+export async function restartTrainingPlan(planId: string, startIso: string): Promise<string> {
+	markListsStale('plans');
+	const { data, error } = await supabase.rpc('restart_training_plan', {
+		p_plan_id: planId,
+		p_start_date: startIso
+	});
+	if (error) {
+		const friendly = rateLimitErrorMessage(m, error);
+		if (friendly) throw new Error(friendly);
+		throw dbError(error);
+	}
+	return data;
+}
+
 /// Set a plan's goal time with the re-derived workout paces
 /// (`goalTimeRepacePatches`) and VDOT in one transaction
 /// (`set_plan_goal_time`), so the goal and the paces never disagree.

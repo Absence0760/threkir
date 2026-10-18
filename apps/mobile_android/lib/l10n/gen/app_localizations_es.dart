@@ -17634,6 +17634,11 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String rateLimitRestartPlan(String wait) {
+    return 'Estás reiniciando planes demasiado rápido: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
   String get planCalendarFeedTitle => 'Calendario del plan de entrenamiento';
 
   @override
@@ -17916,6 +17921,46 @@ class AppLocalizationsEs extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get planDetailRestartPlan => 'Reiniciar el plan…';
+
+  @override
+  String get planDetailRestartTitle => 'Reiniciar este plan';
+
+  @override
+  String get planDetailRestartChangeDate => 'Cambiar la fecha de inicio';
+
+  @override
+  String planDetailRestartConfirmLive(String date, String end) {
+    return 'La nueva copia empieza el $date y termina el $end. Este plan, y cualquier plan activo con el que se solapen esas fechas, se archiva como abandonado. Se conservan sus semanas, entrenamientos y enlaces a carreras.';
+  }
+
+  @override
+  String planDetailRestartConfirmOver(String date, String end) {
+    return 'La nueva copia empieza el $date y termina el $end. Cualquier plan activo con el que se solapen esas fechas se archiva como abandonado. Este plan conserva sus semanas, entrenamientos y enlaces a carreras.';
+  }
+
+  @override
+  String planDetailRestartRaceMoves(String date) {
+    return 'El día de la carrera pasa al $date.';
+  }
+
+  @override
+  String planDetailRestartRaceAhead(String date) {
+    return 'La carrera de este plan, el $date, todavía no ha llegado. Reiniciarlo movería el día de la carrera, así que cambia la fecha de la carrera o empieza un plan nuevo.';
+  }
+
+  @override
+  String get planDetailRestartRaceAheadError =>
+      'Este plan tiene una carrera que aún no ha llegado, así que no se puede reiniciar.';
+
+  @override
+  String get planDetailRestartConfirm => 'Reiniciar el plan';
+
+  @override
+  String get planDetailRestartDone =>
+      'Plan reiniciado. Esta es tu nueva copia.';
 
   @override
   String get dashboardPlanPausedBody =>

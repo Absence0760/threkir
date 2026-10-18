@@ -11,6 +11,7 @@ import {
 	dbError,
 	isPlanOverlapError,
 	isPlanTrimBlockedError,
+	isPlanRestartRaceAheadError,
 	PlanOverlapError,
 	supabaseErrorFields,
 	isDuplicateKeyError,
@@ -248,6 +249,14 @@ test('dbError turns a 23P01 plan-window overlap into a readable PlanOverlapError
 	assert.equal(appErrorMessage(err), err.message);
 	assert.equal(isPlanOverlapError(err), true);
 	assert.equal(isPlanOverlapError({ code: '23505' }), false);
+});
+
+test('a restart refused over a race ahead keeps its own SQLSTATE', () => {
+	const err = dbError({ message: 'restart_training_plan: this plan has a race still ahead', code: 'RR001' });
+	assert.ok(err instanceof DbError);
+	assert.equal(isPlanRestartRaceAheadError(err), true);
+	assert.equal(isPlanOverlapError(err), false);
+	assert.equal(isPlanRestartRaceAheadError({ code: 'TR001' }), false);
 });
 
 test('a refused trim keeps its own SQLSTATE and is not an overlap', () => {

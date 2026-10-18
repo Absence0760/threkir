@@ -16819,6 +16819,11 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String rateLimitRestartPlan(String wait) {
+    return 'プランのやり直しが速すぎます。$wait待ってから、もう一度お試しください。';
+  }
+
+  @override
   String get planCalendarFeedTitle => 'トレーニングプランのカレンダー';
 
   @override
@@ -17076,6 +17081,44 @@ class AppLocalizationsJa extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get planDetailRestartPlan => 'プランをやり直す…';
+
+  @override
+  String get planDetailRestartTitle => 'このプランをやり直す';
+
+  @override
+  String get planDetailRestartChangeDate => '開始日を変更';
+
+  @override
+  String planDetailRestartConfirmLive(String date, String end) {
+    return '新しいコピーは$dateに始まり$endに終わります。このプランと、その期間に重なるアクティブなプランは中止として終了します。週、ワークアウト、ランとのリンクはそのまま残ります。';
+  }
+
+  @override
+  String planDetailRestartConfirmOver(String date, String end) {
+    return '新しいコピーは$dateに始まり$endに終わります。その期間に重なるアクティブなプランは中止として終了します。このプランの週、ワークアウト、ランとのリンクはそのまま残ります。';
+  }
+
+  @override
+  String planDetailRestartRaceMoves(String date) {
+    return 'レース日は$dateに移ります。';
+  }
+
+  @override
+  String planDetailRestartRaceAhead(String date) {
+    return 'このプランのレース（$date）はまだ先です。やり直すとレース日がずれるため、代わりにレース日を変更するか、新しいプランを始めてください。';
+  }
+
+  @override
+  String get planDetailRestartRaceAheadError => 'このプランにはまだ先のレースがあるため、やり直せません。';
+
+  @override
+  String get planDetailRestartConfirm => 'プランをやり直す';
+
+  @override
+  String get planDetailRestartDone => 'プランをやり直しました。これが新しいコピーです。';
 
   @override
   String get dashboardPlanPausedBody => '一時停止中です。再開すると続きから始まり、休んだ週は後ろにずれます。';

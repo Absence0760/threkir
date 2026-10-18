@@ -24,6 +24,7 @@ const _buckets = <String>[
   'clone_gym_routine_template',
   'publish_gym_routine_as_template',
   'plan_calendar_rotate',
+  'restart_training_plan',
   'send_direct_message',
   'send_direct_message_burst',
 ];
@@ -159,12 +160,13 @@ void main() {
           'clone_gym_routine_template',
           'publish_gym_routine_as_template',
           'plan_calendar_rotate',
+          'restart_training_plan',
           'send_direct_message',
           'create_widget',
         ])
           _render(l10n, bucket, 42),
       };
-      expect(distinct.length, 11,
+      expect(distinct.length, 12,
           reason: '$locale reuses one sentence for two different activities');
       expect(
         _render(l10n, 'clone_plan_template', 42),

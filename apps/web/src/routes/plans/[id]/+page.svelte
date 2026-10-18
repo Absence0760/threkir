@@ -1,5 +1,9 @@
 <script lang="ts">
-	import { isPlanOverlapError, thrownMessage } from '#lib/core/supabase_error.ts';
+	import {
+		isPlanOverlapError,
+		isPlanRestartRaceAheadError,
+		thrownMessage,
+	} from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale, formatDateShort, formatDuration } from '#lib/format/time.ts';
 	import { onMount, tick } from 'svelte';
 	import { afterNavigate, goto, replaceState } from '$app/navigation';
@@ -22,6 +26,7 @@
 		pausePlan,
 		resumePlan,
 		updatePlanStatus,
+		restartTrainingPlan,
 		ActivePlanExistsError,
 		isActiveCoachOf,
 	} from '#lib/core/data.ts';
@@ -81,6 +86,14 @@
 	} from '#lib/training/training.ts';
 	import { weeklyDriftToDate, missedWorkoutAdvice } from '#lib/training/plan_adherence.ts';
 	import { resumeShift } from '#lib/training/plan_resume.ts';
+	import {
+		alignRestartStartIso,
+		defaultRestartStartIso,
+		isWalkRunPlan,
+		restartedDateIso,
+		restartStartAllowed,
+		upcomingRaceIso,
+	} from '#lib/training/plan_restart.ts';
 	import { shiftIsoDate } from '#lib/training/plan_bulk_ops.ts';
 	import { currentPlanWeekIndex } from '#lib/training/plan_week.ts';
 	import {
@@ -1143,6 +1156,62 @@
 	// Rolls over at local midnight (local_day_ticker.ts), so a tab left open
 	// overnight stops calling yesterday today.
 	let today = $state(todayISO());
+
+	// ─── Restart this plan (owner-only, decisions § 2121) ───
+	let restartOpen = $state(false);
+	let restartBusy = $state(false);
+	let restartStart = $state('');
+	let restartWalkRun = $derived(isWalkRunPlan(workouts));
+	let restartRaceAhead = $derived(upcomingRaceIso(workouts, today));
+	let restartEnd = $derived(
+		plan && restartStart ? restartedDateIso(plan.end_date, plan.start_date, restartStart) : null
+	);
+	let restartMovedRace = $derived.by(() => {
+		if (!plan || !restartStart) return null;
+		const last = workouts.filter((w) => w.kind === 'race').map((w) => w.scheduled_date).sort().at(-1);
+		return last ? restartedDateIso(last, plan.start_date, restartStart) : null;
+	});
+	let restartValid = $derived(
+		plan != null && restartStartAllowed(restartStart, plan.start_date, today, restartWalkRun)
+	);
+
+	async function chooseRestart(): Promise<void> {
+		if (!plan) return;
+		adjustOpen = false;
+		await tick();
+		restartStart = defaultRestartStartIso(plan.start_date, today, restartWalkRun);
+		restartOpen = true;
+	}
+
+	function onRestartStartChange(e: Event): void {
+		if (!plan) return;
+		const v = (e.currentTarget as HTMLInputElement).value;
+		restartStart = v ? alignRestartStartIso(v, plan.start_date, restartWalkRun) : '';
+	}
+
+	/// One RPC copies the plan and retires what it replaces, so a failure
+	/// leaves everything as it was.
+	async function doRestartPlan(): Promise<void> {
+		if (!plan || !isOwner || restartBusy || !restartValid) return;
+		restartBusy = true;
+		try {
+			const newId = await restartTrainingPlan(plan.id, restartStart);
+			restartOpen = false;
+			showToast(m('planDetail.restartDone'));
+			await goto(`/plans/${newId}`);
+			await load();
+		} catch (e) {
+			showToast(
+				isPlanRestartRaceAheadError(e)
+					? m('planDetail.restartRaceAheadError')
+					: m('planDetail.bulkFailed', { error: thrownMessage(e) }),
+				'error'
+			);
+		} finally {
+			restartBusy = false;
+		}
+	}
+
 	onMount(() => startLocalDayTicker((iso) => (today = iso)));
 	/// What resuming would push back: the weeks the runner had not started,
 	/// by the whole weeks the plan sat paused (`resumeShift`).
@@ -2279,6 +2348,20 @@
 					<p class="adjust-option-desc" id="adjust-abandon-desc">{m('planDetail.adjustAbandonDesc')}</p>
 				</li>
 			{/if}
+			<li class="adjust-option">
+				<button
+					type="button"
+					class="btn btn-outline btn-sm adjust-option-btn"
+					data-testid="restart-plan-btn"
+					aria-describedby="adjust-restart-desc"
+					onclick={chooseRestart}
+					disabled={bulkBusy}
+				>
+					<span class="material-symbols" aria-hidden="true">replay</span>
+					{m('planDetail.restartPlan')}
+				</button>
+				<p class="adjust-option-desc" id="adjust-restart-desc">{m('planDetail.adjustRestartDesc')}</p>
+			</li>
 			{#if cyclePlansEnabled && cyclePlanConfig}
 				<li class="adjust-option">
 					<button
@@ -2308,6 +2391,72 @@
 				</li>
 			{/if}
 		</ul>
+	</Modal>
+{/if}
+
+{#if plan && isOwner && !plan.is_template}
+	<Modal
+		open={restartOpen}
+		title={m('planDetail.restartTitle')}
+		onclose={() => {
+			if (!restartBusy) restartOpen = false;
+		}}
+		data-testid="restart-plan-dialog"
+	>
+		{#if restartRaceAhead}
+			<p class="restart-text" data-testid="restart-race-ahead">
+				{m('planDetail.restartRaceAhead', { date: formatDateShort(restartRaceAhead) })}
+			</p>
+			<div class="restart-actions">
+				<button type="button" class="btn btn-outline" onclick={() => (restartOpen = false)}>
+					{m('planDetail.replanCancel')}
+				</button>
+			</div>
+		{:else}
+			<label class="restart-field">
+				<span>{m('planDetail.restartStartLabel')}</span>
+				<input
+					type="date"
+					data-testid="restart-start-date"
+					value={restartStart}
+					min={today}
+					onchange={onRestartStartChange}
+					disabled={restartBusy}
+				/>
+			</label>
+			{#if restartValid && restartEnd}
+				<p class="restart-text" data-testid="restart-confirm-message">
+					{m(
+						plan.status === 'active' || plan.status === 'paused'
+							? 'planDetail.restartConfirmLive'
+							: 'planDetail.restartConfirmOver',
+						{ date: formatDateShort(restartStart), end: formatDateShort(restartEnd) }
+					)}
+					{#if restartMovedRace}
+						{m('planDetail.restartRaceMoves', { date: formatDateShort(restartMovedRace) })}
+					{/if}
+				</p>
+			{/if}
+			<div class="restart-actions">
+				<button
+					type="button"
+					class="btn btn-outline"
+					onclick={() => (restartOpen = false)}
+					disabled={restartBusy}
+				>
+					{m('planDetail.replanCancel')}
+				</button>
+				<button
+					type="button"
+					class="btn btn-danger"
+					data-testid="restart-confirm"
+					onclick={doRestartPlan}
+					disabled={restartBusy || !restartValid}
+				>
+					{m('planDetail.restartPlan')}
+				</button>
+			</div>
+		{/if}
 	</Modal>
 {/if}
 
@@ -2840,6 +2989,22 @@
 		font-size: 1rem;
 		vertical-align: -2px;
 		margin-inline-end: 0.2rem;
+	}
+	.restart-field {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+		margin-bottom: var(--space-md);
+	}
+	.restart-text {
+		margin: 0 0 var(--space-md);
+		line-height: 1.5;
+	}
+	.restart-actions {
+		display: flex;
+		justify-content: flex-end;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
 	}
 	.adjust-option-desc {
 		margin: 0;

@@ -4988,6 +4988,7 @@
   "planNewBuildOwn": "Oder stell dir deinen eigenen zusammen",
   "planNewSummary": "{weeks, plural, one{{weeks} Woche} other{{weeks} Wochen}} · endet am {date}",
   "rateLimitRotateCalendarLink": "Du erstellst zu schnell neue Kalenderlinks – bitte warte {wait} und versuche es erneut.",
+  "rateLimitRestartPlan": "Du startest Pläne zu schnell neu – bitte warte {wait} und versuche es erneut.",
   "planCalendarFeedTitle": "Trainingsplan-Kalender",
   "planCalendarFeedTileSubtitle": "Die Einheiten deines Plans in Google, Apple oder Outlook Kalender",
   "planCalendarFeedDescription": "Abonniere ihn in Google Kalender, Apple Kalender oder Outlook, um die Einheiten deines aktiven Plans als ganztägige Termine zu sehen. Sie folgen deinem Plan, wenn er sich ändert.",
@@ -5055,7 +5056,6 @@
   "planDetailResumeShiftTitle": "Fortsetzen und verschieben?",
   "planDetailResumeShiftMessage": "{n, plural, one{Dieser Plan wird wieder dein aktiver Plan. Die Wochen, die du noch nicht begonnen hattest, rücken {n} Woche nach hinten, damit es nächste Woche weitergeht, statt sie als verpasst zu zählen. Er endet jetzt am {date}.} other{Dieser Plan wird wieder dein aktiver Plan. Die Wochen, die du noch nicht begonnen hattest, rücken {n} Wochen nach hinten, damit es nächste Woche weitergeht, statt sie als verpasst zu zählen. Er endet jetzt am {date}.}}",
   "planDetailResumeShiftedDone": "{n, plural, one{Plan fortgesetzt und um {n} Woche verschoben.} other{Plan fortgesetzt und um {n} Wochen verschoben.}}",
-  "dashboardPlanPausedBody": "Pausiert. Setze ihn fort, um weiterzumachen; die verpassten Wochen rücken nach hinten.",
   "planDetailChangeRaceDate": "Wettkampfdatum ändern…",
   "planDetailRaceDatePickerHelp": "Neues Wettkampfdatum",
   "planDetailRaceDateConfirmTitle": "Wettkampfdatum ändern?",
@@ -5073,5 +5073,16 @@
   "planDetailRaceDateTooFar": "Das liegt mehr als ein Jahr weiter in der Zukunft. Starte stattdessen einen neuen Plan für diesen Wettkampf.",
   "planDetailRaceDateNoBuild": "Dieser Plan hat keine Aufbauwoche zum Wiederholen und kann daher nicht verlängert werden.",
   "planDetailRaceDateInTheWay": "In den Wochen, die sich verschieben würden, liegt ein anderer Wettkampf oder eine erledigte Einheit. Ändere das zuerst.",
-  "planDetailRaceDateOverlap": "Das neue Wettkampfdatum reicht in einen anderen aktiven Plan hinein. Verschiebe oder beende jenen Plan zuerst."
+  "planDetailRaceDateOverlap": "Das neue Wettkampfdatum reicht in einen anderen aktiven Plan hinein. Verschiebe oder beende jenen Plan zuerst.",
+  "planDetailRestartPlan": "Plan neu starten…",
+  "planDetailRestartTitle": "Diesen Plan neu starten",
+  "planDetailRestartChangeDate": "Startdatum ändern",
+  "planDetailRestartConfirmLive": "Die neue Kopie beginnt am {date} und endet am {end}. Dieser Plan und jeder aktive Plan, mit dem sich diese Daten überschneiden, wird als abgebrochen abgelegt. Seine Wochen, Einheiten und Lauf-Verknüpfungen bleiben erhalten.",
+  "planDetailRestartConfirmOver": "Die neue Kopie beginnt am {date} und endet am {end}. Jeder aktive Plan, mit dem sich diese Daten überschneiden, wird als abgebrochen abgelegt. Dieser Plan behält seine Wochen, Einheiten und Lauf-Verknüpfungen.",
+  "planDetailRestartRaceMoves": "Der Wettkampftag verschiebt sich auf den {date}.",
+  "planDetailRestartRaceAhead": "Der Wettkampf dieses Plans am {date} steht noch bevor. Ein Neustart würde den Wettkampftag verschieben. Ändere stattdessen das Wettkampfdatum oder beginne einen neuen Plan.",
+  "planDetailRestartRaceAheadError": "Dieser Plan hat noch einen bevorstehenden Wettkampf und kann daher nicht neu gestartet werden.",
+  "planDetailRestartConfirm": "Plan neu starten",
+  "planDetailRestartDone": "Plan neu gestartet. Das ist deine neue Kopie.",
+  "dashboardPlanPausedBody": "Pausiert. Setze ihn fort, um weiterzumachen; die verpassten Wochen rücken nach hinten."
 }

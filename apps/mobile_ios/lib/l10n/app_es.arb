@@ -4988,6 +4988,7 @@
   "planNewBuildOwn": "O crea el tuyo",
   "planNewSummary": "{weeks, plural, one{{weeks} semana} other{{weeks} semanas}} · termina el {date}",
   "rateLimitRotateCalendarLink": "Estás creando enlaces de calendario demasiado rápido: espera {wait} e inténtalo de nuevo.",
+  "rateLimitRestartPlan": "Estás reiniciando planes demasiado rápido: espera {wait} e inténtalo de nuevo.",
   "planCalendarFeedTitle": "Calendario del plan de entrenamiento",
   "planCalendarFeedTileSubtitle": "Los entrenamientos de tu plan en Google Calendar, Calendario de Apple u Outlook",
   "planCalendarFeedDescription": "Suscríbete desde Google Calendar, Calendario de Apple u Outlook para ver los entrenamientos de tu plan activo como eventos de todo el día. Siguen a tu plan cuando cambia.",
@@ -5055,7 +5056,6 @@
   "planDetailResumeShiftTitle": "¿Reanudar y retrasar?",
   "planDetailResumeShiftMessage": "{n, plural, one{Este plan vuelve a ser tu plan activo. Las semanas que no habías empezado se retrasan {n} semana, así que retoma la semana que viene en vez de contarlas como perdidas. Ahora termina el {date}.} other{Este plan vuelve a ser tu plan activo. Las semanas que no habías empezado se retrasan {n} semanas, así que retoma la semana que viene en vez de contarlas como perdidas. Ahora termina el {date}.}}",
   "planDetailResumeShiftedDone": "{n, plural, one{Plan reanudado y retrasado {n} semana.} other{Plan reanudado y retrasado {n} semanas.}}",
-  "dashboardPlanPausedBody": "En pausa. Reanúdalo para retomarlo; las semanas que te perdiste se retrasan.",
   "planDetailChangeRaceDate": "Cambiar fecha de carrera…",
   "planDetailRaceDatePickerHelp": "Nueva fecha de carrera",
   "planDetailRaceDateConfirmTitle": "¿Cambiar la fecha de carrera?",
@@ -5073,5 +5073,16 @@
   "planDetailRaceDateTooFar": "Eso es más de un año después. Crea mejor un plan nuevo para esa carrera.",
   "planDetailRaceDateNoBuild": "Este plan no tiene ninguna semana de desarrollo que repetir, así que no se puede alargar.",
   "planDetailRaceDateInTheWay": "Hay otra carrera o una sesión completada en las semanas que se moverían. Cámbiala primero.",
-  "planDetailRaceDateOverlap": "La nueva fecha de carrera se solapa con otro plan activo. Mueve o termina primero ese plan."
+  "planDetailRaceDateOverlap": "La nueva fecha de carrera se solapa con otro plan activo. Mueve o termina primero ese plan.",
+  "planDetailRestartPlan": "Reiniciar el plan…",
+  "planDetailRestartTitle": "Reiniciar este plan",
+  "planDetailRestartChangeDate": "Cambiar la fecha de inicio",
+  "planDetailRestartConfirmLive": "La nueva copia empieza el {date} y termina el {end}. Este plan, y cualquier plan activo con el que se solapen esas fechas, se archiva como abandonado. Se conservan sus semanas, entrenamientos y enlaces a carreras.",
+  "planDetailRestartConfirmOver": "La nueva copia empieza el {date} y termina el {end}. Cualquier plan activo con el que se solapen esas fechas se archiva como abandonado. Este plan conserva sus semanas, entrenamientos y enlaces a carreras.",
+  "planDetailRestartRaceMoves": "El día de la carrera pasa al {date}.",
+  "planDetailRestartRaceAhead": "La carrera de este plan, el {date}, todavía no ha llegado. Reiniciarlo movería el día de la carrera, así que cambia la fecha de la carrera o empieza un plan nuevo.",
+  "planDetailRestartRaceAheadError": "Este plan tiene una carrera que aún no ha llegado, así que no se puede reiniciar.",
+  "planDetailRestartConfirm": "Reiniciar el plan",
+  "planDetailRestartDone": "Plan reiniciado. Esta es tu nueva copia.",
+  "dashboardPlanPausedBody": "En pausa. Reanúdalo para retomarlo; las semanas que te perdiste se retrasan."
 }

@@ -38,6 +38,12 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # `supabase functions deploy` bundles in a local edge-runtime container,
+  # and the CLI pulls it from public.ecr.aws by default. ECR Public caps
+  # anonymous pulls per shared runner IP, which split backend@1.0.28 in half:
+  # migrations applied, then no function deployed. Same remedy and same
+  # mirror as ci.yml's setting of this variable (decisions § 2113).
+  SUPABASE_INTERNAL_IMAGE_REGISTRY: ghcr.io
 
 jobs:
   deploy:

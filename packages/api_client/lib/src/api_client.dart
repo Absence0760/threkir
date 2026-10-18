@@ -1600,6 +1600,24 @@ class ApiClient {
     return data.map<Run>((row) => _runFromRow(row)).toList();
   }
 
+  /// The signed-in user's runs among [ids], as track-less [Run]s like
+  /// [getRuns] returns. An id the caller does not own, or that no longer
+  /// exists, is simply absent. Owner-filtered for the same coach-visibility
+  /// reason as [getRuns], and chunked because the ids ride the request URL.
+  Future<List<Run>> getRunsByIds(Iterable<String> ids) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    final rows = await readChunked(
+      ids.toSet().toList(),
+      (chunk) async => _client
+          .from(RunRow.table)
+          .select()
+          .eq(RunRow.colUserId, userId)
+          .inFilter(RunRow.colId, chunk),
+    );
+    return rows.map<Run>((row) => _runFromRow(row)).toList();
+  }
+
   /// Download and decode the GPS track for a single run of the signed-in
   /// user's.
   ///

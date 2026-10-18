@@ -16,6 +16,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/runs_screen.dart';
 import '../lib/widgets/run_list_tile.dart';
 import '../lib/screens/add_run_screen.dart';
+import 'pump_until.dart';
 
 /// A signed-in fake whose `getRuns` always returns an empty delta page —
 /// the realistic "nothing changed since last visit" shape a returning
@@ -37,6 +38,23 @@ class _FakeSignedInApi extends ApiClient {
     getRunsCalls++;
     lastUpdatedSince = updatedSince;
     return const [];
+  }
+
+  /// Runs the server holds that no delta pull returns — a web restore or a
+  /// Garmin import, whose rows carry no `metadata.last_modified_at`.
+  List<Run> serverOnly = const [];
+  Set<String> ownedLocal = const {};
+  List<String> requestedIds = const [];
+
+  @override
+  Future<Set<String>> fetchOwnedRunIds() async =>
+      {...ownedLocal, for (final r in serverOnly) r.id};
+
+  @override
+  Future<List<Run>> getRunsByIds(Iterable<String> ids) async {
+    requestedIds = ids.toList();
+    final want = ids.toSet();
+    return [for (final r in serverOnly) if (want.contains(r.id)) r];
   }
 }
 
@@ -729,9 +747,63 @@ void main() {
       await tester.drag(find.byType(Scrollable).first, const Offset(0, -2000));
       await tester.pump();
       expect(find.text('Load 20 more'), findsNothing,
-          reason: '5 local runs (under the 20-row page size) means '
-              'there is provably no next page, regardless of which '
-              'fetch branch ran.');
+          reason: 'the membership reconcile completed, so the device '
+              'holds every owned run and there is no next page.');
+    });
+
+    testWidgets(
+        'a server run no delta pull returns still reaches the list '
+        '(restored on web, archive timestamps older than the watermark)',
+        (tester) async {
+      // Production: a web backup restore upserted runs whose metadata has no
+      // last_modified_at (or an archive-era one). The delta pull filters on
+      // that key, so the phone showed 10 runs of 93 forever.
+      SharedPreferences.setMockInitialValues({
+        'runs_filters_v1': jsonEncode({'range': 'all', 'sort': 'newest'}),
+      });
+      final prefs = Preferences();
+      await prefs.init();
+      await prefs.setRunsLastFetchedAt(DateTime.now().toUtc());
+      _runsDir = Directory.systemTemp.createTempSync('runs_screen_test_');
+      final local = _makeRuns(2);
+      // ignore: invalid_use_of_visible_for_testing_member
+      final runStore = LocalRunStore()..debugSeed(local, dir: _runsDir);
+      final restored = Run(
+        id: 'restored-garmin',
+        startedAt: DateTime.now().subtract(const Duration(minutes: 1)),
+        duration: const Duration(minutes: 40),
+        distanceMetres: 8000,
+        source: RunSource.garmin,
+        createdAt: DateTime.utc(2026, 2, 1),
+      );
+      final api = _FakeSignedInApi()
+        ..ownedLocal = {for (final r in local) r.id}
+        ..serverOnly = [restored];
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RunsScreen(
+            apiClient: api,
+            runStore: runStore,
+            routeStore: LocalRouteStore(),
+            preferences: prefs,
+          ),
+        ),
+      );
+      await pumpUntil(
+        tester,
+        () => runStore.summaries.any((s) => s.id == restored.id),
+        describe: 'the restored run to land in the store',
+      );
+      await tester.pump();
+
+      expect(api.lastUpdatedSince, isNotNull,
+          reason: 'the delta branch ran and returned nothing');
+      expect(api.requestedIds, [restored.id],
+          reason: 'only the gap is fetched in full, never the held rows');
+      expect(runStore.summaries.map((s) => s.id), contains(restored.id));
+      expect(find.byType(RunListTile), findsNWidgets(3));
     });
 
     testWidgets('tapping Load more reveals the next local page',
@@ -773,6 +845,68 @@ void main() {
 
       // 30 ≤ 40 (next page), apiClient is null → no further button.
       expect(find.text('Load 20 more'), findsNothing);
+    });
+  });
+
+  group('RunsScreen month headers', () {
+    Future<void> pumpWithSort(WidgetTester tester, String sort) async {
+      SharedPreferences.setMockInitialValues({
+        'runs_filters_v1': jsonEncode({'range': 'all', 'sort': sort}),
+      });
+      final prefs = Preferences();
+      await prefs.init();
+      _runsDir = Directory.systemTemp.createTempSync('runs_screen_months_');
+      final now = DateTime.now();
+      // Forty days apart always straddles a month boundary; the OLDER run is
+      // the longer one, so a longest-first list runs against the calendar.
+      final runs = [
+        Run(
+          id: 'recent-short',
+          startedAt: now.subtract(const Duration(days: 1)),
+          duration: const Duration(minutes: 30),
+          distanceMetres: 5000,
+          source: RunSource.app,
+        ),
+        Run(
+          id: 'older-long',
+          startedAt: now.subtract(const Duration(days: 41)),
+          duration: const Duration(hours: 2),
+          distanceMetres: 21500,
+          source: RunSource.app,
+        ),
+      ];
+      // ignore: invalid_use_of_visible_for_testing_member
+      final runStore = LocalRunStore()..debugSeed(runs, dir: _runsDir);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RunsScreen(
+            apiClient: null,
+            runStore: runStore,
+            routeStore: LocalRouteStore(),
+            preferences: prefs,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    final monthHeader = find.byWidgetPredicate(
+        (w) => w.runtimeType.toString() == '_MonthHeaderRow');
+
+    testWidgets('newest-first groups by month', (tester) async {
+      await pumpWithSort(tester, 'newest');
+      expect(monthHeader, findsNWidgets(2));
+    });
+
+    testWidgets('longest-first drops month headers instead of interleaving '
+        'them', (tester) async {
+      // Production: the ranked list read JULY above OCTOBER.
+      await pumpWithSort(tester, 'longest');
+      expect(monthHeader, findsNothing);
+      expect(find.byType(RunListTile), findsNWidgets(2));
     });
   });
 

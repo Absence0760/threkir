@@ -239,6 +239,12 @@ class LocalRunStore extends ChangeNotifier {
   /// Whether [runId] is confirmed pushed — the sidecar state, owner-blind.
   bool isSynced(String runId) => _syncedIds.contains(runId);
 
+  /// The id of every run on the device, owner-blind — the full-history index,
+  /// not the resident window. The missing-run reconcile diffs the server's
+  /// owned set against this, so a row the owner tag hides is still "held" and
+  /// is not re-fetched on every refresh.
+  Set<String> get knownIds => {for (final s in _summaries) s.id};
+
   /// Runs whose push is parked, mapped to why. Keyed by id because a parked
   /// run is deliberately NOT resident — see [_blocked].
   Map<String, RunPushBlockReason> get blockedRuns => Map.unmodifiable(_blocked);

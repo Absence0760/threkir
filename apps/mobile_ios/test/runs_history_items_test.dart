@@ -125,5 +125,46 @@ void main() {
       final runs = items.whereType<HistoryRun>().map((i) => i.run.id).toList();
       expect(runs, [r1.id, r2.id, r3.id]);
     });
+
+    test('a ranking sort emits no month headers, so months never interleave',
+        () {
+      // Production: sorted longest-first, the list read JULY (13.4 mi) above
+      // OCTOBER (13.0 mi, 6.56 mi) and would repeat July further down.
+      final jul = _r(DateTime(2026, 7, 14, 7), id: 'jul');
+      final oct17 = _r(DateTime(2026, 10, 17, 7), id: 'oct17');
+      final oct9 = _r(DateTime(2026, 10, 9, 7), id: 'oct9');
+      final feb = _r(DateTime(2026, 2, 3, 7), id: 'feb');
+      final items = buildHistoryItems(
+        [jul, oct17, oct9, feb],
+        now: now,
+        groupByMonth: false,
+      );
+      expect(items.whereType<HistoryMonthHeader>(), isEmpty);
+      expect(
+        items.whereType<HistoryRun>().map((i) => i.run.id).toList(),
+        ['jul', 'oct17', 'oct9', 'feb'],
+        reason: 'the ranking order is the caller\'s and is kept',
+      );
+    });
+
+    test('date-ordered input yields each month header once, newest first',
+        () {
+      final items = buildHistoryItems(
+        [
+          _r(DateTime(2026, 10, 17, 7)),
+          _r(DateTime(2026, 10, 9, 7)),
+          _r(DateTime(2026, 7, 14, 7)),
+          _r(DateTime(2025, 12, 30, 7)),
+        ],
+        now: DateTime(2026, 10, 18),
+      );
+      final headers = items.whereType<HistoryMonthHeader>().toList();
+      expect(
+        [for (final h in headers) (h.year, h.month)],
+        [(2026, 10), (2026, 7), (2025, 12)],
+      );
+      expect(headers.last.label, contains('2025'),
+          reason: 'a header outside the current year names its year');
+    });
   });
 }

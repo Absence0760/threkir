@@ -10,9 +10,10 @@ function wo(
 	kind: string,
 	scheduled_date: string,
 	done: boolean,
-	runDistanceM: number | null = null
+	runDistanceM: number | null = null,
+	linkedRun = done
 ): GraduationWorkout {
-	return { id, kind, scheduled_date, done, runDistanceM };
+	return { id, kind, scheduled_date, done, runDistanceM, linkedRun };
 }
 
 test('walkRunGraduation: the 5K done is a graduation', () => {
@@ -34,6 +35,11 @@ test('walkRunGraduation: nothing until the last session is done, earlier session
 
 test('walkRunGraduation: an older plan ending on a timed run graduates without a 5K', () => {
 	const g = walkRunGraduation([wo('a', 'walk_run', '2026-03-02', false), wo('b', 'walk_run', '2026-03-06', true)]);
+	assert.deepEqual(g, { workoutId: 'b', date: '2026-03-06', ranFiveK: false });
+});
+
+test('walkRunGraduation: a 5K ticked off by hand graduates without claiming the 5K was run', () => {
+	const g = walkRunGraduation([wo('a', 'walk_run', '2026-03-02', true), wo('b', 'walk_run', '2026-03-06', true, 5000, false)]);
 	assert.deepEqual(g, { workoutId: 'b', date: '2026-03-06', ranFiveK: false });
 });
 

@@ -15,6 +15,7 @@
 				kind: w.kind,
 				scheduled_date: w.scheduled_date,
 				done: isWorkoutCompleted(w),
+				linkedRun: w.completed_run_id != null,
 				runDistanceM: structureRunDistanceM(w.structure)
 			}))
 		);

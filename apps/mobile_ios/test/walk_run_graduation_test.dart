@@ -5,12 +5,13 @@ import '../lib/training.dart';
 import '../lib/walk_run_graduation.dart';
 
 GraduationWorkout _wo(String id, String kind, String date, bool done,
-        [num? runDistanceM]) =>
+        [num? runDistanceM, bool? linkedRun]) =>
     GraduationWorkout(
       id: id,
       kind: kind,
       scheduledDate: date,
       done: done,
+      linkedRun: linkedRun ?? done,
       runDistanceM: runDistanceM,
     );
 
@@ -45,6 +46,19 @@ void main() {
     final g = walkRunGraduation([
       _wo('a', 'walk_run', '2026-03-02', false),
       _wo('b', 'walk_run', '2026-03-06', true),
+    ]);
+    expect(
+        g,
+        const WalkRunGraduation(
+            workoutId: 'b', date: '2026-03-06', ranFiveK: false));
+  });
+
+  test(
+      'walkRunGraduation: a 5K ticked off by hand graduates without claiming the 5K was run',
+      () {
+    final g = walkRunGraduation([
+      _wo('a', 'walk_run', '2026-03-02', true),
+      _wo('b', 'walk_run', '2026-03-06', true, 5000, false),
     ]);
     expect(
         g,
@@ -123,7 +137,8 @@ void main() {
       walkRunGraduation([
         for (final r in rows)
           r.id == g?.workoutId
-              ? _wo(r.id, r.kind, r.scheduledDate, false, r.runDistanceM)
+              ? _wo(r.id, r.kind, r.scheduledDate, false, r.runDistanceM,
+                  r.linkedRun)
               : r,
       ]),
       isNull,

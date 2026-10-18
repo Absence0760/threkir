@@ -10,13 +10,14 @@ import '../lib/widgets/walk_run_graduation_card.dart';
 /// what it says for the 5K and for an older plan, and that its next step
 /// opens a 10K plan.
 PlanWorkoutRow _wo(String id, DateTime date, String kind,
-        {bool done = false, Object? structure}) =>
+        {bool done = false, String? runId, Object? structure}) =>
     PlanWorkoutRow(
       id: id,
       weekId: 'w0',
       scheduledDate: date,
       kind: kind,
       manuallyCompleted: done,
+      completedRunId: runId,
       structure: structure,
     );
 
@@ -43,7 +44,8 @@ void main() {
     final rows = [
       _wo('a', DateTime(2026, 3, 2), 'walk_run', done: true),
       _wo('r', DateTime(2026, 3, 3), 'rest'),
-      _wo('b', DateTime(2026, 3, 6), 'walk_run', done: true, structure: _fiveK),
+      _wo('b', DateTime(2026, 3, 6), 'walk_run',
+          runId: 'run-b', structure: _fiveK),
     ];
     expect(
         WalkRunGraduationCard.fromRows(rows),
@@ -56,6 +58,16 @@ void main() {
         _wo('b', DateTime(2026, 3, 6), 'walk_run', structure: _fiveK),
       ]),
       isNull,
+    );
+    expect(
+      WalkRunGraduationCard.fromRows([
+        rows[0],
+        rows[1],
+        _wo('b', DateTime(2026, 3, 6), 'walk_run',
+            done: true, structure: _fiveK),
+      ]),
+      const WalkRunGraduation(
+          workoutId: 'b', date: '2026-03-06', ranFiveK: false),
     );
   });
 

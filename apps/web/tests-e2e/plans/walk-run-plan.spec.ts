@@ -27,11 +27,14 @@ test.afterAll(async () => {
 });
 
 test.afterEach(async () => {
-	const { error } = await getAdminClient().from('training_plans').delete().eq('user_id', runner.id);
+	const admin = getAdminClient();
+	const { error } = await admin.from('training_plans').delete().eq('user_id', runner.id);
 	if (error) throw error;
+	const { error: runErr } = await admin.from('runs').delete().eq('user_id', runner.id);
+	if (runErr) throw runErr;
 });
 
-type Seed = { offset: number; done?: boolean; fiveK?: boolean };
+type Seed = { offset: number; done?: boolean; fiveK?: boolean; linked?: boolean };
 
 const TIMED = {
 	warmup: { duration_s: 300, pace: 'easy' },
@@ -76,6 +79,22 @@ async function plantPlan(start: number, sessions: Seed[]): Promise<string> {
 		if (error) throw error;
 	}
 	for (const s of sessions) {
+		let completedRunId: string | null = null;
+		if (s.linked) {
+			completedRunId = crypto.randomUUID();
+			const { error: runErr } = await admin.from('runs').insert({
+				id: completedRunId,
+				user_id: runner.id,
+				started_at: `${browserDate(s.offset)}T08:00:00Z`,
+				duration_s: 2400,
+				distance_m: 5050,
+				source: 'app',
+				is_public: false,
+				activity_type: 'run',
+				metadata: { activity_type: 'run' }
+			});
+			if (runErr) throw runErr;
+		}
 		const { error } = await admin.from('plan_workouts').insert({
 			week_id: weekIds[Math.floor((s.offset - start) / 7)],
 			scheduled_date: browserDate(s.offset),
@@ -83,7 +102,8 @@ async function plantPlan(start: number, sessions: Seed[]): Promise<string> {
 			target_distance_m: s.fiveK ? 5857 : 2050,
 			target_duration_seconds: s.fiveK ? 4260 : 1710,
 			structure: s.fiveK ? FIVE_K : TIMED,
-			manually_completed: s.done ?? false
+			manually_completed: s.done ?? false,
+			completed_run_id: completedRunId
 		});
 		if (error) throw error;
 	}
@@ -137,7 +157,7 @@ test.describe('a walk-run plan', () => {
 			{ offset: -8, done: true },
 			{ offset: -5, done: true },
 			{ offset: -3, done: true },
-			{ offset: -1, done: true, fiveK: true }
+			{ offset: -1, fiveK: true, linked: true }
 		]);
 		const page = await open(browser, `/plans/${planId}`);
 		try {
@@ -152,6 +172,26 @@ test.describe('a walk-run plan', () => {
 			await expect(next).toHaveAttribute('href', '/plans/new?type=training&goal=10k');
 			await next.click();
 			await expect(page).toHaveURL(/\/plans\/new\?type=training&goal=10k/);
+		} finally {
+			await page.context().close();
+		}
+	});
+
+	test('a 5K ticked off by hand graduates without claiming the 5K was run', async ({ browser }) => {
+		const planId = await plantPlan(-12, [
+			{ offset: -12, done: true },
+			{ offset: -10, done: true },
+			{ offset: -8, done: true },
+			{ offset: -5, done: true },
+			{ offset: -3, done: true },
+			{ offset: -1, done: true, fiveK: true }
+		]);
+		const page = await open(browser, `/plans/${planId}`);
+		try {
+			await expect(page.getByTestId('walk-run-graduation')).toBeVisible({ timeout: 15_000 });
+			await expect(page.getByTestId('walk-run-graduation-body')).toHaveText(
+				'You finished the plan running the whole way, with no walk breaks. You started with one-minute runs between walks.'
+			);
 		} finally {
 			await page.context().close();
 		}

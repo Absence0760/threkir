@@ -18,6 +18,9 @@ export interface GraduationWorkout {
 	scheduled_date: string;
 	/// Done: linked to a run or marked complete.
 	done: boolean;
+	/// A recorded run is linked to the session (`completed_run_id`). A manual
+	/// tick is done, but is no evidence of what was run.
+	linkedRun: boolean;
 	/// The distance the session's one run ends on, when it ends on one
 	/// (`structure.repeats.distance_m`).
 	runDistanceM: number | null;
@@ -27,8 +30,10 @@ export interface WalkRunGraduation {
 	workoutId: string;
 	/// ISO date of the graduation session.
 	date: string;
-	/// The last session was the 5K. A plan generated before the graduation
-	/// run ended on a 5K finished on a timed run instead, and is told so.
+	/// The last session was the 5K and a recorded run backs it. A plan
+	/// generated before the graduation run ended on a 5K finished on a timed
+	/// run instead, and a 5K only ticked off by hand is not claimed as run;
+	/// both are told they finished.
 	ranFiveK: boolean;
 }
 
@@ -57,6 +62,6 @@ export function walkRunGraduation(workouts: readonly GraduationWorkout[]): WalkR
 	return {
 		workoutId: last.id,
 		date: last.scheduled_date,
-		ranFiveK: last.runDistanceM != null && last.runDistanceM >= WALK_RUN_GRADUATION_M
+		ranFiveK: last.linkedRun && last.runDistanceM != null && last.runDistanceM >= WALK_RUN_GRADUATION_M
 	};
 }

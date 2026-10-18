@@ -30,6 +30,7 @@ class WalkRunGraduationCard extends StatelessWidget {
             kind: w.kind,
             scheduledDate: toIsoDate(w.scheduledDate),
             done: isWorkoutCompleted(w),
+            linkedRun: w.completedRunId != null,
             runDistanceM: structureRunDistanceM(w.structure),
           ),
       ]);

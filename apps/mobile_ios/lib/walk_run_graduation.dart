@@ -20,6 +20,10 @@ class GraduationWorkout {
   /// Done: linked to a run or marked complete.
   final bool done;
 
+  /// A recorded run is linked to the session (`completed_run_id`). A manual
+  /// tick is done, but is no evidence of what was run.
+  final bool linkedRun;
+
   /// The distance the session's one run ends on, when it ends on one
   /// (`structure.repeats.distance_m`).
   final num? runDistanceM;
@@ -29,6 +33,7 @@ class GraduationWorkout {
     required this.kind,
     required this.scheduledDate,
     required this.done,
+    this.linkedRun = false,
     this.runDistanceM,
   });
 }
@@ -39,8 +44,10 @@ class WalkRunGraduation {
   /// ISO date of the graduation session.
   final String date;
 
-  /// The last session was the 5K. A plan generated before the graduation run
-  /// ended on a 5K finished on a timed run instead, and is told so.
+  /// The last session was the 5K and a recorded run backs it. A plan
+  /// generated before the graduation run ended on a 5K finished on a timed
+  /// run instead, and a 5K only ticked off by hand is not claimed as run;
+  /// both are told they finished.
   final bool ranFiveK;
 
   const WalkRunGraduation({
@@ -93,6 +100,6 @@ WalkRunGraduation? walkRunGraduation(List<GraduationWorkout> workouts) {
   return WalkRunGraduation(
     workoutId: last.id,
     date: last.scheduledDate,
-    ranFiveK: run != null && run >= kWalkRunGraduationM,
+    ranFiveK: last.linkedRun && run != null && run >= kWalkRunGraduationM,
   );
 }

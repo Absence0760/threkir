@@ -5095,5 +5095,13 @@
   "phoneSurfaceWidgetStale": "Ouvrez Threkir pour actualiser",
   "phoneSurfaceWidgetRestDay": "Jour de repos",
   "phoneSurfaceWidgetDone": "Fait",
-  "phoneSurfaceWidgetSkipped": "Sauté"
+  "phoneSurfaceWidgetSkipped": "Sauté",
+  "dashboardTrainForSomething": "S'entraîner pour un objectif",
+  "dashboardTrainForSomethingBody": "Choisissez une course ou une distance et obtenez un plan semaine par semaine avec des allures adaptées à votre forme.",
+  "dashboardRecent5kTitle": "Votre 5 km en {time} le {date}",
+  "dashboardRecent5kBody": "Créez un plan à partir de ce temps. Vous confirmerez qu'il reflète toujours votre forme avant qu'il ne fixe vos allures.",
+  "dashboardRecent5kCta": "Créer un plan",
+  "dashboardRecent5kDismiss": "Pas maintenant",
+  "dashboardRecent5kDismissFailed": "Impossible d'enregistrer ce choix : la suggestion pourrait réapparaître.",
+  "planNewRecent5kSuggested": "Rempli à partir de votre 5 km récent. N'activez l'interrupteur ci-dessous que s'il reflète votre forme actuelle."
 }

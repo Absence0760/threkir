@@ -18088,6 +18088,36 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get phoneSurfaceWidgetSkipped => 'Saltado';
+
+  @override
+  String get dashboardTrainForSomething => 'Treine para um objetivo';
+
+  @override
+  String get dashboardTrainForSomethingBody =>
+      'Escolha uma prova ou uma distância e receba um plano semana a semana com ritmos ajustados ao seu condicionamento.';
+
+  @override
+  String dashboardRecent5kTitle(String time, String date) {
+    return 'Os seus 5 km em $time a $date';
+  }
+
+  @override
+  String get dashboardRecent5kBody =>
+      'Crie um plano a partir dele. Antes de definir os ritmos, confirma que ainda reflete o seu condicionamento.';
+
+  @override
+  String get dashboardRecent5kCta => 'Criar um plano';
+
+  @override
+  String get dashboardRecent5kDismiss => 'Agora não';
+
+  @override
+  String get dashboardRecent5kDismissFailed =>
+      'Não foi possível guardar, por isso a sugestão pode voltar a aparecer.';
+
+  @override
+  String get planNewRecent5kSuggested =>
+      'Preenchido com os seus 5 km recentes. Ative a opção abaixo só se refletir o seu condicionamento de hoje.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -36161,4 +36191,34 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get phoneSurfaceWidgetSkipped => 'Pulado';
+
+  @override
+  String get dashboardTrainForSomething => 'Treine para algo';
+
+  @override
+  String get dashboardTrainForSomethingBody =>
+      'Escolha uma prova ou uma distância e receba um plano semana a semana com ritmos ajustados ao seu condicionamento.';
+
+  @override
+  String dashboardRecent5kTitle(String time, String date) {
+    return 'Seus 5 km em $time em $date';
+  }
+
+  @override
+  String get dashboardRecent5kBody =>
+      'Crie um plano a partir dele. Antes de definir os ritmos, você confirma que ele ainda reflete seu condicionamento.';
+
+  @override
+  String get dashboardRecent5kCta => 'Criar um plano';
+
+  @override
+  String get dashboardRecent5kDismiss => 'Agora não';
+
+  @override
+  String get dashboardRecent5kDismissFailed =>
+      'Não foi possível salvar, então a sugestão pode voltar a aparecer.';
+
+  @override
+  String get planNewRecent5kSuggested =>
+      'Preenchido com seus 5 km recentes. Ative a opção abaixo só se ele refletir seu condicionamento hoje.';
 }

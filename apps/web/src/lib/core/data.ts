@@ -454,10 +454,11 @@ export async function fetchRunsWithError(
 /// contract + rationale in `./dashboard_runs`); the select carries exactly
 /// the columns the dashboard's consumers read (streaks, training-load,
 /// race-predictor, consistency, intensity, trend, goals, snapshot,
-/// this-week, weekly mileage chart, recent list) — `metadata` stays because those consumers
+/// this-week, weekly mileage chart, recent list, the no-plan recent-5K
+/// suggestion) — `metadata` stays because those consumers
 /// read `avg_bpm` / `elevation_m` / `indoor` from it. `track` is NOT set — it
 /// is a lazy Storage download rather than a column, so it is not one of the
-/// ten and `DashboardRun` does not declare it. `fetchRuns` answers the same
+/// eleven and `DashboardRun` does not declare it. `fetchRuns` answers the same
 /// way for a narrowed read and sets it only for `select('*')`, whose row type
 /// is the whole of `Run`.
 /// The `started_at desc` order means the PostgREST 1000-row cap, if a
@@ -478,6 +479,7 @@ export const DASHBOARD_RUN_COLUMNS = [
 	'is_dnf',
 	'elevation_gain_m',
 	'metadata',
+	'fastest_5k_s',
 ] as const satisfies RunColumns;
 
 /// What the dashboard read carries, and what `fetchRunsForDashboard` declares.
@@ -509,7 +511,7 @@ export async function fetchRunsForDashboard(): Promise<{
 		// `text` and `metadata` is jsonb, so the generated row types them
 		// `string` / `string` / `Json` while the client unions promise less; the
 		// widening cast this replaced meant the dashboard was the one read that
-		// applied none of them. `track` is NOT set — it is not one of the ten
+		// applied none of them. `track` is NOT set — it is not one of the eleven
 		// columns, so `DashboardRun` does not carry it.
 		runs: data.map((r) => ({
 			...r,

@@ -5095,5 +5095,13 @@
   "phoneSurfaceWidgetStale": "Öffne Threkir zum Aktualisieren",
   "phoneSurfaceWidgetRestDay": "Ruhetag",
   "phoneSurfaceWidgetDone": "Erledigt",
-  "phoneSurfaceWidgetSkipped": "Ausgelassen"
+  "phoneSurfaceWidgetSkipped": "Ausgelassen",
+  "dashboardTrainForSomething": "Für etwas trainieren",
+  "dashboardTrainForSomethingBody": "Wähle ein Rennen oder eine Distanz und erhalte einen Wochenplan mit Paces passend zu deiner Form.",
+  "dashboardRecent5kTitle": "Dein 5-km-Lauf in {time} am {date}",
+  "dashboardRecent5kBody": "Erstelle daraus einen Plan. Bevor die Zeit Paces festlegt, bestätigst du, dass sie deiner aktuellen Form entspricht.",
+  "dashboardRecent5kCta": "Plan daraus erstellen",
+  "dashboardRecent5kDismiss": "Nicht jetzt",
+  "dashboardRecent5kDismissFailed": "Das konnte nicht gespeichert werden, der Vorschlag erscheint vielleicht wieder.",
+  "planNewRecent5kSuggested": "Aus deinem letzten 5-km-Lauf übernommen. Aktiviere den Schalter unten nur, wenn die Zeit deiner heutigen Form entspricht."
 }

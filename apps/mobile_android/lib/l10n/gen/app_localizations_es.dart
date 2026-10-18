@@ -18087,4 +18087,34 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get phoneSurfaceWidgetSkipped => 'Omitido';
+
+  @override
+  String get dashboardTrainForSomething => 'Entrena para algo';
+
+  @override
+  String get dashboardTrainForSomethingBody =>
+      'Elige una carrera o una distancia y obtén un plan semana a semana con ritmos ajustados a tu forma.';
+
+  @override
+  String dashboardRecent5kTitle(String time, String date) {
+    return 'Tus 5 km en $time el $date';
+  }
+
+  @override
+  String get dashboardRecent5kBody =>
+      'Crea un plan a partir de él. Antes de que marque tus ritmos, confirmarás que sigue reflejando tu forma.';
+
+  @override
+  String get dashboardRecent5kCta => 'Crear un plan';
+
+  @override
+  String get dashboardRecent5kDismiss => 'Ahora no';
+
+  @override
+  String get dashboardRecent5kDismissFailed =>
+      'No se pudo guardar, así que la sugerencia puede volver a aparecer.';
+
+  @override
+  String get planNewRecent5kSuggested =>
+      'Rellenado con tus 5 km recientes. Activa el interruptor de abajo solo si refleja tu forma de hoy.';
 }

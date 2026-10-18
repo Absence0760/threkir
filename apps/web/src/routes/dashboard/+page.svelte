@@ -79,6 +79,11 @@
 	} from '#lib/stores/modality_visibility.svelte.ts';
 	import DashboardWeekLead from '#lib/components/DashboardWeekLead.svelte';
 	import FinishPlanPrompt from '#lib/components/FinishPlanPrompt.svelte';
+	import Recent5kPlanCard from '#lib/components/Recent5kPlanCard.svelte';
+	import {
+		PLAN_SUGGESTION_DISMISSED_KEY,
+		pickRecent5k,
+	} from '#lib/training/recent_5k_suggestion.ts';
 	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import { weeklyGoalTarget } from '#lib/training/week_lead.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
@@ -204,6 +209,10 @@
 	/// The plan read failed: the plan slot says so rather than offering to
 	/// create a plan the runner may already have.
 	let planLoadError = $state<string | null>(null);
+	/// When the runner last dismissed the recent-5K plan suggestion: null for
+	/// never, undefined while the settings bag is unread or failed to read, so
+	/// an unknown answer never shows a suggestion they already waved away.
+	let recent5kDismissedAt = $state<string | null | undefined>(undefined);
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);
 	let mileageView = $state<'weekly' | 'monthly' | 'yearly'>('weekly');
@@ -684,6 +693,10 @@
 		// A missing bag (new user, or RLS blip) just leaves `weeklyGoalMetres`
 		// null and the goal card hidden.
 		if (settingsRead) applyDashboardSettings(settingsRead);
+		if (settingsRead && !settingsRead.universalUnknown) {
+			const stamp = effective<unknown>(settingsRead, PLAN_SUGGESTION_DISMISSED_KEY);
+			recent5kDismissedAt = typeof stamp === 'string' ? stamp : null;
+		}
 		// An RLS blip just leaves the curve run-only — the contract: a
 		// lift-load failure can't corrupt run readiness.
 		if (gymRead) [gymWorkouts, gymHistory] = gymRead;
@@ -849,6 +862,40 @@
 			await updateUniversal(uid, { [TRAINING_LOAD_EXPANDED_KEY]: next });
 		} catch (e) {
 			console.warn('Training-load expander state not saved', e);
+		}
+	}
+
+	/// The plan slot's suggestion for a runner with no plan: a measured 5K from
+	/// the last eight weeks to seed the wizard with. Only once the plan read has
+	/// answered "no plan" and the settings bag has answered too.
+	let recent5kSuggestion = $derived(
+		!loading && !planOverview && !planLoadError && !pausedPlan && recent5kDismissedAt !== undefined
+			? pickRecent5k(
+					runs.map((r) => ({
+						id: r.id,
+						startedAt: r.started_at,
+						fastest5kS: r.fastest_5k_s,
+						activityType: r.activity_type,
+						isDnf: r.is_dnf,
+					})),
+					Date.now(),
+					recent5kDismissedAt,
+				)
+			: null
+	);
+
+	/// Hidden at once and remembered in the universal bag, so the phone stops
+	/// offering it too. A refused write is said, since the card can come back.
+	async function dismissRecent5k() {
+		const stamp = new Date().toISOString();
+		recent5kDismissedAt = stamp;
+		const uid = auth.user?.id;
+		if (!uid) return;
+		try {
+			await updateUniversal(uid, { [PLAN_SUGGESTION_DISMISSED_KEY]: stamp });
+		} catch (e) {
+			console.warn('Recent-5K suggestion dismissal not saved', e);
+			showToast(m('dash.recent5kDismissFailed'), 'error');
 		}
 	}
 
@@ -1358,6 +1405,8 @@
 				</div>
 				<span class="material-symbols">chevron_right</span>
 			</a>
+		{:else if !planOverview && recent5kSuggestion}
+			<Recent5kPlanCard suggestion={recent5kSuggestion} ondismiss={dismissRecent5k} />
 		{:else if !planOverview}
 			<a class="plan-promo" href="/plans?new=1">
 				<div>

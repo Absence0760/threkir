@@ -105,6 +105,11 @@ class PlanNewScreen extends StatefulWidget {
   /// available it fills the form once after the first frame.
   final String? initialDescription;
 
+  /// A measured 5K to fill the recent-5K field with (Home's recent-5K
+  /// suggestion). Filled, never confirmed: it sets no paces until the runner
+  /// turns on the confirm switch.
+  final int? initialRecent5kSec;
+
   /// Used to open the AI disclosure when the plan assistant is refused for
   /// consent. Null resolves the global client at tap time.
   final ApiClient? apiClient;
@@ -126,6 +131,7 @@ class PlanNewScreen extends StatefulWidget {
     this.raceName,
     this.raceDistanceM,
     this.initialDescription,
+    this.initialRecent5kSec,
     this.apiClient,
     this.loadAiPlanAvailable,
     this.requestPlanInputsFn,
@@ -346,6 +352,13 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       _startDate = defaultPlanStart(_today(), walkRun: true);
     }
     _applyRacePreset();
+    final suggested = widget.initialRecent5kSec;
+    if (suggested != null) {
+      _recent5kMin = suggested ~/ 60;
+      _recent5kSec = suggested % 60;
+      _recent5kMinCtrl.text = '$_recent5kMin';
+      _recent5kSecCtrl.text = '$_recent5kSec';
+    }
     final description = widget.initialDescription?.trim();
     if (description != null && description.isNotEmpty) {
       _aiCtrl.text = description.length > kPlanDescriptionMaxChars
@@ -1254,6 +1267,15 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                       sentence: 'plan',
                       style: muted,
                     ),
+                    if (widget.initialRecent5kSec != null &&
+                        _recent5kTotal == widget.initialRecent5kSec &&
+                        !_recent5kConfirmed)
+                      Padding(
+                        key: const Key('plan-new-recent5k-suggested'),
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(l10n.planNewRecent5kSuggested,
+                            style: muted),
+                      ),
                     if (_recent5kComplete)
                       SwitchListTile(
                         key: const Key('plan-new-recent5k-confirm'),

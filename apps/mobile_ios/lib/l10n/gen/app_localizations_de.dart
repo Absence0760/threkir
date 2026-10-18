@@ -18098,4 +18098,34 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get phoneSurfaceWidgetSkipped => 'Ausgelassen';
+
+  @override
+  String get dashboardTrainForSomething => 'Für etwas trainieren';
+
+  @override
+  String get dashboardTrainForSomethingBody =>
+      'Wähle ein Rennen oder eine Distanz und erhalte einen Wochenplan mit Paces passend zu deiner Form.';
+
+  @override
+  String dashboardRecent5kTitle(String time, String date) {
+    return 'Dein 5-km-Lauf in $time am $date';
+  }
+
+  @override
+  String get dashboardRecent5kBody =>
+      'Erstelle daraus einen Plan. Bevor die Zeit Paces festlegt, bestätigst du, dass sie deiner aktuellen Form entspricht.';
+
+  @override
+  String get dashboardRecent5kCta => 'Plan daraus erstellen';
+
+  @override
+  String get dashboardRecent5kDismiss => 'Nicht jetzt';
+
+  @override
+  String get dashboardRecent5kDismissFailed =>
+      'Das konnte nicht gespeichert werden, der Vorschlag erscheint vielleicht wieder.';
+
+  @override
+  String get planNewRecent5kSuggested =>
+      'Aus deinem letzten 5-km-Lauf übernommen. Aktiviere den Schalter unten nur, wenn die Zeit deiner heutigen Form entspricht.';
 }

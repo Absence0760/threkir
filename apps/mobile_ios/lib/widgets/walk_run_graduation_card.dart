@@ -1,5 +1,6 @@
 import 'package:core_models/core_models.dart' show PlanWorkoutRow;
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show AppIconSize;
 
 import '../l10n/gen/app_localizations.dart';
 import '../training.dart' show isWorkoutCompleted, toIsoDate;
@@ -49,7 +50,8 @@ class WalkRunGraduationCard extends StatelessWidget {
           children: [
             ExcludeSemantics(
               child: Icon(Icons.emoji_events_outlined,
-                  size: 32, color: theme.colorScheme.primary),
+                  size: AppIconSize.material,
+                  color: theme.colorScheme.primary),
             ),
             const SizedBox(width: 12),
             Expanded(

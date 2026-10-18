@@ -66,7 +66,10 @@
 		// Snapshot restore (below) repopulates `plans` synchronously
 		// when navigating back, so skip the fetch — otherwise a flash
 		// of "loading" replaces the restored list and breaks scroll.
-		if (!(plans.length > 0 && !loading)) await load();
+		if (!(plans.length > 0 && !loading)) {
+			await auth.ready();
+			await load();
+		}
 		// Deep-link from the dashboard's "Pick a goal race" CTA: opening
 		// `/plans?new=1` lands here with the create-plan modal already
 		// open. Strip the query so a refresh doesn't re-open the modal.

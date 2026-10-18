@@ -20,6 +20,12 @@ import { consentRecorded } from '#lib/core/auth_confirmation.ts';
 /// still bails in ~one gap. Matches the old per-page poll loops (~1–3 s).
 const AUTH_READY_TIMEOUT_MS = 3000;
 
+/// How long the root layout may hold a signed-in session's app shell on
+/// the neutral loading state while the first profile read is in flight.
+/// Past it the read counts as failed and the shell renders as it did
+/// before the hold existed, so a wedged request cannot strand the user.
+const PROFILE_HOLD_TIMEOUT_MS = 10_000;
+
 interface User {
 	id: string;
 	email: string;
@@ -55,6 +61,41 @@ function createAuthStore() {
 	let user = $state<User | null>(null);
 	let loggedIn = $state(false);
 	let loading = $state(true);
+	// Set when the self-read or bootstrap insert fails (or outlives
+	// PROFILE_HOLD_TIMEOUT_MS) while no profile is hydrated. Releases the
+	// layout's shell hold; it never routes anyone to a gate.
+	let profileFailed = $state(false);
+	let holdTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function clearHoldTimer() {
+		if (holdTimer != null) clearTimeout(holdTimer);
+		holdTimer = null;
+	}
+
+	function markProfileFailed() {
+		clearHoldTimer();
+		if (user == null) profileFailed = true;
+	}
+
+	/// Every lifecycle hook loads the profile through here so a thrown
+	/// error counts as a failure rather than leaving the hold up.
+	function loadProfile(userId: string, email: string) {
+		if (user == null && holdTimer == null) {
+			holdTimer = setTimeout(() => {
+				holdTimer = null;
+				if (user == null) profileFailed = true;
+			}, PROFILE_HOLD_TIMEOUT_MS);
+		}
+		return fetchUser(userId, email).catch((e) => {
+			console.error(e);
+			markProfileFailed();
+		});
+	}
+
+	function resetProfileState() {
+		clearHoldTimer();
+		profileFailed = false;
+	}
 
 	const gate = createReadyGate({
 		isSettled: () => isAuthSettled({ loading, user, loggedIn }),
@@ -102,10 +143,11 @@ function createAuthStore() {
 			// later (one extra DB round-trip). The background fetch on
 			// onAuthStateChange is intentionally not awaited (it fires on every
 			// visibility change and we don't want to block there).
-			await fetchUser(session.user.id, session.user.email ?? '').catch(console.error);
+			await loadProfile(session.user.id, session.user.email ?? '');
 		} else {
 			loggedIn = false;
 			user = null;
+			resetProfileState();
 			loading = false;
 		}
 		gate.markSettled();
@@ -135,6 +177,7 @@ function createAuthStore() {
 		if (readErr) {
 			console.error('[auth] get_my_profile failed', readErr);
 			showToast(m('shell.profileLoadError'), 'error');
+			markProfileFailed();
 			gate.markSettled();
 			return;
 		}
@@ -188,6 +231,7 @@ function createAuthStore() {
 				// was never created. Surface + leave un-hydrated instead.
 				console.error('[auth] profile bootstrap insert failed', createErr);
 				showToast(m('shell.profileSetupError'), 'error');
+				markProfileFailed();
 				gate.markSettled();
 				return;
 			}
@@ -205,6 +249,7 @@ function createAuthStore() {
 			};
 			setUnit(defaultUnit);
 		}
+		resetProfileState();
 		gate.markSettled();
 	}
 
@@ -219,6 +264,7 @@ function createAuthStore() {
 		await signOutWithScope(supabase.auth, 'local');
 		user = null;
 		loggedIn = false;
+		resetProfileState();
 		// Drop the prior user's cached prefs so a subsequent sign-in
 		// as a different user on the same browser can't read the
 		// previous user's universal / device bags or replay their
@@ -240,6 +286,7 @@ function createAuthStore() {
 		if (error) throw new Error(error.message ?? 'sign-out-everywhere failed');
 		user = null;
 		loggedIn = false;
+		resetProfileState();
 		if (priorUserId) dropUserCache(priorUserId);
 	}
 
@@ -248,10 +295,11 @@ function createAuthStore() {
 		supabase.auth.onAuthStateChange((event, session) => {
 			if (session) {
 				loggedIn = true;
-				fetchUser(session.user.id, session.user.email ?? '').catch(console.error);
+				loadProfile(session.user.id, session.user.email ?? '');
 			} else {
 				loggedIn = false;
 				user = null;
+				resetProfileState();
 			}
 			loading = false;
 			gate.markSettled();
@@ -261,7 +309,7 @@ function createAuthStore() {
 		supabase.auth.getSession().then(({ data: { session } }) => {
 			if (session) {
 				loggedIn = true;
-				fetchUser(session.user.id, session.user.email ?? '').catch(console.error);
+				loadProfile(session.user.id, session.user.email ?? '');
 			}
 			loading = false;
 			gate.markSettled();
@@ -272,6 +320,9 @@ function createAuthStore() {
 		get user() { return user; },
 		get loggedIn() { return loggedIn; },
 		get loading() { return loading; },
+		/// The first profile read for this session failed or timed out.
+		/// See post_auth_route.ts holdAppShell.
+		get profileFailed() { return profileFailed; },
 		get isPro() { return user?.subscription_tier === 'pro' || user?.subscription_tier === 'lifetime'; },
 		/// Resolves once auth has settled — a user row has hydrated, or
 		/// the session is definitively anon. Replaces the open-coded

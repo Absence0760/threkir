@@ -6,6 +6,7 @@
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { defaultUnitForLocale } from '#lib/format/locale_defaults.ts';
 	import { emailOtpLink, verifyConsentStamped } from '#lib/core/auth_confirmation.ts';
+	import { postAuthDestination } from '#lib/core/post_auth_route.ts';
 	import AuthShell from '#lib/components/auth/AuthShell.svelte';
 	import { OAUTH_PROVIDER_STASH_KEY, keepAppleRevocationCredential } from '#lib/core/apple_revocation.ts';
 	import {
@@ -134,7 +135,7 @@
 			return;
 		}
 
-		goto(linking ? SIGN_IN_METHODS_PATH : '/dashboard');
+		goto(linking ? SIGN_IN_METHODS_PATH : postAuthDestination(auth.user, '/dashboard'));
 	});
 </script>
 

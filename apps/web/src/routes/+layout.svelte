@@ -29,6 +29,7 @@
 	} from '#lib/stores/modality_visibility.svelte.ts';
 	import type { Modality } from '#lib/settings/modality_visibility.ts';
 	import { strayConfirmationTarget } from '#lib/core/auth_confirmation.ts';
+	import { CONSENT_PATH, ONBOARDING_PATH, holdAppShell } from '#lib/core/post_auth_route.ts';
 	import { PUBLIC_SUPABASE_URL } from '$app/env/public';
 
 	// Warm the connection to the Supabase origin every page hits on
@@ -361,9 +362,9 @@
 		if (auth.loading || !auth.loggedIn || !auth.user) return;
 		if (auth.user.consent_recorded) return;
 		const path = page.url.pathname;
-		if (path === '/auth/confirm-age') return;
+		if (path === CONSENT_PATH) return;
 		if (isAnonAllowed(path)) return;
-		goto('/auth/confirm-age');
+		goto(CONSENT_PATH, { replaceState: true });
 	});
 
 	// Onboarding gate — a signed-in user whose `user_profiles.onboarded_at`
@@ -380,10 +381,27 @@
 		if (auth.user.onboarded_at != null) return;
 		if (!auth.user.consent_recorded) return;
 		const path = page.url.pathname;
-		if (path === '/onboarding') return;
+		if (path === ONBOARDING_PATH) return;
 		if (isAnonAllowed(path)) return;
-		goto('/onboarding');
+		goto(ONBOARDING_PATH, { replaceState: true });
 	});
+
+	// The two gates above only run once the profile has hydrated, which is
+	// after the requested page would already have painted. Until a signed-in
+	// session's profile says it owes neither gate, a gated path renders the
+	// loading screen instead of the shell, so a reload, deep link or second
+	// tab cannot flash the dashboard at a fresh account (decisions § 2122).
+	// The gates navigate with replaceState so the held URL leaves no history
+	// entry to bounce back through.
+	const shellHeld = $derived(
+		browser &&
+			holdAppShell({
+				loggedIn: auth.loggedIn,
+				gatedPath: !isAnonAllowed(page.url.pathname),
+				profile: auth.user,
+				profileFailed: auth.profileFailed,
+			}),
+	);
 
 	let showLogoutModal = $state(false);
 	// Profile popover focus management. audit/accessibility (May 2026)
@@ -552,8 +570,8 @@
 	<main id="main-content">
 		<slot />
 	</main>
-{:else if auth.loading}
-	<div class="loading-screen">
+{:else if auth.loading || shellHeld}
+	<div class="loading-screen" data-testid="app-shell-hold">
 		<span class="loading-text">{m('shell.loading')}</span>
 	</div>
 {:else if auth.loggedIn}

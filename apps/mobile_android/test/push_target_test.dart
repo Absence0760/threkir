@@ -55,7 +55,24 @@ void main() {
           const PushTarget(PushTargetKind.challenges));
     });
 
-    test('achievement + any future kind → /notifications', () {
+    test('run_completed → /share/run/{id} opens the in-app run', () {
+      expect(pushTargetFromUrl('$_base/share/run/run-9'),
+          const PushTarget(PushTargetKind.run, 'run-9'));
+    });
+
+    test('achievement → /share/badge/{id} opens the own Achievements tab', () {
+      expect(pushTargetFromUrl('$_base/share/badge/a-5'),
+          const PushTarget(PushTargetKind.badges));
+    });
+
+    test('any other or incomplete /share path degrades to the inbox', () {
+      expect(pushTargetFromUrl('$_base/share/run'), PushTarget.inbox);
+      expect(pushTargetFromUrl('$_base/share/run/'), PushTarget.inbox);
+      expect(pushTargetFromUrl('$_base/share/workout/w-1'), PushTarget.inbox);
+      expect(pushTargetFromUrl('$_base/share'), PushTarget.inbox);
+    });
+
+    test('any future kind → /notifications', () {
       expect(pushTargetFromUrl('$_base/notifications'), PushTarget.inbox);
     });
 

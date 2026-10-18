@@ -273,7 +273,9 @@ class SyncService with WidgetsBindingObserver {
     final hasPendingRouteDeletes =
         routeStore?.pendingRemoteDeletesForUser(api.userId).isNotEmpty ??
             false;
+    final hasPendingEdits = runStore.pendingEditIds.isNotEmpty;
     if (unsynced.isEmpty &&
+        !hasPendingEdits &&
         !hasPendingDeletes &&
         unsyncedRoutes.isEmpty &&
         !hasPendingRouteDeletes) return;
@@ -317,6 +319,10 @@ class SyncService with WidgetsBindingObserver {
           debugPrint('SyncService: batch push failed ($reason): $e');
           anyFailure = true;
         }
+      }
+      if (hasPendingEdits) {
+        final ok = await pushPendingRunEdits(api, runStore, reason: reason);
+        if (!ok) anyFailure = true;
       }
       if (hasPendingDeletes) {
         final ok = await drainPendingDeletes(api, runStore, reason: reason);
@@ -386,6 +392,87 @@ Future<bool> drainPendingDeletes(
   }
   debugPrint('Sync: drained $ok / ${ids.length} pending deletes');
   return failed == 0;
+}
+
+/// Push every pending field edit to a synced run of the signed-in runner's
+/// (decisions § 2147), skipping a run queued for remote deletion. Returns
+/// `true` iff every edit landed. Shared by the foreground [SyncService] and
+/// the WorkManager cycle for the same reason [drainPendingDeletes] is.
+Future<bool> pushPendingRunEdits(
+  ApiClient api,
+  LocalRunStore runStore, {
+  String reason = 'background',
+}) async {
+  final deleting = runStore.pendingRemoteDeletesForUser(api.userId);
+  final ids =
+      runStore.pendingEditIds.where((id) => !deleting.contains(id)).toList();
+  if (ids.isEmpty) return true;
+  debugPrint('Sync: pushing ${ids.length} pending run edits ($reason)');
+  var settled = true;
+  for (final id in ids) {
+    if (!await pushPendingRunEdit(api, runStore, id)) settled = false;
+  }
+  return settled;
+}
+
+/// Push [runId]'s pending field edit as a compare-and-swap on the server
+/// `updated_at` it was made on, so no device clock decides which edit wins
+/// (decisions § 2147). A swap that finds the row moved reads it again,
+/// re-bases the edit onto it — the server's changes to other fields kept,
+/// this edit's fields laid on top, since it is the later arrival — and tries
+/// once more. A row the server no longer has takes the local copy and the
+/// edit with it, as a server-side delete does everywhere else.
+///
+/// Returns `true` when nothing is left pending for the run. Never throws: a
+/// failure leaves the edit pending for the next sync (layered resilience).
+Future<bool> pushPendingRunEdit(
+  ApiClient api,
+  LocalRunStore runStore,
+  String runId,
+) async {
+  final initial = runStore.pendingEdit(runId);
+  if (initial == null) return true;
+  try {
+    var reread = initial.baseUpdatedAt == null;
+    for (var attempt = 0; attempt < 2; attempt++) {
+      final local = await runStore.runById(runId);
+      if (local == null ||
+          filterRunsForCurrentUser([local], api.userId).isEmpty) {
+        return true;
+      }
+      if (reread) {
+        final rows = await api.getRunsByIds([runId]);
+        if (rows.isEmpty) {
+          await runStore.delete(runId);
+          return true;
+        }
+        await runStore.rebasePendingEdit(rows.first);
+      }
+      final edit = runStore.pendingEdit(runId);
+      if (edit == null) return true;
+      final rebased = await runStore.runById(runId);
+      if (rebased == null) return true;
+      final landed = await api.updateRunFieldsIfUnchanged(
+        rebased,
+        fields: edit.fields,
+        baseUpdatedAt: edit.baseUpdatedAt,
+      );
+      if (landed != null) {
+        await runStore.adoptPushedEdit(landed, edit);
+        if (runStore.pendingEdit(runId) == null) return true;
+        // Edited again while the swap was in flight: the newer edit is
+        // already re-based onto the row that came back.
+        reread = false;
+      } else {
+        reread = true;
+      }
+    }
+    debugPrint('Sync: edit to $runId still pending after a re-based retry');
+    return false;
+  } catch (e) {
+    debugPrint('Sync: pushing the edit to $runId failed: $e');
+    return false;
+  }
 }
 
 /// Push routes the user created offline (signed-out, network down,

@@ -30,6 +30,7 @@ void main() {
       expect(MetadataKeys.sessionStepResults, 'session_step_results');
       expect(MetadataKeys.sessionAdherence, 'session_adherence');
       expect(MetadataKeys.smoothedSidecarSha256, 'smoothed_sidecar_sha256');
+      expect(MetadataKeys.serverUpdatedAt, 'server_updated_at');
     });
 
     test('every value is unique snake_case', () {
@@ -79,6 +80,7 @@ void main() {
         MetadataKeys.routineId,
         MetadataKeys.runningDynamics,
         MetadataKeys.runNumber,
+        MetadataKeys.serverUpdatedAt,
         MetadataKeys.sessionAdherence,
         MetadataKeys.sessionPlanId,
         MetadataKeys.sessionStepResults,

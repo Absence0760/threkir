@@ -13,7 +13,7 @@
 -- this week's Sunday, so weeks 0-3 are past and week 4 is under way.
 
 begin;
-select plan(49);
+select plan(59);
 
 create temp table rpab_s as
   select (current_date - extract(dow from current_date)::integer - 28) as s;
@@ -25,14 +25,16 @@ values
   ('b7b7b7b7-0000-0000-0000-00000000000b', 'authenticated', 'authenticated', 'rpab-b@rpab.local', '', now(), now()),
   ('b7b7b7b7-0000-0000-0000-00000000000c', 'authenticated', 'authenticated', 'rpab-c@rpab.local', '', now(), now()),
   ('b7b7b7b7-0000-0000-0000-00000000000d', 'authenticated', 'authenticated', 'rpab-d@rpab.local', '', now(), now()),
-  ('b7b7b7b7-0000-0000-0000-00000000000e', 'authenticated', 'authenticated', 'rpab-e@rpab.local', '', now(), now())
+  ('b7b7b7b7-0000-0000-0000-00000000000e', 'authenticated', 'authenticated', 'rpab-e@rpab.local', '', now(), now()),
+  ('b7b7b7b7-0000-0000-0000-00000000000f', 'authenticated', 'authenticated', 'rpab-f@rpab.local', '', now(), now())
 on conflict (id) do nothing;
 insert into user_profiles (id, display_name, health_data_consent_at) values
   ('b7b7b7b7-0000-0000-0000-00000000000a', 'RPAB A', now()),
   ('b7b7b7b7-0000-0000-0000-00000000000b', 'RPAB B', null),
   ('b7b7b7b7-0000-0000-0000-00000000000c', 'RPAB C', null),
   ('b7b7b7b7-0000-0000-0000-00000000000d', 'RPAB D', null),
-  ('b7b7b7b7-0000-0000-0000-00000000000e', 'RPAB E', null)
+  ('b7b7b7b7-0000-0000-0000-00000000000e', 'RPAB E', null),
+  ('b7b7b7b7-0000-0000-0000-00000000000f', 'RPAB F', now())
 on conflict (id) do update set health_data_consent_at = excluded.health_data_consent_at;
 
 insert into private.feature_flags (name, enabled) values ('hr_prescription', true)
@@ -49,7 +51,7 @@ insert into private.feature_flags (name, enabled) values ('hr_prescription', tru
 create temp table rpab_plans (tag text, owner text, shape text, status text);
 insert into rpab_plans values
   ('a1', 'a', 'r', 'active'), ('a2', 'a', 'r', 'paused'), ('b1', 'b', 'w', 'active'),
-  ('d1', 'd', 'w', 'active'), ('e1', 'e', 'w', 'active');
+  ('d1', 'd', 'w', 'active'), ('e1', 'e', 'w', 'active'), ('f1', 'f', 'w', 'active');
 
 insert into training_plans (id, user_id, name, goal_event, goal_distance_m, start_date, end_date, days_per_week, status)
 select ('b1b1b1b1-0000-0000-0000-0000000000' || p.tag)::uuid,
@@ -80,8 +82,8 @@ select ('b3b3b3b3-0000-0000-0000-' || p.tag || lpad(i::text, 2, '0') || '0100000
              when p.tag = 'd1' and i = 7 then 'race' else 'long' end)::workout_kind,
        case when p.shape = 'r' and i = 9 then 21097 else 12000 end,
        i <= 1,
-       case when i = 4 and p.owner = 'a' then 140 end,
-       case when i = 4 and p.owner = 'a' then 155 end
+       case when i = 4 and p.owner in ('a', 'f') then 140 end,
+       case when i = 4 and p.owner in ('a', 'f') then 155 end
 from rpab_s, rpab_plans p, generate_series(0, 9) as i;
 insert into plan_workouts (id, week_id, scheduled_date, kind, target_distance_m)
 select ('b3b3b3b3-0000-0000-0000-' || p.tag || lpad(i::text, 2, '0') || '02000000')::uuid,
@@ -185,6 +187,13 @@ select is((select prefs -> 'plan_break_dismissed' from user_settings where user_
 
 -- ── A race plan runs two weeks again and keeps race day ───────────────────
 
+-- A workout the runner skipped inside the break, and an answer already held
+-- by a workout in a week that will move.
+reset role;
+update plan_workouts set skipped_at = now() where id = 'b3b3b3b3-0000-0000-0000-a10302000000';
+update plan_workouts set missed_ack_at = now() where id = 'b3b3b3b3-0000-0000-0000-a10601000000';
+set local role authenticated;
+
 select lives_ok(
   $$select reschedule_plan_after_break('b1b1b1b1-0000-0000-0000-0000000000a1', current_date, (select s + 8 from rpab_s),
       array['b2b2b2b2-0000-0000-0000-0000a1000003', 'b2b2b2b2-0000-0000-0000-0000a1000004']::uuid[],
@@ -229,8 +238,32 @@ select is((select array_agg(scheduled_date order by id) from plan_workouts
 select is((select manually_completed from plan_workouts where id = 'b3b3b3b3-0000-0000-0000-a10101000000'),
   true, 'race plan: a completed workout stays completed');
 select is((select prefs -> 'plan_break_dismissed' from user_settings where user_id = 'b7b7b7b7-0000-0000-0000-00000000000a'),
-  (select jsonb_build_object('plan_id', 'b1b1b1b1-0000-0000-0000-0000000000a1', 'from', s + 8) from rpab_s),
-  'race plan: the offer is recorded as answered for this break');
+  (select jsonb_build_object('plan_id', 'b1b1b1b1-0000-0000-0000-0000000000a1', 'from', s + 8, 'until', current_date) from rpab_s),
+  'race plan: the offer is recorded as answered for this break, with its last day');
+create temp table rpab_missed as
+  select wo.id, wo.missed_ack_at
+  from plan_workouts wo join plan_weeks w on w.id = wo.week_id, rpab_s
+  where w.plan_id = 'b1b1b1b1-0000-0000-0000-0000000000a1' and w.week_index <= 4
+    and wo.scheduled_date >= s + 8 and wo.scheduled_date < current_date
+    and wo.kind <> 'rest' and wo.completed_run_id is null and not wo.manually_completed
+    and wo.skipped_at is null;
+select ok((select count(*) from rpab_missed) >= 4, 'missed: the break covered at least four open workouts');
+select is((select count(*)::int from rpab_missed where missed_ack_at is null),
+  0, 'missed: every open workout the break covered is answered');
+select is((select missed_ack_at from plan_workouts where id = 'b3b3b3b3-0000-0000-0000-a10302000000'),
+  null, 'missed: a workout the runner skipped is not answered for them');
+select is((select missed_ack_at from plan_workouts where id = 'b3b3b3b3-0000-0000-0000-a10101000000'),
+  null, 'missed: a done workout before the break is not answered');
+select is((select count(*)::int from plan_workouts wo join plan_weeks w on w.id = wo.week_id
+           where w.plan_id = 'b1b1b1b1-0000-0000-0000-0000000000a1' and w.week_index = 4
+             and wo.scheduled_date >= current_date and wo.missed_ack_at is not null),
+  0, 'missed: nothing dated today or later is answered');
+select is((select count(*)::int from plan_workouts wo join plan_weeks w on w.id = wo.week_id
+           where w.plan_id = 'b1b1b1b1-0000-0000-0000-0000000000a1' and w.week_index in (5, 6)
+             and wo.missed_ack_at is not null),
+  0, 'missed: the copies start unanswered');
+select is((select missed_ack_at from plan_workouts where id = 'b3b3b3b3-0000-0000-0000-a10601000000'),
+  null, 'missed: a workout that moved loses the answer it held');
 select is((select end_date from training_plans where id = 'b1b1b1b1-0000-0000-0000-0000000000a2'),
   (select s + 63 from rpab_s), 'race plan: the owner''s other plan is untouched');
 
@@ -292,6 +325,23 @@ select is((select end_date from training_plans where id = 'b1b1b1b1-0000-0000-00
   (select s + 69 from rpab_s), 'overlap: the plan keeps its end date');
 select is((select prefs -> 'plan_break_dismissed' from user_settings where user_id = 'b7b7b7b7-0000-0000-0000-00000000000e'),
   null, 'overlap: the offer is not recorded as answered');
+
+-- ── The HR gate shut, consent given ───────────────────────────────────────
+
+reset role;
+update private.feature_flags set enabled = false where name = 'hr_prescription';
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"b7b7b7b7-0000-0000-0000-00000000000f","role":"authenticated"}';
+select lives_ok(
+  $$select reschedule_plan_after_break('b1b1b1b1-0000-0000-0000-0000000000f1', current_date, current_date - 10,
+      array['b2b2b2b2-0000-0000-0000-0000f1000004']::uuid[])$$,
+  'a consenting runner with the HR gate shut can still run a week again');
+select is((select count(*)::int from plan_workouts wo join plan_weeks w on w.id = wo.week_id
+           where w.plan_id = 'b1b1b1b1-0000-0000-0000-0000000000f1' and w.week_index = 5
+             and (wo.target_hr_min_bpm is not null or wo.target_hr_max_bpm is not null)),
+  0, 'gate shut: the copy carries no heart-rate target despite consent');
+select is((select target_hr_min_bpm::int from plan_workouts where id = 'b3b3b3b3-0000-0000-0000-f10401000000'),
+  140, 'gate shut: the week copied keeps its own targets');
 
 select * from finish();
 rollback;

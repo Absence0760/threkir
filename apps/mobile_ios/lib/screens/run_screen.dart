@@ -7,7 +7,8 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart'
     show ActivityType, DistanceUnit, PlanWorkoutRow;
-import 'package:flutter/foundation.dart' show defaultTargetPlatform;
+import 'package:flutter/foundation.dart'
+    show ValueListenable, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderProxyBox;
 import 'package:flutter/scheduler.dart';
@@ -199,6 +200,11 @@ class RunScreen extends StatefulWidget {
   /// multi-day effort being split into two disjoint runs by a process kill.
   final cm.Run? initialResumablePartial;
 
+  /// Whether the shell is showing this page. The page is kept alive behind
+  /// the others, so coming back to it re-reads the plan card: a run matched
+  /// on another device or the web would otherwise stay "to do" here.
+  final ValueListenable<bool>? shown;
+
   const RunScreen({
     super.key,
     this.apiClient,
@@ -217,6 +223,7 @@ class RunScreen extends StatefulWidget {
     this.devBackendUrl,
     this.watchTransportFactory,
     this.initialResumablePartial,
+    this.shown,
   });
 
   @override
@@ -615,6 +622,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   bool _weakGpsLatest = false;
   bool _weakGps = false;
 
+  // Mirrors [RunRecorder.preciseLocationOff] for the approximate-location
+  // strip. It cannot ride on `_weakGps`: an approximate grant may deliver no
+  // fix at all, so there is nothing for the accuracy gate to reject.
+  bool _preciseLocationOff = false;
+
   // Foreground-only ("While using the app") location disclosure state.
   // `_leftForegroundAt` is the wall-clock moment the app left the screen
   // during an active recording; `_backgroundLimitDisclosed` keeps the
@@ -795,6 +807,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     widget.runStore.addListener(_onPrefsChange);
     widget.social.addListener(_onSocialChange);
     widget.training.addListener(_onTrainingChange);
+    widget.shown?.addListener(_onShownChange);
     pendingStartWorkout.addListener(_onPendingStartWorkout);
     pendingArmGuidedRun.addListener(_onPendingArmGuidedRun);
     runStopRequests.addListener(_onDockedStopRequest);
@@ -833,6 +846,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed && widget.shown?.value != false) {
+      _onTrainingChange();
+    }
     // L4 auxiliary: this only ever decides whether to show a disclosure.
     // Nothing in here may touch recording state, so it carries its own
     // catch rather than riding any recording path's.
@@ -1191,9 +1207,17 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     });
   }
 
+  void _onShownChange() {
+    if (widget.shown?.value == true) _onTrainingChange();
+  }
+
   @override
   void didUpdateWidget(covariant RunScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!identical(widget.shown, oldWidget.shown)) {
+      oldWidget.shown?.removeListener(_onShownChange);
+      widget.shown?.addListener(_onShownChange);
+    }
     if (widget.initialRoute != null &&
         widget.initialRoute != oldWidget.initialRoute &&
         _state == _ScreenState.idle) {
@@ -1989,6 +2013,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     } else if (_recorder?.preciseLocationOff == true) {
       _notifyPreciseLocationOff();
     }
+    _preciseLocationOff = _recorder?.preciseLocationOff == true;
     _leftForegroundAt = null;
     _backgroundLimitDisclosed = false;
 
@@ -3352,10 +3377,15 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // Weak-GPS only matters while the signal is still live; a full GPS-lost
     // state supersedes it (and carries its own, louder banner).
     final weak = _weakGpsLatest && !lost;
-    if ((lost != _gpsLost || weak != _weakGps) && mounted) {
+    final preciseOff = _recorder?.preciseLocationOff == true;
+    if ((lost != _gpsLost ||
+            weak != _weakGps ||
+            preciseOff != _preciseLocationOff) &&
+        mounted) {
       setState(() {
         _gpsLost = lost;
         _weakGps = weak;
+        _preciseLocationOff = preciseOff;
       });
     }
   }
@@ -3432,6 +3462,17 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       actionLabel: _l10n.runSettings,
       onAction: () => Geolocator.openAppSettings(),
     );
+  }
+
+  /// Android has no temporary precise grant and iOS's one-shot prompt was
+  /// already declined in [RunRecorder.prepare], so the app's location
+  /// settings page is the only remaining way to turn precision back on.
+  Future<void> _openPreciseLocationSettings() async {
+    try {
+      await Geolocator.openAppSettings();
+    } catch (e) {
+      debugPrint('openAppSettings (precise location) failed: $e');
+    }
   }
 
   /// Explain what the runner just lost: under a foreground-only location
@@ -3977,6 +4018,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _gpsLost = false;
     _weakGps = false;
     _weakGpsLatest = false;
+    _preciseLocationOff = false;
     _leftForegroundAt = null;
     _backgroundLimitDisclosed = false;
     // Strategy choice survives into the next run; the built plan and the
@@ -4048,6 +4090,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     widget.runStore.removeListener(_onPrefsChange);
     widget.social.removeListener(_onSocialChange);
     widget.training.removeListener(_onTrainingChange);
+    widget.shown?.removeListener(_onShownChange);
     _socialDebounce?.cancel();
     _trainingDebounce?.cancel();
     _snapshotSub?.cancel();
@@ -4846,6 +4889,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
             bottomPadding: isCountdown ? 0 : _statsOverlayHeight,
             activity: isCountdown ? null : _activityType,
             ghostPosition: _computeGhostPosition(),
+            approximateLocation: !isCountdown && _preciseLocationOff,
           ),
         ),
 
@@ -5031,8 +5075,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                 permissionLost: _permissionLost,
                 gpsLost: _gpsLost,
                 weakGps: _weakGps,
-                weakGpsApproximate:
-                    _weakGps && _recorder?.preciseLocationOff == true,
+                approximateLocation: _preciseLocationOff,
+                onTurnOnPreciseLocation: _openPreciseLocationSettings,
                 safetyNudgeVisible: _safetyNudgeVisible,
                 onSafetyNudgeShare: _onSafetyNudgeShare,
                 onSafetyNudgeDismiss: _dismissSafetyNudge,
@@ -5762,7 +5806,8 @@ class RunTopBanners extends StatelessWidget {
     required this.permissionLost,
     required this.gpsLost,
     required this.weakGps,
-    this.weakGpsApproximate = false,
+    this.approximateLocation = false,
+    this.onTurnOnPreciseLocation,
     required this.safetyNudgeVisible,
     required this.onSafetyNudgeShare,
     required this.onSafetyNudgeDismiss,
@@ -5775,9 +5820,12 @@ class RunTopBanners extends StatelessWidget {
   final bool gpsLost;
   final bool weakGps;
 
-  /// The weak-GPS stall is the approximate location grant, not the sky, so
-  /// the strip names that cause instead of blaming the signal.
-  final bool weakGpsApproximate;
+  /// The run records under an approximate grant. Shown from the first
+  /// second rather than on a rejected fix, because the grant may deliver no
+  /// fix at all; it outranks [weakGps] since the grant, not the sky, is why
+  /// distance is not moving.
+  final bool approximateLocation;
+  final VoidCallback? onTurnOnPreciseLocation;
   final bool safetyNudgeVisible;
   final VoidCallback onSafetyNudgeShare;
   final VoidCallback onSafetyNudgeDismiss;
@@ -5854,6 +5902,45 @@ class RunTopBanners extends StatelessWidget {
               ),
             ),
           )
+        else if (approximateLocation)
+          Center(
+            child: Card(
+              color: semantic.warning,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 8, 2),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.gps_not_fixed,
+                            color: semantic.onWarning, size: 18),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            l10n.runWeakGpsApproximate,
+                            style: TextStyle(
+                                color: semantic.onWarning,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (onTurnOnPreciseLocation != null)
+                      TextButton(
+                        onPressed: onTurnOnPreciseLocation,
+                        style: TextButton.styleFrom(
+                          foregroundColor: semantic.onWarning,
+                        ),
+                        child: Text(l10n.runTurnOnPreciseLocation),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          )
         else if (weakGps)
           Center(
             child: Card(
@@ -5868,9 +5955,7 @@ class RunTopBanners extends StatelessWidget {
                         color: semantic.onWarning, size: 18),
                     const SizedBox(width: 8),
                     Text(
-                      weakGpsApproximate
-                          ? l10n.runWeakGpsApproximate
-                          : l10n.runWeakGps,
+                      l10n.runWeakGps,
                       style: TextStyle(
                           color: semantic.onWarning,
                           fontWeight: FontWeight.w600),

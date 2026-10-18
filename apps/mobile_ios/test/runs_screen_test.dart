@@ -789,12 +789,14 @@ void main() {
           ),
         ),
       );
+      // The list itself is the signal: the store's summary lands before its
+      // index persist and the notify that rebuilds the screen, so waiting on
+      // the summary asserted before the list could have changed.
       await pumpUntil(
         tester,
-        () => runStore.summaries.any((s) => s.id == restored.id),
-        describe: 'the restored run to land in the store',
+        () => find.byKey(ValueKey(restored.id)).evaluate().isNotEmpty,
+        describe: 'the restored run to reach the list',
       );
-      await tester.pump();
 
       expect(api.lastCursor, isNotNull,
           reason: 'the delta branch ran and returned nothing');

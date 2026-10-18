@@ -25,6 +25,8 @@ class PlanNudgeCard extends StatefulWidget {
   /// The host's veto: true renders nothing, whatever the plan says (another
   /// card that outranks this one is showing).
   final bool hidden;
+  /// The days a break covered (`breakWindow`): no nudge judges them.
+  final ({String fromIso, String untilIso})? breakWindow;
 
   const PlanNudgeCard({
     super.key,
@@ -34,6 +36,7 @@ class PlanNudgeCard extends StatefulWidget {
     required this.now,
     required this.onReview,
     this.hidden = false,
+    this.breakWindow,
   });
 
   /// The dismissed occurrences in the prefs bag.
@@ -47,6 +50,7 @@ class PlanNudgeCard extends StatefulWidget {
     required List<Run> runs,
     required List<String> dismissed,
     required DateTime now,
+    ({String fromIso, String untilIso})? breakWindow,
   }) {
     try {
       final o = overview;
@@ -97,6 +101,8 @@ class PlanNudgeCard extends StatefulWidget {
         weeks: weeks,
         runDates: [for (final r in runRows) r.date],
         dismissed: dismissed,
+        breakFromIso: breakWindow?.fromIso,
+        breakUntilIso: breakWindow?.untilIso,
       );
     } catch (e) {
       debugPrint('PlanNudgeCard: working out the card failed: $e');
@@ -119,6 +125,7 @@ class _PlanNudgeCardState extends State<PlanNudgeCard> {
         runs: widget.runs,
         dismissed: _dismissed,
         now: widget.now,
+        breakWindow: widget.breakWindow,
       );
 
   Future<bool> _file(String key) async {

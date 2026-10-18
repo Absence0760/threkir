@@ -91,7 +91,7 @@
 	{@html `<script type="application/ld+json">${jsonLd}</script>`}
 </svelte:head>
 
-<SharePageShell>
+<SharePageShell appHref={`/routes/${data.id}`}>
 	{#if loading}
 		<main class="content" id="main-content"><p class="status">{m('shell.loading')}</p></main>
 	{:else if loadFailed}

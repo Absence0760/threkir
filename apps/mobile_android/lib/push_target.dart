@@ -18,8 +18,14 @@ enum PushTargetKind {
   /// A user profile (`/u/<id>`).
   profile,
 
-  /// A single run (`/runs/<id>`).
+  /// A single run (`/runs/<id>`, or the `/share/run/<id>` a run_completed
+  /// push carries — the in-app run, not the public page).
   run,
+
+  /// The recipient's own Achievements tab (`/share/badge/<id>`, the URL an
+  /// achievement push carries). The badge is always the recipient's own, so
+  /// no id is needed to place it.
+  badges,
 
   /// The training-plan list (`/plans`).
   plans,
@@ -166,6 +172,17 @@ PushTarget pushTargetFromUrl(String? url) {
     // the conversation list; a URL naming the partner opens that thread.
     case 'messages':
       return PushTarget(PushTargetKind.messages, id);
+    // The worker stamps the public share URL for the kinds an email may be
+    // opened logged out from. A signed-in app opens the in-app view instead,
+    // as web's inbox does.
+    case 'share':
+      final entityId = segments.length > 2 ? segments[2] : null;
+      if (entityId == null) return PushTarget.inbox;
+      return switch (id) {
+        'run' => PushTarget(PushTargetKind.run, entityId),
+        'badge' => const PushTarget(PushTargetKind.badges),
+        _ => PushTarget.inbox,
+      };
     case 'notifications':
       return PushTarget.inbox;
     default:

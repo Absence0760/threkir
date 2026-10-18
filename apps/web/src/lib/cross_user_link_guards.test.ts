@@ -16,26 +16,37 @@ import { resolve } from 'node:path';
 // link (fired at a followee's FOLLOWERS) pointed at /runs/{id} too; that side is
 // pinned in apps/job_worker/internal/mailer_test.go.
 //
-// Those links stay on the public /share/* surfaces — they are anon-reachable
-// and indexable, which /runs/[id] is not (the layout auth-gate bounces anon to
-// /login). What issue #666 closed is the OTHER half: /runs/[id] itself now has
-// a non-owner branch, so a pasted in-app URL renders the run instead of
-// claiming it is gone. The guards below pin both halves.
+// What issue #666 closed is the OTHER half: /runs/[id] itself now has a
+// non-owner branch, so it renders any run the viewer's audience admits, through
+// the same clipped RunShareView the share page uses. That made it the right
+// target for a SIGNED-IN surface's links too (decisions § 2152): the feed
+// linked to /share/run, the logged-out page with no sidebar and no way back,
+// and a reader who tapped a run left the app. Links that leave the app — the
+// worker's emails, a copied share link — stay on /share/*, which opens without
+// a session; the feed's lift card stays there because gym_workouts is
+// owner-only to read and no in-app non-owner workout view exists. The guards
+// below pin both halves.
 //
 // Owner-only surfaces (/history, /runs, /dashboard, PeriodSummary) list the
 // viewer's own runs and are deliberately not covered here.
 
 const read = (p: string) => readFileSync(resolve(p), 'utf-8');
 
-test('SocialFeed links other runners rows to public surfaces, not owner-scoped ones', () => {
+test('SocialFeed keeps a signed-in reader inside the app for other runners rows', () => {
 	const src = read('src/lib/components/SocialFeed.svelte');
 	assert.doesNotMatch(
 		src,
-		/href="\/runs\/\{/,
-		'SocialFeed renders other users runs — /share/run/{id} is the anon-reachable, indexable surface for them; /runs/[id] is behind the auth gate.',
+		/href="\/share\/(?:run|badge)\//,
+		'SocialFeed is a signed-in surface — a run or badge link to /share/* drops the reader on the logged-out page with no way back into the app.',
 	);
-	assert.match(src, /href="\/share\/run\/\{entry\.id\}"/, 'the feed run card must open the public run page');
-	assert.match(src, /href="\/share\/workout\/\{entry\.id\}"/, 'the feed lift card must open the public workout page');
+	assert.match(src, /class="entry-body" href="\/runs\/\{entry\.id\}"/, 'the feed run card must open the in-app run page');
+	assert.match(src, /class="comment-pill" href="\/runs\/\{entry\.id\}"/, 'the comment pill must open the in-app run page');
+	assert.match(
+		src,
+		/href="\/u\/\{b\.authorId\}\?tab=achievements&badge=\{b\.badge\.id\}"/,
+		'a feed badge chip must open the earner\'s Achievements tab',
+	);
+	assert.match(src, /href="\/share\/workout\/\{entry\.id\}"/, 'the feed lift card has no in-app non-owner view and stays on the public workout page');
 });
 
 test('/runs/[id] renders a non-owner branch for a publicly readable run', () => {

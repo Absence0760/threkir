@@ -56,7 +56,7 @@
 	} from '#lib/core/data.ts';
 	import AudienceDialog from '#lib/components/AudienceDialog.svelte';
 	import { audienceOf, type AudienceColumns } from '#lib/social/run_visibility.ts';
-	import { applyRunMetadataPatch } from '#lib/core/data_normalise.ts';
+	import { changedEditFields } from '#lib/core/run_edit_cas.ts';
 	import { ageFromDob } from '#lib/nutrition/nutrition_targets.ts';
 	import type { PlanWorkout } from '#lib/types.ts';
 	import { toRunGpx, downloadFile } from '#lib/routes/gpx.ts';
@@ -629,21 +629,31 @@
 			// title/notes go through updateRunMetadata's normalised patch;
 			// is_dnf rides the same write only when the checkbox changed it.
 			const dnfChanged = editIsDnf !== isDnf;
-			await updateRunMetadata(
-				run.id,
+			const outcome = await updateRunMetadata(
+				run,
 				{ title: editTitle, notes: editNotes },
 				dnfChanged ? editIsDnf : undefined,
 			);
-			run = {
-				...run,
-				metadata: applyRunMetadataPatch(
-					run.metadata,
-					{ title: editTitle, notes: editNotes },
-					new Date().toISOString(),
-				),
-				...(dnfChanged ? { is_dnf: editIsDnf } : {}),
-			} as Run;
-			editing = false;
+			if (outcome.kind === 'saved') {
+				run = outcome.row;
+				editing = false;
+			} else if (outcome.kind === 'conflict') {
+				// Changed elsewhere since this page loaded, in a field this edit
+				// also writes: show the server's copy and keep the dialog open
+				// with what the runner typed, so saving again is a choice made
+				// with the other change in view (decisions § 2147). A field the
+				// runner left alone takes the server's value, or saving again
+				// would write the stale one back over it.
+				const touched = changedEditFields(run, { title: editTitle, notes: editNotes });
+				run = outcome.row;
+				if (touched.title === undefined) editTitle = runTitle;
+				if (touched.notes === undefined) editNotes = runNotes;
+				if (!dnfChanged) editIsDnf = isDnf;
+				showToast(m('runDetail.editConflict'), 'error');
+			} else {
+				showToast(m('runDetail.editGone'), 'error');
+				editing = false;
+			}
 		} catch (e) {
 			showToast(m('runDetail.saveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {

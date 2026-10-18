@@ -84,7 +84,7 @@
 	{@html `<script type="application/ld+json">${jsonLd}</script>`}
 </svelte:head>
 
-<SharePageShell>
+<SharePageShell appHref={`/sessions/${data.id}`}>
 	{#if hasSession}
 		<section class="hero">
 			<p class="kicker">{m('shareSession.heroKicker')}</p>

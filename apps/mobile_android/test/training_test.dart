@@ -1064,6 +1064,71 @@ void main() {
         expect(masters.weeks[2].notes, contains('Step-back'));
       }
     });
+
+    // Mirrors the extra-recovery tests in
+    // apps/web/src/lib/training/training.test.ts.
+    List<Object?> shape(GeneratedPlan p) => [
+          for (final w in p.weeks)
+            [
+              w.phase,
+              w.targetVolumeM,
+              w.notes,
+              for (final x in w.workouts)
+                [
+                  x.scheduledDate,
+                  x.kind,
+                  x.targetDistanceM,
+                  x.targetDurationSeconds,
+                  x.targetPaceSecPerKm,
+                  x.notes,
+                ],
+            ],
+        ];
+
+    test(
+        'usesMastersRecovery: extra recovery applies at any age and never removes it from a masters runner',
+        () {
+      expect(usesMastersRecovery(34, true), isTrue);
+      expect(usesMastersRecovery(null, true), isTrue);
+      expect(usesMastersRecovery(34, false), isFalse);
+      expect(usesMastersRecovery(null, null), isFalse);
+      expect(usesMastersRecovery(58, false), isTrue);
+      expect(usesMastersRecovery(58, null), isTrue);
+    });
+
+    test(
+        'extra recovery gives a sub-masters or ageless runner the masters schedule',
+        () {
+      GeneratePlanInput input({int? age, bool extra = false}) =>
+          GeneratePlanInput(
+            goalEvent: GoalEvent.distanceFull,
+            startDate: DateTime(2026, 6, 7),
+            daysPerWeek: 5,
+            recent5kSec: 24 * 60,
+            age: age,
+            extraRecovery: extra,
+          );
+      final masters = shape(generatePlan(input(age: 58)));
+      expect(shape(generatePlan(input(age: 34, extra: true))), masters);
+      expect(shape(generatePlan(input(extra: true))), masters);
+      expect(shape(generatePlan(input(age: 34))), isNot(masters));
+    });
+
+    test('extra recovery reaches the ultra schedule too', () {
+      GeneratePlanInput input({int? age, bool extra = false}) =>
+          GeneratePlanInput(
+            goalEvent: GoalEvent.custom,
+            goalDistanceM: 100000,
+            startDate: DateTime(2026, 6, 7),
+            daysPerWeek: 5,
+            recent5kSec: 24 * 60,
+            age: age,
+            extraRecovery: extra,
+          );
+      final masters = shape(generatePlan(input(age: 61)));
+      expect(shape(generatePlan(input(extra: true))), masters);
+      expect(shape(generatePlan(input())), isNot(masters));
+    });
   });
 
   group('fmtHms', () {

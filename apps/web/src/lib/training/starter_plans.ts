@@ -46,7 +46,8 @@ export function starterById(id: string): StarterPlan | undefined {
 export function instantiateStarter(
 	id: string,
 	startDate: string,
-	age?: number | null
+	age?: number | null,
+	extraRecovery?: boolean
 ): GeneratedPlan | null {
 	const starter = starterById(id);
 	if (!starter) return null;
@@ -56,7 +57,8 @@ export function instantiateStarter(
 		daysPerWeek: starter.daysPerWeek,
 		weeks: starter.weeks,
 		beginnerWalkRun: starter.beginnerWalkRun,
-		age: age ?? null
+		age: age ?? null,
+		extraRecovery
 	});
 }
 

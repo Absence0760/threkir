@@ -55,7 +55,8 @@ StarterPlan? starterById(String id) {
 /// delegating to [generatePlan]. Returns null for an unknown id. No goal time /
 /// recent-5k is supplied, so paces come back as the conservative fallback —
 /// the caller discloses that, same as the wizard.
-GeneratedPlan? instantiateStarter(String id, DateTime startDate, {int? age}) {
+GeneratedPlan? instantiateStarter(String id, DateTime startDate,
+    {int? age, bool extraRecovery = false}) {
   final starter = starterById(id);
   if (starter == null) return null;
   return generatePlan(GeneratePlanInput(
@@ -65,6 +66,7 @@ GeneratedPlan? instantiateStarter(String id, DateTime startDate, {int? age}) {
     weeks: starter.weeks,
     beginnerWalkRun: starter.beginnerWalkRun,
     age: age,
+    extraRecovery: extraRecovery,
   ));
 }
 

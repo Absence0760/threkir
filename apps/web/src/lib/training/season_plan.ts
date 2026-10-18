@@ -116,6 +116,7 @@ export interface SeasonBuildInput {
 	recent5kSec?: number | null;
 	gender?: TrainingGender;
 	age?: number | null;
+	extraRecovery?: boolean;
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -303,6 +304,7 @@ export function buildSeason(input: SeasonBuildInput): SeasonBuildResult {
 			weeks,
 			gender: input.gender ?? null,
 			age: input.age ?? null,
+			extraRecovery: input.extraRecovery,
 		});
 		fitToARace(generated, race, goalDistanceM);
 		plans.push({

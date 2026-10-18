@@ -92,6 +92,7 @@ import workmanager_apple
       WatchIngestBridge.shared.attach(binaryMessenger: messenger)
       CalendarBridge.shared.attach(binaryMessenger: messenger)
       LiveActivityBridge.shared.attach(binaryMessenger: messenger)
+      HomeWidgetBridge.shared.attach(binaryMessenger: messenger)
       ScreenBrightnessBridge.shared.attach(binaryMessenger: messenger)
       BarometerBridge.shared.attach(binaryMessenger: messenger)
       RunHapticsBridge.shared.attach(binaryMessenger: messenger)

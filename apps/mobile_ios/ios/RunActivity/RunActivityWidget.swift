@@ -2,18 +2,22 @@ import ActivityKit
 import SwiftUI
 import WidgetKit
 
-/// The lock-screen and Dynamic Island presentation of an in-progress run.
+/// The extension's two widgets: the Live Activity of an in-progress run, and
+/// the Today widget (`TodayWorkoutWidget.swift`) for the home and lock
+/// screens. One extension serves both, so the app embeds and signs one.
 ///
-/// Every string on screen arrives already localized and unit-formatted in
-/// `RunActivityAttributes.ContentState`; nothing here formats or translates,
-/// which is why this extension carries no String Catalog. The one value it
-/// renders itself is the clock, and only because `Text(_:style:.timer)` ticks
-/// on-device: the alternative is an ActivityKit update per second for the
-/// length of an ultra.
+/// Every string on screen arrives already localized and unit-formatted —
+/// in `RunActivityAttributes.ContentState` for the run, in the App Group
+/// snapshot for Today; nothing here formats or translates, which is why this
+/// extension carries no String Catalog. The one value it renders itself is
+/// the run clock, and only because `Text(_:style:.timer)` ticks on-device:
+/// the alternative is an ActivityKit update per second for the length of an
+/// ultra.
 @main
 struct RunActivityBundle: WidgetBundle {
     var body: some Widget {
         RunActivityWidget()
+        TodayWorkoutWidget()
     }
 }
 

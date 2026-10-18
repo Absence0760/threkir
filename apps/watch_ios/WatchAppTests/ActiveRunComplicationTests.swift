@@ -305,3 +305,202 @@ final class ActiveRunViewModelTests: XCTestCase {
         )
     }
 }
+
+/// The complication's "today" state: today's planned workout on an idle face,
+/// only on its own day, rolling back to idle at the next local midnight with
+/// no app running. Same reach as the suites above — `ActiveRunTimeline.swift`
+/// and `ActiveRunBridge.swift` are members of both targets — and the same
+/// limit: none of this is evidence the face renders it.
+final class TodayComplicationTests: XCTestCase {
+    private var utc: Calendar = {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(identifier: "UTC")!
+        return c
+    }()
+
+    /// 2026-10-16 09:00 UTC.
+    private var morning: Date {
+        utc.date(from: DateComponents(year: 2026, month: 10, day: 16, hour: 9))!
+    }
+
+    private func glance(
+        date: String = "2026-10-16",
+        kind: String = "tempo",
+        distance: Int? = 8000,
+        duration: Int? = nil
+    ) -> TodayWorkoutGlance {
+        TodayWorkoutGlance(
+            scheduledDate: date,
+            workoutKind: kind,
+            distanceMetres: distance,
+            durationSeconds: duration
+        )
+    }
+
+    private func live(at now: Date) -> ActiveRunSnapshot {
+        ActiveRunSnapshot(
+            isActive: true,
+            elapsedSeconds: 60,
+            distanceMeters: 200,
+            paceSecPerKm: 300,
+            lastUpdatedEpoch: now.timeIntervalSince1970 - 5,
+        )
+    }
+
+    // MARK: - entry
+
+    func testIdleFaceShowsTodaysWorkoutOnItsDay() {
+        let e = ActiveRunTimeline.entry(from: .empty, today: glance(), now: morning, calendar: utc)
+        XCTAssertFalse(e.isActive)
+        XCTAssertEqual(e.today, glance())
+    }
+
+    func testALiveRunWinsTheFace() {
+        let e = ActiveRunTimeline.entry(from: live(at: morning), today: glance(), now: morning, calendar: utc)
+        XCTAssertTrue(e.isActive)
+        XCTAssertNil(e.today)
+    }
+
+    func testAWorkoutForAnotherDayIsNotShown() {
+        for date in ["2026-10-15", "2026-10-17"] {
+            let e = ActiveRunTimeline.entry(from: .empty, today: glance(date: date), now: morning, calendar: utc)
+            XCTAssertNil(e.today, date)
+        }
+    }
+
+    func testTheDayIsTheWatchesOwnZone() {
+        // 23:30 UTC on the 15th is already the 16th in Auckland.
+        var auckland = utc
+        auckland.timeZone = TimeZone(identifier: "Pacific/Auckland")!
+        let lateUTC = utc.date(from: DateComponents(year: 2026, month: 10, day: 15, hour: 23, minute: 30))!
+        XCTAssertNil(ActiveRunTimeline.entry(from: .empty, today: glance(), now: lateUTC, calendar: utc).today)
+        XCTAssertEqual(
+            ActiveRunTimeline.entry(from: .empty, today: glance(), now: lateUTC, calendar: auckland).today,
+            glance()
+        )
+    }
+
+    func testANonGregorianWristStillMatchesTheDay() {
+        // The phone writes Gregorian days; a Buddhist-calendar watch would
+        // otherwise read the year as 2569 and never match one.
+        var buddhist = Calendar(identifier: .buddhist)
+        buddhist.timeZone = utc.timeZone
+        XCTAssertEqual(TodayWorkoutGlance.dayString(morning, calendar: buddhist), "2026-10-16")
+        XCTAssertEqual(PushedWorkout.dayString(morning, calendar: buddhist), "2026-10-16")
+        XCTAssertEqual(
+            ActiveRunTimeline.entry(from: .empty, today: glance(), now: morning, calendar: buddhist).today,
+            glance()
+        )
+    }
+
+    // MARK: - entries + reload policy
+
+    func testTodayRollsOverAtTheNextLocalMidnight() {
+        let entries = ActiveRunTimeline.entries(from: .empty, today: glance(), now: morning, calendar: utc)
+        XCTAssertEqual(entries.count, 2)
+        XCTAssertEqual(entries[0].today, glance())
+        let midnight = utc.date(from: DateComponents(year: 2026, month: 10, day: 17))!
+        XCTAssertEqual(entries[1].date, midnight)
+        XCTAssertNil(entries[1].today)
+        XCTAssertFalse(entries[1].isActive)
+        XCTAssertTrue(ActiveRunTimeline.reloadsAtEnd(entries))
+    }
+
+    func testAWorkoutDatedTomorrowAppearsAtMidnight() {
+        let entries = ActiveRunTimeline.entries(
+            from: .empty, today: glance(date: "2026-10-17"), now: morning, calendar: utc
+        )
+        XCTAssertEqual(entries.count, 2)
+        XCTAssertNil(entries[0].today)
+        XCTAssertEqual(entries[1].today, glance(date: "2026-10-17"))
+    }
+
+    func testAStaleWorkoutIsOneIdleEntryThatWaits() {
+        let entries = ActiveRunTimeline.entries(
+            from: .empty, today: glance(date: "2026-10-14"), now: morning, calendar: utc
+        )
+        XCTAssertEqual(entries.count, 1)
+        XCTAssertNil(entries[0].today)
+        XCTAssertFalse(ActiveRunTimeline.reloadsAtEnd(entries))
+    }
+
+    func testNoWorkoutKeepsTheIdleFaceWaiting() {
+        let entries = ActiveRunTimeline.entries(from: .empty, now: morning, calendar: utc)
+        XCTAssertEqual(entries.count, 1)
+        XCTAssertFalse(ActiveRunTimeline.reloadsAtEnd(entries))
+    }
+
+    func testALiveRunTimelineIgnoresToday() {
+        let entries = ActiveRunTimeline.entries(from: live(at: morning), today: glance(), now: morning, calendar: utc)
+        XCTAssertEqual(entries.count, ActiveRunTimeline.activeEntryCount)
+        XCTAssertTrue(entries.allSatisfy { $0.isActive && $0.today == nil })
+        XCTAssertTrue(ActiveRunTimeline.reloadsAtEnd(entries))
+    }
+
+    // MARK: - the words on the face
+
+    func testEveryPushedKindHasACatalogLabel() {
+        for kind in ["easy", "long", "recovery", "tempo", "interval", "marathon_pace", "walk_run", "race"] {
+            let label = ActiveRunTimeline.kindLabel(kind)
+            XCTAssertFalse(label.isEmpty, kind)
+            XCTAssertFalse(label.hasPrefix("workoutKind."), "\(kind) has no catalog entry: \(label)")
+        }
+    }
+
+    func testAnUnknownKindReadsAsTheGenericHeading() {
+        XCTAssertEqual(ActiveRunTimeline.kindLabel("fartlek"), String(localized: "Today's workout"))
+    }
+
+    func testHeadlinePrefersDistanceThenTime() {
+        XCTAssertEqual(
+            ActiveRunTimeline.todayHeadline(glance(distance: 8000, duration: 1800)),
+            RunFormat.distance(metres: 8000, fractionDigits: 1)
+        )
+        XCTAssertEqual(ActiveRunTimeline.todayHeadline(glance(distance: nil, duration: 1800)), "30:00")
+        XCTAssertNil(ActiveRunTimeline.todayHeadline(glance(distance: nil, duration: nil)))
+    }
+
+    func testTodayLineJoinsKindAndHeadline() {
+        let g = glance(distance: nil, duration: 1800)
+        XCTAssertEqual(ActiveRunTimeline.todayLine(g), "\(ActiveRunTimeline.kindLabel("tempo")) · 30:00")
+        XCTAssertEqual(
+            ActiveRunTimeline.todayLine(glance(distance: nil, duration: nil)),
+            ActiveRunTimeline.kindLabel("tempo")
+        )
+    }
+
+    // MARK: - the push -> glance -> App Group path
+
+    func testAPushedWorkoutBecomesItsGlance() throws {
+        let cases = try XCTUnwrap(PushedWorkoutTests.fixture()["cases"] as? [[String: Any]])
+        let payload = try XCTUnwrap(cases.first?["payload"])
+        let json = try XCTUnwrap(String(data: try JSONSerialization.data(withJSONObject: payload), encoding: .utf8))
+        let push = WorkoutPush.decode(json)
+        guard case .workout(let w) = push else { return XCTFail("fixture case did not decode") }
+        let g = try XCTUnwrap(TodayWorkoutGlance(push))
+        XCTAssertEqual(g.scheduledDate, w.scheduledDate)
+        XCTAssertEqual(g.workoutKind, w.workoutKind)
+        XCTAssertEqual(g.distanceMetres, w.totalDistanceMetres)
+        XCTAssertEqual(g.durationSeconds, w.totalDurationSeconds)
+    }
+
+    func testNothingTodayARefusalOrNoPushIsNoGlance() {
+        XCTAssertNil(TodayWorkoutGlance(WorkoutPush.none))
+        XCTAssertNil(TodayWorkoutGlance(.rejected))
+        XCTAssertNil(TodayWorkoutGlance(nil))
+    }
+
+    func testTheAppGroupSlotReportsOnlyARealChange() {
+        let saved = ActiveRunBridge.readToday()
+        defer { ActiveRunBridge.writeToday(saved) }
+        ActiveRunBridge.writeToday(nil)
+
+        XCTAssertFalse(ActiveRunBridge.writeToday(nil), "clearing an empty slot is no change")
+        XCTAssertTrue(ActiveRunBridge.writeToday(glance()))
+        XCTAssertEqual(ActiveRunBridge.readToday(), glance())
+        XCTAssertFalse(ActiveRunBridge.writeToday(glance()), "the same glance again is no change")
+        XCTAssertTrue(ActiveRunBridge.writeToday(glance(kind: "easy")))
+        XCTAssertTrue(ActiveRunBridge.writeToday(nil))
+        XCTAssertNil(ActiveRunBridge.readToday())
+    }
+}

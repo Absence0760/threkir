@@ -225,7 +225,10 @@ jobs:
       # each, derives the team from them, and writes the ExportOptions.plist. A profile for the wrong bundle, a
       # development profile or a missing one fails here by name. The share
       # extension's profile must carry the App Group capability, or the
-      # extension signs but its container lookup returns nil on device.
+      # extension signs but its container lookup returns nil on device; the
+      # phone's and the Live Activity extension's must carry the Today
+      # widget's group.com.threkir.app.widget, which both entitlements files
+      # declare (docs/ops/apple_provisioning.md step 2b).
       - name: Point the archive at the App Store profiles
         env:
           IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}

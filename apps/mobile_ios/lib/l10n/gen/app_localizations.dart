@@ -28819,6 +28819,12 @@ abstract class AppLocalizations {
   /// **'You\'re making new calendar links too quickly — please wait {wait} and try again.'**
   String rateLimitRotateCalendarLink(String wait);
 
+  /// Rate-limit refusal when the restart_training_plan bucket is spent (restarting a training plan)
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re restarting plans too quickly — please wait {wait} and try again.'**
+  String rateLimitRestartPlan(String wait);
+
   /// Heading of the training-plan calendar feed screen and its Integrations tile
   ///
   /// In en, this message translates to:
@@ -29214,6 +29220,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{n, plural, one{Plan resumed and pushed back {n} week.} other{Plan resumed and pushed back {n} weeks.}}'**
   String planDetailResumeShiftedDone(int n);
+
+  /// Plan detail app-bar menu item that restarts the plan as a fresh copy
+  ///
+  /// In en, this message translates to:
+  /// **'Restart plan…'**
+  String get planDetailRestartPlan;
+
+  /// Title of the restart-plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Restart this plan'**
+  String get planDetailRestartTitle;
+
+  /// Button in the restart dialog that opens the start-date picker
+  ///
+  /// In en, this message translates to:
+  /// **'Change start date'**
+  String get planDetailRestartChangeDate;
+
+  /// Restart confirm for an active or paused plan; date and end are the copy's start and end dates
+  ///
+  /// In en, this message translates to:
+  /// **'The new copy starts on {date} and ends on {end}. This plan, and any active plan those dates overlap, is retired as abandoned. Its weeks, workouts and run links are kept.'**
+  String planDetailRestartConfirmLive(String date, String end);
+
+  /// Restart confirm for a completed or abandoned plan; date and end are the copy's start and end dates
+  ///
+  /// In en, this message translates to:
+  /// **'The new copy starts on {date} and ends on {end}. Any active plan those dates overlap is retired as abandoned. This plan keeps its weeks, workouts and run links.'**
+  String planDetailRestartConfirmOver(String date, String end);
+
+  /// Restart confirm addendum: where the plan's past race lands in the copy
+  ///
+  /// In en, this message translates to:
+  /// **'Race day moves to {date}.'**
+  String planDetailRestartRaceMoves(String date);
+
+  /// Restart dialog body when the plan has a race still ahead; date is that race
+  ///
+  /// In en, this message translates to:
+  /// **'This plan\'s race on {date} is still ahead. Restarting would move race day, so change the race date or start a new plan instead.'**
+  String planDetailRestartRaceAhead(String date);
+
+  /// Banner when the server refuses a restart because a race is still ahead
+  ///
+  /// In en, this message translates to:
+  /// **'This plan has a race still ahead, so it can\'t be restarted.'**
+  String get planDetailRestartRaceAheadError;
+
+  /// Confirm button in the restart dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Restart plan'**
+  String get planDetailRestartConfirm;
+
+  /// Banner after a plan is restarted; the new copy is now showing
+  ///
+  /// In en, this message translates to:
+  /// **'Plan restarted. This is your new copy.'**
+  String get planDetailRestartDone;
 
   /// Subtitle of Home's paused-plan card; tapping it opens the plan with the resume confirm
   ///

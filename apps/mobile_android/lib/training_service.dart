@@ -289,6 +289,17 @@ class PlanTrimBlockedError implements Exception {
   String toString() => 'plan_trim_blocked';
 }
 
+/// A restart refused because the plan has a race on or after today
+/// (`restart_training_plan`'s SQLSTATE RR001, decisions § 2121): moving the
+/// plan would move race day. Nothing changed. Web twin:
+/// `isPlanRestartRaceAheadError` in `apps/web/src/lib/core/supabase_error.ts`.
+class PlanRestartRaceAheadError implements Exception {
+  const PlanRestartRaceAheadError();
+
+  @override
+  String toString() => 'plan_restart_race_ahead';
+}
+
 class TrainingService extends ChangeNotifier {
   final SupabaseClient? _override;
 
@@ -733,6 +744,28 @@ class TrainingService extends ChangeNotifier {
       'p_changes': changes,
     });
     notifyListeners();
+  }
+
+  /// Restarts the caller's plan [planId] as a fresh active copy starting on
+  /// [startIso], retiring the plans it replaces as abandoned in the same
+  /// transaction (`restart_training_plan`, decisions § 2121). Returns the new
+  /// plan's id. A race still ahead surfaces as [PlanRestartRaceAheadError].
+  /// Mirrors web `core/data.ts:restartTrainingPlan`.
+  Future<String> restartPlan(String planId, String startIso) async {
+    final Object? id;
+    try {
+      id = await _c.rpc('restart_training_plan', params: {
+        'p_plan_id': planId,
+        'p_start_date': startIso,
+      });
+    } catch (e, s) {
+      if (e is PostgrestException && e.code == 'RR001') {
+        Error.throwWithStackTrace(const PlanRestartRaceAheadError(), s);
+      }
+      Error.throwWithStackTrace(planWriteError(e), s);
+    }
+    notifyListeners();
+    return id! as String;
   }
 
   /// Moves every workout and the plan's start / end by [days] (the race

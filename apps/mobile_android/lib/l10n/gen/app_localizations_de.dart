@@ -17649,6 +17649,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String rateLimitRestartPlan(String wait) {
+    return 'Du startest Pläne zu schnell neu – bitte warte $wait und versuche es erneut.';
+  }
+
+  @override
   String get planCalendarFeedTitle => 'Trainingsplan-Kalender';
 
   @override
@@ -17924,6 +17929,46 @@ class AppLocalizationsDe extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get planDetailRestartPlan => 'Plan neu starten…';
+
+  @override
+  String get planDetailRestartTitle => 'Diesen Plan neu starten';
+
+  @override
+  String get planDetailRestartChangeDate => 'Startdatum ändern';
+
+  @override
+  String planDetailRestartConfirmLive(String date, String end) {
+    return 'Die neue Kopie beginnt am $date und endet am $end. Dieser Plan und jeder aktive Plan, mit dem sich diese Daten überschneiden, wird als abgebrochen abgelegt. Seine Wochen, Einheiten und Lauf-Verknüpfungen bleiben erhalten.';
+  }
+
+  @override
+  String planDetailRestartConfirmOver(String date, String end) {
+    return 'Die neue Kopie beginnt am $date und endet am $end. Jeder aktive Plan, mit dem sich diese Daten überschneiden, wird als abgebrochen abgelegt. Dieser Plan behält seine Wochen, Einheiten und Lauf-Verknüpfungen.';
+  }
+
+  @override
+  String planDetailRestartRaceMoves(String date) {
+    return 'Der Wettkampftag verschiebt sich auf den $date.';
+  }
+
+  @override
+  String planDetailRestartRaceAhead(String date) {
+    return 'Der Wettkampf dieses Plans am $date steht noch bevor. Ein Neustart würde den Wettkampftag verschieben. Ändere stattdessen das Wettkampfdatum oder beginne einen neuen Plan.';
+  }
+
+  @override
+  String get planDetailRestartRaceAheadError =>
+      'Dieser Plan hat noch einen bevorstehenden Wettkampf und kann daher nicht neu gestartet werden.';
+
+  @override
+  String get planDetailRestartConfirm => 'Plan neu starten';
+
+  @override
+  String get planDetailRestartDone =>
+      'Plan neu gestartet. Das ist deine neue Kopie.';
 
   @override
   String get dashboardPlanPausedBody =>

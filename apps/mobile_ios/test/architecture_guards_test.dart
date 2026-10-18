@@ -5548,6 +5548,10 @@ void main() {
       'screens/plan_detail_screen.dart::dl10n.planDetailDuplicateConfirmTitle': 1,
       // Moves dates only; shifting back by the same amount restores them.
       'screens/plan_detail_screen.dart::l10n.planDetailShiftTitle': 1,
+      // Restart copies the plan and retires the live one as abandoned, a
+      // status change that keeps its history; the second dialog is the
+      // race-ahead refusal, whose only action is dismissal.
+      'screens/plan_detail_screen.dart::l10n.planDetailRestartTitle': 2,
       // Abandon: a status change, not a deletion.
       'screens/plans_screen.dart::title': 1,
       // Visibility toggles and a share that only widens visibility.

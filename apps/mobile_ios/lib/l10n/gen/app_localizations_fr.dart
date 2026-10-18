@@ -17676,6 +17676,11 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String rateLimitRestartPlan(String wait) {
+    return 'Vous recommencez des plans trop rapidement — veuillez patienter $wait et réessayer.';
+  }
+
+  @override
   String get planCalendarFeedTitle => 'Calendrier du plan d\'entraînement';
 
   @override
@@ -17952,6 +17957,46 @@ class AppLocalizationsFr extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get planDetailRestartPlan => 'Recommencer le plan…';
+
+  @override
+  String get planDetailRestartTitle => 'Recommencer ce plan';
+
+  @override
+  String get planDetailRestartChangeDate => 'Changer la date de début';
+
+  @override
+  String planDetailRestartConfirmLive(String date, String end) {
+    return 'La nouvelle copie commence le $date et se termine le $end. Ce plan, ainsi que tout plan actif que ces dates chevauchent, est classé comme abandonné. Ses semaines, séances et liens vers vos sorties sont conservés.';
+  }
+
+  @override
+  String planDetailRestartConfirmOver(String date, String end) {
+    return 'La nouvelle copie commence le $date et se termine le $end. Tout plan actif que ces dates chevauchent est classé comme abandonné. Ce plan conserve ses semaines, séances et liens vers vos sorties.';
+  }
+
+  @override
+  String planDetailRestartRaceMoves(String date) {
+    return 'Le jour de course passe au $date.';
+  }
+
+  @override
+  String planDetailRestartRaceAhead(String date) {
+    return 'La course de ce plan, le $date, est encore à venir. Recommencer déplacerait le jour de course : changez plutôt la date de course ou commencez un nouveau plan.';
+  }
+
+  @override
+  String get planDetailRestartRaceAheadError =>
+      'Ce plan comporte une course encore à venir, il ne peut donc pas être recommencé.';
+
+  @override
+  String get planDetailRestartConfirm => 'Recommencer le plan';
+
+  @override
+  String get planDetailRestartDone =>
+      'Plan recommencé. Voici votre nouvelle copie.';
 
   @override
   String get dashboardPlanPausedBody =>

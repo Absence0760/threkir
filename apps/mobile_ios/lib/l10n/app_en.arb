@@ -23098,6 +23098,15 @@
       }
     }
   },
+  "rateLimitRestartPlan": "You're restarting plans too quickly — please wait {wait} and try again.",
+  "@rateLimitRestartPlan": {
+    "description": "Rate-limit refusal when the restart_training_plan bucket is spent (restarting a training plan)",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
   "planCalendarFeedTitle": "Training plan calendar",
   "@planCalendarFeedTitle": {
     "description": "Heading of the training-plan calendar feed screen and its Integrations tile"
@@ -23409,6 +23418,72 @@
         "type": "int"
       }
     }
+  },
+  "planDetailRestartPlan": "Restart plan…",
+  "@planDetailRestartPlan": {
+    "description": "Plan detail app-bar menu item that restarts the plan as a fresh copy"
+  },
+  "planDetailRestartTitle": "Restart this plan",
+  "@planDetailRestartTitle": {
+    "description": "Title of the restart-plan dialog"
+  },
+  "planDetailRestartChangeDate": "Change start date",
+  "@planDetailRestartChangeDate": {
+    "description": "Button in the restart dialog that opens the start-date picker"
+  },
+  "planDetailRestartConfirmLive": "The new copy starts on {date} and ends on {end}. This plan, and any active plan those dates overlap, is retired as abandoned. Its weeks, workouts and run links are kept.",
+  "@planDetailRestartConfirmLive": {
+    "description": "Restart confirm for an active or paused plan; date and end are the copy's start and end dates",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRestartConfirmOver": "The new copy starts on {date} and ends on {end}. Any active plan those dates overlap is retired as abandoned. This plan keeps its weeks, workouts and run links.",
+  "@planDetailRestartConfirmOver": {
+    "description": "Restart confirm for a completed or abandoned plan; date and end are the copy's start and end dates",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRestartRaceMoves": "Race day moves to {date}.",
+  "@planDetailRestartRaceMoves": {
+    "description": "Restart confirm addendum: where the plan's past race lands in the copy",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRestartRaceAhead": "This plan's race on {date} is still ahead. Restarting would move race day, so change the race date or start a new plan instead.",
+  "@planDetailRestartRaceAhead": {
+    "description": "Restart dialog body when the plan has a race still ahead; date is that race",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailRestartRaceAheadError": "This plan has a race still ahead, so it can't be restarted.",
+  "@planDetailRestartRaceAheadError": {
+    "description": "Banner when the server refuses a restart because a race is still ahead"
+  },
+  "planDetailRestartConfirm": "Restart plan",
+  "@planDetailRestartConfirm": {
+    "description": "Confirm button in the restart dialog"
+  },
+  "planDetailRestartDone": "Plan restarted. This is your new copy.",
+  "@planDetailRestartDone": {
+    "description": "Banner after a plan is restarted; the new copy is now showing"
   },
   "dashboardPlanPausedBody": "Paused. Resume to pick it up again; the weeks you missed move back.",
   "@dashboardPlanPausedBody": {

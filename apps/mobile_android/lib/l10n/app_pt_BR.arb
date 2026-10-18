@@ -4988,6 +4988,7 @@
   "planNewBuildOwn": "Ou monte o seu",
   "planNewSummary": "{weeks, plural, one{{weeks} semana} other{{weeks} semanas}} · termina em {date}",
   "rateLimitRotateCalendarLink": "Você está criando links de calendário rápido demais — espere {wait} e tente de novo.",
+  "rateLimitRestartPlan": "Você está recomeçando planos rápido demais — espere {wait} e tente de novo.",
   "planCalendarFeedTitle": "Calendário do plano de treino",
   "planCalendarFeedTileSubtitle": "Os treinos do seu plano no Google Agenda, Calendário da Apple ou Outlook",
   "planCalendarFeedDescription": "Assine pelo Google Agenda, Calendário da Apple ou Outlook para ver os treinos do seu plano ativo como eventos de dia inteiro. Eles acompanham o plano quando ele muda.",
@@ -5054,5 +5055,15 @@
   "planDetailResumeShiftTitle": "Retomar e adiar?",
   "planDetailResumeShiftMessage": "{n, plural, one{Este plano volta a ser seu plano ativo. As semanas que você ainda não tinha começado passam {n} semana para frente, para retomar na próxima semana em vez de contá-las como perdidas. Agora ele termina em {date}.} other{Este plano volta a ser seu plano ativo. As semanas que você ainda não tinha começado passam {n} semanas para frente, para retomar na próxima semana em vez de contá-las como perdidas. Agora ele termina em {date}.}}",
   "planDetailResumeShiftedDone": "{n, plural, one{Plano retomado e adiado {n} semana.} other{Plano retomado e adiado {n} semanas.}}",
+  "planDetailRestartPlan": "Recomeçar o plano…",
+  "planDetailRestartTitle": "Recomeçar este plano",
+  "planDetailRestartChangeDate": "Alterar a data de início",
+  "planDetailRestartConfirmLive": "A nova cópia começa em {date} e termina em {end}. Este plano, e qualquer plano ativo com que essas datas se sobreponham, é arquivado como abandonado. As semanas, os treinos e os vínculos com corridas dele são mantidos.",
+  "planDetailRestartConfirmOver": "A nova cópia começa em {date} e termina em {end}. Qualquer plano ativo com que essas datas se sobreponham é arquivado como abandonado. Este plano mantém as semanas, os treinos e os vínculos com corridas dele.",
+  "planDetailRestartRaceMoves": "O dia da prova passa para {date}.",
+  "planDetailRestartRaceAhead": "A prova deste plano, em {date}, ainda não aconteceu. Recomeçar mudaria o dia da prova, então altere a data da prova ou comece um novo plano.",
+  "planDetailRestartRaceAheadError": "Este plano tem uma prova que ainda não aconteceu, então não pode ser recomeçado.",
+  "planDetailRestartConfirm": "Recomeçar o plano",
+  "planDetailRestartDone": "Plano recomeçado. Esta é a sua nova cópia.",
   "dashboardPlanPausedBody": "Pausado. Retome para continuar; as semanas que você perdeu passam para frente."
 }

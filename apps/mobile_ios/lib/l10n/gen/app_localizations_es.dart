@@ -953,6 +953,24 @@ class AppLocalizationsEs extends AppLocalizations {
       'Se usa para estimar tus objetivos diarios de calorías y macros.';
 
   @override
+  String get bodyMetricsSaveHint =>
+      'Esta sección solo se guarda cuando tocas «Guardar».';
+
+  @override
+  String get bodyMetricsUnsaved => 'Cambios sin guardar';
+
+  @override
+  String get bodyMetricsNutritionHeading => 'Objetivos de nutrición';
+
+  @override
+  String get bodyMetricsAutosaveHint =>
+      'Los cambios aquí se guardan automáticamente.';
+
+  @override
+  String get bodyMetricsLeaveMessage =>
+      'Has cambiado tus medidas corporales pero no las has guardado. ¿Salir sin guardar?';
+
+  @override
   String get bodyMetricsConsentRequired =>
       'Activa el almacenamiento de datos de salud para guardar altura y peso.';
 

@@ -956,6 +956,24 @@ class AppLocalizationsFr extends AppLocalizations {
       'Sert à estimer vos objectifs quotidiens de calories et de macros.';
 
   @override
+  String get bodyMetricsSaveHint =>
+      'Cette section n\'est enregistrée que lorsque vous touchez « Enregistrer ».';
+
+  @override
+  String get bodyMetricsUnsaved => 'Modifications non enregistrées';
+
+  @override
+  String get bodyMetricsNutritionHeading => 'Objectifs nutritionnels';
+
+  @override
+  String get bodyMetricsAutosaveHint =>
+      'Les modifications ici sont enregistrées automatiquement.';
+
+  @override
+  String get bodyMetricsLeaveMessage =>
+      'Vous avez modifié vos mesures corporelles sans les enregistrer. Quitter sans enregistrer ?';
+
+  @override
   String get bodyMetricsConsentRequired =>
       'Activez le stockage des données de santé pour enregistrer la taille et le poids.';
 

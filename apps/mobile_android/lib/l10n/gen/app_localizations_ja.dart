@@ -914,6 +914,21 @@ class AppLocalizationsJa extends AppLocalizations {
   String get bodyMetricsTargetsHint => '1日のカロリーとマクロ目標の推定に使用します。';
 
   @override
+  String get bodyMetricsSaveHint => 'このセクションは「保存」をタップしたときだけ保存されます。';
+
+  @override
+  String get bodyMetricsUnsaved => '未保存の変更があります';
+
+  @override
+  String get bodyMetricsNutritionHeading => '栄養目標';
+
+  @override
+  String get bodyMetricsAutosaveHint => 'ここでの変更は自動で保存されます。';
+
+  @override
+  String get bodyMetricsLeaveMessage => '身体データを変更しましたが保存していません。保存せずに移動しますか？';
+
+  @override
   String get bodyMetricsConsentRequired => '健康データの保存をオンにすると身長と体重を保存できます。';
 
   @override

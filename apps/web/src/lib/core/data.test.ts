@@ -2299,3 +2299,26 @@ test('joinClubByToken raises the waiver refusal as an Error the join page can re
 		/export function isActivityWaiverRequired\(e: unknown\): boolean \{\s*return e instanceof Error && e\.message === ACTIVITY_WAIVER_REQUIRED;/,
 	);
 });
+
+test('reschedulePlanAfterBreak sends the previewed change as one RPC and surfaces a refusal', () => {
+	// The break offer applies exactly what its preview showed, in one
+	// transaction (decisions § 2128): the client passes the weeks it chose and
+	// never writes weeks or workouts itself, and a refusal (23P01 overlap,
+	// 22023) must reach the card as a thrown error, not a silent no-op.
+	const source = read('src/lib/core/data.ts');
+	const fnMatch = source.match(/export async function reschedulePlanAfterBreak[\s\S]*?\n}/);
+	assert.ok(fnMatch, 'Could not locate reschedulePlanAfterBreak — rename?');
+	const body = fnMatch![0];
+	assert.match(body, /supabase\.rpc\('reschedule_plan_after_break', \{/);
+	for (const [param, value] of [
+		['p_plan_id', 'planId'],
+		['p_today', 'todayIso'],
+		['p_break_from', 'breakFromIso'],
+		['p_repeat_week_ids', 'change\\.repeatWeekIds'],
+		['p_drop_week_ids', 'change\\.dropWeekIds']
+	]) {
+		assert.match(body, new RegExp(`${param}: ${value}\\b`), `${param} must carry ${value}`);
+	}
+	assert.match(body, /if \(error\) throw dbError\(error\);/);
+	assert.doesNotMatch(body, /\.from\(/, 'the reschedule must not write tables around the RPC');
+});

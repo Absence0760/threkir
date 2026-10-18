@@ -1607,7 +1607,9 @@ class _RunsScreenState extends State<RunsScreen>
         ? const <HistoryItem>[]
         : buildHistoryItems(_visible,
             now: DateTime.now(),
-            localeTag: localeToTag(Localizations.localeOf(context)));
+            localeTag: localeToTag(Localizations.localeOf(context)),
+            groupByMonth:
+                _sort == _RunsSort.newest || _sort == _RunsSort.oldest);
     if (widthClassOf(context) == WidthClass.expanded) {
       return _buildRunGrid(theme, l10n, unit, items,
           emptyAfterFilter: emptyAfterFilter, showLoadMore: showLoadMore);

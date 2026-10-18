@@ -848,6 +848,68 @@ void main() {
     });
   });
 
+  group('RunsScreen month headers', () {
+    Future<void> pumpWithSort(WidgetTester tester, String sort) async {
+      SharedPreferences.setMockInitialValues({
+        'runs_filters_v1': jsonEncode({'range': 'all', 'sort': sort}),
+      });
+      final prefs = Preferences();
+      await prefs.init();
+      _runsDir = Directory.systemTemp.createTempSync('runs_screen_months_');
+      final now = DateTime.now();
+      // Forty days apart always straddles a month boundary; the OLDER run is
+      // the longer one, so a longest-first list runs against the calendar.
+      final runs = [
+        Run(
+          id: 'recent-short',
+          startedAt: now.subtract(const Duration(days: 1)),
+          duration: const Duration(minutes: 30),
+          distanceMetres: 5000,
+          source: RunSource.app,
+        ),
+        Run(
+          id: 'older-long',
+          startedAt: now.subtract(const Duration(days: 41)),
+          duration: const Duration(hours: 2),
+          distanceMetres: 21500,
+          source: RunSource.app,
+        ),
+      ];
+      // ignore: invalid_use_of_visible_for_testing_member
+      final runStore = LocalRunStore()..debugSeed(runs, dir: _runsDir);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RunsScreen(
+            apiClient: null,
+            runStore: runStore,
+            routeStore: LocalRouteStore(),
+            preferences: prefs,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    final monthHeader = find.byWidgetPredicate(
+        (w) => w.runtimeType.toString() == '_MonthHeaderRow');
+
+    testWidgets('newest-first groups by month', (tester) async {
+      await pumpWithSort(tester, 'newest');
+      expect(monthHeader, findsNWidgets(2));
+    });
+
+    testWidgets('longest-first drops month headers instead of interleaving '
+        'them', (tester) async {
+      // Production: the ranked list read JULY above OCTOBER.
+      await pumpWithSort(tester, 'longest');
+      expect(monthHeader, findsNothing);
+      expect(find.byType(RunListTile), findsNWidgets(2));
+    });
+  });
+
   group('RunsScreen expanded (tablet) layout', () {
     Future<LocalRunStore> seedThirty() async {
       SharedPreferences.setMockInitialValues({

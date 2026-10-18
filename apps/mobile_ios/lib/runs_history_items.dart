@@ -41,11 +41,19 @@ class HistoryRun extends HistoryItem {
 ///
 /// [now] is parameterised so unit tests can pin the current-year
 /// shortening behaviour.
+///
+/// [groupByMonth] is false for a ranking sort (longest, fastest): a month
+/// header only reads as a section when the list is in date order. Ranked by
+/// distance, the same walk printed "July" above "October" and repeated a month
+/// each time the ranking crossed back into it. Web's list carries no month
+/// headers at all.
 List<HistoryItem> buildHistoryItems(
   List<Run> runs, {
   required DateTime now,
   String localeTag = 'en',
+  bool groupByMonth = true,
 }) {
+  if (!groupByMonth) return [for (final r in runs) HistoryRun(r)];
   final out = <HistoryItem>[];
   int? lastYear;
   int? lastMonth;

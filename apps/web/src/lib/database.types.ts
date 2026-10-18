@@ -6983,6 +6983,10 @@ export type Database = {
         }
         Returns: number
       }
+      restart_training_plan: {
+        Args: { p_plan_id: string; p_start_date: string }
+        Returns: string
+      }
       resume_training_plan: {
         Args: {
           p_from_week_index?: number

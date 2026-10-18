@@ -1,7 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
+import 'package:ui_kit/ui_kit.dart' show IdentityAvatar, ListSkeleton;
 import 'package:flutter/services.dart';
 
 import '../auth_error.dart';
@@ -295,7 +295,11 @@ class _CoachingScreenState extends State<CoachingScreen> {
     );
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-      leading: CircleAvatar(child: Text(_initial(r.displayName))),
+      leading: IdentityAvatar(
+          seed: r.athleteId,
+          name: r.displayName,
+          imageUrl: r.avatarUrl,
+          size: 40),
       title: Text(r.displayName ?? l10n.coachingRunner,
           maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: misses < consecutiveMissFlag && !drift
@@ -327,7 +331,8 @@ class _CoachingScreenState extends State<CoachingScreen> {
               ],
             ),
       trailing: _riskChip(band, l10n),
-      onTap: () => _openAthleteById(r.athleteId, r.displayName),
+      onTap: () =>
+          _openAthleteById(r.athleteId, r.displayName, r.avatarUrl),
     );
   }
 
@@ -394,7 +399,8 @@ class _CoachingScreenState extends State<CoachingScreen> {
     );
   }
 
-  void _openAthleteById(String athleteId, String? displayName) {
+  void _openAthleteById(
+      String athleteId, String? displayName, String? avatarUrl) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => CoachingAthleteScreen(
@@ -402,6 +408,7 @@ class _CoachingScreenState extends State<CoachingScreen> {
           preferences: widget.preferences,
           athleteId: athleteId,
           displayName: displayName,
+          avatarUrl: avatarUrl,
           acceptedAt: null,
           hrPrescription: _hrPrescription,
         ),
@@ -508,7 +515,11 @@ class _CoachingScreenState extends State<CoachingScreen> {
   Widget _athleteRow(CoachAthleteLink a, AppLocalizations l10n) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-      leading: CircleAvatar(child: Text(_initial(a.displayName))),
+      leading: IdentityAvatar(
+          seed: a.userId,
+          name: a.displayName,
+          imageUrl: a.avatarUrl,
+          size: 40),
       title: Text(a.displayName ?? l10n.coachingRunner,
           maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(l10n.coachingCoachingSince(_sinceLabel(a.acceptedAt))),
@@ -537,6 +548,7 @@ class _CoachingScreenState extends State<CoachingScreen> {
           preferences: widget.preferences,
           athleteId: a.userId,
           displayName: a.displayName,
+          avatarUrl: a.avatarUrl,
           acceptedAt: a.acceptedAt,
           hrPrescription: _hrPrescription,
         ),
@@ -573,7 +585,11 @@ class _CoachingScreenState extends State<CoachingScreen> {
               for (final c in _coaches)
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                  leading: CircleAvatar(child: Text(_initial(c.displayName))),
+                  leading: IdentityAvatar(
+                      seed: c.userId,
+                      name: c.displayName,
+                      imageUrl: c.avatarUrl,
+                      size: 40),
                   title: Text(c.displayName ?? l10n.coachingCoach,
                       maxLines: 1, overflow: TextOverflow.ellipsis),
                   subtitle:
@@ -587,10 +603,5 @@ class _CoachingScreenState extends State<CoachingScreen> {
         ),
       ),
     );
-  }
-
-  static String _initial(String? name) {
-    final n = name?.trim() ?? '';
-    return n.isEmpty ? '?' : n.substring(0, 1).toUpperCase();
   }
 }

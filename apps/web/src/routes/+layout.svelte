@@ -6,6 +6,7 @@
 	import { browser } from '$app/env';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { accountLabel } from '#lib/format/account_label.ts';
+	import Avatar from '#lib/components/Avatar.svelte';
 	import { initTheme } from '#lib/settings/theme.ts';
 	import { setMapStyle, type MapStyle } from '#lib/routes/map-style.svelte.ts';
 	import { setUnit, setWeightUnit } from '#lib/format/units.svelte.ts';
@@ -630,9 +631,9 @@
 						title={sidebarCollapsed ? accountLabel(auth.user.display_name) : undefined}
 						bind:this={profileBtnEl}
 					>
-						<div class="user-avatar">
-							{auth.user.display_name?.[0]?.toUpperCase() ?? '?'}
-						</div>
+						<span class="user-avatar" data-testid="sidebar-avatar">
+							<Avatar url={auth.user.avatar_url} name={auth.user.display_name} size="2.25rem" font="0.85rem" />
+						</span>
 						<div class="user-details">
 							<span class="user-name">{accountLabel(auth.user.display_name)}</span>
 							<span class="user-email">{auth.user.email}</span>
@@ -673,9 +674,9 @@
 		<div class="popover-backdrop" onclick={() => (showLogoutModal = false)} role="presentation"></div>
 		<div class="popover" bind:this={popoverEl}>
 			<div class="popover-header">
-				<div class="popover-avatar">
-					{auth.user?.display_name?.[0]?.toUpperCase() ?? '?'}
-				</div>
+				<span class="popover-avatar" data-testid="account-menu-avatar">
+					<Avatar url={auth.user?.avatar_url} name={auth.user?.display_name} size="2rem" font="0.8rem" />
+				</span>
 				<div class="popover-info">
 					<span class="popover-name">{accountLabel(auth.user?.display_name)}</span>
 					<span class="popover-email">{auth.user?.email}</span>
@@ -1036,16 +1037,8 @@
 	}
 
 	.user-avatar {
-		width: 2.25rem;
-		height: 2.25rem;
-		border-radius: 50%;
-		background: var(--gradient-avatar);
-		color: var(--color-on-primary);
 		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 0.85rem;
-		font-weight: 700;
+		border-radius: 50%;
 		flex-shrink: 0;
 		box-shadow: var(--shadow-sm);
 	}
@@ -1107,16 +1100,7 @@
 		padding: var(--space-sm);
 	}
 	.popover-avatar {
-		width: 2rem;
-		height: 2rem;
-		border-radius: 50%;
-		background: var(--gradient-avatar);
-		color: var(--color-on-primary);
 		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 0.8rem;
-		font-weight: 700;
 		flex-shrink: 0;
 	}
 	.popover-info {

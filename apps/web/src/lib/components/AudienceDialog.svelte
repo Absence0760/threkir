@@ -4,7 +4,8 @@
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
-	import { initial } from '#lib/format/avatar.ts';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { hashHue } from '#lib/format/avatar.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import {
@@ -251,7 +252,7 @@
 			<ul data-testid="audience-shared-list">
 				{#each shares as s (s.recipientId)}
 					<li class="person">
-						<span class="avatar" aria-hidden="true">{initial(s.displayName)}</span>
+						<Avatar url={s.avatarUrl} name={s.displayName} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(s.recipientId)} />
 						<span class="who"><strong>{nameOf(s.displayName)}</strong></span>
 						<button
 							type="button"
@@ -306,7 +307,7 @@
 									disabled={pendingRecipient !== null || sharedIds.has(p.id)}
 									onclick={() => share(p)}
 								>
-									<span class="avatar" aria-hidden="true">{initial(p.displayName)}</span>
+									<Avatar url={p.avatarUrl} name={p.displayName} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(p.id)} />
 									<span class="who"><strong>{nameOf(p.displayName)}</strong></span>
 									<span class="cta">
 										{#if sharedIds.has(p.id)}
@@ -423,15 +424,6 @@
 	.candidate:focus-visible {
 		outline: 2px solid var(--color-primary);
 		outline-offset: 1px;
-	}
-	.avatar {
-		inline-size: 2rem;
-		block-size: 2rem;
-		border-radius: 50%;
-		background: var(--color-bg-secondary);
-		display: grid;
-		place-items: center;
-		flex: 0 0 auto;
 	}
 	.who {
 		display: flex;

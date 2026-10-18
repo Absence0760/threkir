@@ -311,7 +311,7 @@
 												href="/coaching/athletes/{r.athlete_id}"
 												onclick={(e) => e.stopPropagation()}
 											>
-												<Avatar name={r.display_name} size="2rem" font="0.78rem" />
+												<Avatar url={r.avatar_url} name={r.display_name} size="2rem" font="0.78rem" />
 												<span class="athlete-name">{r.display_name ?? m('coaching.runner')}</span>
 											</a>
 										</td>
@@ -406,7 +406,7 @@
 				<ul class="link-list">
 					{#each athletes as a (a.id)}
 						<li class="link-row">
-							<Avatar name={a.display_name} size="2.25rem" font="0.85rem" />
+							<Avatar url={a.avatar_url} name={a.display_name} size="2.25rem" font="0.85rem" />
 							<div class="link-body">
 								<a class="link-name" href="/coaching/athletes/{a.user_id}">{a.display_name ?? m('coaching.runner')}</a>
 								<span class="link-sub">{m('coaching.coachingSince', { date: sinceLabel(a.accepted_at) })}</span>
@@ -438,7 +438,7 @@
 				<ul class="link-list">
 					{#each coaches as c (c.id)}
 						<li class="link-row">
-							<Avatar name={c.display_name} size="2.25rem" font="0.85rem" />
+							<Avatar url={c.avatar_url} name={c.display_name} size="2.25rem" font="0.85rem" />
 							<div class="link-body">
 								<a class="link-name" href="/u/{c.user_id}">{c.display_name ?? m('coaching.coach')}</a>
 								<span class="link-sub">{m('coaching.linkedSince', { date: sinceLabel(c.accepted_at) })}</span>

@@ -2,7 +2,8 @@
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import Modal from './Modal.svelte';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
-	import { initial } from '#lib/format/avatar.ts';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { hashHue } from '#lib/format/avatar.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { addShare, fetchFollowers, fetchFollowing, sendDm } from '#lib/core/data.ts';
 	import {
@@ -178,7 +179,7 @@
 								disabled={sendingTo !== null}
 								onclick={() => send(r)}
 							>
-								<span class="avatar" aria-hidden="true">{initial(r.displayName)}</span>
+								<Avatar url={r.avatarUrl} name={r.displayName} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(r.id)} />
 								<span class="who">
 									<strong>{nameOf(r)}</strong>
 									<span class="relation">{relationLabel(r)}</span>
@@ -266,15 +267,6 @@
 	.recipient:disabled {
 		opacity: 0.6;
 		cursor: default;
-	}
-	.avatar {
-		inline-size: 2rem;
-		block-size: 2rem;
-		border-radius: 50%;
-		background: var(--color-bg-secondary);
-		display: grid;
-		place-items: center;
-		flex: 0 0 auto;
 	}
 	.who {
 		display: flex;

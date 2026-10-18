@@ -1,4 +1,4 @@
--- Pins migration 20270918000001: set_plan_goal_time writes a plan's goal time,
+-- Pins migration 20270918000003: set_plan_goal_time writes a plan's goal time,
 -- its VDOT and the re-derived workout paces in one transaction, refuses a
 -- plan the caller does not own, and rolls the goal back when a workout patch
 -- is refused.

@@ -1,4 +1,4 @@
--- Pins migration 20270918000002: pausing stamps paused_at and leaving pause
+-- Pins migration 20270918000004: pausing stamps paused_at and leaving pause
 -- clears it; resume_training_plan reactivates the owner's paused plan and can
 -- push the weeks from a given index back by whole weeks, keeping earlier weeks
 -- (and their history) where they are.

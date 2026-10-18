@@ -7,7 +7,8 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart'
     show ActivityType, DistanceUnit, PlanWorkoutRow;
-import 'package:flutter/foundation.dart' show defaultTargetPlatform;
+import 'package:flutter/foundation.dart'
+    show ValueListenable, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderProxyBox;
 import 'package:flutter/scheduler.dart';
@@ -197,6 +198,11 @@ class RunScreen extends StatefulWidget {
   /// multi-day effort being split into two disjoint runs by a process kill.
   final cm.Run? initialResumablePartial;
 
+  /// Whether the shell is showing this page. The page is kept alive behind
+  /// the others, so coming back to it re-reads the plan card: a run matched
+  /// on another device or the web would otherwise stay "to do" here.
+  final ValueListenable<bool>? shown;
+
   const RunScreen({
     super.key,
     this.apiClient,
@@ -215,6 +221,7 @@ class RunScreen extends StatefulWidget {
     this.devBackendUrl,
     this.watchTransportFactory,
     this.initialResumablePartial,
+    this.shown,
   });
 
   @override
@@ -797,6 +804,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     widget.runStore.addListener(_onPrefsChange);
     widget.social.addListener(_onSocialChange);
     widget.training.addListener(_onTrainingChange);
+    widget.shown?.addListener(_onShownChange);
     pendingStartWorkout.addListener(_onPendingStartWorkout);
     pendingArmGuidedRun.addListener(_onPendingArmGuidedRun);
     runStopRequests.addListener(_onDockedStopRequest);
@@ -835,6 +843,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed && widget.shown?.value != false) {
+      _onTrainingChange();
+    }
     // L4 auxiliary: this only ever decides whether to show a disclosure.
     // Nothing in here may touch recording state, so it carries its own
     // catch rather than riding any recording path's.
@@ -1182,9 +1193,17 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     });
   }
 
+  void _onShownChange() {
+    if (widget.shown?.value == true) _onTrainingChange();
+  }
+
   @override
   void didUpdateWidget(covariant RunScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!identical(widget.shown, oldWidget.shown)) {
+      oldWidget.shown?.removeListener(_onShownChange);
+      widget.shown?.addListener(_onShownChange);
+    }
     if (widget.initialRoute != null &&
         widget.initialRoute != oldWidget.initialRoute &&
         _state == _ScreenState.idle) {
@@ -4060,6 +4079,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     widget.runStore.removeListener(_onPrefsChange);
     widget.social.removeListener(_onSocialChange);
     widget.training.removeListener(_onTrainingChange);
+    widget.shown?.removeListener(_onShownChange);
     _socialDebounce?.cancel();
     _trainingDebounce?.cancel();
     _snapshotSub?.cancel();

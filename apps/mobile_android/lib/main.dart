@@ -411,7 +411,8 @@ void main() async {
   if (hasSupabase && api != null) {
     unawaited(raceController.start());
   }
-  final training = TrainingService();
+  final training = TrainingService()
+    ..followRunsLanded(Listenable.merge([store.landed, watchQueue.landed]));
   final heartRate = BleHeartRate();
   // Kick off auto-reconnect in the background. If the user has paired a
   // strap previously, HR is ready when they tap Start; otherwise it's a

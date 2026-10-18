@@ -302,6 +302,24 @@ class TrainingService extends ChangeNotifier {
   @visibleForTesting
   TrainingService.withClient(SupabaseClient client) : _override = client;
 
+  Listenable? _runsLanded;
+
+  /// Notifies this service's listeners whenever [runsLanded] fires, so every
+  /// screen showing plan completion re-reads it. The server links a run to
+  /// its workout as the row is written (decisions § 2079); without this a
+  /// plain run that satisfied today's workout left every open plan surface
+  /// showing it as still to do. Replaces any source passed earlier.
+  void followRunsLanded(Listenable runsLanded) {
+    _runsLanded?.removeListener(notifyListeners);
+    _runsLanded = runsLanded..addListener(notifyListeners);
+  }
+
+  @override
+  void dispose() {
+    _runsLanded?.removeListener(notifyListeners);
+    super.dispose();
+  }
+
   SupabaseClient get _c {
     final override = _override;
     if (override != null) return override;

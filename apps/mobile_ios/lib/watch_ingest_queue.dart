@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
+import 'run_upload_signal.dart';
+
 /// The durable home of every watch-run payload until the server has it.
 ///
 /// `WatchIngest` writes each run here under
@@ -32,6 +34,10 @@ import 'package:uuid/uuid.dart';
 /// [setLastKnownOwner] — see the WearAuthBridge mirror for the same
 /// owner-tracking pattern on the watch-session side.
 class WatchIngestQueue {
+  /// Fires after a watch run reaches the server, through [drain] or the
+  /// direct save `WatchIngest` falls back to.
+  final RunUploadSignal landed = RunUploadSignal();
+
   static const _uuid = Uuid();
   static const _lastOwnerFilename = 'last_owner.txt';
 
@@ -256,6 +262,7 @@ class WatchIngestQueue {
         debugPrint('WatchIngestQueue.drain upload failed for ${file.path}: $e');
         continue; // transient — left on disk for the next trigger
       }
+      landed.fire();
       try {
         await file.delete();
       } catch (e) {

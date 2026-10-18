@@ -6,6 +6,8 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'run_upload_signal.dart';
+
 /// Persists runs as JSON files on disk for offline-first sync.
 ///
 /// Each run is stored as a separate file: `<run-id>.json`.
@@ -15,6 +17,10 @@ import 'package:path_provider/path_provider.dart';
 /// rewritten every few seconds during a recording, so a crash mid-run can
 /// be recovered on next launch.
 class LocalRunStore extends ChangeNotifier {
+  /// Fires when runs are marked synced or written from the server, so plan
+  /// completion can be re-read without listening to every store change.
+  final RunUploadSignal landed = RunUploadSignal();
+
   Directory? _dirOrNull;
   Directory get _dir => _dirOrNull!;
   List<Run> _runs = [];
@@ -544,6 +550,7 @@ class LocalRunStore extends ChangeNotifier {
     }
     await _persistIndex();
     notifyListeners();
+    landed.fire();
   }
 
   /// What a pulled server row becomes locally, or null to keep the local copy.
@@ -634,6 +641,7 @@ class LocalRunStore extends ChangeNotifier {
     _runs.sort((a, b) => b.startedAt.compareTo(a.startedAt));
     await _persistIndex();
     notifyListeners();
+    landed.fire();
   }
 
   Future<bool> _writeRemoteBatch(List<Run> runs) async {
@@ -1136,6 +1144,7 @@ class LocalRunStore extends ChangeNotifier {
     _markSummariesSynced({runId});
     await _persistSyncedIds();
     notifyListeners();
+    landed.fire();
   }
 
   /// Mark several runs as synced and persist once — used by [SyncService]
@@ -1173,6 +1182,7 @@ class LocalRunStore extends ChangeNotifier {
     _markSummariesSynced(ids);
     await _persistSyncedIds();
     notifyListeners();
+    landed.fire();
   }
 
   Future<void> _persistSyncedIds() async {

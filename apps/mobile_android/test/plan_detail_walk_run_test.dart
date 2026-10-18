@@ -9,7 +9,7 @@ import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import 'pump_until.dart';
 
-/// A couch-to-5K plan on plan detail (decisions § 2158, § 2161): every
+/// A couch-to-5K plan on plan detail (decisions § 2203, § 2204): every
 /// session states its minutes and the 5K its distance, no week is sized in
 /// km, and once the 5K is done the graduation card leads the page.
 

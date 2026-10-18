@@ -1,4 +1,4 @@
-/// Pins `TrainingService.repeatPlanWeek` (decisions § 2156): repeating a week
+/// Pins `TrainingService.repeatPlanWeek` (decisions § 2201): repeating a week
 /// is one `repeat_plan_week` call carrying the runner's today and the week a
 /// race plan drops, and the overlap refusal (23P01) reaches the caller as
 /// [ActivePlanExistsError].

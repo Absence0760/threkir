@@ -10,7 +10,7 @@ import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/sag
 import { deletePlan, insertRun } from '../fixtures/simulate';
 
 /**
- * The comeback ramp (decisions § 2090, § 2162): a week well under plan, or a
+ * The comeback ramp (decisions § 2090, § 2207): a week well under plan, or a
  * return from weeks away, offers the weeks ahead rebuilt from the volume the
  * runner actually ran, through the plan's own re-plan preview. It ships behind
  * `PUBLIC_ADAPTIVE_FITNESS_GATE`, which this lane's dev server turns on

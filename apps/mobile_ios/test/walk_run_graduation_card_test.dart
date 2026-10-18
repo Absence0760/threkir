@@ -6,7 +6,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/walk_run_graduation.dart';
 import '../lib/widgets/walk_run_graduation_card.dart';
 
-/// The couch-to-5K graduation card (decisions § 2161): which rows earn it,
+/// The couch-to-5K graduation card (decisions § 2204): which rows earn it,
 /// what it says for the 5K and for an older plan, and that its next step
 /// opens a 10K plan.
 PlanWorkoutRow _wo(String id, DateTime date, String kind,

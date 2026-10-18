@@ -10,7 +10,7 @@ import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import 'pump_until.dart';
 
-/// The comeback ramp on the plan screen (decisions § 2090, § 2162). With
+/// The comeback ramp on the plan screen (decisions § 2090, § 2207). With
 /// `ADAPTIVE_FITNESS_GATE` on, a week well under plan makes "Re-plan remaining
 /// weeks" build the weeks ahead back from what was run, and the preview says
 /// so; with it off, the same plan reads as on track, as it always has. The rules are

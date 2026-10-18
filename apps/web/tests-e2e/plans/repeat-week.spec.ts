@@ -7,7 +7,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 
 /**
- * "Too hard? Repeat this week" (decisions § 2156): a walk-run plan offers it
+ * "Too hard? Repeat this week" (decisions § 2201): a walk-run plan offers it
  * above the weeks, and every plan offers it on this week's and last week's
  * row. The preview names the new end date, or the race day a race plan keeps;
  * applying it copies the week in after this one and pushes the rest back one

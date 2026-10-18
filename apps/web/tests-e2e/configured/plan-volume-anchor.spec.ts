@@ -10,7 +10,7 @@ import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/sag
 import { deletePlan, insertRun } from '../fixtures/simulate';
 
 /**
- * The comeback ramp (decisions § 2090, § 2170): a week well under plan, or a
+ * The comeback ramp (decisions § 2090, § 2162): a week well under plan, or a
  * return from weeks away, offers the weeks ahead rebuilt from the volume the
  * runner actually ran, through the plan's own re-plan preview. It ships behind
  * `PUBLIC_ADAPTIVE_FITNESS_GATE`, which this lane's dev server turns on
@@ -106,8 +106,11 @@ async function openHome(): Promise<Page> {
 test.describe('The comeback ramp, gate on', () => {
 	test.describe.configure({ mode: 'serial', timeout: 90_000 });
 
-	test.beforeAll(async () => {
-		[user] = await createSagaUsers(1, { displayNames: ['Nudge Runner'] });
+	test.beforeAll(async ({}, testInfo) => {
+		[user] = await createSagaUsers(1, {
+			displayNames: ['Nudge Runner'],
+			baseURL: testInfo.project.use.baseURL
+		});
 	});
 	test.afterAll(async () => {
 		await deleteSagaUsers([user]);

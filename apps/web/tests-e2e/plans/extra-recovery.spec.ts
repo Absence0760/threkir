@@ -1,6 +1,7 @@
 import type { Browser, Page } from '@playwright/test';
 import { expect, test } from '../fixtures/test';
 
+import { readMaybeRow } from '../fixtures/db-read';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 
@@ -57,12 +58,11 @@ async function openWizard(browser: Browser, baseURL: string | undefined, user: S
 const weekVolumes = (page: Page) => page.locator('.week-km').allInnerTexts();
 
 async function extraRecoverySetting(userId: string): Promise<unknown> {
-	const { data } = await getAdminClient()
-		.from('user_settings')
-		.select('prefs')
-		.eq('user_id', userId)
-		.maybeSingle();
-	return (data?.prefs as Record<string, unknown> | undefined)?.extra_recovery;
+	const row = await readMaybeRow(
+		'user_settings prefs',
+		getAdminClient().from('user_settings').select('prefs').eq('user_id', userId).maybeSingle(),
+	);
+	return (row?.prefs as Record<string, unknown> | undefined)?.extra_recovery;
 }
 
 test('a runner with no date of birth is told where to add one, and the toggle reshapes the plan and persists', async ({

@@ -649,6 +649,8 @@ export const messages = {
 	"planDetail.pauseConfirmMessage": "再開するまでプランは非アクティブになります。何も削除されません。",
 	"planDetail.resumeConfirmTitle": "このプランを再開しますか？",
 	"planDetail.resumeConfirmMessage": "このプランが再びアクティブなプランになります。",
+	"planDetail.resumeShiftConfirmMessage": "このプランが再びアクティブなプランになります。まだ始めていなかった週は{n, plural, other {#週}}後ろにずれ、未実施として数えずに来週から再開します。終了日は{date}になります。",
+	"planDetail.resumeShiftedDone": "プランを再開し、{n, plural, other {#週}}後ろにずらしました。",
 	"planDetail.pauseDone": "プランを一時停止しました。",
 	"planDetail.resumeDone": "プランを再開しました。",
 	"planDetail.resumeBlocked": "この期間に重なる別のアクティブなプランがあります。先にそのプランを一時停止、完了、または早めに終了してください。",

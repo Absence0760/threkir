@@ -75,6 +75,8 @@
 		todayISO
 	} from '#lib/training/training.ts';
 	import { weeklyDriftToDate, missedWorkoutAdvice } from '#lib/training/plan_adherence.ts';
+	import { resumeShift } from '#lib/training/plan_resume.ts';
+	import { shiftIsoDate } from '#lib/training/plan_bulk_ops.ts';
 	import { currentPlanWeekIndex } from '#lib/training/plan_week.ts';
 	import {
 		orderedPlanPhases,
@@ -645,8 +647,9 @@
 		if (!plan || !isOwner || bulkBusy || !auth.user) return;
 		bulkBusy = true;
 		try {
-			await resumePlan(plan.id, auth.user.id);
-			showToast(m('planDetail.resumeDone'));
+			const shift = resumeOffer;
+			await resumePlan(plan.id, auth.user.id, shift);
+			showToast(shift ? m('planDetail.resumeShiftedDone', { n: shift.weeks }) : m('planDetail.resumeDone'));
 			await load();
 		} catch (e) {
 			// The pre-check and the constraint say the same thing; the
@@ -998,6 +1001,18 @@
 	});
 
 	let today = $derived(todayISO());
+	/// What resuming would push back: the weeks the runner had not started,
+	/// by the whole weeks the plan sat paused (`resumeShift`).
+	let resumeOffer = $derived(
+		plan?.status === 'paused'
+			? resumeShift({
+					startIso: plan.start_date,
+					pausedOnIso: plan.paused_at ? formatISO(new Date(plan.paused_at)) : null,
+					todayIso: today,
+					weekCount: weeks.length
+				})
+			: null
+	);
 
 	/// The days the workout being edited can move to (plan_move.ts, decisions
 	/// § 2073). Only the owner is offered the move.
@@ -2136,7 +2151,12 @@
 					: bulkConfirm?.kind === 'pause'
 						? m('planDetail.pauseConfirmMessage')
 						: bulkConfirm?.kind === 'resume'
-							? m('planDetail.resumeConfirmMessage')
+							? resumeOffer && plan
+								? m('planDetail.resumeShiftConfirmMessage', {
+										n: resumeOffer.weeks,
+										date: formatDateShort(shiftIsoDate(plan.end_date, 7 * resumeOffer.weeks))
+									})
+								: m('planDetail.resumeConfirmMessage')
 							: ''}
 	confirmLabel={bulkConfirm?.kind === 'shift' && bulkConfirm.following.length > 0
 		? m('planDetail.shiftAlsoMove', {

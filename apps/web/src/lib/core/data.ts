@@ -50,6 +50,8 @@ import { challengesToRecomputeForRun } from '../social/challenge_progress';
 import { mergeMyProgress } from '../social/challenge_list';
 import { selectEffectivePricing } from '../social/event_instance';
 import type { RepacePatch } from '../training/plan_repace';
+import type { ResumeShift } from '../training/plan_resume';
+import { shiftIsoDate } from '../training/plan_bulk_ops';
 import {
 	EVENT_PHOTO_WINDOW_AFTER_MS,
 	EVENT_PHOTO_WINDOW_BEFORE_MS,
@@ -6291,7 +6293,15 @@ async function fetchOverlappingActivePlans(
 /// Resume a paused plan back to 'active'. Refuses (throws
 /// ActivePlanExistsError) when another active plan overlaps its window; a
 /// plan queued before or after it does not block. Non-destructive by design.
-export async function resumePlan(id: string, userId: string): Promise<void> {
+/// Resume a paused plan through `resume_training_plan`, pushing the weeks
+/// `shift` names back when the runner's pause spanned whole weeks
+/// (`resumeShift`), so they come back as upcoming rather than missed. The
+/// overlap pre-check covers the end date the shift will give the plan.
+export async function resumePlan(
+	id: string,
+	userId: string,
+	shift: ResumeShift | null = null
+): Promise<void> {
 	const { data: plan, error: planErr } = await supabase
 		.from('training_plans')
 		.select('start_date, end_date')
@@ -6299,11 +6309,18 @@ export async function resumePlan(id: string, userId: string): Promise<void> {
 		.maybeSingle();
 	if (planErr) throw dbError(planErr);
 	if (!plan) throw new Error('Plan not found.');
-	const others = (await fetchOverlappingActivePlans(userId, plan.start_date, plan.end_date)).filter(
+	const endDate = shift ? shiftIsoDate(plan.end_date, 7 * shift.weeks) : plan.end_date;
+	const others = (await fetchOverlappingActivePlans(userId, plan.start_date, endDate)).filter(
 		(p) => p.id !== id
 	);
 	if (others.length > 0) throw new ActivePlanExistsError();
-	await updatePlanStatus(id, 'active');
+	markListsStale('plans');
+	const { error } = await supabase.rpc('resume_training_plan', {
+		p_plan_id: id,
+		p_from_week_index: shift?.fromWeekIndex ?? null,
+		p_shift_weeks: shift?.weeks ?? 0
+	});
+	if (error) throw dbError(error);
 }
 
 /// The signed-in user's active plans, for checking a date shift against the

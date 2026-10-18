@@ -654,6 +654,8 @@ export const messages = {
 	"planDetail.pauseConfirmMessage": "Dein Plan ist nicht mehr aktiv, bis du ihn fortsetzt. Es wird nichts gelöscht.",
 	"planDetail.resumeConfirmTitle": "Diesen Plan fortsetzen?",
 	"planDetail.resumeConfirmMessage": "Dieser Plan wird wieder dein aktiver Plan.",
+	"planDetail.resumeShiftConfirmMessage": "Dieser Plan wird wieder dein aktiver Plan. Die Wochen, die du noch nicht begonnen hattest, rücken {n, plural, one {# Woche} other {# Wochen}} nach hinten, damit es nächste Woche weitergeht, statt sie als verpasst zu zählen. Er endet jetzt am {date}.",
+	"planDetail.resumeShiftedDone": "Plan fortgesetzt und um {n, plural, one {# Woche} other {# Wochen}} verschoben.",
 	"planDetail.pauseDone": "Plan pausiert.",
 	"planDetail.resumeDone": "Plan fortgesetzt.",
 	"planDetail.resumeBlocked": "Ein anderer aktiver Plan überschneidet sich mit diesem Zeitraum. Pausiere ihn, schließe ihn ab oder beende ihn früher, bevor du fortsetzt.",

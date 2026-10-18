@@ -653,6 +653,8 @@ export const messages = {
 	"planDetail.pauseConfirmMessage": "O seu plano deixa de estar ativo até o retomar. Nada é eliminado.",
 	"planDetail.resumeConfirmTitle": "Retomar este plano?",
 	"planDetail.resumeConfirmMessage": "Este plano volta a ser o seu plano ativo.",
+	"planDetail.resumeShiftConfirmMessage": "Este plano volta a ser o seu plano ativo. As semanas que ainda não tinha começado passam {n, plural, one {# semana} other {# semanas}} para a frente, para retomar na próxima semana em vez de as contar como falhadas. Agora termina a {date}.",
+	"planDetail.resumeShiftedDone": "Plano retomado e adiado {n, plural, one {# semana} other {# semanas}}.",
 	"planDetail.pauseDone": "Plano pausado.",
 	"planDetail.resumeDone": "Plano retomado.",
 	"planDetail.resumeBlocked": "Outro plano ativo sobrepõe-se a estas datas. Pause-o, conclua-o ou termine-o mais cedo primeiro.",

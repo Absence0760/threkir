@@ -654,6 +654,8 @@ export const messages = {
 	"planDetail.pauseConfirmMessage": "Votre plan n'est plus actif jusqu'à ce que vous le repreniez. Rien n'est supprimé.",
 	"planDetail.resumeConfirmTitle": "Reprendre ce plan ?",
 	"planDetail.resumeConfirmMessage": "Ce plan redevient votre plan actif.",
+	"planDetail.resumeShiftConfirmMessage": "Ce plan redevient votre plan actif. Les semaines que vous n'aviez pas commencées sont décalées de {n, plural, one {# semaine} other {# semaines}}, pour reprendre la semaine prochaine au lieu de les compter comme manquées. Il se termine désormais le {date}.",
+	"planDetail.resumeShiftedDone": "Plan repris et décalé de {n, plural, one {# semaine} other {# semaines}}.",
 	"planDetail.pauseDone": "Plan mis en pause.",
 	"planDetail.resumeDone": "Plan repris.",
 	"planDetail.resumeBlocked": "Un autre plan actif chevauche ces dates. Mettez-le d'abord en pause, terminez-le ou avancez sa date de fin.",

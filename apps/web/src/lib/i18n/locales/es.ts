@@ -654,6 +654,8 @@ export const messages = {
 	"planDetail.pauseConfirmMessage": "Tu plan deja de estar activo hasta que lo reanudes. No se elimina nada.",
 	"planDetail.resumeConfirmTitle": "¿Reanudar este plan?",
 	"planDetail.resumeConfirmMessage": "Este plan vuelve a ser tu plan activo.",
+	"planDetail.resumeShiftConfirmMessage": "Este plan vuelve a ser tu plan activo. Las semanas que no habías empezado se retrasan {n, plural, one {# semana} other {# semanas}}, así que retoma la semana que viene en vez de contarlas como perdidas. Ahora termina el {date}.",
+	"planDetail.resumeShiftedDone": "Plan reanudado y retrasado {n, plural, one {# semana} other {# semanas}}.",
 	"planDetail.pauseDone": "Plan pausado.",
 	"planDetail.resumeDone": "Plan reanudado.",
 	"planDetail.resumeBlocked": "Otro plan activo se solapa con estas fechas. Primero pausa ese plan, márcalo como completado o haz que termine antes.",

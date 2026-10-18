@@ -667,6 +667,8 @@ export const en = {
 	"planDetail.pauseConfirmMessage": "Your plan stops being active until you resume it. Nothing is deleted.",
 	"planDetail.resumeConfirmTitle": "Resume this plan?",
 	"planDetail.resumeConfirmMessage": "This plan becomes your active plan again.",
+	"planDetail.resumeShiftConfirmMessage": "This plan becomes your active plan again. The weeks you had not started move back {n, plural, one {# week} other {# weeks}}, so it picks up next week instead of counting them as missed. It now ends on {date}.",
+	"planDetail.resumeShiftedDone": "Plan resumed and pushed back {n, plural, one {# week} other {# weeks}}.",
 	"planDetail.pauseDone": "Plan paused.",
 	"planDetail.resumeDone": "Plan resumed.",
 	"planDetail.resumeBlocked": "Another active plan overlaps these dates. Pause, finish or end it earlier first.",

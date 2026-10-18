@@ -765,6 +765,7 @@ export const en = {
 	"planDetail.restartRaceMoves": "Race day moves to {date}.",
 	"planDetail.restartRaceAhead": "This plan's race on {date} is still ahead. Restarting would move race day, so change the race date or start a new plan instead.",
 	"planDetail.restartRaceAheadError": "This plan has a race still ahead, so it can't be restarted.",
+	"planDetail.restartBeforeTodayError": "That start date is before today where your account's time zone is set. Pick a later date.",
 	"planDetail.restartDone": "Plan restarted. This is your new copy.",
 	"planDetail.adjustCycleDesc": "Eases upcoming sessions on the menstrual and late-luteal days of your cycle. Past sessions stay as they are.",
 	"planDetail.adjustPregnancyDesc": "Turns hard upcoming sessions into easy runs and eases volume by trimester. Past sessions stay as they are.",

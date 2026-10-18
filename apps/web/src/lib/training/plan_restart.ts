@@ -1,6 +1,5 @@
 /**
- * "Restart this plan" (issue #1186, decisions § 2121): the dates a restart
- * offers and refuses. `restart_training_plan` copies the plan, moving every
+ * "Restart this plan": the dates a restart offers and refuses. `restart_training_plan` copies the plan, moving every
  * workout by the offset between the old and new start dates.
  *
  * The start follows the creation wizard (`plan_start.ts`), generalised from

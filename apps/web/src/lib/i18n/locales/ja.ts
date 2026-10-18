@@ -747,6 +747,7 @@ export const messages = {
 	"planDetail.restartRaceMoves": "レース日は{date}に移ります。",
 	"planDetail.restartRaceAhead": "このプランのレース（{date}）はまだ先です。やり直すとレース日がずれるため、代わりにレース日を変更するか、新しいプランを始めてください。",
 	"planDetail.restartRaceAheadError": "このプランにはまだ先のレースがあるため、やり直せません。",
+	"planDetail.restartBeforeTodayError": "その開始日は、アカウントのタイムゾーンでは今日より前です。もっと後の日付を選んでください。",
 	"planDetail.restartDone": "プランをやり直しました。これが新しいコピーです。",
 	"planDetail.adjustCycleDesc": "月経日と黄体期後半の今後のワークアウトを軽減します。過去のワークアウトは変更されません。",
 	"planDetail.adjustPregnancyDesc": "今後のハードなワークアウトをイージーランに変え、三半期ごとに量を減らします。過去のワークアウトは変更されません。",

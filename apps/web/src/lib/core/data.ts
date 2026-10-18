@@ -6722,9 +6722,9 @@ export async function updatePlanMeta(
 }
 
 /// Restart one of the runner's plans as a fresh active copy starting on
-/// `startIso` (`restart_training_plan`, decisions § 2121). The overlapped
-/// active plans and the source, while live, are retired as abandoned in the
-/// same transaction; the source keeps its history. Returns the new plan's id.
+/// `startIso` (`restart_training_plan`). The overlapped active plans and the
+/// source, while live, are retired as abandoned in the same transaction; the
+/// source keeps its history. Returns the new plan's id.
 export async function restartTrainingPlan(planId: string, startIso: string): Promise<string> {
 	markListsStale('plans');
 	const { data, error } = await supabase.rpc('restart_training_plan', {

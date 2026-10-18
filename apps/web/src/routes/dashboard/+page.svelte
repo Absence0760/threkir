@@ -85,6 +85,8 @@
 		pickRecent5k,
 	} from '#lib/training/recent_5k_suggestion.ts';
 	import PlanBreakCard from '#lib/components/PlanBreakCard.svelte';
+	import { loadBreakContext } from '#lib/core/plan_break_context.ts';
+	import { breakState, type BreakContext } from '#lib/training/plan_break_state.ts';
 	import MissedWorkoutPrompt from '#lib/components/MissedWorkoutPrompt.svelte';
 	import PlanNudgeCard from '#lib/components/PlanNudgeCard.svelte';
 	import { DISMISSED_NUDGES_KEY, parseDismissedNudges, workoutOverrunMetres } from '#lib/training/plan_nudges.ts';
@@ -210,6 +212,11 @@
 	});
 	let showAgeGradeCol = $derived(Object.values(prAgeGrades).some((v) => v != null));
 	let planOverview = $state<ActivePlanOverview | null>(null);
+	/// The break offer's reads (decisions § 2128): undefined while loading,
+	/// null when they failed. The offer outranks the missed-workout prompt
+	/// and the plan nudge, so Home holds the state rather than the card.
+	let breakContext = $state<BreakContext | null | undefined>(undefined);
+	let breakContextFor = '';
 	let pausedPlan = $state<{ id: string; name: string } | null>(null);
 	/// The plan read failed: the plan slot says so rather than offering to
 	/// create a plan the runner may already have.
@@ -972,6 +979,27 @@
 	);
 	/// The shown plan's dates have run out but the runner has not filed it yet:
 	/// the hero asks them to, and the week lead stops offering its sessions.
+	let breakToday = $derived(formatISO(todayMidnight));
+	$effect(() => {
+		const uid = auth.user?.id;
+		const active = planOverview?.plan.status === 'active';
+		const key = `${uid}:${breakToday}`;
+		if (!uid || !active || key === breakContextFor) return;
+		breakContextFor = key;
+		breakContext = undefined;
+		void loadBreakContext(uid, breakToday).then((c) => {
+			if (breakContextFor === key) breakContext = c;
+		});
+	});
+	let planBreak = $derived(
+		planOverview && planOverview.plan.status === 'active'
+			? breakState(planOverview.plan, planOverview.weeks, planOverview.workouts, breakToday, breakContext)
+			: null
+	);
+	/// The missed-workout prompt and the plan nudge wait for the break reads
+	/// and give way to the offer while it shows.
+	let planBreakQuiet = $derived(planBreak == null || (!planBreak.pending && !planBreak.showing));
+
 	let planFinished = $derived(
 		planOverview != null && isPlanFinished(planOverview.plan, formatISO(todayMidnight))
 	);
@@ -1326,22 +1354,28 @@
 				{#if planFinished}
 					<FinishPlanPrompt plan={planOverview.plan} onfinished={reloadPlanOverview} />
 				{:else}
-				{#if planOverview.plan.status === 'active'}
+				{#if planBreak?.showing && planBreak.found && breakContext}
 					<PlanBreakCard
 						plan={planOverview.plan}
 						weeks={planOverview.weeks}
 						workouts={planOverview.workouts}
-						today={formatISO(todayMidnight)}
+						today={breakToday}
+						found={planBreak.found}
+						context={breakContext}
+						onanswered={(pref) => {
+							if (breakContext) breakContext = { ...breakContext, dismissedPref: pref };
+						}}
 						onapplied={reloadPlanOverview}
 					/>
+				{:else if planBreakQuiet}
+					<MissedWorkoutPrompt
+						planId={planOverview.plan.id}
+						weeks={planOverview.weeks}
+						workouts={planOverview.workouts}
+						today={formatISO(todayMidnight)}
+						makeUpHref="/plans/{planOverview.plan.id}?makeup=1"
+					/>
 				{/if}
-				<MissedWorkoutPrompt
-					planId={planOverview.plan.id}
-					weeks={planOverview.weeks}
-					workouts={planOverview.workouts}
-					today={formatISO(todayMidnight)}
-					makeUpHref="/plans/{planOverview.plan.id}?makeup=1"
-				/>
 				<div class="plan-hero-today">
 					{#if t}
 						<button
@@ -1421,7 +1455,7 @@
 					</a>
 				</footer>
 			</section>
-			{#if !planFinished && !loading}
+			{#if !planFinished && !loading && planBreakQuiet}
 				<PlanNudgeCard
 					plan={planOverview.plan}
 					weeks={planOverview.weeks}
@@ -1429,6 +1463,7 @@
 					{runs}
 					dismissed={planNudgesDismissed}
 					today={formatISO(todayMidnight)}
+					breakWindow={planBreak?.window ?? null}
 				/>
 			{/if}
 		{:else if planLoadError}

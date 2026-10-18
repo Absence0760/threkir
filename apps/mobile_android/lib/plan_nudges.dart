@@ -252,6 +252,11 @@ PlanNudge? planNudge({
   required List<ReplanWeek> weeks,
   required List<String> runDates,
   required List<String> dismissed,
+
+  /// A break's days (`breakWindow`, the plan_break pair): a judged week that
+  /// overlaps them is missed training the break offer answers, not a trend.
+  String? breakFromIso,
+  String? breakUntilIso,
 }) {
   if (status != 'active' || isTemplate) return null;
   if (today.compareTo(startDate) < 0 || today.compareTo(endDate) > 0) {
@@ -267,6 +272,13 @@ PlanNudge? planNudge({
   }
   if (lastComplete == null) return null;
   final at = lastComplete.weekIndex;
+  if (breakFromIso != null && breakUntilIso != null) {
+    final weekStart = _shiftIso(startDate, 7 * at);
+    if (_shiftIso(weekStart, 6).compareTo(breakFromIso) >= 0 &&
+        weekStart.compareTo(breakUntilIso) <= 0) {
+      return null;
+    }
+  }
   final gone = dismissed.toSet();
   final candidates = <PlanNudge>[];
 

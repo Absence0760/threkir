@@ -204,6 +204,10 @@
 		// coach's plan handoff). With the assistant live it prefills the box
 		// and runs one fill on mount; with it off it is ignored.
 		initialDescription?: string;
+		/// A measured 5K to fill the recent-5K field with (Home's recent-5K
+		/// suggestion). Filled, never confirmed: it sets no paces until the
+		/// runner ticks the confirm box.
+		initialRecent5kSec?: number;
 	}
 	let {
 		oncreated,
@@ -215,6 +219,7 @@
 		initialStartDate,
 		initialWeeks,
 		initialDescription,
+		initialRecent5kSec,
 	}: Props = $props();
 
 	// The initial* props seed the form once; the fields are edited locally after.
@@ -261,8 +266,9 @@
 	let targetMin = $state<number | null>(null);
 	let targetSec = $state<number | null>(null);
 
-	let recent5kMin = $state<number | null>(null);
-	let recent5kSec = $state<number | null>(null);
+	const suggestedRecent5k = untrack(() => initialRecent5kSec ?? null);
+	let recent5kMin = $state<number | null>(suggestedRecent5k == null ? null : Math.floor(suggestedRecent5k / 60));
+	let recent5kSec = $state<number | null>(suggestedRecent5k == null ? null : suggestedRecent5k % 60);
 	// Returning runners type an old PR; the engine would treat it as current
 	// fitness and prescribe paces that are too fast (injury risk — comeback
 	// persona #24). The time only anchors paces once the runner confirms it
@@ -1125,6 +1131,9 @@
 					<span>:</span>
 					<input type="number" min="0" max="59" bind:value={recent5kSec} placeholder={t('planEditor.placeholderSeconds')} aria-describedby="recent-5k-hint" />
 				</div>
+				{#if suggestedRecent5k != null && recent5kTotal === suggestedRecent5k && !recent5kConfirmed}
+					<p class="hint" role="status" data-testid="plan-recent-5k-suggested">{t('planEditor.recent5kSuggested')}</p>
+				{/if}
 				{#if recent5kComplete}
 					<label class="confirm-recent">
 						<input type="checkbox" bind:checked={recent5kConfirmed} />

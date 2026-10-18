@@ -214,6 +214,12 @@ class SettingsKeys {
   /// property of the recording phone. L4 (read/write failure never
   /// touches the recording).
   static const safetyNudgeDismissedAt = 'safety_nudge_dismissed_at';
+
+  /// When the runner last dismissed Home's "build a plan from your recent
+  /// 5K" suggestion, as a UTC ISO-8601 instant; absent = never. Universal so
+  /// web and phone agree. Only a run started after it brings the suggestion
+  /// back (`pickRecent5k`, `recent_5k_suggestion.dart`).
+  static const planSuggestionDismissedAt = 'plan_suggestion_dismissed_at';
 }
 
 /// Pluggable on-device cache for the two prefs bags. The mobile app

@@ -5085,5 +5085,13 @@
   "planDetailRestartBeforeTodayError": "その開始日は、アカウントのタイムゾーンでは今日より前です。もっと後の日付を選んでください。",
   "planDetailRestartConfirm": "プランをやり直す",
   "planDetailRestartDone": "プランをやり直しました。これが新しいコピーです。",
-  "dashboardPlanPausedBody": "一時停止中です。再開すると続きから始まり、休んだ週は後ろにずれます。"
+  "dashboardPlanPausedBody": "一時停止中です。再開すると続きから始まり、休んだ週は後ろにずれます。",
+  "dashboardTrainForSomething": "目標に向けてトレーニング",
+  "dashboardTrainForSomethingBody": "レースや距離を選ぶと、あなたの体力に合わせたペースの週単位プランが作成されます。",
+  "dashboardRecent5kTitle": "{date}の5km {time}",
+  "dashboardRecent5kBody": "この記録からプランを作成できます。ペースに使う前に、今の体力を反映しているか確認します。",
+  "dashboardRecent5kCta": "プランを作成",
+  "dashboardRecent5kDismiss": "今はしない",
+  "dashboardRecent5kDismissFailed": "保存できなかったため、この提案が再び表示される場合があります。",
+  "planNewRecent5kSuggested": "最近の5kmの記録を入力しました。今の体力を反映している場合のみ、下のスイッチをオンにしてください。"
 }

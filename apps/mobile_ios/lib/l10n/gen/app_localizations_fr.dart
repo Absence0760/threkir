@@ -18095,4 +18095,34 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get planDetailRaceDateOverlap =>
       'La nouvelle date de course empiète sur un autre plan actif. Déplacez ou terminez d’abord ce plan.';
+
+  @override
+  String get dashboardTrainForSomething => 'S\'entraîner pour un objectif';
+
+  @override
+  String get dashboardTrainForSomethingBody =>
+      'Choisissez une course ou une distance et obtenez un plan semaine par semaine avec des allures adaptées à votre forme.';
+
+  @override
+  String dashboardRecent5kTitle(String time, String date) {
+    return 'Votre 5 km en $time le $date';
+  }
+
+  @override
+  String get dashboardRecent5kBody =>
+      'Créez un plan à partir de ce temps. Vous confirmerez qu\'il reflète toujours votre forme avant qu\'il ne fixe vos allures.';
+
+  @override
+  String get dashboardRecent5kCta => 'Créer un plan';
+
+  @override
+  String get dashboardRecent5kDismiss => 'Pas maintenant';
+
+  @override
+  String get dashboardRecent5kDismissFailed =>
+      'Impossible d\'enregistrer ce choix : la suggestion pourrait réapparaître.';
+
+  @override
+  String get planNewRecent5kSuggested =>
+      'Rempli à partir de votre 5 km récent. N\'activez l\'interrupteur ci-dessous que s\'il reflète votre forme actuelle.';
 }

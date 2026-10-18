@@ -17203,4 +17203,34 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get planDetailRaceDateOverlap =>
       '新しいレース日が別の有効なプランと重なります。先にそのプランを移動するか終了してください。';
+
+  @override
+  String get dashboardTrainForSomething => '目標に向けてトレーニング';
+
+  @override
+  String get dashboardTrainForSomethingBody =>
+      'レースや距離を選ぶと、あなたの体力に合わせたペースの週単位プランが作成されます。';
+
+  @override
+  String dashboardRecent5kTitle(String time, String date) {
+    return '$dateの5km $time';
+  }
+
+  @override
+  String get dashboardRecent5kBody =>
+      'この記録からプランを作成できます。ペースに使う前に、今の体力を反映しているか確認します。';
+
+  @override
+  String get dashboardRecent5kCta => 'プランを作成';
+
+  @override
+  String get dashboardRecent5kDismiss => '今はしない';
+
+  @override
+  String get dashboardRecent5kDismissFailed =>
+      '保存できなかったため、この提案が再び表示される場合があります。';
+
+  @override
+  String get planNewRecent5kSuggested =>
+      '最近の5kmの記録を入力しました。今の体力を反映している場合のみ、下のスイッチをオンにしてください。';
 }

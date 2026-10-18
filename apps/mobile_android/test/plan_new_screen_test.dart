@@ -409,6 +409,65 @@ void main() {
       expect(find.byKey(const Key('plan-new-recent5k-confirm')), findsOneWidget);
     });
 
+    Future<void> pumpSuggested(WidgetTester tester, int seconds) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PlanNewScreen(
+            training: TrainingService(),
+            initialRecent5kSec: seconds,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.scrollUntilVisible(
+        find.widgetWithText(TextField, 'Minutes').last,
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pump();
+    }
+
+    String fieldText(WidgetTester tester, String label) => tester
+        .widget<TextField>(find.widgetWithText(TextField, label).at(1))
+        .controller!
+        .text;
+
+    testWidgets(
+        "Home's recent-5K suggestion fills the time but leaves it unconfirmed",
+        (tester) async {
+      await pumpSuggested(tester, 1450);
+      expect(fieldText(tester, 'Minutes'), '24');
+      expect(fieldText(tester, 'Seconds'), '10');
+      final toggle = find.byKey(const Key('plan-new-recent5k-confirm'));
+      expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
+      expect(find.byKey(const Key('plan-new-recent5k-suggested')),
+          findsOneWidget);
+      expect(warnFinder, findsOneWidget);
+    });
+
+    testWidgets(
+        'confirming or editing the suggested time takes the note away',
+        (tester) async {
+      await pumpSuggested(tester, 1450);
+      final note = find.byKey(const Key('plan-new-recent5k-suggested'));
+      final toggle = find.byKey(const Key('plan-new-recent5k-confirm'));
+      await tester.ensureVisible(toggle);
+      await tester.pump();
+      await tester.tap(toggle);
+      await tester.pump();
+      expect(note, findsNothing);
+      expect(warnFinder, findsNothing);
+      await tester.tap(toggle);
+      await tester.pump();
+      expect(note, findsOneWidget);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Seconds').at(1), '30');
+      await tester.pump();
+      expect(note, findsNothing);
+    });
+
     testWidgets('switching the confirm on clears the warning', (tester) async {
       await _pump(tester);
       await tester.pump();

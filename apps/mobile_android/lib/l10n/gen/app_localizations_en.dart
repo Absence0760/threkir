@@ -17867,4 +17867,34 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get planDetailRaceDateOverlap =>
       'The new race date runs into another active plan. Move or end that plan first.';
+
+  @override
+  String get dashboardTrainForSomething => 'Train for something';
+
+  @override
+  String get dashboardTrainForSomethingBody =>
+      'Pick a race or a distance and get a week-by-week plan with paces matched to your fitness.';
+
+  @override
+  String dashboardRecent5kTitle(String time, String date) {
+    return 'Your 5K of $time on $date';
+  }
+
+  @override
+  String get dashboardRecent5kBody =>
+      'Build a plan from it. You confirm it still reflects your fitness before it sets any paces.';
+
+  @override
+  String get dashboardRecent5kCta => 'Build a plan from it';
+
+  @override
+  String get dashboardRecent5kDismiss => 'Not now';
+
+  @override
+  String get dashboardRecent5kDismissFailed =>
+      'Couldn\'t save that, so the suggestion may come back.';
+
+  @override
+  String get planNewRecent5kSuggested =>
+      'Filled in from your recent 5K. Turn on the switch below only if it reflects your fitness today.';
 }

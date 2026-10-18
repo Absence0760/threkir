@@ -85,6 +85,9 @@
 		pickRecent5k,
 	} from '#lib/training/recent_5k_suggestion.ts';
 	import PlanBreakCard from '#lib/components/PlanBreakCard.svelte';
+	import MissedWorkoutPrompt from '#lib/components/MissedWorkoutPrompt.svelte';
+	import PlanNudgeCard from '#lib/components/PlanNudgeCard.svelte';
+	import { DISMISSED_NUDGES_KEY, parseDismissedNudges, workoutOverrunMetres } from '#lib/training/plan_nudges.ts';
 	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import { weeklyGoalTarget } from '#lib/training/week_lead.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
@@ -107,7 +110,7 @@
 	import { loadSettings, peekCachedSettings, effective, updateUniversal } from '#lib/settings/settings.ts';
 	import { relativeAge } from '#lib/runs/pr_recency.ts';
 	import type { LoadedSettings } from '#lib/settings/settings.ts';
-	import { fmtKm, fmtPace, formatDistance as formatUnitDistance, formatElevation, formatWeight, setUnit } from '#lib/format/units.svelte.ts';
+	import { fmtKm, fmtOverrun, fmtPace, formatDistance as formatUnitDistance, formatElevation, formatWeight, setUnit } from '#lib/format/units.svelte.ts';
 	import { paceMinutesSeconds } from '#lib/format/pace_format.ts';
 	import { formatSignedInteger } from '#lib/format/number.ts';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
@@ -140,6 +143,7 @@
 	// Distance keys the runner has chosen to hide (comeback persona #28). Stored
 	// in the universal `hidden_prs` settings bag, so it roams across devices.
 	let hiddenPrs = $state<string[]>([]);
+	let planNudgesDismissed = $state<string[]>([]);
 	let showHiddenPrs = $state(false);
 	let visiblePrs = $derived(personalRecords.filter((pr) => !hiddenPrs.includes(pr.key)));
 
@@ -806,6 +810,7 @@
 		weeklyGoalMetres = effective<number>(settings, 'weekly_mileage_goal_m') ?? null;
 		const hidden = effective<string[]>(settings, 'hidden_prs');
 		hiddenPrs = Array.isArray(hidden) ? hidden : [];
+		planNudgesDismissed = parseDismissedNudges(effective<unknown>(settings, DISMISSED_NUDGES_KEY));
 		const unit = effective<string>(settings, 'preferred_unit');
 		if (unit === 'mi' || unit === 'km') {
 			preferredUnit = unit;
@@ -949,6 +954,15 @@
 		t.setHours(0, 0, 0, 0);
 		return t;
 	});
+	/// How far today's done workout ran past its target, when a linked run
+	/// says so (`workoutOverrunMetres`); null for a tick, a short run or noise.
+	const todayOverrunM = $derived.by(() => {
+		const t = planOverview?.todayWorkout;
+		if (!t?.completed_run_id) return null;
+		const run = runs.find((r) => r.id === t.completed_run_id);
+		return workoutOverrunMetres(t.target_distance_m, run?.distance_m ?? null);
+	});
+
 	/// The plan's next race (plan_races.ts): a B race mid-block owns the
 	/// countdown and goal row until it has been run, then the plan's A race.
 	let heroRace = $derived(
@@ -1321,6 +1335,13 @@
 						onapplied={reloadPlanOverview}
 					/>
 				{/if}
+				<MissedWorkoutPrompt
+					planId={planOverview.plan.id}
+					weeks={planOverview.weeks}
+					workouts={planOverview.workouts}
+					today={formatISO(todayMidnight)}
+					makeUpHref="/plans/{planOverview.plan.id}?makeup=1"
+				/>
 				<div class="plan-hero-today">
 					{#if t}
 						<button
@@ -1351,7 +1372,12 @@
 										<span>{m('workoutDetail.atPace', { pace: fmtPace(t.target_pace_sec_per_km) })}</span>
 									{/if}
 									{#if todayDone}
-										<span class="plan-hero-today-done">{m('dash.completed')}</span>
+										<span class="plan-hero-today-done" data-testid="plan-hero-done"
+											>{m('dash.completed')}{#if todayOverrunM != null}<span aria-hidden="true"
+													>{' · '}{m('plan.overrun', { distance: fmtOverrun(todayOverrunM) })}</span
+												><span class="sr-only">, {m('plan.overrunAria', { distance: fmtOverrun(todayOverrunM) })}</span
+												>{/if}</span
+										>
 									{/if}
 								</div>
 							</div>
@@ -1395,6 +1421,16 @@
 					</a>
 				</footer>
 			</section>
+			{#if !planFinished && !loading}
+				<PlanNudgeCard
+					plan={planOverview.plan}
+					weeks={planOverview.weeks}
+					workouts={planOverview.workouts}
+					{runs}
+					dismissed={planNudgesDismissed}
+					today={formatISO(todayMidnight)}
+				/>
+			{/if}
 		{:else if planLoadError}
 			<div class="dash-load-error" role="alert" data-testid="dash-plan-load-error">
 				<span class="material-symbols" aria-hidden="true">error</span>
@@ -2867,6 +2903,17 @@
 	.plan-hero-today-done {
 		color: var(--color-success-text);
 		font-weight: 600;
+	}
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 	.plan-hero-today-arrow {
 		color: var(--color-text-tertiary);

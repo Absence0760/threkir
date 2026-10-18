@@ -118,9 +118,10 @@ export function easeOffNextWeek(
 }
 
 /// Whether a step-back week (a >15% planned-volume drop) immediately
-/// follows `week` — mirrors the heuristic the plan-detail adherence
-/// surface uses.
-function recoveryWeekImminent(weeks: ReplanWeek[], idx: number): boolean {
+/// follows `weeks[idx]` — mirrors the heuristic the plan-detail adherence
+/// surface uses. Exported so the missed-workout prompt (`plan_missed_prompt`)
+/// advises on the same week the make-up would.
+export function recoveryWeekImminent(weeks: ReplanWeek[], idx: number): boolean {
 	const cur = weeks[idx];
 	const next = weeks.find((w) => w.weekIndex === cur.weekIndex + 1);
 	if (!next || !(cur.plannedMetres > 0) || !(next.plannedMetres > 0)) return false;

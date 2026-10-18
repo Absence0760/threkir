@@ -6695,6 +6695,52 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get planNudgeUnderTitle => 'Etwas weniger gelaufen als geplant';
+
+  @override
+  String planNudgeUnderBody(int n, int total) {
+    return 'Du bist in $n der letzten $total Wochen weniger gelaufen als geplant. Für die kommenden Wochen gibt es eine vorgeschlagene Anpassung.';
+  }
+
+  @override
+  String get planNudgeEaseTitle => 'Eine große Woche';
+
+  @override
+  String get planNudgeEaseBody =>
+      'Du bist letzte Woche deutlich mehr gelaufen als geplant. Etwas kürzere Läufe nächste Woche helfen deinem Körper, das zu verarbeiten.';
+
+  @override
+  String get planNudgeRestTitle => 'Laufen an Ruhetagen';
+
+  @override
+  String planNudgeRestBody(int n, int total) {
+    return 'Du bist in $n der letzten $total Wochen an Ruhetagen gelaufen. Diese Läufe zählen für deine Woche, aber an Ruhetagen setzt sich das Training erst richtig fest.';
+  }
+
+  @override
+  String get planNudgeReview => 'Änderungen ansehen';
+
+  @override
+  String get planNudgeDismiss => 'Ausblenden';
+
+  @override
+  String get planNudgeDismissA11y => 'Diesen Vorschlag ausblenden';
+
+  @override
+  String get planNudgeDismissFailed =>
+      'Der Vorschlag konnte nicht ausgeblendet werden. Versuch es noch einmal.';
+
+  @override
+  String planWorkoutOverrun(String distance) {
+    return '+$distance';
+  }
+
+  @override
+  String planWorkoutOverrunA11y(String distance) {
+    return '$distance mehr als geplant';
+  }
+
+  @override
   String get planDetailReplanPreviewTitle => 'Vorgeschlagene Änderungen';
 
   @override
@@ -18233,4 +18279,51 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planBreakWeeksMore => 'Eine Woche mehr';
+
+  @override
+  String missedPromptTitle(String kind, String day) {
+    return 'Verpasst: $kind am $day';
+  }
+
+  @override
+  String missedPromptMakeUpBody(String from, String to) {
+    return 'Hol ihn nach, indem dein nächster langer Lauf von $from auf $to verlängert wird. Du siehst die Änderung, bevor sie gespeichert wird.';
+  }
+
+  @override
+  String get missedPromptCoveredBody =>
+      'Dein nächster langer Lauf deckt das bereits ab, es gibt nichts hinzuzufügen.';
+
+  @override
+  String get missedPromptTaperBody =>
+      'Du bist im Tapering, also lass ihn aus: Frische am Wettkampftag zählt mehr als ein weiterer langer Lauf.';
+
+  @override
+  String get missedPromptRecoveryBody =>
+      'Als Nächstes kommt eine Erholungswoche, also lass ihn aus und lass diese Woche ihn auffangen.';
+
+  @override
+  String get missedPromptLetGoBody =>
+      'Nur ein langer Lauf lohnt sich nachzuholen. Lass diese Einheit aus, statt sie in die nächsten Tage zu quetschen.';
+
+  @override
+  String get missedPromptMakeUp => 'Nachholen';
+
+  @override
+  String get missedPromptLetGo => 'Auslassen';
+
+  @override
+  String get missedPromptRecommended => 'Empfohlen';
+
+  @override
+  String get missedPromptLetGoDone =>
+      'Ausgelassen. Dein Plan läuft unverändert weiter.';
+
+  @override
+  String missedPromptSaveFailed(String error) {
+    return 'Deine Antwort konnte nicht gespeichert werden: $error';
+  }
+
+  @override
+  String get missedPromptNothingToMakeUp => 'Es gibt nichts mehr nachzuholen.';
 }

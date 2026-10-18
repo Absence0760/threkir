@@ -167,6 +167,7 @@ void main() {
       'completed_run_id', // points at the publisher's own run
       'manually_completed', // completion state
       'skipped_at', // completion state
+      'missed_ack_at', // the publisher's answer to a missed workout (decisions § 2122)
       'updated_at', // server-maintained
       'updated_by', // server-maintained
       'target_hr_min_bpm', // Art 9, refused on a template (decisions § 2092)

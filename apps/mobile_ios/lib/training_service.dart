@@ -932,6 +932,26 @@ class TrainingService extends ChangeNotifier {
     return row == null ? null : PlanWorkoutRow.fromJson(row);
   }
 
+  /// Distances of the runs linked to plan workouts, by run id, for the
+  /// "Done · +3 km" status. Ids the viewer cannot read (a coach looking at an
+  /// athlete's plan, a deleted run) are simply absent. Web twin:
+  /// `fetchRunDistances` in data.ts.
+  Future<Map<String, double>> fetchRunDistances(List<String> ids) async {
+    final wanted = ids.toSet().toList();
+    final rows = await readChunked(
+      wanted,
+      (chunk) async => List<Map<String, dynamic>>.from(await _c
+          .from('runs')
+          .select('id, distance_m')
+          .inFilter('id', chunk)),
+    );
+    return {
+      for (final r in rows)
+        if (r['distance_m'] is num)
+          r['id'] as String: (r['distance_m'] as num).toDouble(),
+    };
+  }
+
   /// The viewer's active, non-template plans. Several can be active at once
   /// when their date windows don't overlap.
   Future<List<TrainingPlanRow>> fetchActivePlans() async {
@@ -1365,6 +1385,27 @@ class TrainingService extends ChangeNotifier {
         for (final e in distances.entries)
           e.key: {PlanWorkoutRow.colTargetDistanceM: e.value},
       });
+
+  /// Records the runner's answer to the missed-workout prompt on each of
+  /// [workoutIds] (`answer_missed_workouts`, decisions § 2122), so it is never
+  /// asked again on any device. "Make it up" passes the previewed make-up as
+  /// [distances]; they are written in the same transaction as the answer.
+  /// Mirrors web `answerMissedWorkouts`.
+  Future<void> answerMissedWorkouts({
+    required String planId,
+    required List<String> workoutIds,
+    Map<String, double> distances = const {},
+  }) async {
+    await _c.rpc('answer_missed_workouts', params: {
+      'p_plan_id': planId,
+      'p_workout_ids': workoutIds,
+      'p_changes': [
+        for (final e in distances.entries)
+          {'id': e.key, PlanWorkoutRow.colTargetDistanceM: e.value},
+      ],
+    });
+    notifyListeners();
+  }
 
   /// One `apply_workout_adjustments` call: it writes every patch and
   /// restates each touched week's `target_volume_m` in one transaction, so a

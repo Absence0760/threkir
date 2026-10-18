@@ -6313,6 +6313,51 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get planNudgeUnderTitle => '計画より少なめの走行が続いています';
+
+  @override
+  String planNudgeUnderBody(int n, int total) {
+    return '直近$total週のうち$n週で計画より少なめでした。今後の週の調整案があります。';
+  }
+
+  @override
+  String get planNudgeEaseTitle => '走り込んだ1週間';
+
+  @override
+  String get planNudgeEaseBody =>
+      '先週は計画を大きく上回りました。来週の短めのランを少し軽くすると、体がしっかり吸収できます。';
+
+  @override
+  String get planNudgeRestTitle => '休養日のラン';
+
+  @override
+  String planNudgeRestBody(int n, int total) {
+    return '直近$total週のうち$n週で休養日にも走っています。そのランも週の距離に含まれますが、トレーニングの効果が身につくのは休養日です。';
+  }
+
+  @override
+  String get planNudgeReview => '変更内容を確認';
+
+  @override
+  String get planNudgeDismiss => '閉じる';
+
+  @override
+  String get planNudgeDismissA11y => 'この提案を閉じる';
+
+  @override
+  String get planNudgeDismissFailed => '提案を非表示にできませんでした。もう一度お試しください。';
+
+  @override
+  String planWorkoutOverrun(String distance) {
+    return '+$distance';
+  }
+
+  @override
+  String planWorkoutOverrunA11y(String distance) {
+    return '計画より$distance多い';
+  }
+
+  @override
   String get planDetailReplanPreviewTitle => '提案された変更';
 
   @override
@@ -17363,4 +17408,48 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get planBreakWeeksMore => '1週増やす';
+
+  @override
+  String missedPromptTitle(String kind, String day) {
+    return '未実施: $dayの$kind';
+  }
+
+  @override
+  String missedPromptMakeUpBody(String from, String to) {
+    return '次のロング走を$fromから$toに延ばして埋め合わせます。保存する前に変更内容を確認できます。';
+  }
+
+  @override
+  String get missedPromptCoveredBody => '次のロング走ですでに補えているため、追加は不要です。';
+
+  @override
+  String get missedPromptTaperBody =>
+      'テーパリング中なので見送りましょう。レース当日に疲れを残さないことが、ロング走をもう1回走るより大切です。';
+
+  @override
+  String get missedPromptRecoveryBody => '次は回復週なので見送り、その週で吸収しましょう。';
+
+  @override
+  String get missedPromptLetGoBody =>
+      '埋め合わせる価値があるのはロング走だけです。この先の日程に詰め込まず、見送りましょう。';
+
+  @override
+  String get missedPromptMakeUp => '埋め合わせる';
+
+  @override
+  String get missedPromptLetGo => '見送る';
+
+  @override
+  String get missedPromptRecommended => 'おすすめ';
+
+  @override
+  String get missedPromptLetGoDone => '見送りました。プランはそのまま続きます。';
+
+  @override
+  String missedPromptSaveFailed(String error) {
+    return '回答を保存できませんでした: $error';
+  }
+
+  @override
+  String get missedPromptNothingToMakeUp => '埋め合わせるものはもうありません。';
 }

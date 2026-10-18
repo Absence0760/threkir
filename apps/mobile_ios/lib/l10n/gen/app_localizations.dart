@@ -10846,6 +10846,78 @@ abstract class AppLocalizations {
   /// **'{n, plural, one{Adjusted 1 workout} other{Adjusted {n} workouts}}'**
   String planDetailReplanApplied(int n);
 
+  /// Home plan card title: under-run trend
+  ///
+  /// In en, this message translates to:
+  /// **'Running a little less than planned'**
+  String get planNudgeUnderTitle;
+
+  /// Home plan card body: under-run trend. n of the last total completed weeks were under plan
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve run less than planned in {n} of the last {total} weeks. There\'s a suggested adjustment to the weeks ahead.'**
+  String planNudgeUnderBody(int n, int total);
+
+  /// Home plan card title: last week well over plan
+  ///
+  /// In en, this message translates to:
+  /// **'A big week'**
+  String get planNudgeEaseTitle;
+
+  /// Home plan card body: last week more than 20% over plan, next week's shorter runs eased
+  ///
+  /// In en, this message translates to:
+  /// **'You ran well over plan last week. Easing next week\'s shorter runs helps your body absorb it.'**
+  String get planNudgeEaseBody;
+
+  /// Home plan card title: runs on rest days
+  ///
+  /// In en, this message translates to:
+  /// **'Running on rest days'**
+  String get planNudgeRestTitle;
+
+  /// Home plan card body: runs on rest days in n of the last total completed weeks
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve run on rest days in {n} of the last {total} weeks. Those runs count toward your week, but rest days are where the training sinks in.'**
+  String planNudgeRestBody(int n, int total);
+
+  /// Home plan card: open the existing re-plan preview
+  ///
+  /// In en, this message translates to:
+  /// **'Review the changes'**
+  String get planNudgeReview;
+
+  /// Home plan card: dismiss
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get planNudgeDismiss;
+
+  /// Accessible name of the dismiss control
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss this suggestion'**
+  String get planNudgeDismissA11y;
+
+  /// Dismissing the plan card could not be saved
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t hide that suggestion. Try again.'**
+  String get planNudgeDismissFailed;
+
+  /// How far a done workout ran past its target, shown after Done, e.g. +3 km
+  ///
+  /// In en, this message translates to:
+  /// **'+{distance}'**
+  String planWorkoutOverrun(String distance);
+
+  /// Screen-reader text for the over-run, e.g. 3 km more than planned
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} more than planned'**
+  String planWorkoutOverrunA11y(String distance);
+
   /// Plan-detail adherence/replan/duplicate
   ///
   /// In en, this message translates to:
@@ -29646,6 +29718,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'One week more'**
   String get planBreakWeeksMore;
+
+  /// Heading of the missed-workout prompt on the Today card: the workout kind and the weekday + date it was scheduled
+  ///
+  /// In en, this message translates to:
+  /// **'Missed: {kind} on {day}'**
+  String missedPromptTitle(String kind, String day);
+
+  /// Missed-workout prompt body when the engine offers a make-up: the next long run is stretched from one distance to another; the change is previewed before saving
+  ///
+  /// In en, this message translates to:
+  /// **'Make it up by stretching your next long run from {from} to {to}. You\'ll see the change before it\'s saved.'**
+  String missedPromptMakeUpBody(String from, String to);
+
+  /// Missed-workout prompt body: a missed long run that the next long run already covers, so no make-up is added
+  ///
+  /// In en, this message translates to:
+  /// **'Your next long run already covers it, so there\'s nothing to add.'**
+  String get missedPromptCoveredBody;
+
+  /// Missed-workout prompt body: a missed long run during the taper is let go
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re tapering, so let it go: being fresh on race day matters more than one more long run.'**
+  String get missedPromptTaperBody;
+
+  /// Missed-workout prompt body: a missed long run right before a recovery week is let go
+  ///
+  /// In en, this message translates to:
+  /// **'A recovery week is next, so let it go and let that week absorb it.'**
+  String get missedPromptRecoveryBody;
+
+  /// Missed-workout prompt body for a missed non-long session (easy, tempo, intervals): it is let go, never moved
+  ///
+  /// In en, this message translates to:
+  /// **'Only a long run is worth making up. Let this one go rather than crowding it into the days ahead.'**
+  String get missedPromptLetGoBody;
+
+  /// Missed-workout prompt button: preview the make-up (a longer next long run)
+  ///
+  /// In en, this message translates to:
+  /// **'Make it up'**
+  String get missedPromptMakeUp;
+
+  /// Missed-workout prompt button: drop the missed workout and record the answer
+  ///
+  /// In en, this message translates to:
+  /// **'Let it go'**
+  String get missedPromptLetGo;
+
+  /// Tag on the missed-workout prompt button the plan engine recommends
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get missedPromptRecommended;
+
+  /// Banner after the runner let a missed workout go
+  ///
+  /// In en, this message translates to:
+  /// **'Let go. Your plan carries on as it was.'**
+  String get missedPromptLetGoDone;
+
+  /// Error banner when the answer to the missed-workout prompt could not be saved; nothing changed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save your answer: {error}'**
+  String missedPromptSaveFailed(String error);
+
+  /// Banner when a make-up was requested but there is no missed long run left to make up
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s nothing left to make up.'**
+  String get missedPromptNothingToMakeUp;
 }
 
 class _AppLocalizationsDelegate

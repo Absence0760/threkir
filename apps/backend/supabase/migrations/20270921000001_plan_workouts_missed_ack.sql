@@ -1,4 +1,4 @@
--- "Ask once" about a missed workout (issue #1186, decisions § 2122).
+-- "Ask once" about a missed workout (decisions § 2122).
 --
 -- The Today card on Home and plan detail asks the runner about their most
 -- recent missed workout: "Make it up" for a long run the engine would make up
@@ -9,11 +9,12 @@
 --
 -- `missed_ack_at` is when the runner answered. It is null on every copy:
 -- create_training_plan, clone_plan_template, clone_public_plan,
--- assign_plan_to_athlete, duplicate_plan_week, restart_training_plan and
--- change_plan_race_date all insert with explicit column lists, so a new
--- column takes its default there and a restarted or cloned plan starts with
--- no answers. A workout moved to another date (resume, race-date change, a
--- move or swap, a hand edit) is a different session from the one that was
+-- assign_plan_to_athlete, duplicate_plan_week, restart_training_plan,
+-- change_plan_race_date and reschedule_plan_after_break all insert with
+-- explicit column lists, so a new column takes its default there and a
+-- restarted or cloned plan starts with no answers. A workout moved to another
+-- date (resume, race-date change, a break reschedule, a move or swap, a hand
+-- edit) is a different session from the one that was
 -- missed, so the move clears its answer; if the new date passes too, it is
 -- asked about again.
 --

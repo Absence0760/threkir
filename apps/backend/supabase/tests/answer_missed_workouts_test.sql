@@ -5,7 +5,7 @@
 -- start with none.
 
 begin;
-select plan(34);
+select plan(39);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -188,6 +188,54 @@ select is(
   (select count(*)::int from plan_workouts wo join plan_weeks w on w.id = wo.week_id
    where w.plan_id = (select id from copies where label = 'plan') and wo.missed_ack_at is not null),
   0, 'a restarted plan starts with no answers');
+
+
+-- reschedule_plan_after_break: a repeated week's copy carries no answer, and
+-- a later week it moves loses one. S is the Sunday four weeks before this
+-- week's Sunday, so weeks 0-3 are past and week 4 is under way.
+reset role;
+create temp table mak_s as
+  select (current_date - extract(dow from current_date)::integer - 28) as s;
+insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
+values ('c1c1c1c1-0000-0000-0000-0000000a0003', 'authenticated', 'authenticated', 'mak-break@mak.local', '', now(), now())
+on conflict (id) do nothing;
+insert into user_profiles (id, display_name) values ('c1c1c1c1-0000-0000-0000-0000000a0003', 'MAK Break')
+on conflict (id) do nothing;
+insert into training_plans (id, user_id, name, goal_event, goal_distance_m, start_date, end_date, days_per_week, status)
+select 'c2c2c2c2-0000-0000-0000-0000000a0004', 'c1c1c1c1-0000-0000-0000-0000000a0003', 'Break', 'distance_10k', 10000,
+       s, s + 48, 4, 'active' from mak_s;
+insert into plan_weeks (id, plan_id, week_index, phase, target_volume_m)
+select ('c3c3c3c3-0000-0000-0000-0000000b000' || i)::uuid, 'c2c2c2c2-0000-0000-0000-0000000a0004', i, 'build', 20000
+from generate_series(0, 6) i;
+insert into plan_workouts (id, week_id, scheduled_date, kind, target_distance_m)
+select 'c4c4c4c4-0000-0000-0000-0000000b0002'::uuid, 'c3c3c3c3-0000-0000-0000-0000000b0002'::uuid, s + 17, 'easy'::workout_kind, 6000 from mak_s
+union all
+select 'c4c4c4c4-0000-0000-0000-0000000b0005'::uuid, 'c3c3c3c3-0000-0000-0000-0000000b0005'::uuid, s + 38, 'easy'::workout_kind, 6000 from mak_s;
+-- No client path answers a workout still to come; stamped here to prove the
+-- move clears it anyway.
+update plan_workouts set missed_ack_at = now() where id = 'c4c4c4c4-0000-0000-0000-0000000b0005';
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"c1c1c1c1-0000-0000-0000-0000000a0003","role":"authenticated"}';
+select answer_missed_workouts('c2c2c2c2-0000-0000-0000-0000000a0004', array['c4c4c4c4-0000-0000-0000-0000000b0002']::uuid[]);
+select lives_ok(
+  $$select reschedule_plan_after_break('c2c2c2c2-0000-0000-0000-0000000a0004', current_date, current_date - 10,
+      array['c3c3c3c3-0000-0000-0000-0000000b0002']::uuid[])$$,
+  'the owner runs week 2 again after a break');
+select is(
+  (select count(*)::int from plan_workouts wo join plan_weeks w on w.id = wo.week_id
+   where w.plan_id = 'c2c2c2c2-0000-0000-0000-0000000a0004' and w.week_index = 5 and wo.kind = 'easy'),
+  1, 'the repeated week''s copy is in place');
+select is(
+  (select wo.missed_ack_at from plan_workouts wo join plan_weeks w on w.id = wo.week_id
+   where w.plan_id = 'c2c2c2c2-0000-0000-0000-0000000a0004' and w.week_index = 5),
+  null, 'the copy of an answered miss carries no answer');
+select ok(
+  (select missed_ack_at is not null from plan_workouts where id = 'c4c4c4c4-0000-0000-0000-0000000b0002'),
+  'while the week it copied keeps its own');
+select is(
+  (select missed_ack_at from plan_workouts where id = 'c4c4c4c4-0000-0000-0000-0000000b0005'),
+  null, 'a workout the break moves to a later date loses its answer');
 
 select * from finish();
 rollback;

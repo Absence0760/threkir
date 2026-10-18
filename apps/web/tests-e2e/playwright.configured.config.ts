@@ -21,6 +21,10 @@ import { defineConfig, devices } from '@playwright/test';
  *     export-hub lane: signed in against the local Supabase stack, its own
  *     port, its own globalSetup.
  *
+ * The same holds for a surface behind a fail-closed deploy gate whose off
+ * state the sharded lane pins: `PUBLIC_ADAPTIVE_FITNESS_GATE` is on here for
+ * the comeback ramp (decisions § 2170), and off everywhere else.
+ *
  * Its specs live under tests-e2e/configured and are excluded from the main
  * config via testIgnore, so they never run against a build without the id.
  * A future configured-only surface (another integration's public id) belongs
@@ -62,6 +66,9 @@ export default defineConfig({
 		// `.env.development` localhost dev services off, as in every lane. § 137.
 		env: {
 			PUBLIC_STRAVA_CLIENT_ID: 'e2e-fixture-client-id',
+			// The comeback ramp (plan-volume-anchor.spec.ts) ships behind this
+			// fail-closed gate; the sharded lane runs with it off and pins that.
+			PUBLIC_ADAPTIVE_FITNESS_GATE: 'true',
 			PUBLIC_TILE_STYLE_URL: '',
 			OSRM_URL: ''
 		}

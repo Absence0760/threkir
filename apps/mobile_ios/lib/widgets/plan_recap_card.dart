@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
+import '../metrics.dart' show Metric, metricText;
 import '../plan_recap.dart';
 import '../training.dart' show fmtHms, fmtKm, parseIsoDate, toIsoDate;
 import '../training_service.dart';
@@ -214,7 +215,9 @@ class _PlanRecapCardState extends State<PlanRecapCard> {
             ? l10n.planRecapRaceDnf
             : l10n.planRecapRaceRun(fmtHms(run.durationS), fmtKm(run.distanceM));
         if (race.vdot != null) {
-          raceNotes.add(l10n.metricVdotValue(race.vdot!.toStringAsFixed(1)));
+          raceNotes.add(metricText(l10n, Metric.vdot,
+              variant: 'value',
+              args: {'value': race.vdot!.toStringAsFixed(1)}));
         }
       } else {
         raceValue =

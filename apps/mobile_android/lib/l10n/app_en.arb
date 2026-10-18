@@ -23971,5 +23971,231 @@
   "missedPromptNothingToMakeUp": "There's nothing left to make up.",
   "@missedPromptNothingToMakeUp": {
     "description": "Banner when a make-up was requested but there is no missed long run left to make up"
+  },
+  "planRecapTitle": "How {name} went",
+  "@planRecapTitle": {
+    "description": "Heading of the end-of-plan recap on a completed plan. name is the plan's name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "planRecapLoading": "Loading your recap…",
+  "@planRecapLoading": {
+    "description": "Shown while the plan recap's runs and records load"
+  },
+  "planRecapLoadFailed": "Couldn't load the recap.",
+  "@planRecapLoadFailed": {
+    "description": "Error when the plan recap's runs and records could not be read"
+  },
+  "planRecapRetry": "Try again",
+  "@planRecapRetry": {
+    "description": "Button that retries loading the plan recap"
+  },
+  "planRecapSessionsLabel": "Sessions",
+  "@planRecapSessionsLabel": {
+    "description": "Plan recap label for the sessions-done stat"
+  },
+  "planRecapSessionsValue": "{done} of {total}",
+  "@planRecapSessionsValue": {
+    "description": "Plan recap count of sessions or long runs done out of those planned",
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "planRecapSessionsPct": "{pct}% done",
+  "@planRecapSessionsPct": {
+    "description": "Plan recap share of planned sessions done",
+    "placeholders": {
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "planRecapSkipped": "{count, plural, one {{count} skipped} other {{count} skipped}}",
+  "@planRecapSkipped": {
+    "description": "Plan recap count of sessions the runner skipped",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planRecapMissed": "{count, plural, one {{count} missed} other {{count} missed}}",
+  "@planRecapMissed": {
+    "description": "Plan recap count of sessions whose day passed without being done or skipped",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planRecapLongRunsLabel": "Long runs",
+  "@planRecapLongRunsLabel": {
+    "description": "Plan recap label for the long-run stat"
+  },
+  "planRecapLongRunsRange": "From {first} up to {longest}",
+  "@planRecapLongRunsRange": {
+    "description": "Plan recap long-run progression: the first long run done and the longest. Both are formatted distances",
+    "placeholders": {
+      "first": {
+        "type": "String"
+      },
+      "longest": {
+        "type": "String"
+      }
+    }
+  },
+  "planRecapLongRunsLongest": "Longest {longest}",
+  "@planRecapLongRunsLongest": {
+    "description": "Plan recap longest long run, when it was also the first. longest is a formatted distance",
+    "placeholders": {
+      "longest": {
+        "type": "String"
+      }
+    }
+  },
+  "planRecapDistanceLabel": "Distance",
+  "@planRecapDistanceLabel": {
+    "description": "Plan recap label for the distance stat"
+  },
+  "planRecapTimeLabel": "Time",
+  "@planRecapTimeLabel": {
+    "description": "Plan recap label for the time stat on a walk-run plan"
+  },
+  "planRecapVolumeValue": "{done} of {planned}",
+  "@planRecapVolumeValue": {
+    "description": "Plan recap distance or time done out of planned; both are formatted",
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "planned": {
+        "type": "String"
+      }
+    }
+  },
+  "planRecapTimeValue": "{h} h {m} min",
+  "@planRecapTimeValue": {
+    "description": "A duration in hours and minutes on the plan recap",
+    "placeholders": {
+      "h": {
+        "type": "int"
+      },
+      "m": {
+        "type": "int"
+      }
+    }
+  },
+  "planRecapRaceLabel": "Race day",
+  "@planRecapRaceLabel": {
+    "description": "Plan recap race heading when the race has no name"
+  },
+  "planRecapRaceRun": "{time} for {distance}",
+  "@planRecapRaceRun": {
+    "description": "Plan recap race result: finish time and distance run",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "planRecapRaceDnf": "Did not finish",
+  "@planRecapRaceDnf": {
+    "description": "Plan recap race result when the race run is marked did not finish"
+  },
+  "planRecapRaceNoRun": "Marked done, no run linked",
+  "@planRecapRaceNoRun": {
+    "description": "Plan recap race result when the race was ticked done with no run linked"
+  },
+  "planRecapRaceNotRun": "No run on race day",
+  "@planRecapRaceNotRun": {
+    "description": "Plan recap race result when no run stands for the race"
+  },
+  "planRecapRecordsLabel": "Personal records",
+  "@planRecapRecordsLabel": {
+    "description": "Plan recap heading for personal records set during the plan"
+  },
+  "planRecapRecordsNone": "No new personal records during this plan.",
+  "@planRecapRecordsNone": {
+    "description": "Plan recap line when no personal record was set during the plan"
+  },
+  "planRecapBracketMile": "Mile",
+  "@planRecapBracketMile": {
+    "description": "Personal-record bracket: one mile"
+  },
+  "planRecapBracket5k": "5K",
+  "@planRecapBracket5k": {
+    "description": "Personal-record bracket: 5 km"
+  },
+  "planRecapBracket8k": "8K",
+  "@planRecapBracket8k": {
+    "description": "Personal-record bracket: 8 km"
+  },
+  "planRecapBracket10k": "10K",
+  "@planRecapBracket10k": {
+    "description": "Personal-record bracket: 10 km"
+  },
+  "planRecapBracket12k": "12K",
+  "@planRecapBracket12k": {
+    "description": "Personal-record bracket: 12 km"
+  },
+  "planRecapBracketHalf": "Half marathon",
+  "@planRecapBracketHalf": {
+    "description": "Personal-record bracket: half marathon"
+  },
+  "planRecapBracketMarathon": "Marathon",
+  "@planRecapBracketMarathon": {
+    "description": "Personal-record bracket: marathon"
+  },
+  "planRecapNextTitle": "What's next",
+  "@planRecapNextTitle": {
+    "description": "Plan recap heading for what to do after the plan"
+  },
+  "planRecapRecovery": "Recover first: {days, plural, one {{days} easy day} other {{days} easy days}}, through {date}.",
+  "@planRecapRecovery": {
+    "description": "Plan recap recovery advice after the race. date is the formatted last recovery day",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planRecapNextPlan": "Your next plan can start on {date}.",
+  "@planRecapNextPlan": {
+    "description": "Plan recap line saying when the next plan can start. date is formatted",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planRecapNextPlanSeeded": "Your next plan can start on {date}, with paces from a {time} 5K, your race's equivalent. You confirm it in the wizard.",
+  "@planRecapNextPlanSeeded": {
+    "description": "Plan recap line when the next plan's paces come from the race's 5K equivalent. time is a 5K time",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "planRecapNextPlanCta": "Build your next plan",
+  "@planRecapNextPlanCta": {
+    "description": "Button on the plan recap that opens the new-plan wizard"
   }
 }

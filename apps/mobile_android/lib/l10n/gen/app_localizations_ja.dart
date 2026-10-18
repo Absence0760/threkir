@@ -17458,4 +17458,150 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get missedPromptNothingToMakeUp => '埋め合わせるものはもうありません。';
+
+  @override
+  String planRecapTitle(String name) {
+    return '$nameの振り返り';
+  }
+
+  @override
+  String get planRecapLoading => '振り返りを読み込み中…';
+
+  @override
+  String get planRecapLoadFailed => '振り返りを読み込めませんでした。';
+
+  @override
+  String get planRecapRetry => '再試行';
+
+  @override
+  String get planRecapSessionsLabel => 'セッション';
+
+  @override
+  String planRecapSessionsValue(int done, int total) {
+    return '$total回中$done回';
+  }
+
+  @override
+  String planRecapSessionsPct(int pct) {
+    return '$pct%完了';
+  }
+
+  @override
+  String planRecapSkipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count回スキップ',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planRecapMissed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count回未実施',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planRecapLongRunsLabel => 'ロング走';
+
+  @override
+  String planRecapLongRunsRange(String first, String longest) {
+    return '$firstから$longestまで';
+  }
+
+  @override
+  String planRecapLongRunsLongest(String longest) {
+    return '最長 $longest';
+  }
+
+  @override
+  String get planRecapDistanceLabel => '距離';
+
+  @override
+  String get planRecapTimeLabel => '時間';
+
+  @override
+  String planRecapVolumeValue(String done, String planned) {
+    return '$planned中$done';
+  }
+
+  @override
+  String planRecapTimeValue(int h, int m) {
+    return '$h時間$m分';
+  }
+
+  @override
+  String get planRecapRaceLabel => 'レース当日';
+
+  @override
+  String planRecapRaceRun(String time, String distance) {
+    return '$distanceを$time';
+  }
+
+  @override
+  String get planRecapRaceDnf => '途中棄権';
+
+  @override
+  String get planRecapRaceNoRun => '完了済み（ランの紐付けなし）';
+
+  @override
+  String get planRecapRaceNotRun => 'レース当日のランなし';
+
+  @override
+  String get planRecapRecordsLabel => '自己ベスト';
+
+  @override
+  String get planRecapRecordsNone => 'このプラン中に新しい自己ベストはありません。';
+
+  @override
+  String get planRecapBracketMile => '1マイル';
+
+  @override
+  String get planRecapBracket5k => '5K';
+
+  @override
+  String get planRecapBracket8k => '8K';
+
+  @override
+  String get planRecapBracket10k => '10K';
+
+  @override
+  String get planRecapBracket12k => '12K';
+
+  @override
+  String get planRecapBracketHalf => 'ハーフマラソン';
+
+  @override
+  String get planRecapBracketMarathon => 'マラソン';
+
+  @override
+  String get planRecapNextTitle => '次のステップ';
+
+  @override
+  String planRecapRecovery(int days, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days日間のイージー',
+    );
+    return 'まず回復：$dateまで$_temp0。';
+  }
+
+  @override
+  String planRecapNextPlan(String date) {
+    return '次のプランは$dateから始められます。';
+  }
+
+  @override
+  String planRecapNextPlanSeeded(String date, String time) {
+    return '次のプランは$dateから始められます。ペースはレース結果に相当する5K $timeから設定します。ウィザードで確認してください。';
+  }
+
+  @override
+  String get planRecapNextPlanCta => '次のプランを作る';
 }

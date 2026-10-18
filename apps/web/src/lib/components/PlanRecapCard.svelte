@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import { fetchPlanRecapSources } from '#lib/core/data.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
@@ -50,25 +51,19 @@
 		return m('planRecap.timeValue', { h: Math.floor(total / 60), m: total % 60 });
 	}
 
+	const BRACKET_LABEL: Record<string, MessageKey> = {
+		'1_mile': 'planRecap.bracketMile',
+		'5k': 'planRecap.bracket5k',
+		'8k': 'planRecap.bracket8k',
+		'10k': 'planRecap.bracket10k',
+		'12k': 'planRecap.bracket12k',
+		half_marathon: 'planRecap.bracketHalf',
+		marathon: 'planRecap.bracketMarathon'
+	};
+
 	function bracketLabel(key: string): string {
-		switch (key) {
-			case '1_mile':
-				return m('planRecap.bracketMile');
-			case '5k':
-				return m('planRecap.bracket5k');
-			case '8k':
-				return m('planRecap.bracket8k');
-			case '10k':
-				return m('planRecap.bracket10k');
-			case '12k':
-				return m('planRecap.bracket12k');
-			case 'half_marathon':
-				return m('planRecap.bracketHalf');
-			case 'marathon':
-				return m('planRecap.bracketMarathon');
-			default:
-				return key;
-		}
+		const label = BRACKET_LABEL[key];
+		return label ? m(label) : key;
 	}
 
 	const nextHref = $derived.by(() => {

@@ -685,10 +685,10 @@ export const PAIRS = [
 	},
 	{
 		tableColumn: 'personal_records.distance',
-		// The three maps are keyed `Record<string, …>` / `<String, …>`, so
-		// neither compiler checks them: a new bracket sorts to the fallback
-		// rank and renders its raw key. They are the only enumeration of this
-		// column on either client.
+		// The maps are keyed `Record<string, …>` / `<String, …>` and the
+		// switch is over a `String`, so neither compiler checks them: a new
+		// bracket sorts to the fallback rank and renders its raw key. They are
+		// the only enumeration of this column on either client.
 		clients: [
 			{ file: DATA_TS, decl: 'PR_BRACKET_LABELS', shape: 'keys' },
 			{ file: DATA_TS, decl: 'PR_BRACKET_ORDER', shape: 'keys' },
@@ -699,6 +699,8 @@ export const PAIRS = [
 			},
 			{ file: 'apps/mobile_android/lib/run_stats.dart', decl: '_pbBracketLabels', shape: 'keys' },
 			{ file: 'apps/mobile_android/lib/run_stats.dart', decl: '_pbBracketOrder', shape: 'keys' },
+			{ file: 'apps/web/src/lib/components/PlanRecapCard.svelte', decl: 'BRACKET_LABEL', shape: 'keys' },
+			{ file: 'apps/mobile_android/lib/widgets/plan_recap_card.dart', decl: 'planRecapBracketLabel', shape: 'switch' },
 		],
 	},
 	{

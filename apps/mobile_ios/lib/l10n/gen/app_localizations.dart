@@ -29802,6 +29802,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'There\'s nothing left to make up.'**
   String get missedPromptNothingToMakeUp;
+
+  /// Heading of the end-of-plan recap on a completed plan. name is the plan's name
+  ///
+  /// In en, this message translates to:
+  /// **'How {name} went'**
+  String planRecapTitle(String name);
+
+  /// Shown while the plan recap's runs and records load
+  ///
+  /// In en, this message translates to:
+  /// **'Loading your recap…'**
+  String get planRecapLoading;
+
+  /// Error when the plan recap's runs and records could not be read
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the recap.'**
+  String get planRecapLoadFailed;
+
+  /// Button that retries loading the plan recap
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get planRecapRetry;
+
+  /// Plan recap label for the sessions-done stat
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions'**
+  String get planRecapSessionsLabel;
+
+  /// Plan recap count of sessions or long runs done out of those planned
+  ///
+  /// In en, this message translates to:
+  /// **'{done} of {total}'**
+  String planRecapSessionsValue(int done, int total);
+
+  /// Plan recap share of planned sessions done
+  ///
+  /// In en, this message translates to:
+  /// **'{pct}% done'**
+  String planRecapSessionsPct(int pct);
+
+  /// Plan recap count of sessions the runner skipped
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} skipped} other {{count} skipped}}'**
+  String planRecapSkipped(int count);
+
+  /// Plan recap count of sessions whose day passed without being done or skipped
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} missed} other {{count} missed}}'**
+  String planRecapMissed(int count);
+
+  /// Plan recap label for the long-run stat
+  ///
+  /// In en, this message translates to:
+  /// **'Long runs'**
+  String get planRecapLongRunsLabel;
+
+  /// Plan recap long-run progression: the first long run done and the longest. Both are formatted distances
+  ///
+  /// In en, this message translates to:
+  /// **'From {first} up to {longest}'**
+  String planRecapLongRunsRange(String first, String longest);
+
+  /// Plan recap longest long run, when it was also the first. longest is a formatted distance
+  ///
+  /// In en, this message translates to:
+  /// **'Longest {longest}'**
+  String planRecapLongRunsLongest(String longest);
+
+  /// Plan recap label for the distance stat
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get planRecapDistanceLabel;
+
+  /// Plan recap label for the time stat on a walk-run plan
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get planRecapTimeLabel;
+
+  /// Plan recap distance or time done out of planned; both are formatted
+  ///
+  /// In en, this message translates to:
+  /// **'{done} of {planned}'**
+  String planRecapVolumeValue(String done, String planned);
+
+  /// A duration in hours and minutes on the plan recap
+  ///
+  /// In en, this message translates to:
+  /// **'{h} h {m} min'**
+  String planRecapTimeValue(int h, int m);
+
+  /// Plan recap race heading when the race has no name
+  ///
+  /// In en, this message translates to:
+  /// **'Race day'**
+  String get planRecapRaceLabel;
+
+  /// Plan recap race result: finish time and distance run
+  ///
+  /// In en, this message translates to:
+  /// **'{time} for {distance}'**
+  String planRecapRaceRun(String time, String distance);
+
+  /// Plan recap race result when the race run is marked did not finish
+  ///
+  /// In en, this message translates to:
+  /// **'Did not finish'**
+  String get planRecapRaceDnf;
+
+  /// Plan recap race result when the race was ticked done with no run linked
+  ///
+  /// In en, this message translates to:
+  /// **'Marked done, no run linked'**
+  String get planRecapRaceNoRun;
+
+  /// Plan recap race result when no run stands for the race
+  ///
+  /// In en, this message translates to:
+  /// **'No run on race day'**
+  String get planRecapRaceNotRun;
+
+  /// Plan recap heading for personal records set during the plan
+  ///
+  /// In en, this message translates to:
+  /// **'Personal records'**
+  String get planRecapRecordsLabel;
+
+  /// Plan recap line when no personal record was set during the plan
+  ///
+  /// In en, this message translates to:
+  /// **'No new personal records during this plan.'**
+  String get planRecapRecordsNone;
+
+  /// Personal-record bracket: one mile
+  ///
+  /// In en, this message translates to:
+  /// **'Mile'**
+  String get planRecapBracketMile;
+
+  /// Personal-record bracket: 5 km
+  ///
+  /// In en, this message translates to:
+  /// **'5K'**
+  String get planRecapBracket5k;
+
+  /// Personal-record bracket: 8 km
+  ///
+  /// In en, this message translates to:
+  /// **'8K'**
+  String get planRecapBracket8k;
+
+  /// Personal-record bracket: 10 km
+  ///
+  /// In en, this message translates to:
+  /// **'10K'**
+  String get planRecapBracket10k;
+
+  /// Personal-record bracket: 12 km
+  ///
+  /// In en, this message translates to:
+  /// **'12K'**
+  String get planRecapBracket12k;
+
+  /// Personal-record bracket: half marathon
+  ///
+  /// In en, this message translates to:
+  /// **'Half marathon'**
+  String get planRecapBracketHalf;
+
+  /// Personal-record bracket: marathon
+  ///
+  /// In en, this message translates to:
+  /// **'Marathon'**
+  String get planRecapBracketMarathon;
+
+  /// Plan recap heading for what to do after the plan
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s next'**
+  String get planRecapNextTitle;
+
+  /// Plan recap recovery advice after the race. date is the formatted last recovery day
+  ///
+  /// In en, this message translates to:
+  /// **'Recover first: {days, plural, one {{days} easy day} other {{days} easy days}}, through {date}.'**
+  String planRecapRecovery(int days, String date);
+
+  /// Plan recap line saying when the next plan can start. date is formatted
+  ///
+  /// In en, this message translates to:
+  /// **'Your next plan can start on {date}.'**
+  String planRecapNextPlan(String date);
+
+  /// Plan recap line when the next plan's paces come from the race's 5K equivalent. time is a 5K time
+  ///
+  /// In en, this message translates to:
+  /// **'Your next plan can start on {date}, with paces from a {time} 5K, your race\'s equivalent. You confirm it in the wizard.'**
+  String planRecapNextPlanSeeded(String date, String time);
+
+  /// Button on the plan recap that opens the new-plan wizard
+  ///
+  /// In en, this message translates to:
+  /// **'Build your next plan'**
+  String get planRecapNextPlanCta;
 }
 
 class _AppLocalizationsDelegate

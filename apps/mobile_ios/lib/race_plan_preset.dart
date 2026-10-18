@@ -124,14 +124,23 @@ GoalEvent? goalEventForDistance(num? distanceM) {
 /// `weeks` is capped at the goal's own default rather than filling every week
 /// between now and race day: a marathon 30 weeks out wants the standard
 /// 16-week build starting in 14 weeks, not a 30-week grind.
+///
+/// `notBeforeIso` is the earliest day the plan may start, for a plan chained
+/// after one the runner already has (`racePlanChain` in
+/// race_plan_prefill.dart). It only ever moves the start later than today.
 RacePlanPresetResult racePlanPreset({
   required String raceDateIso,
   required String todayIso,
   num? distanceM,
+  String? notBeforeIso,
 }) {
   final raceDay = _epochDay(raceDateIso);
   final today = _epochDay(todayIso);
   if (raceDay == null || today == null) {
+    return const RacePlanPresetResult.refused(RacePlanRefusal.invalid);
+  }
+  final notBefore = notBeforeIso == null ? today : _epochDay(notBeforeIso);
+  if (notBefore == null) {
     return const RacePlanPresetResult.refused(RacePlanRefusal.invalid);
   }
   if (raceDay <= today) {
@@ -142,9 +151,11 @@ RacePlanPresetResult racePlanPreset({
 
   // The race week is the calendar week (Sunday-based) race day falls in.
   final raceWeekStart = raceDay - _dayOfWeek(raceDay);
-  // Earliest legal start: the Sunday on or after today. Starting today is
-  // fine — the wizard only rejects a start date strictly in the past.
-  final firstStart = today + (7 - _dayOfWeek(today)) % 7;
+  // Earliest legal start: the Sunday on or after today (or the chained
+  // floor). Starting today is fine — the wizard only rejects a start date
+  // strictly in the past.
+  final floor = math.max(today, notBefore);
+  final firstStart = floor + (7 - _dayOfWeek(floor)) % 7;
 
   final available = (raceWeekStart - firstStart) ~/ 7 + 1;
   if (available < kRacePlanMinWeeks) {

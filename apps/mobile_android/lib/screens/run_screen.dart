@@ -12,7 +12,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderProxyBox;
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/semantics.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart' hide ActivityType;
 import 'package:pedometer/pedometer.dart';
@@ -78,7 +77,10 @@ import 'route_picker_screen.dart';
 import '../background_location_nudge.dart';
 import '../battery_optimisation_hint.dart';
 import '../live_activity_bridge.dart';
+import '../lock_screen_step.dart';
 import '../run_notification_bridge.dart';
+import '../run_haptics_bridge.dart';
+import '../step_haptics.dart';
 import '../run_stats.dart';
 import '../share_sheet.dart';
 import '../social_service.dart';
@@ -650,6 +652,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   // runner consumes _onSnapshot output and emits transition / drift
   // events into _workoutEventsSub. Band UI listens via _workoutBand.
   WorkoutRunner? _workoutRunner;
+  final RunHapticsBridge _runHaptics = const RunHapticsBridge();
   StreamSubscription<WorkoutExecEvent>? _workoutEventsSub;
   String? _activeWorkoutId;
 
@@ -1040,6 +1043,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // out as unhandled errors. _ttsCue() does the unawaited+catchError
     // dance so the cue is fire-and-forget but the rejection is logged
     // instead of escaping.
+    //
+    // The buzz sits outside every voice gate: it is the cue that still
+    // reaches a runner with the audio off or the voice set to minimal.
+    _runHaptic(stepHapticFor(e));
     if (e is StepTransitionEvent) {
       _publishWorkoutBand();
       if (widget.preferences.audioCues && _workoutCuesEnabled) {
@@ -1074,6 +1081,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     } else if (e is WorkoutAbandonedEvent) {
       _publishWorkoutBand();
     }
+  }
+
+  /// Fire-and-forget vibration cue, gated on the per-device setting.
+  /// [RunHapticsBridge.play] swallows its own failures.
+  void _runHaptic(RunHapticPattern? pattern) {
+    if (pattern == null || !widget.preferences.hapticFeedback) return;
+    unawaited(_runHaptics.play(pattern));
   }
 
   /// Fire-and-forget TTS announcement. Wraps both synchronous and
@@ -2950,24 +2964,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                     ));
             // Haptic companion to the TTS so the runner notices even
             // with headphones paused or ambient noise masking the cue.
-            // Two-pulse for "speed up", single strong pulse for "slow
-            // down" — the direction is distinguishable by feel alone.
-            HapticFeedback.heavyImpact();
-            if (diff > 0) {
-              // The delayed pulse runs on a different stack frame from
-              // the surrounding try/catch — without its own guard, a
-              // throw here propagates as unhandled and can break the
-              // _onSnapshot pipeline (L0/L1 freeze). Each auxiliary
-              // effect owns its own try/catch + debugPrint; see
-              // docs/architecture/conventions.md § Layered resilience.
-              Future<void>.delayed(const Duration(milliseconds: 180), () {
-                try {
-                  HapticFeedback.heavyImpact();
-                } catch (e) {
-                  debugPrint('pace-alert second-pulse haptic failed: $e');
-                }
-              });
-            }
+            // Two sharp pulses for "speed up", one for "slow down" — the
+            // direction is distinguishable by feel alone. Over the native
+            // channel, not HapticFeedback, so it lands with the screen off.
+            _runHaptic(paceAlertHaptic(tooSlow: diff > 0));
           }
         }
       } catch (e) {
@@ -3203,7 +3203,19 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       paceText: _activityType.usesSpeed
           ? '${UnitFormat.speed(_pace, unit)} ${UnitFormat.speedLabel(unit)}'
           : '${UnitFormat.pace(_pace, unit)} ${UnitFormat.paceLabel(unit)}',
+      step: _lockScreenWorkoutStep(unit),
     );
+  }
+
+  /// Its own catch so a workout-runner fault costs the step line, not the
+  /// time / distance / pace beside it.
+  LockScreenStep? _lockScreenWorkoutStep(DistanceUnit unit) {
+    try {
+      return lockScreenStep(_workoutRunner, l10n: _l10n, unit: unit);
+    } catch (e) {
+      debugPrint('lock-screen workout step failed: $e');
+      return null;
+    }
   }
 
   /// Push the current stats to the native lock-screen notification,
@@ -3219,12 +3231,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _lastNotificationAt = now;
 
     final frame = _lockScreenFrame();
+    final content = runNotificationContent(frame);
     _lockScreen.update(
-      title: frame.title,
-      text: '${frame.elapsedText}  •  ${frame.distanceText}  •  ${frame.paceText}',
-      bigText: '${frame.timeLabel}: ${frame.elapsedText}\n'
-          '${frame.distanceLabel}: ${frame.distanceText}\n'
-          '${frame.paceLabel}: ${frame.paceText}',
+      title: content.title,
+      text: content.text,
+      bigText: content.bigText,
       paused: _manualPaused,
     );
     // iOS's half of the same surface. Offered at this 1 Hz rate and dropped

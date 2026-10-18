@@ -1,5 +1,6 @@
 import Foundation
 import WatchConnectivity
+import WidgetKit
 
 /// Transfers completed runs from the Apple Watch to the paired iPhone over
 /// `WCSession.transferFile(_:metadata:)`. The phone owns the Supabase write —
@@ -61,6 +62,21 @@ enum PhonePreferences {
     /// as one; only a value that is not a ladder at all is nil.
     static func hrZoneCutoffs(in payload: [String: Any]) -> [Int]? {
         HeartRateZones.decode(payload["hr_zone_cutoffs"])
+    }
+
+    /// `full` or `minimal`, the phone's `voice_feedback_verbosity`. Anything
+    /// else is dropped rather than read as `full`: that would speak the
+    /// workout cues a minimal runner asked to be spared on every contact.
+    static func voiceFeedbackVerbosity(in payload: [String: Any]) -> String? {
+        guard let verbosity = payload["voice_feedback_verbosity"] as? String,
+              verbosity == "full" || verbosity == "minimal" else { return nil }
+        return verbosity
+    }
+
+    /// The phone's `workout_steps` voice cue. A non-Bool is dropped for the
+    /// reason `audioCues(in:)` drops one.
+    static func workoutStepCues(in payload: [String: Any]) -> Bool? {
+        payload["voice_cue_workout_steps"] as? Bool
     }
 }
 
@@ -136,6 +152,9 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
         super.init()
         raceState = LiveRaceState(race: LiveRaceStore.load())
         liveRace = raceState.race
+        // A push stored by a build older than the complication's today state
+        // has no glance yet; this is also a no-op on every launch after.
+        Self.publishTodayGlance(todaysWorkout)
         if WCSession.isSupported() {
             WCSession.default.delegate = self
             WCSession.default.activate()
@@ -337,6 +356,15 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
         if let cues = PhonePreferences.audioCues(in: payload) {
             UserDefaults.standard.set(cues, forKey: RunAnnouncer.preferenceKey)
         }
+        // The two switches a structured workout's spoken cues answer to on
+        // top of `audio_cues`, read by `RunAnnouncer` at each cue rather than
+        // at Start, so a change mid-run lands on the next step.
+        if let verbosity = PhonePreferences.voiceFeedbackVerbosity(in: payload) {
+            UserDefaults.standard.set(verbosity, forKey: RunAnnouncer.verbosityKey)
+        }
+        if let stepCues = PhonePreferences.workoutStepCues(in: payload) {
+            UserDefaults.standard.set(stepCues, forKey: RunAnnouncer.workoutStepCuesKey)
+        }
         // The three the recorder reads off disk rather than off this object —
         // the zone ladder on every render of the running page, the privacy
         // default at each checkpoint and at stop — so storing them is the
@@ -374,6 +402,7 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
         if let json = payload[Self.todaysWorkoutKey] as? String {
             PushedWorkoutStore.save(json: json)
             let push = WorkoutPush.decode(json)
+            Self.publishTodayGlance(push)
             DispatchQueue.main.async { self.todaysWorkout = push }
         }
         // Arm / Go / End. Fail-closed the same way: a status word this build
@@ -393,13 +422,22 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
         armedRoute = route
     }
 
-    /// Drop the armed route from the wrist. The phone is the only writer, so
-    /// without this the runner's only way out of a route they no longer want
-    /// is to go back to the phone.
     /// The `transferUserInfo` key the phone's `WatchIngestBridge.workoutUserInfo`
     /// writes today's workout under.
     static let todaysWorkoutKey = "todays_workout"
 
+    /// Hands the complication what its "today" state draws, and asks it to
+    /// re-read only when that changed. The face's midnight rollover is in its
+    /// own timeline, so nothing here has to run at midnight.
+    static func publishTodayGlance(_ push: WorkoutPush?) {
+        if ActiveRunBridge.writeToday(TodayWorkoutGlance(push)) {
+            WidgetCenter.shared.reloadTimelines(ofKind: ActiveRunBridge.complicationKind)
+        }
+    }
+
+    /// Drop the armed route from the wrist. The phone is the only writer, so
+    /// without this the runner's only way out of a route they no longer want
+    /// is to go back to the phone.
     func clearArmedRoute() {
         ArmedRouteStore.clear()
         armedRoute = nil

@@ -17,9 +17,10 @@ import Foundation
 /// string. The extension formats nothing and translates nothing: Dart owns
 /// both, from the same `AppLocalizations` and the same `UnitFormat` the run
 /// screen reads, so the lock screen cannot disagree with the screen behind it
-/// and the extension ships with no String Catalog of its own. The one
-/// exception is `timerStart`, which is a date rather than a string precisely
-/// so the widget can tick the clock itself between updates.
+/// and the extension ships with no String Catalog of its own. The two
+/// exceptions are `timerStart` and `stepEnd`, which are dates rather than
+/// strings precisely so the widget can tick the run clock and a timed
+/// workout step's countdown itself between updates.
 @available(iOS 16.2, *)
 struct RunActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
@@ -38,6 +39,19 @@ struct RunActivityAttributes: ActivityAttributes {
         var distanceText: String
         var paceLabel: String
         var paceText: String
+        /// The structured-workout step, e.g. "Rep 3 of 6" or the
+        /// workout-complete line. Nil on a free run, and every step field is
+        /// optional so a frame encoded before they existed still decodes.
+        var stepTitle: String? = nil
+        /// "400 m to go" / "1:30 to go". On a timed step this is the frozen
+        /// value shown while paused or once `stepEnd` has passed.
+        var stepRemainingText: String? = nil
+        /// "@ 4:00 /km"; nil on an effort-led step.
+        var stepTarget: String? = nil
+        /// When a timed step runs out, so the widget counts it down itself
+        /// the way it counts the run clock up. Nil on a distance step and
+        /// while paused.
+        var stepEnd: Date? = nil
     }
 }
 
@@ -68,7 +82,15 @@ extension RunActivityAttributes.ContentState {
             distanceLabel: distanceLabel,
             distanceText: distanceText,
             paceLabel: paceLabel,
-            paceText: paceText
+            paceText: paceText,
+            // Optional and individually tolerant: a malformed step field
+            // costs the step line, never the run stats beside it.
+            stepTitle: arguments["step_title"] as? String,
+            stepRemainingText: arguments["step_remaining_text"] as? String,
+            stepTarget: arguments["step_target"] as? String,
+            stepEnd: (arguments["step_end_epoch_ms"] as? NSNumber).map {
+                Date(timeIntervalSince1970: $0.doubleValue / 1000)
+            }
         )
     }
 }

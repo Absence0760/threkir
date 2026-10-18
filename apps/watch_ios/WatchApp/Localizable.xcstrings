@@ -2,6 +2,129 @@
   "sourceLanguage": "en",
   "version": "1.0",
   "strings": {
+    "%@ %lld seconds": {
+      "comment": "Spoken step duration over a minute: the already-spoken minutes, then the seconds. Matches the phone's ttsDurationMinutesSeconds in apps/mobile_android/lib/l10n/app_*.arb.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ %2$lld Sekunden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ %2$lld segundos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ %2$lld secondes"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@%2$lld秒"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ %2$lld segundos"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ %2$lld segundos"
+          }
+        }
+      }
+    },
+    "%@ kilometres": {
+      "comment": "Spoken step distance in kilometres with one decimal, the number always written with a period so the voice reads it as a number. Matches the phone's ttsDistanceKm in apps/mobile_android/lib/l10n/app_*.arb.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Kilometer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ kilómetros"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ kilomètres"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@キロメートル"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ quilômetros"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ quilómetros"
+          }
+        }
+      }
+    },
+    "%@ miles": {
+      "comment": "Spoken step distance in miles with one decimal, the number always written with a period. Matches the phone's ttsDistanceMiles in apps/mobile_android/lib/l10n/app_*.arb.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Meilen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ millas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ miles"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@マイル"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ milhas"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ milhas"
+          }
+        }
+      }
+    },
     "%@ to go": {
       "comment": "Distance remaining on the armed route during a run; the placeholder already carries its unit. Wording matches Wear OS's distance_km_to_go.",
       "localizations": {
@@ -80,6 +203,88 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@. %2$@"
+          }
+        }
+      }
+    },
+    "%@. %@ at %@.": {
+      "comment": "Spoken step announcement for a paced distance step: step name, distance, target pace. Matches the phone's ttsStepDistancePace in apps/mobile_android/lib/l10n/app_*.arb.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@ bei %3$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@ a %3$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@ à %3$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@。%2$@を%3$@で。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@ a %3$@."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@ a %3$@."
+          }
+        }
+      }
+    },
+    "%@. %@.": {
+      "comment": "Spoken step announcement for a timed step (step name, then how long) or an effort-led distance step (step name, then how far, no pace). Matches the phone's ttsStepDuration in apps/mobile_android/lib/l10n/app_*.arb; ja joins with full-width stops.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@。%2$@。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@."
           }
         }
       }
@@ -167,7 +372,7 @@
       }
     },
     "%lld kilometres": {
-      "comment": "Spoken split distance in km mode. Plural-aware; matches the phone's ttsSplitUnitKilometre(s).",
+      "comment": "Spoken whole-kilometre distance: a split in km mode, and a workout step's whole-kilometre distance. Plural-aware; matches the phone's ttsSplitUnitKilometre(s) and ttsDistanceKm.",
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -292,8 +497,134 @@
         }
       }
     },
+    "%lld metres": {
+      "comment": "Spoken step distance under a kilometre. Plural-aware; matches the phone's ttsDistanceMetres in apps/mobile_android/lib/l10n/app_*.arb.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld metre"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld metres"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Meter"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Meter"
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld metro"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld metros"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld mètre"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld mètres"
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lldメートル"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld metro"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld metros"
+                }
+              }
+            }
+          }
+        },
+        "pt-PT": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld metro"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld metros"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld miles": {
-      "comment": "Spoken split distance in mi mode. Plural-aware; matches the phone's ttsSplitUnitMile(s).",
+      "comment": "Spoken whole-mile distance: a split in mi mode, and a workout step's whole-mile distance. Plural-aware; matches the phone's ttsSplitUnitMile(s), ttsDistanceMileSingular and ttsDistanceMiles.",
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -414,6 +745,296 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "%lld minutes": {
+      "comment": "Spoken step duration, whole minutes. Plural-aware; matches the phone's ttsDurationMinutes in apps/mobile_android/lib/l10n/app_*.arb.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld minute"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld minutes"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Minute"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Minuten"
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld minuto"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld minutos"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld minute"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld minutes"
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld分"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld minuto"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld minutos"
+                }
+              }
+            }
+          }
+        },
+        "pt-PT": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld minuto"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld minutos"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld minutes %lld seconds per kilometre": {
+      "comment": "Spoken step target pace, km mode: minutes, then seconds. Matches the phone's ttsStepPaceKm in apps/mobile_android/lib/l10n/app_*.arb.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld Minuten %2$lld Sekunden pro Kilometer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld minutos %2$lld segundos por kilómetro"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld minutes %2$lld secondes au kilomètre"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1キロメートルあたり%1$lld分%2$lld秒"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld minutos %2$lld segundos por quilômetro"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld minutos %2$lld segundos por quilómetro"
+          }
+        }
+      }
+    },
+    "%lld minutes %lld seconds per mile": {
+      "comment": "Spoken step target pace, mi mode: minutes, then seconds. Matches the phone's ttsStepPaceMi in apps/mobile_android/lib/l10n/app_*.arb.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld Minuten %2$lld Sekunden pro Meile"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld minutos %2$lld segundos por milla"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld minutes %2$lld secondes au mile"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1マイルあたり%1$lld分%2$lld秒"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld minutos %2$lld segundos por milha"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld minutos %2$lld segundos por milha"
+          }
+        }
+      }
+    },
+    "%lld minutes per kilometre": {
+      "comment": "Spoken step target pace, whole minutes, km mode. Matches the phone's ttsStepPaceKmWhole in apps/mobile_android/lib/l10n/app_*.arb.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Minuten pro Kilometer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld minutos por kilómetro"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld minutes au kilomètre"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1キロメートルあたり%lld分"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld minutos por quilômetro"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld minutos por quilómetro"
+          }
+        }
+      }
+    },
+    "%lld minutes per mile": {
+      "comment": "Spoken step target pace, whole minutes, mi mode. Matches the phone's ttsStepPaceMiWhole in apps/mobile_android/lib/l10n/app_*.arb.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Minuten pro Meile"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld minutos por milla"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld minutes au mile"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1マイルあたり%lld分"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld minutos por milha"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld minutos por milha"
           }
         }
       }
@@ -578,6 +1199,132 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%lld corridas na fila para sincronizar"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld seconds": {
+      "comment": "Spoken step duration under a minute. Plural-aware; matches the phone's ttsDurationSeconds in apps/mobile_android/lib/l10n/app_*.arb.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld second"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld seconds"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Sekunde"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Sekunden"
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld segundo"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld segundos"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld seconde"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld secondes"
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld秒"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld segundo"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld segundos"
+                }
+              }
+            }
+          }
+        },
+        "pt-PT": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld segundo"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld segundos"
                 }
               }
             }
@@ -830,6 +1577,132 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%lld etapas"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld yards": {
+      "comment": "Spoken step distance under a mile, imperial. Plural-aware; matches the phone's ttsDistanceYards in apps/mobile_android/lib/l10n/app_*.arb.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld yard"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld yards"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Yard"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Yards"
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld yarda"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld yardas"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld yard"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld yards"
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lldヤード"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld jarda"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld jardas"
+                }
+              }
+            }
+          }
+        },
+        "pt-PT": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld jarda"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld jardas"
                 }
               }
             }
@@ -1775,6 +2648,88 @@
           "stringUnit": {
             "state": "translated",
             "value": "Evento"
+          }
+        }
+      }
+    },
+    "Fifty metres to go": {
+      "comment": "Spoken end-of-step warning on a distance workout step, km mode. Matches the phone's ttsStepLastFifty in apps/mobile_android/lib/l10n/app_*.arb.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch fünfzig Meter"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quedan cincuenta metros"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plus que cinquante mètres"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "残り五十メートル"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faltam cinquenta metros"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faltam cinquenta metros"
+          }
+        }
+      }
+    },
+    "Fifty yards to go": {
+      "comment": "Spoken end-of-step warning on a distance workout step, mi mode (the window is 50 m, about 55 yd). Matches the phone's ttsStepLastFiftyYards in apps/mobile_android/lib/l10n/app_*.arb.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch fünfzig Yards"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quedan cincuenta yardas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plus que cinquante yards"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "残り五十ヤード"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faltam cinquenta jardas"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faltam cinquenta jardas"
           }
         }
       }
@@ -3746,6 +4701,47 @@
         }
       }
     },
+    "Rep %lld of %lld": {
+      "comment": "Spoken workout step name with its place in the set: index, then total. Verbatim from the phone's ttsStepRepOf in apps/mobile_android/lib/l10n/app_*.arb.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederholung %1$lld von %2$lld"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetición %1$lld de %2$lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Répétition %1$lld sur %2$lld"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "レップ %2$lld本中%1$lld本目"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetição %1$lld de %2$lld"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetição %1$lld de %2$lld"
+          }
+        }
+      }
+    },
     "Restores the unsaved run from the last checkpoint": {
       "comment": "VoiceOver hint on the Recover button.",
       "localizations": {
@@ -3987,6 +4983,47 @@
           "stringUnit": {
             "state": "translated",
             "value": "Correr"
+          }
+        }
+      }
+    },
+    "Run %lld of %lld": {
+      "comment": "Spoken workout step name with its place in the set: index, then total. Verbatim from the phone's ttsStepRunOf in apps/mobile_android/lib/l10n/app_*.arb.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laufen %1$lld von %2$lld"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carrera %1$lld de %2$lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Course %1$lld sur %2$lld"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ラン %2$lld本中%1$lld本目"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corrida %1$lld de %2$lld"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corrida %1$lld de %2$lld"
           }
         }
       }
@@ -5218,6 +6255,47 @@
         }
       }
     },
+    "Ten seconds to go": {
+      "comment": "Spoken end-of-step warning on a timed workout step. Matches the phone's ttsStepLastTenSeconds in apps/mobile_android/lib/l10n/app_*.arb.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch zehn Sekunden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quedan diez segundos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plus que dix secondes"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "残り十秒"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faltam dez segundos"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faltam dez segundos"
+          }
+        }
+      }
+    },
     "Throws away the unsynced run permanently": {
       "comment": "VoiceOver hint on the Discard button (post-run screen).",
       "localizations": {
@@ -5505,6 +6583,47 @@
         }
       }
     },
+    "Walk %lld of %lld": {
+      "comment": "Spoken workout step name with its place in the set: index, then total. Verbatim from the phone's ttsStepWalkOf in apps/mobile_android/lib/l10n/app_*.arb.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gehen %1$lld von %2$lld"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caminata %1$lld de %2$lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marche %1$lld sur %2$lld"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ウォーク %2$lld本中%1$lld本目"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caminhada %1$lld de %2$lld"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caminhada %1$lld de %2$lld"
+          }
+        }
+      }
+    },
     "Warm-up": {
       "comment": "Workout step kind on the running screen. Matches the phone's workoutReviewLabelWarmup.",
       "localizations": {
@@ -5542,6 +6661,47 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aquecimento"
+          }
+        }
+      }
+    },
+    "Workout complete. Nice work.": {
+      "comment": "Spoken when the last step of a structured workout ends. Matches the phone's ttsWorkoutComplete in apps/mobile_android/lib/l10n/app_*.arb.",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Training abgeschlossen. Gut gemacht."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrenamiento completado. Buen trabajo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Séance terminée. Beau travail."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークアウト完了。お疲れさまでした。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Treino concluído. Bom trabalho."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Treino concluído. Bom trabalho."
           }
         }
       }
@@ -5812,6 +6972,805 @@
           "stringUnit": {
             "state": "translated",
             "value": "Caminhada"
+          }
+        }
+      }
+    },
+    "tts.step.cooldown": {
+      "comment": "Spoken workout step name, the start of a step announcement. Verbatim from the phone's ttsStepCooldown in apps/mobile_android/lib/l10n/app_*.arb. Namespaced because the running screen's 'Rep' / 'Run' / 'Walk' labels are differently translated words.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cooldown"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auslaufen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enfriamiento"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retour au calme"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クールダウン"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desaquecimento"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desaquecimento"
+          }
+        }
+      }
+    },
+    "tts.step.cooldownWalk": {
+      "comment": "Spoken workout step name, the start of a step announcement. Verbatim from the phone's ttsStepCooldownWalk in apps/mobile_android/lib/l10n/app_*.arb. Namespaced because the running screen's 'Rep' / 'Run' / 'Walk' labels are differently translated words.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cool-down walk"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gehen zum Abkühlen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caminata de enfriamiento"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marche de retour au calme"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クールダウンのウォーク"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caminhada de desaquecimento"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caminhada de desaquecimento"
+          }
+        }
+      }
+    },
+    "tts.step.recovery": {
+      "comment": "Spoken workout step name, the start of a step announcement. Verbatim from the phone's ttsStepRecovery in apps/mobile_android/lib/l10n/app_*.arb. Namespaced because the running screen's 'Rep' / 'Run' / 'Walk' labels are differently translated words.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recovery"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erholung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recuperación"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Récupération"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リカバリー"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recuperação"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recuperação"
+          }
+        }
+      }
+    },
+    "tts.step.rep": {
+      "comment": "Spoken workout step name, the start of a step announcement. Verbatim from the phone's ttsStepRep in apps/mobile_android/lib/l10n/app_*.arb. Namespaced because the running screen's 'Rep' / 'Run' / 'Walk' labels are differently translated words.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rep"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederholung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetición"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Répétition"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "レップ"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetição"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetição"
+          }
+        }
+      }
+    },
+    "tts.step.run": {
+      "comment": "Spoken workout step name, the start of a step announcement. Verbatim from the phone's ttsStepRun in apps/mobile_android/lib/l10n/app_*.arb. Namespaced because the running screen's 'Rep' / 'Run' / 'Walk' labels are differently translated words.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laufen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carrera"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Course"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ラン"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corrida"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corrida"
+          }
+        }
+      }
+    },
+    "tts.step.steady": {
+      "comment": "Spoken workout step name, the start of a step announcement. Verbatim from the phone's ttsStepSteady in apps/mobile_android/lib/l10n/app_*.arb. Namespaced because the running screen's 'Rep' / 'Run' / 'Walk' labels are differently translated words.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steady"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gleichmäßig"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ritmo constante"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allure régulière"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一定ペース"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ritmo constante"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ritmo constante"
+          }
+        }
+      }
+    },
+    "tts.step.walk": {
+      "comment": "Spoken workout step name, the start of a step announcement. Verbatim from the phone's ttsStepWalk in apps/mobile_android/lib/l10n/app_*.arb. Namespaced because the running screen's 'Rep' / 'Run' / 'Walk' labels are differently translated words.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Walk"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gehen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caminata"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marche"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ウォーク"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caminhada"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caminhada"
+          }
+        }
+      }
+    },
+    "tts.step.warmup": {
+      "comment": "Spoken workout step name, the start of a step announcement. Verbatim from the phone's ttsStepWarmup in apps/mobile_android/lib/l10n/app_*.arb. Namespaced because the running screen's 'Rep' / 'Run' / 'Walk' labels are differently translated words.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warmup"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufwärmen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calentamiento"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échauffement"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ウォームアップ"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aquecimento"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aquecimento"
+          }
+        }
+      }
+    },
+    "tts.step.warmupWalk": {
+      "comment": "Spoken workout step name, the start of a step announcement. Verbatim from the phone's ttsStepWarmupWalk in apps/mobile_android/lib/l10n/app_*.arb. Namespaced because the running screen's 'Rep' / 'Run' / 'Walk' labels are differently translated words.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warm-up walk"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gehen zum Aufwärmen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caminata de calentamiento"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marche d'échauffement"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ウォームアップのウォーク"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caminhada de aquecimento"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caminhada de aquecimento"
+          }
+        }
+      }
+    },
+    "workoutKind.easy": {
+      "comment": "Plan workout kind 'easy' (plan_workouts.kind), shown on the complication's today state. One product, one word: taken verbatim from the web's workoutKind.easy and the phone's workoutKind ARB keys.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Easy"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Locker"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Facile"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suave"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "イージー"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leve"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leve"
+          }
+        }
+      }
+    },
+    "workoutKind.interval": {
+      "comment": "Plan workout kind 'interval' (plan_workouts.kind), shown on the complication's today state. One product, one word: taken verbatim from the web's workoutKind.interval and the phone's workoutKind ARB keys.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intervals"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intervalle"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fractionné"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Series"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "インターバル"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intervalado"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intervalado"
+          }
+        }
+      }
+    },
+    "workoutKind.long": {
+      "comment": "Plan workout kind 'long' (plan_workouts.kind), shown on the complication's today state. One product, one word: taken verbatim from the web's workoutKind.long and the phone's workoutKind ARB keys.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Long run"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Langer Lauf"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sortie longue"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tirada larga"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ロング走"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Longão"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Longão"
+          }
+        }
+      }
+    },
+    "workoutKind.marathon_pace": {
+      "comment": "Plan workout kind 'marathon_pace' (plan_workouts.kind), shown on the complication's today state. One product, one word: taken verbatim from the web's workoutKind.marathon_pace and the phone's workoutKind ARB keys.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marathon pace"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marathontempo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allure marathon"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ritmo de maratón"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "マラソンペース"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ritmo de maratona"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ritmo de maratona"
+          }
+        }
+      }
+    },
+    "workoutKind.race": {
+      "comment": "Plan workout kind 'race' (plan_workouts.kind), shown on the complication's today state. One product, one word: taken verbatim from the web's workoutKind.race and the phone's workoutKind ARB keys.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Race"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wettkampf"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Course"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carrera"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "レース"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prova"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prova"
+          }
+        }
+      }
+    },
+    "workoutKind.recovery": {
+      "comment": "Plan workout kind 'recovery' (plan_workouts.kind), shown on the complication's today state. One product, one word: taken verbatim from the web's workoutKind.recovery and the phone's workoutKind ARB keys.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recovery"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erholung"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Récupération"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recuperación"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リカバリー"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recuperação"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recuperação"
+          }
+        }
+      }
+    },
+    "workoutKind.tempo": {
+      "comment": "Plan workout kind 'tempo' (plan_workouts.kind), shown on the complication's today state. One product, one word: taken verbatim from the web's workoutKind.tempo and the phone's workoutKind ARB keys.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tempo"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tempo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tempo"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tempo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テンポ"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tempo"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tempo"
+          }
+        }
+      }
+    },
+    "workoutKind.walk_run": {
+      "comment": "Plan workout kind 'walk_run' (plan_workouts.kind), shown on the complication's today state. One product, one word: taken verbatim from the web's workoutKind.walk_run and the phone's workoutKind ARB keys.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Walk-run"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geh-Lauf"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marche-course"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caminar-correr"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ウォークラン"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caminhada-corrida"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caminhada-corrida"
           }
         }
       }

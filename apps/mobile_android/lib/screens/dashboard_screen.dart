@@ -65,7 +65,11 @@ import '../widgets/run_list_tile.dart';
 import '../widgets/this_week_strip.dart';
 import '../widgets/goal_editor_sheet.dart';
 import '../widgets/todays_workout_card.dart';
+import '../widgets/plan_nudge_card.dart';
+import '../plan_nudges.dart' show PlanNudge, PlanNudgeKind, workoutOverrunMetres;
 import '../widgets/finish_plan_card.dart';
+import '../widgets/plan_break_card.dart';
+import '../widgets/missed_workout_prompt_card.dart';
 import '../widgets/next_race_card.dart';
 import '../widgets/up_next_plan_card.dart';
 import '../widgets/plan_discovery_card.dart';
@@ -915,10 +919,44 @@ class _DashboardScreenState extends State<DashboardScreen>
             onTap: () => _openPlan(p.upcomingPlan!.id),
           )
         : null;
-    if (race == null || upNext == null) return race ?? upNext;
+    final brk = _planBreakCard(p, now);
+    final parts = [?brk, ?race, ?upNext];
+    if (parts.length < 2) return parts.firstOrNull;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [race, const SizedBox(height: 8), upNext],
+      children: [
+        for (var i = 0; i < parts.length; i++) ...[
+          if (i > 0) const SizedBox(height: 8),
+          parts[i],
+        ],
+      ],
+    );
+  }
+
+  /// A break of a week or more in the shown plan (decisions § 2128). The
+  /// card hides itself when there is none; the local store holds every run,
+  /// unsynced ones included, so a run recorded offline still ends a break.
+  Widget? _planBreakCard(ActivePlanOverview p, DateTime now) {
+    final training = widget.training;
+    if (training == null) return null;
+    final runStarts = [for (final r in widget.runStore.summaryRuns) r.startedAt];
+    if (!PlanBreakCard.shows(
+        plan: p.plan,
+        weeks: p.weeks,
+        workouts: p.workouts,
+        runStarts: runStarts,
+        now: now)) {
+      return null;
+    }
+    return PlanBreakCard(
+      key: const Key('dashboardPlanBreak'),
+      training: training,
+      plan: p.plan,
+      weeks: p.weeks,
+      workouts: p.workouts,
+      runStarts: runStarts,
+      now: now,
+      onApplied: _refreshPlanOverview,
     );
   }
 
@@ -954,6 +992,93 @@ class _DashboardScreenState extends State<DashboardScreen>
         builder: (_) => PlanDetailScreen(training: svc, planId: planId),
       ),
     );
+  }
+
+  /// Asks once about the plan's most recent missed workout (decisions
+  /// § 2122). Only for an active plan that has not run out of dates; the
+  /// overview is always the runner's own.
+  Widget? _missedPromptCard(DateTime now) {
+    final p = _planOverview;
+    final svc = widget.training;
+    if (p == null || svc == null) return null;
+    if (p.plan.status != 'active' || p.plan.isTemplate || _planFinished(now)) {
+      return null;
+    }
+    final prompt = MissedWorkoutPromptCard.promptFor(
+        weeks: p.weeks, workouts: p.workouts, now: now);
+    if (prompt == null) return null;
+    return MissedWorkoutPromptCard(
+      key: ValueKey('dashboardMissedPrompt-${prompt.workoutId}'),
+      training: svc,
+      planId: p.plan.id,
+      prompt: prompt,
+      onMakeUp: () async {
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => PlanDetailScreen(
+              training: svc,
+              planId: p.plan.id,
+              openMakeUp: true,
+            ),
+          ),
+        );
+        _refreshPlanOverview();
+      },
+      onAnswered: _refreshPlanOverview,
+    );
+  }
+
+  /// How far today's done workout ran past its target, when the linked run
+  /// is on this device (`workoutOverrunMetres`).
+  double? _todayOverrun(List<Run> runs) {
+    final t = _planOverview?.todayWorkout;
+    final runId = t?.completedRunId;
+    if (t == null || runId == null) return null;
+    for (final r in runs) {
+      if (r.id == runId) {
+        return workoutOverrunMetres(t.targetDistanceM, r.distanceMetres);
+      }
+    }
+    return null;
+  }
+
+  /// Home's plan card (`planNudge`): null when there is nothing to say, the
+  /// plan's dates have run out, or there is no service to open the plan with.
+  Widget? _planNudgeCard(List<Run> runs, DateTime now) {
+    final p = _planOverview;
+    final svc = widget.training;
+    if (p == null || svc == null || _planFinished(now)) return null;
+    final nudge = PlanNudgeCard.nudgeFor(
+      overview: p,
+      runs: runs,
+      dismissed: PlanNudgeCard.dismissedIn(widget.settingsSync),
+      now: now,
+    );
+    if (nudge == null) return null;
+    return PlanNudgeCard(
+      key: ValueKey('planNudge:${nudge.key}'),
+      overview: p,
+      runs: runs,
+      settingsSync: widget.settingsSync,
+      now: now,
+      onReview: (n) => _reviewPlanNudge(svc, p.plan.id, n),
+    );
+  }
+
+  Future<void> _reviewPlanNudge(
+      TrainingService svc, String planId, PlanNudge n) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PlanDetailScreen(
+          training: svc,
+          planId: planId,
+          openReview: n.kind == PlanNudgeKind.adaptiveUnder
+              ? PlanReview.adaptive
+              : PlanReview.replan,
+        ),
+      ),
+    );
+    _refreshPlanOverview();
   }
 
   void _openTodayWorkout() {
@@ -1283,12 +1408,33 @@ class _DashboardScreenState extends State<DashboardScreen>
     // Active-plan hero + the goals block: both outlive the welcome state,
     // because onboarding can mint a plan and a goal before the first run
     // exists and neither is a derived metric.
-    final heroWorkoutCard = _planOverview?.todayWorkout != null
+    final todayCard = _planOverview?.todayWorkout != null
         ? TodaysWorkoutCard(
             workout: _planOverview!.todayWorkout!,
             onTap: _openTodayWorkout,
+            overrunMetres: _todayOverrun(runs),
           )
         : null;
+    final missedPrompt = _missedPromptCard(now);
+    final nudgeCard = _planNudgeCard(runs, now);
+    final heroCards = [
+      if (missedPrompt != null) missedPrompt,
+      if (todayCard != null) todayCard,
+      if (nudgeCard != null) nudgeCard,
+    ];
+    final Widget? heroWorkoutCard = heroCards.isEmpty
+        ? null
+        : heroCards.length == 1
+            ? heroCards.single
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = 0; i < heroCards.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 8),
+                    heroCards[i],
+                  ],
+                ],
+              );
     final pendingBanner = PendingSyncBanner(
       api: api,
       isOnline: _isOnline,

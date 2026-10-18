@@ -1,6 +1,7 @@
 package com.runapp.watchwear
 
 import com.runapp.watchwear.generated.RunRow
+import com.runapp.watchwear.workout.VoiceVerbosity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -150,6 +151,16 @@ data class UniversalSettings(
     /// by an older build, or a value of the wrong type, must not mute cues
     /// nobody turned off.
     val voiceFeedbackEnabled: Boolean = true,
+    /// Universal `voice_feedback_verbosity`: `minimal` drops the spoken
+    /// end-of-step warning and pace-drift nudge of today's workout and keeps
+    /// the step change and completion, as on the phone. Any other value,
+    /// absent included, is `full`, the registry default.
+    val voiceFeedbackVerbosity: VoiceVerbosity = VoiceVerbosity.FULL,
+    /// The `workout_steps` id of the universal `voice_cue_types` map: whether
+    /// the workout's step cues are spoken. An absent id is ON (the registry's
+    /// rule, so a new cue type defaults audible) and only an explicit JSON
+    /// `false` turns it off, as with [voiceFeedbackEnabled].
+    val workoutStepCuesEnabled: Boolean = true,
 )
 
 /// Allowed values for `default_activity_type`. Mirrors the CHECK
@@ -215,6 +226,12 @@ internal fun parseUniversalSettings(body: String?): UniversalSettings? {
                 ?.takeIf { it in UNIVERSAL_PREFERRED_UNITS },
             showCalories = strictBoolean(prefs, "show_calories") != false,
             voiceFeedbackEnabled = strictBoolean(prefs, "voice_feedback_enabled") != false,
+            voiceFeedbackVerbosity = VoiceVerbosity.fromPref(
+                (prefs["voice_feedback_verbosity"] as? JsonPrimitive)
+                    ?.takeIf { it.isString }?.contentOrNull,
+            ),
+            workoutStepCuesEnabled = (prefs["voice_cue_types"] as? JsonObject)
+                ?.let { strictBoolean(it, "workout_steps") } != false,
         )
     } catch (_: Throwable) {
         null

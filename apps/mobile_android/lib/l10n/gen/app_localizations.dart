@@ -10846,6 +10846,78 @@ abstract class AppLocalizations {
   /// **'{n, plural, one{Adjusted 1 workout} other{Adjusted {n} workouts}}'**
   String planDetailReplanApplied(int n);
 
+  /// Home plan card title: under-run trend
+  ///
+  /// In en, this message translates to:
+  /// **'Running a little less than planned'**
+  String get planNudgeUnderTitle;
+
+  /// Home plan card body: under-run trend. n of the last total completed weeks were under plan
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve run less than planned in {n} of the last {total} weeks. There\'s a suggested adjustment to the weeks ahead.'**
+  String planNudgeUnderBody(int n, int total);
+
+  /// Home plan card title: last week well over plan
+  ///
+  /// In en, this message translates to:
+  /// **'A big week'**
+  String get planNudgeEaseTitle;
+
+  /// Home plan card body: last week more than 20% over plan, next week's shorter runs eased
+  ///
+  /// In en, this message translates to:
+  /// **'You ran well over plan last week. Easing next week\'s shorter runs helps your body absorb it.'**
+  String get planNudgeEaseBody;
+
+  /// Home plan card title: runs on rest days
+  ///
+  /// In en, this message translates to:
+  /// **'Running on rest days'**
+  String get planNudgeRestTitle;
+
+  /// Home plan card body: runs on rest days in n of the last total completed weeks
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve run on rest days in {n} of the last {total} weeks. Those runs count toward your week, but rest days are where the training sinks in.'**
+  String planNudgeRestBody(int n, int total);
+
+  /// Home plan card: open the existing re-plan preview
+  ///
+  /// In en, this message translates to:
+  /// **'Review the changes'**
+  String get planNudgeReview;
+
+  /// Home plan card: dismiss
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get planNudgeDismiss;
+
+  /// Accessible name of the dismiss control
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss this suggestion'**
+  String get planNudgeDismissA11y;
+
+  /// Dismissing the plan card could not be saved
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t hide that suggestion. Try again.'**
+  String get planNudgeDismissFailed;
+
+  /// How far a done workout ran past its target, shown after Done, e.g. +3 km
+  ///
+  /// In en, this message translates to:
+  /// **'+{distance}'**
+  String planWorkoutOverrun(String distance);
+
+  /// Screen-reader text for the over-run, e.g. 3 km more than planned
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} more than planned'**
+  String planWorkoutOverrunA11y(String distance);
+
   /// Plan-detail adherence/replan/duplicate
   ///
   /// In en, this message translates to:
@@ -29407,6 +29479,66 @@ abstract class AppLocalizations {
   /// **'The new race date runs into another active plan. Move or end that plan first.'**
   String get planDetailRaceDateOverlap;
 
+  /// Settings toggle title: vibrate the phone on workout step changes, workout completion and pace alerts during a run
+  ///
+  /// In en, this message translates to:
+  /// **'Vibration cues'**
+  String get phoneSurfaceVibrationCues;
+
+  /// Subtitle of the vibration-cues toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Buzz when a workout step changes, when a workout ends and with pace alerts, even with the screen off.'**
+  String get phoneSurfaceVibrationCuesSubtitle;
+
+  /// Home-screen widget header above today's planned session
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get phoneSurfaceWidgetHeader;
+
+  /// Home-screen widget: the runner has no active training plan
+  ///
+  /// In en, this message translates to:
+  /// **'No training plan'**
+  String get phoneSurfaceWidgetNoPlan;
+
+  /// Home-screen widget: tap prompt that opens the plan list when there is no plan
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a plan'**
+  String get phoneSurfaceWidgetNoPlanAction;
+
+  /// Home-screen widget: the active plan has nothing on today's date
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing scheduled'**
+  String get phoneSurfaceWidgetNothingScheduled;
+
+  /// Home-screen widget: the saved snapshot no longer covers today; opening the app refreshes it
+  ///
+  /// In en, this message translates to:
+  /// **'Open Threkir to update'**
+  String get phoneSurfaceWidgetStale;
+
+  /// Home-screen widget: today is a planned rest day
+  ///
+  /// In en, this message translates to:
+  /// **'Rest day'**
+  String get phoneSurfaceWidgetRestDay;
+
+  /// Home-screen widget: today's planned session is done
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get phoneSurfaceWidgetDone;
+
+  /// Home-screen widget: the runner skipped today's planned session
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get phoneSurfaceWidgetSkipped;
+
   /// Home plan entry for a runner with no training plan; opens the plan wizard
   ///
   /// In en, this message translates to:
@@ -29454,6 +29586,210 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Filled in from your recent 5K. Turn on the switch below only if it reflects your fitness today.'**
   String get planNewRecent5kSuggested;
+
+  /// Plan break card title: the runner has had a week or more without running inside their plan
+  ///
+  /// In en, this message translates to:
+  /// **'Coming back after a break'**
+  String get planBreakTitle;
+
+  /// Plan break card body: days without a run or plan workout, since date (the first quiet day)
+  ///
+  /// In en, this message translates to:
+  /// **'No run or plan workout logged for {days, plural, one {{days} day} other {{days} days}}, since {date}.'**
+  String planBreakBody(int days, String date);
+
+  /// Plan break card hint for a plan ending on a race: date is race day, which never moves
+  ///
+  /// In en, this message translates to:
+  /// **'You can pick the plan up where you left off. Race day stays {date} and the taper is kept; a later build week makes room for each week you run again.'**
+  String planBreakHintRace(String date);
+
+  /// Plan break card hint for a plan without a race
+  ///
+  /// In en, this message translates to:
+  /// **'You can pick the plan up where you left off; the rest of the plan moves back to make room.'**
+  String get planBreakHintNoRace;
+
+  /// Plan break action: run the current week again next week
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat this week'**
+  String get planBreakRepeat;
+
+  /// Label of the number field choosing how many weeks to run again
+  ///
+  /// In en, this message translates to:
+  /// **'Weeks'**
+  String get planBreakWeeksLabel;
+
+  /// Plan break action for a plan without a race: run the chosen weeks again and move the rest back
+  ///
+  /// In en, this message translates to:
+  /// **'Push the plan back'**
+  String get planBreakPushBack;
+
+  /// Plan break action for a race plan: run the chosen weeks again and drop later build weeks so race day holds
+  ///
+  /// In en, this message translates to:
+  /// **'Shorten the build'**
+  String get planBreakShortenBuild;
+
+  /// Plan break action: hide the card and leave the plan unchanged
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the plan as it is'**
+  String get planBreakDismiss;
+
+  /// Title of the plan break preview dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Change your plan?'**
+  String get planBreakConfirmTitle;
+
+  /// Confirm button of the plan break preview dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Change plan'**
+  String get planBreakConfirmApply;
+
+  /// Preview line: how many weeks run again from next week
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {This week runs again next week.} other {The last {n} weeks run again, starting next week.}}'**
+  String planBreakPreviewRepeat(int n);
+
+  /// Preview line for a race plan: how many later build weeks are removed
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {{n} later build week is} other {{n} later build weeks are}} taken out to make room; the taper stays as it is.'**
+  String planBreakPreviewDropped(int n);
+
+  /// Preview line for a race plan: race day is unchanged
+  ///
+  /// In en, this message translates to:
+  /// **'Race day stays {date}.'**
+  String planBreakPreviewRaceDay(String date);
+
+  /// Preview line for a plan without a race: its new end date
+  ///
+  /// In en, this message translates to:
+  /// **'The weeks after move back, and the plan now ends {date}.'**
+  String planBreakPreviewEnd(String date);
+
+  /// Preview line: nothing already done changes
+  ///
+  /// In en, this message translates to:
+  /// **'Weeks you have already run and anything you have done don\'t change.'**
+  String get planBreakPreviewPast;
+
+  /// Banner after the plan break change applied; date is the plan end
+  ///
+  /// In en, this message translates to:
+  /// **'Plan updated. It ends {date}.'**
+  String planBreakApplied(String date);
+
+  /// Banner when the plan break change failed; nothing changed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t change the plan: {error}'**
+  String planBreakFailed(String error);
+
+  /// Banner when hiding the plan break card could not be saved
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save that: {error}'**
+  String planBreakDismissFailed(String error);
+
+  /// Banner when the chosen number of weeks cannot be run again
+  ///
+  /// In en, this message translates to:
+  /// **'That many weeks can\'t be run again in this plan.'**
+  String get planBreakUnavailable;
+
+  /// Accessible label of the button lowering how many weeks run again
+  ///
+  /// In en, this message translates to:
+  /// **'One week fewer'**
+  String get planBreakWeeksFewer;
+
+  /// Accessible label of the button raising how many weeks run again
+  ///
+  /// In en, this message translates to:
+  /// **'One week more'**
+  String get planBreakWeeksMore;
+
+  /// Heading of the missed-workout prompt on the Today card: the workout kind and the weekday + date it was scheduled
+  ///
+  /// In en, this message translates to:
+  /// **'Missed: {kind} on {day}'**
+  String missedPromptTitle(String kind, String day);
+
+  /// Missed-workout prompt body when the engine offers a make-up: the next long run is stretched from one distance to another; the change is previewed before saving
+  ///
+  /// In en, this message translates to:
+  /// **'Make it up by stretching your next long run from {from} to {to}. You\'ll see the change before it\'s saved.'**
+  String missedPromptMakeUpBody(String from, String to);
+
+  /// Missed-workout prompt body: a missed long run that the next long run already covers, so no make-up is added
+  ///
+  /// In en, this message translates to:
+  /// **'Your next long run already covers it, so there\'s nothing to add.'**
+  String get missedPromptCoveredBody;
+
+  /// Missed-workout prompt body: a missed long run during the taper is let go
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re tapering, so let it go: being fresh on race day matters more than one more long run.'**
+  String get missedPromptTaperBody;
+
+  /// Missed-workout prompt body: a missed long run right before a recovery week is let go
+  ///
+  /// In en, this message translates to:
+  /// **'A recovery week is next, so let it go and let that week absorb it.'**
+  String get missedPromptRecoveryBody;
+
+  /// Missed-workout prompt body for a missed non-long session (easy, tempo, intervals): it is let go, never moved
+  ///
+  /// In en, this message translates to:
+  /// **'Only a long run is worth making up. Let this one go rather than crowding it into the days ahead.'**
+  String get missedPromptLetGoBody;
+
+  /// Missed-workout prompt button: preview the make-up (a longer next long run)
+  ///
+  /// In en, this message translates to:
+  /// **'Make it up'**
+  String get missedPromptMakeUp;
+
+  /// Missed-workout prompt button: drop the missed workout and record the answer
+  ///
+  /// In en, this message translates to:
+  /// **'Let it go'**
+  String get missedPromptLetGo;
+
+  /// Tag on the missed-workout prompt button the plan engine recommends
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get missedPromptRecommended;
+
+  /// Banner after the runner let a missed workout go
+  ///
+  /// In en, this message translates to:
+  /// **'Let go. Your plan carries on as it was.'**
+  String get missedPromptLetGoDone;
+
+  /// Error banner when the answer to the missed-workout prompt could not be saved; nothing changed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save your answer: {error}'**
+  String missedPromptSaveFailed(String error);
+
+  /// Banner when a make-up was requested but there is no missed long run left to make up
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s nothing left to make up.'**
+  String get missedPromptNothingToMakeUp;
 }
 
 class _AppLocalizationsDelegate

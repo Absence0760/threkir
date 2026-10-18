@@ -48,7 +48,7 @@ final class RunAnnouncerTests: XCTestCase {
     ) -> (RunAnnouncer, () -> [String]) {
         let announcer = RunAnnouncer()
         var spoken: [String] = []
-        announcer.speak = { spoken.append($0) }
+        announcer.speak = { text, _ in spoken.append(text) }
         announcer.isEnabled = { enabled }
         announcer.prefersMiles = { prefersMiles }
         return (announcer, { spoken })
@@ -397,7 +397,7 @@ final class RunAnnouncerTests: XCTestCase {
         var attempts = 0
         announcer.isEnabled = { true }
         announcer.prefersMiles = { false }
-        announcer.speak = { _ in attempts += 1 }
+        announcer.speak = { _, _ in attempts += 1 }
         announcer.announceSplitIfDue(distanceMetres: 1000, paceSecondsPerKm: nil)
         announcer.announceSplitIfDue(distanceMetres: 2000, paceSecondsPerKm: nil)
         XCTAssertEqual(attempts, 2)
@@ -515,5 +515,484 @@ final class PaceAlertGateTests: XCTestCase {
         // so a later rewrite of the comparison cannot start speaking at it.
         XCTAssertFalse(decide(current: .nan).fire)
         XCTAssertFalse(decide(current: .infinity).fire)
+    }
+}
+
+/// The spoken half of a structured workout: which cue a feed of runner events
+/// speaks, whether the phone's voice switches let it, what it says, and in
+/// what order the speaker takes it. Phrase assertions about the WORDS name
+/// `en_US`, as `testEnglishWordingMatchesThePhone` does; the rest compose from
+/// the catalogue's own parts so they hold in any host language.
+final class WorkoutSpokenCueTests: XCTestCase {
+    private let en = Locale(identifier: "en_US")
+    private var saved: [String: Any] = [:]
+    private let keys = [
+        RunAnnouncer.preferenceKey, RunAnnouncer.verbosityKey, RunAnnouncer.workoutStepCuesKey,
+    ]
+
+    override func setUp() {
+        super.setUp()
+        saved = [:]
+        for key in keys {
+            if let value = UserDefaults.standard.object(forKey: key) { saved[key] = value }
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+    }
+
+    override func tearDown() {
+        for key in keys {
+            if let value = saved[key] {
+                UserDefaults.standard.set(value, forKey: key)
+            } else {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+        super.tearDown()
+    }
+
+    private func step(
+        _ kind: WorkoutStepKind,
+        rep: (Int, Int)? = nil,
+        metres: Int? = nil,
+        seconds: Int? = nil,
+        pace: Int = 300
+    ) -> PushedStep {
+        PushedStep(
+            kind: kind,
+            repIndex: rep?.0,
+            repTotal: rep?.1,
+            distanceMetres: metres,
+            durationSeconds: seconds,
+            paceSecondsPerKm: pace,
+            toleranceSecondsPerKm: 10
+        )
+    }
+
+    private func workout(_ steps: [PushedStep], unpaced: Bool = false) -> PushedWorkout {
+        PushedWorkout(
+            planWorkoutId: "pw-1", scheduledDate: "2026-10-18", workoutKind: "interval",
+            unpaced: unpaced, steps: steps
+        )
+    }
+
+    private func say(_ cue: WorkoutSpokenCue, miles: Bool = false) -> String {
+        WorkoutCuePhrase.text(for: cue, prefersMiles: miles, locale: en)
+    }
+
+    private func announcer(
+        audio: Bool = true, stepCues: Bool = true, verbose: Bool = true, miles: Bool = false
+    ) -> (RunAnnouncer, () -> [(String, RunCuePriority)]) {
+        let announcer = RunAnnouncer()
+        var spoken: [(String, RunCuePriority)] = []
+        announcer.speak = { spoken.append(($0, $1)) }
+        announcer.isEnabled = { audio }
+        announcer.workoutStepCuesEnabled = { stepCues }
+        announcer.isVerbose = { verbose }
+        announcer.prefersMiles = { miles }
+        return (announcer, { spoken })
+    }
+
+    // MARK: - which cue a feed speaks
+
+    func testTheFirstStepIsAnnouncedThoughItDoesNotBuzz() {
+        let w = workout([step(.warmup, metres: 1000), step(.rep, metres: 400)])
+        let events: [WatchWorkoutEvent] = [.transition(previous: -1, current: 0)]
+        XCTAssertNil(WatchWorkoutCue.cue(for: events), "the haptic stays silent on Start")
+        XCTAssertEqual(WorkoutSpokenCue.cue(for: events, workout: w), .step(w.steps[0], paced: true))
+    }
+
+    func testSeveralTransitionsInOneFeedSpeakOnlyTheStepTheRunnerIsOn() {
+        let w = workout([step(.rep, metres: 400), step(.recovery, seconds: 60), step(.rep, metres: 400)])
+        let events: [WatchWorkoutEvent] = [
+            .transition(previous: 0, current: 1), .transition(previous: 1, current: 2),
+        ]
+        XCTAssertEqual(WorkoutSpokenCue.cue(for: events, workout: w), .step(w.steps[2], paced: true))
+    }
+
+    func testATransitionReplacesTheWarningAndTheDriftOfTheStepItLeft() {
+        let w = workout([step(.rep, metres: 400), step(.recovery, seconds: 60)])
+        let events: [WatchWorkoutEvent] = [
+            .warning(index: 0),
+            .paceDrift(index: 0, ahead: false, deltaSecondsPerKm: 40),
+            .transition(previous: 0, current: 1),
+        ]
+        XCTAssertEqual(WorkoutSpokenCue.cue(for: events, workout: w), .step(w.steps[1], paced: true))
+    }
+
+    func testCompletionReplacesEverything() {
+        let w = workout([step(.rep, metres: 400)])
+        let events: [WatchWorkoutEvent] = [.transition(previous: -1, current: 0), .warning(index: 0), .complete]
+        XCTAssertEqual(WorkoutSpokenCue.cue(for: events, workout: w), .complete)
+    }
+
+    func testTheWarningSaysWhichAxisTheStepEndsOn() {
+        let w = workout([step(.recovery, seconds: 90), step(.rep, metres: 800)])
+        XCTAssertEqual(
+            WorkoutSpokenCue.cue(for: [.warning(index: 0)], workout: w), .stepEnding(timed: true)
+        )
+        XCTAssertEqual(
+            WorkoutSpokenCue.cue(for: [.warning(index: 1)], workout: w), .stepEnding(timed: false)
+        )
+    }
+
+    func testTheDriftNudgeIsSpokenInTheDirectionToCorrect() {
+        let w = workout([step(.rep, metres: 800)])
+        XCTAssertEqual(
+            WorkoutSpokenCue.cue(
+                for: [.paceDrift(index: 0, ahead: true, deltaSecondsPerKm: 30)], workout: w
+            ),
+            .paceDrift(tooSlow: false)
+        )
+        XCTAssertEqual(
+            WorkoutSpokenCue.cue(
+                for: [.paceDrift(index: 0, ahead: false, deltaSecondsPerKm: 30)], workout: w
+            ),
+            .paceDrift(tooSlow: true)
+        )
+    }
+
+    func testAFeedWithNothingInItSaysNothing() {
+        XCTAssertNil(WorkoutSpokenCue.cue(for: [], workout: workout([step(.steady, metres: 5000)])))
+    }
+
+    func testAnUnpacedSessionsStepsAreAnnouncedUnpaced() {
+        let w = workout([step(.walk, rep: (1, 5), seconds: 90)], unpaced: true)
+        XCTAssertEqual(
+            WorkoutSpokenCue.cue(for: [.transition(previous: -1, current: 0)], workout: w),
+            .step(w.steps[0], paced: false)
+        )
+    }
+
+    func testAnIndexPastTheWorkoutIsNotSpoken() {
+        let w = workout([step(.rep, metres: 400)])
+        XCTAssertNil(WorkoutSpokenCue.cue(for: [.transition(previous: 0, current: 5)], workout: w))
+        XCTAssertNil(WorkoutSpokenCue.cue(for: [.warning(index: 5)], workout: w))
+    }
+
+    // MARK: - the phone's voice switches
+
+    func testFullModeSpeaksAllFour() {
+        let cues: [WorkoutSpokenCue] = [
+            .step(step(.rep, metres: 400), paced: true), .stepEnding(timed: true),
+            .complete, .paceDrift(tooSlow: true),
+        ]
+        for cue in cues {
+            XCTAssertTrue(
+                WorkoutVoiceGate.speaks(cue, audioCues: true, workoutStepCues: true, verbose: true),
+                "\(cue)"
+            )
+        }
+    }
+
+    func testMinimalModeKeepsStepChangesAndCompletionOnly() {
+        func minimal(_ cue: WorkoutSpokenCue) -> Bool {
+            WorkoutVoiceGate.speaks(cue, audioCues: true, workoutStepCues: true, verbose: false)
+        }
+        XCTAssertTrue(minimal(.step(step(.rep, metres: 400), paced: true)))
+        XCTAssertTrue(minimal(.complete))
+        XCTAssertFalse(minimal(.stepEnding(timed: true)))
+        XCTAssertFalse(minimal(.stepEnding(timed: false)))
+        XCTAssertFalse(minimal(.paceDrift(tooSlow: true)))
+        XCTAssertFalse(minimal(.paceDrift(tooSlow: false)))
+    }
+
+    func testAudioOffSpeaksNothingInEitherMode() {
+        let cues: [WorkoutSpokenCue] = [
+            .step(step(.rep, metres: 400), paced: true), .stepEnding(timed: false),
+            .complete, .paceDrift(tooSlow: false),
+        ]
+        for cue in cues {
+            for verbose in [true, false] {
+                XCTAssertFalse(
+                    WorkoutVoiceGate.speaks(cue, audioCues: false, workoutStepCues: true, verbose: verbose)
+                )
+            }
+        }
+    }
+
+    func testTheWorkoutStepsVoiceCueSilencesTheWorkoutAlone() {
+        XCTAssertFalse(
+            WorkoutVoiceGate.speaks(.complete, audioCues: true, workoutStepCues: false, verbose: true)
+        )
+        XCTAssertFalse(
+            WorkoutVoiceGate.speaks(
+                .step(step(.steady, metres: 5000), paced: true),
+                audioCues: true, workoutStepCues: false, verbose: true
+            )
+        )
+    }
+
+    func testThePreferencesDefaultToFullAndOn() {
+        XCTAssertTrue(RunAnnouncer.isVerboseByPreference)
+        XCTAssertTrue(RunAnnouncer.workoutStepCuesByPreference)
+        UserDefaults.standard.set("minimal", forKey: RunAnnouncer.verbosityKey)
+        XCTAssertFalse(RunAnnouncer.isVerboseByPreference)
+        UserDefaults.standard.set("full", forKey: RunAnnouncer.verbosityKey)
+        XCTAssertTrue(RunAnnouncer.isVerboseByPreference)
+        UserDefaults.standard.set(false, forKey: RunAnnouncer.workoutStepCuesKey)
+        XCTAssertFalse(RunAnnouncer.workoutStepCuesByPreference)
+    }
+
+    func testThePreferenceKeysAreTheWireKeys() {
+        // `apple_watch_prefs_bridge.dart` sends these; a rename on one side is
+        // a switch the runner flips that the wrist never reads.
+        XCTAssertEqual(RunAnnouncer.verbosityKey, "voice_feedback_verbosity")
+        XCTAssertEqual(RunAnnouncer.workoutStepCuesKey, "voice_cue_workout_steps")
+    }
+
+    // MARK: - the announcer
+
+    func testTheAnnouncerSpeaksAStepChangeAtStepPriority() {
+        let (a, spoken) = announcer()
+        let rep = step(.rep, rep: (3, 6), metres: 400, pace: 240)
+        a.announceWorkout(.step(rep, paced: true))
+        XCTAssertEqual(spoken().count, 1)
+        XCTAssertEqual(
+            spoken().first?.0,
+            WorkoutCuePhrase.text(for: .step(rep, paced: true), prefersMiles: false)
+        )
+        XCTAssertEqual(spoken().first?.1, RunCuePriority.step)
+    }
+
+    func testTheAnnouncerHonoursMinimalAndOff() {
+        let (minimal, minimalSpoken) = announcer(verbose: false)
+        minimal.announceWorkout(.stepEnding(timed: true))
+        minimal.announceWorkout(.paceDrift(tooSlow: true))
+        minimal.announceWorkout(.complete)
+        XCTAssertEqual(
+            minimalSpoken().map { $0.0 },
+            [WorkoutCuePhrase.text(for: .complete, prefersMiles: false)]
+        )
+
+        let (off, offSpoken) = announcer(audio: false)
+        off.announceWorkout(.complete)
+        off.announceWorkout(.step(step(.steady, metres: 5000), paced: true))
+        XCTAssertTrue(offSpoken().isEmpty)
+    }
+
+    func testTheDriftNudgeWaitsItsTurnLikeAPaceAlert() {
+        let (a, spoken) = announcer()
+        a.announceWorkout(.paceDrift(tooSlow: true))
+        XCTAssertEqual(spoken().first?.1, RunCuePriority.normal)
+        XCTAssertEqual(
+            spoken().first?.0,
+            RunCuePhrase.text(for: .paceAlert(tooSlow: true), prefersMiles: false)
+        )
+    }
+
+    func testTheAnnouncerSpeaksInTheRunnersUnit() {
+        let (a, spoken) = announcer(miles: true)
+        a.announceWorkout(.stepEnding(timed: false))
+        XCTAssertEqual(
+            spoken().first?.0, WorkoutCuePhrase.text(for: .stepEnding(timed: false), prefersMiles: true)
+        )
+    }
+
+    // MARK: - the numbers
+
+    func testMetricDistancesSpeakMetresUnderAKilometre() {
+        XCTAssertEqual(WorkoutCueMath.spokenDistance(metres: 400, prefersMiles: false), .metres(400))
+        XCTAssertEqual(WorkoutCueMath.spokenDistance(metres: 999, prefersMiles: false), .metres(999))
+        XCTAssertEqual(WorkoutCueMath.spokenDistance(metres: 1000, prefersMiles: false), .kilometres(1))
+        XCTAssertEqual(WorkoutCueMath.spokenDistance(metres: 5000, prefersMiles: false), .kilometres(5))
+        XCTAssertEqual(
+            WorkoutCueMath.spokenDistance(metres: 1500, prefersMiles: false), .kilometresDecimal("1.5")
+        )
+    }
+
+    func testImperialDistancesSpeakYardsUnderAMile() {
+        // 400 m is 437.4 yd.
+        XCTAssertEqual(WorkoutCueMath.spokenDistance(metres: 400, prefersMiles: true), .yards(437))
+        // 2000 m is 1.243 mi.
+        XCTAssertEqual(
+            WorkoutCueMath.spokenDistance(metres: 2000, prefersMiles: true), .milesDecimal("1.2")
+        )
+    }
+
+    func testAOneMileStepIsOneMileThoughThePushCarriesWholeMetres() {
+        // The phone rounds 1609.344 m to 1609 before it pushes. An exact
+        // whole-mile test would call that 0.9998 mi and say "1760 yards".
+        XCTAssertEqual(WorkoutCueMath.spokenDistance(metres: 1609, prefersMiles: true), .miles(1))
+        XCTAssertEqual(WorkoutCueMath.spokenDistance(metres: 3219, prefersMiles: true), .miles(2))
+    }
+
+    func testTheStepPaceRoundsToTheSecondAsThePhoneDoes() {
+        let km = WorkoutCueMath.stepPace(secondsPerKm: 330, prefersMiles: false)
+        XCTAssertEqual(km.minutes, 5)
+        XCTAssertEqual(km.seconds, 30)
+        // 330 s/km x 1.609344 = 531.08 s/mi, 8:51.
+        let mi = WorkoutCueMath.stepPace(secondsPerKm: 330, prefersMiles: true)
+        XCTAssertEqual(mi.minutes, 8)
+        XCTAssertEqual(mi.seconds, 51)
+        // 240 s/km x 1.609344 = 386.24 s/mi, 6:26.
+        let rep = WorkoutCueMath.stepPace(secondsPerKm: 240, prefersMiles: true)
+        XCTAssertEqual(rep.minutes, 6)
+        XCTAssertEqual(rep.seconds, 26)
+    }
+
+    func testDurationsSplitIntoMinutesAndSeconds() {
+        let walk = WorkoutCueMath.minutesSeconds(90)
+        XCTAssertEqual(walk.minutes, 1)
+        XCTAssertEqual(walk.seconds, 30)
+        let recovery = WorkoutCueMath.minutesSeconds(45)
+        XCTAssertEqual(recovery.minutes, 0)
+        XCTAssertEqual(recovery.seconds, 45)
+        let nonsense = WorkoutCueMath.minutesSeconds(-3)
+        XCTAssertEqual(nonsense.minutes, 0)
+        XCTAssertEqual(nonsense.seconds, 0)
+    }
+
+    // MARK: - the words
+
+    func testEveryStepKindInEnglishMatchesThePhone() {
+        XCTAssertEqual(
+            say(.step(step(.rep, rep: (3, 6), metres: 400, pace: 240), paced: true)),
+            "Rep 3 of 6. 400 metres at 4 minutes per kilometre."
+        )
+        XCTAssertEqual(
+            say(.step(step(.rep, metres: 1000, pace: 240), paced: true)),
+            "Rep. 1 kilometre at 4 minutes per kilometre."
+        )
+        XCTAssertEqual(
+            say(.step(step(.rep, rep: (1, 5), seconds: 60), paced: false)),
+            "Run 1 of 5. 1 minute."
+        )
+        XCTAssertEqual(say(.step(step(.rep, seconds: 120), paced: false)), "Run. 2 minutes.")
+        XCTAssertEqual(
+            say(.step(step(.warmup, metres: 2000, pace: 330), paced: true)),
+            "Warmup. 2 kilometres at 5 minutes 30 seconds per kilometre."
+        )
+        XCTAssertEqual(say(.step(step(.warmup, seconds: 300), paced: false)), "Warm-up walk. 5 minutes.")
+        XCTAssertEqual(say(.step(step(.recovery, seconds: 45), paced: true)), "Recovery. 45 seconds.")
+        XCTAssertEqual(
+            say(.step(step(.walk, rep: (2, 5), seconds: 90), paced: false)),
+            "Walk 2 of 5. 1 minute 30 seconds."
+        )
+        XCTAssertEqual(
+            say(.step(step(.steady, metres: 5000, pace: 300), paced: true)),
+            "Steady. 5 kilometres at 5 minutes per kilometre."
+        )
+        XCTAssertEqual(
+            say(.step(step(.cooldown, metres: 1500, pace: 360), paced: true)),
+            "Cooldown. 1.5 kilometres at 6 minutes per kilometre."
+        )
+        XCTAssertEqual(
+            say(.step(step(.cooldown, seconds: 300), paced: false)), "Cool-down walk. 5 minutes."
+        )
+    }
+
+    func testMilesModeSpeaksYardsMilesAndPacePerMile() {
+        XCTAssertEqual(
+            say(.step(step(.rep, rep: (3, 6), metres: 400, pace: 240), paced: true), miles: true),
+            "Rep 3 of 6. 437 yards at 6 minutes 26 seconds per mile."
+        )
+        XCTAssertEqual(
+            say(.step(step(.warmup, metres: 2000, pace: 330), paced: true), miles: true),
+            "Warmup. 1.2 miles at 8 minutes 51 seconds per mile."
+        )
+        XCTAssertEqual(
+            say(.step(step(.steady, metres: 1609, pace: 373), paced: true), miles: true),
+            "Steady. 1 mile at 10 minutes per mile."
+        )
+    }
+
+    func testATimedStepSpeaksTheSameInEitherUnit() {
+        let walk = WorkoutSpokenCue.step(step(.walk, rep: (2, 5), seconds: 90), paced: false)
+        XCTAssertEqual(say(walk, miles: false), say(walk, miles: true))
+    }
+
+    func testAnEffortLedDistanceStepCarriesNoPace() {
+        XCTAssertEqual(say(.step(step(.walk, metres: 800), paced: false)), "Walk. 800 metres.")
+        XCTAssertEqual(
+            say(.step(step(.walk, metres: 800), paced: false), miles: true), "Walk. 875 yards."
+        )
+    }
+
+    func testTheWarningCompletionAndNudgeInEnglish() {
+        XCTAssertEqual(say(.stepEnding(timed: true)), "Ten seconds to go")
+        XCTAssertEqual(say(.stepEnding(timed: true), miles: true), "Ten seconds to go")
+        XCTAssertEqual(say(.stepEnding(timed: false)), "Fifty metres to go")
+        XCTAssertEqual(say(.stepEnding(timed: false), miles: true), "Fifty yards to go")
+        XCTAssertEqual(say(.complete), "Workout complete. Nice work.")
+        XCTAssertEqual(say(.paceDrift(tooSlow: true)), "Pick up the pace")
+        XCTAssertEqual(say(.paceDrift(tooSlow: false)), "Slow down")
+    }
+
+    func testTheAnnouncementIsComposedFromItsParts() {
+        // Locale-free: whatever the host speaks, the sentence carries the
+        // step's name and its distance.
+        let rep = step(.rep, rep: (3, 6), metres: 400, pace: 240)
+        let text = WorkoutCuePhrase.text(for: .step(rep, paced: true), prefersMiles: false)
+        XCTAssertTrue(text.contains(WorkoutCuePhrase.stepName(rep, paced: true)), "Got: \(text)")
+        XCTAssertTrue(
+            text.contains(WorkoutCuePhrase.spokenDistance(.metres(400))), "Got: \(text)"
+        )
+        XCTAssertTrue(
+            text.contains(WorkoutCuePhrase.stepPace(secondsPerKm: 240, prefersMiles: false)),
+            "Got: \(text)"
+        )
+    }
+
+    func testNoWorkoutPhraseIsEmptyInAnyShippedLanguage() {
+        let steps: [PushedStep] = WorkoutStepKind.allCases.flatMap { kind in
+            [
+                step(kind, metres: 400), step(kind, metres: 1609), step(kind, metres: 2500),
+                step(kind, seconds: 1), step(kind, seconds: 60), step(kind, seconds: 95),
+                step(kind, rep: (2, 4), metres: 800), step(kind, rep: (2, 4), seconds: 120),
+            ]
+        }
+        var cues: [WorkoutSpokenCue] = [
+            .stepEnding(timed: true), .stepEnding(timed: false), .complete,
+            .paceDrift(tooSlow: true), .paceDrift(tooSlow: false),
+        ]
+        for s in steps { cues += [.step(s, paced: true), .step(s, paced: false)] }
+        for id in ["en_US", "de_DE", "fr_FR", "es_ES", "ja_JP", "pt_BR", "pt_PT"] {
+            let locale = Locale(identifier: id)
+            for miles in [false, true] {
+                for cue in cues {
+                    let text = WorkoutCuePhrase.text(for: cue, prefersMiles: miles, locale: locale)
+                    XCTAssertFalse(text.isEmpty, "\(id) \(cue)")
+                    XCTAssertFalse(text.contains("tts.step."), "an untranslated key in \(id): \(text)")
+                }
+            }
+        }
+    }
+}
+
+/// The order `RunSpeech` says things in, apart from the engine.
+final class SpeechQueueTests: XCTestCase {
+    func testNormalCuesAreSaidInTheOrderTheyArrive() {
+        var q = SpeechQueue()
+        q.enqueue("1 kilometre", priority: .normal)
+        q.enqueue("Pick up the pace", priority: .normal)
+        XCTAssertEqual(q.next(), "1 kilometre")
+        XCTAssertEqual(q.next(), "Pick up the pace")
+        XCTAssertNil(q.next())
+        XCTAssertTrue(q.isEmpty)
+    }
+
+    func testAStepCueGoesAheadOfEverythingStillWaiting() {
+        var q = SpeechQueue()
+        q.enqueue("Run started", priority: .normal)
+        q.enqueue("1 kilometre", priority: .normal)
+        q.enqueue("Rep 1 of 6", priority: .step)
+        XCTAssertEqual(q.next(), "Rep 1 of 6")
+        XCTAssertEqual(q.next(), "Run started")
+        XCTAssertEqual(q.next(), "1 kilometre")
+    }
+
+    func testANewerStepCueReplacesAnUnsaidOlderOne() {
+        var q = SpeechQueue()
+        q.enqueue("2 kilometres", priority: .normal)
+        q.enqueue("Rep 1 of 6", priority: .step)
+        q.enqueue("Recovery", priority: .step)
+        XCTAssertEqual(q.pending.map(\.text), ["Recovery", "2 kilometres"])
+    }
+
+    func testAnEmptyCueIsNeverQueued() {
+        var q = SpeechQueue()
+        q.enqueue("", priority: .step)
+        q.enqueue("", priority: .normal)
+        XCTAssertTrue(q.isEmpty)
     }
 }

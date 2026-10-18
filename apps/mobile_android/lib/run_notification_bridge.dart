@@ -1,6 +1,38 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'live_activity_bridge.dart' show LiveActivityFrame;
+
+/// What the ongoing notification shows for one [LiveActivityFrame] — the
+/// same frame the iOS Live Activity renders, so the two lock screens agree.
+///
+/// On a structured workout the step takes the title, because the collapsed
+/// row is a title and one line and the step is what the runner acts on; the
+/// stats keep the line. A paused run keeps its paused title, since the state
+/// of the button just pressed matters more than the step, and the step moves
+/// to the top of the expanded text instead of disappearing.
+({String title, String text, String bigText}) runNotificationContent(
+  LiveActivityFrame frame,
+) {
+  final stats =
+      '${frame.elapsedText}  •  ${frame.distanceText}  •  ${frame.paceText}';
+  final statsBig = '${frame.timeLabel}: ${frame.elapsedText}\n'
+      '${frame.distanceLabel}: ${frame.distanceText}\n'
+      '${frame.paceLabel}: ${frame.paceText}';
+  final step = frame.step;
+  if (step == null) {
+    return (title: frame.title, text: stats, bigText: statsBig);
+  }
+  if (frame.paused) {
+    return (
+      title: frame.title,
+      text: stats,
+      bigText: '${step.line}\n$statsBig',
+    );
+  }
+  return (title: step.line, text: stats, bigText: statsBig);
+}
+
 /// Dart client for the native `RunNotificationBridge` method channel.
 ///
 /// Overrides the geolocator foreground-service notification with live run

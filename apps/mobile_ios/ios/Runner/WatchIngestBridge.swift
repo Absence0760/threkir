@@ -460,7 +460,7 @@ import WatchConnectivity
     /// applied.
     ///
     /// The unit and the cue switch are required and refuse the whole push.
-    /// The other three are optional and refused ONE AT A TIME: the watch
+    /// The other five are optional and refused ONE AT A TIME: the watch
     /// applies each key independently and reads an absent one as "keep what
     /// you have", so a rogue activity must not cost the runner their cue
     /// switch.
@@ -480,6 +480,13 @@ import WatchConnectivity
         }
         if let zones = args["hr_zone_cutoffs"] as? [Int], isZoneLadder(zones) {
             context["hr_zone_cutoffs"] = zones
+        }
+        if let verbosity = args["voice_feedback_verbosity"] as? String,
+           ["full", "minimal"].contains(verbosity) {
+            context["voice_feedback_verbosity"] = verbosity
+        }
+        if let stepCues = args["voice_cue_workout_steps"] as? Bool {
+            context["voice_cue_workout_steps"] = stepCues
         }
         return context
     }

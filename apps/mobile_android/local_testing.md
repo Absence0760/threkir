@@ -361,6 +361,7 @@ Activity type is locked once you tap Start — it can't change mid-run.
 - **Manual pause/resume** — pause button on the expanded stats panel. Uses the recorder's Stopwatch so resumed elapsed time is exact.
 - **Lap markers** — flag button records a lap split mid-run
 - **Pace alerts** — set a target pace in Settings; TTS warns when you're 30s+ off
+- **Vibration cues** — a planned workout buzzes on every step change (three long pulses into a rep or steady block, two into a warm-up / recovery / walk / cool-down) and on completion (one long, two short); pace alerts add two sharp pulses for speed up, one for slow down. To verify the screen-off path, start a workout, lock the phone and pocket it: the buzz must still land. Skip a step from the workout band for a quick check. Off in Settings → Preferences → **Vibration cues** (device-scoped `haptic_feedback_enabled`). The emulator has no motor, so this needs a physical phone. Native side: `RunHapticsBridge.kt` + `RunHapticPatterns.kt` (issue #1186)
 - **Wake lock** — screen stays on during the entire run
 - **Background recording** — GPS tracking continues when the screen is off or the app is backgrounded, via a foreground service notification ("Run in progress"). Works under **"While using the app"** too: the service is typed `location` and starts while the app is visible, which is what keeps Android counting the app as in-use. **"Allow all the time"** removes the OS's discretion to stop delivering anyway, and battery optimisation must be disabled for the app either way. When a background stretch really does miss every fix, the run keeps timing and keeps what it already had, and the off-screen distance is simply not counted — disclosed on return, once per run (#784 / #785, `decisions.md § 630`).
 - **Km/mi splits** — snackbar notification at each distance tick (every 1 km / 1 mi for run/walk/hike, every 5 km for cycle)
@@ -457,6 +458,10 @@ Then **reinstall** rather than hot-restart — the plugin runs at Gradle
 configure time — and sign in: a `device_tokens` row should appear for your
 user. Receiving is only half; the send side is the Go worker's FCM credentials.
 See [`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate).
+
+### Today's-workout home-screen widget
+
+`TodayWorkoutWidgetProvider` (Android) draws today's planned session from a seven-day snapshot the app writes on every plan-overview read (`lib/today_widget.dart`, channel `run_app/home_widget`, contract `fixtures/today_widget_snapshot.json`). Every string arrives translated and unit-formatted from Dart. **To test:** sign in as `runner@test.com`, start a plan, long-press the home screen → Widgets → Threkir → **Today's workout**. It shows today's session (or rest / nothing scheduled / no plan); tapping opens that workout, the plan, or the plan list through `com.threkir.app://plans/...`. Mark the workout done or skipped in the app and the widget gains the badge on the next plan read. Set the device date forward a day: the widget rolls over without opening the app (midnight alarm plus the `TIME_SET` broadcast); eight days forward it says "Open Threkir to update". Sign out and it falls back to "Open Threkir to see today's workout". Resize it to one row for the compact layout. `adb shell am start -a android.intent.action.VIEW -d com.threkir.app://plans` exercises the deep link without the widget.
 
 ### Season planning
 

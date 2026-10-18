@@ -24,6 +24,14 @@ enum PushTargetKind {
   /// The training-plan list (`/plans`).
   plans,
 
+  /// One training plan (`/plans/<id>`). Carries the plan UUID.
+  plan,
+
+  /// One workout of a plan (`/plans/<id>/workouts/<workout id>`). Carries
+  /// the plan UUID as [PushTarget.id] and the workout's as
+  /// [PushTarget.workoutId].
+  planWorkout,
+
   /// The challenge list (`/challenges`).
   challenges,
 
@@ -52,22 +60,53 @@ enum PushTargetKind {
 /// A resolved push target: a [kind] plus the entity id when the kind carries
 /// one. Value type so tests can compare targets directly.
 class PushTarget {
-  const PushTarget(this.kind, [this.id]);
+  const PushTarget(this.kind, [this.id, this.workoutId]);
 
   final PushTargetKind kind;
   final String? id;
+
+  /// The plan workout a [PushTargetKind.planWorkout] opens; null otherwise.
+  final String? workoutId;
 
   static const inbox = PushTarget(PushTargetKind.notifications);
 
   @override
   bool operator ==(Object other) =>
-      other is PushTarget && other.kind == kind && other.id == id;
+      other is PushTarget &&
+      other.kind == kind &&
+      other.id == id &&
+      other.workoutId == workoutId;
 
   @override
-  int get hashCode => Object.hash(kind, id);
+  int get hashCode => Object.hash(kind, id, workoutId);
 
   @override
-  String toString() => 'PushTarget(${kind.name}${id == null ? '' : ', $id'})';
+  String toString() => 'PushTarget(${kind.name}'
+      '${id == null ? '' : ', $id'}'
+      '${workoutId == null ? '' : ', $workoutId'})';
+}
+
+final RegExp _uuid = RegExp(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    caseSensitive: false);
+
+/// The plan surface a path under `/plans` names, given its non-empty
+/// segments starting at `plans`: `/plans/<id>` is that plan and
+/// `/plans/<id>/workouts/<workout id>` that workout, matching web's routes.
+/// Anything else under a plan id degrades to that plan, and anything else
+/// under `/plans` (`/plans/new`, `/plans/library/<id>`) to the plan list.
+PushTarget planTargetFromSegments(List<String> segments) {
+  const list = PushTarget(PushTargetKind.plans);
+  if (segments.isEmpty || segments.first != 'plans') return list;
+  if (segments.length < 2 || !_uuid.hasMatch(segments[1])) return list;
+  final planId = segments[1].toLowerCase();
+  if (segments.length == 4 &&
+      segments[2] == 'workouts' &&
+      _uuid.hasMatch(segments[3])) {
+    return PushTarget(
+        PushTargetKind.planWorkout, planId, segments[3].toLowerCase());
+  }
+  return PushTarget(PushTargetKind.plan, planId);
 }
 
 /// Maps a push notification's `url` data key onto a [PushTarget].
@@ -120,7 +159,7 @@ PushTarget pushTargetFromUrl(String? url) {
           ? const PushTarget(PushTargetKind.settingsAccount)
           : PushTarget.inbox;
     case 'plans':
-      return const PushTarget(PushTargetKind.plans);
+      return planTargetFromSegments(segments);
     case 'challenges':
       return const PushTarget(PushTargetKind.challenges);
     // The worker stamps a bare `/messages` for a message push, so it opens

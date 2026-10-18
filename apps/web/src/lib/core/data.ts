@@ -52,6 +52,7 @@ import { selectEffectivePricing } from '../social/event_instance';
 import type { RepacePatch } from '../training/plan_repace';
 import type { ResumeShift } from '../training/plan_resume';
 import type { RaceDateChange } from '../training/plan_race_date';
+import type { BreakChange } from '../training/plan_break';
 import { shiftIsoDate } from '../training/plan_bulk_ops';
 import {
 	EVENT_PHOTO_WINDOW_AFTER_MS,
@@ -6034,6 +6035,21 @@ export async function fetchWorkout(
 	return { workout: (data as PlanWorkout | null) ?? null, error: error?.message ?? null };
 }
 
+/// Distances of the runs linked to plan workouts, by run id, for the
+/// "Done · +3 km" status. Ids the caller cannot read (a coach looking at an
+/// athlete's plan, a deleted run) are simply absent.
+export async function fetchRunDistances(ids: readonly string[]): Promise<Map<string, number>> {
+	const wanted = [...new Set(ids)];
+	const rows = await readChunked(wanted, async (part) => {
+		const { data, error } = await supabase.from(TABLES.runs).select('id, distance_m').in('id', part);
+		if (error) throw dbError(error);
+		return data ?? [];
+	});
+	const out = new Map<string, number>();
+	for (const r of rows) if (r.distance_m != null) out.set(r.id, r.distance_m);
+	return out;
+}
+
 /// Who owns a plan, for the "updated by your coach" line on a workout
 /// (`isEditedByCoach`). Null when the row can't be read; the line then stays
 /// hidden rather than guessing.
@@ -6408,6 +6424,25 @@ export async function changePlanRaceDate(
 	if (error) throw dbError(error);
 }
 
+/// Runs the latest weeks again after a break and records the offer as
+/// answered (`planBreakChange`, decisions § 2128), in one transaction.
+export async function reschedulePlanAfterBreak(
+	planId: string,
+	change: BreakChange,
+	breakFromIso: string,
+	todayIso: string
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('reschedule_plan_after_break', {
+		p_plan_id: planId,
+		p_today: todayIso,
+		p_break_from: breakFromIso,
+		p_repeat_week_ids: change.repeatWeekIds,
+		p_drop_week_ids: change.dropWeekIds
+	});
+	if (error) throw dbError(error);
+}
+
 export async function markWorkoutCompleted(
 	workoutId: string,
 	runId: string | null,
@@ -6694,6 +6729,24 @@ export async function applyWorkoutAdjustments(
 	const { error } = await supabase.rpc('apply_workout_adjustments', {
 		p_plan_id: planId,
 		p_changes: normalised
+	});
+	if (error) throw dbError(error);
+}
+
+/// Record the runner's answer to the missed-workout prompt on each named
+/// workout (`answer_missed_workouts`, decisions § 2122), so it is never asked
+/// again on any device. "Make it up" passes the previewed make-up as
+/// `changes`; it is written in the same transaction as the answer, so the two
+/// land together or not at all.
+export async function answerMissedWorkouts(
+	planId: string,
+	workoutIds: string[],
+	changes: WorkoutAdjustment[] = []
+): Promise<void> {
+	const { error } = await supabase.rpc('answer_missed_workouts', {
+		p_plan_id: planId,
+		p_workout_ids: workoutIds,
+		p_changes: changes
 	});
 	if (error) throw dbError(error);
 }

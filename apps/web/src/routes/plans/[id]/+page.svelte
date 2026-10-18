@@ -14,11 +14,13 @@
 		fetchMyClubs,
 		fetchRuns,
 		fetchDisplayName,
+		fetchRunDistances,
 		publishPlanAsTemplate,
 		publishPlanToLibrary,
 		unpublishFromLibrary,
 		fetchMyPublishedPlans,
 		applyWorkoutAdjustments,
+		answerMissedWorkouts,
 		updatePlanWorkout,
 		duplicatePlanWeek,
 		fetchMyActivePlanWindows,
@@ -40,6 +42,7 @@
 	import { cyclePlanWorkoutPatch, type CyclePlanConfig } from '#lib/training/cycle_plan.ts';
 	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
 	import { replanRemaining, type ReplanChange, type ReplanWeek } from '#lib/training/plan_replan.ts';
+	import { buildReplanWeeks, workoutOverrunMetres } from '#lib/training/plan_nudges.ts';
 	import {
 		raceTaperAdjustments,
 		raceTaperProposals,
@@ -55,6 +58,9 @@
 	import { isAdaptiveFitnessGateEnabled } from '#lib/training/adaptive_fitness_flag.ts';
 	import WorkoutEditor from '#lib/components/WorkoutEditor.svelte';
 	import FinishPlanPrompt from '#lib/components/FinishPlanPrompt.svelte';
+	import PlanBreakCard from '#lib/components/PlanBreakCard.svelte';
+	import MissedWorkoutPrompt, { missedPromptFromRows } from '#lib/components/MissedWorkoutPrompt.svelte';
+	import type { MissedPrompt } from '#lib/training/plan_missed_prompt.ts';
 	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import PlanAiAdjust from '#lib/components/PlanAiAdjust.svelte';
@@ -109,7 +115,7 @@
 	import { workoutKindLabel, planPhaseLabel } from '#lib/training/workout_labels.ts';
 	import { planWorkoutAriaLabel, planWorkoutStatusOf } from '#lib/training/plan_workout_view.ts';
 	import { planWorkoutStatusLook } from '#lib/training/plan_workout_status_style.ts';
-	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
+	import { fmtKm, fmtOverrun, fmtPace } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { loadSettings, effective } from '#lib/settings/settings.ts';
 	import type { WeekStart } from '#lib/format/calendar.ts';
@@ -520,6 +526,7 @@
 		);
 		const changes = raceTaperProposals({ workouts: input, races, today });
 		replanPreview = null;
+		makeUpAnswers = null;
 		adaptiveInfo = null;
 		if (changes.length === 0) {
 			taperPreview = null;
@@ -642,8 +649,68 @@
 		}, 0);
 	}
 
+	/// Home's missed-workout prompt lands here as `?makeup=1`: open the
+	/// make-up preview for the plan's current prompt, then leave the URL.
+	function takeMakeUpParam(): void {
+		const url = new URL(page.url.href);
+		if (url.searchParams.get('makeup') !== '1') return;
+		if (plan && isOwner && missedPromptShown) {
+			const p = missedPromptFromRows(weeks, workouts, today);
+			if (p) void chooseMakeUp(p);
+			else showToast(m('missedPrompt.nothingToMakeUp'));
+		}
+		setTimeout(() => {
+			url.searchParams.delete('makeup');
+			try {
+				replaceState(`${url.pathname}${url.search}${url.hash}`, page.state);
+			} catch (e) {
+				console.error('Clearing the make-up request from the URL failed', { message: thrownMessage(e) });
+			}
+		}, 0);
+	}
+
+	/// Home's plan card lands here as `?review=adaptive` or `?review=replan`:
+	/// open that existing preview, exactly as the Adjust plan dialog would,
+	/// then leave the URL so a reload does not propose it again.
+	function takeReviewParam(): void {
+		const url = new URL(page.url.href);
+		const review = url.searchParams.get('review');
+		if (!review) return;
+		if (plan && isOwner && !plan.is_template && plan.status === 'active') {
+			if (review === 'adaptive') void chooseReplan(proposeAdaptiveReplan);
+			else if (review === 'replan') void chooseReplan(proposeReplan);
+		}
+		setTimeout(() => {
+			url.searchParams.delete('review');
+			try {
+				replaceState(`${url.pathname}${url.search}${url.hash}`, page.state);
+			} catch (e) {
+				console.error('Clearing the review request from the URL failed', { message: thrownMessage(e) });
+			}
+		}, 0);
+	}
+
+	/// The missed-workout prompt's "Make it up" (decisions § 2122): the
+	/// stretched next long run, previewed like a re-plan. Applying it records
+	/// the answer for every miss it honours, in the same transaction.
+	async function chooseMakeUp(p: MissedPrompt): Promise<void> {
+		if (!plan || !isOwner || bulkBusy) return;
+		if (!p.makeUp) {
+			showToast(m('missedPrompt.nothingToMakeUp'));
+			return;
+		}
+		adjustOpen = false;
+		taperPreview = null;
+		adaptiveInfo = null;
+		replanPreview = [p.makeUp];
+		makeUpAnswers = p.makeUpAnswers;
+		await tick();
+		replanPreviewHeading?.focus();
+	}
+
 	async function dismissReplan(): Promise<void> {
 		replanPreview = null;
+		makeUpAnswers = null;
 		adaptiveInfo = null;
 		await tick();
 		adjustButton?.focus();
@@ -819,6 +886,9 @@
 
 	// ─── Re-plan around missed sessions (owner-only) ───
 	let replanPreview = $state<ReplanChange[] | null>(null);
+	/// Set only while the preview is the missed-workout prompt's make-up: the
+	/// misses its apply answers.
+	let makeUpAnswers = $state<string[] | null>(null);
 	/// Only a genuine multi-week TREND gets the badge — the `on_track` and
 	/// (P2) `deload_fatigue` outcomes explain themselves through a toast, so
 	/// they're excluded at the type level rather than by convention.
@@ -835,44 +905,32 @@
 	/// week), completion + past flags.
 	function buildReplanInput(): ReplanWeek[] {
 		if (!plan) return [];
-		const todayD = parseISO(today);
-		return weeks.map((w) => {
-			const weekWorkouts = workoutsByWeek.get(w.id) ?? [];
-			let planned = w.target_volume_m ?? 0;
-			if (!(planned > 0)) {
-				planned = weekWorkouts.reduce(
-					(s, x) => s + (x.kind !== 'rest' ? (x.target_distance_m ?? 0) : 0),
-					0,
-				);
-			}
-			const weekStartD = addDays(parseISO(plan!.start_date), w.week_index * 7);
-			const weekEndD = addDays(weekStartD, 7);
-			let actual = 0;
-			for (const r of recentRuns) {
-				const t = new Date(r.started_at);
-				if (t >= weekStartD && t < weekEndD) actual += r.distance_m ?? 0;
-			}
-			return {
+		return buildReplanWeeks({
+			startDate: plan.start_date,
+			today,
+			runs: recentRuns.map((r) => ({
+				date: formatISO(new Date(r.started_at)),
+				distanceM: r.distance_m ?? 0,
+			})),
+			weeks: weeks.map((w) => ({
 				weekIndex: w.week_index,
 				phase: w.phase,
-				plannedMetres: planned,
-				actualMetres: actual,
-				isComplete: weekEndD <= todayD,
-				workouts: weekWorkouts.map((x) => ({
+				targetVolumeM: w.target_volume_m,
+				workouts: (workoutsByWeek.get(w.id) ?? []).map((x) => ({
 					id: x.id,
 					scheduledDate: x.scheduled_date,
 					kind: x.kind,
 					targetDistanceM: x.target_distance_m,
 					completed: isWorkoutCompleted(x),
 					skipped: isWorkoutSkipped(x),
-					isPast: x.scheduled_date < today,
 				})),
-			};
+			})),
 		});
 	}
 
 	function proposeReplan(): void {
 		if (!plan || !isOwner || bulkBusy) return;
+		makeUpAnswers = null;
 		const { changes, onTrack } = replanRemaining({ weeks: buildReplanInput(), today });
 		if (onTrack || changes.length === 0) {
 			showToast(m('planDetail.replanOnTrack'));
@@ -896,6 +954,7 @@
 
 	function proposeAdaptiveReplan(): void {
 		if (!plan || !isOwner || bulkBusy) return;
+		makeUpAnswers = null;
 		const r = adaptiveReplanRemaining({
 			weeks: buildReplanInput(),
 			today,
@@ -956,17 +1015,23 @@
 	async function applyReplan(): Promise<void> {
 		if (!plan || !replanPreview || bulkBusy) return;
 		bulkBusy = true;
+		const answers = makeUpAnswers;
 		try {
-			await applyWorkoutAdjustments(
-				plan.id,
-				replanPreview.map((c) => ({ id: c.workoutId, target_distance_m: c.toMetres })),
-			);
+			const changes = replanPreview.map((c) => ({ id: c.workoutId, target_distance_m: c.toMetres }));
+			if (answers) await answerMissedWorkouts(plan.id, answers, changes);
+			else await applyWorkoutAdjustments(plan.id, changes);
 			showToast(m('planDetail.replanApplied', { n: replanPreview.length }));
 			replanPreview = null;
+			makeUpAnswers = null;
 			adaptiveInfo = null;
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			showToast(
+				answers
+					? m('missedPrompt.saveFailed', { error: thrownMessage(e) })
+					: m('planDetail.bulkFailed', { error: thrownMessage(e) }),
+				'error'
+			);
 			await load();
 		} finally {
 			bulkBusy = false;
@@ -1044,6 +1109,28 @@
 				// gracefully without recent runs — don't fail the page.
 			}
 		}
+		await loadLinkedRunDistances();
+	}
+
+	/// Run distances behind each done workout, for "Done · +3 km". Auxiliary
+	/// (L4): a failed read just leaves the plain "Done".
+	let linkedRunDistances = $state<Map<string, number>>(new Map());
+	async function loadLinkedRunDistances(): Promise<void> {
+		const ids = workouts.flatMap((w) => (w.completed_run_id ? [w.completed_run_id] : []));
+		if (loadError !== null || ids.length === 0) {
+			linkedRunDistances = new Map();
+			return;
+		}
+		try {
+			linkedRunDistances = await fetchRunDistances(ids);
+		} catch (e) {
+			console.error('Reading the linked run distances failed', { message: thrownMessage(e) });
+		}
+	}
+
+	function overrunOf(wo: PlanWorkout): number | null {
+		if (!wo.completed_run_id) return null;
+		return workoutOverrunMetres(wo.target_distance_m, linkedRunDistances.get(wo.completed_run_id) ?? null);
 	}
 
 	onMount(async () => {
@@ -1059,6 +1146,8 @@
 		await load();
 		takeAdjustParam();
 		takeResumeParam();
+		takeMakeUpParam();
+		takeReviewParam();
 		// Calendar week-start follows the user's preference (W-5/W-14).
 		if (auth.user?.id) {
 			try {
@@ -1263,6 +1352,17 @@
 			: null
 	);
 
+	/// The missed-workout prompt is the owner's, and only while the plan is
+	/// running: never for a coach viewing an athlete, a template, or a paused,
+	/// finished or abandoned plan.
+	let missedPromptShown = $derived(
+		plan != null &&
+			isOwner &&
+			!plan.is_template &&
+			plan.status === 'active' &&
+			!isPlanFinished(plan, today)
+	);
+
 	let todayWorkout = $derived(
 		workouts.find((w) => w.scheduled_date === today) ?? null
 	);
@@ -1445,7 +1545,8 @@
 	}
 
 	function workoutAriaLabel(wo: PlanWorkout): string {
-		return planWorkoutAriaLabel(
+		const over = overrunOf(wo);
+		const label = planWorkoutAriaLabel(
 			wo,
 			today,
 			{
@@ -1456,6 +1557,7 @@
 			},
 			m
 		);
+		return over == null ? label : `${label}, ${m('plan.overrunAria', { distance: fmtOverrun(over) })}`;
 	}
 </script>
 
@@ -1661,6 +1763,10 @@
 			<div class="finish-plan-slot"><FinishPlanPrompt {plan} onfinished={load} /></div>
 		{/if}
 
+		{#if isOwner && plan.status === 'active'}
+			<PlanBreakCard {plan} {weeks} {workouts} {today} onapplied={load} />
+		{/if}
+
 		{#if isOwner && !plan.is_template && replanPreview}
 			<section class="replan-preview" aria-label={m('planDetail.replanPreviewAria')}>
 				<h3 tabindex="-1" bind:this={replanPreviewHeading}>{m('planDetail.replanPreviewTitle')}</h3>
@@ -1732,6 +1838,12 @@
 			/>
 		{/if}
 
+		{#if missedPromptShown && plan}
+			<div class="missed-prompt-slot">
+				<MissedWorkoutPrompt planId={plan.id} {weeks} {workouts} {today} onmakeup={chooseMakeUp} />
+			</div>
+		{/if}
+
 		{#if todayWorkout}
 			<section class="today">
 				<button
@@ -1768,7 +1880,13 @@
 								<span>{m('workoutDetail.atPace', { pace: fmtPace(todayWorkout.target_pace_sec_per_km) })}</span>
 							{/if}
 							{#if isWorkoutCompleted(todayWorkout)}
-								<span class="today-done">{m('planDetail.completed')}</span>
+								{@const over = overrunOf(todayWorkout)}
+								<span class="today-done" data-testid="plan-today-done"
+									>{m('planDetail.completed')}{#if over != null}<span aria-hidden="true"
+											>{' · '}{m('plan.overrun', { distance: fmtOverrun(over) })}</span
+										><span class="sr-only">, {m('plan.overrunAria', { distance: fmtOverrun(over) })}</span
+										>{/if}</span
+								>
 							{:else if isWorkoutSkipped(todayWorkout)}
 								<span class="today-skipped">{m('planDetail.skippedLabel')}</span>
 							{/if}
@@ -2100,6 +2218,14 @@
 									</span>
 									{#if wo.target_distance_m != null && wo.kind !== 'rest'}
 										<span class="dist">{fmtKm(wo.target_distance_m, 1)}</span>
+									{/if}
+									{#if status === 'done'}
+										{@const over = overrunOf(wo)}
+										{#if over != null}
+											<span class="overrun" data-testid="plan-day-overrun"
+												>{m('plan.overrun', { distance: fmtOverrun(over) })}</span
+											>
+										{/if}
 									{/if}
 									{#if look.glyph}
 										<span class="material-symbols check" aria-hidden="true">{look.glyph}</span>
@@ -2540,6 +2666,9 @@
 	}
 	.finish-plan-slot {
 		margin: var(--space-lg) 0;
+	}
+	.missed-prompt-slot {
+		margin: var(--space-md) 0;
 	}
 	.back {
 		display: inline-flex;
@@ -3218,6 +3347,17 @@
 		color: var(--color-success-text);
 		font-weight: 600;
 	}
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
 	.today-skipped {
 		color: var(--color-text-secondary);
 		font-weight: 600;
@@ -3369,6 +3509,12 @@
 	}
 	.day .dist {
 		color: var(--color-text-secondary);
+		font-variant-numeric: tabular-nums;
+	}
+	.day .overrun {
+		color: var(--color-success-text);
+		font-weight: 600;
+		font-size: 0.75rem;
 		font-variant-numeric: tabular-nums;
 	}
 	.day .check {

@@ -36,6 +36,7 @@ Flutter iOS app. **`lib/`, `test/` and `integration_test/` are byte-for-byte ide
 | Apple Watch ingest | `WatchIngest.attach` is a no-op (channel never registered) | `Runner/WatchIngestBridge.swift` posts payloads through `run_app/watch_ingest` |
 | Wear OS auth bridge | `WearAuthBridge.attach` posts via `run_app/wear_auth` | No-op (`MissingPluginException` caught) |
 | Foreground service notification | `RunNotificationBridge` overrides geolocator's notification | No-op (channel not registered) |
+| Run vibration cues (`run_app/haptics`, issue #1186) | `RunHapticsBridge.kt` drives the Vibrator with the `RunHapticPatterns.kt` waveforms, usage `NOTIFICATION` | `RunHapticsBridge` in `AppDelegate.swift` chains the system vibrate sound (Core Haptics does not play in the background), so a pattern is a pulse count; **unbuilt on Linux, not device-verified** |
 | Background sync | `Workmanager().registerPeriodicTask` | `Workmanager().registerProcessingTask` — a `BGProcessingTaskRequest` under `UIBackgroundModes:processing`, registered in `AppDelegate.swift`; never app refresh, so no `fetch` mode. Simulator-accepted; delivery on a device is unverified (`followups.md`) |
 | Background GPS | Geolocator foreground service | `CLLocationManager.allowsBackgroundLocationUpdates` (Info.plist `UIBackgroundModes:location`) |
 | Health Connect / HealthKit | `health` package on Android Health Connect | Same package, HealthKit backend |
@@ -48,14 +49,15 @@ Flutter iOS app. **`lib/`, `test/` and `integration_test/` are byte-for-byte ide
 
 **Native iOS files under `ios/Runner/`:**
 
-- `AppDelegate.swift` — activates the `WatchIngestBridge` singleton at launch + attaches its method channel when the Flutter engine spins up.
+- `AppDelegate.swift` — activates the `WatchIngestBridge` singleton at launch + attaches its method channel when the Flutter engine spins up. Also holds the small bridges kept out of the Xcode project: `ScreenBrightnessBridge`, `BarometerBridge` and `RunHapticsBridge` (run vibration cues over `run_app/haptics`).
 - `CalendarBridge.swift` — **live**: presents `EKEventEditViewController` pre-filled from a club event, handed over the `run_app/calendar` method channel by `lib/calendar_intent.dart`. Asks for write-only calendar access on iOS 17+ (`requestWriteOnlyAccessToEvents`, falling back to `requestAccess` below it) and never reads the calendar. Parses the RRULE value the Dart side sends into an `EKRecurrenceRule` — only the subset `buildRrule` emits, anything else yields no rule rather than a different one (decisions § 692). Registered in `AppDelegate.didInitializeImplicitFlutterEngine`.
 - `DocumentOpenHandoff.swift` — **live**: document "Open with" for route files. A scene life-cycle delegate registered *before* `GeneratedPluginRegistrant` (the plugin claims every cold-launch URL), it moves the `file://` Inbox copy into the share extension's App Group `SharedRoutes/`, writes the same payload, and hands `receive_sharing_intent` the redirect URL, so Dart receives it as a share (decisions § 1761). Compiles `ShareExtension/SharedRouteHandoff.swift` too.
+- `HomeWidgetBridge.swift` — the Today widget's native end of `run_app/home_widget`: `update` stores Dart's `snapshot_json` under `today_snapshot_json` in the `group.com.threkir.app.widget` App Group and reloads `TodayWorkoutWidget`, `clear` removes it on sign-out. The widget itself lives in the Live Activity's extension (`ios/RunActivity/TodayWorkoutWidget.swift`, a second widget in the same `WidgetBundle` so there is one extension to sign), and the decoder plus the which-day rule are `ios/RunActivity/TodayWidgetSnapshot.swift`, compiled into both targets. Every word on the widget is the snapshot's; the extension still carries no String Catalog. The extension now has `RunActivity/RunActivity.entitlements` for the group, so its App Store profile must carry it too.
 - `WatchIngestBridge.swift` — **live**: `WCSessionDelegate` that receives `WCSessionFile` transfers from the watch, reads the gzipped-JSON track contents, and forwards to Dart via the `run_app/watch_ingest` method channel. Runs arriving before Dart has installed its handler are held in an in-memory pen and flushed when Dart signals `ready` on that engine; Dart writes each one to `WatchIngestQueue` before answering `true`, so the pen is never where a run is kept safe ([decisions § 1801](../../docs/architecture/decisions.md)).
 
 ## Native tests
 
-`ios/RunnerTests/` carries 77 XCTest cases (measured 2026-10-06) over the live bridges, the share extension handoff and `DocumentOpenHandoff`. It
+`ios/RunnerTests/` carries 115 XCTest cases (counted 2026-10-18) over the live bridges, the share extension handoff, `DocumentOpenHandoff` and the Today widget's snapshot decoder. It
 replaced the stock `RunnerTests.swift` template stub (`testExample`, empty
 body), which had been the entirety of iOS native coverage while the Android
 twin shipped three Kotlin bridge suites.

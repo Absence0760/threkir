@@ -407,6 +407,10 @@ class SettingsSyncService extends ChangeNotifier {
     if (dim is bool && dim != preferences.dimScreenWhileRecording) {
       preferences.setDimScreenWhileRecording(dim);
     }
+    final haptic = prefs[SettingsKeys.hapticFeedbackEnabled];
+    if (haptic is bool && haptic != preferences.hapticFeedback) {
+      preferences.setHapticFeedback(haptic);
+    }
   }
 
   /// `voice_feedback_enabled` is a UD key read from BOTH bags, same shape as
@@ -470,6 +474,15 @@ class SettingsSyncService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Push the user's run-vibration toggle to the device bag.
+  Future<void> pushHapticFeedback() async {
+    final s = await _ensureService();
+    await s.updateDevice(<String, dynamic>{
+      SettingsKeys.hapticFeedbackEnabled: preferences.hapticFeedback,
+    });
+    notifyListeners();
+  }
+
   /// Push the user's dim-screen-while-recording toggle to the device bag.
   Future<void> pushDimScreenWhileRecording() async {
     final s = await _ensureService();
@@ -503,6 +516,9 @@ SettingsSyncService? _activeSettingsSync;
 void registerActiveSettingsSync(SettingsSyncService? s) {
   _activeSettingsSync = s;
 }
+
+/// The app's settings bag, or null before it has loaded.
+SettingsService? activeSettingsService() => _activeSettingsSync?.service;
 
 /// One effective universal / device setting, null until the settings bag
 /// has loaded or when unset.

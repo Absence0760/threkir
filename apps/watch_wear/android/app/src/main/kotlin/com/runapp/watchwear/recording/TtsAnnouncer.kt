@@ -7,18 +7,32 @@ import android.media.AudioManager
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import com.runapp.watchwear.R
+import com.runapp.watchwear.workout.PushedWorkout
+import com.runapp.watchwear.workout.SpeechStrings
+import com.runapp.watchwear.workout.WorkoutSpeech
+import com.runapp.watchwear.workout.renderWorkoutSpeech
 import java.util.Locale
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.ConcurrentHashMap
 
 /// Thin wrapper around `android.speech.tts.TextToSpeech` used by
-/// `RunRecordingService` to speak split announcements and pace alerts.
+/// `RunRecordingService` to speak split announcements, pace alerts and the
+/// steps of today's workout.
 ///
 /// Ported in spirit from `apps/mobile_android/lib/audio_cues.dart` —
 /// same phrasing ("1 kilometre, pace 5 minutes 30 seconds") so the
 /// runner hears the same cues from the watch as from the phone. Engine
 /// init is async; calls made before ready are silently dropped rather
 /// than queued, because by the time TTS is live the relevant cue has
-/// already moved on (worst case: the first km split is silent).
+/// already moved on (worst case: the first km split is silent). The one
+/// exception is a workout cue: the step it names is still the step the
+/// runner is on when the engine comes up a second later, so the latest one
+/// is held and spoken on ready.
+///
+/// A workout cue outranks the others in the queue ([cueQueueMode]): it
+/// waits behind a split already being spoken instead of cutting it off, a
+/// split or pace alert waits behind it, and a newer workout cue replaces an
+/// older one still in the queue, which would only describe a step the runner
+/// has left.
 ///
 /// Safe to call from any thread — `TextToSpeech.speak` is internally
 /// thread-safe. The service calls from its Default-dispatcher scope.
@@ -53,12 +67,24 @@ class TtsAnnouncer(context: Context) {
             .setWillPauseWhenDucked(false)
             .build()
 
-    // Concurrent in-flight utterances. Cues use QUEUE_FLUSH (one at a
-    // time) but ref-counting keeps focus held across a rapid
-    // start→done→start sequence and guarantees we never abandon focus
-    // while audio is still playing, nor leak it on an error path.
-    private val pendingUtterances = AtomicInteger(0)
+    // Utterances spoken or queued, by id, valued by whether each is a
+    // workout cue. Focus is held while any is in flight, so a rapid
+    // start→done→start sequence keeps it and an error path cannot leak it.
+    // Every callback that ends an utterance — done, error, and stop, which a
+    // QUEUE_FLUSH delivers to whatever it flushed — removes its id.
+    private val inFlight = ConcurrentHashMap<String, Boolean>()
+    private val queueLock = Any()
     @Volatile private var holdsFocus = false
+
+    @Volatile private var heldWorkoutCue: String? = null
+
+    private val speechStrings = object : SpeechStrings {
+        override fun string(id: Int, vararg args: Any): String =
+            if (args.isEmpty()) appContext.getString(id) else appContext.getString(id, *args)
+
+        override fun plural(id: Int, quantity: Int, vararg args: Any): String =
+            appContext.resources.getQuantityString(id, quantity, *args)
+    }
 
     init {
         // Construct lazily — the engine init spawns a thread and
@@ -79,17 +105,24 @@ class TtsAnnouncer(context: Context) {
                         override fun onStart(utteranceId: String?) {}
 
                         override fun onDone(utteranceId: String?) =
-                            releaseFocusIfIdle()
+                            release(utteranceId)
 
                         @Deprecated("Required override; onError(id, code) is the live path")
                         override fun onError(utteranceId: String?) =
-                            releaseFocusIfIdle()
+                            release(utteranceId)
 
                         override fun onError(utteranceId: String?, errorCode: Int) =
-                            releaseFocusIfIdle()
+                            release(utteranceId)
+
+                        override fun onStop(utteranceId: String?, interrupted: Boolean) =
+                            release(utteranceId)
                     },
                 )
                 ready = true
+                heldWorkoutCue?.let {
+                    heldWorkoutCue = null
+                    speak(it, workoutCue = true)
+                }
             }
         }
     }
@@ -146,45 +179,76 @@ class TtsAnnouncer(context: Context) {
             ),
         )
 
+    /// Speak [speech] for [workout] in the runner's [unit]. L4: a resource or
+    /// format failure is logged and the cue is lost, nothing else.
+    fun announceWorkout(speech: WorkoutSpeech, workout: PushedWorkout, unit: DistanceUnit) {
+        val phrase = try {
+            renderWorkoutSpeech(speech, workout, unit, speechStrings)
+        } catch (e: Throwable) {
+            android.util.Log.w(TAG, "workout cue not rendered", e)
+            null
+        } ?: return
+        speak(phrase, workoutCue = speech.priority)
+    }
+
     fun shutdown() {
         try {
             tts?.stop()
             tts?.shutdown()
         } catch (_: Throwable) { /* best-effort */ }
-        // Drop any focus we still hold — stop() doesn't fire onDone.
-        pendingUtterances.set(0)
-        abandonFocus()
+        // Drop any focus we still hold, whatever stop() reported.
+        synchronized(queueLock) {
+            inFlight.clear()
+            heldWorkoutCue = null
+            abandonFocus()
+        }
         tts = null
         ready = false
     }
 
-    private fun speak(phrase: String) {
+    private fun speak(phrase: String, workoutCue: Boolean = false) {
         // Allow empty phrases to no-op silently (formatPaceTail
         // returns "" when pace is unknown, which the split caller
         // appends unconditionally).
-        if (!ready || phrase.isBlank()) return
+        if (phrase.isBlank()) return
+        if (!ready) {
+            if (workoutCue) heldWorkoutCue = phrase
+            return
+        }
+        val utteranceId = "cue-${System.nanoTime()}"
         try {
-            requestFocus()
-            pendingUtterances.incrementAndGet()
-            val utteranceId = "cue-${System.nanoTime()}"
-            val result =
-                tts?.speak(phrase, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
-            // speak() returning ERROR means no onDone/onError will
-            // fire, so release the count we just took to avoid a leak.
-            if (result != TextToSpeech.SUCCESS) {
-                if (pendingUtterances.decrementAndGet() <= 0) abandonFocus()
+            val mode = synchronized(queueLock) {
+                val mode = cueQueueMode(
+                    workoutCue = workoutCue,
+                    workoutCueInFlight = inFlight.containsValue(true),
+                    anyInFlight = inFlight.isNotEmpty(),
+                )
+                // The engine reports each flushed utterance through onStop,
+                // later; what it flushes is out of the queue now.
+                if (mode == CueQueue.FLUSH) inFlight.clear()
+                inFlight[utteranceId] = workoutCue
+                requestFocus()
+                mode
             }
-        } catch (_: Throwable) {
-            // The speak attempt may have already taken a count above.
-            if (pendingUtterances.decrementAndGet() < 0) pendingUtterances.set(0)
-            if (pendingUtterances.get() <= 0) abandonFocus()
+            val result = tts?.speak(
+                phrase,
+                if (mode == CueQueue.FLUSH) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD,
+                null,
+                utteranceId,
+            )
+            // speak() returning ERROR means no callback will fire for this
+            // id, so release it here to avoid a leak.
+            if (result != TextToSpeech.SUCCESS) release(utteranceId)
+        } catch (e: Throwable) {
+            android.util.Log.w(TAG, "cue not spoken", e)
+            release(utteranceId)
         }
     }
 
-    private fun releaseFocusIfIdle() {
-        if (pendingUtterances.decrementAndGet() <= 0) {
-            pendingUtterances.set(0)
-            abandonFocus()
+    private fun release(utteranceId: String?) {
+        synchronized(queueLock) {
+            if (utteranceId != null) inFlight.remove(utteranceId)
+            if (inFlight.isEmpty()) abandonFocus()
         }
     }
 
@@ -202,5 +266,9 @@ class TtsAnnouncer(context: Context) {
         try {
             audioManager.abandonAudioFocusRequest(focusRequest)
         } catch (_: Throwable) { /* best-effort */ }
+    }
+
+    private companion object {
+        const val TAG = "TtsAnnouncer"
     }
 }

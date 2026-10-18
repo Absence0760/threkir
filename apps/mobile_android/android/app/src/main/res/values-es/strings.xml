@@ -5,4 +5,11 @@
     <string name="run_notif_action_resume">Reanudar</string>
     <string name="run_notif_action_pause">Pausar</string>
     <string name="run_notif_action_stop">Detener</string>
+    <string name="widget_today_label">Entrenamiento de hoy</string>
+    <string name="widget_today_description">Tu sesión planificada de hoy, de un vistazo</string>
+    <string name="widget_today_header_fallback">Hoy</string>
+    <string name="widget_today_no_data">Abre Threkir para ver el entrenamiento de hoy</string>
+    <string name="widget_today_preview_header">Hoy</string>
+    <string name="widget_today_preview_title">Tempo</string>
+    <string name="widget_today_preview_detail">8,00 km · 4:45 /km</string>
 </resources>

@@ -234,7 +234,7 @@ void main() {
     expect(from, shiftIsoDate(_s, 8));
     expect(today, '2026-07-07');
     expect(prefs.writes, [
-      {'plan_id': 'plan-1', 'from': shiftIsoDate(_s, 8)}
+      {'plan_id': 'plan-1', 'from': shiftIsoDate(_s, 8), 'until': '2026-07-07'}
     ]);
     expect(applied, 1);
     expect(find.text(_l10n.planBreakApplied(raceDay)), findsOneWidget);
@@ -340,7 +340,7 @@ void main() {
     await tester.tap(find.byKey(const Key('planBreakDismiss')));
     await tester.pumpAndSettle();
     expect(prefs.writes, [
-      {'plan_id': 'plan-1', 'from': shiftIsoDate(_s, 8)}
+      {'plan_id': 'plan-1', 'from': shiftIsoDate(_s, 8), 'until': '2026-07-07'}
     ]);
     expect(training.calls, isEmpty);
     expect(find.byKey(const Key('planBreakCard')), findsNothing);
@@ -365,7 +365,8 @@ void main() {
   });
 
   group('the plan screen', () {
-    Future<void> open(WidgetTester tester, String viewer) async {
+    Future<void> open(WidgetTester tester, String viewer,
+        {bool openMakeUp = false}) async {
       tester.view.physicalSize = const Size(420, 4000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -378,6 +379,7 @@ void main() {
           social: _Social(),
           viewerIdOverride: viewer,
           now: () => _today,
+          openMakeUp: openMakeUp,
         ),
       ));
       await pumpUntil(
@@ -404,5 +406,49 @@ void main() {
       expect(find.text('Autumn Half'), findsWidgets);
       expect(find.byKey(const Key('planDetailPlanBreak')), findsNothing);
     });
+
+    testWidgets('the offer outranks the missed prompt until it is answered',
+        (tester) async {
+      await open(tester, _owner);
+      await pumpUntil(
+        tester,
+        () => tester.any(find.byKey(const Key('planDetailPlanBreak'))),
+        describe: 'the break card',
+      );
+      expect(find.byKey(const Key('missedPrompt')), findsNothing);
+      await tester.ensureVisible(find.byKey(const Key('planBreakDismiss')));
+      await tester.tap(find.byKey(const Key('planBreakDismiss')));
+      await tester.pump();
+      await tester.pump();
+      expect(find.byKey(const Key('planDetailPlanBreak')), findsNothing);
+      expect(find.byKey(const Key('missedPrompt')), findsOneWidget);
+    });
+
+    testWidgets('a make-up link while the offer shows only opens the plan',
+        (tester) async {
+      await open(tester, _owner, openMakeUp: true);
+      await pumpUntil(
+        tester,
+        () => tester.any(find.byKey(const Key('planDetailPlanBreak'))),
+        describe: 'the break card',
+      );
+      await tester.pump();
+      expect(find.text(_l10n.planDetailReplanPreviewTitle), findsNothing);
+      expect(find.byKey(const Key('missedPrompt')), findsNothing);
+    });
+  });
+
+  test('a break state that cannot be worked out shows no offer', () {
+    planBreakDismissalReader = () => throw StateError('bag is corrupt');
+    final s = PlanBreakCard.stateFor(
+      plan: _plan(),
+      weeks: _weeks(),
+      workouts: _workouts(),
+      runStarts: const [],
+      now: _today,
+    );
+    expect(s.showing, isFalse);
+    expect(s.found, isNull);
+    expect(s.window, isNull);
   });
 }

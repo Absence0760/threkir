@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import Avatar from '#lib/components/Avatar.svelte';
-	import { hashHue } from '#lib/format/avatar.ts';
+	import ClubAvatar from '#lib/components/ClubAvatar.svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { browseClubsWithError, fetchMyClubsWithError, searchClubsWithError } from '#lib/core/data.ts';
@@ -111,13 +110,7 @@
 		{#each visible as club (club.id)}
 			<a href="/clubs/{club.slug}" class="card">
 				<div class="card-header">
-					<Avatar
-						name={club.name}
-						size="2.5rem"
-						font="1.1rem"
-						bg="seed"
-						seedHue={hashHue(club.id)}
-					/>
+					<ClubAvatar {club} size="2.5rem" font="1.1rem" />
 					<div class="card-title">
 						<h3>
 								{club.name}

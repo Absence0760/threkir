@@ -744,6 +744,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
               IdentityAvatar(
                   seed: p.row.authorId,
                   name: p.authorName,
+                  imageUrl: p.authorAvatarUrl,
                   size: 32,
                   fontSize: 14),
               const SizedBox(width: 10),

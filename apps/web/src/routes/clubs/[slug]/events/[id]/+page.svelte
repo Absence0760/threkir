@@ -2733,7 +2733,7 @@
 					{#each eventPosts as p (p.id)}
 						<article class="post">
 							<div class="post-author">
-								<Avatar name={p.author_display_name} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(p.author_id)} />
+								<Avatar url={p.author_avatar_url} name={p.author_display_name} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(p.author_id)} />
 								<div>
 									<strong>{p.author_display_name ?? m('clubEvent.memberFallback')}</strong>
 									<span class="when">{fmtRelative(p.created_at ?? new Date().toISOString())}</span>
@@ -2861,7 +2861,7 @@
 					{#each board.results as r (rowKey(r))}
 						<li class="result" class:me={r.user_id !== null && r.user_id === myUserId} class:pending={!r.organiser_approved}>
 							<span class="rank">{r.organiser_approved ? (r.rank ?? '—') : '…'}</span>
-							<Avatar name={r.display_name} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(rowKey(r))} />
+							<Avatar url={r.avatar_url} name={r.display_name} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(rowKey(r))} />
 							<div class="res-info">
 								<strong>{r.display_name ?? m('clubEvent.runnerFallback')}</strong>
 								{#if r.user_id !== null && r.user_id === myUserId}<span class="you">{m('clubEvent.youTag')}</span>{/if}
@@ -3289,7 +3289,7 @@
 				<div class="attendees">
 					{#each attendees as a (a.user_id)}
 						<div class="attendee" class:maybe={a.status === 'maybe'} class:declined={a.status === 'declined'}>
-							<Avatar name={a.display_name} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(a.user_id)} />
+							<Avatar url={a.avatar_url} name={a.display_name} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(a.user_id)} />
 							<div class="att-info">
 								<strong>{a.display_name ?? m('clubEvent.memberFallback')}</strong>
 								<span class="status">{rsvpStatusLabel(a.status)}</span>

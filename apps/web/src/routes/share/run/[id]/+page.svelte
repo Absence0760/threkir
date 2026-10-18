@@ -73,7 +73,7 @@
 	{@html `<script type="application/ld+json">${jsonLd}</script>`}
 </svelte:head>
 
-<SharePageShell>
+<SharePageShell appHref={`/runs/${data.id}`}>
 	{#if hasRun}
 		<section class="hero">
 			<p class="kicker">{m('shareRun.heroKicker')}</p>

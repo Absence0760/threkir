@@ -1,87 +1,62 @@
 <script lang="ts">
 	import { m } from '#lib/i18n/store.svelte.ts';
-	import { fetchRuns, reschedulePlanAfterBreak } from '#lib/core/data.ts';
+	import { reschedulePlanAfterBreak } from '#lib/core/data.ts';
+	import { PLAN_BREAK_DISMISSED_KEY } from '#lib/core/plan_break_context.ts';
+	import type { BreakContext } from '#lib/training/plan_break_state.ts';
 	import { isPlanOverlapError, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { formatDate } from '#lib/format/time.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
-	import { effective, loadSettings, updateUniversal } from '#lib/settings/settings.ts';
-	import { formatISO, parseISO } from '#lib/training/training.ts';
+	import { updateUniversal } from '#lib/settings/settings.ts';
 	import {
-		detectPlanBreak,
-		isBreakDismissed,
 		planBreakChange,
 		type BreakChange,
 		type BreakPlan,
 		type BreakWeek,
-		type BreakWorkout
+		type BreakWorkout,
+		type PlanBreak
 	} from '#lib/training/plan_break.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 
 	/// A break of a week or more in the runner's own active plan (decisions
 	/// § 2128): one calm offer to run the missed weeks again, previewed and
 	/// applied in one transaction, or to keep the plan as it is. The host
-	/// renders it only for the plan's owner.
+	/// owns the break state (`breakState`) because the offer outranks the
+	/// missed-workout prompt and the plan nudge, and renders this only while
+	/// `showing`, for the plan's owner. `onanswered` hands the host the
+	/// answer so it can stop showing the offer.
 	interface Props {
 		plan: BreakPlan & { id: string };
 		weeks: BreakWeek[];
 		workouts: BreakWorkout[];
 		today: string;
+		found: PlanBreak;
+		context: BreakContext;
+		onanswered: (pref: { plan_id: string; from: string; until: string }) => void;
 		onapplied: () => void | Promise<void>;
 	}
-	let { plan, weeks, workouts, today, onapplied }: Props = $props();
+	let { plan, weeks, workouts, today, found, context, onanswered, onapplied }: Props = $props();
 
-	let runDates = $state<string[] | null>(null);
-	let dismissedPref = $state<unknown>(undefined);
-	let hidden = $state(false);
 	let busy = $state(false);
 	let weeksChoice = $state(1);
 	let pending = $state<BreakChange | null>(null);
 
 	$effect(() => {
-		const day = today;
-		const uid = auth.user?.id;
-		if (!uid) return;
-		let stale = false;
-		runDates = null;
-		fetchRuns({
-			limit: 1,
-			columns: ['started_at'] as const,
-			startedAtBefore: parseISO(day).toISOString(),
-			throwOnError: true
-		})
-			.then((rows) => {
-				if (!stale) runDates = rows.map((r) => formatISO(new Date(r.started_at)));
-			})
-			.catch((e) => console.error('plan break: latest run read failed', e));
-		loadSettings(uid)
-			.then((s) => {
-				if (!stale) dismissedPref = effective<unknown>(s, 'plan_break_dismissed') ?? null;
-			})
-			.catch((e) => console.error('plan break: settings read failed', e));
-		return () => {
-			stale = true;
-		};
+		weeksChoice = found.maxWeeks;
 	});
 
-	let input = $derived(
-		runDates == null ? null : { plan, weeks, workouts, runDatesIso: runDates, todayIso: today }
-	);
-	let found = $derived(input ? detectPlanBreak(input) : null);
-	let shown = $derived(
-		found != null &&
-			!hidden &&
-			dismissedPref !== undefined &&
-			!isBreakDismissed(dismissedPref, plan.id, found.fromIso)
-	);
-
-	$effect(() => {
-		if (found) weeksChoice = found.maxWeeks;
-	});
+	let input = $derived({ plan, weeks, workouts, runDatesIso: context.runDatesIso, todayIso: today });
+	let answer = $derived({ plan_id: plan.id, from: found.fromIso, until: today });
 
 	function propose(k: number): void {
-		if (!input || busy) return;
-		const change = planBreakChange(input, k);
+		if (busy) return;
+		let change: BreakChange | null;
+		try {
+			change = planBreakChange(input, k);
+		} catch (e) {
+			console.error('plan break: working out the change failed', e);
+			change = null;
+		}
 		if (!change) {
 			showToast(m('planBreak.unavailable'), 'error');
 			return;
@@ -103,12 +78,12 @@
 
 	async function apply(): Promise<void> {
 		const change = pending;
-		if (!change || !found || busy) return;
+		if (!change || busy) return;
 		busy = true;
 		try {
 			await reschedulePlanAfterBreak(plan.id, change, found.fromIso, today);
 			pending = null;
-			hidden = true;
+			onanswered(answer);
 			showToast(m('planBreak.applied', { date: formatDate(change.endIso) }));
 			await onapplied();
 		} catch (e) {
@@ -126,11 +101,11 @@
 
 	async function dismiss(): Promise<void> {
 		const uid = auth.user?.id;
-		if (!uid || !found || busy) return;
+		if (!uid || busy) return;
 		busy = true;
 		try {
-			await updateUniversal(uid, { plan_break_dismissed: { plan_id: plan.id, from: found.fromIso } });
-			hidden = true;
+			await updateUniversal(uid, { [PLAN_BREAK_DISMISSED_KEY]: answer });
+			onanswered(answer);
 		} catch (e) {
 			showToast(m('planBreak.dismissFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
@@ -139,63 +114,61 @@
 	}
 </script>
 
-{#if shown && found}
-	<section class="plan-break" aria-labelledby="plan-break-title" data-testid="plan-break-card">
-		<span class="material-symbols plan-break-icon" aria-hidden="true">history</span>
-		<div class="plan-break-body">
-			<h3 id="plan-break-title">{m('planBreak.title')}</h3>
-			<p>{m('planBreak.body', { days: found.days, date: formatDate(found.fromIso) })}</p>
-			<p class="plan-break-hint">
-				{found.raceDateIso
-					? m('planBreak.hintRace', { date: formatDate(found.raceDateIso) })
-					: m('planBreak.hintNoRace')}
-			</p>
-			<div class="plan-break-actions">
-				<button
-					type="button"
-					class="btn btn-primary btn-sm"
-					disabled={busy}
-					data-testid="plan-break-repeat"
-					onclick={() => propose(1)}
-				>
-					{m('planBreak.repeat')}
-				</button>
-				{#if found.maxWeeks >= 2}
-					<span class="plan-break-weeks">
-						<label for="plan-break-weeks">{m('planBreak.weeksLabel')}</label>
-						<input
-							id="plan-break-weeks"
-							type="number"
-							min="1"
-							max={found.maxWeeks}
-							step="1"
-							bind:value={weeksChoice}
-							data-testid="plan-break-weeks"
-						/>
-						<button
-							type="button"
-							class="btn btn-secondary btn-sm"
-							disabled={busy}
-							data-testid="plan-break-more"
-							onclick={() => propose(weeksChoice)}
-						>
-							{found.raceDateIso ? m('planBreak.shortenBuild') : m('planBreak.pushBack')}
-						</button>
-					</span>
-				{/if}
-				<button
-					type="button"
-					class="btn btn-outline btn-sm"
-					disabled={busy}
-					data-testid="plan-break-dismiss"
-					onclick={dismiss}
-				>
-					{m('planBreak.dismiss')}
-				</button>
-			</div>
+<section class="plan-break" aria-labelledby="plan-break-title" data-testid="plan-break-card">
+	<span class="material-symbols plan-break-icon" aria-hidden="true">history</span>
+	<div class="plan-break-body">
+		<h3 id="plan-break-title">{m('planBreak.title')}</h3>
+		<p>{m('planBreak.body', { days: found.days, date: formatDate(found.fromIso) })}</p>
+		<p class="plan-break-hint">
+			{found.raceDateIso
+				? m('planBreak.hintRace', { date: formatDate(found.raceDateIso) })
+				: m('planBreak.hintNoRace')}
+		</p>
+		<div class="plan-break-actions">
+			<button
+				type="button"
+				class="btn btn-primary btn-sm"
+				disabled={busy}
+				data-testid="plan-break-repeat"
+				onclick={() => propose(1)}
+			>
+				{m('planBreak.repeat')}
+			</button>
+			{#if found.maxWeeks >= 2}
+				<span class="plan-break-weeks">
+					<label for="plan-break-weeks">{m('planBreak.weeksLabel')}</label>
+					<input
+						id="plan-break-weeks"
+						type="number"
+						min="1"
+						max={found.maxWeeks}
+						step="1"
+						bind:value={weeksChoice}
+						data-testid="plan-break-weeks"
+					/>
+					<button
+						type="button"
+						class="btn btn-secondary btn-sm"
+						disabled={busy}
+						data-testid="plan-break-more"
+						onclick={() => propose(weeksChoice)}
+					>
+						{found.raceDateIso ? m('planBreak.shortenBuild') : m('planBreak.pushBack')}
+					</button>
+				</span>
+			{/if}
+			<button
+				type="button"
+				class="btn btn-outline btn-sm"
+				disabled={busy}
+				data-testid="plan-break-dismiss"
+				onclick={dismiss}
+			>
+				{m('planBreak.dismiss')}
+			</button>
 		</div>
-	</section>
-{/if}
+	</div>
+</section>
 
 <ConfirmDialog
 	open={pending != null}

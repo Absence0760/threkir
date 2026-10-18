@@ -2017,6 +2017,9 @@ class AppLocalizationsFr extends AppLocalizations {
       'Position approximative — distance en pause';
 
   @override
+  String get runTurnOnPreciseLocation => 'Activer la position exacte';
+
+  @override
   String get runA11yStarted => 'Course démarrée';
 
   @override
@@ -10788,6 +10791,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get liveRunMapWaitingGps => 'En attente du GPS...';
+
+  @override
+  String get liveRunMapApproximateLocation =>
+      'La position exacte est désactivée — la carte ne peut pas afficher où vous êtes';
 
   @override
   String get liveRunMapRecentre => 'Recentrer sur ma position';

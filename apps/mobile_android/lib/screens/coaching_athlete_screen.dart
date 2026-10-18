@@ -36,6 +36,7 @@ class CoachingAthleteScreen extends StatefulWidget {
   final Preferences preferences;
   final String athleteId;
   final String? displayName;
+  final String? avatarUrl;
   final DateTime? acceptedAt;
 
   /// Writes the coach's edit to one of the athlete's workouts. The
@@ -53,6 +54,7 @@ class CoachingAthleteScreen extends StatefulWidget {
     required this.preferences,
     required this.athleteId,
     this.displayName,
+    this.avatarUrl,
     this.acceptedAt,
     this.training,
     this.hrPrescription,
@@ -266,7 +268,10 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
     return Row(
       children: [
         IdentityAvatar(
-            seed: widget.athleteId, name: widget.displayName, size: 48),
+            seed: widget.athleteId,
+            name: widget.displayName,
+            imageUrl: widget.avatarUrl,
+            size: 48),
         const SizedBox(width: 12),
         Expanded(
           child: Column(

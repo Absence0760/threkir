@@ -44,7 +44,7 @@
 	<meta name="twitter:description" content={description} />
 </svelte:head>
 
-<SharePageShell>
+<SharePageShell appHref={data.badge?.user_id ? `/u/${data.badge.user_id}?tab=achievements&badge=${data.id}` : null}>
 	<main class="share-badge" id="main-content">
 		{#if hasBadge}
 			<div class="badge-card tier-{tier}">

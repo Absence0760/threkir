@@ -41,6 +41,7 @@ import '../run_stats.dart';
 import '../settings_sync.dart';
 import '../share_sheet.dart';
 import '../social_service.dart';
+import '../sync_service.dart' show pushPendingRunEdit;
 import '../typed_decimal.dart';
 import 'guided_runs_screen.dart';
 import 'settings_preferences_screen.dart';
@@ -888,23 +889,15 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     if (!mounted) return;
     setState(() => run = updated);
 
-    // Push the edited columns (is_dnf / metadata / stats) straight to the
-    // server so other clients reflect the change now, not on the next
-    // batch sync (up to an hour out). Column-only — no track re-upload.
-    // L4 best-effort: a failure leaves the change for the batch sync.
+    // Push the edit straight away so other clients see it now, not on the
+    // next sync cycle: a compare-and-swap of only the changed columns, which
+    // never re-uploads the track and never writes over a change another
+    // device made since this copy was read (decisions § 2147). L4
+    // best-effort and never throws: whatever does not land stays pending for
+    // the next sync.
     final api = widget.apiClient;
     if (api != null) {
-      try {
-        await api.updateRunFields(updated);
-        // The column push covers every field this dialog can change, so the
-        // server row is now current. `update()` deliberately left the run
-        // unsynced (durably, since the H1 sidecar fix) — without settling it
-        // here the next SyncService cycle runs saveRunsBatch and re-uploads
-        // the whole GPS track, megabytes of cellular for a title edit.
-        await widget.runStore.markSynced(updated.id);
-      } catch (e) {
-        debugPrint('updateRunFields failed for ${run.id}: $e');
-      }
+      await pushPendingRunEdit(api, widget.runStore, updated.id);
     }
   }
 

@@ -50,7 +50,6 @@ export function normaliseRunMetadataFields(fields: {
 export function applyRunMetadataPatch(
 	current: JsonObject | null | undefined,
 	fields: { title?: string; notes?: string },
-	now: string,
 ): JsonObject {
 	const base = current ?? {};
 	const next: JsonObject = { ...base };
@@ -61,7 +60,6 @@ export function applyRunMetadataPatch(
 		delete next[key];
 	}
 	Object.assign(next, normaliseRunMetadataFields(fields));
-	next.last_modified_at = now;
 	return next;
 }
 

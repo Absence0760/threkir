@@ -29,6 +29,7 @@ import type { Database } from '../_shared/database.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { checkRateLimit } from '../_shared/rate_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { withCors } from '../_shared/cors.ts';
 import {
   type AccountCreateParams,
   type AccountLinkParams,
@@ -52,7 +53,7 @@ type AccountLinkParamsAreStripeParams = AssertNoUnknownParamKeys<
   UnknownParamKeys<AccountLinkParams, Stripe.AccountLinkCreateParams>
 >;
 
-Deno.serve(withSentry('events-connect-onboard', async (req: Request) => {
+Deno.serve(withCors(withSentry('events-connect-onboard', async (req: Request) => {
   if (req.method !== 'POST') {
     return Response.json({ error: 'method_not_allowed' }, { status: 405 });
   }
@@ -192,4 +193,4 @@ Deno.serve(withSentry('events-connect-onboard', async (req: Request) => {
   }
 
   return Response.json({ url: link.url });
-}));
+})));

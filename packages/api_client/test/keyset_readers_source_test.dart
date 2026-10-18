@@ -29,11 +29,17 @@ void main() {
     test('$reader takes a cursor and pages through _followPage', () {
       final fn = body('Future<KeysetPage<UserProfileRow>> $reader');
       expect(fn, isNotEmpty, reason: 'the reader moved or was renamed');
-      expect(fn.contains('List<Object?>? after'), isTrue,
-          reason: 'the reader must take the previous page\'s cursor');
+      expect(
+        fn.contains('List<Object?>? after'),
+        isTrue,
+        reason: 'the reader must take the previous page\'s cursor',
+      );
       expect(fn.contains('_followPage('), isTrue);
-      expect(fn.contains('offset'), isFalse,
-          reason: 'the reader must not page by offset');
+      expect(
+        fn.contains('offset'),
+        isFalse,
+        reason: 'the reader must not page by offset',
+      );
     });
   }
 
@@ -43,26 +49,35 @@ void main() {
     expect(fn.contains('List<Object?>? after'), isTrue);
     expect(fn.contains('keysetAfter(order, after)'), isTrue);
     expect(fn.contains('nextCursor(order, rows, limit)'), isTrue);
-    expect(fn.contains('p_offset'), isFalse,
-        reason: 'search_public_routes pages by offset; the view is read '
-            'directly so the page can start after a cursor');
+    expect(
+      fn.contains('p_offset'),
+      isFalse,
+      reason:
+          'search_public_routes pages by offset; the view is read '
+          'directly so the page can start after a cursor',
+    );
     expect(fn.contains('offset'), isFalse);
   });
 
-  test('searchPublicRoutes matches the query literally, not as a LIKE pattern',
-      () {
-    // PostgREST rewrites every `*` in an ilike value to `%`, and `%` / `_` /
-    // `\` are LIKE metacharacters, so `ilike('name', '%$q%')` turned a search
-    // for "5*5" into "5%5". The query must reach imatch escaped.
-    final fn = body('Future<KeysetPage<Route>> searchPublicRoutes(');
-    expect(
-      fn.contains("imatchRegex('name', literalSubstringPattern(trimmed))"),
-      isTrue,
-      reason: 'the name must be matched through literalSubstringPattern',
-    );
-    expect(fn.contains('.ilike('), isFalse,
-        reason: 'an ilike pattern reads * % _ \\ as wildcards');
-  });
+  test(
+    'searchPublicRoutes matches the query literally, not as a LIKE pattern',
+    () {
+      // PostgREST rewrites every `*` in an ilike value to `%`, and `%` / `_` /
+      // `\` are LIKE metacharacters, so `ilike('name', '%$q%')` turned a search
+      // for "5*5" into "5%5". The query must reach imatch escaped.
+      final fn = body('Future<KeysetPage<Route>> searchPublicRoutes(');
+      expect(
+        fn.contains("imatchRegex('name', literalSubstringPattern(trimmed))"),
+        isTrue,
+        reason: 'the name must be matched through literalSubstringPattern',
+      );
+      expect(
+        fn.contains('.ilike('),
+        isFalse,
+        reason: 'an ilike pattern reads * % _ \\ as wildcards',
+      );
+    },
+  );
 
   test('the public gym-routine library matches its search literally', () {
     // `ilike('%q%')` read every `*` as `%` (PostgREST) and `%` `_` `\` as
@@ -85,23 +100,24 @@ void main() {
     expect(RegExp(r'\.i?like(AllOf|AnyOf)?\(').hasMatch(code), isFalse);
   });
 
-  test('no filter tree interpolates text into a pattern operator unquoted',
-      () {
+  test('no filter tree interpolates text into a pattern operator unquoted', () {
     // Inside `or=` / `and=` PostgREST reads an unquoted value up to the next
     // `,` or `)`, so `name.ilike.%$term%` lets typed text rewrite the tree.
     // Build the term with core_models' `literalSubstringTerm`, which escapes
     // it for imatch and double-quotes it.
-    final pattern =
-        RegExp(r'\.(i?like|i?match|fts|plfts|phfts|wfts)\.[%*]?\$');
+    final pattern = RegExp(r'\.(i?like|i?match|fts|plfts|phfts|wfts)\.[%*]?\$');
     final offenders = [
-      for (final f in Directory('lib')
-          .listSync(recursive: true)
-          .whereType<File>()
-          .where((f) => f.path.endsWith('.dart')))
-        if (pattern.hasMatch(f
-            .readAsLinesSync()
-            .where((l) => !l.trimLeft().startsWith('//'))
-            .join('\n')))
+      for (final f
+          in Directory('lib')
+              .listSync(recursive: true)
+              .whereType<File>()
+              .where((f) => f.path.endsWith('.dart')))
+        if (pattern.hasMatch(
+          f
+              .readAsLinesSync()
+              .where((l) => !l.trimLeft().startsWith('//'))
+              .join('\n'),
+        ))
           f.path,
     ];
     expect(offenders, isEmpty);
@@ -118,11 +134,17 @@ void main() {
     expect(fn.contains('keysetAfter(_routeListOrder, after)'), isTrue);
     expect(fn.contains('nextCursor(_routeListOrder, data, limit)'), isTrue);
     expect(fn.contains('DateTime? before'), isFalse);
-    expect(fn.contains('.lt(RouteRow.colCreatedAt'), isFalse,
-        reason: 'a created_at-only cursor drops a tied row');
+    expect(
+      fn.contains('.lt(RouteRow.colCreatedAt'),
+      isFalse,
+      reason: 'a created_at-only cursor drops a tied row',
+    );
     final order = body('static const List<KeysetKey> _routeListOrder');
-    expect(order.contains('KeysetKey(RouteRow.colId'), isTrue,
-        reason: 'id must break a created_at tie so the order is total');
+    expect(
+      order.contains('KeysetKey(RouteRow.colId'),
+      isTrue,
+      reason: 'id must break a created_at tie so the order is total',
+    );
   });
 
   test('getRoutes lists only the caller\'s own routes', () {
@@ -131,8 +153,11 @@ void main() {
     // club routes as the caller's own. Web filters by user_id; so must this.
     final fn = body('Future<KeysetPage<Route>> getRoutes(');
     expect(fn, isNotEmpty, reason: 'getRoutes moved or was renamed');
-    expect(fn.contains('.eq(RouteRow.colUserId, userId)'), isTrue,
-        reason: 'the owner filter must be explicit, not left to RLS');
+    expect(
+      fn.contains('.eq(RouteRow.colUserId, userId)'),
+      isTrue,
+      reason: 'the owner filter must be explicit, not left to RLS',
+    );
     expect(fn.contains('_client.auth.currentUser?.id'), isTrue);
   });
 
@@ -143,15 +168,35 @@ void main() {
     // this.
     final fn = body('Future<List<Run>> getRuns(');
     expect(fn, isNotEmpty, reason: 'getRuns moved or was renamed');
-    expect(fn.contains('.eq(RunRow.colUserId, userId)'), isTrue,
-        reason: 'the owner filter must be explicit, not left to RLS');
+    expect(
+      fn.contains('.eq(RunRow.colUserId, userId)'),
+      isTrue,
+      reason: 'the owner filter must be explicit, not left to RLS',
+    );
+  });
+
+  test('getRunsByIds reads only the caller\'s own runs, chunked', () {
+    // The missing-run reconcile pulls every owned id the device lacks, so an
+    // RLS-only read would hand a coach their athletes' runs by id, and an
+    // unchunked id list overflows the request line for a large library.
+    final fn = body('Future<List<Run>> getRunsByIds(');
+    expect(fn, isNotEmpty, reason: 'getRunsByIds moved or was renamed');
+    expect(
+      fn.contains('.eq(RunRow.colUserId, userId)'),
+      isTrue,
+      reason: 'the owner filter must be explicit, not left to RLS',
+    );
+    expect(fn.contains('readChunked('), isTrue);
   });
 
   test('_followPage filters after the cursor and returns the next one', () {
     expect(followPage, isNotEmpty, reason: '_followPage moved or was renamed');
     expect(followPage.contains('keysetAfter(order, after)'), isTrue);
-    expect(followPage.contains('nextCursor(order, edges, limit)'), isTrue,
-        reason: 'the cursor must come from the last EDGE read');
+    expect(
+      followPage.contains('nextCursor(order, edges, limit)'),
+      isTrue,
+      reason: 'the cursor must come from the last EDGE read',
+    );
     expect(followPage.contains('.range('), isFalse);
   });
 }

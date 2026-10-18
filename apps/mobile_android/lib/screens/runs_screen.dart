@@ -22,6 +22,7 @@ import '../local_food_store.dart';
 import '../local_gym_store.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
+import '../missing_run_pull.dart';
 import '../preferences.dart';
 import '../runs_history_items.dart';
 import '../settings_sync.dart';
@@ -708,24 +709,28 @@ class _RunsScreenState extends State<RunsScreen>
           : await api.getRuns(limit: 200, updatedSince: since);
       await widget.runStore.saveManyFromRemote(remote);
       await widget.preferences.setRunsLastFetchedAt(fetchStartedAt);
+      // Neither pull above can see a row this app never stamped (web
+      // entries, imports, a restored backup), so reconcile by membership too.
+      // Its own catch: a failed reconcile must not undo or mislabel the
+      // delta that already landed.
+      var reconciled = false;
+      try {
+        final pulled = await pullMissingRuns(api, widget.runStore);
+        if (pulled > 0) debugPrint('RunsScreen: pulled $pulled missing runs');
+        reconciled = true;
+      } catch (e) {
+        debugPrint('RunsScreen: missing-run reconcile failed: $e');
+      }
       if (mounted) {
         setState(() {
           if (since == null) {
             _remoteHasMore = remote.length == _kRunsPageSize;
           }
-          // Returning-user regression fix: `_remoteHasMore` resets to
-          // its conservative `true` default on every fresh mount (app
-          // restart, tab remount, …), but a returning user almost
-          // always takes the delta-sync branch above, which never
-          // corrects it — so the Load-more button stayed stuck on
-          // forever for anyone with under one page of runs. The local
-          // store's full history is authoritative here regardless of
-          // which branch ran (saveManyFromRemote just folded in
-          // anything new from any device): fewer than a page total
-          // means there is provably no next page to fetch.
-          if (widget.runStore.summaries.length < _kRunsPageSize) {
-            _remoteHasMore = false;
-          }
+          // A completed reconcile means the device holds every owned run,
+          // so no older page exists — the only proof of that. A local count
+          // under one page is not: it read 10 restored-on-web runs' worth of
+          // history as complete and hid Load more over the gap.
+          if (reconciled) _remoteHasMore = false;
         });
       }
     } catch (e) {

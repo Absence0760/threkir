@@ -1,5 +1,5 @@
 /**
- * Changing a plan's race date mid-plan (issue #1186, decisions § 2120): which
+ * Changing a plan's race date mid-plan: which
  * weeks to drop or repeat so the plan ends on the new race day with its taper
  * whole. `change_plan_race_date` applies the result in one transaction and
  * re-checks every choice.
@@ -11,8 +11,6 @@
  * build week before the peak, or before the taper once the peak has started.
  * The taper and race weeks are never dropped, and nothing that has started,
  * nothing completed and no other race moves.
- *
- * Dart twin: apps/mobile_android/lib/plan_race_date.dart.
  */
 
 import { daysBetweenIso } from './cycle_plan.ts';

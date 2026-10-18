@@ -1,4 +1,4 @@
-// Plan detail's "Change race date…" (issue #1186, decisions § 2120): the
+// Plan detail's "Change race date…": the
 // owner's app-bar entry, the date picker, the confirm that says what changes,
 // the refusal of a day too close for the taper, and the overlap error.
 
@@ -22,9 +22,14 @@ const _phases = ['base', 'base', 'build', 'build', 'build', 'peak', 'taper', 'ra
 class _FakeTraining extends TrainingService {
   final bool walkRun;
   final Object? changeError;
+  final List<TrainingPlanRow> activePlans;
   final changeCalls = <(RaceDateChange, String)>[];
 
-  _FakeTraining({this.walkRun = false, this.changeError});
+  _FakeTraining(
+      {this.walkRun = false, this.changeError, this.activePlans = const []});
+
+  @override
+  Future<List<TrainingPlanRow>> fetchActivePlans() async => activePlans;
 
   @override
   Future<
@@ -144,6 +149,22 @@ Future<void> _pickRaceDate(WidgetTester tester, String mmddyyyy) async {
 Future<void> _drainBanner(WidgetTester tester) =>
     tester.pump(const Duration(seconds: 4));
 
+TrainingPlanRow _queued(String start) => TrainingPlanRow(
+      id: 'plan-next',
+      userId: _owner,
+      name: 'Autumn Marathon',
+      goalEvent: 'distance_full',
+      goalDistanceM: 42195,
+      startDate: DateTime.parse(start),
+      endDate: DateTime.parse(start).add(const Duration(days: 111)),
+      daysPerWeek: 4,
+      status: 'active',
+      source: 'generated',
+      rules: const [],
+      isTemplate: false,
+      isPublicTemplate: false,
+    );
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
@@ -218,6 +239,48 @@ void main() {
     await tester.pumpAndSettle();
     expect(training.changeCalls, hasLength(1));
     expect(find.textContaining('runs into another active plan'), findsOneWidget);
+    await _drainBanner(tester);
+  });
+
+  testWidgets('an earlier race confirms the cut build weeks, then applies',
+      (tester) async {
+    final training = _FakeTraining();
+    await _pump(tester, training);
+
+    await _pickRaceDate(tester, '04/01/2026');
+    expect(find.textContaining('2 build weeks are cut'), findsOneWidget);
+    await tester.tap(find.widgetWithText(TextButton, 'Change race date'));
+    await tester.pumpAndSettle();
+    final (change, _) = training.changeCalls.single;
+    expect(change.raceDateIso, '2026-04-01');
+    expect(change.weekDelta, -2);
+    expect(change.dropWeekIds, ['w3', 'w4']);
+    expect(change.insertAt, isNull);
+    await _drainBanner(tester);
+  });
+
+  testWidgets('a later race onto a queued plan is refused before any confirm',
+      (tester) async {
+    final training =
+        _FakeTraining(activePlans: [_queued('2026-04-20')]);
+    await _pump(tester, training);
+
+    await _pickRaceDate(tester, '04/26/2026');
+    expect(find.text('Change race date?'), findsNothing);
+    expect(find.textContaining('runs into another active plan'), findsOneWidget);
+    expect(training.changeCalls, isEmpty);
+    await _drainBanner(tester);
+  });
+
+  testWidgets('a failed change says so', (tester) async {
+    final training = _FakeTraining(changeError: Exception('boom'));
+    await _pump(tester, training);
+
+    await _pickRaceDate(tester, '04/26/2026');
+    await tester.tap(find.widgetWithText(TextButton, 'Change race date'));
+    await tester.pumpAndSettle();
+    expect(training.changeCalls, hasLength(1));
+    expect(find.textContaining("Couldn't update the plan"), findsOneWidget);
     await _drainBanner(tester);
   });
 }

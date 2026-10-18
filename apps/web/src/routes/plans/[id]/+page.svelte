@@ -375,7 +375,7 @@
 		bulkConfirm = { kind: 'shift', following: impact.kind === 'following' ? impact.following : [] };
 	}
 
-	// ─── Change race date (owner-only, decisions § 2120) ───
+	// ─── Change race date (owner-only) ───
 	let raceDateInput = $state('');
 
 	function openAdjust(): void {

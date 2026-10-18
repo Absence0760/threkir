@@ -35,16 +35,6 @@ const COMPONENT = 'lib/components/Avatar.svelte';
  */
 const CLUB_SITES: { file: string; name: string; reason: string }[] = [
 	{
-		file: 'routes/clubs/[slug]/+page.svelte',
-		name: 'club.name',
-		reason: 'the club hero; the club logo upload owns this site',
-	},
-	{
-		file: 'lib/components/SocialClubs.svelte',
-		name: 'club.name',
-		reason: 'a club card; the club logo upload owns this site',
-	},
-	{
 		file: 'lib/components/StravaClubsSection.svelte',
 		name: 'club.name',
 		reason: 'a Strava club, which carries no stored image',

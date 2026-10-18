@@ -137,8 +137,9 @@ confirms first, because the Storage delete cannot be undone, then
 (migration `20270918000007`) admit only that exact filename and only for
 `private.is_club_admin(club_id)`, the same oracle the `clubs` UPDATE policy
 uses for the column itself; see `api_database.md § Storage`. `ClubAvatar` draws
-the logo, falling back to the seeded initial, in the club header and on the
-My clubs / Browse cards; it accepts an `http` URL only on this project's own
+the logo through the shared `Avatar` component, falling back to the seeded
+initial, in the club header and on the My clubs / Browse cards; it hands
+`Avatar` a `sanitize` that accepts an `http` URL only on this project's own
 club-logo path (`clubLogoSrc`), so the local stack shows the logos it stores.
 The share page and its OG image already read the column. **Mobile has no logo
 control yet and still draws the initial** (`parity.md`). A deleted club's logo

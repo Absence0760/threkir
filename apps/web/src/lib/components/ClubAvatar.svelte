@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { initial, hashHue, seedBackground, seedForeground } from '#lib/format/avatar.ts';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { hashHue } from '#lib/format/avatar.ts';
 	import { PUBLIC_SUPABASE_URL } from '$app/env/public';
 	import { clubLogoSrc } from '#lib/social/club_logo.ts';
 
@@ -13,41 +14,18 @@
 		font: string;
 	} = $props();
 
-	const safeUrl = $derived(clubLogoSrc(club.avatar_url, PUBLIC_SUPABASE_URL));
-	const hue = $derived(hashHue(club.id));
+	const logoSrc = (url: string | null | undefined) => clubLogoSrc(url, PUBLIC_SUPABASE_URL);
+	const hasLogo = $derived(logoSrc(club.avatar_url) !== '');
 </script>
 
-<span
-	class="club-avatar"
-	style="--cav-size: {size}; --cav-font: {font}; --cav-bg: {seedBackground(hue)}; --cav-fg: {seedForeground(hue)};"
-	aria-hidden="true"
+<Avatar
+	url={club.avatar_url ?? null}
+	name={club.name}
+	{size}
+	{font}
+	bg="seed"
+	seedHue={hashHue(club.id)}
+	sanitize={logoSrc}
 	data-testid="club-avatar"
-	data-has-logo={safeUrl ? 'true' : 'false'}
->
-	{#if safeUrl}
-		<img src={safeUrl} alt="" />
-	{:else}
-		{initial(club.name)}
-	{/if}
-</span>
-
-<style>
-	.club-avatar {
-		width: var(--cav-size);
-		height: var(--cav-size);
-		flex-shrink: 0;
-		border-radius: 50%;
-		background: var(--cav-bg);
-		color: var(--cav-fg);
-		display: grid;
-		place-items: center;
-		font-weight: 700;
-		font-size: var(--cav-font);
-		overflow: hidden;
-	}
-	.club-avatar img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-</style>
+	data-has-logo={hasLogo ? 'true' : 'false'}
+/>

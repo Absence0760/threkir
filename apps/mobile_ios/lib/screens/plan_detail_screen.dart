@@ -14,6 +14,7 @@ import '../widgets/plan_details_sheet.dart';
 import '../plan_repace.dart';
 import '../plan_bulk_ops.dart' show shiftIsoDate;
 import '../plan_race_date.dart';
+import '../plan_repeat_week.dart';
 import '../plan_resume.dart';
 import '../plan_restart.dart';
 import '../rate_limit_message.dart' show rateLimitErrorMessage;
@@ -1563,6 +1564,139 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     }
   }
 
+  /// "Too hard? Repeat this week" for [w]: the change, or a refusal worth
+  /// explaining (a race plan with no room, a done workout in the way). Null
+  /// where it could never apply: not the owner's plan, not this week or last
+  /// week, a taper week. Web twin: `repeatOffer` on the plan page.
+  RepeatWeekResult? _repeatOffer(TrainingPlanRow p, PlanWeekRow w) {
+    if (!_isOwner(p) || p.isTemplate) return null;
+    final r = repeatWeekChange(
+      plan: _raceDatePlan(p),
+      weeks: _raceDateWeeks,
+      workouts: [
+        for (final wo in _byWeek.values.expand((x) => x))
+          RaceDateWorkout(
+            id: wo.id,
+            weekId: wo.weekId,
+            scheduledDate: toIsoDate(wo.scheduledDate),
+            kind: wo.kind,
+            racePriority: wo.racePriority,
+            completedRunId: wo.completedRunId,
+            manuallyCompleted: wo.manuallyCompleted,
+          )
+      ],
+      weekId: w.id,
+      todayIso: toIsoDate(widget.now()),
+    );
+    if (r.ok ||
+        r.reason == RepeatWeekRefusal.noRoom ||
+        r.reason == RepeatWeekRefusal.inTheWay) {
+      return r;
+    }
+    return null;
+  }
+
+  bool _walkRunOfferShows(TrainingPlanRow p, int currentWeek) {
+    if (_weeks.isEmpty || currentWeek >= _weeks.length) return false;
+    final workouts = [
+      for (final w in _byWeek.values.expand((x) => x))
+        RestartWorkout(kind: w.kind, scheduledDate: toIsoDate(w.scheduledDate)),
+    ];
+    return isWalkRunPlan(workouts) &&
+        (_repeatOffer(p, _weeks[currentWeek])?.ok ?? false);
+  }
+
+  String _repeatWeekRefusal(AppLocalizations l10n, RepeatWeekRefusal r) =>
+      switch (r) {
+        RepeatWeekRefusal.noRoom => l10n.planDetailRepeatWeekNoRoom,
+        RepeatWeekRefusal.inTheWay => l10n.planDetailRepeatWeekInTheWay,
+        RepeatWeekRefusal.lastWeek => l10n.planDetailRepeatWeekLastWeek,
+        RepeatWeekRefusal.notActive ||
+        RepeatWeekRefusal.notRepeatable =>
+          l10n.planDetailRepeatWeekNotNow,
+      };
+
+  /// Runs [w] again next week and pushes the rest back one week, after a
+  /// confirm that names the new end date, or the race day a race plan keeps.
+  /// A later end is checked against the runner's other active plans first.
+  /// Web twin: `chooseRepeatWeek` + `applyRepeatWeek` on the plan page.
+  Future<void> _repeatWeek(TrainingPlanRow p, PlanWeekRow w) async {
+    if (_bulkBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final locale = localeToTag(Localizations.localeOf(context));
+    final todayIso = toIsoDate(widget.now());
+    final r = _repeatOffer(p, w);
+    if (r == null) return;
+    if (!r.ok) {
+      showTopBanner(context, _repeatWeekRefusal(l10n, r.reason!));
+      return;
+    }
+    final change = r.change!;
+    if (change.endIso.compareTo(toIsoDate(p.endDate)) > 0) {
+      final List<TrainingPlanRow> others;
+      try {
+        others = [
+          for (final o in await widget.training
+              .fetchActivePlans()
+              .timeout(kBackendLoadTimeout))
+            if (o.id != p.id) o
+        ];
+      } catch (e) {
+        debugPrint('plan repeat week overlap check failed: $e');
+        if (mounted) {
+          showTopBanner(
+              context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+        }
+        return;
+      }
+      if (!mounted) return;
+      if (overlappingActivePlans(others, toIsoDate(p.startDate), change.endIso)
+          .isNotEmpty) {
+        showTopBanner(context, l10n.planDetailRepeatWeekOverlap);
+        return;
+      }
+    }
+    final start = formatDateShort(parseIsoDate(change.copyStartIso), locale);
+    final race = change.raceDateIso;
+    final ok = await confirmDestructive(
+      context,
+      title: l10n.planDetailRepeatWeekConfirmTitle(w.weekIndex + 1),
+      body: race != null
+          ? l10n.planDetailRepeatWeekConfirmRace(w.weekIndex + 1,
+              change.copyIndex + 1, start,
+              formatDateShort(parseIsoDate(race), locale))
+          : l10n.planDetailRepeatWeekConfirmMessage(w.weekIndex + 1,
+              change.copyIndex + 1, start,
+              formatDateShort(parseIsoDate(change.endIso), locale)),
+      confirmLabel: l10n.planDetailRepeatWeekAction,
+      cancelLabel: l10n.plansCancel,
+    );
+    if (!ok || !mounted) return;
+    setState(() => _bulkBusy = true);
+    try {
+      await widget.training
+          .repeatPlanWeek(p.id, change, todayIso)
+          .timeout(kBackendLoadTimeout);
+      if (!mounted) return;
+      showTopBanner(
+          context, l10n.planDetailRepeatWeekDone(w.weekIndex + 1, start));
+      await _load();
+    } on ActivePlanExistsError {
+      if (mounted) showTopBanner(context, l10n.planDetailRepeatWeekOverlap);
+    } catch (e) {
+      debugPrint('plan repeat week failed: $e');
+      if (mounted) {
+        final friendly = e is PostgrestException
+            ? rateLimitErrorMessage(l10n, code: e.code, message: e.message)
+            : null;
+        showTopBanner(context,
+            friendly ?? l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+      }
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
+    }
+  }
+
   /// Eases one week to a recovery week: about 60% volume, quality sessions
   /// turned into easy runs. Not reversible, so it confirms first. Web twin:
   /// `markWeekRecovery` on the plan page.
@@ -2067,6 +2201,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
             title: _notStarted(p) ? l10n.planDetailFirstWeek : null,
             onSelect: _openWorkout,
           ),
+        ],
+        if (_walkRunOfferShows(p, currentWeek)) ...[
+          const SizedBox(height: 12),
+          _repeatWeekOffer(theme, l10n, p, _weeks[currentWeek]),
         ],
         // Adherence flags and the re-plan preview stay uncollapsed: a warning
         // that only renders when something is wrong is signal, and the
@@ -2899,6 +3037,33 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     );
   }
 
+  Widget _repeatWeekOffer(ThemeData theme, AppLocalizations l10n,
+      TrainingPlanRow p, PlanWeekRow week) {
+    return Container(
+      key: const Key('planDetailRepeatWeekOffer'),
+      padding: const EdgeInsets.all(12),
+      decoration: planCardDecoration(theme),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.planDetailRepeatWeekOfferTitle,
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text(l10n.planDetailRepeatWeekOfferBody,
+              style: theme.textTheme.bodyMedium),
+          const SizedBox(height: 8),
+          FilledButton.tonalIcon(
+            key: const Key('planDetailRepeatWeekOfferButton'),
+            onPressed: _bulkBusy ? null : () => _repeatWeek(p, week),
+            icon: const Icon(Icons.replay),
+            label: Text(l10n.planDetailRepeatWeek),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _weekCard(ThemeData theme, AppLocalizations l10n, TrainingPlanRow p,
       PlanWeekRow w, int currentWeek) {
     final phase = planPhaseFromDb(w.phase);
@@ -2943,6 +3108,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                   onSelected: (a) => switch (a) {
                     _WeekMenu.duplicate => _duplicateWeek(p, w),
                     _WeekMenu.recovery => _markWeekRecovery(p, w),
+                    _WeekMenu.repeat => _repeatWeek(p, w),
                   },
                   itemBuilder: (_) => [
                     PopupMenuItem(
@@ -2951,6 +3117,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                     PopupMenuItem(
                         value: _WeekMenu.recovery,
                         child: Text(l10n.planDetailMarkRecovery)),
+                    if (_repeatOffer(p, w) != null)
+                      PopupMenuItem(
+                          key: ValueKey('planDetailRepeatWeek-${w.weekIndex}'),
+                          value: _WeekMenu.repeat,
+                          child: Text(l10n.planDetailRepeatWeekAction)),
                   ],
                 ),
             ],
@@ -3365,7 +3536,7 @@ class _RestartPlanDialogState extends State<_RestartPlanDialog> {
   }
 }
 
-enum _WeekMenu { duplicate, recovery }
+enum _WeekMenu { duplicate, recovery, repeat }
 
 /// Asks how many days to move the plan by. Pops the signed day count, or
 /// nothing on cancel. The RPC's own bound is ±366 and zero is a no-op.

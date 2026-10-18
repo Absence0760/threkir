@@ -14,6 +14,7 @@ import 'nutrition_targets.dart' show ageFromDob;
 import 'plan_bulk_ops.dart';
 import 'plan_break.dart' show BreakChange;
 import 'plan_race_date.dart' show RaceDateChange;
+import 'plan_repeat_week.dart' show RepeatWeekChange;
 import 'plan_resume.dart';
 import 'plan_copy.dart';
 import 'plan_current.dart';
@@ -854,6 +855,25 @@ class TrainingService extends ChangeNotifier {
         'p_break_from': breakFromIso,
         'p_repeat_week_ids': change.repeatWeekIds,
         'p_drop_week_ids': change.dropWeekIds,
+      });
+    } catch (e, s) {
+      Error.throwWithStackTrace(planWriteError(e), s);
+    }
+    notifyListeners();
+  }
+
+  /// "Too hard? Repeat this week": runs [change]'s week again next week and
+  /// pushes the rest back one, keeping race day by dropping
+  /// `change.dropWeekId` (`repeatWeekChange`), in one transaction
+  /// (`repeat_plan_week`). Web twin: `repeatPlanWeek` in `core/data.ts`.
+  Future<void> repeatPlanWeek(
+      String planId, RepeatWeekChange change, String todayIso) async {
+    try {
+      await _c.rpc('repeat_plan_week', params: {
+        'p_plan_id': planId,
+        'p_today': todayIso,
+        'p_week_id': change.weekId,
+        'p_drop_week_id': change.dropWeekId,
       });
     } catch (e, s) {
       Error.throwWithStackTrace(planWriteError(e), s);

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:core_models/core_models.dart'
-    show DistanceUnit, kMetresPerMile;
+    show DistanceUnit, kMetresPerMile, parseIsoStrictValue;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -156,7 +156,7 @@ class Preferences extends ChangeNotifier {
   // Timestamp of the last successful runs-list fetch. Drives the
   // delta-fetch path in RunsScreen so refreshes only pull rows modified
   // since, instead of re-paging the entire history every time.
-  static const _kRunsLastFetchedAt = 'runs_last_fetched_at';
+  static const _kRunsSyncCursor = 'runs_sync_cursor';
 
   static const _kBatteryOptHintShown = 'battery_opt_hint_shown';
 
@@ -552,25 +552,31 @@ class Preferences extends ChangeNotifier {
     }
   }
 
-  /// Timestamp of the last successful `getRuns` call. Used to drive the
-  /// delta-fetch path so refreshing the Runs tab only pulls rows updated
-  /// since the last visit. Null means "never fetched" — the first fetch
-  /// is full, subsequent ones are deltas.
-  DateTime? get runsLastFetchedAt {
-    final iso = _prefs.getString(_kRunsLastFetchedAt);
-    return iso == null ? null : DateTime.tryParse(iso);
+  /// The largest server `runs.updated_at` the delta pull has seen — a SERVER
+  /// instant, never the device clock, so skew cannot open a gap
+  /// (`ApiClient.getRunsModifiedSince`). Null means "never pulled", and the
+  /// next pull walks every owned row.
+  ///
+  /// A new key rather than the old `runs_last_fetched_at`: that one was a
+  /// device instant compared against the phone-only `last_modified_at`
+  /// stamp, and a device upgrading from it holds copies of runs edited on
+  /// web that no `updated_at` cursor would ever return. Starting from null
+  /// re-reads them once (decisions § 2118).
+  DateTime? get runsSyncCursor {
+    final iso = _prefs.getString(_kRunsSyncCursor);
+    return iso == null ? null : parseIsoStrictValue(iso);
   }
 
-  Future<void> setRunsLastFetchedAt(DateTime when) async {
-    await _prefs.setString(_kRunsLastFetchedAt, when.toIso8601String());
+  Future<void> setRunsSyncCursor(DateTime when) async {
+    await _prefs.setString(_kRunsSyncCursor, when.toUtc().toIso8601String());
   }
 
   /// Back to "never fetched" so the next signed-in account's first runs
   /// fetch takes the FULL path — a delta fetch against the prior
   /// account's watermark would silently skip the new account's older
   /// history on this device (issue #231).
-  Future<void> clearRunsLastFetchedAt() async {
-    await _prefs.remove(_kRunsLastFetchedAt);
+  Future<void> clearRunsSyncCursor() async {
+    await _prefs.remove(_kRunsSyncCursor);
   }
 
   /// Reset every account-scoped preference — the local mirrors of the
@@ -597,7 +603,7 @@ class Preferences extends ChangeNotifier {
     await setShowGym(null);
     await setShowNutrition(null);
     await clearGoals();
-    await clearRunsLastFetchedAt();
+    await clearRunsSyncCursor();
     // The deferred-onboarding flag belongs to the account that dismissed
     // the wizard offline — the next account must get its own gate decision.
     await setSetupWizardDismissed(false);

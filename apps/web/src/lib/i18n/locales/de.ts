@@ -4092,6 +4092,8 @@ export const messages = {
 	"races.detailShareFailed": "Der Link konnte nicht geteilt oder kopiert werden.",
 	"races.detailImportAfterRace": "Dein offizielles Ergebnis kannst du ab dem Renntag, {date}, importieren.",
 	"races.detailYourRuns": "Deine Läufe bei diesem Rennen",
+	"races.courseHeading": "Strecke",
+	"races.courseGain": "{value} Höhenmeter",
 	"races.detailRunsFailed": "Deine Läufe für dieses Rennen konnten nicht geladen werden.",
 	"races.detailNoRuns": "Noch keine Läufe mit diesem Rennen verknüpft. Importiere nach dem Renntag hier dein Ergebnis oder öffne den aufgezeichneten Lauf und ordne ihn diesem Rennen zu.",
 	"races.submitRace": "Rennen hinzufügen",

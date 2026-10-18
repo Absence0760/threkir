@@ -3940,6 +3940,8 @@
   "racesDetailShare": "Teilen",
   "racesDetailImportAfterRace": "Dein offizielles Ergebnis kannst du ab dem Renntag, {date}, importieren.",
   "racesDetailYourRuns": "Deine Läufe bei diesem Rennen",
+  "racesCourseHeading": "Strecke",
+  "racesCourseGain": "{value} Höhenmeter",
   "racesDetailRunsFailed": "Deine Läufe für dieses Rennen konnten nicht geladen werden.",
   "racesDetailNoRuns": "Noch keine Läufe mit diesem Rennen verknüpft. Importiere nach dem Renntag hier dein Ergebnis oder öffne den aufgezeichneten Lauf und ordne ihn diesem Rennen zu.",
   "racesViewResults": "Ergebnisse ansehen",

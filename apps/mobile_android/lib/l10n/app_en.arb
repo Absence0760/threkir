@@ -18403,6 +18403,19 @@
   "@racesDetailYourRuns": {
     "description": "Race detail screen: heading over the runner's own runs linked to this race"
   },
+  "racesCourseHeading": "Course",
+  "@racesCourseHeading": {
+    "description": "Race detail: heading over the race's course summary (distance, elevation gain, surface)"
+  },
+  "racesCourseGain": "{value} elevation gain",
+  "@racesCourseGain": {
+    "description": "Race detail: the course's total elevation gain in the course summary. value is the formatted gain with its unit, e.g. 180 m.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "racesDetailRunsFailed": "Couldn't load your runs for this race.",
   "@racesDetailRunsFailed": {
     "description": "Race detail screen: the runner's linked runs failed to load"

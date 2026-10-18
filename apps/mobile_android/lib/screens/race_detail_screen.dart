@@ -5,7 +5,8 @@ import 'package:ui_kit/ui_kit.dart' show ActivityLoaderKind, FullBodyLoader;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/gen/app_localizations.dart';
-import '../preferences.dart' show formatDistanceForPref, formatEffortTime;
+import '../preferences.dart'
+    show formatDistanceForPref, formatEffortTime, formatElevationForPref;
 import '../pro_sellable.dart' show fetchAiPlanAvailable;
 import '../race_plan_prefill.dart';
 import '../race_plan_preset.dart';
@@ -17,6 +18,7 @@ import '../training_service.dart';
 import '../web_base_url.dart';
 import '../widgets/error_state.dart';
 import '../widgets/top_banner.dart';
+import 'global_segments_screen.dart' show catalogueSurfaceLabel;
 import 'plan_new_screen.dart';
 import 'races_screen.dart' show showRaceImportSheet;
 
@@ -274,13 +276,30 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
     // A plan ending before this race: the new plan queues behind it rather
     // than replacing or trimming it (decisions § 2008, § 2154).
     final chain = canTrainFor ? racePlanChain(_ownPlans, planRace, today) : null;
+    final course = race.course;
     final describe = canTrainFor && _aiPlan
         ? racePlanDescribe(
             race: planRace,
             goalTimeS: racePlanGoalTimeS(_ownPlans, race.raceDate),
             recentEffort: _recentEffort,
+            course: course == null
+                ? null
+                : RacePlanCourse(
+                    ascentM: course.ascentM,
+                    surface: course.surface,
+                  ),
           )
         : null;
+    final courseParts = <String>[
+      if (course != null) ...[
+        if ((course.distanceM ?? 0) > 0)
+          formatDistanceForPref(course.distanceM!),
+        if ((course.ascentM ?? 0) > 0)
+          l.racesCourseGain(formatElevationForPref(course.ascentM)),
+        if ((course.surface ?? '').isNotEmpty)
+          catalogueSurfaceLabel(l, course.surface!),
+      ],
+    ];
     final meta = <String>[
       race.raceDate,
       if (race.distanceM != null) formatDistanceForPref(race.distanceM!.toDouble()),
@@ -375,6 +394,18 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
               style: theme.textTheme.bodySmall,
             ),
           ),
+        if (courseParts.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Column(
+            key: const Key('race-detail-course'),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l.racesCourseHeading, style: theme.textTheme.titleMedium),
+              const SizedBox(height: 4),
+              Text(courseParts.join(' · '), style: theme.textTheme.bodyMedium),
+            ],
+          ),
+        ],
         const SizedBox(height: 24),
         Text(l.racesDetailYourRuns, style: theme.textTheme.titleMedium),
         const SizedBox(height: 8),

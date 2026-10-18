@@ -4105,6 +4105,8 @@ export const en = {
 	"races.detailShareFailed": "Couldn't share or copy the link.",
 	"races.detailImportAfterRace": "You can import your official result from race day, {date}.",
 	"races.detailYourRuns": "Your runs at this race",
+	"races.courseHeading": "Course",
+	"races.courseGain": "{value} elevation gain",
 	"races.detailRunsFailed": "Couldn't load your runs for this race.",
 	"races.detailNoRuns": "No runs linked to this race yet. After race day, import your result here, or open the run you recorded and match it to this race.",
 	"races.submitRace": "Add a race",

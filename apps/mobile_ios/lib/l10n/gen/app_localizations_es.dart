@@ -13924,6 +13924,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get racesDetailYourRuns => 'Tus carreras en esta prueba';
 
   @override
+  String get racesCourseHeading => 'Recorrido';
+
+  @override
+  String racesCourseGain(String value) {
+    return '$value de desnivel positivo';
+  }
+
+  @override
   String get racesDetailRunsFailed =>
       'No se pudieron cargar tus carreras de esta prueba.';
 

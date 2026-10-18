@@ -4087,6 +4087,8 @@ export const messages = {
 	"races.detailShareFailed": "リンクを共有またはコピーできませんでした。",
 	"races.detailImportAfterRace": "公式結果はレース当日（{date}）からインポートできます。",
 	"races.detailYourRuns": "このレースでのあなたのラン",
+	"races.courseHeading": "コース",
+	"races.courseGain": "獲得標高 {value}",
 	"races.detailRunsFailed": "このレースのランを読み込めませんでした。",
 	"races.detailNoRuns": "このレースに紐付いたランはまだありません。レース当日以降に、ここで結果をインポートするか、記録したランを開いてこのレースと紐付けてください。",
 	"races.submitRace": "レースを追加",

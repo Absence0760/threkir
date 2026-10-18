@@ -3940,6 +3940,8 @@
   "racesDetailShare": "共有",
   "racesDetailImportAfterRace": "公式結果はレース当日（{date}）からインポートできます。",
   "racesDetailYourRuns": "このレースでのあなたのラン",
+  "racesCourseHeading": "コース",
+  "racesCourseGain": "獲得標高 {value}",
   "racesDetailRunsFailed": "このレースのランを読み込めませんでした。",
   "racesDetailNoRuns": "このレースに紐付いたランはまだありません。レース当日以降に、ここで結果をインポートするか、記録したランを開いてこのレースと紐付けてください。",
   "racesViewResults": "結果を見る",

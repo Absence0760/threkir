@@ -3940,6 +3940,8 @@
   "racesDetailShare": "Partager",
   "racesDetailImportAfterRace": "Vous pourrez importer votre résultat officiel à partir du jour de la course, le {date}.",
   "racesDetailYourRuns": "Vos courses à cette épreuve",
+  "racesCourseHeading": "Parcours",
+  "racesCourseGain": "{value} de dénivelé positif",
   "racesDetailRunsFailed": "Impossible de charger vos courses pour cette épreuve.",
   "racesDetailNoRuns": "Aucune course n'est encore liée à cette épreuve. Après le jour de la course, importez votre résultat ici ou ouvrez la course que vous avez enregistrée et associez-la à cette épreuve.",
   "racesViewResults": "Voir les résultats",

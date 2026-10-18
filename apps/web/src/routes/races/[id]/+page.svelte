@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { formatDistance, formatElevation } from '#lib/format/units.svelte.ts';
+	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import { formatDate, formatDuration } from '#lib/format/time.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { racePlanPreset } from '#lib/training/race_plan_preset.ts';
@@ -171,7 +172,9 @@
 			race: planRace,
 			goalTimeS: racePlanGoalTimeS(ownPlans, planRace.raceDateIso),
 			recentEffort,
-			course: null,
+			course: race?.course
+				? { ascentM: race.course.ascentM, surface: race.course.surface }
+				: null,
 		});
 		return racePlanHref({
 			race: planRace,
@@ -179,6 +182,18 @@
 			notBeforeIso: chain?.notBeforeIso ?? null,
 			describe,
 		});
+	});
+
+	let courseParts = $derived.by(() => {
+		const c = race?.course;
+		if (!c) return [];
+		const parts: string[] = [];
+		if (c.distanceM != null && c.distanceM > 0) parts.push(formatDistance(c.distanceM));
+		if (c.ascentM != null && c.ascentM > 0) {
+			parts.push(m('races.courseGain', { value: formatElevation(c.ascentM) }));
+		}
+		if (c.surface) parts.push(routeSurfaceLabel(c.surface));
+		return parts;
 	});
 
 	let entryHref = $derived(race?.entry_url ? safeHref(race.entry_url) : null);
@@ -306,6 +321,13 @@
 			</p>
 		{/if}
 
+		{#if courseParts.length > 0}
+			<section class="section" aria-labelledby="race-course-heading" data-testid="race-detail-course">
+				<h2 id="race-course-heading">{m('races.courseHeading')}</h2>
+				<p class="course-summary">{courseParts.join(' · ')}</p>
+			</section>
+		{/if}
+
 		<section class="section" aria-labelledby="race-runs-heading">
 			<h2 id="race-runs-heading">{m('races.detailYourRuns')}</h2>
 			{#if runsFailed}
@@ -418,6 +440,9 @@
 	}
 	.section h2 {
 		font-size: 1.1rem;
+		margin: 0;
+	}
+	.course-summary {
 		margin: 0;
 	}
 	.runs {

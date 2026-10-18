@@ -13284,6 +13284,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String get racesDetailYourRuns => 'このレースでのあなたのラン';
 
   @override
+  String get racesCourseHeading => 'コース';
+
+  @override
+  String racesCourseGain(String value) {
+    return '獲得標高 $value';
+  }
+
+  @override
   String get racesDetailRunsFailed => 'このレースのランを読み込めませんでした。';
 
   @override

@@ -3940,6 +3940,8 @@
   "racesDetailShare": "Compartir",
   "racesDetailImportAfterRace": "Podrás importar tu resultado oficial a partir del día de la carrera, {date}.",
   "racesDetailYourRuns": "Tus carreras en esta prueba",
+  "racesCourseHeading": "Recorrido",
+  "racesCourseGain": "{value} de desnivel positivo",
   "racesDetailRunsFailed": "No se pudieron cargar tus carreras de esta prueba.",
   "racesDetailNoRuns": "Aún no hay carreras vinculadas a esta prueba. Después del día de la carrera, importa aquí tu resultado o abre la carrera que grabaste y vincúlala a esta prueba.",
   "racesViewResults": "Ver resultados",

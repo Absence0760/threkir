@@ -13929,6 +13929,14 @@ class AppLocalizationsPt extends AppLocalizations {
   String get racesDetailYourRuns => 'As suas corridas nesta prova';
 
   @override
+  String get racesCourseHeading => 'Percurso';
+
+  @override
+  String racesCourseGain(String value) {
+    return '$value de ganho de elevação';
+  }
+
+  @override
   String get racesDetailRunsFailed =>
       'Não foi possível carregar as suas corridas desta prova.';
 
@@ -32295,6 +32303,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get racesDetailYourRuns => 'Suas corridas nesta prova';
+
+  @override
+  String get racesCourseHeading => 'Percurso';
+
+  @override
+  String racesCourseGain(String value) {
+    return '$value de ganho de elevação';
+  }
 
   @override
   String get racesDetailRunsFailed =>

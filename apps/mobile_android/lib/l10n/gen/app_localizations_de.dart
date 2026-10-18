@@ -13936,6 +13936,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get racesDetailYourRuns => 'Deine Läufe bei diesem Rennen';
 
   @override
+  String get racesCourseHeading => 'Strecke';
+
+  @override
+  String racesCourseGain(String value) {
+    return '$value Höhenmeter';
+  }
+
+  @override
   String get racesDetailRunsFailed =>
       'Deine Läufe für dieses Rennen konnten nicht geladen werden.';
 

@@ -4092,6 +4092,8 @@ export const messages = {
 	"races.detailShareFailed": "No se pudo compartir ni copiar el enlace.",
 	"races.detailImportAfterRace": "Podrás importar tu resultado oficial a partir del día de la carrera, {date}.",
 	"races.detailYourRuns": "Tus carreras en esta prueba",
+	"races.courseHeading": "Recorrido",
+	"races.courseGain": "{value} de desnivel positivo",
 	"races.detailRunsFailed": "No se pudieron cargar tus carreras de esta prueba.",
 	"races.detailNoRuns": "Aún no hay carreras vinculadas a esta prueba. Después del día de la carrera, importa aquí tu resultado o abre la carrera que grabaste y vincúlala a esta prueba.",
 	"races.submitRace": "Añadir carrera",

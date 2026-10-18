@@ -963,8 +963,6 @@
 		t.setHours(0, 0, 0, 0);
 		return t;
 	});
-	/// How far today's done workout ran past its target, when a linked run
-	/// says so (`workoutOverrunMetres`); null for a tick, a short run or noise.
 	/// Today's size as the plan states it: a walk-run session in minutes.
 	const todaySize = $derived.by(() => {
 		const t = planOverview?.todayWorkout;
@@ -977,6 +975,8 @@
 		});
 		return size == null ? null : formatPlannedSize(m, size, (metres) => fmtKm(metres));
 	});
+	/// How far today's done workout ran past its target, when a linked run
+	/// says so (`workoutOverrunMetres`); null for a tick, a short run or noise.
 	const todayOverrunM = $derived.by(() => {
 		const t = planOverview?.todayWorkout;
 		if (!t?.completed_run_id) return null;

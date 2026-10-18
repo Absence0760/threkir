@@ -24,6 +24,8 @@
 		publishGymRoutineAsTemplate,
 	} from '#lib/core/data.ts';
 	import { STARTER_PLANS, starterById, instantiateStarter } from '#lib/training/starter_plans.ts';
+	import { loadPlanCalibration } from '#lib/training/plan_calibration_load.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { starterName, starterSummaryText } from '#lib/training/starter_labels.ts';
 	import { PRIMARY_GOAL_VALUES, planPresetForGoal, type PrimaryGoal } from '#lib/settings/onboarding.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -335,8 +337,12 @@
 		const starterId = selectedStarterId;
 		const start = startDate;
 		const starter = starterById(starterId);
-		const generated = instantiateStarter(starterId, start);
-		if (!starter || !generated) return;
+		if (!starter) return;
+		creatingStarter = true;
+		const c = auth.user ? await loadPlanCalibration(auth.user.id) : null;
+		creatingStarter = false;
+		const generated = instantiateStarter(starterId, start, c?.age, c?.extraRecovery);
+		if (!generated) return;
 		const run = async (overlap: PlanOverlapChoice): Promise<void> => {
 			creatingStarter = true;
 			try {

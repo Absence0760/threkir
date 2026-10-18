@@ -1,3 +1,5 @@
 packages:
   - apps/web
   - apps/backend
+allowBuilds:
+  esbuild: set this to true or false

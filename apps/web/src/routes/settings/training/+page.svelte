@@ -24,6 +24,7 @@
 	} from '#lib/settings/weekly_goal.ts';
 	import { formatDecimal, formatInteger } from '#lib/format/number.ts';
 	import { createPrefsPage } from '#lib/settings/prefs_page.svelte.ts';
+	import { EXTRA_RECOVERY_KEY } from '#lib/training/plan_calibration.ts';
 	import PrefsPage from '#lib/components/settings/PrefsPage.svelte';
 
 	let preferredUnit = $state<'km' | 'mi'>('km');
@@ -64,6 +65,10 @@
 	// Opt-out: drop gym load from the run fitness/fatigue/form curve so the
 	// dashboard readiness stays run-only. Default off (gym counts).
 	let excludeGymFromReadiness = $state(false);
+	// `extra_recovery`: the masters recovery calibration (decisions § 93) for
+	// a runner under 50 or with no date of birth on record. A training
+	// preference, not a health fact, so it carries no consent gate.
+	let extraRecovery = $state(false);
 
 	// "My heart rate is affected by medication" (decisions § 2092). Art 9, so
 	// it is behind the deploy gate and the health-data consent, which the
@@ -96,6 +101,7 @@
 			z5 = zones.z5?.toString() ?? '';
 		}
 		excludeGymFromReadiness = effective<boolean>(settings, 'exclude_gym_from_readiness', false) === true;
+		extraRecovery = effective<boolean>(settings, EXTRA_RECOVERY_KEY, false) === true;
 		hrPrescription = await hrPrescriptionEnabled();
 		if (hrPrescription) {
 			hrMedicationAffected = effective<boolean>(settings, 'hr_medication_affected', false) === true;
@@ -187,6 +193,21 @@
 			</label>
 			<p class="hint" id="weekly-distance-goal-hint">{m('prefs.weeklyDistanceGoalHint')}</p>
 		</div>
+	</section>
+
+	<section class="card" id="plan-recovery">
+		<h2>{m('prefs.planRecoveryHeading')}</h2>
+		<label class="checkbox-row">
+			<input
+				type="checkbox"
+				bind:checked={extraRecovery}
+				aria-describedby="extra-recovery-hint"
+				data-testid="extra-recovery-toggle"
+				onchange={() => prefs.save({ [EXTRA_RECOVERY_KEY]: extraRecovery })}
+			/>
+			<span>{m('prefs.extraRecovery')}</span>
+		</label>
+		<p class="hint" id="extra-recovery-hint">{m('prefs.extraRecoveryHint')}</p>
 	</section>
 
 	<section class="card" id="heart-rate-zones">

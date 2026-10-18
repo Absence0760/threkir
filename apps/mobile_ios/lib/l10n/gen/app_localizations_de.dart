@@ -13810,6 +13810,36 @@ class AppLocalizationsDe extends AppLocalizations {
   String get racesSearchPlaceholder => 'Rennen nach Name suchen…';
 
   @override
+  String get racesFilters => 'Filter';
+
+  @override
+  String racesFiltersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Filter, $count aktiv',
+      one: 'Filter, 1 aktiv',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String racesRemoveFilter(String filter) {
+    return 'Filter entfernen: $filter';
+  }
+
+  @override
+  String racesNearChip(String place) {
+    return 'In der Nähe von $place';
+  }
+
+  @override
+  String get racesFiltersDone => 'Fertig';
+
+  @override
+  String get racesDistanceGroup => 'Distanz';
+
+  @override
   String get racesNearPlace => 'In der Nähe eines Ortes…';
 
   @override

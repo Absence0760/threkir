@@ -323,6 +323,10 @@ test.describe('every swept filter and preference control renders its explanation
 		await page.goto('/races');
 		const filters = page.locator('.filters');
 		await expect(filters).toBeVisible({ timeout: 15_000 });
+		// Every hint but the search field's lives in the Filters panel; open it
+		// so the pass reads explanations a sighted reader can actually see.
+		await page.getByTestId('races-filters-toggle').click();
+		await expect(page.getByTestId('races-filters-panel')).toBeVisible();
 		await assertEveryControlExplained(filters, '/races (filters)');
 
 		// The paste form lives in the per-race import modal, which only opens

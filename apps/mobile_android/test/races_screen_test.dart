@@ -165,6 +165,14 @@ Widget _app(RaceService service,
       home: RacesScreen(service: service),
     );
 
+/// Opens the filter sheet. A fixed pump past the sheet's entrance rather than
+/// pumpAndSettle, which never settles while the loading skeleton shimmers.
+Future<void> _openFilters(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('races-filters-button')));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
+}
+
 void main() {
   testWidgets('renders the empty state when no listings match', (tester) async {
     await tester.pumpWidget(_app(_FakeRaceService(results: const [])));
@@ -219,6 +227,7 @@ void main() {
     expect(service.lastNewestFirst, isFalse);
     expect(service.lastFrom, isNull);
 
+    await _openFilters(tester);
     await tester.tap(find.widgetWithText(ChoiceChip, 'Recent results'));
     await tester.pump();
     await tester.pump();
@@ -241,6 +250,7 @@ void main() {
     final service = _FakeRaceService(results: const []);
     await tester.pumpWidget(_app(service));
     await tester.pump();
+    await _openFilters(tester);
     await tester.tap(find.widgetWithText(ChoiceChip, 'Recent results'));
     await tester.pump();
     await tester.pump();
@@ -788,16 +798,75 @@ void main() {
 
     await tester.pumpWidget(_app(service));
     await tester.pump();
-    final chip = find.byType(ChoiceChip).first;
+    await _openFilters(tester);
+    final chip = find.widgetWithText(ChoiceChip, 'Half');
     final small = tester.getSize(chip).height;
     // A Material chip's own tap target is 48; the old 40 px lane squeezed it.
     expect(small, greaterThanOrEqualTo(48));
 
     await tester.pumpWidget(_app(service, textScale: 2.0));
     await tester.pump();
+    if (chip.evaluate().isEmpty) await _openFilters(tester);
     // Pre-fix the chip measured exactly 40.0 here while needing 58, so its
     // label was cropped inside the rail.
     expect(tester.getSize(chip).height, greaterThan(small));
+  });
+
+  testWidgets(
+      'at 360x640 and 1.3x text the first race is on screen, the filters wait '
+      'in a sheet, and an active filter reads as a removable chip',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final service = _FakeRaceService(results: [
+      for (var i = 0; i < 4; i++)
+        _listing('r$i',
+            'Richmond Half Marathon Presented By A Long Sponsor Name $i',
+            distanceM: 21097, raceDate: _isoDaysOut(60 + i)),
+    ]);
+    await tester.pumpWidget(_app(service, textScale: 1.3));
+    await tester.pump();
+    await tester.pump();
+
+    // No filter chip on the screen itself: only the search and Filters.
+    expect(find.byType(ChoiceChip), findsNothing);
+    expect(find.byKey(const Key('races-active-filters')), findsNothing);
+
+    final firstCard = find.ancestor(
+        of: find.textContaining('Long Sponsor Name 0'),
+        matching: find.byType(Card));
+    expect(tester.getRect(firstCard).top, lessThan(640));
+    expect(tester.getRect(firstCard).bottom, lessThanOrEqualTo(640),
+        reason: 'the whole first race fits the first screen');
+
+    await _openFilters(tester);
+    expect(find.widgetWithText(ChoiceChip, 'Recent results'), findsOneWidget);
+    expect(find.widgetWithText(ChoiceChip, 'Half'), findsOneWidget);
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Half'));
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Done'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final active = find.byKey(const Key('races-active-filters'));
+    expect(active, findsOneWidget);
+    final halfChip =
+        find.descendant(of: active, matching: find.widgetWithText(InputChip, 'Half'));
+    expect(halfChip, findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const Key('races-filters-button')),
+            matching: find.text('1')),
+        findsOneWidget);
+
+    await tester.tap(find.byTooltip('Remove filter: Half'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const Key('races-active-filters')), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   // Issue #666 C5: the list reserved nothing at all for the Submit-race FAB,

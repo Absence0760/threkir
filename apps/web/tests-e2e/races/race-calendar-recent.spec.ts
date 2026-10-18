@@ -42,6 +42,7 @@ test.describe('/races — Recent results', () => {
 		await page.getByTestId('races-search').fill(String(stamp));
 		await expect(page.getByTestId('races-empty')).toBeVisible({ timeout: 15_000 });
 
+		await page.getByTestId('races-filters-toggle').click();
 		await page.getByTestId('races-when-recent').click();
 		await expect(page.getByTestId('races-when-recent')).toHaveAttribute('aria-pressed', 'true');
 		const cards = page.getByTestId('race-card').filter({ hasText: String(stamp) });

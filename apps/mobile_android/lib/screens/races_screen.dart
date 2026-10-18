@@ -209,97 +209,207 @@ class _RacesScreenState extends State<RacesScreen> {
       ),
       body: Column(
         children: [
+          // One row: the list is what the screen is for, so only the search
+          // stays out here and every other filter waits behind Filters.
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Column(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Row(
               children: [
-                TextField(
-                  controller: _searchCtl,
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
-                    hintText: l.racesSearchPlaceholder,
-                    isDense: true,
-                  ),
-                  onChanged: (v) {
-                    _query = v;
-                    _schedule();
-                  },
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _placeCtl,
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.place),
-                    hintText: l.racesNearPlace,
-                    isDense: true,
-                  ),
-                  onChanged: (v) {
-                    _nearPlace = v;
-                    _schedule();
-                  },
-                ),
-                const SizedBox(height: 8),
-                Semantics(
-                  container: true,
-                  label: l.racesWhenGroup,
-                  child: Wrap(
-                    spacing: 8,
-                    children: [
-                      ChoiceChip(
-                        label: Text(l.racesWhenUpcoming),
-                        selected: !_recent,
-                        onSelected: (_) {
-                          setState(() => _recent = false);
-                          _run();
-                        },
-                      ),
-                      ChoiceChip(
-                        label: Text(l.racesWhenRecent),
-                        selected: _recent,
-                        onSelected: (_) {
-                          setState(() => _recent = true);
-                          _run();
-                        },
-                      ),
-                    ],
+                Expanded(
+                  child: TextField(
+                    controller: _searchCtl,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search),
+                      hintText: l.racesSearchPlaceholder,
+                      isDense: true,
+                    ),
+                    onChanged: (v) {
+                      _query = v;
+                      _schedule();
+                    },
                   ),
                 ),
-                if (_recent)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      l.racesWhenHint(recentWindowDays),
-                      style: Theme.of(context).textTheme.bodySmall,
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  key: const Key('races-filters-button'),
+                  onPressed: _openFilters,
+                  icon: ExcludeSemantics(
+                    child: Badge(
+                      isLabelVisible: _activeCount > 0,
+                      label: Text('$_activeCount'),
+                      child: const Icon(Icons.tune),
                     ),
                   ),
-                const SizedBox(height: 8),
-                // A scrolling Row, not a horizontal ListView in a fixed-height
-                // box: a chip needs 58 px at 2x OS text scale and a 40 px lane
-                // cropped its label (and stole its 48 dp tap target at 1.0x).
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      for (final band in _distanceBands)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ChoiceChip(
-                            label: Text(_bandLabel(l, band)),
-                            selected: _distance == band,
-                            onSelected: (_) {
-                              setState(() => _distance = band);
-                              _run();
-                            },
-                          ),
-                        ),
-                    ],
+                  label: Semantics(
+                    label: _activeCount > 0
+                        ? l.racesFiltersCount(_activeCount)
+                        : l.racesFilters,
+                    excludeSemantics: true,
+                    child: Text(l.racesFilters),
                   ),
                 ),
               ],
             ),
           ),
+          if (_activeCount > 0) _buildActiveFilters(l),
           Expanded(child: _buildResults(l)),
         ],
+      ),
+    );
+  }
+
+  int get _activeCount =>
+      (_distance.isEmpty ? 0 : 1) +
+      (_recent ? 1 : 0) +
+      (_nearPlace.trim().isEmpty ? 0 : 1);
+
+  void _setRecent(bool recent) {
+    setState(() => _recent = recent);
+    _run();
+  }
+
+  void _setDistance(String band) {
+    setState(() => _distance = band);
+    _run();
+  }
+
+  void _clearNear() {
+    _placeCtl.clear();
+    setState(() => _nearPlace = '');
+    _run();
+  }
+
+  /// The filter state with the sheet closed: one removable chip per filter,
+  /// in a single row that scrolls rather than wraps so it never costs the
+  /// list more than one line.
+  Widget _buildActiveFilters(AppLocalizations l) {
+    Widget chip(String label, VoidCallback onRemove) => Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: InputChip(
+            label: Text(label),
+            selected: true,
+            showCheckmark: false,
+            onPressed: _openFilters,
+            onDeleted: onRemove,
+            deleteButtonTooltipMessage: l.racesRemoveFilter(label),
+          ),
+        );
+    return SingleChildScrollView(
+      key: const Key('races-active-filters'),
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          if (_recent) chip(l.racesWhenRecent, () => _setRecent(false)),
+          if (_distance.isNotEmpty)
+            chip(_bandLabel(l, _distance), () => _setDistance('')),
+          if (_nearPlace.trim().isNotEmpty)
+            chip(l.racesNearChip(_nearPlace.trim()), _clearNear),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openFilters() {
+    final l = AppLocalizations.of(context);
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheet) {
+          // Each change applies at once, so the list behind the sheet and the
+          // chips above it are already right when it closes.
+          void apply(VoidCallback change) {
+            change();
+            setSheet(() {});
+          }
+
+          final theme = Theme.of(sheetContext);
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l.racesFilters, style: theme.textTheme.titleLarge),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _placeCtl,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.place),
+                      hintText: l.racesNearPlace,
+                      isDense: true,
+                    ),
+                    onChanged: (v) => apply(() {
+                      setState(() => _nearPlace = v);
+                      _schedule();
+                    }),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(l.racesWhenGroup, style: theme.textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  Semantics(
+                    container: true,
+                    label: l.racesWhenGroup,
+                    child: Wrap(
+                      spacing: 8,
+                      children: [
+                        ChoiceChip(
+                          label: Text(l.racesWhenUpcoming),
+                          selected: !_recent,
+                          onSelected: (_) => apply(() => _setRecent(false)),
+                        ),
+                        ChoiceChip(
+                          label: Text(l.racesWhenRecent),
+                          selected: _recent,
+                          onSelected: (_) => apply(() => _setRecent(true)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_recent)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        l.racesWhenHint(recentWindowDays),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+                  Text(l.racesDistanceGroup, style: theme.textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  // A Wrap, not a fixed-height lane: a chip needs 58 px at 2x
+                  // OS text scale and a 40 px lane cropped its label (and stole
+                  // its 48 dp tap target at 1.0x).
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      for (final band in _distanceBands)
+                        ChoiceChip(
+                          label: Text(_bandLabel(l, band)),
+                          selected: _distance == band,
+                          onSelected: (_) => apply(() => _setDistance(band)),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(sheetContext).pop(),
+                      child: Text(l.racesFiltersDone),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -391,6 +501,8 @@ class _RaceCard extends StatelessWidget {
                     children: [
                       Text(
                         race.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(decoration: TextDecoration.underline),
                       ),
@@ -420,7 +532,6 @@ class _RaceCard extends StatelessWidget {
               Wrap(
                 spacing: 8,
                 runSpacing: 4,
-                alignment: WrapAlignment.end,
                 children: [
                   if (canTrainFor)
                     OutlinedButton(

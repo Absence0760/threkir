@@ -18215,6 +18215,45 @@
   "@racesSearchPlaceholder": {
     "description": "Placeholder for the race name search field"
   },
+  "racesFilters": "Filters",
+  "@racesFilters": {
+    "description": "Label of the button that opens the race calendar's filter sheet"
+  },
+  "racesFiltersCount": "{count, plural, one{Filters, 1 on} other{Filters, {count} on}}",
+  "@racesFiltersCount": {
+    "description": "Screen-reader label of the Filters button when filters are on. {count} is how many.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "racesRemoveFilter": "Remove filter: {filter}",
+  "@racesRemoveFilter": {
+    "description": "Tooltip and screen-reader label of the remove action on an active race-calendar filter chip. {filter} is the chip's own label.",
+    "placeholders": {
+      "filter": {
+        "type": "String"
+      }
+    }
+  },
+  "racesNearChip": "Near {place}",
+  "@racesNearChip": {
+    "description": "Active-filter chip for the near-a-place filter. {place} is what the runner typed.",
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "racesFiltersDone": "Done",
+  "@racesFiltersDone": {
+    "description": "Button that closes the race calendar's filter sheet"
+  },
+  "racesDistanceGroup": "Distance",
+  "@racesDistanceGroup": {
+    "description": "Heading over the distance-band chips in the race calendar filter sheet"
+  },
   "racesNearPlace": "Near a place…",
   "@racesNearPlace": {
     "description": "Placeholder for the near-a-place geocode field"

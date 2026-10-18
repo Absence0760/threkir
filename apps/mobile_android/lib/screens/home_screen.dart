@@ -465,6 +465,14 @@ class _HomeScreenState extends State<HomeScreen>
         ));
       case PushTargetKind.profile:
         await _pushScreen(ProfileScreen(api: api, userId: target.id!));
+      case PushTargetKind.badges:
+        final me = api.userId;
+        if (me == null) return;
+        await _pushScreen(ProfileScreen(
+          api: api,
+          userId: me,
+          initialTab: ProfileTab.badges,
+        ));
       case PushTargetKind.run:
         await _openRun(target.id!);
       case PushTargetKind.plans:

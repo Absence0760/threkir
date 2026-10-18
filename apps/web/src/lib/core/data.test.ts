@@ -599,6 +599,38 @@ test('deleteNotifications is one delete_notifications RPC call, guards empty, su
 	);
 });
 
+test('answerMissedWorkouts sends the stretch and the answer in one RPC, and surfaces errors', () => {
+	// Reason: "Make it up" stretches the next long run AND records the miss as
+	// answered (decisions § 2122). Two calls — apply_workout_adjustments, then
+	// an answer write — could land the stretch and lose the answer, and the
+	// prompt would ask again and stretch the same run a second time. The RPC
+	// applies both in one transaction only if the wrapper hands it both.
+	const source = read('src/lib/core/data.ts');
+	const fnMatch = source.match(/export async function answerMissedWorkouts[\s\S]*?\n}/);
+	assert.ok(fnMatch, 'Could not locate answerMissedWorkouts — rename?');
+	const body = fnMatch![0];
+	assert.match(
+		body,
+		/supabase\.rpc\('answer_missed_workouts', \{\s*p_plan_id: planId,\s*p_workout_ids: workoutIds,\s*p_changes: changes\s*\}\)/,
+		'answerMissedWorkouts must pass the plan, the answered ids and the make-up to answer_missed_workouts together.',
+	);
+	assert.match(
+		body,
+		/changes: WorkoutAdjustment\[\] = \[\]/,
+		'"Let it go" sends no changes — the default must be an empty list, never undefined.',
+	);
+	assert.equal(
+		(body.match(/await /g) ?? []).length,
+		1,
+		'answerMissedWorkouts must await exactly one call — a second round-trip is a second transaction.',
+	);
+	assert.match(
+		body,
+		/if \(error\) throw dbError\(error\);/,
+		'answerMissedWorkouts must throw — the prompt keeps its question and says the save failed only if the error reaches it.',
+	);
+});
+
 test('NotificationsList dismisses a whole group in one batched delete, not one per member', () => {
 	// Reason: removeGroup awaited remove(row.id) for every member of a
 	// collapsed group — N sequential DELETEs (issue #350). Both the single

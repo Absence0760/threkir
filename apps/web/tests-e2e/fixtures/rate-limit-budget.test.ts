@@ -128,6 +128,9 @@ const NOT_SPENT_BY_SPECS: Record<string, string> = {
 	restart_training_plan:
 		'plans/restart-plan.spec.ts restarts plans only as ephemeral saga users, so the bucket ' +
 		'it spends is its own; pgtap covers the RPC.',
+	repeat_plan_week:
+		'plans/repeat-week.spec.ts repeats weeks only as ephemeral saga users, so the bucket ' +
+		'it spends is its own; pgtap covers the cap itself.',
 	plan_calendar_rotate:
 		'settings/plan-calendar-feed.spec.ts mints and replaces the link only as an ephemeral ' +
 		'saga user, so the bucket it spends is its own; pgtap covers the cap itself.'

@@ -18372,6 +18372,74 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get missedPromptNothingToMakeUp => 'Já não há nada para compensar.';
+
+  @override
+  String get planDetailRepeatWeek => 'Repetir esta semana';
+
+  @override
+  String get planDetailRepeatWeekOfferTitle => 'Demasiado difícil?';
+
+  @override
+  String get planDetailRepeatWeekOfferBody =>
+      'Repita esta semana na próxima. O que já fez continua feito, e o resto do plano é adiado uma semana.';
+
+  @override
+  String planDetailRepeatWeekConfirmTitle(int n) {
+    return 'Repetir a semana $n?';
+  }
+
+  @override
+  String planDetailRepeatWeekConfirmMessage(
+    int n,
+    int copy,
+    String start,
+    String end,
+  ) {
+    return 'A semana $n é repetida como semana $copy, a partir de $start. Cada semana seguinte é adiada uma, e o plano termina agora a $end. Os treinos que já fez ficam como estão.';
+  }
+
+  @override
+  String planDetailRepeatWeekConfirmRace(
+    int n,
+    int copy,
+    String start,
+    String race,
+  ) {
+    return 'A semana $n é repetida como semana $copy, a partir de $start. Para manter a prova a $race, sai uma semana posterior antes da redução de carga. Os treinos que já fez ficam como estão.';
+  }
+
+  @override
+  String get planDetailRepeatWeekAction => 'Repetir semana';
+
+  @override
+  String planDetailRepeatWeekDone(int n, String start) {
+    return 'A semana $n é repetida a partir de $start.';
+  }
+
+  @override
+  String get planDetailRepeatWeekNoRoom =>
+      'Não resta nenhuma semana antes da redução de carga para abrir espaço, por isso repetir esta semana mudaria o dia da prova. Mude antes a data da prova.';
+
+  @override
+  String get planDetailRepeatWeekInTheWay =>
+      'Uma semana que seria adiada tem uma prova ou um treino já feito, por isso esta semana não pode ser repetida.';
+
+  @override
+  String get planDetailRepeatWeekLastWeek =>
+      'Esta é a última semana do plano, por isso não há nada para adiar.';
+
+  @override
+  String get planDetailRepeatWeekNotNow =>
+      'Só é possível repetir esta semana ou a anterior de um plano ativo.';
+
+  @override
+  String rateLimitRepeatWeek(String wait) {
+    return 'Está a repetir semanas do plano demasiado depressa — aguarde $wait e tente novamente.';
+  }
+
+  @override
+  String get planDetailRepeatWeekOverlap =>
+      'Repetir esta semana faria o plano sobrepor-se a outro plano ativo. Mude ou termine primeiro esse plano.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -36729,4 +36797,72 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get missedPromptNothingToMakeUp => 'Não há mais nada para compensar.';
+
+  @override
+  String get planDetailRepeatWeek => 'Repetir esta semana';
+
+  @override
+  String get planDetailRepeatWeekOfferTitle => 'Pesado demais?';
+
+  @override
+  String get planDetailRepeatWeekOfferBody =>
+      'Repita esta semana na próxima. O que você já fez continua feito, e o resto do plano é adiado em uma semana.';
+
+  @override
+  String planDetailRepeatWeekConfirmTitle(int n) {
+    return 'Repetir a semana $n?';
+  }
+
+  @override
+  String planDetailRepeatWeekConfirmMessage(
+    int n,
+    int copy,
+    String start,
+    String end,
+  ) {
+    return 'A semana $n é repetida como semana $copy, a partir de $start. Cada semana seguinte é adiada em uma, e o plano agora termina em $end. Os treinos que você já fez ficam como estão.';
+  }
+
+  @override
+  String planDetailRepeatWeekConfirmRace(
+    int n,
+    int copy,
+    String start,
+    String race,
+  ) {
+    return 'A semana $n é repetida como semana $copy, a partir de $start. Para manter a prova em $race, sai uma semana posterior antes do polimento. Os treinos que você já fez ficam como estão.';
+  }
+
+  @override
+  String get planDetailRepeatWeekAction => 'Repetir semana';
+
+  @override
+  String planDetailRepeatWeekDone(int n, String start) {
+    return 'A semana $n é repetida a partir de $start.';
+  }
+
+  @override
+  String get planDetailRepeatWeekNoRoom =>
+      'Não sobrou nenhuma semana antes do polimento para abrir espaço, então repetir esta semana mudaria o dia da prova. Mude a data da prova em vez disso.';
+
+  @override
+  String get planDetailRepeatWeekInTheWay =>
+      'Uma semana que seria adiada tem uma prova ou um treino já feito, então esta semana não pode ser repetida.';
+
+  @override
+  String get planDetailRepeatWeekLastWeek =>
+      'Esta é a última semana do plano, então não há nada para adiar.';
+
+  @override
+  String get planDetailRepeatWeekNotNow =>
+      'Só é possível repetir esta semana ou a anterior de um plano ativo.';
+
+  @override
+  String rateLimitRepeatWeek(String wait) {
+    return 'Você está repetindo semanas do plano rápido demais — espere $wait e tente de novo.';
+  }
+
+  @override
+  String get planDetailRepeatWeekOverlap =>
+      'Repetir esta semana faria o plano se sobrepor a outro plano ativo. Mova ou encerre esse plano primeiro.';
 }

@@ -18181,4 +18181,72 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get missedPromptNothingToMakeUp => 'There\'s nothing left to make up.';
+
+  @override
+  String get planDetailRepeatWeek => 'Repeat this week';
+
+  @override
+  String get planDetailRepeatWeekOfferTitle => 'Too hard?';
+
+  @override
+  String get planDetailRepeatWeekOfferBody =>
+      'Run this week again next week. What you\'ve done stays done, and the rest of the plan moves back a week.';
+
+  @override
+  String planDetailRepeatWeekConfirmTitle(int n) {
+    return 'Repeat week $n?';
+  }
+
+  @override
+  String planDetailRepeatWeekConfirmMessage(
+    int n,
+    int copy,
+    String start,
+    String end,
+  ) {
+    return 'Week $n runs again as week $copy, from $start. Every week after it moves back one, and the plan now ends on $end. Workouts you\'ve done stay as they are.';
+  }
+
+  @override
+  String planDetailRepeatWeekConfirmRace(
+    int n,
+    int copy,
+    String start,
+    String race,
+  ) {
+    return 'Week $n runs again as week $copy, from $start. To keep race day on $race, one later week before the taper comes out. Workouts you\'ve done stay as they are.';
+  }
+
+  @override
+  String get planDetailRepeatWeekAction => 'Repeat week';
+
+  @override
+  String planDetailRepeatWeekDone(int n, String start) {
+    return 'Week $n runs again from $start.';
+  }
+
+  @override
+  String get planDetailRepeatWeekNoRoom =>
+      'There\'s no week left before the taper to make room, so repeating this week would move race day. Change the race date instead.';
+
+  @override
+  String get planDetailRepeatWeekInTheWay =>
+      'A week that would move holds a race or a workout you\'ve done, so this week can\'t be repeated.';
+
+  @override
+  String get planDetailRepeatWeekLastWeek =>
+      'This is the plan\'s last week, so there\'s nothing to push back.';
+
+  @override
+  String get planDetailRepeatWeekNotNow =>
+      'Only this week or last week of an active plan can run again.';
+
+  @override
+  String rateLimitRepeatWeek(String wait) {
+    return 'You\'re repeating plan weeks too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String get planDetailRepeatWeekOverlap =>
+      'Repeating this week would run the plan into another active plan. Move or end that plan first.';
 }

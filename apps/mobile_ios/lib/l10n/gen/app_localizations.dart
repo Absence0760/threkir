@@ -29868,6 +29868,100 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'There\'s nothing left to make up.'**
   String get missedPromptNothingToMakeUp;
+
+  /// Button on the walk-run 'too hard' offer: run the current week again next week
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat this week'**
+  String get planDetailRepeatWeek;
+
+  /// Lead of the walk-run 'too hard' offer on plan detail
+  ///
+  /// In en, this message translates to:
+  /// **'Too hard?'**
+  String get planDetailRepeatWeekOfferTitle;
+
+  /// Body of the walk-run 'too hard' offer on plan detail
+  ///
+  /// In en, this message translates to:
+  /// **'Run this week again next week. What you\'ve done stays done, and the rest of the plan moves back a week.'**
+  String get planDetailRepeatWeekOfferBody;
+
+  /// Confirm title for repeating a plan week; n is the week number
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat week {n}?'**
+  String planDetailRepeatWeekConfirmTitle(int n);
+
+  /// Confirm body for repeating a week of a plan without a race; n the week, copy its new week number, start the copy's first day, end the plan's new end date
+  ///
+  /// In en, this message translates to:
+  /// **'Week {n} runs again as week {copy}, from {start}. Every week after it moves back one, and the plan now ends on {end}. Workouts you\'ve done stay as they are.'**
+  String planDetailRepeatWeekConfirmMessage(
+    int n,
+    int copy,
+    String start,
+    String end,
+  );
+
+  /// Confirm body for repeating a week of a race plan; race is the race day it keeps
+  ///
+  /// In en, this message translates to:
+  /// **'Week {n} runs again as week {copy}, from {start}. To keep race day on {race}, one later week before the taper comes out. Workouts you\'ve done stay as they are.'**
+  String planDetailRepeatWeekConfirmRace(
+    int n,
+    int copy,
+    String start,
+    String race,
+  );
+
+  /// Week menu item and confirm button: repeat this week next week
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat week'**
+  String get planDetailRepeatWeekAction;
+
+  /// Banner after a week was repeated; n the week, start the copy's first day
+  ///
+  /// In en, this message translates to:
+  /// **'Week {n} runs again from {start}.'**
+  String planDetailRepeatWeekDone(int n, String start);
+
+  /// Refusal: a race plan has no pre-taper week left to drop
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s no week left before the taper to make room, so repeating this week would move race day. Change the race date instead.'**
+  String get planDetailRepeatWeekNoRoom;
+
+  /// Refusal: a week that would move holds a race or a done workout
+  ///
+  /// In en, this message translates to:
+  /// **'A week that would move holds a race or a workout you\'ve done, so this week can\'t be repeated.'**
+  String get planDetailRepeatWeekInTheWay;
+
+  /// Refusal: the plan's last week has nothing after it
+  ///
+  /// In en, this message translates to:
+  /// **'This is the plan\'s last week, so there\'s nothing to push back.'**
+  String get planDetailRepeatWeekLastWeek;
+
+  /// Refusal: only this week or last week of an active plan can run again
+  ///
+  /// In en, this message translates to:
+  /// **'Only this week or last week of an active plan can run again.'**
+  String get planDetailRepeatWeekNotNow;
+
+  /// Rate-limit refusal when the repeat_plan_week bucket is spent (repeating a plan week)
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re repeating plan weeks too quickly — please wait {wait} and try again.'**
+  String rateLimitRepeatWeek(String wait);
+
+  /// Refusal: repeating the week would end the plan inside another active plan
+  ///
+  /// In en, this message translates to:
+  /// **'Repeating this week would run the plan into another active plan. Move or end that plan first.'**
+  String get planDetailRepeatWeekOverlap;
 }
 
 class _AppLocalizationsDelegate

@@ -6985,6 +6985,15 @@ export type Database = {
         Args: { p_bucket: string; p_spend_id: string; p_user_id: string }
         Returns: boolean
       }
+      repeat_plan_week: {
+        Args: {
+          p_drop_week_id?: string
+          p_plan_id: string
+          p_today: string
+          p_week_id: string
+        }
+        Returns: string
+      }
       request_distance_recompute: {
         Args: { p_run_id: string }
         Returns: undefined

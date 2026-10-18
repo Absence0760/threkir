@@ -5162,5 +5162,19 @@
   "missedPromptRecommended": "Recommandé",
   "missedPromptLetGoDone": "C'est noté. Votre plan continue tel quel.",
   "missedPromptSaveFailed": "Impossible d'enregistrer votre réponse : {error}",
-  "missedPromptNothingToMakeUp": "Il n'y a plus rien à rattraper."
+  "missedPromptNothingToMakeUp": "Il n'y a plus rien à rattraper.",
+  "planDetailRepeatWeek": "Refaire cette semaine",
+  "planDetailRepeatWeekOfferTitle": "Trop dur ?",
+  "planDetailRepeatWeekOfferBody": "Refaites cette semaine la semaine prochaine. Ce que vous avez fait reste fait, et le reste du plan recule d’une semaine.",
+  "planDetailRepeatWeekConfirmTitle": "Refaire la semaine {n} ?",
+  "planDetailRepeatWeekConfirmMessage": "La semaine {n} est refaite en semaine {copy}, à partir du {start}. Chaque semaine suivante recule d’une semaine, et le plan se termine désormais le {end}. Les séances faites restent telles quelles.",
+  "planDetailRepeatWeekConfirmRace": "La semaine {n} est refaite en semaine {copy}, à partir du {start}. Pour garder la course le {race}, une semaine plus loin avant l’affûtage est retirée. Les séances faites restent telles quelles.",
+  "planDetailRepeatWeekAction": "Refaire la semaine",
+  "planDetailRepeatWeekDone": "La semaine {n} est refaite à partir du {start}.",
+  "planDetailRepeatWeekNoRoom": "Il ne reste aucune semaine avant l’affûtage pour faire de la place : refaire cette semaine déplacerait le jour de course. Changez plutôt la date de course.",
+  "planDetailRepeatWeekInTheWay": "Une semaine qui serait décalée contient une course ou une séance déjà faite : cette semaine ne peut pas être refaite.",
+  "planDetailRepeatWeekLastWeek": "C’est la dernière semaine du plan : il n’y a rien à décaler.",
+  "planDetailRepeatWeekNotNow": "Seule cette semaine ou la précédente d’un plan actif peut être refaite.",
+  "rateLimitRepeatWeek": "Vous répétez des semaines de plan trop rapidement — veuillez patienter {wait} et réessayer.",
+  "planDetailRepeatWeekOverlap": "Refaire cette semaine ferait empiéter le plan sur un autre plan actif. Déplacez ou terminez d’abord ce plan."
 }

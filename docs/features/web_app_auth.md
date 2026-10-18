@@ -104,7 +104,7 @@ The "Sign-in Methods" card on `/settings/account` lists every identity attached 
 ### Wire format
 
 - **Read**: `supabase.auth.getUserIdentities()` → `{ identities: [{ provider, identity_data, created_at, ... }] }`
-- **Link**: `supabase.auth.linkIdentity({ provider, options: { redirectTo: '/auth/callback' } })` — kicks off an OAuth round-trip identical to fresh sign-in. On return, the new identity is attached to the existing `user_id`.
+- **Link**: `supabase.auth.linkIdentity({ provider, options: { redirectTo: '/auth/callback' } })` — kicks off an OAuth round-trip identical to fresh sign-in. On return, the new identity is attached to the existing `user_id`. Before the redirect the card stashes the provider under `oauth_link_provider` in `sessionStorage` (`OAUTH_LINK_STASH_KEY`, `lib/core/auth_redirect_error.ts`), which is how the callback tells a link from a sign-in: a link returns to `/settings/account#sign-in-methods`, refused or not, instead of `/dashboard`. An OAuth sign-in button clears a stale marker an abandoned link left behind.
 - **Unlink**: `supabase.auth.unlinkIdentity(identity)`. Supabase blocks unlinking the last remaining identity; the UI also disables the button client-side with a "you need at least one" tooltip.
 
 ### Supabase prerequisites
@@ -118,6 +118,19 @@ Identity linking is **opt-in** in Supabase. If `linkIdentity()` returns `manual_
 - Brand-true SVG icons for Google (4-colour G) and Apple (white-on-black wordmark), reused from `/login`
 - Provider rows show provider label + email from `identity_data` + linked-on date
 - Per-provider unlink button, disabled when only one identity remains
+- A refused link's reason, above the identity list (see below)
+
+### Refused OAuth redirects
+
+GoTrue refuses an OAuth sign-in or an identity link by redirecting to `/auth/callback` with `error`, `error_code` and `error_description` instead of a `code` — in the query for PKCE, in the fragment for the implicit flow. supabase-js's own URL detection keeps an existing session through such a refusal, so the callback used to fail the exchange, find the runner's still-valid session, call it success and navigate on: a refused link was a silent redirect. The callback now parses the refusal first (`authRedirectError`, query overriding fragment per key, as supabase-js does), strips it from the address bar, and never exchanges or consults the session for success:
+
+- **A link** (the `oauth_link_provider` marker is present and a session exists): the refusal is handed to the account page under `oauth_link_refusal` and shown in the Sign-in methods card, read once. The message is chosen by code (`lib/core/link_refusal_message.ts`, the code strings from `@supabase/auth-js` `lib/error-codes.d.ts`):
+  - `identity_already_exists` → `settingsAccount.linkIdentityTaken`: that Google / Apple account already signs in to a different Threkir account; to link it, sign in with it, take a **Download full backup** there, **Delete Account**, then sign back in here and link again. The provider and the two button labels are interpolated, so the steps name what the page actually shows.
+  - `identity_not_found` → `settingsAccount.linkIdentityNotFound`; `single_identity_not_deletable` → `settingsAccount.needOneMethod`; `manual_linking_disabled` → `settingsAccount.linkingDisabled`.
+  - anything else → `settingsAccount.linkFailed` with GoTrue's description.
+- **A sign-in** (no marker, or no session): the callback shows `authCallback.failed` with the description and the Back to login link.
+
+There is no automatic fix for `identity_already_exists`: the identity belongs to another user, and moving it would leave that account's runs behind a login nobody can use (decisions § 2119). Pinned by `lib/core/auth_redirect_error.test.ts` and `tests-e2e/auth/oauth-redirect-refusal.spec.ts`.
 
 ---
 

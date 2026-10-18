@@ -8,10 +8,55 @@
 	import { emailOtpLink, verifyConsentStamped } from '#lib/core/auth_confirmation.ts';
 	import AuthShell from '#lib/components/auth/AuthShell.svelte';
 	import { OAUTH_PROVIDER_STASH_KEY, keepAppleRevocationCredential } from '#lib/core/apple_revocation.ts';
+	import {
+		LINK_REFUSAL_STASH_KEY,
+		OAUTH_LINK_STASH_KEY,
+		SIGN_IN_METHODS_PATH,
+		authRedirectError,
+		authRedirectErrorDetail,
+		encodeLinkRefusal,
+		parseLinkProvider,
+	} from '#lib/core/auth_redirect_error.ts';
 
 	let error = $state('');
 
+	function takeStashed(key: string): string | null {
+		try {
+			const value = sessionStorage.getItem(key);
+			sessionStorage.removeItem(key);
+			return value;
+		} catch (_) {
+			return null;
+		}
+	}
+
 	onMount(async () => {
+		const linking = parseLinkProvider(takeStashed(OAUTH_LINK_STASH_KEY));
+
+		// A refusal must be read before anything else: supabase-js keeps
+		// the existing session through it, so the session check further
+		// down would report a refused link as a successful sign-in.
+		const refused = authRedirectError(window.location.search, window.location.hash);
+		if (refused) {
+			replaceState(window.location.pathname, {});
+			takeStashed(OAUTH_PROVIDER_STASH_KEY);
+			const signedIn = linking ? (await supabase.auth.getSession()).data.session : null;
+			if (linking && signedIn) {
+				try {
+					sessionStorage.setItem(
+						LINK_REFUSAL_STASH_KEY,
+						encodeLinkRefusal({ provider: linking, ...refused }),
+					);
+					goto(SIGN_IN_METHODS_PATH, { replaceState: true });
+					return;
+				} catch (_) {
+					/* No storage to hand it over with: say it here instead. */
+				}
+			}
+			error = authRedirectErrorDetail(refused);
+			return;
+		}
+
 		// Two shapes land here. An email link carries `token_hash` +
 		// `type`, which `verifyOtp` turns into a session from any
 		// browser — mail is read wherever the person happens to be, and
@@ -48,13 +93,7 @@
 
 		// Apple's refresh token arrives on this exchange only; keep it so
 		// account deletion can revoke the grant (Guideline 5.1.1(v)).
-		let stashedProvider: string | null = null;
-		try {
-			stashedProvider = sessionStorage.getItem(OAUTH_PROVIDER_STASH_KEY);
-			sessionStorage.removeItem(OAUTH_PROVIDER_STASH_KEY);
-		} catch (_) {
-			/* No storage: the provider is unknown and nothing is kept. */
-		}
+		const stashedProvider = takeStashed(OAUTH_PROVIDER_STASH_KEY);
 		// Not awaited: nothing below depends on it, and sign-in is already done.
 		void keepAppleRevocationCredential(supabase.functions, stashedProvider, session);
 
@@ -95,7 +134,7 @@
 			return;
 		}
 
-		goto('/dashboard');
+		goto(linking ? SIGN_IN_METHODS_PATH : '/dashboard');
 	});
 </script>
 

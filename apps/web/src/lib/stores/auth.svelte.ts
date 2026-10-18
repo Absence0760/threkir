@@ -10,6 +10,7 @@ import { parsePreferredUnit, parseSubscriptionTier } from '#lib/types.ts';
 import { createReadyGate, isAuthSettled } from './auth_ready';
 import { signOutWithScope } from './sign_out';
 import { OAUTH_PROVIDER_STASH_KEY } from '#lib/core/apple_revocation.ts';
+import { OAUTH_LINK_STASH_KEY } from '#lib/core/auth_redirect_error.ts';
 import { consentRecorded } from '#lib/core/auth_confirmation.ts';
 
 /// Longest QUIET gap a `ready()` waiter tolerates before resolving
@@ -62,8 +63,11 @@ function createAuthStore() {
 
 	/// /auth/callback reads this back to tell an Apple sign-in, whose
 	/// refresh token must be kept for revocation, from a Google one.
+	/// A sign-in also drops any link marker an abandoned link left behind,
+	/// so the callback does not mistake this sign-in for that link.
 	function stashOAuthProvider(provider: 'google' | 'apple') {
 		try {
+			sessionStorage.removeItem(OAUTH_LINK_STASH_KEY);
 			sessionStorage.setItem(OAUTH_PROVIDER_STASH_KEY, provider);
 		} catch (e) {
 			console.error('auth: could not stash the OAuth provider:', e);

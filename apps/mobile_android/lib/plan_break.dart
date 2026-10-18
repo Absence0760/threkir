@@ -13,12 +13,15 @@
 /// A plan that ends on a race keeps its race day: the same number of pre-taper
 /// weeks that have not started are dropped (build first, then base, then peak,
 /// the latest of each first), as `change_plan_race_date` drops them. The
-/// taper, anything that has started and anything done never move.
+/// taper, anything that has started and anything done never move. The weeks
+/// and drops come from `plan_repeat_week.dart`, which "Repeat this week"
+/// shares.
 library;
 
 import 'cycle_plan.dart' show daysBetweenIso;
 import 'plan_bulk_ops.dart' show shiftIsoDate;
 import 'plan_race_date.dart';
+import 'plan_repeat_week.dart';
 
 const int kBreakMinDays = 7;
 const int kBreakMaxWeeks = 52;
@@ -60,37 +63,22 @@ class BreakChange {
   });
 }
 
-const _taper = {'taper', 'race'};
-const _dropRank = {'build': 0, 'base': 1, 'peak': 2};
-
 bool _isDone(RaceDateWorkout w) =>
     w.completedRunId != null || w.manuallyCompleted;
 
 class _Shape {
   final String from;
   final int days;
-  final int current;
-  final String? raceDate;
+  final RerunFrame frame;
   final List<RaceDateWeek> sources;
-  final List<RaceDateWeek> drops;
-  final List<RaceDateWeek> sorted;
-  final Map<String, List<RaceDateWorkout>> byWeek;
 
-  const _Shape(this.from, this.days, this.current, this.raceDate, this.sources,
-      this.drops, this.sorted, this.byWeek);
+  const _Shape(this.from, this.days, this.frame, this.sources);
 }
 
 _Shape? _shape(RaceDatePlan plan, List<RaceDateWeek> weeks,
     List<RaceDateWorkout> workouts, List<String> runDatesIso, String todayIso) {
-  if (plan.isTemplate || plan.trimmedAt != null || plan.status != 'active') {
-    return null;
-  }
-  if (weeks.isEmpty || todayIso.compareTo(plan.endDate) > 0) return null;
-  final toToday = daysBetweenIso(plan.startDate, todayIso);
-  if (toToday == null || toToday < 0) return null;
-  final current = (toToday / 7).floor();
-  final sorted = [...weeks]..sort((a, b) => a.weekIndex - b.weekIndex);
-  if (sorted.last.weekIndex <= current) return null;
+  final frame = rerunFrame(plan, weeks, workouts, todayIso);
+  if (frame == null) return null;
 
   String? last;
   for (final d in runDatesIso) {
@@ -117,52 +105,24 @@ _Shape? _shape(RaceDatePlan plan, List<RaceDateWeek> weeks,
     return null;
   }
 
-  final byWeek = <String, List<RaceDateWorkout>>{};
-  for (final w in workouts) {
-    (byWeek[w.weekId] ??= []).add(w);
-  }
-  List<RaceDateWorkout> of(RaceDateWeek week) => byWeek[week.id] ?? const [];
-
   final sources = <RaceDateWeek>[];
-  for (final w in sorted.reversed) {
-    if (w.weekIndex > current) continue;
-    if (_taper.contains(w.phase)) break;
+  for (final w in frame.sorted.reversed) {
+    if (w.weekIndex > frame.current) continue;
+    if (kRerunTaperPhases.contains(w.phase)) break;
     sources.add(w);
   }
-  final raceDate = planRaceDate(plan, weeks);
-  final drops = raceDate == null
-      ? <RaceDateWeek>[]
-      : (sorted
-          .where((w) =>
-              w.weekIndex > current &&
-              !_taper.contains(w.phase) &&
-              !of(w).any((x) => x.kind == 'race' || _isDone(x)))
-          .toList()
-        ..sort((a, b) {
-          final byRank = (_dropRank[a.phase] ?? 3) - (_dropRank[b.phase] ?? 3);
-          return byRank != 0 ? byRank : b.weekIndex - a.weekIndex;
-        }));
-  return _Shape(from, days, current, raceDate, sources, drops, sorted, byWeek);
+  return _Shape(from, days, frame, sources);
 }
 
 BreakChange? _changeFor(_Shape s, RaceDatePlan plan, int k) {
   if (k < 1 || k > kBreakMaxWeeks || k > s.sources.length) return null;
-  if (s.raceDate != null && k > s.drops.length) return null;
-  final drop = s.raceDate != null ? s.drops.sublist(0, k) : <RaceDateWeek>[];
-  final dropped = drop.map((w) => w.id).toSet();
-  for (final w in s.sorted) {
-    if (w.weekIndex <= s.current || dropped.contains(w.id)) continue;
-    final below = drop.where((d) => d.weekIndex < w.weekIndex).length;
-    if (k - below == 0) continue;
-    if ((s.byWeek[w.id] ?? const []).any((x) => x.kind == 'race' || _isDone(x))) {
-      return null;
-    }
-  }
+  final placed = rerunPlacement(s.frame, plan, k);
+  if (!placed.ok) return null;
   return BreakChange(
     weeks: k,
     repeatWeekIds: s.sources.sublist(0, k).reversed.map((w) => w.id).toList(),
-    dropWeekIds: drop.map((w) => w.id).toList()..sort(),
-    endIso: s.raceDate != null ? plan.endDate : shiftIsoDate(plan.endDate, 7 * k),
+    dropWeekIds: placed.drops.map((w) => w.id).toList()..sort(),
+    endIso: placed.endIso!,
   );
 }
 
@@ -186,7 +146,7 @@ PlanBreak? detectPlanBreak({
   }
   if (maxWeeks < 1) return null;
   return PlanBreak(
-      fromIso: s.from, days: s.days, raceDateIso: s.raceDate, maxWeeks: maxWeeks);
+      fromIso: s.from, days: s.days, raceDateIso: s.frame.raceDate, maxWeeks: maxWeeks);
 }
 
 /// What running the latest [weeksToRepeat] weeks again would change, or null

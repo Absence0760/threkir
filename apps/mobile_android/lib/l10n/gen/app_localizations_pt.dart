@@ -6018,6 +6018,11 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String planNewRaceChained(String date) {
+    return 'Começa a $date, depois do seu plano atual e dos dias de recuperação.';
+  }
+
+  @override
   String get planNewRacePast =>
       'Essa prova já se realizou, por isso as datas abaixo são as predefinidas.';
 
@@ -13787,6 +13792,20 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get racesTrainForThis => 'Treinar para esta prova';
+
+  @override
+  String get racesBuildPlan => 'Criar um plano para esta prova';
+
+  @override
+  String get racesTailorWithAi => 'Ajustar com IA';
+
+  @override
+  String get racesAddToSeason => 'Adicionar à minha época';
+
+  @override
+  String racesAddToSeasonHint(String plan, String date, String days) {
+    return 'Começa depois de $plan terminar a $date, com $days dias para recuperar.';
+  }
 
   @override
   String get racesWhenGroup => 'Quando';
@@ -23943,6 +23962,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
+  String planNewRaceChained(String date) {
+    return 'Começa em $date, depois do seu plano atual e dos dias de recuperação.';
+  }
+
+  @override
   String get planNewRacePast =>
       'Essa corrida já aconteceu, então as datas abaixo são as padrão.';
 
@@ -31702,6 +31726,20 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get racesTrainForThis => 'Treinar para esta corrida';
+
+  @override
+  String get racesBuildPlan => 'Criar um plano para esta corrida';
+
+  @override
+  String get racesTailorWithAi => 'Ajustar com IA';
+
+  @override
+  String get racesAddToSeason => 'Adicionar à minha temporada';
+
+  @override
+  String racesAddToSeasonHint(String plan, String date, String days) {
+    return 'Começa depois que $plan terminar em $date, com $days dias para se recuperar.';
+  }
 
   @override
   String get racesWhenGroup => 'Quando';

@@ -8048,6 +8048,15 @@
       }
     }
   },
+  "planNewRaceChained": "Starts {date}, after your current plan and its recovery days.",
+  "@planNewRaceChained": {
+    "description": "Plan wizard: note when the race plan starts after the runner's current plan. date is the start date.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "planNewRacePast": "That race has already been run, so the dates below are the usual defaults.",
   "@planNewRacePast": {
     "description": "Note shown when the race the wizard was opened from has already been run"
@@ -18185,6 +18194,33 @@
   "racesTrainForThis": "Train for this race",
   "@racesTrainForThis": {
     "description": "Race card action that opens the plan wizard sized around that race"
+  },
+  "racesBuildPlan": "Build a plan for this race",
+  "@racesBuildPlan": {
+    "description": "Race detail: primary action opening the plan builder prefilled for this race."
+  },
+  "racesTailorWithAi": "Tailor it with AI",
+  "@racesTailorWithAi": {
+    "description": "Race detail: secondary action opening the AI plan assistant prefilled with this race. Shown only while the AI plan assistant is live."
+  },
+  "racesAddToSeason": "Add to my season",
+  "@racesAddToSeason": {
+    "description": "Race detail: action that builds a plan for this race starting after the runner's current plan ends."
+  },
+  "racesAddToSeasonHint": "Starts after {plan} ends on {date}, with {days} days to recover.",
+  "@racesAddToSeasonHint": {
+    "description": "Race detail: explains when a chained plan starts. plan is the earlier plan's name, date its end date, days the recovery days (always 3 or more).",
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      },
+      "days": {
+        "type": "String"
+      }
+    }
   },
   "racesWhenGroup": "When",
   "@racesWhenGroup": {

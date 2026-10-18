@@ -5678,6 +5678,11 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String planNewRaceChained(String date) {
+    return '現在のプランとその回復期間の後、$dateに始まります。';
+  }
+
+  @override
   String get planNewRacePast => 'このレースはすでに終了しているため、下の日付は通常の初期値です。';
 
   @override
@@ -13145,6 +13150,20 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get racesTrainForThis => 'このレースに向けてトレーニング';
+
+  @override
+  String get racesBuildPlan => 'このレースのプランを作成';
+
+  @override
+  String get racesTailorWithAi => 'AIで調整する';
+
+  @override
+  String get racesAddToSeason => 'シーズンに追加';
+
+  @override
+  String racesAddToSeasonHint(String plan, String date, String days) {
+    return '$planが$dateに終わった後、$days日間の回復期間を置いて始まります。';
+  }
 
   @override
   String get racesWhenGroup => '期間';

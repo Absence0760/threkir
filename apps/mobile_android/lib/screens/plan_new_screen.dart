@@ -100,6 +100,10 @@ class PlanNewScreen extends StatefulWidget {
   final String? raceName;
   final num? raceDistanceM;
 
+  /// The chained start floor a race's "Add to my season" hands over, so the
+  /// plan queues after the runner's current one; an AI fill keeps to it too.
+  final String? notBeforeIso;
+
   /// A plain-English description to prefill the "Describe the plan you want"
   /// box with (the Coach's "Build this plan" link). When the box is
   /// available it fills the form once after the first frame.
@@ -125,6 +129,7 @@ class PlanNewScreen extends StatefulWidget {
     this.raceDateIso,
     this.raceName,
     this.raceDistanceM,
+    this.notBeforeIso,
     this.initialDescription,
     this.apiClient,
     this.loadAiPlanAvailable,
@@ -515,6 +520,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       raceDateIso: raceDate,
       distanceM: _goalDistanceM,
       todayIso: toIsoDate(DateTime.now()),
+      notBeforeIso: widget.notBeforeIso,
     );
     final preset = result.preset;
     if (preset == null) return result.reason ?? RacePlanRefusal.invalid;
@@ -566,6 +572,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       raceDateIso: raceDateIso,
       distanceM: widget.raceDistanceM,
       todayIso: toIsoDate(DateTime.now()),
+      notBeforeIso: widget.notBeforeIso,
     );
     _racePreset = result;
     final preset = result.preset;
@@ -1642,7 +1649,12 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     final result = _racePreset;
     if (result == null) return null;
     final preset = result.preset;
-    if (preset != null) return l10n.planNewRaceAnchored(preset.weeks);
+    if (preset != null) {
+      final anchored = l10n.planNewRaceAnchored(preset.weeks);
+      return widget.notBeforeIso == null
+          ? anchored
+          : '$anchored ${l10n.planNewRaceChained(preset.startDate)}';
+    }
     return switch (result.reason!) {
       RacePlanRefusal.past => l10n.planNewRacePast,
       RacePlanRefusal.tooSoon => l10n.planNewRaceTooSoon,

@@ -11,7 +11,7 @@ import {
 } from './run_edit_cas';
 
 // The run-detail edit is a compare-and-swap on the server-stamped
-// `updated_at` (decisions § 2120). The fake plays Postgres: a swap lands only
+// `updated_at` (decisions § 2147). The fake plays Postgres: a swap lands only
 // while the row still holds the base it is given, and every landed write
 // moves the stamp.
 

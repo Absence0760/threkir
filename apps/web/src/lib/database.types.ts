@@ -3097,6 +3097,7 @@ export type Database = {
           id: string
           kind: Database["public"]["Enums"]["workout_kind"]
           manually_completed: boolean
+          missed_ack_at: string | null
           notes: string | null
           pace_zone: string | null
           race_name: string | null
@@ -3124,6 +3125,7 @@ export type Database = {
           id?: string
           kind: Database["public"]["Enums"]["workout_kind"]
           manually_completed?: boolean
+          missed_ack_at?: string | null
           notes?: string | null
           pace_zone?: string | null
           race_name?: string | null
@@ -3151,6 +3153,7 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["workout_kind"]
           manually_completed?: boolean
+          missed_ack_at?: string | null
           notes?: string | null
           pace_zone?: string | null
           race_name?: string | null
@@ -5915,6 +5918,10 @@ export type Database = {
       }
       ai_disclosure_current_version: { Args: never; Returns: number }
       am_i_admin: { Args: never; Returns: boolean }
+      answer_missed_workouts: {
+        Args: { p_changes?: Json; p_plan_id: string; p_workout_ids: string[] }
+        Returns: undefined
+      }
       apply_workout_adjustments: {
         Args: { p_changes: Json; p_plan_id: string }
         Returns: undefined
@@ -6034,6 +6041,19 @@ export type Database = {
           user_id: string
           value: number
         }[]
+      }
+      change_plan_race_date: {
+        Args: {
+          p_drop_week_ids?: string[]
+          p_insert_at?: number
+          p_insert_count?: number
+          p_plan_id: string
+          p_race_date: string
+          p_race_workout_id?: string
+          p_repeat_week_id?: string
+          p_today: string
+        }
+        Returns: undefined
       }
       check_rate_limit: {
         Args: {
@@ -6970,6 +6990,16 @@ export type Database = {
         Returns: undefined
       }
       request_follow: { Args: { p_target: string }; Returns: string }
+      reschedule_plan_after_break: {
+        Args: {
+          p_break_from: string
+          p_drop_week_ids?: string[]
+          p_plan_id: string
+          p_repeat_week_ids: string[]
+          p_today: string
+        }
+        Returns: undefined
+      }
       reschedule_plan_workouts: {
         Args: { p_moves: Json; p_plan_id: string }
         Returns: undefined
@@ -6982,6 +7012,10 @@ export type Database = {
           p_target_kind: string
         }
         Returns: number
+      }
+      restart_training_plan: {
+        Args: { p_plan_id: string; p_start_date: string }
+        Returns: string
       }
       resume_training_plan: {
         Args: {

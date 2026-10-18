@@ -1,7 +1,7 @@
 import 'package:core_models/core_models.dart';
 import 'package:test/test.dart';
 
-/// The pure half of the run edit compare-and-swap (decisions § 2120): which
+/// The pure half of the run edit compare-and-swap (decisions § 2147): which
 /// fields an edit changed, how a pending edit is laid onto a newer server
 /// row, and the UPDATE body that carries only those fields.
 Run _run({

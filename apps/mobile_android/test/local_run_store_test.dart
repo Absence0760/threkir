@@ -39,7 +39,7 @@ void main() {
         () async {
       // H1: the edit used to be lost on the next launch because only memory
       // knew about it. A synced run's edit is now a pending field edit
-      // (decisions § 2120), and that has to be just as durable.
+      // (decisions § 2147), and that has to be just as durable.
       final store = LocalRunStore();
       await store.init(overrideDirectory: tempDir);
       await store.save(makeRun(id: 'R'));
@@ -73,7 +73,7 @@ void main() {
     test('update() on a windowed-out run restores its residency', () async {
       // The other half of H1: an edit to a run outside the resident window
       // was invisible to the drain even inside the same session. It is a
-      // pending field edit now (decisions § 2120), and still made resident.
+      // pending field edit now (decisions § 2147), and still made resident.
       final seed = LocalRunStore();
       await seed.init(overrideDirectory: tempDir);
       await seed.save(Run(

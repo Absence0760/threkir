@@ -29,6 +29,7 @@ import '../main.dart'
         pendingPushTarget;
 import '../preferences.dart';
 import '../push_target.dart';
+import 'plan_target_screen.dart';
 import '../race_controller.dart';
 import '../race_service.dart';
 import '../run_stop_dock.dart';
@@ -38,6 +39,7 @@ import '../sync_service.dart';
 import '../shared_file_import.dart' show incomingRouteImport;
 import '../social_service.dart';
 import '../training_service.dart';
+import '../today_widget.dart' show TodayWidgetBridge;
 import '../watch_workout_push.dart' show WatchWorkoutBridge;
 import '../fab_clearance.dart';
 import '../help_destination.dart';
@@ -489,6 +491,10 @@ class _HomeScreenState extends State<HomeScreen>
           apiClient: api,
           runStore: widget.runStore,
         ));
+      case PushTargetKind.plan:
+      case PushTargetKind.planWorkout:
+        await _pushScreen(planTargetScreen(target,
+            training: widget.training, runStore: widget.runStore));
       case PushTargetKind.challenges:
         await _pushScreen(ChallengesScreen(social: widget.social));
       case PushTargetKind.clubs:
@@ -1010,9 +1016,11 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       final p = await widget.training.fetchActiveOverview();
       if (mounted) _planOverview = p;
-      // The same read keeps both watches holding today's workout; a failed
-      // read pushes nothing, so the wrist keeps what it had.
+      // The same read keeps both watches and the home-screen widget holding
+      // today's workout; a failed read pushes nothing, so each keeps what it
+      // had.
       unawaited(WatchWorkoutBridge().publish(p));
+      unawaited(TodayWidgetBridge().publish(p));
     } catch (e) {
       debugPrint('home: plan overview for the runner menu failed: $e');
     }

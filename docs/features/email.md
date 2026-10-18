@@ -215,7 +215,7 @@ Shared pieces:
   `/share/badge/{achievement_id}` — though not always the same page: the
   in-app inbox opens `run_completed` at `/runs/{id}` and `achievement` at the
   recipient's `/u/{id}?tab=achievements&badge={id}`, since its reader is
-  signed in (decisions § 2125), and the phone's `push_target.dart` maps the
+  signed in (decisions § 2152), and the phone's `push_target.dart` maps the
   worker's `/share/run` and `/share/badge` URLs onto those same in-app
   screens. The share page itself offers a signed-in visitor a way back into
   the app. The worker's links need `plan_id`, `achievement_id` and

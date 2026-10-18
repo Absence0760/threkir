@@ -226,7 +226,7 @@ final class RunResumeTests: XCTestCase {
     func testAPrimedAnnouncerSpeaksOnlyTheNextSplit() {
         let announcer = RunAnnouncer()
         var spoken: [String] = []
-        announcer.speak = { spoken.append($0) }
+        announcer.speak = { text, _ in spoken.append(text) }
         announcer.isEnabled = { true }
         announcer.prefersMiles = { false }
         announcer.primeSplits(distanceMetres: 61_400)
@@ -300,7 +300,7 @@ final class RunResumeTests: XCTestCase {
 
     private func silentAnnouncer() -> RunAnnouncer {
         let announcer = RunAnnouncer()
-        announcer.speak = { _ in }
+        announcer.speak = { _, _ in }
         announcer.isEnabled = { true }
         announcer.prefersMiles = { false }
         return announcer

@@ -147,6 +147,11 @@ class Preferences extends ChangeNotifier {
   // on a long run. Defaults false — the historical behaviour is a
   // full-brightness screen.
   static const _kDimScreenWhileRecording = 'dim_screen_while_recording';
+  // Mirrors the device-scoped `haptic_feedback_enabled` settings-bag key:
+  // vibrate on workout step changes, workout completion and pace alerts.
+  // Defaults true — the buzz is the cue that still reaches a runner with
+  // the audio off or the voice set to minimal.
+  static const _kHapticFeedback = 'haptic_feedback_enabled';
   // Per-device, never synced: write completed runs back to Android
   // Health Connect so they flow on to Google Fit / Samsung Health / etc.
   // Off by default — writing user data to a third-party store is opt-in
@@ -275,6 +280,7 @@ class Preferences extends ChangeNotifier {
   String _voiceFeedbackVerbosity = 'full';
   bool _keepScreenOn = true;
   bool _dimScreenWhileRecording = false;
+  bool _hapticFeedback = true;
   bool _writeToHealthConnect = false;
   ThemeMode _themeMode = ThemeMode.dark;
   Locale? _locale;
@@ -301,6 +307,8 @@ class Preferences extends ChangeNotifier {
     String? defaultActivityType,
     String? privacyDefault,
     List<int>? hrZoneCutoffs,
+    String? voiceFeedbackVerbosity,
+    bool? workoutStepCues,
   }) appleWatchPrefsPush = AppleWatchPrefsBridge.push;
 
   /// The zone ladder the wrist badges live heart rate against, resolved by
@@ -350,6 +358,12 @@ class Preferences extends ChangeNotifier {
   /// screen already allowed to sleep there is nothing to dim). Mirrors
   /// the device-scoped `dim_screen_while_recording` settings-bag key.
   bool get dimScreenWhileRecording => _dimScreenWhileRecording;
+
+  /// Whether the run screen vibrates on workout step changes, workout
+  /// completion and pace alerts. Independent of [audioCues] and the voice
+  /// verbosity: it is the non-audio channel. Mirrors the device-scoped
+  /// `haptic_feedback_enabled` settings-bag key.
+  bool get hapticFeedback => _hapticFeedback;
 
   /// Whether completed runs are written back to Android Health Connect
   /// (persona #36). Local-only, off by default, Android-only at the call
@@ -615,6 +629,7 @@ class Preferences extends ChangeNotifier {
     await setSplitPaceMode(SplitPaceMode.split);
     await setKeepScreenOn(true);
     await setDimScreenWhileRecording(false);
+    await setHapticFeedback(true);
     await clearVoiceCueTypes();
   }
 
@@ -720,6 +735,7 @@ class Preferences extends ChangeNotifier {
     _keepScreenOn = _prefs.getBool(_kKeepScreenOn) ?? true;
     _dimScreenWhileRecording =
         _prefs.getBool(_kDimScreenWhileRecording) ?? false;
+    _hapticFeedback = _prefs.getBool(_kHapticFeedback) ?? true;
     _themeMode = _themeModeFromString(_prefs.getString(_kThemeMode));
     _locale = localeFromTag(_prefs.getString(_kLocale));
     final bw = _prefs.getDouble(_kBodyWeightKg);
@@ -814,6 +830,8 @@ class Preferences extends ChangeNotifier {
         defaultActivityType: _defaultActivityType,
         privacyDefault: _privacyDefault,
         hrZoneCutoffs: _appleWatchHrZoneCutoffs,
+        voiceFeedbackVerbosity: _voiceFeedbackVerbosity,
+        workoutStepCues: voiceCueEnabled(VoiceCue.workoutSteps),
       );
     } catch (e) {
       debugPrint('Apple Watch preference push failed: $e');
@@ -838,6 +856,7 @@ class Preferences extends ChangeNotifier {
     _voiceCueTypes = {..._voiceCueTypes, cueId: v};
     await _prefs.setString(_kVoiceCueTypes, jsonEncode(_voiceCueTypes));
     notifyListeners();
+    await _pushAppleWatchPrefs();
   }
 
   /// Overlay the device-bag `voice_cue_types` map onto the local mirror
@@ -848,6 +867,7 @@ class Preferences extends ChangeNotifier {
     _voiceCueTypes = {..._voiceCueTypes, ...incoming};
     await _prefs.setString(_kVoiceCueTypes, jsonEncode(_voiceCueTypes));
     notifyListeners();
+    await _pushAppleWatchPrefs();
   }
 
   /// Sign-out reset. Because [applyVoiceCueTypes] merges without erasing,
@@ -857,6 +877,7 @@ class Preferences extends ChangeNotifier {
     _voiceCueTypes = {};
     await _prefs.remove(_kVoiceCueTypes);
     notifyListeners();
+    await _pushAppleWatchPrefs();
   }
 
   Future<void> setOnboarded(bool v) async {
@@ -906,6 +927,7 @@ class Preferences extends ChangeNotifier {
     _voiceFeedbackVerbosity = v;
     await _prefs.setString(_kVoiceFeedbackVerbosity, v);
     notifyListeners();
+    await _pushAppleWatchPrefs();
   }
 
   Future<void> setSentryOptOut(bool v) async {
@@ -923,6 +945,12 @@ class Preferences extends ChangeNotifier {
   Future<void> setDimScreenWhileRecording(bool v) async {
     _dimScreenWhileRecording = v;
     await _prefs.setBool(_kDimScreenWhileRecording, v);
+    notifyListeners();
+  }
+
+  Future<void> setHapticFeedback(bool v) async {
+    _hapticFeedback = v;
+    await _prefs.setBool(_kHapticFeedback, v);
     notifyListeners();
   }
 

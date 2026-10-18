@@ -46,6 +46,7 @@ const GATES: readonly { web: string; dart: string }[] = [
 		web: 'src/lib/nutrition/weight_fluid_flag.ts',
 		dart: '../mobile_android/lib/weight_fluid_flag.dart',
 	},
+	{ web: 'src/lib/training/cycle_plan_flag.ts', dart: '../mobile_android/lib/cycle_plan_flag.dart' },
 ];
 
 /// Gates that exist on web and nowhere else, so there is no second name to
@@ -58,7 +59,6 @@ const WEB_ONLY = new Map<string, string>([
 	['src/lib/core/apple_auth_flag.ts', 'mobile gates Apple sign-in the same way Google is gated — appleSignInAvailable() reads APPLE_SERVICE_CLIENT_ID + APPLE_REDIRECT_URI directly (apple_auth.dart), with no flag module to name'],
 	['src/lib/routes/route_gen_flag.ts', 'the graph-cycle sidecar is reached from the web route builder only'],
 	['src/lib/social/fundraising_flag.ts', 'the fundraising surface is web-canonical with no mobile twin (decisions § 24)'],
-	['src/lib/training/cycle_plan_flag.ts', 'cycle_plan has a Dart twin but no mobile SURFACE consumes it yet, so mobile has no gate to name'],
 	['src/lib/training/ai_plan_edit_flag.ts', 'AI plan edits are web-canonical (decisions § 24, § 1979); mobile has no surface to gate, and opens the Coach\'s plan-edit link on the web'],
 	['src/lib/training/ai_plan_flag.ts', 'mobile reads the plan assistant\'s availability from /app-capabilities.json (`ai_plan`, pro_sellable.dart), not from a gate module of its own'],
 	['src/lib/nutrition/plate_photo_flag.ts', 'mobile reads the plate-photo logger\'s availability from /app-capabilities.json (`plate_photo`, pro_sellable.dart), not from a gate module of its own'],

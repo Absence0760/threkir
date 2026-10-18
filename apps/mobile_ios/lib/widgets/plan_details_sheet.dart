@@ -30,6 +30,7 @@ Future<PlanDetailsEdit?> showPlanDetailsSheet(
   return showModalBottomSheet<PlanDetailsEdit>(
     context: context,
     isScrollControlled: true,
+    useSafeArea: true,
     showDragHandle: true,
     builder: (_) => _PlanDetailsSheet(plan: plan),
   );

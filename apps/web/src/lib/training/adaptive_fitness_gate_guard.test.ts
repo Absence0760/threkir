@@ -15,6 +15,7 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { stripComments } from '../core/strip_comments';
 
 function read(...parts: string[]): string {
 	return readFileSync(resolve(...parts), 'utf-8');
@@ -93,10 +94,12 @@ test('the fitness snapshot is never stored, logged, or persisted by the plan pag
 		'the apply path must not carry a load value');
 });
 
-test('the plan page is the only caller of the engine, so no second call site escapes these guards', () => {
+test('the plan page is the only caller that can pass fitness, so no second call site escapes these guards', () => {
 	// Every property above is pinned on ONE call site. A second caller (a
 	// dashboard card, the coach, a notification) would pass whatever it liked
-	// and none of this would see it (decisions § 1977).
+	// and none of this would see it (decisions § 1977). Home's plan card is the
+	// one admitted second caller, and only because the next test pins that it
+	// passes no fitness at all (decisions § 2125).
 	const callers: string[] = [];
 	const walk = (dir: string): void => {
 		for (const e of readdirSync(resolve(dir), { withFileTypes: true })) {
@@ -111,7 +114,17 @@ test('the plan page is the only caller of the engine, so no second call site esc
 		}
 	};
 	walk('src');
-	assert.deepEqual(callers, ['src/routes/plans/[id]/+page.svelte']);
+	assert.deepEqual(callers.sort(), ['src/lib/training/plan_nudges.ts', 'src/routes/plans/[id]/+page.svelte']);
+});
+
+test("Home's plan card calls the engine with no fitness and holds no load value", () => {
+	const code = stripComments(read('src/lib/training/plan_nudges.ts'));
+	const calls = code.match(/\badaptiveReplanRemaining\(([^)]*)\)/g) ?? [];
+	assert.equal(calls.length, 1, 'plan_nudges.ts must call adaptiveReplanRemaining exactly once');
+	assert.equal(calls[0], 'adaptiveReplanRemaining({ weeks, today: input.today })',
+		'the Home card must pass only the weeks and today, never a fitness snapshot');
+	assert.equal(/\b(fitness|tsb|atl|ctl|AdaptiveFitness)\b/i.test(code), false,
+		'a load value or fitness input appears in plan_nudges.ts');
 });
 
 test('the plan page reads the gate only through the flag module and holds no load value', () => {

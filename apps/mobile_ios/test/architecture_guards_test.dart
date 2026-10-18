@@ -1093,7 +1093,7 @@ void main() {
       // Reason: `metadata.last_modified_at` orders the summary index between
       // this device's two isolates (`_persistIndex`); without it a background
       // isolate's stale snapshot of an edited run wins the index merge. It no
-      // longer decides anything against the server (decisions § 2120).
+      // longer decides anything against the server (decisions § 2147).
       for (final signature in [
         r'Future<Run> _save\(Run run\)\s*async\s*\{',
         r'Future<void> _update\(Run updated\)\s*async\s*\{',
@@ -1109,7 +1109,7 @@ void main() {
 
     test('the remote merge decides by pending edit, never by a clock', () {
       // Reason: two devices' clocks disagree, so comparing their stamps let
-      // a stale copy beat a newer edit (decisions § 2120). A pulled row
+      // a stale copy beat a newer edit (decisions § 2147). A pulled row
       // replaces a synced copy unless that copy has a pending edit, whose
       // fields are laid on top of the row.
       final body = _extractMethodBody(
@@ -5543,6 +5543,10 @@ void main() {
       'screens/plan_detail_screen.dart::dl10n.planDetailDuplicateConfirmTitle': 1,
       // Moves dates only; shifting back by the same amount restores them.
       'screens/plan_detail_screen.dart::l10n.planDetailShiftTitle': 1,
+      // Restart copies the plan and retires the live one as abandoned, a
+      // status change that keeps its history; the second dialog is the
+      // race-ahead refusal, whose only action is dismissal.
+      'screens/plan_detail_screen.dart::l10n.planDetailRestartTitle': 2,
       // Abandon: a status change, not a deletion.
       'screens/plans_screen.dart::title': 1,
       // Visibility toggles and a share that only widens visibility.
@@ -5822,11 +5826,11 @@ void main() {
   // to reach. The rule is narrow: whatever the body interpolates, it may not
   // be a bare English label.
   test('the lock-screen notification body carries no English literal', () {
-    final src = File('lib/screens/run_screen.dart').readAsStringSync();
-    final match = RegExp(r'bigText:([\s\S]{0,400}?),\n\s*paused:').firstMatch(src);
+    final src = File('lib/run_notification_bridge.dart').readAsStringSync();
+    final match = RegExp(r'final statsBig =([\s\S]{0,400}?);\n').firstMatch(src);
     expect(match, isNotNull,
-        reason: 'could not find the bigText argument in run_screen.dart — if '
-            'the lock-screen body moved, move this guard with it');
+        reason: 'could not find the statsBig body in run_notification_bridge.dart '
+            '— if the lock-screen body moved, move this guard with it');
     final body = match!.group(1)!;
     for (final label in ['Time:', 'Distance:', 'Speed:', 'Pace:']) {
       expect(

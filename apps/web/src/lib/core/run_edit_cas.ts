@@ -1,4 +1,4 @@
-// Compare-and-swap for the run-detail edit (decisions § 2120). Pure apart
+// Compare-and-swap for the run-detail edit (decisions § 2147). Pure apart
 // from the injected `io`, so the conflict rule is unit-tested without a
 // Supabase stack; `updateRunMetadata` in `data.ts` supplies the queries.
 

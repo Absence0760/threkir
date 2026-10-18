@@ -8,7 +8,7 @@ import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/sag
 /**
  * A fresh account must reach /onboarding without the app shell (and so the
  * dashboard inside it) ever being attached to the DOM first (decisions
- * § 2122). The shell used to paint, then the layout's gate bounced to
+ * § 2149). The shell used to paint, then the layout's gate bounced to
  * /onboarding once the profile hydrated. A MutationObserver installed before
  * any page script records the first time `.app-shell` is attached; the
  * assertion is that it never was by the time the wizard heading shows.

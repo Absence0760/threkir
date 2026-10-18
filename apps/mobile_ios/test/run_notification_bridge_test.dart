@@ -1,7 +1,30 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../lib/live_activity_bridge.dart';
+import '../lib/lock_screen_step.dart';
 import '../lib/run_notification_bridge.dart';
+
+LiveActivityFrame _frame({bool paused = false, LockScreenStep? step}) =>
+    LiveActivityFrame(
+      title: paused ? 'Run • paused' : 'Run',
+      paused: paused,
+      elapsed: const Duration(minutes: 12),
+      elapsedText: '12:00',
+      timeLabel: 'Time',
+      distanceLabel: 'Distance',
+      distanceText: '2.40 km',
+      paceLabel: 'Pace',
+      paceText: '5:00 /km',
+      step: step,
+    );
+
+const _rep = LockScreenStep(
+  index: 4,
+  name: 'Rep 3 of 6',
+  remainingText: '400 m to go',
+  targetText: '@ 4:00 /km',
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -95,5 +118,38 @@ void main() {
     await bridge.updateSplit(title: 'Run', text: 'x');
     await bridge.clearSplit();
     messenger.setMockMethodCallHandler(channel, null);
+  });
+
+  group('runNotificationContent', () {
+    test('a free run reads exactly as it did before workouts reached it', () {
+      final c = runNotificationContent(_frame());
+      expect(c.title, 'Run');
+      expect(c.text, '12:00  •  2.40 km  •  5:00 /km');
+      expect(c.bigText, 'Time: 12:00\nDistance: 2.40 km\nPace: 5:00 /km');
+    });
+
+    test('a workout step takes the title; the stats keep the collapsed line',
+        () {
+      final c = runNotificationContent(_frame(step: _rep));
+      expect(c.title, 'Rep 3 of 6 · 400 m to go · @ 4:00 /km');
+      expect(c.text, '12:00  •  2.40 km  •  5:00 /km');
+      expect(c.bigText, isNot(contains('Rep 3 of 6')),
+          reason: 'the expanded view already shows the title above it');
+    });
+
+    test('paused keeps the paused title and moves the step into the body', () {
+      final c = runNotificationContent(_frame(paused: true, step: _rep));
+      expect(c.title, 'Run • paused');
+      expect(c.bigText.split('\n').first,
+          'Rep 3 of 6 · 400 m to go · @ 4:00 /km');
+    });
+
+    test('a finished workout says so in the title', () {
+      final c = runNotificationContent(_frame(
+        step: const LockScreenStep(
+            index: 6, name: 'Workout complete', complete: true),
+      ));
+      expect(c.title, 'Workout complete');
+    });
   });
 }

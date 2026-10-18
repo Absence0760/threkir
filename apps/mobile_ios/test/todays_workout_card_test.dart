@@ -29,6 +29,7 @@ Future<void> _pump(
   PlanWorkoutRow workout, {
   VoidCallback? onTap,
   VoidCallback? onStart,
+  double? overrunMetres,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -39,6 +40,7 @@ Future<void> _pump(
           workout: workout,
           onTap: onTap,
           onStart: onStart,
+          overrunMetres: overrunMetres,
         ),
       ),
     ),
@@ -58,6 +60,25 @@ void main() {
       await _pump(tester, _workout(completedRunId: 'run-1'));
       expect(find.text('DONE TODAY'), findsOneWidget);
       expect(find.byIcon(Icons.check_circle), findsOneWidget);
+    });
+
+    testWidgets('a done workout run long reads "DONE TODAY · +3 km"',
+        (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pump(tester, _workout(completedRunId: 'run-1'),
+          onTap: () {}, overrunMetres: 3000);
+      expect(find.text('DONE TODAY · +3 km'), findsOneWidget);
+      expect(
+          find.bySemanticsLabel(
+              RegExp(r'^DONE TODAY, 3 km more than planned, Tempo, ')),
+          findsOneWidget);
+      semantics.dispose();
+    });
+
+    testWidgets('an over-run is not shown on a workout not yet done',
+        (tester) async {
+      await _pump(tester, _workout(), overrunMetres: 3000);
+      expect(find.textContaining('+3 km'), findsNothing);
     });
 
     testWidgets('renders the workout kind label', (tester) async {

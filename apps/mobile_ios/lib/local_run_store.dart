@@ -63,7 +63,7 @@ class LocalRunStore extends ChangeNotifier {
   // stays synced — its row exists — and is pushed by
   // `pushPendingRunEdits` as a compare-and-swap of only those columns, never
   // by the whole-row upsert, which would re-upload its track and write every
-  // other field back over whatever another device changed (decisions § 2120).
+  // other field back over whatever another device changed (decisions § 2147).
   final Map<String, PendingRunEdit> _pendingEdits = {};
 
   /// Serialises every operation that mutates this store's DIRECTORY, on the
@@ -128,7 +128,7 @@ class LocalRunStore extends ChangeNotifier {
   // this one answers "will trying again help", and folding the second into the
   // first would make an unparked run indistinguishable from a synced one.
   static const _blockedRunsFilename = 'blocked_runs.json';
-  // Sidecar of [_pendingEdits]. Absent on a store written before § 2120,
+  // Sidecar of [_pendingEdits]. Absent on a store written before § 2147,
   // which reads as no pending edit.
   static const _pendingEditsFilename = 'pending_edits.json';
   // Compact on-disk projection of every run (one RunSummary each). Read first
@@ -555,7 +555,7 @@ class LocalRunStore extends ChangeNotifier {
 
   /// What a pulled server row becomes locally, or null to keep the local copy.
   ///
-  /// No device clock takes part (decisions § 2120). A local copy the server
+  /// No device clock takes part (decisions § 2147). A local copy the server
   /// has not confirmed — a run not pushed yet, a whole-row rewrite such as a
   /// re-import, a parked run — is kept, and its own upsert carries it. A
   /// synced copy with a pending edit takes the server row with the edit's
@@ -687,7 +687,7 @@ class LocalRunStore extends ChangeNotifier {
   /// [PendingRunEdit] — the fields this edit changed, on top of any still
   /// pending, and the server `updated_at` of the copy it was made on — which
   /// `pushPendingRunEdits` sends as a compare-and-swap of those columns
-  /// alone (decisions § 2120). A run the server has not confirmed is marked
+  /// alone (decisions § 2147). A run the server has not confirmed is marked
   /// unsynced, and its next push upserts the whole row as before.
   Future<void> update(Run updated) => _serialised(() => _update(updated));
 

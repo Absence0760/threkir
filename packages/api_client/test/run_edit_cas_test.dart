@@ -7,7 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:test/test.dart';
 
 /// A pending run edit is pushed as a compare-and-swap on the server
-/// `updated_at` it was made on (decisions § 2120): only the changed columns,
+/// `updated_at` it was made on (decisions § 2147): only the changed columns,
 /// filtered on the id AND the base, which travels back to the server exactly
 /// as the server sent it. The fake plays PostgREST at the http boundary.
 class _FakePostgrest extends http.BaseClient {

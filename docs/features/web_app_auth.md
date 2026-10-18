@@ -283,7 +283,7 @@ Both layout gates (consent, then onboarding) can only decide once the profile ha
 
 The hold is fail-safe: `auth.profileFailed` releases it when `get_my_profile` or the bootstrap insert fails, a profile load throws, or no answer arrives within 10 s. The shell then renders as it did before the hold existed (the profile-load toast, the gates no-op on a null user), rather than stranding the user on a spinner.
 
-Pinned by `src/lib/core/post_auth_route.test.ts` and `tests-e2e/onboarding/no-dashboard-flash.spec.ts`, which observes the DOM from before the first page script and fails if `.app-shell` is ever attached on the way to the wizard. Decisions §2122.
+Pinned by `src/lib/core/post_auth_route.test.ts` and `tests-e2e/onboarding/no-dashboard-flash.spec.ts`, which observes the DOM from before the first page script and fails if `.app-shell` is ever attached on the way to the wizard. Decisions § 2149.
 
 ---
 

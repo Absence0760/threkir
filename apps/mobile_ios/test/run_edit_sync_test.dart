@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../lib/local_run_store.dart';
 import '../lib/sync_service.dart';
 
-/// No device clock decides a run edit conflict (decisions § 2120). A pulled
+/// No device clock decides a run edit conflict (decisions § 2147). A pulled
 /// server row replaces a synced copy unless that copy has a pending edit, in
 /// which case the edit's fields are laid on top of it; the edit is pushed as
 /// a compare-and-swap on the server `updated_at` it was made on.
@@ -380,7 +380,7 @@ void main() {
 
   group('on-disk format', () {
     test('a store written before pending edits loads with none', () async {
-      // The pre-§ 2120 layout: a synced run file with no server stamp in its
+      // The pre-§ 2147 layout: a synced run file with no server stamp in its
       // bag and no pending_edits.json beside it.
       final seed = await open();
       await seed.save(

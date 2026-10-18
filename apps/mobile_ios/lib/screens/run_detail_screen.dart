@@ -892,7 +892,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     // Push the edit straight away so other clients see it now, not on the
     // next sync cycle: a compare-and-swap of only the changed columns, which
     // never re-uploads the track and never writes over a change another
-    // device made since this copy was read (decisions § 2120). L4
+    // device made since this copy was read (decisions § 2147). L4
     // best-effort and never throws: whatever does not land stays pending for
     // the next sync.
     final api = widget.apiClient;

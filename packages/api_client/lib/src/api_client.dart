@@ -1034,7 +1034,7 @@ class ApiClient {
   /// Push a local edit to a synced run as a compare-and-swap: an UPDATE of
   /// only the columns [fields] live in ([runEditPatch]), filtered on the id
   /// AND on `updated_at` still being [baseUpdatedAt], the server stamp of the
-  /// copy the edit was made on (decisions § 2120). Returns the row as the
+  /// copy the edit was made on (decisions § 2147). Returns the row as the
   /// server now holds it, carrying its new `updated_at`, or null when no row
   /// matched — the row moved since the base was read, or is gone — which the
   /// caller resolves by reading it again ([getRunsByIds]) and re-basing.
@@ -6868,7 +6868,7 @@ class ApiClient {
       metadata[MetadataKeys.elevationM] = r.elevationGainM;
     }
     // The base a local edit is compare-and-swapped against (decisions
-    // § 2120). The raw string, not `r.updatedAt`: the push sends it back for
+    // § 2147). The raw string, not `r.updatedAt`: the push sends it back for
     // an equality match, and a value re-formatted through `DateTime` is not
     // guaranteed to be the one Postgres compares.
     final updatedAt = row[RunRow.colUpdatedAt];

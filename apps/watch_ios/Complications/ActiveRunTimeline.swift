@@ -19,6 +19,9 @@ struct ActiveRunEntry: TimelineEntry {
     let elapsedSeconds: Int
     let distanceMeters: Double
     let paceSecPerKm: Double?
+    /// Today's planned workout, set only on an idle entry whose own date is
+    /// the workout's day.
+    var today: TodayWorkoutGlance? = nil
 }
 
 enum ActiveRunTimeline {
@@ -40,21 +43,48 @@ enum ActiveRunTimeline {
     static let activeEntryCount = 10
     static let activeEntryStride: TimeInterval = 30
 
-    static func entry(from snapshot: ActiveRunSnapshot, now: Date) -> ActiveRunEntry {
+    /// A live run always wins the face. Today's workout shows only when no
+    /// run is, and only on its own day by the watch's calendar — the rule
+    /// `WorkoutPush.offered` applies to the pre-run screen, so the face never
+    /// names a session the Start button would not follow.
+    static func entry(
+        from snapshot: ActiveRunSnapshot,
+        today glance: TodayWorkoutGlance? = nil,
+        now: Date,
+        calendar: Calendar = .current
+    ) -> ActiveRunEntry {
         let age = now.timeIntervalSince1970 - snapshot.lastUpdatedEpoch
         let isActive = snapshot.isActive && snapshot.lastUpdatedEpoch > 0 && age < staleAfter
+        let shown = isActive ? nil : glance.flatMap { $0.isFor(now, calendar: calendar) ? $0 : nil }
         return ActiveRunEntry(
             date: now,
             isActive: isActive,
             elapsedSeconds: snapshot.elapsedSeconds,
             distanceMeters: snapshot.distanceMeters,
             paceSecPerKm: snapshot.paceSecPerKm,
+            today: shown
         )
     }
 
-    static func entries(from snapshot: ActiveRunSnapshot, now: Date) -> [ActiveRunEntry] {
-        let head = entry(from: snapshot, now: now)
-        guard head.isActive else { return [head] }
+    /// An idle face holding today's workout carries a second entry at the
+    /// next local midnight, where the workout's day ends and the face drops
+    /// back to idle with no app running to tell it. The same entry is what
+    /// shows a workout dated tomorrow when the phone's day is ahead of the
+    /// wrist's.
+    static func entries(
+        from snapshot: ActiveRunSnapshot,
+        today glance: TodayWorkoutGlance? = nil,
+        now: Date,
+        calendar: Calendar = .current
+    ) -> [ActiveRunEntry] {
+        let head = entry(from: snapshot, today: glance, now: now, calendar: calendar)
+        guard head.isActive else {
+            guard let glance,
+                  let midnight = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)),
+                  head.today != nil || glance.isFor(midnight, calendar: calendar)
+            else { return [head] }
+            return [head, entry(from: snapshot, today: glance, now: midnight, calendar: calendar)]
+        }
         return (0..<activeEntryCount).map { i in
             let dt = activeEntryStride * Double(i)
             return ActiveRunEntry(
@@ -65,6 +95,51 @@ enum ActiveRunTimeline {
                 paceSecPerKm: head.paceSecPerKm,
             )
         }
+    }
+
+    /// Whether the system should ask for a fresh timeline once this one has
+    /// run out: a live run's schedule is ten entries deep, and an idle one
+    /// with a midnight rollover needs the next day's reading. A plain idle
+    /// face waits for the app's next reload instead of spending budget.
+    static func reloadsAtEnd(_ entries: [ActiveRunEntry]) -> Bool {
+        entries.first?.isActive == true || entries.count > 1
+    }
+
+    /// The plan's word for a workout kind, the phone's and the web's
+    /// verbatim. A kind this build does not know reads as the generic
+    /// heading rather than a raw token. `rest` is absent because the phone
+    /// never pushes a rest day: it has no steps to follow.
+    static func kindLabel(_ kind: String) -> String {
+        switch kind {
+        case "easy": return String(localized: "workoutKind.easy")
+        case "long": return String(localized: "workoutKind.long")
+        case "recovery": return String(localized: "workoutKind.recovery")
+        case "tempo": return String(localized: "workoutKind.tempo")
+        case "interval": return String(localized: "workoutKind.interval")
+        case "marathon_pace": return String(localized: "workoutKind.marathon_pace")
+        case "walk_run": return String(localized: "workoutKind.walk_run")
+        case "race": return String(localized: "workoutKind.race")
+        default: return String(localized: "Today's workout")
+        }
+    }
+
+    /// The session's headline: its distance when any step is measured in
+    /// distance, else its time, else nothing. The pre-run screen's summary
+    /// shows both for a mixed session; a face has room for one.
+    static func todayHeadline(_ glance: TodayWorkoutGlance) -> String? {
+        if let d = glance.distanceMetres {
+            return RunFormat.distance(metres: Double(d), fractionDigits: 1)
+        }
+        if let t = glance.durationSeconds { return formatElapsed(t) }
+        return nil
+    }
+
+    /// Kind and headline on one line, a `String` for the reason `statLine`
+    /// is one.
+    static func todayLine(_ glance: TodayWorkoutGlance) -> String {
+        [kindLabel(glance.workoutKind), todayHeadline(glance)]
+            .compactMap { $0 }
+            .joined(separator: " · ")
     }
 
     /// Distance and pace on one line, assembled OUTSIDE any `Text` / `Label`

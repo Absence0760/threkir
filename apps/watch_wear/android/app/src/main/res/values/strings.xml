@@ -49,6 +49,26 @@
     <string name="complication_desc_recording">Recording, %1$s elapsed, %2$s</string>
     <string name="complication_desc_paused">Paused at %1$s, %2$s</string>
     <string name="complication_desc_last_run">Last run %1$s in %2$s</string>
+    <!-- Today's planned workout on the tile and the complication -->
+    <string name="tile_today">TODAY</string>
+    <string name="complication_today_short">Today</string>
+    <string name="complication_desc_today">Today\'s workout: %1$s, %2$s</string>
+    <string name="workout_kind_easy">Easy</string>
+    <string name="workout_kind_long">Long run</string>
+    <string name="workout_kind_recovery">Recovery</string>
+    <string name="workout_kind_tempo">Tempo</string>
+    <string name="workout_kind_interval">Intervals</string>
+    <string name="workout_kind_marathon_pace">Marathon pace</string>
+    <string name="workout_kind_walk_run">Walk-run</string>
+    <string name="workout_kind_race">Race</string>
+    <string name="workout_kind_short_easy">E</string>
+    <string name="workout_kind_short_long">L</string>
+    <string name="workout_kind_short_recovery">Rec</string>
+    <string name="workout_kind_short_tempo">T</string>
+    <string name="workout_kind_short_interval">Int</string>
+    <string name="workout_kind_short_marathon_pace">MP</string>
+    <string name="workout_kind_short_walk_run">W/R</string>
+    <string name="workout_kind_short_race">Race</string>
 
     <!-- ───────────── Notification ───────────── -->
     <string name="notif_recording_run">Recording run</string>
@@ -253,6 +273,48 @@
     <string name="tts_run_complete_mi">Run complete. %1$s miles in %2$d minutes.</string>
     <string name="tts_pace_alert_fast">Pick up the pace</string>
     <string name="tts_pace_alert_slow">Slow down</string>
+
+    <!-- Today's workout, spoken (workout/WorkoutSpeech.kt). Wording from the
+         phone's app_*.arb tts* keys so a runner carrying both devices hears
+         the same sentence. tts_step_distance is the unpaced distance step:
+         tts_step_duration's shape with the distance in place of the time. -->
+    <string name="tts_workout_complete">Workout complete. Nice work.</string>
+    <string name="tts_step_warmup">Warmup</string>
+    <string name="tts_step_warmup_walk">Warm-up walk</string>
+    <string name="tts_step_rep">Rep</string>
+    <string name="tts_step_run">Run</string>
+    <string name="tts_step_rep_of">Rep %1$d of %2$d</string>
+    <string name="tts_step_run_of">Run %1$d of %2$d</string>
+    <string name="tts_step_recovery">Recovery</string>
+    <string name="tts_step_walk">Walk</string>
+    <string name="tts_step_walk_of">Walk %1$d of %2$d</string>
+    <string name="tts_step_steady">Steady</string>
+    <string name="tts_step_cooldown">Cooldown</string>
+    <string name="tts_step_cooldown_walk">Cool-down walk</string>
+    <string name="tts_step_duration">%1$s. %2$s.</string>
+    <string name="tts_step_distance_pace">%1$s. %2$s at %3$s.</string>
+    <string name="tts_step_distance">%1$s. %2$s.</string>
+    <string name="tts_step_pace_km">%1$d minutes %2$d seconds per kilometre</string>
+    <string name="tts_step_pace_mi">%1$d minutes %2$d seconds per mile</string>
+    <string name="tts_step_pace_km_whole">%1$d minutes per kilometre</string>
+    <string name="tts_step_pace_mi_whole">%1$d minutes per mile</string>
+    <string name="tts_distance_km">%1$s kilometres</string>
+    <string name="tts_distance_mi">%1$s miles</string>
+    <string name="tts_distance_short_km">%1$d metres</string>
+    <string name="tts_distance_short_mi">%1$d yards</string>
+    <string name="tts_duration_seconds">%1$d seconds</string>
+    <string name="tts_duration_minutes_seconds">%1$s %2$d seconds</string>
+    <string name="tts_step_last_fifty_km">Fifty metres to go</string>
+    <string name="tts_step_last_fifty_mi">Fifty yards to go</string>
+    <string name="tts_step_last_ten_seconds">Ten seconds to go</string>
+    <string name="tts_pace_drift_ahead_km">Ease up — %1$d seconds per kilometre ahead of pace.</string>
+    <string name="tts_pace_drift_ahead_mi">Ease up — %1$d seconds per mile ahead of pace.</string>
+    <string name="tts_pace_drift_behind_km">Pick it up — %1$d seconds per kilometre behind pace.</string>
+    <string name="tts_pace_drift_behind_mi">Pick it up — %1$d seconds per mile behind pace.</string>
+    <plurals name="tts_duration_minutes">
+        <item quantity="one">%1$d minute</item>
+        <item quantity="other">%1$d minutes</item>
+    </plurals>
 
     <!-- Today's workout, pushed by the phone (WorkoutBridge) -->
     <string name="workout">Workout</string>

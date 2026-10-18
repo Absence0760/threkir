@@ -3,6 +3,8 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'lock_screen_step.dart';
+
 /// One frame of what the iOS Live Activity shows.
 ///
 /// Every string is already localized and unit-formatted by the caller, so the
@@ -21,6 +23,7 @@ class LiveActivityFrame {
     required this.distanceText,
     required this.paceLabel,
     required this.paceText,
+    this.step,
   });
 
   /// Lock-screen header. Carries the paused state in words, exactly as the
@@ -44,6 +47,9 @@ class LiveActivityFrame {
   final String paceLabel;
   final String paceText;
 
+  /// The structured-workout step, or null on a free run.
+  final LockScreenStep? step;
+
   /// [elapsed] and [elapsedText] are deliberately absent: the widget renders
   /// the running clock itself, so a tick is not a reason to spend an update,
   /// and a paused clock does not advance. Comparing them would push once a
@@ -57,7 +63,8 @@ class LiveActivityFrame {
       other.distanceLabel == distanceLabel &&
       other.distanceText == distanceText &&
       other.paceLabel == paceLabel &&
-      other.paceText == paceText;
+      other.paceText == paceText &&
+      other.step == step;
 
   @override
   int get hashCode => Object.hash(
@@ -68,6 +75,7 @@ class LiveActivityFrame {
         distanceText,
         paceLabel,
         paceText,
+        step,
       );
 }
 
@@ -82,7 +90,9 @@ class LiveActivityFrame {
 /// [minInterval], none at all when nothing rendered has changed, and a
 /// pause/resume goes out immediately because a lock screen that disagrees
 /// with the button the runner just pressed is the one failure they will
-/// notice.
+/// notice. A workout step change goes out immediately too: "Rep 4 of 6" is
+/// the instruction the runner is acting on now, and ten seconds of the
+/// previous rep's target is ten seconds of running to the wrong one.
 class LiveActivityCadence {
   LiveActivityCadence({this.minInterval = const Duration(seconds: 10)});
 
@@ -99,6 +109,7 @@ class LiveActivityCadence {
     final lastAt = _lastAt;
     if (last == null || lastAt == null) return true;
     if (next.paused != last.paused) return true;
+    if (next.step?.index != last.step?.index) return true;
     final since = now.difference(lastAt);
     // A negative interval means the wall clock stepped backwards (NTP, a
     // timezone change). Treating that as "not yet" would wedge the activity
@@ -177,6 +188,12 @@ class LiveActivityBridge {
 
   static const _anchorTolerance = Duration(milliseconds: 1500);
 
+  /// When a timed workout step runs out, for the widget's countdown — held
+  /// for the same jitter reason as [_anchor], and re-derived on a new step,
+  /// across a pause, or past [_anchorTolerance] of drift.
+  DateTime? _stepEnd;
+  int? _stepEndIndex;
+
   bool get isRunning => _running;
 
   /// Show the activity. A no-op on Android and a false return anywhere
@@ -185,6 +202,7 @@ class LiveActivityBridge {
     if (!_supported || _running) return;
     final now = _clock();
     _anchor = now.subtract(frame.elapsed);
+    _reanchorStep(frame, now);
     try {
       final started = await _invoke('start', _payload(frame));
       _running = started ?? false;
@@ -202,6 +220,7 @@ class LiveActivityBridge {
     final now = _clock();
     if (!_cadence.shouldPush(frame, now)) return;
     _reanchor(frame, now);
+    _reanchorStep(frame, now);
     // Recorded before the await so a slow platform call cannot let a burst of
     // frames queue up behind it and all pass the interval at once.
     _cadence.record(frame, now);
@@ -219,6 +238,8 @@ class LiveActivityBridge {
     if (!_supported) return;
     _running = false;
     _anchor = null;
+    _stepEnd = null;
+    _stepEndIndex = null;
     _cadence.reset();
     try {
       await _invoke('stop', const <String, Object?>{});
@@ -239,8 +260,29 @@ class LiveActivityBridge {
     if (drift >= _anchorTolerance) _anchor = implied;
   }
 
+  void _reanchorStep(LiveActivityFrame frame, DateTime now) {
+    final step = frame.step;
+    final remaining = step?.remaining;
+    if (step == null || remaining == null) {
+      _stepEnd = null;
+      _stepEndIndex = null;
+      return;
+    }
+    final implied = now.add(remaining);
+    final end = _stepEnd;
+    if (end == null || _stepEndIndex != step.index) {
+      _stepEnd = implied;
+      _stepEndIndex = step.index;
+      return;
+    }
+    if (frame.paused) return;
+    if (implied.difference(end).abs() >= _anchorTolerance) _stepEnd = implied;
+  }
+
   Map<String, Object?> _payload(LiveActivityFrame frame) {
     final anchor = _anchor ?? _clock().subtract(frame.elapsed);
+    final step = frame.step;
+    final stepEnd = _stepEnd;
     return <String, Object?>{
       'title': frame.title,
       'paused': frame.paused,
@@ -251,6 +293,16 @@ class LiveActivityBridge {
       'distance_text': frame.distanceText,
       'pace_label': frame.paceLabel,
       'pace_text': frame.paceText,
+      // Absent, not null, on a free run: the extension decodes each as
+      // optional, and an older extension ignores keys it does not know.
+      if (step != null) 'step_title': step.name,
+      if (step?.remainingText != null)
+        'step_remaining_text': step!.remainingText,
+      if (step?.targetText != null) 'step_target': step!.targetText,
+      // Only while running: a paused run shows the frozen remaining text, as
+      // the run clock does.
+      if (step != null && step.isTimed && !frame.paused && stepEnd != null)
+        'step_end_epoch_ms': stepEnd.millisecondsSinceEpoch,
     };
   }
 }

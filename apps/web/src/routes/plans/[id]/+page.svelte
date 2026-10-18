@@ -1,5 +1,10 @@
 <script lang="ts">
-	import { isPlanOverlapError, thrownMessage } from '#lib/core/supabase_error.ts';
+	import {
+		isPlanOverlapError,
+		isPlanRestartBeforeTodayError,
+		isPlanRestartRaceAheadError,
+		thrownMessage,
+	} from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale, formatDateShort, formatDuration } from '#lib/format/time.ts';
 	import { onMount, tick } from 'svelte';
 	import { afterNavigate, goto, replaceState } from '$app/navigation';
@@ -9,27 +14,35 @@
 		fetchMyClubs,
 		fetchRuns,
 		fetchDisplayName,
+		fetchRunDistances,
 		publishPlanAsTemplate,
 		publishPlanToLibrary,
 		unpublishFromLibrary,
 		fetchMyPublishedPlans,
 		applyWorkoutAdjustments,
+		answerMissedWorkouts,
 		updatePlanWorkout,
 		duplicatePlanWeek,
 		fetchMyActivePlanWindows,
 		shiftTrainingPlan,
+		changePlanRaceDate,
 		pausePlan,
 		resumePlan,
+		updatePlanStatus,
+		restartTrainingPlan,
 		ActivePlanExistsError,
 		isActiveCoachOf,
 	} from '#lib/core/data.ts';
 	import { recoveryWorkoutPatch } from '#lib/training/plan_bulk_ops.ts';
 	import { planShiftImpact } from '#lib/training/plan_shift.ts';
+	import { planRaceDate, raceDateChange, type RaceDateChange, type RaceDateRefusal } from '#lib/training/plan_race_date.ts';
+	import { overlappingPlans } from '#lib/training/plan_current.ts';
 	import { workoutMoveDays } from '#lib/training/plan_move.ts';
 	import { startLocalDayTicker } from '#lib/format/local_day_ticker.ts';
 	import { cyclePlanWorkoutPatch, type CyclePlanConfig } from '#lib/training/cycle_plan.ts';
 	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
 	import { replanRemaining, type ReplanChange, type ReplanWeek } from '#lib/training/plan_replan.ts';
+	import { buildReplanWeeks, workoutOverrunMetres } from '#lib/training/plan_nudges.ts';
 	import {
 		raceTaperAdjustments,
 		raceTaperProposals,
@@ -45,6 +58,11 @@
 	import { isAdaptiveFitnessGateEnabled } from '#lib/training/adaptive_fitness_flag.ts';
 	import WorkoutEditor from '#lib/components/WorkoutEditor.svelte';
 	import FinishPlanPrompt from '#lib/components/FinishPlanPrompt.svelte';
+	import PlanBreakCard from '#lib/components/PlanBreakCard.svelte';
+	import { loadBreakContext } from '#lib/core/plan_break_context.ts';
+	import { breakState, type BreakContext } from '#lib/training/plan_break_state.ts';
+	import MissedWorkoutPrompt, { missedPromptFromRows } from '#lib/components/MissedWorkoutPrompt.svelte';
+	import type { MissedPrompt } from '#lib/training/plan_missed_prompt.ts';
 	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import PlanAiAdjust from '#lib/components/PlanAiAdjust.svelte';
@@ -77,6 +95,14 @@
 	} from '#lib/training/training.ts';
 	import { weeklyDriftToDate, missedWorkoutAdvice } from '#lib/training/plan_adherence.ts';
 	import { resumeShift } from '#lib/training/plan_resume.ts';
+	import {
+		alignRestartStartIso,
+		defaultRestartStartIso,
+		isWalkRunPlan,
+		restartedDateIso,
+		restartStartAllowed,
+		upcomingRaceIso,
+	} from '#lib/training/plan_restart.ts';
 	import { shiftIsoDate } from '#lib/training/plan_bulk_ops.ts';
 	import { currentPlanWeekIndex } from '#lib/training/plan_week.ts';
 	import {
@@ -91,7 +117,7 @@
 	import { workoutKindLabel, planPhaseLabel } from '#lib/training/workout_labels.ts';
 	import { planWorkoutAriaLabel, planWorkoutStatusOf } from '#lib/training/plan_workout_view.ts';
 	import { planWorkoutStatusLook } from '#lib/training/plan_workout_status_style.ts';
-	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
+	import { fmtKm, fmtOverrun, fmtPace } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { loadSettings, effective } from '#lib/settings/settings.ts';
 	import type { WeekStart } from '#lib/format/calendar.ts';
@@ -308,6 +334,7 @@
 		| { kind: 'cycle' }
 		| { kind: 'pause' }
 		| { kind: 'resume' }
+		| { kind: 'raceDate'; change: RaceDateChange }
 		| null
 	>(null);
 
@@ -355,6 +382,99 @@
 			return;
 		}
 		bulkConfirm = { kind: 'shift', following: impact.kind === 'following' ? impact.following : [] };
+	}
+
+	// ─── Change race date (owner-only) ───
+	let raceDateInput = $state('');
+
+	function openAdjust(): void {
+		raceDateInput = raceDateOffer ?? '';
+		adjustOpen = true;
+	}
+
+	function raceDateRefusalMessage(reason: RaceDateRefusal, date: string, earliestIso?: string): string {
+		switch (reason) {
+			case 'too_soon':
+				return m('planDetail.raceDateTooSoon', {
+					date: fmtRaceDate(date),
+					earliest: earliestIso ? fmtRaceDate(earliestIso) : ''
+				});
+			case 'past':
+				return m('planDetail.raceDatePast');
+			case 'invalid':
+				return m('planDetail.raceDateInvalid');
+			case 'unchanged':
+				return m('planDetail.raceDateUnchanged');
+			case 'no_race':
+				return m('planDetail.raceDateNoRace');
+			case 'race_week_started':
+				return m('planDetail.raceDateWeekStarted');
+			case 'too_far':
+				return m('planDetail.raceDateTooFar');
+			case 'no_build_week':
+				return m('planDetail.raceDateNoBuild');
+			case 'in_the_way':
+				return m('planDetail.raceDateInTheWay');
+		}
+	}
+
+	/// Work out which weeks the new race date drops or repeats, refuse here
+	/// what the plan cannot reach with its taper whole, and check a later end
+	/// against the runner's other active plans before asking. A failed check
+	/// asks nothing.
+	async function chooseRaceDate(): Promise<void> {
+		if (!plan || !raceDateInput) return;
+		const date = raceDateInput;
+		adjustOpen = false;
+		await tick();
+		const result = raceDateChange({ plan, weeks, workouts, raceDateIso: date, todayIso: today });
+		if (!result.ok) {
+			showToast(raceDateRefusalMessage(result.reason, date, result.earliestIso), 'error');
+			return;
+		}
+		if (plan.status === 'active' && date > plan.end_date) {
+			let others: PlanName[];
+			try {
+				others = await fetchMyActivePlanWindows();
+			} catch (e) {
+				showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+				return;
+			}
+			const blocking = overlappingPlans(
+				others.filter((p) => p.id !== plan?.id),
+				plan.start_date,
+				date
+			);
+			if (blocking.length > 0) {
+				showToast(
+					m('planDetail.raceDateBlocked', { date: fmtRaceDate(date), plans: planNames(blocking) }),
+					'error'
+				);
+				return;
+			}
+		}
+		bulkConfirm = { kind: 'raceDate', change: result.change };
+	}
+
+	async function applyRaceDate(change: RaceDateChange): Promise<void> {
+		if (!plan || bulkBusy) return;
+		bulkBusy = true;
+		try {
+			await changePlanRaceDate(plan.id, change, today);
+			showToast(m('planDetail.raceDateDone', { date: fmtRaceDate(change.raceDateIso) }));
+			await load();
+		} catch (e) {
+			planWriteFailed(e);
+		} finally {
+			bulkBusy = false;
+		}
+	}
+
+	function raceDateConfirmMessage(change: RaceDateChange): string {
+		const date = fmtRaceDate(change.raceDateIso);
+		if (change.weekDelta > 0) return m('planDetail.raceDateConfirmLater', { date, n: change.weekDelta });
+		if (change.weekDelta < 0) return m('planDetail.raceDateConfirmEarlier', { date, n: -change.weekDelta });
+		return m('planDetail.raceDateConfirmSameWeek', { date });
 	}
 
 	function planNames(plans: PlanName[]): string {
@@ -408,6 +528,7 @@
 		);
 		const changes = raceTaperProposals({ workouts: input, races, today });
 		replanPreview = null;
+		makeUpAnswers = null;
 		adaptiveInfo = null;
 		if (changes.length === 0) {
 			taperPreview = null;
@@ -530,8 +651,68 @@
 		}, 0);
 	}
 
+	/// Home's missed-workout prompt lands here as `?makeup=1`: open the
+	/// make-up preview for the plan's current prompt, then leave the URL.
+	function takeMakeUpParam(): void {
+		const url = new URL(page.url.href);
+		if (url.searchParams.get('makeup') !== '1') return;
+		if (plan && isOwner && missedPromptShown) {
+			const p = missedPromptFromRows(weeks, workouts, today);
+			if (p) void chooseMakeUp(p);
+			else showToast(m('missedPrompt.nothingToMakeUp'));
+		}
+		setTimeout(() => {
+			url.searchParams.delete('makeup');
+			try {
+				replaceState(`${url.pathname}${url.search}${url.hash}`, page.state);
+			} catch (e) {
+				console.error('Clearing the make-up request from the URL failed', { message: thrownMessage(e) });
+			}
+		}, 0);
+	}
+
+	/// Home's plan card lands here as `?review=adaptive` or `?review=replan`:
+	/// open that existing preview, exactly as the Adjust plan dialog would,
+	/// then leave the URL so a reload does not propose it again.
+	function takeReviewParam(): void {
+		const url = new URL(page.url.href);
+		const review = url.searchParams.get('review');
+		if (!review) return;
+		if (plan && isOwner && !plan.is_template && plan.status === 'active') {
+			if (review === 'adaptive') void chooseReplan(proposeAdaptiveReplan);
+			else if (review === 'replan') void chooseReplan(proposeReplan);
+		}
+		setTimeout(() => {
+			url.searchParams.delete('review');
+			try {
+				replaceState(`${url.pathname}${url.search}${url.hash}`, page.state);
+			} catch (e) {
+				console.error('Clearing the review request from the URL failed', { message: thrownMessage(e) });
+			}
+		}, 0);
+	}
+
+	/// The missed-workout prompt's "Make it up" (decisions § 2122): the
+	/// stretched next long run, previewed like a re-plan. Applying it records
+	/// the answer for every miss it honours, in the same transaction.
+	async function chooseMakeUp(p: MissedPrompt): Promise<void> {
+		if (!plan || !isOwner || bulkBusy) return;
+		if (!p.makeUp) {
+			showToast(m('missedPrompt.nothingToMakeUp'));
+			return;
+		}
+		adjustOpen = false;
+		taperPreview = null;
+		adaptiveInfo = null;
+		replanPreview = [p.makeUp];
+		makeUpAnswers = p.makeUpAnswers;
+		await tick();
+		replanPreviewHeading?.focus();
+	}
+
 	async function dismissReplan(): Promise<void> {
 		replanPreview = null;
+		makeUpAnswers = null;
 		adaptiveInfo = null;
 		await tick();
 		adjustButton?.focus();
@@ -546,6 +727,7 @@
 		else if (c.kind === 'duplicate') void duplicateWeek(c.week);
 		else if (c.kind === 'cycle') void applyCycleAdjustment();
 		else if (c.kind === 'pause') void doPausePlan();
+		else if (c.kind === 'raceDate') void applyRaceDate(c.change);
 		else void doResumePlan();
 	}
 
@@ -681,8 +863,34 @@
 		}
 	}
 
+	// ─── Abandon (owner-only, active or paused) ───
+	// Not reversible from the UI, so it gets its own ConfirmDialog. A failure
+	// keeps the dialog open: the plan is still live, so closing would lie.
+	let abandonOpen = $state(false);
+
+	async function chooseAbandon(): Promise<void> {
+		adjustOpen = false;
+		await tick();
+		abandonOpen = true;
+	}
+
+	async function doAbandonPlan(): Promise<void> {
+		if (!plan || !isOwner) return;
+		try {
+			await updatePlanStatus(plan.id, 'abandoned');
+		} catch (e) {
+			showToast(m('plansPage.actionFailed', { error: thrownMessage(e) }), 'error');
+			return;
+		}
+		abandonOpen = false;
+		await load();
+	}
+
 	// ─── Re-plan around missed sessions (owner-only) ───
 	let replanPreview = $state<ReplanChange[] | null>(null);
+	/// Set only while the preview is the missed-workout prompt's make-up: the
+	/// misses its apply answers.
+	let makeUpAnswers = $state<string[] | null>(null);
 	/// Only a genuine multi-week TREND gets the badge — the `on_track` and
 	/// (P2) `deload_fatigue` outcomes explain themselves through a toast, so
 	/// they're excluded at the type level rather than by convention.
@@ -699,44 +907,33 @@
 	/// week), completion + past flags.
 	function buildReplanInput(): ReplanWeek[] {
 		if (!plan) return [];
-		const todayD = parseISO(today);
-		return weeks.map((w) => {
-			const weekWorkouts = workoutsByWeek.get(w.id) ?? [];
-			let planned = w.target_volume_m ?? 0;
-			if (!(planned > 0)) {
-				planned = weekWorkouts.reduce(
-					(s, x) => s + (x.kind !== 'rest' ? (x.target_distance_m ?? 0) : 0),
-					0,
-				);
-			}
-			const weekStartD = addDays(parseISO(plan!.start_date), w.week_index * 7);
-			const weekEndD = addDays(weekStartD, 7);
-			let actual = 0;
-			for (const r of recentRuns) {
-				const t = new Date(r.started_at);
-				if (t >= weekStartD && t < weekEndD) actual += r.distance_m ?? 0;
-			}
-			return {
+		return buildReplanWeeks({
+			startDate: plan.start_date,
+			today,
+			runs: recentRuns.map((r) => ({
+				date: formatISO(new Date(r.started_at)),
+				distanceM: r.distance_m ?? 0,
+			})),
+			weeks: weeks.map((w) => ({
 				weekIndex: w.week_index,
 				phase: w.phase,
-				plannedMetres: planned,
-				actualMetres: actual,
-				isComplete: weekEndD <= todayD,
-				workouts: weekWorkouts.map((x) => ({
+				targetVolumeM: w.target_volume_m,
+				workouts: (workoutsByWeek.get(w.id) ?? []).map((x) => ({
 					id: x.id,
 					scheduledDate: x.scheduled_date,
 					kind: x.kind,
 					targetDistanceM: x.target_distance_m,
 					completed: isWorkoutCompleted(x),
 					skipped: isWorkoutSkipped(x),
-					isPast: x.scheduled_date < today,
+					answered: x.missed_ack_at != null,
 				})),
-			};
+			})),
 		});
 	}
 
 	function proposeReplan(): void {
 		if (!plan || !isOwner || bulkBusy) return;
+		makeUpAnswers = null;
 		const { changes, onTrack } = replanRemaining({ weeks: buildReplanInput(), today });
 		if (onTrack || changes.length === 0) {
 			showToast(m('planDetail.replanOnTrack'));
@@ -760,6 +957,7 @@
 
 	function proposeAdaptiveReplan(): void {
 		if (!plan || !isOwner || bulkBusy) return;
+		makeUpAnswers = null;
 		const r = adaptiveReplanRemaining({
 			weeks: buildReplanInput(),
 			today,
@@ -820,17 +1018,23 @@
 	async function applyReplan(): Promise<void> {
 		if (!plan || !replanPreview || bulkBusy) return;
 		bulkBusy = true;
+		const answers = makeUpAnswers;
 		try {
-			await applyWorkoutAdjustments(
-				plan.id,
-				replanPreview.map((c) => ({ id: c.workoutId, target_distance_m: c.toMetres })),
-			);
+			const changes = replanPreview.map((c) => ({ id: c.workoutId, target_distance_m: c.toMetres }));
+			if (answers) await answerMissedWorkouts(plan.id, answers, changes);
+			else await applyWorkoutAdjustments(plan.id, changes);
 			showToast(m('planDetail.replanApplied', { n: replanPreview.length }));
 			replanPreview = null;
+			makeUpAnswers = null;
 			adaptiveInfo = null;
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			showToast(
+				answers
+					? m('missedPrompt.saveFailed', { error: thrownMessage(e) })
+					: m('planDetail.bulkFailed', { error: thrownMessage(e) }),
+				'error'
+			);
 			await load();
 		} finally {
 			bulkBusy = false;
@@ -856,9 +1060,17 @@
 	/// Who assigned this plan, when a coach did and it is not the viewer.
 	let assigningCoachName = $state<string | null>(null);
 
+	// SvelteKit keeps this component mounted across /plans/A → /plans/B, so
+	// onMount's load never runs for B; the effect below loads it instead.
+	let loadedId = $state<string | null>(null);
+	$effect(() => {
+		if (loadedId !== null && id !== loadedId) void load();
+	});
+
 	async function load() {
 		loading = true;
 		loadError = null;
+		loadedId = id;
 		try {
 			const res = await fetchPlan(id);
 			loadError = res.error;
@@ -889,6 +1101,11 @@
 				console.error('isActiveCoachOf failed', e);
 			}
 		}
+		if (loadError === null && plan != null && plan.user_id === auth.user?.id && plan.status === 'active') {
+			breakContext = await loadBreakContext(plan.user_id, today);
+		} else {
+			breakContext = null;
+		}
 		if (loadError === null && plan != null && plan.user_id === auth.user?.id) {
 			// Owner-only: the recent runs feed both the Race Day Riegel
 			// projection (within 21 days) and the current-week adherence
@@ -900,6 +1117,28 @@
 				// gracefully without recent runs — don't fail the page.
 			}
 		}
+		await loadLinkedRunDistances();
+	}
+
+	/// Run distances behind each done workout, for "Done · +3 km". Auxiliary
+	/// (L4): a failed read just leaves the plain "Done".
+	let linkedRunDistances = $state<Map<string, number>>(new Map());
+	async function loadLinkedRunDistances(): Promise<void> {
+		const ids = workouts.flatMap((w) => (w.completed_run_id ? [w.completed_run_id] : []));
+		if (loadError !== null || ids.length === 0) {
+			linkedRunDistances = new Map();
+			return;
+		}
+		try {
+			linkedRunDistances = await fetchRunDistances(ids);
+		} catch (e) {
+			console.error('Reading the linked run distances failed', { message: thrownMessage(e) });
+		}
+	}
+
+	function overrunOf(wo: PlanWorkout): number | null {
+		if (!wo.completed_run_id) return null;
+		return workoutOverrunMetres(wo.target_distance_m, linkedRunDistances.get(wo.completed_run_id) ?? null);
 	}
 
 	onMount(async () => {
@@ -915,6 +1154,8 @@
 		await load();
 		takeAdjustParam();
 		takeResumeParam();
+		takeMakeUpParam();
+		takeReviewParam();
 		// Calendar week-start follows the user's preference (W-5/W-14).
 		if (auth.user?.id) {
 			try {
@@ -1021,6 +1262,61 @@
 	// Rolls over at local midnight (local_day_ticker.ts), so a tab left open
 	// overnight stops calling yesterday today.
 	let today = $state(todayISO());
+
+	// ─── Restart this plan (owner-only) ───
+	let restartOpen = $state(false);
+	let restartBusy = $state(false);
+	let restartStart = $state('');
+	let restartWalkRun = $derived(isWalkRunPlan(workouts));
+	let restartRaceAhead = $derived(upcomingRaceIso(workouts, today));
+	let restartEnd = $derived(
+		plan && restartStart ? restartedDateIso(plan.end_date, plan.start_date, restartStart) : null
+	);
+	let restartMovedRace = $derived.by(() => {
+		if (!plan || !restartStart) return null;
+		const last = workouts.filter((w) => w.kind === 'race').map((w) => w.scheduled_date).sort().at(-1);
+		return last ? restartedDateIso(last, plan.start_date, restartStart) : null;
+	});
+	let restartValid = $derived(
+		plan != null && restartStartAllowed(restartStart, plan.start_date, today, restartWalkRun)
+	);
+
+	async function chooseRestart(): Promise<void> {
+		if (!plan) return;
+		adjustOpen = false;
+		await tick();
+		restartStart = defaultRestartStartIso(plan.start_date, today, restartWalkRun);
+		restartOpen = true;
+	}
+
+	function onRestartStartChange(e: Event): void {
+		if (!plan) return;
+		const v = (e.currentTarget as HTMLInputElement).value;
+		restartStart = v ? alignRestartStartIso(v, plan.start_date, restartWalkRun) : '';
+	}
+
+	async function doRestartPlan(): Promise<void> {
+		if (!plan || !isOwner || restartBusy || !restartValid) return;
+		restartBusy = true;
+		try {
+			const newId = await restartTrainingPlan(plan.id, restartStart);
+			restartOpen = false;
+			showToast(m('planDetail.restartDone'));
+			await goto(`/plans/${newId}`);
+		} catch (e) {
+			showToast(
+				isPlanRestartRaceAheadError(e)
+					? m('planDetail.restartRaceAheadError')
+					: isPlanRestartBeforeTodayError(e)
+						? m('planDetail.restartBeforeTodayError')
+						: m('planDetail.bulkFailed', { error: thrownMessage(e) }),
+				'error'
+			);
+		} finally {
+			restartBusy = false;
+		}
+	}
+
 	onMount(() => startLocalDayTicker((iso) => (today = iso)));
 	/// What resuming would push back: the weeks the runner had not started,
 	/// by the whole weeks the plan sat paused (`resumeShift`).
@@ -1049,6 +1345,12 @@
 	/// countdown, race-week panel and hero relation follow the next one, so a
 	/// B race mid-block gets its own run-in before the plan's A race.
 	let races = $derived(plan ? planRaces(plan, workouts) : []);
+	/// The race day the owner can move, or null for a plan with no race still
+	/// ahead (a walk-run plan, one ended early, one whose race has passed).
+	let raceDateOffer = $derived.by(() => {
+		const d = plan ? planRaceDate(plan, weeks) : null;
+		return d && d >= today ? d : null;
+	});
 	let upcomingRace = $derived(nextRace(races, today));
 	/// The hero's distance / goal / date follow the next race once it is not
 	/// the plan's own A race on the end date; the A goal stays in the races list.
@@ -1056,6 +1358,29 @@
 		plan && upcomingRace && !(upcomingRace.priority === 'A' && upcomingRace.date === plan.end_date)
 			? upcomingRace
 			: null
+	);
+
+	/// The break offer's reads (decisions § 2128), loaded with the plan for
+	/// its owner: undefined until then, null when they failed. The offer
+	/// outranks the missed-workout prompt, here and for Home's `?makeup=1`.
+	let breakContext = $state<BreakContext | null | undefined>(undefined);
+	let planBreak = $derived(
+		plan && isOwner && plan.status === 'active'
+			? breakState(plan, weeks, workouts, today, breakContext)
+			: null
+	);
+	let planBreakQuiet = $derived(planBreak == null || (!planBreak.pending && !planBreak.showing));
+
+	/// The missed-workout prompt is the owner's, and only while the plan is
+	/// running: never for a coach viewing an athlete, a template, or a paused,
+	/// finished or abandoned plan.
+	let missedPromptShown = $derived(
+		plan != null &&
+			isOwner &&
+			planBreakQuiet &&
+			!plan.is_template &&
+			plan.status === 'active' &&
+			!isPlanFinished(plan, today)
 	);
 
 	let todayWorkout = $derived(
@@ -1240,7 +1565,8 @@
 	}
 
 	function workoutAriaLabel(wo: PlanWorkout): string {
-		return planWorkoutAriaLabel(
+		const over = overrunOf(wo);
+		const label = planWorkoutAriaLabel(
 			wo,
 			today,
 			{
@@ -1251,6 +1577,7 @@
 			},
 			m
 		);
+		return over == null ? label : `${label}, ${m('plan.overrunAria', { distance: fmtOverrun(over) })}`;
 	}
 </script>
 
@@ -1318,7 +1645,7 @@
 							class="btn btn-outline btn-sm hero-edit"
 							aria-haspopup="dialog"
 							bind:this={adjustButton}
-							onclick={() => (adjustOpen = true)}
+							onclick={openAdjust}
 						>
 							<span class="material-symbols" aria-hidden="true">tune</span>
 							{m('planDetail.adjustPlan')}
@@ -1346,7 +1673,11 @@
 				</div>
 				<div class="hero-chips">
 					{#if plan.assigned_by_coach_id && plan.assigned_by_coach_id !== auth.user?.id}
-						<a class="chip chip-link" href="/coaching" data-testid="assigned-by-coach">
+						<a
+							class="chip chip-link"
+							href={assigningCoachName ? `/u/${plan.assigned_by_coach_id}` : '/coaching'}
+							data-testid="assigned-by-coach"
+						>
 							<span class="material-symbols" aria-hidden="true">sports</span>
 							{assigningCoachName
 								? m('planDetail.assignedBy', { name: assigningCoachName })
@@ -1452,6 +1783,21 @@
 			<div class="finish-plan-slot"><FinishPlanPrompt {plan} onfinished={load} /></div>
 		{/if}
 
+		{#if planBreak?.showing && planBreak.found && breakContext}
+			<PlanBreakCard
+				{plan}
+				{weeks}
+				{workouts}
+				{today}
+				found={planBreak.found}
+				context={breakContext}
+				onanswered={(pref) => {
+					if (breakContext) breakContext = { ...breakContext, dismissedPref: pref };
+				}}
+				onapplied={load}
+			/>
+		{/if}
+
 		{#if isOwner && !plan.is_template && replanPreview}
 			<section class="replan-preview" aria-label={m('planDetail.replanPreviewAria')}>
 				<h3 tabindex="-1" bind:this={replanPreviewHeading}>{m('planDetail.replanPreviewTitle')}</h3>
@@ -1523,6 +1869,12 @@
 			/>
 		{/if}
 
+		{#if missedPromptShown && plan}
+			<div class="missed-prompt-slot">
+				<MissedWorkoutPrompt planId={plan.id} {weeks} {workouts} {today} onmakeup={chooseMakeUp} />
+			</div>
+		{/if}
+
 		{#if todayWorkout}
 			<section class="today">
 				<button
@@ -1559,7 +1911,13 @@
 								<span>{m('workoutDetail.atPace', { pace: fmtPace(todayWorkout.target_pace_sec_per_km) })}</span>
 							{/if}
 							{#if isWorkoutCompleted(todayWorkout)}
-								<span class="today-done">{m('planDetail.completed')}</span>
+								{@const over = overrunOf(todayWorkout)}
+								<span class="today-done" data-testid="plan-today-done"
+									>{m('planDetail.completed')}{#if over != null}<span aria-hidden="true"
+											>{' · '}{m('plan.overrun', { distance: fmtOverrun(over) })}</span
+										><span class="sr-only">, {m('plan.overrunAria', { distance: fmtOverrun(over) })}</span
+										>{/if}</span
+								>
 							{:else if isWorkoutSkipped(todayWorkout)}
 								<span class="today-skipped">{m('planDetail.skippedLabel')}</span>
 							{/if}
@@ -1892,6 +2250,14 @@
 									{#if wo.target_distance_m != null && wo.kind !== 'rest'}
 										<span class="dist">{fmtKm(wo.target_distance_m, 1)}</span>
 									{/if}
+									{#if status === 'done'}
+										{@const over = overrunOf(wo)}
+										{#if over != null}
+											<span class="overrun" data-testid="plan-day-overrun"
+												>{m('plan.overrun', { distance: fmtOverrun(over) })}</span
+											>
+										{/if}
+									{/if}
 									{#if look.glyph}
 										<span class="material-symbols check" aria-hidden="true">{look.glyph}</span>
 									{/if}
@@ -2026,6 +2392,33 @@
 				</div>
 				<p class="adjust-option-desc" id="adjust-shift-desc">{m('planDetail.adjustShiftDesc')}</p>
 			</li>
+			{#if raceDateOffer}
+				<li class="adjust-option">
+					<div class="shift-control">
+						<input
+							type="date"
+							class="race-date-input"
+							bind:value={raceDateInput}
+							min={shiftIsoDate(today, 1)}
+							aria-label={m('planDetail.raceDateAria')}
+							data-testid="race-date-input"
+							disabled={bulkBusy}
+						/>
+						<button
+							type="button"
+							class="btn btn-outline btn-sm adjust-option-btn"
+							aria-describedby="adjust-race-date-desc"
+							data-testid="race-date-btn"
+							onclick={chooseRaceDate}
+							disabled={bulkBusy || !raceDateInput}
+						>
+							<span class="material-symbols" aria-hidden="true">event</span>
+							{m('planDetail.raceDateChange')}
+						</button>
+					</div>
+					<p class="adjust-option-desc" id="adjust-race-date-desc">{m('planDetail.adjustRaceDateDesc')}</p>
+				</li>
+			{/if}
 			<li class="adjust-option">
 				<button
 					type="button"
@@ -2106,7 +2499,34 @@
 							: m('planDetail.adjustPauseDesc')}
 					</p>
 				</li>
+				<li class="adjust-option">
+					<button
+						type="button"
+						class="btn btn-outline btn-sm adjust-option-btn"
+						aria-describedby="adjust-abandon-desc"
+						onclick={chooseAbandon}
+						disabled={bulkBusy}
+					>
+						<span class="material-symbols" aria-hidden="true">cancel</span>
+						{m('plansPage.abandonTitle')}
+					</button>
+					<p class="adjust-option-desc" id="adjust-abandon-desc">{m('planDetail.adjustAbandonDesc')}</p>
+				</li>
 			{/if}
+			<li class="adjust-option">
+				<button
+					type="button"
+					class="btn btn-outline btn-sm adjust-option-btn"
+					data-testid="restart-plan-btn"
+					aria-describedby="adjust-restart-desc"
+					onclick={chooseRestart}
+					disabled={bulkBusy}
+				>
+					<span class="material-symbols" aria-hidden="true">replay</span>
+					{m('planDetail.restartPlan')}
+				</button>
+				<p class="adjust-option-desc" id="adjust-restart-desc">{m('planDetail.adjustRestartDesc')}</p>
+			</li>
 			{#if cyclePlansEnabled && cyclePlanConfig}
 				<li class="adjust-option">
 					<button
@@ -2139,12 +2559,80 @@
 	</Modal>
 {/if}
 
+{#if plan && isOwner && !plan.is_template}
+	<Modal
+		open={restartOpen}
+		title={m('planDetail.restartTitle')}
+		onclose={() => {
+			if (!restartBusy) restartOpen = false;
+		}}
+		data-testid="restart-plan-dialog"
+	>
+		{#if restartRaceAhead}
+			<p class="restart-text" data-testid="restart-race-ahead">
+				{m('planDetail.restartRaceAhead', { date: formatDateShort(restartRaceAhead) })}
+			</p>
+			<div class="restart-actions">
+				<button type="button" class="btn btn-outline" onclick={() => (restartOpen = false)}>
+					{m('planDetail.replanCancel')}
+				</button>
+			</div>
+		{:else}
+			<label class="restart-field">
+				<span>{m('planDetail.restartStartLabel')}</span>
+				<input
+					type="date"
+					data-testid="restart-start-date"
+					value={restartStart}
+					min={today}
+					onchange={onRestartStartChange}
+					disabled={restartBusy}
+				/>
+			</label>
+			{#if restartValid && restartEnd}
+				<p class="restart-text" data-testid="restart-confirm-message">
+					{m(
+						plan.status === 'active' || plan.status === 'paused'
+							? 'planDetail.restartConfirmLive'
+							: 'planDetail.restartConfirmOver',
+						{ date: formatDateShort(restartStart), end: formatDateShort(restartEnd) }
+					)}
+					{#if restartMovedRace}
+						{m('planDetail.restartRaceMoves', { date: formatDateShort(restartMovedRace) })}
+					{/if}
+				</p>
+			{/if}
+			<div class="restart-actions">
+				<button
+					type="button"
+					class="btn btn-outline"
+					onclick={() => (restartOpen = false)}
+					disabled={restartBusy}
+				>
+					{m('planDetail.replanCancel')}
+				</button>
+				<button
+					type="button"
+					class="btn btn-danger"
+					data-testid="restart-confirm"
+					onclick={doRestartPlan}
+					disabled={restartBusy || !restartValid}
+				>
+					{m('planDetail.restartPlan')}
+				</button>
+			</div>
+		{/if}
+	</Modal>
+{/if}
+
 <ConfirmDialog
 	open={bulkConfirm !== null}
 	danger
 	data-testid="bulk-confirm-dialog"
 	title={bulkConfirm?.kind === 'shift'
 		? m('planDetail.shiftConfirmTitle')
+		: bulkConfirm?.kind === 'raceDate'
+		? m('planDetail.raceDateConfirmTitle')
 		: bulkConfirm?.kind === 'recovery'
 			? m('planDetail.recoveryConfirmTitle')
 			: bulkConfirm?.kind === 'cycle'
@@ -2161,6 +2649,8 @@
 					plans: planNames(bulkConfirm.following),
 				})
 			: m('planDetail.shiftConfirmMessage', { n: Math.abs(shiftDays) })
+		: bulkConfirm?.kind === 'raceDate'
+		? raceDateConfirmMessage(bulkConfirm.change)
 		: bulkConfirm?.kind === 'recovery'
 			? m('planDetail.recoveryConfirmMessage', { n: bulkConfirm.week.week_index + 1 })
 			: bulkConfirm?.kind === 'duplicate'
@@ -2190,12 +2680,26 @@
 	oncancel={() => (bulkConfirm = null)}
 />
 
+<ConfirmDialog
+	open={abandonOpen}
+	danger
+	data-testid="abandon-confirm-dialog"
+	title={m('plansPage.abandonTitle')}
+	message={m('plansPage.abandonMessage', { name: plan?.name ?? '' })}
+	confirmLabel={m('plansPage.abandon')}
+	onconfirm={doAbandonPlan}
+	oncancel={() => (abandonOpen = false)}
+/>
+
 <style>
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
 	}
 	.finish-plan-slot {
 		margin: var(--space-lg) 0;
+	}
+	.missed-prompt-slot {
+		margin: var(--space-md) 0;
 	}
 	.back {
 		display: inline-flex;
@@ -2654,6 +3158,22 @@
 		vertical-align: -2px;
 		margin-inline-end: 0.2rem;
 	}
+	.restart-field {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+		margin-bottom: var(--space-md);
+	}
+	.restart-text {
+		margin: 0 0 var(--space-md);
+		line-height: 1.5;
+	}
+	.restart-actions {
+		display: flex;
+		justify-content: flex-end;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
+	}
 	.adjust-option-desc {
 		margin: 0;
 		font-size: 0.85rem;
@@ -2664,6 +3184,9 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.4rem;
+	}
+	.shift-control .race-date-input {
+		width: auto;
 	}
 	.shift-control input {
 		width: 4.5rem;
@@ -2855,6 +3378,17 @@
 		color: var(--color-success-text);
 		font-weight: 600;
 	}
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
 	.today-skipped {
 		color: var(--color-text-secondary);
 		font-weight: 600;
@@ -3006,6 +3540,12 @@
 	}
 	.day .dist {
 		color: var(--color-text-secondary);
+		font-variant-numeric: tabular-nums;
+	}
+	.day .overrun {
+		color: var(--color-success-text);
+		font-weight: 600;
+		font-size: 0.75rem;
 		font-variant-numeric: tabular-nums;
 	}
 	.day .check {

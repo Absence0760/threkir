@@ -450,15 +450,21 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     private func publishWorkout(_ events: [WatchWorkoutEvent]) {
         workoutView = workoutRunner?.view()
-        // L4: a haptic or a spoken cue must never reach the recording.
+        // L4: a haptic or a spoken cue must never reach the recording. Both
+        // come after the step is on screen, and neither returns anything.
         switch WatchWorkoutCue.cue(for: events) {
         case .step?: WKInterfaceDevice.current().play(.start)
         case .stepEnding?: WKInterfaceDevice.current().play(.click)
         case .complete?: WKInterfaceDevice.current().play(.success)
-        case .paceAlert(let tooSlow)?:
-            WKInterfaceDevice.current().play(.notification)
-            announcer.announcePaceAlert(tooSlow: tooSlow)
+        case .paceAlert?: WKInterfaceDevice.current().play(.notification)
         case nil: break
+        }
+        // The spoken cue is chosen apart from the haptic: it announces the
+        // first step, which the buzz leaves silent, and it answers to the
+        // phone's voice switches, which the buzz does not.
+        if let workout = workoutRunner?.workout,
+           let spoken = WorkoutSpokenCue.cue(for: events, workout: workout) {
+            announcer.announceWorkout(spoken)
         }
     }
 

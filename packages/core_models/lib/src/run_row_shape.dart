@@ -34,7 +34,7 @@ const Map<String, String> kRunMirroredMetadataColumns = <String, String>{
 };
 
 /// Metadata keys the client keeps for itself and never persists (decisions
-/// § 2120). `server_updated_at` is the row's server `updated_at` as the
+/// § 2147). `server_updated_at` is the row's server `updated_at` as the
 /// server sent it (`ApiClient._runFromRow`), the base a local edit is
 /// compare-and-swapped against; it is named apart from the column so it is
 /// not a promoted key. `last_modified_at` is the phone's own write clock,

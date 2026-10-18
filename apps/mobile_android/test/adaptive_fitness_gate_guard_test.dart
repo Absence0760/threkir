@@ -110,10 +110,12 @@ void main() {
         reason: 'the apply path must not carry a load value');
   });
 
-  test('the plan screen is the only caller of the engine, so no second call site escapes these guards',
+  test('the plan screen is the only caller that can pass fitness, so no second call site escapes these guards',
       () {
     // Every property above is pinned on ONE call site; a second caller would
     // pass whatever it liked and none of this would see it (decisions § 1977).
+    // Home's plan card is the one admitted second caller, and only because the
+    // next test pins that it passes no fitness at all (decisions § 2125).
     final callers = <String>[];
     for (final e in Directory('lib').listSync(recursive: true)) {
       if (e is! File || !e.path.endsWith('.dart')) continue;
@@ -122,7 +124,27 @@ void main() {
         callers.add(e.path.replaceAll('\\', '/'));
       }
     }
-    expect(callers, ['lib/screens/plan_detail_screen.dart']);
+    expect(callers..sort(),
+        ['lib/plan_nudges.dart', 'lib/screens/plan_detail_screen.dart']);
+  });
+
+  test("Home's plan card calls the engine with no fitness and holds no load value",
+      () {
+    final code = _read('lib/plan_nudges.dart')
+        .split('\n')
+        .where((l) => !RegExp(r'^\s*//').hasMatch(l))
+        .join('\n');
+    final calls = RegExp(r'\badaptiveReplanRemaining\(([^)]*)\)')
+        .allMatches(code)
+        .map((m) => m.group(0))
+        .toList();
+    expect(calls, ['adaptiveReplanRemaining(weeks: sorted, today: today)'],
+        reason: 'the Home card must pass only the weeks and today, never a fitness snapshot');
+    expect(
+        RegExp(r'\b(fitness|tsb|atl|ctl|AdaptiveFitness)\b', caseSensitive: false)
+            .hasMatch(code),
+        false,
+        reason: 'a load value or fitness input appears in plan_nudges.dart');
   });
 
   test('the plan screen holds no load value outside _adaptiveFitnessInput', () {

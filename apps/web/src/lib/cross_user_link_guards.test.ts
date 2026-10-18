@@ -19,7 +19,7 @@ import { resolve } from 'node:path';
 // What issue #666 closed is the OTHER half: /runs/[id] itself now has a
 // non-owner branch, so it renders any run the viewer's audience admits, through
 // the same clipped RunShareView the share page uses. That made it the right
-// target for a SIGNED-IN surface's links too (decisions § 2125): the feed
+// target for a SIGNED-IN surface's links too (decisions § 2152): the feed
 // linked to /share/run, the logged-out page with no sidebar and no way back,
 // and a reader who tapped a run left the app. Links that leave the app — the
 // worker's emails, a copied share link — stay on /share/*, which opens without

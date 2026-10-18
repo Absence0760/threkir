@@ -2,7 +2,7 @@
 /// whether the root layout must hold the app shell until that is known.
 ///
 /// A brand-new account used to land on /dashboard, paint it, and only then
-/// bounce to /onboarding once the profile hydrated (decisions § 2122). Both
+/// bounce to /onboarding once the profile hydrated (decisions § 2149). Both
 /// halves live here, pure, so the sign-in hops and the layout cannot drift.
 
 export const ONBOARDING_PATH = '/onboarding';

@@ -118,6 +118,11 @@ const HOMES: Record<string, Home> = {
 	safety_off_route_alerts: { page: 'safety' },
 	auto_live_share: { none: 'device-only recording preference, edited on mobile' },
 	safety_nudge_dismissed_at: { none: 'written by the mobile run screen, not a control' },
+	plan_suggestion_dismissed_at: {
+		none: "the Home recent-5K plan suggestion's own dismissal stamp, not a control",
+	},
+	plan_nudges_dismissed: { none: "written by Home's plan card, not a settings control" },
+	plan_break_dismissed: { none: "written by the plan break card's dismiss and apply, not a settings control" },
 };
 
 function registryKeys(): string[] {

@@ -391,7 +391,7 @@
 	// after the requested page would already have painted. Until a signed-in
 	// session's profile says it owes neither gate, a gated path renders the
 	// loading screen instead of the shell, so a reload, deep link or second
-	// tab cannot flash the dashboard at a fresh account (decisions § 2122).
+	// tab cannot flash the dashboard at a fresh account (decisions § 2149).
 	// The gates navigate with replaceState so the held URL leaves no history
 	// entry to bounce back through.
 	const shellHeld = $derived(

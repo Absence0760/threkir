@@ -4,6 +4,7 @@ import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart'
     show PlanWeekRow, PlanWorkoutRow, TrainingPlanRow;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -39,6 +40,18 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
+  // supabase_flutter opens an app_links deep-link stream on init. The mount
+  // runs under runAsync, so without a stub the real event loop turns and the
+  // MissingPluginException lands as an unhandled error in the first case.
+  for (final name in const [
+    'com.llfbandit.app_links/events',
+    'com.llfbandit.app_links/messages',
+  ]) {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+            MethodChannel(name, const StandardMethodCodec()),
+            (call) async => null);
+  }
   await Supabase.initialize(
     url: 'http://127.0.0.1:24321',
     anonKey: 'eyJ.local.test',

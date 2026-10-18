@@ -1538,7 +1538,7 @@ void main() {
         (tester) async {
       // M2: the whole-row drain would re-gzip + re-upload the entire GPS track
       // for a title edit. A synced run's edit is a pending field edit, pushed
-      // as a compare-and-swap of the title alone (decisions § 2120).
+      // as a compare-and-swap of the title alone (decisions § 2147).
       final run = _run(title: 'Morning Tempo', withTrack: true);
       final api = _EditOkApi();
       final runStore = await pumpForEdit(tester, run, api);

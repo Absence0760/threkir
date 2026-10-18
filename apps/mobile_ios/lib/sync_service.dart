@@ -395,7 +395,7 @@ Future<bool> drainPendingDeletes(
 }
 
 /// Push every pending field edit to a synced run of the signed-in runner's
-/// (decisions § 2120), skipping a run queued for remote deletion. Returns
+/// (decisions § 2147), skipping a run queued for remote deletion. Returns
 /// `true` iff every edit landed. Shared by the foreground [SyncService] and
 /// the WorkManager cycle for the same reason [drainPendingDeletes] is.
 Future<bool> pushPendingRunEdits(
@@ -417,7 +417,7 @@ Future<bool> pushPendingRunEdits(
 
 /// Push [runId]'s pending field edit as a compare-and-swap on the server
 /// `updated_at` it was made on, so no device clock decides which edit wins
-/// (decisions § 2120). A swap that finds the row moved reads it again,
+/// (decisions § 2147). A swap that finds the row moved reads it again,
 /// re-bases the edit onto it — the server's changes to other fields kept,
 /// this edit's fields laid on top, since it is the later arrival — and tries
 /// once more. A row the server no longer has takes the local copy and the

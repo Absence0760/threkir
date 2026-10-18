@@ -4,7 +4,7 @@ import 'run.dart';
 import 'run_row_shape.dart';
 
 /// The vocabulary a local edit to an already-synced run records its changed
-/// fields in (decisions § 2120). A column is named by its `runs` column, a
+/// fields in (decisions § 2147). A column is named by its `runs` column, a
 /// bag key by `metadata.<key>`; a promoted bag key such as `is_dnf` is pushed
 /// to its column by [runEditPatch].
 abstract final class RunEditField {
@@ -27,7 +27,7 @@ const Set<String> kRunEditIgnoredMetadataKeys = <String>{
 };
 
 /// The server `updated_at` a copy of a run was read at, exactly as the server
-/// sent it, or null for a copy that never carried one (read before § 2120, or
+/// sent it, or null for a copy that never carried one (read before § 2147, or
 /// never pulled). Kept as the server's string because the push filters on it
 /// for equality: a re-formatted `DateTime` can lose precision a `timestamptz`
 /// keeps, and would then never match.

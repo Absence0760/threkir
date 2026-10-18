@@ -513,6 +513,22 @@ void main() {
       expect(prefs.keepScreenOn, isFalse);
     });
 
+    test('haptic_feedback_enabled round-trips, a non-bool is dropped',
+        () async {
+      final prefs = await freshPrefs();
+      expect(prefs.hapticFeedback, isTrue);
+      final svc = SettingsSyncService(preferences: prefs);
+
+      svc.debugApplyDevice({SettingsKeys.hapticFeedbackEnabled: false});
+      expect(prefs.hapticFeedback, isFalse);
+
+      svc.debugApplyDevice({SettingsKeys.hapticFeedbackEnabled: 'on'});
+      expect(prefs.hapticFeedback, isFalse);
+
+      svc.debugApplyDevice({SettingsKeys.hapticFeedbackEnabled: true});
+      expect(prefs.hapticFeedback, isTrue);
+    });
+
     test('empty device bag is a no-op', () async {
       final prefs = await freshPrefs();
       await prefs.setAudioCues(true);
@@ -751,12 +767,16 @@ Future<bool> Function({
   String? defaultActivityType,
   String? privacyDefault,
   List<int>? hrZoneCutoffs,
+  String? voiceFeedbackVerbosity,
+  bool? workoutStepCues,
 }) _recordZones(List<List<int>?> into) => ({
       required preferredUnit,
       required audioCues,
       defaultActivityType,
       privacyDefault,
       hrZoneCutoffs,
+      voiceFeedbackVerbosity,
+      workoutStepCues,
     }) async {
       into.add(hrZoneCutoffs);
       return true;

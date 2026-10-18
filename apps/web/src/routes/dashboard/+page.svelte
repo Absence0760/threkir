@@ -79,6 +79,17 @@
 	} from '#lib/stores/modality_visibility.svelte.ts';
 	import DashboardWeekLead from '#lib/components/DashboardWeekLead.svelte';
 	import FinishPlanPrompt from '#lib/components/FinishPlanPrompt.svelte';
+	import Recent5kPlanCard from '#lib/components/Recent5kPlanCard.svelte';
+	import {
+		PLAN_SUGGESTION_DISMISSED_KEY,
+		pickRecent5k,
+	} from '#lib/training/recent_5k_suggestion.ts';
+	import PlanBreakCard from '#lib/components/PlanBreakCard.svelte';
+	import { loadBreakContext } from '#lib/core/plan_break_context.ts';
+	import { breakState, type BreakContext } from '#lib/training/plan_break_state.ts';
+	import MissedWorkoutPrompt from '#lib/components/MissedWorkoutPrompt.svelte';
+	import PlanNudgeCard from '#lib/components/PlanNudgeCard.svelte';
+	import { DISMISSED_NUDGES_KEY, parseDismissedNudges, workoutOverrunMetres } from '#lib/training/plan_nudges.ts';
 	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import { weeklyGoalTarget } from '#lib/training/week_lead.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
@@ -101,7 +112,7 @@
 	import { loadSettings, peekCachedSettings, effective, updateUniversal } from '#lib/settings/settings.ts';
 	import { relativeAge } from '#lib/runs/pr_recency.ts';
 	import type { LoadedSettings } from '#lib/settings/settings.ts';
-	import { fmtKm, fmtPace, formatDistance as formatUnitDistance, formatElevation, formatWeight, setUnit } from '#lib/format/units.svelte.ts';
+	import { fmtKm, fmtOverrun, fmtPace, formatDistance as formatUnitDistance, formatElevation, formatWeight, setUnit } from '#lib/format/units.svelte.ts';
 	import { paceMinutesSeconds } from '#lib/format/pace_format.ts';
 	import { formatSignedInteger } from '#lib/format/number.ts';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
@@ -134,6 +145,7 @@
 	// Distance keys the runner has chosen to hide (comeback persona #28). Stored
 	// in the universal `hidden_prs` settings bag, so it roams across devices.
 	let hiddenPrs = $state<string[]>([]);
+	let planNudgesDismissed = $state<string[]>([]);
 	let showHiddenPrs = $state(false);
 	let visiblePrs = $derived(personalRecords.filter((pr) => !hiddenPrs.includes(pr.key)));
 
@@ -200,10 +212,19 @@
 	});
 	let showAgeGradeCol = $derived(Object.values(prAgeGrades).some((v) => v != null));
 	let planOverview = $state<ActivePlanOverview | null>(null);
+	/// The break offer's reads (decisions § 2128): undefined while loading,
+	/// null when they failed. The offer outranks the missed-workout prompt
+	/// and the plan nudge, so Home holds the state rather than the card.
+	let breakContext = $state<BreakContext | null | undefined>(undefined);
+	let breakContextFor = '';
 	let pausedPlan = $state<{ id: string; name: string } | null>(null);
 	/// The plan read failed: the plan slot says so rather than offering to
 	/// create a plan the runner may already have.
 	let planLoadError = $state<string | null>(null);
+	/// When the runner last dismissed the recent-5K plan suggestion: null for
+	/// never, undefined while the settings bag is unread or failed to read, so
+	/// an unknown answer never shows a suggestion they already waved away.
+	let recent5kDismissedAt = $state<string | null | undefined>(undefined);
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);
 	let mileageView = $state<'weekly' | 'monthly' | 'yearly'>('weekly');
@@ -684,6 +705,10 @@
 		// A missing bag (new user, or RLS blip) just leaves `weeklyGoalMetres`
 		// null and the goal card hidden.
 		if (settingsRead) applyDashboardSettings(settingsRead);
+		if (settingsRead && !settingsRead.universalUnknown) {
+			const stamp = effective<unknown>(settingsRead, PLAN_SUGGESTION_DISMISSED_KEY);
+			recent5kDismissedAt = typeof stamp === 'string' ? stamp : null;
+		}
 		// An RLS blip just leaves the curve run-only — the contract: a
 		// lift-load failure can't corrupt run readiness.
 		if (gymRead) [gymWorkouts, gymHistory] = gymRead;
@@ -792,6 +817,7 @@
 		weeklyGoalMetres = effective<number>(settings, 'weekly_mileage_goal_m') ?? null;
 		const hidden = effective<string[]>(settings, 'hidden_prs');
 		hiddenPrs = Array.isArray(hidden) ? hidden : [];
+		planNudgesDismissed = parseDismissedNudges(effective<unknown>(settings, DISMISSED_NUDGES_KEY));
 		const unit = effective<string>(settings, 'preferred_unit');
 		if (unit === 'mi' || unit === 'km') {
 			preferredUnit = unit;
@@ -852,6 +878,40 @@
 		}
 	}
 
+	/// The plan slot's suggestion for a runner with no plan: a measured 5K from
+	/// the last eight weeks to seed the wizard with. Only once the plan read has
+	/// answered "no plan" and the settings bag has answered too.
+	let recent5kSuggestion = $derived(
+		!loading && !planOverview && !planLoadError && !pausedPlan && recent5kDismissedAt !== undefined
+			? pickRecent5k(
+					runs.map((r) => ({
+						id: r.id,
+						startedAt: r.started_at,
+						fastest5kS: r.fastest_5k_s,
+						activityType: r.activity_type,
+						isDnf: r.is_dnf,
+					})),
+					Date.now(),
+					recent5kDismissedAt,
+				)
+			: null
+	);
+
+	/// Hidden at once and remembered in the universal bag, so the phone stops
+	/// offering it too. A refused write is said, since the card can come back.
+	async function dismissRecent5k() {
+		const stamp = new Date().toISOString();
+		recent5kDismissedAt = stamp;
+		const uid = auth.user?.id;
+		if (!uid) return;
+		try {
+			await updateUniversal(uid, { [PLAN_SUGGESTION_DISMISSED_KEY]: stamp });
+		} catch (e) {
+			console.warn('Recent-5K suggestion dismissal not saved', e);
+			showToast(m('dash.recent5kDismissFailed'), 'error');
+		}
+	}
+
 	const hidePr = (key: string) => setHiddenPrs([...new Set([...hiddenPrs, key])]);
 	const unhidePr = (key: string) => setHiddenPrs(hiddenPrs.filter((k) => k !== key));
 
@@ -901,6 +961,15 @@
 		t.setHours(0, 0, 0, 0);
 		return t;
 	});
+	/// How far today's done workout ran past its target, when a linked run
+	/// says so (`workoutOverrunMetres`); null for a tick, a short run or noise.
+	const todayOverrunM = $derived.by(() => {
+		const t = planOverview?.todayWorkout;
+		if (!t?.completed_run_id) return null;
+		const run = runs.find((r) => r.id === t.completed_run_id);
+		return workoutOverrunMetres(t.target_distance_m, run?.distance_m ?? null);
+	});
+
 	/// The plan's next race (plan_races.ts): a B race mid-block owns the
 	/// countdown and goal row until it has been run, then the plan's A race.
 	let heroRace = $derived(
@@ -910,6 +979,27 @@
 	);
 	/// The shown plan's dates have run out but the runner has not filed it yet:
 	/// the hero asks them to, and the week lead stops offering its sessions.
+	let breakToday = $derived(formatISO(todayMidnight));
+	$effect(() => {
+		const uid = auth.user?.id;
+		const active = planOverview?.plan.status === 'active';
+		const key = `${uid}:${breakToday}`;
+		if (!uid || !active || key === breakContextFor) return;
+		breakContextFor = key;
+		breakContext = undefined;
+		void loadBreakContext(uid, breakToday).then((c) => {
+			if (breakContextFor === key) breakContext = c;
+		});
+	});
+	let planBreak = $derived(
+		planOverview && planOverview.plan.status === 'active'
+			? breakState(planOverview.plan, planOverview.weeks, planOverview.workouts, breakToday, breakContext)
+			: null
+	);
+	/// The missed-workout prompt and the plan nudge wait for the break reads
+	/// and give way to the offer while it shows.
+	let planBreakQuiet = $derived(planBreak == null || (!planBreak.pending && !planBreak.showing));
+
 	let planFinished = $derived(
 		planOverview != null && isPlanFinished(planOverview.plan, formatISO(todayMidnight))
 	);
@@ -1264,6 +1354,28 @@
 				{#if planFinished}
 					<FinishPlanPrompt plan={planOverview.plan} onfinished={reloadPlanOverview} />
 				{:else}
+				{#if planBreak?.showing && planBreak.found && breakContext}
+					<PlanBreakCard
+						plan={planOverview.plan}
+						weeks={planOverview.weeks}
+						workouts={planOverview.workouts}
+						today={breakToday}
+						found={planBreak.found}
+						context={breakContext}
+						onanswered={(pref) => {
+							if (breakContext) breakContext = { ...breakContext, dismissedPref: pref };
+						}}
+						onapplied={reloadPlanOverview}
+					/>
+				{:else if planBreakQuiet}
+					<MissedWorkoutPrompt
+						planId={planOverview.plan.id}
+						weeks={planOverview.weeks}
+						workouts={planOverview.workouts}
+						today={formatISO(todayMidnight)}
+						makeUpHref="/plans/{planOverview.plan.id}?makeup=1"
+					/>
+				{/if}
 				<div class="plan-hero-today">
 					{#if t}
 						<button
@@ -1294,7 +1406,12 @@
 										<span>{m('workoutDetail.atPace', { pace: fmtPace(t.target_pace_sec_per_km) })}</span>
 									{/if}
 									{#if todayDone}
-										<span class="plan-hero-today-done">{m('dash.completed')}</span>
+										<span class="plan-hero-today-done" data-testid="plan-hero-done"
+											>{m('dash.completed')}{#if todayOverrunM != null}<span aria-hidden="true"
+													>{' · '}{m('plan.overrun', { distance: fmtOverrun(todayOverrunM) })}</span
+												><span class="sr-only">, {m('plan.overrunAria', { distance: fmtOverrun(todayOverrunM) })}</span
+												>{/if}</span
+										>
 									{/if}
 								</div>
 							</div>
@@ -1338,6 +1455,17 @@
 					</a>
 				</footer>
 			</section>
+			{#if !planFinished && !loading && planBreakQuiet}
+				<PlanNudgeCard
+					plan={planOverview.plan}
+					weeks={planOverview.weeks}
+					workouts={planOverview.workouts}
+					{runs}
+					dismissed={planNudgesDismissed}
+					today={formatISO(todayMidnight)}
+					breakWindow={planBreak?.window ?? null}
+				/>
+			{/if}
 		{:else if planLoadError}
 			<div class="dash-load-error" role="alert" data-testid="dash-plan-load-error">
 				<span class="material-symbols" aria-hidden="true">error</span>
@@ -1358,6 +1486,8 @@
 				</div>
 				<span class="material-symbols">chevron_right</span>
 			</a>
+		{:else if !planOverview && recent5kSuggestion}
+			<Recent5kPlanCard suggestion={recent5kSuggestion} ondismiss={dismissRecent5k} />
 		{:else if !planOverview}
 			<a class="plan-promo" href="/plans?new=1">
 				<div>
@@ -2808,6 +2938,17 @@
 	.plan-hero-today-done {
 		color: var(--color-success-text);
 		font-weight: 600;
+	}
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 	.plan-hero-today-arrow {
 		color: var(--color-text-tertiary);

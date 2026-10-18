@@ -17,6 +17,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../lib/plan_resume.dart' show ResumeShift;
 import '../lib/training_service.dart';
 
 class _Request {
@@ -41,8 +42,8 @@ class _FakePostgrest {
   /// Every plan the fake knows, by id. A list read returns the active ones.
   final Map<String, Map<String, Object?>> plans = {};
 
-  /// When set, a PATCH of `training_plans` answers with this SQLSTATE.
-  String? patchErrorCode;
+  /// When set, the `resume_training_plan` rpc answers with this SQLSTATE.
+  String? resumeErrorCode;
 
   int get port => _server.port;
 
@@ -79,10 +80,13 @@ class _FakePostgrest {
     } else if (req.method == 'GET' && path == '/rest/v1/plan_workouts') {
       res.write(jsonEncode(<Object>[]));
     } else if (req.method == 'PATCH' && path == '/rest/v1/training_plans') {
-      if (patchErrorCode != null) {
+      res.statusCode = HttpStatus.noContent;
+    } else if (req.method == 'POST' &&
+        path == '/rest/v1/rpc/resume_training_plan') {
+      if (resumeErrorCode != null) {
         res.statusCode = HttpStatus.conflict;
         res.write(jsonEncode({
-          'code': patchErrorCode,
+          'code': resumeErrorCode,
           'message': 'conflicting key value violates exclusion constraint',
         }));
       } else {
@@ -166,6 +170,12 @@ void main() {
           if (r.method == 'PATCH') r,
       ];
 
+  List<_Request> resumes() => [
+        for (final r in fake.requests)
+          if (r.method == 'POST' && r.path == '/rest/v1/rpc/resume_training_plan')
+            r,
+      ];
+
   test('fetchMyPlans reads only the viewer\'s own plans, never templates',
       () async {
     await training.fetchMyPlans();
@@ -235,27 +245,65 @@ void main() {
       ]);
       await expectLater(
           training.resumePlan('paused'), throwsA(isA<ActivePlanExistsError>()));
+      expect(resumes(), isEmpty);
       expect(patches(), isEmpty);
     });
 
-    test('resumes beside active plans queued clear of it', () async {
+    test('resumes beside active plans queued clear of it, moving no weeks',
+        () async {
       addPlans([
         _plan('paused', 10, 40, status: 'paused'),
         _plan('before', -20, 9),
         _plan('after', 41, 70),
       ]);
       await training.resumePlan('paused');
-      final sent = patches().single;
-      expect(sent.query['id'], 'eq.paused');
-      expect(sent.body, {'status': 'active'});
+      expect(resumes().single.body, {
+        'p_plan_id': 'paused',
+        'p_from_week_index': null,
+        'p_shift_weeks': 0,
+      });
+      expect(patches(), isEmpty);
+    });
+
+    test('a shifted resume sends the weeks it moves', () async {
+      addPlans([
+        _plan('paused', 10, 40, status: 'paused'),
+        _plan('after', 60, 90),
+      ]);
+      await training.resumePlan('paused',
+          shift: const ResumeShift(fromWeekIndex: 2, weeks: 2));
+      expect(resumes().single.body, {
+        'p_plan_id': 'paused',
+        'p_from_week_index': 2,
+        'p_shift_weeks': 2,
+      });
+    });
+
+    test('a shift that would run into a queued plan is refused before the write',
+        () async {
+      // Clear of `after` as it stands (ends day 40), but two weeks later it
+      // would end on day 54, inside `after`.
+      addPlans([
+        _plan('paused', 10, 40, status: 'paused'),
+        _plan('after', 50, 80),
+      ]);
+      await training.resumePlan('paused');
+      expect(resumes(), hasLength(1));
+      fake.requests.clear();
+      await expectLater(
+          training.resumePlan('paused',
+              shift: const ResumeShift(fromWeekIndex: 2, weeks: 2)),
+          throwsA(isA<ActivePlanExistsError>()));
+      expect(resumes(), isEmpty);
     });
 
     test('an overlap the constraint catches after the check still reads as one',
         () async {
       addPlans([_plan('paused', 10, 40, status: 'paused')]);
-      fake.patchErrorCode = '23P01';
+      fake.resumeErrorCode = '23P01';
       await expectLater(
           training.resumePlan('paused'), throwsA(isA<ActivePlanExistsError>()));
+      expect(resumes(), hasLength(1));
     });
   });
 

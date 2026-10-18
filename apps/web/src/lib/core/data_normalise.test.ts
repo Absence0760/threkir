@@ -131,7 +131,7 @@ test('applyRunMetadataPatch: empty patch field on an empty bag is a no-op', () =
 	assert.equal(Object.prototype.hasOwnProperty.call(next, 'notes'), false);
 });
 
-test('applyRunMetadataPatch: stamps no device clock (decisions § 2120)', () => {
+test('applyRunMetadataPatch: stamps no device clock (decisions § 2147)', () => {
 	// The browser's clock is not the server's, and nothing reads the stamp:
 	// a run edit conflict is decided by the server-stamped `updated_at`.
 	const next = applyRunMetadataPatch({ title: 'x' }, {});

@@ -12,6 +12,8 @@ import 'backend_timeout.dart';
 import 'health_consent.dart';
 import 'nutrition_targets.dart' show ageFromDob;
 import 'plan_bulk_ops.dart';
+import 'plan_break.dart' show BreakChange;
+import 'plan_race_date.dart' show RaceDateChange;
 import 'plan_resume.dart';
 import 'plan_copy.dart';
 import 'plan_current.dart';
@@ -287,6 +289,26 @@ class PlanTrimBlockedError implements Exception {
 
   @override
   String toString() => 'plan_trim_blocked';
+}
+
+/// A restart refused because the plan has a race on or after today
+/// (`restart_training_plan`'s SQLSTATE RR001): moving the plan would move
+/// race day off the real date. Nothing changed.
+class PlanRestartRaceAheadError implements Exception {
+  const PlanRestartRaceAheadError();
+
+  @override
+  String toString() => 'plan_restart_race_ahead';
+}
+
+/// A restart refused because its start is before the runner's today in their
+/// stored time zone (`restart_training_plan`'s SQLSTATE RR002), which can be
+/// ahead of the device's date the dialog checked against. Nothing changed.
+class PlanRestartBeforeTodayError implements Exception {
+  const PlanRestartBeforeTodayError();
+
+  @override
+  String toString() => 'plan_restart_before_today';
 }
 
 class TrainingService extends ChangeNotifier {
@@ -753,6 +775,31 @@ class TrainingService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Restarts the caller's plan [planId] as a fresh active copy starting on
+  /// [startIso], retiring the plans it replaces as abandoned in the same
+  /// transaction (`restart_training_plan`). Returns the new plan's id. A race
+  /// still ahead surfaces as [PlanRestartRaceAheadError], a start before the
+  /// server's today as [PlanRestartBeforeTodayError].
+  Future<String> restartPlan(String planId, String startIso) async {
+    final Object? id;
+    try {
+      id = await _c.rpc('restart_training_plan', params: {
+        'p_plan_id': planId,
+        'p_start_date': startIso,
+      });
+    } catch (e, s) {
+      if (e is PostgrestException && e.code == 'RR001') {
+        Error.throwWithStackTrace(const PlanRestartRaceAheadError(), s);
+      }
+      if (e is PostgrestException && e.code == 'RR002') {
+        Error.throwWithStackTrace(const PlanRestartBeforeTodayError(), s);
+      }
+      Error.throwWithStackTrace(planWriteError(e), s);
+    }
+    notifyListeners();
+    return id! as String;
+  }
+
   /// Moves every workout and the plan's start / end by [days] (the race
   /// moved, the runner started late) in one transaction, with the plans
   /// queued after it when [shiftFollowing]. A shift into another active
@@ -765,6 +812,48 @@ class TrainingService extends ChangeNotifier {
         'p_plan_id': planId,
         'p_days': days,
         'p_shift_following': shiftFollowing,
+      });
+    } catch (e, s) {
+      Error.throwWithStackTrace(planWriteError(e), s);
+    }
+    notifyListeners();
+  }
+
+  /// Re-anchors a plan on a new race date: [change] (`raceDateChange`) names
+  /// the weeks to drop or repeat and `change_plan_race_date` applies them in
+  /// one transaction. A later end that runs into another
+  /// active plan surfaces as [ActivePlanExistsError] via [planWriteError].
+  Future<void> changePlanRaceDate(
+      String planId, RaceDateChange change, String todayIso) async {
+    try {
+      await _c.rpc('change_plan_race_date', params: {
+        'p_plan_id': planId,
+        'p_race_date': change.raceDateIso,
+        'p_today': todayIso,
+        'p_drop_week_ids': change.dropWeekIds,
+        'p_insert_at': change.insertAt,
+        'p_insert_count': change.insertCount,
+        'p_repeat_week_id': change.repeatWeekId,
+        'p_race_workout_id': change.raceWorkoutId,
+      });
+    } catch (e, s) {
+      Error.throwWithStackTrace(planWriteError(e), s);
+    }
+    notifyListeners();
+  }
+
+  /// Runs the latest weeks again after a break and records the offer as
+  /// answered (`planBreakChange`, decisions § 2128), in one transaction.
+  /// Web twin: `reschedulePlanAfterBreak` in `core/data.ts`.
+  Future<void> reschedulePlanAfterBreak(String planId, BreakChange change,
+      String breakFromIso, String todayIso) async {
+    try {
+      await _c.rpc('reschedule_plan_after_break', params: {
+        'p_plan_id': planId,
+        'p_today': todayIso,
+        'p_break_from': breakFromIso,
+        'p_repeat_week_ids': change.repeatWeekIds,
+        'p_drop_week_ids': change.dropWeekIds,
       });
     } catch (e, s) {
       Error.throwWithStackTrace(planWriteError(e), s);
@@ -859,6 +948,26 @@ class TrainingService extends ChangeNotifier {
         .eq('id', id)
         .maybeSingle();
     return row == null ? null : PlanWorkoutRow.fromJson(row);
+  }
+
+  /// Distances of the runs linked to plan workouts, by run id, for the
+  /// "Done · +3 km" status. Ids the viewer cannot read (a coach looking at an
+  /// athlete's plan, a deleted run) are simply absent. Web twin:
+  /// `fetchRunDistances` in data.ts.
+  Future<Map<String, double>> fetchRunDistances(List<String> ids) async {
+    final wanted = ids.toSet().toList();
+    final rows = await readChunked(
+      wanted,
+      (chunk) async => List<Map<String, dynamic>>.from(await _c
+          .from('runs')
+          .select('id, distance_m')
+          .inFilter('id', chunk)),
+    );
+    return {
+      for (final r in rows)
+        if (r['distance_m'] is num)
+          r['id'] as String: (r['distance_m'] as num).toDouble(),
+    };
   }
 
   /// The viewer's active, non-template plans. Several can be active at once
@@ -1294,6 +1403,27 @@ class TrainingService extends ChangeNotifier {
         for (final e in distances.entries)
           e.key: {PlanWorkoutRow.colTargetDistanceM: e.value},
       });
+
+  /// Records the runner's answer to the missed-workout prompt on each of
+  /// [workoutIds] (`answer_missed_workouts`, decisions § 2122), so it is never
+  /// asked again on any device. "Make it up" passes the previewed make-up as
+  /// [distances]; they are written in the same transaction as the answer.
+  /// Mirrors web `answerMissedWorkouts`.
+  Future<void> answerMissedWorkouts({
+    required String planId,
+    required List<String> workoutIds,
+    Map<String, double> distances = const {},
+  }) async {
+    await _c.rpc('answer_missed_workouts', params: {
+      'p_plan_id': planId,
+      'p_workout_ids': workoutIds,
+      'p_changes': [
+        for (final e in distances.entries)
+          {'id': e.key, PlanWorkoutRow.colTargetDistanceM: e.value},
+      ],
+    });
+    notifyListeners();
+  }
 
   /// One `apply_workout_adjustments` call: it writes every patch and
   /// restates each touched week's `target_volume_m` in one transaction, so a

@@ -2,18 +2,22 @@ import ActivityKit
 import SwiftUI
 import WidgetKit
 
-/// The lock-screen and Dynamic Island presentation of an in-progress run.
+/// The extension's two widgets: the Live Activity of an in-progress run, and
+/// the Today widget (`TodayWorkoutWidget.swift`) for the home and lock
+/// screens. One extension serves both, so the app embeds and signs one.
 ///
-/// Every string on screen arrives already localized and unit-formatted in
-/// `RunActivityAttributes.ContentState`; nothing here formats or translates,
-/// which is why this extension carries no String Catalog. The one value it
-/// renders itself is the clock, and only because `Text(_:style:.timer)` ticks
-/// on-device: the alternative is an ActivityKit update per second for the
-/// length of an ultra.
+/// Every string on screen arrives already localized and unit-formatted —
+/// in `RunActivityAttributes.ContentState` for the run, in the App Group
+/// snapshot for Today; nothing here formats or translates, which is why this
+/// extension carries no String Catalog. The one value it renders itself is
+/// the run clock, and only because `Text(_:style:.timer)` ticks on-device:
+/// the alternative is an ActivityKit update per second for the length of an
+/// ultra.
 @main
 struct RunActivityBundle: WidgetBundle {
     var body: some Widget {
         RunActivityWidget()
+        TodayWorkoutWidget()
     }
 }
 
@@ -39,13 +43,16 @@ struct RunActivityWidget: Widget {
                     .padding(.trailing, 4)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    RunActivityStat(
-                        label: context.state.timeLabel,
-                        value: nil,
-                        alignment: .center
-                    ) {
-                        RunActivityClock(state: context.state)
-                            .font(.system(.title, design: .rounded).monospacedDigit())
+                    VStack(spacing: 6) {
+                        RunActivityStepLine(state: context.state)
+                        RunActivityStat(
+                            label: context.state.timeLabel,
+                            value: nil,
+                            alignment: .center
+                        ) {
+                            RunActivityClock(state: context.state)
+                                .font(.system(.title, design: .rounded).monospacedDigit())
+                        }
                     }
                 }
             } compactLeading: {
@@ -86,6 +93,55 @@ struct RunActivityClock: View {
             Text(state.elapsedText)
         } else {
             Text(state.timerStart, style: .timer)
+        }
+    }
+}
+
+/// The structured-workout step — "Rep 3 of 6 · @ 4:00 /km" over what is
+/// left of it — or nothing on a free run. A timed step counts down on-device
+/// from `stepEnd`, as the run clock counts up, so the seconds tick without an
+/// ActivityKit update each; paused, or once the end has passed and the app
+/// has not yet advanced the step, it shows the frozen text instead, because
+/// `Text(timerInterval:)` needs a range that has not ended.
+struct RunActivityStepLine: View {
+    let state: RunActivityAttributes.ContentState
+
+    var body: some View {
+        if let title = state.stepTitle {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    if let target = state.stepTarget {
+                        Text(target)
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                remaining
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    @ViewBuilder
+    private var remaining: some View {
+        let now = Date()
+        if !state.paused, let end = state.stepEnd, end > now {
+            Label {
+                Text(timerInterval: now...end, countsDown: true)
+            } icon: {
+                Image(systemName: "timer")
+            }
+        } else if let text = state.stepRemainingText {
+            Text(text)
         }
     }
 }
@@ -137,6 +193,7 @@ struct RunActivityLockScreenView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+            RunActivityStepLine(state: state)
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 RunActivityStat(label: state.timeLabel, value: nil) {
                     RunActivityClock(state: state)

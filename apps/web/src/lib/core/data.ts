@@ -52,6 +52,8 @@ import { mergeMyProgress } from '../social/challenge_list';
 import { selectEffectivePricing } from '../social/event_instance';
 import type { RepacePatch } from '../training/plan_repace';
 import type { ResumeShift } from '../training/plan_resume';
+import type { RaceDateChange } from '../training/plan_race_date';
+import type { BreakChange } from '../training/plan_break';
 import { shiftIsoDate } from '../training/plan_bulk_ops';
 import {
 	EVENT_PHOTO_WINDOW_AFTER_MS,
@@ -453,10 +455,11 @@ export async function fetchRunsWithError(
 /// contract + rationale in `./dashboard_runs`); the select carries exactly
 /// the columns the dashboard's consumers read (streaks, training-load,
 /// race-predictor, consistency, intensity, trend, goals, snapshot,
-/// this-week, weekly mileage chart, recent list) — `metadata` stays because those consumers
+/// this-week, weekly mileage chart, recent list, the no-plan recent-5K
+/// suggestion) — `metadata` stays because those consumers
 /// read `avg_bpm` / `elevation_m` / `indoor` from it. `track` is NOT set — it
 /// is a lazy Storage download rather than a column, so it is not one of the
-/// ten and `DashboardRun` does not declare it. `fetchRuns` answers the same
+/// eleven and `DashboardRun` does not declare it. `fetchRuns` answers the same
 /// way for a narrowed read and sets it only for `select('*')`, whose row type
 /// is the whole of `Run`.
 /// The `started_at desc` order means the PostgREST 1000-row cap, if a
@@ -477,6 +480,7 @@ export const DASHBOARD_RUN_COLUMNS = [
 	'is_dnf',
 	'elevation_gain_m',
 	'metadata',
+	'fastest_5k_s',
 ] as const satisfies RunColumns;
 
 /// What the dashboard read carries, and what `fetchRunsForDashboard` declares.
@@ -508,7 +512,7 @@ export async function fetchRunsForDashboard(): Promise<{
 		// `text` and `metadata` is jsonb, so the generated row types them
 		// `string` / `string` / `Json` while the client unions promise less; the
 		// widening cast this replaced meant the dashboard was the one read that
-		// applied none of them. `track` is NOT set — it is not one of the ten
+		// applied none of them. `track` is NOT set — it is not one of the eleven
 		// columns, so `DashboardRun` does not carry it.
 		runs: data.map((r) => ({
 			...r,
@@ -1882,7 +1886,7 @@ async function gzipBytes(data: Uint8Array): Promise<Uint8Array> {
 }
 
 /// Save the run-detail edit made on [loaded], the row as the page last read
-/// it, as a compare-and-swap on its server `updated_at` (decisions § 2120):
+/// it, as a compare-and-swap on its server `updated_at` (decisions § 2147):
 /// an edit never writes over a change made elsewhere since the page loaded
 /// to a field it also changes, and reports that as a `conflict` with the
 /// server's copy instead. `isDnf` rides the same write when the dialog
@@ -6094,6 +6098,21 @@ export async function fetchWorkout(
 	return { workout: (data as PlanWorkout | null) ?? null, error: error?.message ?? null };
 }
 
+/// Distances of the runs linked to plan workouts, by run id, for the
+/// "Done · +3 km" status. Ids the caller cannot read (a coach looking at an
+/// athlete's plan, a deleted run) are simply absent.
+export async function fetchRunDistances(ids: readonly string[]): Promise<Map<string, number>> {
+	const wanted = [...new Set(ids)];
+	const rows = await readChunked(wanted, async (part) => {
+		const { data, error } = await supabase.from(TABLES.runs).select('id, distance_m').in('id', part);
+		if (error) throw dbError(error);
+		return data ?? [];
+	});
+	const out = new Map<string, number>();
+	for (const r of rows) if (r.distance_m != null) out.set(r.id, r.distance_m);
+	return out;
+}
+
 /// Who owns a plan, for the "updated by your coach" line on a workout
 /// (`isEditedByCoach`). Null when the row can't be read; the line then stays
 /// hidden rather than guessing.
@@ -6447,6 +6466,46 @@ export async function shiftTrainingPlan(
 	if (error) throw dbError(error);
 }
 
+/// Re-anchor a plan on a new race date (`raceDateChange` picks the weeks;
+/// `change_plan_race_date` applies them in one transaction).
+export async function changePlanRaceDate(
+	planId: string,
+	change: RaceDateChange,
+	todayIso: string
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('change_plan_race_date', {
+		p_plan_id: planId,
+		p_race_date: change.raceDateIso,
+		p_today: todayIso,
+		p_drop_week_ids: change.dropWeekIds,
+		p_insert_at: change.insertAt,
+		p_insert_count: change.insertCount,
+		p_repeat_week_id: change.repeatWeekId,
+		p_race_workout_id: change.raceWorkoutId
+	});
+	if (error) throw dbError(error);
+}
+
+/// Runs the latest weeks again after a break and records the offer as
+/// answered (`planBreakChange`, decisions § 2128), in one transaction.
+export async function reschedulePlanAfterBreak(
+	planId: string,
+	change: BreakChange,
+	breakFromIso: string,
+	todayIso: string
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('reschedule_plan_after_break', {
+		p_plan_id: planId,
+		p_today: todayIso,
+		p_break_from: breakFromIso,
+		p_repeat_week_ids: change.repeatWeekIds,
+		p_drop_week_ids: change.dropWeekIds
+	});
+	if (error) throw dbError(error);
+}
+
 export async function markWorkoutCompleted(
 	workoutId: string,
 	runId: string | null,
@@ -6737,6 +6796,24 @@ export async function applyWorkoutAdjustments(
 	if (error) throw dbError(error);
 }
 
+/// Record the runner's answer to the missed-workout prompt on each named
+/// workout (`answer_missed_workouts`, decisions § 2122), so it is never asked
+/// again on any device. "Make it up" passes the previewed make-up as
+/// `changes`; it is written in the same transaction as the answer, so the two
+/// land together or not at all.
+export async function answerMissedWorkouts(
+	planId: string,
+	workoutIds: string[],
+	changes: WorkoutAdjustment[] = []
+): Promise<void> {
+	const { error } = await supabase.rpc('answer_missed_workouts', {
+		p_plan_id: planId,
+		p_workout_ids: workoutIds,
+		p_changes: changes
+	});
+	if (error) throw dbError(error);
+}
+
 export async function updatePlanWeek(
 	id: string,
 	patch: Partial<{ phase: PlanPhase; target_volume_m: number | null; notes: string | null }>
@@ -6760,6 +6837,24 @@ export async function updatePlanMeta(
 	markListsStale('plans');
 	const { error } = await supabase.from('training_plans').update(patch).eq('id', id);
 	if (error) throw dbError(error);
+}
+
+/// Restart one of the runner's plans as a fresh active copy starting on
+/// `startIso` (`restart_training_plan`). The overlapped active plans and the
+/// source, while live, are retired as abandoned in the same transaction; the
+/// source keeps its history. Returns the new plan's id.
+export async function restartTrainingPlan(planId: string, startIso: string): Promise<string> {
+	markListsStale('plans');
+	const { data, error } = await supabase.rpc('restart_training_plan', {
+		p_plan_id: planId,
+		p_start_date: startIso
+	});
+	if (error) {
+		const friendly = rateLimitErrorMessage(m, error);
+		if (friendly) throw new Error(friendly);
+		throw dbError(error);
+	}
+	return data;
 }
 
 /// Set a plan's goal time with the re-derived workout paces

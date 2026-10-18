@@ -641,7 +641,7 @@
 				// Changed elsewhere since this page loaded, in a field this edit
 				// also writes: show the server's copy and keep the dialog open
 				// with what the runner typed, so saving again is a choice made
-				// with the other change in view (decisions § 2120). A field the
+				// with the other change in view (decisions § 2147). A field the
 				// runner left alone takes the server's value, or saving again
 				// would write the stale one back over it.
 				const touched = changedEditFields(run, { title: editTitle, notes: editNotes });

@@ -103,4 +103,64 @@ final class LiveActivityBridgeTests: XCTestCase {
             )
         )
     }
+
+    func testDecodesAWorkoutStep() throws {
+        let state = try XCTUnwrap(
+            RunActivityAttributes.ContentState(
+                arguments: args(overriding: [
+                    "step_title": "Rep 3 of 6",
+                    "step_remaining_text": "400 m to go",
+                    "step_target": "@ 4:00 /km",
+                    "step_end_epoch_ms": NSNumber(value: 1_700_000_090_000 as Int64),
+                ])
+            )
+        )
+        XCTAssertEqual(state.stepTitle, "Rep 3 of 6")
+        XCTAssertEqual(state.stepRemainingText, "400 m to go")
+        XCTAssertEqual(state.stepTarget, "@ 4:00 /km")
+        let end = try XCTUnwrap(state.stepEnd)
+        XCTAssertEqual(end.timeIntervalSince1970, 1_700_000_090, accuracy: 0.001)
+    }
+
+    /// A free run sends no step keys at all, and neither did any frame built
+    /// before the step line existed: both must still decode, with no step.
+    func testAFrameWithoutAStepStillDecodes() throws {
+        let state = try XCTUnwrap(RunActivityAttributes.ContentState(arguments: args()))
+        XCTAssertNil(state.stepTitle)
+        XCTAssertNil(state.stepRemainingText)
+        XCTAssertNil(state.stepTarget)
+        XCTAssertNil(state.stepEnd)
+    }
+
+    /// The step line is the optional part of the frame: a wrongly typed step
+    /// field loses that field, not the run stats.
+    func testAWronglyTypedStepFieldDropsOnlyThatField() throws {
+        let state = try XCTUnwrap(
+            RunActivityAttributes.ContentState(
+                arguments: args(overriding: [
+                    "step_title": "Walk",
+                    "step_end_epoch_ms": "1700000090000",
+                ])
+            )
+        )
+        XCTAssertEqual(state.stepTitle, "Walk")
+        XCTAssertNil(state.stepEnd)
+        XCTAssertEqual(state.distanceText, "1.20 km")
+    }
+
+    /// ActivityKit persists the content state as JSON; one encoded before the
+    /// step fields existed must decode into the current shape.
+    func testContentStateEncodedWithoutStepFieldsDecodes() throws {
+        let legacy = """
+        {"title":"Run","paused":false,"timerStart":0,"elapsedText":"00:42",
+         "timeLabel":"Time","distanceLabel":"Distance","distanceText":"1.20 km",
+         "paceLabel":"Pace","paceText":"5:30 /km"}
+        """
+        let state = try JSONDecoder().decode(
+            RunActivityAttributes.ContentState.self,
+            from: Data(legacy.utf8)
+        )
+        XCTAssertEqual(state.paceText, "5:30 /km")
+        XCTAssertNil(state.stepTitle)
+    }
 }

@@ -548,7 +548,7 @@ Tag → workflow → deploy is the canonical path for every Fly service, GraphHo
 
 ### Edge Function CORS ships with a backend release, not a web one
 
-The browser-called Edge Functions answer the CORS preflight in their own code (`_shared/cors.ts`, decisions § 2121), so a fix to it — or a new browser-called function — reaches threkir.com only when the functions are redeployed: publish a `backend@<version>` GitHub Release, which runs `release-backend.yml` and redeploys every function (it applies pending migrations too, so check what else is on `main`). A one-off `supabase functions deploy <name> --project-ref <ref>` from `apps/backend/` is the narrower path. Verify with a token-less preflight, which must answer 204 with `access-control-allow-origin: https://threkir.com`:
+The browser-called Edge Functions answer the CORS preflight in their own code (`_shared/cors.ts`, decisions § 2148), so a fix to it — or a new browser-called function — reaches threkir.com only when the functions are redeployed: publish a `backend@<version>` GitHub Release, which runs `release-backend.yml` and redeploys every function (it applies pending migrations too, so check what else is on `main`). A one-off `supabase functions deploy <name> --project-ref <ref>` from `apps/backend/` is the narrower path. Verify with a token-less preflight, which must answer 204 with `access-control-allow-origin: https://threkir.com`:
 
 `curl -s -i -X OPTIONS -H "Origin: https://threkir.com" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: authorization,content-type" https://<ref>.supabase.co/functions/v1/delete-account`
 

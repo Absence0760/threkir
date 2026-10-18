@@ -354,7 +354,7 @@ during SSR, prerender or the Lambda's head render, so the markup a crawler or
 unfurler reads is the anonymous header, unchanged; the header reserves the
 control's height, so it appears without moving the page. Nothing about the
 visitor reaches the `<head>`. In-app links do not point here in the first
-place — they go to the in-app view (decisions § 2125).
+place — they go to the in-app view (decisions § 2152).
 
 ## Shared marketing/brand pieces
 

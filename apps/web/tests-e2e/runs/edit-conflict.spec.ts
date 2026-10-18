@@ -9,7 +9,7 @@ import { USER_A } from '../fixtures/users';
 
 /**
  * /runs/[id] — the edit dialog is a compare-and-swap on the row's
- * server-stamped `updated_at` (decisions § 2120). The admin client plays a
+ * server-stamped `updated_at` (decisions § 2147). The admin client plays a
  * second device writing the row after the page loaded it, which the
  * `runs_stamp_updated_at` trigger moves the stamp for.
  *

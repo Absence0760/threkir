@@ -5,4 +5,11 @@
     <string name="run_notif_action_resume">Reprendre</string>
     <string name="run_notif_action_pause">Pause</string>
     <string name="run_notif_action_stop">Arrêter</string>
+    <string name="widget_today_label">Séance du jour</string>
+    <string name="widget_today_description">Votre séance prévue aujourd\'hui, en un coup d\'œil</string>
+    <string name="widget_today_header_fallback">Aujourd\'hui</string>
+    <string name="widget_today_no_data">Ouvrez Threkir pour voir la séance du jour</string>
+    <string name="widget_today_preview_header">Aujourd\'hui</string>
+    <string name="widget_today_preview_title">Tempo</string>
+    <string name="widget_today_preview_detail">8,00 km · 4:45 /km</string>
 </resources>

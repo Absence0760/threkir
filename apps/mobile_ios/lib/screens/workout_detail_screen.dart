@@ -8,6 +8,8 @@ import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/date_format.dart';
 import '../l10n/locale_support.dart';
+import '../overrun_format.dart';
+import '../plan_nudges.dart' show workoutOverrunMetres;
 import '../plan_races.dart';
 import '../relink_candidates.dart';
 import '../training.dart';
@@ -55,6 +57,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   /// Whether the athlete's coach made the last edit. Auxiliary: a failed
   /// owner read leaves the line hidden and never touches the workout.
   bool _editedByCoach = false;
+
+  /// The linked run's distance and the run it was read for, for
+  /// "Done · +3 km". Auxiliary: a failed read leaves the plain "Done".
+  double? _linkedDistance;
+  String? _linkedDistanceRunId;
   late bool _loading = widget.initial == null;
   bool _unlinking = false;
   bool _skipping = false;
@@ -84,6 +91,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         _loading = false;
       });
       unawaited(_loadProvenance(w));
+      unawaited(_loadLinkedDistance(w));
     } catch (e, s) {
       debugPrint('WorkoutDetailScreen._load failed: $e\n$s');
       if (!mounted) return;
@@ -106,6 +114,31 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         _loading = false;
         _error = kind;
       });
+    }
+  }
+
+  Future<void> _loadLinkedDistance(PlanWorkoutRow? w) async {
+    final runId = w?.completedRunId;
+    if (runId == null) {
+      if (_linkedDistanceRunId != null) {
+        setState(() {
+          _linkedDistance = null;
+          _linkedDistanceRunId = null;
+        });
+      }
+      return;
+    }
+    try {
+      final d = await widget.training
+          .fetchRunDistances([runId])
+          .timeout(kBackendLoadTimeout);
+      if (!mounted || _workout?.completedRunId != runId) return;
+      setState(() {
+        _linkedDistance = d[runId];
+        _linkedDistanceRunId = runId;
+      });
+    } catch (e) {
+      debugPrint('WorkoutDetailScreen._loadLinkedDistance failed: $e');
     }
   }
 
@@ -445,6 +478,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             required Color fg,
             required IconData icon,
             required String label,
+            String? semanticsLabel,
             required List<Widget> actions}) =>
         Container(
           key: key,
@@ -465,6 +499,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(label,
+                        key: const Key('workoutDetailStatusLabel'),
+                        semanticsLabel: semanticsLabel,
                         style: TextStyle(color: fg, fontWeight: FontWeight.w700)),
                   ),
                 ],
@@ -475,12 +511,22 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         );
 
     if (isWorkoutCompleted(w)) {
+      final overrunM = w.completedRunId != null &&
+              w.completedRunId == _linkedDistanceRunId
+          ? workoutOverrunMetres(w.targetDistanceM, _linkedDistance)
+          : null;
+      final overrun = overrunM == null ? null : fmtOverrun(overrunM);
       return panel(
         key: const Key('workoutDetailCompleted'),
         bg: theme.colorScheme.primaryContainer,
         fg: theme.colorScheme.onPrimaryContainer,
         icon: Icons.check_circle,
-        label: l10n.workoutCompleted,
+        label: overrun == null
+            ? l10n.workoutCompleted
+            : '${l10n.workoutCompleted} · ${l10n.planWorkoutOverrun(overrun)}',
+        semanticsLabel: overrun == null
+            ? null
+            : '${l10n.workoutCompleted}, ${l10n.planWorkoutOverrunA11y(overrun)}',
         actions: [
           if (w.completedRunId != null)
             TextButton(

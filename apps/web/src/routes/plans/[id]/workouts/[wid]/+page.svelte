@@ -10,6 +10,7 @@
 		markWorkoutCompleted,
 		markWorkoutSkipped,
 		fetchRelinkCandidateRuns,
+		fetchRunDistances,
 		type RelinkCandidateRun
 	} from '#lib/core/data.ts';
 	import { fmtHms, isWorkoutCompleted, isWorkoutSkipped } from '#lib/training/training.ts';
@@ -17,7 +18,8 @@
 	import { isEditedByCoach } from '#lib/training/workout_prescription.ts';
 	import { hrTargetLabel, rpeTargetLabel } from '#lib/training/workout_target_label.ts';
 	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_gate.ts';
-	import { fmtKm, fmtPace, fmtPaceTolerance } from '#lib/format/units.svelte.ts';
+	import { fmtKm, fmtOverrun, fmtPace, fmtPaceTolerance } from '#lib/format/units.svelte.ts';
+	import { workoutOverrunMetres } from '#lib/training/plan_nudges.ts';
 	import { formatDateShort } from '#lib/format/time.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import Modal from '#lib/components/Modal.svelte';
@@ -89,6 +91,27 @@
 		workout && hrPrescription ? hrTargetLabel(workout.target_hr_min_bpm, workout.target_hr_max_bpm) : null
 	);
 	let editedByCoach = $derived(workout != null && isEditedByCoach(workout, ownerId, auth.user?.id));
+
+	/// The linked run's distance, for "Done · +3 km". Auxiliary (L4): a failed
+	/// read leaves the plain "Done".
+	let linkedRunDistance = $state<number | null>(null);
+	$effect(() => {
+		const runId = workout?.completed_run_id ?? null;
+		linkedRunDistance = null;
+		if (!runId) return;
+		let live = true;
+		fetchRunDistances([runId])
+			.then((d) => {
+				if (live) linkedRunDistance = d.get(runId) ?? null;
+			})
+			.catch((e) => console.error('Reading the linked run distance failed', e));
+		return () => {
+			live = false;
+		};
+	});
+	let overrunM = $derived(
+		workout?.completed_run_id ? workoutOverrunMetres(workout.target_distance_m, linkedRunDistance) : null
+	);
 
 	let structure = $derived(
 		(workout?.structure as unknown as WorkoutStructure | null) ?? null
@@ -374,7 +397,12 @@
 			{#if isWorkoutCompleted(workout)}
 				<div class="completed-card">
 					<span class="material-symbols" aria-hidden="true">check_circle</span>
-					<span class="completed-label">{t('workoutDetail.completed')}</span>
+					<span class="completed-label" data-testid="workout-detail-done"
+						>{t('workoutDetail.completed')}{#if overrunM != null}<span aria-hidden="true"
+								>{' · '}{t('plan.overrun', { distance: fmtOverrun(overrunM) })}</span
+							><span class="sr-only">, {t('plan.overrunAria', { distance: fmtOverrun(overrunM) })}</span
+							>{/if}</span
+					>
 					<div class="completed-actions">
 						{#if workout.completed_run_id}
 							<button class="btn-ghost" onclick={openRelink}>

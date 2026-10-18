@@ -6696,6 +6696,52 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get planNudgeUnderTitle => 'Un peu moins que prévu';
+
+  @override
+  String planNudgeUnderBody(int n, int total) {
+    return 'Vous avez couru moins que prévu $n semaines sur les $total dernières. Un ajustement des semaines à venir vous est proposé.';
+  }
+
+  @override
+  String get planNudgeEaseTitle => 'Une grosse semaine';
+
+  @override
+  String get planNudgeEaseBody =>
+      'Vous avez couru nettement plus que prévu la semaine dernière. Alléger les sorties courtes de la semaine prochaine aide votre corps à l\'assimiler.';
+
+  @override
+  String get planNudgeRestTitle => 'Courir les jours de repos';
+
+  @override
+  String planNudgeRestBody(int n, int total) {
+    return 'Vous avez couru des jours de repos $n semaines sur les $total dernières. Ces sorties comptent dans votre semaine, mais c\'est au repos que l\'entraînement porte ses fruits.';
+  }
+
+  @override
+  String get planNudgeReview => 'Voir les changements';
+
+  @override
+  String get planNudgeDismiss => 'Masquer';
+
+  @override
+  String get planNudgeDismissA11y => 'Masquer cette suggestion';
+
+  @override
+  String get planNudgeDismissFailed =>
+      'Impossible de masquer cette suggestion. Réessayez.';
+
+  @override
+  String planWorkoutOverrun(String distance) {
+    return '+$distance';
+  }
+
+  @override
+  String planWorkoutOverrunA11y(String distance) {
+    return '$distance de plus que prévu';
+  }
+
+  @override
   String get planDetailReplanPreviewTitle => 'Changements proposés';
 
   @override

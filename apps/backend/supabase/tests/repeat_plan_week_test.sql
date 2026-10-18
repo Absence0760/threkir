@@ -98,7 +98,8 @@ set local "request.jwt.claims" = '{"sub":"c7c7c7c7-0000-0000-0000-00000000000c",
 select throws_ok(
   $$select repeat_plan_week('c1c1c1c1-0000-0000-0000-0000000000b1', current_date,
       'c2c2c2c2-0000-0000-0000-0000b1000004')$$,
-  'P0002', null, 'another runner''s plan is refused');
+  'P0002', 'repeat_plan_week: plan c1c1c1c1-0000-0000-0000-0000000000b1 not found',
+  'another runner''s plan is refused');
 reset role;
 select is((select count(*)::int from rate_limits
            where user_id = 'c7c7c7c7-0000-0000-0000-00000000000c'),
@@ -261,7 +262,8 @@ set local "request.jwt.claims" = '{"sub":"c7c7c7c7-0000-0000-0000-00000000000e",
 select throws_ok(
   $$select repeat_plan_week('c1c1c1c1-0000-0000-0000-0000000000e1', current_date,
       'c2c2c2c2-0000-0000-0000-0000e1000004')$$,
-  '23P01', null, 'a later end that runs into another active plan is refused');
+  '23P01', 'conflicting key value violates exclusion constraint "training_plans_active_no_overlap"',
+  'a later end that runs into another active plan is refused');
 select is((select count(*)::int || '/' || (max(tp.end_date) - min(s))
            from plan_weeks w join training_plans tp on tp.id = w.plan_id, rpw_s
            where w.plan_id = 'c1c1c1c1-0000-0000-0000-0000000000e1'),

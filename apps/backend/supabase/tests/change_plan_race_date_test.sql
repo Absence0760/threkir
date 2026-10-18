@@ -11,7 +11,7 @@
 -- this week's Sunday, so weeks 0 and 1 are past and week 2 is under way.
 
 begin;
-select plan(55);
+select plan(57);
 
 create temp table cprd_s as
   select (current_date - extract(dow from current_date)::integer - 14) as s;
@@ -101,7 +101,8 @@ set local "request.jwt.claims" = '{"sub":"c7c7c7c7-0000-0000-0000-000000000002",
 select throws_ok(
   $$select change_plan_race_date('c1c1c1c1-0000-0000-0000-00000000000a', (select s + 52 from cprd_s), current_date,
       array['c2c2c2c2-0000-0000-0000-0000000a0005', 'c2c2c2c2-0000-0000-0000-0000000a0004']::uuid[])$$,
-  'P0002', null, 'another runner''s plan is refused');
+  'P0002', 'change_plan_race_date: plan c1c1c1c1-0000-0000-0000-00000000000a not found',
+  'another runner''s plan is refused');
 
 set local "request.jwt.claims" = '{"sub":"c7c7c7c7-0000-0000-0000-000000000001","role":"authenticated"}';
 
@@ -119,7 +120,8 @@ select throws_ok(
             'c2c2c2c2-0000-0000-0000-0000000a0005', 'c2c2c2c2-0000-0000-0000-0000000a0006',
             'c2c2c2c2-0000-0000-0000-0000000a0007']::uuid[],
       null, 0, null, 'c3c3c3c3-0000-0000-0000-0000a0900000')$$,
-  '22023', null, 'a race too close for the taper is refused even with the whole build cut');
+  '22023', (select format('change_plan_race_date: %s does not fall in the plan''s race week', s + 21) from cprd_s),
+  'a race too close for the taper is refused even with the whole build cut');
 
 select throws_ok(
   $$select change_plan_race_date('c1c1c1c1-0000-0000-0000-00000000000a', (select s + 52 from cprd_s), current_date,
@@ -185,7 +187,8 @@ select is((select end_date from training_plans where id = 'c1c1c1c1-0000-0000-00
 select throws_ok(
   $$select change_plan_race_date('c1c1c1c1-0000-0000-0000-00000000000d', (select s + 77 from cprd_s), current_date,
       '{}', 6, 2, 'c2c2c2c2-0000-0000-0000-0000000d0005', 'c3c3c3c3-0000-0000-0000-0000d0900000')$$,
-  '23P01', null, 'a later race that runs into another active plan is refused');
+  '23P01', 'conflicting key value violates exclusion constraint "training_plans_active_no_overlap"',
+  'a later race that runs into another active plan is refused');
 select is((select count(*)::int from plan_weeks where plan_id = 'c1c1c1c1-0000-0000-0000-00000000000d'),
   10, 'overlap: no week was inserted');
 select is((select count(*)::int from plan_workouts wo join plan_weeks w on w.id = wo.week_id
@@ -233,7 +236,7 @@ select lives_ok(
       '{}', null, 0, null, 'c3c3c3c3-0000-0000-0000-000a10900000')$$,
   'the owner moves the race inside its week');
 select is((select scheduled_date from plan_workouts where id = 'c3c3c3c3-0000-0000-0000-000a10900000'),
-  (select s + 65 from cprd_s), 'the race is on the new day');
+  (select s + 65 from cprd_s), 'the race moved inside its week is on the new day');
 select is((select scheduled_date from plan_workouts where id = 'c3c3c3c3-0000-0000-0000-000a10900002'),
   (select s + 63 from cprd_s), 'the run it displaced takes its old day');
 select is((select count(*)::int from plan_workouts wo join plan_weeks w on w.id = wo.week_id
@@ -252,11 +255,13 @@ select lives_ok(
       '{}', null, 0, null, 'c3c3c3c3-0000-0000-0000-000a30900000')$$,
   'a race whose old day has passed moves to a later day of its week');
 select is((select scheduled_date from plan_workouts where id = 'c3c3c3c3-0000-0000-0000-000a30900000'),
-  current_date + 3, 'the race is on the new day');
+  current_date + 3, 'the race whose day had passed is on the new day');
 select is((select count(*)::int from plan_workouts where id = 'c3c3c3c3-0000-0000-0000-000a30900004'),
   0, 'the run on the new day is removed rather than moved into the past');
 select is((select scheduled_date from plan_workouts where id = 'c3c3c3c3-0000-0000-0000-000a30900001'),
   current_date, 'today''s run stays');
+select is((select array_agg(week_index::int order by week_index) from plan_weeks where plan_id = 'c1c1c1c1-0000-0000-0000-0000000000a3'),
+  array[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 'a move inside a started race week adds, drops and re-indexes no week');
 
 -- ── Later, HR gate shut: the repeated week drops its heart-rate targets ───
 
@@ -301,6 +306,8 @@ select is((select count(*)::int from plan_workouts wo join plan_weeks w on w.id 
            where w.plan_id = 'c1c1c1c1-0000-0000-0000-0000000000a2' and w.week_index in (6, 7)
              and wo.target_hr_min_bpm = 140 and wo.target_hr_max_bpm = 155),
   2, 'the repeated weeks carry the heart-rate target');
+select is((select array_agg(week_index::int order by week_index) from plan_weeks where plan_id = 'c1c1c1c1-0000-0000-0000-0000000000a2'),
+  array[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], 'with the gate open the two inserted weeks are indexed without a gap too');
 
 -- ── Invariants across every plan that changed ─────────────────────────────
 

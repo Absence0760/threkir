@@ -13,7 +13,7 @@
 -- this week's Sunday, so weeks 0-3 are past and week 4 is under way.
 
 begin;
-select plan(59);
+select plan(60);
 
 create temp table rpab_s as
   select (current_date - extract(dow from current_date)::integer - 28) as s;
@@ -105,7 +105,8 @@ set local "request.jwt.claims" = '{"sub":"b7b7b7b7-0000-0000-0000-00000000000c",
 select throws_ok(
   $$select reschedule_plan_after_break('b1b1b1b1-0000-0000-0000-0000000000a1', current_date, current_date - 20,
       array['b2b2b2b2-0000-0000-0000-0000a1000004']::uuid[], array['b2b2b2b2-0000-0000-0000-0000a1000005']::uuid[])$$,
-  'P0002', null, 'another runner''s plan is refused');
+  'P0002', 'reschedule_plan_after_break: plan b1b1b1b1-0000-0000-0000-0000000000a1 not found',
+  'another runner''s plan is refused');
 
 set local "request.jwt.claims" = '{"sub":"b7b7b7b7-0000-0000-0000-00000000000a","role":"authenticated"}';
 
@@ -318,7 +319,8 @@ set local "request.jwt.claims" = '{"sub":"b7b7b7b7-0000-0000-0000-00000000000e",
 select throws_ok(
   $$select reschedule_plan_after_break('b1b1b1b1-0000-0000-0000-0000000000e1', current_date, current_date - 10,
       array['b2b2b2b2-0000-0000-0000-0000e1000004']::uuid[])$$,
-  '23P01', null, 'a later end that runs into another active plan is refused');
+  '23P01', 'conflicting key value violates exclusion constraint "training_plans_active_no_overlap"',
+  'a later end that runs into another active plan is refused');
 select is((select count(*)::int from plan_weeks where plan_id = 'b1b1b1b1-0000-0000-0000-0000000000e1'),
   10, 'overlap: no week was added');
 select is((select end_date from training_plans where id = 'b1b1b1b1-0000-0000-0000-0000000000e1'),
@@ -342,6 +344,9 @@ select is((select count(*)::int from plan_workouts wo join plan_weeks w on w.id 
   0, 'gate shut: the copy carries no heart-rate target despite consent');
 select is((select target_hr_min_bpm::int from plan_workouts where id = 'b3b3b3b3-0000-0000-0000-f10401000000'),
   140, 'gate shut: the week copied keeps its own targets');
+select is((select prefs -> 'plan_break_dismissed' from user_settings where user_id = 'b7b7b7b7-0000-0000-0000-00000000000f'),
+  jsonb_build_object('plan_id', 'b1b1b1b1-0000-0000-0000-0000000000f1', 'from', current_date - 10, 'until', current_date),
+  'gate shut: the offer is recorded as answered for this break, with its last day');
 
 select * from finish();
 rollback;

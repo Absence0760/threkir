@@ -3,7 +3,7 @@
 -- prescription gate on the copied bpm targets, and the hourly rate limit.
 
 begin;
-select plan(16);
+select plan(19);
 
 insert into private.feature_flags (name, enabled) values ('hr_prescription', true)
   on conflict (name) do update set enabled = true;
@@ -69,7 +69,7 @@ select is(
   (select row(pwo.target_hr_min_bpm, pwo.target_hr_max_bpm)::text
    from plan_workouts pwo join plan_weeks pw on pw.id = pwo.week_id
    where pw.plan_id = (select id from copies where label = 'shut')),
-  '(,)', 'and the copy holds no bpm target');
+  '(,)', 'and the gate-shut copy holds no bpm target');
 
 reset role;
 update private.feature_flags set enabled = true where name = 'hr_prescription';
@@ -82,7 +82,7 @@ select is(
   (select row(pwo.target_hr_min_bpm, pwo.target_hr_max_bpm)::text
    from plan_workouts pwo join plan_weeks pw on pw.id = pwo.week_id
    where pw.plan_id = (select id from copies where label = 'unconsented')),
-  '(,)', 'and the copy holds no bpm target');
+  '(,)', 'and the unconsented copy holds no bpm target');
 select is(
   (select row(pwo.target_hr_min_bpm, pwo.target_hr_max_bpm)::text
    from plan_workouts pwo join plan_weeks pw on pw.id = pwo.week_id
@@ -91,11 +91,15 @@ select is(
 
 -- "Today" with no stored time zone: the UTC date less one day.
 select lives_ok(
-  $$select restart_training_plan('b8b8b8b8-0000-0000-0000-0000000f0001', current_date)$$,
+  $$insert into copies select 'no-tz-today', restart_training_plan('b8b8b8b8-0000-0000-0000-0000000f0001', current_date)$$,
   'with no time zone a start of today is accepted');
+select is((select start_date from training_plans where id = (select id from copies where label = 'no-tz-today')),
+  current_date, 'and the copy starts today');
 select lives_ok(
-  $$select restart_training_plan('b8b8b8b8-0000-0000-0000-0000000f0001', current_date - 1)$$,
+  $$insert into copies select 'no-tz-yesterday', restart_training_plan('b8b8b8b8-0000-0000-0000-0000000f0001', current_date - 1)$$,
   'and so is the UTC yesterday, which a device west of UTC calls today');
+select is((select start_date from training_plans where id = (select id from copies where label = 'no-tz-yesterday')),
+  current_date - 1, 'and that copy starts on the UTC yesterday');
 select throws_ok(
   $$select restart_training_plan('b8b8b8b8-0000-0000-0000-0000000f0001', current_date - 2)$$,
   'RR002', 'restart_training_plan: the new start date is before today',
@@ -108,13 +112,16 @@ select throws_ok(
   'RR002', 'restart_training_plan: the new start date is before today',
   'with a time zone the day before its today is refused');
 select lives_ok(
-  $$select restart_training_plan('b8b8b8b8-0000-0000-0000-0000000f0002', current_date)$$,
+  $$insert into copies select 'tz-today', restart_training_plan('b8b8b8b8-0000-0000-0000-0000000f0002', current_date)$$,
   'and its today is accepted');
+select is((select start_date from training_plans where id = (select id from copies where label = 'tz-today')),
+  current_date, 'and the copy starts on that zone''s today');
 
 -- Another runner's plan is refused before any budget is spent.
 select throws_ok(
   $$select restart_training_plan('b8b8b8b8-0000-0000-0000-0000000f0003', current_date + 7)$$,
-  'P0001', null, 'another runner''s plan is refused');
+  'P0001', 'restart_training_plan: plan b8b8b8b8-0000-0000-0000-0000000f0003 not found',
+  'another runner''s plan is refused');
 
 -- The hourly cap.
 set local "request.jwt.claims" = '{"sub":"b7b7b7b7-0000-0000-0000-0000000f0003","role":"authenticated"}';

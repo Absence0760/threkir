@@ -5,7 +5,7 @@
 -- start with none.
 
 begin;
-select plan(39);
+select plan(40);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -69,7 +69,8 @@ select throws_ok(
 set local "request.jwt.claims" = '{"sub":"c1c1c1c1-0000-0000-0000-0000000a0002","role":"authenticated"}';
 select throws_ok(
   $$select answer_missed_workouts('c2c2c2c2-0000-0000-0000-0000000a0001', array['c4c4c4c4-0000-0000-0000-0000000a0001']::uuid[])$$,
-  'P0001', null, 'another runner is refused');
+  'P0001', 'answer_missed_workouts: plan c2c2c2c2-0000-0000-0000-0000000a0001 not found',
+  'another runner is refused');
 
 -- The owner's refusals.
 set local "request.jwt.claims" = '{"sub":"c1c1c1c1-0000-0000-0000-0000000a0001","role":"authenticated"}';
@@ -182,7 +183,7 @@ select is(
   0, 'a duplicated week carries no answer');
 select ok(
   (select missed_ack_at is not null from plan_workouts where id = 'c4c4c4c4-0000-0000-0000-0000000a0010'),
-  'while the week it copied keeps its own');
+  'while the duplicated week keeps its own');
 insert into copies select 'plan', restart_training_plan('c2c2c2c2-0000-0000-0000-0000000a0001', current_date + 7);
 select is(
   (select count(*)::int from plan_workouts wo join plan_weeks w on w.id = wo.week_id
@@ -232,10 +233,14 @@ select is(
   null, 'the copy of an answered miss carries no answer');
 select ok(
   (select missed_ack_at is not null from plan_workouts where id = 'c4c4c4c4-0000-0000-0000-0000000b0002'),
-  'while the week it copied keeps its own');
+  'while the week the break repeated keeps its own');
 select is(
   (select missed_ack_at from plan_workouts where id = 'c4c4c4c4-0000-0000-0000-0000000b0005'),
   null, 'a workout the break moves to a later date loses its answer');
+select is(
+  (select prefs -> 'plan_break_dismissed' from user_settings where user_id = 'c1c1c1c1-0000-0000-0000-0000000a0003'),
+  jsonb_build_object('plan_id', 'c2c2c2c2-0000-0000-0000-0000000a0004', 'from', current_date - 10, 'until', current_date),
+  'the break''s offer is recorded as answered, with its last day');
 
 select * from finish();
 rollback;

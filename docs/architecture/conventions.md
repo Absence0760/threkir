@@ -1584,6 +1584,14 @@ The Spoken-cues block's shape — a plain line under the control saying what it 
 - **A repeated block renders its explanation once.** An exercise, a set row or a session item inside an `{#each}` renders its line on the first iteration only, and every later iteration's controls point at that same id — a sentence under each of eight cells, repeated per exercise, is the density this exists to remove.
 - **Wiring an existing explanation counts; inventing one to satisfy the scan does not.** `/onboarding` was registered without a single new string: its per-step hints were already the right copy and only needed an id and an `aria-describedby`.
 
+## A page that mixes explicit-save and auto-save sections labels each one
+
+Most settings auto-save (decisions § 111); a section holding Art 9 data saves only on its own button. When one page carries both, a page-level "Saved" cue is not enough — the runner cannot tell which controls are already stored. On web and mobile alike (decisions § 2113):
+
+- **Each section states its save model in place**, next to its controls: the auto-save section shows its own Saving / Saved status, the explicit one says it saves only on its button.
+- **The explicit section shows an unsaved-changes state** the moment it is edited, and clears it on a successful save.
+- **The explicit section guards navigation** while it is dirty — `UnsavedChangesGuard` on web, the same prompt-on-pop on mobile — so leaving the page cannot silently drop an edit the runner believed was kept.
+
 ## Web list pages — preserve scroll on back-navigation
 
 Any list page that links into a detail page (`/history`, `/routes`, `/plans`, `/clubs`, `/feed`, `/u/[id]`-style surfaces, …) must `export const snapshot` (SvelteKit's [snapshot API](https://svelte.dev/docs/kit/snapshots)) so clicking a row, then `back`, lands the user at the same scroll position they left at. Without this, the page remounts empty, SvelteKit's built-in scroll restoration runs against a 0-height body, and the user is bounced back to the top.

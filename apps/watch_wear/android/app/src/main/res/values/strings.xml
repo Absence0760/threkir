@@ -49,6 +49,26 @@
     <string name="complication_desc_recording">Recording, %1$s elapsed, %2$s</string>
     <string name="complication_desc_paused">Paused at %1$s, %2$s</string>
     <string name="complication_desc_last_run">Last run %1$s in %2$s</string>
+    <!-- Today's planned workout on the tile and the complication -->
+    <string name="tile_today">TODAY</string>
+    <string name="complication_today_short">Today</string>
+    <string name="complication_desc_today">Today\'s workout: %1$s, %2$s</string>
+    <string name="workout_kind_easy">Easy</string>
+    <string name="workout_kind_long">Long run</string>
+    <string name="workout_kind_recovery">Recovery</string>
+    <string name="workout_kind_tempo">Tempo</string>
+    <string name="workout_kind_interval">Intervals</string>
+    <string name="workout_kind_marathon_pace">Marathon pace</string>
+    <string name="workout_kind_walk_run">Walk-run</string>
+    <string name="workout_kind_race">Race</string>
+    <string name="workout_kind_short_easy">E</string>
+    <string name="workout_kind_short_long">L</string>
+    <string name="workout_kind_short_recovery">Rec</string>
+    <string name="workout_kind_short_tempo">T</string>
+    <string name="workout_kind_short_interval">Int</string>
+    <string name="workout_kind_short_marathon_pace">MP</string>
+    <string name="workout_kind_short_walk_run">W/R</string>
+    <string name="workout_kind_short_race">Race</string>
 
     <!-- ───────────── Notification ───────────── -->
     <string name="notif_recording_run">Recording run</string>

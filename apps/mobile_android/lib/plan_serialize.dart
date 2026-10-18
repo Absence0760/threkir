@@ -3,14 +3,13 @@
 /// web's plan export writes, so a plan exported on web, or a coach's
 /// hand-built table in the same shape, imports here to the same workouts.
 ///
-/// Dart twin of `apps/web/src/lib/training/plan_serialize.ts`, the PARSE
-/// half only (decisions § 2053): `parsePlanMarkdown` + `parsePlanJson`,
-/// with the header-aware Race / Priority / Goal columns and the legacy
-/// six-column positional table. The Markdown writer is ported privately,
-/// only because the JSON import is defined as "re-render as Markdown, then
-/// parse" on web. Keep the accepted cell forms, error messages, phase and
-/// volume recompute, goal-distance resolution and the mirrored test cases
-/// in lockstep.
+/// Dart twin of `apps/web/src/lib/training/plan_serialize.ts`: the parse
+/// half (decisions § 2053) — `parsePlanMarkdown` + `parsePlanJson`, with the
+/// header-aware Race / Priority / Goal columns and the legacy six-column
+/// positional table — and the export half, `planToMarkdown` + `planToJson`,
+/// behind plan detail's Export. Keep the accepted cell forms, error
+/// messages, phase and volume recompute, goal-distance resolution, the
+/// written format and the mirrored test cases in lockstep.
 ///
 /// Lossy by design, as on web: pace tolerance, structured intervals and
 /// duration steps are not in the table, so a parsed workout carries
@@ -109,6 +108,33 @@ String _sanitizeCell(String? s) {
 String _str(Object? v) => v == null ? '' : '$v';
 
 /// Web's `planToMarkdown`, over the decoded JSON export shape.
+/// The Markdown table web's plan export writes, for a plan in the export
+/// shape (`name`, `goalEvent`, `goalDistanceM`, `goalTimeSec`, `startDate`,
+/// `workouts`: maps keyed like `plan_workouts` plus a 0-based `week_index`).
+String planToMarkdown(Map<String, dynamic> plan) => _planToMarkdown(
+      name: plan['name'] as String,
+      goalEvent: plan['goalEvent'] as String,
+      goalDistanceM: plan['goalDistanceM'] as num,
+      goalTimeSec: plan['goalTimeSec'] as num?,
+      startDate: plan['startDate'] as String,
+      workouts: [
+        for (final w in plan['workouts'] as List) w as Map<String, dynamic>,
+      ],
+    );
+
+/// The JSON export: [plan] as web's `JSON.stringify(plan, null, 2)` writes
+/// it. A whole-number double is written as an integer, as JavaScript does,
+/// so `24000.0` reads `24000` in either app's file.
+String planToJson(Map<String, dynamic> plan) {
+  Object? jsNumbers(Object? v) => switch (v) {
+        double d when d.isFinite && d == d.truncateToDouble() => d.toInt(),
+        Map m => {for (final e in m.entries) e.key: jsNumbers(e.value)},
+        List l => [for (final x in l) jsNumbers(x)],
+        _ => v,
+      };
+  return const JsonEncoder.withIndent('  ').convert(jsNumbers(plan));
+}
+
 String _planToMarkdown({
   required String name,
   required String goalEvent,

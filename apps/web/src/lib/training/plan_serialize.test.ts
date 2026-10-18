@@ -185,6 +185,15 @@ test('parsePlanMarkdown defaults goalEvent to custom + infers distance from long
 
 // ─────────────────────── JSON round-trip ───────────────────────
 
+test('planToJson writes whole-number doubles as integers, as JSON.stringify does', () => {
+	// Pins the file format the mobile twin must reproduce: a Dart double
+	// 24000.0 would otherwise be written as "24000.0".
+	const json = planToJson({ ...SAMPLE, goalDistanceM: 42195.0, workouts: [{ ...SAMPLE.workouts[0], target_distance_m: 24000.0 }] });
+	assert.match(json, /"goalDistanceM": 42195,/);
+	assert.match(json, /"target_distance_m": 24000,/);
+	assert.ok(json.startsWith('{\n  "name": "Spring Marathon",'));
+});
+
 test('planToJson → parsePlanJson round-trips the workouts', () => {
 	const parsed = parsePlanJson(planToJson(SAMPLE));
 	assert.equal(parsed.name, SAMPLE.name);

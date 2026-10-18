@@ -458,6 +458,10 @@ configure time — and sign in: a `device_tokens` row should appear for your
 user. Receiving is only half; the send side is the Go worker's FCM credentials.
 See [`docs/features/native_push.md` § Operator provisioning](../../docs/features/native_push.md#operator-provisioning-the-credential-gate).
 
+### Today's-workout home-screen widget
+
+`TodayWorkoutWidgetProvider` (Android) draws today's planned session from a seven-day snapshot the app writes on every plan-overview read (`lib/today_widget.dart`, channel `run_app/home_widget`, contract `fixtures/today_widget_snapshot.json`). Every string arrives translated and unit-formatted from Dart. **To test:** sign in as `runner@test.com`, start a plan, long-press the home screen → Widgets → Threkir → **Today's workout**. It shows today's session (or rest / nothing scheduled / no plan); tapping opens that workout, the plan, or the plan list through `com.threkir.app://plans/...`. Mark the workout done or skipped in the app and the widget gains the badge on the next plan read. Set the device date forward a day: the widget rolls over without opening the app (midnight alarm plus the `TIME_SET` broadcast); eight days forward it says "Open Threkir to update". Sign out and it falls back to "Open Threkir to see today's workout". Resize it to one row for the compact layout. `adb shell am start -a android.intent.action.VIEW -d com.threkir.app://plans` exercises the deep link without the widget.
+
 ### Season planning
 
 Train → New plan → **Plan a season**. Add races with **Add a race** (name, race day, distance, priority, optional goal time `h:mm:ss`), set days per week, then **Confirm races and preview plans**: one plan per A race, each recovery gap, and any B/C race that falls in no plan. **Create** writes the plans in order and opens the first; the overlap prompt appears only when the first plan overlaps an active one. The **Describe your season** card shows only when the deploy's AI plan capability is on; any failure leaves a blank race to fill in. A season creates several active plans, so use a throwaway account or delete them afterwards.

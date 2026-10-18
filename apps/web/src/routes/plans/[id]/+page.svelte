@@ -1370,7 +1370,11 @@
 				</div>
 				<div class="hero-chips">
 					{#if plan.assigned_by_coach_id && plan.assigned_by_coach_id !== auth.user?.id}
-						<a class="chip chip-link" href="/coaching" data-testid="assigned-by-coach">
+						<a
+							class="chip chip-link"
+							href={assigningCoachName ? `/u/${plan.assigned_by_coach_id}` : '/coaching'}
+							data-testid="assigned-by-coach"
+						>
 							<span class="material-symbols" aria-hidden="true">sports</span>
 							{assigningCoachName
 								? m('planDetail.assignedBy', { name: assigningCoachName })

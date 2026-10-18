@@ -26,6 +26,7 @@
 		fetchMyActivePlanWindows,
 		shiftTrainingPlan,
 		changePlanRaceDate,
+		repeatPlanWeek,
 		pausePlan,
 		resumePlan,
 		updatePlanStatus,
@@ -37,6 +38,7 @@
 	import { planShiftImpact } from '#lib/training/plan_shift.ts';
 	import { planRaceDate, raceDateChange, type RaceDateChange, type RaceDateRefusal } from '#lib/training/plan_race_date.ts';
 	import { overlappingPlans } from '#lib/training/plan_current.ts';
+	import { repeatWeekChange, type RepeatWeekChange, type RepeatWeekRefusal } from '#lib/training/plan_repeat_week.ts';
 	import { workoutMoveDays } from '#lib/training/plan_move.ts';
 	import { startLocalDayTicker } from '#lib/format/local_day_ticker.ts';
 	import { cyclePlanWorkoutPatch, type CyclePlanConfig } from '#lib/training/cycle_plan.ts';
@@ -333,6 +335,7 @@
 		| { kind: 'pause' }
 		| { kind: 'resume' }
 		| { kind: 'raceDate'; change: RaceDateChange }
+		| { kind: 'repeat'; week: PlanWeek; change: RepeatWeekChange }
 		| null
 	>(null);
 
@@ -452,6 +455,94 @@
 			}
 		}
 		bulkConfirm = { kind: 'raceDate', change: result.change };
+	}
+
+	// ─── Repeat this week (owner-only) ───
+	/// The weeks a runner may run again: this week and the one that just
+	/// finished. Shown while the change is possible, or while it is refused
+	/// for a reason worth explaining (a race plan with no room, a done workout
+	/// in the way); hidden where it could never apply.
+	function repeatOffer(week: PlanWeek): ReturnType<typeof repeatWeekChange> | null {
+		if (!plan || !isOwner) return null;
+		const r = repeatWeekChange({ plan, weeks, workouts, weekId: week.id, todayIso: today });
+		if (r.ok || r.reason === 'no_room' || r.reason === 'in_the_way') return r;
+		return null;
+	}
+
+	function repeatWeekRefusalMessage(reason: RepeatWeekRefusal): string {
+		switch (reason) {
+			case 'no_room':
+				return m('planDetail.repeatWeekNoRoom');
+			case 'in_the_way':
+				return m('planDetail.repeatWeekInTheWay');
+			case 'last_week':
+				return m('planDetail.repeatWeekLastWeek');
+			default:
+				return m('planDetail.repeatWeekNotNow');
+		}
+	}
+
+	/// Work out the change, explain a refusal, and check a later end against
+	/// the runner's other active plans before asking. A failed check asks
+	/// nothing.
+	async function chooseRepeatWeek(week: PlanWeek): Promise<void> {
+		if (!plan) return;
+		const r = repeatWeekChange({ plan, weeks, workouts, weekId: week.id, todayIso: today });
+		if (!r.ok) {
+			showToast(repeatWeekRefusalMessage(r.reason), 'error');
+			return;
+		}
+		if (r.change.endIso > plan.end_date) {
+			let others: PlanName[];
+			try {
+				others = await fetchMyActivePlanWindows();
+			} catch (e) {
+				showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+				return;
+			}
+			const blocking = overlappingPlans(
+				others.filter((p) => p.id !== plan?.id),
+				plan.start_date,
+				r.change.endIso
+			);
+			if (blocking.length > 0) {
+				showToast(m('planDetail.repeatWeekBlocked', { plans: planNames(blocking) }), 'error');
+				return;
+			}
+		}
+		bulkConfirm = { kind: 'repeat', week, change: r.change };
+	}
+
+	function repeatWeekConfirmMessage(week: PlanWeek, change: RepeatWeekChange): string {
+		const params = {
+			n: week.week_index + 1,
+			copy: change.copyIndex + 1,
+			start: formatDateShort(change.copyStartIso)
+		};
+		if (change.raceDateIso && change.dropWeekIndex != null) {
+			return m('planDetail.repeatWeekConfirmRace', {
+				...params,
+				dropped: change.dropWeekIndex + 1,
+				race: fmtRaceDate(change.raceDateIso)
+			});
+		}
+		return m('planDetail.repeatWeekConfirmMessage', { ...params, end: formatDateShort(change.endIso) });
+	}
+
+	async function applyRepeatWeek(week: PlanWeek, change: RepeatWeekChange): Promise<void> {
+		if (!plan || bulkBusy) return;
+		bulkBusy = true;
+		try {
+			await repeatPlanWeek(plan.id, change, today);
+			showToast(
+				m('planDetail.repeatWeekDone', { n: week.week_index + 1, start: formatDateShort(change.copyStartIso) })
+			);
+			await load();
+		} catch (e) {
+			planWriteFailed(e);
+		} finally {
+			bulkBusy = false;
+		}
 	}
 
 	async function applyRaceDate(change: RaceDateChange): Promise<void> {
@@ -726,6 +817,7 @@
 		else if (c.kind === 'cycle') void applyCycleAdjustment();
 		else if (c.kind === 'pause') void doPausePlan();
 		else if (c.kind === 'raceDate') void applyRaceDate(c.change);
+		else if (c.kind === 'repeat') void applyRepeatWeek(c.week, c.change);
 		else void doResumePlan();
 	}
 
@@ -1967,6 +2059,24 @@
 			onSelect={openWorkout}
 		/>
 
+		{#if restartWalkRun && currentWeek && repeatOffer(currentWeek)?.ok}
+			<section class="repeat-week-offer" data-testid="repeat-week-offer">
+				<p>
+					<strong>{m('planDetail.repeatWeekOfferTitle')}</strong>
+					{m('planDetail.repeatWeekOfferBody')}
+				</p>
+				<button
+					type="button"
+					class="btn btn-secondary btn-sm"
+					disabled={bulkBusy}
+					onclick={() => currentWeek && chooseRepeatWeek(currentWeek)}
+				>
+					<span class="material-symbols" aria-hidden="true">replay</span>
+					{m('planDetail.repeatWeek')}
+				</button>
+			</section>
+		{/if}
+
 		{#if currentWeekDrift || missedLongRun}
 			<section class="adherence" aria-label={m('planDetail.adherenceAria')}>
 				{#if currentWeekDrift}
@@ -2172,6 +2282,19 @@
 								>
 									<span class="material-symbols">trending_down</span>
 									{m('planDetail.markRecovery')}
+								</button>
+							{/if}
+							{#if repeatOffer(w)}
+								<button
+									type="button"
+									class="week-recovery-btn"
+									data-testid="repeat-week-btn"
+									onclick={() => chooseRepeatWeek(w)}
+									disabled={bulkBusy}
+									title={m('planDetail.repeatWeekHint')}
+								>
+									<span class="material-symbols">replay</span>
+									{m('planDetail.repeatWeek')}
 								</button>
 							{/if}
 							{#if isOwner && !plan.is_template}
@@ -2603,6 +2726,8 @@
 		? m('planDetail.shiftConfirmTitle')
 		: bulkConfirm?.kind === 'raceDate'
 		? m('planDetail.raceDateConfirmTitle')
+		: bulkConfirm?.kind === 'repeat'
+		? m('planDetail.repeatWeekConfirmTitle', { n: bulkConfirm.week.week_index + 1 })
 		: bulkConfirm?.kind === 'recovery'
 			? m('planDetail.recoveryConfirmTitle')
 			: bulkConfirm?.kind === 'cycle'
@@ -2621,6 +2746,8 @@
 			: m('planDetail.shiftConfirmMessage', { n: Math.abs(shiftDays) })
 		: bulkConfirm?.kind === 'raceDate'
 		? raceDateConfirmMessage(bulkConfirm.change)
+		: bulkConfirm?.kind === 'repeat'
+		? repeatWeekConfirmMessage(bulkConfirm.week, bulkConfirm.change)
 		: bulkConfirm?.kind === 'recovery'
 			? m('planDetail.recoveryConfirmMessage', { n: bulkConfirm.week.week_index + 1 })
 			: bulkConfirm?.kind === 'duplicate'
@@ -2644,6 +2771,8 @@
 				plans: planNames(bulkConfirm.following),
 				n: Math.abs(shiftDays),
 			})
+		: bulkConfirm?.kind === 'repeat'
+		? m('planDetail.repeatWeekAction')
 		: m('planDetail.bulkConfirm')}
 	cancelLabel={m('planDetail.replanCancel')}
 	onconfirm={runBulkConfirm}
@@ -3058,6 +3187,27 @@
 		flex-direction: column;
 		gap: var(--space-sm);
 		margin-bottom: var(--space-md);
+	}
+	.repeat-week-offer {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-sm);
+		margin-bottom: var(--space-md);
+		padding: var(--space-sm) var(--space-md);
+		border-radius: var(--radius-md);
+		border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+		background: color-mix(in srgb, var(--color-primary) 8%, var(--color-bg));
+	}
+	.repeat-week-offer p {
+		margin: 0;
+		flex: 1 1 16rem;
+		font-size: 0.9rem;
+		line-height: 1.4;
+	}
+	.repeat-week-offer .material-symbols {
+		font-size: 1.1rem;
 	}
 	.adherence-flag {
 		display: flex;

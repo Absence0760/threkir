@@ -53,6 +53,7 @@ import type { RepacePatch } from '../training/plan_repace';
 import type { ResumeShift } from '../training/plan_resume';
 import type { RaceDateChange } from '../training/plan_race_date';
 import type { BreakChange } from '../training/plan_break';
+import type { RepeatWeekChange } from '../training/plan_repeat_week';
 import { shiftIsoDate } from '../training/plan_bulk_ops';
 import {
 	EVENT_PHOTO_WINDOW_AFTER_MS,
@@ -6439,6 +6440,24 @@ export async function reschedulePlanAfterBreak(
 		p_break_from: breakFromIso,
 		p_repeat_week_ids: change.repeatWeekIds,
 		p_drop_week_ids: change.dropWeekIds
+	});
+	if (error) throw dbError(error);
+}
+
+/// "Too hard? Repeat this week": runs the week again next week and pushes the
+/// rest back one, keeping race day by dropping `change.dropWeekId`
+/// (`repeatWeekChange`), in one transaction.
+export async function repeatPlanWeek(
+	planId: string,
+	change: RepeatWeekChange,
+	todayIso: string
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('repeat_plan_week', {
+		p_plan_id: planId,
+		p_today: todayIso,
+		p_week_id: change.weekId,
+		p_drop_week_id: change.dropWeekId
 	});
 	if (error) throw dbError(error);
 }

@@ -22,13 +22,11 @@ test.describe('Refused OAuth redirect', () => {
 	test('a refused link lands back on Sign-in methods with the reason and a way forward', async ({
 		page,
 	}) => {
-		// Only on the callback document: the marker is what linkProvider
-		// stashes before it hands off to GoTrue.
-		await page.addInitScript(() => {
-			if (location.pathname === '/auth/callback') {
-				sessionStorage.setItem('oauth_link_provider', 'google');
-			}
-		});
+		// The marker linkProvider stashes on Settings → Account before it hands
+		// off to GoTrue. Set once in the tab's session storage, as the app does,
+		// rather than from an init script that would put it back on every load.
+		await page.goto('/settings/account');
+		await page.evaluate(() => sessionStorage.setItem('oauth_link_provider', 'google'));
 
 		await page.goto(REFUSAL);
 

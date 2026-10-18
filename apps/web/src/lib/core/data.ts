@@ -51,6 +51,7 @@ import { mergeMyProgress } from '../social/challenge_list';
 import { selectEffectivePricing } from '../social/event_instance';
 import type { RepacePatch } from '../training/plan_repace';
 import type { ResumeShift } from '../training/plan_resume';
+import type { RaceDateChange } from '../training/plan_race_date';
 import { shiftIsoDate } from '../training/plan_bulk_ops';
 import {
 	EVENT_PHOTO_WINDOW_AFTER_MS,
@@ -6380,6 +6381,27 @@ export async function shiftTrainingPlan(
 		p_plan_id: planId,
 		p_days: days,
 		p_shift_following: shiftFollowing
+	});
+	if (error) throw dbError(error);
+}
+
+/// Re-anchor a plan on a new race date (`raceDateChange` picks the weeks;
+/// `change_plan_race_date` applies them in one transaction, decisions § 2120).
+export async function changePlanRaceDate(
+	planId: string,
+	change: RaceDateChange,
+	todayIso: string
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('change_plan_race_date', {
+		p_plan_id: planId,
+		p_race_date: change.raceDateIso,
+		p_today: todayIso,
+		p_drop_week_ids: change.dropWeekIds,
+		p_insert_at: change.insertAt,
+		p_insert_count: change.insertCount,
+		p_repeat_week_id: change.repeatWeekId,
+		p_race_workout_id: change.raceWorkoutId
 	});
 	if (error) throw dbError(error);
 }

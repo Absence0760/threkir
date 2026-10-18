@@ -36,6 +36,25 @@
     <string name="complication_desc_recording">記録中、経過 %1$s、%2$s</string>
     <string name="complication_desc_paused">一時停止 %1$s、%2$s</string>
     <string name="complication_desc_last_run">前回のラン %1$s、%2$s</string>
+    <string name="tile_today">今日</string>
+    <string name="complication_today_short">今日</string>
+    <string name="complication_desc_today">今日のワークアウト: %1$s、%2$s</string>
+    <string name="workout_kind_easy">イージー</string>
+    <string name="workout_kind_long">ロング走</string>
+    <string name="workout_kind_recovery">リカバリー</string>
+    <string name="workout_kind_tempo">テンポ</string>
+    <string name="workout_kind_interval">インターバル</string>
+    <string name="workout_kind_marathon_pace">マラソンペース</string>
+    <string name="workout_kind_walk_run">ウォークラン</string>
+    <string name="workout_kind_race">レース</string>
+    <string name="workout_kind_short_easy">E</string>
+    <string name="workout_kind_short_long">L</string>
+    <string name="workout_kind_short_recovery">回復</string>
+    <string name="workout_kind_short_tempo">T</string>
+    <string name="workout_kind_short_interval">IV</string>
+    <string name="workout_kind_short_marathon_pace">MP</string>
+    <string name="workout_kind_short_walk_run">WR</string>
+    <string name="workout_kind_short_race">本番</string>
 
     <string name="notif_recording_run">ランを記録中</string>
     <string name="notif_paused">一時停止中</string>

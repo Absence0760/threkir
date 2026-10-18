@@ -109,7 +109,10 @@ apps/watch_wear/
             │   │   ├── BatteryStatus.kt         # capacity reading for pre-run warning
             │   │   └── NetworkWatcher.kt        # ConnectivityManager.NetworkCallback flow
             │   ├── tiles/
-            │   │   └── ActiveRunTileService.kt  # active-run tile (Wear Tiles + ProtoLayout)
+            │   │   ├── ActiveRunTileService.kt  # active-run tile (Wear Tiles + ProtoLayout); idle state shows today's workout until local midnight
+            │   │   ├── TodayWorkoutGlance.kt    # pure: today's workout for the tile + complication (offer rule, "6 × 400 m" headline, day end)
+            │   │   ├── TodayGlanceSource.kt     # local reads behind it (Data Layer item + LastRunStore), fail-to-idle
+            │   │   └── TodaysWorkoutListenerService.kt  # wakes on a `/todays_workout` push, refreshes tile + complication
             │   ├── complications/
             │   │   ├── ActiveRunComplicationService.kt  # watch-face complication data source
             │   │   ├── RunComplicationContent.kt        # pure: what the slot shows + push cadence

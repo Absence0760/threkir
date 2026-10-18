@@ -37,6 +37,25 @@
     <string name="complication_desc_recording">Aufzeichnung, %1$s vergangen, %2$s</string>
     <string name="complication_desc_paused">Pausiert bei %1$s, %2$s</string>
     <string name="complication_desc_last_run">Letzter Lauf: %1$s in %2$s</string>
+    <string name="tile_today">HEUTE</string>
+    <string name="complication_today_short">Heute</string>
+    <string name="complication_desc_today">Heutiges Training: %1$s, %2$s</string>
+    <string name="workout_kind_easy">Locker</string>
+    <string name="workout_kind_long">Langer Lauf</string>
+    <string name="workout_kind_recovery">Erholung</string>
+    <string name="workout_kind_tempo">Tempo</string>
+    <string name="workout_kind_interval">Intervalle</string>
+    <string name="workout_kind_marathon_pace">Marathontempo</string>
+    <string name="workout_kind_walk_run">Geh-Lauf</string>
+    <string name="workout_kind_race">Wettkampf</string>
+    <string name="workout_kind_short_easy">Lo</string>
+    <string name="workout_kind_short_long">LL</string>
+    <string name="workout_kind_short_recovery">Erh</string>
+    <string name="workout_kind_short_tempo">T</string>
+    <string name="workout_kind_short_interval">Int</string>
+    <string name="workout_kind_short_marathon_pace">MT</string>
+    <string name="workout_kind_short_walk_run">G/L</string>
+    <string name="workout_kind_short_race">WK</string>
 
     <string name="notif_recording_run">Lauf wird aufgezeichnet</string>
     <string name="notif_paused">Pausiert</string>

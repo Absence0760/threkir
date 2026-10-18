@@ -37,6 +37,25 @@
     <string name="complication_desc_recording">Enregistrement, %1$s écoulé, %2$s</string>
     <string name="complication_desc_paused">En pause à %1$s, %2$s</string>
     <string name="complication_desc_last_run">Dernière course : %1$s en %2$s</string>
+    <string name="tile_today">AUJOURD\'HUI</string>
+    <string name="complication_today_short">Auj.</string>
+    <string name="complication_desc_today">Séance du jour : %1$s, %2$s</string>
+    <string name="workout_kind_easy">Facile</string>
+    <string name="workout_kind_long">Sortie longue</string>
+    <string name="workout_kind_recovery">Récupération</string>
+    <string name="workout_kind_tempo">Tempo</string>
+    <string name="workout_kind_interval">Fractionné</string>
+    <string name="workout_kind_marathon_pace">Allure marathon</string>
+    <string name="workout_kind_walk_run">Marche-course</string>
+    <string name="workout_kind_race">Course</string>
+    <string name="workout_kind_short_easy">EF</string>
+    <string name="workout_kind_short_long">SL</string>
+    <string name="workout_kind_short_recovery">Réc</string>
+    <string name="workout_kind_short_tempo">T</string>
+    <string name="workout_kind_short_interval">Fr</string>
+    <string name="workout_kind_short_marathon_pace">AM</string>
+    <string name="workout_kind_short_walk_run">M/C</string>
+    <string name="workout_kind_short_race">Crs</string>
 
     <string name="notif_recording_run">Enregistrement de la course</string>
     <string name="notif_paused">En pause</string>

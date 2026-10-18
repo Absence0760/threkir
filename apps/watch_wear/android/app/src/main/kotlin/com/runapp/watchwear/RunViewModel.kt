@@ -649,6 +649,17 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         _state.value = _state.value.copy(todaysWorkout = offered)
     }
 
+    /// The "today" tile's tap: land on the pre-run screen with [planWorkoutId]
+    /// armed, even if the runner had switched the chip to a free run earlier
+    /// in this process. Only when it is still the workout on offer — a tap on
+    /// a tile rendered before midnight, or before a newer push, arms nothing.
+    fun followWorkoutFromTile(planWorkoutId: String) {
+        if (_state.value.stage != Stage.PreRun) return
+        refreshTodaysWorkout()
+        if (_state.value.todaysWorkout?.planWorkoutId != planWorkoutId) return
+        _state.value = _state.value.copy(followWorkout = true)
+    }
+
     /// The pre-run chip: follow today's workout, or run free.
     fun toggleFollowWorkout() {
         if (_state.value.stage != Stage.PreRun) return
@@ -1915,12 +1926,14 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     durationS = durationS,
                     unit = if (m.preferredUnit == com.runapp.watchwear.recording.DistanceUnit.MI) "mi" else "km",
                     finishedAtMs = System.currentTimeMillis(),
+                    planWorkoutId = m.workoutReview?.planWorkoutId,
                 ),
             )
         } catch (e: Throwable) {
             Log.w(TAG, "last run not kept for the complication", e)
         }
         com.runapp.watchwear.complications.ActiveRunComplicationService.requestUpdate(getApplication())
+        com.runapp.watchwear.tiles.ActiveRunTileService.requestUpdate(getApplication())
     }
 
     private suspend fun forgetLastRun(clear: suspend () -> Unit) {
@@ -1930,6 +1943,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             Log.w(TAG, "last run not cleared from the complication", e)
         }
         com.runapp.watchwear.complications.ActiveRunComplicationService.requestUpdate(getApplication())
+        com.runapp.watchwear.tiles.ActiveRunTileService.requestUpdate(getApplication())
     }
 
     fun sync() {

@@ -2,14 +2,16 @@ package com.runapp.watchwear.complications
 
 import com.runapp.watchwear.recording.DistanceUnit
 import com.runapp.watchwear.recording.RecordingRepository
+import com.runapp.watchwear.tiles.PlanKind
+import com.runapp.watchwear.tiles.TodayGlance
 import com.runapp.watchwear.tiles.formatDistanceLabel
 import com.runapp.watchwear.tiles.formatElapsed
 import com.runapp.watchwear.tiles.formatPaceSecPerUnit
 import java.util.Locale
 import kotlinx.serialization.Serializable
 
-/// The four things the watch-face complication can be showing.
-internal enum class ComplicationState { RECORDING, PAUSED, LAST_RUN, NO_RUN }
+/// The five things the watch-face complication can be showing.
+internal enum class ComplicationState { RECORDING, PAUSED, TODAY, LAST_RUN, NO_RUN }
 
 /// What the complication shows, decided without any Android type so the
 /// choice is pinned on the host JVM. `ActiveRunComplicationService` maps it
@@ -27,6 +29,8 @@ internal data class RunComplicationContent(
     val elapsed: String = "",
     val liveSinceEpochMs: Long? = null,
     val detail: String = "",
+    /// Set only for [ComplicationState.TODAY]: the planned session's kind.
+    val kind: PlanKind? = null,
 )
 
 /// The last run this watch recorded, as `LastRunStore` keeps it. The unit is
@@ -41,6 +45,10 @@ internal data class LastRun(
     val durationS: Int,
     val unit: String,
     val finishedAtMs: Long,
+    /// The plan workout the run followed, when it followed one, so the
+    /// "today" glances stop offering a session this watch already ran.
+    /// Defaulted: an entry written before the field existed still decodes.
+    val planWorkoutId: String? = null,
 )
 
 /// Decide the complication's content from what the watch knows locally.
@@ -94,6 +102,19 @@ internal fun complicationContent(
         detail = "$distance · $elapsed",
     )
 }
+
+/// Today's planned workout, for the idle complication. The service serves it
+/// as a timeline entry that ends at [TodayGlance.validUntilEpochMs], over the
+/// [complicationContent] it would otherwise show, so at midnight the face
+/// drops back to the last run on its own and never shows yesterday's session
+/// as today's. A live run never gets here: the service asks for this only
+/// when no run is active.
+internal fun todayComplicationContent(glance: TodayGlance): RunComplicationContent =
+    RunComplicationContent(
+        state = ComplicationState.TODAY,
+        detail = glance.headline,
+        kind = glance.kind,
+    )
 
 /// The fixed sample the watch-face editor shows before the complication is
 /// placed. The platform caches it and expects it constant per locale, so it

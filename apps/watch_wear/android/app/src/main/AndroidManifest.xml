@@ -111,6 +111,23 @@
                 android:resource="@drawable/tile_active_run_preview" />
         </service>
 
+        <!-- Wakes on a new today's-workout push from the phone and asks the
+             tile and the complication to re-read it; the live listener in
+             WorkoutBridge only exists while the app is open. exported=true is
+             required for Play services to deliver; the filter limits the
+             wake-up to the one Data Layer path. -->
+        <service
+            android:name=".tiles.TodaysWorkoutListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:path="/todays_workout" />
+            </intent-filter>
+        </service>
+
         <!-- Watch-face complication: the live run, or the last run this watch
              recorded. BIND_COMPLICATION_PROVIDER is enforced by the platform,
              so only the complication host can bind and exported=true is safe

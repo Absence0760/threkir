@@ -38,6 +38,12 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # `supabase functions deploy` bundles in a local edge-runtime container,
+  # and the CLI pulls it from public.ecr.aws by default. ECR Public caps
+  # anonymous pulls per shared runner IP, which split backend@1.0.28 in half:
+  # migrations applied, then no function deployed. Same remedy and same
+  # mirror as ci.yml's setting of this variable (decisions § 2113).
+  SUPABASE_INTERNAL_IMAGE_REGISTRY: ghcr.io
 
 jobs:
   deploy:
@@ -101,11 +107,6 @@ jobs:
           # confirmation and password-reset mail when the function is absent.
           # `supabase functions deploy` reads each function's verify_jwt from
           # config.toml, so no per-function flags are needed here.
-          # --use-api bundles on Supabase's side. The Docker bundler pulls
-          # edge-runtime from public ECR anonymously, and that pull was refused
-          # (`toomanyrequests`) twice running on backend@1.0.28, leaving the
-          # new migrations live with none of the functions deployed
-          # (decisions § 2112).
           shopt -s nullglob
           deployed=0
           for dir in supabase/functions/*/; do
@@ -113,7 +114,7 @@ jobs:
             [ "$fn" = "_shared" ] && continue
             [ -f "$dir/index.ts" ] || continue
             echo "::group::deploy $fn"
-            supabase functions deploy "$fn" --use-api --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+            supabase functions deploy "$fn" --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
             echo "::endgroup::"
             deployed=$((deployed + 1))
           done

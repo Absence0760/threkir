@@ -711,48 +711,22 @@ class TrainingService extends ChangeNotifier {
 
   Future<({TrainingPlanRow? plan, List<PlanWeekRow> weeks, List<PlanWorkoutRow> workouts})>
       fetchPlan(String id) async {
-    final planRow = await _c
+    // One round trip, not three: the detail screen gives the whole load one
+    // timeout, and three sequential queries spent it three times over on a
+    // slow link.
+    final row = await _c
         .from('training_plans')
-        .select()
+        .select('*, plan_weeks(*, plan_workouts(*))')
         .eq('id', id)
         .maybeSingle();
-    if (planRow == null) {
+    if (row == null) {
       return (
         plan: null,
         weeks: <PlanWeekRow>[],
         workouts: <PlanWorkoutRow>[],
       );
     }
-    final weekRows = await _c
-        .from('plan_weeks')
-        .select()
-        .eq('plan_id', id)
-        .order('week_index', ascending: true);
-    final weeks = (weekRows as List)
-        .cast<Map<String, dynamic>>()
-        .map(PlanWeekRow.fromJson)
-        .toList();
-    if (weeks.isEmpty) {
-      return (
-        plan: TrainingPlanRow.fromJson(planRow),
-        weeks: <PlanWeekRow>[],
-        workouts: <PlanWorkoutRow>[],
-      );
-    }
-    final woRows = await _c
-        .from('plan_workouts')
-        .select()
-        .inFilter('week_id', weeks.map((w) => w.id).toList())
-        .order('scheduled_date', ascending: true);
-    final workouts = (woRows as List)
-        .cast<Map<String, dynamic>>()
-        .map(PlanWorkoutRow.fromJson)
-        .toList();
-    return (
-      plan: TrainingPlanRow.fromJson(planRow),
-      weeks: weeks,
-      workouts: workouts,
-    );
+    return planDetailFromRow(row);
   }
 
   /// Who owns a plan, for the "updated by your coach" line on a workout
@@ -1361,4 +1335,26 @@ class PlanWorkoutLinkCandidate {
         targetDurationSeconds: (json['target_duration_seconds'] as num?)?.toInt(),
         dayOffset: (json['day_offset'] as num).toInt(),
       );
+}
+
+/// Splits one `training_plans` row carrying a `plan_weeks(*, plan_workouts(*))`
+/// embed into the plan, its weeks and its workouts. Ordered here because an
+/// embed is ordered per parent, so neither list arrives in plan order.
+({TrainingPlanRow plan, List<PlanWeekRow> weeks, List<PlanWorkoutRow> workouts})
+    planDetailFromRow(Map<String, dynamic> row) {
+  final planRow = Map<String, dynamic>.of(row);
+  final weekRows = ((planRow.remove('plan_weeks') as List?) ?? const [])
+      .cast<Map<String, dynamic>>();
+  final weeks = <PlanWeekRow>[];
+  final workouts = <PlanWorkoutRow>[];
+  for (final w in weekRows) {
+    final weekRow = Map<String, dynamic>.of(w);
+    final woRows = ((weekRow.remove('plan_workouts') as List?) ?? const [])
+        .cast<Map<String, dynamic>>();
+    weeks.add(PlanWeekRow.fromJson(weekRow));
+    workouts.addAll(woRows.map(PlanWorkoutRow.fromJson));
+  }
+  weeks.sort((a, b) => a.weekIndex.compareTo(b.weekIndex));
+  workouts.sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
+  return (plan: TrainingPlanRow.fromJson(planRow), weeks: weeks, workouts: workouts);
 }

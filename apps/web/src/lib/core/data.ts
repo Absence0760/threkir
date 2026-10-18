@@ -5988,38 +5988,29 @@ export async function fetchPlan(id: string): Promise<{
 	workouts: PlanWorkout[];
 	error: string | null;
 }> {
-	const [planRes, weeksRes] = await Promise.all([
-		supabase.from('training_plans').select('*').eq('id', id).maybeSingle(),
-		supabase
-			.from('plan_weeks')
-			.select('*')
-			.eq('plan_id', id)
-			.order('week_index', { ascending: true })
-	]);
+	// One round trip: the embed needs no `in (...)` list of week ids, so no
+	// chunking either. Ordered here because an embed's order is per parent.
+	const { data, error } = await supabase
+		.from('training_plans')
+		.select('*, plan_weeks(*, plan_workouts(*))')
+		.eq('id', id)
+		.maybeSingle();
 	// Surface a query error so the detail page can show a "couldn't load —
 	// retry" state instead of the not-found page (a real error otherwise
-	// reads as a missing plan when the rows just come back null).
-	const error = planRes.error?.message ?? weeksRes.error?.message ?? null;
-	const plan = (planRes.data ?? null) as TrainingPlan | null;
-	const weeks = (weeksRes.data ?? []) as PlanWeek[];
-	if (!plan || weeks.length === 0) {
-		return { plan, weeks, workouts: [], error };
+	// reads as a missing plan when the row just comes back null).
+	if (!data) return { plan: null, weeks: [], workouts: [], error: error?.message ?? null };
+	const { plan_weeks: weekRows, ...plan } = data;
+	const weeks: PlanWeek[] = [];
+	const workouts: PlanWorkout[] = [];
+	for (const { plan_workouts: woRows, ...week } of weekRows ?? []) {
+		weeks.push(week as PlanWeek);
+		workouts.push(...((woRows ?? []) as PlanWorkout[]));
 	}
-	const weekIds = weeks.map((w) => w.id);
-	const { data: woData, error: woErr } = await queryChunked(weekIds, (part) =>
-		supabase.from('plan_workouts').select('*').in('week_id', part)
+	weeks.sort((a, b) => a.week_index - b.week_index);
+	workouts.sort((a, b) =>
+		a.scheduled_date < b.scheduled_date ? -1 : a.scheduled_date > b.scheduled_date ? 1 : 0
 	);
-	// Ordered here rather than per chunk: each chunk's order says nothing
-	// about where its rows sit against another chunk's.
-	const workouts = ((woData ?? []) as PlanWorkout[])
-		.slice()
-		.sort((a, b) => (a.scheduled_date < b.scheduled_date ? -1 : a.scheduled_date > b.scheduled_date ? 1 : 0));
-	return {
-		plan,
-		weeks,
-		workouts,
-		error: error ?? woErr?.message ?? null
-	};
+	return { plan: plan as TrainingPlan, weeks, workouts, error: null };
 }
 
 export async function fetchWorkout(

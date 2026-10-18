@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/training_service.dart';
@@ -76,5 +78,188 @@ void main() {
       expect(h.efforts, isEmpty);
     });
   });
+
+  group('planDetailFromRow', () {
+    // A real `training_plans` row with its `plan_weeks(*, plan_workouts(*))`
+    // embed, captured from the local stack and trimmed to two weeks of two
+    // workouts — then reversed, because an embed is only ordered per parent.
+    Map<String, dynamic> row() => jsonDecode(_embeddedPlan) as Map<String, dynamic>;
+
+    test('splits the embed into plan, weeks and workouts, in plan order', () {
+      final d = planDetailFromRow(row());
+      expect(d.plan.name, 'Richmond Half 2026');
+      expect(d.weeks.map((w) => w.weekIndex), [0, 1]);
+      expect(d.workouts.map((w) => w.scheduledDate.toIso8601String().substring(0, 10)),
+          ['2026-09-30', '2026-10-01', '2026-10-07', '2026-10-08']);
+      expect(d.workouts.every((w) => d.weeks.any((wk) => wk.id == w.weekId)), isTrue);
+    });
+
+    test('leaves the caller\'s row untouched', () {
+      final r = row();
+      planDetailFromRow(r);
+      expect(r.containsKey('plan_weeks'), isTrue);
+      expect((r['plan_weeks'] as List).first, contains('plan_workouts'));
+    });
+
+    test('a plan with no weeks, or a week with no workouts, is empty not null', () {
+      final noWeeks = row()..['plan_weeks'] = <dynamic>[];
+      expect(planDetailFromRow(noWeeks).weeks, isEmpty);
+      expect(planDetailFromRow(noWeeks).workouts, isEmpty);
+
+      final emptyWeek = row();
+      for (final w in emptyWeek['plan_weeks'] as List) {
+        (w as Map<String, dynamic>)['plan_workouts'] = <dynamic>[];
+      }
+      final d = planDetailFromRow(emptyWeek);
+      expect(d.weeks, hasLength(2));
+      expect(d.workouts, isEmpty);
+    });
+  });
 }
 
+const _embeddedPlan = r'''
+{
+  "id": "a1a1eada-aaaa-0000-0000-000000000001",
+  "user_id": "00000000-0000-0000-0000-000000000001",
+  "name": "Richmond Half 2026",
+  "goal_event": "distance_half",
+  "goal_distance_m": 21097.5,
+  "goal_time_seconds": 5700,
+  "start_date": "2026-09-30",
+  "end_date": "2026-12-22",
+  "days_per_week": 5,
+  "vdot": 52.0,
+  "current_5k_seconds": 1320,
+  "status": "active",
+  "notes": "Goal race: Richmond Half Marathon, 2026-06-21.",
+  "created_at": "2026-10-17T03:10:26.208153+00:00",
+  "updated_at": "2026-10-17T03:13:28.353722+00:00",
+  "source": "manual",
+  "rules": [
+    "80% of weekly mileage should be easy",
+    "Never increase weekly volume more than 10% week-over-week",
+    "Long run is non-negotiable \u2014 protect Sunday",
+    "Sleep 8 hours through build weeks"
+  ],
+  "is_template": false,
+  "parent_template_id": null,
+  "club_id": null,
+  "assigned_by_coach_id": null,
+  "is_public_template": false,
+  "trimmed_at": null,
+  "plan_weeks": [
+    {
+      "id": "a0aa0002-0000-0000-0000-000000000002",
+      "notes": null,
+      "phase": "base",
+      "plan_id": "a1a1eada-aaaa-0000-0000-000000000001",
+      "week_index": 1,
+      "plan_workouts": [
+        {
+          "id": "95535e98-0c37-4c75-b473-f279b842445e",
+          "kind": "rest",
+          "notes": null,
+          "week_id": "a0aa0002-0000-0000-0000-000000000002",
+          "pace_zone": null,
+          "race_name": null,
+          "structure": null,
+          "skipped_at": null,
+          "updated_at": "2026-10-17T03:10:26.208153+00:00",
+          "updated_by": null,
+          "completed_at": null,
+          "race_priority": null,
+          "scheduled_date": "2026-10-08",
+          "completed_run_id": null,
+          "target_distance_m": null,
+          "manually_completed": false,
+          "race_taper_applied_at": null,
+          "target_pace_sec_per_km": null,
+          "target_duration_seconds": null,
+          "target_pace_tolerance_sec": null,
+          "target_pace_end_sec_per_km": null
+        },
+        {
+          "id": "acc8d833-12ea-4a17-8453-cded80e72575",
+          "kind": "long",
+          "notes": null,
+          "week_id": "a0aa0002-0000-0000-0000-000000000002",
+          "pace_zone": "E",
+          "race_name": null,
+          "structure": null,
+          "skipped_at": null,
+          "updated_at": "2026-10-17T03:10:26.208153+00:00",
+          "updated_by": null,
+          "completed_at": null,
+          "race_priority": null,
+          "scheduled_date": "2026-10-07",
+          "completed_run_id": null,
+          "target_distance_m": 15000.0,
+          "manually_completed": false,
+          "race_taper_applied_at": null,
+          "target_pace_sec_per_km": 325,
+          "target_duration_seconds": null,
+          "target_pace_tolerance_sec": 20,
+          "target_pace_end_sec_per_km": null
+        }
+      ],
+      "target_volume_m": 45000.0
+    },
+    {
+      "id": "a0aa0001-0000-0000-0000-000000000001",
+      "notes": null,
+      "phase": "base",
+      "plan_id": "a1a1eada-aaaa-0000-0000-000000000001",
+      "week_index": 0,
+      "plan_workouts": [
+        {
+          "id": "3e9fed34-1bc5-4cef-8ea4-d5db70c2cbb1",
+          "kind": "rest",
+          "notes": null,
+          "week_id": "a0aa0001-0000-0000-0000-000000000001",
+          "pace_zone": null,
+          "race_name": null,
+          "structure": null,
+          "skipped_at": null,
+          "updated_at": "2026-10-17T03:10:26.208153+00:00",
+          "updated_by": null,
+          "completed_at": null,
+          "race_priority": null,
+          "scheduled_date": "2026-10-01",
+          "completed_run_id": null,
+          "target_distance_m": null,
+          "manually_completed": false,
+          "race_taper_applied_at": null,
+          "target_pace_sec_per_km": null,
+          "target_duration_seconds": null,
+          "target_pace_tolerance_sec": null,
+          "target_pace_end_sec_per_km": null
+        },
+        {
+          "id": "6179d2e4-cd47-470d-a02e-9fbcd34519b1",
+          "kind": "long",
+          "notes": null,
+          "week_id": "a0aa0001-0000-0000-0000-000000000001",
+          "pace_zone": "E",
+          "race_name": null,
+          "structure": null,
+          "skipped_at": null,
+          "updated_at": "2026-10-17T03:10:26.208153+00:00",
+          "updated_by": null,
+          "completed_at": null,
+          "race_priority": null,
+          "scheduled_date": "2026-09-30",
+          "completed_run_id": null,
+          "target_distance_m": 12000.0,
+          "manually_completed": false,
+          "race_taper_applied_at": null,
+          "target_pace_sec_per_km": 330,
+          "target_duration_seconds": null,
+          "target_pace_tolerance_sec": 20,
+          "target_pace_end_sec_per_km": null
+        }
+      ],
+      "target_volume_m": 40000.0
+    }
+  ]
+}
+''';

@@ -1274,9 +1274,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
 
   /// Moves the plan's race to a day the runner picks: the weeks still ahead
   /// are re-anchored so the plan ends on it, build weeks added or cut and the
-  /// taper kept (`raceDateChange`, decisions § 2120). A day the plan cannot
-  /// reach with its taper is refused before anything is asked. Web twin:
-  /// `chooseRaceDate` on the plan page.
+  /// taper kept (`raceDateChange`). A day the plan cannot reach with its
+  /// taper, or a later end that runs into another active plan, is refused
+  /// before anything is asked.
   Future<void> _changeRaceDate(TrainingPlanRow p) async {
     if (_bulkBusy) return;
     final current = _raceDateOffer(p);
@@ -1316,6 +1316,30 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     if (!result.ok) {
       showTopBanner(context, _raceDateRefusal(l10n, result, date, locale));
       return;
+    }
+    if (p.status == 'active' && date.compareTo(toIsoDate(p.endDate)) > 0) {
+      final List<TrainingPlanRow> others;
+      try {
+        others = [
+          for (final o in await widget.training
+              .fetchActivePlans()
+              .timeout(kBackendLoadTimeout))
+            if (o.id != p.id) o
+        ];
+      } catch (e) {
+        debugPrint('plan race date overlap check failed: $e');
+        if (mounted) {
+          showTopBanner(
+              context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+        }
+        return;
+      }
+      if (!mounted) return;
+      if (overlappingActivePlans(others, toIsoDate(p.startDate), date)
+          .isNotEmpty) {
+        showTopBanner(context, l10n.planDetailRaceDateOverlap);
+        return;
+      }
     }
     final change = result.change!;
     final shown = formatDateShort(parseIsoDate(date), locale);

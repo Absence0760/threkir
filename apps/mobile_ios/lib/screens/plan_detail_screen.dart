@@ -253,8 +253,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   }
 
   Future<void> _load() async {
+    // A plan already on screen stays there while it refreshes: no full-body
+    // loader, no scroll reset, and a failed refresh is a banner over the
+    // stale plan rather than an error page in its place.
+    final refreshing = _plan != null;
     setState(() {
-      _loading = true;
+      if (!refreshing) _loading = true;
       _error = null;
     });
     try {
@@ -276,22 +280,28 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       _loadPublishedState();
       _loadCoachesOwner();
       _loadAssigningCoach();
-    } on TimeoutException catch (e) {
-      debugPrint('PlanDetailScreen._load timed out: $e');
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = _PlanDetailLoadError.timeout;
-        });
-      }
     } catch (e, s) {
       debugPrint('PlanDetailScreen._load failed: $e\n$s');
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = _PlanDetailLoadError.generic;
-        });
+      if (!mounted) return;
+      final kind = e is TimeoutException
+          ? _PlanDetailLoadError.timeout
+          : classifyAuthError(e) == AuthErrorKind.offline
+              ? _PlanDetailLoadError.offline
+              : _PlanDetailLoadError.generic;
+      if (refreshing) {
+        final l10n = AppLocalizations.of(context);
+        showTopBanner(
+          context,
+          kind == _PlanDetailLoadError.generic
+              ? l10n.commonStaleRefreshFailed
+              : l10n.commonStaleOffline,
+        );
+        return;
       }
+      setState(() {
+        _loading = false;
+        _error = kind;
+      });
     }
   }
 
@@ -1063,9 +1073,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       return Scaffold(
         appBar: AppBar(),
         body: ErrorState(
-            message: _error == _PlanDetailLoadError.timeout
-                ? l10n.planDetailTimeoutError
-                : l10n.planDetailLoadError,
+            message: switch (_error!) {
+              _PlanDetailLoadError.timeout => l10n.planDetailTimeoutError,
+              _PlanDetailLoadError.offline => l10n.authErrorOffline,
+              _PlanDetailLoadError.generic => l10n.planDetailLoadError,
+            },
             onRetry: _load),
       );
     }
@@ -2220,6 +2232,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
           training: widget.training,
           planId: widget.planId,
           workoutId: wo.id,
+          initial: wo,
         ),
       ),
     );
@@ -2237,7 +2250,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   }
 }
 
-enum _PlanDetailLoadError { timeout, generic }
+enum _PlanDetailLoadError { timeout, offline, generic }
 
 // A workout row carries a 4 dp top margin, so the dash is drawn below it.
 class _TopInsetDashedOutline extends CustomPainter {

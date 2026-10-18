@@ -17678,4 +17678,12 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get planCalendarFeedPrivacy =>
       'Quien tenga el enlace puede ver las fechas, tipos y objetivos de tus entrenamientos. No incluye ubicación, notas ni el nombre del plan. Crea un enlace nuevo si lo compartiste por error.';
+
+  @override
+  String get commonStaleOffline =>
+      'No tienes conexión. Se muestra lo último que se cargó.';
+
+  @override
+  String get commonStaleRefreshFailed =>
+      'No se pudo actualizar. Se muestra lo último que se cargó.';
 }

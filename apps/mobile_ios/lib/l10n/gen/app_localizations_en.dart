@@ -17498,4 +17498,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get planCalendarFeedPrivacy =>
       'Anyone with the link can see your workout dates, types and targets. It carries no location, notes or plan name. Make a new link if you shared it by mistake.';
+
+  @override
+  String get commonStaleOffline =>
+      'You\'re offline. Showing what was last loaded.';
+
+  @override
+  String get commonStaleRefreshFailed =>
+      'Couldn\'t refresh. Showing what was last loaded.';
 }

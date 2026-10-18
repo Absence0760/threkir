@@ -17718,4 +17718,12 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get planCalendarFeedPrivacy =>
       'Toute personne disposant du lien voit les dates, types et objectifs de vos séances. Il ne contient ni lieu, ni notes, ni nom de plan. Créez un nouveau lien si vous l\'avez partagé par erreur.';
+
+  @override
+  String get commonStaleOffline =>
+      'Vous êtes hors ligne. Affichage des dernières données chargées.';
+
+  @override
+  String get commonStaleRefreshFailed =>
+      'Actualisation impossible. Affichage des dernières données chargées.';
 }

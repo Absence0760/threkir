@@ -5001,5 +5001,7 @@
   "planCalendarFeedRotateMessage": "O link atual deixa de funcionar na hora. Um calendário assinado nele para de atualizar até você assinar de novo com o novo link.",
   "planCalendarFeedRevokeTitle": "Desativar o link de calendário?",
   "planCalendarFeedRevokeMessage": "O link deixa de funcionar na hora e os calendários assinados param de atualizar. Eventos já copiados podem ficar até o calendário atualizar.",
-  "planCalendarFeedPrivacy": "Quem tiver o link vê as datas, os tipos e as metas dos seus treinos. Ele não traz local, anotações nem o nome do plano. Crie um novo link se você o compartilhou por engano."
+  "planCalendarFeedPrivacy": "Quem tiver o link vê as datas, os tipos e as metas dos seus treinos. Ele não traz local, anotações nem o nome do plano. Crie um novo link se você o compartilhou por engano.",
+  "commonStaleOffline": "Você está offline. Mostrando o que foi carregado por último.",
+  "commonStaleRefreshFailed": "Não foi possível atualizar. Mostrando o que foi carregado por último."
 }

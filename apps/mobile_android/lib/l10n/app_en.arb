@@ -23158,5 +23158,13 @@
   "planCalendarFeedPrivacy": "Anyone with the link can see your workout dates, types and targets. It carries no location, notes or plan name. Make a new link if you shared it by mistake.",
   "@planCalendarFeedPrivacy": {
     "description": "Privacy note: what someone holding the link can and cannot see"
+  },
+  "commonStaleOffline": "You're offline. Showing what was last loaded.",
+  "@commonStaleOffline": {
+    "description": "Top banner when a screen already showing data fails to refresh because the device is offline; the old data stays on screen"
+  },
+  "commonStaleRefreshFailed": "Couldn't refresh. Showing what was last loaded.",
+  "@commonStaleRefreshFailed": {
+    "description": "Top banner when a screen already showing data fails to refresh for a reason other than being offline; the old data stays on screen"
   }
 }

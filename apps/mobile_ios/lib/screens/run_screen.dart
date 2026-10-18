@@ -4270,6 +4270,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
           training: widget.training,
           planId: planId,
           workoutId: wo.id,
+          initial: wo,
         ),
       ),
     );

@@ -5001,5 +5001,7 @@
   "planCalendarFeedRotateMessage": "El enlace actual deja de funcionar de inmediato. Un calendario suscrito a él deja de actualizarse hasta que te suscribas con el enlace nuevo.",
   "planCalendarFeedRevokeTitle": "¿Desactivar el enlace de calendario?",
   "planCalendarFeedRevokeMessage": "El enlace deja de funcionar de inmediato y los calendarios suscritos dejan de actualizarse. Los eventos ya copiados pueden quedarse hasta que el calendario se actualice.",
-  "planCalendarFeedPrivacy": "Quien tenga el enlace puede ver las fechas, tipos y objetivos de tus entrenamientos. No incluye ubicación, notas ni el nombre del plan. Crea un enlace nuevo si lo compartiste por error."
+  "planCalendarFeedPrivacy": "Quien tenga el enlace puede ver las fechas, tipos y objetivos de tus entrenamientos. No incluye ubicación, notas ni el nombre del plan. Crea un enlace nuevo si lo compartiste por error.",
+  "commonStaleOffline": "No tienes conexión. Se muestra lo último que se cargó.",
+  "commonStaleRefreshFailed": "No se pudo actualizar. Se muestra lo último que se cargó."
 }

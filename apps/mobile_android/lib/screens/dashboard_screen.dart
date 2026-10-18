@@ -645,6 +645,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           training: svc,
           planId: p.plan.id,
           workoutId: id,
+          initial: p.workouts.where((wo) => wo.id == id).firstOrNull,
         ),
       ),
     );

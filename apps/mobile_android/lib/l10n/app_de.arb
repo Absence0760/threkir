@@ -5001,5 +5001,7 @@
   "planCalendarFeedRotateMessage": "Der aktuelle Link funktioniert sofort nicht mehr. Ein Kalender, der ihn abonniert hat, wird nicht mehr aktualisiert, bis du den neuen Link abonnierst.",
   "planCalendarFeedRevokeTitle": "Kalenderlink deaktivieren?",
   "planCalendarFeedRevokeMessage": "Der Link funktioniert sofort nicht mehr, und abonnierte Kalender werden nicht mehr aktualisiert. Bereits übernommene Termine können bis zur nächsten Aktualisierung des Kalenders bleiben.",
-  "planCalendarFeedPrivacy": "Wer den Link hat, sieht Datum, Art und Ziele deiner Einheiten. Er enthält keinen Ort, keine Notizen und keinen Plannamen. Erstelle einen neuen Link, wenn du ihn versehentlich geteilt hast."
+  "planCalendarFeedPrivacy": "Wer den Link hat, sieht Datum, Art und Ziele deiner Einheiten. Er enthält keinen Ort, keine Notizen und keinen Plannamen. Erstelle einen neuen Link, wenn du ihn versehentlich geteilt hast.",
+  "commonStaleOffline": "Du bist offline. Angezeigt wird der zuletzt geladene Stand.",
+  "commonStaleRefreshFailed": "Aktualisieren fehlgeschlagen. Angezeigt wird der zuletzt geladene Stand."
 }

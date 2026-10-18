@@ -16863,4 +16863,10 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get planCalendarFeedPrivacy =>
       'リンクを知っている人は誰でも、ワークアウトの日付・種類・目標を見られます。場所、メモ、プラン名は含まれません。誤って共有した場合は新しいリンクを作成してください。';
+
+  @override
+  String get commonStaleOffline => 'オフラインです。最後に読み込んだ内容を表示しています。';
+
+  @override
+  String get commonStaleRefreshFailed => '更新できませんでした。最後に読み込んだ内容を表示しています。';
 }

@@ -17690,4 +17690,12 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get planCalendarFeedPrivacy =>
       'Wer den Link hat, sieht Datum, Art und Ziele deiner Einheiten. Er enthält keinen Ort, keine Notizen und keinen Plannamen. Erstelle einen neuen Link, wenn du ihn versehentlich geteilt hast.';
+
+  @override
+  String get commonStaleOffline =>
+      'Du bist offline. Angezeigt wird der zuletzt geladene Stand.';
+
+  @override
+  String get commonStaleRefreshFailed =>
+      'Aktualisieren fehlgeschlagen. Angezeigt wird der zuletzt geladene Stand.';
 }

@@ -3,6 +3,7 @@
 // Start").
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
@@ -52,8 +53,8 @@ class _FakeTraining extends TrainingService {
 
 /// Opens the screen from a host route so a pop has somewhere to land, and
 /// returns the future of what it popped with.
-Future<Future<Object?>> _open(
-    WidgetTester tester, _FakeTraining training) async {
+Future<Future<Object?>> _open(WidgetTester tester, _FakeTraining training,
+    {PlanWorkoutRow? initial}) async {
   late Future<Object?> popped;
   await tester.pumpWidget(
     MaterialApp(
@@ -67,6 +68,7 @@ Future<Future<Object?>> _open(
                 training: training,
                 planId: 'plan-1',
                 workoutId: 'wo-1',
+                initial: initial,
               ),
             ),
           ),
@@ -117,6 +119,40 @@ void main() {
       expect(find.text(en.workoutTimeoutError), findsOneWidget);
       expect(find.text(en.workoutLoadError), findsNothing);
     });
+  });
+
+  group('a row handed in by the caller', () {
+    testWidgets('renders at once, and Start works with no signal',
+        (tester) async {
+      final training = _FakeTraining(_workout(),
+          loads: [const SocketException('no route')]);
+      final popped = await _open(tester, training, initial: _workout());
+
+      expect(training.fetchCalls, 1, reason: 'it still tries to refresh');
+      expect(find.text(en.workoutStart), findsOneWidget);
+      expect(find.text(en.commonStaleOffline), findsOneWidget);
+      expect(find.text(en.authErrorOffline), findsNothing);
+
+      await tester.tap(find.text(en.workoutStart));
+      await tester.pumpAndSettle();
+      expect(((await popped)! as PlanWorkoutRow).id, 'wo-1');
+    });
+
+    testWidgets('a fresher row from the refresh replaces it', (tester) async {
+      final training =
+          _FakeTraining(_workout(skippedAt: DateTime(2026, 4, 5, 9)));
+      await _open(tester, training, initial: _workout());
+
+      expect(find.byKey(const Key('workoutDetailSkipped')), findsOneWidget);
+      expect(find.text(en.workoutStart), findsNothing);
+    });
+  });
+
+  testWidgets('a first load offline says offline', (tester) async {
+    await _open(tester,
+        _FakeTraining(_workout(), loads: [const SocketException('no route')]));
+    expect(find.text(en.authErrorOffline), findsOneWidget);
+    expect(find.text(en.workoutLoadError), findsNothing);
   });
 
   group('open-workout actions', () {

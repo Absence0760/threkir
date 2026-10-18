@@ -28902,6 +28902,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Anyone with the link can see your workout dates, types and targets. It carries no location, notes or plan name. Make a new link if you shared it by mistake.'**
   String get planCalendarFeedPrivacy;
+
+  /// Top banner when a screen already showing data fails to refresh because the device is offline; the old data stays on screen
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re offline. Showing what was last loaded.'**
+  String get commonStaleOffline;
+
+  /// Top banner when a screen already showing data fails to refresh for a reason other than being offline; the old data stays on screen
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t refresh. Showing what was last loaded.'**
+  String get commonStaleRefreshFailed;
 }
 
 class _AppLocalizationsDelegate

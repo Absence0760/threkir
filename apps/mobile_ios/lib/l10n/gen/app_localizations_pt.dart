@@ -17682,6 +17682,14 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get planCalendarFeedPrivacy =>
       'Quem tiver a ligação vê as datas, os tipos e os objetivos dos seus treinos. Não inclui local, notas nem o nome do plano. Crie uma nova ligação se a partilhou por engano.';
+
+  @override
+  String get commonStaleOffline =>
+      'Está offline. A mostrar o que foi carregado por último.';
+
+  @override
+  String get commonStaleRefreshFailed =>
+      'Não foi possível atualizar. A mostrar o que foi carregado por último.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -35348,4 +35356,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get planCalendarFeedPrivacy =>
       'Quem tiver o link vê as datas, os tipos e as metas dos seus treinos. Ele não traz local, anotações nem o nome do plano. Crie um novo link se você o compartilhou por engano.';
+
+  @override
+  String get commonStaleOffline =>
+      'Você está offline. Mostrando o que foi carregado por último.';
+
+  @override
+  String get commonStaleRefreshFailed =>
+      'Não foi possível atualizar. Mostrando o que foi carregado por último.';
 }

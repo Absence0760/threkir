@@ -4,6 +4,7 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart';
 
+import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/date_format.dart';
 import '../l10n/locale_support.dart';
@@ -27,6 +28,10 @@ class WorkoutDetailScreen extends StatefulWidget {
   final String planId;
   final String workoutId;
 
+  /// The row the caller already holds. Drawn at once and refreshed behind it,
+  /// so the workout reads, and Start works, without signal.
+  final PlanWorkoutRow? initial;
+
   /// The heart-rate prescription gate (decisions § 2092); null reads the
   /// deploy flag. A test passes it directly.
   final bool? hrPrescription;
@@ -35,6 +40,7 @@ class WorkoutDetailScreen extends StatefulWidget {
     required this.training,
     required this.planId,
     required this.workoutId,
+    this.initial,
     this.hrPrescription,
   });
 
@@ -43,13 +49,13 @@ class WorkoutDetailScreen extends StatefulWidget {
 }
 
 class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
-  PlanWorkoutRow? _workout;
+  late PlanWorkoutRow? _workout = widget.initial;
   late final bool _hrPrescription = widget.hrPrescription ?? hrPrescriptionGate;
 
   /// Whether the athlete's coach made the last edit. Auxiliary: a failed
   /// owner read leaves the line hidden and never touches the workout.
   bool _editedByCoach = false;
-  bool _loading = true;
+  late bool _loading = widget.initial == null;
   bool _unlinking = false;
   bool _skipping = false;
   _WorkoutLoadError? _error;
@@ -61,8 +67,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   Future<void> _load() async {
+    // A workout already on screen stays there while it refreshes; a failed
+    // refresh is a banner over it, so Start still works offline.
+    final refreshing = _workout != null;
     setState(() {
-      _loading = true;
+      if (!refreshing) _loading = true;
       _error = null;
     });
     try {
@@ -75,22 +84,28 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         _loading = false;
       });
       unawaited(_loadProvenance(w));
-    } on TimeoutException catch (e) {
-      debugPrint('WorkoutDetailScreen._load timed out: $e');
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = _WorkoutLoadError.timeout;
-        });
-      }
     } catch (e, s) {
       debugPrint('WorkoutDetailScreen._load failed: $e\n$s');
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = _WorkoutLoadError.generic;
-        });
+      if (!mounted) return;
+      final kind = e is TimeoutException
+          ? _WorkoutLoadError.timeout
+          : classifyAuthError(e) == AuthErrorKind.offline
+              ? _WorkoutLoadError.offline
+              : _WorkoutLoadError.generic;
+      if (refreshing) {
+        final l10n = AppLocalizations.of(context);
+        showTopBanner(
+          context,
+          kind == _WorkoutLoadError.generic
+              ? l10n.commonStaleRefreshFailed
+              : l10n.commonStaleOffline,
+        );
+        return;
       }
+      setState(() {
+        _loading = false;
+        _error = kind;
+      });
     }
   }
 
@@ -194,9 +209,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       return Scaffold(
         appBar: AppBar(),
         body: ErrorState(
-            message: _error == _WorkoutLoadError.timeout
-                ? l10n.workoutTimeoutError
-                : l10n.workoutLoadError,
+            message: switch (_error!) {
+              _WorkoutLoadError.timeout => l10n.workoutTimeoutError,
+              _WorkoutLoadError.offline => l10n.authErrorOffline,
+              _WorkoutLoadError.generic => l10n.workoutLoadError,
+            },
             onRetry: _load),
       );
     }
@@ -791,7 +808,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       };
 }
 
-enum _WorkoutLoadError { timeout, generic }
+enum _WorkoutLoadError { timeout, offline, generic }
 
 class _RelinkPickerDialog extends StatefulWidget {
   final TrainingService training;

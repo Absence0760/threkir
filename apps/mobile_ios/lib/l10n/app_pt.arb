@@ -5001,5 +5001,7 @@
   "planCalendarFeedRotateMessage": "A ligação atual deixa de funcionar de imediato. Um calendário subscrito deixa de ser atualizado até subscrever novamente com a nova ligação.",
   "planCalendarFeedRevokeTitle": "Desativar a ligação de calendário?",
   "planCalendarFeedRevokeMessage": "A ligação deixa de funcionar de imediato e os calendários subscritos deixam de ser atualizados. Os eventos já copiados podem ficar até o calendário atualizar.",
-  "planCalendarFeedPrivacy": "Quem tiver a ligação vê as datas, os tipos e os objetivos dos seus treinos. Não inclui local, notas nem o nome do plano. Crie uma nova ligação se a partilhou por engano."
+  "planCalendarFeedPrivacy": "Quem tiver a ligação vê as datas, os tipos e os objetivos dos seus treinos. Não inclui local, notas nem o nome do plano. Crie uma nova ligação se a partilhou por engano.",
+  "commonStaleOffline": "Está offline. A mostrar o que foi carregado por último.",
+  "commonStaleRefreshFailed": "Não foi possível atualizar. A mostrar o que foi carregado por último."
 }

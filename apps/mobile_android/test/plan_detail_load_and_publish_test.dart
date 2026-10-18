@@ -3,6 +3,7 @@
 // detail"). The layout suite only proves the toggle renders; these drive it.
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
@@ -155,6 +156,52 @@ void main() {
       expect(find.text(en.planDetailLoadError), findsNothing);
       expect(find.text(en.errorStateRetry), findsOneWidget);
     });
+  });
+
+  group('a refresh over a plan already on screen', () {
+    Future<void> pullToRefresh(WidgetTester tester) async {
+      // The test surface is tall enough that the list cannot be dragged, so
+      // the indicator is fired the way a pull would fire it.
+      unawaited(tester
+          .state<RefreshIndicatorState>(find.byType(RefreshIndicator).first)
+          .show());
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+    }
+
+    testWidgets('a failed refresh keeps the plan and says it is stale',
+        (tester) async {
+      final training = _FakeTraining(loads: [null, Exception('boom')]);
+      await _pump(tester, training);
+      await pullToRefresh(tester);
+
+      expect(training.fetchCalls, 2);
+      expect(find.text('Spring Half'), findsWidgets);
+      expect(find.text(en.commonStaleRefreshFailed), findsOneWidget);
+      expect(find.text(en.planDetailLoadError), findsNothing);
+      expect(find.byType(FullBodyLoader), findsNothing);
+      await _drainBanner(tester);
+    });
+
+    testWidgets('offline, the banner says so', (tester) async {
+      final training =
+          _FakeTraining(loads: [null, const SocketException('no route')]);
+      await _pump(tester, training);
+      await pullToRefresh(tester);
+
+      expect(find.text('Spring Half'), findsWidgets);
+      expect(find.text(en.commonStaleOffline), findsOneWidget);
+      await _drainBanner(tester);
+    });
+  });
+
+  testWidgets('a first load offline says offline, not a generic failure',
+      (tester) async {
+    await _pump(tester,
+        _FakeTraining(loads: [const SocketException('no route')]));
+    expect(find.text(en.authErrorOffline), findsOneWidget);
+    expect(find.text(en.planDetailLoadError), findsNothing);
   });
 
   group('library publish toggle', () {

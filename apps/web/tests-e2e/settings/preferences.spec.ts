@@ -651,6 +651,30 @@ test.describe('settings preference pages', () => {
 		await consent.uncheck();
 	});
 
+	test('each body-metrics card says how it saves, and the explicit one says when it is unsaved', async ({
+		page
+	}) => {
+		// The demographics card saves on its button (Art 9) and the nutrition
+		// card saves on change. Side by side with nothing saying so, a runner
+		// who changed the activity level reached for Save demographics, and one
+		// who changed a birth date assumed it had saved like the card below.
+		// In-memory only for demographics; the activity level is put back.
+		await page.goto('/settings/body');
+		const hint = page.getByTestId('demographics-save-hint');
+		await expect(hint).toContainText('saves only when you press Save demographics');
+		await expect(page.getByTestId('nutrition-save-status')).toContainText('save automatically');
+
+		await page.getByTestId('date-of-birth-year').selectOption('1950');
+		await expect(hint).toContainText('Unsaved changes');
+
+		const level = page.getByTestId('activity-level');
+		const before = await level.inputValue();
+		await level.selectOption(before === 'light' ? 'moderate' : 'light');
+		await expect(page.getByTestId('nutrition-save-status')).toContainText('Saved');
+		await level.selectOption(before);
+		await expect(page.getByTestId('nutrition-save-status')).toContainText('Saved');
+	});
+
 	test('an out-of-range height or weight is refused in the field, not by postgres', async ({
 		page
 	}) => {

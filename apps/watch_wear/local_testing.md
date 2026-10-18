@@ -138,6 +138,29 @@ The decision and formatting are pinned host-side by `TodayWorkoutGlanceTest`
 and the wiring by `TodayGlanceWiringTest`; what they cannot see is the
 renderer honouring the timeline, which is step 5.
 
+### Spoken workout steps
+
+Needs a phone-pushed workout for today (above) and headphones paired to the
+watch, or the watch speaker.
+
+1. Start the run with the workout chip on. Within a second or two of "Run
+   started" the first step is spoken ("Warmup. 1 kilometre at 6 minutes per
+   kilometre."). Each later step change buzzes and then speaks its sentence;
+   the last one says "Workout complete. Nice work."
+2. Near the end of a distance step longer than 100 m: three ticks and
+   "Fifty metres to go" ("Fifty yards to go" with **mi**); on a timed step
+   over 20 s, "Ten seconds to go".
+3. On web Settings → Recording & voice set verbosity to **minimal** and start
+   a new run: step changes and completion still speak, the warning and the
+   drift nudge only buzz. Turn the **workout steps** cue off, or voice
+   feedback off: the workout says nothing and still buzzes.
+4. Let a step change land while a split is being spoken: the split finishes
+   and the step follows it, not the other way round.
+
+The decisions and sentences are pinned by `WorkoutSpeechTest` and
+`CueQueueTest`, the wiring by `WorkoutSpeechWiringTest`; the voice, the
+queue order on a real engine and the audio routing need an ear.
+
 ### Offline queue behaviour
 
 1. Stop the local Supabase stack (`supabase stop` in `apps/backend`).

@@ -140,6 +140,49 @@ class UniversalSettingsTest {
     }
 
     @Test
+    fun `voice_feedback_verbosity is minimal only on the exact token`() {
+        assertEquals(
+            com.runapp.watchwear.workout.VoiceVerbosity.MINIMAL,
+            parseUniversalSettings("""[{"prefs":{"voice_feedback_verbosity":"minimal"}}]""")
+                ?.voiceFeedbackVerbosity,
+        )
+        for (body in listOf(
+            """[{"prefs":{"voice_feedback_verbosity":"full"}}]""",
+            """[{"prefs":{"voice_feedback_verbosity":"Minimal"}}]""",
+            """[{"prefs":{"voice_feedback_verbosity":1}}]""",
+            """[{"prefs":{}}]""",
+            """[]""",
+        )) {
+            assertEquals(
+                body,
+                com.runapp.watchwear.workout.VoiceVerbosity.FULL,
+                parseUniversalSettings(body)?.voiceFeedbackVerbosity,
+            )
+        }
+    }
+
+    @Test
+    fun `the workout_steps voice cue is off only on an explicit false`() {
+        assertEquals(
+            false,
+            parseUniversalSettings("""[{"prefs":{"voice_cue_types":{"workout_steps":false}}}]""")
+                ?.workoutStepCuesEnabled,
+        )
+        // Absent id is ON (the registry's rule), and a wrong type is dropped,
+        // never coerced, like voice_feedback_enabled.
+        for (body in listOf(
+            """[{"prefs":{"voice_cue_types":{"workout_steps":true}}}]""",
+            """[{"prefs":{"voice_cue_types":{"splits":false}}}]""",
+            """[{"prefs":{"voice_cue_types":{"workout_steps":"false"}}}]""",
+            """[{"prefs":{"voice_cue_types":false}}]""",
+            """[{"prefs":{}}]""",
+            """[]""",
+        )) {
+            assertEquals(body, true, parseUniversalSettings(body)?.workoutStepCuesEnabled)
+        }
+    }
+
+    @Test
     fun `the cue switch and the unit ride the same bag read`() {
         // One fetch feeds both, and the Apple Watch carries the same pair
         // over WCSession. A parse that dropped one would leave that wrist

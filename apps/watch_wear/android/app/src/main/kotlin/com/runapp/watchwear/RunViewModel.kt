@@ -248,6 +248,13 @@ data class UiState(
     /// recording service, which owns the TTS engine; nothing on the watch
     /// itself can set it, because the watch has no settings screen.
     val voiceFeedbackEnabled: Boolean = true,
+    /// Universal `voice_feedback_verbosity`, handed to the recording service
+    /// with [voiceFeedbackEnabled] so a spoken workout cue is gated the way
+    /// the phone gates it.
+    val voiceFeedbackVerbosity: com.runapp.watchwear.workout.VoiceVerbosity =
+        com.runapp.watchwear.workout.VoiceVerbosity.FULL,
+    /// `voice_cue_types.workout_steps` from the universal bag (absent = on).
+    val workoutStepCuesEnabled: Boolean = true,
     /// Distance-display unit resolved from `user_settings.prefs
     /// .preferred_unit`. Drives the distance / pace read-outs on the
     /// running + post-run screens and the route "to go" badge. Defaults
@@ -1500,6 +1507,8 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                 bodyWeightKg = settings.bodyWeightKg,
                 showCalories = settings.showCalories,
                 voiceFeedbackEnabled = settings.voiceFeedbackEnabled,
+                voiceFeedbackVerbosity = settings.voiceFeedbackVerbosity,
+                workoutStepCuesEnabled = settings.workoutStepCuesEnabled,
                 preferredUnit = com.runapp.watchwear.recording.DistanceUnit
                     .fromPref(settings.preferredUnit),
             )
@@ -1577,6 +1586,8 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             preferredUnit = _state.value.preferredUnit,
             privacyDefault = universalPrivacyDefault,
             voiceFeedbackEnabled = _state.value.voiceFeedbackEnabled,
+            voiceFeedbackVerbosity = _state.value.voiceFeedbackVerbosity,
+            workoutStepCuesEnabled = _state.value.workoutStepCuesEnabled,
             workoutJson = workoutJson,
         )
     }

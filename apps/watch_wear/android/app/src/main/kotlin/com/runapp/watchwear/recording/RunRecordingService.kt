@@ -29,11 +29,15 @@ import com.runapp.watchwear.Pedometer
 import com.runapp.watchwear.R
 import com.runapp.watchwear.tiles.formatElapsed
 import com.runapp.watchwear.workout.HapticPattern
+import com.runapp.watchwear.workout.VoiceVerbosity
 import com.runapp.watchwear.workout.WorkoutCue
+import com.runapp.watchwear.workout.WorkoutEvent
 import com.runapp.watchwear.workout.WorkoutPush
 import com.runapp.watchwear.workout.WorkoutRunner
+import com.runapp.watchwear.workout.WorkoutVoice
 import com.runapp.watchwear.workout.parseWorkoutPush
 import com.runapp.watchwear.workout.workoutCue
+import com.runapp.watchwear.workout.workoutSpeech
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -159,6 +163,12 @@ class RunRecordingService : Service() {
     /// ACTION_START intent. Absent means ON, which is the registry default.
     private var voiceFeedbackEnabled: Boolean = true
 
+    /// Universal `voice_feedback_verbosity` and `voice_cue_types.workout_steps`,
+    /// from the same intent: with [voiceFeedbackEnabled] they decide which of
+    /// today's workout cues are spoken ([workoutSpeech]).
+    private var voiceFeedbackVerbosity: VoiceVerbosity = VoiceVerbosity.FULL
+    private var workoutStepCuesEnabled: Boolean = true
+
     /// The announcer, or null when the runner has the cues switched off.
     /// Every announce site goes through this rather than through [tts], so a
     /// cue added later is silenced by default rather than by remembering to
@@ -226,6 +236,10 @@ class RunRecordingService : Service() {
                 }.getOrDefault(DistanceUnit.KM),
                 privacyDefault = intent.getStringExtra(EXTRA_PRIVACY_DEFAULT),
                 voiceFeedbackEnabled = intent.getBooleanExtra(EXTRA_AUDIO_CUES, true),
+                voiceFeedbackVerbosity = VoiceVerbosity.fromPref(
+                    intent.getStringExtra(EXTRA_VOICE_VERBOSITY),
+                ),
+                workoutStepCuesEnabled = intent.getBooleanExtra(EXTRA_WORKOUT_STEP_CUES, true),
                 workoutJson = intent.getStringExtra(EXTRA_WORKOUT_JSON),
             )
             ACTION_PAUSE -> pauseRecording()
@@ -257,6 +271,8 @@ class RunRecordingService : Service() {
         unit: DistanceUnit,
         privacyDefault: String?,
         voiceFeedbackEnabled: Boolean,
+        voiceFeedbackVerbosity: VoiceVerbosity,
+        workoutStepCuesEnabled: Boolean,
         workoutJson: String?,
     ) {
         if (RecordingRepository.metrics.value.isActive) return
@@ -267,6 +283,8 @@ class RunRecordingService : Service() {
         this.preferredUnit = unit
         this.privacyDefault = privacyDefault
         this.voiceFeedbackEnabled = voiceFeedbackEnabled
+        this.voiceFeedbackVerbosity = voiceFeedbackVerbosity
+        this.workoutStepCuesEnabled = workoutStepCuesEnabled
         startedAtMs = System.currentTimeMillis()
         pausedAccumulatedMs = 0
         pausedSinceMs = 0
@@ -504,13 +522,34 @@ class RunRecordingService : Service() {
         publishWorkout(events)
     }
 
-    private fun publishWorkout(events: List<com.runapp.watchwear.workout.WorkoutEvent>) {
+    private fun publishWorkout(events: List<WorkoutEvent>) {
         val view = synchronized(workoutLock) { workoutRunner?.view() }
         RecordingRepository.update { it.copy(workoutView = view) }
         when (val cue = workoutCue(events)) {
             is WorkoutCue.Vibrate -> vibrate(cue.pattern, "workout step")
-            is WorkoutCue.PaceAlert -> firePaceAlert(cue.tooSlow)
+            is WorkoutCue.PaceAlert -> vibratePaceAlert(cue.tooSlow)
             null -> Unit
+        }
+        speakWorkout(events)
+    }
+
+    /// The spoken half of a workout feed, beside the haptic and gated apart
+    /// from it, as on the phone: the buzz still reaches a runner with the
+    /// voice off or minimal. L4 — this runs on the ticker that keeps the
+    /// run's clock, so nothing it does may throw out of here.
+    private fun speakWorkout(events: List<WorkoutEvent>) {
+        try {
+            val announcer = cues ?: return
+            val voice = WorkoutVoice(
+                enabled = voiceFeedbackEnabled,
+                workoutSteps = workoutStepCuesEnabled,
+                verbosity = voiceFeedbackVerbosity,
+            )
+            val speech = workoutSpeech(events, voice) ?: return
+            val workout = synchronized(workoutLock) { workoutRunner?.workout } ?: return
+            announcer.announceWorkout(speech, workout, preferredUnit)
+        } catch (e: Throwable) {
+            android.util.Log.w(TAG, "workout cue not spoken", e)
         }
     }
 
@@ -807,10 +846,10 @@ class RunRecordingService : Service() {
     private fun announceProgress(newDistance: Double, pace: Double?) {
         // TTS split: announce once per completed unit of the runner's
         // `preferred_unit`. Runs on the service's Default-dispatcher scope
-        // already — the TTS engine is thread-safe and a Flush-queued speak()
-        // replaces any in-flight utterance, so if two splits land in quick
-        // succession (shouldn't happen at running pace, but) only the more
-        // recent is spoken.
+        // already — the TTS engine is thread-safe and a split replaces any
+        // split in flight, so if two land in quick succession (shouldn't
+        // happen at running pace, but) only the more recent is spoken. It
+        // waits behind a workout cue instead (`cueQueueMode`).
         val currentSplit = completedSplits(newDistance, preferredUnit)
         if (currentSplit > lastAnnouncedSplit) {
             lastAnnouncedSplit = currentSplit
@@ -895,6 +934,13 @@ class RunRecordingService : Service() {
     /// The direction is distinguishable by feel alone, so runners
     /// notice even with TTS muted or headphones paused.
     private fun firePaceAlert(tooSlow: Boolean) {
+        vibratePaceAlert(tooSlow)
+        cues?.announcePaceAlert(tooSlow)
+    }
+
+    /// The haptic half of [firePaceAlert], alone: a workout's drift cue
+    /// speaks its own sentence, under its own voice gates ([speakWorkout]).
+    private fun vibratePaceAlert(tooSlow: Boolean) {
         val effect = if (tooSlow) {
             // Two ~180 ms pulses with a ~180 ms gap, matching the
             // "speed up" cue on Android. `timings` is [off, on, off, on].
@@ -907,7 +953,6 @@ class RunRecordingService : Service() {
             VibrationEffect.createOneShot(220, VibrationEffect.DEFAULT_AMPLITUDE)
         }
         vibrate(effect, "pace alert")
-        cues?.announcePaceAlert(tooSlow)
     }
 
     private fun vibrate(pattern: HapticPattern, what: String) {
@@ -1125,6 +1170,11 @@ class RunRecordingService : Service() {
         /// `voice_feedback_enabled`. Absent means ON, the registry default;
         /// only an explicit `false` silences the wrist.
         const val EXTRA_AUDIO_CUES = "audio_cues"
+        /// The runner's universal `voice_feedback_verbosity` token. Absent or
+        /// unrecognised means `full`.
+        const val EXTRA_VOICE_VERBOSITY = "voice_feedback_verbosity"
+        /// `voice_cue_types.workout_steps`. Absent means ON.
+        const val EXTRA_WORKOUT_STEP_CUES = "workout_step_cues"
         /// Today's workout as the phone pushed it (`WorkoutBridge`), JSON
         /// text. Absent means a free run.
         const val EXTRA_WORKOUT_JSON = "workout_json"
@@ -1185,6 +1235,8 @@ class RunRecordingService : Service() {
             preferredUnit: DistanceUnit = DistanceUnit.KM,
             privacyDefault: String? = null,
             voiceFeedbackEnabled: Boolean = true,
+            voiceFeedbackVerbosity: VoiceVerbosity = VoiceVerbosity.FULL,
+            workoutStepCuesEnabled: Boolean = true,
             workoutJson: String? = null,
         ) {
             val intent = Intent(context, RunRecordingService::class.java).apply {
@@ -1193,6 +1245,8 @@ class RunRecordingService : Service() {
                 putExtra(EXTRA_ACTIVITY_TYPE, activityType)
                 putExtra(EXTRA_PREFERRED_UNIT, preferredUnit.name)
                 putExtra(EXTRA_AUDIO_CUES, voiceFeedbackEnabled)
+                putExtra(EXTRA_VOICE_VERBOSITY, voiceFeedbackVerbosity.token)
+                putExtra(EXTRA_WORKOUT_STEP_CUES, workoutStepCuesEnabled)
                 if (!privacyDefault.isNullOrEmpty()) {
                     putExtra(EXTRA_PRIVACY_DEFAULT, privacyDefault)
                 }

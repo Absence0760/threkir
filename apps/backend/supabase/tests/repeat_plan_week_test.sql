@@ -15,7 +15,7 @@
 -- this week's Sunday, so weeks 0-3 are past and week 4 is under way.
 
 begin;
-select plan(40);
+select plan(43);
 
 create temp table rpw_s as
   select (current_date - extract(dow from current_date)::integer - 28) as s;
@@ -28,7 +28,7 @@ from unnest(array['a', 'b', 'c', 'd', 'e', 'f']) as o
 on conflict (id) do nothing;
 insert into user_profiles (id, display_name, health_data_consent_at)
 select ('c7c7c7c7-0000-0000-0000-00000000000' || o)::uuid, 'RPW ' || o,
-       case when o = 'a' then now() end
+       case when o in ('a', 'd') then now() end
 from unnest(array['a', 'b', 'c', 'd', 'e', 'f']) as o
 on conflict (id) do update set health_data_consent_at = excluded.health_data_consent_at;
 
@@ -38,8 +38,8 @@ insert into private.feature_flags (name, enabled) values ('hr_prescription', tru
 -- Ten-week plans. A race plan (r): base 0-1, build 2-5, peak 6-7, taper 8,
 -- race 9 on its last Sunday, the end date. A walk-run plan (w): every week
 -- build, no race, ending on week 9's Saturday. A long run every Sunday (weeks
--- 0 and 1 done), an easy run every Wednesday, heart-rate targets on week 4's
--- long run.
+-- 0 and 1 done), an easy run every Wednesday, heart-rate targets on the long
+-- runs of weeks 3 and 4 for A and D, the two who consent.
 --   a1 A race (active)   a2 A race (paused)   b1 B walk   d1 D walk
 --   e1 E walk, e2 E's next plan starting the day after e1 ends   f1 F walk
 create temp table rpw_plans (tag text, owner text, shape text, status text);
@@ -75,8 +75,8 @@ select ('c3c3c3c3-0000-0000-0000-' || p.tag || lpad(i::text, 2, '0') || '0100000
        (case when p.shape = 'r' and i = 9 then 'race' else 'long' end)::workout_kind,
        case when p.shape = 'r' and i = 9 then 21097 else 8000 end,
        i <= 1,
-       case when i = 4 and p.owner = 'a' then 140 end,
-       case when i = 4 and p.owner = 'a' then 155 end
+       case when i in (3, 4) and p.owner in ('a', 'd') then 140 end,
+       case when i in (3, 4) and p.owner in ('a', 'd') then 155 end
 from rpw_s, rpw_plans p, generate_series(0, 9) as i;
 insert into plan_workouts (id, week_id, scheduled_date, kind, target_distance_m)
 select ('c3c3c3c3-0000-0000-0000-' || p.tag || lpad(i::text, 2, '0') || '02000000')::uuid,
@@ -228,10 +228,26 @@ select is((select count(*)::int from plan_workouts wo join plan_weeks w on w.id 
 
 -- ── Last week, the one that just finished ─────────────────────────────────
 
+reset role;
+update private.feature_flags set enabled = false where name = 'hr_prescription';
+update plan_workouts set missed_ack_at = now() where id = 'c3c3c3c3-0000-0000-0000-d10701000000';
+set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"c7c7c7c7-0000-0000-0000-00000000000d","role":"authenticated"}';
 select isnt((select repeat_plan_week('c1c1c1c1-0000-0000-0000-0000000000d1', current_date,
       'c2c2c2c2-0000-0000-0000-0000d1000003')),
   null, 'last week runs again');
+select is((select count(*)::int from plan_workouts
+           where week_id = 'c2c2c2c2-0000-0000-0000-0000d1000003' and missed_ack_at is not null),
+  2, 'last week: its missed workouts are answered, since the copy restores them');
+select is((select missed_ack_at from plan_workouts where id = 'c3c3c3c3-0000-0000-0000-d10701000000'),
+  null, 'last week: a workout that moved loses its answer');
+select is((select count(*)::int from plan_workouts wo join plan_weeks w on w.id = wo.week_id
+           where w.plan_id = 'c1c1c1c1-0000-0000-0000-0000000000d1' and w.week_index = 5
+             and wo.target_hr_min_bpm is not null),
+  0, 'last week: with the heart-rate gate closed, a consenting owner''s copy carries no target');
+reset role;
+update private.feature_flags set enabled = true where name = 'hr_prescription';
+set local role authenticated;
 select is((select array_agg(wo.kind::text || '@' || (wo.scheduled_date - s) order by wo.scheduled_date)
            from plan_workouts wo join plan_weeks w on w.id = wo.week_id, rpw_s
            where w.plan_id = 'c1c1c1c1-0000-0000-0000-0000000000d1' and w.week_index = 5),

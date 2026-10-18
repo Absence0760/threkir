@@ -25,8 +25,16 @@
 -- the one before it can run again ("this week was too hard", or "last week
 -- was"), and an hourly rate limit. The ownership check runs before the rate
 -- limit, so a request for a plan the caller does not own spends none of their
--- budget. It does not touch user_settings.prefs.plan_break_dismissed: that key
--- answers a break offer, and this is not one.
+-- budget. It answers the missed-workout prompt (missed_ack_at,
+-- 20270921000001) for the repeated week's open workouts before today, since
+-- the copy restores them; moved workouts lose any answer through
+-- plan_workouts_clear_missed_ack. It does not touch
+-- user_settings.prefs.plan_break_dismissed: that key answers a break offer,
+-- and this is not one.
+--
+-- What reschedule_plan_after_break keeps around the shared body: its own
+-- checks, answering the missed workouts its break covered, and the
+-- plan_break_dismissed write ({plan_id, from, until}).
 --
 -- SECURITY DEFINER because enforce_create_rate_limit is not executable by
 -- authenticated (20270626000001). RLS is therefore not consulted, so the
@@ -263,9 +271,18 @@ begin
     'reschedule_plan_after_break', p_plan_id, p_today, p_repeat_week_ids, p_drop_week_ids
   );
 
+  update plan_workouts wo
+  set missed_ack_at = now()
+  from plan_weeks w
+  where wo.week_id = w.id and w.plan_id = p_plan_id
+    and wo.kind <> 'rest'
+    and wo.completed_run_id is null and not wo.manually_completed
+    and wo.skipped_at is null and wo.missed_ack_at is null
+    and wo.scheduled_date >= p_break_from and wo.scheduled_date < p_today;
+
   insert into user_settings (user_id, prefs)
   values (caller, jsonb_build_object('plan_break_dismissed',
-            jsonb_build_object('plan_id', p_plan_id, 'from', p_break_from)))
+            jsonb_build_object('plan_id', p_plan_id, 'from', p_break_from, 'until', p_today)))
   on conflict (user_id) do update
     set prefs = coalesce(user_settings.prefs, '{}'::jsonb) || excluded.prefs,
         updated_at = now();
@@ -290,6 +307,7 @@ declare
   caller uuid := auth.uid();
   plan_row training_plans%rowtype;
   v_current integer;
+  v_new_week_id uuid;
 begin
   if caller is null then
     raise exception using
@@ -332,10 +350,20 @@ begin
       message = 'repeat_plan_week: only this week or last week can run again';
   end if;
 
-  return private.repeat_plan_weeks(
+  v_new_week_id := private.repeat_plan_weeks(
     'repeat_plan_week', p_plan_id, p_today, array[p_week_id],
     case when p_drop_week_id is null then '{}'::uuid[] else array[p_drop_week_id] end
   );
+
+  update plan_workouts wo
+  set missed_ack_at = now()
+  where wo.week_id = p_week_id
+    and wo.kind <> 'rest'
+    and wo.completed_run_id is null and not wo.manually_completed
+    and wo.skipped_at is null and wo.missed_ack_at is null
+    and wo.scheduled_date < p_today;
+
+  return v_new_week_id;
 end;
 $$;
 

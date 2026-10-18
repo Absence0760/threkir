@@ -3,8 +3,10 @@ import { strict as assert } from 'node:assert';
 
 import {
 	DEFAULT_RUNS_VIEW,
+	parseRunsRange,
 	parseRunsView,
 	resolveRunsView,
+	runsSearchWithoutRange,
 	runsListGroupsByDay,
 	runsViewSearch,
 } from './runs_view';
@@ -41,4 +43,19 @@ test('day headings only under a chronological sort', () => {
 	assert.equal(runsListGroupsByDay('oldest'), true);
 	assert.equal(runsListGroupsByDay('longest'), false);
 	assert.equal(runsListGroupsByDay('fastest'), false);
+});
+
+test('a link may name any fixed range, never custom', () => {
+	for (const r of ['today', 'week', 'month', 'year', 'all']) assert.equal(parseRunsRange(r), r);
+	assert.equal(parseRunsRange('custom'), null);
+	assert.equal(parseRunsRange('ALL'), null);
+	assert.equal(parseRunsRange(''), null);
+	assert.equal(parseRunsRange(null), null);
+});
+
+test('dropping the range keeps the other query parameters', () => {
+	assert.equal(runsSearchWithoutRange('?view=list&range=all'), '?view=list');
+	assert.equal(runsSearchWithoutRange('?range=all'), '');
+	assert.equal(runsSearchWithoutRange('?a=1&range=week&view=grid'), '?a=1&view=grid');
+	assert.equal(runsSearchWithoutRange(''), '');
 });

@@ -512,8 +512,9 @@ redaction-boundary guarantees are pinned by
 > presence reads in `lib/stores/modality_visibility.svelte.ts`) is true, the
 > same rule the kind chips use, and independent of the `show_gym` /
 > `show_nutrition` switches. A pure runner who opens `/history` directly lands
-> on `/runs?view=list` once both reads have answered (never while one is
-> pending). `/runs` carries the day-grouped read instead: a **List / Grid**
+> on `/runs?view=list&range=all` once both reads have answered (never while
+> one is pending) — all time, as History was, not the list's own default of
+> today; `/runs` applies a linked `?range=` once and drops it from the URL. `/runs` carries the day-grouped read instead: a **List / Grid**
 > toggle, where List renders the same rows through the shared
 > `TimelineDayList.svelte` over `timeline/day_groups.ts`. Multi-modal runners
 > keep this timeline unchanged.
@@ -562,7 +563,7 @@ redaction-boundary guarantees are pinned by
 > a timeline) or a run-only mount with no gym store; that's not an offline
 > fallback, just "there is only one modality." Web reaches the same end its own
 > way: a pure runner has no History item and `/history` forwards to
-> `/runs?view=list` (decisions § 2117). Both correct per
+> `/runs?view=list&range=all` (decisions § 2117). Both correct per
 > [§ 24](../architecture/decisions.md#24-web-is-the-canonical-feature-surface-mobile-and-watches-are-platform-additive).
 
 ```

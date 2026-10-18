@@ -21,9 +21,11 @@
 	import TimelineDayList, { type TimelineItem } from '#lib/components/TimelineDayList.svelte';
 	import { groupByLocalDay, type DayGroup } from '#lib/timeline/day_groups.ts';
 	import {
+		parseRunsRange,
 		parseRunsView,
 		resolveRunsView,
 		runsListGroupsByDay,
+		runsSearchWithoutRange,
 		runsViewSearch,
 		type RunsView,
 	} from '#lib/runs/runs_view.ts';
@@ -154,6 +156,16 @@
 			}
 		} catch (_) {
 			/* localStorage may be unavailable / blob may be corrupt — leave defaults */
+		}
+		const linkedRange = parseRunsRange(page.url.searchParams.get('range'));
+		if (linkedRange) {
+			dateRange = linkedRange;
+			customFrom = '';
+			customTo = '';
+			void goto(`${page.url.pathname}${runsSearchWithoutRange(page.url.search)}`, {
+				replace: true,
+				reset: false,
+			});
 		}
 		filtersHydrated = true;
 	});

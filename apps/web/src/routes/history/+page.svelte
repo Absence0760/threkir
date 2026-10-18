@@ -86,12 +86,12 @@
 
 	// A runner who has logged nothing but runs gets nothing here that /runs
 	// does not already show, so the sidebar hides History for them and a
-	// direct visit lands on the run list's day-grouped view instead
-	// (decisions § 2117). Waits for the presence reads: null is "not known
-	// yet", never "no".
+	// direct visit lands on the run list's day-grouped view instead, over all
+	// time as History was (decisions § 2117). Waits for the presence reads:
+	// null is "not known yet", never "no".
 	let runOnly = $derived(auth.user != null && hasNonRunData() === false);
 	$effect(() => {
-		if (runOnly) void goto('/runs?view=list', { replaceState: true });
+		if (runOnly) void goto('/runs?view=list&range=all', { replace: true });
 	});
 	function activitySummary(a: ActivityRow): { primary: string; secondary: string } {
 		const s = a.summary;

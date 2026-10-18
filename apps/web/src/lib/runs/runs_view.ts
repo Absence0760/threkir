@@ -15,6 +15,29 @@ export function resolveRunsView(fromUrl: unknown, stored: unknown): RunsView {
 	return parseRunsView(fromUrl) ?? parseRunsView(stored) ?? DEFAULT_RUNS_VIEW;
 }
 
+/// The date ranges a link may name with `?range=`. Custom is left out: it
+/// means nothing without its bounds. A link that names one replaces the
+/// remembered range for that visit, which is how `/history` hands a run-only
+/// runner their whole record rather than today's (decisions § 2117).
+export const RUNS_LINK_RANGES = ['today', 'week', 'month', 'year', 'all'] as const;
+export type RunsLinkRange = (typeof RUNS_LINK_RANGES)[number];
+
+export function parseRunsRange(raw: unknown): RunsLinkRange | null {
+	return typeof raw === 'string' && (RUNS_LINK_RANGES as readonly string[]).includes(raw)
+		? (raw as RunsLinkRange)
+		: null;
+}
+
+/// `search` without `range`, every other parameter kept: the range is applied
+/// once and then lives in the filters like any other choice, so a refresh
+/// after the runner changes it does not snap it back.
+export function runsSearchWithoutRange(search: string): string {
+	const params = new URLSearchParams(search);
+	params.delete('range');
+	const rest = params.toString();
+	return rest ? `?${rest}` : '';
+}
+
 /// `search` with `view` set, every other parameter kept.
 export function runsViewSearch(search: string, view: RunsView): string {
 	const params = new URLSearchParams(search);

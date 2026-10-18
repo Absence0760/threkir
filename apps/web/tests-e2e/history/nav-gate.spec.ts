@@ -81,6 +81,9 @@ test.describe('History nav gate', () => {
 			await page.goto('/history');
 			await expect(page).toHaveURL(/\/runs\?view=list$/, { timeout: 15_000 });
 			await expect(page.getByTestId('runs-list-view')).toBeVisible();
+			// Over all time, as History was: the run is yesterday's, which the
+			// list's own default of today would hide.
+			await expect(page.getByTestId('runs-list-view').locator('a[href^="/runs/"]')).toHaveCount(1);
 		} finally {
 			await page.context().close();
 		}

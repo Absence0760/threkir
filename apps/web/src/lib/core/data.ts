@@ -6696,6 +6696,24 @@ export async function applyWorkoutAdjustments(
 	if (error) throw dbError(error);
 }
 
+/// Record the runner's answer to the missed-workout prompt on each named
+/// workout (`answer_missed_workouts`, decisions § 2122), so it is never asked
+/// again on any device. "Make it up" passes the previewed make-up as
+/// `changes`; it is written in the same transaction as the answer, so the two
+/// land together or not at all.
+export async function answerMissedWorkouts(
+	planId: string,
+	workoutIds: string[],
+	changes: WorkoutAdjustment[] = []
+): Promise<void> {
+	const { error } = await supabase.rpc('answer_missed_workouts', {
+		p_plan_id: planId,
+		p_workout_ids: workoutIds,
+		p_changes: changes
+	});
+	if (error) throw dbError(error);
+}
+
 export async function updatePlanWeek(
 	id: string,
 	patch: Partial<{ phase: PlanPhase; target_volume_m: number | null; notes: string | null }>

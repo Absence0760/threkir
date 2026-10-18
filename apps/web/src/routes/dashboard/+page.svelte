@@ -79,6 +79,7 @@
 	} from '#lib/stores/modality_visibility.svelte.ts';
 	import DashboardWeekLead from '#lib/components/DashboardWeekLead.svelte';
 	import FinishPlanPrompt from '#lib/components/FinishPlanPrompt.svelte';
+	import MissedWorkoutPrompt from '#lib/components/MissedWorkoutPrompt.svelte';
 	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import { weeklyGoalTarget } from '#lib/training/week_lead.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
@@ -1264,6 +1265,13 @@
 				{#if planFinished}
 					<FinishPlanPrompt plan={planOverview.plan} onfinished={reloadPlanOverview} />
 				{:else}
+				<MissedWorkoutPrompt
+					planId={planOverview.plan.id}
+					weeks={planOverview.weeks}
+					workouts={planOverview.workouts}
+					today={formatISO(todayMidnight)}
+					makeUpHref="/plans/{planOverview.plan.id}?makeup=1"
+				/>
 				<div class="plan-hero-today">
 					{#if t}
 						<button

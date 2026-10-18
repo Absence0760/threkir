@@ -6361,13 +6361,18 @@ class _LastRunCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Row(
+                      // A Wrap, not a Row: the column is ~190 dp on a
+                      // 360 dp phone, so the two pills side by side overflow
+                      // at the default text size and the pace pill must drop
+                      // to its own line under a large OS text scale.
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
                         children: [
                           _metricPill(
                             theme,
                             formatDistanceForPref(run.distanceMetres),
                           ),
-                          const SizedBox(width: 6),
                           _metricPill(
                             theme,
                             _formatPace(run.duration, run.distanceMetres),

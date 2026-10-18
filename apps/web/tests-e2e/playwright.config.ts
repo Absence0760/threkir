@@ -136,9 +136,14 @@ export default defineConfig({
 		// from it — upgrade.spec.ts intercepts the navigation. Without it the
 		// page renders the app-only storefront (decisions § 1826), which the
 		// unit guards in paywall_guards.test.ts pin instead.
+		//
+		// Strava is pinned empty, as every CI lane writes it, so a developer's
+		// .env holding a client id can't flip the "unconfigured Strava" specs;
+		// the configured lane sets its own fixture id.
 		env: {
 			PUBLIC_TILE_STYLE_URL: '',
 			OSRM_URL: '',
+			PUBLIC_STRAVA_CLIENT_ID: '',
 			PUBLIC_REVENUECAT_WEB_CHECKOUT_URL: 'https://pay.rev.cat/e2e-fixture',
 		},
 		// Vite logs are noisy; only surface them on failure.

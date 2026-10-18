@@ -50,10 +50,10 @@ $$;
 set local statement_timeout = '3s';
 select lives_ok(
   $$ insert into runs (user_id, started_at, duration_s, distance_m, source, is_public,
-                       activity_type, is_dnf, metadata)
+                       activity_type, is_dnf)
      select '0918aaaa-0000-0000-0000-0000000000a1',
             '2031-05-04 14:00:00+00'::timestamptz + make_interval(days => i / 20, mins => i % 20),
-            1800, 4000 + i, 'app', false, 'run', false, '{}'::jsonb
+            1800, 4000 + i, 'app', false, 'run', false
      from generate_series(0, 239) i $$,
   'a 240-run insert over twelve planned days completes inside a 3 s statement timeout'
 );

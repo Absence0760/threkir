@@ -57,9 +57,9 @@ select ok(pg_temp.holds_achievements_lock('0918bbbb-0000-0000-0000-0000000000a1'
 
 select lives_ok(
   $$ insert into runs (user_id, started_at, duration_s, distance_m, source, is_public,
-                       activity_type, is_dnf, metadata)
+                       activity_type, is_dnf)
      values ('0918bbbb-0000-0000-0000-0000000000a1', now(), 1800, 5000, 'app', false,
-             'run', false, '{}'::jsonb) $$,
+             'run', false) $$,
   'a service-role insert still writes through the row-level owner lock'
 );
 

@@ -29275,6 +29275,12 @@ abstract class AppLocalizations {
   /// **'This plan has a race still ahead, so it can\'t be restarted.'**
   String get planDetailRestartRaceAheadError;
 
+  /// Banner when the server refuses a restart's start date as before today in the account's stored time zone
+  ///
+  /// In en, this message translates to:
+  /// **'That start date is before today where your account\'s time zone is set. Pick a later date.'**
+  String get planDetailRestartBeforeTodayError;
+
   /// Confirm button in the restart dialog
   ///
   /// In en, this message translates to:

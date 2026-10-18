@@ -1,6 +1,7 @@
 <script lang="ts">
 	import {
 		isPlanOverlapError,
+		isPlanRestartBeforeTodayError,
 		isPlanRestartRaceAheadError,
 		thrownMessage,
 	} from '#lib/core/supabase_error.ts';
@@ -991,9 +992,17 @@
 	/// Who assigned this plan, when a coach did and it is not the viewer.
 	let assigningCoachName = $state<string | null>(null);
 
+	// SvelteKit keeps this component mounted across /plans/A → /plans/B, so
+	// onMount's load never runs for B; the effect below loads it instead.
+	let loadedId = $state<string | null>(null);
+	$effect(() => {
+		if (loadedId !== null && id !== loadedId) void load();
+	});
+
 	async function load() {
 		loading = true;
 		loadError = null;
+		loadedId = id;
 		try {
 			const res = await fetchPlan(id);
 			loadError = res.error;
@@ -1157,7 +1166,7 @@
 	// overnight stops calling yesterday today.
 	let today = $state(todayISO());
 
-	// ─── Restart this plan (owner-only, decisions § 2121) ───
+	// ─── Restart this plan (owner-only) ───
 	let restartOpen = $state(false);
 	let restartBusy = $state(false);
 	let restartStart = $state('');
@@ -1189,8 +1198,6 @@
 		restartStart = v ? alignRestartStartIso(v, plan.start_date, restartWalkRun) : '';
 	}
 
-	/// One RPC copies the plan and retires what it replaces, so a failure
-	/// leaves everything as it was.
 	async function doRestartPlan(): Promise<void> {
 		if (!plan || !isOwner || restartBusy || !restartValid) return;
 		restartBusy = true;
@@ -1199,12 +1206,13 @@
 			restartOpen = false;
 			showToast(m('planDetail.restartDone'));
 			await goto(`/plans/${newId}`);
-			await load();
 		} catch (e) {
 			showToast(
 				isPlanRestartRaceAheadError(e)
 					? m('planDetail.restartRaceAheadError')
-					: m('planDetail.bulkFailed', { error: thrownMessage(e) }),
+					: isPlanRestartBeforeTodayError(e)
+						? m('planDetail.restartBeforeTodayError')
+						: m('planDetail.bulkFailed', { error: thrownMessage(e) }),
 				'error'
 			);
 		} finally {

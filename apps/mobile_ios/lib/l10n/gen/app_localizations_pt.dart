@@ -17957,6 +17957,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Este plano tem uma prova ainda por vir, por isso não pode ser recomeçado.';
 
   @override
+  String get planDetailRestartBeforeTodayError =>
+      'Essa data de início é anterior a hoje no fuso horário da sua conta. Escolha uma data posterior.';
+
+  @override
   String get planDetailRestartConfirm => 'Recomeçar o plano';
 
   @override
@@ -35993,6 +35997,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get planDetailRestartRaceAheadError =>
       'Este plano tem uma prova que ainda não aconteceu, então não pode ser recomeçado.';
+
+  @override
+  String get planDetailRestartBeforeTodayError =>
+      'Essa data de início é anterior a hoje no fuso horário da sua conta. Escolha uma data posterior.';
 
   @override
   String get planDetailRestartConfirm => 'Recomeçar o plano';

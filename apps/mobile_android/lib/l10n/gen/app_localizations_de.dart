@@ -17967,6 +17967,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Dieser Plan hat noch einen bevorstehenden Wettkampf und kann daher nicht neu gestartet werden.';
 
   @override
+  String get planDetailRestartBeforeTodayError =>
+      'Dieses Startdatum liegt vor dem heutigen Tag in der Zeitzone deines Kontos. Wähle ein späteres Datum.';
+
+  @override
   String get planDetailRestartConfirm => 'Plan neu starten';
 
   @override

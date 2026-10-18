@@ -752,6 +752,7 @@ export const messages = {
 	"planDetail.restartRaceMoves": "El día de la carrera pasa al {date}.",
 	"planDetail.restartRaceAhead": "La carrera de este plan, el {date}, todavía no ha llegado. Reiniciarlo movería el día de la carrera, así que cambia la fecha de la carrera o empieza un plan nuevo.",
 	"planDetail.restartRaceAheadError": "Este plan tiene una carrera que aún no ha llegado, así que no se puede reiniciar.",
+	"planDetail.restartBeforeTodayError": "Esa fecha de inicio es anterior a hoy en la zona horaria de tu cuenta. Elige una fecha posterior.",
 	"planDetail.restartDone": "Plan reiniciado. Esta es tu nueva copia.",
 	"planDetail.adjustCycleDesc": "Suaviza los próximos entrenamientos en los días menstruales y de fase lútea tardía de tu ciclo. Los entrenamientos pasados no cambian.",
 	"planDetail.adjustPregnancyDesc": "Convierte los próximos entrenamientos duros en rodajes suaves y reduce el volumen por trimestre. Los entrenamientos pasados no cambian.",

@@ -751,6 +751,7 @@ export const messages = {
 	"planDetail.restartRaceMoves": "O dia da prova passa para {date}.",
 	"planDetail.restartRaceAhead": "A prova deste plano, em {date}, ainda não aconteceu. Recomeçar mudaria o dia da prova, então altere a data da prova ou comece um novo plano.",
 	"planDetail.restartRaceAheadError": "Este plano tem uma prova que ainda não aconteceu, então não pode ser recomeçado.",
+	"planDetail.restartBeforeTodayError": "Essa data de início é anterior a hoje no fuso horário da sua conta. Escolha uma data posterior.",
 	"planDetail.restartDone": "Plano recomeçado. Esta é a sua nova cópia.",
 	"planDetail.adjustCycleDesc": "Suaviza os próximos treinos nos dias menstruais e de fase lútea tardia do seu ciclo. Treinos passados não mudam.",
 	"planDetail.adjustPregnancyDesc": "Transforma os próximos treinos duros em corridas leves e reduz o volume por trimestre. Treinos passados não mudam.",

@@ -5082,6 +5082,7 @@
   "planDetailRestartRaceMoves": "Der Wettkampftag verschiebt sich auf den {date}.",
   "planDetailRestartRaceAhead": "Der Wettkampf dieses Plans am {date} steht noch bevor. Ein Neustart würde den Wettkampftag verschieben. Ändere stattdessen das Wettkampfdatum oder beginne einen neuen Plan.",
   "planDetailRestartRaceAheadError": "Dieser Plan hat noch einen bevorstehenden Wettkampf und kann daher nicht neu gestartet werden.",
+  "planDetailRestartBeforeTodayError": "Dieses Startdatum liegt vor dem heutigen Tag in der Zeitzone deines Kontos. Wähle ein späteres Datum.",
   "planDetailRestartConfirm": "Plan neu starten",
   "planDetailRestartDone": "Plan neu gestartet. Das ist deine neue Kopie.",
   "dashboardPlanPausedBody": "Pausiert. Setze ihn fort, um weiterzumachen; die verpassten Wochen rücken nach hinten."

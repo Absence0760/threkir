@@ -752,6 +752,7 @@ export const messages = {
 	"planDetail.restartRaceMoves": "Der Wettkampftag verschiebt sich auf den {date}.",
 	"planDetail.restartRaceAhead": "Der Wettkampf dieses Plans am {date} steht noch bevor. Ein Neustart würde den Wettkampftag verschieben. Ändere stattdessen das Wettkampfdatum oder beginne einen neuen Plan.",
 	"planDetail.restartRaceAheadError": "Dieser Plan hat noch einen bevorstehenden Wettkampf und kann daher nicht neu gestartet werden.",
+	"planDetail.restartBeforeTodayError": "Dieses Startdatum liegt vor dem heutigen Tag in der Zeitzone deines Kontos. Wähle ein späteres Datum.",
 	"planDetail.restartDone": "Plan neu gestartet. Das ist deine neue Kopie.",
 	"planDetail.adjustCycleDesc": "Erleichtert kommende Einheiten an den Menstruations- und Spätluteal-Tagen deines Zyklus. Vergangene Einheiten bleiben unverändert.",
 	"planDetail.adjustPregnancyDesc": "Macht aus harten kommenden Einheiten lockere Läufe und reduziert den Umfang nach Trimester. Vergangene Einheiten bleiben unverändert.",

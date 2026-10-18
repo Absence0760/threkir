@@ -12,6 +12,7 @@ import {
 	isPlanOverlapError,
 	isPlanTrimBlockedError,
 	isPlanRestartRaceAheadError,
+	isPlanRestartBeforeTodayError,
 	PlanOverlapError,
 	supabaseErrorFields,
 	isDuplicateKeyError,
@@ -257,6 +258,13 @@ test('a restart refused over a race ahead keeps its own SQLSTATE', () => {
 	assert.equal(isPlanRestartRaceAheadError(err), true);
 	assert.equal(isPlanOverlapError(err), false);
 	assert.equal(isPlanRestartRaceAheadError({ code: 'TR001' }), false);
+});
+
+test('a restart refused for a start before today keeps its own SQLSTATE', () => {
+	const err = dbError({ message: 'restart_training_plan: the new start date is before today', code: 'RR002' });
+	assert.equal(isPlanRestartBeforeTodayError(err), true);
+	assert.equal(isPlanRestartRaceAheadError(err), false);
+	assert.equal(isPlanRestartBeforeTodayError({ code: 'RR001' }), false);
 });
 
 test('a refused trim keeps its own SQLSTATE and is not an overlap', () => {

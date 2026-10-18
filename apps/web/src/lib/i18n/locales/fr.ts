@@ -752,6 +752,7 @@ export const messages = {
 	"planDetail.restartRaceMoves": "Le jour de course passe au {date}.",
 	"planDetail.restartRaceAhead": "La course de ce plan, le {date}, est encore à venir. Recommencer déplacerait le jour de course : changez plutôt la date de course ou commencez un nouveau plan.",
 	"planDetail.restartRaceAheadError": "Ce plan comporte une course encore à venir, il ne peut donc pas être recommencé.",
+	"planDetail.restartBeforeTodayError": "Cette date de début est antérieure à aujourd'hui dans le fuseau horaire de votre compte. Choisissez une date plus tardive.",
 	"planDetail.restartDone": "Plan recommencé. Voici votre nouvelle copie.",
 	"planDetail.adjustCycleDesc": "Allège les prochaines séances pendant les jours de règles et de fin de phase lutéale de votre cycle. Les séances passées ne changent pas.",
 	"planDetail.adjustPregnancyDesc": "Transforme les prochaines séances difficiles en footings faciles et réduit le volume par trimestre. Les séances passées ne changent pas.",

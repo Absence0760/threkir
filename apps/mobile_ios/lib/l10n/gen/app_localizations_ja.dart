@@ -17115,6 +17115,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planDetailRestartRaceAheadError => 'このプランにはまだ先のレースがあるため、やり直せません。';
 
   @override
+  String get planDetailRestartBeforeTodayError =>
+      'その開始日は、アカウントのタイムゾーンでは今日より前です。もっと後の日付を選んでください。';
+
+  @override
   String get planDetailRestartConfirm => 'プランをやり直す';
 
   @override

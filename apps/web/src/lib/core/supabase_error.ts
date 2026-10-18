@@ -76,9 +76,16 @@ export function isPlanTrimBlockedError(err: unknown): boolean {
 }
 
 /// SQLSTATE RR001 — restart_training_plan refusing a plan whose race is
-/// still ahead, since restarting would move race day (decisions § 2121).
+/// still ahead, since restarting would move race day off the real date.
 export function isPlanRestartRaceAheadError(err: unknown): boolean {
 	return typeof err === 'object' && err !== null && (err as { code?: unknown }).code === 'RR001';
+}
+
+/// SQLSTATE RR002 — restart_training_plan refusing a start before the
+/// runner's today in their stored time zone, which can be ahead of the
+/// device's date the dialog checked against.
+export function isPlanRestartBeforeTodayError(err: unknown): boolean {
+	return typeof err === 'object' && err !== null && (err as { code?: unknown }).code === 'RR002';
 }
 
 /// Turn a Supabase result's `error` into something fit to throw. An `Error`

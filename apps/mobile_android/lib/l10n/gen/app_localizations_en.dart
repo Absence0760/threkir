@@ -17770,6 +17770,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'This plan has a race still ahead, so it can\'t be restarted.';
 
   @override
+  String get planDetailRestartBeforeTodayError =>
+      'That start date is before today where your account\'s time zone is set. Pick a later date.';
+
+  @override
   String get planDetailRestartConfirm => 'Restart plan';
 
   @override

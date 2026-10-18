@@ -1,5 +1,4 @@
-/// "Restart this plan" (issue #1186, decisions § 2121): the dates a restart
-/// offers and refuses. `restart_training_plan` copies the plan, moving every
+/// "Restart this plan": the dates a restart offers and refuses. `restart_training_plan` copies the plan, moving every
 /// workout by the offset between the old and new start dates.
 ///
 /// The start follows the creation wizard (`plan_start.dart`), generalised
@@ -7,8 +6,6 @@
 /// offsets from the start date, and a library or coach plan may be anchored
 /// on any day. A walk-run plan has no weekday-bound role, so it may start any
 /// day and defaults to tomorrow, as in the wizard.
-///
-/// Dart twin of `apps/web/src/lib/training/plan_restart.ts`.
 library;
 
 import 'cycle_plan.dart' show daysBetweenIso;

@@ -5085,5 +5085,13 @@
   "planDetailRestartBeforeTodayError": "Dieses Startdatum liegt vor dem heutigen Tag in der Zeitzone deines Kontos. Wähle ein späteres Datum.",
   "planDetailRestartConfirm": "Plan neu starten",
   "planDetailRestartDone": "Plan neu gestartet. Das ist deine neue Kopie.",
-  "dashboardPlanPausedBody": "Pausiert. Setze ihn fort, um weiterzumachen; die verpassten Wochen rücken nach hinten."
+  "dashboardPlanPausedBody": "Pausiert. Setze ihn fort, um weiterzumachen; die verpassten Wochen rücken nach hinten.",
+  "dashboardTrainForSomething": "Für etwas trainieren",
+  "dashboardTrainForSomethingBody": "Wähle ein Rennen oder eine Distanz und erhalte einen Wochenplan mit Paces passend zu deiner Form.",
+  "dashboardRecent5kTitle": "Dein 5-km-Lauf in {time} am {date}",
+  "dashboardRecent5kBody": "Erstelle daraus einen Plan. Bevor die Zeit Paces festlegt, bestätigst du, dass sie deiner aktuellen Form entspricht.",
+  "dashboardRecent5kCta": "Plan daraus erstellen",
+  "dashboardRecent5kDismiss": "Nicht jetzt",
+  "dashboardRecent5kDismissFailed": "Das konnte nicht gespeichert werden, der Vorschlag erscheint vielleicht wieder.",
+  "planNewRecent5kSuggested": "Aus deinem letzten 5-km-Lauf übernommen. Aktiviere den Schalter unten nur, wenn die Zeit deiner heutigen Form entspricht."
 }

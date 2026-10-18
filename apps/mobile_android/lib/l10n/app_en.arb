@@ -23602,5 +23602,47 @@
   "planDetailRaceDateOverlap": "The new race date runs into another active plan. Move or end that plan first.",
   "@planDetailRaceDateOverlap": {
     "description": "A later race date runs into another active plan"
+  },
+  "dashboardTrainForSomething": "Train for something",
+  "@dashboardTrainForSomething": {
+    "description": "Home plan entry for a runner with no training plan; opens the plan wizard"
+  },
+  "dashboardTrainForSomethingBody": "Pick a race or a distance and get a week-by-week plan with paces matched to your fitness.",
+  "@dashboardTrainForSomethingBody": {
+    "description": "Body under the Home \"Train for something\" plan entry"
+  },
+  "dashboardRecent5kTitle": "Your 5K of {time} on {date}",
+  "@dashboardRecent5kTitle": {
+    "description": "Home suggestion naming the runner's recent measured 5K, e.g. \"Your 5K of 24:10 on 3 Oct\"",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "24:10"
+      },
+      "date": {
+        "type": "String",
+        "example": "3 Oct"
+      }
+    }
+  },
+  "dashboardRecent5kBody": "Build a plan from it. You confirm it still reflects your fitness before it sets any paces.",
+  "@dashboardRecent5kBody": {
+    "description": "Body of the Home recent-5K plan suggestion"
+  },
+  "dashboardRecent5kCta": "Build a plan from it",
+  "@dashboardRecent5kCta": {
+    "description": "Button on the Home recent-5K suggestion that opens the plan wizard pre-filled"
+  },
+  "dashboardRecent5kDismiss": "Not now",
+  "@dashboardRecent5kDismiss": {
+    "description": "Button that dismisses the Home recent-5K plan suggestion"
+  },
+  "dashboardRecent5kDismissFailed": "Couldn't save that, so the suggestion may come back.",
+  "@dashboardRecent5kDismissFailed": {
+    "description": "Banner when dismissing the recent-5K suggestion could not be saved"
+  },
+  "planNewRecent5kSuggested": "Filled in from your recent 5K. Turn on the switch below only if it reflects your fitness today.",
+  "@planNewRecent5kSuggested": {
+    "description": "Plan wizard note under a recent-5K time filled in from the Home suggestion"
   }
 }

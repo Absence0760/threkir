@@ -68,6 +68,9 @@ import '../widgets/todays_workout_card.dart';
 import '../widgets/finish_plan_card.dart';
 import '../widgets/next_race_card.dart';
 import '../widgets/up_next_plan_card.dart';
+import '../widgets/plan_discovery_card.dart';
+import '../widgets/top_banner.dart';
+import '../recent_5k_suggestion.dart';
 import '../widgets/training_load_chart.dart';
 import 'add_run_screen.dart';
 import 'coach_screen.dart';
@@ -78,6 +81,7 @@ import 'import_screen.dart';
 import 'nutrition_screen.dart';
 import 'period_summary_screen.dart';
 import 'plan_detail_screen.dart';
+import 'plan_new_screen.dart';
 import 'profile_screen.dart';
 import 'recap_screen.dart';
 import 'run_detail_screen.dart';
@@ -198,6 +202,15 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   /// The runner's paused plan, read only when there is no active one.
   TrainingPlanRow? _pausedPlan;
+
+  /// Set once the plan reads have answered "no active plan and no paused
+  /// one". A failed read leaves it false, so Home never offers to start a
+  /// plan the runner may already have.
+  bool _noPlan = false;
+
+  /// This visit's "Not now" on the recent-5K suggestion, ahead of the
+  /// settings bag catching up.
+  String? _recent5kDismissedLocal;
 
   /// Daily nutrition targets, resolved once on mount, so the Home nutrition
   /// rings can show fill vs target. Null until resolved / when body metrics
@@ -596,7 +609,12 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (svc == null) return;
     try {
       final overview = await svc.fetchActiveOverview();
-      if (mounted) setState(() => _planOverview = overview);
+      if (mounted) {
+        setState(() {
+          _planOverview = overview;
+          if (overview != null) _noPlan = false;
+        });
+      }
       if (overview != null) {
         if (mounted && _pausedPlan != null) setState(() => _pausedPlan = null);
         return;
@@ -605,11 +623,18 @@ class _DashboardScreenState extends State<DashboardScreen>
       // else, and must not read as a failed overview.
       try {
         final paused = await svc.fetchPausedPlan();
-        if (mounted) setState(() => _pausedPlan = paused);
+        if (mounted) {
+          setState(() {
+            _pausedPlan = paused;
+            _noPlan = paused == null;
+          });
+        }
       } catch (e) {
+        if (mounted) setState(() => _noPlan = false);
         debugPrint('dashboard paused-plan fetch failed: $e');
       }
     } catch (e) {
+      if (mounted) setState(() => _noPlan = false);
       // Non-critical — same logging stance as run_screen's overview
       // fetch. The card simply doesn't render; the rest of the
       // dashboard keeps working.
@@ -759,6 +784,102 @@ class _DashboardScreenState extends State<DashboardScreen>
           _refreshPlanOverview();
         },
       ),
+    );
+  }
+
+  /// Whether Home may offer to start a plan: signed in, with the plan reads
+  /// answered "none".
+  bool get _offersPlanEntry =>
+      _noPlan &&
+      _planOverview == null &&
+      _pausedPlan == null &&
+      widget.training != null &&
+      widget.apiClient?.userId != null;
+
+  Future<void> _openPlanNew({int? recent5kSec}) async {
+    final svc = widget.training;
+    if (svc == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            PlanNewScreen(training: svc, initialRecent5kSec: recent5kSec),
+      ),
+    );
+    _refreshPlanOverview();
+  }
+
+  /// The recent measured 5K to seed a plan from, or null. Null too while the
+  /// settings bag is unread: an unknown answer must not re-show a suggestion
+  /// the runner dismissed on another device. Reads the resident runs, not the
+  /// summaries Home charts from: a summary carries no `fastest_5k_s`, and the
+  /// newest 200 runs reach back past the eight-week window for anyone running
+  /// fewer than three times a day.
+  Recent5kSuggestion? _recent5kSuggestion(DateTime now) {
+    final runs = widget.runStore.runs;
+    final service = widget.settingsSync?.service;
+    if (service == null) return null;
+    try {
+      final stored =
+          service.effective<Object>(SettingsKeys.planSuggestionDismissedAt);
+      return pickRecent5k(
+        [
+          for (final r in runs)
+            Recent5kCandidate(
+              id: r.id,
+              startedAt: r.startedAt.toUtc().toIso8601String(),
+              fastest5kS: switch (r.metadata?[MetadataKeys.fastest5kS]) {
+                final num s => s,
+                _ => null,
+              },
+              activityType: switch (r.metadata?[MetadataKeys.activityType]) {
+                final String a => a,
+                _ => null,
+              },
+              isDnf: switch (r.metadata?[MetadataKeys.isDnf]) {
+                final bool d => d,
+                _ => null,
+              },
+            ),
+        ],
+        now.millisecondsSinceEpoch,
+        _recent5kDismissedLocal ?? (stored is String ? stored : null),
+      );
+    } catch (e) {
+      debugPrint('dashboard recent-5K suggestion failed: $e');
+      return null;
+    }
+  }
+
+  Future<void> _dismissRecent5k() async {
+    final stamp = DateTime.now().toUtc().toIso8601String();
+    setState(() => _recent5kDismissedLocal = stamp);
+    try {
+      await widget.settingsSync?.updateUniversal(
+          {SettingsKeys.planSuggestionDismissedAt: stamp});
+    } catch (e) {
+      debugPrint('dashboard recent-5K dismissal not saved: $e');
+      if (!mounted) return;
+      showTopBanner(
+          context, AppLocalizations.of(context).dashboardRecent5kDismissFailed);
+    }
+  }
+
+  /// The plan slot for a runner with no plan: the recent-5K suggestion when
+  /// there is one, else "Train for something".
+  Widget? _planDiscoveryCard(DateTime now) {
+    if (!_offersPlanEntry) return null;
+    final suggestion = _recent5kSuggestion(now);
+    if (suggestion != null) {
+      return Recent5kPlanCard(
+        key: const Key('dashboardRecent5k'),
+        suggestion: suggestion,
+        onBuild: () => _openPlanNew(recent5kSec: suggestion.seconds),
+        onDismiss: _dismissRecent5k,
+      );
+    }
+    return TrainForSomethingCard(
+      key: const Key('dashboardTrainForSomething'),
+      onTap: _openPlanNew,
     );
   }
 
@@ -1262,6 +1383,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   : widget.onLogLift,
               onAddGoal: _newGoal,
               onImport: _openImport,
+              onTrainForSomething: _offersPlanEntry ? _openPlanNew : null,
             ),
           ),
         ],
@@ -1278,7 +1400,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       // week to lead with.
       final weekLeadCard =
           runs.isNotEmpty ? _weekLeadCard(runs, goals, unit, now) : null;
-      final raceCard = _nextRaceCard(now);
+      final raceCard = _nextRaceCard(now) ?? _planDiscoveryCard(now);
       // Active-plan hero: surface the day's structured workout above
       // goals so a plan-runner sees what's next before scrolling. Hidden
       // when no active plan or no workout today.
@@ -2103,6 +2225,11 @@ class _WelcomeEmpty extends StatelessWidget {
   final VoidCallback? onLogLift;
   final VoidCallback onAddGoal;
   final VoidCallback onImport;
+
+  /// Opens the plan wizard. Null while the runner has a plan, or the plan
+  /// reads have not answered, so the entry is never offered to someone who
+  /// may already have one.
+  final VoidCallback? onTrainForSomething;
   const _WelcomeEmpty({
     required this.theme,
     required this.planAbove,
@@ -2110,6 +2237,7 @@ class _WelcomeEmpty extends StatelessWidget {
     required this.onLogLift,
     required this.onAddGoal,
     required this.onImport,
+    this.onTrainForSomething,
   });
 
   @override
@@ -2162,6 +2290,13 @@ class _WelcomeEmpty extends StatelessWidget {
               spacing: 12,
               runSpacing: 8,
               children: [
+                if (onTrainForSomething != null)
+                  FilledButton.tonalIcon(
+                    key: const Key('dashboardWelcomeTrainForSomething'),
+                    onPressed: onTrainForSomething,
+                    icon: const Icon(Icons.event_note),
+                    label: Text(l10n.dashboardTrainForSomething),
+                  ),
                 FilledButton.tonalIcon(
                   onPressed: onAddGoal,
                   icon: const Icon(Icons.flag_outlined),

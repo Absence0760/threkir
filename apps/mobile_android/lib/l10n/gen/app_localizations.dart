@@ -29406,6 +29406,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The new race date runs into another active plan. Move or end that plan first.'**
   String get planDetailRaceDateOverlap;
+
+  /// Home plan entry for a runner with no training plan; opens the plan wizard
+  ///
+  /// In en, this message translates to:
+  /// **'Train for something'**
+  String get dashboardTrainForSomething;
+
+  /// Body under the Home "Train for something" plan entry
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a race or a distance and get a week-by-week plan with paces matched to your fitness.'**
+  String get dashboardTrainForSomethingBody;
+
+  /// Home suggestion naming the runner's recent measured 5K, e.g. "Your 5K of 24:10 on 3 Oct"
+  ///
+  /// In en, this message translates to:
+  /// **'Your 5K of {time} on {date}'**
+  String dashboardRecent5kTitle(String time, String date);
+
+  /// Body of the Home recent-5K plan suggestion
+  ///
+  /// In en, this message translates to:
+  /// **'Build a plan from it. You confirm it still reflects your fitness before it sets any paces.'**
+  String get dashboardRecent5kBody;
+
+  /// Button on the Home recent-5K suggestion that opens the plan wizard pre-filled
+  ///
+  /// In en, this message translates to:
+  /// **'Build a plan from it'**
+  String get dashboardRecent5kCta;
+
+  /// Button that dismisses the Home recent-5K plan suggestion
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get dashboardRecent5kDismiss;
+
+  /// Banner when dismissing the recent-5K suggestion could not be saved
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save that, so the suggestion may come back.'**
+  String get dashboardRecent5kDismissFailed;
+
+  /// Plan wizard note under a recent-5K time filled in from the Home suggestion
+  ///
+  /// In en, this message translates to:
+  /// **'Filled in from your recent 5K. Turn on the switch below only if it reflects your fitness today.'**
+  String get planNewRecent5kSuggested;
 }
 
 class _AppLocalizationsDelegate

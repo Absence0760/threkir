@@ -5085,5 +5085,13 @@
   "planDetailRestartBeforeTodayError": "Essa data de início é anterior a hoje no fuso horário da sua conta. Escolha uma data posterior.",
   "planDetailRestartConfirm": "Recomeçar o plano",
   "planDetailRestartDone": "Plano recomeçado. Esta é a sua nova cópia.",
-  "dashboardPlanPausedBody": "Pausado. Retome para continuar; as semanas que você perdeu passam para frente."
+  "dashboardPlanPausedBody": "Pausado. Retome para continuar; as semanas que você perdeu passam para frente.",
+  "dashboardTrainForSomething": "Treine para algo",
+  "dashboardTrainForSomethingBody": "Escolha uma prova ou uma distância e receba um plano semana a semana com ritmos ajustados ao seu condicionamento.",
+  "dashboardRecent5kTitle": "Seus 5 km em {time} em {date}",
+  "dashboardRecent5kBody": "Crie um plano a partir dele. Antes de definir os ritmos, você confirma que ele ainda reflete seu condicionamento.",
+  "dashboardRecent5kCta": "Criar um plano",
+  "dashboardRecent5kDismiss": "Agora não",
+  "dashboardRecent5kDismissFailed": "Não foi possível salvar, então a sugestão pode voltar a aparecer.",
+  "planNewRecent5kSuggested": "Preenchido com seus 5 km recentes. Ative a opção abaixo só se ele refletir seu condicionamento hoje."
 }

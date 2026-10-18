@@ -5033,6 +5033,7 @@
   "planDetailRecoveryDone": "Woche zur Erholungswoche gemacht",
   "planDetailExportMarkdown": "Als Markdown exportieren",
   "planDetailExportJson": "Als JSON exportieren",
+  "planDetailAbandonPlan": "Plan aufgeben",
   "planDetailDeletePlan": "Plan löschen",
   "planDetailEditDetails": "Plandetails bearbeiten",
   "planDetailGoalTimeInvalid": "Gib eine Zielzeit über null ein, Minuten und Sekunden höchstens 59.",

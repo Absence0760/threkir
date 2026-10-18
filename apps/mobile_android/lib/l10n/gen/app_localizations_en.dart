@@ -17633,6 +17633,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planDetailExportJson => 'Export as JSON';
 
   @override
+  String get planDetailAbandonPlan => 'Abandon plan';
+
+  @override
   String get planDetailDeletePlan => 'Delete plan';
 
   @override

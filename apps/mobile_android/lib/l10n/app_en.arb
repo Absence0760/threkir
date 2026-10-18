@@ -23308,6 +23308,10 @@
   "@planDetailExportJson": {
     "description": "Plan menu item: share the plan as JSON"
   },
+  "planDetailAbandonPlan": "Abandon plan",
+  "@planDetailAbandonPlan": {
+    "description": "Plan menu item: abandon an active or paused plan (confirms first; weeks, workouts and linked runs are kept)"
+  },
   "planDetailDeletePlan": "Delete plan",
   "@planDetailDeletePlan": {
     "description": "Plan menu item: delete the plan (confirms first)"

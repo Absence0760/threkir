@@ -5033,6 +5033,7 @@
   "planDetailRecoveryDone": "Semana tornada de recuperação",
   "planDetailExportMarkdown": "Exportar como Markdown",
   "planDetailExportJson": "Exportar como JSON",
+  "planDetailAbandonPlan": "Abandonar plano",
   "planDetailDeletePlan": "Eliminar plano",
   "planDetailEditDetails": "Editar detalhes do plano",
   "planDetailGoalTimeInvalid": "Introduza um tempo-alvo acima de zero, com minutos e segundos até 59.",

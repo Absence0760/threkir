@@ -546,6 +546,14 @@ Two orthogonal axes. **Release** is "we cut a tagged version of the product"; **
 
 Tag → workflow → deploy is the canonical path for every Fly service, GraphHopper included — `release-graphhopper.yml` fires on a published `graphhopper@*` release, so no service is left on a hand-rolled `flyctl deploy` from a maintainer's laptop. See [`apps/job_worker/deployment.md`](../../apps/job_worker/deployment.md) § CI wiring.
 
+### Edge Function CORS ships with a backend release, not a web one
+
+The browser-called Edge Functions answer the CORS preflight in their own code (`_shared/cors.ts`, decisions § 2121), so a fix to it — or a new browser-called function — reaches threkir.com only when the functions are redeployed: publish a `backend@<version>` GitHub Release, which runs `release-backend.yml` and redeploys every function (it applies pending migrations too, so check what else is on `main`). A one-off `supabase functions deploy <name> --project-ref <ref>` from `apps/backend/` is the narrower path. Verify with a token-less preflight, which must answer 204 with `access-control-allow-origin: https://threkir.com`:
+
+`curl -s -i -X OPTIONS -H "Origin: https://threkir.com" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: authorization,content-type" https://<ref>.supabase.co/functions/v1/delete-account`
+
+The allowed origins are `PRODUCTION_ORIGINS` in the helper, not a secret; a new site host (a custom domain, a separate preview project) is a code change there.
+
 ### One-off: the SPA-shell cutover from `index.html` to `200.html`
 
 adapter-static's `fallback` moves from `build/index.html` to `build/200.html`

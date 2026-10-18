@@ -68,6 +68,7 @@ import { selectEffectivePricing } from '../_shared/event_instance.ts';
 import { isValidTimestamptz, isValidUuid } from '../_shared/input_validation.ts';
 import { checkRateLimit } from '../_shared/rate_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { withCors } from '../_shared/cors.ts';
 import {
   buildRefundParams,
   cancelAction,
@@ -107,7 +108,7 @@ interface CancelBody {
   reason?: unknown;
 }
 
-Deno.serve(withSentry('events-cancel', async (req: Request) => {
+Deno.serve(withCors(withSentry('events-cancel', async (req: Request) => {
   if (req.method !== 'POST') {
     return Response.json({ error: 'method_not_allowed' }, { status: 405 });
   }
@@ -268,7 +269,7 @@ Deno.serve(withSentry('events-cancel', async (req: Request) => {
   // The refund exists at Stripe; charge.refunded will flip the order
   // ->refunded and release the seat. Report refund_initiated so the UI polls.
   return Response.json({ ok: true, action: 'refund_initiated', order_id: order.id });
-}));
+})));
 
 /// The organiser path: cancel the occurrence, then refund every registrant.
 async function cancelOccurrence(args: {

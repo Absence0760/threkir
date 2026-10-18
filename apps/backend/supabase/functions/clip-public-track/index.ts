@@ -9,6 +9,7 @@ import type { Database } from '../_shared/database.ts';
 import { checkRateLimit, ipBucketKey } from '../_shared/rate_limit.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { withCors } from '../_shared/cors.ts';
 import { isValidUuid } from '../_shared/input_validation.ts';
 import { findViewableRun } from './viewable_run.ts';
 import { withholdFromNonOwner } from './non_owner_points.ts';
@@ -44,7 +45,7 @@ import {
 //      run from its start (`distM`). Owners receive the unclipped track.
 //   6. Return the points as JSON.
 
-Deno.serve(withSentry('clip-public-track', async (req: Request) => {
+Deno.serve(withCors(withSentry('clip-public-track', async (req: Request) => {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
@@ -273,7 +274,7 @@ Deno.serve(withSentry('clip-public-track', async (req: Request) => {
   }
   const clippedPoints = Array.isArray(clipped) ? clipped : [];
   return Response.json({ points: withholdFromNonOwner(clippedPoints) });
-}));
+})));
 
 /// Inflate a stored track or sidecar, bounded on the OUTPUT: the 5 MB cap on
 /// the compressed blob does not stop a ~1000:1 gzip from filling the isolate's

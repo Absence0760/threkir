@@ -154,7 +154,10 @@ url = "env(SSO_MOCK_OIDC_URL)"
 # The other functions (strava-import, parkrun-import, export-data,
 # delete-account, events-connect-onboard, events-checkout,
 # events-cancel) all need a user-scoped Supabase JWT and are correct on
-# the default verify_jwt = true.
+# the default verify_jwt = true. That default does not block the browser's
+# CORS preflight: the hosted gateway forwards OPTIONS to the function without
+# a JWT check (measured 2026-10-18: delete-account answered its own 405), and
+# _shared/cors.ts answers it. Do not turn the gate off for CORS (§ 2121).
 #
 # clip-public-track is the exception: it serves logged-out spectators
 # on public share pages, whose supabase-js sends the anon/publishable

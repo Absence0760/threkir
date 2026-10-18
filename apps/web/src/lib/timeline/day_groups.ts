@@ -1,3 +1,5 @@
+import { isoDateOf } from '../nutrition/diary_day';
+
 /// Consecutive rows that fall on the same local calendar day, in the order
 /// the caller already sorted them. Shared by the /history timeline and the
 /// /runs list view so the two group a day the same way (decisions § 2117).
@@ -14,21 +16,15 @@ export interface DayGroup<T> {
 	rows: T[];
 }
 
-function localDayKey(d: Date): string {
-	const mm = String(d.getMonth() + 1).padStart(2, '0');
-	const dd = String(d.getDate()).padStart(2, '0');
-	return `${d.getFullYear()}-${mm}-${dd}`;
-}
-
 export function groupByLocalDay<T>(
 	rows: readonly T[],
 	startedAt: (row: T) => string,
 	now: Date = new Date(),
 ): DayGroup<T>[] {
-	const today = localDayKey(now);
+	const today = isoDateOf(now);
 	const y = new Date(now);
 	y.setDate(y.getDate() - 1);
-	const yesterday = localDayKey(y);
+	const yesterday = isoDateOf(y);
 
 	const groups: DayGroup<T>[] = [];
 	const seen = new Map<string, number>();
@@ -36,7 +32,7 @@ export function groupByLocalDay<T>(
 	let curDay = '';
 	for (const row of rows) {
 		const iso = startedAt(row);
-		const day = localDayKey(new Date(iso));
+		const day = isoDateOf(new Date(iso));
 		if (!cur || day !== curDay) {
 			const n = seen.get(day) ?? 0;
 			seen.set(day, n + 1);

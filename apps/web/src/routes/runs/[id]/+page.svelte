@@ -56,7 +56,7 @@
 	} from '#lib/core/data.ts';
 	import AudienceDialog from '#lib/components/AudienceDialog.svelte';
 	import { audienceOf, type AudienceColumns } from '#lib/social/run_visibility.ts';
-	import { changedEditFields } from '#lib/core/run_edit_cas.ts';
+	import { changedEditFields, runEditColumns } from '#lib/core/run_edit_cas.ts';
 	import { ageFromDob } from '#lib/nutrition/nutrition_targets.ts';
 	import type { PlanWorkout } from '#lib/types.ts';
 	import { toRunGpx, downloadFile } from '#lib/routes/gpx.ts';
@@ -635,7 +635,7 @@
 				dnfChanged ? editIsDnf : undefined,
 			);
 			if (outcome.kind === 'saved') {
-				run = outcome.row;
+				run = { ...run, ...runEditColumns(outcome.row) };
 				editing = false;
 			} else if (outcome.kind === 'conflict') {
 				// Changed elsewhere since this page loaded, in a field this edit
@@ -645,7 +645,7 @@
 				// runner left alone takes the server's value, or saving again
 				// would write the stale one back over it.
 				const touched = changedEditFields(run, { title: editTitle, notes: editNotes });
-				run = outcome.row;
+				run = { ...run, ...runEditColumns(outcome.row) };
 				if (touched.title === undefined) editTitle = runTitle;
 				if (touched.notes === undefined) editNotes = runNotes;
 				if (!dnfChanged) editIsDnf = isDnf;

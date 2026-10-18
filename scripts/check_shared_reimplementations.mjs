@@ -163,12 +163,6 @@ export const REGISTERED = [
 	},
 	{
 		kind: 'clone',
-		key: 'apps/web/src/lib/nutrition/diary_day.ts:isoDateOf|apps/web/src/lib/nutrition/meal_detail.ts:localDateKey',
-		reason:
-			'Real duplicate, filed. Both render a local calendar day as `yyyy-mm-dd`. `diary_day` is half of a registered parity pair, so moving the function is a lockstep edit on the Dart side too — out of this lane, which may not run Flutter.',
-	},
-	{
-		kind: 'clone',
 		key:
 			'apps/web/src/lib/share/share_event_meta.ts:renderShareEventHeadTags|apps/web/src/lib/share/share_race_meta.ts:renderShareRaceHeadTags|apps/web/src/lib/share/share_route_meta.ts:renderShareRouteHeadTags',
 		reason:

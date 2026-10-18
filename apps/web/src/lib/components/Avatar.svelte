@@ -13,6 +13,10 @@
 		/** Hue (0–359) for `bg="seed"`. Pass `hashHue(id)` for per-entity colour;
 		 *  omit for the fixed default. */
 		seedHue = null,
+		/** Vets the stored URL into an `<img src>`, or '' for the initial.
+		 *  Defaults to the https-only `safeImageSrc`. */
+		sanitize = safeImageSrc,
+		...data
 	}: {
 		url?: string | null;
 		name?: string | null;
@@ -20,9 +24,11 @@
 		font: string;
 		bg?: BgMode;
 		seedHue?: number | null;
+		sanitize?: (url: string | null | undefined) => string;
+		[attr: `data-${string}`]: string | undefined;
 	} = $props();
 
-	const safeUrl = $derived(safeImageSrc(url));
+	const safeUrl = $derived(sanitize(url));
 
 	const hue = $derived(seedHue ?? 260);
 	const background = $derived(
@@ -43,6 +49,7 @@
 	class="avatar"
 	style="--av-size: {size}; --av-font: {font}; --av-bg: {background}; --av-fg: {foreground};"
 	aria-hidden="true"
+	{...data}
 >
 	{#if safeUrl}
 		<img src={safeUrl} alt="" />

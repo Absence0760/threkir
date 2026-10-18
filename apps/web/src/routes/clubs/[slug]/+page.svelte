@@ -61,6 +61,8 @@
 	import DangerZone from '#lib/components/DangerZone.svelte';
 	import EventEditor from '#lib/components/EventEditor.svelte';
 	import ClubEditor from '#lib/components/ClubEditor.svelte';
+	import ClubAvatar from '#lib/components/ClubAvatar.svelte';
+	import ClubLogoControl from '#lib/components/ClubLogoControl.svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
 	import VerifiedBadge from '#lib/components/VerifiedBadge.svelte';
@@ -880,7 +882,18 @@
 		</a>
 
 		<div class="hero">
-			<Avatar name={club.name} size="4.5rem" font="2rem" bg="seed" seedHue={hashHue(club.id)} />
+			<div class="hero-logo">
+				<ClubAvatar {club} size="4.5rem" font="2rem" />
+				{#if isAdmin}
+					<ClubLogoControl
+						clubId={club.id}
+						hasLogo={!!club.avatar_url}
+						onchange={(url) => {
+							if (club) club = { ...club, avatar_url: url };
+						}}
+					/>
+				{/if}
+			</div>
 			<div class="hero-text">
 				<div class="hero-title-row">
 					<h1>
@@ -1922,6 +1935,12 @@
 
 
 
+	.hero-logo {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--space-sm);
+	}
 	.hero-text h1 {
 		font-size: 1.6rem;
 		margin: 0;
@@ -2888,6 +2907,9 @@
 	@media (max-width: 26rem) {
 		.hero {
 			grid-template-columns: minmax(0, 1fr);
+		}
+		.hero-logo {
+			align-items: flex-start;
 		}
 	}
 

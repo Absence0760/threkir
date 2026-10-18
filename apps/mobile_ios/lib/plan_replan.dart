@@ -147,8 +147,9 @@ List<ReplanChange> easeOffNextWeek(
 }
 
 /// Whether a step-back week (a >15% planned-volume drop) immediately follows
-/// the week at `idx`.
-bool _recoveryWeekImminent(List<ReplanWeek> weeks, int idx) {
+/// the week at `idx`. Public so the missed-workout prompt
+/// (`plan_missed_prompt.dart`) advises on the same week the make-up would.
+bool recoveryWeekImminent(List<ReplanWeek> weeks, int idx) {
   final cur = weeks[idx];
   final next = _firstOrNull(weeks, (w) => w.weekIndex == cur.weekIndex + 1);
   if (next == null || !(cur.plannedMetres > 0) || !(next.plannedMetres > 0)) {
@@ -199,7 +200,7 @@ ReplanResult replanRemaining({
       final advice = missedWorkoutAdvice(MissedWorkoutInput(
         kind: 'long',
         isTaper: _isTaper(week.phase),
-        recoveryWeekImminent: _recoveryWeekImminent(sorted, i),
+        recoveryWeekImminent: recoveryWeekImminent(sorted, i),
       ));
       if (advice.recommendation != MakeUpRecommendation.makeUp) continue;
       final missed = wo.targetDistanceM ?? 0;

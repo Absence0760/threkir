@@ -176,16 +176,20 @@ select throws_ok(
   'zero servings is rejected — the per-serving macros would divide by it'
 );
 
--- ── training_plans.days_per_week: 3..7 ──────────────────────────────────────
+-- ── training_plans.days_per_week: 2..7 ──────────────────────────────────────
 -- `training_plans_active_no_overlap` refuses two active plans over the same
 -- dates, so every plan here is filed completed: the subject is the bound, and
 -- a second active plan would fail with a 23P01 that says nothing about it.
+-- The CHECK floor is 2 because a walk-run plan may train two days a week; that
+-- two days is walk-run ONLY is a rule about the plan's workouts, held by
+-- triggers rather than this CHECK, and `walk_run_two_days_test` pins it
+-- (decisions § 2104). A bare plan row has no workouts, so it is the bound alone.
 select lives_ok(
   $$ insert into training_plans (user_id, name, goal_event, goal_distance_m,
                                  start_date, end_date, days_per_week, status)
-     values ('b0000000-0000-0000-0000-000000000001', 'Three days', 'distance_5k', 5000,
-             '2026-01-04', '2026-03-01', 3, 'completed') $$,
-  'three days a week is accepted at the floor'
+     values ('b0000000-0000-0000-0000-000000000001', 'Two days', 'distance_5k', 5000,
+             '2026-01-04', '2026-03-01', 2, 'completed') $$,
+  'two days a week is accepted at the floor on a plan row with no workouts'
 );
 select lives_ok(
   $$ insert into training_plans (user_id, name, goal_event, goal_distance_m,
@@ -197,10 +201,10 @@ select lives_ok(
 select throws_ok(
   $$ insert into training_plans (user_id, name, goal_event, goal_distance_m,
                                  start_date, end_date, days_per_week, status)
-     values ('b0000000-0000-0000-0000-000000000001', 'Two days', 'distance_5k', 5000,
-             '2026-01-04', '2026-03-01', 2, 'completed') $$,
+     values ('b0000000-0000-0000-0000-000000000001', 'One day', 'distance_5k', 5000,
+             '2026-01-04', '2026-03-01', 1, 'completed') $$,
   '23514', null,
-  'two days a week is rejected — the generator has no plan shape for it'
+  'one day a week is rejected — no generator, walk-run included, has a plan shape for it'
 );
 select throws_ok(
   $$ insert into training_plans (user_id, name, goal_event, goal_distance_m,

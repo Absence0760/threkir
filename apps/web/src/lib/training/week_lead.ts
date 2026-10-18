@@ -25,6 +25,7 @@
 
 import type { WeekStart } from './current_week';
 import { markedDoneTally, weekStartLocal, type PlanCompletion, type RunGoal } from './goals';
+import { weekJudgedByDistance } from './plan_adherence';
 
 export interface LeadActivity {
 	started_at: string;
@@ -118,16 +119,21 @@ export function weeklyGoalTarget(goals: RunGoal[]): WeeklyGoalTarget | null {
 	return distanceM == null && runCount == null ? null : { distanceM, runCount };
 }
 
+/// The plan's distance for the calendar week, or 0 when the week cannot be
+/// judged in distance (`weekJudgedByDistance`: it holds a walk-run session,
+/// whose distance is an estimate), so the lead falls back to the runner's own
+/// yardstick rather than a number the plan made up.
 export function plannedDistanceForWeek(
 	workouts: LeadPlanWorkout[],
 	thisWeekStart: Date,
 ): number {
 	const first = localIso(thisWeekStart);
 	const last = localIso(addDays(thisWeekStart, 6));
+	const inWeek = workouts.filter((w) => w.scheduled_date >= first && w.scheduled_date <= last);
+	if (!weekJudgedByDistance(inWeek.map((w) => w.kind))) return 0;
 	let total = 0;
-	for (const w of workouts) {
+	for (const w of inWeek) {
 		if (w.kind === 'rest') continue;
-		if (w.scheduled_date < first || w.scheduled_date > last) continue;
 		total += w.target_distance_m ?? 0;
 	}
 	return total;

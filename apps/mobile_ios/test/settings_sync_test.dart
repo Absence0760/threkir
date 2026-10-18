@@ -767,12 +767,16 @@ Future<bool> Function({
   String? defaultActivityType,
   String? privacyDefault,
   List<int>? hrZoneCutoffs,
+  String? voiceFeedbackVerbosity,
+  bool? workoutStepCues,
 }) _recordZones(List<List<int>?> into) => ({
       required preferredUnit,
       required audioCues,
       defaultActivityType,
       privacyDefault,
       hrZoneCutoffs,
+      voiceFeedbackVerbosity,
+      workoutStepCues,
     }) async {
       into.add(hrZoneCutoffs);
       return true;

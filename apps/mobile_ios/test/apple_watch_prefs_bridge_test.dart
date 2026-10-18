@@ -188,6 +188,43 @@ void main() {
     expect(args.containsKey('privacy_default'), isFalse);
   });
 
+  test('carries the two workout-voice switches, spelled as the wrist reads them',
+      () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    await AppleWatchPrefsBridge.push(
+      preferredUnit: 'km',
+      audioCues: true,
+      voiceFeedbackVerbosity: 'minimal',
+      workoutStepCues: false,
+    );
+    // `RunAnnouncer.verbosityKey` and `RunAnnouncer.workoutStepCuesKey` on the
+    // watch. A false is an instruction, not an absence: it is how the runner
+    // silences step calls on the wrist.
+    expect(channel.calls.single.arguments, {
+      'preferred_unit': 'km',
+      'audio_cues': true,
+      'voice_feedback_verbosity': 'minimal',
+      'voice_cue_workout_steps': false,
+    });
+  });
+
+  test('a verbosity the wrist would read as full is left off, not coerced',
+      () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    await AppleWatchPrefsBridge.push(
+      preferredUnit: 'km',
+      audioCues: true,
+      voiceFeedbackVerbosity: 'quiet',
+    );
+    final args = channel.calls.single.arguments as Map;
+    expect(args.containsKey('voice_feedback_verbosity'), isFalse);
+    expect(args.containsKey('voice_cue_workout_steps'), isFalse);
+  });
+
+  test('accepts exactly the two verbosities the watch reads', () {
+    expect(AppleWatchPrefsBridge.acceptedVoiceVerbosities, {'full', 'minimal'});
+  });
+
   test('accepts the activity and privacy vocabularies the watch decodes', () {
     expect(AppleWatchPrefsBridge.acceptedActivityTypes, {'run', 'walk', 'hike', 'cycle'});
     expect(AppleWatchPrefsBridge.acceptedPrivacyDefaults, {'public', 'followers', 'private'});

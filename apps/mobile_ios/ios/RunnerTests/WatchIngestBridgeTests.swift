@@ -269,6 +269,25 @@ final class WatchIngestBridgeTests: XCTestCase {
         XCTAssertEqual(Set(context.keys), ["preferred_unit", "audio_cues"])
     }
 
+    func testPrefsContextCarriesTheTwoWorkoutVoiceSwitches() throws {
+        var args = requiredPrefs
+        args["voice_feedback_verbosity"] = "minimal"
+        args["voice_cue_workout_steps"] = false
+        let context = try XCTUnwrap(WatchIngestBridge.prefsContext(from: args))
+        XCTAssertEqual(context["voice_feedback_verbosity"] as? String, "minimal")
+        // A false is the runner silencing step calls on the wrist, not an
+        // absence, so it has to survive the repack.
+        XCTAssertEqual(context["voice_cue_workout_steps"] as? Bool, false)
+    }
+
+    func testARogueVerbosityIsDroppedAloneRatherThanReadAsFull() throws {
+        var args = requiredPrefs
+        args["voice_feedback_verbosity"] = "quiet"
+        args["voice_cue_workout_steps"] = "no"
+        let context = try XCTUnwrap(WatchIngestBridge.prefsContext(from: args))
+        XCTAssertEqual(Set(context.keys), ["preferred_unit", "audio_cues"])
+    }
+
     func testTheZoneLadderGateMatchesTheWatchDecoder() {
         XCTAssertTrue(WatchIngestBridge.isZoneLadder([]))
         XCTAssertTrue(WatchIngestBridge.isZoneLadder([40, 100, 150, 200, 240]))

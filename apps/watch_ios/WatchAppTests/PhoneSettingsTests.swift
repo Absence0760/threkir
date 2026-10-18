@@ -252,6 +252,30 @@ final class PhoneSettingsTests: XCTestCase {
         XCTAssertNil(HeartRateZones.zone(bpm: 146, cutoffs: [114, 133]))
     }
 
+    // MARK: - the workout voice switches
+
+    func testBothVerbositiesDecode() {
+        for value in ["full", "minimal"] {
+            XCTAssertEqual(PhonePreferences.voiceFeedbackVerbosity(in: ["voice_feedback_verbosity": value]), value)
+        }
+    }
+
+    func testARogueVerbosityDecodesAsNothingRatherThanFull() {
+        // Read as full, it would speak the cues a minimal runner asked to be
+        // spared on every contact the retained context is re-offered.
+        let rogues: [Any] = ["quiet", "Minimal", "", 0, true]
+        for rogue in rogues {
+            XCTAssertNil(PhonePreferences.voiceFeedbackVerbosity(in: ["voice_feedback_verbosity": rogue]))
+        }
+    }
+
+    func testTheWorkoutStepSwitchDecodesBothWaysAndNothingElse() {
+        XCTAssertEqual(PhonePreferences.workoutStepCues(in: ["voice_cue_workout_steps": false]), false)
+        XCTAssertEqual(PhonePreferences.workoutStepCues(in: ["voice_cue_workout_steps": true]), true)
+        XCTAssertNil(PhonePreferences.workoutStepCues(in: ["voice_cue_workout_steps": "no"]))
+        XCTAssertNil(PhonePreferences.workoutStepCues(in: [:]))
+    }
+
     // MARK: - independence
 
     func testEachSettingIsReadWithoutTheOthers() {
@@ -261,6 +285,8 @@ final class PhoneSettingsTests: XCTestCase {
         XCTAssertNil(PhonePreferences.defaultActivityType(in: unitOnly))
         XCTAssertNil(PhonePreferences.privacyDefault(in: unitOnly))
         XCTAssertNil(PhonePreferences.hrZoneCutoffs(in: unitOnly))
+        XCTAssertNil(PhonePreferences.voiceFeedbackVerbosity(in: unitOnly))
+        XCTAssertNil(PhonePreferences.workoutStepCues(in: unitOnly))
 
         let zonesOnly: [String: Any] = ["hr_zone_cutoffs": [Int]()]
         XCTAssertEqual(PhonePreferences.hrZoneCutoffs(in: zonesOnly), [])

@@ -63,6 +63,21 @@ enum PhonePreferences {
     static func hrZoneCutoffs(in payload: [String: Any]) -> [Int]? {
         HeartRateZones.decode(payload["hr_zone_cutoffs"])
     }
+
+    /// `full` or `minimal`, the phone's `voice_feedback_verbosity`. Anything
+    /// else is dropped rather than read as `full`: that would speak the
+    /// workout cues a minimal runner asked to be spared on every contact.
+    static func voiceFeedbackVerbosity(in payload: [String: Any]) -> String? {
+        guard let verbosity = payload["voice_feedback_verbosity"] as? String,
+              verbosity == "full" || verbosity == "minimal" else { return nil }
+        return verbosity
+    }
+
+    /// The phone's `workout_steps` voice cue. A non-Bool is dropped for the
+    /// reason `audioCues(in:)` drops one.
+    static func workoutStepCues(in payload: [String: Any]) -> Bool? {
+        payload["voice_cue_workout_steps"] as? Bool
+    }
 }
 
 class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
@@ -340,6 +355,15 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
         // un-mute an explicit off.
         if let cues = PhonePreferences.audioCues(in: payload) {
             UserDefaults.standard.set(cues, forKey: RunAnnouncer.preferenceKey)
+        }
+        // The two switches a structured workout's spoken cues answer to on
+        // top of `audio_cues`, read by `RunAnnouncer` at each cue rather than
+        // at Start, so a change mid-run lands on the next step.
+        if let verbosity = PhonePreferences.voiceFeedbackVerbosity(in: payload) {
+            UserDefaults.standard.set(verbosity, forKey: RunAnnouncer.verbosityKey)
+        }
+        if let stepCues = PhonePreferences.workoutStepCues(in: payload) {
+            UserDefaults.standard.set(stepCues, forKey: RunAnnouncer.workoutStepCuesKey)
         }
         // The three the recorder reads off disk rather than off this object —
         // the zone ladder on every render of the running page, the privacy

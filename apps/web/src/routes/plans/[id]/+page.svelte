@@ -2219,7 +2219,7 @@
 								{weekDone}<em> / {weekActive}</em> {m('planDetail.done')}
 							</span>
 							{#if weekJudgedByDistance(weekWorkouts.map((x) => x.kind))}
-								<span class="week-volume">{fmtKm(w.target_volume_m, 0)}</span>
+								<span class="week-volume" data-testid="plan-week-volume">{fmtKm(w.target_volume_m, 0)}</span>
 							{/if}
 							{#if isOwner && !plan.is_template && w.phase !== 'race'}
 								<button
@@ -2277,7 +2277,7 @@
 										{workoutKindLabel(wo.kind)}
 									</span>
 									{#if sizeLabel(wo, 1) != null}
-										<span class="dist">{sizeLabel(wo, 1)}</span>
+										<span class="dist" data-testid="plan-day-size">{sizeLabel(wo, 1)}</span>
 									{/if}
 									{#if status === 'done'}
 										{@const over = overrunOf(wo)}

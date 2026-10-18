@@ -1414,7 +1414,7 @@
 								</span>
 								<div class="plan-hero-today-meta">
 									{#if todaySize != null}
-										<span>{todaySize}</span>
+										<span data-testid="plan-hero-today-size">{todaySize}</span>
 									{/if}
 									{#if t.target_pace_sec_per_km && t.kind !== 'walk_run'}
 										<span>{m('workoutDetail.atPace', { pace: fmtPace(t.target_pace_sec_per_km) })}</span>

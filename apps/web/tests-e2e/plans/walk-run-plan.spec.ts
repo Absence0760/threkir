@@ -120,6 +120,11 @@ test.describe('a walk-run plan', () => {
 			await expect(page.getByRole('region', { name: 'Plan adherence' })).toHaveCount(0);
 			await expect(page.getByText(/So far this week you've run/)).toHaveCount(0);
 			await expect(page.getByTestId('walk-run-graduation')).toHaveCount(0);
+			// Each session states its minutes, the last its 5K, and no week a km
+			// volume: 300 + 8 × 60 + 7 × 90 + 300 = 1710 s reads as 29 min.
+			const sizes = page.getByTestId('plan-day-size');
+			await expect(sizes).toHaveText(['29 min', '29 min', '29 min', '29 min', '29 min', '5.0 km']);
+			await expect(page.getByTestId('plan-week-volume')).toHaveCount(0);
 		} finally {
 			await page.context().close();
 		}
@@ -147,6 +152,17 @@ test.describe('a walk-run plan', () => {
 			await expect(next).toHaveAttribute('href', '/plans/new?type=training&goal=10k');
 			await next.click();
 			await expect(page).toHaveURL(/\/plans\/new\?type=training&goal=10k/);
+		} finally {
+			await page.context().close();
+		}
+	});
+
+	test("Home states today's walk-run session in minutes, with no pace", async ({ browser }) => {
+		await plantPlan(-2, [{ offset: -2, done: true }, { offset: 0 }, { offset: 2 }, { offset: 5 }, { offset: 7 }, { offset: 9, fiveK: true }]);
+		const page = await open(browser, '/dashboard');
+		try {
+			await expect(page.getByTestId('plan-hero-today-size')).toHaveText('29 min', { timeout: 15_000 });
+			await expect(page.getByText(/\/km/)).toHaveCount(0);
 		} finally {
 			await page.context().close();
 		}

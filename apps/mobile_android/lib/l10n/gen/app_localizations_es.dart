@@ -4671,7 +4671,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get profilePrivateRunsNoteLink => 'Ver todas en el historial';
+  String get profilePrivateRunsNoteLink => 'Ver todas en Carreras';
 
   @override
   String get profileFollowersEmpty => 'Aún no hay seguidores.';

@@ -4688,7 +4688,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get profilePrivateRunsNoteLink => 'Alle im Verlauf ansehen';
+  String get profilePrivateRunsNoteLink => 'Alle unter Läufe ansehen';
 
   @override
   String get profileFollowersEmpty => 'Noch keine Follower.';

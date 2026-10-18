@@ -4675,7 +4675,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get profilePrivateRunsNoteLink => 'Ver todas no histórico';
+  String get profilePrivateRunsNoteLink => 'Ver todas em Corridas';
 
   @override
   String get profileFollowersEmpty => 'Nenhum seguidor ainda.';
@@ -22593,7 +22593,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get profilePrivateRunsNoteLink => 'Ver todas no histórico';
+  String get profilePrivateRunsNoteLink => 'Ver todas em Corridas';
 
   @override
   String get profileFollowersEmpty => 'Nenhum seguidor ainda.';

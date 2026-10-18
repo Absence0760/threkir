@@ -7699,7 +7699,7 @@ abstract class AppLocalizations {
   /// Link under the private-runs note that opens the owner's full run list
   ///
   /// In en, this message translates to:
-  /// **'View all in History'**
+  /// **'View all in Runs'**
   String get profilePrivateRunsNoteLink;
 
   /// Empty state for the followers tab

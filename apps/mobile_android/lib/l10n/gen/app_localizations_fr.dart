@@ -4690,7 +4690,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get profilePrivateRunsNoteLink => 'Tout voir dans l\'historique';
+  String get profilePrivateRunsNoteLink => 'Tout voir dans Courses';
 
   @override
   String get profileFollowersEmpty => 'Aucun abonné pour le moment.';

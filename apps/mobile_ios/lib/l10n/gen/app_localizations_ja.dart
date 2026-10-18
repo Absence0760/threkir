@@ -4402,7 +4402,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get profilePrivateRunsNoteLink => '履歴ですべて表示';
+  String get profilePrivateRunsNoteLink => 'ランですべて表示';
 
   @override
   String get profileFollowersEmpty => 'フォロワーはまだいません。';

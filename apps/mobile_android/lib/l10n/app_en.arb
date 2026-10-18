@@ -6157,7 +6157,7 @@
       }
     }
   },
-  "profilePrivateRunsNoteLink": "View all in History",
+  "profilePrivateRunsNoteLink": "View all in Runs",
   "@profilePrivateRunsNoteLink": {
     "description": "Link under the private-runs note that opens the owner's full run list"
   },

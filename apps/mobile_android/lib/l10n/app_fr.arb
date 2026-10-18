@@ -1311,7 +1311,7 @@
   "profileRunsEmptySelf": "Vous n'avez pas encore partagé de course.",
   "profileRunsEmptyOther": "Aucune course publique pour le moment.",
   "profilePrivateRunsNote": "{count, plural, one{1 de vos courses n'est pas publique, elle n'apparaît donc pas ici.} other{{count} de vos courses ne sont pas publiques, elles n'apparaissent donc pas ici.}}",
-  "profilePrivateRunsNoteLink": "Tout voir dans l'historique",
+  "profilePrivateRunsNoteLink": "Tout voir dans Courses",
   "profileFollowersEmpty": "Aucun abonné pour le moment.",
   "profileFollowingEmpty": "Vous ne suivez personne.",
   "profileLoadMore": "Charger {count} de plus",

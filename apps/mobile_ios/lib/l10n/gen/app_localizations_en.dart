@@ -4630,7 +4630,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get profilePrivateRunsNoteLink => 'View all in History';
+  String get profilePrivateRunsNoteLink => 'View all in Runs';
 
   @override
   String get profileFollowersEmpty => 'No followers yet.';

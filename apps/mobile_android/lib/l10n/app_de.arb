@@ -1311,7 +1311,7 @@
   "profileRunsEmptySelf": "Du hast noch keine Läufe geteilt.",
   "profileRunsEmptyOther": "Noch keine öffentlichen Läufe.",
   "profilePrivateRunsNote": "{count, plural, one{1 deiner Läufe ist nicht öffentlich und wird hier deshalb nicht aufgeführt.} other{{count} deiner Läufe sind nicht öffentlich und werden hier deshalb nicht aufgeführt.}}",
-  "profilePrivateRunsNoteLink": "Alle im Verlauf ansehen",
+  "profilePrivateRunsNoteLink": "Alle unter Läufe ansehen",
   "profileFollowersEmpty": "Noch keine Follower.",
   "profileFollowingEmpty": "Folgst noch niemandem.",
   "profileLoadMore": "{count} weitere laden",

@@ -1311,7 +1311,7 @@
   "profileRunsEmptySelf": "まだランを共有していません。",
   "profileRunsEmptyOther": "公開ランはまだありません。",
   "profilePrivateRunsNote": "{count, plural, other{あなたのランのうち{count}件は公開されていないため、ここには表示されません。}}",
-  "profilePrivateRunsNoteLink": "履歴ですべて表示",
+  "profilePrivateRunsNoteLink": "ランですべて表示",
   "profileFollowersEmpty": "フォロワーはまだいません。",
   "profileFollowingEmpty": "まだ誰もフォローしていません。",
   "profileLoadMore": "さらに{count}件読み込む",

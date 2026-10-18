@@ -13966,6 +13966,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get racesDetailYourRuns => 'Tus carreras en esta prueba';
 
   @override
+  String get racesCourseHeading => 'Recorrido';
+
+  @override
+  String racesCourseGain(String value) {
+    return '$value de desnivel positivo';
+  }
+
+  @override
   String get racesDetailRunsFailed =>
       'No se pudieron cargar tus carreras de esta prueba.';
 
@@ -17589,6 +17597,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planDetailAssignedByCoach => 'Asignado por tu entrenador';
+
+  @override
+  String planDetailBuiltForRace(String race, String date) {
+    return 'Creado para $race · $date';
+  }
 
   @override
   String planDetailWeekOfN(int week, int total) {

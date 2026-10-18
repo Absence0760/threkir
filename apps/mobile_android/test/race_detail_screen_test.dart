@@ -78,6 +78,7 @@ RaceListingView _listing({
   String provider = 'manual',
   required String raceDate,
   String? entryUrl,
+  RaceListingCourse? course,
 }) =>
     RaceListingView(
       id: '11111111-1111-4111-8111-111111111111',
@@ -91,6 +92,7 @@ RaceListingView _listing({
       resultsUrl: null,
       isVerified: true,
       distanceMAway: null,
+      course: course,
     );
 
 Widget _app(RaceService service, {_FakeTraining? training, bool aiPlan = false}) =>
@@ -178,6 +180,43 @@ void main() {
     expect(find.textContaining('No runs linked to this race yet'), findsNothing);
 
     await tester.pump(const Duration(seconds: 4));
+  });
+
+  testWidgets('a listing on a public course shows the course summary',
+      (tester) async {
+    final service = _FakeRaceService(
+      listing: _listing(
+        raceDate: _isoDaysOut(60),
+        course: const RaceListingCourse(
+            distanceM: 42195, ascentM: 180, surface: 'road'),
+      ),
+    );
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    await tester.pump();
+
+    final course = find.byKey(const Key('race-detail-course'));
+    expect(course, findsOneWidget);
+    expect(find.descendant(of: course, matching: find.text('Course')),
+        findsOneWidget);
+    expect(
+      find.descendant(
+          of: course, matching: find.textContaining('180 m elevation gain')),
+      findsOneWidget,
+    );
+    expect(find.descendant(of: course, matching: find.textContaining('Road')),
+        findsOneWidget);
+  });
+
+  testWidgets('a listing with no visible course shows no course section',
+      (tester) async {
+    final service = _FakeRaceService(listing: _listing(raceDate: _isoDaysOut(60)));
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Moab Marathon'), findsWidgets);
+    expect(find.byKey(const Key('race-detail-course')), findsNothing);
   });
 
   testWidgets('a listing that no longer exists reads as not found', (tester) async {

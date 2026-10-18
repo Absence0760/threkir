@@ -3,7 +3,13 @@ import { expect, test } from '../fixtures/test';
 import { browserDate } from '../fixtures/dates';
 import { readRows } from '../fixtures/db-read';
 import { getAdminClient } from '../fixtures/local-supabase';
-import { deletePlan, deleteRaceListing, insertRaceListing } from '../fixtures/simulate';
+import {
+	deletePlan,
+	deleteRaceListing,
+	deleteRoute,
+	insertRaceListing,
+	insertRoute
+} from '../fixtures/simulate';
 import { USER_B } from '../fixtures/users';
 
 /**
@@ -16,7 +22,10 @@ import { USER_B } from '../fixtures/users';
  * a Playwright run cannot unset a build-time public flag. When the runner
  * already has an active plan ending before the race, "Add to my season"
  * queues the new plan behind it plus its recovery days instead of
- * overlapping it.
+ * overlapping it. The plan the wizard creates links back to the listing
+ * (decisions § 2156), and the plan page names the race. A listing whose
+ * course is a public route shows that course and hands its climb and surface
+ * to the AI description; a private one shows and sends nothing (§ 2157).
  *
  * The planted plan sits a year out so no other USER_B spec's plan window can
  * be the one the page chains after.
@@ -37,9 +46,19 @@ test.describe('/races/[id] — build a plan from a race', () => {
 	test.use({ storageState: USER_B.storageStatePath });
 
 	const listings: string[] = [];
+	const createdPlans: string[] = [];
+	const routes: string[] = [];
 
 	test.afterEach(async () => {
 		await deletePlantedPlans();
+		for (const id of createdPlans.splice(0)) await deletePlan(id);
+		for (const id of routes.splice(0)) {
+			try {
+				await deleteRoute(id);
+			} catch (_) {
+				/* best-effort */
+			}
+		}
 		for (const id of listings.splice(0)) {
 			try {
 				await deleteRaceListing(id);
@@ -125,5 +144,76 @@ test.describe('/races/[id] — build a plan from a race', () => {
 		const start = await page.getByLabel('Start date').inputValue();
 		expect(start >= floor).toBe(true);
 		expect(new Date(`${start}T00:00:00Z`).getUTCDay()).toBe(0);
+	});
+
+	test('the plan built from a race links back to it, and the plan page names the race', async ({ page }) => {
+		const raceName = `E2E Race Link ${Date.now()}`;
+		const raceDate = browserDate(700);
+		const id = await insertRaceListing({ provider: 'runsignup', name: raceName, race_date: raceDate, distance_m: 21_097 });
+		listings.push(id);
+
+		await page.goto(`/races/${id}`);
+		await page.getByTestId('race-detail-train').click();
+		await expect(page).toHaveURL(/\/plans\/new\?/);
+		expect(new URL(page.url()).searchParams.get('raceListing')).toBe(id);
+
+		const submit = page.locator('form.plan-editor').getByRole('button', { name: 'Create plan' });
+		await expect(submit).toBeEnabled({ timeout: 10_000 });
+		await submit.click();
+		await page.waitForURL(/\/plans\/[0-9a-f-]+$/, { timeout: 15_000 });
+		const planId = page.url().match(/\/plans\/([0-9a-f-]+)$/)![1];
+		createdPlans.push(planId);
+
+		const rows = await readRows(
+			'race-linked plan',
+			getAdminClient().from('training_plans').select('race_listing_id').eq('id', planId)
+		);
+		expect(rows[0]?.race_listing_id).toBe(id);
+
+		const linked = page.getByTestId('plan-linked-race');
+		await expect(linked).toContainText(raceName);
+		await expect(linked).toHaveAttribute('href', `/races/${id}`);
+	});
+
+	async function listingOnCourse(name: string, isPublic: boolean): Promise<string> {
+		const routeId = await insertRoute({
+			user_id: USER_B.id,
+			name: `${name} course`,
+			waypoints: [
+				{ lat: 37.54, lng: -77.43 },
+				{ lat: 37.55, lng: -77.44 }
+			],
+			distance_m: 42_195,
+			elevation_m: 180,
+			is_public: isPublic
+		});
+		routes.push(routeId);
+		const id = await insertRaceListing({ provider: 'runsignup', name, race_date: browserDate(70), distance_m: 42_195 });
+		listings.push(id);
+		const { error } = await getAdminClient().from('race_listings').update({ route_id: routeId }).eq('id', id);
+		if (error) throw error;
+		return id;
+	}
+
+	test('a public course is shown and goes into the AI description', async ({ page }) => {
+		const id = await listingOnCourse(`E2E Race Course ${Date.now()}`, true);
+
+		await page.goto(`/races/${id}`);
+		const course = page.getByTestId('race-detail-course');
+		await expect(course).toContainText('Course');
+		await expect(course).toContainText('elevation gain');
+		const href = new URL((await page.getByTestId('race-detail-tailor-ai').getAttribute('href'))!, 'https://example.test');
+		expect(href.searchParams.get('describe') ?? '').toContain('Course: 180 m ascent, road surface.');
+	});
+
+	test('a private course is neither shown nor described', async ({ page }) => {
+		const id = await listingOnCourse(`E2E Race Private Course ${Date.now()}`, false);
+
+		await page.goto(`/races/${id}`);
+		const ai = page.getByTestId('race-detail-tailor-ai');
+		await expect(ai).toBeVisible();
+		await expect(page.getByTestId('race-detail-course')).toHaveCount(0);
+		const href = new URL((await ai.getAttribute('href'))!, 'https://example.test');
+		expect(href.searchParams.get('describe') ?? '').not.toContain('Course:');
 	});
 });

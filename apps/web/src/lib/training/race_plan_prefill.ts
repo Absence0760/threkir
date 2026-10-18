@@ -214,6 +214,8 @@ export function racePlanDescribe(
 /// The `/plans/new` link a race opens. Web-only (see the file header).
 export function racePlanHref(input: {
 	race: RacePlanRace;
+	/// The calendar listing, so the created plan links back to it.
+	listingId?: string | null;
 	notBeforeIso?: string | null;
 	describe?: string | null;
 }): string {
@@ -223,6 +225,7 @@ export function racePlanHref(input: {
 		raceName: input.race.name,
 	});
 	if (input.race.distanceM != null) q.set('raceDistance', String(input.race.distanceM));
+	if (input.listingId) q.set('raceListing', input.listingId);
 	if (input.notBeforeIso) q.set('notBefore', input.notBeforeIso);
 	if (input.describe) q.set('describe', input.describe);
 	return `/plans/new?${q}`;

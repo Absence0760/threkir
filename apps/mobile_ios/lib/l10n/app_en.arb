@@ -18457,6 +18457,19 @@
   "@racesDetailYourRuns": {
     "description": "Race detail screen: heading over the runner's own runs linked to this race"
   },
+  "racesCourseHeading": "Course",
+  "@racesCourseHeading": {
+    "description": "Race detail: heading over the race's course summary (distance, elevation gain, surface)"
+  },
+  "racesCourseGain": "{value} elevation gain",
+  "@racesCourseGain": {
+    "description": "Race detail: the course's total elevation gain in the course summary. value is the formatted gain with its unit, e.g. 180 m.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "racesDetailRunsFailed": "Couldn't load your runs for this race.",
   "@racesDetailRunsFailed": {
     "description": "Race detail screen: the runner's linked runs failed to load"
@@ -23042,6 +23055,18 @@
   "planDetailAssignedByCoach": "Assigned by your coach",
   "@planDetailAssignedByCoach": {
     "description": "Chip on a coach-assigned plan when the coach's name is unknown"
+  },
+  "planDetailBuiltForRace": "Built for {race} · {date}",
+  "@planDetailBuiltForRace": {
+    "description": "Plan detail: the calendar race the plan was built for, linking to that race. race is the race's name, date its race day.",
+    "placeholders": {
+      "race": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
   },
   "planDetailWeekOfN": "Week {week} of {total}",
   "@planDetailWeekOfN": {

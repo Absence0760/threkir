@@ -140,18 +140,25 @@ test('goal time: none without a matching plan that carries one', () => {
 });
 
 // Web-only: the phone passes these fields to PlanNewScreen directly.
-test('href carries the race, the chained floor and the description', () => {
-	const href = racePlanHref({ race: RICHMOND, notBeforeIso: '2026-10-08', describe: 'Race: x.' });
+test('href carries the race, its listing, the chained floor and the description', () => {
+	const href = racePlanHref({
+		race: RICHMOND,
+		listingId: '11111111-1111-4111-8111-111111111111',
+		notBeforeIso: '2026-10-08',
+		describe: 'Race: x.',
+	});
 	const url = new URL(href, 'https://example.test');
 	assert.equal(url.pathname, '/plans/new');
 	assert.equal(url.searchParams.get('type'), 'training');
 	assert.equal(url.searchParams.get('raceDate'), '2026-11-14');
 	assert.equal(url.searchParams.get('raceName'), 'Richmond Marathon');
 	assert.equal(url.searchParams.get('raceDistance'), '42195');
+	assert.equal(url.searchParams.get('raceListing'), '11111111-1111-4111-8111-111111111111');
 	assert.equal(url.searchParams.get('notBefore'), '2026-10-08');
 	assert.equal(url.searchParams.get('describe'), 'Race: x.');
 	const bare = new URL(racePlanHref({ race: { ...RICHMOND, distanceM: null } }), 'https://example.test');
 	assert.equal(bare.searchParams.has('raceDistance'), false);
+	assert.equal(bare.searchParams.has('raceListing'), false);
 	assert.equal(bare.searchParams.has('notBefore'), false);
 	assert.equal(bare.searchParams.has('describe'), false);
 });

@@ -22,6 +22,11 @@ class RaceListingView {
   final bool isVerified;
   final double? distanceMAway;
 
+  /// The linked course's summary. The view fills it only while the route is
+  /// public, so null covers "no course" and "a course nobody may see" alike
+  /// (decisions § 2157). Calendar search rows never carry it.
+  final RaceListingCourse? course;
+
   const RaceListingView({
     required this.id,
     required this.provider,
@@ -34,6 +39,7 @@ class RaceListingView {
     required this.resultsUrl,
     required this.isVerified,
     required this.distanceMAway,
+    this.course,
   });
 
   factory RaceListingView.fromJson(Map<String, dynamic> j) => RaceListingView(
@@ -48,7 +54,26 @@ class RaceListingView {
         resultsUrl: j['results_url'] as String?,
         isVerified: j['is_verified'] as bool? ?? false,
         distanceMAway: (j['distance_m_away'] as num?)?.toDouble(),
+        course: RaceListingCourse.fromViewRow(j),
       );
+}
+
+class RaceListingCourse {
+  final double? distanceM;
+  final double? ascentM;
+  final String? surface;
+
+  const RaceListingCourse({this.distanceM, this.ascentM, this.surface});
+
+  /// Null when the row carries none of the view's course columns.
+  static RaceListingCourse? fromViewRow(Map<String, dynamic> j) {
+    final distance = (j['course_distance_m'] as num?)?.toDouble();
+    final ascent = (j['course_elevation_m'] as num?)?.toDouble();
+    final surface = j['course_surface'] as String?;
+    if (distance == null && ascent == null && surface == null) return null;
+    return RaceListingCourse(
+        distanceM: distance, ascentM: ascent, surface: surface);
+  }
 }
 
 /// The matched-race view for a run: the run's owner-only race metadata + its
@@ -386,7 +411,7 @@ class RaceService extends ChangeNotifier {
     final row = await _c
         .from('public_race_listings')
         .select(
-            'id, provider, provider_race_id, name, race_date, distance_m, location_label, entry_url, results_url, is_verified')
+            'id, provider, provider_race_id, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface')
         .eq('id', id)
         .maybeSingle();
     if (row == null ||

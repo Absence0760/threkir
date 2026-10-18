@@ -13316,6 +13316,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String get racesDetailYourRuns => 'このレースでのあなたのラン';
 
   @override
+  String get racesCourseHeading => 'コース';
+
+  @override
+  String racesCourseGain(String value) {
+    return '獲得標高 $value';
+  }
+
+  @override
   String get racesDetailRunsFailed => 'このレースのランを読み込めませんでした。';
 
   @override
@@ -16769,6 +16777,11 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get planDetailAssignedByCoach => 'コーチが割り当て';
+
+  @override
+  String planDetailBuiltForRace(String race, String date) {
+    return '$race（$date）向け';
+  }
 
   @override
   String planDetailWeekOfN(int week, int total) {

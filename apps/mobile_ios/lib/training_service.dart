@@ -1106,6 +1106,9 @@ class TrainingService extends ChangeNotifier {
     required int daysPerWeek,
     String? notes,
     required GeneratedPlan generated,
+    // The race listing the plan is built for; the RPC writes null for an id
+    // that names no listing rather than refusing the plan.
+    String? raceListingId,
     PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
     final uid = _uid;
@@ -1167,6 +1170,7 @@ class TrainingService extends ChangeNotifier {
           // Match web's `notes?.trim() || null` — whitespace-only collapses
           // to null so the column stays clean for `IS NOT NULL` filters.
           'notes': _trimToNull(notes),
+          'race_listing_id': raceListingId,
         },
         'p_weeks': [
           for (final w in generated.weeks)

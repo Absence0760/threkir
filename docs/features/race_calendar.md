@@ -278,3 +278,20 @@ The page gets the thumbnail, caption, time and the uploader's display name, neve
 
 The import dialog is one component on web, `RaceImportDialog.svelte`, used by both `/races` and `/races/[id]`; its per-leg credential probe is the shared `race_import_probe.svelte.ts`, which asks each leg once per session (a probe spends the import function's own rate limit, and a 429 reads as unavailable). Tests: `apps/web/tests-e2e/races/race-detail.spec.ts`, `apps/mobile_android/test/race_detail_screen_test.dart`, and the race-day gate in `races_screen_test.dart`.
 
+
+## Plans built for a race, and a race's course (shipped 2026-10-18)
+
+**A plan built from the race page links back to it** ([decisions § 2156](../architecture/decisions.md)). The race page's three plan actions hand the listing id to the wizard (web `?raceListing=` on `/plans/new`, built by `racePlanHref`; mobile `PlanNewScreen.raceListingId`), which passes it to `create_training_plan` only while the race preset applied, so a link opened for a race already run creates an unlinked plan. The plan stores it in `training_plans.race_listing_id`, and plan detail (web `/plans/[id]`, mobile `PlanDetailScreen`) shows **Built for {race} · {date}**, linking to the race's detail page; a failed listing read leaves the line out. Templates, the library and club copies, coach assignments and restarts never carry the link (`api_database.md § training_plans`).
+
+**A listing can have a course** ([decisions § 2157](../architecture/decisions.md)). `race_listings.route_id` names the route the race is run on, one per edition. The race detail page shows a **Course** section with the course's distance, elevation gain and surface, and passes the gain and surface to `racePlanDescribe`, so the AI plan description carries the course line. Both read the summary from `public_race_listings`, which fills it only while the route is public and not moderated away: a listing linked to a private route shows no course and sends none, to every reader including the route's owner. The calendar list is unchanged, and the route's id is not exposed, so there is no course map or route link yet (that is the #1190 course-map slice). Descent is not sent: routes store only total ascent.
+
+**Linking a course is an operator task until the organiser claim flow in #1190.** Only the service role may write `route_id`: a submitter's insert drops it and their update keeps the stored value. The Supabase SQL editor sends no JWT, so set the role claim first, in one transaction:
+
+```sql
+begin;
+select set_config('request.jwt.claims', '{"role":"service_role"}', true);
+update public.race_listings set route_id = '<public route id>' where id = '<listing id>' returning id, route_id;
+commit;
+```
+
+Check that the route is public (`select is_public, shadow_hidden from routes where id = '<public route id>'`) first: a private route is stored but never shown. Tests: `race_listing_course_test.sql`, `training_plan_race_listing_test.sql`, `tests-e2e/races/race-plan.spec.ts`, `test/race_detail_screen_test.dart`, `test/plan_detail_linked_race_test.dart`.

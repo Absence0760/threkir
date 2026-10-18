@@ -5,7 +5,7 @@
 		isPlanRestartRaceAheadError,
 		thrownMessage,
 	} from '#lib/core/supabase_error.ts';
-	import { activeFormatLocale, formatDateShort, formatDuration } from '#lib/format/time.ts';
+	import { activeFormatLocale, formatDate, formatDateShort, formatDuration } from '#lib/format/time.ts';
 	import { onMount, tick } from 'svelte';
 	import { afterNavigate, goto, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
@@ -14,6 +14,7 @@
 		fetchMyClubs,
 		fetchRuns,
 		fetchDisplayName,
+		fetchRaceListing,
 		fetchRunDistances,
 		publishPlanAsTemplate,
 		publishPlanToLibrary,
@@ -33,6 +34,7 @@
 		restartTrainingPlan,
 		ActivePlanExistsError,
 		isActiveCoachOf,
+		type RaceListingDetail,
 	} from '#lib/core/data.ts';
 	import { recoveryWorkoutPatch } from '#lib/training/plan_bulk_ops.ts';
 	import { planShiftImpact } from '#lib/training/plan_shift.ts';
@@ -1201,6 +1203,8 @@
 
 	/// Who assigned this plan, when a coach did and it is not the viewer.
 	let assigningCoachName = $state<string | null>(null);
+	/// The calendar race this plan was built for (decisions § 2156).
+	let linkedRace = $state<RaceListingDetail | null>(null);
 
 	// SvelteKit keeps this component mounted across /plans/A → /plans/B, so
 	// onMount's load never runs for B; the effect below loads it instead.
@@ -1226,6 +1230,16 @@
 		}
 		loading = false;
 		assigningCoachName = null;
+		linkedRace = null;
+		const raceListingId = plan?.race_listing_id;
+		if (loadError === null && raceListingId) {
+			// Auxiliary: a failed read leaves the plan without its race line.
+			fetchRaceListing(raceListingId)
+				.then((race) => {
+					if (plan?.race_listing_id === raceListingId) linkedRace = race;
+				})
+				.catch((e) => console.error('fetchRaceListing failed', e));
+		}
 		const coachId = plan?.assigned_by_coach_id;
 		if (loadError === null && coachId && coachId !== auth.user?.id) {
 			fetchDisplayName(coachId)
@@ -1844,6 +1858,15 @@
 							{assigningCoachName
 								? m('planDetail.assignedBy', { name: assigningCoachName })
 								: m('planDetail.assignedByCoach')}
+						</a>
+					{/if}
+					{#if linkedRace}
+						<a class="chip chip-link" href="/races/{linkedRace.id}" data-testid="plan-linked-race">
+							<span class="material-symbols" aria-hidden="true">flag</span>
+							{m('planDetail.builtForRace', {
+								race: linkedRace.name,
+								date: formatDate(linkedRace.race_date),
+							})}
 						</a>
 					{/if}
 					{#if plan.parent_template_id}

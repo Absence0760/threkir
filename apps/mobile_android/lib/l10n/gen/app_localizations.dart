@@ -22832,6 +22832,18 @@ abstract class AppLocalizations {
   /// **'Your runs at this race'**
   String get racesDetailYourRuns;
 
+  /// Race detail: heading over the race's course summary (distance, elevation gain, surface)
+  ///
+  /// In en, this message translates to:
+  /// **'Course'**
+  String get racesCourseHeading;
+
+  /// Race detail: the course's total elevation gain in the course summary. value is the formatted gain with its unit, e.g. 180 m.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} elevation gain'**
+  String racesCourseGain(String value);
+
   /// Race detail screen: the runner's linked runs failed to load
   ///
   /// In en, this message translates to:
@@ -28734,6 +28746,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Assigned by your coach'**
   String get planDetailAssignedByCoach;
+
+  /// Plan detail: the calendar race the plan was built for, linking to that race. race is the race's name, date its race day.
+  ///
+  /// In en, this message translates to:
+  /// **'Built for {race} · {date}'**
+  String planDetailBuiltForRace(String race, String date);
 
   /// Plan-detail header: which week of the plan today is in
   ///

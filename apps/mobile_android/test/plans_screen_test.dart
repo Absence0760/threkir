@@ -79,6 +79,7 @@ class _FakeTraining extends TrainingService {
     required int daysPerWeek,
     String? notes,
     required GeneratedPlan generated,
+    String? raceListingId,
     PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
     created = (name: name, start: startDate, days: daysPerWeek, goal: goalEvent);

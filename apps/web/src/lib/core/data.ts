@@ -2860,6 +2860,16 @@ export interface RaceListingDetail {
 	entry_url: string | null;
 	results_url: string | null;
 	is_verified: boolean;
+	/// The linked course's summary. The view fills it only while the route is
+	/// public, so null covers "no course" and "a course nobody may see" alike
+	/// (decisions § 2157).
+	course: RaceListingCourse | null;
+}
+
+export interface RaceListingCourse {
+	distanceM: number | null;
+	ascentM: number | null;
+	surface: string | null;
 }
 
 export async function fetchRaceListing(id: string): Promise<RaceListingDetail | null> {
@@ -2867,12 +2877,14 @@ export async function fetchRaceListing(id: string): Promise<RaceListingDetail | 
 	const { data, error } = await supabase
 		.from('public_race_listings')
 		.select(
-			'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified'
+			'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface'
 		)
 		.eq('id', id)
 		.maybeSingle();
 	if (error) throw dbError(error);
 	if (!data || !data.id || !data.name || !data.race_date || !data.provider) return null;
+	const hasCourse =
+		data.course_distance_m != null || data.course_elevation_m != null || data.course_surface != null;
 	return {
 		id: data.id,
 		provider: data.provider,
@@ -2882,7 +2894,14 @@ export async function fetchRaceListing(id: string): Promise<RaceListingDetail | 
 		location_label: data.location_label,
 		entry_url: data.entry_url,
 		results_url: data.results_url,
-		is_verified: data.is_verified ?? false
+		is_verified: data.is_verified ?? false,
+		course: hasCourse
+			? {
+					distanceM: data.course_distance_m,
+					ascentM: data.course_elevation_m,
+					surface: data.course_surface
+				}
+			: null
 	};
 }
 
@@ -6268,6 +6287,9 @@ export async function createTrainingPlan(input: {
 	daysPerWeek: number;
 	notes?: string;
 	generated: GeneratedPlan;
+	/// The race listing the plan is built for. The RPC writes null for an id
+	/// that names no listing rather than refusing the plan.
+	raceListingId?: string | null;
 	overlap?: PlanOverlapChoice;
 }): Promise<TrainingPlan> {
 	// Read the id from the session directly rather than from the auth store.
@@ -6324,7 +6346,8 @@ export async function createTrainingPlan(input: {
 			days_per_week: input.daysPerWeek,
 			vdot: input.generated.vdot ?? null,
 			current_5k_seconds: input.recent5kSec ?? null,
-			notes: input.notes?.trim() || null
+			notes: input.notes?.trim() || null,
+			race_listing_id: input.raceListingId ?? null
 		},
 		p_weeks: input.generated.weeks.map((w) => ({
 			week_index: w.week_index,

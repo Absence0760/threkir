@@ -13832,6 +13832,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get racesDetailYourRuns => 'Your runs at this race';
 
   @override
+  String get racesCourseHeading => 'Course';
+
+  @override
+  String racesCourseGain(String value) {
+    return '$value elevation gain';
+  }
+
+  @override
   String get racesDetailRunsFailed => 'Couldn\'t load your runs for this race.';
 
   @override
@@ -17413,6 +17421,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planDetailAssignedByCoach => 'Assigned by your coach';
+
+  @override
+  String planDetailBuiltForRace(String race, String date) {
+    return 'Built for $race · $date';
+  }
 
   @override
   String planDetailWeekOfN(int week, int total) {

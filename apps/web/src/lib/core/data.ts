@@ -164,7 +164,7 @@ import {
 	DEFAULT_RELINK_WINDOW_DAYS,
 	type RelinkCandidateRun
 } from '../training/relink_candidates';
-import { formatISO, type GeneratedPlan, type GoalEvent, type PlanPhase } from '../training/training';
+import { formatISO, parseISO, type GeneratedPlan, type GoalEvent, type PlanPhase } from '../training/training';
 import type { RacePriority } from '../training/plan_races';
 import { parseRosterRecentWorkouts, type RosterRecentWorkout } from '../training/coach_load';
 import { auth } from '../stores/auth.svelte';
@@ -6124,13 +6124,11 @@ export async function fetchPlanRecapSources(
 ): Promise<{ runs: PlanRecapRun[]; records: PlanRecapRecord[] }> {
 	const userId = auth.user?.id;
 	if (!userId) return { runs: [], records: [] };
-	const localMidnight = (iso: string) => new Date(`${iso}T00:00:00`).toISOString();
-	const localDay = (instant: string) => formatISO(new Date(instant));
 	const [runs, recordsRes] = await Promise.all([
 		fetchRuns({
 			columns: ['id', 'started_at', 'distance_m', 'duration_s', 'activity_type', 'is_dnf'] as const,
-			startedAtFrom: localMidnight(shiftIsoDate(startIso, -2)),
-			startedAtBefore: localMidnight(shiftIsoDate(endIso, 3)),
+			startedAtFrom: parseISO(shiftIsoDate(startIso, -2)).toISOString(),
+			startedAtBefore: parseISO(shiftIsoDate(endIso, 3)).toISOString(),
 			throwOnError: true,
 		}),
 		supabase
@@ -6142,7 +6140,7 @@ export async function fetchPlanRecapSources(
 	return {
 		runs: runs.map((r) => ({
 			id: r.id,
-			date: localDay(r.started_at),
+			date: formatISO(new Date(r.started_at)),
 			distanceM: r.distance_m,
 			durationS: r.duration_s,
 			activityType: r.activity_type,
@@ -6151,7 +6149,7 @@ export async function fetchPlanRecapSources(
 		records: (recordsRes.data ?? []).map((r) => ({
 			distance: r.distance,
 			timeS: r.best_time_s,
-			date: localDay(r.achieved_at),
+			date: formatISO(new Date(r.achieved_at)),
 			runId: r.run_id,
 		})),
 	};

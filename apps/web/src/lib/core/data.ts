@@ -49,6 +49,7 @@ import {
 import { challengesToRecomputeForRun } from '../social/challenge_progress';
 import { mergeMyProgress } from '../social/challenge_list';
 import { selectEffectivePricing } from '../social/event_instance';
+import type { RepacePatch } from '../training/plan_repace';
 import {
 	EVENT_PHOTO_WINDOW_AFTER_MS,
 	EVENT_PHOTO_WINDOW_BEFORE_MS,
@@ -6653,6 +6654,25 @@ export async function updatePlanMeta(
 ): Promise<void> {
 	markListsStale('plans');
 	const { error } = await supabase.from('training_plans').update(patch).eq('id', id);
+	if (error) throw dbError(error);
+}
+
+/// Set a plan's goal time with the re-derived workout paces
+/// (`goalTimeRepacePatches`) and VDOT in one transaction
+/// (`set_plan_goal_time`), so the goal and the paces never disagree.
+export async function setPlanGoalTime(
+	planId: string,
+	goalTimeSec: number | null,
+	vdot: number | null,
+	changes: RepacePatch[]
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('set_plan_goal_time', {
+		p_plan_id: planId,
+		p_goal_time_seconds: goalTimeSec,
+		p_vdot: vdot,
+		p_changes: changes as unknown as Json
+	});
 	if (error) throw dbError(error);
 }
 

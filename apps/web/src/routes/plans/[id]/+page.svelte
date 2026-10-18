@@ -1948,6 +1948,8 @@
 {#if editingPlanMeta && plan}
 	<PlanMetaEditor
 		{plan}
+		{workouts}
+		todayIso={today}
 		onClose={() => (editingPlanMeta = false)}
 		onSaved={async () => {
 			editingPlanMeta = false;

@@ -4,17 +4,23 @@
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { RACE_GOAL_MAX_HOURS } from '#lib/training/plan_races.ts';
 	import Modal from './Modal.svelte';
-	import { updatePlanMeta } from '#lib/core/data.ts';
+	import { setPlanGoalTime, updatePlanMeta } from '#lib/core/data.ts';
+	import { goalTimeRepacePatches } from '#lib/training/plan_repace.ts';
+	import { vdotFromRace } from '#lib/training/training.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
-	import type { TrainingPlan } from '#lib/types.ts';
+	import type { PlanWorkout, TrainingPlan } from '#lib/types.ts';
 
 	interface Props {
 		plan: TrainingPlan;
+		/// The plan's workouts, so a goal-time change re-derives their paces.
+		workouts: PlanWorkout[];
+		/// The runner's local day: workouts before it keep their paces.
+		todayIso: string;
 		onSaved: () => void;
 		onClose: () => void;
 	}
-	let { plan, onSaved, onClose }: Props = $props();
+	let { plan, workouts, todayIso, onSaved, onClose }: Props = $props();
 
 	// Snapshot the incoming plan into editable state. We don't bind
 	// directly to `plan.x` because the parent passes a $state proxy
@@ -61,14 +67,34 @@
 				.split('\n')
 				.map((s) => s.trim())
 				.filter((s) => s.length > 0);
+			// A new goal time re-derives the paces still ahead, written with the
+			// goal in one transaction; the rest of the form is a plain update.
+			let repaced = 0;
+			if (goalSeconds !== plan.goal_time_seconds) {
+				const changes = goalTimeRepacePatches({
+					goalDistanceM: plan.goal_distance_m,
+					oldGoalTimeSec: plan.goal_time_seconds,
+					newGoalTimeSec: goalSeconds,
+					recent5kSec: plan.current_5k_seconds,
+					todayIso,
+					workouts
+				});
+				const vdot =
+					goalSeconds && !plan.current_5k_seconds
+						? Math.round(vdotFromRace(plan.goal_distance_m, goalSeconds) * 100) / 100
+						: null;
+				await setPlanGoalTime(plan.id, goalSeconds, vdot, changes);
+				repaced = changes.length;
+			}
 			await updatePlanMeta(plan.id, {
 				name: name.trim(),
 				notes: notes.trim() || null,
-				goal_time_seconds: goalSeconds,
 				days_per_week: daysPerWeek,
 				rules: rules.length > 0 ? rules : null,
 			});
-			showToast(m('planMeta.planUpdated'));
+			showToast(
+				repaced > 0 ? m('planMeta.planUpdatedRepaced', { n: repaced }) : m('planMeta.planUpdated')
+			);
 			onSaved();
 		} catch (e: any) {
 			error = m('planMeta.saveFailed', { error: thrownMessage(e) });

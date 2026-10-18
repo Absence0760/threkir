@@ -3782,6 +3782,8 @@ export const messages = {
 	"shareRun.ctaSub": "無料。マップ、スプリット、高度、Kudos、トレーニングプラン。基本機能にサブスクリプションは不要です。",
 	"shareRun.ctaButton": "無料で登録",
 	"shareRun.footerHome": "Threkir ホーム",
+	"shareRun.backToApp": "戻る",
+	"shareRun.openInApp": "Threkir で開く",
 	"shareEvent.heroKicker": "Threkir のイベント",
 	"shareProfile.subtitle": "Threkir \u306e\u30e9\u30f3\u30ca\u30fc",
 	"shareProfile.notFoundTitle": "\u30e9\u30f3\u30ca\u30fc\u304c\u898b\u3064\u304b\u308a\u307e\u305b\u3093\u3002",

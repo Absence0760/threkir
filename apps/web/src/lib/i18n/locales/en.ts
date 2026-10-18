@@ -3800,6 +3800,8 @@ export const en = {
 	"shareRun.ctaSub": "Free. Map, splits, elevation, kudos, training plans. No subscription needed for the basics.",
 	"shareRun.ctaButton": "Sign up for Free",
 	"shareRun.footerHome": "Threkir home",
+	"shareRun.backToApp": "Back",
+	"shareRun.openInApp": "Open in Threkir",
 	"shareEvent.heroKicker": "An event on Threkir",
 	"shareProfile.subtitle": "A runner on Threkir",
 	"shareProfile.notFoundTitle": "Runner not found.",

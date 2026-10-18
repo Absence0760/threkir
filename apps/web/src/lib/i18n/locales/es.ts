@@ -3787,6 +3787,8 @@ export const messages = {
 	"shareRun.ctaSub": "Gratis. Mapa, parciales, desnivel, kudos, planes de entrenamiento. No necesitas suscripción para lo básico.",
 	"shareRun.ctaButton": "Regístrate gratis",
 	"shareRun.footerHome": "Inicio de Threkir",
+	"shareRun.backToApp": "Atrás",
+	"shareRun.openInApp": "Abrir en Threkir",
 	"shareEvent.heroKicker": "Un evento en Threkir",
 	"shareProfile.subtitle": "Un corredor en Threkir",
 	"shareProfile.notFoundTitle": "Corredor no encontrado.",

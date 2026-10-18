@@ -1,6 +1,7 @@
 // Active-run complication for watchOS 10+. Renders the live workout
 // stats (elapsed time, distance, current pace) on the runner's watch
-// face.
+// face, and between runs today's planned workout when the phone pushed
+// one for today.
 //
 // This runs in the `WatchAppComplication` extension, a separate PROCESS
 // from the app that owns the HKWorkoutSession — it cannot reach
@@ -26,7 +27,8 @@ import WidgetKit
 
 /// Hands the system fresh entries on a coarse cadence; the schedule itself
 /// is `ActiveRunTimeline`'s. The Run app explicitly reloads the timeline on
-/// workout state transitions (start, pause, resume, stop) via
+/// workout state transitions (start, pause, resume, stop) and when the phone
+/// pushes a different workout for today, via
 /// `WidgetCenter.shared.reloadTimelines(...)`.
 struct ActiveRunProvider: TimelineProvider {
     typealias Entry = ActiveRunEntry
@@ -42,15 +44,20 @@ struct ActiveRunProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (Entry) -> Void) {
-        completion(ActiveRunTimeline.entry(from: ActiveRunBridge.read(), now: .now))
+        completion(ActiveRunTimeline.entry(
+            from: ActiveRunBridge.read(),
+            today: ActiveRunBridge.readToday(),
+            now: .now
+        ))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> Void) {
-        let entries = ActiveRunTimeline.entries(from: ActiveRunBridge.read(), now: .now)
-        // Idle — one static entry and no schedule; the app calls
-        // reloadTimelines on the next state change so we don't have to
-        // budget refreshes for a watch face that isn't going to change.
-        let policy: TimelineReloadPolicy = entries.first?.isActive == true ? .atEnd : .never
+        let entries = ActiveRunTimeline.entries(
+            from: ActiveRunBridge.read(),
+            today: ActiveRunBridge.readToday(),
+            now: .now
+        )
+        let policy: TimelineReloadPolicy = ActiveRunTimeline.reloadsAtEnd(entries) ? .atEnd : .never
         completion(Timeline(entries: entries, policy: policy))
     }
 }
@@ -95,6 +102,18 @@ private struct CircularView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
+        } else if let today = entry.today {
+            VStack(spacing: 0) {
+                Image(systemName: "figure.run")
+                    .font(.caption)
+                    .foregroundStyle(.tint)
+                Text(ActiveRunTimeline.todayHeadline(today) ?? ActiveRunTimeline.kindLabel(today.workoutKind))
+                    .font(.caption2.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(ActiveRunTimeline.todayLine(today))
         } else {
             VStack(spacing: 0) {
                 Image(systemName: "figure.run")
@@ -117,6 +136,9 @@ private struct CornerView: View {
                 .font(.body.weight(.semibold))
                 .widgetCurvesContent()
                 .widgetLabel("Pace")
+        } else if let today = entry.today {
+            Image(systemName: "figure.run")
+                .widgetLabel(ActiveRunTimeline.todayLine(today))
         } else {
             Image(systemName: "figure.run")
                 .widgetLabel("Run")
@@ -130,6 +152,8 @@ private struct InlineView: View {
     var body: some View {
         if entry.isActive {
             Label(ActiveRunTimeline.statLine(entry), systemImage: "figure.run")
+        } else if let today = entry.today {
+            Label(ActiveRunTimeline.todayLine(today), systemImage: "figure.run")
         } else {
             Label("Tap to start", systemImage: "figure.run")
         }
@@ -156,6 +180,26 @@ private struct RectangularView: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+            }
+        } else if let today = entry.today {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Image(systemName: "figure.run").font(.caption2)
+                    Text("Today's workout")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.tint)
+                        .lineLimit(1)
+                }
+                Text(ActiveRunTimeline.kindLabel(today.workoutKind))
+                    .font(.body.weight(.medium))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                if let headline = ActiveRunTimeline.todayHeadline(today) {
+                    Text(headline)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
             }
         } else {
             VStack(alignment: .leading, spacing: 2) {

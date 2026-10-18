@@ -1,5 +1,6 @@
 import Foundation
 import WatchConnectivity
+import WidgetKit
 
 /// Transfers completed runs from the Apple Watch to the paired iPhone over
 /// `WCSession.transferFile(_:metadata:)`. The phone owns the Supabase write —
@@ -136,6 +137,9 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
         super.init()
         raceState = LiveRaceState(race: LiveRaceStore.load())
         liveRace = raceState.race
+        // A push stored by a build older than the complication's today state
+        // has no glance yet; this is also a no-op on every launch after.
+        Self.publishTodayGlance(todaysWorkout)
         if WCSession.isSupported() {
             WCSession.default.delegate = self
             WCSession.default.activate()
@@ -374,6 +378,7 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
         if let json = payload[Self.todaysWorkoutKey] as? String {
             PushedWorkoutStore.save(json: json)
             let push = WorkoutPush.decode(json)
+            Self.publishTodayGlance(push)
             DispatchQueue.main.async { self.todaysWorkout = push }
         }
         // Arm / Go / End. Fail-closed the same way: a status word this build
@@ -393,13 +398,22 @@ class WatchConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
         armedRoute = route
     }
 
-    /// Drop the armed route from the wrist. The phone is the only writer, so
-    /// without this the runner's only way out of a route they no longer want
-    /// is to go back to the phone.
     /// The `transferUserInfo` key the phone's `WatchIngestBridge.workoutUserInfo`
     /// writes today's workout under.
     static let todaysWorkoutKey = "todays_workout"
 
+    /// Hands the complication what its "today" state draws, and asks it to
+    /// re-read only when that changed. The face's midnight rollover is in its
+    /// own timeline, so nothing here has to run at midnight.
+    static func publishTodayGlance(_ push: WorkoutPush?) {
+        if ActiveRunBridge.writeToday(TodayWorkoutGlance(push)) {
+            WidgetCenter.shared.reloadTimelines(ofKind: ActiveRunBridge.complicationKind)
+        }
+    }
+
+    /// Drop the armed route from the wrist. The phone is the only writer, so
+    /// without this the runner's only way out of a route they no longer want
+    /// is to go back to the phone.
     func clearArmedRoute() {
         ArmedRouteStore.clear()
         armedRoute = nil

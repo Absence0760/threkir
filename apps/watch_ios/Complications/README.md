@@ -96,11 +96,25 @@ WorkoutManager (host app)
         ├─ ActiveRunBridge.write(snapshot)            ── App Group UserDefaults
         └─ WidgetCenter.reloadTimelines(ofKind: ...)  ── nudges the OS
 
+WatchConnectivityManager (host app)
+  └─ todays_workout push / launch
+        └─ publishTodayGlance(push)
+              ├─ ActiveRunBridge.writeToday(glance)   ── App Group UserDefaults
+              └─ reloadTimelines, only if it changed
+
 ActiveRunProvider (widget extension)
   └─ getTimeline()
-        └─ ActiveRunBridge.read()                     ── reads same UserDefaults
-              └─ ActiveRunEntryView                   ── renders for current widgetFamily
+        ├─ ActiveRunBridge.read() + readToday()       ── reads same UserDefaults
+        └─ ActiveRunEntryView                         ── renders for current widgetFamily
 ```
+
+Between runs the face shows today's planned workout — its kind and headline
+distance (or duration) — when the phone pushed one dated the watch's own today,
+the same rule the pre-run screen offers it by. A live run always wins the face.
+The timeline carries a second entry at the next local midnight, so the workout
+drops off when its day ends with no app running; `ActiveRunTimeline.reloadsAtEnd`
+asks for a fresh timeline after it. The phone's explicit "nothing today" (rest
+day, done, skipped, no plan) clears the glance, so the face returns to idle.
 
 The kind is `ActiveRunBridge.complicationKind`, read by both targets rather than
 spelled twice: `reloadTimelines(ofKind:)` with a kind no widget declares is a

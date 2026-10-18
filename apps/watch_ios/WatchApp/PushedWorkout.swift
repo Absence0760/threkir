@@ -26,7 +26,7 @@ struct PushedWorkout: Codable, Equatable {
     let planWorkoutId: String
     /// The plan day, `yyyy-MM-dd`, in the runner's own calendar.
     let scheduledDate: String
-    /// `plan_workouts.kind`. Carried for a later "today" complication.
+    /// `plan_workouts.kind`, which the complication's "today" state names.
     let workoutKind: String
     /// A walk-run session: no step is a pace test, so no step grades pace.
     let unpaced: Bool
@@ -53,8 +53,7 @@ struct PushedWorkout: Codable, Equatable {
     }
 
     static func dayString(_ date: Date, calendar: Calendar = .current) -> String {
-        let c = calendar.dateComponents([.year, .month, .day], from: date)
-        return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
+        TodayWorkoutGlance.dayString(date, calendar: calendar)
     }
 }
 
@@ -241,5 +240,20 @@ enum PushedWorkoutStore {
 
     static func clear(defaults: UserDefaults = .standard) {
         defaults.removeObject(forKey: key)
+    }
+}
+
+extension TodayWorkoutGlance {
+    /// What the complication shows for `push`: nil for "nothing today", a
+    /// refused payload or no push at all, each of which takes the face back
+    /// to its idle state.
+    init?(_ push: WorkoutPush?) {
+        guard case .workout(let w)? = push else { return nil }
+        self.init(
+            scheduledDate: w.scheduledDate,
+            workoutKind: w.workoutKind,
+            distanceMetres: w.totalDistanceMetres,
+            durationSeconds: w.totalDurationSeconds
+        )
     }
 }

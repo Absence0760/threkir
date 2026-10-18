@@ -181,9 +181,21 @@ class DashboardScreen extends StatefulWidget {
 /// (issue #921).
 enum _AccountHistory { unknown, none, some }
 
+class _HomeBreak {
+  final List<DateTime>? runStarts;
+  final PlanBreakState state;
+
+  const _HomeBreak(this.runStarts, this.state);
+
+  static const none = _HomeBreak(null, PlanBreakState.none);
+}
+
 class _DashboardScreenState extends State<DashboardScreen>
     with AuthChangeAware<DashboardScreen>, WidgetsBindingObserver {
   _AccountHistory _history = _AccountHistory.unknown;
+
+  /// This build's break state (`_homeBreak`), read by every plan card.
+  _HomeBreak _breakNow = _HomeBreak.none;
 
   /// Whether the last hydrate reached the server. Feeds the pending-sync
   /// banner's retry affordance, nothing else.
@@ -919,7 +931,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             onTap: () => _openPlan(p.upcomingPlan!.id),
           )
         : null;
-    final brk = _planBreakCard(p, now);
+    final brk = _planBreakCard(p, now, _breakNow);
     final parts = [?brk, ?race, ?upNext];
     if (parts.length < 2) return parts.firstOrNull;
     return Column(
@@ -936,27 +948,45 @@ class _DashboardScreenState extends State<DashboardScreen>
   /// A break of a week or more in the shown plan (decisions § 2128). The
   /// card hides itself when there is none; the local store holds every run,
   /// unsynced ones included, so a run recorded offline still ends a break.
-  Widget? _planBreakCard(ActivePlanOverview p, DateTime now) {
+  Widget? _planBreakCard(
+      ActivePlanOverview p, DateTime now, _HomeBreak home) {
     final training = widget.training;
-    if (training == null) return null;
-    final runStarts = [for (final r in widget.runStore.summaryRuns) r.startedAt];
-    if (!PlanBreakCard.shows(
-        plan: p.plan,
-        weeks: p.weeks,
-        workouts: p.workouts,
-        runStarts: runStarts,
-        now: now)) {
-      return null;
-    }
+    if (training == null || !home.state.showing) return null;
     return PlanBreakCard(
       key: const Key('dashboardPlanBreak'),
       training: training,
       plan: p.plan,
       weeks: p.weeks,
       workouts: p.workouts,
-      runStarts: runStarts,
+      runStarts: home.runStarts,
       now: now,
       onApplied: _refreshPlanOverview,
+      onAnswered: () {
+        if (mounted) setState(() {});
+      },
+    );
+  }
+
+  /// The break state for Home's plan, worked out once per build: the offer
+  /// outranks the missed-workout prompt and the plan nudge. The runs are
+  /// known once the store holds one, or the account has none at all; a cold
+  /// store on an account that has run shows no offer rather than call that
+  /// runner on a break.
+  _HomeBreak _homeBreak(List<Run> runs, DateTime now) {
+    final p = _planOverview;
+    if (p == null || p.plan.status != 'active') return _HomeBreak.none;
+    final runStarts = runs.isNotEmpty || _history == _AccountHistory.none
+        ? [for (final r in runs) r.startedAt]
+        : null;
+    return _HomeBreak(
+      runStarts,
+      PlanBreakCard.stateFor(
+        plan: p.plan,
+        weeks: p.weeks,
+        workouts: p.workouts,
+        runStarts: runStarts,
+        now: now,
+      ),
     );
   }
 
@@ -1000,7 +1030,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   Widget? _missedPromptCard(DateTime now) {
     final p = _planOverview;
     final svc = widget.training;
-    if (p == null || svc == null) return null;
+    if (p == null || svc == null || _breakNow.state.showing) return null;
     if (p.plan.status != 'active' || p.plan.isTemplate || _planFinished(now)) {
       return null;
     }
@@ -1048,11 +1078,14 @@ class _DashboardScreenState extends State<DashboardScreen>
     final p = _planOverview;
     final svc = widget.training;
     if (p == null || svc == null || _planFinished(now)) return null;
+    if (_breakNow.state.showing) return null;
+    final window = _breakNow.state.window;
     final nudge = PlanNudgeCard.nudgeFor(
       overview: p,
       runs: runs,
       dismissed: PlanNudgeCard.dismissedIn(widget.settingsSync),
       now: now,
+      breakWindow: window,
     );
     if (nudge == null) return null;
     return PlanNudgeCard(
@@ -1061,6 +1094,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       runs: runs,
       settingsSync: widget.settingsSync,
       now: now,
+      breakWindow: window,
       onReview: (n) => _reviewPlanNudge(svc, p.plan.id, n),
     );
   }
@@ -1272,6 +1306,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     final goals = widget.preferences.goals;
 
     final now = DateTime.now();
+    _breakNow = _homeBreak(runs, now);
     final weekStart = weekStartLocal(now, weekStartDay: _weekStartDay);
     final monthStart = DateTime(now.year, now.month, 1);
     // Compute the training-load series ONCE — FitnessCard, ReadinessCard, and

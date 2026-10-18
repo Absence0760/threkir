@@ -220,6 +220,11 @@ class SettingsKeys {
   /// web and phone agree. Only a run started after it brings the suggestion
   /// back (`pickRecent5k`, `recent_5k_suggestion.dart`).
   static const planSuggestionDismissedAt = 'plan_suggestion_dismissed_at';
+
+  /// The last break-of-a-week-or-more offer the runner answered, as
+  /// `{plan_id, from, until}` (decisions § 2128). Universal so web and phone
+  /// stop offering the same break, and so the plan nudge skips its weeks.
+  static const planBreakDismissed = 'plan_break_dismissed';
 }
 
 /// Pluggable on-device cache for the two prefs bags. The mobile app

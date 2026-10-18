@@ -370,6 +370,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       }
       if (widget.openMakeUp && !_makeUpOffered && loaded != null) {
         _makeUpOffered = true;
+        // The break offer outranks the prompt; its runs must be known first.
+        if (widget.runStore == null) await runsLoaded;
+        if (!mounted) return;
         if (_missedPromptShown(loaded)) {
           final prompt = _missedPrompt();
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -774,7 +777,22 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       !p.isTemplate &&
       p.status == 'active' &&
       !FinishPlanCard.shows(
-          status: p.status, endDate: p.endDate, now: widget.now());
+          status: p.status, endDate: p.endDate, now: widget.now()) &&
+      !_breakState(p).showing;
+
+  /// The break offer (decisions § 2128), for the owner's active plan only.
+  /// While it shows it outranks the missed-workout prompt, here and for
+  /// Home's `openMakeUp`, which then only opens the plan.
+  PlanBreakState _breakState(TrainingPlanRow p) {
+    if (!_isOwner(p) || p.status != 'active') return PlanBreakState.none;
+    return PlanBreakCard.stateFor(
+      plan: p,
+      weeks: _weeks,
+      workouts: _byWeek.values.expand((x) => x).toList(),
+      runStarts: _breakRunStarts,
+      now: widget.now(),
+    );
+  }
 
   MissedPrompt? _missedPrompt() => MissedWorkoutPromptCard.promptFor(
         weeks: _weeks,
@@ -1964,13 +1982,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
             onFinished: _load,
           ),
         ],
-        if (_isOwner(p) &&
-            PlanBreakCard.shows(
-                plan: p,
-                weeks: _weeks,
-                workouts: allWorkouts,
-                runStarts: _breakRunStarts,
-                now: widget.now())) ...[
+        if (_breakState(p).showing) ...[
           const SizedBox(height: 12),
           PlanBreakCard(
             key: const Key('planDetailPlanBreak'),
@@ -1981,6 +1993,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
             runStarts: _breakRunStarts,
             now: widget.now(),
             onApplied: _load,
+            onAnswered: () {
+              if (mounted) setState(() {});
+            },
           ),
         ],
         if (PlanRacesList.shows(races)) ...[

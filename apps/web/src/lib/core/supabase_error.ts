@@ -75,6 +75,12 @@ export function isPlanTrimBlockedError(err: unknown): boolean {
 	return typeof err === 'object' && err !== null && (err as { code?: unknown }).code === 'TR001';
 }
 
+/// SQLSTATE RR001 — restart_training_plan refusing a plan whose race is
+/// still ahead, since restarting would move race day (decisions § 2121).
+export function isPlanRestartRaceAheadError(err: unknown): boolean {
+	return typeof err === 'object' && err !== null && (err as { code?: unknown }).code === 'RR001';
+}
+
 /// Turn a Supabase result's `error` into something fit to throw. An `Error`
 /// that is not postgrest-js's own `PostgrestError` (auth-js, storage-js and
 /// functions-js all throw real subclasses, and a FunctionsHttpError's

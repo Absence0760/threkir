@@ -1751,6 +1751,7 @@ create table rate_limits (
 | `create_route` | 30 | 3600 | `routes_create_rate_limit_trigger()` |
 | `plan_calendar_rotate` | 20 | 3600 | `rotate_plan_calendar_feed()` |
 | `publish_gym_routine_as_template` | 20 | 3600 | `publish_gym_routine_as_template()` |
+| `restart_training_plan` | 20 | 3600 | `restart_training_plan()` |
 | `send_direct_message` | 250 | 3600 | `direct_messages_rate_limit_trigger()` |
 | `send_direct_message_burst` | 30 | 60 | `direct_messages_rate_limit_trigger()` |
 

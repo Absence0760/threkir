@@ -1,4 +1,4 @@
--- Changing a plan's race date mid-plan (issue #1186, decisions § 2120).
+-- Changing a plan's race date mid-plan.
 --
 -- The race moves; the plan has to end on the new day without losing its
 -- taper. The weeks still ahead are re-anchored in whole weeks so every
@@ -19,6 +19,11 @@
 -- race date, the shape the season planner writes (§ 2009 reads it as the A
 -- race on the end date).
 --
+-- A repeated week carries its heart-rate targets only while the HR
+-- prescription gate is open and the owner has consented, as
+-- restart_training_plan does: check_plan_workout_hr_target refuses an insert
+-- carrying bpm otherwise, which would fail the whole change.
+--
 -- The client picks the weeks (`raceDateChange`, the plan_race_date pair) from
 -- the runner's local today; this checks every choice against that day before
 -- writing anything: no week that has started moves or goes, a taper or race
@@ -36,6 +41,26 @@
 --
 -- No column changes, so no row type is regenerated beyond gen:types picking
 -- up the function.
+
+-- The consent column is not readable under the caller's own grants, so the
+-- gate is read here, for the caller only (no argument, so it is no oracle on
+-- anyone else's consent).
+create or replace function private.caller_may_carry_hr_targets()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, private
+as $$
+  select private.hr_prescription_enabled()
+    and exists (
+      select 1 from user_profiles up
+      where up.id = auth.uid() and up.health_data_consent_at is not null
+    );
+$$;
+
+revoke execute on function private.caller_may_carry_hr_targets() from public, anon;
+grant execute on function private.caller_may_carry_hr_targets() to authenticated;
 
 create or replace function public.change_plan_race_date(
   p_plan_id uuid,
@@ -66,6 +91,7 @@ declare
   v_occupant uuid;
   v_new_week_id uuid;
   v_src plan_weeks%rowtype;
+  v_carry_hr boolean;
   i integer;
 begin
   if caller is null then
@@ -212,6 +238,8 @@ begin
   end if;
 
   if v_insert > 0 then
+    v_carry_hr := private.caller_may_carry_hr_targets();
+
     update plan_workouts
     set scheduled_date = scheduled_date + 7 * v_insert
     where week_id in (
@@ -242,7 +270,9 @@ begin
              wo.kind, wo.target_distance_m, wo.target_duration_seconds,
              wo.target_pace_sec_per_km, wo.target_pace_end_sec_per_km, wo.target_pace_tolerance_sec,
              wo.pace_zone, wo.structure, wo.notes,
-             wo.target_rpe_min, wo.target_rpe_max, wo.target_hr_min_bpm, wo.target_hr_max_bpm
+             wo.target_rpe_min, wo.target_rpe_max,
+             case when v_carry_hr then wo.target_hr_min_bpm end,
+             case when v_carry_hr then wo.target_hr_max_bpm end
       from plan_workouts wo
       where wo.week_id = v_src.id and wo.kind <> 'race';
     end loop;

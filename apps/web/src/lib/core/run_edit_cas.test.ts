@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
 	changedEditFields,
 	editedFieldsMoved,
+	runEditColumns,
 	runEditPatch,
 	saveRunEdit,
 	type RunEditIo,
@@ -142,4 +143,13 @@ test('the patch carries the bag without a device clock, and is_dnf only when tog
 	assert.equal(Object.prototype.hasOwnProperty.call(patch.metadata, 'last_modified_at'), false);
 	assert.equal(patch.metadata.notes, 'flat');
 	assert.deepEqual(Object.keys(runEditPatch(row(), {}, true)).sort(), ['is_dnf', 'metadata']);
+});
+
+test('runEditColumns carries exactly the columns the edit owns', () => {
+	const wide = { ...row({ updated_at: BASE_2, is_dnf: true }), id: 'r1', user_id: 'u1', route_id: 'x' };
+	assert.deepEqual(runEditColumns(wide), {
+		updated_at: BASE_2,
+		metadata: { title: 'Easy', notes: 'flat', activity_type: 'run' },
+		is_dnf: true,
+	});
 });

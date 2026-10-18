@@ -33,6 +33,14 @@ export type RunEditOutcome<R> =
 	| { kind: 'conflict'; row: R }
 	| { kind: 'gone' };
 
+/// The columns of [row] this edit owns, to lay over the page's own copy of
+/// the run. The page keeps the rest of the row it loaded rather than taking
+/// the outcome's whole row, so the owner template's `run` is only ever
+/// sourced from the owner-scoped fetch.
+export function runEditColumns(row: RunEditRow): RunEditRow {
+	return { updated_at: row.updated_at, metadata: row.metadata, is_dnf: row.is_dnf };
+}
+
 /// The UPDATE body for an edit of [fields] (and of `is_dnf` when [isDnf] is
 /// set) made on [row].
 export function runEditPatch(

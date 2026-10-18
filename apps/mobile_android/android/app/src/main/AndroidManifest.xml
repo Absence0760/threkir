@@ -207,6 +207,17 @@
                 <data android:scheme="com.threkir.app" android:host="runs" />
                 <data android:scheme="com.threkir.app" android:host="routes" />
             </intent-filter>
+            <!-- Plan links (lib/entity_link.dart parsePlanLink): the
+                 home-screen widget's `com.threkir.app://plans`,
+                 `plans/<id>` and `plans/<id>/workouts/<id>`. App scheme
+                 only; the widget's taps target this activity explicitly,
+                 and the filter lets any other in-app surface use them. -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.threkir.app" android:host="plans" />
+            </intent-filter>
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

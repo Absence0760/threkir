@@ -719,7 +719,11 @@ void main() async {
   // `com.threkir.app://runs|routes/<id>` scheme), the links an owner hands out
   // to followers and named people: HomeScreen drains pendingEntityLink.
   try {
-    final entityLinks = EntityLinkService()..start();
+    // Plan links (the home-screen widget's `com.threkir.app://plans/...`)
+    // take the push-target handoff, which already opens plan screens.
+    final entityLinks = EntityLinkService(
+      onPlanLink: (target) => pendingPushTarget.value = target,
+    )..start();
     unawaited(entityLinks.processInitial());
   } catch (e) {
     debugPrint('entity link init failed: $e');

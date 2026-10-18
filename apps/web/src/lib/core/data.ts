@@ -3263,7 +3263,7 @@ async function isProviderGateRefusal(error: unknown): Promise<boolean> {
 /// The matched-race view for a run: the run's owner-only race metadata + its
 /// linked listing (when any). Owner-scoped — reads the base runs row.
 export interface RaceResultForRun {
-	race_listing: RaceListing | null;
+	race_listing: RaceListingDetail | null;
 	race_name: string | null;
 	bib: string | null;
 	chip_time: string | null;
@@ -3283,14 +3283,15 @@ export async function fetchRaceResultForRun(runId: string): Promise<RaceResultFo
 		.maybeSingle();
 	if (error || !data) return null;
 	const meta = (data.metadata as Record<string, unknown> | null) ?? {};
-	let listing: RaceListing | null = null;
+	let listing: RaceListingDetail | null = null;
 	if (data.race_listing_id) {
-		const { data: l } = await supabase
-			.from('public_race_listings')
-			.select('*')
-			.eq('id', data.race_listing_id as string)
-			.maybeSingle();
-		listing = (l as RaceListing) ?? null;
+		// The listing only adds the results link; a failed read of it must not
+		// hide the official result already stamped on the run.
+		try {
+			listing = await fetchRaceListing(data.race_listing_id);
+		} catch (e) {
+			console.warn('fetchRaceResultForRun: listing read failed', e);
+		}
 	}
 	return {
 		race_listing: listing,

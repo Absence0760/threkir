@@ -4071,7 +4071,7 @@ export const en = {
 	"races.searchHint": "Matches the race's name only, not where it is held — use Near a place for that. It narrows the list below and is not remembered between visits.",
 	"races.filters": "Filters",
 	"races.filtersCount": "Filters, {count} on",
-	"races.removeFilter": "Remove filter: {filter}",
+	"races.removeFilter": "{filter}, remove filter",
 	"races.nearMe": "Near me",
 	"races.nearPlace": "Near a place…",
 	"races.nearPlaceHint": "Looks the place up on the map and keeps the calendar to races around it, closest first. A listing with no location recorded drops out while it is set.",

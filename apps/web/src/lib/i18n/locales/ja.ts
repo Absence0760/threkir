@@ -4053,7 +4053,7 @@ export const messages = {
 	"races.searchHint": "照合されるのは大会名だけで、開催地は対象外です。場所で絞るには「近くの場所」を使ってください。下の一覧を絞り込むだけで、次回には引き継がれません。",
 	"races.filters": "絞り込み",
 	"races.filtersCount": "絞り込み（{count}件適用中）",
-	"races.removeFilter": "絞り込みを解除: {filter}",
+	"races.removeFilter": "{filter}、絞り込みを解除",
 	"races.nearMe": "現在地の近く",
 	"races.nearPlace": "場所の近く…",
 	"races.nearPlaceHint": "指定した場所を地図で照合し、その周辺の大会だけを近い順に表示します。設定しているあいだ、開催地が登録されていない大会は一覧から外れます。",

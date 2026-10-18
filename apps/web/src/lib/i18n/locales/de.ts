@@ -4058,7 +4058,7 @@ export const messages = {
 	"races.searchHint": "Trifft nur den Namen des Rennens, nicht den Austragungsort — dafür ist In der Nähe da. Es schränkt die Liste unten ein und wird nicht gemerkt.",
 	"races.filters": "Filter",
 	"races.filtersCount": "Filter, {count} aktiv",
-	"races.removeFilter": "Filter entfernen: {filter}",
+	"races.removeFilter": "{filter}, Filter entfernen",
 	"races.nearMe": "In meiner Nähe",
 	"races.nearPlace": "In der Nähe eines Ortes…",
 	"races.nearPlaceHint": "Schlägt den Ort auf der Karte nach und beschränkt den Kalender auf Rennen ringsum, nächstgelegene zuerst. Einträge ohne hinterlegten Ort fallen so lange heraus.",

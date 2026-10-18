@@ -141,7 +141,9 @@ test.describe('/races/[id] — build a plan from a race', () => {
 		const floor = browserDate(404);
 		expect(new URL(page.url()).searchParams.get('notBefore')).toBe(floor);
 		await expect(page.getByTestId('race-preset-chained')).toBeVisible();
-		const start = await page.getByLabel('Start date').inputValue();
+		// /plans/new has two start dates — the starter picker's and the wizard's;
+		// the chained floor applies to the wizard.
+		const start = await page.locator('form.plan-editor').getByLabel('Start date').inputValue();
 		expect(start >= floor).toBe(true);
 		expect(new Date(`${start}T00:00:00Z`).getUTCDay()).toBe(0);
 	});

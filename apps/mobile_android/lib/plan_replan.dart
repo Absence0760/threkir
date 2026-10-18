@@ -75,7 +75,10 @@ class ReplanWeek {
   });
 }
 
-enum ReplanReason { makeUpLong, easeOverRunning }
+/// [ReplanReason.anchorActualVolume] is proposed by `plan_volume_anchor.dart`,
+/// never by [replanRemaining]; it shares this shape so it previews and applies
+/// the same way.
+enum ReplanReason { makeUpLong, easeOverRunning, anchorActualVolume }
 
 class ReplanChange {
   final String workoutId;

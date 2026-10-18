@@ -6693,6 +6693,27 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get planNudgeAnchorUnderTitle => 'A semana passada ficou aquém';
+
+  @override
+  String get planNudgeAnchorUnderBody =>
+      'As próximas semanas continuam a subir a partir do plano, não do que correu. Há uma alteração sugerida para reconstruir a partir da semana passada.';
+
+  @override
+  String get planNudgeAnchorReturnTitle => 'Regressar ao plano com calma';
+
+  @override
+  String planNudgeAnchorReturnBody(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '# semanas',
+      one: '# semana',
+    );
+    return 'Esteve afastado do plano durante $_temp0. Há uma alteração sugerida para que as próximas semanas voltem a subir a partir do que correu por último.';
+  }
+
+  @override
   String get planNudgeEaseTitle => 'Uma semana em grande';
 
   @override
@@ -6736,6 +6757,27 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String planDetailReplanMakeUp(String from, String to) {
     return 'Longão $from → $to — repor um longão perdido';
+  }
+
+  @override
+  String planDetailReplanAnchor(String from, String to) {
+    return '$from → $to — reconstruir a partir do que correu';
+  }
+
+  @override
+  String planDetailAnchorUnderNote(String km) {
+    return 'A sua última semana de corrida ficou em $km, bem abaixo do plano. Estas semanas passam a reconstruir a partir daí, cerca de 10 % por semana, até o plano voltar a encaixar. O afinamento mantém-se como planeado.';
+  }
+
+  @override
+  String planDetailAnchorReturnNote(int n, String km) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '# semanas',
+      one: '# semana',
+    );
+    return 'Esteve afastado do plano durante $_temp0. Estas semanas recomeçam em cerca de metade dos $km que correu na sua última semana e sobem cerca de 10 % por semana. O afinamento mantém-se como planeado.';
   }
 
   @override
@@ -25017,6 +25059,27 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
+  String get planNudgeAnchorUnderTitle => 'A semana passada ficou abaixo';
+
+  @override
+  String get planNudgeAnchorUnderBody =>
+      'As próximas semanas ainda sobem a partir do plano, não do que você correu. Há uma mudança sugerida para reconstruir a partir da semana passada.';
+
+  @override
+  String get planNudgeAnchorReturnTitle => 'Voltando ao plano com calma';
+
+  @override
+  String planNudgeAnchorReturnBody(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '# semanas',
+      one: '# semana',
+    );
+    return 'Você ficou fora do plano por $_temp0. Há uma mudança sugerida para que as próximas semanas voltem a subir a partir do que você correu por último.';
+  }
+
+  @override
   String get planNudgeEaseTitle => 'Uma semana puxada';
 
   @override
@@ -25060,6 +25123,27 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String planDetailReplanMakeUp(String from, String to) {
     return 'Longão $from → $to — repor um longão perdido';
+  }
+
+  @override
+  String planDetailReplanAnchor(String from, String to) {
+    return '$from → $to — reconstruir a partir do que você correu';
+  }
+
+  @override
+  String planDetailAnchorUnderNote(String km) {
+    return 'Sua última semana de corrida ficou em $km, bem abaixo do plano. Estas semanas agora reconstroem a partir daí, cerca de 10 % por semana, até o plano voltar a encaixar. O polimento continua como planejado.';
+  }
+
+  @override
+  String planDetailAnchorReturnNote(int n, String km) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '# semanas',
+      one: '# semana',
+    );
+    return 'Você ficou fora do plano por $_temp0. Estas semanas recomeçam em cerca de metade dos $km que você correu na sua última semana e sobem cerca de 10 % por semana. O polimento continua como planejado.';
   }
 
   @override

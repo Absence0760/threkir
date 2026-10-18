@@ -6688,6 +6688,27 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get planNudgeAnchorUnderTitle => 'La semana pasada se quedó corta';
+
+  @override
+  String get planNudgeAnchorUnderBody =>
+      'Las próximas semanas siguen subiendo desde el plan, no desde lo que corriste. Hay un cambio sugerido para reconstruir desde la semana pasada.';
+
+  @override
+  String get planNudgeAnchorReturnTitle => 'Volver al plan poco a poco';
+
+  @override
+  String planNudgeAnchorReturnBody(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '# semanas',
+      one: '# semana',
+    );
+    return 'Has estado fuera del plan $_temp0. Hay un cambio sugerido para que las próximas semanas se reconstruyan desde lo último que corriste.';
+  }
+
+  @override
   String get planNudgeEaseTitle => 'Una semana intensa';
 
   @override
@@ -6731,6 +6752,27 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String planDetailReplanMakeUp(String from, String to) {
     return 'Tirada larga $from → $to — recuperar una tirada larga perdida';
+  }
+
+  @override
+  String planDetailReplanAnchor(String from, String to) {
+    return '$from → $to — reconstruir desde lo que corriste';
+  }
+
+  @override
+  String planDetailAnchorUnderNote(String km) {
+    return 'Tu última semana corriendo se quedó en $km, muy por debajo del plan. Estas semanas ahora se reconstruyen desde ahí, alrededor de un 10 % por semana, hasta volver a encajar con el plan. La puesta a punto se mantiene como estaba.';
+  }
+
+  @override
+  String planDetailAnchorReturnNote(int n, String km) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '# semanas',
+      one: '# semana',
+    );
+    return 'Has estado fuera del plan $_temp0. Estas semanas vuelven a empezar en aproximadamente la mitad de los $km que corriste en tu última semana y suben alrededor de un 10 % por semana. La puesta a punto se mantiene como estaba.';
   }
 
   @override

@@ -15,6 +15,7 @@ import '../plan_repace.dart';
 import '../plan_bulk_ops.dart' show shiftIsoDate;
 import '../plan_race_date.dart';
 import '../plan_resume.dart';
+import '../plan_volume_anchor.dart';
 import '../plan_restart.dart';
 import '../rate_limit_message.dart' show rateLimitErrorMessage;
 import '../cycle_plan.dart' show CyclePlanConfig, CyclePlanMode;
@@ -839,22 +840,55 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     _reveal(_replanPreviewKey);
   }
 
+  /// The comeback ramp, only while `ADAPTIVE_FITNESS_GATE` is on (decisions
+  /// § 2090); off, every path below behaves as it did without it.
+  VolumeAnchor? _volumeAnchor(List<ReplanWeek> input) {
+    if (!adaptiveFitnessGate) return null;
+    return anchorToActualVolume(weeks: input);
+  }
+
   void _proposeReplan(TrainingPlanRow plan) {
     if (!_isOwner(plan) || _bulkBusy) return;
     _makeUpAnswers = null;
     final l10n = AppLocalizations.of(context);
-    final res = replanRemaining(
-        weeks: _buildReplanInput(plan), today: toIsoDate(widget.now()));
-    if (res.onTrack || res.changes.isEmpty) {
+    final input = _buildReplanInput(plan);
+    final changes = preferVolumeAnchor(
+      _volumeAnchor(input),
+      replanRemaining(weeks: input, today: toIsoDate(widget.now())).changes,
+    );
+    if (changes.isEmpty) {
       setState(() => _replanPreview = null);
       showTopBanner(context, l10n.planDetailReplanOnTrack);
       return;
     }
     setState(() {
       _adaptiveInfo = null;
-      _replanPreview = res.changes;
+      _replanPreview = changes;
     });
     _reveal(_replanPreviewKey);
+  }
+
+  /// After a resume or a break reschedule, the weeks ahead are offered
+  /// re-anchored to what the runner last ran, through the same preview. It
+  /// proposes only; nothing changes until Apply.
+  void _offerAnchor() {
+    final p = _plan;
+    if (!mounted || p == null || !_isOwner(p) || p.isTemplate) return;
+    if (p.status != 'active') return;
+    final anchor = _volumeAnchor(_buildReplanInput(p));
+    if (anchor == null) return;
+    setState(() {
+      _taperPreview = null;
+      _makeUpAnswers = null;
+      _adaptiveInfo = null;
+      _replanPreview = anchor.changes;
+    });
+    _reveal(_replanPreviewKey);
+  }
+
+  Future<void> _reloadAndOfferAnchor() async {
+    await _load();
+    _offerAnchor();
   }
 
   /// P2 (gated): the runner's latest training-load point as the fitness input.
@@ -878,8 +912,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     if (!_isOwner(plan) || _bulkBusy) return;
     _makeUpAnswers = null;
     final l10n = AppLocalizations.of(context);
+    final input = _buildReplanInput(plan);
     final res = adaptiveReplanRemaining(
-      weeks: _buildReplanInput(plan),
+      weeks: input,
       today: toIsoDate(widget.now()),
       fitness: _adaptiveFitnessInput(),
     );
@@ -913,7 +948,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       showTopBanner(context, l10n.planDetailAdaptiveOnTrack);
       return;
     }
-    if (res.changes.isEmpty) {
+    // An under-run trend is answered by building back from what was run
+    // (`plan_volume_anchor`), not by stretching a missed long run.
+    final changes = res.reason == AdaptiveReason.trendUnderfitness
+        ? preferVolumeAnchor(_volumeAnchor(input), res.changes)
+        : res.changes;
+    if (changes.isEmpty) {
       setState(() {
         _replanPreview = null;
         _adaptiveInfo = null;
@@ -923,7 +963,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     }
     setState(() {
       _adaptiveInfo = (reason: res.reason, confidence: res.confidence);
-      _replanPreview = res.changes;
+      _replanPreview = changes;
     });
     _reveal(_replanPreviewKey);
   }
@@ -1156,7 +1196,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
               : shift != null
                   ? l10n.planDetailResumeShiftedDone(shift.weeks)
                   : l10n.planDetailResumeDone);
-      await _load();
+      if (paused) {
+        await _load();
+      } else {
+        await _reloadAndOfferAnchor();
+      }
     } on ActivePlanExistsError {
       if (!mounted) return;
       setState(() => _bulkBusy = false);
@@ -2011,7 +2055,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
             workouts: allWorkouts,
             runStarts: _breakRunStarts,
             now: widget.now(),
-            onApplied: _load,
+            onApplied: _reloadAndOfferAnchor,
             onAnswered: () {
               if (mounted) setState(() {});
             },
@@ -2536,6 +2580,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     if (!_isOwner(p) || p.isTemplate) return const [];
     final preview = _replanPreview;
     final taper = _taperPreview;
+    final anchorInfo = preview != null &&
+            preview.any((c) => c.reason == ReplanReason.anchorActualVolume)
+        ? _volumeAnchor(_buildReplanInput(p))
+        : null;
     return [
       const SizedBox(height: 12),
       Align(
@@ -2632,6 +2680,20 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                       fontWeight: FontWeight.w600,
                     )),
               ],
+              if (anchorInfo != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  anchorInfo.returning
+                      ? l10n.planDetailAnchorReturnNote(
+                          anchorInfo.idleWeeks, fmtKm(anchorInfo.anchorMetres))
+                      : l10n.planDetailAnchorUnderNote(
+                          fmtKm(anchorInfo.anchorMetres)),
+                  key: const Key('planDetailReplanAnchorNote'),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
               const SizedBox(height: 8),
               for (final c in preview)
                 Padding(
@@ -2650,11 +2712,15 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                       ),
                       Expanded(
                         child: Text(
-                          c.reason == ReplanReason.makeUpLong
-                              ? l10n.planDetailReplanMakeUp(
-                                  fmtKm(c.fromMetres), fmtKm(c.toMetres))
-                              : l10n.planDetailReplanEase(
+                          switch (c.reason) {
+                            ReplanReason.makeUpLong => l10n.planDetailReplanMakeUp(
+                                fmtKm(c.fromMetres), fmtKm(c.toMetres)),
+                            ReplanReason.anchorActualVolume =>
+                              l10n.planDetailReplanAnchor(
                                   fmtKm(c.fromMetres), fmtKm(c.toMetres)),
+                            ReplanReason.easeOverRunning => l10n.planDetailReplanEase(
+                                fmtKm(c.fromMetres), fmtKm(c.toMetres)),
+                          },
                           style: theme.textTheme.bodySmall,
                         ),
                       ),

@@ -6706,6 +6706,27 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get planNudgeAnchorUnderTitle => 'Letzte Woche fiel kürzer aus';
+
+  @override
+  String get planNudgeAnchorUnderBody =>
+      'Die kommenden Wochen steigern sich noch vom Plan aus, nicht von dem, was du gelaufen bist. Es gibt einen Vorschlag, stattdessen von der letzten Woche aus wieder aufzubauen.';
+
+  @override
+  String get planNudgeAnchorReturnTitle => 'Sanft zurück in deinen Plan';
+
+  @override
+  String planNudgeAnchorReturnBody(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '# Wochen',
+      one: '# Woche',
+    );
+    return 'Du warst $_temp0 raus aus dem Plan. Es gibt einen Vorschlag, damit die kommenden Wochen von deinem letzten Umfang aus wieder aufbauen.';
+  }
+
+  @override
   String get planNudgeEaseTitle => 'Eine große Woche';
 
   @override
@@ -6749,6 +6770,27 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String planDetailReplanMakeUp(String from, String to) {
     return 'Long Run $from → $to — verpassten Long Run nachholen';
+  }
+
+  @override
+  String planDetailReplanAnchor(String from, String to) {
+    return '$from → $to — von deinem tatsächlichen Umfang aus wieder aufbauen';
+  }
+
+  @override
+  String planDetailAnchorUnderNote(String km) {
+    return 'Deine letzte Laufwoche kam auf $km, deutlich unter Plan. Diese Wochen bauen jetzt von dort aus wieder auf, etwa 10 % pro Woche, bis der Plan wieder passt. Das Tapering bleibt wie geplant.';
+  }
+
+  @override
+  String planDetailAnchorReturnNote(int n, String km) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '# Wochen',
+      one: '# Woche',
+    );
+    return 'Du warst $_temp0 raus aus dem Plan. Diese Wochen starten wieder bei etwa der Hälfte der $km, die du zuletzt in einer Woche gelaufen bist, und steigern sich um etwa 10 % pro Woche. Das Tapering bleibt wie geplant.';
   }
 
   @override

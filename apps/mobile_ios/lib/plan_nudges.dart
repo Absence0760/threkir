@@ -12,6 +12,7 @@ library;
 import 'plan_adaptive_replan.dart';
 import 'plan_adherence.dart' show DriftDirection;
 import 'plan_replan.dart';
+import 'plan_volume_anchor.dart';
 
 /// A run past its target by less than this is not worth a word: GPS drift
 /// and a loop home add a few hundred metres to most runs.
@@ -30,9 +31,17 @@ const int restDayMinWeeks = 2;
 /// (`SettingsKeys.planNudgesDismissed`).
 const int dismissedNudgesCap = 20;
 
-enum PlanNudgeKind { adaptiveUnder, easeOver, restDayRuns }
+enum PlanNudgeKind {
+  anchorUnder,
+  anchorReturn,
+  adaptiveUnder,
+  easeOver,
+  restDayRuns,
+}
 
 String _kindKey(PlanNudgeKind k) => switch (k) {
+      PlanNudgeKind.anchorUnder => 'anchor_under',
+      PlanNudgeKind.anchorReturn => 'anchor_return',
       PlanNudgeKind.adaptiveUnder => 'adaptive_under',
       PlanNudgeKind.easeOver => 'ease_over',
       PlanNudgeKind.restDayRuns => 'rest_day_runs',
@@ -48,6 +57,8 @@ class PlanNudge {
   final String key;
 
   /// Weeks in the trend window that showed the signal, and the window size.
+  /// `easeOver` and `anchorUnder` are one week by definition: 1 of 1;
+  /// `anchorReturn` carries the weeks away from the plan in both.
   final int weeks;
   final int ofWeeks;
 
@@ -237,11 +248,17 @@ List<ReplanWeek> buildReplanWeeks({
 /// non-template plan qualifies (the caller owns the "is the viewer the owner"
 /// check). In order, the first occurrence not yet dismissed wins:
 ///
-///  1. `adaptiveUnder` — the adaptive re-plan's 2-of-3 under-run trend, and
-///     only when it has a change to propose;
-///  2. `easeOver` — the last completed week ran over plan and the re-plan
+///  1. `anchorUnder` / `anchorReturn` — only with [anchorVolume] on (the
+///     caller passes `ADAPTIVE_FITNESS_GATE`, decisions § 2090): the last
+///     completed week ran under plan, or the runner has been away from it for
+///     a layoff, and the weeks ahead ask for more than 10% over what they last
+///     ran ([anchorToActualVolume]). It outranks the trend card, whose review
+///     would open the same anchored proposal;
+///  2. `adaptiveUnder` — the adaptive re-plan's 2-of-3 under-run trend, and
+///     only when it has a change to propose and no anchor applies;
+///  3. `easeOver` — the last completed week ran over plan and the re-plan
 ///     eases next week;
-///  3. `restDayRuns` — runs on rest days in 2 of the last 3 completed weeks.
+///  4. `restDayRuns` — runs on rest days in 2 of the last 3 completed weeks.
 PlanNudge? planNudge({
   required String planId,
   required String status,
@@ -257,6 +274,9 @@ PlanNudge? planNudge({
   /// overlaps them is missed training the break offer answers, not a trend.
   String? breakFromIso,
   String? breakUntilIso,
+
+  /// The comeback ramp's deploy gate. False offers no anchor card.
+  bool anchorVolume = false,
 }) {
   if (status != 'active' || isTemplate) return null;
   if (today.compareTo(startDate) < 0 || today.compareTo(endDate) > 0) {
@@ -282,10 +302,25 @@ PlanNudge? planNudge({
   final gone = dismissed.toSet();
   final candidates = <PlanNudge>[];
 
+  final anchor = anchorVolume ? anchorToActualVolume(weeks: sorted) : null;
+  if (anchor != null) {
+    final kind =
+        anchor.returning ? PlanNudgeKind.anchorReturn : PlanNudgeKind.anchorUnder;
+    final n = anchor.returning ? anchor.idleWeeks : 1;
+    candidates.add(PlanNudge(
+      kind: kind,
+      weekIndex: at,
+      key: planNudgeKey(planId, kind, at),
+      weeks: n,
+      ofWeeks: n,
+    ));
+  }
+
   // P1 only, by construction: no fitness snapshot reaches Home (decisions
   // § 2125), so the gated P2 load input keeps its one call site.
   final adaptive = adaptiveReplanRemaining(weeks: sorted, today: today);
-  if (adaptive.reason == AdaptiveReason.trendUnderfitness &&
+  if (anchor == null &&
+      adaptive.reason == AdaptiveReason.trendUnderfitness &&
       adaptive.changes.isNotEmpty) {
     candidates.add(PlanNudge(
       kind: PlanNudgeKind.adaptiveUnder,

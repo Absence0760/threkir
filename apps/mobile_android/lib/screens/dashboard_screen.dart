@@ -13,6 +13,7 @@ import 'package:ui_kit/ui_kit.dart'
         FullBodyLoader,
         ProgressBar;
 
+import '../adaptive_fitness_flag.dart';
 import '../adaptive_width.dart';
 import '../age_grade.dart';
 import '../ai_disclosure.dart' show AiDisclosureRecord;
@@ -1082,12 +1083,14 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (hidden || p == null || svc == null || _planFinished(now)) return null;
     if (_breakNow.state.showing) return null;
     final window = _breakNow.state.window;
+    final anchorVolume = adaptiveFitnessGate;
     final nudge = PlanNudgeCard.nudgeFor(
       overview: p,
       runs: runs,
       dismissed: PlanNudgeCard.dismissedIn(widget.settingsSync),
       now: now,
       breakWindow: window,
+      anchorVolume: anchorVolume,
     );
     if (nudge == null) return null;
     return PlanNudgeCard(
@@ -1097,6 +1100,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       settingsSync: widget.settingsSync,
       now: now,
       breakWindow: window,
+      anchorVolume: anchorVolume,
       onReview: (n) => _reviewPlanNudge(svc, p.plan.id, n),
     );
   }

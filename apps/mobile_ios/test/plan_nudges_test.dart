@@ -92,6 +92,7 @@ PlanNudge? _nudge(
   List<String> dismissed = const [],
   String? breakFromIso,
   String? breakUntilIso,
+  bool anchorVolume = false,
 }) =>
     planNudge(
       planId: 'p',
@@ -106,6 +107,7 @@ PlanNudge? _nudge(
       dismissed: dismissed,
       breakFromIso: breakFromIso,
       breakUntilIso: breakUntilIso,
+      anchorVolume: anchorVolume,
     );
 
 void main() {
@@ -233,6 +235,87 @@ void main() {
         week0Workouts: [_wo('e0', '2026-06-02', 'easy', 8000)]);
     final runs = [_run('2026-06-14', 20000), _run('2026-06-21', 28000)];
     expect(_nudge(weeks, runs), isNull);
+  });
+
+  test(
+      'planNudge: a week well under plan anchors the weeks ahead, and outranks the trend card',
+      () {
+    final runs = [
+      _run('2026-06-02', 8000),
+      _run('2026-06-14', 20000),
+      _run('2026-06-21', 12000),
+    ];
+    final weeks = _plan([40000, 40000, 40000]);
+    final n = _nudge(weeks, runs, anchorVolume: true)!;
+    expect(n.kind, PlanNudgeKind.anchorUnder);
+    expect(n.weekIndex, 2);
+    expect(n.key, 'p:anchor_under:2');
+    expect(n.weeks, 1);
+    expect(n.ofWeeks, 1);
+    // The trend card would open the same anchored proposal, so it is not
+    // offered in its place once this one is dismissed.
+    expect(
+        _nudge(weeks, runs,
+            anchorVolume: true, dismissed: ['p:anchor_under:2']),
+        isNull);
+  });
+
+  test(
+      'planNudge: with the gate off no week is anchored, and the trend card is offered as before',
+      () {
+    final runs = [
+      _run('2026-06-02', 8000),
+      _run('2026-06-14', 20000),
+      _run('2026-06-21', 12000),
+    ];
+    final weeks = _plan([40000, 40000, 40000]);
+    expect(_nudge(weeks, runs)?.kind, PlanNudgeKind.adaptiveUnder);
+    expect(_nudge(weeks, runs, anchorVolume: false)?.kind,
+        PlanNudgeKind.adaptiveUnder);
+    expect(_nudge(weeks, runs, dismissed: ['p:adaptive_under:2']), isNull);
+  });
+
+  test(
+      'planNudge: weeks away from a resumed plan re-anchor it, whatever the last week ran',
+      () {
+    final runs = [
+      _run('2026-06-02', 8000),
+      _run('2026-06-07', 26000),
+      _run('2026-06-09', 8000),
+      _run('2026-06-14', 20000),
+      _run('2026-06-16', 8000),
+      _run('2026-06-21', 20000),
+    ];
+    // A resume pushed weeks 3 and 4 back four weeks, to indices 7 and 8.
+    final base = _plan([34000, 28000, 28000]);
+    final weeks = [
+      ...base.take(3),
+      NudgeInputWeek(
+        weekIndex: 7,
+        phase: 'build',
+        targetVolumeM: 40000,
+        workouts: [
+          _wo('e7', '2026-07-21', 'easy', 8000),
+          _wo('l7', '2026-07-26', 'long', 22000),
+        ],
+      ),
+      NudgeInputWeek(
+        weekIndex: 8,
+        phase: 'build',
+        targetVolumeM: 40000,
+        workouts: [
+          _wo('e8', '2026-07-28', 'easy', 10000),
+          _wo('l8', '2026-08-02', 'long', 22000),
+        ],
+      ),
+    ];
+    expect(_nudge(weeks, runs, today: '2026-07-15'), isNull);
+    final n = _nudge(weeks, runs, today: '2026-07-15', anchorVolume: true)!;
+    expect(n.kind, PlanNudgeKind.anchorReturn);
+    expect(n.weekIndex, 2);
+    expect(n.key, 'p:anchor_return:2');
+    expect(n.weeks, 4);
+    expect(n.ofWeeks, 4);
   });
 
   test('planNudge: one week more than 20% over plan proposes the ease-off', () {

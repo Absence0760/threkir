@@ -10864,6 +10864,30 @@ abstract class AppLocalizations {
   /// **'You\'ve run less than planned in {n} of the last {total} weeks. There\'s a suggested adjustment to the weeks ahead.'**
   String planNudgeUnderBody(int n, int total);
 
+  /// Home plan card title: last week came in well under plan (comeback ramp)
+  ///
+  /// In en, this message translates to:
+  /// **'Last week came in short'**
+  String get planNudgeAnchorUnderTitle;
+
+  /// Home plan card body: last week came in well under plan (comeback ramp)
+  ///
+  /// In en, this message translates to:
+  /// **'The weeks ahead still step up from the plan, not from what you ran. There\'s a suggested change to build back from last week instead.'**
+  String get planNudgeAnchorUnderBody;
+
+  /// Home plan card title: back after weeks away from the plan (comeback ramp)
+  ///
+  /// In en, this message translates to:
+  /// **'Easing back into your plan'**
+  String get planNudgeAnchorReturnTitle;
+
+  /// Home plan card body: back after n weeks away from the plan (comeback ramp)
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve been away from the plan for {n, plural, one {# week} other {# weeks}}. There\'s a suggested change so the weeks ahead build back up from what you last ran.'**
+  String planNudgeAnchorReturnBody(int n);
+
   /// Home plan card title: last week well over plan
   ///
   /// In en, this message translates to:
@@ -10935,6 +10959,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Long run {from} → {to} — make up a missed long run'**
   String planDetailReplanMakeUp(String from, String to);
+
+  /// Plan-detail re-plan preview row: a session lowered so the weeks ahead build back from the volume actually run (comeback ramp)
+  ///
+  /// In en, this message translates to:
+  /// **'{from} → {to} — build back from what you ran'**
+  String planDetailReplanAnchor(String from, String to);
+
+  /// Plan-detail re-plan preview note: the last week came in well under plan, km is what was run that week
+  ///
+  /// In en, this message translates to:
+  /// **'Your last week of running came in at {km}, well under plan. These weeks now build back from that, about 10% a week, until the plan fits again. The taper stays as planned.'**
+  String planDetailAnchorUnderNote(String km);
+
+  /// Plan-detail re-plan preview note after weeks away from the plan: n weeks away, km is the last week run
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve been away from the plan for {n, plural, one {# week} other {# weeks}}. These weeks restart at about half of the {km} you last ran in a week and build about 10% a week. The taper stays as planned.'**
+  String planDetailAnchorReturnNote(int n, String km);
 
   /// Plan-detail adherence/replan/duplicate
   ///

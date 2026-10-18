@@ -6630,6 +6630,27 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get planNudgeAnchorUnderTitle => 'Last week came in short';
+
+  @override
+  String get planNudgeAnchorUnderBody =>
+      'The weeks ahead still step up from the plan, not from what you ran. There\'s a suggested change to build back from last week instead.';
+
+  @override
+  String get planNudgeAnchorReturnTitle => 'Easing back into your plan';
+
+  @override
+  String planNudgeAnchorReturnBody(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '# weeks',
+      one: '# week',
+    );
+    return 'You\'ve been away from the plan for $_temp0. There\'s a suggested change so the weeks ahead build back up from what you last ran.';
+  }
+
+  @override
   String get planNudgeEaseTitle => 'A big week';
 
   @override
@@ -6673,6 +6694,27 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String planDetailReplanMakeUp(String from, String to) {
     return 'Long run $from → $to — make up a missed long run';
+  }
+
+  @override
+  String planDetailReplanAnchor(String from, String to) {
+    return '$from → $to — build back from what you ran';
+  }
+
+  @override
+  String planDetailAnchorUnderNote(String km) {
+    return 'Your last week of running came in at $km, well under plan. These weeks now build back from that, about 10% a week, until the plan fits again. The taper stays as planned.';
+  }
+
+  @override
+  String planDetailAnchorReturnNote(int n, String km) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '# weeks',
+      one: '# week',
+    );
+    return 'You\'ve been away from the plan for $_temp0. These weeks restart at about half of the $km you last ran in a week and build about 10% a week. The taper stays as planned.';
   }
 
   @override

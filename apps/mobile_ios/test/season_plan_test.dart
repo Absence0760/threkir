@@ -317,4 +317,23 @@ void main() {
     expect([for (final p in a.plans) (p.name, p.startDate, p.endDate)],
         [for (final p in b.plans) (p.name, p.startDate, p.endDate)]);
   });
+
+  test('extra recovery shapes every plan in the season the way a masters age does',
+      () {
+    List<List<double>> volumes(SeasonBuildResult r) => [
+          for (final p in _ok(r).plans)
+            [for (final w in p.generated.weeks) w.targetVolumeM]
+        ];
+    final races = [_richmond, _comrades];
+    final masters = volumes(buildSeason(
+        races: races, todayIso: _today, daysPerWeek: 4, age: 60));
+    expect(
+        volumes(buildSeason(
+            races: races,
+            todayIso: _today,
+            daysPerWeek: 4,
+            extraRecovery: true)),
+        masters);
+    expect(volumes(_build(races)), isNot(masters));
+  });
 }

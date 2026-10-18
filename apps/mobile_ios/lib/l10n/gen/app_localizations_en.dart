@@ -18466,4 +18466,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planRecapNextPlanCta => 'Build your next plan';
+
+  @override
+  String get prefsExtraRecovery => 'More recovery between hard days';
+
+  @override
+  String get prefsExtraRecoveryHint =>
+      'New plans leave 72 hours between your long run and the next hard session, and ease off every third week instead of every fourth. Plans already do this from age 50 when your date of birth is on record.';
+
+  @override
+  String get planNewExtraRecoveryHint =>
+      'Spaces hard sessions further apart and eases off every third week. Saved to your training settings, so every new plan uses it.';
+
+  @override
+  String get planNewExtraRecoverySaveFailed =>
+      'Couldn\'t save that setting. Try again.';
+
+  @override
+  String get planNewMastersRecoveryApplied =>
+      'Because you\'re 50 or over, this plan spaces hard sessions further apart and eases off every third week.';
+
+  @override
+  String get planNewDobHintAbsent =>
+      'Plans give runners aged 50 and over more recovery automatically.';
+
+  @override
+  String get planNewDobHintAbsentAction => 'Add your date of birth';
+
+  @override
+  String get planNewDobHintHealthData =>
+      'Plans can only use your date of birth to adjust for age with your consent to health-data use.';
+
+  @override
+  String get planNewDobHintHealthDataAction => 'Review consent';
 }

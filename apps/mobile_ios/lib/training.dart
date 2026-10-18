@@ -268,6 +268,12 @@ const int kMastersAge = 50;
 
 bool isMastersAge(int? age) => age != null && age >= kMastersAge;
 
+/// Web `usesMastersRecovery` twin: the plan takes the masters recovery
+/// calibration when the runner is 50+ or set `extra_recovery`, a training
+/// preference any runner can set. It only ever adds recovery.
+bool usesMastersRecovery(int? age, bool? extraRecovery) =>
+    extraRecovery == true || isMastersAge(age);
+
 /// Web `isWorkoutSkipped` twin — a planned workout is "skipped" when the
 /// runner deliberately dropped it (`skippedAt` stamped). Skip and done
 /// are mutually exclusive at the write layer, so a skipped workout is
@@ -544,6 +550,10 @@ class GeneratePlanInput {
   /// finding Older #30.
   final int? age;
 
+  /// The runner's `extra_recovery` setting: apply the masters recovery
+  /// calibration whatever [age] says. See [usesMastersRecovery].
+  final bool extraRecovery;
+
   /// When true, produce a beginner C25K-style walk-run plan instead of the
   /// continuous-running plan. Goal stays a 5k; every session is a walk_run
   /// workout of timed run/walk intervals (persona #22).
@@ -559,6 +569,7 @@ class GeneratePlanInput {
     this.weeks,
     this.gender,
     this.age,
+    this.extraRecovery = false,
     this.beginnerWalkRun = false,
   });
 }
@@ -612,7 +623,7 @@ GeneratedPlan generatePlan(GeneratePlanInput input) {
   }
 
   final weeks = <GeneratedWeek>[];
-  final masters = isMastersAge(input.age);
+  final masters = usesMastersRecovery(input.age, input.extraRecovery);
   for (var i = 0; i < totalWeeks; i++) {
     final phase = phaseFor(i, totalWeeks);
     final peakKm = peakVolumeKm(
@@ -1003,7 +1014,7 @@ GeneratedPlan _generateUltraPlan(
   required double? vdot,
   required bool pacesAreFallback,
 }) {
-  final masters = isMastersAge(input.age);
+  final masters = usesMastersRecovery(input.age, input.extraRecovery);
   final backToBack = goalDistanceM >= kUltraBackToBackMinM;
   final peakKm = peakVolumeKm(
       goalDistanceM,

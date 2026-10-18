@@ -93,6 +93,7 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
 
   TrainingGender _viewerGender;
   int? _viewerAge;
+  bool _viewerExtraRecovery = false;
 
   String? _rowError;
   SeasonBuildResult? _built;
@@ -112,15 +113,15 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
   void initState() {
     super.initState();
     _loadAiAvailability();
-    widget.training.fetchViewerGender().then((g) {
-      if (mounted) setState(() => _viewerGender = g);
+    widget.training.fetchPlanCalibration().then((c) {
+      if (!mounted) return;
+      setState(() {
+        _viewerGender = c.gender;
+        _viewerAge = c.age;
+        _viewerExtraRecovery = c.extraRecovery;
+      });
     }).catchError((Object e) {
-      debugPrint('SeasonPlanScreen: gender lookup failed: $e');
-    });
-    widget.training.fetchViewerAge().then((a) {
-      if (mounted) setState(() => _viewerAge = a);
-    }).catchError((Object e) {
-      debugPrint('SeasonPlanScreen: age lookup failed: $e');
+      debugPrint('SeasonPlanScreen: calibration lookup failed: $e');
     });
   }
 
@@ -313,6 +314,7 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
         daysPerWeek: _daysPerWeek,
         gender: _viewerGender,
         age: _viewerAge,
+        extraRecovery: _viewerExtraRecovery,
       );
       _builtFor = _currentKey();
     });

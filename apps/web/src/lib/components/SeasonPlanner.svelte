@@ -9,10 +9,8 @@
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
-	import { supabase } from '#lib/core/supabase.ts';
 	import { createTrainingPlan, fetchMyOverlappingActivePlans, type PlanOverlapChoice } from '#lib/core/data.ts';
-	import { ageFromDob } from '#lib/nutrition/nutrition_targets.ts';
-	import { healthUseDob } from '#lib/core/health_consent.ts';
+	import { loadPlanCalibration } from '#lib/training/plan_calibration_load.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
 	import PlanOverlapDialog, { trimBlockedMessage } from '#lib/components/PlanOverlapDialog.svelte';
@@ -49,17 +47,13 @@
 
 	let viewerGender = $state<TrainingGender>(null);
 	let viewerAge = $state<number | null>(null);
+	let viewerExtraRecovery = $state(false);
 	onMount(async () => {
 		if (!auth.user) return;
-		try {
-			const { data } = await supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle();
-			const g = (data as { gender?: string | null } | null)?.gender;
-			if (g === 'male' || g === 'female' || g === 'prefer_not_to_say') viewerGender = g;
-			const age = ageFromDob(healthUseDob(data), Date.now());
-			if (age !== null) viewerAge = age;
-		} catch (e) {
-			console.error('Profile read for the season planner failed', { message: thrownMessage(e) });
-		}
+		const c = await loadPlanCalibration(auth.user.id);
+		viewerGender = c.gender;
+		viewerAge = c.age;
+		viewerExtraRecovery = c.extraRecovery;
 	});
 
 	const showAssistant = coachEnabled() && aiPlanEnabled();
@@ -207,7 +201,14 @@
 			built = null;
 			return;
 		}
-		built = buildSeason({ races, todayIso: todayIso(), daysPerWeek, gender: viewerGender, age: viewerAge });
+		built = buildSeason({
+			races,
+			todayIso: todayIso(),
+			daysPerWeek,
+			gender: viewerGender,
+			age: viewerAge,
+			extraRecovery: viewerExtraRecovery,
+		});
 		builtFor = currentKey;
 	}
 

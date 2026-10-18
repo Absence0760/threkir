@@ -14,6 +14,7 @@ import '../lib/race_predictor.dart' show EffortForPrediction;
 import '../lib/screens/plan_new_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training.dart';
+import '../lib/plan_calibration.dart';
 import '../lib/training_service.dart';
 import 'pump_until.dart';
 
@@ -51,9 +52,8 @@ class _RampTraining extends TrainingService {
   _RampTraining(this.history);
 
   @override
-  Future<TrainingGender> fetchViewerGender() async => null;
-  @override
-  Future<int?> fetchViewerAge() async => null;
+  Future<PlanCalibration> fetchPlanCalibration() async =>
+      PlanCalibration.unknown;
   @override
   Future<PlanRunHistory?> fetchPlanRunHistory() async => history;
   @override
@@ -88,9 +88,8 @@ class _GateTraining extends TrainingService {
   _GateTraining({this.activePlans = const [], this.lookupFails = false});
 
   @override
-  Future<TrainingGender> fetchViewerGender() async => null;
-  @override
-  Future<int?> fetchViewerAge() async => null;
+  Future<PlanCalibration> fetchPlanCalibration() async =>
+      PlanCalibration.unknown;
   @override
   Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async =>
       const [];
@@ -129,9 +128,8 @@ class _HangingCreateTraining extends TrainingService {
   int createCalls = 0;
 
   @override
-  Future<TrainingGender> fetchViewerGender() async => null;
-  @override
-  Future<int?> fetchViewerAge() async => null;
+  Future<PlanCalibration> fetchPlanCalibration() async =>
+      PlanCalibration.unknown;
   @override
   Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async =>
       const [];
@@ -169,9 +167,8 @@ class _LookupGateTraining extends TrainingService {
   _LookupGateTraining({this.templatesByClub = const {}});
 
   @override
-  Future<TrainingGender> fetchViewerGender() async => null;
-  @override
-  Future<int?> fetchViewerAge() async => null;
+  Future<PlanCalibration> fetchPlanCalibration() async =>
+      PlanCalibration.unknown;
   @override
   Future<List<TrainingPlanRow>> fetchClubTemplates(String clubId) async =>
       templatesByClub[clubId] ?? const [];
@@ -236,9 +233,8 @@ class _RecordingTraining extends TrainingService {
   GeneratedPlan? generated;
 
   @override
-  Future<TrainingGender> fetchViewerGender() async => null;
-  @override
-  Future<int?> fetchViewerAge() async => null;
+  Future<PlanCalibration> fetchPlanCalibration() async =>
+      PlanCalibration.unknown;
   @override
   Future<PlanRunHistory?> fetchPlanRunHistory() async => null;
   @override

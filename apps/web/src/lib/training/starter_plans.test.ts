@@ -52,6 +52,17 @@ test('an instantiated starter anchors at the given start date', () => {
 	assert.ok(plan!.endDate > '2026-07-01');
 });
 
+test('an instantiated starter takes the masters schedule from extra recovery as it does from age', () => {
+	assert.deepEqual(
+		instantiateStarter('half_12wk', '2026-07-05', null, true),
+		instantiateStarter('half_12wk', '2026-07-05', 60)
+	);
+	assert.notDeepEqual(
+		instantiateStarter('half_12wk', '2026-07-05'),
+		instantiateStarter('half_12wk', '2026-07-05', 60)
+	);
+});
+
 test('starterSummary describes C25K as 9 weeks, 3 days a week, 30-45 minute sessions', () => {
 	// The shortest session is week 1 (28.5 min) and the longest week 7
 	// (44 min), each rounded to the nearest 5. The graduation 5K lasts as

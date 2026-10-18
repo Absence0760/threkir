@@ -525,6 +525,17 @@ SettingsService? activeSettingsService() => _activeSettingsSync?.service;
 Object? activeSetting(String key) =>
     _activeSettingsSync?.service?.effective<Object>(key);
 
+/// Merge [changes] into the universal bag through the app's settings sync,
+/// so every screen listening to it sees the edit. Throws [StateError] when
+/// no sync is registered (signed out, or before `main.dart` has run).
+Future<void> updateActiveUniversal(Map<String, dynamic> changes) {
+  final sync = _activeSettingsSync;
+  if (sync == null) {
+    throw StateError('updateActiveUniversal: no settings sync registered');
+  }
+  return sync.updateUniversal(changes);
+}
+
 /// The runner's `week_start_day` ('monday' | 'sunday'), Monday until the
 /// settings bag has loaded.
 String activeWeekStartDay() =>

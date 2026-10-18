@@ -30,6 +30,7 @@ import {
 	peakVolumeKm,
 	mileageFraction,
 	isMastersAge,
+	usesMastersRecovery,
 	defaultPlanWeeks,
 	walkRunDefaultWeeks,
 	WALK_RUN_GRADUATION_M,
@@ -921,6 +922,41 @@ test('generatePlan: a sub-masters age leaves the standard Tue/Thu schedule intac
 	});
 	const week = plan.weeks.find((w) => dayOffsetInWeek(w, QUALITY_KINDS) != null)!;
 	assert.equal(dayOffsetInWeek(week, QUALITY_KINDS), 2);
+});
+
+test('usesMastersRecovery: extra recovery applies at any age and never removes it from a masters runner', () => {
+	assert.equal(usesMastersRecovery(34, true), true);
+	assert.equal(usesMastersRecovery(null, true), true);
+	assert.equal(usesMastersRecovery(34, false), false);
+	assert.equal(usesMastersRecovery(undefined, undefined), false);
+	assert.equal(usesMastersRecovery(58, false), true);
+	assert.equal(usesMastersRecovery(58, null), true);
+});
+
+test('generatePlan: extra recovery gives a sub-masters or ageless runner the masters schedule', () => {
+	const base = {
+		goalEvent: 'distance_full' as const,
+		startDate: '2026-06-07',
+		daysPerWeek: 5,
+		recent5kSec: 24 * 60
+	};
+	const masters = generatePlan({ ...base, age: 58 });
+	assert.deepEqual(generatePlan({ ...base, age: 34, extraRecovery: true }), masters);
+	assert.deepEqual(generatePlan({ ...base, age: null, extraRecovery: true }), masters);
+	assert.notDeepEqual(generatePlan({ ...base, age: 34 }), masters);
+});
+
+test('generatePlan: extra recovery reaches the ultra schedule too', () => {
+	const base = {
+		goalEvent: 'custom' as const,
+		goalDistanceM: 100_000,
+		startDate: '2026-06-07',
+		daysPerWeek: 5,
+		recent5kSec: 24 * 60
+	};
+	const masters = generatePlan({ ...base, age: 61 });
+	assert.deepEqual(generatePlan({ ...base, extraRecovery: true }), masters);
+	assert.notDeepEqual(generatePlan(base), masters);
 });
 
 

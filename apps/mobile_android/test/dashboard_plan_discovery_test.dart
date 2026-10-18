@@ -25,7 +25,7 @@ import '../lib/preferences.dart';
 import '../lib/screens/dashboard_screen.dart';
 import '../lib/screens/plan_new_screen.dart';
 import '../lib/settings_sync.dart';
-import '../lib/training.dart' show TrainingGender;
+import '../lib/plan_calibration.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/top_banner.dart' show kTopBannerMaxDuration;
 import 'pump_until.dart';
@@ -75,9 +75,8 @@ class _Training extends TrainingService {
   Future<TrainingPlanRow?> fetchPausedPlan() async => null;
 
   @override
-  Future<TrainingGender> fetchViewerGender() async => null;
-  @override
-  Future<int?> fetchViewerAge() async => null;
+  Future<PlanCalibration> fetchPlanCalibration() async =>
+      PlanCalibration.unknown;
   @override
   Future<PlanRunHistory?> fetchPlanRunHistory() async => null;
   @override

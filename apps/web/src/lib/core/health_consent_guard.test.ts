@@ -17,7 +17,7 @@ const HEALTH_USE_SURFACES = [
 	'../../routes/dashboard/+page.svelte',
 	'../../routes/nutrition/+page.svelte',
 	'../../routes/nutrition/targets/+page.svelte',
-	'../components/PlanEditor.svelte',
+	'../training/plan_calibration.ts',
 ];
 
 for (const rel of HEALTH_USE_SURFACES) {
@@ -32,6 +32,24 @@ for (const rel of HEALTH_USE_SURFACES) {
 			`${rel} reads date_of_birth directly; the age record carries no consent term, ` +
 				'so a health use must resolve it through healthUseDob instead',
 		);
+	});
+}
+
+// Every surface that builds a plan for the signed-in runner takes gender, age
+// and `extra_recovery` from one loader, so a new plan surface cannot skip the
+// masters recovery calibration (decisions § 93) or derive the age on its own.
+const PLAN_BUILDING_SURFACES = [
+	'../components/PlanEditor.svelte',
+	'../components/SeasonPlanner.svelte',
+	'../../routes/plans/+page.svelte',
+	'../../routes/plans/new/+page.svelte',
+];
+
+for (const rel of PLAN_BUILDING_SURFACES) {
+	test(`${rel} calibrates its plans through loadPlanCalibration`, () => {
+		const src = readFileSync(resolve(import.meta.dirname, rel), 'utf8');
+		assert.ok(src.includes('loadPlanCalibration('), `${rel} builds a plan without loadPlanCalibration`);
+		assert.ok(!src.includes('ageFromDob'), `${rel} derives the age itself instead of through loadPlanCalibration`);
 	});
 }
 

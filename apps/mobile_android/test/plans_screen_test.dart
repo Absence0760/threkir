@@ -10,6 +10,7 @@ import '../lib/plan_labels.dart' show starterStartDate;
 import '../lib/screens/plan_library_screen.dart';
 import '../lib/screens/plans_screen.dart';
 import '../lib/training.dart';
+import '../lib/plan_calibration.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/error_state.dart';
 import '../lib/widgets/sign_in_required_state.dart';
@@ -64,7 +65,8 @@ class _FakeTraining extends TrainingService {
   }
 
   @override
-  Future<int?> fetchViewerAge() async => null;
+  Future<PlanCalibration> fetchPlanCalibration() async =>
+      PlanCalibration.unknown;
 
   @override
   Future<TrainingPlanRow> createPlan({

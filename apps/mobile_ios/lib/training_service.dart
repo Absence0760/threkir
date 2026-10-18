@@ -5,12 +5,11 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'training.dart' show TrainingGender;
 
 import 'active_plan_cache.dart';
 import 'backend_timeout.dart';
-import 'health_consent.dart';
-import 'nutrition_targets.dart' show ageFromDob;
+import 'plan_calibration.dart';
+import 'settings_sync.dart' show activeSetting, updateActiveUniversal;
 import 'plan_bulk_ops.dart';
 import 'plan_break.dart' show BreakChange;
 import 'plan_race_date.dart' show RaceDateChange;
@@ -363,47 +362,46 @@ class TrainingService extends ChangeNotifier {
   /// bootstrap bug, not a signed-out viewer, and must not read as one.
   String? get currentUserId => _uid;
 
-  /// The viewer's own `user_profiles` row, or null. Goes through
-  /// `get_my_profile()` (SECURITY DEFINER) because neither `gender` nor
-  /// `date_of_birth` nor `health_data_consent_at` is in the cross-user column
-  /// grant (20260707_001 / 20270408_001): a direct `.select('gender')` is
-  /// rejected outright with 42501, so the reads this replaced could only ever
-  /// report "unset" — the same defect `ApiClient.fetchAiDisclosure` records.
+  /// The runner facts every plan built for the viewer calibrates on —
+  /// gender, age and the `extra_recovery` setting — graded by
+  /// [planCalibrationFrom]. Mirror of web `loadPlanCalibration`.
   ///
-  /// L4 best-effort by contract: the plan wizard's initState awaits the two
-  /// callers without blocking, and any failure only costs the calibration.
-  /// The try/catch must therefore wrap BOTH the `_uid` access (which touches
-  /// `_c`, which throws `StateError` in widget tests that don't initialise
-  /// Supabase) AND the network read. A regression that narrowed the catch to
-  /// the inner read alone surfaced as `plan_new_screen_test` failing with
-  /// "TrainingService called before Supabase.initialize() resolved" in CI.
-  Future<UserProfileRow?> _fetchMyProfile() async {
+  /// The profile goes through `get_my_profile()` (SECURITY DEFINER) because
+  /// neither `gender` nor `date_of_birth` nor `health_data_consent_at` is in
+  /// the cross-user column grant (20260707_001 / 20270408_001). Reshaping a
+  /// plan around the runner's age is an Art 9 health inference, so the date
+  /// is resolved through `healthUseDob` inside [planCalibrationFrom] (§ 722).
+  ///
+  /// L4 best-effort by contract, and each read is its own failure domain: a
+  /// failed profile read keeps the setting, and an unloaded settings bag
+  /// keeps the age. The try/catch wraps BOTH the `_uid` access (which
+  /// touches `_c`, which throws `StateError` in widget tests that don't
+  /// initialise Supabase) AND the network read.
+  Future<PlanCalibration> fetchPlanCalibration() async {
+    UserProfileRow? profile;
+    var profileRead = true;
     try {
-      if (_uid == null) return null;
-      final row = ApiClient.profileRowFrom(
-          await _c.rpc('get_my_profile', params: const {}, get: true));
-      if (row == null) return null;
-      return UserProfileRow.fromJson(row);
-    } catch (_) {
-      /* L4 best-effort — fall back to null on any failure,
-         including the not-yet-initialised StateError thrown by
-         the _c getter in widget tests. */
+      if (_uid != null) {
+        final row = ApiClient.profileRowFrom(
+            await _c.rpc('get_my_profile', params: const {}, get: true));
+        if (row != null) profile = UserProfileRow.fromJson(row);
+      }
+    } catch (e) {
+      debugPrint('fetchPlanCalibration: profile read failed: $e');
+      profileRead = false;
     }
-    return null;
+    return planCalibrationFrom(
+      profile: profile,
+      profileRead: profileRead,
+      extraRecoverySetting: activeSetting(SettingsKeys.extraRecovery),
+      nowMs: DateTime.now().millisecondsSinceEpoch,
+    );
   }
 
-  /// Persona-hunt Round 3 finding Woman #3. Reads the viewer's
-  /// `user_profiles.gender` so the plan wizard can apply the
-  /// gender-aware pace calibration. Returns null when the column is
-  /// unset (the default) — pacesFromGoalPace then uses the
-  /// male-derived curve unchanged. Mirror of the inline supabase
-  /// read on web `PlanEditor.svelte`. Gender carries its own consent
-  /// term at every write path, so the read needs none.
-  Future<TrainingGender> fetchViewerGender() async {
-    final g = (await _fetchMyProfile())?.gender;
-    if (g == 'male' || g == 'female' || g == 'prefer_not_to_say') return g;
-    return null;
-  }
+  /// Turn `extra_recovery` on or off in the universal settings bag, the
+  /// same switch as Settings → Preferences. Throws when the write fails.
+  Future<void> setExtraRecovery(bool on) =>
+      updateActiveUniversal({SettingsKeys.extraRecovery: on});
 
   /// The viewer's running history as the plan wizard reads it: far enough
   /// back ([kLayoffMaxDays] plus the four-week base before it) to see the
@@ -411,7 +409,7 @@ class TrainingService extends ChangeNotifier {
   /// the ramp check grades against, and the last [kGoalCheckWindowDays] of
   /// qualifying efforts the goal-time check projects from. Mirrors the two
   /// reads on web `PlanEditor.svelte`. Same L4 best-effort contract as
-  /// [fetchViewerGender]: null on any failure, and every note built from it
+  /// [fetchPlanCalibration]: null on any failure, and every note built from it
   /// then self-hides rather than grading against a base it doesn't have.
   Future<PlanRunHistory?> fetchPlanRunHistory() async {
     try {
@@ -434,20 +432,6 @@ class TrainingService extends ChangeNotifier {
       debugPrint('fetchPlanRunHistory failed: $e');
     }
     return null;
-  }
-
-  /// Persona-hunt finding Older #30. Returns the viewer's whole-year age so
-  /// the plan wizard can apply the masters recovery calibration (50+), or
-  /// null — generatePlan then uses the standard younger-physiology schedule.
-  ///
-  /// Reshaping a training plan around the runner's age is an Art 9 health
-  /// inference, and the age record itself carries no consent term because the
-  /// under-18 search floor depends on it (§ 718). So the date comes through
-  /// [healthUseDob] rather than off the row, matching web's PlanEditor
-  /// (§ 722). Same L4 best-effort contract as [fetchViewerGender].
-  Future<int?> fetchViewerAge() async {
-    final dob = healthUseDob(await _fetchMyProfile());
-    return ageFromDob(dob, DateTime.now().millisecondsSinceEpoch);
   }
 
   /// Plan templates owned by `clubId`. Visible to club members per RLS.

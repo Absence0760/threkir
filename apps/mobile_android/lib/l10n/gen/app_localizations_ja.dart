@@ -17775,4 +17775,35 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get planRecapNextPlanCta => '次のプランを作る';
+
+  @override
+  String get prefsExtraRecovery => 'ハードな日の間の回復を長めにする';
+
+  @override
+  String get prefsExtraRecoveryHint =>
+      '新しいプランでは、ロング走から次のハードなセッションまで72時間空け、4週ごとではなく3週ごとに負荷を落とします。生年月日が登録されていれば、50歳以上のプランではすでにこの設定になります。';
+
+  @override
+  String get planNewExtraRecoveryHint =>
+      'ハードなセッションの間隔を広げ、3週ごとに負荷を落とします。トレーニング設定に保存され、新しいプランすべてに使われます。';
+
+  @override
+  String get planNewExtraRecoverySaveFailed => '設定を保存できませんでした。もう一度お試しください。';
+
+  @override
+  String get planNewMastersRecoveryApplied =>
+      '50歳以上のため、このプランではハードなセッションの間隔を広げ、3週ごとに負荷を落とします。';
+
+  @override
+  String get planNewDobHintAbsent => '50歳以上のランナーには、プランが自動的に回復を長めに取ります。';
+
+  @override
+  String get planNewDobHintAbsentAction => '生年月日を追加';
+
+  @override
+  String get planNewDobHintHealthData =>
+      'プランが年齢に合わせて生年月日を使うには、健康データの利用への同意が必要です。';
+
+  @override
+  String get planNewDobHintHealthDataAction => '同意を確認';
 }

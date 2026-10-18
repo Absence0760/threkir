@@ -249,6 +249,18 @@ export function isMastersAge(age: number | null | undefined): boolean {
 	return age != null && age >= MASTERS_AGE;
 }
 
+/// Whether a plan takes the masters recovery calibration: the runner is 50+,
+/// or they asked for it (`extra_recovery`, a training preference any runner
+/// can set — a comeback runner, or one with no date of birth on record).
+/// The preference only ever adds recovery; it never removes it from a
+/// masters runner.
+export function usesMastersRecovery(
+	age: number | null | undefined,
+	extraRecovery: boolean | null | undefined
+): boolean {
+	return extraRecovery === true || isMastersAge(age);
+}
+
 /**
  * Derive the five Daniels intensity-zone paces as multipliers of goal-race
  * pace. Numbers chosen so the output sits close to Daniels' published tables
@@ -474,6 +486,9 @@ export interface GeneratePlanInput {
 	/// hard-day spacing + a 3-week build/recover cycle. Persona-hunt
 	/// finding Older #30.
 	age?: number | null;
+	/// The runner's `extra_recovery` setting: apply the masters recovery
+	/// calibration whatever `age` says. See `usesMastersRecovery`.
+	extraRecovery?: boolean;
 	/// When true, produce a beginner C25K-style walk-run plan instead of the
 	/// continuous-running plan. The goal stays a 5k; every session is a
 	/// `walk_run` workout of timed run/walk intervals (persona #22).
@@ -547,7 +562,7 @@ export function generatePlan(input: GeneratePlanInput): GeneratedPlan {
 	}
 
 	const weeks: GeneratedWeek[] = [];
-	const masters = isMastersAge(input.age);
+	const masters = usesMastersRecovery(input.age, input.extraRecovery);
 
 	for (let i = 0; i < totalWeeks; i++) {
 		const phase = phaseFor(i, totalWeeks);
@@ -1008,7 +1023,7 @@ interface UltraPlanContext {
 
 function generateUltraPlan(input: GeneratePlanInput, ctx: UltraPlanContext): GeneratedPlan {
 	const { goalDistanceM, totalWeeks, paces, startDate } = ctx;
-	const masters = isMastersAge(input.age);
+	const masters = usesMastersRecovery(input.age, input.extraRecovery);
 	const backToBack = goalDistanceM >= ULTRA_BACK_TO_BACK_MIN_M;
 	const peakKm = peakVolumeKm(
 		goalDistanceM,

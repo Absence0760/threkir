@@ -18697,4 +18697,38 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planRecapNextPlanCta => 'Créer votre prochain plan';
+
+  @override
+  String get prefsExtraRecovery =>
+      'Plus de récupération entre les jours difficiles';
+
+  @override
+  String get prefsExtraRecoveryHint =>
+      'Les nouveaux plans laissent 72 heures entre ta sortie longue et la séance difficile suivante, et allègent une semaine sur trois au lieu d\'une sur quatre. Les plans le font déjà à partir de 50 ans si ta date de naissance est renseignée.';
+
+  @override
+  String get planNewExtraRecoveryHint =>
+      'Espace davantage les séances difficiles et allège une semaine sur trois. Enregistré dans tes réglages d\'entraînement : chaque nouveau plan l\'utilise.';
+
+  @override
+  String get planNewExtraRecoverySaveFailed =>
+      'Impossible d\'enregistrer ce réglage. Réessaie.';
+
+  @override
+  String get planNewMastersRecoveryApplied =>
+      'Comme tu as 50 ans ou plus, ce plan espace davantage les séances difficiles et allège une semaine sur trois.';
+
+  @override
+  String get planNewDobHintAbsent =>
+      'Les plans donnent automatiquement plus de récupération aux coureurs de 50 ans et plus.';
+
+  @override
+  String get planNewDobHintAbsentAction => 'Ajouter ta date de naissance';
+
+  @override
+  String get planNewDobHintHealthData =>
+      'Les plans ne peuvent utiliser ta date de naissance pour s\'adapter à ton âge qu\'avec ton consentement à l\'utilisation des données de santé.';
+
+  @override
+  String get planNewDobHintHealthDataAction => 'Vérifier le consentement';
 }

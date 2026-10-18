@@ -11,7 +11,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/l10n/gen/app_localizations_en.dart';
 import '../lib/screens/coach_screen.dart';
 import '../lib/screens/plan_new_screen.dart';
-import '../lib/training.dart' show TrainingGender;
+import '../lib/plan_calibration.dart';
 import '../lib/training_service.dart';
 import 'realtime_drain.dart';
 
@@ -66,9 +66,8 @@ class _Training extends TrainingService {
           (plan: active, weeks: const <PlanWeekRow>[], workouts: const <PlanWorkoutRow>[]);
 
   @override
-  Future<TrainingGender> fetchViewerGender() async => null;
-  @override
-  Future<int?> fetchViewerAge() async => null;
+  Future<PlanCalibration> fetchPlanCalibration() async =>
+      PlanCalibration.unknown;
   @override
   Future<PlanRunHistory?> fetchPlanRunHistory() async => null;
   @override

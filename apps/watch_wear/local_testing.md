@@ -111,6 +111,33 @@ on phone / web. The unit is sampled once at run start, so flipping it on the
 phone mid-run does not change the cue until the next run — same stamping the
 active-run tile uses.)
 
+### Today's workout on the tile and the complication
+
+Needs a paired phone with an active training plan that has a structured
+workout scheduled for today (the phone pushes it to `/todays_workout`).
+
+1. Add the **Active run** tile and put the **Run stats** complication on a
+   face. Do not open the watch app.
+2. Open the phone app so it pushes today's workout. Within a few seconds the
+   tile's idle state becomes **TODAY** with the kind ("Intervals"), the shape
+   ("6 × 400 m", or a total distance / time) and the step count; the
+   complication's short slot shows the kind code ("Int") under "Today", the
+   long slot "Intervals" over the shape. `TodaysWorkoutListenerService` is
+   what wakes them, so this must work with the app closed.
+3. Tap the tile: the app opens on the pre-run screen with the workout chip
+   on. Switch the chip off, leave, tap the tile again: it is back on.
+4. Run the workout and stop. The tile and the complication drop back to the
+   plain idle prompt and the last run respectively (the finished run names
+   the workout it followed). Discarding that run brings the offer back.
+5. Midnight: set the watch clock to 23:59 with the tile showing a workout.
+   At 00:00 the tile shows the plain idle prompt and the complication the
+   last run, with no app or phone involvement (both serve the workout as a
+   timeline entry that ends at local midnight).
+
+The decision and formatting are pinned host-side by `TodayWorkoutGlanceTest`
+and the wiring by `TodayGlanceWiringTest`; what they cannot see is the
+renderer honouring the timeline, which is step 5.
+
 ### Offline queue behaviour
 
 1. Stop the local Supabase stack (`supabase stop` in `apps/backend`).

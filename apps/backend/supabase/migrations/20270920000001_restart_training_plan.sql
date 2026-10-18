@@ -1,6 +1,6 @@
--- "Restart this plan" (issue #1186, decisions § 2121): a fresh copy of one of
--- the runner's own plans, starting on a date they pick, made active in the
--- same transaction that retires what it replaces.
+-- Restart a plan: a fresh copy of one of the runner's own plans, starting on
+-- a date they pick, made active in the same transaction that retires what it
+-- replaces.
 --
 -- The copy carries the plan's structure: every week, every workout with its
 -- targets, structure and race fields, the goal, rules and notes, all moved by
@@ -17,16 +17,25 @@
 -- Refused:
 --   * a template (is_template): templates are copied through
 --     clone_plan_template, which strips owner-private fields;
---   * a start before the runner's local today (one day of slack when no time
---     zone is on record), which would open the copy with missed weeks;
+--   * a start before the runner's local today (RR002). "Today" is
+--     private.athlete_local_date on prefs.time_zone; with no zone on record it
+--     is the UTC date less one day, so a device west of UTC, whose today can
+--     be the UTC yesterday, is never refused a start it calls today. The
+--     clients check against the device's date, which can run behind the
+--     stored zone (a phone not yet switched after travel), so the refusal has
+--     its own code and message;
 --   * a plan with a race on or after the runner's local today (RR001). Moving
---     the whole plan would move race day off the real date. Re-dating a race
---     is "Change race date"; restart is for a plan whose races are behind it.
+--     the whole plan would move race day off the real date (decisions § 2121).
+--
+-- The ownership check runs before the rate limit, so a request for a plan the
+-- caller does not own, or one that does not exist, spends none of their budget.
 --
 -- Carried conservatively:
 --   * assigned_by_coach_id is NOT carried: notify_plan_assigned fires on an
 --     insert that names a coach, and the coach did not assign this copy. The
 --     coach still reads it through the coach_athletes link like any plan.
+--   * club_id is NOT carried: on a personal plan it is the club a template was
+--     published to, and the copy is the runner's own, not a club template.
 --   * bpm targets are carried only while the hr_prescription gate is open and
 --     the runner has health-data consent on record; otherwise null, so the
 --     copy never trips check_plan_workout_hr_target. RPE ranges always carry.
@@ -68,8 +77,6 @@ begin
       message = 'restart_training_plan: a start date is required';
   end if;
 
-  perform enforce_create_rate_limit('restart_training_plan', caller, 20, 3600);
-
   select * into src
   from training_plans
   where id = p_plan_id and user_id = caller
@@ -83,6 +90,8 @@ begin
       message = 'restart_training_plan: a template cannot be restarted';
   end if;
 
+  perform enforce_create_rate_limit('restart_training_plan', caller, 20, 3600);
+
   select us.prefs ->> 'time_zone' into v_tz
   from user_settings us
   where us.user_id = caller;
@@ -93,8 +102,8 @@ begin
 
   if p_start_date < v_today then
     raise exception using
-      errcode = 'invalid_parameter_value',
-      message = 'restart_training_plan: the new start date is in the past';
+      errcode = 'RR002',
+      message = 'restart_training_plan: the new start date is before today';
   end if;
 
   if exists (

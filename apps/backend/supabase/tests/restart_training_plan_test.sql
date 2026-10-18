@@ -5,7 +5,7 @@
 -- plan whose race is still ahead.
 
 begin;
-select plan(31);
+select plan(33);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -56,10 +56,17 @@ values
   ('aaaaaaaa-0000-0000-0000-0000000e0400', 'a9a9a9a9-0000-0000-0000-0000000e0040', current_date + 3, 'race', 5000,
    null, null, null, null, null, false, null, 'Ahead', 'A');
 
--- A plan queued after the source that the new window will overlap.
+-- A plan queued after the source that the new window will overlap, one queued
+-- well after it that the window does not reach, and another runner's active
+-- plan over the same dates.
 insert into training_plans (id, user_id, name, goal_event, goal_distance_m, start_date, end_date, days_per_week, status)
-values ('a8a8a8a8-0000-0000-0000-0000000e0005', 'a7a7a7a7-0000-0000-0000-0000000e0001', 'Queued', 'distance_5k', 5000,
-  current_date + 20, current_date + 40, 4, 'active');
+values
+  ('a8a8a8a8-0000-0000-0000-0000000e0005', 'a7a7a7a7-0000-0000-0000-0000000e0001', 'Queued', 'distance_5k', 5000,
+   current_date + 20, current_date + 40, 4, 'active'),
+  ('a8a8a8a8-0000-0000-0000-0000000e0006', 'a7a7a7a7-0000-0000-0000-0000000e0001', 'Far queued', 'distance_5k', 5000,
+   current_date + 200, current_date + 220, 4, 'active'),
+  ('a8a8a8a8-0000-0000-0000-0000000e0007', 'a7a7a7a7-0000-0000-0000-0000000e0002', 'Their active', 'distance_5k', 5000,
+   current_date + 7, current_date + 27, 4, 'active');
 
 insert into runs (id, user_id, started_at, duration_s, distance_m, source, activity_type)
 values ('abababab-0000-0000-0000-0000000e0001', 'a7a7a7a7-0000-0000-0000-0000000e0001', '2020-01-01 07:00+00', 3600, 12000, 'app', 'run');
@@ -77,7 +84,7 @@ select throws_ok(
   '22023', 'restart_training_plan: a template cannot be restarted', 'a template is refused');
 select throws_ok(
   $$select restart_training_plan('a8a8a8a8-0000-0000-0000-0000000e0001', current_date - 3)$$,
-  '22023', 'restart_training_plan: the new start date is in the past', 'a start in the past is refused');
+  'RR002', 'restart_training_plan: the new start date is before today', 'a start before today is refused');
 select throws_ok(
   $$select restart_training_plan('a8a8a8a8-0000-0000-0000-0000000e0004', current_date + 7)$$,
   'RR001', 'restart_training_plan: this plan has a race still ahead',
@@ -109,6 +116,12 @@ select is((select status from training_plans where id = 'a8a8a8a8-0000-0000-0000
 select is((select status from training_plans where id = 'a8a8a8a8-0000-0000-0000-0000000e0005'),
   'abandoned', 'an active plan the new window overlaps is retired as abandoned');
 
+select is((select status from training_plans where id = 'a8a8a8a8-0000-0000-0000-0000000e0006'),
+  'active', 'a later active plan the new window does not reach stays active');
+reset role;
+select is((select status from training_plans where id = 'a8a8a8a8-0000-0000-0000-0000000e0007'),
+  'active', 'another runner''s active plan is untouched');
+set local role authenticated;
 select is((select count(*)::int from plan_weeks where plan_id = (select id from restarted)),
   3, 'every week is copied');
 select is((select notes from plan_weeks where plan_id = (select id from restarted) and week_index = 0),
@@ -181,8 +194,9 @@ select lives_ok(
   'an abandoned plan can be restarted');
 select is(
   (select count(*)::int from training_plans
-   where user_id = 'a7a7a7a7-0000-0000-0000-0000000e0001' and status = 'active'),
-  1, 'leaving exactly one active plan, the newest copy');
+   where user_id = 'a7a7a7a7-0000-0000-0000-0000000e0001' and status = 'active'
+     and id <> 'a8a8a8a8-0000-0000-0000-0000000e0006'),
+  1, 'leaving exactly one active plan over those dates, the newest copy');
 
 select * from finish();
 rollback;

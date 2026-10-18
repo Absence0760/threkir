@@ -67,6 +67,8 @@ import '../widgets/goal_editor_sheet.dart';
 import '../widgets/todays_workout_card.dart';
 import '../widgets/plan_nudge_card.dart';
 import '../plan_nudges.dart' show PlanNudge, PlanNudgeKind, workoutOverrunMetres;
+import '../workout_summary.dart' show plannedWorkoutSize;
+import '../workout_summary_format.dart' show formatPlannedSize;
 import '../widgets/finish_plan_card.dart';
 import '../widgets/plan_break_card.dart';
 import '../widgets/missed_workout_prompt_card.dart';
@@ -726,6 +728,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                 manuallyCompleted: w.manuallyCompleted,
                 completedRunId: w.completedRunId,
                 skippedAt: w.skippedAt?.toIso8601String(),
+                targetDurationSeconds: w.targetDurationSeconds,
+                structure: w.structure,
               ),
           ];
   }
@@ -1066,7 +1070,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (t == null || runId == null) return null;
     for (final r in runs) {
       if (r.id == runId) {
-        return workoutOverrunMetres(t.targetDistanceM, r.distanceMetres);
+        return workoutOverrunMetres(t.targetDistanceM, r.distanceMetres, t.kind);
       }
     }
     return null;
@@ -2163,6 +2167,14 @@ class _DashboardWeekLead extends StatelessWidget {
             : lead.distanceM / c.targetM!;
     final vs = _vsText(l10n);
     final next = lead.next;
+    final nextSize = next == null
+        ? null
+        : plannedWorkoutSize(
+            kind: next.kind,
+            targetDistanceM: next.targetDistanceM,
+            targetDurationS: next.targetDurationSeconds,
+            structure: next.structure,
+          );
 
     return Card(
       child: Padding(
@@ -2226,8 +2238,9 @@ class _DashboardWeekLead extends StatelessWidget {
                   when: _whenLabel(l10n, next.scheduledDate, lead.nextInDays),
                   detail: [
                     workoutKindLabel(l10n, workoutKindFromDb(next.kind)),
-                    if (next.targetDistanceM != null)
-                      UnitFormat.distance(next.targetDistanceM!, unit),
+                    if (nextSize != null)
+                      formatPlannedSize(l10n, nextSize,
+                          (m) => UnitFormat.distance(m.toDouble(), unit)),
                   ].join(' · '),
                   onTap: () => onOpenSession(next),
                 )

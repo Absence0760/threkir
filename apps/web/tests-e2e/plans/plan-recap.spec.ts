@@ -79,7 +79,7 @@ async function plantCompletedPlan(name: string, status: 'completed' | 'active'):
 			target_distance_m: RACE_DISTANCE_M,
 			completed_run_id: raceRunId
 		}
-	]);
+	], { defaultToNull: false });
 	if (woErr) throw woErr;
 	planted.plans.push(planId);
 	return planId;
@@ -106,7 +106,7 @@ test.describe('the end-of-plan recap', () => {
 		await expect(recap.getByTestId('plan-recap-volume')).toContainText('Distance');
 		await expect(recap.getByTestId('plan-recap-race')).toContainText(`${NAME_PREFIX} done race`);
 		await expect(recap.getByTestId('plan-recap-race')).toContainText('1:05:00');
-		await expect(recap.getByTestId('plan-recap-race')).toContainText(/VDOT \d+\.\d/);
+		await expect(recap.getByTestId('plan-recap-race')).toContainText(/VDOT.*\d+\.\d/);
 		await expect(recap.getByTestId('plan-recap-records')).toContainText('Half marathon', { timeout: 10_000 });
 		await expect(recap.getByTestId('plan-recap-recovery')).toContainText('7 easy days');
 

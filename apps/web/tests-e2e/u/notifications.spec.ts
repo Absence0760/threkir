@@ -5,6 +5,8 @@ import {
 	clearNotifications,
 	deleteClub,
 	deleteRun,
+	deleteAchievement,
+	insertAchievement,
 	insertComment,
 	insertKudos,
 	insertRun
@@ -162,6 +164,21 @@ test.describe('/u/[me]?tab=notifications — run_completed render (persona #38)'
 		// distance-less "completed a run" fallback. A unit-agnostic match
 		// (km or mi) so the test survives USER_B's unit preference.
 		await expect(verb.first()).toHaveText(/completed a [\d.]+\s*(km|mi) run/i);
+	});
+
+	test('tapping it opens the run inside the app shell, not the public share page', async ({
+		page
+	}) => {
+		await page.goto(`/u/${USER_B.id}?tab=notifications`);
+		const verb = page.locator('.item-wrap .verb', { hasText: /completed a/ });
+		await expect(verb.first()).toBeVisible({ timeout: 10_000 });
+
+		await verb.first().click();
+		await expect(page).toHaveURL(new RegExp(`/runs/${runId}$`), { timeout: 10_000 });
+		// The app shell's sidebar is what the share page lacks: a signed-in
+		// reader landing on /share/run had no navigation back into the app.
+		await expect(page.locator('nav.sidebar')).toBeVisible();
+		await expect(page.getByText(/Run not found/i)).toHaveCount(0);
 	});
 });
 
@@ -367,5 +384,56 @@ test.describe('/u/[me]?tab=notifications — undo a dismiss', () => {
 				{ timeout: 10_000 }
 			)
 			.toBe(0);
+	});
+});
+
+/**
+ * achievement tap target. The badge is the recipient's own, and may be
+ * private, which the public /share/badge page answers with "not found" — so
+ * the link opens the recipient's Achievements tab focused on that badge.
+ */
+test.describe('/u/[me]?tab=notifications — achievement opens the badge in the app', () => {
+	test.use({ storageState: USER_B.storageStatePath });
+
+	let badgeId: string | null = null;
+
+	test.beforeEach(async () => {
+		await clearNotifications(USER_B.id);
+		badgeId = await insertAchievement({
+			user_id: USER_B.id,
+			badge_key: 'distance_lifetime',
+			tier: 'platinum',
+			is_public: false
+		});
+		const { error } = await getAdminClient()
+			.from('notifications')
+			.insert({ user_id: USER_B.id, kind: 'achievement', achievement_id: badgeId });
+		if (error) throw new Error(error.message);
+	});
+
+	test.afterEach(async () => {
+		await clearNotifications(USER_B.id);
+		if (badgeId) {
+			try {
+				await deleteAchievement(badgeId);
+			} catch (_) {
+				/* best-effort */
+			}
+			badgeId = null;
+		}
+	});
+
+	test('tapping it lands on the own Achievements tab with the badge focused', async ({ page }) => {
+		await page.goto(`/u/${USER_B.id}?tab=notifications`);
+		const item = page.locator('.item-wrap').first();
+		await expect(item).toBeVisible({ timeout: 10_000 });
+		await item.locator('.verb').click();
+
+		await expect(page).toHaveURL(
+			new RegExp(`/u/${USER_B.id}\\?tab=achievements&badge=${badgeId}$`),
+			{ timeout: 10_000 }
+		);
+		await expect(page.locator('nav.sidebar')).toBeVisible();
+		await expect(page.getByTestId('badge-focused')).toBeVisible({ timeout: 10_000 });
 	});
 });

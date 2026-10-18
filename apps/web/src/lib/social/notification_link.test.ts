@@ -18,6 +18,7 @@ function make(overrides: {
 	return {
 		row: {
 			kind: overrides.kind,
+			user_id: 'me',
 			run_id: overrides.run_id ?? null,
 			actor_id: overrides.actor_id ?? null,
 			event_id: overrides.event_id ?? null,
@@ -31,7 +32,15 @@ function make(overrides: {
 }
 
 test('run-engagement kinds link to the run detail', () => {
-	for (const kind of ['kudos', 'comment', 'comment_reply', 'reaction', 'comment_like', 'mention']) {
+	for (const kind of [
+		'kudos',
+		'comment',
+		'comment_reply',
+		'reaction',
+		'comment_like',
+		'mention',
+		'run_completed',
+	]) {
 		assert.equal(notificationLinkFor(make({ kind, run_id: 'r1' })), '/runs/r1');
 		assert.equal(notificationLinkFor(make({ kind })), null, `${kind} with no run_id has no link`);
 	}
@@ -76,14 +85,32 @@ test('club_post links to the club home', () => {
 	assert.equal(notificationLinkFor(make({ kind: 'club_post' })), null);
 });
 
-test('run_completed links to the public run share page', () => {
-	assert.equal(notificationLinkFor(make({ kind: 'run_completed', run_id: 'r7' })), '/share/run/r7');
-	assert.equal(notificationLinkFor(make({ kind: 'run_completed' })), null);
+test('achievement links to the recipient\'s own achievements tab, focused on the badge', () => {
+	assert.equal(
+		notificationLinkFor(make({ kind: 'achievement', achievement_id: 'a5' })),
+		'/u/me?tab=achievements&badge=a5',
+	);
+	assert.equal(notificationLinkFor(make({ kind: 'achievement' })), null);
 });
 
-test('achievement links to the badge share page', () => {
-	assert.equal(notificationLinkFor(make({ kind: 'achievement', achievement_id: 'a5' })), '/share/badge/a5');
-	assert.equal(notificationLinkFor(make({ kind: 'achievement' })), null);
+test('no notification sends a signed-in reader to a public share page', () => {
+	const ids = {
+		run_id: 'r-1',
+		actor_id: 'u-1',
+		event_id: 'e-1',
+		plan_id: 'p-1',
+		achievement_id: 'a-1',
+		challenge_id: 'c-1',
+		event_club_slug: 'club',
+		club_slug: 'club',
+	};
+	for (const kind of notificationKinds()) {
+		const href = notificationLinkFor(make({ kind, ...ids }));
+		assert.ok(
+			href === null || !/^\/(?:recap\/)?share\//.test(href),
+			`${kind} links to ${href}, the logged-out share page, from inside the app`,
+		);
+	}
 });
 
 test('challenge_complete links to the challenge', () => {

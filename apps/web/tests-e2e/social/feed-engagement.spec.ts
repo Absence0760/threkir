@@ -168,14 +168,12 @@ test.describe('/social?tab=feed — kudos pill + comment count', () => {
 		await page.goto('/social?tab=feed');
 		const card = page.locator('article.entry').filter({ hasText: title });
 		await expect(card).toBeVisible({ timeout: 10_000 });
-		// The comment-pill shows the count and links to the PUBLIC run page —
-		// anon-reachable and indexable, unlike the auth-gated /runs/[id]. It
-		// used to point at /runs/[id], which sent a follower to a "Run not
-		// found" page (fixed both ways: the link moved, and /runs/[id] gained
-		// a non-owner branch in issue #666).
+		// The comment-pill shows the count and links to the in-app run page,
+		// whose non-owner branch (issue #666) mounts the same comments. The
+		// public /share/run page would take a signed-in reader out of the app.
 		const commentPill = card.locator('.comment-pill');
 		await expect(commentPill).toContainText('2', { timeout: 10_000 });
-		await expect(commentPill).toHaveAttribute('href', new RegExp(`/share/run/${runId}`));
+		await expect(commentPill).toHaveAttribute('href', `/runs/${runId}`);
 	});
 });
 

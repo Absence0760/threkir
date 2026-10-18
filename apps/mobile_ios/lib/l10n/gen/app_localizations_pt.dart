@@ -6682,6 +6682,52 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get planNudgeUnderTitle => 'A correr um pouco menos do que o previsto';
+
+  @override
+  String planNudgeUnderBody(int n, int total) {
+    return 'Correu menos do que o previsto em $n das últimas $total semanas. Há um ajuste sugerido para as próximas semanas.';
+  }
+
+  @override
+  String get planNudgeEaseTitle => 'Uma semana em grande';
+
+  @override
+  String get planNudgeEaseBody =>
+      'Na semana passada correu bem acima do previsto. Aliviar as corridas mais curtas da próxima semana ajuda o corpo a assimilar.';
+
+  @override
+  String get planNudgeRestTitle => 'Correr nos dias de descanso';
+
+  @override
+  String planNudgeRestBody(int n, int total) {
+    return 'Correu em dias de descanso em $n das últimas $total semanas. Essas corridas contam para a sua semana, mas é no descanso que o treino se consolida.';
+  }
+
+  @override
+  String get planNudgeReview => 'Rever as alterações';
+
+  @override
+  String get planNudgeDismiss => 'Dispensar';
+
+  @override
+  String get planNudgeDismissA11y => 'Dispensar esta sugestão';
+
+  @override
+  String get planNudgeDismissFailed =>
+      'Não foi possível ocultar a sugestão. Tente novamente.';
+
+  @override
+  String planWorkoutOverrun(String distance) {
+    return '+$distance';
+  }
+
+  @override
+  String planWorkoutOverrunA11y(String distance) {
+    return 'mais $distance do que o previsto';
+  }
+
+  @override
   String get planDetailReplanPreviewTitle => 'Mudanças propostas';
 
   @override
@@ -24736,6 +24782,53 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       one: '1 treino ajustado',
     );
     return '$_temp0';
+  }
+
+  @override
+  String get planNudgeUnderTitle =>
+      'Correndo um pouco menos do que o planejado';
+
+  @override
+  String planNudgeUnderBody(int n, int total) {
+    return 'Você correu menos do que o planejado em $n das últimas $total semanas. Há um ajuste sugerido para as próximas semanas.';
+  }
+
+  @override
+  String get planNudgeEaseTitle => 'Uma semana puxada';
+
+  @override
+  String get planNudgeEaseBody =>
+      'Na semana passada você correu bem acima do planejado. Aliviar as corridas mais curtas da próxima semana ajuda seu corpo a absorver.';
+
+  @override
+  String get planNudgeRestTitle => 'Correndo nos dias de descanso';
+
+  @override
+  String planNudgeRestBody(int n, int total) {
+    return 'Você correu em dias de descanso em $n das últimas $total semanas. Essas corridas contam para a sua semana, mas é no descanso que o treino se consolida.';
+  }
+
+  @override
+  String get planNudgeReview => 'Revisar as mudanças';
+
+  @override
+  String get planNudgeDismiss => 'Dispensar';
+
+  @override
+  String get planNudgeDismissA11y => 'Dispensar esta sugestão';
+
+  @override
+  String get planNudgeDismissFailed =>
+      'Não foi possível ocultar a sugestão. Tente novamente.';
+
+  @override
+  String planWorkoutOverrun(String distance) {
+    return '+$distance';
+  }
+
+  @override
+  String planWorkoutOverrunA11y(String distance) {
+    return '$distance a mais do que o planejado';
   }
 
   @override

@@ -8932,6 +8932,80 @@
       }
     }
   },
+  "planNudgeUnderTitle": "Running a little less than planned",
+  "@planNudgeUnderTitle": {
+    "description": "Home plan card title: under-run trend"
+  },
+  "planNudgeUnderBody": "You've run less than planned in {n} of the last {total} weeks. There's a suggested adjustment to the weeks ahead.",
+  "@planNudgeUnderBody": {
+    "description": "Home plan card body: under-run trend. n of the last total completed weeks were under plan",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "planNudgeEaseTitle": "A big week",
+  "@planNudgeEaseTitle": {
+    "description": "Home plan card title: last week well over plan"
+  },
+  "planNudgeEaseBody": "You ran well over plan last week. Easing next week's shorter runs helps your body absorb it.",
+  "@planNudgeEaseBody": {
+    "description": "Home plan card body: last week more than 20% over plan, next week's shorter runs eased"
+  },
+  "planNudgeRestTitle": "Running on rest days",
+  "@planNudgeRestTitle": {
+    "description": "Home plan card title: runs on rest days"
+  },
+  "planNudgeRestBody": "You've run on rest days in {n} of the last {total} weeks. Those runs count toward your week, but rest days are where the training sinks in.",
+  "@planNudgeRestBody": {
+    "description": "Home plan card body: runs on rest days in n of the last total completed weeks",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "planNudgeReview": "Review the changes",
+  "@planNudgeReview": {
+    "description": "Home plan card: open the existing re-plan preview"
+  },
+  "planNudgeDismiss": "Dismiss",
+  "@planNudgeDismiss": {
+    "description": "Home plan card: dismiss"
+  },
+  "planNudgeDismissA11y": "Dismiss this suggestion",
+  "@planNudgeDismissA11y": {
+    "description": "Accessible name of the dismiss control"
+  },
+  "planNudgeDismissFailed": "Couldn't hide that suggestion. Try again.",
+  "@planNudgeDismissFailed": {
+    "description": "Dismissing the plan card could not be saved"
+  },
+  "planWorkoutOverrun": "+{distance}",
+  "@planWorkoutOverrun": {
+    "description": "How far a done workout ran past its target, shown after Done, e.g. +3 km",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "planWorkoutOverrunA11y": "{distance} more than planned",
+  "@planWorkoutOverrunA11y": {
+    "description": "Screen-reader text for the over-run, e.g. 3 km more than planned",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
   "planDetailReplanPreviewTitle": "Proposed changes",
   "@planDetailReplanPreviewTitle": {
     "description": "Plan-detail adherence/replan/duplicate"

@@ -912,6 +912,26 @@ class TrainingService extends ChangeNotifier {
     return row == null ? null : PlanWorkoutRow.fromJson(row);
   }
 
+  /// Distances of the runs linked to plan workouts, by run id, for the
+  /// "Done · +3 km" status. Ids the viewer cannot read (a coach looking at an
+  /// athlete's plan, a deleted run) are simply absent. Web twin:
+  /// `fetchRunDistances` in data.ts.
+  Future<Map<String, double>> fetchRunDistances(List<String> ids) async {
+    final wanted = ids.toSet().toList();
+    final rows = await readChunked(
+      wanted,
+      (chunk) async => List<Map<String, dynamic>>.from(await _c
+          .from('runs')
+          .select('id, distance_m')
+          .inFilter('id', chunk)),
+    );
+    return {
+      for (final r in rows)
+        if (r['distance_m'] is num)
+          r['id'] as String: (r['distance_m'] as num).toDouble(),
+    };
+  }
+
   /// The viewer's active, non-template plans. Several can be active at once
   /// when their date windows don't overlap.
   Future<List<TrainingPlanRow>> fetchActivePlans() async {

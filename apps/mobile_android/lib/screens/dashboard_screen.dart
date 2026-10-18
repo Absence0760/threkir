@@ -65,6 +65,8 @@ import '../widgets/run_list_tile.dart';
 import '../widgets/this_week_strip.dart';
 import '../widgets/goal_editor_sheet.dart';
 import '../widgets/todays_workout_card.dart';
+import '../widgets/plan_nudge_card.dart';
+import '../plan_nudges.dart' show PlanNudge, PlanNudgeKind, workoutOverrunMetres;
 import '../widgets/finish_plan_card.dart';
 import '../widgets/next_race_card.dart';
 import '../widgets/up_next_plan_card.dart';
@@ -835,6 +837,59 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
+  /// How far today's done workout ran past its target, when the linked run
+  /// is on this device (`workoutOverrunMetres`).
+  double? _todayOverrun(List<Run> runs) {
+    final t = _planOverview?.todayWorkout;
+    final runId = t?.completedRunId;
+    if (t == null || runId == null) return null;
+    for (final r in runs) {
+      if (r.id == runId) {
+        return workoutOverrunMetres(t.targetDistanceM, r.distanceMetres);
+      }
+    }
+    return null;
+  }
+
+  /// Home's plan card (`planNudge`): null when there is nothing to say, the
+  /// plan's dates have run out, or there is no service to open the plan with.
+  Widget? _planNudgeCard(List<Run> runs, DateTime now) {
+    final p = _planOverview;
+    final svc = widget.training;
+    if (p == null || svc == null || _planFinished(now)) return null;
+    final nudge = PlanNudgeCard.nudgeFor(
+      overview: p,
+      runs: runs,
+      dismissed: PlanNudgeCard.dismissedIn(widget.settingsSync),
+      now: now,
+    );
+    if (nudge == null) return null;
+    return PlanNudgeCard(
+      key: ValueKey('planNudge:${nudge.key}'),
+      overview: p,
+      runs: runs,
+      settingsSync: widget.settingsSync,
+      now: now,
+      onReview: (n) => _reviewPlanNudge(svc, p.plan.id, n),
+    );
+  }
+
+  Future<void> _reviewPlanNudge(
+      TrainingService svc, String planId, PlanNudge n) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PlanDetailScreen(
+          training: svc,
+          planId: planId,
+          openReview: n.kind == PlanNudgeKind.adaptiveUnder
+              ? PlanReview.adaptive
+              : PlanReview.replan,
+        ),
+      ),
+    );
+    _refreshPlanOverview();
+  }
+
   void _openTodayWorkout() {
     final svc = widget.training;
     final p = _planOverview;
@@ -1162,12 +1217,20 @@ class _DashboardScreenState extends State<DashboardScreen>
     // Active-plan hero + the goals block: both outlive the welcome state,
     // because onboarding can mint a plan and a goal before the first run
     // exists and neither is a derived metric.
-    final heroWorkoutCard = _planOverview?.todayWorkout != null
+    final todayCard = _planOverview?.todayWorkout != null
         ? TodaysWorkoutCard(
             workout: _planOverview!.todayWorkout!,
             onTap: _openTodayWorkout,
+            overrunMetres: _todayOverrun(runs),
           )
         : null;
+    final nudgeCard = _planNudgeCard(runs, now);
+    final heroWorkoutCard = todayCard == null || nudgeCard == null
+        ? todayCard ?? nudgeCard
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [todayCard, const SizedBox(height: 8), nudgeCard],
+          );
     final pendingBanner = PendingSyncBanner(
       api: api,
       isOnline: _isOnline,

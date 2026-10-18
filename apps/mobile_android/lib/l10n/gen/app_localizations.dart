@@ -10846,6 +10846,78 @@ abstract class AppLocalizations {
   /// **'{n, plural, one{Adjusted 1 workout} other{Adjusted {n} workouts}}'**
   String planDetailReplanApplied(int n);
 
+  /// Home plan card title: under-run trend
+  ///
+  /// In en, this message translates to:
+  /// **'Running a little less than planned'**
+  String get planNudgeUnderTitle;
+
+  /// Home plan card body: under-run trend. n of the last total completed weeks were under plan
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve run less than planned in {n} of the last {total} weeks. There\'s a suggested adjustment to the weeks ahead.'**
+  String planNudgeUnderBody(int n, int total);
+
+  /// Home plan card title: last week well over plan
+  ///
+  /// In en, this message translates to:
+  /// **'A big week'**
+  String get planNudgeEaseTitle;
+
+  /// Home plan card body: last week more than 20% over plan, next week's shorter runs eased
+  ///
+  /// In en, this message translates to:
+  /// **'You ran well over plan last week. Easing next week\'s shorter runs helps your body absorb it.'**
+  String get planNudgeEaseBody;
+
+  /// Home plan card title: runs on rest days
+  ///
+  /// In en, this message translates to:
+  /// **'Running on rest days'**
+  String get planNudgeRestTitle;
+
+  /// Home plan card body: runs on rest days in n of the last total completed weeks
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve run on rest days in {n} of the last {total} weeks. Those runs count toward your week, but rest days are where the training sinks in.'**
+  String planNudgeRestBody(int n, int total);
+
+  /// Home plan card: open the existing re-plan preview
+  ///
+  /// In en, this message translates to:
+  /// **'Review the changes'**
+  String get planNudgeReview;
+
+  /// Home plan card: dismiss
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get planNudgeDismiss;
+
+  /// Accessible name of the dismiss control
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss this suggestion'**
+  String get planNudgeDismissA11y;
+
+  /// Dismissing the plan card could not be saved
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t hide that suggestion. Try again.'**
+  String get planNudgeDismissFailed;
+
+  /// How far a done workout ran past its target, shown after Done, e.g. +3 km
+  ///
+  /// In en, this message translates to:
+  /// **'+{distance}'**
+  String planWorkoutOverrun(String distance);
+
+  /// Screen-reader text for the over-run, e.g. 3 km more than planned
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} more than planned'**
+  String planWorkoutOverrunA11y(String distance);
+
   /// Plan-detail adherence/replan/duplicate
   ///
   /// In en, this message translates to:

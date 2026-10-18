@@ -7310,6 +7310,15 @@ export type Database = {
         Returns: boolean
       }
       set_my_handle: { Args: { p_handle: string }; Returns: string }
+      set_plan_goal_time: {
+        Args: {
+          p_changes: Json
+          p_goal_time_seconds: number
+          p_plan_id: string
+          p_vdot: number
+        }
+        Returns: undefined
+      }
       set_push_subscription: {
         Args: {
           p_device_id: string

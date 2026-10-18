@@ -4,7 +4,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deleteClub } from '../fixtures/simulate';
 import { USER_A, USER_B } from '../fixtures/users';
-import { readRow } from '../fixtures/db-read';
+import { readRow, readRows } from '../fixtures/db-read';
 
 /**
  * Club logo — an owner sets the picture behind `clubs.avatar_url`
@@ -107,8 +107,11 @@ test.describe('/clubs/[slug] — club logo', () => {
 			expect(url).toMatch(
 				new RegExp(`/storage/v1/object/public/avatars/clubs/${id}/logo\\.jpg\\?v=\\d+$`),
 			);
-			const { data: objects } = await admin.storage.from('avatars').list(`clubs/${id}`);
-			expect((objects ?? []).map((o) => o.name)).toEqual(['logo.jpg']);
+			const objects = await readRows(
+				'club logo objects',
+				admin.storage.from('avatars').list(`clubs/${id}`),
+			);
+			expect(objects.map((o) => o.name)).toEqual(['logo.jpg']);
 			await expect(headerAvatar).toHaveAttribute('data-has-logo', 'true');
 			await expect(headerAvatar.locator('img')).toHaveAttribute('src', url!);
 		});
@@ -151,8 +154,11 @@ test.describe('/clubs/[slug] — club logo', () => {
 			});
 			await expect(headerAvatar).toHaveAttribute('data-has-logo', 'false');
 			expect(await storedUrl()).toBeNull();
-			const { data } = await admin.storage.from('avatars').list(`clubs/${id}`);
-			expect((data ?? []).map((o) => o.name)).toEqual([]);
+			const remaining = await readRows(
+				'club logo objects',
+				admin.storage.from('avatars').list(`clubs/${id}`),
+			);
+			expect(remaining.map((o) => o.name)).toEqual([]);
 		});
 	});
 });

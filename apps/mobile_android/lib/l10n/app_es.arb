@@ -5151,5 +5151,19 @@
   "missedPromptRecommended": "Recomendado",
   "missedPromptLetGoDone": "Hecho. Tu plan sigue igual.",
   "missedPromptSaveFailed": "No se pudo guardar tu respuesta: {error}",
-  "missedPromptNothingToMakeUp": "Ya no queda nada que recuperar."
+  "missedPromptNothingToMakeUp": "Ya no queda nada que recuperar.",
+  "planDetailRepeatWeek": "Repetir esta semana",
+  "planDetailRepeatWeekOfferTitle": "¿Demasiado duro?",
+  "planDetailRepeatWeekOfferBody": "Repite esta semana la próxima semana. Lo que ya hiciste queda hecho y el resto del plan se retrasa una semana.",
+  "planDetailRepeatWeekConfirmTitle": "¿Repetir la semana {n}?",
+  "planDetailRepeatWeekConfirmMessage": "La semana {n} se repite como semana {copy}, a partir del {start}. Cada semana posterior se retrasa una, y el plan ahora termina el {end}. Los entrenamientos que ya hiciste se quedan como están.",
+  "planDetailRepeatWeekConfirmRace": "La semana {n} se repite como semana {copy}, a partir del {start}. Para mantener la carrera el {race}, sale una semana posterior antes de la puesta a punto. Los entrenamientos que ya hiciste se quedan como están.",
+  "planDetailRepeatWeekAction": "Repetir semana",
+  "planDetailRepeatWeekDone": "La semana {n} se repite a partir del {start}.",
+  "planDetailRepeatWeekNoRoom": "No queda ninguna semana antes de la puesta a punto para hacer sitio, así que repetir esta semana movería el día de la carrera. Cambia la fecha de la carrera en su lugar.",
+  "planDetailRepeatWeekInTheWay": "Una semana que se movería tiene una carrera o un entrenamiento ya hecho, así que esta semana no se puede repetir.",
+  "planDetailRepeatWeekLastWeek": "Esta es la última semana del plan, así que no hay nada que retrasar.",
+  "planDetailRepeatWeekNotNow": "Solo se puede repetir esta semana o la anterior de un plan activo.",
+  "rateLimitRepeatWeek": "Estás repitiendo semanas del plan demasiado rápido: espera {wait} e inténtalo de nuevo.",
+  "planDetailRepeatWeekOverlap": "Repetir esta semana haría que el plan se solapara con otro plan activo. Mueve o termina primero ese plan."
 }

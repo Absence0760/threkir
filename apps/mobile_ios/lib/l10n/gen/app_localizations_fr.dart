@@ -18362,4 +18362,72 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get missedPromptNothingToMakeUp => 'Il n\'y a plus rien à rattraper.';
+
+  @override
+  String get planDetailRepeatWeek => 'Refaire cette semaine';
+
+  @override
+  String get planDetailRepeatWeekOfferTitle => 'Trop dur ?';
+
+  @override
+  String get planDetailRepeatWeekOfferBody =>
+      'Refaites cette semaine la semaine prochaine. Ce que vous avez fait reste fait, et le reste du plan recule d’une semaine.';
+
+  @override
+  String planDetailRepeatWeekConfirmTitle(int n) {
+    return 'Refaire la semaine $n ?';
+  }
+
+  @override
+  String planDetailRepeatWeekConfirmMessage(
+    int n,
+    int copy,
+    String start,
+    String end,
+  ) {
+    return 'La semaine $n est refaite en semaine $copy, à partir du $start. Chaque semaine suivante recule d’une semaine, et le plan se termine désormais le $end. Les séances faites restent telles quelles.';
+  }
+
+  @override
+  String planDetailRepeatWeekConfirmRace(
+    int n,
+    int copy,
+    String start,
+    String race,
+  ) {
+    return 'La semaine $n est refaite en semaine $copy, à partir du $start. Pour garder la course le $race, une semaine plus loin avant l’affûtage est retirée. Les séances faites restent telles quelles.';
+  }
+
+  @override
+  String get planDetailRepeatWeekAction => 'Refaire la semaine';
+
+  @override
+  String planDetailRepeatWeekDone(int n, String start) {
+    return 'La semaine $n est refaite à partir du $start.';
+  }
+
+  @override
+  String get planDetailRepeatWeekNoRoom =>
+      'Il ne reste aucune semaine avant l’affûtage pour faire de la place : refaire cette semaine déplacerait le jour de course. Changez plutôt la date de course.';
+
+  @override
+  String get planDetailRepeatWeekInTheWay =>
+      'Une semaine qui serait décalée contient une course ou une séance déjà faite : cette semaine ne peut pas être refaite.';
+
+  @override
+  String get planDetailRepeatWeekLastWeek =>
+      'C’est la dernière semaine du plan : il n’y a rien à décaler.';
+
+  @override
+  String get planDetailRepeatWeekNotNow =>
+      'Seule cette semaine ou la précédente d’un plan actif peut être refaite.';
+
+  @override
+  String rateLimitRepeatWeek(String wait) {
+    return 'Vous répétez des semaines de plan trop rapidement — veuillez patienter $wait et réessayer.';
+  }
+
+  @override
+  String get planDetailRepeatWeekOverlap =>
+      'Refaire cette semaine ferait empiéter le plan sur un autre plan actif. Déplacez ou terminez d’abord ce plan.';
 }

@@ -58,6 +58,8 @@ String rateLimitMessage(AppLocalizations l10n, RateLimitInfo info) {
       return l10n.rateLimitRotateCalendarLink(wait);
     case 'restart_training_plan':
       return l10n.rateLimitRestartPlan(wait);
+    case 'repeat_plan_week':
+      return l10n.rateLimitRepeatWeek(wait);
     case 'send_direct_message':
     case 'send_direct_message_burst':
       return l10n.rateLimitSendMessage(wait);

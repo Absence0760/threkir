@@ -5151,5 +5151,19 @@
   "missedPromptRecommended": "Recomendado",
   "missedPromptLetGoDone": "Pronto. Seu plano continua como estava.",
   "missedPromptSaveFailed": "Não foi possível salvar sua resposta: {error}",
-  "missedPromptNothingToMakeUp": "Não há mais nada para compensar."
+  "missedPromptNothingToMakeUp": "Não há mais nada para compensar.",
+  "planDetailRepeatWeek": "Repetir esta semana",
+  "planDetailRepeatWeekOfferTitle": "Pesado demais?",
+  "planDetailRepeatWeekOfferBody": "Repita esta semana na próxima. O que você já fez continua feito, e o resto do plano é adiado em uma semana.",
+  "planDetailRepeatWeekConfirmTitle": "Repetir a semana {n}?",
+  "planDetailRepeatWeekConfirmMessage": "A semana {n} é repetida como semana {copy}, a partir de {start}. Cada semana seguinte é adiada em uma, e o plano agora termina em {end}. Os treinos que você já fez ficam como estão.",
+  "planDetailRepeatWeekConfirmRace": "A semana {n} é repetida como semana {copy}, a partir de {start}. Para manter a prova em {race}, sai uma semana posterior antes do polimento. Os treinos que você já fez ficam como estão.",
+  "planDetailRepeatWeekAction": "Repetir semana",
+  "planDetailRepeatWeekDone": "A semana {n} é repetida a partir de {start}.",
+  "planDetailRepeatWeekNoRoom": "Não sobrou nenhuma semana antes do polimento para abrir espaço, então repetir esta semana mudaria o dia da prova. Mude a data da prova em vez disso.",
+  "planDetailRepeatWeekInTheWay": "Uma semana que seria adiada tem uma prova ou um treino já feito, então esta semana não pode ser repetida.",
+  "planDetailRepeatWeekLastWeek": "Esta é a última semana do plano, então não há nada para adiar.",
+  "planDetailRepeatWeekNotNow": "Só é possível repetir esta semana ou a anterior de um plano ativo.",
+  "rateLimitRepeatWeek": "Você está repetindo semanas do plano rápido demais — espere {wait} e tente de novo.",
+  "planDetailRepeatWeekOverlap": "Repetir esta semana faria o plano se sobrepor a outro plano ativo. Mova ou encerre esse plano primeiro."
 }

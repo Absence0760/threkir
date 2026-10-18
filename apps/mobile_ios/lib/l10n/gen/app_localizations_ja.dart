@@ -17458,4 +17458,70 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get missedPromptNothingToMakeUp => '埋め合わせるものはもうありません。';
+
+  @override
+  String get planDetailRepeatWeek => '今週をもう一度';
+
+  @override
+  String get planDetailRepeatWeekOfferTitle => 'きつすぎましたか？';
+
+  @override
+  String get planDetailRepeatWeekOfferBody =>
+      '今週の内容を来週もう一度行います。完了したものはそのまま残り、残りのプランは1週間後ろにずれます。';
+
+  @override
+  String planDetailRepeatWeekConfirmTitle(int n) {
+    return '第$n週をもう一度行いますか？';
+  }
+
+  @override
+  String planDetailRepeatWeekConfirmMessage(
+    int n,
+    int copy,
+    String start,
+    String end,
+  ) {
+    return '第$n週を$startから第$copy週としてもう一度行います。それ以降の週はすべて1週間後ろにずれ、プランの終了日は$endになります。完了したワークアウトはそのまま残ります。';
+  }
+
+  @override
+  String planDetailRepeatWeekConfirmRace(
+    int n,
+    int copy,
+    String start,
+    String race,
+  ) {
+    return '第$n週を$startから第$copy週としてもう一度行います。レース日を$raceのまま保つため、テーパー前の先の週を1つ外します。完了したワークアウトはそのまま残ります。';
+  }
+
+  @override
+  String get planDetailRepeatWeekAction => '週をもう一度';
+
+  @override
+  String planDetailRepeatWeekDone(int n, String start) {
+    return '第$n週を$startからもう一度行います。';
+  }
+
+  @override
+  String get planDetailRepeatWeekNoRoom =>
+      'テーパーの前に空けられる週が残っていないため、今週を繰り返すとレース日が動いてしまいます。代わりにレース日を変更してください。';
+
+  @override
+  String get planDetailRepeatWeekInTheWay =>
+      'ずれる週にレースか完了したワークアウトがあるため、今週は繰り返せません。';
+
+  @override
+  String get planDetailRepeatWeekLastWeek => 'プランの最終週なので、後ろにずらすものがありません。';
+
+  @override
+  String get planDetailRepeatWeekNotNow => '繰り返せるのは、進行中のプランの今週か先週だけです。';
+
+  @override
+  String rateLimitRepeatWeek(String wait) {
+    return 'プランの週の繰り返しが速すぎます。$wait待ってから、もう一度お試しください。';
+  }
+
+  @override
+  String get planDetailRepeatWeekOverlap =>
+      '今週を繰り返すと、プランが別の有効なプランと重なります。先にそのプランを移動するか終了してください。';
 }

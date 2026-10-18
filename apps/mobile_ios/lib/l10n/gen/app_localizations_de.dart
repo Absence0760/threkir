@@ -18333,4 +18333,72 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get missedPromptNothingToMakeUp => 'Es gibt nichts mehr nachzuholen.';
+
+  @override
+  String get planDetailRepeatWeek => 'Diese Woche wiederholen';
+
+  @override
+  String get planDetailRepeatWeekOfferTitle => 'Zu hart?';
+
+  @override
+  String get planDetailRepeatWeekOfferBody =>
+      'Lauf diese Woche nächste Woche noch einmal. Was du erledigt hast, bleibt erledigt, und der Rest des Plans rückt eine Woche nach hinten.';
+
+  @override
+  String planDetailRepeatWeekConfirmTitle(int n) {
+    return 'Woche $n wiederholen?';
+  }
+
+  @override
+  String planDetailRepeatWeekConfirmMessage(
+    int n,
+    int copy,
+    String start,
+    String end,
+  ) {
+    return 'Woche $n läuft ab dem $start noch einmal als Woche $copy. Jede Woche danach rückt um eine nach hinten, und der Plan endet jetzt am $end. Erledigte Trainings bleiben, wie sie sind.';
+  }
+
+  @override
+  String planDetailRepeatWeekConfirmRace(
+    int n,
+    int copy,
+    String start,
+    String race,
+  ) {
+    return 'Woche $n läuft ab dem $start noch einmal als Woche $copy. Damit dein Wettkampf am $race bleibt, fällt eine spätere Woche vor dem Tapering weg. Erledigte Trainings bleiben, wie sie sind.';
+  }
+
+  @override
+  String get planDetailRepeatWeekAction => 'Woche wiederholen';
+
+  @override
+  String planDetailRepeatWeekDone(int n, String start) {
+    return 'Woche $n läuft ab dem $start noch einmal.';
+  }
+
+  @override
+  String get planDetailRepeatWeekNoRoom =>
+      'Vor dem Tapering ist keine Woche mehr übrig, die Platz machen könnte, also würde das Wiederholen den Wettkampftag verschieben. Ändere stattdessen das Wettkampfdatum.';
+
+  @override
+  String get planDetailRepeatWeekInTheWay =>
+      'Eine Woche, die sich verschieben würde, enthält einen Wettkampf oder ein erledigtes Training, deshalb lässt sich diese Woche nicht wiederholen.';
+
+  @override
+  String get planDetailRepeatWeekLastWeek =>
+      'Das ist die letzte Woche des Plans, es gibt nichts zu verschieben.';
+
+  @override
+  String get planDetailRepeatWeekNotNow =>
+      'Nur diese oder die letzte Woche eines aktiven Plans kann wiederholt werden.';
+
+  @override
+  String rateLimitRepeatWeek(String wait) {
+    return 'Du wiederholst Planwochen zu schnell – bitte warte $wait und versuche es erneut.';
+  }
+
+  @override
+  String get planDetailRepeatWeekOverlap =>
+      'Mit der wiederholten Woche würde der Plan in einen anderen aktiven Plan hineinlaufen. Verschiebe oder beende jenen Plan zuerst.';
 }

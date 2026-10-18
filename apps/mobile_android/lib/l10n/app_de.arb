@@ -5151,5 +5151,19 @@
   "missedPromptRecommended": "Empfohlen",
   "missedPromptLetGoDone": "Ausgelassen. Dein Plan läuft unverändert weiter.",
   "missedPromptSaveFailed": "Deine Antwort konnte nicht gespeichert werden: {error}",
-  "missedPromptNothingToMakeUp": "Es gibt nichts mehr nachzuholen."
+  "missedPromptNothingToMakeUp": "Es gibt nichts mehr nachzuholen.",
+  "planDetailRepeatWeek": "Diese Woche wiederholen",
+  "planDetailRepeatWeekOfferTitle": "Zu hart?",
+  "planDetailRepeatWeekOfferBody": "Lauf diese Woche nächste Woche noch einmal. Was du erledigt hast, bleibt erledigt, und der Rest des Plans rückt eine Woche nach hinten.",
+  "planDetailRepeatWeekConfirmTitle": "Woche {n} wiederholen?",
+  "planDetailRepeatWeekConfirmMessage": "Woche {n} läuft ab dem {start} noch einmal als Woche {copy}. Jede Woche danach rückt um eine nach hinten, und der Plan endet jetzt am {end}. Erledigte Trainings bleiben, wie sie sind.",
+  "planDetailRepeatWeekConfirmRace": "Woche {n} läuft ab dem {start} noch einmal als Woche {copy}. Damit dein Wettkampf am {race} bleibt, fällt eine spätere Woche vor dem Tapering weg. Erledigte Trainings bleiben, wie sie sind.",
+  "planDetailRepeatWeekAction": "Woche wiederholen",
+  "planDetailRepeatWeekDone": "Woche {n} läuft ab dem {start} noch einmal.",
+  "planDetailRepeatWeekNoRoom": "Vor dem Tapering ist keine Woche mehr übrig, die Platz machen könnte, also würde das Wiederholen den Wettkampftag verschieben. Ändere stattdessen das Wettkampfdatum.",
+  "planDetailRepeatWeekInTheWay": "Eine Woche, die sich verschieben würde, enthält einen Wettkampf oder ein erledigtes Training, deshalb lässt sich diese Woche nicht wiederholen.",
+  "planDetailRepeatWeekLastWeek": "Das ist die letzte Woche des Plans, es gibt nichts zu verschieben.",
+  "planDetailRepeatWeekNotNow": "Nur diese oder die letzte Woche eines aktiven Plans kann wiederholt werden.",
+  "rateLimitRepeatWeek": "Du wiederholst Planwochen zu schnell – bitte warte {wait} und versuche es erneut.",
+  "planDetailRepeatWeekOverlap": "Mit der wiederholten Woche würde der Plan in einen anderen aktiven Plan hineinlaufen. Verschiebe oder beende jenen Plan zuerst."
 }

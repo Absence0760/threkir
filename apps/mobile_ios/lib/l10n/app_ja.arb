@@ -5151,5 +5151,19 @@
   "missedPromptRecommended": "おすすめ",
   "missedPromptLetGoDone": "見送りました。プランはそのまま続きます。",
   "missedPromptSaveFailed": "回答を保存できませんでした: {error}",
-  "missedPromptNothingToMakeUp": "埋め合わせるものはもうありません。"
+  "missedPromptNothingToMakeUp": "埋め合わせるものはもうありません。",
+  "planDetailRepeatWeek": "今週をもう一度",
+  "planDetailRepeatWeekOfferTitle": "きつすぎましたか？",
+  "planDetailRepeatWeekOfferBody": "今週の内容を来週もう一度行います。完了したものはそのまま残り、残りのプランは1週間後ろにずれます。",
+  "planDetailRepeatWeekConfirmTitle": "第{n}週をもう一度行いますか？",
+  "planDetailRepeatWeekConfirmMessage": "第{n}週を{start}から第{copy}週としてもう一度行います。それ以降の週はすべて1週間後ろにずれ、プランの終了日は{end}になります。完了したワークアウトはそのまま残ります。",
+  "planDetailRepeatWeekConfirmRace": "第{n}週を{start}から第{copy}週としてもう一度行います。レース日を{race}のまま保つため、テーパー前の先の週を1つ外します。完了したワークアウトはそのまま残ります。",
+  "planDetailRepeatWeekAction": "週をもう一度",
+  "planDetailRepeatWeekDone": "第{n}週を{start}からもう一度行います。",
+  "planDetailRepeatWeekNoRoom": "テーパーの前に空けられる週が残っていないため、今週を繰り返すとレース日が動いてしまいます。代わりにレース日を変更してください。",
+  "planDetailRepeatWeekInTheWay": "ずれる週にレースか完了したワークアウトがあるため、今週は繰り返せません。",
+  "planDetailRepeatWeekLastWeek": "プランの最終週なので、後ろにずらすものがありません。",
+  "planDetailRepeatWeekNotNow": "繰り返せるのは、進行中のプランの今週か先週だけです。",
+  "rateLimitRepeatWeek": "プランの週の繰り返しが速すぎます。{wait}待ってから、もう一度お試しください。",
+  "planDetailRepeatWeekOverlap": "今週を繰り返すと、プランが別の有効なプランと重なります。先にそのプランを移動するか終了してください。"
 }

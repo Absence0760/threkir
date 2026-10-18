@@ -228,3 +228,12 @@ test('isLocked() fails closed on unknown tier (default = locked)', () => {
 		'isLocked() must return !isPro() for Pro-only keys so an unknown tier defaults to locked.',
 	);
 });
+
+test('the race page offers "Tailor it with AI" only under the AI plan box gate', () => {
+	// The action spends a Coach message on load (PlanEditor runs a handed
+	// description once), so with either flag unset it must not render at all.
+	const page = read('src/routes/races/[id]/+page.svelte');
+	assert.match(page, /const showAiPlan = coachEnabled\(\) && aiPlanEnabled\(\);/);
+	assert.match(page, /if \(!showAiPlan \|\| !planRace \|\| !planHref\) return null;/);
+	assert.match(page, /\{#if aiHref\}\s*<a class="btn btn-outline" href=\{aiHref\} data-testid="race-detail-tailor-ai">/);
+});

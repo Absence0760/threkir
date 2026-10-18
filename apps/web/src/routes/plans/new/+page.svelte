@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { todayISO } from '#lib/training/training.ts';
+	import { formatDate } from '#lib/format/time.ts';
 	import { alignPlanStartIso, defaultPlanStartIso } from '#lib/training/plan_start.ts';
 	import { racePlanPreset } from '#lib/training/race_plan_preset.ts';
 	import { goto, afterNavigate } from '$app/navigation';
@@ -89,11 +90,16 @@
 		const n = Number(raceDistanceParam);
 		return Number.isFinite(n) ? n : null;
 	})();
+	// `?notBefore=` (a race page's "Add to my season") floors the start after
+	// the runner's current plan and its recovery days, so the new plan queues
+	// behind it instead of overlapping it.
+	const notBeforeParam = page.url.searchParams.get('notBefore')?.trim() || null;
 	const racePreset = raceDateParam
 		? racePlanPreset({
 				raceDateIso: raceDateParam,
 				distanceM: raceDistanceM,
 				todayIso: todayISO(),
+				notBeforeIso: notBeforeParam,
 			})
 		: null;
 	// A refusal still renders the wizard on its own defaults — we just say
@@ -529,6 +535,11 @@
 		<p class="picker-hint race-preset-note" data-testid="race-preset-note">
 			{m('plansNew.raceAnchored', { weeks: String(racePreset.preset.weeks) })}
 		</p>
+		{#if notBeforeParam}
+			<p class="picker-hint race-preset-note" data-testid="race-preset-chained">
+				{m('plansNew.raceChained', { date: formatDate(racePreset.preset.startDate) })}
+			</p>
+		{/if}
 	{:else if raceRefusalKey}
 		<p class="picker-hint race-preset-note" data-testid="race-preset-refusal">
 			{m(raceRefusalKey)}
@@ -546,6 +557,7 @@
 		{initialName}
 		initialStartDate={racePreset?.ok ? racePreset.preset.startDate : undefined}
 		initialWeeks={racePreset?.ok ? racePreset.preset.weeks : undefined}
+		notBeforeIso={notBeforeParam}
 		initialDescription={describeParam}
 	/>
 	{:else if kind === 'session'}

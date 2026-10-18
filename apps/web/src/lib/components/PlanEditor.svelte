@@ -200,6 +200,9 @@
 		initialName?: string;
 		initialStartDate?: string;
 		initialWeeks?: number;
+		/// The chained start floor a race page's "Add to my season" hands over;
+		/// an AI fill that re-derives the dates from a race keeps to it too.
+		notBeforeIso?: string | null;
 		// A plain-English plan description handed over by a deep link (the
 		// coach's plan handoff). With the assistant live it prefills the box
 		// and runs one fill on mount; with it off it is ignored.
@@ -214,6 +217,7 @@
 		initialName,
 		initialStartDate,
 		initialWeeks,
+		notBeforeIso,
 		initialDescription,
 	}: Props = $props();
 
@@ -349,6 +353,7 @@
 			raceDateIso: raceDate,
 			distanceM: goalDistance,
 			todayIso: todayIso(),
+			notBeforeIso,
 		});
 		if (!result.ok) return t(RACE_REFUSAL_KEYS[result.reason]);
 		let { weeks: presetWeeks, startDate: presetStart } = result.preset;

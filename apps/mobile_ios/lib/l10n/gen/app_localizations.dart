@@ -29406,6 +29406,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The new race date runs into another active plan. Move or end that plan first.'**
   String get planDetailRaceDateOverlap;
+
+  /// Home-screen widget header above today's planned session
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get phoneSurfaceWidgetHeader;
+
+  /// Home-screen widget: the runner has no active training plan
+  ///
+  /// In en, this message translates to:
+  /// **'No training plan'**
+  String get phoneSurfaceWidgetNoPlan;
+
+  /// Home-screen widget: tap prompt that opens the plan list when there is no plan
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a plan'**
+  String get phoneSurfaceWidgetNoPlanAction;
+
+  /// Home-screen widget: the active plan has nothing on today's date
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing scheduled'**
+  String get phoneSurfaceWidgetNothingScheduled;
+
+  /// Home-screen widget: the saved snapshot no longer covers today; opening the app refreshes it
+  ///
+  /// In en, this message translates to:
+  /// **'Open Threkir to update'**
+  String get phoneSurfaceWidgetStale;
+
+  /// Home-screen widget: today is a planned rest day
+  ///
+  /// In en, this message translates to:
+  /// **'Rest day'**
+  String get phoneSurfaceWidgetRestDay;
+
+  /// Home-screen widget: today's planned session is done
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get phoneSurfaceWidgetDone;
+
+  /// Home-screen widget: the runner skipped today's planned session
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get phoneSurfaceWidgetSkipped;
 }
 
 class _AppLocalizationsDelegate

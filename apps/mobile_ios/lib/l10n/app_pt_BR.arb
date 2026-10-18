@@ -5085,5 +5085,13 @@
   "planDetailRestartBeforeTodayError": "Essa data de início é anterior a hoje no fuso horário da sua conta. Escolha uma data posterior.",
   "planDetailRestartConfirm": "Recomeçar o plano",
   "planDetailRestartDone": "Plano recomeçado. Esta é a sua nova cópia.",
-  "dashboardPlanPausedBody": "Pausado. Retome para continuar; as semanas que você perdeu passam para frente."
+  "dashboardPlanPausedBody": "Pausado. Retome para continuar; as semanas que você perdeu passam para frente.",
+  "phoneSurfaceWidgetHeader": "Hoje",
+  "phoneSurfaceWidgetNoPlan": "Sem plano de treino",
+  "phoneSurfaceWidgetNoPlanAction": "Escolha um plano",
+  "phoneSurfaceWidgetNothingScheduled": "Nada agendado",
+  "phoneSurfaceWidgetStale": "Abra o Threkir para atualizar",
+  "phoneSurfaceWidgetRestDay": "Dia de descanso",
+  "phoneSurfaceWidgetDone": "Feito",
+  "phoneSurfaceWidgetSkipped": "Pulado"
 }

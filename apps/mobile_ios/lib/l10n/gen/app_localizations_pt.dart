@@ -18057,6 +18057,30 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get planDetailRaceDateOverlap =>
       'A nova data da prova sobrepõe-se a outro plano ativo. Mude ou termine primeiro esse plano.';
+
+  @override
+  String get phoneSurfaceWidgetHeader => 'Hoje';
+
+  @override
+  String get phoneSurfaceWidgetNoPlan => 'Sem plano de treino';
+
+  @override
+  String get phoneSurfaceWidgetNoPlanAction => 'Escolher um plano';
+
+  @override
+  String get phoneSurfaceWidgetNothingScheduled => 'Nada agendado';
+
+  @override
+  String get phoneSurfaceWidgetStale => 'Abra o Threkir para atualizar';
+
+  @override
+  String get phoneSurfaceWidgetRestDay => 'Dia de descanso';
+
+  @override
+  String get phoneSurfaceWidgetDone => 'Feito';
+
+  @override
+  String get phoneSurfaceWidgetSkipped => 'Saltado';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -36099,4 +36123,28 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get planDetailRaceDateOverlap =>
       'A nova data da prova se sobrepõe a outro plano ativo. Mova ou encerre esse plano primeiro.';
+
+  @override
+  String get phoneSurfaceWidgetHeader => 'Hoje';
+
+  @override
+  String get phoneSurfaceWidgetNoPlan => 'Sem plano de treino';
+
+  @override
+  String get phoneSurfaceWidgetNoPlanAction => 'Escolha um plano';
+
+  @override
+  String get phoneSurfaceWidgetNothingScheduled => 'Nada agendado';
+
+  @override
+  String get phoneSurfaceWidgetStale => 'Abra o Threkir para atualizar';
+
+  @override
+  String get phoneSurfaceWidgetRestDay => 'Dia de descanso';
+
+  @override
+  String get phoneSurfaceWidgetDone => 'Feito';
+
+  @override
+  String get phoneSurfaceWidgetSkipped => 'Pulado';
 }

@@ -5085,5 +5085,13 @@
   "planDetailRestartBeforeTodayError": "その開始日は、アカウントのタイムゾーンでは今日より前です。もっと後の日付を選んでください。",
   "planDetailRestartConfirm": "プランをやり直す",
   "planDetailRestartDone": "プランをやり直しました。これが新しいコピーです。",
-  "dashboardPlanPausedBody": "一時停止中です。再開すると続きから始まり、休んだ週は後ろにずれます。"
+  "dashboardPlanPausedBody": "一時停止中です。再開すると続きから始まり、休んだ週は後ろにずれます。",
+  "phoneSurfaceWidgetHeader": "今日",
+  "phoneSurfaceWidgetNoPlan": "トレーニングプランなし",
+  "phoneSurfaceWidgetNoPlanAction": "プランを選ぶ",
+  "phoneSurfaceWidgetNothingScheduled": "予定なし",
+  "phoneSurfaceWidgetStale": "Threkirを開いて更新",
+  "phoneSurfaceWidgetRestDay": "休養日",
+  "phoneSurfaceWidgetDone": "完了",
+  "phoneSurfaceWidgetSkipped": "スキップ"
 }

@@ -17867,4 +17867,28 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get planDetailRaceDateOverlap =>
       'The new race date runs into another active plan. Move or end that plan first.';
+
+  @override
+  String get phoneSurfaceWidgetHeader => 'Today';
+
+  @override
+  String get phoneSurfaceWidgetNoPlan => 'No training plan';
+
+  @override
+  String get phoneSurfaceWidgetNoPlanAction => 'Pick a plan';
+
+  @override
+  String get phoneSurfaceWidgetNothingScheduled => 'Nothing scheduled';
+
+  @override
+  String get phoneSurfaceWidgetStale => 'Open Threkir to update';
+
+  @override
+  String get phoneSurfaceWidgetRestDay => 'Rest day';
+
+  @override
+  String get phoneSurfaceWidgetDone => 'Done';
+
+  @override
+  String get phoneSurfaceWidgetSkipped => 'Skipped';
 }

@@ -17203,4 +17203,28 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get planDetailRaceDateOverlap =>
       '新しいレース日が別の有効なプランと重なります。先にそのプランを移動するか終了してください。';
+
+  @override
+  String get phoneSurfaceWidgetHeader => '今日';
+
+  @override
+  String get phoneSurfaceWidgetNoPlan => 'トレーニングプランなし';
+
+  @override
+  String get phoneSurfaceWidgetNoPlanAction => 'プランを選ぶ';
+
+  @override
+  String get phoneSurfaceWidgetNothingScheduled => '予定なし';
+
+  @override
+  String get phoneSurfaceWidgetStale => 'Threkirを開いて更新';
+
+  @override
+  String get phoneSurfaceWidgetRestDay => '休養日';
+
+  @override
+  String get phoneSurfaceWidgetDone => '完了';
+
+  @override
+  String get phoneSurfaceWidgetSkipped => 'スキップ';
 }

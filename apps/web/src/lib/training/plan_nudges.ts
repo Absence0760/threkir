@@ -199,10 +199,11 @@ function restDayRunWeeks(
 /// non-template plan qualifies (the caller owns the "is the viewer the owner"
 /// check). In order, the first occurrence not yet dismissed wins:
 ///
-///  1. `anchor_under` / `anchor_return` — the last completed week ran under
-///     plan, or the runner has been away from it for a layoff, and the weeks
-///     ahead ask for more than 10% over what they last ran
-///     (`anchorToActualVolume`). It outranks the trend card, whose review
+///  1. `anchor_under` / `anchor_return` — only with `anchorVolume` on (the
+///     caller passes `ADAPTIVE_FITNESS_GATE`, decisions § 2090): the last
+///     completed week ran under plan, or the runner has been away from it for
+///     a layoff, and the weeks ahead ask for more than 10% over what they last
+///     ran (`anchorToActualVolume`). It outranks the trend card, whose review
 ///     would open the same anchored proposal;
 ///  2. `adaptive_under` — the adaptive re-plan's 2-of-3 under-run trend, and
 ///     only when it has a change to propose and no anchor applies;
@@ -223,6 +224,8 @@ export function planNudge(input: {
 	/// overlaps them is missed training the break offer answers, not a trend.
 	breakFromIso?: string | null;
 	breakUntilIso?: string | null;
+	/// The comeback ramp's deploy gate. Absent or false offers no anchor card.
+	anchorVolume?: boolean;
 }): PlanNudge | null {
 	if (input.status !== 'active' || input.isTemplate) return null;
 	if (input.today < input.startDate || input.today > input.endDate) return null;
@@ -237,7 +240,7 @@ export function planNudge(input: {
 	const dismissed = new Set(input.dismissed);
 	const candidates: PlanNudge[] = [];
 
-	const anchor = anchorToActualVolume({ weeks });
+	const anchor = input.anchorVolume === true ? anchorToActualVolume({ weeks }) : null;
 	if (anchor) {
 		const kind = anchor.returning ? 'anchor_return' : 'anchor_under';
 		const n = anchor.returning ? anchor.idleWeeks : 1;

@@ -217,6 +217,20 @@ test('anchorToActualVolume: a week already anchored proposes nothing more', () =
 	assert.equal(anchorToActualVolume({ weeks: [weeks[0], applied] }), null);
 });
 
+test('anchorToActualVolume: a week run as its anchored sessions prescribed is not short', () => {
+	// The week's target stays 40 km after an anchor; its sessions ask for 22.
+	const anchored = week(0, 40_000, 21_000, true, [
+		wo('l0', '2026-06-07', 'long', 12_000, { completed: true, isPast: true }),
+		wo('e0', '2026-06-03', 'easy', 10_000, { completed: true, isPast: true }),
+		wo('x0', '2026-06-02', 'rest', null, { isPast: true }),
+	]);
+	assert.equal(anchorToActualVolume({ weeks: [anchored, fullWeek(1, '2026-06-08')] }), null);
+	const short = { ...anchored, actualMetres: 15_000 };
+	const a = anchorToActualVolume({ weeks: [short, fullWeek(1, '2026-06-08')] });
+	assert.ok(a);
+	assert.equal(a.anchorMetres, 15_000);
+});
+
 test('preferVolumeAnchor: the anchor replaces every other proposal, and nothing changes without one', () => {
 	const other: ReplanChange[] = [
 		{

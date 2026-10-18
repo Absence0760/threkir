@@ -5,6 +5,7 @@
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { formatISO, isWorkoutCompleted, isWorkoutSkipped } from '#lib/training/training.ts';
+	import { isAdaptiveFitnessGateEnabled } from '#lib/training/adaptive_fitness_flag.ts';
 	import {
 		buildReplanWeeks,
 		DISMISSED_NUDGES_KEY,
@@ -82,7 +83,8 @@
 				runDates: runRows.map((r) => r.date),
 				dismissed: saved,
 				breakFromIso: breakWindow?.fromIso ?? null,
-				breakUntilIso: breakWindow?.untilIso ?? null
+				breakUntilIso: breakWindow?.untilIso ?? null,
+				anchorVolume: isAdaptiveFitnessGateEnabled()
 			});
 		} catch (e) {
 			console.error('Working out the plan card failed', e);

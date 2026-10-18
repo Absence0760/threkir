@@ -43,7 +43,11 @@
 	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
 	import { replanRemaining, type ReplanChange, type ReplanWeek } from '#lib/training/plan_replan.ts';
 	import { buildReplanWeeks, workoutOverrunMetres } from '#lib/training/plan_nudges.ts';
-	import { anchorToActualVolume, preferVolumeAnchor } from '#lib/training/plan_volume_anchor.ts';
+	import {
+		anchorToActualVolume,
+		preferVolumeAnchor,
+		type VolumeAnchor
+	} from '#lib/training/plan_volume_anchor.ts';
 	import {
 		raceTaperAdjustments,
 		raceTaperProposals,
@@ -932,12 +936,19 @@
 		});
 	}
 
+	/// The comeback ramp, only while `ADAPTIVE_FITNESS_GATE` is on (decisions
+	/// § 2090); off, every path below behaves as it did without it.
+	function volumeAnchor(input: ReplanWeek[]): VolumeAnchor | null {
+		if (!isAdaptiveFitnessGateEnabled()) return null;
+		return anchorToActualVolume({ weeks: input });
+	}
+
 	function proposeReplan(): void {
 		if (!plan || !isOwner || bulkBusy) return;
 		makeUpAnswers = null;
 		const input = buildReplanInput();
 		const changes = preferVolumeAnchor(
-			anchorToActualVolume({ weeks: input }),
+			volumeAnchor(input),
 			replanRemaining({ weeks: input, today }).changes
 		);
 		if (changes.length === 0) {
@@ -997,7 +1008,7 @@
 		// (`plan_volume_anchor`), not by stretching a missed long run.
 		const changes =
 			reason === 'trend_underfitness'
-				? preferVolumeAnchor(anchorToActualVolume({ weeks: input }), r.changes)
+				? preferVolumeAnchor(volumeAnchor(input), r.changes)
 				: r.changes;
 		if (changes.length === 0) {
 			// A real multi-week trend, but the conservative rules prescribe no
@@ -1065,7 +1076,7 @@
 	/// Set while the preview is the anchor's: what it builds back from.
 	let anchorInfo = $derived(
 		replanPreview?.some((c) => c.reason === 'anchor_actual_volume')
-			? anchorToActualVolume({ weeks: buildReplanInput() })
+			? volumeAnchor(buildReplanInput())
 			: null
 	);
 
@@ -1074,7 +1085,7 @@
 	/// proposes only; nothing changes until Apply.
 	async function offerAnchor(): Promise<void> {
 		if (!plan || !isOwner || plan.is_template || plan.status !== 'active') return;
-		const anchor = anchorToActualVolume({ weeks: buildReplanInput() });
+		const anchor = volumeAnchor(buildReplanInput());
 		if (!anchor) return;
 		taperPreview = null;
 		makeUpAnswers = null;

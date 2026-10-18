@@ -9,14 +9,18 @@
  * back from what was run, at about 10% a week, until the plan's own weeks
  * fit again. That is this module.
  *
- * Distance only. It reads planned and actual weekly volume and nothing
- * derived from heart rate or training load, so it sits outside
- * `ADAPTIVE_FITNESS_GATE` (decisions § 144 / § 150); the gated TSB input stays
- * with `adaptiveReplanRemaining` alone.
+ * Distance only: it reads planned and actual weekly volume and nothing
+ * derived from heart rate or training load. It still ships behind
+ * `ADAPTIVE_FITNESS_GATE` (decisions § 2090, § 144 / § 150), because it
+ * rewrites the weeks ahead from what was run, which is the second-wave
+ * prescription work that sign-off covers. The gate is the caller's: Home and
+ * the plan page call this only while it is on.
  *
  * The rules:
  *  - It speaks when the last completed week ran under plan (`weeklyDrift`'s
- *    20% band), or when the runner has been away from the plan for
+ *    20% band, against the smaller of the week's target and what its
+ *    sessions prescribe, so a week already anchored and run as prescribed is
+ *    not short), or when the runner has been away from the plan for
  *    `LAYOFF_MIN_DAYS` or more: a resumed or rescheduled plan whose skipped
  *    weeks are a layoff, whether or not the week before it was on target.
  *  - The anchor is the most recent completed week with any running in it. A
@@ -68,6 +72,16 @@ function isFixed(kind: string): boolean {
 	return kind === 'rest' || kind === 'race';
 }
 
+/// What a completed week asked for: its target, or less when its sessions
+/// add up to less (the anchor lowers sessions, never the week's target).
+function prescribedMetres(week: ReplanWeek): number {
+	let sessions = 0;
+	for (const wo of week.workouts) {
+		if (wo.kind !== 'rest') sessions += wo.targetDistanceM ?? 0;
+	}
+	return sessions > 0 ? Math.min(week.plannedMetres, sessions) : week.plannedMetres;
+}
+
 /// The proposal, or null when nothing ahead needs to change.
 export function anchorToActualVolume(input: { weeks: ReplanWeek[] }): VolumeAnchor | null {
 	const weeks = [...input.weeks].sort((a, b) => a.weekIndex - b.weekIndex);
@@ -82,7 +96,7 @@ export function anchorToActualVolume(input: { weeks: ReplanWeek[] }): VolumeAnch
 	const idleWeeks = ahead[0].weekIndex - anchor.weekIndex - 1;
 	const returning = idleWeeks * 7 >= LAYOFF_MIN_DAYS;
 	const under =
-		weeklyDrift(lastComplete.plannedMetres, lastComplete.actualMetres).direction === 'under';
+		weeklyDrift(prescribedMetres(lastComplete), lastComplete.actualMetres).direction === 'under';
 	if (!under && !returning) return null;
 
 	const changes: ReplanChange[] = [];

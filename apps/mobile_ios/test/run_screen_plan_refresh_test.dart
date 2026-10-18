@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/audio_cues.dart';
 import '../lib/ble_heart_rate.dart';
 import '../lib/ble_treadmill.dart';
@@ -29,23 +28,16 @@ import 'pump_until.dart';
 // used to keep offering "Start workout" for a session Home already showed as
 // done. These pin the three things that now re-read it: a run reaching the
 // server, the page coming back into view, and the app resuming.
+//
+// No Supabase client is initialized here: RunScreen runs with apiClient null,
+// and a live client registers its own lifecycle observer, whose resume starts
+// a periodic token-refresh timer that outlives the test, and an app_links
+// listener whose missing-plugin error lands in whichever test is running.
 
 const _startKey = Key('todaysWorkoutStart');
 const _debounce = Duration(milliseconds: 600);
 
-bool _supabaseReady = false;
 late Directory _runsDir;
-
-Future<void> _ensureSupabase() async {
-  if (_supabaseReady) return;
-  TestWidgetsFlutterBinding.ensureInitialized();
-  SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
-  _supabaseReady = true;
-}
 
 /// Serves today's 4 mi easy run, unmatched until [linkRun] is called.
 class _MatchingTraining extends TrainingService {
@@ -160,8 +152,6 @@ Future<void> _waitForFetches(
 }
 
 void main() {
-  setUpAll(_ensureSupabase);
-
   tearDown(() {
     if (_runsDir.existsSync()) _runsDir.deleteSync(recursive: true);
   });

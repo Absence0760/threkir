@@ -75,7 +75,7 @@ apps/watch_wear/
             │   ├── SessionBridge.kt         # Wearable Data Layer listener for phone-handed session
             │   ├── RoutesBridge.kt          # Wearable Data Layer listener for phone-pushed starred routes
             │   ├── WorkoutBridge.kt         # Wearable Data Layer listener for today's planned workout (`/todays_workout`)
-            │   ├── workout/                 # today's workout: `PushedWorkout.kt` (fail-closed decode + day check), `WorkoutRunner.kt` (port of the phone's step runner, held to `fixtures/watch_workout_payload.json`), `WorkoutCues.kt` (one haptic per feed); see docs/features/workout_execution.md § On the wrist
+            │   ├── workout/                 # today's workout: `PushedWorkout.kt` (fail-closed decode + day check), `WorkoutRunner.kt` (port of the phone's step runner, held to `fixtures/watch_workout_payload.json`), `WorkoutCues.kt` (one haptic per feed), `WorkoutSpeech.kt` (which feed is spoken under the synced voice prefs + the phone's sentence for it); see docs/features/workout_execution.md § On the wrist
             │   ├── SessionStore.kt          # EncryptedSharedPreferences cache of the auth session (tokens encrypted at rest)
             │   ├── SingleFlight.kt          # coalesces concurrent token refreshes (rotating refresh token)
             │   ├── RaceSessionClient.kt     # race-mode REST client: armed/running poll, chosen course, pings, `event_results` upsert
@@ -100,7 +100,7 @@ apps/watch_wear/
             │   │   ├── TrackStorage.kt          # durable track dir + cache migration + orphan sweep
             │   │   ├── ElapsedMath.kt           # pure pause/resume elapsed-time math
             │   │   ├── RouteMath.kt             # off-route distance + remaining km
-            │   │   ├── TtsAnnouncer.kt          # split + pace-alert TTS
+            │   │   ├── TtsAnnouncer.kt          # split + pace-alert + workout-step TTS (workout cues outrank splits in the queue)
             │   │   ├── MercatorTiles.kt         # Web Mercator + tile coords
             │   │   └── TrackOverlayBuffer.kt    # rolling-buffer geometric halving
             │   ├── system/
@@ -729,8 +729,7 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   length. Tile background is still deferred (see "What's still
   deferred" above).
 - **TTS audio cues.** `recording/TtsAnnouncer.kt` wraps
-  `android.speech.tts.TextToSpeech` with an async init + flush-queued
-  speak. `RunRecordingService` announces "Run started" on begin,
+  `android.speech.tts.TextToSpeech` with an async init. `RunRecordingService` announces "Run started" on begin,
   a split on each completed unit of the runner's `preferred_unit`
   ("1 kilometre. Pace 5 minutes 30 seconds per kilometre" / "1 mile.
   Pace 8 minutes 2 seconds per mile" — same phrasing as Android's
@@ -739,7 +738,27 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   follow the unit: the trigger is `completedSplits(distance, unit)` and
   each phrase has a `_km` / `_mi` resource (`decisions.md § 467`). Gated
   on `BuildConfig.ENABLE_TTS` (defaults on; set `DISABLE_TTS=true` in
-  `.env.local` to silence).
+  `.env.local` to silence) and at run time on the universal
+  `voice_feedback_enabled`.
+- **Spoken workout steps (issue #1186).** A run following today's workout
+  speaks, beside the unchanged step haptics, the phone's step sentence on
+  every step change, the first included ("Rep 3 of 6. 400 metres at 4
+  minutes per kilometre." / "Walk 1 of 8. 1 minute 30 seconds."; an unpaced
+  distance step drops the pace), "Workout complete. Nice work.", and in
+  `full` verbosity also the end-of-step warning ("Fifty metres to go" /
+  "Fifty yards to go" / "Ten seconds to go" on a timed step) and the
+  step's pace-drift nudge, which replaces the generic pace-alert phrase for
+  a workout. `workout/WorkoutSpeech.kt` is pure (`workoutSpeech` picks the
+  cue, `renderWorkoutSpeech` builds the sentence through a `SpeechStrings`
+  seam) and `WorkoutSpeechTest` reads it through the real
+  `values*/strings.xml`. Gated as the phone gates it: `voice_feedback_enabled`,
+  `voice_cue_types.workout_steps` and `voice_feedback_verbosity`, all read
+  from the universal bag and passed through `ACTION_START`. Queue:
+  `cueQueueMode` in `TtsPhrases.kt` — a workout cue waits behind a split
+  already speaking, a split waits behind a workout cue, and a newer workout
+  cue flushes an older one; a workout cue raised before the engine is ready
+  is held and spoken on ready. `onStop` releases audio focus for whatever a
+  flush dropped (it used to leak, leaving the runner's music ducked).
 - **Target-pace picker + haptic pace alerts.** Pre-run **Pace** chip
   cycles `off / 4:00 / 4:30 / 5:00 / 5:30 / 6:00 / 6:30 / 7:00 /km` via
   `RunViewModel.cycleTargetPace`. `start()` passes the value through

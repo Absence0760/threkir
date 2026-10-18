@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/foundation.dart';
@@ -5,6 +7,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'training.dart' show TrainingGender;
 
+import 'active_plan_cache.dart';
+import 'backend_timeout.dart';
 import 'health_consent.dart';
 import 'nutrition_targets.dart' show ageFromDob;
 import 'plan_copy.dart';
@@ -769,47 +773,28 @@ class TrainingService extends ChangeNotifier {
   /// The overview of the current plan — the one covering today, else the
   /// latest-ended — or, before any has started, of the queued one.
   Future<ActivePlanOverview?> fetchActiveOverview() async {
+    final uid = _uid;
+    if (uid == null) return null;
+    try {
+      // One deadline for the whole read, owned here rather than by each
+      // caller, so a slow link still reaches the saved copy below.
+      final snapshot = await _fetchActivePlanSnapshot().timeout(kBackendLoadTimeout);
+      unawaited(writeActivePlanCache(uid, snapshot));
+      return activeOverviewFrom(snapshot, DateTime.now());
+    } catch (e) {
+      final saved = await readActivePlanCache(uid);
+      if (saved == null) rethrow;
+      debugPrint('fetchActiveOverview failed, using the saved copy: $e');
+      return activeOverviewFrom(saved, DateTime.now());
+    }
+  }
+
+  Future<ActivePlanSnapshot> _fetchActivePlanSnapshot() async {
     final activePlans = await fetchActivePlans();
-    final today = toIsoDate(DateTime.now());
-    final plan = currentOrUpcomingPlan(activePlans, today);
-    if (plan == null) return null;
-    final upcoming = pickCurrentPlan(
-      [for (final p in activePlans) if (p.id != plan.id) p],
-      planRowStartIso(plan).compareTo(today) > 0 ? planRowStartIso(plan) : today,
-      start: planRowStartIso,
-      end: planRowEndIso,
-    ).upcoming;
-    final res = await fetchPlan(plan.id);
-    if (res.plan == null) return null;
-    final todayWorkout = res.workouts
-        .where((w) =>
-            toIsoDate(w.scheduledDate) == today && w.kind != 'rest')
-        .cast<PlanWorkoutRow?>()
-        .firstOrNull;
-    final active = res.workouts.where((w) => w.kind != 'rest').toList();
-    final done = active
-        .where(isWorkoutCompleted)
-        .length;
-    final pct = active.isEmpty ? 0 : (100 * done / active.length).round();
-    // Whole-epoch-day bucketing, not a wall-clock difference: a start→today
-    // span crossing a DST transition is 167/169 h, so `inDays` truncates a day
-    // short and reports the previous week (#338). A plan whose weeks failed to
-    // load has no valid index — the helper's `weekCount - 1` would be -1.
-    final currentWeek = res.weeks.isEmpty
-        ? 0
-        : currentPlanWeekIndex(
-            toIsoDate(plan.startDate),
-            today,
-            res.weeks.length,
-          );
-    return ActivePlanOverview(
-      plan: plan,
-      weeks: res.weeks,
-      workouts: res.workouts,
-      todayWorkout: todayWorkout,
-      completionPct: pct,
-      currentWeekIndex: currentWeek,
-      upcomingPlan: upcoming,
+    final plan = currentOrUpcomingPlan(activePlans, toIsoDate(DateTime.now()));
+    return ActivePlanSnapshot(
+      activePlans: activePlans,
+      detail: plan == null ? null : await fetchPlan(plan.id),
     );
   }
 
@@ -1357,4 +1342,51 @@ class PlanWorkoutLinkCandidate {
   weeks.sort((a, b) => a.weekIndex.compareTo(b.weekIndex));
   workouts.sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
   return (plan: TrainingPlanRow.fromJson(planRow), weeks: weeks, workouts: workouts);
+}
+
+/// The overview [snapshot] describes as of [now]: the current plan (the one
+/// covering today, else the latest-ended, else the queued one), today's
+/// workout, the completion figure and the current week. Pure, so a saved
+/// snapshot reads today correctly whenever it was saved.
+ActivePlanOverview? activeOverviewFrom(ActivePlanSnapshot snapshot, DateTime now) {
+  final activePlans = snapshot.activePlans;
+  final today = toIsoDate(now);
+  final plan = currentOrUpcomingPlan(activePlans, today);
+  final res = snapshot.detail;
+  if (plan == null || res == null || res.plan == null || res.plan!.id != plan.id) {
+    return null;
+  }
+  final upcoming = pickCurrentPlan(
+    [for (final p in activePlans) if (p.id != plan.id) p],
+    planRowStartIso(plan).compareTo(today) > 0 ? planRowStartIso(plan) : today,
+    start: planRowStartIso,
+    end: planRowEndIso,
+  ).upcoming;
+  final todayWorkout = res.workouts
+      .where((w) => toIsoDate(w.scheduledDate) == today && w.kind != 'rest')
+      .cast<PlanWorkoutRow?>()
+      .firstOrNull;
+  final active = res.workouts.where((w) => w.kind != 'rest').toList();
+  final done = active.where(isWorkoutCompleted).length;
+  final pct = active.isEmpty ? 0 : (100 * done / active.length).round();
+  // Whole-epoch-day bucketing, not a wall-clock difference: a start→today
+  // span crossing a DST transition is 167/169 h, so `inDays` truncates a day
+  // short and reports the previous week (#338). A plan whose weeks failed to
+  // load has no valid index — the helper's `weekCount - 1` would be -1.
+  final currentWeek = res.weeks.isEmpty
+      ? 0
+      : currentPlanWeekIndex(
+          toIsoDate(plan.startDate),
+          today,
+          res.weeks.length,
+        );
+  return ActivePlanOverview(
+    plan: plan,
+    weeks: res.weeks,
+    workouts: res.workouts,
+    todayWorkout: todayWorkout,
+    completionPct: pct,
+    currentWeekIndex: currentWeek,
+    upcomingPlan: upcoming,
+  );
 }

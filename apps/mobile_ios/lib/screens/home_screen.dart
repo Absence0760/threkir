@@ -10,7 +10,6 @@ import 'package:core_models/core_models.dart' as cm;
 import '../adaptive_width.dart';
 import '../audio_cues.dart';
 import '../auth_change_aware.dart';
-import '../backend_timeout.dart';
 import '../ble_heart_rate.dart';
 import '../ble_treadmill.dart';
 import '../club_invite_link.dart' show pendingClubInviteToken;
@@ -980,15 +979,14 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// The active plan, cached so the menu opens at once rather than after a
   /// plan read; [todaysOpenWorkout] re-derives today from it at menu time.
-  /// Null until the first read lands, and after any read that fails, which
-  /// costs the menu its workout row and nothing else.
+  /// Null until the first read lands. Offline, the read answers from the copy
+  /// the last good one saved (`active_plan_cache.dart`).
   ActivePlanOverview? _planOverview;
   Timer? _trainingDebounce;
 
   Future<void> _refreshPlanOverview() async {
     try {
-      final p =
-          await widget.training.fetchActiveOverview().timeout(kBackendLoadTimeout);
+      final p = await widget.training.fetchActiveOverview();
       if (mounted) _planOverview = p;
       // The same read keeps both watches holding today's workout; a failed
       // read pushes nothing, so the wrist keeps what it had.

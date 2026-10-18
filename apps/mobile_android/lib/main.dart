@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart';
 
+import 'active_plan_cache.dart';
 import 'apple_watch_route_bridge.dart';
 import 'audio_cues.dart';
 import 'background_sync.dart';
@@ -542,6 +543,9 @@ void main() async {
         // stores aren't user-namespaced on disk (decisions §73/§122 deferred
         // the `created_by_user_id` tag), so sign-out wipes them outright,
         // mirroring the settings cache's drop-on-sign-out (§72).
+        // The active plan saved for offline reads (today's workout on Home,
+        // the Run tab and the dashboard) belongs to the departing account.
+        unawaited(clearActivePlanCache());
         for (final s in <OfflineSyncStore>[gearStore, gymStore, foodStore]) {
           s.clear().catchError((Object e) {
             debugPrint('Offline store clear on signedOut failed: $e');

@@ -3905,6 +3905,35 @@ void main() {
     });
 
     test(
+      'fetchActiveOverview bounds its own read, so its saved-copy fallback '
+      'runs before any caller gives up',
+      () {
+        // A caller-side .timeout of the same length fires first and skips
+        // the fallback to the saved active plan (active_plan_cache.dart), so
+        // the deadline lives in the service and the callers await it bare.
+        final source = File('lib/training_service.dart').readAsStringSync();
+        final at = source.indexOf('Future<ActivePlanOverview?> fetchActiveOverview()');
+        expect(at, greaterThan(0));
+        final body = source.substring(at, source.indexOf('\n  }\n', at));
+        expect(body, contains('.timeout(kBackendLoadTimeout)'));
+        expect(body, contains('readActivePlanCache('));
+        for (final caller in const [
+          'lib/screens/run_screen.dart',
+          'lib/screens/home_screen.dart',
+          'lib/screens/dashboard_screen.dart',
+        ]) {
+          expect(
+            RegExp(r'fetchActiveOverview\(\)\s*\.timeout\(')
+                .hasMatch(File(caller).readAsStringSync()),
+            isFalse,
+            reason: '$caller wraps fetchActiveOverview in its own timeout, '
+                'which races the service deadline and loses the offline copy',
+          );
+        }
+      },
+    );
+
+    test(
       'run_screen.dart bounds every Supabase / training / social await '
       'with kBackendLoadTimeout',
       () {
@@ -3942,7 +3971,6 @@ void main() {
           'makeRunPrivate',
           'concludeLiveBroadcast',
           'fetchPlanForWorkout',
-          'fetchActiveOverview',
           'fetchNextRsvpedEvent',
           'fetchMyClubs',
         ];

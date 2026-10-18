@@ -1136,9 +1136,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
 
   Future<void> _refreshPlanOverview() async {
     try {
-      final p = await widget.training
-          .fetchActiveOverview()
-          .timeout(kBackendLoadTimeout);
+      final p = await widget.training.fetchActiveOverview();
       if (mounted) setState(() => _planOverview = p);
     } catch (e) {
       // Non-critical — same logging rationale as `_refreshUpcomingEvent`.

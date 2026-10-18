@@ -114,6 +114,9 @@ Deno.test('only an http loopback/kong SUPABASE_URL counts as local; anything els
 });
 
 Deno.test('a missing Origin is never admitted', () => {
+  // The allowed case is what a broken helper cannot satisfy; refusals alone
+  // pass against one that admits nothing.
+  assert(isAllowedOrigin('https://threkir.com', true));
   assert(!isAllowedOrigin(null, true));
   assert(!isAllowedOrigin('', true));
 });

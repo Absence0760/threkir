@@ -7660,6 +7660,18 @@ abstract class AppLocalizations {
   /// **'No public runs yet.'**
   String get profileRunsEmptyOther;
 
+  /// Owner-only note on their own profile's Runs tab: how many of their runs are not public and so are not listed there
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 of your runs isn\'t public, so it isn\'t listed here.} other{{count} of your runs aren\'t public, so they aren\'t listed here.}}'**
+  String profilePrivateRunsNote(int count);
+
+  /// Link under the private-runs note that opens the owner's full run list
+  ///
+  /// In en, this message translates to:
+  /// **'View all in History'**
+  String get profilePrivateRunsNoteLink;
+
   /// Empty state for the followers tab
   ///
   /// In en, this message translates to:

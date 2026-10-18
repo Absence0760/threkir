@@ -6128,6 +6128,19 @@
   "@profileRunsEmptyOther": {
     "description": "Empty runs tab on another user's profile"
   },
+  "profilePrivateRunsNote": "{count, plural, one{1 of your runs isn't public, so it isn't listed here.} other{{count} of your runs aren't public, so they aren't listed here.}}",
+  "@profilePrivateRunsNote": {
+    "description": "Owner-only note on their own profile's Runs tab: how many of their runs are not public and so are not listed there",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "profilePrivateRunsNoteLink": "View all in History",
+  "@profilePrivateRunsNoteLink": {
+    "description": "Link under the private-runs note that opens the owner's full run list"
+  },
   "profileFollowersEmpty": "No followers yet.",
   "@profileFollowersEmpty": {
     "description": "Empty state for the followers tab"

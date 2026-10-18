@@ -4641,6 +4641,21 @@ class AppLocalizationsEs extends AppLocalizations {
   String get profileRunsEmptyOther => 'Aún no hay carreras públicas.';
 
   @override
+  String profilePrivateRunsNote(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count de tus carreras no son públicas, así que no aparecen aquí.',
+      one: '1 de tus carreras no es pública, así que no aparece aquí.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get profilePrivateRunsNoteLink => 'Ver todas en el historial';
+
+  @override
   String get profileFollowersEmpty => 'Aún no hay seguidores.';
 
   @override

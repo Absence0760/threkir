@@ -4645,6 +4645,21 @@ class AppLocalizationsPt extends AppLocalizations {
   String get profileRunsEmptyOther => 'Nenhuma corrida pública ainda.';
 
   @override
+  String profilePrivateRunsNote(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count das suas corridas não são públicas, por isso não aparecem aqui.',
+      one: '1 das suas corridas não é pública, por isso não aparece aqui.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get profilePrivateRunsNoteLink => 'Ver todas no histórico';
+
+  @override
   String get profileFollowersEmpty => 'Nenhum seguidor ainda.';
 
   @override
@@ -22518,6 +22533,21 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get profileRunsEmptyOther => 'Nenhuma corrida pública ainda.';
+
+  @override
+  String profilePrivateRunsNote(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count das suas corridas não são públicas, por isso não aparecem aqui.',
+      one: '1 das suas corridas não é pública, por isso não aparece aqui.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get profilePrivateRunsNoteLink => 'Ver todas no histórico';
 
   @override
   String get profileFollowersEmpty => 'Nenhum seguidor ainda.';

@@ -8,13 +8,35 @@ import 'package:ui_kit/ui_kit.dart' show IdentityAvatar, ListSkeleton;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/help_destination.dart';
+import '../lib/help_guides.dart' show HelpDestination;
 import '../lib/screens/profile_screen.dart';
+import '../lib/widgets/error_state.dart';
 
 /// Signed-in viewer looking at their own profile — the five-tab shape
 /// that carries Notifications.
 class _SelfApi extends ApiClient {
+  _SelfApi({
+    this.counts = (publicCount: 0, privateCount: 0),
+    this.countsThrow = false,
+  });
+
+  final ({int publicCount, int? privateCount}) counts;
+  final bool countsThrow;
+  bool? countsAskedAsSelf;
+
   @override
   String? get userId => 'me';
+
+  @override
+  Future<({int publicCount, int? privateCount})> fetchProfileRunCounts(
+    String userId, {
+    required bool isSelf,
+  }) async {
+    countsAskedAsSelf = isSelf;
+    if (countsThrow) throw Exception('counts boom');
+    return counts;
+  }
 
   @override
   Future<ProfileSummary?> fetchProfileSummary(String userId) async =>
@@ -89,6 +111,7 @@ Future<void> _pump(
 
 void main() {
   setUpAll(_ensureSupabase);
+  _privateRunsNoteTests();
 
   group('ProfileScreen — initial render', () {
     testWidgets('renders the Profile fallback title before the summary loads',
@@ -497,16 +520,35 @@ void main() {
       expect(_selectedTabLabel(tester), 'Runs');
     });
 
-    testWidgets('a full runs page reads as N+, not as a total',
-        (tester) async {
-      await pumpOther(tester, _OtherApi(runCount: 30));
-      expect(
-        find.descendant(
+    Finder runStat(String text) => find.descendant(
           of: find.byKey(const ValueKey('profile-stat-runs')),
-          matching: find.text('30+'),
-        ),
-        findsOneWidget,
+          matching: find.text(text),
+        );
+
+    testWidgets('the run count is the counted total, not the loaded page',
+        (tester) async {
+      final api = _OtherApi(
+        runCount: 30,
+        counts: (publicCount: 142, privateCount: null),
       );
+      await pumpOther(tester, api);
+      expect(runStat('142'), findsOneWidget);
+      expect(runStat('30+'), findsNothing);
+      expect(api.countsAskedAsSelf, isFalse);
+    });
+
+    testWidgets('a failed count falls back to the page, read as N+',
+        (tester) async {
+      await pumpOther(tester, _OtherApi(runCount: 30, countsThrow: true));
+      expect(runStat('30+'), findsOneWidget);
+      expect(find.byType(ErrorState), findsNothing,
+          reason: 'the count is auxiliary; its failure must not error a tab');
+    });
+
+    testWidgets('a failed count with a short page shows the page length',
+        (tester) async {
+      await pumpOther(tester, _OtherApi(runCount: 3, countsThrow: true));
+      expect(runStat('3'), findsOneWidget);
     });
 
     testWidgets('signed out hides the follow counts, not the run count',
@@ -604,10 +646,101 @@ void main() {
   });
 }
 
+Future<void> _pumpSelf(WidgetTester tester, _SelfApi api) async {
+  await _ensureSupabase();
+  await tester.pumpWidget(
+    MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: ProfileScreen(api: api, userId: 'me'),
+    ),
+  );
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 50));
+}
+
+void _privateRunsNoteTests() {
+  group('private runs note (owner only)', () {
+    const note = "7 of your runs aren't public, so they aren't listed here.";
+
+    testWidgets('the owner is told how many runs the profile leaves out',
+        (tester) async {
+      final api = _SelfApi(counts: (publicCount: 2, privateCount: 7));
+      await _pumpSelf(tester, api);
+      expect(api.countsAskedAsSelf, isTrue);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('profile-stat-runs')),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('profile-private-runs-note')),
+          findsOneWidget);
+      expect(find.text(note), findsOneWidget);
+    });
+
+    testWidgets('one private run reads in the singular', (tester) async {
+      await _pumpSelf(
+          tester, _SelfApi(counts: (publicCount: 0, privateCount: 1)));
+      expect(find.text("1 of your runs isn't public, so it isn't listed here."),
+          findsOneWidget);
+    });
+
+    testWidgets('the link asks the shell for the full run list',
+        (tester) async {
+      addTearDown(() => pendingHelpDestination.value = null);
+      await _pumpSelf(
+          tester, _SelfApi(counts: (publicCount: 2, privateCount: 7)));
+      await tester.tap(find.byKey(const ValueKey('profile-private-runs-link')));
+      await tester.pump();
+      expect(pendingHelpDestination.value, HelpDestination.runs);
+    });
+
+    testWidgets('no note when every run is public', (tester) async {
+      await _pumpSelf(
+          tester, _SelfApi(counts: (publicCount: 5, privateCount: 0)));
+      expect(find.byKey(const ValueKey('profile-private-runs-note')),
+          findsNothing);
+    });
+
+    testWidgets('no note on another runner\'s profile', (tester) async {
+      final api = _OtherApi(counts: (publicCount: 3, privateCount: 7));
+      await _ensureSupabase();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ProfileScreen(api: api, userId: 'other'),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.byKey(const ValueKey('profile-private-runs-note')),
+          findsNothing,
+          reason: 'even a fake that hands back a private figure must not '
+              'surface it to a non-owner');
+    });
+
+    testWidgets('no note, and no broken tab, when the count fails',
+        (tester) async {
+      await _pumpSelf(tester, _SelfApi(countsThrow: true));
+      expect(find.byKey(const ValueKey('profile-private-runs-note')),
+          findsNothing);
+      expect(find.byType(ErrorState), findsNothing);
+    });
+  });
+}
+
 /// Another runner's profile, viewed signed in (or not), with [runCount]
 /// public runs.
 class _OtherApi extends _SelfApi {
-  _OtherApi({this.runCount = 3, this.signedIn = true});
+  _OtherApi({
+    this.runCount = 3,
+    this.signedIn = true,
+    super.counts = (publicCount: 3, privateCount: null),
+    super.countsThrow,
+  });
 
   final int runCount;
   final bool signedIn;

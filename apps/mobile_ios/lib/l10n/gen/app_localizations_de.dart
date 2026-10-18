@@ -2012,6 +2012,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runWeakGpsApproximate => 'Ungefährer Standort — Distanz pausiert';
 
   @override
+  String get runTurnOnPreciseLocation => 'Genauen Standort aktivieren';
+
+  @override
   String get runA11yStarted => 'Lauf gestartet';
 
   @override
@@ -10727,6 +10730,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get liveRunMapWaitingGps => 'Warte auf GPS...';
+
+  @override
+  String get liveRunMapApproximateLocation =>
+      'Genauer Standort ist aus — die Karte kann deine Position nicht anzeigen';
 
   @override
   String get liveRunMapRecentre => 'Auf meinen Standort zentrieren';

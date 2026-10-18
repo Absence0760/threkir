@@ -2007,6 +2007,9 @@ class AppLocalizationsEs extends AppLocalizations {
       'Ubicación aproximada — distancia en pausa';
 
   @override
+  String get runTurnOnPreciseLocation => 'Activar la ubicación exacta';
+
+  @override
   String get runA11yStarted => 'Carrera iniciada';
 
   @override
@@ -10716,6 +10719,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get liveRunMapWaitingGps => 'Esperando GPS...';
+
+  @override
+  String get liveRunMapApproximateLocation =>
+      'La ubicación exacta está desactivada — el mapa no puede mostrar dónde estás';
 
   @override
   String get liveRunMapRecentre => 'Centrar en mi ubicación';

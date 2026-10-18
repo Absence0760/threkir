@@ -2009,6 +2009,9 @@ class AppLocalizationsPt extends AppLocalizations {
       'Localização aproximada — distância pausada';
 
   @override
+  String get runTurnOnPreciseLocation => 'Ativar a localização exata';
+
+  @override
   String get runA11yStarted => 'Corrida iniciada';
 
   @override
@@ -10718,6 +10721,10 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get liveRunMapWaitingGps => 'A aguardar GPS...';
+
+  @override
+  String get liveRunMapApproximateLocation =>
+      'A localização exata está desativada — o mapa não consegue mostrar onde está';
 
   @override
   String get liveRunMapRecentre => 'Recentralizar na minha localização';
@@ -19927,6 +19934,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Localização aproximada — distância pausada';
 
   @override
+  String get runTurnOnPreciseLocation => 'Ativar a localização precisa';
+
+  @override
   String get runA11yStarted => 'Corrida iniciada';
 
   @override
@@ -28627,6 +28637,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get liveRunMapWaitingGps => 'Aguardando GPS...';
+
+  @override
+  String get liveRunMapApproximateLocation =>
+      'A localização precisa está desativada — o mapa não consegue mostrar onde você está';
 
   @override
   String get liveRunMapRecentre => 'Recentralizar na minha localização';

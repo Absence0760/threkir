@@ -2585,6 +2585,10 @@
   "@runWeakGpsApproximate": {
     "description": "Banner shown mid-run instead of runWeakGps when distance has stalled because the location grant is approximate (Precise Location off / Approximate only)"
   },
+  "runTurnOnPreciseLocation": "Turn on precise location",
+  "@runTurnOnPreciseLocation": {
+    "description": "Action on the mid-run approximate-location strip; opens the app's location settings so the runner can turn precise location on"
+  },
   "runA11yStarted": "Run started",
   "@runA11yStarted": {
     "description": "Screen-reader status announcement when recording begins"
@@ -14378,6 +14382,10 @@
   "liveRunMapWaitingGps": "Waiting for GPS...",
   "@liveRunMapWaitingGps": {
     "description": "Overlay shown while waiting for the first GPS fix"
+  },
+  "liveRunMapApproximateLocation": "Precise location is off — the map can't show where you are",
+  "@liveRunMapApproximateLocation": {
+    "description": "Live map placeholder shown instead of liveRunMapWaitingGps while the run records under an approximate location grant and no fix has arrived"
   },
   "liveRunMapRecentre": "Re-centre on my location",
   "@liveRunMapRecentre": {

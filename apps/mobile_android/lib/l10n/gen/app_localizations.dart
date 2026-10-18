@@ -3455,6 +3455,12 @@ abstract class AppLocalizations {
   /// **'Approximate location — distance paused'**
   String get runWeakGpsApproximate;
 
+  /// Action on the mid-run approximate-location strip; opens the app's location settings so the runner can turn precise location on
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on precise location'**
+  String get runTurnOnPreciseLocation;
+
   /// Screen-reader status announcement when recording begins
   ///
   /// In en, this message translates to:
@@ -17492,6 +17498,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Waiting for GPS...'**
   String get liveRunMapWaitingGps;
+
+  /// Live map placeholder shown instead of liveRunMapWaitingGps while the run records under an approximate location grant and no fix has arrived
+  ///
+  /// In en, this message translates to:
+  /// **'Precise location is off — the map can\'t show where you are'**
+  String get liveRunMapApproximateLocation;
 
   /// Tooltip on the re-centre map button
   ///

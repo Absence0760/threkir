@@ -1921,6 +1921,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runWeakGpsApproximate => 'おおよその位置情報 — 距離は一時停止中';
 
   @override
+  String get runTurnOnPreciseLocation => '正確な位置情報をオンにする';
+
+  @override
   String get runA11yStarted => 'ランを開始しました';
 
   @override
@@ -10186,6 +10189,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get liveRunMapWaitingGps => 'GPS を待っています...';
+
+  @override
+  String get liveRunMapApproximateLocation => '正確な位置情報がオフです — 地図に現在地を表示できません';
 
   @override
   String get liveRunMapRecentre => '現在地に再センタリング';

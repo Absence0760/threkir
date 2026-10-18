@@ -140,6 +140,17 @@ const int kPaceAlertDriftSecPerKm = 30;
 /// The quiet interval after a pace cue before another may speak.
 const int kPaceAlertRateLimitSeconds = 30;
 
+/// Diameter of the idle Start circle for an idle view [height] tall.
+///
+/// 140 is the designed size; on a short viewport (landscape, split screen)
+/// the circle gives way so the pinned Start never takes the whole view from
+/// the cards above it, and it never drops below a size that still reads as
+/// the primary control.
+double idleStartButtonSize(double height) {
+  if (!height.isFinite) return 140;
+  return (height * 0.28).clamp(96.0, 140.0);
+}
+
 /// Main run recording screen with GPS tracking, live stats, sync, audio cues,
 /// auto-pause, countdown, and optional route following.
 class RunScreen extends StatefulWidget {
@@ -4481,21 +4492,18 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final lastRun = _mostRecentRun();
+    // Start is the L0/L1 entry point, so it is pinned below the scroll
+    // rather than ending it: every card above (race, route, event, plan
+    // workout, last run) is auxiliary, and when they stacked up Start was
+    // pushed under the bottom bar and had to be scrolled to.
     return SafeArea(
       child: LayoutBuilder(
-        builder: (context, constraints) => SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-              24, 16, 24, 16 + DockedFabInset.of(context)),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight:
-                  constraints.maxHeight - 32 - DockedFabInset.of(context),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Column(
+        builder: (context, constraints) => Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 4),
@@ -4681,77 +4689,87 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                     ],
                   ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  // audit/accessibility (2026-05-25) High — WCAG 1.3.1 +
-                  // 4.1.2. The pre-fix tree was a bare GestureDetector
-                  // → Container → Text('START'); TalkBack saw a
-                  // generic tappable region with no role. Semantics
-                  // wraps the whole circle so the button is announced
-                  // as a discrete control with a meaningful label.
-                  child: Semantics(
-                    button: true,
-                    label: l10n.runStartA11yLabel,
-                    // The brand accent, not the success green: starting a
-                    // run is the app's primary action, and the dock's
-                    // Start-run button beside it is already the accent.
-                    // Green stays the in-run "resume" signal (§ 1769).
-                    child: GestureDetector(
-                      onTap: _beginCountdown,
-                      child: Container(
-                        width: 140,
-                        height: 140,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: theme.colorScheme.primary.withOpacity(0.3),
-                            width: 3,
-                          ),
-                        ),
-                        padding: const EdgeInsets.all(8),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: theme.colorScheme.primary,
-                            boxShadow: [
-                              BoxShadow(
-                                color: theme.colorScheme.primary.withValues(alpha: 0.25),
-                                blurRadius: 24,
-                                spreadRadius: 4,
-                              ),
-                            ],
-                          ),
-                          // The circle is a fixed 140 px, so its label is
-                          // bounded by the graphic. "START" already fills
-                          // 117.5 of the 124 px interior in English at 1.0x —
-                          // French "DÉMARRER" and German "STARTEN" were being
-                          // broken mid-word, and 2x cropped every locale.
-                          child: Center(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8),
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  l10n.runStart,
-                                  maxLines: 1,
-                                  softWrap: false,
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w800,
-                                    color: theme.colorScheme.onPrimary,
-                                    letterSpacing: 1.5,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.only(
+                  top: 8, bottom: 16 + DockedFabInset.of(context)),
+              child: _buildIdleStartButton(
+                theme,
+                l10n,
+                idleStartButtonSize(constraints.maxHeight),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIdleStartButton(
+      ThemeData theme, AppLocalizations l10n, double size) {
+    // audit/accessibility (2026-05-25) High — WCAG 1.3.1 +
+    // 4.1.2. The pre-fix tree was a bare GestureDetector
+    // → Container → Text('START'); TalkBack saw a
+    // generic tappable region with no role. Semantics
+    // wraps the whole circle so the button is announced
+    // as a discrete control with a meaningful label.
+    return Semantics(
+      key: const ValueKey('run-idle-start'),
+      button: true,
+      label: l10n.runStartA11yLabel,
+      // The brand accent, not the success green: starting a
+      // run is the app's primary action, and the dock's
+      // Start-run button beside it is already the accent.
+      // Green stays the in-run "resume" signal (§ 1769).
+      child: GestureDetector(
+        onTap: _beginCountdown,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: theme.colorScheme.primary.withOpacity(0.3),
+              width: 3,
+            ),
+          ),
+          padding: const EdgeInsets.all(8),
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: theme.colorScheme.primary,
+              boxShadow: [
+                BoxShadow(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                  blurRadius: 24,
+                  spreadRadius: 4,
+                ),
+              ],
+            ),
+            // The circle is at most 140 px, so its label is
+            // bounded by the graphic. "START" already fills
+            // 117.5 of the 124 px interior in English at 1.0x —
+            // French "DÉMARRER" and German "STARTEN" were being
+            // broken mid-word, and 2x cropped every locale.
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    l10n.runStart,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: theme.colorScheme.onPrimary,
+                      letterSpacing: 1.5,
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ),

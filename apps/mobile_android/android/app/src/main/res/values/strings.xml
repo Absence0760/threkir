@@ -5,4 +5,11 @@
     <string name="run_notif_action_resume">Resume</string>
     <string name="run_notif_action_pause">Pause</string>
     <string name="run_notif_action_stop">Stop</string>
+    <string name="widget_today_label">Today\'s workout</string>
+    <string name="widget_today_description">Your planned session for today, at a glance</string>
+    <string name="widget_today_header_fallback">Today</string>
+    <string name="widget_today_no_data">Open Threkir to see today\'s workout</string>
+    <string name="widget_today_preview_header">Today</string>
+    <string name="widget_today_preview_title">Tempo</string>
+    <string name="widget_today_preview_detail">8.00 km · 4:45 /km</string>
 </resources>

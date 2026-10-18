@@ -22,6 +22,7 @@ class MainActivity : FlutterFragmentActivity() {
         WearAuthBridge(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
         WearRoutesBridge(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
         WearWorkoutBridge(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
+        HomeWidgetBridge(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
         RunNotificationBridge(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
         BatterySettingsBridge(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
         CalendarBridge(applicationContext, flutterEngine.dartExecutor.binaryMessenger)

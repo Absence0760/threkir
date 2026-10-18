@@ -18323,6 +18323,39 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get missedPromptNothingToMakeUp => 'Já não há nada para compensar.';
+
+  @override
+  String get prefsExtraRecovery => 'Mais recuperação entre dias duros';
+
+  @override
+  String get prefsExtraRecoveryHint =>
+      'Os novos planos deixam 72 horas entre a sua corrida longa e a sessão dura seguinte, e aliviam a cada três semanas em vez de a cada quatro. Os planos já o fazem a partir dos 50 anos quando a sua data de nascimento está registada.';
+
+  @override
+  String get planNewExtraRecoveryHint =>
+      'Espaça mais as sessões duras e alivia a cada três semanas. Fica guardado nas suas definições de treino, por isso todos os planos novos o usam.';
+
+  @override
+  String get planNewExtraRecoverySaveFailed =>
+      'Não foi possível guardar a definição. Tente novamente.';
+
+  @override
+  String get planNewMastersRecoveryApplied =>
+      'Como tem 50 anos ou mais, este plano espaça mais as sessões duras e alivia a cada três semanas.';
+
+  @override
+  String get planNewDobHintAbsent =>
+      'Os planos dão automaticamente mais recuperação a quem corre com 50 anos ou mais.';
+
+  @override
+  String get planNewDobHintAbsentAction => 'Adicionar a sua data de nascimento';
+
+  @override
+  String get planNewDobHintHealthData =>
+      'Os planos só podem usar a sua data de nascimento para se ajustarem à sua idade com o seu consentimento para a utilização de dados de saúde.';
+
+  @override
+  String get planNewDobHintHealthDataAction => 'Rever consentimento';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -36631,4 +36664,37 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get missedPromptNothingToMakeUp => 'Não há mais nada para compensar.';
+
+  @override
+  String get prefsExtraRecovery => 'Mais recuperação entre dias difíceis';
+
+  @override
+  String get prefsExtraRecoveryHint =>
+      'Os novos planos deixam 72 horas entre o seu longão e a próxima sessão forte, e aliviam a cada três semanas em vez de a cada quatro. Os planos já fazem isso a partir dos 50 anos quando a sua data de nascimento está cadastrada.';
+
+  @override
+  String get planNewExtraRecoveryHint =>
+      'Espaça mais as sessões fortes e alivia a cada três semanas. Fica salvo nas suas configurações de treino, então todo plano novo usa.';
+
+  @override
+  String get planNewExtraRecoverySaveFailed =>
+      'Não foi possível salvar a configuração. Tente de novo.';
+
+  @override
+  String get planNewMastersRecoveryApplied =>
+      'Como você tem 50 anos ou mais, este plano espaça mais as sessões fortes e alivia a cada três semanas.';
+
+  @override
+  String get planNewDobHintAbsent =>
+      'Os planos dão automaticamente mais recuperação a quem corre com 50 anos ou mais.';
+
+  @override
+  String get planNewDobHintAbsentAction => 'Adicionar sua data de nascimento';
+
+  @override
+  String get planNewDobHintHealthData =>
+      'Os planos só podem usar sua data de nascimento para se ajustar à sua idade com o seu consentimento para o uso de dados de saúde.';
+
+  @override
+  String get planNewDobHintHealthDataAction => 'Revisar consentimento';
 }

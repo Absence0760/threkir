@@ -18322,4 +18322,37 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get missedPromptNothingToMakeUp => 'Ya no queda nada que recuperar.';
+
+  @override
+  String get prefsExtraRecovery => 'Más recuperación entre días duros';
+
+  @override
+  String get prefsExtraRecoveryHint =>
+      'Los planes nuevos dejan 72 horas entre tu tirada larga y la siguiente sesión dura, y aflojan una semana de cada tres en lugar de una de cada cuatro. Los planes ya lo hacen a partir de los 50 si tu fecha de nacimiento está registrada.';
+
+  @override
+  String get planNewExtraRecoveryHint =>
+      'Separa más las sesiones duras y afloja una semana de cada tres. Se guarda en tus ajustes de entrenamiento, así que todos los planes nuevos lo usan.';
+
+  @override
+  String get planNewExtraRecoverySaveFailed =>
+      'No se pudo guardar el ajuste. Inténtalo de nuevo.';
+
+  @override
+  String get planNewMastersRecoveryApplied =>
+      'Como tienes 50 años o más, este plan separa más las sesiones duras y afloja una semana de cada tres.';
+
+  @override
+  String get planNewDobHintAbsent =>
+      'Los planes dan automáticamente más recuperación a quienes corren con 50 años o más.';
+
+  @override
+  String get planNewDobHintAbsentAction => 'Añade tu fecha de nacimiento';
+
+  @override
+  String get planNewDobHintHealthData =>
+      'Los planes solo pueden usar tu fecha de nacimiento para ajustarse a tu edad con tu consentimiento para el uso de datos de salud.';
+
+  @override
+  String get planNewDobHintHealthDataAction => 'Revisar el consentimiento';
 }

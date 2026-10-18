@@ -5151,5 +5151,14 @@
   "missedPromptRecommended": "Recomendado",
   "missedPromptLetGoDone": "Pronto. Seu plano continua como estava.",
   "missedPromptSaveFailed": "Não foi possível salvar sua resposta: {error}",
-  "missedPromptNothingToMakeUp": "Não há mais nada para compensar."
+  "missedPromptNothingToMakeUp": "Não há mais nada para compensar.",
+  "prefsExtraRecovery": "Mais recuperação entre dias difíceis",
+  "prefsExtraRecoveryHint": "Os novos planos deixam 72 horas entre o seu longão e a próxima sessão forte, e aliviam a cada três semanas em vez de a cada quatro. Os planos já fazem isso a partir dos 50 anos quando a sua data de nascimento está cadastrada.",
+  "planNewExtraRecoveryHint": "Espaça mais as sessões fortes e alivia a cada três semanas. Fica salvo nas suas configurações de treino, então todo plano novo usa.",
+  "planNewExtraRecoverySaveFailed": "Não foi possível salvar a configuração. Tente de novo.",
+  "planNewMastersRecoveryApplied": "Como você tem 50 anos ou mais, este plano espaça mais as sessões fortes e alivia a cada três semanas.",
+  "planNewDobHintAbsent": "Os planos dão automaticamente mais recuperação a quem corre com 50 anos ou mais.",
+  "planNewDobHintAbsentAction": "Adicionar sua data de nascimento",
+  "planNewDobHintHealthData": "Os planos só podem usar sua data de nascimento para se ajustar à sua idade com o seu consentimento para o uso de dados de saúde.",
+  "planNewDobHintHealthDataAction": "Revisar consentimento"
 }

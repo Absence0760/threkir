@@ -5151,5 +5151,14 @@
   "missedPromptRecommended": "Empfohlen",
   "missedPromptLetGoDone": "Ausgelassen. Dein Plan läuft unverändert weiter.",
   "missedPromptSaveFailed": "Deine Antwort konnte nicht gespeichert werden: {error}",
-  "missedPromptNothingToMakeUp": "Es gibt nichts mehr nachzuholen."
+  "missedPromptNothingToMakeUp": "Es gibt nichts mehr nachzuholen.",
+  "prefsExtraRecovery": "Mehr Erholung zwischen harten Tagen",
+  "prefsExtraRecoveryHint": "Neue Pläne lassen 72 Stunden zwischen deinem langen Lauf und der nächsten harten Einheit und nehmen jede dritte statt jede vierte Woche zurück. Ab 50 tun Pläne das bereits, wenn dein Geburtsdatum hinterlegt ist.",
+  "planNewExtraRecoveryHint": "Legt harte Einheiten weiter auseinander und nimmt jede dritte Woche zurück. Wird in deinen Trainingseinstellungen gespeichert, also nutzt jeder neue Plan es.",
+  "planNewExtraRecoverySaveFailed": "Die Einstellung konnte nicht gespeichert werden. Versuch es noch einmal.",
+  "planNewMastersRecoveryApplied": "Weil du 50 oder älter bist, legt dieser Plan harte Einheiten weiter auseinander und nimmt jede dritte Woche zurück.",
+  "planNewDobHintAbsent": "Pläne geben Läuferinnen und Läufern ab 50 automatisch mehr Erholung.",
+  "planNewDobHintAbsentAction": "Geburtsdatum hinzufügen",
+  "planNewDobHintHealthData": "Pläne können dein Geburtsdatum nur mit deiner Einwilligung zur Nutzung von Gesundheitsdaten an dein Alter anpassen.",
+  "planNewDobHintHealthDataAction": "Einwilligung prüfen"
 }

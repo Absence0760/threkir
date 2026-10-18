@@ -162,6 +162,10 @@ class SettingsKeys {
   /// measured max. Server-gated on health-data consent and dropped on its
   /// withdrawal (decisions § 2092). Web twin: `hr_medication_affected`.
   static const hrMedicationAffected = 'hr_medication_affected';
+  /// Ask new training plans for the masters recovery calibration (72 h
+  /// hard-day spacing + a 3-week cycle) at any age; it only ever adds
+  /// recovery (decisions § 93). Web twin: `EXTRA_RECOVERY_KEY`.
+  static const extraRecovery = 'extra_recovery';
   /// Explicit show/hide choice for the mobile Gym surfaces (Fitness hub tab,
   /// Log action, Home cards). Absent = shown only once a lift is logged.
   /// Mobile-only reader; web has no equivalent toggle (settings.md).

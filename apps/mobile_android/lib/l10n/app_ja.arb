@@ -5151,5 +5151,14 @@
   "missedPromptRecommended": "おすすめ",
   "missedPromptLetGoDone": "見送りました。プランはそのまま続きます。",
   "missedPromptSaveFailed": "回答を保存できませんでした: {error}",
-  "missedPromptNothingToMakeUp": "埋め合わせるものはもうありません。"
+  "missedPromptNothingToMakeUp": "埋め合わせるものはもうありません。",
+  "prefsExtraRecovery": "ハードな日の間の回復を長めにする",
+  "prefsExtraRecoveryHint": "新しいプランでは、ロング走から次のハードなセッションまで72時間空け、4週ごとではなく3週ごとに負荷を落とします。生年月日が登録されていれば、50歳以上のプランではすでにこの設定になります。",
+  "planNewExtraRecoveryHint": "ハードなセッションの間隔を広げ、3週ごとに負荷を落とします。トレーニング設定に保存され、新しいプランすべてに使われます。",
+  "planNewExtraRecoverySaveFailed": "設定を保存できませんでした。もう一度お試しください。",
+  "planNewMastersRecoveryApplied": "50歳以上のため、このプランではハードなセッションの間隔を広げ、3週ごとに負荷を落とします。",
+  "planNewDobHintAbsent": "50歳以上のランナーには、プランが自動的に回復を長めに取ります。",
+  "planNewDobHintAbsentAction": "生年月日を追加",
+  "planNewDobHintHealthData": "プランが年齢に合わせて生年月日を使うには、健康データの利用への同意が必要です。",
+  "planNewDobHintHealthDataAction": "同意を確認"
 }

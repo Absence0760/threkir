@@ -5,38 +5,25 @@ import 'package:flutter_test/flutter_test.dart';
 import '../lib/training_service.dart';
 
 void main() {
-  // CI regression pin: TrainingService.fetchViewerGender is called
-  // from `_PlanNewScreenState.initState`. When Supabase isn't
-  // initialised (every widget test that doesn't boot the local
-  // stack), the `_c` getter throws a StateError. A previous version
-  // of `fetchViewerGender` only wrapped the network read in
-  // try/catch, leaving the `_uid` -> `_c` access exposed — the
-  // initState thus crashed the entire test. The fix moved the
-  // try/catch to cover both, restoring the L4-best-effort contract.
-  //
-  // This test is the smallest possible reproducer: a default-
-  // constructed TrainingService (no override, no Supabase.initialize)
-  // returns null from fetchViewerGender instead of throwing.
-
+  // CI regression pin: TrainingService.fetchPlanCalibration is called from
+  // the plan wizard's initState. When Supabase isn't initialised (every
+  // widget test that doesn't boot the local stack), the `_c` getter throws a
+  // StateError. A previous version of the profile read only wrapped the
+  // network call in try/catch, leaving the `_uid` -> `_c` access exposed, and
+  // the initState crashed the entire test. The catch covers both, so the
+  // read degrades to a failed profile read: no gender, no age, and no
+  // date-of-birth state, which keeps the "add your date of birth" hint
+  // hidden rather than telling a runner with one on record that it is
+  // missing.
   test(
-    'fetchViewerGender returns null (no throw) when Supabase is uninitialised',
+    'fetchPlanCalibration degrades to a failed profile read (no throw) when '
+    'Supabase is uninitialised',
     () async {
-      final svc = TrainingService();
-      final g = await svc.fetchViewerGender();
-      expect(g, isNull);
-    },
-  );
-
-  // Same contract for the age read, which shares the profile fetch: both go
-  // through `get_my_profile()` now (the direct column selects they replaced
-  // are refused by the column lockdown, 20260707_001, so they could only ever
-  // report "unset"), and both are awaited unblocking from the same initState.
-  test(
-    'fetchViewerAge returns null (no throw) when Supabase is uninitialised',
-    () async {
-      final svc = TrainingService();
-      final a = await svc.fetchViewerAge();
-      expect(a, isNull);
+      final c = await TrainingService().fetchPlanCalibration();
+      expect(c.gender, isNull);
+      expect(c.age, isNull);
+      expect(c.dobState, isNull);
+      expect(c.extraRecovery, isFalse);
     },
   );
 

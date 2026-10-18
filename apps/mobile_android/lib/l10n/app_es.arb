@@ -5151,5 +5151,14 @@
   "missedPromptRecommended": "Recomendado",
   "missedPromptLetGoDone": "Hecho. Tu plan sigue igual.",
   "missedPromptSaveFailed": "No se pudo guardar tu respuesta: {error}",
-  "missedPromptNothingToMakeUp": "Ya no queda nada que recuperar."
+  "missedPromptNothingToMakeUp": "Ya no queda nada que recuperar.",
+  "prefsExtraRecovery": "Más recuperación entre días duros",
+  "prefsExtraRecoveryHint": "Los planes nuevos dejan 72 horas entre tu tirada larga y la siguiente sesión dura, y aflojan una semana de cada tres en lugar de una de cada cuatro. Los planes ya lo hacen a partir de los 50 si tu fecha de nacimiento está registrada.",
+  "planNewExtraRecoveryHint": "Separa más las sesiones duras y afloja una semana de cada tres. Se guarda en tus ajustes de entrenamiento, así que todos los planes nuevos lo usan.",
+  "planNewExtraRecoverySaveFailed": "No se pudo guardar el ajuste. Inténtalo de nuevo.",
+  "planNewMastersRecoveryApplied": "Como tienes 50 años o más, este plan separa más las sesiones duras y afloja una semana de cada tres.",
+  "planNewDobHintAbsent": "Los planes dan automáticamente más recuperación a quienes corren con 50 años o más.",
+  "planNewDobHintAbsentAction": "Añade tu fecha de nacimiento",
+  "planNewDobHintHealthData": "Los planes solo pueden usar tu fecha de nacimiento para ajustarse a tu edad con tu consentimiento para el uso de datos de salud.",
+  "planNewDobHintHealthDataAction": "Revisar el consentimiento"
 }

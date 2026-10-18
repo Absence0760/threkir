@@ -29802,6 +29802,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'There\'s nothing left to make up.'**
   String get missedPromptNothingToMakeUp;
+
+  /// Switch label: ask new training plans for the masters (50+) recovery schedule at any age.
+  ///
+  /// In en, this message translates to:
+  /// **'More recovery between hard days'**
+  String get prefsExtraRecovery;
+
+  /// No description provided for @prefsExtraRecoveryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'New plans leave 72 hours between your long run and the next hard session, and ease off every third week instead of every fourth. Plans already do this from age 50 when your date of birth is on record.'**
+  String get prefsExtraRecoveryHint;
+
+  /// No description provided for @planNewExtraRecoveryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Spaces hard sessions further apart and eases off every third week. Saved to your training settings, so every new plan uses it.'**
+  String get planNewExtraRecoveryHint;
+
+  /// No description provided for @planNewExtraRecoverySaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save that setting. Try again.'**
+  String get planNewExtraRecoverySaveFailed;
+
+  /// No description provided for @planNewMastersRecoveryApplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Because you\'re 50 or over, this plan spaces hard sessions further apart and eases off every third week.'**
+  String get planNewMastersRecoveryApplied;
+
+  /// No description provided for @planNewDobHintAbsent.
+  ///
+  /// In en, this message translates to:
+  /// **'Plans give runners aged 50 and over more recovery automatically.'**
+  String get planNewDobHintAbsent;
+
+  /// Button opening Settings → Preferences, where the date of birth is edited.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your date of birth'**
+  String get planNewDobHintAbsentAction;
+
+  /// No description provided for @planNewDobHintHealthData.
+  ///
+  /// In en, this message translates to:
+  /// **'Plans can only use your date of birth to adjust for age with your consent to health-data use.'**
+  String get planNewDobHintHealthData;
+
+  /// Button opening Settings → Body metrics, where health-data consent is reviewed.
+  ///
+  /// In en, this message translates to:
+  /// **'Review consent'**
+  String get planNewDobHintHealthDataAction;
 }
 
 class _AppLocalizationsDelegate

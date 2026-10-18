@@ -5151,5 +5151,14 @@
   "missedPromptRecommended": "Recommandé",
   "missedPromptLetGoDone": "C'est noté. Votre plan continue tel quel.",
   "missedPromptSaveFailed": "Impossible d'enregistrer votre réponse : {error}",
-  "missedPromptNothingToMakeUp": "Il n'y a plus rien à rattraper."
+  "missedPromptNothingToMakeUp": "Il n'y a plus rien à rattraper.",
+  "prefsExtraRecovery": "Plus de récupération entre les jours difficiles",
+  "prefsExtraRecoveryHint": "Les nouveaux plans laissent 72 heures entre ta sortie longue et la séance difficile suivante, et allègent une semaine sur trois au lieu d'une sur quatre. Les plans le font déjà à partir de 50 ans si ta date de naissance est renseignée.",
+  "planNewExtraRecoveryHint": "Espace davantage les séances difficiles et allège une semaine sur trois. Enregistré dans tes réglages d'entraînement : chaque nouveau plan l'utilise.",
+  "planNewExtraRecoverySaveFailed": "Impossible d'enregistrer ce réglage. Réessaie.",
+  "planNewMastersRecoveryApplied": "Comme tu as 50 ans ou plus, ce plan espace davantage les séances difficiles et allège une semaine sur trois.",
+  "planNewDobHintAbsent": "Les plans donnent automatiquement plus de récupération aux coureurs de 50 ans et plus.",
+  "planNewDobHintAbsentAction": "Ajouter ta date de naissance",
+  "planNewDobHintHealthData": "Les plans ne peuvent utiliser ta date de naissance pour s'adapter à ton âge qu'avec ton consentement à l'utilisation des données de santé.",
+  "planNewDobHintHealthDataAction": "Vérifier le consentement"
 }

@@ -18333,4 +18333,37 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get missedPromptNothingToMakeUp => 'Es gibt nichts mehr nachzuholen.';
+
+  @override
+  String get prefsExtraRecovery => 'Mehr Erholung zwischen harten Tagen';
+
+  @override
+  String get prefsExtraRecoveryHint =>
+      'Neue Pläne lassen 72 Stunden zwischen deinem langen Lauf und der nächsten harten Einheit und nehmen jede dritte statt jede vierte Woche zurück. Ab 50 tun Pläne das bereits, wenn dein Geburtsdatum hinterlegt ist.';
+
+  @override
+  String get planNewExtraRecoveryHint =>
+      'Legt harte Einheiten weiter auseinander und nimmt jede dritte Woche zurück. Wird in deinen Trainingseinstellungen gespeichert, also nutzt jeder neue Plan es.';
+
+  @override
+  String get planNewExtraRecoverySaveFailed =>
+      'Die Einstellung konnte nicht gespeichert werden. Versuch es noch einmal.';
+
+  @override
+  String get planNewMastersRecoveryApplied =>
+      'Weil du 50 oder älter bist, legt dieser Plan harte Einheiten weiter auseinander und nimmt jede dritte Woche zurück.';
+
+  @override
+  String get planNewDobHintAbsent =>
+      'Pläne geben Läuferinnen und Läufern ab 50 automatisch mehr Erholung.';
+
+  @override
+  String get planNewDobHintAbsentAction => 'Geburtsdatum hinzufügen';
+
+  @override
+  String get planNewDobHintHealthData =>
+      'Pläne können dein Geburtsdatum nur mit deiner Einwilligung zur Nutzung von Gesundheitsdaten an dein Alter anpassen.';
+
+  @override
+  String get planNewDobHintHealthDataAction => 'Einwilligung prüfen';
 }

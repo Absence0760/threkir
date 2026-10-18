@@ -1959,6 +1959,17 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                             ? (_) => _editExcludeGymFromReadiness()
                             : null,
                       ),
+                    SwitchListTile(
+                      key: const Key('prefsExtraRecovery'),
+                      title: Text(l10n.prefsExtraRecovery),
+                      subtitle: Text(l10n.prefsExtraRecoveryHint),
+                      value:
+                          _bagValue<Object>(SettingsKeys.extraRecovery) == true,
+                      onChanged: _bagReady
+                          ? (on) =>
+                              _putUniversal(SettingsKeys.extraRecovery, on)
+                          : null,
+                    ),
                   ],
                 ),
                 (

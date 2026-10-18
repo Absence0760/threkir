@@ -60,6 +60,8 @@
 	import FinishPlanPrompt from '#lib/components/FinishPlanPrompt.svelte';
 	import PlanRecapCard from '#lib/components/PlanRecapCard.svelte';
 	import PlanBreakCard from '#lib/components/PlanBreakCard.svelte';
+	import { loadBreakContext } from '#lib/core/plan_break_context.ts';
+	import { breakState, type BreakContext } from '#lib/training/plan_break_state.ts';
 	import MissedWorkoutPrompt, { missedPromptFromRows } from '#lib/components/MissedWorkoutPrompt.svelte';
 	import type { MissedPrompt } from '#lib/training/plan_missed_prompt.ts';
 	import { isPlanFinished } from '#lib/training/plan_current.ts';
@@ -1100,6 +1102,11 @@
 				console.error('isActiveCoachOf failed', e);
 			}
 		}
+		if (loadError === null && plan != null && plan.user_id === auth.user?.id && plan.status === 'active') {
+			breakContext = await loadBreakContext(plan.user_id, today);
+		} else {
+			breakContext = null;
+		}
 		if (loadError === null && plan != null && plan.user_id === auth.user?.id) {
 			// Owner-only: the recent runs feed both the Race Day Riegel
 			// projection (within 21 days) and the current-week adherence
@@ -1354,12 +1361,24 @@
 			: null
 	);
 
+	/// The break offer's reads (decisions § 2128), loaded with the plan for
+	/// its owner: undefined until then, null when they failed. The offer
+	/// outranks the missed-workout prompt, here and for Home's `?makeup=1`.
+	let breakContext = $state<BreakContext | null | undefined>(undefined);
+	let planBreak = $derived(
+		plan && isOwner && plan.status === 'active'
+			? breakState(plan, weeks, workouts, today, breakContext)
+			: null
+	);
+	let planBreakQuiet = $derived(planBreak == null || (!planBreak.pending && !planBreak.showing));
+
 	/// The missed-workout prompt is the owner's, and only while the plan is
 	/// running: never for a coach viewing an athlete, a template, or a paused,
 	/// finished or abandoned plan.
 	let missedPromptShown = $derived(
 		plan != null &&
 			isOwner &&
+			planBreakQuiet &&
 			!plan.is_template &&
 			plan.status === 'active' &&
 			!isPlanFinished(plan, today)
@@ -1769,8 +1788,19 @@
 			<PlanRecapCard {plan} {workouts} />
 		{/if}
 
-		{#if isOwner && plan.status === 'active'}
-			<PlanBreakCard {plan} {weeks} {workouts} {today} onapplied={load} />
+		{#if planBreak?.showing && planBreak.found && breakContext}
+			<PlanBreakCard
+				{plan}
+				{weeks}
+				{workouts}
+				{today}
+				found={planBreak.found}
+				context={breakContext}
+				onanswered={(pref) => {
+					if (breakContext) breakContext = { ...breakContext, dismissedPref: pref };
+				}}
+				onapplied={load}
+			/>
 		{/if}
 
 		{#if isOwner && !plan.is_template && replanPreview}

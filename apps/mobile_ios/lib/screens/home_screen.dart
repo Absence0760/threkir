@@ -209,6 +209,13 @@ class _HomeScreenState extends State<HomeScreen>
   /// `initState` and never re-created.
   final _currentIndex = ValueNotifier<int>(_initialIndex);
 
+  /// Whether the Run page is the one showing; the kept-alive page refreshes
+  /// its plan card when this turns true.
+  final _runPageShown = ValueNotifier<bool>(_initialIndex == _pageRun);
+
+  void _syncRunPageShown() =>
+      _runPageShown.value = _currentIndex.value == _pageRun;
+
   /// Everything the centre button's look reads: whether a run is recording,
   /// and whether a tap starts one, which turns on the preferences and on
   /// whether a lift or a meal exists. The button and its caption rebuild on
@@ -239,6 +246,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
+    _currentIndex.addListener(_syncRunPageShown);
     _rebuildPages();
     pendingStartWorkout.addListener(_onPendingStartWorkout);
     pendingArmGuidedRun.addListener(_onPendingArmGuidedRun);
@@ -467,6 +475,14 @@ class _HomeScreenState extends State<HomeScreen>
         ));
       case PushTargetKind.profile:
         await _pushScreen(ProfileScreen(api: api, userId: target.id!));
+      case PushTargetKind.badges:
+        final me = api.userId;
+        if (me == null) return;
+        await _pushScreen(ProfileScreen(
+          api: api,
+          userId: me,
+          initialTab: ProfileTab.badges,
+        ));
       case PushTargetKind.run:
         await _openRun(target.id!);
       case PushTargetKind.plans:
@@ -810,6 +826,7 @@ class _HomeScreenState extends State<HomeScreen>
           treadmill: widget.treadmill,
           initialRoute: _preselectedRoute,
           initialResumablePartial: widget.resumablePartial,
+          shown: _runPageShown,
         ),
       ),
       _LazyKeepAliveTab(
@@ -854,7 +871,9 @@ class _HomeScreenState extends State<HomeScreen>
     pendingClubInviteToken.removeListener(_onPendingClubInvite);
     pendingEntityLink.removeListener(_onPendingEntityLink);
     _pageController.dispose();
+    _currentIndex.removeListener(_syncRunPageShown);
     _currentIndex.dispose();
+    _runPageShown.dispose();
     _fitnessTab.dispose();
     super.dispose();
   }

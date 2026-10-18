@@ -144,11 +144,13 @@ class EventView {
 class ClubPostView {
   final ClubPostRow row;
   final String? authorName;
+  final String? authorAvatarUrl;
   final int replyCount;
 
   const ClubPostView({
     required this.row,
     required this.authorName,
+    this.authorAvatarUrl,
     required this.replyCount,
   });
 }
@@ -157,6 +159,7 @@ class AttendeeView {
   final String userId;
   final String status;
   final String? displayName;
+  final String? avatarUrl;
   // 'attended' | 'no_show' | null. Orthogonal to RSVP status; host-written
   // via mark_attendance (instructor_business.md M6).
   final String? attendance;
@@ -170,6 +173,7 @@ class AttendeeView {
     required this.userId,
     required this.status,
     this.displayName,
+    this.avatarUrl,
     this.attendance,
     this.courseId,
     this.offerExpiresAt,
@@ -1868,12 +1872,18 @@ class SocialService extends ChangeNotifier {
     // display name degrades to null. Query each chunk and merge into one map.
     final profilePages = await Future.wait([
       for (final c in chunkList(ids))
-        _c.from('user_profiles').select('id, display_name').inFilter('id', c),
+        _c
+            .from('user_profiles')
+            .select('id, display_name, avatar_url')
+            .inFilter('id', c),
     ]);
     final byId = <String, String?>{};
+    final avatarById = <String, String?>{};
     for (final profiles in profilePages) {
       for (final p in profiles as List) {
-        byId[(p as Map)['id'] as String] = p['display_name'] as String?;
+        final id = (p as Map)['id'] as String;
+        byId[id] = p['display_name'] as String?;
+        avatarById[id] = p['avatar_url'] as String?;
       }
     }
     return [
@@ -1882,6 +1892,7 @@ class SocialService extends ChangeNotifier {
           userId: a['user_id'] as String,
           status: a['status'] as String,
           displayName: byId[a['user_id']],
+          avatarUrl: avatarById[a['user_id']],
           attendance: a['attendance'] as String?,
           offerExpiresAt: parseIsoStrictValue(a['offer_expires_at']),
           courseId: a['course_id'] as String?,
@@ -2369,7 +2380,7 @@ class SocialService extends ChangeNotifier {
     final futures = <Future<dynamic>>[
       _c
           .from('user_profiles')
-          .select('id, display_name')
+          .select('id, display_name, avatar_url')
           .inFilter('id', authorIds),
     ];
     if (topLevelIds.isNotEmpty) {
@@ -2380,8 +2391,11 @@ class SocialService extends ChangeNotifier {
     }
     final results = await Future.wait(futures);
     final byId = <String, String?>{};
+    final avatarById = <String, String?>{};
     for (final p in results[0] as List) {
-      byId[(p as Map)['id'] as String] = p['display_name'] as String?;
+      final id = (p as Map)['id'] as String;
+      byId[id] = p['display_name'] as String?;
+      avatarById[id] = p['avatar_url'] as String?;
     }
     final counts = <String, int>{};
     if (results.length > 1) {
@@ -2396,6 +2410,7 @@ class SocialService extends ChangeNotifier {
         ClubPostView(
           row: p,
           authorName: byId[p.authorId],
+          authorAvatarUrl: avatarById[p.authorId],
           replyCount: counts[p.id] ?? 0,
         ),
     ];

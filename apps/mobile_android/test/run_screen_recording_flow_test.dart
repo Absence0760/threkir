@@ -142,6 +142,14 @@ class _ServicesOffGeolocatorPlatform extends _FakeGeolocatorPlatform {
 /// off / Android approximate only), and declining iOS's temporary
 /// full-accuracy prompt.
 class _ReducedAccuracyGeolocatorPlatform extends _FakeGeolocatorPlatform {
+  int openedAppSettings = 0;
+
+  @override
+  Future<bool> openAppSettings() async {
+    openedAppSettings++;
+    return true;
+  }
+
   @override
   Future<LocationAccuracyStatus> getLocationAccuracy() async =>
       LocationAccuracyStatus.reduced;
@@ -1162,6 +1170,68 @@ void main() {
       expect(find.text('Approximate location — distance paused'),
           findsOneWidget);
       expect(find.text('Weak GPS — distance paused'), findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+      await reduced.dispose();
+    });
+
+    testWidgets('an approximate grant that never delivers a fix still says '
+        'distance is paused, from the first second', (tester) async {
+      // The reported case: Android "approximate only", no coarse fix ever
+      // arrives, so nothing reaches the accuracy gate to flag a stall.
+      final reduced = _ReducedAccuracyGeolocatorPlatform();
+      GeolocatorPlatform.instance = reduced;
+      await pumpRunScreen(tester);
+
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException(); // LiveRunMap tile-fetch noise
+
+      expect(find.text('START'), findsNothing);
+      expect(find.text('Approximate location — distance paused'),
+          findsOneWidget,
+          reason: 'shown at the start, not after a rejected fix');
+      expect(find.text('Waiting for GPS...'), findsNothing,
+          reason: 'no precise fix is coming, so the map must not promise one');
+      expect(
+          find.text("Precise location is off — the map can't show where you "
+              'are'),
+          findsOneWidget);
+
+      // Let the one-shot precise-location top banner expire so only the
+      // persistent strip remains.
+      for (var i = 0; i < 9; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      tester.takeException();
+      expect(find.text('Approximate location — distance paused'),
+          findsOneWidget,
+          reason: 'the strip persists for as long as the grant is approximate');
+
+      await tester.tap(find.text('Turn on precise location'));
+      await tester.pump();
+      expect(reduced.openedAppSettings, 1);
+
+      // The runner turned precision on: the first fix that clears the
+      // accuracy gate clears the recorder's flag, and the strip goes.
+      reduced.emit(_pos(metresEast: 0, secondsFromStart: 20));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      tester.takeException();
+      expect(find.text('Approximate location — distance paused'),
+          findsNothing);
+      expect(find.text('Turn on precise location'), findsNothing);
 
       await tester.pumpWidget(const SizedBox());
       for (var i = 0; i < 4; i++) {

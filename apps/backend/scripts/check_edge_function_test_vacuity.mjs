@@ -98,7 +98,18 @@ export const MATERIALISED = [FUNCTIONS_REL, ...NEUTERED_ARTIFACTS.map((a) => a.p
 // each entry has to say which, because "it reads something else" is also what
 // a genuinely vacuous test looks like from here.
 /** @type {{ file: string, name: string, reason: string }[]} */
-export const EXPECTED_SURVIVORS = [];
+export const EXPECTED_SURVIVORS = [
+  {
+    file: './supabase/functions/_shared/cors_wiring.test.ts',
+    name: 'the call-site scan still finds the browser callers it was written against',
+    reason: "its subject is apps/web/src's call sites (a sibling app's source), which the mutation leaves intact",
+  },
+  {
+    file: './supabase/functions/_shared/cors_wiring.test.ts',
+    name: 'every exemption is still a live call site',
+    reason: 'it checks the EXEMPT list against apps/web/src call sites, not any function module',
+  },
+];
 
 /**
  * @param {string} src

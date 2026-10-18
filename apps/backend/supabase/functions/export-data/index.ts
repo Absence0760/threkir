@@ -61,6 +61,7 @@ import {
 import { checkRateLimitTiered } from '../_shared/rate_limit.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { withCors } from '../_shared/cors.ts';
 import { publishableKey, secretKey, secretKeyHeaders } from '../_shared/api_keys.ts';
 import { EXPORT_FETCH_CONCURRENCY, pooledPipeline } from './pooled.ts';
 import { parseContentRangeTotal } from './paging.ts';
@@ -132,7 +133,7 @@ interface BuildResult {
 	incomplete: string[];
 }
 
-Deno.serve(withSentry('export-data', async (req: Request) => {
+Deno.serve(withCors(withSentry('export-data', async (req: Request) => {
 	if (req.method !== 'POST') {
 		return Response.json({ error: 'method_not_allowed' }, { status: 405 });
 	}
@@ -268,7 +269,7 @@ Deno.serve(withSentry('export-data', async (req: Request) => {
 		complete: built.runs.complete && built.incomplete.length === 0,
 		format,
 	});
-}));
+})));
 
 async function writeCsv(
 	upload: ResumableUpload,

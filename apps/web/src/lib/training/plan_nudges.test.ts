@@ -266,3 +266,15 @@ test('planNudge: nothing before the first week has ended', () => {
 	const runs = [{ date: '2026-06-02', distanceM: 30_000 }];
 	assert.equal(nudge(plan([28_000, 28_000, 28_000]), runs, { today: '2026-06-05' }), null);
 });
+
+test('planNudge: a judged week that overlaps a break says nothing, and a later one is judged again', () => {
+	const runs = [
+		{ date: '2026-06-07', distanceM: 28_000 },
+		{ date: '2026-06-14', distanceM: 28_000 },
+		{ date: '2026-06-21', distanceM: 36_000 },
+	];
+	const weeks = plan([28_000, 28_000, 28_000]);
+	assert.equal(nudge(weeks, runs, { breakFromIso: '2026-06-21', breakUntilIso: '2026-06-24' }), null);
+	assert.equal(nudge(weeks, runs, { breakFromIso: '2026-06-01', breakUntilIso: '2026-06-14' })?.kind, 'ease_over');
+	assert.equal(nudge(weeks, runs, { breakFromIso: '2026-06-22', breakUntilIso: '2026-06-24' })?.kind, 'ease_over');
+});

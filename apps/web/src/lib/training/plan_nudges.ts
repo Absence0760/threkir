@@ -207,6 +207,10 @@ export function planNudge(input: {
 	weeks: ReplanWeek[];
 	runDates: readonly string[];
 	dismissed: readonly string[];
+	/// A break's days (`breakWindow`, the plan_break pair): a judged week that
+	/// overlaps them is missed training the break offer answers, not a trend.
+	breakFromIso?: string | null;
+	breakUntilIso?: string | null;
 }): PlanNudge | null {
 	if (input.status !== 'active' || input.isTemplate) return null;
 	if (input.today < input.startDate || input.today > input.endDate) return null;
@@ -214,6 +218,10 @@ export function planNudge(input: {
 	const lastComplete = [...weeks].reverse().find((w) => w.isComplete);
 	if (!lastComplete) return null;
 	const at = lastComplete.weekIndex;
+	if (input.breakFromIso && input.breakUntilIso) {
+		const weekStart = shiftIso(input.startDate, 7 * at);
+		if (shiftIso(weekStart, 6) >= input.breakFromIso && weekStart <= input.breakUntilIso) return null;
+	}
 	const dismissed = new Set(input.dismissed);
 	const candidates: PlanNudge[] = [];
 

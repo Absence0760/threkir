@@ -4,6 +4,7 @@ import * as cheerio from 'https://esm.sh/cheerio@1.0.0-rc.12';
 import { checkRateLimitTiered } from '../_shared/rate_limit.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { withCors } from '../_shared/cors.ts';
 import {
   MAX_PARKRUN_ROWS,
   capParkrunField,
@@ -16,7 +17,7 @@ import { publishableKey } from '../_shared/api_keys.ts';
 import { reconcileImportBatch } from '../_shared/external_id_batch.ts';
 import { resolveImportAudience } from '../_shared/privacy_default.ts';
 
-Deno.serve(withSentry('parkrun-import', async (req: Request) => {
+Deno.serve(withCors(withSentry('parkrun-import', async (req: Request) => {
   const guarded = await readJsonWithLimit<{ athleteNumber?: unknown; probe?: unknown }>(
     req,
     1024,
@@ -228,4 +229,4 @@ Deno.serve(withSentry('parkrun-import', async (req: Request) => {
   // client can name the gap rather than only its existence — `imported + skipped`
   // is what we processed and stops at MAX_PARKRUN_ROWS.
   return Response.json({ imported, skipped, total: usable, complete: usable <= MAX_PARKRUN_ROWS });
-}));
+})));

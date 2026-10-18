@@ -61,6 +61,8 @@
 	import DangerZone from '#lib/components/DangerZone.svelte';
 	import EventEditor from '#lib/components/EventEditor.svelte';
 	import ClubEditor from '#lib/components/ClubEditor.svelte';
+	import ClubAvatar from '#lib/components/ClubAvatar.svelte';
+	import ClubLogoControl from '#lib/components/ClubLogoControl.svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
 	import VerifiedBadge from '#lib/components/VerifiedBadge.svelte';
@@ -880,7 +882,18 @@
 		</a>
 
 		<div class="hero">
-			<Avatar name={club.name} size="4.5rem" font="2rem" bg="seed" seedHue={hashHue(club.id)} />
+			<div class="hero-logo">
+				<ClubAvatar {club} size="4.5rem" font="2rem" />
+				{#if isAdmin}
+					<ClubLogoControl
+						clubId={club.id}
+						hasLogo={!!club.avatar_url}
+						onchange={(url) => {
+							if (club) club = { ...club, avatar_url: url };
+						}}
+					/>
+				{/if}
+			</div>
 			<div class="hero-text">
 				<div class="hero-title-row">
 					<h1>
@@ -1075,7 +1088,7 @@
 				<div class="pending-list">
 					{#each pending as p (p.user_id)}
 						<div class="pending-row">
-							<Avatar name={p.display_name} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(p.user_id)} />
+							<Avatar url={p.avatar_url} name={p.display_name} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(p.user_id)} />
 							<div class="pending-info">
 								<strong>{p.display_name ?? tr('clubHome.memberFallback')}</strong>
 								<span class="when">{tr('clubHome.requestedRelative', { time: fmtRelative(p.joined_at ?? new Date().toISOString()) })}</span>
@@ -1226,7 +1239,7 @@
 						<article class="post">
 							<div class="post-author">
 								<a href="/u/{post.author_id}" class="author-link">
-									<Avatar name={post.author_display_name} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(post.author_id)} />
+									<Avatar url={post.author_avatar_url} name={post.author_display_name} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(post.author_id)} />
 									<div>
 										<strong>{post.author_display_name ?? tr('clubHome.memberFallback')}</strong>
 										<span class="when">{fmtRelative(post.created_at ?? new Date().toISOString())}</span>
@@ -1271,7 +1284,7 @@
 												<!-- Redundant image link for the same destination as the
 												     author-name link below (WCAG technique H2). See RunSocial. -->
 												<a href="/u/{reply.author_id}" class="reply-author-link" tabindex="-1" aria-hidden="true">
-													<Avatar name={reply.author_display_name} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(reply.author_id)} />
+													<Avatar url={reply.author_avatar_url} name={reply.author_display_name} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(reply.author_id)} />
 												</a>
 												<div class="reply-body">
 													<div class="reply-head">
@@ -1650,7 +1663,7 @@
 					{#each members as m (m.user_id)}
 						<div class="member">
 							<a href="/u/{m.user_id}" class="member-link">
-								<Avatar name={m.display_name} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(m.user_id)} />
+								<Avatar url={m.avatar_url} name={m.display_name} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(m.user_id)} />
 								<div class="member-name">
 									<strong>{m.display_name ?? tr('clubHome.memberFallback')}</strong>
 									{#if m.role !== 'member' && (!isAdmin || m.role === 'owner' || m.user_id === club?.owner_id)}
@@ -1922,6 +1935,12 @@
 
 
 
+	.hero-logo {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--space-sm);
+	}
 	.hero-text h1 {
 		font-size: 1.6rem;
 		margin: 0;
@@ -2888,6 +2907,9 @@
 	@media (max-width: 26rem) {
 		.hero {
 			grid-template-columns: minmax(0, 1fr);
+		}
+		.hero-logo {
+			align-items: flex-start;
 		}
 	}
 

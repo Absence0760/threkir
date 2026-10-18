@@ -256,7 +256,7 @@
 		</div>
 	{:else}
 		<header class="athlete-head">
-			<Avatar name={link?.display_name} size="3rem" font="1.1rem" />
+			<Avatar url={link?.avatar_url} name={link?.display_name} size="3rem" font="1.1rem" />
 			<div>
 				<h1>{link?.display_name ?? m('coachingAthlete.runnerFallback')}</h1>
 				<p class="muted">

@@ -338,6 +338,24 @@ e2e-tested without standing up the Lambda.
   club/event/profile/route read is safe by default, but keep filtering
   explicitly on any new public surface for defense in depth.
 
+### A signed-in visitor gets a way back into the app
+
+The share pages are the logged-out surface — `SharePageShell` carries a logo,
+the content and a footer, and no sidebar. A signed-in reader still reaches
+them (an email link, a pasted URL, an older in-app link), so the shell's
+header shows them one control: **Back** (`history.back()`) when the referrer
+is same-origin and the tab has history, otherwise **Open in Threkir** to the
+in-app view of the same entity, which each page passes as `appHref` (`/runs/[id]`,
+`/u/[owner]?tab=achievements&badge=[id]`, `/clubs/[slug]`, the club event,
+`/u/[id]`, `/races/[id]`, `/routes/[id]`, `/sessions/[id]`; a workout or recap
+has no in-app non-owner view and falls back to `/dashboard`). The decision is
+the pure `share_return.ts`. It is computed in an `$effect`, which never runs
+during SSR, prerender or the Lambda's head render, so the markup a crawler or
+unfurler reads is the anonymous header, unchanged; the header reserves the
+control's height, so it appears without moving the page. Nothing about the
+visitor reaches the `<head>`. In-app links do not point here in the first
+place — they go to the in-app view (decisions § 2152).
+
 ## Shared marketing/brand pieces
 
 - **`#lib/components/SeoHead.svelte`** — reusable `<svelte:head>` (title,

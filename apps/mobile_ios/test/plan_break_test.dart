@@ -232,4 +232,32 @@ void main() {
     expect(isBreakDismissed('p', 'p', '2026-06-15'), isFalse);
     expect(isBreakDismissed([pref], 'p', '2026-06-15'), isFalse);
   });
+
+  test('the offer shows for a break nobody answered, and only then', () {
+    final found = _detect();
+    expect(breakOfferShowing(found, null, 'p'), isTrue);
+    expect(
+        breakOfferShowing(
+            found, {'plan_id': 'p', 'from': shiftIsoDate(_s, 8)}, 'p'),
+        isFalse);
+    expect(
+        breakOfferShowing(
+            found, {'plan_id': 'q', 'from': shiftIsoDate(_s, 8)}, 'p'),
+        isTrue);
+    expect(breakOfferShowing(null, null, 'p'), isFalse);
+  });
+
+  test('the break window is the break on now, else the last one answered in this plan',
+      () {
+    final found = _detect();
+    const answered = {'plan_id': 'p', 'from': '2026-05-01', 'until': '2026-05-20'};
+    expect(breakWindow(found, answered, 'p', _today),
+        (fromIso: shiftIsoDate(_s, 8), untilIso: _today));
+    expect(breakWindow(null, answered, 'p', _today),
+        (fromIso: '2026-05-01', untilIso: '2026-05-20'));
+    expect(breakWindow(null, answered, 'q', _today), isNull);
+    expect(breakWindow(null, {'plan_id': 'p', 'from': '2026-05-01'}, 'p', _today),
+        isNull);
+    expect(breakWindow(null, null, 'p', _today), isNull);
+  });
 }

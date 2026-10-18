@@ -217,3 +217,27 @@ bool isBreakDismissed(Object? pref, String planId, String fromIso) {
   if (pref is! Map) return false;
   return pref['plan_id'] == planId && pref['from'] == fromIso;
 }
+
+/// Whether the break offer is on screen: a break to offer that the runner has
+/// not answered. While it is, a host shows neither the missed-workout prompt
+/// nor the plan nudge card, and a make-up deep link only opens the plan: those
+/// judge the missed weeks one workout or one week at a time, while the break
+/// offer re-runs them whole.
+bool breakOfferShowing(PlanBreak? found, Object? dismissedPref, String planId) =>
+    found != null && !isBreakDismissed(dismissedPref, planId, found.fromIso);
+
+/// The days a break covered, for a judge that must not read them as missed
+/// training: the break on now, from its first day to today, or else the last
+/// one the runner answered in this plan (`plan_break_dismissed` with its
+/// `until`). Null when there is neither.
+({String fromIso, String untilIso})? breakWindow(
+    PlanBreak? found, Object? dismissedPref, String planId, String todayIso) {
+  if (found != null) return (fromIso: found.fromIso, untilIso: todayIso);
+  if (dismissedPref is! Map) return null;
+  final from = dismissedPref['from'];
+  final until = dismissedPref['until'];
+  if (dismissedPref['plan_id'] != planId || from is! String || until is! String) {
+    return null;
+  }
+  return (fromIso: from, untilIso: until);
+}

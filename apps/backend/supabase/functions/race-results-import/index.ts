@@ -6,10 +6,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
 import type { Database } from '../_shared/database.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { withCors } from '../_shared/cors.ts';
 import { publishableKey } from '../_shared/api_keys.ts';
 import { makeRaceResultsImportHandler } from './handler.ts';
 
-Deno.serve(withSentry('race-results-import', makeRaceResultsImportHandler({
+Deno.serve(withCors(withSentry('race-results-import', makeRaceResultsImportHandler({
   getEnv: (name) => Deno.env.get(name),
   userClient: (authHeader) =>
     createClient<Database>(
@@ -18,4 +19,4 @@ Deno.serve(withSentry('race-results-import', makeRaceResultsImportHandler({
       { global: { headers: { Authorization: authHeader } } },
     ),
   fetch: (input, init) => fetch(input, init),
-})));
+}))));

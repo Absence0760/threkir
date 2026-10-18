@@ -10,9 +10,16 @@
 		isOwner?: boolean;
 		onToggleVisibility?: (badge: Achievement) => void;
 		onShare?: (badge: Achievement) => void;
+		/** The badge a deep link (`?badge=<id>`) points at: scrolled to and outlined. */
+		focusId?: string | null;
 	}
 
-	let { badges, isOwner = false, onToggleVisibility, onShare }: Props = $props();
+	let { badges, isOwner = false, onToggleVisibility, onShare, focusId = null }: Props = $props();
+
+	$effect(() => {
+		if (!focusId || !badges.some((b) => b.id === focusId)) return;
+		document.getElementById(`badge-${focusId}`)?.scrollIntoView({ block: 'center' });
+	});
 
 	const TIER_LABEL: Record<AchievementTier, () => string> = {
 		bronze: () => m('badges.tier.bronze'),
@@ -32,7 +39,14 @@
 	<ul class="badge-grid">
 		{#each badges as b (b.id)}
 			{@const r = resolved(b)}
-			<li class="badge-tile tier-{b.tier}" class:is-private={!b.is_public}>
+			<li
+				id="badge-{b.id}"
+				class="badge-tile tier-{b.tier}"
+				class:is-private={!b.is_public}
+				class:is-focused={b.id === focusId}
+				aria-current={b.id === focusId ? 'true' : undefined}
+				data-testid={b.id === focusId ? 'badge-focused' : undefined}
+			>
 				<span class="badge-icon material-symbols" aria-hidden="true">{r?.icon ?? 'military_tech'}</span>
 				<span class="badge-label">{r ? m(r.labelKey) : b.badge_key}</span>
 				{#if r}
@@ -89,6 +103,10 @@
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-top: 3px solid var(--tier-color, var(--color-border));
+	}
+	.badge-tile.is-focused {
+		outline: 2px solid var(--tier-color, var(--color-primary));
+		outline-offset: 2px;
 	}
 	.badge-tile.is-private {
 		opacity: 0.72;

@@ -42,7 +42,7 @@
 	{@html `<script type="application/ld+json">${jsonLd}</script>`}
 </svelte:head>
 
-<SharePageShell>
+<SharePageShell {appHref}>
 	{#if hasProfile}
 		<!-- The landmark rides the hero rather than a wrapper: .hero is a flex
 		     child of SharePageShell's .share-page, so wrapping it would move

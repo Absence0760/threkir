@@ -3,6 +3,7 @@ import type { Database, DbClient } from '../_shared/database.ts';
 import { checkRateLimit, checkRateLimitTiered } from '../_shared/rate_limit.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
+import { withCors } from '../_shared/cors.ts';
 import { type StravaTokens, refreshStravaToken } from '../_shared/strava.ts';
 import { disconnectStravaLocally } from '../_shared/strava_disconnect.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
@@ -27,7 +28,7 @@ import { backfill } from './backfill.ts';
 // lives in `../_shared/strava.ts` so the `strava-webhook` EF reuses
 // the same path without drift.
 
-Deno.serve(withSentry('strava-import', async (req: Request) => {
+Deno.serve(withCors(withSentry('strava-import', async (req: Request) => {
 	if (req.method !== 'POST') {
 		return Response.json({ error: 'method_not_allowed' }, { status: 405 });
 	}
@@ -153,7 +154,7 @@ Deno.serve(withSentry('strava-import', async (req: Request) => {
 		case 'disconnect':
 			return handleDisconnect(supabase, user.id);
 	}
-}));
+})));
 
 // audit/strava May 2026 High #1 — user-initiated Disconnect must
 // (a) revoke at Strava's end so the token can't be replayed,

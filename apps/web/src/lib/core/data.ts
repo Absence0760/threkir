@@ -12,6 +12,7 @@ import { SELECT_SEPARATOR, type Join } from './database';
 import type { Insertable, Updatable } from './database';
 import type { JsonObject, TrackPoint } from '../types';
 import { isEntityId } from './entity_id';
+import { saveRunEdit, type RunEditFields, type RunEditOutcome } from './run_edit_cas';
 import { markListsStale } from './list_freshness';
 import {
 	keysetAfter,
@@ -222,7 +223,6 @@ import {
 } from '../social/dm_thread';
 import type { ParsedResultRow } from '../runs/event_results_csv';
 import {
-	applyRunMetadataPatch,
 	normalisePlanWorkoutNotes,
 	shouldRescoreGlobalSegments,
 	stampGlobalSegmentsScored,
@@ -1886,36 +1886,49 @@ async function gzipBytes(data: Uint8Array): Promise<Uint8Array> {
 	return out;
 }
 
-/// `isDnf` rides the same round-trip when the edit dialog changed it:
-/// `runs.is_dnf` is a real column (20261207_001), not a metadata key, and
-/// setting it true drops the run from personal-records scoring.
+/// Save the run-detail edit made on [loaded], the row as the page last read
+/// it, as a compare-and-swap on its server `updated_at` (decisions § 2147):
+/// an edit never writes over a change made elsewhere since the page loaded
+/// to a field it also changes, and reports that as a `conflict` with the
+/// server's copy instead. `isDnf` rides the same write when the dialog
+/// changed it: `runs.is_dnf` is a real column (20261207_001), and setting it
+/// true drops the run from personal-records scoring.
+///
+/// Title / notes are trimmed and an empty-after-trim key is removed from the
+/// bag rather than left as `""`; mobile's run-detail edit applies the same
+/// normalisation (`data_normalise.ts` holds the contract).
 export async function updateRunMetadata(
-	id: string,
-	fields: { title?: string; notes?: string },
+	loaded: Run,
+	fields: RunEditFields,
 	isDnf?: boolean,
-): Promise<void> {
-	const { data: run } = await supabase
-		.from(TABLES.runs)
-		.select('metadata')
-		.eq('id', id)
-		.single();
-	if (!run) throw new Error('Run not found');
-	// Trim + drop empty-after-trim keys so clearing a field via the
-	// edit dialog actually removes the key from the metadata bag
-	// instead of leaving `notes: ""` behind. Mobile's run-detail
-	// edit dialog applies the same normalisation. Logic lives in
-	// data_normalise.ts so the contract can be unit-tested.
-	const next = applyRunMetadataPatch(
-		run.metadata as JsonObject | null | undefined,
+): Promise<RunEditOutcome<Run>> {
+	const outcome = await saveRunEdit<Run>(
+		{
+			swap: async (patch, base) => {
+				const filtered = supabase.from(TABLES.runs).update(patch).eq('id', loaded.id);
+				const { data, error } = await (base === null
+					? filtered.is('updated_at', null)
+					: filtered.eq('updated_at', base)
+				).select('*');
+				if (error) throw dbError(error);
+				return (data ?? []).map((row) => asRun(row, loaded.track));
+			},
+			reload: async () => {
+				const { data, error } = await supabase
+					.from(TABLES.runs)
+					.select('*')
+					.eq('id', loaded.id)
+					.maybeSingle();
+				if (error) throw dbError(error);
+				return data ? asRun(data, loaded.track) : null;
+			},
+		},
+		loaded,
 		fields,
-		new Date().toISOString(),
+		isDnf,
 	);
-	markListsStale('runs', 'history', 'routes');
-	const { error } = await supabase
-		.from(TABLES.runs)
-		.update(isDnf === undefined ? { metadata: next } : { metadata: next, is_dnf: isDnf })
-		.eq('id', id);
-	if (error) throw dbError(error);
+	if (outcome.kind === 'saved') markListsStale('runs', 'history', 'routes');
+	return outcome;
 }
 
 // --- Route reviews ---
@@ -3620,6 +3633,56 @@ export async function deleteClub(id: string): Promise<void> {
 		if (error.message === PAID_EVENT_DELETE_REFUSAL) throw new Error(PAID_EVENT_DELETE_REFUSAL);
 		throw dbError(error);
 	}
+}
+
+// Club logos share the public `avatars` bucket (and its 2 MB / JPEG-PNG-WebP
+// limits) under `clubs/{club_id}/logo.{ext}`; the Storage policies admit only
+// that exact filename, written by the club's owners and admins (migration
+// 20270918000007).
+const clubLogoPathsFor = (clubId: string): string[] =>
+	Object.values(AVATAR_MIME_TO_EXT).map((e) => `clubs/${clubId}/logo.${e}`);
+
+/// Upload a club logo and point `clubs.avatar_url` at it. Same shape as
+/// `uploadAvatar`: EXIF stripped client-side (the bucket is public with no
+/// strip worker), remove-then-insert at a stable path, `?v=` cache-bust.
+export async function uploadClubLogo(clubId: string, file: File): Promise<string> {
+	if (file.size > AVATAR_MAX_BYTES) throw new Error('Image too large (2 MB max)');
+	const clean = await stripExifFromFile(file);
+	if (!clean) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	const ext = AVATAR_MIME_TO_EXT[clean.type];
+	if (!ext) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	const storagePath = `clubs/${clubId}/logo.${ext}`;
+
+	await supabase.storage.from(BUCKETS.avatars).remove(clubLogoPathsFor(clubId));
+
+	const { error: upErr } = await supabase.storage
+		.from(BUCKETS.avatars)
+		.upload(storagePath, clean, { contentType: clean.type, upsert: false });
+	if (upErr) throw dbError(upErr);
+
+	const { data: pub } = supabase.storage.from(BUCKETS.avatars).getPublicUrl(storagePath);
+	const url = `${pub.publicUrl}?v=${Date.now()}`;
+
+	const { error: clubErr } = await supabase
+		.from('clubs')
+		.update({ avatar_url: url })
+		.eq('id', clubId);
+	if (clubErr) {
+		await supabase.storage.from(BUCKETS.avatars).remove([storagePath]);
+		throw dbError(clubErr);
+	}
+	return url;
+}
+
+/// Remove a club's logo: drops every stored logo object and clears
+/// `clubs.avatar_url` so renderers fall back to the initial.
+export async function removeClubLogo(clubId: string): Promise<void> {
+	const { error: rmErr } = await supabase.storage
+		.from(BUCKETS.avatars)
+		.remove(clubLogoPathsFor(clubId));
+	if (rmErr) throw dbError(rmErr);
+	const { error } = await supabase.from('clubs').update({ avatar_url: null }).eq('id', clubId);
+	if (error) throw dbError(error);
 }
 
 export async function joinClub(
@@ -10413,8 +10476,6 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 	// seconds, and `runs.metadata` is a whole-column jsonb write. Merging the
 	// stale copy would silently revert any title / notes edit the owner made
 	// inside that window — the run-detail edit dialog writes the same column.
-	// Keeping the read adjacent to the write is the same discipline
-	// `updateRunMetadata` follows.
 	const { data: freshRow } = await supabase
 		.from(TABLES.runs)
 		.select('metadata')

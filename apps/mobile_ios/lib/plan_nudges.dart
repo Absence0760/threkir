@@ -10,7 +10,7 @@
 library;
 
 import 'plan_adaptive_replan.dart';
-import 'plan_adherence.dart' show DriftDirection;
+import 'plan_adherence.dart' show DriftDirection, weekJudgedByDistance;
 import 'plan_replan.dart';
 
 /// A run past its target by less than this is not worth a word: GPS drift
@@ -62,8 +62,12 @@ class PlanNudge {
 
 /// Metres a completed run went past its workout's distance target, or null
 /// when there is no distance target, no run distance, or the extra is small
-/// enough to be noise. Never negative: a short run is not an over-run.
-double? workoutOverrunMetres(double? targetDistanceM, double? runDistanceM) {
+/// enough to be noise. Never negative: a short run is not an over-run. A
+/// walk-run session ([kind]) never over-runs: its target is an estimate, not
+/// a distance anyone set.
+double? workoutOverrunMetres(double? targetDistanceM, double? runDistanceM,
+    [String? kind]) {
+  if (kind == 'walk_run') return null;
   if (targetDistanceM == null || runDistanceM == null) return null;
   if (!(targetDistanceM > 0) || !runDistanceM.isFinite) return null;
   final extra = runDistanceM - targetDistanceM;
@@ -158,7 +162,9 @@ class NudgeInputRun {
 /// The re-plan engine's input, built the one way every caller builds it:
 /// planned volume is the week's target or, when unset, its non-rest
 /// distances; actual volume is every run on a local day inside the week; a
-/// week is complete once its last day has ended.
+/// week is complete once its last day has ended. A week
+/// [weekJudgedByDistance] refuses (a walk-run week) plans no volume, so no
+/// drift, ease-off or under-run trend is ever read off its estimates.
 List<ReplanWeek> buildReplanWeeks({
   required String startDate,
   required String today,
@@ -166,8 +172,9 @@ List<ReplanWeek> buildReplanWeeks({
   required List<NudgeInputRun> runs,
 }) {
   return weeks.map((w) {
-    var planned = w.targetVolumeM ?? 0;
-    if (!(planned > 0)) {
+    final judged = weekJudgedByDistance(w.workouts.map((x) => x.kind));
+    var planned = judged ? (w.targetVolumeM ?? 0) : 0.0;
+    if (judged && !(planned > 0)) {
       planned = 0;
       for (final x in w.workouts) {
         if (x.kind != 'rest') planned += x.targetDistanceM ?? 0;

@@ -5,6 +5,7 @@ import 'package:ui_kit/ui_kit.dart' show AppIconSize;
 import '../l10n/gen/app_localizations.dart';
 import '../overrun_format.dart';
 import '../plan_current.dart';
+import '../planned_size_label.dart';
 import '../training.dart';
 import '../training_labels.dart';
 import 'plan_workout_status_style.dart';
@@ -52,7 +53,8 @@ class TodaysWorkoutCard extends StatelessWidget {
                 ? PlanWorkoutStatus.skipped
                 : PlanWorkoutStatus.upcoming);
     final showStart = onStart != null && !done && !skipped;
-    final pace = w.targetPaceSecPerKm == null
+    final size = plannedSizeLabel(l10n, w);
+    final pace = w.targetPaceSecPerKm == null || w.kind == 'walk_run'
         ? null
         : l10n.todaysWorkoutAtPace(fmtPace(w.targetPaceSecPerKm));
     final overrun = done && overrunMetres != null ? fmtOverrun(overrunMetres!) : null;
@@ -60,7 +62,7 @@ class TodaysWorkoutCard extends StatelessWidget {
       done ? l10n.todaysWorkoutDone : l10n.todaysWorkoutToday,
       if (overrun != null) l10n.planWorkoutOverrunA11y(overrun),
       workoutKindLabel(l10n, kind),
-      if (w.targetDistanceM != null) fmtKm(w.targetDistanceM),
+      ?size,
       ?pace,
     ].join(', ');
 
@@ -127,8 +129,9 @@ class TodaysWorkoutCard extends StatelessWidget {
                       runSpacing: 2,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        if (w.targetDistanceM != null)
+                        if (size != null)
                           Row(
+                            key: const Key('todaysWorkoutSize'),
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
@@ -139,7 +142,7 @@ class TodaysWorkoutCard extends StatelessWidget {
                               const SizedBox(width: 3),
                               Flexible(
                                 child: Text(
-                                  fmtKm(w.targetDistanceM),
+                                  size,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(

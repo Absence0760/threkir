@@ -110,7 +110,7 @@
 		};
 	});
 	let overrunM = $derived(
-		workout?.completed_run_id ? workoutOverrunMetres(workout.target_distance_m, linkedRunDistance) : null
+		workout?.completed_run_id ? workoutOverrunMetres(workout.target_distance_m, linkedRunDistance, workout.kind) : null
 	);
 
 	let structure = $derived(
@@ -335,8 +335,8 @@
 					{#if walkRun}
 						<div class="metric session-metric" data-testid="walk-run-summary">
 							<span class="m-label">{t('workoutDetail.session')}</span>
-							<strong>{formatWalkRunTotal(t, walkRun)}</strong>
-							<span class="walk-run-pattern">{formatWalkRunPattern(t, walkRun)}</span>
+							<strong>{formatWalkRunTotal(t, walkRun, fmtOverrun)}</strong>
+							<span class="walk-run-pattern">{formatWalkRunPattern(t, walkRun, fmtOverrun)}</span>
 						</div>
 					{:else}
 						{#if workout.target_distance_m != null}

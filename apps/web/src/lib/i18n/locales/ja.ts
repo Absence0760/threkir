@@ -6605,4 +6605,11 @@ export const messages = {
 	"planDetail.repeatWeekLastWeek": "プランの最終週なので、後ろにずらすものがありません。",
 	"planDetail.repeatWeekNotNow": "繰り返せるのは、進行中のプランの今週か先週だけです。",
 	"planDetail.repeatWeekBlocked": "今週を繰り返すと、プランが{plans}と重なります。先にそのプランを移動するか終了してください。",
+	"missedPrompt.repeatWeekBody": "1回休んでも失うものはありません。そのまま続けるか、今週がきつかったら次に進む前にもう一度繰り返しましょう。週を繰り返してもペナルティはありません。",
+	"walkRunGraduation.title": "達成：ゼロから5km",
+	"walkRunGraduation.bodyFiveK": "5kmを止まらずに走りきりました。始めはウォークの合間に1分走るところからでした。",
+	"walkRunGraduation.bodyFinished": "ウォーク休憩なしで、最後まで走りきってプランを終えました。始めはウォークの合間に1分走るところからでした。",
+	"walkRunGraduation.nextTitle": "次のステップ",
+	"walkRunGraduation.tenK": "10kmに向けて練習する",
+	"walkRunGraduation.keepRunning": "または習慣を続けましょう。週3回の楽なランで、プランなしでも身につけた力を保てます。",
 } satisfies Messages;

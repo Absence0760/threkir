@@ -7,6 +7,7 @@ import type { WorkoutStructure } from './training';
 import {
 	aboutMinutes,
 	paceZoneName,
+	plannedWorkoutSize,
 	spokenDuration,
 	structureSegments,
 	structureTotal,
@@ -73,7 +74,8 @@ test('walkRunPattern: week 1 reads as its timed intervals', () => {
 		runS: 60,
 		walkS: 90,
 		cooldownS: 300,
-		totalS: 1710
+		totalS: 1710,
+		runM: null
 	});
 });
 
@@ -88,6 +90,25 @@ test('walkRunPattern: the graduation run has no walk', () => {
 	assert.equal(p?.totalS, 2100);
 });
 
+test('walkRunPattern: the graduation 5K ends on its distance, its walks still timed', () => {
+	const fiveK: WorkoutStructure = {
+		warmup: { duration_s: 300, pace: 'easy' },
+		repeats: { count: 1, distance_m: 5000, pace_sec_per_km: 420, recovery_pace: 'walk' },
+		cooldown: { duration_s: 300, pace: 'easy' }
+	};
+	assert.deepEqual(walkRunPattern(fiveK), {
+		warmupS: 300,
+		count: 1,
+		runS: 0,
+		walkS: null,
+		cooldownS: 300,
+		totalS: 600,
+		runM: 5000
+	});
+	// A distance only ends a single run; repeated distance reps are not a walk-run pattern.
+	assert.equal(walkRunPattern({ ...fiveK, repeats: { ...fiveK.repeats!, count: 2 } }), null);
+});
+
 test('walkRunPattern: matches the generator for every C25K week', () => {
 	const plan = generatePlan({
 		goalEvent: 'distance_5k',
@@ -97,9 +118,34 @@ test('walkRunPattern: matches the generator for every C25K week', () => {
 	});
 	for (const week of plan.weeks) {
 		for (const w of week.workouts.filter((x) => x.kind === 'walk_run')) {
-			assert.equal(walkRunPattern(w.structure)?.totalS, w.target_duration_seconds);
+			const p = walkRunPattern(w.structure);
+			assert.ok(p);
+			if (p.runM != null) assert.equal(p.runM, w.structure?.repeats?.distance_m);
+			else assert.equal(p.totalS, w.target_duration_seconds);
 		}
 	}
+});
+
+test('plannedWorkoutSize: a walk-run reads as minutes, its graduation 5K as 5 km, a road run as its target', () => {
+	const size = (kind: string, targetDistanceM: number | null, targetDurationS: number | null, structure: unknown) =>
+		plannedWorkoutSize({ kind, targetDistanceM, targetDurationS, structure });
+	assert.deepEqual(size('walk_run', 2050, 1710, walkRunWeek1), { kind: 'duration', seconds: 1710 });
+	assert.deepEqual(
+		size('walk_run', 5857, 4260, {
+			warmup: { duration_s: 300, pace: 'easy' },
+			repeats: { count: 1, distance_m: 5000, recovery_pace: 'walk' },
+			cooldown: { duration_s: 300, pace: 'easy' }
+		}),
+		{ kind: 'distance', metres: 5000 }
+	);
+	// No readable pattern: the stored duration, never the estimated distance.
+	assert.deepEqual(size('walk_run', 2050, 1710, null), { kind: 'duration', seconds: 1710 });
+	assert.deepEqual(size('walk_run', 2050, 1710, 'x'), { kind: 'duration', seconds: 1710 });
+	assert.equal(size('walk_run', 2050, null, [1]), null);
+	assert.deepEqual(size('easy', 8000, 2400, null), { kind: 'distance', metres: 8000 });
+	assert.equal(size('easy', null, 2400, null), null);
+	assert.equal(size('easy', 0, null, null), null);
+	assert.equal(size('rest', 3000, null, null), null);
 });
 
 test('walkRunPattern: null for a paced session and a distance-measured one', () => {

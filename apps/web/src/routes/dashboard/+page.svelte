@@ -90,6 +90,8 @@
 	import MissedWorkoutPrompt from '#lib/components/MissedWorkoutPrompt.svelte';
 	import PlanNudgeCard from '#lib/components/PlanNudgeCard.svelte';
 	import { DISMISSED_NUDGES_KEY, parseDismissedNudges, workoutOverrunMetres } from '#lib/training/plan_nudges.ts';
+	import { plannedWorkoutSize } from '#lib/training/workout_summary.ts';
+	import { formatPlannedSize } from '#lib/training/workout_summary_format.ts';
 	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import { weeklyGoalTarget } from '#lib/training/week_lead.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
@@ -963,11 +965,23 @@
 	});
 	/// How far today's done workout ran past its target, when a linked run
 	/// says so (`workoutOverrunMetres`); null for a tick, a short run or noise.
+	/// Today's size as the plan states it: a walk-run session in minutes.
+	const todaySize = $derived.by(() => {
+		const t = planOverview?.todayWorkout;
+		if (!t) return null;
+		const size = plannedWorkoutSize({
+			kind: t.kind,
+			targetDistanceM: t.target_distance_m,
+			targetDurationS: t.target_duration_seconds,
+			structure: t.structure
+		});
+		return size == null ? null : formatPlannedSize(m, size, (metres) => fmtKm(metres));
+	});
 	const todayOverrunM = $derived.by(() => {
 		const t = planOverview?.todayWorkout;
 		if (!t?.completed_run_id) return null;
 		const run = runs.find((r) => r.id === t.completed_run_id);
-		return workoutOverrunMetres(t.target_distance_m, run?.distance_m ?? null);
+		return workoutOverrunMetres(t.target_distance_m, run?.distance_m ?? null, t.kind);
 	});
 
 	/// The plan's next race (plan_races.ts): a B race mid-block owns the
@@ -1399,10 +1413,10 @@
 									{workoutKindLabel(t.kind)}
 								</span>
 								<div class="plan-hero-today-meta">
-									{#if t.target_distance_m != null}
-										<span>{fmtKm(t.target_distance_m)}</span>
+									{#if todaySize != null}
+										<span data-testid="plan-hero-today-size">{todaySize}</span>
 									{/if}
-									{#if t.target_pace_sec_per_km}
+									{#if t.target_pace_sec_per_km && t.kind !== 'walk_run'}
 										<span>{m('workoutDetail.atPace', { pace: fmtPace(t.target_pace_sec_per_km) })}</span>
 									{/if}
 									{#if todayDone}

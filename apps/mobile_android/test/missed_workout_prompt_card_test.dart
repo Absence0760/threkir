@@ -160,6 +160,25 @@ void main() {
         findsOneWidget);
   });
 
+  testWidgets('a missed walk-run session says to repeat the week, in no km',
+      (tester) async {
+    final l10n = await _pump(tester,
+        training: _Training(),
+        prompt: _prompt([
+          _wo('wr', 'w1', DateTime(2026, 3, 9), 'walk_run', 2050),
+          _wo('wr2', 'w1', DateTime(2026, 3, 13), 'walk_run', 2050),
+        ]),
+        onMakeUp: () {});
+    expect(find.textContaining('Missed: Walk-run on'), findsOneWidget);
+    expect(find.byKey(const Key('missedPromptMakeUp')), findsNothing);
+    final body =
+        tester.widget<Text>(find.byKey(const Key('missedPromptBody'))).data!;
+    expect(body, l10n.missedPromptRepeatWeekBody);
+    expect(body, isNot(contains('km')));
+    expect(tester.widget(find.byKey(const Key('missedPromptLetGo'))),
+        isA<FilledButton>());
+  });
+
   testWidgets('a missed long run in the taper says so and is let go',
       (tester) async {
     final l10n = await _pump(tester,

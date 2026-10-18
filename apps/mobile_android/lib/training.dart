@@ -674,11 +674,17 @@ const kWalkRunProgression = <({int runSec, int walkSec, int count})>[
   (runSec: 480, walkSec: 150, count: 3),
   (runSec: 600, walkSec: 120, count: 3),
   (runSec: 900, walkSec: 180, count: 2),
-  (runSec: 1500, walkSec: 0, count: 1),
+  (runSec: 1800, walkSec: 0, count: 1),
 ];
 const _kWalkRunWarmupS = 300;
 const _kWalkRunCooldownS = 300;
 const _kWalkPaceSecPerKm = 700;
+
+/// The distance a couch-to-5K plan's last session runs. Every other session
+/// is prescribed in time; this one ends on the distance the plan is named
+/// for, so finishing the plan means having run a 5K. Mirrors
+/// `WALK_RUN_GRADUATION_M` in training.ts.
+const double kWalkRunGraduationM = 5000;
 
 GeneratedWorkout _walkRunWorkout(
     DateTime date, int weekIndex, int easyPaceSecPerKm) {
@@ -718,6 +724,34 @@ GeneratedWorkout _walkRunWorkout(
   );
 }
 
+/// The graduation run: a walking warm-up, 5 km run continuously, a walking
+/// cool-down. Unpaced like every walk-run step (decisions § 2074); the easy
+/// pace only sizes the time and distance estimates.
+GeneratedWorkout _walkRunGraduationWorkout(DateTime date, int easyPaceSecPerKm) {
+  const walkSec = _kWalkRunWarmupS + _kWalkRunCooldownS;
+  return GeneratedWorkout(
+    scheduledDate: date,
+    kind: WorkoutKind.walkRun,
+    targetDistanceM:
+        (kWalkRunGraduationM + (walkSec * 1000) / _kWalkPaceSecPerKm)
+            .round()
+            .toDouble(),
+    targetDurationSeconds:
+        ((kWalkRunGraduationM * easyPaceSecPerKm) / 1000).round() + walkSec,
+    targetPaceSecPerKm: easyPaceSecPerKm,
+    structure: WorkoutStructure(
+      warmup: {'duration_s': _kWalkRunWarmupS, 'pace': 'easy'},
+      repeats: {
+        'count': 1,
+        'distance_m': kWalkRunGraduationM.toInt(),
+        'pace_sec_per_km': easyPaceSecPerKm,
+        'recovery_pace': 'walk',
+      },
+      cooldown: {'duration_s': _kWalkRunCooldownS, 'pace': 'easy'},
+    ),
+  );
+}
+
 GeneratedPlan _generateWalkRunPlan(GeneratePlanInput input,
     double goalDistanceM, TrainingPaces paces, double? vdot,
     bool pacesAreFallback) {
@@ -737,6 +771,7 @@ GeneratedPlan _generateWalkRunPlan(GeneratePlanInput input,
       ? [0, 3]
       : ([0, 2, 4, 1, 3, 5, 6].sublist(0, runDays)..sort());
   final runSet = dayOffsets.toSet();
+  final lastRunDay = dayOffsets.last;
   final weeks = <GeneratedWeek>[];
   for (var i = 0; i < totalWeeks; i++) {
     final weekStart = addDays(input.startDate, i * 7);
@@ -744,7 +779,9 @@ GeneratedPlan _generateWalkRunPlan(GeneratePlanInput input,
     for (var d = 0; d < 7; d++) {
       final date = addDays(weekStart, d);
       if (runSet.contains(d)) {
-        workouts.add(_walkRunWorkout(date, i, paces.easy));
+        workouts.add(i == totalWeeks - 1 && d == lastRunDay
+            ? _walkRunGraduationWorkout(date, paces.easy)
+            : _walkRunWorkout(date, i, paces.easy));
       } else {
         workouts.add(GeneratedWorkout(
           scheduledDate: date,
@@ -758,7 +795,7 @@ GeneratedPlan _generateWalkRunPlan(GeneratePlanInput input,
       targetVolumeM:
           workouts.fold(0.0, (s, w) => s + (w.targetDistanceM ?? 0)),
       notes: i == totalWeeks - 1
-          ? 'Final week — you can run the distance continuously now.'
+          ? 'Final week — it ends with your first 5K.'
           : 'Take the walk breaks even when you feel good — they make the runs sustainable.',
       workouts: workouts,
     ));

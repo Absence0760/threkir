@@ -6609,4 +6609,11 @@ export const messages = {
 	"planDetail.repeatWeekLastWeek": "Esta é a última semana do plano, por isso não há nada para adiar.",
 	"planDetail.repeatWeekNotNow": "Só é possível repetir esta semana ou a anterior de um plano ativo.",
 	"planDetail.repeatWeekBlocked": "Repetir esta semana faria o plano sobrepor-se a {plans}. Mova ou termine esse plano primeiro.",
+	"missedPrompt.repeatWeekBody": "Falhar uma sessão não lhe custa nada. Continue, ou, se esta semana lhe pareceu difícil, repita-a antes de avançar. Repetir uma semana não tem qualquer penalização.",
+	"walkRunGraduation.title": "Conseguiu: do sofá aos 5 km",
+	"walkRunGraduation.bodyFiveK": "Correu 5 km sem parar. Começou com um minuto de corrida entre caminhadas.",
+	"walkRunGraduation.bodyFinished": "Terminou o plano a correr do princípio ao fim, sem pausas para caminhar. Começou com um minuto de corrida entre caminhadas.",
+	"walkRunGraduation.nextTitle": "E agora?",
+	"walkRunGraduation.tenK": "Treinar para 10 km",
+	"walkRunGraduation.keepRunning": "Ou mantenha o hábito: três corridas fáceis por semana conservam o que construiu, sem precisar de plano.",
 } satisfies Messages;

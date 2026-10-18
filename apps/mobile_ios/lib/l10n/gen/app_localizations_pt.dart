@@ -18440,6 +18440,31 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get planDetailRepeatWeekOverlap =>
       'Repetir esta semana faria o plano sobrepor-se a outro plano ativo. Mude ou termine primeiro esse plano.';
+
+  @override
+  String get missedPromptRepeatWeekBody =>
+      'Falhar uma sessão não lhe custa nada. Continue, ou, se esta semana lhe pareceu difícil, repita-a antes de avançar. Repetir uma semana não tem qualquer penalização.';
+
+  @override
+  String get walkRunGraduationTitle => 'Conseguiu: do sofá aos 5 km';
+
+  @override
+  String get walkRunGraduationBodyFiveK =>
+      'Correu 5 km sem parar. Começou com um minuto de corrida entre caminhadas.';
+
+  @override
+  String get walkRunGraduationBodyFinished =>
+      'Terminou o plano a correr do princípio ao fim, sem pausas para caminhar. Começou com um minuto de corrida entre caminhadas.';
+
+  @override
+  String get walkRunGraduationNextTitle => 'E agora?';
+
+  @override
+  String get walkRunGraduationTenK => 'Treinar para 10 km';
+
+  @override
+  String get walkRunGraduationKeepRunning =>
+      'Ou mantenha o hábito: três corridas fáceis por semana conservam o que construiu, sem precisar de plano.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -36865,4 +36890,29 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get planDetailRepeatWeekOverlap =>
       'Repetir esta semana faria o plano se sobrepor a outro plano ativo. Mova ou encerre esse plano primeiro.';
+
+  @override
+  String get missedPromptRepeatWeekBody =>
+      'Perder uma sessão não custa nada. Siga em frente ou, se esta semana pareceu pesada, repita-a antes de avançar. Repetir uma semana não tem nenhuma penalidade.';
+
+  @override
+  String get walkRunGraduationTitle => 'Você conseguiu: do sofá aos 5 km';
+
+  @override
+  String get walkRunGraduationBodyFiveK =>
+      'Você correu 5 km sem parar. Começou com um minuto de corrida entre caminhadas.';
+
+  @override
+  String get walkRunGraduationBodyFinished =>
+      'Você terminou o plano correndo do início ao fim, sem pausas para caminhar. Começou com um minuto de corrida entre caminhadas.';
+
+  @override
+  String get walkRunGraduationNextTitle => 'E agora?';
+
+  @override
+  String get walkRunGraduationTenK => 'Treinar para 10 km';
+
+  @override
+  String get walkRunGraduationKeepRunning =>
+      'Ou mantenha o hábito: três corridas leves por semana conservam o que você construiu, sem precisar de plano.';
 }

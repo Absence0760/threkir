@@ -14,7 +14,11 @@
  *  2. Missed-long-run advice — a simple make-up / skip recommendation
  *     for a long run the runner blew past, driven by training phase and
  *     proximity to a recovery week. The long run is the one session worth
- *     a make-up decision; quality sessions are cheaper to drop.
+ *     a make-up decision; quality sessions are cheaper to drop, and a
+ *     missed walk-run session is answered with "repeat the week".
+ *
+ * A week holding a walk-run session is never judged in distance
+ * (`weekJudgedByDistance`): it is judged by its sessions.
  *
  * The UI maps the returned reason codes to localized prose; tests assert
  * on the codes so wording can change without churning the suite.
@@ -71,6 +75,17 @@ export function weeklyDrift(
 	};
 }
 
+/// Whether a plan week's volume can be judged in distance. A week holding a
+/// walk-run session cannot: that session is prescribed in time (decisions
+/// § 91), and its `target_distance_m` is an estimate at a pace nobody chose,
+/// so a km drift against it tells a beginner they under- or over-ran a
+/// number the plan made up. Such a week is judged by its sessions instead:
+/// done, or missed and answered through the missed-workout prompt.
+export function weekJudgedByDistance(kinds: Iterable<string>): boolean {
+	for (const k of kinds) if (k === 'walk_run') return false;
+	return true;
+}
+
 /// One plan workout, reduced to what the to-date baseline needs.
 export interface DriftWorkout {
 	/// Local ISO date (YYYY-MM-DD) the workout is scheduled for.
@@ -111,11 +126,14 @@ export interface WeekToDateDriftInput {
 /// scaled onto that total. A week that declares a volume but places none
 /// of it on a workout cannot be placed in time at all, and yields the
 /// neutral unflagged result rather than a baseline guessed from elapsed
-/// days.
+/// days, as does a week `weekJudgedByDistance` refuses.
 export function weeklyDriftToDate(
 	input: WeekToDateDriftInput,
 	threshold = PLAN_DRIFT_THRESHOLD,
 ): WeeklyDrift {
+	if (!weekJudgedByDistance(input.workouts.map((w) => w.kind))) {
+		return weeklyDrift(0, 0, threshold);
+	}
 	let plannedElapsed = 0;
 	let plannedWeek = 0;
 	for (const w of input.workouts) {
@@ -143,7 +161,8 @@ export type MissedWorkoutReason =
 	| 'key_session' // base/build long run — worth making up
 	| 'taper' // late in the plan, adding load now hurts more than it helps
 	| 'recovery_soon' // a step-back week is imminent; let the body take the down week
-	| 'not_long_run'; // quality session, not worth a dedicated make-up
+	| 'not_long_run' // quality session, not worth a dedicated make-up
+	| 'repeat_week'; // walk-run session: carry on, or run the week again — no penalty
 
 export interface MissedWorkoutAdvice {
 	recommendation: MakeUpRecommendation;
@@ -165,7 +184,12 @@ export interface MissedWorkoutInput {
 /// to cram. For a long run: skip in the taper (freshness > one more long
 /// run) or when a recovery week is about to absorb the deficit anyway;
 /// otherwise make it up, because the long run is the plan's keystone.
+/// A walk-run session is never crammed in: a beginner who misses one carries
+/// on, or runs the week again before moving up, and neither costs anything.
 export function missedWorkoutAdvice(input: MissedWorkoutInput): MissedWorkoutAdvice {
+	if (input.kind === 'walk_run') {
+		return { recommendation: 'skip', reason: 'repeat_week' };
+	}
 	if (input.kind !== 'long') {
 		return { recommendation: 'skip', reason: 'not_long_run' };
 	}

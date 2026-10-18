@@ -72,6 +72,7 @@ void main() {
         walkS: 90,
         cooldownS: 300,
         totalS: 1710,
+        runM: null,
       ),
     );
   });
@@ -92,6 +93,42 @@ void main() {
     expect(p?.totalS, 2100);
   });
 
+  test('walkRunPattern: the graduation 5K ends on its distance, its walks still timed',
+      () {
+    const fiveK = WorkoutStructure(
+      warmup: {'duration_s': 300, 'pace': 'easy'},
+      repeats: {
+        'count': 1,
+        'distance_m': 5000,
+        'pace_sec_per_km': 420,
+        'recovery_pace': 'walk',
+      },
+      cooldown: {'duration_s': 300, 'pace': 'easy'},
+    );
+    expect(
+      walkRunPattern(fiveK),
+      const WalkRunPattern(
+        warmupS: 300,
+        count: 1,
+        runS: 0,
+        walkS: null,
+        cooldownS: 300,
+        totalS: 600,
+        runM: 5000,
+      ),
+    );
+    // A distance only ends a single run; repeated distance reps are not a
+    // walk-run pattern.
+    expect(
+      walkRunPattern(WorkoutStructure(
+        warmup: fiveK.warmup,
+        repeats: {...fiveK.repeats!, 'count': 2},
+        cooldown: fiveK.cooldown,
+      )),
+      isNull,
+    );
+  });
+
   test('walkRunPattern: matches the generator for every C25K week', () {
     final plan = generatePlan(GeneratePlanInput(
       goalEvent: GoalEvent.distance5k,
@@ -101,9 +138,47 @@ void main() {
     ));
     for (final week in plan.weeks) {
       for (final w in week.workouts.where((x) => x.kind == WorkoutKind.walkRun)) {
-        expect(walkRunPattern(w.structure)?.totalS, w.targetDurationSeconds);
+        final p = walkRunPattern(w.structure);
+        expect(p, isNotNull);
+        if (p!.runM != null) {
+          expect(p.runM, w.structure!.repeats!['distance_m']);
+        } else {
+          expect(p.totalS, w.targetDurationSeconds);
+        }
       }
     }
+  });
+
+  test(
+      'plannedWorkoutSize: a walk-run reads as minutes, its graduation 5K as 5 km, a road run as its target',
+      () {
+    StructureTotal? size(String kind, double? targetDistanceM,
+            int? targetDurationS, Object? structure) =>
+        plannedWorkoutSize(
+            kind: kind,
+            targetDistanceM: targetDistanceM,
+            targetDurationS: targetDurationS,
+            structure: structure);
+    expect(size('walk_run', 2050, 1710, _walkRunWeek1.toJson()),
+        const StructureTotalDuration(1710));
+    expect(
+      size('walk_run', 5857, 4260, {
+        'warmup': {'duration_s': 300, 'pace': 'easy'},
+        'repeats': {'count': 1, 'distance_m': 5000, 'recovery_pace': 'walk'},
+        'cooldown': {'duration_s': 300, 'pace': 'easy'},
+      }),
+      const StructureTotalDistance(5000),
+    );
+    // No readable pattern: the stored duration, never the estimated distance.
+    expect(size('walk_run', 2050, 1710, null),
+        const StructureTotalDuration(1710));
+    expect(size('walk_run', 2050, 1710, 'x'),
+        const StructureTotalDuration(1710));
+    expect(size('walk_run', 2050, null, [1]), isNull);
+    expect(size('easy', 8000, 2400, null), const StructureTotalDistance(8000));
+    expect(size('easy', null, 2400, null), isNull);
+    expect(size('easy', 0, null, null), isNull);
+    expect(size('rest', 3000, null, null), isNull);
   });
 
   test('walkRunPattern: null for a paced session and a distance-measured one',

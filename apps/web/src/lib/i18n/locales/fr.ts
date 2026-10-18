@@ -6610,4 +6610,11 @@ export const messages = {
 	"planDetail.repeatWeekLastWeek": "C’est la dernière semaine du plan : il n’y a rien à décaler.",
 	"planDetail.repeatWeekNotNow": "Seule cette semaine ou la précédente d’un plan actif peut être refaite.",
 	"planDetail.repeatWeekBlocked": "Refaire cette semaine ferait chevaucher le plan avec {plans}. Déplacez ou terminez d’abord ce plan.",
+	"missedPrompt.repeatWeekBody": "Manquer une séance ne vous coûte rien. Continuez, ou si cette semaine vous a semblé dure, refaites-la avant de passer à la suite. Répéter une semaine n'a rien d'un échec.",
+	"walkRunGraduation.title": "Vous l'avez fait : du canapé aux 5 km",
+	"walkRunGraduation.bodyFiveK": "Vous avez couru 5 km sans vous arrêter. Vous avez commencé par une minute de course entre deux marches.",
+	"walkRunGraduation.bodyFinished": "Vous avez terminé le plan en courant tout du long, sans pause marchée. Vous avez commencé par une minute de course entre deux marches.",
+	"walkRunGraduation.nextTitle": "Et maintenant ?",
+	"walkRunGraduation.tenK": "Préparer un 10 km",
+	"walkRunGraduation.keepRunning": "Ou gardez l'habitude : trois sorties faciles par semaine suffisent à conserver vos acquis, sans plan.",
 } satisfies Messages;

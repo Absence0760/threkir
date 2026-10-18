@@ -184,3 +184,16 @@ test('an older unanswered missed long run is answered with the make-up it feeds'
 	assert.equal(p?.makeUp?.toMetres, 20700);
 	assert.deepEqual(p?.makeUpAnswers, ['old', 'new']);
 });
+
+test('a missed walk-run session is answered with repeating the week, never a make-up', () => {
+	const weeks = [
+		week(0, 'build', 0, [wo('wr-9', '2026-03-09', 'walk_run', 2050), wo('wr-11', '2026-03-11', 'walk_run', 2050)]),
+		week(1, 'graduation', 0, [wo('wr-16', '2026-03-16', 'walk_run', 2050)])
+	];
+	const p = missedWorkoutPrompt({ weeks, today: TODAY });
+	assert.equal(p?.workoutId, 'wr-9');
+	assert.equal(p?.advice.recommendation, 'skip');
+	assert.equal(p?.advice.reason, 'repeat_week');
+	assert.equal(p?.makeUp, null);
+	assert.deepEqual(p?.makeUpAnswers, []);
+});

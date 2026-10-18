@@ -5176,5 +5176,12 @@
   "planDetailRepeatWeekLastWeek": "Das ist die letzte Woche des Plans, es gibt nichts zu verschieben.",
   "planDetailRepeatWeekNotNow": "Nur diese oder die letzte Woche eines aktiven Plans kann wiederholt werden.",
   "rateLimitRepeatWeek": "Du wiederholst Planwochen zu schnell – bitte warte {wait} und versuche es erneut.",
-  "planDetailRepeatWeekOverlap": "Mit der wiederholten Woche würde der Plan in einen anderen aktiven Plan hineinlaufen. Verschiebe oder beende jenen Plan zuerst."
+  "planDetailRepeatWeekOverlap": "Mit der wiederholten Woche würde der Plan in einen anderen aktiven Plan hineinlaufen. Verschiebe oder beende jenen Plan zuerst.",
+  "missedPromptRepeatWeekBody": "Eine verpasste Einheit kostet dich nichts. Mach einfach weiter, oder wiederhole die Woche, wenn sie dir schwergefallen ist, bevor du die nächste Stufe angehst. Eine Woche zu wiederholen ist kein Rückschritt.",
+  "walkRunGraduationTitle": "Geschafft: vom Sofa zu 5 km",
+  "walkRunGraduationBodyFiveK": "Du bist 5 km am Stück gelaufen. Angefangen hast du mit einer Minute Laufen zwischen Gehpausen.",
+  "walkRunGraduationBodyFinished": "Du hast den Plan durchgehend laufend beendet, ganz ohne Gehpausen. Angefangen hast du mit einer Minute Laufen zwischen Gehpausen.",
+  "walkRunGraduationNextTitle": "Wie geht es weiter?",
+  "walkRunGraduationTenK": "Für 10 km trainieren",
+  "walkRunGraduationKeepRunning": "Oder bleib einfach dran: Drei lockere Läufe pro Woche halten, was du dir aufgebaut hast, ganz ohne Plan."
 }

@@ -5176,5 +5176,12 @@
   "planDetailRepeatWeekLastWeek": "Esta é a última semana do plano, então não há nada para adiar.",
   "planDetailRepeatWeekNotNow": "Só é possível repetir esta semana ou a anterior de um plano ativo.",
   "rateLimitRepeatWeek": "Você está repetindo semanas do plano rápido demais — espere {wait} e tente de novo.",
-  "planDetailRepeatWeekOverlap": "Repetir esta semana faria o plano se sobrepor a outro plano ativo. Mova ou encerre esse plano primeiro."
+  "planDetailRepeatWeekOverlap": "Repetir esta semana faria o plano se sobrepor a outro plano ativo. Mova ou encerre esse plano primeiro.",
+  "missedPromptRepeatWeekBody": "Perder uma sessão não custa nada. Siga em frente ou, se esta semana pareceu pesada, repita-a antes de avançar. Repetir uma semana não tem nenhuma penalidade.",
+  "walkRunGraduationTitle": "Você conseguiu: do sofá aos 5 km",
+  "walkRunGraduationBodyFiveK": "Você correu 5 km sem parar. Começou com um minuto de corrida entre caminhadas.",
+  "walkRunGraduationBodyFinished": "Você terminou o plano correndo do início ao fim, sem pausas para caminhar. Começou com um minuto de corrida entre caminhadas.",
+  "walkRunGraduationNextTitle": "E agora?",
+  "walkRunGraduationTenK": "Treinar para 10 km",
+  "walkRunGraduationKeepRunning": "Ou mantenha o hábito: três corridas leves por semana conservam o que você construiu, sem precisar de plano."
 }

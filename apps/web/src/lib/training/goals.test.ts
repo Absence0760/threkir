@@ -357,6 +357,18 @@ test('markedDoneTally — counts hand-marked sessions from the period start thro
 	assert.deepEqual(tally, { distanceM: 11000, count: 3 });
 });
 
+test('markedDoneTally — a walk-run session marked done counts, but adds no distance', () => {
+	const tally = markedDoneTally(
+		[
+			done('2026-04-06', { kind: 'walk_run', target_distance_m: 2050 }),
+			done('2026-04-07', { kind: 'easy', target_distance_m: 6000 }),
+		],
+		periodStart('week', NOW),
+		NOW,
+	);
+	assert.deepEqual(tally, { distanceM: 6000, count: 2 });
+});
+
 test('evaluateGoal — sessions marked done without a run add to distance and run count, not time or pace', () => {
 	const goal: RunGoal = {
 		id: 'g1',

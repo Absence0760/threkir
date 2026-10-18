@@ -17,6 +17,7 @@ import '../plan_race_date.dart';
 import '../plan_repeat_week.dart';
 import '../plan_resume.dart';
 import '../plan_restart.dart';
+import '../planned_size_label.dart';
 import '../rate_limit_message.dart' show rateLimitErrorMessage;
 import '../cycle_plan.dart' show CyclePlanConfig, CyclePlanMode;
 import '../cycle_plan_config.dart';
@@ -54,6 +55,8 @@ import 'profile_screen.dart';
 import '../backend_timeout.dart';
 import '../disclosure_state.dart';
 import '../widgets/finish_plan_card.dart';
+import '../widgets/walk_run_graduation_card.dart';
+import 'plan_new_screen.dart';
 import '../widgets/plan_break_card.dart';
 import '../widgets/missed_workout_prompt_card.dart';
 import '../plan_missed_prompt.dart';
@@ -455,7 +458,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   double? _overrunOf(PlanWorkoutRow w) {
     final runId = w.completedRunId;
     if (runId == null) return null;
-    return workoutOverrunMetres(w.targetDistanceM, _linkedRunDistances[runId]);
+    return workoutOverrunMetres(
+        w.targetDistanceM, _linkedRunDistances[runId], w.kind);
   }
 
   /// Best-effort fetch of the viewer's recent runs so the adherence banner
@@ -2116,11 +2120,28 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       PlanWorkoutRow? todayWorkout) {
     final allWorkouts = _byWeek.values.expand((x) => x).toList();
     final races = _planRacesFor(p);
+    final graduation = _isOwner(p) && !p.isTemplate
+        ? WalkRunGraduationCard.fromRows(allWorkouts)
+        : null;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
         _heroCard(theme, l10n, p, pct, done, total,
             heroRace: _heroRace(p, races)),
+        if (graduation != null) ...[
+          const SizedBox(height: 12),
+          WalkRunGraduationCard(
+            graduation: graduation,
+            onTrainForTenK: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => PlanNewScreen(
+                  training: widget.training,
+                  initialGoal: GoalEvent.distance10k,
+                ),
+              ),
+            ),
+          ),
+        ],
         if (_isOwner(p) &&
             !p.isTemplate &&
             FinishPlanCard.shows(
@@ -2298,8 +2319,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     if (next != null && !restToday) {
       final parts = [
         formatDowDateShort(next.scheduledDate, tag),
-        if (next.targetDistanceM != null) fmtKm(next.targetDistanceM),
-        if (next.targetPaceSecPerKm != null)
+        ?plannedSizeLabel(l10n, next),
+        if (next.targetPaceSecPerKm != null && next.kind != 'walk_run')
           l10n.todaysWorkoutAtPace(fmtPace(next.targetPaceSecPerKm)),
       ];
       return card(
@@ -3094,10 +3115,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                       fontWeight: FontWeight.w700,
                     )),
               ),
-              Text(fmtKm(w.targetVolumeM, 0),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  )),
+              if (weekJudgedByDistance(workouts.map((x) => x.kind)))
+                Text(fmtKm(w.targetVolumeM, 0),
+                    key: ValueKey('planDetailWeekVolume-${w.weekIndex}'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    )),
               if (_isOwner(p) && !p.isTemplate)
                 PopupMenuButton<_WeekMenu>(
                   key: ValueKey('planDetailWeekMenu-${w.weekIndex}'),
@@ -3164,6 +3187,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     final overrunM =
         status == PlanWorkoutStatus.done ? _overrunOf(wo) : null;
     final overrun = overrunM == null ? null : fmtOverrun(overrunM);
+    final size = plannedSizeLabel(l10n, wo);
     Widget row = Container(
       margin: const EdgeInsets.only(top: 4),
       padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
@@ -3210,8 +3234,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
               ),
             ),
           ),
-          if (wo.targetDistanceM != null && !isRest) ...[
-            Text(fmtKm(wo.targetDistanceM, 1),
+          if (size != null) ...[
+            Text(size,
+                key: ValueKey('planDetailWorkoutSize-${wo.id}'),
                 style: theme.textTheme.bodySmall),
             const SizedBox(width: 6),
           ],
@@ -3241,8 +3266,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       today,
       day: formatDowDateShort(wo.scheduledDate, tag),
       kind: workoutKindLabel(l10n, kind),
-      distance:
-          wo.targetDistanceM != null && !isRest ? fmtKm(wo.targetDistanceM, 1) : null,
+      distance: size,
     );
     final semanticsLabel = overrun == null
         ? label

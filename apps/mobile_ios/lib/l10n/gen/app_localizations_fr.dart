@@ -18479,4 +18479,29 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get planDetailRepeatWeekOverlap =>
       'Refaire cette semaine ferait empiéter le plan sur un autre plan actif. Déplacez ou terminez d’abord ce plan.';
+
+  @override
+  String get missedPromptRepeatWeekBody =>
+      'Manquer une séance ne vous coûte rien. Continuez, ou si cette semaine vous a semblé dure, refaites-la avant de passer à la suite. Répéter une semaine n\'a rien d\'un échec.';
+
+  @override
+  String get walkRunGraduationTitle => 'Vous l\'avez fait : du canapé aux 5 km';
+
+  @override
+  String get walkRunGraduationBodyFiveK =>
+      'Vous avez couru 5 km sans vous arrêter. Vous avez commencé par une minute de course entre deux marches.';
+
+  @override
+  String get walkRunGraduationBodyFinished =>
+      'Vous avez terminé le plan en courant tout du long, sans pause marchée. Vous avez commencé par une minute de course entre deux marches.';
+
+  @override
+  String get walkRunGraduationNextTitle => 'Et maintenant ?';
+
+  @override
+  String get walkRunGraduationTenK => 'Préparer un 10 km';
+
+  @override
+  String get walkRunGraduationKeepRunning =>
+      'Ou gardez l\'habitude : trois sorties faciles par semaine suffisent à conserver vos acquis, sans plan.';
 }

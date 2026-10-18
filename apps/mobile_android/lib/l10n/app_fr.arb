@@ -5176,5 +5176,12 @@
   "planDetailRepeatWeekLastWeek": "C’est la dernière semaine du plan : il n’y a rien à décaler.",
   "planDetailRepeatWeekNotNow": "Seule cette semaine ou la précédente d’un plan actif peut être refaite.",
   "rateLimitRepeatWeek": "Vous répétez des semaines de plan trop rapidement — veuillez patienter {wait} et réessayer.",
-  "planDetailRepeatWeekOverlap": "Refaire cette semaine ferait empiéter le plan sur un autre plan actif. Déplacez ou terminez d’abord ce plan."
+  "planDetailRepeatWeekOverlap": "Refaire cette semaine ferait empiéter le plan sur un autre plan actif. Déplacez ou terminez d’abord ce plan.",
+  "missedPromptRepeatWeekBody": "Manquer une séance ne vous coûte rien. Continuez, ou si cette semaine vous a semblé dure, refaites-la avant de passer à la suite. Répéter une semaine n'a rien d'un échec.",
+  "walkRunGraduationTitle": "Vous l'avez fait : du canapé aux 5 km",
+  "walkRunGraduationBodyFiveK": "Vous avez couru 5 km sans vous arrêter. Vous avez commencé par une minute de course entre deux marches.",
+  "walkRunGraduationBodyFinished": "Vous avez terminé le plan en courant tout du long, sans pause marchée. Vous avez commencé par une minute de course entre deux marches.",
+  "walkRunGraduationNextTitle": "Et maintenant ?",
+  "walkRunGraduationTenK": "Préparer un 10 km",
+  "walkRunGraduationKeepRunning": "Ou gardez l'habitude : trois sorties faciles par semaine suffisent à conserver vos acquis, sans plan."
 }

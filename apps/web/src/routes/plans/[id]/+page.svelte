@@ -64,6 +64,7 @@
 	import { loadBreakContext } from '#lib/core/plan_break_context.ts';
 	import { breakState, type BreakContext } from '#lib/training/plan_break_state.ts';
 	import MissedWorkoutPrompt, { missedPromptFromRows } from '#lib/components/MissedWorkoutPrompt.svelte';
+	import WalkRunGraduationCard, { graduationFromRows } from '#lib/components/WalkRunGraduationCard.svelte';
 	import type { MissedPrompt } from '#lib/training/plan_missed_prompt.ts';
 	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
@@ -95,7 +96,9 @@
 		parseISO,
 		todayISO
 	} from '#lib/training/training.ts';
-	import { weeklyDriftToDate, missedWorkoutAdvice } from '#lib/training/plan_adherence.ts';
+	import { weeklyDriftToDate, missedWorkoutAdvice, weekJudgedByDistance } from '#lib/training/plan_adherence.ts';
+	import { plannedWorkoutSize } from '#lib/training/workout_summary.ts';
+	import { formatPlannedSize } from '#lib/training/workout_summary_format.ts';
 	import { resumeShift } from '#lib/training/plan_resume.ts';
 	import {
 		alignRestartStartIso,
@@ -1226,7 +1229,23 @@
 
 	function overrunOf(wo: PlanWorkout): number | null {
 		if (!wo.completed_run_id) return null;
-		return workoutOverrunMetres(wo.target_distance_m, linkedRunDistances.get(wo.completed_run_id) ?? null);
+		return workoutOverrunMetres(
+			wo.target_distance_m,
+			linkedRunDistances.get(wo.completed_run_id) ?? null,
+			wo.kind
+		);
+	}
+
+	/// A session's size as the plan states it (`plannedWorkoutSize`): a
+	/// walk-run session in minutes, never its estimated distance.
+	function sizeLabel(wo: PlanWorkout, digits?: number): string | null {
+		const size = plannedWorkoutSize({
+			kind: wo.kind,
+			targetDistanceM: wo.target_distance_m,
+			targetDurationS: wo.target_duration_seconds,
+			structure: wo.structure
+		});
+		return size == null ? null : formatPlannedSize(m, size, (metres) => fmtKm(metres, digits));
 	}
 
 	onMount(async () => {
@@ -1356,6 +1375,11 @@
 	let restartBusy = $state(false);
 	let restartStart = $state('');
 	let restartWalkRun = $derived(isWalkRunPlan(workouts));
+	/// The couch-to-5K completion moment, once the plan's last walk-run
+	/// session is done. Owner-only, like the rest of the plan's coaching.
+	let walkRunGraduation = $derived(
+		plan && isOwner && !plan.is_template ? graduationFromRows(workouts) : null
+	);
 	let restartRaceAhead = $derived(upcomingRaceIso(workouts, today));
 	let restartEnd = $derived(
 		plan && restartStart ? restartedDateIso(plan.end_date, plan.start_date, restartStart) : null
@@ -1660,8 +1684,7 @@
 			{
 				day: `${dayOfWeek(wo.scheduled_date)} ${formatDateShort(wo.scheduled_date)}`,
 				kind: workoutKindLabel(wo.kind),
-				distance:
-					wo.target_distance_m != null && wo.kind !== 'rest' ? fmtKm(wo.target_distance_m) : null
+				distance: sizeLabel(wo)
 			},
 			m
 		);
@@ -1867,6 +1890,10 @@
 			</div>
 		</header>
 
+		{#if walkRunGraduation}
+			<WalkRunGraduationCard graduation={walkRunGraduation} />
+		{/if}
+
 		{#if isOwner && !plan.is_template && isPlanFinished(plan, today)}
 			<div class="finish-plan-slot"><FinishPlanPrompt {plan} onfinished={load} /></div>
 		{/if}
@@ -1992,10 +2019,10 @@
 							{workoutKindLabel(todayWorkout.kind)}
 						</span>
 						<div class="today-meta">
-							{#if todayWorkout.target_distance_m != null}
-								<span>{fmtKm(todayWorkout.target_distance_m)}</span>
+							{#if sizeLabel(todayWorkout) != null}
+								<span>{sizeLabel(todayWorkout)}</span>
 							{/if}
-							{#if todayWorkout.target_pace_sec_per_km}
+							{#if todayWorkout.target_pace_sec_per_km && todayWorkout.kind !== 'walk_run'}
 								<span>{m('workoutDetail.atPace', { pace: fmtPace(todayWorkout.target_pace_sec_per_km) })}</span>
 							{/if}
 							{#if isWorkoutCompleted(todayWorkout)}
@@ -2035,10 +2062,10 @@
 						</span>
 						<div class="today-meta">
 							<span>{dayOfWeek(nextWorkout.scheduled_date)} · {formatDateShort(nextWorkout.scheduled_date)}</span>
-							{#if nextWorkout.target_distance_m != null}
-								<span>{fmtKm(nextWorkout.target_distance_m)}</span>
+							{#if sizeLabel(nextWorkout) != null}
+								<span>{sizeLabel(nextWorkout)}</span>
 							{/if}
-							{#if nextWorkout.target_pace_sec_per_km}
+							{#if nextWorkout.target_pace_sec_per_km && nextWorkout.kind !== 'walk_run'}
 								<span>{m('workoutDetail.atPace', { pace: fmtPace(nextWorkout.target_pace_sec_per_km) })}</span>
 							{/if}
 						</div>
@@ -2203,7 +2230,7 @@
 						</div>
 					{/if}
 					<div class="plan-progress-stats">
-						{#if distanceBanked.plannedMetres > 0}
+						{#if distanceBanked.plannedMetres > 0 && !restartWalkRun}
 							<div class="stat-chip">
 								<span class="material-symbols">route</span>
 								<span class="stat-label"><MetricLabel metric="distanceBanked" /></span>
@@ -2297,7 +2324,9 @@
 							<span class="week-progress">
 								{weekDone}<em> / {weekActive}</em> {m('planDetail.done')}
 							</span>
-							<span class="week-volume">{fmtKm(w.target_volume_m, 0)}</span>
+							{#if weekJudgedByDistance(weekWorkouts.map((x) => x.kind))}
+								<span class="week-volume" data-testid="plan-week-volume">{fmtKm(w.target_volume_m, 0)}</span>
+							{/if}
 							{#if isOwner && !plan.is_template && w.phase !== 'race'}
 								<button
 									type="button"
@@ -2366,8 +2395,8 @@
 									<span class="kind">
 										{workoutKindLabel(wo.kind)}
 									</span>
-									{#if wo.target_distance_m != null && wo.kind !== 'rest'}
-										<span class="dist">{fmtKm(wo.target_distance_m, 1)}</span>
+									{#if sizeLabel(wo, 1) != null}
+										<span class="dist" data-testid="plan-day-size">{sizeLabel(wo, 1)}</span>
 									{/if}
 									{#if status === 'done'}
 										{@const over = overrunOf(wo)}

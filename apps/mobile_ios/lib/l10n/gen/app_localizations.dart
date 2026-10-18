@@ -29962,6 +29962,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Repeating this week would run the plan into another active plan. Move or end that plan first.'**
   String get planDetailRepeatWeekOverlap;
+
+  /// Missed-workout prompt body for a missed walk-run (couch-to-5K) session: no make-up, carry on or repeat the week, with no penalty
+  ///
+  /// In en, this message translates to:
+  /// **'Missing a session costs you nothing. Carry on, or if this week felt hard, run it again before moving up. There\'s no penalty for repeating a week.'**
+  String get missedPromptRepeatWeekBody;
+
+  /// Heading of the card shown on a couch-to-5K plan once its last session, the 5K, is done
+  ///
+  /// In en, this message translates to:
+  /// **'You did it: couch to 5K'**
+  String get walkRunGraduationTitle;
+
+  /// Graduation card body when the last session was the continuous 5K
+  ///
+  /// In en, this message translates to:
+  /// **'You ran 5K without stopping. You started with one-minute runs between walks.'**
+  String get walkRunGraduationBodyFiveK;
+
+  /// Graduation card body for an older walk-run plan whose last session was a timed continuous run rather than a 5K
+  ///
+  /// In en, this message translates to:
+  /// **'You finished the plan running the whole way, with no walk breaks. You started with one-minute runs between walks.'**
+  String get walkRunGraduationBodyFinished;
+
+  /// Graduation card sub-heading above the next-step choices
+  ///
+  /// In en, this message translates to:
+  /// **'What next?'**
+  String get walkRunGraduationNextTitle;
+
+  /// Graduation card button that starts a 10K training plan
+  ///
+  /// In en, this message translates to:
+  /// **'Train for a 10K'**
+  String get walkRunGraduationTenK;
+
+  /// Graduation card line offering the alternative of keeping the running habit without a plan
+  ///
+  /// In en, this message translates to:
+  /// **'Or keep the habit: three easy runs a week hold on to what you\'ve built, no plan needed.'**
+  String get walkRunGraduationKeepRunning;
 }
 
 class _AppLocalizationsDelegate

@@ -14,12 +14,16 @@ String formatSpokenDuration(AppLocalizations l10n, SpokenDuration d) =>
         l10n.workoutSummaryMinSec(minutes, seconds),
     };
 
-/// "5 min warm-up, 8 × (1 min run / 90 s walk), 5 min cool-down".
-String formatWalkRunPattern(AppLocalizations l10n, WalkRunPattern p) {
+/// "5 min warm-up, 8 × (1 min run / 90 s walk), 5 min cool-down", or
+/// "5 min warm-up, 5 km run, 5 min cool-down" for the graduation 5K.
+String formatWalkRunPattern(AppLocalizations l10n, WalkRunPattern p,
+    String Function(num metres) fmtDistance) {
   String say(num sec) => formatSpokenDuration(l10n, spokenDuration(sec));
-  final main = p.walkS != null
-      ? l10n.workoutSummaryIntervals(p.count, say(p.runS), say(p.walkS!))
-      : l10n.workoutSummaryContinuous(say(p.count * p.runS));
+  final main = p.runM != null
+      ? l10n.workoutSummaryContinuous(fmtDistance(p.runM!))
+      : p.walkS != null
+          ? l10n.workoutSummaryIntervals(p.count, say(p.runS), say(p.walkS!))
+          : l10n.workoutSummaryContinuous(say(p.count * p.runS));
   final warmup =
       p.warmupS != null ? l10n.workoutSummaryWarmup(say(p.warmupS!)) : null;
   final cooldown = p.cooldownS != null
@@ -33,9 +37,23 @@ String formatWalkRunPattern(AppLocalizations l10n, WalkRunPattern p) {
   return main;
 }
 
-/// "about 29 min".
-String formatWalkRunTotal(AppLocalizations l10n, WalkRunPattern p) =>
-    l10n.workoutSummaryAbout(l10n.workoutSummaryMin(aboutMinutes(p.totalS)));
+/// A plan card's size for a session ([plannedWorkoutSize]): "29 min" for a
+/// timed one, the distance otherwise.
+String formatPlannedSize(AppLocalizations l10n, StructureTotal size,
+        String Function(num metres) fmtDistance) =>
+    switch (size) {
+      StructureTotalDistance(:final metres) => fmtDistance(metres),
+      StructureTotalDuration(:final seconds) =>
+        l10n.workoutSummaryMin(aboutMinutes(seconds)),
+    };
+
+/// "about 29 min", or "5 km run" for a session that ends on a distance.
+String formatWalkRunTotal(AppLocalizations l10n, WalkRunPattern p,
+    String Function(num metres) fmtDistance) {
+  if (p.runM != null) return l10n.workoutSummaryContinuous(fmtDistance(p.runM!));
+  return l10n.workoutSummaryAbout(
+      l10n.workoutSummaryMin(aboutMinutes(p.totalS)));
+}
 
 String _zoneName(AppLocalizations l10n, PaceZoneName n) => switch (n) {
       PaceZoneName.easy => l10n.planNewPaceEasy,

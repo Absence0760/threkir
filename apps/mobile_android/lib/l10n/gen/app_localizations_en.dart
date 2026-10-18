@@ -18249,4 +18249,29 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get planDetailRepeatWeekOverlap =>
       'Repeating this week would run the plan into another active plan. Move or end that plan first.';
+
+  @override
+  String get missedPromptRepeatWeekBody =>
+      'Missing a session costs you nothing. Carry on, or if this week felt hard, run it again before moving up. There\'s no penalty for repeating a week.';
+
+  @override
+  String get walkRunGraduationTitle => 'You did it: couch to 5K';
+
+  @override
+  String get walkRunGraduationBodyFiveK =>
+      'You ran 5K without stopping. You started with one-minute runs between walks.';
+
+  @override
+  String get walkRunGraduationBodyFinished =>
+      'You finished the plan running the whole way, with no walk breaks. You started with one-minute runs between walks.';
+
+  @override
+  String get walkRunGraduationNextTitle => 'What next?';
+
+  @override
+  String get walkRunGraduationTenK => 'Train for a 10K';
+
+  @override
+  String get walkRunGraduationKeepRunning =>
+      'Or keep the habit: three easy runs a week hold on to what you\'ve built, no plan needed.';
 }

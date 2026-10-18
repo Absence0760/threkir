@@ -24148,5 +24148,33 @@
   "planDetailRepeatWeekOverlap": "Repeating this week would run the plan into another active plan. Move or end that plan first.",
   "@planDetailRepeatWeekOverlap": {
     "description": "Refusal: repeating the week would end the plan inside another active plan"
+  },
+  "missedPromptRepeatWeekBody": "Missing a session costs you nothing. Carry on, or if this week felt hard, run it again before moving up. There's no penalty for repeating a week.",
+  "@missedPromptRepeatWeekBody": {
+    "description": "Missed-workout prompt body for a missed walk-run (couch-to-5K) session: no make-up, carry on or repeat the week, with no penalty"
+  },
+  "walkRunGraduationTitle": "You did it: couch to 5K",
+  "@walkRunGraduationTitle": {
+    "description": "Heading of the card shown on a couch-to-5K plan once its last session, the 5K, is done"
+  },
+  "walkRunGraduationBodyFiveK": "You ran 5K without stopping. You started with one-minute runs between walks.",
+  "@walkRunGraduationBodyFiveK": {
+    "description": "Graduation card body when the last session was the continuous 5K"
+  },
+  "walkRunGraduationBodyFinished": "You finished the plan running the whole way, with no walk breaks. You started with one-minute runs between walks.",
+  "@walkRunGraduationBodyFinished": {
+    "description": "Graduation card body for an older walk-run plan whose last session was a timed continuous run rather than a 5K"
+  },
+  "walkRunGraduationNextTitle": "What next?",
+  "@walkRunGraduationNextTitle": {
+    "description": "Graduation card sub-heading above the next-step choices"
+  },
+  "walkRunGraduationTenK": "Train for a 10K",
+  "@walkRunGraduationTenK": {
+    "description": "Graduation card button that starts a 10K training plan"
+  },
+  "walkRunGraduationKeepRunning": "Or keep the habit: three easy runs a week hold on to what you've built, no plan needed.",
+  "@walkRunGraduationKeepRunning": {
+    "description": "Graduation card line offering the alternative of keeping the running habit without a plan"
   }
 }

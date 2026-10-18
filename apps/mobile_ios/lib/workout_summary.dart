@@ -135,6 +135,11 @@ class WalkRunPattern {
   final num? cooldownS;
   final num totalS;
 
+  /// Set when the session's one run ends on a distance rather than a time
+  /// (the graduation 5K). [runS] is then 0, and [totalS] counts only the
+  /// timed walking either side, since the run lasts as long as it takes.
+  final num? runM;
+
   const WalkRunPattern({
     required this.warmupS,
     required this.count,
@@ -142,6 +147,7 @@ class WalkRunPattern {
     required this.walkS,
     required this.cooldownS,
     required this.totalS,
+    this.runM,
   });
 
   @override
@@ -152,11 +158,12 @@ class WalkRunPattern {
       other.runS == runS &&
       other.walkS == walkS &&
       other.cooldownS == cooldownS &&
-      other.totalS == totalS;
+      other.totalS == totalS &&
+      other.runM == runM;
 
   @override
   int get hashCode =>
-      Object.hash(warmupS, count, runS, walkS, cooldownS, totalS);
+      Object.hash(warmupS, count, runS, walkS, cooldownS, totalS, runM);
 }
 
 // Seconds when [block] is measured by time only; [_mixed] when it names a
@@ -171,12 +178,14 @@ Object? _timeOnly(Map<String, dynamic>? block) {
 
 /// The timed pattern of a walk-run session (a repeats block whose recovery
 /// is a walk, the same test expandWorkoutSteps uses), or null for any other
-/// session and for one that measures a step by distance.
+/// session and for one that measures a step by distance. The one exception
+/// is a single run ended by distance (the graduation 5K), read as `runM`.
 WalkRunPattern? walkRunPattern(WorkoutStructure? s) {
   final r = s?.repeats;
   if (s == null || r == null || r['recovery_pace'] != 'walk') return null;
-  final runS = _timeOnly(r);
   final count = _repCount(r);
+  final runM = count == 1 ? _positive(r['distance_m']) : null;
+  final runS = runM != null ? 0 : _timeOnly(r);
   if (runS is! num || count == 0) return null;
   if (_positive(r['recovery_distance_m']) != null) return null;
   final warmupS = _timeOnly(s.warmup);
@@ -200,6 +209,49 @@ WalkRunPattern? walkRunPattern(WorkoutStructure? s) {
         count * runS +
         (walkS != null ? (count - 1) * walkS : 0) +
         (c ?? 0),
+    runM: runM,
+  );
+}
+
+/// What a plan card states a session's size as. A walk-run session is
+/// prescribed in time (decisions § 91) and its `target_distance_m` is an
+/// estimate at a pace nobody chose, so it reads as its minutes; the
+/// graduation 5K reads as the distance it ends on. Any other session reads
+/// as its target distance. Null for a rest day or nothing to state.
+/// [structure] is the stored `plan_workouts.structure`, read defensively.
+StructureTotal? plannedWorkoutSize({
+  required String kind,
+  required num? targetDistanceM,
+  required num? targetDurationS,
+  required Object? structure,
+}) {
+  if (kind == 'rest') return null;
+  if (kind != 'walk_run') {
+    final metres = _positive(targetDistanceM);
+    return metres == null ? null : StructureTotalDistance(metres);
+  }
+  final p = walkRunPattern(_structureOf(structure));
+  if (p?.runM != null) return StructureTotalDistance(p!.runM!);
+  final seconds = p != null ? _positive(p.totalS) : _positive(targetDurationS);
+  return seconds == null ? null : StructureTotalDuration(seconds);
+}
+
+// A block that is present but not a map reads as an empty block, the way
+// the TypeScript half reads one: it names nothing, yet is still there.
+Map<String, dynamic>? _block(Object? v) => v == null
+    ? null
+    : v is Map
+        ? v.map((k, x) => MapEntry('$k', x))
+        : <String, dynamic>{};
+
+WorkoutStructure? _structureOf(Object? raw) {
+  if (raw is WorkoutStructure) return raw;
+  if (raw is! Map) return null;
+  return WorkoutStructure(
+    warmup: _block(raw['warmup']),
+    repeats: _block(raw['repeats']),
+    steady: _block(raw['steady']),
+    cooldown: _block(raw['cooldown']),
   );
 }
 

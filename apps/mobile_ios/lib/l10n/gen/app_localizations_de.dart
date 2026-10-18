@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -18067,4 +18068,11 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get planDetailRaceDateOverlap =>
       'Das neue Wettkampfdatum reicht in einen anderen aktiven Plan hinein. Verschiebe oder beende jenen Plan zuerst.';
+
+  @override
+  String get phoneSurfaceVibrationCues => 'Vibrationssignale';
+
+  @override
+  String get phoneSurfaceVibrationCuesSubtitle =>
+      'Vibriert bei jedem Wechsel des Trainingsabschnitts, am Ende des Trainings und bei Pace-Warnungen, auch bei ausgeschaltetem Bildschirm.';
 }

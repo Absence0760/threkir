@@ -5085,5 +5085,7 @@
   "planDetailRestartBeforeTodayError": "Essa data de início é anterior a hoje no fuso horário da sua conta. Escolha uma data posterior.",
   "planDetailRestartConfirm": "Recomeçar o plano",
   "planDetailRestartDone": "Plano recomeçado. Esta é a sua nova cópia.",
-  "dashboardPlanPausedBody": "Pausado. Retome para continuar; as semanas que você perdeu passam para frente."
+  "dashboardPlanPausedBody": "Pausado. Retome para continuar; as semanas que você perdeu passam para frente.",
+  "phoneSurfaceVibrationCues": "Alertas por vibração",
+  "phoneSurfaceVibrationCuesSubtitle": "Vibra quando a etapa do treino muda, quando o treino termina e com os alertas de ritmo, mesmo com a tela apagada."
 }

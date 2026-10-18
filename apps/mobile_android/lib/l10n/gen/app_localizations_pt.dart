@@ -18057,6 +18057,13 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get planDetailRaceDateOverlap =>
       'A nova data da prova sobrepõe-se a outro plano ativo. Mude ou termine primeiro esse plano.';
+
+  @override
+  String get phoneSurfaceVibrationCues => 'Alertas por vibração';
+
+  @override
+  String get phoneSurfaceVibrationCuesSubtitle =>
+      'Vibra quando muda a etapa do treino, quando o treino termina e com os alertas de ritmo, mesmo com o ecrã desligado.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -36099,4 +36106,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get planDetailRaceDateOverlap =>
       'A nova data da prova se sobrepõe a outro plano ativo. Mova ou encerre esse plano primeiro.';
+
+  @override
+  String get phoneSurfaceVibrationCues => 'Alertas por vibração';
+
+  @override
+  String get phoneSurfaceVibrationCuesSubtitle =>
+      'Vibra quando a etapa do treino muda, quando o treino termina e com os alertas de ritmo, mesmo com a tela apagada.';
 }

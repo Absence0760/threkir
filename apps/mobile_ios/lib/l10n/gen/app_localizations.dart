@@ -29406,6 +29406,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The new race date runs into another active plan. Move or end that plan first.'**
   String get planDetailRaceDateOverlap;
+
+  /// Settings toggle title: vibrate the phone on workout step changes, workout completion and pace alerts during a run
+  ///
+  /// In en, this message translates to:
+  /// **'Vibration cues'**
+  String get phoneSurfaceVibrationCues;
+
+  /// Subtitle of the vibration-cues toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Buzz when a workout step changes, when a workout ends and with pace alerts, even with the screen off.'**
+  String get phoneSurfaceVibrationCuesSubtitle;
 }
 
 class _AppLocalizationsDelegate

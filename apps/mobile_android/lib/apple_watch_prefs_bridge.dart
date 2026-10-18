@@ -9,8 +9,12 @@ import 'run_intensity.dart' show parseHrZones;
 /// the distance unit its read-outs and spoken splits use (`preferred_unit`),
 /// whether those spoken cues are audible at all (`audio_cues`), the activity
 /// its pre-run picker opens on (`default_activity_type`), the visibility a
-/// run recorded on it is saved with (`privacy_default`), and the heart-rate
-/// zone ladder its live `Z3` badge reads (`hr_zone_cutoffs`).
+/// run recorded on it is saved with (`privacy_default`), the heart-rate
+/// zone ladder its live `Z3` badge reads (`hr_zone_cutoffs`), and the two
+/// switches its spoken workout-step cues answer to on top of `audio_cues`
+/// (`voice_feedback_verbosity` and `voice_cue_workout_steps`, the phone's
+/// `workout_steps` voice cue), so a structured workout run on the wrist
+/// speaks exactly what the same run would speak on the phone.
 ///
 /// The ladder is resolved HERE, from `hr_zones` > `max_hr_bpm` > Tanaka off
 /// `date_of_birth`, rather than shipping the three inputs to the wrist. The
@@ -64,6 +68,12 @@ class AppleWatchPrefsBridge {
 
   @visibleForTesting
   static const Set<String> acceptedPrivacyDefaults = {'public', 'followers', 'private'};
+
+  /// The two voice-feedback verbosities the watch's announcer reads. A third
+  /// value would be one the wrist reads as `full` — speaking cues the runner
+  /// asked to be spared — so it is left off the push instead.
+  @visibleForTesting
+  static const Set<String> acceptedVoiceVerbosities = {'full', 'minimal'};
 
   /// The per-bound range the watch's zone decoder accepts, Wear OS's
   /// `parseHrZones` gate.
@@ -125,7 +135,7 @@ class AppleWatchPrefsBridge {
   /// Queue the watch's current settings.
   ///
   /// [preferredUnit] and [audioCues] are required and a bad unit refuses the
-  /// whole push, as before. The other three are optional and independent: a
+  /// whole push, as before. The other five are optional and independent: a
   /// null, or a value the watch would drop, leaves that key off the push, and
   /// the watch reads an absent key as "keep what you have". [hrZoneCutoffs]
   /// is null until the settings bag has been read this launch, so a push made
@@ -148,6 +158,8 @@ class AppleWatchPrefsBridge {
     String? defaultActivityType,
     String? privacyDefault,
     List<int>? hrZoneCutoffs,
+    String? voiceFeedbackVerbosity,
+    bool? workoutStepCues,
   }) async {
     if (defaultTargetPlatform != TargetPlatform.iOS) return false;
     if (!acceptedUnits.contains(preferredUnit)) {
@@ -165,6 +177,10 @@ class AppleWatchPrefsBridge {
           'privacy_default': privacyDefault,
         if (hrZoneCutoffs != null && isWatchZoneLadder(hrZoneCutoffs))
           'hr_zone_cutoffs': hrZoneCutoffs,
+        if (voiceFeedbackVerbosity != null &&
+            acceptedVoiceVerbosities.contains(voiceFeedbackVerbosity))
+          'voice_feedback_verbosity': voiceFeedbackVerbosity,
+        if (workoutStepCues != null) 'voice_cue_workout_steps': workoutStepCues,
       });
       return true;
     } on MissingPluginException {

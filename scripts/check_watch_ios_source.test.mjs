@@ -805,7 +805,7 @@ test('the three settings-push rails agree on the shipped tree', () => {
 	const { errors, ok } = check(WATCH_IOS, INGEST_ABS, null, null, null, null, PREFS_BRIDGE_ABS);
 	assert.deepEqual(matched(errors, /settings-(push|envelope)/), []);
 	assert.ok(
-		ok.some((o) => /^all 5 settings-push keys agree/.test(o)),
+		ok.some((o) => /^all 7 settings-push keys agree/.test(o)),
 		ok.join('\n'),
 	);
 });

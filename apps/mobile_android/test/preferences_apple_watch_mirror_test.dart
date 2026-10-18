@@ -18,6 +18,8 @@ typedef _Push = ({
   String? activity,
   String? privacy,
   List<int>? zones,
+  String? verbosity,
+  bool? stepCues,
 });
 
 class _Recorder {
@@ -35,6 +37,8 @@ class _Recorder {
     String? defaultActivityType,
     String? privacyDefault,
     List<int>? hrZoneCutoffs,
+    String? voiceFeedbackVerbosity,
+    bool? workoutStepCues,
   }) async {
     if (throwOnPush != null) throw throwOnPush!;
     full.add((
@@ -43,6 +47,8 @@ class _Recorder {
       activity: defaultActivityType,
       privacy: privacyDefault,
       zones: hrZoneCutoffs,
+      verbosity: voiceFeedbackVerbosity,
+      stepCues: workoutStepCues,
     ));
     return true;
   }
@@ -109,6 +115,8 @@ void main() {
       defaultActivityType,
       privacyDefault,
       hrZoneCutoffs,
+      voiceFeedbackVerbosity,
+      workoutStepCues,
     }) async {
       seen = prefs.audioCues ? 'on' : 'off';
       return true;
@@ -170,5 +178,42 @@ void main() {
     expect(last.zones, isEmpty);
     expect(last.activity, 'run');
     expect(last.privacy, 'private');
+  });
+
+  test('the voice verbosity rides every push, and changing it pushes it',
+      () async {
+    // The wrist speaks a structured workout's end-of-step warning and pace
+    // nudge only in full mode, exactly as the phone does, so a minimal
+    // runner's watch has to be told.
+    final (prefs, recorder) =
+        await _prefs({'voice_feedback_verbosity': 'minimal'});
+    expect(recorder.full.single.verbosity, 'minimal');
+    recorder.full.clear();
+    await prefs.setVoiceFeedbackVerbosity('full');
+    expect(recorder.full, hasLength(1));
+    expect(recorder.full.single.verbosity, 'full');
+  });
+
+  test('the workout-step voice cue rides every push, on until switched off',
+      () async {
+    final (prefs, recorder) = await _prefs();
+    // An absent id is ON, on the wrist as on the phone.
+    expect(recorder.full.single.stepCues, isTrue);
+    recorder.full.clear();
+    await prefs.setVoiceCueEnabled('workout_steps', false);
+    expect(recorder.full.single.stepCues, isFalse);
+    // A bag pulled from the web reaches the wrist through the same push.
+    await prefs.applyVoiceCueTypes({'workout_steps': true});
+    expect(recorder.full.last.stepCues, isTrue);
+  });
+
+  test('sign-out puts the wrist back to full verbosity and step cues on',
+      () async {
+    final (prefs, recorder) = await _prefs({'voice_feedback_verbosity': 'minimal'});
+    await prefs.setVoiceCueEnabled('workout_steps', false);
+    recorder.full.clear();
+    await prefs.resetAccountScopedPrefs();
+    expect(recorder.full.last.verbosity, 'full');
+    expect(recorder.full.last.stepCues, isTrue);
   });
 }

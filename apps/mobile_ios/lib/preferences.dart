@@ -307,6 +307,8 @@ class Preferences extends ChangeNotifier {
     String? defaultActivityType,
     String? privacyDefault,
     List<int>? hrZoneCutoffs,
+    String? voiceFeedbackVerbosity,
+    bool? workoutStepCues,
   }) appleWatchPrefsPush = AppleWatchPrefsBridge.push;
 
   /// The zone ladder the wrist badges live heart rate against, resolved by
@@ -828,6 +830,8 @@ class Preferences extends ChangeNotifier {
         defaultActivityType: _defaultActivityType,
         privacyDefault: _privacyDefault,
         hrZoneCutoffs: _appleWatchHrZoneCutoffs,
+        voiceFeedbackVerbosity: _voiceFeedbackVerbosity,
+        workoutStepCues: voiceCueEnabled(VoiceCue.workoutSteps),
       );
     } catch (e) {
       debugPrint('Apple Watch preference push failed: $e');
@@ -852,6 +856,7 @@ class Preferences extends ChangeNotifier {
     _voiceCueTypes = {..._voiceCueTypes, cueId: v};
     await _prefs.setString(_kVoiceCueTypes, jsonEncode(_voiceCueTypes));
     notifyListeners();
+    await _pushAppleWatchPrefs();
   }
 
   /// Overlay the device-bag `voice_cue_types` map onto the local mirror
@@ -862,6 +867,7 @@ class Preferences extends ChangeNotifier {
     _voiceCueTypes = {..._voiceCueTypes, ...incoming};
     await _prefs.setString(_kVoiceCueTypes, jsonEncode(_voiceCueTypes));
     notifyListeners();
+    await _pushAppleWatchPrefs();
   }
 
   /// Sign-out reset. Because [applyVoiceCueTypes] merges without erasing,
@@ -871,6 +877,7 @@ class Preferences extends ChangeNotifier {
     _voiceCueTypes = {};
     await _prefs.remove(_kVoiceCueTypes);
     notifyListeners();
+    await _pushAppleWatchPrefs();
   }
 
   Future<void> setOnboarded(bool v) async {
@@ -920,6 +927,7 @@ class Preferences extends ChangeNotifier {
     _voiceFeedbackVerbosity = v;
     await _prefs.setString(_kVoiceFeedbackVerbosity, v);
     notifyListeners();
+    await _pushAppleWatchPrefs();
   }
 
   Future<void> setSentryOptOut(bool v) async {

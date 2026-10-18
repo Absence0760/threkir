@@ -26,8 +26,14 @@ import 'pump_until.dart';
 
 const _uid = 'owner-uuid';
 
+/// The screen's clock, pinned. Which plan week a seeded run lands in turns on
+/// the weekday, so a wall-clock "today" made each case a different fixture on
+/// a Monday than on a Sunday. A Wednesday puts runs on both sides of the week
+/// boundary for the six-day deep-fatigue block.
+final _today = DateTime(2026, 6, 17, 12);
+
 DateTime _mondayThisWeek() {
-  final now = DateTime.now();
+  final now = _today;
   final d = DateTime(now.year, now.month, now.day);
   return d.subtract(Duration(days: d.weekday - DateTime.monday));
 }
@@ -112,9 +118,12 @@ void main() {
     return d;
   }
 
-  // Three completed under-run weeks (planned 40k, actual ~10k each) + a future
-  // long run that an under-trend re-plan would bump. Anchored two weeks back so
-  // weeks 0-2 are complete + in the past and week 3 holds the future long.
+  // Three completed 40 km weeks + a future long run that an under-trend
+  // re-plan would bump. Anchored three weeks back so weeks 0-2 are complete
+  // and week 3 is the current one. The run store supplies the actuals: the
+  // mild runner's 28 km under-runs all three; the deep block leaves weeks 0-1
+  // empty and puts 45 km in week 2 (Friday-Sunday, inside the 20% band), so
+  // two of three weeks are flagged under.
   ({_FakeTraining training, DateTime start}) underTrendPlan() {
     final start = _mondayThisWeek().subtract(const Duration(days: 21));
     final weeks = [
@@ -160,7 +169,7 @@ void main() {
   }) async {
     final store = LocalRunStore();
     await store.init(overrideDirectory: tmp(prefix));
-    final now = DateTime.now();
+    final now = _today;
     final runs = [
       for (var i = 0; i < days; i++)
         Run(
@@ -207,6 +216,7 @@ void main() {
           planId: 'plan-1',
           social: social,
           viewerIdOverride: _uid,
+          now: () => _today,
           runStore: runStore,
         ),
       ),

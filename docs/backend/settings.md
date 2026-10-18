@@ -249,10 +249,16 @@ Some per-device prefs are **never** synced to `user_settings` / `user_device_set
   over the `WCSession` application context (`AppleWatchPrefsBridge.push` →
   `WatchIngestBridge.prefsContext` → `PhonePreferences` on the watch):
   `preferred_unit`, `audio_cues` (the phone's `voice_feedback_enabled`),
-  `default_activity_type`, `privacy_default`, and `hr_zone_cutoffs` — a
+  `default_activity_type`, `privacy_default`, `hr_zone_cutoffs` — a
   ladder the PHONE resolves from `hr_zones` > `max_hr_bpm` > Tanaka off
   `date_of_birth` (`zoneCutoffsForWatch`), so the wrist gets five bounds and
-  never the date of birth. `hr_zone_cutoffs` is a wire key, not a bag key.
+  never the date of birth — `voice_feedback_verbosity`, and
+  `voice_cue_workout_steps` (the phone's effective `voice_cue_types.workout_steps`,
+  absent = on). The last two gate the wrist's spoken structured-workout cues
+  exactly as the phone's run screen gates its own: `minimal` keeps step
+  changes and completion and drops the end-of-step warning and the pace
+  nudge, and the step switch off silences the workout's cues alone.
+  `hr_zone_cutoffs` and `voice_cue_workout_steps` are wire keys, not bag keys.
   Read-only; no editor on the wrist. Claim (20) of
   `scripts/check_watch_ios_source.mjs` holds the three key lists together.
 - **Not yet wired**: the per-device settings editor UI on any client (the

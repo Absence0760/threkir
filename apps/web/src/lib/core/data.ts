@@ -7634,6 +7634,32 @@ export async function fetchPublicRunsByUser(userId: string, limit = 20): Promise
 	return (data ?? []) as Run[];
 }
 
+export interface ProfileRunCounts {
+	/** Runs anyone can see on the profile. */
+	publicCount: number;
+	/** The owner's runs that are NOT on the profile; null for any other viewer. */
+	privateCount: number | null;
+}
+
+/// Head counts for the profile header. The header used to show the length of
+/// the loaded run page, which capped at its limit and gave the owner no hint
+/// that their private runs exist but aren't listed.
+export async function fetchProfileRunCounts(userId: string, isSelf: boolean): Promise<ProfileRunCounts> {
+	const [pub, priv] = await Promise.all([
+		supabase.from('public_runs').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+		isSelf
+			? supabase
+					.from(TABLES.runs)
+					.select('id', { count: 'exact', head: true })
+					.eq('user_id', userId)
+					.or('is_public.is.null,is_public.eq.false')
+			: Promise.resolve({ count: null, error: null }),
+	]);
+	if (pub.error) throw dbError(pub.error);
+	if (priv.error) throw dbError(priv.error);
+	return { publicCount: pub.count ?? 0, privateCount: isSelf ? (priv.count ?? 0) : null };
+}
+
 // ─────────────────────── Kudos + comments on runs (decisions §32) ───────────────────────
 
 export interface RunKudosSummary {

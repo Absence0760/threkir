@@ -15,6 +15,7 @@
 	import {
 		fetchPublicProfile,
 		fetchPublicRunsByUser,
+		fetchProfileRunCounts,
 		fetchFollowers,
 		fetchFollowing,
 		FOLLOW_PAGE_SIZE,
@@ -32,6 +33,7 @@
 		fetchUserBadges,
 		setBadgeVisibility,
 		type FeedEntry,
+		type ProfileRunCounts,
 		type ProfileSummary,
 		type PublicProfile,
 	} from '#lib/core/data.ts';
@@ -63,6 +65,7 @@
 	let profile = $state<ProfileSummary | null>(null);
 	let loadError = $state<string | null>(null);
 	let runs = $state<Run[]>([]);
+	let runCounts = $state<ProfileRunCounts | null>(null);
 	let followers = $state<PublicProfile[]>([]);
 	let following = $state<PublicProfile[]>([]);
 	let followersHasMore = $state(false);
@@ -327,6 +330,23 @@
 
 	$effect(() => {
 		if (userId) load();
+	});
+
+	// Its own effect so it re-runs once auth hydrates and `isSelf` flips. The
+	// header falls back to the loaded page's length if the count fails.
+	$effect(() => {
+		const id = userId;
+		const self = isSelf;
+		if (!id) return;
+		fetchProfileRunCounts(id, self).then(
+			(c) => {
+				if (id === userId) runCounts = c;
+			},
+			(e) => {
+				console.warn('profile run counts failed', e);
+				runCounts = null;
+			},
+		);
 	});
 
 	// Deep-link the followers / following / notifications tab via
@@ -707,7 +727,7 @@
 				</h1>
 				<div class="counts">
 					<button class="count" type="button" onclick={() => setTab('runs')}>
-						<span class="count-num">{runs.length}</span>
+						<span class="count-num" data-testid="profile-run-count">{runCounts?.publicCount ?? runs.length}</span>
 						<span class="count-label">{m('profile.tabRuns')}</span>
 					</button>
 					<button class="count" type="button" onclick={() => setTab('followers')}>
@@ -875,6 +895,17 @@
 				</p>
 			</div>
 		{:else if tab === 'runs'}
+			{#if isSelf && runCounts?.privateCount}
+				<p class="private-runs-note" data-testid="profile-private-runs-note">
+					<span class="material-symbols" aria-hidden="true">lock</span>
+					<span>
+						{runCounts.privateCount === 1
+							? m('profile.privateRunsNoteOne')
+							: m('profile.privateRunsNoteMany', { n: runCounts.privateCount })}
+						<a href="/history">{m('profile.privateRunsNoteLink')}</a>
+					</span>
+				</p>
+			{/if}
 			{#if runsError !== null}
 				{@render sectionError(runsError, loadRuns)}
 			{:else if runsLoading}
@@ -1637,6 +1668,21 @@
 
 	/* Empty-state card — same shape as /clubs, /routes, /runs. Card with
 	   icon (or brand mark) + h3 + explainer + CTA. */
+	.private-runs-note {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--space-xs);
+		margin: 0 0 var(--space-md);
+		font-size: 0.9rem;
+		color: var(--color-text-secondary);
+		line-height: 1.5;
+	}
+	.private-runs-note .material-symbols {
+		font-size: 1.1rem;
+		line-height: 1.4;
+		color: var(--color-text-tertiary);
+	}
+
 	.empty-card {
 		display: flex;
 		flex-direction: column;

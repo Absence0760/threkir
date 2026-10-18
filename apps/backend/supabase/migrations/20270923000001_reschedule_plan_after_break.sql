@@ -23,8 +23,14 @@
 -- nothing written.
 --
 -- The same transaction records the offer as answered in
--- user_settings.prefs.plan_break_dismissed ({plan_id, from}), so neither the
--- web card nor the phone's offers the same break again.
+-- user_settings.prefs.plan_break_dismissed ({plan_id, from, until}), so
+-- neither the web card nor the phone's offers the same break again and the
+-- plan nudge does not judge the weeks it covered; and it answers the
+-- missed-workout prompt (missed_ack_at, 20270921000001) for every unanswered
+-- open workout the break covered, so the prompt does not then offer a
+-- make-up for a long run the re-run weeks already restore. Copies take
+-- missed_ack_at's null default (explicit column list), and a moved workout
+-- loses any answer through plan_workouts_clear_missed_ack.
 --
 -- A copied week carries its heart-rate targets only while the HR prescription
 -- gate is open and the owner has consented (private.caller_may_carry_hr_targets,
@@ -230,9 +236,18 @@ begin
   set end_date = end_date + 7 * (v_k - v_drop_count), updated_at = now()
   where id = p_plan_id;
 
+  update plan_workouts wo
+  set missed_ack_at = now()
+  from plan_weeks w
+  where wo.week_id = w.id and w.plan_id = p_plan_id
+    and wo.kind <> 'rest'
+    and wo.completed_run_id is null and not wo.manually_completed
+    and wo.skipped_at is null and wo.missed_ack_at is null
+    and wo.scheduled_date >= p_break_from and wo.scheduled_date < p_today;
+
   insert into user_settings (user_id, prefs)
   values (caller, jsonb_build_object('plan_break_dismissed',
-            jsonb_build_object('plan_id', p_plan_id, 'from', p_break_from)))
+            jsonb_build_object('plan_id', p_plan_id, 'from', p_break_from, 'until', p_today)))
   on conflict (user_id) do update
     set prefs = coalesce(user_settings.prefs, '{}'::jsonb) || excluded.prefs,
         updated_at = now();

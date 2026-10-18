@@ -1031,21 +1031,39 @@ class ApiClient {
     );
   }
 
-  /// Patch the editable columns of a run row in place — duration, distance,
-  /// the promoted `is_dnf` flag, and the metadata bag — WITHOUT re-uploading
-  /// the track. The web run-detail `saveEdit` writes these columns directly;
-  /// the mobile edit dialog mirrors it so a DNF / title / notes / stat edit
-  /// is reflected on other clients immediately instead of waiting for the
-  /// next batch sync (which would re-gzip + re-upload the whole track for a
-  /// one-flag change). Owner-only by RLS. Best-effort caller — a failure
-  /// just leaves the change to land on the next batch sync.
-  Future<void> updateRunFields(Run run) async {
-    await _client.from(RunRow.table).update({
-      RunRow.colDurationS: run.duration.inSeconds,
-      RunRow.colDistanceM: run.distanceMetres,
-      RunRow.colIsDnf: run.metadata?['is_dnf'] == true,
-      RunRow.colMetadata: runMetadataForRow(run.metadata),
-    }).eq(RunRow.colId, run.id);
+  /// Push a local edit to a synced run as a compare-and-swap: an UPDATE of
+  /// only the columns [fields] live in ([runEditPatch]), filtered on the id
+  /// AND on `updated_at` still being [baseUpdatedAt], the server stamp of the
+  /// copy the edit was made on (decisions § 2147). Returns the row as the
+  /// server now holds it, carrying its new `updated_at`, or null when no row
+  /// matched — the row moved since the base was read, or is gone — which the
+  /// caller resolves by reading it again ([getRunsByIds]) and re-basing.
+  ///
+  /// The base is sent back exactly as the server sent it. A null base matches
+  /// only a row whose `updated_at` is null, a row no write has touched since
+  /// the column became server-stamped. Owner-filtered by RLS and by the
+  /// explicit `user_id` clause, the same coach-visibility reason [getRuns]
+  /// gives. Never re-uploads the track.
+  Future<Run?> updateRunFieldsIfUnchanged(
+    Run run, {
+    required Set<String> fields,
+    required String? baseUpdatedAt,
+  }) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    final patch = runEditPatch(run, fields, userId: userId);
+    if (patch.isEmpty) return null;
+    final filtered = _client
+        .from(RunRow.table)
+        .update(patch)
+        .eq(RunRow.colId, run.id)
+        .eq(RunRow.colUserId, userId);
+    final rows = await (baseUpdatedAt == null
+            ? filtered.isFilter(RunRow.colUpdatedAt, null)
+            : filtered.eq(RunRow.colUpdatedAt, baseUpdatedAt))
+        .select();
+    if (rows.isEmpty) return null;
+    return _runFromRow(rows.first);
   }
 
   /// Mark a run as publicly visible so it can be viewed at
@@ -6849,6 +6867,14 @@ class ApiClient {
     if (r.elevationGainM != null) {
       metadata[MetadataKeys.elevationM] = r.elevationGainM;
     }
+    // The base a local edit is compare-and-swapped against (decisions
+    // § 2147). The raw string, not `r.updatedAt`: the push sends it back for
+    // an equality match, and a value re-formatted through `DateTime` is not
+    // guaranteed to be the one Postgres compares.
+    final updatedAt = row[RunRow.colUpdatedAt];
+    if (updatedAt is String && updatedAt.isNotEmpty) {
+      metadata[MetadataKeys.serverUpdatedAt] = updatedAt;
+    }
 
     return Run(
       id: r.id,
@@ -9659,8 +9685,8 @@ class ActivityRow {
 ///
 /// Stripping nulls means an upsert can only ever ADD or CHANGE a value, never
 /// clear one. That is the same trade-off `buildSaveRouteBody` already takes,
-/// and targeted clears go through `updateRunFields`, which sends only the keys
-/// it means to write.
+/// and targeted clears go through `updateRunFieldsIfUnchanged`, which sends
+/// only the columns it means to write.
 ///
 /// `followers_only` is NOT NULL, so the row always carries a value and the
 /// null strip cannot protect it: a re-sync would write `false` over a

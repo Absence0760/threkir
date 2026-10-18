@@ -34,12 +34,12 @@ void main() {
     );
   }
 
-  group('a local edit is durably unsynced', () {
-    test('update() survives a cold reload as unsynced', () async {
-      // H1: update() flipped the run unsynced in memory + in index.json but
-      // never wrote synced_ids.json, and cold-load treats that sidecar as
-      // authoritative — so an offline edit was silently re-marked synced on
-      // the next launch and could never drain.
+  group('a local edit is durably pending', () {
+    test('update() of a synced run survives a cold reload as a pending edit',
+        () async {
+      // H1: the edit used to be lost on the next launch because only memory
+      // knew about it. A synced run's edit is now a pending field edit
+      // (decisions § 2147), and that has to be just as durable.
       final store = LocalRunStore();
       await store.init(overrideDirectory: tempDir);
       await store.save(makeRun(id: 'R'));
@@ -51,13 +51,29 @@ void main() {
 
       final third = LocalRunStore();
       await third.init(overrideDirectory: tempDir);
+      expect(third.pendingEdit('R')?.fields, {RunEditField.distanceM});
+      expect(third.unsyncedRuns, isEmpty);
+    });
+
+    test('update() of a never-pushed run survives a cold reload as unsynced',
+        () async {
+      final store = LocalRunStore();
+      await store.init(overrideDirectory: tempDir);
+      await store.save(makeRun(id: 'R'));
+
+      final second = LocalRunStore();
+      await second.init(overrideDirectory: tempDir);
+      await second.update(makeRun(id: 'R', distance: 9999));
+
+      final third = LocalRunStore();
+      await third.init(overrideDirectory: tempDir);
       expect(third.unsyncedRuns.map((r) => r.id), ['R']);
     });
 
     test('update() on a windowed-out run restores its residency', () async {
-      // The other half of H1: `unsyncedRuns` reads `_runs`, not `_summaries`,
-      // so an edit to a run outside the resident window was invisible to the
-      // drain even inside the same session.
+      // The other half of H1: an edit to a run outside the resident window
+      // was invisible to the drain even inside the same session. It is a
+      // pending field edit now (decisions § 2147), and still made resident.
       final seed = LocalRunStore();
       await seed.init(overrideDirectory: tempDir);
       await seed.save(Run(
@@ -92,7 +108,8 @@ void main() {
         track: const [],
         source: RunSource.app,
       ));
-      expect(store.unsyncedRuns.map((r) => r.id), ['older']);
+      expect(store.pendingEditIds, ['older']);
+      expect(store.runs.map((r) => r.id), contains('older'));
     });
 
     test('an edit DURING a push is not marked synced', () async {
@@ -1341,135 +1358,6 @@ void main() {
       expect(store.runs.single.metadata?['created_by_user_id'], isNull,
           reason: 'cloud-sourced rows must not be tagged with the local '
               'currentUserId — the cloud row carries its own user_id');
-    });
-  });
-
-  group('_lastModifiedOf fallback prefers startedAt over createdAt (L2)', () {
-    Run rawRun({
-      required String id,
-      required DateTime startedAt,
-      DateTime? createdAt,
-      Map<String, dynamic>? metadata,
-      double distance = 5000,
-    }) =>
-        Run(
-          id: id,
-          startedAt: startedAt,
-          duration: const Duration(minutes: 25),
-          distanceMetres: distance,
-          track: const [],
-          source: RunSource.app,
-          metadata: metadata,
-          createdAt: createdAt,
-        );
-
-    test(
-        'a legacy local run with a later startedAt wins over a remote run with '
-        'a later createdAt', () async {
-      final store = LocalRunStore();
-      await store.init(overrideDirectory: tempDir);
-
-      // Local run, no metadata.last_modified_at: startedAt is LATE,
-      // createdAt is EARLY. Seed it as already-on-disk (synced) so
-      // saveFromRemote sees it as the existing copy.
-      await store.saveFromRemote(rawRun(
-        id: 'r-clock',
-        startedAt: DateTime.utc(2026, 6, 10),
-        createdAt: DateTime.utc(2026, 1, 1),
-        distance: 1111,
-      ));
-
-      // Remote run with the same id: startedAt EARLY, createdAt LATE.
-      // Under the old createdAt-preferring chain the remote (later
-      // createdAt) would win and overwrite the local distance. With the
-      // startedAt fallback the local (later startedAt) is kept.
-      await store.saveFromRemote(rawRun(
-        id: 'r-clock',
-        startedAt: DateTime.utc(2026, 1, 1),
-        createdAt: DateTime.utc(2026, 6, 10),
-        distance: 9999,
-      ));
-
-      expect(store.runs.single.distanceMetres, 1111,
-          reason: 'startedAt (not the ambiguous server createdAt) is the '
-              'modification-clock fallback');
-    });
-
-    test('metadata.last_modified_at still takes precedence over startedAt',
-        () async {
-      final store = LocalRunStore();
-      await store.init(overrideDirectory: tempDir);
-
-      // Local: late last_modified_at but an early startedAt.
-      await store.saveFromRemote(rawRun(
-        id: 'r-meta',
-        startedAt: DateTime.utc(2026, 1, 1),
-        metadata: {'last_modified_at': '2026-06-10T00:00:00.000Z'},
-        distance: 2222,
-      ));
-
-      // Remote: no last_modified_at, a late startedAt. The local's
-      // explicit stamp must still win.
-      await store.saveFromRemote(rawRun(
-        id: 'r-meta',
-        startedAt: DateTime.utc(2026, 6, 9),
-        distance: 8888,
-      ));
-
-      expect(store.runs.single.distanceMetres, 2222);
-    });
-
-    test('an IMPOSSIBLE last_modified_at is refused, not rolled over',
-        () async {
-      // `DateTime.tryParse` answers `2026-06-32` with the 2nd of July rather
-      // than refusing it, and that answer passes every non-null check a real
-      // one would (decisions § 1344 / § 1377). Here the rolled-over day is
-      // LATER than the remote copy's clock, so the stale local row would win
-      // the merge and the server copy could never reach the phone again.
-      final store = LocalRunStore();
-      await store.init(overrideDirectory: tempDir);
-
-      await store.saveFromRemote(rawRun(
-        id: 'r-impossible',
-        startedAt: DateTime.utc(2026, 1, 1),
-        metadata: {'last_modified_at': '2026-06-32T00:00:00.000Z'},
-        distance: 2222,
-      ));
-      await store.saveFromRemote(rawRun(
-        id: 'r-impossible',
-        startedAt: DateTime.utc(2026, 6, 10),
-        distance: 8888,
-      ));
-
-      expect(store.runs.single.distanceMetres, 8888,
-          reason: 'the unreadable stamp falls back to startedAt (1 Jan), which '
-              'loses to the remote copy — under tryParse it would have read as '
-              '2 July and won');
-    });
-
-    test('a last_modified_at of the wrong TYPE reads as absent, not a throw',
-        () async {
-      // The `as String?` cast this read used to carry threw a TypeError out of
-      // the merge, so one malformed stamp discarded the comparison rather than
-      // degrading to the run's own start instant.
-      final store = LocalRunStore();
-      await store.init(overrideDirectory: tempDir);
-
-      await store.saveFromRemote(rawRun(
-        id: 'r-type',
-        startedAt: DateTime.utc(2026, 6, 10),
-        metadata: {'last_modified_at': 12345},
-        distance: 1111,
-      ));
-      await store.saveFromRemote(rawRun(
-        id: 'r-type',
-        startedAt: DateTime.utc(2026, 1, 1),
-        distance: 9999,
-      ));
-
-      expect(store.runs.single.distanceMetres, 1111,
-          reason: 'the stamp is absent, so startedAt (10 Jun) decides and the '
-              'local copy is kept');
     });
   });
 

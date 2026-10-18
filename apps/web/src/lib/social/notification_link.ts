@@ -12,6 +12,7 @@
 export interface NotificationLinkInput {
 	row: {
 		kind: string;
+		user_id: string;
 		run_id: string | null;
 		actor_id: string | null;
 		event_id: string | null;
@@ -32,8 +33,11 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 		case 'reaction':
 		case 'comment_like':
 		case 'mention':
-			// The last two need not be the recipient's run; /runs/[id] serves a
-			// non-owner the shared view of any run their audience admits.
+		case 'run_completed':
+			// None of these need be the recipient's run; /runs/[id] serves a
+			// non-owner the shared view of any run their audience admits, inside
+			// the app shell. /share/run is the logged-out page and would drop a
+			// signed-in reader out of the app.
 			return r.run_id ? `/runs/${r.run_id}` : null;
 		case 'follow':
 			return r.actor_id ? `/u/${r.actor_id}` : null;
@@ -56,10 +60,12 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 			return r.actor_id ? `/messages/${r.actor_id}` : null;
 		case 'club_post':
 			return item.club_slug ? `/clubs/${item.club_slug}` : null;
-		case 'run_completed':
-			return r.run_id ? `/share/run/${r.run_id}` : null;
 		case 'achievement':
-			return r.achievement_id ? `/share/badge/${r.achievement_id}` : null;
+			// The recipient earned it, so it is on their own Achievements tab —
+			// even while private, where /share/badge would answer "not found".
+			return r.achievement_id
+				? `/u/${r.user_id}?tab=achievements&badge=${r.achievement_id}`
+				: null;
 		case 'challenge_complete':
 			return r.challenge_id ? `/challenges/${r.challenge_id}` : null;
 		case 'data_export_ready':

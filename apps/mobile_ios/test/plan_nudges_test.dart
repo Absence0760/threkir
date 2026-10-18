@@ -90,6 +90,8 @@ PlanNudge? _nudge(
   String endDate = '2026-08-30',
   String today = _today,
   List<String> dismissed = const [],
+  String? breakFromIso,
+  String? breakUntilIso,
 }) =>
     planNudge(
       planId: 'p',
@@ -102,6 +104,8 @@ PlanNudge? _nudge(
           startDate: _start, today: today, weeks: weeks, runs: runs),
       runDates: runs.map((r) => r.date).toList(),
       dismissed: dismissed,
+      breakFromIso: breakFromIso,
+      breakUntilIso: breakUntilIso,
     );
 
 void main() {
@@ -319,5 +323,30 @@ void main() {
     expect(
         _nudge(_plan([28000, 28000, 28000]), runs, today: '2026-06-05'),
         isNull);
+  });
+
+  test(
+      'planNudge: a judged week that overlaps a break says nothing, and a later one is judged again',
+      () {
+    final runs = [
+      _run('2026-06-07', 28000),
+      _run('2026-06-14', 28000),
+      _run('2026-06-21', 36000),
+    ];
+    final weeks = _plan([28000, 28000, 28000]);
+    expect(
+        _nudge(weeks, runs,
+            breakFromIso: '2026-06-21', breakUntilIso: '2026-06-24'),
+        isNull);
+    expect(
+        _nudge(weeks, runs,
+                breakFromIso: '2026-06-01', breakUntilIso: '2026-06-14')
+            ?.kind,
+        PlanNudgeKind.easeOver);
+    expect(
+        _nudge(weeks, runs,
+                breakFromIso: '2026-06-22', breakUntilIso: '2026-06-24')
+            ?.kind,
+        PlanNudgeKind.easeOver);
   });
 }

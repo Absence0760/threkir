@@ -30,8 +30,10 @@
 		/// The host's veto: true renders nothing, whatever the plan says
 		/// (another card that outranks this one is showing).
 		hidden?: boolean;
+		/// The days a break covered (`breakWindow`): no nudge judges them.
+		breakWindow?: { fromIso: string; untilIso: string } | null;
 	}
-	let { plan, weeks, workouts, runs, dismissed, today, hidden = false }: Props = $props();
+	let { plan, weeks, workouts, runs, dismissed, today, hidden = false, breakWindow = null }: Props = $props();
 
 	let filed = $state<string[] | null>(null);
 	let saved = $derived(filed ?? dismissed);
@@ -78,7 +80,9 @@
 				today,
 				weeks: replanWeeks,
 				runDates: runRows.map((r) => r.date),
-				dismissed: saved
+				dismissed: saved,
+				breakFromIso: breakWindow?.fromIso ?? null,
+				breakUntilIso: breakWindow?.untilIso ?? null
 			});
 		} catch (e) {
 			console.error('Working out the plan card failed', e);

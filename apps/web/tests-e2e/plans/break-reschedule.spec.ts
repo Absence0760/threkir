@@ -171,7 +171,7 @@ test.describe('picking a plan back up after a break', () => {
 			[browserDate(START + 35), 'long', false],
 			[browserDate(START + 38), 'easy', false]
 		]);
-		expect(await dismissal(runner.id)).toEqual({ plan_id: planId, from: browserDate(START + 8) });
+		expect(await dismissal(runner.id)).toEqual({ plan_id: planId, from: browserDate(START + 8), until: browserDate(0) });
 	});
 
 	test('shortening the build runs the last three weeks again and keeps the taper', async ({ browser }) => {
@@ -232,7 +232,7 @@ test.describe('picking a plan back up after a break', () => {
 		await expect(card).toBeVisible({ timeout: 10_000 });
 		await card.getByTestId('plan-break-dismiss').click();
 		await expect(card).toHaveCount(0);
-		await expect.poll(() => dismissal(runner.id)).toEqual({ plan_id: planId, from: browserDate(START + 8) });
+		await expect.poll(() => dismissal(runner.id)).toEqual({ plan_id: planId, from: browserDate(START + 8), until: browserDate(0) });
 		expect(await phasesOf(planId)).toEqual([...RACE_PHASES]);
 
 		await page.goto('/dashboard');
@@ -273,5 +273,70 @@ test.describe('picking a plan back up after a break', () => {
 		expect(await phasesOf(planId)).toEqual([...FREE_PHASES]);
 		expect(await planEnd(planId)).toBe(browserDate(START + 69));
 		expect(await dismissal(runner.id)).toBeNull();
+	});
+
+	test('the break offer outranks the missed-workout prompt and the plan nudge until it is answered', async ({
+		browser
+	}) => {
+		const planId = await seedPlan(runner.id, { race: true, name: 'e2e break precedence' });
+		const page = await openAs(browser, runner, '/dashboard');
+		await expect(page.getByTestId('plan-break-card')).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByTestId('missed-prompt')).toHaveCount(0);
+		await expect(page.getByTestId('plan-nudge')).toHaveCount(0);
+
+		await page.goto(`/plans/${planId}`);
+		await expect(page.getByTestId('plan-break-card')).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByTestId('missed-prompt')).toHaveCount(0);
+
+		await page.getByTestId('plan-break-dismiss').click();
+		await expect(page.getByTestId('plan-break-card')).toHaveCount(0);
+		await expect(page.getByTestId('missed-prompt')).toBeVisible();
+
+		await page.goto('/dashboard');
+		await expect(page.getByTestId('missed-prompt')).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByTestId('plan-break-card')).toHaveCount(0);
+		await expect(page.getByTestId('plan-nudge')).toHaveCount(0);
+	});
+
+	test('once the break is applied the missed-workout prompt stays quiet', async ({ browser }) => {
+		const planId = await seedPlan(runner.id, { race: true, name: 'e2e break quiet' });
+		const page = await openAs(browser, runner, `/plans/${planId}`);
+		const card = page.getByTestId('plan-break-card');
+		await expect(card).toBeVisible({ timeout: 10_000 });
+		await card.getByTestId('plan-break-repeat').click();
+		await page.getByTestId('plan-break-confirm').getByRole('button', { name: 'Change plan' }).click();
+		await expect(page.getByText(/^Plan updated\. It ends /)).toBeVisible();
+
+		const open = await readRows(
+			'the open workouts the break covered',
+			getAdminClient()
+				.from('plan_workouts')
+				.select('missed_ack_at, plan_weeks!inner(plan_id)')
+				.eq('plan_weeks.plan_id', planId)
+				.gte('scheduled_date', browserDate(START + 8))
+				.lt('scheduled_date', browserDate(0))
+		);
+		expect(open.length).toBeGreaterThanOrEqual(4);
+		expect(open.filter((w) => w.missed_ack_at == null)).toEqual([]);
+
+		await page.reload();
+		await expect(page.getByRole('heading', { level: 1, name: 'e2e break quiet' })).toBeVisible({ timeout: 10_000 });
+		await page.waitForLoadState('networkidle');
+		await expect(page.getByTestId('missed-prompt')).toHaveCount(0);
+		await expect(page.getByTestId('plan-break-card')).toHaveCount(0);
+		await page.goto('/dashboard');
+		await expect(page.getByText('e2e break quiet').first()).toBeVisible({ timeout: 10_000 });
+		await page.waitForLoadState('networkidle');
+		await expect(page.getByTestId('missed-prompt')).toHaveCount(0);
+		await expect(page.getByTestId('plan-nudge')).toHaveCount(0);
+	});
+
+	test('a make-up link while the break offer shows only opens the plan', async ({ browser }) => {
+		const planId = await seedPlan(runner.id, { race: true, name: 'e2e break makeup' });
+		const page = await openAs(browser, runner, `/plans/${planId}?makeup=1`);
+		await expect(page.getByTestId('plan-break-card')).toBeVisible({ timeout: 10_000 });
+		await expect(page).not.toHaveURL(/makeup=1/);
+		await expect(page.getByRole('region', { name: 'Proposed plan changes' })).toHaveCount(0);
+		await expect(page.getByTestId('missed-prompt')).toHaveCount(0);
 	});
 });

@@ -68,6 +68,7 @@ class MetadataKeys {
   static const String routineId = 'routine_id';
   static const String runningDynamics = 'running_dynamics';
   static const String runNumber = 'run_number';
+  static const String serverUpdatedAt = 'server_updated_at';
   static const String sessionAdherence = 'session_adherence';
   static const String sessionPlanId = 'session_plan_id';
   static const String sessionStepResults = 'session_step_results';

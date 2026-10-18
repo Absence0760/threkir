@@ -90,6 +90,7 @@ class WatchIngest {
         runFromWatchPayload(payload),
         isPublic: isPublicFromWatchPayload(payload),
       );
+      queue.landed.fire();
       return true;
     } catch (e) {
       debugPrint('Watch ingest direct save failed: $e');

@@ -20,20 +20,20 @@ end.
 
 ## Status
 
-Last moved: **2026-09-21**.
+Last moved: **2026-10-18**.
 
 | # | Artifact | Where it ends up | State |
 |---|---|---|---|
 | — | Google Cloud project `threkir` | — | **Done 2026-09-18** — created for push, reused here |
 | 1 | Consent screen (Google Auth Platform) | — | **Done 2026-09-20** — Testing, External, `threkir.com` authorized |
 | 2 | **Web** OAuth client | Supabase provider + GitHub `MOBILE_GOOGLE_WEB_CLIENT_ID` | **Done 2026-09-20** |
-| 3 | **Android** OAuth client, one per SHA-1 | Google console only — no id to copy | ☐ |
+| 3 | **Android** OAuth client, one per SHA-1 | Google console only — no id to copy | **Done 2026-10-18** — `Threkir Android (Play signing)` in project `threkir`, for the Play App Signing SHA-1; upload-key and debug clients not made (#1194 step 3) |
 | 4 | **iOS** OAuth client, re-downloaded `GoogleService-Info.plist` | GitHub `GOOGLE_SERVICE_INFO_PLIST_BASE64` (`production` env) + estate `google_service_info_plist_base64` | ☐ — credential only; the code half landed in #997 |
 | 5 | Web client id + secret backed up | estate `threkir/push-credentials.sops.yaml` | **Done 2026-09-20** — `google_oauth_web_client_id` + `_secret` |
 | 6 | Supabase Google provider enabled | Supabase dashboard | **Done 2026-09-21** — `/auth/v1/authorize?provider=google` 302s to accounts.google.com with `scope=email profile` |
 | 7 | Site URL, Redirect URLs, manual linking | Supabase dashboard | **Done 2026-09-21** |
 | 8 | `PUBLIC_GOOGLE_AUTH_ENABLED` truthy + `web@` tag | GitHub secret + release | **Done 2026-09-21** — `web@1.8.0` deployed; `https://threkir.com/_app/env.js` serves `PUBLIC_GOOGLE_AUTH_ENABLED:"true"` and the other nine gates empty |
-| 9 | `MOBILE_GOOGLE_WEB_CLIENT_ID` + `mobile_android@` tag | GitHub secret + release | ☐ |
+| 9 | `MOBILE_GOOGLE_WEB_CLIENT_ID` + `mobile_android@` tag | GitHub secret + release | **Done 2026-10-18** — secret on the `production` environment, `mobile_android@1.17.1` on the Internal track, Google sign-in verified on a phone (#1194) |
 | 10 | iOS release passes `GOOGLE_WEB_CLIENT_ID` + one device sign-in | `release-ios.yml` + a `mobile_ios@` release | ☐ — **a one-line workflow change, after a device check on a Mac** |
 
 The open rows are `☐` rather than `- [ ]` on purpose, for the reason
@@ -108,8 +108,9 @@ Google takes one fingerprint per client, so this is one client per key:
 - **Upload keystore** — it lives only in the estate repo, so extract it first:
   `cd ~/github/infra-secrets && AWS_PROFILE=threkir sops --decrypt --extract '["keystore_jks_base64"]' threkir/android-upload-keystore.sops.yaml | base64 -d > /tmp/upload-keystore.jks`
   then `keytool -keystore /tmp/upload-keystore.jks -list -v -alias upload | grep SHA1`
-- **Play App Signing** — Play Console → the app → Test and release → Setup →
-  App signing → *App signing key certificate*. **This is the fingerprint real
+- **Play App Signing** — Play Console → the app → Test and release → App integrity,
+  which now redirects to **Protected with Play** → expand *Play Store protection*
+  → Play app signing → *App signing key certificate* (path as of 2026-10-18). **This is the fingerprint real
   users carry**, because Play strips the upload signature and re-signs with its
   own key. It does not exist until the first upload, so it is not actionable
   before step 9; skipping it is the classic works-on-my-phone,

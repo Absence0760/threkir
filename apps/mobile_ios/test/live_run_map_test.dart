@@ -18,6 +18,7 @@ Future<void> _pump(
   required List<Waypoint> track,
   Waypoint? currentPosition,
   bool followRunner = true,
+  bool approximateLocation = false,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -31,6 +32,7 @@ Future<void> _pump(
             track: track,
             currentPosition: currentPosition,
             followRunner: followRunner,
+            approximateLocation: approximateLocation,
           ),
         ),
       ),
@@ -122,6 +124,19 @@ void main() {
       await _pump(tester, track: const []);
       expect(find.text('Waiting for GPS...'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    });
+
+    testWidgets(
+        'an approximate grant explains the empty map instead of waiting',
+        (tester) async {
+      await _pump(tester, track: const [], approximateLocation: true);
+      expect(find.text('Waiting for GPS...'), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsNothing,
+          reason: 'no precise fix is coming, so no spinner promises one');
+      expect(
+          find.text("Precise location is off — the map can't show where you "
+              'are'),
+          findsOneWidget);
     });
 
     testWidgets('renders the map widget when a current position is provided',

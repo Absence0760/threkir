@@ -15,6 +15,7 @@ import 'plan_bulk_ops.dart';
 import 'plan_copy.dart';
 import 'plan_current.dart';
 import 'comeback.dart' show kLayoffMaxDays;
+import 'cycle_plan.dart';
 import 'fitness.dart' show qualifyingRuns;
 import 'plan_ramp.dart';
 import 'race_predictor.dart' show EffortForPrediction;
@@ -750,6 +751,24 @@ class TrainingService extends ChangeNotifier {
       Error.throwWithStackTrace(planWriteError(e), s);
     }
     notifyListeners();
+  }
+
+  /// Eases [workouts] dated [todayIso] or later for [cfg]'s cycle or
+  /// pregnancy (`cyclePlanWorkoutPatch`, decisions § 231) through
+  /// [_applyWorkoutAdjustments]; the past is history and is not rewritten.
+  /// Returns how many workouts changed. Art 9: the caller holds the
+  /// cycle-plans gate. Mirrors web `applyCycleAdjustment` on the plan page.
+  Future<int> applyCycleAdjustment(String planId,
+      List<PlanWorkoutRow> workouts, CyclePlanConfig cfg, String todayIso) async {
+    final patches = <String, Map<String, Object?>>{};
+    for (final w in workouts) {
+      final date = toIsoDate(w.scheduledDate);
+      if (date.compareTo(todayIso) < 0) continue;
+      final patch = cyclePlanWorkoutPatch(w.kind, w.targetDistanceM, date, cfg);
+      if (patch != null && !patch.isEmpty) patches[w.id] = patch.fields;
+    }
+    await _applyWorkoutAdjustments(planId, patches);
+    return patches.length;
   }
 
   /// Turns [workouts] — one week's — into a recovery week through

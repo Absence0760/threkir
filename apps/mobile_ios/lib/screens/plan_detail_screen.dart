@@ -12,6 +12,8 @@ import '../auth_error.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/plan_details_sheet.dart';
 import '../plan_repace.dart';
+import '../cycle_plan.dart' show CyclePlanConfig, CyclePlanMode;
+import '../cycle_plan_config.dart';
 import '../share_sheet.dart';
 import '../plan_serialize.dart';
 import '../l10n/date_format.dart';
@@ -62,7 +64,7 @@ const double _kExpandedBodyMaxWidth = 900;
 
 /// The whole-plan changes the Adjust plan dialog offers. Web twin: the option
 /// list in `apps/web/src/routes/plans/[id]/+page.svelte` (decisions § 1635).
-enum _PlanAdjustment { replan, adaptiveReplan, raceTaper, pause, resume }
+enum _PlanAdjustment { replan, adaptiveReplan, raceTaper, cycle, pause, resume }
 
 /// Today's session and this week lead the screen; everything else sits behind
 /// a named expander whose open/closed state is remembered per account. Every
@@ -119,6 +121,10 @@ class PlanDetailScreen extends StatefulWidget {
   /// in seven. Production leaves the default.
   final DateTime Function() now;
 
+  /// The runner's cycle / pregnancy adjustment config, read under the
+  /// cycle-plans gate (`readCyclePlanConfig`). A test passes its own.
+  final CyclePlanConfig? Function() cyclePlanConfig;
+
   const PlanDetailScreen({
     super.key,
     required this.training,
@@ -127,6 +133,7 @@ class PlanDetailScreen extends StatefulWidget {
     this.viewerIdOverride,
     this.runStore,
     this.now = DateTime.now,
+    this.cyclePlanConfig = readCyclePlanConfig,
   });
 
   @override
@@ -722,6 +729,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   Future<void> _openAdjustPlan(TrainingPlanRow p) async {
     if (!_isOwner(p) || p.isTemplate) return;
     final l10n = AppLocalizations.of(context);
+    // Art 9: the cycle and pregnancy settings are read only under the gate.
+    final cycleConfig = widget.cyclePlanConfig();
     final choice = await showDialog<_PlanAdjustment>(
       context: context,
       builder: (ctx) {
@@ -763,6 +772,18 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                     title: l10n.planDetailRaceTaper,
                     description: l10n.planDetailAdjustRaceTaperDesc,
                     value: _PlanAdjustment.raceTaper,
+                  ),
+                if (cycleConfig != null)
+                  _adjustOption(
+                    ctx,
+                    icon: Icons.favorite_border,
+                    title: cycleConfig.mode == CyclePlanMode.cycle
+                        ? l10n.planDetailCycleAdjustCycle
+                        : l10n.planDetailCycleAdjustPregnancy,
+                    description: cycleConfig.mode == CyclePlanMode.cycle
+                        ? l10n.planDetailAdjustCycleDesc
+                        : l10n.planDetailAdjustPregnancyDesc,
+                    value: _PlanAdjustment.cycle,
                   ),
                 if (p.status == 'paused')
                   _adjustOption(
@@ -807,6 +828,49 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         await _setPlanPaused(p, paused: true);
       case _PlanAdjustment.resume:
         await _setPlanPaused(p, paused: false);
+      case _PlanAdjustment.cycle:
+        await _applyCycleAdjustment(p, cycleConfig!);
+    }
+  }
+
+  /// Eases the upcoming workouts for the runner's cycle or pregnancy after
+  /// a confirm that says what changes. Web twin: `applyCycleAdjustment`.
+  Future<void> _applyCycleAdjustment(
+      TrainingPlanRow p, CyclePlanConfig cfg) async {
+    if (_bulkBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final ok = await confirmDestructive(
+      context,
+      title: l10n.planDetailCycleAdjustConfirmTitle,
+      body: cfg.mode == CyclePlanMode.cycle
+          ? l10n.planDetailCycleAdjustConfirmCycle
+          : l10n.planDetailCycleAdjustConfirmPregnancy,
+      confirmLabel: cfg.mode == CyclePlanMode.cycle
+          ? l10n.planDetailCycleAdjustCycle
+          : l10n.planDetailCycleAdjustPregnancy,
+      cancelLabel: l10n.plansCancel,
+    );
+    if (!ok || !mounted) return;
+    setState(() => _bulkBusy = true);
+    try {
+      final changed = await widget.training
+          .applyCycleAdjustment(p.id, _byWeek.values.expand((x) => x).toList(),
+              cfg, toIsoDate(widget.now()))
+          .timeout(kBackendLoadTimeout);
+      if (!mounted) return;
+      showTopBanner(
+          context,
+          changed > 0
+              ? l10n.planDetailCycleAdjustDone
+              : l10n.planDetailCycleAdjustNone);
+      if (changed > 0) await _load();
+    } catch (e) {
+      debugPrint('plan cycle adjustment failed: $e');
+      if (mounted) {
+        showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+      }
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
     }
   }
 

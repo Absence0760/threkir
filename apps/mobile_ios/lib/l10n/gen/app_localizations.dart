@@ -29082,6 +29082,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{n, plural, one{Plan updated. Paces re-derived for {n} upcoming workout.} other{Plan updated. Paces re-derived for {n} upcoming workouts.}}'**
   String planDetailDetailsSavedRepaced(int n);
+
+  /// Adjust plan option and confirm button: ease the plan for the menstrual cycle (Art 9, behind the cycle-plans gate)
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust for my cycle'**
+  String get planDetailCycleAdjustCycle;
+
+  /// Adjust plan option and confirm button: adjust the plan for pregnancy
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust for pregnancy'**
+  String get planDetailCycleAdjustPregnancy;
+
+  /// Cycle / pregnancy adjustment confirm title
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust remaining weeks?'**
+  String get planDetailCycleAdjustConfirmTitle;
+
+  /// Confirm body for the cycle adjustment
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming workouts on your menstrual and late-luteal days will be eased — a modest volume trim, with quality sessions run by feel. Past workouts are unchanged.'**
+  String get planDetailCycleAdjustConfirmCycle;
+
+  /// Confirm body for the pregnancy adjustment; not medical advice
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming workouts will be adjusted for pregnancy: hard sessions and races become easy runs and volume tapers by trimester. This is not medical advice — follow your healthcare provider. Past workouts are unchanged.'**
+  String get planDetailCycleAdjustConfirmPregnancy;
+
+  /// Banner after the adjustment changed workouts
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming weeks adjusted.'**
+  String get planDetailCycleAdjustDone;
+
+  /// Banner when no upcoming workout needed adjusting
+  ///
+  /// In en, this message translates to:
+  /// **'No upcoming workouts needed adjusting.'**
+  String get planDetailCycleAdjustNone;
+
+  /// Description under the cycle option in the Adjust plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Eases upcoming sessions on the menstrual and late-luteal days of your cycle. Past sessions stay as they are.'**
+  String get planDetailAdjustCycleDesc;
+
+  /// Description under the pregnancy option in the Adjust plan dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Turns hard upcoming sessions into easy runs and eases volume by trimester. Past sessions stay as they are.'**
+  String get planDetailAdjustPregnancyDesc;
 }
 
 class _AppLocalizationsDelegate

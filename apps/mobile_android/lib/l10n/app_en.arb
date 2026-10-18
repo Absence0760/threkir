@@ -23303,5 +23303,41 @@
         "type": "int"
       }
     }
+  },
+  "planDetailCycleAdjustCycle": "Adjust for my cycle",
+  "@planDetailCycleAdjustCycle": {
+    "description": "Adjust plan option and confirm button: ease the plan for the menstrual cycle (Art 9, behind the cycle-plans gate)"
+  },
+  "planDetailCycleAdjustPregnancy": "Adjust for pregnancy",
+  "@planDetailCycleAdjustPregnancy": {
+    "description": "Adjust plan option and confirm button: adjust the plan for pregnancy"
+  },
+  "planDetailCycleAdjustConfirmTitle": "Adjust remaining weeks?",
+  "@planDetailCycleAdjustConfirmTitle": {
+    "description": "Cycle / pregnancy adjustment confirm title"
+  },
+  "planDetailCycleAdjustConfirmCycle": "Upcoming workouts on your menstrual and late-luteal days will be eased — a modest volume trim, with quality sessions run by feel. Past workouts are unchanged.",
+  "@planDetailCycleAdjustConfirmCycle": {
+    "description": "Confirm body for the cycle adjustment"
+  },
+  "planDetailCycleAdjustConfirmPregnancy": "Upcoming workouts will be adjusted for pregnancy: hard sessions and races become easy runs and volume tapers by trimester. This is not medical advice — follow your healthcare provider. Past workouts are unchanged.",
+  "@planDetailCycleAdjustConfirmPregnancy": {
+    "description": "Confirm body for the pregnancy adjustment; not medical advice"
+  },
+  "planDetailCycleAdjustDone": "Upcoming weeks adjusted.",
+  "@planDetailCycleAdjustDone": {
+    "description": "Banner after the adjustment changed workouts"
+  },
+  "planDetailCycleAdjustNone": "No upcoming workouts needed adjusting.",
+  "@planDetailCycleAdjustNone": {
+    "description": "Banner when no upcoming workout needed adjusting"
+  },
+  "planDetailAdjustCycleDesc": "Eases upcoming sessions on the menstrual and late-luteal days of your cycle. Past sessions stay as they are.",
+  "@planDetailAdjustCycleDesc": {
+    "description": "Description under the cycle option in the Adjust plan dialog"
+  },
+  "planDetailAdjustPregnancyDesc": "Turns hard upcoming sessions into easy runs and eases volume by trimester. Past sessions stay as they are.",
+  "@planDetailAdjustPregnancyDesc": {
+    "description": "Description under the pregnancy option in the Adjust plan dialog"
   }
 }

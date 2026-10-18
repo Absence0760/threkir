@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:share_plus_platform_interface/share_plus_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart' show FullBodyLoader;
+import '../lib/cycle_plan.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/plan_serialize.dart';
 import '../lib/screens/plan_detail_screen.dart';
@@ -122,6 +123,16 @@ class _FakeTraining extends TrainingService {
           required List<String>? rules}) async =>
       metaCalls.add((name, notes, daysPerWeek, rules));
 
+  final cycleCalls = <(CyclePlanMode, String, int)>[];
+  int cycleChanges = 2;
+
+  @override
+  Future<int> applyCycleAdjustment(String planId,
+      List<PlanWorkoutRow> workouts, CyclePlanConfig cfg, String todayIso) async {
+    cycleCalls.add((cfg.mode, todayIso, workouts.length));
+    return cycleChanges;
+  }
+
   @override
   Future<void> setPlanGoalTime(String planId, int? goalTimeSec, double? vdot,
           List<Map<String, Object?>> changes) async =>
@@ -147,7 +158,7 @@ class _RecordingSharePlatform extends SharePlatform {
 late _RecordingSharePlatform _share;
 
 Future<void> _pump(WidgetTester tester, _FakeTraining training,
-    {String viewerId = _owner}) async {
+    {String viewerId = _owner, CyclePlanConfig? cycleConfig}) async {
   tester.view.physicalSize = const Size(420, 4000);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
@@ -165,6 +176,7 @@ Future<void> _pump(WidgetTester tester, _FakeTraining training,
                 social: _FakeSocial(),
                 viewerIdOverride: viewerId,
                 now: () => _today,
+                cyclePlanConfig: () => cycleConfig,
               ),
             )),
             child: const Text('open'),
@@ -437,6 +449,54 @@ void main() {
       expect(find.text('Add a plan name.'), findsOneWidget);
       expect(training.metaCalls, isEmpty);
       expect(training.goalCalls, isEmpty);
+    });
+  });
+
+  group('cycle / pregnancy adjustment', () {
+    Future<void> openAdjust(WidgetTester tester) =>
+        _openPlanMenu(tester, 'Adjust plan');
+
+    testWidgets('no config, no option', (tester) async {
+      await _pump(tester, _FakeTraining());
+      await openAdjust(tester);
+      expect(find.text('Adjust for my cycle'), findsNothing);
+      expect(find.text('Adjust for pregnancy'), findsNothing);
+    });
+
+    testWidgets('a pregnancy config offers it, confirms, then applies from today',
+        (tester) async {
+      final training = _FakeTraining();
+      await _pump(tester, training,
+          cycleConfig: const CyclePlanConfig.pregnancy(dueDateIso: '2026-09-01'));
+      await openAdjust(tester);
+
+      await tester.tap(find.text('Adjust for pregnancy'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('This is not medical advice'), findsOneWidget);
+      expect(training.cycleCalls, isEmpty, reason: 'nothing before the confirm');
+
+      await tester.tap(find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.text('Adjust for pregnancy')));
+      await tester.pumpAndSettle();
+      expect(training.cycleCalls, [(CyclePlanMode.pregnancy, '2026-03-11', 2)]);
+      expect(find.text('Upcoming weeks adjusted.'), findsOneWidget);
+      await _drainBanner(tester);
+    });
+
+    testWidgets('nothing to change says so', (tester) async {
+      final training = _FakeTraining()..cycleChanges = 0;
+      await _pump(tester, training,
+          cycleConfig: const CyclePlanConfig.cycle(
+              cycleLengthDays: 28, lastPeriodStartIso: '2026-03-01'));
+      await openAdjust(tester);
+      await tester.tap(find.text('Adjust for my cycle'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.descendant(
+          of: find.byType(AlertDialog), matching: find.text('Adjust for my cycle')));
+      await tester.pumpAndSettle();
+      expect(find.text('No upcoming workouts needed adjusting.'), findsOneWidget);
+      await _drainBanner(tester);
     });
   });
 

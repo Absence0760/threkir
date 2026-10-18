@@ -5031,5 +5031,14 @@
   "planDetailRulesLabel": "Planregeln, eine pro Zeile",
   "planDetailSaveDetails": "Speichern",
   "planDetailDetailsSaved": "Plan aktualisiert.",
-  "planDetailDetailsSavedRepaced": "{n, plural, one{Plan aktualisiert. Tempos für {n} anstehende Einheit neu berechnet.} other{Plan aktualisiert. Tempos für {n} anstehende Einheiten neu berechnet.}}"
+  "planDetailDetailsSavedRepaced": "{n, plural, one{Plan aktualisiert. Tempos für {n} anstehende Einheit neu berechnet.} other{Plan aktualisiert. Tempos für {n} anstehende Einheiten neu berechnet.}}",
+  "planDetailCycleAdjustCycle": "An meinen Zyklus anpassen",
+  "planDetailCycleAdjustPregnancy": "An die Schwangerschaft anpassen",
+  "planDetailCycleAdjustConfirmTitle": "Verbleibende Wochen anpassen?",
+  "planDetailCycleAdjustConfirmCycle": "Kommende Einheiten an deinen Menstruations- und Spätluteal-Tagen werden erleichtert — eine moderate Umfangsreduzierung, Qualitätseinheiten nach Gefühl. Vergangene Einheiten bleiben unverändert.",
+  "planDetailCycleAdjustConfirmPregnancy": "Kommende Einheiten werden an die Schwangerschaft angepasst: harte Einheiten und Wettkämpfe werden zu lockeren Läufen und der Umfang wird nach Trimester reduziert. Dies ist keine medizinische Beratung — folge deiner Ärztin oder deinem Arzt. Vergangene Einheiten bleiben unverändert.",
+  "planDetailCycleAdjustDone": "Kommende Wochen angepasst.",
+  "planDetailCycleAdjustNone": "Keine kommenden Einheiten mussten angepasst werden.",
+  "planDetailAdjustCycleDesc": "Erleichtert kommende Einheiten an den Menstruations- und Spätluteal-Tagen deines Zyklus. Vergangene Einheiten bleiben unverändert.",
+  "planDetailAdjustPregnancyDesc": "Macht aus harten kommenden Einheiten lockere Läufe und reduziert den Umfang nach Trimester. Vergangene Einheiten bleiben unverändert."
 }

@@ -5031,5 +5031,14 @@
   "planDetailRulesLabel": "Reglas del plan, una por línea",
   "planDetailSaveDetails": "Guardar",
   "planDetailDetailsSaved": "Plan actualizado.",
-  "planDetailDetailsSavedRepaced": "{n, plural, one{Plan actualizado. Ritmos recalculados para {n} entrenamiento próximo.} other{Plan actualizado. Ritmos recalculados para {n} entrenamientos próximos.}}"
+  "planDetailDetailsSavedRepaced": "{n, plural, one{Plan actualizado. Ritmos recalculados para {n} entrenamiento próximo.} other{Plan actualizado. Ritmos recalculados para {n} entrenamientos próximos.}}",
+  "planDetailCycleAdjustCycle": "Ajustar a mi ciclo",
+  "planDetailCycleAdjustPregnancy": "Ajustar al embarazo",
+  "planDetailCycleAdjustConfirmTitle": "¿Ajustar las semanas restantes?",
+  "planDetailCycleAdjustConfirmCycle": "Los próximos entrenamientos en tus días menstruales y de fase lútea tardía se suavizarán: una reducción moderada del volumen y sesiones de calidad por sensaciones. Los entrenamientos pasados no cambian.",
+  "planDetailCycleAdjustConfirmPregnancy": "Los próximos entrenamientos se ajustarán al embarazo: las sesiones duras y las carreras pasan a ser rodajes suaves y el volumen se reduce por trimestre. Esto no es consejo médico: sigue a tu profesional sanitario. Los entrenamientos pasados no cambian.",
+  "planDetailCycleAdjustDone": "Semanas próximas ajustadas.",
+  "planDetailCycleAdjustNone": "Ningún entrenamiento próximo necesitaba ajuste.",
+  "planDetailAdjustCycleDesc": "Suaviza los próximos entrenamientos en los días menstruales y de fase lútea tardía de tu ciclo. Los entrenamientos pasados no cambian.",
+  "planDetailAdjustPregnancyDesc": "Convierte los próximos entrenamientos duros en rodajes suaves y reduce el volumen por trimestre. Los entrenamientos pasados no cambian."
 }

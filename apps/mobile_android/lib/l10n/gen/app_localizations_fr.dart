@@ -17848,4 +17848,37 @@ class AppLocalizationsFr extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get planDetailCycleAdjustCycle => 'Adapter à mon cycle';
+
+  @override
+  String get planDetailCycleAdjustPregnancy => 'Adapter à la grossesse';
+
+  @override
+  String get planDetailCycleAdjustConfirmTitle =>
+      'Adapter les semaines restantes ?';
+
+  @override
+  String get planDetailCycleAdjustConfirmCycle =>
+      'Les prochaines séances lors de vos jours de règles et de fin de phase lutéale seront allégées — une réduction modérée du volume, les séances de qualité courues à la sensation. Les séances passées ne changent pas.';
+
+  @override
+  String get planDetailCycleAdjustConfirmPregnancy =>
+      'Les prochaines séances seront adaptées à la grossesse : les séances difficiles et les courses deviennent des footings faciles et le volume diminue par trimestre. Ce n\'est pas un avis médical — suivez les conseils de votre professionnel de santé. Les séances passées ne changent pas.';
+
+  @override
+  String get planDetailCycleAdjustDone => 'Semaines à venir adaptées.';
+
+  @override
+  String get planDetailCycleAdjustNone =>
+      'Aucune séance à venir n\'avait besoin d\'être adaptée.';
+
+  @override
+  String get planDetailAdjustCycleDesc =>
+      'Allège les prochaines séances pendant les jours de règles et de fin de phase lutéale de votre cycle. Les séances passées ne changent pas.';
+
+  @override
+  String get planDetailAdjustPregnancyDesc =>
+      'Transforme les prochaines séances difficiles en footings faciles et réduit le volume par trimestre. Les séances passées ne changent pas.';
 }

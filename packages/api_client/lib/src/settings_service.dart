@@ -112,6 +112,14 @@ class SettingsKeys {
   static const timeZone = 'time_zone';
   static const weeklyMileageGoalMetres = 'weekly_mileage_goal_m';
   static const weekStartDay = 'week_start_day';
+  /// GDPR Art 9 reproductive-health settings behind the cycle / pregnancy
+  /// plan adjustment (decisions § 231): written only under the cycle-plans
+  /// gate AND health-data consent, nulled on withdrawal, so a value present
+  /// here is consented data. Read on mobile only under `cyclePlansGate`.
+  static const cycleTrackingMode = 'cycle_tracking_mode';
+  static const cycleLengthDays = 'cycle_length_days';
+  static const cycleLastPeriodStart = 'cycle_last_period_start';
+  static const pregnancyDueDate = 'pregnancy_due_date';
   static const mapStyle = 'map_style';
   static const unitsPaceFormat = 'units_pace_format';
   /// Display + entry unit for body weight and lift weights (Phase 4

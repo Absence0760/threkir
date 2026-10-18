@@ -16980,4 +16980,35 @@ class AppLocalizationsJa extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get planDetailCycleAdjustCycle => '生理周期に合わせて調整';
+
+  @override
+  String get planDetailCycleAdjustPregnancy => '妊娠に合わせて調整';
+
+  @override
+  String get planDetailCycleAdjustConfirmTitle => '残りの週を調整しますか？';
+
+  @override
+  String get planDetailCycleAdjustConfirmCycle =>
+      '月経日と黄体期後半の今後のワークアウトが軽減されます。量は控えめに減らし、質の高いセッションは感覚で行います。過去のワークアウトは変更されません。';
+
+  @override
+  String get planDetailCycleAdjustConfirmPregnancy =>
+      '今後のワークアウトが妊娠に合わせて調整されます。ハードなセッションやレースはイージーランになり、量は三半期ごとに減少します。これは医学的アドバイスではありません。医療提供者の指導に従ってください。過去のワークアウトは変更されません。';
+
+  @override
+  String get planDetailCycleAdjustDone => '今後の週を調整しました。';
+
+  @override
+  String get planDetailCycleAdjustNone => '調整が必要な今後のワークアウトはありませんでした。';
+
+  @override
+  String get planDetailAdjustCycleDesc =>
+      '月経日と黄体期後半の今後のワークアウトを軽減します。過去のワークアウトは変更されません。';
+
+  @override
+  String get planDetailAdjustPregnancyDesc =>
+      '今後のハードなワークアウトをイージーランに変え、三半期ごとに量を減らします。過去のワークアウトは変更されません。';
 }

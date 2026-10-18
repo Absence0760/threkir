@@ -17819,4 +17819,38 @@ class AppLocalizationsDe extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get planDetailCycleAdjustCycle => 'An meinen Zyklus anpassen';
+
+  @override
+  String get planDetailCycleAdjustPregnancy =>
+      'An die Schwangerschaft anpassen';
+
+  @override
+  String get planDetailCycleAdjustConfirmTitle =>
+      'Verbleibende Wochen anpassen?';
+
+  @override
+  String get planDetailCycleAdjustConfirmCycle =>
+      'Kommende Einheiten an deinen Menstruations- und Spätluteal-Tagen werden erleichtert — eine moderate Umfangsreduzierung, Qualitätseinheiten nach Gefühl. Vergangene Einheiten bleiben unverändert.';
+
+  @override
+  String get planDetailCycleAdjustConfirmPregnancy =>
+      'Kommende Einheiten werden an die Schwangerschaft angepasst: harte Einheiten und Wettkämpfe werden zu lockeren Läufen und der Umfang wird nach Trimester reduziert. Dies ist keine medizinische Beratung — folge deiner Ärztin oder deinem Arzt. Vergangene Einheiten bleiben unverändert.';
+
+  @override
+  String get planDetailCycleAdjustDone => 'Kommende Wochen angepasst.';
+
+  @override
+  String get planDetailCycleAdjustNone =>
+      'Keine kommenden Einheiten mussten angepasst werden.';
+
+  @override
+  String get planDetailAdjustCycleDesc =>
+      'Erleichtert kommende Einheiten an den Menstruations- und Spätluteal-Tagen deines Zyklus. Vergangene Einheiten bleiben unverändert.';
+
+  @override
+  String get planDetailAdjustPregnancyDesc =>
+      'Macht aus harten kommenden Einheiten lockere Läufe und reduziert den Umfang nach Trimester. Vergangene Einheiten bleiben unverändert.';
 }

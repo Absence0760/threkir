@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/geocoding.dart';
 import '../lib/social_service.dart';
 import '../lib/training.dart';
+import '../lib/cycle_plan.dart';
 import '../lib/training_service.dart';
 
 // Known seed IDs / slugs — kept here so an unintended seed change shows
@@ -888,6 +889,48 @@ void main() {
         expect(
             after.workouts.firstWhere((w) => w.id == paced.id).targetPaceSecPerKm,
             250);
+      } finally {
+        if (newId != null) await training.deletePlan(newId);
+      }
+    });
+
+    test('applyCycleAdjustment writes through apply_workout_adjustments',
+        () async {
+      String? newId;
+      try {
+        final start = DateTime.utc(2033, 4, 3);
+        final created = await training.createPlan(
+          name: 'integration-test cycle plan',
+          goalEvent: GoalEvent.distance10k,
+          goalDistanceM: 10_000,
+          startDate: start,
+          daysPerWeek: 4,
+          recent5kSec: 1500,
+          generated: generatePlan(GeneratePlanInput(
+            goalEvent: GoalEvent.distance10k,
+            recent5kSec: 1500,
+            startDate: start,
+            daysPerWeek: 4,
+          )),
+        );
+        newId = created.id;
+        final before = await training.fetchPlan(created.id);
+        // Due a month after the plan starts: every week is third trimester
+        // or later, so hard sessions become easy runs.
+        final changed = await training.applyCycleAdjustment(
+          created.id,
+          before.workouts,
+          const CyclePlanConfig.pregnancy(dueDateIso: '2033-05-01'),
+          '2033-04-01',
+        );
+        expect(changed, greaterThan(0));
+        final after = await training.fetchPlan(created.id);
+        expect(
+            after.workouts.where((w) =>
+                const {'tempo', 'interval', 'marathon_pace'}.contains(w.kind) &&
+                w.scheduledDate.isBefore(DateTime.utc(2033, 5, 1))),
+            isEmpty,
+            reason: 'no hard session survives inside the pregnancy window');
       } finally {
         if (newId != null) await training.deletePlan(newId);
       }

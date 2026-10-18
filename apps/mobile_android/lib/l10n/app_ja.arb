@@ -5031,5 +5031,14 @@
   "planDetailRulesLabel": "プランのルール（1行に1つ）",
   "planDetailSaveDetails": "保存",
   "planDetailDetailsSaved": "プランを更新しました。",
-  "planDetailDetailsSavedRepaced": "{n, plural, other{プランを更新しました。今後の{n}件のワークアウトのペースを再計算しました。}}"
+  "planDetailDetailsSavedRepaced": "{n, plural, other{プランを更新しました。今後の{n}件のワークアウトのペースを再計算しました。}}",
+  "planDetailCycleAdjustCycle": "生理周期に合わせて調整",
+  "planDetailCycleAdjustPregnancy": "妊娠に合わせて調整",
+  "planDetailCycleAdjustConfirmTitle": "残りの週を調整しますか？",
+  "planDetailCycleAdjustConfirmCycle": "月経日と黄体期後半の今後のワークアウトが軽減されます。量は控えめに減らし、質の高いセッションは感覚で行います。過去のワークアウトは変更されません。",
+  "planDetailCycleAdjustConfirmPregnancy": "今後のワークアウトが妊娠に合わせて調整されます。ハードなセッションやレースはイージーランになり、量は三半期ごとに減少します。これは医学的アドバイスではありません。医療提供者の指導に従ってください。過去のワークアウトは変更されません。",
+  "planDetailCycleAdjustDone": "今後の週を調整しました。",
+  "planDetailCycleAdjustNone": "調整が必要な今後のワークアウトはありませんでした。",
+  "planDetailAdjustCycleDesc": "月経日と黄体期後半の今後のワークアウトを軽減します。過去のワークアウトは変更されません。",
+  "planDetailAdjustPregnancyDesc": "今後のハードなワークアウトをイージーランに変え、三半期ごとに量を減らします。過去のワークアウトは変更されません。"
 }

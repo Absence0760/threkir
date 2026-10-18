@@ -17627,4 +17627,36 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get planDetailCycleAdjustCycle => 'Adjust for my cycle';
+
+  @override
+  String get planDetailCycleAdjustPregnancy => 'Adjust for pregnancy';
+
+  @override
+  String get planDetailCycleAdjustConfirmTitle => 'Adjust remaining weeks?';
+
+  @override
+  String get planDetailCycleAdjustConfirmCycle =>
+      'Upcoming workouts on your menstrual and late-luteal days will be eased — a modest volume trim, with quality sessions run by feel. Past workouts are unchanged.';
+
+  @override
+  String get planDetailCycleAdjustConfirmPregnancy =>
+      'Upcoming workouts will be adjusted for pregnancy: hard sessions and races become easy runs and volume tapers by trimester. This is not medical advice — follow your healthcare provider. Past workouts are unchanged.';
+
+  @override
+  String get planDetailCycleAdjustDone => 'Upcoming weeks adjusted.';
+
+  @override
+  String get planDetailCycleAdjustNone =>
+      'No upcoming workouts needed adjusting.';
+
+  @override
+  String get planDetailAdjustCycleDesc =>
+      'Eases upcoming sessions on the menstrual and late-luteal days of your cycle. Past sessions stay as they are.';
+
+  @override
+  String get planDetailAdjustPregnancyDesc =>
+      'Turns hard upcoming sessions into easy runs and eases volume by trimester. Past sessions stay as they are.';
 }

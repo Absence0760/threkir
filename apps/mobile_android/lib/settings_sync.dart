@@ -504,6 +504,11 @@ void registerActiveSettingsSync(SettingsSyncService? s) {
   _activeSettingsSync = s;
 }
 
+/// One effective universal / device setting, null until the settings bag
+/// has loaded or when unset.
+Object? activeSetting(String key) =>
+    _activeSettingsSync?.service?.effective<Object>(key);
+
 /// The runner's `week_start_day` ('monday' | 'sunday'), Monday until the
 /// settings bag has loaded.
 String activeWeekStartDay() =>

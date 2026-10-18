@@ -17810,4 +17810,37 @@ class AppLocalizationsEs extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get planDetailCycleAdjustCycle => 'Ajustar a mi ciclo';
+
+  @override
+  String get planDetailCycleAdjustPregnancy => 'Ajustar al embarazo';
+
+  @override
+  String get planDetailCycleAdjustConfirmTitle =>
+      '¿Ajustar las semanas restantes?';
+
+  @override
+  String get planDetailCycleAdjustConfirmCycle =>
+      'Los próximos entrenamientos en tus días menstruales y de fase lútea tardía se suavizarán: una reducción moderada del volumen y sesiones de calidad por sensaciones. Los entrenamientos pasados no cambian.';
+
+  @override
+  String get planDetailCycleAdjustConfirmPregnancy =>
+      'Los próximos entrenamientos se ajustarán al embarazo: las sesiones duras y las carreras pasan a ser rodajes suaves y el volumen se reduce por trimestre. Esto no es consejo médico: sigue a tu profesional sanitario. Los entrenamientos pasados no cambian.';
+
+  @override
+  String get planDetailCycleAdjustDone => 'Semanas próximas ajustadas.';
+
+  @override
+  String get planDetailCycleAdjustNone =>
+      'Ningún entrenamiento próximo necesitaba ajuste.';
+
+  @override
+  String get planDetailAdjustCycleDesc =>
+      'Suaviza los próximos entrenamientos en los días menstruales y de fase lútea tardía de tu ciclo. Los entrenamientos pasados no cambian.';
+
+  @override
+  String get planDetailAdjustPregnancyDesc =>
+      'Convierte los próximos entrenamientos duros en rodajes suaves y reduce el volumen por trimestre. Los entrenamientos pasados no cambian.';
 }

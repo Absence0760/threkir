@@ -12,7 +12,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderProxyBox;
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/semantics.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart' hide ActivityType;
 import 'package:pedometer/pedometer.dart';
@@ -2964,24 +2963,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                     ));
             // Haptic companion to the TTS so the runner notices even
             // with headphones paused or ambient noise masking the cue.
-            // Two-pulse for "speed up", single strong pulse for "slow
-            // down" — the direction is distinguishable by feel alone.
-            HapticFeedback.heavyImpact();
-            if (diff > 0) {
-              // The delayed pulse runs on a different stack frame from
-              // the surrounding try/catch — without its own guard, a
-              // throw here propagates as unhandled and can break the
-              // _onSnapshot pipeline (L0/L1 freeze). Each auxiliary
-              // effect owns its own try/catch + debugPrint; see
-              // docs/architecture/conventions.md § Layered resilience.
-              Future<void>.delayed(const Duration(milliseconds: 180), () {
-                try {
-                  HapticFeedback.heavyImpact();
-                } catch (e) {
-                  debugPrint('pace-alert second-pulse haptic failed: $e');
-                }
-              });
-            }
+            // Two sharp pulses for "speed up", one for "slow down" — the
+            // direction is distinguishable by feel alone. Over the native
+            // channel, not HapticFeedback, so it lands with the screen off.
+            _runHaptic(paceAlertHaptic(tooSlow: diff > 0));
           }
         }
       } catch (e) {

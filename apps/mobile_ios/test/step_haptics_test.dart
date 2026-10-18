@@ -3,6 +3,8 @@
 // run screen relies on: a REAL WorkoutRunner's events, decided and played,
 // reach `run_app/haptics` with the right pattern names (issue #1186).
 
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:run_recorder/run_recorder.dart';
@@ -163,5 +165,15 @@ void main() {
       await sub.cancel();
       runner.dispose();
     });
+  });
+
+  test('the run screen buzzes only through the native channel', () {
+    // HapticFeedback is a view-level effect Android drops with the screen
+    // off — which is how most of a run is spent — so a call to it on the
+    // run screen is a cue the runner never feels.
+    final src = File('lib/screens/run_screen.dart').readAsStringSync();
+    expect(src.contains('HapticFeedback.'), isFalse);
+    expect(src, contains('_runHaptic(paceAlertHaptic(tooSlow: diff > 0))'));
+    expect(src, contains('_runHaptic(stepHapticFor(e))'));
   });
 }

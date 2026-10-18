@@ -67,7 +67,57 @@ test('sessions: the ring counts, plus the skipped sessions it leaves out', () =>
 		records: [],
 		todayIso: '2026-04-27'
 	});
-	assert.deepEqual(recap.sessions, { completed: 2, total: 3, pct: 67, skipped: 1 });
+	assert.deepEqual(recap.sessions, { completed: 2, total: 3, pct: 67, skipped: 1, missed: 1 });
+});
+
+test('sessions: an answered or moved miss is still missed, an upcoming day is not', () => {
+	const recap = assemblePlanRecap({
+		plan,
+		workouts: [
+			wo('w1', '2026-03-03', 'long', { missed_ack_at: '2026-03-05T08:00:00Z' }),
+			wo('w2', '2026-03-10', 'easy'),
+			wo('w3', '2026-03-12', 'easy', { skipped_at: '2026-03-12T08:00:00Z' }),
+			wo('w4', '2026-03-14', 'rest'),
+			wo('w5', '2026-04-27', 'easy')
+		],
+		runs: [],
+		records: [],
+		todayIso: '2026-04-27'
+	});
+	assert.deepEqual(recap.sessions, { completed: 0, total: 3, pct: 0, skipped: 1, missed: 2 });
+});
+
+test('an empty plan recaps to zeros and still offers the next plan', () => {
+	const recap = assemblePlanRecap({
+		plan: { ...plan, trimmed_at: '2026-03-02T10:00:00Z' },
+		workouts: [],
+		runs: [],
+		records: [],
+		todayIso: '2026-04-27'
+	});
+	assert.deepEqual(recap.sessions, { completed: 0, total: 0, pct: 0, skipped: 0, missed: 0 });
+	assert.deepEqual(recap.volume, { basis: 'distance', done: 0, planned: 0 });
+	assert.deepEqual(recap.longRuns, { done: 0, planned: 0, first: null, longest: null });
+	assert.equal(recap.race, null);
+	assert.equal(recap.next.startIso, '2026-05-10');
+});
+
+test('long runs: done of planned, from the first to the longest', () => {
+	const recap = assemblePlanRecap({
+		plan,
+		workouts: [
+			wo('l3', '2026-03-15', 'long', { completed_run_id: 'r3', target_distance_m: 18_000 }),
+			wo('l1', '2026-03-01', 'long', { manually_completed: true, target_distance_m: 12_000 }),
+			wo('l2', '2026-03-08', 'long', { completed_run_id: 'r2', target_distance_m: 15_000 }),
+			wo('l4', '2026-03-22', 'long', { target_distance_m: 20_000 }),
+			wo('l5', '2026-03-29', 'long', { skipped_at: '2026-03-29T08:00:00Z', target_distance_m: 22_000 }),
+			wo('e1', '2026-03-02', 'easy', { completed_run_id: 'r9', target_distance_m: 30_000 })
+		],
+		runs: [run('r2', '2026-03-08', 16_200, 5800), run('r3', '2026-03-15', 0, 0), run('r9', '2026-03-02', 30_000, 9000)],
+		records: [],
+		todayIso: '2026-04-27'
+	});
+	assert.deepEqual(recap.longRuns, { done: 3, planned: 4, first: 12_000, longest: 18_000 });
 });
 
 test('distance: a linked run counts its real distance, a ticked workout its target', () => {

@@ -6,7 +6,8 @@
 // Dart twin: `apps/mobile_android/lib/plan_recap.dart`.
 
 import { shiftIsoDate } from './plan_bulk_ops.ts';
-import { planDistanceBanked, planWorkoutProgress } from './plan_progress.ts';
+import { isWorkoutMissed } from './plan_current.ts';
+import { longestCompletedLongRunMetres, planDistanceBanked, planWorkoutProgress } from './plan_progress.ts';
 import { planRaces, type PlanRace, type RacePriority } from './plan_races.ts';
 import { isWalkRunPlan } from './plan_restart.ts';
 import { defaultPlanStartIso, nextSundayIso } from './plan_start.ts';
@@ -42,6 +43,7 @@ export interface RecapWorkout {
 	completed_run_id?: string | null;
 	manually_completed?: boolean | null;
 	skipped_at?: string | null;
+	missed_ack_at?: string | null;
 	race_name?: string | null;
 	race_priority?: string | null;
 }
@@ -110,9 +112,24 @@ export interface RecapNext {
 	seed5kSec: number | null;
 }
 
+export interface RecapLongRuns {
+	/// Long runs done, of those still on the books (skipped ones leave both).
+	done: number;
+	planned: number;
+	/// The earliest-dated long run done, and the longest: the block's
+	/// progression. Each is the linked run's distance, else the target.
+	first: number | null;
+	longest: number | null;
+}
+
 export interface PlanRecap {
-	sessions: { completed: number; total: number; pct: number; skipped: number };
+	/// The ring's counts (`planWorkoutProgress`), plus the sessions it leaves
+	/// out (skipped) and the ones it counts as not done whose day has passed
+	/// (missed). An answered miss is still missed: answering it changes the
+	/// plan ahead, not what was run.
+	sessions: { completed: number; total: number; pct: number; skipped: number; missed: number };
 	volume: { basis: RecapVolumeBasis; done: number; planned: number };
+	longRuns: RecapLongRuns;
 	records: PlanRecapRecord[];
 	race: RecapRace | null;
 	next: RecapNext;
@@ -184,12 +201,32 @@ export function fiveKSecondsAtVdot(vdot: number): number | null {
 	let lo = 60;
 	let hi = 4 * 60 * 60;
 	if (vdotFromRace(5000, lo) < vdot || vdotFromRace(5000, hi) > vdot) return null;
-	for (let i = 0; i < 60; i++) {
-		const mid = (lo + hi) / 2;
+	while (hi - lo > 1) {
+		const mid = Math.floor((lo + hi) / 2);
 		if (vdotFromRace(5000, mid) > vdot) lo = mid;
 		else hi = mid;
 	}
-	return Math.round((lo + hi) / 2);
+	return vdotFromRace(5000, lo) - vdot < vdot - vdotFromRace(5000, hi) ? lo : hi;
+}
+
+function longRunProgression(workouts: RecapWorkout[], distanceById: Map<string, number>): RecapLongRuns {
+	let done = 0;
+	let planned = 0;
+	let firstDate: string | null = null;
+	let first: number | null = null;
+	for (const w of workouts) {
+		if (w.kind !== 'long' || w.skipped_at != null) continue;
+		planned += 1;
+		if (w.manually_completed !== true && w.completed_run_id == null) continue;
+		done += 1;
+		const actual = w.completed_run_id != null ? distanceById.get(w.completed_run_id) : undefined;
+		const d = actual != null && actual > 0 ? actual : (w.target_distance_m ?? 0);
+		if (d > 0 && (firstDate === null || w.scheduled_date < firstDate)) {
+			firstDate = w.scheduled_date;
+			first = d;
+		}
+	}
+	return { done, planned, first, longest: longestCompletedLongRunMetres(workouts, distanceById) };
 }
 
 function timeBanked(workouts: RecapWorkout[], durationById: Map<string, number>) {
@@ -218,7 +255,12 @@ export function assemblePlanRecap(input: PlanRecapInput): PlanRecap {
 
 	const progress = planWorkoutProgress(workouts);
 	let skipped = 0;
-	for (const w of workouts) if (w.kind !== 'rest' && w.skipped_at != null) skipped += 1;
+	let missed = 0;
+	for (const w of workouts) {
+		if (w.kind !== 'rest' && w.skipped_at != null) skipped += 1;
+		const completed = w.manually_completed === true || w.completed_run_id != null;
+		if (isWorkoutMissed({ ...w, completed, skipped: w.skipped_at != null }, todayIso)) missed += 1;
+	}
 
 	const distanceById = new Map<string, number>();
 	const durationById = new Map<string, number>();
@@ -274,8 +316,9 @@ export function assemblePlanRecap(input: PlanRecapInput): PlanRecap {
 	}
 
 	return {
-		sessions: { ...progress, skipped },
+		sessions: { ...progress, skipped, missed },
 		volume,
+		longRuns: longRunProgression(workouts, distanceById),
 		records: inWindow,
 		race,
 		next: { recovery, startIso, seed5kSec },

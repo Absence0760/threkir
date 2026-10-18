@@ -114,7 +114,8 @@
 	import { loadSettings, peekCachedSettings, effective, updateUniversal } from '#lib/settings/settings.ts';
 	import { relativeAge } from '#lib/runs/pr_recency.ts';
 	import type { LoadedSettings } from '#lib/settings/settings.ts';
-	import { fmtKm, fmtOverrun, fmtPace, formatDistance as formatUnitDistance, formatElevation, formatWeight, setUnit } from '#lib/format/units.svelte.ts';
+	import { fmtKm, fmtPace, formatDistance as formatUnitDistance, formatElevation, formatWeight, setUnit } from '#lib/format/units.svelte.ts';
+	import { fmtOverrun } from '#lib/format/overrun.ts';
 	import { paceMinutesSeconds } from '#lib/format/pace_format.ts';
 	import { formatSignedInteger } from '#lib/format/number.ts';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';

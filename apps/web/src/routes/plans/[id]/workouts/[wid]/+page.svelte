@@ -18,7 +18,8 @@
 	import { isEditedByCoach } from '#lib/training/workout_prescription.ts';
 	import { hrTargetLabel, rpeTargetLabel } from '#lib/training/workout_target_label.ts';
 	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_gate.ts';
-	import { fmtKm, fmtOverrun, fmtPace, fmtPaceTolerance } from '#lib/format/units.svelte.ts';
+	import { fmtKm, fmtPace, fmtPaceTolerance } from '#lib/format/units.svelte.ts';
+	import { fmtOverrun } from '#lib/format/overrun.ts';
 	import { workoutOverrunMetres } from '#lib/training/plan_nudges.ts';
 	import { formatDateShort } from '#lib/format/time.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';

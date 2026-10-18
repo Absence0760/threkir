@@ -130,7 +130,8 @@
 	import { workoutKindLabel, planPhaseLabel } from '#lib/training/workout_labels.ts';
 	import { planWorkoutAriaLabel, planWorkoutStatusOf } from '#lib/training/plan_workout_view.ts';
 	import { planWorkoutStatusLook } from '#lib/training/plan_workout_status_style.ts';
-	import { fmtKm, fmtOverrun, fmtPace } from '#lib/format/units.svelte.ts';
+	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
+	import { fmtOverrun } from '#lib/format/overrun.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { loadSettings, effective } from '#lib/settings/settings.ts';
 	import type { WeekStart } from '#lib/format/calendar.ts';

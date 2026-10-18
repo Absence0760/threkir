@@ -639,7 +639,7 @@ void main() {
         period: GoalPeriod.week,
         distanceMetres: 40000,
       ));
-      await prefs.setRunsLastFetchedAt(DateTime.utc(2026, 7, 1));
+      await prefs.setRunsSyncCursor(DateTime.utc(2026, 7, 1));
 
       await svc.onSignedOut();
 
@@ -656,7 +656,7 @@ void main() {
       expect(prefs.splitIntervalMetres, 0);
       expect(prefs.goals, isEmpty,
           reason: "A's goals must not render as B's");
-      expect(prefs.runsLastFetchedAt, isNull,
+      expect(prefs.runsSyncCursor, isNull,
           reason: "clearing the watermark forces B's first fetch down the "
               'FULL path — a delta against A\'s timestamp would skip '
               "B's older history");

@@ -1855,6 +1855,51 @@ void main() {
       expect(a!.track, hasLength(1), reason: 'hydrated from disk with its track');
     });
 
+    test(
+        'saveManyFromRemote updates an out-of-window copy in place, keeping '
+        'its track and leaving it out of the window', () async {
+      // The first pull after sign-in or upgrade hands over every owned row
+      // (decisions § 2118). Making each windowed-out copy resident would load
+      // every track in the history into memory.
+      await seed([
+        mk('a', DateTime(2026, 1, 1), track: const [Waypoint(lat: 1, lng: 2)]),
+        mk('b', DateTime(2026, 2, 1)),
+      ]);
+      final store = LocalRunStore()..residentWindow = 1;
+      await store.init(overrideDirectory: tempDir);
+      expect(store.runs.map((r) => r.id), ['b'], reason: 'precondition');
+
+      await store.saveManyFromRemote([
+        Run(
+          id: 'a',
+          startedAt: DateTime(2026, 1, 1),
+          duration: const Duration(minutes: 20),
+          distanceMetres: 6100,
+          track: const [],
+          source: RunSource.app,
+        ),
+      ]);
+
+      expect(store.runs.map((r) => r.id), ['b'],
+          reason: 'a synced copy outside the window stays outside it');
+      expect(store.summaries.firstWhere((s) => s.id == 'a').distanceMetres,
+          6100);
+      final a = await store.runById('a');
+      expect(a!.distanceMetres, 6100, reason: 'the file took the server copy');
+      expect(a.track, hasLength(1), reason: 'and kept the local track');
+    });
+
+    test('saveManyFromRemote writes more rows than one batch', () async {
+      final store = LocalRunStore();
+      await store.init(overrideDirectory: tempDir);
+      final count = LocalRunStore.kRemoteWriteBatch * 2 + 3;
+      await store.saveManyFromRemote([
+        for (var i = 0; i < count; i++) mk('r$i', DateTime(2026, 1, 1, 0, i)),
+      ]);
+      expect(store.summaries, hasLength(count));
+      expect(store.unsyncedRuns, isEmpty);
+    });
+
     test('residency: an unsynced run older than the window stays resident',
         () async {
       await seed(

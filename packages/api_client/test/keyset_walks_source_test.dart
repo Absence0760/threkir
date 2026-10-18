@@ -66,6 +66,10 @@ void main() {
     ('Future<List<ExerciseRow>> fetchExerciseCatalogue()', '_exerciseCatalogueOrder'),
     ('Future<Set<String>> fetchOwnedRunIds()', '_runRowsOrder'),
     ('Future<Set<String>> fetchOwnedRouteIds()', '_routeRowsOrder'),
+    (
+      'Future<({List<Run> runs, DateTime? cursor})> getRunsModifiedSince(',
+      '_runsModifiedOrder'
+    ),
   ]) {
     test('$signature walks $order by keyset cursor', () {
       final b = body(signature);
@@ -92,6 +96,10 @@ void main() {
   // would delete owned rows past the cap.
   for (final (signature, filter) in const [
     ('Future<Set<String>> fetchOwnedRunIds()', '.eq(RunRow.colUserId, userId)'),
+    (
+      'Future<({List<Run> runs, DateTime? cursor})> getRunsModifiedSince(',
+      '.eq(RunRow.colUserId, userId)'
+    ),
     (
       'Future<Set<String>> fetchOwnedRouteIds()',
       '.eq(RouteRow.colUserId, userId)'

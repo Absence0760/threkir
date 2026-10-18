@@ -573,17 +573,43 @@ class LocalRunStore extends ChangeNotifier {
   }
 
   /// Bulk variant of [saveFromRemote] used by the runs-screen pull-to-refresh
-  /// path. A delta fetch can return up to 200 rows; calling [saveFromRemote]
-  /// in a loop fired N file writes plus N `notifyListeners()` calls, each
-  /// rebuilding the runs screen — a fresh user pulling for the first time
-  /// rebuilt the screen 200 times. This variant batches all writes with
-  /// `Future.wait`, then notifies listeners once at the end.
+  /// path. Calling [saveFromRemote] in a loop fired N file writes plus N
+  /// `notifyListeners()` calls, each rebuilding the runs screen — a fresh user
+  /// pulling for the first time rebuilt the screen 200 times. This variant
+  /// writes in batches of [kRemoteWriteBatch] with `Future.wait`, then
+  /// notifies listeners once at the end.
+  ///
+  /// The pull can hand over every owned row (the first walk after sign-in or
+  /// upgrade, decisions § 2118), so two things are bounded here that a
+  /// 200-row delta never stressed. A copy outside the resident window is
+  /// hydrated from disk to keep its track, and stays out of the window
+  /// afterwards — making it resident would load every track in the history
+  /// into memory. And only one batch of hydrated runs is held at a time.
   Future<void> saveManyFromRemote(Iterable<Run> runs) =>
       _serialised(() => _saveManyFromRemote(runs));
 
+  /// Runs hydrated and written per batch by [saveManyFromRemote].
+  static const int kRemoteWriteBatch = 50;
+
   Future<void> _saveManyFromRemote(Iterable<Run> runs) async {
     if (runs.isEmpty) return;
+    final all = runs.toList();
+    var wrote = false;
+    for (var i = 0; i < all.length; i += kRemoteWriteBatch) {
+      final end = i + kRemoteWriteBatch < all.length
+          ? i + kRemoteWriteBatch
+          : all.length;
+      if (await _writeRemoteBatch(all.sublist(i, end))) wrote = true;
+    }
+    if (!wrote) return;
+    _runs.sort((a, b) => b.startedAt.compareTo(a.startedAt));
+    await _persistIndex();
+    notifyListeners();
+  }
+
+  Future<bool> _writeRemoteBatch(List<Run> runs) async {
     final toWrite = <Run>[];
+    final windowedOut = <String>{};
     for (final run in runs) {
       final existing = _runs.where((r) => r.id == run.id).firstOrNull;
       // Newer-wins also against an out-of-window synced run via its summary
@@ -597,6 +623,9 @@ class LocalRunStore extends ChangeNotifier {
               ? _lastModifiedOf(existingSummary.toRun())
               : null);
       if (localTs != null && localTs.isAfter(_lastModifiedOf(run))) continue;
+      if (existing == null && existingSummary != null) {
+        windowedOut.add(run.id);
+      }
       Run? existingFull = existing;
       if (run.track.isEmpty && existingFull == null && existingSummary != null) {
         existingFull = await _runByIdRaw(run.id);
@@ -619,7 +648,7 @@ class LocalRunStore extends ChangeNotifier {
           : run;
       toWrite.add(merged);
     }
-    if (toWrite.isEmpty) return;
+    if (toWrite.isEmpty) return false;
     await Future.wait(toWrite.map((merged) {
       final file = File('${_dir.path}/${merged.id}.json');
       final data = {
@@ -630,14 +659,14 @@ class LocalRunStore extends ChangeNotifier {
       return writeJsonAtomic(file, data);
     }));
     for (final merged in toWrite) {
-      _runs.removeWhere((r) => r.id == merged.id);
-      _runs.insert(0, merged);
+      if (!windowedOut.contains(merged.id)) {
+        _runs.removeWhere((r) => r.id == merged.id);
+        _runs.insert(0, merged);
+      }
       _syncedIds.add(merged.id);
       _upsertSummary(merged, synced: true);
     }
-    _runs.sort((a, b) => b.startedAt.compareTo(a.startedAt));
-    await _persistIndex();
-    notifyListeners();
+    return true;
   }
 
   /// Whether a run with this id already exists locally.

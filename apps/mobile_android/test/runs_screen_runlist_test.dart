@@ -26,10 +26,15 @@ class _FakeApi extends ApiClient {
   String? get userId => 'u1';
 
   @override
+  Future<({List<Run> runs, DateTime? cursor})> getRunsModifiedSince(
+    DateTime? cursor,
+  ) async =>
+      (runs: const <Run>[], cursor: cursor);
+
+  @override
   Future<List<Run>> getRuns({
     int limit = 50,
     DateTime? before,
-    DateTime? updatedSince,
   }) async =>
       const [];
 }

@@ -43,7 +43,6 @@ class _HistoryApi extends ApiClient {
   Future<List<Run>> getRuns({
     int limit = 50,
     DateTime? before,
-    DateTime? updatedSince,
   }) async =>
       [
         for (var i = 0; i < runs; i++)

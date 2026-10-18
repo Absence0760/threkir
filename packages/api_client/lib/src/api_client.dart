@@ -1556,12 +1556,6 @@ class ApiClient {
   /// [before] paginates backwards — pass the `startedAt` of the oldest
   /// row from a previous page to get the next older batch.
   ///
-  /// [updatedSince] enables delta fetches: only rows whose `last_modified_at`
-  /// (in metadata) is newer than the supplied timestamp are returned. The
-  /// caller stores its `lastFetchedAt` locally and passes it on subsequent
-  /// opens so we don't re-fetch the entire history on every Runs tab
-  /// visit.
-  ///
   /// Owner-only, filtered by `user_id` rather than left to RLS: the `runs`
   /// SELECT policy also admits every run of an athlete the caller actively
   /// coaches, and those would land in a coach's own run store, history and
@@ -1569,7 +1563,6 @@ class ApiClient {
   Future<List<Run>> getRuns({
     int limit = 50,
     DateTime? before,
-    DateTime? updatedSince,
   }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
@@ -1579,19 +1572,6 @@ class ApiClient {
     if (before != null) {
       query = query.lt(RunRow.colStartedAt, before.toIso8601String());
     }
-    if (updatedSince != null) {
-      // `last_modified_at` lives in metadata as an ISO-8601 string stamped
-      // by LocalRunStore on every write. `->>` projects the JSON field as
-      // text; Postgres lexicographic-compares ISO-8601 strings correctly.
-      // The key must NOT be quoted in PostgREST filter syntax — a quoted
-      // key is treated as the literal JSON key `'last_modified_at'`
-      // (quotes included), which matches nothing and silently turns every
-      // delta pull into an empty result.
-      query = query.gt(
-        '${RunRow.colMetadata}->>last_modified_at',
-        updatedSince.toIso8601String(),
-      );
-    }
 
     final data = await query
         .order(RunRow.colStartedAt, ascending: false)
@@ -1599,6 +1579,59 @@ class ApiClient {
 
     return data.map<Run>((row) => _runFromRow(row)).toList();
   }
+
+  /// How far behind its cursor [getRunsModifiedSince] re-reads. `updated_at`
+  /// is the writing transaction's START (`now()`, decisions § 2118), so a
+  /// write can commit after a later-starting one whose stamp the cursor has
+  /// already passed, carrying a stamp below it. Re-reading a window behind
+  /// the cursor catches it; the rows read twice are harmless, because the
+  /// local merge keeps a copy that is already current.
+  static const Duration runsDeltaOverlap = Duration(minutes: 5);
+
+  /// Every run of the caller's whose server `updated_at` is later than
+  /// [cursor] minus [runsDeltaOverlap], and the cursor to pass next time.
+  ///
+  /// `runs.updated_at` is stamped by the server on every insert and update
+  /// (migration `20270918000005`), so it sees a change made by any writer —
+  /// web, an import, a restore, a job — where the `metadata.last_modified_at`
+  /// stamp this pull used to key on is written by the phone alone (§ 2116).
+  /// The returned cursor is the largest `updated_at` the server sent, never
+  /// the device clock, so clock skew cannot open a gap; with no rows it is
+  /// [cursor] unchanged.
+  ///
+  /// A null [cursor] walks every owned row. Walked by keyset on
+  /// `(updated_at, id)` rather than capped: a statement stamps all its rows
+  /// with one value, so a page boundary inside a tie would skip the rest of
+  /// it under a plain `updated_at >` cursor, and a cap would leave whatever
+  /// it cut off behind the cursor it returned. Owner-filtered for the same
+  /// coach-visibility reason as [getRuns].
+  Future<({List<Run> runs, DateTime? cursor})> getRunsModifiedSince(
+    DateTime? cursor,
+  ) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Not authenticated');
+    final from = cursor?.toUtc().subtract(runsDeltaOverlap).toIso8601String();
+    final rows = await _walk(_runsModifiedOrder, () {
+      final q =
+          _client.from(RunRow.table).select().eq(RunRow.colUserId, userId);
+      return from == null ? q : q.gt(RunRow.colUpdatedAt, from);
+    });
+    var next = cursor;
+    for (final row in rows) {
+      final stamp = parseIsoStrictValue(row[RunRow.colUpdatedAt]);
+      if (stamp != null && (next == null || stamp.isAfter(next))) next = stamp;
+    }
+    return (runs: rows.map<Run>(_runFromRow).toList(), cursor: next);
+  }
+
+  /// Oldest change first, `id` breaking the ties one statement's shared
+  /// `now()` produces. `updated_at` is nullable on a row no write has touched
+  /// since the column became server-stamped; nulls sort last, so the walk
+  /// from a null cursor still reads them.
+  static const List<KeysetKey> _runsModifiedOrder = [
+    KeysetKey(RunRow.colUpdatedAt, ascending: true, nullsFirst: false),
+    KeysetKey(RunRow.colId, ascending: true, nullsFirst: false),
+  ];
 
   /// The signed-in user's runs among [ids], as track-less [Run]s like
   /// [getRuns] returns. An id the caller does not own, or that no longer

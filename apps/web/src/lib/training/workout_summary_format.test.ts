@@ -9,7 +9,7 @@ import type { Locale } from '../i18n/locale';
 import type { MessageKey } from '../i18n/messages';
 import { walkRunPattern, paceZoneName } from './workout_summary';
 import type { WorkoutStructure } from './training';
-import { formatPaceZone, formatWalkRunPattern, formatWalkRunTotal } from './workout_summary_format';
+import { formatPaceZone, formatPlannedSize, formatWalkRunPattern, formatWalkRunTotal } from './workout_summary_format';
 
 type Translate = (key: MessageKey, params?: Record<string, string | number>) => string;
 
@@ -63,6 +63,12 @@ test('en: the graduation 5K reads as a distance, with no minutes for the run', a
 	const p = walkRunPattern(fiveK)!;
 	assert.equal(formatWalkRunPattern(t, p, km), '5 min warm-up, 5 km run, 5 min cool-down');
 	assert.equal(formatWalkRunTotal(t, p, km), '5 km run');
+});
+
+test('en: a plan card states a timed session in minutes and a distance as a distance', async () => {
+	const t = await translatorFor('en');
+	assert.equal(formatPlannedSize(t, { kind: 'duration', seconds: 1710 }, km), '29 min');
+	assert.equal(formatPlannedSize(t, { kind: 'distance', metres: 5000 }, km), '5 km');
 });
 
 test('en: a Daniels code is named, free text is shown as typed', async () => {

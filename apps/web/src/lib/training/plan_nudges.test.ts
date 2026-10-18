@@ -102,6 +102,12 @@ test('workoutOverrunMetres: a short run, or no target, is never an over-run', ()
 	assert.equal(workoutOverrunMetres(10_000, null), null);
 });
 
+test('workoutOverrunMetres: a walk-run session never over-runs its estimate', () => {
+	assert.equal(workoutOverrunMetres(2_050, 6_000, 'walk_run'), null);
+	assert.equal(workoutOverrunMetres(5_857, 9_000, 'walk_run'), null);
+	assert.equal(workoutOverrunMetres(10_000, 13_000, 'easy'), 3_000);
+});
+
 test('overrunDigits: whole units at ten or more, or when a decimal would read .0', () => {
 	assert.equal(overrunDigits(3), 0);
 	assert.equal(overrunDigits(2.98), 0);

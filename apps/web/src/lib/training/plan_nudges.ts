@@ -50,11 +50,15 @@ export interface PlanNudge {
 
 /// Metres a completed run went past its workout's distance target, or null
 /// when there is no distance target, no run distance, or the extra is small
-/// enough to be noise. Never negative: a short run is not an over-run.
+/// enough to be noise. Never negative: a short run is not an over-run. A
+/// walk-run session (`kind`) never over-runs: its target is an estimate,
+/// not a distance anyone set.
 export function workoutOverrunMetres(
 	targetDistanceM: number | null | undefined,
 	runDistanceM: number | null | undefined,
+	kind?: string,
 ): number | null {
+	if (kind === 'walk_run') return null;
 	if (targetDistanceM == null || runDistanceM == null) return null;
 	if (!(targetDistanceM > 0) || !Number.isFinite(runDistanceM)) return null;
 	const extra = runDistanceM - targetDistanceM;

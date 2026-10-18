@@ -110,7 +110,7 @@
 		};
 	});
 	let overrunM = $derived(
-		workout?.completed_run_id ? workoutOverrunMetres(workout.target_distance_m, linkedRunDistance) : null
+		workout?.completed_run_id ? workoutOverrunMetres(workout.target_distance_m, linkedRunDistance, workout.kind) : null
 	);
 
 	let structure = $derived(

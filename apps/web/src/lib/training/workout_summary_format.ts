@@ -3,7 +3,7 @@
 // module the node:test runner can load.
 
 import type { MessageKey } from '#lib/i18n/messages.ts';
-import type { PaceZoneName, SpokenDuration, WalkRunPattern } from './workout_summary';
+import type { PaceZoneName, SpokenDuration, StructureTotal, WalkRunPattern } from './workout_summary';
 import { aboutMinutes, spokenDuration } from './workout_summary';
 
 type Translate = (key: MessageKey, params?: Record<string, string | number>) => string;
@@ -40,6 +40,18 @@ export function formatWalkRunPattern(
 	if (warmup) return t('workoutSummary.withWarmup', { warmup, main });
 	if (cooldown) return t('workoutSummary.withCooldown', { main, cooldown });
 	return main;
+}
+
+/// A plan card's size for a session (`plannedWorkoutSize`): "29 min" for a
+/// timed one, the distance otherwise.
+export function formatPlannedSize(
+	t: Translate,
+	size: StructureTotal,
+	fmtDistance: (metres: number) => string
+): string {
+	return size.kind === 'distance'
+		? fmtDistance(size.metres)
+		: t('workoutSummary.min', { n: aboutMinutes(size.seconds) });
 }
 
 /// "about 29 min", or "5 km run" for a session that ends on a distance.

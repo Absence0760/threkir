@@ -142,6 +142,32 @@ export function walkRunPattern(s: WorkoutStructure | null | undefined): WalkRunP
 	};
 }
 
+/// What a plan card states a session's size as. A walk-run session is
+/// prescribed in time (decisions § 91) and its `target_distance_m` is an
+/// estimate at a pace nobody chose, so it reads as its minutes; the
+/// graduation 5K reads as the distance it ends on. Any other session reads
+/// as its target distance. Null for a rest day or nothing to state.
+export function plannedWorkoutSize(w: {
+	kind: string;
+	targetDistanceM: number | null | undefined;
+	targetDurationS: number | null | undefined;
+	structure: unknown;
+}): StructureTotal | null {
+	if (w.kind === 'rest') return null;
+	if (w.kind !== 'walk_run') {
+		const metres = positive(w.targetDistanceM);
+		return metres == null ? null : { kind: 'distance', metres };
+	}
+	const s =
+		w.structure != null && typeof w.structure === 'object' && !Array.isArray(w.structure)
+			? (w.structure as WorkoutStructure)
+			: null;
+	const p = walkRunPattern(s);
+	if (p?.runM != null) return { kind: 'distance', metres: p.runM };
+	const seconds = p != null ? positive(p.totalS) : positive(w.targetDurationS);
+	return seconds == null ? null : { kind: 'duration', seconds };
+}
+
 export type SpokenDuration =
 	| { unit: 'min'; minutes: number }
 	| { unit: 'sec'; seconds: number }

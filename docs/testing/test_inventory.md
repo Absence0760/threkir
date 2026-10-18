@@ -109,7 +109,7 @@ Closes the documented "typed errors thrown from `prepare()`" gap. Replaces `Geol
 
 Six cases added 2026-10-15 for `preciseLocationOff` ([decisions § 1985](../architecture/decisions.md)): an Android approximate-only grant sets the flag without a second request; on iOS a reduced grant asks once for temporary full accuracy under `PreciseRunTracking` and clears the flag when granted, and keeps it set when declined; an already-precise grant asks nothing; an unreadable accuracy status reads as precise and the run still records; and a later precise `prepare()` clears a flag an earlier one set.
 
-### `apps/mobile_android/test/local_run_store_test.dart` — 100 tests
+### `apps/mobile_android/test/local_run_store_test.dart` — 97 tests
 
 Persistence round-trips against a real temporary filesystem directory. Tests inject a tempDir via `LocalRunStore.init(overrideDirectory: ...)` so they never touch `path_provider` or the platform channel.
 

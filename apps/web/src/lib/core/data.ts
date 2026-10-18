@@ -52,6 +52,7 @@ import { selectEffectivePricing } from '../social/event_instance';
 import type { RepacePatch } from '../training/plan_repace';
 import type { ResumeShift } from '../training/plan_resume';
 import type { RaceDateChange } from '../training/plan_race_date';
+import type { BreakChange } from '../training/plan_break';
 import { shiftIsoDate } from '../training/plan_bulk_ops';
 import {
 	EVENT_PHOTO_WINDOW_AFTER_MS,
@@ -6402,6 +6403,25 @@ export async function changePlanRaceDate(
 		p_insert_count: change.insertCount,
 		p_repeat_week_id: change.repeatWeekId,
 		p_race_workout_id: change.raceWorkoutId
+	});
+	if (error) throw dbError(error);
+}
+
+/// Runs the latest weeks again after a break and records the offer as
+/// answered (`planBreakChange`, decisions § 2128), in one transaction.
+export async function reschedulePlanAfterBreak(
+	planId: string,
+	change: BreakChange,
+	breakFromIso: string,
+	todayIso: string
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('reschedule_plan_after_break', {
+		p_plan_id: planId,
+		p_today: todayIso,
+		p_break_from: breakFromIso,
+		p_repeat_week_ids: change.repeatWeekIds,
+		p_drop_week_ids: change.dropWeekIds
 	});
 	if (error) throw dbError(error);
 }

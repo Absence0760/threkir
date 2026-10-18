@@ -6035,6 +6035,19 @@ export type Database = {
           value: number
         }[]
       }
+      change_plan_race_date: {
+        Args: {
+          p_drop_week_ids?: string[]
+          p_insert_at?: number
+          p_insert_count?: number
+          p_plan_id: string
+          p_race_date: string
+          p_race_workout_id?: string
+          p_repeat_week_id?: string
+          p_today: string
+        }
+        Returns: undefined
+      }
       check_rate_limit: {
         Args: {
           p_bucket: string

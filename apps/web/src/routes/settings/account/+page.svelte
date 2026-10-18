@@ -61,6 +61,7 @@
 	} from '#lib/backup/cloud_export_helpers.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import PasswordInput from '#lib/components/PasswordInput.svelte';
+	import DateOfBirthInput from '#lib/components/DateOfBirthInput.svelte';
 	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
 	import { numberInputValue } from '#lib/settings/number_input.ts';
 	import type { PrefsBag } from '#lib/settings/settings.ts';
@@ -1392,13 +1393,10 @@
 						</button>
 					{/if}
 				</label>
-				<label>
-					<span class="label-text">{m('settingsAccount.dateOfBirth')}</span>
-					<!-- Not consent-disabled: the column it writes is the under-18
-					     discoverability floor's age record (§ 718). Consent gates
-					     the Art 9 prefs mirror, not the field. -->
-					<input type="date" bind:value={dateOfBirth} max={new Date().toISOString().slice(0, 10)} data-testid="date-of-birth" />
-				</label>
+				<!-- Not consent-disabled: the column it writes is the under-18
+				     discoverability floor's age record (§ 718). Consent gates
+				     the Art 9 prefs mirror, not the field. -->
+				<DateOfBirthInput bind:value={dateOfBirth} label={m('settingsAccount.dateOfBirth')} />
 				<label>
 					<span class="label-text">{m('settingsAccount.restingHr')}</span>
 					<input type="number" bind:value={restingHr} placeholder={m('settingsAccount.restingHrPlaceholder')} min={RESTING_HR_BPM_MIN} max={RESTING_HR_BPM_MAX} aria-invalid={restingHrOutOfRange} data-testid="resting-hr" />

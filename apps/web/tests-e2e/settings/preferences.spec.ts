@@ -4,6 +4,7 @@ import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
 import { acceptCookieConsent } from '../fixtures/helpers';
+import { dateOfBirth, fillDateOfBirth } from '../fixtures/date-of-birth';
 
 /**
  * The preference pages /settings/preferences was split into (issue #905) —
@@ -703,7 +704,9 @@ test.describe('settings preference pages', () => {
 			.locator('input[type="checkbox"]');
 		if (await consent.isChecked()) await consent.uncheck();
 
-		await expect(page.getByTestId('date-of-birth')).toBeEnabled();
+		await expect(page.getByTestId('date-of-birth-year')).toBeEnabled();
+		await expect(page.getByTestId('date-of-birth-month')).toBeEnabled();
+		await expect(page.getByTestId('date-of-birth-day')).toBeEnabled();
 		await expect(page.getByTestId('height-cm')).toBeDisabled();
 		await expect(page.getByTestId('weight')).toBeDisabled();
 		// The purpose line has to say why an ungated field is asking.
@@ -764,21 +767,44 @@ test.describe('settings preference pages', () => {
 		).toBeVisible();
 	});
 
-	test('Date of birth input caps at today and leaves birth years unbounded', async ({
+	test('Date of birth is picked by year, not paged back from today, and refuses half or future dates', async ({
 		page
 	}) => {
-		// A birth year decades back must stay reachable through the native
-		// picker: no `min` fencing off realistic birth years, and a `max`
-		// of today blocking future DOBs — mirrors the /onboarding DOB
-		// field (issue #222).
+		// The native `<input type="date">` popup opened on the current month,
+		// so reaching a birth year meant scrolling back through decades. The
+		// field is now three selects with the year newest-first. In-memory
+		// only: nothing is saved, so USER_A's stored DOB is untouched.
 		await page.goto('/settings/body');
-		const dob = page.getByLabel('Date of birth', { exact: true });
-		const max = await dob.getAttribute('max');
-		expect(max).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-		expect(Math.abs(Date.parse(`${max}T00:00:00Z`) - Date.now())).toBeLessThan(
-			48 * 3600 * 1000
+		const dob = dateOfBirth(page);
+		const thisYear = new Date().getFullYear();
+		const years = await dob.year.locator('option').evaluateAll((os) =>
+			os.map((o) => (o as HTMLOptionElement).value).filter(Boolean).map(Number),
 		);
-		expect(await dob.getAttribute('min')).toBeNull();
+		expect(years[0]).toBe(thisYear);
+		expect(years.at(-1)).toBe(thisYear - 120);
+
+		await fillDateOfBirth(page, '1979-02-28');
+		await expect(dob.month).toHaveValue('2');
+		await expect(dob.day).toHaveValue('28');
+		await expect(page.getByTestId('date-of-birth-error')).toHaveCount(0);
+
+		// Clearing one part reports the half-picked date instead of saving it.
+		await dob.day.selectOption('');
+		await expect(page.getByTestId('date-of-birth-error')).toBeVisible();
+		await expect(dob.group).toHaveAttribute('aria-describedby', /^dob-purpose \S+-error$/);
+
+		// A day the new month lacks clamps to its last day.
+		await dob.month.selectOption('1');
+		await dob.day.selectOption('31');
+		await dob.month.selectOption('4');
+		await expect(dob.day).toHaveValue('30');
+
+		// No birth date can be after today.
+		await dob.year.selectOption(String(thisYear));
+		await dob.month.selectOption('12');
+		await dob.day.selectOption('31');
+		const todayIsLastDay = new Date().getMonth() === 11 && new Date().getDate() === 31;
+		if (!todayIsLastDay) await expect(page.getByTestId('date-of-birth-error')).toBeVisible();
 	});
 });
 

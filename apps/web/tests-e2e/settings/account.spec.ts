@@ -235,7 +235,9 @@ test.describe('/settings/account', () => {
 			.first();
 		const startedChecked = await consent.isChecked();
 		if (startedChecked) await consent.uncheck();
-		await expect(page.getByTestId('date-of-birth')).toBeEnabled();
+		await expect(page.getByTestId('date-of-birth-year')).toBeEnabled();
+		await expect(page.getByTestId('date-of-birth-month')).toBeEnabled();
+		await expect(page.getByTestId('date-of-birth-day')).toBeEnabled();
 		if (startedChecked) await consent.check();
 	});
 

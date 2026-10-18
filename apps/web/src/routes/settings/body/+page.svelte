@@ -15,6 +15,7 @@
 	import { valueLimit, withinValueLimit } from '#lib/core/column_limits.ts';
 	import { ACTIVITY_LEVELS, type ActivityLevel, type WeightGoal } from '#lib/nutrition/nutrition_targets.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import DateOfBirthInput from '#lib/components/DateOfBirthInput.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import type { Updatable } from '#lib/core/database.ts';
 	import { createPrefsPage } from '#lib/settings/prefs_page.svelte.ts';
@@ -257,16 +258,7 @@
 				<p class="hint" id="gender-hint">{m('prefs.genderHint')}</p>
 			</div>
 			<div class="field">
-				<label>
-					<span class="label-text">{m('prefs.dateOfBirth')}</span>
-					<input
-						type="date"
-						bind:value={dateOfBirth}
-						max={new Date().toISOString().slice(0, 10)}
-						aria-describedby="dob-purpose"
-						data-testid="date-of-birth"
-					/>
-				</label>
+				<DateOfBirthInput bind:value={dateOfBirth} label={m('prefs.dateOfBirth')} describedby="dob-purpose" />
 				<p class="hint" id="dob-purpose">{m('prefs.dateOfBirthPurpose')}</p>
 			</div>
 			<div class="field">

@@ -82,8 +82,10 @@ class MissedPrompt {
 }
 
 String _isoMinusDays(String iso, int days) {
-  final d = DateTime.parse('${iso}T00:00:00Z').subtract(Duration(days: days));
-  return d.toIso8601String().substring(0, 10);
+  final d = DateTime.parse('${iso}T00:00:00Z');
+  return DateTime.utc(d.year, d.month, d.day - days)
+      .toIso8601String()
+      .substring(0, 10);
 }
 
 bool _missed(MissedPromptWorkout wo, String today) => isWorkoutMissed(

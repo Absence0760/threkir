@@ -5043,5 +5043,6 @@
   "planDetailAdjustPregnancyDesc": "Macht aus harten kommenden Einheiten lockere Läufe und reduziert den Umfang nach Trimester. Vergangene Einheiten bleiben unverändert.",
   "planDetailResumeShiftTitle": "Fortsetzen und verschieben?",
   "planDetailResumeShiftMessage": "{n, plural, one{Dieser Plan wird wieder dein aktiver Plan. Die Wochen, die du noch nicht begonnen hattest, rücken {n} Woche nach hinten, damit es nächste Woche weitergeht, statt sie als verpasst zu zählen. Er endet jetzt am {date}.} other{Dieser Plan wird wieder dein aktiver Plan. Die Wochen, die du noch nicht begonnen hattest, rücken {n} Wochen nach hinten, damit es nächste Woche weitergeht, statt sie als verpasst zu zählen. Er endet jetzt am {date}.}}",
-  "planDetailResumeShiftedDone": "{n, plural, one{Plan fortgesetzt und um {n} Woche verschoben.} other{Plan fortgesetzt und um {n} Wochen verschoben.}}"
+  "planDetailResumeShiftedDone": "{n, plural, one{Plan fortgesetzt und um {n} Woche verschoben.} other{Plan fortgesetzt und um {n} Wochen verschoben.}}",
+  "dashboardPlanPausedBody": "Pausiert. Setze ihn fort, um weiterzumachen; die verpassten Wochen rücken nach hinten."
 }

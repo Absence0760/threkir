@@ -29154,6 +29154,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{n, plural, one{Plan resumed and pushed back {n} week.} other{Plan resumed and pushed back {n} weeks.}}'**
   String planDetailResumeShiftedDone(int n);
+
+  /// Subtitle of Home's paused-plan card; tapping it opens the plan with the resume confirm
+  ///
+  /// In en, this message translates to:
+  /// **'Paused. Resume to pick it up again; the weeks you missed move back.'**
+  String get dashboardPlanPausedBody;
 }
 
 class _AppLocalizationsDelegate

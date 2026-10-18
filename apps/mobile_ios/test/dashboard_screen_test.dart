@@ -16,6 +16,7 @@ import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/plan_detail_screen.dart';
 import '../lib/screens/run_detail_screen.dart';
 import 'pump_until.dart';
 import '../lib/training_service.dart';
@@ -109,6 +110,27 @@ class _FakeTraining extends TrainingService {
   _FakeTraining(this.overview);
   @override
   Future<ActivePlanOverview?> fetchActiveOverview() async => overview;
+}
+
+/// No active plan, one paused: Home must keep it reachable.
+class _PausedTraining extends TrainingService {
+  @override
+  Future<ActivePlanOverview?> fetchActiveOverview() async => null;
+  @override
+  Future<TrainingPlanRow?> fetchPausedPlan() async => TrainingPlanRow(
+        id: 'plan-paused',
+        userId: 'u1',
+        name: 'Autumn Half',
+        goalEvent: 'distance_half',
+        goalDistanceM: 21097.5,
+        startDate: DateTime(2026, 9, 1),
+        endDate: DateTime(2026, 11, 22),
+        daysPerWeek: 4,
+        status: 'paused',
+        source: 'generated',
+        isTemplate: false,
+        isPublicTemplate: false,
+      );
 }
 
 /// A plan whose dates ran out two days ago, still `active`: nothing writes
@@ -887,6 +909,57 @@ void main() {
       });
       // Let the confirmation banner's auto-dismiss timer run out.
       await tester.pump(const Duration(seconds: 6));
+    });
+
+    testWidgets('a paused plan stays on Home and opens with the resume confirm',
+        (tester) async {
+      await tester.runAsync(() async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = Preferences();
+        await prefs.init();
+        final dir = Directory.systemTemp.createTempSync('dashboard_paused_plan_');
+        try {
+          final seedStore = LocalRunStore();
+          await seedStore.init(overrideDirectory: dir);
+          await seedStore.save(_run(id: 'r1'));
+          final runStore = LocalRunStore();
+          await runStore.init(overrideDirectory: dir);
+
+          await tester.pumpWidget(
+            MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: DashboardScreen(
+                runStore: runStore,
+                routeStore: LocalRouteStore(),
+                gymStore: LocalGymStore(),
+                foodStore: LocalFoodStore(),
+                preferences: prefs,
+                training: _PausedTraining(),
+              ),
+            ),
+          );
+          await tester.pump();
+          await tester.pump();
+          await tester.pump();
+
+          final card = find.byKey(const Key('dashboardPausedPlan'));
+          await tester.scrollUntilVisible(card, 200,
+              scrollable: find.byType(Scrollable).first);
+          expect(find.descendant(of: card, matching: find.text('Autumn Half')),
+              findsOneWidget);
+
+          await tester.tap(card);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 400));
+          final detail =
+              tester.widget<PlanDetailScreen>(find.byType(PlanDetailScreen));
+          expect(detail.planId, 'plan-paused');
+          expect(detail.openResume, isTrue);
+        } finally {
+          dir.deleteSync(recursive: true);
+        }
+      });
     });
 
     testWidgets(

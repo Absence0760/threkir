@@ -17686,4 +17686,8 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get dashboardPlanPausedBody =>
+      'Paused. Resume to pick it up again; the weeks you missed move back.';
 }

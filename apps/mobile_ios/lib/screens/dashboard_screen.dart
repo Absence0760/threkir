@@ -196,6 +196,9 @@ class _DashboardScreenState extends State<DashboardScreen>
   /// done, switches plans).
   ActivePlanOverview? _planOverview;
 
+  /// The runner's paused plan, read only when there is no active one.
+  TrainingPlanRow? _pausedPlan;
+
   /// Daily nutrition targets, resolved once on mount, so the Home nutrition
   /// rings can show fill vs target. Null until resolved / when body metrics
   /// are absent (the rings then render unfilled — anti-clutter).
@@ -594,6 +597,18 @@ class _DashboardScreenState extends State<DashboardScreen>
     try {
       final overview = await svc.fetchActiveOverview();
       if (mounted) setState(() => _planOverview = overview);
+      if (overview != null) {
+        if (mounted && _pausedPlan != null) setState(() => _pausedPlan = null);
+        return;
+      }
+      // Its own catch: a failed paused-plan read costs the card and nothing
+      // else, and must not read as a failed overview.
+      try {
+        final paused = await svc.fetchPausedPlan();
+        if (mounted) setState(() => _pausedPlan = paused);
+      } catch (e) {
+        debugPrint('dashboard paused-plan fetch failed: $e');
+      }
     } catch (e) {
       // Non-critical — same logging stance as run_screen's overview
       // fetch. The card simply doesn't render; the rest of the
@@ -716,9 +731,40 @@ class _DashboardScreenState extends State<DashboardScreen>
   /// or the Finish plan card once its dates have run out, with the plan
   /// queued after it beneath. Null with neither: no active plan, or a race
   /// day passed with nothing queued.
+  /// A paused plan stays on Home with a way back to it: the card opens the
+  /// plan with the resume confirm up, where the paused weeks move back.
+  Widget? _pausedPlanCard() {
+    final paused = _pausedPlan;
+    final svc = widget.training;
+    if (paused == null || svc == null) return null;
+    final l10n = AppLocalizations.of(context);
+    return Card(
+      key: const Key('dashboardPausedPlan'),
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        leading: const Icon(Icons.pause_circle_outline),
+        title: Text(paused.name),
+        subtitle: Text(l10n.dashboardPlanPausedBody),
+        trailing: Text(l10n.planDetailResumePlan),
+        onTap: () async {
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => PlanDetailScreen(
+                training: svc,
+                planId: paused.id,
+                openResume: true,
+              ),
+            ),
+          );
+          _refreshPlanOverview();
+        },
+      ),
+    );
+  }
+
   Widget? _nextRaceCard(DateTime now) {
     final p = _planOverview;
-    if (p == null) return null;
+    if (p == null) return _pausedPlanCard();
     final training = widget.training;
     final Widget? race;
     if (_planFinished(now) && training != null) {

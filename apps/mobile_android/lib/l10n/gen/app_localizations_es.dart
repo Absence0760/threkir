@@ -17870,4 +17870,8 @@ class AppLocalizationsEs extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get dashboardPlanPausedBody =>
+      'En pausa. Reanúdalo para retomarlo; las semanas que te perdiste se retrasan.';
 }

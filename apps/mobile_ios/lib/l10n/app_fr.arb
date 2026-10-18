@@ -5043,5 +5043,6 @@
   "planDetailAdjustPregnancyDesc": "Transforme les prochaines séances difficiles en footings faciles et réduit le volume par trimestre. Les séances passées ne changent pas.",
   "planDetailResumeShiftTitle": "Reprendre et décaler ?",
   "planDetailResumeShiftMessage": "{n, plural, one{Ce plan redevient votre plan actif. Les semaines que vous n'aviez pas commencées sont décalées de {n} semaine, pour reprendre la semaine prochaine au lieu de les compter comme manquées. Il se termine désormais le {date}.} other{Ce plan redevient votre plan actif. Les semaines que vous n'aviez pas commencées sont décalées de {n} semaines, pour reprendre la semaine prochaine au lieu de les compter comme manquées. Il se termine désormais le {date}.}}",
-  "planDetailResumeShiftedDone": "{n, plural, one{Plan repris et décalé de {n} semaine.} other{Plan repris et décalé de {n} semaines.}}"
+  "planDetailResumeShiftedDone": "{n, plural, one{Plan repris et décalé de {n} semaine.} other{Plan repris et décalé de {n} semaines.}}",
+  "dashboardPlanPausedBody": "En pause. Reprenez-le pour continuer ; les semaines manquées sont décalées."
 }

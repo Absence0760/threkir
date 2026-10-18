@@ -5043,5 +5043,6 @@
   "planDetailAdjustPregnancyDesc": "Transforma os próximos treinos duros em corridas leves e reduz o volume por trimestre. Treinos passados não mudam.",
   "planDetailResumeShiftTitle": "Retomar e adiar?",
   "planDetailResumeShiftMessage": "{n, plural, one{Este plano volta a ser seu plano ativo. As semanas que você ainda não tinha começado passam {n} semana para frente, para retomar na próxima semana em vez de contá-las como perdidas. Agora ele termina em {date}.} other{Este plano volta a ser seu plano ativo. As semanas que você ainda não tinha começado passam {n} semanas para frente, para retomar na próxima semana em vez de contá-las como perdidas. Agora ele termina em {date}.}}",
-  "planDetailResumeShiftedDone": "{n, plural, one{Plano retomado e adiado {n} semana.} other{Plano retomado e adiado {n} semanas.}}"
+  "planDetailResumeShiftedDone": "{n, plural, one{Plano retomado e adiado {n} semana.} other{Plano retomado e adiado {n} semanas.}}",
+  "dashboardPlanPausedBody": "Pausado. Retome para continuar; as semanas que você perdeu passam para frente."
 }

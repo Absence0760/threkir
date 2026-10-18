@@ -5043,5 +5043,6 @@
   "planDetailAdjustPregnancyDesc": "Convierte los próximos entrenamientos duros en rodajes suaves y reduce el volumen por trimestre. Los entrenamientos pasados no cambian.",
   "planDetailResumeShiftTitle": "¿Reanudar y retrasar?",
   "planDetailResumeShiftMessage": "{n, plural, one{Este plan vuelve a ser tu plan activo. Las semanas que no habías empezado se retrasan {n} semana, así que retoma la semana que viene en vez de contarlas como perdidas. Ahora termina el {date}.} other{Este plan vuelve a ser tu plan activo. Las semanas que no habías empezado se retrasan {n} semanas, así que retoma la semana que viene en vez de contarlas como perdidas. Ahora termina el {date}.}}",
-  "planDetailResumeShiftedDone": "{n, plural, one{Plan reanudado y retrasado {n} semana.} other{Plan reanudado y retrasado {n} semanas.}}"
+  "planDetailResumeShiftedDone": "{n, plural, one{Plan reanudado y retrasado {n} semana.} other{Plan reanudado y retrasado {n} semanas.}}",
+  "dashboardPlanPausedBody": "En pausa. Reanúdalo para retomarlo; las semanas que te perdiste se retrasan."
 }

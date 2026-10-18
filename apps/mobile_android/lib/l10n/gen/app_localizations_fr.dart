@@ -17908,4 +17908,8 @@ class AppLocalizationsFr extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get dashboardPlanPausedBody =>
+      'En pause. Reprenez-le pour continuer ; les semaines manquées sont décalées.';
 }

@@ -23364,5 +23364,9 @@
         "type": "int"
       }
     }
+  },
+  "dashboardPlanPausedBody": "Paused. Resume to pick it up again; the weeks you missed move back.",
+  "@dashboardPlanPausedBody": {
+    "description": "Subtitle of Home's paused-plan card; tapping it opens the plan with the resume confirm"
   }
 }

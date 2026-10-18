@@ -17871,6 +17871,10 @@ class AppLocalizationsPt extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get dashboardPlanPausedBody =>
+      'Em pausa. Retome para continuar; as semanas que falhou passam para a frente.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -35727,4 +35731,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     );
     return '$_temp0';
   }
+
+  @override
+  String get dashboardPlanPausedBody =>
+      'Pausado. Retome para continuar; as semanas que você perdeu passam para frente.';
 }

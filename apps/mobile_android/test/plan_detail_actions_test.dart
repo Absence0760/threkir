@@ -180,7 +180,9 @@ class _RecordingSharePlatform extends SharePlatform {
 late _RecordingSharePlatform _share;
 
 Future<void> _pump(WidgetTester tester, _FakeTraining training,
-    {String viewerId = _owner, CyclePlanConfig? cycleConfig}) async {
+    {String viewerId = _owner,
+    CyclePlanConfig? cycleConfig,
+    bool openResume = false}) async {
   tester.view.physicalSize = const Size(420, 4000);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
@@ -199,6 +201,7 @@ Future<void> _pump(WidgetTester tester, _FakeTraining training,
                 viewerIdOverride: viewerId,
                 now: () => _today,
                 cyclePlanConfig: () => cycleConfig,
+                openResume: openResume,
               ),
             )),
             child: const Text('open'),
@@ -552,6 +555,21 @@ void main() {
           [const ResumeShift(fromWeekIndex: 1, weeks: 2)]);
       expect(find.text('Plan resumed and pushed back 2 weeks.'), findsOneWidget);
       await _drainBanner(tester);
+    });
+
+    testWidgets("Home's paused card lands with the resume confirm already up",
+        (tester) async {
+      final training = _FakeTraining(
+        status: 'paused',
+        start: DateTime(2026, 2, 23),
+        pausedAt: DateTime(2026, 2, 24, 9),
+      );
+      await _pump(tester, training, openResume: true);
+      await tester.pumpAndSettle();
+      expect(find.text('Resume and push back?'), findsOneWidget);
+      await tester.tap(find.text('Cancel').last);
+      await tester.pumpAndSettle();
+      expect(training.resumeCalls, isEmpty);
     });
 
     testWidgets('cancelling the confirm leaves the plan paused', (tester) async {

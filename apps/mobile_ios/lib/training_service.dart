@@ -888,6 +888,24 @@ class TrainingService extends ChangeNotifier {
     );
   }
 
+  /// The runner's most recently paused plan, so Home can offer to resume it
+  /// when there is no active one instead of acting as though there is no
+  /// plan. Mirrors the `paused` half of web `fetchActivePlanOverview`.
+  Future<TrainingPlanRow?> fetchPausedPlan() async {
+    final uid = _uid;
+    if (uid == null) return null;
+    final row = await _c
+        .from(TrainingPlanRow.table)
+        .select()
+        .eq('user_id', uid)
+        .eq('status', 'paused')
+        .eq('is_template', false)
+        .order('paused_at', ascending: false, nullsFirst: false)
+        .limit(1)
+        .maybeSingle();
+    return row == null ? null : TrainingPlanRow.fromJson(row);
+  }
+
   /// Write a freshly generated plan — plan row, weeks, workouts — through
   /// `create_training_plan`, which resolves the active plans the new window
   /// overlaps per [onOverlap] and inserts everything in one transaction

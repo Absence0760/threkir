@@ -127,6 +127,10 @@ class PlanDetailScreen extends StatefulWidget {
   /// cycle-plans gate (`readCyclePlanConfig`). A test passes its own.
   final CyclePlanConfig? Function() cyclePlanConfig;
 
+  /// Open with the resume confirm up, when the plan is paused and the viewer
+  /// owns it: Home's paused-plan card lands here. Web twin: `?resume=1`.
+  final bool openResume;
+
   const PlanDetailScreen({
     super.key,
     required this.training,
@@ -136,6 +140,7 @@ class PlanDetailScreen extends StatefulWidget {
     this.runStore,
     this.now = DateTime.now,
     this.cyclePlanConfig = readCyclePlanConfig,
+    this.openResume = false,
   });
 
   @override
@@ -148,6 +153,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   List<PlanWeekRow> _weeks = const [];
   Map<String, List<PlanWorkoutRow>> _byWeek = const {};
   bool _loading = true;
+
+  /// [PlanDetailScreen.openResume] fires once, not on every reload.
+  bool _resumeOffered = false;
   bool _coachesOwner = false;
   _PlanDetailLoadError? _error;
   bool _publishing = false;
@@ -294,6 +302,17 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       _loadPublishedState();
       _loadCoachesOwner();
       _loadAssigningCoach();
+      final loaded = _plan;
+      if (widget.openResume &&
+          !_resumeOffered &&
+          loaded != null &&
+          loaded.status == 'paused' &&
+          _isOwner(loaded)) {
+        _resumeOffered = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _setPlanPaused(loaded, paused: false);
+        });
+      }
     } catch (e, s) {
       debugPrint('PlanDetailScreen._load failed: $e\n$s');
       if (!mounted) return;

@@ -5043,5 +5043,6 @@
   "planDetailAdjustPregnancyDesc": "今後のハードなワークアウトをイージーランに変え、三半期ごとに量を減らします。過去のワークアウトは変更されません。",
   "planDetailResumeShiftTitle": "再開して後ろにずらしますか？",
   "planDetailResumeShiftMessage": "{n, plural, other{このプランが再びアクティブなプランになります。まだ始めていなかった週は{n}週後ろにずれ、未実施として数えずに来週から再開します。終了日は{date}になります。}}",
-  "planDetailResumeShiftedDone": "{n, plural, other{プランを再開し、{n}週後ろにずらしました。}}"
+  "planDetailResumeShiftedDone": "{n, plural, other{プランを再開し、{n}週後ろにずらしました。}}",
+  "dashboardPlanPausedBody": "一時停止中です。再開すると続きから始まり、休んだ週は後ろにずれます。"
 }

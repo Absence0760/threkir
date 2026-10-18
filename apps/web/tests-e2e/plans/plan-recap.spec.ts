@@ -9,7 +9,7 @@ import { USER_B } from '../fixtures/users';
 /**
  * A completed plan used to end on nothing (issue #1186): the helpers for
  * adherence and distance existed, but no surface assembled them. The plan page
- * now shows a recap of a completed plan — sessions, distance, the race run and
+ * now shows a recap of a completed plan — sessions (missed and skipped apart), distance, long runs, the race run and
  * its VDOT, records set inside the plan — and a "What's next" that carries the
  * race's 5K equivalent and a start past the recovery into the wizard.
  */
@@ -67,6 +67,7 @@ async function plantCompletedPlan(name: string, status: 'completed' | 'active'):
 		.insert({ id: weekId, plan_id: planId, week_index: 0, phase: 'race', target_volume_m: 40_000 });
 	if (weekErr) throw weekErr;
 	const { error: woErr } = await admin.from('plan_workouts').insert([
+		{ week_id: weekId, scheduled_date: browserDate(RACE_OFFSET - 10), kind: 'long', target_distance_m: 16_000, manually_completed: true },
 		{ week_id: weekId, scheduled_date: browserDate(RACE_OFFSET - 7), kind: 'easy', target_distance_m: 10_000, completed_run_id: easyRunId },
 		{ week_id: weekId, scheduled_date: browserDate(RACE_OFFSET - 5), kind: 'easy', target_distance_m: 8_000, skipped_at: new Date().toISOString() },
 		{ week_id: weekId, scheduled_date: browserDate(RACE_OFFSET - 3), kind: 'easy', target_distance_m: 6_000 },
@@ -96,9 +97,12 @@ test.describe('the end-of-plan recap', () => {
 		const recap = page.getByTestId('plan-recap');
 		await expect(recap).toBeVisible({ timeout: 10_000 });
 		await expect(recap.getByRole('heading', { name: `How ${NAME_PREFIX} done went` })).toBeVisible();
-		await expect(recap.getByTestId('plan-recap-sessions')).toContainText('2 of 3');
-		await expect(recap.getByTestId('plan-recap-sessions')).toContainText('67% done');
+		await expect(recap.getByTestId('plan-recap-sessions')).toContainText('3 of 4');
+		await expect(recap.getByTestId('plan-recap-sessions')).toContainText('75% done');
+		await expect(recap.getByTestId('plan-recap-sessions')).toContainText('1 missed');
 		await expect(recap.getByTestId('plan-recap-sessions')).toContainText('1 skipped');
+		await expect(recap.getByTestId('plan-recap-long-runs')).toContainText('1 of 1');
+		await expect(recap.getByTestId('plan-recap-long-runs')).toContainText(/Longest \d/);
 		await expect(recap.getByTestId('plan-recap-volume')).toContainText('Distance');
 		await expect(recap.getByTestId('plan-recap-race')).toContainText(`${NAME_PREFIX} done race`);
 		await expect(recap.getByTestId('plan-recap-race')).toContainText('1:05:00');

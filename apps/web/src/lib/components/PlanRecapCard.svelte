@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import { fetchPlanRecapSources } from '#lib/core/data.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { formatDate, formatDateShort } from '#lib/format/time.ts';
@@ -8,7 +9,6 @@
 	import { fmtHms, todayISO } from '#lib/training/training.ts';
 	import {
 		assemblePlanRecap,
-		fiveKSecondsAtVdot,
 		type PlanRecap,
 		type RecapPlan,
 		type RecapWorkout
@@ -97,6 +97,9 @@
 				<dd>
 					<strong>{m('planRecap.sessionsValue', { done: recap.sessions.completed, total: recap.sessions.total })}</strong>
 					<span>{m('planRecap.sessionsPct', { pct: recap.sessions.pct })}</span>
+					{#if recap.sessions.missed > 0}
+						<span>{m('planRecap.missed', { count: recap.sessions.missed })}</span>
+					{/if}
 					{#if recap.sessions.skipped > 0}
 						<span>{m('planRecap.skipped', { count: recap.sessions.skipped })}</span>
 					{/if}
@@ -113,6 +116,19 @@
 					</strong>
 				</dd>
 			</div>
+			{#if recap.longRuns.planned > 0}
+				<div data-testid="plan-recap-long-runs">
+					<dt>{m('planRecap.longRunsLabel')}</dt>
+					<dd>
+						<strong>{m('planRecap.sessionsValue', { done: recap.longRuns.done, total: recap.longRuns.planned })}</strong>
+						{#if recap.longRuns.first != null && recap.longRuns.longest != null && recap.longRuns.longest > recap.longRuns.first}
+							<span>{m('planRecap.longRunsRange', { first: fmtKm(recap.longRuns.first), longest: fmtKm(recap.longRuns.longest) })}</span>
+						{:else if recap.longRuns.longest != null}
+							<span>{m('planRecap.longRunsLongest', { longest: fmtKm(recap.longRuns.longest) })}</span>
+						{/if}
+					</dd>
+				</div>
+			{/if}
 			{#if recap.race}
 				<div data-testid="plan-recap-race">
 					<dt>{recap.race.name ?? m('planRecap.raceLabel')} · {formatDateShort(recap.race.date)}</dt>
@@ -127,7 +143,7 @@
 										})}
 							</strong>
 							{#if recap.race.vdot != null}
-								<span>{m('planRecap.vdot', { vdot: recap.race.vdot.toFixed(1) })}</span>
+								<span><MetricLabel metric="vdot" /> {recap.race.vdot.toFixed(1)}</span>
 							{/if}
 						{:else if recap.race.raced}
 							<strong>{m('planRecap.raceNoRun')}</strong>
@@ -163,11 +179,10 @@
 				</p>
 			{/if}
 			<p>
-				{recap.next.seed5kSec != null && recap.race?.vdot != null
+				{recap.next.seed5kSec != null
 					? m('planRecap.nextPlanSeeded', {
 							date: formatDate(recap.next.startIso),
-							time: fmtHms(fiveKSecondsAtVdot(recap.race.vdot)),
-							vdot: recap.race.vdot.toFixed(1)
+							time: fmtHms(recap.next.seed5kSec)
 						})
 					: m('planRecap.nextPlan', { date: formatDate(recap.next.startIso) })}
 			</p>

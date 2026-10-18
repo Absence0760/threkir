@@ -79,6 +79,8 @@ import '../background_location_nudge.dart';
 import '../battery_optimisation_hint.dart';
 import '../live_activity_bridge.dart';
 import '../run_notification_bridge.dart';
+import '../run_haptics_bridge.dart';
+import '../step_haptics.dart';
 import '../run_stats.dart';
 import '../share_sheet.dart';
 import '../social_service.dart';
@@ -650,6 +652,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   // runner consumes _onSnapshot output and emits transition / drift
   // events into _workoutEventsSub. Band UI listens via _workoutBand.
   WorkoutRunner? _workoutRunner;
+  final RunHapticsBridge _runHaptics = const RunHapticsBridge();
   StreamSubscription<WorkoutExecEvent>? _workoutEventsSub;
   String? _activeWorkoutId;
 
@@ -1040,6 +1043,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // out as unhandled errors. _ttsCue() does the unawaited+catchError
     // dance so the cue is fire-and-forget but the rejection is logged
     // instead of escaping.
+    //
+    // The buzz sits outside every voice gate: it is the cue that still
+    // reaches a runner with the audio off or the voice set to minimal.
+    _runHaptic(stepHapticFor(e));
     if (e is StepTransitionEvent) {
       _publishWorkoutBand();
       if (widget.preferences.audioCues && _workoutCuesEnabled) {
@@ -1074,6 +1081,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     } else if (e is WorkoutAbandonedEvent) {
       _publishWorkoutBand();
     }
+  }
+
+  /// Fire-and-forget vibration cue, gated on the per-device setting.
+  /// [RunHapticsBridge.play] swallows its own failures.
+  void _runHaptic(RunHapticPattern? pattern) {
+    if (pattern == null || !widget.preferences.hapticFeedback) return;
+    unawaited(_runHaptics.play(pattern));
   }
 
   /// Fire-and-forget TTS announcement. Wraps both synchronous and

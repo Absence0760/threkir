@@ -1,3 +1,4 @@
+import AudioToolbox
 import CoreMotion
 import Flutter
 import UIKit
@@ -93,6 +94,7 @@ import workmanager_apple
       LiveActivityBridge.shared.attach(binaryMessenger: messenger)
       ScreenBrightnessBridge.shared.attach(binaryMessenger: messenger)
       BarometerBridge.shared.attach(binaryMessenger: messenger)
+      RunHapticsBridge.shared.attach(binaryMessenger: messenger)
     }
   }
 }
@@ -129,6 +131,63 @@ final class ScreenBrightnessBridge {
       }
     }
     channel = brightness
+  }
+}
+
+/// Run cues on the vibration motor, over `run_app/haptics`. Dart side:
+/// `lib/run_haptics_bridge.dart`, which names the pattern; Android's table is
+/// `RunHapticPatterns.kt`.
+///
+/// The system vibrate sound, not Core Haptics or UIFeedbackGenerator: those
+/// only play while the app is in the foreground, and a run is recorded with
+/// the phone locked in a pocket. A background-location app may still play the
+/// vibrate sound. It has one fixed length, so a pattern here is a pulse count,
+/// each pulse chained off the previous one's completion. Kept in this file so
+/// it needs no new entry in the Xcode project.
+final class RunHapticsBridge {
+  static let shared = RunHapticsBridge()
+
+  static let pulses: [String: Int] = [
+    "step_work": 3,
+    "step_ease": 2,
+    "workout_complete": 4,
+    "pace_speed_up": 2,
+    "pace_slow_down": 1,
+  ]
+
+  private var channel: FlutterMethodChannel?
+
+  func attach(binaryMessenger: FlutterBinaryMessenger) {
+    let haptics = FlutterMethodChannel(
+      name: "run_app/haptics",
+      binaryMessenger: binaryMessenger
+    )
+    haptics.setMethodCallHandler { call, result in
+      guard call.method == "play" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      guard let name = call.arguments as? String,
+        let count = RunHapticsBridge.pulses[name]
+      else {
+        result(
+          FlutterError(
+            code: "bad_args", message: "unknown haptic pattern", details: nil))
+        return
+      }
+      RunHapticsBridge.vibrate(times: count)
+      result(true)
+    }
+    channel = haptics
+  }
+
+  private static func vibrate(times: Int) {
+    guard times > 0 else { return }
+    AudioServicesPlaySystemSoundWithCompletion(kSystemSoundID_Vibrate) {
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+        RunHapticsBridge.vibrate(times: times - 1)
+      }
+    }
   }
 }
 

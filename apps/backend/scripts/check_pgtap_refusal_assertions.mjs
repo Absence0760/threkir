@@ -2000,6 +2000,117 @@ export const FILTERED_RPC_ARGUMENTS = [
       'The `lives_ok` measures the PRIVILEGE -- a steward\'s hide not raising 42501 where the ' +
       'non-steward and attendee calls do. `set_event_photo_hidden` derives both columns from ' +
       '`p_hidden` (`now()` / the caller), so the named read-back states what landed.',
+  },  {
+    file: 'set_plan_goal_time_test.sql',
+    description: 'the owner sets a new goal time with its re-derived paces',
+    columns: [
+      'training_plans.vdot',
+    ],
+    readBack: 'the VDOT is written',
+    reason:
+      'set_plan_goal_time writes `coalesce(p_vdot, vdot)`, so a server that ignored the argument would keep the stored 45. The named read-back states the supplied 49.5.',
+  },
+  {
+    file: 'change_plan_race_date_test.sql',
+    description: 'the owner moves the race earlier, dropping two build weeks',
+    columns: [
+      'plan_weeks.week_index',
+    ],
+    readBack: 'the weeks are re-indexed without a gap',
+    reason:
+      'Two weeks are dropped, so every later week\'s index falls by two. The re-index is `week_index` arithmetic over the stored weeks, never the argument itself; the named read-back states the whole index array after the call, which a server that stopped re-indexing would not have written.',
+  },
+  {
+    file: 'change_plan_race_date_test.sql',
+    description: 'the owner moves the race inside its week',
+    columns: [
+      'plan_weeks.week_index',
+    ],
+    readBack: 'no week is added or dropped',
+    reason:
+      'A same-week move must leave every index alone. The re-index is `week_index` arithmetic over the stored weeks, never the argument itself; the named read-back states the whole index array after the call, which a server that stopped re-indexing would not have written.',
+  },
+  {
+    file: 'change_plan_race_date_test.sql',
+    description: 'a race whose old day has passed moves to a later day of its week',
+    columns: [
+      'plan_weeks.week_index',
+    ],
+    readBack: 'a move inside a started race week adds, drops and re-indexes no week',
+    reason:
+      'A move inside a race week already under way must leave every index alone. The re-index is `week_index` arithmetic over the stored weeks, never the argument itself; the named read-back states the whole index array after the call, which a server that stopped re-indexing would not have written.',
+  },
+  {
+    file: 'change_plan_race_date_test.sql',
+    description: 'with the HR gate shut a later race still applies',
+    columns: [
+      'plan_weeks.week_index',
+    ],
+    readBack: 'the weeks are indexed without a gap',
+    reason:
+      'Two weeks are inserted before the peak, so every later index rises by two. The re-index is `week_index` arithmetic over the stored weeks, never the argument itself; the named read-back states the whole index array after the call, which a server that stopped re-indexing would not have written.',
+  },
+  {
+    file: 'change_plan_race_date_test.sql',
+    description: 'with the HR gate open and consent a later race applies',
+    columns: [
+      'plan_weeks.week_index',
+    ],
+    readBack: 'with the gate open the two inserted weeks are indexed without a gap too',
+    reason:
+      'Same insertion as the gate-shut case on another plan. The re-index is `week_index` arithmetic over the stored weeks, never the argument itself; the named read-back states the whole index array after the call, which a server that stopped re-indexing would not have written.',
+  },
+  {
+    file: 'plan_pause_resume_test.sql',
+    description: 'the owner resumes, pushing weeks 1 on back two weeks',
+    columns: [
+      'plan_weeks.week_index',
+      'plan_workouts.scheduled_date',
+      'training_plans.end_date',
+    ],
+    readBack: 'a later week moves two indexes',
+    reason:
+      'All three columns are `+ p_shift_weeks` arithmetic over the stored values. The named read-back states the moved index; the assertions beside it state the workout moved 14 days, the race landing on the new end date and the end date itself.',
+  },
+  {
+    file: 'reschedule_plan_after_break_test.sql',
+    description: 'the race plan runs weeks 3 and 4 again',
+    columns: [
+      'user_settings.prefs',
+    ],
+    readBack: 'race plan: the offer is recorded as answered for this break, with its last day',
+    reason:
+      'reschedule_plan_after_break records the answered offer as `jsonb_build_object` over its arguments inside `prefs`, so the argument never lands verbatim. The named read-back states the stored object.',
+  },
+  {
+    file: 'reschedule_plan_after_break_test.sql',
+    description: 'the plan without a race runs this week again',
+    columns: [
+      'user_settings.prefs',
+    ],
+    readBack: 'no race: a runner with no settings row gets one with the answer',
+    reason:
+      'reschedule_plan_after_break records the answered offer as `jsonb_build_object` over its arguments inside `prefs`, so the argument never lands verbatim. The named read-back states the plan id inside the stored object, for a runner who had no settings row before the call.',
+  },
+  {
+    file: 'reschedule_plan_after_break_test.sql',
+    description: 'a consenting runner with the HR gate shut can still run a week again',
+    columns: [
+      'user_settings.prefs',
+    ],
+    readBack: 'gate shut: the offer is recorded as answered for this break, with its last day',
+    reason:
+      'reschedule_plan_after_break records the answered offer as `jsonb_build_object` over its arguments inside `prefs`, so the argument never lands verbatim. The named read-back states the stored object.',
+  },
+  {
+    file: 'answer_missed_workouts_test.sql',
+    description: 'the owner runs week 2 again after a break',
+    columns: [
+      'user_settings.prefs',
+    ],
+    readBack: 'the break\'s offer is recorded as answered, with its last day',
+    reason:
+      'reschedule_plan_after_break records the answered offer as `jsonb_build_object` over its arguments inside `prefs`, so the argument never lands verbatim. The named read-back states the stored object.',
   },
 ];
 

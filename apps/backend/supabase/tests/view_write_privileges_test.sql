@@ -7,11 +7,17 @@
 --      (postgres, bypassing RLS) — so a future view created without the
 --      revoke-then-grant reset fails HERE instead of shipping writable.
 --   2. A functional probe on the shape that was exploitable: an anon insert
---      through public_race_listings is denied.
+--      through an auto-updatable view is denied by the privilege. The probe
+--      used to target public_race_listings, the view the exploit went
+--      through, but 20270924000002 joined it to public_routes, and a view
+--      that is not auto-updatable refuses an insert in the rewriter (55000)
+--      before any privilege is consulted, so it no longer measured the
+--      revoke. The probe now targets public_routes, still a single-table
+--      view, and public_race_listings keeps a direct privilege assertion.
 
 begin;
 
-select plan(3);
+select plan(4);
 
 select is(
   (select count(*)::int
@@ -29,12 +35,17 @@ select is(
 set local role anon;
 set local "request.jwt.claims" = '{}';
 
+select ok(
+  not has_table_privilege('anon', 'public.public_race_listings', 'INSERT'),
+  'anon holds no INSERT privilege on public_race_listings'
+);
+
 select throws_ok(
-  $$ insert into public_race_listings (provider, name, race_date)
-     values ('manual', 'Forged Via View', current_date + 1) $$,
+  $$ insert into public_routes (id, name)
+     values (gen_random_uuid(), 'Forged Via View') $$,
   '42501',
   null,
-  'anon cannot INSERT through public_race_listings'
+  'anon cannot INSERT through the auto-updatable public_routes'
 );
 
 set local role authenticated;

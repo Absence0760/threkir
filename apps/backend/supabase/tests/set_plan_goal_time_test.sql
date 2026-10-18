@@ -48,13 +48,15 @@ select is((select structure->'repeats'->>'pace_sec_per_km' from plan_workouts wh
 select throws_ok(
   $$select set_plan_goal_time('f1f1f1f1-0000-0000-0000-0000000b0001', 6000, null,
       '[{"id":"f3f3f3f3-0000-0000-0000-0000000b0101","completed_run_id":"00000000-0000-0000-0000-000000000000"}]')$$,
-  null, 'a refused workout patch fails the whole call');
+  '22023', 'apply_workout_adjustments: a change names a column it cannot write',
+  'a refused workout patch fails the whole call');
 select is((select goal_time_seconds from training_plans where id = 'f1f1f1f1-0000-0000-0000-0000000b0001'),
   6480, 'and the goal time is not changed by it');
 
 select throws_ok(
   $$select set_plan_goal_time('f1f1f1f1-0000-0000-0000-0000000b0002', 6000, null, '[]')$$,
-  null, 'another runner''s plan is refused');
+  'P0001', 'set_plan_goal_time: plan f1f1f1f1-0000-0000-0000-0000000b0002 not found',
+  'another runner''s plan is refused');
 select throws_ok(
   $$select set_plan_goal_time('f1f1f1f1-0000-0000-0000-0000000b0001', 0, null, '[]')$$,
   '22023', 'set_plan_goal_time: goal time must be positive', 'a zero goal time is refused');

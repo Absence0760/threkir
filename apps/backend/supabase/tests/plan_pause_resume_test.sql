@@ -43,7 +43,8 @@ select throws_ok(
   'week 0 never moves: it holds the start date');
 select throws_ok(
   $$select resume_training_plan('f1f1f1f1-0000-0000-0000-0000000c0002', null, 0)$$,
-  null, 'another runner''s plan is refused');
+  'P0001', 'resume_training_plan: plan f1f1f1f1-0000-0000-0000-0000000c0002 not found',
+  'another runner''s plan is refused');
 
 select lives_ok(
   $$select resume_training_plan('f1f1f1f1-0000-0000-0000-0000000c0001', 1, 2)$$,

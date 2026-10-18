@@ -17867,4 +17867,109 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get planDetailRaceDateOverlap =>
       'The new race date runs into another active plan. Move or end that plan first.';
+
+  @override
+  String get planBreakTitle => 'Coming back after a break';
+
+  @override
+  String planBreakBody(int days, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days',
+      one: '$days day',
+    );
+    return 'No run or plan workout logged for $_temp0, since $date.';
+  }
+
+  @override
+  String planBreakHintRace(String date) {
+    return 'You can pick the plan up where you left off. Race day stays $date and the taper is kept; a later build week makes room for each week you run again.';
+  }
+
+  @override
+  String get planBreakHintNoRace =>
+      'You can pick the plan up where you left off; the rest of the plan moves back to make room.';
+
+  @override
+  String get planBreakRepeat => 'Repeat this week';
+
+  @override
+  String get planBreakWeeksLabel => 'Weeks';
+
+  @override
+  String get planBreakPushBack => 'Push the plan back';
+
+  @override
+  String get planBreakShortenBuild => 'Shorten the build';
+
+  @override
+  String get planBreakDismiss => 'Keep the plan as it is';
+
+  @override
+  String get planBreakConfirmTitle => 'Change your plan?';
+
+  @override
+  String get planBreakConfirmApply => 'Change plan';
+
+  @override
+  String planBreakPreviewRepeat(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'The last $n weeks run again, starting next week.',
+      one: 'This week runs again next week.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planBreakPreviewDropped(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n later build weeks are',
+      one: '$n later build week is',
+    );
+    return '$_temp0 taken out to make room; the taper stays as it is.';
+  }
+
+  @override
+  String planBreakPreviewRaceDay(String date) {
+    return 'Race day stays $date.';
+  }
+
+  @override
+  String planBreakPreviewEnd(String date) {
+    return 'The weeks after move back, and the plan now ends $date.';
+  }
+
+  @override
+  String get planBreakPreviewPast =>
+      'Weeks you have already run and anything you have done don\'t change.';
+
+  @override
+  String planBreakApplied(String date) {
+    return 'Plan updated. It ends $date.';
+  }
+
+  @override
+  String planBreakFailed(String error) {
+    return 'Couldn\'t change the plan: $error';
+  }
+
+  @override
+  String planBreakDismissFailed(String error) {
+    return 'Couldn\'t save that: $error';
+  }
+
+  @override
+  String get planBreakUnavailable =>
+      'That many weeks can\'t be run again in this plan.';
+
+  @override
+  String get planBreakWeeksFewer => 'One week fewer';
+
+  @override
+  String get planBreakWeeksMore => 'One week more';
 }

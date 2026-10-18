@@ -17203,4 +17203,103 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get planDetailRaceDateOverlap =>
       '新しいレース日が別の有効なプランと重なります。先にそのプランを移動するか終了してください。';
+
+  @override
+  String get planBreakTitle => '休止からの再開';
+
+  @override
+  String planBreakBody(int days, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days日間',
+    );
+    return '$date以降、ランもプランのワークアウトも記録がありません（$_temp0）。';
+  }
+
+  @override
+  String planBreakHintRace(String date) {
+    return '中断したところからプランを再開できます。レース日は$dateのまま、テーパーもそのまま残ります。繰り返す週の分だけ、後のビルド週が外れます。';
+  }
+
+  @override
+  String get planBreakHintNoRace => '中断したところからプランを再開できます。残りのプランは後ろにずれます。';
+
+  @override
+  String get planBreakRepeat => '今週を繰り返す';
+
+  @override
+  String get planBreakWeeksLabel => '週数';
+
+  @override
+  String get planBreakPushBack => 'プランを後ろにずらす';
+
+  @override
+  String get planBreakShortenBuild => 'ビルド期間を短くする';
+
+  @override
+  String get planBreakDismiss => 'プランをこのままにする';
+
+  @override
+  String get planBreakConfirmTitle => 'プランを変更しますか？';
+
+  @override
+  String get planBreakConfirmApply => 'プランを変更';
+
+  @override
+  String planBreakPreviewRepeat(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '直近の$n週を来週から繰り返します。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planBreakPreviewDropped(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'その分、後のビルド週を$n週外します。',
+    );
+    return '$_temp0テーパーは変わりません。';
+  }
+
+  @override
+  String planBreakPreviewRaceDay(String date) {
+    return 'レース日は$dateのままです。';
+  }
+
+  @override
+  String planBreakPreviewEnd(String date) {
+    return '以降の週は後ろにずれ、プランの終了日は$dateになります。';
+  }
+
+  @override
+  String get planBreakPreviewPast => 'すでに走った週や完了したものは変わりません。';
+
+  @override
+  String planBreakApplied(String date) {
+    return 'プランを更新しました。終了日は$dateです。';
+  }
+
+  @override
+  String planBreakFailed(String error) {
+    return 'プランを変更できませんでした：$error';
+  }
+
+  @override
+  String planBreakDismissFailed(String error) {
+    return '保存できませんでした：$error';
+  }
+
+  @override
+  String get planBreakUnavailable => 'このプランではその週数を繰り返せません。';
+
+  @override
+  String get planBreakWeeksFewer => '1週減らす';
+
+  @override
+  String get planBreakWeeksMore => '1週増やす';
 }

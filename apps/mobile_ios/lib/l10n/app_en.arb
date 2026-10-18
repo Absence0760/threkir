@@ -23602,5 +23602,141 @@
   "planDetailRaceDateOverlap": "The new race date runs into another active plan. Move or end that plan first.",
   "@planDetailRaceDateOverlap": {
     "description": "A later race date runs into another active plan"
+  },
+  "planBreakTitle": "Coming back after a break",
+  "@planBreakTitle": {
+    "description": "Plan break card title: the runner has had a week or more without running inside their plan"
+  },
+  "planBreakBody": "No run or plan workout logged for {days, plural, one {{days} day} other {{days} days}}, since {date}.",
+  "@planBreakBody": {
+    "description": "Plan break card body: days without a run or plan workout, since date (the first quiet day)",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planBreakHintRace": "You can pick the plan up where you left off. Race day stays {date} and the taper is kept; a later build week makes room for each week you run again.",
+  "@planBreakHintRace": {
+    "description": "Plan break card hint for a plan ending on a race: date is race day, which never moves",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planBreakHintNoRace": "You can pick the plan up where you left off; the rest of the plan moves back to make room.",
+  "@planBreakHintNoRace": {
+    "description": "Plan break card hint for a plan without a race"
+  },
+  "planBreakRepeat": "Repeat this week",
+  "@planBreakRepeat": {
+    "description": "Plan break action: run the current week again next week"
+  },
+  "planBreakWeeksLabel": "Weeks",
+  "@planBreakWeeksLabel": {
+    "description": "Label of the number field choosing how many weeks to run again"
+  },
+  "planBreakPushBack": "Push the plan back",
+  "@planBreakPushBack": {
+    "description": "Plan break action for a plan without a race: run the chosen weeks again and move the rest back"
+  },
+  "planBreakShortenBuild": "Shorten the build",
+  "@planBreakShortenBuild": {
+    "description": "Plan break action for a race plan: run the chosen weeks again and drop later build weeks so race day holds"
+  },
+  "planBreakDismiss": "Keep the plan as it is",
+  "@planBreakDismiss": {
+    "description": "Plan break action: hide the card and leave the plan unchanged"
+  },
+  "planBreakConfirmTitle": "Change your plan?",
+  "@planBreakConfirmTitle": {
+    "description": "Title of the plan break preview dialog"
+  },
+  "planBreakConfirmApply": "Change plan",
+  "@planBreakConfirmApply": {
+    "description": "Confirm button of the plan break preview dialog"
+  },
+  "planBreakPreviewRepeat": "{n, plural, one {This week runs again next week.} other {The last {n} weeks run again, starting next week.}}",
+  "@planBreakPreviewRepeat": {
+    "description": "Preview line: how many weeks run again from next week",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planBreakPreviewDropped": "{n, plural, one {{n} later build week is} other {{n} later build weeks are}} taken out to make room; the taper stays as it is.",
+  "@planBreakPreviewDropped": {
+    "description": "Preview line for a race plan: how many later build weeks are removed",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planBreakPreviewRaceDay": "Race day stays {date}.",
+  "@planBreakPreviewRaceDay": {
+    "description": "Preview line for a race plan: race day is unchanged",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planBreakPreviewEnd": "The weeks after move back, and the plan now ends {date}.",
+  "@planBreakPreviewEnd": {
+    "description": "Preview line for a plan without a race: its new end date",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planBreakPreviewPast": "Weeks you have already run and anything you have done don't change.",
+  "@planBreakPreviewPast": {
+    "description": "Preview line: nothing already done changes"
+  },
+  "planBreakApplied": "Plan updated. It ends {date}.",
+  "@planBreakApplied": {
+    "description": "Banner after the plan break change applied; date is the plan end",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planBreakFailed": "Couldn't change the plan: {error}",
+  "@planBreakFailed": {
+    "description": "Banner when the plan break change failed; nothing changed",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "planBreakDismissFailed": "Couldn't save that: {error}",
+  "@planBreakDismissFailed": {
+    "description": "Banner when hiding the plan break card could not be saved",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "planBreakUnavailable": "That many weeks can't be run again in this plan.",
+  "@planBreakUnavailable": {
+    "description": "Banner when the chosen number of weeks cannot be run again"
+  },
+  "planBreakWeeksFewer": "One week fewer",
+  "@planBreakWeeksFewer": {
+    "description": "Accessible label of the button lowering how many weeks run again"
+  },
+  "planBreakWeeksMore": "One week more",
+  "@planBreakWeeksMore": {
+    "description": "Accessible label of the button raising how many weeks run again"
   }
 }

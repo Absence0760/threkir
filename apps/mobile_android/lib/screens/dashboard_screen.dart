@@ -66,6 +66,7 @@ import '../widgets/this_week_strip.dart';
 import '../widgets/goal_editor_sheet.dart';
 import '../widgets/todays_workout_card.dart';
 import '../widgets/finish_plan_card.dart';
+import '../widgets/plan_break_card.dart';
 import '../widgets/next_race_card.dart';
 import '../widgets/up_next_plan_card.dart';
 import '../widgets/training_load_chart.dart';
@@ -794,10 +795,44 @@ class _DashboardScreenState extends State<DashboardScreen>
             onTap: () => _openPlan(p.upcomingPlan!.id),
           )
         : null;
-    if (race == null || upNext == null) return race ?? upNext;
+    final brk = _planBreakCard(p, now);
+    final parts = [?brk, ?race, ?upNext];
+    if (parts.length < 2) return parts.firstOrNull;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [race, const SizedBox(height: 8), upNext],
+      children: [
+        for (var i = 0; i < parts.length; i++) ...[
+          if (i > 0) const SizedBox(height: 8),
+          parts[i],
+        ],
+      ],
+    );
+  }
+
+  /// A break of a week or more in the shown plan (decisions § 2128). The
+  /// card hides itself when there is none; the local store holds every run,
+  /// unsynced ones included, so a run recorded offline still ends a break.
+  Widget? _planBreakCard(ActivePlanOverview p, DateTime now) {
+    final training = widget.training;
+    if (training == null) return null;
+    final runStarts = [for (final r in widget.runStore.summaryRuns) r.startedAt];
+    if (!PlanBreakCard.shows(
+        plan: p.plan,
+        weeks: p.weeks,
+        workouts: p.workouts,
+        runStarts: runStarts,
+        now: now)) {
+      return null;
+    }
+    return PlanBreakCard(
+      key: const Key('dashboardPlanBreak'),
+      training: training,
+      plan: p.plan,
+      weeks: p.weeks,
+      workouts: p.workouts,
+      runStarts: runStarts,
+      now: now,
+      onApplied: _refreshPlanOverview,
     );
   }
 

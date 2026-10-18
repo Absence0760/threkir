@@ -29406,6 +29406,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The new race date runs into another active plan. Move or end that plan first.'**
   String get planDetailRaceDateOverlap;
+
+  /// Plan break card title: the runner has had a week or more without running inside their plan
+  ///
+  /// In en, this message translates to:
+  /// **'Coming back after a break'**
+  String get planBreakTitle;
+
+  /// Plan break card body: days without a run or plan workout, since date (the first quiet day)
+  ///
+  /// In en, this message translates to:
+  /// **'No run or plan workout logged for {days, plural, one {{days} day} other {{days} days}}, since {date}.'**
+  String planBreakBody(int days, String date);
+
+  /// Plan break card hint for a plan ending on a race: date is race day, which never moves
+  ///
+  /// In en, this message translates to:
+  /// **'You can pick the plan up where you left off. Race day stays {date} and the taper is kept; a later build week makes room for each week you run again.'**
+  String planBreakHintRace(String date);
+
+  /// Plan break card hint for a plan without a race
+  ///
+  /// In en, this message translates to:
+  /// **'You can pick the plan up where you left off; the rest of the plan moves back to make room.'**
+  String get planBreakHintNoRace;
+
+  /// Plan break action: run the current week again next week
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat this week'**
+  String get planBreakRepeat;
+
+  /// Label of the number field choosing how many weeks to run again
+  ///
+  /// In en, this message translates to:
+  /// **'Weeks'**
+  String get planBreakWeeksLabel;
+
+  /// Plan break action for a plan without a race: run the chosen weeks again and move the rest back
+  ///
+  /// In en, this message translates to:
+  /// **'Push the plan back'**
+  String get planBreakPushBack;
+
+  /// Plan break action for a race plan: run the chosen weeks again and drop later build weeks so race day holds
+  ///
+  /// In en, this message translates to:
+  /// **'Shorten the build'**
+  String get planBreakShortenBuild;
+
+  /// Plan break action: hide the card and leave the plan unchanged
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the plan as it is'**
+  String get planBreakDismiss;
+
+  /// Title of the plan break preview dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Change your plan?'**
+  String get planBreakConfirmTitle;
+
+  /// Confirm button of the plan break preview dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Change plan'**
+  String get planBreakConfirmApply;
+
+  /// Preview line: how many weeks run again from next week
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {This week runs again next week.} other {The last {n} weeks run again, starting next week.}}'**
+  String planBreakPreviewRepeat(int n);
+
+  /// Preview line for a race plan: how many later build weeks are removed
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {{n} later build week is} other {{n} later build weeks are}} taken out to make room; the taper stays as it is.'**
+  String planBreakPreviewDropped(int n);
+
+  /// Preview line for a race plan: race day is unchanged
+  ///
+  /// In en, this message translates to:
+  /// **'Race day stays {date}.'**
+  String planBreakPreviewRaceDay(String date);
+
+  /// Preview line for a plan without a race: its new end date
+  ///
+  /// In en, this message translates to:
+  /// **'The weeks after move back, and the plan now ends {date}.'**
+  String planBreakPreviewEnd(String date);
+
+  /// Preview line: nothing already done changes
+  ///
+  /// In en, this message translates to:
+  /// **'Weeks you have already run and anything you have done don\'t change.'**
+  String get planBreakPreviewPast;
+
+  /// Banner after the plan break change applied; date is the plan end
+  ///
+  /// In en, this message translates to:
+  /// **'Plan updated. It ends {date}.'**
+  String planBreakApplied(String date);
+
+  /// Banner when the plan break change failed; nothing changed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t change the plan: {error}'**
+  String planBreakFailed(String error);
+
+  /// Banner when hiding the plan break card could not be saved
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save that: {error}'**
+  String planBreakDismissFailed(String error);
+
+  /// Banner when the chosen number of weeks cannot be run again
+  ///
+  /// In en, this message translates to:
+  /// **'That many weeks can\'t be run again in this plan.'**
+  String get planBreakUnavailable;
+
+  /// Accessible label of the button lowering how many weeks run again
+  ///
+  /// In en, this message translates to:
+  /// **'One week fewer'**
+  String get planBreakWeeksFewer;
+
+  /// Accessible label of the button raising how many weeks run again
+  ///
+  /// In en, this message translates to:
+  /// **'One week more'**
+  String get planBreakWeeksMore;
 }
 
 class _AppLocalizationsDelegate

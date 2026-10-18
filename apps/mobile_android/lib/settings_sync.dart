@@ -504,6 +504,9 @@ void registerActiveSettingsSync(SettingsSyncService? s) {
   _activeSettingsSync = s;
 }
 
+/// The app's settings bag, or null before it has loaded.
+SettingsService? activeSettingsService() => _activeSettingsSync?.service;
+
 /// One effective universal / device setting, null until the settings bag
 /// has loaded or when unset.
 Object? activeSetting(String key) =>

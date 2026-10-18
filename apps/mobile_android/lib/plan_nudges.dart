@@ -26,11 +26,9 @@ const double overrunMinFraction = 0.1;
 const int restDayWindow = 3;
 const int restDayMinWeeks = 2;
 
-/// Dismissed occurrences kept in the prefs bag.
+/// Dismissed occurrences kept in the prefs bag
+/// (`SettingsKeys.planNudgesDismissed`).
 const int dismissedNudgesCap = 20;
-
-/// The `user_settings.prefs` key holding dismissed occurrences.
-const String dismissedNudgesKey = 'plan_nudges_dismissed';
 
 enum PlanNudgeKind { adaptiveUnder, easeOver, restDayRuns }
 
@@ -119,6 +117,11 @@ class NudgeInputWorkout {
   final bool completed;
   final bool skipped;
 
+  /// The runner already answered this missed workout — let it go or made it
+  /// up through the missed-workout prompt (`missed_ack_at`). Off the books
+  /// like a skip, so no re-plan stretches a long run for it a second time.
+  final bool answered;
+
   const NudgeInputWorkout({
     required this.id,
     required this.scheduledDate,
@@ -126,6 +129,7 @@ class NudgeInputWorkout {
     required this.targetDistanceM,
     required this.completed,
     required this.skipped,
+    required this.answered,
   });
 }
 
@@ -190,7 +194,7 @@ List<ReplanWeek> buildReplanWeeks({
                 kind: x.kind,
                 targetDistanceM: x.targetDistanceM,
                 completed: x.completed,
-                skipped: x.skipped,
+                skipped: x.skipped || x.answered,
                 isPast: x.scheduledDate.compareTo(today) < 0,
               ))
           .toList(),

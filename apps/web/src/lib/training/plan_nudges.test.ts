@@ -19,9 +19,9 @@ function wo(
 	scheduledDate: string,
 	kind: string,
 	targetDistanceM: number | null,
-	{ completed = false, skipped = false } = {},
+	{ completed = false, skipped = false, answered = false } = {},
 ): NudgeInputWorkout {
-	return { id, scheduledDate, kind, targetDistanceM, completed, skipped };
+	return { id, scheduledDate, kind, targetDistanceM, completed, skipped, answered };
 }
 
 /// Plan starting Monday 2026-06-01: weeks 0-2 complete on 2026-06-24, week 3
@@ -163,6 +163,22 @@ test('planNudge: under plan in 2 of the last 3 weeks with a missed long run prop
 		weeks: 2,
 		ofWeeks: 3,
 	});
+});
+
+test('planNudge: a missed long run the runner already answered is not made up again', () => {
+	const runs = [
+		{ date: '2026-06-02', distanceM: 8_000 },
+		{ date: '2026-06-14', distanceM: 20_000 },
+		{ date: '2026-06-09', distanceM: 8_000 },
+		{ date: '2026-06-21', distanceM: 20_000 },
+		{ date: '2026-06-16', distanceM: 8_000 },
+	];
+	const weeks = plan([40_000, 40_000, 28_000], [
+		{ workouts: [wo('l0', '2026-06-07', 'long', 26_000, { answered: true }), wo('e0', '2026-06-02', 'easy', 8_000)] },
+	]);
+	const built = buildReplanWeeks({ startDate: START, today: TODAY, weeks, runs });
+	assert.equal(built[0].workouts[0].skipped, true);
+	assert.equal(nudge(weeks, runs), null);
 });
 
 test('planNudge: an under-run trend with nothing safe to change says nothing', () => {

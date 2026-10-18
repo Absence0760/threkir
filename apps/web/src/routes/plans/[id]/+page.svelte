@@ -923,6 +923,7 @@
 					targetDistanceM: x.target_distance_m,
 					completed: isWorkoutCompleted(x),
 					skipped: isWorkoutSkipped(x),
+					answered: x.missed_ack_at != null,
 				})),
 			})),
 		});

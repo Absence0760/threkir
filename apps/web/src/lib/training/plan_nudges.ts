@@ -103,6 +103,10 @@ export interface NudgeInputWorkout {
 	targetDistanceM: number | null;
 	completed: boolean;
 	skipped: boolean;
+	/// The runner already answered this missed workout — let it go or made it
+	/// up through the missed-workout prompt (`missed_ack_at`). Off the books
+	/// like a skip, so no re-plan stretches a long run for it a second time.
+	answered: boolean;
 }
 
 export interface NudgeInputWeek {
@@ -154,7 +158,7 @@ export function buildReplanWeeks(input: {
 				kind: x.kind,
 				targetDistanceM: x.targetDistanceM,
 				completed: x.completed,
-				skipped: x.skipped,
+				skipped: x.skipped || x.answered,
 				isPast: x.scheduledDate < input.today,
 			})),
 		};

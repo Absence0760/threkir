@@ -129,7 +129,7 @@ test.describe('placeholder-only text inputs now expose accessible names', () => 
 		await expect(page.getByRole('button', { name: /Add photo/ })).toBeVisible({
 			timeout: 10_000
 		});
-		await page.locator('input[type="file"]').setInputFiles({
+		await page.getByTestId('club-photos-file-input').setInputFiles({
 			name: 'a11y-club.png',
 			mimeType: 'image/png',
 			buffer: ONE_PIXEL_PNG

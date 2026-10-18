@@ -248,7 +248,6 @@ PlanNudge? planNudge({
   required List<ReplanWeek> weeks,
   required List<String> runDates,
   required List<String> dismissed,
-  AdaptiveFitness? fitness,
 }) {
   if (status != 'active' || isTemplate) return null;
   if (today.compareTo(startDate) < 0 || today.compareTo(endDate) > 0) {
@@ -267,8 +266,9 @@ PlanNudge? planNudge({
   final gone = dismissed.toSet();
   final candidates = <PlanNudge>[];
 
-  final adaptive =
-      adaptiveReplanRemaining(weeks: sorted, today: today, fitness: fitness);
+  // P1 only, by construction: no fitness snapshot reaches Home (decisions
+  // § 2125), so the gated P2 load input keeps its one call site.
+  final adaptive = adaptiveReplanRemaining(weeks: sorted, today: today);
   if (adaptive.reason == AdaptiveReason.trendUnderfitness &&
       adaptive.changes.isNotEmpty) {
     candidates.add(PlanNudge(

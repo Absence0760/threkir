@@ -10,7 +10,7 @@
  * (TS↔Dart parity pair, equal test counts).
  */
 
-import { adaptiveReplanRemaining, type AdaptiveFitness } from './plan_adaptive_replan';
+import { adaptiveReplanRemaining } from './plan_adaptive_replan';
 import { replanRemaining, type ReplanWeek } from './plan_replan';
 
 /// A run past its target by less than this is not worth a word: GPS drift
@@ -203,7 +203,6 @@ export function planNudge(input: {
 	weeks: ReplanWeek[];
 	runDates: readonly string[];
 	dismissed: readonly string[];
-	fitness?: AdaptiveFitness | null;
 }): PlanNudge | null {
 	if (input.status !== 'active' || input.isTemplate) return null;
 	if (input.today < input.startDate || input.today > input.endDate) return null;
@@ -214,11 +213,9 @@ export function planNudge(input: {
 	const dismissed = new Set(input.dismissed);
 	const candidates: PlanNudge[] = [];
 
-	const adaptive = adaptiveReplanRemaining({
-		weeks,
-		today: input.today,
-		fitness: input.fitness ?? null,
-	});
+	// P1 only, by construction: no fitness snapshot reaches Home (decisions
+	// § 2125), so the gated P2 load input keeps its one call site.
+	const adaptive = adaptiveReplanRemaining({ weeks, today: input.today });
 	if (adaptive.reason === 'trend_underfitness' && adaptive.changes.length > 0) {
 		candidates.push({
 			kind: 'adaptive_under',

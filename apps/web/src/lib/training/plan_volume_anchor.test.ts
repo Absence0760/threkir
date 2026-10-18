@@ -164,6 +164,18 @@ test('anchorToActualVolume: rest, race and skipped sessions are neither counted 
 	);
 });
 
+test('anchorToActualVolume: a resumed walk-run plan keeps its sessions in minutes', () => {
+	const weeks = [
+		week(0, 10_000, 8_000, true, []),
+		week(5, 12_000, 0, false, [
+			wo('w1', '2026-07-06', 'walk_run', 4_000),
+			wo('w2', '2026-07-08', 'walk_run', 4_000),
+			wo('w3', '2026-07-10', 'walk_run', 4_000),
+		]),
+	];
+	assert.equal(anchorToActualVolume({ weeks }), null);
+});
+
 test('anchorToActualVolume: a week with no running is a break, and the anchor is the last week that had some', () => {
 	const weeks = [
 		week(0, 40_000, 30_000, true, []),

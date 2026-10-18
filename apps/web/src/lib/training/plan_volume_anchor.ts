@@ -34,7 +34,9 @@
  *    one factor so the week keeps its shape, down to the 100 m. None goes
  *    below the generator's 3 km easy floor, and one already at or under it is
  *    left alone. Done sessions count toward their week as prescribed; missed
- *    ones count nothing. Rest and race sessions are never counted or touched.
+ *    ones count nothing. Rest and race sessions are never counted or touched,
+ *    nor are walk-run sessions, which are prescribed in minutes and never km
+ *    (decisions § 2203), so a resumed couch-to-5K plan is left as it is.
  *  - The climb stops at the first taper or race week. The taper is sacred,
  *    exactly as in `replanRemaining`.
  *
@@ -69,7 +71,7 @@ export interface VolumeAnchor {
 }
 
 function isFixed(kind: string): boolean {
-	return kind === 'rest' || kind === 'race';
+	return kind === 'rest' || kind === 'race' || kind === 'walk_run';
 }
 
 /// What a completed week asked for: its target, or less when its sessions

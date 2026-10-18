@@ -183,6 +183,18 @@ void main() {
     ]);
   });
 
+  test('anchorToActualVolume: a resumed walk-run plan keeps its sessions in minutes', () {
+    final weeks = [
+      _week(0, 10000, 8000, true, []),
+      _week(5, 12000, 0, false, [
+        _wo('w1', '2026-07-06', 'walk_run', 4000),
+        _wo('w2', '2026-07-08', 'walk_run', 4000),
+        _wo('w3', '2026-07-10', 'walk_run', 4000),
+      ]),
+    ];
+    expect(anchorToActualVolume(weeks: weeks), isNull);
+  });
+
   test('anchorToActualVolume: a week with no running is a break, and the anchor is the last week that had some',
       () {
     final weeks = [

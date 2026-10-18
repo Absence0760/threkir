@@ -1288,6 +1288,8 @@ export const en = {
 	"runDetail.stepOther": "Step",
 	"runDetail.onPace": "on pace",
 	"runDetail.saveFailed": "Save failed: {error}",
+	"runDetail.editConflict": "This run was changed elsewhere after you opened it, so your edit was not saved. Check the current details, then save again.",
+	"runDetail.editGone": "This run was deleted elsewhere, so your edit was not saved.",
 	"runDetail.deleteFailed": "Delete failed: {error}",
 	"runDetail.shareLinkCopied": "Share link copied to clipboard",
 	"runDetail.shareFailed": "Share failed: {error}",

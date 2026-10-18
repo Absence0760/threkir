@@ -911,8 +911,7 @@ test('computeGlobalSegmentEffortsForRun re-reads runs.metadata immediately befor
 	// writing the stamp back. Merging the stamp into that stale copy
 	// silently reverts any title / notes edit the owner made in the window —
 	// the run-detail edit dialog writes the same column. The bag must be
-	// re-read immediately before the write, the same read-adjacent-to-write
-	// discipline updateRunMetadata follows.
+	// re-read immediately before the write.
 	const source = read('src/lib/core/data.ts');
 	const start = source.indexOf('export async function computeGlobalSegmentEffortsForRun');
 	assert.ok(start >= 0, 'Could not locate computeGlobalSegmentEffortsForRun — rename?');

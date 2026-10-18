@@ -12,6 +12,7 @@ import { SELECT_SEPARATOR, type Join } from './database';
 import type { Insertable, Updatable } from './database';
 import type { JsonObject, TrackPoint } from '../types';
 import { isEntityId } from './entity_id';
+import { saveRunEdit, type RunEditFields, type RunEditOutcome } from './run_edit_cas';
 import { markListsStale } from './list_freshness';
 import {
 	keysetAfter,
@@ -219,7 +220,6 @@ import {
 } from '../social/dm_thread';
 import type { ParsedResultRow } from '../runs/event_results_csv';
 import {
-	applyRunMetadataPatch,
 	normalisePlanWorkoutNotes,
 	shouldRescoreGlobalSegments,
 	stampGlobalSegmentsScored,
@@ -1881,36 +1881,49 @@ async function gzipBytes(data: Uint8Array): Promise<Uint8Array> {
 	return out;
 }
 
-/// `isDnf` rides the same round-trip when the edit dialog changed it:
-/// `runs.is_dnf` is a real column (20261207_001), not a metadata key, and
-/// setting it true drops the run from personal-records scoring.
+/// Save the run-detail edit made on [loaded], the row as the page last read
+/// it, as a compare-and-swap on its server `updated_at` (decisions § 2120):
+/// an edit never writes over a change made elsewhere since the page loaded
+/// to a field it also changes, and reports that as a `conflict` with the
+/// server's copy instead. `isDnf` rides the same write when the dialog
+/// changed it: `runs.is_dnf` is a real column (20261207_001), and setting it
+/// true drops the run from personal-records scoring.
+///
+/// Title / notes are trimmed and an empty-after-trim key is removed from the
+/// bag rather than left as `""`; mobile's run-detail edit applies the same
+/// normalisation (`data_normalise.ts` holds the contract).
 export async function updateRunMetadata(
-	id: string,
-	fields: { title?: string; notes?: string },
+	loaded: Run,
+	fields: RunEditFields,
 	isDnf?: boolean,
-): Promise<void> {
-	const { data: run } = await supabase
-		.from(TABLES.runs)
-		.select('metadata')
-		.eq('id', id)
-		.single();
-	if (!run) throw new Error('Run not found');
-	// Trim + drop empty-after-trim keys so clearing a field via the
-	// edit dialog actually removes the key from the metadata bag
-	// instead of leaving `notes: ""` behind. Mobile's run-detail
-	// edit dialog applies the same normalisation. Logic lives in
-	// data_normalise.ts so the contract can be unit-tested.
-	const next = applyRunMetadataPatch(
-		run.metadata as JsonObject | null | undefined,
+): Promise<RunEditOutcome<Run>> {
+	const outcome = await saveRunEdit<Run>(
+		{
+			swap: async (patch, base) => {
+				const filtered = supabase.from(TABLES.runs).update(patch).eq('id', loaded.id);
+				const { data, error } = await (base === null
+					? filtered.is('updated_at', null)
+					: filtered.eq('updated_at', base)
+				).select('*');
+				if (error) throw dbError(error);
+				return (data ?? []).map((row) => asRun(row, loaded.track));
+			},
+			reload: async () => {
+				const { data, error } = await supabase
+					.from(TABLES.runs)
+					.select('*')
+					.eq('id', loaded.id)
+					.maybeSingle();
+				if (error) throw dbError(error);
+				return data ? asRun(data, loaded.track) : null;
+			},
+		},
+		loaded,
 		fields,
-		new Date().toISOString(),
+		isDnf,
 	);
-	markListsStale('runs', 'history', 'routes');
-	const { error } = await supabase
-		.from(TABLES.runs)
-		.update(isDnf === undefined ? { metadata: next } : { metadata: next, is_dnf: isDnf })
-		.eq('id', id);
-	if (error) throw dbError(error);
+	if (outcome.kind === 'saved') markListsStale('runs', 'history', 'routes');
+	return outcome;
 }
 
 // --- Route reviews ---
@@ -10274,8 +10287,6 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 	// seconds, and `runs.metadata` is a whole-column jsonb write. Merging the
 	// stale copy would silently revert any title / notes edit the owner made
 	// inside that window — the run-detail edit dialog writes the same column.
-	// Keeping the read adjacent to the write is the same discipline
-	// `updateRunMetadata` follows.
 	const { data: freshRow } = await supabase
 		.from(TABLES.runs)
 		.select('metadata')

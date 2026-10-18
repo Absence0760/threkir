@@ -1275,6 +1275,8 @@ export const messages = {
 	"runDetail.stepOther": "Étape",
 	"runDetail.onPace": "dans le rythme",
 	"runDetail.saveFailed": "Échec de l'enregistrement : {error}",
+	"runDetail.editConflict": "Cette course a été modifiée ailleurs après son ouverture, votre modification n'a donc pas été enregistrée. Vérifiez les informations actuelles, puis enregistrez de nouveau.",
+	"runDetail.editGone": "Cette course a été supprimée ailleurs, votre modification n'a donc pas été enregistrée.",
 	"runDetail.deleteFailed": "Échec de la suppression : {error}",
 	"runDetail.shareLinkCopied": "Lien de partage copié dans le presse-papiers",
 	"runDetail.shareFailed": "Échec du partage : {error}",

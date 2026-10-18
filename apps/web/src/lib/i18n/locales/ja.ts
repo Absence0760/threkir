@@ -1270,6 +1270,8 @@ export const messages = {
 	"runDetail.stepOther": "ステップ",
 	"runDetail.onPace": "ペース通り",
 	"runDetail.saveFailed": "保存に失敗しました: {error}",
+	"runDetail.editConflict": "このランは開いた後に別の場所で変更されたため、編集内容は保存されませんでした。現在の内容を確認してから、もう一度保存してください。",
+	"runDetail.editGone": "このランは別の場所で削除されたため、編集内容は保存されませんでした。",
 	"runDetail.deleteFailed": "削除に失敗しました: {error}",
 	"runDetail.shareLinkCopied": "共有リンクをクリップボードにコピーしました",
 	"runDetail.shareFailed": "共有に失敗しました: {error}",

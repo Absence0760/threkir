@@ -1274,6 +1274,8 @@ export const messages = {
 	"runDetail.stepOther": "Etapa",
 	"runDetail.onPace": "no ritmo",
 	"runDetail.saveFailed": "Falha ao guardar: {error}",
+	"runDetail.editConflict": "Esta corrida foi alterada noutro local depois de a abrir, por isso a sua alteração não foi guardada. Verifique os dados atuais e guarde novamente.",
+	"runDetail.editGone": "Esta corrida foi eliminada noutro local, por isso a sua alteração não foi guardada.",
 	"runDetail.deleteFailed": "Falha ao eliminar: {error}",
 	"runDetail.shareLinkCopied": "Link de partilha copiado para a área de transferência",
 	"runDetail.shareFailed": "Falha ao partilhar: {error}",

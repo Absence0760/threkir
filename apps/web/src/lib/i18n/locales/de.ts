@@ -1275,6 +1275,8 @@ export const messages = {
 	"runDetail.stepOther": "Schritt",
 	"runDetail.onPace": "im Tempo",
 	"runDetail.saveFailed": "Speichern fehlgeschlagen: {error}",
+	"runDetail.editConflict": "Dieser Lauf wurde woanders geändert, nachdem du ihn geöffnet hast, daher wurde deine Änderung nicht gespeichert. Prüfe die aktuellen Angaben und speichere dann erneut.",
+	"runDetail.editGone": "Dieser Lauf wurde woanders gelöscht, daher wurde deine Änderung nicht gespeichert.",
 	"runDetail.deleteFailed": "Löschen fehlgeschlagen: {error}",
 	"runDetail.shareLinkCopied": "Freigabelink in die Zwischenablage kopiert",
 	"runDetail.shareFailed": "Teilen fehlgeschlagen: {error}",

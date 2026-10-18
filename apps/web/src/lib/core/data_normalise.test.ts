@@ -98,23 +98,19 @@ test('normaliseRunMetadataFields: ignores keys whose value is not a string', () 
 // applyRunMetadataPatch — the end-to-end metadata merge
 // ---------------------------------------------------------------------------
 
-const NOW = '2026-06-01T12:00:00.000Z';
-
 test('applyRunMetadataPatch: writes title + notes onto an empty bag', () => {
-	const next = applyRunMetadataPatch(null, { title: 'A', notes: 'B' }, NOW);
-	assert.deepEqual(next, { title: 'A', notes: 'B', last_modified_at: NOW });
+	const next = applyRunMetadataPatch(null, { title: 'A', notes: 'B' });
+	assert.deepEqual(next, { title: 'A', notes: 'B' });
 });
 
 test('applyRunMetadataPatch: preserves unrelated keys', () => {
 	const next = applyRunMetadataPatch(
 		{ activity_type: 'run', strava_id: 12345 },
 		{ title: 'A' },
-		NOW,
 	);
 	assert.equal(next.activity_type, 'run');
 	assert.equal(next.strava_id, 12345);
 	assert.equal(next.title, 'A');
-	assert.equal(next.last_modified_at, NOW);
 });
 
 test('applyRunMetadataPatch: empty patch field REMOVES the key (the bug fix)', () => {
@@ -124,7 +120,6 @@ test('applyRunMetadataPatch: empty patch field REMOVES the key (the bug fix)', (
 	const next = applyRunMetadataPatch(
 		{ title: 'Old', notes: 'Old notes' },
 		{ title: 'New', notes: '   ' },
-		NOW,
 	);
 	assert.equal(next.title, 'New');
 	assert.equal(Object.prototype.hasOwnProperty.call(next, 'notes'), false,
@@ -132,13 +127,15 @@ test('applyRunMetadataPatch: empty patch field REMOVES the key (the bug fix)', (
 });
 
 test('applyRunMetadataPatch: empty patch field on an empty bag is a no-op', () => {
-	const next = applyRunMetadataPatch({}, { notes: '' }, NOW);
+	const next = applyRunMetadataPatch({}, { notes: '' });
 	assert.equal(Object.prototype.hasOwnProperty.call(next, 'notes'), false);
 });
 
-test('applyRunMetadataPatch: always stamps last_modified_at', () => {
-	const next = applyRunMetadataPatch({ title: 'x' }, {}, NOW);
-	assert.equal(next.last_modified_at, NOW);
+test('applyRunMetadataPatch: stamps no device clock (decisions § 2120)', () => {
+	// The browser's clock is not the server's, and nothing reads the stamp:
+	// a run edit conflict is decided by the server-stamped `updated_at`.
+	const next = applyRunMetadataPatch({ title: 'x' }, {});
+	assert.equal(Object.prototype.hasOwnProperty.call(next, 'last_modified_at'), false);
 });
 
 test('applyRunMetadataPatch: only the keys in fields are touched — '
@@ -148,7 +145,6 @@ test('applyRunMetadataPatch: only the keys in fields are touched — '
 	const next = applyRunMetadataPatch(
 		{ title: 'Keep me', other_field: 'untouched' },
 		{ notes: 'New' },
-		NOW,
 	);
 	assert.equal(next.title, 'Keep me');
 	assert.equal(next.other_field, 'untouched');

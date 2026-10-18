@@ -12,6 +12,7 @@ import 'backend_timeout.dart';
 import 'health_consent.dart';
 import 'nutrition_targets.dart' show ageFromDob;
 import 'plan_bulk_ops.dart';
+import 'plan_break.dart' show BreakChange;
 import 'plan_race_date.dart' show RaceDateChange;
 import 'plan_resume.dart';
 import 'plan_copy.dart';
@@ -816,6 +817,25 @@ class TrainingService extends ChangeNotifier {
         'p_insert_count': change.insertCount,
         'p_repeat_week_id': change.repeatWeekId,
         'p_race_workout_id': change.raceWorkoutId,
+      });
+    } catch (e, s) {
+      Error.throwWithStackTrace(planWriteError(e), s);
+    }
+    notifyListeners();
+  }
+
+  /// Runs the latest weeks again after a break and records the offer as
+  /// answered (`planBreakChange`, decisions § 2128), in one transaction.
+  /// Web twin: `reschedulePlanAfterBreak` in `core/data.ts`.
+  Future<void> reschedulePlanAfterBreak(String planId, BreakChange change,
+      String breakFromIso, String todayIso) async {
+    try {
+      await _c.rpc('reschedule_plan_after_break', params: {
+        'p_plan_id': planId,
+        'p_today': todayIso,
+        'p_break_from': breakFromIso,
+        'p_repeat_week_ids': change.repeatWeekIds,
+        'p_drop_week_ids': change.dropWeekIds,
       });
     } catch (e, s) {
       Error.throwWithStackTrace(planWriteError(e), s);

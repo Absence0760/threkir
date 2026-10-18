@@ -84,6 +84,7 @@
 		PLAN_SUGGESTION_DISMISSED_KEY,
 		pickRecent5k,
 	} from '#lib/training/recent_5k_suggestion.ts';
+	import PlanBreakCard from '#lib/components/PlanBreakCard.svelte';
 	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import { weeklyGoalTarget } from '#lib/training/week_lead.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
@@ -1311,6 +1312,15 @@
 				{#if planFinished}
 					<FinishPlanPrompt plan={planOverview.plan} onfinished={reloadPlanOverview} />
 				{:else}
+				{#if planOverview.plan.status === 'active'}
+					<PlanBreakCard
+						plan={planOverview.plan}
+						weeks={planOverview.weeks}
+						workouts={planOverview.workouts}
+						today={formatISO(todayMidnight)}
+						onapplied={reloadPlanOverview}
+					/>
+				{/if}
 				<div class="plan-hero-today">
 					{#if t}
 						<button

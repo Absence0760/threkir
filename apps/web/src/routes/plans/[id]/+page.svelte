@@ -55,6 +55,7 @@
 	import { isAdaptiveFitnessGateEnabled } from '#lib/training/adaptive_fitness_flag.ts';
 	import WorkoutEditor from '#lib/components/WorkoutEditor.svelte';
 	import FinishPlanPrompt from '#lib/components/FinishPlanPrompt.svelte';
+	import PlanBreakCard from '#lib/components/PlanBreakCard.svelte';
 	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import PlanAiAdjust from '#lib/components/PlanAiAdjust.svelte';
@@ -1659,6 +1660,10 @@
 
 		{#if isOwner && !plan.is_template && isPlanFinished(plan, today)}
 			<div class="finish-plan-slot"><FinishPlanPrompt {plan} onfinished={load} /></div>
+		{/if}
+
+		{#if isOwner && plan.status === 'active'}
+			<PlanBreakCard {plan} {weeks} {workouts} {today} onapplied={load} />
 		{/if}
 
 		{#if isOwner && !plan.is_template && replanPreview}

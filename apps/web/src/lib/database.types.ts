@@ -6983,6 +6983,16 @@ export type Database = {
         Returns: undefined
       }
       request_follow: { Args: { p_target: string }; Returns: string }
+      reschedule_plan_after_break: {
+        Args: {
+          p_break_from: string
+          p_drop_week_ids?: string[]
+          p_plan_id: string
+          p_repeat_week_ids: string[]
+          p_today: string
+        }
+        Returns: undefined
+      }
       reschedule_plan_workouts: {
         Args: { p_moves: Json; p_plan_id: string }
         Returns: undefined

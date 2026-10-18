@@ -18128,4 +18128,109 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get planNewRecent5kSuggested =>
       'Aus deinem letzten 5-km-Lauf übernommen. Aktiviere den Schalter unten nur, wenn die Zeit deiner heutigen Form entspricht.';
+
+  @override
+  String get planBreakTitle => 'Zurück nach einer Pause';
+
+  @override
+  String planBreakBody(int days, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days Tage',
+      one: '$days Tag',
+    );
+    return 'Seit $date kein Lauf und kein Planworkout erfasst – $_temp0.';
+  }
+
+  @override
+  String planBreakHintRace(String date) {
+    return 'Du kannst den Plan dort fortsetzen, wo du aufgehört hast. Der Wettkampftag bleibt der $date und das Tapering bleibt erhalten; für jede wiederholte Woche fällt eine spätere Aufbauwoche weg.';
+  }
+
+  @override
+  String get planBreakHintNoRace =>
+      'Du kannst den Plan dort fortsetzen, wo du aufgehört hast; der Rest des Plans verschiebt sich nach hinten.';
+
+  @override
+  String get planBreakRepeat => 'Diese Woche wiederholen';
+
+  @override
+  String get planBreakWeeksLabel => 'Wochen';
+
+  @override
+  String get planBreakPushBack => 'Plan nach hinten verschieben';
+
+  @override
+  String get planBreakShortenBuild => 'Aufbau verkürzen';
+
+  @override
+  String get planBreakDismiss => 'Plan so lassen';
+
+  @override
+  String get planBreakConfirmTitle => 'Plan ändern?';
+
+  @override
+  String get planBreakConfirmApply => 'Plan ändern';
+
+  @override
+  String planBreakPreviewRepeat(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Die letzten $n Wochen werden ab nächster Woche wiederholt.',
+      one: 'Diese Woche wird nächste Woche wiederholt.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planBreakPreviewDropped(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n spätere Aufbauwochen fallen',
+      one: '$n spätere Aufbauwoche fällt',
+    );
+    return '$_temp0 dafür weg; das Tapering bleibt, wie es ist.';
+  }
+
+  @override
+  String planBreakPreviewRaceDay(String date) {
+    return 'Der Wettkampftag bleibt der $date.';
+  }
+
+  @override
+  String planBreakPreviewEnd(String date) {
+    return 'Die folgenden Wochen verschieben sich, und der Plan endet jetzt am $date.';
+  }
+
+  @override
+  String get planBreakPreviewPast =>
+      'Bereits gelaufene Wochen und alles Erledigte bleiben unverändert.';
+
+  @override
+  String planBreakApplied(String date) {
+    return 'Plan aktualisiert. Er endet am $date.';
+  }
+
+  @override
+  String planBreakFailed(String error) {
+    return 'Plan konnte nicht geändert werden: $error';
+  }
+
+  @override
+  String planBreakDismissFailed(String error) {
+    return 'Konnte nicht gespeichert werden: $error';
+  }
+
+  @override
+  String get planBreakUnavailable =>
+      'So viele Wochen lassen sich in diesem Plan nicht wiederholen.';
+
+  @override
+  String get planBreakWeeksFewer => 'Eine Woche weniger';
+
+  @override
+  String get planBreakWeeksMore => 'Eine Woche mehr';
 }

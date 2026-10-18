@@ -18117,4 +18117,110 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get planNewRecent5kSuggested =>
       'Rellenado con tus 5 km recientes. Activa el interruptor de abajo solo si refleja tu forma de hoy.';
+
+  @override
+  String get planBreakTitle => 'Volver después de un descanso';
+
+  @override
+  String planBreakBody(int days, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days días',
+      one: '$days día',
+    );
+    return 'Sin carreras ni entrenamientos del plan registrados desde el $date: $_temp0.';
+  }
+
+  @override
+  String planBreakHintRace(String date) {
+    return 'Puedes retomar el plan donde lo dejaste. El día de la carrera sigue siendo el $date y se mantiene la puesta a punto; cada semana que repitas sustituye a una semana de desarrollo posterior.';
+  }
+
+  @override
+  String get planBreakHintNoRace =>
+      'Puedes retomar el plan donde lo dejaste; el resto del plan se retrasa para hacer sitio.';
+
+  @override
+  String get planBreakRepeat => 'Repetir esta semana';
+
+  @override
+  String get planBreakWeeksLabel => 'Semanas';
+
+  @override
+  String get planBreakPushBack => 'Retrasar el plan';
+
+  @override
+  String get planBreakShortenBuild => 'Acortar el desarrollo';
+
+  @override
+  String get planBreakDismiss => 'Dejar el plan como está';
+
+  @override
+  String get planBreakConfirmTitle => '¿Cambiar tu plan?';
+
+  @override
+  String get planBreakConfirmApply => 'Cambiar plan';
+
+  @override
+  String planBreakPreviewRepeat(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Las últimas $n semanas se repiten a partir de la semana que viene.',
+      one: 'Esta semana se repite la semana que viene.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planBreakPreviewDropped(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Se quitan $n semanas de desarrollo posteriores',
+      one: 'Se quita $n semana de desarrollo posterior',
+    );
+    return '$_temp0 para hacer sitio; la puesta a punto no cambia.';
+  }
+
+  @override
+  String planBreakPreviewRaceDay(String date) {
+    return 'El día de la carrera sigue siendo el $date.';
+  }
+
+  @override
+  String planBreakPreviewEnd(String date) {
+    return 'Las semanas siguientes se retrasan y el plan termina ahora el $date.';
+  }
+
+  @override
+  String get planBreakPreviewPast =>
+      'Las semanas que ya has corrido y lo que ya has hecho no cambian.';
+
+  @override
+  String planBreakApplied(String date) {
+    return 'Plan actualizado. Termina el $date.';
+  }
+
+  @override
+  String planBreakFailed(String error) {
+    return 'No se pudo cambiar el plan: $error';
+  }
+
+  @override
+  String planBreakDismissFailed(String error) {
+    return 'No se pudo guardar: $error';
+  }
+
+  @override
+  String get planBreakUnavailable =>
+      'No se pueden repetir tantas semanas en este plan.';
+
+  @override
+  String get planBreakWeeksFewer => 'Una semana menos';
+
+  @override
+  String get planBreakWeeksMore => 'Una semana más';
 }

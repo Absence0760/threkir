@@ -51,6 +51,7 @@ import 'profile_screen.dart';
 import '../backend_timeout.dart';
 import '../disclosure_state.dart';
 import '../widgets/finish_plan_card.dart';
+import '../widgets/plan_break_card.dart';
 import '../widgets/error_state.dart';
 import '../widgets/current_week_strip.dart';
 import '../widgets/next_race_card.dart';
@@ -173,6 +174,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   bool _libraryBusy = false;
   String? _publishedTemplateId;
   List<RecentRunRow> _recentRuns = const [];
+  bool _recentRunsLoaded = false;
   List<ReplanChange>? _replanPreview;
   // The B/C race taper's proposals (decisions § 2051), previewed like a
   // re-plan and applied only on the runner's say-so.
@@ -370,10 +372,23 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       final runs =
           await _social.fetchRecentRuns(limit: 50).timeout(kBackendLoadTimeout);
       if (!mounted) return;
-      setState(() => _recentRuns = runs);
+      setState(() {
+        _recentRuns = runs;
+        _recentRunsLoaded = true;
+      });
     } catch (_) {
       /* L4 best-effort — leave the adherence surfaces hidden. */
     }
+  }
+
+  /// When the runner's runs started, for the break card: the local store
+  /// when the host passed one (it holds unsynced runs too), else the recent
+  /// runs once they loaded; null until then, which keeps the card hidden.
+  List<DateTime>? get _breakRunStarts {
+    final store = widget.runStore;
+    if (store != null) return [for (final r in store.summaryRuns) r.startedAt];
+    if (!_recentRunsLoaded) return null;
+    return [for (final r in _recentRuns) r.startedAt];
   }
 
   /// Coach RLS lets an athlete's active coach edit the workouts of a
@@ -1815,6 +1830,25 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
             planName: p.name,
             endDate: p.endDate,
             onFinished: _load,
+          ),
+        ],
+        if (_isOwner(p) &&
+            PlanBreakCard.shows(
+                plan: p,
+                weeks: _weeks,
+                workouts: allWorkouts,
+                runStarts: _breakRunStarts,
+                now: widget.now())) ...[
+          const SizedBox(height: 12),
+          PlanBreakCard(
+            key: const Key('planDetailPlanBreak'),
+            training: widget.training,
+            plan: p,
+            weeks: _weeks,
+            workouts: allWorkouts,
+            runStarts: _breakRunStarts,
+            now: widget.now(),
+            onApplied: _load,
           ),
         ],
         if (PlanRacesList.shows(races)) ...[

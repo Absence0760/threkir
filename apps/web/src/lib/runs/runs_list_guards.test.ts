@@ -86,3 +86,19 @@ test('a restore does not trip the render-window reset', () => {
 		'restore must adopt the restored filter set as the window it belongs to',
 	);
 });
+
+test('the list view keeps bulk selection, like the grid', () => {
+	// Both views render the same filtered, windowed runs; a list view that
+	// dropped the selection props would leave Select showing a bulk bar over
+	// rows that cannot be picked (decisions § 2114).
+	const list = block("{#if view === 'list'}\n\t\t\t<div class=\"run-list-view\"", '{:else}');
+	assert.match(list, /groups=\{listGroups\}/);
+	assert.match(list, /\{selecting\}/);
+	assert.match(list, /\{selected\}/);
+	assert.match(list, /ontoggle=\{toggleSelect\}/);
+	assert.match(
+		block('let listGroups = $derived.by', '\n\t});'),
+		/visibleRuns/,
+		'the list must page through the same render window as the grid',
+	);
+});

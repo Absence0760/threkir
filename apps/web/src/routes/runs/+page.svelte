@@ -12,11 +12,21 @@
 	import RunEditor from '#lib/components/RunEditor.svelte';
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
 	import Modal from '#lib/components/Modal.svelte';
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
+	import { page } from '$app/state';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import RunTrackPreview from '#lib/components/RunTrackPreview.svelte';
 	import DateRangePicker from '#lib/components/DateRangePicker.svelte';
+	import TimelineDayList, { type TimelineItem } from '#lib/components/TimelineDayList.svelte';
+	import { groupByLocalDay, type DayGroup } from '#lib/timeline/day_groups.ts';
+	import {
+		parseRunsView,
+		resolveRunsView,
+		runsListGroupsByDay,
+		runsViewSearch,
+		type RunsView,
+	} from '#lib/runs/runs_view.ts';
 	import type { Run, RunSource } from '#lib/types.ts';
 	import { formatElevation } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -51,6 +61,10 @@
 	// streams in pages of PAGE_SIZE so a heavy account doesn't
 	// pull thousands of rows on first paint.
 	let dateRange = $state<DateRange>('today');
+	/// Map-card grid or day-grouped list (decisions § 2114). Remembered in the
+	/// filters blob like the rest of the view, and named in the URL so a link
+	/// can open either; the URL wins.
+	let view = $state<RunsView>('grid');
 
 	/// First day of the week for the "Week" filter, mirroring the
 	/// dashboard's `week_start_day` pref so the run list and the
@@ -136,6 +150,7 @@
 				if (typeof saved.customFrom === 'string') customFrom = saved.customFrom;
 				if (typeof saved.customTo === 'string') customTo = saved.customTo;
 				if (saved.sortKey) sortKey = saved.sortKey;
+				view = resolveRunsView(page.url.searchParams.get('view'), saved.view);
 			}
 		} catch (_) {
 			/* localStorage may be unavailable / blob may be corrupt — leave defaults */
@@ -148,12 +163,26 @@
 		try {
 			localStorage.setItem(
 				FILTERS_KEY,
-				JSON.stringify({ sourceFilter, activityFilter, dateRange, customFrom, customTo, sortKey }),
+				JSON.stringify({ sourceFilter, activityFilter, dateRange, customFrom, customTo, sortKey, view }),
 			);
 		} catch (_) {
 			/* silent */
 		}
 	});
+
+	// A `?view=` link followed while /runs is already open reuses this
+	// component, so the URL is read on every navigation, not only at mount.
+	// A link without one leaves the current view alone.
+	$effect(() => {
+		const fromUrl = parseRunsView(page.url.searchParams.get('view'));
+		if (fromUrl) view = fromUrl;
+	});
+
+	function setView(next: RunsView): void {
+		view = next;
+		// Shallow: the list, filters and scroll stay as they are.
+		replaceState(`${page.url.pathname}${runsViewSearch(page.url.search, next)}`, page.state);
+	}
 
 	/// Lower-bound / upper-bound cutoffs in local time for the selected
 	/// range. `null` on either side means "no cutoff on this side".
@@ -306,6 +335,32 @@
 	let visibleRuns = $derived(
 		fetchMode === 'full' ? filteredRuns.slice(0, renderLimit) : filteredRuns,
 	);
+
+	function runListItem(run: Run): TimelineItem {
+		const secondary = [formatDuration(run.duration_s), formatPace(run.duration_s, run.distance_m)];
+		if (run.metadata?.event) secondary.push(String(run.metadata.event));
+		secondary.push(sourceLabel(run.source));
+		return {
+			id: run.id,
+			kind: 'run',
+			glyph: ACTIVITY_TYPE_ICONS[run.activity_type] ?? ACTIVITY_TYPE_ICONS.run,
+			href: `/runs/${run.id}`,
+			primary: formatDistance(run.distance_m),
+			secondary: secondary.join(' · '),
+		};
+	}
+
+	/// Under a distance or pace sort there is no day to head a group with, so
+	/// the list view is one undivided list in that order.
+	let listHeadings = $derived(runsListGroupsByDay(sortKey));
+	let listGroups = $derived.by<DayGroup<TimelineItem>[]>(() => {
+		if (view !== 'list' || visibleRuns.length === 0) return [];
+		if (listHeadings) return groupByLocalDay(visibleRuns, (r) => r.started_at).map((g) => ({
+			...g,
+			rows: g.rows.map(runListItem),
+		}));
+		return [{ key: 'all', relative: null, startedAt: '', rows: visibleRuns.map(runListItem) }];
+	});
 
 	/// The filter/sort set the current render window belongs to. Keyed rather
 	/// than one-shot-flagged: a back-nav restore ASSIGNS the filters, which is
@@ -510,6 +565,8 @@
 		customFrom: string;
 		customTo: string;
 		renderLimit: number;
+		/** Absent from a snapshot captured before the list view existed. */
+		view?: RunsView;
 		scrollY: number;
 		listToken: string;
 	}> = {
@@ -525,6 +582,7 @@
 			customFrom,
 			customTo,
 			renderLimit,
+			view,
 			scrollY: typeof window === 'undefined' ? 0 : window.scrollY,
 			listToken: loadedToken,
 		}),
@@ -535,6 +593,7 @@
 			dateRange = s.dateRange;
 			customFrom = s.customFrom;
 			customTo = s.customTo;
+			view = resolveRunsView(page.url.searchParams.get('view'), s.view);
 			filtersHydrated = true;
 			// A run was written since the list was loaded (created from the
 			// Add-run modal, edited or deleted on its detail page), so the
@@ -733,6 +792,34 @@
 			</div>
 
 			<div class="toolbar-actions">
+				<div class="view-toggle seg-group" role="group" aria-label={m('runs.viewGroup')}>
+					<button
+						type="button"
+						class="seg-btn"
+						class:active={view === 'list'}
+						aria-pressed={view === 'list'}
+						title={m('runs.viewList')}
+						aria-label={m('runs.viewList')}
+						data-testid="runs-view-list"
+						onclick={() => setView('list')}
+					>
+						<span class="material-symbols" aria-hidden="true">list</span>
+						<span class="view-label">{m('runs.viewList')}</span>
+					</button>
+					<button
+						type="button"
+						class="seg-btn"
+						class:active={view === 'grid'}
+						aria-pressed={view === 'grid'}
+						title={m('runs.viewGrid')}
+						aria-label={m('runs.viewGrid')}
+						data-testid="runs-view-grid"
+						onclick={() => setView('grid')}
+					>
+						<span class="material-symbols" aria-hidden="true">apps</span>
+						<span class="view-label">{m('runs.viewGrid')}</span>
+					</button>
+				</div>
 				{#if selecting}
 					<button class="link-btn" onclick={selectAllVisible} type="button">{m('runs.selectAll')}</button>
 					<button class="link-btn" onclick={exitSelectMode} type="button">{m('runs.done')}</button>
@@ -780,7 +867,12 @@
 	</header>
 
 	{#if loading}
-		{@render listSkeleton()}
+		{#if view === 'list'}
+			<TimelineDayList groups={[]} placeholder />
+			<p class="sr-only" role="status">{m('runs.loadingRuns')}</p>
+		{:else}
+			{@render listSkeleton()}
+		{/if}
 	{:else if loadError}
 		<div class="card-elevated empty load-error" role="alert" data-testid="runs-load-error">
 			<span class="material-symbols empty-icon" aria-hidden="true">error</span>
@@ -798,7 +890,18 @@
 			</div>
 		</div>
 	{:else}
-		<div class="run-list">
+		{#if view === 'list'}
+			<div class="run-list-view" data-testid="runs-list-view">
+				<TimelineDayList
+					groups={listGroups}
+					headings={listHeadings}
+					{selecting}
+					{selected}
+					ontoggle={toggleSelect}
+				/>
+			</div>
+		{:else}
+		<div class="run-list" data-testid="runs-grid-view">
 			{#each visibleRuns as run}
 				{@const isSelected = selected.has(run.id)}
 				<svelte:element
@@ -900,6 +1003,7 @@
 				</svelte:element>
 			{/each}
 		</div>
+		{/if}
 
 		{#if selecting && selected.size > 0}
 			<div class="bulk-bar" role="toolbar" aria-label={m('runs.selectionActions')}>
@@ -1171,7 +1275,8 @@
 	   action cluster on one row. ~54rem is just above their combined width, so
 	   the labels vanish a touch before they'd collide with the actions. */
 	@container (max-width: 54rem) {
-		.activity-label {
+		.activity-label,
+		.view-label {
 			display: none;
 		}
 	}

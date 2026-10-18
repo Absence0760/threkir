@@ -64,7 +64,6 @@ test('a walk-run plan repeats this week next week and ends a week later', () => 
 			copyIndex: 5,
 			copyStartIso: shiftIsoDate(S, 35),
 			dropWeekId: null,
-			dropWeekIndex: null,
 			endIso: shiftIsoDate(S, 76),
 			raceDateIso: null
 		}
@@ -86,7 +85,6 @@ test('a race plan keeps race day by dropping its latest build week', () => {
 			copyIndex: 5,
 			copyStartIso: shiftIsoDate(S, 35),
 			dropWeekId: 'w5',
-			dropWeekIndex: 5,
 			endIso: shiftIsoDate(S, 63),
 			raceDateIso: shiftIsoDate(S, 63)
 		}

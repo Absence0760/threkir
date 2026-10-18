@@ -43,7 +43,6 @@ export type RepeatWeekChange = {
 	/// The first day of the copy's week.
 	copyStartIso: string;
 	dropWeekId: string | null;
-	dropWeekIndex: number | null;
 	/// The plan's end date afterwards.
 	endIso: string;
 	/// The race day the plan keeps, or null for a plan without one.
@@ -162,15 +161,13 @@ export function repeatWeekChange(input: {
 	if (!frame) return { ok: false, reason: 'last_week' };
 	const placed = rerunPlacement(frame, plan, 1);
 	if (!placed.ok) return placed;
-	const drop = placed.drops[0] ?? null;
 	return {
 		ok: true,
 		change: {
 			weekId,
 			copyIndex: current + 1,
 			copyStartIso: shiftIsoDate(plan.start_date, 7 * (current + 1)),
-			dropWeekId: drop?.id ?? null,
-			dropWeekIndex: drop?.week_index ?? null,
+			dropWeekId: placed.drops[0]?.id ?? null,
 			endIso: placed.endIso,
 			raceDateIso: frame.raceDate
 		}

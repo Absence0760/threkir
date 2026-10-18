@@ -521,12 +521,8 @@
 			copy: change.copyIndex + 1,
 			start: formatDateShort(change.copyStartIso)
 		};
-		if (change.raceDateIso && change.dropWeekIndex != null) {
-			return m('planDetail.repeatWeekConfirmRace', {
-				...params,
-				dropped: change.dropWeekIndex + 1,
-				race: fmtRaceDate(change.raceDateIso)
-			});
+		if (change.raceDateIso) {
+			return m('planDetail.repeatWeekConfirmRace', { ...params, race: fmtRaceDate(change.raceDateIso) });
 		}
 		return m('planDetail.repeatWeekConfirmMessage', { ...params, end: formatDateShort(change.endIso) });
 	}

@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures/test';
 
+import { readRows } from '../fixtures/db-read';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
 
@@ -88,8 +89,11 @@ test.describe('/plans/[id] Abandon', () => {
 		const { planId, weekId } = await seedPlan('e2e abandon active', 'active');
 		try {
 			await abandonFromDetail(page, planId, 'e2e abandon active', 'Pause plan');
-			const kept = await admin.from('plan_workouts').select('id').eq('week_id', weekId);
-			expect(kept.data).toHaveLength(1);
+			const kept = await readRows(
+				'abandoned plan workouts',
+				admin.from('plan_workouts').select('id').eq('week_id', weekId)
+			);
+			expect(kept).toHaveLength(1);
 		} finally {
 			await admin.from('training_plans').delete().eq('id', planId);
 		}
@@ -100,8 +104,11 @@ test.describe('/plans/[id] Abandon', () => {
 		const { planId, weekId } = await seedPlan('e2e abandon paused', 'paused');
 		try {
 			await abandonFromDetail(page, planId, 'e2e abandon paused', 'Resume plan');
-			const kept = await admin.from('plan_workouts').select('id').eq('week_id', weekId);
-			expect(kept.data).toHaveLength(1);
+			const kept = await readRows(
+				'abandoned plan workouts',
+				admin.from('plan_workouts').select('id').eq('week_id', weekId)
+			);
+			expect(kept).toHaveLength(1);
 		} finally {
 			await admin.from('training_plans').delete().eq('id', planId);
 		}

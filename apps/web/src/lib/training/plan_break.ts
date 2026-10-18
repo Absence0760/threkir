@@ -14,17 +14,14 @@
  * A plan that ends on a race keeps its race day: the same number of pre-taper
  * weeks that have not started are dropped (build first, then base, then peak,
  * the latest of each first), as `change_plan_race_date` drops them. The
- * taper, anything that has started and anything done never move.
+ * taper, anything that has started and anything done never move. The weeks
+ * and drops come from `plan_repeat_week.ts`, which "Repeat this week" shares.
  */
 
 import { daysBetweenIso } from './cycle_plan.ts';
 import { shiftIsoDate } from './plan_bulk_ops.ts';
-import {
-	planRaceDate,
-	type RaceDatePlan,
-	type RaceDateWeek,
-	type RaceDateWorkout
-} from './plan_race_date.ts';
+import type { RaceDatePlan, RaceDateWeek, RaceDateWorkout } from './plan_race_date.ts';
+import { RERUN_TAPER_PHASES, rerunFrame, rerunPlacement, type RerunFrame } from './plan_repeat_week.ts';
 
 export const BREAK_MIN_DAYS = 7;
 export const BREAK_MAX_WEEKS = 52;
@@ -61,9 +58,6 @@ export type BreakChange = {
 	endIso: string;
 };
 
-const TAPER = new Set(['taper', 'race']);
-const DROP_RANK: Record<string, number> = { build: 0, base: 1, peak: 2 };
-
 function isDone(w: BreakWorkout): boolean {
 	return w.completed_run_id != null || w.manually_completed;
 }
@@ -71,23 +65,14 @@ function isDone(w: BreakWorkout): boolean {
 type Shape = {
 	from: string;
 	days: number;
-	current: number;
-	raceDate: string | null;
+	frame: RerunFrame;
 	sources: BreakWeek[];
-	drops: BreakWeek[];
-	sorted: BreakWeek[];
-	byWeek: Map<string, BreakWorkout[]>;
 };
 
 function shape(input: BreakInput): Shape | null {
 	const { plan, weeks, workouts, runDatesIso, todayIso } = input;
-	if (plan.is_template || plan.trimmed_at || plan.status !== 'active') return null;
-	if (weeks.length === 0 || todayIso > plan.end_date) return null;
-	const toToday = daysBetweenIso(plan.start_date, todayIso);
-	if (toToday == null || toToday < 0) return null;
-	const current = Math.floor(toToday / 7);
-	const sorted = [...weeks].sort((a, b) => a.week_index - b.week_index);
-	if (sorted[sorted.length - 1].week_index <= current) return null;
+	const frame = rerunFrame(plan, weeks, workouts, todayIso);
+	if (!frame) return null;
 
 	let last: string | null = null;
 	for (const d of runDatesIso) if (d < todayIso && (last == null || d > last)) last = d;
@@ -104,56 +89,27 @@ function shape(input: BreakInput): Shape | null {
 		return null;
 	}
 
-	const byWeek = new Map<string, BreakWorkout[]>();
-	for (const w of workouts) {
-		const list = byWeek.get(w.week_id) ?? [];
-		list.push(w);
-		byWeek.set(w.week_id, list);
-	}
-	const of = (week: BreakWeek) => byWeek.get(week.id) ?? [];
-
 	const sources: BreakWeek[] = [];
-	for (const w of [...sorted].reverse()) {
-		if (w.week_index > current) continue;
-		if (TAPER.has(w.phase)) break;
+	for (const w of [...frame.sorted].reverse()) {
+		if (w.week_index > frame.current) continue;
+		if (RERUN_TAPER_PHASES.has(w.phase)) break;
 		sources.push(w);
 	}
-	const raceDate = planRaceDate(plan, weeks);
-	const drops = raceDate
-		? sorted
-				.filter(
-					(w) =>
-						w.week_index > current &&
-						!TAPER.has(w.phase) &&
-						!of(w).some((x) => x.kind === 'race' || isDone(x))
-				)
-				.sort(
-					(a, b) =>
-						(DROP_RANK[a.phase] ?? 3) - (DROP_RANK[b.phase] ?? 3) || b.week_index - a.week_index
-				)
-		: [];
-	return { from, days, current, raceDate, sources, drops, sorted, byWeek };
+	return { from, days, frame, sources };
 }
 
 function changeFor(s: Shape, plan: BreakPlan, k: number): BreakChange | null {
 	if (!Number.isInteger(k) || k < 1 || k > BREAK_MAX_WEEKS || k > s.sources.length) return null;
-	if (s.raceDate && k > s.drops.length) return null;
-	const drop = s.raceDate ? s.drops.slice(0, k) : [];
-	const dropped = new Set(drop.map((w) => w.id));
-	for (const w of s.sorted) {
-		if (w.week_index <= s.current || dropped.has(w.id)) continue;
-		const below = drop.filter((d) => d.week_index < w.week_index).length;
-		if (k - below === 0) continue;
-		if ((s.byWeek.get(w.id) ?? []).some((x) => x.kind === 'race' || isDone(x))) return null;
-	}
+	const placed = rerunPlacement(s.frame, plan, k);
+	if (!placed.ok) return null;
 	return {
 		weeks: k,
 		repeatWeekIds: s.sources
 			.slice(0, k)
 			.reverse()
 			.map((w) => w.id),
-		dropWeekIds: drop.map((w) => w.id).sort(),
-		endIso: s.raceDate ? plan.end_date : shiftIsoDate(plan.end_date, 7 * k)
+		dropWeekIds: placed.drops.map((w) => w.id).sort(),
+		endIso: placed.endIso
 	};
 }
 
@@ -168,7 +124,7 @@ export function detectPlanBreak(input: BreakInput): PlanBreak | null {
 	let maxWeeks = 0;
 	while (maxWeeks < cap && changeFor(s, input.plan, maxWeeks + 1)) maxWeeks++;
 	if (maxWeeks < 1) return null;
-	return { fromIso: s.from, days: s.days, raceDateIso: s.raceDate, maxWeeks };
+	return { fromIso: s.from, days: s.days, raceDateIso: s.frame.raceDate, maxWeeks };
 }
 
 /// What running the latest `weeks` weeks again would change, or null when

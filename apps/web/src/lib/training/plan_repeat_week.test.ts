@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { repeatWeekChange } from './plan_repeat_week.ts';
+import { repeatWeekChange, rerunFrame, rerunPlacement } from './plan_repeat_week.ts';
 import { shiftIsoDate } from './plan_bulk_ops.ts';
 import type { RaceDatePlan, RaceDateWorkout } from './plan_race_date.ts';
 
@@ -137,4 +137,25 @@ test('a done workout or a B race in a week that would move is in the way', () =>
 	assert.deepEqual(run(WALK, 'w4', { workouts: done }), { ok: false, reason: 'in_the_way' });
 	const bRace = workouts(RACE).map((w) => (w.id === 'long5' ? { ...w, kind: 'race' } : w));
 	assert.deepEqual(run(RACE, 'w4', { workouts: bRace }), { ok: false, reason: 'in_the_way' });
+});
+
+test('the shared rerun drops as many weeks as it copies, build first, then the latest peak', () => {
+	const p = plan(RACE);
+	const frame = rerunFrame(p, weeks(RACE), workouts(RACE), TODAY);
+	assert.ok(frame);
+	assert.deepEqual(frame.drops.map((w) => w.id), ['w5', 'w7', 'w6']);
+	const two = rerunPlacement(frame, p, 2);
+	assert.ok(two.ok);
+	assert.deepEqual(two.drops.map((w) => w.id), ['w5', 'w7']);
+	assert.equal(two.endIso, p.end_date);
+	assert.deepEqual(rerunPlacement(frame, p, 4), { ok: false, reason: 'no_room' });
+});
+
+test('the shared rerun moves a plan without a race back by its copies', () => {
+	const p = plan(WALK);
+	const frame = rerunFrame(p, weeks(WALK), workouts(WALK), TODAY);
+	assert.ok(frame);
+	assert.equal(frame.current, 4);
+	assert.deepEqual(rerunPlacement(frame, p, 3), { ok: true, drops: [], endIso: shiftIsoDate(S, 69 + 21) });
+	assert.equal(rerunFrame(p, weeks(WALK), workouts(WALK), shiftIsoDate(S, 65)), null);
 });

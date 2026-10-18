@@ -29089,6 +29089,12 @@ abstract class AppLocalizations {
   /// **'Export as JSON'**
   String get planDetailExportJson;
 
+  /// Plan menu item: abandon an active or paused plan (confirms first; weeks, workouts and linked runs are kept)
+  ///
+  /// In en, this message translates to:
+  /// **'Abandon plan'**
+  String get planDetailAbandonPlan;
+
   /// Plan menu item: delete the plan (confirms first)
   ///
   /// In en, this message translates to:

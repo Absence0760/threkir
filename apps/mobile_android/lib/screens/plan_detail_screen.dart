@@ -44,6 +44,7 @@ import '../settings_sync.dart' show activeWeekStartDay;
 import '../preferences.dart' show activePreferences;
 import 'package:api_client/api_client.dart' show ApiClient;
 import 'coaching_screen.dart';
+import 'profile_screen.dart';
 import '../backend_timeout.dart';
 import '../disclosure_state.dart';
 import '../widgets/finish_plan_card.dart';
@@ -131,6 +132,11 @@ class PlanDetailScreen extends StatefulWidget {
   /// owns it: Home's paused-plan card lands here. Web twin: `?resume=1`.
   final bool openResume;
 
+  /// Opens a user's profile. Production leaves it null and pushes
+  /// [ProfileScreen]; a test passes its own to see where the coach entry goes.
+  @visibleForTesting
+  final void Function(BuildContext context, String userId)? openProfileOverride;
+
   const PlanDetailScreen({
     super.key,
     required this.training,
@@ -141,6 +147,7 @@ class PlanDetailScreen extends StatefulWidget {
     this.now = DateTime.now,
     this.cyclePlanConfig = readCyclePlanConfig,
     this.openResume = false,
+    this.openProfileOverride,
   });
 
   @override
@@ -249,6 +256,18 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     } catch (e) {
       debugPrint('PlanDetailScreen._loadAssigningCoach failed: $e');
     }
+  }
+
+  void _openCoachProfile(String coachId) {
+    final override = widget.openProfileOverride;
+    if (override != null) {
+      override(context, coachId);
+      return;
+    }
+    if (!ApiClient.isInitialized) return;
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => ProfileScreen(api: ApiClient(), userId: coachId),
+    ));
   }
 
   void _openCoaching() {
@@ -1022,6 +1041,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         _exportPlan(p, json: false);
       case _PlanMenu.exportJson:
         _exportPlan(p, json: true);
+      case _PlanMenu.abandon:
+        _abandonPlan(p);
+      case _PlanMenu.coach:
+        final coachId = p.assignedByCoachId;
+        if (coachId != null) _openCoachProfile(coachId);
       case _PlanMenu.delete:
         _deletePlan(p);
     }
@@ -1212,6 +1236,37 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
       }
     }
+  }
+
+  /// Abandon an active or paused plan. Not reversible from the UI, so it
+  /// confirms first; the reload then drops every active/paused-only action.
+  /// Web twin: the Abandon option in `/plans/[id]`'s Adjust plan dialog.
+  Future<void> _abandonPlan(TrainingPlanRow p) async {
+    if (_bulkBusy || (p.status != 'active' && p.status != 'paused')) return;
+    final l10n = AppLocalizations.of(context);
+    final ok = await confirmDestructive(
+      context,
+      title: l10n.plansAbandonTitle(p.name),
+      body: l10n.plansAbandonBody,
+      confirmLabel: l10n.plansAbandon,
+      cancelLabel: l10n.plansCancel,
+    );
+    if (!ok || !mounted) return;
+    setState(() => _bulkBusy = true);
+    try {
+      await widget.training
+          .updateStatus(p.id, 'abandoned')
+          .timeout(kBackendLoadTimeout);
+    } catch (e) {
+      debugPrint('plan abandon failed: $e');
+      if (!mounted) return;
+      setState(() => _bulkBusy = false);
+      showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _bulkBusy = false);
+    await _load();
   }
 
   Future<void> _deletePlan(TrainingPlanRow p) async {
@@ -1482,7 +1537,20 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                 PopupMenuItem(
                     value: _PlanMenu.exportJson,
                     child: Text(l10n.planDetailExportJson)),
+                if (p.assignedByCoachId != null &&
+                    p.assignedByCoachId != _viewerId() &&
+                    _assigningCoachName != null)
+                  PopupMenuItem(
+                      key: const Key('planDetailMenuCoach'),
+                      value: _PlanMenu.coach,
+                      child: Text(
+                          l10n.planDetailAssignedBy(_assigningCoachName!))),
                 const PopupMenuDivider(),
+                if (p.status == 'active' || p.status == 'paused')
+                  PopupMenuItem(
+                      key: const Key('planDetailMenuAbandon'),
+                      value: _PlanMenu.abandon,
+                      child: Text(l10n.planDetailAbandonPlan)),
                 PopupMenuItem(
                     value: _PlanMenu.delete,
                     child: Text(l10n.planDetailDeletePlan)),
@@ -2725,7 +2793,16 @@ class PublishClubPicker extends StatelessWidget {
   }
 }
 
-enum _PlanMenu { adjust, editDetails, shift, exportMarkdown, exportJson, delete }
+enum _PlanMenu {
+  adjust,
+  editDetails,
+  shift,
+  exportMarkdown,
+  exportJson,
+  coach,
+  abandon,
+  delete,
+}
 
 enum _WeekMenu { duplicate, recovery }
 

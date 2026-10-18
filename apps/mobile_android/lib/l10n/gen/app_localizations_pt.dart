@@ -17819,6 +17819,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get planDetailExportJson => 'Exportar como JSON';
 
   @override
+  String get planDetailAbandonPlan => 'Abandonar plano';
+
+  @override
   String get planDetailDeletePlan => 'Eliminar plano';
 
   @override
@@ -35720,6 +35723,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planDetailExportJson => 'Exportar como JSON';
+
+  @override
+  String get planDetailAbandonPlan => 'Abandonar plano';
 
   @override
   String get planDetailDeletePlan => 'Excluir plano';

@@ -16985,6 +16985,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planDetailExportJson => 'JSONでエクスポート';
 
   @override
+  String get planDetailAbandonPlan => 'プランを中止';
+
+  @override
   String get planDetailDeletePlan => 'プランを削除';
 
   @override

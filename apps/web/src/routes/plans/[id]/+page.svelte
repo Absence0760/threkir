@@ -20,6 +20,7 @@
 		shiftTrainingPlan,
 		pausePlan,
 		resumePlan,
+		updatePlanStatus,
 		ActivePlanExistsError,
 		isActiveCoachOf,
 	} from '#lib/core/data.ts';
@@ -679,6 +680,29 @@
 		} finally {
 			bulkBusy = false;
 		}
+	}
+
+	// ─── Abandon (owner-only, active or paused) ───
+	// Not reversible from the UI, so it gets its own ConfirmDialog. A failure
+	// keeps the dialog open: the plan is still live, so closing would lie.
+	let abandonOpen = $state(false);
+
+	async function chooseAbandon(): Promise<void> {
+		adjustOpen = false;
+		await tick();
+		abandonOpen = true;
+	}
+
+	async function doAbandonPlan(): Promise<void> {
+		if (!plan || !isOwner) return;
+		try {
+			await updatePlanStatus(plan.id, 'abandoned');
+		} catch (e) {
+			showToast(m('plansPage.actionFailed', { error: thrownMessage(e) }), 'error');
+			return;
+		}
+		abandonOpen = false;
+		await load();
 	}
 
 	// ─── Re-plan around missed sessions (owner-only) ───
@@ -1346,7 +1370,11 @@
 				</div>
 				<div class="hero-chips">
 					{#if plan.assigned_by_coach_id && plan.assigned_by_coach_id !== auth.user?.id}
-						<a class="chip chip-link" href="/coaching" data-testid="assigned-by-coach">
+						<a
+							class="chip chip-link"
+							href={assigningCoachName ? `/u/${plan.assigned_by_coach_id}` : '/coaching'}
+							data-testid="assigned-by-coach"
+						>
 							<span class="material-symbols" aria-hidden="true">sports</span>
 							{assigningCoachName
 								? m('planDetail.assignedBy', { name: assigningCoachName })
@@ -2106,6 +2134,19 @@
 							: m('planDetail.adjustPauseDesc')}
 					</p>
 				</li>
+				<li class="adjust-option">
+					<button
+						type="button"
+						class="btn btn-outline btn-sm adjust-option-btn"
+						aria-describedby="adjust-abandon-desc"
+						onclick={chooseAbandon}
+						disabled={bulkBusy}
+					>
+						<span class="material-symbols" aria-hidden="true">cancel</span>
+						{m('plansPage.abandonTitle')}
+					</button>
+					<p class="adjust-option-desc" id="adjust-abandon-desc">{m('planDetail.adjustAbandonDesc')}</p>
+				</li>
 			{/if}
 			{#if cyclePlansEnabled && cyclePlanConfig}
 				<li class="adjust-option">
@@ -2188,6 +2229,17 @@
 	cancelLabel={m('planDetail.replanCancel')}
 	onconfirm={runBulkConfirm}
 	oncancel={() => (bulkConfirm = null)}
+/>
+
+<ConfirmDialog
+	open={abandonOpen}
+	danger
+	data-testid="abandon-confirm-dialog"
+	title={m('plansPage.abandonTitle')}
+	message={m('plansPage.abandonMessage', { name: plan?.name ?? '' })}
+	confirmLabel={m('plansPage.abandon')}
+	onconfirm={doAbandonPlan}
+	oncancel={() => (abandonOpen = false)}
 />
 
 <style>

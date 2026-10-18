@@ -736,6 +736,7 @@ export const en = {
 	"planDetail.heroNextRace": "Next race: {name}",
 	"planDetail.adjustPauseDesc": "Puts the plan on hold without deleting anything, until you resume it. Use it for illness, injury or travel.",
 	"planDetail.adjustResumeDesc": "Makes this your active plan again. Use it when you're ready to pick the plan back up.",
+	"planDetail.adjustAbandonDesc": "Ends the plan for good. Its weeks, workouts and linked runs are kept. Use it when you're not going to finish this plan.",
 	"planDetail.adjustCycleDesc": "Eases upcoming sessions on the menstrual and late-luteal days of your cycle. Past sessions stay as they are.",
 	"planDetail.adjustPregnancyDesc": "Turns hard upcoming sessions into easy runs and eases volume by trimester. Past sessions stay as they are.",
 	"planDetail.adaptiveOnTrack": "Your recent weeks are on track — no adjustment needed.",

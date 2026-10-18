@@ -17857,6 +17857,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get planDetailExportJson => 'Exporter en JSON';
 
   @override
+  String get planDetailAbandonPlan => 'Abandonner le plan';
+
+  @override
   String get planDetailDeletePlan => 'Supprimer le plan';
 
   @override

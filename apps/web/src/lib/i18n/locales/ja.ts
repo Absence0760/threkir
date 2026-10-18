@@ -320,6 +320,8 @@ export const messages = {
 	"dash.trainingPlansKicker": "トレーニングプラン",
 	"dash.planPromoTitle": "目標レースを選べば、週ごとのスケジュールを組みます",
 	"dash.planPromoBody": "5K、10K、ハーフ、フル — あなたのフィットネスに合わせたペースと軽めの週を組み込んだ週単位のプラン。",
+	"dash.planPausedKicker": "プランを一時停止中",
+	"dash.planPausedBody": "中断したところから再開できます。再開すると、休んだ週は後ろにずれます。",
 	"dash.upcomingEventLabel": "今後のイベント",
 	"dash.sourceAll": "すべて",
 	"dash.sourceRecorded": "記録済み",

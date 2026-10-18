@@ -513,6 +513,22 @@
 		}, 0);
 	}
 
+	/// Home's paused-plan card lands here as `?resume=1`: open the resume
+	/// confirm, which says what moves, then leave the URL.
+	function takeResumeParam(): void {
+		const url = new URL(page.url.href);
+		if (url.searchParams.get('resume') !== '1') return;
+		if (plan?.status === 'paused' && isOwner) bulkConfirm = { kind: 'resume' };
+		setTimeout(() => {
+			url.searchParams.delete('resume');
+			try {
+				replaceState(`${url.pathname}${url.search}${url.hash}`, page.state);
+			} catch (e) {
+				console.error('Clearing the resume request from the URL failed', { message: thrownMessage(e) });
+			}
+		}, 0);
+	}
+
 	async function dismissReplan(): Promise<void> {
 		replanPreview = null;
 		adaptiveInfo = null;
@@ -897,6 +913,7 @@
 		disclosure = readDisclosureState(DISCLOSURE_SCOPE, auth.user?.id, DISCLOSURE_DEFAULTS);
 		await load();
 		takeAdjustParam();
+		takeResumeParam();
 		// Calendar week-start follows the user's preference (W-5/W-14).
 		if (auth.user?.id) {
 			try {

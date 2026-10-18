@@ -6047,12 +6047,33 @@ export async function fetchPlanOwnerId(planId: string): Promise<string | null> {
 /// A plan overview read. `error` is set when a read failed, so a caller can
 /// say "couldn't load your plan" instead of showing the no-plan state over a
 /// plan that exists.
-export type PlanOverviewRead = { overview: ActivePlanOverview | null; error: string | null };
+export type PlanOverviewRead = {
+	overview: ActivePlanOverview | null;
+	error: string | null;
+	/// The runner's most recently paused plan, read only when there is no
+	/// active one to show, so Home can offer to resume it instead of acting
+	/// as though they have no plan.
+	paused?: Pick<TrainingPlan, 'id' | 'name'> | null;
+};
 
 export async function fetchActivePlanOverview(): Promise<PlanOverviewRead> {
 	const userId = auth.user?.id;
 	if (!userId) return { overview: null, error: null };
-	return planOverviewFor(userId);
+	const read = await planOverviewFor(userId);
+	if (read.overview || read.error) return read;
+	const { data, error } = await supabase
+		.from('training_plans')
+		.select('id, name')
+		.eq('user_id', userId)
+		.eq('status', 'paused')
+		.eq('is_template', false)
+		.order('paused_at', { ascending: false, nullsFirst: false })
+		.limit(1)
+		.maybeSingle();
+	// A failed read of the paused plan is not a failed plan load: the
+	// dashboard falls back to the no-plan card, as it did before.
+	if (error) console.error('Reading the paused plan failed', { message: error.message });
+	return { ...read, paused: data ?? null };
 }
 
 /// The overview of `userId`'s current plan (plan_current.ts), or of the next

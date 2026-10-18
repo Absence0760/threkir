@@ -325,6 +325,8 @@ export const messages = {
 	"dash.trainingPlansKicker": "TRAININGSPLÄNE",
 	"dash.planPromoTitle": "Wähle dein Zielrennen und wir planen die Wochen",
 	"dash.planPromoBody": "5K, 10K, Halb- oder Marathon — ein Wochenplan mit Tempi passend zu deiner Form und eingebauten lockeren Wochen.",
+	"dash.planPausedKicker": "Plan pausiert",
+	"dash.planPausedBody": "Mach dort weiter, wo du aufgehört hast — beim Fortsetzen rücken die verpassten Wochen nach hinten.",
 	"dash.upcomingEventLabel": "ANSTEHENDES EVENT",
 	"dash.sourceAll": "Alle",
 	"dash.sourceRecorded": "Aufgezeichnet",

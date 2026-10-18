@@ -325,6 +325,8 @@ export const messages = {
 	"dash.trainingPlansKicker": "PLANS D'ENTRAÎNEMENT",
 	"dash.planPromoTitle": "Choisissez une course objectif et on planifie les semaines",
 	"dash.planPromoBody": "5K, 10K, semi ou marathon — un plan semaine par semaine avec des allures adaptées à votre forme et des semaines légères intégrées.",
+	"dash.planPausedKicker": "Plan en pause",
+	"dash.planPausedBody": "Reprenez là où vous vous étiez arrêté — à la reprise, les semaines manquées sont décalées.",
 	"dash.upcomingEventLabel": "ÉVÉNEMENT À VENIR",
 	"dash.sourceAll": "Tout",
 	"dash.sourceRecorded": "Enregistré",

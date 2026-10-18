@@ -99,4 +99,19 @@ test.describe('resuming a paused plan', () => {
 		expect(weeks[0].plan_workouts[0].scheduled_date).toBe(browserDate(-27));
 		expect(weeks[1].plan_workouts[0].scheduled_date).toBe(browserDate(-27 + 7 + 28));
 	});
+
+	test('Home offers the paused plan, and its card opens the resume confirm', async ({ page }) => {
+		const planId = await seedPausedPlan();
+		await page.goto('/dashboard');
+		const card = page.getByTestId('dash-paused-plan');
+		await expect(card).toBeVisible({ timeout: 10_000 });
+		await expect(card).toContainText(PLAN_NAME);
+
+		await card.click();
+		await page.waitForURL(new RegExp(`/plans/${planId}`));
+		await expect(page.getByText(/move back 4 weeks/)).toBeVisible();
+		await expect(page).not.toHaveURL(/resume=1/);
+		await page.getByRole('button', { name: 'Apply' }).click();
+		await expect(page.getByText('Plan resumed and pushed back 4 weeks.')).toBeVisible();
+	});
 });

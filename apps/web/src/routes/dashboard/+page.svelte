@@ -200,6 +200,7 @@
 	});
 	let showAgeGradeCol = $derived(Object.values(prAgeGrades).some((v) => v != null));
 	let planOverview = $state<ActivePlanOverview | null>(null);
+	let pausedPlan = $state<{ id: string; name: string } | null>(null);
 	/// The plan read failed: the plan slot says so rather than offering to
 	/// create a plan the runner may already have.
 	let planLoadError = $state<string | null>(null);
@@ -672,6 +673,7 @@
 		runs = runsRead.runs;
 		planOverview = planRead.overview;
 		planLoadError = planRead.error;
+		pausedPlan = planRead.paused ?? null;
 		// Every card below derives from `runs`. If that read failed there is
 		// nothing truthful to render, so state it rather than painting an
 		// empty account over the top of it.
@@ -713,6 +715,7 @@
 		const read = await fetchActivePlanOverview();
 		planOverview = read.overview;
 		planLoadError = read.error;
+		pausedPlan = read.paused ?? null;
 	}
 
 	/// The self-read the age-grade column and the nutrition targets both need.
@@ -1343,6 +1346,15 @@
 					>{m('dash.retry')}</button
 				>
 			</div>
+		{:else if !planOverview && pausedPlan}
+			<a class="plan-promo" href="/plans/{pausedPlan.id}?resume=1" data-testid="dash-paused-plan">
+				<div>
+					<span class="today-label">{m('dash.planPausedKicker')}</span>
+					<h3>{pausedPlan.name}</h3>
+					<p>{m('dash.planPausedBody')}</p>
+				</div>
+				<span class="material-symbols">chevron_right</span>
+			</a>
 		{:else if !planOverview}
 			<a class="plan-promo" href="/plans?new=1">
 				<div>

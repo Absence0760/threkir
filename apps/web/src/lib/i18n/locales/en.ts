@@ -338,6 +338,8 @@ export const en = {
 	"dash.trainingPlansKicker": "TRAINING PLANS",
 	"dash.planPromoTitle": "Pick a goal race and we'll schedule the weeks",
 	"dash.planPromoBody": "5K, 10K, half or full — a week-by-week plan with paces matched to your fitness and easy weeks built in.",
+	"dash.planPausedKicker": "Plan paused",
+	"dash.planPausedBody": "Pick it up again where you left off — resuming moves the weeks you missed back.",
 	"dash.upcomingEventLabel": "UPCOMING EVENT",
 	"dash.sourceAll": "All",
 	"dash.sourceRecorded": "Recorded",

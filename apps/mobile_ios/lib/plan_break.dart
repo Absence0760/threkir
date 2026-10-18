@@ -209,3 +209,11 @@ BreakChange? planBreakChange({
   final s = _shape(plan, weeks, workouts, runDatesIso, todayIso);
   return s == null ? null : _changeFor(s, plan, weeksToRepeat);
 }
+
+/// Whether `user_settings.prefs.plan_break_dismissed` already answers this
+/// break: the same plan and the same first day. A later break, or one in
+/// another plan, is offered again; anything unreadable is not an answer.
+bool isBreakDismissed(Object? pref, String planId, String fromIso) {
+  if (pref is! Map) return false;
+  return pref['plan_id'] == planId && pref['from'] == fromIso;
+}

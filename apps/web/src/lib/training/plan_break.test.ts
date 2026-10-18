@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
 	BREAK_MIN_DAYS,
 	detectPlanBreak,
+	isBreakDismissed,
 	planBreakChange,
 	type BreakInput,
 	type BreakWorkout
@@ -152,4 +153,14 @@ test('weeks outside 1..maxWeeks are refused', () => {
 	assert.equal(planBreakChange(input(), 0), null);
 	assert.equal(planBreakChange(input(), 4), null);
 	assert.equal(planBreakChange(input(), 1.5), null);
+});
+
+test('a dismissal answers only the same plan and the same break', () => {
+	const pref = { plan_id: 'p', from: '2026-06-15' };
+	assert.equal(isBreakDismissed(pref, 'p', '2026-06-15'), true);
+	assert.equal(isBreakDismissed(pref, 'p', '2026-07-01'), false);
+	assert.equal(isBreakDismissed(pref, 'q', '2026-06-15'), false);
+	assert.equal(isBreakDismissed(null, 'p', '2026-06-15'), false);
+	assert.equal(isBreakDismissed('p', 'p', '2026-06-15'), false);
+	assert.equal(isBreakDismissed([pref], 'p', '2026-06-15'), false);
 });

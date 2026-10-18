@@ -179,3 +179,12 @@ export function planBreakChange(input: BreakInput, weeks: number): BreakChange |
 	const s = shape(input);
 	return s ? changeFor(s, input.plan, weeks) : null;
 }
+
+/// Whether `user_settings.prefs.plan_break_dismissed` already answers this
+/// break: the same plan and the same first day. A later break, or one in
+/// another plan, is offered again; anything unreadable is not an answer.
+export function isBreakDismissed(pref: unknown, planId: string, fromIso: string): boolean {
+	if (pref == null || typeof pref !== 'object' || Array.isArray(pref)) return false;
+	const p = pref as Record<string, unknown>;
+	return p.plan_id === planId && p.from === fromIso;
+}

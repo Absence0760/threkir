@@ -222,4 +222,14 @@ void main() {
     expect(_change(4), isNull);
     expect(_change(-1), isNull);
   });
+
+  test('a dismissal answers only the same plan and the same break', () {
+    const pref = {'plan_id': 'p', 'from': '2026-06-15'};
+    expect(isBreakDismissed(pref, 'p', '2026-06-15'), isTrue);
+    expect(isBreakDismissed(pref, 'p', '2026-07-01'), isFalse);
+    expect(isBreakDismissed(pref, 'q', '2026-06-15'), isFalse);
+    expect(isBreakDismissed(null, 'p', '2026-06-15'), isFalse);
+    expect(isBreakDismissed('p', 'p', '2026-06-15'), isFalse);
+    expect(isBreakDismissed([pref], 'p', '2026-06-15'), isFalse);
+  });
 }

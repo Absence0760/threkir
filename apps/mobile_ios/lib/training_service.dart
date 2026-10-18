@@ -11,6 +11,7 @@ import 'active_plan_cache.dart';
 import 'backend_timeout.dart';
 import 'health_consent.dart';
 import 'nutrition_targets.dart' show ageFromDob;
+import 'plan_bulk_ops.dart';
 import 'plan_copy.dart';
 import 'plan_current.dart';
 import 'comeback.dart' show kLayoffMaxDays;
@@ -695,6 +696,40 @@ class TrainingService extends ChangeNotifier {
     }
     notifyListeners();
     return newId as String;
+  }
+
+  /// Moves every workout and the plan's start / end by [days] (the race
+  /// moved, the runner started late) in one transaction, with the plans
+  /// queued after it when [shiftFollowing]. A shift into another active
+  /// plan's window surfaces as [ActivePlanExistsError]. Mirrors web
+  /// `core/data.ts:shiftTrainingPlan`.
+  Future<void> shiftTrainingPlan(
+      String planId, int days, {bool shiftFollowing = false}) async {
+    try {
+      await _c.rpc('shift_training_plan', params: {
+        'p_plan_id': planId,
+        'p_days': days,
+        'p_shift_following': shiftFollowing,
+      });
+    } catch (e, s) {
+      Error.throwWithStackTrace(planWriteError(e), s);
+    }
+    notifyListeners();
+  }
+
+  /// Turns [workouts] — one week's — into a recovery week through
+  /// [_applyWorkoutAdjustments], which restates the week's volume in the same
+  /// transaction. Returns how many workouts changed. Mirrors web
+  /// `markWeekRecovery` on the plan page.
+  Future<int> markWeekRecovery(
+      String planId, List<PlanWorkoutRow> workouts) async {
+    final patches = <String, Map<String, Object?>>{
+      for (final w in workouts)
+        if (recoveryWorkoutPatch(w.kind, w.targetDistanceM) case final p?)
+          w.id: p,
+    };
+    await _applyWorkoutAdjustments(planId, patches);
+    return patches.length;
   }
 
   Future<List<TrainingPlanRow>> fetchMyPlans() async {

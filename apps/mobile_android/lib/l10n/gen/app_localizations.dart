@@ -28914,6 +28914,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t refresh. Showing what was last loaded.'**
   String get commonStaleRefreshFailed;
+
+  /// Tooltip on the plan detail app-bar overflow menu
+  ///
+  /// In en, this message translates to:
+  /// **'More plan actions'**
+  String get planDetailMoreActions;
+
+  /// Tooltip on a week's overflow menu in the week-by-week list
+  ///
+  /// In en, this message translates to:
+  /// **'Week {n} actions'**
+  String planDetailWeekActions(int n);
+
+  /// Plan menu item that opens the shift-dates dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Shift dates…'**
+  String get planDetailShiftDates;
+
+  /// Shift dates dialog title
+  ///
+  /// In en, this message translates to:
+  /// **'Shift the whole plan?'**
+  String get planDetailShiftTitle;
+
+  /// Shift dates dialog body
+  ///
+  /// In en, this message translates to:
+  /// **'This moves every workout and your race date. You can shift again to undo it.'**
+  String get planDetailShiftMessage;
+
+  /// Label of the days field in the shift dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Days to shift (negative moves earlier)'**
+  String get planDetailShiftDaysLabel;
+
+  /// Validation error for the shift days field
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a whole number of days from -366 to 366, other than 0.'**
+  String get planDetailShiftDaysInvalid;
+
+  /// Confirm button of the shift dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Shift dates'**
+  String get planDetailShiftApply;
+
+  /// Banner after the plan was shifted; n is the absolute number of days
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{Plan shifted by {n} day} other{Plan shifted by {n} days}}'**
+  String planDetailShiftDone(int n);
+
+  /// Dialog title when a forward shift runs into later plans
+  ///
+  /// In en, this message translates to:
+  /// **'Move the plans after this one too?'**
+  String get planDetailShiftFollowingTitle;
+
+  /// Dialog body when a forward shift runs into later plans
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{Shifting by {n} day runs into the plans queued after this one. Moving them by the same amount keeps their spacing.} other{Shifting by {n} days runs into the plans queued after this one. Moving them by the same amount keeps their spacing.}}'**
+  String planDetailShiftFollowingMessage(int n);
+
+  /// Confirm button: shift the later plans as well
+  ///
+  /// In en, this message translates to:
+  /// **'Move them too'**
+  String get planDetailShiftFollowingApply;
+
+  /// Banner when a shift runs into an earlier plan
+  ///
+  /// In en, this message translates to:
+  /// **'These dates run into a plan that comes before this one. Pick a smaller shift, or end that plan earlier first.'**
+  String get planDetailShiftBlocked;
+
+  /// Week menu item and confirm button: turn a week into a recovery week
+  ///
+  /// In en, this message translates to:
+  /// **'Make recovery week'**
+  String get planDetailMarkRecovery;
+
+  /// Recovery week confirm title
+  ///
+  /// In en, this message translates to:
+  /// **'Make this a recovery week?'**
+  String get planDetailRecoveryConfirmTitle;
+
+  /// Recovery week confirm body; n is the 1-based week number
+  ///
+  /// In en, this message translates to:
+  /// **'This eases week {n}\'s volume to about 60% and turns its quality sessions into easy runs. The original paces and distances can\'t be restored.'**
+  String planDetailRecoveryConfirmMessage(int n);
+
+  /// Banner after a week was eased
+  ///
+  /// In en, this message translates to:
+  /// **'Week eased to a recovery week'**
+  String get planDetailRecoveryDone;
+
+  /// Plan menu item: share the plan as a Markdown table
+  ///
+  /// In en, this message translates to:
+  /// **'Export as Markdown'**
+  String get planDetailExportMarkdown;
+
+  /// Plan menu item: share the plan as JSON
+  ///
+  /// In en, this message translates to:
+  /// **'Export as JSON'**
+  String get planDetailExportJson;
+
+  /// Plan menu item: delete the plan (confirms first)
+  ///
+  /// In en, this message translates to:
+  /// **'Delete plan'**
+  String get planDetailDeletePlan;
 }
 
 class _AppLocalizationsDelegate

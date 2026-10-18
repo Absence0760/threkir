@@ -17698,4 +17698,90 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get commonStaleRefreshFailed =>
       'Aktualisieren fehlgeschlagen. Angezeigt wird der zuletzt geladene Stand.';
+
+  @override
+  String get planDetailMoreActions => 'Weitere Planaktionen';
+
+  @override
+  String planDetailWeekActions(int n) {
+    return 'Aktionen für Woche $n';
+  }
+
+  @override
+  String get planDetailShiftDates => 'Termine verschieben…';
+
+  @override
+  String get planDetailShiftTitle => 'Den ganzen Plan verschieben?';
+
+  @override
+  String get planDetailShiftMessage =>
+      'Damit verschieben sich alle Einheiten und dein Wettkampftermin. Du kannst erneut verschieben, um es rückgängig zu machen.';
+
+  @override
+  String get planDetailShiftDaysLabel => 'Tage verschieben (negativ = früher)';
+
+  @override
+  String get planDetailShiftDaysInvalid =>
+      'Gib eine ganze Zahl von -366 bis 366 ein, außer 0.';
+
+  @override
+  String get planDetailShiftApply => 'Termine verschieben';
+
+  @override
+  String planDetailShiftDone(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plan um $n Tage verschoben',
+      one: 'Plan um $n Tag verschoben',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShiftFollowingTitle =>
+      'Auch die folgenden Pläne verschieben?';
+
+  @override
+  String planDetailShiftFollowingMessage(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Eine Verschiebung um $n Tage überschneidet sich mit den Plänen danach. Verschiebst du sie um denselben Wert, bleibt ihr Abstand erhalten.',
+      one:
+          'Eine Verschiebung um $n Tag überschneidet sich mit den Plänen danach. Verschiebst du sie um denselben Wert, bleibt ihr Abstand erhalten.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShiftFollowingApply => 'Ebenfalls verschieben';
+
+  @override
+  String get planDetailShiftBlocked =>
+      'Diese Termine überschneiden sich mit einem Plan, der vor diesem liegt. Wähle eine kleinere Verschiebung oder beende den anderen Plan früher.';
+
+  @override
+  String get planDetailMarkRecovery => 'Zur Erholungswoche machen';
+
+  @override
+  String get planDetailRecoveryConfirmTitle => 'Zur Erholungswoche machen?';
+
+  @override
+  String planDetailRecoveryConfirmMessage(int n) {
+    return 'Damit sinkt der Umfang von Woche $n auf etwa 60 %, und intensive Einheiten werden zu lockeren Läufen. Die ursprünglichen Tempos und Distanzen lassen sich nicht wiederherstellen.';
+  }
+
+  @override
+  String get planDetailRecoveryDone => 'Woche zur Erholungswoche gemacht';
+
+  @override
+  String get planDetailExportMarkdown => 'Als Markdown exportieren';
+
+  @override
+  String get planDetailExportJson => 'Als JSON exportieren';
+
+  @override
+  String get planDetailDeletePlan => 'Plan löschen';
 }

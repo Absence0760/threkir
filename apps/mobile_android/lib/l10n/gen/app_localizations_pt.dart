@@ -17690,6 +17690,93 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get commonStaleRefreshFailed =>
       'Não foi possível atualizar. A mostrar o que foi carregado por último.';
+
+  @override
+  String get planDetailMoreActions => 'Mais ações do plano';
+
+  @override
+  String planDetailWeekActions(int n) {
+    return 'Ações da semana $n';
+  }
+
+  @override
+  String get planDetailShiftDates => 'Mover datas…';
+
+  @override
+  String get planDetailShiftTitle => 'Mover o plano inteiro?';
+
+  @override
+  String get planDetailShiftMessage =>
+      'Isto move todos os treinos e a data da sua prova. Pode mover novamente para anular.';
+
+  @override
+  String get planDetailShiftDaysLabel => 'Dias a mover (negativo = mais cedo)';
+
+  @override
+  String get planDetailShiftDaysInvalid =>
+      'Introduza um número inteiro de dias entre -366 e 366, diferente de 0.';
+
+  @override
+  String get planDetailShiftApply => 'Mover datas';
+
+  @override
+  String planDetailShiftDone(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plano movido $n dias',
+      one: 'Plano movido $n dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShiftFollowingTitle =>
+      'Mover também os planos seguintes?';
+
+  @override
+  String planDetailShiftFollowingMessage(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Mover $n dias colide com os planos agendados depois deste. Movê-los o mesmo mantém o intervalo.',
+      one:
+          'Mover $n dia colide com os planos agendados depois deste. Movê-los o mesmo mantém o intervalo.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShiftFollowingApply => 'Movê-los também';
+
+  @override
+  String get planDetailShiftBlocked =>
+      'Estas datas colidem com um plano anterior a este. Escolha um desvio menor ou termine esse plano mais cedo.';
+
+  @override
+  String get planDetailMarkRecovery => 'Tornar semana de recuperação';
+
+  @override
+  String get planDetailRecoveryConfirmTitle =>
+      'Tornar esta semana de recuperação?';
+
+  @override
+  String planDetailRecoveryConfirmMessage(int n) {
+    return 'Isto reduz o volume da semana $n para cerca de 60% e transforma os treinos de qualidade em corridas leves. Os ritmos e distâncias originais não podem ser repostos.';
+  }
+
+  @override
+  String get planDetailRecoveryDone => 'Semana tornada de recuperação';
+
+  @override
+  String get planDetailExportMarkdown => 'Exportar como Markdown';
+
+  @override
+  String get planDetailExportJson => 'Exportar como JSON';
+
+  @override
+  String get planDetailDeletePlan => 'Eliminar plano';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -35364,4 +35451,92 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get commonStaleRefreshFailed =>
       'Não foi possível atualizar. Mostrando o que foi carregado por último.';
+
+  @override
+  String get planDetailMoreActions => 'Mais ações do plano';
+
+  @override
+  String planDetailWeekActions(int n) {
+    return 'Ações da semana $n';
+  }
+
+  @override
+  String get planDetailShiftDates => 'Mudar datas…';
+
+  @override
+  String get planDetailShiftTitle => 'Mudar o plano inteiro?';
+
+  @override
+  String get planDetailShiftMessage =>
+      'Isso muda todos os treinos e a data da sua prova. Você pode mudar de novo para desfazer.';
+
+  @override
+  String get planDetailShiftDaysLabel =>
+      'Dias para mudar (negativo = mais cedo)';
+
+  @override
+  String get planDetailShiftDaysInvalid =>
+      'Digite um número inteiro de dias entre -366 e 366, diferente de 0.';
+
+  @override
+  String get planDetailShiftApply => 'Mudar datas';
+
+  @override
+  String planDetailShiftDone(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plano mudado em $n dias',
+      one: 'Plano mudado em $n dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShiftFollowingTitle =>
+      'Mudar também os planos seguintes?';
+
+  @override
+  String planDetailShiftFollowingMessage(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Mudar $n dias esbarra nos planos agendados depois deste. Mudá-los na mesma quantidade mantém o intervalo.',
+      one:
+          'Mudar $n dia esbarra nos planos agendados depois deste. Mudá-los na mesma quantidade mantém o intervalo.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShiftFollowingApply => 'Mudá-los também';
+
+  @override
+  String get planDetailShiftBlocked =>
+      'Essas datas esbarram em um plano anterior a este. Escolha uma mudança menor ou encerre esse plano antes.';
+
+  @override
+  String get planDetailMarkRecovery => 'Transformar em semana de recuperação';
+
+  @override
+  String get planDetailRecoveryConfirmTitle =>
+      'Transformar esta semana em recuperação?';
+
+  @override
+  String planDetailRecoveryConfirmMessage(int n) {
+    return 'Isso reduz o volume da semana $n para cerca de 60% e transforma os treinos de qualidade em corridas leves. Os ritmos e distâncias originais não podem ser restaurados.';
+  }
+
+  @override
+  String get planDetailRecoveryDone => 'Semana transformada em recuperação';
+
+  @override
+  String get planDetailExportMarkdown => 'Exportar como Markdown';
+
+  @override
+  String get planDetailExportJson => 'Exportar como JSON';
+
+  @override
+  String get planDetailDeletePlan => 'Excluir plano';
 }

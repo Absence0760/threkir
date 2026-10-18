@@ -17506,4 +17506,91 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get commonStaleRefreshFailed =>
       'Couldn\'t refresh. Showing what was last loaded.';
+
+  @override
+  String get planDetailMoreActions => 'More plan actions';
+
+  @override
+  String planDetailWeekActions(int n) {
+    return 'Week $n actions';
+  }
+
+  @override
+  String get planDetailShiftDates => 'Shift dates…';
+
+  @override
+  String get planDetailShiftTitle => 'Shift the whole plan?';
+
+  @override
+  String get planDetailShiftMessage =>
+      'This moves every workout and your race date. You can shift again to undo it.';
+
+  @override
+  String get planDetailShiftDaysLabel =>
+      'Days to shift (negative moves earlier)';
+
+  @override
+  String get planDetailShiftDaysInvalid =>
+      'Enter a whole number of days from -366 to 366, other than 0.';
+
+  @override
+  String get planDetailShiftApply => 'Shift dates';
+
+  @override
+  String planDetailShiftDone(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plan shifted by $n days',
+      one: 'Plan shifted by $n day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShiftFollowingTitle =>
+      'Move the plans after this one too?';
+
+  @override
+  String planDetailShiftFollowingMessage(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Shifting by $n days runs into the plans queued after this one. Moving them by the same amount keeps their spacing.',
+      one:
+          'Shifting by $n day runs into the plans queued after this one. Moving them by the same amount keeps their spacing.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShiftFollowingApply => 'Move them too';
+
+  @override
+  String get planDetailShiftBlocked =>
+      'These dates run into a plan that comes before this one. Pick a smaller shift, or end that plan earlier first.';
+
+  @override
+  String get planDetailMarkRecovery => 'Make recovery week';
+
+  @override
+  String get planDetailRecoveryConfirmTitle => 'Make this a recovery week?';
+
+  @override
+  String planDetailRecoveryConfirmMessage(int n) {
+    return 'This eases week $n\'s volume to about 60% and turns its quality sessions into easy runs. The original paces and distances can\'t be restored.';
+  }
+
+  @override
+  String get planDetailRecoveryDone => 'Week eased to a recovery week';
+
+  @override
+  String get planDetailExportMarkdown => 'Export as Markdown';
+
+  @override
+  String get planDetailExportJson => 'Export as JSON';
+
+  @override
+  String get planDetailDeletePlan => 'Delete plan';
 }

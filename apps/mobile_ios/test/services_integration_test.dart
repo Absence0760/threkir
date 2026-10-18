@@ -793,6 +793,59 @@ void main() {
           reason: 'deletePlan must remove the row');
     });
 
+    test('shiftTrainingPlan and markWeekRecovery write through their RPCs',
+        () async {
+      // A throwaway far-future plan, so the shift and the deload never touch
+      // the seeded one. Both calls go through RPCs whose parameter names a
+      // fake cannot vouch for.
+      String? newId;
+      try {
+        final start = DateTime.utc(2031, 1, 5);
+        final created = await training.createPlan(
+          name: 'integration-test shift plan',
+          goalEvent: GoalEvent.distance10k,
+          goalDistanceM: 10_000,
+          startDate: start,
+          daysPerWeek: 4,
+          recent5kSec: 1500,
+          generated: generatePlan(GeneratePlanInput(
+            goalEvent: GoalEvent.distance10k,
+            recent5kSec: 1500,
+            startDate: start,
+            daysPerWeek: 4,
+          )),
+        );
+        newId = created.id;
+        final before = await training.fetchPlan(created.id);
+
+        await training.shiftTrainingPlan(created.id, 3);
+        final shifted = await training.fetchPlan(created.id);
+        expect(shifted.plan!.startDate,
+            before.plan!.startDate.add(const Duration(days: 3)));
+        expect(shifted.workouts.first.scheduledDate,
+            before.workouts.first.scheduledDate.add(const Duration(days: 3)));
+
+        final quality = shifted.workouts.firstWhere(
+            (w) => const {'tempo', 'interval', 'marathon_pace'}.contains(w.kind));
+        final week = shifted.weeks.firstWhere((w) => w.id == quality.weekId);
+        final weekWorkouts =
+            shifted.workouts.where((w) => w.weekId == week.id).toList();
+        final changed = await training.markWeekRecovery(created.id, weekWorkouts);
+        expect(changed, greaterThan(0));
+
+        final eased = await training.fetchPlan(created.id);
+        final q = eased.workouts.firstWhere((w) => w.id == quality.id);
+        expect(q.kind, 'recovery');
+        expect(q.targetPaceSecPerKm, isNull);
+        expect(q.structure, isNull);
+        final easedWeek = eased.weeks.firstWhere((w) => w.id == week.id);
+        expect(easedWeek.targetVolumeM, lessThan(week.targetVolumeM!),
+            reason: 'the RPC restates the week volume from its workouts');
+      } finally {
+        if (newId != null) await training.deletePlan(newId);
+      }
+    });
+
     test('markCompleted toggles the completion fields', () async {
       // Pick a workout that the seed leaves un-completed so we have
       // a clean baseline. Restore in finally.

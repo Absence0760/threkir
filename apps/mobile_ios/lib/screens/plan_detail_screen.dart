@@ -9,6 +9,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../adaptive_fitness_flag.dart';
 import '../adaptive_width.dart';
 import '../auth_error.dart';
+import '../widgets/confirm_destructive.dart';
+import '../share_sheet.dart';
+import '../plan_serialize.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
@@ -889,6 +892,174 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     }
   }
 
+  void _onPlanMenu(_PlanMenu action, TrainingPlanRow p) {
+    switch (action) {
+      case _PlanMenu.adjust:
+        _openAdjustPlan(p);
+      case _PlanMenu.shift:
+        _shiftPlan(p);
+      case _PlanMenu.exportMarkdown:
+        _exportPlan(p, json: false);
+      case _PlanMenu.exportJson:
+        _exportPlan(p, json: true);
+      case _PlanMenu.delete:
+        _deletePlan(p);
+    }
+  }
+
+  /// Moves the whole plan by a number of days the runner types (the race
+  /// moved, they started late). A forward shift that runs into the plans
+  /// queued after this one offers to move them by the same amount; a shift
+  /// into an earlier plan is refused with what to do instead. Web twin:
+  /// `shiftPlan` on the plan page.
+  Future<void> _shiftPlan(TrainingPlanRow plan) async {
+    if (_bulkBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final days = await showDialog<int>(
+      context: context,
+      builder: (_) => const _ShiftDatesDialog(),
+    );
+    if (days == null || !mounted) return;
+    setState(() => _bulkBusy = true);
+    var shiftFollowing = false;
+    try {
+      while (true) {
+        try {
+          await widget.training
+              .shiftTrainingPlan(plan.id, days, shiftFollowing: shiftFollowing)
+              .timeout(kBackendLoadTimeout);
+          break;
+        } on ActivePlanExistsError {
+          if (!mounted) return;
+          if (days < 0 || shiftFollowing) {
+            showTopBanner(context, l10n.planDetailShiftBlocked);
+            return;
+          }
+          final moveThem = await confirmDestructive(
+            context,
+            title: l10n.planDetailShiftFollowingTitle,
+            body: l10n.planDetailShiftFollowingMessage(days.abs()),
+            confirmLabel: l10n.planDetailShiftFollowingApply,
+            cancelLabel: l10n.plansCancel,
+          );
+          if (!moveThem || !mounted) return;
+          shiftFollowing = true;
+        }
+      }
+      if (!mounted) return;
+      showTopBanner(context, l10n.planDetailShiftDone(days.abs()));
+      await _load();
+    } catch (e) {
+      debugPrint('plan shift failed: $e');
+      if (mounted) {
+        showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+      }
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
+    }
+  }
+
+  /// Eases one week to a recovery week: about 60% volume, quality sessions
+  /// turned into easy runs. Not reversible, so it confirms first. Web twin:
+  /// `markWeekRecovery` on the plan page.
+  Future<void> _markWeekRecovery(TrainingPlanRow plan, PlanWeekRow week) async {
+    if (_bulkBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final ok = await confirmDestructive(
+      context,
+      title: l10n.planDetailRecoveryConfirmTitle,
+      body: l10n.planDetailRecoveryConfirmMessage(week.weekIndex + 1),
+      confirmLabel: l10n.planDetailMarkRecovery,
+      cancelLabel: l10n.plansCancel,
+    );
+    if (!ok || !mounted) return;
+    setState(() => _bulkBusy = true);
+    try {
+      await widget.training
+          .markWeekRecovery(plan.id, _byWeek[week.id] ?? const [])
+          .timeout(kBackendLoadTimeout);
+      if (!mounted) return;
+      showTopBanner(context, l10n.planDetailRecoveryDone);
+      await _load();
+    } catch (e) {
+      debugPrint('plan recovery week failed: $e');
+      if (mounted) {
+        showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+      }
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
+    }
+  }
+
+  /// The plan in web's export shape (`plan_serialize`'s `ExportPlan`).
+  Map<String, dynamic> _exportShape(TrainingPlanRow p) {
+    final weekIndexById = {for (final w in _weeks) w.id: w.weekIndex};
+    return {
+      'name': p.name,
+      'goalEvent': p.goalEvent,
+      'goalDistanceM': p.goalDistanceM,
+      'goalTimeSec': p.goalTimeSeconds,
+      'startDate': toIsoDate(p.startDate),
+      'workouts': [
+        for (final w in _byWeek.values.expand((x) => x))
+          {
+            'week_index': weekIndexById[w.weekId] ?? 0,
+            'scheduled_date': toIsoDate(w.scheduledDate),
+            'kind': w.kind,
+            'target_distance_m': w.targetDistanceM,
+            'target_pace_sec_per_km': w.targetPaceSecPerKm,
+            'notes': w.notes,
+            'target_duration_seconds': w.targetDurationSeconds,
+            'race_name': w.raceName,
+            'race_priority': w.racePriority,
+            'race_taper_applied_at': w.raceTaperAppliedAt?.toUtc().toIso8601String(),
+          },
+      ],
+    };
+  }
+
+  /// Hands the plan to the share sheet as the Markdown table or the JSON
+  /// file web exports, so it can be saved, sent, or pasted into the plan
+  /// import on either app.
+  Future<void> _exportPlan(TrainingPlanRow p, {required bool json}) async {
+    final shape = _exportShape(p);
+    try {
+      await shareTextFrom(
+        context,
+        text: json ? planToJson(shape) : planToMarkdown(shape),
+        subject: p.name,
+      );
+    } catch (e) {
+      debugPrint('plan export share failed: $e');
+      if (mounted) {
+        final l10n = AppLocalizations.of(context);
+        showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+      }
+    }
+  }
+
+  Future<void> _deletePlan(TrainingPlanRow p) async {
+    final l10n = AppLocalizations.of(context);
+    final ok = await confirmDestructive(
+      context,
+      title: l10n.plansDeleteTitle(p.name),
+      body: l10n.plansDeleteBody,
+      confirmLabel: l10n.plansDelete,
+      cancelLabel: l10n.plansCancel,
+    );
+    if (!ok || !mounted) return;
+    setState(() => _bulkBusy = true);
+    try {
+      await widget.training.deletePlan(p.id).timeout(kBackendLoadTimeout);
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      debugPrint('plan delete failed: $e');
+      if (!mounted) return;
+      setState(() => _bulkBusy = false);
+      showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+    }
+  }
+
   Future<void> _duplicateWeek(TrainingPlanRow plan, PlanWeekRow week) async {
     if (_bulkBusy) return;
     final l10n = AppLocalizations.of(context);
@@ -1110,7 +1281,36 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         theme, l10n, p, pct, done, allActive.length, currentWeek, todayWorkout);
 
     return Scaffold(
-      appBar: AppBar(title: Text(p.name)),
+      appBar: AppBar(
+        title: Text(p.name),
+        actions: [
+          if (_isOwner(p) && !p.isTemplate)
+            PopupMenuButton<_PlanMenu>(
+              key: const Key('planDetailMenu'),
+              tooltip: l10n.planDetailMoreActions,
+              enabled: !_bulkBusy,
+              onSelected: (a) => _onPlanMenu(a, p),
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                    value: _PlanMenu.adjust,
+                    child: Text(l10n.planDetailAdjustPlan)),
+                PopupMenuItem(
+                    value: _PlanMenu.shift,
+                    child: Text(l10n.planDetailShiftDates)),
+                PopupMenuItem(
+                    value: _PlanMenu.exportMarkdown,
+                    child: Text(l10n.planDetailExportMarkdown)),
+                PopupMenuItem(
+                    value: _PlanMenu.exportJson,
+                    child: Text(l10n.planDetailExportJson)),
+                const PopupMenuDivider(),
+                PopupMenuItem(
+                    value: _PlanMenu.delete,
+                    child: Text(l10n.planDetailDeletePlan)),
+              ],
+            ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: _load,
         child: contentColumn(context, body, maxWidth: _kExpandedBodyMaxWidth),
@@ -2045,15 +2245,24 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                     color: theme.colorScheme.onSurfaceVariant,
                   )),
               if (_isOwner(p) && !p.isTemplate)
-                IconButton(
-                  iconSize: 16,
-                  padding: EdgeInsets.zero,
-                  constraints:
-                      const BoxConstraints(minWidth: 48, minHeight: 48),
-                  tooltip: l10n.planDetailDuplicateWeek,
-                  icon: Icon(Icons.content_copy,
-                      color: theme.colorScheme.outline),
-                  onPressed: _bulkBusy ? null : () => _duplicateWeek(p, w),
+                PopupMenuButton<_WeekMenu>(
+                  key: ValueKey('planDetailWeekMenu-${w.weekIndex}'),
+                  tooltip: l10n.planDetailWeekActions(w.weekIndex + 1),
+                  enabled: !_bulkBusy,
+                  icon: Icon(Icons.more_vert,
+                      size: 18, color: theme.colorScheme.outline),
+                  onSelected: (a) => switch (a) {
+                    _WeekMenu.duplicate => _duplicateWeek(p, w),
+                    _WeekMenu.recovery => _markWeekRecovery(p, w),
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                        value: _WeekMenu.duplicate,
+                        child: Text(l10n.planDetailDuplicateWeek)),
+                    PopupMenuItem(
+                        value: _WeekMenu.recovery,
+                        child: Text(l10n.planDetailMarkRecovery)),
+                  ],
                 ),
             ],
           ),
@@ -2333,6 +2542,78 @@ class PublishClubPicker extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+enum _PlanMenu { adjust, shift, exportMarkdown, exportJson, delete }
+
+enum _WeekMenu { duplicate, recovery }
+
+/// Asks how many days to move the plan by. Pops the signed day count, or
+/// nothing on cancel. The RPC's own bound is ±366 and zero is a no-op.
+class _ShiftDatesDialog extends StatefulWidget {
+  const _ShiftDatesDialog();
+
+  @override
+  State<_ShiftDatesDialog> createState() => _ShiftDatesDialogState();
+}
+
+class _ShiftDatesDialogState extends State<_ShiftDatesDialog> {
+  final _ctrl = TextEditingController(text: '7');
+  String? _error;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final n = int.tryParse(_ctrl.text.trim());
+    if (n == null || n == 0 || n.abs() > 366) {
+      setState(() => _error = AppLocalizations.of(context).planDetailShiftDaysInvalid);
+      return;
+    }
+    Navigator.pop(context, n);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return AlertDialog(
+      title: Text(l10n.planDetailShiftTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.planDetailShiftMessage),
+          const SizedBox(height: 12),
+          TextField(
+            key: const Key('planDetailShiftDays'),
+            controller: _ctrl,
+            autofocus: true,
+            keyboardType:
+                const TextInputType.numberWithOptions(signed: true),
+            decoration: InputDecoration(
+              labelText: l10n.planDetailShiftDaysLabel,
+              errorText: _error,
+              errorMaxLines: 3,
+            ),
+            onSubmitted: (_) => _submit(),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.plansCancel),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: Text(l10n.planDetailShiftApply),
+        ),
+      ],
     );
   }
 }

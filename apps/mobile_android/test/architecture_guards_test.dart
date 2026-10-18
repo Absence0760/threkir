@@ -5546,6 +5546,8 @@ void main() {
       'screens/nutrition_screen.dart::l10n.nutritionSaveAsRecipeTitle': 1,
       // Copies rather than replaces; the source plan is untouched.
       'screens/plan_detail_screen.dart::dl10n.planDetailDuplicateConfirmTitle': 1,
+      // Moves dates only; shifting back by the same amount restores them.
+      'screens/plan_detail_screen.dart::l10n.planDetailShiftTitle': 1,
       // Abandon: a status change, not a deletion.
       'screens/plans_screen.dart::title': 1,
       // Visibility toggles and a share that only widens visibility.

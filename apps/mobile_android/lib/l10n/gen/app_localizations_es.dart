@@ -17686,4 +17686,92 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get commonStaleRefreshFailed =>
       'No se pudo actualizar. Se muestra lo último que se cargó.';
+
+  @override
+  String get planDetailMoreActions => 'Más acciones del plan';
+
+  @override
+  String planDetailWeekActions(int n) {
+    return 'Acciones de la semana $n';
+  }
+
+  @override
+  String get planDetailShiftDates => 'Mover fechas…';
+
+  @override
+  String get planDetailShiftTitle => '¿Mover todo el plan?';
+
+  @override
+  String get planDetailShiftMessage =>
+      'Esto mueve todos los entrenamientos y la fecha de tu carrera. Puedes volver a moverlo para deshacerlo.';
+
+  @override
+  String get planDetailShiftDaysLabel => 'Días a mover (negativo = antes)';
+
+  @override
+  String get planDetailShiftDaysInvalid =>
+      'Introduce un número entero de días entre -366 y 366, distinto de 0.';
+
+  @override
+  String get planDetailShiftApply => 'Mover fechas';
+
+  @override
+  String planDetailShiftDone(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plan movido $n días',
+      one: 'Plan movido $n día',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShiftFollowingTitle =>
+      '¿Mover también los planes siguientes?';
+
+  @override
+  String planDetailShiftFollowingMessage(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Mover $n días choca con los planes que vienen después. Si los mueves lo mismo, se mantiene la separación.',
+      one:
+          'Mover $n día choca con los planes que vienen después. Si los mueves lo mismo, se mantiene la separación.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShiftFollowingApply => 'Moverlos también';
+
+  @override
+  String get planDetailShiftBlocked =>
+      'Estas fechas chocan con un plan anterior a este. Elige un desplazamiento menor o termina antes ese plan.';
+
+  @override
+  String get planDetailMarkRecovery => 'Convertir en semana de recuperación';
+
+  @override
+  String get planDetailRecoveryConfirmTitle =>
+      '¿Convertir esta semana en semana de recuperación?';
+
+  @override
+  String planDetailRecoveryConfirmMessage(int n) {
+    return 'Esto reduce el volumen de la semana $n a aproximadamente el 60 % y convierte las sesiones de calidad en rodajes suaves. Los ritmos y distancias originales no se pueden recuperar.';
+  }
+
+  @override
+  String get planDetailRecoveryDone =>
+      'Semana convertida en semana de recuperación';
+
+  @override
+  String get planDetailExportMarkdown => 'Exportar como Markdown';
+
+  @override
+  String get planDetailExportJson => 'Exportar como JSON';
+
+  @override
+  String get planDetailDeletePlan => 'Eliminar plan';
 }

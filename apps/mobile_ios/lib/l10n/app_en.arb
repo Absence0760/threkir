@@ -23166,5 +23166,105 @@
   "commonStaleRefreshFailed": "Couldn't refresh. Showing what was last loaded.",
   "@commonStaleRefreshFailed": {
     "description": "Top banner when a screen already showing data fails to refresh for a reason other than being offline; the old data stays on screen"
+  },
+  "planDetailMoreActions": "More plan actions",
+  "@planDetailMoreActions": {
+    "description": "Tooltip on the plan detail app-bar overflow menu"
+  },
+  "planDetailWeekActions": "Week {n} actions",
+  "@planDetailWeekActions": {
+    "description": "Tooltip on a week's overflow menu in the week-by-week list",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planDetailShiftDates": "Shift dates…",
+  "@planDetailShiftDates": {
+    "description": "Plan menu item that opens the shift-dates dialog"
+  },
+  "planDetailShiftTitle": "Shift the whole plan?",
+  "@planDetailShiftTitle": {
+    "description": "Shift dates dialog title"
+  },
+  "planDetailShiftMessage": "This moves every workout and your race date. You can shift again to undo it.",
+  "@planDetailShiftMessage": {
+    "description": "Shift dates dialog body"
+  },
+  "planDetailShiftDaysLabel": "Days to shift (negative moves earlier)",
+  "@planDetailShiftDaysLabel": {
+    "description": "Label of the days field in the shift dialog"
+  },
+  "planDetailShiftDaysInvalid": "Enter a whole number of days from -366 to 366, other than 0.",
+  "@planDetailShiftDaysInvalid": {
+    "description": "Validation error for the shift days field"
+  },
+  "planDetailShiftApply": "Shift dates",
+  "@planDetailShiftApply": {
+    "description": "Confirm button of the shift dialog"
+  },
+  "planDetailShiftDone": "{n, plural, one{Plan shifted by {n} day} other{Plan shifted by {n} days}}",
+  "@planDetailShiftDone": {
+    "description": "Banner after the plan was shifted; n is the absolute number of days",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planDetailShiftFollowingTitle": "Move the plans after this one too?",
+  "@planDetailShiftFollowingTitle": {
+    "description": "Dialog title when a forward shift runs into later plans"
+  },
+  "planDetailShiftFollowingMessage": "{n, plural, one{Shifting by {n} day runs into the plans queued after this one. Moving them by the same amount keeps their spacing.} other{Shifting by {n} days runs into the plans queued after this one. Moving them by the same amount keeps their spacing.}}",
+  "@planDetailShiftFollowingMessage": {
+    "description": "Dialog body when a forward shift runs into later plans",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planDetailShiftFollowingApply": "Move them too",
+  "@planDetailShiftFollowingApply": {
+    "description": "Confirm button: shift the later plans as well"
+  },
+  "planDetailShiftBlocked": "These dates run into a plan that comes before this one. Pick a smaller shift, or end that plan earlier first.",
+  "@planDetailShiftBlocked": {
+    "description": "Banner when a shift runs into an earlier plan"
+  },
+  "planDetailMarkRecovery": "Make recovery week",
+  "@planDetailMarkRecovery": {
+    "description": "Week menu item and confirm button: turn a week into a recovery week"
+  },
+  "planDetailRecoveryConfirmTitle": "Make this a recovery week?",
+  "@planDetailRecoveryConfirmTitle": {
+    "description": "Recovery week confirm title"
+  },
+  "planDetailRecoveryConfirmMessage": "This eases week {n}'s volume to about 60% and turns its quality sessions into easy runs. The original paces and distances can't be restored.",
+  "@planDetailRecoveryConfirmMessage": {
+    "description": "Recovery week confirm body; n is the 1-based week number",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planDetailRecoveryDone": "Week eased to a recovery week",
+  "@planDetailRecoveryDone": {
+    "description": "Banner after a week was eased"
+  },
+  "planDetailExportMarkdown": "Export as Markdown",
+  "@planDetailExportMarkdown": {
+    "description": "Plan menu item: share the plan as a Markdown table"
+  },
+  "planDetailExportJson": "Export as JSON",
+  "@planDetailExportJson": {
+    "description": "Plan menu item: share the plan as JSON"
+  },
+  "planDetailDeletePlan": "Delete plan",
+  "@planDetailDeletePlan": {
+    "description": "Plan menu item: delete the plan (confirms first)"
   }
 }

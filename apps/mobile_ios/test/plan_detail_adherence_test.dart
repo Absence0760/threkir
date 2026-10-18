@@ -296,7 +296,7 @@ void main() {
       final social = _FakeSocial(const []);
       await _pump(tester, training: training, social: social);
 
-      final dup = find.byTooltip('Duplicate week');
+      final dup = find.byTooltip('Week 1 actions');
       // Both primitives, because the two Flutter versions leave the button in
       // different states: scrollUntilVisible builds it where the list is lazy
       // (it is absent from the tree entirely on 3.44), and ensureVisible then
@@ -309,6 +309,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(dup, findsOneWidget);
       await tester.tap(dup);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Duplicate week').last);
       await tester.pumpAndSettle();
       // The dialog gates the destructive RPC — nothing fired yet.
       expect(find.byType(AlertDialog), findsOneWidget);
@@ -334,12 +336,14 @@ void main() {
       )..duplicateOverlaps = true;
       await _pump(tester, training: training, social: _FakeSocial(const []));
 
-      final dup = find.byTooltip('Duplicate week');
+      final dup = find.byTooltip('Week 1 actions');
       await tester.scrollUntilVisible(dup, 200,
           scrollable: find.byType(Scrollable).first);
       await tester.ensureVisible(dup);
       await tester.pumpAndSettle();
       await tester.tap(dup);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Duplicate week').last);
       await tester.pumpAndSettle();
       await tester.tap(find.descendant(
           of: find.byType(AlertDialog),
@@ -364,7 +368,7 @@ void main() {
       final social = _FakeSocial(const []);
       await _pump(tester, training: training, social: social);
 
-      final dup = find.byTooltip('Duplicate week');
+      final dup = find.byTooltip('Week 1 actions');
       // Both primitives, because the two Flutter versions leave the button in
       // different states: scrollUntilVisible builds it where the list is lazy
       // (it is absent from the tree entirely on 3.44), and ensureVisible then
@@ -376,6 +380,8 @@ void main() {
       await tester.ensureVisible(dup);
       await tester.pumpAndSettle();
       await tester.tap(dup);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Duplicate week').last);
       await tester.pumpAndSettle();
       await tester.tap(find.descendant(
           of: find.byType(AlertDialog),
@@ -395,7 +401,7 @@ void main() {
       final social = _FakeSocial(const []);
       await _pump(tester,
           training: training, social: social, viewerId: 'someone-else');
-      expect(find.byTooltip('Duplicate week'), findsNothing);
+      expect(find.byTooltip('Week 1 actions'), findsNothing);
     });
   });
 

@@ -237,13 +237,23 @@ void main() {
       await _pump(tester);
       expect(find.text('Publish as club template'), findsOneWidget);
       expect(find.text('Publish to library'), findsOneWidget);
+      // The app bar's only control is the plan-actions menu, and publishing
+      // is not one of its items.
       expect(
         find.descendant(
           of: find.byType(AppBar),
           matching: find.byType(IconButton),
         ),
-        findsNothing,
+        findsOneWidget,
       );
+      await tester.tap(find.byKey(const Key('planDetailMenu')));
+      await tester.pumpAndSettle();
+      expect(find.text('Delete plan'), findsOneWidget);
+      expect(find.text('Publish to library'), findsOneWidget,
+          reason: 'only the section copy, not a menu item');
+      expect(find.text('Publish as club template'), findsOneWidget);
+      await tester.tapAt(Offset.zero);
+      await tester.pumpAndSettle();
 
       await tester.pumpWidget(const SizedBox());
       await _pump(tester, viewerId: 'someone-else');

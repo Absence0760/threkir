@@ -16869,4 +16869,83 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get commonStaleRefreshFailed => '更新できませんでした。最後に読み込んだ内容を表示しています。';
+
+  @override
+  String get planDetailMoreActions => 'その他のプラン操作';
+
+  @override
+  String planDetailWeekActions(int n) {
+    return '第$n週の操作';
+  }
+
+  @override
+  String get planDetailShiftDates => '日付をずらす…';
+
+  @override
+  String get planDetailShiftTitle => 'プラン全体をずらしますか？';
+
+  @override
+  String get planDetailShiftMessage => 'すべてのワークアウトとレース日が移動します。もう一度ずらせば元に戻せます。';
+
+  @override
+  String get planDetailShiftDaysLabel => 'ずらす日数（マイナスで前倒し）';
+
+  @override
+  String get planDetailShiftDaysInvalid => '-366〜366の整数（0以外）を入力してください。';
+
+  @override
+  String get planDetailShiftApply => '日付をずらす';
+
+  @override
+  String planDetailShiftDone(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'プランを$n日ずらしました',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShiftFollowingTitle => '後続のプランもずらしますか？';
+
+  @override
+  String planDetailShiftFollowingMessage(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n日ずらすと、このあとに予定しているプランと重なります。同じ日数ずらせば間隔は保たれます。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShiftFollowingApply => 'それらもずらす';
+
+  @override
+  String get planDetailShiftBlocked =>
+      'この日付は、このプランより前のプランと重なります。ずらす日数を減らすか、そのプランを早めに終了してください。';
+
+  @override
+  String get planDetailMarkRecovery => '回復週にする';
+
+  @override
+  String get planDetailRecoveryConfirmTitle => 'この週を回復週にしますか？';
+
+  @override
+  String planDetailRecoveryConfirmMessage(int n) {
+    return '第$n週の練習量を約60%に減らし、強度の高い練習をイージーランに変えます。元のペースと距離は復元できません。';
+  }
+
+  @override
+  String get planDetailRecoveryDone => '回復週にしました';
+
+  @override
+  String get planDetailExportMarkdown => 'Markdownでエクスポート';
+
+  @override
+  String get planDetailExportJson => 'JSONでエクスポート';
+
+  @override
+  String get planDetailDeletePlan => 'プランを削除';
 }

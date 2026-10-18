@@ -17726,4 +17726,92 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get commonStaleRefreshFailed =>
       'Actualisation impossible. Affichage des dernières données chargées.';
+
+  @override
+  String get planDetailMoreActions => 'Autres actions du plan';
+
+  @override
+  String planDetailWeekActions(int n) {
+    return 'Actions de la semaine $n';
+  }
+
+  @override
+  String get planDetailShiftDates => 'Décaler les dates…';
+
+  @override
+  String get planDetailShiftTitle => 'Décaler tout le plan ?';
+
+  @override
+  String get planDetailShiftMessage =>
+      'Toutes les séances et la date de votre course seront décalées. Vous pouvez décaler à nouveau pour annuler.';
+
+  @override
+  String get planDetailShiftDaysLabel =>
+      'Jours de décalage (négatif = plus tôt)';
+
+  @override
+  String get planDetailShiftDaysInvalid =>
+      'Saisissez un nombre entier de jours entre -366 et 366, autre que 0.';
+
+  @override
+  String get planDetailShiftApply => 'Décaler les dates';
+
+  @override
+  String planDetailShiftDone(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Plan décalé de $n jours',
+      one: 'Plan décalé de $n jour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShiftFollowingTitle =>
+      'Décaler aussi les plans suivants ?';
+
+  @override
+  String planDetailShiftFollowingMessage(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Un décalage de $n jours empiète sur les plans prévus après celui-ci. Les décaler d\'autant conserve leur écart.',
+      one:
+          'Un décalage de $n jour empiète sur les plans prévus après celui-ci. Les décaler d\'autant conserve leur écart.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planDetailShiftFollowingApply => 'Les décaler aussi';
+
+  @override
+  String get planDetailShiftBlocked =>
+      'Ces dates empiètent sur un plan qui précède celui-ci. Choisissez un décalage plus court ou terminez ce plan plus tôt.';
+
+  @override
+  String get planDetailMarkRecovery => 'Passer en semaine de récupération';
+
+  @override
+  String get planDetailRecoveryConfirmTitle =>
+      'Passer cette semaine en récupération ?';
+
+  @override
+  String planDetailRecoveryConfirmMessage(int n) {
+    return 'Le volume de la semaine $n passe à environ 60 % et les séances de qualité deviennent des footings. Les allures et distances d\'origine ne pourront pas être rétablies.';
+  }
+
+  @override
+  String get planDetailRecoveryDone => 'Semaine passée en récupération';
+
+  @override
+  String get planDetailExportMarkdown => 'Exporter en Markdown';
+
+  @override
+  String get planDetailExportJson => 'Exporter en JSON';
+
+  @override
+  String get planDetailDeletePlan => 'Supprimer le plan';
 }

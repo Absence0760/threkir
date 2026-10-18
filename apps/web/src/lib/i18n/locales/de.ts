@@ -723,6 +723,7 @@ export const messages = {
 	"planDetail.heroNextRace": "Nächster Wettkampf: {name}",
 	"planDetail.adjustPauseDesc": "Hält den Plan an, ohne etwas zu löschen, bis du ihn fortsetzt. Nutze das bei Krankheit, Verletzung oder auf Reisen.",
 	"planDetail.adjustResumeDesc": "Macht diesen Plan wieder zu deinem aktiven Plan. Nutze das, wenn du bereit bist, wieder einzusteigen.",
+	"planDetail.adjustAbandonDesc": "Beendet den Plan endgültig. Wochen, Trainingseinheiten und verknüpfte Läufe bleiben erhalten. Nutze das, wenn du diesen Plan nicht mehr abschließen wirst.",
 	"planDetail.adjustCycleDesc": "Erleichtert kommende Einheiten an den Menstruations- und Spätluteal-Tagen deines Zyklus. Vergangene Einheiten bleiben unverändert.",
 	"planDetail.adjustPregnancyDesc": "Macht aus harten kommenden Einheiten lockere Läufe und reduziert den Umfang nach Trimester. Vergangene Einheiten bleiben unverändert.",
 	"planDetail.adaptiveOnTrack": "Deine letzten Wochen sind im Plan – keine Anpassung nötig.",

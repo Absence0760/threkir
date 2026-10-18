@@ -718,6 +718,7 @@ export const messages = {
 	"planDetail.heroNextRace": "次のレース: {name}",
 	"planDetail.adjustPauseDesc": "何も削除せずに、再開するまでプランを一時停止します。体調不良、けが、旅行のときに使います。",
 	"planDetail.adjustResumeDesc": "このプランを再びアクティブなプランにします。プランを再開する準備ができたときに使います。",
+	"planDetail.adjustAbandonDesc": "プランを完全に終了します。週、ワークアウト、紐付いたランはすべて残ります。このプランを最後まで続けないときに使います。",
 	"planDetail.adjustCycleDesc": "月経日と黄体期後半の今後のワークアウトを軽減します。過去のワークアウトは変更されません。",
 	"planDetail.adjustPregnancyDesc": "今後のハードなワークアウトをイージーランに変え、三半期ごとに量を減らします。過去のワークアウトは変更されません。",
 	"planDetail.adaptiveOnTrack": "直近の週は計画どおりです。調整は不要です。",

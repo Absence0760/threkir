@@ -722,6 +722,7 @@ export const messages = {
 	"planDetail.heroNextRace": "Próxima prova: {name}",
 	"planDetail.adjustPauseDesc": "Coloca o plano em pausa sem eliminar nada, até o retomar. Use em caso de doença, lesão ou viagem.",
 	"planDetail.adjustResumeDesc": "Volta a tornar este plano o seu plano ativo. Use quando quiser retomá-lo.",
+	"planDetail.adjustAbandonDesc": "Termina o plano definitivamente. As semanas, os treinos e as corridas associadas mantêm-se. Use quando não for terminar este plano.",
 	"planDetail.adjustCycleDesc": "Suaviza os próximos treinos nos dias menstruais e de fase lútea tardia do seu ciclo. Os treinos passados não mudam.",
 	"planDetail.adjustPregnancyDesc": "Transforma os próximos treinos duros em corridas leves e reduz o volume por trimestre. Os treinos passados não mudam.",
 	"planDetail.adaptiveOnTrack": "As suas últimas semanas estão dentro do plano — nenhum ajuste necessário.",

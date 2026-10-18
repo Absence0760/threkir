@@ -66,6 +66,20 @@ int walkRunDefaultWeeks() => kWalkRunProgression.length;
 /// number this would silently cut. Mirrors training.ts.
 const int kWalkRunMaxDaysPerWeek = 3;
 
+/// The fewest training days a week a plan may carry. A walk-run plan (at
+/// least one walk-run session and nothing but walk-run, rest and race) may run
+/// 2, which the wizard offers; every other plan needs 3. create_training_plan
+/// applies the same rule (migration 20270915000001). Mirrors training.ts.
+int minDaysPerWeek(List<GeneratedWeek> weeks) {
+  final kinds = [for (final w in weeks) for (final wo in w.workouts) wo.kind];
+  final walkRun = kinds.contains(WorkoutKind.walkRun) &&
+      kinds.every((k) =>
+          k == WorkoutKind.walkRun ||
+          k == WorkoutKind.rest ||
+          k == WorkoutKind.race);
+  return walkRun ? 2 : 3;
+}
+
 String goalEventDbValue(GoalEvent g) => switch (g) {
       GoalEvent.distance5k => 'distance_5k',
       GoalEvent.distance10k => 'distance_10k',
@@ -717,7 +731,11 @@ GeneratedPlan _generateWalkRunPlan(GeneratePlanInput input,
   final totalWeeks =
       max(input.weeks ?? kWalkRunProgression.length, kWalkRunProgression.length);
   final runDays = input.daysPerWeek.clamp(1, kWalkRunMaxDaysPerWeek);
-  final dayOffsets = [0, 2, 4, 1, 3, 5, 6].sublist(0, runDays)..sort();
+  // Two sessions sit three days apart (0/3) rather than 0/2, which would
+  // leave a five-day gap before the next week's first session.
+  final dayOffsets = runDays == 2
+      ? [0, 3]
+      : ([0, 2, 4, 1, 3, 5, 6].sublist(0, runDays)..sort());
   final runSet = dayOffsets.toSet();
   final weeks = <GeneratedWeek>[];
   for (var i = 0; i < totalWeeks; i++) {

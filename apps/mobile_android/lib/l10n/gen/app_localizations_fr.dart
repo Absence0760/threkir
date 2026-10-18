@@ -12925,6 +12925,16 @@ class AppLocalizationsFr extends AppLocalizations {
       'Sur les footings prévus des deux dernières semaines, la fréquence cardiaque est plus haute à allure égale que sur les six semaines d\'avant. Affiché seulement pour les athlètes ayant donné leur consentement aux données de santé.';
 
   @override
+  String get metricEasyHrDriftLabel => 'Dérive cardiaque en endurance';
+
+  @override
+  String get metricMissStreakLabel => 'Manqués d\'affilée';
+
+  @override
+  String get metricMissStreakDefinition =>
+      'Séances prévues d\'affilée, en remontant depuis hier, passées sans course enregistrée. Une séance sautée ou un jour de repos ne compte pas et n\'interrompt pas la série ; une séance faite y met fin.';
+
+  @override
   String get coachingRosterRiskLow => 'Faible';
 
   @override

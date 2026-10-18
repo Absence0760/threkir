@@ -12280,6 +12280,16 @@ class AppLocalizationsJa extends AppLocalizations {
       '直近 2 週間の予定どおりのイージーランで、同じペースでの心拍数がその前の 6 週間より高くなっています。健康データに同意したアスリートにのみ表示されます。';
 
   @override
+  String get metricEasyHrDriftLabel => 'イージーランの心拍ドリフト';
+
+  @override
+  String get metricMissStreakLabel => '連続未実施';
+
+  @override
+  String get metricMissStreakDefinition =>
+      '昨日からさかのぼって、ランの記録がないまま過ぎた予定ワークアウトの連続数です。スキップしたワークアウトや休養日は数えず、連続も途切れません。完了したワークアウトで連続は終わります。';
+
+  @override
   String get coachingRosterRiskLow => '低';
 
   @override

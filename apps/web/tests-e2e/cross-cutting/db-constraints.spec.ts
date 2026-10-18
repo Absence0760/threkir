@@ -207,7 +207,7 @@ test.describe('database constraints', () => {
 		expect(error?.code).toBe('23514');
 	});
 
-	test('training_plans CHECK days_per_week between 3 and 7 rejects an out-of-range value', async () => {
+	test('training_plans CHECK days_per_week between 2 and 7 rejects an out-of-range value', async () => {
 		const admin = getAdminClient();
 		const { error } = await admin.from('training_plans').insert({
 			user_id: USER_A.id,

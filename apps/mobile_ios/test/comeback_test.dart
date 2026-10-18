@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/comeback.dart';
@@ -386,11 +388,13 @@ void main() {
       expect(weeks[0].workouts[2].kind, WorkoutKind.interval);
     });
 
-    test('leaves every week after the first that fits alone, speed work and all',
+    test('keeps climbing past a step-back week that fits, up to the last week over its cap',
         () {
-      // 40 / 44 / 36 / 48 km against caps of 35 / 38.5 / 42.35 / 46.585 km:
-      // the step-back third week fits, so the fourth keeps its intervals and
-      // its 48 km even though that is over the cap the climb would have hit.
+      // 40 / 44 / 36 / 48 km from a 35 km opening cap. The caps grow from
+      // what was prescribed: 35, 38.5, then 42.35 for both the third and the
+      // fourth week, because the step-back third week (36 km, which fits)
+      // does not raise the most prescribed. The fourth scales by 42.35 / 48,
+      // down to the 100 m.
       final weeks = [
         for (final (i, m) in [40000.0, 44000.0, 36000.0, 48000.0].indexed)
           week(i, [
@@ -401,9 +405,39 @@ void main() {
       final capped = capReturnRamp(weeks, 35000, 420);
       expect(capped[0].workouts[1].kind, WorkoutKind.easy);
       expect(capped[1].workouts[1].kind, WorkoutKind.easy);
-      expect(identical(capped[2], weeks[2]), isTrue);
-      expect(identical(capped[3], weeks[3]), isTrue);
-      expect(capped[3].workouts[1].kind, WorkoutKind.interval);
+      expect(capped[2].workouts[0].targetDistanceM, 28000);
+      expect(capped[2].workouts[1].targetDistanceM, 8000);
+      expect(capped[2].workouts[1].kind, WorkoutKind.easy);
+      expect(capped[3].workouts[0].targetDistanceM, 35200);
+      expect(capped[3].workouts[1].targetDistanceM, 7000);
+      expect(capped[3].workouts[1].kind, WorkoutKind.easy);
+      expect(weeks[3].workouts[1].kind, WorkoutKind.interval);
+    });
+
+    test('never rises more than 10% over the most prescribed so far, step-back or not',
+        () {
+      // The review's series: a 50 km pre-break average (a 25 km opening cap)
+      // and generated weeks of 30 / 32 / 34 / 30 (step-back) / 39 / 41 km.
+      // Growing the cap by position let week 5 jump 22% over anything run
+      // before it.
+      final weeks = [
+        for (final (i, m)
+            in [30000.0, 32000.0, 34000.0, 30000.0, 39000.0, 41000.0].indexed)
+          week(i, [
+            workout(WorkoutKind.long, m * 0.6),
+            workout(WorkoutKind.easy, m * 0.4),
+          ]),
+      ];
+      final volumes =
+          capReturnRamp(weeks, 25000, 420).map((w) => w.targetVolumeM).toList();
+      expect(volumes.first, lessThanOrEqualTo(25000));
+      var highest = volumes.first;
+      for (final v in volumes.skip(1)) {
+        expect(v, lessThanOrEqualTo(highest * 1.1 + 1e-6),
+            reason: '$v rises more than 10% over $highest');
+        highest = math.max(highest, v);
+      }
+      expect(volumes, [25000, 27500, 30200, 30000, 33100, 36300]);
     });
 
     test('drops sessions the cap would take under 3 km to rest, shortest first',

@@ -56,7 +56,9 @@ List<Map<String, Object?>> planWeekCopyRows(
 /// `manually_completed`, `skipped_at`) is not copied — a template starts
 /// fresh. The race fields and the taper stamp are: a B race is part of the
 /// design, and an eased workout without its stamp would be cut again by the
-/// cloner's next taper (decisions § 2063).
+/// cloner's next taper (decisions § 2063). The RPE range is carried; the bpm
+/// range never is: a heart-rate target is one person's Art 9 prescription and
+/// the database refuses one on a template (decisions § 2092).
 List<Map<String, Object?>> planWorkoutCopyRows(
   List<PlanWorkoutRow> workouts,
   Map<String, String> newWeekIdByOldId,
@@ -79,5 +81,7 @@ List<Map<String, Object?>> planWorkoutCopyRows(
             'race_name': w.raceName,
             'race_priority': w.racePriority,
             'race_taper_applied_at': w.raceTaperAppliedAt?.toIso8601String(),
+            'target_rpe_min': w.targetRpeMin,
+            'target_rpe_max': w.targetRpeMax,
           },
     ];

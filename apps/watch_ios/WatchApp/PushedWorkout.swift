@@ -33,7 +33,11 @@ struct PushedWorkout: Codable, Equatable {
     let steps: [PushedStep]
 
     /// Whether this is today's workout on the watch's own calendar, so a
-    /// phone left unopened past midnight cannot arm a stale session.
+    /// phone left unopened past midnight cannot arm a stale session. The
+    /// watch's calendar is the right one to read: the phone picks the workout
+    /// on its own local date, which is the plan's, and a paired watch takes
+    /// its zone from that phone. A "today" sent in the push would be exactly
+    /// as stale as the push (decisions § 2102).
     func isFor(_ date: Date, calendar: Calendar = .current) -> Bool {
         scheduledDate == PushedWorkout.dayString(date, calendar: calendar)
     }

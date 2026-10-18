@@ -10,10 +10,15 @@
 /// against the stored SHA-256 in constant time, and the comparison also runs
 /// when the id matches no row.
 ///
-/// Order: the per-IP bucket first, before the token is even parsed, so the
-/// endpoint cannot be ground at network rate (the strava-webhook posture);
-/// then the secret; then a per-feed bucket, so one leaked URL hammered from
-/// many addresses is capped too. Both buckets fail closed.
+/// Order: the token's shape first, which costs nothing, so a malformed path
+/// is a 404 that spends no bucket and reads no table; then a coarse per-IP
+/// bucket, so the secret read cannot be ground at network rate from one
+/// address; then the secret; then a per-feed bucket, so one leaked URL
+/// hammered from many addresses is capped too. Both buckets fail closed.
+/// A caller the trusted header does not name shares one high bucket instead
+/// of the per-address one (planCalendarIpLimiter): calendar providers poll
+/// from shared pools, and the low per-address bucket shared by every unnamed
+/// caller would let one lock every feed out.
 
 import {
   buildPlanFeedIcs,
@@ -37,8 +42,10 @@ export interface PlanCalendarDeps {
 }
 
 /// Per-user schedule: no shared cache may keep it, and a calendar re-reading
-/// within a quarter of an hour may reuse its own copy.
-const FEED_CACHE_CONTROL = 'private, max-age=900';
+/// within five minutes may reuse its own copy. Kept short because a revoked
+/// or rotated URL keeps serving from that copy until it expires; calendar
+/// apps poll hourly or less often, so a longer age saves no requests.
+const FEED_CACHE_CONTROL = 'private, max-age=300';
 
 const BASE_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
@@ -73,11 +80,11 @@ export function makePlanCalendarHandler(deps: PlanCalendarDeps): (req: Request) 
       });
     }
 
-    const ipDenied = await deps.limitByIp(req);
-    if (ipDenied) return ipDenied;
-
     const token = parseFeedToken(req.url);
     if (!token) return notFound();
+
+    const ipDenied = await deps.limitByIp(req);
+    if (ipDenied) return ipDenied;
 
     let stored: string | null;
     try {

@@ -9,7 +9,7 @@
 /// gate. Minted, rotated and revoked from Settings through
 /// rotate_plan_calendar_feed / revoke_plan_calendar_feed.
 ///
-/// The body is the owner's ACTIVE plan's non-rest workouts as all-day
+/// The body is the owner's current plan's non-rest workouts as all-day
 /// entries — kind, date, prescribed target — and nothing else: no location,
 /// notes, plan or race name (docs/features/training.md § Calendar feed).
 ///
@@ -22,10 +22,16 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0?target=deno';
 import type { Database, DbClient } from '../_shared/database.ts';
-import { checkRateLimit, ipBucketKey } from '../_shared/rate_limit.ts';
+import { checkRateLimit, ipBucketKey, trustedRequestIp } from '../_shared/rate_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { secretKey } from '../_shared/api_keys.ts';
-import { feedBucketKey } from './lib.ts';
+import {
+  feedBucketKey,
+  PLAN_CALENDAR_IP_PER_HOUR,
+  PLAN_CALENDAR_UNNAMED_PER_HOUR,
+  planCalendarIpLimiter,
+  unnamedBucketKey,
+} from './lib.ts';
 import { makePlanCalendarHandler } from './handler.ts';
 
 let admin: DbClient | null = null;
@@ -38,14 +44,17 @@ function adminClient(): DbClient {
 }
 
 const handler = makePlanCalendarHandler({
-  // 120 an hour per address: a calendar polls a feed a few times an hour at
-  // most, and Google fetches every subscriber's feed from a shared pool, so
-  // the per-address ceiling is set well above one client's need. The per-feed
-  // bucket below is the tight one.
-  limitByIp: async (req) =>
-    checkRateLimit(adminClient(), await ipBucketKey(req), 'plan-calendar:anon', 120, 3600, {
-      failClosed: true,
-    }),
+  limitByIp: planCalendarIpLimiter(
+    trustedRequestIp,
+    async (req) =>
+      checkRateLimit(adminClient(), await ipBucketKey(req), 'plan-calendar:anon', PLAN_CALENDAR_IP_PER_HOUR, 3600, {
+        failClosed: true,
+      }),
+    async () =>
+      checkRateLimit(adminClient(), await unnamedBucketKey(), 'plan-calendar:unnamed', PLAN_CALENDAR_UNNAMED_PER_HOUR, 3600, {
+        failClosed: true,
+      }),
+  ),
   limitByFeed: async (feedId) =>
     checkRateLimit(adminClient(), await feedBucketKey(feedId), 'plan-calendar:feed', 30, 3600, {
       failClosed: true,

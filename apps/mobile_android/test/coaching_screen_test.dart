@@ -149,6 +149,22 @@ void main() {
       expect(find.text('Easy HR +7%'), findsOneWidget);
     });
 
+    testWidgets('each flag opens its definition from the metric registry',
+        (tester) async {
+      final prefs = await _prefs();
+      await _pump(tester, _FakeApi(roster: [flagged()]), prefs,
+          hrPrescription: true);
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      await tester.tap(find.byTooltip(l10n.metricAbout(l10n.metricEasyHrDriftLabel)));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.coachingRosterHrDriftHint), findsOneWidget);
+      await tester.tap(find.text(l10n.commonDismiss));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip(l10n.metricAbout(l10n.metricMissStreakLabel)));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.metricMissStreakDefinition), findsOneWidget);
+    });
+
     testWidgets('with the gate off the drift chip stays hidden',
         (tester) async {
       final prefs = await _prefs();
@@ -193,7 +209,7 @@ void main() {
     await _pump(tester, api, prefs);
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     expect(find.text(l10n.coachingPendingInvite), findsOneWidget);
-    expect(find.byIcon(Icons.copy_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.copy), findsOneWidget);
     expect(find.byIcon(Icons.ios_share), findsOneWidget);
   });
 }

@@ -23,7 +23,7 @@ import '../device_timezone.dart';
 import '../disclosure_state.dart';
 import '../goals.dart';
 import '../health_consent.dart';
-import '../hr_prescription_flag.dart';
+import '../hr_prescription_gate.dart';
 import '../l10n/date_format.dart' show formatDowDateShort;
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart' show activeLocaleTag;

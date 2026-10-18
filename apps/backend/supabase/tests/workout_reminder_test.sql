@@ -1,13 +1,14 @@
 -- Pins migration 20270913000001: enqueue_workout_reminders() raises one
 -- `workout_reminder` per runner per LOCAL morning (07:00-11:59 in
--- prefs.time_zone, UTC when unset), only for the active plan (a template
+-- prefs.time_zone; nobody whose zone is unset or unknown, since 20270915000006),
+-- only for the active plan (a template
 -- can never be active: training_plans_template_status), never on a rest day
 -- or for a done / skipped workout, never for a runner who muted the kind, and
 -- never twice for the same local day.
 --
 -- Every call passes p_now, so nothing here depends on the wall clock.
 begin;
-select plan(24);
+select plan(26);
 
 set local timezone = 'UTC';
 
@@ -21,6 +22,15 @@ begin
     insert into user_settings (user_id, prefs) values (p_id, p_prefs)
       on conflict (user_id) do update set prefs = excluded.prefs;
   end if;
+  return p_id;
+end;
+$$;
+
+-- A runner in UTC: every case below that is not about the zone itself.
+create function pg_temp.mk_utc_user(p_id uuid, p_prefs jsonb default '{}') returns uuid
+language plpgsql as $$
+begin
+  perform pg_temp.mk_user(p_id, '{"time_zone":"UTC"}'::jsonb || p_prefs);
   return p_id;
 end;
 $$;
@@ -61,7 +71,7 @@ declare
   wo uuid;
 begin
   -- UTC, workout on the 16th. The control.
-  perform pg_temp.mk_user('11860909-0000-0000-0000-0000000000a1', null);
+  perform pg_temp.mk_utc_user('11860909-0000-0000-0000-0000000000a1');
   w := pg_temp.mk_plan('11860909-0000-0000-0000-0000000000a1', 'active');
   perform pg_temp.mk_workout(w, '2031-01-16');
 
@@ -71,39 +81,45 @@ begin
   perform pg_temp.mk_workout(w, '2031-01-16');
 
   -- Rest day only.
-  perform pg_temp.mk_user('11860909-0000-0000-0000-0000000000c1', null);
+  perform pg_temp.mk_utc_user('11860909-0000-0000-0000-0000000000c1');
   w := pg_temp.mk_plan('11860909-0000-0000-0000-0000000000c1', 'active');
   perform pg_temp.mk_workout(w, '2031-01-16', 'rest');
 
   -- Done by hand.
-  perform pg_temp.mk_user('11860909-0000-0000-0000-0000000000c2', null);
+  perform pg_temp.mk_utc_user('11860909-0000-0000-0000-0000000000c2');
   w := pg_temp.mk_plan('11860909-0000-0000-0000-0000000000c2', 'active');
   wo := pg_temp.mk_workout(w, '2031-01-16');
   update plan_workouts set manually_completed = true, completed_at = now() where id = wo;
 
   -- Skipped.
-  perform pg_temp.mk_user('11860909-0000-0000-0000-0000000000c3', null);
+  perform pg_temp.mk_utc_user('11860909-0000-0000-0000-0000000000c3');
   w := pg_temp.mk_plan('11860909-0000-0000-0000-0000000000c3', 'active');
   wo := pg_temp.mk_workout(w, '2031-01-16');
   update plan_workouts set skipped_at = now() where id = wo;
 
   -- Paused plan.
-  perform pg_temp.mk_user('11860909-0000-0000-0000-0000000000c4', null);
+  perform pg_temp.mk_utc_user('11860909-0000-0000-0000-0000000000c4');
   w := pg_temp.mk_plan('11860909-0000-0000-0000-0000000000c4', 'paused');
   perform pg_temp.mk_workout(w, '2031-01-16');
 
   -- Muted.
-  perform pg_temp.mk_user('11860909-0000-0000-0000-0000000000c6', '{"notify_workout_reminder":"off"}');
+  perform pg_temp.mk_utc_user('11860909-0000-0000-0000-0000000000c6', '{"notify_workout_reminder":"off"}');
   w := pg_temp.mk_plan('11860909-0000-0000-0000-0000000000c6', 'active');
   perform pg_temp.mk_workout(w, '2031-01-16');
 
   -- A non-'off' value does not mute.
-  perform pg_temp.mk_user('11860909-0000-0000-0000-0000000000c7', '{"notify_workout_reminder":false}');
+  perform pg_temp.mk_utc_user('11860909-0000-0000-0000-0000000000c7', '{"notify_workout_reminder":false}');
   w := pg_temp.mk_plan('11860909-0000-0000-0000-0000000000c7', 'active');
   perform pg_temp.mk_workout(w, '2031-01-16');
 
+  -- No time zone at all. (An unknown zone cannot be written: the time_zone
+  -- pref is validated against pg_timezone_names on write, 20270830000011.)
+  perform pg_temp.mk_user('11860909-0000-0000-0000-0000000000d1', null);
+  w := pg_temp.mk_plan('11860909-0000-0000-0000-0000000000d1', 'active');
+  perform pg_temp.mk_workout(w, '2031-01-16');
+
   -- Workout on the 17th only.
-  perform pg_temp.mk_user('11860909-0000-0000-0000-0000000000c8', null);
+  perform pg_temp.mk_utc_user('11860909-0000-0000-0000-0000000000c8');
   w := pg_temp.mk_plan('11860909-0000-0000-0000-0000000000c8', 'active');
   perform pg_temp.mk_workout(w, '2031-01-17');
 end;
@@ -143,6 +159,22 @@ select is(pg_temp.reminders('11860909-0000-0000-0000-0000000000c7'), 1,
   'only the literal off mutes');
 select is(pg_temp.reminders('11860909-0000-0000-0000-0000000000c8'), 0,
   'a workout tomorrow does not remind today');
+
+select is(pg_temp.reminders('11860909-0000-0000-0000-0000000000d1'), 0,
+  'a runner with no time zone is not reminded at 07:30 UTC');
+
+-- Every hour of the day: a runner without a time zone is never reminded.
+do $$
+begin
+  for h in 0..23 loop
+    perform public.enqueue_workout_reminders(('2031-01-16 00:00:00+00'::timestamptz + make_interval(hours => h)));
+  end loop;
+end;
+$$;
+select is(
+  pg_temp.reminders('11860909-0000-0000-0000-0000000000d1'),
+  0,
+  'a runner with no time zone is never reminded, at any hour');
 
 -- ─────────── idempotent per local day ───────────
 

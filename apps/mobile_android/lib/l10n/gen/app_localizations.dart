@@ -21081,6 +21081,24 @@ abstract class AppLocalizations {
   /// **'On planned easy runs over the last two weeks, heart rate is higher for the same pace than in the six weeks before. Shown only for athletes who gave health-data consent.'**
   String get coachingRosterHrDriftHint;
 
+  /// Name of the coach roster's easy-run heart-rate drift flag, titling its definition
+  ///
+  /// In en, this message translates to:
+  /// **'Easy HR drift'**
+  String get metricEasyHrDriftLabel;
+
+  /// Name of the coach roster's consecutive-missed-workouts flag, titling its definition
+  ///
+  /// In en, this message translates to:
+  /// **'Missed in a row'**
+  String get metricMissStreakLabel;
+
+  /// Definition of the coach roster's consecutive-missed-workouts flag
+  ///
+  /// In en, this message translates to:
+  /// **'Planned workouts in a row, counting back from yesterday, that passed with no run logged. A skipped workout or a rest day doesn\'t count and doesn\'t break the run; a done workout ends it.'**
+  String get metricMissStreakDefinition;
+
   /// Injury-risk band: low
   ///
   /// In en, this message translates to:

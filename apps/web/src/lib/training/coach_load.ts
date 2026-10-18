@@ -117,9 +117,10 @@ export function consecutiveMissedWorkouts(recent: RosterRecentWorkout[], todayIs
 	return run;
 }
 
-/// Easy-run efficiency-factor drift (per cent) at or above which the roster
-/// flags it. The RPC computes the drift from the athlete's planned easy runs,
-/// recent 14 days against the 42 before, only under health-data consent.
+/// Easy-run heart-rate drift (per cent) at or above which the roster flags it.
+/// The RPC computes it as the change in mean heart rate on the athlete's
+/// planned easy runs held within 15 s/km of their median easy pace, recent 14
+/// days against the 42 before, only under health-data consent.
 export const EASY_HR_DRIFT_FLAG_PCT = 5;
 
 export function isEasyHrDriftFlagged(driftPct: number | null | undefined): boolean {

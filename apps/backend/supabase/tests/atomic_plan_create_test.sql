@@ -99,8 +99,8 @@ select throws_ok(
 );
 select throws_ok(
   $$ select create_training_plan(plan, weeks) from apc_args where label = 'two_days' $$,
-  '22023', 'create_training_plan: days per week must be between 3 and 7',
-  'two days a week is refused'
+  '22023', 'create_training_plan: only a walk-run plan may train two days a week; other plans need 3 to 7',
+  'two days a week is refused for a road plan'
 );
 select throws_ok(
   $$ select create_training_plan(plan, weeks, 'merge') from apc_args where label = 'free' $$,

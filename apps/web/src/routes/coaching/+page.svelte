@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
+	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import {
 		fetchMyAthletesWithError,
 		fetchPendingCoachInvites,
@@ -24,14 +25,17 @@
 		isEasyHrDriftFlagged,
 		loadTrend
 	} from '#lib/training/coach_load.ts';
-	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_flag.ts';
+	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_gate.ts';
 	import { rosterRisk, sortRoster, type RosterSortKey } from './roster_sort';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 
-	const hrPrescription = hrPrescriptionEnabled();
+	let hrPrescription = $state(false);
+	onMount(() => {
+		void hrPrescriptionEnabled().then((on) => (hrPrescription = on));
+	});
 
 	function missStreak(r: CoachRosterRow): number {
 		return r.athlete_today ? consecutiveMissedWorkouts(r.recent_workouts, r.athlete_today) : 0;
@@ -329,7 +333,7 @@
 												<span>{r.plan_completion_pct}%</span>
 												{#if misses >= CONSECUTIVE_MISS_FLAG}
 													<span class="flag-chip" data-testid="roster-miss-flag">
-														{m('coaching.roster.missStreak', { n: misses })}
+														<MetricLabel metric="missStreak" variant="chip" params={{ n: misses }} />
 													</span>
 												{/if}
 											{:else}
@@ -341,12 +345,12 @@
 												{riskLabel(band)}
 											</span>
 											{#if hrPrescription && isEasyHrDriftFlagged(r.easy_hr_drift_pct)}
-												<span
-													class="flag-chip"
-													data-testid="roster-hr-drift-flag"
-													title={m('coaching.roster.hrDriftHint')}
-												>
-													{m('coaching.roster.hrDrift', { pct: Math.round(r.easy_hr_drift_pct ?? 0) })}
+												<span class="flag-chip" data-testid="roster-hr-drift-flag">
+													<MetricLabel
+														metric="easyHrDrift"
+														variant="chip"
+														params={{ pct: Math.round(r.easy_hr_drift_pct ?? 0) }}
+													/>
 												</span>
 											{/if}
 										</td>
@@ -671,7 +675,7 @@
 	}
 	.flag-chip {
 		display: inline-block;
-		margin-left: var(--space-2xs);
+		margin-inline-start: var(--space-2xs);
 		padding: 0.1rem 0.5rem;
 		border-radius: var(--radius-sm);
 		font-size: 0.76rem;

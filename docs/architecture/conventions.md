@@ -1586,7 +1586,7 @@ The Spoken-cues block's shape — a plain line under the control saying what it 
 
 ## A page that mixes explicit-save and auto-save sections labels each one
 
-Most settings auto-save (decisions § 111); a section holding Art 9 data saves only on its own button. When one page carries both, a page-level "Saved" cue is not enough — the runner cannot tell which controls are already stored. On web and mobile alike (decisions § 2113):
+Most settings auto-save (decisions § 111); a section holding Art 9 data saves only on its own button. When one page carries both, a page-level "Saved" cue is not enough — the runner cannot tell which controls are already stored. On web and mobile alike (decisions § 2114):
 
 - **Each section states its save model in place**, next to its controls: the auto-save section shows its own Saving / Saved status, the explicit one says it saves only on its button.
 - **The explicit section shows an unsaved-changes state** the moment it is edited, and clears it on a successful save.

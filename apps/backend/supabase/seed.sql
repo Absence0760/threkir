@@ -3072,3 +3072,14 @@ insert into private.feature_flags (name, enabled) values ('safety_audience', tru
 -- Local stacks and CI open it so the coach view and its specs exercise it.
 insert into private.feature_flags (name, enabled) values ('coach_run_map', true)
   on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Heart-rate prescription gate (20270915000004) ───────────────────
+--
+-- bpm targets, the hr_medication_affected pref and the roster HR drift are
+-- fail-closed behind a private.feature_flags row no migration writes, so prod
+-- stays off until the CISO + counsel sign-off in docs/features/coach_roster.md.
+-- Local stacks and CI open it, and both clients read this same row
+-- (hr_prescription_enabled(), 20270917000004), so the HR surfaces and their
+-- specs exercise it.
+insert into private.feature_flags (name, enabled) values ('hr_prescription', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();

@@ -78,6 +78,10 @@ const sourceWorkout = {
 	race_name: null,
 	race_priority: null,
 	race_taper_applied_at: null,
+	target_rpe_min: 7,
+	target_rpe_max: 8,
+	target_hr_min_bpm: 160,
+	target_hr_max_bpm: 172,
 	completed_at: '2026-01-06T09:12:00Z',
 	completed_run_id: 'run-9',
 	manually_completed: true,
@@ -108,6 +112,17 @@ test('a published workout keeps every plan-design field the source carried', () 
 	assert.equal(row.scheduled_date, '2026-01-06');
 	assert.equal(row.target_distance_m, 12000);
 	assert.equal(row.target_duration_seconds, 3300);
+});
+
+test('a published workout keeps its RPE range and never its bpm range', () => {
+	// Reason: publishing dropped the effort targets, so a template lost the
+	// coach's "RPE 7-8"; and a bpm target is Art 9, which the database refuses
+	// on a template, so carrying it would fail the whole publish.
+	const [row] = planWorkoutCopyRows([sourceWorkout], new Map([['week-1', 'new-week-1']]));
+	assert.equal(row.target_rpe_min, 7);
+	assert.equal(row.target_rpe_max, 8);
+	assert.equal('target_hr_min_bpm' in row, false);
+	assert.equal('target_hr_max_bpm' in row, false);
 });
 
 test('a published race workout keeps its name and priority', () => {
@@ -232,6 +247,8 @@ test('every plan_workouts column is either copied on publish or excused', () => 
 		['skipped_at', 'completion state — a template starts fresh'],
 		['updated_at', 'server-maintained'],
 		['updated_by', 'server-maintained'],
+		['target_hr_min_bpm', "Art 9: one person's heart-rate prescription, refused on a template (decisions § 2092)"],
+		['target_hr_max_bpm', "Art 9: one person's heart-rate prescription, refused on a template (decisions § 2092)"],
 	]);
 	const [copied] = planWorkoutCopyRows(
 		[sourceWorkout],

@@ -14,7 +14,7 @@ import '../training.dart';
 import '../training_labels.dart';
 import '../training_service.dart';
 import '../backend_timeout.dart';
-import '../hr_prescription_flag.dart';
+import '../hr_prescription_gate.dart';
 import '../widgets/error_state.dart';
 import '../widgets/top_banner.dart';
 import '../workout_kind_color.dart';

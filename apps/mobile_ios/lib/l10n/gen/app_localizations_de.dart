@@ -12909,6 +12909,16 @@ class AppLocalizationsDe extends AppLocalizations {
       'Bei geplanten lockeren Läufen der letzten zwei Wochen ist die Herzfrequenz beim gleichen Tempo höher als in den sechs Wochen davor. Nur für Athleten mit Gesundheitsdaten-Einwilligung angezeigt.';
 
   @override
+  String get metricEasyHrDriftLabel => 'Puls-Drift bei lockeren Läufen';
+
+  @override
+  String get metricMissStreakLabel => 'Verpasst in Folge';
+
+  @override
+  String get metricMissStreakDefinition =>
+      'Geplante Einheiten in Folge, von gestern rückwärts gezählt, die ohne erfassten Lauf vergangen sind. Eine übersprungene Einheit oder ein Ruhetag zählt nicht und unterbricht die Folge nicht; eine erledigte Einheit beendet sie.';
+
+  @override
   String get coachingRosterRiskLow => 'Niedrig';
 
   @override

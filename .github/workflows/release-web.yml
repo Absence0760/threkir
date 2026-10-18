@@ -156,7 +156,6 @@ jobs:
           PUBLIC_ENABLE_NEARBY_RUNNERS: ${{ secrets.PUBLIC_ENABLE_NEARBY_RUNNERS }}
           PUBLIC_ADAPTIVE_FITNESS_GATE: ${{ secrets.PUBLIC_ADAPTIVE_FITNESS_GATE }}
           PUBLIC_WEIGHT_FLUID_ENABLED: ${{ secrets.PUBLIC_WEIGHT_FLUID_ENABLED }}
-          PUBLIC_HR_PRESCRIPTION_ENABLED: ${{ secrets.PUBLIC_HR_PRESCRIPTION_ENABLED }}
           # Optional — unset keeps the web client on the Supabase
           # Realtime live path; set to https://live.threkir.com once the
           # Fly live hub is deployed (apps/job_worker/deployment.md).
@@ -191,7 +190,6 @@ jobs:
           PUBLIC_ENABLE_NEARBY_RUNNERS=${PUBLIC_ENABLE_NEARBY_RUNNERS}
           PUBLIC_ADAPTIVE_FITNESS_GATE=${PUBLIC_ADAPTIVE_FITNESS_GATE}
           PUBLIC_WEIGHT_FLUID_ENABLED=${PUBLIC_WEIGHT_FLUID_ENABLED}
-          PUBLIC_HR_PRESCRIPTION_ENABLED=${PUBLIC_HR_PRESCRIPTION_ENABLED}
           PUBLIC_LIVE_HUB_URL=${PUBLIC_LIVE_HUB_URL}
           PUBLIC_VAPID_PUBLIC_KEY=${PUBLIC_VAPID_PUBLIC_KEY}
           PUBLIC_APP_RELEASE=${PUBLIC_APP_RELEASE}

@@ -16889,6 +16889,18 @@
   "@coachingRosterHrDriftHint": {
     "description": "Tooltip explaining the easy-run heart-rate drift roster flag"
   },
+  "metricEasyHrDriftLabel": "Easy HR drift",
+  "@metricEasyHrDriftLabel": {
+    "description": "Name of the coach roster's easy-run heart-rate drift flag, titling its definition"
+  },
+  "metricMissStreakLabel": "Missed in a row",
+  "@metricMissStreakLabel": {
+    "description": "Name of the coach roster's consecutive-missed-workouts flag, titling its definition"
+  },
+  "metricMissStreakDefinition": "Planned workouts in a row, counting back from yesterday, that passed with no run logged. A skipped workout or a rest day doesn't count and doesn't break the run; a done workout ends it.",
+  "@metricMissStreakDefinition": {
+    "description": "Definition of the coach roster's consecutive-missed-workouts flag"
+  },
   "coachingRosterRiskLow": "Low",
   "@coachingRosterRiskLow": {
     "description": "Injury-risk band: low"

@@ -164,6 +164,14 @@
 // 28 KB to 16 (/gym 27 to 17, /history 24 to 14), at most 7 parts per route.
 // MAX_CORE_CATALOGUE_KB is 11 (~10% over ja, 10). MAX_CODE_KB is 2243: 2057
 // plus the same 186 KB of cover, lowered for the reason given above.
+// MAX_CORE_CATALOGUE_KB is 13 since the #1186 round: ja's core measured 11213 ->
+// 11542 bytes gzipped (10.95 -> 11.27 KB, reported as 12), every other core
+// +310-330 bytes, from 26 keys that are genuinely core: the shared short
+// workout-kind and HR/effort target labels (rendered on /plans/[id], /coaching
+// and /dashboard, a cross-area set too small to be a group), the goal-event
+// labels /plans and /dashboard share, the root layout's workout-reminder bell
+// line, a rate-limit message and two race-photo strings /races and /share
+// share. ~10% over ja's 12, the per-catalogue convention (decisions § 2109).
 // Raised to 2259 for season planning (#1181), which measured 2238 -> 2254 KB
 // (+16, 475 -> 481 files) on the production build: the new /plans/season
 // route node (8.4), the season builder, season-request client and ultra
@@ -171,6 +179,20 @@
 // the time-zone writer. No dependency and no duplicate; it is route-split
 // feature code, so the ceiling moves by exactly what was measured and keeps
 // the 5 KB of cover main had (decisions § 2072).
+// Raised to 2288 for the #1186 testing round (PR #1188, 222 commits), which
+// measured 2254 -> 2283 KB (481 -> 489 files) on the production build against
+// origin/main 44ecc0f5e, same placeholder env as CI. Attributed by vite's client
+// manifest, gzip per entry: the new /races/[id] node (3.0) and race-import
+// dialog (2.4), the comeback ramp chunk (3.1), /plans/[id]/workouts/[wid] +1.8
+// (heart-rate and effort targets), /settings/integrations +1.5 (the plan
+// calendar feed), PlanEditor +1.5, /plans/[id] +1.2, plan_ramp +1.0, and the
+// English parts of 177 new keys (~3); training/calendar code re-chunked rather
+// than grew. No dependency changed and no module is duplicated. One import was
+// a real cost and was fixed rather than paid for: core/data.ts reaching
+// training.ts statically had pulled the whole plan generator into the data
+// chunk most routes load (49.9 -> 55.8 KB); it is imported lazily now (50.7).
+// The rest is route-split feature code, so the ceiling moves by what was
+// measured and keeps the same 5 KB of cover (decisions § 2109).
 // MAX_LARGEST_CHUNK_KB stays 350, unchanged: 245 KB * the 33% headroom that
 // number was always justified by is 326, so the existing figure still states
 // the rule. What changed is the population it measures, not the ceiling.
@@ -205,8 +227,8 @@ export const CLIENT_MANIFEST = join(
 );
 export const LOCALES_DIR = join(WEB_DIR, 'src', 'lib', 'i18n', 'locales');
 
-export const MAX_CODE_KB = 2259;
-export const MAX_CORE_CATALOGUE_KB = 11;
+export const MAX_CODE_KB = 2288;
+export const MAX_CORE_CATALOGUE_KB = 13;
 export const MAX_AREA_CATALOGUE_KB = 14;
 export const MAX_LARGEST_CHUNK_KB = 350;
 export const MAX_ASSET_KB = 100;

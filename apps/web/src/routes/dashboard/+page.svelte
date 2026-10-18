@@ -36,7 +36,7 @@
 	const coachOn = coachEnabled();
 	import { computeReadiness, type ReadinessContributorKind } from '#lib/training/readiness.ts';
 	import { computeTrainingLoadSeries, hasTrimpSignal, isTrimpLowConfidence } from '#lib/training/training_load.ts';
-	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_flag.ts';
+	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_gate.ts';
 	import { planRaceCountdown } from '#lib/training/plan_week.ts';
 	import { nextRace, planRaces } from '#lib/training/plan_races.ts';
 	import { formatISO } from '#lib/training/training.ts';
@@ -365,7 +365,10 @@
 	);
 
 	let trainingLoadHasHr = $derived(hasTrimpSignal(runs, trimpPrefs));
-	const hrPrescription = hrPrescriptionEnabled();
+	let hrPrescription = $state(false);
+	onMount(() => {
+		void hrPrescriptionEnabled().then((on) => (hrPrescription = on));
+	});
 	let hrMedicationAffected = $state(false);
 	let trainingLoadLowConfidence = $derived(
 		hrPrescription && isTrimpLowConfidence(trainingLoadHasHr, hrMedicationAffected)

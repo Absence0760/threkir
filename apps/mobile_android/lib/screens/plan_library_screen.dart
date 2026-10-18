@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show EmptyState, ListSkeleton;
+import 'package:ui_kit/ui_kit.dart' show EmptyState, ListSkeleton, ProgressBar;
 
 import '../auth_error.dart';
 import '../l10n/date_format.dart';
@@ -158,9 +158,9 @@ class _PlanLibraryScreenState extends State<PlanLibraryScreen> {
               ),
             ),
             SizedBox(
-              height: 2,
+              height: ProgressBar.height,
               child: _loading && _loaded
-                  ? const LinearProgressIndicator(minHeight: 2)
+                  ? const ProgressBar(value: null)
                   : null,
             ),
           ],

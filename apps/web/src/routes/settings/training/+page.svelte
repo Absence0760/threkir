@@ -2,7 +2,7 @@
 	import { effective } from '#lib/settings/settings.ts';
 	import { supabase } from '#lib/core/supabase.ts';
 	import { dbError } from '#lib/core/supabase_error.ts';
-	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_flag.ts';
+	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_gate.ts';
 	import { m, currentLocale } from '#lib/i18n/store.svelte.ts';
 	import {
 		MAX_HR_BPM_MIN,
@@ -70,9 +70,10 @@
 	// server re-checks on write. A runner on a beta blocker is told to set a
 	// measured max, and their HR-derived training load is labelled
 	// low-confidence.
-	const hrPrescription = hrPrescriptionEnabled();
+	let hrPrescription = $state(false);
 	let hrMedicationAffected = $state(false);
 	let healthConsentGranted = $state(false);
+	let consentCheckFailed = $state(false);
 
 	// Race-fueling intake rates — the per-hour carbs + fluid the roadbook fuel
 	// plan scales onto each leg. Defaults 60 g/hr + 500 ml/hr (fuel_plan.ts).
@@ -95,13 +96,24 @@
 			z5 = zones.z5?.toString() ?? '';
 		}
 		excludeGymFromReadiness = effective<boolean>(settings, 'exclude_gym_from_readiness', false) === true;
+		hrPrescription = await hrPrescriptionEnabled();
 		if (hrPrescription) {
 			hrMedicationAffected = effective<boolean>(settings, 'hr_medication_affected', false) === true;
-			const { data: prof, error: profErr } = await supabase
-				.rpc('get_my_profile', undefined, { get: true })
-				.maybeSingle();
-			if (profErr) throw dbError(profErr);
-			healthConsentGranted = prof?.health_data_consent_at != null;
+			// Its own failure domain: the consent read only decides whether the
+			// medication toggle may be turned on, so a failed read leaves that one
+			// control shut and says so, and every other field on the page loads.
+			try {
+				const { data: prof, error: profErr } = await supabase
+					.rpc('get_my_profile', undefined, { get: true })
+					.maybeSingle();
+				if (profErr) throw dbError(profErr);
+				healthConsentGranted = prof?.health_data_consent_at != null;
+				consentCheckFailed = false;
+			} catch (e) {
+				console.error('settings/training: health-data consent read failed', e);
+				healthConsentGranted = false;
+				consentCheckFailed = true;
+			}
 		}
 		carbsPerHour = (effective<number>(settings, 'carbs_per_hour', 60) ?? 60).toString();
 		fluidPerHour = (effective<number>(settings, 'fluid_per_hour', 500) ?? 500).toString();
@@ -224,11 +236,13 @@
 					<span>{m('prefs.hrMedicationAffected')}</span>
 				</label>
 				<p class="hint" id="hr-medication-hint">
-					{#if healthConsentGranted}
+					{#if consentCheckFailed}
+						<span data-testid="hr-medication-consent-failed">{m('prefs.hrMedicationConsentCheckFailed')}</span>
+					{:else if healthConsentGranted}
 						{m('prefs.hrMedicationAffectedHint')}
 					{:else}
 						{m('prefs.hrMedicationNeedsConsent')}
-						<a href="/settings/body">{m('prefs.hrMedicationConsentLink')}</a>
+						<a href="/settings/body">{m('prefs.hrMedicationGiveConsent')}</a>
 					{/if}
 				</p>
 				{#if hrMedicationAffected && maxHrParsed === null}

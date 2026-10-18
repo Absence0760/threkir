@@ -14,9 +14,11 @@ import {
   KIND_LABELS,
   parseFeedDocument,
   parseFeedToken,
+  planCalendarIpLimiter,
   secretMatches,
   sha256Hex,
   targetPaceText,
+  unnamedBucketKey,
   WORKOUT_KINDS,
   workoutText,
 } from './lib.ts';
@@ -227,4 +229,30 @@ Deno.test('an empty plan is a valid, empty calendar', () => {
   const ics = buildPlanFeedIcs({ ...DOC, workouts: [] }, NOW);
   assert(!ics.includes('BEGIN:VEVENT'));
   assert(ics.trimEnd().endsWith('END:VCALENDAR'));
+});
+
+Deno.test('the per-IP limiter checks a named caller by address and every unnamed caller in one shared bucket', async () => {
+  const checked: string[] = [];
+  const limiter = planCalendarIpLimiter(
+    (req) => req.headers.get('cf-connecting-ip'),
+    (req) => {
+      checked.push(`named:${req.headers.get('cf-connecting-ip')}`);
+      return Promise.resolve(null);
+    },
+    () => {
+      checked.push('unnamed');
+      return Promise.resolve(new Response('slow down', { status: 429 }));
+    },
+  );
+  const unnamed = await limiter(new Request('http://x/a.ics'));
+  assertEquals(unnamed?.status, 429);
+  assertEquals(await limiter(new Request('http://x/a.ics', { headers: { 'cf-connecting-ip': '203.0.113.7' } })), null);
+  assertEquals(checked, ['unnamed', 'named:203.0.113.7']);
+});
+
+Deno.test('every unnamed caller shares one stable UUIDv8-shaped bucket key', async () => {
+  const key = await unnamedBucketKey();
+  assertEquals(key, await unnamedBucketKey());
+  assertMatch(key, /^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+  assert(key !== (await feedBucketKey('plan-calendar-unnamed-v1')));
 });

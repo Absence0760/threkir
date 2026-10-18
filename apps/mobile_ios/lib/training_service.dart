@@ -55,7 +55,7 @@ PlanRunHistory planRunHistoryFromRows(
       distanceM: distanceM,
       activityType: activityType,
     ));
-    final started = DateTime.tryParse(startedAt);
+    final started = parseIsoStrictValue(startedAt);
     if (started == null ||
         nowMs - started.millisecondsSinceEpoch >
             kGoalCheckWindowDays * 86400000) {
@@ -937,8 +937,9 @@ class TrainingService extends ChangeNotifier {
     if (goalDistanceM <= 0) {
       throw Exception('Goal distance must be positive.');
     }
-    if (daysPerWeek < 3 || daysPerWeek > 7) {
-      throw Exception('Days per week must be between 3 and 7.');
+    final minDays = minDaysPerWeek(generated.weeks);
+    if (daysPerWeek < minDays || daysPerWeek > 7) {
+      throw Exception('Days per week must be between $minDays and 7.');
     }
     if (goalTimeSec != null && goalTimeSec <= 0) {
       throw Exception('Goal time must be positive.');

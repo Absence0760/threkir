@@ -14,6 +14,7 @@ import '../ble_heart_rate.dart';
 import '../ble_treadmill.dart';
 import '../club_invite_link.dart' show pendingClubInviteToken;
 import '../entity_link.dart';
+import '../hr_prescription_gate.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_food_store.dart';
 import '../local_gear_store.dart';
@@ -985,6 +986,8 @@ class _HomeScreenState extends State<HomeScreen>
   Timer? _trainingDebounce;
 
   Future<void> _refreshPlanOverview() async {
+    final api = widget.apiClient;
+    if (api != null) unawaited(refreshHrPrescriptionGate(api.hrPrescriptionEnabled));
     try {
       final p = await widget.training.fetchActiveOverview();
       if (mounted) _planOverview = p;

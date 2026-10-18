@@ -6158,8 +6158,12 @@ export async function createTrainingPlan(input: {
 	// readable message here beats a raw 22023 / 23xxx code.
 	if (!input.name.trim()) throw new Error('Name is required.');
 	if (!(input.goalDistanceM > 0)) throw new Error('Goal distance must be positive.');
-	if (input.daysPerWeek < 3 || input.daysPerWeek > 7) {
-		throw new Error('Days per week must be between 3 and 7.');
+	// Imported here, not at the top: a static import pulls the whole plan
+	// generator into this module's chunk, which nearly every route loads.
+	const { minDaysPerWeek } = await import('../training/training');
+	const minDays = minDaysPerWeek(input.generated.weeks);
+	if (input.daysPerWeek < minDays || input.daysPerWeek > 7) {
+		throw new Error(`Days per week must be between ${minDays} and 7.`);
 	}
 	if (input.goalTimeSec != null && input.goalTimeSec <= 0) {
 		throw new Error('Goal time must be positive.');

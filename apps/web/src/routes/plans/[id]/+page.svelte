@@ -26,6 +26,7 @@
 	import { recoveryWorkoutPatch } from '#lib/training/plan_bulk_ops.ts';
 	import { planShiftImpact } from '#lib/training/plan_shift.ts';
 	import { workoutMoveDays } from '#lib/training/plan_move.ts';
+	import { startLocalDayTicker } from '#lib/format/local_day_ticker.ts';
 	import { cyclePlanWorkoutPatch, type CyclePlanConfig } from '#lib/training/cycle_plan.ts';
 	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
 	import { replanRemaining, type ReplanChange, type ReplanWeek } from '#lib/training/plan_replan.ts';
@@ -1017,7 +1018,10 @@
 		return m;
 	});
 
-	let today = $derived(todayISO());
+	// Rolls over at local midnight (local_day_ticker.ts), so a tab left open
+	// overnight stops calling yesterday today.
+	let today = $state(todayISO());
+	onMount(() => startLocalDayTicker((iso) => (today = iso)));
 	/// What resuming would push back: the weeks the runner had not started,
 	/// by the whole weeks the plan sat paused (`resumeShift`).
 	let resumeOffer = $derived(

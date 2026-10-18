@@ -6,14 +6,16 @@ import 'package:flutter/services.dart';
 
 import '../auth_error.dart';
 import '../coach_load.dart';
-import '../hr_prescription_flag.dart';
+import '../hr_prescription_gate.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/date_format.dart';
 import '../l10n/locale_support.dart';
+import '../metrics.dart';
 import '../preferences.dart';
 import '../share_sheet.dart';
 import '../web_base_url.dart';
 import '../widgets/confirm_destructive.dart';
+import '../widgets/metric_label.dart';
 import '../widgets/top_banner.dart';
 import 'coaching_athlete_screen.dart';
 
@@ -308,16 +310,18 @@ class _CoachingScreenState extends State<CoachingScreen> {
                   runSpacing: 4,
                   children: [
                     if (misses >= consecutiveMissFlag)
-                      _flagChip(l10n.coachingRosterMissStreak(misses),
+                      _metricFlag(
+                          metricText(l10n, Metric.missStreak,
+                              variant: 'chip', args: {'n': '$misses'}),
+                          const MetricInfoButton(metric: Metric.missStreak),
                           key: Key('rosterMissFlag-${r.athleteId}')),
                     if (drift)
-                      Tooltip(
-                        message: l10n.coachingRosterHrDriftHint,
-                        child: _flagChip(
-                            l10n.coachingRosterHrDrift(
-                                r.easyHrDriftPct!.round()),
-                            key: Key('rosterHrDriftFlag-${r.athleteId}')),
-                      ),
+                      _metricFlag(
+                          metricText(l10n, Metric.easyHrDrift,
+                              variant: 'chip',
+                              args: {'pct': '${r.easyHrDriftPct!.round()}'}),
+                          const MetricInfoButton(metric: Metric.easyHrDrift),
+                          key: Key('rosterHrDriftFlag-${r.athleteId}')),
                   ],
                 ),
               ],
@@ -326,6 +330,12 @@ class _CoachingScreenState extends State<CoachingScreen> {
       onTap: () => _openAthleteById(r.athleteId, r.displayName),
     );
   }
+
+  Widget _metricFlag(String label, Widget disclosure, {required Key key}) =>
+      Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [_flagChip(label, key: key), disclosure],
+      );
 
   Widget _flagChip(String label, {Key? key}) {
     final theme = Theme.of(context);
@@ -476,7 +486,7 @@ class _CoachingScreenState extends State<CoachingScreen> {
           children: [
             IconButton(
               tooltip: l10n.coachingCopyLink,
-              icon: const Icon(Icons.copy_outlined),
+              icon: const Icon(Icons.copy),
               onPressed: () => _copyLink(inv.inviteToken),
             ),
             IconButton(

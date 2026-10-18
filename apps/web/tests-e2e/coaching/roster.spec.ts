@@ -144,7 +144,12 @@ test.describe('coach roster dashboard', () => {
 			const morgan = page.getByTestId('roster-row').filter({
 				has: page.locator(`a[href="/coaching/athletes/${USER_C_PRO.id}"]`)
 			});
-			await expect(morgan.getByTestId('roster-miss-flag')).toHaveText('2 missed in a row', { timeout: 10_000 });
+			const missFlag = morgan.getByTestId('roster-miss-flag');
+			await expect(missFlag.locator('.metric-label')).toContainText('2 missed in a row', { timeout: 10_000 });
+			await missFlag.getByRole('button', { name: 'About 2 missed in a row' }).click();
+			await expect(missFlag.getByTestId('metric-definition-missStreak')).toContainText(
+				'counting back from yesterday'
+			);
 			const alex = page.getByTestId('roster-row').filter({
 				has: page.locator(`a[href="/coaching/athletes/${USER_B.id}"]`)
 			});
@@ -153,16 +158,18 @@ test.describe('coach roster dashboard', () => {
 	});
 
 	test.describe('easy-HR drift', () => {
-		// The chip off the real coach_roster_summary: planned easy runs over the
-		// last 14 days against the 42 before (migration 20270912000002). Every
-		// run covers 8 km in 40 min (200 m/min); the earlier three average
-		// 140 bpm and the recent two 150, so the efficiency factor falls by
-		// 1 - 140/150 = 6.67 % and the chip reads +7 %. The second athlete has
-		// the same runs and no health-data consent, so the SQL computes nothing
-		// for them (decisions § 2092). Saga users, so no seed row is touched and
-		// the spec re-runs on a used database. The chip is behind
-		// PUBLIC_HR_PRESCRIPTION_ENABLED, on in .env.development; its off state is
-		// pinned by src/lib/training/hr_prescription_flag.test.ts.
+		// The chip off the real coach_roster_summary: mean heart rate on planned
+		// easy runs at the athlete's median easy pace, the last 14 days against
+		// the 42 before (migrations 20270915000003 + 20270917000001). Every run
+		// covers 8 km in 40 min (5:00/km), so all sit on the median and both
+		// windows share a mean pace. The earlier three average 140 bpm and the
+		// recent three 150 (three recent runs is the floor), so heart rate at the
+		// same pace is 150/140 - 1 = 7.14 % higher and the chip reads +7 %. The
+		// second athlete has the same runs and no health-data consent, so the SQL
+		// computes nothing for them (decisions § 2092). Saga users, so no seed row is touched and
+		// the spec re-runs on a used database. The chip is behind the
+		// server's hr_prescription gate, which seed.sql opens; its off state is
+		// pinned by src/lib/training/hr_prescription_gate.test.ts and pgTAP.
 		test.describe.configure({ timeout: 90_000 });
 
 		let coach: SagaUser;
@@ -195,6 +202,7 @@ test.describe('coach roster dashboard', () => {
 				[34, 140],
 				[27, 140],
 				[20, 140],
+				[11, 150],
 				[8, 150],
 				[3, 150]
 			] as const) {
@@ -263,9 +271,10 @@ test.describe('coach roster dashboard', () => {
 				await page.goto('/coaching');
 				const row = (a: SagaUser) =>
 					page.getByTestId('roster-row').filter({ has: page.locator(`a[href="/coaching/athletes/${a.id}"]`) });
-				await expect(row(consenting).getByTestId('roster-hr-drift-flag')).toHaveText('Easy HR +7%', {
-					timeout: 10_000
-				});
+				const driftFlag = row(consenting).getByTestId('roster-hr-drift-flag');
+				await expect(driftFlag.locator('.metric-label')).toContainText('Easy HR +7%', { timeout: 10_000 });
+				await driftFlag.getByRole('button', { name: 'About Easy HR +7%' }).click();
+				await expect(driftFlag.getByTestId('metric-definition-easyHrDrift')).toContainText('for the same pace');
 				await expect(row(withheld)).toBeVisible();
 				await expect(row(withheld).getByTestId('roster-hr-drift-flag')).toHaveCount(0);
 			} finally {

@@ -12896,6 +12896,16 @@ class AppLocalizationsEs extends AppLocalizations {
       'En los rodajes suaves planificados de las dos últimas semanas, la frecuencia cardíaca es más alta al mismo ritmo que en las seis semanas anteriores. Solo se muestra para atletas que dieron su consentimiento de datos de salud.';
 
   @override
+  String get metricEasyHrDriftLabel => 'Deriva de FC en rodajes suaves';
+
+  @override
+  String get metricMissStreakLabel => 'Perdidos seguidos';
+
+  @override
+  String get metricMissStreakDefinition =>
+      'Entrenamientos planificados seguidos, contando hacia atrás desde ayer, que pasaron sin una carrera registrada. Un entrenamiento omitido o un día de descanso no cuenta ni corta la racha; uno completado la termina.';
+
+  @override
   String get coachingRosterRiskLow => 'Bajo';
 
   @override

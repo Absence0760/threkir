@@ -48,12 +48,6 @@ class PlanDayCell extends StatelessWidget {
         MediaQuery.sizeOf(context).width < kPlanCellShortLabelBelow;
     final radius = BorderRadius.circular(AppRadius.sm);
 
-    final outline = isToday
-        ? theme.colorScheme.primary
-        : (look?.dashed ?? false)
-            ? Colors.transparent
-            : (look?.outline ?? theme.dividerColor);
-
     Widget cell = Container(
       margin: const EdgeInsets.all(2),
       padding: const EdgeInsets.all(4),
@@ -62,7 +56,14 @@ class PlanDayCell extends StatelessWidget {
         color: wo == null
             ? Colors.transparent
             : (look?.fill ?? theme.colorScheme.surfaceContainerHigh),
-        border: Border.all(color: outline, width: isToday ? 1.5 : 1),
+        border: Border.all(
+          color: isToday
+              ? theme.colorScheme.primary
+              : (look?.dashed ?? false)
+                  ? Colors.transparent
+                  : (look?.outline ?? theme.dividerColor),
+          width: isToday ? 1.5 : 1,
+        ),
         borderRadius: radius,
       ),
       foregroundDecoration: wo != null

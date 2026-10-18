@@ -43,7 +43,7 @@ import { acceptCookieConsent } from '../fixtures/helpers';
  *      jog + cooldown 1.5 km) and a long run today.
  *   2. Open the interval workout's detail page and verify the runner's
  *      "what am I about to run" half: the structure breakdown renders
- *      (warmup + repeats + cooldown rows, total ~11 km).
+ *      (warmup + repeats + cooldown rows, total 9.6 km).
  *   3. Log the run for real via simulate.insertRun (the mobile recorder's
  *      job — done service-side per the simulate.ts contract).
  *   4. Link that run to the interval workout through the Re-link picker
@@ -67,10 +67,9 @@ const DAY_MS = 24 * 3600 * 1000;
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 // 5×1000 m interval: warmup 1.5 km + 5×1000 m + 4×400 m jog recovery +
-// cooldown 1.5 km. intervalTotal on the detail page = warmup + repeats
-// (count × (rep + recovery)) + cooldown = 1500 + 5×(1000+400) + 1500 =
-// 1500 + 7000 + 1500 = 10000 m. The detail page renders the recovery
-// inside the repeats descriptor, so the rendered total is 10 km.
+// cooldown 1.5 km. The detail page's total counts one recovery between each
+// pair of reps, none after the last: 1500 + 5×1000 + 4×400 + 1500 =
+// 1500 + 5000 + 1600 + 1500 = 9600 m, rendered as 9.6 km.
 const INTERVAL_STRUCTURE = {
 	warmup: { distance_m: 1500 },
 	repeats: {

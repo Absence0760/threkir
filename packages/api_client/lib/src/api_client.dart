@@ -2635,6 +2635,21 @@ class ApiClient {
         .eq(RouteRow.colId, routeId);
   }
 
+  /// Whether the heart-rate prescription surfaces are live: the server's
+  /// `hr_prescription` gate, the same row the database enforces on every
+  /// write (decisions § 2108). Mirror of web `hrPrescriptionEnabled`. Fail
+  /// closed: any read failure is "off".
+  Future<bool> hrPrescriptionEnabled() async {
+    try {
+      final result = await _client
+          .rpc('hr_prescription_enabled', params: const {}, get: true);
+      return result == true;
+    } catch (e) {
+      debugPrint('hr_prescription_enabled failed: $e');
+      return false;
+    }
+  }
+
   // ────────────────── Audience sharing ──────────────────
   //
   // Mirror of `apps/web/src/lib/core/data.ts` `audienceSharingEnabled` /

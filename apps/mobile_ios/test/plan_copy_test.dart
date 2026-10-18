@@ -68,6 +68,10 @@ final _sourceWorkout = PlanWorkoutRow(
   raceName: null,
   racePriority: null,
   raceTaperAppliedAt: DateTime.utc(2026, 1, 2, 8),
+  targetRpeMin: 7,
+  targetRpeMax: 8,
+  targetHrMinBpm: 160,
+  targetHrMaxBpm: 172,
 );
 
 List<String> _missing(
@@ -95,6 +99,8 @@ void main() {
       'race_name': null,
       'race_priority': null,
       'race_taper_applied_at': '2026-01-02T08:00:00.000Z',
+      'target_rpe_min': 7,
+      'target_rpe_max': 8,
     });
   });
 
@@ -143,6 +149,14 @@ void main() {
     ]);
   });
 
+  test('a published workout keeps its RPE range and never its bpm range', () {
+    final [row] =
+        planWorkoutCopyRows([_sourceWorkout], {'week-1': 'new-week-1'});
+    expect([row['target_rpe_min'], row['target_rpe_max']], [7, 8]);
+    expect(row.containsKey('target_hr_min_bpm'), isFalse);
+    expect(row.containsKey('target_hr_max_bpm'), isFalse);
+  });
+
   // Census: the requirement is every key the generated row class serialises,
   // which only changes when a migration does.
   test('every plan_workouts column is either copied on publish or excused', () {
@@ -155,6 +169,8 @@ void main() {
       'skipped_at', // completion state
       'updated_at', // server-maintained
       'updated_by', // server-maintained
+      'target_hr_min_bpm', // Art 9, refused on a template (decisions § 2092)
+      'target_hr_max_bpm', // Art 9, refused on a template (decisions § 2092)
     };
     final [copied] =
         planWorkoutCopyRows([_sourceWorkout], {'week-1': 'new-week-1'});

@@ -150,6 +150,7 @@
 	<input
 		bind:this={fileInput}
 		type="file"
+		data-testid="club-photos-file-input"
 		accept="image/jpeg,image/png,image/webp"
 		hidden
 		onchange={onFileChange}

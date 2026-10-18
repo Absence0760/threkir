@@ -1903,9 +1903,10 @@ export async function updateRunMetadata(
 	fields: RunEditFields,
 	isDnf?: boolean,
 ): Promise<RunEditOutcome<Run>> {
-	const outcome = await saveRunEdit<Run>(
+	return saveRunEdit<Run>(
 		{
 			swap: async (patch, base) => {
+				markListsStale('runs', 'history', 'routes');
 				const filtered = supabase.from(TABLES.runs).update(patch).eq('id', loaded.id);
 				const { data, error } = await (base === null
 					? filtered.is('updated_at', null)
@@ -1928,8 +1929,6 @@ export async function updateRunMetadata(
 		fields,
 		isDnf,
 	);
-	if (outcome.kind === 'saved') markListsStale('runs', 'history', 'routes');
-	return outcome;
 }
 
 // --- Route reviews ---

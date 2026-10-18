@@ -87,7 +87,10 @@ async function cleanup(ids: string[]): Promise<void> {
  *  (empty-state). */
 async function thisWeekDistanceKm(page: import('@playwright/test').Page): Promise<number> {
 	await page.goto('/dashboard');
-	const card = page.getByRole('button', { name: /This Week/i }).first();
+	// Anchored and case-sensitive: the missed-workout prompt's "Repeat this
+	// week" button is also a button whose name contains "this week", and it
+	// renders above the stat grid on any day the seeded plan has a miss.
+	const card = page.getByRole('button', { name: /^This Week\b/ }).first();
 	await expect(card).toBeVisible({ timeout: 10_000 });
 	const text = (await card.innerText()).trim();
 	const m = text.match(/([0-9]+(?:\.[0-9]+)?)\s*(km|mi)/i);

@@ -113,19 +113,27 @@ export function racePlanPreset(input: {
 	raceDateIso: string;
 	distanceM?: number | null;
 	todayIso: string;
+	/// Earliest day the plan may start, for a plan chained after one the
+	/// runner already has (`racePlanChain` in race_plan_prefill.ts). Only ever
+	/// moves the start later than today.
+	notBeforeIso?: string | null;
 }): RacePlanPresetResult {
 	const raceDay = epochDay(input.raceDateIso);
 	const today = epochDay(input.todayIso);
 	if (raceDay === null || today === null) return { ok: false, reason: 'invalid' };
+	const notBefore = input.notBeforeIso == null ? today : epochDay(input.notBeforeIso);
+	if (notBefore === null) return { ok: false, reason: 'invalid' };
 	if (raceDay <= today) return { ok: false, reason: 'past' };
 
 	const goalEvent = goalEventForDistance(input.distanceM);
 
 	// The race week is the calendar week (Sunday-based) race day falls in.
 	const raceWeekStart = raceDay - dayOfWeek(raceDay);
-	// Earliest legal start: the Sunday on or after today. Starting today is
-	// fine — the wizard only rejects a start date strictly in the past.
-	const firstStart = today + ((7 - dayOfWeek(today)) % 7);
+	// Earliest legal start: the Sunday on or after today (or the chained
+	// floor). Starting today is fine — the wizard only rejects a start date
+	// strictly in the past.
+	const floor = Math.max(today, notBefore);
+	const firstStart = floor + ((7 - dayOfWeek(floor)) % 7);
 
 	const available = (raceWeekStart - firstStart) / 7 + 1;
 	if (available < RACE_PLAN_MIN_WEEKS) return { ok: false, reason: 'too_soon' };

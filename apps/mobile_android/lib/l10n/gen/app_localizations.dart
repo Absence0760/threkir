@@ -9856,6 +9856,12 @@ abstract class AppLocalizations {
   /// **'Sized for your race: a {weeks}-week plan whose final week is race week. Adjust anything below before creating it.'**
   String planNewRaceAnchored(int weeks);
 
+  /// Plan wizard: note when the race plan starts after the runner's current plan. date is the start date.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts {date}, after your current plan and its recovery days.'**
+  String planNewRaceChained(String date);
+
   /// Note shown when the race the wizard was opened from has already been run
   ///
   /// In en, this message translates to:
@@ -22687,6 +22693,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Train for this race'**
   String get racesTrainForThis;
+
+  /// Race detail: primary action opening the plan builder prefilled for this race.
+  ///
+  /// In en, this message translates to:
+  /// **'Build a plan for this race'**
+  String get racesBuildPlan;
+
+  /// Race detail: secondary action opening the AI plan assistant prefilled with this race. Shown only while the AI plan assistant is live.
+  ///
+  /// In en, this message translates to:
+  /// **'Tailor it with AI'**
+  String get racesTailorWithAi;
+
+  /// Race detail: action that builds a plan for this race starting after the runner's current plan ends.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to my season'**
+  String get racesAddToSeason;
+
+  /// Race detail: explains when a chained plan starts. plan is the earlier plan's name, date its end date, days the recovery days (always 3 or more).
+  ///
+  /// In en, this message translates to:
+  /// **'Starts after {plan} ends on {date}, with {days} days to recover.'**
+  String racesAddToSeasonHint(String plan, String date, String days);
 
   /// Races screen: accessibility label for the Upcoming / Recent results choice
   ///

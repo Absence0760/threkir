@@ -3,6 +3,7 @@
 	import { formatDate } from '#lib/format/time.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { racePlanPreset } from '#lib/training/race_plan_preset.ts';
+	import { racePlanHref } from '#lib/training/race_plan_prefill.ts';
 	import { todayISO } from '#lib/training/training.ts';
 	import type { RaceListingResult } from '#lib/core/data.ts';
 
@@ -33,13 +34,9 @@
 			todayIso: todayISO()
 		});
 		if (!preset.ok) return null;
-		const q = new URLSearchParams({
-			type: 'training',
-			raceDate: race.race_date,
-			raceName: race.name
+		return racePlanHref({
+			race: { name: race.name, raceDateIso: race.race_date, distanceM: race.distance_m }
 		});
-		if (race.distance_m != null) q.set('raceDistance', String(race.distance_m));
-		return `/plans/new?${q}`;
 	});
 </script>
 

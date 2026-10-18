@@ -217,6 +217,24 @@ void main() {
     expect(preset.startDate, '2026-08-23');
   });
 
+  test('a chained floor starts the plan on the Sunday on or after it, and can refuse',
+      () {
+    RacePlanPresetResult at(String? notBefore) => racePlanPreset(
+        raceDateIso: '2026-12-06',
+        distanceM: 42195,
+        todayIso: '2026-08-14',
+        notBeforeIso: notBefore);
+    final chained = _ok(at('2026-09-02'));
+    expect(chained.startDate, '2026-09-06');
+    expect(chained.weeks, 14);
+    _assertAnchoring(chained, '2026-12-06');
+    // A floor already behind today changes nothing.
+    expect(at('2026-08-01').preset!.startDate, at(null).preset!.startDate);
+    expect(at('2026-08-01').preset!.weeks, at(null).preset!.weeks);
+    expect(at('2026-11-20').reason, RacePlanRefusal.tooSoon);
+    expect(at('nope').reason, RacePlanRefusal.invalid);
+  });
+
   test('the anchoring invariant holds for every weekday and a year of race dates',
       () {
     final start = _utcDay('2026-08-15');

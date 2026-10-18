@@ -1186,7 +1186,10 @@ void main() {
 
   group('PlanNewScreen — the race the wizard was opened from', () {
     Future<void> pumpRace(WidgetTester tester,
-        {required String raceDateIso, String? name, num? distanceM}) {
+        {required String raceDateIso,
+        String? name,
+        num? distanceM,
+        String? notBeforeIso}) {
       // The form sits in a lazy ListView; a tall surface builds every field
       // the preset writes to so their state can be read.
       tester.view.physicalSize = const Size(1200, 6000);
@@ -1203,6 +1206,7 @@ void main() {
             raceDateIso: raceDateIso,
             raceName: name,
             raceDistanceM: distanceM,
+            notBeforeIso: notBeforeIso,
           ),
         ),
       );
@@ -1234,6 +1238,31 @@ void main() {
       expect(_goalValue(tester), 'distance_half');
       expect(fieldTexts(tester), contains('Autumn Half'));
       expect(fieldTexts(tester), contains('${expected.weeks}'));
+    });
+
+    testWidgets('a chained floor starts the plan after it and says so',
+        (tester) async {
+      final raceIso = isoDaysOut(220);
+      final floorIso = isoDaysOut(120);
+      final expected = racePlanPreset(
+        raceDateIso: raceIso,
+        distanceM: 21097.5,
+        todayIso: toIsoDate(DateTime.now()),
+        notBeforeIso: floorIso,
+      ).preset!;
+      await pumpRace(tester,
+          raceDateIso: raceIso,
+          name: 'Autumn Half',
+          distanceM: 21097.5,
+          notBeforeIso: floorIso);
+      await tester.pump();
+
+      expect(expected.startDate.compareTo(floorIso) >= 0, isTrue);
+      expect(find.text(_shownDate(expected.startDate)), findsOneWidget);
+      expect(
+          find.textContaining(
+              'Starts ${expected.startDate}, after your current plan'),
+          findsOneWidget);
     });
 
     testWidgets('a race already run falls back to the defaults and says why',

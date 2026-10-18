@@ -3,11 +3,26 @@
 	import { formatDate, formatDuration } from '#lib/format/time.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { racePlanPreset } from '#lib/training/race_plan_preset.ts';
+	import {
+		racePlanChain,
+		racePlanDescribe,
+		racePlanGoalTimeS,
+		racePlanHref,
+		type RacePlanEffort,
+		type RacePlanOwnPlan,
+		type RacePlanRace,
+	} from '#lib/training/race_plan_prefill.ts';
+	import { qualifyingRuns } from '#lib/training/fitness.ts';
+	import { predictRaceLadder } from '#lib/training/race_predictor.ts';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
+	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
 	import { todayISO } from '#lib/training/training.ts';
 	import {
 		fetchRaceListing,
 		fetchMyRunsAtRace,
 		fetchRaceListingPhotos,
+		fetchMyPlans,
+		fetchRuns,
 		type RaceListingDetail,
 		type RaceListingRun,
 		type RaceListingPhoto
@@ -28,6 +43,14 @@
 	let runsFailed = $state(false);
 	let photos = $state<RaceListingPhoto[]>([]);
 	let importing = $state<RaceListingDetail | null>(null);
+	let ownPlans = $state<RacePlanOwnPlan[]>([]);
+	let recentEffort = $state<RacePlanEffort | null>(null);
+
+	// The AI action sends the description to the plan assistant, so it exists
+	// only while that assistant is live (fail-closed: both flags unset → off).
+	const showAiPlan = coachEnabled() && aiPlanEnabled();
+	/// The window the recent effort is read from: `currentVdot`'s 90 days.
+	const EFFORT_WINDOW_DAYS = 90;
 
 	async function load() {
 		const id = data.id;
@@ -53,6 +76,7 @@
 			void fetchRaceListingPhotos(id).then((p) => {
 				if (race?.id === id) photos = p;
 			});
+			void loadPlanContext(id);
 		}
 	}
 
@@ -67,11 +91,50 @@
 		}
 	}
 
+	// Auxiliary to the race-to-plan actions: a failed read leaves the plain
+	// "Build a plan" link, never an error on the race page.
+	async function loadPlanContext(id: string) {
+		try {
+			const plans = await fetchMyPlans();
+			if (race?.id !== id) return;
+			ownPlans = plans.map((p) => ({
+				id: p.id,
+				name: p.name,
+				status: p.status,
+				endDateIso: p.end_date,
+				goalDistanceM: p.goal_distance_m,
+				goalTimeSeconds: p.goal_time_seconds,
+			}));
+		} catch (e) {
+			console.error('race page plan read failed', e);
+		}
+		if (!showAiPlan) return;
+		try {
+			const now = Date.now();
+			const rows = await fetchRuns({
+				columns: ['started_at', 'distance_m', 'duration_s', 'activity_type', 'metadata', 'source'] as const,
+				startedAtFrom: new Date(now - EFFORT_WINDOW_DAYS * 86_400_000).toISOString(),
+			});
+			const prediction = predictRaceLadder(
+				qualifyingRuns(rows).map((r) => ({
+					distanceM: r.distance_m,
+					durationS: r.duration_s,
+					ageDays: Math.max(0, (now - Date.parse(r.started_at)) / 86_400_000),
+				})),
+			);
+			if (race?.id === id) recentEffort = prediction?.anchor ?? null;
+		} catch (e) {
+			console.error('race page recent-effort read failed', e);
+		}
+	}
+
 	$effect(() => {
 		void data.id;
 		race = null;
 		runs = [];
 		photos = [];
+		ownPlans = [];
+		recentEffort = null;
 		void load();
 	});
 
@@ -79,21 +142,36 @@
 	// the import opens instead of offering one that can only come back empty.
 	let canImport = $derived(race != null && race.race_date <= todayISO());
 
+	let planRace = $derived<RacePlanRace | null>(
+		race ? { name: race.name, raceDateIso: race.race_date, distanceM: race.distance_m } : null,
+	);
+
 	let planHref = $derived.by(() => {
-		if (!race) return null;
+		if (!planRace) return null;
 		const preset = racePlanPreset({
-			raceDateIso: race.race_date,
-			distanceM: race.distance_m,
+			raceDateIso: planRace.raceDateIso,
+			distanceM: planRace.distanceM,
 			todayIso: todayISO()
 		});
-		if (!preset.ok) return null;
-		const q = new URLSearchParams({
-			type: 'training',
-			raceDate: race.race_date,
-			raceName: race.name
+		return preset.ok ? racePlanHref({ race: planRace }) : null;
+	});
+
+	// A plan ending before this race: the new plan queues behind it rather
+	// than replacing or trimming it (decisions § 2008, § 2154).
+	let chain = $derived(planRace && planHref ? racePlanChain(ownPlans, planRace, todayISO()) : null);
+	let chainHref = $derived(
+		planRace && chain ? racePlanHref({ race: planRace, notBeforeIso: chain.notBeforeIso }) : null,
+	);
+
+	let aiHref = $derived.by(() => {
+		if (!showAiPlan || !planRace || !planHref) return null;
+		const describe = racePlanDescribe({
+			race: planRace,
+			goalTimeS: racePlanGoalTimeS(ownPlans, planRace.raceDateIso),
+			recentEffort,
+			course: null,
 		});
-		if (race.distance_m != null) q.set('raceDistance', String(race.distance_m));
-		return `/plans/new?${q}`;
+		return racePlanHref({ race: planRace, notBeforeIso: chain?.notBeforeIso ?? null, describe });
 	});
 
 	let entryHref = $derived(race?.entry_url ? safeHref(race.entry_url) : null);
@@ -151,9 +229,23 @@
 		</header>
 
 		<div class="actions">
+			{#if chainHref}
+				<a class="btn btn-primary" href={chainHref} data-testid="race-detail-add-to-season">
+					{m('races.addToSeason')}
+				</a>
+			{/if}
 			{#if planHref}
-				<a class="btn btn-outline" href={planHref} data-testid="race-detail-train">
-					{m('races.trainForThis')}
+				<a
+					class="btn {chainHref ? 'btn-outline' : 'btn-primary'}"
+					href={planHref}
+					data-testid="race-detail-train"
+				>
+					{m('races.buildPlan')}
+				</a>
+			{/if}
+			{#if aiHref}
+				<a class="btn btn-outline" href={aiHref} data-testid="race-detail-tailor-ai">
+					{m('races.tailorWithAi')}
 				</a>
 			{/if}
 			{#if entryHref && entryHref !== '#'}
@@ -192,6 +284,15 @@
 				</button>
 			{/if}
 		</div>
+		{#if chain}
+			<p class="hint" data-testid="race-detail-season-hint">
+				{m('races.addToSeasonHint', {
+					plan: chain.planName,
+					date: formatDate(chain.planEndIso),
+					days: String(chain.recoveryDays),
+				})}
+			</p>
+		{/if}
 		{#if !canImport}
 			<p class="hint" data-testid="race-detail-import-later">
 				{m('races.detailImportAfterRace', { date: formatDate(race.race_date) })}

@@ -6032,6 +6032,11 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String planNewRaceChained(String date) {
+    return 'Commence le $date, après votre plan actuel et ses jours de récupération.';
+  }
+
+  @override
   String get planNewRacePast =>
       'Cette course a déjà eu lieu, les dates ci-dessous sont donc celles par défaut.';
 
@@ -13887,6 +13892,20 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get racesTrainForThis => 'S\'entraîner pour cette course';
+
+  @override
+  String get racesBuildPlan => 'Créer un plan pour cette course';
+
+  @override
+  String get racesTailorWithAi => 'L\'adapter avec l\'IA';
+
+  @override
+  String get racesAddToSeason => 'Ajouter à ma saison';
+
+  @override
+  String racesAddToSeasonHint(String plan, String date, String days) {
+    return 'Commence après la fin de $plan le $date, avec $days jours de récupération.';
+  }
 
   @override
   String get racesWhenGroup => 'Période';

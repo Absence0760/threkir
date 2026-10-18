@@ -23,9 +23,10 @@
 		file: File | null;
 		onconfirm: (cropped: File) => void;
 		oncancel: () => void;
+		title?: string;
 	}
 
-	let { file, onconfirm, oncancel }: Props = $props();
+	let { file, onconfirm, oncancel, title }: Props = $props();
 
 	// Crop geometry runs in a fixed coordinate square; the stage scales it to
 	// whatever size CSS gives it, and pointer deltas are mapped back through
@@ -167,7 +168,7 @@
 
 <Modal
 	open={file !== null}
-	title={m('avatarCrop.title')}
+	title={title ?? m('avatarCrop.title')}
 	narrow
 	onclose={() => {
 		if (!encoding) oncancel();

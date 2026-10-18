@@ -3630,6 +3630,56 @@ export async function deleteClub(id: string): Promise<void> {
 	}
 }
 
+// Club logos share the public `avatars` bucket (and its 2 MB / JPEG-PNG-WebP
+// limits) under `clubs/{club_id}/logo.{ext}`; the Storage policies admit only
+// that exact filename, written by the club's owners and admins (migration
+// 20270918000007).
+const clubLogoPathsFor = (clubId: string): string[] =>
+	Object.values(AVATAR_MIME_TO_EXT).map((e) => `clubs/${clubId}/logo.${e}`);
+
+/// Upload a club logo and point `clubs.avatar_url` at it. Same shape as
+/// `uploadAvatar`: EXIF stripped client-side (the bucket is public with no
+/// strip worker), remove-then-insert at a stable path, `?v=` cache-bust.
+export async function uploadClubLogo(clubId: string, file: File): Promise<string> {
+	if (file.size > AVATAR_MAX_BYTES) throw new Error('Image too large (2 MB max)');
+	const clean = await stripExifFromFile(file);
+	if (!clean) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	const ext = AVATAR_MIME_TO_EXT[clean.type];
+	if (!ext) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	const storagePath = `clubs/${clubId}/logo.${ext}`;
+
+	await supabase.storage.from(BUCKETS.avatars).remove(clubLogoPathsFor(clubId));
+
+	const { error: upErr } = await supabase.storage
+		.from(BUCKETS.avatars)
+		.upload(storagePath, clean, { contentType: clean.type, upsert: false });
+	if (upErr) throw dbError(upErr);
+
+	const { data: pub } = supabase.storage.from(BUCKETS.avatars).getPublicUrl(storagePath);
+	const url = `${pub.publicUrl}?v=${Date.now()}`;
+
+	const { error: clubErr } = await supabase
+		.from('clubs')
+		.update({ avatar_url: url })
+		.eq('id', clubId);
+	if (clubErr) {
+		await supabase.storage.from(BUCKETS.avatars).remove([storagePath]);
+		throw dbError(clubErr);
+	}
+	return url;
+}
+
+/// Remove a club's logo: drops every stored logo object and clears
+/// `clubs.avatar_url` so renderers fall back to the initial.
+export async function removeClubLogo(clubId: string): Promise<void> {
+	const { error: rmErr } = await supabase.storage
+		.from(BUCKETS.avatars)
+		.remove(clubLogoPathsFor(clubId));
+	if (rmErr) throw dbError(rmErr);
+	const { error } = await supabase.from('clubs').update({ avatar_url: null }).eq('id', clubId);
+	if (error) throw dbError(error);
+}
+
 export async function joinClub(
 	clubId: string,
 	policy: JoinPolicy = 'open',

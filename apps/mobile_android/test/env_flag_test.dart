@@ -269,6 +269,7 @@ void main() {
       'WEIGH_IN_GATE': 'lib/weigh_in_flag.dart',
       'WEIGHT_FLUID_ENABLED': 'lib/weight_fluid_flag.dart',
       'HR_PRESCRIPTION_ENABLED': 'lib/hr_prescription_flag.dart',
+      'CYCLE_PLANS_ENABLED': 'lib/cycle_plan_flag.dart',
     };
 
     for (final owner in owners.entries) {
@@ -396,6 +397,7 @@ void main() {
       'WEIGH_IN_GATE',
       'WEIGHT_FLUID_ENABLED',
       'HR_PRESCRIPTION_ENABLED',
+      'CYCLE_PLANS_ENABLED',
       'TILE_URL_TEMPLATE',
       'USDA_FDC_API_KEY',
     ]) {

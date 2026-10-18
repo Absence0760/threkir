@@ -256,7 +256,7 @@ A season is several races: "Richmond Marathon on 14 Nov, Two Oceans on 3 Apr as 
 
 Pinned by 21 mirror tests per twin (`season_plan.test.ts` ↔ `test/season_plan_test.dart`), `season_create.test.ts` (4), `tests-e2e/plans/season-planner.spec.ts` (manual entry → two chained active plans with the B race in the second; the extraction-unavailable fallback) and `test/season_plan_screen_test.dart` (10).
 
-## Loading a plan, and reading it offline (decisions § 2113)
+## Loading a plan, and reading it offline (decisions § 2114)
 
 `fetchPlan` (web `data.ts` ↔ mobile `training_service.dart`) reads a plan, its weeks and its workouts as one `training_plans` select with a `plan_weeks(*, plan_workouts(*))` embed, and orders weeks by `week_index` and workouts by `scheduled_date` on the client, because an embed is ordered per parent. Mobile's split is the pure `planDetailFromRow`.
 

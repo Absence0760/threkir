@@ -5085,5 +5085,17 @@
   "planDetailRestartBeforeTodayError": "Esa fecha de inicio es anterior a hoy en la zona horaria de tu cuenta. Elige una fecha posterior.",
   "planDetailRestartConfirm": "Reiniciar el plan",
   "planDetailRestartDone": "Plan reiniciado. Esta es tu nueva copia.",
-  "dashboardPlanPausedBody": "En pausa. Reanúdalo para retomarlo; las semanas que te perdiste se retrasan."
+  "dashboardPlanPausedBody": "En pausa. Reanúdalo para retomarlo; las semanas que te perdiste se retrasan.",
+  "missedPromptTitle": "Te saltaste: {kind} el {day}",
+  "missedPromptMakeUpBody": "Recupérala alargando tu próxima tirada larga de {from} a {to}. Verás el cambio antes de que se guarde.",
+  "missedPromptCoveredBody": "Tu próxima tirada larga ya lo cubre, así que no hay nada que añadir.",
+  "missedPromptTaperBody": "Estás en la puesta a punto, así que déjala pasar: llegar fresco el día de la carrera importa más que otra tirada larga.",
+  "missedPromptRecoveryBody": "Lo siguiente es una semana de recuperación, así que déjala pasar y deja que esa semana lo absorba.",
+  "missedPromptLetGoBody": "Solo vale la pena recuperar una tirada larga. Deja pasar esta en lugar de meterla en los próximos días.",
+  "missedPromptMakeUp": "Recuperarla",
+  "missedPromptLetGo": "Dejarla pasar",
+  "missedPromptRecommended": "Recomendado",
+  "missedPromptLetGoDone": "Hecho. Tu plan sigue igual.",
+  "missedPromptSaveFailed": "No se pudo guardar tu respuesta: {error}",
+  "missedPromptNothingToMakeUp": "Ya no queda nada que recuperar."
 }

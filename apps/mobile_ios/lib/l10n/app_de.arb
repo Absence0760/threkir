@@ -5085,5 +5085,17 @@
   "planDetailRestartBeforeTodayError": "Dieses Startdatum liegt vor dem heutigen Tag in der Zeitzone deines Kontos. Wähle ein späteres Datum.",
   "planDetailRestartConfirm": "Plan neu starten",
   "planDetailRestartDone": "Plan neu gestartet. Das ist deine neue Kopie.",
-  "dashboardPlanPausedBody": "Pausiert. Setze ihn fort, um weiterzumachen; die verpassten Wochen rücken nach hinten."
+  "dashboardPlanPausedBody": "Pausiert. Setze ihn fort, um weiterzumachen; die verpassten Wochen rücken nach hinten.",
+  "missedPromptTitle": "Verpasst: {kind} am {day}",
+  "missedPromptMakeUpBody": "Hol ihn nach, indem dein nächster langer Lauf von {from} auf {to} verlängert wird. Du siehst die Änderung, bevor sie gespeichert wird.",
+  "missedPromptCoveredBody": "Dein nächster langer Lauf deckt das bereits ab, es gibt nichts hinzuzufügen.",
+  "missedPromptTaperBody": "Du bist im Tapering, also lass ihn aus: Frische am Wettkampftag zählt mehr als ein weiterer langer Lauf.",
+  "missedPromptRecoveryBody": "Als Nächstes kommt eine Erholungswoche, also lass ihn aus und lass diese Woche ihn auffangen.",
+  "missedPromptLetGoBody": "Nur ein langer Lauf lohnt sich nachzuholen. Lass diese Einheit aus, statt sie in die nächsten Tage zu quetschen.",
+  "missedPromptMakeUp": "Nachholen",
+  "missedPromptLetGo": "Auslassen",
+  "missedPromptRecommended": "Empfohlen",
+  "missedPromptLetGoDone": "Ausgelassen. Dein Plan läuft unverändert weiter.",
+  "missedPromptSaveFailed": "Deine Antwort konnte nicht gespeichert werden: {error}",
+  "missedPromptNothingToMakeUp": "Es gibt nichts mehr nachzuholen."
 }

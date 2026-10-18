@@ -51,6 +51,8 @@ import 'profile_screen.dart';
 import '../backend_timeout.dart';
 import '../disclosure_state.dart';
 import '../widgets/finish_plan_card.dart';
+import '../widgets/missed_workout_prompt_card.dart';
+import '../plan_missed_prompt.dart';
 import '../widgets/error_state.dart';
 import '../widgets/current_week_strip.dart';
 import '../widgets/next_race_card.dart';
@@ -135,6 +137,11 @@ class PlanDetailScreen extends StatefulWidget {
   /// owns it: Home's paused-plan card lands here. Web twin: `?resume=1`.
   final bool openResume;
 
+  /// Open with the missed-workout make-up previewed, when the viewer owns the
+  /// plan and it has one: Home's "Make it up" lands here. Web twin:
+  /// `?makeup=1`.
+  final bool openMakeUp;
+
   /// Opens a user's profile. Production leaves it null and pushes
   /// [ProfileScreen]; a test passes its own to see where the coach entry goes.
   @visibleForTesting
@@ -150,6 +157,7 @@ class PlanDetailScreen extends StatefulWidget {
     this.now = DateTime.now,
     this.cyclePlanConfig = readCyclePlanConfig,
     this.openResume = false,
+    this.openMakeUp = false,
     this.openProfileOverride,
   });
 
@@ -166,6 +174,13 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
 
   /// [PlanDetailScreen.openResume] fires once, not on every reload.
   bool _resumeOffered = false;
+
+  /// [PlanDetailScreen.openMakeUp] fires once, not on every reload.
+  bool _makeUpOffered = false;
+
+  /// Set only while the re-plan preview is the missed-workout prompt's
+  /// make-up: the misses its apply answers (decisions § 2122).
+  List<String>? _makeUpAnswers;
   bool _coachesOwner = false;
   _PlanDetailLoadError? _error;
   bool _publishing = false;
@@ -334,6 +349,21 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _setPlanPaused(loaded, paused: false);
         });
+      }
+      if (widget.openMakeUp && !_makeUpOffered && loaded != null) {
+        _makeUpOffered = true;
+        if (_missedPromptShown(loaded)) {
+          final prompt = _missedPrompt();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            if (prompt == null) {
+              showTopBanner(context,
+                  AppLocalizations.of(context).missedPromptNothingToMakeUp);
+            } else {
+              _chooseMakeUp(loaded, prompt);
+            }
+          });
+        }
       }
     } catch (e, s) {
       debugPrint('PlanDetailScreen._load failed: $e\n$s');
@@ -608,6 +638,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     );
     setState(() {
       _replanPreview = null;
+      _makeUpAnswers = null;
       _adaptiveInfo = null;
       _taperPreview = changes.isEmpty ? null : changes;
     });
@@ -669,8 +700,45 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     };
   }
 
+  /// The missed-workout prompt is the owner's, and only while the plan is
+  /// running: never for a coach viewing an athlete, a template, or a paused,
+  /// finished or abandoned plan.
+  bool _missedPromptShown(TrainingPlanRow p) =>
+      _isOwner(p) &&
+      !p.isTemplate &&
+      p.status == 'active' &&
+      !FinishPlanCard.shows(
+          status: p.status, endDate: p.endDate, now: widget.now());
+
+  MissedPrompt? _missedPrompt() => MissedWorkoutPromptCard.promptFor(
+        weeks: _weeks,
+        workouts: _byWeek.values.expand((x) => x).toList(),
+        now: widget.now(),
+      );
+
+  /// The missed-workout prompt's "Make it up" (decisions § 2122): the
+  /// stretched next long run, previewed like a re-plan. Applying it records
+  /// the answer for every miss it honours, in the same transaction.
+  void _chooseMakeUp(TrainingPlanRow plan, MissedPrompt prompt) {
+    if (!_isOwner(plan) || _bulkBusy) return;
+    final makeUp = prompt.makeUp;
+    if (makeUp == null) {
+      showTopBanner(
+          context, AppLocalizations.of(context).missedPromptNothingToMakeUp);
+      return;
+    }
+    setState(() {
+      _taperPreview = null;
+      _adaptiveInfo = null;
+      _replanPreview = [makeUp];
+      _makeUpAnswers = prompt.makeUpAnswers;
+    });
+    _reveal(_replanPreviewKey);
+  }
+
   void _proposeReplan(TrainingPlanRow plan) {
     if (!_isOwner(plan) || _bulkBusy) return;
+    _makeUpAnswers = null;
     final l10n = AppLocalizations.of(context);
     final res = replanRemaining(
         weeks: _buildReplanInput(plan), today: toIsoDate(widget.now()));
@@ -704,6 +772,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   /// Adaptive (trend-based) re-plan: only proposes when the last few completed
   /// weeks show a sustained drift, suppressing single-week noise.
   void _proposeAdaptiveReplan(TrainingPlanRow plan) {
+    _makeUpAnswers = null;
     if (!_isOwner(plan) || _bulkBusy) return;
     final l10n = AppLocalizations.of(context);
     final res = adaptiveReplanRemaining(
@@ -1003,17 +1072,24 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     final changes = _replanPreview;
     if (changes == null || _bulkBusy) return;
     final l10n = AppLocalizations.of(context);
+    final answers = _makeUpAnswers;
     setState(() => _bulkBusy = true);
     try {
-      await widget.training
-          .applyReplan(
-            planId: plan.id,
-            distances: {for (final c in changes) c.workoutId: c.toMetres},
-          )
+      await (answers != null
+              ? widget.training.answerMissedWorkouts(
+                  planId: plan.id,
+                  workoutIds: answers,
+                  distances: {for (final c in changes) c.workoutId: c.toMetres},
+                )
+              : widget.training.applyReplan(
+                  planId: plan.id,
+                  distances: {for (final c in changes) c.workoutId: c.toMetres},
+                ))
           .timeout(kBackendLoadTimeout);
       if (!mounted) return;
       setState(() {
         _replanPreview = null;
+        _makeUpAnswers = null;
         _adaptiveInfo = null;
         _bulkBusy = false;
       });
@@ -1024,10 +1100,15 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       if (!mounted) return;
       setState(() {
         _replanPreview = null;
+        _makeUpAnswers = null;
         _adaptiveInfo = null;
         _bulkBusy = false;
       });
-      showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+      showTopBanner(
+          context,
+          answers != null
+              ? l10n.missedPromptSaveFailed(friendlyError(l10n, e))
+              : l10n.planDetailBulkFailed(friendlyError(l10n, e)));
       await _load();
     }
   }
@@ -1832,6 +1913,18 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
           ),
         ],
         const SizedBox(height: 12),
+        if (_missedPromptShown(p))
+          if (_missedPrompt() case final prompt?) ...[
+            MissedWorkoutPromptCard(
+              key: ValueKey('planDetailMissedPrompt-${prompt.workoutId}'),
+              training: widget.training,
+              planId: p.id,
+              prompt: prompt,
+              onMakeUp: () => _chooseMakeUp(p, prompt),
+              onAnswered: _load,
+            ),
+            const SizedBox(height: 12),
+          ],
         if (todayWorkout != null)
           TodaysWorkoutCard(
             workout: todayWorkout,
@@ -2457,6 +2550,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                         ? null
                         : () => setState(() {
                               _replanPreview = null;
+                              _makeUpAnswers = null;
                               _adaptiveInfo = null;
                             }),
                     child: Text(l10n.planDetailReplanCancel),

@@ -17203,4 +17203,48 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get planDetailRaceDateOverlap =>
       '新しいレース日が別の有効なプランと重なります。先にそのプランを移動するか終了してください。';
+
+  @override
+  String missedPromptTitle(String kind, String day) {
+    return '未実施: $dayの$kind';
+  }
+
+  @override
+  String missedPromptMakeUpBody(String from, String to) {
+    return '次のロング走を$fromから$toに延ばして埋め合わせます。保存する前に変更内容を確認できます。';
+  }
+
+  @override
+  String get missedPromptCoveredBody => '次のロング走ですでに補えているため、追加は不要です。';
+
+  @override
+  String get missedPromptTaperBody =>
+      'テーパリング中なので見送りましょう。レース当日に疲れを残さないことが、ロング走をもう1回走るより大切です。';
+
+  @override
+  String get missedPromptRecoveryBody => '次は回復週なので見送り、その週で吸収しましょう。';
+
+  @override
+  String get missedPromptLetGoBody =>
+      '埋め合わせる価値があるのはロング走だけです。この先の日程に詰め込まず、見送りましょう。';
+
+  @override
+  String get missedPromptMakeUp => '埋め合わせる';
+
+  @override
+  String get missedPromptLetGo => '見送る';
+
+  @override
+  String get missedPromptRecommended => 'おすすめ';
+
+  @override
+  String get missedPromptLetGoDone => '見送りました。プランはそのまま続きます。';
+
+  @override
+  String missedPromptSaveFailed(String error) {
+    return '回答を保存できませんでした: $error';
+  }
+
+  @override
+  String get missedPromptNothingToMakeUp => '埋め合わせるものはもうありません。';
 }

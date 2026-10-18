@@ -18057,6 +18057,53 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get planDetailRaceDateOverlap =>
       'A nova data da prova sobrepõe-se a outro plano ativo. Mude ou termine primeiro esse plano.';
+
+  @override
+  String missedPromptTitle(String kind, String day) {
+    return 'Falhado: $kind em $day';
+  }
+
+  @override
+  String missedPromptMakeUpBody(String from, String to) {
+    return 'Compense-o alargando o seu próximo longão de $from para $to. Verá a alteração antes de ser guardada.';
+  }
+
+  @override
+  String get missedPromptCoveredBody =>
+      'O seu próximo longão já o cobre, por isso não há nada a acrescentar.';
+
+  @override
+  String get missedPromptTaperBody =>
+      'Está no afinamento, por isso deixe passar: chegar fresco ao dia da prova conta mais do que mais um longão.';
+
+  @override
+  String get missedPromptRecoveryBody =>
+      'A seguir vem uma semana de recuperação, por isso deixe passar e deixe essa semana absorvê-lo.';
+
+  @override
+  String get missedPromptLetGoBody =>
+      'Só vale a pena compensar um longão. Deixe passar este treino em vez de o encaixar nos próximos dias.';
+
+  @override
+  String get missedPromptMakeUp => 'Compensar';
+
+  @override
+  String get missedPromptLetGo => 'Deixar passar';
+
+  @override
+  String get missedPromptRecommended => 'Recomendado';
+
+  @override
+  String get missedPromptLetGoDone =>
+      'Feito. O seu plano continua como estava.';
+
+  @override
+  String missedPromptSaveFailed(String error) {
+    return 'Não foi possível guardar a sua resposta: $error';
+  }
+
+  @override
+  String get missedPromptNothingToMakeUp => 'Já não há nada para compensar.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -36099,4 +36146,50 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get planDetailRaceDateOverlap =>
       'A nova data da prova se sobrepõe a outro plano ativo. Mova ou encerre esse plano primeiro.';
+
+  @override
+  String missedPromptTitle(String kind, String day) {
+    return 'Perdido: $kind em $day';
+  }
+
+  @override
+  String missedPromptMakeUpBody(String from, String to) {
+    return 'Compense alongando seu próximo longão de $from para $to. Você verá a mudança antes de ela ser salva.';
+  }
+
+  @override
+  String get missedPromptCoveredBody =>
+      'Seu próximo longão já cobre isso, então não há nada a acrescentar.';
+
+  @override
+  String get missedPromptTaperBody =>
+      'Você está no polimento, então deixe passar: chegar descansado no dia da prova importa mais do que mais um longão.';
+
+  @override
+  String get missedPromptRecoveryBody =>
+      'A próxima é uma semana de recuperação, então deixe passar e deixe essa semana absorver isso.';
+
+  @override
+  String get missedPromptLetGoBody =>
+      'Só vale a pena compensar um longão. Deixe este passar em vez de espremê-lo nos próximos dias.';
+
+  @override
+  String get missedPromptMakeUp => 'Compensar';
+
+  @override
+  String get missedPromptLetGo => 'Deixar passar';
+
+  @override
+  String get missedPromptRecommended => 'Recomendado';
+
+  @override
+  String get missedPromptLetGoDone => 'Pronto. Seu plano continua como estava.';
+
+  @override
+  String missedPromptSaveFailed(String error) {
+    return 'Não foi possível salvar sua resposta: $error';
+  }
+
+  @override
+  String get missedPromptNothingToMakeUp => 'Não há mais nada para compensar.';
 }

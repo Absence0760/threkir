@@ -29406,6 +29406,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The new race date runs into another active plan. Move or end that plan first.'**
   String get planDetailRaceDateOverlap;
+
+  /// Heading of the missed-workout prompt on the Today card: the workout kind and the weekday + date it was scheduled
+  ///
+  /// In en, this message translates to:
+  /// **'Missed: {kind} on {day}'**
+  String missedPromptTitle(String kind, String day);
+
+  /// Missed-workout prompt body when the engine offers a make-up: the next long run is stretched from one distance to another; the change is previewed before saving
+  ///
+  /// In en, this message translates to:
+  /// **'Make it up by stretching your next long run from {from} to {to}. You\'ll see the change before it\'s saved.'**
+  String missedPromptMakeUpBody(String from, String to);
+
+  /// Missed-workout prompt body: a missed long run that the next long run already covers, so no make-up is added
+  ///
+  /// In en, this message translates to:
+  /// **'Your next long run already covers it, so there\'s nothing to add.'**
+  String get missedPromptCoveredBody;
+
+  /// Missed-workout prompt body: a missed long run during the taper is let go
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re tapering, so let it go: being fresh on race day matters more than one more long run.'**
+  String get missedPromptTaperBody;
+
+  /// Missed-workout prompt body: a missed long run right before a recovery week is let go
+  ///
+  /// In en, this message translates to:
+  /// **'A recovery week is next, so let it go and let that week absorb it.'**
+  String get missedPromptRecoveryBody;
+
+  /// Missed-workout prompt body for a missed non-long session (easy, tempo, intervals): it is let go, never moved
+  ///
+  /// In en, this message translates to:
+  /// **'Only a long run is worth making up. Let this one go rather than crowding it into the days ahead.'**
+  String get missedPromptLetGoBody;
+
+  /// Missed-workout prompt button: preview the make-up (a longer next long run)
+  ///
+  /// In en, this message translates to:
+  /// **'Make it up'**
+  String get missedPromptMakeUp;
+
+  /// Missed-workout prompt button: drop the missed workout and record the answer
+  ///
+  /// In en, this message translates to:
+  /// **'Let it go'**
+  String get missedPromptLetGo;
+
+  /// Tag on the missed-workout prompt button the plan engine recommends
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get missedPromptRecommended;
+
+  /// Banner after the runner let a missed workout go
+  ///
+  /// In en, this message translates to:
+  /// **'Let go. Your plan carries on as it was.'**
+  String get missedPromptLetGoDone;
+
+  /// Error banner when the answer to the missed-workout prompt could not be saved; nothing changed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save your answer: {error}'**
+  String missedPromptSaveFailed(String error);
+
+  /// Banner when a make-up was requested but there is no missed long run left to make up
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s nothing left to make up.'**
+  String get missedPromptNothingToMakeUp;
 }
 
 class _AppLocalizationsDelegate

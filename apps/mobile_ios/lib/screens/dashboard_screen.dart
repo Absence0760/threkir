@@ -66,6 +66,7 @@ import '../widgets/this_week_strip.dart';
 import '../widgets/goal_editor_sheet.dart';
 import '../widgets/todays_workout_card.dart';
 import '../widgets/finish_plan_card.dart';
+import '../widgets/missed_workout_prompt_card.dart';
 import '../widgets/next_race_card.dart';
 import '../widgets/up_next_plan_card.dart';
 import '../widgets/training_load_chart.dart';
@@ -835,6 +836,40 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
+  /// Asks once about the plan's most recent missed workout (decisions
+  /// § 2122). Only for an active plan that has not run out of dates; the
+  /// overview is always the runner's own.
+  Widget? _missedPromptCard(DateTime now) {
+    final p = _planOverview;
+    final svc = widget.training;
+    if (p == null || svc == null) return null;
+    if (p.plan.status != 'active' || p.plan.isTemplate || _planFinished(now)) {
+      return null;
+    }
+    final prompt = MissedWorkoutPromptCard.promptFor(
+        weeks: p.weeks, workouts: p.workouts, now: now);
+    if (prompt == null) return null;
+    return MissedWorkoutPromptCard(
+      key: ValueKey('dashboardMissedPrompt-${prompt.workoutId}'),
+      training: svc,
+      planId: p.plan.id,
+      prompt: prompt,
+      onMakeUp: () async {
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => PlanDetailScreen(
+              training: svc,
+              planId: p.plan.id,
+              openMakeUp: true,
+            ),
+          ),
+        );
+        _refreshPlanOverview();
+      },
+      onAnswered: _refreshPlanOverview,
+    );
+  }
+
   void _openTodayWorkout() {
     final svc = widget.training;
     final p = _planOverview;
@@ -1162,12 +1197,21 @@ class _DashboardScreenState extends State<DashboardScreen>
     // Active-plan hero + the goals block: both outlive the welcome state,
     // because onboarding can mint a plan and a goal before the first run
     // exists and neither is a derived metric.
-    final heroWorkoutCard = _planOverview?.todayWorkout != null
+    final todayCard = _planOverview?.todayWorkout != null
         ? TodaysWorkoutCard(
             workout: _planOverview!.todayWorkout!,
             onTap: _openTodayWorkout,
           )
         : null;
+    final missedPrompt = _missedPromptCard(now);
+    final heroWorkoutCard = missedPrompt == null
+        ? todayCard
+        : todayCard == null
+            ? missedPrompt
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [missedPrompt, const SizedBox(height: 8), todayCard],
+              );
     final pendingBanner = PendingSyncBanner(
       api: api,
       isOnline: _isOnline,

@@ -5085,5 +5085,17 @@
   "planDetailRestartBeforeTodayError": "Cette date de début est antérieure à aujourd'hui dans le fuseau horaire de votre compte. Choisissez une date plus tardive.",
   "planDetailRestartConfirm": "Recommencer le plan",
   "planDetailRestartDone": "Plan recommencé. Voici votre nouvelle copie.",
-  "dashboardPlanPausedBody": "En pause. Reprenez-le pour continuer ; les semaines manquées sont décalées."
+  "dashboardPlanPausedBody": "En pause. Reprenez-le pour continuer ; les semaines manquées sont décalées.",
+  "missedPromptTitle": "Manqué : {kind} le {day}",
+  "missedPromptMakeUpBody": "Rattrapez-la en allongeant votre prochaine sortie longue de {from} à {to}. Vous verrez la modification avant qu'elle soit enregistrée.",
+  "missedPromptCoveredBody": "Votre prochaine sortie longue la couvre déjà, il n'y a rien à ajouter.",
+  "missedPromptTaperBody": "Vous êtes en affûtage, laissez tomber : être frais le jour de la course compte plus qu'une sortie longue de plus.",
+  "missedPromptRecoveryBody": "Une semaine de récupération arrive, laissez tomber et laissez-la absorber l'écart.",
+  "missedPromptLetGoBody": "Seule une sortie longue vaut d'être rattrapée. Laissez tomber celle-ci plutôt que de l'entasser dans les jours qui viennent.",
+  "missedPromptMakeUp": "Rattraper",
+  "missedPromptLetGo": "Laisser tomber",
+  "missedPromptRecommended": "Recommandé",
+  "missedPromptLetGoDone": "C'est noté. Votre plan continue tel quel.",
+  "missedPromptSaveFailed": "Impossible d'enregistrer votre réponse : {error}",
+  "missedPromptNothingToMakeUp": "Il n'y a plus rien à rattraper."
 }

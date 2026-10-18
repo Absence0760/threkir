@@ -18067,4 +18067,51 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get planDetailRaceDateOverlap =>
       'Das neue Wettkampfdatum reicht in einen anderen aktiven Plan hinein. Verschiebe oder beende jenen Plan zuerst.';
+
+  @override
+  String missedPromptTitle(String kind, String day) {
+    return 'Verpasst: $kind am $day';
+  }
+
+  @override
+  String missedPromptMakeUpBody(String from, String to) {
+    return 'Hol ihn nach, indem dein nächster langer Lauf von $from auf $to verlängert wird. Du siehst die Änderung, bevor sie gespeichert wird.';
+  }
+
+  @override
+  String get missedPromptCoveredBody =>
+      'Dein nächster langer Lauf deckt das bereits ab, es gibt nichts hinzuzufügen.';
+
+  @override
+  String get missedPromptTaperBody =>
+      'Du bist im Tapering, also lass ihn aus: Frische am Wettkampftag zählt mehr als ein weiterer langer Lauf.';
+
+  @override
+  String get missedPromptRecoveryBody =>
+      'Als Nächstes kommt eine Erholungswoche, also lass ihn aus und lass diese Woche ihn auffangen.';
+
+  @override
+  String get missedPromptLetGoBody =>
+      'Nur ein langer Lauf lohnt sich nachzuholen. Lass diese Einheit aus, statt sie in die nächsten Tage zu quetschen.';
+
+  @override
+  String get missedPromptMakeUp => 'Nachholen';
+
+  @override
+  String get missedPromptLetGo => 'Auslassen';
+
+  @override
+  String get missedPromptRecommended => 'Empfohlen';
+
+  @override
+  String get missedPromptLetGoDone =>
+      'Ausgelassen. Dein Plan läuft unverändert weiter.';
+
+  @override
+  String missedPromptSaveFailed(String error) {
+    return 'Deine Antwort konnte nicht gespeichert werden: $error';
+  }
+
+  @override
+  String get missedPromptNothingToMakeUp => 'Es gibt nichts mehr nachzuholen.';
 }

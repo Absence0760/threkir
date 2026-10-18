@@ -111,6 +111,7 @@ class _GateTraining extends TrainingService {
     required int daysPerWeek,
     String? notes,
     required GeneratedPlan generated,
+    String? raceListingId,
     PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
     createCalled = true;
@@ -149,6 +150,7 @@ class _HangingCreateTraining extends TrainingService {
     required int daysPerWeek,
     String? notes,
     required GeneratedPlan generated,
+    String? raceListingId,
     PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) {
     createCalls++;
@@ -193,6 +195,7 @@ class _LookupGateTraining extends TrainingService {
     required int daysPerWeek,
     String? notes,
     required GeneratedPlan generated,
+    String? raceListingId,
     PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
     createCalls++;
@@ -234,6 +237,8 @@ class _RecordingTraining extends TrainingService {
   GoalEvent? goalEvent;
   double? goalDistanceM;
   GeneratedPlan? generated;
+  bool createCalled = false;
+  String? raceListingId;
 
   @override
   Future<TrainingGender> fetchViewerGender() async => null;
@@ -258,11 +263,14 @@ class _RecordingTraining extends TrainingService {
     required int daysPerWeek,
     String? notes,
     required GeneratedPlan generated,
+    String? raceListingId,
     PlanOverlapAction onOverlap = PlanOverlapAction.refuse,
   }) async {
     this.goalEvent = goalEvent;
     this.goalDistanceM = goalDistanceM;
     this.generated = generated;
+    this.raceListingId = raceListingId;
+    createCalled = true;
     throw Exception('test: skip navigation');
   }
 }
@@ -1189,7 +1197,9 @@ void main() {
         {required String raceDateIso,
         String? name,
         num? distanceM,
-        String? notBeforeIso}) {
+        String? notBeforeIso,
+        String? raceListingId,
+        TrainingService? training}) {
       // The form sits in a lazy ListView; a tall surface builds every field
       // the preset writes to so their state can be read.
       tester.view.physicalSize = const Size(1200, 6000);
@@ -1201,11 +1211,12 @@ void main() {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: PlanNewScreen(
-            training: _RampTraining(null),
+            training: training ?? _RampTraining(null),
             social: _FakeSocial(const []),
             raceDateIso: raceDateIso,
             raceName: name,
             raceDistanceM: distanceM,
+            raceListingId: raceListingId,
             notBeforeIso: notBeforeIso,
           ),
         ),
@@ -1263,6 +1274,49 @@ void main() {
           find.textContaining(
               'Starts ${expected.startDate}, after your current plan'),
           findsOneWidget);
+    });
+
+    Future<void> createFromRace(WidgetTester tester) async {
+      final create = find.widgetWithText(FilledButton, 'Create plan');
+      await tester.scrollUntilVisible(create, 300,
+          scrollable: find.byType(Scrollable).first);
+      await tester.tap(create);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the plan created from a race carries its listing',
+        (tester) async {
+      final training = _RecordingTraining();
+      await pumpRace(tester,
+          raceDateIso: isoDaysOut(220),
+          name: 'Autumn Half',
+          distanceM: 21097.5,
+          raceListingId: '11111111-1111-4111-8111-111111111111',
+          training: training);
+      await tester.pump();
+      await createFromRace(tester);
+
+      expect(training.createCalled, isTrue);
+      expect(training.raceListingId, '11111111-1111-4111-8111-111111111111');
+    });
+
+    testWidgets('a race the wizard could not plan for links nothing',
+        (tester) async {
+      final training = _RecordingTraining();
+      await pumpRace(tester,
+          raceDateIso: isoDaysOut(-3),
+          name: 'Last Month 10K',
+          distanceM: 10000,
+          raceListingId: '11111111-1111-4111-8111-111111111111',
+          training: training);
+      await tester.pump();
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Plan name'), 'Spring 10K');
+      await tester.pump();
+      await createFromRace(tester);
+
+      expect(training.createCalled, isTrue);
+      expect(training.raceListingId, isNull);
     });
 
     testWidgets('a race already run falls back to the defaults and says why',

@@ -153,14 +153,16 @@
 			distanceM: planRace.distanceM,
 			todayIso: todayISO()
 		});
-		return preset.ok ? racePlanHref({ race: planRace }) : null;
+		return preset.ok ? racePlanHref({ race: planRace, listingId: race?.id }) : null;
 	});
 
 	// A plan ending before this race: the new plan queues behind it rather
 	// than replacing or trimming it (decisions § 2008, § 2154).
 	let chain = $derived(planRace && planHref ? racePlanChain(ownPlans, planRace, todayISO()) : null);
 	let chainHref = $derived(
-		planRace && chain ? racePlanHref({ race: planRace, notBeforeIso: chain.notBeforeIso }) : null,
+		planRace && chain
+			? racePlanHref({ race: planRace, listingId: race?.id, notBeforeIso: chain.notBeforeIso })
+			: null,
 	);
 
 	let aiHref = $derived.by(() => {
@@ -171,7 +173,12 @@
 			recentEffort,
 			course: null,
 		});
-		return racePlanHref({ race: planRace, notBeforeIso: chain?.notBeforeIso ?? null, describe });
+		return racePlanHref({
+			race: planRace,
+			listingId: race?.id,
+			notBeforeIso: chain?.notBeforeIso ?? null,
+			describe,
+		});
 	});
 
 	let entryHref = $derived(race?.entry_url ? safeHref(race.entry_url) : null);

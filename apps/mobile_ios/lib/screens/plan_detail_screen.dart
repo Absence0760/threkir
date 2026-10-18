@@ -37,6 +37,7 @@ import '../overrun_format.dart';
 import '../plan_move.dart';
 import '../plan_races.dart';
 import '../plan_week.dart';
+import '../race_service.dart';
 import '../race_taper.dart';
 import '../social_service.dart' show ClubView, RecentRunRow, SocialService;
 import '../metrics.dart';
@@ -50,6 +51,7 @@ import '../preferences.dart' show activePreferences;
 import 'package:api_client/api_client.dart' show ApiClient;
 import 'coaching_screen.dart';
 import 'profile_screen.dart';
+import 'race_detail_screen.dart';
 import '../backend_timeout.dart';
 import '../disclosure_state.dart';
 import '../widgets/finish_plan_card.dart';
@@ -158,6 +160,15 @@ class PlanDetailScreen extends StatefulWidget {
   @visibleForTesting
   final void Function(BuildContext context, String userId)? openProfileOverride;
 
+  /// Reads the calendar race a plan was built for. Null constructs one
+  /// against the global client, only when the plan has a race link.
+  final RaceService? raceService;
+
+  /// Opens a race's detail screen. Production leaves it null and pushes
+  /// [RaceDetailScreen]; a test passes its own to see which race it opens.
+  @visibleForTesting
+  final void Function(BuildContext context, String listingId)? openRaceOverride;
+
   const PlanDetailScreen({
     super.key,
     required this.training,
@@ -171,6 +182,8 @@ class PlanDetailScreen extends StatefulWidget {
     this.openMakeUp = false,
     this.openReview,
     this.openProfileOverride,
+    this.raceService,
+    this.openRaceOverride,
   });
 
   @override
@@ -219,6 +232,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   // Finished weeks fold into one summary row until the runner opens them.
   bool _showEarlierWeeks = false;
   String? _assigningCoachName;
+
+  /// The calendar race this plan was built for (decisions § 2156).
+  RaceListingView? _linkedRace;
+  RaceService? _raceService;
+  RaceService get _races => _raceService ??= widget.raceService ?? RaceService();
   // "Today" is derived on every build from widget.now(); these rebuild the
   // screen when the day turns over while it is open, or when it resumes.
   Timer? _midnight;
@@ -294,6 +312,39 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     }
   }
 
+  // Auxiliary: a failed read leaves the plan without its race line.
+  Future<void> _loadLinkedRace() async {
+    final listingId = _plan?.raceListingId;
+    if (listingId == null) {
+      if (_linkedRace != null) setState(() => _linkedRace = null);
+      return;
+    }
+    try {
+      final race =
+          await _races.fetchRaceListing(listingId).timeout(kBackendLoadTimeout);
+      if (mounted && _plan?.raceListingId == listingId) {
+        setState(() => _linkedRace = race);
+      }
+    } catch (e) {
+      debugPrint('PlanDetailScreen._loadLinkedRace failed: $e');
+    }
+  }
+
+  void _openLinkedRace(RaceListingView race) {
+    final override = widget.openRaceOverride;
+    if (override != null) {
+      override(context, race.id);
+      return;
+    }
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => RaceDetailScreen(
+        service: _races,
+        listingId: race.id,
+        training: widget.training,
+      ),
+    ));
+  }
+
   void _openCoachProfile(String coachId) {
     final override = widget.openProfileOverride;
     if (override != null) {
@@ -358,6 +409,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       _loadPublishedState();
       _loadCoachesOwner();
       _loadAssigningCoach();
+      unawaited(_loadLinkedRace());
       final loaded = _plan;
       if (widget.openResume &&
           !_resumeOffered &&
@@ -1987,6 +2039,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       children: [
         _heroCard(theme, l10n, p, pct, done, total,
             heroRace: _heroRace(p, races)),
+        if (_linkedRace != null) ...[
+          const SizedBox(height: 8),
+          _linkedRaceRow(theme, l10n, _linkedRace!),
+        ],
         if (_isOwner(p) &&
             !p.isTemplate &&
             FinishPlanCard.shows(
@@ -2802,6 +2858,23 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _linkedRaceRow(
+      ThemeData theme, AppLocalizations l10n, RaceListingView race) {
+    final tag = localeToTag(Localizations.localeOf(context));
+    final date = formatDateMed(parseIsoDate(race.raceDate), tag);
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        key: const Key('planDetailLinkedRace'),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+        leading: const Icon(Icons.flag_outlined),
+        title: Text(l10n.planDetailBuiltForRace(race.name, date)),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => _openLinkedRace(race),
       ),
     );
   }

@@ -17373,6 +17373,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planDetailAssignedByCoach => 'Assigned by your coach';
 
   @override
+  String planDetailBuiltForRace(String race, String date) {
+    return 'Built for $race · $date';
+  }
+
+  @override
   String planDetailWeekOfN(int week, int total) {
     return 'Week $week of $total';
   }

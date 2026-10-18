@@ -16,7 +16,8 @@ import { USER_B } from '../fixtures/users';
  * a Playwright run cannot unset a build-time public flag. When the runner
  * already has an active plan ending before the race, "Add to my season"
  * queues the new plan behind it plus its recovery days instead of
- * overlapping it.
+ * overlapping it. The plan the wizard creates links back to the listing
+ * (decisions § 2156), and the plan page names the race.
  *
  * The planted plan sits a year out so no other USER_B spec's plan window can
  * be the one the page chains after.
@@ -37,9 +38,11 @@ test.describe('/races/[id] — build a plan from a race', () => {
 	test.use({ storageState: USER_B.storageStatePath });
 
 	const listings: string[] = [];
+	const createdPlans: string[] = [];
 
 	test.afterEach(async () => {
 		await deletePlantedPlans();
+		for (const id of createdPlans.splice(0)) await deletePlan(id);
 		for (const id of listings.splice(0)) {
 			try {
 				await deleteRaceListing(id);
@@ -125,5 +128,34 @@ test.describe('/races/[id] — build a plan from a race', () => {
 		const start = await page.getByLabel('Start date').inputValue();
 		expect(start >= floor).toBe(true);
 		expect(new Date(`${start}T00:00:00Z`).getUTCDay()).toBe(0);
+	});
+
+	test('the plan built from a race links back to it, and the plan page names the race', async ({ page }) => {
+		const raceName = `E2E Race Link ${Date.now()}`;
+		const raceDate = browserDate(700);
+		const id = await insertRaceListing({ provider: 'runsignup', name: raceName, race_date: raceDate, distance_m: 21_097 });
+		listings.push(id);
+
+		await page.goto(`/races/${id}`);
+		await page.getByTestId('race-detail-train').click();
+		await expect(page).toHaveURL(/\/plans\/new\?/);
+		expect(new URL(page.url()).searchParams.get('raceListing')).toBe(id);
+
+		const submit = page.locator('form.plan-editor').getByRole('button', { name: 'Create plan' });
+		await expect(submit).toBeEnabled({ timeout: 10_000 });
+		await submit.click();
+		await page.waitForURL(/\/plans\/[0-9a-f-]+$/, { timeout: 15_000 });
+		const planId = page.url().match(/\/plans\/([0-9a-f-]+)$/)![1];
+		createdPlans.push(planId);
+
+		const rows = await readRows(
+			'race-linked plan',
+			getAdminClient().from('training_plans').select('race_listing_id').eq('id', planId)
+		);
+		expect(rows[0]?.race_listing_id).toBe(id);
+
+		const linked = page.getByTestId('plan-linked-race');
+		await expect(linked).toContainText(raceName);
+		await expect(linked).toHaveAttribute('href', `/races/${id}`);
 	});
 });

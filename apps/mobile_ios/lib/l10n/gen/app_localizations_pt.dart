@@ -17554,6 +17554,11 @@ class AppLocalizationsPt extends AppLocalizations {
   String get planDetailAssignedByCoach => 'Atribuído pelo seu treinador';
 
   @override
+  String planDetailBuiltForRace(String race, String date) {
+    return 'Criado para $race · $date';
+  }
+
+  @override
   String planDetailWeekOfN(int week, int total) {
     return 'Semana $week de $total';
   }
@@ -35911,6 +35916,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planDetailAssignedByCoach => 'Atribuído pelo seu treinador';
+
+  @override
+  String planDetailBuiltForRace(String race, String date) {
+    return 'Criado para $race · $date';
+  }
 
   @override
   String planDetailWeekOfN(int week, int total) {

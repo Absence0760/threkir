@@ -2,6 +2,7 @@
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
+	import { isEntityId } from '#lib/core/entity_id.ts';
 	import { todayISO } from '#lib/training/training.ts';
 	import { formatDate } from '#lib/format/time.ts';
 	import { alignPlanStartIso, defaultPlanStartIso } from '#lib/training/plan_start.ts';
@@ -95,6 +96,9 @@
 	// the runner's current plan and its recovery days, so the new plan queues
 	// behind it instead of overlapping it.
 	const notBeforeParam = page.url.searchParams.get('notBefore')?.trim() || null;
+	// `?raceListing=` names the calendar listing the race facts came from, so
+	// the created plan links back to that race (decisions § 2156).
+	const raceListingParam = page.url.searchParams.get('raceListing')?.trim() || null;
 	const racePreset = raceDateParam
 		? racePlanPreset({
 				raceDateIso: raceDateParam,
@@ -569,6 +573,7 @@
 		initialStartDate={racePreset?.ok ? racePreset.preset.startDate : undefined}
 		initialWeeks={racePreset?.ok ? racePreset.preset.weeks : undefined}
 		notBeforeIso={notBeforeParam}
+		raceListingId={racePreset?.ok && isEntityId(raceListingParam) ? raceListingParam : null}
 		initialDescription={describeParam}
 		{initialRecent5kSec}
 	/>

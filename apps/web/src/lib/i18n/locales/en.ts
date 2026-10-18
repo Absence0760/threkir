@@ -668,6 +668,7 @@ export const en = {
 	"planDetail.editPlanAria": "Edit plan name, goal time, and rules",
 	"planDetail.editPlan": "Edit plan",
 	"planDetail.clonedFromTemplate": "Cloned from a template",
+	"planDetail.builtForRace": "Built for {race} · {date}",
 	"planDetail.clubTemplate": "Club template",
 	"planDetail.weekPillPrefix": "Week {n}",
 	"planDetail.weekPillOf": "of {total}",

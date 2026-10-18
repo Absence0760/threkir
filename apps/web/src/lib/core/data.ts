@@ -6225,6 +6225,9 @@ export async function createTrainingPlan(input: {
 	daysPerWeek: number;
 	notes?: string;
 	generated: GeneratedPlan;
+	/// The race listing the plan is built for. The RPC writes null for an id
+	/// that names no listing rather than refusing the plan.
+	raceListingId?: string | null;
 	overlap?: PlanOverlapChoice;
 }): Promise<TrainingPlan> {
 	// Read the id from the session directly rather than from the auth store.
@@ -6281,7 +6284,8 @@ export async function createTrainingPlan(input: {
 			days_per_week: input.daysPerWeek,
 			vdot: input.generated.vdot ?? null,
 			current_5k_seconds: input.recent5kSec ?? null,
-			notes: input.notes?.trim() || null
+			notes: input.notes?.trim() || null,
+			race_listing_id: input.raceListingId ?? null
 		},
 		p_weeks: input.generated.weeks.map((w) => ({
 			week_index: w.week_index,

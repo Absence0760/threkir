@@ -4967,6 +4967,7 @@
   "planDetailFirstWeek": "Première semaine",
   "planDetailAssignedBy": "Attribué par {name}",
   "planDetailAssignedByCoach": "Attribué par votre coach",
+  "planDetailBuiltForRace": "Conçu pour {race} · {date}",
   "planDetailWeekOfN": "Semaine {week} sur {total}",
   "planDetailPausedChip": "En pause",
   "planDetailWeekDoneCount": "{done} / {total} faites",

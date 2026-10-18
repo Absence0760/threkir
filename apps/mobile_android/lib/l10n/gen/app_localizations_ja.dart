@@ -16739,6 +16739,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planDetailAssignedByCoach => 'コーチが割り当て';
 
   @override
+  String planDetailBuiltForRace(String race, String date) {
+    return '$race（$date）向け';
+  }
+
+  @override
   String planDetailWeekOfN(int week, int total) {
     return '第$week週／全$total週';
   }

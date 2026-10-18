@@ -28693,6 +28693,12 @@ abstract class AppLocalizations {
   /// **'Assigned by your coach'**
   String get planDetailAssignedByCoach;
 
+  /// Plan detail: the calendar race the plan was built for, linking to that race. race is the race's name, date its race day.
+  ///
+  /// In en, this message translates to:
+  /// **'Built for {race} · {date}'**
+  String planDetailBuiltForRace(String race, String date);
+
   /// Plan-detail header: which week of the plan today is in
   ///
   /// In en, this message translates to:

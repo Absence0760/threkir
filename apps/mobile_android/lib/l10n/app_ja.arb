@@ -4967,6 +4967,7 @@
   "planDetailFirstWeek": "最初の週",
   "planDetailAssignedBy": "{name}さんが割り当て",
   "planDetailAssignedByCoach": "コーチが割り当て",
+  "planDetailBuiltForRace": "{race}（{date}）向け",
   "planDetailWeekOfN": "第{week}週／全{total}週",
   "planDetailPausedChip": "一時停止中",
   "planDetailWeekDoneCount": "{done} / {total} 完了",

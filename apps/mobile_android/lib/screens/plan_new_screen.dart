@@ -100,6 +100,10 @@ class PlanNewScreen extends StatefulWidget {
   final String? raceName;
   final num? raceDistanceM;
 
+  /// The calendar listing those facts came from, so the created plan links
+  /// back to the race (decisions § 2156).
+  final String? raceListingId;
+
   /// The chained start floor a race's "Add to my season" hands over, so the
   /// plan queues after the runner's current one; an AI fill keeps to it too.
   final String? notBeforeIso;
@@ -134,6 +138,7 @@ class PlanNewScreen extends StatefulWidget {
     this.raceDateIso,
     this.raceName,
     this.raceDistanceM,
+    this.raceListingId,
     this.notBeforeIso,
     this.initialDescription,
     this.initialRecent5kSec,
@@ -897,6 +902,8 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
             startDate: _startDate,
             daysPerWeek: _daysPerWeek,
             generated: preview,
+            raceListingId:
+                _racePreset?.ok == true ? widget.raceListingId : null,
             onOverlap: action,
           )
           .timeout(kBackendLoadTimeout);

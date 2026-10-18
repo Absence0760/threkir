@@ -183,6 +183,7 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
           raceDateIso: race.raceDate,
           raceName: race.name,
           raceDistanceM: race.distanceM,
+          raceListingId: race.id,
           notBeforeIso: notBeforeIso,
           initialDescription: describe,
           loadAiPlanAvailable: widget.loadAiPlanAvailable,

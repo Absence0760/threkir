@@ -655,6 +655,7 @@ export const messages = {
 	"planDetail.editPlanAria": "Modifier le nom du plan, le temps cible et les règles",
 	"planDetail.editPlan": "Modifier le plan",
 	"planDetail.clonedFromTemplate": "Cloné depuis un modèle",
+	"planDetail.builtForRace": "Conçu pour {race} · {date}",
 	"planDetail.clubTemplate": "Modèle de club",
 	"planDetail.weekPillPrefix": "Semaine {n}",
 	"planDetail.weekPillOf": "sur {total}",

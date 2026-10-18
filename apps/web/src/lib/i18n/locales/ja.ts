@@ -650,6 +650,7 @@ export const messages = {
 	"planDetail.editPlanAria": "プラン名、目標タイム、ルールを編集",
 	"planDetail.editPlan": "プランを編集",
 	"planDetail.clonedFromTemplate": "テンプレートから複製",
+	"planDetail.builtForRace": "{race}（{date}）向け",
 	"planDetail.clubTemplate": "クラブのテンプレート",
 	"planDetail.weekPillPrefix": "第{n}週",
 	"planDetail.weekPillOf": "/ {total}",

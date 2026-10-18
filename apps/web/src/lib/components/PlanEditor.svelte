@@ -203,6 +203,8 @@
 		/// The chained start floor a race page's "Add to my season" hands over;
 		/// an AI fill that re-derives the dates from a race keeps to it too.
 		notBeforeIso?: string | null;
+		/// The race listing the plan is built for; the created plan links to it.
+		raceListingId?: string | null;
 		// A plain-English plan description handed over by a deep link (the
 		// coach's plan handoff). With the assistant live it prefills the box
 		// and runs one fill on mount; with it off it is ignored.
@@ -222,6 +224,7 @@
 		initialStartDate,
 		initialWeeks,
 		notBeforeIso,
+		raceListingId,
 		initialDescription,
 		initialRecent5kSec,
 	}: Props = $props();
@@ -877,6 +880,7 @@
 						startDate,
 						daysPerWeek,
 						generated: plan!,
+						raceListingId,
 						overlap,
 					}),
 				() => fetchMyOverlappingActivePlans(startDate, endDate)

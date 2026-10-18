@@ -17,6 +17,10 @@ export const RECENT_5K_WINDOW_DAYS = 56;
 export const RECENT_5K_MIN_S = 12 * 60;
 export const RECENT_5K_MAX_S = 60 * 60 - 1;
 
+/// The universal-prefs key holding when the runner last dismissed the
+/// suggestion (an ISO-8601 instant). Registered in docs/backend/settings.md.
+export const PLAN_SUGGESTION_DISMISSED_KEY = 'plan_suggestion_dismissed_at';
+
 const DAY_MS = 86_400_000;
 
 export interface Recent5kCandidate {

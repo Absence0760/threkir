@@ -5,6 +5,7 @@
 	import { todayISO } from '#lib/training/training.ts';
 	import { alignPlanStartIso, defaultPlanStartIso } from '#lib/training/plan_start.ts';
 	import { racePlanPreset } from '#lib/training/race_plan_preset.ts';
+	import { isPlausibleRecent5k } from '#lib/training/recent_5k_suggestion.ts';
 	import { goto, afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import PlanEditor from '#lib/components/PlanEditor.svelte';
@@ -113,6 +114,16 @@
 				: racePreset.reason === 'too_soon'
 					? 'plansNew.raceTooSoon'
 					: 'plansNew.raceUnreadable';
+
+	// `?recent5k=<seconds>` (Home's "build a plan from your recent 5K") fills
+	// the wizard's recent-5K field. It stays unconfirmed: PlanEditor only lets
+	// it set paces once the runner ticks that it reflects their fitness today.
+	const recent5kParam = page.url.searchParams.get('recent5k')?.trim();
+	const initialRecent5kSec = (() => {
+		if (!recent5kParam || !/^[0-9]+$/.test(recent5kParam)) return undefined;
+		const n = Number(recent5kParam);
+		return isPlausibleRecent5k(n) ? n : undefined;
+	})();
 
 	let kind = $state<PlanKind>(initialKind());
 
@@ -547,6 +558,7 @@
 		initialStartDate={racePreset?.ok ? racePreset.preset.startDate : undefined}
 		initialWeeks={racePreset?.ok ? racePreset.preset.weeks : undefined}
 		initialDescription={describeParam}
+		{initialRecent5kSec}
 	/>
 	{:else if kind === 'session'}
 		<div class="form-branch">

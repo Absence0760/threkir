@@ -69,6 +69,11 @@ test('fetchRunsForDashboard is bounded + column-narrowed, not the unbounded sele
 			`DASHBOARD_RUN_COLUMNS must carry ${c} — every card on /dashboard derives from it.`,
 		);
 	}
+	assert.match(
+		dashTuple[1],
+		/'fastest_5k_s'/,
+		'DASHBOARD_RUN_COLUMNS must carry fastest_5k_s — the no-plan recent-5K plan suggestion reads it.',
+	);
 	// The dashboard page must call the bounded reader, not the unbounded one.
 	const page = read('src/routes/dashboard/+page.svelte');
 	assert.match(

@@ -22520,6 +22520,42 @@ abstract class AppLocalizations {
   /// **'Search races by name…'**
   String get racesSearchPlaceholder;
 
+  /// Label of the button that opens the race calendar's filter sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Filters'**
+  String get racesFilters;
+
+  /// Screen-reader label of the Filters button when filters are on. {count} is how many.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Filters, 1 on} other{Filters, {count} on}}'**
+  String racesFiltersCount(int count);
+
+  /// Tooltip and screen-reader label of the remove action on an active race-calendar filter chip. {filter} is the chip's own label.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove filter: {filter}'**
+  String racesRemoveFilter(String filter);
+
+  /// Active-filter chip for the near-a-place filter. {place} is what the runner typed.
+  ///
+  /// In en, this message translates to:
+  /// **'Near {place}'**
+  String racesNearChip(String place);
+
+  /// Button that closes the race calendar's filter sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get racesFiltersDone;
+
+  /// Heading over the distance-band chips in the race calendar filter sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get racesDistanceGroup;
+
   /// Placeholder for the near-a-place geocode field
   ///
   /// In en, this message translates to:

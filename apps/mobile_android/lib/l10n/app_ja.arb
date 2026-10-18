@@ -5082,6 +5082,7 @@
   "planDetailRestartRaceMoves": "レース日は{date}に移ります。",
   "planDetailRestartRaceAhead": "このプランのレース（{date}）はまだ先です。やり直すとレース日がずれるため、代わりにレース日を変更するか、新しいプランを始めてください。",
   "planDetailRestartRaceAheadError": "このプランにはまだ先のレースがあるため、やり直せません。",
+  "planDetailRestartBeforeTodayError": "その開始日は、アカウントのタイムゾーンでは今日より前です。もっと後の日付を選んでください。",
   "planDetailRestartConfirm": "プランをやり直す",
   "planDetailRestartDone": "プランをやり直しました。これが新しいコピーです。",
   "dashboardPlanPausedBody": "一時停止中です。再開すると続きから始まり、休んだ週は後ろにずれます。"

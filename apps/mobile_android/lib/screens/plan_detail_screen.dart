@@ -1059,10 +1059,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   }
 
   /// Restarts the plan as a fresh active copy on a date the runner picks
-  /// (`restart_training_plan`, decisions § 2121), then opens the copy in
-  /// this screen's place. The plans it replaces are retired as abandoned by
-  /// the same RPC; this one keeps its history. Web twin: the Restart plan
-  /// option in `/plans/[id]`'s Adjust plan dialog.
+  /// (`restart_training_plan`), then opens the copy in this screen's place.
+  /// The plans it replaces are retired as abandoned by the same RPC; this one
+  /// keeps its history.
   Future<void> _restartPlan(TrainingPlanRow p) async {
     if (!_isOwner(p) || _bulkBusy) return;
     final l10n = AppLocalizations.of(context);
@@ -1089,6 +1088,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       if (!mounted) return;
       setState(() => _bulkBusy = false);
       showTopBanner(context, l10n.planDetailRestartRaceAheadError);
+      return;
+    } on PlanRestartBeforeTodayError {
+      if (!mounted) return;
+      setState(() => _bulkBusy = false);
+      showTopBanner(context, l10n.planDetailRestartBeforeTodayError);
       return;
     } catch (e, s) {
       debugPrint('restart plan failed: $e\n$s');

@@ -5082,6 +5082,7 @@
   "planDetailRestartRaceMoves": "El día de la carrera pasa al {date}.",
   "planDetailRestartRaceAhead": "La carrera de este plan, el {date}, todavía no ha llegado. Reiniciarlo movería el día de la carrera, así que cambia la fecha de la carrera o empieza un plan nuevo.",
   "planDetailRestartRaceAheadError": "Este plan tiene una carrera que aún no ha llegado, así que no se puede reiniciar.",
+  "planDetailRestartBeforeTodayError": "Esa fecha de inicio es anterior a hoy en la zona horaria de tu cuenta. Elige una fecha posterior.",
   "planDetailRestartConfirm": "Reiniciar el plan",
   "planDetailRestartDone": "Plan reiniciado. Esta es tu nueva copia.",
   "dashboardPlanPausedBody": "En pausa. Reanúdalo para retomarlo; las semanas que te perdiste se retrasan."

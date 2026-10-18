@@ -291,14 +291,23 @@ class PlanTrimBlockedError implements Exception {
 }
 
 /// A restart refused because the plan has a race on or after today
-/// (`restart_training_plan`'s SQLSTATE RR001, decisions § 2121): moving the
-/// plan would move race day. Nothing changed. Web twin:
-/// `isPlanRestartRaceAheadError` in `apps/web/src/lib/core/supabase_error.ts`.
+/// (`restart_training_plan`'s SQLSTATE RR001): moving the plan would move
+/// race day off the real date. Nothing changed.
 class PlanRestartRaceAheadError implements Exception {
   const PlanRestartRaceAheadError();
 
   @override
   String toString() => 'plan_restart_race_ahead';
+}
+
+/// A restart refused because its start is before the runner's today in their
+/// stored time zone (`restart_training_plan`'s SQLSTATE RR002), which can be
+/// ahead of the device's date the dialog checked against. Nothing changed.
+class PlanRestartBeforeTodayError implements Exception {
+  const PlanRestartBeforeTodayError();
+
+  @override
+  String toString() => 'plan_restart_before_today';
 }
 
 class TrainingService extends ChangeNotifier {
@@ -749,9 +758,9 @@ class TrainingService extends ChangeNotifier {
 
   /// Restarts the caller's plan [planId] as a fresh active copy starting on
   /// [startIso], retiring the plans it replaces as abandoned in the same
-  /// transaction (`restart_training_plan`, decisions § 2121). Returns the new
-  /// plan's id. A race still ahead surfaces as [PlanRestartRaceAheadError].
-  /// Mirrors web `core/data.ts:restartTrainingPlan`.
+  /// transaction (`restart_training_plan`). Returns the new plan's id. A race
+  /// still ahead surfaces as [PlanRestartRaceAheadError], a start before the
+  /// server's today as [PlanRestartBeforeTodayError].
   Future<String> restartPlan(String planId, String startIso) async {
     final Object? id;
     try {
@@ -762,6 +771,9 @@ class TrainingService extends ChangeNotifier {
     } catch (e, s) {
       if (e is PostgrestException && e.code == 'RR001') {
         Error.throwWithStackTrace(const PlanRestartRaceAheadError(), s);
+      }
+      if (e is PostgrestException && e.code == 'RR002') {
+        Error.throwWithStackTrace(const PlanRestartBeforeTodayError(), s);
       }
       Error.throwWithStackTrace(planWriteError(e), s);
     }

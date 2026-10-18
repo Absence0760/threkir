@@ -17995,6 +17995,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Ce plan comporte une course encore à venir, il ne peut donc pas être recommencé.';
 
   @override
+  String get planDetailRestartBeforeTodayError =>
+      'Cette date de début est antérieure à aujourd\'hui dans le fuseau horaire de votre compte. Choisissez une date plus tardive.';
+
+  @override
   String get planDetailRestartConfirm => 'Recommencer le plan';
 
   @override

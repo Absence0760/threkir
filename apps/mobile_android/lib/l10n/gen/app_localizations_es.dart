@@ -17956,6 +17956,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Este plan tiene una carrera que aún no ha llegado, así que no se puede reiniciar.';
 
   @override
+  String get planDetailRestartBeforeTodayError =>
+      'Esa fecha de inicio es anterior a hoy en la zona horaria de tu cuenta. Elige una fecha posterior.';
+
+  @override
   String get planDetailRestartConfirm => 'Reiniciar el plan';
 
   @override

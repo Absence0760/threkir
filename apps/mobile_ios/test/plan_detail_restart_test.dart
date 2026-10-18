@@ -1,11 +1,11 @@
-// Plan detail's "Restart plan…" (issue #1186, decisions § 2121): the
-// owner-only menu entry, the confirm that names the copy's dates, opening the
+// Plan detail's "Restart plan…": the owner-only menu entry, the confirm that names the copy's dates, opening the
 // copy on success, and the refusals.
 
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import 'package:ui_kit/ui_kit.dart' show FullBodyLoader;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/plan_detail_screen.dart';
@@ -145,6 +145,9 @@ Future<void> _openRestart(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Finder _inPicker(String text) => find.descendant(
+    of: find.byType(DatePickerDialog), matching: find.text(text));
+
 Future<void> _drainBanner(WidgetTester tester) =>
     tester.pump(const Duration(seconds: 4));
 
@@ -234,6 +237,81 @@ void main() {
 
     expect(find.text("This plan has a race still ahead, so it can't be restarted."),
         findsOneWidget);
+    await _drainBanner(tester);
+  });
+
+  testWidgets('a picked date stays on the plan weekday and updates the confirm',
+      (tester) async {
+    final training = _FakeTraining();
+    await _pump(tester, training);
+    await _openRestart(tester);
+
+    await tester.tap(find.byKey(const Key('planDetailRestartPickDate')));
+    await tester.pumpAndSettle();
+    await tester.tap(_inPicker('25'));
+    await tester.tap(_inPicker('OK'));
+    await tester.pumpAndSettle();
+    expect(
+        tester
+            .widget<Text>(find.byKey(const Key('planDetailRestartMessage')))
+            .data,
+        contains('starts on Mar 23'),
+        reason: 'a Wednesday is not selectable for a Monday-anchored plan');
+
+    await tester.tap(find.byKey(const Key('planDetailRestartPickDate')));
+    await tester.pumpAndSettle();
+    await tester.tap(_inPicker('30'));
+    await tester.tap(_inPicker('OK'));
+    await tester.pumpAndSettle();
+    final message = tester
+        .widget<Text>(find.byKey(const Key('planDetailRestartMessage')))
+        .data!;
+    expect(message, contains('starts on Mar 30'));
+    expect(message, contains('ends on Apr 12'));
+    expect(message, contains('Race day moves to Mar 31.'));
+
+    await tester.tap(find.byKey(const Key('planDetailRestartConfirm')));
+    await tester.pumpAndSettle();
+    await pumpUntil(tester, () => training.fetched.contains('plan-2'),
+        describe: 'the copy to load');
+    expect(training.restartCalls, [('plan-1', '2026-03-30')]);
+    await _drainBanner(tester);
+  });
+
+  testWidgets('a spent hourly budget reads as a wait', (tester) async {
+    final training = _FakeTraining(
+      restartError: const PostgrestException(
+        message: 'rate limit exceeded for restart_training_plan, retry in 1800s',
+        code: 'P0001',
+      ),
+    );
+    await _pump(tester, training);
+    await _openRestart(tester);
+    await tester.tap(find.byKey(const Key('planDetailRestartConfirm')));
+    await tester.pumpAndSettle();
+
+    expect(
+        find.text(
+            "You're restarting plans too quickly — please wait 30 minutes and try again."),
+        findsOneWidget);
+    expect(training.fetched, isNot(contains('plan-2')));
+    await _drainBanner(tester);
+  });
+
+  testWidgets('a start the server puts before today names the reason',
+      (tester) async {
+    final training =
+        _FakeTraining(restartError: const PlanRestartBeforeTodayError());
+    await _pump(tester, training);
+    await _openRestart(tester);
+    await tester.tap(find.byKey(const Key('planDetailRestartConfirm')));
+    await tester.pumpAndSettle();
+
+    expect(
+        find.text(
+            "That start date is before today where your account's time zone is set. Pick a later date."),
+        findsOneWidget);
+    expect(training.fetched, isNot(contains('plan-2')));
     await _drainBanner(tester);
   });
 

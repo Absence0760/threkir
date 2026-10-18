@@ -23481,6 +23481,10 @@
   "@planDetailRestartRaceAheadError": {
     "description": "Banner when the server refuses a restart because a race is still ahead"
   },
+  "planDetailRestartBeforeTodayError": "That start date is before today where your account's time zone is set. Pick a later date.",
+  "@planDetailRestartBeforeTodayError": {
+    "description": "Banner when the server refuses a restart's start date as before today in the account's stored time zone"
+  },
   "planDetailRestartConfirm": "Restart plan",
   "@planDetailRestartConfirm": {
     "description": "Confirm button in the restart dialog"

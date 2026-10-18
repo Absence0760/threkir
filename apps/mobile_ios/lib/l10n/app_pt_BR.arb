@@ -5082,6 +5082,7 @@
   "planDetailRestartRaceMoves": "O dia da prova passa para {date}.",
   "planDetailRestartRaceAhead": "A prova deste plano, em {date}, ainda não aconteceu. Recomeçar mudaria o dia da prova, então altere a data da prova ou comece um novo plano.",
   "planDetailRestartRaceAheadError": "Este plano tem uma prova que ainda não aconteceu, então não pode ser recomeçado.",
+  "planDetailRestartBeforeTodayError": "Essa data de início é anterior a hoje no fuso horário da sua conta. Escolha uma data posterior.",
   "planDetailRestartConfirm": "Recomeçar o plano",
   "planDetailRestartDone": "Plano recomeçado. Esta é a sua nova cópia.",
   "dashboardPlanPausedBody": "Pausado. Retome para continuar; as semanas que você perdeu passam para frente."

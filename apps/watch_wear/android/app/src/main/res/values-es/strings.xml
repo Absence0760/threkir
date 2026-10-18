@@ -219,6 +219,44 @@
     <string name="tts_pace_alert_fast">Acelera el ritmo</string>
     <string name="tts_pace_alert_slow">Reduce la velocidad</string>
 
+    <string name="tts_workout_complete">Entrenamiento completado. Buen trabajo.</string>
+    <string name="tts_step_warmup">Calentamiento</string>
+    <string name="tts_step_warmup_walk">Caminata de calentamiento</string>
+    <string name="tts_step_rep">Repetición</string>
+    <string name="tts_step_run">Carrera</string>
+    <string name="tts_step_rep_of">Repetición %1$d de %2$d</string>
+    <string name="tts_step_run_of">Carrera %1$d de %2$d</string>
+    <string name="tts_step_recovery">Recuperación</string>
+    <string name="tts_step_walk">Caminata</string>
+    <string name="tts_step_walk_of">Caminata %1$d de %2$d</string>
+    <string name="tts_step_steady">Ritmo constante</string>
+    <string name="tts_step_cooldown">Enfriamiento</string>
+    <string name="tts_step_cooldown_walk">Caminata de enfriamiento</string>
+    <string name="tts_step_duration">%1$s. %2$s.</string>
+    <string name="tts_step_distance_pace">%1$s. %2$s a %3$s.</string>
+    <string name="tts_step_distance">%1$s. %2$s.</string>
+    <string name="tts_step_pace_km">%1$d minutos %2$d segundos por kilómetro</string>
+    <string name="tts_step_pace_mi">%1$d minutos %2$d segundos por milla</string>
+    <string name="tts_step_pace_km_whole">%1$d minutos por kilómetro</string>
+    <string name="tts_step_pace_mi_whole">%1$d minutos por milla</string>
+    <string name="tts_distance_km">%1$s kilómetros</string>
+    <string name="tts_distance_mi">%1$s millas</string>
+    <string name="tts_distance_short_km">%1$d metros</string>
+    <string name="tts_distance_short_mi">%1$d yardas</string>
+    <string name="tts_duration_seconds">%1$d segundos</string>
+    <string name="tts_duration_minutes_seconds">%1$s %2$d segundos</string>
+    <string name="tts_step_last_fifty_km">Quedan cincuenta metros</string>
+    <string name="tts_step_last_fifty_mi">Quedan cincuenta yardas</string>
+    <string name="tts_step_last_ten_seconds">Quedan diez segundos</string>
+    <string name="tts_pace_drift_ahead_km">Afloja un poco — %1$d segundos por kilómetro demasiado rápido.</string>
+    <string name="tts_pace_drift_ahead_mi">Afloja un poco — %1$d segundos por milla demasiado rápido.</string>
+    <string name="tts_pace_drift_behind_km">Acelera un poco — %1$d segundos por kilómetro demasiado lento.</string>
+    <string name="tts_pace_drift_behind_mi">Acelera un poco — %1$d segundos por milla demasiado lento.</string>
+    <plurals name="tts_duration_minutes">
+        <item quantity="one">%1$d minuto</item>
+        <item quantity="other">%1$d minutos</item>
+    </plurals>
+
     <!-- Today's workout, pushed by the phone (WorkoutBridge) -->
     <string name="workout">Entreno</string>
     <string name="workout_off">Desactivado</string>

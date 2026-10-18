@@ -5125,5 +5125,17 @@
   "planBreakDismissFailed": "No se pudo guardar: {error}",
   "planBreakUnavailable": "No se pueden repetir tantas semanas en este plan.",
   "planBreakWeeksFewer": "Una semana menos",
-  "planBreakWeeksMore": "Una semana más"
+  "planBreakWeeksMore": "Una semana más",
+  "missedPromptTitle": "Te saltaste: {kind} el {day}",
+  "missedPromptMakeUpBody": "Recupérala alargando tu próxima tirada larga de {from} a {to}. Verás el cambio antes de que se guarde.",
+  "missedPromptCoveredBody": "Tu próxima tirada larga ya lo cubre, así que no hay nada que añadir.",
+  "missedPromptTaperBody": "Estás en la puesta a punto, así que déjala pasar: llegar fresco el día de la carrera importa más que otra tirada larga.",
+  "missedPromptRecoveryBody": "Lo siguiente es una semana de recuperación, así que déjala pasar y deja que esa semana lo absorba.",
+  "missedPromptLetGoBody": "Solo vale la pena recuperar una tirada larga. Deja pasar esta en lugar de meterla en los próximos días.",
+  "missedPromptMakeUp": "Recuperarla",
+  "missedPromptLetGo": "Dejarla pasar",
+  "missedPromptRecommended": "Recomendado",
+  "missedPromptLetGoDone": "Hecho. Tu plan sigue igual.",
+  "missedPromptSaveFailed": "No se pudo guardar tu respuesta: {error}",
+  "missedPromptNothingToMakeUp": "Ya no queda nada que recuperar."
 }

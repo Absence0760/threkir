@@ -1366,6 +1366,27 @@ class TrainingService extends ChangeNotifier {
           e.key: {PlanWorkoutRow.colTargetDistanceM: e.value},
       });
 
+  /// Records the runner's answer to the missed-workout prompt on each of
+  /// [workoutIds] (`answer_missed_workouts`, decisions § 2122), so it is never
+  /// asked again on any device. "Make it up" passes the previewed make-up as
+  /// [distances]; they are written in the same transaction as the answer.
+  /// Mirrors web `answerMissedWorkouts`.
+  Future<void> answerMissedWorkouts({
+    required String planId,
+    required List<String> workoutIds,
+    Map<String, double> distances = const {},
+  }) async {
+    await _c.rpc('answer_missed_workouts', params: {
+      'p_plan_id': planId,
+      'p_workout_ids': workoutIds,
+      'p_changes': [
+        for (final e in distances.entries)
+          {'id': e.key, PlanWorkoutRow.colTargetDistanceM: e.value},
+      ],
+    });
+    notifyListeners();
+  }
+
   /// One `apply_workout_adjustments` call: it writes every patch and
   /// restates each touched week's `target_volume_m` in one transaction, so a
   /// failure changes nothing (decisions § 2061).

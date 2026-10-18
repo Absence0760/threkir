@@ -5125,5 +5125,17 @@
   "planBreakDismissFailed": "Konnte nicht gespeichert werden: {error}",
   "planBreakUnavailable": "So viele Wochen lassen sich in diesem Plan nicht wiederholen.",
   "planBreakWeeksFewer": "Eine Woche weniger",
-  "planBreakWeeksMore": "Eine Woche mehr"
+  "planBreakWeeksMore": "Eine Woche mehr",
+  "missedPromptTitle": "Verpasst: {kind} am {day}",
+  "missedPromptMakeUpBody": "Hol ihn nach, indem dein nächster langer Lauf von {from} auf {to} verlängert wird. Du siehst die Änderung, bevor sie gespeichert wird.",
+  "missedPromptCoveredBody": "Dein nächster langer Lauf deckt das bereits ab, es gibt nichts hinzuzufügen.",
+  "missedPromptTaperBody": "Du bist im Tapering, also lass ihn aus: Frische am Wettkampftag zählt mehr als ein weiterer langer Lauf.",
+  "missedPromptRecoveryBody": "Als Nächstes kommt eine Erholungswoche, also lass ihn aus und lass diese Woche ihn auffangen.",
+  "missedPromptLetGoBody": "Nur ein langer Lauf lohnt sich nachzuholen. Lass diese Einheit aus, statt sie in die nächsten Tage zu quetschen.",
+  "missedPromptMakeUp": "Nachholen",
+  "missedPromptLetGo": "Auslassen",
+  "missedPromptRecommended": "Empfohlen",
+  "missedPromptLetGoDone": "Ausgelassen. Dein Plan läuft unverändert weiter.",
+  "missedPromptSaveFailed": "Deine Antwort konnte nicht gespeichert werden: {error}",
+  "missedPromptNothingToMakeUp": "Es gibt nichts mehr nachzuholen."
 }

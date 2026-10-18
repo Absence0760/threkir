@@ -18033,4 +18033,50 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planBreakWeeksMore => 'One week more';
+
+  @override
+  String missedPromptTitle(String kind, String day) {
+    return 'Missed: $kind on $day';
+  }
+
+  @override
+  String missedPromptMakeUpBody(String from, String to) {
+    return 'Make it up by stretching your next long run from $from to $to. You\'ll see the change before it\'s saved.';
+  }
+
+  @override
+  String get missedPromptCoveredBody =>
+      'Your next long run already covers it, so there\'s nothing to add.';
+
+  @override
+  String get missedPromptTaperBody =>
+      'You\'re tapering, so let it go: being fresh on race day matters more than one more long run.';
+
+  @override
+  String get missedPromptRecoveryBody =>
+      'A recovery week is next, so let it go and let that week absorb it.';
+
+  @override
+  String get missedPromptLetGoBody =>
+      'Only a long run is worth making up. Let this one go rather than crowding it into the days ahead.';
+
+  @override
+  String get missedPromptMakeUp => 'Make it up';
+
+  @override
+  String get missedPromptLetGo => 'Let it go';
+
+  @override
+  String get missedPromptRecommended => 'Recommended';
+
+  @override
+  String get missedPromptLetGoDone => 'Let go. Your plan carries on as it was.';
+
+  @override
+  String missedPromptSaveFailed(String error) {
+    return 'Couldn\'t save your answer: $error';
+  }
+
+  @override
+  String get missedPromptNothingToMakeUp => 'There\'s nothing left to make up.';
 }

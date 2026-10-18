@@ -19,6 +19,7 @@
 		unpublishFromLibrary,
 		fetchMyPublishedPlans,
 		applyWorkoutAdjustments,
+		answerMissedWorkouts,
 		updatePlanWorkout,
 		duplicatePlanWeek,
 		fetchMyActivePlanWindows,
@@ -56,6 +57,8 @@
 	import WorkoutEditor from '#lib/components/WorkoutEditor.svelte';
 	import FinishPlanPrompt from '#lib/components/FinishPlanPrompt.svelte';
 	import PlanBreakCard from '#lib/components/PlanBreakCard.svelte';
+	import MissedWorkoutPrompt, { missedPromptFromRows } from '#lib/components/MissedWorkoutPrompt.svelte';
+	import type { MissedPrompt } from '#lib/training/plan_missed_prompt.ts';
 	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import PlanAiAdjust from '#lib/components/PlanAiAdjust.svelte';
@@ -521,6 +524,7 @@
 		);
 		const changes = raceTaperProposals({ workouts: input, races, today });
 		replanPreview = null;
+		makeUpAnswers = null;
 		adaptiveInfo = null;
 		if (changes.length === 0) {
 			taperPreview = null;
@@ -643,8 +647,47 @@
 		}, 0);
 	}
 
+	/// Home's missed-workout prompt lands here as `?makeup=1`: open the
+	/// make-up preview for the plan's current prompt, then leave the URL.
+	function takeMakeUpParam(): void {
+		const url = new URL(page.url.href);
+		if (url.searchParams.get('makeup') !== '1') return;
+		if (plan && isOwner && missedPromptShown) {
+			const p = missedPromptFromRows(weeks, workouts, today);
+			if (p) void chooseMakeUp(p);
+			else showToast(m('missedPrompt.nothingToMakeUp'));
+		}
+		setTimeout(() => {
+			url.searchParams.delete('makeup');
+			try {
+				replaceState(`${url.pathname}${url.search}${url.hash}`, page.state);
+			} catch (e) {
+				console.error('Clearing the make-up request from the URL failed', { message: thrownMessage(e) });
+			}
+		}, 0);
+	}
+
+	/// The missed-workout prompt's "Make it up" (decisions § 2122): the
+	/// stretched next long run, previewed like a re-plan. Applying it records
+	/// the answer for every miss it honours, in the same transaction.
+	async function chooseMakeUp(p: MissedPrompt): Promise<void> {
+		if (!plan || !isOwner || bulkBusy) return;
+		if (!p.makeUp) {
+			showToast(m('missedPrompt.nothingToMakeUp'));
+			return;
+		}
+		adjustOpen = false;
+		taperPreview = null;
+		adaptiveInfo = null;
+		replanPreview = [p.makeUp];
+		makeUpAnswers = p.makeUpAnswers;
+		await tick();
+		replanPreviewHeading?.focus();
+	}
+
 	async function dismissReplan(): Promise<void> {
 		replanPreview = null;
+		makeUpAnswers = null;
 		adaptiveInfo = null;
 		await tick();
 		adjustButton?.focus();
@@ -820,6 +863,9 @@
 
 	// ─── Re-plan around missed sessions (owner-only) ───
 	let replanPreview = $state<ReplanChange[] | null>(null);
+	/// Set only while the preview is the missed-workout prompt's make-up: the
+	/// misses its apply answers.
+	let makeUpAnswers = $state<string[] | null>(null);
 	/// Only a genuine multi-week TREND gets the badge — the `on_track` and
 	/// (P2) `deload_fatigue` outcomes explain themselves through a toast, so
 	/// they're excluded at the type level rather than by convention.
@@ -874,6 +920,7 @@
 
 	function proposeReplan(): void {
 		if (!plan || !isOwner || bulkBusy) return;
+		makeUpAnswers = null;
 		const { changes, onTrack } = replanRemaining({ weeks: buildReplanInput(), today });
 		if (onTrack || changes.length === 0) {
 			showToast(m('planDetail.replanOnTrack'));
@@ -897,6 +944,7 @@
 
 	function proposeAdaptiveReplan(): void {
 		if (!plan || !isOwner || bulkBusy) return;
+		makeUpAnswers = null;
 		const r = adaptiveReplanRemaining({
 			weeks: buildReplanInput(),
 			today,
@@ -957,17 +1005,23 @@
 	async function applyReplan(): Promise<void> {
 		if (!plan || !replanPreview || bulkBusy) return;
 		bulkBusy = true;
+		const answers = makeUpAnswers;
 		try {
-			await applyWorkoutAdjustments(
-				plan.id,
-				replanPreview.map((c) => ({ id: c.workoutId, target_distance_m: c.toMetres })),
-			);
+			const changes = replanPreview.map((c) => ({ id: c.workoutId, target_distance_m: c.toMetres }));
+			if (answers) await answerMissedWorkouts(plan.id, answers, changes);
+			else await applyWorkoutAdjustments(plan.id, changes);
 			showToast(m('planDetail.replanApplied', { n: replanPreview.length }));
 			replanPreview = null;
+			makeUpAnswers = null;
 			adaptiveInfo = null;
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			showToast(
+				answers
+					? m('missedPrompt.saveFailed', { error: thrownMessage(e) })
+					: m('planDetail.bulkFailed', { error: thrownMessage(e) }),
+				'error'
+			);
 			await load();
 		} finally {
 			bulkBusy = false;
@@ -1060,6 +1114,7 @@
 		await load();
 		takeAdjustParam();
 		takeResumeParam();
+		takeMakeUpParam();
 		// Calendar week-start follows the user's preference (W-5/W-14).
 		if (auth.user?.id) {
 			try {
@@ -1262,6 +1317,17 @@
 		plan && upcomingRace && !(upcomingRace.priority === 'A' && upcomingRace.date === plan.end_date)
 			? upcomingRace
 			: null
+	);
+
+	/// The missed-workout prompt is the owner's, and only while the plan is
+	/// running: never for a coach viewing an athlete, a template, or a paused,
+	/// finished or abandoned plan.
+	let missedPromptShown = $derived(
+		plan != null &&
+			isOwner &&
+			!plan.is_template &&
+			plan.status === 'active' &&
+			!isPlanFinished(plan, today)
 	);
 
 	let todayWorkout = $derived(
@@ -1735,6 +1801,12 @@
 					await load();
 				}}
 			/>
+		{/if}
+
+		{#if missedPromptShown && plan}
+			<div class="missed-prompt-slot">
+				<MissedWorkoutPrompt planId={plan.id} {weeks} {workouts} {today} onmakeup={chooseMakeUp} />
+			</div>
 		{/if}
 
 		{#if todayWorkout}
@@ -2545,6 +2617,9 @@
 	}
 	.finish-plan-slot {
 		margin: var(--space-lg) 0;
+	}
+	.missed-prompt-slot {
+		margin: var(--space-md) 0;
 	}
 	.back {
 		display: inline-flex;

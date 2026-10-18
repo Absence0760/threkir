@@ -5125,5 +5125,17 @@
   "planBreakDismissFailed": "Impossible d'enregistrer : {error}",
   "planBreakUnavailable": "Impossible de refaire autant de semaines dans ce plan.",
   "planBreakWeeksFewer": "Une semaine de moins",
-  "planBreakWeeksMore": "Une semaine de plus"
+  "planBreakWeeksMore": "Une semaine de plus",
+  "missedPromptTitle": "Manqué : {kind} le {day}",
+  "missedPromptMakeUpBody": "Rattrapez-la en allongeant votre prochaine sortie longue de {from} à {to}. Vous verrez la modification avant qu'elle soit enregistrée.",
+  "missedPromptCoveredBody": "Votre prochaine sortie longue la couvre déjà, il n'y a rien à ajouter.",
+  "missedPromptTaperBody": "Vous êtes en affûtage, laissez tomber : être frais le jour de la course compte plus qu'une sortie longue de plus.",
+  "missedPromptRecoveryBody": "Une semaine de récupération arrive, laissez tomber et laissez-la absorber l'écart.",
+  "missedPromptLetGoBody": "Seule une sortie longue vaut d'être rattrapée. Laissez tomber celle-ci plutôt que de l'entasser dans les jours qui viennent.",
+  "missedPromptMakeUp": "Rattraper",
+  "missedPromptLetGo": "Laisser tomber",
+  "missedPromptRecommended": "Recommandé",
+  "missedPromptLetGoDone": "C'est noté. Votre plan continue tel quel.",
+  "missedPromptSaveFailed": "Impossible d'enregistrer votre réponse : {error}",
+  "missedPromptNothingToMakeUp": "Il n'y a plus rien à rattraper."
 }

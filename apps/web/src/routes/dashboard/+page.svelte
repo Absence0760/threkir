@@ -85,6 +85,7 @@
 		pickRecent5k,
 	} from '#lib/training/recent_5k_suggestion.ts';
 	import PlanBreakCard from '#lib/components/PlanBreakCard.svelte';
+	import MissedWorkoutPrompt from '#lib/components/MissedWorkoutPrompt.svelte';
 	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import { weeklyGoalTarget } from '#lib/training/week_lead.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
@@ -1321,6 +1322,13 @@
 						onapplied={reloadPlanOverview}
 					/>
 				{/if}
+				<MissedWorkoutPrompt
+					planId={planOverview.plan.id}
+					weeks={planOverview.weeks}
+					workouts={planOverview.workouts}
+					today={formatISO(todayMidnight)}
+					makeUpHref="/plans/{planOverview.plan.id}?makeup=1"
+				/>
 				<div class="plan-hero-today">
 					{#if t}
 						<button

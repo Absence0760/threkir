@@ -5125,5 +5125,17 @@
   "planBreakDismissFailed": "Não foi possível salvar: {error}",
   "planBreakUnavailable": "Não é possível repetir tantas semanas neste plano.",
   "planBreakWeeksFewer": "Uma semana a menos",
-  "planBreakWeeksMore": "Uma semana a mais"
+  "planBreakWeeksMore": "Uma semana a mais",
+  "missedPromptTitle": "Perdido: {kind} em {day}",
+  "missedPromptMakeUpBody": "Compense alongando seu próximo longão de {from} para {to}. Você verá a mudança antes de ela ser salva.",
+  "missedPromptCoveredBody": "Seu próximo longão já cobre isso, então não há nada a acrescentar.",
+  "missedPromptTaperBody": "Você está no polimento, então deixe passar: chegar descansado no dia da prova importa mais do que mais um longão.",
+  "missedPromptRecoveryBody": "A próxima é uma semana de recuperação, então deixe passar e deixe essa semana absorver isso.",
+  "missedPromptLetGoBody": "Só vale a pena compensar um longão. Deixe este passar em vez de espremê-lo nos próximos dias.",
+  "missedPromptMakeUp": "Compensar",
+  "missedPromptLetGo": "Deixar passar",
+  "missedPromptRecommended": "Recomendado",
+  "missedPromptLetGoDone": "Pronto. Seu plano continua como estava.",
+  "missedPromptSaveFailed": "Não foi possível salvar sua resposta: {error}",
+  "missedPromptNothingToMakeUp": "Não há mais nada para compensar."
 }

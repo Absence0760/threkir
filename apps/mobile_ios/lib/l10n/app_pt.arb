@@ -5125,5 +5125,17 @@
   "planBreakDismissFailed": "Não foi possível guardar: {error}",
   "planBreakUnavailable": "Não é possível repetir tantas semanas neste plano.",
   "planBreakWeeksFewer": "Menos uma semana",
-  "planBreakWeeksMore": "Mais uma semana"
+  "planBreakWeeksMore": "Mais uma semana",
+  "missedPromptTitle": "Falhado: {kind} em {day}",
+  "missedPromptMakeUpBody": "Compense-o alargando o seu próximo longão de {from} para {to}. Verá a alteração antes de ser guardada.",
+  "missedPromptCoveredBody": "O seu próximo longão já o cobre, por isso não há nada a acrescentar.",
+  "missedPromptTaperBody": "Está no afinamento, por isso deixe passar: chegar fresco ao dia da prova conta mais do que mais um longão.",
+  "missedPromptRecoveryBody": "A seguir vem uma semana de recuperação, por isso deixe passar e deixe essa semana absorvê-lo.",
+  "missedPromptLetGoBody": "Só vale a pena compensar um longão. Deixe passar este treino em vez de o encaixar nos próximos dias.",
+  "missedPromptMakeUp": "Compensar",
+  "missedPromptLetGo": "Deixar passar",
+  "missedPromptRecommended": "Recomendado",
+  "missedPromptLetGoDone": "Feito. O seu plano continua como estava.",
+  "missedPromptSaveFailed": "Não foi possível guardar a sua resposta: {error}",
+  "missedPromptNothingToMakeUp": "Já não há nada para compensar."
 }

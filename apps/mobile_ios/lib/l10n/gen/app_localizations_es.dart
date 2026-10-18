@@ -18223,4 +18223,50 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planBreakWeeksMore => 'Una semana más';
+
+  @override
+  String missedPromptTitle(String kind, String day) {
+    return 'Te saltaste: $kind el $day';
+  }
+
+  @override
+  String missedPromptMakeUpBody(String from, String to) {
+    return 'Recupérala alargando tu próxima tirada larga de $from a $to. Verás el cambio antes de que se guarde.';
+  }
+
+  @override
+  String get missedPromptCoveredBody =>
+      'Tu próxima tirada larga ya lo cubre, así que no hay nada que añadir.';
+
+  @override
+  String get missedPromptTaperBody =>
+      'Estás en la puesta a punto, así que déjala pasar: llegar fresco el día de la carrera importa más que otra tirada larga.';
+
+  @override
+  String get missedPromptRecoveryBody =>
+      'Lo siguiente es una semana de recuperación, así que déjala pasar y deja que esa semana lo absorba.';
+
+  @override
+  String get missedPromptLetGoBody =>
+      'Solo vale la pena recuperar una tirada larga. Deja pasar esta en lugar de meterla en los próximos días.';
+
+  @override
+  String get missedPromptMakeUp => 'Recuperarla';
+
+  @override
+  String get missedPromptLetGo => 'Dejarla pasar';
+
+  @override
+  String get missedPromptRecommended => 'Recomendado';
+
+  @override
+  String get missedPromptLetGoDone => 'Hecho. Tu plan sigue igual.';
+
+  @override
+  String missedPromptSaveFailed(String error) {
+    return 'No se pudo guardar tu respuesta: $error';
+  }
+
+  @override
+  String get missedPromptNothingToMakeUp => 'Ya no queda nada que recuperar.';
 }

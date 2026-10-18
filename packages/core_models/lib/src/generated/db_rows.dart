@@ -4682,6 +4682,7 @@ class PlanWorkoutRow {
   static const String colTargetRpeMax = 'target_rpe_max';
   static const String colTargetHrMinBpm = 'target_hr_min_bpm';
   static const String colTargetHrMaxBpm = 'target_hr_max_bpm';
+  static const String colMissedAckAt = 'missed_ack_at';
 
   final String id;
   final String weekId;
@@ -4708,6 +4709,7 @@ class PlanWorkoutRow {
   final int? targetRpeMax;
   final int? targetHrMinBpm;
   final int? targetHrMaxBpm;
+  final DateTime? missedAckAt;
 
   const PlanWorkoutRow({
     required this.id,
@@ -4735,6 +4737,7 @@ class PlanWorkoutRow {
     this.targetRpeMax,
     this.targetHrMinBpm,
     this.targetHrMaxBpm,
+    this.missedAckAt,
   });
 
   factory PlanWorkoutRow.fromJson(Map<String, dynamic> json) => PlanWorkoutRow(
@@ -4763,6 +4766,7 @@ class PlanWorkoutRow {
     targetRpeMax: (json['target_rpe_max'] as num?)?.toInt(),
     targetHrMinBpm: (json['target_hr_min_bpm'] as num?)?.toInt(),
     targetHrMaxBpm: (json['target_hr_max_bpm'] as num?)?.toInt(),
+    missedAckAt: parseIsoStrictValue(json['missed_ack_at']),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -4791,6 +4795,7 @@ class PlanWorkoutRow {
     colTargetRpeMax: targetRpeMax,
     colTargetHrMinBpm: targetHrMinBpm,
     colTargetHrMaxBpm: targetHrMaxBpm,
+    colMissedAckAt: missedAckAt?.toIso8601String(),
   };
 
   PlanWorkoutRow copyWith({
@@ -4819,6 +4824,7 @@ class PlanWorkoutRow {
     int? targetRpeMax,
     int? targetHrMinBpm,
     int? targetHrMaxBpm,
+    DateTime? missedAckAt,
   }) => PlanWorkoutRow(
     id: id ?? this.id,
     weekId: weekId ?? this.weekId,
@@ -4845,6 +4851,7 @@ class PlanWorkoutRow {
     targetRpeMax: targetRpeMax ?? this.targetRpeMax,
     targetHrMinBpm: targetHrMinBpm ?? this.targetHrMinBpm,
     targetHrMaxBpm: targetHrMaxBpm ?? this.targetHrMaxBpm,
+    missedAckAt: missedAckAt ?? this.missedAckAt,
   );
 }
 

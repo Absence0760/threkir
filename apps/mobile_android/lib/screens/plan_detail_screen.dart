@@ -13,6 +13,7 @@ import '../widgets/confirm_destructive.dart';
 import '../widgets/plan_details_sheet.dart';
 import '../plan_repace.dart';
 import '../plan_bulk_ops.dart' show shiftIsoDate;
+import '../plan_race_date.dart';
 import '../plan_resume.dart';
 import '../cycle_plan.dart' show CyclePlanConfig, CyclePlanMode;
 import '../cycle_plan_config.dart';
@@ -1037,6 +1038,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         _editPlanDetails(p);
       case _PlanMenu.shift:
         _shiftPlan(p);
+      case _PlanMenu.raceDate:
+        _changeRaceDate(p);
       case _PlanMenu.exportMarkdown:
         _exportPlan(p, json: false);
       case _PlanMenu.exportJson:
@@ -1151,6 +1154,133 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       await _load();
     } catch (e) {
       debugPrint('plan shift failed: $e');
+      if (mounted) {
+        showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
+      }
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
+    }
+  }
+
+  RaceDatePlan _raceDatePlan(TrainingPlanRow p) => RaceDatePlan(
+        startDate: toIsoDate(p.startDate),
+        endDate: toIsoDate(p.endDate),
+        trimmedAt: p.trimmedAt?.toIso8601String(),
+        status: p.status,
+        isTemplate: p.isTemplate,
+      );
+
+  List<RaceDateWeek> get _raceDateWeeks => [
+        for (final w in _weeks)
+          RaceDateWeek(id: w.id, weekIndex: w.weekIndex, phase: w.phase)
+      ];
+
+  /// The race day the owner can move, or null for a plan with no race still
+  /// ahead (a walk-run plan, one ended early, one whose race has passed).
+  String? _raceDateOffer(TrainingPlanRow p) {
+    final d = planRaceDate(_raceDatePlan(p), _raceDateWeeks);
+    return d != null && d.compareTo(toIsoDate(widget.now())) >= 0 ? d : null;
+  }
+
+  String _raceDateRefusal(AppLocalizations l10n, RaceDateResult r, String date,
+      String locale) {
+    switch (r.reason!) {
+      case RaceDateRefusal.tooSoon:
+        return l10n.planDetailRaceDateTooSoon(
+            formatDateShort(parseIsoDate(date), locale),
+            r.earliestIso == null
+                ? ''
+                : formatDateShort(parseIsoDate(r.earliestIso!), locale));
+      case RaceDateRefusal.past:
+        return l10n.planDetailRaceDatePast;
+      case RaceDateRefusal.invalid:
+        return l10n.planDetailRaceDateInvalid;
+      case RaceDateRefusal.unchanged:
+        return l10n.planDetailRaceDateUnchanged;
+      case RaceDateRefusal.noRace:
+        return l10n.planDetailRaceDateNoRace;
+      case RaceDateRefusal.raceWeekStarted:
+        return l10n.planDetailRaceDateWeekStarted;
+      case RaceDateRefusal.tooFar:
+        return l10n.planDetailRaceDateTooFar;
+      case RaceDateRefusal.noBuildWeek:
+        return l10n.planDetailRaceDateNoBuild;
+      case RaceDateRefusal.inTheWay:
+        return l10n.planDetailRaceDateInTheWay;
+    }
+  }
+
+  /// Moves the plan's race to a day the runner picks: the weeks still ahead
+  /// are re-anchored so the plan ends on it, build weeks added or cut and the
+  /// taper kept (`raceDateChange`, decisions § 2120). A day the plan cannot
+  /// reach with its taper is refused before anything is asked. Web twin:
+  /// `chooseRaceDate` on the plan page.
+  Future<void> _changeRaceDate(TrainingPlanRow p) async {
+    if (_bulkBusy) return;
+    final current = _raceDateOffer(p);
+    if (current == null) return;
+    final l10n = AppLocalizations.of(context);
+    final locale = localeToTag(Localizations.localeOf(context));
+    final todayIso = toIsoDate(widget.now());
+    final tomorrow = parseIsoDate(shiftIsoDate(todayIso, 1));
+    final initial = parseIsoDate(current);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial.isBefore(tomorrow) ? tomorrow : initial,
+      firstDate: tomorrow,
+      lastDate: parseIsoDate(shiftIsoDate(todayIso, 3 * 366)),
+      helpText: l10n.planDetailRaceDatePickerHelp,
+    );
+    if (picked == null || !mounted) return;
+    final date = toIsoDate(picked);
+    final result = raceDateChange(
+      plan: _raceDatePlan(p),
+      weeks: _raceDateWeeks,
+      workouts: [
+        for (final w in _byWeek.values.expand((x) => x))
+          RaceDateWorkout(
+            id: w.id,
+            weekId: w.weekId,
+            scheduledDate: toIsoDate(w.scheduledDate),
+            kind: w.kind,
+            racePriority: w.racePriority,
+            completedRunId: w.completedRunId,
+            manuallyCompleted: w.manuallyCompleted,
+          )
+      ],
+      raceDateIso: date,
+      todayIso: todayIso,
+    );
+    if (!result.ok) {
+      showTopBanner(context, _raceDateRefusal(l10n, result, date, locale));
+      return;
+    }
+    final change = result.change!;
+    final shown = formatDateShort(parseIsoDate(date), locale);
+    final ok = await confirmDestructive(
+      context,
+      title: l10n.planDetailRaceDateConfirmTitle,
+      body: change.weekDelta > 0
+          ? l10n.planDetailRaceDateConfirmLater(change.weekDelta, shown)
+          : change.weekDelta < 0
+              ? l10n.planDetailRaceDateConfirmEarlier(-change.weekDelta, shown)
+              : l10n.planDetailRaceDateConfirmSameWeek(shown),
+      confirmLabel: l10n.planDetailRaceDateApply,
+      cancelLabel: l10n.plansCancel,
+    );
+    if (!ok || !mounted) return;
+    setState(() => _bulkBusy = true);
+    try {
+      await widget.training
+          .changePlanRaceDate(p.id, change, todayIso)
+          .timeout(kBackendLoadTimeout);
+      if (!mounted) return;
+      showTopBanner(context, l10n.planDetailRaceDateDone(shown));
+      await _load();
+    } on ActivePlanExistsError {
+      if (mounted) showTopBanner(context, l10n.planDetailRaceDateOverlap);
+    } catch (e) {
+      debugPrint('plan race date change failed: $e');
       if (mounted) {
         showTopBanner(context, l10n.planDetailBulkFailed(friendlyError(l10n, e)));
       }
@@ -1531,6 +1661,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                 PopupMenuItem(
                     value: _PlanMenu.shift,
                     child: Text(l10n.planDetailShiftDates)),
+                if (_raceDateOffer(p) != null)
+                  PopupMenuItem(
+                      key: const Key('planDetailChangeRaceDate'),
+                      value: _PlanMenu.raceDate,
+                      child: Text(l10n.planDetailChangeRaceDate)),
                 PopupMenuItem(
                     value: _PlanMenu.exportMarkdown,
                     child: Text(l10n.planDetailExportMarkdown)),
@@ -2797,6 +2932,7 @@ enum _PlanMenu {
   adjust,
   editDetails,
   shift,
+  raceDate,
   exportMarkdown,
   exportJson,
   coach,

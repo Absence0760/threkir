@@ -17920,4 +17920,91 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get dashboardPlanPausedBody =>
       'En pausa. Reanúdalo para retomarlo; las semanas que te perdiste se retrasan.';
+
+  @override
+  String get planDetailChangeRaceDate => 'Cambiar fecha de carrera…';
+
+  @override
+  String get planDetailRaceDatePickerHelp => 'Nueva fecha de carrera';
+
+  @override
+  String get planDetailRaceDateConfirmTitle => '¿Cambiar la fecha de carrera?';
+
+  @override
+  String planDetailRaceDateConfirmLater(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Tu carrera pasa al $date. Se añaden $n semanas de desarrollo antes de la puesta a punto, que se queda como está. Las semanas que ya empezaste no cambian.',
+      one:
+          'Tu carrera pasa al $date. Se añade $n semana de desarrollo antes de la puesta a punto, que se queda como está. Las semanas que ya empezaste no cambian.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailRaceDateConfirmEarlier(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Tu carrera pasa al $date. Se quitan $n semanas de desarrollo y la puesta a punto se queda como está. Las semanas que ya empezaste no cambian.',
+      one:
+          'Tu carrera pasa al $date. Se quita $n semana de desarrollo y la puesta a punto se queda como está. Las semanas que ya empezaste no cambian.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailRaceDateConfirmSameWeek(String date) {
+    return 'Tu carrera pasa al $date, en la misma semana. No se añaden ni se quitan semanas, y la puesta a punto se queda como está.';
+  }
+
+  @override
+  String get planDetailRaceDateApply => 'Cambiar fecha de carrera';
+
+  @override
+  String planDetailRaceDateDone(String date) {
+    return 'Fecha de carrera cambiada al $date';
+  }
+
+  @override
+  String planDetailRaceDateTooSoon(String date, String earliest) {
+    return 'El $date es demasiado pronto para mantener tu puesta a punto, incluso quitando el desarrollo. La fecha de carrera más temprana que alcanza este plan es el $earliest.';
+  }
+
+  @override
+  String get planDetailRaceDatePast =>
+      'Elige una fecha de carrera posterior a hoy.';
+
+  @override
+  String get planDetailRaceDateInvalid => 'Esa fecha no es válida.';
+
+  @override
+  String get planDetailRaceDateUnchanged => 'Tu carrera ya es ese día.';
+
+  @override
+  String get planDetailRaceDateNoRace =>
+      'Este plan no tiene ninguna carrera pendiente que mover.';
+
+  @override
+  String get planDetailRaceDateWeekStarted =>
+      'La semana de carrera ya empezó, así que no se pueden añadir semanas antes. Elige un día de esta semana o crea un plan nuevo para la carrera posterior.';
+
+  @override
+  String get planDetailRaceDateTooFar =>
+      'Eso es más de un año después. Crea mejor un plan nuevo para esa carrera.';
+
+  @override
+  String get planDetailRaceDateNoBuild =>
+      'Este plan no tiene ninguna semana de desarrollo que repetir, así que no se puede alargar.';
+
+  @override
+  String get planDetailRaceDateInTheWay =>
+      'Hay otra carrera o una sesión completada en las semanas que se moverían. Cámbiala primero.';
+
+  @override
+  String get planDetailRaceDateOverlap =>
+      'La nueva fecha de carrera se solapa con otro plan activo. Mueve o termina primero ese plan.';
 }

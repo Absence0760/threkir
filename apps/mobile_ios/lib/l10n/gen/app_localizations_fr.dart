@@ -17959,4 +17959,91 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get dashboardPlanPausedBody =>
       'En pause. Reprenez-le pour continuer ; les semaines manquées sont décalées.';
+
+  @override
+  String get planDetailChangeRaceDate => 'Changer la date de course…';
+
+  @override
+  String get planDetailRaceDatePickerHelp => 'Nouvelle date de course';
+
+  @override
+  String get planDetailRaceDateConfirmTitle => 'Changer la date de course ?';
+
+  @override
+  String planDetailRaceDateConfirmLater(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Votre course passe au $date. $n semaines de développement sont ajoutées avant l’affûtage, qui reste tel quel. Les semaines déjà commencées ne changent pas.',
+      one:
+          'Votre course passe au $date. $n semaine de développement est ajoutée avant l’affûtage, qui reste tel quel. Les semaines déjà commencées ne changent pas.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailRaceDateConfirmEarlier(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Votre course passe au $date. $n semaines de développement sont retirées, et l’affûtage reste tel quel. Les semaines déjà commencées ne changent pas.',
+      one:
+          'Votre course passe au $date. $n semaine de développement est retirée, et l’affûtage reste tel quel. Les semaines déjà commencées ne changent pas.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailRaceDateConfirmSameWeek(String date) {
+    return 'Votre course passe au $date, dans la même semaine. Aucune semaine n’est ajoutée ni retirée, et l’affûtage reste tel quel.';
+  }
+
+  @override
+  String get planDetailRaceDateApply => 'Changer la date de course';
+
+  @override
+  String planDetailRaceDateDone(String date) {
+    return 'Date de course changée au $date';
+  }
+
+  @override
+  String planDetailRaceDateTooSoon(String date, String earliest) {
+    return 'Le $date est trop tôt pour garder votre affûtage, même en retirant le développement. La date de course la plus proche possible pour ce plan est le $earliest.';
+  }
+
+  @override
+  String get planDetailRaceDatePast =>
+      'Choisissez une date de course après aujourd’hui.';
+
+  @override
+  String get planDetailRaceDateInvalid => 'Cette date n’est pas valide.';
+
+  @override
+  String get planDetailRaceDateUnchanged => 'Votre course est déjà ce jour-là.';
+
+  @override
+  String get planDetailRaceDateNoRace =>
+      'Ce plan n’a pas de course à venir à déplacer.';
+
+  @override
+  String get planDetailRaceDateWeekStarted =>
+      'La semaine de course a commencé : aucune semaine ne peut plus être ajoutée avant. Choisissez un jour de cette semaine, ou créez un nouveau plan pour la course plus tardive.';
+
+  @override
+  String get planDetailRaceDateTooFar =>
+      'C’est plus d’un an plus tard. Créez plutôt un nouveau plan pour cette course.';
+
+  @override
+  String get planDetailRaceDateNoBuild =>
+      'Ce plan n’a aucune semaine de développement à répéter, il ne peut donc pas être allongé.';
+
+  @override
+  String get planDetailRaceDateInTheWay =>
+      'Une autre course ou une séance terminée se trouve dans les semaines qui seraient déplacées. Modifiez-la d’abord.';
+
+  @override
+  String get planDetailRaceDateOverlap =>
+      'La nouvelle date de course empiète sur un autre plan actif. Déplacez ou terminez d’abord ce plan.';
 }

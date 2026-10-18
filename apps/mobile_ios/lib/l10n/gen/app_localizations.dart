@@ -29226,6 +29226,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Paused. Resume to pick it up again; the weeks you missed move back.'**
   String get dashboardPlanPausedBody;
+
+  /// App-bar menu item opening the race date picker
+  ///
+  /// In en, this message translates to:
+  /// **'Change race date…'**
+  String get planDetailChangeRaceDate;
+
+  /// Help text on the race date picker
+  ///
+  /// In en, this message translates to:
+  /// **'New race date'**
+  String get planDetailRaceDatePickerHelp;
+
+  /// Confirm title for changing the race date
+  ///
+  /// In en, this message translates to:
+  /// **'Change race date?'**
+  String get planDetailRaceDateConfirmTitle;
+
+  /// Confirm body; date the new race day, n build weeks added
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{Your race moves to {date}. {n} build week is added before the taper, which stays as it is. Weeks you have already started don\'t change.} other{Your race moves to {date}. {n} build weeks are added before the taper, which stays as it is. Weeks you have already started don\'t change.}}'**
+  String planDetailRaceDateConfirmLater(int n, String date);
+
+  /// Confirm body; date the new race day, n build weeks cut
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{Your race moves to {date}. {n} build week is cut, and the taper stays as it is. Weeks you have already started don\'t change.} other{Your race moves to {date}. {n} build weeks are cut, and the taper stays as it is. Weeks you have already started don\'t change.}}'**
+  String planDetailRaceDateConfirmEarlier(int n, String date);
+
+  /// Confirm body when the race moves within its week
+  ///
+  /// In en, this message translates to:
+  /// **'Your race moves to {date}, in the same week. No weeks are added or cut, and the taper stays as it is.'**
+  String planDetailRaceDateConfirmSameWeek(String date);
+
+  /// Confirm button for changing the race date
+  ///
+  /// In en, this message translates to:
+  /// **'Change race date'**
+  String get planDetailRaceDateApply;
+
+  /// Banner after the race date changed
+  ///
+  /// In en, this message translates to:
+  /// **'Race date changed to {date}'**
+  String planDetailRaceDateDone(String date);
+
+  /// Refusal: date the picked day, earliest the first reachable race day
+  ///
+  /// In en, this message translates to:
+  /// **'{date} is too soon to keep your taper, even with the build cut. The earliest race date this plan can reach is {earliest}.'**
+  String planDetailRaceDateTooSoon(String date, String earliest);
+
+  /// Refusal: race date today or earlier
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a race date after today.'**
+  String get planDetailRaceDatePast;
+
+  /// Refusal: unusable date
+  ///
+  /// In en, this message translates to:
+  /// **'That isn\'t a valid date.'**
+  String get planDetailRaceDateInvalid;
+
+  /// Refusal: same day as now
+  ///
+  /// In en, this message translates to:
+  /// **'Your race is already on that day.'**
+  String get planDetailRaceDateUnchanged;
+
+  /// Refusal: plan has no race ahead
+  ///
+  /// In en, this message translates to:
+  /// **'This plan has no race ahead to move.'**
+  String get planDetailRaceDateNoRace;
+
+  /// Refusal: race week has started
+  ///
+  /// In en, this message translates to:
+  /// **'Race week has started, so no weeks can go in front of it. Pick a day this week, or start a new plan for the later race.'**
+  String get planDetailRaceDateWeekStarted;
+
+  /// Refusal: more than a year later
+  ///
+  /// In en, this message translates to:
+  /// **'That is more than a year further out. Start a new plan for that race instead.'**
+  String get planDetailRaceDateTooFar;
+
+  /// Refusal: no build week to repeat
+  ///
+  /// In en, this message translates to:
+  /// **'This plan has no build week to repeat, so it can\'t be made longer.'**
+  String get planDetailRaceDateNoBuild;
+
+  /// Refusal: another race or completed session would move
+  ///
+  /// In en, this message translates to:
+  /// **'Another race or a completed session sits in the weeks that would move. Change that first.'**
+  String get planDetailRaceDateInTheWay;
+
+  /// A later race date runs into another active plan
+  ///
+  /// In en, this message translates to:
+  /// **'The new race date runs into another active plan. Move or end that plan first.'**
+  String get planDetailRaceDateOverlap;
 }
 
 class _AppLocalizationsDelegate

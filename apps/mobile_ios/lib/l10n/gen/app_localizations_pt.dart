@@ -17921,6 +17921,93 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get dashboardPlanPausedBody =>
       'Em pausa. Retome para continuar; as semanas que falhou passam para a frente.';
+
+  @override
+  String get planDetailChangeRaceDate => 'Alterar data da prova…';
+
+  @override
+  String get planDetailRaceDatePickerHelp => 'Nova data da prova';
+
+  @override
+  String get planDetailRaceDateConfirmTitle => 'Alterar a data da prova?';
+
+  @override
+  String planDetailRaceDateConfirmLater(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'A sua prova passa para $date. São acrescentadas $n semanas de construção antes da redução de carga, que fica como está. As semanas já começadas não mudam.',
+      one:
+          'A sua prova passa para $date. É acrescentada $n semana de construção antes da redução de carga, que fica como está. As semanas já começadas não mudam.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailRaceDateConfirmEarlier(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'A sua prova passa para $date. São retiradas $n semanas de construção, e a redução de carga fica como está. As semanas já começadas não mudam.',
+      one:
+          'A sua prova passa para $date. É retirada $n semana de construção, e a redução de carga fica como está. As semanas já começadas não mudam.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailRaceDateConfirmSameWeek(String date) {
+    return 'A sua prova passa para $date, na mesma semana. Não são acrescentadas nem retiradas semanas, e a redução de carga fica como está.';
+  }
+
+  @override
+  String get planDetailRaceDateApply => 'Alterar data da prova';
+
+  @override
+  String planDetailRaceDateDone(String date) {
+    return 'Data da prova alterada para $date';
+  }
+
+  @override
+  String planDetailRaceDateTooSoon(String date, String earliest) {
+    return '$date é cedo demais para manter a redução de carga, mesmo retirando a construção. A data de prova mais próxima que este plano alcança é $earliest.';
+  }
+
+  @override
+  String get planDetailRaceDatePast =>
+      'Escolha uma data de prova depois de hoje.';
+
+  @override
+  String get planDetailRaceDateInvalid => 'Essa data não é válida.';
+
+  @override
+  String get planDetailRaceDateUnchanged => 'A sua prova já é nesse dia.';
+
+  @override
+  String get planDetailRaceDateNoRace =>
+      'Este plano não tem nenhuma prova pela frente para mudar.';
+
+  @override
+  String get planDetailRaceDateWeekStarted =>
+      'A semana da prova já começou, por isso não é possível acrescentar semanas antes dela. Escolha um dia desta semana ou crie um novo plano para a prova mais tardia.';
+
+  @override
+  String get planDetailRaceDateTooFar =>
+      'Isso fica mais de um ano depois. Crie antes um novo plano para essa prova.';
+
+  @override
+  String get planDetailRaceDateNoBuild =>
+      'Este plano não tem nenhuma semana de construção para repetir, por isso não pode ser prolongado.';
+
+  @override
+  String get planDetailRaceDateInTheWay =>
+      'Há outra prova ou uma sessão concluída nas semanas que mudariam. Altere isso primeiro.';
+
+  @override
+  String get planDetailRaceDateOverlap =>
+      'A nova data da prova sobrepõe-se a outro plano ativo. Mude ou termine primeiro esse plano.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -35827,4 +35914,91 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get dashboardPlanPausedBody =>
       'Pausado. Retome para continuar; as semanas que você perdeu passam para frente.';
+
+  @override
+  String get planDetailChangeRaceDate => 'Alterar data da prova…';
+
+  @override
+  String get planDetailRaceDatePickerHelp => 'Nova data da prova';
+
+  @override
+  String get planDetailRaceDateConfirmTitle => 'Alterar a data da prova?';
+
+  @override
+  String planDetailRaceDateConfirmLater(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Sua prova passa para $date. $n semanas de construção são adicionadas antes do polimento, que continua como está. As semanas já iniciadas não mudam.',
+      one:
+          'Sua prova passa para $date. $n semana de construção é adicionada antes do polimento, que continua como está. As semanas já iniciadas não mudam.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailRaceDateConfirmEarlier(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Sua prova passa para $date. $n semanas de construção são cortadas, e o polimento continua como está. As semanas já iniciadas não mudam.',
+      one:
+          'Sua prova passa para $date. $n semana de construção é cortada, e o polimento continua como está. As semanas já iniciadas não mudam.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailRaceDateConfirmSameWeek(String date) {
+    return 'Sua prova passa para $date, na mesma semana. Nenhuma semana é adicionada ou cortada, e o polimento continua como está.';
+  }
+
+  @override
+  String get planDetailRaceDateApply => 'Alterar data da prova';
+
+  @override
+  String planDetailRaceDateDone(String date) {
+    return 'Data da prova alterada para $date';
+  }
+
+  @override
+  String planDetailRaceDateTooSoon(String date, String earliest) {
+    return '$date é cedo demais para manter seu polimento, mesmo cortando a construção. A data de prova mais próxima que este plano alcança é $earliest.';
+  }
+
+  @override
+  String get planDetailRaceDatePast =>
+      'Escolha uma data de prova depois de hoje.';
+
+  @override
+  String get planDetailRaceDateInvalid => 'Essa data não é válida.';
+
+  @override
+  String get planDetailRaceDateUnchanged => 'Sua prova já é nesse dia.';
+
+  @override
+  String get planDetailRaceDateNoRace =>
+      'Este plano não tem nenhuma prova pela frente para mudar.';
+
+  @override
+  String get planDetailRaceDateWeekStarted =>
+      'A semana da prova já começou, então não dá para adicionar semanas antes dela. Escolha um dia desta semana ou crie um novo plano para a prova mais tarde.';
+
+  @override
+  String get planDetailRaceDateTooFar =>
+      'Isso fica mais de um ano depois. Crie um novo plano para essa prova.';
+
+  @override
+  String get planDetailRaceDateNoBuild =>
+      'Este plano não tem nenhuma semana de construção para repetir, então não pode ser alongado.';
+
+  @override
+  String get planDetailRaceDateInTheWay =>
+      'Há outra prova ou uma sessão concluída nas semanas que mudariam. Altere isso primeiro.';
+
+  @override
+  String get planDetailRaceDateOverlap =>
+      'A nova data da prova se sobrepõe a outro plano ativo. Mova ou encerre esse plano primeiro.';
 }

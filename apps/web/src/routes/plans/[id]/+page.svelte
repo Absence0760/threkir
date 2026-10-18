@@ -18,6 +18,7 @@
 		duplicatePlanWeek,
 		fetchMyActivePlanWindows,
 		shiftTrainingPlan,
+		changePlanRaceDate,
 		pausePlan,
 		resumePlan,
 		updatePlanStatus,
@@ -26,6 +27,8 @@
 	} from '#lib/core/data.ts';
 	import { recoveryWorkoutPatch } from '#lib/training/plan_bulk_ops.ts';
 	import { planShiftImpact } from '#lib/training/plan_shift.ts';
+	import { planRaceDate, raceDateChange, type RaceDateChange, type RaceDateRefusal } from '#lib/training/plan_race_date.ts';
+	import { overlappingPlans } from '#lib/training/plan_current.ts';
 	import { workoutMoveDays } from '#lib/training/plan_move.ts';
 	import { startLocalDayTicker } from '#lib/format/local_day_ticker.ts';
 	import { cyclePlanWorkoutPatch, type CyclePlanConfig } from '#lib/training/cycle_plan.ts';
@@ -309,6 +312,7 @@
 		| { kind: 'cycle' }
 		| { kind: 'pause' }
 		| { kind: 'resume' }
+		| { kind: 'raceDate'; change: RaceDateChange }
 		| null
 	>(null);
 
@@ -356,6 +360,99 @@
 			return;
 		}
 		bulkConfirm = { kind: 'shift', following: impact.kind === 'following' ? impact.following : [] };
+	}
+
+	// ─── Change race date (owner-only, decisions § 2120) ───
+	let raceDateInput = $state('');
+
+	function openAdjust(): void {
+		raceDateInput = raceDateOffer ?? '';
+		adjustOpen = true;
+	}
+
+	function raceDateRefusalMessage(reason: RaceDateRefusal, date: string, earliestIso?: string): string {
+		switch (reason) {
+			case 'too_soon':
+				return m('planDetail.raceDateTooSoon', {
+					date: fmtRaceDate(date),
+					earliest: earliestIso ? fmtRaceDate(earliestIso) : ''
+				});
+			case 'past':
+				return m('planDetail.raceDatePast');
+			case 'invalid':
+				return m('planDetail.raceDateInvalid');
+			case 'unchanged':
+				return m('planDetail.raceDateUnchanged');
+			case 'no_race':
+				return m('planDetail.raceDateNoRace');
+			case 'race_week_started':
+				return m('planDetail.raceDateWeekStarted');
+			case 'too_far':
+				return m('planDetail.raceDateTooFar');
+			case 'no_build_week':
+				return m('planDetail.raceDateNoBuild');
+			case 'in_the_way':
+				return m('planDetail.raceDateInTheWay');
+		}
+	}
+
+	/// Work out which weeks the new race date drops or repeats, refuse here
+	/// what the plan cannot reach with its taper whole, and check a later end
+	/// against the runner's other active plans before asking. A failed check
+	/// asks nothing.
+	async function chooseRaceDate(): Promise<void> {
+		if (!plan || !raceDateInput) return;
+		const date = raceDateInput;
+		adjustOpen = false;
+		await tick();
+		const result = raceDateChange({ plan, weeks, workouts, raceDateIso: date, todayIso: today });
+		if (!result.ok) {
+			showToast(raceDateRefusalMessage(result.reason, date, result.earliestIso), 'error');
+			return;
+		}
+		if (plan.status === 'active' && date > plan.end_date) {
+			let others: PlanName[];
+			try {
+				others = await fetchMyActivePlanWindows();
+			} catch (e) {
+				showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+				return;
+			}
+			const blocking = overlappingPlans(
+				others.filter((p) => p.id !== plan?.id),
+				plan.start_date,
+				date
+			);
+			if (blocking.length > 0) {
+				showToast(
+					m('planDetail.raceDateBlocked', { date: fmtRaceDate(date), plans: planNames(blocking) }),
+					'error'
+				);
+				return;
+			}
+		}
+		bulkConfirm = { kind: 'raceDate', change: result.change };
+	}
+
+	async function applyRaceDate(change: RaceDateChange): Promise<void> {
+		if (!plan || bulkBusy) return;
+		bulkBusy = true;
+		try {
+			await changePlanRaceDate(plan.id, change, today);
+			showToast(m('planDetail.raceDateDone', { date: fmtRaceDate(change.raceDateIso) }));
+			await load();
+		} catch (e) {
+			planWriteFailed(e);
+		} finally {
+			bulkBusy = false;
+		}
+	}
+
+	function raceDateConfirmMessage(change: RaceDateChange): string {
+		const date = fmtRaceDate(change.raceDateIso);
+		if (change.weekDelta > 0) return m('planDetail.raceDateConfirmLater', { date, n: change.weekDelta });
+		if (change.weekDelta < 0) return m('planDetail.raceDateConfirmEarlier', { date, n: -change.weekDelta });
+		return m('planDetail.raceDateConfirmSameWeek', { date });
 	}
 
 	function planNames(plans: PlanName[]): string {
@@ -547,6 +644,7 @@
 		else if (c.kind === 'duplicate') void duplicateWeek(c.week);
 		else if (c.kind === 'cycle') void applyCycleAdjustment();
 		else if (c.kind === 'pause') void doPausePlan();
+		else if (c.kind === 'raceDate') void applyRaceDate(c.change);
 		else void doResumePlan();
 	}
 
@@ -1073,6 +1171,12 @@
 	/// countdown, race-week panel and hero relation follow the next one, so a
 	/// B race mid-block gets its own run-in before the plan's A race.
 	let races = $derived(plan ? planRaces(plan, workouts) : []);
+	/// The race day the owner can move, or null for a plan with no race still
+	/// ahead (a walk-run plan, one ended early, one whose race has passed).
+	let raceDateOffer = $derived.by(() => {
+		const d = plan ? planRaceDate(plan, weeks) : null;
+		return d && d >= today ? d : null;
+	});
 	let upcomingRace = $derived(nextRace(races, today));
 	/// The hero's distance / goal / date follow the next race once it is not
 	/// the plan's own A race on the end date; the A goal stays in the races list.
@@ -1342,7 +1446,7 @@
 							class="btn btn-outline btn-sm hero-edit"
 							aria-haspopup="dialog"
 							bind:this={adjustButton}
-							onclick={() => (adjustOpen = true)}
+							onclick={openAdjust}
 						>
 							<span class="material-symbols" aria-hidden="true">tune</span>
 							{m('planDetail.adjustPlan')}
@@ -2054,6 +2158,33 @@
 				</div>
 				<p class="adjust-option-desc" id="adjust-shift-desc">{m('planDetail.adjustShiftDesc')}</p>
 			</li>
+			{#if raceDateOffer}
+				<li class="adjust-option">
+					<div class="shift-control">
+						<input
+							type="date"
+							class="race-date-input"
+							bind:value={raceDateInput}
+							min={shiftIsoDate(today, 1)}
+							aria-label={m('planDetail.raceDateAria')}
+							data-testid="race-date-input"
+							disabled={bulkBusy}
+						/>
+						<button
+							type="button"
+							class="btn btn-outline btn-sm adjust-option-btn"
+							aria-describedby="adjust-race-date-desc"
+							data-testid="race-date-btn"
+							onclick={chooseRaceDate}
+							disabled={bulkBusy || !raceDateInput}
+						>
+							<span class="material-symbols" aria-hidden="true">event</span>
+							{m('planDetail.raceDateChange')}
+						</button>
+					</div>
+					<p class="adjust-option-desc" id="adjust-race-date-desc">{m('planDetail.adjustRaceDateDesc')}</p>
+				</li>
+			{/if}
 			<li class="adjust-option">
 				<button
 					type="button"
@@ -2186,6 +2317,8 @@
 	data-testid="bulk-confirm-dialog"
 	title={bulkConfirm?.kind === 'shift'
 		? m('planDetail.shiftConfirmTitle')
+		: bulkConfirm?.kind === 'raceDate'
+		? m('planDetail.raceDateConfirmTitle')
 		: bulkConfirm?.kind === 'recovery'
 			? m('planDetail.recoveryConfirmTitle')
 			: bulkConfirm?.kind === 'cycle'
@@ -2202,6 +2335,8 @@
 					plans: planNames(bulkConfirm.following),
 				})
 			: m('planDetail.shiftConfirmMessage', { n: Math.abs(shiftDays) })
+		: bulkConfirm?.kind === 'raceDate'
+		? raceDateConfirmMessage(bulkConfirm.change)
 		: bulkConfirm?.kind === 'recovery'
 			? m('planDetail.recoveryConfirmMessage', { n: bulkConfirm.week.week_index + 1 })
 			: bulkConfirm?.kind === 'duplicate'
@@ -2716,6 +2851,9 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.4rem;
+	}
+	.shift-control .race-date-input {
+		width: auto;
 	}
 	.shift-control input {
 		width: 4.5rem;

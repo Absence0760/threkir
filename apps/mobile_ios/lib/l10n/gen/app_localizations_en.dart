@@ -17734,4 +17734,89 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get dashboardPlanPausedBody =>
       'Paused. Resume to pick it up again; the weeks you missed move back.';
+
+  @override
+  String get planDetailChangeRaceDate => 'Change race date…';
+
+  @override
+  String get planDetailRaceDatePickerHelp => 'New race date';
+
+  @override
+  String get planDetailRaceDateConfirmTitle => 'Change race date?';
+
+  @override
+  String planDetailRaceDateConfirmLater(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Your race moves to $date. $n build weeks are added before the taper, which stays as it is. Weeks you have already started don\'t change.',
+      one:
+          'Your race moves to $date. $n build week is added before the taper, which stays as it is. Weeks you have already started don\'t change.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailRaceDateConfirmEarlier(int n, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Your race moves to $date. $n build weeks are cut, and the taper stays as it is. Weeks you have already started don\'t change.',
+      one:
+          'Your race moves to $date. $n build week is cut, and the taper stays as it is. Weeks you have already started don\'t change.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String planDetailRaceDateConfirmSameWeek(String date) {
+    return 'Your race moves to $date, in the same week. No weeks are added or cut, and the taper stays as it is.';
+  }
+
+  @override
+  String get planDetailRaceDateApply => 'Change race date';
+
+  @override
+  String planDetailRaceDateDone(String date) {
+    return 'Race date changed to $date';
+  }
+
+  @override
+  String planDetailRaceDateTooSoon(String date, String earliest) {
+    return '$date is too soon to keep your taper, even with the build cut. The earliest race date this plan can reach is $earliest.';
+  }
+
+  @override
+  String get planDetailRaceDatePast => 'Pick a race date after today.';
+
+  @override
+  String get planDetailRaceDateInvalid => 'That isn\'t a valid date.';
+
+  @override
+  String get planDetailRaceDateUnchanged => 'Your race is already on that day.';
+
+  @override
+  String get planDetailRaceDateNoRace => 'This plan has no race ahead to move.';
+
+  @override
+  String get planDetailRaceDateWeekStarted =>
+      'Race week has started, so no weeks can go in front of it. Pick a day this week, or start a new plan for the later race.';
+
+  @override
+  String get planDetailRaceDateTooFar =>
+      'That is more than a year further out. Start a new plan for that race instead.';
+
+  @override
+  String get planDetailRaceDateNoBuild =>
+      'This plan has no build week to repeat, so it can\'t be made longer.';
+
+  @override
+  String get planDetailRaceDateInTheWay =>
+      'Another race or a completed session sits in the weeks that would move. Change that first.';
+
+  @override
+  String get planDetailRaceDateOverlap =>
+      'The new race date runs into another active plan. Move or end that plan first.';
 }

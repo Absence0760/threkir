@@ -4873,6 +4873,7 @@ class RaceListingRow {
   static const String colIsVerified = 'is_verified';
   static const String colCreatedAt = 'created_at';
   static const String colUpdatedAt = 'updated_at';
+  static const String colRouteId = 'route_id';
 
   final String id;
   final String provider;
@@ -4888,6 +4889,7 @@ class RaceListingRow {
   final bool isVerified;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? routeId;
 
   const RaceListingRow({
     required this.id,
@@ -4904,6 +4906,7 @@ class RaceListingRow {
     required this.isVerified,
     required this.createdAt,
     required this.updatedAt,
+    this.routeId,
   });
 
   factory RaceListingRow.fromJson(Map<String, dynamic> json) => RaceListingRow(
@@ -4921,6 +4924,7 @@ class RaceListingRow {
     isVerified: (json['is_verified'] as bool?) ?? false,
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
     updatedAt: parseIsoStrictRequired(json['updated_at'], 'updated_at'),
+    routeId: json['route_id'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -4938,6 +4942,7 @@ class RaceListingRow {
     colIsVerified: isVerified,
     colCreatedAt: createdAt.toIso8601String(),
     colUpdatedAt: updatedAt.toIso8601String(),
+    colRouteId: routeId,
   };
 
   RaceListingRow copyWith({
@@ -4955,6 +4960,7 @@ class RaceListingRow {
     bool? isVerified,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? routeId,
   }) => RaceListingRow(
     id: id ?? this.id,
     provider: provider ?? this.provider,
@@ -4970,6 +4976,7 @@ class RaceListingRow {
     isVerified: isVerified ?? this.isVerified,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
+    routeId: routeId ?? this.routeId,
   );
 }
 

@@ -3275,6 +3275,7 @@ export type Database = {
           provider_race_id: string | null
           race_date: string
           results_url: string | null
+          route_id: string | null
           submitted_by: string | null
           updated_at: string
         }
@@ -3291,6 +3292,7 @@ export type Database = {
           provider_race_id?: string | null
           race_date: string
           results_url?: string | null
+          route_id?: string | null
           submitted_by?: string | null
           updated_at?: string
         }
@@ -3307,10 +3309,33 @@ export type Database = {
           provider_race_id?: string | null
           race_date?: string
           results_url?: string | null
+          route_id?: string | null
           submitted_by?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "race_listings_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "race_listings_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "race_listings_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "shared_routes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       race_pings: {
         Row: {
@@ -5506,6 +5531,9 @@ export type Database = {
       }
       public_race_listings: {
         Row: {
+          course_distance_m: number | null
+          course_elevation_m: number | null
+          course_surface: string | null
           created_at: string | null
           distance_m: number | null
           entry_url: string | null
@@ -5519,36 +5547,6 @@ export type Database = {
           race_date: string | null
           results_url: string | null
           updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          distance_m?: number | null
-          entry_url?: string | null
-          id?: string | null
-          is_verified?: boolean | null
-          location_label?: string | null
-          location_point?: unknown
-          name?: string | null
-          provider?: string | null
-          provider_race_id?: string | null
-          race_date?: string | null
-          results_url?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          distance_m?: number | null
-          entry_url?: string | null
-          id?: string | null
-          is_verified?: boolean | null
-          location_label?: string | null
-          location_point?: unknown
-          name?: string | null
-          provider?: string | null
-          provider_race_id?: string | null
-          race_date?: string | null
-          results_url?: string | null
-          updated_at?: string | null
         }
         Relationships: []
       }

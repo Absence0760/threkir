@@ -130,5 +130,5 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     // org.json is part of the Android runtime, but android.jar's copy is a
     // stub on a host JVM; TodayWidgetSnapshotTest needs the real parser.
-    testImplementation("org.json:json:20240303")
+    testImplementation("org.json:json:20260814")
 }

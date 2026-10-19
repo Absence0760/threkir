@@ -85,6 +85,7 @@ const HOMES: Record<string, Home> = {
 	voice_feedback_verbosity: { page: 'recording' },
 	voice_feedback_interval_km: { page: 'recording', also: { devices: PER_DEVICE_OVERRIDE } },
 	voice_cue_types: { page: 'recording' },
+	voice_split_pace_mode: { page: 'recording' },
 	haptic_feedback_enabled: { page: 'devices' },
 	keep_screen_on: { page: 'devices' },
 	dim_screen_while_recording: { none: 'phone-only recording preference, edited on mobile' },

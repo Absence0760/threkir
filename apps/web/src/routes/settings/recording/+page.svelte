@@ -5,10 +5,14 @@
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import {
 		VOICE_CUE_IDS,
+		SPLIT_PACE_MODES,
+		SPLIT_PACE_MODE_DEFAULT,
 		VOICE_FEEDBACK_ENABLED_DEFAULT,
 		isVoiceCueEnabled,
+		readSplitPaceMode,
 		readVoiceCueMap,
 		setVoiceCueEnabled,
+		type SplitPaceMode,
 		type VoiceCueId,
 		type VoiceCueMap,
 	} from '#lib/settings/voice_cues.ts';
@@ -27,6 +31,12 @@
 	// splits, not 1 km.
 	const KM_PER_MI = 1.609344;
 	let voiceFeedbackIntervalKm = $state('1.0');
+	let splitPaceMode = $state<SplitPaceMode>(SPLIT_PACE_MODE_DEFAULT);
+	const SPLIT_PACE_MODE_LABELS: Record<SplitPaceMode, MessageKey> = {
+		split: 'prefs.splitPaceModeSplit',
+		average: 'prefs.splitPaceModeAverage',
+		both: 'prefs.splitPaceModeBoth',
+	};
 	// Sparse map of cue id -> bool; an absent id is ON (voice_cues.ts).
 	let voiceCueTypes = $state<VoiceCueMap>({});
 	// Keyed by VoiceCueId so the compiler refuses a cue id with no label —
@@ -56,6 +66,7 @@
 		voiceFeedbackIntervalKm = (
 			effective<number>(settings, 'voice_feedback_interval_km', 1.0) ?? 1.0
 		).toString();
+		splitPaceMode = readSplitPaceMode(effective<unknown>(settings, 'voice_split_pace_mode'));
 		voiceCueTypes = readVoiceCueMap(effective<unknown>(settings, 'voice_cue_types'));
 	});
 
@@ -130,6 +141,23 @@
 						/>
 					</label>
 					<p class="hint" id="split-interval-hint">{m('prefs.splitIntervalHint')}</p>
+				</div>
+				<div class="field">
+					<label>
+						<span class="label-text">{m('prefs.splitPaceMode')}</span>
+						<select
+							bind:value={splitPaceMode}
+							data-testid="split-pace-mode"
+							disabled={!isVoiceCueEnabled(voiceCueTypes, 'splits')}
+							onchange={() => prefs.save({ voice_split_pace_mode: splitPaceMode })}
+							aria-describedby="split-pace-mode-hint"
+						>
+							{#each SPLIT_PACE_MODES as mode (mode)}
+								<option value={mode}>{m(SPLIT_PACE_MODE_LABELS[mode])}</option>
+							{/each}
+						</select>
+					</label>
+					<p class="hint" id="split-pace-mode-hint">{m('prefs.splitPaceModeHint')}</p>
 				</div>
 				<fieldset class="cue-list" data-testid="voice-cue-types">
 					<legend class="label-text">{m('prefs.voiceCueTypes')}</legend>

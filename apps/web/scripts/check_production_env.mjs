@@ -43,6 +43,11 @@
  *     supported configuration — Pro is sold through the iPhone app's
  *     In-App Purchase and the page says so (decisions § 1826) — and the
  *     CLI prints a `::notice::` naming the state instead.
+ *   - PUBLIC_DONATE_URL may be unset (no donate link renders), but a value
+ *     that IS set must be a Stripe Payment Link: https, host
+ *     donate.stripe.com or buy.stripe.com, a link id. The test is
+ *     `donateUrlProblem` in src/lib/billing/donate_link.ts, the same one
+ *     the pages apply before they render a donate link.
  *   - The OPTIONAL origins below (PUBLIC_SITE_URL, PUBLIC_LIVE_HUB_URL,
  *     PUBLIC_EXPORT_HUB_URL) may be unset — each has a defined
  *     unconfigured behaviour — but a value that IS set has to be a
@@ -90,6 +95,7 @@
  */
 
 import { checkoutBaseProblem } from '../src/lib/billing/revenuecat_links.ts';
+import { donateUrlProblem } from '../src/lib/billing/donate_link.ts';
 import { isTruthyFlagValue } from '../src/lib/core/env_flag.ts';
 
 const PLACEHOLDER_HOST_RE = /\bplaceholder\.supabase\.co\b/i;
@@ -287,6 +293,18 @@ export function checkProductionEnv(env) {
 		notices.push(
 			'Web checkout is off: PUBLIC_REVENUECAT_WEB_CHECKOUT_URL is unset while a Pro perk flag is on, so /settings/upgrade sells Pro through the iPhone app only (decisions § 1826). Set the secret to a https://pay.rev.cat/<token> link to turn web checkout on.',
 		);
+	}
+
+	const donateLink = String(env.PUBLIC_DONATE_URL ?? '').trim();
+	if (donateLink) {
+		const problem = donateUrlProblem(donateLink);
+		if (problem) {
+			findings.push({
+				envVar: 'PUBLIC_DONATE_URL',
+				value: redactCredentials(donateLink),
+				reason: `${problem} The site refuses a link like this and hides every donate link, so the release would ship believing donations are live when they are not.`,
+			});
+		}
 	}
 
 	// The plan assistant's box renders only when the Coach is on too (it is a

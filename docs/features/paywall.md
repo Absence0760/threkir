@@ -107,6 +107,9 @@ its "Get Pro" CTA for a "Pro — coming soon" teaser
 (`upgrade.proComingSoon`), the "Most popular" ribbon becomes
 "Coming soon", and the Donate button becomes the primary CTA — so the
 app never sells a hollow subscription and leads with donations instead.
+The Donate card itself renders only when `PUBLIC_DONATE_URL` holds a
+Stripe Payment Link (decisions § 2217), so with both perks off and no
+link the page offers no purchase at all rather than a dead button.
 Each flagged perk's card bullet is additionally gated on its own flag
 (the Coach bullets on `coachOn`, the route-generation bullet on
 `routeGenOn`, the plate-photo bullet on `coachOn && platePhotoEnabled()`
@@ -542,7 +545,15 @@ watch inherits the phone's subscription via the paired Supabase session
    settings layout).
 2. Page shows the two-card layout: Pro plan card ($79.99 / year or $9.99 / month) plus
    a one-off **Donate** button.
-3. Tapping Donate opens an external payment link in a new tab.
+3. Tapping Donate opens a Stripe Payment Link in a new tab. The link is
+   the `PUBLIC_DONATE_URL` build secret, on the same Threkir Stripe
+   account RevenueCat Web Billing charges web Pro through, so both kinds
+   of payment share one processor. `donateUrlProblem`
+   (`lib/billing/donate_link.ts`) accepts only `https://donate.stripe.com/…`
+   or `https://buy.stripe.com/…`. Unset or malformed hides the card, the
+   hero's "chip in" sentence and the `/compare` footer's donate sentence,
+   and the release guard fails a set-but-malformed value
+   (decisions § 2217).
 
 The tiered donation picker, transparent cost breakdown, progress bars,
 and donor count that existed under the previous donations-only model

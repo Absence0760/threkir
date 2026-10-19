@@ -298,6 +298,10 @@ class SettingsSyncService extends ChangeNotifier {
     if (vfv is String && vfv.isNotEmpty && vfv != preferences.voiceFeedbackVerbosity) {
       preferences.setVoiceFeedbackVerbosity(vfv);
     }
+    final spm = prefs[SettingsKeys.voiceSplitPaceMode];
+    if (spm is String && spm != preferences.splitPaceMode) {
+      preferences.setSplitPaceMode(spm);
+    }
     _applyVoiceFeedbackEnabled(prefs);
     _applyVoiceCueTypes(prefs);
     // Body weight in kg — drives the run-detail calorie estimate.

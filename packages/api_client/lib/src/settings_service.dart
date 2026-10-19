@@ -191,6 +191,9 @@ class SettingsKeys {
   // Device (D)
   static const voiceFeedbackEnabled = 'voice_feedback_enabled';
   static const voiceFeedbackVerbosity = 'voice_feedback_verbosity';
+  /// Which pace the split cue reads out (`split` | `average` | `both`).
+  /// Universal, so web Settings can set it. See settings.md.
+  static const voiceSplitPaceMode = 'voice_split_pace_mode';
   static const voiceFeedbackIntervalKm = 'voice_feedback_interval_km';
   /// Per-cue voice toggles as a map of cue id → bool (splits,
   /// start_finish, off_route, pace_alerts, workout_steps, cutoff_catch_up,

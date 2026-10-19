@@ -335,7 +335,9 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
       ],
       current: widget.preferences.splitPaceMode,
     );
-    if (picked != null) await widget.preferences.setSplitPaceMode(picked);
+    if (picked == null) return;
+    await widget.preferences.setSplitPaceMode(picked);
+    await _putUniversal(SettingsKeys.voiceSplitPaceMode, picked);
   }
 
   static String _splitPaceModeLabel(AppLocalizations l10n, String raw) {

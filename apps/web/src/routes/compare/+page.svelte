@@ -7,9 +7,13 @@
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
+	import { donateUrl } from '#lib/billing/donate.ts';
 
 	// Drop the "AI Coach" explore link when the Coach is off (rock-bottom).
 	const coachOn = coachEnabled();
+	// Straight to the Stripe Payment Link: /settings/upgrade is behind sign-in,
+	// and a visitor should not need an account to chip in.
+	const donateHref = donateUrl();
 
 	function cellLabel(v: FeatureSupport): string {
 		return v === 'yes' ? m('compare.cellYes') : v === 'no' ? m('compare.cellNo') : m('compare.cellPartial');
@@ -101,9 +105,11 @@
 	{/each}
 
 	<footer class="cmp-footer">
-		<p>
-			{m('compare.footerPrefix')}<a href="/settings/upgrade">{m('compare.footerDonateLink')}</a>{m('compare.footerSuffix')}
-		</p>
+		{#if donateHref}
+			<p data-testid="compare-donate">
+				{m('compare.footerPrefix')}<a href={donateHref} target="_blank" rel="noopener noreferrer">{m('compare.footerDonateLink')}</a>{m('compare.footerSuffix')}
+			</p>
+		{/if}
 		<p class="cmp-links">
 			{m('compare.exploreFeatures')}
 			{#if coachOn}

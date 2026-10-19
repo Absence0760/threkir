@@ -8,6 +8,8 @@ import {
 	VOICE_CUE_IDS,
 	VOICE_FEEDBACK_ENABLED_DEFAULT,
 	isVoiceCueEnabled,
+	SPLIT_PACE_MODES,
+	readSplitPaceMode,
 	readVoiceCueMap,
 	setVoiceCueEnabled,
 } from './voice_cues';
@@ -130,4 +132,28 @@ test('the settings.md registry row default matches the shared default', () => {
 		VOICE_FEEDBACK_ENABLED_DEFAULT,
 		'settings.md registry default disagrees with VOICE_FEEDBACK_ENABLED_DEFAULT',
 	);
+});
+
+test('readSplitPaceMode keeps a known mode and falls back to split', () => {
+	assert.equal(readSplitPaceMode('average'), 'average');
+	assert.equal(readSplitPaceMode('both'), 'both');
+	assert.equal(readSplitPaceMode('split'), 'split');
+	assert.equal(readSplitPaceMode(undefined), 'split');
+	assert.equal(readSplitPaceMode(''), 'split');
+	assert.equal(readSplitPaceMode('AVERAGE'), 'split');
+	assert.equal(readSplitPaceMode(1), 'split');
+});
+
+test('the split pace modes match the Dart SplitPaceMode wire contract exactly', () => {
+	// Web writes the mode; the phone speaks it. A value only one side knows
+	// would be coerced back to `split` on the phone and the runner's choice
+	// would silently do nothing.
+	const dart = readFileSync(
+		resolve(__dirname, '../../../../mobile_android/lib/preferences.dart'),
+		'utf-8',
+	);
+	const body = dart.match(/class SplitPaceMode \{([\s\S]*?)\n\}/);
+	assert.ok(body, 'SplitPaceMode class not found in preferences.dart');
+	const modes = [...body[1].matchAll(/static const \w+ = '([a-z_]+)';/g)].map((mt) => mt[1]);
+	assert.deepEqual(modes, [...SPLIT_PACE_MODES]);
 });

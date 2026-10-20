@@ -244,6 +244,7 @@ else
 	dim "  PUBLIC_MAPTILER_KEY"
 	dim "  PUBLIC_REVENUECAT_WEB_CHECKOUT_URL  (if RevenueCat is wired)"
 	dim "  PUBLIC_REVENUECAT_WEB_PORTAL_URL    (optional)"
+	dim "  PUBLIC_DONATE_URL                   (optional, Stripe Payment Link)"
 	dim "  PUBLIC_SENTRY_DSN              (if Sentry is wired)"
 	read -rp "Press Enter once the secrets are saved. " _
 fi

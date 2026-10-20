@@ -375,6 +375,27 @@ test('does NOT enforce PUBLIC_REVENUECAT_WEB_PORTAL_URL (management portal is op
 	assert.equal(r.ok, true);
 });
 
+test('an unset PUBLIC_DONATE_URL passes silently; donations are optional', () => {
+	const r = checkProductionEnv({ ...RELEASE_BASE });
+	assert.equal(r.ok, true);
+	assert.deepEqual(r.notices, []);
+});
+
+test('accepts a Stripe Payment Link as PUBLIC_DONATE_URL', () => {
+	const r = checkProductionEnv({ ...RELEASE_BASE, PUBLIC_DONATE_URL: 'https://donate.stripe.com/abc123' });
+	assert.equal(r.ok, true);
+});
+
+test('fails a PUBLIC_DONATE_URL that is not a Stripe Payment Link', () => {
+	// The placeholder that shipped for months: GitHub redirects it to its own
+	// marketing page, so every Donate click went nowhere that takes money.
+	const r = checkProductionEnv({ ...RELEASE_BASE, PUBLIC_DONATE_URL: 'https://github.com/sponsors' });
+	assert.equal(r.ok, false);
+	assert.equal(r.findings.length, 1);
+	assert.equal(r.findings[0].envVar, 'PUBLIC_DONATE_URL');
+	assert.match(r.findings[0].reason, /not donate\.stripe\.com or buy\.stripe\.com/);
+});
+
 test('accepts a valid PUBLIC_VAPID_PUBLIC_KEY', () => {
 	const r = checkProductionEnv({
 		PUBLIC_SUPABASE_URL: 'https://prod-project.supabase.co',

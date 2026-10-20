@@ -64,6 +64,36 @@ test.describe('/settings/recording voice cues', () => {
 		}
 	});
 
+	test('the split pace mode round-trips and follows the Splits cue', async ({ page }) => {
+		await page.goto('/settings/recording');
+		await setMaster(page, true);
+
+		const mode = page.getByTestId('split-pace-mode');
+		await expect(mode).toHaveValue('split');
+		await expect(mode).toBeEnabled();
+
+		try {
+			await mode.selectOption('average');
+			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+			await page.reload();
+			await expect(page.getByTestId('split-pace-mode')).toHaveValue('average', { timeout: 10_000 });
+
+			// The mode only changes what the split cue says, so it has nothing
+			// to act on once that cue is off.
+			await page.getByTestId('voice-cue-splits').uncheck();
+			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+			await expect(page.getByTestId('split-pace-mode')).toBeDisabled();
+		} finally {
+			await page.goto('/settings/recording');
+			await setMaster(page, true);
+			await page.getByTestId('voice-cue-splits').check();
+			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+			await page.getByTestId('split-pace-mode').selectOption('split');
+			await expect(page.getByTestId('save-status')).toContainText('Saved', { timeout: 8_000 });
+			await setMaster(page, false);
+		}
+	});
+
 	test('the cue list is hidden until spoken cues are switched on', async ({ page }) => {
 		await page.goto('/settings/recording');
 		await setMaster(page, false);

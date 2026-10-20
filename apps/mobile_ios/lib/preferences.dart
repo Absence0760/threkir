@@ -66,8 +66,9 @@ class VoiceCue {
 
 /// How the split cue reads pace out loud: the split's own pace
 /// ([split], the default + prior behaviour), the cumulative average
-/// pace since the run started ([average]), or [both]. Device-local (a
-/// per-device audio preference, not roamed).
+/// pace since the run started ([average]), or [both]. Roams through the
+/// universal `voice_split_pace_mode` bag key; web `SPLIT_PACE_MODES` in
+/// `settings/voice_cues.ts` must list the same values.
 class SplitPaceMode {
   SplitPaceMode._();
 
@@ -127,7 +128,8 @@ class Preferences extends ChangeNotifier {
   static const _kAdvancedGps = 'advanced_gps';
   static const _kSplitIntervalMetres = 'split_interval_metres';
   static const _kUndoWindowS = 'undo_window_s';
-  // Device-local: which pace the split cue reads out (SplitPaceMode).
+  // Mirrors the universal `voice_split_pace_mode` settings-bag key: which
+  // pace the split cue reads out (SplitPaceMode).
   static const _kSplitPaceMode = 'split_pace_mode';
   // Mirrors the universal `default_activity_type` settings-bag key.
   // Drives the run screen's initial activity selection. One of

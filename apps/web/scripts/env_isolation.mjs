@@ -69,6 +69,8 @@ export const NOT_ISOLATED_URL_VARS = {
 		'A RevenueCat-hosted checkout page with no loopback form. The dev/prod split is which RevenueCat project the link belongs to, which a URL-shape guard cannot see.',
 	PUBLIC_REVENUECAT_WEB_PORTAL_URL:
 		'The same hosted-page shape as the checkout link above.',
+	PUBLIC_DONATE_URL:
+		'A Stripe-hosted Payment Link with no loopback form. The dev/prod split is whether the link was made in test mode, which a URL-shape guard cannot see.',
 };
 
 const KEY_PATTERNS = [

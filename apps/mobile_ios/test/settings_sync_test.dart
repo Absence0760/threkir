@@ -163,6 +163,26 @@ void main() {
       expect(prefs.useMiles, isFalse);
     });
 
+    test('voice_split_pace_mode updates the local split pace mode', () async {
+      final prefs = await freshPrefs();
+      expect(prefs.splitPaceMode, SplitPaceMode.split);
+      final svc = SettingsSyncService(preferences: prefs);
+
+      svc.debugApplyUniversal({SettingsKeys.voiceSplitPaceMode: 'average'});
+
+      expect(prefs.splitPaceMode, SplitPaceMode.average);
+    });
+
+    test('an unknown voice_split_pace_mode falls back to split', () async {
+      final prefs = await freshPrefs();
+      await prefs.setSplitPaceMode(SplitPaceMode.both);
+      final svc = SettingsSyncService(preferences: prefs);
+
+      svc.debugApplyUniversal({SettingsKeys.voiceSplitPaceMode: 'loud'});
+
+      expect(prefs.splitPaceMode, SplitPaceMode.split);
+    });
+
     test('default_activity_type updates the local default', () async {
       final prefs = await freshPrefs();
       expect(prefs.defaultActivityType, isNot('cycle'));

@@ -13,6 +13,7 @@
 		proStorefront,
 		type ProPlan,
 	} from '#lib/billing/revenuecat_links.ts';
+	import { donateUrl } from '#lib/billing/donate.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import { routeGenEnabled } from '#lib/routes/route_gen_flag.ts';
 	import { platePhotoEnabled } from '#lib/nutrition/plate_photo_flag.ts';
@@ -38,11 +39,9 @@
 	// sold it. decisions § 1826.
 	const storefront = proStorefront(proSellable, webCheckoutAvailable());
 
-	// External donation link. One-off donations are intentionally routed
-	// through an external provider so the app doesn't have to own a payment
-	// integration just for chip-ins. Swap for Stripe / Ko-fi / GitHub
-	// Sponsors as appropriate.
-	const DONATE_URL = 'https://github.com/sponsors';
+	// A Stripe Payment Link, or null: with no usable link every donate
+	// affordance is hidden rather than pointing somewhere that takes no money.
+	const donateHref = donateUrl();
 
 	const PRO_PRICE_MONTHLY_USD = 9.99;
 	const PRO_PRICE_ANNUAL_USD = 79.99;
@@ -78,10 +77,6 @@
 		window.location.href = url;
 	}
 
-	function handleDonate() {
-		window.open(DONATE_URL, '_blank', 'noopener,noreferrer');
-	}
-
 	/// Opens the billing portal where the Pro subscription was started.
 	/// Mobile purchases route through the App Store / Play Store — those
 	/// users need to cancel on-device. For web purchases RevenueCat's
@@ -106,7 +101,7 @@
 		<p class="kicker">{m('shell.settings')}</p>
 		<h1>{m('upgrade.heroTitle')}</h1>
 		<p class="tagline">
-			{m('upgrade.heroTagline')}
+			{m('upgrade.heroTagline')}{#if donateHref}{' '}{m('upgrade.heroTaglineDonate')}{/if}
 		</p>
 	</header>
 
@@ -265,23 +260,27 @@
 		</article>
 	</section>
 
-	<section class="donate-card">
+	{#if donateHref}
+	<section class="donate-card" data-testid="donate-card">
 		<div class="donate-text">
 			<h2>{m('upgrade.donateTitle')}</h2>
 			<p>
 				{m('upgrade.donateBody')}
 			</p>
 		</div>
-		<button
+		<a
 			class="btn"
 			class:btn-primary={storefront !== 'checkout'}
 			class:btn-outline={storefront === 'checkout'}
-			onclick={handleDonate}
+			href={donateHref}
+			target="_blank"
+			rel="noopener noreferrer"
 		>
 			<span class="material-symbols" aria-hidden="true">favorite</span>
 			{m('upgrade.donate')}
-		</button>
+		</a>
 	</section>
+	{/if}
 </div>
 
 <style>

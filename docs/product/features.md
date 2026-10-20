@@ -392,7 +392,7 @@ Price: **$9.99 / month** or **$79.99 / year** (33% less than twelve months; year
 - **Higher AI Coach daily cap** — 10 messages / day (5× the free cap). Both tiers share the same `increment_coach_usage` + `usedToday > TIER_LIMITS[tier].dailyLimit` gate in `handler.ts`; only the resolved cap differs.
 - **Priority processing** — Pro requests routed ahead of the free queue when the service is under heavy load (front-of-queue for `map_match` jobs today). Tier-aware rate-limiting on other endpoints lands over time.
 
-**Donations:** a one-off "Donate" button on `/settings/upgrade` links to an external payment provider (GitHub Sponsors placeholder today). Donations are kept alongside the subscription because a chunk of users will want to chip in without committing to a recurring charge.
+**Donations:** a one-off "Donate" button on `/settings/upgrade` links to a Stripe Payment Link (`PUBLIC_DONATE_URL`), and is hidden while that is unset. Donations are kept alongside the subscription because a chunk of users will want to chip in without committing to a recurring charge.
 
 **Done when:**
 - RevenueCat web SDK is wired behind the "Get Pro" button.
@@ -481,13 +481,13 @@ See `decisions.md #12` for the rationale.
 The `/settings/upgrade` page shows a single Donate card below the Pro plan card:
 
 - A short headline + one sentence of copy.
-- A single "Donate" button that opens an external payment provider (GitHub Sponsors placeholder today; swap for Stripe / Ko-fi / Buy Me a Coffee as preferred).
+- A single "Donate" button that opens a Stripe Payment Link from the `PUBLIC_DONATE_URL` build secret. The card, the hero's donation sentence and the `/compare` footer's donate link all render only when that secret holds a valid `donate.stripe.com` / `buy.stripe.com` link (decisions § 2217).
 - No in-app amount picker, no recurring option, no progress bars, no cost breakdown.
 
 The `monthly_funding` table stays in the schema but is no longer read by the page. If transparent funding ever returns as a marketing angle, reviving it is a one-page revert — history is preserved in git.
 
 **Done when:**
-- Clicking Donate opens the external link in a new tab.
+- Clicking Donate opens the Stripe Payment Link in a new tab; with no link configured, no donate affordance renders anywhere.
 - Pro users see the same Donate card (a subscription doesn't preclude one-offs).
 - No references to `monthly_funding` remain on the upgrade page.
 

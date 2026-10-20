@@ -10,7 +10,8 @@ import { acceptCookieConsent } from '../fixtures/helpers';
  * paywall-feature-gates.spec.ts covers the Free / Pro CTA matrix
  * (Get Pro vs Manage subscription, Active badge). This file pins the
  * polished structure: tier-grid layout, per-tier feature-list shape,
- * "Most popular" flag, donate-link URL, and the responsive stack at
+ * "Most popular" flag, the donate card hidden while no Payment Link is
+ * configured, and the responsive stack at
  * narrow widths.
  */
 
@@ -117,46 +118,19 @@ test.describe('/settings/upgrade — free user', () => {
 		await expect(proCard.getByRole('button', { name: /Get Pro — .*9\.99\/mo/ })).toBeVisible();
 	});
 
-	test('donate card renders heart icon + button + the configured GitHub Sponsors link target', async ({
-		page,
-	}) => {
-		// The bottom card is the "not ready for Pro? chip in" path.
-		// DONATE_URL is set to GitHub Sponsors in
-		// src/routes/settings/upgrade/+page.svelte — assert the click
-		// opens that URL in a new tab.
+	test('with no donation link configured, the page offers no way to donate', async ({ page }) => {
+		// The donate card, and the hero sentence that points at it, render only
+		// when PUBLIC_DONATE_URL holds a Stripe Payment Link (decisions § 2217).
+		// CI builds leave it unset. The old hard-coded github.com/sponsors
+		// placeholder sent every click to GitHub's marketing page, so a build
+		// with no real link must show nothing rather than a dead button.
 		await page.goto('/settings/upgrade');
+		await expect(page.locator('.tier-pro')).toBeVisible({ timeout: 10_000 });
 
-		const donateCard = page.locator('.donate-card');
-		await expect(donateCard).toBeVisible({ timeout: 10_000 });
-		await expect(donateCard.getByRole('heading', { name: /Not ready for a subscription/i }))
-			.toBeVisible();
-
-		const donateBtn = donateCard.getByRole('button', { name: /Donate/i });
-		await expect(donateBtn).toBeVisible();
-		// Heart icon ligature.
-		await expect(donateBtn.locator('.material-symbols')).toHaveText('favorite');
-
-		// Click opens DONATE_URL in a new tab. The page uses
-		// window.open(url, '_blank', 'noopener,noreferrer'), so we
-		// intercept the call instead of waiting for `popup` — the
-		// noopener flag makes the popup unreliable on the Playwright
-		// side. Stubbing window.open guarantees the URL was passed.
-		const donateUrl = await page.evaluate(() => {
-			const calls: string[] = [];
-			(window as unknown as { __donateUrls: string[] }).__donateUrls = calls;
-			window.open = ((url?: string | URL) => {
-				calls.push(String(url ?? ''));
-				return null;
-			}) as typeof window.open;
-			return null;
-		});
-		void donateUrl;
-		await donateBtn.click();
-		const urls = await page.evaluate(
-			() => (window as unknown as { __donateUrls: string[] }).__donateUrls,
-		);
-		expect(urls.length).toBe(1);
-		expect(urls[0]).toMatch(/^https:\/\/github\.com\/sponsors/);
+		await expect(page.getByTestId('donate-card')).toHaveCount(0);
+		await expect(page.getByRole('heading', { name: /Not ready for a subscription/i })).toHaveCount(0);
+		await expect(page.locator('.tagline')).not.toContainText(/chip in/i);
+		await expect(page.locator('a[href*="github.com/sponsors"]')).toHaveCount(0);
 	});
 
 	test('Get Pro redirects to the hosted checkout with the user id, the chosen plan and a way back', async ({

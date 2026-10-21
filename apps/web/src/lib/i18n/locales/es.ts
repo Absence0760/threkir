@@ -229,6 +229,7 @@ export const messages = {
 	"coachChat.primerWithPlan": "Pregunta sobre el entrenamiento de hoy, tu ritmo o cómo se comparan tus carreras recientes con el plan.",
 	"coachChat.primerNoPlan": "Pregunta sobre tus carreras recientes, el ritmo de las carreras suaves o los fundamentos del entrenamiento.",
 	"coachChat.coachThinking": "El coach está pensando",
+	"coachChat.jumpToLatest": "Ir al último mensaje",
 	"coachChat.saveAndResend": "Guardar y reenviar",
 	"coachChat.cancel": "Cancelar",
 	"coachChat.copyToClipboard": "Copiar al portapapeles",

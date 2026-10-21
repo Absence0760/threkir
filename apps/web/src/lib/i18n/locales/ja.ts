@@ -224,6 +224,7 @@ export const messages = {
 	"coachChat.primerWithPlan": "今日のワークアウト、ペース、最近のランとプランの比較について質問してね。",
 	"coachChat.primerNoPlan": "最近のラン、イージーランのペース、トレーニングの基本について質問してね。",
 	"coachChat.coachThinking": "コーチが考えています",
+	"coachChat.jumpToLatest": "最新のメッセージへ",
 	"coachChat.saveAndResend": "保存して再送信",
 	"coachChat.cancel": "キャンセル",
 	"coachChat.copyToClipboard": "クリップボードにコピー",

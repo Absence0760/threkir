@@ -242,6 +242,7 @@ export const en = {
 	"coachChat.primerWithPlan": "Ask about today's workout, your pace, or how recent runs compare to plan.",
 	"coachChat.primerNoPlan": "Ask about your recent runs, easy-run pacing, or training basics.",
 	"coachChat.coachThinking": "Coach is thinking",
+	"coachChat.jumpToLatest": "Jump to latest",
 	"coachChat.saveAndResend": "Save & resend",
 	"coachChat.cancel": "Cancel",
 	"coachChat.copyToClipboard": "Copy to clipboard",

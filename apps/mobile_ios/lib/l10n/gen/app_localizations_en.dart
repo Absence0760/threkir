@@ -283,6 +283,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get healthPlatformNameIos => 'Apple Health';
+
+  @override
+  String get healthPlatformNameAndroid => 'Health Connect';
+
+  @override
   String get importCsvCardTitle => 'CSV';
 
   @override
@@ -2486,7 +2492,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historySourceParkrun => 'parkrun';
 
   @override
-  String get historySourceHealthKit => 'HealthKit';
+  String get historySourceHealthKit => 'Apple Health';
 
   @override
   String get historySourceHealthConnect => 'Health Connect';

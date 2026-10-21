@@ -117,8 +117,8 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
 
 ## Don't translate
 
-Threkir, Pro, Strava, Garmin, parkrun, Health Connect, Apple Health (kept
-in English — Apple's German app is "Health"), Apple Watch, Wear OS,
+Threkir, Pro, Strava, Garmin, parkrun, Health Connect (Google keeps it in
+German too), Apple Health (kept in English — Apple's German app is "Health"), Apple Watch, Wear OS,
 HealthKit, GPX/TCX/FIT, VDOT, CTL, ATL, TSB, TRIMP, RPE, 1RM, GAP, DNF.
 VO₂ max is written **VO₂max** (`metric.vo2max.label`); `watchMetricVo2Max`
 "VO2max" is the ASCII form for the watch font. Identifiers, route paths,

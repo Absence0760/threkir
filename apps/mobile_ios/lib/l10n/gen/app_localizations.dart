@@ -539,6 +539,18 @@ abstract class AppLocalizations {
   /// **'Import from {label}'**
   String importHealthButton(Object label);
 
+  /// Apple's health app as Apple names it in this locale (apple.com/<locale>/health) — titles the Import screen's health card and the setup wizard's import row on iOS
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Health'**
+  String get healthPlatformNameIos;
+
+  /// Google's Health Connect as Google names it in this locale (support.google.com/android/answer/12201227) — same surfaces on Android; keep it identical to historySourceHealthConnect
+  ///
+  /// In en, this message translates to:
+  /// **'Health Connect'**
+  String get healthPlatformNameAndroid;
+
   /// Card title for the CSV import source
   ///
   /// In en, this message translates to:
@@ -4235,13 +4247,13 @@ abstract class AppLocalizations {
   /// **'parkrun'**
   String get historySourceParkrun;
 
-  /// Source-filter label for HealthKit-imported runs — brand name, not translated
+  /// Source-filter label for runs imported from Apple's health app — Apple's own name for it in this locale, the same as healthPlatformNameIos
   ///
   /// In en, this message translates to:
-  /// **'HealthKit'**
+  /// **'Apple Health'**
   String get historySourceHealthKit;
 
-  /// Source-filter label for Health Connect-imported runs — brand name, not translated
+  /// Source-filter label for Health Connect-imported runs — Google's own name for it in this locale, the same as healthPlatformNameAndroid
   ///
   /// In en, this message translates to:
   /// **'Health Connect'**

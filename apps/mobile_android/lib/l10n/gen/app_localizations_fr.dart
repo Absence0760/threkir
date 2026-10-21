@@ -284,6 +284,12 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get healthPlatformNameIos => 'Apple Santé';
+
+  @override
+  String get healthPlatformNameAndroid => 'Santé Connect';
+
+  @override
   String get importCsvCardTitle => 'CSV';
 
   @override
@@ -400,7 +406,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get importHealthSubtitleAndroid =>
-      'Récupérez les séances depuis Google Fit, Samsung Health, Garmin, Fitbit et toute autre app Health Connect';
+      'Récupérez les séances depuis Google Fit, Samsung Health, Garmin, Fitbit et toute autre app Santé Connect';
 
   @override
   String get importHealthDescriptionIos =>
@@ -408,7 +414,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get importHealthDescriptionAndroid =>
-      'Lit les résumés de séances (date, distance, durée, type) de la dernière année. La carte GPS d\'une séance est aussi importée quand Health Connect autorise Threkir à la lire ; s\'il en retient, vous pouvez autoriser l\'accès aux cartes après l\'import.';
+      'Lit les résumés de séances (date, distance, durée, type) de la dernière année. La carte GPS d\'une séance est aussi importée quand Santé Connect autorise Threkir à la lire ; si certaines sont retenues, vous pouvez autoriser l\'accès aux cartes après l\'import.';
 
   @override
   String importHealthRoutesWithheld(int count) {
@@ -420,7 +426,7 @@ class AppLocalizationsFr extends AppLocalizations {
       one:
           '1 activité importée a une carte GPS que Threkir n\'est pas autorisé à lire.',
     );
-    return '$_temp0 Health Connect protège l\'itinéraire d\'une séance par une autorisation distincte.';
+    return '$_temp0 Santé Connect protège l\'itinéraire d\'une séance par une autorisation distincte.';
   }
 
   @override
@@ -428,11 +434,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get importHealthRoutesRequesting =>
-      'Demande d\'accès aux cartes à Health Connect…';
+      'Demande d\'accès aux cartes à Santé Connect…';
 
   @override
   String get importHealthRoutesDenied =>
-      'Accès aux cartes non accordé. Les imports resteront sans carte — vous pouvez le changer dans Health Connect à tout moment.';
+      'Accès aux cartes non accordé. Les imports resteront sans carte — vous pouvez le changer dans Santé Connect à tout moment.';
 
   @override
   String get importHealthRoutesAdding =>
@@ -1699,11 +1705,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get setupImportHealthAndroid =>
-      'Les courses de toute app synchronisée avec Health Connect, dont Garmin et Samsung';
+      'Les courses de toute app synchronisée avec Santé Connect, dont Garmin et Samsung';
 
   @override
   String get setupImportHealthIos =>
-      'Les séances de l\'Apple Watch et de toute app qui enregistre dans Apple Health, dont Garmin';
+      'Les séances de l\'Apple Watch et de toute app qui enregistre dans Apple Santé, dont Garmin';
 
   @override
   String get setupImportStravaDesc =>
@@ -2522,10 +2528,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get historySourceParkrun => 'parkrun';
 
   @override
-  String get historySourceHealthKit => 'HealthKit';
+  String get historySourceHealthKit => 'Apple Santé';
 
   @override
-  String get historySourceHealthConnect => 'Health Connect';
+  String get historySourceHealthConnect => 'Santé Connect';
 
   @override
   String get historyRangePickerTitle => 'Sélectionner les dates';
@@ -8174,15 +8180,15 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get integrationsHealthConnectTitle =>
-      'Écrire les courses dans Health Connect';
+      'Écrire les courses dans Santé Connect';
 
   @override
   String get integrationsHealthConnectSubtitle =>
-      'Envoie chaque course terminée à Health Connect pour qu\'elle apparaisse dans Google Fit, Samsung Health, Fitbit et d\'autres.';
+      'Envoie chaque course terminée à Santé Connect pour qu\'elle apparaisse dans Google Fit, Samsung Health, Fitbit et d\'autres.';
 
   @override
   String get integrationsHealthConnectDenied =>
-      'Autorisation Health Connect non accordée — les courses ne seront pas écrites.';
+      'Autorisation Santé Connect non accordée — les courses ne seront pas écrites.';
 
   @override
   String integrationsHrPairFailed(Object error) {

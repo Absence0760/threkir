@@ -127,9 +127,12 @@ literal `1` in a `one` branch — 11 mobile strings already do (e.g.
 
 ## Don't translate
 
-Threkir, Pro, Strava, Garmin, parkrun, Health Connect, Apple Watch,
-Wear OS, HealthKit, GPX/TCX/FIT, VDOT, CTL, ATL, TSB, TRIMP, RPE, 1RM, GAP,
-DNF. VO₂ max is **VO₂ máx**. Apple's app is **Apple Saúde**. Identifiers,
+Threkir, Pro, Strava, Garmin, parkrun, Apple Watch,
+Wear OS, HealthKit (the framework), GPX/TCX/FIT, VDOT, CTL, ATL, TSB, TRIMP, RPE, 1RM, GAP,
+DNF. VO₂ max is **VO₂ máx**. The health platforms take their vendors'
+names (`healthPlatformNameIos` / `healthPlatformNameAndroid`): Apple's app
+is **Saúde da Apple** as a title and **o app Saúde** in running text;
+Google's is **a Conexão Saúde** (feminine: na / à / da Conexão Saúde). Identifiers,
 route paths, ICU keywords, `{placeholders}`.
 
 ## Provenance

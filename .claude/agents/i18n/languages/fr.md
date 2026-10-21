@@ -121,10 +121,11 @@ count of 0. Use `{count}` (ARB) / `#` (web).
 
 ## Don't translate
 
-Threkir, Pro, Strava, Garmin, parkrun, Health Connect, Apple Watch,
-Wear OS, HealthKit, GPX/TCX/FIT, VDOT, CTL, ATL, TSB, TRIMP, RPE, 1RM, GAP,
-DNF, and VO₂ max (written with a space, as `metric.vo2max.label` has it). Apple's app is named **Apple Santé** (its official French
-name, as `importHealthSubtitleIos` already does). Identifiers, route
+Threkir, Pro, Strava, Garmin, parkrun, Apple Watch,
+Wear OS, HealthKit (the framework), GPX/TCX/FIT, VDOT, CTL, ATL, TSB, TRIMP, RPE, 1RM, GAP,
+DNF, and VO₂ max (written with a space, as `metric.vo2max.label` has it). Apple's app is named **Apple Santé** and Google's
+**Santé Connect** (each vendor's official French name;
+`healthPlatformNameIos` / `healthPlatformNameAndroid`). Identifiers, route
 paths, ICU keywords, `{placeholders}`.
 
 ## Provenance

@@ -152,10 +152,13 @@ rendering "1 …" for 0. Use `{count}` (ARB) / `#` (web).
 
 ## Don't translate
 
-Threkir, Pro, Strava, Garmin, parkrun, Health Connect, Apple Watch,
-Wear OS, HealthKit, GPX/TCX/FIT, VDOT, CTL, ATL, TSB, TRIMP, RPE, 1RM, GAP,
-DNF. VO₂ max is **VO₂ máx** (`metric.vo2max.label`). Apple's app is
-**Apple Saúde**. Identifiers, route paths, ICU keywords, `{placeholders}`.
+Threkir, Pro, Strava, Garmin, parkrun, Apple Watch,
+Wear OS, HealthKit (the framework), GPX/TCX/FIT, VDOT, CTL, ATL, TSB, TRIMP, RPE, 1RM, GAP,
+DNF. VO₂ max is **VO₂ máx** (`metric.vo2max.label`). The health platforms
+take their vendors' names (`healthPlatformNameIos` /
+`healthPlatformNameAndroid`): Apple's app is **Saúde da Apple** as a title
+and **a app Saúde** in running text; Google's is **a Conexão Saúde**
+(feminine: na / à / da Conexão Saúde). Identifiers, route paths, ICU keywords, `{placeholders}`.
 
 ## Provenance
 

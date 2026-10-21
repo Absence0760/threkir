@@ -117,10 +117,13 @@ Japanese has **only `other`**. Write `{count, plural, other{{count}件の…}}`
 
 ## Don't translate
 
-Threkir, Pro, Strava, Garmin, parkrun, Health Connect, Apple Health (kept
-in Latin script, as `importHealthSubtitleIos` does), Apple Watch, Wear OS,
-HealthKit, GPX/TCX/FIT, VDOT, CTL, ATL, TSB, TRIMP, RPE, 1RM, GAP, DNF,
-VO₂max. Person-named formulas are transliterated: Riegel → リーゲル
+Threkir, Pro, Strava, Garmin, parkrun, Apple Watch, Wear OS,
+HealthKit (the framework), GPX/TCX/FIT, VDOT, CTL, ATL, TSB, TRIMP, RPE, 1RM, GAP, DNF,
+VO₂max. The health platforms take their vendors' Japanese names
+(`healthPlatformNameIos` / `healthPlatformNameAndroid`): **ヘルスケア** and
+**ヘルスコネクト**, in katakana, never the English names. A generic
+"health app" is 「健康管理アプリ」, not 「ヘルスケアアプリ」, which is Apple's.
+Person-named formulas are transliterated: Riegel → リーゲル
 (`metricRiegelLabel` 「リーゲルの式」). Identifiers, route paths, ICU keywords,
 `{placeholders}`.
 

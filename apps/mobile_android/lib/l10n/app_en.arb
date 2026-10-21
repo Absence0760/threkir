@@ -451,6 +451,14 @@
       }
     }
   },
+  "healthPlatformNameIos": "Apple Health",
+  "@healthPlatformNameIos": {
+    "description": "Apple's health app as Apple names it in this locale (apple.com/<locale>/health) — titles the Import screen's health card and the setup wizard's import row on iOS"
+  },
+  "healthPlatformNameAndroid": "Health Connect",
+  "@healthPlatformNameAndroid": {
+    "description": "Google's Health Connect as Google names it in this locale (support.google.com/android/answer/12201227) — same surfaces on Android; keep it identical to historySourceHealthConnect"
+  },
   "importCsvCardTitle": "CSV",
   "@importCsvCardTitle": {
     "description": "Card title for the CSV import source"
@@ -3237,13 +3245,13 @@
   "@historySourceParkrun": {
     "description": "Source-filter label for parkrun-imported runs — brand name, not translated"
   },
-  "historySourceHealthKit": "HealthKit",
+  "historySourceHealthKit": "Apple Health",
   "@historySourceHealthKit": {
-    "description": "Source-filter label for HealthKit-imported runs — brand name, not translated"
+    "description": "Source-filter label for runs imported from Apple's health app — Apple's own name for it in this locale, the same as healthPlatformNameIos"
   },
   "historySourceHealthConnect": "Health Connect",
   "@historySourceHealthConnect": {
-    "description": "Source-filter label for Health Connect-imported runs — brand name, not translated"
+    "description": "Source-filter label for Health Connect-imported runs — Google's own name for it in this locale, the same as healthPlatformNameAndroid"
   },
   "historyRangePickerTitle": "Select dates",
   "@historyRangePickerTitle": {

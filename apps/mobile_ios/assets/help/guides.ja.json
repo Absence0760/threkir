@@ -290,7 +290,7 @@
     ],
     "routes": [
       "/settings/upgrade",
-      "/coach"
+      "/messages/coach"
     ],
     "sections": [
       {

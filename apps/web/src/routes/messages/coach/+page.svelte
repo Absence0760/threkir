@@ -1,0 +1,627 @@
+<script lang="ts">
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import { onMount } from 'svelte';
+	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
+	import CoachChat from '#lib/components/CoachChat.svelte';
+	import { fetchActivePlanOverview, fetchMyPlans } from '#lib/core/data.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { supabase } from '#lib/core/supabase.ts';
+	import { guidedRunLibrary, type GuidedRun } from '#lib/training/guided_runs.ts';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
+	import type { CoachPlanScope } from '#lib/coach/types.ts';
+	import { currentSeason } from '#lib/training/plan_current.ts';
+	import { todayISO } from '#lib/training/training.ts';
+	import AiDisclosureNotice from '#lib/components/AiDisclosureNotice.svelte';
+	import AiTag from '#lib/components/AiTag.svelte';
+	import {
+		AI_DISCLOSURE_CURRENT_VERSION,
+		AI_DISCLOSURE_VERSION_COACH,
+		aiDisclosureFromProfileRow,
+		checkAiDisclosure,
+		type AiDisclosureRecord,
+	} from '#lib/core/ai_disclosure.ts';
+
+	// When the Coach is off (rock-bottom deploy, ANTHROPIC_API_KEY unset → the
+	// chat would 503) the chat surface is replaced by a "coming soon" notice.
+	// The guided-runs rail below is fully static (local TTS cue scripts, no
+	// Anthropic) so it stays visible. paywall.md.
+	const coachOn = coachEnabled();
+	import type { TrainingPlan } from '#lib/types.ts';
+	import { m } from '#lib/i18n/store.svelte.ts';
+
+	// The Coach's conversation lives in Messages (decisions § 2227); `/coach`
+	// redirects here with its query kept.
+	const COACH_PATH = '/messages/coach';
+
+	let plans = $state<TrainingPlan[]>([]);
+	let planId = $state<string | null>(null);
+	let planScope = $state<CoachPlanScope>('plan');
+	let loaded = $state(false);
+
+	// $derived so the guided-run rail re-renders when the locale changes.
+	let guidedLibrary = $derived(guidedRunLibrary(m));
+
+	// GDPR Art 6(1)(a): the Coach forwards health-adjacent data (DOB,
+	// HR zones, recent runs) to Anthropic, a US-based sub-processor.
+	// Opening the page is not an affirmative consent act — gate the
+	// chat behind a first-use disclosure until the user clicks accept,
+	// at which point we record the versioned consent on user_profiles.
+	// See audit/gdpr (2026-05-25) and decisions.md § 571.
+	//
+	// The chat is gated at the COACH minimum, not the current version: a
+	// user who accepted the older Coach-only disclosure consented to
+	// exactly this, and re-prompting them here to unlock a different
+	// feature would be bundling. The widened acceptance is offered where
+	// the wider feature is (Settings → Account).
+	let aiDisclosure = $state<AiDisclosureRecord>({ version: null, acceptedAt: null });
+	let coachConsentChecked = $state(false);
+	let coachConsentSaving = $state(false);
+	let coachConsentError = $state('');
+	let coachConsentDecided = $derived(
+		coachConsentChecked && checkAiDisclosure(aiDisclosure, AI_DISCLOSURE_VERSION_COACH).ok,
+	);
+
+	// Read `?plan=<id>` from the URL on first load and whenever the param
+	// changes (e.g. via the deep link from /plans/[id], or the inbox row). When absent, we
+	// fall back to the user's active plan.
+	let urlPlanParam = $derived(page.url.searchParams.get('plan'));
+
+	onMount(async () => {
+		// Wait for auth so the RLS-scoped fetches return the right rows.
+		await auth.ready();
+		if (!auth.user) loaded = true;
+	});
+
+	// The signed-in init re-fires when auth.user settles, not one-shot in
+	// onMount: ready() resolves on its safety timeout even when the
+	// session hasn't settled yet (slow device / loaded CI runner), and a
+	// mount-time `if (auth.user)` gate then strands the page on the
+	// loading state forever.
+	let initRequested = false;
+	$effect(() => {
+		if (!auth.user || initRequested) return;
+		initRequested = true;
+		void initForUser();
+	});
+
+	async function initForUser() {
+		// Read the consent timestamp BEFORE anything that could fan out
+		// to Anthropic. The chat component is render-gated on
+		// `coachConsentDecided`, so a missing row keeps the disclosure
+		// modal in front of the user until they accept.
+		try {
+			// The consent columns are not in the public-safe column
+			// grant list (migration 20260707_001), so a direct
+			// `.select()` returns null for authenticated callers. Go
+			// through the SECURITY DEFINER `get_my_profile()` RPC
+			// instead — same pattern as the other self-row reads.
+			const { data: prof } = await supabase
+				.rpc('get_my_profile', undefined, { get: true })
+				.maybeSingle();
+			aiDisclosure = aiDisclosureFromProfileRow(prof);
+		} catch (_) {
+			// Failed to read consent state — fail closed so we
+			// never accidentally render the chat without an
+			// affirmative grant.
+			aiDisclosure = { version: null, acceptedAt: null };
+		}
+		coachConsentChecked = true;
+		try {
+			plans = await fetchMyPlans();
+		} catch (_) {
+			plans = [];
+		}
+		await resolvePlanId();
+		loaded = true;
+	}
+
+	async function acceptCoachConsent() {
+		if (!auth.user || coachConsentSaving) return;
+		coachConsentSaving = true;
+		coachConsentError = '';
+		try {
+			// Server-stamped and monotone: record_ai_disclosure_consent()
+			// sets now() on the server (not a client-chosen, backdatable
+			// value) and direct writes to the consent columns are blocked
+			// at the DB. The version recorded is the one this build just
+			// rendered — the user is shown the current disclosure here, so
+			// accepting it grants the current scope, not a narrower one.
+			const { data, error } = await supabase
+				.rpc('record_ai_disclosure_consent', { p_version: AI_DISCLOSURE_CURRENT_VERSION })
+				.maybeSingle();
+			if (error) throw new Error(error.message);
+			// Take the server's word for what was recorded — a locally
+			// synthesised version/timestamp would let the UI open the chat
+			// off a write that never landed (§ 560).
+			const row = data as { version: number | null; accepted_at: string | null } | null;
+			if (row?.version == null || !row.accepted_at) {
+				throw new Error('consent not recorded');
+			}
+			aiDisclosure = { version: row.version, acceptedAt: row.accepted_at };
+		} catch (e) {
+			coachConsentError = m('coachPage.consentRecordError', { error: thrownMessage(e) });
+		} finally {
+			coachConsentSaving = false;
+		}
+	}
+
+	function declineCoachConsent() {
+		// Leaving the Coach surface without consent keeps the chat
+		// component unmounted — no request can fire to Anthropic.
+		goto('/messages');
+	}
+
+	$effect(() => {
+		// Re-resolve when the query param changes (browser back/forward, or
+		// the user picks a different plan in the switcher).
+		if (loaded) resolvePlanId();
+	});
+
+	async function resolvePlanId() {
+		const fromUrl = urlPlanParam;
+		// Explicit "no plan" sentinel — user picked "No plan" in the
+		// strip dropdown. Stay null; do NOT fall back to the active
+		// plan or the user's first save reverts on the next load.
+		if (fromUrl === 'none') {
+			planId = null;
+			planScope = 'none';
+			return;
+		}
+		// "My season": the thread is kept under the season's first plan, and
+		// the server reads it with the plans chained after it. With nothing
+		// queued any more the link falls through to the current plan.
+		if (fromUrl === 'season') {
+			const season = currentSeason(
+				plans.filter((p) => p.status === 'active'),
+				todayISO(),
+			);
+			if (season.length > 1) {
+				planId = season[0].id;
+				planScope = 'season';
+				return;
+			}
+		}
+		planScope = 'plan';
+		if (fromUrl && plans.some((p) => p.id === fromUrl)) {
+			planId = fromUrl;
+			return;
+		}
+		// No (or stale) query param — default to the user's active plan.
+		const { overview, error } = await fetchActivePlanOverview();
+		// A failed read leaves the chat on recent runs only; the chat's own
+		// context strip reads the plan again and says it could not load.
+		if (error) console.error('[coach] active plan lookup failed', { message: error });
+		planId = overview?.plan.id ?? null;
+	}
+
+	function pickPlan(next: string) {
+		// Reflect the choice in the URL so refresh / share keeps the
+		// context, and so $effect above re-runs `resolvePlanId`.
+		// `next === ''` means the user picked the "No plan" option in
+		// the strip dropdown; we encode that as `?plan=none` so a
+		// reload re-reads the explicit choice instead of falling back
+		// to the active plan. `season` is the "My season" option and is
+		// written as is.
+		const params = new URLSearchParams(page.url.search);
+		if (next === '') params.set('plan', 'none');
+		else params.set('plan', next);
+		const qs = params.toString();
+		goto(qs ? `${COACH_PATH}?${qs}` : COACH_PATH, { replace: true, reset: false });
+	}
+
+	function fmtMinutes(seconds: number): string {
+		const mins = Math.round(seconds / 60);
+		return m('coachPage.minutesShort', { mins });
+	}
+
+	// Intensity is implicit in title + subtitle wording — keep the data
+	// model untouched (it mirrors mobile_android via shared-library-syncer)
+	// and derive a hue locally for the rail's at-a-glance dot.
+	// Switch on the stable run id, not the now-localized title/subtitle —
+	// matching English substrings would silently fail in every other locale.
+	function intensityFor(g: GuidedRun): { label: string; tone: 'easy' | 'tempo' | 'mixed' } {
+		if (g.id === 'first-timer-15') return { label: m('coachPage.intensityRunWalk'), tone: 'mixed' };
+		if (g.id === 'tempo-builder-25') return { label: m('coachPage.intensityTempo'), tone: 'tempo' };
+		return { label: m('coachPage.intensityEasy'), tone: 'easy' };
+	}
+</script>
+
+<svelte:head>
+	<title>{m('coachPage.documentTitle')}</title>
+</svelte:head>
+
+<!--
+	The Coach conversation inside Messages. The layout's visually-hidden h1
+	names the page; this pane's heading names the conversation, as a DM's
+	header names the partner.
+-->
+<header class="pane-head conv-head">
+	<a class="back" href="/messages" aria-label={m('messages.backAria')}>←</a>
+	<span class="coach-avatar" aria-hidden="true"><span class="material-symbols">sports</span></span>
+	<h2 class="who">{m('nav.coach')}</h2>
+	<AiTag />
+</header>
+
+<div class="coach-pane">
+	<div class="chat-host">
+		{#if !coachOn}
+			<div class="coach-coming-soon">
+				<h2>{m('coachPage.comingSoonHeading')}</h2>
+				<p>{m('coachPage.comingSoonBody')}</p>
+			</div>
+		{:else if !coachConsentChecked || !loaded}
+			<p class="muted">{m('shell.loading')}</p>
+		{:else if !coachConsentDecided}
+			<!--
+				GDPR Art 6(1)(a) first-use disclosure. Render-gates the
+				chat so no fetch fans out to Anthropic until the user
+				clicks accept. Decline → back to the inbox. See audit/gdpr
+				(2026-05-25).
+			-->
+			<div class="coach-consent" role="dialog" tabindex="-1" aria-labelledby="coach-consent-heading">
+				<h2 id="coach-consent-heading">{m('coachPage.consentHeading')}</h2>
+				<AiDisclosureNotice />
+				<p>
+					{m('coachPage.consentActionPrefix')}<strong>{m('coachPage.consentActionEmphasis')}</strong>{m('coachPage.consentActionSuffix')}
+				</p>
+				{#if coachConsentError}
+					<p class="coach-consent-error" role="alert">{coachConsentError}</p>
+				{/if}
+				<div class="coach-consent-actions">
+					<button type="button" class="btn btn-secondary" onclick={declineCoachConsent}>
+						{m('coachPage.cancelButton')}
+					</button>
+					<button
+						type="button"
+						class="btn btn-primary"
+						disabled={coachConsentSaving}
+						onclick={acceptCoachConsent}
+					>
+						{coachConsentSaving ? m('coachPage.consentSaving') : m('coachPage.consentAccept')}
+					</button>
+				</div>
+			</div>
+		{:else}
+			{#key `${planScope}:${planId}`}
+				<CoachChat {planId} {planScope} {plans} onPlanChange={pickPlan} />
+			{/key}
+		{/if}
+	</div>
+
+	<aside class="guided" aria-labelledby="guided-heading">
+		<header class="guided-head">
+			<div>
+				<p class="guided-eyebrow">{m('coachPage.guidedEyebrow')}</p>
+				<h2 id="guided-heading">{m('coachPage.guidedHeading')}</h2>
+				<p class="guided-sub">{m('coachPage.guidedSub')}</p>
+			</div>
+			<a class="guided-all" href="/guided">
+				{m('coachPage.seeFullLibrary')}
+				<span class="material-symbols">arrow_forward</span>
+			</a>
+		</header>
+		{#if guidedLibrary.length === 0}
+			<p class="guided-empty">{m('coachPage.guidedEmpty')}</p>
+		{:else}
+			<ul class="guided-list">
+				{#each guidedLibrary as g (g.id)}
+					{@const intent = intensityFor(g)}
+					<li>
+						<a class="guided-card" href="/guided/{g.id}">
+							<div class="guided-card-head">
+								<span class="duration">{fmtMinutes(g.duration_sec)}</span>
+								<span class="intensity" data-tone={intent.tone}>
+									<span class="intensity-dot" aria-hidden="true"></span>
+									{intent.label}
+								</span>
+							</div>
+							<h3>{g.title}</h3>
+							<p class="guided-card-sub">{g.subtitle}</p>
+							<p class="guided-card-meta">{m('coachPage.cueCount', { count: g.cues.length })}</p>
+						</a>
+					</li>
+				{/each}
+				<li class="mobile-cta-item">
+					<div class="mobile-cta" aria-label={m('coachPage.mobileCtaAria')}>
+						<span class="material-symbols mobile-cta-icon" aria-hidden="true">phone_iphone</span>
+						<p class="mobile-cta-title">{m('coachPage.mobileCtaTitle')}</p>
+						<p class="mobile-cta-sub">
+							{m('coachPage.mobileCtaSub')}
+						</p>
+					</div>
+				</li>
+			</ul>
+		{/if}
+	</aside>
+</div>
+
+<style>
+	.pane-head {
+		padding: var(--space-md) var(--space-lg);
+		border-bottom: 1px solid var(--color-border);
+	}
+	.conv-head {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+	}
+	.conv-head .who {
+		margin: 0;
+		font-size: 1rem;
+		font-weight: 700;
+	}
+	.back {
+		display: none;
+		text-decoration: none;
+		color: var(--color-text-secondary);
+		font-size: 1.2rem;
+	}
+	.coach-avatar {
+		flex: 0 0 auto;
+		width: 1.9rem;
+		height: 1.9rem;
+		border-radius: 50%;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		background: color-mix(in srgb, var(--section-coach) 14%, var(--color-surface));
+		color: var(--section-coach-ink);
+	}
+	.coach-avatar .material-symbols {
+		font-size: 1.1rem;
+	}
+	/* The chat takes the pane's height; the guided-runs rail runs along the
+	   bottom as a strip, since the pane sits beside the inbox and has no room
+	   for a second column. */
+	.coach-pane {
+		flex: 1 1 auto;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+	}
+	.chat-host {
+		display: flex;
+		flex-direction: column;
+		flex: 1 1 auto;
+		min-height: 0;
+		min-width: 0;
+	}
+	/* The pane already draws the frame, so the chat's own goes. */
+	.chat-host > :global(.shell) {
+		height: 100%;
+		border: none;
+		border-radius: 0;
+	}
+	.muted {
+		color: var(--color-text-tertiary);
+		padding: var(--space-lg);
+	}
+	.coach-coming-soon {
+		max-width: 44rem;
+		margin: var(--space-lg) auto;
+		padding: var(--space-xl);
+		background: var(--color-surface);
+		border: 1px dashed var(--color-border);
+		border-radius: var(--radius-lg);
+		line-height: 1.55;
+		text-align: center;
+	}
+	.coach-coming-soon h2 {
+		margin: 0 0 var(--space-sm);
+	}
+	.coach-coming-soon p {
+		margin: 0;
+		color: var(--color-text-secondary);
+	}
+	.coach-consent {
+		max-width: 44rem;
+		margin: var(--space-lg) auto;
+		padding: var(--space-xl);
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		line-height: 1.55;
+		overflow-y: auto;
+	}
+	.coach-consent h2 {
+		margin: 0 0 var(--space-md);
+		font-size: 1.25rem;
+	}
+	.coach-consent p { margin: 0 0 var(--space-md); }
+	.coach-consent-error {
+		color: var(--color-danger-text);
+		font-weight: 600;
+	}
+	.coach-consent-actions {
+		display: flex;
+		gap: var(--space-md);
+		justify-content: flex-end;
+		margin-top: var(--space-lg);
+	}
+
+	.guided {
+		flex: 0 0 auto;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+		border-top: 1px solid var(--color-border);
+		background: var(--color-bg-secondary);
+		padding: var(--space-sm) var(--space-md);
+		min-width: 0;
+	}
+	.guided-head {
+		display: flex;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: var(--space-sm);
+	}
+	.guided-eyebrow {
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		font-size: var(--font-size-section-label);
+		font-weight: 700;
+		color: var(--color-text-tertiary);
+		margin: 0 0 var(--space-2xs);
+	}
+	.guided-head h2 {
+		font-size: 0.95rem;
+		font-weight: 700;
+		margin: 0;
+		line-height: 1.2;
+	}
+	.guided-sub {
+		font-size: 0.78rem;
+		color: var(--color-text-tertiary);
+		margin: var(--space-2xs) 0 0;
+		line-height: 1.4;
+	}
+	.guided-list {
+		list-style: none;
+		padding: 0 0 var(--space-xs);
+		margin: 0;
+		display: flex;
+		flex-direction: row;
+		gap: var(--space-sm);
+		overflow-x: auto;
+		scroll-snap-type: x mandatory;
+	}
+	.guided-list > li {
+		flex: 0 0 15rem;
+		scroll-snap-align: start;
+		display: flex;
+	}
+	.guided-empty {
+		font-size: 0.82rem;
+		color: var(--color-text-tertiary);
+		margin: 0;
+	}
+	.guided-card {
+		flex: 1 1 auto;
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		padding: 0.6rem 0.75rem;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		text-decoration: none;
+		color: inherit;
+		transition: border-color var(--transition-fast),
+			transform var(--transition-fast);
+	}
+	.guided-card:hover {
+		border-color: var(--color-primary);
+		transform: translateY(-1px);
+	}
+	.guided-card-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-sm);
+	}
+	.duration {
+		background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+		color: var(--color-primary);
+		padding: 0.1rem 0.5rem;
+		border-radius: 999px;
+		font-size: var(--font-size-section-label);
+		font-weight: 700;
+	}
+	.intensity {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		font-size: var(--font-size-section-label);
+		font-weight: 600;
+		color: var(--color-text-secondary);
+	}
+	.intensity-dot {
+		width: 0.45rem;
+		height: 0.45rem;
+		border-radius: 50%;
+		background: var(--color-text-tertiary);
+	}
+	.intensity[data-tone='easy'] .intensity-dot { background: var(--color-success); }
+	.intensity[data-tone='tempo'] .intensity-dot { background: var(--color-accent-orange); }
+	.intensity[data-tone='mixed'] .intensity-dot { background: var(--color-accent-cyan); }
+	.guided-card h3 {
+		margin: 0;
+		font-size: 0.88rem;
+		font-weight: 600;
+		line-height: 1.3;
+	}
+	.guided-card-sub {
+		font-size: 0.76rem;
+		color: var(--color-text-secondary);
+		margin: 0;
+		line-height: 1.35;
+	}
+	.guided-card-meta {
+		font-size: var(--font-size-section-label);
+		color: var(--color-text-tertiary);
+		margin: 0.15rem 0 0;
+	}
+	.guided-all {
+		flex: 0 0 auto;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		padding: var(--space-xs) var(--space-sm);
+		font-size: 0.78rem;
+		font-weight: 500;
+		color: var(--color-text-secondary);
+		text-decoration: none;
+		border-radius: var(--radius-md);
+		transition: color var(--transition-fast), background var(--transition-fast);
+	}
+	.guided-all:hover {
+		color: var(--color-primary);
+		background: var(--color-bg-tertiary);
+	}
+	.guided-all .material-symbols {
+		font-family: 'Material Symbols Outlined';
+		font-size: 0.95rem;
+	}
+	/* Closes the loop from "preview this" to "run this": the last card in the
+	   strip. Hidden on a narrow viewport, where the reader is very likely on
+	   a phone already. */
+	.mobile-cta {
+		flex: 1 1 auto;
+		padding: 0.6rem 0.75rem;
+		background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+		border: 1px dashed color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+		border-radius: var(--radius-md);
+	}
+	.mobile-cta-icon {
+		font-family: 'Material Symbols Outlined';
+		font-size: 1.3rem;
+		color: var(--color-primary);
+		display: block;
+		margin-bottom: var(--space-2xs);
+	}
+	.mobile-cta-title {
+		font-size: 0.85rem;
+		font-weight: 700;
+		margin: 0 0 var(--space-2xs);
+		color: var(--color-text);
+	}
+	.mobile-cta-sub {
+		font-size: 0.74rem;
+		color: var(--color-text-secondary);
+		margin: 0;
+		line-height: 1.4;
+	}
+
+	@media (max-width: 64rem) {
+		.guided-list > li.mobile-cta-item { display: none; }
+	}
+	@media (max-width: 48rem) {
+		.back {
+			display: inline;
+		}
+		.chat-host {
+			min-height: 30rem;
+		}
+	}
+</style>

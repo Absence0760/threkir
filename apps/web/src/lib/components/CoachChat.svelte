@@ -8,6 +8,7 @@
 	import { TABLES } from '#lib/core/schema.ts';
 	import { fmtKm } from '#lib/format/units.svelte.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import AiTag from '#lib/components/AiTag.svelte';
 	import ChipDropdown from '#lib/components/ChipDropdown.svelte';
 	import { TIER_LIMITS } from '#lib/coach/types.ts';
 	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
@@ -1132,7 +1133,10 @@
 					</div>
 				{/if}
 				{#each messages as m, i (i)}
-					<div class="bubble" class:user={m.role === 'user'}>
+					<div class="bubble" class:user={m.role === 'user'} data-role={m.role}>
+						{#if m.role === 'assistant'}
+							{@render aiByline()}
+						{/if}
 						{#if m.role === 'user' && editingId === m.id && m.id != null}
 							<div class="edit-form">
 								<textarea bind:value={editingDraft} rows="3" aria-label={t('coachChat.editMessageLabel')}></textarea>
@@ -1214,7 +1218,8 @@
 					</div>
 				{/each}
 				{#if awaitingAssistant && messages[messages.length - 1]?.role === 'user'}
-					<div class="bubble">
+					<div class="bubble" data-role="assistant">
+						{@render aiByline()}
 						<div class="typing-dots" aria-label={t('coachChat.coachThinking')}>
 							<span></span><span></span><span></span>
 						</div>
@@ -1284,6 +1289,16 @@
 		</div>
 	</div>
 
+	<!-- Every Coach message is labelled, not only the first (EU AI Act
+	     Art. 50, decisions § 2227): an avatar, the Coach's name and the AI tag. -->
+	{#snippet aiByline()}
+		<div class="ai-byline" data-testid="coach-ai-byline">
+			<span class="ai-avatar" aria-hidden="true"><span class="material-symbols">sports</span></span>
+			<span class="ai-name">{t('nav.coach')}</span>
+			<AiTag />
+		</div>
+	{/snippet}
+
 	<ConfirmDialog
 		open={showArchiveConfirm}
 		title={t('coachChat.confirmTitle')}
@@ -1305,6 +1320,31 @@
 </div>
 
 <style>
+	.ai-byline {
+		display: flex;
+		white-space: normal;
+		align-items: center;
+		gap: 0.35rem;
+		margin-bottom: 0.3rem;
+		font-size: var(--font-size-section-label);
+		color: var(--color-text-secondary);
+	}
+	.ai-avatar {
+		width: 1.35rem;
+		height: 1.35rem;
+		border-radius: 50%;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		background: color-mix(in srgb, var(--section-coach) 14%, var(--color-surface));
+		color: var(--section-coach-ink);
+	}
+	.ai-avatar .material-symbols {
+		font-size: 0.85rem;
+	}
+	.ai-name {
+		font-weight: 600;
+	}
 	.shell {
 		display: flex;
 		gap: 0;

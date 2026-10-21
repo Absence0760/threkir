@@ -8,7 +8,7 @@ export const guide: Guide = {
 	category: 'account',
 	audience: ['everyone'],
 	platforms: ['web', 'android', 'ios'],
-	routes: ['/settings/upgrade', '/coach'],
+	routes: ['/settings/upgrade', '/messages/coach'],
 	sections: [
 		{
 			heading: 'What stays free',

@@ -113,7 +113,7 @@
 		<p class="cmp-links">
 			{m('compare.exploreFeatures')}
 			{#if coachOn}
-				<a href="/coach">{m('compare.linkAiCoach')}</a>
+				<a href="/messages/coach">{m('compare.linkAiCoach')}</a>
 				<span class="sep">&middot;</span>
 			{/if}
 			<a href="/plans">{m('compare.linkTrainingPlans')}</a>

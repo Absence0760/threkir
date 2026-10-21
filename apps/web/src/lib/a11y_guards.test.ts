@@ -219,7 +219,9 @@ test('accessibility: every top-level page renders an h1 (WCAG 1.3.1 + 2.4.6)', (
 		// run-list page moved to /runs in the §63-amendment restructure.
 		['src/routes/history/+page.svelte', 'history.timelineHeading', 'History'],
 		['src/routes/runs/+page.svelte', 'history.heading', 'Run history'],
-		['src/routes/coach/+page.svelte', 'coachPage.h1', 'AI Coach'],
+		// The Coach is a conversation in Messages (decisions § 2227): the
+		// layout's h1 names Messages, the pane's h2 names the Coach.
+		['src/routes/messages/+layout.svelte', 'messages.heading', 'Messages'],
 	] as const) {
 		const src = read(path);
 		assert.match(

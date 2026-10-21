@@ -22,7 +22,7 @@ export interface CoachContext {
 
 /// One entry per field the Coach context can send to Anthropic.
 ///
-/// - `gate` — the lowest accepted AI-disclosure version the field is sent at.
+/// - `sentFrom` — the lowest accepted AI-disclosure version the field is sent at.
 ///   `buildContext` withholds it below that, field by field, so a runner who
 ///   accepted an older disclosure keeps a working Coach with what they agreed
 ///   to instead of being locked out until they re-accept.
@@ -33,7 +33,7 @@ export interface CoachContext {
 ///   rather than an accident.
 export type CoachContextEntry =
 	| {
-			gate: number;
+			sentFrom: number;
 			bullet: MessageKey;
 			namedFrom: number;
 			legacyReason?: string;
@@ -66,57 +66,57 @@ const HR_INPUT_LEGACY =
 /// lane cannot reach Anthropic without a covering consent bullet.
 export const COACH_CONTEXT_REGISTRY: Readonly<Record<string, CoachContextEntry>> = {
 	'profile.display_name': {
-		gate: V1,
+		sentFrom: V1,
 		bullet: 'coachPage.consentBulletCoachSettings',
 		namedFrom: V6,
 		legacyReason: SETTINGS_LEGACY,
 	},
 	'profile.preferred_unit': {
-		gate: V1,
+		sentFrom: V1,
 		bullet: 'coachPage.consentBulletCoachSettings',
 		namedFrom: V6,
 		legacyReason: SETTINGS_LEGACY,
 	},
 	'runner_context.weekly_mileage_goal_m': {
-		gate: V1,
+		sentFrom: V1,
 		bullet: 'coachPage.consentBulletCoachSettings',
 		namedFrom: V6,
 		legacyReason: SETTINGS_LEGACY,
 	},
 	'runner_context.coach_personality': {
-		gate: V1,
+		sentFrom: V1,
 		bullet: 'coachPage.consentBulletCoachSettings',
 		namedFrom: V6,
 		legacyReason: SETTINGS_LEGACY,
 	},
 	'runner_context.date_of_birth': {
-		gate: V1,
+		sentFrom: V1,
 		bullet: 'coachPage.consentBulletProfile',
 		namedFrom: V1,
 	},
 	'runner_context.hr_zones': {
-		gate: V1,
+		sentFrom: V1,
 		bullet: 'coachPage.consentBulletProfile',
 		namedFrom: V1,
 	},
 	'runner_context.resting_hr_bpm': {
-		gate: V1,
+		sentFrom: V1,
 		bullet: 'coachPage.consentBulletCoachSettings',
 		namedFrom: V6,
 		legacyReason: HR_INPUT_LEGACY,
 	},
 	'runner_context.max_hr_bpm': {
-		gate: V1,
+		sentFrom: V1,
 		bullet: 'coachPage.consentBulletCoachSettings',
 		namedFrom: V6,
 		legacyReason: HR_INPUT_LEGACY,
 	},
-	plan: { gate: V1, bullet: 'coachPage.consentBulletPlan', namedFrom: V1 },
-	plan_weeks: { gate: V1, bullet: 'coachPage.consentBulletPlan', namedFrom: V1 },
-	plan_workouts: { gate: V1, bullet: 'coachPage.consentBulletPlan', namedFrom: V1 },
-	recent_runs: { gate: V1, bullet: 'coachPage.consentBulletRuns', namedFrom: V1 },
-	recent_lifts: { gate: V6, bullet: 'coachPage.consentBulletLifts', namedFrom: V6 },
-	nutrition_7d: { gate: V6, bullet: 'coachPage.consentBulletNutrition', namedFrom: V6 },
+	plan: { sentFrom: V1, bullet: 'coachPage.consentBulletPlan', namedFrom: V1 },
+	plan_weeks: { sentFrom: V1, bullet: 'coachPage.consentBulletPlan', namedFrom: V1 },
+	plan_workouts: { sentFrom: V1, bullet: 'coachPage.consentBulletPlan', namedFrom: V1 },
+	recent_runs: { sentFrom: V1, bullet: 'coachPage.consentBulletRuns', namedFrom: V1 },
+	recent_lifts: { sentFrom: V6, bullet: 'coachPage.consentBulletLifts', namedFrom: V6 },
+	nutrition_7d: { sentFrom: V6, bullet: 'coachPage.consentBulletNutrition', namedFrom: V6 },
 	now_iso: { notPersonalData: 'The server clock, so the model knows what "today" is.' },
 };
 
@@ -129,7 +129,7 @@ export function coachContextAllows(path: string, disclosureVersion: number): boo
 	if (!entry) {
 		throw new Error(`coach context key "${path}" is not in COACH_CONTEXT_REGISTRY`);
 	}
-	return 'notPersonalData' in entry || disclosureVersion >= entry.gate;
+	return 'notPersonalData' in entry || disclosureVersion >= entry.sentFrom;
 }
 
 /// Drop every field the runner's accepted disclosure does not cover, and

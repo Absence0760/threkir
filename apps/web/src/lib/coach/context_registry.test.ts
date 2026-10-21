@@ -161,7 +161,7 @@ for (const version of [AI_DISCLOSURE_VERSION_COACH, AI_DISCLOSURE_VERSION_FOOD_P
 		assert.equal((data.plan as { id: string }).id, 'p1');
 		for (const path of emittedPaths(data)) {
 			const entry = COACH_CONTEXT_REGISTRY[path];
-			if ('gate' in entry) assert.ok(entry.gate <= version, `"${path}" sent below its gate`);
+			if ('sentFrom' in entry) assert.ok(entry.sentFrom <= version, `"${path}" sent below its gate`);
 		}
 	});
 }
@@ -203,11 +203,11 @@ test('withholdUndisclosed drops a nested field below its gate and keeps a null c
 test('every registry entry is gated on a known version, at or above the copy that names it', () => {
 	for (const [path, entry] of Object.entries(COACH_CONTEXT_REGISTRY)) {
 		if ('notPersonalData' in entry) continue;
-		assert.ok(entry.gate >= 1 && entry.gate <= AI_DISCLOSURE_CURRENT_VERSION, path);
+		assert.ok(entry.sentFrom >= 1 && entry.sentFrom <= AI_DISCLOSURE_CURRENT_VERSION, path);
 		assert.ok(entry.namedFrom >= 1 && entry.namedFrom <= AI_DISCLOSURE_CURRENT_VERSION, path);
 		assert.ok(
-			entry.gate >= entry.namedFrom || (entry.legacyReason ?? '').length > 0,
-			`"${path}" is sent at v${entry.gate} but first named at v${entry.namedFrom}, with no legacyReason`,
+			entry.sentFrom >= entry.namedFrom || (entry.legacyReason ?? '').length > 0,
+			`"${path}" is sent at v${entry.sentFrom} but first named at v${entry.namedFrom}, with no legacyReason`,
 		);
 	}
 });

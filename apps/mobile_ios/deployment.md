@@ -219,6 +219,7 @@ App Store Connect's age-rating questionnaire (revised 2025: 4+/9+/13+/16+/18+ ti
 - **User-generated content / social features** — Yes: social feed, run comments, club posts, direct messages.
 - **Location sharing** — Yes: public run/route shares and live spectator links expose (privacy-clipped) location.
 - **In-app purchases** — Yes: the Pro subscription (the "In-App Purchases" badge is also derived automatically from the IAP configuration).
+- **In-App Controls (Parental Controls, Age Assurance)** — None. The 16+ signup checkbox is a self-declaration, not an age-assurance mechanism ([age-of-consent.md § Enforcement caveats](../../docs/compliance/age-of-consent.md)), and there are no parental controls. Declaring either got 1.0.14 rejected under Guideline 2.3.6 (2026-10-21, #1218): App Review looks for the feature and rejects when it cannot find it.
 
 The base content rating stays low for a running app; these capability flags are what raise the effective tier, and misdeclaring them is a review rejection. Keep the answers consistent with the Play IARC interactive elements in [`apps/mobile_android/deployment.md`](../mobile_android/deployment.md).
 

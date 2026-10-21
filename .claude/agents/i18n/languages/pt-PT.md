@@ -129,6 +129,7 @@ rendering "1 …" for 0. Use `{count}` (ARB) / `#` (web).
 | auto-pause | — | no catalogue string yet; build from "Corrida pausada" / "Pausar" → "Pausa automática", and flag it as a new term |
 | kudos | kudos ("dar kudos", "remover kudos") | |
 | workout | Treino | |
+| skip a workout / skipped | **Ignorar** / **ignorado** (treino) — un-skip **Deixar de ignorar**; status = **estado** | settled 2026-10-21; never "saltado" for the status. Skipping a step or setup is **Saltar**; "não salte" stays in coaching advice |
 | warm-up / cool-down / recovery | Aquecimento / Desaquecimento / Recuperação | |
 | save / settings / feed / followers | Guardar / **Definições** / Feed / Seguidores | `navSettings` is "Config." — inconsistency 3 |
 | app | **a app** (feminine, from *a aplicação*): "na app", "da app", "esta app", "outra app" | settled 2026-10-13 |

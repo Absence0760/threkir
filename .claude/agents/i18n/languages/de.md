@@ -100,6 +100,7 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
 | workout | Training (dominant) / Workout | |
 | warm-up / cool-down / recovery | Aufwärmen / Auslaufen / Erholung | cool-down also "Abwärmen", "Abkühlen" — inconsistency 6 |
 | save / settings / feed | Speichern / Einstellungen / Feed | |
+| chat message | **Chatnachricht** (closed compound, Duden) | settled 2026-10-21; never "Chat-Nachricht" |
 | social | Sozial (mobile `navSocial`) / Community (web `nav.social`) | inconsistency 7 |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)

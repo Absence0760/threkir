@@ -110,6 +110,7 @@ literal `1` in a `one` branch — 11 mobile strings already do (e.g.
 | auto-pause | — | no catalogue string yet; build from "Corrida pausada" / "Pausar" → "Pausa automática", and flag it as a new term |
 | kudos | kudos ("dar kudos", "remover kudos") | |
 | workout | Treino | |
+| skip a workout / skipped | **Ignorar** / **ignorado** (treino) — un-skip **Deixar de ignorar** | settled 2026-10-21; never "pulado" for the status. Skipping a step or setup is **Pular**; "não pule" stays in coaching advice |
 | warm-up / cool-down / recovery | Aquecimento / Desaquecimento / Recuperação | |
 | save / settings / feed / followers | Salvar / Configurações (nav "Config.") / Feed / Seguidores | |
 

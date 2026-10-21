@@ -213,7 +213,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String importStatusSkippedDuplicates(Object count) {
-    return '$count duplicata(s) ignorada(s) já importada(s) de outra fonte';
+    return '$count duplicado(s) ignorado(s), já importado(s) de outra fonte';
   }
 
   @override
@@ -5896,7 +5896,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get plansStatusAbandoned => 'Abandonado';
 
   @override
-  String get plansFilterGroupLabel => 'Filtrar planos por status';
+  String get plansFilterGroupLabel => 'Filtrar planos por estado';
 
   @override
   String get plansFilterAll => 'Todos';
@@ -7004,11 +7004,11 @@ class AppLocalizationsPt extends AppLocalizations {
   String get workoutSkip => 'Ignorar este treino';
 
   @override
-  String get workoutUnskip => 'Desfazer ignorar';
+  String get workoutUnskip => 'Deixar de ignorar';
 
   @override
   String get workoutSkipError =>
-      'Não foi possível atualizar o status de ignorado. Tente novamente.';
+      'Não foi possível atualizar o estado do treino. Tente novamente.';
 
   @override
   String get workoutRelink => 'Revincular';
@@ -7063,7 +7063,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get workoutAdviceLong =>
-      'Fique relaxado. Procure uma respiração constante. Reduza 10% da distância se o clima estiver ruim ou estiver dolorido — mas não salte.';
+      'Fique relaxado. Procure uma respiração constante. Reduza 10% da distância se o tempo estiver mau ou estiver dolorido — mas não salte.';
 
   @override
   String get workoutAdviceTempo =>
@@ -9194,7 +9194,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsMinimalVoiceCuesSubtitle =>
-      'Pula os avisos tagarelas de meio de repetição e desvio de ritmo';
+      'Ignora os avisos tagarelas de meio de repetição e desvio de ritmo';
 
   @override
   String get prefsKeepScreenOn => 'Manter o ecrã ligado';
@@ -10009,7 +10009,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get workoutReviewColDelta => 'Δ';
 
   @override
-  String get workoutReviewSkip => 'saltar';
+  String get workoutReviewSkip => 'ignorado';
 
   @override
   String get workoutReviewLabelWarmup => 'Aquecimento';
@@ -13077,7 +13077,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get metricMissStreakDefinition =>
-      'Treinos planeados seguidos, a contar para trás a partir de ontem, que passaram sem corrida registada. Um treino saltado ou um dia de descanso não conta nem interrompe a sequência; um treino feito termina-a.';
+      'Treinos planeados seguidos, a contar para trás a partir de ontem, que passaram sem corrida registada. Um treino ignorado ou um dia de descanso não conta nem interrompe a sequência; um treino feito termina-a.';
 
   @override
   String get coachingRosterRiskLow => 'Baixo';
@@ -18094,7 +18094,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planDetailGoalTimeRepaceHint =>
-      'Alterá-lo recalcula os ritmos-alvo dos treinos que faltam. Os passados, feitos e saltados mantêm os seus, e um plano criado a partir de um 5K recente mantém os ritmos.';
+      'Alterá-lo recalcula os ritmos-alvo dos treinos que faltam. Os passados, feitos e ignorados mantêm os seus, e um plano criado a partir de um 5K recente mantém os ritmos.';
 
   @override
   String get planDetailNotesLabel => 'Notas';
@@ -18343,7 +18343,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get phoneSurfaceWidgetDone => 'Feito';
 
   @override
-  String get phoneSurfaceWidgetSkipped => 'Saltado';
+  String get phoneSurfaceWidgetSkipped => 'Ignorado';
 
   @override
   String get dashboardTrainForSomething => 'Treine para um objetivo';
@@ -18652,8 +18652,8 @@ class AppLocalizationsPt extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count saltadas',
-      one: '$count saltada',
+      other: '$count ignoradas',
+      one: '$count ignorada',
     );
     return '$_temp0';
   }
@@ -25807,11 +25807,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get workoutSkip => 'Ignorar este treino';
 
   @override
-  String get workoutUnskip => 'Desfazer ignorar';
+  String get workoutUnskip => 'Deixar de ignorar';
 
   @override
   String get workoutSkipError =>
-      'Não foi possível atualizar o status de ignorado. Tente novamente.';
+      'Não foi possível atualizar o status do treino. Tente novamente.';
 
   @override
   String get workoutRelink => 'Revincular';
@@ -25915,7 +25915,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachConsentBulletPlan =>
-      'O plano de treino ativo que você selecionou: o nome, o status, a prova-alvo e o tempo-alvo, o tempo recente de 5K e a pontuação de condicionamento a partir dos quais ele foi criado, as datas, os dias de treino, as regras e as anotações; a fase, a distância-alvo e as anotações de cada semana; e, de cada treino, a data, o tipo, as metas, a estrutura, as anotações, o nome da prova, a prioridade e se você o concluiu ou pulou, além das metas de frequência cardíaca (apenas se você tiver dado o consentimento de dados de saúde).';
+      'O plano de treino ativo que você selecionou: o nome, o status, a prova-alvo e o tempo-alvo, o tempo recente de 5K e a pontuação de condicionamento a partir dos quais ele foi criado, as datas, os dias de treino, as regras e as anotações; a fase, a distância-alvo e as anotações de cada semana; e, de cada treino, a data, o tipo, as metas, a estrutura, as anotações, o nome da prova, a prioridade e se você o concluiu ou ignorou, além das metas de frequência cardíaca (apenas se você tiver dado o consentimento de dados de saúde).';
 
   @override
   String get coachConsentBulletMessages =>
@@ -28803,7 +28803,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get workoutReviewColDelta => 'Δ';
 
   @override
-  String get workoutReviewSkip => 'pular';
+  String get workoutReviewSkip => 'ignorado';
 
   @override
   String get workoutReviewLabelWarmup => 'Aquecimento';
@@ -31871,7 +31871,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get metricMissStreakDefinition =>
-      'Treinos planejados seguidos, contando para trás a partir de ontem, que passaram sem corrida registrada. Um treino pulado ou um dia de descanso não conta nem interrompe a sequência; um treino concluído a encerra.';
+      'Treinos planejados seguidos, contando para trás a partir de ontem, que passaram sem corrida registrada. Um treino ignorado ou um dia de descanso não conta nem interrompe a sequência; um treino concluído a encerra.';
 
   @override
   String get coachingRosterRiskLow => 'Baixo';
@@ -36882,7 +36882,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planDetailGoalTimeRepaceHint =>
-      'Alterar recalcula os ritmos-alvo dos treinos que ainda faltam. Os passados, feitos e pulados mantêm os seus, e um plano criado a partir de um 5K recente mantém os ritmos.';
+      'Alterar recalcula os ritmos-alvo dos treinos que ainda faltam. Os passados, feitos e ignorados mantêm os seus, e um plano criado a partir de um 5K recente mantém os ritmos.';
 
   @override
   String get planDetailNotesLabel => 'Notas';
@@ -37131,7 +37131,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get phoneSurfaceWidgetDone => 'Feito';
 
   @override
-  String get phoneSurfaceWidgetSkipped => 'Pulado';
+  String get phoneSurfaceWidgetSkipped => 'Ignorado';
 
   @override
   String get dashboardTrainForSomething => 'Treine para algo';
@@ -37439,8 +37439,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count puladas',
-      one: '$count pulada',
+      other: '$count ignoradas',
+      one: '$count ignorada',
     );
     return '$_temp0';
   }

@@ -7019,11 +7019,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get workoutSkip => 'Ignorer cette séance';
 
   @override
-  String get workoutUnskip => 'Annuler l\'ignorance';
+  String get workoutUnskip => 'Ne plus ignorer';
 
   @override
   String get workoutSkipError =>
-      'Impossible de mettre à jour l\'ignorance. Réessayez.';
+      'Impossible de mettre à jour le statut de la séance. Réessayez.';
 
   @override
   String get workoutRelink => 'Réassocier';
@@ -13103,7 +13103,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get metricMissStreakDefinition =>
-      'Séances prévues d\'affilée, en remontant depuis hier, passées sans course enregistrée. Une séance sautée ou un jour de repos ne compte pas et n\'interrompt pas la série ; une séance faite y met fin.';
+      'Séances prévues d\'affilée, en remontant depuis hier, passées sans course enregistrée. Une séance ignorée ou un jour de repos ne compte pas et n\'interrompt pas la série ; une séance faite y met fin.';
 
   @override
   String get coachingRosterRiskLow => 'Faible';
@@ -18132,7 +18132,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planDetailGoalTimeRepaceHint =>
-      'La modifier recalcule les allures cibles des séances à venir. Les séances passées, faites ou sautées gardent les leurs, et un plan construit à partir d\'un 5 km récent garde ses allures.';
+      'La modifier recalcule les allures cibles des séances à venir. Les séances passées, faites ou ignorées gardent les leurs, et un plan construit à partir d\'un 5 km récent garde ses allures.';
 
   @override
   String get planDetailNotesLabel => 'Notes';
@@ -18381,7 +18381,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get phoneSurfaceWidgetDone => 'Fait';
 
   @override
-  String get phoneSurfaceWidgetSkipped => 'Sauté';
+  String get phoneSurfaceWidgetSkipped => 'Ignoré';
 
   @override
   String get dashboardTrainForSomething => 'S\'entraîner pour un objectif';
@@ -18691,8 +18691,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count sautées',
-      one: '$count sautée',
+      other: '$count ignorées',
+      one: '$count ignorée',
     );
     return '$_temp0';
   }

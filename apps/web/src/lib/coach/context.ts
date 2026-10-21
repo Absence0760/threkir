@@ -10,7 +10,9 @@ import {
 	AI_DISCLOSURE_VERSION_COACH,
 	AI_DISCLOSURE_VERSION_COACH_CROSS_TRAINING,
 } from '../core/ai_disclosure';
+import { SELECT_SEPARATOR, type Join } from '../core/database';
 import { TABLES } from '../core/schema';
+import type { Database } from '../database.types';
 import type { MessageKey } from '../i18n/messages';
 import { dbError } from '../core/supabase_error';
 import { distinctExerciseCount } from '../gym/gym_prs';
@@ -43,12 +45,105 @@ export type CoachContextEntry =
 const V1 = AI_DISCLOSURE_VERSION_COACH;
 const V6 = AI_DISCLOSURE_VERSION_COACH_CROSS_TRAINING;
 
-/// Top-level keys whose value is an object registered field by field below
-/// (`profile.display_name`, …), rather than as a whole.
-export const COACH_CONTEXT_CONTAINERS: ReadonlySet<string> = new Set([
-	'profile',
-	'runner_context',
+type Row<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
+
+/// The columns each table-backed lane selects: explicit rather than `*`, so a
+/// column added to the table stays out of the Coach until it is listed here,
+/// registered below and named by a consent bullet (decisions § 2220).
+export const COACH_PLAN_COLUMNS = [
+	'id',
+	'name',
+	'status',
+	'goal_event',
+	'goal_distance_m',
+	'goal_time_seconds',
+	'current_5k_seconds',
+	'vdot',
+	'days_per_week',
+	'start_date',
+	'end_date',
+	'rules',
+	'notes',
+] as const satisfies readonly (keyof Row<'training_plans'>)[];
+
+export const COACH_PLAN_WEEK_COLUMNS = [
+	'id',
+	'week_index',
+	'phase',
+	'target_volume_m',
+	'notes',
+] as const satisfies readonly (keyof Row<'plan_weeks'>)[];
+
+export const COACH_PLAN_WORKOUT_COLUMNS = [
+	'week_id',
+	'scheduled_date',
+	'kind',
+	'target_distance_m',
+	'target_duration_seconds',
+	'target_pace_sec_per_km',
+	'target_pace_end_sec_per_km',
+	'target_pace_tolerance_sec',
+	'pace_zone',
+	'target_hr_min_bpm',
+	'target_hr_max_bpm',
+	'target_rpe_min',
+	'target_rpe_max',
+	'structure',
+	'notes',
+	'race_name',
+	'race_priority',
+	'completed_at',
+	'manually_completed',
+	'skipped_at',
+] as const satisfies readonly (keyof Row<'plan_workouts'>)[];
+
+/// `metadata` is narrowed further, key by key, by `pickAllowedRunMetadata`.
+export const COACH_RUN_COLUMNS = [
+	'id',
+	'started_at',
+	'distance_m',
+	'duration_s',
+	'activity_type',
+	'metadata',
+] as const satisfies readonly (keyof Row<'runs'>)[];
+
+type Sel<C extends readonly string[]> = Join<C, typeof SELECT_SEPARATOR>;
+const PLAN_SELECT = COACH_PLAN_COLUMNS.join(SELECT_SEPARATOR) as Sel<typeof COACH_PLAN_COLUMNS>;
+const PLAN_WEEK_SELECT = COACH_PLAN_WEEK_COLUMNS.join(SELECT_SEPARATOR) as Sel<
+	typeof COACH_PLAN_WEEK_COLUMNS
+>;
+const PLAN_WORKOUT_SELECT = COACH_PLAN_WORKOUT_COLUMNS.join(SELECT_SEPARATOR) as Sel<
+	typeof COACH_PLAN_WORKOUT_COLUMNS
+>;
+const RUN_SELECT = COACH_RUN_COLUMNS.join(SELECT_SEPARATOR) as Sel<typeof COACH_RUN_COLUMNS>;
+
+/// Plan-workout fields derived from the runner's heart rate, so held to the
+/// same health-data consent as `runner_context.hr_zones`.
+const COACH_PLAN_WORKOUT_HEALTH_COLUMNS: ReadonlySet<string> = new Set([
+	'target_hr_min_bpm',
+	'target_hr_max_bpm',
 ]);
+
+/// Top-level keys registered field by field below (`profile.display_name`,
+/// `plan_workouts.kind`, …) rather than as a whole: an `object` is one row, a
+/// `list` is rows that each carry those fields.
+export const COACH_CONTEXT_CONTAINERS: ReadonlyMap<string, 'object' | 'list'> = new Map([
+	['profile', 'object'],
+	['runner_context', 'object'],
+	['plan', 'object'],
+	['plan_weeks', 'list'],
+	['plan_workouts', 'list'],
+	['recent_runs', 'list'],
+]);
+
+/// The selected columns of each table-backed container, so the registry test
+/// can hold the select lists and the registry to the same set.
+export const COACH_CONTEXT_COLUMNS: Readonly<Record<string, readonly string[]>> = {
+	plan: COACH_PLAN_COLUMNS,
+	plan_weeks: COACH_PLAN_WEEK_COLUMNS,
+	plan_workouts: COACH_PLAN_WORKOUT_COLUMNS,
+	recent_runs: COACH_RUN_COLUMNS,
+};
 
 const SETTINGS_LEGACY =
 	'Sent since the v1 Coach as part of the settings the runner gives the Coach; ' +
@@ -59,6 +154,19 @@ const HR_INPUT_LEGACY =
 	'An input the "configured HR zones" of the v1 copy are computed from, and ' +
 	'health-consent gated since v1; kept ungated by disclosure version per ' +
 	'issue #1217. v6 copy names it.';
+
+/// The plan and runs lanes have been sent since the v1 Coach, whose plan and
+/// runs bullets name them, so their fields are gated and named at v1.
+const PLAN_FIELD: CoachContextEntry = {
+	sentFrom: V1,
+	bullet: 'coachPage.consentBulletPlan',
+	namedFrom: V1,
+};
+const RUN_FIELD: CoachContextEntry = {
+	sentFrom: V1,
+	bullet: 'coachPage.consentBulletRuns',
+	namedFrom: V1,
+};
 
 /// Every key `buildContext` may emit, and what discloses it (issue #1217).
 /// `buildContext` throws on a key that is missing here, and
@@ -111,10 +219,53 @@ export const COACH_CONTEXT_REGISTRY: Readonly<Record<string, CoachContextEntry>>
 		namedFrom: V6,
 		legacyReason: HR_INPUT_LEGACY,
 	},
-	plan: { sentFrom: V1, bullet: 'coachPage.consentBulletPlan', namedFrom: V1 },
-	plan_weeks: { sentFrom: V1, bullet: 'coachPage.consentBulletPlan', namedFrom: V1 },
-	plan_workouts: { sentFrom: V1, bullet: 'coachPage.consentBulletPlan', namedFrom: V1 },
-	recent_runs: { sentFrom: V1, bullet: 'coachPage.consentBulletRuns', namedFrom: V1 },
+	'plan.id': PLAN_FIELD,
+	'plan.name': PLAN_FIELD,
+	'plan.status': PLAN_FIELD,
+	'plan.goal_event': PLAN_FIELD,
+	'plan.goal_distance_m': PLAN_FIELD,
+	'plan.goal_time_seconds': PLAN_FIELD,
+	'plan.current_5k_seconds': PLAN_FIELD,
+	'plan.vdot': PLAN_FIELD,
+	'plan.days_per_week': PLAN_FIELD,
+	'plan.start_date': PLAN_FIELD,
+	'plan.end_date': PLAN_FIELD,
+	'plan.rules': PLAN_FIELD,
+	'plan.notes': PLAN_FIELD,
+	'plan_weeks.id': PLAN_FIELD,
+	'plan_weeks.week_index': PLAN_FIELD,
+	'plan_weeks.phase': PLAN_FIELD,
+	'plan_weeks.target_volume_m': PLAN_FIELD,
+	'plan_weeks.notes': PLAN_FIELD,
+	'plan_workouts.week_id': PLAN_FIELD,
+	'plan_workouts.scheduled_date': PLAN_FIELD,
+	'plan_workouts.kind': PLAN_FIELD,
+	'plan_workouts.target_distance_m': PLAN_FIELD,
+	'plan_workouts.target_duration_seconds': PLAN_FIELD,
+	'plan_workouts.target_pace_sec_per_km': PLAN_FIELD,
+	'plan_workouts.target_pace_end_sec_per_km': PLAN_FIELD,
+	'plan_workouts.target_pace_tolerance_sec': PLAN_FIELD,
+	'plan_workouts.pace_zone': PLAN_FIELD,
+	// Null without health-data consent (COACH_PLAN_WORKOUT_HEALTH_COLUMNS).
+	'plan_workouts.target_hr_min_bpm': PLAN_FIELD,
+	'plan_workouts.target_hr_max_bpm': PLAN_FIELD,
+	'plan_workouts.target_rpe_min': PLAN_FIELD,
+	'plan_workouts.target_rpe_max': PLAN_FIELD,
+	'plan_workouts.structure': PLAN_FIELD,
+	'plan_workouts.notes': PLAN_FIELD,
+	'plan_workouts.race_name': PLAN_FIELD,
+	'plan_workouts.race_priority': PLAN_FIELD,
+	'plan_workouts.completed_at': PLAN_FIELD,
+	'plan_workouts.manually_completed': PLAN_FIELD,
+	'plan_workouts.skipped_at': PLAN_FIELD,
+	'recent_runs.id': RUN_FIELD,
+	'recent_runs.started_at': RUN_FIELD,
+	'recent_runs.distance_m': RUN_FIELD,
+	'recent_runs.duration_s': RUN_FIELD,
+	'recent_runs.activity_type': RUN_FIELD,
+	// Narrowed key by key by pickAllowedRunMetadata, avg_bpm only with
+	// health-data consent.
+	'recent_runs.metadata': RUN_FIELD,
 	recent_lifts: { sentFrom: V6, bullet: 'coachPage.consentBulletLifts', namedFrom: V6 },
 	nutrition_7d: { sentFrom: V6, bullet: 'coachPage.consentBulletNutrition', namedFrom: V6 },
 	now_iso: { notPersonalData: 'The server clock, so the model knows what "today" is.' },
@@ -141,20 +292,35 @@ export function withholdUndisclosed(
 ): Record<string, unknown> {
 	const out: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(data)) {
-		if (COACH_CONTEXT_CONTAINERS.has(key)) {
+		const container = COACH_CONTEXT_CONTAINERS.get(key);
+		if (container) {
 			if (value == null) {
 				out[key] = value;
 				continue;
 			}
-			const inner: Record<string, unknown> = {};
-			for (const [field, v] of Object.entries(value as Record<string, unknown>)) {
-				if (coachContextAllows(`${key}.${field}`, disclosureVersion)) inner[field] = v;
-			}
-			out[key] = inner;
+			const withhold = (row: Record<string, unknown>) => {
+				const inner: Record<string, unknown> = {};
+				for (const [field, v] of Object.entries(row)) {
+					if (coachContextAllows(`${key}.${field}`, disclosureVersion)) inner[field] = v;
+				}
+				return inner;
+			};
+			out[key] =
+				container === 'list'
+					? (value as Record<string, unknown>[]).map(withhold)
+					: withhold(value as Record<string, unknown>);
 			continue;
 		}
 		if (coachContextAllows(key, disclosureVersion)) out[key] = value;
 	}
+	return out;
+}
+
+/// Holds the emitted shape to the column list, whatever the client returned.
+function pickColumns(row: unknown, columns: readonly string[]): Record<string, unknown> {
+	const r = row as Record<string, unknown>;
+	const out: Record<string, unknown> = {};
+	for (const c of columns) if (c in r) out[c] = r[c];
 	return out;
 }
 
@@ -180,7 +346,7 @@ async function currentPlanRow(
 ): Promise<unknown> {
 	const { data, error } = await supabase
 		.from('training_plans')
-		.select('*')
+		.select(PLAN_SELECT)
 		.eq('user_id', userId)
 		.eq('status', 'active')
 		.eq('is_template', false)
@@ -258,7 +424,7 @@ export async function buildContext(
 		if (planId) {
 			const pinned = await supabase
 				.from('training_plans')
-				.select('*')
+				.select(PLAN_SELECT)
 				.eq('id', planId)
 				.eq('user_id', userId)
 				.maybeSingle();
@@ -287,7 +453,7 @@ export async function buildContext(
 			const fromWeek = Math.max(0, currentWeek - COACH_PLAN_WEEKS_LOOKBACK);
 			const weekRes = await supabase
 				.from('plan_weeks')
-				.select('*')
+				.select(PLAN_WEEK_SELECT)
 				.eq('plan_id', planRow.id)
 				.gte('week_index', fromWeek)
 				.order('week_index', { ascending: true })
@@ -299,7 +465,7 @@ export async function buildContext(
 				// still sees the taper/race, never an empty plan.
 				const tailRes = await supabase
 					.from('plan_weeks')
-					.select('*')
+					.select(PLAN_WEEK_SELECT)
 					.eq('plan_id', planRow.id)
 					.order('week_index', { ascending: false })
 					.limit(COACH_PLAN_WEEKS_CAP);
@@ -309,14 +475,23 @@ export async function buildContext(
 				const ids = (weeks as { id: string }[]).map((w) => w.id);
 				const wkRes = await supabase
 					.from('plan_workouts')
-					.select('*')
+					.select(PLAN_WORKOUT_SELECT)
 					.in('week_id', ids)
 					.order('scheduled_date', { ascending: true })
 					.limit(COACH_PLAN_WORKOUTS_CAP);
-				workouts = wkRes.data ?? [];
+				workouts = (wkRes.data ?? []).map((w) => {
+					const row = pickColumns(w, COACH_PLAN_WORKOUT_COLUMNS);
+					if (!healthConsentGranted) {
+						for (const c of COACH_PLAN_WORKOUT_HEALTH_COLUMNS) {
+							if (c in row) row[c] = null;
+						}
+					}
+					return row;
+				});
 			}
+			weeks = weeks.map((w) => pickColumns(w, COACH_PLAN_WEEK_COLUMNS));
 		}
-		return { plan: plan ?? null, weeks, workouts };
+		return { plan: plan ? pickColumns(plan, COACH_PLAN_COLUMNS) : null, weeks, workouts };
 	})();
 
 	// Persona-hunt Round 2 finding Pro #3. `metadata` is a free-form
@@ -336,12 +511,12 @@ export async function buildContext(
 	const runsLane = (async () => {
 		const { data: rawRecentRuns } = await supabase
 			.from(TABLES.runs)
-			.select('id, started_at, distance_m, duration_s, metadata, route_id')
+			.select(RUN_SELECT)
 			.eq('user_id', userId)
 			.order('started_at', { ascending: false })
 			.limit(runsLimit);
 		return (rawRecentRuns ?? []).map((r) => ({
-			...r,
+			...pickColumns(r, COACH_RUN_COLUMNS),
 			metadata: pickAllowedRunMetadata(
 				r.metadata as Record<string, unknown> | null,
 				healthConsentGranted,
@@ -619,7 +794,6 @@ export function summarizeNutrition(
 /// processor boundary and must justify its coaching value. Audited
 /// against docs/backend/metadata.md.
 const COACH_METADATA_ALLOWLIST: ReadonlySet<string> = new Set([
-	'activity_type', // run / walk / hike / cycle — coach gates advice on this
 	'avg_bpm', // Art 9 heart-rate — stripped unless health consent granted (COACH_HEALTH_METADATA_KEYS); HR zones use it
 	'workout_kind', // structured workouts — coach reads to track plan adherence
 	'workout_step_results', // per-step planned-vs-actual; coach summarises adherence

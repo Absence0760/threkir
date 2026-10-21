@@ -109,7 +109,8 @@ Future<void> _ensureSupabase() async {
   _supabaseReady = true;
 }
 
-Future<_FakeApi> _pump(WidgetTester tester, List<TrainingPlanRow> plans) async {
+Future<_FakeApi> _pump(WidgetTester tester, List<TrainingPlanRow> plans,
+    {DateTime Function()? now}) async {
   final api = _FakeApi();
   await tester.pumpWidget(
     MaterialApp(
@@ -119,6 +120,7 @@ Future<_FakeApi> _pump(WidgetTester tester, List<TrainingPlanRow> plans) async {
         api: api,
         training: _Training(plans, {_marathon.id: 5, _ultra.id: 14}),
         loadAiPlanAvailable: () async => false,
+        now: now,
       ),
     ),
   );
@@ -176,6 +178,23 @@ void main() {
     expect(api.threadReads.last, _marathon.id);
     expect(find.text(_en.coachContextPlanWeeks(_en.coachSeasonName, 19)),
         findsOneWidget);
+    await drainRealtimeTimers(tester);
+  });
+
+  testWidgets(
+      'a season that shrinks to one plan while the screen is open falls back '
+      'to that plan instead of a picker value with no item', (tester) async {
+    var clock = DateTime.now();
+    final api = await _pump(tester, [_ultra, _marathon], now: () => clock);
+    await _pick(tester, _en.coachSeasonOption);
+    clock = clock.add(const Duration(days: 21));
+    (tester.element(find.byType(CoachScreen)) as StatefulElement)
+        .markNeedsBuild();
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(find.text(_en.coachSeasonOption), findsNothing);
+    expect(find.text(_en.coachPlanActive(_marathon.name)), findsOneWidget);
+    expect(api.threadReads.last, _marathon.id);
     await drainRealtimeTimers(tester);
   });
 

@@ -223,12 +223,17 @@ class CoachScreen extends StatefulWidget {
   /// "Build this plan" link opens.
   final Future<bool> Function()? loadAiPlanAvailable;
 
+  /// The wall clock the season is read against. Tests inject it to cross the
+  /// local midnight a season shrinks at.
+  final DateTime Function()? now;
+
   const CoachScreen({
     super.key,
     required this.api,
     required this.training,
     this.initialPlanId,
     this.loadAiPlanAvailable,
+    this.now,
   });
 
   @override
@@ -294,7 +299,15 @@ class _CoachScreenState extends State<CoachScreen> {
   /// behind the current plan; one plan alone is the plan option.
   List<TrainingPlanRow> get _seasonPlans => currentSeasonPlans(
       [for (final p in _plans) if (p.status == 'active') p],
-      toIsoDate(DateTime.now()));
+      toIsoDate((widget.now ?? DateTime.now)()));
+
+  /// The scope actually in force. The season is re-read from the clock on
+  /// every build while the choice is kept from the pick, so a screen left
+  /// open past the night its first block ends can hold `season` with one
+  /// plan left; that is the plan option, and the picker, strip and request
+  /// all read it the same way.
+  String get _effectiveScope =>
+      _planScope == 'season' && _seasonPlans.length <= 1 ? 'plan' : _planScope;
 
   List<_Msg> _messages = [];
   bool _threadLoaded = false;
@@ -482,7 +495,7 @@ class _CoachScreenState extends State<CoachScreen> {
     bool hrZonesLoaded = false;
     int? weeklyGoalMetres;
     try {
-      if (_planScope == 'season') {
+      if (_effectiveScope == 'season') {
         final season = _seasonPlans;
         isSeason = true;
         final details = await Future.wait(season.map((p) =>
@@ -658,7 +671,7 @@ class _CoachScreenState extends State<CoachScreen> {
       final body = jsonEncode(coachRequestBody(
         messages: payloadMessages,
         planId: _planId,
-        planScope: _planScope,
+        planScope: _effectiveScope,
         recentRunsLimit: _runsLimit,
         mode: mode,
         anchorMessageId: anchorId,
@@ -1183,7 +1196,7 @@ class _CoachScreenState extends State<CoachScreen> {
               const SizedBox(width: 12),
               Flexible(
                 child: DropdownButton<String>(
-                  value: _planScope == 'season'
+                  value: _effectiveScope == 'season'
                       ? kCoachSeasonOption
                       : (_planId ?? ''),
                   isExpanded: true,

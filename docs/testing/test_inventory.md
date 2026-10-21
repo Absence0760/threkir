@@ -462,9 +462,9 @@ Dart mirror of `apps/web/src/lib/segments.test.ts`. Pure tests for the segment-e
  Three more pin that a coordinate-less (NaN) fix at either end is dropped without ending the trim, that a fix placed only by its smoothed pair ends it when out, and that an all-coordinate-less track returns empty.
 Dart mirror of `apps/web/src/lib/privacy.test.ts`. Pure tests for `lib/privacy.dart`. Covers `isInAnyZone` (empty zones, centre, far point) and `clipPointsToZones` (empty zones returns input, drops leading + trailing in-zone, keeps interior, every-point-in-zone returns empty, multi-zone union).
 
-### `apps/mobile_android/test/coach_screen_season_test.dart` — 5 tests
+### `apps/mobile_android/test/coach_screen_season_test.dart` — 6 tests
 
-Issue #1213: the mobile Coach plan picker. `coachRequestBody` carries `plan_scope` beside the `plan_id` the thread is kept under; the screen opens on the current plan rather than a queued block listed first; picking **My season** keeps the thread under the current plan and names the season with the summed weeks of its plans; **No plan** clears the plan from the thread and the strip; and with nothing queued behind the current plan there is no season option.
+Issue #1213: the mobile Coach plan picker. `coachRequestBody` carries `plan_scope` beside the `plan_id` the thread is kept under; the screen opens on the current plan rather than a queued block listed first; picking **My season** keeps the thread under the current plan and names the season with the summed weeks of its plans; a season that shrinks to one plan while the screen is open (its first block ends at local midnight) falls back to that plan rather than leaving the picker on a value with no item; **No plan** clears the plan from the thread and the strip; and with nothing queued behind the current plan there is no season option.
 
 ### `apps/mobile_android/test/coach_screen_helpers_test.dart` — 19 tests
 

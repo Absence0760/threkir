@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -391,8 +392,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other:
           '$count corridas estão guardadas neste dispositivo — o envio para a nuvem não foi concluído. Será tentado novamente na próxima sincronização.',
-      one:
-          '1 corrida está guardada neste dispositivo — o envio para a nuvem não foi concluído. Será tentado novamente na próxima sincronização.',
+      one: '1 corrida está guardada neste dispositivo — o envio para a nuvem não foi concluído. Será tentado novamente na próxima sincronização.',
     );
     return '$_temp0';
   }
@@ -420,8 +420,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other:
           '$count atividades importadas têm mapas de GPS que o Threkir não tem permissão para ler.',
-      one:
-          '1 atividade importada tem um mapa de GPS que o Threkir não tem permissão para ler.',
+      one: '1 atividade importada tem um mapa de GPS que o Threkir não tem permissão para ler.',
     );
     return '$_temp0 O Health Connect protege a rota de um treino com uma permissão própria.';
   }
@@ -7076,15 +7075,15 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachConsentBulletProfile =>
-      'A sua data de nascimento, género e zonas de FC, se definidas.';
+      'Apenas se tiver dado o consentimento de dados de saúde: a sua data de nascimento e as zonas de FC configuradas, se as tiver definido.';
 
   @override
   String get coachConsentBulletRuns =>
-      'Uma amostra das suas corridas mais recentes.';
+      'Uma amostra das suas corridas mais recentes: a data, a distância, a duração, o tipo de atividade, o ganho de elevação, se foi em espaço interior e como correu face a um treino planeado, além da sua frequência cardíaca média (apenas se tiver dado o consentimento de dados de saúde).';
 
   @override
   String get coachConsentBulletPlan =>
-      'O plano de treino ativo que selecionou.';
+      'O plano de treino ativo que selecionou: o nome, o estado, a prova-alvo e o tempo-alvo, o tempo recente de 5K e a pontuação de forma física a partir dos quais foi criado, as datas, os dias de treino, as regras e as notas; a fase, a distância-alvo e as notas de cada semana; e a data, o tipo, as metas, a estrutura, as notas, o nome da prova e a prioridade de cada treino, e se o concluiu ou ignorou, além das metas de frequência cardíaca (apenas se tiver dado o consentimento de dados de saúde).';
 
   @override
   String get coachConsentBulletMessages =>
@@ -7096,11 +7095,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachConsentBulletPlanRequest =>
-      'Para o assistente de planos com IA: a descrição do plano que escreve (prova-alvo, tempos-alvo e recentes, quantos dias pode treinar), usada apenas para preencher as definições do plano — o plano em si é criado pelo gerador próprio da Threkir, não pela IA.';
+      'Para o assistente de planos com IA: a descrição do plano que escreve (prova-alvo, tempos-alvo e recentes, quantos dias pode treinar), usada apenas para preencher as definições do plano — o plano em si é criado pelo gerador próprio do Threkir, não pela IA.';
 
   @override
   String get coachConsentBulletPlatePhoto =>
-      'Para o registo por fotografia do prato: a fotografia da sua refeição que escolher, enviada só para estimar o que está no prato. A localização e os dados da câmara são removidos antes do envio, a Threkir não guarda a fotografia e nada é registado até rever e guardar.';
+      'Para o registo por fotografia do prato: a fotografia da sua refeição que escolher, enviada só para estimar o que está no prato. A localização e os dados da câmara são removidos antes do envio, o Threkir não guarda a fotografia e nada é registado até rever e guardar.';
 
   @override
   String get coachConsentBulletCoachSettings =>
@@ -11562,8 +11561,7 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other:
           'O seu calendário não consegue ignorar datas canceladas: $count ocorrências canceladas vão continuar a aparecer.',
-      one:
-          'O seu calendário não consegue ignorar datas canceladas: 1 ocorrência cancelada vai continuar a aparecer.',
+      one: 'O seu calendário não consegue ignorar datas canceladas: 1 ocorrência cancelada vai continuar a aparecer.',
     );
     return '$_temp0';
   }
@@ -19103,8 +19101,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       locale: localeName,
       other:
           '$count corridas estão salvas neste dispositivo — o envio para a nuvem não foi concluído. Vai tentar de novo na próxima sincronização.',
-      one:
-          '1 corrida está salva neste dispositivo — o envio para a nuvem não foi concluído. Vai tentar de novo na próxima sincronização.',
+      one: '1 corrida está salva neste dispositivo — o envio para a nuvem não foi concluído. Vai tentar de novo na próxima sincronização.',
     );
     return '$_temp0';
   }
@@ -19132,8 +19129,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       locale: localeName,
       other:
           '$count atividades importadas têm mapas de GPS que o Threkir não tem permissão para ler.',
-      one:
-          '1 atividade importada tem um mapa de GPS que o Threkir não tem permissão para ler.',
+      one: '1 atividade importada tem um mapa de GPS que o Threkir não tem permissão para ler.',
     );
     return '$_temp0 O Health Connect protege a rota de um treino com uma permissão própria.';
   }
@@ -25791,15 +25787,15 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachConsentBulletProfile =>
-      'Sua data de nascimento, gênero e zonas de FC, se definidas.';
+      'Apenas se você tiver dado o consentimento de dados de saúde: sua data de nascimento e suas zonas de frequência cardíaca configuradas, se você as tiver definido.';
 
   @override
   String get coachConsentBulletRuns =>
-      'Uma amostra das suas corridas mais recentes.';
+      'Uma amostra das suas corridas mais recentes: a data, a distância, a duração, o tipo de atividade, o ganho de elevação, se foi em ambiente fechado e como foi em relação a um treino planejado, além da sua frequência cardíaca média (apenas se você tiver dado o consentimento de dados de saúde).';
 
   @override
   String get coachConsentBulletPlan =>
-      'O plano de treino ativo que você selecionou.';
+      'O plano de treino ativo que você selecionou: o nome, o status, a prova-alvo e o tempo-alvo, o tempo recente de 5K e a pontuação de condicionamento a partir dos quais ele foi criado, as datas, os dias de treino, as regras e as anotações; a fase, a distância-alvo e as anotações de cada semana; e, de cada treino, a data, o tipo, as metas, a estrutura, as anotações, o nome da prova, a prioridade e se você o concluiu ou pulou, além das metas de frequência cardíaca (apenas se você tiver dado o consentimento de dados de saúde).';
 
   @override
   String get coachConsentBulletMessages =>
@@ -30270,8 +30266,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       locale: localeName,
       other:
           'Seu calendário não consegue pular datas canceladas: $count ocorrências canceladas ainda vão aparecer.',
-      one:
-          'Seu calendário não consegue pular datas canceladas: 1 ocorrência cancelada ainda vai aparecer.',
+      one: 'Seu calendário não consegue pular datas canceladas: 1 ocorrência cancelada ainda vai aparecer.',
     );
     return '$_temp0';
   }

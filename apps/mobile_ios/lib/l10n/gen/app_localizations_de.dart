@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -390,8 +391,7 @@ class AppLocalizationsDe extends AppLocalizations {
       locale: localeName,
       other:
           '$count Läufe sind auf diesem Gerät gespeichert — das Hochladen in die Cloud hat nicht geklappt. Es wird bei der nächsten Synchronisierung erneut versucht.',
-      one:
-          '1 Lauf ist auf diesem Gerät gespeichert — das Hochladen in die Cloud hat nicht geklappt. Es wird bei der nächsten Synchronisierung erneut versucht.',
+      one: '1 Lauf ist auf diesem Gerät gespeichert — das Hochladen in die Cloud hat nicht geklappt. Es wird bei der nächsten Synchronisierung erneut versucht.',
     );
     return '$_temp0';
   }
@@ -419,8 +419,7 @@ class AppLocalizationsDe extends AppLocalizations {
       locale: localeName,
       other:
           '$count importierte Aktivitäten haben GPS-Karten, die Threkir nicht lesen darf.',
-      one:
-          '1 importierte Aktivität hat eine GPS-Karte, die Threkir nicht lesen darf.',
+      one: '1 importierte Aktivität hat eine GPS-Karte, die Threkir nicht lesen darf.',
     );
     return '$_temp0 Health Connect schützt die Route eines Workouts mit einer eigenen Berechtigung.';
   }
@@ -4684,8 +4683,7 @@ class AppLocalizationsDe extends AppLocalizations {
       locale: localeName,
       other:
           '$count deiner Läufe sind nicht öffentlich und werden hier deshalb nicht aufgeführt.',
-      one:
-          '1 deiner Läufe ist nicht öffentlich und wird hier deshalb nicht aufgeführt.',
+      one: '1 deiner Läufe ist nicht öffentlich und wird hier deshalb nicht aufgeführt.',
     );
     return '$_temp0';
   }
@@ -7089,14 +7087,15 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentBulletProfile =>
-      'Dein Geburtsdatum, Geschlecht und HF-Zonen, falls festgelegt.';
+      'Nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast: dein Geburtsdatum und deine konfigurierten HF-Zonen, falls eingestellt.';
 
   @override
-  String get coachConsentBulletRuns => 'Ein Ausschnitt deiner letzten Läufe.';
+  String get coachConsentBulletRuns =>
+      'Ein Ausschnitt deiner letzten Läufe: das Datum, die Distanz, die Dauer, der Aktivitätstyp, die Höhenmeter, ob der Lauf drinnen stattfand und wie er im Vergleich zu einer geplanten Einheit lief, sowie deine durchschnittliche Herzfrequenz (nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast).';
 
   @override
   String get coachConsentBulletPlan =>
-      'Den aktiven Trainingsplan, den du ausgewählt hast.';
+      'Der aktive Trainingsplan, den du ausgewählt hast: sein Name, sein Status, das Zielrennen und die Zielzeit, die aktuelle 5-km-Zeit und der Fitnesswert, auf denen er beruht, seine Datumsangaben, Trainingstage, Regeln und Notizen; für jede Woche die Phase, die Zieldistanz und die Notizen; und für jede Einheit das Datum, die Art, die Vorgaben, der Aufbau, die Notizen, der Name und die Priorität des Rennens und ob du sie absolviert oder übersprungen hast, sowie die Herzfrequenzvorgaben (nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast).';
 
   @override
   String get coachConsentBulletMessages =>
@@ -11568,8 +11567,7 @@ class AppLocalizationsDe extends AppLocalizations {
       locale: localeName,
       other:
           'Dein Kalender kann abgesagte Termine nicht auslassen – $count abgesagte Termine erscheinen trotzdem.',
-      one:
-          'Dein Kalender kann abgesagte Termine nicht auslassen – 1 abgesagter Termin erscheint trotzdem.',
+      one: 'Dein Kalender kann abgesagte Termine nicht auslassen – 1 abgesagter Termin erscheint trotzdem.',
     );
     return '$_temp0';
   }

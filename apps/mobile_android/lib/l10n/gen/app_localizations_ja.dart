@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -6680,13 +6681,16 @@ class AppLocalizationsJa extends AppLocalizations {
       'ThrekirのAI機能は、あなたのデータの一部を、米国のAIモデルプロバイダーである Anthropic に送信します。利用する機能に応じて、その一部には以下が含まれます：';
 
   @override
-  String get coachConsentBulletProfile => '生年月日、性別、設定済みの心拍ゾーン。';
+  String get coachConsentBulletProfile =>
+      '健康データの利用に同意している場合のみ: 生年月日と心拍ゾーン（設定済みの場合）。';
 
   @override
-  String get coachConsentBulletRuns => '直近のランの一部。';
+  String get coachConsentBulletRuns =>
+      '直近のランの一定期間分: 日付、距離、時間、アクティビティの種類、獲得標高、屋内かどうか、予定していたワークアウトに対する達成状況。加えて、健康データの利用に同意している場合のみ平均心拍数。';
 
   @override
-  String get coachConsentBulletPlan => '選択中のアクティブなトレーニングプラン。';
+  String get coachConsentBulletPlan =>
+      '選択中のアクティブなトレーニングプラン: プラン名、ステータス、目標レースと目標タイム、作成の基になった最近の5Kタイムと走力スコア、期間、トレーニング日、ルール、メモ。各週のフェーズ、目標距離、メモ。各ワークアウトの日付、種類、目標、構成、メモ、レース名と優先度、完了したかスキップしたか。加えて、健康データの利用に同意している場合のみ心拍数の目標。';
 
   @override
   String get coachConsentBulletMessages => '下の画面で入力するチャットメッセージ。';

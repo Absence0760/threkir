@@ -274,17 +274,14 @@
 		// Production builds (`adapter-static` with DEV=false) never
 		// reach this branch, so there's no leak.
 		if (import.meta.env.DEV && typeof window !== 'undefined') {
-			const w = window as unknown as {
-				__heatmapMap?: unknown;
-				__heatmapPinsSettled?: () => boolean;
-			};
-			w.__heatmapMap = map;
+			(window as unknown as { __heatmapMap?: unknown }).__heatmapMap = map;
 			// The map's own idle state can't see the app's camera moves that
 			// are still owed: the one-shot initial framing (geolocation fix or
 			// fit-to-data, which awaits a fetch before it animates) and the
 			// debounced pin refresh after a move. A test that clicks a pin
 			// before both have landed clicks a camera that is about to move.
-			w.__heatmapPinsSettled = () => didInitialFit && pendingPinsFetch === null && !loading;
+			(window as unknown as { __heatmapPinsSettled?: () => boolean }).__heatmapPinsSettled = () =>
+				didInitialFit && pendingPinsFetch === null && !loading;
 		}
 		map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 		// "Locate me" button. Built-in MapLibre primitive — no
@@ -790,12 +787,8 @@
 
 	onDestroy(() => {
 		if (import.meta.env.DEV && typeof window !== 'undefined') {
-			const w = window as unknown as {
-				__heatmapMap?: unknown;
-				__heatmapPinsSettled?: unknown;
-			};
-			w.__heatmapMap = undefined;
-			w.__heatmapPinsSettled = undefined;
+			(window as unknown as { __heatmapMap?: unknown }).__heatmapMap = undefined;
+			(window as unknown as { __heatmapPinsSettled?: unknown }).__heatmapPinsSettled = undefined;
 		}
 		stopResizeWatch?.();
 		currentPopup?.remove();

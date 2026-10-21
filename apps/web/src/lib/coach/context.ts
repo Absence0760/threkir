@@ -1,6 +1,7 @@
 // Builds the JSON context block fed into the coach prompt: profile,
-// runner prefs (HR zones, mileage goal, coach_personality), active
-// (or pinned) plan + plan weeks + plan workouts, the most recent
+// runner prefs (HR zones, mileage goal, coach_personality), the active
+// (or pinned) plan + plan weeks + plan workouts — or the season of plans
+// chained after it, as `season` blocks — the most recent
 // runs and lifts, and a 7-day nutrition summary — each field only when
 // the runner's accepted AI disclosure names it (COACH_CONTEXT_REGISTRY).
 // Pure function over a Supabase client — same code path in dev and prod.
@@ -16,7 +17,10 @@ import type { Database } from '../database.types';
 import type { MessageKey } from '../i18n/messages';
 import { dbError } from '../core/supabase_error';
 import { distinctExerciseCount } from '../gym/gym_prs';
-import { pickCurrentPlan } from '../training/plan_current';
+import { pickCurrentPlan, plansFollowing } from '../training/plan_current';
+import type { CoachPlanScope } from './types';
+
+export type { CoachPlanScope };
 
 export interface CoachContext {
 	data?: unknown;
@@ -126,14 +130,27 @@ const COACH_PLAN_WORKOUT_HEALTH_COLUMNS: ReadonlySet<string> = new Set([
 
 /// Top-level keys registered field by field below (`profile.display_name`,
 /// `plan_workouts.kind`, …) rather than as a whole: an `object` is one row, a
-/// `list` is rows that each carry those fields.
-export const COACH_CONTEXT_CONTAINERS: ReadonlyMap<string, 'object' | 'list'> = new Map([
-	['profile', 'object'],
-	['runner_context', 'object'],
-	['plan', 'object'],
-	['plan_weeks', 'list'],
-	['plan_workouts', 'list'],
-	['recent_runs', 'list'],
+/// `list` is rows that each carry those fields, and `blocks` is a list of
+/// objects whose keys are `COACH_SEASON_BLOCK_KEYS`, each withheld under the
+/// same entries as the top-level key of that name.
+export const COACH_CONTEXT_CONTAINERS: ReadonlyMap<string, 'object' | 'list' | 'blocks'> =
+	new Map([
+		['profile', 'object'],
+		['runner_context', 'object'],
+		['plan', 'object'],
+		['plan_weeks', 'list'],
+		['plan_workouts', 'list'],
+		['recent_runs', 'list'],
+		['season', 'blocks'],
+	]);
+
+/// What one block of `season` carries: one plan with its weeks and workouts,
+/// the same three keys and fields a single plan is sent with. A season adds
+/// plans, never fields, so the plan consent bullet covers it unchanged.
+export const COACH_SEASON_BLOCK_KEYS: ReadonlySet<string> = new Set([
+	'plan',
+	'plan_weeks',
+	'plan_workouts',
 ]);
 
 /// The selected columns of each table-backed container, so the registry test
@@ -293,6 +310,17 @@ export function withholdUndisclosed(
 	const out: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(data)) {
 		const container = COACH_CONTEXT_CONTAINERS.get(key);
+		if (container === 'blocks' && value != null) {
+			out[key] = (value as Record<string, unknown>[]).map((block) => {
+				for (const inner of Object.keys(block)) {
+					if (!COACH_SEASON_BLOCK_KEYS.has(inner)) {
+						throw new Error(`coach context key "${key}.${inner}" is not a season block key`);
+					}
+				}
+				return withholdUndisclosed(block, disclosureVersion);
+			});
+			continue;
+		}
 		if (container) {
 			if (value == null) {
 				out[key] = value;
@@ -333,17 +361,19 @@ export interface CoachProfileRow {
 	health_data_consent_at: string | null;
 }
 
-/// Several plans can be active at once when their windows don't overlap
-/// (decisions § 2008); the coach talks about the one plan_current.ts picks, or
-/// the next to start when none is current. `today` is the runner's local date,
-/// which the handler takes from the request and checks against its own clock
-/// (decisions § 2052). A failed read throws: answering as if the runner had no
-/// plan would be a confident wrong answer.
-async function currentPlanRow(
-	supabase: SupabaseClient,
-	userId: string,
-	today: string,
-): Promise<unknown> {
+type PlanWindowRow = { id: string; start_date: string; end_date: string };
+
+/// One plan as the Coach is sent it, with the weeks and workouts of it that
+/// fall in the week window.
+interface PlanBlock {
+	plan: Record<string, unknown>;
+	plan_weeks: Record<string, unknown>[];
+	plan_workouts: Record<string, unknown>[];
+}
+
+const WEEK_MS = 7 * 86_400_000;
+
+async function activePlanRows(supabase: SupabaseClient, userId: string): Promise<PlanWindowRow[]> {
 	const { data, error } = await supabase
 		.from('training_plans')
 		.select(PLAN_SELECT)
@@ -352,9 +382,169 @@ async function currentPlanRow(
 		.eq('is_template', false)
 		.order('start_date', { ascending: true });
 	if (error) throw dbError(error);
-	const rows = (data ?? []) as { start_date: string; end_date: string }[];
-	const { current, upcoming } = pickCurrentPlan(rows, today);
-	return current ?? upcoming;
+	return (data ?? []) as unknown as PlanWindowRow[];
+}
+
+async function pinnedPlanRow(
+	supabase: SupabaseClient,
+	userId: string,
+	planId: string,
+): Promise<PlanWindowRow | null> {
+	const { data, error } = await supabase
+		.from('training_plans')
+		.select(PLAN_SELECT)
+		.eq('id', planId)
+		.eq('user_id', userId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return (data ?? null) as unknown as PlanWindowRow | null;
+}
+
+/// The plans `scope` covers, in chain order, the anchor first. Several plans
+/// can be active at once when their windows don't overlap (decisions § 2008);
+/// without a pinned plan the anchor is the one plan_current.ts picks, or the
+/// next to start when none is current. `today` is the runner's local date,
+/// which the handler takes from the request and checks against its own clock
+/// (decisions § 2052). A failed read throws: answering as if the runner had no
+/// plan would be a confident wrong answer.
+async function plansInScope(
+	supabase: SupabaseClient,
+	userId: string,
+	planId: string | null,
+	scope: CoachPlanScope,
+	today: string,
+): Promise<PlanWindowRow[]> {
+	if (scope === 'none') return [];
+	if (scope === 'plan' && planId) {
+		const pinned = await pinnedPlanRow(supabase, userId, planId);
+		return pinned ? [pinned] : [];
+	}
+	const [pinned, active] = await Promise.all([
+		planId ? pinnedPlanRow(supabase, userId, planId) : Promise.resolve(null),
+		activePlanRows(supabase, userId),
+	]);
+	let anchor = pinned;
+	if (!planId) {
+		const { current, upcoming } = pickCurrentPlan(active, today);
+		anchor = current ?? upcoming;
+	}
+	if (!anchor) return [];
+	return scope === 'season' ? plansFollowing(anchor, active) : [anchor];
+}
+
+/// The week window the Coach reads, anchored on the first plan in scope: from
+/// COACH_PLAN_WEEKS_LOOKBACK weeks before the anchor's current week, for
+/// COACH_PLAN_WEEKS_CAP weeks. A later plan in a season contributes only the
+/// weeks that start inside it, so a season is bounded by the same window as a
+/// single plan, not by how many plans it holds. Week `i` of a plan starts
+/// `7 * i` days after its `start_date`. Exported for its unit test.
+export function coachPlanWeekWindow(
+	anchorStart: string,
+	today: string,
+): { fromMs: number; toMs: number } {
+	const startMs = Date.parse(anchorStart);
+	const todayMs = Date.parse(today);
+	if (!Number.isFinite(startMs) || !Number.isFinite(todayMs)) {
+		return { fromMs: -Infinity, toMs: Infinity };
+	}
+	const currentWeek = Math.max(0, Math.floor((todayMs - startMs) / WEEK_MS));
+	const fromMs = startMs + Math.max(0, currentWeek - COACH_PLAN_WEEKS_LOOKBACK) * WEEK_MS;
+	return { fromMs, toMs: fromMs + COACH_PLAN_WEEKS_CAP * WEEK_MS };
+}
+
+/// The first week index of a plan starting at `planStart` that is still inside
+/// a window beginning at `fromMs`: a week that straddles the window's start
+/// counts, as the anchor's current week does.
+function firstWeekInWindow(planStart: string, fromMs: number): number {
+	const startMs = Date.parse(planStart);
+	if (!Number.isFinite(startMs) || !Number.isFinite(fromMs)) return 0;
+	return Math.max(0, Math.floor((fromMs - startMs) / WEEK_MS));
+}
+
+/// The plans in scope with the weeks and workouts of theirs that fall in the
+/// week window, at most COACH_PLAN_WEEKS_CAP weeks and COACH_PLAN_WORKOUTS_CAP
+/// workouts across all of them, so a long plan or a long season cannot grow the
+/// prompt without limit (bug-hunt 2026-07-r2 H2, issue #374). A later plan with
+/// no week in the window is left out. A plan whose whole run is before the
+/// window (a fully elapsed plan viewed explicitly) falls back to its final
+/// weeks, so the coach still sees the taper and race rather than an empty plan.
+async function loadPlanBlocks(
+	supabase: SupabaseClient,
+	plans: PlanWindowRow[],
+	today: string,
+	healthConsentGranted: boolean,
+): Promise<PlanBlock[]> {
+	if (plans.length === 0) return [];
+	const { fromMs, toMs } = coachPlanWeekWindow(plans[0].start_date, today);
+	const inWindow = plans.filter((p, i) => i === 0 || !(Date.parse(p.start_date) >= toMs));
+	const weekReads = await Promise.all(
+		inWindow.map((p) =>
+			supabase
+				.from('plan_weeks')
+				.select(PLAN_WEEK_SELECT)
+				.eq('plan_id', p.id)
+				.gte('week_index', firstWeekInWindow(p.start_date, fromMs))
+				.order('week_index', { ascending: true })
+				.limit(COACH_PLAN_WEEKS_CAP),
+		),
+	);
+	let budget = COACH_PLAN_WEEKS_CAP;
+	const weeksByPlan = inWindow.map((p, i) => {
+		const { data, error } = weekReads[i];
+		if (error) throw dbError(error);
+		const startMs = Date.parse(p.start_date);
+		const rows = ((data ?? []) as unknown as { week_index: number }[]).filter(
+			(w) => !(startMs + w.week_index * WEEK_MS >= toMs),
+		);
+		const taken = rows.slice(0, Math.max(0, budget));
+		budget -= taken.length;
+		return taken as unknown as Record<string, unknown>[];
+	});
+	if (weeksByPlan.every((w) => w.length === 0)) {
+		const { data, error } = await supabase
+			.from('plan_weeks')
+			.select(PLAN_WEEK_SELECT)
+			.eq('plan_id', plans[0].id)
+			.order('week_index', { ascending: false })
+			.limit(COACH_PLAN_WEEKS_CAP);
+		if (error) throw dbError(error);
+		weeksByPlan[0] = ((data ?? []) as unknown as Record<string, unknown>[]).slice().reverse();
+	}
+
+	const weekIds = weeksByPlan.flat().map((w) => w.id as string);
+	const workoutsByWeek = new Map<string, Record<string, unknown>[]>();
+	if (weekIds.length > 0) {
+		const { data, error } = await supabase
+			.from('plan_workouts')
+			.select(PLAN_WORKOUT_SELECT)
+			.in('week_id', weekIds)
+			.order('scheduled_date', { ascending: true })
+			.limit(COACH_PLAN_WORKOUTS_CAP);
+		if (error) throw dbError(error);
+		for (const w of data ?? []) {
+			const row = pickColumns(w, COACH_PLAN_WORKOUT_COLUMNS);
+			if (!healthConsentGranted) {
+				for (const c of COACH_PLAN_WORKOUT_HEALTH_COLUMNS) {
+					if (c in row) row[c] = null;
+				}
+			}
+			const weekId = row.week_id as string;
+			if (!workoutsByWeek.has(weekId)) workoutsByWeek.set(weekId, []);
+			workoutsByWeek.get(weekId)!.push(row);
+		}
+	}
+
+	const blocks: PlanBlock[] = [];
+	inWindow.forEach((p, i) => {
+		const weeks = weeksByPlan[i];
+		if (i > 0 && weeks.length === 0) return;
+		blocks.push({
+			plan: pickColumns(p, COACH_PLAN_COLUMNS),
+			plan_weeks: weeks.map((w) => pickColumns(w, COACH_PLAN_WEEK_COLUMNS)),
+			plan_workouts: weeks.flatMap((w) => workoutsByWeek.get(w.id as string) ?? []),
+		});
+	});
+	return blocks;
 }
 
 export async function buildContext(
@@ -365,6 +555,7 @@ export async function buildContext(
 	profileRow: CoachProfileRow | null,
 	today: string,
 	disclosureVersion: number,
+	planScope: CoachPlanScope = 'plan',
 ): Promise<CoachContext> {
 	// `profileRow` is the `get_my_profile()` result the handler already
 	// fetched for the coach-consent gate — passed in rather than re-queried
@@ -407,92 +598,21 @@ export async function buildContext(
 	// Fan them out with Promise.all so the endpoint pays ~one round-trip
 	// instead (perf-hunt 2026-06-10). Each lane keeps its own internal
 	// sequential sub-chain where one query genuinely feeds the next.
-	const planLane = (async (): Promise<{
-		plan: unknown;
-		weeks: unknown[];
-		workouts: unknown[];
-	}> => {
-		// Scope every data lane to the caller explicitly — do NOT lean on RLS
-		// alone. Migrations 20261103_001 + 20261116_001 additively granted an
-		// active coach read on their athletes' runs/plans, so an RLS-only read
-		// from a coach's own /coach chat would UNION the athlete's rows into the
-		// coach's context (and the no-plan_id branch could return the athlete's
-		// active plan). The `.eq('user_id', userId)` keeps this the caller's own
-		// data; plan_weeks/plan_workouts inherit the scope transitively through
-		// the plan (they carry no user_id column).
-		let plan: unknown;
-		if (planId) {
-			const pinned = await supabase
-				.from('training_plans')
-				.select(PLAN_SELECT)
-				.eq('id', planId)
-				.eq('user_id', userId)
-				.maybeSingle();
-			if (pinned.error) throw dbError(pinned.error);
-			plan = pinned.data;
-		} else {
-			plan = await currentPlanRow(supabase, userId, today);
-		}
-		let weeks: unknown[] = [];
-		let workouts: unknown[] = [];
-		if (plan && typeof plan === 'object' && 'id' in plan) {
-			const planRow = plan as { id: string; start_date?: string | null };
-			// Bound the plan window like recent_runs / recent_lifts so a long
-			// plan (ultra base block, multi-year, or a REST-inserted row with
-			// no row-count CHECK) can't re-serialise its entire week/workout
-			// history into the prompt on every call. Bias to the weeks around
-			// "now" — a short look-back plus the cap of upcoming weeks — so the
-			// coach keeps the current + upcoming weeks it reasons about, not a
-			// long plan's stale opening block.
-			const startMs = planRow.start_date
-				? new Date(planRow.start_date).getTime()
-				: NaN;
-			const currentWeek = Number.isFinite(startMs)
-				? Math.max(0, Math.floor((Date.now() - startMs) / (7 * 86_400_000)))
-				: 0;
-			const fromWeek = Math.max(0, currentWeek - COACH_PLAN_WEEKS_LOOKBACK);
-			const weekRes = await supabase
-				.from('plan_weeks')
-				.select(PLAN_WEEK_SELECT)
-				.eq('plan_id', planRow.id)
-				.gte('week_index', fromWeek)
-				.order('week_index', { ascending: true })
-				.limit(COACH_PLAN_WEEKS_CAP);
-			weeks = weekRes.data ?? [];
-			if (weeks.length === 0) {
-				// A fully-elapsed plan viewed explicitly (its last week is before
-				// `fromWeek`): fall back to its final cap of weeks so the coach
-				// still sees the taper/race, never an empty plan.
-				const tailRes = await supabase
-					.from('plan_weeks')
-					.select(PLAN_WEEK_SELECT)
-					.eq('plan_id', planRow.id)
-					.order('week_index', { ascending: false })
-					.limit(COACH_PLAN_WEEKS_CAP);
-				weeks = (tailRes.data ?? []).slice().reverse();
-			}
-			if (weeks.length > 0) {
-				const ids = (weeks as { id: string }[]).map((w) => w.id);
-				const wkRes = await supabase
-					.from('plan_workouts')
-					.select(PLAN_WORKOUT_SELECT)
-					.in('week_id', ids)
-					.order('scheduled_date', { ascending: true })
-					.limit(COACH_PLAN_WORKOUTS_CAP);
-				workouts = (wkRes.data ?? []).map((w) => {
-					const row = pickColumns(w, COACH_PLAN_WORKOUT_COLUMNS);
-					if (!healthConsentGranted) {
-						for (const c of COACH_PLAN_WORKOUT_HEALTH_COLUMNS) {
-							if (c in row) row[c] = null;
-						}
-					}
-					return row;
-				});
-			}
-			weeks = weeks.map((w) => pickColumns(w, COACH_PLAN_WEEK_COLUMNS));
-		}
-		return { plan: plan ? pickColumns(plan, COACH_PLAN_COLUMNS) : null, weeks, workouts };
-	})();
+	// Scope every data lane to the caller explicitly — do NOT lean on RLS
+	// alone. Migrations 20261103_001 + 20261116_001 additively granted an
+	// active coach read on their athletes' runs/plans, so an RLS-only read
+	// from a coach's own /coach chat would UNION the athlete's rows into the
+	// coach's context (and the no-plan_id branch could return the athlete's
+	// active plan). The `.eq('user_id', userId)` in plansInScope keeps this
+	// the caller's own data; plan_weeks/plan_workouts inherit the scope
+	// transitively through the plan (they carry no user_id column).
+	const planLane = (async (): Promise<PlanBlock[]> =>
+		loadPlanBlocks(
+			supabase,
+			await plansInScope(supabase, userId, planId, planScope, today),
+			today,
+			healthConsentGranted,
+		))();
 
 	// Persona-hunt Round 2 finding Pro #3. `metadata` is a free-form
 	// jsonb bag (docs/backend/metadata.md). Some keys are useful coaching
@@ -594,8 +714,19 @@ export async function buildContext(
 		return null;
 	})();
 
-	const [{ plan, weeks, workouts }, recentRuns, recentLifts, prefs, nutrition7d] =
+	const [planBlocks, recentRuns, recentLifts, prefs, nutrition7d] =
 		await Promise.all([planLane, runsLane, liftsLane, settingsLane, nutritionLane]);
+
+	// A season is sent as blocks so each week and workout stays with its plan;
+	// a single plan keeps the flat keys the Coach has always been sent.
+	const planContext: Record<string, unknown> =
+		planScope === 'season'
+			? { season: planBlocks }
+			: {
+					plan: planBlocks[0]?.plan ?? null,
+					plan_weeks: planBlocks[0]?.plan_weeks ?? [],
+					plan_workouts: planBlocks[0]?.plan_workouts ?? [],
+				};
 
 	const runnerContext = {
 		// Non-health prefs are always safe to send.
@@ -615,9 +746,7 @@ export async function buildContext(
 		data: withholdUndisclosed({
 			profile: profile ?? null,
 			runner_context: runnerContext,
-			plan: plan ?? null,
-			plan_weeks: weeks,
-			plan_workouts: workouts,
+			...planContext,
 			recent_runs: recentRuns ?? [],
 			recent_lifts: recentLifts,
 			nutrition_7d: nutrition7d,
@@ -637,11 +766,12 @@ export async function buildContext(
 export const COACH_LIFTS_CAP = 8;
 
 /// Fixed caps on the plan window sent to the coach. Bounded — like
-/// recent_runs / recent_lifts — so a long or REST-inserted plan can't
-/// grow the prompt without limit. `WEEKS_CAP` covers a full marathon
-/// block; `WORKOUTS_CAP` is WEEKS_CAP × the 7-day max. `WEEKS_LOOKBACK`
-/// keeps a couple of recently-completed weeks for adherence context
-/// while the cap fills with the current + upcoming weeks.
+/// recent_runs / recent_lifts — so a long or REST-inserted plan, or a
+/// season of several, can't grow the prompt without limit. `WEEKS_CAP`
+/// covers a full marathon block; `WORKOUTS_CAP` is WEEKS_CAP × the 7-day
+/// max. `WEEKS_LOOKBACK` keeps a couple of recently-completed weeks for
+/// adherence context while the cap fills with the current + upcoming
+/// weeks. Both caps hold across every plan of a season together.
 export const COACH_PLAN_WEEKS_CAP = 20;
 export const COACH_PLAN_WORKOUTS_CAP = 140;
 export const COACH_PLAN_WEEKS_LOOKBACK = 2;

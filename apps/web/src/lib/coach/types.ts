@@ -10,6 +10,13 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type CoachMode = 'send' | 'regenerate' | 'edit';
 
+/// Which plans the Coach context carries (issue #1213). `plan` is the plan
+/// pinned with `plan_id`, else the one plan_current.ts picks; `season` is that
+/// plan and the active plans chained after it (decisions § 2008); `none` is no
+/// plan at all, the picker's "No plan".
+export type CoachPlanScope = 'plan' | 'season' | 'none';
+export const COACH_PLAN_SCOPES: readonly CoachPlanScope[] = ['plan', 'season', 'none'];
+
 // coach_messages.role — who wrote a turn. The column's CHECK (migration
 // 20260511_001) admits exactly these two; `system` is not persisted (the
 // system prompt is rebuilt per request, never a row). Keep in lockstep
@@ -31,6 +38,11 @@ export type SupabaseClientFactory = (
 export interface CoachRequestBody {
 	messages: { role: CoachMessageRole; content: string }[];
 	plan_id?: string;
+	// Which plans the context carries (context.ts `CoachPlanScope`). Absent
+	// reads as 'plan', which is what a client built before the season picker
+	// sends. With 'season', `plan_id` names the anchor the thread is kept
+	// under, and the season is that plan and the plans chained after it.
+	plan_scope?: CoachPlanScope;
 	recent_runs_limit?: number;
 	mode?: CoachMode;
 	// Anchor for regenerate / edit. The server deletes this message and

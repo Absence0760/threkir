@@ -22,7 +22,9 @@ import {
 	COACH_PLAN_WEEK_COLUMNS,
 	COACH_PLAN_WORKOUT_COLUMNS,
 	COACH_RUN_COLUMNS,
+	COACH_SEASON_BLOCK_KEYS,
 	withholdUndisclosed,
+	type CoachPlanScope,
 	type CoachProfileRow,
 } from './context';
 
@@ -155,27 +157,36 @@ const PROFILE: CoachProfileRow = {
 	health_data_consent_at: '2026-06-01T00:00:00.000Z',
 };
 
-async function contextAt(version: number, profile: CoachProfileRow = PROFILE) {
+async function contextAt(
+	version: number,
+	profile: CoachProfileRow = PROFILE,
+	scope: CoachPlanScope = 'plan',
+	tables = fullFixture(),
+) {
 	const read = new Set<string>();
 	const selects = new Map<string, Set<string>>();
 	const ctx = await buildContext(
-		recordingSupabase(fullFixture(), read, selects) as never,
+		recordingSupabase(tables, read, selects) as never,
 		USER,
 		null,
 		10,
 		profile,
 		'2026-06-15',
 		version,
+		scope,
 	);
 	return { data: ctx.data as Record<string, unknown>, read, selects };
 }
 
-/// Every registry path the emitted context carries.
+/// Every registry path the emitted context carries. A `season` block is read
+/// under the same entries as the top-level keys it repeats.
 function emittedPaths(data: Record<string, unknown>): string[] {
 	const out: string[] = [];
 	for (const [key, value] of Object.entries(data)) {
 		const container = COACH_CONTEXT_CONTAINERS.get(key);
-		if (container && value != null) {
+		if (container === 'blocks') {
+			for (const block of value as Record<string, unknown>[]) out.push(...emittedPaths(block));
+		} else if (container && value != null) {
 			const rows = (container === 'list' ? value : [value]) as Record<string, unknown>[];
 			const fields = new Set(rows.flatMap((r) => Object.keys(r)));
 			for (const field of fields) out.push(`${key}.${field}`);
@@ -352,5 +363,79 @@ test('an unregistered field on a list row throws instead of being sent', () => {
 	assert.throws(
 		() => withholdUndisclosed({ plan: { id: 'p1', user_id: USER } }, AI_DISCLOSURE_CURRENT_VERSION),
 		/"plan.user_id" is not in COACH_CONTEXT_REGISTRY/,
+	);
+});
+
+/// Two plans chained back to back, each with a week and a workout, so a
+/// season has more than one block to emit.
+function seasonFixture(): Record<string, Record<string, unknown>[]> {
+	const tables = fullFixture();
+	const [p1] = tables.training_plans;
+	const [w1] = tables.plan_weeks;
+	const [k1] = tables.plan_workouts;
+	tables.training_plans = [
+		{ ...p1, end_date: '2026-08-30' },
+		{ ...p1, id: 'p2', start_date: '2026-08-31', end_date: '2026-12-20' },
+	];
+	tables.plan_weeks = [w1, { ...w1, id: 'w2', plan_id: 'p2', week_index: 0 }];
+	tables.plan_workouts = [k1, { ...k1, id: 'k2', week_id: 'w2', scheduled_date: '2026-08-31' }];
+	return tables;
+}
+
+test('a season sends more plans under the same registered fields, so the plan bullet covers it', async () => {
+	const { data, selects } = await contextAt(
+		AI_DISCLOSURE_CURRENT_VERSION,
+		PROFILE,
+		'season',
+		seasonFixture(),
+	);
+	const season = data.season as Record<string, unknown>[];
+	assert.equal(season.length, 2);
+	assert.equal('plan' in data, false);
+	const planPaths = Object.keys(COACH_CONTEXT_REGISTRY).filter((p) =>
+		[...COACH_SEASON_BLOCK_KEYS].some((k) => p.startsWith(`${k}.`)),
+	);
+	for (const block of season) {
+		assert.deepEqual(Object.keys(block).sort(), [...COACH_SEASON_BLOCK_KEYS].sort());
+		const paths = emittedPaths(block);
+		assert.deepEqual([...new Set(paths)].sort(), planPaths.sort(), 'each block carries exactly the plan fields');
+		for (const path of paths) {
+			const entry = COACH_CONTEXT_REGISTRY[path];
+			assert.ok('bullet' in entry && entry.bullet === 'coachPage.consentBulletPlan', path);
+		}
+	}
+	for (const [container, table] of [
+		['plan', 'training_plans'],
+		['plan_weeks', 'plan_weeks'],
+		['plan_workouts', 'plan_workouts'],
+	] as const) {
+		assert.deepEqual(
+			[...(selects.get(table) ?? [])],
+			[COACH_CONTEXT_COLUMNS[container].join(', ')],
+			`${table}: a season reads exactly the plan tuple`,
+		);
+	}
+});
+
+test('a season block carries only plan keys, and its fields are withheld like the top-level ones', () => {
+	assert.throws(
+		() =>
+			withholdUndisclosed(
+				{ season: [{ plan: { id: 'p1' }, recent_runs: [] }] },
+				AI_DISCLOSURE_CURRENT_VERSION,
+			),
+		/"season.recent_runs" is not a season block key/,
+	);
+	assert.throws(
+		() =>
+			withholdUndisclosed(
+				{ season: [{ plan: { id: 'p1', user_id: USER }, plan_weeks: [], plan_workouts: [] }] },
+				AI_DISCLOSURE_CURRENT_VERSION,
+			),
+		/"plan.user_id" is not in COACH_CONTEXT_REGISTRY/,
+	);
+	assert.deepEqual(
+		withholdUndisclosed({ season: [] }, AI_DISCLOSURE_CURRENT_VERSION),
+		{ season: [] },
 	);
 });

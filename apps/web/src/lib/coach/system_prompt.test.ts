@@ -183,3 +183,12 @@ test('planEditHandoffAddendum(false) is empty, so the system text is unchanged w
 	assert.equal(planEditHandoffAddendum(true), planEditHandoffAddendum(true));
 	assert.ok(!/\d{4}-\d{2}-\d{2}/.test(planEditHandoffAddendum(true)));
 });
+
+test('the system prompt tells the model how a season context is shaped (issue #1213)', () => {
+	// context.ts sends `season` blocks instead of the flat plan keys when the
+	// runner picks "My season"; without this line the model would read the
+	// later plans' weeks as the current plan's.
+	assert.match(COACH_SYSTEM_PROMPT, /`season` instead of a single `plan`/);
+	assert.match(COACH_SYSTEM_PROMPT, /each with its own `plan`, `plan_weeks` and `plan_workouts`/);
+	assert.match(planEditHandoffAddendum(true), /With a `season` in the context, use the `id` of the plan whose workouts the change touches; one link changes one plan\./);
+});

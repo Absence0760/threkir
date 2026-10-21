@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -388,7 +387,8 @@ class AppLocalizationsEn extends AppLocalizations {
       locale: localeName,
       other:
           '$count runs are saved on this device — their upload to the cloud didn\'t go through. They will retry on the next sync.',
-      one: '1 run is saved on this device — its upload to the cloud didn\'t go through. It will retry on the next sync.',
+      one:
+          '1 run is saved on this device — its upload to the cloud didn\'t go through. It will retry on the next sync.',
     );
     return '$_temp0';
   }
@@ -11445,7 +11445,8 @@ class AppLocalizationsEn extends AppLocalizations {
       locale: localeName,
       other:
           'Your calendar can\'t skip called-off dates, so $count cancelled occurrences will still appear.',
-      one: 'Your calendar can\'t skip called-off dates, so 1 cancelled occurrence will still appear.',
+      one:
+          'Your calendar can\'t skip called-off dates, so 1 cancelled occurrence will still appear.',
     );
     return '$_temp0';
   }

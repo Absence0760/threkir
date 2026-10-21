@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -389,7 +388,8 @@ class AppLocalizationsFr extends AppLocalizations {
       locale: localeName,
       other:
           '$count courses sont enregistrées sur cet appareil : leur envoi vers le cloud n\'a pas abouti. Il sera retenté à la prochaine synchronisation.',
-      one: '1 course est enregistrée sur cet appareil : son envoi vers le cloud n\'a pas abouti. Il sera retenté à la prochaine synchronisation.',
+      one:
+          '1 course est enregistrée sur cet appareil : son envoi vers le cloud n\'a pas abouti. Il sera retenté à la prochaine synchronisation.',
     );
     return '$_temp0';
   }
@@ -417,7 +417,8 @@ class AppLocalizationsFr extends AppLocalizations {
       locale: localeName,
       other:
           '$count activités importées ont des cartes GPS que Threkir n\'est pas autorisé à lire.',
-      one: '1 activité importée a une carte GPS que Threkir n\'est pas autorisé à lire.',
+      one:
+          '1 activité importée a une carte GPS que Threkir n\'est pas autorisé à lire.',
     );
     return '$_temp0 Health Connect protège l\'itinéraire d\'une séance par une autorisation distincte.';
   }
@@ -4685,7 +4686,8 @@ class AppLocalizationsFr extends AppLocalizations {
       locale: localeName,
       other:
           '$count de vos courses ne sont pas publiques, elles n\'apparaissent donc pas ici.',
-      one: '1 de vos courses n\'est pas publique, elle n\'apparaît donc pas ici.',
+      one:
+          '1 de vos courses n\'est pas publique, elle n\'apparaît donc pas ici.',
     );
     return '$_temp0';
   }
@@ -11588,7 +11590,8 @@ class AppLocalizationsFr extends AppLocalizations {
       locale: localeName,
       other:
           'Votre calendrier ne peut pas ignorer les dates annulées : $count occurrences annulées apparaîtront quand même.',
-      one: 'Votre calendrier ne peut pas ignorer les dates annulées : 1 occurrence annulée apparaîtra quand même.',
+      one:
+          'Votre calendrier ne peut pas ignorer les dates annulées : 1 occurrence annulée apparaîtra quand même.',
     );
     return '$_temp0';
   }

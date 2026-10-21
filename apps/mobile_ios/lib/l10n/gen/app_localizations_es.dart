@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -390,7 +389,8 @@ class AppLocalizationsEs extends AppLocalizations {
       locale: localeName,
       other:
           '$count carreras están guardadas en este dispositivo: su subida a la nube no se completó. Se reintentará en la próxima sincronización.',
-      one: '1 carrera está guardada en este dispositivo: su subida a la nube no se completó. Se reintentará en la próxima sincronización.',
+      one:
+          '1 carrera está guardada en este dispositivo: su subida a la nube no se completó. Se reintentará en la próxima sincronización.',
     );
     return '$_temp0';
   }
@@ -11561,7 +11561,8 @@ class AppLocalizationsEs extends AppLocalizations {
       locale: localeName,
       other:
           'Tu calendario no puede omitir las fechas canceladas: $count fechas canceladas seguirán apareciendo.',
-      one: 'Tu calendario no puede omitir las fechas canceladas: 1 fecha cancelada seguirá apareciendo.',
+      one:
+          'Tu calendario no puede omitir las fechas canceladas: 1 fecha cancelada seguirá apareciendo.',
     );
     return '$_temp0';
   }

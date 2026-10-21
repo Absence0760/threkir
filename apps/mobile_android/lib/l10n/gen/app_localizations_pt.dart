@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -392,7 +391,8 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other:
           '$count corridas estão guardadas neste dispositivo — o envio para a nuvem não foi concluído. Será tentado novamente na próxima sincronização.',
-      one: '1 corrida está guardada neste dispositivo — o envio para a nuvem não foi concluído. Será tentado novamente na próxima sincronização.',
+      one:
+          '1 corrida está guardada neste dispositivo — o envio para a nuvem não foi concluído. Será tentado novamente na próxima sincronização.',
     );
     return '$_temp0';
   }
@@ -420,7 +420,8 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other:
           '$count atividades importadas têm mapas de GPS que o Threkir não tem permissão para ler.',
-      one: '1 atividade importada tem um mapa de GPS que o Threkir não tem permissão para ler.',
+      one:
+          '1 atividade importada tem um mapa de GPS que o Threkir não tem permissão para ler.',
     );
     return '$_temp0 O Health Connect protege a rota de um treino com uma permissão própria.';
   }
@@ -11564,7 +11565,8 @@ class AppLocalizationsPt extends AppLocalizations {
       locale: localeName,
       other:
           'O seu calendário não consegue ignorar datas canceladas: $count ocorrências canceladas vão continuar a aparecer.',
-      one: 'O seu calendário não consegue ignorar datas canceladas: 1 ocorrência cancelada vai continuar a aparecer.',
+      one:
+          'O seu calendário não consegue ignorar datas canceladas: 1 ocorrência cancelada vai continuar a aparecer.',
     );
     return '$_temp0';
   }
@@ -19104,7 +19106,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       locale: localeName,
       other:
           '$count corridas estão salvas neste dispositivo — o envio para a nuvem não foi concluído. Vai tentar de novo na próxima sincronização.',
-      one: '1 corrida está salva neste dispositivo — o envio para a nuvem não foi concluído. Vai tentar de novo na próxima sincronização.',
+      one:
+          '1 corrida está salva neste dispositivo — o envio para a nuvem não foi concluído. Vai tentar de novo na próxima sincronização.',
     );
     return '$_temp0';
   }
@@ -19132,7 +19135,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       locale: localeName,
       other:
           '$count atividades importadas têm mapas de GPS que o Threkir não tem permissão para ler.',
-      one: '1 atividade importada tem um mapa de GPS que o Threkir não tem permissão para ler.',
+      one:
+          '1 atividade importada tem um mapa de GPS que o Threkir não tem permissão para ler.',
     );
     return '$_temp0 O Health Connect protege a rota de um treino com uma permissão própria.';
   }
@@ -30272,7 +30276,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       locale: localeName,
       other:
           'Seu calendário não consegue pular datas canceladas: $count ocorrências canceladas ainda vão aparecer.',
-      one: 'Seu calendário não consegue pular datas canceladas: 1 ocorrência cancelada ainda vai aparecer.',
+      one:
+          'Seu calendário não consegue pular datas canceladas: 1 ocorrência cancelada ainda vai aparecer.',
     );
     return '$_temp0';
   }

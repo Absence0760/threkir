@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -391,7 +390,8 @@ class AppLocalizationsDe extends AppLocalizations {
       locale: localeName,
       other:
           '$count Läufe sind auf diesem Gerät gespeichert — das Hochladen in die Cloud hat nicht geklappt. Es wird bei der nächsten Synchronisierung erneut versucht.',
-      one: '1 Lauf ist auf diesem Gerät gespeichert — das Hochladen in die Cloud hat nicht geklappt. Es wird bei der nächsten Synchronisierung erneut versucht.',
+      one:
+          '1 Lauf ist auf diesem Gerät gespeichert — das Hochladen in die Cloud hat nicht geklappt. Es wird bei der nächsten Synchronisierung erneut versucht.',
     );
     return '$_temp0';
   }
@@ -419,7 +419,8 @@ class AppLocalizationsDe extends AppLocalizations {
       locale: localeName,
       other:
           '$count importierte Aktivitäten haben GPS-Karten, die Threkir nicht lesen darf.',
-      one: '1 importierte Aktivität hat eine GPS-Karte, die Threkir nicht lesen darf.',
+      one:
+          '1 importierte Aktivität hat eine GPS-Karte, die Threkir nicht lesen darf.',
     );
     return '$_temp0 Health Connect schützt die Route eines Workouts mit einer eigenen Berechtigung.';
   }
@@ -4683,7 +4684,8 @@ class AppLocalizationsDe extends AppLocalizations {
       locale: localeName,
       other:
           '$count deiner Läufe sind nicht öffentlich und werden hier deshalb nicht aufgeführt.',
-      one: '1 deiner Läufe ist nicht öffentlich und wird hier deshalb nicht aufgeführt.',
+      one:
+          '1 deiner Läufe ist nicht öffentlich und wird hier deshalb nicht aufgeführt.',
     );
     return '$_temp0';
   }
@@ -11570,7 +11572,8 @@ class AppLocalizationsDe extends AppLocalizations {
       locale: localeName,
       other:
           'Dein Kalender kann abgesagte Termine nicht auslassen – $count abgesagte Termine erscheinen trotzdem.',
-      one: 'Dein Kalender kann abgesagte Termine nicht auslassen – 1 abgesagter Termin erscheint trotzdem.',
+      one:
+          'Dein Kalender kann abgesagte Termine nicht auslassen – 1 abgesagter Termin erscheint trotzdem.',
     );
     return '$_temp0';
   }

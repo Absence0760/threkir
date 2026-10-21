@@ -7075,6 +7075,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get coachNoPlanOption => 'No plan (recent runs only)';
 
   @override
+  String get coachSeasonOption =>
+      'My season (current plan and the plans queued after it)';
+
+  @override
+  String get coachSeasonName => 'My season';
+
+  @override
   String coachPlanActive(String name) {
     return '$name · active';
   }

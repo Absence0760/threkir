@@ -229,6 +229,13 @@ TrainingPlanRow? currentOrUpcomingPlan(
   return pick.current ?? pick.upcoming;
 }
 
+/// The current (else upcoming) plan among [activePlans] and the plans queued
+/// after it, in date order: the season the Coach's "My season" reads.
+List<TrainingPlanRow> currentSeasonPlans(
+        List<TrainingPlanRow> activePlans, String todayIso) =>
+    currentSeason(activePlans, todayIso,
+        start: planRowStartIso, end: planRowEndIso);
+
 /// The active plans a new `[startIso, endIso]` window overlaps.
 List<TrainingPlanRow> overlappingActivePlans(
         List<TrainingPlanRow> activePlans, String startIso, String endIso) =>

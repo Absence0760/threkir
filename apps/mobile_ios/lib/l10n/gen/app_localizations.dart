@@ -11548,6 +11548,18 @@ abstract class AppLocalizations {
   /// **'No plan (recent runs only)'**
   String get coachNoPlanOption;
 
+  /// Coach plan picker option: the Coach reads the current training plan together with the back-to-back plans queued after it
+  ///
+  /// In en, this message translates to:
+  /// **'My season (current plan and the plans queued after it)'**
+  String get coachSeasonOption;
+
+  /// Coach context chip label when the Coach reads the runner's whole season of back-to-back training plans; shown as '<label> · <N>w'
+  ///
+  /// In en, this message translates to:
+  /// **'My season'**
+  String get coachSeasonName;
+
   /// Plan-switcher dropdown: active plan label
   ///
   /// In en, this message translates to:

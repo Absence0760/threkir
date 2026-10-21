@@ -1951,6 +1951,8 @@
   "coachConsentSaving": "同意を記録中…",
   "aiDisclosureRecordFailed": "同意を記録できませんでした：{error}",
   "coachNoPlanOption": "プランなし（最近のランのみ）",
+  "coachSeasonOption": "マイシーズン（現在のプランとその後に続くプラン）",
+  "coachSeasonName": "マイシーズン",
   "coachPlanActive": "{name} · 進行中",
   "coachPlanDone": "{name} · 完了",
   "coachNewChatTooltip": "新しいチャット",

@@ -6748,6 +6748,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get coachNoPlanOption => 'プランなし（最近のランのみ）';
 
   @override
+  String get coachSeasonOption => 'マイシーズン（現在のプランとその後に続くプラン）';
+
+  @override
+  String get coachSeasonName => 'マイシーズン';
+
+  @override
   String coachPlanActive(String name) {
     return '$name · 進行中';
   }

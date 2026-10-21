@@ -29,6 +29,7 @@ import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
+import '../training.dart' show toIsoDate;
 import '../training_service.dart';
 import '../web_base_url.dart';
 import '../weekly_goal.dart';
@@ -185,6 +186,31 @@ Uri? coachPlanAdjustWebUri(String href, String webBase) {
   );
 }
 
+/// The plan-picker value for "My season", the web picker's `?plan=season`.
+/// Plan ids are uuids, so it can never be one.
+const kCoachSeasonOption = 'season';
+
+/// The `/api/coach` request body. `plan_scope` says what the Coach reads:
+/// `plan` (the plan [planId], else the current one), `season` ([planId] and
+/// the plans queued after it) or `none` (no plan); `plan_id` is the plan the
+/// thread is kept under (issue #1213).
+Map<String, dynamic> coachRequestBody({
+  required List<Map<String, String>> messages,
+  required String? planId,
+  required String planScope,
+  required int recentRunsLimit,
+  required String mode,
+  required String? anchorMessageId,
+}) =>
+    {
+      'messages': messages,
+      'plan_id': planId,
+      'plan_scope': planScope,
+      'recent_runs_limit': recentRunsLimit,
+      'mode': mode,
+      'anchor_message_id': anchorMessageId,
+    };
+
 /// AI Coach chat. Mirrors `apps/web/src/lib/components/CoachChat.svelte`
 /// + `/coach/+page.svelte`. One screen file by design — see backlog.
 class CoachScreen extends StatefulWidget {
@@ -225,12 +251,15 @@ class _Msg {
 
 class _ContextSummary {
   final String? planName;
+  /// The Coach reads the season, so the plan chip names it instead of a plan.
+  final bool season;
   final int? planWeeks;
   final int runCount;
   final bool hrZonesLoaded;
   final int? weeklyGoalMetres;
   const _ContextSummary({
     required this.planName,
+    this.season = false,
     required this.planWeeks,
     required this.runCount,
     required this.hrZonesLoaded,
@@ -258,6 +287,14 @@ class _CoachScreenState extends State<CoachScreen> {
 
   List<TrainingPlanRow> _plans = const [];
   String? _planId;
+  // `plan`, `season` or `none`; see [coachRequestBody].
+  String _planScope = 'plan';
+
+  /// The plans "My season" would send. Offered only when something is queued
+  /// behind the current plan; one plan alone is the plan option.
+  List<TrainingPlanRow> get _seasonPlans => currentSeasonPlans(
+      [for (final p in _plans) if (p.status == 'active') p],
+      toIsoDate(DateTime.now()));
 
   List<_Msg> _messages = [];
   bool _threadLoaded = false;
@@ -357,14 +394,13 @@ class _CoachScreenState extends State<CoachScreen> {
       if (_planId != null && !_plans.any((p) => p.id == _planId)) {
         _planId = null;
       }
-      if (_planId == null) {
-        for (final p in _plans) {
-          if (p.status == 'active') {
-            _planId = p.id;
-            break;
-          }
-        }
-      }
+      // Default to the plan the dashboard calls current (decisions § 2008),
+      // not whichever active plan the list happens to put first: with a
+      // block queued behind the current one, that could be the later block.
+      _planId ??= currentOrUpcomingPlan(
+              [for (final p in _plans) if (p.status == 'active') p],
+              toIsoDate(DateTime.now()))
+          ?.id;
     } catch (e) {
       debugPrint('coach_screen: initial plans load failed: $e');
     }
@@ -440,12 +476,20 @@ class _CoachScreenState extends State<CoachScreen> {
     if (viewerId == null) return;
     final gen = ++_ctxGen;
     String? planName;
+    var isSeason = false;
     int? planWeeks;
     int runCount = 0;
     bool hrZonesLoaded = false;
     int? weeklyGoalMetres;
     try {
-      if (_planId != null) {
+      if (_planScope == 'season') {
+        final season = _seasonPlans;
+        isSeason = true;
+        final details = await Future.wait(season.map((p) =>
+            widget.training.fetchPlan(p.id).timeout(kBackendLoadTimeout)));
+        if (gen != _ctxGen) return;
+        planWeeks = details.fold<int>(0, (n, d) => n + d.weeks.length);
+      } else if (_planId != null) {
         final p = _plans.firstWhere(
           (x) => x.id == _planId,
           orElse: () => _plans.isNotEmpty
@@ -500,6 +544,7 @@ class _CoachScreenState extends State<CoachScreen> {
     setState(() {
       _ctx = _ContextSummary(
         planName: planName,
+        season: isSeason,
         planWeeks: planWeeks,
         runCount: runCount,
         hrZonesLoaded: hrZonesLoaded,
@@ -610,13 +655,14 @@ class _CoachScreenState extends State<CoachScreen> {
           .sublist(0, assistantIdx)
           .map((m) => {'role': m.role, 'content': m.content.value})
           .toList();
-      final body = jsonEncode({
-        'messages': payloadMessages,
-        'plan_id': _planId,
-        'recent_runs_limit': _runsLimit,
-        'mode': mode,
-        'anchor_message_id': anchorId,
-      });
+      final body = jsonEncode(coachRequestBody(
+        messages: payloadMessages,
+        planId: _planId,
+        planScope: _planScope,
+        recentRunsLimit: _runsLimit,
+        mode: mode,
+        anchorMessageId: anchorId,
+      ));
 
       final uri = Uri.parse('${resolveWebBaseUrl()}/api/coach');
 
@@ -1056,7 +1102,19 @@ class _CoachScreenState extends State<CoachScreen> {
   }
 
   void _onPlanChanged(String? next) {
-    setState(() => _planId = (next ?? '').isEmpty ? null : next);
+    setState(() {
+      if (next == kCoachSeasonOption) {
+        // The season thread is kept under its first plan.
+        _planScope = 'season';
+        _planId = _seasonPlans.first.id;
+      } else if ((next ?? '').isEmpty) {
+        _planScope = 'none';
+        _planId = null;
+      } else {
+        _planScope = 'plan';
+        _planId = next;
+      }
+    });
     _streamSub?.cancel();
     _reloadAll();
     _subscribeRealtime();
@@ -1125,7 +1183,9 @@ class _CoachScreenState extends State<CoachScreen> {
               const SizedBox(width: 12),
               Flexible(
                 child: DropdownButton<String>(
-                  value: _planId ?? '',
+                  value: _planScope == 'season'
+                      ? kCoachSeasonOption
+                      : (_planId ?? ''),
                   isExpanded: true,
                   underline: const SizedBox.shrink(),
                   items: [
@@ -1133,6 +1193,14 @@ class _CoachScreenState extends State<CoachScreen> {
                       value: '',
                       child: Text(l10n.coachNoPlanOption),
                     ),
+                    if (_seasonPlans.length > 1)
+                      DropdownMenuItem(
+                        value: kCoachSeasonOption,
+                        child: Text(
+                          l10n.coachSeasonOption,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ..._plans.map((p) => DropdownMenuItem(
                           value: p.id,
                           child: Text(
@@ -1351,13 +1419,14 @@ class _CoachScreenState extends State<CoachScreen> {
     final c = _ctx!;
     final cs = theme.colorScheme;
     final chips = <Widget>[];
-    if (c.planName != null) {
+    final planName = c.season ? l10n.coachSeasonName : c.planName;
+    if (planName != null) {
       chips.add(_chip(
         cs,
         icon: Icons.calendar_month,
         label: c.planWeeks != null
-            ? l10n.coachContextPlanWeeks(c.planName!, c.planWeeks!)
-            : c.planName!,
+            ? l10n.coachContextPlanWeeks(planName, c.planWeeks!)
+            : planName,
       ));
     } else {
       chips.add(_chip(cs,

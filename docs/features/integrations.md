@@ -4,7 +4,7 @@ A reference for every external data source the app connects to, how each integra
 
 ---
 
-**Contents:** [Overview](#overview) · [Which integrations a deployment offers](#which-integrations-a-deployment-offers) · [Apple HealthKit](#apple-healthkit) · [Android Health Connect](#android-health-connect) · [Strava](#strava) · [parkrun](#parkrun) · [Garmin Connect](#garmin-connect) · [Race results (RunSignUp + general scraping)](#race-results-runsignup--general-scraping) · [Treadmills (BLE FTMS)](#treadmills-ble-ftms) · [The `health` Flutter package](#the-health-flutter-package) · [Deduplication strategy](#deduplication-strategy)
+**Contents:** [Overview](#overview) · [Which integrations a deployment offers](#which-integrations-a-deployment-offers) · [Onboarding entry point](#onboarding-entry-point) · [Apple HealthKit](#apple-healthkit) · [Android Health Connect](#android-health-connect) · [Strava](#strava) · [parkrun](#parkrun) · [Garmin Connect](#garmin-connect) · [Race results (RunSignUp + general scraping)](#race-results-runsignup--general-scraping) · [Treadmills (BLE FTMS)](#treadmills-ble-ftms) · [The `health` Flutter package](#the-health-flutter-package) · [Deduplication strategy](#deduplication-strategy)
 
 > The Treadmills (BLE FTMS) integration has **shipped on mobile**, including the live run-screen treadmill-mode toggle. The watch (Wear OS / watchOS) BLE plumbing is the remaining follow-up.
 
@@ -48,6 +48,24 @@ Two rules sit on top:
 **Every card and tile also carries an `(i)`** explaining what the provider is and how to use it — `InfoTip.svelte` on web, `widgets/info_tip.dart` on mobile ([decisions.md § 1622](../architecture/decisions.md)). The copy is per-platform where the instruction differs: web's parkrun tip sends the runner to Settings → Account, where that import lives on web; mobile's says to tap the tile.
 
 **Adding a provider** means adding a catalogue entry with its gate, a `*Info` string in all seven locales on each platform it ships to, and — for a `probe` gate — the probe itself. A provider with no gate is not a thing the catalogue can express.
+
+---
+
+## Onboarding entry point
+
+The setup wizard on both clients ends with a skippable **"Bring your running history"** step (between `track` and `done`) so a new account can fill its dashboard, PRs and badges on day one ([decisions § 2224](../architecture/decisions.md)). It runs no import of its own: every row opens an import surface this document already describes, so its gates, permission sheets and failure reports apply unchanged.
+
+| Client | Row | Opens | Gate |
+|---|---|---|---|
+| Web | Strava | `/settings/integrations` (OAuth card + archive upload) | `always` — the archive upload needs nothing |
+| Web | Garmin | `/settings/integrations` (bulk `.fit` / `.zip` upload) | `always` |
+| Web | parkrun | `/settings/account` (athlete number + Pull results) | `probe` (`parkrun-import`) |
+| Android | Health Connect | `ImportScreen` | the OS permission sheet, inside the screen |
+| iOS | Apple Health | `ImportScreen` | the OS permission sheet, inside the screen |
+| Mobile | Strava | `ImportScreen` (archive upload) | none |
+| Mobile | parkrun | `SettingsIntegrationsScreen` | `probe` (`parkrun-import`) |
+
+The lists live in `settings/onboarding.ts` (`ONBOARDING_IMPORT_SOURCES`, `visibleImportSources`) and `onboarding.dart` (`setupWizardImportSources`). Web shows no health platform (no web binding); mobile shows no Garmin row (no mobile Garmin importer — Garmin reaches a phone through the health platform). Web saves the wizard and navigates, because its layout gate would bounce an un-onboarded account back to `/onboarding`; mobile pushes the screen over the wizard route and returns to the same step.
 
 ---
 

@@ -156,6 +156,8 @@ Auth providers: Apple Sign-In (required on iOS per App Store guidelines) and Goo
 
 On first launch, users see a sign-in screen. After auth, all subsequent app opens check for a valid session silently — no login screen unless the session has expired (30 days).
 
+After sign-up, the setup wizard ends with an optional "Bring your running history" step that opens the existing Strava, Garmin export, parkrun and (on mobile) Health Connect / Apple Health imports, so the dashboard, PRs and badges can fill on day one — see [integrations.md § Onboarding entry point](../features/integrations.md#onboarding-entry-point).
+
 Sync strategy: write-to-local-first, sync-in-background. Runs are written to JSON files on disk (`LocalRunStore`) immediately on save. A background sync process (foreground triggers + connectivity change + hourly WorkManager on Android) uploads pending runs to Supabase. Conflicts (same run modified on two devices) resolve via `metadata.last_modified_at` — last-write-wins.
 
 **Done when:**

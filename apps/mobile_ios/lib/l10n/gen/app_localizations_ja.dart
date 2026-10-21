@@ -279,6 +279,12 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get healthPlatformNameIos => 'ヘルスケア';
+
+  @override
+  String get healthPlatformNameAndroid => 'ヘルスコネクト';
+
+  @override
   String get importCsvCardTitle => 'CSV';
 
   @override
@@ -384,19 +390,19 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get importHealthSubtitleIos =>
-      'Apple Watch、Nike Run Club、Strava など、Apple Health に書き込む各アプリで記録したワークアウトを取り込みます';
+      'Apple Watch、Nike Run Club、Strava など、ヘルスケアに書き込む各アプリで記録したワークアウトを取り込みます';
 
   @override
   String get importHealthSubtitleAndroid =>
-      'Google Fit、Samsung Health、Garmin、Fitbit など、Health Connect 対応アプリからワークアウトを取り込みます';
+      'Google Fit、Samsung Health、Garmin、Fitbit など、ヘルスコネクト対応アプリからワークアウトを取り込みます';
 
   @override
   String get importHealthDescriptionIos =>
-      '過去1年間のワークアウト概要（日付、距離、時間、種類）を読み込みます。Apple Health はサードパーティ製アプリが記録した GPS ルートを公開しないため、この方法でインポートしたランには地図のトレースがありません。';
+      '過去1年間のワークアウト概要（日付、距離、時間、種類）を読み込みます。ヘルスケアはサードパーティ製アプリが記録した GPS ルートを公開しないため、この方法でインポートしたランには地図のトレースがありません。';
 
   @override
   String get importHealthDescriptionAndroid =>
-      '過去1年間のワークアウト概要（日付、距離、時間、種類）を読み込みます。Health Connect が Threkir に読み取りを許可している場合は、ワークアウトの GPS マップも取り込まれます。一部が保留された場合は、インポート後にマップへのアクセスを許可できます。';
+      '過去1年間のワークアウト概要（日付、距離、時間、種類）を読み込みます。ヘルスコネクトが Threkir に読み取りを許可している場合は、ワークアウトの GPS マップも取り込まれます。一部が保留された場合は、インポート後にマップへのアクセスを許可できます。';
 
   @override
   String importHealthRoutesWithheld(int count) {
@@ -405,18 +411,18 @@ class AppLocalizationsJa extends AppLocalizations {
       locale: localeName,
       other: 'インポートしたアクティビティ$count件に、Threkirが読み取りを許可されていないGPS地図があります。',
     );
-    return '${_temp0}Health Connectはワークアウトのルートを別の権限で保護しています。';
+    return '$_temp0ヘルスコネクトはワークアウトのルートを別の権限で保護しています。';
   }
 
   @override
   String get importHealthRoutesAllowButton => '地図のインポートを許可';
 
   @override
-  String get importHealthRoutesRequesting => 'Health Connectに地図へのアクセスを要求中...';
+  String get importHealthRoutesRequesting => 'ヘルスコネクトに地図へのアクセスを要求中...';
 
   @override
   String get importHealthRoutesDenied =>
-      '地図へのアクセスは許可されませんでした。インポートは概要のみのままです。Health Connectでいつでも変更できます。';
+      '地図へのアクセスは許可されませんでした。インポートは概要のみのままです。ヘルスコネクトでいつでも変更できます。';
 
   @override
   String get importHealthRoutesAdding => 'インポートしたアクティビティに地図を追加中...';
@@ -1617,11 +1623,11 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get setupImportHealthAndroid =>
-      'GarminやSamsungを含む、Health Connectに同期するすべてのアプリからランを取り込みます';
+      'GarminやSamsungを含む、ヘルスコネクトに同期するすべてのアプリからランを取り込みます';
 
   @override
   String get setupImportHealthIos =>
-      'Apple Watchと、Garminを含むApple Healthに保存するすべてのアプリからワークアウトを取り込みます';
+      'Apple Watchと、Garminを含め、ヘルスケアに保存するすべてのアプリからワークアウトを取り込みます';
 
   @override
   String get setupImportStravaDesc =>
@@ -2380,10 +2386,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get historySourceParkrun => 'parkrun';
 
   @override
-  String get historySourceHealthKit => 'HealthKit';
+  String get historySourceHealthKit => 'ヘルスケア';
 
   @override
-  String get historySourceHealthConnect => 'Health Connect';
+  String get historySourceHealthConnect => 'ヘルスコネクト';
 
   @override
   String get historyRangePickerTitle => '日付を選択';
@@ -7327,7 +7333,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsAccountImportSubtitle =>
-      'Strava のエクスポート、ヘルスケアアプリ、CSV、バックアップ';
+      'Strava のエクスポート、健康管理アプリ、CSV、バックアップ';
 
   @override
   String get settingsAccountAccountExport => 'アカウントのエクスポート';
@@ -7703,15 +7709,15 @@ class AppLocalizationsJa extends AppLocalizations {
       '同期したアクティビティを履歴に取り込むには、Strava + parkrunにアカウントが必要です。';
 
   @override
-  String get integrationsHealthConnectTitle => 'ランをHealth Connectに書き込む';
+  String get integrationsHealthConnectTitle => 'ランをヘルスコネクトに書き込む';
 
   @override
   String get integrationsHealthConnectSubtitle =>
-      '完了した各ランをHealth Connectに送信し、Google Fit、Samsung Health、Fitbitなどに表示します。';
+      '完了した各ランをヘルスコネクトに送信し、Google Fit、Samsung Health、Fitbitなどに表示します。';
 
   @override
   String get integrationsHealthConnectDenied =>
-      'Health Connectの権限が許可されていません — ランは書き込まれません。';
+      'ヘルスコネクトの権限が許可されていません — ランは書き込まれません。';
 
   @override
   String integrationsHrPairFailed(Object error) {

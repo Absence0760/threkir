@@ -129,6 +129,7 @@ rendering "1 …" for 0. Use `{count}` (ARB) / `#` (web).
 | auto-pause | — | no catalogue string yet; build from "Corrida pausada" / "Pausar" → "Pausa automática", and flag it as a new term |
 | kudos | kudos ("dar kudos", "remover kudos") | |
 | workout | Treino | |
+| skip a workout / skipped | **Ignorar** / **ignorado** (treino) — un-skip **Deixar de ignorar**; status = **estado** | settled 2026-10-21; never "saltado" for the status. Skipping a step or setup is **Saltar**; "não salte" stays in coaching advice |
 | warm-up / cool-down / recovery | Aquecimento / Desaquecimento / Recuperação | |
 | save / settings / feed / followers | Guardar / **Definições** / Feed / Seguidores | `navSettings` is "Config." — inconsistency 3 |
 | app | **a app** (feminine, from *a aplicação*): "na app", "da app", "esta app", "outra app" | settled 2026-10-13 |
@@ -152,10 +153,13 @@ rendering "1 …" for 0. Use `{count}` (ARB) / `#` (web).
 
 ## Don't translate
 
-Threkir, Pro, Strava, Garmin, parkrun, Health Connect, Apple Watch,
-Wear OS, HealthKit, GPX/TCX/FIT, VDOT, CTL, ATL, TSB, TRIMP, RPE, 1RM, GAP,
-DNF. VO₂ max is **VO₂ máx** (`metric.vo2max.label`). Apple's app is
-**Apple Saúde**. Identifiers, route paths, ICU keywords, `{placeholders}`.
+Threkir, Pro, Strava, Garmin, parkrun, Apple Watch,
+Wear OS, HealthKit (the framework), GPX/TCX/FIT, VDOT, CTL, ATL, TSB, TRIMP, RPE, 1RM, GAP,
+DNF. VO₂ max is **VO₂ máx** (`metric.vo2max.label`). The health platforms
+take their vendors' names (`healthPlatformNameIos` /
+`healthPlatformNameAndroid`): Apple's app is **Saúde da Apple** as a title
+and **a app Saúde** in running text; Google's is **a Conexão Saúde**
+(feminine: na / à / da Conexão Saúde). Identifiers, route paths, ICU keywords, `{placeholders}`.
 
 ## Provenance
 

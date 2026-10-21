@@ -110,6 +110,7 @@ literal `1` in a `one` branch — 11 mobile strings already do (e.g.
 | auto-pause | — | no catalogue string yet; build from "Corrida pausada" / "Pausar" → "Pausa automática", and flag it as a new term |
 | kudos | kudos ("dar kudos", "remover kudos") | |
 | workout | Treino | |
+| skip a workout / skipped | **Ignorar** / **ignorado** (treino) — un-skip **Deixar de ignorar** | settled 2026-10-21; never "pulado" for the status. Skipping a step or setup is **Pular**; "não pule" stays in coaching advice |
 | warm-up / cool-down / recovery | Aquecimento / Desaquecimento / Recuperação | |
 | save / settings / feed / followers | Salvar / Configurações (nav "Config.") / Feed / Seguidores | |
 
@@ -127,9 +128,12 @@ literal `1` in a `one` branch — 11 mobile strings already do (e.g.
 
 ## Don't translate
 
-Threkir, Pro, Strava, Garmin, parkrun, Health Connect, Apple Watch,
-Wear OS, HealthKit, GPX/TCX/FIT, VDOT, CTL, ATL, TSB, TRIMP, RPE, 1RM, GAP,
-DNF. VO₂ max is **VO₂ máx**. Apple's app is **Apple Saúde**. Identifiers,
+Threkir, Pro, Strava, Garmin, parkrun, Apple Watch,
+Wear OS, HealthKit (the framework), GPX/TCX/FIT, VDOT, CTL, ATL, TSB, TRIMP, RPE, 1RM, GAP,
+DNF. VO₂ max is **VO₂ máx**. The health platforms take their vendors'
+names (`healthPlatformNameIos` / `healthPlatformNameAndroid`): Apple's app
+is **Saúde da Apple** as a title and **o app Saúde** in running text;
+Google's is **a Conexão Saúde** (feminine: na / à / da Conexão Saúde). Identifiers,
 route paths, ICU keywords, `{placeholders}`.
 
 ## Provenance

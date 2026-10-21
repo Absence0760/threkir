@@ -166,7 +166,7 @@ then regenerates (`flutter gen-l10n` in `apps/mobile_android`, the
    bar must never get the same word (`runSurface.tabRuns` vs
    `runSurface.tabRaces` is the live example — see the guide).
 8. **Don't translate:** `Threkir`, `Pro` (the subscription tier),
-   Strava, Garmin, parkrun, Health Connect, HealthKit, Wear OS, Apple Watch,
+   Strava, Garmin, parkrun, HealthKit (the framework), Wear OS, Apple Watch,
    Nike Run Club, Google Fit, Samsung Health, Fitbit, Stripe, RevenueCat,
    OpenStreetMap, file formats (`GPX`, `TCX`, `FIT`, `.zip`), the metric
    abbreviations the app keeps (`VDOT`, `CTL`, `ATL`, `TSB`, `TRIMP`,
@@ -175,9 +175,10 @@ then regenerates (`flutter gen-l10n` in `apps/mobile_android`, the
    `other`, `=0`), Material Symbols ligature words (an icon name like
    `close` or `directions_run` in a value is an identifier, not prose), and
    anything that looks like a code identifier or route path (`/settings`,
-   `distance_half`). Apple's own app is named in the platform's official
-   localized name where the guide says the catalogue does (e.g. fr
-   `Apple Santé`). A step-by-step that quotes another product's UI
+   `distance_half`). Apple's health app and Google's Health Connect are
+   named by their vendors' official localized names, which the catalogue
+   holds in `healthPlatformNameIos` / `healthPlatformNameAndroid` (e.g. fr
+   `Apple Santé` / `Santé Connect`) — reuse those values, never the English. A step-by-step that quotes another product's UI
    (`importStravaHowToSteps`) uses that product's own localized labels if
    you know them; otherwise keep the English label inside the locale's
    quotation marks and flag it.

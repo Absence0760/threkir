@@ -192,12 +192,12 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String importHealthRequestingPermission(Object label) {
-    return 'A solicitar permissão do $label...';
+    return 'A solicitar permissão de $label...';
   }
 
   @override
   String importHealthPermissionDenied(Object label) {
-    return 'Permissão do $label negada';
+    return 'Permissão de $label negada';
   }
 
   @override
@@ -205,7 +205,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String importHealthFailed(Object label, Object error) {
-    return 'Falha na importação do $label: $error';
+    return 'Falha na importação de $label: $error';
   }
 
   @override
@@ -213,7 +213,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String importStatusSkippedDuplicates(Object count) {
-    return '$count duplicata(s) ignorada(s) já importada(s) de outra fonte';
+    return '$count duplicado(s) ignorado(s), já importado(s) de outra fonte';
   }
 
   @override
@@ -281,8 +281,14 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String importHealthButton(Object label) {
-    return 'Importar do $label';
+    return 'Importar de $label';
   }
+
+  @override
+  String get healthPlatformNameIos => 'Saúde da Apple';
+
+  @override
+  String get healthPlatformNameAndroid => 'Conexão Saúde';
 
   @override
   String get importCsvCardTitle => 'CSV';
@@ -399,19 +405,19 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get importHealthSubtitleIos =>
-      'Importe treinos gravados no Apple Watch, Nike Run Club, Strava e outras apps que gravam no Apple Saúde';
+      'Importe treinos gravados no Apple Watch, Nike Run Club, Strava e outras apps que gravam na app Saúde';
 
   @override
   String get importHealthSubtitleAndroid =>
-      'Importe treinos do Google Fit, Samsung Health, Garmin, Fitbit e qualquer outra app do Health Connect';
+      'Importe treinos do Google Fit, Samsung Health, Garmin, Fitbit e qualquer outra app ligada à Conexão Saúde';
 
   @override
   String get importHealthDescriptionIos =>
-      'Lê resumos de treino (data, distância, duração, tipo) do último ano. O Apple Saúde não expõe rotas de GPS gravadas por apps de terceiros — as corridas importadas assim não terão trajeto no mapa.';
+      'Lê resumos de treino (data, distância, duração, tipo) do último ano. A app Saúde não expõe rotas de GPS gravadas por apps de terceiros — as corridas importadas assim não terão trajeto no mapa.';
 
   @override
   String get importHealthDescriptionAndroid =>
-      'Lê resumos de treino (data, distância, duração, tipo) do último ano. O mapa GPS de um treino também vem quando o Health Connect permite que o Threkir o leia; se retiver algum, pode permitir o acesso aos mapas depois da importação.';
+      'Lê resumos de treino (data, distância, duração, tipo) do último ano. O mapa GPS de um treino também vem quando a Conexão Saúde permite que o Threkir o leia; se retiver algum, pode permitir o acesso aos mapas depois da importação.';
 
   @override
   String importHealthRoutesWithheld(int count) {
@@ -423,7 +429,7 @@ class AppLocalizationsPt extends AppLocalizations {
       one:
           '1 atividade importada tem um mapa de GPS que o Threkir não tem permissão para ler.',
     );
-    return '$_temp0 O Health Connect protege a rota de um treino com uma permissão própria.';
+    return '$_temp0 A Conexão Saúde protege a rota de um treino com uma permissão própria.';
   }
 
   @override
@@ -431,11 +437,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get importHealthRoutesRequesting =>
-      'A solicitar acesso aos mapas ao Health Connect...';
+      'A solicitar acesso aos mapas à Conexão Saúde...';
 
   @override
   String get importHealthRoutesDenied =>
-      'Acesso aos mapas não concedido. As importações continuam sem mapa — pode mudar isto no Health Connect quando quiser.';
+      'Acesso aos mapas não concedido. As importações continuam sem mapa — pode mudar isto na Conexão Saúde quando quiser.';
 
   @override
   String get importHealthRoutesAdding =>
@@ -1694,11 +1700,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get setupImportHealthAndroid =>
-      'Corridas de qualquer app que sincronize com o Health Connect, incluindo Garmin e Samsung';
+      'Corridas de qualquer app que sincronize com a Conexão Saúde, incluindo Garmin e Samsung';
 
   @override
   String get setupImportHealthIos =>
-      'Treinos do Apple Watch e de qualquer app que grave no Apple Health, incluindo Garmin';
+      'Treinos do Apple Watch e de qualquer app que grave na app Saúde, incluindo Garmin';
 
   @override
   String get setupImportStravaDesc =>
@@ -2512,10 +2518,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get historySourceParkrun => 'parkrun';
 
   @override
-  String get historySourceHealthKit => 'HealthKit';
+  String get historySourceHealthKit => 'Saúde da Apple';
 
   @override
-  String get historySourceHealthConnect => 'Health Connect';
+  String get historySourceHealthConnect => 'Conexão Saúde';
 
   @override
   String get historyRangePickerTitle => 'Selecionar datas';
@@ -5890,7 +5896,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get plansStatusAbandoned => 'Abandonado';
 
   @override
-  String get plansFilterGroupLabel => 'Filtrar planos por status';
+  String get plansFilterGroupLabel => 'Filtrar planos por estado';
 
   @override
   String get plansFilterAll => 'Todos';
@@ -6998,11 +7004,11 @@ class AppLocalizationsPt extends AppLocalizations {
   String get workoutSkip => 'Ignorar este treino';
 
   @override
-  String get workoutUnskip => 'Desfazer ignorar';
+  String get workoutUnskip => 'Deixar de ignorar';
 
   @override
   String get workoutSkipError =>
-      'Não foi possível atualizar o status de ignorado. Tente novamente.';
+      'Não foi possível atualizar o estado do treino. Tente novamente.';
 
   @override
   String get workoutRelink => 'Revincular';
@@ -7057,7 +7063,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get workoutAdviceLong =>
-      'Fique relaxado. Procure uma respiração constante. Reduza 10% da distância se o clima estiver ruim ou estiver dolorido — mas não salte.';
+      'Fique relaxado. Procure uma respiração constante. Reduza 10% da distância se o tempo estiver mau ou estiver dolorido — mas não salte.';
 
   @override
   String get workoutAdviceTempo =>
@@ -8152,15 +8158,15 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get integrationsHealthConnectTitle =>
-      'Gravar corridas no Health Connect';
+      'Gravar corridas na Conexão Saúde';
 
   @override
   String get integrationsHealthConnectSubtitle =>
-      'Envia cada corrida concluída ao Health Connect para que apareça no Google Fit, Samsung Health, Fitbit e outros.';
+      'Envia cada corrida concluída à Conexão Saúde para que apareça no Google Fit, Samsung Health, Fitbit e outros.';
 
   @override
   String get integrationsHealthConnectDenied =>
-      'Permissão do Health Connect não concedida — as corridas não serão gravadas.';
+      'Permissão da Conexão Saúde não concedida — as corridas não serão gravadas.';
 
   @override
   String integrationsHrPairFailed(Object error) {
@@ -9188,7 +9194,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsMinimalVoiceCuesSubtitle =>
-      'Pula os avisos tagarelas de meio de repetição e desvio de ritmo';
+      'Ignora os avisos tagarelas de meio de repetição e desvio de ritmo';
 
   @override
   String get prefsKeepScreenOn => 'Manter o ecrã ligado';
@@ -10003,7 +10009,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get workoutReviewColDelta => 'Δ';
 
   @override
-  String get workoutReviewSkip => 'saltar';
+  String get workoutReviewSkip => 'ignorado';
 
   @override
   String get workoutReviewLabelWarmup => 'Aquecimento';
@@ -13071,7 +13077,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get metricMissStreakDefinition =>
-      'Treinos planeados seguidos, a contar para trás a partir de ontem, que passaram sem corrida registada. Um treino saltado ou um dia de descanso não conta nem interrompe a sequência; um treino feito termina-a.';
+      'Treinos planeados seguidos, a contar para trás a partir de ontem, que passaram sem corrida registada. Um treino ignorado ou um dia de descanso não conta nem interrompe a sequência; um treino feito termina-a.';
 
   @override
   String get coachingRosterRiskLow => 'Baixo';
@@ -18088,7 +18094,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planDetailGoalTimeRepaceHint =>
-      'Alterá-lo recalcula os ritmos-alvo dos treinos que faltam. Os passados, feitos e saltados mantêm os seus, e um plano criado a partir de um 5K recente mantém os ritmos.';
+      'Alterá-lo recalcula os ritmos-alvo dos treinos que faltam. Os passados, feitos e ignorados mantêm os seus, e um plano criado a partir de um 5K recente mantém os ritmos.';
 
   @override
   String get planDetailNotesLabel => 'Notas';
@@ -18337,7 +18343,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get phoneSurfaceWidgetDone => 'Feito';
 
   @override
-  String get phoneSurfaceWidgetSkipped => 'Saltado';
+  String get phoneSurfaceWidgetSkipped => 'Ignorado';
 
   @override
   String get dashboardTrainForSomething => 'Treine para um objetivo';
@@ -18646,8 +18652,8 @@ class AppLocalizationsPt extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count saltadas',
-      one: '$count saltada',
+      other: '$count ignoradas',
+      one: '$count ignorada',
     );
     return '$_temp0';
   }
@@ -19021,12 +19027,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String importHealthRequestingPermission(Object label) {
-    return 'Solicitando permissão do $label...';
+    return 'Solicitando permissão de $label...';
   }
 
   @override
   String importHealthPermissionDenied(Object label) {
-    return 'Permissão do $label negada';
+    return 'Permissão de $label negada';
   }
 
   @override
@@ -19034,7 +19040,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String importHealthFailed(Object label, Object error) {
-    return 'Falha na importação do $label: $error';
+    return 'Falha na importação de $label: $error';
   }
 
   @override
@@ -19109,8 +19115,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String importHealthButton(Object label) {
-    return 'Importar do $label';
+    return 'Importar de $label';
   }
+
+  @override
+  String get healthPlatformNameIos => 'Saúde da Apple';
+
+  @override
+  String get healthPlatformNameAndroid => 'Conexão Saúde';
 
   @override
   String get importCsvCardTitle => 'CSV';
@@ -19227,19 +19239,19 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get importHealthSubtitleIos =>
-      'Importe treinos gravados no Apple Watch, Nike Run Club, Strava e outros apps que gravam no Apple Saúde';
+      'Importe treinos gravados no Apple Watch, Nike Run Club, Strava e outros apps que gravam no app Saúde';
 
   @override
   String get importHealthSubtitleAndroid =>
-      'Importe treinos do Google Fit, Samsung Health, Garmin, Fitbit e qualquer outro app do Health Connect';
+      'Importe treinos do Google Fit, Samsung Health, Garmin, Fitbit e qualquer outro app conectado à Conexão Saúde';
 
   @override
   String get importHealthDescriptionIos =>
-      'Lê resumos de treino (data, distância, duração, tipo) do último ano. O Apple Saúde não expõe rotas de GPS gravadas por apps de terceiros — as corridas importadas assim não terão trajeto no mapa.';
+      'Lê resumos de treino (data, distância, duração, tipo) do último ano. O app Saúde não expõe rotas de GPS gravadas por apps de terceiros — as corridas importadas assim não terão trajeto no mapa.';
 
   @override
   String get importHealthDescriptionAndroid =>
-      'Lê resumos de treino (data, distância, duração, tipo) do último ano. O mapa GPS de um treino também vem quando o Health Connect permite que o Threkir o leia; se ele retiver algum, você pode permitir o acesso aos mapas depois da importação.';
+      'Lê resumos de treino (data, distância, duração, tipo) do último ano. O mapa GPS de um treino também vem quando a Conexão Saúde permite que o Threkir o leia; se ela retiver algum, você pode permitir o acesso aos mapas depois da importação.';
 
   @override
   String importHealthRoutesWithheld(int count) {
@@ -19251,7 +19263,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       one:
           '1 atividade importada tem um mapa de GPS que o Threkir não tem permissão para ler.',
     );
-    return '$_temp0 O Health Connect protege a rota de um treino com uma permissão própria.';
+    return '$_temp0 A Conexão Saúde protege a rota de um treino com uma permissão própria.';
   }
 
   @override
@@ -19259,11 +19271,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get importHealthRoutesRequesting =>
-      'Solicitando acesso aos mapas ao Health Connect...';
+      'Solicitando acesso aos mapas à Conexão Saúde...';
 
   @override
   String get importHealthRoutesDenied =>
-      'Acesso aos mapas não concedido. As importações continuam sem mapa — você pode mudar isso no Health Connect quando quiser.';
+      'Acesso aos mapas não concedido. As importações continuam sem mapa — você pode mudar isso na Conexão Saúde quando quiser.';
 
   @override
   String get importHealthRoutesAdding =>
@@ -20524,11 +20536,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get setupImportHealthAndroid =>
-      'Corridas de qualquer app que sincronize com o Health Connect, incluindo Garmin e Samsung';
+      'Corridas de qualquer app que sincronize com a Conexão Saúde, incluindo Garmin e Samsung';
 
   @override
   String get setupImportHealthIos =>
-      'Treinos do Apple Watch e de qualquer app que salve no Apple Health, incluindo Garmin';
+      'Treinos do Apple Watch e de qualquer app que salve no app Saúde, incluindo Garmin';
 
   @override
   String get setupImportStravaDesc =>
@@ -21343,10 +21355,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get historySourceParkrun => 'parkrun';
 
   @override
-  String get historySourceHealthKit => 'HealthKit';
+  String get historySourceHealthKit => 'Saúde da Apple';
 
   @override
-  String get historySourceHealthConnect => 'Health Connect';
+  String get historySourceHealthConnect => 'Conexão Saúde';
 
   @override
   String get historyRangePickerTitle => 'Selecionar datas';
@@ -25830,11 +25842,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get workoutSkip => 'Ignorar este treino';
 
   @override
-  String get workoutUnskip => 'Desfazer ignorar';
+  String get workoutUnskip => 'Deixar de ignorar';
 
   @override
   String get workoutSkipError =>
-      'Não foi possível atualizar o status de ignorado. Tente novamente.';
+      'Não foi possível atualizar o status do treino. Tente novamente.';
 
   @override
   String get workoutRelink => 'Revincular';
@@ -25938,7 +25950,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachConsentBulletPlan =>
-      'O plano de treino ativo que você selecionou: o nome, o status, a prova-alvo e o tempo-alvo, o tempo recente de 5K e a pontuação de condicionamento a partir dos quais ele foi criado, as datas, os dias de treino, as regras e as anotações; a fase, a distância-alvo e as anotações de cada semana; e, de cada treino, a data, o tipo, as metas, a estrutura, as anotações, o nome da prova, a prioridade e se você o concluiu ou pulou, além das metas de frequência cardíaca (apenas se você tiver dado o consentimento de dados de saúde).';
+      'O plano de treino ativo que você selecionou: o nome, o status, a prova-alvo e o tempo-alvo, o tempo recente de 5K e a pontuação de condicionamento a partir dos quais ele foi criado, as datas, os dias de treino, as regras e as anotações; a fase, a distância-alvo e as anotações de cada semana; e, de cada treino, a data, o tipo, as metas, a estrutura, as anotações, o nome da prova, a prioridade e se você o concluiu ou ignorou, além das metas de frequência cardíaca (apenas se você tiver dado o consentimento de dados de saúde).';
 
   @override
   String get coachConsentBulletMessages =>
@@ -26977,15 +26989,15 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get integrationsHealthConnectTitle =>
-      'Gravar corridas no Health Connect';
+      'Gravar corridas na Conexão Saúde';
 
   @override
   String get integrationsHealthConnectSubtitle =>
-      'Envia cada corrida concluída ao Health Connect para que apareça no Google Fit, Samsung Health, Fitbit e outros.';
+      'Envia cada corrida concluída à Conexão Saúde para que apareça no Google Fit, Samsung Health, Fitbit e outros.';
 
   @override
   String get integrationsHealthConnectDenied =>
-      'Permissão do Health Connect não concedida — as corridas não serão gravadas.';
+      'Permissão da Conexão Saúde não concedida — as corridas não serão gravadas.';
 
   @override
   String integrationsHrPairFailed(Object error) {
@@ -28826,7 +28838,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get workoutReviewColDelta => 'Δ';
 
   @override
-  String get workoutReviewSkip => 'pular';
+  String get workoutReviewSkip => 'ignorado';
 
   @override
   String get workoutReviewLabelWarmup => 'Aquecimento';
@@ -31894,7 +31906,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get metricMissStreakDefinition =>
-      'Treinos planejados seguidos, contando para trás a partir de ontem, que passaram sem corrida registrada. Um treino pulado ou um dia de descanso não conta nem interrompe a sequência; um treino concluído a encerra.';
+      'Treinos planejados seguidos, contando para trás a partir de ontem, que passaram sem corrida registrada. Um treino ignorado ou um dia de descanso não conta nem interrompe a sequência; um treino concluído a encerra.';
 
   @override
   String get coachingRosterRiskLow => 'Baixo';
@@ -36905,7 +36917,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planDetailGoalTimeRepaceHint =>
-      'Alterar recalcula os ritmos-alvo dos treinos que ainda faltam. Os passados, feitos e pulados mantêm os seus, e um plano criado a partir de um 5K recente mantém os ritmos.';
+      'Alterar recalcula os ritmos-alvo dos treinos que ainda faltam. Os passados, feitos e ignorados mantêm os seus, e um plano criado a partir de um 5K recente mantém os ritmos.';
 
   @override
   String get planDetailNotesLabel => 'Notas';
@@ -37154,7 +37166,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get phoneSurfaceWidgetDone => 'Feito';
 
   @override
-  String get phoneSurfaceWidgetSkipped => 'Pulado';
+  String get phoneSurfaceWidgetSkipped => 'Ignorado';
 
   @override
   String get dashboardTrainForSomething => 'Treine para algo';
@@ -37462,8 +37474,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count puladas',
-      one: '$count pulada',
+      other: '$count ignoradas',
+      one: '$count ignorada',
     );
     return '$_temp0';
   }

@@ -676,7 +676,7 @@ Moderation runs through the web admin surface `/admin/reports` (web-only back-of
 Four RPCs, all SECURITY DEFINER, all (except the chrome gate) hard-denying a non-admin with a `42501` before touching any report data:
 
 - `am_i_admin()` → boolean. The only admin function in `public` (PostgREST-callable); used purely to pick page chrome — never the authorization boundary.
-- `fetch_pending_reports()` → one row per reported target with pending reports: `(target_kind, target_id, report_count, reporter_count, reasons jsonb, latest_at, shadow_hidden boolean)`, newest-active first. Drives the queue; `shadow_hidden` reflects the per-kind auto-hide state so the queue can badge it + offer Unhide.
+- `fetch_pending_reports()` → one row per reported target with pending reports: `(target_kind, target_id, report_count, reporter_count, reasons jsonb, latest_at, shadow_hidden boolean, page_id uuid)`, newest-active first. Drives the queue; `shadow_hidden` reflects the per-kind auto-hide state so the queue can badge it + offer Unhide. `page_id` (migration `20271021000020`) is the id the queue's link opens: the target itself for user / club / route / run, its run / club / route for a comment / club_post / route_review, null for a direct message or a target whose row is gone.
 - `fetch_reports_for_target(p_target_kind, p_target_id)` → every individual report (any status) against one target, newest first, with the `snapshot_*` columns (re-created by `20271021000003`; a reported message has no page a moderator can open, so the queue quotes the snapshot).
 - `resolve_target_reports(p_target_kind, p_target_id, p_status, p_resolution)` → sets all pending reports on the target to `'reviewed'`/`'dismissed'` with `reviewed_by = auth.uid()` + `reviewed_at = now()` + the note; returns the row count. Rejects an invalid status with `22023`. Triage-only.
 - `admin_unhide_target(p_target_kind, p_target_id)` → clears `shadow_hidden` on a user/club/route; returns true if a row flipped. The auto-hide revert (decisions §172).
@@ -2346,10 +2346,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 148 migrations write a function-level `from public, anon` revoke
-today (130 as `revoke execute`, 22 as `revoke all`); it is the house form for
+trigger calls). 150 migrations write a function-level `from public, anon` revoke
+today (132 as `revoke execute`, 22 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 607 migrations in version order and fails the PR on
+keeps it — it replays all 610 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts

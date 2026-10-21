@@ -709,12 +709,12 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
     _ => Icons.favorite_outline,
   };
 
-  // Product names stay untranslated: the health platform's comes from the
-  // Import screen's own label, parkrun's from the catalogue entry Settings uses.
+  // The health platform's name is the Import screen's own label, parkrun's the
+  // catalogue entry Settings uses, so each reads the same on every surface.
   String _importName(AppLocalizations l10n, String source) => switch (source) {
     'strava' => 'Strava',
     'parkrun' => l10n.integrationsParkrunName,
-    _ => healthLabelFor(isIOS: source == 'healthkit'),
+    _ => healthLabelFor(l10n, isIOS: source == 'healthkit'),
   };
 
   String _importDescription(AppLocalizations l10n, String source) =>

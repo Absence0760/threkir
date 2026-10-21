@@ -6415,6 +6415,7 @@ export type Database = {
         Args: never
         Returns: {
           latest_at: string
+          page_id: string
           reasons: Json
           report_count: number
           reporter_count: number

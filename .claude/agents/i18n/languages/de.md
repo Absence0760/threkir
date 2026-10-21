@@ -100,6 +100,7 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
 | workout | Training (dominant) / Workout | |
 | warm-up / cool-down / recovery | Aufwärmen / Auslaufen / Erholung | cool-down also "Abwärmen", "Abkühlen" — inconsistency 6 |
 | save / settings / feed | Speichern / Einstellungen / Feed | |
+| chat message | **Chatnachricht** (closed compound, Duden) | settled 2026-10-21; never "Chat-Nachricht" |
 | social | Sozial (mobile `navSocial`) / Community (web `nav.social`) | inconsistency 7 |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
@@ -117,8 +118,8 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
 
 ## Don't translate
 
-Threkir, Pro, Strava, Garmin, parkrun, Health Connect, Apple Health (kept
-in English — Apple's German app is "Health"), Apple Watch, Wear OS,
+Threkir, Pro, Strava, Garmin, parkrun, Health Connect (Google keeps it in
+German too), Apple Health (kept in English — Apple's German app is "Health"), Apple Watch, Wear OS,
 HealthKit, GPX/TCX/FIT, VDOT, CTL, ATL, TSB, TRIMP, RPE, 1RM, GAP, DNF.
 VO₂ max is written **VO₂max** (`metric.vo2max.label`); `watchMetricVo2Max`
 "VO2max" is the ASCII form for the watch font. Identifiers, route paths,

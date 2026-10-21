@@ -172,8 +172,38 @@ void main() {
   group('Platform-aware Health label helpers', () {
     test('healthLabelFor names HealthKit on iOS, Health Connect on Android',
         () {
-      expect(healthLabelFor(isIOS: true), 'Apple Health');
-      expect(healthLabelFor(isIOS: false), 'Health Connect');
+      final en = lookupAppLocalizations(const Locale('en'));
+      expect(healthLabelFor(en, isIOS: true), 'Apple Health');
+      expect(healthLabelFor(en, isIOS: false), 'Health Connect');
+    });
+
+    test('healthLabelFor uses each vendor\'s own name in the reader\'s locale',
+        () {
+      // Apple and Google localize these apps' names; the label must follow
+      // so the card title matches the copy under it (decisions § 2226).
+      String ios(String tag) =>
+          healthLabelFor(lookupAppLocalizations(Locale(tag)), isIOS: true);
+      String android(String tag) =>
+          healthLabelFor(lookupAppLocalizations(Locale(tag)), isIOS: false);
+      expect(ios('fr'), 'Apple Santé');
+      expect(ios('es'), 'Salud de Apple');
+      expect(ios('ja'), 'ヘルスケア');
+      expect(ios('de'), 'Apple Health');
+      expect(android('fr'), 'Santé Connect');
+      expect(android('es'), 'Salud conectada');
+      expect(android('ja'), 'ヘルスコネクト');
+      expect(android('de'), 'Health Connect');
+    });
+
+    test('the health platform names match the run-history source labels', () {
+      for (final locale in AppLocalizations.supportedLocales) {
+        final l10n = lookupAppLocalizations(locale);
+        expect(healthLabelFor(l10n, isIOS: false),
+            l10n.historySourceHealthConnect,
+            reason: '$locale');
+        expect(healthLabelFor(l10n, isIOS: true), l10n.historySourceHealthKit,
+            reason: '$locale');
+      }
     });
   });
 

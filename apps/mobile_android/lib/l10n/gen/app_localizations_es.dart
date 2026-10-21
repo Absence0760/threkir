@@ -285,6 +285,12 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get healthPlatformNameIos => 'Salud de Apple';
+
+  @override
+  String get healthPlatformNameAndroid => 'Salud conectada';
+
+  @override
   String get importCsvCardTitle => 'CSV';
 
   @override
@@ -397,19 +403,19 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get importHealthSubtitleIos =>
-      'Importa los entrenamientos que has registrado en Apple Watch, Nike Run Club, Strava y otras apps que escriben en Apple Salud';
+      'Importa los entrenamientos que has registrado en Apple Watch, Nike Run Club, Strava y otras apps que escriben en Salud de Apple';
 
   @override
   String get importHealthSubtitleAndroid =>
-      'Importa entrenamientos de Google Fit, Samsung Health, Garmin, Fitbit y cualquier otra app de Health Connect';
+      'Importa entrenamientos de Google Fit, Samsung Health, Garmin, Fitbit y cualquier otra app compatible con Salud conectada';
 
   @override
   String get importHealthDescriptionIos =>
-      'Lee los resúmenes de entrenamiento (fecha, distancia, duración, tipo) del último año. Apple Salud no expone las rutas GPS registradas por apps de terceros — las carreras importadas así no tendrán trazado en el mapa.';
+      'Lee los resúmenes de entrenamiento (fecha, distancia, duración, tipo) del último año. Salud de Apple no expone las rutas GPS registradas por apps de terceros — las carreras importadas así no tendrán trazado en el mapa.';
 
   @override
   String get importHealthDescriptionAndroid =>
-      'Lee los resúmenes de entrenamiento (fecha, distancia, duración, tipo) del último año. El mapa GPS de un entrenamiento también se importa cuando Health Connect deja que Threkir lo lea; si retiene alguno, puedes permitir el acceso a los mapas después de importar.';
+      'Lee los resúmenes de entrenamiento (fecha, distancia, duración, tipo) del último año. El mapa GPS de un entrenamiento también se importa cuando Salud conectada deja que Threkir lo lea; si retiene alguno, puedes permitir el acceso a los mapas después de importar.';
 
   @override
   String importHealthRoutesWithheld(int count) {
@@ -420,7 +426,7 @@ class AppLocalizationsEs extends AppLocalizations {
           '$count actividades importadas tienen mapas GPS que Threkir no puede leer.',
       one: '1 actividad importada tiene un mapa GPS que Threkir no puede leer.',
     );
-    return '$_temp0 Health Connect protege la ruta de un entrenamiento con un permiso aparte.';
+    return '$_temp0 Salud conectada protege la ruta de un entrenamiento con un permiso aparte.';
   }
 
   @override
@@ -428,11 +434,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get importHealthRoutesRequesting =>
-      'Solicitando acceso a los mapas a Health Connect...';
+      'Solicitando acceso a los mapas a Salud conectada...';
 
   @override
   String get importHealthRoutesDenied =>
-      'Acceso a los mapas no concedido. Las importaciones seguirán sin mapa; puedes cambiarlo en Health Connect cuando quieras.';
+      'Acceso a los mapas no concedido. Las importaciones seguirán sin mapa; puedes cambiarlo en Salud conectada cuando quieras.';
 
   @override
   String get importHealthRoutesAdding =>
@@ -1692,11 +1698,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get setupImportHealthAndroid =>
-      'Carreras de cualquier app que se sincronice con Health Connect, incluidas Garmin y Samsung';
+      'Carreras de cualquier app que se sincronice con Salud conectada, incluidas Garmin y Samsung';
 
   @override
   String get setupImportHealthIos =>
-      'Entrenamientos de Apple Watch y de cualquier app que guarde en Apple Health, incluida Garmin';
+      'Entrenamientos de Apple Watch y de cualquier app que guarde en Salud de Apple, incluida Garmin';
 
   @override
   String get setupImportStravaDesc =>
@@ -2513,10 +2519,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get historySourceParkrun => 'parkrun';
 
   @override
-  String get historySourceHealthKit => 'HealthKit';
+  String get historySourceHealthKit => 'Salud de Apple';
 
   @override
-  String get historySourceHealthConnect => 'Health Connect';
+  String get historySourceHealthConnect => 'Salud conectada';
 
   @override
   String get historyRangePickerTitle => 'Seleccionar fechas';
@@ -8150,15 +8156,15 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get integrationsHealthConnectTitle =>
-      'Escribir carreras en Health Connect';
+      'Escribir carreras en Salud conectada';
 
   @override
   String get integrationsHealthConnectSubtitle =>
-      'Envía cada carrera terminada a Health Connect para que aparezca en Google Fit, Samsung Health, Fitbit y otros.';
+      'Envía cada carrera terminada a Salud conectada para que aparezca en Google Fit, Samsung Health, Fitbit y otros.';
 
   @override
   String get integrationsHealthConnectDenied =>
-      'Permiso de Health Connect no concedido: las carreras no se escribirán.';
+      'Permiso de Salud conectada no concedido: las carreras no se escribirán.';
 
   @override
   String integrationsHrPairFailed(Object error) {

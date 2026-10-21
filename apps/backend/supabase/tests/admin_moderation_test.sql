@@ -9,7 +9,7 @@
 
 begin;
 
-select plan(22);
+select plan(29);
 
 -- ─── Fixtures ───────────────────────────────────────────────────────
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
@@ -144,6 +144,68 @@ set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000ad301",
 select is(
   (select count(*)::int from fetch_pending_reports()),
   0, 'resolved target is gone from the queue');
+
+-- ─── page_id: the page each queued target's link opens ─────────────
+-- A comment, club post and route review live on their run / club / route,
+-- so the queue resolves the parent server-side (it may be private, and an
+-- admin reads no other user's private run through RLS).
+reset role;
+-- Synthetic fixture users stand in for signed-up accounts, which always
+-- carry the GDPR Art 8 stamp before they can write (20270424000004).
+select tests.confirm_consent();
+-- Fixtures are planted with no caller, as seed-time rows are.
+set local "request.jwt.claims" = '';
+insert into runs (id, user_id, started_at, distance_m, duration_s, source, metadata)
+values ('00000000-0000-0000-0000-0000000ad310', '00000000-0000-0000-0000-0000000ad304',
+        '2026-04-01 09:00:00+00', 5000, 1500, 'app', '{"activity_type":"run"}');
+insert into run_comments (id, run_id, author_id, body)
+values ('00000000-0000-0000-0000-0000000ad311', '00000000-0000-0000-0000-0000000ad310',
+        '00000000-0000-0000-0000-0000000ad304', 'abusive comment');
+insert into clubs (id, owner_id, name, slug, is_public)
+values ('00000000-0000-0000-0000-0000000ad312', '00000000-0000-0000-0000-0000000ad304',
+        'Mod Club', 'mod-club-ad312', true);
+insert into club_posts (id, club_id, author_id, body)
+values ('00000000-0000-0000-0000-0000000ad313', '00000000-0000-0000-0000-0000000ad312',
+        '00000000-0000-0000-0000-0000000ad304', 'abusive post');
+insert into routes (id, user_id, name, waypoints, distance_m, is_public)
+values ('00000000-0000-0000-0000-0000000ad314', '00000000-0000-0000-0000-0000000ad304',
+        'Mod Route', '[{"lat":40.0,"lng":-73.0},{"lat":40.01,"lng":-73.0}]', 5000, true);
+insert into route_reviews (id, route_id, user_id, rating, comment)
+values ('00000000-0000-0000-0000-0000000ad315', '00000000-0000-0000-0000-0000000ad314',
+        '00000000-0000-0000-0000-0000000ad304', 1, 'abusive review');
+insert into reports (reporter_id, target_kind, target_id, reason, status)
+values
+  ('00000000-0000-0000-0000-0000000ad302', 'user',         '00000000-0000-0000-0000-0000000ad303', 'spam', 'pending'),
+  ('00000000-0000-0000-0000-0000000ad302', 'run',          '00000000-0000-0000-0000-0000000ad310', 'spam', 'pending'),
+  ('00000000-0000-0000-0000-0000000ad302', 'comment',      '00000000-0000-0000-0000-0000000ad311', 'spam', 'pending'),
+  ('00000000-0000-0000-0000-0000000ad302', 'club',         '00000000-0000-0000-0000-0000000ad312', 'spam', 'pending'),
+  ('00000000-0000-0000-0000-0000000ad302', 'club_post',    '00000000-0000-0000-0000-0000000ad313', 'spam', 'pending'),
+  ('00000000-0000-0000-0000-0000000ad302', 'route',        '00000000-0000-0000-0000-0000000ad314', 'spam', 'pending'),
+  ('00000000-0000-0000-0000-0000000ad302', 'route_review', '00000000-0000-0000-0000-0000000ad315', 'spam', 'pending');
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000ad301","role":"authenticated"}';
+select is(
+  (select page_id from fetch_pending_reports() where target_kind = 'user'),
+  '00000000-0000-0000-0000-0000000ad303'::uuid, 'a user report links to the user');
+select is(
+  (select page_id from fetch_pending_reports() where target_kind = 'run'),
+  '00000000-0000-0000-0000-0000000ad310'::uuid, 'a run report links to the run');
+select is(
+  (select page_id from fetch_pending_reports() where target_kind = 'comment'),
+  '00000000-0000-0000-0000-0000000ad310'::uuid, 'a comment report links to the run it is on');
+select is(
+  (select page_id from fetch_pending_reports() where target_kind = 'club'),
+  '00000000-0000-0000-0000-0000000ad312'::uuid, 'a club report links to the club');
+select is(
+  (select page_id from fetch_pending_reports() where target_kind = 'club_post'),
+  '00000000-0000-0000-0000-0000000ad312'::uuid, 'a club post report links to its club');
+select is(
+  (select page_id from fetch_pending_reports() where target_kind = 'route'),
+  '00000000-0000-0000-0000-0000000ad314'::uuid, 'a route report links to the route');
+select is(
+  (select page_id from fetch_pending_reports() where target_kind = 'route_review'),
+  '00000000-0000-0000-0000-0000000ad314'::uuid, 'a route review report links to its route');
 
 select * from finish();
 rollback;

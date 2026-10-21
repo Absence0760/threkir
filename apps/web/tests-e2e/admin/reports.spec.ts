@@ -1,6 +1,7 @@
 import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
+import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 import { USER_A, USER_B } from '../fixtures/users';
 
 /**
@@ -39,11 +40,18 @@ async function plantPendingReports(targetId: string) {
 	for (const r of data ?? []) plantedReportIds.push(r.id as string);
 }
 
+const plantedCommentIds: string[] = [];
+
 test.afterEach(async () => {
-	if (plantedReportIds.length === 0) return;
 	const admin = getAdminClient();
-	await admin.from('reports').delete().in('id', plantedReportIds);
-	plantedReportIds.length = 0;
+	if (plantedReportIds.length > 0) {
+		await admin.from('reports').delete().in('id', plantedReportIds);
+		plantedReportIds.length = 0;
+	}
+	if (plantedCommentIds.length > 0) {
+		await admin.from('run_comments').delete().in('id', plantedCommentIds);
+		plantedCommentIds.length = 0;
+	}
 });
 
 test.describe('admin moderation — admin can triage the queue', () => {
@@ -135,6 +143,40 @@ test.describe('admin moderation — admin can triage the queue', () => {
 				new RegExp(`/${TARGET_ID}$`)
 			);
 		});
+});
+
+test.describe('admin moderation — a comment report names its kind and opens its run', () => {
+	test.use({ storageState: USER_A.storageStatePath });
+
+	test('the row reads Comment and links to the run the comment is on', async ({ page }) => {
+		// The queue used to label every kind it had no arm for "Route" and link
+		// `/clubs/<comment id>` — a missing club (decisions § 2225).
+		const admin = getAdminClient();
+		const { data: comment, error: commentError } = await admin
+			.from('run_comments')
+			.insert({ run_id: RUNNER_PUBLIC_RUN_ID, author_id: USER_B.id, body: `queue-kind ${Date.now()}` })
+			.select('id')
+			.single();
+		if (commentError) throw commentError;
+		plantedCommentIds.push(comment.id);
+		const { data: report, error: reportError } = await admin
+			.from('reports')
+			.insert({ reporter_id: REPORTER_TWO, target_kind: 'comment', target_id: comment.id, reason: 'harassment', status: 'pending' })
+			.select('id')
+			.single();
+		if (reportError) throw reportError;
+		plantedReportIds.push(report.id);
+
+		await page.goto('/admin/reports');
+
+		const row = page.getByTestId('admin-queue-row').filter({ hasText: comment.id.slice(0, 8) });
+		await expect(row).toBeVisible();
+		await expect(row.locator('.kind')).toHaveText('Comment');
+		await expect(row.locator('a.target-link')).toHaveAttribute(
+			'href',
+			`/runs/${RUNNER_PUBLIC_RUN_ID}`
+		);
+	});
 });
 
 test.describe('admin moderation — non-admin is locked out', () => {

@@ -11,26 +11,39 @@
 	import ChipDropdown from '#lib/components/ChipDropdown.svelte';
 	import { TIER_LIMITS } from '#lib/coach/types.ts';
 	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
-	import { pickCurrentPlan } from '#lib/training/plan_current.ts';
+	import { currentSeason, pickCurrentPlan } from '#lib/training/plan_current.ts';
 	import { todayISO } from '#lib/training/training.ts';
 	import { dbError, thrownMessage } from '#lib/core/supabase_error.ts';
-	import type { CoachMessageRole } from '#lib/coach/types.ts';
+	import type { CoachMessageRole, CoachPlanScope } from '#lib/coach/types.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import { motion } from '#lib/motion/motion.svelte.ts';
 	import type { TrainingPlan } from '#lib/types.ts';
 
 	interface Props {
+		/// The plan the thread is kept under. With `planScope` 'season' it is
+		/// the season's first plan.
 		planId: string | null;
+		/// What the Coach reads: this plan, the season from it, or no plan.
+		planScope?: CoachPlanScope;
 		/// Optional list of the user's plans for the in-strip plan
 		/// switcher. When omitted the chip falls back to read-only.
 		plans?: TrainingPlan[];
-		/// Called with the next plan id (or '' for "no plan") when the
+		/// Called with the next plan id ('' for "no plan", 'season' for
+		/// "My season") when the
 		/// strip's plan-select changes. The host owns the URL + reload
 		/// dance — see /coach/+page.svelte. Omitted on embedded surfaces
 		/// (e.g. /plans/[id] inline coach) where the plan is fixed.
 		onPlanChange?: (next: string) => void;
 	}
-	let { planId, plans = [], onPlanChange }: Props = $props();
+	let { planId, planScope = 'plan', plans = [], onPlanChange }: Props = $props();
+	// The plans "My season" would send, offered only when something is
+	// queued behind the current plan; one plan alone is the plan option.
+	let seasonPlans = $derived(
+		currentSeason(
+			plans.filter((p) => p.status === 'active'),
+			todayISO(),
+		),
+	);
 	let hasPlan = $derived(planId != null);
 
 	const RUN_LIMIT_OPTIONS = [10, 20, 50, 100];
@@ -350,7 +363,18 @@
 		let planReadFailed = false;
 		try {
 			let plan: { id: string; name: string } | null = null;
-			if (planId) {
+			if (planScope === 'season') {
+				const ids = seasonPlans.map((p) => p.id);
+				planName = t('coachChat.mySeason');
+				const { count, error: err } = await supabase
+					.from('plan_weeks')
+					.select('id', { count: 'exact', head: true })
+					.in('plan_id', ids);
+				if (err) throw dbError(err);
+				planWeeks = count ?? null;
+			} else if (planScope === 'none') {
+				plan = null;
+			} else if (planId) {
 				const { data, error: err } = await supabase
 					.from('training_plans')
 					.select('id, name')
@@ -529,6 +553,7 @@
 				const body = JSON.stringify({
 					messages: payloadMessages,
 					plan_id: planId,
+					plan_scope: planScope,
 					recent_runs_limit: runsLimit,
 					today: todayISO(),
 					mode: opts.mode,
@@ -967,6 +992,9 @@
 					{@const c = contextSummary}
 					{@const planOptions = [
 						{ value: '', label: t('coachChat.noPlan'), sub: t('coachChat.recentRunsOnly') },
+						...(seasonPlans.length > 1
+							? [{ value: 'season', label: t('coachChat.mySeason'), sub: t('coachChat.mySeasonSub') }]
+							: []),
 						...plans.map((p) => ({
 							value: p.id,
 							label: p.name,
@@ -985,7 +1013,7 @@
 					<div class="context-strip" title={t('coachChat.contextStripTitle')}>
 						{#if onPlanChange && plans.length > 0}
 							<ChipDropdown
-								value={planId ?? ''}
+								value={planScope === 'season' ? 'season' : planScope === 'none' ? '' : (planId ?? '')}
 								options={planOptions}
 								onChange={onPlanChange}
 								icon="calendar_month"

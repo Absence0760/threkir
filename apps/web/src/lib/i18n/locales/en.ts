@@ -220,6 +220,8 @@ export const en = {
 	"coachChat.subNoPlan": "Second opinion on your recent runs. Not medical advice.",
 	"coachChat.noPlan": "No plan",
 	"coachChat.recentRunsOnly": "recent runs only",
+	"coachChat.mySeason": "My season",
+	"coachChat.mySeasonSub": "current plan and the plans queued after it",
 	"coachChat.activePlan": "Active plan",
 	"coachChat.completed": "Completed",
 	"coachChat.lastN": "Last {n}",

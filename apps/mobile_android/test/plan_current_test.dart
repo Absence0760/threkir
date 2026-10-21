@@ -16,6 +16,16 @@ List<String> _overlap(List<_Plan> plans, String start, String end) =>
         .map((p) => p.id)
         .toList();
 
+List<String> _following(_Plan anchor, List<_Plan> plans) =>
+    plansFollowing(anchor, plans, start: (p) => p.start, end: (p) => p.end)
+        .map((p) => p.id)
+        .toList();
+
+List<String> _season(List<_Plan> plans, String today) =>
+    currentSeason(plans, today, start: (p) => p.start, end: (p) => p.end)
+        .map((p) => p.id)
+        .toList();
+
 final _marathon = _p('marathon', '2026-08-02', '2026-11-15');
 final _ultra = _p('ultra', '2026-11-16', '2027-06-14');
 final _later = _p('later', '2027-07-01', '2027-09-30');
@@ -83,6 +93,34 @@ void main() {
       () {
     expect(_overlap([_marathon], '2026-09-01', '2026-09-07'), ['marathon']);
     expect(_overlap([_marathon], '2026-07-01', '2026-08-01'), isEmpty);
+  });
+
+  test('plansFollowing: the anchor first, then the plans after it in date order',
+      () {
+    expect(_following(_marathon, [_later, _marathon, _ultra]),
+        ['marathon', 'ultra', 'later']);
+  });
+
+  test('plansFollowing: a plan starting on or before the anchor end is left out',
+      () {
+    final inside = _p('inside', '2026-11-15', '2026-12-31');
+    final before = _p('before', '2026-01-01', '2026-03-01');
+    expect(_following(_marathon, [inside, before, _ultra]),
+        ['marathon', 'ultra']);
+  });
+
+  test('currentSeason: the current plan and the plans queued behind it, never the one before',
+      () {
+    expect(_season([_later, _ultra, _marathon], '2026-12-01'),
+        ['ultra', 'later']);
+    expect(_season([_later, _ultra, _marathon], '2026-10-15'),
+        ['marathon', 'ultra', 'later']);
+  });
+
+  test('currentSeason: with nothing started it begins at the upcoming plan, and is empty with no plans',
+      () {
+    expect(_season([_later, _ultra], '2026-10-15'), ['ultra', 'later']);
+    expect(_season([], '2026-10-15'), isEmpty);
   });
 
   test('isPlanFinished: an active plan is finished from the day after its end day',

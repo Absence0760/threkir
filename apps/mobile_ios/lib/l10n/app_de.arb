@@ -1951,6 +1951,8 @@
   "coachConsentSaving": "Einwilligung wird gespeichert…",
   "aiDisclosureRecordFailed": "Einwilligung konnte nicht gespeichert werden: {error}",
   "coachNoPlanOption": "Kein Plan (nur letzte Läufe)",
+  "coachSeasonOption": "Meine Saison (aktueller Plan und die danach geplanten Pläne)",
+  "coachSeasonName": "Meine Saison",
   "coachPlanActive": "{name} · aktiv",
   "coachPlanDone": "{name} · fertig",
   "coachNewChatTooltip": "Neuer Chat",

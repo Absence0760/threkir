@@ -202,6 +202,8 @@ export const messages = {
 	"coachChat.subNoPlan": "最近のランへのセカンドオピニオン。医療上の助言ではありません。",
 	"coachChat.noPlan": "プランなし",
 	"coachChat.recentRunsOnly": "最近のランのみ",
+	"coachChat.mySeason": "マイシーズン",
+	"coachChat.mySeasonSub": "現在のプランとその後に続くプラン",
 	"coachChat.activePlan": "アクティブなプラン",
 	"coachChat.completed": "完了",
 	"coachChat.lastN": "直近{n}件",

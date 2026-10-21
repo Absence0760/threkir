@@ -233,6 +233,7 @@ test.describe('AI coach grounded-context journey', () => {
 				expect(coachPosts.length).toBe(before + 1);
 				const body = coachPosts[coachPosts.length - 1];
 				expect(body.plan_id).toBe(SEED_PLAN_ID);
+				expect(body.plan_scope).toBe('plan');
 				expect(body.recent_runs_limit).toBe(20);
 			});
 
@@ -308,6 +309,9 @@ test.describe('AI coach grounded-context journey', () => {
 				// runs window reset to 20 on the per-plan remount (the window
 				// is scoped to the chat-host instance, not global).
 				expect(body.plan_id ?? null).toBeNull();
+				// The server reads no plan for 'none'; a null plan_id alone used
+				// to read as "the current plan" (issue #1213).
+				expect(body.plan_scope).toBe('none');
 				expect(body.recent_runs_limit).toBe(20);
 			});
 		} finally {

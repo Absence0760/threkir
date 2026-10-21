@@ -59,6 +59,44 @@ CurrentPlanPick<T> pickCurrentPlan<T>(
   return CurrentPlanPick(current: current, upcoming: upcoming);
 }
 
+/// [anchor] and the plans in [plans] that start after it ends, in date order:
+/// the blocks chained behind it (decisions § 2008). Active plans cannot
+/// overlap, so among active plans these are exactly the ones queued after the
+/// anchor; a plan that starts inside the anchor's window is left out, which
+/// keeps the result non-overlapping when the anchor is not itself active.
+/// Ties on start keep the input order.
+List<T> plansFollowing<T>(
+  T anchor,
+  List<T> plans, {
+  required String Function(T plan) start,
+  required String Function(T plan) end,
+}) {
+  final anchorEnd = end(anchor);
+  final later = [
+    for (var i = 0; i < plans.length; i++)
+      if (start(plans[i]).compareTo(anchorEnd) > 0) (i, plans[i]),
+  ]..sort((a, b) {
+      final byStart = start(a.$2).compareTo(start(b.$2));
+      return byStart != 0 ? byStart : a.$1 - b.$1;
+    });
+  return [anchor, for (final e in later) e.$2];
+}
+
+/// The runner's season as the Coach reads it: the plan [pickCurrentPlan] names
+/// (current, else upcoming) and the plans chained after it. Empty with no
+/// active plan.
+List<T> currentSeason<T>(
+  List<T> activePlans,
+  String todayIso, {
+  required String Function(T plan) start,
+  required String Function(T plan) end,
+}) {
+  final pick = pickCurrentPlan(activePlans, todayIso, start: start, end: end);
+  final anchor = pick.current ?? pick.upcoming;
+  if (anchor == null) return [];
+  return plansFollowing(anchor, activePlans, start: start, end: end);
+}
+
 /// The plans whose inclusive window shares at least one day with
 /// `[startIso, endIso]`. Two windows that share only a boundary day overlap;
 /// a window starting the day after another ends does not.

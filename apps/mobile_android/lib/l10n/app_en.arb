@@ -9551,6 +9551,14 @@
   "@coachNoPlanOption": {
     "description": "Plan-switcher dropdown: no plan option"
   },
+  "coachSeasonOption": "My season (current plan and the plans queued after it)",
+  "@coachSeasonOption": {
+    "description": "Coach plan picker option: the Coach reads the current training plan together with the back-to-back plans queued after it"
+  },
+  "coachSeasonName": "My season",
+  "@coachSeasonName": {
+    "description": "Coach context chip label when the Coach reads the runner's whole season of back-to-back training plans; shown as '<label> · <N>w'"
+  },
   "coachPlanActive": "{name} · active",
   "@coachPlanActive": {
     "description": "Plan-switcher dropdown: active plan label",

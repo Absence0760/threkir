@@ -41,6 +41,7 @@ import {
 import { streamAnthropic, streamOpenAI } from './providers';
 import { COACH_SYSTEM_PROMPT, fuelHandoffAddendum, planEditHandoffAddendum, planHandoffAddendum } from './system_prompt';
 import {
+	COACH_PLAN_SCOPES,
 	TIER_LIMITS,
 	emptyUsage,
 	type CoachConfig,
@@ -104,6 +105,13 @@ export async function handleCoach(
 	const runsLimitCheck = validateRunsLimit(body.recent_runs_limit);
 	if (!runsLimitCheck.ok) {
 		return jsonError(400, runsLimitCheck.reason);
+	}
+
+	if (
+		body.plan_scope !== undefined &&
+		!(COACH_PLAN_SCOPES as readonly unknown[]).includes(body.plan_scope)
+	) {
+		return jsonError(400, 'plan_scope must be one of plan, season, none');
 	}
 
 	const makeClient = config.createClient ?? createClient;
@@ -254,6 +262,7 @@ export async function handleCoach(
 			// The Coach needs only v1, but some lanes of its context need more:
 			// buildContext withholds each one the accepted version doesn't cover.
 			disclosure.version,
+			body.plan_scope ?? 'plan',
 		);
 	} catch (e) {
 		console.error('[coach] context read failed', { message: thrownMessage(e) });

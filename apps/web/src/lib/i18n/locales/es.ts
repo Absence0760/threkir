@@ -207,6 +207,8 @@ export const messages = {
 	"coachChat.subNoPlan": "Una segunda opinión sobre tus carreras recientes. No es consejo médico.",
 	"coachChat.noPlan": "Sin plan",
 	"coachChat.recentRunsOnly": "solo carreras recientes",
+	"coachChat.mySeason": "Mi temporada",
+	"coachChat.mySeasonSub": "plan actual y los planes en cola después",
 	"coachChat.activePlan": "Plan activo",
 	"coachChat.completed": "Completado",
 	"coachChat.lastN": "Últimas {n}",

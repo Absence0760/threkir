@@ -7145,6 +7145,13 @@ class AppLocalizationsPt extends AppLocalizations {
   String get coachNoPlanOption => 'Sem plano (apenas corridas recentes)';
 
   @override
+  String get coachSeasonOption =>
+      'A minha época (plano atual e os planos seguintes)';
+
+  @override
+  String get coachSeasonName => 'A minha época';
+
+  @override
   String coachPlanActive(String name) {
     return '$name · ativo';
   }
@@ -25908,6 +25915,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachNoPlanOption => 'Sem plano (apenas corridas recentes)';
+
+  @override
+  String get coachSeasonOption =>
+      'Minha temporada (plano atual e os planos seguintes)';
+
+  @override
+  String get coachSeasonName => 'Minha temporada';
 
   @override
   String coachPlanActive(String name) {

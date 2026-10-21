@@ -1951,6 +1951,8 @@
   "coachConsentSaving": "A registar consentimento…",
   "aiDisclosureRecordFailed": "Não foi possível registar o consentimento: {error}",
   "coachNoPlanOption": "Sem plano (apenas corridas recentes)",
+  "coachSeasonOption": "A minha época (plano atual e os planos seguintes)",
+  "coachSeasonName": "A minha época",
   "coachPlanActive": "{name} · ativo",
   "coachPlanDone": "{name} · concluído",
   "coachNewChatTooltip": "Novo chat",

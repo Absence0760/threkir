@@ -10279,6 +10279,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reportTitleReview => 'Report review';
 
   @override
+  String get reportTitleMessage => 'Report message';
+
+  @override
   String get reportTitleContent => 'Report content';
 
   @override
@@ -16683,6 +16686,35 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get messagesRouteLoading => 'Loading route';
+
+  @override
+  String get messagesDeletedAccount => 'Deleted account';
+
+  @override
+  String get messagesDeletedAccountClosed =>
+      'This account was deleted. You can still read the messages you sent, but you can\'t reply.';
+
+  @override
+  String get messagesUnsentPlaceholder => 'Message unsent';
+
+  @override
+  String get messagesUnsend => 'Unsend';
+
+  @override
+  String get messagesUnsendConfirmTitle => 'Unsend this message?';
+
+  @override
+  String get messagesUnsendConfirmBody =>
+      'It will be removed for both of you. This can\'t be undone.';
+
+  @override
+  String get messagesUnsendFailed => 'Couldn\'t unsend the message.';
+
+  @override
+  String get messagesReport => 'Report';
+
+  @override
+  String get messagesOptionsHint => 'show message options';
 
   @override
   String get profileMessage => 'Message';

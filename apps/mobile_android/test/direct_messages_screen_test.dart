@@ -115,12 +115,33 @@ class _FakeApi extends ApiClient {
     return threads;
   }
 
+  final List<DmThreadTarget> targets = [];
+
+  final List<String> unsent = [];
+  Object? unsendError;
+
+  @override
+  Future<DirectMessageRow> unsendDm(String messageId) async {
+    unsent.add(messageId);
+    if (unsendError != null) throw unsendError!;
+    final m = [...newest, ...?server].firstWhere((m) => m.id == messageId);
+    return DirectMessageRow(
+      id: m.id,
+      senderId: m.senderId,
+      recipientId: m.recipientId,
+      createdAt: m.createdAt,
+      readAt: m.readAt,
+      unsentAt: DateTime.utc(2026, 10, 14, 11),
+    );
+  }
+
   @override
   Future<DmThreadPage> fetchDmThread(
-    String otherId, {
+    DmThreadTarget target, {
     DirectMessageRow? before,
     int limit = 50,
   }) async {
+    targets.add(target);
     befores.add(before);
     if (threadError != null) throw threadError!;
     final all = server;
@@ -646,6 +667,168 @@ void main() {
       expect(find.text(l10n.messagesLoadEarlier), findsNothing);
       expect(tester.getTopLeft(find.text('five')).dy,
           greaterThan(tester.getTopLeft(find.text('four')).dy));
+    });
+  });
+
+  group('unsend and report', () {
+    Future<void> longPress(WidgetTester tester, String body) async {
+      await tester.longPress(find.text(body));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('your own message offers Unsend, never Report', (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1', from: _me, body: 'mine')];
+      await _pumpThread(tester, api);
+
+      await longPress(tester, 'mine');
+
+      expect(find.byKey(const ValueKey('message-action-unsend')), findsOneWidget);
+      expect(find.byKey(const ValueKey('message-action-report')), findsNothing);
+    });
+
+    testWidgets('the other person\'s message offers Report, never Unsend',
+        (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1', body: 'theirs')];
+      await _pumpThread(tester, api);
+
+      await longPress(tester, 'theirs');
+
+      expect(find.byKey(const ValueKey('message-action-report')), findsOneWidget);
+      expect(find.byKey(const ValueKey('message-action-unsend')), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('message-action-report')));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.reportTitleMessage), findsOneWidget);
+    });
+
+    testWidgets('unsend asks first; cancelling changes nothing', (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1', from: _me, body: 'mine')];
+      await _pumpThread(tester, api);
+
+      await longPress(tester, 'mine');
+      await tester.tap(find.byKey(const ValueKey('message-action-unsend')));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.messagesUnsendConfirmTitle), findsOneWidget);
+
+      await tester.tap(find.text(l10n.commonCancel));
+      await tester.pumpAndSettle();
+      expect(api.unsent, isEmpty);
+      expect(find.text('mine'), findsOneWidget);
+    });
+
+    testWidgets('a confirmed unsend leaves the placeholder, with no options',
+        (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1', from: _me, body: 'mine')];
+      await _pumpThread(tester, api);
+
+      await longPress(tester, 'mine');
+      await tester.tap(find.byKey(const ValueKey('message-action-unsend')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('message-unsend-confirm')));
+      await tester.pumpAndSettle();
+
+      expect(api.unsent, ['m1']);
+      expect(find.text('mine'), findsNothing);
+      expect(find.text(l10n.messagesUnsentPlaceholder), findsOneWidget);
+
+      await longPress(tester, l10n.messagesUnsentPlaceholder);
+      expect(find.byKey(const ValueKey('message-action-unsend')), findsNothing);
+    });
+
+    testWidgets('a failed unsend says so and keeps the message',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [_msg('m1', from: _me, body: 'mine')]
+        ..unsendError = StateError('offline');
+      await _pumpThread(tester, api);
+
+      await longPress(tester, 'mine');
+      await tester.tap(find.byKey(const ValueKey('message-action-unsend')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('message-unsend-confirm')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text(l10n.messagesUnsendFailed), findsOneWidget);
+      expect(find.text('mine'), findsOneWidget);
+      await _drainBanner(tester);
+    });
+
+    testWidgets('a message the other person unsent reads as unsent',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [
+          DirectMessageRow(
+            id: 'm1',
+            senderId: _partner,
+            recipientId: _me,
+            createdAt: DateTime.utc(2026, 10, 14, 8),
+            readAt: DateTime.utc(2026, 10, 14, 9),
+            unsentAt: DateTime.utc(2026, 10, 14, 10),
+          ),
+        ];
+      await _pumpThread(tester, api);
+
+      expect(find.text(l10n.messagesUnsentPlaceholder), findsOneWidget);
+      await longPress(tester, l10n.messagesUnsentPlaceholder);
+      expect(find.byKey(const ValueKey('message-action-report')), findsNothing);
+    });
+  });
+
+  group('deleted account', () {
+    testWidgets('the inbox names a deleted partner and an unsent preview',
+        (tester) async {
+      final api = _FakeApi()
+        ..threads = [
+          DmThread(
+            partnerId: null,
+            deletedPartnerKey: 'k-1',
+            lastBody: 'still here?',
+            lastAt: DateTime.utc(2026, 10, 14, 8),
+            lastFromMe: true,
+            unread: 0,
+          ),
+          DmThread(
+            partnerId: 'p-2',
+            partnerName: 'Grace',
+            lastBody: null,
+            lastUnsent: true,
+            lastAt: DateTime.utc(2026, 10, 13, 8),
+            lastFromMe: false,
+            unread: 0,
+          ),
+        ];
+      await tester.pumpWidget(
+          _app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+
+      expect(find.text(l10n.messagesDeletedAccount), findsOneWidget);
+      expect(find.text(l10n.messagesYouPrefixed('still here?')), findsOneWidget);
+      expect(find.text(l10n.messagesUnsentPlaceholder), findsOneWidget);
+      expect(find.byKey(const ValueKey('dm-thread-k-1')), findsOneWidget);
+    });
+
+    testWidgets('a deleted partner\'s thread reads by its key and cannot be '
+        'replied to', (tester) async {
+      final api = _FakeApi()
+        ..newest = [_msg('m1', from: _me, body: 'still here?')];
+      await tester.pumpWidget(_app(MessageThreadScreen.deletedPartner(
+        api: api,
+        deletedPartnerKey: 'k-1',
+        pollInterval: _quiet,
+      )));
+      await tester.pump();
+      await tester.pump();
+
+      final target = api.targets.single;
+      expect(target, isA<DmDeletedPartnerThread>());
+      expect((target as DmDeletedPartnerThread).deletedPartnerKey, 'k-1');
+      expect(find.text(l10n.messagesDeletedAccount), findsOneWidget);
+      expect(find.text('still here?'), findsOneWidget);
+      expect(find.byKey(const ValueKey('message-composer')), findsNothing);
+      expect(find.text(l10n.messagesDeletedAccountClosed), findsOneWidget);
+      expect(find.byTooltip(l10n.messagesViewProfile), findsNothing);
+      expect(api.markReadCalls, 0);
     });
   });
 

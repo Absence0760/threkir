@@ -10385,6 +10385,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get reportTitleReview => 'Denunciar avaliação';
 
   @override
+  String get reportTitleMessage => 'Denunciar mensagem';
+
+  @override
   String get reportTitleContent => 'Denunciar conteúdo';
 
   @override
@@ -16856,6 +16859,36 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get messagesRouteLoading => 'A carregar a rota';
+
+  @override
+  String get messagesDeletedAccount => 'Conta eliminada';
+
+  @override
+  String get messagesDeletedAccountClosed =>
+      'Esta conta foi eliminada. Ainda pode ler as mensagens que enviou, mas não pode responder.';
+
+  @override
+  String get messagesUnsentPlaceholder => 'Envio da mensagem anulado';
+
+  @override
+  String get messagesUnsend => 'Anular envio';
+
+  @override
+  String get messagesUnsendConfirmTitle => 'Anular o envio desta mensagem?';
+
+  @override
+  String get messagesUnsendConfirmBody =>
+      'Será removida para ambos. Isto não pode ser desfeito.';
+
+  @override
+  String get messagesUnsendFailed =>
+      'Não foi possível anular o envio da mensagem.';
+
+  @override
+  String get messagesReport => 'Denunciar';
+
+  @override
+  String get messagesOptionsHint => 'mostrar as opções da mensagem';
 
   @override
   String get profileMessage => 'Mensagem';
@@ -29092,6 +29125,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get reportTitleReview => 'Denunciar avaliação';
 
   @override
+  String get reportTitleMessage => 'Denunciar mensagem';
+
+  @override
   String get reportTitleContent => 'Denunciar conteúdo';
 
   @override
@@ -35560,6 +35596,36 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get messagesRouteLoading => 'Carregando rota';
+
+  @override
+  String get messagesDeletedAccount => 'Conta excluída';
+
+  @override
+  String get messagesDeletedAccountClosed =>
+      'Esta conta foi excluída. Você ainda pode ler as mensagens que enviou, mas não pode responder.';
+
+  @override
+  String get messagesUnsentPlaceholder => 'Mensagem removida';
+
+  @override
+  String get messagesUnsend => 'Desfazer envio';
+
+  @override
+  String get messagesUnsendConfirmTitle => 'Desfazer o envio desta mensagem?';
+
+  @override
+  String get messagesUnsendConfirmBody =>
+      'Ela será removida para vocês dois. Isso não pode ser desfeito.';
+
+  @override
+  String get messagesUnsendFailed =>
+      'Não foi possível desfazer o envio da mensagem.';
+
+  @override
+  String get messagesReport => 'Denunciar';
+
+  @override
+  String get messagesOptionsHint => 'mostrar opções da mensagem';
 
   @override
   String get profileMessage => 'Mensagem';

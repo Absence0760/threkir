@@ -9086,33 +9086,40 @@ class ApiClient {
     final res = await _client.rpc('dm_threads', params: const {}, get: true);
     final rows = (res as List).cast<Map<String, dynamic>>();
     if (rows.isEmpty) return const [];
+    // A deleted partner's thread has no partner id (migration
+    // 20271021000003), so it has no profile to read.
     final partnerIds = <String>{
-      for (final r in rows) r['partner_id'] as String,
+      for (final r in rows)
+        if (r['partner_id'] is String) r['partner_id'] as String,
     }.toList();
     final profileById = <String, Map<String, dynamic>>{};
-    try {
-      final profiles = await readChunked(
-        partnerIds,
-        (chunk) => _client
-            .from(UserProfileRow.table)
-            .select('id, display_name, avatar_url')
-            .inFilter(UserProfileRow.colId, chunk),
-      );
-      for (final p in profiles) {
-        profileById[p['id'] as String] = p;
+    if (partnerIds.isNotEmpty) {
+      try {
+        final profiles = await readChunked(
+          partnerIds,
+          (chunk) => _client
+              .from(UserProfileRow.table)
+              .select('id, display_name, avatar_url')
+              .inFilter(UserProfileRow.colId, chunk),
+        );
+        for (final p in profiles) {
+          profileById[p['id'] as String] = p;
+        }
+      } catch (e) {
+        debugPrint('fetchDmThreads profile read failed: ${safeErrorLabel(e)}');
       }
-    } catch (e) {
-      debugPrint('fetchDmThreads profile read failed: ${safeErrorLabel(e)}');
     }
     return [
       for (final r in rows)
         DmThread(
-          partnerId: r['partner_id'] as String,
+          partnerId: r['partner_id'] as String?,
+          deletedPartnerKey: r['deleted_partner_key'] as String?,
           partnerName:
               profileById[r['partner_id']]?['display_name'] as String?,
           partnerAvatarUrl:
               profileById[r['partner_id']]?['avatar_url'] as String?,
-          lastBody: r['last_body'] as String,
+          lastBody: r['last_body'] as String?,
+          lastUnsent: r['last_unsent'] == true,
           lastAt: parseIsoStrictRequired(r['last_at'], 'last_at'),
           lastFromMe: r['last_from_me'] == true,
           unread: (r['unread'] as num?)?.toInt() ?? 0,
@@ -9134,7 +9141,10 @@ class ApiClient {
     return total;
   }
 
-  /// One page of the conversation with [otherId], oldest message first.
+  /// One page of a conversation, oldest message first. A partner thread is
+  /// both directions between the viewer and the partner; a deleted-partner
+  /// thread is the viewer's own messages under that partner's key, since the
+  /// leaver's side was erased with their account (migration 20271021000003).
   ///
   /// Keyset-paged newest-first on `(created_at, id)`: [before] is the oldest
   /// message already shown, and the page holds the [limit] messages before it.
@@ -9145,7 +9155,7 @@ class ApiClient {
   /// recipient_id` CHECK is exactly the two directions of this conversation.
   /// Throws on a failed read.
   Future<DmThreadPage> fetchDmThread(
-    String otherId, {
+    DmThreadTarget target, {
     DirectMessageRow? before,
     int limit = 50,
   }) async {
@@ -9153,12 +9163,18 @@ class ApiClient {
     if (me == null) {
       return const DmThreadPage(messages: [], hasMore: false);
     }
-    final pair = [me, otherId];
-    var query = _client
-        .from(DirectMessageRow.table)
-        .select()
-        .inFilter(DirectMessageRow.colSenderId, pair)
-        .inFilter(DirectMessageRow.colRecipientId, pair);
+    var query = _client.from(DirectMessageRow.table).select();
+    switch (target) {
+      case DmPartnerThread(:final partnerId):
+        final pair = [me, partnerId];
+        query = query
+            .inFilter(DirectMessageRow.colSenderId, pair)
+            .inFilter(DirectMessageRow.colRecipientId, pair);
+      case DmDeletedPartnerThread(:final deletedPartnerKey):
+        query = query
+            .eq(DirectMessageRow.colSenderId, me)
+            .eq(DirectMessageRow.colDeletedPartnerKey, deletedPartnerKey);
+    }
     if (before != null) {
       final at = before.createdAt.toUtc().toIso8601String();
       query = query.or(
@@ -9216,6 +9232,19 @@ class ApiClient {
       if (e.code == '42501') throw const DmSendNotPermitted();
       rethrow;
     }
+  }
+
+  /// Unsend one of the viewer's own messages: the server nulls its body and
+  /// attachment and stamps `unsent_at`, so both sides see a placeholder
+  /// (migration 20271021000003). Not reversible. Returns the updated row; a
+  /// message the viewer did not send raises P0002 as a [PostgrestException].
+  /// Mirrors web `unsendDm`.
+  Future<DirectMessageRow> unsendDm(String messageId) async {
+    final row = await _client.rpc(
+      'unsend_direct_message',
+      params: {'p_message_id': messageId},
+    );
+    return DirectMessageRow.fromJson(row as Map<String, dynamic>);
   }
 
   /// Mark the messages [otherId] sent the viewer as read, up to and including

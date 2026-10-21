@@ -10385,6 +10385,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get reportTitleReview => 'Denunciar reseña';
 
   @override
+  String get reportTitleMessage => 'Denunciar mensaje';
+
+  @override
   String get reportTitleContent => 'Denunciar contenido';
 
   @override
@@ -16850,6 +16853,35 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get messagesRouteLoading => 'Cargando ruta';
+
+  @override
+  String get messagesDeletedAccount => 'Cuenta eliminada';
+
+  @override
+  String get messagesDeletedAccountClosed =>
+      'Esta cuenta se ha eliminado. Aún puedes leer los mensajes que enviaste, pero no puedes responder.';
+
+  @override
+  String get messagesUnsentPlaceholder => 'Mensaje anulado';
+
+  @override
+  String get messagesUnsend => 'Anular envío';
+
+  @override
+  String get messagesUnsendConfirmTitle => '¿Anular el envío de este mensaje?';
+
+  @override
+  String get messagesUnsendConfirmBody =>
+      'Se eliminará para las dos personas. Esto no se puede deshacer.';
+
+  @override
+  String get messagesUnsendFailed => 'No se pudo anular el envío del mensaje.';
+
+  @override
+  String get messagesReport => 'Denunciar';
+
+  @override
+  String get messagesOptionsHint => 'mostrar las opciones del mensaje';
 
   @override
   String get profileMessage => 'Mensaje';

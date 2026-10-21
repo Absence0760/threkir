@@ -9856,6 +9856,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get reportTitleReview => 'レビューを報告';
 
   @override
+  String get reportTitleMessage => 'メッセージを報告';
+
+  @override
   String get reportTitleContent => 'コンテンツを報告';
 
   @override
@@ -16066,6 +16069,35 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get messagesRouteLoading => 'ルートを読み込み中';
+
+  @override
+  String get messagesDeletedAccount => '削除されたアカウント';
+
+  @override
+  String get messagesDeletedAccountClosed =>
+      'このアカウントは削除されました。あなたが送信したメッセージは引き続き読めますが、返信はできません。';
+
+  @override
+  String get messagesUnsentPlaceholder => 'メッセージの送信が取り消されました';
+
+  @override
+  String get messagesUnsend => '送信取消';
+
+  @override
+  String get messagesUnsendConfirmTitle => 'このメッセージの送信を取り消しますか？';
+
+  @override
+  String get messagesUnsendConfirmBody =>
+      'メッセージはあなたと相手の両方から削除されます。この操作は取り消せません。';
+
+  @override
+  String get messagesUnsendFailed => 'メッセージの送信を取り消せませんでした。';
+
+  @override
+  String get messagesReport => '報告';
+
+  @override
+  String get messagesOptionsHint => 'メッセージのオプションを表示';
 
   @override
   String get profileMessage => 'メッセージ';

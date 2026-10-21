@@ -10394,6 +10394,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get reportTitleReview => 'Bewertung melden';
 
   @override
+  String get reportTitleMessage => 'Nachricht melden';
+
+  @override
   String get reportTitleContent => 'Inhalt melden';
 
   @override
@@ -16867,6 +16870,36 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get messagesRouteLoading => 'Route wird geladen';
+
+  @override
+  String get messagesDeletedAccount => 'Gelöschtes Konto';
+
+  @override
+  String get messagesDeletedAccountClosed =>
+      'Dieses Konto wurde gelöscht. Du kannst die Nachrichten, die du gesendet hast, weiterhin lesen, aber nicht mehr antworten.';
+
+  @override
+  String get messagesUnsentPlaceholder => 'Nachricht zurückgezogen';
+
+  @override
+  String get messagesUnsend => 'Zurückziehen';
+
+  @override
+  String get messagesUnsendConfirmTitle => 'Diese Nachricht zurückziehen?';
+
+  @override
+  String get messagesUnsendConfirmBody =>
+      'Sie wird für euch beide entfernt. Das kann nicht rückgängig gemacht werden.';
+
+  @override
+  String get messagesUnsendFailed =>
+      'Die Nachricht konnte nicht zurückgezogen werden.';
+
+  @override
+  String get messagesReport => 'Melden';
+
+  @override
+  String get messagesOptionsHint => 'Nachrichtenoptionen anzeigen';
 
   @override
   String get profileMessage => 'Nachricht';

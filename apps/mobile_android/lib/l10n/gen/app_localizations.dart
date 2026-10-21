@@ -16881,6 +16881,12 @@ abstract class AppLocalizations {
   /// **'Report review'**
   String get reportTitleReview;
 
+  /// Report sheet title when reporting a direct message
+  ///
+  /// In en, this message translates to:
+  /// **'Report message'**
+  String get reportTitleMessage;
+
   /// Report sheet title fallback for generic content
   ///
   /// In en, this message translates to:
@@ -27613,6 +27619,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Loading route'**
   String get messagesRouteLoading;
+
+  /// Name shown for a conversation partner who deleted their account, in the inbox and the conversation app bar
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted account'**
+  String get messagesDeletedAccount;
+
+  /// Shown in place of the composer in a conversation whose partner deleted their account
+  ///
+  /// In en, this message translates to:
+  /// **'This account was deleted. You can still read the messages you sent, but you can\'t reply.'**
+  String get messagesDeletedAccountClosed;
+
+  /// Placeholder shown in place of a message its sender unsent, to both people, and as the inbox preview
+  ///
+  /// In en, this message translates to:
+  /// **'Message unsent'**
+  String get messagesUnsentPlaceholder;
+
+  /// Action in the message options sheet, and the confirm button, to unsend (remove for both people) your own direct message
+  ///
+  /// In en, this message translates to:
+  /// **'Unsend'**
+  String get messagesUnsend;
+
+  /// Confirm dialog title before unsending a direct message
+  ///
+  /// In en, this message translates to:
+  /// **'Unsend this message?'**
+  String get messagesUnsendConfirmTitle;
+
+  /// Confirm dialog body before unsending a direct message
+  ///
+  /// In en, this message translates to:
+  /// **'It will be removed for both of you. This can\'t be undone.'**
+  String get messagesUnsendConfirmBody;
+
+  /// Banner when unsending a direct message failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t unsend the message.'**
+  String get messagesUnsendFailed;
+
+  /// Action in the message options sheet that opens the report sheet for the other person's message
+  ///
+  /// In en, this message translates to:
+  /// **'Report'**
+  String get messagesReport;
+
+  /// Screen-reader long-press hint on a message bubble (read after 'double tap and hold to'); lowercase
+  ///
+  /// In en, this message translates to:
+  /// **'show message options'**
+  String get messagesOptionsHint;
 
   /// Profile action opening a direct-message conversation with this runner
   ///

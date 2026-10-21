@@ -14,6 +14,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../widgets/dm_route_attachment.dart';
 import '../widgets/error_state.dart';
+import '../widgets/report_sheet.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
 import 'profile_screen.dart';
@@ -35,19 +36,38 @@ const Duration kMessageThreadPollInterval = Duration(seconds: 10);
 /// withdrawn with the typed text put back in the composer and the reason
 /// shown — the follow / block gate, the send throttle, offline and anything
 /// else each read differently (`dm_send_error.dart`).
+///
+/// Long-pressing a message opens its options: Unsend on your own (confirmed,
+/// since it cannot be undone) and Report on the other person's. A partner
+/// who deleted their account opens through [MessageThreadScreen.deletedPartner]:
+/// the viewer's own messages under that partner's key, with no composer
+/// (migration 20271021000003).
 class MessageThreadScreen extends StatefulWidget {
   const MessageThreadScreen({
     super.key,
     required this.api,
-    required this.partnerId,
+    required String this.partnerId,
     this.partnerName,
     this.partnerAvatarUrl,
     this.pollInterval = kMessageThreadPollInterval,
     this.onOpenRoute,
-  });
+  }) : deletedPartnerKey = null;
+
+  const MessageThreadScreen.deletedPartner({
+    super.key,
+    required this.api,
+    required String this.deletedPartnerKey,
+    this.pollInterval = kMessageThreadPollInterval,
+    this.onOpenRoute,
+  })  : partnerId = null,
+        partnerName = null,
+        partnerAvatarUrl = null;
 
   final ApiClient api;
-  final String partnerId;
+
+  /// Null for a deleted partner's thread; [deletedPartnerKey] names it then.
+  final String? partnerId;
+  final String? deletedPartnerKey;
   final String? partnerName;
   final String? partnerAvatarUrl;
   final Duration pollInterval;
@@ -84,6 +104,10 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
 
   String? _partnerName;
 
+  DmThreadTarget get _target => widget.partnerId != null
+      ? DmPartnerThread(widget.partnerId!)
+      : DmDeletedPartnerThread(widget.deletedPartnerKey!);
+
   @override
   void initState() {
     super.initState();
@@ -92,7 +116,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     _composer.addListener(_onComposerChanged);
     if (widget.api.userId == null) return;
     _load();
-    if (_partnerName == null) _loadPartnerName();
+    if (_partnerName == null && widget.partnerId != null) _loadPartnerName();
     _poll = Timer.periodic(widget.pollInterval, (_) => _refresh());
   }
 
@@ -119,7 +143,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
 
   Future<void> _loadPartnerName() async {
     try {
-      final profile = await widget.api.fetchPublicProfile(widget.partnerId);
+      final profile = await widget.api.fetchPublicProfile(widget.partnerId!);
       if (!mounted || profile?.displayName == null) return;
       setState(() => _partnerName = profile!.displayName);
     } catch (e) {
@@ -133,7 +157,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
       _loadError = null;
     });
     try {
-      final page = await widget.api.fetchDmThread(widget.partnerId);
+      final page = await widget.api.fetchDmThread(_target);
       if (!mounted) return;
       setState(() {
         _messages = page.messages;
@@ -168,7 +192,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
     _refreshing = true;
     try {
-      final page = await widget.api.fetchDmThread(widget.partnerId);
+      final page = await widget.api.fetchDmThread(_target);
       if (!mounted) return;
       setState(() {
         _refreshTick++;
@@ -202,7 +226,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     setState(() => _loadingEarlier = true);
     try {
       final page = await widget.api
-          .fetchDmThread(widget.partnerId, before: _messages.first);
+          .fetchDmThread(_target, before: _messages.first);
       if (!mounted || window != _window) return;
       setState(() {
         _messages = _merge(_messages, page.messages);
@@ -244,13 +268,15 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
   /// until a poll shows it. An auxiliary effect: a failure leaves the
   /// conversation on screen and the next poll tries again.
   Future<void> _markReadIfUnread() async {
+    final partnerId = widget.partnerId;
+    if (partnerId == null) return;
     bool unread(DirectMessageRow m) =>
-        m.senderId == widget.partnerId && m.readAt == null;
+        m.senderId == partnerId && m.readAt == null;
     final shown = _messages.where(unread);
     if (shown.isEmpty) return;
     final through = shown.last;
     try {
-      await widget.api.markDmThreadRead(widget.partnerId, through: through);
+      await widget.api.markDmThreadRead(partnerId, through: through);
       if (!mounted) return;
       final now = DateTime.now().toUtc();
       setState(() {
@@ -267,8 +293,9 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
   }
 
   Future<void> _send() async {
+    final partnerId = widget.partnerId;
     final body = _composer.text.trim();
-    if (_sending || body.isEmpty) return;
+    if (partnerId == null || _sending || body.isEmpty) return;
     final pending =
         _PendingMessage('pending-${_pendingSeq++}', body, DateTime.now());
     setState(() {
@@ -277,7 +304,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     });
     _composer.clear();
     try {
-      final row = await widget.api.sendDm(widget.partnerId, body);
+      final row = await widget.api.sendDm(partnerId, body);
       if (!mounted) return;
       setState(() {
         _pending.remove(pending);
@@ -305,12 +332,94 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
   }
 
   void _openProfile() {
+    final partnerId = widget.partnerId;
+    if (partnerId == null) return;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            ProfileScreen(api: widget.api, userId: widget.partnerId),
+        builder: (_) => ProfileScreen(api: widget.api, userId: partnerId),
       ),
     );
+  }
+
+  /// The long-press options for one stored message: Unsend on your own,
+  /// Report on the other person's. An unsent message has neither.
+  Future<void> _showOptions(DirectMessageRow m) async {
+    final l10n = AppLocalizations.of(context);
+    final mine = m.senderId == widget.api.userId;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      useSafeArea: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (mine)
+              ListTile(
+                key: const ValueKey('message-action-unsend'),
+                leading: Icon(Icons.undo,
+                    color: AppSemanticColors.of(ctx).danger),
+                title: Text(l10n.messagesUnsend),
+                onTap: () => Navigator.pop(ctx, 'unsend'),
+              )
+            else
+              ListTile(
+                key: const ValueKey('message-action-report'),
+                leading: const Icon(Icons.flag_outlined),
+                title: Text(l10n.messagesReport),
+                onTap: () => Navigator.pop(ctx, 'report'),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || action == null) return;
+    if (action == 'unsend') {
+      await _unsend(m);
+    } else {
+      await showReportSheet(
+        context,
+        api: widget.api,
+        targetKind: 'direct_message',
+        targetId: m.id,
+      );
+    }
+  }
+
+  /// Unsend cannot be undone — the server clears the text for both people —
+  /// so it is confirmed rather than offered an undo (conventions.md
+  /// § Destructive actions).
+  Future<void> _unsend(DirectMessageRow m) async {
+    final l10n = AppLocalizations.of(context);
+    final ok = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(l10n.messagesUnsendConfirmTitle),
+            content: Text(l10n.messagesUnsendConfirmBody),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(l10n.commonCancel),
+              ),
+              TextButton(
+                key: const ValueKey('message-unsend-confirm'),
+                onPressed: () => Navigator.pop(ctx, true),
+                style: TextButton.styleFrom(
+                    foregroundColor: AppSemanticColors.of(ctx).danger),
+                child: Text(l10n.messagesUnsend),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!ok || !mounted) return;
+    try {
+      final row = await widget.api.unsendDm(m.id);
+      if (!mounted) return;
+      setState(() => _messages = _merge(_messages, [row]));
+    } catch (e) {
+      debugPrint('message unsend failed: ${safeErrorLabel(e)}');
+      if (mounted) showTopBanner(context, l10n.messagesUnsendFailed);
+    }
   }
 
   @override
@@ -323,7 +432,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
         title: Row(
           children: [
             IdentityAvatar(
-              seed: widget.partnerId,
+              seed: widget.partnerId ?? widget.deletedPartnerKey!,
               name: _partnerName,
               imageUrl: widget.partnerAvatarUrl,
               size: 32,
@@ -331,7 +440,9 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                _partnerName ?? l10n.profileRunnerFallback,
+                widget.partnerId == null
+                    ? l10n.messagesDeletedAccount
+                    : _partnerName ?? l10n.profileRunnerFallback,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -339,7 +450,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
           ],
         ),
         actions: [
-          if (signedIn)
+          if (signedIn && widget.partnerId != null)
             IconButton(
               tooltip: l10n.messagesViewProfile,
               icon: const Icon(Icons.person_outline),
@@ -352,7 +463,10 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
           : Column(
               children: [
                 Expanded(child: _body(l10n)),
-                if (_loadError == null && !_loading) _composerBar(l10n),
+                if (_loadError == null && !_loading)
+                  widget.partnerId == null
+                      ? _closedBar(l10n)
+                      : _composerBar(l10n),
               ],
             ),
     );
@@ -392,12 +506,18 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
         _Bubble(
           key: ValueKey(m.id),
           mine: m.senderId == me,
-          body: hasDmRouteAttachment(m.routeId) &&
-                  bodyRestatesAttachment(m.body, m.routeId!)
+          unsentLabel: m.unsentAt != null || m.body == null
+              ? l10n.messagesUnsentPlaceholder
+              : null,
+          body: m.body == null ||
+                  (hasDmRouteAttachment(m.routeId) &&
+                      bodyRestatesAttachment(m.body!, m.routeId!))
               ? null
               : m.body,
           time: _stamp(m.createdAt, tag),
-          attachment: hasDmRouteAttachment(m.routeId)
+          onLongPress: m.unsentAt == null ? () => _showOptions(m) : null,
+          longPressHint: l10n.messagesOptionsHint,
+          attachment: m.unsentAt == null && hasDmRouteAttachment(m.routeId)
               ? DmRouteAttachment(
                   api: widget.api,
                   routeId: m.routeId!,
@@ -431,6 +551,27 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
         local.month == now.month &&
         local.day == now.day;
     return today ? formatTime(at, tag) : formatDateTime(at, tag);
+  }
+
+  /// Stands in for the composer when the partner deleted their account:
+  /// there is no one to reply to.
+  Widget _closedBar(AppLocalizations l10n) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      top: false,
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: theme.dividerColor)),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Text(
+          l10n.messagesDeletedAccountClosed,
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+      ),
+    );
   }
 
   Widget _composerBar(AppLocalizations l10n) {
@@ -486,6 +627,9 @@ class _Bubble extends StatelessWidget {
     this.attachment,
     this.sending = false,
     this.sendingLabel,
+    this.unsentLabel,
+    this.onLongPress,
+    this.longPressHint,
   });
 
   final bool mine;
@@ -494,6 +638,11 @@ class _Bubble extends StatelessWidget {
   final Widget? attachment;
   final bool sending;
   final String? sendingLabel;
+
+  /// Set when the sender unsent the message; rendered in place of the body.
+  final String? unsentLabel;
+  final VoidCallback? onLongPress;
+  final String? longPressHint;
 
   @override
   Widget build(BuildContext context) {
@@ -519,7 +668,15 @@ class _Bubble extends StatelessWidget {
             attachment!,
             if (body != null) const SizedBox(height: 6),
           ],
-          if (body != null)
+          if (unsentLabel != null)
+            Text(
+              unsentLabel!,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: fg.withValues(alpha: 0.8),
+                fontStyle: FontStyle.italic,
+              ),
+            )
+          else if (body != null)
             Text(body!, style: theme.textTheme.bodyMedium?.copyWith(color: fg)),
           const SizedBox(height: 2),
           Row(
@@ -540,14 +697,23 @@ class _Bubble extends StatelessWidget {
         ],
       ),
     );
+    final Widget content;
+    if (sending) {
+      content = Semantics(
+        label: sendingLabel,
+        child: Opacity(opacity: 0.6, child: bubble),
+      );
+    } else if (onLongPress != null) {
+      content = Semantics(
+        onLongPressHint: longPressHint,
+        child: GestureDetector(onLongPress: onLongPress, child: bubble),
+      );
+    } else {
+      content = bubble;
+    }
     return Align(
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-      child: sending
-          ? Semantics(
-              label: sendingLabel,
-              child: Opacity(opacity: 0.6, child: bubble),
-            )
-          : bubble,
+      child: content,
     );
   }
 }

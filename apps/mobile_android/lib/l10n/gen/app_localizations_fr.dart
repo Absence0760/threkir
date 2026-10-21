@@ -10411,6 +10411,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get reportTitleReview => 'Signaler l\'avis';
 
   @override
+  String get reportTitleMessage => 'Signaler le message';
+
+  @override
   String get reportTitleContent => 'Signaler le contenu';
 
   @override
@@ -16893,6 +16896,35 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get messagesRouteLoading => 'Chargement de l\'itinéraire';
+
+  @override
+  String get messagesDeletedAccount => 'Compte supprimé';
+
+  @override
+  String get messagesDeletedAccountClosed =>
+      'Ce compte a été supprimé. Vous pouvez toujours lire les messages que vous avez envoyés, mais vous ne pouvez pas répondre.';
+
+  @override
+  String get messagesUnsentPlaceholder => 'Message retiré';
+
+  @override
+  String get messagesUnsend => 'Retirer';
+
+  @override
+  String get messagesUnsendConfirmTitle => 'Retirer ce message ?';
+
+  @override
+  String get messagesUnsendConfirmBody =>
+      'Il sera supprimé pour vous deux. Cette action est irréversible.';
+
+  @override
+  String get messagesUnsendFailed => 'Impossible de retirer le message.';
+
+  @override
+  String get messagesReport => 'Signaler';
+
+  @override
+  String get messagesOptionsHint => 'afficher les options du message';
 
   @override
   String get profileMessage => 'Message';

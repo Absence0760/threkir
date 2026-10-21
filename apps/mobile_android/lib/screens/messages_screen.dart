@@ -72,7 +72,7 @@ class _MessagesScreenState extends State<MessagesScreen>
 
   List<DmThread> _applyOpened(List<DmThread> rows, DateTime startedAt) => [
         for (final t in rows)
-          (_openedAt[t.partnerId]?.isAfter(startedAt) ?? false)
+          (_openedAt[t.threadKey]?.isAfter(startedAt) ?? false)
               ? t.copyWith(unread: 0)
               : t,
       ];
@@ -119,23 +119,30 @@ class _MessagesScreenState extends State<MessagesScreen>
   }
 
   Future<void> _open(DmThread t) async {
+    final partnerId = t.partnerId;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => MessageThreadScreen(
-          api: widget.api,
-          partnerId: t.partnerId,
-          partnerName: t.partnerName,
-          partnerAvatarUrl: t.partnerAvatarUrl,
-          pollInterval: widget.threadPollInterval,
-        ),
+        builder: (_) => partnerId == null
+            ? MessageThreadScreen.deletedPartner(
+                api: widget.api,
+                deletedPartnerKey: t.deletedPartnerKey!,
+                pollInterval: widget.threadPollInterval,
+              )
+            : MessageThreadScreen(
+                api: widget.api,
+                partnerId: partnerId,
+                partnerName: t.partnerName,
+                partnerAvatarUrl: t.partnerAvatarUrl,
+                pollInterval: widget.threadPollInterval,
+              ),
       ),
     );
     if (!mounted) return;
-    _openedAt[t.partnerId] = DateTime.now();
+    _openedAt[t.threadKey] = DateTime.now();
     setState(() {
       _threads = [
         for (final x in _threads)
-          x.partnerId == t.partnerId ? x.copyWith(unread: 0) : x,
+          x.threadKey == t.threadKey ? x.copyWith(unread: 0) : x,
       ];
     });
     _refresh();
@@ -180,11 +187,16 @@ class _MessagesScreenState extends State<MessagesScreen>
   Widget _row(AppLocalizations l10n, DmThread t, String tag) {
     final theme = Theme.of(context);
     final unread = t.unread > 0;
-    final name = t.partnerName ?? l10n.profileRunnerFallback;
+    final name = t.partnerId == null
+        ? l10n.messagesDeletedAccount
+        : t.partnerName ?? l10n.profileRunnerFallback;
+    final preview = t.lastUnsent || t.lastBody == null
+        ? l10n.messagesUnsentPlaceholder
+        : t.lastBody!;
     return ListTile(
-      key: ValueKey('dm-thread-${t.partnerId}'),
+      key: ValueKey('dm-thread-${t.threadKey}'),
       leading: IdentityAvatar(
-        seed: t.partnerId,
+        seed: t.threadKey,
         name: t.partnerName,
         imageUrl: t.partnerAvatarUrl,
         size: 40,
@@ -196,7 +208,7 @@ class _MessagesScreenState extends State<MessagesScreen>
         style: unread ? const TextStyle(fontWeight: FontWeight.w700) : null,
       ),
       subtitle: Text(
-        t.lastFromMe ? l10n.messagesYouPrefixed(t.lastBody) : t.lastBody,
+        t.lastFromMe ? l10n.messagesYouPrefixed(preview) : preview,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
@@ -216,7 +228,7 @@ class _MessagesScreenState extends State<MessagesScreen>
               label: l10n.messagesUnreadCount(t.unread),
               excludeSemantics: true,
               child: StatusPill(
-                key: ValueKey('dm-unread-${t.partnerId}'),
+                key: ValueKey('dm-unread-${t.threadKey}'),
                 label: '${t.unread}',
                 foreground: theme.colorScheme.onPrimary,
                 fill: theme.colorScheme.primary,

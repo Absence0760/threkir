@@ -14,6 +14,7 @@
 	import { currentSeason, pickCurrentPlan } from '#lib/training/plan_current.ts';
 	import { todayISO } from '#lib/training/training.ts';
 	import { dbError, thrownMessage } from '#lib/core/supabase_error.ts';
+	import { chunk, FEED_FOLLOWEE_CHUNK } from '#lib/social/feed_merge.ts';
 	import type { CoachMessageRole, CoachPlanScope } from '#lib/coach/types.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import { motion } from '#lib/motion/motion.svelte.ts';
@@ -366,12 +367,17 @@
 			if (planScope === 'season') {
 				const ids = seasonPlans.map((p) => p.id);
 				planName = t('coachChat.mySeason');
-				const { count, error: err } = await supabase
-					.from('plan_weeks')
-					.select('id', { count: 'exact', head: true })
-					.in('plan_id', ids);
-				if (err) throw dbError(err);
-				planWeeks = count ?? null;
+				const pages = await Promise.all(
+					chunk(ids, FEED_FOLLOWEE_CHUNK).map((part) =>
+						supabase
+							.from('plan_weeks')
+							.select('id', { count: 'exact', head: true })
+							.in('plan_id', part)
+					)
+				);
+				const failed = pages.find((p) => p.error != null);
+				if (failed?.error) throw dbError(failed.error);
+				planWeeks = pages.reduce((n, p) => n + (p.count ?? 0), 0);
 			} else if (planScope === 'none') {
 				plan = null;
 			} else if (planId) {

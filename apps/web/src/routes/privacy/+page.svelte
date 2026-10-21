@@ -199,7 +199,9 @@
 		</li>
 		<li>
 			<strong>Anthropic</strong> (or, on fallback, OpenAI) — AI Coach. Receives your chat prompt
-			plus a summary of your recent training (which can include heart-rate and goal data). We use
+			plus a summary of your recent training (which can include heart-rate and goal data) and, once
+			you have accepted the current AI disclosure, a summary of your recent gym sessions and, only
+			with health-data consent, a 7-day summary of your food log. We use
 			the provider's commercial API: your prompts and the responses are <strong>not used to train
 			the provider's models</strong>, and under Anthropic's default API retention policy inputs and
 			outputs are deleted from Anthropic's systems within 30 days of processing (material flagged

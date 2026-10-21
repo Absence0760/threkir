@@ -7115,6 +7115,18 @@ class AppLocalizationsDe extends AppLocalizations {
       'Für die Mahlzeiten-Fotoerfassung: das Foto deiner Mahlzeit, das du auswählst, nur um zu schätzen, was auf dem Teller liegt. Standort- und Kameradaten werden vorher entfernt, Threkir speichert das Foto nicht, und nichts wird eingetragen, bevor du es prüfst und speicherst.';
 
   @override
+  String get coachConsentBulletCoachSettings =>
+      'Dein Anzeigename und deine Einheiten, deine Ruheherzfrequenz und deine maximale Herzfrequenz (nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast), dein wöchentliches Distanzziel und die Coach-Persönlichkeit, die du gewählt hast.';
+
+  @override
+  String get coachConsentBulletLifts =>
+      'Eine Zusammenfassung deiner letzten Gym-Einheiten: das Datum, der Name der Einheit, die Anzahl der Übungen und Sätze sowie das insgesamt gehobene Gewicht.';
+
+  @override
+  String get coachConsentBulletNutrition =>
+      'Nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast: eine 7-Tage-Zusammenfassung deines Ernährungstagebuchs (erfasste Tage sowie Durchschnittswerte für Kalorien, Eiweiß, Kohlenhydrate und Fett), niemals einzelne Mahlzeiten.';
+
+  @override
   String get coachConsentBulletPlanEdit =>
       'Für KI-Planänderungen: die anstehenden Einheiten des Plans, den du änderst (Datum, Art und Distanz), und die Änderung, die du eingibst, nur um Änderungen vorzuschlagen, die du prüfst, bevor etwas gespeichert wird — die KI kann keine Einheiten hinzufügen und keine Pace festlegen.';
 

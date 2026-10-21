@@ -18,8 +18,12 @@ import { thrownMessage } from './supabase_error';
 //   4  v3 plus AI plan edits (the active plan's upcoming workouts and the
 //      typed change request, sent only to propose edits the runner
 //      reviews before anything is saved).
-//   5  All AI features: v4 plus the plate-photo logger (one meal photo,
-//      sent only to propose food-log rows the runner edits before saving).
+//   5  v4 plus the plate-photo logger (one meal photo, sent only to
+//      propose food-log rows the runner edits before saving).
+//   6  All AI features: v5 plus the Coach's cross-training context (recent
+//      gym-session summaries and, with health-data consent, a 7-day
+//      nutrition summary). The Coach itself still needs only v1: those two
+//      lanes of its context are gated per lane in coach/context.ts.
 //
 // Every AI endpoint declares its minimum. Adding the next AI feature means
 // a new version with new copy, not a new boolean column and not quietly
@@ -70,11 +74,22 @@ export const AI_DISCLOSURE_VERSION_PLAN_EDIT_AI = 4;
 export const AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI = 5;
 
 /**
+ * Minimum disclosure version for the Coach context's gym and nutrition lanes
+ * (`recent_lifts`, `nutrition_7d`). Not an endpoint minimum: /api/coach still
+ * requires only {@link AI_DISCLOSURE_VERSION_COACH}, and a runner below this
+ * rung gets a Coach whose context leaves both lanes out. The lanes had been
+ * sent since the multi-modal work without any copy naming them (issue #1217),
+ * so the copy that names them is a rung of its own rather than a quiet edit
+ * of an older one, and a v1-v5 acceptance does not stretch to cover them.
+ */
+export const AI_DISCLOSURE_VERSION_COACH_CROSS_TRAINING = 6;
+
+/**
  * The newest disclosure this build knows how to present. Must equal the
  * SQL `ai_disclosure_current_version()`; `ai_disclosure.test.ts` reads the
  * newest migration that defines it and fails if they drift.
  */
-export const AI_DISCLOSURE_CURRENT_VERSION = AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI;
+export const AI_DISCLOSURE_CURRENT_VERSION = AI_DISCLOSURE_VERSION_COACH_CROSS_TRAINING;
 
 /**
  * Where every AI feature sends a runner its endpoint refused for consent.

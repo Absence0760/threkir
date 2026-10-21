@@ -11482,6 +11482,24 @@ abstract class AppLocalizations {
   /// **'For the plate-photo logger: the photo of your meal you choose, sent only to estimate what is on the plate. Location and camera details are removed before it leaves, Threkir does not keep the photo, and nothing is logged until you review and save it.'**
   String get coachConsentBulletPlatePhoto;
 
+  /// Consent gate bullet: Coach settings sent with each Coach message (AI disclosure v6)
+  ///
+  /// In en, this message translates to:
+  /// **'Your display name and units, your resting and maximum heart rate (only if you\'ve given health-data consent), your weekly distance goal, and the Coach personality you chose.'**
+  String get coachConsentBulletCoachSettings;
+
+  /// Consent gate bullet: recent gym-session summaries sent to the Coach (AI disclosure v6)
+  ///
+  /// In en, this message translates to:
+  /// **'A summary of your most recent gym sessions: the date, the session name, how many exercises and sets, and the total weight lifted.'**
+  String get coachConsentBulletLifts;
+
+  /// Consent gate bullet: 7-day nutrition summary sent to the Coach, health-consent gated (AI disclosure v6)
+  ///
+  /// In en, this message translates to:
+  /// **'Only if you\'ve given health-data consent: a 7-day summary of your food log (days logged and average calories, protein, carbs and fat), never individual meals.'**
+  String get coachConsentBulletNutrition;
+
   /// Consent gate bullet: AI plan edits (the active plan's upcoming workouts and the typed change request, sent to propose edits the runner reviews)
   ///
   /// In en, this message translates to:

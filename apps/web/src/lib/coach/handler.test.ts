@@ -244,10 +244,11 @@ test('returns 400 when body.messages is invalid (missing, wrong shape)', async (
 /// written. `coach_messages.maybeSingle()` returns `{ data: null }` — the
 /// anchor-miss the fail-closed path must catch.
 function makeSupabaseStub(
-	calls: { inserts: string[]; deletes: string[] },
+	calls: { inserts: string[]; deletes: string[]; reads?: string[] },
 	profileOverride?: Record<string, unknown> | null,
 ) {
 	function builder(table: string): Record<string, unknown> {
+		calls.reads?.push(table);
 		const result = { data: null as unknown, error: null };
 		const b: Record<string, unknown> = {
 			select: () => b,
@@ -655,6 +656,55 @@ async function systemTextFor(
 	assert.ok(system, 'the provider must receive a system message');
 	return system!.content;
 }
+
+/// Drive one `send` turn as a runner holding `version` and return the tables
+/// the context build read.
+async function tablesReadAt(version: number): Promise<string[]> {
+	const calls = { inserts: [] as string[], deletes: [] as string[], reads: [] as string[] };
+	const originalFetch = globalThis.fetch;
+	globalThis.fetch = (async () => new Response('upstream down', { status: 500 })) as typeof fetch;
+	try {
+		await captureConsoleError(async () => {
+			const result = await handleCoach(
+				'Bearer fake-token',
+				{ messages: [{ role: 'user', content: 'Should I run today?' }] },
+				{
+					...baseConfig(),
+					provider: 'openai',
+					openaiBaseUrl: 'http://127.0.0.1:1/v1',
+					bypassPaywallEnabled: true,
+					createClient: () =>
+						makeSupabaseStub(calls, {
+							coach_consent_at: '2026-01-01T00:00:00Z',
+							ai_disclosure_version: version,
+							display_name: 'Test Runner',
+							preferred_unit: 'km',
+							health_data_consent_at: '2026-01-01T00:00:00Z',
+						}),
+				},
+			);
+			if (result.kind === 'sse') {
+				for await (const chunk of result.body) void chunk;
+			}
+		});
+	} finally {
+		globalThis.fetch = originalFetch;
+	}
+	return calls.reads;
+}
+
+test('the handler hands the accepted disclosure to the context build (issue #1217)', async () => {
+	// A v1 holder keeps the Coach but its context reads no gym or food data;
+	// a v6 holder with health consent gets both lanes. Without the version
+	// threaded through, both would read the same tables.
+	const v1 = await tablesReadAt(1);
+	assert.ok(v1.includes('runs'), 'the Coach still builds a context at v1');
+	assert.equal(v1.includes('gym_workouts'), false);
+	assert.equal(v1.includes('food_log'), false);
+	const v6 = await tablesReadAt(6);
+	assert.ok(v6.includes('gym_workouts'));
+	assert.ok(v6.includes('food_log'));
+});
 
 test('the system text carries the describe-link handoff when the AI plan assistant is on', async () => {
 	const text = await systemTextFor(true);

@@ -20,6 +20,7 @@ import {
 	COACH_PLAN_WORKOUTS_CAP,
 } from './context';
 import type { CoachProfileRow } from './context';
+import { AI_DISCLOSURE_CURRENT_VERSION } from '../core/ai_disclosure';
 
 const SRC = readFileSync(
 	resolve(import.meta.dirname ?? '.', 'context.ts'),
@@ -114,7 +115,7 @@ test('nutrition_7d is gated on health-data consent', () => {
 	// the consent check through the food_log query up to the next closing
 	// brace (the if-block's), regardless of indent.
 	const guard = SRC.match(
-		/if \(healthConsentGranted\) \{[\s\S]*?from\(TABLES\.food_log\)[\s\S]*?\}/,
+		/if \(healthConsentGranted && [^)]*\)\) \{[\s\S]*?from\(TABLES\.food_log\)[\s\S]*?\}/,
 	);
 	assert.ok(
 		guard,
@@ -168,6 +169,7 @@ test('buildContext caps plan_weeks + plan_workouts row counts', async () => {
 		10,
 		{ display_name: 'R', preferred_unit: 'km', health_data_consent_at: null },
 		'2026-06-15',
+		AI_DISCLOSURE_CURRENT_VERSION,
 	);
 	const data = ctx.data as { plan_weeks: unknown[]; plan_workouts: unknown[] };
 	assert.equal(data.plan_weeks.length, COACH_PLAN_WEEKS_CAP);
@@ -263,6 +265,7 @@ function runWithConsent(consentAt: string | null) {
 		10,
 		profileRow,
 		'2026-06-15',
+		AI_DISCLOSURE_CURRENT_VERSION,
 	);
 }
 
@@ -388,6 +391,7 @@ test('buildContext no-plan_id branch returns the CALLER active plan, not an athl
 		10,
 		COACH_PROFILE,
 		'2026-06-15',
+		AI_DISCLOSURE_CURRENT_VERSION,
 	);
 	const data = ctx.data as {
 		plan: { id: string; user_id: string } | null;
@@ -408,6 +412,7 @@ test('buildContext leaks none of an athlete recent runs into a coach context', a
 		10,
 		COACH_PROFILE,
 		'2026-06-15',
+		AI_DISCLOSURE_CURRENT_VERSION,
 	);
 	const runs = (ctx.data as { recent_runs: { id: string; metadata: unknown }[] }).recent_runs;
 	assert.deepEqual(runs.map((r) => r.id), ['run-b'], 'only the coach own run');
@@ -421,6 +426,7 @@ test('buildContext scopes lifts + nutrition to the caller', async () => {
 		10,
 		COACH_PROFILE,
 		'2026-06-15',
+		AI_DISCLOSURE_CURRENT_VERSION,
 	);
 	const data = ctx.data as {
 		recent_lifts: { title: string | null; volume_kg: number }[];
@@ -443,6 +449,7 @@ test('buildContext with an athlete planId still returns nothing cross-tenant', a
 		10,
 		COACH_PROFILE,
 		'2026-06-15',
+		AI_DISCLOSURE_CURRENT_VERSION,
 	);
 	const data = ctx.data as { plan: unknown; plan_weeks: unknown[]; plan_workouts: unknown[] };
 	assert.equal(data.plan, null, 'a foreign plan id must not resolve');
@@ -577,8 +584,8 @@ test('buildContext picks the current plan by the runner today it is handed, not 
 			{ id: 'plan-2', user_id: COACH, status: 'active', is_template: false, start_date: '2026-06-15', end_date: '2026-09-01' },
 		],
 	};
-	const before = await buildContext(filteringSupabase(fixture) as never, COACH, null, 10, COACH_PROFILE, '2026-06-14');
-	const after = await buildContext(filteringSupabase(fixture) as never, COACH, null, 10, COACH_PROFILE, '2026-06-15');
+	const before = await buildContext(filteringSupabase(fixture) as never, COACH, null, 10, COACH_PROFILE, '2026-06-14', AI_DISCLOSURE_CURRENT_VERSION);
+	const after = await buildContext(filteringSupabase(fixture) as never, COACH, null, 10, COACH_PROFILE, '2026-06-15', AI_DISCLOSURE_CURRENT_VERSION);
 	assert.equal((before.data as { plan: { id: string } }).plan.id, 'plan-1');
 	assert.equal((after.data as { plan: { id: string } }).plan.id, 'plan-2');
 });
@@ -601,11 +608,11 @@ function failingPlansSupabase() {
 
 test('buildContext throws when the plan read fails instead of reporting no plan', async () => {
 	await assert.rejects(
-		buildContext(failingPlansSupabase() as never, COACH, null, 10, COACH_PROFILE, '2026-06-15'),
+		buildContext(failingPlansSupabase() as never, COACH, null, 10, COACH_PROFILE, '2026-06-15', AI_DISCLOSURE_CURRENT_VERSION),
 		(e: unknown) => (e as { code?: string }).code === '57014',
 	);
 	await assert.rejects(
-		buildContext(failingPlansSupabase() as never, COACH, 'plan-x', 10, COACH_PROFILE, '2026-06-15'),
+		buildContext(failingPlansSupabase() as never, COACH, 'plan-x', 10, COACH_PROFILE, '2026-06-15', AI_DISCLOSURE_CURRENT_VERSION),
 		(e: unknown) => (e as { code?: string }).code === '57014',
 	);
 });

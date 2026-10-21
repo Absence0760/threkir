@@ -251,6 +251,9 @@ export async function handleCoach(
 			runsLimit,
 			profileRow,
 			resolveToday(body.today, (config.now ?? Date.now)()),
+			// The Coach needs only v1, but some lanes of its context need more:
+			// buildContext withholds each one the accepted version doesn't cover.
+			disclosure.version,
 		);
 	} catch (e) {
 		console.error('[coach] context read failed', { message: thrownMessage(e) });

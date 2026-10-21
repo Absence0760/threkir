@@ -102,6 +102,18 @@ will diff against this baseline.
 
 ---
 
+## 2026-10-21 — Anthropic — new data categories disclosed (no new sub-processor)
+
+* **What changes**: the AI Coach's context now names, in a new consent version, two data categories it had already been sending without any disclosure: a summary of the runner's recent gym sessions, and (only with health-data consent) a 7-day nutrition summary. Runners who accepted an earlier AI disclosure stop sending both until they accept v6; their Coach keeps working on the rest. The disclosure also names resting / max HR, display name and units, the weekly distance goal and the Coach personality, which the Coach already received.
+* **Why**: the consent copy did not describe what the Coach sends (issue #1217, decisions § 2218).
+* **Activation date**: not before the counsel / CISO sign-off on the v6 AI-disclosure copy. Until this change deploys, prod keeps sending both categories under v1-v5 acceptances, as it has since the multi-modal work; the deploy itself stops that for every runner below v6, so the sign-off is worth doing promptly.
+* **Data categories affected**: gym-session summaries (date, session name, exercise and set counts, total volume); 7-day nutrition summary (days logged, average calories, protein, carbs, fat), Art. 9 health data gated on health-data consent.
+* **Region**: us-east-1 (unchanged).
+* **DPA**: <https://www.anthropic.com/legal/data-processing-addendum> (unchanged).
+* **Opt-out path**: don't accept AI disclosure v6 (the Coach still works without these categories); withdraw AI consent or health-data consent in Settings → Account.
+
+---
+
 ## Template for future entries
 
 ```

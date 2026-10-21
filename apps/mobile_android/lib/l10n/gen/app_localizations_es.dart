@@ -7098,6 +7098,18 @@ class AppLocalizationsEs extends AppLocalizations {
       'Para el registro con foto del plato: la foto de tu comida que elijas, enviada solo para estimar lo que hay en el plato. La ubicación y los datos de la cámara se eliminan antes del envío, Threkir no guarda la foto y no se registra nada hasta que lo revises y guardes.';
 
   @override
+  String get coachConsentBulletCoachSettings =>
+      'Tu nombre visible y tus unidades, tu frecuencia cardíaca en reposo y máxima (solo si has dado tu consentimiento de datos de salud), tu objetivo de distancia semanal y la personalidad del entrenador que has elegido.';
+
+  @override
+  String get coachConsentBulletLifts =>
+      'Un resumen de tus sesiones de gimnasio más recientes: la fecha, el nombre de la sesión, cuántos ejercicios y series, y el peso total levantado.';
+
+  @override
+  String get coachConsentBulletNutrition =>
+      'Solo si has dado tu consentimiento de datos de salud: un resumen de 7 días de tu registro de comidas (días registrados y media de calorías, proteínas, carbohidratos y grasas), nunca comidas individuales.';
+
+  @override
   String get coachConsentBulletPlanEdit =>
       'Para los ajustes de plan con IA: los próximos entrenamientos del plan que cambias (fechas, tipos y distancias) y el cambio que escribes, solo para sugerir cambios que revisas antes de que se guarde nada; la IA no puede añadir entrenamientos ni fijar ritmos.';
 

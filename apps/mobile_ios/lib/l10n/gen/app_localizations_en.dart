@@ -7033,6 +7033,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'For the plate-photo logger: the photo of your meal you choose, sent only to estimate what is on the plate. Location and camera details are removed before it leaves, Threkir does not keep the photo, and nothing is logged until you review and save it.';
 
   @override
+  String get coachConsentBulletCoachSettings =>
+      'Your display name and units, your resting and maximum heart rate (only if you\'ve given health-data consent), your weekly distance goal, and the Coach personality you chose.';
+
+  @override
+  String get coachConsentBulletLifts =>
+      'A summary of your most recent gym sessions: the date, the session name, how many exercises and sets, and the total weight lifted.';
+
+  @override
+  String get coachConsentBulletNutrition =>
+      'Only if you\'ve given health-data consent: a 7-day summary of your food log (days logged and average calories, protein, carbs and fat), never individual meals.';
+
+  @override
   String get coachConsentBulletPlanEdit =>
       'For AI plan edits: the upcoming workouts in the plan you are changing (dates, types and distances) and the change you type, used only to suggest edits you review before anything is saved — the AI cannot add workouts or set paces.';
 

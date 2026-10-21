@@ -1,17 +1,161 @@
 // Builds the JSON context block fed into the coach prompt: profile,
 // runner prefs (HR zones, mileage goal, coach_personality), active
-// (or pinned) plan + plan weeks + plan workouts, and the most recent
-// runs. Pure function over a Supabase client — same code path in dev
-// and prod.
+// (or pinned) plan + plan weeks + plan workouts, the most recent
+// runs and lifts, and a 7-day nutrition summary — each field only when
+// the runner's accepted AI disclosure names it (COACH_CONTEXT_REGISTRY).
+// Pure function over a Supabase client — same code path in dev and prod.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import {
+	AI_DISCLOSURE_VERSION_COACH,
+	AI_DISCLOSURE_VERSION_COACH_CROSS_TRAINING,
+} from '../core/ai_disclosure';
 import { TABLES } from '../core/schema';
+import type { MessageKey } from '../i18n/messages';
 import { dbError } from '../core/supabase_error';
 import { distinctExerciseCount } from '../gym/gym_prs';
 import { pickCurrentPlan } from '../training/plan_current';
 
 export interface CoachContext {
 	data?: unknown;
+}
+
+/// One entry per field the Coach context can send to Anthropic.
+///
+/// - `gate` — the lowest accepted AI-disclosure version the field is sent at.
+///   `buildContext` withholds it below that, field by field, so a runner who
+///   accepted an older disclosure keeps a working Coach with what they agreed
+///   to instead of being locked out until they re-accept.
+/// - `bullet` — the consent bullet (`AiDisclosureNotice`) that names it.
+/// - `namedFrom` — the disclosure version whose copy first named it. A field
+///   gated below that was sent before any copy described it; that is allowed
+///   only with a written `legacyReason`, so the gap is a recorded decision
+///   rather than an accident.
+export type CoachContextEntry =
+	| {
+			gate: number;
+			bullet: MessageKey;
+			namedFrom: number;
+			legacyReason?: string;
+	  }
+	| { notPersonalData: string };
+
+const V1 = AI_DISCLOSURE_VERSION_COACH;
+const V6 = AI_DISCLOSURE_VERSION_COACH_CROSS_TRAINING;
+
+/// Top-level keys whose value is an object registered field by field below
+/// (`profile.display_name`, …), rather than as a whole.
+export const COACH_CONTEXT_CONTAINERS: ReadonlySet<string> = new Set([
+	'profile',
+	'runner_context',
+]);
+
+const SETTINGS_LEGACY =
+	'Sent since the v1 Coach as part of the settings the runner gives the Coach; ' +
+	'the owner judged it low sensitivity and kept it ungated so a v1-v5 ' +
+	'Coach keeps working (issue #1217). v6 copy names it.';
+
+const HR_INPUT_LEGACY =
+	'An input the "configured HR zones" of the v1 copy are computed from, and ' +
+	'health-consent gated since v1; kept ungated by disclosure version per ' +
+	'issue #1217. v6 copy names it.';
+
+/// Every key `buildContext` may emit, and what discloses it (issue #1217).
+/// `buildContext` throws on a key that is missing here, and
+/// `context_registry.test.ts` drives every lane to prove none is, so a new
+/// lane cannot reach Anthropic without a covering consent bullet.
+export const COACH_CONTEXT_REGISTRY: Readonly<Record<string, CoachContextEntry>> = {
+	'profile.display_name': {
+		gate: V1,
+		bullet: 'coachPage.consentBulletCoachSettings',
+		namedFrom: V6,
+		legacyReason: SETTINGS_LEGACY,
+	},
+	'profile.preferred_unit': {
+		gate: V1,
+		bullet: 'coachPage.consentBulletCoachSettings',
+		namedFrom: V6,
+		legacyReason: SETTINGS_LEGACY,
+	},
+	'runner_context.weekly_mileage_goal_m': {
+		gate: V1,
+		bullet: 'coachPage.consentBulletCoachSettings',
+		namedFrom: V6,
+		legacyReason: SETTINGS_LEGACY,
+	},
+	'runner_context.coach_personality': {
+		gate: V1,
+		bullet: 'coachPage.consentBulletCoachSettings',
+		namedFrom: V6,
+		legacyReason: SETTINGS_LEGACY,
+	},
+	'runner_context.date_of_birth': {
+		gate: V1,
+		bullet: 'coachPage.consentBulletProfile',
+		namedFrom: V1,
+	},
+	'runner_context.hr_zones': {
+		gate: V1,
+		bullet: 'coachPage.consentBulletProfile',
+		namedFrom: V1,
+	},
+	'runner_context.resting_hr_bpm': {
+		gate: V1,
+		bullet: 'coachPage.consentBulletCoachSettings',
+		namedFrom: V6,
+		legacyReason: HR_INPUT_LEGACY,
+	},
+	'runner_context.max_hr_bpm': {
+		gate: V1,
+		bullet: 'coachPage.consentBulletCoachSettings',
+		namedFrom: V6,
+		legacyReason: HR_INPUT_LEGACY,
+	},
+	plan: { gate: V1, bullet: 'coachPage.consentBulletPlan', namedFrom: V1 },
+	plan_weeks: { gate: V1, bullet: 'coachPage.consentBulletPlan', namedFrom: V1 },
+	plan_workouts: { gate: V1, bullet: 'coachPage.consentBulletPlan', namedFrom: V1 },
+	recent_runs: { gate: V1, bullet: 'coachPage.consentBulletRuns', namedFrom: V1 },
+	recent_lifts: { gate: V6, bullet: 'coachPage.consentBulletLifts', namedFrom: V6 },
+	nutrition_7d: { gate: V6, bullet: 'coachPage.consentBulletNutrition', namedFrom: V6 },
+	now_iso: { notPersonalData: 'The server clock, so the model knows what "today" is.' },
+};
+
+/// Whether `path` may be sent to a runner who accepted `disclosureVersion`.
+/// An unregistered path throws: sending it would be sending data no consent
+/// bullet names, and the handler turns the throw into a 503 rather than a
+/// Coach reply built on it.
+export function coachContextAllows(path: string, disclosureVersion: number): boolean {
+	const entry = COACH_CONTEXT_REGISTRY[path];
+	if (!entry) {
+		throw new Error(`coach context key "${path}" is not in COACH_CONTEXT_REGISTRY`);
+	}
+	return 'notPersonalData' in entry || disclosureVersion >= entry.gate;
+}
+
+/// Drop every field the runner's accepted disclosure does not cover, and
+/// throw on any field the registry does not know. Applied to the assembled
+/// context as the last step, so it holds for every lane, present and future.
+export function withholdUndisclosed(
+	data: Record<string, unknown>,
+	disclosureVersion: number,
+): Record<string, unknown> {
+	const out: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(data)) {
+		if (COACH_CONTEXT_CONTAINERS.has(key)) {
+			if (value == null) {
+				out[key] = value;
+				continue;
+			}
+			const inner: Record<string, unknown> = {};
+			for (const [field, v] of Object.entries(value as Record<string, unknown>)) {
+				if (coachContextAllows(`${key}.${field}`, disclosureVersion)) inner[field] = v;
+			}
+			out[key] = inner;
+			continue;
+		}
+		if (coachContextAllows(key, disclosureVersion)) out[key] = value;
+	}
+	return out;
 }
 
 /// The slice of the `get_my_profile()` row the coach context reads. The
@@ -54,6 +198,7 @@ export async function buildContext(
 	runsLimit: number,
 	profileRow: CoachProfileRow | null,
 	today: string,
+	disclosureVersion: number,
 ): Promise<CoachContext> {
 	// `profileRow` is the `get_my_profile()` result the handler already
 	// fetched for the coach-consent gate — passed in rather than re-queried
@@ -220,7 +365,12 @@ export async function buildContext(
 	// (as already happened to runs/plans) can't quietly leak an athlete's
 	// lifts/nutrition into a coach's own context. gym_sets inherits the scope
 	// transitively through the workout ids (no user_id column).
+	//
+	// Both lanes also need the v6 disclosure, the first copy that names them
+	// (issue #1217). Below it they don't query at all rather than querying
+	// and being stripped: what is never read can't leak by a later refactor.
 	const liftsLane = (async (): Promise<LiftSummary[]> => {
+		if (!coachContextAllows('recent_lifts', disclosureVersion)) return [];
 		const { data: liftWorkouts } = await supabase
 			.from(TABLES.gym_workouts)
 			.select('id, title, started_at')
@@ -255,7 +405,7 @@ export async function buildContext(
 	// row cap over a 7-day window is plenty to compute daily averages and
 	// bounds the worst case (a power-logger).
 	const nutritionLane = (async (): Promise<NutritionSummary | null> => {
-		if (healthConsentGranted) {
+		if (healthConsentGranted && coachContextAllows('nutrition_7d', disclosureVersion)) {
 			const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
 			const { data: foodRows } = await supabase
 				.from(TABLES.food_log)
@@ -287,7 +437,7 @@ export async function buildContext(
 	};
 
 	return {
-		data: {
+		data: withholdUndisclosed({
 			profile: profile ?? null,
 			runner_context: runnerContext,
 			plan: plan ?? null,
@@ -302,7 +452,7 @@ export async function buildContext(
 			// with the timestamp busts the cache on every message; trailing it
 			// keeps the whole prefix stable across a conversation. Issue #390.
 			now_iso: new Date().toISOString(),
-		},
+		}, disclosureVersion),
 	};
 }
 

@@ -23,7 +23,10 @@ class AiDisclosureNotice extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final bullets = [
       l10n.coachConsentBulletProfile,
+      l10n.coachConsentBulletCoachSettings,
       l10n.coachConsentBulletRuns,
+      l10n.coachConsentBulletLifts,
+      l10n.coachConsentBulletNutrition,
       l10n.coachConsentBulletPlan,
       l10n.coachConsentBulletMessages,
       l10n.coachConsentBulletRoutes,

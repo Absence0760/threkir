@@ -7103,6 +7103,18 @@ class AppLocalizationsPt extends AppLocalizations {
       'Para o registo por fotografia do prato: a fotografia da sua refeição que escolher, enviada só para estimar o que está no prato. A localização e os dados da câmara são removidos antes do envio, a Threkir não guarda a fotografia e nada é registado até rever e guardar.';
 
   @override
+  String get coachConsentBulletCoachSettings =>
+      'O seu nome de exibição e unidades, a sua frequência cardíaca em repouso e máxima (apenas se tiver dado o consentimento de dados de saúde), a sua meta de distância semanal e a personalidade que escolheu para o Coach.';
+
+  @override
+  String get coachConsentBulletLifts =>
+      'Um resumo das suas sessões de ginásio mais recentes: a data, o nome da sessão, quantos exercícios e séries, e o peso total levantado.';
+
+  @override
+  String get coachConsentBulletNutrition =>
+      'Apenas se tiver dado o consentimento de dados de saúde: um resumo de 7 dias do seu registo alimentar (dias registados e a média de calorias, proteínas, hidratos de carbono e gorduras), nunca refeições individuais.';
+
+  @override
   String get coachConsentBulletPlanEdit =>
       'Para os ajustes de plano com IA: os próximos treinos do plano que está a alterar (datas, tipos e distâncias) e a alteração que escreve, usados apenas para sugerir alterações que revê antes de qualquer gravação — a IA não pode adicionar treinos nem definir ritmos.';
 
@@ -25804,6 +25816,18 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get coachConsentBulletPlatePhoto =>
       'Para o registro por foto do prato: a foto da sua refeição que você escolher, enviada só para estimar o que há no prato. Localização e dados da câmera são removidos antes do envio, o Threkir não guarda a foto e nada é registrado até você revisar e salvar.';
+
+  @override
+  String get coachConsentBulletCoachSettings =>
+      'Seu nome de exibição e unidades, sua frequência cardíaca em repouso e máxima (apenas se você tiver dado o consentimento de dados de saúde), sua meta de distância semanal e a personalidade que você escolheu para o Coach.';
+
+  @override
+  String get coachConsentBulletLifts =>
+      'Um resumo das suas sessões de academia mais recentes: a data, o nome da sessão, quantos exercícios e séries e o peso total levantado.';
+
+  @override
+  String get coachConsentBulletNutrition =>
+      'Apenas se você tiver dado o consentimento de dados de saúde: um resumo de 7 dias do seu registro alimentar (dias registrados e a média de calorias, proteínas, carboidratos e gorduras), nunca refeições individuais.';
 
   @override
   String get coachConsentBulletPlanEdit =>

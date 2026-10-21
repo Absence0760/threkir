@@ -6,6 +6,7 @@ import {
 	AI_DISCLOSURE_CURRENT_VERSION,
 	AI_DISCLOSURE_ERROR,
 	AI_DISCLOSURE_VERSION_COACH,
+	AI_DISCLOSURE_VERSION_COACH_CROSS_TRAINING,
 	AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI,
 	AI_DISCLOSURE_VERSION_PLAN_AI,
 	AI_DISCLOSURE_VERSION_PLAN_EDIT_AI,
@@ -130,7 +131,7 @@ test('no acceptance below v5 satisfies the plate-photo scope', () => {
 	}
 });
 
-test('the v5 acceptance satisfies every scope', () => {
+test('the v5 acceptance satisfies every scope below the Coach cross-training lanes', () => {
 	const record = { version: AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI, acceptedAt: ACCEPTED };
 	for (const required of [
 		AI_DISCLOSURE_VERSION_COACH,
@@ -140,6 +141,41 @@ test('the v5 acceptance satisfies every scope', () => {
 		AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI,
 	]) {
 		assert.deepEqual(checkAiDisclosure(record, required), { ok: true, version: 5 });
+	}
+});
+
+test('no acceptance below v6 covers the Coach gym and nutrition lanes', () => {
+	// Issue #1217: those lanes were sent without any copy naming them, so a
+	// v1-v5 acceptance must not stretch to cover them (decisions § 571).
+	for (const version of [
+		AI_DISCLOSURE_VERSION_COACH,
+		AI_DISCLOSURE_VERSION_ROUTE_AI,
+		AI_DISCLOSURE_VERSION_PLAN_AI,
+		AI_DISCLOSURE_VERSION_PLAN_EDIT_AI,
+		AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI,
+	]) {
+		assert.deepEqual(
+			checkAiDisclosure(
+				{ version, acceptedAt: ACCEPTED },
+				AI_DISCLOSURE_VERSION_COACH_CROSS_TRAINING,
+			),
+			{ ok: false, reason: 'stale' },
+			`v${version}`,
+		);
+	}
+});
+
+test('the v6 acceptance satisfies every scope', () => {
+	const record = { version: AI_DISCLOSURE_VERSION_COACH_CROSS_TRAINING, acceptedAt: ACCEPTED };
+	for (const required of [
+		AI_DISCLOSURE_VERSION_COACH,
+		AI_DISCLOSURE_VERSION_ROUTE_AI,
+		AI_DISCLOSURE_VERSION_PLAN_AI,
+		AI_DISCLOSURE_VERSION_PLAN_EDIT_AI,
+		AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI,
+		AI_DISCLOSURE_VERSION_COACH_CROSS_TRAINING,
+	]) {
+		assert.deepEqual(checkAiDisclosure(record, required), { ok: true, version: 6 });
 	}
 });
 
@@ -347,5 +383,6 @@ test('the version ladder is ordered and the current version is its top rung', ()
 	assert.ok(AI_DISCLOSURE_VERSION_ROUTE_AI < AI_DISCLOSURE_VERSION_PLAN_AI);
 	assert.ok(AI_DISCLOSURE_VERSION_PLAN_AI < AI_DISCLOSURE_VERSION_PLAN_EDIT_AI);
 	assert.ok(AI_DISCLOSURE_VERSION_PLAN_EDIT_AI < AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI);
-	assert.equal(AI_DISCLOSURE_CURRENT_VERSION, AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI);
+	assert.ok(AI_DISCLOSURE_VERSION_FOOD_PHOTO_AI < AI_DISCLOSURE_VERSION_COACH_CROSS_TRAINING);
+	assert.equal(AI_DISCLOSURE_CURRENT_VERSION, AI_DISCLOSURE_VERSION_COACH_CROSS_TRAINING);
 });

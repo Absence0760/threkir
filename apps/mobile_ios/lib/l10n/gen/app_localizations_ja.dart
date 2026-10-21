@@ -6704,6 +6704,18 @@ class AppLocalizationsJa extends AppLocalizations {
       '食事写真による記録：あなたが選んだ食事の写真を、お皿の内容を推定するためだけに送信します。位置情報やカメラの情報は送信前に削除され、Threkirは写真を保存せず、確認して保存するまで何も記録されません。';
 
   @override
+  String get coachConsentBulletCoachSettings =>
+      '表示名と単位、安静時心拍数と最大心拍数（健康データの利用に同意している場合のみ）、週間距離の目標、選択したコーチの性格。';
+
+  @override
+  String get coachConsentBulletLifts =>
+      '直近のジムのセッションの概要: 日付、セッション名、種目数とセット数、挙上した総重量。';
+
+  @override
+  String get coachConsentBulletNutrition =>
+      '健康データの利用に同意している場合のみ: 食事記録の7日間の概要（記録した日数と、カロリー・たんぱく質・炭水化物・脂質の平均）。個々の食事は送信しません。';
+
+  @override
   String get coachConsentBulletPlanEdit =>
       'AIプラン調整利用時: 変更するプランの今後のワークアウト（日付、種類、距離）と入力した変更内容。保存前に確認する変更案の作成にのみ使用し、AIがワークアウトを追加したりペースを設定したりすることはありません。';
 

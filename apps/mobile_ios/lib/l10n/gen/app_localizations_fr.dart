@@ -7118,6 +7118,18 @@ class AppLocalizationsFr extends AppLocalizations {
       'Pour la saisie par photo de repas : la photo de votre repas que vous choisissez, envoyée uniquement pour estimer ce qu\'il y a dans l\'assiette. La position et les données de l\'appareil photo sont retirées avant l\'envoi, Threkir ne conserve pas la photo et rien n\'est enregistré tant que vous n\'avez pas vérifié et sauvegardé.';
 
   @override
+  String get coachConsentBulletCoachSettings =>
+      'Votre nom affiché et vos unités, votre fréquence cardiaque au repos et maximale (uniquement si vous avez donné votre consentement aux données de santé), votre objectif de distance hebdomadaire et la personnalité du coach que vous avez choisie.';
+
+  @override
+  String get coachConsentBulletLifts =>
+      'Un résumé de vos séances de musculation les plus récentes : la date, le nom de la séance, le nombre d\'exercices et de séries, et le poids total soulevé.';
+
+  @override
+  String get coachConsentBulletNutrition =>
+      'Uniquement si vous avez donné votre consentement aux données de santé : un résumé sur 7 jours de votre journal alimentaire (jours renseignés et moyennes des calories, protéines, glucides et lipides), jamais les repas individuels.';
+
+  @override
   String get coachConsentBulletPlanEdit =>
       'Pour les ajustements de plan par IA : les prochaines séances du plan que vous modifiez (dates, types et distances) et la modification que vous saisissez, uniquement pour proposer des changements que vous vérifiez avant tout enregistrement — l\'IA ne peut ni ajouter de séances ni fixer d\'allures.';
 

@@ -11914,6 +11914,12 @@ abstract class AppLocalizations {
   /// **'Could not open archive.'**
   String get coachOpenArchiveFailed;
 
+  /// Button shown over the coach chat when the runner has scrolled up and new reply text has arrived below; tapping it scrolls to the newest message and resumes following the reply
+  ///
+  /// In en, this message translates to:
+  /// **'Jump to latest'**
+  String get coachJumpToLatest;
+
   /// Banner shown when deleting a coach archive fails; the swiped row snaps back
   ///
   /// In en, this message translates to:

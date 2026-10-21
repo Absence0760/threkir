@@ -15,7 +15,6 @@ import 'package:ui_kit/ui_kit.dart'
         ActivityLoaderKind,
         FullBodyLoader,
         ListSkeleton,
-        motionScrollTo,
         reduceMotion,
         syncMotionLoop;
 
@@ -34,6 +33,7 @@ import '../training_service.dart';
 import '../web_base_url.dart';
 import '../weekly_goal.dart';
 import '../widgets/ai_disclosure_notice.dart';
+import '../widgets/chat_stick_to_bottom.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/surface_peer_strip.dart';
@@ -248,6 +248,7 @@ class _CoachScreenState extends State<CoachScreen> {
   static const _proDailyLimit = 10;
 
   final _scrollCtrl = ScrollController();
+  late final _stick = ChatStickToBottom(_scrollCtrl);
   final _draftCtrl = TextEditingController();
   final _editCtrl = TextEditingController();
   // Generation counter for _loadContext. A plan switch refires the
@@ -326,6 +327,7 @@ class _CoachScreenState extends State<CoachScreen> {
   void dispose() {
     _streamSub?.cancel();
     _realtimeChannel?.unsubscribe();
+    _stick.dispose();
     _scrollCtrl.dispose();
     _draftCtrl.dispose();
     _editCtrl.dispose();
@@ -429,7 +431,7 @@ class _CoachScreenState extends State<CoachScreen> {
       _threadLoaded = true;
     });
     await _loadContext();
-    _scrollToBottom();
+    _scrollToBottom(force: true);
   }
 
   Future<void> _loadContext() async {
@@ -548,15 +550,10 @@ class _CoachScreenState extends State<CoachScreen> {
         .subscribe();
   }
 
-  Future<void> _scrollToBottom() async {
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    if (!mounted || !_scrollCtrl.hasClients) return;
-    await motionScrollTo(
-      context,
-      _scrollCtrl,
-      _scrollCtrl.position.maxScrollExtent,
-    );
-  }
+  /// Follows new content only while the runner is at the bottom of the
+  /// log (issue #1214); [force] is for their own turn and thread switches.
+  Future<void> _scrollToBottom({bool force = false}) =>
+      _stick.scrollToBottom(context, force: force);
 
   Future<void> _send() async {
     final t = _draftCtrl.text.trim();
@@ -599,7 +596,7 @@ class _CoachScreenState extends State<CoachScreen> {
     _messages.add(_Msg(role: 'assistant', content: ''));
     final assistantIdx = _messages.length - 1;
     setState(() {});
-    _scrollToBottom();
+    _scrollToBottom(force: true);
 
     try {
       String? token =
@@ -910,7 +907,7 @@ class _CoachScreenState extends State<CoachScreen> {
             .toList();
       });
       Navigator.maybePop(context);
-      _scrollToBottom();
+      _scrollToBottom(force: true);
     } catch (e) {
       debugPrint('Open archive failed: $e');
       if (!mounted) return;
@@ -1565,11 +1562,26 @@ class _CoachScreenState extends State<CoachScreen> {
         ],
       );
     }
-    return ListView.builder(
-      controller: _scrollCtrl,
-      padding: const EdgeInsets.all(16),
-      itemCount: _messages.length,
-      itemBuilder: (context, i) => _buildBubble(theme, l10n, _messages[i]),
+    return Stack(
+      children: [
+        ListView.builder(
+          controller: _scrollCtrl,
+          padding: const EdgeInsets.all(16),
+          itemCount: _messages.length,
+          itemBuilder: (context, i) => _buildBubble(theme, l10n, _messages[i]),
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 12,
+          child: Center(
+            child: JumpToLatestButton(
+              controller: _stick,
+              label: l10n.coachJumpToLatest,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

@@ -7370,6 +7370,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get coachOpenArchiveFailed => 'Não foi possível abrir o ficheiro.';
 
   @override
+  String get coachJumpToLatest => 'Ir para a última mensagem';
+
+  @override
   String coachArchiveDeleteFailed(String error) {
     return 'Não foi possível eliminar o arquivo: $error';
   }
@@ -26078,6 +26081,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachOpenArchiveFailed => 'Não foi possível abrir o arquivo.';
+
+  @override
+  String get coachJumpToLatest => 'Ir para a última mensagem';
 
   @override
   String coachArchiveDeleteFailed(String error) {

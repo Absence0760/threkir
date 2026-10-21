@@ -229,6 +229,7 @@ export const messages = {
 	"coachChat.primerWithPlan": "Frag nach dem heutigen Training, deinem Tempo oder wie deine letzten Läufe zum Plan passen.",
 	"coachChat.primerNoPlan": "Frag nach deinen letzten Läufen, dem Tempo für lockere Läufe oder Trainingsgrundlagen.",
 	"coachChat.coachThinking": "Coach denkt nach",
+	"coachChat.jumpToLatest": "Zur neuesten Nachricht",
 	"coachChat.saveAndResend": "Speichern & erneut senden",
 	"coachChat.cancel": "Abbrechen",
 	"coachChat.copyToClipboard": "In Zwischenablage kopieren",

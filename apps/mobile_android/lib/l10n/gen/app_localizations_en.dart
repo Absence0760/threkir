@@ -7297,6 +7297,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get coachOpenArchiveFailed => 'Could not open archive.';
 
   @override
+  String get coachJumpToLatest => 'Jump to latest';
+
+  @override
   String coachArchiveDeleteFailed(String error) {
     return 'Couldn\'t delete archive: $error';
   }

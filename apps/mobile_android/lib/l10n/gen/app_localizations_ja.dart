@@ -6957,6 +6957,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get coachOpenArchiveFailed => 'アーカイブを開けませんでした。';
 
   @override
+  String get coachJumpToLatest => '最新のメッセージへ';
+
+  @override
   String coachArchiveDeleteFailed(String error) {
     return 'アーカイブを削除できませんでした：$error';
   }

@@ -2012,6 +2012,7 @@
   "coachStreamFailed": "échec du flux",
   "coachNewConversationFailed": "Impossible de démarrer une nouvelle conversation.",
   "coachOpenArchiveFailed": "Impossible d'ouvrir l'archive.",
+  "coachJumpToLatest": "Aller au dernier message",
   "coachArchiveDeleteFailed": "Impossible de supprimer l'archive : {error}",
   "coachReactionFailed": "Impossible d’enregistrer votre réaction. Réessayez.",
   "coachCopied": "Copié dans le presse-papiers",

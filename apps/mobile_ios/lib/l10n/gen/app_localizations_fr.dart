@@ -7388,6 +7388,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get coachOpenArchiveFailed => 'Impossible d\'ouvrir l\'archive.';
 
   @override
+  String get coachJumpToLatest => 'Aller au dernier message';
+
+  @override
   String coachArchiveDeleteFailed(String error) {
     return 'Impossible de supprimer l\'archive : $error';
   }

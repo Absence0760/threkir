@@ -110,3 +110,40 @@ export function parseDmThreadRouteId(id: string): DmThreadTarget {
 		? { kind: 'deleted', deletedPartnerKey: id.slice(DELETED_ROUTE_PREFIX.length) }
 		: { kind: 'partner', partnerId: id };
 }
+
+/**
+ * How often an open conversation and the inbox re-read while on screen. No
+ * client subscribes to this rail over Realtime (decisions § 1916), so a poll is
+ * how a reply arrives. Mobile's `kMessageThreadPollInterval` and
+ * `kMessagesInboxPollInterval` carry the same two numbers.
+ */
+export const DM_THREAD_POLL_MS = 10_000;
+export const DM_INBOX_POLL_MS = 30_000;
+
+/**
+ * Folds a poll's newest page into the conversation on screen, the way
+ * mobile's thread poll does.
+ *
+ * The page is merged by id when it reaches back to the newest message shown.
+ * When it does not, more than a page arrived since the last read, and merging
+ * would leave the messages between the two out of the list for good, since
+ * "load earlier" pages back from the oldest message shown. The page then
+ * replaces the list (every message shown is older than the page's oldest, so
+ * nothing on screen is newer than it), `gap` is set so an older-page read
+ * already in flight is dropped rather than merged across it, and "load
+ * earlier" is offered again.
+ */
+export function mergeDmPollPage<T extends DmOrderKey>(
+	current: readonly T[],
+	page: DmPage<T>,
+	hasMore: boolean
+): { messages: T[]; hasMore: boolean; gap: boolean } {
+	const fresh = page.messages;
+	if (current.length === 0) {
+		return { messages: mergeDmMessages([], fresh), hasMore: hasMore || page.hasMore, gap: false };
+	}
+	const gap =
+		page.hasMore && fresh.length > 0 && compareDmOrder(fresh[0], current[current.length - 1]) > 0;
+	if (!gap) return { messages: mergeDmMessages(current, fresh), hasMore, gap: false };
+	return { messages: mergeDmMessages([], fresh), hasMore: true, gap: true };
+}

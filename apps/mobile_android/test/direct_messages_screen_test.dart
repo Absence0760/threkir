@@ -117,6 +117,9 @@ class _FakeApi extends ApiClient {
 
   final List<DmThreadTarget> targets = [];
 
+  /// When set, the next newest-page read waits on it (then it clears).
+  Completer<DmThreadPage>? pollGate;
+
   final List<String> unsent = [];
   Object? unsendError;
 
@@ -143,6 +146,11 @@ class _FakeApi extends ApiClient {
   }) async {
     targets.add(target);
     befores.add(before);
+    final gate = pollGate;
+    if (gate != null && before == null) {
+      pollGate = null;
+      return gate.future;
+    }
     if (threadError != null) throw threadError!;
     final all = server;
     if (all != null) {
@@ -215,8 +223,34 @@ class _FakeApi extends ApiClient {
   @override
   Future<ProfileSummary?> fetchProfileSummary(String userId) async => summary;
 
+  bool blocked = false;
+  Object? blockError;
+  final List<String> blocks = [];
+  final List<String> unblocks = [];
+  final List<String> blockChecks = [];
+
+  Completer<bool>? blockCheckGate;
+
   @override
-  Future<bool> isBlockedByViewer(String userId) async => false;
+  Future<bool> isBlockedByViewer(String userId) async {
+    blockChecks.add(userId);
+    final gate = blockCheckGate;
+    if (gate != null) return gate.future;
+    return blocked;
+  }
+
+  @override
+  Future<void> blockUser(String targetUserId, {String? reason}) async {
+    blocks.add(targetUserId);
+    if (blockError != null) throw blockError!;
+    blocked = true;
+  }
+
+  @override
+  Future<void> unblockUser(String targetUserId) async {
+    unblocks.add(targetUserId);
+    blocked = false;
+  }
 
   @override
   Future<List<RunRow>> fetchPublicRunsByUser(String userId,
@@ -754,6 +788,31 @@ void main() {
       await _drainBanner(tester);
     });
 
+    testWidgets('a poll already in flight when you unsend does not bring the '
+        'text back', (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1', from: _me, body: 'mine')];
+      await _pumpThread(tester, api, poll: const Duration(seconds: 10));
+
+      final stale = Completer<DmThreadPage>();
+      api.pollGate = stale;
+      await tester.pump(const Duration(seconds: 10));
+
+      await longPress(tester, 'mine');
+      await tester.tap(find.byKey(const ValueKey('message-action-unsend')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('message-unsend-confirm')));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.messagesUnsentPlaceholder), findsOneWidget);
+
+      stale.complete(DmThreadPage(
+          messages: [_msg('m1', from: _me, body: 'mine')], hasMore: false));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('mine'), findsNothing);
+      expect(find.text(l10n.messagesUnsentPlaceholder), findsOneWidget);
+    });
+
     testWidgets('a message the other person unsent reads as unsent',
         (tester) async {
       final api = _FakeApi()
@@ -829,6 +888,139 @@ void main() {
       expect(find.text(l10n.messagesDeletedAccountClosed), findsOneWidget);
       expect(find.byTooltip(l10n.messagesViewProfile), findsNothing);
       expect(api.markReadCalls, 0);
+      expect(find.byKey(const ValueKey('message-thread-more')), findsNothing,
+          reason: 'there is no one to block in a deleted partner\'s thread');
+      expect(api.blockChecks, isEmpty);
+    });
+  });
+
+  group('block from the conversation', () {
+    Future<void> openMenu(WidgetTester tester) async {
+      await tester.tap(find.byKey(const ValueKey('message-thread-more')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('Block asks first; cancelling changes nothing',
+        (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1')];
+      await _pumpThread(tester, api);
+      expect(api.blockChecks, [_partner]);
+
+      await openMenu(tester);
+      expect(find.text(l10n.messagesBlock), findsOneWidget);
+      await tester.tap(find.text(l10n.messagesBlock));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.profileBlockConfirmTitle('Ada')), findsOneWidget);
+      expect(find.text(l10n.messagesBlockConfirmBody), findsOneWidget);
+
+      await tester.tap(find.text(l10n.profileCancel));
+      await tester.pumpAndSettle();
+      expect(api.blocks, isEmpty);
+      expect(find.byKey(const ValueKey('message-composer')), findsOneWidget);
+    });
+
+    testWidgets('a confirmed block swaps the composer for the blocked notice',
+        (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1')];
+      await _pumpThread(tester, api);
+
+      await openMenu(tester);
+      await tester.tap(find.text(l10n.messagesBlock));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('message-block-confirm')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(api.blocks, [_partner]);
+      expect(find.byKey(const ValueKey('message-composer')), findsNothing);
+      expect(find.byKey(const ValueKey('message-send')), findsNothing);
+      expect(find.text(l10n.messagesBlockedNotice('Ada')), findsOneWidget);
+      expect(find.text(l10n.profileBlocked('Ada')), findsOneWidget);
+      await _drainBanner(tester);
+    });
+
+    testWidgets('a thread opened on a blocked partner shows the notice, and '
+        'Unblock brings the composer back without a confirm', (tester) async {
+      final api = _FakeApi()
+        ..newest = [_msg('m1')]
+        ..blocked = true;
+      await _pumpThread(tester, api);
+
+      expect(find.byKey(const ValueKey('message-composer')), findsNothing);
+      expect(find.text(l10n.messagesBlockedNotice('Ada')), findsOneWidget);
+
+      await openMenu(tester);
+      final item = find.byKey(const ValueKey('message-thread-block'));
+      expect(
+          find.descendant(of: item, matching: find.text(l10n.messagesUnblock)),
+          findsOneWidget);
+      await tester.tap(item);
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(api.unblocks, [_partner]);
+      expect(find.byKey(const ValueKey('message-composer')), findsOneWidget);
+      await _drainBanner(tester);
+    });
+
+    testWidgets('the notice\'s own Unblock lifts the block', (tester) async {
+      final api = _FakeApi()
+        ..newest = [_msg('m1')]
+        ..blocked = true;
+      await _pumpThread(tester, api);
+
+      await tester.tap(find.byKey(const ValueKey('message-unblock')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(api.unblocks, [_partner]);
+      expect(find.byKey(const ValueKey('message-composer')), findsOneWidget);
+      await _drainBanner(tester);
+    });
+
+    testWidgets('a block-state read that answers after Block cannot undo it',
+        (tester) async {
+      final pending = Completer<bool>();
+      final api = _FakeApi()
+        ..newest = [_msg('m1')]
+        ..blockCheckGate = pending;
+      await _pumpThread(tester, api);
+
+      await openMenu(tester);
+      await tester.tap(find.text(l10n.messagesBlock));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('message-block-confirm')));
+      await tester.pump();
+      await tester.pump();
+      expect(find.text(l10n.messagesBlockedNotice('Ada')), findsOneWidget);
+
+      pending.complete(false);
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text(l10n.messagesBlockedNotice('Ada')), findsOneWidget);
+      expect(find.byKey(const ValueKey('message-composer')), findsNothing);
+      await _drainBanner(tester);
+    });
+
+    testWidgets('a failed block says so and keeps the composer',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [_msg('m1')]
+        ..blockError = StateError('offline');
+      await _pumpThread(tester, api);
+
+      await openMenu(tester);
+      await tester.tap(find.text(l10n.messagesBlock));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('message-block-confirm')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('message-composer')), findsOneWidget);
+      expect(find.textContaining('Could not block'), findsOneWidget);
+      await _drainBanner(tester);
     });
   });
 

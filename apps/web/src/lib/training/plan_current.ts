@@ -31,6 +31,32 @@ export function pickCurrentPlan<T extends PlanWindow>(
 	return { current: covering ?? ended, upcoming };
 }
 
+/// `anchor` and the plans in `plans` that start after it ends, in date order:
+/// the blocks chained behind it (decisions § 2008). Active plans cannot
+/// overlap, so among active plans these are exactly the ones queued after the
+/// anchor; a plan that starts inside the anchor's window is left out, which
+/// keeps the result non-overlapping when the anchor is not itself active.
+/// Ties on start keep the input order.
+export function plansFollowing<T extends PlanWindow>(anchor: T, plans: T[]): T[] {
+	const later = plans
+		.map((p, i) => ({ p, i }))
+		.filter(({ p }) => p.start_date > anchor.end_date)
+		.sort((a, b) =>
+			a.p.start_date < b.p.start_date ? -1 : a.p.start_date > b.p.start_date ? 1 : a.i - b.i
+		)
+		.map(({ p }) => p);
+	return [anchor, ...later];
+}
+
+/// The runner's season as the Coach reads it: the plan `pickCurrentPlan` names
+/// (current, else upcoming) and the plans chained after it. Empty with no
+/// active plan.
+export function currentSeason<T extends PlanWindow>(activePlans: T[], todayIso: string): T[] {
+	const { current, upcoming } = pickCurrentPlan(activePlans, todayIso);
+	const anchor = current ?? upcoming;
+	return anchor ? plansFollowing(anchor, activePlans) : [];
+}
+
 /// The plans whose inclusive window shares at least one day with
 /// [startIso, endIso] — the rows training_plans_active_no_overlap would
 /// reject a new active plan over.

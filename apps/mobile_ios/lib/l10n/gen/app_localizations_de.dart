@@ -7180,6 +7180,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get coachNoPlanOption => 'Kein Plan (nur letzte Läufe)';
 
   @override
+  String get coachSeasonOption =>
+      'Meine Saison (aktueller Plan und die danach geplanten Pläne)';
+
+  @override
+  String get coachSeasonName => 'Meine Saison';
+
+  @override
   String coachPlanActive(String name) {
     return '$name · aktiv';
   }
@@ -16927,6 +16934,21 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get messagesOptionsHint => 'Nachrichtenoptionen anzeigen';
+
+  @override
+  String get messagesBlock => 'Blockieren';
+
+  @override
+  String get messagesUnblock => 'Blockierung aufheben';
+
+  @override
+  String get messagesBlockConfirmBody =>
+      'Ihr könnt euch dann gegenseitig keine Nachrichten mehr schreiben, und diese Person kann dir nicht mehr folgen, deinen Läufen keine Kudos geben und sie nicht kommentieren. Jede Follow-Beziehung zwischen euch, egal in welche Richtung, wird aufgehoben und auch durch das Aufheben der Blockierung nicht wiederhergestellt.';
+
+  @override
+  String messagesBlockedNotice(String name) {
+    return 'Du hast $name blockiert, daher könnt ihr euch gegenseitig keine Nachrichten schreiben.';
+  }
 
   @override
   String get profileMessage => 'Nachricht';

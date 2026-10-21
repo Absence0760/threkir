@@ -9,6 +9,9 @@
 	import { supabase } from '#lib/core/supabase.ts';
 	import { guidedRunLibrary, type GuidedRun } from '#lib/training/guided_runs.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
+	import type { CoachPlanScope } from '#lib/coach/types.ts';
+	import { currentSeason } from '#lib/training/plan_current.ts';
+	import { todayISO } from '#lib/training/training.ts';
 	import AiDisclosureNotice from '#lib/components/AiDisclosureNotice.svelte';
 	import {
 		AI_DISCLOSURE_CURRENT_VERSION,
@@ -28,6 +31,7 @@
 
 	let plans = $state<TrainingPlan[]>([]);
 	let planId = $state<string | null>(null);
+	let planScope = $state<CoachPlanScope>('plan');
 	let loaded = $state(false);
 
 	// $derived so the guided-run rail re-renders when the locale changes.
@@ -156,8 +160,24 @@
 		// plan or the user's first save reverts on the next load.
 		if (fromUrl === 'none') {
 			planId = null;
+			planScope = 'none';
 			return;
 		}
+		// "My season": the thread is kept under the season's first plan, and
+		// the server reads it with the plans chained after it. With nothing
+		// queued any more the link falls through to the current plan.
+		if (fromUrl === 'season') {
+			const season = currentSeason(
+				plans.filter((p) => p.status === 'active'),
+				todayISO(),
+			);
+			if (season.length > 1) {
+				planId = season[0].id;
+				planScope = 'season';
+				return;
+			}
+		}
+		planScope = 'plan';
 		if (fromUrl && plans.some((p) => p.id === fromUrl)) {
 			planId = fromUrl;
 			return;
@@ -176,7 +196,8 @@
 		// `next === ''` means the user picked the "No plan" option in
 		// the strip dropdown; we encode that as `?plan=none` so a
 		// reload re-reads the explicit choice instead of falling back
-		// to the active plan.
+		// to the active plan. `season` is the "My season" option and is
+		// written as is.
 		const params = new URLSearchParams(page.url.search);
 		if (next === '') params.set('plan', 'none');
 		else params.set('plan', next);
@@ -253,8 +274,8 @@
 				</div>
 			</div>
 		{:else}
-			{#key planId}
-				<CoachChat {planId} {plans} onPlanChange={pickPlan} />
+			{#key `${planScope}:${planId}`}
+				<CoachChat {planId} {planScope} {plans} onPlanChange={pickPlan} />
 			{/key}
 		{/if}
 	</div>

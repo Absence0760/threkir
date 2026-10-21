@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show LengthLimitingTextInputFormatter;
 import 'package:ui_kit/ui_kit.dart';
 
+import '../auth_error.dart';
 import '../dm_attachment.dart';
 import '../dm_send_error.dart';
 import '../l10n/date_format.dart';
@@ -42,6 +43,11 @@ const Duration kMessageThreadPollInterval = Duration(seconds: 10);
 /// who deleted their account opens through [MessageThreadScreen.deletedPartner]:
 /// the viewer's own messages under that partner's key, with no composer
 /// (migration 20271021000003).
+///
+/// The overflow menu blocks or unblocks the partner, the same toggle the
+/// profile carries (decisions § 1952): Block is confirmed, Unblock is not.
+/// While the viewer's block stands the composer gives way to a notice, since
+/// the INSERT policy refuses a send either way across a block.
 class MessageThreadScreen extends StatefulWidget {
   const MessageThreadScreen({
     super.key,
@@ -104,6 +110,21 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
 
   String? _partnerName;
 
+  /// Whether the viewer has blocked the partner. `user_blocks` is owner-read,
+  /// so a block the partner placed is never known here; that one surfaces as
+  /// the send refusal, the same sentence as the follow gate (§ 1916).
+  bool _blocked = false;
+  bool _blockBusy = false;
+
+  /// Bumped by a completed block or unblock, so a state read that started
+  /// before it cannot undo what the viewer just did.
+  int _blockVersion = 0;
+
+  /// Bumped whenever the list is written from something newer than a poll's
+  /// read (a send, an unsend), so a poll already in flight is dropped rather
+  /// than putting an unsent message's text back.
+  int _localWrites = 0;
+
   DmThreadTarget get _target => widget.partnerId != null
       ? DmPartnerThread(widget.partnerId!)
       : DmDeletedPartnerThread(widget.deletedPartnerKey!);
@@ -117,6 +138,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     if (widget.api.userId == null) return;
     _load();
     if (_partnerName == null && widget.partnerId != null) _loadPartnerName();
+    if (widget.partnerId != null) _loadBlockState();
     _poll = Timer.periodic(widget.pollInterval, (_) => _refresh());
   }
 
@@ -148,6 +170,87 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
       setState(() => _partnerName = profile!.displayName);
     } catch (e) {
       debugPrint('message thread partner name read failed: ${safeErrorLabel(e)}');
+    }
+  }
+
+  /// Never gates the conversation: on a failure the composer stays, and the
+  /// server still refuses a blocked send.
+  Future<void> _loadBlockState() async {
+    final versionAtStart = _blockVersion;
+    try {
+      final blocked = await widget.api.isBlockedByViewer(widget.partnerId!);
+      if (!mounted || versionAtStart != _blockVersion) return;
+      if (blocked != _blocked) setState(() => _blocked = blocked);
+    } catch (e) {
+      debugPrint('message thread block check failed: ${safeErrorLabel(e)}');
+    }
+  }
+
+  String _displayName(AppLocalizations l10n) =>
+      _partnerName ?? l10n.profileRunnerFallback;
+
+  Future<void> _toggleBlock() async {
+    if (_blockBusy || widget.partnerId == null) return;
+    if (_blocked) return _unblock();
+    final l10n = AppLocalizations.of(context);
+    final ok = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(l10n.profileBlockConfirmTitle(_displayName(l10n))),
+            content: Text(l10n.messagesBlockConfirmBody),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(l10n.profileCancel),
+              ),
+              FilledButton.tonal(
+                key: const ValueKey('message-block-confirm'),
+                style: FilledButton.styleFrom(
+                  foregroundColor: Theme.of(ctx).colorScheme.error,
+                ),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: Text(l10n.profileBlockConfirmAction),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!ok || !mounted) return;
+    setState(() => _blockBusy = true);
+    try {
+      await widget.api.blockUser(widget.partnerId!);
+      if (!mounted) return;
+      _blockVersion++;
+      setState(() => _blocked = true);
+      showTopBanner(context, l10n.profileBlocked(_displayName(l10n)));
+    } catch (e) {
+      debugPrint('message thread block failed: ${safeErrorLabel(e)}');
+      if (mounted) {
+        showTopBanner(context, l10n.profileBlockFailed(friendlyError(l10n, e)));
+      }
+    } finally {
+      if (mounted) setState(() => _blockBusy = false);
+    }
+  }
+
+  Future<void> _unblock() async {
+    if (_blockBusy || widget.partnerId == null) return;
+    final l10n = AppLocalizations.of(context);
+    setState(() => _blockBusy = true);
+    try {
+      await widget.api.unblockUser(widget.partnerId!);
+      if (!mounted) return;
+      _blockVersion++;
+      setState(() => _blocked = false);
+      showTopBanner(context, l10n.profileUnblocked(_displayName(l10n)));
+    } catch (e) {
+      debugPrint('message thread unblock failed: ${safeErrorLabel(e)}');
+      if (mounted) {
+        showTopBanner(
+            context, l10n.profileUnblockFailed(friendlyError(l10n, e)));
+      }
+    } finally {
+      if (mounted) setState(() => _blockBusy = false);
     }
   }
 
@@ -191,9 +294,10 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     if (!_appInForeground) return;
     if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
     _refreshing = true;
+    final writesAtStart = _localWrites;
     try {
       final page = await widget.api.fetchDmThread(_target);
-      if (!mounted) return;
+      if (!mounted || writesAtStart != _localWrites) return;
       setState(() {
         _refreshTick++;
         final fresh = page.messages;
@@ -295,7 +399,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
   Future<void> _send() async {
     final partnerId = widget.partnerId;
     final body = _composer.text.trim();
-    if (partnerId == null || _sending || body.isEmpty) return;
+    if (partnerId == null || _blocked || _sending || body.isEmpty) return;
     final pending =
         _PendingMessage('pending-${_pendingSeq++}', body, DateTime.now());
     setState(() {
@@ -306,6 +410,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     try {
       final row = await widget.api.sendDm(partnerId, body);
       if (!mounted) return;
+      _localWrites++;
       setState(() {
         _pending.remove(pending);
         _messages = _merge(_messages, [row]);
@@ -415,6 +520,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     try {
       final row = await widget.api.unsendDm(m.id);
       if (!mounted) return;
+      _localWrites++;
       setState(() => _messages = _merge(_messages, [row]));
     } catch (e) {
       debugPrint('message unsend failed: ${safeErrorLabel(e)}');
@@ -456,6 +562,29 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
               icon: const Icon(Icons.person_outline),
               onPressed: _openProfile,
             ),
+          if (signedIn && widget.partnerId != null)
+            PopupMenuButton<String>(
+              key: const ValueKey('message-thread-more'),
+              tooltip: l10n.commonMore,
+              onSelected: (_) => _toggleBlock(),
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  key: const ValueKey('message-thread-block'),
+                  value: 'block',
+                  enabled: !_blockBusy,
+                  child: ListTile(
+                    leading: Icon(
+                      Icons.block,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    title: Text(
+                      _blocked ? l10n.messagesUnblock : l10n.messagesBlock,
+                    ),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
       body: !signedIn
@@ -465,8 +594,17 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
                 Expanded(child: _body(l10n)),
                 if (_loadError == null && !_loading)
                   widget.partnerId == null
-                      ? _closedBar(l10n)
-                      : _composerBar(l10n),
+                      ? _closedBar(l10n.messagesDeletedAccountClosed)
+                      : _blocked
+                          ? _closedBar(
+                              l10n.messagesBlockedNotice(_displayName(l10n)),
+                              action: TextButton(
+                                key: const ValueKey('message-unblock'),
+                                onPressed: _blockBusy ? null : _unblock,
+                                child: Text(l10n.messagesUnblock),
+                              ),
+                            )
+                          : _composerBar(l10n),
               ],
             ),
     );
@@ -553,9 +691,9 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     return today ? formatTime(at, tag) : formatDateTime(at, tag);
   }
 
-  /// Stands in for the composer when the partner deleted their account:
-  /// there is no one to reply to.
-  Widget _closedBar(AppLocalizations l10n) {
+  /// Stands in for the composer when there is no one to reply to: the
+  /// partner deleted their account, or the viewer has blocked them.
+  Widget _closedBar(String message, {Widget? action}) {
     final theme = Theme.of(context);
     return SafeArea(
       top: false,
@@ -565,10 +703,17 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
           border: Border(top: BorderSide(color: theme.dividerColor)),
         ),
         padding: const EdgeInsets.all(12),
-        child: Text(
-          l10n.messagesDeletedAccountClosed,
-          style: theme.textTheme.bodySmall
-              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                message,
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ),
+            if (action != null) ...[const SizedBox(width: 8), action],
+          ],
         ),
       ),
     );

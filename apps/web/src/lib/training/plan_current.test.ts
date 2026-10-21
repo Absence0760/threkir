@@ -1,10 +1,12 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import {
+	currentSeason,
 	isPlanFinished,
 	isWorkoutMissed,
 	overlappingPlans,
 	pickCurrentPlan,
+	plansFollowing,
 	planWorkoutStatus
 } from './plan_current';
 
@@ -75,6 +77,37 @@ test('overlappingPlans: a window ending on a plan start day overlaps', () => {
 test('overlappingPlans: a window inside a plan overlaps, one wholly before it does not', () => {
 	assert.deepEqual(overlappingPlans([marathon], '2026-09-01', '2026-09-07').map((p) => p.id), ['marathon']);
 	assert.deepEqual(overlappingPlans([marathon], '2026-07-01', '2026-08-01').map((p) => p.id), []);
+});
+
+test('plansFollowing: the anchor first, then the plans after it in date order', () => {
+	const ids = plansFollowing(marathon, [later, marathon, ultra]).map((p) => p.id);
+	assert.deepEqual(ids, ['marathon', 'ultra', 'later']);
+});
+
+test('plansFollowing: a plan starting on or before the anchor end is left out', () => {
+	const inside = { id: 'inside', start_date: '2026-11-15', end_date: '2026-12-31' };
+	const before = { id: 'before', start_date: '2026-01-01', end_date: '2026-03-01' };
+	const ids = plansFollowing(marathon, [inside, before, ultra]).map((p) => p.id);
+	assert.deepEqual(ids, ['marathon', 'ultra']);
+});
+
+test('currentSeason: the current plan and the plans queued behind it, never the one before', () => {
+	assert.deepEqual(
+		currentSeason([later, ultra, marathon], '2026-12-01').map((p) => p.id),
+		['ultra', 'later']
+	);
+	assert.deepEqual(
+		currentSeason([later, ultra, marathon], '2026-10-15').map((p) => p.id),
+		['marathon', 'ultra', 'later']
+	);
+});
+
+test('currentSeason: with nothing started it begins at the upcoming plan, and is empty with no plans', () => {
+	assert.deepEqual(
+		currentSeason([later, ultra], '2026-10-15').map((p) => p.id),
+		['ultra', 'later']
+	);
+	assert.deepEqual(currentSeason([], '2026-10-15'), []);
 });
 
 test('isPlanFinished: an active plan is finished from the day after its end day', () => {

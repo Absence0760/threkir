@@ -6770,6 +6770,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get coachNoPlanOption => 'プランなし（最近のランのみ）';
 
   @override
+  String get coachSeasonOption => 'マイシーズン（現在のプランとその後に続くプラン）';
+
+  @override
+  String get coachSeasonName => 'マイシーズン';
+
+  @override
   String coachPlanActive(String name) {
     return '$name · 進行中';
   }
@@ -16126,6 +16132,21 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get messagesOptionsHint => 'メッセージのオプションを表示';
+
+  @override
+  String get messagesBlock => 'ブロック';
+
+  @override
+  String get messagesUnblock => 'ブロック解除';
+
+  @override
+  String get messagesBlockConfirmBody =>
+      'お互いにメッセージを送れなくなり、相手はあなたをフォローしたり、あなたのランを称賛したり、コメントしたりできなくなります。お互いの間のフォローは、どちらの方向のものもすべて解除され、ブロックを解除しても元には戻りません。';
+
+  @override
+  String messagesBlockedNotice(String name) {
+    return '$nameをブロックしているため、お互いにメッセージを送ることはできません。';
+  }
 
   @override
   String get profileMessage => 'メッセージ';

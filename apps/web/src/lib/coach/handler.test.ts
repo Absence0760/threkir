@@ -659,7 +659,7 @@ async function systemTextFor(
 
 /// Drive one `send` turn as a runner holding `version` and return the tables
 /// the context build read.
-async function tablesReadAt(version: number): Promise<string[]> {
+async function tablesReadAt(version: number, extra: Record<string, unknown> = {}): Promise<string[]> {
 	const calls = { inserts: [] as string[], deletes: [] as string[], reads: [] as string[] };
 	const originalFetch = globalThis.fetch;
 	globalThis.fetch = (async () => new Response('upstream down', { status: 500 })) as typeof fetch;
@@ -667,7 +667,7 @@ async function tablesReadAt(version: number): Promise<string[]> {
 		await captureConsoleError(async () => {
 			const result = await handleCoach(
 				'Bearer fake-token',
-				{ messages: [{ role: 'user', content: 'Should I run today?' }] },
+				{ messages: [{ role: 'user', content: 'Should I run today?' }], ...extra },
 				{
 					...baseConfig(),
 					provider: 'openai',
@@ -704,6 +704,27 @@ test('the handler hands the accepted disclosure to the context build (issue #121
 	const v6 = await tablesReadAt(6);
 	assert.ok(v6.includes('gym_workouts'));
 	assert.ok(v6.includes('food_log'));
+});
+
+test('the handler hands plan_scope to the context build, and "none" reads no plan (issue #1213)', async () => {
+	assert.ok((await tablesReadAt(1)).includes('training_plans'), 'an absent scope still reads the plan');
+	assert.ok((await tablesReadAt(1, { plan_scope: 'season' })).includes('training_plans'));
+	const none = await tablesReadAt(1, { plan_scope: 'none' });
+	assert.ok(none.includes('runs'), 'the rest of the context is still built');
+	assert.equal(none.includes('training_plans'), false);
+});
+
+test('returns 400 on a plan_scope outside plan, season and none', async () => {
+	for (const bad of ['all', '', 1, null, ['season']]) {
+		const result = await handleCoach(
+			'Bearer x',
+			{ messages: [{ role: 'user', content: 'hi' }], plan_scope: bad },
+			baseConfig(),
+		);
+		const { status, body } = parseJsonResult(result);
+		assert.equal(status, 400, `expected 400 for ${JSON.stringify(bad)}`);
+		assert.equal(body.error, 'plan_scope must be one of plan, season, none');
+	}
 });
 
 test('the system text carries the describe-link handoff when the AI plan assistant is on', async () => {

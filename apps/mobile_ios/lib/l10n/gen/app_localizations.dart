@@ -11584,6 +11584,18 @@ abstract class AppLocalizations {
   /// **'No plan (recent runs only)'**
   String get coachNoPlanOption;
 
+  /// Coach plan picker option: the Coach reads the current training plan together with the back-to-back plans queued after it
+  ///
+  /// In en, this message translates to:
+  /// **'My season (current plan and the plans queued after it)'**
+  String get coachSeasonOption;
+
+  /// Coach context chip label when the Coach reads the runner's whole season of back-to-back training plans; shown as '<label> · <N>w'
+  ///
+  /// In en, this message translates to:
+  /// **'My season'**
+  String get coachSeasonName;
+
   /// Plan-switcher dropdown: active plan label
   ///
   /// In en, this message translates to:
@@ -27715,6 +27727,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'show message options'**
   String get messagesOptionsHint;
+
+  /// Conversation overflow-menu action that blocks the other person (confirmed first)
+  ///
+  /// In en, this message translates to:
+  /// **'Block'**
+  String get messagesBlock;
+
+  /// Conversation action that lifts the viewer's block on the other person; in the overflow menu and on the blocked notice
+  ///
+  /// In en, this message translates to:
+  /// **'Unblock'**
+  String get messagesUnblock;
+
+  /// Confirm dialog body before blocking someone from inside a direct-message conversation
+  ///
+  /// In en, this message translates to:
+  /// **'Neither of you will be able to message the other, and they won\'t be able to follow you or give kudos to or comment on your runs. Any follow between you in either direction is cleared, and unblocking doesn\'t bring it back.'**
+  String get messagesBlockConfirmBody;
+
+  /// Shown in place of the message composer when the viewer has blocked the other person
+  ///
+  /// In en, this message translates to:
+  /// **'You blocked {name}, so neither of you can message the other.'**
+  String messagesBlockedNotice(String name);
 
   /// Profile action opening a direct-message conversation with this runner
   ///

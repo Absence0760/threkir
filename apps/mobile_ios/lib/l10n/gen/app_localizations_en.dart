@@ -7098,6 +7098,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get coachNoPlanOption => 'No plan (recent runs only)';
 
   @override
+  String get coachSeasonOption =>
+      'My season (current plan and the plans queued after it)';
+
+  @override
+  String get coachSeasonName => 'My season';
+
+  @override
   String coachPlanActive(String name) {
     return '$name · active';
   }
@@ -16742,6 +16749,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get messagesOptionsHint => 'show message options';
+
+  @override
+  String get messagesBlock => 'Block';
+
+  @override
+  String get messagesUnblock => 'Unblock';
+
+  @override
+  String get messagesBlockConfirmBody =>
+      'Neither of you will be able to message the other, and they won\'t be able to follow you or give kudos to or comment on your runs. Any follow between you in either direction is cleared, and unblocking doesn\'t bring it back.';
+
+  @override
+  String messagesBlockedNotice(String name) {
+    return 'You blocked $name, so neither of you can message the other.';
+  }
 
   @override
   String get profileMessage => 'Message';

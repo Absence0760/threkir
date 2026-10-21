@@ -1686,6 +1686,29 @@ class AppLocalizationsPt extends AppLocalizations {
   String get setupTrackRunningAlwaysOn => 'Sempre ativa';
 
   @override
+  String get setupImportTitle => 'Traga o seu histórico de corridas';
+
+  @override
+  String get setupImportHint =>
+      'Já regista corridas noutro sítio? Traga-as para que o seu painel, os seus recordes e as suas medalhas comecem preenchidos. Cada opção abre a respetiva importação e, no fim, volta aqui.';
+
+  @override
+  String get setupImportHealthAndroid =>
+      'Corridas de qualquer app que sincronize com o Health Connect, incluindo Garmin e Samsung';
+
+  @override
+  String get setupImportHealthIos =>
+      'Treinos do Apple Watch e de qualquer app que grave no Apple Health, incluindo Garmin';
+
+  @override
+  String get setupImportStravaDesc =>
+      'Carregue a exportação que recebe do Strava por e-mail, com todas as atividades que registou';
+
+  @override
+  String get setupImportParkrunDesc =>
+      'Traga todos os seus resultados do parkrun com o seu número de atleta';
+
+  @override
   String get setupDoneTitle => 'Tudo pronto';
 
   @override
@@ -20434,6 +20457,29 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get setupTrackRunningAlwaysOn => 'Sempre ativa';
+
+  @override
+  String get setupImportTitle => 'Traga seu histórico de corridas';
+
+  @override
+  String get setupImportHint =>
+      'Já registra corridas em outro lugar? Traga-as para cá para que seu painel, seus recordes e suas medalhas já comecem preenchidos. Cada opção abre a importação correspondente, e depois você volta para cá.';
+
+  @override
+  String get setupImportHealthAndroid =>
+      'Corridas de qualquer app que sincronize com o Health Connect, incluindo Garmin e Samsung';
+
+  @override
+  String get setupImportHealthIos =>
+      'Treinos do Apple Watch e de qualquer app que salve no Apple Health, incluindo Garmin';
+
+  @override
+  String get setupImportStravaDesc =>
+      'Envie o arquivo de exportação que o Strava manda por e-mail, com todas as atividades que você registrou';
+
+  @override
+  String get setupImportParkrunDesc =>
+      'Importe todos os seus resultados do parkrun com seu número de atleta';
 
   @override
   String get setupDoneTitle => 'Tudo pronto';

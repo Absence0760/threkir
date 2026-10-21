@@ -2891,6 +2891,42 @@ abstract class AppLocalizations {
   /// **'Always on'**
   String get setupTrackRunningAlwaysOn;
 
+  /// Setup wizard import step title: offers to bring in runs the person already logged in another app or service
+  ///
+  /// In en, this message translates to:
+  /// **'Bring your running history'**
+  String get setupImportTitle;
+
+  /// Setup wizard import step hint. Records = personal records (PRs). Tapping a source opens that existing import screen; closing it returns to this step
+  ///
+  /// In en, this message translates to:
+  /// **'Already log runs somewhere else? Bring them in so your dashboard, records and badges start full. Each one opens its import, and you come back here after.'**
+  String get setupImportHint;
+
+  /// Setup wizard import step, Android: subtitle under the Health Connect row. Health Connect, Garmin and Samsung are product names, keep them untranslated
+  ///
+  /// In en, this message translates to:
+  /// **'Runs from any app that syncs to Health Connect, including Garmin and Samsung'**
+  String get setupImportHealthAndroid;
+
+  /// Setup wizard import step, iOS: subtitle under the Apple Health row. Apple Watch, Apple Health and Garmin are product names, keep them untranslated
+  ///
+  /// In en, this message translates to:
+  /// **'Workouts from Apple Watch and any app that saves to Apple Health, including Garmin'**
+  String get setupImportHealthIos;
+
+  /// Setup wizard import step: subtitle under the Strava row. The archive is the ZIP export Strava emails on request. Strava is a product name
+  ///
+  /// In en, this message translates to:
+  /// **'Upload the archive Strava emails you, with every activity you\'ve logged'**
+  String get setupImportStravaDesc;
+
+  /// Setup wizard import step: subtitle under the parkrun row. parkrun is a brand name, always lowercase; athlete number is the parkrun ID such as A123456
+  ///
+  /// In en, this message translates to:
+  /// **'Pull in every parkrun result with your athlete number'**
+  String get setupImportParkrunDesc;
+
   /// Setup wizard final step title
   ///
   /// In en, this message translates to:

@@ -1689,6 +1689,29 @@ class AppLocalizationsDe extends AppLocalizations {
   String get setupTrackRunningAlwaysOn => 'Immer aktiv';
 
   @override
+  String get setupImportTitle => 'Bring deine Laufhistorie mit';
+
+  @override
+  String get setupImportHint =>
+      'Erfasst du deine Läufe schon woanders? Hol sie rein, damit dein Dashboard, deine Rekorde und Abzeichen von Anfang an gefüllt sind. Jede Quelle öffnet ihren Import, danach kommst du hierher zurück.';
+
+  @override
+  String get setupImportHealthAndroid =>
+      'Läufe aus jeder App, die mit Health Connect synchronisiert, auch Garmin und Samsung';
+
+  @override
+  String get setupImportHealthIos =>
+      'Workouts von der Apple Watch und aus jeder App, die in Apple Health speichert, auch Garmin';
+
+  @override
+  String get setupImportStravaDesc =>
+      'Lade das Archiv hoch, das Strava dir per E-Mail schickt – mit allen Aktivitäten, die du erfasst hast';
+
+  @override
+  String get setupImportParkrunDesc =>
+      'Hol alle parkrun-Ergebnisse über deine Athletennummer';
+
+  @override
   String get setupDoneTitle => 'Alles bereit';
 
   @override

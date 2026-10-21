@@ -2161,6 +2161,30 @@
   "@setupTrackRunningAlwaysOn": {
     "description": "Setup wizard what-to-track step: subtitle saying running cannot be switched off"
   },
+  "setupImportTitle": "Bring your running history",
+  "@setupImportTitle": {
+    "description": "Setup wizard import step title: offers to bring in runs the person already logged in another app or service"
+  },
+  "setupImportHint": "Already log runs somewhere else? Bring them in so your dashboard, records and badges start full. Each one opens its import, and you come back here after.",
+  "@setupImportHint": {
+    "description": "Setup wizard import step hint. Records = personal records (PRs). Tapping a source opens that existing import screen; closing it returns to this step"
+  },
+  "setupImportHealthAndroid": "Runs from any app that syncs to Health Connect, including Garmin and Samsung",
+  "@setupImportHealthAndroid": {
+    "description": "Setup wizard import step, Android: subtitle under the Health Connect row. Health Connect, Garmin and Samsung are product names, keep them untranslated"
+  },
+  "setupImportHealthIos": "Workouts from Apple Watch and any app that saves to Apple Health, including Garmin",
+  "@setupImportHealthIos": {
+    "description": "Setup wizard import step, iOS: subtitle under the Apple Health row. Apple Watch, Apple Health and Garmin are product names, keep them untranslated"
+  },
+  "setupImportStravaDesc": "Upload the archive Strava emails you, with every activity you've logged",
+  "@setupImportStravaDesc": {
+    "description": "Setup wizard import step: subtitle under the Strava row. The archive is the ZIP export Strava emails on request. Strava is a product name"
+  },
+  "setupImportParkrunDesc": "Pull in every parkrun result with your athlete number",
+  "@setupImportParkrunDesc": {
+    "description": "Setup wizard import step: subtitle under the parkrun row. parkrun is a brand name, always lowercase; athlete number is the parkrun ID such as A123456"
+  },
   "setupDoneTitle": "You're all set",
   "@setupDoneTitle": {
     "description": "Setup wizard final step title"

@@ -59,6 +59,7 @@ import 'confirm_age_screen.dart';
 import 'dashboard_screen.dart';
 import 'event_detail_screen.dart';
 import 'fitness_hub_screen.dart';
+import 'import_screen.dart';
 import 'message_thread_screen.dart';
 import 'messages_screen.dart';
 import '../onboarding.dart';
@@ -392,6 +393,23 @@ class _HomeScreenState extends State<HomeScreen>
           // once the user explicitly picked a unit.
           initialPreferredUnit: widget.settingsSync?.service
               ?.effective<String>(SettingsKeys.preferredUnit),
+          // The import step opens the same screens Settings does, so every
+          // permission sheet and consent they ask for still runs there.
+          importScreenBuilder: (_) => ImportScreen(
+            apiClient: api,
+            runStore: widget.runStore,
+            routeStore: widget.routeStore,
+            preferences: widget.preferences,
+            settingsSync: widget.settingsSync,
+          ),
+          integrationsScreenBuilder: (_) => SettingsIntegrationsScreen(
+            apiClient: api,
+            heartRate: widget.heartRate,
+            treadmill: widget.treadmill,
+            preferences: widget.preferences,
+            settingsSync: widget.settingsSync,
+          ),
+          probeParkrun: RaceService().isParkrunConfigured,
         ),
       ),
     );

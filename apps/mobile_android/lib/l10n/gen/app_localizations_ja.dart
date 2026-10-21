@@ -1609,6 +1609,28 @@ class AppLocalizationsJa extends AppLocalizations {
   String get setupTrackRunningAlwaysOn => '常にオン';
 
   @override
+  String get setupImportTitle => 'ランの履歴を取り込みましょう';
+
+  @override
+  String get setupImportHint =>
+      'ほかのアプリでランを記録していますか？取り込めば、ダッシュボード、自己ベスト、バッジが最初から充実します。いずれかを選ぶとそのインポート画面が開き、終わるとここに戻ります。';
+
+  @override
+  String get setupImportHealthAndroid =>
+      'GarminやSamsungを含む、Health Connectに同期するすべてのアプリからランを取り込みます';
+
+  @override
+  String get setupImportHealthIos =>
+      'Apple Watchと、Garminを含むApple Healthに保存するすべてのアプリからワークアウトを取り込みます';
+
+  @override
+  String get setupImportStravaDesc =>
+      'これまで記録したすべてのアクティビティを含む、Stravaからメールで届くアーカイブをアップロードします';
+
+  @override
+  String get setupImportParkrunDesc => 'アスリート番号でparkrunの全結果を取り込みます';
+
+  @override
   String get setupDoneTitle => '準備完了';
 
   @override

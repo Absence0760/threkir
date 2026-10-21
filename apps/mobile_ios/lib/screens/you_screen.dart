@@ -14,6 +14,7 @@ import '../local_run_store.dart';
 import '../parkrun_barcode_cache.dart';
 import '../preferences.dart';
 import '../settings_sync.dart';
+import '../training_service.dart';
 import 'messages_screen.dart';
 import 'parkrun_barcode_screen.dart';
 import 'profile_screen.dart';
@@ -38,6 +39,9 @@ class YouScreen extends StatefulWidget {
   final BleTreadmill treadmill;
   final SettingsSyncService? settingsSync;
 
+  /// What the inbox's AI Coach row opens the Coach with.
+  final TrainingService? training;
+
   const YouScreen({
     super.key,
     this.apiClient,
@@ -50,6 +54,7 @@ class YouScreen extends StatefulWidget {
     this.foodStore,
     this.gearStore,
     this.settingsSync,
+    this.training,
   });
 
   @override
@@ -214,7 +219,9 @@ class _YouScreenState extends State<YouScreen>
               child: IconButton(
                 key: const ValueKey('you-messages'),
                 tooltip: l10n.messagesTitle,
-                onPressed: () => _push(MessagesScreen(api: api)),
+                onPressed: () => _push(
+                  MessagesScreen(api: api, training: widget.training),
+                ),
                 icon: ExcludeSemantics(
                   child: Badge.count(
                     count: _unreadDms,

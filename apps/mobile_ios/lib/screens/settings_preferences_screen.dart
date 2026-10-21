@@ -11,6 +11,7 @@ import '../hr_prescription_gate.dart';
 import '../hr_zones.dart'
     show kMaxHrBpmMax, kMaxHrBpmMin, kRestingHrBpmMax, kRestingHrBpmMin;
 import '../l10n/gen/app_localizations.dart';
+import '../messages_inbox.dart';
 import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
 import '../local_food_store.dart';
@@ -899,6 +900,31 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     await _putUniversal(SettingsKeys.emailNewDeviceAlerts, on ? 'off' : 'on');
   }
 
+  /// Where the AI Coach sits in the Messages inbox (decisions § 2227).
+  Future<void> _editCoachInMessages() async {
+    final l10n = AppLocalizations.of(context);
+    final picked = await _pickRadio<CoachInboxPlacement>(
+      title: l10n.prefsCoachInMessages,
+      options: CoachInboxPlacement.values,
+      labels: [
+        for (final p in CoachInboxPlacement.values) _coachPlacementLabel(l10n, p),
+      ],
+      current: parseCoachInboxPlacement(
+          _bagValue<Object>(SettingsKeys.messagesCoachRow)),
+    );
+    if (picked != null) {
+      await _putUniversal(SettingsKeys.messagesCoachRow, picked.name);
+    }
+  }
+
+  static String _coachPlacementLabel(
+          AppLocalizations l10n, CoachInboxPlacement p) =>
+      switch (p) {
+        CoachInboxPlacement.pinned => l10n.prefsCoachInMessagesPinned,
+        CoachInboxPlacement.listed => l10n.prefsCoachInMessagesListed,
+        CoachInboxPlacement.hidden => l10n.prefsCoachInMessagesHidden,
+      };
+
   Future<void> _toggleNotifyWorkoutReminder() async {
     // Opt-OUT, stored as 'on'|'off' (default 'on'); only the literal 'off'
     // mutes it, matching the scheduler's and the worker's read.
@@ -1737,6 +1763,26 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                       value: runPrimaryForced || prefs.keepRunPrimary,
                       onChanged:
                           runPrimaryForced ? null : prefs.setKeepRunPrimary,
+                    ),
+                  ],
+                ),
+                (
+                  l10n.prefsSectionMessages,
+                  [
+                    ListTile(
+                      key: const Key('prefsCoachInMessages'),
+                      title: Text(l10n.prefsCoachInMessages),
+                      subtitle: Text(
+                        _coachPlacementLabel(
+                          l10n,
+                          parseCoachInboxPlacement(
+                            _bagValue<Object>(SettingsKeys.messagesCoachRow),
+                          ),
+                        ),
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      enabled: _bagReady,
+                      onTap: _editCoachInMessages,
                     ),
                   ],
                 ),

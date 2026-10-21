@@ -17912,4 +17912,38 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get planNewDobHintHealthDataAction => '同意を確認';
+
+  @override
+  String get messagesAiTag => 'AI';
+
+  @override
+  String get messagesAiTagSr => 'AIによる生成';
+
+  @override
+  String get messagesCoachRowIntro => 'トレーニング、プラン、ランについて質問できます。';
+
+  @override
+  String get messagesCoachPin => 'AI コーチを上部に固定';
+
+  @override
+  String get messagesCoachUnpin => 'AI コーチの固定を解除';
+
+  @override
+  String get messagesCoachPlacementFailed =>
+      'AI コーチの表示位置を保存できませんでした。もう一度お試しください。';
+
+  @override
+  String get prefsSectionMessages => 'メッセージ';
+
+  @override
+  String get prefsCoachInMessages => 'メッセージでの AI コーチ';
+
+  @override
+  String get prefsCoachInMessagesPinned => '上部に固定';
+
+  @override
+  String get prefsCoachInMessagesListed => '会話と一緒に表示';
+
+  @override
+  String get prefsCoachInMessagesHidden => '非表示';
 }

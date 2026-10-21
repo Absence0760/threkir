@@ -18796,6 +18796,41 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planNewDobHintHealthDataAction => 'Rever consentimento';
+
+  @override
+  String get messagesAiTag => 'IA';
+
+  @override
+  String get messagesAiTagSr => 'Gerado por IA';
+
+  @override
+  String get messagesCoachRowIntro =>
+      'Pergunte sobre o seu treino, o seu plano ou uma corrida.';
+
+  @override
+  String get messagesCoachPin => 'Fixar o Coach de IA no topo';
+
+  @override
+  String get messagesCoachUnpin => 'Desafixar o Coach de IA';
+
+  @override
+  String get messagesCoachPlacementFailed =>
+      'Não foi possível guardar a posição do Coach de IA. Tente novamente.';
+
+  @override
+  String get prefsSectionMessages => 'Mensagens';
+
+  @override
+  String get prefsCoachInMessages => 'Coach de IA nas Mensagens';
+
+  @override
+  String get prefsCoachInMessagesPinned => 'Fixado no topo';
+
+  @override
+  String get prefsCoachInMessagesListed => 'Com as suas conversas';
+
+  @override
+  String get prefsCoachInMessagesHidden => 'Oculto';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -37577,4 +37612,39 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planNewDobHintHealthDataAction => 'Revisar consentimento';
+
+  @override
+  String get messagesAiTag => 'IA';
+
+  @override
+  String get messagesAiTagSr => 'Gerado por IA';
+
+  @override
+  String get messagesCoachRowIntro =>
+      'Pergunte sobre seu treino, seu plano ou uma corrida.';
+
+  @override
+  String get messagesCoachPin => 'Fixar o Coach de IA no topo';
+
+  @override
+  String get messagesCoachUnpin => 'Desafixar o Coach de IA';
+
+  @override
+  String get messagesCoachPlacementFailed =>
+      'Não foi possível salvar onde o Coach de IA aparece. Tente novamente.';
+
+  @override
+  String get prefsSectionMessages => 'Mensagens';
+
+  @override
+  String get prefsCoachInMessages => 'Coach de IA em Mensagens';
+
+  @override
+  String get prefsCoachInMessagesPinned => 'Fixado no topo';
+
+  @override
+  String get prefsCoachInMessagesListed => 'Junto com suas conversas';
+
+  @override
+  String get prefsCoachInMessagesHidden => 'Oculto';
 }

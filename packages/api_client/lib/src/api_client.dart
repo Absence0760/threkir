@@ -5753,6 +5753,25 @@ class ApiClient {
         .toList();
   }
 
+  /// The newest message across the runner's current (not archived) Coach
+  /// conversations, for the AI Coach row in the Messages inbox (decisions
+  /// § 2227). Owner-only by RLS. Callers read it only once the runner has
+  /// consented to the Coach; throws on a failed read, so the row can say
+  /// nothing rather than claim there is no conversation.
+  Future<CoachMessageRow?> fetchLatestCoachMessage() async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return null;
+    final row = await _client
+        .from(CoachMessageRow.table)
+        .select()
+        .eq(CoachMessageRow.colUserId, viewerId)
+        .isFilter(CoachMessageRow.colArchivedAt, null)
+        .order(CoachMessageRow.colCreatedAt, ascending: false)
+        .limit(1)
+        .maybeSingle();
+    return row == null ? null : CoachMessageRow.fromJson(row);
+  }
+
   /// Set / clear the up/down reaction on an assistant bubble.
   Future<void> setCoachReaction({
     required String messageId,

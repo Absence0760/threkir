@@ -5263,5 +5263,16 @@
   "planNewDobHintAbsent": "Les plans donnent automatiquement plus de récupération aux coureurs de 50 ans et plus.",
   "planNewDobHintAbsentAction": "Ajouter ta date de naissance",
   "planNewDobHintHealthData": "Les plans ne peuvent utiliser ta date de naissance pour s'adapter à ton âge qu'avec ton consentement à l'utilisation des données de santé.",
-  "planNewDobHintHealthDataAction": "Vérifier le consentement"
+  "planNewDobHintHealthDataAction": "Vérifier le consentement",
+  "messagesAiTag": "IA",
+  "messagesAiTagSr": "Généré par l'IA",
+  "messagesCoachRowIntro": "Posez vos questions sur votre entraînement, votre plan ou une course.",
+  "messagesCoachPin": "Épingler le Coach IA en haut",
+  "messagesCoachUnpin": "Désépingler le Coach IA",
+  "messagesCoachPlacementFailed": "Impossible d'enregistrer l'emplacement du Coach IA. Réessayez.",
+  "prefsSectionMessages": "Messages",
+  "prefsCoachInMessages": "Coach IA dans Messages",
+  "prefsCoachInMessagesPinned": "Épinglé en haut",
+  "prefsCoachInMessagesListed": "Avec vos conversations",
+  "prefsCoachInMessagesHidden": "Masqué"
 }

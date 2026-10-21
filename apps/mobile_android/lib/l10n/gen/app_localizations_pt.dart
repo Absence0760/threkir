@@ -16894,6 +16894,21 @@ class AppLocalizationsPt extends AppLocalizations {
   String get messagesOptionsHint => 'mostrar as opções da mensagem';
 
   @override
+  String get messagesBlock => 'Bloquear';
+
+  @override
+  String get messagesUnblock => 'Desbloquear';
+
+  @override
+  String get messagesBlockConfirmBody =>
+      'Nenhum dos dois poderá enviar mensagens ao outro, e esta pessoa não poderá segui-lo, dar kudos às suas corridas nem comentá-las. Qualquer seguimento entre ambos, em qualquer direção, é removido, e desbloquear não o repõe.';
+
+  @override
+  String messagesBlockedNotice(String name) {
+    return 'Bloqueou $name, por isso nenhum dos dois pode enviar mensagens ao outro.';
+  }
+
+  @override
   String get profileMessage => 'Mensagem';
 
   @override
@@ -35632,6 +35647,21 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get messagesOptionsHint => 'mostrar opções da mensagem';
+
+  @override
+  String get messagesBlock => 'Bloquear';
+
+  @override
+  String get messagesUnblock => 'Desbloquear';
+
+  @override
+  String get messagesBlockConfirmBody =>
+      'Nenhum de vocês dois poderá enviar mensagens para o outro, e essa pessoa não poderá seguir você, dar kudos às suas corridas nem comentá-las. Qualquer seguimento entre vocês, em qualquer direção, é removido, e desbloquear não o traz de volta.';
+
+  @override
+  String messagesBlockedNotice(String name) {
+    return 'Você bloqueou $name, então nenhum de vocês dois pode enviar mensagens para o outro.';
+  }
 
   @override
   String get profileMessage => 'Mensagem';

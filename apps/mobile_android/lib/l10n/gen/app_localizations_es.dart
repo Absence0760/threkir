@@ -16887,6 +16887,21 @@ class AppLocalizationsEs extends AppLocalizations {
   String get messagesOptionsHint => 'mostrar las opciones del mensaje';
 
   @override
+  String get messagesBlock => 'Bloquear';
+
+  @override
+  String get messagesUnblock => 'Desbloquear';
+
+  @override
+  String get messagesBlockConfirmBody =>
+      'Ninguno de los dos podrá enviar mensajes al otro, y esa persona no podrá seguirte, dar kudos a tus carreras ni comentarlas. Cualquier seguimiento entre ambos, en cualquier dirección, se eliminará, y desbloquear no lo restablecerá.';
+
+  @override
+  String messagesBlockedNotice(String name) {
+    return 'Has bloqueado a $name, así que ninguno de los dos puede enviar mensajes al otro.';
+  }
+
+  @override
   String get profileMessage => 'Mensaje';
 
   @override

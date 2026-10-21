@@ -16106,6 +16106,21 @@ class AppLocalizationsJa extends AppLocalizations {
   String get messagesOptionsHint => 'メッセージのオプションを表示';
 
   @override
+  String get messagesBlock => 'ブロック';
+
+  @override
+  String get messagesUnblock => 'ブロック解除';
+
+  @override
+  String get messagesBlockConfirmBody =>
+      'お互いにメッセージを送れなくなり、相手はあなたをフォローしたり、あなたのランを称賛したり、コメントしたりできなくなります。お互いの間のフォローは、どちらの方向のものもすべて解除され、ブロックを解除しても元には戻りません。';
+
+  @override
+  String messagesBlockedNotice(String name) {
+    return '$nameをブロックしているため、お互いにメッセージを送ることはできません。';
+  }
+
+  @override
   String get profileMessage => 'メッセージ';
 
   @override

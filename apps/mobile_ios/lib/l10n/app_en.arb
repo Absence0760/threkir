@@ -22010,6 +22010,27 @@
   "@messagesOptionsHint": {
     "description": "Screen-reader long-press hint on a message bubble (read after 'double tap and hold to'); lowercase"
   },
+  "messagesBlock": "Block",
+  "@messagesBlock": {
+    "description": "Conversation overflow-menu action that blocks the other person (confirmed first)"
+  },
+  "messagesUnblock": "Unblock",
+  "@messagesUnblock": {
+    "description": "Conversation action that lifts the viewer's block on the other person; in the overflow menu and on the blocked notice"
+  },
+  "messagesBlockConfirmBody": "Neither of you will be able to message the other, and they won't be able to follow you or give kudos to or comment on your runs. Any follow between you in either direction is cleared, and unblocking doesn't bring it back.",
+  "@messagesBlockConfirmBody": {
+    "description": "Confirm dialog body before blocking someone from inside a direct-message conversation"
+  },
+  "messagesBlockedNotice": "You blocked {name}, so neither of you can message the other.",
+  "@messagesBlockedNotice": {
+    "description": "Shown in place of the message composer when the viewer has blocked the other person",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "profileMessage": "Message",
   "@profileMessage": {
     "description": "Profile action opening a direct-message conversation with this runner"

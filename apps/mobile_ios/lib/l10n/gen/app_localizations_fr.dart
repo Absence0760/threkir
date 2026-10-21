@@ -16930,6 +16930,21 @@ class AppLocalizationsFr extends AppLocalizations {
   String get messagesOptionsHint => 'afficher les options du message';
 
   @override
+  String get messagesBlock => 'Bloquer';
+
+  @override
+  String get messagesUnblock => 'Débloquer';
+
+  @override
+  String get messagesBlockConfirmBody =>
+      'Aucun de vous deux ne pourra écrire à l\'autre, et cette personne ne pourra plus vous suivre, donner de kudos à vos courses ni les commenter. Tout abonnement entre vous, dans un sens comme dans l\'autre, sera supprimé, et le déblocage ne le rétablira pas.';
+
+  @override
+  String messagesBlockedNotice(String name) {
+    return 'Vous avez bloqué $name : aucun de vous deux ne peut donc écrire à l\'autre.';
+  }
+
+  @override
   String get profileMessage => 'Message';
 
   @override

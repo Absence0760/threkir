@@ -1,6 +1,23 @@
 # Direct messages
 
-1:1 messages between two runners. Web is the canonical surface (`/messages/[[id]]`); mobile has the same inbox and conversation (`messages_screen.dart`, `message_thread_screen.dart`, mirrored to `mobile_ios`). The parity row is [parity.md § Direct messages (1:1)](../product/parity.md); this page is the behaviour reference.
+1:1 messages between two runners. Web is the canonical surface (`/messages/[[id]]` under the `/messages` layout that holds the inbox); mobile has the same inbox and conversation (`messages_screen.dart`, `message_thread_screen.dart`, mirrored to `mobile_ios`). The parity row is [parity.md § Direct messages (1:1)](../product/parity.md); this page is the behaviour reference.
+
+## The AI Coach in the inbox
+
+Since [decisions § 2227](../architecture/decisions.md) (issue #1215, Phase 1) the AI Coach is one more row in the inbox, pinned at the top by default. The inbox is merged in the **list only**: the row is `dm_threads()` plus the newest non-archived `coach_messages` row, and the two tables keep their own RLS, retention and rendering. No AI text ever appears in a conversation with a person, and the Coach never takes part in one.
+
+| | Web | Mobile |
+|---|---|---|
+| Row | `routes/messages/+layout.svelte`, state in `stores/messages_inbox.svelte.ts` | `messages_screen.dart` |
+| Opens | `/messages/coach?plan=<plan of the previewed message>` (or `?plan=none`), the existing `CoachChat` in the conversation pane | `CoachScreen` on that plan |
+| Shown when | `coachEnabled()` | `ProPerks.coach` from `/app-capabilities.json`, and a `TrainingService` is present |
+| Placement | `messages_coach_row` universal setting (`pinned` default / `listed` / `hidden`; [settings.md](../backend/settings.md)); the row's pin button toggles pinned ↔ listed, Settings → Display offers all three | the row's pin button; Settings → Preferences → Messages |
+
+Ordering and the preview text are the `messages_inbox` parity pair ([parity_pairs.md](../architecture/parity_pairs.md)): a listed row goes before the first conversation whose latest message is strictly older than its own, and after every conversation when it has no message; the preview drops the markdown and is always placed as text.
+
+**Consent gate.** The row is shown to a runner who has not accepted the AI disclosure, but `coach_messages` is not read for them: the row says what the Coach is ("Ask about your training, your plan or a run.") and opening it shows the existing consent prompt. A failed consent read counts as no consent. Every Coach message, in the inbox row and in the chat, carries an avatar and an "AI" tag that a screen reader hears as "AI-generated" (EU AI Act Art. 50).
+
+`/coach` redirects to `/messages/coach` with its query kept, and the sidebar has no Coach row any more. The mobile Home coach card stays and opens the same `CoachScreen`.
 
 ## Who can message whom
 
@@ -39,9 +56,9 @@ A conversation poll re-reads the **newest page** rather than asking for messages
 ## Tests
 
 - pgtap: `direct_messages_test.sql`, `dm_unsend_report_keep_on_delete_test.sql`, `direct_message_route_attachment_test.sql`
-- web unit: `social/dm_thread.test.ts`, `core/visible_poll.test.ts`
-- Playwright: `tests-e2e/messages/` — `dm-thread-block.spec.ts` (block from the conversation), `dm-live-poll.spec.ts` (thread and inbox polls, driven by Playwright's clock), plus the send, paging, permission, unsend/report and route-attachment specs
-- mobile: `direct_messages_screen_test.dart`, api_client `direct_messages_test.dart`
+- web unit: `social/dm_thread.test.ts`, `core/visible_poll.test.ts`, `social/messages_inbox.test.ts`
+- Playwright: `tests-e2e/messages/` — `dm-thread-block.spec.ts` (block from the conversation), `dm-live-poll.spec.ts` (thread and inbox polls, driven by Playwright's clock), `coach-inbox-row.spec.ts` (the Coach row: no-consent, preview, AI label, unpin and hide persisting, the `/coach` redirect), plus the send, paging, permission, unsend/report and route-attachment specs
+- mobile: `direct_messages_screen_test.dart`, `messages_coach_row_test.dart`, `messages_inbox_test.dart`, api_client `direct_messages_test.dart`
 
 ## Not built yet (issue #1216)
 

@@ -9846,6 +9846,10 @@
   "@coachOpenArchiveFailed": {
     "description": "Error opening an archive"
   },
+  "coachJumpToLatest": "Jump to latest",
+  "@coachJumpToLatest": {
+    "description": "Button shown over the coach chat when the runner has scrolled up and new reply text has arrived below; tapping it scrolls to the newest message and resumes following the reply"
+  },
   "coachArchiveDeleteFailed": "Couldn't delete archive: {error}",
   "@coachArchiveDeleteFailed": {
     "description": "Banner shown when deleting a coach archive fails; the swiped row snaps back",

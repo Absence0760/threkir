@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -6951,6 +6952,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get coachOpenArchiveFailed => 'アーカイブを開けませんでした。';
+
+  @override
+  String get coachJumpToLatest => '最新のメッセージへ';
 
   @override
   String coachArchiveDeleteFailed(String error) {

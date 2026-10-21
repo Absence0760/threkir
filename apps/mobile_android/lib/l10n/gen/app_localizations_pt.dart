@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -7369,6 +7370,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachOpenArchiveFailed => 'Não foi possível abrir o ficheiro.';
+
+  @override
+  String get coachJumpToLatest => 'Ir para a última mensagem';
 
   @override
   String coachArchiveDeleteFailed(String error) {
@@ -26082,6 +26086,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachOpenArchiveFailed => 'Não foi possível abrir o arquivo.';
+
+  @override
+  String get coachJumpToLatest => 'Ir para a última mensagem';
 
   @override
   String coachArchiveDeleteFailed(String error) {

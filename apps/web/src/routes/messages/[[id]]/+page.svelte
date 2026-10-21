@@ -11,11 +11,18 @@
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import DmRouteAttachment from '#lib/components/DmRouteAttachment.svelte';
 	import { bodyRestatesAttachment, hasDmRouteAttachment } from '#lib/social/dm_attachment.ts';
-	import { mergeDmMessages } from '#lib/social/dm_thread.ts';
+	import {
+		dmThreadRouteId,
+		mergeDmMessages,
+		parseDmThreadRouteId
+	} from '#lib/social/dm_thread.ts';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import ReportDialog from '#lib/components/ReportDialog.svelte';
 	import {
 		fetchDmThreads,
 		fetchDmThread,
 		sendDm,
+		unsendDm,
 		markDmThreadRead,
 		type DmThread,
 		type DirectMessage
@@ -43,9 +50,19 @@
 	let scroller = $state<HTMLDivElement | null>(null);
 
 	let activeId = $derived(page.params.id ?? null);
+	// A deleted partner's thread has no partner to reply to, link to or mark
+	// read; it holds only the viewer's own messages (migration 20271021000003).
+	const activeTarget = $derived(activeId ? parseDmThreadRouteId(activeId) : null);
+	const activePartnerId = $derived(activeTarget?.kind === 'partner' ? activeTarget.partnerId : null);
 	const draft = $derived(activeId ? (drafts[activeId] ?? '') : '');
 	let me = $derived(auth.user?.id ?? null);
-	let activeThread = $derived(threads.find((t) => t.partnerId === activeId) ?? null);
+	let activeThread = $derived(threads.find((t) => dmThreadRouteId(t) === activeId) ?? null);
+
+	// The message an Unsend / Report action is open for. Unsend cannot be
+	// undone, so it goes through a confirm; Report has its own dialog.
+	let unsendTarget = $state<DirectMessage | null>(null);
+	let reportTarget = $state<DirectMessage | null>(null);
+	let actionError = $state<string | null>(null);
 
 	onMount(async () => {
 		await auth.ready();
@@ -74,7 +91,7 @@
 		try {
 			const rows = await fetchDmThreads();
 			threads = rows.map((t) =>
-				(markedReadAt.get(t.partnerId) ?? -Infinity) >= startedAt ? { ...t, unread: 0 } : t
+				(markedReadAt.get(dmThreadRouteId(t)) ?? -Infinity) >= startedAt ? { ...t, unread: 0 } : t
 			);
 		} catch {
 			threadsError = true;
@@ -87,6 +104,7 @@
 		// A send failure belongs to the thread it happened in; leaving it pinned
 		// above the composer made it read as an error in the new conversation.
 		sendError = null;
+		actionError = null;
 		if (!id || !auth.user) {
 			messages = [];
 			hasMore = false;
@@ -108,7 +126,7 @@
 		threadError = false;
 		earlierError = false;
 		try {
-			const result = await fetchDmThread(id);
+			const result = await fetchDmThread(parseDmThreadRouteId(id));
 			if (id !== activeId) return;
 			messages = result.messages;
 			hasMore = result.hasMore;
@@ -122,13 +140,15 @@
 			if (id === activeId) loadingThread = false;
 		}
 		void scrollToNewest();
-		const newestShown = messages.findLast((m) => m.sender_id === id);
+		const target = parseDmThreadRouteId(id);
+		if (target.kind !== 'partner') return;
+		const newestShown = messages.findLast((m) => m.sender_id === target.partnerId);
 		if (!newestShown) return;
 		try {
 			await markDmThreadRead(id, newestShown);
 			markedReadAt.set(id, Date.now());
 			// Zero the unread badge locally without a full refetch.
-			threads = threads.map((t) => (t.partnerId === id ? { ...t, unread: 0 } : t));
+			threads = threads.map((t) => (dmThreadRouteId(t) === id ? { ...t, unread: 0 } : t));
 			void dmUnreadStore.refresh();
 		} catch {
 			// Marking-read is a non-critical side effect; its failure must not
@@ -151,7 +171,7 @@
 		loadingEarlier = true;
 		earlierError = false;
 		try {
-			const result = await fetchDmThread(id, { before: oldest });
+			const result = await fetchDmThread(parseDmThreadRouteId(id), { before: oldest });
 			if (id !== activeId) return;
 			const fromBottom = scroller ? scroller.scrollHeight - scroller.scrollTop : 0;
 			messages = mergeDmMessages(messages, result.messages);
@@ -167,12 +187,13 @@
 
 	async function send() {
 		const id = activeId;
-		if (!id || !draft.trim() || sending) return;
+		const partnerId = activePartnerId;
+		if (!id || !partnerId || !draft.trim() || sending) return;
 		sending = true;
 		sendError = null;
 		try {
 			const body = drafts[id] ?? '';
-			const msg = await sendDm(id, body);
+			const msg = await sendDm(partnerId, body);
 			messages = mergeDmMessages(messages, [msg]);
 			void scrollToNewest();
 			delete drafts[id];
@@ -188,6 +209,27 @@
 			sendError = appErrorMessage(e) ?? tr('messages.sendFailed');
 		} finally {
 			sending = false;
+		}
+	}
+
+	async function confirmUnsend() {
+		const target = unsendTarget;
+		const id = activeId;
+		if (!target || !id) return;
+		actionError = null;
+		try {
+			const updated = await unsendDm(target.id);
+			if (id === activeId) messages = mergeDmMessages(messages, [updated]);
+		} catch (e) {
+			actionError = appErrorMessage(e) ?? tr('messages.unsendFailed');
+		} finally {
+			unsendTarget = null;
+		}
+		try {
+			threads = await fetchDmThreads();
+		} catch {
+			// The unsend itself landed and already renders; a stale preview in
+			// the list is corrected by the next load.
 		}
 	}
 
@@ -232,20 +274,26 @@
 					<p class="muted empty">{tr('messages.emptyThreads')}</p>
 				{:else}
 					<ul>
-						{#each threads as t (t.partnerId)}
+						{#each threads as t (dmThreadRouteId(t))}
+							{@const routeId = dmThreadRouteId(t)}
+							{@const name = t.partnerId
+								? (t.partnerName ?? tr('messages.runnerFallback'))
+								: tr('messages.deletedAccount')}
 							<li>
 								<a
 									class="thread"
-									class:active={t.partnerId === activeId}
-									href={`/messages/${t.partnerId}`}
+									class:active={routeId === activeId}
+									href={`/messages/${routeId}`}
 								>
-									<Avatar url={t.partnerAvatar} name={t.partnerName} size="2.2rem" font="0.9rem" bg="seed" seedHue={hashHue(t.partnerId)} />
+									<Avatar url={t.partnerAvatar} name={t.partnerId ? t.partnerName : null} size="2.2rem" font="0.9rem" bg="seed" seedHue={hashHue(routeId)} />
 									<span class="thread-body">
 										<span class="thread-top">
-											<strong>{t.partnerName ?? tr('messages.runnerFallback')}</strong>
+											<strong>{name}</strong>
 											{#if t.unread > 0}<span class="badge">{t.unread}</span>{/if}
 										</span>
-										<span class="preview">{t.lastFromMe ? tr('messages.youPrefix') : ''}{t.lastBody}</span>
+										<span class="preview" class:unsent={t.lastUnsent}>{t.lastFromMe ? tr('messages.youPrefix') : ''}{t.lastUnsent
+												? tr('messages.unsentPlaceholder')
+												: t.lastBody}</span>
 									</span>
 								</a>
 							</li>
@@ -260,9 +308,13 @@
 				{:else}
 					<header class="pane-head conv-head">
 						<a class="back" href="/messages" aria-label={tr('messages.backAria')}>←</a>
-						<a class="who" href={`/u/${activeId}`}>
-							{activeThread?.partnerName ?? tr('messages.runnerFallback')}
-						</a>
+						{#if activePartnerId}
+							<a class="who" href={`/u/${activePartnerId}`}>
+								{activeThread?.partnerName ?? tr('messages.runnerFallback')}
+							</a>
+						{:else}
+							<span class="who">{tr('messages.deletedAccount')}</span>
+						{/if}
 					</header>
 					<div class="messages" bind:this={scroller}>
 						{#if loadingThread}
@@ -298,8 +350,11 @@
 							{/if}
 							{#each messages as m (m.id)}
 								{@const attached = m.route_id}
-								<div class="bubble" class:mine={m.sender_id === me}>
-									{#if hasDmRouteAttachment(attached)}
+								{@const mine = m.sender_id === me}
+								<div class="bubble" class:mine class:unsent={m.unsent_at !== null} data-testid="dm-bubble">
+									{#if m.unsent_at !== null || m.body === null}
+										<span class="text placeholder">{tr('messages.unsentPlaceholder')}</span>
+									{:else if hasDmRouteAttachment(attached)}
 										<DmRouteAttachment routeId={attached} />
 										{#if !bodyRestatesAttachment(m.body, attached)}
 											<span class="text">{m.body}</span>
@@ -307,12 +362,33 @@
 									{:else}
 										<span class="text">{m.body}</span>
 									{/if}
-									<span class="when">{fmtTime(m.created_at)}</span>
+									<span class="meta">
+										<span class="when">{fmtTime(m.created_at)}</span>
+										{#if m.unsent_at === null}
+											{#if mine}
+												<button
+													type="button"
+													class="msg-action"
+													onclick={() => (unsendTarget = m)}
+												>{tr('messages.unsend')}</button>
+											{:else}
+												<button
+													type="button"
+													class="msg-action"
+													onclick={() => (reportTarget = m)}
+												>{tr('messages.report')}</button>
+											{/if}
+										{/if}
+									</span>
 								</div>
 							{/each}
 						{/if}
 					</div>
+					{#if actionError}<p class="send-error" role="alert">{actionError}</p>{/if}
 					{#if sendError}<p class="send-error" role="alert">{sendError}</p>{/if}
+					{#if !activePartnerId}
+						<p class="muted closed">{tr('messages.deletedAccountClosed')}</p>
+					{:else}
 					<div class="composer">
 						<textarea
 							value={draft}
@@ -328,11 +404,32 @@
 							{sending ? '…' : tr('messages.send')}
 						</button>
 					</div>
+					{/if}
 				{/if}
 			</section>
 		</div>
 	{/if}
 </div>
+
+<ConfirmDialog
+	open={unsendTarget !== null}
+	danger
+	title={tr('messages.unsendConfirmTitle')}
+	message={tr('messages.unsendConfirmMessage')}
+	confirmLabel={tr('messages.unsend')}
+	onconfirm={confirmUnsend}
+	oncancel={() => (unsendTarget = null)}
+	data-testid="dm-unsend-confirm"
+/>
+
+{#if reportTarget}
+	<ReportDialog
+		open={reportTarget !== null}
+		targetKind="direct_message"
+		targetId={reportTarget.id}
+		onclose={() => (reportTarget = null)}
+	/>
+{/if}
 
 <style>
 	.page {
@@ -469,9 +566,41 @@
 		background: var(--color-primary);
 		color: var(--color-bg);
 	}
+	.bubble .meta {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
 	.bubble .when {
 		font-size: var(--font-size-section-label);
 		opacity: 0.7;
+	}
+	/* Text-styled so it reads as a quiet affordance on every bubble rather
+	   than a button competing with the message; inherits the bubble's
+	   foreground, so it stays legible on the sent bubble's inverted fill. */
+	.msg-action {
+		background: none;
+		border: none;
+		padding: 0.15rem 0;
+		font: inherit;
+		font-size: var(--font-size-section-label);
+		color: inherit;
+		opacity: 0.85;
+		text-decoration: underline;
+		cursor: pointer;
+	}
+	.msg-action:focus-visible {
+		outline: 2px solid currentColor;
+		outline-offset: 2px;
+	}
+	.placeholder,
+	.preview.unsent {
+		font-style: italic;
+	}
+	.closed {
+		padding: var(--space-md) var(--space-lg);
+		border-top: 1px solid var(--color-border);
+		margin: 0;
 	}
 	/* The attachment card carries its own surface + border, so it must not
 	   inherit the sent-bubble's inverted foreground. */

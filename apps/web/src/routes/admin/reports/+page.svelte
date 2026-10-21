@@ -32,7 +32,10 @@
 	let confirm = $state<{ status: ReportResolution } | null>(null);
 	let confirmUnhide = $state(false);
 
-	function targetHref(kind: ReportTargetKind, id: string): string {
+	// A direct message has no page a moderator can open — the thread is the
+	// two participants' alone — so its evidence is the snapshot on each report.
+	function targetHref(kind: ReportTargetKind, id: string): string | null {
+		if (kind === 'direct_message') return null;
 		if (kind === 'user') return `/u/${id}`;
 		if (kind === 'route') return `/routes/${id}`;
 		return `/clubs/${id}`;
@@ -41,6 +44,7 @@
 	function kindLabel(kind: ReportTargetKind): string {
 		if (kind === 'user') return t('admin.reports.kind.user');
 		if (kind === 'club') return t('admin.reports.kind.club');
+		if (kind === 'direct_message') return t('admin.reports.kind.directMessage');
 		return t('admin.reports.kind.route');
 	}
 
@@ -169,11 +173,15 @@
 							>
 								<td>
 									<span class="kind">{kindLabel(target.target_kind)}</span>
-									<a
-										href={targetHref(target.target_kind, target.target_id)}
-										class="target-link"
-										onclick={(e) => e.stopPropagation()}
-									>{target.target_id.slice(0, 8)}</a>
+									{#if targetHref(target.target_kind, target.target_id)}
+										<a
+											href={targetHref(target.target_kind, target.target_id)}
+											class="target-link"
+											onclick={(e) => e.stopPropagation()}
+										>{target.target_id.slice(0, 8)}</a>
+									{:else}
+										<span class="target-link">{target.target_id.slice(0, 8)}</span>
+									{/if}
 									{#if target.shadow_hidden}
 										<span class="hidden-badge" data-testid="admin-hidden-badge">{t('admin.reports.hiddenBadge')}</span>
 									{/if}
@@ -225,9 +233,11 @@
 		<div class="detail-body">
 			<div class="detail-head">
 				<span class="kind">{kindLabel(selected.target_kind)}</span>
-				<a href={targetHref(selected.target_kind, selected.target_id)} class="target-link">
-					{t('admin.reports.viewTarget')}
-				</a>
+				{#if targetHref(selected.target_kind, selected.target_id)}
+					<a href={targetHref(selected.target_kind, selected.target_id)} class="target-link">
+						{t('admin.reports.viewTarget')}
+					</a>
+				{/if}
 				{#if selected.shadow_hidden}
 					<span class="hidden-badge" data-testid="admin-detail-hidden-badge">{t('admin.reports.hiddenBadge')}</span>
 				{/if}
@@ -259,6 +269,17 @@
 							</div>
 							<p class="report-by muted">{t('admin.reports.reportBy', { id: r.reporter_id.slice(0, 8) })}</p>
 							<p class="notes">{r.notes || t('admin.reports.noNotes')}</p>
+							{#if r.snapshot_body !== null}
+								<blockquote class="snapshot" data-testid="admin-report-snapshot">
+									<p class="muted">
+										{t('admin.reports.snapshotBy', {
+											id: (r.snapshot_author_id ?? '').slice(0, 8),
+											when: r.snapshot_sent_at ? formatRelativeTime(r.snapshot_sent_at) : ''
+										})}
+									</p>
+									<p>{r.snapshot_body}</p>
+								</blockquote>
+							{/if}
 						</li>
 					{/each}
 				</ul>
@@ -462,6 +483,16 @@
 	.report-by,
 	.when {
 		font-size: 0.78rem;
+	}
+	.snapshot {
+		margin: 0.4rem 0 0;
+		padding: 0.4rem 0.7rem;
+		border-inline-start: 3px solid var(--color-border);
+		background: var(--color-bg-secondary);
+		white-space: pre-wrap;
+	}
+	.snapshot p {
+		margin: 0;
 	}
 	.notes {
 		margin: 0;

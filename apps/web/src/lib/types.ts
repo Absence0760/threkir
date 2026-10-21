@@ -569,7 +569,7 @@ export function parseNutritionAssignmentStatus(
 }
 // Polymorphic report target. Kept in lockstep with the `reports.target_kind`
 // CHECK constraint (migrations 20260908_001 / 20261117_001 / 20270115_001 /
-// 20270402_001) via apps/web/scripts/check_constraint_unions.mjs.
+// 20270402_001 / 20271021000003) via apps/web/scripts/check_constraint_unions.mjs.
 export type ReportTargetKind =
 	| 'user'
 	| 'club'
@@ -577,7 +577,8 @@ export type ReportTargetKind =
 	| 'comment'
 	| 'club_post'
 	| 'run'
-	| 'route_review';
+	| 'route_review'
+	| 'direct_message';
 export type NotificationKind =
 	| 'kudos'
 	| 'comment'

@@ -81,3 +81,32 @@ export function mergeDmMessages<T extends DmOrderKey>(a: readonly T[], b: readon
 	for (const m of b) byId.set(m.id, m);
 	return [...byId.values()].sort(compareDmOrder);
 }
+
+/**
+ * Which conversation a thread is: the partner, or — once the partner deleted
+ * their account — the random per-partner key the server stamped on the
+ * remaining user's messages (migration 20271021000003). The deleted case has
+ * no partner id to put in the URL, so it travels as `deleted-<key>`.
+ */
+export type DmThreadTarget =
+	| { kind: 'partner'; partnerId: string }
+	| { kind: 'deleted'; deletedPartnerKey: string };
+
+const DELETED_ROUTE_PREFIX = 'deleted-';
+
+/** The `/messages/[id]` segment for a thread. */
+export function dmThreadRouteId(t: {
+	partnerId: string | null;
+	deletedPartnerKey: string | null;
+}): string {
+	if (t.partnerId) return t.partnerId;
+	if (t.deletedPartnerKey) return `${DELETED_ROUTE_PREFIX}${t.deletedPartnerKey}`;
+	throw new Error('dm thread: neither a partner nor a deleted-partner key');
+}
+
+/** The inverse of [dmThreadRouteId]. */
+export function parseDmThreadRouteId(id: string): DmThreadTarget {
+	return id.startsWith(DELETED_ROUTE_PREFIX)
+		? { kind: 'deleted', deletedPartnerKey: id.slice(DELETED_ROUTE_PREFIX.length) }
+		: { kind: 'partner', partnerId: id };
+}

@@ -221,6 +221,7 @@ import {
 	dmPageFromRows,
 	type DmOrderKey,
 	type DmPage,
+	type DmThreadTarget,
 } from '../social/dm_thread';
 import type { ParsedResultRow } from '../runs/event_results_csv';
 import {
@@ -10818,21 +10819,32 @@ export async function submitReport(input: {
 export interface DirectMessage {
 	id: string;
 	sender_id: string;
-	recipient_id: string;
-	body: string;
+	/// Null once the recipient deleted their account (migration
+	/// 20271021000003): the remaining sender keeps the message, and
+	/// `deleted_partner_key` names the conversation instead.
+	recipient_id: string | null;
+	/// Null once the sender unsent it (`unsent_at` set).
+	body: string | null;
 	created_at: string;
 	read_at: string | null;
 	/// Typed route attachment (migration 20270619_001). Null on an ordinary
 	/// message. What the reader is allowed to SEE of the route it names is
 	/// decided at read time by [fetchRouteById], never by holding this id.
 	route_id: string | null;
+	unsent_at: string | null;
+	deleted_partner_key: string | null;
 }
 
 export interface DmThread {
-	partnerId: string;
+	/// Null when the partner deleted their account; the thread is then keyed
+	/// on `deletedPartnerKey` and holds only the viewer's own messages.
+	partnerId: string | null;
+	deletedPartnerKey: string | null;
 	partnerName: string | null;
 	partnerAvatar: string | null;
-	lastBody: string;
+	/// Null when the latest message was unsent (`lastUnsent`).
+	lastBody: string | null;
+	lastUnsent: boolean;
 	lastAt: string;
 	lastFromMe: boolean;
 	unread: number;
@@ -10867,22 +10879,31 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 	// conversations" on a blip strands the user until a manual reload.
 	if (error) throw new Error(`dm_threads failed: ${error.message}`);
 	if (!data) return [];
+	// The generator types every RETURNS TABLE column as non-null; partner_id,
+	// deleted_partner_key and last_body are each null in one case (a deleted
+	// partner, a live partner, an unsent message).
 	const threads: DmThread[] = (data as {
-		partner_id: string;
-		last_body: string;
+		partner_id: string | null;
+		deleted_partner_key: string | null;
+		last_body: string | null;
+		last_unsent: boolean;
 		last_at: string;
 		last_from_me: boolean;
 		unread: number;
 	}[]).map((r) => ({
 		partnerId: r.partner_id,
+		deletedPartnerKey: r.deleted_partner_key,
 		partnerName: null,
 		partnerAvatar: null,
 		lastBody: r.last_body,
+		lastUnsent: r.last_unsent === true,
 		lastAt: r.last_at,
 		lastFromMe: r.last_from_me,
 		unread: Number(r.unread) || 0,
 	}));
-	const byPartner = new Map(threads.map((t) => [t.partnerId, t]));
+	const byPartner = new Map(
+		threads.flatMap((t) => (t.partnerId ? [[t.partnerId, t] as const] : [])),
+	);
 	const partnerIds = [...byPartner.keys()];
 	if (partnerIds.length > 0) {
 		const { data: profiles } = await queryChunked(partnerIds, (part) =>
@@ -10897,11 +10918,14 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 		}
 	}
 	// The RPC already orders newest-conversation-first; the profile merge
-	// preserves it (Map iteration is insertion order).
-	return [...byPartner.values()];
+	// mutates the rows in place, so that order is kept.
+	return threads;
 }
 
-/// One page of the conversation with `otherId`, oldest message first.
+/// One page of a conversation, oldest message first. A partner thread is both
+/// directions between the viewer and the partner; a deleted-partner thread is
+/// the viewer's own messages under that partner's key, since the leaver's
+/// side was erased with their account.
 ///
 /// Keyset-paged from the newest end on `(created_at, id)`: `before` is the
 /// oldest message already shown, and the page holds the `limit` messages before
@@ -10911,18 +10935,19 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 /// exactly the two directions of this conversation, and leaves the `or` tree
 /// to the keyset. Throws on a failed read.
 export async function fetchDmThread(
-	otherId: string,
+	target: DmThreadTarget,
 	opts: { before?: DmOrderKey; limit?: number } = {},
 ): Promise<DmPage<DirectMessage>> {
 	const me = auth.user?.id;
 	if (!me) return { messages: [], hasMore: false };
 	const limit = opts.limit ?? DM_THREAD_PAGE_SIZE;
-	const pair = [me, otherId];
-	let query = supabase
-		.from(TABLES.direct_messages)
-		.select('*')
-		.in('sender_id', pair)
-		.in('recipient_id', pair);
+	let query = supabase.from(TABLES.direct_messages).select('*');
+	if (target.kind === 'deleted') {
+		query = query.eq('sender_id', me).eq('deleted_partner_key', target.deletedPartnerKey);
+	} else {
+		const pair = [me, target.partnerId];
+		query = query.in('sender_id', pair).in('recipient_id', pair);
+	}
 	if (opts.before) query = query.or(dmPageBeforeFilter(opts.before));
 	for (const k of DM_THREAD_ORDER) {
 		query = query.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
@@ -10974,7 +10999,19 @@ export async function sendDm(
 	return data as DirectMessage;
 }
 
-/// Mark every message from `otherId` to the viewer as read.
+/// Unsend one of the viewer's own messages: the server nulls its body and
+/// attachment and stamps `unsent_at`, so both sides see a placeholder
+/// (migration 20271021000003). Not reversible. Returns the updated row; a
+/// message the viewer did not send answers P0002, which reaches the caller as
+/// an error rather than a silent no-op.
+export async function unsendDm(messageId: string): Promise<DirectMessage> {
+	const { data, error } = await supabase.rpc('unsend_direct_message', {
+		p_message_id: messageId,
+	});
+	if (error || !data) throw error ? dbError(error) : new Error('Unsend failed');
+	return data as DirectMessage;
+}
+
 /// Marks the partner's unread messages read up to and including `through`, the
 /// newest one on screen (created_at, then id, the thread's own order). A reply
 /// that lands after the thread was read stays unread until it is shown.
@@ -13463,6 +13500,11 @@ export interface TargetReport {
 	reviewed_at: string | null;
 	reviewed_by: string | null;
 	resolution: string | null;
+	/// The reported direct message as it read at report time (migration
+	/// 20271021000003); null for every other target kind.
+	snapshot_body: string | null;
+	snapshot_author_id: string | null;
+	snapshot_sent_at: string | null;
 }
 
 /** Whether the current user is a moderator. Chrome gate only — the RPCs
@@ -13509,6 +13551,9 @@ export async function fetchReportsForTarget(
 		reviewed_at: (r.reviewed_at ?? null) as string | null,
 		reviewed_by: (r.reviewed_by ?? null) as string | null,
 		resolution: (r.resolution ?? null) as string | null,
+		snapshot_body: (r.snapshot_body ?? null) as string | null,
+		snapshot_author_id: (r.snapshot_author_id ?? null) as string | null,
+		snapshot_sent_at: (r.snapshot_sent_at ?? null) as string | null,
 	}));
 }
 

@@ -6,7 +6,9 @@ import {
 	compareDmOrder,
 	dmPageBeforeFilter,
 	dmPageFromRows,
-	mergeDmMessages
+	dmThreadRouteId,
+	mergeDmMessages,
+	parseDmThreadRouteId
 } from './dm_thread';
 
 const msg = (id: string, created_at: string, body = id) => ({ id, created_at, body });
@@ -96,4 +98,22 @@ test('a sent message merges into place and a later copy of an id wins', () => {
 	);
 	const edited = msg('m-1', '2026-10-14T08:01:00+00:00', 'newer copy');
 	assert.equal(mergeDmMessages(shown, [edited])[0].body, 'newer copy');
+});
+
+test('a partner thread routes by the partner id', () => {
+	const partnerId = '11111111-1111-1111-1111-111111111111';
+	const id = dmThreadRouteId({ partnerId, deletedPartnerKey: null });
+	assert.equal(id, partnerId);
+	assert.deepEqual(parseDmThreadRouteId(id), { kind: 'partner', partnerId });
+});
+
+test('a deleted partner routes by its key and parses back to it', () => {
+	const key = '22222222-2222-2222-2222-222222222222';
+	const id = dmThreadRouteId({ partnerId: null, deletedPartnerKey: key });
+	assert.equal(id, `deleted-${key}`);
+	assert.deepEqual(parseDmThreadRouteId(id), { kind: 'deleted', deletedPartnerKey: key });
+});
+
+test('a thread with neither a partner nor a key has no route', () => {
+	assert.throws(() => dmThreadRouteId({ partnerId: null, deletedPartnerKey: null }));
 });

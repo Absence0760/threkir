@@ -68,6 +68,12 @@
 		<li>
 			<strong>{m('deleteAccount.s4PaymentsLabel')}</strong>{m('deleteAccount.s4PaymentsBody')}
 		</li>
+		<li>
+			<strong>{m('deleteAccount.s4MessagesLabel')}</strong>{m('deleteAccount.s4MessagesBody')}
+		</li>
+		<li>
+			<strong>{m('deleteAccount.s4ReportsLabel')}</strong>{m('deleteAccount.s4ReportsBody')}
+		</li>
 	</ul>
 	<p>
 		{m('deleteAccount.s4PolicyPrefix')}<a href="/privacy">{m('deleteAccount.privacyPolicy')}</a>{m(

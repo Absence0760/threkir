@@ -5574,6 +5574,7 @@ export type Database = {
           featured_at: string | null
           id: string | null
           is_featured: boolean | null
+          is_official: boolean | null
           is_public: boolean | null
           name: string | null
           run_count: number | null
@@ -5591,6 +5592,7 @@ export type Database = {
           featured_at?: string | null
           id?: string | null
           is_featured?: boolean | null
+          is_official?: never
           is_public?: boolean | null
           name?: string | null
           run_count?: number | null
@@ -5608,6 +5610,7 @@ export type Database = {
           featured_at?: string | null
           id?: string | null
           is_featured?: boolean | null
+          is_official?: never
           is_public?: boolean | null
           name?: string | null
           run_count?: number | null
@@ -5759,6 +5762,7 @@ export type Database = {
           featured_at: string | null
           id: string | null
           is_featured: boolean | null
+          is_official: boolean | null
           is_public: boolean | null
           name: string | null
           run_count: number | null
@@ -5776,6 +5780,7 @@ export type Database = {
           featured_at?: string | null
           id?: string | null
           is_featured?: boolean | null
+          is_official?: never
           is_public?: boolean | null
           name?: string | null
           run_count?: number | null
@@ -5793,6 +5798,7 @@ export type Database = {
           featured_at?: string | null
           id?: string | null
           is_featured?: boolean | null
+          is_official?: never
           is_public?: boolean | null
           name?: string | null
           run_count?: number | null
@@ -6046,6 +6052,7 @@ export type Database = {
           ends_at: string
           goal_value: number
           id: string
+          is_official: boolean
           is_public: boolean
           metric: string
           participant_count: number
@@ -6189,6 +6196,7 @@ export type Database = {
         Returns: {
           avatar_url: string
           id: string
+          is_verified: boolean
           lat: number
           lng: number
           location_label: string
@@ -6281,6 +6289,7 @@ export type Database = {
           elevation_m: number
           id: string
           is_featured: boolean
+          is_official: boolean
           lat: number
           lng: number
           name: string
@@ -6700,6 +6709,27 @@ export type Database = {
         Returns: boolean
       }
       is_event_visible: { Args: { p_event_id: string }; Returns: boolean }
+      is_official:
+        | {
+            Args: { c: Database["public"]["Tables"]["challenges"]["Row"] }
+            Returns: boolean
+          }
+        | {
+            Args: { g: Database["public"]["Tables"]["gym_routines"]["Row"] }
+            Returns: boolean
+          }
+        | {
+            Args: { p: Database["public"]["Tables"]["training_plans"]["Row"] }
+            Returns: boolean
+          }
+        | {
+            Args: { r: Database["public"]["Tables"]["routes"]["Row"] }
+            Returns: boolean
+          }
+        | {
+            Args: { s: Database["public"]["Tables"]["session_plans"]["Row"] }
+            Returns: boolean
+          }
       is_pro: { Args: never; Returns: boolean }
       is_public_club_by_id: { Args: { p_club_id: string }; Returns: boolean }
       is_public_event_by_id: { Args: { p_event_id: string }; Returns: boolean }
@@ -6838,6 +6868,7 @@ export type Database = {
           featured_at: string | null
           id: string | null
           is_featured: boolean | null
+          is_official: boolean | null
           is_public: boolean | null
           name: string | null
           run_count: number | null
@@ -7160,6 +7191,7 @@ export type Database = {
           featured_at: string | null
           id: string | null
           is_featured: boolean | null
+          is_official: boolean | null
           is_public: boolean | null
           name: string | null
           run_count: number | null

@@ -13488,6 +13488,10 @@ export interface PendingReportTarget {
 	reasons: Record<string, number>;
 	latest_at: string;
 	shadow_hidden: boolean;
+	/** The id of the page that shows the reported item (the item itself, or
+	 *  the run / club / route carrying a comment / post / review); null for a
+	 *  direct message or a target whose row is gone. */
+	page_id: string | null;
 }
 
 export interface TargetReport {
@@ -13527,6 +13531,7 @@ export async function fetchPendingReports(): Promise<PendingReportTarget[]> {
 		reasons: (r.reasons ?? {}) as Record<string, number>,
 		latest_at: r.latest_at as string,
 		shadow_hidden: r.shadow_hidden === true,
+		page_id: (r.page_id ?? null) as string | null,
 	}));
 }
 

@@ -18,6 +18,7 @@
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { reportTargetHref, reportTargetLabelKey } from './report_target';
 
 	let isAdmin = $state<boolean | null>(null);
 	let loading = $state(true);
@@ -32,20 +33,9 @@
 	let confirm = $state<{ status: ReportResolution } | null>(null);
 	let confirmUnhide = $state(false);
 
-	// A direct message has no page a moderator can open — the thread is the
-	// two participants' alone — so its evidence is the snapshot on each report.
-	function targetHref(kind: ReportTargetKind, id: string): string | null {
-		if (kind === 'direct_message') return null;
-		if (kind === 'user') return `/u/${id}`;
-		if (kind === 'route') return `/routes/${id}`;
-		return `/clubs/${id}`;
-	}
-
 	function kindLabel(kind: ReportTargetKind): string {
-		if (kind === 'user') return t('admin.reports.kind.user');
-		if (kind === 'club') return t('admin.reports.kind.club');
-		if (kind === 'direct_message') return t('admin.reports.kind.directMessage');
-		return t('admin.reports.kind.route');
+		const key = reportTargetLabelKey(kind);
+		return key ? t(key) : kind;
 	}
 
 	function statusLabel(status: string): string {
@@ -173,9 +163,9 @@
 							>
 								<td>
 									<span class="kind">{kindLabel(target.target_kind)}</span>
-									{#if targetHref(target.target_kind, target.target_id)}
+									{#if reportTargetHref(target.target_kind, target.page_id)}
 										<a
-											href={targetHref(target.target_kind, target.target_id)}
+											href={reportTargetHref(target.target_kind, target.page_id)}
 											class="target-link"
 											onclick={(e) => e.stopPropagation()}
 										>{target.target_id.slice(0, 8)}</a>
@@ -233,8 +223,8 @@
 		<div class="detail-body">
 			<div class="detail-head">
 				<span class="kind">{kindLabel(selected.target_kind)}</span>
-				{#if targetHref(selected.target_kind, selected.target_id)}
-					<a href={targetHref(selected.target_kind, selected.target_id)} class="target-link">
+				{#if reportTargetHref(selected.target_kind, selected.page_id)}
+					<a href={reportTargetHref(selected.target_kind, selected.page_id)} class="target-link">
 						{t('admin.reports.viewTarget')}
 					</a>
 				{/if}

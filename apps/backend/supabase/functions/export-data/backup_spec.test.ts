@@ -57,8 +57,9 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 	// 20270822000001) added follow_requests on both legs (sent + received).
 	// Reactions and comment likes (migration 20270826000001) added
 	// run_reactions + run_comment_likes, each on both legs (left by the subject
-	// + received on their runs / comments).
-	assertEquals(specs.length, 74, `expected 74 specs, got ${specs.length}`);
+	// + received on their runs / comments). Direct-message reports (migration
+	// 20271021000003) added reports_against_my_messages.
+	assertEquals(specs.length, 75, `expected 75 specs, got ${specs.length}`);
 	const entries = new Set(specs.map((s) => s.entry));
 	for (const expected of [
 		'coach_messages.json',
@@ -99,6 +100,7 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 		'user_coach_usage.json',
 		'reports.json',
 		'reports_against_me.json',
+		'reports_against_my_messages.json',
 		'direct_messages_sent.json',
 		'direct_messages_received.json',
 		'coaching_as_coach.json',
@@ -526,8 +528,10 @@ Deno.test('no reports-target (against-me) spec leaks reporter_id in its select',
 	// select column list. Guard that EVERY spec which targets the user as
 	// a report SUBJECT (target_kind=eq.user) omits reporter_id — so a
 	// future copy-paste that adds another against-me table can't leak it.
+	// Every reports spec but the reporter's own history names someone else as
+	// the reporter — reports_against_my_messages (20271021000003) is the second.
 	const offenders = buildBackupSpecs(TEST_UID)
-		.filter((s) => s.table === 'reports' && s.filter.includes('target_kind=eq.user'))
+		.filter((s) => s.table === 'reports' && !s.filter.startsWith('reporter_id='))
 		.filter((s) => s.select === '*' || s.select.includes('reporter_id'));
 	assertEquals(offenders.length, 0, `against-me reports spec leaks reporter_id: ${offenders.map((o) => o.entry).join(', ')}`);
 });

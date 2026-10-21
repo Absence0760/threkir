@@ -779,31 +779,37 @@ export type Database = {
       }
       direct_messages: {
         Row: {
-          body: string
+          body: string | null
           created_at: string
+          deleted_partner_key: string | null
           id: string
           read_at: string | null
-          recipient_id: string
+          recipient_id: string | null
           route_id: string | null
           sender_id: string
+          unsent_at: string | null
         }
         Insert: {
-          body: string
+          body?: string | null
           created_at?: string
+          deleted_partner_key?: string | null
           id?: string
           read_at?: string | null
-          recipient_id: string
+          recipient_id?: string | null
           route_id?: string | null
           sender_id: string
+          unsent_at?: string | null
         }
         Update: {
-          body?: string
+          body?: string | null
           created_at?: string
+          deleted_partner_key?: string | null
           id?: string
           read_at?: string | null
-          recipient_id?: string
+          recipient_id?: string | null
           route_id?: string | null
           sender_id?: string
+          unsent_at?: string | null
         }
         Relationships: [
           {
@@ -3548,6 +3554,9 @@ export type Database = {
           resolution: string | null
           reviewed_at: string | null
           reviewed_by: string | null
+          snapshot_author_id: string | null
+          snapshot_body: string | null
+          snapshot_sent_at: string | null
           status: string
           target_id: string
           target_kind: string
@@ -3561,6 +3570,9 @@ export type Database = {
           resolution?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          snapshot_author_id?: string | null
+          snapshot_body?: string | null
+          snapshot_sent_at?: string | null
           status?: string
           target_id: string
           target_kind: string
@@ -3574,6 +3586,9 @@ export type Database = {
           resolution?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          snapshot_author_id?: string | null
+          snapshot_body?: string | null
+          snapshot_sent_at?: string | null
           status?: string
           target_id?: string
           target_kind?: string
@@ -6290,9 +6305,11 @@ export type Database = {
       dm_threads: {
         Args: never
         Returns: {
+          deleted_partner_key: string
           last_at: string
           last_body: string
           last_from_me: boolean
+          last_unsent: boolean
           partner_id: string
           unread: number
         }[]
@@ -6417,6 +6434,9 @@ export type Database = {
           resolution: string
           reviewed_at: string
           reviewed_by: string
+          snapshot_author_id: string
+          snapshot_body: string
+          snapshot_sent_at: string
           status: string
         }[]
       }
@@ -7466,6 +7486,26 @@ export type Database = {
       }
       unblock_user: { Args: { p_target: string }; Returns: undefined }
       unlink_club_strava: { Args: { p_club_id: string }; Returns: boolean }
+      unsend_direct_message: {
+        Args: { p_message_id: string }
+        Returns: {
+          body: string | null
+          created_at: string
+          deleted_partner_key: string | null
+          id: string
+          read_at: string | null
+          recipient_id: string | null
+          route_id: string | null
+          sender_id: string
+          unsent_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "direct_messages"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       upsert_checkpoint_crossing: {
         Args: {
           p_bib?: string

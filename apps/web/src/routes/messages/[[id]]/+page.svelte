@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { activeFormatLocale } from '#lib/format/time.ts';
-	import { appErrorMessage } from '#lib/core/supabase_error.ts';
+	import { appErrorMessage, thrownMessage } from '#lib/core/supabase_error.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { startVisiblePoll } from '#lib/core/visible_poll.ts';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
 	import { dmUnreadStore } from '#lib/stores/dm_unread.svelte.ts';
 	import { onMount, tick } from 'svelte';
@@ -12,8 +14,11 @@
 	import DmRouteAttachment from '#lib/components/DmRouteAttachment.svelte';
 	import { bodyRestatesAttachment, hasDmRouteAttachment } from '#lib/social/dm_attachment.ts';
 	import {
+		DM_INBOX_POLL_MS,
+		DM_THREAD_POLL_MS,
 		dmThreadRouteId,
 		mergeDmMessages,
+		mergeDmPollPage,
 		parseDmThreadRouteId
 	} from '#lib/social/dm_thread.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
@@ -24,6 +29,9 @@
 		sendDm,
 		unsendDm,
 		markDmThreadRead,
+		blockUser,
+		unblockUser,
+		isBlockedByViewer,
 		type DmThread,
 		type DirectMessage
 	} from '#lib/core/data.ts';
@@ -64,6 +72,17 @@
 	let reportTarget = $state<DirectMessage | null>(null);
 	let actionError = $state<string | null>(null);
 
+	// Block from inside the conversation, the same toggle the profile header
+	// carries (decisions § 1952): Block is confirmed because block_user drains
+	// the follow edge both ways, which unblocking does not put back; Unblock
+	// runs at once. `user_blocks` is owner-read, so this knows only the
+	// viewer's own block — a partner who blocked the viewer still reads as the
+	// composer's send refusal, the one sentence § 1916 keeps for both gates.
+	let blockedByMe = $state(false);
+	let blockBusy = $state(false);
+	let showBlockConfirm = $state(false);
+	const partnerName = $derived(activeThread?.partnerName ?? tr('messages.runnerFallback'));
+
 	onMount(async () => {
 		await auth.ready();
 		ready = true;
@@ -85,18 +104,45 @@
 	// assigning it as-is put the badge back on the conversation just opened.
 	const markedReadAt = new Map<string, number>();
 
+	function applyThreads(rows: DmThread[], startedAt: number) {
+		threads = rows.map((t) =>
+			(markedReadAt.get(dmThreadRouteId(t)) ?? -Infinity) >= startedAt ? { ...t, unread: 0 } : t
+		);
+	}
+
 	async function loadThreads() {
 		threadsError = false;
 		const startedAt = Date.now();
 		try {
-			const rows = await fetchDmThreads();
-			threads = rows.map((t) =>
-				(markedReadAt.get(dmThreadRouteId(t)) ?? -Infinity) >= startedAt ? { ...t, unread: 0 } : t
-			);
+			applyThreads(await fetchDmThreads(), startedAt);
 		} catch {
 			threadsError = true;
 		}
 	}
+
+	// The inbox re-reads its list every 30 s while the tab is visible, as
+	// mobile's does. A failed poll keeps the list it has and logs: the next
+	// tick is the retry, and a banner every 30 s would be noise. A list that
+	// never loaded retries through loadThreads so its error state can clear.
+	let pollingThreads = false;
+	async function pollThreads() {
+		if (pollingThreads) return;
+		if (threadsError) return loadThreads();
+		pollingThreads = true;
+		const startedAt = Date.now();
+		try {
+			applyThreads(await fetchDmThreads(), startedAt);
+		} catch (e) {
+			console.warn('messages inbox poll failed', e);
+		} finally {
+			pollingThreads = false;
+		}
+	}
+
+	$effect(() => {
+		if (!auth.user) return;
+		return startVisiblePoll(() => void pollThreads(), DM_INBOX_POLL_MS);
+	});
 
 	// Load the open conversation whenever the route param changes.
 	$effect(() => {
@@ -128,6 +174,7 @@
 		try {
 			const result = await fetchDmThread(parseDmThreadRouteId(id));
 			if (id !== activeId) return;
+			localWrites++;
 			messages = result.messages;
 			hasMore = result.hasMore;
 		} catch {
@@ -140,6 +187,10 @@
 			if (id === activeId) loadingThread = false;
 		}
 		void scrollToNewest();
+		await markThreadRead(id);
+	}
+
+	async function markThreadRead(id: string) {
 		const target = parseDmThreadRouteId(id);
 		if (target.kind !== 'partner') return;
 		const newestShown = messages.findLast((m) => m.sender_id === target.partnerId);
@@ -147,12 +198,134 @@
 		try {
 			await markDmThreadRead(id, newestShown);
 			markedReadAt.set(id, Date.now());
+			const readAt = new Date().toISOString();
+			if (id === activeId) {
+				messages = messages.map((m) =>
+					m.sender_id === target.partnerId && m.read_at === null ? { ...m, read_at: readAt } : m
+				);
+			}
 			// Zero the unread badge locally without a full refetch.
 			threads = threads.map((t) => (dmThreadRouteId(t) === id ? { ...t, unread: 0 } : t));
 			void dmUnreadStore.refresh();
-		} catch {
+		} catch (e) {
 			// Marking-read is a non-critical side effect; its failure must not
 			// blank the conversation the fetch already loaded.
+			console.warn('message thread mark-read failed', e);
+		}
+	}
+
+	// The open conversation re-reads its newest page every 10 s while the tab
+	// is visible, as mobile's does (decisions § 1916); the effect's teardown
+	// stops it when the conversation changes or the page is left. There is no
+	// "newer than" read: re-reading the newest page also brings in an unsend
+	// of a message already on screen, which a read past the newest would miss.
+	// A failed poll keeps what is shown and logs.
+	let pollingThread = false;
+	// Bumped when a poll replaces the list across a gap, so a "load earlier"
+	// already in flight is dropped rather than merged into the new window.
+	let messageWindow = 0;
+	// Bumped whenever the list is written from something newer than a poll's
+	// read (a send, an unsend, a fresh open), so a poll that was already in
+	// flight is dropped rather than putting an unsent message's text back.
+	let localWrites = 0;
+
+	function atBottom(): boolean {
+		if (!scroller) return true;
+		return scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 32;
+	}
+
+	async function pollThread(id: string) {
+		if (id !== activeId || pollingThread || loadingThread || threadError) return;
+		pollingThread = true;
+		const writesAtStart = localWrites;
+		try {
+			const result = await fetchDmThread(parseDmThreadRouteId(id));
+			if (id !== activeId || writesAtStart !== localWrites) return;
+			const follow = atBottom();
+			const next = mergeDmPollPage(messages, result, hasMore);
+			if (next.gap) messageWindow++;
+			messages = next.messages;
+			hasMore = next.hasMore;
+			// A reader scrolled up stays where they are: new messages append
+			// below, so leaving scrollTop alone keeps what they are reading.
+			if (follow || next.gap) void scrollToNewest();
+			const target = parseDmThreadRouteId(id);
+			if (
+				target.kind === 'partner' &&
+				messages.some((m) => m.sender_id === target.partnerId && m.read_at === null)
+			) {
+				await markThreadRead(id);
+			}
+		} catch (e) {
+			console.warn('message thread poll failed', e);
+		} finally {
+			pollingThread = false;
+		}
+	}
+
+	$effect(() => {
+		const id = activeId;
+		if (!id || !auth.user) return;
+		return startVisiblePoll(() => void pollThread(id), DM_THREAD_POLL_MS);
+	});
+
+	$effect(() => {
+		const partner = activePartnerId;
+		blockedByMe = false;
+		showBlockConfirm = false;
+		if (!partner || !auth.user) return;
+		void loadBlockState(partner);
+	});
+
+	// The block check must never gate the conversation, so a failure leaves
+	// the composer up: the server still refuses a blocked send (the INSERT
+	// policy's is_blocked_either_way), and the composer shows that refusal.
+	// Bumped by a completed block or unblock, so a state read that started
+	// before it cannot undo what the viewer just did.
+	let blockVersion = 0;
+
+	async function loadBlockState(partner: string) {
+		const versionAtStart = blockVersion;
+		try {
+			const blocked = await isBlockedByViewer(partner);
+			if (partner === activePartnerId && versionAtStart === blockVersion) blockedByMe = blocked;
+		} catch (e) {
+			console.warn('message thread block check failed', e);
+		}
+	}
+
+	async function confirmBlock() {
+		showBlockConfirm = false;
+		const partner = activePartnerId;
+		if (!partner || blockBusy) return;
+		const name = partnerName;
+		blockBusy = true;
+		try {
+			await blockUser(partner);
+			blockVersion++;
+			if (partner === activePartnerId) blockedByMe = true;
+			showToast(tr('profile.blockedToast', { name }), 'success');
+		} catch (e) {
+			showToast(tr('profile.blockError', { error: thrownMessage(e) }), 'error');
+		} finally {
+			blockBusy = false;
+		}
+	}
+
+	async function unblock() {
+		const partner = activePartnerId;
+		if (!partner || blockBusy) return;
+		const name = partnerName;
+		blockBusy = true;
+		try {
+			await unblockUser(partner);
+			blockVersion++;
+			if (partner === activePartnerId) blockedByMe = false;
+			showToast(tr('profile.unblockedToast', { name }), 'success');
+		} catch (e) {
+			showToast(tr('profile.unblockError', { error: thrownMessage(e) }), 'error');
+		} finally {
+			blockBusy = false;
 		}
 	}
 
@@ -168,11 +341,12 @@
 		const id = activeId;
 		const oldest = messages[0];
 		if (!id || !oldest || loadingEarlier) return;
+		const windowAtStart = messageWindow;
 		loadingEarlier = true;
 		earlierError = false;
 		try {
 			const result = await fetchDmThread(parseDmThreadRouteId(id), { before: oldest });
-			if (id !== activeId) return;
+			if (id !== activeId || windowAtStart !== messageWindow) return;
 			const fromBottom = scroller ? scroller.scrollHeight - scroller.scrollTop : 0;
 			messages = mergeDmMessages(messages, result.messages);
 			hasMore = result.hasMore;
@@ -188,12 +362,13 @@
 	async function send() {
 		const id = activeId;
 		const partnerId = activePartnerId;
-		if (!id || !partnerId || !draft.trim() || sending) return;
+		if (!id || !partnerId || blockedByMe || !draft.trim() || sending) return;
 		sending = true;
 		sendError = null;
 		try {
 			const body = drafts[id] ?? '';
 			const msg = await sendDm(partnerId, body);
+			localWrites++;
 			messages = mergeDmMessages(messages, [msg]);
 			void scrollToNewest();
 			delete drafts[id];
@@ -219,6 +394,7 @@
 		actionError = null;
 		try {
 			const updated = await unsendDm(target.id);
+			localWrites++;
 			if (id === activeId) messages = mergeDmMessages(messages, [updated]);
 		} catch (e) {
 			actionError = appErrorMessage(e) ?? tr('messages.unsendFailed');
@@ -309,9 +485,17 @@
 					<header class="pane-head conv-head">
 						<a class="back" href="/messages" aria-label={tr('messages.backAria')}>←</a>
 						{#if activePartnerId}
-							<a class="who" href={`/u/${activePartnerId}`}>
-								{activeThread?.partnerName ?? tr('messages.runnerFallback')}
-							</a>
+							<a class="who" href={`/u/${activePartnerId}`}>{partnerName}</a>
+							<button
+								type="button"
+								class="btn btn-secondary btn-sm head-action"
+								data-testid="dm-block-toggle"
+								aria-pressed={blockedByMe}
+								disabled={blockBusy}
+								onclick={() => (blockedByMe ? void unblock() : (showBlockConfirm = true))}
+							>
+								{blockedByMe ? tr('messages.unblock') : tr('messages.block')}
+							</button>
 						{:else}
 							<span class="who">{tr('messages.deletedAccount')}</span>
 						{/if}
@@ -388,6 +572,18 @@
 					{#if sendError}<p class="send-error" role="alert">{sendError}</p>{/if}
 					{#if !activePartnerId}
 						<p class="muted closed">{tr('messages.deletedAccountClosed')}</p>
+					{:else if blockedByMe}
+						<div class="closed blocked" data-testid="dm-blocked-notice">
+							<p class="muted">{tr('messages.blockedNotice', { name: partnerName })}</p>
+							<button
+								type="button"
+								class="btn btn-secondary btn-sm"
+								disabled={blockBusy}
+								onclick={() => void unblock()}
+							>
+								{tr('messages.unblock')}
+							</button>
+						</div>
 					{:else}
 					<div class="composer">
 						<textarea
@@ -420,6 +616,18 @@
 	onconfirm={confirmUnsend}
 	oncancel={() => (unsendTarget = null)}
 	data-testid="dm-unsend-confirm"
+/>
+
+<ConfirmDialog
+	open={showBlockConfirm}
+	danger
+	title={tr('profile.blockConfirmTitle', { name: partnerName })}
+	message={tr('messages.blockConfirmMessage')}
+	confirmLabel={tr('profile.blockConfirmLabel')}
+	cancelLabel={tr('profile.cancel')}
+	onconfirm={confirmBlock}
+	oncancel={() => (showBlockConfirm = false)}
+	data-testid="dm-block-confirm"
 />
 
 {#if reportTarget}
@@ -536,6 +744,18 @@
 		font-weight: 700;
 		color: var(--color-text);
 		text-decoration: none;
+	}
+	.head-action {
+		margin-inline-start: auto;
+	}
+	.blocked {
+		display: flex;
+		align-items: center;
+		gap: var(--space-md);
+	}
+	.blocked p {
+		margin: 0;
+		flex: 1 1 auto;
 	}
 	.back {
 		display: none;

@@ -2,12 +2,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+	DM_INBOX_POLL_MS,
 	DM_THREAD_PAGE_SIZE,
+	DM_THREAD_POLL_MS,
 	compareDmOrder,
 	dmPageBeforeFilter,
 	dmPageFromRows,
 	dmThreadRouteId,
 	mergeDmMessages,
+	mergeDmPollPage,
 	parseDmThreadRouteId
 } from './dm_thread';
 
@@ -116,4 +119,76 @@ test('a deleted partner routes by its key and parses back to it', () => {
 
 test('a thread with neither a partner nor a key has no route', () => {
 	assert.throws(() => dmThreadRouteId({ partnerId: null, deletedPartnerKey: null }));
+});
+
+test('the poll cadences match mobile', () => {
+	assert.equal(DM_THREAD_POLL_MS, 10_000);
+	assert.equal(DM_INBOX_POLL_MS, 30_000);
+});
+
+test('a poll page that overlaps the screen is merged without duplicating a row', () => {
+	const shown = [msg('a', '2026-10-14T08:00:00Z'), msg('b', '2026-10-14T08:01:00Z')];
+	const page = {
+		messages: [msg('b', '2026-10-14T08:01:00Z', 'b edited'), msg('c', '2026-10-14T08:02:00Z')],
+		hasMore: true
+	};
+	const out = mergeDmPollPage(shown, page, false);
+	assert.deepEqual(
+		out.messages.map((m) => m.id),
+		['a', 'b', 'c']
+	);
+	assert.equal(out.messages[1].body, 'b edited', 'the fresh copy replaces the shown one');
+	assert.equal(out.hasMore, false, 'an overlapping page leaves "load earlier" as it was');
+	assert.equal(out.gap, false);
+});
+
+test('a poll page that does not reach the newest shown message replaces the list', () => {
+	const shown = [msg('a', '2026-10-14T08:00:00Z'), msg('b', '2026-10-14T08:01:00Z')];
+	const page = {
+		messages: [msg('x', '2026-10-14T09:00:00Z'), msg('y', '2026-10-14T09:01:00Z')],
+		hasMore: true
+	};
+	const out = mergeDmPollPage(shown, page, false);
+	assert.deepEqual(
+		out.messages.map((m) => m.id),
+		['x', 'y']
+	);
+	assert.equal(out.hasMore, true);
+	assert.equal(out.gap, true);
+});
+
+test('a page older than the newest shown message is merged, not a gap', () => {
+	const shown = [msg('a', '2026-10-14T08:00:00Z'), msg('z', '2026-10-14T10:00:00Z')];
+	const page = {
+		messages: [msg('x', '2026-10-14T09:00:00Z'), msg('y', '2026-10-14T09:01:00Z')],
+		hasMore: true
+	};
+	const out = mergeDmPollPage(shown, page, false);
+	assert.equal(out.gap, false);
+	assert.deepEqual(
+		out.messages.map((m) => m.id),
+		['a', 'x', 'y', 'z']
+	);
+});
+
+test('a complete page never reads as a gap', () => {
+	const shown = [msg('a', '2026-10-14T08:00:00Z')];
+	const page = { messages: [msg('x', '2026-10-14T09:00:00Z')], hasMore: false };
+	const out = mergeDmPollPage(shown, page, false);
+	assert.deepEqual(
+		out.messages.map((m) => m.id),
+		['a', 'x']
+	);
+	assert.equal(out.gap, false);
+});
+
+test('a poll into an empty conversation takes the page and its hasMore', () => {
+	const page = { messages: [msg('x', '2026-10-14T09:00:00Z')], hasMore: true };
+	const out = mergeDmPollPage([], page, false);
+	assert.deepEqual(
+		out.messages.map((m) => m.id),
+		['x']
+	);
+	assert.equal(out.hasMore, true);
+	assert.equal(out.gap, false);
 });

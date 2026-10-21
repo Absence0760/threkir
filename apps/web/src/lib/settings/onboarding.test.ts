@@ -5,6 +5,8 @@ import {
 	ONBOARDING_STEPS,
 	ONBOARDING_TOTAL_STEPS,
 	visibleOnboardingSteps,
+	ONBOARDING_IMPORT_SOURCES,
+	visibleImportSources,
 	PRIMARY_GOAL_KEY,
 	PRIMARY_GOAL_VALUES,
 	planPresetForGoal,
@@ -74,13 +76,13 @@ test('ONBOARDING_TOTAL_STEPS matches the wizard step count', () => {
 	// sees "step 4 of 8" while there are 9 actual steps, or vice
 	// versa. Pin the constant; the page-level test counts the
 	// rendered <section> blocks.
-	assert.equal(ONBOARDING_TOTAL_STEPS, 8);
+	assert.equal(ONBOARDING_TOTAL_STEPS, 9);
 });
 
-test('the full wizard is the eight steps, in order', () => {
+test('the full wizard is the nine steps, in order', () => {
 	assert.deepEqual(
 		[...ONBOARDING_STEPS],
-		['name', 'units', 'goal', 'about', 'run-privacy', 'notifications', 'track', 'done'],
+		['name', 'units', 'goal', 'about', 'run-privacy', 'notifications', 'track', 'import', 'done'],
 	);
 	assert.equal(ONBOARDING_TOTAL_STEPS, ONBOARDING_STEPS.length);
 });
@@ -106,4 +108,53 @@ test('granted but not yet subscribed still offers the step', () => {
 	// Permission granted to the site does not mean this device is subscribed.
 	const steps = visibleOnboardingSteps({ supported: true, permission: 'granted', subscribed: false });
 	assert.ok(steps.includes('notifications'));
+});
+
+test('the import step hands each source to the import surface that already exists', () => {
+	// The step builds no importer: Strava (connection + archive upload) and the
+	// Garmin export upload live on /settings/integrations, parkrun's
+	// athlete-number import on /settings/account.
+	const hrefs = Object.fromEntries(ONBOARDING_IMPORT_SOURCES.map((s) => [s.source, s.href]));
+	assert.deepEqual(hrefs, {
+		strava: '/settings/integrations',
+		garmin: '/settings/integrations',
+		parkrun: '/settings/account',
+	});
+});
+
+test('the web import step offers no health platform', () => {
+	// HealthKit and Health Connect are on-device frameworks with no web binding.
+	const sources = ONBOARDING_IMPORT_SOURCES.map((s) => s.source as string);
+	for (const health of ['healthkit', 'health_connect', 'health']) {
+		assert.ok(!sources.includes(health), health);
+	}
+});
+
+test('parkrun is offered only once its probe says the import can run', () => {
+	assert.deepEqual(
+		visibleImportSources(false).map((s) => s.source),
+		['strava', 'garmin'],
+	);
+	assert.deepEqual(
+		visibleImportSources(true).map((s) => s.source),
+		['strava', 'garmin', 'parkrun'],
+	);
+});
+
+test('every import source has a translated description', () => {
+	const labels = en as Record<string, string>;
+	for (const { source } of ONBOARDING_IMPORT_SOURCES) {
+		const key = `onboarding.import${source[0].toUpperCase()}${source.slice(1)}Desc`;
+		assert.ok(labels[key]?.trim(), `en has no "${key}"`);
+	}
+});
+
+test('the import step sits between track and done whichever steps are walked', () => {
+	for (const push of [
+		{ supported: true, permission: 'default', subscribed: false },
+		{ supported: false, permission: 'default', subscribed: false },
+	] as const) {
+		const steps = visibleOnboardingSteps(push);
+		assert.deepEqual(steps.slice(-3), ['track', 'import', 'done']);
+	}
 });

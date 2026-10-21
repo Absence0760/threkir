@@ -18,6 +18,7 @@
 	import { supabase } from '#lib/core/supabase.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { updateUniversal } from '#lib/settings/settings.ts';
+	import { isParkrunConfigured } from '#lib/core/data.ts';
 	import type { PrefsBag } from '#lib/settings/settings.ts';
 	import type { Updatable } from '#lib/core/database.ts';
 	import {
@@ -31,6 +32,8 @@
 		PRIMARY_GOAL_KEY,
 		PRIMARY_GOAL_VALUES,
 		visibleOnboardingSteps,
+		visibleImportSources,
+		type OnboardingImportSource,
 		type OnboardingStep,
 		type PrimaryGoal,
 	} from '#lib/settings/onboarding.ts';
@@ -118,6 +121,16 @@
 	let trackGym = $state<boolean | null>(null);
 	let trackNutrition = $state<boolean | null>(null);
 
+	// ── Step 8: import your history ───────────────────────────
+	// Each row hands off to the import surface that already exists for that
+	// source. The layout gate sends a signed-in account with no onboarded_at
+	// back here from every other page, so a row finishes setup first (the same
+	// save Open dashboard does) and then goes, exactly as the done step's
+	// create-plan CTA does — there is no half-finished wizard to resume.
+	// parkrun waits on its probe; until it answers, its row stays hidden.
+	let parkrunAvailable = $state(false);
+	const importSources = $derived(visibleImportSources(parkrunAvailable));
+
 	let saving = $state(false);
 
 	// Gates the wizard render until onMount has run (auth polled + fields
@@ -149,6 +162,11 @@
 			subscribed: pushSubscribed,
 		});
 		ready = true;
+		// Not awaited: the import step is near the end, and a probe that never
+		// answers must not hold the wizard's first paint.
+		isParkrunConfigured()
+			.then((ok) => (parkrunAvailable = ok))
+			.catch(() => (parkrunAvailable = false));
 	});
 
 	// Which way the last step change went, so the incoming step slides in
@@ -191,6 +209,7 @@
 		'run-privacy': 'onboarding.rail.privacy',
 		notifications: 'onboarding.rail.notifications',
 		track: 'onboarding.rail.track',
+		import: 'onboarding.rail.import',
 		done: 'onboarding.rail.done',
 	} as const satisfies Record<OnboardingStep, string>;
 
@@ -205,6 +224,14 @@
 	};
 
 	const PRIVACY_ICON = { private: 'lock', followers: 'group', public: 'public' } as const;
+
+	// Brand names are not translated (availability.ts says why); the line under
+	// each one is.
+	const IMPORT_SOURCE = {
+		strava: { name: 'Strava', icon: 'directions_run', desc: 'onboarding.importStravaDesc' },
+		garmin: { name: 'Garmin', icon: 'watch', desc: 'onboarding.importGarminDesc' },
+		parkrun: { name: 'parkrun', icon: 'emoji_events', desc: 'onboarding.importParkrunDesc' },
+	} as const satisfies Record<OnboardingImportSource, { name: string; icon: string; desc: string }>;
 
 	// Skip means "leave this one unanswered", so it discards the step's
 	// current value before advancing. Sharing `next()` made the two buttons
@@ -713,6 +740,33 @@
 					</button>
 				</div>
 			</section>
+		{:else if current === 'import'}
+			<section aria-labelledby="step-import-title">
+				<span class="step-icon" aria-hidden="true"><span class="material-symbols">history</span></span>
+				<h1 id="step-import-title" tabindex="-1">{m('onboarding.importTitle')}</h1>
+				<p class="hint" id="onboarding-import-hint">{m('onboarding.importHint')}</p>
+				<ul class="privacy-list import-list" aria-labelledby="step-import-title" aria-describedby="onboarding-import-hint">
+					{#each importSources as option (option.source)}
+						{@const src = IMPORT_SOURCE[option.source]}
+						<li>
+							<button
+								type="button"
+								class="choice privacy-row"
+								data-testid="onboarding-import-{option.source}"
+								onclick={() => finishAndExit(option.href)}
+								disabled={saving}
+							>
+								<span class="goal-glyph" aria-hidden="true"><span class="material-symbols">{src.icon}</span></span>
+								<span class="choice-text">
+									<strong class="choice-name">{src.name}</strong>
+									<span class="choice-desc">{m(src.desc)}</span>
+								</span>
+								<span class="material-symbols import-go" aria-hidden="true">arrow_forward</span>
+							</button>
+						</li>
+					{/each}
+				</ul>
+			</section>
 		{:else if current === 'done'}
 			<section class="finish" aria-labelledby="step-done-title">
 				<span class="done-badge" aria-hidden="true">
@@ -763,7 +817,7 @@
 						onclick={next}
 						disabled={saving || (current === 'about' && weightOutOfRange)}
 					>
-						{m('onboarding.continue')}
+						{current === 'import' ? m('onboarding.importSkip') : m('onboarding.continue')}
 						<span class="material-symbols" aria-hidden="true">arrow_forward</span>
 					</button>
 				{:else}
@@ -1102,6 +1156,20 @@
 	}
 
 	.unit-tiles, .privacy-list { display: flex; flex-direction: column; gap: var(--space-sm); }
+
+	.import-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+
+	.import-go {
+		flex-shrink: 0;
+		margin-inline-start: auto;
+		color: var(--color-text-secondary);
+	}
+
+	.import-list .choice:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 	@media (min-width: 32rem) {
 		.unit-tiles { flex-direction: row; }
 	}

@@ -175,6 +175,8 @@ test.describe('onboarding → first run → dashboard journey', () => {
 					page.getByRole('heading', { name: /What do you want to track/i })
 				).toBeVisible();
 				await page.getByRole('button', { name: 'Continue' }).click();
+				// Import step — nothing to bring in for a brand-new account.
+				await page.getByRole('button', { name: 'Skip for now' }).click();
 				// Done. The "Open dashboard" button persists the
 				// answers + stamps onboarded_at, then full-page-navs.
 				await expect(

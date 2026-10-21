@@ -61,6 +61,7 @@ export const ONBOARDING_STEPS = [
 	'run-privacy',
 	'notifications',
 	'track',
+	'import',
 	'done',
 ] as const;
 
@@ -90,6 +91,32 @@ export function visibleOnboardingSteps(push: PushAvailability): OnboardingStep[]
 		push.permission !== 'denied' &&
 		push.permission !== 'unsupported';
 	return ONBOARDING_STEPS.filter((step) => step !== 'notifications' || canEnable);
+}
+
+/// The history sources the `import` step offers on the web, in render order.
+/// Each one hands the runner to the import surface that already exists for it
+/// rather than running anything itself, so this is a table of destinations:
+/// the Strava connection and archive upload plus the Garmin export upload
+/// live on /settings/integrations, and the parkrun athlete-number import on
+/// /settings/account. Health Connect and Apple Health have no web binding
+/// (integrations.md), so they are mobile's alone. Mobile's list is its own
+/// counterpart, `setupWizardImportSources` in onboarding.dart, not a twin.
+export const ONBOARDING_IMPORT_SOURCES = [
+	{ source: 'strava', href: '/settings/integrations' },
+	{ source: 'garmin', href: '/settings/integrations' },
+	{ source: 'parkrun', href: '/settings/account' },
+] as const;
+
+export type OnboardingImportSource = (typeof ONBOARDING_IMPORT_SOURCES)[number]['source'];
+
+/// The sources this deployment can honour. The Strava archive and Garmin
+/// export imports run entirely in the browser (gate `always`), so they are
+/// always offered; parkrun waits on its Edge Function probe, and a probe that
+/// has not answered hides the row the way a refused one does.
+export function visibleImportSources(
+	parkrunAvailable: boolean,
+): (typeof ONBOARDING_IMPORT_SOURCES)[number][] {
+	return ONBOARDING_IMPORT_SOURCES.filter((s) => s.source !== 'parkrun' || parkrunAvailable);
 }
 
 export interface PlanPreset {

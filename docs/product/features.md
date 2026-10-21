@@ -564,7 +564,7 @@ These are stubs. Each closes a gap against a specific competitor (see `docs/prod
 ### Social graph
 **Closes:** Strava, Nike Run Club.
 **Stub:** `follows` table; activity feed of people you follow; kudos (one-tap); threaded comments on runs; per-user privacy zones that blur start/end within radius.
-**Shipped (web, Android + iOS):** 1:1 **direct messages** (persona #55) — `/messages` on web, the Messages inbox + conversation screens on mobile (decisions § 1916), gated on the follow graph + blocks, with a `message` notification. Realtime delivery + a non-follower "message requests" inbox are deferred; mobile polls an open inbox / conversation instead.
+**Shipped (web, Android + iOS):** 1:1 **direct messages** (persona #55) — `/messages` on web, the Messages inbox + conversation screens on mobile (decisions § 1916), gated on the follow graph + blocks, with a `message` notification. Either side can block from inside the conversation. Realtime delivery + a non-follower "message requests" inbox are deferred; both platforms poll an open inbox (30 s) and conversation (10 s) instead ([direct_messages.md](../features/direct_messages.md)).
 
 ### Gear tracking
 **Closes:** Strava, Garmin.

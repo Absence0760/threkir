@@ -11443,19 +11443,19 @@ abstract class AppLocalizations {
   /// Consent gate bullet: profile data
   ///
   /// In en, this message translates to:
-  /// **'Your date of birth, gender, and HR zones if set.'**
+  /// **'Only if you\'ve given health-data consent: your date of birth and configured HR zones, if you\'ve set them.'**
   String get coachConsentBulletProfile;
 
   /// Consent gate bullet: recent runs
   ///
   /// In en, this message translates to:
-  /// **'A window of your most recent runs.'**
+  /// **'A window of your most recent runs: the date, distance, duration, activity type, elevation gain, whether it was indoors and how it went against a planned workout, plus your average heart rate only if you\'ve given health-data consent.'**
   String get coachConsentBulletRuns;
 
   /// Consent gate bullet: active plan
   ///
   /// In en, this message translates to:
-  /// **'The active training plan you have selected.'**
+  /// **'The active training plan you have selected: its name, status, goal race and target time, the recent 5K time and running fitness score it was built from, its dates, training days, rules and notes; each week\'s phase, target distance and notes; and each workout\'s date, type, targets, structure, notes, race name and priority, and whether you completed or skipped it, with heart-rate targets only if you\'ve given health-data consent.'**
   String get coachConsentBulletPlan;
 
   /// Consent gate bullet: chat messages
@@ -11913,6 +11913,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not open archive.'**
   String get coachOpenArchiveFailed;
+
+  /// Button shown over the coach chat when the runner has scrolled up and new reply text has arrived below; tapping it scrolls to the newest message and resumes following the reply
+  ///
+  /// In en, this message translates to:
+  /// **'Jump to latest'**
+  String get coachJumpToLatest;
 
   /// Banner shown when deleting a coach archive fails; the swiped row snaps back
   ///

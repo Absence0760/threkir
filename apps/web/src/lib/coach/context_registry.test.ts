@@ -15,8 +15,13 @@ import {
 import { en } from '../i18n/locales/en';
 import {
 	buildContext,
+	COACH_CONTEXT_COLUMNS,
 	COACH_CONTEXT_CONTAINERS,
 	COACH_CONTEXT_REGISTRY,
+	COACH_PLAN_COLUMNS,
+	COACH_PLAN_WEEK_COLUMNS,
+	COACH_PLAN_WORKOUT_COLUMNS,
+	COACH_RUN_COLUMNS,
 	withholdUndisclosed,
 	type CoachProfileRow,
 } from './context';
@@ -36,16 +41,53 @@ const ARB_EN = JSON.parse(readFileSync(resolve(MOBILE, 'l10n/app_en.arb'), 'utf8
 const USER = 'user-1';
 const RECENT = new Date(Date.now() - 86_400_000).toISOString();
 
+/// A row carrying every listed column, with `fixed` values where a lane's
+/// filters or joins need them, so every selected field has something to emit.
+function rowOf(columns: readonly string[], fixed: Record<string, unknown>): Record<string, unknown> {
+	return {
+		...Object.fromEntries(columns.map((c) => [c, `${c}-value`])),
+		...fixed,
+	};
+}
+
 /// One row in every table a lane reads, so every lane has something to emit.
+/// The table-backed rows also carry columns the Coach does not select
+/// (`user_id`, `updated_by`, …), as the real rows do.
 function fullFixture(): Record<string, Record<string, unknown>[]> {
 	return {
 		training_plans: [
-			{ id: 'p1', user_id: USER, status: 'active', is_template: false, start_date: '2026-06-01', end_date: '2099-12-31' },
+			rowOf(COACH_PLAN_COLUMNS, {
+				id: 'p1',
+				status: 'active',
+				start_date: '2026-06-01',
+				end_date: '2099-12-31',
+				user_id: USER,
+				is_template: false,
+				assigned_by_coach_id: 'coach-1',
+			}),
 		],
-		plan_weeks: [{ id: 'w1', plan_id: 'p1', week_index: 0 }],
-		plan_workouts: [{ id: 'k1', week_id: 'w1', scheduled_date: '2026-06-02' }],
+		plan_weeks: [rowOf(COACH_PLAN_WEEK_COLUMNS, { id: 'w1', plan_id: 'p1', week_index: 0 })],
+		plan_workouts: [
+			rowOf(COACH_PLAN_WORKOUT_COLUMNS, {
+				id: 'k1',
+				week_id: 'w1',
+				scheduled_date: '2026-06-02',
+				target_hr_min_bpm: 140,
+				target_hr_max_bpm: 155,
+				updated_by: 'coach-1',
+			}),
+		],
 		runs: [
-			{ id: 'r1', user_id: USER, started_at: RECENT, distance_m: 10_000, duration_s: 3_000, metadata: { activity_type: 'run', avg_bpm: 150 }, route_id: null },
+			rowOf(COACH_RUN_COLUMNS, {
+				id: 'r1',
+				user_id: USER,
+				started_at: RECENT,
+				distance_m: 10_000,
+				duration_s: 3_000,
+				activity_type: 'run',
+				metadata: { is_indoor: false, avg_bpm: 150, notes: 'private' },
+				route_id: 'route-1',
+			}),
 		],
 		gym_workouts: [{ id: 'g1', user_id: USER, title: 'Pull', started_at: RECENT }],
 		gym_sets: [{ workout_id: 'g1', exercise_name: 'Row', reps: 5, weight_kg: 60 }],
@@ -67,7 +109,11 @@ function fullFixture(): Record<string, Record<string, unknown>[]> {
 }
 
 /// Filter-aware stub that records which tables were read.
-function recordingSupabase(tables: Record<string, Record<string, unknown>[]>, read: Set<string>) {
+function recordingSupabase(
+	tables: Record<string, Record<string, unknown>[]>,
+	read: Set<string>,
+	selects: Map<string, Set<string>> = new Map(),
+) {
 	return {
 		from(table: string) {
 			read.add(table);
@@ -80,7 +126,12 @@ function recordingSupabase(tables: Record<string, Record<string, unknown>[]>, re
 						eqs.every(([c, v]) => r[c] === v) && ins.every(([c, vs]) => vs.includes(r[c])),
 				);
 			const q: Record<string, unknown> = {};
-			for (const m of ['select', 'order', 'gte']) q[m] = () => q;
+			for (const m of ['order', 'gte']) q[m] = () => q;
+			q.select = (cols: string) => {
+				if (!selects.has(table)) selects.set(table, new Set());
+				selects.get(table)!.add(cols);
+				return q;
+			};
 			q.eq = (c: string, v: unknown) => {
 				eqs.push([c, v]);
 				return q;
@@ -104,29 +155,31 @@ const PROFILE: CoachProfileRow = {
 	health_data_consent_at: '2026-06-01T00:00:00.000Z',
 };
 
-async function contextAt(version: number) {
+async function contextAt(version: number, profile: CoachProfileRow = PROFILE) {
 	const read = new Set<string>();
+	const selects = new Map<string, Set<string>>();
 	const ctx = await buildContext(
-		recordingSupabase(fullFixture(), read) as never,
+		recordingSupabase(fullFixture(), read, selects) as never,
 		USER,
 		null,
 		10,
-		PROFILE,
+		profile,
 		'2026-06-15',
 		version,
 	);
-	return { data: ctx.data as Record<string, unknown>, read };
+	return { data: ctx.data as Record<string, unknown>, read, selects };
 }
 
 /// Every registry path the emitted context carries.
 function emittedPaths(data: Record<string, unknown>): string[] {
 	const out: string[] = [];
 	for (const [key, value] of Object.entries(data)) {
-		if (COACH_CONTEXT_CONTAINERS.has(key) && value != null) {
-			for (const field of Object.keys(value as Record<string, unknown>)) {
-				out.push(`${key}.${field}`);
-			}
-		} else {
+		const container = COACH_CONTEXT_CONTAINERS.get(key);
+		if (container && value != null) {
+			const rows = (container === 'list' ? value : [value]) as Record<string, unknown>[];
+			const fields = new Set(rows.flatMap((r) => Object.keys(r)));
+			for (const field of fields) out.push(`${key}.${field}`);
+		} else if (!container) {
 			out.push(key);
 		}
 	}
@@ -228,4 +281,76 @@ test('every covering bullet is real copy, shown on web and on mobile', () => {
 			`${path}: ai_disclosure_notice.dart does not render ${arbKey}`,
 		);
 	}
+});
+
+test('the select lists and the registry name the same fields for every table-backed lane', async () => {
+	const { selects } = await contextAt(AI_DISCLOSURE_CURRENT_VERSION);
+	const tableOf: Record<string, string> = {
+		plan: 'training_plans',
+		plan_weeks: 'plan_weeks',
+		plan_workouts: 'plan_workouts',
+		recent_runs: 'runs',
+	};
+	assert.deepEqual(Object.keys(COACH_CONTEXT_COLUMNS).sort(), Object.keys(tableOf).sort());
+	for (const [container, columns] of Object.entries(COACH_CONTEXT_COLUMNS)) {
+		const registered = Object.keys(COACH_CONTEXT_REGISTRY)
+			.filter((p) => p.startsWith(`${container}.`))
+			.map((p) => p.slice(container.length + 1));
+		assert.deepEqual(
+			[...columns].sort(),
+			registered.sort(),
+			`${container}: every selected column needs a registry entry, and every entry a selected column`,
+		);
+		assert.equal(COACH_CONTEXT_CONTAINERS.has(container), true, container);
+		// What reaches PostgREST is the column list itself, never `*`.
+		assert.deepEqual(
+			[...(selects.get(tableOf[container]) ?? [])],
+			[columns.join(', ')],
+			`${container}: the ${tableOf[container]} read must select exactly its column list`,
+		);
+	}
+});
+
+test('a column the Coach does not select never reaches the context, even when a row carries it', async () => {
+	const { data } = await contextAt(AI_DISCLOSURE_CURRENT_VERSION);
+	const plan = data.plan as Record<string, unknown>;
+	const workout = (data.plan_workouts as Record<string, unknown>[])[0];
+	const run = (data.recent_runs as Record<string, unknown>[])[0];
+	for (const field of ['user_id', 'is_template', 'assigned_by_coach_id']) {
+		assert.equal(field in plan, false, `plan.${field}`);
+	}
+	for (const field of ['id', 'updated_by']) assert.equal(field in workout, false, `plan_workouts.${field}`);
+	for (const field of ['user_id', 'route_id']) assert.equal(field in run, false, `recent_runs.${field}`);
+	assert.deepEqual(run.metadata, { is_indoor: false, avg_bpm: 150 });
+});
+
+test('heart-rate targets on plan workouts need health-data consent', async () => {
+	const withConsent = await contextAt(AI_DISCLOSURE_CURRENT_VERSION);
+	const consented = (withConsent.data.plan_workouts as Record<string, unknown>[])[0];
+	assert.equal(consented.target_hr_min_bpm, 140);
+	assert.equal(consented.target_hr_max_bpm, 155);
+
+	const without = await contextAt(AI_DISCLOSURE_CURRENT_VERSION, {
+		...PROFILE,
+		health_data_consent_at: null,
+	});
+	const withheld = (without.data.plan_workouts as Record<string, unknown>[])[0];
+	assert.equal(withheld.target_hr_min_bpm, null);
+	assert.equal(withheld.target_hr_max_bpm, null);
+	assert.equal(withheld.scheduled_date, '2026-06-02');
+});
+
+test('an unregistered field on a list row throws instead of being sent', () => {
+	assert.throws(
+		() =>
+			withholdUndisclosed(
+				{ plan_workouts: [{ scheduled_date: '2026-06-02', updated_by: 'coach-1' }] },
+				AI_DISCLOSURE_CURRENT_VERSION,
+			),
+		/"plan_workouts.updated_by" is not in COACH_CONTEXT_REGISTRY/,
+	);
+	assert.throws(
+		() => withholdUndisclosed({ plan: { id: 'p1', user_id: USER } }, AI_DISCLOSURE_CURRENT_VERSION),
+		/"plan.user_id" is not in COACH_CONTEXT_REGISTRY/,
+	);
 });

@@ -1,7 +1,7 @@
 -- Direct messages: unsend instead of a cross-user hard delete, keep the
 -- remaining user's copy when the other side deletes their account, and let a
 -- recipient report a message with a snapshot that unsend cannot destroy
--- (issue #1216, decisions § 2220).
+-- (issue #1216, decisions § 2221).
 --
 -- ── 1. No client hard delete; a sender-only soft unsend ──────────────────
 --

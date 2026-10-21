@@ -7091,15 +7091,15 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get coachConsentBulletProfile =>
-      'Votre date de naissance, votre sexe et vos zones de FC si elles sont définies.';
+      'Uniquement si vous avez donné votre consentement aux données de santé : votre date de naissance et vos zones de fréquence cardiaque configurées, si vous les avez définies.';
 
   @override
   String get coachConsentBulletRuns =>
-      'Un échantillon de vos courses les plus récentes.';
+      'Un aperçu de vos courses les plus récentes : la date, la distance, la durée, le type d\'activité, le dénivelé positif, si la course a eu lieu en intérieur et son déroulement par rapport à une séance prévue, ainsi que votre fréquence cardiaque moyenne (uniquement si vous avez donné votre consentement aux données de santé).';
 
   @override
   String get coachConsentBulletPlan =>
-      'Le plan d\'entraînement actif que vous avez sélectionné.';
+      'Le plan d\'entraînement actif que vous avez sélectionné : son nom, son statut, la course visée et le temps visé, le temps récent sur 5 km et le score de forme à partir desquels il a été construit, ses dates, ses jours d\'entraînement, ses règles et ses notes ; pour chaque semaine, la phase, la distance cible et les notes ; et pour chaque séance, la date, le type, les objectifs, la structure, les notes, le nom et la priorité de la course, et si vous l\'avez effectuée ou ignorée, ainsi que les objectifs de fréquence cardiaque (uniquement si vous avez donné votre consentement aux données de santé).';
 
   @override
   String get coachConsentBulletMessages =>
@@ -7115,7 +7115,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get coachConsentBulletPlatePhoto =>
-      'Pour la saisie par photo de repas : la photo de votre repas que vous choisissez, envoyée uniquement pour estimer ce qu\'il y a dans l\'assiette. La position et les données de l\'appareil photo sont retirées avant l\'envoi, Threkir ne conserve pas la photo et rien n\'est enregistré tant que vous n\'avez pas vérifié et sauvegardé.';
+      'Pour la saisie par photo de repas : la photo de votre repas que vous choisissez, envoyée uniquement pour estimer ce qu\'il y a dans l\'assiette. La position et les données de l\'appareil photo sont retirées avant l\'envoi, Threkir ne conserve pas la photo et rien n\'est enregistré tant que vous n\'avez pas vérifié et enregistré.';
 
   @override
   String get coachConsentBulletCoachSettings =>
@@ -7388,6 +7388,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get coachOpenArchiveFailed => 'Impossible d\'ouvrir l\'archive.';
+
+  @override
+  String get coachJumpToLatest => 'Aller au dernier message';
 
   @override
   String coachArchiveDeleteFailed(String error) {

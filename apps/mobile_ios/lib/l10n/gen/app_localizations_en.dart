@@ -7007,14 +7007,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coachConsentBulletProfile =>
-      'Your date of birth, gender, and HR zones if set.';
+      'Only if you\'ve given health-data consent: your date of birth and configured HR zones, if you\'ve set them.';
 
   @override
-  String get coachConsentBulletRuns => 'A window of your most recent runs.';
+  String get coachConsentBulletRuns =>
+      'A window of your most recent runs: the date, distance, duration, activity type, elevation gain, whether it was indoors and how it went against a planned workout, plus your average heart rate only if you\'ve given health-data consent.';
 
   @override
   String get coachConsentBulletPlan =>
-      'The active training plan you have selected.';
+      'The active training plan you have selected: its name, status, goal race and target time, the recent 5K time and running fitness score it was built from, its dates, training days, rules and notes; each week\'s phase, target distance and notes; and each workout\'s date, type, targets, structure, notes, race name and priority, and whether you completed or skipped it, with heart-rate targets only if you\'ve given health-data consent.';
 
   @override
   String get coachConsentBulletMessages =>
@@ -7294,6 +7295,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coachOpenArchiveFailed => 'Could not open archive.';
+
+  @override
+  String get coachJumpToLatest => 'Jump to latest';
 
   @override
   String coachArchiveDeleteFailed(String error) {

@@ -250,7 +250,7 @@ function runWithConsent(consentAt: string | null) {
 		started_at: '2026-06-08T08:00:00.000Z',
 		distance_m: 10000,
 		duration_s: 3000,
-		metadata: { activity_type: 'run', avg_bpm: 152 },
+		metadata: { is_indoor: false, avg_bpm: 152 },
 		route_id: null,
 	};
 	const profileRow: CoachProfileRow = {
@@ -276,14 +276,14 @@ test('buildContext strips per-run avg_bpm when health consent is null', async ()
 	const ctx = await runWithConsent(null);
 	const runs = (ctx.data as { recent_runs: { metadata: unknown }[] }).recent_runs;
 	assert.equal(runs.length, 1);
-	assert.deepEqual(runs[0].metadata, { activity_type: 'run' });
+	assert.deepEqual(runs[0].metadata, { is_indoor: false });
 });
 
 test('buildContext keeps per-run avg_bpm when health consent is granted', async () => {
 	const ctx = await runWithConsent('2026-06-01T00:00:00.000Z');
 	const runs = (ctx.data as { recent_runs: { metadata: unknown }[] }).recent_runs;
 	assert.equal(runs.length, 1);
-	assert.deepEqual(runs[0].metadata, { activity_type: 'run', avg_bpm: 152 });
+	assert.deepEqual(runs[0].metadata, { is_indoor: false, avg_bpm: 152 });
 });
 
 // --- cross-tenant scoping (issue #373) --------------------------------
@@ -394,14 +394,13 @@ test('buildContext no-plan_id branch returns the CALLER active plan, not an athl
 		AI_DISCLOSURE_CURRENT_VERSION,
 	);
 	const data = ctx.data as {
-		plan: { id: string; user_id: string } | null;
+		plan: { id: string } | null;
 		plan_weeks: { id: string }[];
-		plan_workouts: { id: string }[];
+		plan_workouts: { week_id: string }[];
 	};
 	assert.equal(data.plan?.id, 'plan-b', 'must resolve the coach own active plan');
-	assert.equal(data.plan?.user_id, COACH);
 	assert.deepEqual(data.plan_weeks.map((w) => w.id), ['week-b']);
-	assert.deepEqual(data.plan_workouts.map((w) => w.id), ['wk-b']);
+	assert.deepEqual(data.plan_workouts.map((w) => w.week_id), ['week-b']);
 });
 
 test('buildContext leaks none of an athlete recent runs into a coach context', async () => {

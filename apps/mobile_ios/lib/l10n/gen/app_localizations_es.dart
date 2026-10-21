@@ -7071,15 +7071,15 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachConsentBulletProfile =>
-      'Tu fecha de nacimiento, sexo y zonas de FC si están configuradas.';
+      'Solo si has dado tu consentimiento de datos de salud: tu fecha de nacimiento y tus zonas de frecuencia cardíaca configuradas, si las has establecido.';
 
   @override
   String get coachConsentBulletRuns =>
-      'Una muestra de tus carreras más recientes.';
+      'Una muestra de tus carreras más recientes: la fecha, la distancia, la duración, el tipo de actividad, el desnivel positivo, si fue en interior y cómo fue respecto a un entrenamiento planificado, además de tu frecuencia cardíaca media (solo si has dado tu consentimiento de datos de salud).';
 
   @override
   String get coachConsentBulletPlan =>
-      'El plan de entrenamiento activo que has seleccionado.';
+      'El plan de entrenamiento activo que has seleccionado: su nombre, estado, carrera objetivo y tiempo objetivo, el tiempo reciente en 5K y la puntuación de forma física con los que se creó, sus fechas, días de entrenamiento, reglas y notas; la fase, la distancia objetivo y las notas de cada semana; y la fecha, el tipo, los objetivos, la estructura, las notas, el nombre de la carrera y la prioridad de cada entrenamiento, y si lo has completado u omitido, además de los objetivos de frecuencia cardíaca (solo si has dado tu consentimiento de datos de salud).';
 
   @override
   String get coachConsentBulletMessages =>
@@ -7365,6 +7365,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachOpenArchiveFailed => 'No se pudo abrir el archivo.';
+
+  @override
+  String get coachJumpToLatest => 'Ir al último mensaje';
 
   @override
   String coachArchiveDeleteFailed(String error) {

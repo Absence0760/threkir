@@ -9474,15 +9474,15 @@
   "@coachConsentIntro": {
     "description": "Consent gate intro paragraph"
   },
-  "coachConsentBulletProfile": "Your date of birth, gender, and HR zones if set.",
+  "coachConsentBulletProfile": "Only if you've given health-data consent: your date of birth and configured HR zones, if you've set them.",
   "@coachConsentBulletProfile": {
     "description": "Consent gate bullet: profile data"
   },
-  "coachConsentBulletRuns": "A window of your most recent runs.",
+  "coachConsentBulletRuns": "A window of your most recent runs: the date, distance, duration, activity type, elevation gain, whether it was indoors and how it went against a planned workout, plus your average heart rate only if you've given health-data consent.",
   "@coachConsentBulletRuns": {
     "description": "Consent gate bullet: recent runs"
   },
-  "coachConsentBulletPlan": "The active training plan you have selected.",
+  "coachConsentBulletPlan": "The active training plan you have selected: its name, status, goal race and target time, the recent 5K time and running fitness score it was built from, its dates, training days, rules and notes; each week's phase, target distance and notes; and each workout's date, type, targets, structure, notes, race name and priority, and whether you completed or skipped it, with heart-rate targets only if you've given health-data consent.",
   "@coachConsentBulletPlan": {
     "description": "Consent gate bullet: active plan"
   },
@@ -9845,6 +9845,10 @@
   "coachOpenArchiveFailed": "Could not open archive.",
   "@coachOpenArchiveFailed": {
     "description": "Error opening an archive"
+  },
+  "coachJumpToLatest": "Jump to latest",
+  "@coachJumpToLatest": {
+    "description": "Button shown over the coach chat when the runner has scrolled up and new reply text has arrived below; tapping it scrolls to the newest message and resumes following the reply"
   },
   "coachArchiveDeleteFailed": "Couldn't delete archive: {error}",
   "@coachArchiveDeleteFailed": {

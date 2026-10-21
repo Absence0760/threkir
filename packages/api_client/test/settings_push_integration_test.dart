@@ -102,6 +102,27 @@ void main() {
     expect(prefs['week_start_day'], 1);
   });
 
+  test('concurrent universal pushes all land (issue #1212)', () async {
+    // A read-merge-write lost every key but the last writer's here: each
+    // push read the bag before the others' writes landed. The merge now
+    // runs in one statement server-side.
+    final keys = List.generate(8, (i) => 'merge_probe_$i');
+    await Future.wait([
+      for (var i = 0; i < keys.length; i++)
+        settings.updateUniversal({keys[i]: i}),
+    ]);
+    final row = await client
+        .from('user_settings')
+        .select('prefs')
+        .eq('user_id', uid)
+        .single();
+    final prefs = row['prefs'] as Map;
+    for (var i = 0; i < keys.length; i++) {
+      expect(prefs[keys[i]], i, reason: '${keys[i]} was overwritten');
+    }
+    expect(prefs['privacy_default'], 'private');
+  });
+
   test('device push before any load() lands the missing row', () async {
     await settings.updateDevice({'map_style': 'terrain'});
     final row = await client

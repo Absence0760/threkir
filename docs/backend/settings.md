@@ -170,6 +170,19 @@ Some per-device prefs are **never** synced to `user_settings` / `user_device_set
 - **On settings edit**: write to whichever table matches the key's scope. A
   device that edits a `UD` key writes to `user_device_settings.prefs`
   unless the user is in the universal-settings UI.
+- **Write the delta, never the bag.** A change goes through the
+  `merge_my_settings(p_changes)` / `merge_my_device_settings(p_device_id,
+  p_changes, p_platform, p_label)` RPCs (migration `20271021000002`, issue
+  #1212): `p_changes` names only the keys being changed, a JSON `null` removes
+  a key, and the merge runs in one `INSERT ... ON CONFLICT DO UPDATE`, so
+  concurrent writers serialise on the row instead of overwriting each other.
+  A client-side read-merge-write of the whole bag loses updates: one page load
+  has several writers (the layout's `time_zone` sync, a prefs page's one-time
+  `locale` stamp, the page's own save), and in a local probe twelve concurrent
+  read-merge-writes kept one key of twelve. Web `pushUniversal` / `pushDevice`
+  and Dart `SettingsService._pushUniversal` / `_pushDevice` both use the RPCs;
+  any other bag writer should go through `updateUniversal` / `updateDevice`
+  rather than writing the table.
 - **On read**: merge `user_device_settings.prefs` on top of
   `user_settings.prefs`, fall back to the default in this doc.
 
@@ -227,8 +240,8 @@ Some per-device prefs are **never** synced to `user_settings` / `user_device_set
   fall-through to empty bags on network failure so a brand-new offline
   visit still loads. Writes apply to the cache first; on push failure
   the change is queued under
-  `settings_cache_pending_<userId>_<deviceId>` and replayed against a
-  fresh server bag on the next successful refresh. **Only a transport
+  `settings_cache_pending_<userId>_<deviceId>` and replayed through the
+  same merge RPC on the next successful refresh. **Only a transport
   failure queues** ([`settings_write.ts`](../../apps/web/src/lib/settings/settings_write.ts),
   decisions §559): a write PostgREST *refused* — an RLS denial, a CHECK
   violation, an expired JWT — rolls the optimistic cache entry back,

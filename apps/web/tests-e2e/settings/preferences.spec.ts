@@ -309,12 +309,12 @@ test.describe('settings preference pages', () => {
 		await expect(toggle).not.toBeChecked();
 
 		// Opt in. The bag write must be the literal 'on' string. The push is
-		// a POST upsert, not a PATCH — a missing client-provisioned row makes
-		// an update match 0 rows and silently drop the change (#234).
+		// the merge RPC's upsert, not a PATCH — a missing client-provisioned row
+		// makes an update match 0 rows and silently drop the change (#234).
 		const optInPatch = page.waitForRequest(
 			(req) =>
 				req.method() === 'POST' &&
-				req.url().includes('/rest/v1/user_settings') &&
+				req.url().includes('/rest/v1/rpc/merge_my_settings') &&
 				(req.postData() ?? '').includes('"email_weekly_digest":"on"'),
 			{ timeout: 8_000 }
 		);
@@ -364,7 +364,7 @@ test.describe('settings preference pages', () => {
 		const optInPatch = page.waitForRequest(
 			(req) =>
 				req.method() === 'POST' &&
-				req.url().includes('/rest/v1/user_settings') &&
+				req.url().includes('/rest/v1/rpc/merge_my_settings') &&
 				(req.postData() ?? '').includes('"email_lifecycle_drip":"on"'),
 			{ timeout: 8_000 }
 		);
@@ -409,7 +409,7 @@ test.describe('settings preference pages', () => {
 		const optOut = page.waitForRequest(
 			(req) =>
 				req.method() === 'POST' &&
-				req.url().includes('/rest/v1/user_settings') &&
+				req.url().includes('/rest/v1/rpc/merge_my_settings') &&
 				(req.postData() ?? '').includes('"email_new_device_alerts":"off"'),
 			{ timeout: 8_000 }
 		);
@@ -424,7 +424,7 @@ test.describe('settings preference pages', () => {
 		const optIn = page.waitForRequest(
 			(req) =>
 				req.method() === 'POST' &&
-				req.url().includes('/rest/v1/user_settings') &&
+				req.url().includes('/rest/v1/rpc/merge_my_settings') &&
 				(req.postData() ?? '').includes('"email_new_device_alerts":"on"'),
 			{ timeout: 8_000 }
 		);
@@ -452,7 +452,7 @@ test.describe('settings preference pages', () => {
 		const patch = page.waitForRequest(
 			(req) =>
 				req.method() === 'POST' &&
-				req.url().includes('/rest/v1/user_settings') &&
+				req.url().includes('/rest/v1/rpc/merge_my_settings') &&
 				(req.postData() ?? '').includes('"locale":"de"'),
 			{ timeout: 8_000 }
 		);

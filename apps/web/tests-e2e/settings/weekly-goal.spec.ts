@@ -47,7 +47,7 @@ async function blurAndAwaitGoalWrite(page: Page, field: Locator, metres: number)
 	const write = page.waitForRequest(
 		(req) =>
 			req.method() === 'POST' &&
-			req.url().includes('/rest/v1/user_settings') &&
+			req.url().includes('/rest/v1/rpc/merge_my_settings') &&
 			(req.postData() ?? '').includes(`"weekly_mileage_goal_m":${metres}`),
 		{ timeout: 8_000 }
 	);
@@ -125,12 +125,14 @@ test.describe('weekly distance goal', () => {
 		const nextWrite = page.waitForRequest(
 			(req) =>
 				req.method() === 'POST' &&
-				req.url().includes('/rest/v1/user_settings') &&
+				req.url().includes('/rest/v1/rpc/merge_my_settings') &&
 				(req.postData() ?? '').includes(`"coach_personality":"${next}"`),
 			{ timeout: 8_000 }
 		);
 		await personality.selectOption(next);
-		expect((await nextWrite).postData()).toContain(`"weekly_mileage_goal_m":${SEEDED_GOAL_M}`);
+		// The write carries the delta only, so a refused goal riding along
+		// would show up as the key itself.
+		expect((await nextWrite).postData()).not.toContain('"weekly_mileage_goal_m"');
 		await expect.poll(storedGoal, { timeout: 5_000 }).toBe(SEEDED_GOAL_M);
 
 		await personality.selectOption(before);

@@ -1204,6 +1204,8 @@ Settings registry. `user_settings.prefs` is a single jsonb bag keyed off `user_i
 
 Two key-targeted RPCs write the `push_subscription` device pref atomically (PostgREST can't express a jsonb key write in a PATCH, and a whole-bag read-merge-write can clobber the row's other prefs — issue #235): **`set_push_subscription(p_device_id, p_subscription, p_platform default 'web', p_label default null)`** — SECURITY INVOKER, `authenticated`-only, `auth.uid()`-scoped; a single `jsonb_set` (or `- 'push_subscription'` when `p_subscription` is NULL / jsonb `'null'`) with an insert arm for a not-yet-provisioned device row (migration `20270419_001`, the web subscribe/unsubscribe path in `apps/web/src/lib/util/push.ts`); and **`clear_push_subscription(p_user_id, p_device_id)`** — SECURITY DEFINER, `service_role`-only; the Go worker's dead-endpoint prune (migration `20261219_001`). Pinned by `set_push_subscription_test.sql` + `web_push_channel_test.sql`.
 
+Every other prefs-bag write goes through two delta-merge RPCs (issue #1212): **`merge_my_settings(p_changes jsonb) returns jsonb`** and **`merge_my_device_settings(p_device_id text, p_changes jsonb, p_platform text, p_label text default null) returns jsonb`** — SECURITY INVOKER, `authenticated`-only, `auth.uid()`-scoped. `p_changes` must be a JSON object; a top-level JSON `null` value removes that key (the clients' `applyPrefsChanges` rule), every other key is set, and keys not named are left as the row holds them. One `INSERT ... ON CONFLICT DO UPDATE` per call, so concurrent merges serialise on the row lock rather than one client's whole-bag upsert overwriting another's keys; the insert arm creates a not-yet-provisioned row (the device variant takes the NOT NULL `platform`). Returns the merged bag, which the clients stamp into their cache. Migration `20271021000002`; pinned by `merge_my_settings_test.sql`, `tests-e2e/settings/prefs-merge-concurrency.spec.ts` and the Dart `settings_push_integration_test.dart`.
+
 #### `device_tokens`
 
 Push-notification device tokens. One row per (user, device). Prepared in
@@ -2336,10 +2338,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 146 migrations write a function-level `from public, anon` revoke
-today (129 as `revoke execute`, 21 as `revoke all`); it is the house form for
+trigger calls). 148 migrations write a function-level `from public, anon` revoke
+today (130 as `revoke execute`, 22 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 605 migrations in version order and fails the PR on
+keeps it — it replays all 607 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts

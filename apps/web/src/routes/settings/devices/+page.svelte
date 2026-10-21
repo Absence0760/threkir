@@ -224,6 +224,24 @@
 		return String(v);
 	}
 
+	async function mergeOverrides(
+		device: DeviceRow,
+		changes: PrefsBag,
+	): Promise<{ data: DeviceRow['prefs']; error: { message: string } | null }> {
+		const res = await supabase.rpc('merge_my_device_settings', {
+			p_device_id: device.device_id,
+			p_changes: changes,
+			p_platform: device.platform,
+			p_label: device.label,
+		});
+		if (res.error) return { data: device.prefs, error: res.error };
+		const bag = res.data;
+		return {
+			data: bag != null && typeof bag === 'object' && !Array.isArray(bag) ? (bag as DeviceRow['prefs']) : device.prefs,
+			error: null,
+		};
+	}
+
 	/// Drop a single override key from a device. The rest of the row
 	/// stays. A failure surfaces as an error toast — silently returning
 	/// left the value on screen with no explanation of why the Clear did
@@ -232,18 +250,16 @@
 		if (!auth.user) return;
 		const device = devices.find((d) => d.device_id === deviceId);
 		if (!device) return;
-		const { [key]: _dropped, ...rest } = device.prefs;
-		const { error } = await supabase
-			.from('user_device_settings')
-			.update({ prefs: rest, updated_at: new Date().toISOString() })
-			.eq('user_id', auth.user.id)
-			.eq('device_id', deviceId);
+		// A delta through the atomic merge (issue #1212): writing back this
+		// page's snapshot of the bag would undo anything that device changed
+		// since the page loaded.
+		const { data, error } = await mergeOverrides(device, { [key]: null });
 		if (error) {
 			showToast(m('settingsDevices.clearOverrideFailedToast', { message: error.message }), 'error');
 			return;
 		}
 		devices = devices.map((d) =>
-			d.device_id === deviceId ? { ...d, prefs: rest } : d,
+			d.device_id === deviceId ? { ...d, prefs: data } : d,
 		);
 	}
 
@@ -378,19 +394,14 @@
 
 		if (addBusy) return;
 		addBusy = true;
-		const next = { ...device.prefs, [addKey]: value };
-		const { error } = await supabase
-			.from('user_device_settings')
-			.update({ prefs: next, updated_at: new Date().toISOString() })
-			.eq('user_id', auth.user.id)
-			.eq('device_id', addingForDevice);
+		const { data, error } = await mergeOverrides(device, { [addKey]: value });
 		addBusy = false;
 		if (error) {
 			showToast(m('settingsDevices.addOverrideFailedToast', { message: error.message }), 'error');
 			return;
 		}
 		devices = devices.map((d) =>
-			d.device_id === addingForDevice ? { ...d, prefs: next } : d,
+			d.device_id === addingForDevice ? { ...d, prefs: data } : d,
 		);
 		addingForDevice = null;
 	}

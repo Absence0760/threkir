@@ -6,8 +6,8 @@
 // load reverts the setting. These bags carry privacy_zones (server-side
 // track clipping) and safety_overdue_minutes (the pg_cron overdue
 // escalation), so a silent drop is a privacy/safety failure. The push
-// must stay an UPSERT, and the loadSettings auto-provision writes must
-// stay error-checked.
+// must create a missing row, and the loadSettings auto-provision writes
+// must stay error-checked.
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
@@ -23,27 +23,32 @@ function fnBody(name: string): string {
 	return next === -1 ? source.slice(start) : source.slice(start, next);
 }
 
-test('pushUniversal upserts user_settings (0-row update hole, #234)', () => {
+// Issue #1212 moved the merge server-side: a client read-merge-write lost
+// updates whenever two writers were in flight (the layout's time_zone sync,
+// a page's locale stamp, the page's own save), and the later upsert put the
+// earlier one's key back. The RPCs merge in one INSERT ... ON CONFLICT, which
+// is also the upsert the #234 0-row hole needs.
+test('pushUniversal merges through merge_my_settings, never a whole-bag write', () => {
 	const body = fnBody('pushUniversal');
-	assert.match(body, /\.upsert\(/, 'pushUniversal must upsert');
+	assert.match(body, /\.rpc\(\s*'merge_my_settings'/, 'pushUniversal must merge server-side');
 	assert.doesNotMatch(
 		body,
-		/\.update\(/,
-		'pushUniversal must not use .update() — a missing row 0-row no-ops',
+		/\.from\(|\.upsert\(|\.update\(/,
+		'a client-side read-merge-write of the bag loses a concurrent writer\'s keys',
 	);
 });
 
-test('pushDevice upserts user_device_settings with the NOT NULL platform', () => {
+test('pushDevice merges through merge_my_device_settings with the NOT NULL platform', () => {
 	const body = fnBody('pushDevice');
-	assert.match(body, /\.upsert\(/, 'pushDevice must upsert');
+	assert.match(body, /\.rpc\(\s*'merge_my_device_settings'/, 'pushDevice must merge server-side');
 	assert.doesNotMatch(
 		body,
-		/\.update\(/,
-		'pushDevice must not use .update() — a missing row 0-row no-ops',
+		/\.from\(|\.upsert\(|\.update\(/,
+		'a client-side read-merge-write of the bag loses a concurrent writer\'s keys',
 	);
 	assert.match(
 		body,
-		/platform:\s*detectPlatform\(\)/,
+		/p_platform:\s*detectPlatform\(\)/,
 		'the insert arm needs platform (NOT NULL) or a first-write 23502s',
 	);
 });
@@ -81,8 +86,8 @@ test('every push failure is thrown as a classified SettingsWriteError', () => {
 		const throws = body.match(/throw new SettingsWriteError\(/g) ?? [];
 		assert.equal(
 			throws.length,
-			2,
-			`${name} must classify both the read and the upsert failure — a bare throw reads as a bug, and bugs surface instead of queueing`,
+			1,
+			`${name} must classify the merge failure — a bare throw reads as a bug, and bugs surface instead of queueing`,
 		);
 	}
 });

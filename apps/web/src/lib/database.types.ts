@@ -6756,6 +6756,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      merge_my_device_settings: {
+        Args: {
+          p_changes: Json
+          p_device_id: string
+          p_label?: string
+          p_platform: string
+        }
+        Returns: Json
+      }
+      merge_my_settings: { Args: { p_changes: Json }; Returns: Json }
       move_plan_workout: {
         Args: { p_date: string; p_workout_id: string }
         Returns: string

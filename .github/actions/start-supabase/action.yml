@@ -25,6 +25,21 @@ runs:
     # with stub ss/docker/supabase/sudo on PATH); the incident history that
     # shaped it is in that file's header. Inline, the LISTEN-only port probe
     # that cost CI run 35626531071 three attempts was readable by nothing.
+    # Authenticated pulls are counted against this repo's token instead of
+    # the anonymous limit shared by every runner on the same egress IP
+    # (start_stack.sh incident 9). A token that cannot log in (a fork PR's)
+    # falls back to the anonymous pull this action always made, so the
+    # login can only widen what succeeds.
+    - name: Log in to ghcr.io for authenticated image pulls
+      shell: bash
+      env:
+        GHCR_TOKEN: ${{ github.token }}
+        GHCR_USER: ${{ github.actor }}
+      run: |
+        if ! printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin; then
+          echo "::warning::ghcr.io login failed; pulling anonymously"
+        fi
+
     - name: Start the stack with a port-clean retry
       shell: bash
       working-directory: apps/backend

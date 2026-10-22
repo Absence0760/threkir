@@ -50,6 +50,11 @@ concurrency:
 # the workflow lacks this top-level grant.
 permissions:
   contents: read
+  # The start-supabase action logs in to ghcr.io so its image pulls are
+  # counted against this repo's token rather than the anonymous limit that
+  # every hosted runner sharing an egress IP draws on (start_stack.sh
+  # incident 9). Reading public packages is all it needs.
+  packages: read
 
 # Opt every JS-based action (actions/checkout, actions/cache,
 # supabase/setup-cli, …) into Node 24 ahead of GitHub's 2026-06-02

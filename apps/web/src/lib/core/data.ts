@@ -55,6 +55,7 @@ import type { ResumeShift } from '../training/plan_resume';
 import type { RaceDateChange } from '../training/plan_race_date';
 import type { BreakChange } from '../training/plan_break';
 import type { RepeatWeekChange } from '../training/plan_repeat_week';
+import type { AiPlanEditPayload } from '../training/plan_edit/season';
 import { shiftIsoDate } from '../training/plan_bulk_ops';
 import type { PlanRecapRecord, PlanRecapRun } from '../training/plan_recap';
 import {
@@ -6839,6 +6840,27 @@ export async function reschedulePlanWorkouts(
 	const { error } = await supabase.rpc('reschedule_plan_workouts', {
 		p_plan_id: planId,
 		p_moves: moves
+	});
+	if (error) throw dbError(error);
+}
+
+/// Write a reviewed AI plan edit in one transaction (`apply_ai_plan_edits`,
+/// decisions § 2230): every workout and week change of `payload`, in this plan
+/// and, with `includeFollowing`, the active plans chained after it, or none.
+/// The RPC re-checks each change against the rows as they are now.
+export async function applyAiPlanEdits(
+	planId: string,
+	todayIso: string,
+	includeFollowing: boolean,
+	payload: AiPlanEditPayload
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('apply_ai_plan_edits', {
+		p_plan_id: planId,
+		p_today: todayIso,
+		p_include_following: includeFollowing,
+		p_workouts: payload.workouts,
+		p_weeks: payload.weeks
 	});
 	if (error) throw dbError(error);
 }

@@ -89,6 +89,10 @@ export interface PlanEditWorkout {
 	completed_run_id?: string | null;
 	manually_completed?: boolean | null;
 	skipped_at?: string | null;
+	/// Read by the scale-up guard in `apply.ts`: a B or C race's window, and a
+	/// workout its taper already eased, never scale above 1.0.
+	race_priority?: string | null;
+	race_taper_applied_at?: string | null;
 }
 
 export interface PlanEditSnapshot {

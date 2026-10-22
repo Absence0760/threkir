@@ -69,7 +69,7 @@ test('event kinds link to the club event, needing both event id and club slug', 
 });
 
 test('plan kinds link to the plan detail', () => {
-	for (const kind of ['plan_update', 'plan_assigned', 'workout_reminder']) {
+	for (const kind of ['plan_update', 'plan_assigned', 'plan_ai_edit', 'workout_reminder']) {
 		assert.equal(notificationLinkFor(make({ kind, plan_id: 'p3' })), '/plans/p3');
 		assert.equal(notificationLinkFor(make({ kind })), null);
 	}

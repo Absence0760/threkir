@@ -54,6 +54,7 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 				: null;
 		case 'plan_update':
 		case 'plan_assigned':
+		case 'plan_ai_edit':
 		case 'workout_reminder':
 			return r.plan_id ? `/plans/${r.plan_id}` : null;
 		case 'message':

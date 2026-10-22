@@ -176,6 +176,10 @@ test('planEditHandoffAddendum(true) asks for one adjust link on the context plan
 	assert.match(out, /Never invent a plan id/);
 	assert.match(out, /do not rewrite workouts or dates yourself/);
 	assert.match(out, /percent-encode/);
+	assert.match(out, /nothing changes until they apply them/);
+	// The scope across chained blocks is the runner's choice on the card
+	// (decisions § 2230), never the model's: it links the first plan only.
+	assert.match(out, /link the first plan it touches: the runner is asked whether it carries into the following blocks/);
 });
 
 test('planEditHandoffAddendum(false) is empty, so the system text is unchanged while the feature is off', () => {

@@ -252,3 +252,85 @@ test('a set mixing every operation kind applies each one, and an easier plan is 
 		stackedDays: [],
 	});
 });
+
+test('a scale-up leaves a B/C race window and a taper-eased workout alone; a scale-down does not', () => {
+	// A C race on Monday 2026-11-02: its 3-day taper reaches back to Friday
+	// 10-30, so week 3's Sunday long run (11-01) is inside it and the Tuesday
+	// tempo and Thursday easy run are not (race_taper.ts, decisions § 2051).
+	const base = fixture();
+	base.workouts.push({
+		id: 'c-race',
+		week_id: 'wk3',
+		scheduled_date: '2026-11-02',
+		kind: 'race',
+		target_distance_m: 10_000,
+		race_priority: 'C',
+	});
+	const up = applyPlanEditOps(base, [{ op: 'scale_week', weekIndex: 2, factor: 1.1 }], TODAY);
+	const after = (id: string) => up.after.workouts.find((w) => w.id === id)!.target_distance_m;
+	assert.equal(after('c-tempo'), 11_000);
+	assert.equal(after('c-easy'), 11_000);
+	assert.equal(after('c-long'), 24_000, 'inside the C race taper: not scaled up');
+	// The target rises by what the scaled sessions add, not by the held 24 km's share.
+	assert.equal(up.weeks.find((w) => w.weekId === 'wk2')!.afterVolumeM, 46_000);
+
+	const eased = fixture();
+	eased.workouts.find((w) => w.id === 'c-easy')!.race_taper_applied_at = '2026-10-10T00:00:00Z';
+	const up2 = applyPlanEditOps(eased, [{ op: 'scale_week', weekIndex: 2, factor: 1.1 }], TODAY);
+	assert.equal(up2.after.workouts.find((w) => w.id === 'c-easy')!.target_distance_m, 10_000);
+
+	const down = applyPlanEditOps(base, [{ op: 'scale_week', weekIndex: 2, factor: 0.9 }], TODAY);
+	assert.equal(down.after.workouts.find((w) => w.id === 'c-long')!.target_distance_m, 21_600);
+});
+
+test('a workout moved into a B/C race window is held at its targets whatever order the operations come in', () => {
+	// Thursday's easy run (10-29) is four days before a C race on 11-02, outside
+	// its 3-day taper; moved to Friday 10-30 it is inside.
+	const base = fixture();
+	base.workouts.push({
+		id: 'c-race',
+		week_id: 'wk3',
+		scheduled_date: '2026-11-02',
+		kind: 'race',
+		target_distance_m: 10_000,
+		race_priority: 'C',
+	});
+	const move = { op: 'move_workout', workoutId: 'c-easy', date: '2026-10-30' } as const;
+	const scale = { op: 'scale_week', weekIndex: 2, factor: 1.1 } as const;
+	for (const ops of [[move, scale], [scale, move]]) {
+		const r = applyPlanEditOps(base, [...ops], TODAY);
+		const easy = r.after.workouts.find((w) => w.id === 'c-easy')!;
+		assert.equal(easy.scheduled_date, '2026-10-30');
+		assert.equal(easy.target_distance_m, 10_000);
+		assert.equal(r.after.workouts.find((w) => w.id === 'c-tempo')!.target_distance_m, 11_000);
+	}
+});
+
+test('a race already run keeps its recovery window protected from a scale-up', () => {
+	// A B half marathon yesterday (10-14): seven days of recovery, 10-15 to
+	// 10-21, cover every open session of week 1.
+	const base = fixture();
+	base.workouts.push({
+		id: 'a-brace',
+		week_id: 'wk0',
+		scheduled_date: '2026-10-14',
+		kind: 'race',
+		target_distance_m: 21_097,
+		race_priority: 'B',
+	});
+	const r = applyPlanEditOps(base, [{ op: 'scale_week', weekIndex: 0, factor: 1.1 }], TODAY);
+	assert.deepEqual(r.workouts, []);
+});
+
+test('a race in a neighbouring block holds the workouts its window reaches', () => {
+	const base = fixture();
+	const nearby = [
+		{ date: '2026-10-21', name: null, priority: 'C' as const, distanceM: 10_000, goalTimeSec: null, workoutId: 'elsewhere' },
+	];
+	// A C race on Wednesday 10-21 in another block: Thursday's easy run (10-22)
+	// is in its two-day recovery, Saturday's (10-24) is not.
+	const r = applyPlanEditOps(base, [{ op: 'scale_week', weekIndex: 1, factor: 1.1 }], TODAY, nearby);
+	const after = (id: string) => r.after.workouts.find((w) => w.id === id)!.target_distance_m;
+	assert.equal(after('b-easy'), 8_000);
+	assert.equal(after('b-easy2'), 6_600);
+});

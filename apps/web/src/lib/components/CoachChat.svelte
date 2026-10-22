@@ -12,6 +12,10 @@
 	import ChipDropdown from '#lib/components/ChipDropdown.svelte';
 	import { TIER_LIMITS } from '#lib/coach/types.ts';
 	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
+	import { aiPlanEditEnabled } from '#lib/training/ai_plan_edit_flag.ts';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
+	import { planEditHandoff } from '#lib/coach/plan_edit_link.ts';
+	import CoachPlanEditCard from '#lib/components/CoachPlanEditCard.svelte';
 	import { currentSeason, pickCurrentPlan } from '#lib/training/plan_current.ts';
 	import { todayISO } from '#lib/training/training.ts';
 	import { dbError, thrownMessage } from '#lib/core/supabase_error.ts';
@@ -63,6 +67,12 @@
 	}
 
 	let messages = $state<Msg[]>([]);
+	/// Plan-edit proposals render as a card under the reply that links one
+	/// (decisions § 2230), behind the same fail-closed gate as the plan page.
+	const planEditCards = coachEnabled() && aiPlanEditEnabled();
+	/// Replies that arrived in this session: their card proposes at once. An
+	/// older reply's card waits for a tap, so reopening a thread spends nothing.
+	let freshReplies = $state<string[]>([]);
 	/// Set to the coach's completed reply when a stream finishes, so a
 	/// visually-hidden aria-live region announces it once (WCAG 4.1.3).
 	let liveAnnouncement = $state('');
@@ -717,6 +727,7 @@
 			if (id) {
 				const cur = messages[assistantIdx];
 				if (cur) messages[assistantIdx] = { ...cur, id };
+				freshReplies = [...freshReplies, id];
 			}
 			// Announce the completed reply to assistive tech exactly once
 			// (WCAG 4.1.3), via the visually-hidden polite region — not
@@ -1155,6 +1166,18 @@
 							{:else}
 								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 								<div class="md">{@html renderMarkdown(m.content)}</div>
+								{#if planEditCards && m.id && !viewingArchiveAt}
+									{@const handoff = planEditHandoff(m.content)}
+									{#if handoff}
+										{#key m.id}
+											<CoachPlanEditCard
+												planId={handoff.planId}
+												request={handoff.request}
+												auto={freshReplies.includes(m.id)}
+											/>
+										{/key}
+									{/if}
+								{/if}
 							{/if}
 						{:else}
 							<span>{m.content}</span>

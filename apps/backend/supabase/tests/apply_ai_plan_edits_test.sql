@@ -14,7 +14,7 @@
 -- queued the day after P ends.
 
 begin;
-select plan(45);
+select plan(80);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at) values
   ('e5e5e5e5-0000-0000-0000-0000000000a1', 'authenticated', 'authenticated', 'aipe-owner@aipe.local', '', now(), now()),
@@ -291,6 +291,82 @@ select throws_ok(
 );
 reset role;
 delete from plan_workouts where id = 'e5e5e5e5-3333-0000-0000-000000000013';
+-- The block before P, ended a week before P began, closing on a B 100 km
+-- race: its 21-day recovery runs through P's current week, so this week's
+-- easy run is held at 1.0 although the race is in another plan.
+insert into training_plans (id, user_id, name, goal_event, goal_distance_m, start_date, end_date, days_per_week, status) values
+  ('e5e5e5e5-1111-0000-0000-000000000005', 'e5e5e5e5-0000-0000-0000-0000000000a1', 'Before P', 'distance_half', 21097,
+   current_date - 21, current_date - 8, 4, 'completed');
+insert into plan_weeks (id, plan_id, week_index, phase, target_volume_m) values
+  ('e5e5e5e5-2222-0000-0000-000000000050', 'e5e5e5e5-1111-0000-0000-000000000005', 0, 'race', 100000);
+insert into plan_workouts (id, week_id, scheduled_date, kind, target_distance_m, race_priority) values
+  ('e5e5e5e5-3333-0000-0000-000000000050', 'e5e5e5e5-2222-0000-0000-000000000050', current_date - 8, 'race', 100000, 'B');
+set local role authenticated;
+select throws_ok(
+  $$ select pg_temp.aipe('e5e5e5e5-1111-0000-0000-000000000001',
+       '[{"id":"e5e5e5e5-3333-0000-0000-000000000004","target_distance_m":12100}]'::jsonb) $$,
+  '22023', null,
+  'a workout in the recovery window of the preceding block''s B race is not scaled up'
+);
+reset role;
+delete from training_plans where id = 'e5e5e5e5-1111-0000-0000-000000000005';
+
+-- Which block is "the one before" is the same rule fetchPrecedingPlan reads:
+-- the latest non-template active or completed plan ending before P starts,
+-- ties to the lowest id. Each case puts the B 100 km race on one candidate
+-- only, so whether the easy run is held says which plan was picked.
+create function pg_temp.before_block(p_id text, p_end date, p_status text, p_race boolean) returns void
+language sql as $f$
+  insert into training_plans (id, user_id, name, goal_event, goal_distance_m, start_date, end_date, days_per_week, status)
+  values (p_id::uuid, 'e5e5e5e5-0000-0000-0000-0000000000a1', 'Before ' || p_id, 'distance_half', 21097,
+          p_end - 13, p_end, 4, p_status);
+  insert into plan_weeks (plan_id, week_index, phase, target_volume_m) values (p_id::uuid, 0, 'race', 100000);
+  insert into plan_workouts (week_id, scheduled_date, kind, target_distance_m, race_priority)
+  select w.id, p_end, 'race', 100000, 'B' from plan_weeks w where w.plan_id = p_id::uuid and p_race;
+$f$;
+select pg_temp.before_block('e5e5e5e5-1111-0000-0000-000000000006', current_date - 8, 'completed', true);
+select pg_temp.before_block('e5e5e5e5-1111-0000-0000-000000000007', current_date - 8, 'completed', false);
+set local role authenticated;
+select throws_ok(
+  $$ select pg_temp.aipe('e5e5e5e5-1111-0000-0000-000000000001',
+       '[{"id":"e5e5e5e5-3333-0000-0000-000000000004","target_distance_m":12100}]'::jsonb) $$,
+  '22023', null,
+  'two blocks ending the same day: the lower id is the one before, and its race holds'
+);
+reset role;
+delete from training_plans where id in ('e5e5e5e5-1111-0000-0000-000000000006', 'e5e5e5e5-1111-0000-0000-000000000007');
+select pg_temp.before_block('e5e5e5e5-1111-0000-0000-000000000006', current_date - 8, 'completed', false);
+select pg_temp.before_block('e5e5e5e5-1111-0000-0000-000000000007', current_date - 8, 'completed', true);
+set local role authenticated;
+select lives_ok(
+  $$ select pg_temp.aipe('e5e5e5e5-1111-0000-0000-000000000001',
+       '[{"id":"e5e5e5e5-3333-0000-0000-000000000004","target_distance_m":12100}]'::jsonb) $$,
+  'and a race on the higher id of the two is not the one before''s'
+);
+reset role;
+update plan_workouts set target_distance_m = 11000 where id = 'e5e5e5e5-3333-0000-0000-000000000004';
+delete from training_plans where id in ('e5e5e5e5-1111-0000-0000-000000000006', 'e5e5e5e5-1111-0000-0000-000000000007');
+select pg_temp.before_block('e5e5e5e5-1111-0000-0000-000000000006', current_date - 20, 'completed', false);
+select pg_temp.before_block('e5e5e5e5-1111-0000-0000-000000000007', current_date - 8, 'abandoned', true);
+set local role authenticated;
+select lives_ok(
+  $$ select pg_temp.aipe('e5e5e5e5-1111-0000-0000-000000000001',
+       '[{"id":"e5e5e5e5-3333-0000-0000-000000000004","target_distance_m":12100}]'::jsonb) $$,
+  'an abandoned block ending later is skipped for the completed one before it'
+);
+reset role;
+update plan_workouts set target_distance_m = 11000 where id = 'e5e5e5e5-3333-0000-0000-000000000004';
+delete from training_plans where id = 'e5e5e5e5-1111-0000-0000-000000000007';
+select pg_temp.before_block('e5e5e5e5-1111-0000-0000-000000000007', current_date - 7, 'completed', true);
+set local role authenticated;
+select lives_ok(
+  $$ select pg_temp.aipe('e5e5e5e5-1111-0000-0000-000000000001',
+       '[{"id":"e5e5e5e5-3333-0000-0000-000000000004","target_distance_m":12100}]'::jsonb) $$,
+  'a block ending on the day P starts is not the one before it'
+);
+reset role;
+update plan_workouts set target_distance_m = 11000 where id = 'e5e5e5e5-3333-0000-0000-000000000004';
+delete from training_plans where id in ('e5e5e5e5-1111-0000-0000-000000000006', 'e5e5e5e5-1111-0000-0000-000000000007');
 set local role authenticated;
 
 -- 6. The chained block changes only when asked, and only by scaling.
@@ -399,6 +475,68 @@ select is(
   1,
   'once the coach link has ended, a further apply notifies nobody'
 );
+
+-- 9. private.in_bc_race_window is the third copy of the race_taper.ts
+-- windows (parity_pairs.md, race_taper): every branch, at its edge. One
+-- completed plan per race, 200 days out, so nothing else is in reach.
+insert into training_plans (id, user_id, name, goal_event, goal_distance_m, start_date, end_date, days_per_week, status)
+select ('e5e5e5e5-1111-0000-0000-0000000001' || n)::uuid, 'e5e5e5e5-0000-0000-0000-0000000000a1', 'Window ' || n,
+       'distance_half', case when n = '07' then 50000 else 21097 end,
+       current_date + 170, case when n = '07' then current_date + 200 else current_date + 230 end, 4, 'completed'
+from unnest(array['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11']) as n;
+insert into plan_weeks (id, plan_id, week_index, phase, target_volume_m)
+select ('e5e5e5e5-2222-0000-0000-0000000001' || n)::uuid, ('e5e5e5e5-1111-0000-0000-0000000001' || n)::uuid, 4, 'build', 40000
+from unnest(array['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11']) as n;
+insert into plan_workouts (id, week_id, scheduled_date, kind, target_distance_m, race_priority) values
+  -- C: no priority, not on the end date.
+  ('e5e5e5e5-3333-0000-0000-000000000101', 'e5e5e5e5-2222-0000-0000-000000000101', current_date + 200, 'race', 5000, null),
+  ('e5e5e5e5-3333-0000-0000-000000000102', 'e5e5e5e5-2222-0000-0000-000000000102', current_date + 200, 'race', 21097, 'B'),
+  ('e5e5e5e5-3333-0000-0000-000000000103', 'e5e5e5e5-2222-0000-0000-000000000103', current_date + 200, 'race', 13500, 'B'),
+  ('e5e5e5e5-3333-0000-0000-000000000104', 'e5e5e5e5-2222-0000-0000-000000000104', current_date + 200, 'race', 50000, 'B'),
+  ('e5e5e5e5-3333-0000-0000-000000000105', 'e5e5e5e5-2222-0000-0000-000000000105', current_date + 200, 'race', 100000, 'B'),
+  ('e5e5e5e5-3333-0000-0000-000000000106', 'e5e5e5e5-2222-0000-0000-000000000106', current_date + 200, 'race', null, 'B'),
+  -- On its plan's end date with no distance: the 50 km goal.
+  ('e5e5e5e5-3333-0000-0000-000000000107', 'e5e5e5e5-2222-0000-0000-000000000107', current_date + 200, 'race', null, 'B'),
+  ('e5e5e5e5-3333-0000-0000-000000000108', 'e5e5e5e5-2222-0000-0000-000000000108', current_date + 200, 'race', 5000, 'B'),
+  ('e5e5e5e5-3333-0000-0000-000000000109', 'e5e5e5e5-2222-0000-0000-000000000109', current_date + 200, 'race', 30000, 'B'),
+  ('e5e5e5e5-3333-0000-0000-000000000110', 'e5e5e5e5-2222-0000-0000-000000000110', current_date + 200, 'race', 42195, 'B'),
+  ('e5e5e5e5-3333-0000-0000-000000000111', 'e5e5e5e5-2222-0000-0000-000000000111', current_date + 200, 'race', 0, 'B');
+
+set local role authenticated;
+create function pg_temp.win(n text, offset_days int) returns boolean language sql as $$
+  select private.in_bc_race_window(array[('e5e5e5e5-1111-0000-0000-0000000001' || n)::uuid],
+                                   current_date + 200 + offset_days);
+$$;
+select is(pg_temp.win('01', -3), true,  'C race: 3 days before is in its taper');
+select is(pg_temp.win('01', -4), false, 'C race: 4 days before is not');
+select is(pg_temp.win('01', 2), true,   'C race: 2 days after is in its recovery');
+select is(pg_temp.win('01', 3), false,  'C race: 3 days after is not');
+select is(pg_temp.win('02', 0), false,  'race day itself is in neither window');
+select is(pg_temp.win('02', -6), true,  'B 21.1 km: 6 days before is in its taper');
+select is(pg_temp.win('02', -7), false, 'B 21.1 km: 7 days before is not');
+select is(pg_temp.win('02', 7), true,   'B 21.1 km: round(7.03) = 7 recovery days');
+select is(pg_temp.win('02', 8), false,  'B 21.1 km: day 8 is past them');
+select is(pg_temp.win('03', 5), true,   'B 13.5 km: round(4.5) = 5, half away from zero');
+select is(pg_temp.win('03', 6), false,  'B 13.5 km: day 6 is past them');
+select is(pg_temp.win('04', -8), true,  'B 50 km: an ultra tapers from 8 days out');
+select is(pg_temp.win('04', -9), false, 'B 50 km: 9 days out is not');
+select is(pg_temp.win('04', 11), true,  'B 50 km: round(7 + 3.90) = 11 recovery days');
+select is(pg_temp.win('04', 12), false, 'B 50 km: day 12 is past them');
+select is(pg_temp.win('05', 21), true,  'B 100 km: recovery capped at 21 days');
+select is(pg_temp.win('05', 22), false, 'B 100 km: day 22 is past the cap');
+select is(pg_temp.win('06', 5), true,   'B with no distance: 5 recovery days');
+select is(pg_temp.win('06', 6), false,  'B with no distance: day 6 is past them');
+select is(pg_temp.win('07', -8), true,  'an end-date B race with no distance takes the 50 km goal: 8-day taper');
+select is(pg_temp.win('07', 11), true,  'and 11 recovery days');
+select is(pg_temp.win('07', 12), false, 'and not 12');
+select is(pg_temp.win('08', 4), true,   'B 5 km: round(1.67) = 2 is held up to 4 recovery days');
+select is(pg_temp.win('08', 5), false,  'B 5 km: day 5 is past them');
+select is(pg_temp.win('09', 7), true,   'B 30 km: round(10) is held down to 7 recovery days');
+select is(pg_temp.win('09', 8), false,  'B 30 km: day 8 is past them');
+select is(pg_temp.win('10', -6), true,  'B exactly a marathon is not an ultra: 6-day taper');
+select is(pg_temp.win('10', -7), false, 'B exactly a marathon: 7 days out is not in it');
+select is(pg_temp.win('11', 5), true,   'B with a 0 m distance: 5 recovery days');
+select is(pg_temp.win('11', 6), false,  'B with a 0 m distance: day 6 is past them');
 
 select * from finish();
 rollback;

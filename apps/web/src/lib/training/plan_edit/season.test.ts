@@ -26,7 +26,7 @@ const STEADY = { weeklyM: 38_000, activeWeeks: 4 };
 function following(firstWeekKm: number): PlanEditBlock {
 	const longKm = firstWeekKm - 18;
 	const snapshot: PlanEditSnapshot = {
-		plan: { start_date: '2026-11-09', end_date: '2026-11-29' },
+		plan: { start_date: '2026-11-09', end_date: '2026-11-29', goal_distance_m: 21_097, goal_time_seconds: null },
 		weeks: [
 			{ id: 'f0', week_index: 0, phase: 'build', target_volume_m: firstWeekKm * 1000 },
 			{ id: 'f1', week_index: 1, phase: 'build', target_volume_m: 40_000 },
@@ -103,7 +103,7 @@ test('a block longer than one request\'s operation cap is still scaled in full',
 		target_distance_m: 30_000,
 	}));
 	const block: PlanEditSnapshot = {
-		plan: { start_date: '2027-01-04', end_date: '2027-05-09' },
+		plan: { start_date: '2027-01-04', end_date: '2027-05-09', goal_distance_m: 42_195, goal_time_seconds: null },
 		weeks,
 		workouts,
 	};
@@ -273,7 +273,7 @@ test('a gap before the next block is not graded as weeks of no running', () => {
 	// The same block queued two weeks later.
 	const gapped = following(48);
 	const later = (iso: string) => new Date(Date.parse(`${iso}T00:00:00Z`) + 14 * 86_400_000).toISOString().slice(0, 10);
-	gapped.snapshot.plan = { start_date: later('2026-11-09'), end_date: later('2026-11-29') };
+	gapped.snapshot.plan = { ...gapped.snapshot.plan, start_date: later('2026-11-09'), end_date: later('2026-11-29') };
 	for (const w of gapped.snapshot.workouts) w.scheduled_date = later(w.scheduled_date);
 	assert.deepEqual(chainedBase(fixture()), { weeklyM: 39_000, activeWeeks: MIN_ACTIVE_WEEKS });
 	const edit = planSeasonEdit({
@@ -285,4 +285,48 @@ test('a gap before the next block is not graded as weeks of no running', () => {
 		scope: 'season',
 	});
 	assert.equal(edit.blocks[1].check.verdict, 'confirm');
+});
+
+test('an end-date B ultra with no distance holds eleven recovery days into the next block', () => {
+	// The fixture's last-day race as an undistanced B race in a 50 km-goal
+	// block: 7 + (50 - 42.195) / 2 = 10.9, so 11 days of recovery, 11-09 to
+	// 11-19, cover the next block's Sunday long run (11-15) too.
+	const p = primary();
+	p.snapshot.plan.goal_distance_m = 50_000;
+	const race = p.snapshot.workouts.find((w) => w.id === 'd-race')!;
+	race.target_distance_m = null;
+	race.race_priority = 'B';
+	const edit = planSeasonEdit({
+		primary: p,
+		ops: HARDER,
+		following: [following(40)],
+		recent: STEADY,
+		todayIso: TODAY,
+		scope: 'season',
+	});
+	const next = edit.blocks[1].application.after.workouts;
+	assert.equal(next.find((w) => w.id === 'f0-easy')!.target_distance_m, 18_000);
+	assert.equal(next.find((w) => w.id === 'f0-long')!.target_distance_m, 22_000);
+});
+
+test('the block before the plan holds the days its B race recovery reaches', () => {
+	// The previous block ended on Sunday 10-11 with a B 50 km race: 11 days of
+	// recovery run to 10-22, through this week's open sessions.
+	const preceding: PlanEditBlock = {
+		planId: 'before',
+		name: 'Before',
+		snapshot: {
+			plan: { start_date: '2026-09-14', end_date: '2026-10-11', goal_distance_m: 50_000, goal_time_seconds: null },
+			weeks: [{ id: 'p3', week_index: 3, phase: 'race', target_volume_m: 50_000 }],
+			workouts: [
+				{ id: 'p-race', week_id: 'p3', scheduled_date: '2026-10-11', kind: 'race', target_distance_m: 50_000, race_priority: 'B' },
+			],
+		},
+	};
+	const scaleWeek0: PlanEditOp[] = [{ op: 'scale_week', weekIndex: 0, factor: 1.1 }];
+	const easy = (edit: ReturnType<typeof planSeasonEdit>) =>
+		edit.blocks[0].application.after.workouts.find((w) => w.id === 'a-easy')!.target_distance_m;
+	const input = { primary: primary(), ops: scaleWeek0, following: [], recent: STEADY, todayIso: TODAY, scope: 'plan' as const };
+	assert.equal(easy(planSeasonEdit({ ...input, preceding })), 8_000);
+	assert.equal(easy(planSeasonEdit(input)), 8_800);
 });

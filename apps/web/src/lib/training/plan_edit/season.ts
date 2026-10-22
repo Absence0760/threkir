@@ -37,6 +37,7 @@ import {
 } from './ops';
 import { MIN_ACTIVE_WEEKS, type RecentVolume } from '../plan_ramp';
 import type { PlanRace } from '../plan_races';
+import type { PlanWeek, PlanWorkout, TrainingPlan } from '../../types';
 
 export type PlanEditScope = 'plan' | 'season';
 
@@ -109,11 +110,49 @@ export function chainedBase(previous: PlanEditSnapshot): Recent {
 	return { weeklyM: mean, activeWeeks: mean > 0 ? MIN_ACTIVE_WEEKS : 0 };
 }
 
-/// Every race of every block in the edit: a B race at the end of one block has
-/// a recovery window reaching into the next, and one at the start of a block a
-/// taper reaching back into the one before.
-function seasonRaces(primary: PlanEditBlock, following: readonly PlanEditBlock[]): PlanRace[] {
-	return [primary, ...following].flatMap((b) => blockRaces(b.snapshot));
+/// Every race of every block in the edit, and of the block just before it: a
+/// B race at the end of one block has a recovery window reaching into the
+/// next (including a block that ended yesterday, into today), and one at the
+/// start of a block a taper reaching back into the one before.
+/// `apply_ai_plan_edits` re-checks the windows of the same plans: the edit's
+/// own and the preceding one (`fetchPrecedingPlan`). In 'plan' scope the
+/// client also counts the following blocks' races, which only ever holds
+/// more workouts back than the server requires.
+export function seasonRaces(
+	primary: PlanEditBlock,
+	following: readonly PlanEditBlock[],
+	preceding: PlanEditBlock | null = null,
+): PlanRace[] {
+	return [...(preceding ? [preceding] : []), primary, ...following].flatMap((b) =>
+		blockRaces(b.snapshot),
+	);
+}
+
+/// A plan as read by `fetchPlan`, as the block an AI plan edit works on.
+export function planEditBlock(
+	plan: Pick<TrainingPlan, 'id' | 'name' | 'start_date' | 'end_date' | 'goal_distance_m' | 'goal_time_seconds'>,
+	weeks: readonly Pick<PlanWeek, 'id' | 'week_index' | 'phase' | 'target_volume_m'>[],
+	workouts: readonly PlanWorkout[],
+): PlanEditBlock {
+	return {
+		planId: plan.id,
+		name: plan.name,
+		snapshot: {
+			plan: {
+				start_date: plan.start_date,
+				end_date: plan.end_date,
+				goal_distance_m: plan.goal_distance_m,
+				goal_time_seconds: plan.goal_time_seconds,
+			},
+			weeks: weeks.map((w) => ({
+				id: w.id,
+				week_index: w.week_index,
+				phase: w.phase,
+				target_volume_m: w.target_volume_m,
+			})),
+			workouts: workouts.map((w) => ({ ...w })),
+		},
+	};
 }
 
 const VERDICT_RANK: Record<PlanEditLoadVerdict, number> = { ok: 0, confirm: 1, reject: 2 };
@@ -126,12 +165,14 @@ export function planSeasonEdit(input: {
 	primary: PlanEditBlock;
 	ops: PlanEditOp[];
 	following: readonly PlanEditBlock[];
+	/// The block before the plan, for its race windows only; never edited.
+	preceding?: PlanEditBlock | null;
 	recent: Recent;
 	todayIso: string;
 	scope: PlanEditScope;
 }): SeasonEdit {
 	const { primary, ops, following, recent, todayIso, scope } = input;
-	const races = seasonRaces(primary, following);
+	const races = seasonRaces(primary, following, input.preceding ?? null);
 	const first = applyPlanEditOps(primary.snapshot, ops, todayIso, races);
 	const blocks: BlockEdit[] = [
 		{
@@ -176,10 +217,11 @@ export function offersSeasonScope(
 	ops: readonly PlanEditOp[],
 	following: readonly PlanEditBlock[],
 	todayIso: string,
+	preceding: PlanEditBlock | null = null,
 ): boolean {
 	const factor = cascadeFactor(ops);
 	if (factor == null) return false;
-	const races = seasonRaces(primary, following);
+	const races = seasonRaces(primary, following, preceding);
 	return following.some((b) => {
 		const app = applyPlanEditOps(b.snapshot, cascadeOps(b.snapshot, factor, todayIso), todayIso, races);
 		return app.workouts.length > 0 || app.weeks.length > 0;

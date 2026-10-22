@@ -129,7 +129,12 @@ function stateOf(w: PlanEditWorkout): WorkoutState {
 /// on the plan's end date, C anywhere else).
 export function blockRaces(snapshot: PlanEditSnapshot): PlanRace[] {
 	return planRaces(
-		{ end_date: snapshot.plan.end_date, goal_distance_m: 0, goal_time_seconds: null, trimmed_at: null },
+		{
+			end_date: snapshot.plan.end_date,
+			goal_distance_m: snapshot.plan.goal_distance_m,
+			goal_time_seconds: snapshot.plan.goal_time_seconds,
+			trimmed_at: null,
+		},
 		snapshot.workouts.map((w) => ({ ...w, target_duration_seconds: w.target_duration_seconds ?? null })),
 	);
 }

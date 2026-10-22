@@ -6106,6 +6106,36 @@ export async function fetchPlan(id: string): Promise<{
 	return { plan: plan as TrainingPlan, weeks, workouts, error: null };
 }
 
+/// The block before a plan, whose B/C race windows can reach into its first
+/// days: the caller's latest non-template active or completed plan ending
+/// before `startIso`, ties to the lowest id. `apply_ai_plan_edits` picks the
+/// same plan, so an AI plan edit holds those windows on both sides
+/// (decisions § 2230). Null when there is none.
+export async function fetchPrecedingPlan(startIso: string): Promise<{
+	plan: TrainingPlan;
+	weeks: PlanWeek[];
+	workouts: PlanWorkout[];
+} | null> {
+	const userId = await currentViewerId();
+	if (!userId) return null;
+	const { data, error } = await supabase
+		.from('training_plans')
+		.select('id')
+		.eq('user_id', userId)
+		.eq('is_template', false)
+		.in('status', ['active', 'completed'])
+		.lt('end_date', startIso)
+		.order('end_date', { ascending: false })
+		.order('id', { ascending: true })
+		.limit(1)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	const read = await fetchPlan(data.id);
+	if (read.error) throw new Error(read.error);
+	return read.plan ? { plan: read.plan, weeks: read.weeks, workouts: read.workouts } : null;
+}
+
 export async function fetchWorkout(
 	id: string
 ): Promise<{ workout: PlanWorkout | null; error: string | null }> {

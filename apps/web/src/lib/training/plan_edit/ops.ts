@@ -67,6 +67,11 @@ export type PlanEditNote = (typeof PLAN_EDIT_NOTES)[number];
 export interface PlanEditPlan {
 	start_date: string;
 	end_date: string;
+	/// The goal race's distance and time: `planRaces` gives an end-date race
+	/// with no distance of its own the plan's goal distance, which sets the
+	/// length of its B/C taper and recovery windows (`apply.ts`).
+	goal_distance_m: number;
+	goal_time_seconds: number | null;
 }
 
 export interface PlanEditWeek {

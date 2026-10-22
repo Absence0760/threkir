@@ -32,8 +32,9 @@
 --     value (rounding allowed), and a workout never above 1.0 in a taper or
 --     race week, on a workout a B/C race taper already eased
 --     (race_taper_applied_at), or on one whose current or new day falls in a
---     B or C race's taper or recovery window (private.in_bc_race_window, the
---     windows of race_taper.ts, decisions § 2051);
+--     B or C race's taper or recovery window, in the edit's plans or the
+--     block just before them (private.in_bc_race_window, the windows of
+--     race_taper.ts, decisions § 2051);
 --   - the only kind change is a tempo, interval or marathon-pace session
 --     becoming recovery, and only that change may clear its pace targets and
 --     structure;
@@ -74,16 +75,18 @@ alter table notifications
   not valid;
 
 -- Whether p_day falls in the taper or recovery window of a B or C race in any
--- of p_plan_ids: the windows raceTaperProposals uses (race_taper.ts,
--- decisions § 2051), so the client's scale-up rule (noScaleUpWorkoutIds) and
--- this check agree. Every race counts, ahead or already run, since a race
--- behind today still has its recovery window ahead. The plans are the ones
--- the edit may change, so a race at the end of one block holds the start of
--- the next only when both are in the edit, exactly as on the client. A race's
--- priority defaults as planRaces does: A on its plan's end date, C anywhere
--- else. B: 6 days before (8 for a race beyond the
--- marathon), and after it round(km / 3) days within 4..7, 5 with no distance,
--- or for an ultra min(21, round(7 + (km - 42.195) / 2)). C: 3 before, 2 after.
+-- of p_plan_ids. This is the third copy of the race_taper.ts windows
+-- (windowFor / recoveryDays; the Dart twin is race_taper.dart), registered
+-- with that pair in docs/architecture/parity_pairs.md: a change to a window
+-- there changes it here, and apply_ai_plan_edits_test.sql pins every branch.
+-- Every race counts, ahead or already run, since a race behind today still
+-- has its recovery window ahead. A race reads as planRaces reads it: an unset
+-- priority is A on its plan's end date and C anywhere else, and an end-date
+-- race with no distance of its own takes the plan's goal distance. B: 6 days
+-- before (8 for a race beyond the marathon), and after it round(km / 3) days
+-- held to 4..7, 5 with no distance, or for an ultra min(21, round(7 +
+-- (km - 42.195) / 2)). C: 3 before, 2 after. round() on numeric rounds half
+-- away from zero, as Math.round does for these positive values.
 -- Invoker: it reads only the caller's own plan rows, under their RLS.
 create or replace function private.in_bc_race_window(p_plan_ids uuid[], p_day date)
 returns boolean
@@ -100,7 +103,8 @@ as $$
     cross join lateral (
       select coalesce(rw.race_priority,
                       case when rw.scheduled_date = tp.end_date then 'A' else 'C' end) as priority,
-             rw.target_distance_m as metres
+             coalesce(rw.target_distance_m,
+                      case when rw.scheduled_date = tp.end_date then tp.goal_distance_m end) as metres
     ) race
     where rwk.plan_id = any (p_plan_ids)
       and rw.kind = 'race'
@@ -189,6 +193,7 @@ declare
   plan_row training_plans%rowtype;
   following record;
   allowed uuid[];
+  race_plans uuid[];
   touched uuid[] := '{}';
   seen uuid[] := '{}';
   ch jsonb;
@@ -266,6 +271,24 @@ begin
       allowed := allowed || following.id;
     end loop;
   end if;
+
+  -- Whose B/C race windows hold a scale-up: the plans the edit may change and
+  -- the block just before this one (the caller's latest non-template active
+  -- or completed plan ending before it starts, ties to the lowest id), whose
+  -- race at its end can have a recovery window running into this plan. The
+  -- client reads the same block (fetchPrecedingPlan) and these plans' races;
+  -- in 'plan' scope it also counts the following blocks' races, which only
+  -- holds more back than this requires.
+  race_plans := allowed || array(
+    select tp.id
+    from training_plans tp
+    where tp.user_id = caller
+      and not tp.is_template
+      and tp.status in ('active', 'completed')
+      and tp.end_date < plan_row.start_date
+    order by tp.end_date desc, tp.id
+    limit 1
+  );
 
   set constraints plan_workouts_one_per_day deferred;
 
@@ -357,8 +380,8 @@ begin
     v_ceiling := case
       when r.phase in ('taper', 'race') or r.race_taper_applied_at is not null then 1.0
       when (ch ? 'target_distance_m' or ch ? 'target_duration_seconds')
-           and (private.in_bc_race_window(allowed, r.scheduled_date)
-                or private.in_bc_race_window(allowed,
+           and (private.in_bc_race_window(race_plans, r.scheduled_date)
+                or private.in_bc_race_window(race_plans,
                      coalesce((ch->>'scheduled_date')::date, r.scheduled_date))) then 1.0
       else 1.1
     end;

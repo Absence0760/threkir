@@ -209,7 +209,7 @@ function userTurn(requestText: string, today: string, planText: string): string 
 	);
 }
 
-const PLAN_COLUMNS = 'id, start_date, end_date, is_template, status';
+const PLAN_COLUMNS = 'id, start_date, end_date, is_template, status, goal_distance_m, goal_time_seconds';
 const WEEK_COLUMNS = 'id, week_index, phase, target_volume_m';
 // One string literal, not a concatenation: supabase-js types the rows only
 // from a literal select, and a widened `string` reads them as GenericStringError.
@@ -234,7 +234,15 @@ async function loadPlan(
 			.maybeSingle();
 		if (planRes.error) throw dbError(planRes.error);
 		const plan = planRes.data as
-			| { id: string; start_date: string; end_date: string; is_template: boolean | null; status: string }
+			| {
+					id: string;
+					start_date: string;
+					end_date: string;
+					is_template: boolean | null;
+					status: string;
+					goal_distance_m: number;
+					goal_time_seconds: number | null;
+			  }
 			| null;
 		if (!plan || plan.is_template === true) return { ok: false, status: 404 };
 		const weeksRes = await supabase.from('plan_weeks').select(WEEK_COLUMNS).eq('plan_id', plan.id);
@@ -251,7 +259,16 @@ async function loadPlan(
 		}
 		return {
 			ok: true,
-			snapshot: { plan: { start_date: plan.start_date, end_date: plan.end_date }, weeks, workouts },
+			snapshot: {
+				plan: {
+					start_date: plan.start_date,
+					end_date: plan.end_date,
+					goal_distance_m: plan.goal_distance_m,
+					goal_time_seconds: plan.goal_time_seconds,
+				},
+				weeks,
+				workouts,
+			},
 			active: plan.status === 'active',
 		};
 	} catch (e) {

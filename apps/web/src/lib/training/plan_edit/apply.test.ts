@@ -334,3 +334,21 @@ test('a race in a neighbouring block holds the workouts its window reaches', () 
 	assert.equal(after('b-easy'), 8_000);
 	assert.equal(after('b-easy2'), 6_600);
 });
+
+test('an end-date B race with no distance takes the plan goal distance for its windows', () => {
+	// planRaces gives the race the 50 km goal, so it tapers from 8 days out
+	// (10-31), not 6: the peak week's Sunday long run (11-01, 7 days before) is
+	// inside it and is not scaled up. The plan page reads the race the same way.
+	const run = (goalM: number) => {
+		const base = fixture();
+		base.plan.goal_distance_m = goalM;
+		const race = base.workouts.find((w) => w.id === 'd-race')!;
+		race.target_distance_m = null;
+		race.race_priority = 'B';
+		const r = applyPlanEditOps(base, [{ op: 'scale_week', weekIndex: 2, factor: 1.1 }], TODAY);
+		return r.after.workouts.find((w) => w.id === 'c-long')!.target_distance_m;
+	};
+	assert.equal(run(50_000), 24_000);
+	// A road goal keeps the 6-day taper, which the long run sits outside.
+	assert.equal(run(21_097), 26_400);
+});

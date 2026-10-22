@@ -5,7 +5,7 @@
 -- nothing at all while the flag is off.
 
 begin;
-select plan(38);
+select plan(39);
 
 -- ─── Fixtures ────────────────────────────────────────────────────────────
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
@@ -187,6 +187,11 @@ insert into reports (id, reporter_id, target_kind, target_id, reason, status, cr
 select is(private.report_retention_window('dismissed'), interval '6 months', 'no action taken: 6 months');
 select is(private.report_retention_window('reviewed'), interval '12 months', 'action taken: 12 months');
 select is(private.report_retention_window('pending'), null::interval, 'an open report has no window');
+
+select is(
+  (select enabled from private.feature_flags where name = 'reports_retention_purge'),
+  true,
+  'the purge ships switched on (20271022000001)');
 
 delete from private.feature_flags where name = 'reports_retention_purge';
 select private.purge_stale_reports();

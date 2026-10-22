@@ -202,6 +202,12 @@ export const REGISTERED = [
 		reason:
 			'False positive, and the one worth keeping written down. `detectPlatform` maps a USER AGENT to a platform token; `platformIcon` maps that token to an icon ligature. They share `includes(\'android\')` / `(\'mac\')` / `(\'windows\')` / `(\'linux\')` because they speak about the same vocabulary from opposite ends, not because either is a copy of the other.',
 	},
+	{
+		kind: 'ops',
+		key: 'apps/web/src/lib/core/visible_poll.ts:startVisiblePoll|apps/web/src/lib/format/local_day_ticker.ts:startLocalDayTicker',
+		reason:
+			'Not a copy. What they share is how a browser spells "tell me when the tab comes back": `addEventListener(\'visibilitychange\')` and its removal. `startLocalDayTicker` arms one timeout for the next local midnight and re-checks the date on visibility, `focus` and `pageshow`, never polling. `startVisiblePoll` runs a fixed-period interval that stops while the tab is hidden and ticks at once when it returns. A shared helper would own one listener pair and the two call sites would each still carry their own timer and their own idea of what "visible" should trigger. `visible_poll.ts` already reuses the ticker\'s `VisibilitySource` type, which is the part that is genuinely common.',
+	},
 ];
 
 const ID_START = /[\p{L}_$]/u;

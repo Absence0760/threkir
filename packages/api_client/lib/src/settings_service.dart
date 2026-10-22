@@ -98,6 +98,10 @@ class SettingsKeys {
   /// muted runner, and by the Go worker's `kindMuted` on email and push
   /// (migration 20270913000001).
   static const notifyWorkoutReminder = 'notify_workout_reminder';
+  /// Where the AI Coach sits in the Messages inbox — `'pinned'` (default) |
+  /// `'listed'` | `'hidden'`; anything else reads as pinned
+  /// (`parseCoachInboxPlacement`, decisions § 2227). Never read in SQL.
+  static const messagesCoachRow = 'messages_coach_row';
   /// The user's preferred language for server-sent email, as a BCP-47 tag
   /// (`en`/`de`/`fr`/`es`/`ja`/`pt-BR`). Written by the clients as a side
   /// effect of the language picker so the Go worker can localize email

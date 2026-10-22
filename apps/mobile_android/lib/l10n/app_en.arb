@@ -24628,5 +24628,49 @@
   "planNewDobHintHealthDataAction": "Review consent",
   "@planNewDobHintHealthDataAction": {
     "description": "Button opening Settings → Body metrics, where health-data consent is reviewed."
+  },
+  "messagesAiTag": "AI",
+  "@messagesAiTag": {
+    "description": "Short tag on every AI Coach message and on the Coach's inbox row (EU AI Act Art. 50). Keep it to the local abbreviation for AI."
+  },
+  "messagesAiTagSr": "AI-generated",
+  "@messagesAiTagSr": {
+    "description": "What a screen reader announces for the AI tag on an AI Coach message"
+  },
+  "messagesCoachRowIntro": "Ask about your training, your plan or a run.",
+  "@messagesCoachRowIntro": {
+    "description": "Preview line of the AI Coach row in the Messages inbox when there is no Coach message to show (none yet, or the runner has not consented to the Coach)"
+  },
+  "messagesCoachPin": "Pin AI Coach to the top",
+  "@messagesCoachPin": {
+    "description": "Tooltip and screen-reader label of the button that pins the AI Coach row to the top of the Messages inbox"
+  },
+  "messagesCoachUnpin": "Unpin AI Coach",
+  "@messagesCoachUnpin": {
+    "description": "Tooltip and screen-reader label of the button that unpins the AI Coach row, so it sorts among the conversations by its latest message"
+  },
+  "messagesCoachPlacementFailed": "Couldn't save where AI Coach goes. Try again.",
+  "@messagesCoachPlacementFailed": {
+    "description": "Banner when pinning or unpinning the AI Coach row could not be saved"
+  },
+  "prefsSectionMessages": "Messages",
+  "@prefsSectionMessages": {
+    "description": "Settings section heading for Messages inbox options"
+  },
+  "prefsCoachInMessages": "AI Coach in Messages",
+  "@prefsCoachInMessages": {
+    "description": "Settings row: where the AI Coach appears in the Messages inbox"
+  },
+  "prefsCoachInMessagesPinned": "Pinned at the top",
+  "@prefsCoachInMessagesPinned": {
+    "description": "Option: the AI Coach row stays at the top of the Messages inbox"
+  },
+  "prefsCoachInMessagesListed": "With your conversations",
+  "@prefsCoachInMessagesListed": {
+    "description": "Option: the AI Coach row is sorted among the conversations by its latest message"
+  },
+  "prefsCoachInMessagesHidden": "Hidden",
+  "@prefsCoachInMessagesHidden": {
+    "description": "Option: the AI Coach row is left out of the Messages inbox (the Coach itself stays available from Home)"
   }
 }

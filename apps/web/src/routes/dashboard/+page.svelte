@@ -2358,7 +2358,7 @@
 			{/if}
 
 			{#if coachOn}
-				<a class="coach-promo" href="/coach">
+				<a class="coach-promo" href="/messages/coach">
 					<div class="coach-icon">
 						<span class="material-symbols">sports</span>
 					</div>

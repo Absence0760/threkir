@@ -1,5 +1,5 @@
 -- Discovery ranks official content and verified clubs first (issue #1190 § 4,
--- decisions § 2227).
+-- decisions § 2228).
 --
 -- discoverable_routes_in_bbox:
 --   * an OFFICIAL route (private.is_official_publisher, 20271021000030) always

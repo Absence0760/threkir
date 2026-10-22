@@ -139,7 +139,7 @@ export type Run = Omit<RunRow, 'source' | 'metadata' | 'activity_type'> & {
 // the type promises on every path (§ 1327).
 /// Published by a verified organiser: the row's club is verified and its
 /// author an active owner/admin of it (migration 20271021000030, decisions
-/// § 2227). Derived server-side and never stored, so it is present only on the
+/// § 2228). Derived server-side and never stored, so it is present only on the
 /// reads that select it — the `is_official` computed field on a table, or the
 /// column the read views and discovery RPCs carry — and absent elsewhere.
 export type OfficialFlag = { is_official?: boolean | null };

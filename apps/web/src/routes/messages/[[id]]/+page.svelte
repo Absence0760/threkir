@@ -5,16 +5,13 @@
 	import { startVisiblePoll } from '#lib/core/visible_poll.ts';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
 	import { dmUnreadStore } from '#lib/stores/dm_unread.svelte.ts';
-	import { onMount, tick } from 'svelte';
-	import Avatar from '#lib/components/Avatar.svelte';
-	import { hashHue } from '#lib/format/avatar.ts';
+	import { tick } from 'svelte';
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
 	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { messagesInbox } from '#lib/stores/messages_inbox.svelte.ts';
 	import DmRouteAttachment from '#lib/components/DmRouteAttachment.svelte';
 	import { bodyRestatesAttachment, hasDmRouteAttachment } from '#lib/social/dm_attachment.ts';
 	import {
-		DM_INBOX_POLL_MS,
 		DM_THREAD_POLL_MS,
 		dmThreadRouteId,
 		mergeDmMessages,
@@ -24,7 +21,6 @@
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
 	import {
-		fetchDmThreads,
 		fetchDmThread,
 		sendDm,
 		unsendDm,
@@ -32,12 +28,9 @@
 		blockUser,
 		unblockUser,
 		isBlockedByViewer,
-		type DmThread,
 		type DirectMessage
 	} from '#lib/core/data.ts';
 
-	let ready = $state(false);
-	let threads = $state<DmThread[]>([]);
 	let messages = $state<DirectMessage[]>([]);
 	// Drafts are PER THREAD. A single top-level draft followed the viewer into
 	// whichever conversation they clicked next — the composer lives inside the
@@ -49,7 +42,6 @@
 	let sending = $state(false);
 	let loadingThread = $state(false);
 	let sendError = $state<string | null>(null);
-	let threadsError = $state(false);
 	let threadError = $state(false);
 	// The thread is read from its newest end, a page at a time (dm_thread.ts).
 	let hasMore = $state(false);
@@ -64,7 +56,9 @@
 	const activePartnerId = $derived(activeTarget?.kind === 'partner' ? activeTarget.partnerId : null);
 	const draft = $derived(activeId ? (drafts[activeId] ?? '') : '');
 	let me = $derived(auth.user?.id ?? null);
-	let activeThread = $derived(threads.find((t) => dmThreadRouteId(t) === activeId) ?? null);
+	let activeThread = $derived(
+		messagesInbox.threads.find((t) => dmThreadRouteId(t) === activeId) ?? null
+	);
 
 	// The message an Unsend / Report action is open for. Unsend cannot be
 	// undone, so it goes through a confirm; Report has its own dialog.
@@ -82,67 +76,6 @@
 	let blockBusy = $state(false);
 	let showBlockConfirm = $state(false);
 	const partnerName = $derived(activeThread?.partnerName ?? tr('messages.runnerFallback'));
-
-	onMount(async () => {
-		await auth.ready();
-		ready = true;
-	});
-
-	// Load the thread list whenever a user is present, not one-shot in
-	// onMount: ready() resolves on its safety timeout even when the
-	// session hasn't settled yet (slow device / loaded CI runner), and a
-	// mount-time `if (auth.user)` gate would then skip the fetch forever.
-	let threadsRequested = false;
-	$effect(() => {
-		if (!auth.user || threadsRequested) return;
-		threadsRequested = true;
-		void loadThreads();
-	});
-
-	// When each conversation was last marked read. A thread-list fetch that
-	// started before that answers with the count from before the mark, and
-	// assigning it as-is put the badge back on the conversation just opened.
-	const markedReadAt = new Map<string, number>();
-
-	function applyThreads(rows: DmThread[], startedAt: number) {
-		threads = rows.map((t) =>
-			(markedReadAt.get(dmThreadRouteId(t)) ?? -Infinity) >= startedAt ? { ...t, unread: 0 } : t
-		);
-	}
-
-	async function loadThreads() {
-		threadsError = false;
-		const startedAt = Date.now();
-		try {
-			applyThreads(await fetchDmThreads(), startedAt);
-		} catch {
-			threadsError = true;
-		}
-	}
-
-	// The inbox re-reads its list every 30 s while the tab is visible, as
-	// mobile's does. A failed poll keeps the list it has and logs: the next
-	// tick is the retry, and a banner every 30 s would be noise. A list that
-	// never loaded retries through loadThreads so its error state can clear.
-	let pollingThreads = false;
-	async function pollThreads() {
-		if (pollingThreads) return;
-		if (threadsError) return loadThreads();
-		pollingThreads = true;
-		const startedAt = Date.now();
-		try {
-			applyThreads(await fetchDmThreads(), startedAt);
-		} catch (e) {
-			console.warn('messages inbox poll failed', e);
-		} finally {
-			pollingThreads = false;
-		}
-	}
-
-	$effect(() => {
-		if (!auth.user) return;
-		return startVisiblePoll(() => void pollThreads(), DM_INBOX_POLL_MS);
-	});
 
 	// Load the open conversation whenever the route param changes.
 	$effect(() => {
@@ -197,7 +130,6 @@
 		if (!newestShown) return;
 		try {
 			await markDmThreadRead(id, newestShown);
-			markedReadAt.set(id, Date.now());
 			const readAt = new Date().toISOString();
 			if (id === activeId) {
 				messages = messages.map((m) =>
@@ -205,7 +137,7 @@
 				);
 			}
 			// Zero the unread badge locally without a full refetch.
-			threads = threads.map((t) => (dmThreadRouteId(t) === id ? { ...t, unread: 0 } : t));
+			messagesInbox.markRead(id);
 			void dmUnreadStore.refresh();
 		} catch (e) {
 			// Marking-read is a non-critical side effect; its failure must not
@@ -373,13 +305,9 @@
 			void scrollToNewest();
 			delete drafts[id];
 			drafts = { ...drafts };
-			try {
-				threads = await fetchDmThreads();
-			} catch {
-				// The send itself succeeded and already renders; a failed
-				// list refresh must not claim "send failed" — stale
-				// previews are fine until the next load.
-			}
+			// The send itself succeeded and already renders; a failed list
+			// refresh must not claim "send failed".
+			await messagesInbox.refreshThreads();
 		} catch (e) {
 			sendError = appErrorMessage(e) ?? tr('messages.sendFailed');
 		} finally {
@@ -401,12 +329,7 @@
 		} finally {
 			unsendTarget = null;
 		}
-		try {
-			threads = await fetchDmThreads();
-		} catch {
-			// The unsend itself landed and already renders; a stale preview in
-			// the list is corrected by the next load.
-		}
+		await messagesInbox.refreshThreads();
 	}
 
 	function onKeydown(e: KeyboardEvent) {
@@ -429,183 +352,130 @@
 
 <svelte:head><title>{tr('messages.pageTitle')}</title></svelte:head>
 
-<div class="page">
-	<h1 class="visually-hidden">{tr('messages.heading')}</h1>
-	{#if !ready}
-		<p class="muted">{tr('shell.loading')}</p>
-	{:else if !auth.user}
-		<p class="muted">{tr('messages.signInPrompt')}</p>
-	{:else}
-		<div class="layout">
-			<aside class="threads" class:has-active={activeId}>
-				<header class="pane-head"><h2>{tr('messages.heading')}</h2></header>
-				{#if threadsError}
-					<p class="muted empty" role="alert">
-						{tr('messages.threadsLoadFailed')}
-						<button type="button" class="btn btn-secondary btn-sm" onclick={() => void loadThreads()}>
-							{tr('messages.retry')}
-						</button>
-					</p>
-				{:else if threads.length === 0}
-					<p class="muted empty">{tr('messages.emptyThreads')}</p>
-				{:else}
-					<ul>
-						{#each threads as t (dmThreadRouteId(t))}
-							{@const routeId = dmThreadRouteId(t)}
-							{@const name = t.partnerId
-								? (t.partnerName ?? tr('messages.runnerFallback'))
-								: tr('messages.deletedAccount')}
-							<li>
-								<a
-									class="thread"
-									class:active={routeId === activeId}
-									href={`/messages/${routeId}`}
-								>
-									<Avatar url={t.partnerAvatar} name={t.partnerId ? t.partnerName : null} size="2.2rem" font="0.9rem" bg="seed" seedHue={hashHue(routeId)} />
-									<span class="thread-body">
-										<span class="thread-top">
-											<strong>{name}</strong>
-											{#if t.unread > 0}<span class="badge">{t.unread}</span>{/if}
-										</span>
-										<span class="preview" class:unsent={t.lastUnsent}>{t.lastFromMe ? tr('messages.youPrefix') : ''}{t.lastUnsent
-												? tr('messages.unsentPlaceholder')
-												: t.lastBody}</span>
-									</span>
-								</a>
-							</li>
-						{/each}
-					</ul>
-				{/if}
-			</aside>
 
-			<section class="conversation" class:has-active={activeId}>
-				{#if !activeId}
-					<p class="muted center">{tr('messages.pickConversation')}</p>
-				{:else}
-					<header class="pane-head conv-head">
-						<a class="back" href="/messages" aria-label={tr('messages.backAria')}>←</a>
-						{#if activePartnerId}
-							<a class="who" href={`/u/${activePartnerId}`}>{partnerName}</a>
-							<button
-								type="button"
-								class="btn btn-secondary btn-sm head-action"
-								data-testid="dm-block-toggle"
-								aria-pressed={blockedByMe}
-								disabled={blockBusy}
-								onclick={() => (blockedByMe ? void unblock() : (showBlockConfirm = true))}
-							>
-								{blockedByMe ? tr('messages.unblock') : tr('messages.block')}
-							</button>
-						{:else}
-							<span class="who">{tr('messages.deletedAccount')}</span>
+{#if !activeId}
+	<p class="muted center">{tr('messages.pickConversation')}</p>
+{:else}
+	<header class="pane-head conv-head">
+		<a class="back" href="/messages" aria-label={tr('messages.backAria')}>←</a>
+		{#if activePartnerId}
+			<a class="who" href={`/u/${activePartnerId}`}>{partnerName}</a>
+			<button
+				type="button"
+				class="btn btn-secondary btn-sm head-action"
+				data-testid="dm-block-toggle"
+				aria-pressed={blockedByMe}
+				disabled={blockBusy}
+				onclick={() => (blockedByMe ? void unblock() : (showBlockConfirm = true))}
+			>
+				{blockedByMe ? tr('messages.unblock') : tr('messages.block')}
+			</button>
+		{:else}
+			<span class="who">{tr('messages.deletedAccount')}</span>
+		{/if}
+	</header>
+	<div class="messages" bind:this={scroller}>
+		{#if loadingThread}
+			<p class="muted center">{tr('shell.loading')}</p>
+		{:else if threadError}
+			<p class="muted center" role="alert">
+				{tr('messages.threadLoadFailed')}
+				<button
+					type="button"
+					class="btn btn-secondary btn-sm"
+					onclick={() => activeId && void openThread(activeId)}
+				>
+					{tr('messages.retry')}
+				</button>
+			</p>
+		{:else if messages.length === 0}
+			<p class="muted center">{tr('messages.emptyConversation')}</p>
+		{:else}
+			{#if hasMore}
+				<div class="earlier">
+					<button
+						type="button"
+						class="btn btn-secondary btn-sm"
+						onclick={() => void loadEarlier()}
+						disabled={loadingEarlier}
+					>
+						{loadingEarlier ? tr('shell.loading') : tr('messages.loadEarlier')}
+					</button>
+					{#if earlierError}
+						<p class="send-error" role="alert">{tr('messages.loadEarlierFailed')}</p>
+					{/if}
+				</div>
+			{/if}
+			{#each messages as m (m.id)}
+				{@const attached = m.route_id}
+				{@const mine = m.sender_id === me}
+				<div class="bubble" class:mine class:unsent={m.unsent_at !== null} data-testid="dm-bubble">
+					{#if m.unsent_at !== null || m.body === null}
+						<span class="text placeholder">{tr('messages.unsentPlaceholder')}</span>
+					{:else if hasDmRouteAttachment(attached)}
+						<DmRouteAttachment routeId={attached} />
+						{#if !bodyRestatesAttachment(m.body, attached)}
+							<span class="text">{m.body}</span>
 						{/if}
-					</header>
-					<div class="messages" bind:this={scroller}>
-						{#if loadingThread}
-							<p class="muted center">{tr('shell.loading')}</p>
-						{:else if threadError}
-							<p class="muted center" role="alert">
-								{tr('messages.threadLoadFailed')}
+					{:else}
+						<span class="text">{m.body}</span>
+					{/if}
+					<span class="meta">
+						<span class="when">{fmtTime(m.created_at)}</span>
+						{#if m.unsent_at === null}
+							{#if mine}
 								<button
 									type="button"
-									class="btn btn-secondary btn-sm"
-									onclick={() => activeId && void openThread(activeId)}
-								>
-									{tr('messages.retry')}
-								</button>
-							</p>
-						{:else if messages.length === 0}
-							<p class="muted center">{tr('messages.emptyConversation')}</p>
-						{:else}
-							{#if hasMore}
-								<div class="earlier">
-									<button
-										type="button"
-										class="btn btn-secondary btn-sm"
-										onclick={() => void loadEarlier()}
-										disabled={loadingEarlier}
-									>
-										{loadingEarlier ? tr('shell.loading') : tr('messages.loadEarlier')}
-									</button>
-									{#if earlierError}
-										<p class="send-error" role="alert">{tr('messages.loadEarlierFailed')}</p>
-									{/if}
-								</div>
+									class="msg-action"
+									onclick={() => (unsendTarget = m)}
+								>{tr('messages.unsend')}</button>
+							{:else}
+								<button
+									type="button"
+									class="msg-action"
+									onclick={() => (reportTarget = m)}
+								>{tr('messages.report')}</button>
 							{/if}
-							{#each messages as m (m.id)}
-								{@const attached = m.route_id}
-								{@const mine = m.sender_id === me}
-								<div class="bubble" class:mine class:unsent={m.unsent_at !== null} data-testid="dm-bubble">
-									{#if m.unsent_at !== null || m.body === null}
-										<span class="text placeholder">{tr('messages.unsentPlaceholder')}</span>
-									{:else if hasDmRouteAttachment(attached)}
-										<DmRouteAttachment routeId={attached} />
-										{#if !bodyRestatesAttachment(m.body, attached)}
-											<span class="text">{m.body}</span>
-										{/if}
-									{:else}
-										<span class="text">{m.body}</span>
-									{/if}
-									<span class="meta">
-										<span class="when">{fmtTime(m.created_at)}</span>
-										{#if m.unsent_at === null}
-											{#if mine}
-												<button
-													type="button"
-													class="msg-action"
-													onclick={() => (unsendTarget = m)}
-												>{tr('messages.unsend')}</button>
-											{:else}
-												<button
-													type="button"
-													class="msg-action"
-													onclick={() => (reportTarget = m)}
-												>{tr('messages.report')}</button>
-											{/if}
-										{/if}
-									</span>
-								</div>
-							{/each}
 						{/if}
-					</div>
-					{#if actionError}<p class="send-error" role="alert">{actionError}</p>{/if}
-					{#if sendError}<p class="send-error" role="alert">{sendError}</p>{/if}
-					{#if !activePartnerId}
-						<p class="muted closed">{tr('messages.deletedAccountClosed')}</p>
-					{:else if blockedByMe}
-						<div class="closed blocked" data-testid="dm-blocked-notice">
-							<p class="muted">{tr('messages.blockedNotice', { name: partnerName })}</p>
-							<button
-								type="button"
-								class="btn btn-secondary btn-sm"
-								disabled={blockBusy}
-								onclick={() => void unblock()}
-							>
-								{tr('messages.unblock')}
-							</button>
-						</div>
-					{:else}
-					<div class="composer">
-						<textarea
-							value={draft}
-							oninput={(e) => {
-								if (activeId) drafts[activeId] = e.currentTarget.value;
-							}}
-							onkeydown={onKeydown}
-							placeholder={tr('messages.composerPlaceholder')}
-							rows="1"
-							maxlength="4000"
-						></textarea>
-						<button class="btn btn-primary" onclick={send} disabled={sending || !draft.trim()}>
-							{sending ? '…' : tr('messages.send')}
-						</button>
-					</div>
-					{/if}
-				{/if}
-			</section>
+					</span>
+				</div>
+			{/each}
+		{/if}
+	</div>
+	{#if actionError}<p class="send-error" role="alert">{actionError}</p>{/if}
+	{#if sendError}<p class="send-error" role="alert">{sendError}</p>{/if}
+	{#if !activePartnerId}
+		<p class="muted closed">{tr('messages.deletedAccountClosed')}</p>
+	{:else if blockedByMe}
+		<div class="closed blocked" data-testid="dm-blocked-notice">
+			<p class="muted">{tr('messages.blockedNotice', { name: partnerName })}</p>
+			<button
+				type="button"
+				class="btn btn-secondary btn-sm"
+				disabled={blockBusy}
+				onclick={() => void unblock()}
+			>
+				{tr('messages.unblock')}
+			</button>
+		</div>
+	{:else}
+		<div class="composer">
+			<textarea
+				value={draft}
+				oninput={(e) => {
+					if (activeId) drafts[activeId] = e.currentTarget.value;
+				}}
+				onkeydown={onKeydown}
+				placeholder={tr('messages.composerPlaceholder')}
+				rows="1"
+				maxlength="4000"
+			></textarea>
+			<button class="btn btn-primary" onclick={send} disabled={sending || !draft.trim()}>
+				{sending ? '…' : tr('messages.send')}
+			</button>
 		</div>
 	{/if}
-</div>
+{/if}
 
 <ConfirmDialog
 	open={unsendTarget !== null}
@@ -640,12 +510,6 @@
 {/if}
 
 <style>
-	.page {
-		padding: var(--space-lg) var(--space-2xl);
-		height: 100vh;
-		display: flex;
-		flex-direction: column;
-	}
 	.muted {
 		color: var(--color-text-secondary);
 	}
@@ -653,87 +517,9 @@
 		text-align: center;
 		margin: auto;
 	}
-	.layout {
-		display: grid;
-		grid-template-columns: 20rem 1fr;
-		gap: var(--space-lg);
-		flex: 1 1 auto;
-		min-height: 0;
-	}
-	.threads,
-	.conversation {
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		background: var(--color-surface);
-		display: flex;
-		flex-direction: column;
-		min-height: 0;
-		overflow: hidden;
-	}
 	.pane-head {
 		padding: var(--space-md) var(--space-lg);
 		border-bottom: 1px solid var(--color-border);
-	}
-	.pane-head h2 {
-		margin: 0;
-		font-size: 1rem;
-	}
-	.threads ul {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		overflow-y: auto;
-	}
-	.thread {
-		display: flex;
-		gap: 0.6rem;
-		align-items: center;
-		padding: var(--space-sm) var(--space-lg);
-		text-decoration: none;
-		color: var(--color-text);
-		border-bottom: 1px solid var(--color-border);
-	}
-	.thread:hover,
-	.thread.active {
-		background: var(--color-bg-secondary);
-	}
-	.thread-body {
-		min-width: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 0.1rem;
-	}
-	.thread-top {
-		display: flex;
-		align-items: center;
-		gap: 0.4rem;
-		min-width: 0;
-	}
-	/* A flex item's default `min-width: auto` refuses to shrink below its
-	   content, so a long display name pushed the unread count out of the
-	   pane .threads clips — the one thing on the row you cannot afford to
-	   lose. The name gives way instead. */
-	.thread-top strong {
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.badge {
-		flex: 0 0 auto;
-		background: var(--color-primary);
-		color: var(--color-bg);
-		border-radius: 999px;
-		font-size: var(--font-size-section-label);
-		padding: 0.05rem 0.4rem;
-		font-weight: 700;
-	}
-	.preview {
-		font-size: 0.8rem;
-		color: var(--color-text-tertiary);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
 	}
 	.conv-head {
 		display: flex;
@@ -813,8 +599,7 @@
 		outline: 2px solid currentColor;
 		outline-offset: 2px;
 	}
-	.placeholder,
-	.preview.unsent {
+	.placeholder {
 		font-style: italic;
 	}
 	.closed {
@@ -855,21 +640,9 @@
 		background: var(--color-bg);
 		color: var(--color-text);
 	}
-	.empty {
-		padding: var(--space-lg);
-	}
-
+	/* The layout shows one pane at a time on narrow screens; this is the
+	   way back to the list. */
 	@media (max-width: 48rem) {
-		.layout {
-			grid-template-columns: minmax(0, 1fr);
-		}
-		/* On narrow screens show one pane at a time. */
-		.threads.has-active {
-			display: none;
-		}
-		.conversation:not(.has-active) {
-			display: none;
-		}
 		.back {
 			display: inline;
 		}

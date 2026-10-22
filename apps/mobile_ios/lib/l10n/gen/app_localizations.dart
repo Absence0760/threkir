@@ -30514,6 +30514,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Review consent'**
   String get planNewDobHintHealthDataAction;
+
+  /// Short tag on every AI Coach message and on the Coach's inbox row (EU AI Act Art. 50). Keep it to the local abbreviation for AI.
+  ///
+  /// In en, this message translates to:
+  /// **'AI'**
+  String get messagesAiTag;
+
+  /// What a screen reader announces for the AI tag on an AI Coach message
+  ///
+  /// In en, this message translates to:
+  /// **'AI-generated'**
+  String get messagesAiTagSr;
+
+  /// Preview line of the AI Coach row in the Messages inbox when there is no Coach message to show (none yet, or the runner has not consented to the Coach)
+  ///
+  /// In en, this message translates to:
+  /// **'Ask about your training, your plan or a run.'**
+  String get messagesCoachRowIntro;
+
+  /// Tooltip and screen-reader label of the button that pins the AI Coach row to the top of the Messages inbox
+  ///
+  /// In en, this message translates to:
+  /// **'Pin AI Coach to the top'**
+  String get messagesCoachPin;
+
+  /// Tooltip and screen-reader label of the button that unpins the AI Coach row, so it sorts among the conversations by its latest message
+  ///
+  /// In en, this message translates to:
+  /// **'Unpin AI Coach'**
+  String get messagesCoachUnpin;
+
+  /// Banner when pinning or unpinning the AI Coach row could not be saved
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save where AI Coach goes. Try again.'**
+  String get messagesCoachPlacementFailed;
+
+  /// Settings section heading for Messages inbox options
+  ///
+  /// In en, this message translates to:
+  /// **'Messages'**
+  String get prefsSectionMessages;
+
+  /// Settings row: where the AI Coach appears in the Messages inbox
+  ///
+  /// In en, this message translates to:
+  /// **'AI Coach in Messages'**
+  String get prefsCoachInMessages;
+
+  /// Option: the AI Coach row stays at the top of the Messages inbox
+  ///
+  /// In en, this message translates to:
+  /// **'Pinned at the top'**
+  String get prefsCoachInMessagesPinned;
+
+  /// Option: the AI Coach row is sorted among the conversations by its latest message
+  ///
+  /// In en, this message translates to:
+  /// **'With your conversations'**
+  String get prefsCoachInMessagesListed;
+
+  /// Option: the AI Coach row is left out of the Messages inbox (the Coach itself stays available from Home)
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden'**
+  String get prefsCoachInMessagesHidden;
 }
 
 class _AppLocalizationsDelegate

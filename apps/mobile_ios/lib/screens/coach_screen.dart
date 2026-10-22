@@ -34,6 +34,7 @@ import '../training_service.dart';
 import '../web_base_url.dart';
 import '../weekly_goal.dart';
 import '../widgets/ai_disclosure_notice.dart';
+import '../widgets/ai_tag.dart';
 import '../widgets/chat_stick_to_bottom.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/sign_in_required_state.dart';
@@ -1686,6 +1687,9 @@ class _CoachScreenState extends State<CoachScreen> {
               crossAxisAlignment:
                   isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
+                // Every Coach message is labelled, not only the first (EU AI
+                // Act Art. 50, decisions § 2227).
+                if (!isUser) _buildAiByline(theme, l10n),
                 Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 12, vertical: 10),
@@ -1733,6 +1737,29 @@ class _CoachScreenState extends State<CoachScreen> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAiByline(ThemeData theme, AppLocalizations l10n) {
+    return Padding(
+      key: const ValueKey('coach-ai-byline'),
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CoachAvatar(size: 22),
+          const SizedBox(width: 6),
+          Text(
+            l10n.coachTitle,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 6),
+          const AiTag(),
         ],
       ),
     );

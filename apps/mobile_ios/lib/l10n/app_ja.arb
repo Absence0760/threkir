@@ -5268,5 +5268,16 @@
   "planNewDobHintAbsent": "50歳以上のランナーには、プランが自動的に回復を長めに取ります。",
   "planNewDobHintAbsentAction": "生年月日を追加",
   "planNewDobHintHealthData": "プランが年齢に合わせて生年月日を使うには、健康データの利用への同意が必要です。",
-  "planNewDobHintHealthDataAction": "同意を確認"
+  "planNewDobHintHealthDataAction": "同意を確認",
+  "messagesAiTag": "AI",
+  "messagesAiTagSr": "AIによる生成",
+  "messagesCoachRowIntro": "トレーニング、プラン、ランについて質問できます。",
+  "messagesCoachPin": "AI コーチを上部に固定",
+  "messagesCoachUnpin": "AI コーチの固定を解除",
+  "messagesCoachPlacementFailed": "AI コーチの表示位置を保存できませんでした。もう一度お試しください。",
+  "prefsSectionMessages": "メッセージ",
+  "prefsCoachInMessages": "メッセージでの AI コーチ",
+  "prefsCoachInMessagesPinned": "上部に固定",
+  "prefsCoachInMessagesListed": "会話と一緒に表示",
+  "prefsCoachInMessagesHidden": "非表示"
 }

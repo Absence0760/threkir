@@ -1,5 +1,5 @@
 -- Official content: derived from the verified club, never stored per row
--- (issue #1190 § 1, decisions § 2227).
+-- (issue #1190 § 1, decisions § 2228).
 --
 -- A route, plan, gym routine, challenge or session plan reads as OFFICIAL when
 -- it was published BY a verified organiser: its `club_id` names a club with
@@ -78,7 +78,7 @@ $$;
 comment on function private.is_official_publisher(uuid, uuid) is
   'True when p_author_id is an active owner/admin of the public, verified, '
   'non-hidden club p_club_id. The single derivation of "official" content '
-  '(issue #1190, decisions § 2227); never stored per row.';
+  '(issue #1190, decisions § 2228); never stored per row.';
 
 grant execute on function private.is_official_publisher(uuid, uuid) to anon, authenticated, service_role;
 

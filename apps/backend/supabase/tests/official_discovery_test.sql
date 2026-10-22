@@ -1,5 +1,5 @@
 -- Pins 20271021000031: discovery ranks official content and verified clubs
--- first (issue #1190 § 4, decisions § 2227).
+-- first (issue #1190 § 4, decisions § 2228).
 --
 --   * an official route qualifies for a pin with no runs and no editorial pick;
 --   * official routes rank first, at most a quarter of p_limit of them ahead

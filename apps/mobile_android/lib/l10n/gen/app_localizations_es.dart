@@ -18810,4 +18810,39 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planNewDobHintHealthDataAction => 'Revisar el consentimiento';
+
+  @override
+  String get messagesAiTag => 'IA';
+
+  @override
+  String get messagesAiTagSr => 'Generado por IA';
+
+  @override
+  String get messagesCoachRowIntro =>
+      'Pregunta sobre tu entrenamiento, tu plan o una carrera.';
+
+  @override
+  String get messagesCoachPin => 'Fijar el Entrenador IA arriba';
+
+  @override
+  String get messagesCoachUnpin => 'Dejar de fijar el Entrenador IA';
+
+  @override
+  String get messagesCoachPlacementFailed =>
+      'No se pudo guardar la posición del Entrenador IA. Inténtalo de nuevo.';
+
+  @override
+  String get prefsSectionMessages => 'Mensajes';
+
+  @override
+  String get prefsCoachInMessages => 'Entrenador IA en Mensajes';
+
+  @override
+  String get prefsCoachInMessagesPinned => 'Fijado arriba';
+
+  @override
+  String get prefsCoachInMessagesListed => 'Con tus conversaciones';
+
+  @override
+  String get prefsCoachInMessagesHidden => 'Oculto';
 }

@@ -41,7 +41,7 @@ export const AREAS = {
 	dashboard: ['/dashboard'],
 	gym: ['/gym'],
 	profile: ['/u'],
-	coach: ['/coach'],
+	coach: ['/messages/coach'],
 	nutrition: ['/nutrition'],
 	social: ['/social'],
 	coaching: ['/coaching'],

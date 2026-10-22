@@ -196,16 +196,22 @@ test('/runs/[id] still claims a guided run when the library no longer has the id
 	);
 });
 
-test('/coach surfaces the Guided runs library on its page', () => {
+test('the Coach conversation surfaces the Guided runs library', () => {
 	// Reason: the dedicated `/guided` sidebar entry was removed when the
 	// nav tightened to 5 items. Guided + Coach are both coach-driven,
-	// so the library is reachable from /coach via a side rail / section
-	// that iterates the guided-run library. A regression that drops the
-	// reference would leave guided runs only accessible by typing the
-	// URL — effectively orphaning the library.
-	const source = read('src/routes/coach/+page.svelte');
-	assert.match(source, /guidedRunLibrary\(/, '/coach must surface the guided-run library');
-	assert.match(source, /\{#each guidedLibrary as g/, 'each-block over the library missing on /coach');
+	// so the library is reachable from the Coach's conversation (in
+	// Messages since decisions § 2227) via a rail that iterates the
+	// guided-run library. A regression that drops the reference would
+	// leave guided runs only accessible by typing the URL — effectively
+	// orphaning the library.
+	const source = read('src/routes/messages/coach/+page.svelte');
+	assert.match(source, /guidedRunLibrary\(/, '/messages/coach must surface the guided-run library');
+	assert.match(source, /\{#each guidedLibrary as g/, 'each-block over the library missing on /messages/coach');
+	assert.match(
+		read('src/routes/messages/coach/+page.svelte'),
+		/<h2 class="who">\{m\('nav\.coach'\)\}<\/h2>/,
+		'the Coach pane must name the conversation in a heading',
+	);
 });
 
 // ─────────── audio_cues.dart speakGuidedCue ───────────

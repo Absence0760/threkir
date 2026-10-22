@@ -12,6 +12,7 @@ import '../lib/ai_disclosure_memo.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/coach_screen.dart';
 import '../lib/screens/guided_runs_screen.dart';
+import '../lib/widgets/ai_tag.dart';
 import '../lib/widgets/surface_peer_strip.dart';
 import '../lib/widgets/sign_in_required_state.dart';
 import '../lib/training_service.dart';
@@ -60,6 +61,44 @@ class _SlowConsentApi extends _HangingThreadApi {
     await release.future;
     return answer;
   }
+}
+
+/// Consented, with a conversation of two Coach replies around one of the
+/// runner's own turns — drives the per-message AI label.
+class _ThreadApi extends _ConsentedApi {
+  @override
+  Future<List<CoachMessageRow>> fetchCoachMessages({String? planId}) async => [
+        CoachMessageRow(
+          id: 'a1',
+          userId: 'u-viewer',
+          role: 'assistant',
+          content: 'First reply',
+          createdAt: DateTime.utc(2026, 6, 1, 8),
+        ),
+        CoachMessageRow(
+          id: 'u1',
+          userId: 'u-viewer',
+          role: 'user',
+          content: 'And tomorrow?',
+          createdAt: DateTime.utc(2026, 6, 1, 8, 1),
+        ),
+        CoachMessageRow(
+          id: 'a2',
+          userId: 'u-viewer',
+          role: 'assistant',
+          content: 'Second reply',
+          createdAt: DateTime.utc(2026, 6, 1, 8, 2),
+        ),
+      ];
+
+  @override
+  Future<List<DateTime>> listCoachArchives({String? planId}) async => const [];
+
+  @override
+  Future<int> getCoachUsage() async => 0;
+
+  @override
+  Future<bool> isPro() async => false;
 }
 
 bool _supabaseReady = false;
@@ -526,6 +565,25 @@ void main() {
 
       expect(api.deleteCalls, 1);
       expect(find.byTooltip('Conversation actions'), findsNothing);
+      await _drain(tester);
+    });
+  });
+
+  group('CoachScreen — AI label (decisions § 2227)', () {
+    testWidgets('every Coach message carries the AI byline, the runner\'s '
+        'own turns do not', (tester) async {
+      await _pump(tester, api: _ThreadApi());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('First reply'), findsOneWidget);
+      expect(find.text('Second reply'), findsOneWidget);
+      final bylines = find.byKey(const ValueKey('coach-ai-byline'));
+      expect(bylines, findsNWidgets(2));
+      expect(
+        find.descendant(of: bylines, matching: find.byType(AiTag)),
+        findsNWidgets(2),
+      );
       await _drain(tester);
     });
   });

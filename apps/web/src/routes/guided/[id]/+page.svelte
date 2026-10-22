@@ -11,7 +11,7 @@
 
 	let cameFromCoach = $state(false);
 	afterNavigate(({ from }) => {
-		if (from?.url.pathname === '/coach' && !cameFromCoach) {
+		if (from?.url.pathname === '/messages/coach' && !cameFromCoach) {
 			cameFromCoach = true;
 		}
 	});

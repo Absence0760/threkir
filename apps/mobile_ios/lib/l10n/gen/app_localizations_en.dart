@@ -18621,4 +18621,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planNewDobHintHealthDataAction => 'Review consent';
+
+  @override
+  String get messagesAiTag => 'AI';
+
+  @override
+  String get messagesAiTagSr => 'AI-generated';
+
+  @override
+  String get messagesCoachRowIntro =>
+      'Ask about your training, your plan or a run.';
+
+  @override
+  String get messagesCoachPin => 'Pin AI Coach to the top';
+
+  @override
+  String get messagesCoachUnpin => 'Unpin AI Coach';
+
+  @override
+  String get messagesCoachPlacementFailed =>
+      'Couldn\'t save where AI Coach goes. Try again.';
+
+  @override
+  String get prefsSectionMessages => 'Messages';
+
+  @override
+  String get prefsCoachInMessages => 'AI Coach in Messages';
+
+  @override
+  String get prefsCoachInMessagesPinned => 'Pinned at the top';
+
+  @override
+  String get prefsCoachInMessagesListed => 'With your conversations';
+
+  @override
+  String get prefsCoachInMessagesHidden => 'Hidden';
 }

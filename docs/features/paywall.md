@@ -214,8 +214,11 @@ resume, so a cancellation made on the store's page shows on return. Web
 The same `coachEnabled()` flag hides every other **web** entry point into
 the AI Coach so rock-bottom shows no door that only 503s:
 
-- the **Coach sidebar nav item** (`+layout.svelte` filters it out),
-- the **`/coach` page chat** — replaced by a "coming soon" notice
+- the **AI Coach row in the Messages inbox** (the sidebar has no Coach item
+  since decisions § 2227; `stores/messages_inbox.svelte.ts` leaves the row
+  out),
+- the **`/messages/coach` chat** (`/coach` redirects there) — replaced by a
+  "coming soon" notice
   (`coachPage.comingSoon*`); the static guided-runs rail below it stays
   (it's local TTS cue scripts, no Anthropic dependency),
 - the **dashboard "Ask the Coach" promo** card,

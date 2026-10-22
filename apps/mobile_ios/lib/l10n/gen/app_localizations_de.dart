@@ -18824,4 +18824,39 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planNewDobHintHealthDataAction => 'Einwilligung prüfen';
+
+  @override
+  String get messagesAiTag => 'KI';
+
+  @override
+  String get messagesAiTagSr => 'KI-generiert';
+
+  @override
+  String get messagesCoachRowIntro =>
+      'Frag nach deinem Training, deinem Plan oder einem Lauf.';
+
+  @override
+  String get messagesCoachPin => 'KI-Coach oben anheften';
+
+  @override
+  String get messagesCoachUnpin => 'KI-Coach nicht mehr anheften';
+
+  @override
+  String get messagesCoachPlacementFailed =>
+      'Die Position des KI-Coaches konnte nicht gespeichert werden. Versuche es erneut.';
+
+  @override
+  String get prefsSectionMessages => 'Nachrichten';
+
+  @override
+  String get prefsCoachInMessages => 'KI-Coach in Nachrichten';
+
+  @override
+  String get prefsCoachInMessagesPinned => 'Oben angeheftet';
+
+  @override
+  String get prefsCoachInMessagesListed => 'Bei deinen Unterhaltungen';
+
+  @override
+  String get prefsCoachInMessagesHidden => 'Ausgeblendet';
 }

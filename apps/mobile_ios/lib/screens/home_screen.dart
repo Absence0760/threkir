@@ -540,7 +540,7 @@ class _HomeScreenState extends State<HomeScreen>
       case PushTargetKind.messages:
         final partnerId = target.id;
         await _pushScreen(partnerId == null
-            ? MessagesScreen(api: api)
+            ? MessagesScreen(api: api, training: widget.training)
             : MessageThreadScreen(api: api, partnerId: partnerId));
       case PushTargetKind.settingsAccount:
         await _pushScreen(
@@ -869,6 +869,7 @@ class _HomeScreenState extends State<HomeScreen>
           heartRate: widget.heartRate,
           treadmill: widget.treadmill,
           settingsSync: widget.settingsSync,
+          training: widget.training,
         ),
       ),
     ];

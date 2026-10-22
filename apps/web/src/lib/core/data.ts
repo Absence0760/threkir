@@ -10860,6 +10860,39 @@ export interface DmThread {
 	unread: number;
 }
 
+/// The newest message of the runner's current (not archived) Coach
+/// conversations, for the AI Coach row in the Messages inbox (decisions
+/// § 2227). Owner-only by RLS. The caller reads it only once the runner has
+/// consented to the Coach; throws on a failed read so the row can say nothing
+/// rather than claim there is no conversation.
+export interface LatestCoachMessage {
+	planId: string | null;
+	role: 'user' | 'assistant';
+	content: string;
+	createdAt: string;
+}
+
+export async function fetchLatestCoachMessage(): Promise<LatestCoachMessage | null> {
+	const me = auth.user?.id;
+	if (!me) return null;
+	const { data, error } = await supabase
+		.from('coach_messages')
+		.select('plan_id, role, content, created_at')
+		.eq('user_id', me)
+		.is('archived_at', null)
+		.order('created_at', { ascending: false })
+		.limit(1)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	return {
+		planId: data.plan_id,
+		role: data.role === 'user' ? 'user' : 'assistant',
+		content: data.content,
+		createdAt: data.created_at,
+	};
+}
+
 /// Total unread direct messages across every conversation: the badge on the
 /// sidebar's Messages entry. The same `dm_threads()` aggregation as
 /// [fetchDmThreads] without its partner-profile read, as mobile's

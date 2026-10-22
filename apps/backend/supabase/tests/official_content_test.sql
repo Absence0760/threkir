@@ -1,5 +1,5 @@
 -- Pins 20271021000030: "official" content is derived from the verified club,
--- never stored per row (issue #1190, decisions § 2227).
+-- never stored per row (issue #1190, decisions § 2228).
 --
 -- Official = the row's club is verified, public and not hidden, and the row's
 -- author is an ACTIVE owner or admin of it. A plain member's club content is

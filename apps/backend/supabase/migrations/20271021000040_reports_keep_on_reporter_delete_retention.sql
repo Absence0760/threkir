@@ -126,6 +126,7 @@ comment on function private.report_retention_window(text) is
   'Pending counsel sign-off (decisions § 2231).';
 
 -- When a report becomes eligible for the purge; null when it never will.
+-- STABLE, not IMMUTABLE: timestamptz + a month interval depends on TimeZone.
 create or replace function private.report_purge_after(
   p_status text,
   p_reviewed_at timestamptz,
@@ -133,7 +134,7 @@ create or replace function private.report_purge_after(
 )
 returns timestamptz
 language sql
-immutable
+stable
 set search_path = public, private, pg_temp
 as $$
   select case
@@ -194,11 +195,12 @@ comment on function private.purge_stale_reports() is
   'pending counsel sign-off. Scheduled by pg_cron `purge-stale-reports` '
   '(03:59 UTC daily). decisions § 2231.';
 
--- ─── shared target lookups for the moderation reads ─────────────────────
+-- ─── target lookups for fetch_resolved_reports ──────────────────────────
 --
--- Called only from the SECURITY DEFINER reads below, so they run as the
--- function owner and see past RLS (an admin reads no other user's private run
--- through RLS). Bodies moved verbatim from 20271021000020.
+-- Called only from that SECURITY DEFINER read, so they run as the function
+-- owner and see past RLS (an admin reads no other user's private run through
+-- RLS). Copies of 20271021000020's per-kind cases; fetch_pending_reports
+-- below keeps its own inline copy so its re-emit stays a one-change diff.
 
 create or replace function private.report_target_page_id(p_kind text, p_id uuid)
 returns uuid
@@ -240,10 +242,9 @@ revoke execute on function private.report_target_shadow_hidden(text, uuid) from 
 
 -- ─── fetch_pending_reports: a deleted reporter still counts ─────────────
 --
--- Full body re-emitted from 20271021000020 (still `stable`), with the
--- reporter_count fix from (1) and the page / hidden lookups moved into the
--- helpers above. Return type unchanged, so CREATE OR REPLACE keeps the grants;
--- they are restated anyway.
+-- Full body re-emitted from 20271021000020 (still `stable`); the only change
+-- is the reporter_count fix from (1). Return type unchanged, so CREATE OR
+-- REPLACE keeps the grants; they are restated anyway.
 
 create or replace function fetch_pending_reports()
 returns table (
@@ -293,8 +294,25 @@ begin
                                     as reporter_count,
       br.reasons,
       max(p.cat)                    as latest_at,
-      private.report_target_shadow_hidden(p.tk, p.tid) as shadow_hidden,
-      private.report_target_page_id(p.tk, p.tid)       as page_id
+      coalesce(
+        case p.tk
+          when 'user'  then (select up.shadow_hidden from user_profiles up where up.id = p.tid)
+          when 'club'  then (select c.shadow_hidden  from clubs c          where c.id = p.tid)
+          when 'route' then (select rt.shadow_hidden from routes rt        where rt.id = p.tid)
+          else false
+        end,
+        false
+      )                             as shadow_hidden,
+      case p.tk
+        when 'user'         then (select up.id       from user_profiles up where up.id = p.tid)
+        when 'club'         then (select c.id        from clubs c          where c.id = p.tid)
+        when 'route'        then (select rt.id       from routes rt        where rt.id = p.tid)
+        when 'run'          then (select ru.id       from runs ru          where ru.id = p.tid)
+        when 'comment'      then (select rc.run_id   from run_comments rc  where rc.id = p.tid)
+        when 'club_post'    then (select cp.club_id  from club_posts cp    where cp.id = p.tid)
+        when 'route_review' then (select rr.route_id from route_reviews rr where rr.id = p.tid)
+        else null
+      end                           as page_id
     from pending p
     join by_reason br on br.tk = p.tk and br.tid = p.tid
     group by p.tk, p.tid, br.reasons
@@ -310,8 +328,11 @@ grant execute on function fetch_pending_reports() to authenticated;
 -- The pending queue drops a target once its last report is resolved, and a
 -- resolved report is the only kind the purge can delete — so without this
 -- list a hold could only be placed while the target still had something
--- pending. One row per target with at least one resolved report, most
--- recently resolved first, capped.
+-- pending. One row per target with at least one resolved report, capped,
+-- ordered by the earliest purge date first: the cap must never hide the
+-- reports closest to deletion, which are the ones a hold has to reach before
+-- the next 03:59 run. Fully held targets (no purge date) follow, most
+-- recently resolved first.
 
 create or replace function fetch_resolved_reports(p_limit int default 100)
 returns table (
@@ -349,7 +370,8 @@ begin
     from reports r
     where r.status <> 'pending'
     group by r.target_kind, r.target_id
-    order by max(r.reviewed_at) desc nulls last
+    order by min(private.report_purge_after(r.status, r.reviewed_at, r.legal_hold)) asc nulls last,
+             max(r.reviewed_at) desc nulls last
     limit least(greatest(coalesce(p_limit, 100), 1), 500);
 end;
 $$;

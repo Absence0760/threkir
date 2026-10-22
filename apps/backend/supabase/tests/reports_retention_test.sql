@@ -5,7 +5,7 @@
 -- nothing at all while the flag is off.
 
 begin;
-select plan(36);
+select plan(38);
 
 -- ─── Fixtures ────────────────────────────────────────────────────────────
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
@@ -216,6 +216,26 @@ select is(
   (select count(*)::int from reports where reporter_id is null and target_id = 'e7000000-0000-0000-0000-0000000000d1'),
   1,
   'the held, pending message report is untouched');
+
+-- ─── The Resolved list never hides the reports closest to deletion ──────
+-- A long-overdue dismissed report (the purge is off, so it is still here) on
+-- its own target must be the first row even at a cap of one.
+insert into reports (reporter_id, target_kind, target_id, reason, status, created_at, reviewed_at) values
+  (null, 'club', 'e7000000-0000-0000-0000-00000000c2ab', 'spam', 'dismissed', now() - interval '10 years', now() - interval '10 years'),
+  (null, 'club', 'e7000000-0000-0000-0000-00000000c3ab', 'spam', 'reviewed',  now(),                      now());
+update private.feature_flags set enabled = false where name = 'reports_retention_purge';
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"e7000000-0000-0000-0000-0000000000ad","role":"authenticated"}';
+select is(
+  (select target_id from fetch_resolved_reports(1)),
+  'e7000000-0000-0000-0000-00000000c2ab'::uuid,
+  'the capped Resolved list leads with the earliest purge date, not the latest resolution');
+select is(
+  (select held_count from fetch_resolved_reports() where target_id = 'e7000000-0000-0000-0000-00000000c1ab'),
+  1::bigint,
+  'the Resolved list counts held reports per target');
+set local role postgres;
 
 -- ─── The cron registration ───────────────────────────────────────────────
 select is(

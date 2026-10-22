@@ -2559,10 +2559,12 @@ class ApiClient {
   /// Discoverable public routes inside the viewport bbox for the route
   /// discovery map. Mirror of the web `fetchDiscoverableRoutesInBbox`.
   /// [filter] is the lens: 'popular' (default) | 'official' | 'featured' |
-  /// 'friends' | 'hidden_gems'. Official routes rank first, capped at a
-  /// quarter of [limit] outside the 'official' lens. [distMin]/[distMax] are the parallel race-distance
-  /// band bounds (a null [distMax] element = open-ended ultra); omit them
-  /// for no distance filter. Fails soft to an empty list.
+  /// 'friends' | 'hidden_gems'. Official routes rank first; outside the
+  /// 'official' lens at most a quarter of [limit] rank ahead of community
+  /// routes and the rest backfill after them. [distMin]/[distMax] are the
+  /// parallel race-distance band bounds (a null [distMax] element =
+  /// open-ended ultra); omit them for no distance filter. Fails soft to an
+  /// empty list.
   Future<List<DiscoverableRoutePin>> fetchDiscoverableRoutesInBbox({
     required double minLng,
     required double minLat,

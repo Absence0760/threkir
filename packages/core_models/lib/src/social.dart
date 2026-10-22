@@ -437,8 +437,8 @@ class DiscoverableRoutePin {
   final double lng;
 
   /// Published by a verified organiser (migration 20271021000030). Official
-  /// routes rank first in every lens, capped at a quarter of the viewport's
-  /// pins outside the `official` lens.
+  /// routes rank first; outside the `official` lens at most a quarter of the
+  /// viewport's pins rank ahead of community routes.
   final bool official;
 
   const DiscoverableRoutePin({

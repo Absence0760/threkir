@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures/test';
 
+import { readRow } from '../fixtures/db-read';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 import { USER_A, USER_B } from '../fixtures/users';
@@ -220,15 +221,21 @@ test.describe('admin moderation — legal hold on a resolved report', () => {
 		await modal.getByTestId('admin-legal-hold-toggle').click();
 		await expect(modal.getByTestId('admin-legal-hold-badge')).toBeVisible();
 		await expect(modal.getByText(/Eligible for deletion from/)).toHaveCount(0);
-		const held = await admin.from('reports').select('legal_hold').eq('id', data.id).single();
-		expect(held.data?.legal_hold).toBe(true);
+		const held = await readRow(
+			'held report',
+			admin.from('reports').select('legal_hold').eq('id', data.id).single()
+		);
+		expect(held.legal_hold).toBe(true);
 
 		// Lifting is confirmed: without the hold the purge may delete it.
 		await modal.getByTestId('admin-legal-hold-toggle').click();
 		await page.getByTestId('admin-lift-hold-confirm').getByRole('button', { name: /lift legal hold/i }).click();
 		await expect(modal.getByTestId('admin-legal-hold-badge')).toHaveCount(0);
-		const lifted = await admin.from('reports').select('legal_hold').eq('id', data.id).single();
-		expect(lifted.data?.legal_hold).toBe(false);
+		const lifted = await readRow(
+			'lifted report',
+			admin.from('reports').select('legal_hold').eq('id', data.id).single()
+		);
+		expect(lifted.legal_hold).toBe(false);
 	});
 });
 

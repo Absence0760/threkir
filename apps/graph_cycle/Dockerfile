@@ -17,7 +17,7 @@
 # holds every Go module's builder to it, which is what keeps this identical to
 # apps/job_worker/Dockerfile (a comment saying so did not: this file sat on
 # 1.26 while that one moved to 1.27).
-FROM golang:1.27.2-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS build
+FROM golang:1.27.3-alpine@sha256:d530cf60723abf1ffae0cd16bb546b379ec0550d2f3815e5b16ed69dbc00fba4 AS build
 WORKDIR /src
 
 # Cache go.mod / go.sum first so dependency-only changes don't invalidate the
@@ -33,7 +33,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/graph_c
 # 2026b (Trivy DLA-4792-1) while static-debian13 carried 2026c. The binary
 # is static, so the base supplies only ca-certificates, tzdata and the
 # nonroot user.
-FROM gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:d62067879de890a1def9da0e7766b7d20810a5e5555cef8506b752437d7a3e88
 COPY --from=build /out/graph_cycle /graph_cycle
 
 # Public guarded port (the Go server binds it; Fly's http_service forwards here).

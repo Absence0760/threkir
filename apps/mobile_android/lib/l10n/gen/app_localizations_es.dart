@@ -7104,7 +7104,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'Las funciones de IA de Threkir envían una parte de tus datos a Anthropic, nuestro proveedor de modelos de IA en EE. UU. Según la función que uses, esa parte incluye:';
+      'Las funciones de IA de Threkir envían una parte de tus datos a Anthropic, nuestro proveedor de modelos de IA en EE. UU., para que pueda redactar las respuestas del Entrenador IA y las sugerencias de las demás funciones de IA. Según la función que uses, esa parte incluye:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -7120,7 +7120,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachConsentBulletMessages =>
-      'Los mensajes de chat que escribes en la pantalla de abajo.';
+      'Los mensajes que envías al Entrenador IA, incluida cualquier cosa que escribas sobre tu salud o tus lesiones, así que no incluyas nada que prefieras no compartir.';
 
   @override
   String get coachConsentBulletRoutes =>
@@ -7152,7 +7152,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachConsentProcessing =>
-      'Anthropic procesa los datos en nombre de Threkir según sus términos de tratamiento de datos; por defecto, no entrenan sus modelos con los datos de clientes de Threkir. Todos los detalles —incluido el mecanismo de transferencia, la retención y tus derechos de retirada— están en nuestra política de privacidad.';
+      'Los elementos marcados «solo si has dado tu consentimiento de datos de salud» son datos de salud: al aceptar, das tu consentimiento explícito para que se envíen a Anthropic para estas funciones. Anthropic procesa los datos en nombre de Threkir según sus términos de tratamiento de datos, no entrena sus modelos con ellos y los elimina en un plazo de 30 días (más tiempo solo en el caso del contenido que marquen sus sistemas de seguridad). Puedes retirar este consentimiento en cualquier momento en Ajustes → Cuenta; así se deja de enviar cualquier dato nuevo, pero no se deshace lo que ya se envió. Todos los detalles, incluidas las garantías de la transferencia, están en nuestra política de privacidad.';
 
   @override
   String get coachConsentAction =>
@@ -16926,7 +16926,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get messagesUnsendConfirmBody =>
-      'Se eliminará para las dos personas. Esto no se puede deshacer.';
+      'El texto se eliminará para las dos personas. Esto no se puede deshacer. Si el mensaje ya se había denunciado, la denuncia conserva una copia.';
 
   @override
   String get messagesUnsendFailed => 'No se pudo anular el envío del mensaje.';

@@ -7040,7 +7040,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'Threkir\'s AI features forward a slice of your data to Anthropic, our AI model provider in the United States. Depending on which feature you use, that slice includes:';
+      'Threkir\'s AI features forward a slice of your data to Anthropic, our AI model provider in the United States, so it can write the Coach\'s replies and the other AI features\' suggestions for you. Depending on which feature you use, that slice includes:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -7056,7 +7056,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coachConsentBulletMessages =>
-      'The chat messages you type in the screen below.';
+      'The messages you send the Coach, including anything you write about your health or injuries, so leave out anything you\'d rather not share.';
 
   @override
   String get coachConsentBulletRoutes =>
@@ -7088,7 +7088,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coachConsentProcessing =>
-      'Anthropic processes the data on Threkir\'s behalf under their data-processing terms; they do not train their models on Threkir customer data by default. Full details — including transfer mechanism, retention, and your withdrawal rights — are in our privacy policy.';
+      'The items marked “only if you\'ve given health-data consent” are health data: by accepting, you explicitly agree to them being sent to Anthropic for these features. Anthropic processes the data on Threkir\'s behalf under its data-processing terms, does not train its models on it, and deletes it within 30 days (longer only for content its safety systems flag). You can withdraw this consent at any time in Settings → Account; that stops anything further being sent but does not undo what was already sent. Full details, including the transfer safeguards, are in our privacy policy.';
 
   @override
   String get coachConsentAction =>
@@ -16760,7 +16760,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get messagesUnsendConfirmBody =>
-      'It will be removed for both of you. This can\'t be undone.';
+      'The text will be removed for both of you. This can\'t be undone. If the message was already reported, the report keeps a copy.';
 
   @override
   String get messagesUnsendFailed => 'Couldn\'t unsend the message.';

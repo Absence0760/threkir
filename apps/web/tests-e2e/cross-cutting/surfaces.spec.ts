@@ -192,19 +192,22 @@ test.describe('navigation — sidebar links wire up', () => {
 		page
 	}) => {
 		// Sidebar shape: Dashboard · History · Runs · Gym · Nutrition ·
-		// Coach · Social. Routes relocated off the sidebar to a sub-tab
+		// Social · Messages. Routes relocated off the sidebar to a sub-tab
 		// under the run surface (/runs ↔ /routes). Plans moved off the
 		// sidebar to be reached from the dashboard today-card. Feed +
-		// People + Clubs collapsed under /social. Guided runs surfaces
-		// from /coach. Settings is in the profile popover.
+		// People + Clubs collapsed under /social. The AI Coach is a pinned
+		// conversation in Messages (/messages/coach, decisions § 2227), and
+		// Guided runs surfaces from it. Settings is in the profile popover.
 		await page.goto('/dashboard');
 		const sidebar = page.locator('.sidebar');
 		await sidebar.getByRole('link', { name: /History/ }).click();
 		await expect(page).toHaveURL(/\/history(\?.*)?$/, { timeout: 10_000 });
-		await sidebar.getByRole('link', { name: /Coach/ }).click();
-		await expect(page).toHaveURL(/\/coach(\?.*)?$/, { timeout: 10_000 });
 		await sidebar.getByRole('link', { name: /Social/ }).click();
 		await expect(page).toHaveURL(/\/social(\?.*)?$/, { timeout: 10_000 });
+		await sidebar.getByRole('link', { name: /^Messages/ }).click();
+		await expect(page).toHaveURL(/\/messages(\/.*)?(\?.*)?$/, { timeout: 10_000 });
+		// The Coach no longer has a sidebar item of its own.
+		await expect(sidebar.getByRole('link', { name: /Coach/ })).toHaveCount(0);
 		// Routes no longer has a standalone sidebar item — it lives under
 		// the run surface now.
 		await expect(sidebar.getByRole('link', { name: /^Routes$/ })).toHaveCount(0);

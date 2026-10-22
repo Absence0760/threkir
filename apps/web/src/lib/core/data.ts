@@ -13539,9 +13539,26 @@ export interface PendingReportTarget {
 	page_id: string | null;
 }
 
+/** One target with at least one resolved report — the list a legal hold is
+ *  placed from once a target has left the pending queue. */
+export interface ResolvedReportTarget {
+	target_kind: ReportTargetKind;
+	target_id: string;
+	report_count: number;
+	held_count: number;
+	last_reviewed_at: string | null;
+	/** The earliest date one of these reports becomes eligible for the
+	 *  retention purge; null when every one is held (decisions § 2231). */
+	next_purge_after: string | null;
+	shadow_hidden: boolean;
+	page_id: string | null;
+}
+
 export interface TargetReport {
 	id: string;
-	reporter_id: string;
+	/** Null once the reporter has deleted their account: the report is kept
+	 *  as evidence (migration 20271021000040). */
+	reporter_id: string | null;
 	reason: string;
 	notes: string | null;
 	status: string;
@@ -13554,6 +13571,10 @@ export interface TargetReport {
 	snapshot_body: string | null;
 	snapshot_author_id: string | null;
 	snapshot_sent_at: string | null;
+	legal_hold: boolean;
+	/** When the retention purge may delete this report; null while it is
+	 *  pending or held. */
+	purge_after: string | null;
 }
 
 /** Whether the current user is a moderator. Chrome gate only — the RPCs
@@ -13593,7 +13614,7 @@ export async function fetchReportsForTarget(
 	if (error) throw dbError(error);
 	return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
 		id: r.id as string,
-		reporter_id: r.reporter_id as string,
+		reporter_id: (r.reporter_id ?? null) as string | null,
 		reason: r.reason as string,
 		notes: (r.notes ?? null) as string | null,
 		status: r.status as string,
@@ -13604,7 +13625,36 @@ export async function fetchReportsForTarget(
 		snapshot_body: (r.snapshot_body ?? null) as string | null,
 		snapshot_author_id: (r.snapshot_author_id ?? null) as string | null,
 		snapshot_sent_at: (r.snapshot_sent_at ?? null) as string | null,
+		legal_hold: r.legal_hold === true,
+		purge_after: (r.purge_after ?? null) as string | null,
 	}));
+}
+
+/** Targets with resolved reports, most recently resolved first. */
+export async function fetchResolvedReports(): Promise<ResolvedReportTarget[]> {
+	const { data, error } = await supabase.rpc('fetch_resolved_reports', undefined, { get: true });
+	if (error) throw dbError(error);
+	return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+		target_kind: r.target_kind as ReportTargetKind,
+		target_id: r.target_id as string,
+		report_count: Number(r.report_count ?? 0),
+		held_count: Number(r.held_count ?? 0),
+		last_reviewed_at: (r.last_reviewed_at ?? null) as string | null,
+		next_purge_after: (r.next_purge_after ?? null) as string | null,
+		shadow_hidden: r.shadow_hidden === true,
+		page_id: (r.page_id ?? null) as string | null,
+	}));
+}
+
+/** Place or lift a legal hold on one report. Admin-gated at the DB; returns
+ *  the hold as stored. */
+export async function setReportLegalHold(reportId: string, hold: boolean): Promise<boolean> {
+	const { data, error } = await supabase.rpc('set_report_legal_hold', {
+		p_report_id: reportId,
+		p_hold: hold,
+	});
+	if (error) throw dbError(error);
+	return data === true;
 }
 
 /** Mark all pending reports on a target reviewed/dismissed with a note.

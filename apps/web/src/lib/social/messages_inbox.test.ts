@@ -79,6 +79,21 @@ test('a listed Coach tied with a conversation goes after it', () => {
 		ids(inboxEntries(threads, { placement: 'listed', lastAt: '2026-10-20T09:00:00Z' })),
 		['a', 'b', 'coach', 'c']
 	);
+	// The same millisecond is a tie, whatever the microseconds say.
+	assert.deepEqual(
+		ids(
+			inboxEntries([thread('x', '2026-10-20T09:00:00.123456Z')], {
+				placement: 'listed',
+				lastAt: '2026-10-20T09:00:00.123900Z'
+			})
+		),
+		['x', 'coach']
+	);
+	// An unreadable stamp sorts as oldest.
+	assert.deepEqual(
+		ids(inboxEntries([thread('x', 'not a date')], { placement: 'listed', lastAt: '2020-01-01T00:00:00Z' })),
+		['coach', 'x']
+	);
 });
 
 test('a listed Coach with no message goes last', () => {
@@ -99,6 +114,7 @@ test('the preview drops markdown and keeps the words', () => {
 	assert.equal(coachInboxPreview('```js\ncode()\n```'), 'code()');
 	assert.equal(coachInboxPreview('keep snake_case and 3*4'), 'keep snake_case and 34');
 	assert.equal(coachInboxPreview('   \n\n  '), '');
+	assert.equal(coachInboxPreview('\u0085rest day\u0085'), 'rest day');
 });
 
 test('a long preview is cut on a code point with an ellipsis', () => {

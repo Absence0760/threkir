@@ -97,6 +97,12 @@ void main() {
           threads, _row(CoachInboxPlacement.listed, '2026-10-20T09:00:00Z'))),
       ['a', 'b', 'coach', 'c'],
     );
+    // The same millisecond is a tie, whatever the microseconds say.
+    expect(
+      _ids(_entries([_thread('x', '2026-10-20T09:00:00.123456Z')],
+          _row(CoachInboxPlacement.listed, '2026-10-20T09:00:00.123900Z'))),
+      ['x', 'coach'],
+    );
   });
 
   test('a listed Coach with no message goes last', () {
@@ -115,6 +121,7 @@ void main() {
     expect(coachInboxPreview('keep snake_case and 3*4'),
         'keep snake_case and 34');
     expect(coachInboxPreview('   \n\n  '), '');
+    expect(coachInboxPreview('\u0085rest day\u0085'), 'rest day');
   });
 
   test('a long preview is cut on a code point with an ellipsis', () {

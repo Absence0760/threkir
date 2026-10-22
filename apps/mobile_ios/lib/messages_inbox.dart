@@ -72,7 +72,11 @@ List<InboxEntry<T>> inboxEntries<T>(
   if (coach.placement == CoachInboxPlacement.pinned) return [row, ...dms];
   final at = coach.lastAt;
   if (at == null) return [...dms, row];
-  final index = threads.indexWhere((t) => lastAt(t).isBefore(at));
+  // Milliseconds, as web compares: Postgres stamps microseconds, which
+  // DateTime keeps and JavaScript's Date.parse drops.
+  final atMs = at.millisecondsSinceEpoch;
+  final index =
+      threads.indexWhere((t) => lastAt(t).millisecondsSinceEpoch < atMs);
   if (index == -1) return [...dms, row];
   return [...dms.sublist(0, index), row, ...dms.sublist(index)];
 }
@@ -86,7 +90,12 @@ final _fence = RegExp(r'```[^\n]*');
 final _lineMarker =
     RegExp(r'^[ \t]*(?:#{1,6}|>|[-*+]|\d+[.)])[ \t]+', multiLine: true);
 final _emphasis = RegExp(r'\*\*|__|~~|\*');
-final _space = RegExp(r'\s+');
+// One explicit whitespace set, because String.trim and \s disagree between
+// Dart and JavaScript (Dart's trim strips U+0085).
+const _wsClass =
+    r'[\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]';
+final _space = RegExp('$_wsClass+');
+final _edgeSpace = RegExp('^$_wsClass+|$_wsClass+\$');
 
 /// A Coach message as one line of plain text for the inbox row. The Coach
 /// writes markdown; the row shows text only, so the markup is dropped rather
@@ -99,8 +108,9 @@ String coachInboxPreview(String content) {
       .replaceAll(_lineMarker, '')
       .replaceAll(_emphasis, '')
       .replaceAll(_space, ' ')
-      .trim();
+      .replaceAll(_edgeSpace, '');
   final points = text.runes.toList();
   if (points.length <= kCoachPreviewMax) return text;
-  return '${String.fromCharCodes(points.sublist(0, kCoachPreviewMax - 1)).trimRight()}…';
+  final cut = String.fromCharCodes(points.sublist(0, kCoachPreviewMax - 1));
+  return '${cut.replaceAll(_edgeSpace, '')}…';
 }

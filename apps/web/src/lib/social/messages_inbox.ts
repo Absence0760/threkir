@@ -40,6 +40,8 @@ export interface CoachInboxRow {
 	lastAt: string | null;
 }
 
+/// Milliseconds, as both halves compare: Postgres stamps microseconds, which
+/// Dart's DateTime keeps and Date.parse drops.
 function instantMs(iso: string): number {
 	const ms = Date.parse(iso);
 	return Number.isNaN(ms) ? Number.NEGATIVE_INFINITY : ms;
@@ -73,6 +75,11 @@ export function inboxEntries<T extends { lastAt: string }>(
 /// with an ellipsis.
 export const COACH_PREVIEW_MAX = 140;
 
+// One explicit whitespace set, because String.trim and \s disagree between
+// JavaScript and Dart (Dart's trim strips U+0085).
+const WS = /[\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]+/g;
+const EDGE_WS = /^[\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]+|[\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]+$/g;
+
 /**
  * A Coach message as one line of plain text for the inbox row. The Coach
  * writes markdown; the row shows text only, so the markup is dropped rather
@@ -85,9 +92,9 @@ export function coachInboxPreview(content: string): string {
 		.replace(/`/g, '')
 		.replace(/^[ \t]*(?:#{1,6}|>|[-*+]|\d+[.)])[ \t]+/gm, '')
 		.replace(/\*\*|__|~~|\*/g, '')
-		.replace(/\s+/g, ' ')
-		.trim();
+		.replace(WS, ' ')
+		.replace(EDGE_WS, '');
 	const points = Array.from(text);
 	if (points.length <= COACH_PREVIEW_MAX) return text;
-	return points.slice(0, COACH_PREVIEW_MAX - 1).join('').trimEnd() + '…';
+	return points.slice(0, COACH_PREVIEW_MAX - 1).join('').replace(EDGE_WS, '') + '…';
 }

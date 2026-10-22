@@ -374,7 +374,7 @@ test('the edge runtime override is retired once the CLI pin ships the fix itself
 });
 
 test('a pin is read whatever keys sit between uses: and with:', () => {
-	const step = (extra) =>
+	const step = (/** @type {string} */ extra) =>
 		`      - uses: ./.github/actions/setup-supabase-cli\n${extra}        with:\n          version: 2.84.2\n`;
 	const text = `jobs:\n  a:\n    steps:\n${step('')}${step("        id: supabase_cli\n        if: ${{ !cancelled() }}\n")}`;
 	assert.deepEqual(cliPins(text), ['2.84.2', '2.84.2']);

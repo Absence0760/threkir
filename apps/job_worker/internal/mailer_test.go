@@ -130,8 +130,10 @@ func TestKindMute_OnlyEverSubtracts(t *testing.T) {
 // opted into everything from being emailed and pushed a provisional moderation
 // notice with no destination.
 func TestInAppOnlyKinds_NeverLeaveTheInbox(t *testing.T) {
-	if !inAppOnlyKinds["content_hidden"] {
-		t.Fatal("content_hidden must be in-app only — see the inAppOnlyKinds rationale")
+	for _, kind := range []string{"content_hidden", "plan_ai_edit"} {
+		if !inAppOnlyKinds[kind] {
+			t.Fatalf("%s must be in-app only — see the inAppOnlyKinds rationale", kind)
+		}
 	}
 	for kind := range inAppOnlyKinds {
 		for _, mode := range []string{emailModeAll, emailModeImportant, emailModeOff} {
@@ -196,7 +198,7 @@ func TestRenderNotificationEmail_RunDeepLinkAndFallback(t *testing.T) {
 // blank/garbled email.
 func TestRenderNotificationEmail_AllKinds(t *testing.T) {
 	const base = "https://threkir.test"
-	ev, run, club := "evt-1", "run-1", "club-1"
+	ev, run, club, plan := "evt-1", "run-1", "club-1", "plan-1"
 
 	cases := []struct {
 		kind     string
@@ -209,6 +211,9 @@ func TestRenderNotificationEmail_AllKinds(t *testing.T) {
 		{"event_waitlist_slot", NotificationRow{Kind: "event_waitlist_slot", EventID: &ev}, base + "/events/evt-1"},
 		{"plan_update", NotificationRow{Kind: "plan_update"}, base + "/plans"},
 		{"plan_assigned", NotificationRow{Kind: "plan_assigned"}, base + "/plans"},
+		// Sent to the assigning coach, whose view of the athlete's plan is the
+		// same /plans/{id} page (decisions § 2230).
+		{"plan_ai_edit", NotificationRow{Kind: "plan_ai_edit", PlanID: &plan}, base + "/plans/plan-1"},
 		{"workout_reminder", NotificationRow{Kind: "workout_reminder"}, base + "/plans"},
 		{"message", NotificationRow{Kind: "message"}, base + "/messages"},
 		{"club_post", NotificationRow{Kind: "club_post", ClubID: &club}, base + "/clubs/club-1"},

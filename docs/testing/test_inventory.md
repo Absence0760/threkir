@@ -716,6 +716,10 @@ The web half of the `weekly_goal` parity pair (issue #902 § 5): the weekly dist
 
 The Dart half of the `weekly_goal` pair, case for case with `weekly_goal.test.ts` (web's `'km' | 'mi'` is `DistanceUnit`).
 
+### `apps/mobile_android/test/settings_preferences_coach_inbox_test.dart` — 4 tests
+
+The AI Coach placement tile on Settings → Preferences (decisions § 2227): with nothing stored it reads pinned, it reads a stored `listed`, picking Hidden writes `messages_coach_row: hidden` to the universal bag, and dismissing the picker writes nothing.
+
 ### `apps/mobile_android/test/settings_preferences_weekly_goal_test.dart` — 3 tests
 
 The mobile weekly-goal editor on Settings → Preferences: a miles runner's 50000 m goal pre-fills the dialog as 31.1 with an "mi" suffix, saving that untouched figure pushes 50000 back unchanged, and 42.2 typed in kilometres pushes 42200.

@@ -3548,9 +3548,10 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          legal_hold: boolean
           notes: string | null
           reason: string
-          reporter_id: string
+          reporter_id: string | null
           resolution: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -3564,9 +3565,10 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          legal_hold?: boolean
           notes?: string | null
           reason: string
-          reporter_id: string
+          reporter_id?: string | null
           resolution?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -3580,9 +3582,10 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          legal_hold?: boolean
           notes?: string | null
           reason?: string
-          reporter_id?: string
+          reporter_id?: string | null
           resolution?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -6438,7 +6441,9 @@ export type Database = {
         Returns: {
           created_at: string
           id: string
+          legal_hold: boolean
           notes: string
+          purge_after: string
           reason: string
           reporter_id: string
           resolution: string
@@ -6448,6 +6453,19 @@ export type Database = {
           snapshot_body: string
           snapshot_sent_at: string
           status: string
+        }[]
+      }
+      fetch_resolved_reports: {
+        Args: { p_limit?: number }
+        Returns: {
+          held_count: number
+          last_reviewed_at: string
+          next_purge_after: string
+          page_id: string
+          report_count: number
+          shadow_hidden: boolean
+          target_id: string
+          target_kind: string
         }[]
       }
       find_backlogged_jobs: {
@@ -7460,6 +7478,10 @@ export type Database = {
           p_subscription: Json
         }
         Returns: undefined
+      }
+      set_report_legal_hold: {
+        Args: { p_hold: boolean; p_report_id: string }
+        Returns: boolean
       }
       set_run_expected_return: {
         Args: { p_expected_return_at: string; p_run_id: string }

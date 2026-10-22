@@ -9,7 +9,7 @@ here at least **30 days before activation** in production.
 
 If you object to a planned change you can:
 
-1. Email `privacy@<your-domain>` ([live](mailto:privacy@<your-domain>))
+1. Email `privacy@threkir.com` ([live](mailto:privacy@threkir.com))
    before the activation date listed below — we will pause the rollout
    while we discuss your case.
 2. Delete your account via Settings → Account → Delete account before
@@ -106,11 +106,12 @@ will diff against this baseline.
 
 * **What changes**: the AI Coach's context now names, in a new consent version, two data categories it had already been sending without any disclosure: a summary of the runner's recent gym sessions, and (only with health-data consent) a 7-day nutrition summary. Runners who accepted an earlier AI disclosure stop sending both until they accept v6; their Coach keeps working on the rest. The disclosure also names units, the weekly distance goal and the Coach personality, which the Coach already received and keeps receiving under earlier acceptances. Raw resting / max HR are withheld below v6 too, and the display name is no longer sent to the Coach at all (decisions § 2229).
 * **Why**: the consent copy did not describe what the Coach sends (issue #1217, decisions § 2218).
-* **Activation date**: not before the counsel / CISO sign-off on the v6 AI-disclosure copy. Until this change deploys, prod keeps sending both categories under v1-v5 acceptances, as it has since the multi-modal work; the deploy itself stops that for every runner below v6, so the sign-off is worth doing promptly.
+* **Activation date**: the deploy that carries v6, after the owner's sign-off on 2026-10-22 (no counsel retained; the memo above is the review). Until this change deploys, prod keeps sending both categories under v1-v5 acceptances, as it has since the multi-modal work; the deploy itself stops that for every runner below v6, so the sign-off is worth doing promptly.
 * **Data categories affected**: gym-session summaries (date, session name, exercise and set counts, total volume); 7-day nutrition summary (days logged, average calories, protein, carbs, fat), Art. 9 health data gated on health-data consent.
 * **Region**: us-east-1 (unchanged).
 * **DPA**: <https://www.anthropic.com/legal/data-processing-addendum> (unchanged).
 * **Opt-out path**: don't accept AI disclosure v6 (the Coach still works without these categories); withdraw AI consent or health-data consent in Settings → Account.
+* **Assessment (2026-10-22)**: the pre-v6 sending is assessed as a lawful-basis and transparency gap, not a personal data breach: it was an intended disclosure to a contracted processor, with no security failure, so Art 33/34 is not triggered. Gym summaries were sent from 2026-06-03, the nutrition summary (with health-data consent) from 2026-06-03, and units, goal, personality, display name and resting / max HR from 2026-05-03. Anthropic deletes API inputs within 30 days. Record: [`assessments.md`](assessments.md) § 2026-10-22; memo `reviews/legal-ai-disclosure-v6.md`.
 
 ---
 
@@ -133,4 +134,4 @@ will diff against this baseline.
 Last updated 2026-05-26. The audit trail of edits to this file is the
 git history of `docs/compliance/sub-processor-changelog.md`. If you
 need a notarised log of changes prior to a specific date, email
-`privacy@<your-domain>`.
+`privacy@threkir.com`.

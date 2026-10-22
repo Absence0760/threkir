@@ -1,4 +1,4 @@
--- Switch the report retention purge on (decisions § 2231 amendment). The
+-- Switch the report retention purge on (decisions § 2234). The
 -- 6/12-month windows were approved by the owner as controller, on the memo in
 -- reviews/legal-dm-deletion-rule.md. Left off, every resolved report and its
 -- direct-message snapshot would be kept forever, which Art 5(1)(e) does not

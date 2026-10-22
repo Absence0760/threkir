@@ -226,9 +226,12 @@ rather than against a list of known-bad names.
 
 **Added 2026-10-21 (decisions § 2221, § 2231):** both rails add
 `reports_against_my_messages.json`, the snapshot of each direct message of
-the subject's that someone reported (its body and send time, with the report's reason and status), with the
-reporter anonymised, so an Art 15 copy includes their own words held as
-evidence. A report's `legal_hold` is included in the reporter's own export
+the subject's that someone reported (its body and send time, with the report's reason and status), so an
+Art 15 copy includes their own words held as evidence. Reporter identity
+is withheld. For a direct message the reporter is necessarily the
+recipient, so the report's free-text notes are never included, and a
+report still pending review is left out until it is resolved (Art 15(4);
+corrected 2026-10-22, `reports_against_me.json` drops `notes` too). A report's `legal_hold` is included in the reporter's own export
 and never in an against-me export (`reports_against_me.json` /
 `reports_against_my_messages.json`), so the reported person is not told a
 report is being kept for legal reasons.

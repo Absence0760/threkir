@@ -111,7 +111,7 @@ will diff against this baseline.
 * **Region**: us-east-1 (unchanged).
 * **DPA**: <https://www.anthropic.com/legal/data-processing-addendum> (unchanged).
 * **Opt-out path**: don't accept AI disclosure v6 (the Coach still works without these categories); withdraw AI consent or health-data consent in Settings → Account.
-* **Assessment (2026-10-22)**: the pre-v6 sending is assessed as a lawful-basis and transparency gap, not a personal data breach: it was an intended disclosure to a contracted processor, with no security failure, so Art 33/34 is not triggered. Gym summaries were sent from 2026-06-03, the nutrition summary (with health-data consent) from 2026-06-03, and units, goal, personality, display name and resting / max HR from 2026-05-03. Anthropic deletes API inputs within 30 days. Record: [`assessments.md`](assessments.md) § 2026-10-22; memo `reviews/legal-ai-disclosure-v6.md`.
+* **Assessment (2026-10-22)**: the pre-v6 sending is assessed as a lawful-basis and transparency gap, not a personal data breach: it was an intended disclosure to a contracted processor, with no security failure, so Art 33/34 is not triggered. Gym summaries were sent from 2026-06-03, the nutrition summary (with health-data consent) from 2026-06-03, and units, goal, personality, display name and resting / max HR from 2026-05-03. Anthropic deletes API inputs within 30 days. Record: the 2026-10-22 entry in [`assessments.md`](assessments.md); memo `reviews/legal-ai-disclosure-v6.md`.
 
 ---
 

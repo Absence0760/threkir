@@ -8,14 +8,15 @@
 --     run_count = 0, and the old `is_featured or run_count > 0` gate hid it;
 --   * a new `official` lens returns only official routes;
 --   * official routes rank first (then featured, then run_count, as before);
---   * every lens but `official` caps official pins at a quarter of p_limit
---     (25 of the clients' 100). Ranking official first without a cap would let
---     one organiser with a few hundred traced courses in a city fill the whole
---     viewport and hide every community route; a quarter keeps the organiser's
---     courses visible while leaving at least three quarters of the slots to the
---     community whenever the community has that many routes in view. The
---     `official` lens is uncapped because asking for official routes is the
---     point of it;
+--   * every lens but `official` lets at most a quarter of p_limit (25 of the
+--     clients' 100) official pins rank AHEAD of community routes. Ranking
+--     official first without a cap would let one organiser with a few hundred
+--     traced courses in a city fill the whole viewport and hide every
+--     community route. The cap is a ranking tier, not a filter: official
+--     routes past it rank after the community routes and still fill any slots
+--     the community leaves empty, so a sparse viewport (or a `friends` lens on
+--     an organiser you follow) loses nothing. The `official` lens is uncapped
+--     because asking for official routes is the point of it;
 --   * `hidden_gems` excludes official routes, the way it excludes featured
 --     ones: an official route is always surfaced by `popular`, so it is not
 --     hidden.
@@ -134,10 +135,15 @@ as $$
     ST_Y(l.start_point::geometry) as lat,
     l.is_official
   from lensed l
-  where p_filter = 'official'
-    or l.is_official = false
-    or l.official_rank <= greatest(1, coalesce(p_limit, 100) / 4)
-  order by l.is_official desc, l.is_featured desc, l.run_count desc, l.created_at desc
+  order by
+    case
+      when l.is_official
+        and (p_filter = 'official' or l.official_rank <= greatest(1, coalesce(p_limit, 100) / 4))
+        then 0
+      when not l.is_official then 1
+      else 2
+    end,
+    l.is_featured desc, l.run_count desc, l.created_at desc
   limit p_limit;
 $$;
 

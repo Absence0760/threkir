@@ -2,8 +2,10 @@
 -- first (issue #1190 § 4, decisions § 2227).
 --
 --   * an official route qualifies for a pin with no runs and no editorial pick;
---   * official routes rank first, capped at a quarter of p_limit outside the
---     `official` lens so they cannot crowd community routes out of a viewport;
+--   * official routes rank first, at most a quarter of p_limit of them ahead
+--     of the community outside the `official` lens; the rest rank after the
+--     community and backfill empty slots, so they never crowd it out and
+--     never vanish from a sparse viewport;
 --   * the `official` lens is uncapped and holds only official routes;
 --   * `hidden_gems` never offers an official route;
 --   * clubs_in_bbox ranks a verified club above a bigger unverified one.
@@ -79,24 +81,27 @@ select ok(
   'an official route with no runs qualifies for a popular pin'
 );
 
--- 4. The cap: p_limit 8 leaves room for 8 / 4 = 2 official pins...
+-- 4. The cap: p_limit 8 lets 8 / 4 = 2 official pins rank first...
+select results_eq(
+  $$ select is_official from discoverable_routes_in_bbox(150.0, -40.3, 150.3, -40.0, 8, 'popular') limit 2 $$,
+  $$ values (true), (true) $$,
+  'at most a quarter of p_limit official pins rank ahead of the community'
+);
+
+-- 5. ...then every community route in view, before any further official one.
+select results_eq(
+  $$ select id from discoverable_routes_in_bbox(150.0, -40.3, 150.3, -40.0, 8, 'popular') offset 2 limit 4 $$,
+  $$ values ('0fd13333-0000-0000-0000-000000000001'::uuid), ('0fd13333-0000-0000-0000-000000000002'::uuid),
+            ('0fd13333-0000-0000-0000-000000000003'::uuid), ('0fd13333-0000-0000-0000-000000000004'::uuid) $$,
+  'the cap keeps community routes their slots, ranked by run count'
+);
+
+-- 6. The cap is a tier, not a filter: official routes past it fill the slots
+--    the community leaves empty.
 select is(
   (select count(*)::int from discoverable_routes_in_bbox(150.0, -40.3, 150.3, -40.0, 8, 'popular') where is_official),
-  2,
-  'official pins are capped at a quarter of p_limit'
-);
-
--- 5. ...and every community route in view still gets its pin.
-select is(
-  (select count(*)::int from discoverable_routes_in_bbox(150.0, -40.3, 150.3, -40.0, 8, 'popular') where not is_official),
   4,
-  'the cap leaves community routes their slots'
-);
-
--- 6. Official ranks first.
-select ok(
-  (select is_official from discoverable_routes_in_bbox(150.0, -40.3, 150.3, -40.0, 8, 'popular') limit 1),
-  'official routes rank above community routes'
+  'official routes past the cap backfill the unused slots'
 );
 
 -- 7. With room to spare, the cap scales with p_limit (100 / 4 = 25 > 6).

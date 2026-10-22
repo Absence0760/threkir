@@ -128,6 +128,8 @@ grant execute on function public.is_official(public.session_plans) to anon, auth
 -- ── 3. Route read views gain a trailing `is_official` ────────────────────────
 -- Bodies re-emitted verbatim from their latest definition (20270802000003)
 -- with one column appended. Existing grants survive `create or replace view`.
+-- The null test short-circuits the definer call (which cannot be inlined) for
+-- every clubless route the view reads.
 
 create or replace view public_routes as
   select
@@ -146,7 +148,7 @@ create or replace view public_routes as
     r.featured_at,
     r.run_count,
     case when is_public_club_by_id(r.club_id) then r.club_id else null::uuid end as club_id,
-    private.is_official_publisher(r.club_id, r.user_id) as is_official
+    (r.club_id is not null and private.is_official_publisher(r.club_id, r.user_id)) as is_official
   from routes r
   where r.is_public = true
     and r.shadow_hidden = false;
@@ -168,7 +170,7 @@ create or replace view shared_routes as
     r.featured_at,
     r.run_count,
     case when is_public_club_by_id(r.club_id) then r.club_id else null::uuid end as club_id,
-    private.is_official_publisher(r.club_id, r.user_id) as is_official
+    (r.club_id is not null and private.is_official_publisher(r.club_id, r.user_id)) as is_official
   from routes r
   where r.is_public = false
     and r.shadow_hidden = false

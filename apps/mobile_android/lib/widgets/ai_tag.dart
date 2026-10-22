@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart';
 
 import '../l10n/gen/app_localizations.dart';
 
@@ -12,27 +13,17 @@ class AiTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
+    final cs = Theme.of(context).colorScheme;
     return Semantics(
       label: l10n.messagesAiTagSr,
       excludeSemantics: true,
-      child: Container(
+      child: StatusPill(
         key: const ValueKey('ai-tag'),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest,
-          border: Border.all(color: cs.outlineVariant),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Text(
-          l10n.messagesAiTag,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: cs.onSurfaceVariant,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.4,
-          ),
-        ),
+        label: l10n.messagesAiTag,
+        foreground: cs.onSurfaceVariant,
+        fill: cs.surfaceContainerHighest,
+        outline: cs.outlineVariant,
+        size: StatusPillSize.compact,
       ),
     );
   }

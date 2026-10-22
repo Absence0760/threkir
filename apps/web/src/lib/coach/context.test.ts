@@ -31,9 +31,8 @@ test('subscription_tier is NOT projected into the Anthropic context', () => {
 	// audit/coach May 2026 Medium #9 — Art 5(1)(c) data minimisation.
 	// The handler knows tier and adjusts limits server-side; sending
 	// billing-tier metadata to a sub-processor has no functional
-	// purpose. The profile projection must include display_name +
-	// preferred_unit only (plus internal consent flags read off the
-	// row but not emitted).
+	// purpose. The profile projection must include preferred_unit only
+	// (plus internal consent flags read off the row but not emitted).
 	const profileObj = SRC.match(/const profile = profileRowTyped[\s\S]*?\{([\s\S]*?)\}[\s\S]*?:\s*null;/);
 	assert.ok(
 		profileObj,
@@ -43,6 +42,13 @@ test('subscription_tier is NOT projected into the Anthropic context', () => {
 		profileObj![1].includes('subscription_tier'),
 		false,
 		'subscription_tier MUST NOT appear in the Anthropic-bound profile projection',
+	);
+	// Decisions § 2229: nothing in the Coach's prompt uses the display
+	// name, so it is not sent either.
+	assert.equal(
+		profileObj![1].includes('display_name'),
+		false,
+		'display_name MUST NOT appear in the Anthropic-bound profile projection',
 	);
 });
 
@@ -167,7 +173,7 @@ test('buildContext caps plan_weeks + plan_workouts row counts', async () => {
 		'user-1',
 		null,
 		10,
-		{ display_name: 'R', preferred_unit: 'km', health_data_consent_at: null },
+		{ preferred_unit: 'km', health_data_consent_at: null },
 		'2026-06-15',
 		AI_DISCLOSURE_CURRENT_VERSION,
 	);
@@ -254,7 +260,6 @@ function runWithConsent(consentAt: string | null) {
 		route_id: null,
 	};
 	const profileRow: CoachProfileRow = {
-		display_name: 'Runner',
 		preferred_unit: 'km',
 		health_data_consent_at: consentAt,
 	};
@@ -378,7 +383,6 @@ function coachTenantFixture() {
 }
 
 const COACH_PROFILE: CoachProfileRow = {
-	display_name: 'Coach',
 	preferred_unit: 'km',
 	health_data_consent_at: '2026-06-01T00:00:00.000Z',
 };

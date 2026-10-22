@@ -536,6 +536,18 @@ Deno.test('no reports-target (against-me) spec leaks reporter_id in its select',
 	assertEquals(offenders.length, 0, `against-me reports spec leaks reporter_id: ${offenders.map((o) => o.entry).join(', ')}`);
 });
 
+Deno.test('no against-me reports spec discloses a legal hold', () => {
+	// reports.legal_hold (20271021000040) marks a report a moderator is keeping
+	// for a legal claim. The reporter's own history ships it (it is the storage
+	// period of their own data, Art 15(1)(d)); the reported person's projections
+	// must not, or the archive tips them off that a claim is in prospect
+	// (decisions § 2231).
+	const offenders = buildBackupSpecs(TEST_UID)
+		.filter((s) => s.table === 'reports' && !s.filter.startsWith('reporter_id='))
+		.filter((s) => s.select === '*' || s.select.includes('legal_hold'));
+	assertEquals(offenders.length, 0, `against-me reports spec discloses legal_hold: ${offenders.map((o) => o.entry).join(', ')}`);
+});
+
 Deno.test('filter values are URL-encoded (raw filter is interpolated into the REST URL)', () => {
 	// index.ts builds the PostgREST URL as `...?select=...&${spec.filter}`,
 	// so any non-URL-safe character in the id must already be encoded in

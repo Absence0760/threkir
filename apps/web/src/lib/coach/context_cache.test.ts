@@ -34,7 +34,6 @@ function fakeSupabase(tableData: Record<string, unknown>) {
 }
 
 const profileRow: CoachProfileRow = {
-	display_name: 'Runner',
 	preferred_unit: 'km',
 	health_data_consent_at: '2026-06-01T00:00:00.000Z',
 };

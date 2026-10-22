@@ -6725,7 +6725,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get coachConsentBulletPlan =>
-      '選択中のアクティブなトレーニングプラン: プラン名、ステータス、目標レースと目標タイム、作成の基になった最近の5Kタイムと走力スコア、期間、トレーニング日、ルール、メモ。各週のフェーズ、目標距離、メモ。各ワークアウトの日付、種類、目標、構成、メモ、レース名と優先度、完了したかスキップしたか。加えて、健康データの利用に同意している場合のみ心拍数の目標。';
+      '選択中のトレーニングプラン（1つまたは複数）: 各プランについて、プラン名、ステータス、目標レースと目標タイム、作成の基になった最近の5Kタイムと走力スコア、期間、トレーニング日、ルール、メモ。各週のフェーズ、目標距離、メモ。各ワークアウトの日付、種類、目標、構成、メモ、レース名と優先度、完了したかスキップしたか。加えて、健康データの利用に同意している場合のみ心拍数の目標。';
 
   @override
   String get coachConsentBulletMessages => '下の画面で入力するチャットメッセージ。';
@@ -6744,7 +6744,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get coachConsentBulletCoachSettings =>
-      '表示名と単位、安静時心拍数と最大心拍数（健康データの利用に同意している場合のみ）、週間距離の目標、選択したコーチの性格。';
+      '距離の単位、安静時心拍数と最大心拍数（健康データの利用に同意している場合のみ）、週間距離の目標、選択したコーチの性格。';
 
   @override
   String get coachConsentBulletLifts =>

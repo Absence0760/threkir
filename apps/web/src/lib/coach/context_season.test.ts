@@ -127,7 +127,6 @@ function fixture(plans: Row[] = [SPRING, MARATHON, ULTRA, SUMMER, TEMPLATE, OTHE
 }
 
 const PROFILE: CoachProfileRow = {
-	display_name: 'Runner',
 	preferred_unit: 'km',
 	health_data_consent_at: '2026-06-01T00:00:00.000Z',
 };

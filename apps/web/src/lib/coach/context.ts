@@ -128,7 +128,7 @@ const COACH_PLAN_WORKOUT_HEALTH_COLUMNS: ReadonlySet<string> = new Set([
 	'target_hr_max_bpm',
 ]);
 
-/// Top-level keys registered field by field below (`profile.display_name`,
+/// Top-level keys registered field by field below (`profile.preferred_unit`,
 /// `plan_workouts.kind`, …) rather than as a whole: an `object` is one row, a
 /// `list` is rows that each carry those fields, and `blocks` is a list of
 /// objects whose keys are `COACH_SEASON_BLOCK_KEYS`, each withheld under the
@@ -167,11 +167,6 @@ const SETTINGS_LEGACY =
 	'the owner judged it low sensitivity and kept it ungated so a v1-v5 ' +
 	'Coach keeps working (issue #1217). v6 copy names it.';
 
-const HR_INPUT_LEGACY =
-	'An input the "configured HR zones" of the v1 copy are computed from, and ' +
-	'health-consent gated since v1; kept ungated by disclosure version per ' +
-	'issue #1217. v6 copy names it.';
-
 /// The plan and runs lanes have been sent since the v1 Coach, whose plan and
 /// runs bullets name them, so their fields are gated and named at v1.
 const PLAN_FIELD: CoachContextEntry = {
@@ -190,12 +185,6 @@ const RUN_FIELD: CoachContextEntry = {
 /// `context_registry.test.ts` drives every lane to prove none is, so a new
 /// lane cannot reach Anthropic without a covering consent bullet.
 export const COACH_CONTEXT_REGISTRY: Readonly<Record<string, CoachContextEntry>> = {
-	'profile.display_name': {
-		sentFrom: V1,
-		bullet: 'coachPage.consentBulletCoachSettings',
-		namedFrom: V6,
-		legacyReason: SETTINGS_LEGACY,
-	},
 	'profile.preferred_unit': {
 		sentFrom: V1,
 		bullet: 'coachPage.consentBulletCoachSettings',
@@ -224,17 +213,18 @@ export const COACH_CONTEXT_REGISTRY: Readonly<Record<string, CoachContextEntry>>
 		bullet: 'coachPage.consentBulletProfile',
 		namedFrom: V1,
 	},
+	// Art 9 health data that no copy before v6 names, so held to v6 as well as
+	// to health-data consent (decisions § 2229). The HR zones derived from
+	// them are named since v1 and keep flowing.
 	'runner_context.resting_hr_bpm': {
-		sentFrom: V1,
+		sentFrom: V6,
 		bullet: 'coachPage.consentBulletCoachSettings',
 		namedFrom: V6,
-		legacyReason: HR_INPUT_LEGACY,
 	},
 	'runner_context.max_hr_bpm': {
-		sentFrom: V1,
+		sentFrom: V6,
 		bullet: 'coachPage.consentBulletCoachSettings',
 		namedFrom: V6,
-		legacyReason: HR_INPUT_LEGACY,
 	},
 	'plan.id': PLAN_FIELD,
 	'plan.name': PLAN_FIELD,
@@ -356,7 +346,6 @@ function pickColumns(row: unknown, columns: readonly string[]): Record<string, u
 /// handler fetches this row for the consent gate and passes it in, so
 /// the same SECURITY DEFINER RPC isn't issued twice per coach message.
 export interface CoachProfileRow {
-	display_name: string | null;
 	preferred_unit: string | null;
 	health_data_consent_at: string | null;
 }
@@ -568,9 +557,10 @@ export async function buildContext(
 	// a sub-processor violates Art 5(1)(c) data minimisation (audit/coach
 	// May 2026 Medium #9).
 	const profileRowTyped = profileRow;
+	// The display name is left out: nothing in the Coach's prompt uses it, so
+	// sending it would be data for no purpose (Art 5(1)(c), decisions § 2229).
 	const profile = profileRowTyped
 		? {
-				display_name: profileRowTyped.display_name,
 				preferred_unit: profileRowTyped.preferred_unit,
 			}
 		: null;

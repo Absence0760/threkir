@@ -7052,7 +7052,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coachConsentBulletPlan =>
-      'The active training plan you have selected: its name, status, goal race and target time, the recent 5K time and running fitness score it was built from, its dates, training days, rules and notes; each week\'s phase, target distance and notes; and each workout\'s date, type, targets, structure, notes, race name and priority, and whether you completed or skipped it, with heart-rate targets only if you\'ve given health-data consent.';
+      'The training plan or plans you have selected: for each plan, its name, status, goal race and target time, the recent 5K time and running fitness score it was built from, its dates, training days, rules and notes; each week\'s phase, target distance and notes; and each workout\'s date, type, targets, structure, notes, race name and priority, and whether you completed or skipped it, with heart-rate targets only if you\'ve given health-data consent.';
 
   @override
   String get coachConsentBulletMessages =>
@@ -7072,7 +7072,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coachConsentBulletCoachSettings =>
-      'Your display name and units, your resting and maximum heart rate (only if you\'ve given health-data consent), your weekly distance goal, and the Coach personality you chose.';
+      'Your distance units, your resting and maximum heart rate (only if you\'ve given health-data consent), your weekly distance goal, and the Coach personality you chose.';
 
   @override
   String get coachConsentBulletLifts =>

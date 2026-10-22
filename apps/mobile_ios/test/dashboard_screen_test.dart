@@ -15,6 +15,7 @@ import '../lib/local_gym_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
+import '../lib/pro_sellable.dart';
 import '../lib/screens/dashboard_screen.dart';
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/screens/run_detail_screen.dart';
@@ -23,6 +24,10 @@ import '../lib/training_service.dart';
 import '../lib/widgets/mileage_trend_card.dart';
 import '../lib/widgets/run_list_tile.dart';
 import '../lib/widgets/todays_workout_card.dart';
+
+/// The Coach live on this deploy, so the gated coach entry can render.
+Future<ProPerks> _coachLive() async =>
+    const ProPerks(coach: true, routeGen: false);
 
 /// Signed-in fake so the gated coach entry renders.
 class _FakeApi extends ApiClient {
@@ -1275,6 +1280,7 @@ void main() {
                 gymStore: LocalGymStore(),
                 foodStore: LocalFoodStore(),
                 preferences: prefs,
+                loadPerks: _coachLive,
               ),
             ),
           );
@@ -1332,12 +1338,63 @@ void main() {
                   gymStore: LocalGymStore(),
                   foodStore: LocalFoodStore(),
                   preferences: prefs,
+                  loadPerks: _coachLive,
                 ),
               ),
             );
             await tester.pump();
             await tester.pump();
             expect(find.text(subtitle), findsOneWidget);
+          } finally {
+            dir.deleteSync(recursive: true);
+          }
+        });
+      });
+    }
+
+    for (final (label, perks) in [
+      ('the manifest says the Coach is off', () async => ProPerks.none),
+      (
+        'the manifest cannot be read',
+        () async => throw const SocketException('unreachable'),
+      ),
+    ]) {
+      testWidgets('no coach card when $label', (tester) async {
+        // Decisions § 2227: the Messages inbox hides its Coach row unless the
+        // capability manifest says the Coach is live, failing closed on an
+        // unreachable manifest. Home's card follows the same signal, so it
+        // never opens a Coach this deploy does not run.
+        await tester.runAsync(() async {
+          SharedPreferences.setMockInitialValues({});
+          final prefs = Preferences();
+          await prefs.init();
+          final dir = Directory.systemTemp.createTempSync('dashboard_coach_off_');
+          try {
+            final seedStore = LocalRunStore();
+            await seedStore.init(overrideDirectory: dir);
+            await seedStore.save(_run(id: 'r1'));
+            final runStore = LocalRunStore();
+            await runStore.init(overrideDirectory: dir);
+            await tester.pumpWidget(
+              MaterialApp(
+                localizationsDelegates:
+                    AppLocalizations.localizationsDelegates,
+                supportedLocales: AppLocalizations.supportedLocales,
+                home: DashboardScreen(
+                  apiClient: _FakeApi(),
+                  training: _FakeTraining(null),
+                  runStore: runStore,
+                  routeStore: LocalRouteStore(),
+                  gymStore: LocalGymStore(),
+                  foodStore: LocalFoodStore(),
+                  preferences: prefs,
+                  loadPerks: perks,
+                ),
+              ),
+            );
+            await tester.pump();
+            await tester.pump();
+            expect(find.text('Ask your coach'), findsNothing);
           } finally {
             dir.deleteSync(recursive: true);
           }

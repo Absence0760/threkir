@@ -7131,7 +7131,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get coachConsentBulletPlan =>
-      'Le plan d\'entraînement actif que vous avez sélectionné : son nom, son statut, la course visée et le temps visé, le temps récent sur 5 km et le score de forme à partir desquels il a été construit, ses dates, ses jours d\'entraînement, ses règles et ses notes ; pour chaque semaine, la phase, la distance cible et les notes ; et pour chaque séance, la date, le type, les objectifs, la structure, les notes, le nom et la priorité de la course, et si vous l\'avez effectuée ou ignorée, ainsi que les objectifs de fréquence cardiaque (uniquement si vous avez donné votre consentement aux données de santé).';
+      'Le ou les plans d\'entraînement que vous avez sélectionnés : pour chaque plan, son nom, son statut, la course visée et le temps visé, le temps récent sur 5 km et le score de forme à partir desquels il a été construit, ses dates, ses jours d\'entraînement, ses règles et ses notes ; pour chaque semaine, la phase, la distance cible et les notes ; et pour chaque séance, la date, le type, les objectifs, la structure, les notes, le nom et la priorité de la course, et si vous l\'avez effectuée ou ignorée, ainsi que les objectifs de fréquence cardiaque (uniquement si vous avez donné votre consentement aux données de santé).';
 
   @override
   String get coachConsentBulletMessages =>
@@ -7151,7 +7151,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get coachConsentBulletCoachSettings =>
-      'Votre nom affiché et vos unités, votre fréquence cardiaque au repos et maximale (uniquement si vous avez donné votre consentement aux données de santé), votre objectif de distance hebdomadaire et la personnalité du coach que vous avez choisie.';
+      'Vos unités de distance, votre fréquence cardiaque au repos et maximale (uniquement si vous avez donné votre consentement aux données de santé), votre objectif de distance hebdomadaire et la personnalité du coach que vous avez choisie.';
 
   @override
   String get coachConsentBulletLifts =>

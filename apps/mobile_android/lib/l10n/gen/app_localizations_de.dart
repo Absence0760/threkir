@@ -7129,7 +7129,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentBulletPlan =>
-      'Der aktive Trainingsplan, den du ausgewählt hast: sein Name, sein Status, das Zielrennen und die Zielzeit, die aktuelle 5-km-Zeit und der Fitnesswert, auf denen er beruht, seine Datumsangaben, Trainingstage, Regeln und Notizen; für jede Woche die Phase, die Zieldistanz und die Notizen; und für jede Einheit das Datum, die Art, die Vorgaben, der Aufbau, die Notizen, der Name und die Priorität des Rennens und ob du sie absolviert oder übersprungen hast, sowie die Herzfrequenzvorgaben (nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast).';
+      'Der Trainingsplan oder die Trainingspläne, die du ausgewählt hast: für jeden Plan sein Name, sein Status, das Zielrennen und die Zielzeit, die aktuelle 5-km-Zeit und der Fitnesswert, auf denen er beruht, seine Datumsangaben, Trainingstage, Regeln und Notizen; für jede Woche die Phase, die Zieldistanz und die Notizen; und für jede Einheit das Datum, die Art, die Vorgaben, der Aufbau, die Notizen, der Name und die Priorität des Rennens und ob du sie absolviert oder übersprungen hast, sowie die Herzfrequenzvorgaben (nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast).';
 
   @override
   String get coachConsentBulletMessages =>
@@ -7149,7 +7149,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentBulletCoachSettings =>
-      'Dein Anzeigename und deine Einheiten, deine Ruheherzfrequenz und deine maximale Herzfrequenz (nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast), dein wöchentliches Distanzziel und die Coach-Persönlichkeit, die du gewählt hast.';
+      'Deine Distanzeinheit, deine Ruheherzfrequenz und deine maximale Herzfrequenz (nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast), dein wöchentliches Distanzziel und die Coach-Persönlichkeit, die du gewählt hast.';
 
   @override
   String get coachConsentBulletLifts =>

@@ -7111,7 +7111,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachConsentBulletPlan =>
-      'El plan de entrenamiento activo que has seleccionado: su nombre, estado, carrera objetivo y tiempo objetivo, el tiempo reciente en 5K y la puntuación de forma física con los que se creó, sus fechas, días de entrenamiento, reglas y notas; la fase, la distancia objetivo y las notas de cada semana; y la fecha, el tipo, los objetivos, la estructura, las notas, el nombre de la carrera y la prioridad de cada entrenamiento, y si lo has completado u omitido, además de los objetivos de frecuencia cardíaca (solo si has dado tu consentimiento de datos de salud).';
+      'El plan o los planes de entrenamiento que has seleccionado: de cada plan, su nombre, estado, carrera objetivo y tiempo objetivo, el tiempo reciente en 5K y la puntuación de forma física con los que se creó, sus fechas, días de entrenamiento, reglas y notas; la fase, la distancia objetivo y las notas de cada semana; y la fecha, el tipo, los objetivos, la estructura, las notas, el nombre de la carrera y la prioridad de cada entrenamiento, y si lo has completado u omitido, además de los objetivos de frecuencia cardíaca (solo si has dado tu consentimiento de datos de salud).';
 
   @override
   String get coachConsentBulletMessages =>
@@ -7131,7 +7131,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachConsentBulletCoachSettings =>
-      'Tu nombre visible y tus unidades, tu frecuencia cardíaca en reposo y máxima (solo si has dado tu consentimiento de datos de salud), tu objetivo de distancia semanal y la personalidad del entrenador que has elegido.';
+      'Tus unidades de distancia, tu frecuencia cardíaca en reposo y máxima (solo si has dado tu consentimiento de datos de salud), tu objetivo de distancia semanal y la personalidad del entrenador que has elegido.';
 
   @override
   String get coachConsentBulletLifts =>

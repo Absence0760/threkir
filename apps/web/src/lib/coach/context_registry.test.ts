@@ -152,7 +152,6 @@ function recordingSupabase(
 }
 
 const PROFILE: CoachProfileRow = {
-	display_name: 'Runner',
 	preferred_unit: 'km',
 	health_data_consent_at: '2026-06-01T00:00:00.000Z',
 };
@@ -236,6 +235,36 @@ test('a v6 acceptance gets the gym and nutrition lanes', async () => {
 		{ date: RECENT.slice(0, 10), title: 'Pull', exercises: 1, sets: 1, volume_kg: 300 },
 	]);
 	assert.equal((data.nutrition_7d as { avg_calories: number }).avg_calories, 2_000);
+});
+
+test('raw resting and max HR are sent only at v6, and only with health-data consent', async () => {
+	const rc = (data: Record<string, unknown>) => data.runner_context as Record<string, unknown>;
+	for (const version of [AI_DISCLOSURE_VERSION_COACH, AI_DISCLOSURE_VERSION_COACH_CROSS_TRAINING - 1]) {
+		const { data } = await contextAt(version);
+		assert.equal('resting_hr_bpm' in rc(data), false, `resting_hr_bpm sent at v${version}`);
+		assert.equal('max_hr_bpm' in rc(data), false, `max_hr_bpm sent at v${version}`);
+		// The zones derived from them are named since v1 and keep flowing.
+		assert.deepEqual(rc(data).hr_zones, [120, 140, 160, 175]);
+	}
+	const consented = await contextAt(AI_DISCLOSURE_VERSION_COACH_CROSS_TRAINING);
+	assert.equal(rc(consented.data).resting_hr_bpm, 50);
+	assert.equal(rc(consented.data).max_hr_bpm, 190);
+	const withheld = await contextAt(AI_DISCLOSURE_VERSION_COACH_CROSS_TRAINING, {
+		...PROFILE,
+		health_data_consent_at: null,
+	});
+	assert.equal(rc(withheld.data).resting_hr_bpm, null);
+	assert.equal(rc(withheld.data).max_hr_bpm, null);
+	assert.equal(rc(withheld.data).hr_zones, null);
+});
+
+test('the display name is never sent, even when the profile row carries it', async () => {
+	const { data } = await contextAt(AI_DISCLOSURE_CURRENT_VERSION, {
+		...PROFILE,
+		display_name: 'Runner',
+	} as CoachProfileRow);
+	assert.deepEqual(data.profile, { preferred_unit: 'km' });
+	assert.equal('profile.display_name' in COACH_CONTEXT_REGISTRY, false);
 });
 
 test('an unregistered key throws instead of being sent', () => {

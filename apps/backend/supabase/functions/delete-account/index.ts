@@ -480,7 +480,9 @@ async function cleanupVaultSecrets(
 // target can be a user / club / route). When target_kind = 'user',
 // the row stores the deleted user's id indefinitely — no cascade.
 // Delete those rows explicitly before the auth-row cascade so the
-// UUID doesn't outlive the user.
+// UUID doesn't outlive the user — except a report under legal hold,
+// which a moderator placed so the reported person could not erase it
+// by leaving (Art 17(3)(e), decisions § 2231).
 async function deleteUserReports(
   adminClient: DbClient,
   userId: string,
@@ -490,7 +492,8 @@ async function deleteUserReports(
       .from('reports')
       .delete({ count: 'exact' })
       .eq('target_kind', 'user')
-      .eq('target_id', userId);
+      .eq('target_id', userId)
+      .eq('legal_hold', false);
     if (error) return { ok: false, reason: error.message };
     return { ok: true, count: count ?? 0 };
   } catch (e) {

@@ -9,12 +9,7 @@
 	// options exactly as they were.
 	import { onMount, tick } from 'svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
-	import {
-		markWorkoutSkipped,
-		reschedulePlanWorkouts,
-		updatePlanWeek,
-		updatePlanWorkout
-	} from '#lib/core/data.ts';
+	import { applyAiPlanEdits, fetchPrecedingPlan } from '#lib/core/data.ts';
 	import { AI_CONSENT_HREF } from '#lib/core/ai_disclosure.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
@@ -23,6 +18,7 @@
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import {
 		applyPlanEditOps,
+		blockRaces,
 		planEditLoadCheck,
 		type PlanEditApplication,
 		type PlanEditLoadCheck,
@@ -31,9 +27,12 @@
 	import {
 		MAX_PLAN_EDIT_REQUEST_CHARS,
 		type PlanEditNote,
+		type PlanEditOp,
 		type PlanEditSnapshot,
 	} from '#lib/training/plan_edit/ops.ts';
+	import { aiPlanEditPayload, planEditBlock } from '#lib/training/plan_edit/season.ts';
 	import { PlanEditError, requestPlanEdits } from '#lib/training/plan_edit_client.ts';
+	import type { PlanRace } from '#lib/training/plan_races.ts';
 	import { recentRunVolume, type RunForVolume } from '#lib/training/plan_ramp.ts';
 	import { parseISO } from '#lib/training/training.ts';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
@@ -63,10 +62,19 @@
 	let noChanges = $state(false);
 	let confirmHarder = $state(false);
 	let heading = $state<HTMLHeadingElement>();
+	/// What the result was graded from, and the day it was graded against.
+	let basis: { ops: PlanEditOp[]; nearby: PlanRace[] } | null = null;
+	let gradedDay = '';
+	let dayChanged = $state(false);
 
 	function snapshot(): PlanEditSnapshot {
 		return {
-			plan: { start_date: plan.start_date, end_date: plan.end_date },
+			plan: {
+				start_date: plan.start_date,
+				end_date: plan.end_date,
+				goal_distance_m: plan.goal_distance_m,
+				goal_time_seconds: plan.goal_time_seconds,
+			},
 			weeks: weeks.map((w) => ({
 				id: w.id,
 				week_index: w.week_index,
@@ -95,22 +103,23 @@
 		notes = [];
 		dropped = 0;
 		try {
-			const proposal = await requestPlanEdits(plan.id, text, today);
+			// The block before this one: a B/C race at its end has a recovery
+			// window reaching into this plan, which a scale-up must not undo,
+			// and `apply_ai_plan_edits` re-checks it (decisions § 2230).
+			const [proposal, preceding] = await Promise.all([
+				requestPlanEdits(plan.id, text, today),
+				fetchPrecedingPlan(plan.start_date),
+			]);
 			notes = proposal.notes;
 			dropped = proposal.dropped;
-			const before = snapshot();
-			const application = applyPlanEditOps(before, proposal.ops, today);
-			if (application.workouts.length === 0 && application.weeks.length === 0) {
-				noChanges = true;
-			} else {
-				const check = planEditLoadCheck(
-					before,
-					application.after,
-					recentRunVolume(recentRuns, Date.now()),
-					today,
-				);
-				result = { application, check };
-			}
+			basis = {
+				ops: proposal.ops,
+				nearby: preceding
+					? blockRaces(planEditBlock(preceding.plan, preceding.weeks, preceding.workouts).snapshot)
+					: [],
+			};
+			dayChanged = false;
+			grade();
 		} catch (e) {
 			if (!(e instanceof PlanEditError)) {
 				console.error('AI plan edit request failed', { message: thrownMessage(e) });
@@ -123,43 +132,66 @@
 		heading?.focus();
 	}
 
+	/// Apply the operations and grade the result against `today`, recording
+	/// the day it describes.
+	function grade(): void {
+		if (!basis) return;
+		gradedDay = today;
+		const before = snapshot();
+		const application = applyPlanEditOps(before, basis.ops, today, basis.nearby);
+		if (application.workouts.length === 0 && application.weeks.length === 0) {
+			noChanges = true;
+			result = null;
+			return;
+		}
+		const check = planEditLoadCheck(before, application.after, recentRunVolume(recentRuns, Date.now()), today);
+		result = { application, check };
+	}
+
+	/// The page's `today` moves at local midnight. Changes graded against the
+	/// day before would include a workout now in the past, which
+	/// `apply_ai_plan_edits` refuses whole, so re-grade against the new day and
+	/// ask for another look instead of applying (decisions § 2230).
+	function dayTurned(): boolean {
+		if (gradedDay === today) return false;
+		dayChanged = true;
+		grade();
+		return true;
+	}
+
 	function onApplyClick(): void {
 		if (!result || result.check.verdict === 'reject') return;
+		if (dayTurned()) return;
 		if (result.check.verdict === 'confirm') confirmHarder = true;
 		else void persist();
 	}
 
 	async function persist(): Promise<void> {
 		confirmHarder = false;
+		if (dayTurned()) return;
 		if (!result || result.check.verdict === 'reject' || saving) return;
 		saving = true;
-		const { application } = result;
+		const { application, check } = result;
 		try {
-			// Dates first and together: a swap, or a move onto a day another
-			// row is leaving, passes through an occupied day, which only the
-			// one-transaction reschedule can do (decisions § 2073).
-			await reschedulePlanWorkouts(
+			// One transaction for every change, re-checked server-side
+			// (`apply_ai_plan_edits`, decisions § 2230): a swap passing through
+			// an occupied day, a skip and a week target land together or not
+			// at all.
+			await applyAiPlanEdits(
 				plan.id,
-				application.workouts
-					.filter((c) => c.patch?.scheduled_date !== undefined)
-					.map((c) => ({ id: c.workoutId, date: c.patch!.scheduled_date! })),
-			);
-			await Promise.all([
-				...application.workouts.map(async (c) => {
-					const fields = { ...c.patch };
-					delete fields.scheduled_date;
-					if (Object.keys(fields).length > 0) await updatePlanWorkout(c.workoutId, fields);
-					if (c.skip) await markWorkoutSkipped(c.workoutId, true);
+				today,
+				false,
+				aiPlanEditPayload({
+					scope: 'plan',
+					blocks: [{ planId: plan.id, name: plan.name, application, check }],
+					verdict: check.verdict,
 				}),
-				...application.weeks.map((w) => updatePlanWeek(w.weekId, { target_volume_m: w.afterVolumeM })),
-			]);
+			);
 			showToast(m('planDetail.aiAdjustApplied'));
 			result = null;
 			await onapplied();
 		} catch (e) {
 			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
-			// Some rows may have saved: reload so the page shows the real state.
-			await onapplied();
 		} finally {
 			saving = false;
 		}
@@ -222,6 +254,10 @@
 				<a href={AI_CONSENT_HREF}>{m('planDetail.aiAdjustErrorConsentLink')}</a>
 			{/if}
 		</p>
+	{/if}
+
+	{#if dayChanged && result}
+		<p class="note" role="status" data-testid="ai-adjust-day-changed">{m('coachChat.planEditDayChanged')}</p>
 	{/if}
 
 	{#if notes.includes('unsupported')}

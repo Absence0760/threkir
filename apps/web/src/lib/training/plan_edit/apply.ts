@@ -21,14 +21,22 @@
 //   - a week newly ELEVATED, or newly stacked hard days, needs a second,
 //     explicit confirmation naming what got harder.
 //
-// Pure: no Supabase, no DOM. The page persists the date changes together through
-// `reschedulePlanWorkouts`, then the other fields through
-// `updatePlanWorkout` / `updatePlanWeek` / `markWorkoutSkipped`.
+// A scale-up also leaves alone every workout inside a B or C race's taper or
+// recovery window (`race_taper.ts`, decisions § 2051) and every workout that
+// taper already eased (`race_taper_applied_at`): the scale_week clamp keeps a
+// taper or race WEEK at 1.0, and this keeps the B/C windows inside a build
+// week from being undone by "a bit more volume".
+//
+// Pure: no Supabase, no DOM. Every change persists in one transaction through
+// `apply_ai_plan_edits` (`aiPlanEditPayload` in `season.ts`), which re-checks
+// each one (decisions § 2230).
 
 import { injuryRiskBand, type InjuryRiskBand } from '../coach_load';
 import { recoveryWeekVolume, recoveryWorkoutPatch } from '../plan_bulk_ops';
 import { canDisplaceForMove } from '../plan_move';
 import { MIN_ACTIVE_WEEKS, type RecentVolume } from '../plan_ramp';
+import { planRaces, type PlanRace } from '../plan_races';
+import { raceTaperProposals } from '../race_taper';
 import {
 	isEditableWorkout,
 	isOpenWeek,
@@ -45,7 +53,7 @@ const HARD_KINDS: ReadonlySet<string> = new Set(['tempo', 'interval', 'marathon_
 /// and `plan_ramp` already use.
 export const PLAN_EDIT_CHRONIC_WEEKS = 4;
 
-export interface WorkoutPatch {
+export type WorkoutPatch = {
 	scheduled_date?: string;
 	kind?: string;
 	target_distance_m?: number | null;
@@ -53,7 +61,7 @@ export interface WorkoutPatch {
 	target_pace_sec_per_km?: number | null;
 	target_pace_tolerance_sec?: number | null;
 	structure?: null;
-}
+};
 
 export interface WorkoutState {
 	scheduledDate: string;
@@ -117,6 +125,71 @@ function stateOf(w: PlanEditWorkout): WorkoutState {
 	};
 }
 
+/// The races a block holds, as `planRaces` reads them (an unset priority is A
+/// on the plan's end date, C anywhere else).
+export function blockRaces(snapshot: PlanEditSnapshot): PlanRace[] {
+	return planRaces(
+		{
+			end_date: snapshot.plan.end_date,
+			goal_distance_m: snapshot.plan.goal_distance_m,
+			goal_time_seconds: snapshot.plan.goal_time_seconds,
+			trimmed_at: null,
+		},
+		snapshot.workouts.map((w) => ({ ...w, target_duration_seconds: w.target_duration_seconds ?? null })),
+	);
+}
+
+/// Every race counts, ahead or already run: a race behind today still has its
+/// recovery window ahead of it, and a pre-race window behind today touches no
+/// workout an edit may change.
+const RACE_WINDOW_PROBE_FROM = '0001-01-01';
+
+/// Workouts a scale-up must not reach: those a B/C race taper already eased,
+/// and those inside a B/C race window, from the block's own races and any
+/// `nearbyRaces` of the blocks chained around it. Membership comes from
+/// `raceTaperProposals` itself, so the windows are exactly the ones the plan
+/// page proposes: each candidate is probed as an undone 10 km tempo on its own
+/// day, which every window (taper, shake-out, recovery) changes.
+export function noScaleUpWorkoutIds(
+	snapshot: PlanEditSnapshot,
+	nearbyRaces: readonly PlanRace[] = [],
+): Set<string> {
+	const ids = new Set<string>();
+	for (const w of snapshot.workouts) if (w.race_taper_applied_at != null) ids.add(w.id);
+	const seen = new Set<string>();
+	const races = [...blockRaces(snapshot), ...nearbyRaces]
+		.filter((r) => {
+			if (r.priority === 'A') return false;
+			const key = r.workoutId ?? `${r.date}|${r.name}`;
+			if (seen.has(key)) return false;
+			seen.add(key);
+			return true;
+		})
+		.sort((a, b) => a.date.localeCompare(b.date) || (a.workoutId ?? '').localeCompare(b.workoutId ?? ''));
+	if (races.length === 0) return ids;
+	const probes = raceTaperProposals({
+		workouts: snapshot.workouts
+			.filter((w) => w.kind !== 'rest' && w.kind !== 'race')
+			.map((w) => ({
+				id: w.id,
+				scheduledDate: w.scheduled_date,
+				kind: 'tempo',
+				targetDistanceM: 10_000,
+				targetDurationSeconds: null,
+				structure: null,
+				notes: null,
+				phase: null,
+				completed: false,
+				skipped: false,
+				taperApplied: false,
+			})),
+		races,
+		today: RACE_WINDOW_PROBE_FROM,
+	});
+	for (const p of probes) ids.add(p.workoutId);
+	return ids;
+}
+
 function scaled(value: number | null | undefined, factor: number): number | null {
 	if (value == null || !Number.isFinite(value)) return value ?? null;
 	return Math.round(value * factor);
@@ -125,11 +198,13 @@ function scaled(value: number | null | undefined, factor: number): number | null
 /// Apply operations to a copy of the plan. Each one re-checks its target
 /// against this copy with the same editability rule the server used, so a
 /// plan that changed between the request and the apply cannot be edited
-/// through a stale operation.
+/// through a stale operation. `nearbyRaces` are the races of the other blocks
+/// in the same edit, whose B/C windows can reach across a block boundary.
 export function applyPlanEditOps(
 	snapshot: PlanEditSnapshot,
 	ops: PlanEditOp[],
 	todayIso: string,
+	nearbyRaces: readonly PlanRace[] = [],
 ): PlanEditApplication {
 	const after = clone(snapshot);
 	const byId = new Map(after.workouts.map((w) => [w.id, w]));
@@ -140,6 +215,22 @@ export function applyPlanEditOps(
 	};
 	const weekWorkouts = (weekId: string) =>
 		after.workouts.filter((w) => w.week_id === weekId && isEditableWorkout(w, todayIso));
+
+	// A workout a move or swap carries into (or out of) a B/C window is held
+	// at both dates, the rule `apply_ai_plan_edits` re-checks with the row's
+	// current and new day.
+	let frozen: Set<string> | null = null;
+	if (ops.some((o) => o.op === 'scale_week' && o.factor > 1)) {
+		const moved = applyPlanEditOps(
+			snapshot,
+			ops.filter((o) => o.op === 'move_workout' || o.op === 'swap_days'),
+			todayIso,
+		).after;
+		frozen = new Set([
+			...noScaleUpWorkoutIds(snapshot, nearbyRaces),
+			...noScaleUpWorkoutIds(moved, nearbyRaces),
+		]);
+	}
 
 	let applied = 0;
 	for (const op of ops) {
@@ -171,15 +262,28 @@ export function applyPlanEditOps(
 			case 'scale_week': {
 				const week = weekByIndex.get(op.weekIndex);
 				if (!week || !isOpenWeek(after.plan, week, todayIso)) break;
+				let heldM = 0;
 				for (const w of weekWorkouts(week.id)) {
 					// A structured session's reps would contradict a scaled
 					// distance (the bug `recoveryWorkoutPatch` documents), so it
 					// keeps its prescription; the diff shows it unchanged.
 					if (w.structure != null) continue;
+					if (op.factor > 1 && frozen?.has(w.id)) {
+						heldM += w.target_distance_m ?? 0;
+						continue;
+					}
 					w.target_distance_m = scaled(w.target_distance_m, op.factor);
 					w.target_duration_seconds = scaled(w.target_duration_seconds, op.factor);
 				}
-				week.target_volume_m = scaled(week.target_volume_m, op.factor);
+				// A held workout adds nothing, so the week target does not
+				// claim its share of the increase either.
+				week.target_volume_m =
+					heldM > 0 && week.target_volume_m != null
+						? Math.max(
+								week.target_volume_m,
+								Math.round(week.target_volume_m * op.factor - heldM * (op.factor - 1)),
+							)
+						: scaled(week.target_volume_m, op.factor);
 				applied++;
 				break;
 			}

@@ -5,7 +5,12 @@
 // Pure: takes the plan's workouts, its races (`planRaces`) and today, and
 // proposes per-workout changes the plan page previews before applying.
 // Dart twin `apps/mobile_android/lib/race_taper.dart` — keep the windows,
-// scales, tie-breaks and test counts in lockstep.
+// scales, tie-breaks and test counts in lockstep. The windows (not the
+// scales) have a third, SQL copy: `private.in_bc_race_window` in migration
+// 20271021000050, which holds an AI plan edit's scale-up out of them
+// (decisions § 2230). A change to B_TAPER_DAYS, B_ULTRA_TAPER_DAYS, the
+// recovery days or C_TAPER_DAYS / C_RECOVERY_DAYS changes that function too,
+// in a new migration; apply_ai_plan_edits_test.sql pins each branch.
 
 import { daysBetweenIso } from './cycle_plan';
 import type { PlanRace } from './plan_races';

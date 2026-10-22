@@ -598,6 +598,7 @@ test('every AI consent prompt sends the runner to the one place that can record 
 	const files = [
 		'src/lib/components/PlatePhotoLogger.svelte',
 		'src/lib/components/PlanAiAdjust.svelte',
+		'src/lib/components/CoachPlanEditCard.svelte',
 		'src/lib/components/PlanEditor.svelte',
 		'src/lib/components/SeasonPlanner.svelte',
 	];

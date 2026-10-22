@@ -10,7 +10,7 @@ import type { Database, Json } from '../database.types';
 import { asProjectedRun, asRun, type ProjectedRun, type RunRow } from './run_narrow';
 import { SELECT_SEPARATOR, type Join } from './database';
 import type { Insertable, Updatable } from './database';
-import type { JsonObject, TrackPoint } from '../types';
+import type { JsonObject, OfficialFlag, TrackPoint } from '../types';
 import { isEntityId } from './entity_id';
 import { saveRunEdit, type RunEditFields, type RunEditOutcome } from './run_edit_cas';
 import { markListsStale } from './list_freshness';
@@ -55,6 +55,7 @@ import type { ResumeShift } from '../training/plan_resume';
 import type { RaceDateChange } from '../training/plan_race_date';
 import type { BreakChange } from '../training/plan_break';
 import type { RepeatWeekChange } from '../training/plan_repeat_week';
+import type { AiPlanEditPayload } from '../training/plan_edit/season';
 import { shiftIsoDate } from '../training/plan_bulk_ops';
 import type { PlanRecapRecord, PlanRecapRun } from '../training/plan_recap';
 import {
@@ -221,6 +222,7 @@ import {
 	dmPageFromRows,
 	type DmOrderKey,
 	type DmPage,
+	type DmThreadTarget,
 } from '../social/dm_thread';
 import type { ParsedResultRow } from '../runs/event_results_csv';
 import {
@@ -2353,7 +2355,7 @@ export async function fetchRouteById(id: string): Promise<Route | null> {
 	const viewerId = await currentViewerId();
 	const ownerRead = await supabase
 		.from('routes')
-		.select('*')
+		.select('*, is_official')
 		.eq('id', id)
 		.maybeSingle();
 	if (ownerRead.error) throw dbError(ownerRead.error);
@@ -5855,7 +5857,7 @@ export async function fetchPublicPlanLibrary(
 ): Promise<{ plans: PublicPlanLibraryEntry[]; error: string | null }> {
 	let q = supabase
 		.from('training_plans')
-		.select('*')
+		.select('*, is_official')
 		.eq('is_public_template', true)
 		.order('created_at', { ascending: false })
 		.limit(limit);
@@ -6083,7 +6085,7 @@ export async function fetchPlan(id: string): Promise<{
 	// chunking either. Ordered here because an embed's order is per parent.
 	const { data, error } = await supabase
 		.from('training_plans')
-		.select('*, plan_weeks(*, plan_workouts(*))')
+		.select('*, is_official, plan_weeks(*, plan_workouts(*))')
 		.eq('id', id)
 		.maybeSingle();
 	// Surface a query error so the detail page can show a "couldn't load —
@@ -6102,6 +6104,36 @@ export async function fetchPlan(id: string): Promise<{
 		a.scheduled_date < b.scheduled_date ? -1 : a.scheduled_date > b.scheduled_date ? 1 : 0
 	);
 	return { plan: plan as TrainingPlan, weeks, workouts, error: null };
+}
+
+/// The block before a plan, whose B/C race windows can reach into its first
+/// days: the caller's latest non-template active or completed plan ending
+/// before `startIso`, ties to the lowest id. `apply_ai_plan_edits` picks the
+/// same plan, so an AI plan edit holds those windows on both sides
+/// (decisions § 2230). Null when there is none.
+export async function fetchPrecedingPlan(startIso: string): Promise<{
+	plan: TrainingPlan;
+	weeks: PlanWeek[];
+	workouts: PlanWorkout[];
+} | null> {
+	const userId = await currentViewerId();
+	if (!userId) return null;
+	const { data, error } = await supabase
+		.from('training_plans')
+		.select('id')
+		.eq('user_id', userId)
+		.eq('is_template', false)
+		.in('status', ['active', 'completed'])
+		.lt('end_date', startIso)
+		.order('end_date', { ascending: false })
+		.order('id', { ascending: true })
+		.limit(1)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	const read = await fetchPlan(data.id);
+	if (read.error) throw new Error(read.error);
+	return read.plan ? { plan: read.plan, weeks: read.weeks, workouts: read.workouts } : null;
 }
 
 export async function fetchWorkout(
@@ -6838,6 +6870,27 @@ export async function reschedulePlanWorkouts(
 	const { error } = await supabase.rpc('reschedule_plan_workouts', {
 		p_plan_id: planId,
 		p_moves: moves
+	});
+	if (error) throw dbError(error);
+}
+
+/// Write a reviewed AI plan edit in one transaction (`apply_ai_plan_edits`,
+/// decisions § 2230): every workout and week change of `payload`, in this plan
+/// and, with `includeFollowing`, the active plans chained after it, or none.
+/// The RPC re-checks each change against the rows as they are now.
+export async function applyAiPlanEdits(
+	planId: string,
+	todayIso: string,
+	includeFollowing: boolean,
+	payload: AiPlanEditPayload
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('apply_ai_plan_edits', {
+		p_plan_id: planId,
+		p_today: todayIso,
+		p_include_following: includeFollowing,
+		p_workouts: payload.workouts,
+		p_weeks: payload.weeks
 	});
 	if (error) throw dbError(error);
 }
@@ -9295,6 +9348,9 @@ export interface ClubPin {
 	member_count: number;
 	lng: number;
 	lat: number;
+	/// Verified clubs rank first (migration 20271021000031); the pin
+	/// carries the badge.
+	is_verified: boolean;
 }
 
 export async function fetchClubsInBbox(bbox: {
@@ -9320,15 +9376,20 @@ export async function fetchClubsInBbox(bbox: {
 
 /// Discoverable public routes inside the viewport bbox. The lens is
 /// chosen by `filter`:
-///   • 'popular'     (default) — featured OR run_count > 0.
+///   • 'popular'     (default) — official OR featured OR run_count > 0.
+///   • 'official'    — published by a verified organiser only, uncapped.
 ///   • 'featured'    — admin-curated only.
 ///   • 'friends'     — public routes created by users you follow.
-///   • 'hidden_gems' — un-run public routes past a >=1km sanity floor.
+///   • 'hidden_gems' — un-run, non-official public routes past a >=1km
+///     sanity floor.
+/// Official routes rank first; outside the `official` lens at most a
+/// quarter of `limit` rank ahead of community routes and the rest backfill
+/// after them, so they never crowd the community out of a viewport.
 /// Returns the start_point for each route so the map can drop a pin
 /// there. Mirrors the `p_filter` branch in
-/// 20261113_001_discoverable_routes_filter.sql — keep the union in
+/// 20271021000031_official_discovery_ranking.sql — keep the union in
 /// lockstep with the RPC's CASE arms.
-export type DiscoverFilter = 'popular' | 'featured' | 'friends' | 'hidden_gems';
+export type DiscoverFilter = 'popular' | 'official' | 'featured' | 'friends' | 'hidden_gems';
 
 export interface DiscoverableRoutePin {
 	id: string;
@@ -9341,6 +9402,8 @@ export interface DiscoverableRoutePin {
 	run_count: number;
 	lng: number;
 	lat: number;
+	/// Published by a verified organiser (migration 20271021000030).
+	is_official: boolean;
 }
 
 export async function fetchDiscoverableRoutesInBbox(bbox: {
@@ -10818,24 +10881,68 @@ export async function submitReport(input: {
 export interface DirectMessage {
 	id: string;
 	sender_id: string;
-	recipient_id: string;
-	body: string;
+	/// Null once the recipient deleted their account (migration
+	/// 20271021000003): the remaining sender keeps the message, and
+	/// `deleted_partner_key` names the conversation instead.
+	recipient_id: string | null;
+	/// Null once the sender unsent it (`unsent_at` set).
+	body: string | null;
 	created_at: string;
 	read_at: string | null;
 	/// Typed route attachment (migration 20270619_001). Null on an ordinary
 	/// message. What the reader is allowed to SEE of the route it names is
 	/// decided at read time by [fetchRouteById], never by holding this id.
 	route_id: string | null;
+	unsent_at: string | null;
+	deleted_partner_key: string | null;
 }
 
 export interface DmThread {
-	partnerId: string;
+	/// Null when the partner deleted their account; the thread is then keyed
+	/// on `deletedPartnerKey` and holds only the viewer's own messages.
+	partnerId: string | null;
+	deletedPartnerKey: string | null;
 	partnerName: string | null;
 	partnerAvatar: string | null;
-	lastBody: string;
+	/// Null when the latest message was unsent (`lastUnsent`).
+	lastBody: string | null;
+	lastUnsent: boolean;
 	lastAt: string;
 	lastFromMe: boolean;
 	unread: number;
+}
+
+/// The newest message of the runner's current (not archived) Coach
+/// conversations, for the AI Coach row in the Messages inbox (decisions
+/// § 2227). Owner-only by RLS. The caller reads it only once the runner has
+/// consented to the Coach; throws on a failed read so the row can say nothing
+/// rather than claim there is no conversation.
+export interface LatestCoachMessage {
+	planId: string | null;
+	role: 'user' | 'assistant';
+	content: string;
+	createdAt: string;
+}
+
+export async function fetchLatestCoachMessage(): Promise<LatestCoachMessage | null> {
+	const me = auth.user?.id;
+	if (!me) return null;
+	const { data, error } = await supabase
+		.from('coach_messages')
+		.select('plan_id, role, content, created_at')
+		.eq('user_id', me)
+		.is('archived_at', null)
+		.order('created_at', { ascending: false })
+		.limit(1)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	return {
+		planId: data.plan_id,
+		role: data.role === 'user' ? 'user' : 'assistant',
+		content: data.content,
+		createdAt: data.created_at,
+	};
 }
 
 /// Total unread direct messages across every conversation: the badge on the
@@ -10867,22 +10974,31 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 	// conversations" on a blip strands the user until a manual reload.
 	if (error) throw new Error(`dm_threads failed: ${error.message}`);
 	if (!data) return [];
+	// The generator types every RETURNS TABLE column as non-null; partner_id,
+	// deleted_partner_key and last_body are each null in one case (a deleted
+	// partner, a live partner, an unsent message).
 	const threads: DmThread[] = (data as {
-		partner_id: string;
-		last_body: string;
+		partner_id: string | null;
+		deleted_partner_key: string | null;
+		last_body: string | null;
+		last_unsent: boolean;
 		last_at: string;
 		last_from_me: boolean;
 		unread: number;
 	}[]).map((r) => ({
 		partnerId: r.partner_id,
+		deletedPartnerKey: r.deleted_partner_key,
 		partnerName: null,
 		partnerAvatar: null,
 		lastBody: r.last_body,
+		lastUnsent: r.last_unsent === true,
 		lastAt: r.last_at,
 		lastFromMe: r.last_from_me,
 		unread: Number(r.unread) || 0,
 	}));
-	const byPartner = new Map(threads.map((t) => [t.partnerId, t]));
+	const byPartner = new Map(
+		threads.flatMap((t) => (t.partnerId ? [[t.partnerId, t] as const] : [])),
+	);
 	const partnerIds = [...byPartner.keys()];
 	if (partnerIds.length > 0) {
 		const { data: profiles } = await queryChunked(partnerIds, (part) =>
@@ -10897,11 +11013,14 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 		}
 	}
 	// The RPC already orders newest-conversation-first; the profile merge
-	// preserves it (Map iteration is insertion order).
-	return [...byPartner.values()];
+	// mutates the rows in place, so that order is kept.
+	return threads;
 }
 
-/// One page of the conversation with `otherId`, oldest message first.
+/// One page of a conversation, oldest message first. A partner thread is both
+/// directions between the viewer and the partner; a deleted-partner thread is
+/// the viewer's own messages under that partner's key, since the leaver's
+/// side was erased with their account.
 ///
 /// Keyset-paged from the newest end on `(created_at, id)`: `before` is the
 /// oldest message already shown, and the page holds the `limit` messages before
@@ -10911,18 +11030,19 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 /// exactly the two directions of this conversation, and leaves the `or` tree
 /// to the keyset. Throws on a failed read.
 export async function fetchDmThread(
-	otherId: string,
+	target: DmThreadTarget,
 	opts: { before?: DmOrderKey; limit?: number } = {},
 ): Promise<DmPage<DirectMessage>> {
 	const me = auth.user?.id;
 	if (!me) return { messages: [], hasMore: false };
 	const limit = opts.limit ?? DM_THREAD_PAGE_SIZE;
-	const pair = [me, otherId];
-	let query = supabase
-		.from(TABLES.direct_messages)
-		.select('*')
-		.in('sender_id', pair)
-		.in('recipient_id', pair);
+	let query = supabase.from(TABLES.direct_messages).select('*');
+	if (target.kind === 'deleted') {
+		query = query.eq('sender_id', me).eq('deleted_partner_key', target.deletedPartnerKey);
+	} else {
+		const pair = [me, target.partnerId];
+		query = query.in('sender_id', pair).in('recipient_id', pair);
+	}
 	if (opts.before) query = query.or(dmPageBeforeFilter(opts.before));
 	for (const k of DM_THREAD_ORDER) {
 		query = query.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
@@ -10974,7 +11094,19 @@ export async function sendDm(
 	return data as DirectMessage;
 }
 
-/// Mark every message from `otherId` to the viewer as read.
+/// Unsend one of the viewer's own messages: the server nulls its body and
+/// attachment and stamps `unsent_at`, so both sides see a placeholder
+/// (migration 20271021000003). Not reversible. Returns the updated row; a
+/// message the viewer did not send answers P0002, which reaches the caller as
+/// an error rather than a silent no-op.
+export async function unsendDm(messageId: string): Promise<DirectMessage> {
+	const { data, error } = await supabase.rpc('unsend_direct_message', {
+		p_message_id: messageId,
+	});
+	if (error || !data) throw error ? dbError(error) : new Error('Unsend failed');
+	return data as DirectMessage;
+}
+
 /// Marks the partner's unread messages read up to and including `through`, the
 /// newest one on screen (created_at, then id, the thread's own order). A reply
 /// that lands after the thread was read stays unread until it is shown.
@@ -12070,7 +12202,9 @@ export interface GymRoutineSet {
 }
 
 export interface GymRoutineDetail {
-	routine: GymRoutineSummary;
+	/// `is_official` comes with the base-table read only; the public view
+	/// fallback cannot carry it (a public template is never club-owned).
+	routine: GymRoutineSummary & OfficialFlag;
 	exercises: GymRoutineExercise[];
 }
 
@@ -12132,14 +12266,14 @@ export async function fetchGymRoutines(limit = 100): Promise<GymRoutineSummary[]
 /// public_gym_routines view (migration 20270319_001), which carries no
 /// last_modified_at — created_at stands in for the required summary field.
 export async function fetchGymRoutineDetail(id: string): Promise<GymRoutineDetail | null> {
-	let routine: GymRoutineSummary | null = null;
+	let routine: (GymRoutineSummary & OfficialFlag) | null = null;
 	const { data: base, error: rErr } = await supabase
 		.from(TABLES.gym_routines)
-		.select('id, author_id, club_id, is_public_template, title, notes, exercise_count, last_modified_at, created_at')
+		.select('id, author_id, club_id, is_public_template, title, notes, exercise_count, last_modified_at, created_at, is_official')
 		.eq('id', id)
 		.maybeSingle();
 	if (!rErr && base) {
-		routine = base as GymRoutineSummary;
+		routine = base;
 	} else {
 		const { data: pub } = await supabase
 			.from('public_gym_routines')
@@ -13235,7 +13369,7 @@ export async function fetchSessionPlans(): Promise<SessionPlan[]> {
 		.eq('user_id', userId);
 	const clubIds = (memberships ?? []).map((m: { club_id: string }) => m.club_id);
 
-	let query = supabase.from('session_plans').select('*');
+	let query = supabase.from('session_plans').select('*, is_official');
 	query = clubIds.length
 		? query.or(`author_id.eq.${userId},club_id.in.(${clubIds.join(',')})`)
 		: query.eq('author_id', userId);
@@ -13248,7 +13382,7 @@ export async function fetchSessionPlans(): Promise<SessionPlan[]> {
 export async function fetchSessionPlan(id: string): Promise<SessionPlanWithItems | null> {
 	const { data: plan, error } = await supabase
 		.from('session_plans')
-		.select('*')
+		.select('*, is_official')
 		.eq('id', id)
 		.maybeSingle();
 	if (error) throw dbError(error);
@@ -13451,11 +13585,32 @@ export interface PendingReportTarget {
 	reasons: Record<string, number>;
 	latest_at: string;
 	shadow_hidden: boolean;
+	/** The id of the page that shows the reported item (the item itself, or
+	 *  the run / club / route carrying a comment / post / review); null for a
+	 *  direct message or a target whose row is gone. */
+	page_id: string | null;
+}
+
+/** One target with at least one resolved report — the list a legal hold is
+ *  placed from once a target has left the pending queue. */
+export interface ResolvedReportTarget {
+	target_kind: ReportTargetKind;
+	target_id: string;
+	report_count: number;
+	held_count: number;
+	last_reviewed_at: string | null;
+	/** The earliest date one of these reports becomes eligible for the
+	 *  retention purge; null when every one is held (decisions § 2231). */
+	next_purge_after: string | null;
+	shadow_hidden: boolean;
+	page_id: string | null;
 }
 
 export interface TargetReport {
 	id: string;
-	reporter_id: string;
+	/** Null once the reporter has deleted their account: the report is kept
+	 *  as evidence (migration 20271021000040). */
+	reporter_id: string | null;
 	reason: string;
 	notes: string | null;
 	status: string;
@@ -13463,6 +13618,15 @@ export interface TargetReport {
 	reviewed_at: string | null;
 	reviewed_by: string | null;
 	resolution: string | null;
+	/// The reported direct message as it read at report time (migration
+	/// 20271021000003); null for every other target kind.
+	snapshot_body: string | null;
+	snapshot_author_id: string | null;
+	snapshot_sent_at: string | null;
+	legal_hold: boolean;
+	/** When the retention purge may delete this report; null while it is
+	 *  pending or held. */
+	purge_after: string | null;
 }
 
 /** Whether the current user is a moderator. Chrome gate only — the RPCs
@@ -13485,6 +13649,7 @@ export async function fetchPendingReports(): Promise<PendingReportTarget[]> {
 		reasons: (r.reasons ?? {}) as Record<string, number>,
 		latest_at: r.latest_at as string,
 		shadow_hidden: r.shadow_hidden === true,
+		page_id: (r.page_id ?? null) as string | null,
 	}));
 }
 
@@ -13501,7 +13666,7 @@ export async function fetchReportsForTarget(
 	if (error) throw dbError(error);
 	return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
 		id: r.id as string,
-		reporter_id: r.reporter_id as string,
+		reporter_id: (r.reporter_id ?? null) as string | null,
 		reason: r.reason as string,
 		notes: (r.notes ?? null) as string | null,
 		status: r.status as string,
@@ -13509,7 +13674,39 @@ export async function fetchReportsForTarget(
 		reviewed_at: (r.reviewed_at ?? null) as string | null,
 		reviewed_by: (r.reviewed_by ?? null) as string | null,
 		resolution: (r.resolution ?? null) as string | null,
+		snapshot_body: (r.snapshot_body ?? null) as string | null,
+		snapshot_author_id: (r.snapshot_author_id ?? null) as string | null,
+		snapshot_sent_at: (r.snapshot_sent_at ?? null) as string | null,
+		legal_hold: r.legal_hold === true,
+		purge_after: (r.purge_after ?? null) as string | null,
 	}));
+}
+
+/** Targets with resolved reports, most recently resolved first. */
+export async function fetchResolvedReports(): Promise<ResolvedReportTarget[]> {
+	const { data, error } = await supabase.rpc('fetch_resolved_reports', undefined, { get: true });
+	if (error) throw dbError(error);
+	return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+		target_kind: r.target_kind as ReportTargetKind,
+		target_id: r.target_id as string,
+		report_count: Number(r.report_count ?? 0),
+		held_count: Number(r.held_count ?? 0),
+		last_reviewed_at: (r.last_reviewed_at ?? null) as string | null,
+		next_purge_after: (r.next_purge_after ?? null) as string | null,
+		shadow_hidden: r.shadow_hidden === true,
+		page_id: (r.page_id ?? null) as string | null,
+	}));
+}
+
+/** Place or lift a legal hold on one report. Admin-gated at the DB; returns
+ *  the hold as stored. */
+export async function setReportLegalHold(reportId: string, hold: boolean): Promise<boolean> {
+	const { data, error } = await supabase.rpc('set_report_legal_hold', {
+		p_report_id: reportId,
+		p_hold: hold,
+	});
+	if (error) throw dbError(error);
+	return data === true;
 }
 
 /** Mark all pending reports on a target reviewed/dismissed with a note.
@@ -14154,7 +14351,7 @@ export async function fetchChallenges(
 	// member). The `mine` filter narrows to challenges the caller has joined.
 	let query = supabase
 		.from(TABLES.challenges)
-		.select('*')
+		.select('*, is_official')
 		.order('ends_at', { ascending: true });
 	const { data, error } = await query;
 	if (error) throw dbError(error);
@@ -14257,7 +14454,7 @@ export async function fetchChallengeById(id: string): Promise<ChallengeWithMeta 
 	const userId = auth.user?.id;
 	const { data, error } = await supabase
 		.from(TABLES.challenges)
-		.select('*')
+		.select('*, is_official')
 		.eq('id', id)
 		.maybeSingle();
 	if (error) throw dbError(error);

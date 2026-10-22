@@ -111,6 +111,7 @@ const HOMES: Record<string, Home> = {
 	fluid_per_hour: { page: 'training' },
 	show_calories: { page: 'display' },
 	show_gym: { page: 'display' },
+	messages_coach_row: { page: 'display', via: 'MESSAGES_COACH_ROW_KEY' },
 	show_nutrition: { page: 'display' },
 	exclude_gym_from_readiness: { page: 'training' },
 	hr_medication_affected: { page: 'training' },

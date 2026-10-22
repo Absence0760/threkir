@@ -7,6 +7,7 @@
 	import { toRouteGpxWithMarkers, type RouteGpxMarker } from '#lib/routes/route_gpx.ts';
 	import { fetchRouteById, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, setRoutePublic, setRouteStar, audienceSharingEnabled, fetchShares } from '#lib/core/data.ts';
 	import AudienceDialog from '#lib/components/AudienceDialog.svelte';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import { audienceOf, type AudienceColumns } from '#lib/social/run_visibility.ts';
 	import type { RouteMarker } from '#lib/types.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -620,6 +621,7 @@
 				<div>
 					<div class="title-row">
 						<h1>{route.name}</h1>
+						{#if route.is_official}<OfficialBadge size={18} />{/if}
 						{#if isOwner}
 							<button
 								type="button"

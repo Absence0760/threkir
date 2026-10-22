@@ -88,6 +88,7 @@ insert into anon_callable (fn, why) values
   ('global_segment_leaderboard',      'public segment board'),
   ('heatmap_points_in_bbox',          'logged-out map discovery'),
   ('is_challenge_visible',            'named by two challenge_participants policies `to public`; anon holds SELECT on that table and a policy expression is privilege-checked against the QUERYING role, so withholding turns an anonymous read into 42501'),
+  ('is_official',                     'computed field on routes, session_plans and challenges; a logged-out viewer of a public row reads the official badge, and RLS has already admitted the row'),
   ('is_event_visible',                'named by the checkpoint_crossings, event_checkpoints and event_pricing SELECT policies, all `to public`'),
   ('is_public_club_by_id',            'named by the public_routes view'),
   ('is_public_event_by_id',           'named by the public_runs view'),

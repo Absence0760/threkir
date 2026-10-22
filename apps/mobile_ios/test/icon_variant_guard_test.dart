@@ -16,11 +16,9 @@
 // glyph. 66 sites moved, each to its own stem's dominant variant, with ties
 // broken toward filled on that 697:138 lean.
 //
-// A future selected/unselected pair is the one legitimate reason to draw a stem
-// both ways — M3's `NavigationDestination(icon:, selectedIcon:)` idiom. There
-// are none today (checked: zero `selectedIcon:` in `lib/`), so the exemption is
-// deliberately NOT pre-built. Add the stem to `_selectionPairs` with the widget
-// that renders it when the first one lands.
+// A selected/unselected pair is the one legitimate reason to draw a stem both
+// ways — M3's `icon:` / `selectedIcon:` idiom. Each one goes in
+// `_selectionPairs` with the widget that renders it.
 
 import 'package:flutter_test/flutter_test.dart';
 
@@ -43,10 +41,11 @@ const _roots = ['lib', '../../packages/ui_kit/lib'];
 /// (`Semantics(toggled: shared)`) draws it filled while the photo is shared to
 /// the race page and outlined while it is not, so the variant IS the state.
 ///
-/// The M3 `NavigationDestination(icon:, selectedIcon:)` pair belongs here too
-/// when the first one lands; there are none today (zero `selectedIcon:` in
-/// `lib/`), so it is not pre-built.
-const _selectionPairs = <String>{'cloud_upload', 'emoji_events'};
+/// `push_pin` is the first M3 `icon:` / `selectedIcon:` pair: the AI Coach
+/// row's pin `IconButton(isSelected: pinned)` in `messages_screen.dart` draws
+/// it outlined while the Coach is unpinned and filled while it is pinned to
+/// the top of the inbox, so again the variant IS the state.
+const _selectionPairs = <String>{'cloud_upload', 'emoji_events', 'push_pin'};
 
 String _stem(String name) =>
     name.replaceAll(RegExp(r'_(outlined|rounded|sharp)$'), '');

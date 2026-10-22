@@ -109,11 +109,13 @@ no accent on `solo` or demonstratives; opening `¿` and `¡` always (106 /
 
 ## Don't translate
 
-Threkir, Pro, Strava, Garmin, parkrun, Health Connect, Apple Watch,
-Wear OS, HealthKit, GPX/TCX/FIT, VDOT, CTL, ATL, TSB, TRIMP, RPE, 1RM, GAP,
-DNF. VO₂ max is written **VO₂ máx** (the catalogue's form). Apple's app is
-**Apple Salud** (its official Spanish name, as `importHealthSubtitleIos`
-already does). Identifiers, route paths, ICU keywords, `{placeholders}`.
+Threkir, Pro, Strava, Garmin, parkrun, Apple Watch,
+Wear OS, HealthKit (the framework), GPX/TCX/FIT, VDOT, CTL, ATL, TSB, TRIMP, RPE, 1RM, GAP,
+DNF. VO₂ max is written **VO₂ máx** (the catalogue's form). The two health
+platforms take their vendors' Spanish names, `healthPlatformNameIos` /
+`healthPlatformNameAndroid`: **Salud de Apple** (apple.com/es/health) and
+**Salud conectada** (Google's Spanish help centre) — never "Apple Salud" or
+"Health Connect". Identifiers, route paths, ICU keywords, `{placeholders}`.
 
 ## Provenance
 

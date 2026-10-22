@@ -71,6 +71,10 @@ test('nothing is written when the settings read failed and the cache is cold', a
 			writes.push(route.request().method());
 			return route.continue();
 		});
+		// A bag write is a merge RPC, not a request to the table.
+		page.on('request', (req) => {
+			if (req.url().includes('/rest/v1/rpc/merge_my_settings')) writes.push(req.method());
+		});
 		await page.goto('/dashboard');
 		// postgrest-js retries a failed GET three times, 1, 2 and 4 s apart, and
 		// more than one load reads the bag. Once the reads have stopped every

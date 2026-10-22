@@ -262,14 +262,12 @@ test.describe('Home plan card and the over-run status', () => {
 		const page = await openHome();
 		const card = page.getByTestId('plan-nudge');
 		await expect(card).toBeVisible({ timeout: 15_000 });
-		await page.route(/\/rest\/v1\/user_settings\b/, (route) =>
-			route.request().method() === 'GET'
-				? route.continue()
-				: route.fulfill({
-						status: 403,
-						contentType: 'application/json',
-						body: JSON.stringify({ code: '42501', message: 'permission denied for table user_settings' })
-					})
+		await page.route(/\/rest\/v1\/rpc\/merge_my_settings\b/, (route) =>
+			route.fulfill({
+				status: 403,
+				contentType: 'application/json',
+				body: JSON.stringify({ code: '42501', message: 'permission denied for table user_settings' })
+			})
 		);
 		await card.getByRole('button', { name: 'Dismiss this suggestion' }).click();
 		await expect(page.getByText("Couldn't hide that suggestion. Try again.")).toBeVisible();

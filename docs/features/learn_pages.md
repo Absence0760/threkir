@@ -125,7 +125,7 @@ Each guide ends with a contextual CTA block: a short "Ready to do this in the ap
 | Road running 101 / build a route | `route-builder` | `/routes/new` | shipped |
 | Choosing running shoes / gear | `gear` | `/settings` (gear/integrations) or `/runs` (run-gear) | shipped (no dedicated `/gear` route — link `/settings`) |
 | What to eat before a long run | `nutrition` | `/nutrition` | shipped |
-| Train smarter / get coached | `ai-coach` | `/coach` | shipped |
+| Train smarter / get coached | `ai-coach` | `/messages/coach` | shipped |
 | Find people to run with | `clubs` | `/social?tab=clubs` | shipped |
 | Your first race: how to sign up | `racing` | `/social?tab=clubs` (find a club/event) | **race calendar PLANNED, not shipped** — see note |
 | Explore routes near you | `explore` | `/routes?tab=explore` | shipped |

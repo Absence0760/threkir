@@ -58,7 +58,13 @@ function stubSupabase(opts: StubOpts = {}) {
 	const snap = opts.snapshot ?? fixture();
 	const planRow =
 		opts.plan === undefined
-			? { id: PLAN_ID, start_date: snap.plan.start_date, end_date: snap.plan.end_date, is_template: false }
+			? {
+					id: PLAN_ID,
+					start_date: snap.plan.start_date,
+					end_date: snap.plan.end_date,
+					is_template: false,
+					status: 'active',
+				}
 			: opts.plan;
 	const factory = () =>
 		({
@@ -195,9 +201,29 @@ test('the plan is read under the caller\'s own id, and a plan they do not own is
 test('a template plan is not editable here', async () => {
 	const snap = fixture();
 	const r = await run({
-		plan: { id: PLAN_ID, start_date: snap.plan.start_date, end_date: snap.plan.end_date, is_template: true },
+		plan: {
+			id: PLAN_ID,
+			start_date: snap.plan.start_date,
+			end_date: snap.plan.end_date,
+			is_template: true,
+			status: 'active',
+		},
 	});
 	assert.equal(r.status, 404);
+});
+
+test('a completed or ended plan is a 409 that spends nothing (decisions § 2230)', async () => {
+	const snap = fixture();
+	const base = { id: PLAN_ID, start_date: snap.plan.start_date, end_date: snap.plan.end_date, is_template: false };
+	for (const plan of [
+		{ ...base, status: 'completed' },
+		{ ...base, status: 'abandoned' },
+		{ ...base, status: 'active', end_date: '2026-10-14' },
+	]) {
+		const r = await run({ plan });
+		assert.equal(r.status, 409, JSON.stringify(plan));
+		assert.ok(!r.sb.calls.includes('spend_coach_usage_slot'));
+	}
 });
 
 test('a plan read error is a 500 that spends nothing', async () => {

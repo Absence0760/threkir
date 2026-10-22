@@ -23,6 +23,7 @@ import '../widgets/live_run_map.dart'
         currentBasemapIsDark,
         currentTileUrl;
 import '../widgets/map_attribution.dart';
+import '../widgets/official_badge.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/place_search_panel.dart';
 import 'public_route_screen.dart';
@@ -87,8 +88,8 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
   List<cm.DiscoverableRoutePin> _pins = const [];
   List<cm.ClubPin> _clubs = const [];
 
-  /// Discovery lens: 'popular' (default) | 'friends' | 'featured' |
-  /// 'hidden_gems'. Mirrors the web DiscoverFilter union.
+  /// Discovery lens: 'popular' (default) | 'official' | 'friends' |
+  /// 'featured' | 'hidden_gems'. Mirrors the web DiscoverFilter union.
   String _filter = 'popular';
 
   /// Selected race-distance band keys (multi-select). Empty = no filter.
@@ -145,6 +146,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
 
   static const List<String> _lenses = [
     'popular',
+    'official',
     'friends',
     'featured',
     'hidden_gems',
@@ -153,6 +155,8 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
   String _lensLabel(String key) {
     final l10n = AppLocalizations.of(context);
     switch (key) {
+      case 'official':
+        return l10n.heatmapLensOfficial;
       case 'friends':
         return l10n.heatmapLensFriends;
       case 'featured':
@@ -310,6 +314,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                 title: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis),
                 subtitle: Row(
                   children: [
+                    if (p.official) const _OfficialMark(),
                     if (bandForDistance(p.distanceM) != null)
                       _bandBadge(bandForDistance(p.distanceM)!.label),
                     Flexible(
@@ -839,7 +844,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                       point: LatLng(club.lat, club.lng),
                       width: 18,
                       height: 18,
-                      child: const _ClubPinDot(),
+                      child: _ClubPinDot(verified: club.isVerified),
                     ),
                 ],
               ),
@@ -1073,6 +1078,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
       title: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Row(
         children: [
+          if (p.official) const _OfficialMark(),
           if (band != null) _bandBadge(band.label),
           Flexible(
             child: Text(meta, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -1296,19 +1302,38 @@ class _RoutePinDot extends StatelessWidget {
   }
 }
 
+/// A club pin — teal, ringed in the verified blue when the club is
+/// verified (verified clubs also rank first in `clubs_in_bbox`).
 class _ClubPinDot extends StatelessWidget {
-  const _ClubPinDot();
+  final bool verified;
+  const _ClubPinDot({required this.verified});
 
   @override
   Widget build(BuildContext context) {
-    return const DecoratedBox(
+    return DecoratedBox(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Color(0xFF7FB3C2),
+        color: const Color(0xFF7FB3C2),
         border: Border.fromBorderSide(
-          BorderSide(color: Color(0xFF0F172A), width: 2),
+          BorderSide(
+            color: verified ? const Color(0xFF2563EB) : const Color(0xFF0F172A),
+            width: verified ? 3 : 2,
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// The Official badge in a result row, spaced like the band badge.
+class _OfficialMark extends StatelessWidget {
+  const _OfficialMark();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.only(right: 6),
+      child: OfficialBadge(size: 12),
     );
   }
 }

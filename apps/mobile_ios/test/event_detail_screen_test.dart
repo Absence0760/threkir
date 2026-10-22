@@ -413,6 +413,7 @@ class _RoutineApi extends ApiClient {
     SessionPlanRow plan,
     List<SessionPlanBlockRow> blocks,
     List<SessionPlanItemRow> items,
+    bool isOfficial,
   })?> fetchSessionPlan(String id) async {
     if (!readablePlans.contains(id)) return null;
     final flow = id == 'plan-flow';
@@ -462,6 +463,7 @@ class _RoutineApi extends ApiClient {
                 perSide: false,
               ),
             ],
+      isOfficial: false,
     );
   }
 }

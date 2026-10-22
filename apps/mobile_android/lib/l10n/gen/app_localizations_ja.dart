@@ -279,6 +279,12 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get healthPlatformNameIos => 'ヘルスケア';
+
+  @override
+  String get healthPlatformNameAndroid => 'ヘルスコネクト';
+
+  @override
   String get importCsvCardTitle => 'CSV';
 
   @override
@@ -384,19 +390,19 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get importHealthSubtitleIos =>
-      'Apple Watch、Nike Run Club、Strava など、Apple Health に書き込む各アプリで記録したワークアウトを取り込みます';
+      'Apple Watch、Nike Run Club、Strava など、ヘルスケアに書き込む各アプリで記録したワークアウトを取り込みます';
 
   @override
   String get importHealthSubtitleAndroid =>
-      'Google Fit、Samsung Health、Garmin、Fitbit など、Health Connect 対応アプリからワークアウトを取り込みます';
+      'Google Fit、Samsung Health、Garmin、Fitbit など、ヘルスコネクト対応アプリからワークアウトを取り込みます';
 
   @override
   String get importHealthDescriptionIos =>
-      '過去1年間のワークアウト概要（日付、距離、時間、種類）を読み込みます。Apple Health はサードパーティ製アプリが記録した GPS ルートを公開しないため、この方法でインポートしたランには地図のトレースがありません。';
+      '過去1年間のワークアウト概要（日付、距離、時間、種類）を読み込みます。ヘルスケアはサードパーティ製アプリが記録した GPS ルートを公開しないため、この方法でインポートしたランには地図のトレースがありません。';
 
   @override
   String get importHealthDescriptionAndroid =>
-      '過去1年間のワークアウト概要（日付、距離、時間、種類）を読み込みます。Health Connect が Threkir に読み取りを許可している場合は、ワークアウトの GPS マップも取り込まれます。一部が保留された場合は、インポート後にマップへのアクセスを許可できます。';
+      '過去1年間のワークアウト概要（日付、距離、時間、種類）を読み込みます。ヘルスコネクトが Threkir に読み取りを許可している場合は、ワークアウトの GPS マップも取り込まれます。一部が保留された場合は、インポート後にマップへのアクセスを許可できます。';
 
   @override
   String importHealthRoutesWithheld(int count) {
@@ -405,18 +411,18 @@ class AppLocalizationsJa extends AppLocalizations {
       locale: localeName,
       other: 'インポートしたアクティビティ$count件に、Threkirが読み取りを許可されていないGPS地図があります。',
     );
-    return '${_temp0}Health Connectはワークアウトのルートを別の権限で保護しています。';
+    return '$_temp0ヘルスコネクトはワークアウトのルートを別の権限で保護しています。';
   }
 
   @override
   String get importHealthRoutesAllowButton => '地図のインポートを許可';
 
   @override
-  String get importHealthRoutesRequesting => 'Health Connectに地図へのアクセスを要求中...';
+  String get importHealthRoutesRequesting => 'ヘルスコネクトに地図へのアクセスを要求中...';
 
   @override
   String get importHealthRoutesDenied =>
-      '地図へのアクセスは許可されませんでした。インポートは概要のみのままです。Health Connectでいつでも変更できます。';
+      '地図へのアクセスは許可されませんでした。インポートは概要のみのままです。ヘルスコネクトでいつでも変更できます。';
 
   @override
   String get importHealthRoutesAdding => 'インポートしたアクティビティに地図を追加中...';
@@ -1609,6 +1615,28 @@ class AppLocalizationsJa extends AppLocalizations {
   String get setupTrackRunningAlwaysOn => '常にオン';
 
   @override
+  String get setupImportTitle => 'ランの履歴を取り込みましょう';
+
+  @override
+  String get setupImportHint =>
+      'ほかのアプリでランを記録していますか？取り込めば、ダッシュボード、自己ベスト、バッジが最初から充実します。いずれかを選ぶとそのインポート画面が開き、終わるとここに戻ります。';
+
+  @override
+  String get setupImportHealthAndroid =>
+      'GarminやSamsungを含む、ヘルスコネクトに同期するすべてのアプリからランを取り込みます';
+
+  @override
+  String get setupImportHealthIos =>
+      'Apple Watchと、Garminを含め、ヘルスケアに保存するすべてのアプリからワークアウトを取り込みます';
+
+  @override
+  String get setupImportStravaDesc =>
+      'これまで記録したすべてのアクティビティを含む、Stravaからメールで届くアーカイブをアップロードします';
+
+  @override
+  String get setupImportParkrunDesc => 'アスリート番号でparkrunの全結果を取り込みます';
+
+  @override
   String get setupDoneTitle => '準備完了';
 
   @override
@@ -2358,10 +2386,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get historySourceParkrun => 'parkrun';
 
   @override
-  String get historySourceHealthKit => 'HealthKit';
+  String get historySourceHealthKit => 'ヘルスケア';
 
   @override
-  String get historySourceHealthConnect => 'Health Connect';
+  String get historySourceHealthConnect => 'ヘルスコネクト';
 
   @override
   String get historyRangePickerTitle => '日付を選択';
@@ -4131,6 +4159,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get heatmapLensPopular => '人気';
 
   @override
+  String get heatmapLensOfficial => '公式';
+
+  @override
   String get heatmapLensFriends => 'フレンド';
 
   @override
@@ -4595,6 +4626,11 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String profileNotifPlanAssigned(String name) {
     return '$nameがあなたにトレーニングプランを割り当てました';
+  }
+
+  @override
+  String profileNotifPlanAiEdit(String name) {
+    return '$nameがあなたが割り当てたプランにAIの変更案を適用しました';
   }
 
   @override
@@ -6680,13 +6716,16 @@ class AppLocalizationsJa extends AppLocalizations {
       'ThrekirのAI機能は、あなたのデータの一部を、米国のAIモデルプロバイダーである Anthropic に送信します。利用する機能に応じて、その一部には以下が含まれます：';
 
   @override
-  String get coachConsentBulletProfile => '生年月日、性別、設定済みの心拍ゾーン。';
+  String get coachConsentBulletProfile =>
+      '健康データの利用に同意している場合のみ: 生年月日と心拍ゾーン（設定済みの場合）。';
 
   @override
-  String get coachConsentBulletRuns => '直近のランの一部。';
+  String get coachConsentBulletRuns =>
+      '直近のランの一定期間分: 日付、距離、時間、アクティビティの種類、獲得標高、屋内かどうか、予定していたワークアウトに対する達成状況。加えて、健康データの利用に同意している場合のみ平均心拍数。';
 
   @override
-  String get coachConsentBulletPlan => '選択中のアクティブなトレーニングプラン。';
+  String get coachConsentBulletPlan =>
+      '選択中のトレーニングプラン（1つまたは複数）: 各プランについて、プラン名、ステータス、目標レースと目標タイム、作成の基になった最近の5Kタイムと走力スコア、期間、トレーニング日、ルール、メモ。各週のフェーズ、目標距離、メモ。各ワークアウトの日付、種類、目標、構成、メモ、レース名と優先度、完了したかスキップしたか。加えて、健康データの利用に同意している場合のみ心拍数の目標。';
 
   @override
   String get coachConsentBulletMessages => '下の画面で入力するチャットメッセージ。';
@@ -6702,6 +6741,18 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get coachConsentBulletPlatePhoto =>
       '食事写真による記録：あなたが選んだ食事の写真を、お皿の内容を推定するためだけに送信します。位置情報やカメラの情報は送信前に削除され、Threkirは写真を保存せず、確認して保存するまで何も記録されません。';
+
+  @override
+  String get coachConsentBulletCoachSettings =>
+      '距離の単位、安静時心拍数と最大心拍数（健康データの利用に同意している場合のみ）、週間距離の目標、選択したコーチの性格。';
+
+  @override
+  String get coachConsentBulletLifts =>
+      '直近のジムのセッションの概要: 日付、セッション名、種目数とセット数、挙上した総重量。';
+
+  @override
+  String get coachConsentBulletNutrition =>
+      '健康データの利用に同意している場合のみ: 食事記録の7日間の概要（記録した日数と、カロリー・たんぱく質・炭水化物・脂質の平均）。個々の食事は送信しません。';
 
   @override
   String get coachConsentBulletPlanEdit =>
@@ -6731,6 +6782,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get coachNoPlanOption => 'プランなし（最近のランのみ）';
+
+  @override
+  String get coachSeasonOption => 'マイシーズン（現在のプランとその後に続くプラン）';
+
+  @override
+  String get coachSeasonName => 'マイシーズン';
 
   @override
   String coachPlanActive(String name) {
@@ -6939,6 +6996,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get coachOpenArchiveFailed => 'アーカイブを開けませんでした。';
+
+  @override
+  String get coachJumpToLatest => '最新のメッセージへ';
 
   @override
   String coachArchiveDeleteFailed(String error) {
@@ -7281,7 +7341,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsAccountImportSubtitle =>
-      'Strava のエクスポート、ヘルスケアアプリ、CSV、バックアップ';
+      'Strava のエクスポート、健康管理アプリ、CSV、バックアップ';
 
   @override
   String get settingsAccountAccountExport => 'アカウントのエクスポート';
@@ -7657,15 +7717,15 @@ class AppLocalizationsJa extends AppLocalizations {
       '同期したアクティビティを履歴に取り込むには、Strava + parkrunにアカウントが必要です。';
 
   @override
-  String get integrationsHealthConnectTitle => 'ランをHealth Connectに書き込む';
+  String get integrationsHealthConnectTitle => 'ランをヘルスコネクトに書き込む';
 
   @override
   String get integrationsHealthConnectSubtitle =>
-      '完了した各ランをHealth Connectに送信し、Google Fit、Samsung Health、Fitbitなどに表示します。';
+      '完了した各ランをヘルスコネクトに送信し、Google Fit、Samsung Health、Fitbitなどに表示します。';
 
   @override
   String get integrationsHealthConnectDenied =>
-      'Health Connectの権限が許可されていません — ランは書き込まれません。';
+      'ヘルスコネクトの権限が許可されていません — ランは書き込まれません。';
 
   @override
   String integrationsHrPairFailed(Object error) {
@@ -9844,6 +9904,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get reportTitleReview => 'レビューを報告';
 
   @override
+  String get reportTitleMessage => 'メッセージを報告';
+
+  @override
   String get reportTitleContent => 'コンテンツを報告';
 
   @override
@@ -10706,6 +10769,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get verifiedClubTooltip => '公式認証済みクラブ';
+
+  @override
+  String get officialBadgeLabel => '公式';
+
+  @override
+  String get officialBadgeTooltip => '公式: 認証済みの主催者が公開';
 
   @override
   String get raceDistance5k => '5km';
@@ -16056,6 +16125,50 @@ class AppLocalizationsJa extends AppLocalizations {
   String get messagesRouteLoading => 'ルートを読み込み中';
 
   @override
+  String get messagesDeletedAccount => '削除されたアカウント';
+
+  @override
+  String get messagesDeletedAccountClosed =>
+      'このアカウントは削除されました。あなたが送信したメッセージは引き続き読めますが、返信はできません。';
+
+  @override
+  String get messagesUnsentPlaceholder => 'メッセージの送信が取り消されました';
+
+  @override
+  String get messagesUnsend => '送信取消';
+
+  @override
+  String get messagesUnsendConfirmTitle => 'このメッセージの送信を取り消しますか？';
+
+  @override
+  String get messagesUnsendConfirmBody =>
+      'メッセージはあなたと相手の両方から削除されます。この操作は取り消せません。';
+
+  @override
+  String get messagesUnsendFailed => 'メッセージの送信を取り消せませんでした。';
+
+  @override
+  String get messagesReport => '報告';
+
+  @override
+  String get messagesOptionsHint => 'メッセージのオプションを表示';
+
+  @override
+  String get messagesBlock => 'ブロック';
+
+  @override
+  String get messagesUnblock => 'ブロック解除';
+
+  @override
+  String get messagesBlockConfirmBody =>
+      'お互いにメッセージを送れなくなり、相手はあなたをフォローしたり、あなたのランを称賛したり、コメントしたりできなくなります。お互いの間のフォローは、どちらの方向のものもすべて解除され、ブロックを解除しても元には戻りません。';
+
+  @override
+  String messagesBlockedNotice(String name) {
+    return '$nameをブロックしているため、お互いにメッセージを送ることはできません。';
+  }
+
+  @override
   String get profileMessage => 'メッセージ';
 
   @override
@@ -17819,4 +17932,38 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get planNewDobHintHealthDataAction => '同意を確認';
+
+  @override
+  String get messagesAiTag => 'AI';
+
+  @override
+  String get messagesAiTagSr => 'AIによる生成';
+
+  @override
+  String get messagesCoachRowIntro => 'トレーニング、プラン、ランについて質問できます。';
+
+  @override
+  String get messagesCoachPin => 'AI コーチを上部に固定';
+
+  @override
+  String get messagesCoachUnpin => 'AI コーチの固定を解除';
+
+  @override
+  String get messagesCoachPlacementFailed =>
+      'AI コーチの表示位置を保存できませんでした。もう一度お試しください。';
+
+  @override
+  String get prefsSectionMessages => 'メッセージ';
+
+  @override
+  String get prefsCoachInMessages => 'メッセージでの AI コーチ';
+
+  @override
+  String get prefsCoachInMessagesPinned => '上部に固定';
+
+  @override
+  String get prefsCoachInMessagesListed => '会話と一緒に表示';
+
+  @override
+  String get prefsCoachInMessagesHidden => '非表示';
 }

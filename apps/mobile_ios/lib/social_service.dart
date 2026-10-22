@@ -274,6 +274,10 @@ class ChallengeView implements MyProgressRow {
   /// their clubs happens to be on the board (decisions § 615).
   final String? myTeamClubId;
 
+  /// Published by a verified organiser — the `is_official` computed field
+  /// (migration 20271021000030), present on the list and detail reads.
+  final bool isOfficial;
+
   const ChallengeView({
     required this.id,
     required this.creatorId,
@@ -293,6 +297,7 @@ class ChallengeView implements MyProgressRow {
     this.participantCount = 0,
     this.completedAt,
     this.myTeamClubId,
+    this.isOfficial = false,
   });
 
   /// The caller-relative half of the row replaced with what `mergeMyProgress`
@@ -318,6 +323,7 @@ class ChallengeView implements MyProgressRow {
         participantCount: participantCount,
         completedAt: merged.completedAt,
         myTeamClubId: myTeamClubId,
+        isOfficial: isOfficial,
       );
 }
 
@@ -2557,6 +2563,7 @@ class SocialService extends ChangeNotifier {
       participantCount: participantCount,
       completedAt: completedAt,
       myTeamClubId: myTeamClubId,
+      isOfficial: r['is_official'] == true,
     );
   }
 
@@ -2567,7 +2574,7 @@ class SocialService extends ChangeNotifier {
   Future<List<ChallengeView>> fetchChallenges() async {
     final rows = await _c
         .from('challenges')
-        .select()
+        .select('*, is_official')
         .order('ends_at', ascending: true) as List;
     if (rows.isEmpty) return const [];
     final ids = rows.map((r) => (r as Map)['id'] as String).toList();
@@ -2618,7 +2625,11 @@ class SocialService extends ChangeNotifier {
   }
 
   Future<ChallengeView?> fetchChallengeById(String id) async {
-    final row = await _c.from('challenges').select().eq('id', id).maybeSingle();
+    final row = await _c
+        .from('challenges')
+        .select('*, is_official')
+        .eq('id', id)
+        .maybeSingle();
     if (row == null) return null;
     final parts = await _c
         .from('challenge_participants')

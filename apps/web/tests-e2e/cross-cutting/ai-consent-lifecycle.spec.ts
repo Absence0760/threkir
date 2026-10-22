@@ -224,7 +224,15 @@ test.describe('AI-processing consent — gate, record, withdraw, re-engage', () 
 						? section.getByTestId('ai-consent-accept')
 						: section.getByRole('button', { name: 'Accept the updated disclosure' });
 				await accept.click();
-				await expect(section.getByRole('button', { name: 'Withdraw consent' })).toBeVisible({ timeout: 10_000 });
+				// Neither control proves the write landed: the stale-state accept
+				// is renamed "Recording consent…" the moment it is clicked, and
+				// Withdraw is on screen throughout. The "updated" notice is the
+				// one thing that only clears once the server's answer is applied.
+				await expect(section.getByText(/The AI disclosure has been updated/)).toHaveCount(0, {
+					timeout: 10_000,
+				});
+				await expect(section.getByRole('button', { name: /Recording consent/ })).toHaveCount(0);
+				await expect(section.getByRole('button', { name: 'Withdraw consent' })).toBeVisible();
 				await expect(accept).toHaveCount(0);
 				const rec = await consentRecord();
 				expect(rec.ai_disclosure_version).toBe(CURRENT_VERSION);

@@ -234,6 +234,11 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 			'false',
 		);
 		await page.getByRole('button', { name: 'Continue' }).click();
+		// Import step: offered, and one tap moves past it without importing.
+		await expect(
+			page.getByRole('heading', { name: /Bring your running history/i })
+		).toBeVisible();
+		await page.getByRole('button', { name: 'Skip for now' }).click();
 		// Done. Because a goal (10K) was chosen, the goal-keyed
 		// "Create my training plan" CTA is offered alongside the neutral
 		// dashboard exit (runner-new discoverability nudge).
@@ -241,7 +246,7 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 			page.getByRole('heading', { name: /All set/i })
 		).toBeVisible();
 		await expect(page.getByRole('heading', { name: /Notifications/i })).toHaveCount(0);
-		await expect(page.getByRole('progressbar', { name: 'Step 7 of 7' })).toBeVisible();
+		await expect(page.getByRole('progressbar', { name: 'Step 8 of 8' })).toBeVisible();
 		await expect(
 			page.getByRole('button', { name: 'Create my training plan' })
 		).toBeVisible();
@@ -333,6 +338,8 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		await page.getByRole('button', { name: 'Continue' }).click();
 		// Track step, left untouched: nothing is written for it.
 		await page.getByRole('button', { name: 'Continue' }).click();
+		// Import step: nothing to bring in, so move past it.
+		await page.getByRole('button', { name: 'Skip for now' }).click();
 		// Done (no notifications step without a push key)
 		await page.getByRole('button', { name: 'Open dashboard' }).click();
 		await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
@@ -388,6 +395,8 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		await page.getByRole('button', { name: 'Continue' }).click();
 		// Track step, left untouched: nothing is written for it.
 		await page.getByRole('button', { name: 'Continue' }).click();
+		// Import step: nothing to bring in, so move past it.
+		await page.getByRole('button', { name: 'Skip for now' }).click();
 		// Done (no notifications step without a push key)
 		await page.getByRole('button', { name: 'Open dashboard' }).click();
 		await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
@@ -425,6 +434,8 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		).toBeVisible();
 		await page.getByRole('checkbox', { name: /Gym/ }).click();
 		await page.getByRole('button', { name: 'Continue' }).click();
+		// Import step: nothing to bring in, so move past it.
+		await page.getByRole('button', { name: 'Skip for now' }).click();
 		await expect(page.getByRole('heading', { name: /All set/i })).toBeVisible();
 		await page.getByRole('button', { name: 'Open dashboard' }).click();
 		await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
@@ -498,6 +509,8 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		await gym.click();
 		await expect(gym).toHaveAttribute('aria-checked', 'true');
 		await page.getByRole('button', { name: 'Skip', exact: true }).click();
+		// Import step: nothing to bring in, so move past it.
+		await page.getByRole('button', { name: 'Skip for now' }).click();
 
 		// The skipped goal shows: no goal means no goal-keyed plan CTA.
 		await expect(page.getByRole('heading', { name: /All set/i })).toBeVisible();
@@ -506,7 +519,9 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		).toHaveCount(0);
 
 		// And stepping back shows the skipped steps emptied rather than still
-		// holding what Skip claimed to pass over.
+		// holding what Skip claimed to pass over. Back from done lands on the
+		// import step, then the track step.
+		await page.getByRole('button', { name: 'Back' }).click();
 		await page.getByRole('button', { name: 'Back' }).click();
 		await expect(page.getByRole('checkbox', { name: /Gym/ })).toHaveAttribute(
 			'aria-checked',
@@ -524,6 +539,8 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		await page.getByRole('button', { name: 'Continue' }).click();
 		await page.getByRole('button', { name: 'Continue' }).click();
 		await page.getByRole('button', { name: 'Continue' }).click();
+		// Import step: nothing to bring in, so move past it.
+		await page.getByRole('button', { name: 'Skip for now' }).click();
 
 		await page.getByRole('button', { name: 'Open dashboard' }).click();
 		await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
@@ -600,6 +617,8 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		await page.getByRole('button', { name: 'Continue' }).click();
 		// Track step, left untouched: nothing is written for it.
 		await page.getByRole('button', { name: 'Continue' }).click();
+		// Import step: nothing to bring in, so move past it.
+		await page.getByRole('button', { name: 'Skip for now' }).click();
 		// Done (no notifications step without a push key)
 		await page.getByRole('button', { name: 'Open dashboard' }).click();
 		await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
@@ -633,10 +652,11 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		).toBeVisible();
 		// Every step before done: advance without entering or choosing
 		// anything. Six, because without a push key there is no
-		// notifications step.
+		// notifications step, then past the import step.
 		for (let i = 0; i < 6; i++) {
 			await page.getByRole('button', { name: 'Continue' }).click();
 		}
+		await page.getByRole('button', { name: 'Skip for now' }).click();
 		// Done — no goal was chosen, so only the neutral exit renders.
 		await expect(page.getByRole('heading', { name: /All set/i })).toBeVisible();
 		await expect(

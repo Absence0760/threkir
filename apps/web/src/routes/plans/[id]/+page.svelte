@@ -2506,7 +2506,7 @@
 			{/each}
 		</DisclosureSection>
 
-		<a class="coach-link" href="/coach?plan={plan.id}">
+		<a class="coach-link" href="/messages/coach?plan={plan.id}">
 			<span class="material-symbols">sports</span>
 			<div class="coach-link-body">
 				<strong>{m('planDetail.coachLinkTitle')}</strong>

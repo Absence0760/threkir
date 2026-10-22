@@ -60,6 +60,7 @@ String _targetKeyFor(NotificationRow n) {
       return n.clubId != null ? 'club:${n.clubId}' : solo;
     case 'plan_update':
     case 'plan_assigned':
+    case 'plan_ai_edit':
       return n.planId != null ? 'plan:${n.planId}' : solo;
     case 'achievement':
       return n.achievementId != null ? 'achievement:${n.achievementId}' : solo;

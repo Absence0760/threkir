@@ -36,8 +36,8 @@ void main() {
       expect(primaryGoalValues.length, 6);
     });
 
-    test('onboardingTotalSteps matches web (8)', () {
-      expect(onboardingTotalSteps, 8);
+    test('onboardingTotalSteps matches web (9)', () {
+      expect(onboardingTotalSteps, 9);
       // The constant is written out (a list length is not a constant
       // expression), so pin it against the list it describes.
       expect(setupWizardSteps.length, onboardingTotalSteps);
@@ -52,6 +52,7 @@ void main() {
         'run-privacy',
         'notifications',
         'track',
+        'import',
         'done',
       ]);
     });
@@ -73,12 +74,47 @@ void main() {
       expect(steps, setupWizardSteps);
     });
 
-    test('the track step sits just before done', () {
+    test('the track and import steps sit just before done, in that order',
+        () {
       for (final asked in [true, false]) {
         final steps = visibleSetupWizardSteps(privacyAlreadyChosen: asked);
         expect(steps.where((s) => s == setupWizardTrackStep), hasLength(1));
-        expect(steps[steps.length - 2], setupWizardTrackStep);
+        expect(steps.where((s) => s == setupWizardImportStep), hasLength(1));
+        expect(steps[steps.length - 3], setupWizardTrackStep);
+        expect(steps[steps.length - 2], setupWizardImportStep);
         expect(steps.last, 'done');
+      }
+    });
+
+    test('the import step offers the device\'s own health platform only', () {
+      final ios = setupWizardImportSources(isIOS: true, parkrunAvailable: true);
+      expect(ios, ['healthkit', 'strava', 'parkrun']);
+      expect(ios.contains('health_connect'), isFalse);
+
+      final android =
+          setupWizardImportSources(isIOS: false, parkrunAvailable: true);
+      expect(android, ['health_connect', 'strava', 'parkrun']);
+      expect(android.contains('healthkit'), isFalse);
+    });
+
+    test('the import step hides parkrun until its probe says yes', () {
+      for (final isIOS in [true, false]) {
+        final sources =
+            setupWizardImportSources(isIOS: isIOS, parkrunAvailable: false);
+        expect(sources.contains('parkrun'), isFalse);
+        expect(sources, hasLength(2));
+      }
+    });
+
+    test('the import step never offers a web-only source', () {
+      // Garmin's export upload is a web importer; a phone reaches Garmin
+      // through the health platform instead.
+      for (final isIOS in [true, false]) {
+        expect(
+          setupWizardImportSources(isIOS: isIOS, parkrunAvailable: true)
+              .contains('garmin'),
+          isFalse,
+        );
       }
     });
 

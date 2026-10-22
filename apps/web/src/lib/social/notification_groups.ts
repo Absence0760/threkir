@@ -73,6 +73,7 @@ function targetKeyFor(n: GroupableNotification): string {
 			return n.club_id ? `club:${n.club_id}` : solo;
 		case 'plan_update':
 		case 'plan_assigned':
+		case 'plan_ai_edit':
 			return n.plan_id ? `plan:${n.plan_id}` : solo;
 		case 'achievement':
 			return n.achievement_id ? `achievement:${n.achievement_id}` : solo;

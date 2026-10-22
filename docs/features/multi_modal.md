@@ -927,7 +927,10 @@ composer is a modal sheet, matching `gear_form_sheet` / `goal_editor_sheet`.
   + a 7-day rolling nutrition summary, not raw rows — so prompt size + per-
   call cost stay roughly flat as history grows. The daily cap is unchanged.
   *(Shipped — `summarizeRecentLifts` + `summarizeNutrition`, unit-tested;
-  nutrition gated on Art 9 health consent.)*
+  nutrition gated on Art 9 health consent. Both lanes are also gated on AI
+  disclosure v6, the first copy that names them — below it they are not
+  queried and the Coach works on the rest of its context; see
+  `COACH_CONTEXT_REGISTRY`, decisions § 2218, issue #1217.)*
 - **Training-load** factors lift sessions as additional stress — see the
   lift-load spec below. A `training_load` parity-pair change. *(Shipped +
   wired into web `/dashboard`.)* The web Fitness card now **discloses** this:

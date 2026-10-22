@@ -28,6 +28,7 @@ Route _$RouteFromJson(Map<String, dynamic> json) => Route(
   isStarred: json['isStarred'] as bool? ?? false,
   clubId: json['clubId'] as String?,
   description: json['description'] as String?,
+  official: json['official'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$RouteToJson(Route instance) => <String, dynamic>{
@@ -46,4 +47,5 @@ Map<String, dynamic> _$RouteToJson(Route instance) => <String, dynamic>{
   'isStarred': instance.isStarred,
   'clubId': instance.clubId,
   'description': instance.description,
+  'official': instance.official,
 };

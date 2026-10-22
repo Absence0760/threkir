@@ -138,6 +138,19 @@ Deno.test('handler calls deleteUserReports before admin.deleteUser', () => {
 	);
 });
 
+Deno.test('deleteUserReports keeps a report under legal hold', () => {
+	// A moderator's hold exists so the reported person cannot erase the
+	// report by deleting their account (decisions § 2231). The purge honours
+	// it in SQL; this sweep is the other delete path that must.
+	const start = SRC.indexOf('async function deleteUserReports(');
+	const end = SRC.indexOf('\n}\n', start);
+	assert(start !== -1 && end !== -1, 'deleteUserReports is no longer where this test looks');
+	assert(
+		SRC.slice(start, end).includes(".eq('legal_hold', false)"),
+		'deleteUserReports must filter legal_hold = false',
+	);
+});
+
 Deno.test('handler walks every user-content bucket in the mandatory drain', () => {
 	// The avatars bucket is best-effort outside the main try/catch
 	// because the bucket doesn't exist yet; the other five drains are

@@ -21,7 +21,6 @@
 	import { dmUnreadStore, DM_UNREAD_POLL_MS } from '#lib/stores/dm_unread.svelte.ts';
 	import { m, initLocale } from '#lib/i18n/store.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
-	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import {
 		hasNonRunData,
 		hydrateModalityVisibility,
@@ -210,7 +209,7 @@
 	// Order is runner-led: log + review + train is the daily loop, then
 	// content, then social. Settings lives in the profile popover at the
 	// bottom of the sidebar; Feed is a self-only tab on /u/[me]; Guided runs
-	// are surfaced from /coach (both are coach-driven). Top-down scan time
+	// are surfaced beside the Coach's conversation in Messages. Top-down scan time
 	// matches frequency-of-use. Gym + Nutrition appear only while
 	// `modalityVisible` says so: the runner's show_gym / show_nutrition choice,
 	// or, with none made, whether that modality has data (decisions § 1739).
@@ -228,17 +227,14 @@
 		{ href: '/runs', labelKey: 'nav.runs', icon: 'directions_run', section: 'runs' },
 		{ href: '/gym', labelKey: 'nav.gym', icon: 'fitness_center', section: 'gym' },
 		{ href: '/nutrition', labelKey: 'nav.nutrition', icon: 'nutrition', section: 'nutrition' },
-		{ href: '/coach', labelKey: 'nav.coach', icon: 'sports', section: 'coach' },
 		{ href: '/social', labelKey: 'nav.social', icon: 'public', section: 'social' },
 		{ href: '/messages', labelKey: 'nav.messages', icon: 'chat_bubble', section: 'messages' },
 	];
-	// The AI Coach nav entry is hidden when the Coach is off (rock-bottom
-	// deploy, PUBLIC_COACH_ENABLED unset) — don't surface a nav door that
-	// only leads to a "coming soon" page. coach_flag.ts.
+	// The AI Coach has no sidebar row: it is a conversation in Messages,
+	// pinned at the top of the inbox (decisions § 2227).
 	const NAV_MODALITY: Record<string, Modality> = { '/gym': 'gym', '/nutrition': 'nutrition' };
 	const navItems = $derived(
 		navItemsBase.filter((item) => {
-			if (item.href === '/coach') return coachEnabled();
 			if (item.href === '/history') return hasNonRunData() === true;
 			const modality = NAV_MODALITY[item.href];
 			return modality === undefined || modalityVisible(modality);

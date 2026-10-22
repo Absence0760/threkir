@@ -33,12 +33,12 @@ export async function expandTrainingLoad(page: Page): Promise<void> {
 	const disclosure = page.getByTestId('training-load-disclosure');
 	if ((await disclosure.count()) === 0) return;
 	if (await disclosure.evaluate((el) => (el as HTMLDetailsElement).open)) return;
-	// Opening it remembers itself in the universal bag with a read-merge-write
-	// (`pushUniversal`). A spec that writes that bag out of band next — a
-	// `setUserSetting` standing in for another device — would interleave with
-	// it and lose its own value, so wait for the write to land.
+	// Opening it remembers itself in the universal bag (`pushUniversal`). A spec
+	// that writes that bag out of band next — a `setUserSetting` standing in for
+	// another device, which replaces the whole bag — would race it, so wait for
+	// the write to land.
 	const saved = page.waitForResponse(
-		(r) => r.url().includes('/rest/v1/user_settings') && r.request().method() === 'POST',
+		(r) => r.url().includes('/rest/v1/rpc/merge_my_settings') && r.request().method() === 'POST',
 	);
 	await disclosure.locator('summary').click();
 	await expect(disclosure).toHaveJSProperty('open', true);

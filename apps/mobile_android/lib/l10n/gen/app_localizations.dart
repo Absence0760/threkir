@@ -539,6 +539,18 @@ abstract class AppLocalizations {
   /// **'Import from {label}'**
   String importHealthButton(Object label);
 
+  /// Apple's health app as Apple names it in this locale (apple.com/<locale>/health) — titles the Import screen's health card and the setup wizard's import row on iOS
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Health'**
+  String get healthPlatformNameIos;
+
+  /// Google's Health Connect as Google names it in this locale (support.google.com/android/answer/12201227) — same surfaces on Android; keep it identical to historySourceHealthConnect
+  ///
+  /// In en, this message translates to:
+  /// **'Health Connect'**
+  String get healthPlatformNameAndroid;
+
   /// Card title for the CSV import source
   ///
   /// In en, this message translates to:
@@ -2891,6 +2903,42 @@ abstract class AppLocalizations {
   /// **'Always on'**
   String get setupTrackRunningAlwaysOn;
 
+  /// Setup wizard import step title: offers to bring in runs the person already logged in another app or service
+  ///
+  /// In en, this message translates to:
+  /// **'Bring your running history'**
+  String get setupImportTitle;
+
+  /// Setup wizard import step hint. Records = personal records (PRs). Tapping a source opens that existing import screen; closing it returns to this step
+  ///
+  /// In en, this message translates to:
+  /// **'Already log runs somewhere else? Bring them in so your dashboard, records and badges start full. Each one opens its import, and you come back here after.'**
+  String get setupImportHint;
+
+  /// Setup wizard import step, Android: subtitle under the Health Connect row. Health Connect, Garmin and Samsung are product names, keep them untranslated
+  ///
+  /// In en, this message translates to:
+  /// **'Runs from any app that syncs to Health Connect, including Garmin and Samsung'**
+  String get setupImportHealthAndroid;
+
+  /// Setup wizard import step, iOS: subtitle under the Apple Health row. Apple Watch, Apple Health and Garmin are product names, keep them untranslated
+  ///
+  /// In en, this message translates to:
+  /// **'Workouts from Apple Watch and any app that saves to Apple Health, including Garmin'**
+  String get setupImportHealthIos;
+
+  /// Setup wizard import step: subtitle under the Strava row. The archive is the ZIP export Strava emails on request. Strava is a product name
+  ///
+  /// In en, this message translates to:
+  /// **'Upload the archive Strava emails you, with every activity you\'ve logged'**
+  String get setupImportStravaDesc;
+
+  /// Setup wizard import step: subtitle under the parkrun row. parkrun is a brand name, always lowercase; athlete number is the parkrun ID such as A123456
+  ///
+  /// In en, this message translates to:
+  /// **'Pull in every parkrun result with your athlete number'**
+  String get setupImportParkrunDesc;
+
   /// Setup wizard final step title
   ///
   /// In en, this message translates to:
@@ -4199,13 +4247,13 @@ abstract class AppLocalizations {
   /// **'parkrun'**
   String get historySourceParkrun;
 
-  /// Source-filter label for HealthKit-imported runs — brand name, not translated
+  /// Source-filter label for runs imported from Apple's health app — Apple's own name for it in this locale, the same as healthPlatformNameIos
   ///
   /// In en, this message translates to:
-  /// **'HealthKit'**
+  /// **'Apple Health'**
   String get historySourceHealthKit;
 
-  /// Source-filter label for Health Connect-imported runs — brand name, not translated
+  /// Source-filter label for Health Connect-imported runs — Google's own name for it in this locale, the same as healthPlatformNameAndroid
   ///
   /// In en, this message translates to:
   /// **'Health Connect'**
@@ -7234,6 +7282,12 @@ abstract class AppLocalizations {
   /// **'Popular'**
   String get heatmapLensPopular;
 
+  /// Discovery-lens label for routes published by verified organisers (a verified club's owner or admin) on the heatmap
+  ///
+  /// In en, this message translates to:
+  /// **'Official'**
+  String get heatmapLensOfficial;
+
   /// Discovery-lens label for friends' routes on the heatmap
   ///
   /// In en, this message translates to:
@@ -7977,6 +8031,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{name} assigned you a training plan'**
   String profileNotifPlanAssigned(String name);
+
+  /// Notification text for a coach whose athlete applied AI Coach suggested changes to a plan the coach assigned
+  ///
+  /// In en, this message translates to:
+  /// **'{name} applied AI-suggested changes to a plan you assigned'**
+  String profileNotifPlanAiEdit(String name);
 
   /// Notification inbox line for the morning reminder that today has a workout on the runner's active training plan
   ///
@@ -11443,19 +11503,19 @@ abstract class AppLocalizations {
   /// Consent gate bullet: profile data
   ///
   /// In en, this message translates to:
-  /// **'Your date of birth, gender, and HR zones if set.'**
+  /// **'Only if you\'ve given health-data consent: your date of birth and configured HR zones, if you\'ve set them.'**
   String get coachConsentBulletProfile;
 
   /// Consent gate bullet: recent runs
   ///
   /// In en, this message translates to:
-  /// **'A window of your most recent runs.'**
+  /// **'A window of your most recent runs: the date, distance, duration, activity type, elevation gain, whether it was indoors and how it went against a planned workout, plus your average heart rate only if you\'ve given health-data consent.'**
   String get coachConsentBulletRuns;
 
   /// Consent gate bullet: active plan
   ///
   /// In en, this message translates to:
-  /// **'The active training plan you have selected.'**
+  /// **'The training plan or plans you have selected: for each plan, its name, status, goal race and target time, the recent 5K time and running fitness score it was built from, its dates, training days, rules and notes; each week\'s phase, target distance and notes; and each workout\'s date, type, targets, structure, notes, race name and priority, and whether you completed or skipped it, with heart-rate targets only if you\'ve given health-data consent.'**
   String get coachConsentBulletPlan;
 
   /// Consent gate bullet: chat messages
@@ -11481,6 +11541,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'For the plate-photo logger: the photo of your meal you choose, sent only to estimate what is on the plate. Location and camera details are removed before it leaves, Threkir does not keep the photo, and nothing is logged until you review and save it.'**
   String get coachConsentBulletPlatePhoto;
+
+  /// Consent gate bullet: Coach settings sent with each Coach message (AI disclosure v6)
+  ///
+  /// In en, this message translates to:
+  /// **'Your distance units, your resting and maximum heart rate (only if you\'ve given health-data consent), your weekly distance goal, and the Coach personality you chose.'**
+  String get coachConsentBulletCoachSettings;
+
+  /// Consent gate bullet: recent gym-session summaries sent to the Coach (AI disclosure v6)
+  ///
+  /// In en, this message translates to:
+  /// **'A summary of your most recent gym sessions: the date, the session name, how many exercises and sets, and the total weight lifted.'**
+  String get coachConsentBulletLifts;
+
+  /// Consent gate bullet: 7-day nutrition summary sent to the Coach, health-consent gated (AI disclosure v6)
+  ///
+  /// In en, this message translates to:
+  /// **'Only if you\'ve given health-data consent: a 7-day summary of your food log (days logged and average calories, protein, carbs and fat), never individual meals.'**
+  String get coachConsentBulletNutrition;
 
   /// Consent gate bullet: AI plan edits (the active plan's upcoming workouts and the typed change request, sent to propose edits the runner reviews)
   ///
@@ -11529,6 +11607,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No plan (recent runs only)'**
   String get coachNoPlanOption;
+
+  /// Coach plan picker option: the Coach reads the current training plan together with the back-to-back plans queued after it
+  ///
+  /// In en, this message translates to:
+  /// **'My season (current plan and the plans queued after it)'**
+  String get coachSeasonOption;
+
+  /// Coach context chip label when the Coach reads the runner's whole season of back-to-back training plans; shown as '<label> · <N>w'
+  ///
+  /// In en, this message translates to:
+  /// **'My season'**
+  String get coachSeasonName;
 
   /// Plan-switcher dropdown: active plan label
   ///
@@ -11895,6 +11985,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not open archive.'**
   String get coachOpenArchiveFailed;
+
+  /// Button shown over the coach chat when the runner has scrolled up and new reply text has arrived below; tapping it scrolls to the newest message and resumes following the reply
+  ///
+  /// In en, this message translates to:
+  /// **'Jump to latest'**
+  String get coachJumpToLatest;
 
   /// Banner shown when deleting a coach archive fails; the swiped row snaps back
   ///
@@ -16863,6 +16959,12 @@ abstract class AppLocalizations {
   /// **'Report review'**
   String get reportTitleReview;
 
+  /// Report sheet title when reporting a direct message
+  ///
+  /// In en, this message translates to:
+  /// **'Report message'**
+  String get reportTitleMessage;
+
   /// Report sheet title fallback for generic content
   ///
   /// In en, this message translates to:
@@ -18326,6 +18428,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Official verified club'**
   String get verifiedClubTooltip;
+
+  /// Short visible label on content (route, plan, routine, challenge, session plan) published by a verified club's owner or admin
+  ///
+  /// In en, this message translates to:
+  /// **'Official'**
+  String get officialBadgeLabel;
+
+  /// Tooltip and screen-reader label on the Official badge: the content was published by a verified organiser
+  ///
+  /// In en, this message translates to:
+  /// **'Official: published by a verified organiser'**
+  String get officialBadgeTooltip;
 
   /// Best-effort race distance label: 5 kilometres
   ///
@@ -27596,6 +27710,84 @@ abstract class AppLocalizations {
   /// **'Loading route'**
   String get messagesRouteLoading;
 
+  /// Name shown for a conversation partner who deleted their account, in the inbox and the conversation app bar
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted account'**
+  String get messagesDeletedAccount;
+
+  /// Shown in place of the composer in a conversation whose partner deleted their account
+  ///
+  /// In en, this message translates to:
+  /// **'This account was deleted. You can still read the messages you sent, but you can\'t reply.'**
+  String get messagesDeletedAccountClosed;
+
+  /// Placeholder shown in place of a message its sender unsent, to both people, and as the inbox preview
+  ///
+  /// In en, this message translates to:
+  /// **'Message unsent'**
+  String get messagesUnsentPlaceholder;
+
+  /// Action in the message options sheet, and the confirm button, to unsend (remove for both people) your own direct message
+  ///
+  /// In en, this message translates to:
+  /// **'Unsend'**
+  String get messagesUnsend;
+
+  /// Confirm dialog title before unsending a direct message
+  ///
+  /// In en, this message translates to:
+  /// **'Unsend this message?'**
+  String get messagesUnsendConfirmTitle;
+
+  /// Confirm dialog body before unsending a direct message
+  ///
+  /// In en, this message translates to:
+  /// **'It will be removed for both of you. This can\'t be undone.'**
+  String get messagesUnsendConfirmBody;
+
+  /// Banner when unsending a direct message failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t unsend the message.'**
+  String get messagesUnsendFailed;
+
+  /// Action in the message options sheet that opens the report sheet for the other person's message
+  ///
+  /// In en, this message translates to:
+  /// **'Report'**
+  String get messagesReport;
+
+  /// Screen-reader long-press hint on a message bubble (read after 'double tap and hold to'); lowercase
+  ///
+  /// In en, this message translates to:
+  /// **'show message options'**
+  String get messagesOptionsHint;
+
+  /// Conversation overflow-menu action that blocks the other person (confirmed first)
+  ///
+  /// In en, this message translates to:
+  /// **'Block'**
+  String get messagesBlock;
+
+  /// Conversation action that lifts the viewer's block on the other person; in the overflow menu and on the blocked notice
+  ///
+  /// In en, this message translates to:
+  /// **'Unblock'**
+  String get messagesUnblock;
+
+  /// Confirm dialog body before blocking someone from inside a direct-message conversation
+  ///
+  /// In en, this message translates to:
+  /// **'Neither of you will be able to message the other, and they won\'t be able to follow you or give kudos to or comment on your runs. Any follow between you in either direction is cleared, and unblocking doesn\'t bring it back.'**
+  String get messagesBlockConfirmBody;
+
+  /// Shown in place of the message composer when the viewer has blocked the other person
+  ///
+  /// In en, this message translates to:
+  /// **'You blocked {name}, so neither of you can message the other.'**
+  String messagesBlockedNotice(String name);
+
   /// Profile action opening a direct-message conversation with this runner
   ///
   /// In en, this message translates to:
@@ -30328,6 +30520,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Review consent'**
   String get planNewDobHintHealthDataAction;
+
+  /// Short tag on every AI Coach message and on the Coach's inbox row (EU AI Act Art. 50). Keep it to the local abbreviation for AI.
+  ///
+  /// In en, this message translates to:
+  /// **'AI'**
+  String get messagesAiTag;
+
+  /// What a screen reader announces for the AI tag on an AI Coach message
+  ///
+  /// In en, this message translates to:
+  /// **'AI-generated'**
+  String get messagesAiTagSr;
+
+  /// Preview line of the AI Coach row in the Messages inbox when there is no Coach message to show (none yet, or the runner has not consented to the Coach)
+  ///
+  /// In en, this message translates to:
+  /// **'Ask about your training, your plan or a run.'**
+  String get messagesCoachRowIntro;
+
+  /// Tooltip and screen-reader label of the button that pins the AI Coach row to the top of the Messages inbox
+  ///
+  /// In en, this message translates to:
+  /// **'Pin AI Coach to the top'**
+  String get messagesCoachPin;
+
+  /// Tooltip and screen-reader label of the button that unpins the AI Coach row, so it sorts among the conversations by its latest message
+  ///
+  /// In en, this message translates to:
+  /// **'Unpin AI Coach'**
+  String get messagesCoachUnpin;
+
+  /// Banner when pinning or unpinning the AI Coach row could not be saved
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save where AI Coach goes. Try again.'**
+  String get messagesCoachPlacementFailed;
+
+  /// Settings section heading for Messages inbox options
+  ///
+  /// In en, this message translates to:
+  /// **'Messages'**
+  String get prefsSectionMessages;
+
+  /// Settings row: where the AI Coach appears in the Messages inbox
+  ///
+  /// In en, this message translates to:
+  /// **'AI Coach in Messages'**
+  String get prefsCoachInMessages;
+
+  /// Option: the AI Coach row stays at the top of the Messages inbox
+  ///
+  /// In en, this message translates to:
+  /// **'Pinned at the top'**
+  String get prefsCoachInMessagesPinned;
+
+  /// Option: the AI Coach row is sorted among the conversations by its latest message
+  ///
+  /// In en, this message translates to:
+  /// **'With your conversations'**
+  String get prefsCoachInMessagesListed;
+
+  /// Option: the AI Coach row is left out of the Messages inbox (the Coach itself stays available from Home)
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden'**
+  String get prefsCoachInMessagesHidden;
 }
 
 class _AppLocalizationsDelegate

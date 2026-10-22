@@ -49,6 +49,7 @@ import '../widgets/ai_disclosure_notice.dart';
 import '../widgets/app_bar_actions.dart';
 import '../widgets/live_run_map.dart';
 import '../widgets/missing_map_tiles_hint.dart';
+import '../widgets/official_badge.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/route_markers_panel.dart';
 import '../widgets/route_conditions.dart';
@@ -630,6 +631,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
           surface: r.surface,
           tags: _tags,
           featured: r.featured,
+          official: r.official,
           runCount: r.runCount,
           isStarred: _isStarred,
           description: r.description,
@@ -765,6 +767,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
           surface: r.surface,
           tags: _tags,
           featured: r.featured,
+          official: r.official,
           runCount: r.runCount,
           isStarred: starred,
           description: r.description,
@@ -1315,7 +1318,8 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
               // affordances elsewhere.
               if (route.surface != null ||
                   route.runCount > 0 ||
-                  route.featured)
+                  route.featured ||
+                  route.official)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
                   child: Wrap(
@@ -1340,6 +1344,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                           label: l10n.routeDetailFeatured,
                           color: semantic.crown,
                         ),
+                      if (route.official) const OfficialBadge(size: 16),
                     ],
                   ),
                 ),
@@ -1945,6 +1950,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
       surface: widget.route.surface,
       tags: widget.route.tags,
       featured: widget.route.featured,
+      official: widget.route.official,
       runCount: widget.route.runCount,
       isStarred: widget.route.isStarred,
       description: widget.route.description,

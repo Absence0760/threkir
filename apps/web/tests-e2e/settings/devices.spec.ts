@@ -165,6 +165,52 @@ test.describe('/settings/devices', () => {
 		await expect(plantedRow.locator('.override-value', { hasText: 'satellite' })).toBeVisible();
 	});
 
+	test('clearing an override keeps a pref the device wrote after the page loaded', async ({ page }) => {
+		// The Clear used to write back this page's snapshot of the bag minus
+		// the key, which undid anything the device itself had written since
+		// the page loaded (issue #1212). It now sends a delta.
+		const admin = getAdminClient();
+		const plantedDeviceId = `${PLANTED_DEVICE_PREFIX}clear-delta-${Date.now()}`;
+		await admin.from('user_device_settings').insert({
+			user_id: USER_A.id,
+			device_id: plantedDeviceId,
+			platform: 'android',
+			label: 'Clear-delta fixture',
+			prefs: { map_style: 'satellite', voice_feedback_enabled: false },
+		});
+
+		await page.goto('/settings/devices');
+		const plantedRow = rowByLabel(page, 'Clear-delta fixture');
+		await expect(plantedRow).toBeVisible({ timeout: 10_000 });
+		await plantedRow.locator('.override-link').click();
+
+		const { error } = await admin
+			.from('user_device_settings')
+			.update({ prefs: { map_style: 'satellite', voice_feedback_enabled: false, keep_screen_on: true } })
+			.eq('user_id', USER_A.id)
+			.eq('device_id', plantedDeviceId);
+		if (error) throw error;
+
+		await plantedRow
+			.locator('.overrides li', { has: page.locator('code', { hasText: 'map_style' }) })
+			.locator('button.override-clear')
+			.click();
+		await expect(plantedRow.locator('.overrides code', { hasText: 'map_style' })).toHaveCount(0);
+
+		const [row] = await readRows(
+			'planted device prefs after clear',
+			admin
+				.from('user_device_settings')
+				.select('prefs')
+				.eq('user_id', USER_A.id)
+				.eq('device_id', plantedDeviceId),
+		);
+		expect((row as { prefs: Record<string, unknown> }).prefs).toEqual({
+			voice_feedback_enabled: false,
+			keep_screen_on: true,
+		});
+	});
+
 	test('a failed clear-override surfaces an error toast instead of silently no-op', async ({
 		page
 	}) => {
@@ -191,16 +237,12 @@ test.describe('/settings/devices', () => {
 
 		// Only intercept AFTER the page has provisioned its own row, so the
 		// failure is scoped to the Clear write.
-		await page.route('**/rest/v1/user_device_settings**', async (route) => {
-			if (route.request().method() === 'PATCH') {
-				await route.fulfill({
-					status: 500,
-					contentType: 'application/json',
-					body: JSON.stringify({ message: 'simulated failure' })
-				});
-				return;
-			}
-			await route.fallback();
+		await page.route('**/rest/v1/rpc/merge_my_device_settings*', async (route) => {
+			await route.fulfill({
+				status: 500,
+				contentType: 'application/json',
+				body: JSON.stringify({ message: 'simulated failure' })
+			});
 		});
 
 		await plantedRow.locator('button.override-clear').first().click();
@@ -238,16 +280,12 @@ test.describe('/settings/devices', () => {
 		const dialog = page.locator('.modal', { hasText: 'override' });
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
 
-		await page.route('**/rest/v1/user_device_settings**', async (route) => {
-			if (route.request().method() === 'PATCH') {
-				await route.fulfill({
-					status: 500,
-					contentType: 'application/json',
-					body: JSON.stringify({ message: 'simulated failure' })
-				});
-				return;
-			}
-			await route.fallback();
+		await page.route('**/rest/v1/rpc/merge_my_device_settings*', async (route) => {
+			await route.fulfill({
+				status: 500,
+				contentType: 'application/json',
+				body: JSON.stringify({ message: 'simulated failure' })
+			});
 		});
 
 		await dialog.getByRole('button', { name: 'Save' }).click();

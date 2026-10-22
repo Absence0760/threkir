@@ -15,6 +15,7 @@ import '../local_gym_store.dart';
 import '../session_step_label.dart';
 import '../session_steps.dart';
 import '../widgets/error_state.dart';
+import '../widgets/official_badge.dart';
 import '../widgets/top_banner.dart';
 
 /// Read-only mobile view of a session plan's expanded sequence
@@ -53,6 +54,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
   bool _loading = true;
   bool _error = false;
   String? _title;
+  bool _isOfficial = false;
   String? _discipline;
   List<SessionStep> _steps = const [];
   bool _isPublic = false;
@@ -101,6 +103,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
       );
       setState(() {
         _title = data.plan.title;
+        _isOfficial = data.isOfficial;
         _discipline = data.plan.discipline;
         _steps = expandSessionSteps(input).steps;
         _isPublic = data.plan.isPublic;
@@ -220,6 +223,13 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                   padding: EdgeInsets.fromLTRB(
                       16, 16, 16, fabScrollClearance(context)),
                   children: [
+                    if (_isOfficial) ...[
+                      const Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: OfficialBadge(size: 16),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     Text(l10n.sessionSteps,
                         style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),

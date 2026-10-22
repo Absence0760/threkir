@@ -283,6 +283,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get healthPlatformNameIos => 'Apple Health';
+
+  @override
+  String get healthPlatformNameAndroid => 'Health Connect';
+
+  @override
   String get importCsvCardTitle => 'CSV';
 
   @override
@@ -1670,6 +1676,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setupTrackRunningAlwaysOn => 'Always on';
 
   @override
+  String get setupImportTitle => 'Bring your running history';
+
+  @override
+  String get setupImportHint =>
+      'Already log runs somewhere else? Bring them in so your dashboard, records and badges start full. Each one opens its import, and you come back here after.';
+
+  @override
+  String get setupImportHealthAndroid =>
+      'Runs from any app that syncs to Health Connect, including Garmin and Samsung';
+
+  @override
+  String get setupImportHealthIos =>
+      'Workouts from Apple Watch and any app that saves to Apple Health, including Garmin';
+
+  @override
+  String get setupImportStravaDesc =>
+      'Upload the archive Strava emails you, with every activity you\'ve logged';
+
+  @override
+  String get setupImportParkrunDesc =>
+      'Pull in every parkrun result with your athlete number';
+
+  @override
   String get setupDoneTitle => 'You\'re all set';
 
   @override
@@ -2463,7 +2492,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historySourceParkrun => 'parkrun';
 
   @override
-  String get historySourceHealthKit => 'HealthKit';
+  String get historySourceHealthKit => 'Apple Health';
 
   @override
   String get historySourceHealthConnect => 'Health Connect';
@@ -4350,6 +4379,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get heatmapLensPopular => 'Popular';
 
   @override
+  String get heatmapLensOfficial => 'Official';
+
+  @override
   String get heatmapLensFriends => 'Friends';
 
   @override
@@ -4823,6 +4855,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String profileNotifPlanAssigned(String name) {
     return '$name assigned you a training plan';
+  }
+
+  @override
+  String profileNotifPlanAiEdit(String name) {
+    return '$name applied AI-suggested changes to a plan you assigned';
   }
 
   @override
@@ -7007,14 +7044,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coachConsentBulletProfile =>
-      'Your date of birth, gender, and HR zones if set.';
+      'Only if you\'ve given health-data consent: your date of birth and configured HR zones, if you\'ve set them.';
 
   @override
-  String get coachConsentBulletRuns => 'A window of your most recent runs.';
+  String get coachConsentBulletRuns =>
+      'A window of your most recent runs: the date, distance, duration, activity type, elevation gain, whether it was indoors and how it went against a planned workout, plus your average heart rate only if you\'ve given health-data consent.';
 
   @override
   String get coachConsentBulletPlan =>
-      'The active training plan you have selected.';
+      'The training plan or plans you have selected: for each plan, its name, status, goal race and target time, the recent 5K time and running fitness score it was built from, its dates, training days, rules and notes; each week\'s phase, target distance and notes; and each workout\'s date, type, targets, structure, notes, race name and priority, and whether you completed or skipped it, with heart-rate targets only if you\'ve given health-data consent.';
 
   @override
   String get coachConsentBulletMessages =>
@@ -7031,6 +7069,18 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get coachConsentBulletPlatePhoto =>
       'For the plate-photo logger: the photo of your meal you choose, sent only to estimate what is on the plate. Location and camera details are removed before it leaves, Threkir does not keep the photo, and nothing is logged until you review and save it.';
+
+  @override
+  String get coachConsentBulletCoachSettings =>
+      'Your distance units, your resting and maximum heart rate (only if you\'ve given health-data consent), your weekly distance goal, and the Coach personality you chose.';
+
+  @override
+  String get coachConsentBulletLifts =>
+      'A summary of your most recent gym sessions: the date, the session name, how many exercises and sets, and the total weight lifted.';
+
+  @override
+  String get coachConsentBulletNutrition =>
+      'Only if you\'ve given health-data consent: a 7-day summary of your food log (days logged and average calories, protein, carbs and fat), never individual meals.';
 
   @override
   String get coachConsentBulletPlanEdit =>
@@ -7060,6 +7110,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coachNoPlanOption => 'No plan (recent runs only)';
+
+  @override
+  String get coachSeasonOption =>
+      'My season (current plan and the plans queued after it)';
+
+  @override
+  String get coachSeasonName => 'My season';
 
   @override
   String coachPlanActive(String name) {
@@ -7282,6 +7339,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get coachOpenArchiveFailed => 'Could not open archive.';
+
+  @override
+  String get coachJumpToLatest => 'Jump to latest';
 
   @override
   String coachArchiveDeleteFailed(String error) {
@@ -10267,6 +10327,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reportTitleReview => 'Report review';
 
   @override
+  String get reportTitleMessage => 'Report message';
+
+  @override
   String get reportTitleContent => 'Report content';
 
   @override
@@ -11156,6 +11219,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get verifiedClubTooltip => 'Official verified club';
+
+  @override
+  String get officialBadgeLabel => 'Official';
+
+  @override
+  String get officialBadgeTooltip =>
+      'Official: published by a verified organiser';
 
   @override
   String get raceDistance5k => '5 km';
@@ -16673,6 +16743,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String get messagesRouteLoading => 'Loading route';
 
   @override
+  String get messagesDeletedAccount => 'Deleted account';
+
+  @override
+  String get messagesDeletedAccountClosed =>
+      'This account was deleted. You can still read the messages you sent, but you can\'t reply.';
+
+  @override
+  String get messagesUnsentPlaceholder => 'Message unsent';
+
+  @override
+  String get messagesUnsend => 'Unsend';
+
+  @override
+  String get messagesUnsendConfirmTitle => 'Unsend this message?';
+
+  @override
+  String get messagesUnsendConfirmBody =>
+      'It will be removed for both of you. This can\'t be undone.';
+
+  @override
+  String get messagesUnsendFailed => 'Couldn\'t unsend the message.';
+
+  @override
+  String get messagesReport => 'Report';
+
+  @override
+  String get messagesOptionsHint => 'show message options';
+
+  @override
+  String get messagesBlock => 'Block';
+
+  @override
+  String get messagesUnblock => 'Unblock';
+
+  @override
+  String get messagesBlockConfirmBody =>
+      'Neither of you will be able to message the other, and they won\'t be able to follow you or give kudos to or comment on your runs. Any follow between you in either direction is cleared, and unblocking doesn\'t bring it back.';
+
+  @override
+  String messagesBlockedNotice(String name) {
+    return 'You blocked $name, so neither of you can message the other.';
+  }
+
+  @override
   String get profileMessage => 'Message';
 
   @override
@@ -18512,4 +18626,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planNewDobHintHealthDataAction => 'Review consent';
+
+  @override
+  String get messagesAiTag => 'AI';
+
+  @override
+  String get messagesAiTagSr => 'AI-generated';
+
+  @override
+  String get messagesCoachRowIntro =>
+      'Ask about your training, your plan or a run.';
+
+  @override
+  String get messagesCoachPin => 'Pin AI Coach to the top';
+
+  @override
+  String get messagesCoachUnpin => 'Unpin AI Coach';
+
+  @override
+  String get messagesCoachPlacementFailed =>
+      'Couldn\'t save where AI Coach goes. Try again.';
+
+  @override
+  String get prefsSectionMessages => 'Messages';
+
+  @override
+  String get prefsCoachInMessages => 'AI Coach in Messages';
+
+  @override
+  String get prefsCoachInMessagesPinned => 'Pinned at the top';
+
+  @override
+  String get prefsCoachInMessagesListed => 'With your conversations';
+
+  @override
+  String get prefsCoachInMessagesHidden => 'Hidden';
 }

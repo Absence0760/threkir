@@ -8,22 +8,36 @@
 		fetchReportsForTarget,
 		resolveTargetReports,
 		adminUnhideTarget,
+		fetchResolvedReports,
+		setReportLegalHold,
 		type PendingReportTarget,
+		type ResolvedReportTarget,
 		type TargetReport,
 		type ReportTargetKind,
 		type ReportResolution,
 	} from '#lib/core/data.ts';
-	import { formatRelativeTime } from '#lib/format/time.ts';
+	import { formatDate, formatRelativeTime } from '#lib/format/time.ts';
 	import Modal from '#lib/components/Modal.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { reportTargetHref, reportTargetLabelKey } from './report_target';
+
+	type QueueTarget = Pick<
+		PendingReportTarget,
+		'target_kind' | 'target_id' | 'page_id' | 'shadow_hidden' | 'report_count'
+	>;
 
 	let isAdmin = $state<boolean | null>(null);
 	let loading = $state(true);
+	let view = $state<'pending' | 'resolved'>('pending');
 	let queue = $state<PendingReportTarget[]>([]);
+	let resolved = $state<ResolvedReportTarget[]>([]);
+	let resolvedLoaded = $state(false);
+	let resolvedLoading = $state(false);
+	let resolvedError = $state<string | null>(null);
 
-	let selected = $state<PendingReportTarget | null>(null);
+	let selected = $state<QueueTarget | null>(null);
 	let detail = $state<TargetReport[]>([]);
 	let detailLoading = $state(false);
 	let resolution = $state('');
@@ -31,17 +45,13 @@
 	let unhiding = $state(false);
 	let confirm = $state<{ status: ReportResolution } | null>(null);
 	let confirmUnhide = $state(false);
-
-	function targetHref(kind: ReportTargetKind, id: string): string {
-		if (kind === 'user') return `/u/${id}`;
-		if (kind === 'route') return `/routes/${id}`;
-		return `/clubs/${id}`;
-	}
+	let holdBusy = $state<string | null>(null);
+	let confirmLiftHold = $state<TargetReport | null>(null);
+	let hasPending = $derived(detail.some((r) => r.status === 'pending'));
 
 	function kindLabel(kind: ReportTargetKind): string {
-		if (kind === 'user') return t('admin.reports.kind.user');
-		if (kind === 'club') return t('admin.reports.kind.club');
-		return t('admin.reports.kind.route');
+		const key = reportTargetLabelKey(kind);
+		return key ? t(key) : kind;
 	}
 
 	function statusLabel(status: string): string {
@@ -58,7 +68,40 @@
 		}
 	}
 
-	async function openTarget(target: PendingReportTarget) {
+	async function loadResolved() {
+		resolvedLoading = true;
+		resolvedError = null;
+		try {
+			resolved = await fetchResolvedReports();
+			resolvedLoaded = true;
+		} catch (e) {
+			resolvedError = t('admin.reports.resolvedLoadFailed', { error: thrownMessage(e) });
+		} finally {
+			resolvedLoading = false;
+		}
+	}
+
+	async function showView(next: 'pending' | 'resolved') {
+		view = next;
+		if (next === 'resolved' && !resolvedLoaded) await loadResolved();
+	}
+
+	async function setHold(report: TargetReport, hold: boolean) {
+		if (holdBusy) return;
+		holdBusy = report.id;
+		try {
+			await setReportLegalHold(report.id, hold);
+			showToast(t(hold ? 'admin.reports.holdPlaced' : 'admin.reports.holdLifted'), 'success');
+			if (selected) detail = await fetchReportsForTarget(selected.target_kind, selected.target_id);
+			if (resolvedLoaded) await loadResolved();
+		} catch (e) {
+			showToast(t('admin.reports.holdFailed', { error: thrownMessage(e) }), 'error');
+		} finally {
+			holdBusy = null;
+		}
+	}
+
+	async function openTarget(target: QueueTarget) {
 		selected = target;
 		resolution = '';
 		detail = [];
@@ -92,6 +135,7 @@
 			showToast(t(msgKey, { count: n }), 'success');
 			closeDetail();
 			await loadQueue();
+			if (resolvedLoaded) await loadResolved();
 		} catch (e) {
 			showToast(t('admin.reports.resolveFailed', { error: thrownMessage(e) }), 'error');
 		} finally {
@@ -108,6 +152,11 @@
 			showToast(t('admin.reports.unhidden'), 'success');
 			selected = { ...target, shadow_hidden: false };
 			queue = queue.map((q) =>
+				q.target_kind === target.target_kind && q.target_id === target.target_id
+					? { ...q, shadow_hidden: false }
+					: q,
+			);
+			resolved = resolved.map((q) =>
 				q.target_kind === target.target_kind && q.target_id === target.target_id
 					? { ...q, shadow_hidden: false }
 					: q,
@@ -143,7 +192,90 @@
 			<p class="muted">{t('admin.reports.subtitle')}</p>
 		</header>
 
-		{#if queue.length === 0}
+		<div class="tabs" role="group" aria-label={t('admin.reports.title')}>
+			<button
+				type="button"
+				class="tab"
+				class:active={view === 'pending'}
+				aria-pressed={view === 'pending'}
+				data-testid="admin-tab-pending"
+				onclick={() => showView('pending')}
+			>{t('admin.reports.tabPending')}</button>
+			<button
+				type="button"
+				class="tab"
+				class:active={view === 'resolved'}
+				aria-pressed={view === 'resolved'}
+				data-testid="admin-tab-resolved"
+				onclick={() => showView('resolved')}
+			>{t('admin.reports.tabResolved')}</button>
+		</div>
+
+		{#if view === 'resolved'}
+			{#if resolvedError}
+				<div class="card-elevated empty" role="alert" data-testid="admin-resolved-error">
+					<p class="muted">{resolvedError}</p>
+					<button type="button" class="btn btn-outline btn-sm" onclick={loadResolved}>
+						{t('admin.reports.retry')}
+					</button>
+				</div>
+			{:else if resolvedLoading || !resolvedLoaded}
+				<p class="muted">{t('admin.reports.loading')}</p>
+			{:else if resolved.length === 0}
+				<div class="card-elevated empty" data-testid="admin-resolved-empty">
+					<p class="muted">{t('admin.reports.resolvedEmpty')}</p>
+				</div>
+			{:else}
+				<div class="card-elevated">
+					<table data-testid="admin-resolved">
+						<thead>
+							<tr>
+								<th>{t('admin.reports.colTarget')}</th>
+								<th>{t('admin.reports.colReports')}</th>
+								<th>{t('admin.reports.colHeld')}</th>
+								<th>{t('admin.reports.colResolved')}</th>
+								<th>{t('admin.reports.colReview')}</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each resolved as target (target.target_kind + target.target_id)}
+								<tr data-testid="admin-resolved-row">
+									<td>
+										<span class="kind">{kindLabel(target.target_kind)}</span>
+										{#if reportTargetHref(target.target_kind, target.page_id)}
+											<a href={reportTargetHref(target.target_kind, target.page_id)} class="target-link"
+												>{target.target_id.slice(0, 8)}</a>
+										{:else}
+											<span class="target-link">{target.target_id.slice(0, 8)}</span>
+										{/if}
+									</td>
+									<td>{target.report_count}</td>
+									<td>
+										{#if target.held_count > 0}
+											<span class="hold-badge" aria-hidden="true">{target.held_count}</span>
+											<span class="visually-hidden">{t('admin.reports.heldCount', { count: target.held_count })}</span>
+										{:else}
+											<span class="muted">0</span>
+										{/if}
+									</td>
+									<td class="muted">{target.last_reviewed_at ? formatRelativeTime(target.last_reviewed_at) : ''}</td>
+									<td>
+										<button
+											type="button"
+											class="btn btn-outline btn-sm"
+											data-testid="admin-resolved-review"
+											onclick={() => openTarget(target)}
+										>
+											{t('admin.reports.review')}
+										</button>
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{/if}
+		{:else if queue.length === 0}
 			<div class="card-elevated empty" data-testid="admin-queue-empty">
 				<p class="muted">{t('admin.reports.empty')}</p>
 			</div>
@@ -169,11 +301,15 @@
 							>
 								<td>
 									<span class="kind">{kindLabel(target.target_kind)}</span>
-									<a
-										href={targetHref(target.target_kind, target.target_id)}
-										class="target-link"
-										onclick={(e) => e.stopPropagation()}
-									>{target.target_id.slice(0, 8)}</a>
+									{#if reportTargetHref(target.target_kind, target.page_id)}
+										<a
+											href={reportTargetHref(target.target_kind, target.page_id)}
+											class="target-link"
+											onclick={(e) => e.stopPropagation()}
+										>{target.target_id.slice(0, 8)}</a>
+									{:else}
+										<span class="target-link">{target.target_id.slice(0, 8)}</span>
+									{/if}
 									{#if target.shadow_hidden}
 										<span class="hidden-badge" data-testid="admin-hidden-badge">{t('admin.reports.hiddenBadge')}</span>
 									{/if}
@@ -225,9 +361,11 @@
 		<div class="detail-body">
 			<div class="detail-head">
 				<span class="kind">{kindLabel(selected.target_kind)}</span>
-				<a href={targetHref(selected.target_kind, selected.target_id)} class="target-link">
-					{t('admin.reports.viewTarget')}
-				</a>
+				{#if reportTargetHref(selected.target_kind, selected.page_id)}
+					<a href={reportTargetHref(selected.target_kind, selected.page_id)} class="target-link">
+						{t('admin.reports.viewTarget')}
+					</a>
+				{/if}
 				{#if selected.shadow_hidden}
 					<span class="hidden-badge" data-testid="admin-detail-hidden-badge">{t('admin.reports.hiddenBadge')}</span>
 				{/if}
@@ -256,39 +394,71 @@
 								<span class="reason chip">{r.reason}</span>
 								<span class="status status-{r.status}">{statusLabel(r.status)}</span>
 								<span class="muted when">{formatRelativeTime(r.created_at)}</span>
+								{#if r.legal_hold}
+									<span class="hold-badge" data-testid="admin-legal-hold-badge">{t('admin.reports.legalHoldBadge')}</span>
+								{/if}
 							</div>
-							<p class="report-by muted">{t('admin.reports.reportBy', { id: r.reporter_id.slice(0, 8) })}</p>
+							<p class="report-by muted">
+								{r.reporter_id
+									? t('admin.reports.reportBy', { id: r.reporter_id.slice(0, 8) })
+									: t('admin.reports.reporterDeleted')}
+							</p>
 							<p class="notes">{r.notes || t('admin.reports.noNotes')}</p>
+							{#if r.snapshot_body !== null}
+								<blockquote class="snapshot" data-testid="admin-report-snapshot">
+									<p class="muted">
+										{t('admin.reports.snapshotBy', {
+											id: (r.snapshot_author_id ?? '').slice(0, 8),
+											when: r.snapshot_sent_at ? formatRelativeTime(r.snapshot_sent_at) : ''
+										})}
+									</p>
+									<p>{r.snapshot_body}</p>
+								</blockquote>
+							{/if}
+							<div class="hold-row">
+								{#if r.purge_after}
+									<span class="muted retention">{t('admin.reports.purgeAfter', { date: formatDate(r.purge_after) })}</span>
+								{/if}
+								<button
+									type="button"
+									class="btn btn-outline btn-sm"
+									disabled={holdBusy !== null}
+									data-testid="admin-legal-hold-toggle"
+									onclick={() => (r.legal_hold ? (confirmLiftHold = r) : setHold(r, true))}
+								>{t(r.legal_hold ? 'admin.reports.liftHold' : 'admin.reports.placeHold')}</button>
+							</div>
 						</li>
 					{/each}
 				</ul>
 
-				<label class="resolution">
-					<span>{t('admin.reports.resolutionLabel')}</span>
-					<textarea
-						bind:value={resolution}
-						rows="2"
-						placeholder={t('admin.reports.resolutionPlaceholder')}
-						data-testid="admin-resolution-input"
-					></textarea>
-				</label>
+				{#if hasPending}
+					<label class="resolution">
+						<span>{t('admin.reports.resolutionLabel')}</span>
+						<textarea
+							bind:value={resolution}
+							rows="2"
+							placeholder={t('admin.reports.resolutionPlaceholder')}
+							data-testid="admin-resolution-input"
+						></textarea>
+					</label>
 
-				<div class="actions">
-					<button
-						type="button"
-						class="btn btn-secondary"
-						disabled={resolving}
-						data-testid="admin-dismiss"
-						onclick={() => (confirm = { status: 'dismissed' })}
-					>{t('admin.reports.dismiss')}</button>
-					<button
-						type="button"
-						class="btn btn-primary"
-						disabled={resolving}
-						data-testid="admin-mark-reviewed"
-						onclick={() => (confirm = { status: 'reviewed' })}
-					>{t('admin.reports.markReviewed')}</button>
-				</div>
+					<div class="actions">
+						<button
+							type="button"
+							class="btn btn-secondary"
+							disabled={resolving}
+							data-testid="admin-dismiss"
+							onclick={() => (confirm = { status: 'dismissed' })}
+						>{t('admin.reports.dismiss')}</button>
+						<button
+							type="button"
+							class="btn btn-primary"
+							disabled={resolving}
+							data-testid="admin-mark-reviewed"
+							onclick={() => (confirm = { status: 'reviewed' })}
+						>{t('admin.reports.markReviewed')}</button>
+					</div>
+				{/if}
 			{/if}
 		</div>
 	</Modal>
@@ -313,6 +483,21 @@
 		if (status) doResolve(status);
 	}}
 	oncancel={() => (confirm = null)}
+/>
+
+<ConfirmDialog
+	open={!!confirmLiftHold}
+	danger
+	title={t('admin.reports.confirmLiftHoldTitle')}
+	message={t('admin.reports.confirmLiftHoldMessage')}
+	confirmLabel={t('admin.reports.liftHold')}
+	data-testid="admin-lift-hold-confirm"
+	onconfirm={() => {
+		const report = confirmLiftHold;
+		confirmLiftHold = null;
+		if (report) setHold(report, false);
+	}}
+	oncancel={() => (confirmLiftHold = null)}
 />
 
 <ConfirmDialog
@@ -419,6 +604,52 @@
 		letter-spacing: 0.03em;
 		margin-inline-start: 0.4rem;
 	}
+	.tabs {
+		display: flex;
+		gap: 0.4rem;
+		border-bottom: 1px solid var(--color-border);
+		overflow-x: auto;
+	}
+	.tab {
+		background: none;
+		border: none;
+		padding: 0.6rem 0.25rem;
+		margin-inline-end: 1rem;
+		font: inherit;
+		font-weight: 600;
+		color: var(--color-text-secondary);
+		border-bottom: 2px solid transparent;
+		cursor: pointer;
+		white-space: nowrap;
+	}
+	.tab:hover {
+		color: var(--color-text);
+	}
+	.tab.active {
+		color: var(--color-primary);
+		border-bottom-color: var(--color-primary);
+	}
+	.hold-badge {
+		display: inline-block;
+		padding: 0.1rem 0.45rem;
+		border-radius: var(--radius-sm);
+		border: 1px solid var(--color-primary);
+		color: var(--color-primary);
+		font-size: 0.72rem;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+	}
+	.hold-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+		margin-top: 0.25rem;
+	}
+	.retention {
+		font-size: 0.78rem;
+	}
 	.hidden-notice {
 		display: flex;
 		align-items: center;
@@ -462,6 +693,16 @@
 	.report-by,
 	.when {
 		font-size: 0.78rem;
+	}
+	.snapshot {
+		margin: 0.4rem 0 0;
+		padding: 0.4rem 0.7rem;
+		border-inline-start: 3px solid var(--color-border);
+		background: var(--color-bg-secondary);
+		white-space: pre-wrap;
+	}
+	.snapshot p {
+		margin: 0;
 	}
 	.notes {
 		margin: 0;

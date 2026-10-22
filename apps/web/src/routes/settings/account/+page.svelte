@@ -72,7 +72,7 @@
 	import DateOfBirthInput from '#lib/components/DateOfBirthInput.svelte';
 	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
 	import { numberInputValue } from '#lib/settings/number_input.ts';
-	import type { PrefsBag } from '#lib/settings/settings.ts';
+	import { updateUniversal, type PrefsBag } from '#lib/settings/settings.ts';
 	import type { Updatable } from '#lib/core/database.ts';
 	import {
 		MAX_HR_BPM_MIN,
@@ -710,20 +710,15 @@
 			prefs.cycle_last_period_start = null;
 			prefs.pregnancy_due_date = null;
 		}
+		// Through the shared atomic merge (issue #1212): a read-merge-write here
+		// put back any key another writer changed between the read and the
+		// upsert, and an unchecked failed read merged into `{}` and replaced the
+		// whole bag. A null value removes the key.
 		if (Object.keys(prefs).length > 0) {
-			const { data } = await supabase
-				.from('user_settings')
-				.select('prefs')
-				.eq('user_id', auth.user.id)
-				.maybeSingle();
-			const merged = { ...((data?.prefs as PrefsBag | null) ?? {}), ...prefs };
-			const { error: settingsError } = await supabase.from('user_settings').upsert({
-				user_id: auth.user.id,
-				prefs: merged,
-				updated_at: new Date().toISOString(),
-			});
-			if (settingsError) {
-				showToast(m('settingsAccount.saveFailed', { error: settingsError.message }), 'error');
+			try {
+				await updateUniversal(auth.user.id, prefs);
+			} catch (e) {
+				showToast(m('settingsAccount.saveFailed', { error: thrownMessage(e) }), 'error');
 				saving = false;
 				return;
 			}

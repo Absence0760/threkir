@@ -3,7 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { browserDate } from '../fixtures/dates';
 import { readRow, readRows } from '../fixtures/db-read';
 import { getAdminClient } from '../fixtures/local-supabase';
-import { USER_A } from '../fixtures/users';
+import { USER_B } from '../fixtures/users';
 
 /**
  * /plans/[id] — "Adjust with AI" (AI plan edits, decisions § 1979).
@@ -15,11 +15,13 @@ import { USER_A } from '../fixtures/users';
  * page wiring: operations become a before/after diff, nothing is written until
  * "Apply AI-suggested changes", an edit that stacks hard days needs a second
  * confirmation, a consent refusal points at Settings, and the Coach's
- * `?adjust=` handoff runs once. Throwaway plan (status `completed` to dodge the
- * active-plan overlap constraint; editing gates on dates, not status).
+ * `?adjust=` handoff runs once. Throwaway ACTIVE plan: Apply writes through
+ * `apply_ai_plan_edits`, which refuses a completed or ended plan (decisions
+ * § 2230). USER_B carries no active plan of its own, so one around today
+ * cannot collide with the seed on the active-plan overlap constraint.
  */
 test.describe('/plans/[id] — Adjust with AI', () => {
-	test.use({ storageState: USER_A.storageStatePath });
+	test.use({ storageState: USER_B.storageStatePath });
 
 	const admin = getAdminClient();
 	let planId: string;
@@ -36,14 +38,14 @@ test.describe('/plans/[id] — Adjust with AI', () => {
 		longId = crypto.randomUUID();
 		const { error: planErr } = await admin.from('training_plans').insert({
 			id: planId,
-			user_id: USER_A.id,
+			user_id: USER_B.id,
 			name: 'e2e ai adjust',
 			goal_event: 'distance_half',
 			goal_distance_m: 21097,
 			goal_time_seconds: null,
 			start_date: browserDate(0),
 			end_date: browserDate(13),
-			status: 'completed',
+			status: 'active',
 			days_per_week: 4,
 		});
 		expect(planErr).toBeNull();

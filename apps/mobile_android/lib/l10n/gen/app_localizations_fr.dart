@@ -284,6 +284,12 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get healthPlatformNameIos => 'Apple Santé';
+
+  @override
+  String get healthPlatformNameAndroid => 'Santé Connect';
+
+  @override
   String get importCsvCardTitle => 'CSV';
 
   @override
@@ -400,7 +406,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get importHealthSubtitleAndroid =>
-      'Récupérez les séances depuis Google Fit, Samsung Health, Garmin, Fitbit et toute autre app Health Connect';
+      'Récupérez les séances depuis Google Fit, Samsung Health, Garmin, Fitbit et toute autre app Santé Connect';
 
   @override
   String get importHealthDescriptionIos =>
@@ -408,7 +414,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get importHealthDescriptionAndroid =>
-      'Lit les résumés de séances (date, distance, durée, type) de la dernière année. La carte GPS d\'une séance est aussi importée quand Health Connect autorise Threkir à la lire ; s\'il en retient, vous pouvez autoriser l\'accès aux cartes après l\'import.';
+      'Lit les résumés de séances (date, distance, durée, type) de la dernière année. La carte GPS d\'une séance est aussi importée quand Santé Connect autorise Threkir à la lire ; si certaines sont retenues, vous pouvez autoriser l\'accès aux cartes après l\'import.';
 
   @override
   String importHealthRoutesWithheld(int count) {
@@ -420,7 +426,7 @@ class AppLocalizationsFr extends AppLocalizations {
       one:
           '1 activité importée a une carte GPS que Threkir n\'est pas autorisé à lire.',
     );
-    return '$_temp0 Health Connect protège l\'itinéraire d\'une séance par une autorisation distincte.';
+    return '$_temp0 Santé Connect protège l\'itinéraire d\'une séance par une autorisation distincte.';
   }
 
   @override
@@ -428,11 +434,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get importHealthRoutesRequesting =>
-      'Demande d\'accès aux cartes à Health Connect…';
+      'Demande d\'accès aux cartes à Santé Connect…';
 
   @override
   String get importHealthRoutesDenied =>
-      'Accès aux cartes non accordé. Les imports resteront sans carte — vous pouvez le changer dans Health Connect à tout moment.';
+      'Accès aux cartes non accordé. Les imports resteront sans carte — vous pouvez le changer dans Santé Connect à tout moment.';
 
   @override
   String get importHealthRoutesAdding =>
@@ -1691,6 +1697,29 @@ class AppLocalizationsFr extends AppLocalizations {
   String get setupTrackRunningAlwaysOn => 'Toujours activée';
 
   @override
+  String get setupImportTitle => 'Importez votre historique de course';
+
+  @override
+  String get setupImportHint =>
+      'Vous enregistrez déjà vos courses ailleurs ? Importez-les pour que votre tableau de bord, vos records personnels et vos badges soient remplis dès le départ. Chaque source ouvre son import, puis vous revenez ici.';
+
+  @override
+  String get setupImportHealthAndroid =>
+      'Les courses de toute app synchronisée avec Santé Connect, dont Garmin et Samsung';
+
+  @override
+  String get setupImportHealthIos =>
+      'Les séances de l\'Apple Watch et de toute app qui enregistre dans Apple Santé, dont Garmin';
+
+  @override
+  String get setupImportStravaDesc =>
+      'Envoyez l\'archive que Strava vous transmet par e-mail, avec toutes les activités que vous avez enregistrées';
+
+  @override
+  String get setupImportParkrunDesc =>
+      'Récupérez tous vos résultats parkrun avec votre numéro d\'athlète';
+
+  @override
   String get setupDoneTitle => 'Tout est prêt';
 
   @override
@@ -2499,10 +2528,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get historySourceParkrun => 'parkrun';
 
   @override
-  String get historySourceHealthKit => 'HealthKit';
+  String get historySourceHealthKit => 'Apple Santé';
 
   @override
-  String get historySourceHealthConnect => 'Health Connect';
+  String get historySourceHealthConnect => 'Santé Connect';
 
   @override
   String get historyRangePickerTitle => 'Sélectionner les dates';
@@ -4405,6 +4434,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get heatmapLensPopular => 'Populaire';
 
   @override
+  String get heatmapLensOfficial => 'Officiels';
+
+  @override
   String get heatmapLensFriends => 'Amis';
 
   @override
@@ -4885,6 +4917,11 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String profileNotifPlanAssigned(String name) {
     return '$name vous a attribué un plan d\'entraînement';
+  }
+
+  @override
+  String profileNotifPlanAiEdit(String name) {
+    return '$name a appliqué des modifications proposées par l\'IA à un plan que vous avez attribué';
   }
 
   @override
@@ -6990,11 +7027,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get workoutSkip => 'Ignorer cette séance';
 
   @override
-  String get workoutUnskip => 'Annuler l\'ignorance';
+  String get workoutUnskip => 'Ne plus ignorer';
 
   @override
   String get workoutSkipError =>
-      'Impossible de mettre à jour l\'ignorance. Réessayez.';
+      'Impossible de mettre à jour le statut de la séance. Réessayez.';
 
   @override
   String get workoutRelink => 'Réassocier';
@@ -7091,15 +7128,15 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get coachConsentBulletProfile =>
-      'Votre date de naissance, votre sexe et vos zones de FC si elles sont définies.';
+      'Uniquement si vous avez donné votre consentement aux données de santé : votre date de naissance et vos zones de fréquence cardiaque configurées, si vous les avez définies.';
 
   @override
   String get coachConsentBulletRuns =>
-      'Un échantillon de vos courses les plus récentes.';
+      'Un aperçu de vos courses les plus récentes : la date, la distance, la durée, le type d\'activité, le dénivelé positif, si la course a eu lieu en intérieur et son déroulement par rapport à une séance prévue, ainsi que votre fréquence cardiaque moyenne (uniquement si vous avez donné votre consentement aux données de santé).';
 
   @override
   String get coachConsentBulletPlan =>
-      'Le plan d\'entraînement actif que vous avez sélectionné.';
+      'Le ou les plans d\'entraînement que vous avez sélectionnés : pour chaque plan, son nom, son statut, la course visée et le temps visé, le temps récent sur 5 km et le score de forme à partir desquels il a été construit, ses dates, ses jours d\'entraînement, ses règles et ses notes ; pour chaque semaine, la phase, la distance cible et les notes ; et pour chaque séance, la date, le type, les objectifs, la structure, les notes, le nom et la priorité de la course, et si vous l\'avez effectuée ou ignorée, ainsi que les objectifs de fréquence cardiaque (uniquement si vous avez donné votre consentement aux données de santé).';
 
   @override
   String get coachConsentBulletMessages =>
@@ -7115,7 +7152,19 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get coachConsentBulletPlatePhoto =>
-      'Pour la saisie par photo de repas : la photo de votre repas que vous choisissez, envoyée uniquement pour estimer ce qu\'il y a dans l\'assiette. La position et les données de l\'appareil photo sont retirées avant l\'envoi, Threkir ne conserve pas la photo et rien n\'est enregistré tant que vous n\'avez pas vérifié et sauvegardé.';
+      'Pour la saisie par photo de repas : la photo de votre repas que vous choisissez, envoyée uniquement pour estimer ce qu\'il y a dans l\'assiette. La position et les données de l\'appareil photo sont retirées avant l\'envoi, Threkir ne conserve pas la photo et rien n\'est enregistré tant que vous n\'avez pas vérifié et enregistré.';
+
+  @override
+  String get coachConsentBulletCoachSettings =>
+      'Vos unités de distance, votre fréquence cardiaque au repos et maximale (uniquement si vous avez donné votre consentement aux données de santé), votre objectif de distance hebdomadaire et la personnalité du coach que vous avez choisie.';
+
+  @override
+  String get coachConsentBulletLifts =>
+      'Un résumé de vos séances de musculation les plus récentes : la date, le nom de la séance, le nombre d\'exercices et de séries, et le poids total soulevé.';
+
+  @override
+  String get coachConsentBulletNutrition =>
+      'Uniquement si vous avez donné votre consentement aux données de santé : un résumé sur 7 jours de votre journal alimentaire (jours renseignés et moyennes des calories, protéines, glucides et lipides), jamais les repas individuels.';
 
   @override
   String get coachConsentBulletPlanEdit =>
@@ -7146,6 +7195,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get coachNoPlanOption => 'Aucun plan (courses récentes uniquement)';
+
+  @override
+  String get coachSeasonOption =>
+      'Ma saison (plan actuel et les plans prévus ensuite)';
+
+  @override
+  String get coachSeasonName => 'Ma saison';
 
   @override
   String coachPlanActive(String name) {
@@ -7376,6 +7432,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get coachOpenArchiveFailed => 'Impossible d\'ouvrir l\'archive.';
+
+  @override
+  String get coachJumpToLatest => 'Aller au dernier message';
 
   @override
   String coachArchiveDeleteFailed(String error) {
@@ -8129,15 +8188,15 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get integrationsHealthConnectTitle =>
-      'Écrire les courses dans Health Connect';
+      'Écrire les courses dans Santé Connect';
 
   @override
   String get integrationsHealthConnectSubtitle =>
-      'Envoie chaque course terminée à Health Connect pour qu\'elle apparaisse dans Google Fit, Samsung Health, Fitbit et d\'autres.';
+      'Envoie chaque course terminée à Santé Connect pour qu\'elle apparaisse dans Google Fit, Samsung Health, Fitbit et d\'autres.';
 
   @override
   String get integrationsHealthConnectDenied =>
-      'Autorisation Health Connect non accordée — les courses ne seront pas écrites.';
+      'Autorisation Santé Connect non accordée — les courses ne seront pas écrites.';
 
   @override
   String integrationsHrPairFailed(Object error) {
@@ -10399,6 +10458,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get reportTitleReview => 'Signaler l\'avis';
 
   @override
+  String get reportTitleMessage => 'Signaler le message';
+
+  @override
   String get reportTitleContent => 'Signaler le contenu';
 
   @override
@@ -11301,6 +11363,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get verifiedClubTooltip => 'Club officiel vérifié';
+
+  @override
+  String get officialBadgeLabel => 'Officiel';
+
+  @override
+  String get officialBadgeTooltip =>
+      'Officiel : publié par un organisateur vérifié';
 
   @override
   String get raceDistance5k => '5 km';
@@ -13049,7 +13118,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get metricMissStreakDefinition =>
-      'Séances prévues d\'affilée, en remontant depuis hier, passées sans course enregistrée. Une séance sautée ou un jour de repos ne compte pas et n\'interrompt pas la série ; une séance faite y met fin.';
+      'Séances prévues d\'affilée, en remontant depuis hier, passées sans course enregistrée. Une séance ignorée ou un jour de repos ne compte pas et n\'interrompt pas la série ; une séance faite y met fin.';
 
   @override
   String get coachingRosterRiskLow => 'Faible';
@@ -16883,6 +16952,50 @@ class AppLocalizationsFr extends AppLocalizations {
   String get messagesRouteLoading => 'Chargement de l\'itinéraire';
 
   @override
+  String get messagesDeletedAccount => 'Compte supprimé';
+
+  @override
+  String get messagesDeletedAccountClosed =>
+      'Ce compte a été supprimé. Vous pouvez toujours lire les messages que vous avez envoyés, mais vous ne pouvez pas répondre.';
+
+  @override
+  String get messagesUnsentPlaceholder => 'Message retiré';
+
+  @override
+  String get messagesUnsend => 'Retirer';
+
+  @override
+  String get messagesUnsendConfirmTitle => 'Retirer ce message ?';
+
+  @override
+  String get messagesUnsendConfirmBody =>
+      'Il sera supprimé pour vous deux. Cette action est irréversible.';
+
+  @override
+  String get messagesUnsendFailed => 'Impossible de retirer le message.';
+
+  @override
+  String get messagesReport => 'Signaler';
+
+  @override
+  String get messagesOptionsHint => 'afficher les options du message';
+
+  @override
+  String get messagesBlock => 'Bloquer';
+
+  @override
+  String get messagesUnblock => 'Débloquer';
+
+  @override
+  String get messagesBlockConfirmBody =>
+      'Aucun de vous deux ne pourra écrire à l\'autre, et cette personne ne pourra plus vous suivre, donner de kudos à vos courses ni les commenter. Tout abonnement entre vous, dans un sens comme dans l\'autre, sera supprimé, et le déblocage ne le rétablira pas.';
+
+  @override
+  String messagesBlockedNotice(String name) {
+    return 'Vous avez bloqué $name : aucun de vous deux ne peut donc écrire à l\'autre.';
+  }
+
+  @override
   String get profileMessage => 'Message';
 
   @override
@@ -18034,7 +18147,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planDetailGoalTimeRepaceHint =>
-      'La modifier recalcule les allures cibles des séances à venir. Les séances passées, faites ou sautées gardent les leurs, et un plan construit à partir d\'un 5 km récent garde ses allures.';
+      'La modifier recalcule les allures cibles des séances à venir. Les séances passées, faites ou ignorées gardent les leurs, et un plan construit à partir d\'un 5 km récent garde ses allures.';
 
   @override
   String get planDetailNotesLabel => 'Notes';
@@ -18283,7 +18396,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get phoneSurfaceWidgetDone => 'Fait';
 
   @override
-  String get phoneSurfaceWidgetSkipped => 'Sauté';
+  String get phoneSurfaceWidgetSkipped => 'Ignoré';
 
   @override
   String get dashboardTrainForSomething => 'S\'entraîner pour un objectif';
@@ -18593,8 +18706,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count sautées',
-      one: '$count sautée',
+      other: '$count ignorées',
+      one: '$count ignorée',
     );
     return '$_temp0';
   }
@@ -18744,4 +18857,39 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planNewDobHintHealthDataAction => 'Vérifier le consentement';
+
+  @override
+  String get messagesAiTag => 'IA';
+
+  @override
+  String get messagesAiTagSr => 'Généré par l\'IA';
+
+  @override
+  String get messagesCoachRowIntro =>
+      'Posez vos questions sur votre entraînement, votre plan ou une course.';
+
+  @override
+  String get messagesCoachPin => 'Épingler le Coach IA en haut';
+
+  @override
+  String get messagesCoachUnpin => 'Désépingler le Coach IA';
+
+  @override
+  String get messagesCoachPlacementFailed =>
+      'Impossible d\'enregistrer l\'emplacement du Coach IA. Réessayez.';
+
+  @override
+  String get prefsSectionMessages => 'Messages';
+
+  @override
+  String get prefsCoachInMessages => 'Coach IA dans Messages';
+
+  @override
+  String get prefsCoachInMessagesPinned => 'Épinglé en haut';
+
+  @override
+  String get prefsCoachInMessagesListed => 'Avec vos conversations';
+
+  @override
+  String get prefsCoachInMessagesHidden => 'Masqué';
 }

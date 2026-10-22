@@ -133,13 +133,14 @@ test.describe('/compare — visitor conversion journey (anon, static marketing p
 
 		await test.step('the AI Coach feature link routes an anon visitor into the sign-in funnel', async () => {
 			// The footer "Explore the features" strip links to the real
-			// product surfaces (compare/+page.svelte:104 a[href="/coach"]). But
-			// /coach is NOT in the +layout.svelte anon-allowed set, so the
-			// global auth guard bounces an unauthenticated visitor to /login
-			// (with a return_to=/coach so they land on Coach after signing in).
+			// product surfaces (compare/+page.svelte a[href="/messages/coach"], the
+			// Coach's conversation in Messages). But /messages is NOT in the
+			// +layout.svelte anon-allowed set, so the global auth guard bounces an
+			// unauthenticated visitor to /login (with a return_to so they land on
+			// the Coach after signing in).
 			// The marketing link's job is to route into that funnel — the same
 			// auth-wall end the donate CTA hits below.
-			const coachLink = page.locator('.cmp-footer a[href="/coach"]');
+			const coachLink = page.locator('.cmp-footer a[href="/messages/coach"]');
 			await expect(coachLink).toBeVisible();
 			await coachLink.click();
 			await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });

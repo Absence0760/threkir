@@ -97,6 +97,7 @@ Japanese has **only `other`**. Write `{count, plural, other{{count}件の…}}`
 | auto-pause | — | no catalogue string yet; build from 一時停止 (「ランを一時停止しました」) → 自動一時停止, and flag it as a new term |
 | kudos | **称賛** (`kudosGiveLabel` 「称賛する」, `profile.giveKudos`) | four renderings ship — inconsistency 1 |
 | workout | ワークアウト; training トレーニング | |
+| `hike` activity type | **トレイルラン** (`activityTypeHike` / `activityType.hike`) | deliberate, not a mistranslation: the stored token is `hike` but the product shows it as "Trail run" in every locale since decisions § 547 / § 1155. Don't flag it or change it to ハイキング |
 | warm-up / cool-down / recovery | ウォームアップ / クールダウン / リカバリー | 回復 once on mobile |
 | save / settings / feed / followers | 保存 / 設定 / フィード / フォロワー | |
 | sign in | サインイン | ログイン in 4 / 21 strings — inconsistency 4 |
@@ -117,10 +118,13 @@ Japanese has **only `other`**. Write `{count, plural, other{{count}件の…}}`
 
 ## Don't translate
 
-Threkir, Pro, Strava, Garmin, parkrun, Health Connect, Apple Health (kept
-in Latin script, as `importHealthSubtitleIos` does), Apple Watch, Wear OS,
-HealthKit, GPX/TCX/FIT, VDOT, CTL, ATL, TSB, TRIMP, RPE, 1RM, GAP, DNF,
-VO₂max. Person-named formulas are transliterated: Riegel → リーゲル
+Threkir, Pro, Strava, Garmin, parkrun, Apple Watch, Wear OS,
+HealthKit (the framework), GPX/TCX/FIT, VDOT, CTL, ATL, TSB, TRIMP, RPE, 1RM, GAP, DNF,
+VO₂max. The health platforms take their vendors' Japanese names
+(`healthPlatformNameIos` / `healthPlatformNameAndroid`): **ヘルスケア** and
+**ヘルスコネクト**, in katakana, never the English names. A generic
+"health app" is 「健康管理アプリ」, not 「ヘルスケアアプリ」, which is Apple's.
+Person-named formulas are transliterated: Riegel → リーゲル
 (`metricRiegelLabel` 「リーゲルの式」). Identifiers, route paths, ICU keywords,
 `{placeholders}`.
 

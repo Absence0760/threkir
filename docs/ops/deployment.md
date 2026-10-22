@@ -682,7 +682,7 @@ Each ships default off with two halves: a `PUBLIC_*` flag in the web build (`rel
 | Feature | Web flag | Lambda key | Sign-off before flipping |
 |---|---|---|---|
 | AI plan assistant on `/plans/new` (decisions § 1930) | `PUBLIC_AI_PLAN_ENABLED` | `AI_PLAN_ENABLED` | owner + counsel on superseding § 12 in part; counsel / CISO on the v3 AI-disclosure copy |
-| Adjust with AI on `/plans/[id]` (§ 1979 – § 1981) | `PUBLIC_AI_PLAN_EDIT_ENABLED` | `AI_PLAN_EDIT_ENABLED` | owner + counsel on § 1979; counsel / CISO on the v4 AI-disclosure copy |
+| Adjust with AI on `/plans/[id]` and the plan-edit card in the Coach chat (§ 1979 – § 1981, § 2230) | `PUBLIC_AI_PLAN_EDIT_ENABLED` | `AI_PLAN_EDIT_ENABLED` | owner + counsel on § 1979; counsel / CISO on the v4 AI-disclosure copy |
 | Log from a photo on `/nutrition/log` (§ 1972 – § 1973) | `PUBLIC_PLATE_PHOTO_ENABLED` | `PLATE_PHOTO_ENABLED` | counsel / CISO on the v5 AI-disclosure copy; owner on the vision spend |
 | Coach fuelling handoff to `/nutrition/fuel` (§ 1975) | `PUBLIC_COACH_FUEL_ENABLED` | `COACH_FUEL_ENABLED` | owner + counsel ([race_fueling_plan.md](../features/race_fueling_plan.md) pre-deploy checklist); no new disclosure rung |
 

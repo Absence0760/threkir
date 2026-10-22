@@ -159,6 +159,45 @@ void main() {
       expect(threads.single.partnerName, isNull);
     });
 
+    test('a deleted partner and an unsent latest message map, and only the '
+        'live partner is looked up', () async {
+      await _signIn(client);
+      fake.bodyByPath[_threadsPath] = [
+        {
+          'partner_id': 'p-1',
+          'deleted_partner_key': null,
+          'last_body': null,
+          'last_unsent': true,
+          'last_at': '2026-10-14T09:30:00Z',
+          'last_from_me': false,
+          'unread': 0,
+        },
+        {
+          'partner_id': null,
+          'deleted_partner_key': 'k-1',
+          'last_body': 'are you there?',
+          'last_unsent': false,
+          'last_at': '2026-10-13T09:30:00Z',
+          'last_from_me': true,
+          'unread': 0,
+        },
+      ];
+      fake.bodyByPath[_profilesPath] = [
+        {'id': 'p-1', 'display_name': 'Ada', 'avatar_url': null},
+      ];
+
+      final threads = await api.fetchDmThreads();
+
+      expect(threads.first.lastUnsent, isTrue);
+      expect(threads.first.lastBody, isNull);
+      expect(threads.last.partnerId, isNull);
+      expect(threads.last.deletedPartnerKey, 'k-1');
+      expect(threads.last.threadKey, 'k-1');
+      expect(threads.last.target, isA<DmDeletedPartnerThread>());
+      expect(fake.to(_profilesPath).single.url.queryParameters['id'],
+          'in.("p-1")');
+    });
+
     test('a failed inbox read throws rather than reading as empty', () async {
       await _signIn(client);
       fake.statusByPath[_threadsPath] = 500;
@@ -233,7 +272,7 @@ void main() {
         _message('m-1', createdAt: '2026-10-14T08:01:00Z'),
       ];
 
-      final page = await api.fetchDmThread('other-1', limit: 3);
+      final page = await api.fetchDmThread(const DmPartnerThread('other-1'), limit: 3);
 
       final req = fake.to(_messagesPath).single;
       expect(req.method, 'GET');
@@ -257,7 +296,7 @@ void main() {
         _message('m-1', createdAt: '2026-10-14T08:01:00Z'),
       ];
 
-      final page = await api.fetchDmThread('other-1', limit: 2);
+      final page = await api.fetchDmThread(const DmPartnerThread('other-1'), limit: 2);
 
       expect(page.hasMore, isTrue);
       expect(page.messages.map((m) => m.id), ['m-2', 'm-3']);
@@ -269,7 +308,7 @@ void main() {
       final oldest = DirectMessageRow.fromJson(
           _message('m-5', createdAt: '2026-10-14T08:05:00.123456Z'));
 
-      await api.fetchDmThread('other-1', before: oldest);
+      await api.fetchDmThread(const DmPartnerThread('other-1'), before: oldest);
 
       final q = fake.to(_messagesPath).single.url.queryParameters;
       expect(
@@ -280,11 +319,55 @@ void main() {
       expect(q['limit'], '51');
     });
 
+    test('a deleted partner\'s thread reads the viewer\'s own messages under '
+        'its key', () async {
+      await _signIn(client);
+      fake.bodyByPath[_messagesPath] = const <dynamic>[];
+
+      await api.fetchDmThread(const DmDeletedPartnerThread('k-1'));
+
+      final q = fake.to(_messagesPath).single.url.queryParameters;
+      expect(q['sender_id'], 'eq.user-1');
+      expect(q['deleted_partner_key'], 'eq.k-1');
+      expect(q.containsKey('recipient_id'), isFalse);
+    });
+
     test('signed out answers an empty page without a wire call', () async {
-      final page = await api.fetchDmThread('other-1');
+      final page = await api.fetchDmThread(const DmPartnerThread('other-1'));
       expect(page.messages, isEmpty);
       expect(page.hasMore, isFalse);
       expect(fake.requests, isEmpty);
+    });
+  });
+
+  group('unsendDm', () {
+    test('calls the sender-only RPC and returns the unsent row', () async {
+      await _signIn(client);
+      fake.bodyByPath['/rest/v1/rpc/unsend_direct_message'] = {
+        ..._message('m-1'),
+        'body': null,
+        'unsent_at': '2026-10-14T09:00:00Z',
+      };
+
+      final row = await api.unsendDm('m-1');
+
+      final req =
+          fake.to('/rest/v1/rpc/unsend_direct_message').single as http.Request;
+      expect(req.method, 'POST');
+      expect(jsonDecode(req.body), {'p_message_id': 'm-1'});
+      expect(row.body, isNull);
+      expect(row.unsentAt, DateTime.utc(2026, 10, 14, 9));
+    });
+
+    test('a message the viewer did not send surfaces the refusal', () async {
+      await _signIn(client);
+      fake.statusByPath['/rest/v1/rpc/unsend_direct_message'] = 404;
+      fake.bodyByPath['/rest/v1/rpc/unsend_direct_message'] = {
+        'code': 'P0002',
+        'message': 'unsend_direct_message: message not found',
+      };
+
+      expect(api.unsendDm('m-9'), throwsA(isA<PostgrestException>()));
     });
   });
 

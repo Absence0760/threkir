@@ -31,6 +31,12 @@
 		setModalityChoice,
 	} from '#lib/stores/modality_visibility.svelte.ts';
 	import type { Modality } from '#lib/settings/modality_visibility.ts';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
+	import {
+		MESSAGES_COACH_ROW_KEY,
+		parseCoachInboxPlacement,
+		type CoachInboxPlacement,
+	} from '#lib/social/messages_inbox.ts';
 
 	let preferredUnit = $state<'km' | 'mi'>('km');
 	let weightUnit = $state<'kg' | 'lbs'>('kg');
@@ -41,6 +47,10 @@
 	// limit entirely, so reaching Undo never means beating a countdown.
 	let undoWindowS = $state<number>(DEFAULT_UNDO_WINDOW_S);
 	let showCalories = $state(true);
+	// Where the AI Coach sits in Messages (decisions § 2227). Offered only
+	// while the Coach is on for this deploy, as the inbox row is.
+	const coachOn = coachEnabled();
+	let coachRow = $state<CoachInboxPlacement>('pinned');
 
 	/// `auto` is the absence of the key, not a fourth level: picking it writes
 	/// null, which deletes it and hands the level back to the derivation.
@@ -86,6 +96,7 @@
 		undoWindowS = undoWindowSFromPref(effective<number>(settings, 'undo_window_s'));
 		setUndoWindowS(undoWindowS);
 		showCalories = effective<boolean>(settings, 'show_calories', true) !== false;
+		coachRow = parseCoachInboxPlacement(effective(settings, MESSAGES_COACH_ROW_KEY));
 		const storedDisclosure = effective<string>(settings, DISCLOSURE_LEVEL_KEY);
 		disclosureChoice = isDisclosureLevel(storedDisclosure) ? storedDisclosure : 'auto';
 		primaryGoal = effective<string>(settings, PRIMARY_GOAL_KEY) ?? null;
@@ -308,6 +319,30 @@
 			</span>
 		</label>
 	</section>
+
+	{#if coachOn}
+		<section class="card" id="messages-coach">
+			<h2>{m('prefs.messagesHeading')}</h2>
+			<div class="form-grid">
+				<div class="field">
+					<label>
+						<span class="label-text">{m('prefs.coachInMessages')}</span>
+						<select
+							bind:value={coachRow}
+							data-testid="coach-in-messages-select"
+							aria-describedby="coach-in-messages-hint"
+							onchange={() => prefs.save({ [MESSAGES_COACH_ROW_KEY]: coachRow })}
+						>
+							<option value="pinned">{m('prefs.coachInMessagesPinned')}</option>
+							<option value="listed">{m('prefs.coachInMessagesListed')}</option>
+							<option value="hidden">{m('prefs.coachInMessagesHidden')}</option>
+						</select>
+					</label>
+					<p class="hint" id="coach-in-messages-hint">{m('prefs.coachInMessagesHint')}</p>
+				</div>
+			</div>
+		</section>
+	{/if}
 
 	<section class="card" id="gym-nutrition">
 		<h2>{m('prefs.modalitiesHeading')}</h2>

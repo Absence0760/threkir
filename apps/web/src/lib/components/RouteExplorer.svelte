@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';
@@ -377,6 +378,7 @@
 						</div>
 						<div class="route-info">
 							<h3>{route.name}</h3>
+							{#if route.is_official}<OfficialBadge />{/if}
 							<div class="route-meta">
 								<span class="meta-item">
 									<span class="material-symbols meta-icon">straighten</span>

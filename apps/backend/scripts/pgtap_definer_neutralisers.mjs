@@ -123,7 +123,8 @@ export const DEFINER_NEUTRALISERS = new Map([
       sql: `create or replace view public.public_routes as
  select id, user_id, name, distance_m, elevation_m, surface, is_public, slug,
         created_at, updated_at, tags, is_featured, featured_at, run_count,
-        case when is_public_club_by_id(club_id) then club_id else null::uuid end as club_id
+        case when is_public_club_by_id(club_id) then club_id else null::uuid end as club_id,
+        (club_id is not null and private.is_official_publisher(club_id, user_id)) as is_official
    from routes r
   where ${mine('r')};`,
       subject: 'routes r — the route whose publicness was dropped',
@@ -396,7 +397,7 @@ $neutralised$;`,
       subject: 'user_settings s — a runner with no settings row was never a candidate, so the settings row is what makes one discoverable',
       witness: {
         setup: `insert into user_settings (user_id, prefs, discoverable_area)
-                 values ((select id from auth.users order by id limit 1),
+                 values ((select p.id from user_profiles p order by p.id limit 1),
                          '{}'::jsonb,
                          extensions.ST_SetSRID(extensions.ST_MakePoint(0, 0), 4326)::geography)
                  on conflict (user_id) do update
@@ -819,12 +820,13 @@ $neutralised$;`,
  returns table(id uuid, creator_id uuid, club_id uuid, title text, description text,
                metric text, scope text, goal_value numeric, activity_type text,
                starts_at timestamptz, ends_at timestamptz, is_public boolean,
-               created_at timestamptz, participant_count integer)
+               created_at timestamptz, participant_count integer, is_official boolean)
  language sql stable security definer set search_path to 'public'
 as $neutralised$
   select c.id, c.creator_id, c.club_id, c.title, c.description, c.metric, c.scope,
          c.goal_value, c.activity_type, c.starts_at, c.ends_at, c.is_public,
-         c.created_at, c.participant_count
+         c.created_at, c.participant_count,
+         private.is_official_publisher(c.club_id, c.creator_id)
   from challenges c
   where c.ends_at > now()
     and not exists (
@@ -1093,7 +1095,8 @@ as $neutralised$
   select r.id, r.user_id, r.name, r.distance_m, r.elevation_m, r.surface, r.is_public,
          r.slug, r.created_at, r.updated_at, r.tags, r.is_featured, r.featured_at,
          r.run_count,
-         case when is_public_club_by_id(r.club_id) then r.club_id else null::uuid end
+         case when is_public_club_by_id(r.club_id) then r.club_id else null::uuid end,
+         (r.club_id is not null and private.is_official_publisher(r.club_id, r.user_id))
   from routes r, box, centre
   where r.geom is not null
     and ST_Intersects(r.geom, box.g)
@@ -1240,7 +1243,8 @@ $neutralised$;`,
       sql: `create or replace view public.shared_routes as
  select id, user_id, name, distance_m, elevation_m, surface, is_public, slug,
         created_at, updated_at, tags, is_featured, featured_at, run_count,
-        case when is_public_club_by_id(club_id) then club_id else null::uuid end as club_id
+        case when is_public_club_by_id(club_id) then club_id else null::uuid end as club_id,
+        (club_id is not null and private.is_official_publisher(club_id, user_id)) as is_official
    from routes r
   where r.is_public = false
     and ${mine('r')};`,

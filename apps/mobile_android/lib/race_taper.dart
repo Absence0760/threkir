@@ -6,7 +6,9 @@
 /// proposes per-workout changes the plan screen previews before applying.
 ///
 /// Dart twin of `apps/web/src/lib/training/race_taper.ts` — keep the windows,
-/// scales, tie-breaks and test counts in lockstep.
+/// scales, tie-breaks and test counts in lockstep. The windows also have a
+/// one-way SQL copy, `private.in_bc_race_window` (migration 20271021000050,
+/// decisions § 2230): a window change here needs a new migration there.
 library;
 
 import 'dart:math' show min;

@@ -53,6 +53,12 @@ class Route {
   /// the title on the route detail surfaces.
   final String? description;
 
+  /// Published by a verified organiser: [clubId] names a verified club and
+  /// the author is an active owner/admin of it. Derived server-side
+  /// (`is_official`, migration 20271021000030) and never stored on the row,
+  /// so it is true only on reads that select it.
+  final bool official;
+
   const Route({
     required this.id,
     required this.name,
@@ -69,6 +75,7 @@ class Route {
     this.isStarred = false,
     this.clubId,
     this.description,
+    this.official = false,
   });
 
   factory Route.fromJson(Map<String, dynamic> json) => _$RouteFromJson(json);

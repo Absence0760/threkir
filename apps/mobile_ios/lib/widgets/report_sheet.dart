@@ -8,7 +8,8 @@ import '../rate_limit_message.dart';
 import 'top_banner.dart';
 
 /// Modal report sheet — entry point for the moderation flow on
-/// profiles, clubs, routes, comments, club posts, and runs. Mirrors
+/// profiles, clubs, routes, comments, club posts, runs, route reviews and
+/// direct messages. Mirrors
 /// the web `submitReport` surface. The user picks a reason from a
 /// fixed list + optional free-text notes, then taps Submit.
 ///
@@ -246,6 +247,8 @@ class _ReportSheetState extends State<_ReportSheet> {
         return l10n.reportTitleRun;
       case 'route_review':
         return l10n.reportTitleReview;
+      case 'direct_message':
+        return l10n.reportTitleMessage;
     }
     return l10n.reportTitleContent;
   }

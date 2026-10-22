@@ -98,6 +98,10 @@ class SettingsKeys {
   /// muted runner, and by the Go worker's `kindMuted` on email and push
   /// (migration 20270913000001).
   static const notifyWorkoutReminder = 'notify_workout_reminder';
+  /// Where the AI Coach sits in the Messages inbox — `'pinned'` (default) |
+  /// `'listed'` | `'hidden'`; anything else reads as pinned
+  /// (`parseCoachInboxPlacement`, decisions § 2227). Never read in SQL.
+  static const messagesCoachRow = 'messages_coach_row';
   /// The user's preferred language for server-sent email, as a BCP-47 tag
   /// (`en`/`de`/`fr`/`es`/`ja`/`pt-BR`). Written by the clients as a side
   /// effect of the language picker so the Go worker can localize email
@@ -532,10 +536,10 @@ class SettingsService {
   /// down, server returns 5xx, etc.) the change is queued to a pending
   /// list and replayed on the next successful [load].
   ///
-  /// **Concurrency note:** the server push re-fetches the current row
-  /// before merging so a concurrent write from another device isn't
-  /// silently overwritten. Mirrors the read-merge-write pattern in
-  /// `apps/web/src/lib/settings/settings.ts: updateUniversal`.
+  /// **Concurrency note:** the server push merges the delta in one
+  /// statement (`merge_my_settings`), so a concurrent writer — another
+  /// device, or this app's own time-zone sync — is never overwritten.
+  /// Same RPC as `apps/web/src/lib/settings/settings.ts: updateUniversal`.
   Future<void> updateUniversal(Map<String, dynamic> changes) async {
     final userId = _requireUser();
     _universal = applyPrefsChanges(_universal, changes);
@@ -568,59 +572,43 @@ class SettingsService {
     }
   }
 
+  /// The merge runs server-side in one statement (`merge_my_settings`,
+  /// issue #1212). A read-merge-write here lost updates: two writers in
+  /// flight each read the bag before the other's write landed, and the
+  /// later write put the earlier one's key back. The RPC is also an upsert,
+  /// so a missing client-provisioned row is created rather than 0-row
+  /// no-op'd (#234). A null value in [changes] removes the key.
   Future<void> _pushUniversal(
       String userId, Map<String, dynamic> changes) async {
-    final fresh = await _client
-        .from(UserSettingRow.table)
-        .select(UserSettingRow.colPrefs)
-        .eq(UserSettingRow.colUserId, userId)
-        .maybeSingle();
-    final base = _asMap(fresh?[UserSettingRow.colPrefs]);
-    final merged = applyPrefsChanges(base, changes);
-    // Upsert, not update: rows are client-provisioned, so a missing row
-    // makes an update match 0 rows and report success — the change is
-    // neither stored nor queued, and the next load reverts it (#234).
-    // This bag carries privacy_zones + safety_overdue_minutes, so a
-    // silent drop here is a privacy/safety failure, not a lost nicety.
-    await _client.from(UserSettingRow.table).upsert(
-      <String, dynamic>{
-        UserSettingRow.colUserId: userId,
-        UserSettingRow.colPrefs: merged,
-        UserSettingRow.colUpdatedAt: DateTime.now().toUtc().toIso8601String(),
-      },
-      onConflict: UserSettingRow.colUserId,
+    final merged = await _client.rpc(
+      'merge_my_settings',
+      params: <String, dynamic>{'p_changes': changes},
     );
-    _universal = merged;
-    await _cache.writeUniversal(userId, _universal);
+    // Stamp with the server's union so this device picks up the other
+    // writers' keys, not just its own delta.
+    if (merged is Map) {
+      _universal = _asMap(merged);
+      await _cache.writeUniversal(userId, _universal);
+    }
   }
 
+  /// Same atomic merge as [_pushUniversal]; the insert arm needs platform
+  /// (NOT NULL) + label, matching the load() provision row.
   Future<void> _pushDevice(
       String userId, Map<String, dynamic> changes) async {
-    final fresh = await _client
-        .from(UserDeviceSettingRow.table)
-        .select(UserDeviceSettingRow.colPrefs)
-        .eq(UserDeviceSettingRow.colUserId, userId)
-        .eq(UserDeviceSettingRow.colDeviceId, _deviceId)
-        .maybeSingle();
-    final base = _asMap(fresh?[UserDeviceSettingRow.colPrefs]);
-    final merged = applyPrefsChanges(base, changes);
-    // Upsert for the same 0-row reason as _pushUniversal; the insert arm
-    // needs platform (NOT NULL) + label, matching the load() provision row.
-    await _client.from(UserDeviceSettingRow.table).upsert(
-      <String, dynamic>{
-        UserDeviceSettingRow.colUserId: userId,
-        UserDeviceSettingRow.colDeviceId: _deviceId,
-        UserDeviceSettingRow.colPlatform: _platform,
-        if (_label != null) UserDeviceSettingRow.colLabel: _label,
-        UserDeviceSettingRow.colPrefs: merged,
-        UserDeviceSettingRow.colUpdatedAt:
-            DateTime.now().toUtc().toIso8601String(),
+    final merged = await _client.rpc(
+      'merge_my_device_settings',
+      params: <String, dynamic>{
+        'p_device_id': _deviceId,
+        'p_changes': changes,
+        'p_platform': _platform,
+        'p_label': _label,
       },
-      onConflict:
-          '${UserDeviceSettingRow.colUserId},${UserDeviceSettingRow.colDeviceId}',
     );
-    _device = merged;
-    await _cache.writeDevice(userId, _deviceId, _device);
+    if (merged is Map) {
+      _device = _asMap(merged);
+      await _cache.writeDevice(userId, _deviceId, _device);
+    }
   }
 
   String _requireUser() {

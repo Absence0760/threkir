@@ -779,31 +779,37 @@ export type Database = {
       }
       direct_messages: {
         Row: {
-          body: string
+          body: string | null
           created_at: string
+          deleted_partner_key: string | null
           id: string
           read_at: string | null
-          recipient_id: string
+          recipient_id: string | null
           route_id: string | null
           sender_id: string
+          unsent_at: string | null
         }
         Insert: {
-          body: string
+          body?: string | null
           created_at?: string
+          deleted_partner_key?: string | null
           id?: string
           read_at?: string | null
-          recipient_id: string
+          recipient_id?: string | null
           route_id?: string | null
           sender_id: string
+          unsent_at?: string | null
         }
         Update: {
-          body?: string
+          body?: string | null
           created_at?: string
+          deleted_partner_key?: string | null
           id?: string
           read_at?: string | null
-          recipient_id?: string
+          recipient_id?: string | null
           route_id?: string | null
           sender_id?: string
+          unsent_at?: string | null
         }
         Relationships: [
           {
@@ -3542,12 +3548,16 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          legal_hold: boolean
           notes: string | null
           reason: string
-          reporter_id: string
+          reporter_id: string | null
           resolution: string | null
           reviewed_at: string | null
           reviewed_by: string | null
+          snapshot_author_id: string | null
+          snapshot_body: string | null
+          snapshot_sent_at: string | null
           status: string
           target_id: string
           target_kind: string
@@ -3555,12 +3565,16 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          legal_hold?: boolean
           notes?: string | null
           reason: string
-          reporter_id: string
+          reporter_id?: string | null
           resolution?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          snapshot_author_id?: string | null
+          snapshot_body?: string | null
+          snapshot_sent_at?: string | null
           status?: string
           target_id: string
           target_kind: string
@@ -3568,12 +3582,16 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          legal_hold?: boolean
           notes?: string | null
           reason?: string
-          reporter_id?: string
+          reporter_id?: string | null
           resolution?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          snapshot_author_id?: string | null
+          snapshot_body?: string | null
+          snapshot_sent_at?: string | null
           status?: string
           target_id?: string
           target_kind?: string
@@ -5559,6 +5577,7 @@ export type Database = {
           featured_at: string | null
           id: string | null
           is_featured: boolean | null
+          is_official: boolean | null
           is_public: boolean | null
           name: string | null
           run_count: number | null
@@ -5576,6 +5595,7 @@ export type Database = {
           featured_at?: string | null
           id?: string | null
           is_featured?: boolean | null
+          is_official?: never
           is_public?: boolean | null
           name?: string | null
           run_count?: number | null
@@ -5593,6 +5613,7 @@ export type Database = {
           featured_at?: string | null
           id?: string | null
           is_featured?: boolean | null
+          is_official?: never
           is_public?: boolean | null
           name?: string | null
           run_count?: number | null
@@ -5744,6 +5765,7 @@ export type Database = {
           featured_at: string | null
           id: string | null
           is_featured: boolean | null
+          is_official: boolean | null
           is_public: boolean | null
           name: string | null
           run_count: number | null
@@ -5761,6 +5783,7 @@ export type Database = {
           featured_at?: string | null
           id?: string | null
           is_featured?: boolean | null
+          is_official?: never
           is_public?: boolean | null
           name?: string | null
           run_count?: number | null
@@ -5778,6 +5801,7 @@ export type Database = {
           featured_at?: string | null
           id?: string | null
           is_featured?: boolean | null
+          is_official?: never
           is_public?: boolean | null
           name?: string | null
           run_count?: number | null
@@ -5937,6 +5961,16 @@ export type Database = {
         Args: { p_changes?: Json; p_plan_id: string; p_workout_ids: string[] }
         Returns: undefined
       }
+      apply_ai_plan_edits: {
+        Args: {
+          p_include_following: boolean
+          p_plan_id: string
+          p_today: string
+          p_weeks: Json
+          p_workouts: Json
+        }
+        Returns: undefined
+      }
       apply_workout_adjustments: {
         Args: { p_changes: Json; p_plan_id: string }
         Returns: undefined
@@ -6031,6 +6065,7 @@ export type Database = {
           ends_at: string
           goal_value: number
           id: string
+          is_official: boolean
           is_public: boolean
           metric: string
           participant_count: number
@@ -6174,6 +6209,7 @@ export type Database = {
         Returns: {
           avatar_url: string
           id: string
+          is_verified: boolean
           lat: number
           lng: number
           location_label: string
@@ -6266,6 +6302,7 @@ export type Database = {
           elevation_m: number
           id: string
           is_featured: boolean
+          is_official: boolean
           lat: number
           lng: number
           name: string
@@ -6290,9 +6327,11 @@ export type Database = {
       dm_threads: {
         Args: never
         Returns: {
+          deleted_partner_key: string
           last_at: string
           last_body: string
           last_from_me: boolean
+          last_unsent: boolean
           partner_id: string
           unread: number
         }[]
@@ -6398,6 +6437,7 @@ export type Database = {
         Args: never
         Returns: {
           latest_at: string
+          page_id: string
           reasons: Json
           report_count: number
           reporter_count: number
@@ -6411,13 +6451,31 @@ export type Database = {
         Returns: {
           created_at: string
           id: string
+          legal_hold: boolean
           notes: string
+          purge_after: string
           reason: string
           reporter_id: string
           resolution: string
           reviewed_at: string
           reviewed_by: string
+          snapshot_author_id: string
+          snapshot_body: string
+          snapshot_sent_at: string
           status: string
+        }[]
+      }
+      fetch_resolved_reports: {
+        Args: { p_limit?: number }
+        Returns: {
+          held_count: number
+          last_reviewed_at: string
+          next_purge_after: string
+          page_id: string
+          report_count: number
+          shadow_hidden: boolean
+          target_id: string
+          target_kind: string
         }[]
       }
       find_backlogged_jobs: {
@@ -6679,6 +6737,27 @@ export type Database = {
         Returns: boolean
       }
       is_event_visible: { Args: { p_event_id: string }; Returns: boolean }
+      is_official:
+        | {
+            Args: { c: Database["public"]["Tables"]["challenges"]["Row"] }
+            Returns: boolean
+          }
+        | {
+            Args: { g: Database["public"]["Tables"]["gym_routines"]["Row"] }
+            Returns: boolean
+          }
+        | {
+            Args: { p: Database["public"]["Tables"]["training_plans"]["Row"] }
+            Returns: boolean
+          }
+        | {
+            Args: { r: Database["public"]["Tables"]["routes"]["Row"] }
+            Returns: boolean
+          }
+        | {
+            Args: { s: Database["public"]["Tables"]["session_plans"]["Row"] }
+            Returns: boolean
+          }
       is_pro: { Args: never; Returns: boolean }
       is_public_club_by_id: { Args: { p_club_id: string }; Returns: boolean }
       is_public_event_by_id: { Args: { p_event_id: string }; Returns: boolean }
@@ -6756,6 +6835,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      merge_my_device_settings: {
+        Args: {
+          p_changes: Json
+          p_device_id: string
+          p_label?: string
+          p_platform: string
+        }
+        Returns: Json
+      }
+      merge_my_settings: { Args: { p_changes: Json }; Returns: Json }
       move_plan_workout: {
         Args: { p_date: string; p_workout_id: string }
         Returns: string
@@ -6807,6 +6896,7 @@ export type Database = {
           featured_at: string | null
           id: string | null
           is_featured: boolean | null
+          is_official: boolean | null
           is_public: boolean | null
           name: string | null
           run_count: number | null
@@ -7129,6 +7219,7 @@ export type Database = {
           featured_at: string | null
           id: string | null
           is_featured: boolean | null
+          is_official: boolean | null
           is_public: boolean | null
           name: string | null
           run_count: number | null
@@ -7398,6 +7489,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_report_legal_hold: {
+        Args: { p_hold: boolean; p_report_id: string }
+        Returns: boolean
+      }
       set_run_expected_return: {
         Args: { p_expected_return_at: string; p_run_id: string }
         Returns: boolean
@@ -7456,6 +7551,26 @@ export type Database = {
       }
       unblock_user: { Args: { p_target: string }; Returns: undefined }
       unlink_club_strava: { Args: { p_club_id: string }; Returns: boolean }
+      unsend_direct_message: {
+        Args: { p_message_id: string }
+        Returns: {
+          body: string | null
+          created_at: string
+          deleted_partner_key: string | null
+          id: string
+          read_at: string | null
+          recipient_id: string | null
+          route_id: string | null
+          sender_id: string
+          unsent_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "direct_messages"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       upsert_checkpoint_crossing: {
         Args: {
           p_bib?: string

@@ -14,7 +14,7 @@
 -- other suites' rows never enter the viewport.
 
 begin;
-select plan(10);
+select plan(12);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -102,6 +102,20 @@ select is(
   (select count(*)::int from discoverable_routes_in_bbox(150.0, -40.3, 150.3, -40.0, 8, 'popular') where is_official),
   4,
   'official routes past the cap backfill the unused slots'
+);
+
+-- The six official courses were filed in one transaction: same created_at,
+-- no runs, none featured. The row id breaks the tie, so the same two fill the
+-- cap on every call, whatever box the map happens to send.
+select results_eq(
+  $$ select id from discoverable_routes_in_bbox(150.0, -40.3, 150.3, -40.0, 8, 'popular') limit 2 $$,
+  $$ values ('0fd12222-0000-0000-0000-000000000001'::uuid), ('0fd12222-0000-0000-0000-000000000002'::uuid) $$,
+  'routes tied on created_at, runs and featured fill the cap in id order'
+);
+select results_eq(
+  $$ select id from discoverable_routes_in_bbox(150.01, -40.29, 150.31, -40.01, 8, 'popular') $$,
+  $$ select id from discoverable_routes_in_bbox(150.0, -40.3, 150.3, -40.0, 8, 'popular') $$,
+  'a nudged box over the same routes returns the same pins in the same order'
 );
 
 -- 7. With room to spare, the cap scales with p_limit (100 / 4 = 25 > 6).

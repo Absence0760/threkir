@@ -20,7 +20,10 @@
 --   * `hidden_gems` excludes official routes, the way it excludes featured
 --     ones: an official route is always surfaced by `popular`, so it is not
 --     hidden.
---   * the row gains `is_official` so the pin and list can carry the badge.
+--   * the row gains `is_official` so the pin and list can carry the badge;
+--   * the row id is the last sort key in the window and the result, so routes
+--     imported in one transaction (same created_at, no runs) rank the same way
+--     on every call and a map nudge cannot swap which ones fill the cap.
 --
 -- clubs_in_bbox ranks verified clubs above unverified ones (then member_count
 -- as before), so a large fan club no longer outranks the new official one, and
@@ -104,7 +107,7 @@ as $$
       v.*,
       row_number() over (
         partition by v.is_official
-        order by v.is_featured desc, v.run_count desc, v.created_at desc
+        order by v.is_featured desc, v.run_count desc, v.created_at desc, v.id
       ) as official_rank
     from in_view v
     where case p_filter
@@ -143,7 +146,7 @@ as $$
       when not l.is_official then 1
       else 2
     end,
-    l.is_featured desc, l.run_count desc, l.created_at desc
+    l.is_featured desc, l.run_count desc, l.created_at desc, l.id
   limit p_limit;
 $$;
 
@@ -197,7 +200,7 @@ as $$
     and c.shadow_hidden = false
     and c.location_point is not null
     and c.location_point::geometry && bbox.g
-  order by c.is_verified desc, c.member_count desc, c.created_at desc
+  order by c.is_verified desc, c.member_count desc, c.created_at desc, c.id
   limit p_limit;
 $$;
 

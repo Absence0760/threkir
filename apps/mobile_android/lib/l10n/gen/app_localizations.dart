@@ -8032,6 +8032,12 @@ abstract class AppLocalizations {
   /// **'{name} assigned you a training plan'**
   String profileNotifPlanAssigned(String name);
 
+  /// Notification text for a coach whose athlete applied AI Coach suggested changes to a plan the coach assigned
+  ///
+  /// In en, this message translates to:
+  /// **'{name} applied AI-suggested changes to a plan you assigned'**
+  String profileNotifPlanAiEdit(String name);
+
   /// Notification inbox line for the morning reminder that today has a workout on the runner's active training plan
   ///
   /// In en, this message translates to:

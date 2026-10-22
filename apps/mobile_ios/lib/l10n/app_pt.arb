@@ -1361,6 +1361,7 @@
   "profileNotifRunCompletedDist": "{name} concluiu uma corrida de {dist}",
   "profileNotifRunCompleted": "{name} concluiu uma corrida",
   "profileNotifPlanAssigned": "{name} atribuiu-lhe um plano de treino",
+  "profileNotifPlanAiEdit": "{name} aplicou alterações sugeridas pela IA a um plano atribuído por si",
   "profileNotifWorkoutReminder": "O seu treino de hoje está à sua espera no plano",
   "profileNotifEventCancelTitled": "Uma ocorrência de “{title}” foi cancelada",
   "profileNotifEventCancel": "Uma ocorrência de um evento que confirmaste foi cancelada",

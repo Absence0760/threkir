@@ -4905,6 +4905,11 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String profileNotifPlanAiEdit(String name) {
+    return '$name aplicou alterações sugeridas pela IA a um plano atribuído por si';
+  }
+
+  @override
   String get profileNotifWorkoutReminder =>
       'O seu treino de hoje está à sua espera no plano';
 
@@ -23749,6 +23754,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String profileNotifPlanAssigned(String name) {
     return '$name atribuiu um plano de treino a você';
+  }
+
+  @override
+  String profileNotifPlanAiEdit(String name) {
+    return '$name aplicou mudanças sugeridas pela IA a um plano que você atribuiu';
   }
 
   @override

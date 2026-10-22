@@ -4629,6 +4629,11 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String profileNotifPlanAiEdit(String name) {
+    return '$nameがあなたが割り当てたプランにAIの変更案を適用しました';
+  }
+
+  @override
   String get profileNotifWorkoutReminder => '今日のワークアウトがプランで待っています';
 
   @override

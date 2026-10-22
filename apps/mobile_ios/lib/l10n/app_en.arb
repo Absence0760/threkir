@@ -6534,6 +6534,15 @@
       }
     }
   },
+  "profileNotifPlanAiEdit": "{name} applied AI-suggested changes to a plan you assigned",
+  "@profileNotifPlanAiEdit": {
+    "description": "Notification text for a coach whose athlete applied AI Coach suggested changes to a plan the coach assigned",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "profileNotifWorkoutReminder": "Today's workout is waiting in your plan",
   "@profileNotifWorkoutReminder": {
     "description": "Notification inbox line for the morning reminder that today has a workout on the runner's active training plan"

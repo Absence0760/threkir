@@ -423,6 +423,13 @@ func kindMuted(kind string, prefs map[string]interface{}) bool {
 // on "all" would still be emailed and pushed.
 var inAppOnlyKinds = map[string]bool{
 	"content_hidden": true,
+	// A coach is told that an athlete applied AI-suggested changes to a plan
+	// the coach assigned (decisions § 2230). It is an awareness note on the
+	// coach's own roster work, not something they are waiting on, and an
+	// athlete tweaking their week several times would otherwise reach the
+	// coach's mailbox and tray each time; the unread row is refreshed rather
+	// than repeated for that reason too.
+	"plan_ai_edit": true,
 }
 
 // emailMode reads the channel preference out of the user_settings.prefs
@@ -518,6 +525,11 @@ func pathForKind(kind, base string, n NotificationRow) string {
 		// edit someone else made; notify_plan_assigned notifies the athlete,
 		// who owns the assigned plan), so the owner-scoped detail page is
 		// correct for each.
+		return planPath(base, n)
+	case "plan_ai_edit":
+		// The recipient is the coach who assigned the plan, not its owner;
+		// /plans/{id} renders the coach's view of an active athlete's plan
+		// (coach_plan_access), which is where the change is to be read.
 		return planPath(base, n)
 	case "workout_reminder":
 		// The runner's active plan, whose detail page opens on the current

@@ -6,6 +6,7 @@ import 'package:ui_kit/ui_kit.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_gym_store.dart';
 import '../widgets/error_state.dart';
+import '../widgets/official_badge.dart';
 import 'session_detail_screen.dart';
 
 /// Read-only list of the user's session plans (session_planner.md P1). Tapping a
@@ -24,7 +25,7 @@ class SessionsScreen extends StatefulWidget {
 class _SessionsScreenState extends State<SessionsScreen> {
   bool _loading = true;
   bool _error = false;
-  List<SessionPlanRow> _plans = const [];
+  List<({SessionPlanRow plan, bool isOfficial})> _plans = const [];
 
   @override
   void initState() {
@@ -72,7 +73,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
                   : ListView.builder(
                       itemCount: _plans.length,
                       itemBuilder: (context, i) {
-                        final p = _plans[i];
+                        final p = _plans[i].plan;
                         final subtitleParts = <String>[
                           if (p.discipline != null) p.discipline!,
                           if (p.estDurationMin != null)
@@ -80,9 +81,16 @@ class _SessionsScreenState extends State<SessionsScreen> {
                         ];
                         return ListTile(
                           title: Text(p.title.isEmpty ? l10n.sessionUntitled : p.title),
-                          subtitle: subtitleParts.isEmpty
+                          subtitle: subtitleParts.isEmpty && !_plans[i].isOfficial
                               ? null
-                              : Text(subtitleParts.join(' · ')),
+                              : Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (_plans[i].isOfficial) const OfficialBadge(),
+                                    if (subtitleParts.isNotEmpty)
+                                      Text(subtitleParts.join(' · ')),
+                                  ],
+                                ),
                           trailing: const Icon(Icons.chevron_right),
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute<void>(

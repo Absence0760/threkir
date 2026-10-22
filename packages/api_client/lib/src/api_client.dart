@@ -2558,8 +2558,9 @@ class ApiClient {
 
   /// Discoverable public routes inside the viewport bbox for the route
   /// discovery map. Mirror of the web `fetchDiscoverableRoutesInBbox`.
-  /// [filter] is the lens: 'popular' (default) | 'featured' | 'friends' |
-  /// 'hidden_gems'. [distMin]/[distMax] are the parallel race-distance
+  /// [filter] is the lens: 'popular' (default) | 'official' | 'featured' |
+  /// 'friends' | 'hidden_gems'. Official routes rank first, capped at a
+  /// quarter of [limit] outside the 'official' lens. [distMin]/[distMax] are the parallel race-distance
   /// band bounds (a null [distMax] element = open-ended ultra); omit them
   /// for no distance filter. Fails soft to an empty list.
   Future<List<DiscoverableRoutePin>> fetchDiscoverableRoutesInBbox({
@@ -2601,6 +2602,7 @@ class ApiClient {
           runCount: (r['run_count'] as num?)?.toInt() ?? 0,
           lat: (r['lat'] as num).toDouble(),
           lng: (r['lng'] as num).toDouble(),
+          official: (r['is_official'] as bool?) ?? false,
         );
       }).toList();
     } catch (e) {
@@ -2638,6 +2640,7 @@ class ApiClient {
           memberCount: (r['member_count'] as num?)?.toInt() ?? 0,
           lat: (r['lat'] as num).toDouble(),
           lng: (r['lng'] as num).toDouble(),
+          isVerified: (r['is_verified'] as bool?) ?? false,
         );
       }).toList();
     } catch (e) {
@@ -3570,7 +3573,7 @@ class ApiClient {
     final viewerId = _client.auth.currentUser?.id;
     final ownerRow = await _client
         .from(RouteRow.table)
-        .select()
+        .select('*, is_official')
         .eq(RouteRow.colId, routeId)
         .maybeSingle();
     if (ownerRow != null) {
@@ -6929,6 +6932,7 @@ class ApiClient {
       isStarred: row['is_starred'] == true,
       clubId: row['club_id'] as String?,
       description: row['description'] as String?,
+      official: row['is_official'] == true,
     );
   }
 
@@ -7496,18 +7500,25 @@ class ApiClient {
   /// Session plans (session_planner.md P1) the caller can see: their own plans
   /// plus any plan owned by a club they belong to (RLS owns the authority).
   /// Read-only on mobile in P1 — the editor lives on web first.
-  Future<List<SessionPlanRow>> fetchSessionPlans() async {
+  ///
+  /// Each row carries `isOfficial` — the `is_official` computed field
+  /// (migration 20271021000030), which the generated row type cannot hold.
+  Future<List<({SessionPlanRow plan, bool isOfficial})>>
+      fetchSessionPlans() async {
     final uid = _client.auth.currentUser?.id;
     if (uid == null) return const [];
     try {
       final data = await _client
           .from(SessionPlanRow.table)
-          .select()
+          .select('*, is_official')
           .order(SessionPlanRow.colUpdatedAt, ascending: false);
-      return (data as List)
-          .map<SessionPlanRow>(
-              (row) => SessionPlanRow.fromJson(row as Map<String, dynamic>))
-          .toList();
+      return (data as List).map((row) {
+        final m = row as Map<String, dynamic>;
+        return (
+          plan: SessionPlanRow.fromJson(m),
+          isOfficial: m['is_official'] == true,
+        );
+      }).toList();
     } catch (e) {
       debugPrint('fetchSessionPlans failed: $e');
       return const [];
@@ -7515,16 +7526,18 @@ class ApiClient {
   }
 
   /// A single session plan with its blocks + items, for the mobile read view.
-  /// Null when the plan is absent or not visible to the caller.
+  /// Null when the plan is absent or not visible to the caller. `isOfficial`
+  /// is the `is_official` computed field (migration 20271021000030).
   Future<({
     SessionPlanRow plan,
     List<SessionPlanBlockRow> blocks,
     List<SessionPlanItemRow> items,
+    bool isOfficial,
   })?> fetchSessionPlan(String id) async {
     try {
       final planRow = await _client
           .from(SessionPlanRow.table)
-          .select()
+          .select('*, is_official')
           .eq(SessionPlanRow.colId, id)
           .maybeSingle();
       if (planRow == null) return null;
@@ -7548,6 +7561,7 @@ class ApiClient {
             .map<SessionPlanItemRow>(
                 (r) => SessionPlanItemRow.fromJson(r as Map<String, dynamic>))
             .toList(),
+        isOfficial: planRow['is_official'] == true,
       );
     } catch (e) {
       debugPrint('fetchSessionPlan failed: $e');

@@ -7282,6 +7282,12 @@ abstract class AppLocalizations {
   /// **'Popular'**
   String get heatmapLensPopular;
 
+  /// Discovery-lens label for routes published by verified organisers (a verified club's owner or admin) on the heatmap
+  ///
+  /// In en, this message translates to:
+  /// **'Official'**
+  String get heatmapLensOfficial;
+
   /// Discovery-lens label for friends' routes on the heatmap
   ///
   /// In en, this message translates to:
@@ -18416,6 +18422,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Official verified club'**
   String get verifiedClubTooltip;
+
+  /// Short visible label on content (route, plan, routine, challenge, session plan) published by a verified club's owner or admin
+  ///
+  /// In en, this message translates to:
+  /// **'Official'**
+  String get officialBadgeLabel;
+
+  /// Tooltip and screen-reader label on the Official badge: the content was published by a verified organiser
+  ///
+  /// In en, this message translates to:
+  /// **'Official: published by a verified organiser'**
+  String get officialBadgeTooltip;
 
   /// Best-effort race distance label: 5 kilometres
   ///

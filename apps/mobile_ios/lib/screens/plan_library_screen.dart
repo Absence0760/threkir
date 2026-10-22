@@ -15,6 +15,7 @@ import '../training.dart';
 import '../training_service.dart';
 import '../backend_timeout.dart';
 import '../widgets/error_state.dart';
+import '../widgets/official_badge.dart';
 import '../widgets/plan_meta_item.dart';
 import '../widgets/plan_overlap_dialog.dart';
 import '../widgets/sign_in_required_state.dart';
@@ -265,6 +266,7 @@ class _LibraryCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (entry.isOfficial) const OfficialBadge(),
               Text(l10n.planLibraryByAuthor(author)),
               const SizedBox(height: 6),
               _PlanFacts(plan: p),
@@ -415,6 +417,13 @@ class _PlanLibraryPreviewScreenState extends State<PlanLibraryPreviewScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (widget.entry.isOfficial) ...[
+            const Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: OfficialBadge(size: 16),
+            ),
+            const SizedBox(height: 4),
+          ],
           Text(l10n.planLibraryByAuthor(author), style: theme.textTheme.bodyMedium),
           const SizedBox(height: 12),
           _PlanFacts(plan: p, weeks: _weeks.isEmpty ? null : _weeks.length),

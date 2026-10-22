@@ -9,6 +9,7 @@ import '../widgets/app_bar_actions.dart';
 import '../widgets/challenge_progress_bar.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/error_state.dart';
+import '../widgets/official_badge.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
 
@@ -177,6 +178,13 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
+                    if (c.isOfficial) ...[
+                      const Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: OfficialBadge(size: 16),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     Text(_windowLabel(l10n, c), style: TextStyle(color: Theme.of(context).hintColor)),
                     if ((c.description ?? '').isNotEmpty) ...[
                       const SizedBox(height: 8),

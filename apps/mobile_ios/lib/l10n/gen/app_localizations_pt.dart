@@ -4421,6 +4421,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get heatmapLensPopular => 'Populares';
 
   @override
+  String get heatmapLensOfficial => 'Oficiais';
+
+  @override
   String get heatmapLensFriends => 'Amigos';
 
   @override
@@ -11329,6 +11332,13 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get verifiedClubTooltip => 'Clube verificado oficial';
+
+  @override
+  String get officialBadgeLabel => 'Oficial';
+
+  @override
+  String get officialBadgeTooltip =>
+      'Oficial: publicado por um organizador verificado';
 
   @override
   String get raceDistance5k => '5 km';
@@ -23222,6 +23232,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get heatmapLensPopular => 'Populares';
 
   @override
+  String get heatmapLensOfficial => 'Oficiais';
+
+  @override
   String get heatmapLensFriends => 'Amigos';
 
   @override
@@ -30124,6 +30137,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get verifiedClubTooltip => 'Clube verificado oficial';
+
+  @override
+  String get officialBadgeLabel => 'Oficial';
+
+  @override
+  String get officialBadgeTooltip =>
+      'Oficial: publicado por um organizador verificado';
 
   @override
   String get raceDistance5k => '5 km';

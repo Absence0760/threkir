@@ -4159,6 +4159,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get heatmapLensPopular => '人気';
 
   @override
+  String get heatmapLensOfficial => '公式';
+
+  @override
   String get heatmapLensFriends => 'フレンド';
 
   @override
@@ -10761,6 +10764,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get verifiedClubTooltip => '公式認証済みクラブ';
+
+  @override
+  String get officialBadgeLabel => '公式';
+
+  @override
+  String get officialBadgeTooltip => '公式: 認証済みの主催者が公開';
 
   @override
   String get raceDistance5k => '5km';

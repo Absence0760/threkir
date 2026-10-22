@@ -4418,6 +4418,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get heatmapLensPopular => 'Populares';
 
   @override
+  String get heatmapLensOfficial => 'Oficiales';
+
+  @override
   String get heatmapLensFriends => 'Amigos';
 
   @override
@@ -11326,6 +11329,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get verifiedClubTooltip => 'Club verificado oficial';
+
+  @override
+  String get officialBadgeLabel => 'Oficial';
+
+  @override
+  String get officialBadgeTooltip =>
+      'Oficial: publicado por un organizador verificado';
 
   @override
   String get raceDistance5k => '5 km';

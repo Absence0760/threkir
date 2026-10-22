@@ -5818,6 +5818,10 @@
   "@heatmapLensPopular": {
     "description": "Discovery-lens label for popular routes on the heatmap"
   },
+  "heatmapLensOfficial": "Official",
+  "@heatmapLensOfficial": {
+    "description": "Discovery-lens label for routes published by verified organisers (a verified club's owner or admin) on the heatmap"
+  },
   "heatmapLensFriends": "Friends",
   "@heatmapLensFriends": {
     "description": "Discovery-lens label for friends' routes on the heatmap"
@@ -15279,6 +15283,14 @@
   "verifiedClubTooltip": "Official verified club",
   "@verifiedClubTooltip": {
     "description": "Tooltip on the verified-club badge"
+  },
+  "officialBadgeLabel": "Official",
+  "@officialBadgeLabel": {
+    "description": "Short visible label on content (route, plan, routine, challenge, session plan) published by a verified club's owner or admin"
+  },
+  "officialBadgeTooltip": "Official: published by a verified organiser",
+  "@officialBadgeTooltip": {
+    "description": "Tooltip and screen-reader label on the Official badge: the content was published by a verified organiser"
   },
   "raceDistance5k": "5 km",
   "@raceDistance5k": {

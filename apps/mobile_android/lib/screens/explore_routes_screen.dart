@@ -13,6 +13,7 @@ import '../preferences.dart';
 import '../auth_error.dart';
 import '../backend_timeout.dart';
 import '../widgets/error_state.dart';
+import '../widgets/official_badge.dart';
 import '../widgets/route_track_preview.dart';
 import 'route_detail_screen.dart';
 import '../widgets/top_banner.dart';
@@ -752,6 +753,7 @@ class _RouteCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        if (route.official) const OfficialBadge(),
                         if (route.featured)
                           Padding(
                             padding: const EdgeInsets.only(left: 6),

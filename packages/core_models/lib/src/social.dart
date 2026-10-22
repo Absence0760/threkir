@@ -436,6 +436,11 @@ class DiscoverableRoutePin {
   final double lat;
   final double lng;
 
+  /// Published by a verified organiser (migration 20271021000030). Official
+  /// routes rank first in every lens, capped at a quarter of the viewport's
+  /// pins outside the `official` lens.
+  final bool official;
+
   const DiscoverableRoutePin({
     required this.id,
     required this.name,
@@ -447,6 +452,7 @@ class DiscoverableRoutePin {
     required this.runCount,
     required this.lat,
     required this.lng,
+    this.official = false,
   });
 }
 
@@ -462,6 +468,10 @@ class ClubPin {
   final double lat;
   final double lng;
 
+  /// Verified clubs rank first in `clubs_in_bbox` (migration
+  /// 20271021000031); the club sheet carries the badge.
+  final bool isVerified;
+
   const ClubPin({
     required this.id,
     required this.name,
@@ -471,6 +481,7 @@ class ClubPin {
     required this.memberCount,
     required this.lat,
     required this.lng,
+    this.isVerified = false,
   });
 }
 

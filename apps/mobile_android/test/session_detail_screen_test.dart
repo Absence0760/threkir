@@ -22,6 +22,7 @@ class _ThrowingFakeApi extends ApiClient {
     SessionPlanRow plan,
     List<SessionPlanBlockRow> blocks,
     List<SessionPlanItemRow> items,
+    bool isOfficial,
   })?> fetchSessionPlan(String id) async {
     calls++;
     throw Exception('network blip');
@@ -37,6 +38,7 @@ class _NotFoundFakeApi extends ApiClient {
     SessionPlanRow plan,
     List<SessionPlanBlockRow> blocks,
     List<SessionPlanItemRow> items,
+    bool isOfficial,
   })?> fetchSessionPlan(String id) async => null;
 }
 
@@ -50,11 +52,13 @@ class _HangingFakeApi extends ApiClient {
     SessionPlanRow plan,
     List<SessionPlanBlockRow> blocks,
     List<SessionPlanItemRow> items,
+    bool isOfficial,
   })?> fetchSessionPlan(String id) => Completer<
       ({
         SessionPlanRow plan,
         List<SessionPlanBlockRow> blocks,
         List<SessionPlanItemRow> items,
+        bool isOfficial,
       })?>().future;
 }
 

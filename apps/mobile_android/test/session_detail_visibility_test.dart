@@ -44,8 +44,14 @@ class _FakeApi extends ApiClient {
     SessionPlanRow plan,
     List<SessionPlanBlockRow> blocks,
     List<SessionPlanItemRow> items,
+    bool isOfficial,
   })?> fetchSessionPlan(String id) async =>
-      (plan: plan, blocks: const <SessionPlanBlockRow>[], items: [_item()]);
+      (
+        plan: plan,
+        blocks: const <SessionPlanBlockRow>[],
+        items: [_item()],
+        isOfficial: false,
+      );
 
   @override
   Future<void> setSessionPlanPublic(String id, bool isPublic) async {

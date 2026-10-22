@@ -1793,7 +1793,7 @@ that was already behind (a rollback), changes nothing on `--plan`, only reports
 drift when the env stack had nothing to apply, and fails loudly when the repoint
 fails. Not covered: sops's own matching and KMS, `disaster-recovery.sh`.
 
-### `.github/actions/start-supabase/start_stack.test.mjs` — 20 tests (9 added, then 5 for #963, then 6 for #916)
+### `.github/actions/start-supabase/start_stack.test.mjs` — 21 tests (9 added, then 5 for #963, then 6 for #916, then 1 for § 2233)
 
 The port-clean retry ladder, extracted from `action.yml` so something other than
 CI reads it. The property under test is which SOCKET STATES the holder probe

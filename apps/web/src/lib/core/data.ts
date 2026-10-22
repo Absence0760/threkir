@@ -10,7 +10,7 @@ import type { Database, Json } from '../database.types';
 import { asProjectedRun, asRun, type ProjectedRun, type RunRow } from './run_narrow';
 import { SELECT_SEPARATOR, type Join } from './database';
 import type { Insertable, Updatable } from './database';
-import type { JsonObject, TrackPoint } from '../types';
+import type { JsonObject, OfficialFlag, TrackPoint } from '../types';
 import { isEntityId } from './entity_id';
 import { saveRunEdit, type RunEditFields, type RunEditOutcome } from './run_edit_cas';
 import { markListsStale } from './list_freshness';
@@ -9330,8 +9330,9 @@ export async function fetchClubsInBbox(bbox: {
 ///   • 'friends'     — public routes created by users you follow.
 ///   • 'hidden_gems' — un-run, non-official public routes past a >=1km
 ///     sanity floor.
-/// Official routes rank first; outside the `official` lens they are capped
-/// at a quarter of `limit` so they never crowd community routes out.
+/// Official routes rank first; outside the `official` lens at most a
+/// quarter of `limit` rank ahead of community routes and the rest backfill
+/// after them, so they never crowd the community out of a viewport.
 /// Returns the start_point for each route so the map can drop a pin
 /// there. Mirrors the `p_filter` branch in
 /// 20271021000031_official_discovery_ranking.sql — keep the union in
@@ -12088,8 +12089,6 @@ export interface GymRoutineSummary {
 	exercise_count: number;
 	last_modified_at: string;
 	created_at: string;
-	/// Present on the library and detail reads (`OfficialFlag`).
-	is_official?: boolean | null;
 }
 
 export interface GymRoutineExercise {
@@ -12118,7 +12117,9 @@ export interface GymRoutineSet {
 }
 
 export interface GymRoutineDetail {
-	routine: GymRoutineSummary;
+	/// `is_official` comes with the base-table read only; the public view
+	/// fallback cannot carry it (a public template is never club-owned).
+	routine: GymRoutineSummary & OfficialFlag;
 	exercises: GymRoutineExercise[];
 }
 
@@ -12180,14 +12181,14 @@ export async function fetchGymRoutines(limit = 100): Promise<GymRoutineSummary[]
 /// public_gym_routines view (migration 20270319_001), which carries no
 /// last_modified_at — created_at stands in for the required summary field.
 export async function fetchGymRoutineDetail(id: string): Promise<GymRoutineDetail | null> {
-	let routine: GymRoutineSummary | null = null;
+	let routine: (GymRoutineSummary & OfficialFlag) | null = null;
 	const { data: base, error: rErr } = await supabase
 		.from(TABLES.gym_routines)
 		.select('id, author_id, club_id, is_public_template, title, notes, exercise_count, last_modified_at, created_at, is_official')
 		.eq('id', id)
 		.maybeSingle();
 	if (!rErr && base) {
-		routine = base as GymRoutineSummary;
+		routine = base;
 	} else {
 		const { data: pub } = await supabase
 			.from('public_gym_routines')

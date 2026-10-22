@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { byName, explain, loadFunctions, parseArgs, replayFunctions, takesGet } from './rpc_transport.mjs';
+import { byName, explain, loadFunctions, parseArgs, relationNames, replayFunctions, takesGet } from './rpc_transport.mjs';
 
 /** @param {string[]} sqls */
 const replay = (...sqls) => byName(replayFunctions(sqls.map((sql, i) => ({ file: `${i}.sql`, sql }))));
@@ -41,6 +41,28 @@ test('two live overloads of one name are refused rather than guessed between', (
 			replay(
 				'create function f(a int) returns int language sql as $$ select 1 $$;',
 				'create function f(a text) returns int language sql as $$ select 1 $$;'
+			),
+		/more than one live overload/
+	);
+});
+
+test('computed fields overloaded on a row type are left out, not refused', () => {
+	const sqls = [
+		'create table routes (id uuid);',
+		'create view public_routes as select 1;',
+		'create function is_official(r public.routes) returns boolean language sql stable as $$ select true $$;',
+		'create function is_official(v public_routes) returns boolean language sql stable as $$ select true $$;',
+		'create function f(a int) returns int language sql as $$ select 1 $$;',
+	].map((sql, i) => ({ file: `${i}.sql`, sql }));
+	const fns = byName(replayFunctions(sqls), relationNames(sqls));
+	assert.deepEqual([...fns.keys()], ['f']);
+	// A single argument of a non-relation type is still an RPC, and two such
+	// overloads are still refused.
+	assert.throws(
+		() =>
+			replay(
+				'create function g(a goal_event) returns int language sql as $$ select 1 $$;',
+				'create function g(a text) returns int language sql as $$ select 1 $$;'
 			),
 		/more than one live overload/
 	);

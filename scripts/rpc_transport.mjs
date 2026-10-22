@@ -276,19 +276,46 @@ export function replayFunctions(migrations) {
  * Live functions keyed by NAME. A call site names a function, not a
  * signature, so a second live overload is a question this cannot answer and
  * it throws rather than pick one.
+ *
+ * A function whose only argument is a table or view row is a PostgREST
+ * computed field: it is read as a column (`select('*, is_official')`), never
+ * through `.rpc()`, which cannot send a row. Several tables share one field
+ * name by overloading it on the row type (`is_official(routes)`,
+ * `is_official(challenges)`, 20271021000030), so those are left out of the
+ * by-name map rather than refused.
  * @param {Map<string, Fn>} live
+ * @param {Set<string>} [relations] table and view names in `public`
  * @returns {Map<string, Fn>}
  */
-export function byName(live) {
+export function byName(live, relations = new Set()) {
 	/** @type {Map<string, Fn>} */
 	const out = new Map();
 	for (const fn of live.values()) {
+		if (fn.args.length === 1 && relations.has(fn.args[0].type.replace(/^public\./, ''))) continue;
 		if (out.has(fn.name)) {
 			throw new Error(
 				`${fn.name} has more than one live overload; a transport guard cannot tell which one a call resolves to`
 			);
 		}
 		out.set(fn.name, fn);
+	}
+	return out;
+}
+
+/**
+ * Every table and view a migration creates in `public`, by bare name — the
+ * row types a computed field can take.
+ * @param {{ file: string, sql: string }[]} migrations
+ * @returns {Set<string>}
+ */
+export function relationNames(migrations) {
+	/** @type {Set<string>} */
+	const out = new Set();
+	const re = /\bcreate\s+(?:or\s+replace\s+)?(?:table|view)\s+(?:if\s+not\s+exists\s+)?(?:(\w+)\.)?"?(\w+)"?/gi;
+	for (const { sql } of migrations) {
+		for (const m of sql.matchAll(re)) {
+			if ((m[1] ?? 'public').toLowerCase() === 'public') out.add(m[2].toLowerCase());
+		}
 	}
 	return out;
 }
@@ -302,7 +329,7 @@ export function loadFunctions(dir = MIGRATIONS_DIR) {
 		.filter((f) => f.endsWith('.sql'))
 		.sort()
 		.map((file) => ({ file, sql: readFileSync(join(dir, file), 'utf-8') }));
-	return byName(replayFunctions(migrations));
+	return byName(replayFunctions(migrations), relationNames(migrations));
 }
 
 /**

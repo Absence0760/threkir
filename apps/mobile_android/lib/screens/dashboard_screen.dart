@@ -37,6 +37,7 @@ import '../metrics.dart';
 import '../nutrition_targets.dart' show NutritionTargets;
 import '../nutrition_totals.dart' show sumMacros;
 import '../preferences.dart';
+import '../pro_sellable.dart' show ProPerks, fetchProPerks;
 import '../run_stats.dart';
 import '../settings_sync.dart';
 import '../streak_card.dart';
@@ -158,6 +159,10 @@ class DashboardScreen extends StatefulWidget {
   /// screen pushing runs itself. Null leaves runs counted but not retried.
   final Future<void> Function()? onSyncRuns;
 
+  /// Reads whether the Coach is live on this deploy. Defaults to
+  /// [fetchProPerks], the manifest the Messages inbox's Coach row reads.
+  final Future<ProPerks> Function()? loadPerks;
+
   const DashboardScreen({
     super.key,
     this.apiClient,
@@ -171,6 +176,7 @@ class DashboardScreen extends StatefulWidget {
     this.onStartRun,
     this.onLogLift,
     this.onSyncRuns,
+    this.loadPerks,
   });
 
   @override
@@ -250,6 +256,11 @@ class _DashboardScreenState extends State<DashboardScreen>
   /// simply doesn't render (graceful degrade).
   UserProfileRow? _viewerProfile;
 
+  /// Whether the Coach is live on this deploy. False until the manifest says
+  /// so, so an unknown or unreachable manifest hides the coach card, as it
+  /// hides the Messages inbox's Coach row (decisions § 2227).
+  bool _coachLive = false;
+
   /// All-time streaks from the `run_streaks_for_user` aggregate — the same
   /// server row web's card reads, so a fresh install of a deep-history
   /// account doesn't present the store's resident sliver as the all-time
@@ -278,6 +289,17 @@ class _DashboardScreenState extends State<DashboardScreen>
     _loadViewerProfile();
     _loadRunStreaks();
     _loadTrendOpen();
+    _loadCoachLive();
+  }
+
+  Future<void> _loadCoachLive() async {
+    var live = false;
+    try {
+      live = (await (widget.loadPerks ?? fetchProPerks)()).coach;
+    } catch (e) {
+      debugPrint('dashboard: capability lookup failed: $e');
+    }
+    if (mounted && live != _coachLive) setState(() => _coachLive = live);
   }
 
   Future<void> _loadTrendOpen() async {
@@ -996,11 +1018,12 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   /// The pinned "Ask your coach" entry shown at the top of Home. Null when
-  /// signed out or no training service (same guard as the toolbar action), so
-  /// it never renders a dead tap.
+  /// signed out, with no training service, or while the Coach is not live on
+  /// this deploy, so it never renders a dead tap.
   Widget? _coachEntry() {
     final api = widget.apiClient;
     final training = widget.training;
+    if (!_coachLive) return null;
     if (api == null || api.userId == null || training == null) return null;
     final l10n = AppLocalizations.of(context);
     return _CoachEntryCard(
@@ -1583,9 +1606,9 @@ class _DashboardScreenState extends State<DashboardScreen>
     } else {
       // Pinned coach entry — the resolved Coach-prominence decision puts
       // the AI coach one persistent tap from Home (it has no bottom-nav
-      // slot). Gated on the same api + training guard as the toolbar
-      // action, plus runs.isNotEmpty (#272) so it never dominates a
-      // zero-runs first screen.
+      // slot). Gated on api + training, on the Coach being live, plus
+      // runs.isNotEmpty (#272) so it never dominates a zero-runs first
+      // screen.
       final coach = runs.isNotEmpty ? _coachEntry() : null;
       // The week lead opens Home for an account with runs (#905 workstream
       // 3). A lifter with no runs reaches this branch too and has no running

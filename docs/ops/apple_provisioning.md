@@ -36,7 +36,7 @@ Last moved: **2026-10-06**.
 | — | Developer Program enrollment | — | **Active** — App Store Connect reachable 2026-09-19 |
 | 1 | Team ID + renewal reminder | Bitwarden | **Done 2026-10-05** — Team ID confirmed; renewal reminder on the owner's calendar (auto-renew is on) |
 | 2 | App Groups `group.com.threkir.app.activerun` + `group.com.threkir.app.share` | Apple portal | **Done 2026-10-05** |
-| 2b | App Group `group.com.threkir.app.widget` (Today widget), assigned to `com.threkir.app` **and** `com.threkir.app.RunActivity` | Apple portal | ☐ — owed before the next `mobile_ios@` release: `Runner.entitlements` and `RunActivity.entitlements` declare it, so the step-15 phone and Live Activity profiles must be regenerated with it and re-uploaded |
+| 2b | App Group `group.com.threkir.app.widget` (Today widget), assigned to `com.threkir.app` **and** `com.threkir.app.RunActivity` | Apple portal | **Done 2026-10-21** (#1211) — `Threkir App Store` and `Threkir Run Activity App Store` regenerated with it and re-uploaded; `mobile_ios@1.0.16` had failed signing without it |
 | 3 | App IDs `com.threkir.app` + `com.threkir.app.ShareExtension` + `com.threkir.app.RunActivity` | Apple portal | **Done 2026-10-05** — both groups on `com.threkir.app`, the share group on `ShareExtension`, nothing on `RunActivity`; **Associated Domains** added to `com.threkir.app` 2026-10-14 for universal links ([decisions § 1924](../architecture/decisions.md)) |
 | 4 | Watch App IDs `com.threkir.app.watchapp` + `com.threkir.app.watchapp.widget` | Apple portal | **Done 2026-10-05** — `.widget`, not `.complication`, which Apple reported unavailable ([decisions § 1754](../architecture/decisions.md)); `activerun` on both |
 | 5 | Services ID `com.threkir.web` | Apple portal | ☐ |

@@ -330,8 +330,36 @@ function compareVersions(/** @type {string} */ a, /** @type {string} */ b) {
 	return 0;
 }
 
+/// Each `setup-supabase-cli` step's `version:` pin, with where it sits. Read
+/// from the step's own block, not from the line after `uses:`: YAML key order
+/// is free, and a step carrying `id:` / `if:` between `uses:` and `with:`
+/// (every bundled-job step since decisions § 2233) hid two of the eleven pins
+/// from a reader that assumed `with:` came next.
+function cliPinSites(text = readFileSync(CI, 'utf8')) {
+	const lines = text.split('\n');
+	/** @type {{ version: string, line: number }[]} */
+	const sites = [];
+	for (let i = 0; i < lines.length; i++) {
+		const head = lines[i].match(/^(\s*)(?:-\s+)?uses: \.\/\.github\/actions\/setup-supabase-cli\s*$/);
+		if (!head) continue;
+		const dash = lines[i].match(/^(\s*)-\s/);
+		const stepIndent = dash ? dash[1].length : head[1].length - 2;
+		for (let j = i + 1; j < lines.length; j++) {
+			const l = lines[j];
+			if (!l.trim()) continue;
+			if (l.length - l.trimStart().length <= stepIndent) break;
+			const v = l.match(/^\s+version: ([\d.]+)\s*$/);
+			if (v) {
+				sites.push({ version: v[1], line: j });
+				break;
+			}
+		}
+	}
+	return sites;
+}
+
 function cliPins(text = readFileSync(CI, 'utf8')) {
-	return [...text.matchAll(/uses: \.\/\.github\/actions\/setup-supabase-cli\n\s+with:\n\s+version: ([\d.]+)/g)].map((m) => m[1]);
+	return cliPinSites(text).map((s) => s.version);
 }
 
 test('the edge runtime override is retired once the CLI pin ships the fix itself', () => {
@@ -345,10 +373,20 @@ test('the edge runtime override is retired once the CLI pin ships the fix itself
 	);
 });
 
+test('a pin is read whatever keys sit between uses: and with:', () => {
+	const step = (extra) =>
+		`      - uses: ./.github/actions/setup-supabase-cli\n${extra}        with:\n          version: 2.84.2\n`;
+	const text = `jobs:\n  a:\n    steps:\n${step('')}${step("        id: supabase_cli\n        if: ${{ !cancelled() }}\n")}`;
+	assert.deepEqual(cliPins(text), ['2.84.2', '2.84.2']);
+});
+
 test('the retirement guard reads every pin and bites on one at the fixing CLI', () => {
 	const text = readFileSync(CI, 'utf8');
 	assert.equal(cliPins(text).length, (text.match(/uses: \.\/\.github\/actions\/setup-supabase-cli/g) ?? []).length);
-	const bumped = text.replace(/(setup-supabase-cli\n\s+with:\n\s+version: )[\d.]+/, `$1${FIRST_CLI_WITH_FIX}`);
+	const lines = text.split('\n');
+	const first = cliPinSites(text)[0];
+	lines[first.line] = lines[first.line].replace(/[\d.]+\s*$/, FIRST_CLI_WITH_FIX);
+	const bumped = lines.join('\n');
 	assert.ok(cliPins(bumped).some((v) => compareVersions(v, FIRST_CLI_WITH_FIX) >= 0));
 	assert.equal(compareVersions('2.84.2', FIRST_CLI_WITH_FIX), -1);
 	assert.equal(compareVersions('2.120.0', FIRST_CLI_WITH_FIX), 1);

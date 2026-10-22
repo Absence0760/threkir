@@ -10,6 +10,7 @@ Operating docs that back the project's international-launch posture. The `/audit
 | [sub-processor-changelog.md](sub-processor-changelog.md) | The GDPR Art 28(2) change-disclosure history — every sub-processor addition / replacement, landed ≥30 days before activation. `sub-processors.md` is the snapshot; this is the history |
 | [dpia.md](dpia.md) | GDPR Art 35 Data Protection Impact Assessment for live-location + heart-rate tracking |
 | [breach-runbook.md](breach-runbook.md) | 72-hour Art 33/34 notification flow — who calls what, in what order |
+| [assessments.md](assessments.md) | Incidents assessed and found not to be a breach, with the reasoning and who decided |
 | [eu-representative.md](eu-representative.md) | Art 27 placeholder — required for non-EU controllers offering services to EU residents |
 | [age-of-consent.md](age-of-consent.md) | Per-member-state age of consent (GDPR Art 8) + how the product enforces it |
 

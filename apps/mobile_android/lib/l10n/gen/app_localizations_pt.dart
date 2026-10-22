@@ -7109,7 +7109,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'As funcionalidades de IA da Threkir enviam uma parte dos seus dados à Anthropic, o nosso fornecedor de modelos de IA nos Estados Unidos. Consoante a funcionalidade utilizada, essa parte inclui:';
+      'As funcionalidades de IA da Threkir enviam uma parte dos seus dados à Anthropic, o nosso fornecedor de modelos de IA nos Estados Unidos, para que esta possa redigir para si as respostas do Coach e as sugestões das outras funcionalidades de IA. Consoante a funcionalidade utilizada, essa parte inclui:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -7125,7 +7125,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachConsentBulletMessages =>
-      'As mensagens de chat que introduz no ecrã abaixo.';
+      'As mensagens que envia ao Coach, incluindo tudo o que escrever sobre a sua saúde ou lesões; por isso, omita tudo o que prefira não partilhar.';
 
   @override
   String get coachConsentBulletRoutes =>
@@ -7157,7 +7157,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachConsentProcessing =>
-      'A Anthropic processa os dados em nome da Threkir conforme os seus termos de processamento; por predefinição, não treinam os seus modelos com dados de clientes da Threkir. Todos os detalhes — incluindo o mecanismo de transferência, a retenção e o seu direito de retirar o consentimento — estão na nossa política de privacidade.';
+      'Os itens assinalados com “apenas se tiver dado o consentimento de dados de saúde” são dados de saúde: ao aceitar, concorda explicitamente com o envio desses dados à Anthropic para estas funcionalidades. A Anthropic processa os dados em nome da Threkir ao abrigo dos respetivos termos de processamento de dados, não treina os próprios modelos com eles e elimina-os no prazo de 30 dias (mais tempo apenas no caso de conteúdo sinalizado pelos próprios sistemas de segurança). Pode retirar este consentimento a qualquer momento em Definições → Conta; isso impede o envio de quaisquer outros dados, mas não anula o que já foi enviado. Todos os detalhes, incluindo as salvaguardas de transferência, estão na nossa política de privacidade.';
 
   @override
   String get coachConsentAction =>
@@ -16932,7 +16932,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get messagesUnsendConfirmBody =>
-      'Será removida para ambos. Isto não pode ser desfeito.';
+      'O texto será removido para ambos. Isto não pode ser desfeito. Se a mensagem já tiver sido denunciada, a denúncia conserva uma cópia.';
 
   @override
   String get messagesUnsendFailed =>
@@ -25961,7 +25961,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachConsentIntro =>
-      'Os recursos de IA do Threkir enviam uma parte dos seus dados à Anthropic, nosso provedor de modelos de IA nos Estados Unidos. Dependendo do recurso que você usa, essa parte inclui:';
+      'Os recursos de IA do Threkir enviam uma parte dos seus dados à Anthropic, nosso provedor de modelos de IA nos Estados Unidos, para que ela possa escrever para você as respostas do Coach e as sugestões dos outros recursos de IA. Dependendo do recurso que você usa, essa parte inclui:';
 
   @override
   String get coachConsentBulletProfile =>
@@ -25977,7 +25977,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachConsentBulletMessages =>
-      'As mensagens de chat que você digita na tela abaixo.';
+      'As mensagens que você envia ao Coach, incluindo tudo o que você escrever sobre sua saúde ou lesões; por isso, deixe de fora o que preferir não compartilhar.';
 
   @override
   String get coachConsentBulletRoutes =>
@@ -26009,7 +26009,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachConsentProcessing =>
-      'A Anthropic processa os dados em nome da Threkir conforme seus termos de processamento; por padrão, não treinam seus modelos com dados de clientes da Threkir. Todos os detalhes — incluindo o mecanismo de transferência, a retenção e seus direitos de retirada — estão na nossa política de privacidade.';
+      'Os itens marcados com “apenas se você tiver dado o consentimento de dados de saúde” são dados de saúde: ao aceitar, você concorda explicitamente com o envio desses dados à Anthropic para esses recursos. A Anthropic processa os dados em nome da Threkir conforme os termos de processamento de dados dela, não treina os próprios modelos com eles e os exclui em até 30 dias (por mais tempo apenas no caso de conteúdo sinalizado pelos próprios sistemas de segurança). Você pode retirar esse consentimento a qualquer momento em Configurações → Conta; isso impede que qualquer outro dado seja enviado, mas não desfaz o que já foi enviado. Todos os detalhes, incluindo as salvaguardas de transferência, estão na nossa política de privacidade.';
 
   @override
   String get coachConsentAction =>
@@ -35773,7 +35773,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get messagesUnsendConfirmBody =>
-      'Ela será removida para vocês dois. Isso não pode ser desfeito.';
+      'O texto será removido para vocês dois. Isso não pode ser desfeito. Se a mensagem já tiver sido denunciada, a denúncia mantém uma cópia.';
 
   @override
   String get messagesUnsendFailed =>

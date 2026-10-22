@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { NOT_PROVIDED, OPERATOR, OPERATOR_FACTS_COMPLETE } from '#lib/legal/operator.ts';
 
-	const lastUpdated = '2026-10-16';
+	const lastUpdated = '2026-10-22';
 </script>
 
 <svelte:head>
@@ -153,7 +153,7 @@
 			<tr><td>AI Coach</td><td>Consent — Art 6(1)(a) GDPR</td></tr>
 			<tr><td>Paid event registration, fundraising donations, Pro subscription billing</td><td>Contract — Art 6(1)(b) GDPR</td></tr>
 			<tr><td>Marketing email (only if opted in)</td><td>Consent</td></tr>
-			<tr><td>Error monitoring, abuse prevention, moderation of reported content</td><td>Legitimate interest — Art 6(1)(f) GDPR</td></tr>
+			<tr><td>Error monitoring, abuse prevention, moderation of reported content, and keeping evidence of reported abuse for user safety and to establish or defend legal claims</td><td>Legitimate interest — Art 6(1)(f) GDPR</td></tr>
 			<tr><td>Comply with a subpoena, court order, or store demand</td><td>Legal obligation — Art 6(1)(c) GDPR</td></tr>
 		</tbody>
 	</table>
@@ -321,8 +321,8 @@
 		<li><strong>Live spectator pings</strong>: 48 hours (both our database and, when enabled, the Upstash cache).</li>
 		<li><strong>Race spectator pings</strong> (organised-event live results): 48 hours.</li>
 		<li><strong>Checkpoint medical weigh-in fields</strong> (weight, medical hold/note): scrubbed 90 days after they were recorded; the in/out split times are race results and are kept.</li>
-		<li><strong>Direct messages</strong>: 2 years from sending. Deleting your account deletes the messages you sent at once; the messages the other person sent you stay in their copy of the conversation, with your account shown as deleted, until the 2-year limit. Unsending a message removes its text for both of you.</li>
-		<li><strong>Reports you file, and reports about your content</strong>: kept for moderation and safety review. A reported direct message is copied into the report when it is filed, so the copy survives the message being unsent or the sender deleting their account; a report is deleted when the person who filed it deletes their account.</li>
+		<li><strong>Direct messages</strong>: 2 years from sending. Deleting your account deletes the messages you sent at once; the messages the other person sent you stay in their copy of the conversation, with your account shown as deleted, until the 2-year limit. Unsending a message removes its text for both of you. If the other person deletes their account, the messages they sent you are deleted with it; report a message first if you want a copy kept for moderators.</li>
+		<li><strong>Reports you file, and reports about your content</strong>: kept while a moderator reviews them, then deleted 6 months after the report is closed with no action, or 12 months after action was taken. A report we need for a legal claim, or that a court or authority has asked us to preserve, is kept until that need ends. A reported direct message is copied into the report when it is filed, so the copy survives the message being unsent, the sender deleting their account, and the 2-year limit on messages. If you delete your account, reports you filed are kept for the same period with your name removed, so the evidence is not lost.</li>
 		<li><strong>Coach chat history</strong>: 18 months from the message timestamp.</li>
 		<li><strong>AI-provider copies of coach prompts</strong>: deleted by the provider within 30 days of processing (Anthropic API default retention); never used for model training.</li>
 		<li><strong>Coach usage counters</strong> (per-day message counts): 7 days.</li>

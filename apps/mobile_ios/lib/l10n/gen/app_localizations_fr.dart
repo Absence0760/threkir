@@ -7124,7 +7124,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'Les fonctionnalités d\'IA de Threkir transmettent une partie de vos données à Anthropic, notre fournisseur de modèles d\'IA aux États-Unis. Selon la fonctionnalité utilisée, cette partie comprend :';
+      'Les fonctionnalités d\'IA de Threkir transmettent une partie de vos données à Anthropic, notre fournisseur de modèles d\'IA aux États-Unis, afin qu\'il puisse rédiger pour vous les réponses du coach et les suggestions des autres fonctionnalités d\'IA. Selon la fonctionnalité utilisée, cette partie comprend :';
 
   @override
   String get coachConsentBulletProfile =>
@@ -7140,7 +7140,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get coachConsentBulletMessages =>
-      'Les messages que vous tapez dans l\'écran ci-dessous.';
+      'Les messages que vous envoyez au coach, y compris tout ce que vous écrivez sur votre santé ou vos blessures ; n\'y mettez donc rien que vous préféreriez ne pas partager.';
 
   @override
   String get coachConsentBulletRoutes =>
@@ -7172,7 +7172,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get coachConsentProcessing =>
-      'Anthropic traite les données pour le compte de Threkir selon ses conditions de traitement ; par défaut, ils n\'entraînent pas leurs modèles sur les données clients de Threkir. Tous les détails — y compris le mécanisme de transfert, la conservation et vos droits de retrait — figurent dans notre politique de confidentialité.';
+      'Les éléments marqués « uniquement si vous avez donné votre consentement aux données de santé » sont des données de santé : en acceptant, vous consentez explicitement à ce qu\'ils soient envoyés à Anthropic pour ces fonctionnalités. Anthropic traite les données pour le compte de Threkir selon ses conditions de traitement des données, n\'entraîne pas ses modèles sur celles-ci et les supprime dans un délai de 30 jours (plus longtemps uniquement pour les contenus signalés par ses systèmes de sécurité). Vous pouvez retirer ce consentement à tout moment dans Réglages → Compte ; cela empêche tout envoi ultérieur, mais n\'annule pas ce qui a déjà été envoyé. Tous les détails, y compris les garanties encadrant le transfert, figurent dans notre politique de confidentialité.';
 
   @override
   String get coachConsentAction =>
@@ -16969,7 +16969,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get messagesUnsendConfirmBody =>
-      'Il sera supprimé pour vous deux. Cette action est irréversible.';
+      'Le texte sera supprimé pour vous deux. Cette action est irréversible. Si le message a déjà été signalé, le signalement en conserve une copie.';
 
   @override
   String get messagesUnsendFailed => 'Impossible de retirer le message.';

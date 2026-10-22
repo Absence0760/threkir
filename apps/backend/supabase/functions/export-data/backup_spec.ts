@@ -205,23 +205,27 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			filter: `reporter_id=eq.${uid}`,
 			select: '*',
 		},
-		// reports_against_me — Art 15(1)(c) recipient disclosure with
-		// reporter anonymised (competing rights under Art 15(4)).
+		// reports_against_me — Art 15(1)(c) recipient disclosure. Reporter
+		// identity and the reporter's free-text notes are withheld (competing
+		// rights under Art 15(4)).
 		{
 			entry: 'reports_against_me.json',
 			table: 'reports',
 			filter: `target_kind=eq.user&target_id=eq.${uid}`,
-			select: 'id,target_kind,target_id,reason,status,notes,created_at,reviewed_at',
+			select: 'id,target_kind,target_id,reason,status,created_at,reviewed_at',
 		},
 		// reports_against_my_messages — a report on one of the subject's direct
 		// messages snapshots their own words (migration 20271021000003), and the
-		// snapshot outlives an unsend, so it is disclosed here under Art 15 with
-		// the reporter anonymised exactly as reports_against_me does.
+		// snapshot outlives an unsend, so it is disclosed here under Art 15.
+		// Only the recipient can report a direct message, so the reporter is
+		// identifiable from direct_messages_sent.json: the notes are never
+		// included, and a pending report is held back so the export cannot
+		// tip a sender off during review (Art 15(4)).
 		{
 			entry: 'reports_against_my_messages.json',
 			table: 'reports',
-			filter: `target_kind=eq.direct_message&snapshot_author_id=eq.${uid}`,
-			select: 'id,target_kind,target_id,reason,status,notes,created_at,reviewed_at,snapshot_body,snapshot_sent_at',
+			filter: `target_kind=eq.direct_message&snapshot_author_id=eq.${uid}&status=neq.pending`,
+			select: 'id,target_kind,target_id,reason,status,created_at,reviewed_at,snapshot_body,snapshot_sent_at',
 		},
 		// direct_messages — private 1:1 conversations, both directions.
 		// `body` is the subject's own correspondence and ships verbatim.

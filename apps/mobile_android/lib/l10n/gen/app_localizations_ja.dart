@@ -6713,7 +6713,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get coachConsentIntro =>
-      'ThrekirのAI機能は、あなたのデータの一部を、米国のAIモデルプロバイダーである Anthropic に送信します。利用する機能に応じて、その一部には以下が含まれます：';
+      'ThrekirのAI機能は、あなたのデータの一部を、米国のAIモデルプロバイダーである Anthropic に送信し、Anthropic が AI コーチの返信やその他のAI機能の提案を作成できるようにします。利用する機能に応じて、その一部には以下が含まれます：';
 
   @override
   String get coachConsentBulletProfile =>
@@ -6728,7 +6728,8 @@ class AppLocalizationsJa extends AppLocalizations {
       '選択中のトレーニングプラン（1つまたは複数）: 各プランについて、プラン名、ステータス、目標レースと目標タイム、作成の基になった最近の5Kタイムと走力スコア、期間、トレーニング日、ルール、メモ。各週のフェーズ、目標距離、メモ。各ワークアウトの日付、種類、目標、構成、メモ、レース名と優先度、完了したかスキップしたか。加えて、健康データの利用に同意している場合のみ心拍数の目標。';
 
   @override
-  String get coachConsentBulletMessages => '下の画面で入力するチャットメッセージ。';
+  String get coachConsentBulletMessages =>
+      'AI コーチに送るメッセージ。健康やけがについて書いた内容も含まれるため、共有したくないことは書かないでください。';
 
   @override
   String get coachConsentBulletRoutes =>
@@ -6760,7 +6761,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get coachConsentProcessing =>
-      'Anthropic は Threkir に代わってデータ処理条件に基づきデータを処理します。既定では Threkir の顧客データでモデルを学習しません。移転の仕組み、保持期間、撤回の権利を含む詳細は、プライバシーポリシーをご覧ください。';
+      '「健康データの利用に同意している場合のみ」と記載された項目は健康データです。同意すると、これらの機能のためにそれらのデータが Anthropic に送信されることに明示的に同意したことになります。Anthropic は Threkir に代わって、同社のデータ処理条件に基づきデータを処理し、そのデータでモデルを学習せず、30日以内に削除します（同社の安全システムが検出したコンテンツに限り、それより長く保持されます）。この同意は、設定 → アカウントでいつでも撤回できます。撤回するとそれ以降のデータは送信されなくなりますが、すでに送信されたデータは取り消されません。移転に関する保護措置を含む詳細は、プライバシーポリシーをご覧ください。';
 
   @override
   String get coachConsentAction =>
@@ -16142,7 +16143,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get messagesUnsendConfirmBody =>
-      'メッセージはあなたと相手の両方から削除されます。この操作は取り消せません。';
+      'メッセージはあなたと相手の両方から削除されます。この操作は取り消せません。そのメッセージがすでに報告されている場合、報告にはコピーが保持されます。';
 
   @override
   String get messagesUnsendFailed => 'メッセージの送信を取り消せませんでした。';

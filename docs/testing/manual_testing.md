@@ -317,9 +317,10 @@ The Coach endpoint at `/api/coach/+server.ts` is the only server-runtime web rou
 
 | Scenario | Steps | Pass |
 |---|---|---|
-| Send a message | `/coach` page → type a question | Streams a response; grounded-in context strip lists which runs/plans were sent. |
+| Send a message | Messages → the pinned AI Coach row (`/messages/coach`; `/coach` redirects there) → type a question | Streams a response; grounded-in context strip lists which runs/plans were sent. |
 | Plan switcher | `?plan=<id>` query param | Coach context is scoped to the picked plan only. |
 | Runs window | Adjust the 10/20/50/100 selector | More history loaded into context; visible in the strip. |
+| Coach row in Messages | Open Messages; tap the pin on the AI Coach row; reload; then Settings → Display → AI Coach in Messages → Hidden | Pinned at the top with an AI tag by default; unpinned it sorts by its newest message and stays so after reload; hidden takes it out of the inbox. Without AI consent the row describes the Coach and quotes nothing. Mobile: You → Messages, same row; Preferences → Messages for the setting. |
 | Rate limit | Send >N requests as a free user (config in `check_rate_limit_tiered`) | 429 with Retry-After; pro users see a higher ceiling. |
 | Pro-only paths | `/api/coach` calls `is_pro()` to gate paywalled features per [paywall.md](../features/paywall.md) | Free users hit the hard ceiling; pro users get the higher one. |
 

@@ -7,6 +7,7 @@ import '../social_service.dart';
 import '../widgets/challenge_form_sheet.dart';
 import '../widgets/challenge_progress_bar.dart';
 import '../widgets/error_state.dart';
+import '../widgets/official_badge.dart';
 import 'challenge_detail_screen.dart';
 
 /// The Social hub's Challenges sub-tab. Browse public challenges + the user's
@@ -139,7 +140,12 @@ class ChallengesScreenState extends State<ChallengesScreen> {
                 child: showProgress
                     ? _progressRow(context, c)
                     : ListTile(
-                        title: Text(c.title),
+                        title: Row(
+                          children: [
+                            Flexible(child: Text(c.title)),
+                            if (c.isOfficial) const OfficialBadge(),
+                          ],
+                        ),
                         subtitle: Text(
                           '${challengeMetricLabel(l10n, c.metric)} · ${l10n.challengesParticipants(c.participantCount)}',
                         ),
@@ -176,6 +182,7 @@ class ChallengesScreenState extends State<ChallengesScreen> {
                   child: Text(c.title,
                       style: const TextStyle(fontWeight: FontWeight.w600)),
                 ),
+                if (c.isOfficial) const OfficialBadge(),
                 const Icon(Icons.chevron_right),
               ],
             ),

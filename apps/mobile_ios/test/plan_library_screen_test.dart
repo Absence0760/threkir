@@ -9,6 +9,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/plan_library_screen.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/sign_in_required_state.dart';
+import '../lib/widgets/official_badge.dart';
 
 TrainingPlanRow _plan(String id, String name) => TrainingPlanRow(
       id: id,
@@ -44,6 +45,7 @@ class _FakeTraining extends TrainingService {
       PublicPlanLibraryEntry(
         plan: _plan('tmpl-1', 'Sub-4 Marathon'),
         authorHandle: 'Coach Dana',
+        isOfficial: true,
       ),
       PublicPlanLibraryEntry(
         plan: _plan('tmpl-2', 'Beginner Half'),
@@ -148,6 +150,24 @@ void main() {
     // Named author shown; the null-handle plan falls back to anonymous.
     expect(find.text('by Coach Dana'), findsOneWidget);
     expect(find.text('by a runner'), findsOneWidget);
+  });
+
+  testWidgets('an official plan carries the Official badge, a community one not',
+      (tester) async {
+    final t = _FakeTraining();
+    await tester.pumpWidget(_host(t));
+    await tester.pumpAndSettle();
+
+    final badge = find.byType(OfficialBadge);
+    expect(badge, findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.ancestor(of: badge, matching: find.byType(Card)),
+        matching: find.text('Sub-4 Marathon'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Official'), findsOneWidget);
   });
 
   testWidgets('search filters the list', (tester) async {

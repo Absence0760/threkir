@@ -285,6 +285,12 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get healthPlatformNameIos => 'Salud de Apple';
+
+  @override
+  String get healthPlatformNameAndroid => 'Salud conectada';
+
+  @override
   String get importCsvCardTitle => 'CSV';
 
   @override
@@ -397,19 +403,19 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get importHealthSubtitleIos =>
-      'Importa los entrenamientos que has registrado en Apple Watch, Nike Run Club, Strava y otras apps que escriben en Apple Salud';
+      'Importa los entrenamientos que has registrado en Apple Watch, Nike Run Club, Strava y otras apps que escriben en Salud de Apple';
 
   @override
   String get importHealthSubtitleAndroid =>
-      'Importa entrenamientos de Google Fit, Samsung Health, Garmin, Fitbit y cualquier otra app de Health Connect';
+      'Importa entrenamientos de Google Fit, Samsung Health, Garmin, Fitbit y cualquier otra app compatible con Salud conectada';
 
   @override
   String get importHealthDescriptionIos =>
-      'Lee los resúmenes de entrenamiento (fecha, distancia, duración, tipo) del último año. Apple Salud no expone las rutas GPS registradas por apps de terceros — las carreras importadas así no tendrán trazado en el mapa.';
+      'Lee los resúmenes de entrenamiento (fecha, distancia, duración, tipo) del último año. Salud de Apple no expone las rutas GPS registradas por apps de terceros — las carreras importadas así no tendrán trazado en el mapa.';
 
   @override
   String get importHealthDescriptionAndroid =>
-      'Lee los resúmenes de entrenamiento (fecha, distancia, duración, tipo) del último año. El mapa GPS de un entrenamiento también se importa cuando Health Connect deja que Threkir lo lea; si retiene alguno, puedes permitir el acceso a los mapas después de importar.';
+      'Lee los resúmenes de entrenamiento (fecha, distancia, duración, tipo) del último año. El mapa GPS de un entrenamiento también se importa cuando Salud conectada deja que Threkir lo lea; si retiene alguno, puedes permitir el acceso a los mapas después de importar.';
 
   @override
   String importHealthRoutesWithheld(int count) {
@@ -420,7 +426,7 @@ class AppLocalizationsEs extends AppLocalizations {
           '$count actividades importadas tienen mapas GPS que Threkir no puede leer.',
       one: '1 actividad importada tiene un mapa GPS que Threkir no puede leer.',
     );
-    return '$_temp0 Health Connect protege la ruta de un entrenamiento con un permiso aparte.';
+    return '$_temp0 Salud conectada protege la ruta de un entrenamiento con un permiso aparte.';
   }
 
   @override
@@ -428,11 +434,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get importHealthRoutesRequesting =>
-      'Solicitando acceso a los mapas a Health Connect...';
+      'Solicitando acceso a los mapas a Salud conectada...';
 
   @override
   String get importHealthRoutesDenied =>
-      'Acceso a los mapas no concedido. Las importaciones seguirán sin mapa; puedes cambiarlo en Health Connect cuando quieras.';
+      'Acceso a los mapas no concedido. Las importaciones seguirán sin mapa; puedes cambiarlo en Salud conectada cuando quieras.';
 
   @override
   String get importHealthRoutesAdding =>
@@ -1684,6 +1690,29 @@ class AppLocalizationsEs extends AppLocalizations {
   String get setupTrackRunningAlwaysOn => 'Siempre activada';
 
   @override
+  String get setupImportTitle => 'Trae tu historial de carreras';
+
+  @override
+  String get setupImportHint =>
+      '¿Ya registras tus carreras en otro sitio? Tráelas para que tu panel, tus récords y tus logros empiecen llenos. Cada opción abre su importación y después vuelves aquí.';
+
+  @override
+  String get setupImportHealthAndroid =>
+      'Carreras de cualquier app que se sincronice con Salud conectada, incluidas Garmin y Samsung';
+
+  @override
+  String get setupImportHealthIos =>
+      'Entrenamientos de Apple Watch y de cualquier app que guarde en Salud de Apple, incluida Garmin';
+
+  @override
+  String get setupImportStravaDesc =>
+      'Sube la exportación que Strava te envía por correo, con todas las actividades que has registrado';
+
+  @override
+  String get setupImportParkrunDesc =>
+      'Importa todos tus resultados de parkrun con tu número de atleta';
+
+  @override
   String get setupDoneTitle => 'Todo listo';
 
   @override
@@ -2490,10 +2519,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get historySourceParkrun => 'parkrun';
 
   @override
-  String get historySourceHealthKit => 'HealthKit';
+  String get historySourceHealthKit => 'Salud de Apple';
 
   @override
-  String get historySourceHealthConnect => 'Health Connect';
+  String get historySourceHealthConnect => 'Salud conectada';
 
   @override
   String get historyRangePickerTitle => 'Seleccionar fechas';
@@ -4389,6 +4418,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get heatmapLensPopular => 'Populares';
 
   @override
+  String get heatmapLensOfficial => 'Oficiales';
+
+  @override
   String get heatmapLensFriends => 'Amigos';
 
   @override
@@ -4866,6 +4898,11 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String profileNotifPlanAssigned(String name) {
     return '$name te asignó un plan de entrenamiento';
+  }
+
+  @override
+  String profileNotifPlanAiEdit(String name) {
+    return '$name aplicó cambios sugeridos por la IA a un plan que le asignaste';
   }
 
   @override
@@ -7071,15 +7108,15 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachConsentBulletProfile =>
-      'Tu fecha de nacimiento, sexo y zonas de FC si están configuradas.';
+      'Solo si has dado tu consentimiento de datos de salud: tu fecha de nacimiento y tus zonas de frecuencia cardíaca configuradas, si las has establecido.';
 
   @override
   String get coachConsentBulletRuns =>
-      'Una muestra de tus carreras más recientes.';
+      'Una muestra de tus carreras más recientes: la fecha, la distancia, la duración, el tipo de actividad, el desnivel positivo, si fue en interior y cómo fue respecto a un entrenamiento planificado, además de tu frecuencia cardíaca media (solo si has dado tu consentimiento de datos de salud).';
 
   @override
   String get coachConsentBulletPlan =>
-      'El plan de entrenamiento activo que has seleccionado.';
+      'El plan o los planes de entrenamiento que has seleccionado: de cada plan, su nombre, estado, carrera objetivo y tiempo objetivo, el tiempo reciente en 5K y la puntuación de forma física con los que se creó, sus fechas, días de entrenamiento, reglas y notas; la fase, la distancia objetivo y las notas de cada semana; y la fecha, el tipo, los objetivos, la estructura, las notas, el nombre de la carrera y la prioridad de cada entrenamiento, y si lo has completado u omitido, además de los objetivos de frecuencia cardíaca (solo si has dado tu consentimiento de datos de salud).';
 
   @override
   String get coachConsentBulletMessages =>
@@ -7096,6 +7133,18 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get coachConsentBulletPlatePhoto =>
       'Para el registro con foto del plato: la foto de tu comida que elijas, enviada solo para estimar lo que hay en el plato. La ubicación y los datos de la cámara se eliminan antes del envío, Threkir no guarda la foto y no se registra nada hasta que lo revises y guardes.';
+
+  @override
+  String get coachConsentBulletCoachSettings =>
+      'Tus unidades de distancia, tu frecuencia cardíaca en reposo y máxima (solo si has dado tu consentimiento de datos de salud), tu objetivo de distancia semanal y la personalidad del entrenador que has elegido.';
+
+  @override
+  String get coachConsentBulletLifts =>
+      'Un resumen de tus sesiones de gimnasio más recientes: la fecha, el nombre de la sesión, cuántos ejercicios y series, y el peso total levantado.';
+
+  @override
+  String get coachConsentBulletNutrition =>
+      'Solo si has dado tu consentimiento de datos de salud: un resumen de 7 días de tu registro de comidas (días registrados y media de calorías, proteínas, carbohidratos y grasas), nunca comidas individuales.';
 
   @override
   String get coachConsentBulletPlanEdit =>
@@ -7126,6 +7175,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachNoPlanOption => 'Sin plan (solo carreras recientes)';
+
+  @override
+  String get coachSeasonOption =>
+      'Mi temporada (plan actual y los planes en cola después)';
+
+  @override
+  String get coachSeasonName => 'Mi temporada';
 
   @override
   String coachPlanActive(String name) {
@@ -7353,6 +7409,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get coachOpenArchiveFailed => 'No se pudo abrir el archivo.';
+
+  @override
+  String get coachJumpToLatest => 'Ir al último mensaje';
 
   @override
   String coachArchiveDeleteFailed(String error) {
@@ -8105,15 +8164,15 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get integrationsHealthConnectTitle =>
-      'Escribir carreras en Health Connect';
+      'Escribir carreras en Salud conectada';
 
   @override
   String get integrationsHealthConnectSubtitle =>
-      'Envía cada carrera terminada a Health Connect para que aparezca en Google Fit, Samsung Health, Fitbit y otros.';
+      'Envía cada carrera terminada a Salud conectada para que aparezca en Google Fit, Samsung Health, Fitbit y otros.';
 
   @override
   String get integrationsHealthConnectDenied =>
-      'Permiso de Health Connect no concedido: las carreras no se escribirán.';
+      'Permiso de Salud conectada no concedido: las carreras no se escribirán.';
 
   @override
   String integrationsHrPairFailed(Object error) {
@@ -10373,6 +10432,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get reportTitleReview => 'Denunciar reseña';
 
   @override
+  String get reportTitleMessage => 'Denunciar mensaje';
+
+  @override
   String get reportTitleContent => 'Denunciar contenido';
 
   @override
@@ -11272,6 +11334,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get verifiedClubTooltip => 'Club verificado oficial';
+
+  @override
+  String get officialBadgeLabel => 'Oficial';
+
+  @override
+  String get officialBadgeTooltip =>
+      'Oficial: publicado por un organizador verificado';
 
   @override
   String get raceDistance5k => '5 km';
@@ -16840,6 +16909,50 @@ class AppLocalizationsEs extends AppLocalizations {
   String get messagesRouteLoading => 'Cargando ruta';
 
   @override
+  String get messagesDeletedAccount => 'Cuenta eliminada';
+
+  @override
+  String get messagesDeletedAccountClosed =>
+      'Esta cuenta se ha eliminado. Aún puedes leer los mensajes que enviaste, pero no puedes responder.';
+
+  @override
+  String get messagesUnsentPlaceholder => 'Mensaje anulado';
+
+  @override
+  String get messagesUnsend => 'Anular envío';
+
+  @override
+  String get messagesUnsendConfirmTitle => '¿Anular el envío de este mensaje?';
+
+  @override
+  String get messagesUnsendConfirmBody =>
+      'Se eliminará para las dos personas. Esto no se puede deshacer.';
+
+  @override
+  String get messagesUnsendFailed => 'No se pudo anular el envío del mensaje.';
+
+  @override
+  String get messagesReport => 'Denunciar';
+
+  @override
+  String get messagesOptionsHint => 'mostrar las opciones del mensaje';
+
+  @override
+  String get messagesBlock => 'Bloquear';
+
+  @override
+  String get messagesUnblock => 'Desbloquear';
+
+  @override
+  String get messagesBlockConfirmBody =>
+      'Ninguno de los dos podrá enviar mensajes al otro, y esa persona no podrá seguirte, dar kudos a tus carreras ni comentarlas. Cualquier seguimiento entre ambos, en cualquier dirección, se eliminará, y desbloquear no lo restablecerá.';
+
+  @override
+  String messagesBlockedNotice(String name) {
+    return 'Has bloqueado a $name, así que ninguno de los dos puede enviar mensajes al otro.';
+  }
+
+  @override
   String get profileMessage => 'Mensaje';
 
   @override
@@ -18702,4 +18815,39 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planNewDobHintHealthDataAction => 'Revisar el consentimiento';
+
+  @override
+  String get messagesAiTag => 'IA';
+
+  @override
+  String get messagesAiTagSr => 'Generado por IA';
+
+  @override
+  String get messagesCoachRowIntro =>
+      'Pregunta sobre tu entrenamiento, tu plan o una carrera.';
+
+  @override
+  String get messagesCoachPin => 'Fijar el Entrenador IA arriba';
+
+  @override
+  String get messagesCoachUnpin => 'Dejar de fijar el Entrenador IA';
+
+  @override
+  String get messagesCoachPlacementFailed =>
+      'No se pudo guardar la posición del Entrenador IA. Inténtalo de nuevo.';
+
+  @override
+  String get prefsSectionMessages => 'Mensajes';
+
+  @override
+  String get prefsCoachInMessages => 'Entrenador IA en Mensajes';
+
+  @override
+  String get prefsCoachInMessagesPinned => 'Fijado arriba';
+
+  @override
+  String get prefsCoachInMessagesListed => 'Con tus conversaciones';
+
+  @override
+  String get prefsCoachInMessagesHidden => 'Oculto';
 }

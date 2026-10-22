@@ -88,8 +88,8 @@ tradeoffs (below).
   engines deferred, Pro delivers nothing — `/settings/upgrade` shows a
   "Pro — coming soon" teaser and leads with donations rather than selling a
   hollow subscription (also a consumer-protection / chargeback risk). The coach
-  flag hides every web entry point into the AI Coach (sidebar nav, the `/coach`
-  chat → "coming soon", the dashboard promo, the route-detail AI upsell, the
+  flag hides every web entry point into the AI Coach (the Messages inbox row, the
+  `/messages/coach` chat → "coming soon", the dashboard promo, the route-detail AI upsell, the
   `/compare` link) so nothing surfaces a door that only 503s; the static
   guided-runs rail and the offline "Describe this route" template stay. The
   route-gen flag hides the `/routes/new` Pro upsell and the Pro-card bullet —

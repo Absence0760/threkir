@@ -18,8 +18,12 @@
 ///   4  v3 plus AI plan edits (the active plan's upcoming workouts and the
 ///      typed change request, sent only to propose edits the runner
 ///      reviews before anything is saved).
-///   5  All AI features: v4 plus the plate-photo logger (one meal photo,
-///      sent only to propose food-log rows the runner edits before saving).
+///   5  v4 plus the plate-photo logger (one meal photo, sent only to
+///      propose food-log rows the runner edits before saving).
+///   6  All AI features: v5 plus the Coach's cross-training context (recent
+///      gym-session summaries and, with health-data consent, a 7-day
+///      nutrition summary). The Coach itself still needs only v1: the server
+///      withholds those two lanes of its context below v6.
 ///
 /// Adding the next AI feature means a new version with new copy, not a new
 /// boolean and not quietly widening what an existing acceptance covers.
@@ -61,9 +65,16 @@ const int kAiDisclosureVersionPlanEditAi = 4;
 /// estimate food-log rows (decisions § 1972).
 const int kAiDisclosureVersionFoodPhotoAi = 5;
 
+/// Minimum disclosure version for the Coach context's gym and nutrition lanes.
+/// Not an endpoint minimum: `/api/coach` still requires only
+/// [kAiDisclosureVersionCoach], and the server leaves both lanes out of the
+/// context of a runner below this rung (issue #1217). Mobile offers it only
+/// as the version a new acceptance records.
+const int kAiDisclosureVersionCoachCrossTraining = 6;
+
 /// The newest disclosure this build knows how to present. Must equal the SQL
 /// `ai_disclosure_current_version()` and web's `AI_DISCLOSURE_CURRENT_VERSION`.
-const int kAiDisclosureCurrentVersion = kAiDisclosureVersionFoodPhotoAi;
+const int kAiDisclosureCurrentVersion = kAiDisclosureVersionCoachCrossTraining;
 
 /// Machine-readable marker on every AI-consent denial. It rides a `code`
 /// field rather than `error` because the endpoints already use `error` for

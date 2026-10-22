@@ -1737,6 +1737,10 @@ const SECTIONS = [
 	'dashboard', 'history', 'runs', 'gym', 'nutrition', 'coach', 'social', 'messages',
 ] as const;
 
+// The sections the sidebar names. The Coach has no sidebar row since it moved
+// into Messages (decisions § 2227); its pair paints the Coach's avatar there.
+const NAV_SECTIONS = SECTIONS.filter((s) => s !== 'coach');
+
 // Every tint share the tree paints an ink on: the nav disc idle (14) and hover
 // (24), the dashboard lift disc and the history lift chip (18), the meal chip
 // (20), and 0 for the bare-surface cases (the 3 px rail, the footer CTA text).
@@ -1910,6 +1914,9 @@ const SECTION_ACCENT_SURFACES: Array<[file: string, tokens: string[]]> = [
 	// The timeline rows moved out of /history into the component it shares with
 	// the /runs list view (decisions § 2117); the accent moved with them.
 	['lib/components/TimelineDayList.svelte', ['--section-gym-ink', '--section-nutrition-ink']],
+	['routes/messages/+layout.svelte', ['--section-coach', '--section-coach-ink']],
+	['routes/messages/coach/+page.svelte', ['--section-coach', '--section-coach-ink']],
+	['lib/components/CoachChat.svelte', ['--section-coach', '--section-coach-ink']],
 ];
 
 test('the surfaces that mark a modality still read the section pairs', () => {
@@ -1926,7 +1933,7 @@ test('the surfaces that mark a modality still read the section pairs', () => {
 	// The nav accents cannot go back to being hexes in the TS array: the ink
 	// half has to flip per theme and a TS string cannot.
 	const layout = readFileSync(join(root, 'routes/+layout.svelte'), 'utf-8');
-	for (const section of SECTIONS) {
+	for (const section of NAV_SECTIONS) {
 		assert.match(
 			layout,
 			new RegExp(`section: '${section}'`),

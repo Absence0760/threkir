@@ -220,6 +220,8 @@
 				return m('notificationsList.verbPlanUpdate', { name });
 			case 'plan_assigned':
 				return m('notificationsList.verbPlanAssigned', { name });
+			case 'plan_ai_edit':
+				return m('notificationsList.verbPlanAiEdit', { name });
 			case 'workout_reminder':
 				return m('notificationsList.verbWorkoutReminder');
 			case 'message':

@@ -65,6 +65,10 @@ Future<void> _pump(
   Locale? locale,
   String? initialPreferredUnit,
   SettingsSyncService? settingsSync,
+  WidgetBuilder? importScreenBuilder,
+  WidgetBuilder? integrationsScreenBuilder,
+  Future<bool> Function()? probeParkrun,
+  bool? isIOS,
 }) async {
   // Host under a Navigator with a base route so the wizard's pop-on-finish
   // has somewhere to land (it's pushed as a fullscreen route in the app).
@@ -84,6 +88,11 @@ Future<void> _pump(
                     preferences: prefs,
                     settingsSync: settingsSync,
                     initialPreferredUnit: initialPreferredUnit,
+                    importScreenBuilder:
+                        importScreenBuilder ?? (_) => const _StubScreen('import'),
+                    integrationsScreenBuilder: integrationsScreenBuilder,
+                    probeParkrun: probeParkrun,
+                    isIOS: isIOS,
                   ),
                 ),
               ),
@@ -485,7 +494,11 @@ void main() {
           MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            home: SetupWizardScreen(apiClient: api, preferences: prefs),
+            home: SetupWizardScreen(
+              apiClient: api,
+              preferences: prefs,
+              importScreenBuilder: (_) => const _StubScreen('import'),
+            ),
           ),
         );
         await tester.pumpAndSettle();
@@ -663,7 +676,7 @@ void main() {
 
       Future<void> walkToTrack(
           WidgetTester tester, AppLocalizations l10n) async {
-        for (var i = 0; i < _tapsToDone - 1; i++) {
+        for (var i = 0; i < _tapsToDone - 2; i++) {
           await _forward(tester, l10n);
         }
         expect(find.text(l10n.setupTrackTitle), findsOneWidget);
@@ -677,8 +690,8 @@ void main() {
         await tester.pump();
       }
 
-      testWidgets('is the step before done, with Running always on and both '
-          'modalities off', (tester) async {
+      testWidgets('comes before the import step, with Running always on and '
+          'both modalities off', (tester) async {
         final api = _FakeApi();
         await _pump(tester, api, await _prefs());
         final l10n = await AppLocalizations.delegate.load(const Locale('en'));
@@ -695,6 +708,8 @@ void main() {
         expect(find.widgetWithText(FilledButton, l10n.setupSkipStep),
             findsOneWidget);
 
+        await _forward(tester, l10n);
+        expect(find.text(l10n.setupImportTitle), findsOneWidget);
         await _forward(tester, l10n);
         expect(find.text(l10n.setupOpenDashboard), findsOneWidget);
       });
@@ -722,6 +737,7 @@ void main() {
         expect(find.widgetWithText(FilledButton, l10n.setupContinue),
             findsOneWidget);
         await _forward(tester, l10n);
+        await _forward(tester, l10n);
         await tester.tap(find.text(l10n.setupOpenDashboard));
         await tester.pumpAndSettle(const Duration(seconds: 4));
 
@@ -744,6 +760,7 @@ void main() {
 
         await toggle(tester, l10n.fitnessTabNutrition);
         await toggle(tester, l10n.fitnessTabNutrition);
+        await _forward(tester, l10n);
         await _forward(tester, l10n);
         await tester.tap(find.text(l10n.setupOpenDashboard));
         await tester.pumpAndSettle(const Duration(seconds: 4));
@@ -785,6 +802,173 @@ void main() {
         expect(prefs.showGym, isNull);
         expect(fake.universalWrites, isEmpty);
       });
+    });
+
+    group('import your history', () {
+      Future<void> walkToImport(
+          WidgetTester tester, AppLocalizations l10n) async {
+        for (var i = 0; i < _tapsToDone - 1; i++) {
+          await _forward(tester, l10n);
+        }
+        expect(find.text(l10n.setupImportTitle), findsOneWidget);
+      }
+
+      Finder row(String source) => find.byKey(ValueKey('setup-import-$source'));
+
+      testWidgets('sits between track and done', (tester) async {
+        await _pump(tester, _FakeApi(), await _prefs());
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        for (var i = 0; i < _tapsToDone - 2; i++) {
+          await _forward(tester, l10n);
+        }
+        expect(find.text(l10n.setupTrackTitle), findsOneWidget);
+        await _forward(tester, l10n);
+        expect(find.text(l10n.setupImportTitle), findsOneWidget);
+        await _forward(tester, l10n);
+        expect(find.text(l10n.setupOpenDashboard), findsOneWidget);
+      });
+
+      testWidgets('Android offers Health Connect and the Strava archive, '
+          'never Apple Health', (tester) async {
+        await _pump(tester, _FakeApi(), await _prefs(), isIOS: false);
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        await walkToImport(tester, l10n);
+
+        expect(row('health_connect'), findsOneWidget);
+        expect(find.text('Health Connect'), findsOneWidget);
+        expect(find.text(l10n.setupImportHealthAndroid), findsOneWidget);
+        expect(row('healthkit'), findsNothing);
+        expect(find.text('Apple Health'), findsNothing);
+        expect(row('strava'), findsOneWidget);
+        expect(find.text(l10n.setupImportStravaDesc), findsOneWidget);
+        // No probe was handed in, so parkrun has nothing behind it here.
+        expect(row('parkrun'), findsNothing);
+      });
+
+      testWidgets('iOS offers Apple Health, never Health Connect',
+          (tester) async {
+        await _pump(tester, _FakeApi(), await _prefs(), isIOS: true);
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        await walkToImport(tester, l10n);
+
+        expect(row('healthkit'), findsOneWidget);
+        expect(find.text('Apple Health'), findsOneWidget);
+        expect(find.text(l10n.setupImportHealthIos), findsOneWidget);
+        expect(row('health_connect'), findsNothing);
+        expect(find.text('Health Connect'), findsNothing);
+        expect(row('strava'), findsOneWidget);
+      });
+
+      testWidgets('skipping is one tap, writes nothing extra, and finishes',
+          (tester) async {
+        final api = _FakeApi();
+        await _pump(tester, api, await _prefs());
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        await walkToImport(tester, l10n);
+
+        // Nothing opened, so the one forward button says what it does.
+        expect(find.widgetWithText(FilledButton, l10n.setupSkipStep),
+            findsOneWidget);
+        expect(find.text(l10n.setupContinue), findsNothing);
+        await _forward(tester, l10n);
+
+        await tester.tap(find.text(l10n.setupOpenDashboard));
+        await tester.pumpAndSettle(const Duration(seconds: 4));
+        expect(api.completeOnboardingCalled, isTrue);
+        expect(find.byType(SetupWizardScreen), findsNothing);
+      });
+
+      testWidgets('a row opens the existing import screen, and closing it '
+          'returns to the same step with every answer kept', (tester) async {
+        final api = _FakeApi();
+        await _pump(tester, api, await _prefs());
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        await tester.enterText(find.byType(TextField), 'Ada');
+        await tester.pump();
+        await walkToImport(tester, l10n);
+
+        await tester.tap(row('strava'));
+        await tester.pumpAndSettle();
+        expect(find.text('stub-import'), findsOneWidget);
+        // Opening an import is not finishing setup.
+        expect(api.completeOnboardingCalled, isFalse);
+        expect(api.markOnboardedCalled, isFalse);
+
+        await tester.tap(find.text('close-import'));
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.setupImportTitle), findsOneWidget);
+        // Having been somewhere, the forward button now continues.
+        expect(find.widgetWithText(FilledButton, l10n.setupContinue),
+            findsOneWidget);
+
+        await _forward(tester, l10n);
+        await tester.tap(find.text(l10n.setupOpenDashboard));
+        await tester.pumpAndSettle(const Duration(seconds: 4));
+        expect(api.completedDisplayName, 'Ada');
+      });
+
+      testWidgets('the health row opens the same import screen',
+          (tester) async {
+        var opened = 0;
+        await _pump(
+          tester,
+          _FakeApi(),
+          await _prefs(),
+          isIOS: false,
+          importScreenBuilder: (_) {
+            opened++;
+            return const _StubScreen('import');
+          },
+        );
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        await walkToImport(tester, l10n);
+
+        await tester.tap(row('health_connect'));
+        await tester.pumpAndSettle();
+        expect(find.text('stub-import'), findsOneWidget);
+        expect(opened, greaterThan(0));
+      });
+
+      testWidgets('parkrun appears once its probe says yes, and opens '
+          'Integrations, where its import lives', (tester) async {
+        await _pump(
+          tester,
+          _FakeApi(),
+          await _prefs(),
+          probeParkrun: () async => true,
+          integrationsScreenBuilder: (_) => const _StubScreen('integrations'),
+        );
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        await walkToImport(tester, l10n);
+
+        expect(row('parkrun'), findsOneWidget);
+        expect(find.text(l10n.setupImportParkrunDesc), findsOneWidget);
+        await tester.tap(row('parkrun'));
+        await tester.pumpAndSettle();
+        expect(find.text('stub-integrations'), findsOneWidget);
+      });
+
+      for (final (why, probe) in <(String, Future<bool> Function())>[
+        ('refused', () async => false),
+        ('failing', () async => throw Exception('function not deployed')),
+      ]) {
+        testWidgets('a $why parkrun probe keeps the row hidden',
+            (tester) async {
+          await _pump(
+            tester,
+            _FakeApi(),
+            await _prefs(),
+            probeParkrun: probe,
+            integrationsScreenBuilder: (_) =>
+                const _StubScreen('integrations'),
+          );
+          final l10n =
+              await AppLocalizations.delegate.load(const Locale('en'));
+          await walkToImport(tester, l10n);
+          expect(row('parkrun'), findsNothing);
+          expect(row('strava'), findsOneWidget);
+        });
+      }
     });
 
     group('preferences bag (the answers with no local mirror)', () {
@@ -878,4 +1062,23 @@ class _FakeSettingsService implements SettingsService {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Stands in for the screens the import step pushes, which need stores and
+/// platform plugins a widget test has none of. Closing it pops back to the
+/// wizard, the way a runner leaves the real one.
+class _StubScreen extends StatelessWidget {
+  final String name;
+  const _StubScreen(this.name);
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: Text('stub-$name')),
+        body: Center(
+          child: TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('close-$name'),
+          ),
+        ),
+      );
 }

@@ -137,7 +137,14 @@ export type Run = Omit<RunRow, 'source' | 'metadata' | 'activity_type'> & {
 // `public_routes` view projects it away, and the list projection never selects
 // it. The one column the read boundary is unanimous about must not be the one
 // the type promises on every path (§ 1327).
-export type Route = Omit<RouteRow, 'waypoints' | 'surface' | 'shadow_hidden'> & {
+/// Published by a verified organiser: the row's club is verified and its
+/// author an active owner/admin of it (migration 20271021000030, decisions
+/// § 2228). Derived server-side and never stored, so it is present only on the
+/// reads that select it — the `is_official` computed field on a table, or the
+/// column the read views and discovery RPCs carry — and absent elsewhere.
+export type OfficialFlag = { is_official?: boolean | null };
+
+export type Route = Omit<RouteRow, 'waypoints' | 'surface' | 'shadow_hidden'> & OfficialFlag & {
 	waypoints: TrackPoint[];
 	surface: RouteSurface | null;
 };
@@ -569,7 +576,7 @@ export function parseNutritionAssignmentStatus(
 }
 // Polymorphic report target. Kept in lockstep with the `reports.target_kind`
 // CHECK constraint (migrations 20260908_001 / 20261117_001 / 20270115_001 /
-// 20270402_001) via apps/web/scripts/check_constraint_unions.mjs.
+// 20270402_001 / 20271021000003) via apps/web/scripts/check_constraint_unions.mjs.
 export type ReportTargetKind =
 	| 'user'
 	| 'club'
@@ -577,7 +584,8 @@ export type ReportTargetKind =
 	| 'comment'
 	| 'club_post'
 	| 'run'
-	| 'route_review';
+	| 'route_review'
+	| 'direct_message';
 export type NotificationKind =
 	| 'kudos'
 	| 'comment'
@@ -601,7 +609,8 @@ export type NotificationKind =
 	| 'reaction'
 	| 'comment_like'
 	| 'mention'
-	| 'workout_reminder';
+	| 'workout_reminder'
+	| 'plan_ai_edit';
 
 // `invite_token` is excluded from the base type because the column-
 // level grant lockdown (migrations 20260801_001 + 20260818_001 redo)
@@ -704,7 +713,7 @@ export interface FundraiserTotals {
 	currency: string;
 }
 
-export type SessionPlan = SessionPlanRow;
+export type SessionPlan = SessionPlanRow & OfficialFlag;
 export type SessionPlanBlock = SessionPlanBlockRow;
 export type SessionPlanItem = Omit<SessionPlanItemRow, 'kind'> & { kind: SessionItemKind };
 
@@ -749,7 +758,7 @@ export type ClubPostWithAuthor = ClubPost & {
 
 export type PlanStatus = 'active' | 'completed' | 'abandoned' | 'paused';
 
-export type TrainingPlan = Omit<TrainingPlanRow, 'status'> & { status: PlanStatus };
+export type TrainingPlan = Omit<TrainingPlanRow, 'status'> & OfficialFlag & { status: PlanStatus };
 export type PlanWeek = PlanWeekRow;
 export type PlanWorkout = PlanWorkoutRow;
 
@@ -774,7 +783,7 @@ export type ActivePlanOverview = {
 export type ChallengeMetric = 'distance' | 'duration' | 'vert' | 'activity_count' | 'streak_days';
 export type ChallengeScope = 'individual' | 'club_vs_club' | 'group_goal';
 
-export type Challenge = Omit<ChallengeRow, 'metric' | 'scope' | 'activity_type'> & {
+export type Challenge = Omit<ChallengeRow, 'metric' | 'scope' | 'activity_type'> & OfficialFlag & {
 	metric: ChallengeMetric;
 	scope: ChallengeScope;
 	activity_type: ActivityType | null;

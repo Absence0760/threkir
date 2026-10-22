@@ -229,6 +229,13 @@ TrainingPlanRow? currentOrUpcomingPlan(
   return pick.current ?? pick.upcoming;
 }
 
+/// The current (else upcoming) plan among [activePlans] and the plans queued
+/// after it, in date order: the season the Coach's "My season" reads.
+List<TrainingPlanRow> currentSeasonPlans(
+        List<TrainingPlanRow> activePlans, String todayIso) =>
+    currentSeason(activePlans, todayIso,
+        start: planRowStartIso, end: planRowEndIso);
+
 /// The active plans a new `[startIso, endIso]` window overlaps.
 List<TrainingPlanRow> overlappingActivePlans(
         List<TrainingPlanRow> activePlans, String startIso, String endIso) =>
@@ -260,7 +267,15 @@ class PublicPlanLibraryEntry {
   final TrainingPlanRow plan;
   final String? authorHandle;
 
-  const PublicPlanLibraryEntry({required this.plan, required this.authorHandle});
+  /// Published by a verified organiser — the `is_official` computed field
+  /// (migration 20271021000030); the generated row type does not carry it.
+  final bool isOfficial;
+
+  const PublicPlanLibraryEntry({
+    required this.plan,
+    required this.authorHandle,
+    this.isOfficial = false,
+  });
 }
 
 /// Thrown when an active plan already covers some of the dates a write would
@@ -556,16 +571,21 @@ class TrainingService extends ChangeNotifier {
   Future<List<PublicPlanLibraryEntry>> fetchPublicPlanLibrary({
     String query = '',
   }) async {
-    var sel = _c.from('training_plans').select().eq('is_public_template', true);
+    var sel = _c
+        .from('training_plans')
+        .select('*, is_official')
+        .eq('is_public_template', true);
     final trimmed = query.trim();
     if (trimmed.isNotEmpty) {
       sel = sel.imatchRegex('name', literalSubstringPattern(trimmed));
     }
     final rows = await sel.order('created_at', ascending: false).limit(100);
-    final plans = (rows as List)
-        .cast<Map<String, dynamic>>()
-        .map(TrainingPlanRow.fromJson)
-        .toList();
+    final rowMaps = (rows as List).cast<Map<String, dynamic>>();
+    final plans = rowMaps.map(TrainingPlanRow.fromJson).toList();
+    final officialIds = {
+      for (final r in rowMaps)
+        if (r['is_official'] == true) r['id'] as String,
+    };
     final authorIds = {for (final p in plans) p.userId}.toList();
     final byId = <String, String?>{};
     if (authorIds.isNotEmpty) {
@@ -580,7 +600,11 @@ class TrainingService extends ChangeNotifier {
     }
     return [
       for (final p in plans)
-        PublicPlanLibraryEntry(plan: p, authorHandle: byId[p.userId]),
+        PublicPlanLibraryEntry(
+          plan: p,
+          authorHandle: byId[p.userId],
+          isOfficial: officialIds.contains(p.id),
+        ),
     ];
   }
 

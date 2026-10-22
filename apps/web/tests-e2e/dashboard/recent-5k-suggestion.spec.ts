@@ -188,14 +188,12 @@ test.describe('dashboard recent-5K plan suggestion', () => {
 		const page = await openDashboard(browser);
 		try {
 			await expect(page.getByTestId('dash-recent-5k')).toBeVisible({ timeout: 15_000 });
-			await page.route('**/rest/v1/user_settings*', (route) =>
-				route.request().method() === 'GET'
-					? route.continue()
-					: route.fulfill({
-							status: 403,
-							contentType: 'application/json',
-							body: JSON.stringify({ code: '42501', message: 'permission denied for table user_settings' }),
-						}),
+			await page.route('**/rest/v1/rpc/merge_my_settings*', (route) =>
+				route.fulfill({
+					status: 403,
+					contentType: 'application/json',
+					body: JSON.stringify({ code: '42501', message: 'permission denied for table user_settings' }),
+				}),
 			);
 			await page.getByTestId('dash-recent-5k-dismiss').click();
 			await expect(page.locator('.toast.toast-error')).toContainText("Couldn't save that, so the suggestion may come back.");

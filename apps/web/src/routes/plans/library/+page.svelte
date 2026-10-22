@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import { goto } from '$app/navigation';
 	import {
 		fetchPublicPlanLibrary,
@@ -89,7 +90,7 @@
 			{#each plans as p (p.id)}
 				<li>
 					<a class="plan-card" href="/plans/library/{p.id}">
-						<span class="plan-name">{p.name}</span>
+						<span class="plan-name">{p.name}{#if p.is_official}<OfficialBadge />{/if}</span>
 						<span class="plan-author">
 							{m('planLibrary.byAuthor', {
 								author: p.author_handle ?? m('planLibrary.anonymousAuthor'),

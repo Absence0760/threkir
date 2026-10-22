@@ -20,6 +20,7 @@ import {
 	COACH_PLAN_WORKOUTS_CAP,
 } from './context';
 import type { CoachProfileRow } from './context';
+import { AI_DISCLOSURE_CURRENT_VERSION } from '../core/ai_disclosure';
 
 const SRC = readFileSync(
 	resolve(import.meta.dirname ?? '.', 'context.ts'),
@@ -30,9 +31,8 @@ test('subscription_tier is NOT projected into the Anthropic context', () => {
 	// audit/coach May 2026 Medium #9 — Art 5(1)(c) data minimisation.
 	// The handler knows tier and adjusts limits server-side; sending
 	// billing-tier metadata to a sub-processor has no functional
-	// purpose. The profile projection must include display_name +
-	// preferred_unit only (plus internal consent flags read off the
-	// row but not emitted).
+	// purpose. The profile projection must include preferred_unit only
+	// (plus internal consent flags read off the row but not emitted).
 	const profileObj = SRC.match(/const profile = profileRowTyped[\s\S]*?\{([\s\S]*?)\}[\s\S]*?:\s*null;/);
 	assert.ok(
 		profileObj,
@@ -42,6 +42,13 @@ test('subscription_tier is NOT projected into the Anthropic context', () => {
 		profileObj![1].includes('subscription_tier'),
 		false,
 		'subscription_tier MUST NOT appear in the Anthropic-bound profile projection',
+	);
+	// Decisions § 2229: nothing in the Coach's prompt uses the display
+	// name, so it is not sent either.
+	assert.equal(
+		profileObj![1].includes('display_name'),
+		false,
+		'display_name MUST NOT appear in the Anthropic-bound profile projection',
 	);
 });
 
@@ -114,7 +121,7 @@ test('nutrition_7d is gated on health-data consent', () => {
 	// the consent check through the food_log query up to the next closing
 	// brace (the if-block's), regardless of indent.
 	const guard = SRC.match(
-		/if \(healthConsentGranted\) \{[\s\S]*?from\(TABLES\.food_log\)[\s\S]*?\}/,
+		/if \(healthConsentGranted && [^)]*\)\) \{[\s\S]*?from\(TABLES\.food_log\)[\s\S]*?\}/,
 	);
 	assert.ok(
 		guard,
@@ -166,8 +173,9 @@ test('buildContext caps plan_weeks + plan_workouts row counts', async () => {
 		'user-1',
 		null,
 		10,
-		{ display_name: 'R', preferred_unit: 'km', health_data_consent_at: null },
+		{ preferred_unit: 'km', health_data_consent_at: null },
 		'2026-06-15',
+		AI_DISCLOSURE_CURRENT_VERSION,
 	);
 	const data = ctx.data as { plan_weeks: unknown[]; plan_workouts: unknown[] };
 	assert.equal(data.plan_weeks.length, COACH_PLAN_WEEKS_CAP);
@@ -248,11 +256,10 @@ function runWithConsent(consentAt: string | null) {
 		started_at: '2026-06-08T08:00:00.000Z',
 		distance_m: 10000,
 		duration_s: 3000,
-		metadata: { activity_type: 'run', avg_bpm: 152 },
+		metadata: { is_indoor: false, avg_bpm: 152 },
 		route_id: null,
 	};
 	const profileRow: CoachProfileRow = {
-		display_name: 'Runner',
 		preferred_unit: 'km',
 		health_data_consent_at: consentAt,
 	};
@@ -263,6 +270,7 @@ function runWithConsent(consentAt: string | null) {
 		10,
 		profileRow,
 		'2026-06-15',
+		AI_DISCLOSURE_CURRENT_VERSION,
 	);
 }
 
@@ -273,14 +281,14 @@ test('buildContext strips per-run avg_bpm when health consent is null', async ()
 	const ctx = await runWithConsent(null);
 	const runs = (ctx.data as { recent_runs: { metadata: unknown }[] }).recent_runs;
 	assert.equal(runs.length, 1);
-	assert.deepEqual(runs[0].metadata, { activity_type: 'run' });
+	assert.deepEqual(runs[0].metadata, { is_indoor: false });
 });
 
 test('buildContext keeps per-run avg_bpm when health consent is granted', async () => {
 	const ctx = await runWithConsent('2026-06-01T00:00:00.000Z');
 	const runs = (ctx.data as { recent_runs: { metadata: unknown }[] }).recent_runs;
 	assert.equal(runs.length, 1);
-	assert.deepEqual(runs[0].metadata, { activity_type: 'run', avg_bpm: 152 });
+	assert.deepEqual(runs[0].metadata, { is_indoor: false, avg_bpm: 152 });
 });
 
 // --- cross-tenant scoping (issue #373) --------------------------------
@@ -375,7 +383,6 @@ function coachTenantFixture() {
 }
 
 const COACH_PROFILE: CoachProfileRow = {
-	display_name: 'Coach',
 	preferred_unit: 'km',
 	health_data_consent_at: '2026-06-01T00:00:00.000Z',
 };
@@ -388,16 +395,16 @@ test('buildContext no-plan_id branch returns the CALLER active plan, not an athl
 		10,
 		COACH_PROFILE,
 		'2026-06-15',
+		AI_DISCLOSURE_CURRENT_VERSION,
 	);
 	const data = ctx.data as {
-		plan: { id: string; user_id: string } | null;
+		plan: { id: string } | null;
 		plan_weeks: { id: string }[];
-		plan_workouts: { id: string }[];
+		plan_workouts: { week_id: string }[];
 	};
 	assert.equal(data.plan?.id, 'plan-b', 'must resolve the coach own active plan');
-	assert.equal(data.plan?.user_id, COACH);
 	assert.deepEqual(data.plan_weeks.map((w) => w.id), ['week-b']);
-	assert.deepEqual(data.plan_workouts.map((w) => w.id), ['wk-b']);
+	assert.deepEqual(data.plan_workouts.map((w) => w.week_id), ['week-b']);
 });
 
 test('buildContext leaks none of an athlete recent runs into a coach context', async () => {
@@ -408,6 +415,7 @@ test('buildContext leaks none of an athlete recent runs into a coach context', a
 		10,
 		COACH_PROFILE,
 		'2026-06-15',
+		AI_DISCLOSURE_CURRENT_VERSION,
 	);
 	const runs = (ctx.data as { recent_runs: { id: string; metadata: unknown }[] }).recent_runs;
 	assert.deepEqual(runs.map((r) => r.id), ['run-b'], 'only the coach own run');
@@ -421,6 +429,7 @@ test('buildContext scopes lifts + nutrition to the caller', async () => {
 		10,
 		COACH_PROFILE,
 		'2026-06-15',
+		AI_DISCLOSURE_CURRENT_VERSION,
 	);
 	const data = ctx.data as {
 		recent_lifts: { title: string | null; volume_kg: number }[];
@@ -443,6 +452,7 @@ test('buildContext with an athlete planId still returns nothing cross-tenant', a
 		10,
 		COACH_PROFILE,
 		'2026-06-15',
+		AI_DISCLOSURE_CURRENT_VERSION,
 	);
 	const data = ctx.data as { plan: unknown; plan_weeks: unknown[]; plan_workouts: unknown[] };
 	assert.equal(data.plan, null, 'a foreign plan id must not resolve');
@@ -577,8 +587,8 @@ test('buildContext picks the current plan by the runner today it is handed, not 
 			{ id: 'plan-2', user_id: COACH, status: 'active', is_template: false, start_date: '2026-06-15', end_date: '2026-09-01' },
 		],
 	};
-	const before = await buildContext(filteringSupabase(fixture) as never, COACH, null, 10, COACH_PROFILE, '2026-06-14');
-	const after = await buildContext(filteringSupabase(fixture) as never, COACH, null, 10, COACH_PROFILE, '2026-06-15');
+	const before = await buildContext(filteringSupabase(fixture) as never, COACH, null, 10, COACH_PROFILE, '2026-06-14', AI_DISCLOSURE_CURRENT_VERSION);
+	const after = await buildContext(filteringSupabase(fixture) as never, COACH, null, 10, COACH_PROFILE, '2026-06-15', AI_DISCLOSURE_CURRENT_VERSION);
 	assert.equal((before.data as { plan: { id: string } }).plan.id, 'plan-1');
 	assert.equal((after.data as { plan: { id: string } }).plan.id, 'plan-2');
 });
@@ -601,11 +611,11 @@ function failingPlansSupabase() {
 
 test('buildContext throws when the plan read fails instead of reporting no plan', async () => {
 	await assert.rejects(
-		buildContext(failingPlansSupabase() as never, COACH, null, 10, COACH_PROFILE, '2026-06-15'),
+		buildContext(failingPlansSupabase() as never, COACH, null, 10, COACH_PROFILE, '2026-06-15', AI_DISCLOSURE_CURRENT_VERSION),
 		(e: unknown) => (e as { code?: string }).code === '57014',
 	);
 	await assert.rejects(
-		buildContext(failingPlansSupabase() as never, COACH, 'plan-x', 10, COACH_PROFILE, '2026-06-15'),
+		buildContext(failingPlansSupabase() as never, COACH, 'plan-x', 10, COACH_PROFILE, '2026-06-15', AI_DISCLOSURE_CURRENT_VERSION),
 		(e: unknown) => (e as { code?: string }).code === '57014',
 	);
 });

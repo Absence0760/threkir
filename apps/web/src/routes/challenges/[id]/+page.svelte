@@ -12,6 +12,7 @@
 	} from '#lib/core/data.ts';
 	import type { ChallengeWithMeta, ChallengeLeaderboardRow, ClubWithMeta } from '#lib/types.ts';
 	import ChallengeProgressBar from '#lib/components/ChallengeProgressBar.svelte';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import ChallengeLeaderboard from '#lib/components/ChallengeLeaderboard.svelte';
 	import ChallengeEditor from '#lib/components/ChallengeEditor.svelte';
 	import Modal from '#lib/components/Modal.svelte';
@@ -199,7 +200,7 @@
 		<p class="muted">…</p>
 	{:else}
 		<header class="hero">
-			<h1>{challenge.title}</h1>
+			<h1>{challenge.title}{#if challenge.is_official}<OfficialBadge size={18} />{/if}</h1>
 			<div class="hero-chips">
 				<span class="window-chip">
 					<span class="material-symbols" aria-hidden="true">schedule</span>

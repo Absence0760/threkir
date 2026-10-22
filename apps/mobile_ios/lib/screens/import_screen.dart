@@ -121,7 +121,8 @@ class _ImportScreenState extends State<ImportScreen> {
   // shown it speculatively, only once there are maps behind it.
   Set<String> _withheldRouteIds = const {};
 
-  String get _healthLabel => healthLabelFor(isIOS: Platform.isIOS);
+  String _healthLabel(AppLocalizations l10n) =>
+      healthLabelFor(l10n, isIOS: Platform.isIOS);
 
   Future<bool> _requestHealthPermission() =>
       widget.requestHealthPermissionFn?.call() ??
@@ -152,7 +153,7 @@ class _ImportScreenState extends State<ImportScreen> {
     final l10n = AppLocalizations.of(context);
     setState(() {
       _busy = true;
-      _status = l10n.importHealthRequestingPermission(_healthLabel);
+      _status = l10n.importHealthRequestingPermission(_healthLabel(l10n));
       _imported = 0;
       _total = 0;
       _errors = [];
@@ -166,7 +167,7 @@ class _ImportScreenState extends State<ImportScreen> {
         if (!mounted) return;
         setState(() {
           _busy = false;
-          _status = l10n.importHealthPermissionDenied(_healthLabel);
+          _status = l10n.importHealthPermissionDenied(_healthLabel(l10n));
         });
         return;
       }
@@ -186,7 +187,7 @@ class _ImportScreenState extends State<ImportScreen> {
       // says the true thing instead.
       await _saveImportedRuns(
         runs,
-        label: _healthLabel,
+        label: _healthLabel(l10n),
         provider: 'health',
         failures: imported.failures,
         noGpsNote: runs.every((r) => r.track.isEmpty) &&
@@ -198,7 +199,7 @@ class _ImportScreenState extends State<ImportScreen> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _status = l10n.importHealthFailed(_healthLabel, e);
+        _status = l10n.importHealthFailed(_healthLabel(l10n), e);
       });
     }
   }
@@ -246,7 +247,7 @@ class _ImportScreenState extends State<ImportScreen> {
       setState(() {
         _busy = false;
         _withheldRouteIds = const {};
-        _status = l10n.importHealthFailed(_healthLabel, e);
+        _status = l10n.importHealthFailed(_healthLabel(l10n), e);
       });
     }
   }
@@ -683,7 +684,7 @@ class _ImportScreenState extends State<ImportScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(_healthLabel,
+                            Text(_healthLabel(l10n),
                                 style: theme.textTheme.titleMedium),
                             Text(
                               Platform.isIOS
@@ -714,7 +715,7 @@ class _ImportScreenState extends State<ImportScreen> {
                     child: FilledButton.icon(
                       onPressed: _busy ? null : _importHealthConnect,
                       icon: const Icon(Icons.health_and_safety),
-                      label: Text(l10n.importHealthButton(_healthLabel)),
+                      label: Text(l10n.importHealthButton(_healthLabel(l10n))),
                     ),
                   ),
                   if (_withheldRouteIds.isNotEmpty) ...[
@@ -939,11 +940,10 @@ class _ImportScreenState extends State<ImportScreen> {
   }
 }
 
-/// Human-readable label for the platform-specific health store the
-/// `health` package transparently dispatches into. Android backs by
-/// Health Connect; iOS backs by HealthKit (Apple Health). Pure
-/// function — caller passes `Platform.isIOS` so it's unit-testable
-/// without `debugDefaultTargetPlatformOverride` (which only affects
-/// the Flutter target platform, not `dart:io`'s `Platform.isIOS`).
-String healthLabelFor({required bool isIOS}) =>
-    isIOS ? 'Apple Health' : 'Health Connect';
+/// The platform health store's name as its vendor writes it in the reader's
+/// locale — Apple's health app on iOS, Health Connect on Android. Caller
+/// passes `Platform.isIOS` so it's unit-testable without
+/// `debugDefaultTargetPlatformOverride` (which only affects the Flutter
+/// target platform, not `dart:io`'s `Platform.isIOS`).
+String healthLabelFor(AppLocalizations l10n, {required bool isIOS}) =>
+    isIOS ? l10n.healthPlatformNameIos : l10n.healthPlatformNameAndroid;

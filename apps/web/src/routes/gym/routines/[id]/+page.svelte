@@ -16,6 +16,7 @@
 	import type { ClubWithMeta } from '#lib/types.ts';
 	import { formatWeight } from '#lib/format/units.svelte.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import GymRoutineHistory from '#lib/components/GymRoutineHistory.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
@@ -169,7 +170,7 @@
 	{:else}
 		<header class="detail-header">
 			<div>
-				<h1>{detail.routine.title}</h1>
+				<h1>{detail.routine.title}{#if detail.routine.is_official}<OfficialBadge size={18} />{/if}</h1>
 				<p class="head-sub">
 					{t('gym.routine.exerciseCount', { count: detail.routine.exercise_count })}
 				</p>

@@ -50,7 +50,7 @@ export const CTA_TARGETS: CtaTarget[] = [
 	{ feature: 'route-builder', route: '/routes/new', labelKey: 'learn.ctaRouteBuilder' },
 	{ feature: 'gear', route: '/settings', labelKey: 'learn.ctaGear' },
 	{ feature: 'nutrition', route: '/nutrition', labelKey: 'learn.ctaNutrition' },
-	{ feature: 'ai-coach', route: '/coach', labelKey: 'learn.ctaAiCoach' },
+	{ feature: 'ai-coach', route: '/messages/coach', labelKey: 'learn.ctaAiCoach' },
 	{ feature: 'clubs', route: '/social?tab=clubs', labelKey: 'learn.ctaClubs' },
 	{ feature: 'racing', route: '/races', labelKey: 'learn.ctaRacing' },
 	{ feature: 'explore', route: '/routes?tab=explore', labelKey: 'learn.ctaExplore' },

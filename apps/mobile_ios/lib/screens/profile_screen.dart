@@ -1498,6 +1498,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       );
     } else if ((kind == 'plan_update' ||
             kind == 'plan_assigned' ||
+            kind == 'plan_ai_edit' ||
             kind == 'workout_reminder') &&
         item.row.planId != null) {
       await Navigator.of(context).push(
@@ -1607,6 +1608,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         return l10n.profileNotifPlanUpdate(name);
       case 'plan_assigned':
         return l10n.profileNotifPlanAssigned(name);
+      case 'plan_ai_edit':
+        return l10n.profileNotifPlanAiEdit(name);
       case 'workout_reminder':
         return l10n.profileNotifWorkoutReminder;
       case 'achievement':

@@ -19,7 +19,7 @@ test.describe('/dashboard — progressive disclosure', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test('simple folds the training load away, and remembers being opened', async ({ page }) => {
-		// The expander persists through `updateUniversal`, which upserts the
+		// The expander persists through `updateUniversal`, which merges into the
 		// prefs bag — so the state the next load reads is the SERVER's, and a
 		// `goto` fired on the DOM flip alone aborts the write in flight and
 		// reads back the old value. Waiting on the upsert response (armed
@@ -28,7 +28,7 @@ test.describe('/dashboard — progressive disclosure', () => {
 		const settingsWritten = () =>
 			page.waitForResponse(
 				(r) =>
-					r.url().includes('/rest/v1/user_settings') &&
+					r.url().includes('/rest/v1/rpc/merge_my_settings') &&
 					r.request().method() !== 'GET' &&
 					r.ok(),
 			);

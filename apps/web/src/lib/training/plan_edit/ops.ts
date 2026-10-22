@@ -67,6 +67,11 @@ export type PlanEditNote = (typeof PLAN_EDIT_NOTES)[number];
 export interface PlanEditPlan {
 	start_date: string;
 	end_date: string;
+	/// The goal race's distance and time: `planRaces` gives an end-date race
+	/// with no distance of its own the plan's goal distance, which sets the
+	/// length of its B/C taper and recovery windows (`apply.ts`).
+	goal_distance_m: number;
+	goal_time_seconds: number | null;
 }
 
 export interface PlanEditWeek {
@@ -89,6 +94,10 @@ export interface PlanEditWorkout {
 	completed_run_id?: string | null;
 	manually_completed?: boolean | null;
 	skipped_at?: string | null;
+	/// Read by the scale-up guard in `apply.ts`: a B or C race's window, and a
+	/// workout its taper already eased, never scale above 1.0.
+	race_priority?: string | null;
+	race_taper_applied_at?: string | null;
 }
 
 export interface PlanEditSnapshot {

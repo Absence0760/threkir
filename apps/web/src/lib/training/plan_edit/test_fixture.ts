@@ -35,7 +35,7 @@ function wo(
 
 export function fixture(): PlanEditSnapshot {
 	return {
-		plan: { start_date: '2026-10-12', end_date: '2026-11-08' },
+		plan: { start_date: '2026-10-12', end_date: '2026-11-08', goal_distance_m: 21_097, goal_time_seconds: null },
 		weeks: [
 			{ id: 'wk0', week_index: 0, phase: 'build', target_volume_m: 40_000 },
 			{ id: 'wk1', week_index: 1, phase: 'build', target_volume_m: 42_000 },

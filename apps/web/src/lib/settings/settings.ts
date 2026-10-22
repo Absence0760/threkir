@@ -15,6 +15,7 @@ import {
 	type PrefsCache,
 } from './settings_cache';
 import { SettingsWriteError, drainQueue, pushOrQueue } from './settings_write';
+import type { JsonObject } from '../types';
 
 /// Typed accessor for `user_settings` + `user_device_settings`.
 ///
@@ -226,60 +227,47 @@ export async function updateDevice(userId: string, changes: PrefsBag): Promise<P
 	return merged;
 }
 
+/// The delta as the merge RPCs read it: a key whose value is null is removed.
+/// `applyPrefsChanges` treats `undefined` the same way, but JSON drops an
+/// undefined key on the wire, so it is spelled as null here.
+function wireDelta(changes: PrefsBag): JsonObject {
+	const out: JsonObject = {};
+	for (const [k, v] of Object.entries(changes)) out[k] = v === undefined ? null : v;
+	return out;
+}
+
+function asBag(value: unknown): PrefsBag | null {
+	return value != null && typeof value === 'object' && !Array.isArray(value) ? (value as PrefsBag) : null;
+}
+
+/// The merge runs server-side in one statement (`merge_my_settings`, issue
+/// #1212). A read-merge-write here lost updates: two writers in flight —
+/// the layout's `time_zone` sync, a page's `locale` stamp, the page's own
+/// save — each read the bag before the other's write landed, and the later
+/// write put the earlier one's key back. The RPC is also an upsert, so a
+/// missing client-provisioned row is created rather than 0-row no-op'd
+/// (#234).
 async function pushUniversal(userId: string, changes: PrefsBag): Promise<void> {
-	// Read-merge-write against the server bag so a concurrent edit
-	// from another device isn't silently overwritten.
-	const readRes = await supabase
-		.from('user_settings')
-		.select('prefs')
-		.eq('user_id', userId)
-		.maybeSingle();
-	if (readRes.error) throw new SettingsWriteError(readRes);
-	const merged = applyPrefsChanges((readRes.data?.prefs as PrefsBag) ?? {}, changes);
-	// Upsert, not update: rows are client-provisioned, so a missing row
-	// makes an update match 0 rows and report success — the change is
-	// neither stored nor queued, and the next load reverts it (#234).
-	// This bag carries privacy_zones + safety_overdue_minutes, so a
-	// silent drop here is a privacy/safety failure, not a lost nicety.
-	const updRes = await supabase
-		.from('user_settings')
-		.upsert(
-			{ user_id: userId, prefs: merged, updated_at: new Date().toISOString() },
-			{ onConflict: 'user_id' },
-		);
-	if (updRes.error) throw new SettingsWriteError(updRes);
-	// Stamp the cache with the canonical server-merged value so a
-	// device with a stale base picks up the union, not just its own
-	// delta.
-	cache.writeUniversal(userId, merged);
+	const res = await supabase.rpc('merge_my_settings', { p_changes: wireDelta(changes) });
+	if (res.error) throw new SettingsWriteError(res);
+	// Stamp the cache with the server's union, so a device with a stale
+	// base picks up the other writers' keys, not just its own delta.
+	const merged = asBag(res.data);
+	if (merged) cache.writeUniversal(userId, merged);
 }
 
 async function pushDevice(userId: string, deviceId: string, changes: PrefsBag): Promise<void> {
-	const readRes = await supabase
-		.from('user_device_settings')
-		.select('prefs')
-		.eq('user_id', userId)
-		.eq('device_id', deviceId)
-		.maybeSingle();
-	if (readRes.error) throw new SettingsWriteError(readRes);
-	const merged = applyPrefsChanges((readRes.data?.prefs as PrefsBag) ?? {}, changes);
-	// Upsert for the same 0-row reason as pushUniversal; the insert arm
-	// needs platform (NOT NULL) + label, matching the auto-provision row.
-	const updRes = await supabase
-		.from('user_device_settings')
-		.upsert(
-			{
-				user_id: userId,
-				device_id: deviceId,
-				platform: detectPlatform(),
-				label: deviceLabel(),
-				prefs: merged,
-				updated_at: new Date().toISOString(),
-			},
-			{ onConflict: 'user_id,device_id' },
-		);
-	if (updRes.error) throw new SettingsWriteError(updRes);
-	cache.writeDevice(userId, deviceId, merged);
+	// Same atomic merge as pushUniversal; the insert arm needs platform
+	// (NOT NULL) + label, matching the auto-provision row.
+	const res = await supabase.rpc('merge_my_device_settings', {
+		p_device_id: deviceId,
+		p_changes: wireDelta(changes),
+		p_platform: detectPlatform(),
+		p_label: deviceLabel(),
+	});
+	if (res.error) throw new SettingsWriteError(res);
+	const merged = asBag(res.data);
+	if (merged) cache.writeDevice(userId, deviceId, merged);
 }
 
 async function drainPending(userId: string, deviceId: string): Promise<void> {

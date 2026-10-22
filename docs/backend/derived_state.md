@@ -132,7 +132,7 @@ retention cron referenced in a comment that was never created.
   the trigger maintains.
 - **Client writes are discarded (`20270704000003`):** the column carried no lock,
   and the `popular` lens of `discoverable_routes_in_bbox` gates on
-  `featured OR run_count > 0` while `hidden_gems` excludes a route with any —
+  `official OR featured OR run_count > 0` while `hidden_gems` excludes a route with any —
   so an author setting their own route's count promoted it into a map every
   viewer sees. `routes_freeze_managed_columns` discards a client's value, along
   with `is_featured` / `featured_at` and the three derived geometries.

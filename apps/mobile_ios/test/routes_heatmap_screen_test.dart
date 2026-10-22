@@ -18,6 +18,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/routes_heatmap_screen.dart';
+import '../lib/widgets/official_badge.dart';
 
 class _FakeApiClient extends ApiClient {
   int fetchCalls = 0;
@@ -124,6 +125,7 @@ cm.DiscoverableRoutePin _pin({
   int runCount = 6,
   double lat = 39.74,
   double lng = -105.0,
+  bool official = false,
 }) =>
     cm.DiscoverableRoutePin(
       id: id,
@@ -134,6 +136,7 @@ cm.DiscoverableRoutePin _pin({
       runCount: runCount,
       lat: lat,
       lng: lng,
+      official: official,
     );
 
 Position _fakePosition({double lat = 40.7128, double lng = -74.0060}) =>
@@ -383,6 +386,45 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
       expect(api.lastFilter, 'featured');
+    });
+
+    testWidgets('the Official lens refetches with p_filter official',
+        (tester) async {
+      final api = _FakeApiClient();
+      await _pump(tester, api);
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(find.byIcon(Icons.tune));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Official'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(api.lastFilter, 'official');
+    });
+
+    testWidgets('an official pin carries the Official badge in the results',
+        (tester) async {
+      final api = _FakeApiClient()
+        ..nextPins = [
+          _pin(id: 'o', name: 'Organiser Course', official: true),
+          _pin(id: 'c', name: 'Community Loop', lat: 39.75),
+        ];
+      await _pump(tester, api);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.text('2 routes'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final badge = find.byType(OfficialBadge);
+      expect(badge, findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.ancestor(of: badge, matching: find.byType(ListTile)),
+          matching: find.text('Organiser Course'),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('picking a distance band threads the bounds to the RPC',

@@ -156,8 +156,9 @@ void main() {
       await tester.tap(find.text(_reviewTile));
       await tester.pumpAndSettle();
 
-      // The dialog must show the WIDENED copy — the route, plan and plan-edit
-      // bullets are the whole reason an older acceptance is not enough.
+      // The dialog must show the WIDENED copy — the route, plan, plan-edit,
+      // plate-photo and Coach gym/nutrition bullets are the whole reason an
+      // older acceptance is not enough.
       expect(
         find.textContaining('For the AI route assistant:'),
         findsOneWidget,
@@ -172,6 +173,18 @@ void main() {
       );
       expect(
         find.textContaining('For the plate-photo logger:'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('your most recent gym sessions'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('a 7-day summary of your food log'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('your resting and maximum heart rate'),
         findsOneWidget,
       );
 

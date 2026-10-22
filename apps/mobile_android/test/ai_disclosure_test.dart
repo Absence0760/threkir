@@ -126,7 +126,7 @@ void main() {
       }
     });
 
-    test('the v5 acceptance satisfies every scope', () {
+    test('the v5 acceptance satisfies every scope below the Coach cross-training lanes', () {
       const record = AiDisclosureRecord(
         version: kAiDisclosureVersionFoodPhotoAi,
         acceptedAt: _accepted,
@@ -141,6 +141,44 @@ void main() {
         final check = checkAiDisclosure(record, minimum);
         expect(check.ok, isTrue);
         expect(check.version, 5);
+      }
+    });
+
+    test('no acceptance below v6 covers the Coach gym and nutrition lanes', () {
+      // Issue #1217: those lanes were sent without any copy naming them, so a
+      // v1-v5 acceptance must not stretch to cover them (decisions § 571).
+      for (final version in [
+        kAiDisclosureVersionCoach,
+        kAiDisclosureVersionRouteAi,
+        kAiDisclosureVersionPlanAi,
+        kAiDisclosureVersionPlanEditAi,
+        kAiDisclosureVersionFoodPhotoAi,
+      ]) {
+        final check = checkAiDisclosure(
+          AiDisclosureRecord(version: version, acceptedAt: _accepted),
+          kAiDisclosureVersionCoachCrossTraining,
+        );
+        expect(check.ok, isFalse);
+        expect(check.reason, AiDisclosureDenial.stale);
+      }
+    });
+
+    test('the v6 acceptance satisfies every scope', () {
+      const record = AiDisclosureRecord(
+        version: kAiDisclosureVersionCoachCrossTraining,
+        acceptedAt: _accepted,
+      );
+      for (final minimum in [
+        kAiDisclosureVersionCoach,
+        kAiDisclosureVersionRouteAi,
+        kAiDisclosureVersionPlanAi,
+        kAiDisclosureVersionPlanEditAi,
+        kAiDisclosureVersionFoodPhotoAi,
+        kAiDisclosureVersionCoachCrossTraining,
+      ]) {
+        final check = checkAiDisclosure(record, minimum);
+        expect(check.ok, isTrue);
+        expect(check.version, 6);
       }
     });
 
@@ -230,7 +268,10 @@ void main() {
           lessThan(kAiDisclosureVersionPlanEditAi));
       expect(kAiDisclosureVersionPlanEditAi,
           lessThan(kAiDisclosureVersionFoodPhotoAi));
-      expect(kAiDisclosureCurrentVersion, kAiDisclosureVersionFoodPhotoAi);
+      expect(kAiDisclosureVersionFoodPhotoAi,
+          lessThan(kAiDisclosureVersionCoachCrossTraining));
+      expect(
+          kAiDisclosureCurrentVersion, kAiDisclosureVersionCoachCrossTraining);
     });
 
     test('matches ai_disclosure_current_version() in SQL', () {

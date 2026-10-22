@@ -37,6 +37,7 @@
 		club_post: 'reportDialog.titlePost',
 		run: 'reportDialog.titleRun',
 		route_review: 'reportDialog.titleReview',
+		direct_message: 'reportDialog.titleMessage',
 	};
 
 	const REASONS: { value: ReportReason; label: MessageKey; hint: MessageKey }[] = [

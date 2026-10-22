@@ -1164,33 +1164,41 @@ class DirectMessageRow {
   static const String colCreatedAt = 'created_at';
   static const String colReadAt = 'read_at';
   static const String colRouteId = 'route_id';
+  static const String colUnsentAt = 'unsent_at';
+  static const String colDeletedPartnerKey = 'deleted_partner_key';
 
   final String id;
   final String senderId;
-  final String recipientId;
-  final String body;
+  final String? recipientId;
+  final String? body;
   final DateTime createdAt;
   final DateTime? readAt;
   final String? routeId;
+  final DateTime? unsentAt;
+  final String? deletedPartnerKey;
 
   const DirectMessageRow({
     required this.id,
     required this.senderId,
-    required this.recipientId,
-    required this.body,
+    this.recipientId,
+    this.body,
     required this.createdAt,
     this.readAt,
     this.routeId,
+    this.unsentAt,
+    this.deletedPartnerKey,
   });
 
   factory DirectMessageRow.fromJson(Map<String, dynamic> json) => DirectMessageRow(
     id: json['id'] as String,
     senderId: json['sender_id'] as String,
-    recipientId: json['recipient_id'] as String,
-    body: json['body'] as String,
+    recipientId: json['recipient_id'] as String?,
+    body: json['body'] as String?,
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
     readAt: parseIsoStrictValue(json['read_at']),
     routeId: json['route_id'] as String?,
+    unsentAt: parseIsoStrictValue(json['unsent_at']),
+    deletedPartnerKey: json['deleted_partner_key'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -1201,6 +1209,8 @@ class DirectMessageRow {
     colCreatedAt: createdAt.toIso8601String(),
     colReadAt: readAt?.toIso8601String(),
     colRouteId: routeId,
+    colUnsentAt: unsentAt?.toIso8601String(),
+    colDeletedPartnerKey: deletedPartnerKey,
   };
 
   DirectMessageRow copyWith({
@@ -1211,6 +1221,8 @@ class DirectMessageRow {
     DateTime? createdAt,
     DateTime? readAt,
     String? routeId,
+    DateTime? unsentAt,
+    String? deletedPartnerKey,
   }) => DirectMessageRow(
     id: id ?? this.id,
     senderId: senderId ?? this.senderId,
@@ -1219,6 +1231,8 @@ class DirectMessageRow {
     createdAt: createdAt ?? this.createdAt,
     readAt: readAt ?? this.readAt,
     routeId: routeId ?? this.routeId,
+    unsentAt: unsentAt ?? this.unsentAt,
+    deletedPartnerKey: deletedPartnerKey ?? this.deletedPartnerKey,
   );
 }
 

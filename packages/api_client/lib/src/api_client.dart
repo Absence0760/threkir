@@ -2558,10 +2558,13 @@ class ApiClient {
 
   /// Discoverable public routes inside the viewport bbox for the route
   /// discovery map. Mirror of the web `fetchDiscoverableRoutesInBbox`.
-  /// [filter] is the lens: 'popular' (default) | 'featured' | 'friends' |
-  /// 'hidden_gems'. [distMin]/[distMax] are the parallel race-distance
-  /// band bounds (a null [distMax] element = open-ended ultra); omit them
-  /// for no distance filter. Fails soft to an empty list.
+  /// [filter] is the lens: 'popular' (default) | 'official' | 'featured' |
+  /// 'friends' | 'hidden_gems'. Official routes rank first; outside the
+  /// 'official' lens at most a quarter of [limit] rank ahead of community
+  /// routes and the rest backfill after them. [distMin]/[distMax] are the
+  /// parallel race-distance band bounds (a null [distMax] element =
+  /// open-ended ultra); omit them for no distance filter. Fails soft to an
+  /// empty list.
   Future<List<DiscoverableRoutePin>> fetchDiscoverableRoutesInBbox({
     required double minLng,
     required double minLat,
@@ -2601,6 +2604,7 @@ class ApiClient {
           runCount: (r['run_count'] as num?)?.toInt() ?? 0,
           lat: (r['lat'] as num).toDouble(),
           lng: (r['lng'] as num).toDouble(),
+          official: (r['is_official'] as bool?) ?? false,
         );
       }).toList();
     } catch (e) {
@@ -2638,6 +2642,7 @@ class ApiClient {
           memberCount: (r['member_count'] as num?)?.toInt() ?? 0,
           lat: (r['lat'] as num).toDouble(),
           lng: (r['lng'] as num).toDouble(),
+          isVerified: (r['is_verified'] as bool?) ?? false,
         );
       }).toList();
     } catch (e) {
@@ -3570,7 +3575,7 @@ class ApiClient {
     final viewerId = _client.auth.currentUser?.id;
     final ownerRow = await _client
         .from(RouteRow.table)
-        .select()
+        .select('*, is_official')
         .eq(RouteRow.colId, routeId)
         .maybeSingle();
     if (ownerRow != null) {
@@ -5753,6 +5758,25 @@ class ApiClient {
         .toList();
   }
 
+  /// The newest message across the runner's current (not archived) Coach
+  /// conversations, for the AI Coach row in the Messages inbox (decisions
+  /// § 2227). Owner-only by RLS. Callers read it only once the runner has
+  /// consented to the Coach; throws on a failed read, so the row can say
+  /// nothing rather than claim there is no conversation.
+  Future<CoachMessageRow?> fetchLatestCoachMessage() async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return null;
+    final row = await _client
+        .from(CoachMessageRow.table)
+        .select()
+        .eq(CoachMessageRow.colUserId, viewerId)
+        .isFilter(CoachMessageRow.colArchivedAt, null)
+        .order(CoachMessageRow.colCreatedAt, ascending: false)
+        .limit(1)
+        .maybeSingle();
+    return row == null ? null : CoachMessageRow.fromJson(row);
+  }
+
   /// Set / clear the up/down reaction on an assistant bubble.
   Future<void> setCoachReaction({
     required String messageId,
@@ -6929,6 +6953,7 @@ class ApiClient {
       isStarred: row['is_starred'] == true,
       clubId: row['club_id'] as String?,
       description: row['description'] as String?,
+      official: row['is_official'] == true,
     );
   }
 
@@ -7496,18 +7521,25 @@ class ApiClient {
   /// Session plans (session_planner.md P1) the caller can see: their own plans
   /// plus any plan owned by a club they belong to (RLS owns the authority).
   /// Read-only on mobile in P1 — the editor lives on web first.
-  Future<List<SessionPlanRow>> fetchSessionPlans() async {
+  ///
+  /// Each row carries `isOfficial` — the `is_official` computed field
+  /// (migration 20271021000030), which the generated row type cannot hold.
+  Future<List<({SessionPlanRow plan, bool isOfficial})>>
+      fetchSessionPlans() async {
     final uid = _client.auth.currentUser?.id;
     if (uid == null) return const [];
     try {
       final data = await _client
           .from(SessionPlanRow.table)
-          .select()
+          .select('*, is_official')
           .order(SessionPlanRow.colUpdatedAt, ascending: false);
-      return (data as List)
-          .map<SessionPlanRow>(
-              (row) => SessionPlanRow.fromJson(row as Map<String, dynamic>))
-          .toList();
+      return (data as List).map((row) {
+        final m = row as Map<String, dynamic>;
+        return (
+          plan: SessionPlanRow.fromJson(m),
+          isOfficial: m['is_official'] == true,
+        );
+      }).toList();
     } catch (e) {
       debugPrint('fetchSessionPlans failed: $e');
       return const [];
@@ -7515,16 +7547,18 @@ class ApiClient {
   }
 
   /// A single session plan with its blocks + items, for the mobile read view.
-  /// Null when the plan is absent or not visible to the caller.
+  /// Null when the plan is absent or not visible to the caller. `isOfficial`
+  /// is the `is_official` computed field (migration 20271021000030).
   Future<({
     SessionPlanRow plan,
     List<SessionPlanBlockRow> blocks,
     List<SessionPlanItemRow> items,
+    bool isOfficial,
   })?> fetchSessionPlan(String id) async {
     try {
       final planRow = await _client
           .from(SessionPlanRow.table)
-          .select()
+          .select('*, is_official')
           .eq(SessionPlanRow.colId, id)
           .maybeSingle();
       if (planRow == null) return null;
@@ -7548,6 +7582,7 @@ class ApiClient {
             .map<SessionPlanItemRow>(
                 (r) => SessionPlanItemRow.fromJson(r as Map<String, dynamic>))
             .toList(),
+        isOfficial: planRow['is_official'] == true,
       );
     } catch (e) {
       debugPrint('fetchSessionPlan failed: $e');
@@ -9086,33 +9121,40 @@ class ApiClient {
     final res = await _client.rpc('dm_threads', params: const {}, get: true);
     final rows = (res as List).cast<Map<String, dynamic>>();
     if (rows.isEmpty) return const [];
+    // A deleted partner's thread has no partner id (migration
+    // 20271021000003), so it has no profile to read.
     final partnerIds = <String>{
-      for (final r in rows) r['partner_id'] as String,
+      for (final r in rows)
+        if (r['partner_id'] is String) r['partner_id'] as String,
     }.toList();
     final profileById = <String, Map<String, dynamic>>{};
-    try {
-      final profiles = await readChunked(
-        partnerIds,
-        (chunk) => _client
-            .from(UserProfileRow.table)
-            .select('id, display_name, avatar_url')
-            .inFilter(UserProfileRow.colId, chunk),
-      );
-      for (final p in profiles) {
-        profileById[p['id'] as String] = p;
+    if (partnerIds.isNotEmpty) {
+      try {
+        final profiles = await readChunked(
+          partnerIds,
+          (chunk) => _client
+              .from(UserProfileRow.table)
+              .select('id, display_name, avatar_url')
+              .inFilter(UserProfileRow.colId, chunk),
+        );
+        for (final p in profiles) {
+          profileById[p['id'] as String] = p;
+        }
+      } catch (e) {
+        debugPrint('fetchDmThreads profile read failed: ${safeErrorLabel(e)}');
       }
-    } catch (e) {
-      debugPrint('fetchDmThreads profile read failed: ${safeErrorLabel(e)}');
     }
     return [
       for (final r in rows)
         DmThread(
-          partnerId: r['partner_id'] as String,
+          partnerId: r['partner_id'] as String?,
+          deletedPartnerKey: r['deleted_partner_key'] as String?,
           partnerName:
               profileById[r['partner_id']]?['display_name'] as String?,
           partnerAvatarUrl:
               profileById[r['partner_id']]?['avatar_url'] as String?,
-          lastBody: r['last_body'] as String,
+          lastBody: r['last_body'] as String?,
+          lastUnsent: r['last_unsent'] == true,
           lastAt: parseIsoStrictRequired(r['last_at'], 'last_at'),
           lastFromMe: r['last_from_me'] == true,
           unread: (r['unread'] as num?)?.toInt() ?? 0,
@@ -9134,7 +9176,10 @@ class ApiClient {
     return total;
   }
 
-  /// One page of the conversation with [otherId], oldest message first.
+  /// One page of a conversation, oldest message first. A partner thread is
+  /// both directions between the viewer and the partner; a deleted-partner
+  /// thread is the viewer's own messages under that partner's key, since the
+  /// leaver's side was erased with their account (migration 20271021000003).
   ///
   /// Keyset-paged newest-first on `(created_at, id)`: [before] is the oldest
   /// message already shown, and the page holds the [limit] messages before it.
@@ -9145,7 +9190,7 @@ class ApiClient {
   /// recipient_id` CHECK is exactly the two directions of this conversation.
   /// Throws on a failed read.
   Future<DmThreadPage> fetchDmThread(
-    String otherId, {
+    DmThreadTarget target, {
     DirectMessageRow? before,
     int limit = 50,
   }) async {
@@ -9153,12 +9198,18 @@ class ApiClient {
     if (me == null) {
       return const DmThreadPage(messages: [], hasMore: false);
     }
-    final pair = [me, otherId];
-    var query = _client
-        .from(DirectMessageRow.table)
-        .select()
-        .inFilter(DirectMessageRow.colSenderId, pair)
-        .inFilter(DirectMessageRow.colRecipientId, pair);
+    var query = _client.from(DirectMessageRow.table).select();
+    switch (target) {
+      case DmPartnerThread(:final partnerId):
+        final pair = [me, partnerId];
+        query = query
+            .inFilter(DirectMessageRow.colSenderId, pair)
+            .inFilter(DirectMessageRow.colRecipientId, pair);
+      case DmDeletedPartnerThread(:final deletedPartnerKey):
+        query = query
+            .eq(DirectMessageRow.colSenderId, me)
+            .eq(DirectMessageRow.colDeletedPartnerKey, deletedPartnerKey);
+    }
     if (before != null) {
       final at = before.createdAt.toUtc().toIso8601String();
       query = query.or(
@@ -9216,6 +9267,19 @@ class ApiClient {
       if (e.code == '42501') throw const DmSendNotPermitted();
       rethrow;
     }
+  }
+
+  /// Unsend one of the viewer's own messages: the server nulls its body and
+  /// attachment and stamps `unsent_at`, so both sides see a placeholder
+  /// (migration 20271021000003). Not reversible. Returns the updated row; a
+  /// message the viewer did not send raises P0002 as a [PostgrestException].
+  /// Mirrors web `unsendDm`.
+  Future<DirectMessageRow> unsendDm(String messageId) async {
+    final row = await _client.rpc(
+      'unsend_direct_message',
+      params: {'p_message_id': messageId},
+    );
+    return DirectMessageRow.fromJson(row as Map<String, dynamic>);
   }
 
   /// Mark the messages [otherId] sent the viewer as read, up to and including

@@ -427,14 +427,16 @@ void _parseAlterTable(String stmt, Map<String, Map<String, _Column>> schema) {
       }
     }
   } else if (lower.startsWith('alter column')) {
-    // Handles:
+    // Handles, alone or as a comma-separated list of clauses:
     //   alter table t alter column col set not null
     //   alter table t alter column col drop not null
-    final parts = lower
+    //   alter table t alter column a drop not null, alter column b drop not null
+    final clauses = lower
         .substring('alter column'.length)
-        .trim()
-        .split(RegExp(r'\s+'));
-    if (parts.length >= 4) {
+        .split(RegExp(r',\s*alter\s+column\s+'));
+    for (final clause in clauses) {
+      final parts = clause.trim().split(RegExp(r'\s+'));
+      if (parts.length < 4) continue;
       final colName = parts[0];
       final op = parts[1];
       if (op == 'set' && parts[2] == 'not' && parts[3] == 'null') {

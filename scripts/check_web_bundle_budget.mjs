@@ -224,6 +224,18 @@
 // unit failure rather than a budget total. The rest is route-split feature
 // code, so the ceiling moves by what was measured and keeps the same 5 KB of
 // cover (decisions § 2215).
+// Raised to 2360 for the 2026-10-21 testing round (PR #1220, 80 commits),
+// which CI measured at 2324 -> 2354 KB (503 -> 517 files) against origin/main
+// a366e28ba, same placeholder env, same runner image. Attributed by source
+// diff, not by the client manifest: the Coach moving into Messages as
+// /messages/coach (627 lines, while /coach became a 34-line redirect), the
+// new /messages layout and inbox store, CoachPlanEditCard and the season
+// plan-edit modules it reaches (~720 lines, loaded only by the Coach chat),
+// the admin reports surface, AiTag and OfficialBadge. The shell did not grow:
+// the root layout's only import change is one removed (coach_flag), and
+// core/data.ts gained type-only imports, the shape §§ 2109 and 2215 caught it
+// regressing in. No dependency changed. The ceiling moves by what was
+// measured and keeps the 6 KB of cover main had (decisions § 2232).
 // MAX_LARGEST_CHUNK_KB stays 350, unchanged: 245 KB * the 33% headroom that
 // number was always justified by is 326, so the existing figure still states
 // the rule. What changed is the population it measures, not the ceiling.
@@ -258,7 +270,7 @@ export const CLIENT_MANIFEST = join(
 );
 export const LOCALES_DIR = join(WEB_DIR, 'src', 'lib', 'i18n', 'locales');
 
-export const MAX_CODE_KB = 2330;
+export const MAX_CODE_KB = 2360;
 export const MAX_CORE_CATALOGUE_KB = 13;
 export const MAX_AREA_CATALOGUE_KB = 14;
 export const MAX_LARGEST_CHUNK_KB = 350;

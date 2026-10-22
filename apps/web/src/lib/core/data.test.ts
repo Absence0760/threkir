@@ -1688,7 +1688,20 @@ test('the club slug is derived by the shared helper, never re-spelled here', () 
 /// overlays in `types.ts` crossed with the generated `database.types.ts`, and
 /// the grant out of a replay of every migration. A literal repeated here would
 /// be a fourth declaration that agrees until it doesn't ([§ 641]).
+/// The generated Row's columns plus the computed fields the client schema
+/// (`core/database.ts`) declares for the table — PostgREST serves a computed
+/// field as a column a select names explicitly, and the CI typegen leaves it
+/// off the Row.
 function generatedColumns(table: string): Set<string> {
+	const cols = generatedRowColumns(table);
+	const app = read('src/lib/core/database.ts');
+	const tables = /type OfficialTables = ([^;]+);/.exec(app);
+	assert.ok(tables, 'could not locate OfficialTables in core/database.ts — re-anchor');
+	if (tables[1].includes(`'${table}'`)) cols.add('is_official');
+	return cols;
+}
+
+function generatedRowColumns(table: string): Set<string> {
 	const types = read('src/lib/database.types.ts');
 	const start = types.indexOf(`      ${table}: {`);
 	assert.ok(start > 0, `could not locate ${table} in database.types.ts — re-anchor`);
@@ -2166,7 +2179,14 @@ test('every gym / meal-template / recipe read and the row type it is read as nam
 			extra: { user_id: 'embedded so the RLS-scope filter can name it, never read' },
 		},
 		{ fn: 'fetchGymRoutinesWithError', type: 'GymRoutineSummary', table: 'gym_routines' },
-		{ fn: 'fetchGymRoutineDetail', type: 'GymRoutineSummary', table: 'gym_routines' },
+		{
+			fn: 'fetchGymRoutineDetail',
+			type: 'GymRoutineSummary',
+			table: 'gym_routines',
+			extra: {
+				is_official: 'the computed field (20271021000030); GymRoutineDetail carries it as OfficialFlag beside the summary',
+			},
+		},
 		{
 			fn: 'fetchGymRoutineDetail',
 			nth: 1,

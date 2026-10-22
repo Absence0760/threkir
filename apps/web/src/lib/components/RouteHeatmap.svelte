@@ -33,6 +33,7 @@
 		type DistanceBandKey,
 	} from '#lib/routes/distance_bands.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { escapeHtml, safeHref } from '#lib/util/html_escape.ts';
@@ -156,12 +157,13 @@
 	let routePinsCount = $state(0);
 
 	// Route-discovery lens. The chip bar swaps which routes the pin
-	// layer fetches (popular / featured / friends / hidden gems) so the
+	// layer fetches (popular / official / featured / friends / hidden gems) so the
 	// map stops being one undifferentiated blob and becomes a route
 	// browser. Mirrors the RPC's p_filter arms — see data.ts.
 	let routeFilter = $state<DiscoverFilter>('popular');
 	const FILTERS = $derived<{ id: DiscoverFilter; label: string; hint: string }[]>([
 		{ id: 'popular', label: m('routeHeatmap.lensPopular'), hint: m('routeHeatmap.lensPopularHint') },
+		{ id: 'official', label: m('routeHeatmap.lensOfficial'), hint: m('routeHeatmap.lensOfficialHint') },
 		{ id: 'friends', label: m('routeHeatmap.lensFriends'), hint: m('routeHeatmap.lensFriendsHint') },
 		{ id: 'featured', label: m('routeHeatmap.lensFeatured'), hint: m('routeHeatmap.lensFeaturedHint') },
 		{
@@ -275,6 +277,13 @@
 		// reach this branch, so there's no leak.
 		if (import.meta.env.DEV && typeof window !== 'undefined') {
 			(window as unknown as { __heatmapMap?: unknown }).__heatmapMap = map;
+			// The map's own idle state can't see the app's camera moves that
+			// are still owed: the one-shot initial framing (geolocation fix or
+			// fit-to-data, which awaits a fetch before it animates) and the
+			// debounced pin refresh after a move. A test that clicks a pin
+			// before both have landed clicks a camera that is about to move.
+			(window as unknown as { __heatmapPinsSettled?: () => boolean }).__heatmapPinsSettled = () =>
+				didInitialFit && pendingPinsFetch === null && !loading;
 		}
 		map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 		// "Locate me" button. Built-in MapLibre primitive — no
@@ -470,9 +479,10 @@
 				const memberCount = (f.properties?.member_count as number) ?? 0;
 				const locationLabel = (f.properties?.location_label as string) ?? '';
 				const avatarUrl = (f.properties?.avatar_url as string) ?? '';
+				const isVerified = f.properties?.is_verified === true;
 				const href = slug ? `/clubs/${slug}` : id ? `/clubs/${id}` : '#';
 				const coords = (f.geometry as GeoJSON.Point).coordinates as [number, number];
-				openClubPopup(coords, { name, memberCount, locationLabel, avatarUrl, href });
+				openClubPopup(coords, { name, memberCount, locationLabel, avatarUrl, href, isVerified });
 			});
 			map.on('mouseenter', CLUB_PINS_LAYER, (e) => {
 				if (!map) return;
@@ -753,7 +763,10 @@
 			if (pendingFetch) clearTimeout(pendingFetch);
 			pendingFetch = setTimeout(refresh, 350);
 			if (pendingPinsFetch) clearTimeout(pendingPinsFetch);
-			pendingPinsFetch = setTimeout(refreshPins, 350);
+			pendingPinsFetch = setTimeout(() => {
+				pendingPinsFetch = null;
+				void refreshPins();
+			}, 350);
 		});
 
 		// Kick off the first fetch immediately. The HTTP RPC doesn't
@@ -778,6 +791,7 @@
 	onDestroy(() => {
 		if (import.meta.env.DEV && typeof window !== 'undefined') {
 			(window as unknown as { __heatmapMap?: unknown }).__heatmapMap = undefined;
+			(window as unknown as { __heatmapPinsSettled?: unknown }).__heatmapPinsSettled = undefined;
 		}
 		stopResizeWatch?.();
 		currentPopup?.remove();
@@ -859,6 +873,7 @@
 		locationLabel: string;
 		avatarUrl: string;
 		href: string;
+		isVerified: boolean;
 	}
 	function openClubPopup(coords: [number, number], d: ClubPopupData) {
 		const avatar = d.avatarUrl
@@ -878,6 +893,7 @@
 					<div class="pin-popup-titleblock">
 						<span class="pin-popup-title">${escapeHtml(d.name)}</span>
 						<span class="pin-popup-meta">${memberLine}</span>
+						${d.isVerified ? `<span class="pin-popup-verified">${escapeHtml(m('verifiedBadge.tooltip'))}</span>` : ''}
 					</div>
 				</div>
 				${subtitle}
@@ -993,6 +1009,7 @@
 						// rendered feature, not just the fetched row.
 						avatar_url: c.avatar_url,
 						location_label: c.location_label,
+						is_verified: c.is_verified,
 					},
 					geometry: { type: 'Point', coordinates: [c.lng, c.lat] },
 				})),
@@ -1558,6 +1575,7 @@
 								>{/if}
 							{#if r.is_featured}<span class="result-star" title={m('routeHeatmap.featured')}>★</span>{/if}
 							{r.name}
+							{#if r.is_official}<OfficialBadge />{/if}
 						</span>
 						<span class="result-meta">
 							{#if band}<span class="result-band">{band.label}</span>{/if}
@@ -2141,6 +2159,11 @@
 	:global(.heatmap-pin-popup .pin-popup-meta) {
 		font-size: 0.72rem;
 		color: var(--color-text-tertiary);
+	}
+	:global(.heatmap-pin-popup .pin-popup-verified) {
+		font-size: 0.72rem;
+		font-weight: 600;
+		color: var(--color-text);
 	}
 	/* Avatar — circle 32px. Image OR initials fallback. */
 	:global(.heatmap-pin-popup .pin-avatar) {

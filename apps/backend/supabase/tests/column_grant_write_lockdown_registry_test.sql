@@ -3,11 +3,12 @@
 -- ways that shape stops locking anything.
 --
 -- The write-side sibling of column_grant_lockdown_registry_test (SELECT,
--- decisions.md 759). Four tables revoke a table-level write verb and re-grant
+-- decisions.md 759). Five tables revoke a table-level write verb and re-grant
 -- it column by column — achievements 20270506_001 (UPDATE), coach_messages
 -- 20260518_001 (UPDATE) + 20270616_001 (INSERT), challenge_participants
 -- 20270209_001 (UPDATE) + 20270616_001 (INSERT), event_attendees 20270102_001
--- (UPDATE) + 20270520_001 (INSERT). Every withholding below is a decision with
+-- (UPDATE) + 20270520_001 (INSERT), direct_messages 20271021000003 (UPDATE +
+-- INSERT). Every withholding below is a decision with
 -- a named alternative writer — a SECURITY DEFINER RPC, a trigger, or the
 -- service role — not an accident of reaching for `grant update (a, b)`.
 --
@@ -108,7 +109,25 @@ insert into write_lockdown_registry (role, tbl, verb, col, reason) values
   ('authenticated', 'event_attendees', 'INSERT', 'order_id',   'ditto — the 20270520_001 half of the 584 fix'),
   ('authenticated', 'event_attendees', 'INSERT', 'attendance', 'ditto — self-marking `attended` at INSERT was the 584 exploit'),
   ('authenticated', 'event_attendees', 'INSERT', 'offer_expires_at', 'the paid-waitlist claim deadline (20270726000002); only the definer offer mover sets it, or a waiter could hold a seat forever'),
-  ('authenticated', 'event_attendees', 'UPDATE', 'offer_expires_at', 'ditto — extending your own offer would starve the next waiter');
+  ('authenticated', 'event_attendees', 'UPDATE', 'offer_expires_at', 'ditto — extending your own offer would starve the next waiter'),
+
+  -- direct_messages — 20271021000003 (issue #1216). The recipient's one write
+  -- is marking read; the table-level UPDATE it replaced let the recipient
+  -- rewrite the sender's body. Unsend is unsend_direct_message (SECURITY
+  -- DEFINER, sender only); the deleted-partner key is written by the
+  -- recipient_id ON DELETE SET NULL trigger. There is no client DELETE.
+  ('authenticated', 'direct_messages', 'UPDATE', 'id',                  'row identity'),
+  ('authenticated', 'direct_messages', 'UPDATE', 'sender_id',           'who wrote it; re-attributing a message forges it'),
+  ('authenticated', 'direct_messages', 'UPDATE', 'recipient_id',        'who it was sent to; moving it re-delivers private correspondence'),
+  ('authenticated', 'direct_messages', 'UPDATE', 'body',                'the sender''s words; the recipient rewriting them was the hole 20271021000003 closes'),
+  ('authenticated', 'direct_messages', 'UPDATE', 'created_at',          'thread ordering and the 2-year purge window'),
+  ('authenticated', 'direct_messages', 'UPDATE', 'route_id',            'the attachment the sender chose; cleared only by unsend_direct_message'),
+  ('authenticated', 'direct_messages', 'UPDATE', 'unsent_at',           'written only by unsend_direct_message, which checks the caller is the sender'),
+  ('authenticated', 'direct_messages', 'UPDATE', 'deleted_partner_key', 'written only by the recipient_id set-null trigger on account deletion'),
+  ('authenticated', 'direct_messages', 'INSERT', 'created_at',          'defaults to now(); a client-set value backdates a message into a thread'),
+  ('authenticated', 'direct_messages', 'INSERT', 'read_at',             'a message is not read when it is sent; a pre-read send hides it from the unread badge'),
+  ('authenticated', 'direct_messages', 'INSERT', 'unsent_at',           'a message is not unsent when it is sent; unsending is the RPC'),
+  ('authenticated', 'direct_messages', 'INSERT', 'deleted_partner_key', 'exists only once the recipient has deleted their account');
 
 -- Columns a client may set once, at row creation, and never change. Each needs
 -- a reason why write-once is safe — this is the register assertion (5) reads.
@@ -121,7 +140,12 @@ insert into insert_only_registry (tbl, col, reason) values
   ('coach_messages',         'plan_id',      'which plan the turn belongs to; chosen when the turn is written'),
   ('coach_messages',         'role',         'the WITH CHECK confines a client insert to role = ''user'''),
   ('coach_messages',         'content',      'the turn itself — written once by definition; that it cannot then change IS the 20260518_001 lockdown'),
-  ('event_attendees',        'joined_at',    'RSVP stamp, set at insert; the UPDATE grant deliberately omits it (20270102_001)');
+  ('event_attendees',        'joined_at',    'RSVP stamp, set at insert; the UPDATE grant deliberately omits it (20270102_001)'),
+  ('direct_messages',        'id',           'the message id; a client-chosen one names only the client''s own new row, and there is no client DELETE to re-insert under it (20271021000003)'),
+  ('direct_messages',        'sender_id',    'the WITH CHECK pins it to auth.uid() at insert, and there is no client DELETE (20271021000003)'),
+  ('direct_messages',        'recipient_id', 'the WITH CHECK admits only a follow-graph, unblocked recipient at insert'),
+  ('direct_messages',        'body',         'the message itself — written once by definition; unsend is the only later change, through unsend_direct_message'),
+  ('direct_messages',        'route_id',     'the attachment; the WITH CHECK gates it on the sender seeing the route at insert');
 
 -- Tables with NO client UPDATE grant at all — append-only by design, so every
 -- column is trivially insert-only and enumerating them would be noise.

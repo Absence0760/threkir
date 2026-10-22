@@ -8,28 +8,48 @@
 	import { TABLES } from '#lib/core/schema.ts';
 	import { fmtKm } from '#lib/format/units.svelte.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import AiTag from '#lib/components/AiTag.svelte';
 	import ChipDropdown from '#lib/components/ChipDropdown.svelte';
 	import { TIER_LIMITS } from '#lib/coach/types.ts';
 	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
-	import { pickCurrentPlan } from '#lib/training/plan_current.ts';
+	import { aiPlanEditEnabled } from '#lib/training/ai_plan_edit_flag.ts';
+	import { coachEnabled } from '#lib/coach/coach_flag.ts';
+	import { planEditHandoff } from '#lib/coach/plan_edit_link.ts';
+	import CoachPlanEditCard from '#lib/components/CoachPlanEditCard.svelte';
+	import { currentSeason, pickCurrentPlan } from '#lib/training/plan_current.ts';
 	import { todayISO } from '#lib/training/training.ts';
 	import { dbError, thrownMessage } from '#lib/core/supabase_error.ts';
-	import type { CoachMessageRole } from '#lib/coach/types.ts';
+	import { chunk, FEED_FOLLOWEE_CHUNK } from '#lib/social/feed_merge.ts';
+	import type { CoachMessageRole, CoachPlanScope } from '#lib/coach/types.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { motion } from '#lib/motion/motion.svelte.ts';
 	import type { TrainingPlan } from '#lib/types.ts';
 
 	interface Props {
+		/// The plan the thread is kept under. With `planScope` 'season' it is
+		/// the season's first plan.
 		planId: string | null;
+		/// What the Coach reads: this plan, the season from it, or no plan.
+		planScope?: CoachPlanScope;
 		/// Optional list of the user's plans for the in-strip plan
 		/// switcher. When omitted the chip falls back to read-only.
 		plans?: TrainingPlan[];
-		/// Called with the next plan id (or '' for "no plan") when the
+		/// Called with the next plan id ('' for "no plan", 'season' for
+		/// "My season") when the
 		/// strip's plan-select changes. The host owns the URL + reload
 		/// dance — see /coach/+page.svelte. Omitted on embedded surfaces
 		/// (e.g. /plans/[id] inline coach) where the plan is fixed.
 		onPlanChange?: (next: string) => void;
 	}
-	let { planId, plans = [], onPlanChange }: Props = $props();
+	let { planId, planScope = 'plan', plans = [], onPlanChange }: Props = $props();
+	// The plans "My season" would send, offered only when something is
+	// queued behind the current plan; one plan alone is the plan option.
+	let seasonPlans = $derived(
+		currentSeason(
+			plans.filter((p) => p.status === 'active'),
+			todayISO(),
+		),
+	);
 	let hasPlan = $derived(planId != null);
 
 	const RUN_LIMIT_OPTIONS = [10, 20, 50, 100];
@@ -47,6 +67,12 @@
 	}
 
 	let messages = $state<Msg[]>([]);
+	/// Plan-edit proposals render as a card under the reply that links one
+	/// (decisions § 2230), behind the same fail-closed gate as the plan page.
+	const planEditCards = coachEnabled() && aiPlanEditEnabled();
+	/// Replies that arrived in this session: their card proposes at once. An
+	/// older reply's card waits for a tap, so reopening a thread spends nothing.
+	let freshReplies = $state<string[]>([]);
 	/// Set to the coach's completed reply when a stream finishes, so a
 	/// visually-hidden aria-live region announces it once (WCAG 4.1.3).
 	let liveAnnouncement = $state('');
@@ -227,7 +253,7 @@
 		}
 		messages = (data ?? []) as Msg[];
 		viewingArchiveAt = archivedAt;
-		await scrollToBottom();
+		await scrollToBottom({ force: true });
 	}
 
 	async function backToActive() {
@@ -238,7 +264,7 @@
 		if (cachedUserId && !(await loadThread(cachedUserId))) {
 			error = t('coachChat.errorLoad');
 		}
-		await scrollToBottom();
+		await scrollToBottom({ force: true });
 	}
 
 	function askDeleteArchive(archivedAt: string, ev: Event) {
@@ -335,7 +361,7 @@
 
 		await loadContextSummary(session.user.id);
 		subscribeToThread();
-		await scrollToBottom();
+		await scrollToBottom({ force: true });
 	});
 
 	$effect(() => {
@@ -349,7 +375,23 @@
 		let planReadFailed = false;
 		try {
 			let plan: { id: string; name: string } | null = null;
-			if (planId) {
+			if (planScope === 'season') {
+				const ids = seasonPlans.map((p) => p.id);
+				planName = t('coachChat.mySeason');
+				const pages = await Promise.all(
+					chunk(ids, FEED_FOLLOWEE_CHUNK).map((part) =>
+						supabase
+							.from('plan_weeks')
+							.select('id', { count: 'exact', head: true })
+							.in('plan_id', part)
+					)
+				);
+				const failed = pages.find((p) => p.error != null);
+				if (failed?.error) throw dbError(failed.error);
+				planWeeks = pages.reduce((n, p) => n + (p.count ?? 0), 0);
+			} else if (planScope === 'none') {
+				plan = null;
+			} else if (planId) {
 				const { data, error: err } = await supabase
 					.from('training_plans')
 					.select('id, name')
@@ -512,7 +554,7 @@
 		// Placeholder assistant bubble that streamed tokens flow into.
 		messages = [...messages, { id: null, role: 'assistant', content: '' }];
 		const assistantIdx = messages.length - 1;
-		await scrollToBottom();
+		await scrollToBottom({ force: true });
 
 		try {
 			// Snapshot the session token, then post. On 401 we refresh
@@ -528,6 +570,7 @@
 				const body = JSON.stringify({
 					messages: payloadMessages,
 					plan_id: planId,
+					plan_scope: planScope,
 					recent_runs_limit: runsLimit,
 					today: todayISO(),
 					mode: opts.mode,
@@ -684,6 +727,7 @@
 			if (id) {
 				const cur = messages[assistantIdx];
 				if (cur) messages[assistantIdx] = { ...cur, id };
+				freshReplies = [...freshReplies, id];
 			}
 			// Announce the completed reply to assistive tech exactly once
 			// (WCAG 4.1.3), via the visually-hidden polite region — not
@@ -742,9 +786,49 @@
 
 	// ─────────────────────── Composer helpers ───────────────────────
 
-	async function scrollToBottom() {
+	// Stick-to-bottom: new content follows the reader down only while they
+	// are already at the bottom. Scrolling up releases it, so a streaming
+	// reply can be read from its start; reaching the bottom again, the jump
+	// button, or the runner's own turn (`force`) re-engages it. Only an
+	// upward move releases, so our own scroll-down — and a smooth one still
+	// in flight — can never switch it off.
+	const STICK_THRESHOLD_PX = 48;
+	let stickToBottom = true;
+	let lastScrollTop = 0;
+	let hasUnseen = $state(false);
+
+	function onScroll() {
+		if (!scrollEl) return;
+		const top = scrollEl.scrollTop;
+		const atBottom = scrollEl.scrollHeight - top - scrollEl.clientHeight <= STICK_THRESHOLD_PX;
+		if (atBottom) {
+			stickToBottom = true;
+			hasUnseen = false;
+		} else if (top < lastScrollTop) {
+			stickToBottom = false;
+		}
+		lastScrollTop = top;
+	}
+
+	async function scrollToBottom(opts: { force?: boolean; smooth?: boolean } = {}) {
+		if (opts.force) {
+			stickToBottom = true;
+			hasUnseen = false;
+		}
 		await tick();
-		if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
+		if (!scrollEl) return;
+		if (!stickToBottom) {
+			hasUnseen = true;
+			return;
+		}
+		scrollEl.scrollTo({
+			top: scrollEl.scrollHeight,
+			behavior: opts.smooth && !motion.reduced ? 'smooth' : 'auto',
+		});
+	}
+
+	function jumpToLatest() {
+		scrollToBottom({ force: true, smooth: true });
 	}
 
 	const COMPOSER_MAX_PX = 160;
@@ -926,6 +1010,9 @@
 					{@const c = contextSummary}
 					{@const planOptions = [
 						{ value: '', label: t('coachChat.noPlan'), sub: t('coachChat.recentRunsOnly') },
+						...(seasonPlans.length > 1
+							? [{ value: 'season', label: t('coachChat.mySeason'), sub: t('coachChat.mySeasonSub') }]
+							: []),
 						...plans.map((p) => ({
 							value: p.id,
 							label: p.name,
@@ -944,7 +1031,7 @@
 					<div class="context-strip" title={t('coachChat.contextStripTitle')}>
 						{#if onPlanChange && plans.length > 0}
 							<ChipDropdown
-								value={planId ?? ''}
+								value={planScope === 'season' ? 'season' : planScope === 'none' ? '' : (planId ?? '')}
 								options={planOptions}
 								onChange={onPlanChange}
 								icon="calendar_month"
@@ -1038,111 +1125,135 @@
 		     announcements are handled by the visually-hidden region above
 		     (NOT here, where per-token streaming would interrupt on every
 		     token and echo the user's own message). WCAG 4.1.3. -->
-		<div class="scroll" bind:this={scrollEl} role="log" aria-live="off">
-			{#if threadLoaded && messages.length === 0}
-				<div class="primer">
-					<p>
-						{#if hasPlan}
-							{t('coachChat.primerWithPlan')}
-						{:else}
-							{t('coachChat.primerNoPlan')}
-						{/if}
-					</p>
-					<div class="suggestions">
-						{#each suggestions as s}
-							<button class="suggest" onclick={() => use(s)}>{s}</button>
-						{/each}
-					</div>
-				</div>
-			{/if}
-			{#each messages as m, i (i)}
-				<div class="bubble" class:user={m.role === 'user'}>
-					{#if m.role === 'user' && editingId === m.id && m.id != null}
-						<div class="edit-form">
-							<textarea bind:value={editingDraft} rows="3" aria-label={t('coachChat.editMessageLabel')}></textarea>
-							<div class="edit-actions">
-								<button type="button" class="btn-primary" onclick={commitEdit} disabled={!editingDraft.trim()}>
-									{t('coachChat.saveAndResend')}
-								</button>
-								<button type="button" class="header-btn" onclick={cancelEdit}>{t('coachChat.cancel')}</button>
-							</div>
-						</div>
-					{:else if m.role === 'assistant'}
-						{#if !m.content && awaitingAssistant && i === messages.length - 1}
-							<div class="typing-dots" aria-label={t('coachChat.coachThinking')}>
-								<span></span><span></span><span></span>
-							</div>
-						{:else}
-							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-							<div class="md">{@html renderMarkdown(m.content)}</div>
-						{/if}
-					{:else}
-						<span>{m.content}</span>
-					{/if}
-					{#if !viewingArchiveAt && m.id && !(awaitingAssistant && i === messages.length - 1)}
-						<div class="bubble-actions">
-							<button
-								type="button"
-								class="bubble-action"
-								title={t('coachChat.copyToClipboard')}
-								aria-label={t('coachChat.copy')}
-								onclick={() => copyMessage(m.content)}
-							>
-								<span class="material-symbols">content_copy</span>
-							</button>
-							{#if m.role === 'assistant'}
-								<button
-									type="button"
-									class="bubble-action"
-									title={t('coachChat.regenerateTitle')}
-									aria-label={t('coachChat.regenerate')}
-									onclick={() => regenerate(m.id!)}
-								>
-									<span class="material-symbols">refresh</span>
-								</button>
-								<button
-									type="button"
-									class="bubble-action"
-									class:active={m.reaction === 'up'}
-									title={t('coachChat.helpful')}
-									aria-label={t('coachChat.thumbsUp')}
-									aria-pressed={m.reaction === 'up'}
-									onclick={() => reactTo(m.id!, 'up')}
-								>
-									<span class="material-symbols">thumb_up</span>
-								</button>
-								<button
-									type="button"
-									class="bubble-action"
-									class:active={m.reaction === 'down'}
-									title={t('coachChat.notUseful')}
-									aria-label={t('coachChat.thumbsDown')}
-									aria-pressed={m.reaction === 'down'}
-									onclick={() => reactTo(m.id!, 'down')}
-								>
-									<span class="material-symbols">thumb_down</span>
-								</button>
+		<div class="scroll-wrap">
+			<div class="scroll" bind:this={scrollEl} role="log" aria-live="off" onscroll={onScroll}>
+				{#if threadLoaded && messages.length === 0}
+					<div class="primer">
+						<p>
+							{#if hasPlan}
+								{t('coachChat.primerWithPlan')}
 							{:else}
+								{t('coachChat.primerNoPlan')}
+							{/if}
+						</p>
+						<div class="suggestions">
+							{#each suggestions as s}
+								<button class="suggest" onclick={() => use(s)}>{s}</button>
+							{/each}
+						</div>
+					</div>
+				{/if}
+				{#each messages as m, i (i)}
+					<div class="bubble" class:user={m.role === 'user'} data-role={m.role}>
+						{#if m.role === 'assistant'}
+							{@render aiByline()}
+						{/if}
+						{#if m.role === 'user' && editingId === m.id && m.id != null}
+							<div class="edit-form">
+								<textarea bind:value={editingDraft} rows="3" aria-label={t('coachChat.editMessageLabel')}></textarea>
+								<div class="edit-actions">
+									<button type="button" class="btn-primary" onclick={commitEdit} disabled={!editingDraft.trim()}>
+										{t('coachChat.saveAndResend')}
+									</button>
+									<button type="button" class="header-btn" onclick={cancelEdit}>{t('coachChat.cancel')}</button>
+								</div>
+							</div>
+						{:else if m.role === 'assistant'}
+							{#if !m.content && awaitingAssistant && i === messages.length - 1}
+								<div class="typing-dots" aria-label={t('coachChat.coachThinking')}>
+									<span></span><span></span><span></span>
+								</div>
+							{:else}
+								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+								<div class="md">{@html renderMarkdown(m.content)}</div>
+								{#if planEditCards && m.id && !viewingArchiveAt}
+									{@const handoff = planEditHandoff(m.content)}
+									{#if handoff}
+										{#key m.id}
+											<CoachPlanEditCard
+												planId={handoff.planId}
+												request={handoff.request}
+												auto={freshReplies.includes(m.id)}
+											/>
+										{/key}
+									{/if}
+								{/if}
+							{/if}
+						{:else}
+							<span>{m.content}</span>
+						{/if}
+						{#if !viewingArchiveAt && m.id && !(awaitingAssistant && i === messages.length - 1)}
+							<div class="bubble-actions">
 								<button
 									type="button"
 									class="bubble-action"
-									title={t('coachChat.editAndResend')}
-									aria-label={t('coachChat.edit')}
-									onclick={() => startEdit(m.id!, m.content)}
+									title={t('coachChat.copyToClipboard')}
+									aria-label={t('coachChat.copy')}
+									onclick={() => copyMessage(m.content)}
 								>
-									<span class="material-symbols">edit</span>
+									<span class="material-symbols">content_copy</span>
 								</button>
-							{/if}
-						</div>
-					{/if}
-				</div>
-			{/each}
-			{#if awaitingAssistant && messages[messages.length - 1]?.role === 'user'}
-				<div class="bubble">
-					<div class="typing-dots" aria-label={t('coachChat.coachThinking')}>
-						<span></span><span></span><span></span>
+								{#if m.role === 'assistant'}
+									<button
+										type="button"
+										class="bubble-action"
+										title={t('coachChat.regenerateTitle')}
+										aria-label={t('coachChat.regenerate')}
+										onclick={() => regenerate(m.id!)}
+									>
+										<span class="material-symbols">refresh</span>
+									</button>
+									<button
+										type="button"
+										class="bubble-action"
+										class:active={m.reaction === 'up'}
+										title={t('coachChat.helpful')}
+										aria-label={t('coachChat.thumbsUp')}
+										aria-pressed={m.reaction === 'up'}
+										onclick={() => reactTo(m.id!, 'up')}
+									>
+										<span class="material-symbols">thumb_up</span>
+									</button>
+									<button
+										type="button"
+										class="bubble-action"
+										class:active={m.reaction === 'down'}
+										title={t('coachChat.notUseful')}
+										aria-label={t('coachChat.thumbsDown')}
+										aria-pressed={m.reaction === 'down'}
+										onclick={() => reactTo(m.id!, 'down')}
+									>
+										<span class="material-symbols">thumb_down</span>
+									</button>
+								{:else}
+									<button
+										type="button"
+										class="bubble-action"
+										title={t('coachChat.editAndResend')}
+										aria-label={t('coachChat.edit')}
+										onclick={() => startEdit(m.id!, m.content)}
+									>
+										<span class="material-symbols">edit</span>
+									</button>
+								{/if}
+							</div>
+						{/if}
 					</div>
-				</div>
+				{/each}
+				{#if awaitingAssistant && messages[messages.length - 1]?.role === 'user'}
+					<div class="bubble" data-role="assistant">
+						{@render aiByline()}
+						<div class="typing-dots" aria-label={t('coachChat.coachThinking')}>
+							<span></span><span></span><span></span>
+						</div>
+					</div>
+				{/if}
+			</div>
+			{#if hasUnseen}
+				<button type="button" class="jump-latest" onclick={jumpToLatest}>
+					<span class="material-symbols" aria-hidden="true">arrow_downward</span>
+					{t('coachChat.jumpToLatest')}
+				</button>
 			{/if}
 		</div>
 
@@ -1201,6 +1312,16 @@
 		</div>
 	</div>
 
+	<!-- Every Coach message is labelled, not only the first (EU AI Act
+	     Art. 50, decisions § 2227): an avatar, the Coach's name and the AI tag. -->
+	{#snippet aiByline()}
+		<div class="ai-byline" data-testid="coach-ai-byline">
+			<span class="ai-avatar" aria-hidden="true"><span class="material-symbols">sports</span></span>
+			<span class="ai-name">{t('nav.coach')}</span>
+			<AiTag />
+		</div>
+	{/snippet}
+
 	<ConfirmDialog
 		open={showArchiveConfirm}
 		title={t('coachChat.confirmTitle')}
@@ -1222,6 +1343,31 @@
 </div>
 
 <style>
+	.ai-byline {
+		display: flex;
+		white-space: normal;
+		align-items: center;
+		gap: 0.35rem;
+		margin-bottom: 0.3rem;
+		font-size: var(--font-size-section-label);
+		color: var(--color-text-secondary);
+	}
+	.ai-avatar {
+		width: 1.35rem;
+		height: 1.35rem;
+		border-radius: 50%;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		background: color-mix(in srgb, var(--section-coach) 14%, var(--color-surface));
+		color: var(--section-coach-ink);
+	}
+	.ai-avatar .material-symbols {
+		font-size: 0.85rem;
+	}
+	.ai-name {
+		font-weight: 600;
+	}
 	.shell {
 		display: flex;
 		gap: 0;
@@ -1423,10 +1569,26 @@
 	.chip-link:hover { filter: brightness(1.05); }
 	.chip-link:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 
+	.scroll-wrap {
+		position: relative; flex: 1; min-height: 0;
+		display: flex; flex-direction: column;
+	}
 	.scroll {
 		flex: 1; overflow-y: auto; padding: var(--space-md);
 		display: flex; flex-direction: column; gap: 0.6rem;
 	}
+	.jump-latest {
+		position: absolute; bottom: var(--space-sm); left: 50%; transform: translateX(-50%);
+		display: inline-flex; align-items: center; gap: 0.3rem;
+		min-height: 2.75rem; padding: 0 0.9rem;
+		background: var(--color-surface); color: var(--color-primary);
+		border: 1px solid var(--color-border); border-radius: 999px;
+		box-shadow: var(--shadow-md);
+		font: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+	}
+	.jump-latest:hover { background: var(--color-bg-secondary); }
+	.jump-latest:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+	.jump-latest .material-symbols { font-size: 1.05rem; line-height: 1; }
 	.bubble {
 		/* Cap at a comfortable reading measure rather than a percentage —
 		   on a wide viewport, 85% becomes a wall-of-text line. ~64ch

@@ -220,38 +220,39 @@ test.describe('/guided ↔ /guided/[id] — navigation round-trip', () => {
 test.describe('/guided — signed-in back-to-Coach round-trip', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
-	test('signed-in user sees a Back-to-Coach link with href=/coach', async ({ page }) => {
+	test('signed-in user sees a Back-to-Coach link with href=/messages/coach', async ({ page }) => {
 		await page.goto('/guided');
 		const back = page.getByRole('link', { name: /Back to Coach/ });
 		await expect(back).toBeVisible({ timeout: 10_000 });
-		await expect(back).toHaveAttribute('href', '/coach');
+		await expect(back).toHaveAttribute('href', '/messages/coach');
 	});
 
-	test('/coach → "See the full library" → /guided → Back to Coach → /coach', async ({ page }) => {
+	test('/messages/coach → "See the full library" → /guided → Back to Coach → /messages/coach', async ({ page }) => {
 		// Pins the snapshot-restoring history pop pattern: the
 		// /guided afterNavigate hook flips cameFromCoach when the
-		// previous route was /coach, and Back-to-Coach calls
+		// previous route was /messages/coach (the Coach's home since it
+		// became a pinned conversation, decisions § 2227), and Back-to-Coach calls
 		// history.back() so the original coach state survives.
-		await page.goto('/coach');
-		await expect(page).toHaveURL(/\/coach/);
+		await page.goto('/messages/coach');
+		await expect(page).toHaveURL(/\/messages\/coach$/);
 		await page.getByRole('link', { name: /See the full library/ }).click();
 		await expect(page).toHaveURL(/\/guided$/);
 		const back = page.getByRole('link', { name: /Back to Coach/ });
 		await expect(back).toBeVisible({ timeout: 10_000 });
 		await back.click();
-		await expect(page).toHaveURL(/\/coach/);
+		await expect(page).toHaveURL(/\/messages\/coach$/);
 	});
 
 	test('cold-load /guided (no /coach referrer) keeps the back-link as a normal nav', async ({
 		page
 	}) => {
-		// When the user lands on /guided directly (not from /coach),
+		// When the user lands on /guided directly (not from the Coach),
 		// cameFromCoach stays false — clicking Back to Coach is a
 		// plain soft-nav with no history.back() side effect.
 		await page.goto('/guided');
 		const back = page.getByRole('link', { name: /Back to Coach/ });
 		await expect(back).toBeVisible({ timeout: 10_000 });
 		await back.click();
-		await expect(page).toHaveURL(/\/coach/);
+		await expect(page).toHaveURL(/\/messages\/coach$/);
 	});
 });

@@ -285,6 +285,12 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get healthPlatformNameIos => 'Apple Health';
+
+  @override
+  String get healthPlatformNameAndroid => 'Health Connect';
+
+  @override
   String get importCsvCardTitle => 'CSV';
 
   @override
@@ -1689,6 +1695,29 @@ class AppLocalizationsDe extends AppLocalizations {
   String get setupTrackRunningAlwaysOn => 'Immer aktiv';
 
   @override
+  String get setupImportTitle => 'Bring deine Laufhistorie mit';
+
+  @override
+  String get setupImportHint =>
+      'Erfasst du deine Läufe schon woanders? Hol sie rein, damit dein Dashboard, deine Rekorde und Abzeichen von Anfang an gefüllt sind. Jede Quelle öffnet ihren Import, danach kommst du hierher zurück.';
+
+  @override
+  String get setupImportHealthAndroid =>
+      'Läufe aus jeder App, die mit Health Connect synchronisiert, auch Garmin und Samsung';
+
+  @override
+  String get setupImportHealthIos =>
+      'Workouts von der Apple Watch und aus jeder App, die in Apple Health speichert, auch Garmin';
+
+  @override
+  String get setupImportStravaDesc =>
+      'Lade das Archiv hoch, das Strava dir per E-Mail schickt – mit allen Aktivitäten, die du erfasst hast';
+
+  @override
+  String get setupImportParkrunDesc =>
+      'Hol alle parkrun-Ergebnisse über deine Athletennummer';
+
+  @override
   String get setupDoneTitle => 'Alles bereit';
 
   @override
@@ -2492,7 +2521,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get historySourceParkrun => 'parkrun';
 
   @override
-  String get historySourceHealthKit => 'HealthKit';
+  String get historySourceHealthKit => 'Apple Health';
 
   @override
   String get historySourceHealthConnect => 'Health Connect';
@@ -4403,6 +4432,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get heatmapLensPopular => 'Beliebt';
 
   @override
+  String get heatmapLensOfficial => 'Offiziell';
+
+  @override
   String get heatmapLensFriends => 'Freunde';
 
   @override
@@ -4883,6 +4915,11 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String profileNotifPlanAssigned(String name) {
     return '$name hat dir einen Trainingsplan zugewiesen';
+  }
+
+  @override
+  String profileNotifPlanAiEdit(String name) {
+    return '$name hat von der KI vorgeschlagene Änderungen an einem von dir zugewiesenen Plan übernommen';
   }
 
   @override
@@ -7089,14 +7126,15 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachConsentBulletProfile =>
-      'Dein Geburtsdatum, Geschlecht und HF-Zonen, falls festgelegt.';
+      'Nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast: dein Geburtsdatum und deine konfigurierten HF-Zonen, falls eingestellt.';
 
   @override
-  String get coachConsentBulletRuns => 'Ein Ausschnitt deiner letzten Läufe.';
+  String get coachConsentBulletRuns =>
+      'Ein Ausschnitt deiner letzten Läufe: das Datum, die Distanz, die Dauer, der Aktivitätstyp, die Höhenmeter, ob der Lauf drinnen stattfand und wie er im Vergleich zu einer geplanten Einheit lief, sowie deine durchschnittliche Herzfrequenz (nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast).';
 
   @override
   String get coachConsentBulletPlan =>
-      'Den aktiven Trainingsplan, den du ausgewählt hast.';
+      'Der Trainingsplan oder die Trainingspläne, die du ausgewählt hast: für jeden Plan sein Name, sein Status, das Zielrennen und die Zielzeit, die aktuelle 5-km-Zeit und der Fitnesswert, auf denen er beruht, seine Datumsangaben, Trainingstage, Regeln und Notizen; für jede Woche die Phase, die Zieldistanz und die Notizen; und für jede Einheit das Datum, die Art, die Vorgaben, der Aufbau, die Notizen, der Name und die Priorität des Rennens und ob du sie absolviert oder übersprungen hast, sowie die Herzfrequenzvorgaben (nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast).';
 
   @override
   String get coachConsentBulletMessages =>
@@ -7113,6 +7151,18 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get coachConsentBulletPlatePhoto =>
       'Für die Mahlzeiten-Fotoerfassung: das Foto deiner Mahlzeit, das du auswählst, nur um zu schätzen, was auf dem Teller liegt. Standort- und Kameradaten werden vorher entfernt, Threkir speichert das Foto nicht, und nichts wird eingetragen, bevor du es prüfst und speicherst.';
+
+  @override
+  String get coachConsentBulletCoachSettings =>
+      'Deine Distanzeinheit, deine Ruheherzfrequenz und deine maximale Herzfrequenz (nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast), dein wöchentliches Distanzziel und die Coach-Persönlichkeit, die du gewählt hast.';
+
+  @override
+  String get coachConsentBulletLifts =>
+      'Eine Zusammenfassung deiner letzten Gym-Einheiten: das Datum, der Name der Einheit, die Anzahl der Übungen und Sätze sowie das insgesamt gehobene Gewicht.';
+
+  @override
+  String get coachConsentBulletNutrition =>
+      'Nur wenn du die Einwilligung für Gesundheitsdaten erteilt hast: eine 7-Tage-Zusammenfassung deines Ernährungstagebuchs (erfasste Tage sowie Durchschnittswerte für Kalorien, Eiweiß, Kohlenhydrate und Fett), niemals einzelne Mahlzeiten.';
 
   @override
   String get coachConsentBulletPlanEdit =>
@@ -7142,6 +7192,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachNoPlanOption => 'Kein Plan (nur letzte Läufe)';
+
+  @override
+  String get coachSeasonOption =>
+      'Meine Saison (aktueller Plan und die danach geplanten Pläne)';
+
+  @override
+  String get coachSeasonName => 'Meine Saison';
 
   @override
   String coachPlanActive(String name) {
@@ -7369,6 +7426,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get coachOpenArchiveFailed => 'Archiv konnte nicht geöffnet werden.';
+
+  @override
+  String get coachJumpToLatest => 'Zur neuesten Nachricht';
 
   @override
   String coachArchiveDeleteFailed(String error) {
@@ -10382,6 +10442,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get reportTitleReview => 'Bewertung melden';
 
   @override
+  String get reportTitleMessage => 'Nachricht melden';
+
+  @override
   String get reportTitleContent => 'Inhalt melden';
 
   @override
@@ -11282,6 +11345,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get verifiedClubTooltip => 'Offiziell verifizierter Club';
+
+  @override
+  String get officialBadgeLabel => 'Offiziell';
+
+  @override
+  String get officialBadgeTooltip =>
+      'Offiziell: von einem verifizierten Veranstalter veröffentlicht';
 
   @override
   String get raceDistance5k => '5 km';
@@ -16857,6 +16927,51 @@ class AppLocalizationsDe extends AppLocalizations {
   String get messagesRouteLoading => 'Route wird geladen';
 
   @override
+  String get messagesDeletedAccount => 'Gelöschtes Konto';
+
+  @override
+  String get messagesDeletedAccountClosed =>
+      'Dieses Konto wurde gelöscht. Du kannst die Nachrichten, die du gesendet hast, weiterhin lesen, aber nicht mehr antworten.';
+
+  @override
+  String get messagesUnsentPlaceholder => 'Nachricht zurückgezogen';
+
+  @override
+  String get messagesUnsend => 'Zurückziehen';
+
+  @override
+  String get messagesUnsendConfirmTitle => 'Diese Nachricht zurückziehen?';
+
+  @override
+  String get messagesUnsendConfirmBody =>
+      'Sie wird für euch beide entfernt. Das kann nicht rückgängig gemacht werden.';
+
+  @override
+  String get messagesUnsendFailed =>
+      'Die Nachricht konnte nicht zurückgezogen werden.';
+
+  @override
+  String get messagesReport => 'Melden';
+
+  @override
+  String get messagesOptionsHint => 'Nachrichtenoptionen anzeigen';
+
+  @override
+  String get messagesBlock => 'Blockieren';
+
+  @override
+  String get messagesUnblock => 'Blockierung aufheben';
+
+  @override
+  String get messagesBlockConfirmBody =>
+      'Ihr könnt euch dann gegenseitig keine Nachrichten mehr schreiben, und diese Person kann dir nicht mehr folgen, deinen Läufen keine Kudos geben und sie nicht kommentieren. Jede Follow-Beziehung zwischen euch, egal in welche Richtung, wird aufgehoben und auch durch das Aufheben der Blockierung nicht wiederhergestellt.';
+
+  @override
+  String messagesBlockedNotice(String name) {
+    return 'Du hast $name blockiert, daher könnt ihr euch gegenseitig keine Nachrichten schreiben.';
+  }
+
+  @override
   String get profileMessage => 'Nachricht';
 
   @override
@@ -18714,4 +18829,39 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planNewDobHintHealthDataAction => 'Einwilligung prüfen';
+
+  @override
+  String get messagesAiTag => 'KI';
+
+  @override
+  String get messagesAiTagSr => 'KI-generiert';
+
+  @override
+  String get messagesCoachRowIntro =>
+      'Frag nach deinem Training, deinem Plan oder einem Lauf.';
+
+  @override
+  String get messagesCoachPin => 'KI-Coach oben anheften';
+
+  @override
+  String get messagesCoachUnpin => 'KI-Coach nicht mehr anheften';
+
+  @override
+  String get messagesCoachPlacementFailed =>
+      'Die Position des KI-Coaches konnte nicht gespeichert werden. Versuche es erneut.';
+
+  @override
+  String get prefsSectionMessages => 'Nachrichten';
+
+  @override
+  String get prefsCoachInMessages => 'KI-Coach in Nachrichten';
+
+  @override
+  String get prefsCoachInMessagesPinned => 'Oben angeheftet';
+
+  @override
+  String get prefsCoachInMessagesListed => 'Bei deinen Unterhaltungen';
+
+  @override
+  String get prefsCoachInMessagesHidden => 'Ausgeblendet';
 }

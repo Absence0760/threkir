@@ -84,7 +84,7 @@ Driven by frontmatter `cta.feature`, mapped to a route + i18n label in `categori
 | `route-builder` | `/routes/new` | shipped |
 | `gear` | `/settings` | shipped (no dedicated `/gear` route) |
 | `nutrition` | `/nutrition` | shipped |
-| `ai-coach` | `/coach` | shipped |
+| `ai-coach` | `/messages/coach` | shipped |
 | `clubs` | `/social?tab=clubs` | shipped |
 | `racing` | `/races` | shipped |
 | `explore` | `/routes?tab=explore` | shipped |

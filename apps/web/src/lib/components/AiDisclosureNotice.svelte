@@ -16,7 +16,10 @@
 </p>
 <ul>
 	<li>{m('coachPage.consentBulletProfile')}</li>
+	<li>{m('coachPage.consentBulletCoachSettings')}</li>
 	<li>{m('coachPage.consentBulletRuns')}</li>
+	<li>{m('coachPage.consentBulletLifts')}</li>
+	<li>{m('coachPage.consentBulletNutrition')}</li>
 	<li>{m('coachPage.consentBulletPlan')}</li>
 	<li>{m('coachPage.consentBulletMessages')}</li>
 	<li>{m('coachPage.consentBulletRoutes')}</li>

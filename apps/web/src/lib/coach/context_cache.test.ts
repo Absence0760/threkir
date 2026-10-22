@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 
 import { buildContext } from './context';
 import type { CoachProfileRow } from './context';
+import { AI_DISCLOSURE_CURRENT_VERSION } from '../core/ai_disclosure';
 
 // Same chainable Supabase stub shape as context.test.ts: every
 // filter/order returns `this`; the terminal `.limit()` / `.maybeSingle()`
@@ -33,7 +34,6 @@ function fakeSupabase(tableData: Record<string, unknown>) {
 }
 
 const profileRow: CoachProfileRow = {
-	display_name: 'Runner',
 	preferred_unit: 'km',
 	health_data_consent_at: '2026-06-01T00:00:00.000Z',
 };
@@ -54,6 +54,7 @@ function build() {
 		10,
 		profileRow,
 		'2026-06-15',
+		AI_DISCLOSURE_CURRENT_VERSION,
 	);
 }
 

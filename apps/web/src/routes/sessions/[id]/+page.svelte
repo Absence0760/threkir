@@ -23,6 +23,7 @@
 	import { workoutDraftFromSession } from '#lib/social/event_gym_template.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import Modal from '#lib/components/Modal.svelte';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import SessionPlanEditor from '#lib/components/SessionPlanEditor.svelte';
 	import SessionRunner from '#lib/components/SessionRunner.svelte';
@@ -307,7 +308,7 @@
 		{/if}
 		<header class="detail-head">
 			<div>
-				<h1>{plan.title || t('session.untitled')}</h1>
+				<h1>{plan.title || t('session.untitled')}{#if plan.is_official}<OfficialBadge size={18} />{/if}</h1>
 				<p class="muted">
 					{#if plan.discipline}{plan.discipline}{/if}
 					{#if plan.equipment}· {plan.equipment}{/if}

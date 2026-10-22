@@ -42,6 +42,7 @@ const List<String> setupWizardSteps = [
   'run-privacy',
   'notifications',
   setupWizardTrackStep,
+  setupWizardImportStep,
   'done',
 ];
 
@@ -50,7 +51,7 @@ const List<String> setupWizardSteps = [
 /// [visibleSetupWizardSteps] drops anything. Written out rather than read
 /// off [setupWizardSteps] because a list's `length` is not a constant
 /// expression; `onboarding_test.dart` pins the two together.
-const int onboardingTotalSteps = 8;
+const int onboardingTotalSteps = 9;
 
 /// The steps this device actually walks, and the list the progress dots are
 /// generated from. Mobile's own, the counterpart of web's web-only
@@ -70,6 +71,33 @@ List<String> visibleSetupWizardSteps({required bool privacyAlreadyChosen}) => [
 /// The step asking whether to show Gym and Nutrition, just before `done` —
 /// web's `track` step, at the same position (decisions § 1739).
 const String setupWizardTrackStep = 'track';
+
+/// The step offering to bring in the runner's history, between `track` and
+/// `done` — web's `import` step, at the same position.
+const String setupWizardImportStep = 'import';
+
+/// The history sources the import step offers on this device, in render
+/// order. Each opens the import screen that already exists for it; the step
+/// runs nothing itself. Mobile's counterpart of web's
+/// `ONBOARDING_IMPORT_SOURCES`, not a twin: the health platform is the
+/// device's own (Apple Health on iOS, Health Connect on Android) and has no
+/// web binding, while web's Garmin export upload has no mobile importer —
+/// Garmin reaches a phone through the health platform instead.
+///
+/// The health platform (`healthkit` on iOS, `health_connect` on Android —
+/// never both) and `strava` (the archive upload) live on the Import screen,
+/// which needs nothing from the deployment. `parkrun` lives on the
+/// Integrations screen and waits on its Edge Function probe, so a probe that
+/// has not answered yet hides it the way a refused one does.
+List<String> setupWizardImportSources({
+  required bool isIOS,
+  required bool parkrunAvailable,
+}) =>
+    [
+      isIOS ? 'healthkit' : 'health_connect',
+      'strava',
+      if (parkrunAvailable) 'parkrun',
+    ];
 
 /// A create-plan preset derived from a primary-goal answer — twin of web's
 /// `PlanPreset`.

@@ -88,10 +88,11 @@ const ALLOWED: Record<string, number> = {
 	// exactly two ids.
 	"src/lib/core/data.ts :: .in('sender_id', pair)": 1,
 	"src/lib/core/data.ts :: .in('recipient_id', pair)": 1,
-	// The coach's plan weeks, capped by `.limit(COACH_PLAN_WEEKS_CAP)`, and
-	// its recent lift sessions, capped by `.limit(COACH_LIFTS_CAP)`; both
-	// asserted below.
-	"src/lib/coach/context.ts :: .in('week_id', ids)": 1,
+	// The coach's plan weeks — one plan's, or a season's across every block,
+	// drawn from one shared COACH_PLAN_WEEKS_CAP budget and each block read
+	// with `.limit(COACH_PLAN_WEEKS_CAP)` — and its recent lift sessions,
+	// capped by `.limit(COACH_LIFTS_CAP)`; both caps asserted below.
+	"src/lib/coach/context.ts :: .in('week_id', weekIds)": 1,
 	"src/lib/coach/context.ts :: .in('workout_id', ids)": 1,
 };
 

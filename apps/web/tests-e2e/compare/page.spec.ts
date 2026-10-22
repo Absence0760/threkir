@@ -101,12 +101,12 @@ test.describe('/compare — feature comparison vs Strava', () => {
 		expect(partialColor).not.toEqual(noColor);
 	});
 
-	test('internal feature links in the footer point at /coach + /plans + /clubs', async ({
+	test('internal feature links in the footer point at the Coach + /plans + /clubs', async ({
 		page,
 	}) => {
 		await page.goto('/compare');
 		const footer = page.locator('.cmp-footer');
-		await expect(footer.locator('a[href="/coach"]', { hasText: /Coach/ })).toBeVisible();
+		await expect(footer.locator('a[href="/messages/coach"]', { hasText: /Coach/ })).toBeVisible();
 		await expect(footer.locator('a[href="/plans"]', { hasText: /plans/i })).toBeVisible();
 		await expect(footer.locator('a[href="/clubs"]', { hasText: /Clubs/ })).toBeVisible();
 	});

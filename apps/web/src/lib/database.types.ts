@@ -5958,6 +5958,16 @@ export type Database = {
         Args: { p_changes?: Json; p_plan_id: string; p_workout_ids: string[] }
         Returns: undefined
       }
+      apply_ai_plan_edits: {
+        Args: {
+          p_include_following: boolean
+          p_plan_id: string
+          p_today: string
+          p_weeks: Json
+          p_workouts: Json
+        }
+        Returns: undefined
+      }
       apply_workout_adjustments: {
         Args: { p_changes: Json; p_plan_id: string }
         Returns: undefined

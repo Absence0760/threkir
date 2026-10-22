@@ -17,7 +17,7 @@
 
 begin;
 
-select plan(25);
+select plan(26);
 
 -- The seed user is the notification recipient; actor is left null
 -- (actor_id is nullable / on delete set null).
@@ -36,7 +36,8 @@ from unnest(array[
   'data_export_ready', 'refund_failed', 'event_waitlist_slot',
   'follow_request',
   'reaction', 'comment_like', 'mention',
-  'workout_reminder'
+  'workout_reminder',
+  'plan_ai_edit'
 ]) as k;
 
 -- An unknown kind is rejected at INSERT, not deferred.

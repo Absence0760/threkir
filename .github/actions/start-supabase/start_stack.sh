@@ -119,6 +119,14 @@
 #      alike). start_stack.test.mjs fails once the CLI pin reaches 2.119.0,
 #      because from there the override is redundant at best and a downgrade
 #      at worst. decisions.md § 1795.
+#
+#   9. The same quota on ghcr.io. On 2026-10-22 every stack-starting job on
+#      PR #1223 failed three runs in a row with `toomanyrequests` from
+#      ghcr.io/supabase/*, during a GitHub incident covering Packages. The
+#      pulls were anonymous, so they shared the limit with every runner on
+#      the same egress IP. action.yml now logs in to ghcr.io with the job's
+#      token first (ci.yml grants `packages: read`), and falls back to an
+#      anonymous pull when the login fails.
 set -uo pipefail
 
 # Host ports config.toml pins: shadow db 24320 (db diff only), api 24321, db

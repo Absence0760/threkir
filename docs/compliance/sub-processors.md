@@ -55,7 +55,8 @@ GDPR Art 28(2): we must notify users of "any intended changes concerning the add
 For EU-data-subject flows landing in non-adequacy countries (most of the above are US):
 
 - **Standard Contractual Clauses (SCCs)** under the European Commission's 2021 module 2 (controller → processor). Every provider above publishes these in their DPA.
-- **TODO**: confirm we've executed each provider's DPA from our account console (Supabase, AWS, Sentry, RevenueCat, Anthropic, OpenAI). Self-service is the norm.
+- **TODO**: confirm we've executed each provider's DPA from our account console (Supabase, AWS, Sentry, RevenueCat, OpenAI). Self-service is the norm.
+- **Anthropic, confirmed 2026-10-22 by the owner in the Console (Settings → Data retention):** a self-serve API organization, so the Commercial Terms apply and incorporate the DPA without a separate signature. Retention is the default 30 days (no zero-data-retention agreement), the Development Partner Program is not joined, and user feedback is off. AI disclosure v6's "deletes it within 30 days" rests on this; re-check it if any of these change.
 - **Transfer impact assessment**: for the US-hosted ones, document our reliance on EU-US Data Privacy Framework (EUDPF, replacing Privacy Shield post-Schrems II). Each provider's DPA states their certification status.
 
 ## Verification

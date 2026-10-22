@@ -16,6 +16,7 @@ import {
 	checkRuleSubjects,
 	checkShellSafeDiagnoses,
 	checkStepDiagnoses,
+	checkRunPastFailure,
 	derivedBundles,
 	hasShellSubstitutionBacktick,
 	ACTION_DIR,
@@ -1066,7 +1067,7 @@ test('rules 2, 3 and 4 are not applied to a composite action', () => {
 test('RULE_SUBJECTS names every rule exactly once, with a reason', () => {
 	assert.deepEqual(
 		RULE_SUBJECTS.map((r) => r.rule),
-		[1, 2, 3, 4, 5, 6, 7, 8],
+		[1, 2, 3, 4, 5, 6, 7, 8, 9],
 	);
 	for (const r of RULE_SUBJECTS) {
 		assert.ok(r.what.length > 10 && r.why.length > 10, `rule ${r.rule} states no reason`);
@@ -1456,4 +1457,112 @@ test('jobDisplayNames reads every job name and nothing at another indent', () =>
 		jobDisplayNames('jobs:\n  a:\n    name: One\n  b:\n    name: "Two"\n    steps:\n      - name: deep\n'),
 		['One', 'Two'],
 	);
+});
+
+// Rule 9. The fixtures use one standalone two-guard job, so the job is derived
+// as bundled by the guards it runs and the registered jobs are not involved.
+/**
+ * @param {string} name
+ * @param {string} cmd
+ * @param {string | null} cond
+ * @param {string | null} [id]
+ */
+const conditioned = (name, cmd, cond, id = null) =>
+	`      - name: ${name}\n` +
+	(id ? `        id: ${id}\n` : '') +
+	(cond ? `        if: \${{ ${cond} }}\n` : '') +
+	`        run: |\n` +
+	`          if ! ${cmd}; then\n` +
+	`            echo "${ANNOTATION}${name} failed."\n` +
+	`            exit 1\n` +
+	`          fi\n`;
+
+/** @param {string} steps */
+const loneJob = (steps) => [
+	{
+		name: 'ci.yml',
+		text:
+			`name: CI\njobs:\n  lone:\n    steps:\n` +
+			`      - uses: actions/checkout@abc\n` +
+			`      - run: npm ci\n        id: deps\n` +
+			steps,
+	},
+];
+
+test('rule 9: a check after the first one with no if: is skipped by any failure above it, and fails', () => {
+	const { errors } = checkRunPastFailure(
+		loneJob(conditioned('one', guardCmd('one'), null) + conditioned('two', guardCmd('two'), null)),
+	);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /"two" in bundled job `lone` has no `!cancelled\(\)`/);
+});
+
+test('rule 9: the first check needs no condition, and later ones pass behind a named prerequisite', () => {
+	const { errors, ok } = checkRunPastFailure(
+		loneJob(
+			conditioned('one', guardCmd('one'), null) +
+				conditioned('two', guardCmd('two'), "!cancelled() && steps.deps.outcome == 'success'"),
+		),
+	);
+	assert.deepEqual(errors, []);
+	assert.match(ok[0], /job `lone`: 1 step\(s\)/);
+});
+
+// `!cancelled()` alone would run every guard after a failed `npm ci`, each
+// printing a diagnosis about itself that the install caused.
+test('rule 9: running past failures without naming a prerequisite fails', () => {
+	const { errors } = checkRunPastFailure(
+		loneJob(conditioned('one', guardCmd('one'), null) + conditioned('two', guardCmd('two'), '!cancelled()')),
+	);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /names no prerequisite/);
+});
+
+test('rule 9: always() is not accepted in place of !cancelled()', () => {
+	const { errors } = checkRunPastFailure(
+		loneJob(
+			conditioned('one', guardCmd('one'), null) +
+				conditioned('two', guardCmd('two'), "always() && steps.deps.outcome == 'success'"),
+		),
+	);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /has no `!cancelled\(\)`/);
+});
+
+// An outcome of a step that has not run yet is never 'success', so a
+// prerequisite naming a LATER step, or a typo, silently disables the check.
+test('rule 9: a prerequisite that is not an earlier step of the job fails', () => {
+	const { errors } = checkRunPastFailure(
+		loneJob(
+			conditioned('one', guardCmd('one'), null) +
+				conditioned('two', guardCmd('two'), "!cancelled() && steps.build.outcome == 'success'") +
+				conditioned('three', guardCmd('three'), "!cancelled() && steps.deps.outcome == 'success'", 'build'),
+		),
+	);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /"two" .* names `steps\.build`, which is no earlier step/);
+});
+
+test('rule 9: a step after the first check may name a prerequisite set up after it', () => {
+	const { errors } = checkRunPastFailure(
+		loneJob(
+			conditioned('one', guardCmd('one'), null) +
+				conditioned('build', guardCmd('build'), "!cancelled() && steps.deps.outcome == 'success'", 'build') +
+				conditioned('assert', guardCmd('assert'), "!cancelled() && steps.build.outcome == 'success'"),
+		),
+	);
+	assert.deepEqual(errors, []);
+});
+
+test('rule 9: a tree with no bundled job fails rather than reading as a clean pass', () => {
+	const { errors } = checkRunPastFailure([
+		{ name: 'ci.yml', text: `name: CI\njobs:\n  a:\n    steps:\n      - run: echo hi\n` },
+	]);
+	assert.match(errors.join('\n'), /checked nothing/);
+});
+
+test('rule 9 holds on the committed workflows', () => {
+	const { errors, ok } = checkRunPastFailure(readWorkflows(WORKFLOW_DIR));
+	assert.deepEqual(errors, []);
+	assert.ok(ok.length >= 10, `only ${ok.length} bundled job(s) were checked`);
 });

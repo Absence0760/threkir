@@ -255,6 +255,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        id: checkout
       # `go install` reaches proxy.golang.org for actionlint and its module
       # graph, and that fetch has failed mid-stream on a transient HTTP/2
       # error, taking the whole job down on a PR that touched no workflow.
@@ -262,6 +263,7 @@ jobs:
       # network is the flake, so the fetch retries and only a persistent
       # failure is a verdict.
       - name: Install actionlint
+        id: actionlint_install
         run: |
           for attempt in 1 2 3; do
             if go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12; then
@@ -277,6 +279,7 @@ jobs:
       # existing run block would fail this job. The gate's purpose is only
       # what GitHub itself enforces — workflow syntax + expression parsing.
       - name: actionlint (workflow syntax + expression parsing)
+        if: ${{ !cancelled() && steps.actionlint_install.outcome == 'success' }}
         run: |
           if ! "$(go env GOPATH)/bin/actionlint" -color -shellcheck= -pyflakes=; then
             echo "::error::A workflow file does not parse the way GitHub parses it — bad YAML, an unknown key, or an expression GitHub would reject. Nothing here is about the toolchain pins, the CI diagnoses or the run-time-download guard; those are the other checks in this job."
@@ -284,6 +287,8 @@ jobs:
             exit 1
           fi
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        id: node
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         with:
           node-version: 24.20.0
       # decisions.md § 595 — the Flutter SDK pin is declared once per workflow
@@ -297,6 +302,7 @@ jobs:
       # sweep that pinned everything else, and including composite actions
       # under .github/actions, which Dependabot does not scan at all.
       - name: Toolchain pin drift (Flutter + melos + Rust + Node + action SHAs + .tool-versions)
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_toolchain_pins.mjs; then
             echo "::error::A toolchain this build installs is unpinned or two call sites disagree — a floating Flutter SDK, a melos version that does not match pubspec.lock, an unpinned defmt-print or a stale cache key for it, a firmware rust-toolchain.toml channel that is not an exact version, an actions/setup-node step naming no node-version or naming a different one than the rest, a .tool-versions line (commented or not) disagreeing with the pin this repo enforces, a Prerequisites row in docs/architecture/monorepo.md telling a contributor to install a version CI never runs, or a third-party action on a mutable tag instead of a commit SHA. Nothing here is about workflow syntax or the CI diagnoses; those are other checks in this job."
@@ -315,6 +321,7 @@ jobs:
       # fails the build on that shape anywhere in the repo, and on a check step
       # added to a bundled job without a diagnosis of its own.
       - name: CI failure diagnoses name what actually failed
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_ci_diagnostics.mjs; then
             echo "::error::A CI failure would go unattributed or unseen — an '::error::' printed under a bare 'if: failure()', a check step in a job that bundles several guards saying nothing of its own, a job the 'CI gate' aggregator does not wait for, or a whole workflow that runs on every pull request while nothing waits on it and is not declared advisory. Nothing here is about workflow syntax or the toolchain pins; those are other checks in this job."
@@ -334,6 +341,7 @@ jobs:
       # silently, so the Gradle key for mobile_android hashed a pubspec.lock
       # that has never existed and a plugin bump never invalidated it.
       - name: Cache keys cannot restore across runner OSes, and hash files that exist
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_cache_keys.mjs; then
             echo "::error::A cache key is unsound: either a cache path is saved on more than one runner OS, or by a composite action, and one of its keys or restore keys does not name runner.os, so one OS can restore the other's entry; or a hashFiles() pattern matches no tracked file, so the change it was meant to follow never invalidates the cache. Nothing here is about workflow syntax, the toolchain pins or the CI diagnoses."
@@ -352,6 +360,7 @@ jobs:
       # out of this file and running it. A lint on a workflow file, hence here
       # — and it needs no deno, no node_modules and no Docker.
       - name: Edge Function typecheck lane covers the whole tree
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test scripts/edge_functions_typecheck_coverage.test.mjs; then
             echo "::error::The 'Edge Function typecheck' step in the edge-functions job no longer reads the whole supabase/functions tree, so some of it is typechecked by nothing (no tsconfig root covers a Deno program). Nothing here is about workflow syntax, the toolchain pins or the CI diagnoses."
@@ -366,6 +375,7 @@ jobs:
       # every host port config.toml publishes sits below the ephemeral range
       # and matches the ladder's PORTS (issue #963).
       - name: Supabase stack port-clean retry
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test .github/actions/start-supabase/start_stack.test.mjs; then
             echo "::error::The start-supabase composite action's port-clean retry regressed — which socket states its holder probe counts, which ports it covers, or its reservation gate — or config.toml publishes a host port that is unpinned, inside the 32768-60999 ephemeral range, or missing from the ladder's PORTS / RESERVED_RANGE. That shell runs inside a composite action, so it is in no job's test suite and this is the only thing that reads it. Nothing here is about workflow syntax, the toolchain pins or the CI diagnoses."
@@ -378,6 +388,7 @@ jobs:
       # committed project, so a restructured project fails a PR instead of a
       # release (decisions.md § 1701).
       - name: The iOS release signing step still edits the committed Xcode project
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test scripts/ios_release_signing.test.mjs; then
             echo "::error::scripts/ios_release_signing.mjs no longer signs apps/mobile_ios/ios/Runner.xcodeproj the way a release needs: a signed target it cannot find or match to a profile, or an edit that reaches outside the Release configurations. That script runs only at release time, so this is the check that runs before a tag does."
@@ -390,6 +401,7 @@ jobs:
       # release cannot again ship a watch whose sign-in is fail-closed
       # (decisions.md § 1810).
       - name: The iOS release still hands the watch app its Supabase config
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test scripts/ios_watch_runtime_config.test.mjs; then
             echo "::error::scripts/ios_watch_runtime_config.mjs or its wiring regressed: the Supabase values a release writes for the Apple Watch app no longer reach the WatchApp target, are no longer checked in the built IPA before upload, or the script accepts a value it must refuse. Nothing here is about signing."
@@ -402,6 +414,7 @@ jobs:
       # order in release-ios.yml, so a regression fails a PR instead of a
       # release (decisions.md § 2040).
       - name: The iOS release still submits to App Store review as decided
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test scripts/asc_submit.test.mjs; then
             echo "::error::scripts/asc_submit.mjs or its wiring in release-ios.yml regressed: the What's New it reads from the Release body (an owner-written section, never generated notes, at most 4000 characters), the App Store version it picks, the phased release on approval, the review submission, or the step order that checks the note before the build and submits after the upload. Nothing here is about signing or the watch config."
@@ -414,6 +427,7 @@ jobs:
       # reaches past external_apple_secret fails a PR instead of lapsing web
       # Apple sign-in five months later (decisions.md § 1824).
       - name: The Apple client-secret rotation still signs and installs a valid secret
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test scripts/rotate_apple_client_secret.test.mjs; then
             echo "::error::scripts/rotate_apple_client_secret.mjs regressed: the ES256 JWT it signs no longer verifies or carries the claims Apple checks, its lifetime can exceed Apple's six-month cap, it writes more than external_apple_secret, it leaks a response body or key into an error, or rotate-apple-client-secret.yml stopped wiring a secret it reads. Nothing here is about the iOS release."
@@ -425,6 +439,7 @@ jobs:
       # error string can be trusted to report) and its failure forensics are
       # pinned here by driving it with stub curl/docker on PATH.
       - name: Supabase stack sidecar wait loop
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test .github/actions/start-supabase/wait_for_sidecars.test.mjs; then
             echo "::error::The start-supabase composite action's wait loop regressed — its deadline accounting or its failure forensics. That shell runs inside a composite action, so it is in no job's test suite and this is the only thing that reads it. Nothing here is about workflow syntax, the toolchain pins or the CI diagnoses."
@@ -436,6 +451,7 @@ jobs:
       # could run it — and its apt branch fires only after a launch has already
       # failed, so the whole repair path shipped unexecuted (decisions § 912).
       - name: Playwright Chromium verification + apt fallback
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test .github/actions/install-playwright/verify_chromium.test.mjs; then
             echo "::error::The install-playwright composite action's Chromium verification regressed — the launch check, the conditional apt fallback, or the rule that the final verdict is a browser launch rather than apt's exit code. That shell runs inside a composite action, so it is in no job's test suite and this is the only thing that reads it. Nothing here is about workflow syntax, the toolchain pins or the CI diagnoses."
@@ -447,6 +463,7 @@ jobs:
       # existed (§ 439). It reads package.json and the workspace manifests as
       # text, so it belongs in this install-free job like the rest.
       - name: Root package.json scripts name targets that exist
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_root_scripts.mjs; then
             echo "::error::A script in the root package.json cds into a directory that does not exist, or hands a package runner a script target its package.json does not declare. Nothing here is about action SHAs, workflow syntax, the toolchain pins or the CI diagnoses — those are the other guards in this job."
@@ -473,6 +490,7 @@ jobs:
       # reason and still name something real (§ 1392). A lint on a workflow
       # file, hence here.
       - name: CodeQL builds every tree it claims to scan
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_codeql_coverage.mjs; then
             echo "::error::A CodeQL leg does not read everything it reports clean over. On a compiled leg that is a Go module or Gradle project the build step's own walk misses, an exclusion that has outlived its directory, or an exclusion list that has grown to cover everything. On an interpreted leg it is a narrowing nobody justified — a paths/paths-ignore entry, a query-filters exclusion, a query suite below the broadest, or a config-file this guard cannot read. Nothing here is about workflow syntax, the toolchain pins or the CI diagnoses; those are other checks in this job."
@@ -494,6 +512,7 @@ jobs:
       # with a reason this re-measures against the tree. It reads YAML and
       # source paths as text, so it belongs in this install-free job.
       - name: Every committed Gradle test suite is run by some job
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_gradle_test_coverage.mjs; then
             echo "::error::A Gradle project's committed unit tests are executed by nothing — a project no workflow invokes Gradle in, an invocation that builds it without handing Gradle a test task, or a GRADLE_UNTESTED entry that has outlived its project, its tests or its reason. Nothing here is about workflow syntax, the toolchain pins, the CI diagnoses or the CodeQL scan scope; those are the other checks in this job."
@@ -511,6 +530,7 @@ jobs:
       # its whole life (decisions § 764). A lint on workflow files, hence here,
       # and it needs no install: it reads the package.json files as text.
       - name: CI runs no binary it downloads at run time
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_workflow_binaries.mjs; then
             echo "::error::A workflow hands a package runner (npx / pnpm exec / dlx) a binary that no package.json in this repo declares, so CI downloads an unpinned copy at run time. Nothing here is about action SHAs, the Flutter pin or the CI diagnoses — those are the other guards in this job."
@@ -801,6 +821,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        id: checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           # Node 24 to match the Playwright shards. Needed at all
@@ -811,6 +832,7 @@ jobs:
           node-version: 24.20.0
           cache: npm
       - run: npm ci
+        id: deps
       # Cheap, deterministic guard ahead of the stack start: two migrations
       # sharing a version key (the CLI parses only the leading digits before
       # the first underscore, so `_NNN` does not disambiguate) make
@@ -838,6 +860,7 @@ jobs:
       # row under a blocking lock — downtime against prod. Grandfathers the
       # shipped history; see docs/backend/migration_locks.md.
       - name: Migration online-safety (NOT VALID on guarded tables)
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           if ! node --test apps/backend/scripts/sql_lex.test.mjs; then
             echo "::error::The Postgres statement lexer the online-safety guard reads migrations with failed its own tests, so every verdict below it is a guess. This is not schema drift."
@@ -863,6 +886,7 @@ jobs:
       # column revoke is reported only if the table-level grant survives to the
       # end, so a repair is a migration rather than an edit here.
       - name: Migration column revokes are not no-ops
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           if ! node --test apps/backend/scripts/check_migration_column_revoke_noop.test.mjs; then
             echo "::error::The column-revoke guard's own unit tests failed, so its verdict on the migration set cannot be trusted. This is not schema drift and not a lock-safety failure."
@@ -885,6 +909,7 @@ jobs:
       # as the step above: a revoke naming one channel is reported only if the
       # other is still at its default at the end of the set.
       - name: Migration EXECUTE revokes withhold on both CLI images
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           if ! node --test apps/backend/scripts/check_migration_function_revoke_noop.test.mjs; then
             echo "::error::The function-revoke guard's own unit tests failed. If the failing case is 'docs/backend/api_database.md states the counts this guard measures', a migration was added without restating the counted paragraph there — restate the figure the assertion names. Otherwise its verdict on the migration set cannot be trusted. Either way this is not schema drift, not a lock-safety failure and not the column-revoke guard."
@@ -905,6 +930,7 @@ jobs:
       # committed tree, so running them first would report a broken tool over
       # an ordinary missing `get: true`.
       - name: Dart RPCs use the method their function takes
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           if ! node scripts/check_dart_rpc_transport.mjs; then
             echo "::error::A Dart .rpc() call is sent with an HTTP method its function cannot take, or a stable all-scalar read is still POSTed. Nothing here is about the generated types, the migrations' locks or grants, or the web call sites — the web half is the rpc_transport_guard unit test."
@@ -932,6 +958,7 @@ jobs:
       # the committed tree, so running it first would report "the tool is
       # broken" over an ordinary stale lockfile.
       - name: pnpm security overrides declared and in effect
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           if ! node scripts/check_pnpm_overrides.mjs; then
             echo "::error::A pnpm.overrides security pin is missing from a lockfile or was resolved around. Nothing here is about the Supabase schema, the migrations, or the generated row types — the pins are the CVE nudges in package.json's _overrides_rationale."
@@ -958,6 +985,7 @@ jobs:
       # so running it first would report "the tool is broken" over an ordinary
       # dead dependency.
       - name: Declared dependencies are read by something
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           if ! node scripts/check_dead_dependencies.mjs; then
             echo "::error::A package.json declares a dependency nothing in this repo imports, reads out of node_modules, or needs for its types. Nothing here is about the Supabase schema, the migrations, the generated row types or the security overrides — those are the other checks in this job."
@@ -991,11 +1019,14 @@ jobs:
       # moved, just downloads as before: this can only remove a network round
       # trip, never add a failure.
       - name: Cache the Deno binary
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.tool_cache }}/deno
           key: deno-bin-${{ runner.os }}-x64-2.9.6
       - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        id: deno
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         with:
           deno-version: v2.9.6
       # Drift is checked BEFORE the tool's own suite, the reverse of the two
@@ -1005,6 +1036,7 @@ jobs:
       # ordinary stale lockfile. This order keeps both messages true: the
       # second can only fire once the first has established there is no drift.
       - name: deno.lock workspace section vs package.json
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' && steps.deno.outcome == 'success' }}
         run: |
           if ! npm run sync:deno-lock:check; then
             echo "::error::The 'workspace' section of deno.lock has drifted from the npm workspace's package.json files. Nothing here is about the Edge Functions' integrity pins, the migrations, or the generated row types."
@@ -1028,6 +1060,7 @@ jobs:
       # read the committed migrations and types, so running it first would
       # report "the guard is broken" over an ordinary stale union.
       - name: CHECK constraints vs client vocabularies
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           if ! npm run check:check-constraints --workspace=apps/web; then
             echo "::error::A set-shaped CHECK constraint and a client vocabulary that enumerates it have drifted apart, so one client can write a value the other rejects (postgres 23514) — or a dropdown silently lacks a value the column admits. This is not database.types.ts drift. The failure names the file and the declaration, and the client may be a TS union, a const array, a Svelte option list, or a Dart enum / const list (decisions § 791)."
@@ -1053,6 +1086,7 @@ jobs:
       # gives: that suite's last cases read the committed tree, so running it
       # first would report "the guard is broken" over ordinary drift.
       - name: Shared constants agree across every home
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           if ! node scripts/check_shared_constants.mjs; then
             echo "::error::A registered constant with more than one home no longer says the same thing in all of them — a threshold, a bucket boundary, a vocabulary or an eligible-source list written in SQL and in a client, or in two SQL functions. Nothing here is about a CHECK against its TS union (the step above), database.types.ts drift or the web unit tests."
@@ -1072,6 +1106,7 @@ jobs:
       # with every guard green. This one reads the source instead of a
       # registry; decisions § 1397.
       - name: No web module privately reimplements a shared helper
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           if ! node scripts/check_shared_reimplementations.mjs; then
             echo "::error::A web module rewrites a helper apps/web/src/lib already exports, instead of importing it. The failing lines name both sides and what they share — an identical normalised function body, or the distinctive operations a copy cannot drop. Import the shared export; if the duplication is deliberate, add a REGISTERED entry in scripts/check_shared_reimplementations.mjs saying what the thing actually IS."
@@ -1097,6 +1132,7 @@ jobs:
       # above give: that suite's last cases read the committed table, so running
       # it first would report "the guard is broken" over ordinary drift.
       - name: The catalogue accent-fold table is what its generator renders
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           if ! node scripts/check_catalogue_fold_table.mjs; then
             echo "::error::apps/mobile_android/lib/catalogue_fold_table.dart is not what scripts/gen_catalogue_fold_table.mjs renders, so the phone folds search keys differently from the web. Nothing here is about a CHECK constraint, a shared constant, database.types.ts or the web unit tests."
@@ -1124,6 +1160,7 @@ jobs:
       # guards, which run in no Playwright shard — the config ignores
       # **/fixtures/** — so they are unit tests of the harness itself.
       - name: Web TS unit tests
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         working-directory: apps/web
         run: |
           if ! npm run test:unit; then
@@ -1137,6 +1174,7 @@ jobs:
       # carry a real type error indefinitely, and ten did. `tsconfig.tests-e2e.json`
       # is a second tsc root over `tests-e2e/` only; decisions § 749.
       - name: Playwright tree typecheck
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           if ! npm run check:e2e-types --workspace=apps/web; then
             echo "::error::apps/web/tests-e2e does not typecheck. Nothing here involves the migrations, the schema or the generated row types — read the TS error above."
@@ -1150,6 +1188,7 @@ jobs:
       # service worker's globals come from the WebWorker lib, which cannot
       # share a program with DOM; decisions § 752.
       - name: Node + service-worker tree typecheck
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           if ! npm run check:node-types --workspace=apps/web; then
             echo "::error::apps/web's Node side (scripts/, lambda/) does not typecheck. Nothing here involves the migrations, the schema or the generated row types — read the TS error above."
@@ -1174,6 +1213,7 @@ jobs:
       # site. Two roots because cloudfront-js-2.0 is neither Node nor a
       # browser; decisions § 757.
       - name: Repo-root script + CloudFront tree typecheck
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           if ! npm run check:script-types; then
             echo "::error::The repo's own Node scripts (scripts/, apps/backend/scripts/, .github/, infra/) do not typecheck. Nothing here involves the migrations, the schema or the generated row types — read the TS error above."
@@ -1195,6 +1235,7 @@ jobs:
       # first code every visitor, crawler and API client to the site touches.
       # Stdlib only, so it needs nothing installed (decisions § 894).
       - name: CloudFront edge function behaviour
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           if ! node --test infra/modules/web-stack/functions/www_redirect.test.mjs; then
             echo "::error::The www-to-apex CloudFront Function does not behave as specified. It runs at the edge on every request to the site; nothing here is about the schema or the generated types."
@@ -1202,12 +1243,17 @@ jobs:
             exit 1
           fi
       - uses: ./.github/actions/setup-supabase-cli
+        id: supabase_cli
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         with:
           version: 2.84.2
       # Retry + port-cleanup rationale lives in the composite action.
       - name: Start local Supabase stack
+        id: supabase_stack
+        if: ${{ !cancelled() && steps.supabase_cli.outcome == 'success' }}
         uses: ./.github/actions/start-supabase
       - name: Generated TS row types vs the live schema
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' && steps.supabase_stack.outcome == 'success' }}
         run: |
           if ! npm run gen:types:check --workspace=apps/backend; then
             echo "::error::apps/web/src/lib/database.types.ts is out of sync with the Supabase schema."
@@ -1249,7 +1295,9 @@ jobs:
     # second install to say nothing a per-step diagnosis does not.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        id: checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        id: node
         with:
           node-version: 24.20.0
           cache: npm
@@ -1264,6 +1312,7 @@ jobs:
             exit 1
           fi
       - name: Unit-test the removed-Kit-API guard
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test scripts/check_web_removed_kit_apis.test.mjs; then
             echo "::error::The removed-SvelteKit-API guard's own unit tests failed, so its verdict on the build below cannot be trusted."
@@ -1276,6 +1325,7 @@ jobs:
       # help.md). Node strips the files' types itself, so this needs no
       # install and runs before one.
       - name: Verify the per-locale help-guide JSON matches the guide files
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/gen_help_guides.mjs --check; then
             echo "::error::A per-locale help-guide JSON (apps/mobile_{android,ios}/assets/help/guides.<locale>.json or apps/web/static/help-guides/guides.<locale>.json) is stale against apps/web/src/lib/help/guides and translations. Nothing here is about the Svelte build or the bundle — the phone apps or a translated web locale would show different help text from the guide files."
@@ -1283,6 +1333,7 @@ jobs:
             exit 1
           fi
       - name: Unit-test the help-guide JSON generator
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test scripts/gen_help_guides.test.mjs; then
             echo "::error::The help-guide JSON generator's own unit tests failed, so the freshness check above cannot be trusted to fire. Nothing here is about the Svelte build or the bundle."
@@ -1294,6 +1345,7 @@ jobs:
       # the strings it touched (or the file's deletion, which falls back to
       # English) fails here (decisions § 1871, § 1873).
       - name: Verify no help-guide translation is stale against its English guide
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_help_translations.mjs; then
             echo "::error::A translated string under apps/web/src/lib/help/translations was made from older English than its guide now holds, or a translation does not line up with its guide. Nothing here is about the Svelte build or the bundle. The lines above name each file, each stale string's path and its new hash."
@@ -1301,6 +1353,7 @@ jobs:
             exit 1
           fi
       - name: Unit-test the help-guide translation guard
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test scripts/check_help_translations.test.mjs; then
             echo "::error::The help-guide translation guard's own unit tests failed, so the staleness check above cannot be trusted to fire. Nothing here is about the Svelte build or the bundle."
@@ -1312,6 +1365,7 @@ jobs:
       # every locale and both themes on web and phone (docs/features/help.md
       # § Illustrations). A <text>, script, link or foreign colour fails here.
       - name: Verify every help-guide illustration is text-free, themed and referenced
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_help_illustrations.mjs; then
             echo "::error::A help-guide illustration under apps/web/src/lib/help/illustrations holds text, a script, an external reference or a colour outside the token set, or a guide's illustration block names no file, or a file is referenced by no guide. Nothing here is about the Svelte build or the bundle. The lines above name each file and problem."
@@ -1319,6 +1373,7 @@ jobs:
             exit 1
           fi
       - name: Unit-test the help-guide illustration guard
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test scripts/check_help_illustrations.test.mjs; then
             echo "::error::The help-guide illustration guard's own unit tests failed, so the check above cannot be trusted to fire. Nothing here is about the Svelte build or the bundle."
@@ -1326,6 +1381,8 @@ jobs:
             exit 1
           fi
       - run: npm ci
+        id: deps
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
       # The icon font apps/web ships is a SUBSET, cut to the icons the sources
       # name (decisions § 780). Nothing in a build can tell that an icon is
       # missing from it — a name with no ligature renders as the name — so the
@@ -1335,6 +1392,7 @@ jobs:
       # install so it can also confirm the upstream font has not moved under the
       # subset.
       - name: Verify the web icon-font subset covers every icon the sources name
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           if ! node --test scripts/web_icon_font.test.mjs; then
             echo "::error::The committed icon-font subset does not match apps/web's sources. Nothing here is about the bundle's size or the Svelte build — an icon named in the source and absent from the subset renders as its own name, and this is the only gate that can see that."
@@ -1350,6 +1408,7 @@ jobs:
       # affect its exit code, so this stays green under the two pre-existing
       # PlanEditor warnings without suppressing future ones from the log.
       - name: Type-check the Svelte sources (svelte-check)
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           if ! npm run check --workspace=apps/web; then
             echo "::error::svelte-check reports type errors inside apps/web. Nothing here is about the production build below or the bundle's size — this is the only gate that reads types across .svelte boundaries, so a route can compile and still be wrong here."
@@ -1364,6 +1423,8 @@ jobs:
       # Feed placeholder values — real secrets are irrelevant to a compile
       # check and must never appear here.
       - name: Build web (production)
+        id: build
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           if ! npm run build --workspace=apps/web; then
             echo "::error::The production vite build of apps/web failed. This is a compile gate and it deploys nothing — read the compiler error above. A route that fails only here and not under svelte-check is usually a Svelte/rolldown regression against the pinned versions, not a type error."
@@ -1385,6 +1446,7 @@ jobs:
       # one inside @sentry/sveltekit and blanked the site for every reader
       # who accepted error reporting (decisions § 1896).
       - name: Assert no removed SvelteKit API ships to the client
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: |
           if ! node scripts/check_web_removed_kit_apis.mjs; then
             echo "::error::The built web client carries the throwing stub of a SvelteKit module Kit has removed. The build succeeded; the page would throw when that code first runs. The failing line names the chunk."
@@ -1392,6 +1454,7 @@ jobs:
             exit 1
           fi
       - name: Measure + assert the bundle budget
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: |
           if ! node scripts/check_web_bundle_budget.mjs; then
             echo "::error::The web bundle is over one of its budgets. The build itself succeeded — the step above is the compile gate — so this is about size, and the failing line names which population and by how much."
@@ -1410,6 +1473,7 @@ jobs:
       # is declared in apps/web's devDependencies, so the runner resolves it out
       # of node_modules rather than off the registry at run time (§ 764).
       - name: Assert the built artifact's head signals + structured data
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         working-directory: apps/web
         run: |
           if ! npx tsx --test src/lib/share/spa_shell_head_signals.test.ts src/lib/seo/document_title.test.ts src/lib/seo/learn_structured_data.test.ts src/lib/seo/prerendered_head_contract.test.ts; then
@@ -1441,7 +1505,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        id: checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        id: node
         with:
           node-version: 24.20.0
       # Three checks under one job name, so each says which one broke
@@ -1461,6 +1527,7 @@ jobs:
       # Before it was folded in here, a regression to the guard surfaced weeks
       # later, when someone cut a release tag.
       - name: check_production_env tests (release-build guard)
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test apps/web/scripts/check_production_env.test.mjs; then
             echo "::error::The release-build env guard regressed — the check that a production web build refuses placeholder or loopback endpoints. This is not the dev-env guard or the committed-env-file scan; those are the other steps in this job."
@@ -1468,6 +1535,7 @@ jobs:
             exit 1
           fi
       - name: Committed env files carry no live values (env-example scan)
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -1617,7 +1685,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        id: checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        id: node
         with:
           node-version: 24.20.0
       - name: CLAUDE.md vs shared-library-syncer pair registry
@@ -1638,6 +1708,7 @@ jobs:
             exit 1
           fi
       - name: Source twin claims are registered pairs
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_twin_claims.mjs; then
             echo "::error::A source header declares a cross-platform twin at a path that does not exist, or declares a pair no row of the shared-library-syncer table carries. Nothing here is about the two registries agreeing with EACH OTHER — that is the check above; this one is about the source agreeing with them."
@@ -1659,6 +1730,7 @@ jobs:
       # read the committed matrix, so running it first would report "the guard
       # is broken" over an ordinary stale column.
       - name: parity.md iOS column matches its one stated rule
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_parity_ios_column.mjs; then
             echo "::error::docs/product/parity.md's iOS column does not match the rule the document states for it, or that rule is stated in more than one place. Nothing here is about the TS<->Dart parity pairs or the matrix's table structure — those are the two other guards in this job."
@@ -1671,6 +1743,7 @@ jobs:
             exit 1
           fi
       - name: Doc checkboxes use a documented state and name their follow-up
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_doc_checkboxes.mjs; then
             echo '::error::A Markdown checkbox uses a state nothing documents, or a [~] partial names no follow-up. Neither is about the parity matrix or the TS<->Dart pairs — those are the other guards in this job.'
@@ -1683,6 +1756,7 @@ jobs:
             exit 1
           fi
       - name: custom_watch doc counts vs the enums and consts they describe
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_watch_doc_counts.mjs; then
             echo "::error::A docs/custom_watch or apps/custom_watch doc states a count that the firmware symbol it describes no longer holds, or states one no template in the registry reads. Nothing here is about the parity matrix, its iOS column, the TS<->Dart pairs or the doc checkboxes — those are the other four guards in this job."
@@ -1702,6 +1776,7 @@ jobs:
       # docs/testing/test_inventory.md states. A docs-only diff is exactly the
       # diff that breaks either, and every gated job skips on one.
       - name: Relative doc links and heading anchors resolve
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_doc_links.mjs; then
             echo "::error::A relative markdown link points at a file that does not exist, or at a heading anchor no heading in the target file generates. Nothing here is about the parity registries, the doc checkboxes, the watch counts or the test-inventory numbers — those are the other guards in this job."
@@ -1714,6 +1789,7 @@ jobs:
             exit 1
           fi
       - name: test_inventory.md counts match the suites they describe
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_test_inventory_counts.mjs; then
             echo "::error::Either a per-file test count stated in docs/testing/test_inventory.md is not the count that file's suite actually declares, or a file named as a test suite declares no test at all. Nothing here is about relative doc links, the parity registries, the doc checkboxes or the watch counts — those are the other guards in this job."
@@ -1726,6 +1802,7 @@ jobs:
             exit 1
           fi
       - name: releasing.md's release table matches the workflows it describes
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_release_table.mjs; then
             echo "::error::docs/ops/releasing.md's release table disagrees with a release workflow — a runner it names, or an artifact it says a Release carries. Nothing here is about relative doc links, the parity registries, the doc checkboxes, the watch counts or the test-inventory numbers; those are the other guards in this job."
@@ -1738,6 +1815,7 @@ jobs:
             exit 1
           fi
       - name: retention.md's cron table matches the migrations that schedule those jobs
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_retention_cron_register.mjs; then
             echo "::error::docs/compliance/retention.md's auto-deletion table disagrees with the cron.schedule / cron.unschedule set in apps/backend/supabase/migrations. Nothing here is about relative doc links, the test-inventory counts, the parity registries, the doc checkboxes or the watch counts — those are the other guards in this job."
@@ -1750,6 +1828,7 @@ jobs:
             exit 1
           fi
       - name: No merge-conflict marker lines in tracked files
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_conflict_markers.mjs; then
             echo "::error::A tracked file carries a line git writes as a merge-conflict marker (<<<<<<<, |||||||, =======, >>>>>>>). Nothing here is about the parity registries, the doc checkboxes, the watch counts, the doc links, the test-inventory counts or the retention register — those are the other guards in this job."
@@ -1762,6 +1841,8 @@ jobs:
             exit 1
           fi
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.21.0
+        id: flutter
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         with:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -1771,6 +1852,7 @@ jobs:
       # right up until the reader has to work out which of four registries
       # `check_parity_matrix.dart` is about.
       - name: parity.md table structure — columns, symbols, Partial needs Notes
+        if: ${{ !cancelled() && steps.flutter.outcome == 'success' }}
         run: |
           if ! dart run scripts/check_parity_matrix.dart; then
             echo "::error::docs/product/parity.md's table is malformed — a row without 7 cells, a symbol outside \`✓ / ✗ / Partial / N/A\`, a \`Partial\` with no Notes, or a pipe-leading line belonging to no table at all. Nothing here is about the TS<->Dart pairs or the doc checkboxes — those are two of the other guards in this job."
@@ -1799,7 +1881,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        id: checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        id: node
         with:
           node-version: 24.20.0
       - name: Firmware GATT table vs phone client constants
@@ -1818,6 +1902,7 @@ jobs:
       # declarations had drifted (decisions § 773). This is the lexer that
       # stopped it, and it is exercised by nothing else.
       - name: Rust and Dart comment blanking
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test scripts/comment_strip.test.mjs; then
             echo "::error::The comment blanker scripts/check_watch_ble_uuids.mjs reads both its sources through regressed. The GATT tables themselves are fine — the check above just passed — so this is a defect in scripts/comment_strip.mjs, not UUID drift."
@@ -1843,7 +1928,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        id: checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        id: node
         with:
           node-version: 24.20.0
       - name: Firmware golden vectors vs the phone encoder's, and the shared constants
@@ -1853,6 +1940,7 @@ jobs:
             exit 1
           fi
       - name: The wire-vector guard's own unit tests
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test scripts/check_watch_wire_vectors.test.mjs; then
             echo "::error::The wire-vector guard's own unit tests failed. The rails themselves are fine — the check above just passed — so this is a defect in scripts/check_watch_wire_vectors.mjs, not wire drift."
@@ -1865,12 +1953,14 @@ jobs:
       # order of the 64-bit SET1 pages mask, so a gap in the drawing puts every
       # page after it off by one for anyone deriving a bit position from it.
       - name: Firmware page cycle vs the navigation diagram
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_watch_page_ring.mjs; then
             echo "::error::docs/custom_watch/navigation.md's page ring no longer matches page.rs's next() chain. The failing lines name each edge that is declared-but-undrawn or drawn-but-not-declared. page.rs is the source of truth for its own cycle."
             exit 1
           fi
       - name: The page-ring guard's own unit tests
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test scripts/check_watch_page_ring.test.mjs; then
             echo "::error::The page-ring guard's own unit tests failed. The ring itself agrees — the check above just passed — so this is a defect in scripts/check_watch_page_ring.mjs, not ring drift."
@@ -1883,6 +1973,7 @@ jobs:
       # fixtures/gps_corpus/ is replayed through the reference estimator and
       # must land within its own error budget of the course's measured length.
       - name: GPS ground-truth corpus replays within budget
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: |
           if ! python3 -I scripts/gps_distance/replay_corpus.py; then
             echo "::error::A GPS corpus entry's replayed distance is outside its error budget, or the corpus is malformed. The table above prints each entry's signed error against the course's measured length. A change to scripts/gps_distance/reference.py moved it: retune, or justify a new budget in that entry's manifest. fixtures/gps_corpus/README.md."
@@ -1916,7 +2007,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        id: checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        id: node
         with:
           node-version: 24.20.0
       # Drift first, then the tool's own suite — the suite's last two cases
@@ -1944,6 +2037,7 @@ jobs:
       # run here rather than there because a phone defect under a job named for
       # the watch is a name that is wrong about the tier.
       - name: iPhone consent-prompt catalog vs Info.plist, knownRegions and the Runner target
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! bash apps/mobile_ios/scripts/check_xcstrings_parity.sh; then
             echo "::error::apps/mobile_ios ships a permission prompt that is not localized — an NS*UsageDescription key in Info.plist with no entry in ios/Runner/InfoPlist.xcstrings (or an entry for a key the plist no longer has), a locale that entry never translated, an English value that has drifted from the Info.plist fallback, a locale the catalog translates that CFBundleLocalizations or knownRegions omits, or a catalog the Runner target does not bundle. Every one of these shows the English prompt on a non-English iPhone and throws nothing."
@@ -1989,7 +2083,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        id: checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        id: node
         with:
           node-version: 24.20.0
       - name: String Catalog coverage vs CFBundleLocalizations + knownRegions
@@ -2007,6 +2103,7 @@ jobs:
       # half-declared and asserts it refuses, with the unmutated copy as the
       # positive control.
       - name: The String Catalog guard's own unit tests
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test scripts/check_xcstrings_parity.test.mjs; then
             echo "::error::The watchOS String Catalog guard's own unit tests failed. The catalog itself is fine — the check above just passed — so this is a defect in apps/watch_ios/scripts/check_xcstrings_parity.sh or the engine it shares with the iPhone, scripts/xcstrings_parity.py, not a half-declared locale."
@@ -2029,6 +2126,7 @@ jobs:
       # read outside `apps/watch_ios`: an envelope has ends in more than one app,
       # and a guard holding only the watch's cannot see the drift.
       - name: watchOS catalog usage, native declarations and duplicated sources
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_watch_ios_source.mjs; then
             echo "::error::apps/watch_ios carries a source-level defect no compiler reports — a localizing literal with no String Catalog entry, a catalog entry nothing references, an Info.plist / entitlements capability that disagrees with the code, a complication formatter that has drifted from its RunFormat copy, an App Group named two ways, a run hand-off metadata key one end of the WCSession envelope sends and the other never lifts out, a route-push key one of that envelope's three ends spells differently (which drops the whole route, after the runner has been told it was armed), or a password grant / hardcoded credential that has lost the \`#if DEBUG\` fence keeping it out of the shipped app — or the two Xcode projects that build the watch app disagreeing about which sources and resources it is made of, or Runner.xcodeproj no longer embedding it, which un-ships the watch tier while every build and every suite stays green. Nothing here is about a half-declared locale; that is the check above."
@@ -2036,6 +2134,7 @@ jobs:
             exit 1
           fi
       - name: The watchOS source guard's own unit tests
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test scripts/check_watch_ios_source.test.mjs; then
             echo "::error::The watchOS source guard's own unit tests failed. The tree itself is fine — the check above just passed — so this is a defect in scripts/check_watch_ios_source.mjs, not a defect in apps/watch_ios."
@@ -2070,7 +2169,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        id: checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        id: node
         with:
           node-version: 24.20.0
       - name: Monkey C source-level claims (no Connect IQ SDK needed)
@@ -2081,6 +2182,7 @@ jobs:
             exit 1
           fi
       - name: The Garmin source guard's own unit tests
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test scripts/check_garmin_source.test.mjs; then
             echo "::error::The Garmin source guard's own unit tests failed. The tier itself is fine — the check above just passed — so this is a defect in apps/watch_garmin/scripts/check_garmin_source.sh, not a defect in apps/watch_garmin. A guard that has stopped matching passes vacuously, which is the failure mode a source-reading guard has instead of a false negative."
@@ -2180,7 +2282,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        id: checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        id: node
         with:
           node-version: 24.20.0
       - name: IAM least privilege + the OIDC trust contract
@@ -2195,6 +2299,7 @@ jobs:
             exit 1
           fi
       - name: The distribution's error responses, and the handlers that justify them
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_infra_error_responses.mjs; then
             echo "::error::The distribution's custom_error_response set has changed, or a share Lambda has stopped answering its own 404 with the SPA shell. Nothing here is about IAM scope or alarm coverage; those are the other checks in this job."
@@ -2206,6 +2311,7 @@ jobs:
             exit 1
           fi
       - name: The API behaviours the content-type probe covers
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/probe_api_content_type.mjs --derive; then
             echo "::error::The operator probe can no longer derive the distribution's /api/* cache behaviours, so bin/preview-status.sh would report success having probed nothing. Nothing here is about IAM scope, error responses or alarm coverage; those are the other checks in this job."
@@ -2218,6 +2324,7 @@ jobs:
             exit 1
           fi
       - name: Every stack validated, every Lambda alarmed
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_infra_coverage.mjs; then
             echo "::error::A Terraform directory under infra/ is validated or dependency-tracked by nothing, a Terraform directory exists OUTSIDE infra/ where no CI job reads it at all, or a Lambda in the web-stack module has no error-rate or p95 alarm. Nothing here is about IAM scope or the OIDC trust policies; that is the other check in this job."
@@ -2229,6 +2336,7 @@ jobs:
             exit 1
           fi
       - name: The estate secrets slot, named once
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_estate_slot.mjs; then
             echo "::error::A path into the private estate secrets repo names a slot other than the one bin/lib/estate.sh declares, a bin/ script resolves the estate on its own, or a Terraform secrets_file default has moved. Nothing here is about IAM scope, error responses or alarm coverage; those are the other checks in this job."
@@ -2250,6 +2358,7 @@ jobs:
             exit 1
           fi
       - name: Provider locks hashed for every operator platform
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node scripts/check_terraform_lock_platforms.mjs; then
             echo "::error::A committed .terraform.lock.hcl under infra/ is missing a platform's h1: hash, two stacks lock the same provider version for different platforms, or a validated stack has no lock. Nothing here is about IAM scope, error responses, alarm coverage or the estate slot; those are the other checks in this job."
@@ -3567,6 +3676,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        id: checkout
       # `setup-deno` fetches the binary from the same release CDN that returned
       # 504 on 2026-09-21 until all five of setup-supabase-cli's retries were
       # spent, and it has no binary cache of its own -- its `cache:` input is
@@ -3581,6 +3691,7 @@ jobs:
           path: ${{ runner.tool_cache }}/deno
           key: deno-bin-${{ runner.os }}-x64-2.9.6
       - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        id: deno
         with:
           deno-version: v2.9.6
       # Persist the Deno module cache across runs keyed on the committed
@@ -3618,6 +3729,7 @@ jobs:
       # scripts/edge_functions_typecheck_coverage.test.mjs asserts by running
       # both `files=$(…)` expressions rather than restating either.
       - name: Warm the Deno dependency cache
+        id: warm
         working-directory: apps/backend
         run: |
           files=$(find supabase/functions -type f -name '*.ts' | sort)
@@ -3652,6 +3764,8 @@ jobs:
       # @types/node devDependency (decisions § 757) — it is not an npm
       # workspace install and does not need setup-node.
       - name: Provision node types for the typecheck
+        id: node_types
+        if: ${{ !cancelled() && steps.deno.outcome == 'success' }}
         run: |
           for attempt in 1 2 3; do
             if deno install; then
@@ -3664,6 +3778,7 @@ jobs:
           echo "Reproduce locally with: deno install (from the repo root)."
           exit 1
       - name: Edge Function typecheck
+        if: ${{ !cancelled() && steps.warm.outcome == 'success' && steps.node_types.outcome == 'success' }}
         working-directory: apps/backend
         run: |
           files=$(find supabase/functions -type f -name '*.ts' | sort)
@@ -3676,6 +3791,8 @@ jobs:
       # nothing outside node:*, so no workspace install is needed — only a
       # pinned runtime.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        id: node
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         with:
           node-version: 24.20.0
       # A green Deno suite says every assertion passed, not that any of them
@@ -3691,6 +3808,7 @@ jobs:
       # and behind a Docker start a broken stack would fail first and take this
       # signal with it. Measured at ~8 s: it runs the whole Deno suite twice.
       - name: Validate the vacuity guard's own mutation operator
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test apps/backend/scripts/check_edge_function_test_vacuity.test.mjs; then
             echo "::error::The Edge Function vacuity guard's own tests fail. Nothing here involves the Edge Functions, the typecheck or the Supabase stack — fix apps/backend/scripts/edge_function_neuter.mjs (or its tests) first. A failure in the 'neutered twin exports exactly the names the original did' case means the mutation operator has gone lossy, and a lossy operator scores every test in an importing file as a kill nobody proved."
@@ -3698,6 +3816,7 @@ jobs:
             exit 1
           fi
       - name: Mutation-check the Edge Function suite for vacuity
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node apps/backend/scripts/check_edge_function_test_vacuity.mjs; then
             echo "::error::An Edge Function test still passes with every module in the tree neutered, so it cannot tell a working handler from a missing one. The failure above names the file, line and test. Give the assertion something the subject alone can satisfy — a positive control beside the negative, the actual value beside the equality — or add it to EXPECTED_SURVIVORS with the reason its answer is real."
@@ -3705,10 +3824,14 @@ jobs:
             exit 1
           fi
       - uses: ./.github/actions/setup-supabase-cli
+        id: supabase_cli
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         with:
           version: 2.84.2
       # Retry + port-cleanup rationale lives in the composite action.
       - name: Start local Supabase stack
+        id: supabase_stack
+        if: ${{ !cancelled() && steps.supabase_cli.outcome == 'success' }}
         uses: ./.github/actions/start-supabase
       # Auto-started edge-runtime container has no env vars beyond the
       # Supabase defaults — every secret-gated function 503s. Run
@@ -3721,6 +3844,8 @@ jobs:
       # name matched nothing and `|| true` swallowed the miss. What makes
       # the env-loaded host take over is `functions serve`, not the stop.
       - name: Boot the env-loaded functions host
+        id: functions_host
+        if: ${{ !cancelled() && steps.supabase_stack.outcome == 'success' && steps.deno.outcome == 'success' }}
         working-directory: apps/backend
         run: |
           # Write a CI-scoped .env.local with test-default secrets. The
@@ -3807,6 +3932,7 @@ jobs:
           fi
           echo "SUPABASE_SERVICE_ROLE_KEY=$svc_key" >> "$GITHUB_ENV"
       - name: Run handler-envelope integration tests
+        if: ${{ !cancelled() && steps.functions_host.outcome == 'success' }}
         working-directory: apps/backend
         env:
           SUPABASE_TEST_URL: http://127.0.0.1:24321
@@ -3850,6 +3976,7 @@ jobs:
       # run above, whose green baseline it re-measures and refuses to proceed
       # without.
       - name: Validate the served-tree mutation table
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test apps/backend/scripts/check_served_envelope_mutations.test.mjs; then
             echo "::error::The served-tree mutation guard's own tests fail. Nothing here involves the live host, the typecheck or the pure-helper suite — an anchor in check_served_envelope_mutations.mjs no longer occurs exactly once in the handler it names, a mutation claims a test case the file no longer carries, or the source census found a declared case that no mutation names (a case whose ignore: gate is never false in CI runs nowhere, so neither the unmeasured-case nor the phantom-kill check can see it -- register it or exempt it in UNMEASURED_CASES with a reason). Re-anchor the entry on the line that guards it now; deleting it puts that case back to unmeasured."
@@ -3857,6 +3984,7 @@ jobs:
             exit 1
           fi
       - name: Mutation-check the handler-envelope suite against the served tree
+        if: ${{ !cancelled() && steps.node.outcome == 'success' && steps.functions_host.outcome == 'success' }}
         env:
           SUPABASE_TEST_URL: http://127.0.0.1:24321
           REVENUECAT_WEBHOOK_SECRET: ci-revenuecat-secret
@@ -3876,6 +4004,7 @@ jobs:
             exit 1
           fi
       - name: Run pure-helper unit tests
+        if: ${{ !cancelled() && steps.deno.outcome == 'success' && steps.warm.outcome == 'success' }}
         working-directory: apps/backend
         # `deno test --no-check <dir>` recurses into the directory and
         # picks up every `*.test.ts` file. Self-audit (May 2026) caught
@@ -3914,10 +4043,12 @@ jobs:
       # For the refusal-assertion guard below. It imports nothing outside
       # node:*, so no workspace install is needed — only a pinned runtime.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        id: node
         with:
           node-version: 24.20.0
       # Retry + port-cleanup rationale lives in the composite action.
       - name: Start local Supabase stack
+        id: supabase_stack
         uses: ./.github/actions/start-supabase
       - name: Check the server_only registry matches the migrations
         run: |
@@ -3927,6 +4058,7 @@ jobs:
             exit 1
           fi
       - name: Validate the server_only registry guard
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test apps/backend/scripts/check_server_only_registry.test.mjs; then
             echo "::error::The server_only registry guard's own tests fail, so its green means nothing."
@@ -3934,6 +4066,7 @@ jobs:
             exit 1
           fi
       - name: Run pgtap RLS suite
+        if: ${{ !cancelled() && steps.supabase_stack.outcome == 'success' }}
         working-directory: apps/backend
         run: |
           if ! supabase test db --local; then
@@ -3956,6 +4089,7 @@ jobs:
       # vacuous, which is § 741's inversion pointed the other way, and it would
       # be invisible inside a green mutation run.
       - name: Validate the refusal-assertion mutation operators
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test apps/backend/scripts/check_pgtap_refusal_assertions.test.mjs; then
             echo "::error::The pgtap refusal-assertion guard's own tests fail."
@@ -3968,6 +4102,7 @@ jobs:
             exit 1
           fi
       - name: Mutation-check the pgtap refusal assertions
+        if: ${{ !cancelled() && steps.node.outcome == 'success' && steps.supabase_stack.outcome == 'success' }}
         run: |
           if ! node apps/backend/scripts/check_pgtap_refusal_assertions.mjs; then
             echo "::error::A pgtap refusal assertion still passes with the access control it tests taken away, so it cannot tell a hidden row from a row that was never inserted."
@@ -3981,6 +4116,7 @@ jobs:
       # migration TEXT instead, which answers the same on every image and needs
       # no stack at all -- it is deliberately not conditioned on the steps above.
       - name: Check every caller's EXECUTE grant is stated by a migration
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
           if ! node --test apps/backend/scripts/check_stated_function_grants.test.mjs; then
             echo "::error::The stated-grant guard's own tests fail."

@@ -101,6 +101,20 @@
 //      already parses, and an anchor matching nothing is a hard error rather
 //      than a silent pass (decisions § 1585).
 //
+//   9. In a bundled job, one failing check does not skip the checks after it.
+//      A step with no `if:` runs on `success()`, so before this rule the first
+//      red check in `parity-types` skipped the web unit suite, three
+//      typechecks and the live-schema check behind it. On PR #1220 a false
+//      positive did exactly that, and a fix for the one visible failure could
+//      not say whether five more were waiting. Every step after a job's first
+//      self-diagnosing step now carries `!cancelled()` and names a
+//      prerequisite as `steps.<id>.outcome == 'success'`. Without the
+//      prerequisite, a failed `npm ci` would set twenty guards running and
+//      each would print a confident diagnosis about itself, which is rule 1's
+//      incident by another route. The job is still red and the gate still
+//      blocks; what changes is that one run lists every failure instead of
+//      the first (decisions § 2233).
+//
 // THE SUBJECT IS PER RULE, and stated in the output. For this file's whole
 // life every rule read `.github/workflows` and nothing else, so the two
 // composite actions under `.github/actions` were outside all of them at once
@@ -161,7 +175,7 @@ export const ANNOTATION = '::error::';
 /**
  * @typedef {{ name: string, text: string }} WorkflowFile
  * @typedef {{ job: string, line: number, lines: string[] }} RawStep
- * @typedef {{ job: string, line: number, name: string | null, if: string | null, hasRun: boolean, body: string }} Step
+ * @typedef {{ job: string, line: number, name: string | null, id: string | null, if: string | null, hasRun: boolean, body: string }} Step
  */
 
 /// One `steps:` list, from the line after the `steps:` key. Shared by the
@@ -222,10 +236,12 @@ function toStep(s) {
 	const body = s.lines.join('\n');
 	const cond = body.match(/^\s*(?:-\s+)?if:\s*(.*?)\s*$/m);
 	const name = body.match(/^\s*(?:-\s+)?name:\s*(.*?)\s*$/m);
+	const id = body.match(/^\s*(?:-\s+)?id:\s*([A-Za-z_][A-Za-z0-9_-]*)\s*$/m);
 	return {
 		job: s.job,
 		line: s.line,
 		name: name ? name[1] : null,
+		id: id ? id[1] : null,
 		if: cond ? cond[1] : null,
 		hasRun: /^\s*(?:-\s+)?run:/m.test(body),
 		body,
@@ -351,6 +367,12 @@ export const RULE_SUBJECTS = [
 		what: 'the documents describing the merge gate say what PR_ADVISORY holds',
 		actions: false,
 		why: 'the subject is two documents and one register, and an action appears in none of them',
+	},
+	{
+		rule: 9,
+		what: 'one failing check in a bundled job does not skip the checks after it',
+		actions: false,
+		why: "bundling is a property of a job, and a composite action's steps run under its calling job's conditions",
 	},
 ];
 
@@ -605,6 +627,99 @@ export function checkStepDiagnoses(files) {
 	}
 
 	return { errors, ok, exempt, bundles: derived };
+}
+
+/// A condition that keeps a step running after an earlier one failed, and
+/// still stops it when the run is cancelled. `always()` would not.
+export const RUN_PAST_FAILURE = /!\s*cancelled\s*\(\s*\)/;
+
+/// The prerequisites a condition names: every `steps.<id>.outcome == 'success'`.
+export const PREREQUISITE = /\bsteps\.([A-Za-z_][A-Za-z0-9_-]*)\.outcome\s*==\s*'success'/g;
+
+/// Rule 9 — in a bundled job, one failing check does not hide the rest.
+///
+/// A step with no `if:` runs on `success()`, so the first red check skipped
+/// every step below it. PR #1220 is the incident: a false positive in the
+/// reimplementation guard skipped the web unit suite, three typechecks, the
+/// CloudFront tests and the live-schema type check, so a reader fixing the
+/// one red step could not know whether five more were waiting behind it.
+///
+/// From the job's first self-diagnosing step on, every step carries
+/// `!cancelled()` and names, as `steps.<id>.outcome == 'success'`, an earlier
+/// step it actually needs. The second half is what keeps rule 1's promise:
+/// `!cancelled()` alone would run twenty guards after a failed `npm ci`, each
+/// printing a confident diagnosis about itself. Naming the prerequisite is a
+/// judgement this rule cannot make, so it checks only that one was made and
+/// that the id it names is an earlier step of the same job.
+/**
+ * @param {readonly WorkflowFile[]} files
+ * @returns {{ errors: string[], ok: string[] }}
+ */
+export function checkRunPastFailure(files) {
+	const errors = [];
+	const ok = [];
+	const bundled = new Set([...derivedBundles(files).keys(), ...DIAGNOSING_JOBS.keys()]);
+
+	for (const { name, text } of files) {
+		/** @type {Map<string, Step[]>} */
+		const byJob = new Map();
+		for (const step of parseSteps(text)) {
+			if (!bundled.has(step.job)) continue;
+			if (!byJob.has(step.job)) byJob.set(step.job, []);
+			byJob.get(step.job)?.push(step);
+		}
+
+		for (const [job, steps] of byJob) {
+			const first = steps.findIndex((s) => s.body.includes(ANNOTATION));
+			if (first === -1) continue;
+			/** @type {Set<string>} */
+			const earlier = new Set();
+			for (const s of steps.slice(0, first + 1)) if (s.id) earlier.add(s.id);
+			let held = 0;
+
+			for (const step of steps.slice(first + 1)) {
+				const where = `${name}:${step.line}`;
+				const label = step.name ?? runBody(step).split('\n')[0].replace(/^\s*(?:-\s+)?run:\s*/, '').trim();
+				const cond = step.if ?? '';
+				const named = [...cond.matchAll(PREREQUISITE)].map((m) => m[1]);
+				const unknown = named.filter((n) => !earlier.has(n));
+
+				if (!RUN_PAST_FAILURE.test(cond)) {
+					errors.push(
+						`${where} — step "${label}" in bundled job \`${job}\` has no ` +
+							`\`!cancelled()\` in its \`if:\`, so any check failing above it ` +
+							`skips it and its verdict is never seen. Give it ` +
+							`\`if: \${{ !cancelled() && steps.<id>.outcome == 'success' }}\`, ` +
+							`naming the earlier step it needs.`,
+					);
+				} else if (named.length === 0) {
+					errors.push(
+						`${where} — step "${label}" in bundled job \`${job}\` runs past ` +
+							`failures but names no prerequisite, so it would also run after a ` +
+							`failed setup step and print a diagnosis about itself that the ` +
+							`setup caused. Add \`&& steps.<id>.outcome == 'success'\` for the ` +
+							`step it needs.`,
+					);
+				} else if (unknown.length > 0) {
+					errors.push(
+						`${where} — step "${label}" in bundled job \`${job}\` names ` +
+							`${unknown.map((u) => `\`steps.${u}\``).join(', ')}, which is no ` +
+							`earlier step of that job. An outcome of a step that does not exist ` +
+							`(or has not run yet) is never 'success', so this step never runs.`,
+					);
+				} else {
+					held++;
+				}
+				if (step.id) earlier.add(step.id);
+			}
+			ok.push(`${name} job \`${job}\`: ${held} step(s) after its first check run past an earlier failure, each behind a named prerequisite`);
+		}
+	}
+
+	if (ok.length === 0) {
+		errors.push('rule 9 found no bundled job with a self-diagnosing step, so it checked nothing.');
+	}
+	return { errors, ok };
 }
 
 /// The aggregator every branch-protection rule points at.
@@ -1505,6 +1620,7 @@ export function checkAll(files, actions = []) {
 	const subjects = checkRuleSubjects(files, actions);
 	const stated = checkStatedJobCount(files, readFileSync(ORIENTATION_DOC, 'utf-8'));
 	const prGates = checkPrGates(files);
+	const runPast = checkRunPastFailure(files);
 	const gateDocs = checkGateDocs(
 		files,
 		readFileSync(ORIENTATION_DOC, 'utf-8'),
@@ -1520,6 +1636,7 @@ export function checkAll(files, actions = []) {
 			...delivery.errors,
 			...stated.errors,
 			...prGates.errors,
+			...runPast.errors,
 			...gateDocs.errors,
 		],
 		ok: [
@@ -1531,6 +1648,7 @@ export function checkAll(files, actions = []) {
 			...delivery.ok,
 			...stated.ok,
 			...prGates.ok,
+			...runPast.ok,
 			...gateDocs.ok,
 		],
 		scoping,
@@ -1541,6 +1659,7 @@ export function checkAll(files, actions = []) {
 		subjects,
 		stated,
 		prGates,
+		runPast,
 		gateDocs,
 	};
 }

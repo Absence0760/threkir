@@ -242,6 +242,7 @@ export const messages = {
 	"coachChat.planEditScopeSeason": "このブロックとシーズン内の後続ブロック",
 	"coachChat.planEditRejectedSeason": "この変更を後続のブロックにも適用すると、それらのブロックの負荷が急に上がりすぎます。ここだけに適用するには「このブロックのみ」を選んでください。",
 	"coachChat.planEditApply": "適用",
+	"coachChat.planEditDayChanged": "日付が変わったため、変更案を今日の日付で再確認しました。適用する前に内容を確認してください。",
 	"coachChat.planEditDiscard": "破棄",
 	"coachChat.copyToClipboard": "クリップボードにコピー",
 	"coachChat.copy": "コピー",

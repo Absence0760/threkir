@@ -125,8 +125,14 @@ function sseBody(reply: string): string {
 const REQUEST = 'make this week easier';
 
 /// Stub the Coach's reply (the adjust link) and the edit endpoint (one
-/// scale of week 1 to 90%), send a message, and return the card.
-async function askForEdit(page: Page, mockRoute: MockRoute, planId: string) {
+/// scale of week 1, to 90% unless told otherwise), send a message, and
+/// return the card.
+async function askForEdit(
+	page: Page,
+	mockRoute: MockRoute,
+	planId: string,
+	factor = 0.9,
+) {
 	await mockRoute(page, '**/rest/v1/rpc/get_coach_usage*', (route) =>
 		route.fulfill({ status: 200, headers: { 'content-type': 'application/json' }, body: '0' }),
 	);
@@ -148,7 +154,7 @@ async function askForEdit(page: Page, mockRoute: MockRoute, planId: string) {
 			status: 200,
 			contentType: 'application/json',
 			body: JSON.stringify({
-				ops: [{ op: 'scale_week', weekIndex: 0, factor: 0.9 }],
+				ops: [{ op: 'scale_week', weekIndex: 0, factor }],
 				dropped: 0,
 				notes: [],
 				today: browserDate(0),
@@ -191,7 +197,11 @@ test.describe('/coach — plan edit card', () => {
 		await acceptCookieConsent(context);
 	});
 
+	let beforeId: string | null = null;
+
 	test.afterEach(async () => {
+		if (beforeId) await admin.from('training_plans').delete().eq('id', beforeId);
+		beforeId = null;
 		if (seeded) {
 			await admin.from('training_plans').delete().in('id', [seeded.planId, seeded.nextId]);
 			await admin.from('coach_messages').delete().eq('user_id', USER_B.id).eq('plan_id', seeded.planId);
@@ -226,6 +236,74 @@ test.describe('/coach — plan edit card', () => {
 		expect(after.get(seeded.longA)).toBe(14_400);
 		expect(after.get(seeded.laterA)).toBe(18_000);
 		expect(await weekTarget(seeded.weekA0)).toBe(21_600);
+	});
+
+	test('after local midnight Apply re-checks the change against the new day instead of sending yesterday', async ({
+		page,
+		mockRoute,
+	}) => {
+		seeded = await seed(false);
+		// The browser runs in UTC (playwright.config.ts): a minute to midnight.
+		await page.clock.install({ time: new Date(`${browserDate(0)}T23:59:00Z`) });
+		const card = await askForEdit(page, mockRoute, seeded.planId);
+
+		await page.clock.fastForward('02:00');
+		await card.getByRole('button', { name: 'Apply', exact: true }).click();
+		await expect(card.getByTestId('coach-plan-edit-day-changed')).toBeVisible();
+		const untouched = await distances([seeded.easyA, seeded.longA]);
+		expect(untouched.get(seeded.easyA)).toBe(8_000);
+		expect(untouched.get(seeded.longA)).toBe(16_000);
+
+		// Re-graded against the new day, the next Apply writes.
+		await card.getByRole('button', { name: 'Apply', exact: true }).click();
+		await expect(card).toContainText('Your plan has been updated', { timeout: 10_000 });
+		const after = await distances([seeded.easyA, seeded.longA]);
+		expect(after.get(seeded.easyA)).toBe(7_200);
+		expect(after.get(seeded.longA)).toBe(14_400);
+	});
+
+	test('a B race at the end of the block before holds the days its recovery reaches', async ({
+		page,
+		mockRoute,
+	}) => {
+		seeded = await seed(false);
+		// Yesterday's B 13.5 km race closes the previous block: round(4.5) = 5
+		// recovery days, today to day 4, so day 1's easy run is held and day
+		// 5's long run is not. The card reads that block (fetchPrecedingPlan)
+		// and apply_ai_plan_edits re-checks the same one.
+		beforeId = crypto.randomUUID();
+		const weekId = crypto.randomUUID();
+		expect(
+			(
+				await admin.from('training_plans').insert({
+					id: beforeId,
+					user_id: USER_B.id,
+					name: 'e2e chat edit previous block',
+					goal_event: 'distance_half',
+					goal_distance_m: 21097,
+					start_date: browserDate(-14),
+					end_date: browserDate(-1),
+					status: 'completed',
+					days_per_week: 4,
+				})
+			).error,
+		).toBeNull();
+		await admin.from('plan_weeks').insert({ id: weekId, plan_id: beforeId, week_index: 1, phase: 'race', target_volume_m: 13_500 });
+		await admin.from('plan_workouts').insert({
+			week_id: weekId,
+			scheduled_date: browserDate(-1),
+			kind: 'race',
+			target_distance_m: 13_500,
+			race_priority: 'B',
+		});
+
+		const card = await askForEdit(page, mockRoute, seeded.planId, 1.1);
+		await card.getByRole('button', { name: 'Apply', exact: true }).click();
+		await expect(card).toContainText('Your plan has been updated', { timeout: 10_000 });
+
+		const after = await distances([seeded.easyA, seeded.longA]);
+		expect(after.get(seeded.easyA)).toBe(8_000);
+		expect(after.get(seeded.longA)).toBe(17_600);
 	});
 
 	test('with a block queued after it, the runner chooses whether the change reaches it', async ({

@@ -15,17 +15,24 @@
 	import { onMount } from 'svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { AI_CONSENT_HREF } from '#lib/core/ai_disclosure.ts';
-	import { applyAiPlanEdits, fetchMyPlansWithError, fetchPlan, fetchRuns } from '#lib/core/data.ts';
+	import {
+		applyAiPlanEdits,
+		fetchMyPlansWithError,
+		fetchPlan,
+		fetchPrecedingPlan,
+		fetchRuns,
+	} from '#lib/core/data.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { fmtKm } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import type { WorkoutState } from '#lib/training/plan_edit/apply.ts';
-	import type { PlanEditNote } from '#lib/training/plan_edit/ops.ts';
+	import type { PlanEditNote, PlanEditOp } from '#lib/training/plan_edit/ops.ts';
 	import {
 		aiPlanEditPayload,
 		offersSeasonScope,
+		planEditBlock,
 		planSeasonEdit,
 		type PlanEditBlock,
 		type PlanEditScope,
@@ -33,10 +40,9 @@
 	} from '#lib/training/plan_edit/season.ts';
 	import { PlanEditError, requestPlanEdits } from '#lib/training/plan_edit_client.ts';
 	import { plansFollowing } from '#lib/training/plan_current.ts';
-	import { recentRunVolume } from '#lib/training/plan_ramp.ts';
+	import { recentRunVolume, type RunForVolume } from '#lib/training/plan_ramp.ts';
 	import { parseISO, todayISO } from '#lib/training/training.ts';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
-	import type { PlanWeek, PlanWorkout, TrainingPlan } from '#lib/types.ts';
 
 	interface Props {
 		planId: string;
@@ -57,26 +63,20 @@
 	let scope = $state<PlanEditScope>('plan');
 	let saving = $state(false);
 	let confirmHarder = $state(false);
+	/// Set when Apply found the day had turned since the changes were worked
+	/// out: they were graded again against the new day and need a fresh look.
+	let dayChanged = $state(false);
+	/// The day the changes were graded against, sent as `p_today` on Apply.
 	let today = '';
+	/// What the grade was built from, kept so a new day can re-grade it
+	/// without asking the Coach again.
+	let basis: {
+		ops: PlanEditOp[];
+		blocks: { primary: PlanEditBlock; following: PlanEditBlock[]; preceding: PlanEditBlock | null };
+		runs: RunForVolume[];
+	} | null = null;
 
 	let shown = $derived(edits ? (scope === 'season' && edits.season ? edits.season : edits.plan) : null);
-
-	function block(plan: TrainingPlan, weeks: PlanWeek[], workouts: PlanWorkout[]): PlanEditBlock {
-		return {
-			planId: plan.id,
-			name: plan.name,
-			snapshot: {
-				plan: { start_date: plan.start_date, end_date: plan.end_date },
-				weeks: weeks.map((w) => ({
-					id: w.id,
-					week_index: w.week_index,
-					phase: w.phase,
-					target_volume_m: w.target_volume_m,
-				})),
-				workouts: workouts.map((w) => ({ ...w })),
-			},
-		};
-	}
 
 	function errorFor(e: unknown): { message: string; consent: boolean } {
 		const kind = e instanceof PlanEditError ? e.kind : 'unavailable';
@@ -88,7 +88,11 @@
 		return { message: m('coachChat.planEditFailed'), consent: false };
 	}
 
-	async function loadBlocks(): Promise<{ primary: PlanEditBlock; following: PlanEditBlock[] }> {
+	async function loadBlocks(): Promise<{
+		primary: PlanEditBlock;
+		following: PlanEditBlock[];
+		preceding: PlanEditBlock | null;
+	}> {
 		const [primaryRes, mine] = await Promise.all([fetchPlan(planId), fetchMyPlansWithError()]);
 		if (primaryRes.error) throw new Error(primaryRes.error);
 		if (mine.error) throw new Error(mine.error);
@@ -100,13 +104,20 @@
 		// runner's active, non-template plans that start after this one ends.
 		const active = mine.plans.filter((p) => p.status === 'active' && !p.is_template && p.id !== plan.id);
 		const later = plansFollowing(plan, active).slice(1);
-		const reads = await Promise.all(later.map((p) => fetchPlan(p.id)));
+		const [reads, before] = await Promise.all([
+			Promise.all(later.map((p) => fetchPlan(p.id))),
+			fetchPrecedingPlan(plan.start_date),
+		]);
 		const following: PlanEditBlock[] = [];
 		for (const r of reads) {
 			if (r.error) throw new Error(r.error);
-			if (r.plan) following.push(block(r.plan, r.weeks, r.workouts));
+			if (r.plan) following.push(planEditBlock(r.plan, r.weeks, r.workouts));
 		}
-		return { primary: block(plan, primaryRes.weeks, primaryRes.workouts), following };
+		return {
+			primary: planEditBlock(plan, primaryRes.weeks, primaryRes.workouts),
+			following,
+			preceding: before ? planEditBlock(before.plan, before.weeks, before.workouts) : null,
+		};
 	}
 
 	async function propose(): Promise<void> {
@@ -115,6 +126,8 @@
 		error = null;
 		edits = null;
 		noChanges = false;
+		dayChanged = false;
+		basis = null;
 		scope = 'plan';
 		today = todayISO();
 		try {
@@ -125,18 +138,8 @@
 			]);
 			notes = proposal.notes;
 			dropped = proposal.dropped;
-			const recent = recentRunVolume(runs, Date.now());
-			const input = { primary: blocks.primary, ops: proposal.ops, following: blocks.following, recent, todayIso: today };
-			const plan = planSeasonEdit({ ...input, scope: 'plan' });
-			const first = plan.blocks[0].application;
-			if (first.workouts.length === 0 && first.weeks.length === 0) {
-				noChanges = true;
-			} else {
-				const season = offersSeasonScope(blocks.primary, proposal.ops, blocks.following, today)
-					? planSeasonEdit({ ...input, scope: 'season' })
-					: null;
-				edits = { plan, season };
-			}
+			basis = { ops: proposal.ops, blocks, runs };
+			grade();
 			phase = 'ready';
 		} catch (e) {
 			if (!(e instanceof PlanEditError)) {
@@ -147,14 +150,61 @@
 		}
 	}
 
+	/// Apply the operations and grade every block against `today`. Each
+	/// operation's target is re-checked for editability on that day, so a
+	/// workout that has become past drops out rather than reaching the RPC.
+	function grade(): void {
+		if (!basis) return;
+		const { ops, blocks, runs } = basis;
+		// Measured now, so a re-grade on a new day has a new day's baseline.
+		const recent = recentRunVolume(runs, Date.now());
+		const input = {
+			primary: blocks.primary,
+			ops,
+			following: blocks.following,
+			preceding: blocks.preceding,
+			recent,
+			todayIso: today,
+		};
+		const plan = planSeasonEdit({ ...input, scope: 'plan' });
+		const first = plan.blocks[0].application;
+		if (first.workouts.length === 0 && first.weeks.length === 0) {
+			noChanges = true;
+			edits = null;
+			return;
+		}
+		const season = offersSeasonScope(blocks.primary, ops, blocks.following, today, blocks.preceding)
+			? planSeasonEdit({ ...input, scope: 'season' })
+			: null;
+		if (!season) scope = 'plan';
+		edits = { plan, season };
+	}
+
+	/// The changes were graded against the day they were worked out on. After
+	/// local midnight that day is yesterday: a workout dated yesterday would
+	/// still read as editable, the grade would describe the wrong week, and
+	/// `p_today` (accepted within a day of the server's date) would let the RPC
+	/// write a workout that is now in the past. Re-grade against the new day
+	/// and show the result instead of applying.
+	function dayTurned(): boolean {
+		const now = todayISO();
+		if (now === today) return false;
+		today = now;
+		dayChanged = true;
+		grade();
+		return true;
+	}
+
 	function onApplyClick(): void {
 		if (!shown || shown.verdict === 'reject' || saving) return;
+		if (dayTurned()) return;
 		if (shown.verdict === 'confirm') confirmHarder = true;
 		else void persist();
 	}
 
 	async function persist(): Promise<void> {
 		confirmHarder = false;
+		if (dayTurned()) return;
 		const edit = shown;
 		if (!edit || edit.verdict === 'reject' || saving) return;
 		saving = true;
@@ -197,6 +247,10 @@
 		<span class="material-symbols" aria-hidden="true">tune</span>
 		{m('coachChat.planEditTitle')}
 	</p>
+
+	{#if dayChanged && phase === 'ready'}
+		<p class="note" role="status" data-testid="coach-plan-edit-day-changed">{m('coachChat.planEditDayChanged')}</p>
+	{/if}
 
 	{#if phase === 'idle'}
 		<button type="button" class="btn btn-outline btn-sm" onclick={propose}>

@@ -260,6 +260,7 @@ export const en = {
 	"coachChat.planEditScopeSeason": "This block and the following blocks in the season",
 	"coachChat.planEditRejectedSeason": "Carrying this into the following blocks would raise their load too sharply. Choose This block only to apply it here.",
 	"coachChat.planEditApply": "Apply",
+	"coachChat.planEditDayChanged": "It's a new day, so the suggested changes were checked again against today. Review them before you apply.",
 	"coachChat.planEditDiscard": "Discard",
 	"coachChat.copyToClipboard": "Copy to clipboard",
 	"coachChat.copy": "Copy",

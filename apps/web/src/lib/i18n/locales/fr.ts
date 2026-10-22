@@ -247,6 +247,7 @@ export const messages = {
 	"coachChat.planEditScopeSeason": "Ce bloc et les blocs suivants de la saison",
 	"coachChat.planEditRejectedSeason": "Reporter cette modification sur les blocs suivants augmenterait leur charge trop brusquement. Choisissez « Ce bloc uniquement » pour l'appliquer ici.",
 	"coachChat.planEditApply": "Appliquer",
+	"coachChat.planEditDayChanged": "Un nouveau jour a commencé, les modifications proposées ont donc été revérifiées pour aujourd'hui. Relisez-les avant de les appliquer.",
 	"coachChat.planEditDiscard": "Refuser",
 	"coachChat.copyToClipboard": "Copier dans le presse-papiers",
 	"coachChat.copy": "Copier",

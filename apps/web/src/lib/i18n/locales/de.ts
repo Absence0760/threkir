@@ -247,6 +247,7 @@ export const messages = {
 	"coachChat.planEditScopeSeason": "Diesen Block und die folgenden Blöcke der Saison",
 	"coachChat.planEditRejectedSeason": "Würde diese Änderung in die folgenden Blöcke übernommen, stiege deren Belastung zu stark an. Wähle „Nur diesen Block“, um sie nur hier zu übernehmen.",
 	"coachChat.planEditApply": "Übernehmen",
+	"coachChat.planEditDayChanged": "Es ist ein neuer Tag, daher wurden die vorgeschlagenen Änderungen für heute erneut geprüft. Prüfe sie, bevor du sie übernimmst.",
 	"coachChat.planEditDiscard": "Verwerfen",
 	"coachChat.copyToClipboard": "In Zwischenablage kopieren",
 	"coachChat.copy": "Kopieren",

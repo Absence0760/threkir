@@ -902,3 +902,25 @@ Deno.test('PROFILE_SELECT names columns user_profiles actually has', () => {
 	const missing = plainColumns(PROFILE_SELECT).filter((c) => !cols!.has(c));
 	assertEquals(missing, [], `PROFILE_SELECT asks for absent columns: ${missing.join(', ')}`);
 });
+
+Deno.test('no against-me reports spec discloses the reporter\'s notes', () => {
+	// reports.notes is the reporter's own free text (submit_report's p_notes).
+	// It can name or describe the reporter, and a direct-message report's
+	// reporter is always the recipient, so the reported person's projections
+	// must never ship it (Art 15(4)).
+	const offenders = buildBackupSpecs(TEST_UID)
+		.filter((s) => s.table === 'reports' && !s.filter.startsWith('reporter_id='))
+		.filter((s) => s.select === '*' || s.select.split(',').includes('notes'));
+	assertEquals(offenders.length, 0, `against-me reports spec discloses notes: ${offenders.map((o) => o.entry).join(', ')}`);
+});
+
+Deno.test('reports_against_my_messages holds back a pending report', () => {
+	// The sender can identify the reporter (only the recipient can report a
+	// direct message), so a report still under review stays out of the
+	// archive until it is resolved.
+	const rep = buildBackupSpecs(TEST_UID).find(
+		(s) => s.entry === 'reports_against_my_messages.json',
+	);
+	assertExists(rep);
+	assertEquals(rep.filter.includes('status=neq.pending'), true);
+});

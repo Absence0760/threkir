@@ -2383,25 +2383,27 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		// Art 15(1)(c) gives the data subject the right to know
 		// recipients of their data, including moderation actions
 		// taken against them. We project a narrow column set —
-		// reporter_id is anonymised (competing rights under Art 15(4))
-		// while existence + reason + status disclose the action.
+		// reporter_id and the reporter's notes are withheld (competing
+		// rights under Art 15(4)) while existence + reason + status
+		// disclose the action.
 		// audit/data-export-completeness May 2026 Low closeout.
 		{
 			name:   "reports_against_me.json",
 			table:  "reports",
 			filter: "target_kind=eq.user&target_id=eq." + uid,
-			sel:    "id,target_kind,target_id,reason,status,notes,created_at,reviewed_at",
+			sel:    "id,target_kind,target_id,reason,status,created_at,reviewed_at",
 		},
 		// reports on the user's own direct messages. submit_report snapshots
 		// the reported message (migration 20271021000003) and the snapshot
 		// outlives an unsend, so it is the subject's own words held in a
-		// second place: disclosed under Art 15 with the reporter anonymised,
-		// same projection discipline as reports_against_me.
+		// second place, disclosed under Art 15. Only the recipient can report
+		// a direct message, so the reporter is identifiable: the notes are
+		// never included and a pending report is held back (Art 15(4)).
 		{
 			name:   "reports_against_my_messages.json",
 			table:  "reports",
-			filter: "target_kind=eq.direct_message&snapshot_author_id=eq." + uid,
-			sel:    "id,target_kind,target_id,reason,status,notes,created_at,reviewed_at,snapshot_body,snapshot_sent_at",
+			filter: "target_kind=eq.direct_message&snapshot_author_id=eq." + uid + "&status=neq.pending",
+			sel:    "id,target_kind,target_id,reason,status,created_at,reviewed_at,snapshot_body,snapshot_sent_at",
 		},
 		// direct_messages — private 1:1 conversations, both directions
 		// (messages the user sent and messages they received). `body`

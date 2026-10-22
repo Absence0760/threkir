@@ -35,8 +35,30 @@ type WithNullableArgs<Functions> = {
 		: Functions[N];
 };
 
+/// The second correction: the PostgREST computed fields the generator leaves
+/// off a table's `Row`.
+///
+/// `is_official(<table>)` (migration 20271021000030) is a function taking the
+/// table's row, which PostgREST serves as a virtual column a select names
+/// explicitly (`'*, is_official'`) and leaves out of `*`. The postgres-meta CI
+/// pins (v0.96) emits the function under `Functions` but not on the table's
+/// `Row`, so the typed select parser would read `is_official` as a missing
+/// column and degrade the whole row to an error. Declaring it here, with
+/// `ComputedFields` naming it, is the shape newer generators emit: the
+/// column types as `boolean | null` when selected and stays out of `*`.
+type OfficialTables = 'routes' | 'training_plans' | 'gym_routines' | 'challenges' | 'session_plans';
+
+type WithComputedFields<Tables> = {
+	[T in keyof Tables]: T extends OfficialTables
+		? Tables[T] extends { Row: infer R }
+			? Omit<Tables[T], 'Row'> & { Row: R & { is_official: boolean | null }; ComputedFields: 'is_official' }
+			: Tables[T]
+		: Tables[T];
+};
+
 export type AppDatabase = Omit<Database, 'public'> & {
-	public: Omit<Database['public'], 'Functions'> & {
+	public: Omit<Database['public'], 'Functions' | 'Tables'> & {
+		Tables: WithComputedFields<Database['public']['Tables']>;
 		Functions: WithNullableArgs<Database['public']['Functions']>;
 	};
 };

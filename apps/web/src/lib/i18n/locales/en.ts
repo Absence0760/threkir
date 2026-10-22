@@ -3400,6 +3400,8 @@ export const en = {
 	"routeExplorer.locationError": "Could not get location: {error}",
 	"routeHeatmap.lensPopular": "Popular",
 	"routeHeatmap.lensPopularHint": "Routes people actually run",
+	"routeHeatmap.lensOfficial": "Official",
+	"routeHeatmap.lensOfficialHint": "Routes from verified organisers",
 	"routeHeatmap.lensFriends": "Friends",
 	"routeHeatmap.lensFriendsHint": "Routes from people you follow",
 	"routeHeatmap.lensFeatured": "Featured",
@@ -6107,6 +6109,9 @@ export const en = {
 	"checkpoint.backToEvent": "Back to event",
 	// Verified-club badge (VerifiedBadge.svelte)
 	"verifiedBadge.tooltip": "Official verified club",
+	// Official-content badge (OfficialBadge.svelte): content a verified club's owner or admin published
+	"officialBadge.label": "Official",
+	"officialBadge.tooltip": "Official: published by a verified organiser",
 	// Learn / guides public content (learn_pages.md)
 	"learn.hubPageTitle": "Learn to run — guides for new runners — Threkir",
 	"learn.hubPageDescription": "Free, evergreen guides for new and returning runners — gear, training, nutrition, racing, and your first weeks on the road or trail.",

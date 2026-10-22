@@ -137,7 +137,14 @@ export type Run = Omit<RunRow, 'source' | 'metadata' | 'activity_type'> & {
 // `public_routes` view projects it away, and the list projection never selects
 // it. The one column the read boundary is unanimous about must not be the one
 // the type promises on every path (§ 1327).
-export type Route = Omit<RouteRow, 'waypoints' | 'surface' | 'shadow_hidden'> & {
+/// Published by a verified organiser: the row's club is verified and its
+/// author an active owner/admin of it (migration 20271021000030, decisions
+/// § 2227). Derived server-side and never stored, so it is present only on the
+/// reads that select it — the `is_official` computed field on a table, or the
+/// column the read views and discovery RPCs carry — and absent elsewhere.
+export type OfficialFlag = { is_official?: boolean | null };
+
+export type Route = Omit<RouteRow, 'waypoints' | 'surface' | 'shadow_hidden'> & OfficialFlag & {
 	waypoints: TrackPoint[];
 	surface: RouteSurface | null;
 };
@@ -705,7 +712,7 @@ export interface FundraiserTotals {
 	currency: string;
 }
 
-export type SessionPlan = SessionPlanRow;
+export type SessionPlan = SessionPlanRow & OfficialFlag;
 export type SessionPlanBlock = SessionPlanBlockRow;
 export type SessionPlanItem = Omit<SessionPlanItemRow, 'kind'> & { kind: SessionItemKind };
 
@@ -750,7 +757,7 @@ export type ClubPostWithAuthor = ClubPost & {
 
 export type PlanStatus = 'active' | 'completed' | 'abandoned' | 'paused';
 
-export type TrainingPlan = Omit<TrainingPlanRow, 'status'> & { status: PlanStatus };
+export type TrainingPlan = Omit<TrainingPlanRow, 'status'> & OfficialFlag & { status: PlanStatus };
 export type PlanWeek = PlanWeekRow;
 export type PlanWorkout = PlanWorkoutRow;
 
@@ -775,7 +782,7 @@ export type ActivePlanOverview = {
 export type ChallengeMetric = 'distance' | 'duration' | 'vert' | 'activity_count' | 'streak_days';
 export type ChallengeScope = 'individual' | 'club_vs_club' | 'group_goal';
 
-export type Challenge = Omit<ChallengeRow, 'metric' | 'scope' | 'activity_type'> & {
+export type Challenge = Omit<ChallengeRow, 'metric' | 'scope' | 'activity_type'> & OfficialFlag & {
 	metric: ChallengeMetric;
 	scope: ChallengeScope;
 	activity_type: ActivityType | null;

@@ -3,6 +3,7 @@
 	import { fetchChallenges, browsePublicChallenges } from '#lib/core/data.ts';
 	import type { ChallengeWithMeta } from '#lib/types.ts';
 	import ChallengeEditor from '#lib/components/ChallengeEditor.svelte';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import ChallengeProgressBar from '#lib/components/ChallengeProgressBar.svelte';
 	import { myProgressView } from '#lib/social/challenge_list.ts';
 	import Modal from '#lib/components/Modal.svelte';
@@ -154,7 +155,7 @@
 					<li class="card-elevated">
 						<a href={`/challenges/${c.id}`}>
 							<div class="row-top">
-								<span class="title">{c.title}</span>
+								<span class="title">{c.title}{#if c.is_official}<OfficialBadge />{/if}</span>
 								<span class="badge">
 									<span class="material-symbols" aria-hidden="true">{METRIC_ICON[c.metric]}</span>
 									{metricLabel(c.metric)}
@@ -234,7 +235,7 @@
 					<li class="card-elevated">
 						<a href={`/challenges/${c.id}`}>
 							<div class="row-top">
-								<span class="title">{c.title}</span>
+								<span class="title">{c.title}{#if c.is_official}<OfficialBadge />{/if}</span>
 								<span class="badge">
 									<span class="material-symbols" aria-hidden="true">{METRIC_ICON[c.metric]}</span>
 									{metricLabel(c.metric)}

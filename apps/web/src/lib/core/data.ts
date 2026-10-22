@@ -2354,7 +2354,7 @@ export async function fetchRouteById(id: string): Promise<Route | null> {
 	const viewerId = await currentViewerId();
 	const ownerRead = await supabase
 		.from('routes')
-		.select('*')
+		.select('*, is_official')
 		.eq('id', id)
 		.maybeSingle();
 	if (ownerRead.error) throw dbError(ownerRead.error);
@@ -5856,7 +5856,7 @@ export async function fetchPublicPlanLibrary(
 ): Promise<{ plans: PublicPlanLibraryEntry[]; error: string | null }> {
 	let q = supabase
 		.from('training_plans')
-		.select('*')
+		.select('*, is_official')
 		.eq('is_public_template', true)
 		.order('created_at', { ascending: false })
 		.limit(limit);
@@ -6084,7 +6084,7 @@ export async function fetchPlan(id: string): Promise<{
 	// chunking either. Ordered here because an embed's order is per parent.
 	const { data, error } = await supabase
 		.from('training_plans')
-		.select('*, plan_weeks(*, plan_workouts(*))')
+		.select('*, is_official, plan_weeks(*, plan_workouts(*))')
 		.eq('id', id)
 		.maybeSingle();
 	// Surface a query error so the detail page can show a "couldn't load —
@@ -9296,6 +9296,9 @@ export interface ClubPin {
 	member_count: number;
 	lng: number;
 	lat: number;
+	/// Verified clubs rank first (migration 20271021000031); the pin
+	/// carries the badge.
+	is_verified: boolean;
 }
 
 export async function fetchClubsInBbox(bbox: {
@@ -9321,15 +9324,19 @@ export async function fetchClubsInBbox(bbox: {
 
 /// Discoverable public routes inside the viewport bbox. The lens is
 /// chosen by `filter`:
-///   • 'popular'     (default) — featured OR run_count > 0.
+///   • 'popular'     (default) — official OR featured OR run_count > 0.
+///   • 'official'    — published by a verified organiser only, uncapped.
 ///   • 'featured'    — admin-curated only.
 ///   • 'friends'     — public routes created by users you follow.
-///   • 'hidden_gems' — un-run public routes past a >=1km sanity floor.
+///   • 'hidden_gems' — un-run, non-official public routes past a >=1km
+///     sanity floor.
+/// Official routes rank first; outside the `official` lens they are capped
+/// at a quarter of `limit` so they never crowd community routes out.
 /// Returns the start_point for each route so the map can drop a pin
 /// there. Mirrors the `p_filter` branch in
-/// 20261113_001_discoverable_routes_filter.sql — keep the union in
+/// 20271021000031_official_discovery_ranking.sql — keep the union in
 /// lockstep with the RPC's CASE arms.
-export type DiscoverFilter = 'popular' | 'featured' | 'friends' | 'hidden_gems';
+export type DiscoverFilter = 'popular' | 'official' | 'featured' | 'friends' | 'hidden_gems';
 
 export interface DiscoverableRoutePin {
 	id: string;
@@ -9342,6 +9349,8 @@ export interface DiscoverableRoutePin {
 	run_count: number;
 	lng: number;
 	lat: number;
+	/// Published by a verified organiser (migration 20271021000030).
+	is_official: boolean;
 }
 
 export async function fetchDiscoverableRoutesInBbox(bbox: {
@@ -12079,6 +12088,8 @@ export interface GymRoutineSummary {
 	exercise_count: number;
 	last_modified_at: string;
 	created_at: string;
+	/// Present on the library and detail reads (`OfficialFlag`).
+	is_official?: boolean | null;
 }
 
 export interface GymRoutineExercise {
@@ -12172,7 +12183,7 @@ export async function fetchGymRoutineDetail(id: string): Promise<GymRoutineDetai
 	let routine: GymRoutineSummary | null = null;
 	const { data: base, error: rErr } = await supabase
 		.from(TABLES.gym_routines)
-		.select('id, author_id, club_id, is_public_template, title, notes, exercise_count, last_modified_at, created_at')
+		.select('id, author_id, club_id, is_public_template, title, notes, exercise_count, last_modified_at, created_at, is_official')
 		.eq('id', id)
 		.maybeSingle();
 	if (!rErr && base) {
@@ -13272,7 +13283,7 @@ export async function fetchSessionPlans(): Promise<SessionPlan[]> {
 		.eq('user_id', userId);
 	const clubIds = (memberships ?? []).map((m: { club_id: string }) => m.club_id);
 
-	let query = supabase.from('session_plans').select('*');
+	let query = supabase.from('session_plans').select('*, is_official');
 	query = clubIds.length
 		? query.or(`author_id.eq.${userId},club_id.in.(${clubIds.join(',')})`)
 		: query.eq('author_id', userId);
@@ -13285,7 +13296,7 @@ export async function fetchSessionPlans(): Promise<SessionPlan[]> {
 export async function fetchSessionPlan(id: string): Promise<SessionPlanWithItems | null> {
 	const { data: plan, error } = await supabase
 		.from('session_plans')
-		.select('*')
+		.select('*, is_official')
 		.eq('id', id)
 		.maybeSingle();
 	if (error) throw dbError(error);
@@ -14204,7 +14215,7 @@ export async function fetchChallenges(
 	// member). The `mine` filter narrows to challenges the caller has joined.
 	let query = supabase
 		.from(TABLES.challenges)
-		.select('*')
+		.select('*, is_official')
 		.order('ends_at', { ascending: true });
 	const { data, error } = await query;
 	if (error) throw dbError(error);
@@ -14307,7 +14318,7 @@ export async function fetchChallengeById(id: string): Promise<ChallengeWithMeta 
 	const userId = auth.user?.id;
 	const { data, error } = await supabase
 		.from(TABLES.challenges)
-		.select('*')
+		.select('*, is_official')
 		.eq('id', id)
 		.maybeSingle();
 	if (error) throw dbError(error);

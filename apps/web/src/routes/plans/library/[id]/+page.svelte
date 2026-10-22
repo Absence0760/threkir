@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -142,7 +143,7 @@
 		<p class="state">{m('planLibrary.notFound')}</p>
 	{:else}
 		<header class="preview-head">
-			<h1>{plan.name}</h1>
+			<h1>{plan.name}{#if plan.is_official}<OfficialBadge size={18} />{/if}</h1>
 			<p class="author">
 				{m('planLibrary.byAuthor', {
 					author: authorHandle ?? m('planLibrary.anonymousAuthor'),

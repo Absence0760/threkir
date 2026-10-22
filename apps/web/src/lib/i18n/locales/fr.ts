@@ -3387,6 +3387,8 @@ export const messages = {
 	"routeExplorer.locationError": "Impossible d'obtenir la localisation : {error}",
 	"routeHeatmap.lensPopular": "Populaires",
 	"routeHeatmap.lensPopularHint": "Des itinéraires vraiment courus",
+	"routeHeatmap.lensOfficial": "Officiels",
+	"routeHeatmap.lensOfficialHint": "Itinéraires d'organisateurs vérifiés",
 	"routeHeatmap.lensFriends": "Amis",
 	"routeHeatmap.lensFriendsHint": "Itinéraires des personnes que vous suivez",
 	"routeHeatmap.lensFeatured": "À la une",
@@ -6081,6 +6083,8 @@ export const messages = {
 	"checkpoint.backToEvent": "Retour à l'événement",
 	// Verified-club badge (VerifiedBadge.svelte)
 	"verifiedBadge.tooltip": "Club officiel vérifié",
+	"officialBadge.label": "Officiel",
+	"officialBadge.tooltip": "Officiel : publié par un organisateur vérifié",
 	// Learn / guides public content (learn_pages.md)
 	"learn.hubPageTitle": "Apprendre à courir — guides pour débutants — Threkir",
 	"learn.hubPageDescription": "Des guides gratuits et intemporels pour les coureurs débutants ou de retour — équipement, entraînement, nutrition, compétition et vos premières semaines sur route ou en trail.",

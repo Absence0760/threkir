@@ -3382,6 +3382,8 @@ export const messages = {
 	"routeExplorer.locationError": "位置情報を取得できませんでした: {error}",
 	"routeHeatmap.lensPopular": "人気",
 	"routeHeatmap.lensPopularHint": "みんなが実際に走るルート",
+	"routeHeatmap.lensOfficial": "公式",
+	"routeHeatmap.lensOfficialHint": "認証済みの主催者のルート",
 	"routeHeatmap.lensFriends": "フレンド",
 	"routeHeatmap.lensFriendsHint": "フォロー中の人のルート",
 	"routeHeatmap.lensFeatured": "おすすめ",
@@ -6076,6 +6078,8 @@ export const messages = {
 	"checkpoint.backToEvent": "イベントに戻る",
 	// Verified-club badge (VerifiedBadge.svelte)
 	"verifiedBadge.tooltip": "公式認証済みクラブ",
+	"officialBadge.label": "公式",
+	"officialBadge.tooltip": "公式: 認証済みの主催者が公開",
 	// Learn / guides public content (learn_pages.md)
 	"learn.hubPageTitle": "ランニングを学ぶ — 初心者向けガイド — Threkir",
 	"learn.hubPageDescription": "新しく始める人や再開する人のための無料の定番ガイド。ギア、トレーニング、栄養、レース、ロードやトレイルでの最初の数週間について。",

@@ -5,6 +5,7 @@
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { fetchSessionPlans, type SessionPlan } from '#lib/core/data.ts';
 	import Modal from '#lib/components/Modal.svelte';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import SessionPlanEditor from '#lib/components/SessionPlanEditor.svelte';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 
@@ -80,7 +81,7 @@
 			{#each plans as plan (plan.id)}
 				<li>
 					<a class="card-elevated plan-row" href={`/sessions/${plan.id}`}>
-						<span class="plan-title">{plan.title || t('session.untitled')}</span>
+						<span class="plan-title">{plan.title || t('session.untitled')}{#if plan.is_official}<OfficialBadge />{/if}</span>
 						<span class="plan-meta">
 							{#if plan.discipline}{plan.discipline}{/if}
 							{#if plan.est_duration_min}

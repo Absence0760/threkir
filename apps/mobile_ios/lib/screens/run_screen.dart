@@ -73,6 +73,7 @@ import '../typed_decimal.dart';
 import '../watch_settings.dart';
 import '../web_base_url.dart';
 import '../widgets/finish_plan_card.dart';
+import '../widgets/idle_setup_chip.dart';
 import '../widgets/cutoff_card.dart';
 import 'route_picker_screen.dart';
 import '../background_location_nudge.dart';
@@ -4635,37 +4636,40 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                     Center(
                       child: Wrap(
                         spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.center,
                         children: [
-                          OutlinedButton.icon(
+                          IdleSetupChip(
+                            icon: Icons.route,
+                            label: _selectedRoute == null
+                                ? l10n.runChooseRoute
+                                : l10n.runChangeRoute,
+                            isSet: _selectedRoute != null,
                             onPressed: _selectRoute,
-                            icon: const Icon(Icons.route),
-                            label: Text(
-                              _selectedRoute == null
-                                  ? l10n.runChooseRoute
-                                  : l10n.runChangeRoute,
-                            ),
                           ),
-                          TextButton.icon(
+                          IdleSetupChip(
+                            icon: Icons.podcasts,
+                            label: l10n.runShareLiveLink,
+                            isSet: false,
                             onPressed: _shareLiveLink,
-                            icon: const Icon(Icons.podcasts),
-                            label: Text(l10n.runShareLiveLink),
                           ),
-                          TextButton.icon(
+                          IdleSetupChip(
+                            icon: Icons.headset_mic_outlined,
+                            label: _guidedRun?.title ?? l10n.runGuidedRun,
+                            isSet: _guidedRun != null,
                             onPressed: _pickGuidedRun,
-                            icon: const Icon(Icons.headset_mic_outlined),
-                            label: Text(
-                              _guidedRun?.title ?? l10n.runGuidedRun,
-                            ),
                           ),
                           if (_activityType == ActivityType.run)
-                            TextButton.icon(
-                              onPressed: _editRaceStrategy,
-                              icon: const Icon(Icons.flag_outlined),
-                              label: Text(_strategyPreset == null
+                            IdleSetupChip(
+                              icon: Icons.flag_outlined,
+                              label: _strategyPreset == null
                                   ? l10n.runRaceStrategy
-                                  : _strategyLabel(l10n, _strategyPreset!)),
+                                  : _strategyLabel(l10n, _strategyPreset!),
+                              isSet: _strategyPreset != null,
+                              onPressed: _editRaceStrategy,
                             ),
-                          TextButton.icon(
+                          IdleSetupChip(
+                            isSet: _planOverview != null,
                             onPressed: () async {
                               final overview = _planOverview;
                               if (overview != null) {
@@ -4689,18 +4693,18 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                               }
                               _refreshPlanOverview();
                             },
-                            icon: const Icon(Icons.calendar_month),
+                            icon: Icons.calendar_month,
                             // A plan whose dates have run out is not the plan
                             // this run trains for; the chip asks to file it
                             // and still opens it, where Finish plan sits.
-                            label: Text(_planOverview == null
+                            label: _planOverview == null
                                 ? l10n.runTrainingPlans
                                 : FinishPlanCard.shows(
                                         status: _planOverview!.plan.status,
                                         endDate: _planOverview!.plan.endDate,
                                         now: DateTime.now())
                                     ? l10n.planFinishAction
-                                    : _planOverview!.plan.name),
+                                    : _planOverview!.plan.name,
                           ),
                         ],
                       ),

@@ -24,6 +24,7 @@ import '../lib/screens/route_picker_screen.dart';
 import '../lib/screens/run_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
+import '../lib/widgets/idle_setup_chip.dart';
 import '../lib/widgets/todays_workout_card.dart';
 import '../lib/widgets/top_banner.dart' show kTopBannerMaxDuration;
 import 'pre_run_dialogs.dart';
@@ -495,6 +496,54 @@ void main() {
           reason: 'unloaded, the workout is offered again');
       // Let the "workout loaded" banner's timer run out.
       await tester.pump(kTopBannerMaxDuration);
+      await unmount(tester);
+    });
+  });
+
+  group('the setup row', () {
+    IdleSetupChip chip(WidgetTester tester, String label) =>
+        tester.widget<IdleSetupChip>(find.widgetWithText(IdleSetupChip, label));
+
+    Color fill(WidgetTester tester, String label) => tester
+        .widget<Material>(find
+            .descendant(
+                of: find.widgetWithText(IdleSetupChip, label),
+                matching: find.byType(Material))
+            .first)
+        .color!;
+
+    testWidgets('is one control style, with set and not-set told apart',
+        (tester) async {
+      await pumpRunScreen(tester, routes: [_loop], initialRoute: _loop);
+
+      for (final label in const [
+        'Change route',
+        'Share live link',
+        'Guided run',
+        'Race strategy',
+        'Training plans',
+      ]) {
+        expect(find.widgetWithText(IdleSetupChip, label), findsOneWidget,
+            reason: '"$label" is a setup-row chip');
+      }
+      final row = find.ancestor(
+          of: find.widgetWithText(IdleSetupChip, 'Guided run'),
+          matching: find.byType(Wrap));
+      expect(find.descendant(of: row, matching: find.byType(TextButton)),
+          findsNothing);
+      expect(find.descendant(of: row, matching: find.byType(OutlinedButton)),
+          findsNothing);
+
+      expect(chip(tester, 'Change route').isSet, isTrue);
+      expect(chip(tester, 'Guided run').isSet, isFalse);
+      expect(fill(tester, 'Change route'),
+          isNot(fill(tester, 'Guided run')),
+          reason: 'a set item must not look like an unset one');
+
+      await tester.tap(find.byTooltip('Remove route'));
+      await tester.pump();
+      expect(chip(tester, 'Choose route').isSet, isFalse);
+      expect(fill(tester, 'Choose route'), fill(tester, 'Guided run'));
       await unmount(tester);
     });
   });

@@ -15048,6 +15048,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runGuidedRunNone => 'Sem corrida guiada';
 
   @override
+  String get runClearGuidedRunTooltip => 'Remover corrida guiada';
+
+  @override
   String runGuidedRunOption(int minutes, String subtitle) {
     return '$minutes min · $subtitle';
   }
@@ -15057,6 +15060,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runStrategyNone => 'Sem estratégia';
+
+  @override
+  String get runClearRaceStrategyTooltip => 'Remover estratégia de prova';
 
   @override
   String get runStrategyTenTenTen => '10-10-10';
@@ -33902,6 +33908,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get runGuidedRunNone => 'Sem corrida guiada';
 
   @override
+  String get runClearGuidedRunTooltip => 'Remover corrida guiada';
+
+  @override
   String runGuidedRunOption(int minutes, String subtitle) {
     return '$minutes min · $subtitle';
   }
@@ -33911,6 +33920,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runStrategyNone => 'Sem estratégia';
+
+  @override
+  String get runClearRaceStrategyTooltip => 'Remover estratégia de corrida';
 
   @override
   String get runStrategyTenTenTen => '10-10-10';

@@ -546,6 +546,53 @@ void main() {
       expect(fill(tester, 'Choose route'), fill(tester, 'Guided run'));
       await unmount(tester);
     });
+
+    testWidgets('an armed guided run looks set and its x disarms it',
+        (tester) async {
+      final easy = lookupAppLocalizations(const Locale('en')).guidedEasy30Title;
+      await pumpRunScreen(tester);
+      expect(find.byTooltip('Remove guided run'), findsNothing,
+          reason: 'nothing to remove while none is armed');
+
+      await tester.tap(find.text('Guided run'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(easy));
+      await tester.pumpAndSettle();
+      expect(chip(tester, easy).isSet, isTrue);
+
+      final clear = find.byTooltip('Remove guided run');
+      expectTouchTarget(tester, clear);
+      await tester.tap(clear);
+      await tester.pump();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.text(easy), findsNothing);
+      expect(chip(tester, 'Guided run').isSet, isFalse);
+      await unmount(tester);
+    });
+
+    testWidgets('a race strategy looks set and its x clears it',
+        (tester) async {
+      await pumpRunScreen(tester);
+      expect(find.byTooltip('Remove race strategy'), findsNothing);
+
+      await tester.tap(find.text('Race strategy'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Even pace'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      expect(chip(tester, 'Even pace').isSet, isTrue);
+
+      final clear = find.byTooltip('Remove race strategy');
+      expectTouchTarget(tester, clear);
+      await tester.tap(clear);
+      await tester.pump();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(chip(tester, 'Race strategy').isSet, isFalse);
+      // No route means no distance, which raises a banner on its own timer.
+      await tester.pump(kTopBannerMaxDuration);
+      await unmount(tester);
+    });
   });
 
   group('the card stack', () {

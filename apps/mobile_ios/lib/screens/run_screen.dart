@@ -4658,6 +4658,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                             label: _guidedRun?.title ?? l10n.runGuidedRun,
                             isSet: _guidedRun != null,
                             onPressed: _pickGuidedRun,
+                            onClear: _guidedRun == null
+                                ? null
+                                : () => _armGuidedRun(null),
+                            clearTooltip: l10n.runClearGuidedRunTooltip,
                           ),
                           if (_activityType == ActivityType.run)
                             IdleSetupChip(
@@ -4667,6 +4671,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                                   : _strategyLabel(l10n, _strategyPreset!),
                               isSet: _strategyPreset != null,
                               onPressed: _editRaceStrategy,
+                              // The same as None in the sheet: the typed
+                              // distance and goal stay for the next preset.
+                              onClear: _strategyPreset == null
+                                  ? null
+                                  : () =>
+                                      setState(() => _strategyPreset = null),
+                              clearTooltip: l10n.runClearRaceStrategyTooltip,
                             ),
                           IdleSetupChip(
                             isSet: _planOverview != null,

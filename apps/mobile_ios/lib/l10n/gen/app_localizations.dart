@@ -24644,6 +24644,12 @@ abstract class AppLocalizations {
   /// **'No guided run'**
   String get runGuidedRunNone;
 
+  /// Tooltip and screen-reader label for the x on the idle setup row's guided-run chip; disarms the guided run, the same as picking None
+  ///
+  /// In en, this message translates to:
+  /// **'Remove guided run'**
+  String get runClearGuidedRunTooltip;
+
   /// Run screen — a guided-run picker row subtitle
   ///
   /// In en, this message translates to:
@@ -24661,6 +24667,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No strategy'**
   String get runStrategyNone;
+
+  /// Tooltip and screen-reader label for the x on the idle setup row's race-strategy chip; clears the strategy, the same as picking None
+  ///
+  /// In en, this message translates to:
+  /// **'Remove race strategy'**
+  String get runClearRaceStrategyTooltip;
 
   /// Voice cues / race strategy
   ///

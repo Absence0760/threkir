@@ -19840,6 +19840,10 @@
   "@runGuidedRunNone": {
     "description": "Run screen — the guided-run picker row that clears the armed run"
   },
+  "runClearGuidedRunTooltip": "Remove guided run",
+  "@runClearGuidedRunTooltip": {
+    "description": "Tooltip and screen-reader label for the x on the idle setup row's guided-run chip; disarms the guided run, the same as picking None"
+  },
   "runGuidedRunOption": "{minutes} min · {subtitle}",
   "@runGuidedRunOption": {
     "description": "Run screen — a guided-run picker row subtitle",
@@ -19859,6 +19863,10 @@
   "runStrategyNone": "No strategy",
   "@runStrategyNone": {
     "description": "Voice cues / race strategy"
+  },
+  "runClearRaceStrategyTooltip": "Remove race strategy",
+  "@runClearRaceStrategyTooltip": {
+    "description": "Tooltip and screen-reader label for the x on the idle setup row's race-strategy chip; clears the strategy, the same as picking None"
   },
   "runStrategyTenTenTen": "10-10-10",
   "@runStrategyTenTenTen": {

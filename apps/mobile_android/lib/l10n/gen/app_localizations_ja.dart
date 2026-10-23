@@ -14353,6 +14353,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runGuidedRunNone => 'ガイド付きランなし';
 
   @override
+  String get runClearGuidedRunTooltip => 'ガイド付きランを外す';
+
+  @override
   String runGuidedRunOption(int minutes, String subtitle) {
     return '$minutes分 · $subtitle';
   }
@@ -14362,6 +14365,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runStrategyNone => '戦略なし';
+
+  @override
+  String get runClearRaceStrategyTooltip => 'レース戦略を外す';
 
   @override
   String get runStrategyTenTenTen => '10-10-10';

@@ -24,6 +24,7 @@ import '../lib/screens/route_picker_screen.dart';
 import '../lib/screens/run_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
+import '../lib/widgets/todays_workout_card.dart';
 import 'pre_run_dialogs.dart';
 import 'pump_until.dart';
 
@@ -96,11 +97,51 @@ class _CapturingRunStore extends LocalRunStore {
   Future<void> clearInProgress() async {}
 }
 
-/// No plan behind the workout, so no backend round-trip.
-class _NoPlanTraining extends TrainingService {
+/// No plan behind a loaded workout, so no backend round-trip. With [today]
+/// the active plan has that workout scheduled for today.
+class _IdleTraining extends TrainingService {
+  final cm.PlanWorkoutRow? today;
+  _IdleTraining({this.today});
+
   @override
   Future<cm.TrainingPlanRow?> fetchPlanForWorkout(cm.PlanWorkoutRow wo) async =>
       null;
+
+  @override
+  Future<ActivePlanOverview?> fetchActiveOverview() async {
+    final wo = today;
+    if (wo == null) return null;
+    final now = DateTime.now();
+    return ActivePlanOverview(
+      plan: cm.TrainingPlanRow(
+        id: 'plan-1',
+        userId: 'u1',
+        name: 'Autumn 10K block',
+        goalEvent: '10k',
+        goalDistanceM: 10000,
+        startDate: now.subtract(const Duration(days: 14)),
+        endDate: now.add(const Duration(days: 30)),
+        daysPerWeek: 4,
+        status: 'active',
+        source: 'app',
+        isTemplate: false,
+        isPublicTemplate: false,
+      ),
+      weeks: [
+        cm.PlanWeekRow(
+          id: 'wk-1',
+          planId: 'plan-1',
+          weekIndex: 2,
+          phase: 'build',
+          targetVolumeM: 30000,
+        ),
+      ],
+      workouts: [wo],
+      todayWorkout: wo,
+      completionPct: 20,
+      currentWeekIndex: 2,
+    );
+  }
 }
 
 final _workout = cm.PlanWorkoutRow(
@@ -216,6 +257,7 @@ void main() {
     cm.PlanWorkoutRow? initialWorkout,
     List<cm.Route> routes = const [],
     cm.Route? initialRoute,
+    cm.PlanWorkoutRow? todayWorkout,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = Preferences();
@@ -239,7 +281,7 @@ void main() {
             audioCues: AudioCues(),
             social: social,
             raceController: RaceController(social),
-            training: _NoPlanTraining(),
+            training: _IdleTraining(today: todayWorkout),
             heartRate: BleHeartRate(),
             treadmill: BleTreadmill(),
             initialWorkout: initialWorkout,
@@ -396,6 +438,23 @@ void main() {
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(find.text('FOLLOWING'), findsOneWidget);
+      await unmount(tester);
+    });
+  });
+
+  group('the card stack', () {
+    testWidgets("a followed route keeps today's workout card on screen",
+        (tester) async {
+      await pumpRunScreen(tester,
+          routes: [_loop], initialRoute: _loop, todayWorkout: _workout);
+      await pumpUntil(
+          tester, () => find.byType(TodaysWorkoutCard).evaluate().isNotEmpty,
+          describe: "today's workout card");
+
+      expect(find.text('FOLLOWING'), findsOneWidget);
+      expect(find.byType(TodaysWorkoutCard), findsOneWidget,
+          reason: 'a runner on their route on a plan day still needs the '
+              'card that loads the workout');
       await unmount(tester);
     });
   });

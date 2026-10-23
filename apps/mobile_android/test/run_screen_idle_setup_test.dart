@@ -20,6 +20,7 @@ import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/race_controller.dart';
 import '../lib/run_stop_dock.dart';
+import '../lib/screens/route_picker_screen.dart';
 import '../lib/screens/run_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
@@ -135,6 +136,17 @@ Position _pos({required double metresEast, required int secondsFromStart}) {
   );
 }
 
+final _loop = cm.Route(
+  id: 'route-loop',
+  userId: 'u1',
+  name: 'River loop',
+  distanceMetres: 5000,
+  waypoints: const [
+    cm.Waypoint(lat: 47.37, lng: 8.54),
+    cm.Waypoint(lat: 47.371, lng: 8.541),
+  ],
+);
+
 const _workoutKeys = [
   cm.MetadataKeys.planWorkoutId,
   cm.MetadataKeys.workoutStepResults,
@@ -202,6 +214,8 @@ void main() {
   Future<_CapturingRunStore> pumpRunScreen(
     WidgetTester tester, {
     cm.PlanWorkoutRow? initialWorkout,
+    List<cm.Route> routes = const [],
+    cm.Route? initialRoute,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = Preferences();
@@ -210,6 +224,7 @@ void main() {
     final runStore = _CapturingRunStore();
     await runStore.init(overrideDirectory: runsDir);
     final social = SocialService();
+    final routeStore = LocalRouteStore()..debugSeed(routes);
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -219,7 +234,7 @@ void main() {
           child: RunScreen(
             apiClient: null,
             runStore: runStore,
-            routeStore: LocalRouteStore(),
+            routeStore: routeStore,
             preferences: prefs,
             audioCues: AudioCues(),
             social: social,
@@ -228,6 +243,7 @@ void main() {
             heartRate: BleHeartRate(),
             treadmill: BleTreadmill(),
             initialWorkout: initialWorkout,
+            initialRoute: initialRoute,
           ),
         ),
       ),
@@ -313,6 +329,42 @@ void main() {
       await recordAndFinish(tester, store);
       expect(store.captured.single.metadata?[cm.MetadataKeys.planWorkoutId],
           _workout.id);
+      await unmount(tester);
+    });
+  });
+
+  group('the followed route', () {
+    Future<void> openPicker(WidgetTester tester) async {
+      await tester.tap(find.text('Change route'));
+      await tester.pumpAndSettle();
+      expect(find.byType(RoutePickerScreen), findsOneWidget);
+    }
+
+    testWidgets('survives backing out of the picker', (tester) async {
+      await pumpRunScreen(tester, routes: [_loop], initialRoute: _loop);
+      expect(find.text('FOLLOWING'), findsOneWidget);
+
+      await openPicker(tester);
+      // System back, the gesture a runner uses to leave a list.
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.text('FOLLOWING'), findsOneWidget,
+          reason: 'looking at the list and backing out changes nothing');
+      expect(find.text('River loop'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('is cleared by "No route"', (tester) async {
+      await pumpRunScreen(tester, routes: [_loop], initialRoute: _loop);
+
+      await openPicker(tester);
+      await tester.tap(find.descendant(
+          of: find.byType(AppBar), matching: find.text('No route')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('FOLLOWING'), findsNothing);
+      expect(find.text('Choose route'), findsOneWidget);
       await unmount(tester);
     });
   });

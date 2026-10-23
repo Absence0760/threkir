@@ -1424,8 +1424,17 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // search field at the top + sorts starred routes first per
     // user feedback. See `route_picker_screen.dart`.
     final picked = await pickRoute(context, routes: routes, unit: unit);
-    if (!mounted) return;
-    setState(() => _selectedRoute = picked);
+    if (picked == null || !mounted) return;
+    _setFollowedRoute(switch (picked) {
+      RoutePicked(:final route) => route,
+      NoRoutePicked() => null,
+    });
+  }
+
+  /// Follow [route] for the next run, or none with null: the selection, the
+  /// turn announcer and the cutoff legs move together.
+  void _setFollowedRoute(cm.Route? route) {
+    setState(() => _selectedRoute = route);
     _rebuildTurnAnnouncer();
     _loadCutoffLegs();
   }

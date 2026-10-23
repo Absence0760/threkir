@@ -27,8 +27,8 @@ import '../preferences.dart';
 ///      50+ routes becomes navigable with a single short typed
 ///      query.
 ///
-/// Open via [pickRoute]; returns the chosen route, or `null` for
-/// either "No route" or Cancel.
+/// Open via [pickRoute], which resolves the [RoutePick] the runner made, or
+/// `null` when they backed out without choosing.
 class RoutePickerScreen extends StatefulWidget {
   final List<cm.Route> routes;
   final DistanceUnit unit;
@@ -87,7 +87,8 @@ class _RoutePickerScreenState extends State<RoutePickerScreen> {
         // back to the run screen without scrolling.
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop<cm.Route?>(context, null),
+            onPressed: () =>
+                Navigator.pop<RoutePick>(context, const NoRoutePicked()),
             child: Text(l10n.routePickerNoRoute),
           ),
         ],
@@ -229,20 +230,35 @@ class _RouteTile extends StatelessWidget {
       subtitle: Text(
         UnitFormat.distance(route.distanceMetres, unit),
       ),
-      onTap: () => Navigator.pop<cm.Route?>(context, route),
+      onTap: () => Navigator.pop<RoutePick>(context, RoutePicked(route)),
     );
   }
 }
 
-/// Opens the picker as a full-screen page. Returns the chosen
-/// route, `null` for "No route" or Cancel, or `null` if the user
-/// backs out without selecting.
-Future<cm.Route?> pickRoute(
+/// The runner's answer from [RoutePickerScreen]. "No route" is an answer
+/// of its own, so a caller can clear its selection on it and leave the
+/// selection alone on a cancel, which [pickRoute] reports as `null`.
+sealed class RoutePick {
+  const RoutePick();
+}
+
+final class RoutePicked extends RoutePick {
+  final cm.Route route;
+  const RoutePicked(this.route);
+}
+
+final class NoRoutePicked extends RoutePick {
+  const NoRoutePicked();
+}
+
+/// Opens the picker as a full-screen page. Resolves the runner's
+/// [RoutePick], or `null` when they back out or close it without choosing.
+Future<RoutePick?> pickRoute(
   BuildContext context, {
   required List<cm.Route> routes,
   required DistanceUnit unit,
 }) {
-  return Navigator.of(context).push<cm.Route?>(
+  return Navigator.of(context).push<RoutePick>(
     MaterialPageRoute(
       builder: (_) => RoutePickerScreen(routes: routes, unit: unit),
       fullscreenDialog: true,

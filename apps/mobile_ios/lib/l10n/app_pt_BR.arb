@@ -579,6 +579,8 @@
   "runResumeDiscardedBanner": "Corrida anterior descartada.",
   "runWorkoutNoStructure": "Este treino não tem uma estrutura executável.",
   "runWorkoutLoaded": "Treino carregado · {count, plural, one{{count} etapa} other{{count} etapas}} — toque em GO para iniciar",
+  "runWorkoutLoadedTitle": "Treino carregado: {title}",
+  "runUnloadWorkoutTooltip": "Remover treino",
   "runAbandonWorkoutTitle": "Abandonar treino?",
   "runAbandonWorkoutBody": "O plano estruturado termina aqui; a gravação continua como corrida livre. Você pode parar a qualquer momento para salvar o que fez.",
   "runCancel": "Cancelar",

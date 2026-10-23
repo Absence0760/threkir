@@ -3623,6 +3623,18 @@ abstract class AppLocalizations {
   /// **'Workout loaded · {count, plural, one{{count} step} other{{count} steps}} — tap GO to start'**
   String runWorkoutLoaded(int count);
 
+  /// Title of the idle-screen card for the plan workout the next run will execute
+  ///
+  /// In en, this message translates to:
+  /// **'Workout loaded: {title}'**
+  String runWorkoutLoadedTitle(String title);
+
+  /// Tooltip and screen-reader label for the x on the idle screen's loaded-workout card; unloads the workout so the next run is a free run
+  ///
+  /// In en, this message translates to:
+  /// **'Unload workout'**
+  String get runUnloadWorkoutTooltip;
+
   /// Title of the confirm-abandon-workout dialog
   ///
   /// In en, this message translates to:

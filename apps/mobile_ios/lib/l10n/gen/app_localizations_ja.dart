@@ -2014,6 +2014,14 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String runWorkoutLoadedTitle(String title) {
+    return 'ワークアウトを読み込みました：$title';
+  }
+
+  @override
+  String get runUnloadWorkoutTooltip => 'ワークアウトを外す';
+
+  @override
   String get runAbandonWorkoutTitle => 'ワークアウトを中止しますか？';
 
   @override

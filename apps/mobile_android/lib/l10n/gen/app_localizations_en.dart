@@ -2089,6 +2089,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String runWorkoutLoadedTitle(String title) {
+    return 'Workout loaded: $title';
+  }
+
+  @override
+  String get runUnloadWorkoutTooltip => 'Unload workout';
+
+  @override
   String get runAbandonWorkoutTitle => 'Abandon workout?';
 
   @override

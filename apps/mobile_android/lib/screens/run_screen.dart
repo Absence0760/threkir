@@ -93,6 +93,7 @@ import '../widgets/ghost_pacer.dart';
 import '../widgets/live_run_map.dart';
 import '../widgets/expected_return_dialog.dart';
 import '../widgets/live_share_indicator.dart';
+import '../widgets/loaded_workout_card.dart';
 import '../widgets/race_stop_sheet.dart';
 import '../widgets/safety_nudge_banner.dart';
 import '../widgets/todays_workout_card.dart';
@@ -1045,9 +1046,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     if (steps.isEmpty) return;
     final runner = WorkoutRunner(steps: steps);
     _workoutEventsSub = runner.events.listen(_onWorkoutEvent);
-    _workoutRunner = runner;
-    _activeWorkoutId = wo.id;
-    _activeWorkoutRow = wo;
+    setState(() {
+      _workoutRunner = runner;
+      _activeWorkoutId = wo.id;
+      _activeWorkoutRow = wo;
+    });
     _publishWorkoutBand();
   }
 
@@ -4734,6 +4737,14 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                           onClear: () => _setFollowedRoute(null),
                         ),
                       ),
+                    if (_workoutRunner != null && _activeWorkoutRow != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: LoadedWorkoutCard(
+                          workout: _activeWorkoutRow!,
+                          onUnload: () => setState(_unloadWorkout),
+                        ),
+                      ),
                     if (_selectedRoute == null && _upcomingEvent != null)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
@@ -4770,7 +4781,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                           },
                         ),
                       ),
-                    if (_planOverview?.todayWorkout != null)
+                    // The loaded card already stands for today's workout once
+                    // it is the one loaded.
+                    if (_planOverview?.todayWorkout != null &&
+                        !(_workoutRunner != null &&
+                            _activeWorkoutId ==
+                                _planOverview!.todayWorkout!.id))
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: TodaysWorkoutCard(

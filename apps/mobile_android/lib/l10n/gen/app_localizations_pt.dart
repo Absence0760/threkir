@@ -2110,6 +2110,14 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String runWorkoutLoadedTitle(String title) {
+    return 'Treino carregado: $title';
+  }
+
+  @override
+  String get runUnloadWorkoutTooltip => 'Remover treino';
+
+  @override
   String get runAbandonWorkoutTitle => 'Abandonar treino?';
 
   @override
@@ -20963,6 +20971,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     );
     return 'Treino carregado · $_temp0 — toque em GO para iniciar';
   }
+
+  @override
+  String runWorkoutLoadedTitle(String title) {
+    return 'Treino carregado: $title';
+  }
+
+  @override
+  String get runUnloadWorkoutTooltip => 'Remover treino';
 
   @override
   String get runAbandonWorkoutTitle => 'Abandonar treino?';

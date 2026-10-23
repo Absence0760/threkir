@@ -25,6 +25,7 @@ import '../lib/screens/run_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/todays_workout_card.dart';
+import '../lib/widgets/top_banner.dart' show kTopBannerMaxDuration;
 import 'pre_run_dialogs.dart';
 import 'pump_until.dart';
 
@@ -438,6 +439,62 @@ void main() {
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(find.text('FOLLOWING'), findsOneWidget);
+      await unmount(tester);
+    });
+  });
+
+  group('the loaded-workout card', () {
+    testWidgets('shows the workout the next run will execute',
+        (tester) async {
+      await pumpRunScreen(tester, initialWorkout: _workout);
+      await pumpUntil(tester,
+          () => find.text('Workout loaded: Intervals').evaluate().isNotEmpty,
+          describe: 'the loaded-workout card');
+      await unmount(tester);
+    });
+
+    testWidgets('its x unloads the workout, so the run that follows is a '
+        'free run', (tester) async {
+      final store = await pumpRunScreen(tester, initialWorkout: _workout);
+      await pumpUntil(tester,
+          () => find.text('Workout loaded: Intervals').evaluate().isNotEmpty,
+          describe: 'the loaded-workout card');
+
+      final unload = find.byTooltip('Unload workout');
+      expectTouchTarget(tester, unload);
+      await tester.tap(unload);
+      await tester.pump();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.text('Workout loaded: Intervals'), findsNothing);
+
+      await recordAndFinish(tester, store);
+      final meta = store.captured.single.metadata ?? const {};
+      for (final key in _workoutKeys) {
+        expect(meta.containsKey(key), isFalse, reason: key);
+      }
+      await unmount(tester);
+    });
+
+    testWidgets("loading today's workout swaps its card for the loaded one",
+        (tester) async {
+      await pumpRunScreen(tester, todayWorkout: _workout);
+      await pumpUntil(
+          tester, () => find.byType(TodaysWorkoutCard).evaluate().isNotEmpty,
+          describe: "today's workout card");
+
+      await tester.tap(find.byKey(const Key('todaysWorkoutStart')));
+      await pumpUntil(tester,
+          () => find.text('Workout loaded: Intervals').evaluate().isNotEmpty,
+          describe: 'the loaded-workout card');
+      expect(find.byType(TodaysWorkoutCard), findsNothing,
+          reason: 'one card for one workout');
+
+      await tester.tap(find.byTooltip('Unload workout'));
+      await tester.pump();
+      expect(find.byType(TodaysWorkoutCard), findsOneWidget,
+          reason: 'unloaded, the workout is offered again');
+      // Let the "workout loaded" banner's timer run out.
+      await tester.pump(kTopBannerMaxDuration);
       await unmount(tester);
     });
   });

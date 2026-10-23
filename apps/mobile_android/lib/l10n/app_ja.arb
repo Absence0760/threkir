@@ -579,6 +579,8 @@
   "runResumeDiscardedBanner": "前回のランを破棄しました。",
   "runWorkoutNoStructure": "このワークアウトには実行可能な構成がありません。",
   "runWorkoutLoaded": "ワークアウトを読み込みました · {count}ステップ — GOをタップして開始",
+  "runWorkoutLoadedTitle": "ワークアウトを読み込みました：{title}",
+  "runUnloadWorkoutTooltip": "ワークアウトを外す",
   "runAbandonWorkoutTitle": "ワークアウトを中止しますか？",
   "runAbandonWorkoutBody": "構成プランはここで終了しますが、記録はフリーランとして続きます。いつでも停止して、これまでの内容を保存できます。",
   "runCancel": "キャンセル",

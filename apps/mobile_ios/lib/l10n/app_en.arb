@@ -2707,6 +2707,20 @@
       }
     }
   },
+  "runWorkoutLoadedTitle": "Workout loaded: {title}",
+  "@runWorkoutLoadedTitle": {
+    "description": "Title of the idle-screen card for the plan workout the next run will execute",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Intervals"
+      }
+    }
+  },
+  "runUnloadWorkoutTooltip": "Unload workout",
+  "@runUnloadWorkoutTooltip": {
+    "description": "Tooltip and screen-reader label for the x on the idle screen's loaded-workout card; unloads the workout so the next run is a free run"
+  },
   "runAbandonWorkoutTitle": "Abandon workout?",
   "@runAbandonWorkoutTitle": {
     "description": "Title of the confirm-abandon-workout dialog"

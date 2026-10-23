@@ -2118,6 +2118,14 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String runWorkoutLoadedTitle(String title) {
+    return 'Séance chargée : $title';
+  }
+
+  @override
+  String get runUnloadWorkoutTooltip => 'Retirer la séance';
+
+  @override
   String get runAbandonWorkoutTitle => 'Abandonner la séance ?';
 
   @override

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:api_client/api_client.dart' show ApiClient;
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -97,6 +98,29 @@ class _CapturingRunStore extends LocalRunStore {
 
   @override
   Future<void> clearInProgress() async {}
+}
+
+/// Signed in, with the live-broadcast legs recorded instead of sent.
+class _LiveApi extends ApiClient {
+  final List<String> calls = [];
+
+  @override
+  String? get userId => 'user-1';
+
+  @override
+  Future<void> beginLiveBroadcast({
+    required String runId,
+    required DateTime startedAt,
+    String activityType = 'run',
+    bool safetyAudience = false,
+  }) async {
+    calls.add('begin');
+  }
+
+  @override
+  Future<void> concludeLiveBroadcast(String runId) async {
+    calls.add('conclude');
+  }
 }
 
 /// No plan behind a loaded workout, so no backend round-trip. With [today]
@@ -240,6 +264,8 @@ void main() {
     mock(const MethodChannel('flutter_tts'), (call) async => 1);
     mock(const MethodChannel('run_app/run_notification'), (call) async => null);
     mock(const MethodChannel('run_app/haptics'), (call) async => true);
+    mock(const MethodChannel('dev.fluttercommunity.plus/share'),
+        (call) async => '');
     mock(const MethodChannel('step_count'), (call) async => null);
     mock(const MethodChannel('step_detection'), (call) async => null);
     runsDir = Directory.systemTemp.createTempSync('run_screen_idle_setup_');
@@ -260,6 +286,7 @@ void main() {
     List<cm.Route> routes = const [],
     cm.Route? initialRoute,
     cm.PlanWorkoutRow? todayWorkout,
+    ApiClient? api,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = Preferences();
@@ -276,7 +303,7 @@ void main() {
         home: RunStopDock(
           docked: true,
           child: RunScreen(
-            apiClient: null,
+            apiClient: api,
             runStore: runStore,
             routeStore: routeStore,
             preferences: prefs,
@@ -590,6 +617,36 @@ void main() {
       expect(find.byType(AlertDialog), findsNothing);
       expect(chip(tester, 'Race strategy').isSet, isFalse);
       // No route means no distance, which raises a banner on its own timer.
+      await tester.pump(kTopBannerMaxDuration);
+      await unmount(tester);
+    });
+  });
+
+  group('a live link shared before the run', () {
+    testWidgets('shows as armed, and offers the stop / re-share sheet',
+        (tester) async {
+      final api = _LiveApi();
+      await pumpRunScreen(tester, api: api);
+
+      await tester.tap(find.text('Share live link'));
+      await pumpUntil(tester, () => api.calls.contains('begin'),
+          describe: 'the pre-GO broadcast begin');
+      await tester.pump();
+      expect(find.text('Share live link'), findsNothing,
+          reason: 'the idle screen must not look unchanged once shared');
+      final armed = tester.widget<IdleSetupChip>(
+          find.widgetWithText(IdleSetupChip, 'Live link shared'));
+      expect(armed.isSet, isTrue);
+
+      await tester.tap(find.text('Live link shared'));
+      await tester.pumpAndSettle();
+      expect(find.text('Share link again'), findsOneWidget);
+      await tester.tap(find.text('Stop sharing'));
+      await tester.pumpAndSettle();
+
+      expect(api.calls, contains('conclude'));
+      expect(find.text('Share live link'), findsOneWidget,
+          reason: 'stopped, the chip offers sharing again');
       await tester.pump(kTopBannerMaxDuration);
       await unmount(tester);
     });

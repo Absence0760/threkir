@@ -1765,6 +1765,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runShareLiveLink => 'Partilhar link em direto';
 
   @override
+  String get runLiveShareArmed => 'Link em direto partilhado';
+
+  @override
   String get runLiveShareNeedsSignIn =>
       'Inicie sessão para partilhar um link de rastreio em direto.';
 
@@ -20631,6 +20634,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runShareLiveLink => 'Compartilhar link ao vivo';
+
+  @override
+  String get runLiveShareArmed => 'Link ao vivo compartilhado';
 
   @override
   String get runLiveShareNeedsSignIn =>

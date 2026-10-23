@@ -1683,6 +1683,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runShareLiveLink => 'ライブリンクを共有';
 
   @override
+  String get runLiveShareArmed => 'ライブリンクを共有済み';
+
+  @override
   String get runLiveShareNeedsSignIn => 'ライブトラッキングのリンクを共有するにはサインインしてください。';
 
   @override

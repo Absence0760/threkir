@@ -480,6 +480,7 @@
   "runChooseRoute": "Route wählen",
   "runChangeRoute": "Route ändern",
   "runShareLiveLink": "Live-Link teilen",
+  "runLiveShareArmed": "Live-Link geteilt",
   "runLiveShareNeedsSignIn": "Melde dich an, um einen Live-Tracking-Link zu teilen.",
   "runLiveShareNotStarted": "Live-Tracking konnte nicht gestartet werden – tippe zum erneuten Versuch auf Teilen.",
   "runLiveShareActive": "Live",

@@ -480,6 +480,7 @@
   "runChooseRoute": "ルートを選択",
   "runChangeRoute": "ルートを変更",
   "runShareLiveLink": "ライブリンクを共有",
+  "runLiveShareArmed": "ライブリンクを共有済み",
   "runLiveShareNeedsSignIn": "ライブトラッキングのリンクを共有するにはサインインしてください。",
   "runLiveShareNotStarted": "ライブトラッキングを開始できませんでした。「共有」をタップして再試行してください。",
   "runLiveShareActive": "ライブ",

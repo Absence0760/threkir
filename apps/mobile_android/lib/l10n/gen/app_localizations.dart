@@ -3029,6 +3029,12 @@ abstract class AppLocalizations {
   /// **'Share live link'**
   String get runShareLiveLink;
 
+  /// Idle-screen setup chip once the runner has shared a live link for the coming run; tapping it offers re-share or stop
+  ///
+  /// In en, this message translates to:
+  /// **'Live link shared'**
+  String get runLiveShareArmed;
+
   /// Shown when a signed-out user tries to share a live tracking link, which cannot broadcast
   ///
   /// In en, this message translates to:

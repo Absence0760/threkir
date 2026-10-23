@@ -1768,6 +1768,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runShareLiveLink => 'Live-Link teilen';
 
   @override
+  String get runLiveShareArmed => 'Live-Link geteilt';
+
+  @override
   String get runLiveShareNeedsSignIn =>
       'Melde dich an, um einen Live-Tracking-Link zu teilen.';
 

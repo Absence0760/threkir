@@ -480,6 +480,7 @@
   "runChooseRoute": "Choisir un parcours",
   "runChangeRoute": "Changer de parcours",
   "runShareLiveLink": "Partager le lien en direct",
+  "runLiveShareArmed": "Lien en direct partagé",
   "runLiveShareNeedsSignIn": "Connectez-vous pour partager un lien de suivi en direct.",
   "runLiveShareNotStarted": "Le suivi en direct n'a pas pu démarrer — appuyez sur Partager pour réessayer.",
   "runLiveShareActive": "En direct",

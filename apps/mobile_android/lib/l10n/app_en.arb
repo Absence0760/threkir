@@ -2253,6 +2253,10 @@
   "@runShareLiveLink": {
     "description": "Idle-screen button that shares a live spectator link for the run"
   },
+  "runLiveShareArmed": "Live link shared",
+  "@runLiveShareArmed": {
+    "description": "Idle-screen setup chip once the runner has shared a live link for the coming run; tapping it offers re-share or stop"
+  },
   "runLiveShareNeedsSignIn": "Sign in to share a live tracking link.",
   "@runLiveShareNeedsSignIn": {
     "description": "Shown when a signed-out user tries to share a live tracking link, which cannot broadcast"

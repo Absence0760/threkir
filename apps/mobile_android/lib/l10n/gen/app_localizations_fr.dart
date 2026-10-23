@@ -1771,6 +1771,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runShareLiveLink => 'Partager le lien en direct';
 
   @override
+  String get runLiveShareArmed => 'Lien en direct partagé';
+
+  @override
   String get runLiveShareNeedsSignIn =>
       'Connectez-vous pour partager un lien de suivi en direct.';
 

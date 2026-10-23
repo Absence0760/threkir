@@ -1748,6 +1748,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runShareLiveLink => 'Share live link';
 
   @override
+  String get runLiveShareArmed => 'Live link shared';
+
+  @override
   String get runLiveShareNeedsSignIn =>
       'Sign in to share a live tracking link.';
 

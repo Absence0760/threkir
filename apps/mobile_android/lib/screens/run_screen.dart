@@ -1671,7 +1671,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
 
     // Record the intent before the (best-effort) begin so a transient failure
     // here is recovered when the run starts, even if auto-live-share is off.
-    _liveShareRequested = true;
+    // A rebuild, because the idle setup row shows the armed share.
+    setState(() => _liveShareRequested = true);
     final started = await _startLiveBroadcast();
 
     try {
@@ -1767,7 +1768,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// run keeps recording. Clears [_liveShareRequested] so a later GO / auto
   /// path doesn't silently re-broadcast against the runner's choice.
   Future<void> _stopLiveShare() async {
-    _liveShareRequested = false;
+    if (mounted) {
+      setState(() => _liveShareRequested = false);
+    } else {
+      _liveShareRequested = false;
+    }
     final lb = _liveBroadcaster;
     final api = widget.apiClient;
     final id = _runId;
@@ -4647,11 +4652,24 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                             isSet: _selectedRoute != null,
                             onPressed: _selectRoute,
                           ),
-                          IdleSetupChip(
-                            icon: Icons.podcasts,
-                            label: l10n.runShareLiveLink,
-                            isSet: false,
-                            onPressed: _shareLiveLink,
+                          // Armed is the runner's intent, not only a live
+                          // broadcaster: a failed pre-GO begin is retried on
+                          // GO, so the link is still theirs to stop.
+                          ValueListenableBuilder<bool>(
+                            valueListenable: _liveShareActive,
+                            builder: (context, active, _) {
+                              final armed = active || _liveShareRequested;
+                              return IdleSetupChip(
+                                icon: Icons.podcasts,
+                                label: armed
+                                    ? l10n.runLiveShareArmed
+                                    : l10n.runShareLiveLink,
+                                isSet: armed,
+                                onPressed: armed
+                                    ? _onLiveShareIndicatorTap
+                                    : _shareLiveLink,
+                              );
+                            },
                           ),
                           IdleSetupChip(
                             icon: Icons.headset_mic_outlined,

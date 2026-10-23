@@ -480,6 +480,7 @@
   "runChooseRoute": "Escolher rota",
   "runChangeRoute": "Trocar rota",
   "runShareLiveLink": "Compartilhar link ao vivo",
+  "runLiveShareArmed": "Link ao vivo compartilhado",
   "runLiveShareNeedsSignIn": "Faça login para compartilhar um link de rastreamento ao vivo.",
   "runLiveShareNotStarted": "Não foi possível iniciar o rastreamento ao vivo — toque em Compartilhar para tentar novamente.",
   "runLiveShareActive": "Ao vivo",

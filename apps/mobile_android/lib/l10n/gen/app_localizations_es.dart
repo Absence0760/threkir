@@ -1880,6 +1880,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runFollowing => 'SIGUIENDO';
 
   @override
+  String get runClearRouteTooltip => 'Quitar ruta';
+
+  @override
   String get runRaceFallbackTitle => 'Carrera';
 
   @override

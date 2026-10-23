@@ -1884,6 +1884,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runFollowing => 'FOLGT';
 
   @override
+  String get runClearRouteTooltip => 'Route entfernen';
+
+  @override
   String get runRaceFallbackTitle => 'Rennen';
 
   @override

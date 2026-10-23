@@ -367,5 +367,46 @@ void main() {
       expect(find.text('Choose route'), findsOneWidget);
       await unmount(tester);
     });
+
+    testWidgets('is cleared by the x on its card, with no confirm',
+        (tester) async {
+      await pumpRunScreen(tester, routes: [_loop], initialRoute: _loop);
+
+      final clear = find.byTooltip('Remove route');
+      expect(clear, findsOneWidget);
+      expectTouchTarget(tester, clear);
+      await tester.tap(clear);
+      await tester.pump();
+
+      expect(find.byType(AlertDialog), findsNothing,
+          reason: 'picking the route again undoes it, so nothing to confirm');
+      expect(find.text('FOLLOWING'), findsNothing);
+      expect(find.text('River loop'), findsNothing);
+      expect(find.text('Choose route'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('opens the picker when its card is tapped', (tester) async {
+      await pumpRunScreen(tester, routes: [_loop], initialRoute: _loop);
+
+      await tester.tap(find.text('FOLLOWING'));
+      await tester.pumpAndSettle();
+      expect(find.byType(RoutePickerScreen), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('FOLLOWING'), findsOneWidget);
+      await unmount(tester);
+    });
   });
+}
+
+/// Material's 48 dp minimum interactive size, measured on the button that
+/// owns [finder] (a tooltip wraps only the 40 dp visual, not the padded
+/// target around it).
+void expectTouchTarget(WidgetTester tester, Finder finder) {
+  final button = find.ancestor(of: finder, matching: find.byType(IconButton));
+  final size = tester.getSize(button.first);
+  expect(size.width, greaterThanOrEqualTo(48), reason: 'target width');
+  expect(size.height, greaterThanOrEqualTo(48), reason: 'target height');
 }

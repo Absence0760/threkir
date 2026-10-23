@@ -4724,7 +4724,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                         },
                       ),
                     if (_selectedRoute != null)
-                      _RoutePreviewCard(route: _selectedRoute!)
+                      _RoutePreviewCard(
+                        route: _selectedRoute!,
+                        onTap: _selectRoute,
+                        onClear: () => _setFollowedRoute(null),
+                      )
                     else ...[
                       if (_upcomingEvent != null)
                         Padding(
@@ -6643,22 +6647,59 @@ class _RaceBannerState extends State<_RaceBanner> {
   }
 }
 
+/// The followed route on the idle screen. A tap reopens the picker and the
+/// corner x stops following it; clearing needs no confirm because picking the
+/// route again restores it (conventions.md § Destructive actions).
 class _RoutePreviewCard extends StatelessWidget {
   final cm.Route route;
-  const _RoutePreviewCard({required this.route});
+  final VoidCallback onTap;
+  final VoidCallback onClear;
+  const _RoutePreviewCard({
+    required this.route,
+    required this.onTap,
+    required this.onClear,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
+    return Material(
+      color: theme.colorScheme.surfaceContainerHighest,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor),
+        side: BorderSide(color: theme.dividerColor),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Semantics(
+              button: true,
+              onTapHint: l10n.runChangeRoute,
+              child: InkWell(
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 4, 14),
+                  child: _content(theme, l10n),
+                ),
+              ),
+            ),
+          ),
+          IconButton(
+            key: const Key('runClearRoute'),
+            icon: const Icon(Icons.close),
+            tooltip: l10n.runClearRouteTooltip,
+            onPressed: onClear,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _content(ThemeData theme, AppLocalizations l10n) {
+    return Row(
         children: [
           SizedBox(
             width: 72,
@@ -6726,7 +6767,6 @@ class _RoutePreviewCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
     );
   }
 }

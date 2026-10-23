@@ -1882,6 +1882,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runFollowing => 'A seguir';
 
   @override
+  String get runClearRouteTooltip => 'Remover rota';
+
+  @override
   String get runRaceFallbackTitle => 'Prova';
 
   @override
@@ -20732,6 +20735,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runFollowing => 'SEGUINDO';
+
+  @override
+  String get runClearRouteTooltip => 'Remover rota';
 
   @override
   String get runRaceFallbackTitle => 'Prova';

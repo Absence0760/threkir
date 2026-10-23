@@ -511,6 +511,7 @@
   "runLastActivity": "Última atividade",
   "runLastRun": "Última corrida",
   "runFollowing": "SEGUINDO",
+  "runClearRouteTooltip": "Remover rota",
   "runRaceFallbackTitle": "Prova",
   "runRaceArmed": "Prova preparada",
   "runRaceLive": "Prova AO VIVO",

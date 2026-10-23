@@ -511,6 +511,7 @@
   "runLastActivity": "Dernière activité",
   "runLastRun": "Dernière course",
   "runFollowing": "SUIVI",
+  "runClearRouteTooltip": "Retirer le parcours",
   "runRaceFallbackTitle": "Course",
   "runRaceArmed": "Course armée",
   "runRaceLive": "Course EN DIRECT",

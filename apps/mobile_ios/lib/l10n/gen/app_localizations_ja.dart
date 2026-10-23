@@ -1795,6 +1795,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runFollowing => 'フォロー中';
 
   @override
+  String get runClearRouteTooltip => 'ルートを外す';
+
+  @override
   String get runRaceFallbackTitle => 'レース';
 
   @override

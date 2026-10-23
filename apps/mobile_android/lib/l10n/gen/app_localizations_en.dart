@@ -1863,6 +1863,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runFollowing => 'FOLLOWING';
 
   @override
+  String get runClearRouteTooltip => 'Remove route';
+
+  @override
   String get runRaceFallbackTitle => 'Race';
 
   @override

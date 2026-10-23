@@ -1888,6 +1888,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runFollowing => 'SUIVI';
 
   @override
+  String get runClearRouteTooltip => 'Retirer le parcours';
+
+  @override
   String get runRaceFallbackTitle => 'Course';
 
   @override

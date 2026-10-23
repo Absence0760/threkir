@@ -2397,6 +2397,10 @@
   "@runFollowing": {
     "description": "Uppercase label on the route-preview card indicating the run will follow this route"
   },
+  "runClearRouteTooltip": "Remove route",
+  "@runClearRouteTooltip": {
+    "description": "Tooltip and screen-reader label for the x on the idle screen's route card; stops following the route"
+  },
   "runRaceFallbackTitle": "Race",
   "@runRaceFallbackTitle": {
     "description": "Fallback name for a live race when the event has no title"

@@ -511,6 +511,7 @@
   "runLastActivity": "前回のアクティビティ",
   "runLastRun": "前回のラン",
   "runFollowing": "フォロー中",
+  "runClearRouteTooltip": "ルートを外す",
   "runRaceFallbackTitle": "レース",
   "runRaceArmed": "レース準備完了",
   "runRaceLive": "レース ライブ",

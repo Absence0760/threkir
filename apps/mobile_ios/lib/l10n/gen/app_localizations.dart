@@ -3215,6 +3215,12 @@ abstract class AppLocalizations {
   /// **'FOLLOWING'**
   String get runFollowing;
 
+  /// Tooltip and screen-reader label for the x on the idle screen's route card; stops following the route
+  ///
+  /// In en, this message translates to:
+  /// **'Remove route'**
+  String get runClearRouteTooltip;
+
   /// Fallback name for a live race when the event has no title
   ///
   /// In en, this message translates to:

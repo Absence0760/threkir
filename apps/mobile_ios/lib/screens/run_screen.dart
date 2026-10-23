@@ -3983,6 +3983,15 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   }
 
   void _discard() {
+    // A finished run has spent its workout; keeping the runner would write
+    // its plan_workout_id and step results into the next run's metadata. A
+    // false start (countdown cancel, mid-run discard) keeps the choice the
+    // runner made and only rewinds it, as the guided run below does.
+    if (_state == _ScreenState.finished) {
+      _unloadWorkout();
+    } else {
+      _rewindLoadedWorkout();
+    }
     _snapshotSub?.cancel();
     _stepSub?.cancel();
     _baroSub?.cancel();
@@ -4391,6 +4400,31 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     if (mounted) {
       showTopBanner(context, _l10n.runWorkoutLoaded(steps.length));
     }
+  }
+
+  /// Drop the loaded workout: runner, its event subscription, the band and
+  /// the ids the save path links the run to. Callers own the rebuild.
+  void _unloadWorkout() {
+    _workoutEventsSub?.cancel();
+    _workoutEventsSub = null;
+    _workoutRunner?.dispose();
+    _workoutRunner = null;
+    _activeWorkoutId = null;
+    _activeWorkoutRow = null;
+    _publishWorkoutBand();
+  }
+
+  /// Keep the loaded workout but start it again from its first step, so a
+  /// false start does not carry the steps it already advanced through.
+  void _rewindLoadedWorkout() {
+    final old = _workoutRunner;
+    if (old == null) return;
+    _workoutEventsSub?.cancel();
+    old.dispose();
+    final runner = WorkoutRunner(steps: old.steps);
+    _workoutEventsSub = runner.events.listen(_onWorkoutEvent);
+    _workoutRunner = runner;
+    _publishWorkoutBand();
   }
 
   void _onSkipWorkoutStep() {

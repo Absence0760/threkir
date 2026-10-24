@@ -749,19 +749,19 @@ class AppLocalizationsJa extends AppLocalizations {
   String get navStartStroller => 'ベビーカー開始';
 
   @override
-  String get startActivityRun => 'ランを開始';
+  String get startRecordingRun => 'ランを開始';
 
   @override
-  String get startActivityWalk => 'ウォーキングを開始';
+  String get startRecordingWalk => 'ウォーキングを開始';
 
   @override
-  String get startActivityRide => 'サイクリングを開始';
+  String get startRecordingRide => 'サイクリングを開始';
 
   @override
-  String get startActivityTrailRun => 'トレイルランを開始';
+  String get startRecordingTrailRun => 'トレイルランを開始';
 
   @override
-  String get startActivityStroller => 'ベビーカーランを開始';
+  String get startRecordingStroller => 'ベビーカーランを開始';
 
   @override
   String get logModalityShownGym => 'ジムを表示しました';

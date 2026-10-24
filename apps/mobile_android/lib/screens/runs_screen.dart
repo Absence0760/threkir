@@ -101,8 +101,9 @@ class RunsScreen extends StatefulWidget {
 
   /// Whether the shell's centre button starts recording on tap, in which case
   /// it is captioned for the default activity ("Start run", "Start ride", ...)
-  /// rather than "Log" and the empty state has to name it that way. The host knows, because it is the one that can see
-  /// whether lifts or meals exist; this screen's Runs-only mount cannot.
+  /// rather than "Log" and the empty state has to name it that way. The host
+  /// knows, because it is the one that can see whether lifts or meals exist;
+  /// this screen's Runs-only mount cannot.
   final bool centreStartsRun;
 
   const RunsScreen({

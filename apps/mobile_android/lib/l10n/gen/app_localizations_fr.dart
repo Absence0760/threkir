@@ -781,19 +781,19 @@ class AppLocalizationsFr extends AppLocalizations {
   String get navStartStroller => 'Poussette';
 
   @override
-  String get startActivityRun => 'Démarrer une course';
+  String get startRecordingRun => 'Démarrer une course';
 
   @override
-  String get startActivityWalk => 'Démarrer une marche';
+  String get startRecordingWalk => 'Démarrer une marche';
 
   @override
-  String get startActivityRide => 'Démarrer une sortie vélo';
+  String get startRecordingRide => 'Démarrer une sortie vélo';
 
   @override
-  String get startActivityTrailRun => 'Démarrer un trail';
+  String get startRecordingTrailRun => 'Démarrer un trail';
 
   @override
-  String get startActivityStroller => 'Démarrer une course avec poussette';
+  String get startRecordingStroller => 'Démarrer une course avec poussette';
 
   @override
   String get logModalityShownGym => 'La muscu est maintenant affichée';

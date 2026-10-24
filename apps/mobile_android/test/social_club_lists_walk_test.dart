@@ -40,8 +40,23 @@ void main() {
 
   test('fetchPendingRequests walks the request queue by keyset cursor', () {
     final read = body(
-        'Future<List<ClubMemberRow>> fetchPendingRequests(', 'ClubMemberRow.fromJson');
-    expectWalk(read, 'pendingRequestOrder');
+        'Future<List<ClubMemberView>> fetchPendingRequests(', 'return _withProfiles(');
+    expectWalk(read, 'clubMemberOrder');
+  });
+
+  test('fetchClubMembers pages the roster by keyset cursor, active only', () {
+    // One page at a time with Load more, not a whole-roster walk: a club with
+    // hundreds of members renders page one (#1228). A private club's members
+    // can also read its pending and rejected rows, so the filter matters.
+    final read = body('Future<KeysetPage<ClubMemberView>> fetchClubMembers(',
+        'Future<List<ClubMemberView>> _withProfiles(');
+    expect(read.contains('keysetAfter(clubMemberOrder, after)'), isTrue);
+    expect(read.contains('nextCursor(clubMemberOrder, rows, limit)'), isTrue);
+    expect(read.contains('for (final k in clubMemberOrder)'), isTrue);
+    expect(read.contains(".eq('status', 'active')"), isTrue);
+    expect(read.contains("'club_id, user_id, role, status, joined_at'"), isTrue,
+        reason: 'activity_waiver_ack_at is not public roster data');
+    expect(read.contains('.range('), isFalse);
   });
 
   test('both orders end on the column the primary key leaves unique', () {
@@ -53,7 +68,7 @@ void main() {
             .hasMatch(src),
         isTrue);
     expect(
-        RegExp(r"pendingRequestOrder = \[\s*KeysetKey\('joined_at'[^\]]*KeysetKey\('user_id'")
+        RegExp(r"clubMemberOrder = \[\s*KeysetKey\('joined_at'[^\]]*KeysetKey\('user_id'")
             .hasMatch(src),
         isTrue);
   });

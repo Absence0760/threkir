@@ -17,6 +17,7 @@ import 'leaderboard_standing.dart';
 import 'l10n/date_format.dart';
 import 'l10n/gen/app_localizations.dart';
 import 'l10n/locale_support.dart';
+import 'offline_sync_store.dart' show parseServerTimestamp;
 import 'recurrence.dart';
 
 // Column-level grant lockdown: `clubs.invite_token` is revoked from
@@ -739,14 +740,14 @@ class SocialService extends ChangeNotifier {
     KeysetKey('club_id', ascending: false, nullsFirst: false),
   ];
 
+  /// One roster page. Web's `ROSTER_PAGE_SIZE`.
+  static const int rosterPageSize = 50;
+
   /// The order a club's roster and its pending join requests are listed and
   /// walked in: oldest first, so an admin works the request queue in arrival
   /// order, `user_id` (unique within one club) breaking a tie. Web's
   /// `CLUB_MEMBER_ORDER` is the same order, and `club_members_club_roster
   /// (club_id, joined_at, user_id)` serves it.
-  /// One roster page. Web's `ROSTER_PAGE_SIZE`.
-  static const int rosterPageSize = 50;
-
   static const List<KeysetKey> clubMemberOrder = [
     KeysetKey('joined_at', ascending: true, nullsFirst: false),
     KeysetKey('user_id', ascending: true, nullsFirst: false),
@@ -1156,9 +1157,7 @@ class SocialService extends ChangeNotifier {
           userId: r['user_id'] as String,
           role: r['role'] as String? ?? 'member',
           status: r['status'] as String? ?? 'active',
-          joinedAt: r['joined_at'] == null
-              ? null
-              : DateTime.parse(r['joined_at'] as String),
+          joinedAt: parseServerTimestamp(r['joined_at']),
           displayName: byId[r['user_id']]?['display_name'] as String?,
           avatarUrl: byId[r['user_id']]?['avatar_url'] as String?,
         ),

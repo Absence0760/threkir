@@ -783,19 +783,19 @@ class AppLocalizationsDe extends AppLocalizations {
   String get navStartStroller => 'Kinderwagen';
 
   @override
-  String get startActivityRun => 'Lauf starten';
+  String get startRecordingRun => 'Lauf starten';
 
   @override
-  String get startActivityWalk => 'Gehen starten';
+  String get startRecordingWalk => 'Gehen starten';
 
   @override
-  String get startActivityRide => 'Radfahrt starten';
+  String get startRecordingRide => 'Radfahrt starten';
 
   @override
-  String get startActivityTrailRun => 'Traillauf starten';
+  String get startRecordingTrailRun => 'Traillauf starten';
 
   @override
-  String get startActivityStroller => 'Kinderwagenlauf starten';
+  String get startRecordingStroller => 'Kinderwagenlauf starten';
 
   @override
   String get logModalityShownGym => 'Gym wird jetzt angezeigt';

@@ -81,14 +81,14 @@ String startActivityCaption(AppLocalizations l10n, ActivityType type) {
 String startActivityAction(AppLocalizations l10n, ActivityType type) {
   switch (type) {
     case ActivityType.run:
-      return l10n.startActivityRun;
+      return l10n.startRecordingRun;
     case ActivityType.walk:
-      return l10n.startActivityWalk;
+      return l10n.startRecordingWalk;
     case ActivityType.cycle:
-      return l10n.startActivityRide;
+      return l10n.startRecordingRide;
     case ActivityType.hike:
-      return l10n.startActivityTrailRun;
+      return l10n.startRecordingTrailRun;
     case ActivityType.stroller:
-      return l10n.startActivityStroller;
+      return l10n.startRecordingStroller;
   }
 }

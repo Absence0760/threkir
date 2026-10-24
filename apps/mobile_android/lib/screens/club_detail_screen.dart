@@ -1309,12 +1309,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
   List<Widget> _rosterBody(
       ThemeData theme, AppLocalizations l10n, ClubView c) {
     if (_membersLoading && _members.isEmpty) {
-      return const [
-        Padding(
-          padding: EdgeInsets.symmetric(vertical: 24),
-          child: Center(child: CircularProgressIndicator()),
-        ),
-      ];
+      return [ListSkeleton.section(label: l10n.commonLoading)];
     }
     if (_membersFailed && _members.isEmpty) {
       return [

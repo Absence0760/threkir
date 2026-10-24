@@ -782,19 +782,19 @@ class AppLocalizationsPt extends AppLocalizations {
   String get navStartStroller => 'Carrinho';
 
   @override
-  String get startActivityRun => 'Iniciar uma corrida';
+  String get startRecordingRun => 'Iniciar uma corrida';
 
   @override
-  String get startActivityWalk => 'Iniciar uma caminhada';
+  String get startRecordingWalk => 'Iniciar uma caminhada';
 
   @override
-  String get startActivityRide => 'Iniciar uma volta de bicicleta';
+  String get startRecordingRide => 'Iniciar uma volta de bicicleta';
 
   @override
-  String get startActivityTrailRun => 'Iniciar um trail';
+  String get startRecordingTrailRun => 'Iniciar um trail';
 
   @override
-  String get startActivityStroller => 'Iniciar uma corrida com carrinho';
+  String get startRecordingStroller => 'Iniciar uma corrida com carrinho';
 
   @override
   String get logModalityShownGym => 'O Ginásio passou a ser mostrado';
@@ -19726,19 +19726,19 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get navStartStroller => 'Carrinho';
 
   @override
-  String get startActivityRun => 'Iniciar uma corrida';
+  String get startRecordingRun => 'Iniciar uma corrida';
 
   @override
-  String get startActivityWalk => 'Iniciar uma caminhada';
+  String get startRecordingWalk => 'Iniciar uma caminhada';
 
   @override
-  String get startActivityRide => 'Iniciar um pedal';
+  String get startRecordingRide => 'Iniciar um pedal';
 
   @override
-  String get startActivityTrailRun => 'Iniciar uma trilha';
+  String get startRecordingTrailRun => 'Iniciar uma trilha';
 
   @override
-  String get startActivityStroller => 'Iniciar uma corrida com carrinho';
+  String get startRecordingStroller => 'Iniciar uma corrida com carrinho';
 
   @override
   String get logModalityShownGym => 'A Academia passou a ser mostrada';

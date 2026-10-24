@@ -780,19 +780,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get navStartStroller => 'Cochecito';
 
   @override
-  String get startActivityRun => 'Iniciar una carrera';
+  String get startRecordingRun => 'Iniciar una carrera';
 
   @override
-  String get startActivityWalk => 'Iniciar una caminata';
+  String get startRecordingWalk => 'Iniciar una caminata';
 
   @override
-  String get startActivityRide => 'Iniciar una salida en bici';
+  String get startRecordingRide => 'Iniciar una salida en bici';
 
   @override
-  String get startActivityTrailRun => 'Iniciar un trail';
+  String get startRecordingTrailRun => 'Iniciar un trail';
 
   @override
-  String get startActivityStroller => 'Iniciar una carrera con cochecito';
+  String get startRecordingStroller => 'Iniciar una carrera con cochecito';
 
   @override
   String get logModalityShownGym => 'Ahora se muestra Gimnasio';

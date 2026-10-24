@@ -1329,31 +1329,31 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Start a run'**
-  String get startActivityRun;
+  String get startRecordingRun;
 
-  /// As startActivityRun, when the default activity is walk
+  /// As startRecordingRun, when the default activity is walk
   ///
   /// In en, this message translates to:
   /// **'Start a walk'**
-  String get startActivityWalk;
+  String get startRecordingWalk;
 
-  /// As startActivityRun, when the default activity is cycle
+  /// As startRecordingRun, when the default activity is cycle
   ///
   /// In en, this message translates to:
   /// **'Start a ride'**
-  String get startActivityRide;
+  String get startRecordingRide;
 
-  /// As startActivityRun, when the default activity is hike (shown as Trail run)
+  /// As startRecordingRun, when the default activity is hike (shown as Trail run)
   ///
   /// In en, this message translates to:
   /// **'Start a trail run'**
-  String get startActivityTrailRun;
+  String get startRecordingTrailRun;
 
-  /// As startActivityRun, when the default activity is stroller
+  /// As startRecordingRun, when the default activity is stroller
   ///
   /// In en, this message translates to:
   /// **'Start a stroller run'**
-  String get startActivityStroller;
+  String get startRecordingStroller;
 
   /// Top banner after a Log action for a hidden Gym switched it on; carries an Undo that hides it again
   ///

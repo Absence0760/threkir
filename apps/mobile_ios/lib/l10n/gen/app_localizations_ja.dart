@@ -737,7 +737,31 @@ class AppLocalizationsJa extends AppLocalizations {
   String get navStartRun => 'ラン開始';
 
   @override
-  String get logStartRunA11yLabel => 'ランを開始';
+  String get navStartWalk => 'ウォーク開始';
+
+  @override
+  String get navStartRide => 'ライド開始';
+
+  @override
+  String get navStartTrailRun => 'トレイル開始';
+
+  @override
+  String get navStartStroller => 'ベビーカー開始';
+
+  @override
+  String get startActivityRun => 'ランを開始';
+
+  @override
+  String get startActivityWalk => 'ウォーキングを開始';
+
+  @override
+  String get startActivityRide => 'サイクリングを開始';
+
+  @override
+  String get startActivityTrailRun => 'トレイルランを開始';
+
+  @override
+  String get startActivityStroller => 'ベビーカーランを開始';
 
   @override
   String get logModalityShownGym => 'ジムを表示しました';
@@ -2313,8 +2337,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get historyAddPastRun => '過去のランを追加';
 
   @override
-  String get historyEmptyBodyRunPrimary =>
-      '「ラン開始」をタップしてランを記録するか、すでに走ったランを追加しましょう';
+  String historyEmptyBodyRunPrimary(String button) {
+    return '「$button」をタップして記録を開始するか、すでに終えたものを追加しましょう';
+  }
 
   @override
   String get historyLogTooltip => 'ラン・筋トレ・食事を記録';
@@ -8793,10 +8818,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get dashboardWelcomeBody =>
-      'ランを記録したり、目標を設定したり、履歴をインポートすると、ダッシュボードが充実します。';
-
-  @override
-  String get dashboardStartRun => 'ランを開始';
+      'アクティビティを記録したり、目標を設定したり、履歴をインポートすると、ダッシュボードが充実します。';
 
   @override
   String get dashboardSetGoal => '目標を設定';

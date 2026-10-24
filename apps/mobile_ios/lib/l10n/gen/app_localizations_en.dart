@@ -761,7 +761,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navStartRun => 'Start run';
 
   @override
-  String get logStartRunA11yLabel => 'Start a run';
+  String get navStartWalk => 'Start walk';
+
+  @override
+  String get navStartRide => 'Start ride';
+
+  @override
+  String get navStartTrailRun => 'Start trail run';
+
+  @override
+  String get navStartStroller => 'Start stroller run';
+
+  @override
+  String get startActivityRun => 'Start a run';
+
+  @override
+  String get startActivityWalk => 'Start a walk';
+
+  @override
+  String get startActivityRide => 'Start a ride';
+
+  @override
+  String get startActivityTrailRun => 'Start a trail run';
+
+  @override
+  String get startActivityStroller => 'Start a stroller run';
 
   @override
   String get logModalityShownGym => 'Gym is now shown';
@@ -2418,8 +2442,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyAddPastRun => 'Add past run';
 
   @override
-  String get historyEmptyBodyRunPrimary =>
-      'Tap Start run to record a run, or add one you have already finished';
+  String historyEmptyBodyRunPrimary(String button) {
+    return 'Tap $button to start recording, or add one you have already finished';
+  }
 
   @override
   String get historyLogTooltip => 'Log a run, lift or meal';
@@ -9191,10 +9216,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dashboardWelcomeBody =>
-      'Your dashboard fills in once you record a run, set a goal, or import your history.';
-
-  @override
-  String get dashboardStartRun => 'Start a run';
+      'Your dashboard fills in once you record an activity, set a goal, or import your history.';
 
   @override
   String get dashboardSetGoal => 'Set a goal';

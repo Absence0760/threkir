@@ -770,7 +770,31 @@ class AppLocalizationsPt extends AppLocalizations {
   String get navStartRun => 'Correr';
 
   @override
-  String get logStartRunA11yLabel => 'Iniciar uma corrida';
+  String get navStartWalk => 'Caminhar';
+
+  @override
+  String get navStartRide => 'Pedalar';
+
+  @override
+  String get navStartTrailRun => 'Trail';
+
+  @override
+  String get navStartStroller => 'Carrinho';
+
+  @override
+  String get startActivityRun => 'Iniciar uma corrida';
+
+  @override
+  String get startActivityWalk => 'Iniciar uma caminhada';
+
+  @override
+  String get startActivityRide => 'Iniciar uma volta de bicicleta';
+
+  @override
+  String get startActivityTrailRun => 'Iniciar um trail';
+
+  @override
+  String get startActivityStroller => 'Iniciar uma corrida com carrinho';
 
   @override
   String get logModalityShownGym => 'O Ginásio passou a ser mostrado';
@@ -2443,8 +2467,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get historyAddPastRun => 'Adicionar corrida anterior';
 
   @override
-  String get historyEmptyBodyRunPrimary =>
-      'Toque em Correr para gravar uma corrida ou adicione uma que já tenha feito';
+  String historyEmptyBodyRunPrimary(String button) {
+    return 'Toque em $button para começar a gravar ou adicione uma que já tenha feito';
+  }
 
   @override
   String get historyLogTooltip => 'Registar corrida, treino ou refeição';
@@ -9287,10 +9312,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get dashboardWelcomeBody =>
-      'O seu painel é preenchido assim que regista uma corrida, define uma meta ou importa o seu histórico.';
-
-  @override
-  String get dashboardStartRun => 'Iniciar uma corrida';
+      'O seu painel é preenchido assim que regista uma atividade, define uma meta ou importa o seu histórico.';
 
   @override
   String get dashboardSetGoal => 'Definir meta';
@@ -19641,7 +19663,31 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get navStartRun => 'Correr';
 
   @override
-  String get logStartRunA11yLabel => 'Iniciar uma corrida';
+  String get navStartWalk => 'Caminhar';
+
+  @override
+  String get navStartRide => 'Pedalar';
+
+  @override
+  String get navStartTrailRun => 'Trilha';
+
+  @override
+  String get navStartStroller => 'Carrinho';
+
+  @override
+  String get startActivityRun => 'Iniciar uma corrida';
+
+  @override
+  String get startActivityWalk => 'Iniciar uma caminhada';
+
+  @override
+  String get startActivityRide => 'Iniciar um pedal';
+
+  @override
+  String get startActivityTrailRun => 'Iniciar uma trilha';
+
+  @override
+  String get startActivityStroller => 'Iniciar uma corrida com carrinho';
 
   @override
   String get logModalityShownGym => 'A Academia passou a ser mostrada';
@@ -21314,8 +21360,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get historyAddPastRun => 'Adicionar corrida anterior';
 
   @override
-  String get historyEmptyBodyRunPrimary =>
-      'Toque em Correr para gravar uma corrida ou adicione uma que você já fez';
+  String historyEmptyBodyRunPrimary(String button) {
+    return 'Toque em $button para começar a gravar ou adicione uma que você já fez';
+  }
 
   @override
   String get historyLogTooltip => 'Registrar corrida, treino ou refeição';
@@ -28151,10 +28198,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get dashboardWelcomeBody =>
-      'Seu painel é preenchido assim que você registra uma corrida, define uma meta ou importa seu histórico.';
-
-  @override
-  String get dashboardStartRun => 'Iniciar uma corrida';
+      'Seu painel é preenchido assim que você registra uma atividade, define uma meta ou importa seu histórico.';
 
   @override
   String get dashboardSetGoal => 'Definir meta';

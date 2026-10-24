@@ -13,6 +13,7 @@ import 'package:ui_kit/ui_kit.dart'
         FullBodyLoader,
         ProgressBar;
 
+import '../activity_type_labels.dart';
 import '../adaptive_fitness_flag.dart';
 import '../adaptive_width.dart';
 import '../age_grade.dart';
@@ -1587,6 +1588,8 @@ class _DashboardScreenState extends State<DashboardScreen>
               theme: theme,
               planAbove: heroWorkoutCard != null || raceCard != null,
               onStartRun: widget.onStartRun,
+              startActivity:
+                  ActivityType.fromName(widget.preferences.defaultActivityType),
               // Hidden only from the account that said it does not lift (the
               // setup wizard's track step, or Settings); that is the one answer
               // the link would contradict. An account that said it lifts and
@@ -2446,6 +2449,9 @@ class _WelcomeEmpty extends StatelessWidget {
   final ThemeData theme;
   final bool planAbove;
   final VoidCallback? onStartRun;
+
+  /// What [onStartRun] records: the runner's default activity.
+  final ActivityType startActivity;
   final VoidCallback? onLogLift;
   final VoidCallback onAddGoal;
   final VoidCallback onImport;
@@ -2458,6 +2464,7 @@ class _WelcomeEmpty extends StatelessWidget {
     required this.theme,
     required this.planAbove,
     required this.onStartRun,
+    required this.startActivity,
     required this.onLogLift,
     required this.onAddGoal,
     required this.onImport,
@@ -2500,8 +2507,8 @@ class _WelcomeEmpty extends StatelessWidget {
             if (onStartRun != null) ...[
               FilledButton.icon(
                 onPressed: onStartRun,
-                icon: const Icon(Icons.directions_run),
-                label: Text(l10n.dashboardStartRun),
+                icon: Icon(startActivity.icon),
+                label: Text(startActivityAction(l10n, startActivity)),
               ),
               const SizedBox(height: 12),
             ],

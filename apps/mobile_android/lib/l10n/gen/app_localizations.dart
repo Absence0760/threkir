@@ -1301,11 +1301,59 @@ abstract class AppLocalizations {
   /// **'Start run'**
   String get navStartRun;
 
-  /// Screen-reader label for the centre nav button when a tap on it starts a run
+  /// Caption under the centre nav button when a tap on it starts recording and the default activity is walk. Same slot and rules as navStartRun
+  ///
+  /// In en, this message translates to:
+  /// **'Start walk'**
+  String get navStartWalk;
+
+  /// Caption under the centre nav button when a tap on it starts recording and the default activity is cycle. Same slot and rules as navStartRun
+  ///
+  /// In en, this message translates to:
+  /// **'Start ride'**
+  String get navStartRide;
+
+  /// Caption under the centre nav button when a tap on it starts recording and the default activity is hike (shown as Trail run). Same slot and rules as navStartRun
+  ///
+  /// In en, this message translates to:
+  /// **'Start trail run'**
+  String get navStartTrailRun;
+
+  /// Caption under the centre nav button when a tap on it starts recording and the default activity is stroller. Same slot and rules as navStartRun
+  ///
+  /// In en, this message translates to:
+  /// **'Start stroller run'**
+  String get navStartStroller;
+
+  /// Action that starts recording a run: the centre nav button's screen-reader label and the empty Home's primary button
   ///
   /// In en, this message translates to:
   /// **'Start a run'**
-  String get logStartRunA11yLabel;
+  String get startActivityRun;
+
+  /// As startActivityRun, when the default activity is walk
+  ///
+  /// In en, this message translates to:
+  /// **'Start a walk'**
+  String get startActivityWalk;
+
+  /// As startActivityRun, when the default activity is cycle
+  ///
+  /// In en, this message translates to:
+  /// **'Start a ride'**
+  String get startActivityRide;
+
+  /// As startActivityRun, when the default activity is hike (shown as Trail run)
+  ///
+  /// In en, this message translates to:
+  /// **'Start a trail run'**
+  String get startActivityTrailRun;
+
+  /// As startActivityRun, when the default activity is stroller
+  ///
+  /// In en, this message translates to:
+  /// **'Start a stroller run'**
+  String get startActivityStroller;
 
   /// Top banner after a Log action for a hidden Gym switched it on; carries an Undo that hides it again
   ///
@@ -4115,11 +4163,11 @@ abstract class AppLocalizations {
   /// **'Add past run'**
   String get historyAddPastRun;
 
-  /// Empty Runs list body when the centre button starts a run, so it names that button by its run caption (navStartRun) rather than Log
+  /// Empty Runs list body when the centre button starts recording, so it names that button by its caption (navStartRun / navStartWalk / ...) rather than Log
   ///
   /// In en, this message translates to:
-  /// **'Tap Start run to record a run, or add one you have already finished'**
-  String get historyEmptyBodyRunPrimary;
+  /// **'Tap {button} to start recording, or add one you have already finished'**
+  String historyEmptyBodyRunPrimary(String button);
 
   /// Tooltip on the History add button when it logs a lift, a meal, or opens the run/lift/meal picker
   ///
@@ -14971,14 +15019,8 @@ abstract class AppLocalizations {
   /// Dashboard empty-state explanatory body
   ///
   /// In en, this message translates to:
-  /// **'Your dashboard fills in once you record a run, set a goal, or import your history.'**
+  /// **'Your dashboard fills in once you record an activity, set a goal, or import your history.'**
   String get dashboardWelcomeBody;
-
-  /// Dashboard empty-state primary button that opens the recorder to start a run
-  ///
-  /// In en, this message translates to:
-  /// **'Start a run'**
-  String get dashboardStartRun;
 
   /// Dashboard empty-state primary button to create a goal
   ///

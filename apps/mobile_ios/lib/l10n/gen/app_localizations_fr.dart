@@ -769,7 +769,31 @@ class AppLocalizationsFr extends AppLocalizations {
   String get navStartRun => 'Courir';
 
   @override
-  String get logStartRunA11yLabel => 'Démarrer une course';
+  String get navStartWalk => 'Marcher';
+
+  @override
+  String get navStartRide => 'Rouler';
+
+  @override
+  String get navStartTrailRun => 'Trail';
+
+  @override
+  String get navStartStroller => 'Poussette';
+
+  @override
+  String get startActivityRun => 'Démarrer une course';
+
+  @override
+  String get startActivityWalk => 'Démarrer une marche';
+
+  @override
+  String get startActivityRide => 'Démarrer une sortie vélo';
+
+  @override
+  String get startActivityTrailRun => 'Démarrer un trail';
+
+  @override
+  String get startActivityStroller => 'Démarrer une course avec poussette';
 
   @override
   String get logModalityShownGym => 'La muscu est maintenant affichée';
@@ -2451,8 +2475,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get historyAddPastRun => 'Ajouter une course passée';
 
   @override
-  String get historyEmptyBodyRunPrimary =>
-      'Touchez Courir pour enregistrer une course, ou ajoutez-en une déjà terminée';
+  String historyEmptyBodyRunPrimary(String button) {
+    return 'Touchez $button pour lancer l\'enregistrement, ou ajoutez-en une déjà terminée';
+  }
 
   @override
   String get historyLogTooltip =>
@@ -9310,10 +9335,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get dashboardWelcomeBody =>
-      'Votre tableau de bord se remplit dès que vous enregistrez une course, définissez un objectif ou importez votre historique.';
-
-  @override
-  String get dashboardStartRun => 'Démarrer une course';
+      'Votre tableau de bord se remplit dès que vous enregistrez une activité, définissez un objectif ou importez votre historique.';
 
   @override
   String get dashboardSetGoal => 'Définir un objectif';

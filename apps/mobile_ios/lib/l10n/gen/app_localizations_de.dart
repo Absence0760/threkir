@@ -771,7 +771,31 @@ class AppLocalizationsDe extends AppLocalizations {
   String get navStartRun => 'Laufen';
 
   @override
-  String get logStartRunA11yLabel => 'Lauf starten';
+  String get navStartWalk => 'Gehen';
+
+  @override
+  String get navStartRide => 'Radeln';
+
+  @override
+  String get navStartTrailRun => 'Traillauf';
+
+  @override
+  String get navStartStroller => 'Kinderwagen';
+
+  @override
+  String get startActivityRun => 'Lauf starten';
+
+  @override
+  String get startActivityWalk => 'Gehen starten';
+
+  @override
+  String get startActivityRide => 'Radfahrt starten';
+
+  @override
+  String get startActivityTrailRun => 'Traillauf starten';
+
+  @override
+  String get startActivityStroller => 'Kinderwagenlauf starten';
 
   @override
   String get logModalityShownGym => 'Gym wird jetzt angezeigt';
@@ -2445,8 +2469,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get historyAddPastRun => 'Vergangenen Lauf hinzufügen';
 
   @override
-  String get historyEmptyBodyRunPrimary =>
-      'Tippe auf Laufen, um einen Lauf aufzuzeichnen, oder füge einen bereits absolvierten hinzu';
+  String historyEmptyBodyRunPrimary(String button) {
+    return 'Tippe auf $button, um die Aufzeichnung zu starten, oder füge einen bereits absolvierten hinzu';
+  }
 
   @override
   String get historyLogTooltip => 'Lauf, Training oder Mahlzeit erfassen';
@@ -9296,10 +9321,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get dashboardWelcomeBody =>
-      'Dein Dashboard füllt sich, sobald du einen Lauf aufzeichnest, ein Ziel setzt oder deinen Verlauf importierst.';
-
-  @override
-  String get dashboardStartRun => 'Lauf starten';
+      'Dein Dashboard füllt sich, sobald du eine Aktivität aufzeichnest, ein Ziel setzt oder deinen Verlauf importierst.';
 
   @override
   String get dashboardSetGoal => 'Ziel setzen';

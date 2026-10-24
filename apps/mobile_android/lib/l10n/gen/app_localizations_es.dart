@@ -768,7 +768,31 @@ class AppLocalizationsEs extends AppLocalizations {
   String get navStartRun => 'Correr';
 
   @override
-  String get logStartRunA11yLabel => 'Iniciar una carrera';
+  String get navStartWalk => 'Caminar';
+
+  @override
+  String get navStartRide => 'Pedalear';
+
+  @override
+  String get navStartTrailRun => 'Trail';
+
+  @override
+  String get navStartStroller => 'Cochecito';
+
+  @override
+  String get startActivityRun => 'Iniciar una carrera';
+
+  @override
+  String get startActivityWalk => 'Iniciar una caminata';
+
+  @override
+  String get startActivityRide => 'Iniciar una salida en bici';
+
+  @override
+  String get startActivityTrailRun => 'Iniciar un trail';
+
+  @override
+  String get startActivityStroller => 'Iniciar una carrera con cochecito';
 
   @override
   String get logModalityShownGym => 'Ahora se muestra Gimnasio';
@@ -2443,8 +2467,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get historyAddPastRun => 'Añadir carrera pasada';
 
   @override
-  String get historyEmptyBodyRunPrimary =>
-      'Toca Correr para grabar una carrera o añade una que ya hayas hecho';
+  String historyEmptyBodyRunPrimary(String button) {
+    return 'Toca $button para empezar a grabar o añade una que ya hayas hecho';
+  }
 
   @override
   String get historyLogTooltip => 'Registrar una carrera, entreno o comida';
@@ -9284,10 +9309,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get dashboardWelcomeBody =>
-      'Tu panel se completa en cuanto registras una carrera, defines un objetivo o importas tu historial.';
-
-  @override
-  String get dashboardStartRun => 'Iniciar una carrera';
+      'Tu panel se completa en cuanto registras una actividad, defines un objetivo o importas tu historial.';
 
   @override
   String get dashboardSetGoal => 'Definir un objetivo';

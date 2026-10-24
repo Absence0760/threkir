@@ -747,6 +747,16 @@ test('the profile-join fetchers chunk `.in()` so >~100 members are not lost', ()
 	}
 });
 
+test('the club roster lists active members only', () => {
+	// Reason: RLS lets a private club's members read its pending and rejected
+	// rows too, so an unfiltered roster listed a rejected requester as a
+	// member (#1228). Mobile's SocialService.fetchClubMembers filters the same.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const start = source.indexOf('export async function fetchClubMembers(');
+	const body = source.slice(start, source.indexOf('\nexport ', start + 1));
+	assert.match(body, /\.eq\('status', 'active'\)/);
+});
+
 test('the follow-request and mention-handle joins read their `in` list through readChunked', () => {
 	// Reason: neither id list has a ceiling under FEED_FOLLOWEE_CHUNK —
 	// fetchIncomingFollowRequests reads up to 200 requests and

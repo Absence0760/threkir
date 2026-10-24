@@ -8608,6 +8608,102 @@ abstract class AppLocalizations {
   /// **'Member'**
   String get clubDetailMemberFallback;
 
+  /// Club role label (club_members.role owner); web clubRole.owner
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get clubRoleOwner;
+
+  /// Club role label (admin); web clubRole.admin
+  ///
+  /// In en, this message translates to:
+  /// **'Admin'**
+  String get clubRoleAdmin;
+
+  /// Club role label (event_organiser); web clubRole.event_organiser
+  ///
+  /// In en, this message translates to:
+  /// **'Event organiser'**
+  String get clubRoleEventOrganiser;
+
+  /// Club role label (race_director); web clubRole.race_director
+  ///
+  /// In en, this message translates to:
+  /// **'Race director'**
+  String get clubRoleRaceDirector;
+
+  /// Club role label (member); web clubRole.member
+  ///
+  /// In en, this message translates to:
+  /// **'Member'**
+  String get clubRoleMember;
+
+  /// Club Members tab title when the roster has no active members
+  ///
+  /// In en, this message translates to:
+  /// **'No members yet'**
+  String get clubDetailMembersEmptyTitle;
+
+  /// Club Members tab body when the roster has no active members
+  ///
+  /// In en, this message translates to:
+  /// **'As soon as someone joins, they\'ll appear here with their role.'**
+  String get clubDetailMembersEmptyBody;
+
+  /// Club Members tab error when the roster read fails; a Retry button sits under it
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load members'**
+  String get clubDetailMembersLoadFailed;
+
+  /// Button under the club roster that loads the next page of members
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get clubDetailMembersLoadMore;
+
+  /// Tooltip and screen-reader label of the admin menu on a club roster row (change role, remove)
+  ///
+  /// In en, this message translates to:
+  /// **'Member actions'**
+  String get clubDetailMemberActions;
+
+  /// Admin menu item on a club roster row that removes the member
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from club'**
+  String get clubDetailRemoveFromClub;
+
+  /// Title of the confirm dialog before an admin removes a club member
+  ///
+  /// In en, this message translates to:
+  /// **'Remove member'**
+  String get clubDetailRemoveMemberTitle;
+
+  /// Body of the confirm dialog before an admin removes a club member
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name} from {club}?'**
+  String clubDetailRemoveMemberBody(String name, String club);
+
+  /// Destructive confirm button of the remove-member dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get clubDetailRemoveMemberConfirm;
+
+  /// Banner when changing a club member role fails
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to change role: {error}'**
+  String clubDetailRoleChangeFailed(String error);
+
+  /// Banner when removing a club member fails
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to remove member: {error}'**
+  String clubDetailRemoveMemberFailed(String error);
+
   /// CTA label when the viewer's join request is pending
   ///
   /// In en, this message translates to:
@@ -8751,12 +8847,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pending requests ({count})'**
   String clubDetailPendingRequests(int count);
-
-  /// Placeholder name for a pending member shown by id prefix
-  ///
-  /// In en, this message translates to:
-  /// **'User {id}…'**
-  String clubDetailUserShort(String id);
 
   /// Button to deny a join request
   ///

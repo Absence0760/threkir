@@ -183,7 +183,17 @@ export const PAIRS = [
 	},
 	{
 		tableColumn: 'club_members.role',
-		clients: [{ file: TS_TYPES, decl: 'ClubRole', shape: 'union' }],
+		clients: [
+			{ file: TS_TYPES, decl: 'ClubRole', shape: 'union' },
+			{ file: 'apps/mobile_android/lib/club_role_labels.dart', decl: 'clubRoleLabel', shape: 'switch' },
+			{
+				file: 'apps/mobile_android/lib/club_role_labels.dart',
+				decl: 'assignableClubRoles',
+				shape: 'strings',
+				// Ownership moves only through a club transfer, never the roster's role menu.
+				allowMissing: ['owner'],
+			},
+		],
 	},
 	{
 		tableColumn: 'club_members.status',

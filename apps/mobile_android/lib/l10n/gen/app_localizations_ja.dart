@@ -4943,6 +4943,60 @@ class AppLocalizationsJa extends AppLocalizations {
   String get clubDetailMemberFallback => 'メンバー';
 
   @override
+  String get clubRoleOwner => 'オーナー';
+
+  @override
+  String get clubRoleAdmin => '管理者';
+
+  @override
+  String get clubRoleEventOrganiser => 'イベント主催者';
+
+  @override
+  String get clubRoleRaceDirector => 'レースディレクター';
+
+  @override
+  String get clubRoleMember => 'メンバー';
+
+  @override
+  String get clubDetailMembersEmptyTitle => 'まだメンバーがいません';
+
+  @override
+  String get clubDetailMembersEmptyBody => '誰かが参加すると、その役割とともにここに表示されます。';
+
+  @override
+  String get clubDetailMembersLoadFailed => 'メンバーを読み込めませんでした';
+
+  @override
+  String get clubDetailMembersLoadMore => 'もっと見る';
+
+  @override
+  String get clubDetailMemberActions => 'メンバーの操作';
+
+  @override
+  String get clubDetailRemoveFromClub => 'クラブから削除';
+
+  @override
+  String get clubDetailRemoveMemberTitle => 'メンバーを削除';
+
+  @override
+  String clubDetailRemoveMemberBody(String name, String club) {
+    return '$nameを$clubから削除しますか？';
+  }
+
+  @override
+  String get clubDetailRemoveMemberConfirm => '削除';
+
+  @override
+  String clubDetailRoleChangeFailed(String error) {
+    return '役割を変更できませんでした: $error';
+  }
+
+  @override
+  String clubDetailRemoveMemberFailed(String error) {
+    return 'メンバーを削除できませんでした: $error';
+  }
+
+  @override
   String get clubDetailRequestPending => 'リクエスト保留中';
 
   @override
@@ -5026,11 +5080,6 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String clubDetailPendingRequests(int count) {
     return '保留中のリクエスト ($count)';
-  }
-
-  @override
-  String clubDetailUserShort(String id) {
-    return 'ユーザー $id…';
   }
 
   @override

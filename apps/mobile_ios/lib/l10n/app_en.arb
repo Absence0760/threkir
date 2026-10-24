@@ -6975,6 +6975,90 @@
   "@clubDetailMemberFallback": {
     "description": "Fallback name for a club member with no display name"
   },
+  "clubRoleOwner": "Owner",
+  "@clubRoleOwner": {
+    "description": "Club role label (club_members.role owner); web clubRole.owner"
+  },
+  "clubRoleAdmin": "Admin",
+  "@clubRoleAdmin": {
+    "description": "Club role label (admin); web clubRole.admin"
+  },
+  "clubRoleEventOrganiser": "Event organiser",
+  "@clubRoleEventOrganiser": {
+    "description": "Club role label (event_organiser); web clubRole.event_organiser"
+  },
+  "clubRoleRaceDirector": "Race director",
+  "@clubRoleRaceDirector": {
+    "description": "Club role label (race_director); web clubRole.race_director"
+  },
+  "clubRoleMember": "Member",
+  "@clubRoleMember": {
+    "description": "Club role label (member); web clubRole.member"
+  },
+  "clubDetailMembersEmptyTitle": "No members yet",
+  "@clubDetailMembersEmptyTitle": {
+    "description": "Club Members tab title when the roster has no active members"
+  },
+  "clubDetailMembersEmptyBody": "As soon as someone joins, they'll appear here with their role.",
+  "@clubDetailMembersEmptyBody": {
+    "description": "Club Members tab body when the roster has no active members"
+  },
+  "clubDetailMembersLoadFailed": "Could not load members",
+  "@clubDetailMembersLoadFailed": {
+    "description": "Club Members tab error when the roster read fails; a Retry button sits under it"
+  },
+  "clubDetailMembersLoadMore": "Load more",
+  "@clubDetailMembersLoadMore": {
+    "description": "Button under the club roster that loads the next page of members"
+  },
+  "clubDetailMemberActions": "Member actions",
+  "@clubDetailMemberActions": {
+    "description": "Tooltip and screen-reader label of the admin menu on a club roster row (change role, remove)"
+  },
+  "clubDetailRemoveFromClub": "Remove from club",
+  "@clubDetailRemoveFromClub": {
+    "description": "Admin menu item on a club roster row that removes the member"
+  },
+  "clubDetailRemoveMemberTitle": "Remove member",
+  "@clubDetailRemoveMemberTitle": {
+    "description": "Title of the confirm dialog before an admin removes a club member"
+  },
+  "clubDetailRemoveMemberBody": "Remove {name} from {club}?",
+  "@clubDetailRemoveMemberBody": {
+    "description": "Body of the confirm dialog before an admin removes a club member",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Alex"
+      },
+      "club": {
+        "type": "String",
+        "example": "Track Club"
+      }
+    }
+  },
+  "clubDetailRemoveMemberConfirm": "Remove",
+  "@clubDetailRemoveMemberConfirm": {
+    "description": "Destructive confirm button of the remove-member dialog"
+  },
+  "clubDetailRoleChangeFailed": "Failed to change role: {error}",
+  "@clubDetailRoleChangeFailed": {
+    "description": "Banner when changing a club member role fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "clubDetailRemoveMemberFailed": "Failed to remove member: {error}",
+  "@clubDetailRemoveMemberFailed": {
+    "description": "Banner when removing a club member fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "clubDetailRequestPending": "Request pending",
   "@clubDetailRequestPending": {
     "description": "CTA label when the viewer's join request is pending"
@@ -7106,15 +7190,6 @@
     "placeholders": {
       "count": {
         "type": "int"
-      }
-    }
-  },
-  "clubDetailUserShort": "User {id}…",
-  "@clubDetailUserShort": {
-    "description": "Placeholder name for a pending member shown by id prefix",
-    "placeholders": {
-      "id": {
-        "type": "String"
       }
     }
   },

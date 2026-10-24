@@ -5232,6 +5232,62 @@ class AppLocalizationsEs extends AppLocalizations {
   String get clubDetailMemberFallback => 'Miembro';
 
   @override
+  String get clubRoleOwner => 'Propietario';
+
+  @override
+  String get clubRoleAdmin => 'Administrador';
+
+  @override
+  String get clubRoleEventOrganiser => 'Organizador de eventos';
+
+  @override
+  String get clubRoleRaceDirector => 'Director de carrera';
+
+  @override
+  String get clubRoleMember => 'Miembro';
+
+  @override
+  String get clubDetailMembersEmptyTitle => 'Aún no hay miembros';
+
+  @override
+  String get clubDetailMembersEmptyBody =>
+      'En cuanto alguien se una, aparecerá aquí con su rol.';
+
+  @override
+  String get clubDetailMembersLoadFailed =>
+      'No se pudieron cargar los miembros';
+
+  @override
+  String get clubDetailMembersLoadMore => 'Cargar más';
+
+  @override
+  String get clubDetailMemberActions => 'Acciones del miembro';
+
+  @override
+  String get clubDetailRemoveFromClub => 'Quitar del club';
+
+  @override
+  String get clubDetailRemoveMemberTitle => 'Eliminar miembro';
+
+  @override
+  String clubDetailRemoveMemberBody(String name, String club) {
+    return '¿Eliminar a $name de $club?';
+  }
+
+  @override
+  String get clubDetailRemoveMemberConfirm => 'Eliminar';
+
+  @override
+  String clubDetailRoleChangeFailed(String error) {
+    return 'No se pudo cambiar el rol: $error';
+  }
+
+  @override
+  String clubDetailRemoveMemberFailed(String error) {
+    return 'No se pudo eliminar al miembro: $error';
+  }
+
+  @override
   String get clubDetailRequestPending => 'Solicitud pendiente';
 
   @override
@@ -5329,11 +5385,6 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String clubDetailPendingRequests(int count) {
     return 'Solicitudes pendientes ($count)';
-  }
-
-  @override
-  String clubDetailUserShort(String id) {
-    return 'Usuario $id…';
   }
 
   @override

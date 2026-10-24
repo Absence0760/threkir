@@ -17,7 +17,7 @@
 --      default until sign-off) nothing is stamped.
 
 begin;
-select plan(15);
+select plan(17);
 
 select has_function(
   'private', 'stamp_signup_consent', ARRAY[]::text[],
@@ -54,7 +54,9 @@ insert into t_users values
   ('partial',   '88888888-8888-8888-8888-888888888806'),
   ('future',    '88888888-8888-8888-8888-888888888807'),
   ('ancient',   '88888888-8888-8888-8888-888888888808'),
-  ('late',      '88888888-8888-8888-8888-888888888809');
+  ('late',      '88888888-8888-8888-8888-888888888809'),
+  ('badzone',   '88888888-8888-8888-8888-888888888810'),
+  ('badoffset', '88888888-8888-8888-8888-888888888811');
 
 create function pg_temp.mk(p_label text, p_meta jsonb, p_confirmed boolean)
 returns void language sql as $$
@@ -96,6 +98,14 @@ select pg_temp.mk('ancient', jsonb_build_object(
   'age_confirmed_at', (now() - interval '30 days')::text,
   'terms_accepted_at', (now() - interval '30 days')::text), false);
 select pg_temp.mk('late', '{}'::jsonb, false);
+-- An unknown zone name (22023) and an out-of-range offset (22009) raise
+-- outside the datetime-format codes; they must leave no stamp, not abort.
+select pg_temp.mk('badzone', jsonb_build_object(
+  'age_confirmed_at', '2026-01-01 00:00 Foo/Bar',
+  'terms_accepted_at', '2026-01-01 00:00 Foo/Bar'), false);
+select pg_temp.mk('badoffset', jsonb_build_object(
+  'age_confirmed_at', '2026-01-01 00:00 +99:00',
+  'terms_accepted_at', '2026-01-01 00:00 +99:00'), false);
 
 -- An earlier stamp already on record for 'stamped'.
 insert into public.user_profiles (id, age_confirmed_at, terms_accepted_at,
@@ -154,6 +164,13 @@ select is(pg_temp.stamp('stamped'), '2026-01-01T00:00:00Z'::timestamptz,
 -- (6)
 select is(pg_temp.stamp('garbage'), null, 'malformed metadata leaves no stamp');
 select is(pg_temp.stamp('partial'), null, 'age without terms leaves no stamp');
+select is(pg_temp.stamp('badzone'), null,
+  'an unknown zone name leaves no stamp and does not block confirmation');
+select is(
+  (select email_confirmed_at is not null from auth.users
+    where id = '88888888-8888-8888-8888-888888888811'),
+  true,
+  'an out-of-range offset still lets the account confirm');
 select is(pg_temp.stamp('future'), null, 'a future stamp is not trusted');
 select is(pg_temp.stamp('ancient'), null,
   'a stamp long before sign-up is not trusted');

@@ -65,7 +65,10 @@ begin
   begin
     v_age := (meta->>'age_confirmed_at')::timestamptz;
     v_terms := (meta->>'terms_accepted_at')::timestamptz;
-  exception when invalid_datetime_format or datetime_field_overflow then
+  -- Any class-22 error (a bad format, an unknown zone name, an
+  -- out-of-range offset) means the stamp is not trusted. It must never abort
+  -- the trigger, which would fail the sign-up or the confirmation itself.
+  exception when data_exception then
     return new;
   end;
 

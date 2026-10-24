@@ -152,7 +152,12 @@ The 1-second elapsed-time timer inside `begin()` emits snapshots unconditionally
     - api.saveRun() pushes to Supabase if signed in; otherwise marked as
       saved offline
     - State → finished
-9.  User taps Done → _discard() resets all state → _ScreenState.idle
+9.  User taps Done → _discard() resets all state → _ScreenState.idle.
+    A finished run also unloads its plan workout (_unloadWorkout), or the
+    kept-alive Run page would link the next run to it; a false start
+    (countdown cancel, mid-run discard) keeps the workout loaded and
+    rewinds it to its first step (_rewindLoadedWorkout). Route, guided run
+    and race strategy carry over by design.
 ```
 
 ### After the run: grading the race strategy
@@ -492,7 +497,7 @@ The recording stack is organised so a failure at a higher layer cannot break a l
 
 If you add a new feature, place it at the highest layer it actually needs. A new visual (e.g. a cadence chart) is L2 — don't wire it into the `setState` that drives L0/L1. A new alert or side-effect is L4 — wrap it in try/catch.
 
-The same holds for layout on the idle screen: Start is the way into L0/L1, so it is pinned below the scrolling cards rather than placed after them, and no auxiliary card (today's plan workout, route preview, event, last run) can push it under the bottom bar ([conventions.md § Layered resilience](../architecture/conventions.md#layered-resilience), rule 7).
+The same holds for layout on the idle screen: Start is the way into L0/L1, so it is pinned below the scrolling cards rather than placed after them, and no auxiliary card (today's plan workout, loaded workout, route preview, event, last run) can push it under the bottom bar ([conventions.md § Layered resilience](../architecture/conventions.md#layered-resilience), rule 7).
 
 The rest of this page is the Flutter recorder, but the layering contract is not — the two watch clients have their own recording stacks and honour the same table. The clearest reading of it is the Apple Watch GPS banner added 2026-09-18 ([decisions § 1676](../architecture/decisions.md)): the state it reports is the ABSENCE of arriving fixes, so it is recomputed on the L0 elapsed tick rather than on the L1 stream it describes, and it runs after the elapsed write so an L4 disclosure cannot delay the clock it rides on. Its self-heal retry sits at L4 for the same reason — it can only re-issue a CoreLocation call, and the clock, the banked distance and the on-disk track are untouched whether it fires or not. Per-platform state is in [parity.md](../product/parity.md)'s `GPS self-heal retry` and `Indoor / no-GPS mode` rows.
 

@@ -3029,6 +3029,12 @@ abstract class AppLocalizations {
   /// **'Share live link'**
   String get runShareLiveLink;
 
+  /// Idle-screen setup chip once the runner has shared a live link for the coming run; tapping it offers re-share or stop
+  ///
+  /// In en, this message translates to:
+  /// **'Live link shared'**
+  String get runLiveShareArmed;
+
   /// Shown when a signed-out user tries to share a live tracking link, which cannot broadcast
   ///
   /// In en, this message translates to:
@@ -3214,6 +3220,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'FOLLOWING'**
   String get runFollowing;
+
+  /// Tooltip and screen-reader label for the x on the idle screen's route card; stops following the route
+  ///
+  /// In en, this message translates to:
+  /// **'Remove route'**
+  String get runClearRouteTooltip;
 
   /// Fallback name for a live race when the event has no title
   ///
@@ -3616,6 +3628,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Workout loaded · {count, plural, one{{count} step} other{{count} steps}} — tap GO to start'**
   String runWorkoutLoaded(int count);
+
+  /// Title of the idle-screen card for the plan workout the next run will execute
+  ///
+  /// In en, this message translates to:
+  /// **'Workout loaded: {title}'**
+  String runWorkoutLoadedTitle(String title);
+
+  /// Tooltip and screen-reader label for the x on the idle screen's loaded-workout card; unloads the workout so the next run is a free run
+  ///
+  /// In en, this message translates to:
+  /// **'Unload workout'**
+  String get runUnloadWorkoutTooltip;
 
   /// Title of the confirm-abandon-workout dialog
   ///
@@ -24626,6 +24650,12 @@ abstract class AppLocalizations {
   /// **'No guided run'**
   String get runGuidedRunNone;
 
+  /// Tooltip and screen-reader label for the x on the idle setup row's guided-run chip; disarms the guided run, the same as picking None
+  ///
+  /// In en, this message translates to:
+  /// **'Remove guided run'**
+  String get runClearGuidedRunTooltip;
+
   /// Run screen — a guided-run picker row subtitle
   ///
   /// In en, this message translates to:
@@ -24643,6 +24673,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No strategy'**
   String get runStrategyNone;
+
+  /// Tooltip and screen-reader label for the x on the idle setup row's race-strategy chip; clears the strategy, the same as picking None
+  ///
+  /// In en, this message translates to:
+  /// **'Remove race strategy'**
+  String get runClearRaceStrategyTooltip;
 
   /// Voice cues / race strategy
   ///

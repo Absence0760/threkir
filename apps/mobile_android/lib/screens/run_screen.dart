@@ -73,6 +73,7 @@ import '../typed_decimal.dart';
 import '../watch_settings.dart';
 import '../web_base_url.dart';
 import '../widgets/finish_plan_card.dart';
+import '../widgets/idle_setup_chip.dart';
 import '../widgets/cutoff_card.dart';
 import 'route_picker_screen.dart';
 import '../background_location_nudge.dart';
@@ -93,6 +94,7 @@ import '../widgets/ghost_pacer.dart';
 import '../widgets/live_run_map.dart';
 import '../widgets/expected_return_dialog.dart';
 import '../widgets/live_share_indicator.dart';
+import '../widgets/loaded_workout_card.dart';
 import '../widgets/race_stop_sheet.dart';
 import '../widgets/safety_nudge_banner.dart';
 import '../widgets/todays_workout_card.dart';
@@ -1045,9 +1047,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     if (steps.isEmpty) return;
     final runner = WorkoutRunner(steps: steps);
     _workoutEventsSub = runner.events.listen(_onWorkoutEvent);
-    _workoutRunner = runner;
-    _activeWorkoutId = wo.id;
-    _activeWorkoutRow = wo;
+    setState(() {
+      _workoutRunner = runner;
+      _activeWorkoutId = wo.id;
+      _activeWorkoutRow = wo;
+    });
     _publishWorkoutBand();
   }
 
@@ -1424,8 +1428,17 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // search field at the top + sorts starred routes first per
     // user feedback. See `route_picker_screen.dart`.
     final picked = await pickRoute(context, routes: routes, unit: unit);
-    if (!mounted) return;
-    setState(() => _selectedRoute = picked);
+    if (picked == null || !mounted) return;
+    _setFollowedRoute(switch (picked) {
+      RoutePicked(:final route) => route,
+      NoRoutePicked() => null,
+    });
+  }
+
+  /// Follow [route] for the next run, or none with null: the selection, the
+  /// turn announcer and the cutoff legs move together.
+  void _setFollowedRoute(cm.Route? route) {
+    setState(() => _selectedRoute = route);
     _rebuildTurnAnnouncer();
     _loadCutoffLegs();
   }
@@ -1658,7 +1671,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
 
     // Record the intent before the (best-effort) begin so a transient failure
     // here is recovered when the run starts, even if auto-live-share is off.
-    _liveShareRequested = true;
+    // A rebuild, because the idle setup row shows the armed share.
+    setState(() => _liveShareRequested = true);
     final started = await _startLiveBroadcast();
 
     try {
@@ -1754,7 +1768,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// run keeps recording. Clears [_liveShareRequested] so a later GO / auto
   /// path doesn't silently re-broadcast against the runner's choice.
   Future<void> _stopLiveShare() async {
-    _liveShareRequested = false;
+    if (mounted) {
+      setState(() => _liveShareRequested = false);
+    } else {
+      _liveShareRequested = false;
+    }
     final lb = _liveBroadcaster;
     final api = widget.apiClient;
     final id = _runId;
@@ -3983,6 +4001,15 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   }
 
   void _discard() {
+    // A finished run has spent its workout; keeping the runner would write
+    // its plan_workout_id and step results into the next run's metadata. A
+    // false start (countdown cancel, mid-run discard) keeps the choice the
+    // runner made and only rewinds it, as the guided run below does.
+    if (_state == _ScreenState.finished) {
+      _unloadWorkout();
+    } else {
+      _rewindLoadedWorkout();
+    }
     _snapshotSub?.cancel();
     _stepSub?.cancel();
     _baroSub?.cancel();
@@ -4393,6 +4420,31 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     }
   }
 
+  /// Drop the loaded workout: runner, its event subscription, the band and
+  /// the ids the save path links the run to. Callers own the rebuild.
+  void _unloadWorkout() {
+    _workoutEventsSub?.cancel();
+    _workoutEventsSub = null;
+    _workoutRunner?.dispose();
+    _workoutRunner = null;
+    _activeWorkoutId = null;
+    _activeWorkoutRow = null;
+    _publishWorkoutBand();
+  }
+
+  /// Keep the loaded workout but start it again from its first step, so a
+  /// false start does not carry the steps it already advanced through.
+  void _rewindLoadedWorkout() {
+    final old = _workoutRunner;
+    if (old == null) return;
+    _workoutEventsSub?.cancel();
+    old.dispose();
+    final runner = WorkoutRunner(steps: old.steps);
+    _workoutEventsSub = runner.events.listen(_onWorkoutEvent);
+    _workoutRunner = runner;
+    _publishWorkoutBand();
+  }
+
   void _onSkipWorkoutStep() {
     final r = _workoutRunner;
     if (r == null) return;
@@ -4589,37 +4641,64 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                     Center(
                       child: Wrap(
                         spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.center,
                         children: [
-                          OutlinedButton.icon(
+                          IdleSetupChip(
+                            icon: Icons.route,
+                            label: _selectedRoute == null
+                                ? l10n.runChooseRoute
+                                : l10n.runChangeRoute,
+                            isSet: _selectedRoute != null,
                             onPressed: _selectRoute,
-                            icon: const Icon(Icons.route),
-                            label: Text(
-                              _selectedRoute == null
-                                  ? l10n.runChooseRoute
-                                  : l10n.runChangeRoute,
-                            ),
                           ),
-                          TextButton.icon(
-                            onPressed: _shareLiveLink,
-                            icon: const Icon(Icons.podcasts),
-                            label: Text(l10n.runShareLiveLink),
+                          // Armed is the runner's intent, not only a live
+                          // broadcaster: a failed pre-GO begin is retried on
+                          // GO, so the link is still theirs to stop.
+                          ValueListenableBuilder<bool>(
+                            valueListenable: _liveShareActive,
+                            builder: (context, active, _) {
+                              final armed = active || _liveShareRequested;
+                              return IdleSetupChip(
+                                icon: Icons.podcasts,
+                                label: armed
+                                    ? l10n.runLiveShareArmed
+                                    : l10n.runShareLiveLink,
+                                isSet: armed,
+                                onPressed: armed
+                                    ? _onLiveShareIndicatorTap
+                                    : _shareLiveLink,
+                              );
+                            },
                           ),
-                          TextButton.icon(
+                          IdleSetupChip(
+                            icon: Icons.headset_mic_outlined,
+                            label: _guidedRun?.title ?? l10n.runGuidedRun,
+                            isSet: _guidedRun != null,
                             onPressed: _pickGuidedRun,
-                            icon: const Icon(Icons.headset_mic_outlined),
-                            label: Text(
-                              _guidedRun?.title ?? l10n.runGuidedRun,
-                            ),
+                            onClear: _guidedRun == null
+                                ? null
+                                : () => _armGuidedRun(null),
+                            clearTooltip: l10n.runClearGuidedRunTooltip,
                           ),
                           if (_activityType == ActivityType.run)
-                            TextButton.icon(
-                              onPressed: _editRaceStrategy,
-                              icon: const Icon(Icons.flag_outlined),
-                              label: Text(_strategyPreset == null
+                            IdleSetupChip(
+                              icon: Icons.flag_outlined,
+                              label: _strategyPreset == null
                                   ? l10n.runRaceStrategy
-                                  : _strategyLabel(l10n, _strategyPreset!)),
+                                  : _strategyLabel(l10n, _strategyPreset!),
+                              isSet: _strategyPreset != null,
+                              onPressed: _editRaceStrategy,
+                              // The same as None in the sheet: the typed
+                              // distance and goal stay for the next preset.
+                              onClear: _strategyPreset == null
+                                  ? null
+                                  : () =>
+                                      setState(() => _strategyPreset = null),
+                              clearTooltip: l10n.runClearRaceStrategyTooltip,
                             ),
-                          TextButton.icon(
+                          IdleSetupChip(
+                            isSet: _planOverview != null,
                             onPressed: () async {
                               final overview = _planOverview;
                               if (overview != null) {
@@ -4643,18 +4722,18 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                               }
                               _refreshPlanOverview();
                             },
-                            icon: const Icon(Icons.calendar_month),
+                            icon: Icons.calendar_month,
                             // A plan whose dates have run out is not the plan
                             // this run trains for; the chip asks to file it
                             // and still opens it, where Finish plan sits.
-                            label: Text(_planOverview == null
+                            label: _planOverview == null
                                 ? l10n.runTrainingPlans
                                 : FinishPlanCard.shows(
                                         status: _planOverview!.plan.status,
                                         endDate: _planOverview!.plan.endDate,
                                         now: DateTime.now())
                                     ? l10n.planFinishAction
-                                    : _planOverview!.plan.name),
+                                    : _planOverview!.plan.name,
                           ),
                         ],
                       ),
@@ -4665,9 +4744,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                     // event tomorrow, a plan workout today, and a recent
                     // run — showing them together fills the space that
                     // was sitting empty between the chips and the START
-                    // button. If a route is selected for this specific
-                    // run, suppress the social/plan cards and show only
-                    // the route preview since that's the active context.
+                    // button. A followed route is this run's context, so
+                    // the event card and the last-run summary yield to it;
+                    // today's workout does not, because a runner on their
+                    // race route on a plan day still needs the card that
+                    // loads the session.
                     if (widget.raceController != null)
                       ListenableBuilder(
                         listenable: widget.raceController!,
@@ -4681,57 +4762,77 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                         },
                       ),
                     if (_selectedRoute != null)
-                      _RoutePreviewCard(route: _selectedRoute!)
-                    else ...[
-                      if (_upcomingEvent != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: UpcomingEventCard(
-                            event: _upcomingEvent!,
-                            onTap: () async {
-                              final evt = _upcomingEvent!;
-                              List<ClubView> clubs = const [];
-                              try {
-                                clubs = await widget.social
-                                    .fetchMyClubs()
-                                    .timeout(kBackendLoadTimeout);
-                              } catch (e) {
-                                debugPrint('fetchMyClubs failed: $e');
-                              }
-                              final match = clubs
-                                  .where((c) => c.row.id == evt.row.clubId)
-                                  .toList();
-                              if (!mounted) return;
-                              final slug = match.isEmpty
-                                  ? null
-                                  : match.first.row.slug;
-                              if (slug == null) return;
-                              await Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => EventDetailScreen(
-                                    social: widget.social,
-                                    clubSlug: slug,
-                                    eventId: evt.row.id,
-                                  ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _RoutePreviewCard(
+                          route: _selectedRoute!,
+                          onTap: _selectRoute,
+                          onClear: () => _setFollowedRoute(null),
+                        ),
+                      ),
+                    if (_workoutRunner != null && _activeWorkoutRow != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: LoadedWorkoutCard(
+                          workout: _activeWorkoutRow!,
+                          onUnload: () => setState(_unloadWorkout),
+                        ),
+                      ),
+                    if (_selectedRoute == null && _upcomingEvent != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: UpcomingEventCard(
+                          event: _upcomingEvent!,
+                          onTap: () async {
+                            final evt = _upcomingEvent!;
+                            List<ClubView> clubs = const [];
+                            try {
+                              clubs = await widget.social
+                                  .fetchMyClubs()
+                                  .timeout(kBackendLoadTimeout);
+                            } catch (e) {
+                              debugPrint('fetchMyClubs failed: $e');
+                            }
+                            final match = clubs
+                                .where((c) => c.row.id == evt.row.clubId)
+                                .toList();
+                            if (!mounted) return;
+                            final slug = match.isEmpty
+                                ? null
+                                : match.first.row.slug;
+                            if (slug == null) return;
+                            await Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => EventDetailScreen(
+                                  social: widget.social,
+                                  clubSlug: slug,
+                                  eventId: evt.row.id,
                                 ),
-                              );
-                              _refreshUpcomingEvent();
-                            },
-                          ),
+                              ),
+                            );
+                            _refreshUpcomingEvent();
+                          },
                         ),
-                      if (_planOverview?.todayWorkout != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: TodaysWorkoutCard(
-                            workout: _planOverview!.todayWorkout!,
-                            onTap: () => _openTodayWorkoutDetail(
-                              _planOverview!.todayWorkout!,
-                              _planOverview!.plan.id,
-                            ),
-                            onStart: () => _startStructuredWorkout(
-                                _planOverview!.todayWorkout!),
+                      ),
+                    // The loaded card already stands for today's workout once
+                    // it is the one loaded.
+                    if (_planOverview?.todayWorkout != null &&
+                        !(_workoutRunner != null &&
+                            _activeWorkoutId ==
+                                _planOverview!.todayWorkout!.id))
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: TodaysWorkoutCard(
+                          workout: _planOverview!.todayWorkout!,
+                          onTap: () => _openTodayWorkoutDetail(
+                            _planOverview!.todayWorkout!,
+                            _planOverview!.plan.id,
                           ),
+                          onStart: () => _startStructuredWorkout(
+                              _planOverview!.todayWorkout!),
                         ),
+                      ),
+                    if (_selectedRoute == null) ...[
                       if (lastRun != null)
                         _LastRunCard(
                           run: lastRun,
@@ -6600,22 +6701,59 @@ class _RaceBannerState extends State<_RaceBanner> {
   }
 }
 
+/// The followed route on the idle screen. A tap reopens the picker and the
+/// corner x stops following it; clearing needs no confirm because picking the
+/// route again restores it (conventions.md § Destructive actions).
 class _RoutePreviewCard extends StatelessWidget {
   final cm.Route route;
-  const _RoutePreviewCard({required this.route});
+  final VoidCallback onTap;
+  final VoidCallback onClear;
+  const _RoutePreviewCard({
+    required this.route,
+    required this.onTap,
+    required this.onClear,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
+    return Material(
+      color: theme.colorScheme.surfaceContainerHighest,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor),
+        side: BorderSide(color: theme.dividerColor),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Semantics(
+              button: true,
+              onTapHint: l10n.runChangeRoute,
+              child: InkWell(
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 4, 14),
+                  child: _content(theme, l10n),
+                ),
+              ),
+            ),
+          ),
+          IconButton(
+            key: const Key('runClearRoute'),
+            icon: const Icon(Icons.close),
+            tooltip: l10n.runClearRouteTooltip,
+            onPressed: onClear,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _content(ThemeData theme, AppLocalizations l10n) {
+    return Row(
         children: [
           SizedBox(
             width: 72,
@@ -6683,7 +6821,6 @@ class _RoutePreviewCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
     );
   }
 }

@@ -129,9 +129,9 @@ void main() {
     );
 
     testWidgets(
-      'tapping "No route" pops with null',
+      'tapping "No route" pops with NoRoutePicked, not a cancel',
       (tester) async {
-        cm.Route? result = _route('placeholder', 'placeholder');
+        RoutePick? result;
         await tester.pumpWidget(
           MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -164,6 +164,43 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
+        expect(result, isA<NoRoutePicked>());
+      },
+    );
+
+    testWidgets(
+      'backing out pops with null, which no caller reads as "No route"',
+      (tester) async {
+        RoutePick? result = const NoRoutePicked();
+        var resolved = false;
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Builder(
+              builder: (ctx) => Scaffold(
+                body: Center(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      result = await pickRoute(
+                        ctx,
+                        routes: [_route('a', 'Alpha')],
+                        unit: DistanceUnit.km,
+                      );
+                      resolved = true;
+                    },
+                    child: const Text('open'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('open'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byType(CloseButton));
+        await tester.pumpAndSettle();
+        expect(resolved, isTrue);
         expect(result, isNull);
       },
     );
@@ -171,7 +208,7 @@ void main() {
     testWidgets(
       'tapping a route tile pops with that route',
       (tester) async {
-        cm.Route? result;
+        RoutePick? result;
         await tester.pumpWidget(
           MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -201,8 +238,9 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text('Bravo'));
         await tester.pumpAndSettle();
-        expect(result?.id, 'b');
-        expect(result?.name, 'Bravo');
+        final picked = result as RoutePicked;
+        expect(picked.route.id, 'b');
+        expect(picked.route.name, 'Bravo');
       },
     );
 

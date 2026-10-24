@@ -1683,6 +1683,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runShareLiveLink => 'ライブリンクを共有';
 
   @override
+  String get runLiveShareArmed => 'ライブリンクを共有済み';
+
+  @override
   String get runLiveShareNeedsSignIn => 'ライブトラッキングのリンクを共有するにはサインインしてください。';
 
   @override
@@ -1793,6 +1796,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runFollowing => 'フォロー中';
+
+  @override
+  String get runClearRouteTooltip => 'ルートを外す';
 
   @override
   String get runRaceFallbackTitle => 'レース';
@@ -2009,6 +2015,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String runWorkoutLoaded(int count) {
     return 'ワークアウトを読み込みました · $countステップ — GOをタップして開始';
   }
+
+  @override
+  String runWorkoutLoadedTitle(String title) {
+    return 'ワークアウトを読み込みました：$title';
+  }
+
+  @override
+  String get runUnloadWorkoutTooltip => 'ワークアウトを外す';
 
   @override
   String get runAbandonWorkoutTitle => 'ワークアウトを中止しますか？';
@@ -14342,6 +14356,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runGuidedRunNone => 'ガイド付きランなし';
 
   @override
+  String get runClearGuidedRunTooltip => 'ガイド付きランを外す';
+
+  @override
   String runGuidedRunOption(int minutes, String subtitle) {
     return '$minutes分 · $subtitle';
   }
@@ -14351,6 +14368,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runStrategyNone => '戦略なし';
+
+  @override
+  String get runClearRaceStrategyTooltip => 'レース戦略を外す';
 
   @override
   String get runStrategyTenTenTen => '10-10-10';

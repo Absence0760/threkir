@@ -1765,6 +1765,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runShareLiveLink => 'Partilhar link em direto';
 
   @override
+  String get runLiveShareArmed => 'Link em direto partilhado';
+
+  @override
   String get runLiveShareNeedsSignIn =>
       'Inicie sessão para partilhar um link de rastreio em direto.';
 
@@ -1880,6 +1883,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runFollowing => 'A seguir';
+
+  @override
+  String get runClearRouteTooltip => 'Remover rota';
 
   @override
   String get runRaceFallbackTitle => 'Prova';
@@ -2105,6 +2111,14 @@ class AppLocalizationsPt extends AppLocalizations {
     );
     return 'Treino carregado · $_temp0 — toque em GO para iniciar';
   }
+
+  @override
+  String runWorkoutLoadedTitle(String title) {
+    return 'Treino carregado: $title';
+  }
+
+  @override
+  String get runUnloadWorkoutTooltip => 'Remover treino';
 
   @override
   String get runAbandonWorkoutTitle => 'Abandonar treino?';
@@ -15037,6 +15051,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runGuidedRunNone => 'Sem corrida guiada';
 
   @override
+  String get runClearGuidedRunTooltip => 'Remover corrida guiada';
+
+  @override
   String runGuidedRunOption(int minutes, String subtitle) {
     return '$minutes min · $subtitle';
   }
@@ -15046,6 +15063,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runStrategyNone => 'Sem estratégia';
+
+  @override
+  String get runClearRaceStrategyTooltip => 'Remover estratégia de prova';
 
   @override
   String get runStrategyTenTenTen => '10-10-10';
@@ -20616,6 +20636,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get runShareLiveLink => 'Compartilhar link ao vivo';
 
   @override
+  String get runLiveShareArmed => 'Link ao vivo compartilhado';
+
+  @override
   String get runLiveShareNeedsSignIn =>
       'Faça login para compartilhar um link de rastreamento ao vivo.';
 
@@ -20732,6 +20755,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runFollowing => 'SEGUINDO';
+
+  @override
+  String get runClearRouteTooltip => 'Remover rota';
 
   @override
   String get runRaceFallbackTitle => 'Prova';
@@ -20957,6 +20983,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     );
     return 'Treino carregado · $_temp0 — toque em GO para iniciar';
   }
+
+  @override
+  String runWorkoutLoadedTitle(String title) {
+    return 'Treino carregado: $title';
+  }
+
+  @override
+  String get runUnloadWorkoutTooltip => 'Remover treino';
 
   @override
   String get runAbandonWorkoutTitle => 'Abandonar treino?';
@@ -33880,6 +33914,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get runGuidedRunNone => 'Sem corrida guiada';
 
   @override
+  String get runClearGuidedRunTooltip => 'Remover corrida guiada';
+
+  @override
   String runGuidedRunOption(int minutes, String subtitle) {
     return '$minutes min · $subtitle';
   }
@@ -33889,6 +33926,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runStrategyNone => 'Sem estratégia';
+
+  @override
+  String get runClearRaceStrategyTooltip => 'Remover estratégia de corrida';
 
   @override
   String get runStrategyTenTenTen => '10-10-10';

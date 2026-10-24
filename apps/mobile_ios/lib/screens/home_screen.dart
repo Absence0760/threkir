@@ -1109,8 +1109,8 @@ class _HomeScreenState extends State<HomeScreen>
       routes: widget.routeStore.routes,
       unit: widget.preferences.unit,
     );
-    if (picked == null || !mounted) return;
-    _followRoute(picked);
+    if (picked is! RoutePicked || !mounted) return;
+    _followRoute(picked.route);
   }
 
   /// The recorder takes a route only from its start screen, so a finished

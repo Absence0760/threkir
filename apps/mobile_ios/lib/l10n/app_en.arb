@@ -2253,6 +2253,10 @@
   "@runShareLiveLink": {
     "description": "Idle-screen button that shares a live spectator link for the run"
   },
+  "runLiveShareArmed": "Live link shared",
+  "@runLiveShareArmed": {
+    "description": "Idle-screen setup chip once the runner has shared a live link for the coming run; tapping it offers re-share or stop"
+  },
   "runLiveShareNeedsSignIn": "Sign in to share a live tracking link.",
   "@runLiveShareNeedsSignIn": {
     "description": "Shown when a signed-out user tries to share a live tracking link, which cannot broadcast"
@@ -2396,6 +2400,10 @@
   "runFollowing": "FOLLOWING",
   "@runFollowing": {
     "description": "Uppercase label on the route-preview card indicating the run will follow this route"
+  },
+  "runClearRouteTooltip": "Remove route",
+  "@runClearRouteTooltip": {
+    "description": "Tooltip and screen-reader label for the x on the idle screen's route card; stops following the route"
   },
   "runRaceFallbackTitle": "Race",
   "@runRaceFallbackTitle": {
@@ -2702,6 +2710,20 @@
         "type": "int"
       }
     }
+  },
+  "runWorkoutLoadedTitle": "Workout loaded: {title}",
+  "@runWorkoutLoadedTitle": {
+    "description": "Title of the idle-screen card for the plan workout the next run will execute",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Intervals"
+      }
+    }
+  },
+  "runUnloadWorkoutTooltip": "Unload workout",
+  "@runUnloadWorkoutTooltip": {
+    "description": "Tooltip and screen-reader label for the x on the idle screen's loaded-workout card; unloads the workout so the next run is a free run"
   },
   "runAbandonWorkoutTitle": "Abandon workout?",
   "@runAbandonWorkoutTitle": {
@@ -19822,6 +19844,10 @@
   "@runGuidedRunNone": {
     "description": "Run screen — the guided-run picker row that clears the armed run"
   },
+  "runClearGuidedRunTooltip": "Remove guided run",
+  "@runClearGuidedRunTooltip": {
+    "description": "Tooltip and screen-reader label for the x on the idle setup row's guided-run chip; disarms the guided run, the same as picking None"
+  },
   "runGuidedRunOption": "{minutes} min · {subtitle}",
   "@runGuidedRunOption": {
     "description": "Run screen — a guided-run picker row subtitle",
@@ -19841,6 +19867,10 @@
   "runStrategyNone": "No strategy",
   "@runStrategyNone": {
     "description": "Voice cues / race strategy"
+  },
+  "runClearRaceStrategyTooltip": "Remove race strategy",
+  "@runClearRaceStrategyTooltip": {
+    "description": "Tooltip and screen-reader label for the x on the idle setup row's race-strategy chip; clears the strategy, the same as picking None"
   },
   "runStrategyTenTenTen": "10-10-10",
   "@runStrategyTenTenTen": {

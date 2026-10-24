@@ -675,6 +675,13 @@ A live share that runs on the runner's confirmed safety contacts only, with no p
 2. Counsel review of the same, plus the contact-facing copy in all seven locales (the `/live/[id]` notice and closed-link state, and the overdue / off-route email and SMS that now carry a personal link).
 3. Then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('safety_audience', true) on conflict (name) do update set enabled = true, updated_at = now();`. The same statement with `false` is the rollback; the default reverts for everyone who never touched the switch, and every outstanding link stops admitting on its next poll.
 
+### Sign-up consent from metadata — after the legal memo and owner approval
+
+An email sign-up's 16+ and Terms stamps are written to `user_profiles` from its sign-up metadata when the account is confirmed (`private.stamp_signup_consent()`, migration `20271023000001`, decisions § 2238, #1229). Until then such accounts meet the consent gate again on their first sign-in. The trigger ships closed: no migration writes its flag row, so prod behaves exactly as before.
+
+1. A `legal-researcher` memo on capturing the Art 8 / terms evidence from sign-up metadata, and owner approval of it recorded on #1097.
+2. Then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('signup_consent_from_metadata', true) on conflict (name) do update set enabled = true, updated_at = now();`. The same statement with `false` is the rollback. Accounts already stamped keep their stamps, and the gate asks anyone who has none.
+
 ### AI features beside the Coach — paired flags, one sign-off each
 
 Each ships default off with two halves: a `PUBLIC_*` flag in the web build (`release-web.yml`, [apps/web/deployment.md § fail-closed feature gates](../../apps/web/deployment.md)) and an unprefixed key in the coach Lambda's sops file (`coach_config_keys`). Set both halves together, and only after the sign-off in the right-hand column. Each also needs `PUBLIC_COACH_ENABLED`.

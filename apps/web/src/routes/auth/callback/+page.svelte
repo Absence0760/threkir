@@ -98,9 +98,11 @@
 		// Not awaited: nothing below depends on it, and sign-in is already done.
 		void keepAppleRevocationCredential(supabase.functions, stashedProvider, session);
 
-		// OAuth-path age + terms capture (audit/gdpr Critical). The
-		// pre-redirect tick on /login stashed timestamps in
-		// sessionStorage; replay them via the RPC. Idempotent — a
+		// OAuth-path age + terms capture (audit/gdpr Critical). OAuth
+		// cannot carry sign-up metadata, so the pre-redirect tick on /login
+		// stashed timestamps in sessionStorage; replay them via the RPC. An
+		// email sign-up does not need this: the auth.users confirmation
+		// trigger stamps it from its metadata (#1229). Idempotent — a
 		// returning user (already-stamped profile) is a no-op. If the
 		// stash is missing (Safari private mode, returning user, or a
 		// callback not initiated from /login), the /auth/confirm-age

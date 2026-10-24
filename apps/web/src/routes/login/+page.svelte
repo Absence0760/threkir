@@ -209,11 +209,15 @@
 						// dashboard Redirect-URLs allow-list. See
 						// web_app_auth.md § Email confirmation redirect.
 						emailRedirectTo: `${window.location.origin}/auth/callback`,
-						// raw_user_meta_data carries the consent
-						// timestamps at the auth layer; the server-side
-						// stamp on user_profiles happens via the RPC
-						// below. See migration 20260929_001 + audit/gdpr.
-						data: { age_confirmed_at: stamp, terms_accepted_at: stamp },
+						// raw_user_meta_data carries the consent timestamps
+						// and the locale's unit; a trigger on auth.users
+						// stamps user_profiles from them when the account is
+						// confirmed, wherever the link is opened (#1229).
+						data: {
+							age_confirmed_at: stamp,
+							terms_accepted_at: stamp,
+							preferred_unit: defaultUnitForLocale(navigator.language),
+						},
 					},
 				});
 				if (signUpError) throw dbError(signUpError);

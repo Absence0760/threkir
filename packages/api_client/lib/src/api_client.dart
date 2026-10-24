@@ -347,10 +347,10 @@ class ApiClient {
   ///
   /// [ageConfirmedAt] and [termsAcceptedAt] capture the moment the
   /// user ticked the consent checkboxes on the sign-up screen. They
-  /// are stored in `raw_user_meta_data` at the auth layer AND
-  /// re-stamped on `user_profiles` via the `confirm_age_and_terms`
-  /// RPC immediately after signUp succeeds. Server-side enforcement
-  /// of GDPR Art 8 — see migration `20260929_001` and audit/gdpr
+  /// are stored in `raw_user_meta_data` at the auth layer, and a
+  /// trigger on `auth.users` stamps them onto `user_profiles` when the
+  /// account is confirmed (migration `20271023000001`, issue #1229).
+  /// GDPR Art 8 — see migration `20260929_001` and audit/gdpr
   /// (2026-05-25) Critical.
   Future<({String userId, bool needsEmailConfirmation})> signUp({
     required String email,
@@ -376,11 +376,11 @@ class ApiClient {
           'terms_accepted_at': termsIso,
         },
       );
-      // Server-side stamp on user_profiles. When Supabase email
-      // confirmation is on there is no session yet and the RPC fails; the
-      // account then meets the in-app consent gate on its first sign-in
-      // (HomeScreen), which re-asks rather than stamping an affirmation
-      // this device can no longer vouch for.
+      // With email confirmation on there is no session yet; the
+      // `auth.users` confirmation trigger stamps user_profiles from the
+      // `data` above (issue #1229). With a session the trigger has already
+      // run at insert, and this idempotent RPC is the fallback for an
+      // account whose metadata it did not trust.
       if (response.session != null) await _stampAffirmedConsent('signUp');
       return (
         userId: response.user!.id,

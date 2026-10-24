@@ -346,7 +346,7 @@ void main() {
 
       expect(find.text('Welcome!'), findsOneWidget);
       expect(
-          find.text('Your dashboard fills in once you record a run, set a '
+          find.text('Your dashboard fills in once you record an activity, set a '
               'goal, or import your history.'),
           findsNothing);
     });
@@ -364,7 +364,7 @@ void main() {
           describe: 'the plan overview to resolve');
       expect(find.textContaining('Starts in 5 days'), findsOneWidget);
       expect(
-          find.text('Your dashboard fills in once you record a run, set a '
+          find.text('Your dashboard fills in once you record an activity, set a '
               'goal, or import your history.'),
           findsNothing);
     });

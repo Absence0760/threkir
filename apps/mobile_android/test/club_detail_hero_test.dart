@@ -73,8 +73,14 @@ class _FakeSocial extends SocialService {
   }) async =>
       const [];
   @override
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async =>
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async =>
       const [];
+  @override
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = SocialService.rosterPageSize,
+    List<Object?>? after,
+  }) async => const KeysetPage([], null);
   @override
   RealtimeChannel subscribeToClub(String clubId, void Function() onChange) =>
       Supabase.instance.client.channel('test-$clubId');

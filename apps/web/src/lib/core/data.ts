@@ -3918,7 +3918,10 @@ export async function fetchClubMembers(
 		// signed the liability waiver) is the member's own business, not
 		// public roster data.
 		.select('club_id, user_id, role, status, joined_at')
-		.eq('club_id', clubId);
+		.eq('club_id', clubId)
+		// A private club's members can also read its pending and rejected
+		// rows, and a rejected requester is not a member.
+		.eq('status', 'active');
 	if (after) q = q.or(after);
 	for (const k of CLUB_MEMBER_ORDER) {
 		q = q.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });

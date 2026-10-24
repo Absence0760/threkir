@@ -279,9 +279,13 @@ becomes an **action button**, not a tab.
   plan): the menu is a shortcut set, and a long-press cannot be the only way
   to anything. While a run records both gestures still return to the
   recorder.
-- **The centre button says what a tap does.** When the tap starts a run it
-  shows a play icon, the caption "Start run" and the spoken label "Start a
-  run" instead of "+ Log"; while a run records it turns the error colour,
+- **The centre button says what a tap does.** When the tap starts recording
+  it shows a play icon and names the runner's default activity, which is
+  what the recorder will capture: the caption "Start run" / "Start walk" /
+  "Start ride" / "Start trail run" / "Start stroller run" and the spoken
+  label "Start a run" / "Start a ride" / ... instead of "+ Log" (#1230; the
+  empty Home's primary button and the empty Runs list follow the same
+  preference); while a run records it turns the error colour,
   captioned "Recording" and announced "Return to your run". On the Run
   page itself the phone's docked button is the run's **Stop** instead: the
   recorder's 800 ms `HoldToStopButton` with its progress ring, captioned

@@ -72,8 +72,14 @@ class _FakeSocial extends SocialService {
     int limit = 20,
   }) async => const [];
   @override
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async =>
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async =>
       const [];
+  @override
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = SocialService.rosterPageSize,
+    List<Object?>? after,
+  }) async => const KeysetPage([], null);
   @override
   RealtimeChannel subscribeToClub(String clubId, void Function() onChange) =>
       Supabase.instance.client.channel('test-$clubId');
@@ -142,15 +148,21 @@ class _PendingSocial extends SocialService {
     int limit = 20,
   }) async => const [];
   @override
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async =>
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async =>
       const [
-        ClubMemberRow(
-          clubId: 'club-1',
+        ClubMemberView(
           userId: 'pendinguser-0001',
           role: 'member',
           status: 'pending',
+          displayName: 'Pat Pending',
         ),
       ];
+  @override
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = SocialService.rosterPageSize,
+    List<Object?>? after,
+  }) async => const KeysetPage([], null);
   @override
   Future<void> approveJoinRequest({
     required String clubId,
@@ -180,15 +192,21 @@ class _DenySocial extends SocialService {
     int limit = 20,
   }) async => const [];
   @override
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async =>
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async =>
       const [
-        ClubMemberRow(
-          clubId: 'club-1',
+        ClubMemberView(
           userId: 'pendinguser-0001',
           role: 'member',
           status: 'pending',
+          displayName: 'Pat Pending',
         ),
       ];
+  @override
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = SocialService.rosterPageSize,
+    List<Object?>? after,
+  }) async => const KeysetPage([], null);
   @override
   Future<void> denyJoinRequest({
     required String clubId,
@@ -235,8 +253,14 @@ class _ReplySocial extends SocialService {
     int limit = 200,
   }) async => const [];
   @override
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async =>
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async =>
       const [];
+  @override
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = SocialService.rosterPageSize,
+    List<Object?>? after,
+  }) async => const KeysetPage([], null);
   @override
   Future<void> createPost({
     required String clubId,
@@ -270,8 +294,14 @@ class _ComposeSocial extends SocialService {
     int limit = 20,
   }) async => const [];
   @override
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async =>
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async =>
       const [];
+  @override
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = SocialService.rosterPageSize,
+    List<Object?>? after,
+  }) async => const KeysetPage([], null);
   @override
   Future<void> createPost({
     required String clubId,
@@ -368,6 +398,95 @@ class _AvatarPostSocial extends _ReplySocial {
       replyCount: 0,
     ),
   ];
+}
+
+/// Admin club whose roster comes in two keyset pages, recording every cursor
+/// it was asked for and every role change / removal.
+class _RosterSocial extends SocialService {
+  final List<List<Object?>?> afters = [];
+  final List<String> removed = [];
+  final Map<String, String> roles = {};
+  bool failFirst = false;
+
+  @override
+  String? get currentUserId => 'u-viewer';
+  @override
+  Future<ClubView?> fetchClubBySlug(String slug) async => _adminClub();
+  @override
+  Future<List<EventView>> fetchUpcomingEvents(String clubId) async => const [];
+  @override
+  Future<List<ClubPostView>> fetchClubPosts(
+    String clubId, {
+    int limit = 20,
+  }) async => const [];
+  @override
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async =>
+      const [
+        ClubMemberView(
+          userId: 'pendinguser-0001',
+          role: 'member',
+          status: 'pending',
+          displayName: 'Pat Pending',
+        ),
+      ];
+  @override
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = SocialService.rosterPageSize,
+    List<Object?>? after,
+  }) async {
+    if (failFirst) {
+      failFirst = false;
+      throw Exception('network down');
+    }
+    afters.add(after);
+    if (after == null) {
+      return const KeysetPage([
+        ClubMemberView(
+          userId: 'owner',
+          role: 'owner',
+          status: 'active',
+          displayName: 'Olive Owner',
+        ),
+        ClubMemberView(
+          userId: 'u-admin',
+          role: 'admin',
+          status: 'active',
+          displayName: 'Ada Admin',
+        ),
+        ClubMemberView(userId: 'u-noname', role: 'member', status: 'active'),
+      ], ['2026-01-03T00:00:00Z', 'u-noname']);
+    }
+    return const KeysetPage([
+      ClubMemberView(
+        userId: 'u-late',
+        role: 'member',
+        status: 'active',
+        displayName: 'Late Joiner',
+      ),
+    ], null);
+  }
+
+  @override
+  Future<void> setMemberRole({
+    required String clubId,
+    required String userId,
+    required String role,
+  }) async {
+    roles[userId] = role;
+  }
+
+  @override
+  Future<void> removeMember({
+    required String clubId,
+    required String userId,
+  }) async {
+    removed.add(userId);
+  }
+
+  @override
+  RealtimeChannel subscribeToClub(String clubId, void Function() onChange) =>
+      Supabase.instance.client.channel('test-$clubId');
 }
 
 void main() {
@@ -662,6 +781,115 @@ void main() {
       expect(social.denyCalls, 1);
     });
   });
+
+  group('ClubDetailScreen — Members tab roster (#1228)', () {
+    Future<_RosterSocial> openMembers(
+      WidgetTester tester, {
+      _RosterSocial? social,
+    }) async {
+      final s = social ?? _RosterSocial();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ClubDetailScreen(
+            social: s,
+            training: _FakeTraining(),
+            slug: 'track-club',
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.text('Members'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+      return s;
+    }
+
+    realtimeWidgetTest('lists every member by name, with the owner badged', (
+      tester,
+    ) async {
+      await openMembers(tester);
+      expect(find.text('Olive Owner'), findsOneWidget);
+      expect(find.text('Ada Admin'), findsOneWidget);
+      expect(find.text('Owner'), findsOneWidget);
+      // A member with no profile name reads as the fallback, never an id.
+      expect(find.text('Member'), findsWidgets);
+      expect(find.textContaining('u-noname'), findsNothing);
+    });
+
+    realtimeWidgetTest('a pending request shows the requester by name', (
+      tester,
+    ) async {
+      await openMembers(tester);
+      expect(find.text('Pat Pending'), findsOneWidget);
+      expect(find.textContaining('pendingu'), findsNothing);
+    });
+
+    realtimeWidgetTest('Load more fetches the next page after the cursor', (
+      tester,
+    ) async {
+      final social = await openMembers(tester);
+      expect(find.text('Late Joiner'), findsNothing);
+      final more = find.widgetWithText(OutlinedButton, 'Load more');
+      await tester.ensureVisible(more);
+      await tester.pump();
+      await tester.tap(more);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(social.afters, [null, ['2026-01-03T00:00:00Z', 'u-noname']]);
+      expect(find.text('Late Joiner'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, 'Load more'), findsNothing);
+    });
+
+    realtimeWidgetTest(
+        'removing a member asks first, and only then removes them', (
+      tester,
+    ) async {
+      final social = await openMembers(tester);
+      expect(find.byTooltip('Member actions'), findsNWidgets(2),
+          reason: 'the owner row carries no admin menu');
+      await tester.tap(find.byTooltip('Member actions').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove from club'));
+      await tester.pumpAndSettle();
+      expect(find.text('Remove Ada Admin from Track Club?'), findsOneWidget);
+      expect(social.removed, isEmpty);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Remove'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(social.removed, ['u-admin']);
+      expect(find.text('Ada Admin'), findsNothing);
+    });
+
+    realtimeWidgetTest('choosing a role from the menu changes it', (
+      tester,
+    ) async {
+      final social = await openMembers(tester);
+      await tester.tap(find.byTooltip('Member actions').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Race director').last);
+      await tester.pumpAndSettle();
+      expect(social.roles, {'u-noname': 'race_director'});
+      expect(find.text('Race director'), findsOneWidget);
+    });
+
+    realtimeWidgetTest('a failed roster read says so and retries', (
+      tester,
+    ) async {
+      final social = _RosterSocial()..failFirst = true;
+      await openMembers(tester, social: social);
+      expect(find.text('Could not load members'), findsOneWidget);
+      await tester.tap(find.text('Retry'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.text('Olive Owner'), findsOneWidget);
+    });
+  });
+
 
   group('ClubDetailScreen — post author avatar', () {
     // fetchClubPosts selected only display_name, so a member who had uploaded
@@ -1176,8 +1404,14 @@ class _AdminSocial extends SocialService {
     int limit = 20,
   }) async => const [];
   @override
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async =>
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async =>
       const [];
+  @override
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = SocialService.rosterPageSize,
+    List<Object?>? after,
+  }) async => const KeysetPage([], null);
   @override
   RealtimeChannel subscribeToClub(String clubId, void Function() onChange) =>
       Supabase.instance.client.channel('test-$clubId');
@@ -1198,8 +1432,14 @@ class _PostFailSocial extends SocialService {
     int limit = 20,
   }) async => const [];
   @override
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async =>
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async =>
       const [];
+  @override
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = SocialService.rosterPageSize,
+    List<Object?>? after,
+  }) async => const KeysetPage([], null);
   @override
   Future<void> createPost({
     required String clubId,
@@ -1234,8 +1474,14 @@ class _NonMemberSocial extends SocialService {
     int limit = 20,
   }) async => const [];
   @override
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async =>
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async =>
       const [];
+  @override
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = SocialService.rosterPageSize,
+    List<Object?>? after,
+  }) async => const KeysetPage([], null);
   @override
   Future<String> joinClub(
     String clubId,

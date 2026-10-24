@@ -3064,6 +3064,15 @@ insert into private.feature_flags (name, enabled) values ('audience_sharing', tr
 insert into private.feature_flags (name, enabled) values ('safety_audience', true)
   on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
 
+-- ─────────────────── Sign-up consent from metadata (20271023000001) ───────────────────
+--
+-- An email sign-up's age + terms stamps are written from its sign-up
+-- metadata when the account is confirmed (#1229). That changes how Art 8
+-- evidence is captured, so prod waits on the sign-off in
+-- docs/ops/deployment.md. Local stacks and CI open it.
+insert into private.feature_flags (name, enabled) values ('signup_consent_from_metadata', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
 -- ─────────────────── Coach run map gate (20270822000011) ───────────────────
 --
 -- A linked coach's clipped view of an athlete's run map is fail-closed behind

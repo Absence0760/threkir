@@ -431,6 +431,28 @@ void main() {
       );
     });
 
+    testWidgets(
+        'the centre button names the default activity a tap records '
+        '(#1230)', (tester) async {
+      // A cyclist whose default is `cycle` tapped "Start run" and recorded a
+      // ride: RunScreen seeds its activity from this same preference.
+      final s = await _makeStores();
+      await tester.runAsync(() => s.prefs.setDefaultActivityType('cycle'));
+      await _pump(tester, s);
+      final bar = find.byType(BottomAppBar);
+      expect(find.descendant(of: bar, matching: find.text('Start ride')),
+          findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.text('Start run')),
+          findsNothing);
+      expect(_semanticsLabelled('Start a ride'), findsOneWidget);
+
+      await tester.runAsync(() => s.prefs.setDefaultActivityType('run'));
+      await tester.pump();
+      expect(find.descendant(of: bar, matching: find.text('Start run')),
+          findsOneWidget);
+      expect(_semanticsLabelled('Start a run'), findsOneWidget);
+    });
+
     testWidgets('the centre button turns back into Log once a lift exists',
         (tester) async {
       final s = await _makeStores();

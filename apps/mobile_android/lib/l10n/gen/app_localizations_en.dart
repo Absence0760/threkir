@@ -761,7 +761,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navStartRun => 'Start run';
 
   @override
-  String get logStartRunA11yLabel => 'Start a run';
+  String get navStartWalk => 'Start walk';
+
+  @override
+  String get navStartRide => 'Start ride';
+
+  @override
+  String get navStartTrailRun => 'Start trail run';
+
+  @override
+  String get navStartStroller => 'Start stroller run';
+
+  @override
+  String get startRecordingRun => 'Start a run';
+
+  @override
+  String get startRecordingWalk => 'Start a walk';
+
+  @override
+  String get startRecordingRide => 'Start a ride';
+
+  @override
+  String get startRecordingTrailRun => 'Start a trail run';
+
+  @override
+  String get startRecordingStroller => 'Start a stroller run';
 
   @override
   String get logModalityShownGym => 'Gym is now shown';
@@ -2418,8 +2442,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyAddPastRun => 'Add past run';
 
   @override
-  String get historyEmptyBodyRunPrimary =>
-      'Tap Start run to record a run, or add one you have already finished';
+  String historyEmptyBodyRunPrimary(String button) {
+    return 'Tap $button to start recording, or add one you have already finished';
+  }
 
   @override
   String get historyLogTooltip => 'Log a run, lift or meal';
@@ -5161,6 +5186,61 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clubDetailMemberFallback => 'Member';
 
   @override
+  String get clubRoleOwner => 'Owner';
+
+  @override
+  String get clubRoleAdmin => 'Admin';
+
+  @override
+  String get clubRoleEventOrganiser => 'Event organiser';
+
+  @override
+  String get clubRoleRaceDirector => 'Race director';
+
+  @override
+  String get clubRoleMember => 'Member';
+
+  @override
+  String get clubDetailMembersEmptyTitle => 'No members yet';
+
+  @override
+  String get clubDetailMembersEmptyBody =>
+      'As soon as someone joins, they\'ll appear here with their role.';
+
+  @override
+  String get clubDetailMembersLoadFailed => 'Could not load members';
+
+  @override
+  String get clubDetailMembersLoadMore => 'Load more';
+
+  @override
+  String get clubDetailMemberActions => 'Member actions';
+
+  @override
+  String get clubDetailRemoveFromClub => 'Remove from club';
+
+  @override
+  String get clubDetailRemoveMemberTitle => 'Remove member';
+
+  @override
+  String clubDetailRemoveMemberBody(String name, String club) {
+    return 'Remove $name from $club?';
+  }
+
+  @override
+  String get clubDetailRemoveMemberConfirm => 'Remove';
+
+  @override
+  String clubDetailRoleChangeFailed(String error) {
+    return 'Failed to change role: $error';
+  }
+
+  @override
+  String clubDetailRemoveMemberFailed(String error) {
+    return 'Failed to remove member: $error';
+  }
+
+  @override
   String get clubDetailRequestPending => 'Request pending';
 
   @override
@@ -5258,11 +5338,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String clubDetailPendingRequests(int count) {
     return 'Pending requests ($count)';
-  }
-
-  @override
-  String clubDetailUserShort(String id) {
-    return 'User $id…';
   }
 
   @override
@@ -9191,10 +9266,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dashboardWelcomeBody =>
-      'Your dashboard fills in once you record a run, set a goal, or import your history.';
-
-  @override
-  String get dashboardStartRun => 'Start a run';
+      'Your dashboard fills in once you record an activity, set a goal, or import your history.';
 
   @override
   String get dashboardSetGoal => 'Set a goal';

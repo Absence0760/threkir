@@ -84,11 +84,16 @@ class RunNotificationBridge {
   /// cheaply. [bigText] is optional multi-line content shown when the
   /// user expands the notification. [paused] flips the Pause action to
   /// Resume so the lock-screen control matches the recorder state.
+  /// [elapsed] anchors the notification's self-ticking clock (the Android 16
+  /// Live Update card and chip); [elapsedText] is what the chip shows frozen
+  /// while paused.
   Future<void> update({
     required String title,
     required String text,
     String? bigText,
     bool paused = false,
+    Duration? elapsed,
+    String? elapsedText,
   }) async {
     try {
       await _channel.invokeMethod<void>('update', {
@@ -96,6 +101,8 @@ class RunNotificationBridge {
         'text': text,
         if (bigText != null) 'big_text': bigText,
         'paused': paused,
+        if (elapsed != null) 'elapsed_ms': elapsed.inMilliseconds,
+        if (elapsedText != null) 'elapsed_text': elapsedText,
       });
     } catch (e) {
       debugPrint('RunNotificationBridge.update failed: $e');

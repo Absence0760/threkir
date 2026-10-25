@@ -3280,6 +3280,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       text: content.text,
       bigText: content.bigText,
       paused: _manualPaused,
+      elapsed: frame.elapsed,
+      elapsedText: frame.elapsedText,
     );
     // iOS's half of the same surface. Offered at this 1 Hz rate and dropped
     // by the bridge's own cadence gate down to ~0.1 Hz, because ActivityKit

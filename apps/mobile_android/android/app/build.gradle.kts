@@ -109,9 +109,10 @@ flutter {
 dependencies {
     // Wearable Data Layer — pushes the Supabase session to the paired watch_wear app.
     implementation("com.google.android.gms:play-services-wearable:20.0.1")
-    // NotificationCompat / NotificationManagerCompat used by
-    // RunNotificationBridge live under androidx.core:core, which geolocator
-    // already pulls in transitively at 1.16.0 — no explicit dep needed.
+    // NotificationCompat for RunNotificationBridge. Geolocator pulls
+    // androidx.core in at 1.16.0; the Android 16 Live Update builder calls
+    // (setRequestPromotedOngoing, setShortCriticalText) arrived in 1.17.0.
+    implementation("androidx.core:core:1.17.0")
 
     // Health Connect client, for HealthRoutePermissionBridge's
     // READ_EXERCISE_ROUTES request. The `health` plugin depends on the same

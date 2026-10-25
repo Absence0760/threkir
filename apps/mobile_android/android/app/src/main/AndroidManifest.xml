@@ -31,6 +31,11 @@
          permission, granted at install. -->
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Android 16 Live Updates: lets the recording notification ask to be
+         promoted to the lock-screen card and status-bar chip. A normal
+         permission, granted at install; the user can still turn Live
+         Updates off per app in system settings. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
 
     <!-- Camera: barcode scan for the nutrition log fast-path (mobile_scanner).
          Declared optional (android:required="false") so the app still installs

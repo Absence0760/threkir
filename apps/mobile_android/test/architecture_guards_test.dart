@@ -2128,6 +2128,42 @@ void main() {
           reason: 'run start clears a previous run\'s leftover split row');
     });
 
+    test('the ongoing run notification stays eligible for an Android 16 Live Update', () {
+      // Reason: Android only promotes a notification to the lock-screen
+      // card and status-bar chip when it asks to be promoted, the app holds
+      // POST_PROMOTED_NOTIFICATIONS, and the row is not colorized and has no
+      // custom view. Losing any one demotes it to an ordinary row with no
+      // error anywhere (decisions § 2239). Shared host file — skip on the
+      // iOS twin.
+      final file = File(
+        'android/app/src/main/kotlin/com/threkir/app/RunNotificationBridge.kt',
+      );
+      if (!file.existsSync()) return;
+      final source = file.readAsStringSync();
+      final post = source.substring(source.indexOf('private fun post('));
+      final postBody = post.substring(0, post.indexOf('companion object'));
+      expect(postBody, contains('.setRequestPromotedOngoing(true)'),
+          reason: 'the run row must ask to be promoted to a Live Update');
+      expect(postBody, contains('.setUsesChronometer(true)'),
+          reason: 'the card and chip clock tick on-device from an anchor');
+      for (final disqualifier in [
+        'setColorized',
+        'setCustomContentView',
+        'setCustomBigContentView',
+        'DecoratedCustomViewStyle',
+      ]) {
+        expect(postBody, isNot(contains(disqualifier)),
+            reason: '$disqualifier makes the row ineligible for promotion');
+      }
+      final manifest =
+          File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+      expect(
+        manifest,
+        contains('android.permission.POST_PROMOTED_NOTIFICATIONS'),
+        reason: 'without the permission the promotion request is ignored',
+      );
+    });
+
     test('RunNotificationBridge sources its user-facing strings from resources', () {
       // audit/i18n-readiness W-OS-3: the channel name (shown in system
       // notification settings), the title fallback, and the lock-screen

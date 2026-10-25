@@ -77,6 +77,7 @@ User → SignInScreen                  apps/mobile_android/lib/screens/sign_in_s
 
 - The platform channel for `google_sign_in` requires a Google Cloud Console OAuth client matching the app's package signature. See [../apps/mobile_android/local_testing.md](../../apps/mobile_android/local_testing.md) for the setup steps.
 - The `ApiClient` is a **static singleton** after `ApiClient.initialize(url: ..., anonKey: ...)` runs in `main.dart`. Do not instantiate `ApiClient()` and pass it around — all screens read the same global session via `Supabase.instance.client`.
+- **Email sign-up asks for consent once.** `ApiClient.signUp` sends the 16+ and Terms stamps in the GoTrue `data`; with email confirmation on there is no session, and the `auth.users` confirmation trigger stamps `user_profiles` from that metadata (#1229), so the first sign-in after confirming does not push `ConfirmAgeScreen`. Apple / Google from the sign-in screen still meet it, since they carry no sign-up metadata.
 - When the user signs out, `ApiClient.signOut()` just calls `supabase.auth.signOut()`. It does **not** clear the local `LocalRunStore` — offline data survives sign-out by design.
 
 ---

@@ -1012,9 +1012,41 @@
   "@navStartRun": {
     "description": "Caption under the centre nav button when a tap on it starts a run (Gym and Nutrition both hidden, or the run-primary preference on). Must fit the 56dp centre slot; deliberately not the bare noun \"Run\", which decisions § 1649 keeps out of the tab-label set"
   },
-  "logStartRunA11yLabel": "Start a run",
-  "@logStartRunA11yLabel": {
-    "description": "Screen-reader label for the centre nav button when a tap on it starts a run"
+  "navStartWalk": "Start walk",
+  "@navStartWalk": {
+    "description": "Caption under the centre nav button when a tap on it starts recording and the default activity is walk. Same slot and rules as navStartRun"
+  },
+  "navStartRide": "Start ride",
+  "@navStartRide": {
+    "description": "Caption under the centre nav button when a tap on it starts recording and the default activity is cycle. Same slot and rules as navStartRun"
+  },
+  "navStartTrailRun": "Start trail run",
+  "@navStartTrailRun": {
+    "description": "Caption under the centre nav button when a tap on it starts recording and the default activity is hike (shown as Trail run). Same slot and rules as navStartRun"
+  },
+  "navStartStroller": "Start stroller run",
+  "@navStartStroller": {
+    "description": "Caption under the centre nav button when a tap on it starts recording and the default activity is stroller. Same slot and rules as navStartRun"
+  },
+  "startRecordingRun": "Start a run",
+  "@startRecordingRun": {
+    "description": "Action that starts recording a run: the centre nav button's screen-reader label and the empty Home's primary button"
+  },
+  "startRecordingWalk": "Start a walk",
+  "@startRecordingWalk": {
+    "description": "As startRecordingRun, when the default activity is walk"
+  },
+  "startRecordingRide": "Start a ride",
+  "@startRecordingRide": {
+    "description": "As startRecordingRun, when the default activity is cycle"
+  },
+  "startRecordingTrailRun": "Start a trail run",
+  "@startRecordingTrailRun": {
+    "description": "As startRecordingRun, when the default activity is hike (shown as Trail run)"
+  },
+  "startRecordingStroller": "Start a stroller run",
+  "@startRecordingStroller": {
+    "description": "As startRecordingRun, when the default activity is stroller"
   },
   "logModalityShownGym": "Gym is now shown",
   "@logModalityShownGym": {
@@ -3143,9 +3175,15 @@
   "@historyAddPastRun": {
     "description": "Label of the Runs list's manual-entry button and empty-state action: adds a run that already happened, as distinct from the centre button, which records one"
   },
-  "historyEmptyBodyRunPrimary": "Tap Start run to record a run, or add one you have already finished",
+  "historyEmptyBodyRunPrimary": "Tap {button} to start recording, or add one you have already finished",
   "@historyEmptyBodyRunPrimary": {
-    "description": "Empty Runs list body when the centre button starts a run, so it names that button by its run caption (navStartRun) rather than Log"
+    "description": "Empty Runs list body when the centre button starts recording, so it names that button by its caption (navStartRun / navStartWalk / ...) rather than Log",
+    "placeholders": {
+      "button": {
+        "type": "String",
+        "example": "Start run"
+      }
+    }
   },
   "historyLogTooltip": "Log a run, lift or meal",
   "@historyLogTooltip": {
@@ -6937,6 +6975,90 @@
   "@clubDetailMemberFallback": {
     "description": "Fallback name for a club member with no display name"
   },
+  "clubRoleOwner": "Owner",
+  "@clubRoleOwner": {
+    "description": "Club role label (club_members.role owner); web clubRole.owner"
+  },
+  "clubRoleAdmin": "Admin",
+  "@clubRoleAdmin": {
+    "description": "Club role label (admin); web clubRole.admin"
+  },
+  "clubRoleEventOrganiser": "Event organiser",
+  "@clubRoleEventOrganiser": {
+    "description": "Club role label (event_organiser); web clubRole.event_organiser"
+  },
+  "clubRoleRaceDirector": "Race director",
+  "@clubRoleRaceDirector": {
+    "description": "Club role label (race_director); web clubRole.race_director"
+  },
+  "clubRoleMember": "Member",
+  "@clubRoleMember": {
+    "description": "Club role label (member); web clubRole.member"
+  },
+  "clubDetailMembersEmptyTitle": "No members yet",
+  "@clubDetailMembersEmptyTitle": {
+    "description": "Club Members tab title when the roster has no active members"
+  },
+  "clubDetailMembersEmptyBody": "As soon as someone joins, they'll appear here with their role.",
+  "@clubDetailMembersEmptyBody": {
+    "description": "Club Members tab body when the roster has no active members"
+  },
+  "clubDetailMembersLoadFailed": "Could not load members",
+  "@clubDetailMembersLoadFailed": {
+    "description": "Club Members tab error when the roster read fails; a Retry button sits under it"
+  },
+  "clubDetailMembersLoadMore": "Load more",
+  "@clubDetailMembersLoadMore": {
+    "description": "Button under the club roster that loads the next page of members"
+  },
+  "clubDetailMemberActions": "Member actions",
+  "@clubDetailMemberActions": {
+    "description": "Tooltip and screen-reader label of the admin menu on a club roster row (change role, remove)"
+  },
+  "clubDetailRemoveFromClub": "Remove from club",
+  "@clubDetailRemoveFromClub": {
+    "description": "Admin menu item on a club roster row that removes the member"
+  },
+  "clubDetailRemoveMemberTitle": "Remove member",
+  "@clubDetailRemoveMemberTitle": {
+    "description": "Title of the confirm dialog before an admin removes a club member"
+  },
+  "clubDetailRemoveMemberBody": "Remove {name} from {club}?",
+  "@clubDetailRemoveMemberBody": {
+    "description": "Body of the confirm dialog before an admin removes a club member",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Alex"
+      },
+      "club": {
+        "type": "String",
+        "example": "Track Club"
+      }
+    }
+  },
+  "clubDetailRemoveMemberConfirm": "Remove",
+  "@clubDetailRemoveMemberConfirm": {
+    "description": "Destructive confirm button of the remove-member dialog"
+  },
+  "clubDetailRoleChangeFailed": "Failed to change role: {error}",
+  "@clubDetailRoleChangeFailed": {
+    "description": "Banner when changing a club member role fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "clubDetailRemoveMemberFailed": "Failed to remove member: {error}",
+  "@clubDetailRemoveMemberFailed": {
+    "description": "Banner when removing a club member fails",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "clubDetailRequestPending": "Request pending",
   "@clubDetailRequestPending": {
     "description": "CTA label when the viewer's join request is pending"
@@ -7068,15 +7190,6 @@
     "placeholders": {
       "count": {
         "type": "int"
-      }
-    }
-  },
-  "clubDetailUserShort": "User {id}…",
-  "@clubDetailUserShort": {
-    "description": "Placeholder name for a pending member shown by id prefix",
-    "placeholders": {
-      "id": {
-        "type": "String"
       }
     }
   },
@@ -12403,13 +12516,9 @@
   "@dashboardWelcomeTitle": {
     "description": "Dashboard empty-state welcome headline"
   },
-  "dashboardWelcomeBody": "Your dashboard fills in once you record a run, set a goal, or import your history.",
+  "dashboardWelcomeBody": "Your dashboard fills in once you record an activity, set a goal, or import your history.",
   "@dashboardWelcomeBody": {
     "description": "Dashboard empty-state explanatory body"
-  },
-  "dashboardStartRun": "Start a run",
-  "@dashboardStartRun": {
-    "description": "Dashboard empty-state primary button that opens the recorder to start a run"
   },
   "dashboardSetGoal": "Set a goal",
   "@dashboardSetGoal": {

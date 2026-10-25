@@ -99,10 +99,11 @@ class RunsScreen extends StatefulWidget {
   /// other mount's add is modality-specific, so it keeps its FAB.
   final bool showAddFab;
 
-  /// Whether the shell's centre button starts a run on tap, in which case it
-  /// is captioned "Start run" rather than "Log" and the empty state has to
-  /// name it that way. The host knows, because it is the one that can see
-  /// whether lifts or meals exist; this screen's Runs-only mount cannot.
+  /// Whether the shell's centre button starts recording on tap, in which case
+  /// it is captioned for the default activity ("Start run", "Start ride", ...)
+  /// rather than "Log" and the empty state has to name it that way. The host
+  /// knows, because it is the one that can see whether lifts or meals exist;
+  /// this screen's Runs-only mount cannot.
   final bool centreStartsRun;
 
   const RunsScreen({
@@ -1396,7 +1397,10 @@ class _RunsScreenState extends State<RunsScreen>
         icon: Icons.directions_run,
         title: l10n.historyEmptyTitle,
         body: widget.centreStartsRun
-            ? l10n.historyEmptyBodyRunPrimary
+            ? l10n.historyEmptyBodyRunPrimary(startActivityCaption(
+                l10n,
+                ActivityType.fromName(widget.preferences.defaultActivityType),
+              ))
             : l10n.historyEmptyBody,
         ctaLabel: l10n.historyAddPastRun,
         onCta: _openAddRun,

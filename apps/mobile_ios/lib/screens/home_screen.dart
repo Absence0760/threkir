@@ -7,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 
+import '../activity_type_labels.dart';
 import '../adaptive_width.dart';
 import '../audio_cues.dart';
 import '../auth_change_aware.dart';
@@ -1282,13 +1283,17 @@ class _HomeScreenState extends State<HomeScreen>
         recording: true,
       );
     }
+    // The tap records the default activity (RunScreen seeds it from the same
+    // preference), so the caption names that, not always a run.
+    final activity =
+        cm.ActivityType.fromName(widget.preferences.defaultActivityType);
     return _runIsPrimary
         ? (
             // Play, not a runner: with Gym and Nutrition hidden the hub
             // beside it wears the runner glyph.
             icon: Icons.play_arrow,
-            label: l10n.navStartRun,
-            semantics: l10n.logStartRunA11yLabel,
+            label: startActivityCaption(l10n, activity),
+            semantics: startActivityAction(l10n, activity),
             recording: false,
           )
         : (

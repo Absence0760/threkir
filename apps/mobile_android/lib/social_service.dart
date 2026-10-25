@@ -17,6 +17,7 @@ import 'leaderboard_standing.dart';
 import 'l10n/date_format.dart';
 import 'l10n/gen/app_localizations.dart';
 import 'l10n/locale_support.dart';
+import 'offline_sync_store.dart' show parseServerTimestamp;
 import 'recurrence.dart';
 
 // Column-level grant lockdown: `clubs.invite_token` is revoked from
@@ -99,6 +100,35 @@ class ClubView {
   bool get isRaceDirector =>
       isAdmin || viewerRole == 'race_director';
   bool get isMember => viewerRole != null;
+}
+
+/// One club membership row with the member's public profile joined on.
+/// Mirrors the row shape web's `fetchClubMembers` returns.
+class ClubMemberView {
+  final String userId;
+  final String role;
+  final String status;
+  final DateTime? joinedAt;
+  final String? displayName;
+  final String? avatarUrl;
+
+  const ClubMemberView({
+    required this.userId,
+    required this.role,
+    required this.status,
+    this.joinedAt,
+    this.displayName,
+    this.avatarUrl,
+  });
+
+  ClubMemberView withRole(String next) => ClubMemberView(
+        userId: userId,
+        role: next,
+        status: status,
+        joinedAt: joinedAt,
+        displayName: displayName,
+        avatarUrl: avatarUrl,
+      );
 }
 
 /// How many `going` RSVPs the upcoming-event card walks before giving up.
@@ -710,12 +740,15 @@ class SocialService extends ChangeNotifier {
     KeysetKey('club_id', ascending: false, nullsFirst: false),
   ];
 
-  /// The order a club's pending join requests are listed and walked in:
-  /// oldest request first, so an admin works the queue in arrival order,
-  /// `user_id` (unique within one club) breaking a tie. Web's
+  /// One roster page. Web's `ROSTER_PAGE_SIZE`.
+  static const int rosterPageSize = 50;
+
+  /// The order a club's roster and its pending join requests are listed and
+  /// walked in: oldest first, so an admin works the request queue in arrival
+  /// order, `user_id` (unique within one club) breaking a tie. Web's
   /// `CLUB_MEMBER_ORDER` is the same order, and `club_members_club_roster
   /// (club_id, joined_at, user_id)` serves it.
-  static const List<KeysetKey> pendingRequestOrder = [
+  static const List<KeysetKey> clubMemberOrder = [
     KeysetKey('joined_at', ascending: true, nullsFirst: false),
     KeysetKey('user_id', ascending: true, nullsFirst: false),
   ];
@@ -1032,13 +1065,13 @@ class SocialService extends ChangeNotifier {
   }
 
   /// Pending join requests on a club (admins only — RLS will filter), oldest
-  /// first. Walked by keyset cursor in [pendingRequestOrder]: nothing bounds
+  /// first. Walked by keyset cursor in [clubMemberOrder]: nothing bounds
   /// how many requests a request-to-join club accumulates, and an unranged
   /// select capped at `db.max-rows` (1000) hid every request past the cap
   /// from the admin with no error (decisions § 1940).
-  Future<List<ClubMemberRow>> fetchPendingRequests(String clubId) async {
+  Future<List<ClubMemberView>> fetchPendingRequests(String clubId) async {
     final rows = await walkKeyset(
-      pendingRequestOrder,
+      clubMemberOrder,
       (after, limit) async {
         var q = _c
             .from('club_members')
@@ -1047,7 +1080,7 @@ class SocialService extends ChangeNotifier {
             .eq('status', 'pending');
         if (after != null) q = q.or(after);
         PostgrestTransformBuilder<PostgrestList> sorted = q;
-        for (final k in pendingRequestOrder) {
+        for (final k in clubMemberOrder) {
           sorted = sorted.order(
             k.column,
             ascending: k.ascending,
@@ -1057,7 +1090,106 @@ class SocialService extends ChangeNotifier {
         return await sorted.limit(limit);
       },
     );
-    return rows.map(ClubMemberRow.fromJson).toList();
+    return _withProfiles(rows);
+  }
+
+  /// One page of a club roster's active members: a club with hundreds of
+  /// members is reached by load-more rather than fetched whole. Pass the
+  /// previous page's `next` as [after]. Mirrors web's `fetchClubMembers`.
+  ///
+  /// The columns are enumerated rather than `*`: on a public club anyone can
+  /// read this list, and `activity_waiver_ack_at` (when a member signed the
+  /// liability waiver) is the member's own business. Active only, because a
+  /// private club's members can also read its pending and rejected rows, and
+  /// a rejected requester is not a member.
+  Future<KeysetPage<ClubMemberView>> fetchClubMembers(
+    String clubId, {
+    int limit = rosterPageSize,
+    List<Object?>? after,
+  }) async {
+    final filter = after == null ? null : keysetAfter(clubMemberOrder, after);
+    if (after != null && filter == null) return const KeysetPage([], null);
+    var q = _c
+        .from('club_members')
+        .select('club_id, user_id, role, status, joined_at')
+        .eq('club_id', clubId)
+        .eq('status', 'active');
+    if (filter != null) q = q.or(filter);
+    PostgrestTransformBuilder<PostgrestList> sorted = q;
+    for (final k in clubMemberOrder) {
+      sorted = sorted.order(
+        k.column,
+        ascending: k.ascending,
+        nullsFirst: k.nullsFirst,
+      );
+    }
+    final rows = await sorted.limit(limit);
+    return KeysetPage(
+      await _withProfiles(rows),
+      nextCursor(clubMemberOrder, rows, limit),
+    );
+  }
+
+  /// Membership rows with each member's `display_name` + `avatar_url`. The
+  /// profile read is chunked: PostgREST puts `.inFilter` ids in the request
+  /// URL, and a long list overflows the gateway's request-line limit.
+  Future<List<ClubMemberView>> _withProfiles(
+    List<Map<String, dynamic>> rows,
+  ) async {
+    if (rows.isEmpty) return const [];
+    final ids = rows.map((r) => r['user_id'] as String).toList();
+    final profilePages = await Future.wait([
+      for (final c in chunkList(ids))
+        _c
+            .from('user_profiles')
+            .select('id, display_name, avatar_url')
+            .inFilter('id', c),
+    ]);
+    final byId = <String, Map<String, dynamic>>{};
+    for (final page in profilePages) {
+      for (final p in page) {
+        byId[p['id'] as String] = p;
+      }
+    }
+    return [
+      for (final r in rows)
+        ClubMemberView(
+          userId: r['user_id'] as String,
+          role: r['role'] as String? ?? 'member',
+          status: r['status'] as String? ?? 'active',
+          joinedAt: parseServerTimestamp(r['joined_at']),
+          displayName: byId[r['user_id']]?['display_name'] as String?,
+          avatarUrl: byId[r['user_id']]?['avatar_url'] as String?,
+        ),
+    ];
+  }
+
+  /// Admin-only: change a member's role. RLS refuses the owner's row and
+  /// any caller who is not a club admin.
+  Future<void> setMemberRole({
+    required String clubId,
+    required String userId,
+    required String role,
+  }) async {
+    await _c
+        .from('club_members')
+        .update({'role': role})
+        .eq('club_id', clubId)
+        .eq('user_id', userId);
+    notifyListeners();
+  }
+
+  /// Admin-only: remove an active member from a club.
+  Future<void> removeMember({
+    required String clubId,
+    required String userId,
+  }) async {
+    await _c
+        .from('club_members')
+        .delete()
+        .eq('club_id', clubId)
+        .eq('user_id', userId);
+    notifyListeners();
   }
 
   /// Approve a pending join request.

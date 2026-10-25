@@ -58,3 +58,37 @@ extension ActivityTypeIcon on ActivityType {
     }
   }
 }
+
+/// The centre nav button's caption when a tap starts recording [type]. Short
+/// enough for the centre slot; the caption shrinks to fit rather than clip.
+String startActivityCaption(AppLocalizations l10n, ActivityType type) {
+  switch (type) {
+    case ActivityType.run:
+      return l10n.navStartRun;
+    case ActivityType.walk:
+      return l10n.navStartWalk;
+    case ActivityType.cycle:
+      return l10n.navStartRide;
+    case ActivityType.hike:
+      return l10n.navStartTrailRun;
+    case ActivityType.stroller:
+      return l10n.navStartStroller;
+  }
+}
+
+/// The sentence-form action that starts recording [type]: the centre button's
+/// spoken label and the empty Home's primary button.
+String startActivityAction(AppLocalizations l10n, ActivityType type) {
+  switch (type) {
+    case ActivityType.run:
+      return l10n.startRecordingRun;
+    case ActivityType.walk:
+      return l10n.startRecordingWalk;
+    case ActivityType.cycle:
+      return l10n.startRecordingRide;
+    case ActivityType.hike:
+      return l10n.startRecordingTrailRun;
+    case ActivityType.stroller:
+      return l10n.startRecordingStroller;
+  }
+}

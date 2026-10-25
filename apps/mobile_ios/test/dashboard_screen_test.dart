@@ -469,7 +469,7 @@ void main() {
       // sentence so a future tweak that loses an action doesn't
       // silently shrink the copy.
       expect(
-        find.textContaining('Your dashboard fills in once you record a run'),
+        find.textContaining('Your dashboard fills in once you record an activity'),
         findsOneWidget,
       );
     });
@@ -515,6 +515,31 @@ void main() {
       await tester.tap(find.text('Start a run'));
       await tester.pump();
       expect(started, 1);
+    });
+
+    testWidgets(
+        'empty state names the default activity it records (#1230)',
+        (tester) async {
+      final s = await _makeStores();
+      await s.prefs.setDefaultActivityType('walk');
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: DashboardScreen(
+            runStore: s.runStore,
+            routeStore: s.routeStore,
+            gymStore: LocalGymStore(),
+            foodStore: LocalFoodStore(),
+            preferences: s.prefs,
+            onStartRun: () {},
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('Start a walk'), findsOneWidget);
+      expect(find.text('Start a run'), findsNothing);
+      expect(find.byIcon(Icons.directions_walk), findsOneWidget);
     });
 
     testWidgets('empty state hides Start a run when no onStartRun host is wired',

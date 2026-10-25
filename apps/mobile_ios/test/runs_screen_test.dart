@@ -245,6 +245,20 @@ void main() {
       expect(empty.body, isNot(contains('Log')));
     });
 
+    testWidgets(
+        'the empty Runs list names the centre button by the default activity '
+        '(#1230)', (tester) async {
+      final s = await _makeStores();
+      await s.prefs.setDefaultActivityType('hike');
+      await _pump(tester,
+          runStore: s.runStore,
+          routeStore: s.routeStore,
+          prefs: s.prefs,
+          centreStartsRun: true);
+      final empty = tester.widget<EmptyState>(find.byType(EmptyState));
+      expect(empty.body, contains('Start trail run'));
+    });
+
     // The shell's centre button, a thumb away, is the one that records; this
     // one only ever adds a run that already happened, so its label says so.
     testWidgets('FAB is present with the Add past run label', (tester) async {

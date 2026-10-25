@@ -1301,11 +1301,59 @@ abstract class AppLocalizations {
   /// **'Start run'**
   String get navStartRun;
 
-  /// Screen-reader label for the centre nav button when a tap on it starts a run
+  /// Caption under the centre nav button when a tap on it starts recording and the default activity is walk. Same slot and rules as navStartRun
+  ///
+  /// In en, this message translates to:
+  /// **'Start walk'**
+  String get navStartWalk;
+
+  /// Caption under the centre nav button when a tap on it starts recording and the default activity is cycle. Same slot and rules as navStartRun
+  ///
+  /// In en, this message translates to:
+  /// **'Start ride'**
+  String get navStartRide;
+
+  /// Caption under the centre nav button when a tap on it starts recording and the default activity is hike (shown as Trail run). Same slot and rules as navStartRun
+  ///
+  /// In en, this message translates to:
+  /// **'Start trail run'**
+  String get navStartTrailRun;
+
+  /// Caption under the centre nav button when a tap on it starts recording and the default activity is stroller. Same slot and rules as navStartRun
+  ///
+  /// In en, this message translates to:
+  /// **'Start stroller run'**
+  String get navStartStroller;
+
+  /// Action that starts recording a run: the centre nav button's screen-reader label and the empty Home's primary button
   ///
   /// In en, this message translates to:
   /// **'Start a run'**
-  String get logStartRunA11yLabel;
+  String get startRecordingRun;
+
+  /// As startRecordingRun, when the default activity is walk
+  ///
+  /// In en, this message translates to:
+  /// **'Start a walk'**
+  String get startRecordingWalk;
+
+  /// As startRecordingRun, when the default activity is cycle
+  ///
+  /// In en, this message translates to:
+  /// **'Start a ride'**
+  String get startRecordingRide;
+
+  /// As startRecordingRun, when the default activity is hike (shown as Trail run)
+  ///
+  /// In en, this message translates to:
+  /// **'Start a trail run'**
+  String get startRecordingTrailRun;
+
+  /// As startRecordingRun, when the default activity is stroller
+  ///
+  /// In en, this message translates to:
+  /// **'Start a stroller run'**
+  String get startRecordingStroller;
 
   /// Top banner after a Log action for a hidden Gym switched it on; carries an Undo that hides it again
   ///
@@ -4115,11 +4163,11 @@ abstract class AppLocalizations {
   /// **'Add past run'**
   String get historyAddPastRun;
 
-  /// Empty Runs list body when the centre button starts a run, so it names that button by its run caption (navStartRun) rather than Log
+  /// Empty Runs list body when the centre button starts recording, so it names that button by its caption (navStartRun / navStartWalk / ...) rather than Log
   ///
   /// In en, this message translates to:
-  /// **'Tap Start run to record a run, or add one you have already finished'**
-  String get historyEmptyBodyRunPrimary;
+  /// **'Tap {button} to start recording, or add one you have already finished'**
+  String historyEmptyBodyRunPrimary(String button);
 
   /// Tooltip on the History add button when it logs a lift, a meal, or opens the run/lift/meal picker
   ///
@@ -8560,6 +8608,102 @@ abstract class AppLocalizations {
   /// **'Member'**
   String get clubDetailMemberFallback;
 
+  /// Club role label (club_members.role owner); web clubRole.owner
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get clubRoleOwner;
+
+  /// Club role label (admin); web clubRole.admin
+  ///
+  /// In en, this message translates to:
+  /// **'Admin'**
+  String get clubRoleAdmin;
+
+  /// Club role label (event_organiser); web clubRole.event_organiser
+  ///
+  /// In en, this message translates to:
+  /// **'Event organiser'**
+  String get clubRoleEventOrganiser;
+
+  /// Club role label (race_director); web clubRole.race_director
+  ///
+  /// In en, this message translates to:
+  /// **'Race director'**
+  String get clubRoleRaceDirector;
+
+  /// Club role label (member); web clubRole.member
+  ///
+  /// In en, this message translates to:
+  /// **'Member'**
+  String get clubRoleMember;
+
+  /// Club Members tab title when the roster has no active members
+  ///
+  /// In en, this message translates to:
+  /// **'No members yet'**
+  String get clubDetailMembersEmptyTitle;
+
+  /// Club Members tab body when the roster has no active members
+  ///
+  /// In en, this message translates to:
+  /// **'As soon as someone joins, they\'ll appear here with their role.'**
+  String get clubDetailMembersEmptyBody;
+
+  /// Club Members tab error when the roster read fails; a Retry button sits under it
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load members'**
+  String get clubDetailMembersLoadFailed;
+
+  /// Button under the club roster that loads the next page of members
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get clubDetailMembersLoadMore;
+
+  /// Tooltip and screen-reader label of the admin menu on a club roster row (change role, remove)
+  ///
+  /// In en, this message translates to:
+  /// **'Member actions'**
+  String get clubDetailMemberActions;
+
+  /// Admin menu item on a club roster row that removes the member
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from club'**
+  String get clubDetailRemoveFromClub;
+
+  /// Title of the confirm dialog before an admin removes a club member
+  ///
+  /// In en, this message translates to:
+  /// **'Remove member'**
+  String get clubDetailRemoveMemberTitle;
+
+  /// Body of the confirm dialog before an admin removes a club member
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name} from {club}?'**
+  String clubDetailRemoveMemberBody(String name, String club);
+
+  /// Destructive confirm button of the remove-member dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get clubDetailRemoveMemberConfirm;
+
+  /// Banner when changing a club member role fails
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to change role: {error}'**
+  String clubDetailRoleChangeFailed(String error);
+
+  /// Banner when removing a club member fails
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to remove member: {error}'**
+  String clubDetailRemoveMemberFailed(String error);
+
   /// CTA label when the viewer's join request is pending
   ///
   /// In en, this message translates to:
@@ -8703,12 +8847,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pending requests ({count})'**
   String clubDetailPendingRequests(int count);
-
-  /// Placeholder name for a pending member shown by id prefix
-  ///
-  /// In en, this message translates to:
-  /// **'User {id}…'**
-  String clubDetailUserShort(String id);
 
   /// Button to deny a join request
   ///
@@ -14971,14 +15109,8 @@ abstract class AppLocalizations {
   /// Dashboard empty-state explanatory body
   ///
   /// In en, this message translates to:
-  /// **'Your dashboard fills in once you record a run, set a goal, or import your history.'**
+  /// **'Your dashboard fills in once you record an activity, set a goal, or import your history.'**
   String get dashboardWelcomeBody;
-
-  /// Dashboard empty-state primary button that opens the recorder to start a run
-  ///
-  /// In en, this message translates to:
-  /// **'Start a run'**
-  String get dashboardStartRun;
 
   /// Dashboard empty-state primary button to create a goal
   ///

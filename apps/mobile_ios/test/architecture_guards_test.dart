@@ -2181,7 +2181,6 @@ void main() {
         'R.string.run_notif_title_fallback',
         'R.string.run_notif_action_resume',
         'R.string.run_notif_action_pause',
-        'R.string.run_notif_action_stop',
       ]) {
         expect(
           source,
@@ -2192,9 +2191,28 @@ void main() {
       }
     });
 
+    test('the lock-screen notification has no Stop action', () {
+      // Reason: a Stop button on the lock-screen card ends the run with
+      // one tap, on a locked phone or in a pocket, where the app's own Stop
+      // needs an 800 ms hold. Ending a run takes the app. Shared host
+      // files — skip on the iOS twin.
+      final file = File(
+        'android/app/src/main/kotlin/com/threkir/app/RunNotificationBridge.kt',
+      );
+      if (!file.existsSync()) return;
+      final source = file.readAsStringSync();
+      expect(source, isNot(contains('ACTION_STOP')),
+          reason: 'the notification must not post a Stop action');
+      expect(source, isNot(contains('run_notif_action_stop')),
+          reason: 'the notification must not label a Stop action');
+      final dart = File('lib/run_notification_bridge.dart').readAsStringSync();
+      expect(dart, isNot(contains('onStop')),
+          reason: 'no lock-screen action may end the run');
+    });
+
     test('lock-screen action buttons broadcast, never launch an activity (#270)',
         () {
-      // Reason: a getActivity PendingIntent on the Pause/Stop buttons
+      // Reason: a getActivity PendingIntent on the Pause/Resume button
       // launches MainActivity, which trips the keyguard unlock prompt on
       // a locked phone — the user must unlock before the action fires.
       // A true lock-screen control must work locked, so the buttons must

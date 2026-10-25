@@ -45,15 +45,14 @@ void main() {
     final fired = <String>[];
     bridge.onPause = () => fired.add('pause');
     bridge.onResume = () => fired.add('resume');
-    bridge.onStop = () => fired.add('stop');
 
     await sendNative('action', 'pause');
     await sendNative('action', 'resume');
-    await sendNative('action', 'stop');
+    await sendNative('action', 'stop'); // no Stop on the lock screen
     await sendNative('action', 'bogus'); // unknown → ignored
     await sendNative('action', null); // null → ignored, no throw
 
-    expect(fired, ['pause', 'resume', 'stop']);
+    expect(fired, ['pause', 'resume']);
   });
 
   test('a null callback is a safe no-op', () async {

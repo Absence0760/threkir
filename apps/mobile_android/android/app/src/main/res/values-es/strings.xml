@@ -4,7 +4,6 @@
     <string name="run_notif_title_fallback">Corriendo</string>
     <string name="run_notif_action_resume">Reanudar</string>
     <string name="run_notif_action_pause">Pausar</string>
-    <string name="run_notif_action_stop">Detener</string>
     <string name="widget_today_label">Entrenamiento de hoy</string>
     <string name="widget_today_description">Tu sesión planificada de hoy, de un vistazo</string>
     <string name="widget_today_header_fallback">Hoy</string>

@@ -44,14 +44,14 @@ class RunNotificationBridge {
   static const _channel = MethodChannel('run_app/run_notification');
 
   /// Lock-screen action callbacks (Android #14). The native side renders
-  /// Pause/Resume + Stop buttons on the foreground-service notification;
+  /// a Pause/Resume button on the foreground-service notification (no Stop:
+  /// ending a run takes the in-app hold);
   /// tapping one launches MainActivity with a `run_action` extra, which
   /// forwards here over the same channel. The run screen wires these to
   /// the recorder. Null on iOS (the channel has no native handler there,
   /// so the buttons never exist and these never fire).
   void Function()? onPause;
   void Function()? onResume;
-  void Function()? onStop;
 
   RunNotificationBridge() {
     _channel.setMethodCallHandler(_handleNativeCall);
@@ -69,9 +69,6 @@ class RunNotificationBridge {
           break;
         case 'resume':
           onResume?.call();
-          break;
-        case 'stop':
-          onStop?.call();
           break;
       }
     }

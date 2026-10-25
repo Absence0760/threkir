@@ -1499,10 +1499,6 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       if (!mounted || _recorder == null || !_manualPaused) return;
       _toggleManualPause();
     };
-    _lockScreen.onStop = () {
-      if (!mounted || _recorder == null) return;
-      _requestStop();
-    };
   }
 
   void _preload() {

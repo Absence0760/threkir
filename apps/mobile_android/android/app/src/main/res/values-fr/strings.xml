@@ -4,7 +4,6 @@
     <string name="run_notif_title_fallback">En cours</string>
     <string name="run_notif_action_resume">Reprendre</string>
     <string name="run_notif_action_pause">Pause</string>
-    <string name="run_notif_action_stop">Arrêter</string>
     <string name="widget_today_label">Séance du jour</string>
     <string name="widget_today_description">Votre séance prévue aujourd\'hui, en un coup d\'œil</string>
     <string name="widget_today_header_fallback">Aujourd\'hui</string>

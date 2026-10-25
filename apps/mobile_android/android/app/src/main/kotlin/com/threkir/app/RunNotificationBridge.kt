@@ -136,7 +136,7 @@ class RunNotificationBridge(
         }
     }
 
-    /// Forward a lock-screen action ("pause" / "resume" / "stop") to Dart.
+    /// Forward a lock-screen action ("pause" / "resume") to Dart.
     /// Called by `RunActionReceiver` when a notification-action broadcast
     /// fires. If Dart hasn't registered its handler yet, stash and flush on
     /// `ready`.
@@ -309,8 +309,10 @@ class RunNotificationBridge(
             if (!elapsedText.isNullOrBlank()) builder.setShortCriticalText(elapsedText)
         }
 
-        // #14: lock-screen controls. Pause toggles to Resume while paused;
-        // Stop ends the run. Icon 0 renders text-only, which is fine on a
+        // #14: lock-screen controls. Pause toggles to Resume while paused.
+        // There is deliberately no Stop: one tap on a locked phone (or in a
+        // pocket) would end the run, where the app's own Stop is a hold.
+        // Icon 0 renders text-only, which is fine on a
         // workout notification and avoids shipping new drawables.
         if (paused) {
             builder.addAction(
@@ -325,11 +327,6 @@ class RunNotificationBridge(
                 actionIntent(ACTION_PAUSE, RC_PAUSE),
             )
         }
-        builder.addAction(
-            0,
-            context.getString(R.string.run_notif_action_stop),
-            actionIntent(ACTION_STOP, RC_STOP),
-        )
 
         // Posting with the same (channel, id) that geolocator's foreground
         // service is using replaces the visible row without interfering
@@ -361,10 +358,8 @@ class RunNotificationBridge(
         const val EXTRA_RUN_ACTION = "run_action"
         private const val ACTION_PAUSE = "pause"
         private const val ACTION_RESUME = "resume"
-        private const val ACTION_STOP = "stop"
         private const val RC_PAUSE = 101
         private const val RC_RESUME = 102
-        private const val RC_STOP = 103
 
         /// Live instance so MainActivity can forward notification-action
         /// intents into the method channel. The bridge outlives any single

@@ -4,7 +4,6 @@
     <string name="run_notif_title_fallback">Läuft</string>
     <string name="run_notif_action_resume">Fortsetzen</string>
     <string name="run_notif_action_pause">Pause</string>
-    <string name="run_notif_action_stop">Stopp</string>
     <string name="widget_today_label">Heutiges Training</string>
     <string name="widget_today_description">Deine geplante Einheit für heute auf einen Blick</string>
     <string name="widget_today_header_fallback">Heute</string>

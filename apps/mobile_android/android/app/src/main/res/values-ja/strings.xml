@@ -4,7 +4,6 @@
     <string name="run_notif_title_fallback">ラン中</string>
     <string name="run_notif_action_resume">再開</string>
     <string name="run_notif_action_pause">一時停止</string>
-    <string name="run_notif_action_stop">停止</string>
     <string name="widget_today_label">今日のワークアウト</string>
     <string name="widget_today_description">今日予定のセッションをひと目で</string>
     <string name="widget_today_header_fallback">今日</string>

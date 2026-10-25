@@ -76,6 +76,40 @@ void main() {
     messenger.setMockMethodCallHandler(channel, null);
   });
 
+  test('update forwards the clock anchor inputs for the Live Update',
+      () async {
+    final calls = <MethodCall>[];
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return null;
+    });
+    final bridge = RunNotificationBridge();
+    await bridge.update(
+      title: 'Run',
+      text: 'stats',
+      elapsed: const Duration(minutes: 12, seconds: 5, milliseconds: 250),
+      elapsedText: '12:05',
+    );
+    final args = calls.firstWhere((c) => c.method == 'update').arguments as Map;
+    expect(args['elapsed_ms'], 725250);
+    expect(args['elapsed_text'], '12:05');
+    messenger.setMockMethodCallHandler(channel, null);
+  });
+
+  test('update omits the clock keys when no elapsed time is given', () async {
+    final calls = <MethodCall>[];
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return null;
+    });
+    final bridge = RunNotificationBridge();
+    await bridge.update(title: 'Run', text: 'stats');
+    final args = calls.firstWhere((c) => c.method == 'update').arguments as Map;
+    expect(args.containsKey('elapsed_ms'), isFalse);
+    expect(args.containsKey('elapsed_text'), isFalse);
+    messenger.setMockMethodCallHandler(channel, null);
+  });
+
   test('updateSplit posts over the dedicated update_split method (#303)',
       () async {
     final calls = <MethodCall>[];

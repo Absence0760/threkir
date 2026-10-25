@@ -47,6 +47,10 @@ class RunNotificationBridge(
     private var dartReady = false
     private var pendingAction: String? = null
 
+    // Where the notification's self-ticking clock counts up from, held across
+    // reposts so the 1 Hz updates cannot jitter it. See RunClockAnchor.
+    private var clockAnchorMs: Long? = null
+
     init {
         instance = this
         methodChannel.setMethodCallHandler(this)
@@ -84,7 +88,9 @@ class RunNotificationBridge(
                 val text = args["text"] as? String ?: ""
                 val bigText = args["big_text"] as? String
                 val paused = args["paused"] as? Boolean ?: false
-                post(title, text, bigText, paused)
+                val elapsedMs = (args["elapsed_ms"] as? Number)?.toLong()
+                val elapsedText = args["elapsed_text"] as? String
+                post(title, text, bigText, paused, elapsedMs, elapsedText)
                 result.success(null)
             }
             "update_split" -> {
@@ -118,6 +124,7 @@ class RunNotificationBridge(
                 val nm = NotificationManagerCompat.from(context)
                 nm.cancel(GEOLOCATOR_NOTIFICATION_ID)
                 nm.cancel(SPLIT_NOTIFICATION_ID)
+                clockAnchorMs = null
                 result.success(null)
             }
             "clear_split" -> {
@@ -249,7 +256,14 @@ class RunNotificationBridge(
             .notify(SPLIT_NOTIFICATION_ID, builder.build())
     }
 
-    private fun post(title: String, text: String, bigText: String?, paused: Boolean) {
+    private fun post(
+        title: String,
+        text: String,
+        bigText: String?,
+        paused: Boolean,
+        elapsedMs: Long?,
+        elapsedText: String?,
+    ) {
         val pending = openAppIntent()
 
         val builder = NotificationCompat.Builder(context, GEOLOCATOR_CHANNEL_ID)
@@ -259,8 +273,14 @@ class RunNotificationBridge(
             .setContentText(text)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setShowWhen(false)
             .setCategory(NotificationCompat.CATEGORY_WORKOUT)
+            // Android 16 Live Update: the system promotes the row to the
+            // lock-screen card and status-bar chip (One UI's "Live
+            // notifications" + Now Bar). It only honours the request for an
+            // ongoing, titled, non-colorized row in a standard or BigText
+            // style with no custom view, so keep every one of those true.
+            // Older releases ignore the flag and render the row as before.
+            .setRequestPromotedOngoing(true)
             // Surface on the lock screen with full content. Geolocator's
             // default is PRIVATE which hides the text — ours is the whole
             // point of this bridge.
@@ -271,6 +291,22 @@ class RunNotificationBridge(
 
         if (!bigText.isNullOrBlank()) {
             builder.setStyle(NotificationCompat.BigTextStyle().bigText(bigText))
+        }
+
+        // The clock ticks on its own from an anchor, so the card and the chip
+        // stay live between reposts and while the screen is off. A paused
+        // clock must not advance, so it is frozen text instead.
+        if (!paused && elapsedMs != null) {
+            val anchor = RunClockAnchor.next(
+                clockAnchorMs,
+                System.currentTimeMillis(),
+                elapsedMs,
+            )
+            clockAnchorMs = anchor
+            builder.setWhen(anchor).setShowWhen(true).setUsesChronometer(true)
+        } else {
+            builder.setShowWhen(false).setUsesChronometer(false)
+            if (!elapsedText.isNullOrBlank()) builder.setShortCriticalText(elapsedText)
         }
 
         // #14: lock-screen controls. Pause toggles to Resume while paused;
@@ -337,5 +373,22 @@ class RunNotificationBridge(
         @Volatile
         var instance: RunNotificationBridge? = null
             private set
+    }
+}
+
+/// Where the run notification's chronometer counts up from: now minus the
+/// time recorded. Held across reposts unless it moves by [TOLERANCE_MS],
+/// because the recorder's monotonic stopwatch and the wall clock skew by a
+/// fraction of a second per update and an anchor recomputed every time would
+/// make the clock skip or repeat a second. A resume moves it by the length of
+/// the pause and a crash-recovered run by minutes, so both re-anchor.
+/// Mirrors the iOS Live Activity's anchor (`live_activity_bridge.dart`).
+internal object RunClockAnchor {
+    const val TOLERANCE_MS = 1_500L
+
+    fun next(previousMs: Long?, nowMs: Long, elapsedMs: Long): Long {
+        val implied = nowMs - elapsedMs
+        if (previousMs == null) return implied
+        return if (kotlin.math.abs(implied - previousMs) >= TOLERANCE_MS) implied else previousMs
     }
 }

@@ -417,7 +417,7 @@ void main() {
         final unit = s.prefs.unit;
         final distance = UnitFormat.distance(run.distanceMetres, unit);
         expect(
-          summaryText(distance),
+          summaryText(UnitFormat.distanceValue(run.distanceMetres, unit)),
           findsOneWidget,
           reason: 'the summary reads the distance the run was saved with',
         );

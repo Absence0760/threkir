@@ -4528,11 +4528,6 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   bool get _distanceIsEstimated =>
       !_everHadGpsFix && _displayDistanceMetres > 0;
 
-  String get _formattedDistance {
-    final base = UnitFormat.distance(_displayDistanceMetres, _unit);
-    return _distanceIsEstimated ? '~$base' : base;
-  }
-
   String get _formattedDistanceValue {
     final base = UnitFormat.distanceValue(_displayDistanceMetres, _unit);
     return _distanceIsEstimated ? '~$base' : base;
@@ -5407,7 +5402,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         Expanded(
           flex: 4,
           child: FinishedSummary(
-            distanceValue: _formattedDistance,
+            distanceValue: _formattedDistanceValue,
+            distanceUnit: UnitFormat.distanceLabel(_unit),
             timeValue: _formattedTime,
             movingValue: _formatDuration(movingTime),
             primaryLabel: _activityType.usesSpeed
@@ -5438,6 +5434,7 @@ class FinishedSummary extends StatelessWidget {
   const FinishedSummary({
     super.key,
     required this.distanceValue,
+    required this.distanceUnit,
     required this.timeValue,
     required this.movingValue,
     required this.primaryLabel,
@@ -5449,6 +5446,7 @@ class FinishedSummary extends StatelessWidget {
   });
 
   final String distanceValue;
+  final String distanceUnit;
   final String timeValue;
   final String movingValue;
   final String primaryLabel;
@@ -5480,20 +5478,15 @@ class FinishedSummary extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(l10n.runComplete, style: theme.textTheme.headlineSmall),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
                       child: StatTile.medium(
-                          label: l10n.runStatDistance, value: distanceValue),
-                    ),
-                    Expanded(
-                      child: StatTile.medium(
-                          label: l10n.runStatTime, value: timeValue),
-                    ),
-                    Expanded(
-                      child: StatTile.medium(
-                          label: l10n.runStatMoving, value: movingValue),
+                        label: l10n.runStatDistance,
+                        value: distanceValue,
+                        unit: distanceUnit,
+                      ),
                     ),
                     Expanded(
                       child: StatTile.medium(
@@ -5504,7 +5497,20 @@ class FinishedSummary extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: StatTile.medium(
+                          label: l10n.runStatTime, value: timeValue),
+                    ),
+                    Expanded(
+                      child: StatTile.medium(
+                          label: l10n.runStatMoving, value: movingValue),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
                 if (synced) ...[
                   Icon(Icons.cloud_done, color: semantic.success, size: 24),
                   const SizedBox(height: 4),
@@ -5523,7 +5529,7 @@ class FinishedSummary extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(l10n.runSyncing),
                 ],
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 FilledButton(onPressed: onDone, child: Text(l10n.runDone)),
               ],
             ),

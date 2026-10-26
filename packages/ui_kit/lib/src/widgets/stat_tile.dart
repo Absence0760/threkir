@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+const double _valueInset = 4;
+
 enum _StatEmphasis { small, medium, large }
 
 /// One metric read as a pair: the value over the name of the thing it
@@ -127,34 +129,40 @@ class StatTile extends StatelessWidget {
       );
     }
     final large = _emphasis == _StatEmphasis.large;
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
-        children: [
-          Text(
-            value,
-            style: large
-                ? theme.textTheme.headlineMedium
-                    ?.copyWith(fontWeight: FontWeight.w700)
-                : theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-          ),
-          if (unit != null) ...[
-            SizedBox(width: large ? 4 : 2),
+    // The inset keeps a gutter between neighbouring cells: without it a value
+    // scaled down to its cell's full width runs straight into the next one,
+    // and "3:00:58" beside "3:00:55" reads as one number.
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: _valueInset),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
             Text(
-              unit!,
-              style: (large
-                      ? theme.textTheme.bodySmall
-                      : theme.textTheme.labelSmall)
-                  ?.copyWith(color: muted),
+              value,
+              style: large
+                  ? theme.textTheme.headlineMedium
+                      ?.copyWith(fontWeight: FontWeight.w700)
+                  : theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
             ),
+            if (unit != null) ...[
+              SizedBox(width: large ? 4 : 2),
+              Text(
+                unit!,
+                style: (large
+                        ? theme.textTheme.bodySmall
+                        : theme.textTheme.labelSmall)
+                    ?.copyWith(color: muted),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

@@ -106,6 +106,16 @@ flutter {
     source = "../.."
 }
 
+// purchases-hybrid-common pulls in RevenueCat's Amazon Appstore module, whose
+// consumer ProGuard rules carry `-dontoptimize`. Consumer rules apply to the
+// whole app, so that one line switched R8 optimisation off everywhere and Play
+// Console reported "DEX code optimisation 0%". We sell only through Google Play,
+// and nothing configures `AmazonConfiguration`, so drop the module and the
+// Amazon SDK it brings.
+configurations.configureEach {
+    exclude(group = "com.revenuecat.purchases", module = "purchases-store-amazon")
+}
+
 dependencies {
     // Wearable Data Layer — pushes the Supabase session to the paired watch_wear app.
     implementation("com.google.android.gms:play-services-wearable:20.0.1")

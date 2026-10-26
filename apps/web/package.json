@@ -52,26 +52,26 @@
 		"mdsvex": "^0.12.8",
 		"oauth2-mock-server": "9.3.0",
 		"svelte": "5.57.2",
-		"svelte-check": "4.7.6",
+		"svelte-check": "4.7.7",
 		"tsx": "^4.23.15",
 		"typescript": "6.0.3",
-		"vite": "8.3.4"
+		"vite": "8.3.5"
 	},
 	"type": "module",
 	"dependencies": {
-		"@anthropic-ai/sdk": "^0.135.0",
+		"@anthropic-ai/sdk": "^1.1.0",
 		"@resvg/resvg-js": "^2.6.2",
 		"@sentry/node": "^11.8.0",
 		"@sentry/sveltekit": "^11.8.0",
 		"@supabase/ssr": "^0.12.7",
 		"@supabase/supabase-js": "^2.118.0",
-		"@zip.js/zip.js": "^2.23.0",
-		"fit-file-parser": "^6.2.2",
+		"@zip.js/zip.js": "^2.24.0",
+		"fit-file-parser": "^6.2.3",
 		"html-to-image": "^1.11.13",
-		"isomorphic-dompurify": "^4.5.0",
+		"isomorphic-dompurify": "^4.6.0",
 		"jszip": "^3.10.2",
-		"maplibre-gl": "^6.13.0",
+		"maplibre-gl": "^6.15.0",
 		"marked": "^18.1.0",
-		"material-symbols": "^0.48.0"
+		"material-symbols": "^0.48.1"
 	}
 }

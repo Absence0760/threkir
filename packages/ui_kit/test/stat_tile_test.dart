@@ -206,4 +206,32 @@ void main() {
     final glyph = tester.getRect(find.byIcon(Icons.info_outline));
     expect(glyph.left, greaterThanOrEqualTo(label.right));
   });
+
+  testWidgets('a shrunk value keeps a gutter from its neighbour', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 120,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: StatTile.medium(label: 'Time', value: '3:00:58'),
+                  ),
+                  Expanded(
+                    child: StatTile.medium(label: 'Moving', value: '3:00:55'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    final gap = tester.getRect(find.text('3:00:55')).left -
+        tester.getRect(find.text('3:00:58')).right;
+    expect(gap, greaterThanOrEqualTo(8));
+  });
 }

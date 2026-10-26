@@ -59,7 +59,7 @@
 	},
 	"type": "module",
 	"dependencies": {
-		"@anthropic-ai/sdk": "^0.135.0",
+		"@anthropic-ai/sdk": "^1.1.0",
 		"@resvg/resvg-js": "^2.6.2",
 		"@sentry/node": "^11.8.0",
 		"@sentry/sveltekit": "^11.8.0",

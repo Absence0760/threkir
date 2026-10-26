@@ -9,7 +9,7 @@
 # exact patch, equal to go.mod's `go` directive: a bare `1.27` let the digest
 # hold 1.27.1 while nothing compared it, and scripts/check_toolchain_pins.mjs
 # now fails the PR when the two differ.
-FROM golang:1.27.3-alpine@sha256:d530cf60723abf1ffae0cd16bb546b379ec0550d2f3815e5b16ed69dbc00fba4 AS build
+FROM golang:1.27.3-alpine@sha256:b8c9b82affbbb82a020bbcf998dad2ba9516944ac7e883524642a481a9505e9c AS build
 WORKDIR /src
 
 # Cache go.mod / go.sum first so dependency-only changes don't

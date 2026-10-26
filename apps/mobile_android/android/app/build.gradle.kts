@@ -112,7 +112,7 @@ dependencies {
     // NotificationCompat for RunNotificationBridge. Geolocator pulls
     // androidx.core in at 1.16.0; the Android 16 Live Update builder calls
     // (setRequestPromotedOngoing, setShortCriticalText) arrived in 1.17.0.
-    implementation("androidx.core:core:1.17.0")
+    implementation("androidx.core:core:1.19.1")
 
     // Health Connect client, for HealthRoutePermissionBridge's
     // READ_EXERCISE_ROUTES request. The `health` plugin depends on the same

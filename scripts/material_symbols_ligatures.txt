@@ -1186,6 +1186,7 @@ docs_apps_script
 document_scanner
 document_search
 document_share
+document_share_stack
 domain
 domain_add
 domain_disabled
@@ -2834,6 +2835,7 @@ person_cancel
 person_celebrate
 person_check
 person_edit
+person_eye
 person_filled
 person_heart
 person_off
@@ -3548,6 +3550,7 @@ speed_2
 speed_2x
 speed_3
 speed_4
+speed_4_progress
 speed_camera
 spellcheck
 split_scene

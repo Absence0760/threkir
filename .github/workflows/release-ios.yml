@@ -358,7 +358,7 @@ jobs:
 
       - name: Upload to TestFlight
         if: steps.uploaded.outputs.uploaded != 'true'
-        uses: apple-actions/upload-testflight-build@155ea93be9ee6d5186c71f660a612f5eddb14510 # v5.6.0
+        uses: apple-actions/upload-testflight-build@acf1166e95edc302069b74b258a788004fe39a08 # v5.7.0
         with:
           app-path: ${{ steps.ipa.outputs.path }}
           issuer-id: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}

@@ -318,10 +318,10 @@ dependencies {
     implementation("com.google.android.gms:play-services-wearable:20.0.1")
 
     // Networking
-    implementation("com.squareup.okhttp3:okhttp:5.5.0")
+    implementation("com.squareup.okhttp3:okhttp:5.5.1")
 
     // Local persistence
-    implementation("androidx.datastore:datastore-preferences:1.2.1")
+    implementation("androidx.datastore:datastore-preferences:1.3.0")
 
     // Encrypted storage for the auth session (access + refresh tokens are
     // bearer credentials — they live in EncryptedSharedPreferences, not
@@ -330,7 +330,7 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0")
 
     // Serialization + coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
 
@@ -339,5 +339,5 @@ dependencies {
     // BuildConfig.SENTRY_DSN so a build without one is a no-op. The Android SDK auto-captures unhandled JVM exceptions;
     // we additionally wire breadcrumbs in long-running paths via
     // Sentry.captureException calls from coroutine catch blocks.
-    implementation("io.sentry:sentry-android:8.61.0")
+    implementation("io.sentry:sentry-android:8.61.1")
 }

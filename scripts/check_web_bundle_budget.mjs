@@ -236,6 +236,12 @@
 // core/data.ts gained type-only imports, the shape §§ 2109 and 2215 caught it
 // regressing in. No dependency changed. The ceiling moves by what was
 // measured and keeps the 6 KB of cover main had (decisions § 2232).
+// Raised to 2372 for the 2026-10-26 dependency batch (PR #1250), which CI
+// measured at 2354 -> 2366 KB (517 -> 518 files) against main's green run,
+// same job. No source changed; the largest code chunk grew 281 -> 289 KB, and
+// the only client-side bump of that size in the batch is maplibre-gl
+// 6.14 -> 6.16 (zip.js and dompurify measured unchanged gzipped). Same 6 KB of
+// cover (decisions § 2242).
 // MAX_LARGEST_CHUNK_KB stays 350, unchanged: 245 KB * the 33% headroom that
 // number was always justified by is 326, so the existing figure still states
 // the rule. What changed is the population it measures, not the ceiling.
@@ -270,7 +276,7 @@ export const CLIENT_MANIFEST = join(
 );
 export const LOCALES_DIR = join(WEB_DIR, 'src', 'lib', 'i18n', 'locales');
 
-export const MAX_CODE_KB = 2360;
+export const MAX_CODE_KB = 2372;
 export const MAX_CORE_CATALOGUE_KB = 13;
 export const MAX_AREA_CATALOGUE_KB = 14;
 export const MAX_LARGEST_CHUNK_KB = 350;

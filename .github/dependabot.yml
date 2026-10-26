@@ -325,6 +325,14 @@ updates:
       # ceiling; keep settings.gradle.kts in lockstep.
       - dependency-name: "org.jetbrains.kotlin.android"
         versions: [">= 2.4.20"]
+      # Same wall as the AGP and connect-client pins above: androidx.core
+      # 1.19 declares `requires AGP >= 9.1.0` and `compileSdk >= 37` in its
+      # AAR metadata, so the APK smoke build fails at checkDebugAarMetadata
+      # (PR #1235). Re-evaluate with the AGP pin.
+      - dependency-name: "androidx.core:core"
+        versions: [">= 1.19"]
+      - dependency-name: "androidx.core:core-ktx"
+        versions: [">= 1.19"]
 
   # ---------------------------------------------------------------------------
   # terraform — infra stacks

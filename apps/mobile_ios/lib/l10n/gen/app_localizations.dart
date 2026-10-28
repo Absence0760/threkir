@@ -2285,6 +2285,12 @@ abstract class AppLocalizations {
   /// **'Confirm your email first — check your inbox for the confirmation link.'**
   String get authErrorEmailNotConfirmed;
 
+  /// Friendly auth error shown when an emailed sign-in, confirmation or password-reset link has expired or was already used
+  ///
+  /// In en, this message translates to:
+  /// **'That link has expired or was already used. Request a new one to continue.'**
+  String get authErrorLinkExpired;
+
   /// Friendly auth error shown when the server rejects a password as too weak
   ///
   /// In en, this message translates to:

@@ -363,6 +363,7 @@
   "authErrorNotSignedIn": "Precisa de ter sessão iniciada para fazer isto. Inicie sessão e tente novamente.",
   "authErrorEmailExists": "Esse e-mail já tem uma conta. Entre em vez disto.",
   "authErrorEmailNotConfirmed": "Confirme o seu e-mail primeiro — procure o link de confirmação na sua caixa de entrada.",
+  "authErrorLinkExpired": "Este link expirou ou já foi utilizado. Peça um novo para continuar.",
   "authErrorWeakPassword": "Essa palavra-passe é muito fraca. Utilize pelo menos {minLength} caracteres.",
   "authErrorInvalidEmail": "Introduza um endereço de e-mail válido.",
   "authErrorPasswordTooShort": "A palavra-passe deve ter pelo menos {minLength} caracteres.",

@@ -1343,6 +1343,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Confirme o seu e-mail primeiro — procure o link de confirmação na sua caixa de entrada.';
 
   @override
+  String get authErrorLinkExpired =>
+      'Este link expirou ou já foi utilizado. Peça um novo para continuar.';
+
+  @override
   String authErrorWeakPassword(int minLength) {
     return 'Essa palavra-passe é muito fraca. Utilize pelo menos $minLength caracteres.';
   }
@@ -20285,6 +20289,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get authErrorEmailNotConfirmed =>
       'Confirme seu e-mail primeiro — procure o link de confirmação na sua caixa de entrada.';
+
+  @override
+  String get authErrorLinkExpired =>
+      'Este link expirou ou já foi usado. Solicite um novo para continuar.';
 
   @override
   String authErrorWeakPassword(int minLength) {

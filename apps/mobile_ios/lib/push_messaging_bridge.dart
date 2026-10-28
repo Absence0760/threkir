@@ -161,6 +161,10 @@ class PushMessagingBridge {
           default:
             break;
         }
+      }, onError: (Object e) {
+        // A refused auth deep link arrives here as an error; the app
+        // root shows it, and token registration carries on.
+        debugPrint('PushMessagingBridge: auth stream error: $e');
       });
     } catch (e) {
       debugPrint('PushMessagingBridge: auth wiring failed; '

@@ -680,8 +680,13 @@ class ApiClient {
   /// "signed out".
   Stream<String?> get authUserChanges {
     try {
+      // A refused auth deep link is delivered as a stream error; the app
+      // root reports it, so subscribers here only ever see transitions.
       return _client.auth.onAuthStateChange
-          .map((state) => state.session?.user.id);
+          .map((state) => state.session?.user.id)
+          .handleError((Object e) {
+        debugPrint('ApiClient.authUserChanges error: ${safeErrorLabel(e)}');
+      });
     } catch (e) {
       debugPrint('ApiClient.authUserChanges failed: ${safeErrorLabel(e)}');
       return const Stream<String?>.empty();

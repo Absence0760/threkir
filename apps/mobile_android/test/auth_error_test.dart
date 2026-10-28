@@ -113,6 +113,28 @@ void main() {
       );
     });
 
+    test('otp_expired code → linkExpired', () {
+      // What supabase_flutter reports when an emailed sign-in,
+      // confirmation or reset link is opened after it expired or twice
+      // (Sentry THREKIR-CLIENT-7).
+      expect(
+        classifyAuthError(const _FakeAuthException(
+            'Email link is invalid or has expired',
+            code: 'otp_expired',
+            statusCode: 'access_denied')),
+        AuthErrorKind.linkExpired,
+      );
+    });
+
+    test('"link is invalid or has expired" message (no code) → linkExpired',
+        () {
+      expect(
+        classifyAuthError(
+            const _FakeAuthException('Email link is invalid or has expired')),
+        AuthErrorKind.linkExpired,
+      );
+    });
+
     test('weak_password code → weakPassword', () {
       expect(
         classifyAuthError(const _FakeAuthException(
@@ -209,6 +231,11 @@ void main() {
       friendlyAuthError(
           l10n, const _FakeAuthException('', code: 'email_not_confirmed')),
       l10n.authErrorEmailNotConfirmed,
+    );
+    expect(
+      friendlyAuthError(
+          l10n, const _FakeAuthException('', code: 'otp_expired')),
+      l10n.authErrorLinkExpired,
     );
     expect(
       friendlyAuthError(

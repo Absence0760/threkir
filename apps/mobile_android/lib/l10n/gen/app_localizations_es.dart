@@ -1340,6 +1340,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Confirma primero tu correo: busca el enlace de confirmación en tu bandeja de entrada.';
 
   @override
+  String get authErrorLinkExpired =>
+      'Este enlace ha caducado o ya se usó. Solicita uno nuevo para continuar.';
+
+  @override
   String authErrorWeakPassword(int minLength) {
     return 'Esa contraseña es demasiado débil. Usa al menos $minLength caracteres.';
   }

@@ -39,14 +39,22 @@ Future<void> _pumpButton(
 final _hintRing = find.byKey(HoldToStopButton.hintRingKey);
 final _hintBubble = find.byKey(HoldToStopButton.hintBubbleKey);
 
-/// Advances the fake clock frame by frame until the demonstration shows,
-/// turning the real event loop between frames so the SharedPreferences read
-/// the button starts on mount can land.
+/// The learned flag as the mounted button read it on mount; null until that
+/// SharedPreferences read lands.
+bool? _buttonLearned(WidgetTester tester) {
+  final state = tester.state(find.byType(HoldToStopButton));
+  // ignore: avoid_dynamic_calls
+  return (state as dynamic).learned as bool?;
+}
+
+/// Waits for the button's learned-flag read to land, which is what starts the
+/// demonstration, then advances the fake clock into it: the first frame starts
+/// the demonstration's clock, the second moves it.
 Future<void> _pumpUntilHintShows(WidgetTester tester) async {
-  for (var i = 0; i < 20 && _hintRing.evaluate().isEmpty; i++) {
-    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
-    await tester.pump(const Duration(milliseconds: 100));
-  }
+  await pumpUntil(tester, () => _buttonLearned(tester) == false,
+      describe: "the Stop button's learned-flag read to report unlearned");
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 100));
   expect(_hintRing, findsOneWidget,
       reason: 'the hold-to-stop demonstration should play by itself');
 }
@@ -210,10 +218,10 @@ void main() {
       // A later run's Stop (a fresh button) stays quiet.
       await _pumpButton(tester,
           onHoldComplete: () {}, showHint: false, key: UniqueKey());
-      for (var i = 0; i < 10; i++) {
-        await tester.runAsync(() => Future<void>.delayed(Duration.zero));
-        await tester.pump(const Duration(milliseconds: 100));
-      }
+      await pumpUntil(tester, () => _buttonLearned(tester) != null,
+          describe: "the fresh Stop button's learned-flag read to land");
+      expect(_buttonLearned(tester), isTrue);
+      await tester.pump(const Duration(milliseconds: 600));
       expect(_hintRing, findsNothing);
       expect(_hintBubble, findsNothing);
     });

@@ -8,7 +8,7 @@ import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart'
     show ActivityType, DistanceUnit, PlanWorkoutRow;
 import 'package:flutter/foundation.dart'
-    show ValueListenable, defaultTargetPlatform;
+    show ValueListenable, defaultTargetPlatform, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderProxyBox;
 import 'package:flutter/scheduler.dart';
@@ -6259,6 +6259,12 @@ class _HoldToStopButtonState extends State<HoldToStopButton>
   // Null until the device flag has been read. The hint never plays on an
   // unknown answer, so a slow or failed read costs the hint, never the stop.
   bool? _learned;
+
+  /// The device flag once the read started on mount has landed; null before.
+  /// A test that asserts the hint stays quiet waits on this, so its absence
+  /// assertion runs after the answer it depends on rather than after a guess.
+  @visibleForTesting
+  bool? get learned => _learned;
 
   @override
   void initState() {

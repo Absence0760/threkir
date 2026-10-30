@@ -6344,7 +6344,7 @@ class _HoldToStopButtonState extends State<HoldToStopButton>
       builder: (context, _) {
         final t = _hint.value;
         if (t <= 0 || t >= 1) return const SizedBox.shrink();
-        final fill = Curves.easeInOut
+        final fill = AppMotion.curveStandard
             .transform(const Interval(0.1, 0.55).transform(t));
         final fade = 1 - const Interval(0.75, 0.95).transform(t);
         return IgnorePointer(

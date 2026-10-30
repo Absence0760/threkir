@@ -1346,6 +1346,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Confirmez d’abord votre e-mail — recherchez le lien de confirmation dans votre boîte de réception.';
 
   @override
+  String get authErrorLinkExpired =>
+      'Ce lien a expiré ou a déjà été utilisé. Demandez-en un nouveau pour continuer.';
+
+  @override
   String authErrorWeakPassword(int minLength) {
     return 'Ce mot de passe est trop faible. Utilisez au moins $minLength caractères.';
   }

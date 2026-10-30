@@ -43,7 +43,8 @@ const Duration kTopBannerMaxDuration = Duration(seconds: 6);
 /// learn a new affordance.
 ///
 /// Caller must pass a [context] that's under the [Navigator] /
-/// [Overlay] (any screen-level context works). When no Overlay is
+/// [Overlay] (any screen-level context works) or is the root
+/// navigator's own context (`navigatorKey.currentContext`). When no Overlay is
 /// reachable (e.g. very early app boot) the call is a no-op.
 void showTopBanner(
   BuildContext context,
@@ -57,7 +58,11 @@ void showTopBanner(
   final effective = duration > kTopBannerMaxDuration
       ? kTopBannerMaxDuration
       : duration;
-  final overlay = Overlay.maybeOf(context, rootOverlay: true);
+  // The root navigator's own context sits above the Overlay it owns, so
+  // `Overlay.maybeOf` misses it; `Navigator.maybeOf` recognises that
+  // context as the navigator itself and hands back its overlay.
+  final overlay = Overlay.maybeOf(context, rootOverlay: true) ??
+      Navigator.maybeOf(context, rootNavigator: true)?.overlay;
   if (overlay == null) return;
 
   // Read the AppBar height from the nearest Scaffold (if any) so the

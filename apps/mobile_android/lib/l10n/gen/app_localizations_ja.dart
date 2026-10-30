@@ -1282,6 +1282,10 @@ class AppLocalizationsJa extends AppLocalizations {
       'まずメールアドレスを確認してください。受信トレイの確認リンクをご確認ください。';
 
   @override
+  String get authErrorLinkExpired =>
+      'このリンクは期限切れか、すでに使用されています。新しいリンクをリクエストしてください。';
+
+  @override
   String authErrorWeakPassword(int minLength) {
     return 'このパスワードは脆弱です。$minLength 文字以上にしてください。';
   }

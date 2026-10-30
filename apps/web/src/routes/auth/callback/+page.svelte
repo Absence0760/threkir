@@ -18,8 +18,12 @@
 		encodeLinkRefusal,
 		parseLinkProvider,
 	} from '#lib/core/auth_redirect_error.ts';
+	import { classifyAuthError } from '#lib/core/auth_errors.ts';
 
 	let error = $state('');
+	// GoTrue's own text for a spent or expired email link is no help;
+	// the person needs to be told to request a new one.
+	let linkExpired = $state(false);
 
 	function takeStashed(key: string): string | null {
 		try {
@@ -54,6 +58,8 @@
 					/* No storage to hand it over with: say it here instead. */
 				}
 			}
+			linkExpired =
+				classifyAuthError({ code: refused.code, message: refused.description ?? '' }) === 'linkExpired';
 			error = authRedirectErrorDetail(refused);
 			return;
 		}
@@ -87,6 +93,7 @@
 			// only surface the error when no session was established.
 			session = (await supabase.auth.getSession()).data.session;
 			if (!session) {
+				linkExpired = classifyAuthError(authError) === 'linkExpired';
 				error = authError.message;
 				return;
 			}
@@ -147,7 +154,9 @@
 			<span class="status status--error" aria-hidden="true">
 				<span class="material-symbols">error</span>
 			</span>
-			<p class="message error" role="alert">{m('authCallback.failed', { error })}</p>
+			<p class="message error" role="alert">
+				{linkExpired ? m('login.errorLinkExpired') : m('authCallback.failed', { error })}
+			</p>
 			<a class="btn btn-primary back" href="/login">{m('authCallback.backToLogin')}</a>
 		{:else}
 			<span class="status status--busy" aria-hidden="true"></span>

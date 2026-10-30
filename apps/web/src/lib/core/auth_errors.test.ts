@@ -77,6 +77,19 @@ test('invalid_grant + "Email not confirmed" message → emailNotConfirmed (not i
 	);
 });
 
+test('otp_expired code → linkExpired', () => {
+	// The refusal GoTrue redirects with when an emailed sign-in,
+	// confirmation or reset link is opened after it expired or twice.
+	assert.equal(
+		classifyAuthError(authError('Email link is invalid or has expired', { code: 'otp_expired', status: 403 })),
+		'linkExpired'
+	);
+});
+
+test('"link is invalid or has expired" message (no code) → linkExpired', () => {
+	assert.equal(classifyAuthError(authError('Email link is invalid or has expired')), 'linkExpired');
+});
+
 test('weak_password code → weakPassword', () => {
 	assert.equal(
 		classifyAuthError(
@@ -132,6 +145,7 @@ test('every kind maps to a distinct message key', () => {
 		'rateLimited',
 		'emailExists',
 		'emailNotConfirmed',
+		'linkExpired',
 		'weakPassword',
 		'generic'
 	] as const;

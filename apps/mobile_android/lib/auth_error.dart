@@ -19,6 +19,7 @@ enum AuthErrorKind {
   notSignedIn,
   emailExists,
   emailNotConfirmed,
+  linkExpired,
   weakPassword,
   generic,
 }
@@ -55,6 +56,12 @@ AuthErrorKind classifyAuthError(Object error) {
   // wrong-password message for an unconfirmed account (issue #486).
   if (code == 'email_not_confirmed' || msg.contains('email not confirmed')) {
     return AuthErrorKind.emailNotConfirmed;
+  }
+
+  // An emailed magic / confirmation / reset link opened after it expired
+  // or a second time. The fix is a fresh link, which no other kind says.
+  if (code == 'otp_expired' || msg.contains('link is invalid or has expired')) {
+    return AuthErrorKind.linkExpired;
   }
 
   if (code == 'invalid_credentials' ||
@@ -99,6 +106,8 @@ String friendlyAuthError(AppLocalizations l10n, Object error) {
       return l10n.authErrorEmailExists;
     case AuthErrorKind.emailNotConfirmed:
       return l10n.authErrorEmailNotConfirmed;
+    case AuthErrorKind.linkExpired:
+      return l10n.authErrorLinkExpired;
     case AuthErrorKind.weakPassword:
       return l10n.authErrorWeakPassword(kPasswordMinLength);
     // "Sign in to do this" makes no sense on the sign-in screens
@@ -142,6 +151,8 @@ String friendlyError(AppLocalizations l10n, Object error) {
       return l10n.authErrorRateLimited;
     case AuthErrorKind.notSignedIn:
       return l10n.authErrorNotSignedIn;
+    case AuthErrorKind.linkExpired:
+      return l10n.authErrorLinkExpired;
     case AuthErrorKind.invalidCredentials:
     case AuthErrorKind.emailExists:
     case AuthErrorKind.emailNotConfirmed:

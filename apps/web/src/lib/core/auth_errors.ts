@@ -13,6 +13,7 @@ export type AuthErrorKind =
 	| 'rateLimited'
 	| 'emailExists'
 	| 'emailNotConfirmed'
+	| 'linkExpired'
 	| 'weakPassword'
 	| 'generic';
 
@@ -53,6 +54,12 @@ export function classifyAuthError(error: unknown): AuthErrorKind {
 		return 'emailNotConfirmed';
 	}
 
+	// An emailed magic / confirmation / reset link opened after it expired
+	// or a second time. The fix is a fresh link, which no other kind says.
+	if (code === 'otp_expired' || msg.includes('link is invalid or has expired')) {
+		return 'linkExpired';
+	}
+
 	if (
 		code === 'invalid_credentials' ||
 		code === 'invalid_grant' ||
@@ -84,6 +91,7 @@ const MESSAGE_KEYS: Record<AuthErrorKind, MessageKey> = {
 	rateLimited: 'login.errorRateLimited',
 	emailExists: 'login.errorEmailExists',
 	emailNotConfirmed: 'login.errorEmailNotConfirmed',
+	linkExpired: 'login.errorLinkExpired',
 	weakPassword: 'login.errorWeakPassword',
 	generic: 'login.errorGeneric',
 };

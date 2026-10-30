@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { getAdminClient, getUserClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B } from '../fixtures/users';
+import { jumpAndSettle, settleOnFeature } from '../fixtures/heatmap';
 
 /**
  * Route-discovery filter facet on the heatmap (`p_filter` on
@@ -49,24 +50,25 @@ type Pin = {
 };
 
 /// Pan the discovery map to Virginia, where the seeded routes live, and
-/// wait for the post-move bbox refresh to land.
-async function flyToVA(page: import('@playwright/test').Page) {
-	await page.evaluate(async () => {
-		type MapHandle = {
-			flyTo: (o: { center: [number, number]; zoom: number }) => void;
-			once: (event: string, cb: () => void) => void;
-		};
-		const m = (window as unknown as { __heatmapMap?: MapHandle }).__heatmapMap;
-		if (!m) return;
-		await new Promise<void>((resolve) => {
-			m.once('moveend', () => resolve());
-			// Zoom 6 (not 7): the sidebar narrows the map, so a tighter
-			// zoom clips the easternmost / westernmost of the six VA
-			// routes (they span ~4° of longitude) out of the viewport.
-			m.flyTo({ center: [-78, 37.9], zoom: 6 });
-		});
+/// wait for the post-move bbox refresh to land. Zoom 6 (not 7): the
+/// sidebar narrows the map, so a tighter zoom clips the easternmost /
+/// westernmost of the six VA routes (they span ~4° of longitude) out of
+/// the viewport.
+async function jumpToVA(page: import('@playwright/test').Page) {
+	await jumpAndSettle(page, [-78, 37.9], 6);
+}
+
+/// The largest `point_count` among the route-pin source's clusters.
+function maxPointCount(page: import('@playwright/test').Page) {
+	return page.evaluate(() => {
+		const m = (window as unknown as { __heatmapMap?: any }).__heatmapMap;
+		let mx = 0;
+		for (const f of m?.querySourceFeatures('heatmap-route-pins') ?? []) {
+			const c = Number(f.properties?.point_count ?? 0);
+			if (c > mx) mx = c;
+		}
+		return mx;
 	});
-	await page.waitForTimeout(900);
 }
 
 test.describe('discoverable_routes_in_bbox p_filter (backend contract)', () => {
@@ -250,8 +252,7 @@ test.describe('Heatmap filters popover (web)', () => {
 	async function open(page: import('@playwright/test').Page) {
 		await page.goto('/routes/heatmap');
 		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
-		await page.waitForTimeout(1100);
-		await flyToVA(page);
+		await jumpToVA(page);
 	}
 
 	test('the Filters button opens the panel; the lens swaps the result set', async ({
@@ -359,42 +360,18 @@ test.describe('Heatmap route-pin clustering (web)', () => {
 
 			await page.goto('/routes/heatmap');
 			await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
-			await page.waitForTimeout(1000);
+			await jumpAndSettle(page, [9, 49], 12);
 
-			const result = await page.evaluate(async () => {
-				type MapHandle = {
-					flyTo: (o: { center: [number, number]; zoom: number }) => void;
-					once: (event: string, cb: () => void) => void;
-					getLayer: (id: string) => unknown;
-					querySourceFeatures: (
-						id: string,
-					) => Array<{ properties?: Record<string, unknown> }>;
-				};
-				const m = (window as unknown as { __heatmapMap?: MapHandle }).__heatmapMap;
-				if (!m) return { ok: false, maxCount: 0, hasClusterLayer: false };
-				await new Promise<void>((resolve) => {
-					m.once('moveend', () => resolve());
-					m.flyTo({ center: [9, 49], zoom: 12 });
-				});
-				// Give the GeoJSON source a beat to (re)cluster after the
-				// bbox refresh lands the four fixtures.
-				await new Promise((r) => setTimeout(r, 1200));
-				const feats = m.querySourceFeatures('heatmap-route-pins');
-				let maxCount = 0;
-				for (const f of feats) {
-					const c = Number(f.properties?.point_count ?? 0);
-					if (c > maxCount) maxCount = c;
-				}
-				return {
-					ok: true,
-					maxCount,
-					hasClusterLayer: !!m.getLayer('heatmap-route-pins-cluster'),
-				};
-			});
-
-			expect(result.ok, '__heatmapMap dev hook must be present').toBe(true);
-			expect(result.hasClusterLayer, 'cluster layer must be registered').toBe(true);
-			expect(result.maxCount, 'four packed pins form one cluster').toBeGreaterThanOrEqual(2);
+			const hasClusterLayer = await page.evaluate(
+				() =>
+					!!(window as unknown as { __heatmapMap?: any }).__heatmapMap?.getLayer(
+						'heatmap-route-pins-cluster',
+					),
+			);
+			expect(hasClusterLayer, 'cluster layer must be registered').toBe(true);
+			await expect
+				.poll(() => maxPointCount(page), { timeout: 5000, message: 'four packed pins form one cluster' })
+				.toBeGreaterThanOrEqual(2);
 		} finally {
 			await admin.from('routes').delete().in('id', ids);
 		}
@@ -407,8 +384,7 @@ test.describe('Heatmap results sidebar (web)', () => {
 	test('list mirrors the lens; a row keeps it and the View link navigates', async ({ page }) => {
 		await page.goto('/routes/heatmap');
 		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
-		await page.waitForTimeout(1100);
-		await flyToVA(page);
+		await jumpToVA(page);
 
 		const list = page.getByTestId('discover-list');
 		await expect(list).toBeVisible();
@@ -451,8 +427,7 @@ test.describe('Heatmap results sidebar (web)', () => {
 	test('the sidebar collapses + restores', async ({ page }) => {
 		await page.goto('/routes/heatmap');
 		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
-		await page.waitForTimeout(1100);
-		await flyToVA(page);
+		await jumpToVA(page);
 
 		const sidebar = page.getByTestId('discover-sidebar');
 		await expect(sidebar).toBeVisible();
@@ -483,8 +458,7 @@ test.describe('Heatmap hover-to-preview (web)', () => {
 	}) => {
 		await page.goto('/routes/heatmap');
 		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
-		await page.waitForTimeout(1100);
-		await flyToVA(page);
+		await jumpToVA(page);
 
 		// Nothing is drawn by default — the route lines are hidden.
 		expect(await lineCount(page)).toBe(0);
@@ -524,33 +498,15 @@ test.describe('Heatmap hover-to-preview (web)', () => {
 	test('hovering a map dot previews its line and highlights its row', async ({ page }) => {
 		await page.goto('/routes/heatmap');
 		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
-		await page.waitForTimeout(1100);
 
-		// Fly to a single route (zoom 14 → its pin is an un-clustered leaf)
-		// and project its dot to page coordinates.
-		const screen = await page.evaluate(async ([lng, lat]) => {
-			const m = (window as unknown as { __heatmapMap?: any }).__heatmapMap;
-			if (!m) return null;
-			await new Promise<void>((r) => {
-				m.once('moveend', () => r());
-				m.flyTo({ center: [lng, lat], zoom: 14 });
-			});
-			const deadline = Date.now() + 4000;
-			while (Date.now() < deadline) {
-				const p = m.project([lng, lat]);
-				if (
-					m.queryRenderedFeatures([p.x, p.y], { layers: ['heatmap-route-pins-layer'] })
-						.length > 0
-				)
-					break;
-				await new Promise<void>((r) => setTimeout(r, 150));
-			}
-			const p = m.project([lng, lat]);
-			const rect = m.getContainer().getBoundingClientRect();
-			return { x: rect.left + p.x, y: rect.top + p.y };
-		}, [-77.452, 37.5311]); // Belle Isle (seed)
-		expect(screen, '__heatmapMap dev hook must be present').toBeTruthy();
-		if (!screen) return;
+		// Settle on a single route at zoom 14 (its pin is an un-clustered
+		// leaf there) and take its dot's page coordinates.
+		const screen = await settleOnFeature(
+			page,
+			[-77.452, 37.5311], // Belle Isle (seed)
+			14,
+			'heatmap-route-pins-layer',
+		);
 
 		await page.mouse.move(screen.x, screen.y);
 		// The dot hover draws the route line...
@@ -589,25 +545,10 @@ test.describe('Discovery scenario testbed (Denver seed)', () => {
 	test('routes sharing an exact start collapse into one cluster bubble', async ({ page }) => {
 		await page.goto('/routes/heatmap');
 		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
-		await page.waitForTimeout(1100);
 
-		const maxCount = await page.evaluate(async () => {
-			const m = (window as unknown as { __heatmapMap?: any }).__heatmapMap;
-			if (!m) return -1;
-			await new Promise<void>((r) => {
-				m.once('moveend', () => r());
-				m.flyTo({ center: [-105.0, 39.74], zoom: 13 });
-			});
-			await new Promise<void>((r) => setTimeout(r, 1500));
-			let mx = 0;
-			for (const f of m.querySourceFeatures('heatmap-route-pins')) {
-				const c = Number(f.properties?.point_count ?? 0);
-				if (c > mx) mx = c;
-			}
-			return mx;
-		});
+		await jumpAndSettle(page, [-105.0, 39.74], 13);
 		// Group A: three Wash Park routes share the identical start coord.
-		expect(maxCount).toBeGreaterThanOrEqual(3);
+		await expect.poll(() => maxPointCount(page), { timeout: 5000 }).toBeGreaterThanOrEqual(3);
 	});
 });
 
@@ -627,18 +568,9 @@ test.describe('Heatmap compute hygiene (web)', () => {
 	}) => {
 		await page.goto('/routes/heatmap');
 		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
-		await page.waitForTimeout(1100);
 		// Belle Isle (Richmond) at street zoom — a route runs right here, so
 		// the heat would densify into the viewport once it's enabled.
-		await page.evaluate(async () => {
-			const m = (window as unknown as { __heatmapMap?: any }).__heatmapMap;
-			if (!m) return;
-			await new Promise<void>((r) => {
-				m.once('moveend', () => r());
-				m.flyTo({ center: [-77.45, 37.53], zoom: 13 });
-			});
-		});
-		await page.waitForTimeout(900);
+		await jumpAndSettle(page, [-77.45, 37.53], 13);
 
 		// Default view: heat is off → the points are never fetched, so the
 		// source is empty (no wasted server densification per pan).
@@ -661,35 +593,11 @@ test.describe('Heatmap cluster list (web)', () => {
 	}) => {
 		await page.goto('/routes/heatmap');
 		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
-		await page.waitForTimeout(1100);
 
 		// Wash Park (Denver seed): 3 routes share the EXACT same start, so
 		// they always cluster and can't be zoomed apart — the list is the
-		// only way to reach them. Fly there and project the cluster bubble.
-		const screen = await page.evaluate(async ([lng, lat]) => {
-			const m = (window as unknown as { __heatmapMap?: any }).__heatmapMap;
-			if (!m) return null;
-			await new Promise<void>((r) => {
-				m.once('moveend', () => r());
-				m.flyTo({ center: [lng, lat], zoom: 13 });
-			});
-			const deadline = Date.now() + 4000;
-			while (Date.now() < deadline) {
-				const p = m.project([lng, lat]);
-				if (
-					m.queryRenderedFeatures([p.x, p.y], {
-						layers: ['heatmap-route-pins-cluster'],
-					}).length > 0
-				)
-					break;
-				await new Promise<void>((r) => setTimeout(r, 150));
-			}
-			const p = m.project([lng, lat]);
-			const rect = m.getContainer().getBoundingClientRect();
-			return { x: rect.left + p.x, y: rect.top + p.y };
-		}, [-105.0, 39.74]);
-		expect(screen, '__heatmapMap dev hook + a cluster must be present').toBeTruthy();
-		if (!screen) return;
+		// only way to reach them. Settle on the cluster bubble over that start.
+		const screen = await settleOnFeature(page, [-105.0, 39.74], 13, 'heatmap-route-pins-cluster');
 
 		await page.mouse.move(screen.x, screen.y);
 		const popup = page.locator('.heatmap-cluster-popup');
@@ -727,35 +635,11 @@ test.describe('Heatmap cluster list (web)', () => {
 	}) => {
 		await page.goto('/routes/heatmap');
 		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
-		await page.waitForTimeout(1100);
 
 		// Zoom 16 is past clusterMaxZoom (14), so the 3 Wash Park routes
 		// that share an exact start are now un-clustered, overlapping leaf
 		// pins. Hovering must surface the list, not one arbitrary route.
-		const screen = await page.evaluate(async ([lng, lat]) => {
-			const m = (window as unknown as { __heatmapMap?: any }).__heatmapMap;
-			if (!m) return null;
-			await new Promise<void>((r) => {
-				m.once('moveend', () => r());
-				m.flyTo({ center: [lng, lat], zoom: 16 });
-			});
-			const deadline = Date.now() + 4000;
-			while (Date.now() < deadline) {
-				const p = m.project([lng, lat]);
-				if (
-					m.queryRenderedFeatures([p.x, p.y], {
-						layers: ['heatmap-route-pins-layer'],
-					}).length > 0
-				)
-					break;
-				await new Promise<void>((r) => setTimeout(r, 150));
-			}
-			const p = m.project([lng, lat]);
-			const rect = m.getContainer().getBoundingClientRect();
-			return { x: rect.left + p.x, y: rect.top + p.y };
-		}, [-105.0, 39.74]);
-		expect(screen).toBeTruthy();
-		if (!screen) return;
+		const screen = await settleOnFeature(page, [-105.0, 39.74], 16, 'heatmap-route-pins-layer');
 
 		await page.mouse.move(screen.x, screen.y);
 		const popup = page.locator('.heatmap-cluster-popup');
@@ -783,8 +667,7 @@ test.describe('Heatmap keep-on-map / pin (web)', () => {
 	}) => {
 		await page.goto('/routes/heatmap');
 		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
-		await page.waitForTimeout(1100);
-		await flyToVA(page);
+		await jumpToVA(page);
 
 		const rows = page.getByTestId('discover-list').locator('.result-li');
 		await expect.poll(() => rows.count(), { timeout: 6000 }).toBeGreaterThanOrEqual(1);

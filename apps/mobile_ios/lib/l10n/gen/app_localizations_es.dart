@@ -3620,9 +3620,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get routeBuilderSearchHint => 'Buscar lugares…';
 
   @override
-  String get routeBuilderMore => 'Más';
-
-  @override
   String get routeBuilderGenerateLoop => 'Generar bucle';
 
   @override

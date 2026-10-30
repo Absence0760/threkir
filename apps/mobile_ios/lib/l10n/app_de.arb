@@ -976,7 +976,6 @@
   "routeBuilderServerUnreachable": "Server nicht erreichbar. Melde dich an oder überprüfe deine Verbindung und versuche es erneut.",
   "routeBuilderSaveFailed": "Speichern fehlgeschlagen: {error}",
   "routeBuilderSearchHint": "Orte suchen…",
-  "routeBuilderMore": "Mehr",
   "routeBuilderGenerateLoop": "Schleife erzeugen",
   "routeBuilderUndo": "Rückgängig",
   "routeBuilderClear": "Löschen",

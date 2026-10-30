@@ -3584,9 +3584,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get routeBuilderSearchHint => 'Search places…';
 
   @override
-  String get routeBuilderMore => 'More';
-
-  @override
   String get routeBuilderGenerateLoop => 'Generate loop';
 
   @override

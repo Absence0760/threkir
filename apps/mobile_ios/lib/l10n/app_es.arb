@@ -976,7 +976,6 @@
   "routeBuilderServerUnreachable": "No se puede conectar con el servidor. Inicia sesión o comprueba tu conexión e inténtalo de nuevo.",
   "routeBuilderSaveFailed": "Error al guardar: {error}",
   "routeBuilderSearchHint": "Buscar lugares…",
-  "routeBuilderMore": "Más",
   "routeBuilderGenerateLoop": "Generar bucle",
   "routeBuilderUndo": "Deshacer",
   "routeBuilderClear": "Borrar",

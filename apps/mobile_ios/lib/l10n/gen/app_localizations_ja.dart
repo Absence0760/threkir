@@ -3416,9 +3416,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get routeBuilderSearchHint => '場所を検索…';
 
   @override
-  String get routeBuilderMore => 'その他';
-
-  @override
   String get routeBuilderGenerateLoop => 'ループを生成';
 
   @override

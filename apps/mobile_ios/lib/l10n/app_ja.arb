@@ -976,7 +976,6 @@
   "routeBuilderServerUnreachable": "サーバーに接続できません。サインインするか接続を確認して再試行してください。",
   "routeBuilderSaveFailed": "保存に失敗しました: {error}",
   "routeBuilderSearchHint": "場所を検索…",
-  "routeBuilderMore": "その他",
   "routeBuilderGenerateLoop": "ループを生成",
   "routeBuilderUndo": "元に戻す",
   "routeBuilderClear": "クリア",

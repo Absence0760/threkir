@@ -976,7 +976,6 @@
   "routeBuilderServerUnreachable": "Serveur injoignable. Connectez-vous ou vérifiez votre connexion, puis réessayez.",
   "routeBuilderSaveFailed": "Échec de l'enregistrement : {error}",
   "routeBuilderSearchHint": "Rechercher des lieux…",
-  "routeBuilderMore": "Plus",
   "routeBuilderGenerateLoop": "Générer une boucle",
   "routeBuilderUndo": "Annuler",
   "routeBuilderClear": "Effacer",

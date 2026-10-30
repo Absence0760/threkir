@@ -6005,12 +6005,6 @@ abstract class AppLocalizations {
   /// **'Search places…'**
   String get routeBuilderSearchHint;
 
-  /// Tooltip on the route builder's overflow menu while searching
-  ///
-  /// In en, this message translates to:
-  /// **'More'**
-  String get routeBuilderMore;
-
   /// Generate-loop action label (AppBar tooltip, menu item, and dialog title)
   ///
   /// In en, this message translates to:

@@ -21,9 +21,18 @@ import 'top_banner.dart';
 /// would be as wrong as crediting nobody.
 ///
 /// Mount it as the last child of a `FlutterMap` so it draws above the
-/// layers. Ink and scrim key off the resolved basemap for the same reason
-/// the track casing does — the OSM fallback is light whatever the app
-/// theme is.
+/// layers. The strip sits on the map's bottom edge and cannot tell whether
+/// that edge is the screen's: a map that runs under the system navigation
+/// bar mounts it inside a `SafeArea(top: false)`, and one with bottom
+/// controls makes it the last row of their SafeArea'd column instead, so it
+/// stays visible under them at any text scale (`route_builder_screen`,
+/// `routes_heatmap_screen`). It does not read the inset itself: on a map
+/// stacked above other content (`run_screen`'s finished-run summary) the
+/// inset belongs to whatever sits below, and lifting the credit by it would
+/// strand it mid-map.
+///
+/// Ink and scrim key off the resolved basemap for the same reason the track
+/// casing does — the OSM fallback is light whatever the app theme is.
 ///
 /// Deliberately theme-FREE, unlike the rest of the app's micro-labels: the
 /// widget is mounted inside the rasterised share cards as well as on live

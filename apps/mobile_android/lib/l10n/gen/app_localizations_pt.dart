@@ -3620,9 +3620,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get routeBuilderSearchHint => 'Pesquisar lugares…';
 
   @override
-  String get routeBuilderMore => 'Mais';
-
-  @override
   String get routeBuilderGenerateLoop => 'Gerar circuito';
 
   @override
@@ -22561,9 +22558,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get routeBuilderSearchHint => 'Pesquisar lugares…';
-
-  @override
-  String get routeBuilderMore => 'Mais';
 
   @override
   String get routeBuilderGenerateLoop => 'Gerar circuito';

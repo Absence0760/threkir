@@ -4705,10 +4705,6 @@
   "@routeBuilderSearchHint": {
     "description": "Placeholder in the route builder's place-search field"
   },
-  "routeBuilderMore": "More",
-  "@routeBuilderMore": {
-    "description": "Tooltip on the route builder's overflow menu while searching"
-  },
   "routeBuilderGenerateLoop": "Generate loop",
   "@routeBuilderGenerateLoop": {
     "description": "Generate-loop action label (AppBar tooltip, menu item, and dialog title)"

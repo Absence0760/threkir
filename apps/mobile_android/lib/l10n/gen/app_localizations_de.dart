@@ -3628,9 +3628,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get routeBuilderSearchHint => 'Orte suchen…';
 
   @override
-  String get routeBuilderMore => 'Mehr';
-
-  @override
   String get routeBuilderGenerateLoop => 'Schleife erzeugen';
 
   @override

@@ -883,7 +883,6 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                     ),
                   ],
                 ),
-              MapAttribution(darkBasemap: darkBasemap),
             ],
           ),
           // Search-results dropdown — overlays without pushing content.
@@ -929,11 +928,15 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                     child: _selectedPin != null
                         ? _selectionCard(_selectedPin!)
                         : Center(child: _resultsPill()),
                   ),
+                  // The credit closes the column rather than riding the map's
+                  // bottom edge, which sits under the system navigation bar
+                  // and under the pill above.
+                  MapAttribution(darkBasemap: darkBasemap),
                 ],
               ),
             ),

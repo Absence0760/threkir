@@ -16,6 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_run_store.dart';
 import '../lib/screens/run_heatmap_screen.dart';
+import '../lib/widgets/map_attribution.dart';
 
 /// The screen reads the viewer id to decide whether to fetch server
 /// runs at all, so a fake must declare it rather than falling through
@@ -74,7 +75,39 @@ Future<void> _pump(
   await tester.pump(const Duration(milliseconds: 50));
 }
 
+// A map that reaches the screen bottom drew its credit under the system
+// navigation bar (route builder field report; same root cause here).
+void simulateNavBar(WidgetTester tester) {
+  tester.view.physicalSize = const Size(360, 780);
+  tester.view.devicePixelRatio = 1;
+  tester.view.padding = const FakeViewPadding(bottom: 48);
+  tester.view.viewPadding = const FakeViewPadding(bottom: 48);
+  addTearDown(tester.view.reset);
+}
+
+void expectCreditsAboveNavBar(WidgetTester tester) {
+  final credits = find.descendant(
+      of: find.byType(MapAttribution), matching: find.byType(Text));
+  expect(credits, findsWidgets);
+  for (final credit in credits.evaluate()) {
+    final rect = tester.getRect(find.byWidget(credit.widget));
+    expect(rect.bottom, lessThanOrEqualTo(780 - 48),
+        reason: 'credit $rect is under the navigation bar');
+  }
+}
+
 void main() {
+  testWidgets('the map credit stays above the navigation bar',
+      (tester) async {
+    simulateNavBar(tester);
+    await _pump(
+      tester,
+      fetchRunsFn: () async => [_run('a', trackUrl: 'u/a.json.gz')],
+      fetchTrackFn: (_) async => _track(),
+    );
+    expectCreditsAboveNavBar(tester);
+  });
+
   testWidgets('renders the heatmap chrome', (tester) async {
     await _pump(
       tester,

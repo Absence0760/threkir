@@ -10,6 +10,7 @@ import 'package:latlong2/latlong.dart';
 import '../geocoding.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../privacy.dart';
+import '../quiet_location.dart';
 import '../settings_sync.dart';
 import '../widgets/confirm_discard.dart';
 import '../widgets/live_run_map.dart'
@@ -223,21 +224,9 @@ class _PrivacyZonesScreenState extends State<PrivacyZonesScreen> {
       }
       return;
     }
-    if (kIsWeb) return;
-    try {
-      final perm = await Geolocator.checkPermission();
-      if (perm != LocationPermission.always &&
-          perm != LocationPermission.whileInUse) {
-        return;
-      }
-      final last = await Geolocator.getLastKnownPosition();
-      if (last != null) _applyFix(last);
-      final pos = await Geolocator.getCurrentPosition().timeout(
-        const Duration(seconds: 5),
-      );
+    // Silent when there is no fix — the FAB is the user-initiated retry.
+    await for (final pos in quietPositionFixes()) {
       _applyFix(pos);
-    } catch (_) {
-      // Silent — the FAB is the user-initiated retry.
     }
   }
 

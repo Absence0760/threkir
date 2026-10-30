@@ -23,6 +23,7 @@ import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
 import '../local_route_store.dart';
 import '../preferences.dart';
+import '../quiet_location.dart';
 import '../rate_limit_errors.dart';
 import '../rate_limit_message.dart';
 import '../route_loop.dart';
@@ -97,6 +98,11 @@ class RouteBuilderScreen extends StatefulWidget {
   final Future<void> Function(cm.Route route)? saveRouteFn;
   final Future<Position> Function()? locateFn;
 
+  /// Test seam for the fixes the builder centres on when it opens. Production
+  /// passes null and reads [quietPositionFixes], which never prompts.
+  @visibleForTesting
+  final Stream<Position> Function()? initialFixesFn;
+
   /// Test seam — when non-null, [_loadClubs] reads from this instead
   /// of calling into [social]. Lets widget tests drive the dialog's
   /// club picker without booting a real SocialService / Supabase.
@@ -120,6 +126,7 @@ class RouteBuilderScreen extends StatefulWidget {
     this.geocodingFetcher,
     this.saveRouteFn,
     this.locateFn,
+    this.initialFixesFn,
     this.clubChoicesLoader,
     this.snapAvailableOverride,
   });
@@ -129,8 +136,19 @@ class RouteBuilderScreen extends StatefulWidget {
 }
 
 class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
-  static const _kDefaultCenter = LatLng(51.5074, -0.1278); // London
   final MapController _map = MapController();
+
+  // Where the camera opens, decided once before the first frame so the map
+  // never shows one place and then jumps to another it already knew about.
+  late final ({LatLng centre, double zoom}) _opening = _openingCamera();
+
+  // Set by anything that puts the camera where the runner wants it — a pan,
+  // a search result, the Locate button, a placed waypoint — after which a
+  // late on-open fix must not drag it away.
+  bool _cameraClaimed = false;
+  bool _mapReady = false;
+  LatLng? _pendingFix;
+  StreamSubscription<Position>? _openingFixes;
 
   // Waypoint + polyline state.
   final List<cm.Waypoint> _waypoints = [];
@@ -225,6 +243,7 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
   void initState() {
     super.initState();
     _loadClubs();
+    if (widget.initialCenter == null) _centreOnRunner();
     _searchFocus.addListener(() {
       if (!mounted) return;
       setState(() => _searchFocused = _searchFocus.hasFocus);
@@ -268,6 +287,7 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
 
   @override
   void dispose() {
+    _openingFixes?.cancel();
     _searchDebounce?.cancel();
     _searchCtl.dispose();
     _searchFocus.dispose();
@@ -434,6 +454,7 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
   }
 
   Future<void> _onMapTap(TapPosition _, LatLng latLng) async {
+    _cameraClaimed = true;
     // Don't gate on `_routing` — the cancellation system in
     // `_rerouteThrough` (gen-counter + `cancelled` gate threaded
     // into fetchRouteThrough) handles overlapping passes correctly,
@@ -793,8 +814,70 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
     }
   }
 
+  /// The opening camera when the caller names no centre: the start of the
+  /// runner's most recent route, else the whole world (the same fallback
+  /// web's `RouteBuilder.svelte` uses). Never a fixed city: the builder
+  /// opened on London for everyone, and Generate loop, which builds around
+  /// the camera centre, then built the loop there.
+  ({LatLng centre, double zoom}) _openingCamera() {
+    final given = widget.initialCenter;
+    if (given != null) return (centre: given, zoom: 14);
+    try {
+      cm.Route? latest;
+      for (final r in widget.routeStore.routes) {
+        if (r.waypoints.isEmpty) continue;
+        final at = r.createdAt;
+        if (latest == null ||
+            (at != null &&
+                (latest.createdAt == null || at.isAfter(latest.createdAt!)))) {
+          latest = r;
+        }
+      }
+      if (latest != null) {
+        final w = latest.waypoints.first;
+        return (centre: LatLng(w.lat, w.lng), zoom: 14);
+      }
+    } catch (e) {
+      debugPrint('route builder: no recent route to open on: $e');
+    }
+    return (centre: const LatLng(20, 0), zoom: 2);
+  }
+
+  /// Follows the quiet on-open fixes (last known, then fresh) until the
+  /// runner takes the camera. Never prompts: the Locate button is the place
+  /// that asks.
+  void _centreOnRunner() {
+    try {
+      final fixes = (widget.initialFixesFn ?? quietPositionFixes)();
+      _openingFixes = fixes.listen(
+        (pos) {
+          if (!mounted || _cameraClaimed) return;
+          final fix = LatLng(pos.latitude, pos.longitude);
+          if (_mapReady) {
+            _map.move(fix, 15);
+          } else {
+            _pendingFix = fix;
+          }
+        },
+        onError: (Object e) =>
+            debugPrint('route builder opening fix failed: $e'),
+        cancelOnError: true,
+      );
+    } catch (e) {
+      debugPrint('route builder opening fix unavailable: $e');
+    }
+  }
+
+  void _onMapReady() {
+    _mapReady = true;
+    final fix = _pendingFix;
+    _pendingFix = null;
+    if (fix != null && !_cameraClaimed) _map.move(fix, 15);
+  }
+
   Future<void> _locate() async {
     if (_routing || _saving) return;
+    _cameraClaimed = true;
     try {
       final pos = widget.locateFn != null
           ? await widget.locateFn!()
@@ -861,6 +944,7 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
   }
 
   void _onSearchResultTap(PlaceResult result) {
+    _cameraClaimed = true;
     _map.move(LatLng(result.lat, result.lng), 15);
     FocusManager.instance.primaryFocus?.unfocus();
     _searchCtl.clear();
@@ -919,7 +1003,6 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
     final overlapLatLngs = _polyline.length >= 2
         ? overlapLatLngsFor(_polyline, _overlapSpans)
         : const <List<LatLng>>[];
-    final center = widget.initialCenter ?? _kDefaultCenter;
 
     final canUndo = _waypoints.isNotEmpty && !_routing && !_saving;
     final canClear = _waypoints.isNotEmpty && !_routing && !_saving;
@@ -987,11 +1070,15 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
             mapController: _map,
             options: MapOptions(
               backgroundColor: basemapVoidColour(darkBasemap: darkBasemap),
-              initialCenter: center,
-              initialZoom: 14,
+              initialCenter: _opening.centre,
+              initialZoom: _opening.zoom,
               minZoom: 3,
               maxZoom: 22,
               onTap: _onMapTap,
+              onMapReady: _onMapReady,
+              onPositionChanged: (_, hasGesture) {
+                if (hasGesture) _cameraClaimed = true;
+              },
             ),
             children: [
               basemapTileLayer(

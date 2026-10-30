@@ -1727,6 +1727,10 @@
   "@authErrorEmailNotConfirmed": {
     "description": "Friendly auth error shown when sign-in fails because the email address hasn't been confirmed yet"
   },
+  "authErrorLinkExpired": "That link has expired or was already used. Request a new one to continue.",
+  "@authErrorLinkExpired": {
+    "description": "Friendly auth error shown when an emailed sign-in, confirmation or password-reset link has expired or was already used"
+  },
   "authErrorWeakPassword": "That password is too weak. Use at least {minLength} characters.",
   "@authErrorWeakPassword": {
     "description": "Friendly auth error shown when the server rejects a password as too weak",

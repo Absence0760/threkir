@@ -363,6 +363,7 @@
   "authErrorNotSignedIn": "Dafür musst du angemeldet sein. Melde dich an und versuche es erneut.",
   "authErrorEmailExists": "Für diese E-Mail-Adresse existiert bereits ein Konto. Melde dich stattdessen an.",
   "authErrorEmailNotConfirmed": "Bestätige zuerst deine E-Mail-Adresse — sieh in deinem Posteingang nach dem Bestätigungslink.",
+  "authErrorLinkExpired": "Dieser Link ist abgelaufen oder wurde bereits verwendet. Fordere einen neuen an, um fortzufahren.",
   "authErrorWeakPassword": "Dieses Passwort ist zu schwach. Verwende mindestens {minLength} Zeichen.",
   "authErrorInvalidEmail": "Gib eine gültige E-Mail-Adresse ein.",
   "authErrorPasswordTooShort": "Das Passwort muss mindestens {minLength} Zeichen lang sein.",

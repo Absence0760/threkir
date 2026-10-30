@@ -1328,6 +1328,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Confirm your email first — check your inbox for the confirmation link.';
 
   @override
+  String get authErrorLinkExpired =>
+      'That link has expired or was already used. Request a new one to continue.';
+
+  @override
   String authErrorWeakPassword(int minLength) {
     return 'That password is too weak. Use at least $minLength characters.';
   }

@@ -148,6 +148,7 @@ export const en = {
 	'login.errorRateLimited': "Too many attempts. Please wait a moment and try again.",
 	'login.errorEmailExists': "That email already has an account. Sign in instead.",
 	'login.errorEmailNotConfirmed': "Confirm your email first — check your inbox for the confirmation link.",
+	'login.errorLinkExpired': "That link has expired or was already used. Request a new one to continue.",
 	'login.errorWeakPassword': "That password is too weak. Use at least {min} characters.",
 	'login.errorGeneric': "Something went wrong. Please try again.",
 	'login.checkEmail': "Check your inbox — we sent a confirmation link to {email}. Open it to finish creating your account.",

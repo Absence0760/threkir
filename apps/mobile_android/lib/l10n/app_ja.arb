@@ -363,6 +363,7 @@
   "authErrorNotSignedIn": "この操作にはサインインが必要です。サインインしてからもう一度お試しください。",
   "authErrorEmailExists": "このメールアドレスにはすでにアカウントがあります。サインインしてください。",
   "authErrorEmailNotConfirmed": "まずメールアドレスを確認してください。受信トレイの確認リンクをご確認ください。",
+  "authErrorLinkExpired": "このリンクは期限切れか、すでに使用されています。新しいリンクをリクエストしてください。",
   "authErrorWeakPassword": "このパスワードは脆弱です。{minLength} 文字以上にしてください。",
   "authErrorInvalidEmail": "有効なメールアドレスを入力してください。",
   "authErrorPasswordTooShort": "パスワードは {minLength} 文字以上で入力してください。",

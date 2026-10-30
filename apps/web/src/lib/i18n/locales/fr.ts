@@ -135,6 +135,7 @@ export const messages = {
 	'login.errorRateLimited': "Trop de tentatives. Attendez un instant puis réessayez.",
 	'login.errorEmailExists': "Un compte existe déjà avec cet e-mail. Connectez-vous plutôt.",
 	'login.errorEmailNotConfirmed': "Confirmez d’abord votre e-mail — recherchez le lien de confirmation dans votre boîte de réception.",
+	'login.errorLinkExpired': "Ce lien a expiré ou a déjà été utilisé. Demandez-en un nouveau pour continuer.",
 	'login.errorWeakPassword': "Ce mot de passe est trop faible. Utilisez au moins {min} caractères.",
 	'login.errorGeneric': "Une erreur s'est produite. Veuillez réessayer.",
 	'login.checkEmail': "Vérifiez votre boîte mail — nous avons envoyé un lien de confirmation à {email}. Ouvrez-le pour finaliser la création de votre compte.",

@@ -14,6 +14,7 @@ import 'package:ui_kit/ui_kit.dart';
 import 'active_plan_cache.dart';
 import 'apple_watch_route_bridge.dart';
 import 'audio_cues.dart';
+import 'auth_stream_error.dart';
 import 'background_sync.dart';
 import 'dev_auto_login.dart';
 import 'firebase_push_messaging.dart';
@@ -588,6 +589,9 @@ void main() async {
         // boundary where none of it should remain.
         const ParkrunBarcodeCache().clear();
       }
+    }, onError: (Object e) {
+      debugPrint('Auth state stream error: $e');
+      showAuthStreamError(e);
     });
     WearAuthBridge().attach(url: supabaseUrl, anonKey: anonKey);
     WearRoutesBridge().attach(routeStore);
@@ -874,6 +878,7 @@ class _RunAppState extends State<RunApp> {
       builder: (context, _) {
         return MaterialApp(
           title: 'Threkir',
+          navigatorKey: appNavigatorKey,
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light,
           darkTheme: AppTheme.dark,

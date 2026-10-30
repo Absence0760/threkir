@@ -6208,7 +6208,7 @@ class _CollapsedStatsBar extends StatelessWidget {
 /// the phone layout's Stop ([RunStopDock]), so both share one gate.
 ///
 /// Until this device has seen one completed hold, the button also plays a
-/// one-time demonstration (issue #1253): a ghost ring fills once and, where
+/// one-time demonstration: a ghost ring fills once and, where
 /// no caption sits beside the button, a "Hold to stop" bubble fades in above
 /// it. It plays when the button appears and again after any release that
 /// fell short of a full hold. Under reduce motion the bubble is shown still

@@ -328,7 +328,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   /// How much of the trend section opens up before the runner asks for more
-  /// (#905; web `/dashboard`'s `disclosure`). [runCount] is the device's
+  /// (web `/dashboard`'s `disclosure`). [runCount] is the device's
   /// full-history index, the same count the All-time row shows. An unread or
   /// unreadable bag contributes nothing, so the level falls to the derivation
   /// from history alone rather than to a guess.
@@ -1913,7 +1913,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [loadChart, ?gymNote],
       );
-      // Progressive disclosure (#905): at `simple` the fitness snapshot and
+      // Progressive disclosure: at `simple` the fitness snapshot and
       // the load curve are FOLDED into one named expander, never dropped, and
       // the expander remembers per account whether it was opened. At
       // `standard` / `full` the group is exactly as it was. Web twin: the

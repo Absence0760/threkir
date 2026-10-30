@@ -6,7 +6,7 @@ import { test } from 'node:test';
 
 import { stripComments } from '../../src/lib/core/strip_comments';
 
-// A spec that moves the heatmap camera itself races the page's own initial
+// Reason: a spec that moves the heatmap camera itself races the page's own initial
 // framing (see fixtures/heatmap.ts). Every camera move goes through that
 // fixture, which waits on `__heatmapPinsSettled` first.
 

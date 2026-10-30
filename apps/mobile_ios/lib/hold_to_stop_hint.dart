@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Device-local flag: this phone's runner has completed a hold-to-stop at
 /// least once, so the one-time "Hold to stop" hint on the Stop button is
-/// retired (issue #1253). A gesture hint is about the device in hand, so it
+/// retired. A gesture hint is about the device in hand, so it
 /// lives in raw SharedPreferences and never roams through the settings bags.
 const kHoldToStopLearnedKey = 'hold_to_stop_learned';
 

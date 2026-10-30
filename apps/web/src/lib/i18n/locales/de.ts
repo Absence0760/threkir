@@ -1365,7 +1365,7 @@ export const messages = {
 	"routesPage.unstarRouteLabel": "Markierung von {name} entfernen",
 	"routesPage.starRouteLabel": "{name} markieren – wird auf der gekoppelten Uhr angezeigt",
 	"routesPage.routeFallback": "Route",
-	"routesPage.elevation": "{m} m Höhe",
+	"routesPage.elevation": "{elevation} Höhe",
 	"routesPage.starError": "Route konnte nicht markiert werden: {error}",
 	"routesPage.unstarError": "Markierung der Route konnte nicht entfernt werden: {error}",
 	"runDetail.linkedToRoute": "Mit {name} verknüpft",

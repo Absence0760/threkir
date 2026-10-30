@@ -6,7 +6,7 @@
 	import { goto } from '$app/navigation';
 	import { handleTablistKeydown } from '#lib/util/tablist.ts';
 	import { formatDistance } from '#lib/core/mock-data.ts';
-	import { getUnit } from '#lib/format/units.svelte.ts';
+	import { formatElevation, getUnit } from '#lib/format/units.svelte.ts';
 	import { fetchRoutesWithError, setRouteStar } from '#lib/core/data.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -528,7 +528,7 @@
 									<span>{formatDistance(route.distance_m)}</span>
 									{#if route.elevation_m}
 										<span class="meta-sep">&middot;</span>
-										<span>{m('routesPage.elevation', { m: route.elevation_m })}</span>
+										<span>{m('routesPage.elevation', { elevation: formatElevation(route.elevation_m) })}</span>
 									{/if}
 									{#if route.surface}
 										<span class="meta-sep">&middot;</span>
@@ -764,12 +764,18 @@
 		margin-bottom: var(--space-xs);
 	}
 
+	/* Wraps between figures, never inside one: a number keeps its unit. */
 	.route-meta {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		gap: var(--space-xs);
 		font-size: 0.8rem;
 		color: var(--color-text-secondary);
+	}
+
+	.route-meta > span {
+		white-space: nowrap;
 	}
 
 	.meta-sep {

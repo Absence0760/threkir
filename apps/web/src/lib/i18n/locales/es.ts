@@ -1365,7 +1365,7 @@ export const messages = {
 	"routesPage.unstarRouteLabel": "Quitar estrella de {name}",
 	"routesPage.starRouteLabel": "Marcar {name} con estrella — se muestra en el reloj vinculado",
 	"routesPage.routeFallback": "ruta",
-	"routesPage.elevation": "{m} m desn.",
+	"routesPage.elevation": "{elevation} desn.",
 	"routesPage.starError": "No se pudo marcar la ruta con estrella: {error}",
 	"routesPage.unstarError": "No se pudo quitar la estrella de la ruta: {error}",
 	"runDetail.linkedToRoute": "Vinculado a {name}",

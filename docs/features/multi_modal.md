@@ -480,7 +480,7 @@ Density rules so it never becomes a wall of cards:
 > into one closed **Training load** expander inside Fitness and form,
 > remembered in the universal `dashboard_training_load_expanded` key
 > ([decisions § 1658](../architecture/decisions.md),
-> [§ 2243](../architecture/decisions.md)). Not built: "one expanded at a
+> [§ 2244](../architecture/decisions.md)). Not built: "one expanded at a
 > time" and hiding a card outright
 > ([decisions § 2080](../architecture/decisions.md)).
 > `tests-e2e/dashboard/layout.spec.ts`, `tests-e2e/dashboard/disclosure.spec.ts`,

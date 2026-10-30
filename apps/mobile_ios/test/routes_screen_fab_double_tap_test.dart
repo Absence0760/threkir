@@ -63,8 +63,12 @@ Future<void> _pump(WidgetTester tester, Preferences prefs) {
   );
 }
 
-Finder _fab(String label) =>
-    find.widgetWithText(FloatingActionButton, label);
+// Build is the extended FAB, labelled; Import is the small one above it,
+// named by its tooltip.
+Finder _fab(String label) => find.ancestor(
+      of: label == 'Import' ? find.byTooltip(label) : find.text(label),
+      matching: find.byType(FloatingActionButton),
+    );
 
 VoidCallback? _onPressed(WidgetTester tester, String label) =>
     tester.widget<FloatingActionButton>(_fab(label)).onPressed;

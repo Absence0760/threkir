@@ -5308,5 +5308,13 @@
   "prefsCoachInMessages": "Entrenador IA en Mensajes",
   "prefsCoachInMessagesPinned": "Fijado arriba",
   "prefsCoachInMessagesListed": "Con tus conversaciones",
-  "prefsCoachInMessagesHidden": "Oculto"
+  "prefsCoachInMessagesHidden": "Oculto",
+  "prefsDisclosureLevel": "Cuánto detalle",
+  "prefsDisclosureAuto": "Automático",
+  "prefsDisclosureSimple": "Solo lo básico",
+  "prefsDisclosureStandard": "Lo habitual",
+  "prefsDisclosureFull": "Todo",
+  "prefsDisclosureHint": "Cuánto muestra la app antes de que pidas más. Automático lee el objetivo que fijaste y cuántas carreras llevas registradas, y hoy elige {level}. Nunca se oculta nada para siempre: una sección plegada está a un toque de abrirse.",
+  "dashboardTrainingLoadSection": "Carga de entrenamiento",
+  "dashboardTrainingLoadSectionHint": "Tus números de forma física, fatiga y frescura. Está plegado porque pediste solo lo básico: ábrelo cuando quieras, o pide Todo en Ajustes → Preferencias."
 }

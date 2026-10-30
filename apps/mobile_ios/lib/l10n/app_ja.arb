@@ -5308,5 +5308,13 @@
   "prefsCoachInMessages": "メッセージでの AI コーチ",
   "prefsCoachInMessagesPinned": "上部に固定",
   "prefsCoachInMessagesListed": "会話と一緒に表示",
-  "prefsCoachInMessagesHidden": "非表示"
+  "prefsCoachInMessagesHidden": "非表示",
+  "prefsDisclosureLevel": "表示する情報量",
+  "prefsDisclosureAuto": "自動",
+  "prefsDisclosureSimple": "基本だけ",
+  "prefsDisclosureStandard": "標準",
+  "prefsDisclosureFull": "すべて",
+  "prefsDisclosureHint": "要求する前にアプリがどこまで展開するかです。自動は設定した目標と記録したランの件数を読み、現在は「{level}」を選んでいます。完全に隠れることはなく、たたんだセクションはタップ1回で開きます。",
+  "dashboardTrainingLoadSection": "トレーニング負荷",
+  "dashboardTrainingLoadSectionHint": "フィットネス、疲労、コンディションの数値です。「基本だけ」を選んだためたたんでいます。いつでも開けますし、設定 → 環境設定 で「すべて」を選べます。"
 }

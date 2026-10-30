@@ -22,6 +22,7 @@ import '../ai_disclosure_memo.dart';
 import '../auth_change_aware.dart';
 import '../current_week.dart' show WeekStart;
 import '../device_timezone.dart';
+import '../disclosure.dart';
 import '../disclosure_state.dart';
 import '../goals.dart';
 import '../health_consent.dart';
@@ -275,6 +276,11 @@ class _DashboardScreenState extends State<DashboardScreen>
   /// Set once the reader toggles a group, so a slow first read can't undo it.
   bool _trendTouched = false;
 
+  /// This visit's toggle of the "Training load" expander, ahead of the
+  /// settings bag catching up — and in place of it when the write is refused,
+  /// so the section stays the way the reader just put it.
+  bool? _trainingLoadExpandedLocal;
+
   @override
   void initState() {
     super.initState();
@@ -282,6 +288,9 @@ class _DashboardScreenState extends State<DashboardScreen>
     widget.preferences.addListener(_onChange);
     widget.gymStore.addListener(_onChange);
     widget.foodStore.addListener(_onChange);
+    // The bag drives the disclosure level, so a change made in Settings must
+    // reach this keep-alive page without a remount.
+    widget.settingsSync?.addListener(_onChange);
     widget.training?.addListener(_refreshPlanOverview);
     WidgetsBinding.instance.addObserver(this);
     _refreshPlanOverview();
@@ -316,6 +325,54 @@ class _DashboardScreenState extends State<DashboardScreen>
     setState(() => _trendOpen = {..._trendOpen, key: open});
     unawaited(writeDisclosureState(
         _kTrendScope, widget.apiClient?.userId, _trendOpen));
+  }
+
+  /// How much of the trend section opens up before the runner asks for more
+  /// (#905; web `/dashboard`'s `disclosure`). [runCount] is the device's
+  /// full-history index, the same count the All-time row shows. An unread or
+  /// unreadable bag contributes nothing, so the level falls to the derivation
+  /// from history alone rather than to a guess.
+  String _disclosureLevel(int runCount) {
+    Object? stored;
+    String? goal;
+    try {
+      final service = widget.settingsSync?.service;
+      stored = service?.effective<Object>(disclosureLevelKey);
+      final g = service?.effective<Object>(SettingsKeys.primaryGoal);
+      goal = g is String ? g : null;
+    } catch (e) {
+      debugPrint('dashboard: disclosure level read failed: $e');
+    }
+    return resolveDisclosureLevel(stored, goal, runCount);
+  }
+
+  /// Absent or non-bool reads as closed: the fold is what `simple` asked for,
+  /// so an unreadable bag must not silently re-open it.
+  bool get _trainingLoadExpanded {
+    final local = _trainingLoadExpandedLocal;
+    if (local != null) return local;
+    try {
+      return widget.settingsSync?.service
+              ?.effective<Object>(SettingsKeys.dashboardTrainingLoadExpanded) ==
+          true;
+    } catch (e) {
+      debugPrint('dashboard: training-load expander read failed: $e');
+      return false;
+    }
+  }
+
+  /// Remembering the expander is auxiliary (L4): the section is open for this
+  /// visit either way, so a refused write is logged rather than bannered — a
+  /// banner would follow every toggle of a signed-out or offline visit.
+  Future<void> _setTrainingLoadExpanded(bool open) async {
+    if (_trainingLoadExpanded == open) return;
+    setState(() => _trainingLoadExpandedLocal = open);
+    try {
+      await widget.settingsSync?.updateUniversal(
+          {SettingsKeys.dashboardTrainingLoadExpanded: open});
+    } catch (e) {
+      debugPrint('dashboard: training-load expander state not saved: $e');
+    }
   }
 
   @override
@@ -364,6 +421,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       _bestEffortCache.clear();
       _trendOpen = Map.of(_kTrendDefaults);
       _trendTouched = false;
+      _trainingLoadExpandedLocal = null;
     });
     _loadTrendOpen();
     _refreshPlanOverview();
@@ -458,6 +516,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     widget.preferences.removeListener(_onChange);
     widget.gymStore.removeListener(_onChange);
     widget.foodStore.removeListener(_onChange);
+    widget.settingsSync?.removeListener(_onChange);
     widget.training?.removeListener(_refreshPlanOverview);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -1850,22 +1909,50 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
             ),
           );
+      final loadBlock = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [loadChart, ?gymNote],
+      );
+      // Progressive disclosure (#905): at `simple` the fitness snapshot and
+      // the load curve are FOLDED into one named expander, never dropped, and
+      // the expander remembers per account whether it was opened. At
+      // `standard` / `full` the group is exactly as it was. Web twin: the
+      // `training-load-disclosure` <details> on /dashboard, in the same place
+      // — after readiness, before the load ramp.
+      final fitnessCards = _disclosureLevel(runs.length) == 'simple'
+          ? <Widget>[
+              readinessCard,
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: DisclosureSection(
+                  key: const Key('dashboardTrainingLoadDisclosure'),
+                  title: l10n.dashboardTrainingLoadSection,
+                  hint: l10n.dashboardTrainingLoadSectionHint,
+                  open: _trainingLoadExpanded,
+                  onToggle: _setTrainingLoadExpanded,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [fitnessCard, loadBlock],
+                  ),
+                ),
+              ),
+              loadRampCard,
+              comebackCard,
+            ]
+          : <Widget>[
+              fitnessCard,
+              readinessCard,
+              loadRampCard,
+              comebackCard,
+              loadBlock,
+            ];
       final trendGroups = <Widget>[
         group('volume', l10n.dashboardTrendGroupVolume,
             l10n.dashboardTrendGroupVolumeHint, [mileageCard, heatmapCard]),
         // The load chart always draws (it has its own empty state), so this
         // group always mounts.
         group('fitness', l10n.dashboardTrendGroupFitness,
-            l10n.dashboardTrendGroupFitnessHint, [
-          fitnessCard,
-          readinessCard,
-          loadRampCard,
-          comebackCard,
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [loadChart, ?gymNote],
-          ),
-        ]),
+            l10n.dashboardTrendGroupFitnessHint, fitnessCards),
         if (pbCard != null)
           group('performance', l10n.dashboardTrendGroupPerformance,
               l10n.dashboardTrendGroupPerformanceHint, [pbCard, predictorCard])

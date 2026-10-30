@@ -18943,4 +18943,31 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get prefsCoachInMessagesHidden => 'Oculto';
+
+  @override
+  String get prefsDisclosureLevel => 'Cuánto detalle';
+
+  @override
+  String get prefsDisclosureAuto => 'Automático';
+
+  @override
+  String get prefsDisclosureSimple => 'Solo lo básico';
+
+  @override
+  String get prefsDisclosureStandard => 'Lo habitual';
+
+  @override
+  String get prefsDisclosureFull => 'Todo';
+
+  @override
+  String prefsDisclosureHint(String level) {
+    return 'Cuánto muestra la app antes de que pidas más. Automático lee el objetivo que fijaste y cuántas carreras llevas registradas, y hoy elige $level. Nunca se oculta nada para siempre: una sección plegada está a un toque de abrirse.';
+  }
+
+  @override
+  String get dashboardTrainingLoadSection => 'Carga de entrenamiento';
+
+  @override
+  String get dashboardTrainingLoadSectionHint =>
+      'Tus números de forma física, fatiga y frescura. Está plegado porque pediste solo lo básico: ábrelo cuando quieras, o pide Todo en Ajustes → Preferencias.';
 }

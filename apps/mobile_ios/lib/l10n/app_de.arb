@@ -5308,5 +5308,13 @@
   "prefsCoachInMessages": "KI-Coach in Nachrichten",
   "prefsCoachInMessagesPinned": "Oben angeheftet",
   "prefsCoachInMessagesListed": "Bei deinen Unterhaltungen",
-  "prefsCoachInMessagesHidden": "Ausgeblendet"
+  "prefsCoachInMessagesHidden": "Ausgeblendet",
+  "prefsDisclosureLevel": "Wie viele Details",
+  "prefsDisclosureAuto": "Automatisch",
+  "prefsDisclosureSimple": "Nur das Wichtigste",
+  "prefsDisclosureStandard": "Das Übliche",
+  "prefsDisclosureFull": "Alles",
+  "prefsDisclosureHint": "Wie viel die App zeigt, bevor du nach mehr fragst. Automatisch liest dein gesetztes Ziel und die Anzahl deiner aufgezeichneten Läufe und wählt heute {level}. Es wird nie etwas dauerhaft ausgeblendet — ein zugeklappter Abschnitt ist nur einen Tipp vom Öffnen entfernt.",
+  "dashboardTrainingLoadSection": "Trainingsbelastung",
+  "dashboardTrainingLoadSectionHint": "Deine Werte zu Fitness, Ermüdung und Form. Eingeklappt, weil du nur das Wichtigste wolltest — öffne es jederzeit, oder wähle unter Einstellungen → Voreinstellungen „Alles“."
 }

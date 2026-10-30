@@ -24820,5 +24820,43 @@
   "prefsCoachInMessagesHidden": "Hidden",
   "@prefsCoachInMessagesHidden": {
     "description": "Option: the AI Coach row is left out of the Messages inbox (the Coach itself stays available from Home)"
+  },
+  "prefsDisclosureLevel": "How much detail",
+  "@prefsDisclosureLevel": {
+    "description": "Settings > Preferences tile title for the progressive-disclosure level (universal disclosure_level key)"
+  },
+  "prefsDisclosureAuto": "Automatic",
+  "@prefsDisclosureAuto": {
+    "description": "Disclosure-level option: no stored level, derived from the onboarding goal and run count"
+  },
+  "prefsDisclosureSimple": "Just the basics",
+  "@prefsDisclosureSimple": {
+    "description": "Disclosure-level option: the fewest metrics open by default"
+  },
+  "prefsDisclosureStandard": "The usual",
+  "@prefsDisclosureStandard": {
+    "description": "Disclosure-level option: the usual amount of detail"
+  },
+  "prefsDisclosureFull": "Everything",
+  "@prefsDisclosureFull": {
+    "description": "Disclosure-level option: every metric open"
+  },
+  "prefsDisclosureHint": "How much the app opens up before you ask for more. Automatic reads the goal you set and how many runs you have logged, and picks {level} today. Nothing is ever hidden for good — a folded section is one tap from open.",
+  "@prefsDisclosureHint": {
+    "description": "Hint under the How much detail tile; {level} is the level Automatic resolves to today (one of the three option labels)",
+    "placeholders": {
+      "level": {
+        "type": "String",
+        "example": "Just the basics"
+      }
+    }
+  },
+  "dashboardTrainingLoadSection": "Training load",
+  "@dashboardTrainingLoadSection": {
+    "description": "Title of the Home expander that folds the fitness card and training-load chart at the Just the basics level"
+  },
+  "dashboardTrainingLoadSectionHint": "Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it, or ask for everything in Settings → Preferences.",
+  "@dashboardTrainingLoadSectionHint": {
+    "description": "One-line explanation under the Training load expander title on Home; names where the level is changed"
   }
 }

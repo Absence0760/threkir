@@ -5308,5 +5308,13 @@
   "prefsCoachInMessages": "Coach IA dans Messages",
   "prefsCoachInMessagesPinned": "Épinglé en haut",
   "prefsCoachInMessagesListed": "Avec vos conversations",
-  "prefsCoachInMessagesHidden": "Masqué"
+  "prefsCoachInMessagesHidden": "Masqué",
+  "prefsDisclosureLevel": "Niveau de détail",
+  "prefsDisclosureAuto": "Automatique",
+  "prefsDisclosureSimple": "L'essentiel",
+  "prefsDisclosureStandard": "L'habituel",
+  "prefsDisclosureFull": "Tout",
+  "prefsDisclosureHint": "Ce que l'app déplie avant que vous en demandiez plus. Automatique lit l'objectif que vous avez défini et le nombre de sorties enregistrées, et choisit {level} aujourd'hui. Rien n'est jamais masqué définitivement : une section repliée n'est qu'à un toucher de s'ouvrir.",
+  "dashboardTrainingLoadSection": "Charge d’entraînement",
+  "dashboardTrainingLoadSectionHint": "Vos chiffres de forme, de fatigue et de fraîcheur. Replié parce que vous avez demandé l’essentiel : ouvrez-le quand vous voulez, ou choisissez Tout dans Réglages → Préférences."
 }

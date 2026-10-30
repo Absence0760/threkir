@@ -18753,4 +18753,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prefsCoachInMessagesHidden => 'Hidden';
+
+  @override
+  String get prefsDisclosureLevel => 'How much detail';
+
+  @override
+  String get prefsDisclosureAuto => 'Automatic';
+
+  @override
+  String get prefsDisclosureSimple => 'Just the basics';
+
+  @override
+  String get prefsDisclosureStandard => 'The usual';
+
+  @override
+  String get prefsDisclosureFull => 'Everything';
+
+  @override
+  String prefsDisclosureHint(String level) {
+    return 'How much the app opens up before you ask for more. Automatic reads the goal you set and how many runs you have logged, and picks $level today. Nothing is ever hidden for good — a folded section is one tap from open.';
+  }
+
+  @override
+  String get dashboardTrainingLoadSection => 'Training load';
+
+  @override
+  String get dashboardTrainingLoadSectionHint =>
+      'Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it, or ask for everything in Settings → Preferences.';
 }

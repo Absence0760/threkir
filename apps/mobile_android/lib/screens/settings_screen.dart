@@ -185,6 +185,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     settingsSync: widget.settingsSync,
                     gymStore: widget.gymStore,
                     foodStore: widget.foodStore,
+                    runStore: widget.runStore,
                   )),
             ),
             _tab(

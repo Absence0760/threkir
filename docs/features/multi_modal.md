@@ -474,11 +474,17 @@ Density rules so it never becomes a wall of cards:
 > `DisclosureSection` remembered per account on this device
 > (`disclosure_state`, scope `dashboard_trends`), opens by default, and
 > mounts only when one of its cards is sure to draw. The period stats, the
-> this-week strip and the streak stay unfolded above the groups. Not built:
-> "one expanded at a time", a mobile **How much detail** control or
-> `disclosure.dart` consumer, and hiding a card outright
+> this-week strip and the streak stay unfolded above the groups. At the
+> `simple` disclosure level (Settings → "How much detail" on both
+> platforms) the fitness snapshot and the training-load chart fold further,
+> into one closed **Training load** expander inside Fitness and form,
+> remembered in the universal `dashboard_training_load_expanded` key
+> ([decisions § 1658](../architecture/decisions.md),
+> [§ 2243](../architecture/decisions.md)). Not built: "one expanded at a
+> time" and hiding a card outright
 > ([decisions § 2080](../architecture/decisions.md)).
-> `tests-e2e/dashboard/layout.spec.ts`, `test/dashboard_trend_groups_test.dart`.
+> `tests-e2e/dashboard/layout.spec.ts`, `tests-e2e/dashboard/disclosure.spec.ts`,
+> `test/dashboard_trend_groups_test.dart`, `test/dashboard_disclosure_level_test.dart`.
 
 ## History — one timeline, filter chips, separate detail routes
 

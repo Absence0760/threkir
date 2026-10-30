@@ -62,6 +62,8 @@ void main() {
       250,
       scrollable: find.byType(Scrollable).first,
     );
+    await tester.ensureVisible(find.text('Default run privacy'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Default run privacy'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(RadioListTile<String>, 'Public'));

@@ -2301,6 +2301,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                         apiClient: widget.apiClient,
                         preferences: widget.preferences,
                         settingsSync: widget.settingsSync,
+                        runStore: widget.runStore,
                       ),
                     ),
                   ),

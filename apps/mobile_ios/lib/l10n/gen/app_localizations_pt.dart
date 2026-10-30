@@ -1343,6 +1343,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Confirme o seu e-mail primeiro — procure o link de confirmação na sua caixa de entrada.';
 
   @override
+  String get authErrorLinkExpired =>
+      'Este link expirou ou já foi utilizado. Peça um novo para continuar.';
+
+  @override
   String authErrorWeakPassword(int minLength) {
     return 'Essa palavra-passe é muito fraca. Utilize pelo menos $minLength caracteres.';
   }
@@ -3618,9 +3622,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get routeBuilderSearchHint => 'Pesquisar lugares…';
-
-  @override
-  String get routeBuilderMore => 'Mais';
 
   @override
   String get routeBuilderGenerateLoop => 'Gerar circuito';
@@ -18945,6 +18946,33 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsCoachInMessagesHidden => 'Oculto';
+
+  @override
+  String get prefsDisclosureLevel => 'Quanto detalhe';
+
+  @override
+  String get prefsDisclosureAuto => 'Automático';
+
+  @override
+  String get prefsDisclosureSimple => 'Só o essencial';
+
+  @override
+  String get prefsDisclosureStandard => 'O habitual';
+
+  @override
+  String get prefsDisclosureFull => 'Tudo';
+
+  @override
+  String prefsDisclosureHint(String level) {
+    return 'Quanto a aplicação abre antes de pedir mais. Automático lê o objetivo que definiu e quantas corridas já tem guardadas, e hoje escolhe $level. Nada fica escondido para sempre: uma secção recolhida abre com um toque.';
+  }
+
+  @override
+  String get dashboardTrainingLoadSection => 'Carga de treino';
+
+  @override
+  String get dashboardTrainingLoadSectionHint =>
+      'Os seus números de condição física, fadiga e forma. Está recolhido porque pediu só o essencial: abra quando quiser, ou peça Tudo em Definições → Preferências.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -20285,6 +20313,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get authErrorEmailNotConfirmed =>
       'Confirme seu e-mail primeiro — procure o link de confirmação na sua caixa de entrada.';
+
+  @override
+  String get authErrorLinkExpired =>
+      'Este link expirou ou já foi usado. Solicite um novo para continuar.';
 
   @override
   String authErrorWeakPassword(int minLength) {
@@ -22561,9 +22593,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get routeBuilderSearchHint => 'Pesquisar lugares…';
-
-  @override
-  String get routeBuilderMore => 'Mais';
 
   @override
   String get routeBuilderGenerateLoop => 'Gerar circuito';
@@ -37875,4 +37904,31 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get prefsCoachInMessagesHidden => 'Oculto';
+
+  @override
+  String get prefsDisclosureLevel => 'Quanto detalhe';
+
+  @override
+  String get prefsDisclosureAuto => 'Automático';
+
+  @override
+  String get prefsDisclosureSimple => 'Só o básico';
+
+  @override
+  String get prefsDisclosureStandard => 'O de sempre';
+
+  @override
+  String get prefsDisclosureFull => 'Tudo';
+
+  @override
+  String prefsDisclosureHint(String level) {
+    return 'Quanto o app abre antes de você pedir mais. Automático lê a meta que você definiu e quantas corridas já registrou, e hoje escolhe $level. Nada fica escondido para sempre: uma seção recolhida abre com um toque.';
+  }
+
+  @override
+  String get dashboardTrainingLoadSection => 'Carga de treino';
+
+  @override
+  String get dashboardTrainingLoadSectionHint =>
+      'Seus números de condicionamento, fadiga e forma. Está recolhido porque você pediu só o básico: abra quando quiser, ou peça Tudo em Configurações → Preferências.';
 }

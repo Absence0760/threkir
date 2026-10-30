@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -5,9 +6,11 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_map/flutter_map.dart' show FlutterMap;
+import 'package:flutter_map/flutter_map.dart'
+    show FlutterMap, MapCamera, TileLayer;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -20,6 +23,8 @@ import '../lib/local_route_store.dart';
 import '../lib/rate_limit_message.dart';
 import '../lib/route_overlap.dart';
 import '../lib/screens/route_builder_screen.dart';
+import '../lib/widgets/app_bar_actions.dart';
+import '../lib/widgets/map_attribution.dart';
 
 class _FakePathProvider extends PathProviderPlatform with MockPlatformInterfaceMixin {
   final Directory _tmp;
@@ -210,7 +215,11 @@ void main() {
       (tester) async {
     final store = await _store();
     await _pumpScreen(tester, store);
-    await tester.tap(find.byTooltip('Generate loop'));
+    // Generate loop lives in the toolbar's overflow menu.
+    await tester.tap(find.byTooltip('More'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('Generate loop'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     const body = "Target distance — we'll build a radial loop "
@@ -223,6 +232,311 @@ void main() {
       find.descendant(of: sem, matching: find.byType(TextField)),
     );
     expect(field.label, body);
+  });
+
+  // Field report: "when I open the generate routes map, it loads a random
+  // location and not at my location." The builder opened on a hard-coded
+  // London whenever the caller named no centre, and only located on a Locate
+  // tap — so Generate loop, which builds around the camera centre, built the
+  // loop in London too.
+  group('opening camera', () {
+    const london = LatLng(51.5074, -0.1278);
+    const lastKnown = LatLng(40.0150, -105.2705);
+    const fresh = LatLng(40.0160, -105.2710);
+
+    Position fix(LatLng at) => Position(
+          latitude: at.latitude,
+          longitude: at.longitude,
+          timestamp: DateTime.now(),
+          accuracy: 5,
+          altitude: 0,
+          altitudeAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+          speed: 0,
+          speedAccuracy: 0,
+        );
+
+    Future<void> pumpBuilder(
+      WidgetTester tester,
+      LocalRouteStore store, {
+      Stream<Position> Function()? fixes,
+      LatLng? initialCenter,
+    }) async {
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: RouteBuilderScreen(
+          apiClient: ApiClient(),
+          routeStore: store,
+          initialCenter: initialCenter,
+          osrmFetcher: _stubOsrm,
+          elevationFetcher: _stubElev,
+          geocodingFetcher: _stubGeocoding,
+          locateFn: _stubLocate,
+          initialFixesFn: fixes ?? () => const Stream<Position>.empty(),
+          snapAvailableOverride: true,
+        ),
+      ));
+      await tester.pump();
+      await tester.pump(Duration.zero);
+    }
+
+    MapCamera camera(WidgetTester tester) => MapCamera.of(tester.element(
+        find.descendant(
+            of: find.byType(FlutterMap), matching: find.byType(TileLayer))));
+
+    void expectAt(WidgetTester tester, LatLng at) {
+      final c = camera(tester).center;
+      expect(c.latitude, closeTo(at.latitude, 1e-6));
+      expect(c.longitude, closeTo(at.longitude, 1e-6));
+    }
+
+    testWidgets('with no fix and no routes it opens on the world, not London',
+        (tester) async {
+      final store = (await tester.runAsync(_store))!;
+      await pumpBuilder(tester, store);
+      final c = camera(tester);
+      expect(c.center.latitude, isNot(closeTo(london.latitude, 1)));
+      expect(c.zoom, lessThanOrEqualTo(3));
+    });
+
+    testWidgets('a fix moves the camera: the cached one, then the fresh one',
+        (tester) async {
+      final store = (await tester.runAsync(_store))!;
+      final ctl = StreamController<Position>();
+      addTearDown(ctl.close);
+      await pumpBuilder(tester, store, fixes: () => ctl.stream);
+      // A fix is delivered after the frame that flushed it, so the camera
+      // shows it on the frame after.
+      ctl.add(fix(lastKnown));
+      await tester.pump();
+      await tester.pump();
+      expectAt(tester, lastKnown);
+      ctl.add(fix(fresh));
+      await tester.pump();
+      await tester.pump();
+      expectAt(tester, fresh);
+      expect(camera(tester).zoom, 15);
+      // Drain the tile requests the new viewport scheduled.
+      await tester.pump(const Duration(seconds: 2));
+    });
+
+    testWidgets('without a fix it opens on the start of the latest route',
+        (tester) async {
+      final store = (await tester.runAsync(_store))!;
+      await tester.runAsync(() async {
+        await store.save(cm.Route(
+          id: 'old',
+          name: 'Old',
+          waypoints: [cm.Waypoint(lat: 10, lng: 10)],
+          distanceMetres: 1000,
+          createdAt: DateTime.utc(2025, 1, 1),
+        ));
+        await store.save(cm.Route(
+          id: 'new',
+          name: 'New',
+          waypoints: [
+            cm.Waypoint(lat: lastKnown.latitude, lng: lastKnown.longitude),
+          ],
+          distanceMetres: 1000,
+          createdAt: DateTime.utc(2026, 6, 1),
+        ));
+      });
+      await pumpBuilder(tester, store);
+      expectAt(tester, lastKnown);
+    });
+
+    testWidgets('a fix that lands after the runner pans does not move the map',
+        (tester) async {
+      final store = (await tester.runAsync(_store))!;
+      final ctl = StreamController<Position>();
+      addTearDown(ctl.close);
+      await pumpBuilder(tester, store, fixes: () => ctl.stream);
+      await tester.drag(find.byType(FlutterMap), const Offset(-80, 0));
+      await tester.pump();
+      final panned = camera(tester).center;
+      ctl.add(fix(fresh));
+      await tester.pump();
+      await tester.pump();
+      expect(camera(tester).center, panned);
+      // Let the drag's fling settle so no timer outlives the test.
+      await tester.pump(const Duration(seconds: 2));
+    });
+
+    testWidgets('a caller-named centre wins and no fix is followed',
+        (tester) async {
+      final store = (await tester.runAsync(_store))!;
+      var listened = false;
+      await pumpBuilder(tester, store,
+          initialCenter: lastKnown,
+          fixes: () => Stream<Position>.value(fix(fresh))
+              .handleError((_) {})
+              .map((p) {
+            listened = true;
+            return p;
+          }));
+      await tester.pump();
+      expectAt(tester, lastKnown);
+      expect(listened, isFalse);
+    });
+
+    testWidgets('a location source that throws leaves the map working',
+        (tester) async {
+      final store = (await tester.runAsync(_store))!;
+      await pumpBuilder(tester, store,
+          fixes: () => Stream<Position>.error(StateError('no GPS')));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      expect(find.byType(FlutterMap), findsOneWidget);
+    });
+  });
+
+  // Field report from a 1080x2340 phone at ~1.3x OS text: the toolbar's four
+  // icons + Save left the search field a sliver, the mode selector wrapped to
+  // two rows beside the Locate FAB, and the map credit sat under the
+  // gesture/navigation bar. flutter_test's font is fixed-advance and wider
+  // than Roboto (decisions § 500), so these pin structure — one run, no
+  // overlap, above the inset, the toolbar slot count — never a dp fit.
+  group('layout on a 360 dp phone at raised text scale', () {
+    const navBar = 48.0;
+    const screen = Size(360, 780);
+
+    Future<void> pumpPhone(WidgetTester tester, double textScale) async {
+      tester.view.physicalSize = screen;
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = const FakeViewPadding(top: 24, bottom: navBar);
+      tester.view.viewPadding =
+          const FakeViewPadding(top: 24, bottom: navBar);
+      tester.platformDispatcher.textScaleFactorTestValue = textScale;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      final store = await tester.runAsync(_store);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          // Pushed over a root route, as in the app, so the toolbar carries
+          // its back button.
+          initialRoute: '/builder',
+          routes: {
+            '/': (_) => const SizedBox.shrink(),
+            '/builder': (_) => RouteBuilderScreen(
+                  apiClient: ApiClient(),
+                  routeStore: store!,
+                  osrmFetcher: _stubOsrm,
+                  elevationFetcher: _stubElev,
+                  geocodingFetcher: _stubGeocoding,
+                  locateFn: _stubLocate,
+                  snapAvailableOverride: true,
+                ),
+          },
+        ),
+      );
+      await tester.pump();
+      await tester.pump(Duration.zero);
+    }
+
+    // Toolbar icon slots after the title. The overflow's PopupMenuButton
+    // draws an IconButton of its own, so it counts once.
+    Finder toolbarSlots() => find.descendant(
+          of: find.byType(AppBarActions),
+          matching: find.byType(IconButton),
+        );
+
+    for (final scale in [1.3, 2.0]) {
+      testWidgets('${scale}x: nothing overflows', (tester) async {
+        await pumpPhone(tester, scale);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('${scale}x: the mode selector is one run', (tester) async {
+        await pumpPhone(tester, scale);
+        final tops = [
+          for (final label in ['Trail', 'Road', 'Straight'])
+            tester
+                .getRect(find.ancestor(
+                    of: find.text(label), matching: find.byType(ChoiceChip)))
+                .top,
+        ];
+        expect(tops.toSet(), hasLength(1),
+            reason: 'chips on different rows: $tops');
+      });
+
+      testWidgets('${scale}x: the mode selector never meets the Locate FAB',
+          (tester) async {
+        await pumpPhone(tester, scale);
+        final selector = tester.getRect(find.ancestor(
+          of: find.text('Trail'),
+          matching: find.byType(SingleChildScrollView),
+        ));
+        final fab = tester.getRect(find.byType(FloatingActionButton));
+        expect(selector.overlaps(fab), isFalse,
+            reason: 'selector $selector, FAB $fab');
+        expect(selector.right, lessThanOrEqualTo(screen.width));
+      });
+
+      testWidgets('${scale}x: the map credit sits above the navigation bar',
+          (tester) async {
+        await pumpPhone(tester, scale);
+        final credits = find.descendant(
+            of: find.byType(MapAttribution), matching: find.byType(Text));
+        expect(credits, findsWidgets);
+        for (final credit in credits.evaluate()) {
+          final rect = tester.getRect(find.byWidget(credit.widget));
+          expect(rect.bottom, lessThanOrEqualTo(screen.height - navBar),
+              reason: 'credit $rect is under the navigation bar');
+          expect(rect.top, greaterThanOrEqualTo(0));
+        }
+        // And under the controls rather than beneath them.
+        final fab = tester.getRect(find.byType(FloatingActionButton));
+        final strip = tester.getRect(find.byType(MapAttribution));
+        expect(strip.top, greaterThanOrEqualTo(fab.bottom));
+      });
+
+      testWidgets('${scale}x: the toolbar keeps two icon slots beside Save, '
+          'so the search field gets the rest', (tester) async {
+        await pumpPhone(tester, scale);
+        // Undo + the overflow menu; Generate loop, Route points and Clear fold.
+        expect(toolbarSlots(), findsNWidgets(2));
+        expect(find.byTooltip('Undo'), findsOneWidget);
+        expect(find.byTooltip('More'), findsOneWidget);
+        // The title takes what the toolbar leaves: 72 dp before it, 16 after
+        // the actions (AppBarActions' derivation).
+        final save = tester.getRect(find.widgetWithText(TextButton, 'Save'));
+        final field = tester.getRect(find.byType(TextField));
+        expect(find.byType(BackButton), findsOneWidget);
+        expect(field.width, greaterThan(0));
+        expect(field.width,
+            closeTo(screen.width - 72 - 2 * 48 - save.width - 16, 1.0));
+        expect(save.right, lessThanOrEqualTo(screen.width));
+      });
+    }
+
+    testWidgets('the overflow carries Generate loop, Route points and Clear, with '
+        'Clear last', (tester) async {
+      await pumpPhone(tester, 1.3);
+      await tester.tap(find.byTooltip('More'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final items = tester
+          .widgetList<ListTile>(find.descendant(
+              of: find.byType(PopupMenuItem<int>),
+              matching: find.byType(ListTile)))
+          .map((t) => (t.title! as Text).data)
+          .toList();
+      expect(items, ['Generate loop', 'Route points', 'Clear']);
+    });
+
+    testWidgets('a focused search field folds Undo too', (tester) async {
+      await pumpPhone(tester, 1.3);
+      await tester.tap(find.byType(TextField));
+      await tester.pump();
+      expect(toolbarSlots(), findsOneWidget);
+      expect(find.byTooltip('Undo'), findsNothing);
+      // The selector hides so it cannot cover the results dropdown.
+      expect(find.text('Trail'), findsNothing);
+    });
   });
 
   testWidgets('mode toggle has Trail / Road / Straight segments',
@@ -536,19 +850,6 @@ void main() {
     // loud rather than silently breaking Straight-segment taps. See
     // user-reported bug: "the straight button is covered by the
     // locate position button".
-    test('mode toggle Positioned.right clears the FAB column', () {
-      final source =
-          File('lib/screens/route_builder_screen.dart').readAsStringSync();
-      expect(
-        source.contains('right: 16 + 56 + 12'),
-        isTrue,
-        reason:
-            "Mode toggle's right edge must leave room for the 56-dp FAB "
-            "(plus 16 margin + 12 gap) so the Straight segment isn't "
-            "covered by the Locate FAB.",
-      );
-    });
-
     test('empty-state hint suffixes the current mode', () {
       // Pin both the empty hint and the one-waypoint hint so flipping
       // the mode toggle has visible feedback before the user has

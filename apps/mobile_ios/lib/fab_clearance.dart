@@ -3,6 +3,10 @@ import 'package:flutter/widgets.dart';
 /// Height of a Material 3 [FloatingActionButton], regular or extended.
 const double kFabHeight = 56;
 
+/// Height a [FloatingActionButton.small] takes in a column: its 40dp button
+/// padded out to the 48dp minimum tap target.
+const double kSmallFabSlot = 48;
+
 /// Vertical gap between stacked FABs in this app's two-FAB columns.
 const double kFabStackGap = 12;
 

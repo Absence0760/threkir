@@ -1,10 +1,9 @@
-import type { Page } from '@playwright/test';
-
 import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
 import { readRows } from '../fixtures/db-read';
+import { jumpAndSettle, settleOnFeature } from '../fixtures/heatmap';
 
 /**
  * Heatmap discoverable-pin layers (clubs + popular/featured routes)
@@ -50,73 +49,6 @@ const VA_BBOX = {
 // Hardcoded from seed.sql (these are stable across resets).
 const RICHMOND_RUN_CLUB_ID = 'c1111111-0000-0000-0000-000000000001';
 const PRIVATE_CLUB_ID = 'c3333333-0000-0000-0000-000000000003';
-
-type MapHandle = {
-	jumpTo: (o: { center: [number, number]; zoom: number }) => void;
-	project: (lngLat: [number, number]) => { x: number; y: number };
-	getContainer: () => HTMLElement;
-	loaded: () => boolean;
-	isMoving: () => boolean;
-	queryRenderedFeatures: (
-		point: [number, number],
-		opts?: { layers?: string[] },
-	) => Array<{ properties?: { id?: string }; geometry: { coordinates: unknown } }>;
-};
-type HeatmapHooks = { __heatmapMap?: MapHandle; __heatmapPinsSettled?: () => boolean };
-
-// Nothing below sleeps. Each step waits on the state the next action
-// depends on, because a timer only guesses at it: issue #1196 was a fixed
-// 1200 ms wait losing to the page's own initial framing (a fitBounds that
-// awaits a fetch and then animates for 600 ms) on a slow runner. The fit
-// interrupted the spec's flyTo, and the click meant for a pin at zoom 14
-// landed on a route cluster at zoom ~4.
-
-// Jump the camera to `center` once the page has finished framing itself,
-// then wait until that move's own pin refresh has landed and rendered.
-// `jumpTo`, not an animated move: there is nothing to watch, and an
-// animation is one more thing for the next action to race.
-async function jumpAndSettle(page: Page, center: [number, number], zoom: number) {
-	const settled = () => {
-		const w = window as unknown as HeatmapHooks;
-		const m = w.__heatmapMap;
-		return !!m && !!w.__heatmapPinsSettled?.() && m.loaded() && !m.isMoving();
-	};
-	await page.waitForFunction(settled, undefined, { timeout: 15_000 });
-	await page.evaluate(([lng, lat, z]) => {
-		(window as unknown as HeatmapHooks).__heatmapMap!.jumpTo({ center: [lng, lat], zoom: z });
-	}, [center[0], center[1], zoom] as const);
-	await page.waitForFunction(settled, undefined, { timeout: 15_000 });
-}
-
-// Put the camera on the pin at `target` and return its viewport pixel,
-// once a real click there is certain to hit exactly that pin. The caller
-// drives a genuine mouse click — MapLibre's layer click handlers only fire
-// when queryRenderedFeatures hits under a real pointer event. Exactly one
-// feature, because the route-pin handler defers to the overlap list when
-// several routes stack under the click.
-async function settleOnPin(
-	page: Page,
-	target: [number, number],
-	layer: 'heatmap-clubs-layer' | 'heatmap-route-pins-layer',
-) {
-	await jumpAndSettle(page, target, 14);
-	const handle = await page.waitForFunction(({ lng, lat, layer }) => {
-		const w = window as unknown as HeatmapHooks;
-		const m = w.__heatmapMap;
-		if (!m || !w.__heatmapPinsSettled?.() || !m.loaded() || m.isMoving()) return null;
-		const pt = m.project([lng, lat]);
-		const hits = m.queryRenderedFeatures([pt.x, pt.y], { layers: [layer] });
-		const ids = new Set(hits.map((h) => h.properties?.id));
-		const onTarget = hits.some((h) => {
-			const [x, y] = h.geometry.coordinates as [number, number];
-			return Math.abs(x - lng) < 1e-4 && Math.abs(y - lat) < 1e-4;
-		});
-		if (ids.size !== 1 || !onTarget) return null;
-		const rect = m.getContainer().getBoundingClientRect();
-		return { x: rect.left + pt.x, y: rect.top + pt.y };
-	}, { lng: target[0], lat: target[1], layer }, { timeout: 15_000 });
-	return (await handle.jsonValue()) as { x: number; y: number };
-}
 
 test.describe('Heatmap pin RPCs (backend contract)', () => {
 	test('clubs_in_bbox returns public Virginia clubs + skips private ones', async () => {
@@ -285,7 +217,7 @@ test.describe('Heatmap pin popup (click flow)', () => {
 			await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
 
 			const target: [number, number] = [-77.452, 37.5311]; // Belle Isle
-			const screen = await settleOnPin(page, target, 'heatmap-route-pins-layer');
+			const screen = await settleOnFeature(page, target, 14, 'heatmap-route-pins-layer', { single: true });
 
 			// Real click — MapLibre's queryRenderedFeatures only resolves
 			// for actual pointer events, not synthetic fire('click').
@@ -313,7 +245,7 @@ test.describe('Heatmap pin popup (click flow)', () => {
 			await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
 
 			const target: [number, number] = [-77.436, 37.5407]; // Richmond Run Club
-			const screen = await settleOnPin(page, target, 'heatmap-clubs-layer');
+			const screen = await settleOnFeature(page, target, 14, 'heatmap-clubs-layer', { single: true });
 			await page.mouse.click(screen.x, screen.y);
 
 			const popup = page.locator('.heatmap-pin-popup');
@@ -348,7 +280,7 @@ test.describe('Heatmap pin popup (click flow)', () => {
 		// Route dots now keep-on-click (no popup), so drive this against the
 		// club pin — the one surface that still opens a `.heatmap-pin-popup`.
 		const target: [number, number] = [-77.436, 37.5407]; // Richmond Run Club
-		const screen = await settleOnPin(page, target, 'heatmap-clubs-layer');
+		const screen = await settleOnFeature(page, target, 14, 'heatmap-clubs-layer', { single: true });
 		await page.mouse.click(screen.x, screen.y);
 
 		const popup = page.locator('.heatmap-pin-popup');

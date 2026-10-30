@@ -116,9 +116,41 @@ void main() {
     expect(chips, hasLength(2));
     expect(chips[0].selected, isTrue);
     expect(chips[1].selected, isFalse);
-    // showCheckmark is left at Material's default (true) rather than switched
-    // off for width, which is what the SegmentedButton sites had been doing.
-    expect(chips[0].showCheckmark, isNull);
+    expect(
+      find.descendant(
+          of: find.byWidget(chips[0]), matching: find.byIcon(Icons.check)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+          of: find.byWidget(chips[1]), matching: find.byIcon(Icons.check)),
+      findsNothing,
+    );
+  });
+
+  testWidgets(
+      'a selected chip with an icon shows the check in place of the glyph, '
+      'never drawn over it', (tester) async {
+    // Material's own checkmark is painted over the avatar after a dark scrim
+    // across the avatar's circle, so on an icon chip the glyph, the disc and
+    // the check collided (route builder field report).
+    await _pump(tester,
+        width: 400,
+        textScale: 1.0,
+        labels: ['Trail', 'Road'],
+        icons: [Icons.terrain, Icons.directions_car]);
+    final chips =
+        tester.widgetList<ChoiceChip>(find.byType(ChoiceChip)).toList();
+    for (final chip in chips) {
+      expect(chip.showCheckmark, isFalse,
+          reason: 'Material would paint its scrim + check over the avatar');
+    }
+    expect(find.byIcon(Icons.terrain), findsNothing);
+    expect(find.byIcon(Icons.check), findsOneWidget);
+    expect(find.byIcon(Icons.directions_car), findsOneWidget);
+    final check = tester.widget<Icon>(find.byIcon(Icons.check));
+    expect(check.color, AppTheme.light.chipTheme.checkmarkColor,
+        reason: 'the check keeps the contrast-tested checkmark colour');
   });
 
   testWidgets('a leading icon rides in the avatar slot', (tester) async {

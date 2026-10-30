@@ -363,6 +363,7 @@
   "authErrorNotSignedIn": "Você precisa estar conectado para fazer isso. Entre e tente novamente.",
   "authErrorEmailExists": "Esse e-mail já tem uma conta. Entre em vez disso.",
   "authErrorEmailNotConfirmed": "Confirme seu e-mail primeiro — procure o link de confirmação na sua caixa de entrada.",
+  "authErrorLinkExpired": "Este link expirou ou já foi usado. Solicite um novo para continuar.",
   "authErrorWeakPassword": "Essa senha é muito fraca. Use pelo menos {minLength} caracteres.",
   "authErrorInvalidEmail": "Digite um endereço de e-mail válido.",
   "authErrorPasswordTooShort": "A senha deve ter pelo menos {minLength} caracteres.",
@@ -976,7 +977,6 @@
   "routeBuilderServerUnreachable": "Não foi possível acessar o servidor. Faça login ou verifique sua conexão e tente novamente.",
   "routeBuilderSaveFailed": "Falha ao salvar: {error}",
   "routeBuilderSearchHint": "Pesquisar lugares…",
-  "routeBuilderMore": "Mais",
   "routeBuilderGenerateLoop": "Gerar circuito",
   "routeBuilderUndo": "Desfazer",
   "routeBuilderClear": "Limpar",
@@ -5308,5 +5308,13 @@
   "prefsCoachInMessages": "Coach de IA em Mensagens",
   "prefsCoachInMessagesPinned": "Fixado no topo",
   "prefsCoachInMessagesListed": "Junto com suas conversas",
-  "prefsCoachInMessagesHidden": "Oculto"
+  "prefsCoachInMessagesHidden": "Oculto",
+  "prefsDisclosureLevel": "Quanto detalhe",
+  "prefsDisclosureAuto": "Automático",
+  "prefsDisclosureSimple": "Só o básico",
+  "prefsDisclosureStandard": "O de sempre",
+  "prefsDisclosureFull": "Tudo",
+  "prefsDisclosureHint": "Quanto o app abre antes de você pedir mais. Automático lê a meta que você definiu e quantas corridas já registrou, e hoje escolhe {level}. Nada fica escondido para sempre: uma seção recolhida abre com um toque.",
+  "dashboardTrainingLoadSection": "Carga de treino",
+  "dashboardTrainingLoadSectionHint": "Seus números de condicionamento, fadiga e forma. Está recolhido porque você pediu só o básico: abra quando quiser, ou peça Tudo em Configurações → Preferências."
 }

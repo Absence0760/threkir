@@ -363,6 +363,7 @@
   "authErrorNotSignedIn": "Vous devez être connecté pour faire cela. Connectez-vous et réessayez.",
   "authErrorEmailExists": "Un compte existe déjà avec cet e-mail. Connectez-vous plutôt.",
   "authErrorEmailNotConfirmed": "Confirmez d’abord votre e-mail — recherchez le lien de confirmation dans votre boîte de réception.",
+  "authErrorLinkExpired": "Ce lien a expiré ou a déjà été utilisé. Demandez-en un nouveau pour continuer.",
   "authErrorWeakPassword": "Ce mot de passe est trop faible. Utilisez au moins {minLength} caractères.",
   "authErrorInvalidEmail": "Saisissez une adresse e-mail valide.",
   "authErrorPasswordTooShort": "Le mot de passe doit comporter au moins {minLength} caractères.",
@@ -976,7 +977,6 @@
   "routeBuilderServerUnreachable": "Serveur injoignable. Connectez-vous ou vérifiez votre connexion, puis réessayez.",
   "routeBuilderSaveFailed": "Échec de l'enregistrement : {error}",
   "routeBuilderSearchHint": "Rechercher des lieux…",
-  "routeBuilderMore": "Plus",
   "routeBuilderGenerateLoop": "Générer une boucle",
   "routeBuilderUndo": "Annuler",
   "routeBuilderClear": "Effacer",
@@ -5308,5 +5308,13 @@
   "prefsCoachInMessages": "Coach IA dans Messages",
   "prefsCoachInMessagesPinned": "Épinglé en haut",
   "prefsCoachInMessagesListed": "Avec vos conversations",
-  "prefsCoachInMessagesHidden": "Masqué"
+  "prefsCoachInMessagesHidden": "Masqué",
+  "prefsDisclosureLevel": "Niveau de détail",
+  "prefsDisclosureAuto": "Automatique",
+  "prefsDisclosureSimple": "L'essentiel",
+  "prefsDisclosureStandard": "L'habituel",
+  "prefsDisclosureFull": "Tout",
+  "prefsDisclosureHint": "Ce que l'app déplie avant que vous en demandiez plus. Automatique lit l'objectif que vous avez défini et le nombre de sorties enregistrées, et choisit {level} aujourd'hui. Rien n'est jamais masqué définitivement : une section repliée n'est qu'à un toucher de s'ouvrir.",
+  "dashboardTrainingLoadSection": "Charge d’entraînement",
+  "dashboardTrainingLoadSectionHint": "Vos chiffres de forme, de fatigue et de fraîcheur. Replié parce que vous avez demandé l’essentiel : ouvrez-le quand vous voulez, ou choisissez Tout dans Réglages → Préférences."
 }

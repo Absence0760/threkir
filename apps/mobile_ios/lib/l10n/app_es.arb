@@ -363,6 +363,7 @@
   "authErrorNotSignedIn": "Debes iniciar sesión para hacer eso. Inicia sesión e inténtalo de nuevo.",
   "authErrorEmailExists": "Ese correo ya tiene una cuenta. Inicia sesión en su lugar.",
   "authErrorEmailNotConfirmed": "Confirma primero tu correo: busca el enlace de confirmación en tu bandeja de entrada.",
+  "authErrorLinkExpired": "Este enlace ha caducado o ya se usó. Solicita uno nuevo para continuar.",
   "authErrorWeakPassword": "Esa contraseña es demasiado débil. Usa al menos {minLength} caracteres.",
   "authErrorInvalidEmail": "Introduce una dirección de correo válida.",
   "authErrorPasswordTooShort": "La contraseña debe tener al menos {minLength} caracteres.",
@@ -976,7 +977,6 @@
   "routeBuilderServerUnreachable": "No se puede conectar con el servidor. Inicia sesión o comprueba tu conexión e inténtalo de nuevo.",
   "routeBuilderSaveFailed": "Error al guardar: {error}",
   "routeBuilderSearchHint": "Buscar lugares…",
-  "routeBuilderMore": "Más",
   "routeBuilderGenerateLoop": "Generar bucle",
   "routeBuilderUndo": "Deshacer",
   "routeBuilderClear": "Borrar",
@@ -5308,5 +5308,13 @@
   "prefsCoachInMessages": "Entrenador IA en Mensajes",
   "prefsCoachInMessagesPinned": "Fijado arriba",
   "prefsCoachInMessagesListed": "Con tus conversaciones",
-  "prefsCoachInMessagesHidden": "Oculto"
+  "prefsCoachInMessagesHidden": "Oculto",
+  "prefsDisclosureLevel": "Cuánto detalle",
+  "prefsDisclosureAuto": "Automático",
+  "prefsDisclosureSimple": "Solo lo básico",
+  "prefsDisclosureStandard": "Lo habitual",
+  "prefsDisclosureFull": "Todo",
+  "prefsDisclosureHint": "Cuánto muestra la app antes de que pidas más. Automático lee el objetivo que fijaste y cuántas carreras llevas registradas, y hoy elige {level}. Nunca se oculta nada para siempre: una sección plegada está a un toque de abrirse.",
+  "dashboardTrainingLoadSection": "Carga de entrenamiento",
+  "dashboardTrainingLoadSectionHint": "Tus números de forma física, fatiga y frescura. Está plegado porque pediste solo lo básico: ábrelo cuando quieras, o pide Todo en Ajustes → Preferencias."
 }

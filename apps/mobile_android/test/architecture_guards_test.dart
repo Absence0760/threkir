@@ -5716,7 +5716,6 @@ void main() {
       // — have no last row to cover.
       const nonScrolling = {
         'lib/screens/privacy_zones_screen.dart',
-        'lib/screens/route_builder_screen.dart',
       };
       // Hosts that hoist a sub-screen's FAB into their own Scaffold. The
       // clearance belongs to the list, which lives in the sub-screen.

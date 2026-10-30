@@ -16,6 +16,7 @@ import '../geocoding.dart';
 import '../heatmap_clustering.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart' show formatDistanceForPref;
+import '../quiet_location.dart';
 import '../widgets/live_run_map.dart'
     show
         basemapTileLayer,
@@ -544,33 +545,18 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
       }
       return;
     }
-    if (kIsWeb) {
-      _giveUpOnLocate();
-      return;
-    }
-    try {
-      final perm = await Geolocator.checkPermission();
-      if (perm != LocationPermission.always &&
-          perm != LocationPermission.whileInUse) {
-        _giveUpOnLocate();
-        return;
-      }
-      // Fast path: a cached fix centres the map instantly so it doesn't
-      // open on London and then jump once the fresh fix lands.
-      final last = await Geolocator.getLastKnownPosition();
-      if (last != null && mounted) {
-        setState(() => _userLatLng = LatLng(last.latitude, last.longitude));
-        _maybeAutoCenter();
-      }
-      final pos = await Geolocator.getCurrentPosition()
-          .timeout(const Duration(seconds: 5));
+    // The cached fix lands first, so the map does not open on the default
+    // view and then jump once the fresh fix arrives. No fix at all (denied,
+    // services off, timed out): the FAB is the user-initiated retry, and the
+    // map falls back to the data view.
+    var located = false;
+    await for (final pos in quietPositionFixes()) {
       if (!mounted) return;
+      located = true;
       setState(() => _userLatLng = LatLng(pos.latitude, pos.longitude));
       _maybeAutoCenter();
-    } catch (_) {
-      // The FAB is the user-initiated retry; fall back to the data view.
-      _giveUpOnLocate();
     }
+    if (!located && mounted) _giveUpOnLocate();
   }
 
   /// The on-open auto-locate won't frame the map (denied / unavailable /
@@ -883,7 +869,6 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                     ),
                   ],
                 ),
-              MapAttribution(darkBasemap: darkBasemap),
             ],
           ),
           // Search-results dropdown — overlays without pushing content.
@@ -929,11 +914,15 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                     child: _selectedPin != null
                         ? _selectionCard(_selectedPin!)
                         : Center(child: _resultsPill()),
                   ),
+                  // The credit closes the column rather than riding the map's
+                  // bottom edge, which sits under the system navigation bar
+                  // and under the pill above.
+                  MapAttribution(darkBasemap: darkBasemap),
                 ],
               ),
             ),

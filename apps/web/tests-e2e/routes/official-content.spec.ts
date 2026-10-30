@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B } from '../fixtures/users';
+import { jumpAndSettle } from '../fixtures/heatmap';
 
 /**
  * Official content (issue #1190, migration 20271021000030 + 031): a route
@@ -76,19 +77,7 @@ test.describe('official content (web)', () => {
 	test('the Official lens lists the verified club route with its badge', async ({ page }) => {
 		await page.goto('/routes/heatmap');
 		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
-		await page.waitForTimeout(1000);
-		await page.evaluate(async () => {
-			type MapHandle = {
-				flyTo: (o: { center: [number, number]; zoom: number }) => void;
-				once: (event: string, cb: () => void) => void;
-			};
-			const m = (window as unknown as { __heatmapMap?: MapHandle }).__heatmapMap;
-			if (!m) return;
-			await new Promise<void>((resolve) => {
-				m.once('moveend', () => resolve());
-				m.flyTo({ center: [10.015, 50.015], zoom: 12 });
-			});
-		});
+		await jumpAndSettle(page, [10.015, 50.015], 12);
 
 		const list = page.getByTestId('discover-list');
 		const officialRow = list.locator('.result-li', { hasText: OFFICIAL_NAME });

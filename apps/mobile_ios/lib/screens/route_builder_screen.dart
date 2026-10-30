@@ -23,6 +23,7 @@ import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
 import '../local_route_store.dart';
 import '../preferences.dart';
+import '../quiet_location.dart';
 import '../rate_limit_errors.dart';
 import '../rate_limit_message.dart';
 import '../route_loop.dart';
@@ -31,6 +32,7 @@ import '../routing.dart';
 import '../social_service.dart';
 import '../run_stats.dart' show haversineMetres;
 import '../typed_decimal.dart';
+import '../widgets/app_bar_actions.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/confirm_discard.dart';
 import '../widgets/live_run_map.dart'
@@ -96,6 +98,11 @@ class RouteBuilderScreen extends StatefulWidget {
   final Future<void> Function(cm.Route route)? saveRouteFn;
   final Future<Position> Function()? locateFn;
 
+  /// Test seam for the fixes the builder centres on when it opens. Production
+  /// passes null and reads [quietPositionFixes], which never prompts.
+  @visibleForTesting
+  final Stream<Position> Function()? initialFixesFn;
+
   /// Test seam — when non-null, [_loadClubs] reads from this instead
   /// of calling into [social]. Lets widget tests drive the dialog's
   /// club picker without booting a real SocialService / Supabase.
@@ -119,6 +126,7 @@ class RouteBuilderScreen extends StatefulWidget {
     this.geocodingFetcher,
     this.saveRouteFn,
     this.locateFn,
+    this.initialFixesFn,
     this.clubChoicesLoader,
     this.snapAvailableOverride,
   });
@@ -128,8 +136,19 @@ class RouteBuilderScreen extends StatefulWidget {
 }
 
 class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
-  static const _kDefaultCenter = LatLng(51.5074, -0.1278); // London
   final MapController _map = MapController();
+
+  // Where the camera opens, decided once before the first frame so the map
+  // never shows one place and then jumps to another it already knew about.
+  late final ({LatLng centre, double zoom}) _opening = _openingCamera();
+
+  // Set by anything that puts the camera where the runner wants it — a pan,
+  // a search result, the Locate button, a placed waypoint — after which a
+  // late on-open fix must not drag it away.
+  bool _cameraClaimed = false;
+  bool _mapReady = false;
+  LatLng? _pendingFix;
+  StreamSubscription<Position>? _openingFixes;
 
   // Waypoint + polyline state.
   final List<cm.Waypoint> _waypoints = [];
@@ -224,6 +243,7 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
   void initState() {
     super.initState();
     _loadClubs();
+    if (widget.initialCenter == null) _centreOnRunner();
     _searchFocus.addListener(() {
       if (!mounted) return;
       setState(() => _searchFocused = _searchFocus.hasFocus);
@@ -267,6 +287,7 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
 
   @override
   void dispose() {
+    _openingFixes?.cancel();
     _searchDebounce?.cancel();
     _searchCtl.dispose();
     _searchFocus.dispose();
@@ -433,6 +454,7 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
   }
 
   Future<void> _onMapTap(TapPosition _, LatLng latLng) async {
+    _cameraClaimed = true;
     // Don't gate on `_routing` — the cancellation system in
     // `_rerouteThrough` (gen-counter + `cancelled` gate threaded
     // into fetchRouteThrough) handles overlapping passes correctly,
@@ -792,8 +814,70 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
     }
   }
 
+  /// The opening camera when the caller names no centre: the start of the
+  /// runner's most recent route, else the whole world (the same fallback
+  /// web's `RouteBuilder.svelte` uses). Never a fixed city: the builder
+  /// opened on London for everyone, and Generate loop, which builds around
+  /// the camera centre, then built the loop there.
+  ({LatLng centre, double zoom}) _openingCamera() {
+    final given = widget.initialCenter;
+    if (given != null) return (centre: given, zoom: 14);
+    try {
+      cm.Route? latest;
+      for (final r in widget.routeStore.routes) {
+        if (r.waypoints.isEmpty) continue;
+        final at = r.createdAt;
+        if (latest == null ||
+            (at != null &&
+                (latest.createdAt == null || at.isAfter(latest.createdAt!)))) {
+          latest = r;
+        }
+      }
+      if (latest != null) {
+        final w = latest.waypoints.first;
+        return (centre: LatLng(w.lat, w.lng), zoom: 14);
+      }
+    } catch (e) {
+      debugPrint('route builder: no recent route to open on: $e');
+    }
+    return (centre: const LatLng(20, 0), zoom: 2);
+  }
+
+  /// Follows the quiet on-open fixes (last known, then fresh) until the
+  /// runner takes the camera. Never prompts: the Locate button is the place
+  /// that asks.
+  void _centreOnRunner() {
+    try {
+      final fixes = (widget.initialFixesFn ?? quietPositionFixes)();
+      _openingFixes = fixes.listen(
+        (pos) {
+          if (!mounted || _cameraClaimed) return;
+          final fix = LatLng(pos.latitude, pos.longitude);
+          if (_mapReady) {
+            _map.move(fix, 15);
+          } else {
+            _pendingFix = fix;
+          }
+        },
+        onError: (Object e) =>
+            debugPrint('route builder opening fix failed: $e'),
+        cancelOnError: true,
+      );
+    } catch (e) {
+      debugPrint('route builder opening fix unavailable: $e');
+    }
+  }
+
+  void _onMapReady() {
+    _mapReady = true;
+    final fix = _pendingFix;
+    _pendingFix = null;
+    if (fix != null && !_cameraClaimed) _map.move(fix, 15);
+  }
+
   Future<void> _locate() async {
     if (_routing || _saving) return;
+    _cameraClaimed = true;
     try {
       final pos = widget.locateFn != null
           ? await widget.locateFn!()
@@ -860,6 +944,7 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
   }
 
   void _onSearchResultTap(PlaceResult result) {
+    _cameraClaimed = true;
     _map.move(LatLng(result.lat, result.lng), 15);
     FocusManager.instance.primaryFocus?.unfocus();
     _searchCtl.clear();
@@ -895,6 +980,15 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
     await _rerouteThrough(next);
   }
 
+  void _onModeChanged(RouteBuilderMode mode) {
+    setState(() => _mode = mode);
+    // The polyline's shape depends on the OSRM profile, so a placed route
+    // re-routes through its existing waypoints.
+    if (_waypoints.length >= 2) {
+      unawaited(_rerouteThrough(List.of(_waypoints)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -909,16 +1003,7 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
     final overlapLatLngs = _polyline.length >= 2
         ? overlapLatLngsFor(_polyline, _overlapSpans)
         : const <List<LatLng>>[];
-    final center = widget.initialCenter ?? _kDefaultCenter;
 
-    // AppBar actions: when the search field is focused (keyboard
-    // up + actively typing), condense everything except Save into
-    // a single overflow (`⋮`) menu so the search TextField gets
-    // the full title width. Pre-polish the 4 visible action icons
-    // ate ~half the AppBar — the user reported "the search bar is
-    // super tiny and only shows 1 letter when I'm typing." When
-    // the search isn't focused, all 4 affordances stay visible
-    // (most actions get used while building, not while searching).
     final canUndo = _waypoints.isNotEmpty && !_routing && !_saving;
     final canClear = _waypoints.isNotEmpty && !_routing && !_saving;
     final canGenerate = !_routing && !_saving;
@@ -927,7 +1012,6 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
     // generation counter cancels a stale in-flight pass, same as
     // placing another pin mid-route.
     final canListPoints = _waypoints.isNotEmpty && !_saving;
-    final compactActions = _searchFocused;
     final scaffold = Scaffold(
       appBar: AppBar(
         title: TextField(
@@ -941,100 +1025,44 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
           ),
           style: theme.textTheme.bodyLarge,
         ),
-        actions: compactActions
-            ? [
-                // Compact mode while searching: just Save +
-                // overflow. The search field claims everything
-                // else.
-                TextButton(
-                  onPressed: canSave ? _save : null,
-                  child: Text(
-                      _saving ? l10n.routeBuilderSaving : l10n.routeBuilderSave),
-                ),
-                PopupMenuButton<String>(
-                  tooltip: l10n.routeBuilderMore,
-                  onSelected: (a) {
-                    switch (a) {
-                      case 'loop':
-                        if (canGenerate) _generateLoop();
-                      case 'points':
-                        if (canListPoints) _openWaypointList();
-                      case 'undo':
-                        if (canUndo) _undo();
-                      case 'clear':
-                        if (canClear) _clear();
-                    }
-                  },
-                  itemBuilder: (_) => [
-                    PopupMenuItem(
-                      value: 'loop',
-                      enabled: canGenerate,
-                      child: ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.all_inclusive),
-                        title: Text(l10n.routeBuilderGenerateLoop),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'points',
-                      enabled: canListPoints,
-                      child: ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.format_list_numbered),
-                        title: Text(l10n.routeBuilderPointList),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'undo',
-                      enabled: canUndo,
-                      child: ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.undo),
-                        title: Text(l10n.routeBuilderUndo),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'clear',
-                      enabled: canClear,
-                      child: ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.delete_outline),
-                        title: Text(l10n.routeBuilderClear),
-                      ),
-                    ),
-                  ],
-                ),
-              ]
-            : [
-                IconButton(
-                  tooltip: l10n.routeBuilderGenerateLoop,
-                  onPressed: canGenerate ? _generateLoop : null,
-                  // Was Icons.refresh — looked like a retry
-                  // / reload button. Icons.all_inclusive reads as
-                  // "build a circular route" at a glance.
-                  icon: const Icon(Icons.all_inclusive),
-                ),
-                IconButton(
-                  tooltip: l10n.routeBuilderPointList,
-                  onPressed: canListPoints ? _openWaypointList : null,
-                  icon: const Icon(Icons.format_list_numbered),
-                ),
-                IconButton(
-                  tooltip: l10n.routeBuilderUndo,
-                  onPressed: canUndo ? _undo : null,
-                  icon: const Icon(Icons.undo),
-                ),
-                IconButton(
-                  tooltip: l10n.routeBuilderClear,
-                  onPressed: canClear ? _clear : null,
-                  icon: const Icon(Icons.delete_outline),
-                ),
-                TextButton(
-                  onPressed: canSave ? _save : null,
-                  child: Text(
-                      _saving ? l10n.routeBuilderSaving : l10n.routeBuilderSave),
-                ),
-              ],
+        // Ordered by how often a builder reaches for them, so Undo is the one
+        // icon that keeps a slot and the rest fold into the overflow. All four
+        // used to be toolbar icons, which left the search field a few dp on a
+        // 360 dp phone. While the field has focus Undo folds too, so the query
+        // being typed gets the width.
+        actions: [
+          AppBarActions(
+            maxVisible: _searchFocused ? 1 : 2,
+            actions: [
+              AppBarAction(
+                icon: const Icon(Icons.undo),
+                label: l10n.routeBuilderUndo,
+                onPressed: canUndo ? _undo : null,
+              ),
+              AppBarAction(
+                icon: const Icon(Icons.all_inclusive),
+                label: l10n.routeBuilderGenerateLoop,
+                onPressed: canGenerate ? _generateLoop : null,
+              ),
+              AppBarAction(
+                icon: const Icon(Icons.format_list_numbered),
+                label: l10n.routeBuilderPointList,
+                onPressed: canListPoints ? _openWaypointList : null,
+              ),
+              AppBarAction(
+                icon: const Icon(Icons.delete_outline),
+                label: l10n.routeBuilderClear,
+                onPressed: canClear ? _clear : null,
+                destructive: true,
+              ),
+            ],
+          ),
+          TextButton(
+            onPressed: canSave ? _save : null,
+            child:
+                Text(_saving ? l10n.routeBuilderSaving : l10n.routeBuilderSave),
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -1042,11 +1070,15 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
             mapController: _map,
             options: MapOptions(
               backgroundColor: basemapVoidColour(darkBasemap: darkBasemap),
-              initialCenter: center,
-              initialZoom: 14,
+              initialCenter: _opening.centre,
+              initialZoom: _opening.zoom,
               minZoom: 3,
               maxZoom: 22,
               onTap: _onMapTap,
+              onMapReady: _onMapReady,
+              onPositionChanged: (_, hasGesture) {
+                if (hasGesture) _cameraClaimed = true;
+              },
             ),
             children: [
               basemapTileLayer(
@@ -1125,7 +1157,6 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
                       ),
                   ],
                 ),
-              MapAttribution(darkBasemap: darkBasemap),
             ],
           ),
           // Top status pill — distance + elevation gain + spinner.
@@ -1161,42 +1192,58 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
                 ),
               ),
             ),
-          // Bottom mode toggle. Right edge clears the FAB column so
-          // taps on the Straight segment land on the toggle rather
-          // than the Locate FAB. **Hidden while the search field is
-          // focused** — when the keyboard is up + the search-
-          // results dropdown is open below the AppBar, the toggle
-          // was overlapping the bottom of the dropdown.
-          // The user reported "Trail, Road and Straight buttons
-          // cover some of the dropdowns for the search results."
-          if (!_searchFocused)
-            Positioned(
-              bottom: 88,
-              left: 16,
-              right: 16 + 56 + 12,
-              child: _ModeToggle(
-                mode: _mode,
-                onChanged: _routing || _saving
-                    ? null
-                    : (m) {
-                        setState(() => _mode = m);
-                        // Re-route through existing waypoints when
-                        // the mode changes — the polyline shape
-                        // depends on the OSRM profile.
-                        if (_waypoints.length >= 2) {
-                          unawaited(
-                              _rerouteThrough(List.of(_waypoints)));
-                        }
-                      },
+          // The bottom controls and the map credit are one column inside a
+          // SafeArea, so neither depends on a guessed offset: the column
+          // stands on the system inset (gesture or 3-button navigation bar),
+          // the credit sits under the controls at any text scale, and the
+          // mode selector shares a row with the Locate FAB, so it cannot grow
+          // into it. The selector hides while the search field has focus —
+          // the results dropdown hangs from the AppBar and the selector used
+          // to cover its lower rows.
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _searchFocused
+                              ? const SizedBox.shrink()
+                              : Align(
+                                  alignment: AlignmentDirectional.centerStart,
+                                  child: _ModeToggle(
+                                    mode: _mode,
+                                    onChanged: _routing || _saving
+                                        ? null
+                                        : _onModeChanged,
+                                  ),
+                                ),
+                        ),
+                        const SizedBox(width: 12),
+                        FloatingActionButton(
+                          heroTag: 'route_builder_locate_fab',
+                          tooltip: l10n.routeBuilderLocateMe,
+                          onPressed: _routing || _saving ? null : _locate,
+                          child: const Icon(Icons.my_location),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  MapAttribution(darkBasemap: darkBasemap),
+                ],
               ),
             ),
+          ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'route_builder_locate_fab',
-        tooltip: l10n.routeBuilderLocateMe,
-        onPressed: _routing || _saving ? null : _locate,
-        child: const Icon(Icons.my_location),
       ),
     );
     // Any placed waypoint is unsaved work (Save pops directly after
@@ -1625,6 +1672,7 @@ class _ModeToggle extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(4),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: theme.colorScheme.surface.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(999),
@@ -1635,27 +1683,35 @@ class _ModeToggle extends StatelessWidget {
       // overlay's width three ways. `maxLines: 1` + a fade stopped the wrap
       // and started losing characters instead: Spanish "Sendero" got 36.7 px
       // of the 52.5 it needs at 320 dp / 1.0x. Chips are sized by their own
-      // labels and the run reflows, so neither happens.
-      child: ChoiceChipRow<RouteBuilderMode>(
-        options: [
-          ChoiceChipOption(
-            value: RouteBuilderMode.trail,
-            label: l10n.routeBuilderModeTrail,
-            icon: Icons.terrain,
-          ),
-          ChoiceChipOption(
-            value: RouteBuilderMode.road,
-            label: l10n.routeBuilderModeRoad,
-            icon: Icons.directions_car,
-          ),
-          ChoiceChipOption(
-            value: RouteBuilderMode.straight,
-            label: l10n.routeBuilderModeStraight,
-            icon: Icons.straighten,
-          ),
-        ],
-        selected: mode,
-        onChanged: onChanged,
+      // labels, so neither happens. The chips then reflowed onto a second run
+      // at 1.3x, which on a floating map overlay is a half-empty pill grown
+      // into the Locate FAB. A segmented track scrolls as one block rather
+      // than splitting across rows (conventions.md, "Content whose axis is
+      // its information may scroll itself"); the unbounded width lays the
+      // chips out as one run.
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ChoiceChipRow<RouteBuilderMode>(
+          options: [
+            ChoiceChipOption(
+              value: RouteBuilderMode.trail,
+              label: l10n.routeBuilderModeTrail,
+              icon: Icons.terrain,
+            ),
+            ChoiceChipOption(
+              value: RouteBuilderMode.road,
+              label: l10n.routeBuilderModeRoad,
+              icon: Icons.directions_car,
+            ),
+            ChoiceChipOption(
+              value: RouteBuilderMode.straight,
+              label: l10n.routeBuilderModeStraight,
+              icon: Icons.straighten,
+            ),
+          ],
+          selected: mode,
+          onChanged: onChanged,
+        ),
       ),
     );
   }

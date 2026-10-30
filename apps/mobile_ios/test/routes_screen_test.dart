@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -324,11 +325,11 @@ void main() {
         // 5 km / 50 m gain — pinned in `_makeRoutes`. Subtitle
         // text contains both pieces of metadata in the same Text.
         expect(
-          find.textContaining('5.00 km'),
+          find.textContaining('5.00\u00A0km'),
           findsOneWidget,
         );
         expect(
-          find.textContaining('50 m ↑'),
+          find.textContaining('50\u00A0m\u00A0↑'),
           findsOneWidget,
         );
       },
@@ -660,46 +661,212 @@ void main() {
     });
   });
 
-  group('RoutesScreen — narrow-width overflow (issue #666 V7)', () {
-    // The strip sits above the list and never scrolls away. It used to be a
-    // title row over a Wrap that restacked the three buttons onto two or
-    // three lines on a narrow phone, so the header took about half the
-    // screen before the first route.
-    for (final scale in [1.0, 2.0]) {
-      testWidgets(
-          'at 320 logical width and text scale $scale the Discover strip is '
-          'one line that scrolls sideways', (tester) async {
-        tester.view.physicalSize = const Size(320, 640);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.reset);
+  // Field report (Android, 1080x2340 at ~1.3x OS text): "Routes heatmap" cut
+  // off by the sync button, "Any distance" cut off at the screen edge, titles
+  // truncated to eight characters, "229" and "m ↑" on separate lines, and two
+  // extended FABs parked over the cards' star buttons.
+  group('RoutesScreen — phone layout at raised text scale', () {
+    const phone = Size(360, 780);
+    const gutter = 16.0;
 
+    void usePhone(WidgetTester tester, {double bottomInset = 0}) {
+      tester.view.physicalSize = phone;
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.padding = FakeViewPadding(bottom: bottomInset);
+      tester.view.viewPadding = FakeViewPadding(bottom: bottomInset);
+      addTearDown(tester.view.reset);
+    }
+
+    // No waypoints, so the card leads with an avatar rather than a track
+    // preview that would ask the fake api for a clipped trace.
+    List<cm.Route> plainRoutes(int count, {String prefix = 'Route'}) => [
+          for (var i = 0; i < count; i++)
+            cm.Route(
+              id: 'plain-$i',
+              userId: 'test-user',
+              name: '$prefix $i',
+              waypoints: const [],
+              distanceMetres: 42617,
+              elevationGainMetres: 229,
+            ),
+        ];
+
+    void expectInsideScreen(WidgetTester tester, Finder chips, String what) {
+      expect(chips, findsWidgets);
+      for (var i = 0; i < chips.evaluate().length; i++) {
+        final rect = tester.getRect(chips.at(i));
+        expect(rect.left, greaterThanOrEqualTo(gutter - 0.01),
+            reason: '$what #$i starts inside the gutter');
+        expect(rect.right, lessThanOrEqualTo(phone.width - gutter + 0.01),
+            reason: '$what #$i ends inside the gutter, not clipped');
+      }
+    }
+
+    for (final scale in [1.3, 2.0]) {
+      testWidgets('at ${scale}x the Discover chips all sit on screen',
+          (tester) async {
+        usePhone(tester);
         final prefs = await _makePrefs();
-        await _pump(tester, prefs: prefs, api: _FakeApi(), textScale: scale);
+        // ignore: invalid_use_of_visible_for_testing_member
+        final store = LocalRouteStore()..debugSeed(plainRoutes(3));
+        await _pump(tester,
+            prefs: prefs, api: _FakeApi(), routeStore: store, textScale: scale);
         await tester.pump();
         expect(tester.takeException(), isNull, reason: 'no overflow stripe');
 
-        final chips = find.byType(ActionChip);
-        expect(chips, findsNWidgets(3));
-        final tops = [
-          for (var i = 0; i < 3; i++) tester.getTopLeft(chips.at(i)).dy,
-        ];
-        expect(tops.toSet(), hasLength(1),
-            reason: 'the three entries share one line rather than wrapping');
-
-        final strip = find.byKey(const ValueKey('routes-discover-strip'));
-        expect(
-          tester.widget<SingleChildScrollView>(strip).scrollDirection,
-          Axis.horizontal,
-        );
-        expect(tester.getSize(strip).height, lessThan(640 / 5),
-            reason: 'the header must leave the screen to the routes');
+        final discover = find.descendant(
+            of: find.byKey(const ValueKey('routes-discover-strip')),
+            matching: find.byType(ActionChip));
+        expect(discover, findsNWidgets(3));
+        expectInsideScreen(tester, discover, 'Discover chip');
         expect(
             find.byWidgetPredicate(
                 (w) => w is Semantics && w.properties.label == 'Discover'),
             findsOneWidget,
             reason: 'the strip is still named for assistive tech');
       });
+
+      testWidgets(
+          'at ${scale}x the pinned Discover strip over the empty state stays '
+          'on screen', (tester) async {
+        usePhone(tester);
+        final prefs = await _makePrefs();
+        await _pump(tester, prefs: prefs, api: _FakeApi(), textScale: scale);
+        await tester.pump();
+        expect(tester.takeException(), isNull, reason: 'no overflow stripe');
+        expectInsideScreen(tester, find.byType(ActionChip), 'Discover chip');
+      });
+
+      testWidgets('at ${scale}x every filter chip sits on screen',
+          (tester) async {
+        usePhone(tester);
+        final prefs = await _makePrefs();
+        // ignore: invalid_use_of_visible_for_testing_member
+        final store = LocalRouteStore()..debugSeed(plainRoutes(3));
+        await _pump(tester, prefs: prefs, routeStore: store, textScale: scale);
+        await tester.pump();
+        expect(tester.takeException(), isNull, reason: 'no overflow stripe');
+
+        final strip = find.byKey(const ValueKey('routes-filter-chips'));
+        final chips = find.descendant(
+          of: strip,
+          matching: find.byWidgetPredicate(
+              (w) => w is FilterChip || w is ActionChip),
+        );
+        expect(chips, findsNWidgets(4));
+        expectInsideScreen(tester, chips, 'filter chip');
+        for (var i = 0; i < 4; i++) {
+          expect(tester.getSize(chips.at(i)).height,
+              greaterThanOrEqualTo(kMinInteractiveDimension),
+              reason: 'filter chip #$i keeps a 48 dp tap target');
+        }
+      });
+
+      testWidgets(
+          'at ${scale}x the last route scrolls clear of the FABs and the '
+          'navigation bar', (tester) async {
+        const navBar = 48.0;
+        usePhone(tester, bottomInset: navBar);
+        final prefs = await _makePrefs();
+        // ignore: invalid_use_of_visible_for_testing_member
+        final store = LocalRouteStore()..debugSeed(plainRoutes(12));
+        await _pump(tester,
+            prefs: prefs, api: _FakeApi(), routeStore: store, textScale: scale);
+        await tester.pump();
+
+        // A builder list only estimates its extent until the tail is laid
+        // out, so jump to the end until the end stops moving.
+        final list = tester.state<ScrollableState>(_routeList).position;
+        for (var i = 0; i < 10 && list.pixels != list.maxScrollExtent; i++) {
+          list.jumpTo(list.maxScrollExtent);
+          await tester.pump();
+        }
+        expect(list.pixels, list.maxScrollExtent);
+        final last = find.byType(Card).last;
+        final lastBottom = tester.getRect(last).bottom;
+        final fabs = find.byType(FloatingActionButton);
+        expect(fabs, findsNWidgets(2));
+        for (var i = 0; i < 2; i++) {
+          expect(lastBottom, lessThanOrEqualTo(tester.getRect(fabs.at(i)).top),
+              reason: 'FAB #$i must not cover the last card');
+        }
+        expect(lastBottom, lessThanOrEqualTo(phone.height - navBar));
+      });
     }
+
+    testWidgets('at 1.3x a route title gets two lines, not one',
+        (tester) async {
+      usePhone(tester);
+      final prefs = await _makePrefs();
+      // The test font is Ahem, a square per glyph, so this is about the width
+        // the field report saw: eight characters a line at 1.3x.
+        const name = 'Pocahontas St';
+      // ignore: invalid_use_of_visible_for_testing_member
+      final store = LocalRouteStore()
+        // ignore: invalid_use_of_visible_for_testing_member
+        ..debugSeed([
+          cm.Route(
+            id: 'long',
+            userId: 'test-user',
+            name: name,
+            waypoints: const [],
+            distanceMetres: 42617,
+            elevationGainMetres: 229,
+          ),
+        ]);
+      await _pump(tester, prefs: prefs, routeStore: store, textScale: 1.3);
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      final title = tester.renderObject<RenderParagraph>(find.text(name));
+      expect(title.didExceedMaxLines, isFalse,
+          reason: 'a 13-character name fits on two lines at 1.3x');
+      expect(find.byIcon(Icons.chevron_right), findsNothing,
+          reason: 'the whole card is the tap target; the chevron only cost '
+              'the title width');
+    });
+
+    testWidgets('Import is a small FAB beside the extended Build FAB',
+        (tester) async {
+      usePhone(tester);
+      final prefs = await _makePrefs();
+      await _pump(tester, prefs: prefs, api: _FakeApi(), textScale: 1.3);
+      await tester.pump();
+      final import = find.ancestor(
+          of: find.byTooltip('Import'),
+          matching: find.byType(FloatingActionButton));
+      expect(import, findsOneWidget);
+      expect(tester.getSize(import).width, lessThanOrEqualTo(48));
+      expect(find.widgetWithText(FloatingActionButton, 'Build'),
+          findsOneWidget);
+    });
+  });
+
+  group('routeStatsLine', () {
+    final route = cm.Route(
+      id: 'r',
+      userId: 'u',
+      name: 'n',
+      waypoints: const [],
+      distanceMetres: 42617,
+      elevationGainMetres: 229,
+    );
+
+    test('never leaves a breaking space between a figure and its unit', () {
+      for (final unit in cm.DistanceUnit.values) {
+        final pieces = routeStatsLine(route, unit).split('  •  ');
+        expect(pieces, hasLength(2));
+        for (final p in pieces) {
+          expect(p.contains(' '), isFalse, reason: '"$p" could wrap mid-figure');
+        }
+      }
+    });
+
+    test('reads elevation in the reader unit', () {
+      expect(routeStatsLine(route, cm.DistanceUnit.km),
+          '42.62 km  •  229 m ↑');
+      expect(routeStatsLine(route, cm.DistanceUnit.mi),
+          '26.48 mi  •  751 ft ↑');
+    });
   });
 
   group('RoutesScreen — OS text scaling (issue #666 V12)', () {

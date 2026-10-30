@@ -363,6 +363,7 @@
   "authErrorNotSignedIn": "Dafür musst du angemeldet sein. Melde dich an und versuche es erneut.",
   "authErrorEmailExists": "Für diese E-Mail-Adresse existiert bereits ein Konto. Melde dich stattdessen an.",
   "authErrorEmailNotConfirmed": "Bestätige zuerst deine E-Mail-Adresse — sieh in deinem Posteingang nach dem Bestätigungslink.",
+  "authErrorLinkExpired": "Dieser Link ist abgelaufen oder wurde bereits verwendet. Fordere einen neuen an, um fortzufahren.",
   "authErrorWeakPassword": "Dieses Passwort ist zu schwach. Verwende mindestens {minLength} Zeichen.",
   "authErrorInvalidEmail": "Gib eine gültige E-Mail-Adresse ein.",
   "authErrorPasswordTooShort": "Das Passwort muss mindestens {minLength} Zeichen lang sein.",
@@ -976,7 +977,6 @@
   "routeBuilderServerUnreachable": "Server nicht erreichbar. Melde dich an oder überprüfe deine Verbindung und versuche es erneut.",
   "routeBuilderSaveFailed": "Speichern fehlgeschlagen: {error}",
   "routeBuilderSearchHint": "Orte suchen…",
-  "routeBuilderMore": "Mehr",
   "routeBuilderGenerateLoop": "Schleife erzeugen",
   "routeBuilderUndo": "Rückgängig",
   "routeBuilderClear": "Löschen",
@@ -5308,5 +5308,13 @@
   "prefsCoachInMessages": "KI-Coach in Nachrichten",
   "prefsCoachInMessagesPinned": "Oben angeheftet",
   "prefsCoachInMessagesListed": "Bei deinen Unterhaltungen",
-  "prefsCoachInMessagesHidden": "Ausgeblendet"
+  "prefsCoachInMessagesHidden": "Ausgeblendet",
+  "prefsDisclosureLevel": "Wie viele Details",
+  "prefsDisclosureAuto": "Automatisch",
+  "prefsDisclosureSimple": "Nur das Wichtigste",
+  "prefsDisclosureStandard": "Das Übliche",
+  "prefsDisclosureFull": "Alles",
+  "prefsDisclosureHint": "Wie viel die App zeigt, bevor du nach mehr fragst. Automatisch liest dein gesetztes Ziel und die Anzahl deiner aufgezeichneten Läufe und wählt heute {level}. Es wird nie etwas dauerhaft ausgeblendet — ein zugeklappter Abschnitt ist nur einen Tipp vom Öffnen entfernt.",
+  "dashboardTrainingLoadSection": "Trainingsbelastung",
+  "dashboardTrainingLoadSectionHint": "Deine Werte zu Fitness, Ermüdung und Form. Eingeklappt, weil du nur das Wichtigste wolltest — öffne es jederzeit, oder wähle unter Einstellungen → Voreinstellungen „Alles“."
 }

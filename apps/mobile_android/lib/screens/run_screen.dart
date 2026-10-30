@@ -8,7 +8,7 @@ import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart'
     show ActivityType, DistanceUnit, PlanWorkoutRow;
 import 'package:flutter/foundation.dart'
-    show ValueListenable, defaultTargetPlatform;
+    show ValueListenable, defaultTargetPlatform, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderProxyBox;
 import 'package:flutter/scheduler.dart';
@@ -37,6 +37,7 @@ import '../goal_time.dart';
 import '../guided_runs.dart';
 import '../health_connect_exporter.dart';
 import '../activity_type_labels.dart';
+import '../hold_to_stop_hint.dart';
 import '../hr_prescription_gate.dart';
 import '../workout_target_label.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -6205,8 +6206,22 @@ class _CollapsedStatsBar extends StatelessWidget {
 /// caption tells the user the control needs a press-and-hold, not a tap.
 /// Cancels cleanly on release. The shell's docked centre button reuses it as
 /// the phone layout's Stop ([RunStopDock]), so both share one gate.
+///
+/// Until this device has seen one completed hold, the button also plays a
+/// one-time demonstration: a ghost ring fills once and, where
+/// no caption sits beside the button, a "Hold to stop" bubble fades in above
+/// it. It plays when the button appears and again after any release that
+/// fell short of a full hold. Under reduce motion the bubble is shown still
+/// and nothing moves.
 class HoldToStopButton extends StatefulWidget {
   static const holdDuration = Duration(milliseconds: 800);
+  static const hintDuration = Duration(milliseconds: 2600);
+
+  /// The demonstration ring, kept apart from the real hold's progress ring.
+  static const hintRingKey = ValueKey('hold-to-stop-hint-ring');
+
+  /// The floating caption shown by the surfaces built with `showHint: false`.
+  static const hintBubbleKey = ValueKey('hold-to-stop-hint-bubble');
 
   final VoidCallback onHoldComplete;
   final double size;
@@ -6239,14 +6254,62 @@ class _HoldToStopButtonState extends State<HoldToStopButton>
   Duration _holdStart = Duration.zero;
   double _progress = 0;
 
+  late final AnimationController _hint;
+
+  // Null until the device flag has been read. The hint never plays on an
+  // unknown answer, so a slow or failed read costs the hint, never the stop.
+  bool? _learned;
+
+  /// The device flag once the read started on mount has landed; null before.
+  /// A test that asserts the hint stays quiet waits on this, so its absence
+  /// assertion runs after the answer it depends on rather than after a guess.
+  @visibleForTesting
+  bool? get learned => _learned;
+
+  @override
+  void initState() {
+    super.initState();
+    _hint = AnimationController(
+        vsync: this, duration: HoldToStopButton.hintDuration);
+    unawaited(_loadLearned());
+  }
+
+  Future<void> _loadLearned() async {
+    final learned = await holdToStopLearned();
+    if (!mounted || _learned != null) return;
+    setState(() => _learned = learned);
+    if (!learned && _ticker == null) _playHint();
+  }
+
+  void _playHint() {
+    if (_learned != false || _reduceMotion) return;
+    _hint.forward(from: 0);
+  }
+
+  void _stopHint() {
+    _hint.stop();
+    _hint.value = 0;
+  }
+
+  void _retireHint() {
+    _stopHint();
+    if (mounted) setState(() => _learned = true);
+    unawaited(markHoldToStopLearned());
+  }
+
+  bool get _reduceMotion =>
+      mounted && (MediaQuery.maybeDisableAnimationsOf(context) ?? false);
+
   @override
   void dispose() {
     _ticker?.dispose();
+    _hint.dispose();
     super.dispose();
   }
 
   void _onPointerDown() {
     _ticker?.dispose();
+    _stopHint();
     _holdStart = Duration.zero;
     _ticker = createTicker((elapsed) {
       if (_holdStart == Duration.zero) _holdStart = elapsed;
@@ -6259,21 +6322,105 @@ class _HoldToStopButtonState extends State<HoldToStopButton>
         _ticker = null;
         if (mounted) setState(() => _progress = 0);
         widget.onHoldComplete();
+        if (_learned != true) _retireHint();
       }
     })
       ..start();
   }
 
   void _onPointerUpOrCancel() {
+    final released = _ticker != null;
     _ticker?.dispose();
     _ticker = null;
     if (_progress != 0 && mounted) setState(() => _progress = 0);
+    // A release before the hold completed is the clearest sign the gesture
+    // hasn't been learned yet, so the demonstration plays again.
+    if (released) _playHint();
+  }
+
+  Widget _hintRing() {
+    return AnimatedBuilder(
+      animation: _hint,
+      builder: (context, _) {
+        final t = _hint.value;
+        if (t <= 0 || t >= 1) return const SizedBox.shrink();
+        final fill = AppMotion.curveStandard
+            .transform(const Interval(0.1, 0.55).transform(t));
+        final fade = 1 - const Interval(0.75, 0.95).transform(t);
+        return IgnorePointer(
+          child: Opacity(
+            opacity: fade,
+            child: SizedBox(
+              key: HoldToStopButton.hintRingKey,
+              width: widget.size,
+              height: widget.size,
+              child: CircularProgressIndicator(
+                value: fill,
+                strokeWidth: 4,
+                color: Colors.white.withValues(alpha: 0.85),
+                backgroundColor: Colors.transparent,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _hintBubble(BuildContext context, String text) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      key: HoldToStopButton.hintBubbleKey,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: scheme.inverseSurface,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: scheme.onInverseSurface,
+              fontWeight: FontWeight.w600,
+            ),
+      ),
+    );
+  }
+
+  /// The caption for the surfaces with none beside the button, floated above
+  /// it so the docked Stop keeps its exact footprint in the nav bar.
+  Widget _floatingBubble(BuildContext context, String text) {
+    Widget place(Widget child) => Positioned(
+          left: -100,
+          right: -100,
+          bottom: widget.size + 8,
+          child: IgnorePointer(
+            child: ExcludeSemantics(child: Center(child: child)),
+          ),
+        );
+    if (_reduceMotion) return place(_hintBubble(context, text));
+    return AnimatedBuilder(
+      animation: _hint,
+      builder: (context, _) {
+        final t = _hint.value;
+        if (t <= 0 || t >= 1) return const SizedBox.shrink();
+        final opacity = math.min(
+          const Interval(0.0, 0.15).transform(t),
+          1 - const Interval(0.8, 1.0).transform(t),
+        );
+        return place(Opacity(
+          opacity: opacity,
+          child: _hintBubble(context, text),
+        ));
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final semantic = AppSemanticColors.of(context);
     final l10n = AppLocalizations.of(context);
+    final hinting = _learned == false && _progress == 0;
     // The hold gesture is a sighted-user accidental-stop guard built on
     // raw Listener pointer events — a screen-reader user navigates by
     // element + double-tap-to-activate and can't perform a sustained
@@ -6309,6 +6456,7 @@ class _HoldToStopButtonState extends State<HoldToStopButton>
         height: widget.size,
         child: Stack(
           alignment: Alignment.center,
+          clipBehavior: Clip.none,
           children: [
             Container(
               width: widget.size,
@@ -6340,6 +6488,9 @@ class _HoldToStopButtonState extends State<HoldToStopButton>
                   backgroundColor: Colors.transparent,
                 ),
               ),
+            if (hinting) _hintRing(),
+            if (hinting && !widget.showHint)
+              _floatingBubble(context, l10n.runHoldToStopHint),
           ],
         ),
           ),

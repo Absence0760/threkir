@@ -323,7 +323,12 @@ class _RunHeatmapScreenState extends State<RunHeatmapScreen> {
                       ),
                   ],
                 ),
-              MapAttribution(darkBasemap: darkBasemap),
+              // The map runs under the system navigation bar, and a credit
+              // drawn there is covered by it.
+              SafeArea(
+                top: false,
+                child: MapAttribution(darkBasemap: darkBasemap),
+              ),
             ],
           ),
           if (_loading)

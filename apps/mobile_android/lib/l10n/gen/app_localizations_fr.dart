@@ -1346,6 +1346,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Confirmez d’abord votre e-mail — recherchez le lien de confirmation dans votre boîte de réception.';
 
   @override
+  String get authErrorLinkExpired =>
+      'Ce lien a expiré ou a déjà été utilisé. Demandez-en un nouveau pour continuer.';
+
+  @override
   String authErrorWeakPassword(int minLength) {
     return 'Ce mot de passe est trop faible. Utilisez au moins $minLength caractères.';
   }
@@ -3628,9 +3632,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get routeBuilderSearchHint => 'Rechercher des lieux…';
-
-  @override
-  String get routeBuilderMore => 'Plus';
 
   @override
   String get routeBuilderGenerateLoop => 'Générer une boucle';
@@ -18984,4 +18985,31 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get prefsCoachInMessagesHidden => 'Masqué';
+
+  @override
+  String get prefsDisclosureLevel => 'Niveau de détail';
+
+  @override
+  String get prefsDisclosureAuto => 'Automatique';
+
+  @override
+  String get prefsDisclosureSimple => 'L\'essentiel';
+
+  @override
+  String get prefsDisclosureStandard => 'L\'habituel';
+
+  @override
+  String get prefsDisclosureFull => 'Tout';
+
+  @override
+  String prefsDisclosureHint(String level) {
+    return 'Ce que l\'app déplie avant que vous en demandiez plus. Automatique lit l\'objectif que vous avez défini et le nombre de sorties enregistrées, et choisit $level aujourd\'hui. Rien n\'est jamais masqué définitivement : une section repliée n\'est qu\'à un toucher de s\'ouvrir.';
+  }
+
+  @override
+  String get dashboardTrainingLoadSection => 'Charge d’entraînement';
+
+  @override
+  String get dashboardTrainingLoadSectionHint =>
+      'Vos chiffres de forme, de fatigue et de fraîcheur. Replié parce que vous avez demandé l’essentiel : ouvrez-le quand vous voulez, ou choisissez Tout dans Réglages → Préférences.';
 }

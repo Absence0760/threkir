@@ -1282,6 +1282,10 @@ class AppLocalizationsJa extends AppLocalizations {
       'まずメールアドレスを確認してください。受信トレイの確認リンクをご確認ください。';
 
   @override
+  String get authErrorLinkExpired =>
+      'このリンクは期限切れか、すでに使用されています。新しいリンクをリクエストしてください。';
+
+  @override
   String authErrorWeakPassword(int minLength) {
     return 'このパスワードは脆弱です。$minLength 文字以上にしてください。';
   }
@@ -3414,9 +3418,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get routeBuilderSearchHint => '場所を検索…';
-
-  @override
-  String get routeBuilderMore => 'その他';
 
   @override
   String get routeBuilderGenerateLoop => 'ループを生成';
@@ -18058,4 +18059,31 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get prefsCoachInMessagesHidden => '非表示';
+
+  @override
+  String get prefsDisclosureLevel => '表示する情報量';
+
+  @override
+  String get prefsDisclosureAuto => '自動';
+
+  @override
+  String get prefsDisclosureSimple => '基本だけ';
+
+  @override
+  String get prefsDisclosureStandard => '標準';
+
+  @override
+  String get prefsDisclosureFull => 'すべて';
+
+  @override
+  String prefsDisclosureHint(String level) {
+    return '要求する前にアプリがどこまで展開するかです。自動は設定した目標と記録したランの件数を読み、現在は「$level」を選んでいます。完全に隠れることはなく、たたんだセクションはタップ1回で開きます。';
+  }
+
+  @override
+  String get dashboardTrainingLoadSection => 'トレーニング負荷';
+
+  @override
+  String get dashboardTrainingLoadSectionHint =>
+      'フィットネス、疲労、コンディションの数値です。「基本だけ」を選んだためたたんでいます。いつでも開けますし、設定 → 環境設定 で「すべて」を選べます。';
 }

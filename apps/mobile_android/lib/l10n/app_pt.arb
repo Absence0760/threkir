@@ -363,6 +363,7 @@
   "authErrorNotSignedIn": "Precisa de ter sessão iniciada para fazer isto. Inicie sessão e tente novamente.",
   "authErrorEmailExists": "Esse e-mail já tem uma conta. Entre em vez disto.",
   "authErrorEmailNotConfirmed": "Confirme o seu e-mail primeiro — procure o link de confirmação na sua caixa de entrada.",
+  "authErrorLinkExpired": "Este link expirou ou já foi utilizado. Peça um novo para continuar.",
   "authErrorWeakPassword": "Essa palavra-passe é muito fraca. Utilize pelo menos {minLength} caracteres.",
   "authErrorInvalidEmail": "Introduza um endereço de e-mail válido.",
   "authErrorPasswordTooShort": "A palavra-passe deve ter pelo menos {minLength} caracteres.",
@@ -976,7 +977,6 @@
   "routeBuilderServerUnreachable": "Não foi possível aceder ao servidor. Inicie sessão ou verifique a sua ligação e tente novamente.",
   "routeBuilderSaveFailed": "Falha ao guardar: {error}",
   "routeBuilderSearchHint": "Pesquisar lugares…",
-  "routeBuilderMore": "Mais",
   "routeBuilderGenerateLoop": "Gerar circuito",
   "routeBuilderUndo": "Desfazer",
   "routeBuilderClear": "Limpar",
@@ -5308,5 +5308,13 @@
   "prefsCoachInMessages": "Coach de IA nas Mensagens",
   "prefsCoachInMessagesPinned": "Fixado no topo",
   "prefsCoachInMessagesListed": "Com as suas conversas",
-  "prefsCoachInMessagesHidden": "Oculto"
+  "prefsCoachInMessagesHidden": "Oculto",
+  "prefsDisclosureLevel": "Quanto detalhe",
+  "prefsDisclosureAuto": "Automático",
+  "prefsDisclosureSimple": "Só o essencial",
+  "prefsDisclosureStandard": "O habitual",
+  "prefsDisclosureFull": "Tudo",
+  "prefsDisclosureHint": "Quanto a aplicação abre antes de pedir mais. Automático lê o objetivo que definiu e quantas corridas já tem guardadas, e hoje escolhe {level}. Nada fica escondido para sempre: uma secção recolhida abre com um toque.",
+  "dashboardTrainingLoadSection": "Carga de treino",
+  "dashboardTrainingLoadSectionHint": "Os seus números de condição física, fadiga e forma. Está recolhido porque pediu só o essencial: abra quando quiser, ou peça Tudo em Definições → Preferências."
 }

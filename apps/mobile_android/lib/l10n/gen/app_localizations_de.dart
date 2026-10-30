@@ -1345,6 +1345,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Bestätige zuerst deine E-Mail-Adresse — sieh in deinem Posteingang nach dem Bestätigungslink.';
 
   @override
+  String get authErrorLinkExpired =>
+      'Dieser Link ist abgelaufen oder wurde bereits verwendet. Fordere einen neuen an, um fortzufahren.';
+
+  @override
   String authErrorWeakPassword(int minLength) {
     return 'Dieses Passwort ist zu schwach. Verwende mindestens $minLength Zeichen.';
   }
@@ -3626,9 +3630,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get routeBuilderSearchHint => 'Orte suchen…';
-
-  @override
-  String get routeBuilderMore => 'Mehr';
 
   @override
   String get routeBuilderGenerateLoop => 'Schleife erzeugen';
@@ -18957,4 +18958,31 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsCoachInMessagesHidden => 'Ausgeblendet';
+
+  @override
+  String get prefsDisclosureLevel => 'Wie viele Details';
+
+  @override
+  String get prefsDisclosureAuto => 'Automatisch';
+
+  @override
+  String get prefsDisclosureSimple => 'Nur das Wichtigste';
+
+  @override
+  String get prefsDisclosureStandard => 'Das Übliche';
+
+  @override
+  String get prefsDisclosureFull => 'Alles';
+
+  @override
+  String prefsDisclosureHint(String level) {
+    return 'Wie viel die App zeigt, bevor du nach mehr fragst. Automatisch liest dein gesetztes Ziel und die Anzahl deiner aufgezeichneten Läufe und wählt heute $level. Es wird nie etwas dauerhaft ausgeblendet — ein zugeklappter Abschnitt ist nur einen Tipp vom Öffnen entfernt.';
+  }
+
+  @override
+  String get dashboardTrainingLoadSection => 'Trainingsbelastung';
+
+  @override
+  String get dashboardTrainingLoadSectionHint =>
+      'Deine Werte zu Fitness, Ermüdung und Form. Eingeklappt, weil du nur das Wichtigste wolltest — öffne es jederzeit, oder wähle unter Einstellungen → Voreinstellungen „Alles“.';
 }

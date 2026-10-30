@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show SectionHeader;
 
 import '../adaptive_width.dart';
+import '../disclosure.dart';
 import '../goals.dart';
 import '../hr_prescription_gate.dart';
 import '../hr_zones.dart'
@@ -16,6 +17,7 @@ import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
 import '../local_food_store.dart';
 import '../local_gym_store.dart';
+import '../local_run_store.dart';
 import '../locale_defaults.dart';
 import '../main.dart' show themeModeNotifier, localeNotifier;
 import '../nearby_flag.dart';
@@ -85,6 +87,10 @@ class SettingsPreferencesScreen extends StatefulWidget {
   final LocalGymStore? gymStore;
   final LocalFoodStore? foodStore;
 
+  /// Sizes the history the "How much detail" hint derives its Automatic level
+  /// from. Null counts no runs, so the hint names the goal's level alone.
+  final LocalRunStore? runStore;
+
   /// The heart-rate prescription gate (decisions § 2092); null reads the
   /// deploy flag. A test passes it directly.
   final bool? hrPrescription;
@@ -96,6 +102,7 @@ class SettingsPreferencesScreen extends StatefulWidget {
     required this.settingsSync,
     this.gymStore,
     this.foodStore,
+    this.runStore,
     this.hrPrescription,
   });
 
@@ -991,6 +998,45 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     }
   }
 
+  /// `auto` is the absence of the key, not a fourth level: picking it writes
+  /// null, which deletes the key and hands the level back to the derivation.
+  /// Web twin: `/settings/display`'s `disclosureChoice`.
+  String get _disclosureChoice {
+    final stored = _bagValue<Object>(disclosureLevelKey);
+    return isDisclosureLevel(stored) ? stored as String : 'auto';
+  }
+
+  /// What Automatic resolves to today, named in the hint.
+  String get _derivedDisclosure {
+    final goal = _bagValue<Object>(SettingsKeys.primaryGoal);
+    return disclosureLevel(
+      goal is String ? goal : null,
+      widget.runStore?.summaries.length ?? 0,
+    );
+  }
+
+  String _disclosureLabel(AppLocalizations l10n, String choice) =>
+      switch (choice) {
+        'simple' => l10n.prefsDisclosureSimple,
+        'standard' => l10n.prefsDisclosureStandard,
+        'full' => l10n.prefsDisclosureFull,
+        _ => l10n.prefsDisclosureAuto,
+      };
+
+  Future<void> _editDisclosureLevel() async {
+    final l10n = AppLocalizations.of(context);
+    final current = _disclosureChoice;
+    const options = ['auto', ...disclosureLevels];
+    final picked = await _pickRadio<String>(
+      title: l10n.prefsDisclosureLevel,
+      options: options,
+      labels: [for (final o in options) _disclosureLabel(l10n, o)],
+      current: current,
+    );
+    if (picked == null || picked == current) return;
+    await _putUniversal(disclosureLevelKey, picked == 'auto' ? null : picked);
+  }
+
   /// The bag is the source of truth once it has loaded; before that, the
   /// locally-mirrored value keeps the row honest offline.
   int get _undoWindowS {
@@ -1570,6 +1616,27 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                       trailing: const Icon(Icons.chevron_right),
                       enabled: _bagReady,
                       onTap: _editWeightUnit,
+                    ),
+                    ListTile(
+                      key: const Key('prefsDisclosureLevel'),
+                      title: Text(l10n.prefsDisclosureLevel),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(_disclosureLabel(l10n, _disclosureChoice)),
+                          Text(
+                            l10n.prefsDisclosureHint(
+                              _disclosureLabel(l10n, _derivedDisclosure),
+                            ),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                      isThreeLine: true,
+                      trailing: const Icon(Icons.chevron_right),
+                      enabled: _bagReady,
+                      onTap: _editDisclosureLevel,
                     ),
                     ListTile(
                       title: Text(l10n.prefsMapStyle),

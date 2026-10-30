@@ -862,7 +862,7 @@ class RoutesScreenState extends State<RoutesScreen> {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.add_road,
+                                  Icon(Icons.add_location_alt,
                                       size: 18,
                                       color: theme.colorScheme.outline),
                                   const SizedBox(width: 4),
@@ -877,7 +877,7 @@ class RoutesScreenState extends State<RoutesScreen> {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.file_upload,
+                                  Icon(Icons.upload_file,
                                       size: 18,
                                       color: theme.colorScheme.outline),
                                   const SizedBox(width: 4),
@@ -899,10 +899,9 @@ class RoutesScreenState extends State<RoutesScreen> {
               ),
             )
           : ListView.builder(
-              // Clears the dual-FAB column (Build + Import) — pre-fix the
-              // last route's star button and chevron sat under them.
-              padding: EdgeInsets.fromLTRB(
-                  16, 16, 16, fabScrollClearance(context, fabCount: 2)),
+              // Clears the FAB column (Build + the small Import above it) so
+              // the last route's star button can scroll out from under them.
+              padding: EdgeInsets.fromLTRB(16, 8, 16, _fabColumnClearance()),
               itemCount: 1 +
                   (emptyAfterFilter ? 1 : routes.length) +
                   (showLoadMore && !emptyAfterFilter ? 1 : 0),
@@ -911,6 +910,7 @@ class RoutesScreenState extends State<RoutesScreen> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      _discoverStrip(theme, l10n, inList: true),
                       _RoutesFilterHeader(
                         search: _search,
                         surfaceFilter: _surfaceFilter,
@@ -1090,19 +1090,16 @@ class RoutesScreenState extends State<RoutesScreen> {
                         Flexible(
                           child: Text(
                             route.name,
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
-                    // Single-line subtitle — same shape as runs'
-                    // `$date  •  $dur`. Distance + elevation is the
-                    // route equivalent.
-                    subtitle: Text(
-                      '${UnitFormat.distance(route.distanceMetres, unit)}'
-                      '  •  ${route.elevationGainMetres.round()} m ↑',
-                    ),
+                    // Same shape as runs' `$date  •  $dur`. Distance +
+                    // elevation is the route equivalent; each figure stays
+                    // glued to its unit when a raised text scale wraps it.
+                    subtitle: Text(routeStatsLine(route, unit)),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -1161,7 +1158,6 @@ class RoutesScreenState extends State<RoutesScreen> {
                                 : l10n.routesStarForWatch,
                             onPressed: () => _toggleStar(route),
                           ),
-                        const Icon(Icons.chevron_right),
                       ],
                     ),
                     onTap: () async {
@@ -1191,16 +1187,16 @@ class RoutesScreenState extends State<RoutesScreen> {
               },
             );
 
-    // Both mounts share the same body shape: the one-line "Discover" strip
-    // (Public routes / Routes heatmap / Run heatmap + the compact sync
-    // affordance) over the route list. The strip is the single home of every map/
-    // discovery entry point — icon-only AppBar actions proved
-    // undiscoverable (field reports for both heatmaps).
+    // The "Discover" strip (Public routes / Routes heatmap / Run heatmap +
+    // the compact sync affordance) is the single home of every map/discovery
+    // entry point — icon-only AppBar actions proved undiscoverable (field
+    // reports for both heatmaps). With routes on screen it heads the list and
+    // scrolls away with it; over the empty and error states it stays put.
     final content = Column(
       children: [
         if (_selecting)
           _selectionBanner(theme: theme, visible: routes, ownedIds: ownedIds),
-        ..._discoverHeader(theme, l10n),
+        if (mergedRoutes.isEmpty) _discoverStrip(theme, l10n, inList: false),
         Expanded(child: body),
       ],
     );
@@ -1217,14 +1213,17 @@ class RoutesScreenState extends State<RoutesScreen> {
 
   /// The "Discover" strip: the labelled discovery entry points — Public
   /// routes, the community routes heatmap (discoverable-route + club pins)
-  /// and the user's own run heatmap — then the compact sync affordance, on
-  /// ONE line. It sits above the list and never scrolls away, so it used to
-  /// cost a title row plus a Wrap that restacked the three buttons onto two
-  /// or three lines on a narrow phone or at a raised text scale: about half
-  /// the screen before the first route. The chips scroll horizontally
-  /// instead, like the surface peer strip (decisions § 486); "Discover"
-  /// names the strip for assistive tech rather than spending a row.
-  List<Widget> _discoverHeader(ThemeData theme, AppLocalizations l10n) {
+  /// and the user's own run heatmap — beside the compact sync affordance.
+  ///
+  /// The chips wrap rather than scroll sideways. A sideways row gave no edge
+  /// cue, so on a 360 dp phone at a raised text scale "Routes heatmap" read as
+  /// cut off by the sync button and "Run heatmap" was never seen — the same
+  /// finding that made the surface peer strip wrap (decisions § 1954). The
+  /// strip heads the list and scrolls away with it, so a second line costs
+  /// nothing once the reader starts scrolling. "Discover" names the strip for
+  /// assistive tech rather than spending a row.
+  Widget _discoverStrip(ThemeData theme, AppLocalizations l10n,
+      {required bool inList}) {
     ActionChip chip(IconData icon, String label, VoidCallback onPressed) =>
         ActionChip(
           avatar: Icon(icon, size: 18),
@@ -1232,121 +1231,151 @@ class RoutesScreenState extends State<RoutesScreen> {
           onPressed: onPressed,
         );
 
-    return [
-      Semantics(
-        container: true,
-        explicitChildNodes: true,
-        label: l10n.routesDiscover,
+    return Semantics(
+      container: true,
+      explicitChildNodes: true,
+      label: l10n.routesDiscover,
+      child: Padding(
+        // In the list the ListView's own 16 dp gutter applies.
+        padding: inList
+            ? EdgeInsets.zero
+            : const EdgeInsets.fromLTRB(16, 4, 16, 0),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: SingleChildScrollView(
+              child: Wrap(
                 key: const ValueKey('routes-discover-strip'),
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(16, 4, 8, 4),
-                child: Row(
-                  children: [
-                    chip(Icons.explore, l10n.routesPublicRoutes, () {
-                      Navigator.push(
+                spacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  chip(Icons.explore, l10n.routesPublicRoutes, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ExploreRoutesScreen(
+                          apiClient: widget.apiClient,
+                          routeStore: widget.routeStore,
+                          preferences: widget.preferences,
+                        ),
+                      ),
+                    );
+                  }),
+                  if (widget.apiClient != null) ...[
+                    // The two heatmaps sit side by side, so both labels
+                    // carry their qualifier ("Routes" = community
+                    // discoverable-route + club pins; "Run" = the user's
+                    // own tracks) — a bare "Heatmap" next to a sibling
+                    // heatmap says nothing.
+                    chip(
+                      Icons.local_fire_department,
+                      l10n.routesHeatmapTooltip,
+                      () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => ExploreRoutesScreen(
-                            apiClient: widget.apiClient,
-                            routeStore: widget.routeStore,
-                            preferences: widget.preferences,
-                          ),
-                        ),
-                      );
-                    }),
-                    if (widget.apiClient != null) ...[
-                      // The two heatmaps sit side by side, so both labels
-                      // carry their qualifier ("Routes" = community
-                      // discoverable-route + club pins; "Run" = the user's
-                      // own tracks) — a bare "Heatmap" next to a sibling
-                      // heatmap says nothing.
-                      const SizedBox(width: 8),
-                      chip(
-                        Icons.local_fire_department,
-                        l10n.routesHeatmapTooltip,
-                        () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => RoutesHeatmapScreen(
-                              api: widget.apiClient!,
-                            ),
+                          builder: (_) => RoutesHeatmapScreen(
+                            api: widget.apiClient!,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      chip(
-                        Icons.person_pin_circle_outlined,
-                        l10n.runHeatmapTooltip,
-                        () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => RunHeatmapScreen(
-                              api: widget.apiClient!,
-                              runStore: widget.runStore,
-                            ),
+                    ),
+                    chip(
+                      Icons.person_pin_circle_outlined,
+                      l10n.runHeatmapTooltip,
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => RunHeatmapScreen(
+                            api: widget.apiClient!,
+                            runStore: widget.runStore,
                           ),
                         ),
                       ),
-                    ],
+                    ),
                   ],
-                ),
+                ],
               ),
             ),
             if (_syncing)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+              const SizedBox(
+                width: 48,
+                height: 48,
+                child: Center(
+                  child: SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 ),
               )
             else if (widget.apiClient?.userId != null)
-              Padding(
-                padding: const EdgeInsets.only(right: 4),
-                child: IconButton(
-                  icon: const Icon(Icons.cloud_download, size: 20),
-                  tooltip: l10n.routesSyncFromCloud,
-                  constraints:
-                      const BoxConstraints(minWidth: 48, minHeight: 48),
-                  onPressed: _fetchRemoteRoutes,
-                ),
+              IconButton(
+                icon: const Icon(Icons.cloud_download, size: 20),
+                tooltip: l10n.routesSyncFromCloud,
+                constraints:
+                    const BoxConstraints(minWidth: 48, minHeight: 48),
+                onPressed: _fetchRemoteRoutes,
               ),
           ],
         ),
       ),
-    ];
+    );
   }
 
-  /// Dual-FAB column ("Build" + "Import"). Public so an `embedded: true`
-  /// host can hoist it into its own Scaffold's `floatingActionButton` slot.
+  /// Bottom padding the list owes the FAB column, so its last route can
+  /// scroll clear of it and of the system navigation bar.
+  double _fabColumnClearance() =>
+      fabScrollClearance(context) +
+      (widget.apiClient != null ? kSmallFabSlot + kFabStackGap : 0);
+
+  /// The FAB column: the extended "Build" FAB, with "Import" as a small FAB
+  /// above it. Two extended FABs stacked a 130 dp wide, 124 dp tall block
+  /// over the right edge of the list — exactly where each card's star sits.
+  /// Without an api client there is nothing to build against, so Import is
+  /// the one action and keeps its label. Public so an `embedded: true` host
+  /// can hoist it into its own Scaffold's `floatingActionButton` slot.
   Widget buildRouteFabs(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final onImport = _fabBusy ? null : _importFile;
+    if (widget.apiClient == null) {
+      return FloatingActionButton.extended(
+        heroTag: 'routes_import_fab',
+        onPressed: onImport,
+        icon: const Icon(Icons.upload_file),
+        label: Text(l10n.routesImport),
+      );
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        if (widget.apiClient != null)
-          FloatingActionButton.extended(
-            heroTag: 'routes_build_fab',
-            onPressed: _fabBusy ? null : _openBuilder,
-            icon: const Icon(Icons.add_location_alt),
-            label: Text(l10n.routesBuild),
-          ),
-        const SizedBox(height: 12),
-        FloatingActionButton.extended(
+        FloatingActionButton.small(
           heroTag: 'routes_import_fab',
-          onPressed: _fabBusy ? null : _importFile,
-          icon: const Icon(Icons.upload_file),
-          label: Text(l10n.routesImport),
+          onPressed: onImport,
+          tooltip: l10n.routesImport,
+          child: const Icon(Icons.upload_file),
+        ),
+        const SizedBox(height: kFabStackGap),
+        FloatingActionButton.extended(
+          heroTag: 'routes_build_fab',
+          onPressed: _fabBusy ? null : _openBuilder,
+          icon: const Icon(Icons.add_location_alt),
+          label: Text(l10n.routesBuild),
         ),
       ],
     );
   }
+}
+
+/// A route card's stats line, "26.48 mi  •  751 ft ↑", in the reader's unit.
+///
+/// Every space inside a figure is non-breaking, so a raised text scale wraps
+/// the line between the two figures and never between a number and its unit.
+@visibleForTesting
+String routeStatsLine(cm.Route route, cm.DistanceUnit unit) {
+  String glued(String s) => s.replaceAll(' ', '\u00A0');
+  return '${glued(UnitFormat.distance(route.distanceMetres, unit))}'
+      '  •  ${glued('${UnitFormat.elevation(route.elevationGainMetres, unit)} ↑')}';
 }
 
 class _RouteParseRequest {
@@ -1512,53 +1541,49 @@ class _RoutesFilterHeaderState extends State<_RoutesFilterHeader> {
             ),
           ),
           const SizedBox(height: 8),
-          // Single-row filter strip. Starred-first per user
-          // request — it's the most-toggled filter in practice
-          // (people flip the watch-starred set far more often
-          // than they re-pick a surface or sort order), so it
-          // earns the leftmost slot. The four chips reflow into
-          // a horizontal scroll if the device is too narrow. The rail takes
-          // its height from the chips, not a literal: a chip needs 58 px at
-          // 2x OS text scale and was being cropped to 40.
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                FilterChip(
-                  label: Text(l10n.routesStarred),
-                  avatar: Icon(
-                    widget.starredOnly ? Icons.star : Icons.star_border,
-                    size: 18,
-                    color: widget.starredOnly
-                        ? AppSemanticColors.of(context).crown
-                        : theme.colorScheme.onSurfaceVariant,
-                  ),
-                  selected: widget.starredOnly,
-                  onSelected: (_) => widget.onStarredOnlyToggled(),
+          // Starred first: it's the most-toggled filter in practice (people
+          // flip the watch-starred set far more often than they re-pick a
+          // surface or sort order). The chips wrap rather than scroll
+          // sideways: a sideways row clipped "Any distance" at the screen
+          // edge with no cue that more followed, and hid the sort chip
+          // entirely (decisions § 1954). Each row takes its height from the
+          // chips, not a literal — a chip needs 58 px at 2x OS text scale.
+          Wrap(
+            key: const ValueKey('routes-filter-chips'),
+            spacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              FilterChip(
+                label: Text(l10n.routesStarred),
+                avatar: Icon(
+                  widget.starredOnly ? Icons.star : Icons.star_border,
+                  size: 18,
+                  color: widget.starredOnly
+                      ? AppSemanticColors.of(context).crown
+                      : theme.colorScheme.onSurfaceVariant,
                 ),
-                const SizedBox(width: 8),
-                _DropdownChip<_SurfaceFilter>(
-                  value: widget.surfaceFilter,
-                  items: _SurfaceFilter.values,
-                  labelOf: (v) => _surfaceLabel(l10n, v),
-                  onChanged: widget.onSurfaceChanged,
-                ),
-                const SizedBox(width: 8),
-                _DropdownChip<_DistanceBucket>(
-                  value: widget.distanceFilter,
-                  items: _DistanceBucket.values,
-                  labelOf: (v) => _distanceLabel(l10n, v),
-                  onChanged: widget.onDistanceChanged,
-                ),
-                const SizedBox(width: 8),
-                _DropdownChip<_RouteSort>(
-                  value: widget.sort,
-                  items: _RouteSort.values,
-                  labelOf: (v) => _sortLabel(l10n, v),
-                  onChanged: widget.onSortChanged,
-                ),
-              ],
-            ),
+                selected: widget.starredOnly,
+                onSelected: (_) => widget.onStarredOnlyToggled(),
+              ),
+              _DropdownChip<_SurfaceFilter>(
+                value: widget.surfaceFilter,
+                items: _SurfaceFilter.values,
+                labelOf: (v) => _surfaceLabel(l10n, v),
+                onChanged: widget.onSurfaceChanged,
+              ),
+              _DropdownChip<_DistanceBucket>(
+                value: widget.distanceFilter,
+                items: _DistanceBucket.values,
+                labelOf: (v) => _distanceLabel(l10n, v),
+                onChanged: widget.onDistanceChanged,
+              ),
+              _DropdownChip<_RouteSort>(
+                value: widget.sort,
+                items: _RouteSort.values,
+                labelOf: (v) => _sortLabel(l10n, v),
+                onChanged: widget.onSortChanged,
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Row(
@@ -1585,8 +1610,14 @@ class _RoutesFilterHeaderState extends State<_RoutesFilterHeader> {
   }
 }
 
-/// Compact dropdown rendered as a chip — used for surface / distance /
-/// sort so they share the wrap row visually with the starred toggle.
+/// A single-choice picker rendered as a chip — surface / distance / sort — so
+/// it shares the filter row with the starred toggle.
+///
+/// A Material chip rather than a `DropdownButton` in a pill: the button sized
+/// itself to its widest option, so at 2x OS text "Any surface" overflowed the
+/// row; it ignored the 48 dp tap-target floor (26 dp tall at 1.3x); and it sat
+/// visibly shorter than the FilterChip beside it. The chip ellipsizes its
+/// label, pads its target like its neighbour, and opens a menu of the options.
 class _DropdownChip<T> extends StatelessWidget {
   final T value;
   final List<T> items;
@@ -1602,28 +1633,33 @@ class _DropdownChip<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<T>(
-          value: value,
-          isDense: true,
-          icon: const Icon(Icons.arrow_drop_down, size: 18),
-          style: theme.textTheme.bodyMedium,
-          items: [
-            for (final v in items)
-              DropdownMenuItem(value: v, child: Text(labelOf(v))),
+    return MenuAnchor(
+      menuChildren: [
+        for (final v in items)
+          MenuItemButton(
+            leadingIcon: Icon(v == value ? Icons.check : null, size: 18),
+            onPressed: () {
+              if (v != value) onChanged(v);
+            },
+            child: Text(labelOf(v)),
+          ),
+      ],
+      builder: (context, controller, _) => ActionChip(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                labelOf(value),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const Icon(Icons.arrow_drop_down, size: 18),
           ],
-          onChanged: (v) {
-            if (v != null) onChanged(v);
-          },
         ),
+        onPressed: () =>
+            controller.isOpen ? controller.close() : controller.open(),
       ),
     );
   }

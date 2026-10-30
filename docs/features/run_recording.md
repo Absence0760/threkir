@@ -160,6 +160,16 @@ The 1-second elapsed-time timer inside `begin()` emits snapshots unconditionally
     and race strategy carry over by design.
 ```
 
+### First-run "Hold to stop" hint
+
+New runners tap Stop, see nothing happen and assume it is broken (issue #1253). Until this device has seen one **completed** hold, `HoldToStopButton` plays a one-time demonstration: a ghost ring fills once (keyed `HoldToStopButton.hintRingKey`, separate from the real hold's progress ring) and, on the surfaces built with `showHint: false` (the docked centre Stop in `home_screen.dart`'s `_logFab` and the collapsed stats bar), a "Hold to stop" bubble (`runHoldToStopHint`) fades in above the button without changing its footprint. The in-panel Stop already carries that caption beneath it, so it gets the ring only. It plays when the button appears and again after any release that falls short of a full hold; pressing hands the ring back to the real hold. Because the logic lives in the button, every Stop surface gets it.
+
+- **Retirement** happens on the first completed hold, after `onHoldComplete` has run: the flag is the device-local `hold_to_stop_learned` key ([settings.md § Device-local prefs](../backend/settings.md#device-local-pairing-prefs-not-in-the-synced-bag), `lib/hold_to_stop_hint.dart`). Discarding or force-quitting the first run leaves it armed, and a screen reader's double-tap (which routes straight to `onHoldComplete`) does not retire it, since it says nothing about the gesture.
+- **Reduce motion** (`MediaQuery.disableAnimations`) shows the bubble still, for as long as the hint is armed, and no ring moves.
+- **Layering:** the hint is L4. A failed read counts as learned (no hint, rather than one that replays forever), the write never throws, and nothing about the stop path waits on either. The screen-reader `Semantics` node is unchanged and the bubble is excluded from it.
+
+Tests: `hold_to_stop_button_test.dart` (first run plays untouched, a tap replays, a completed hold retires it for later buttons, reduce motion shows a still caption).
+
 ### After the run: grading the race strategy
 
 When a race strategy was active, the final save stamps

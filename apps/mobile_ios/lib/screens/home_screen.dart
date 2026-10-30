@@ -574,6 +574,7 @@ class _HomeScreenState extends State<HomeScreen>
             settingsSync: widget.settingsSync,
             gymStore: widget.gymStore,
             foodStore: widget.foodStore,
+            runStore: widget.runStore,
           ),
         SettingsDestination.account => SettingsAccountScreen(
             apiClient: widget.apiClient,

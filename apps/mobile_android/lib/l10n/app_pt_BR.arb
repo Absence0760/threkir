@@ -5307,5 +5307,13 @@
   "prefsCoachInMessages": "Coach de IA em Mensagens",
   "prefsCoachInMessagesPinned": "Fixado no topo",
   "prefsCoachInMessagesListed": "Junto com suas conversas",
-  "prefsCoachInMessagesHidden": "Oculto"
+  "prefsCoachInMessagesHidden": "Oculto",
+  "prefsDisclosureLevel": "Quanto detalhe",
+  "prefsDisclosureAuto": "Automático",
+  "prefsDisclosureSimple": "Só o básico",
+  "prefsDisclosureStandard": "O de sempre",
+  "prefsDisclosureFull": "Tudo",
+  "prefsDisclosureHint": "Quanto o app abre antes de você pedir mais. Automático lê a meta que você definiu e quantas corridas já registrou, e hoje escolhe {level}. Nada fica escondido para sempre: uma seção recolhida abre com um toque.",
+  "dashboardTrainingLoadSection": "Carga de treino",
+  "dashboardTrainingLoadSectionHint": "Seus números de condicionamento, fadiga e forma. Está recolhido porque você pediu só o básico: abra quando quiser, ou peça Tudo em Configurações → Preferências."
 }

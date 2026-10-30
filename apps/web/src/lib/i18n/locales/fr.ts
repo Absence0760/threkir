@@ -1365,7 +1365,7 @@ export const messages = {
 	"routesPage.unstarRouteLabel": "Retirer {name} des favoris",
 	"routesPage.starRouteLabel": "Mettre {name} en favori — s'affiche sur la montre associée",
 	"routesPage.routeFallback": "itinéraire",
-	"routesPage.elevation": "{m} m dén.",
+	"routesPage.elevation": "{elevation} dén.",
 	"routesPage.starError": "Impossible de mettre l'itinéraire en favori : {error}",
 	"routesPage.unstarError": "Impossible de retirer l'itinéraire des favoris : {error}",
 	"runDetail.linkedToRoute": "Lié à {name}",

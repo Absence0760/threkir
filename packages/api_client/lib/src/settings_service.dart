@@ -191,6 +191,13 @@ class SettingsKeys {
   /// Distance values map 1:1 to the training goal-event enum. Web twin:
   /// `primary_goal` (`onboarding.ts`). See settings.md.
   static const primaryGoal = 'primary_goal';
+  /// Whether Home's "Training load" expander is open (`bool`, absent reads
+  /// as closed). Only drawn, and only written, while the effective
+  /// `disclosure_level` is `simple`; written by the expander itself, so it has
+  /// no settings control. Web twin: `/dashboard`'s `TRAINING_LOAD_EXPANDED_KEY`.
+  /// See settings.md.
+  static const dashboardTrainingLoadExpanded =
+      'dashboard_training_load_expanded';
 
   // Device (D)
   static const voiceFeedbackEnabled = 'voice_feedback_enabled';

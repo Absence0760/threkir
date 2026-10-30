@@ -30748,6 +30748,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hidden'**
   String get prefsCoachInMessagesHidden;
+
+  /// Settings > Preferences tile title for the progressive-disclosure level (universal disclosure_level key)
+  ///
+  /// In en, this message translates to:
+  /// **'How much detail'**
+  String get prefsDisclosureLevel;
+
+  /// Disclosure-level option: no stored level, derived from the onboarding goal and run count
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get prefsDisclosureAuto;
+
+  /// Disclosure-level option: the fewest metrics open by default
+  ///
+  /// In en, this message translates to:
+  /// **'Just the basics'**
+  String get prefsDisclosureSimple;
+
+  /// Disclosure-level option: the usual amount of detail
+  ///
+  /// In en, this message translates to:
+  /// **'The usual'**
+  String get prefsDisclosureStandard;
+
+  /// Disclosure-level option: every metric open
+  ///
+  /// In en, this message translates to:
+  /// **'Everything'**
+  String get prefsDisclosureFull;
+
+  /// Hint under the How much detail tile; {level} is the level Automatic resolves to today (one of the three option labels)
+  ///
+  /// In en, this message translates to:
+  /// **'How much the app opens up before you ask for more. Automatic reads the goal you set and how many runs you have logged, and picks {level} today. Nothing is ever hidden for good — a folded section is one tap from open.'**
+  String prefsDisclosureHint(String level);
+
+  /// Title of the Home expander that folds the fitness card and training-load chart at the Just the basics level
+  ///
+  /// In en, this message translates to:
+  /// **'Training load'**
+  String get dashboardTrainingLoadSection;
+
+  /// One-line explanation under the Training load expander title on Home; names where the level is changed
+  ///
+  /// In en, this message translates to:
+  /// **'Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it, or ask for everything in Settings → Preferences.'**
+  String get dashboardTrainingLoadSectionHint;
 }
 
 class _AppLocalizationsDelegate

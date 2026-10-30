@@ -1378,7 +1378,7 @@ export const en = {
 	"routesPage.unstarRouteLabel": "Unstar {name}",
 	"routesPage.starRouteLabel": "Star {name} — shows on paired watch",
 	"routesPage.routeFallback": "route",
-	"routesPage.elevation": "{m} m elev",
+	"routesPage.elevation": "{elevation} elev",
 	"routesPage.starError": "Could not star route: {error}",
 	"routesPage.unstarError": "Could not unstar route: {error}",
 	"runDetail.linkedToRoute": "Linked to {name}",

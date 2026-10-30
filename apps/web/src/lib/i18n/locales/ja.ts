@@ -1360,7 +1360,7 @@ export const messages = {
 	"routesPage.unstarRouteLabel": "{name} のスターを外す",
 	"routesPage.starRouteLabel": "{name} にスターを付ける — ペアリングしたウォッチに表示",
 	"routesPage.routeFallback": "ルート",
-	"routesPage.elevation": "標高 {m} m",
+	"routesPage.elevation": "標高 {elevation}",
 	"routesPage.starError": "ルートにスターを付けられませんでした: {error}",
 	"routesPage.unstarError": "ルートのスターを外せませんでした: {error}",
 	"runDetail.linkedToRoute": "{name} にリンクしました",

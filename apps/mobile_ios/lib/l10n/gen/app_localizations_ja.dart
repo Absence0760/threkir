@@ -18055,4 +18055,31 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get prefsCoachInMessagesHidden => '非表示';
+
+  @override
+  String get prefsDisclosureLevel => '表示する情報量';
+
+  @override
+  String get prefsDisclosureAuto => '自動';
+
+  @override
+  String get prefsDisclosureSimple => '基本だけ';
+
+  @override
+  String get prefsDisclosureStandard => '標準';
+
+  @override
+  String get prefsDisclosureFull => 'すべて';
+
+  @override
+  String prefsDisclosureHint(String level) {
+    return '要求する前にアプリがどこまで展開するかです。自動は設定した目標と記録したランの件数を読み、現在は「$level」を選んでいます。完全に隠れることはなく、たたんだセクションはタップ1回で開きます。';
+  }
+
+  @override
+  String get dashboardTrainingLoadSection => 'トレーニング負荷';
+
+  @override
+  String get dashboardTrainingLoadSectionHint =>
+      'フィットネス、疲労、コンディションの数値です。「基本だけ」を選んだためたたんでいます。いつでも開けますし、設定 → 環境設定 で「すべて」を選べます。';
 }

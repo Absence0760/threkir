@@ -72,6 +72,9 @@ email_auth_records = {
   # ── Migadu: inbound + @threkir.com mailboxes (apex) ──
   # SPF + ownership-verify share one apex TXT record set (Route 53 keys a
   # record set by name+type, so both TXT strings live under one entry).
+  # Every other apex TXT string goes here too, e.g. Pinterest's domain claim
+  # for pinterest.com/threkir (social#2). The key keeps its Migadu name:
+  # renaming it would destroy and recreate the record set, briefly dropping SPF.
   #
   # The apex SPF authorizes BOTH senders because the app's envelope-from is
   # apex (smtp.ts issues `MAIL FROM:<noreply@threkir.com>`): spf.migadu.com
@@ -79,7 +82,7 @@ email_auth_records = {
   # include here would SPF-fail app mail if Resend ever forwards the apex
   # return-path unrewritten. (Resend's own send-subdomain SPF is separate,
   # above.) Keep this in sync with whichever relay `SMTP_HOST` points at.
-  migadu_apex_txt   = { name = "", type = "TXT", records = ["v=spf1 include:spf.migadu.com include:amazonses.com -all", "hosted-email-verify=p8dxwnab"] }
+  migadu_apex_txt   = { name = "", type = "TXT", records = ["v=spf1 include:spf.migadu.com include:amazonses.com -all", "hosted-email-verify=p8dxwnab", "pinterest-site-verification=c00b9337a0389a79d741e9b76dd9ac6c"] }
   migadu_mx         = { name = "", type = "MX", records = ["10 aspmx1.migadu.com", "20 aspmx2.migadu.com"] }
   migadu_dkim1      = { name = "key1._domainkey", type = "CNAME", records = ["key1.threkir.com._domainkey.migadu.com."] }
   migadu_dkim2      = { name = "key2._domainkey", type = "CNAME", records = ["key2.threkir.com._domainkey.migadu.com."] }

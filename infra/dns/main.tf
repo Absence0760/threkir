@@ -133,3 +133,17 @@ resource "aws_route53_record" "live_hub" {
   ttl     = 300
   records = ["threkir-worker.fly.dev"]
 }
+
+# ─────────────────── Bluesky handle (@threkir.com) ───────────────────
+# Proves to Bluesky that the Threkir account owns threkir.com, so its
+# handle can be the domain instead of threkir.bsky.social. The value is
+# the account's public DID (not a secret). It never changes for the life
+# of the account, even if the account moves to another PDS host.
+
+resource "aws_route53_record" "bluesky_handle" {
+  zone_id = aws_route53_zone.apex.zone_id
+  name    = "_atproto.${var.apex_domain}"
+  type    = "TXT"
+  ttl     = 300
+  records = ["did=did:plc:hvuwdifhrhfnyduhcthmd2x3"]
+}

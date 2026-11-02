@@ -25,7 +25,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/job_wor
 # 2026b (Trivy DLA-4792-1) while static-debian13 carried 2026c. The binary
 # is static, so the base supplies only ca-certificates, tzdata and the
 # nonroot user.
-FROM gcr.io/distroless/static-debian13:nonroot@sha256:18f4cc26c9ffa7f20a359298be7deadac5c607c8e03a02b8119f1a5fc2f82c99
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:25ac8f0c3b2334a9eb05452266bd4697864a8c8ef0ef71e5e6480d7f92868329
 COPY --from=build /out/job_worker /job_worker
 
 # slog JSON logs go to stdout. No HTTP listener — the worker is

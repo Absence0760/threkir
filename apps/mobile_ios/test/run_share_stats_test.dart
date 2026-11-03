@@ -122,6 +122,20 @@ void main() {
           greaterThan(double.parse(km.value.replaceAll(',', ''))));
     });
 
+    test('moving time rounds a millisecond-stamped track to the second', () {
+      final track = [
+        Waypoint(
+            lat: 51.44, lng: -0.27, timestamp: DateTime.utc(2026, 4, 15, 8)),
+        Waypoint(
+            lat: 51.442,
+            lng: -0.27,
+            timestamp: DateTime.utc(2026, 4, 15, 8, 0, 1, 600)),
+      ];
+      final stats = runShareStats(l10n, _run(track: track), DistanceUnit.km,
+          kinds: const [RunShareStatKind.time]);
+      expect(stats.single.value, '00:02');
+    });
+
     test('a ride prints speed in the pace slot', () {
       final stats = runShareStats(
         l10n,

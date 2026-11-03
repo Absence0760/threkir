@@ -551,7 +551,7 @@ create table notifications (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid references auth.users(id) on delete cascade not null,
   actor_id    uuid references auth.users(id) on delete set null,
-  kind        text not null check (kind in ('kudos','comment','comment_reply','follow','event_rsvp','event_cancel','plan_update','message','club_post','run_completed','event_reminder','plan_assigned','achievement','challenge_complete','content_hidden','data_export_ready','refund_failed')),
+  kind        text not null check (kind in ('kudos','comment','comment_reply','follow','event_rsvp','event_cancel','plan_update','message','club_post','run_completed','event_reminder','plan_assigned','achievement','challenge_complete','content_hidden','data_export_ready','refund_failed','event_waitlist_slot','follow_request','reaction','comment_like','mention','workout_reminder','plan_ai_edit','personal_record')),
   run_id        uuid references runs(id) on delete cascade,
   comment_id    uuid references run_comments(id) on delete cascade,
   event_id      uuid references events(id) on delete cascade,
@@ -573,7 +573,7 @@ The `achievement` kind (migration `20270208_001`) fires from the
 award, linked via the dedicated `achievement_id` FK (the `activity_kind` CHECK
 was left untouched rather than widened — a badge isn't an `activities`-view
 modality). Owner-only, no actor. A new in-app kind stays bell-only unless added
-to the email/push allowlists. `plan_assigned` was added by `20270107_001`. `plan_ai_edit` (`20271021000050`, decisions § 2230) is inserted by `private.notify_coach_of_ai_plan_edit`, which `apply_ai_plan_edits` calls for each plan it changed: to the plan's `assigned_by_coach_id` (actor = the athlete, `plan_id` = the plan) only while that coach's `coach_athletes` link with the athlete is `active`, refreshing the unread row's `created_at` rather than adding a second one.
+to the email/push allowlists. `plan_assigned` was added by `20270107_001`. `personal_record` (`20271104000002`, decisions § 2266) is inserted by `private.record_personal_record_improvements` from inside the PR refresher: one per run that beat the cache (however many brackets it improved), only for a run started in the last 7 days, carrying `run_id` and the `('run', run_id)` activity reference; owner-only, no actor. `plan_ai_edit` (`20271021000050`, decisions § 2230) is inserted by `private.notify_coach_of_ai_plan_edit`, which `apply_ai_plan_edits` calls for each plan it changed: to the plan's `assigned_by_coach_id` (actor = the athlete, `plan_id` = the plan) only while that coach's `coach_athletes` link with the athlete is `active`, refreshing the unread row's `created_at` rather than adding a second one.
 
 `(activity_kind, activity_id)` is the **polymorphic activity reference** (F15, migration `20261212_001`) added ahead of the Phase 4 social expansion (kudos on a lift, comment on a meal). `activity_kind` matches the `activities`-view modality tag; `activity_id` is a bare uuid (no single FK — it spans `runs` / `gym_workouts` / `food_log`). The run-notification triggers (`notify_run_kudos`, `notify_run_comment`, `notify_run_completed`) populate it as `('run', run_id)`, and existing run-linked rows were backfilled the same way. `run_id` is kept as the referential-integrity bridge for the run path until the social-lift work lands. The kind CHECK is consolidated into one authoritative constraint (F16, `20261211_001`); `event_reminder` was added by `20261130_001`.
 
@@ -1412,6 +1412,38 @@ Second index `personal_records_distance_time` on `(distance,
 best_time_s asc)` prepared for a future leaderboard view. RLS today
 scopes reads to the owner; broader read policy is a follow-up when
 the leaderboard UI lands.
+
+#### `personal_record_improvements`
+
+The log of each time a run beat the `personal_records` cache, with the time it
+replaced — what the PR share card prints (migration `20271104000002`,
+[decisions § 2266](../architecture/decisions.md)).
+
+```sql
+create table personal_record_improvements (
+  id               uuid primary key default gen_random_uuid(),
+  user_id          uuid not null references auth.users(id) on delete cascade,
+  run_id           uuid not null references runs(id) on delete cascade,
+  distance         text not null check (distance in ('1_mile', '5k', '8k', '10k', '12k', 'half_marathon', 'marathon')),
+  best_time_s      integer not null check (best_time_s > 0),
+  previous_time_s  integer check (previous_time_s is null or previous_time_s > best_time_s),
+  achieved_at      timestamptz not null,
+  created_at       timestamptz not null default now(),
+  constraint personal_record_improvements_run_distance_uk unique (run_id, distance)
+);
+```
+
+Written only by `private.record_personal_record_improvements(p_user, p_before)`
+(SECURITY DEFINER, no client EXECUTE), which `refresh_personal_records_for_user`
+calls after its rebuild with the bests it read before it: a row for each bracket
+now strictly faster than before, or newly filled (`previous_time_s` null). The
+unique key means a run that leaves the cache and returns is not logged again.
+For each run with no earlier row and a start within the last 7 days it also
+inserts one `personal_record` notification. **RLS:** owner SELECT only
+(`personal_record_improvements_self_select`); `anon` / `authenticated` hold no
+other privilege. Exported as `personal_record_improvements.json` by both DSAR
+specs; cascades with the run and the account. Index
+`personal_record_improvements_user_achieved` on `(user_id, achieved_at desc)`.
 
 #### `achievements`
 

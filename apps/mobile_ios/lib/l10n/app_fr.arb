@@ -5344,5 +5344,18 @@
   "prefsDisclosureFull": "Tout",
   "prefsDisclosureHint": "Ce que l'app déplie avant que vous en demandiez plus. Automatique lit l'objectif que vous avez défini et le nombre de sorties enregistrées, et choisit {level} aujourd'hui. Rien n'est jamais masqué définitivement : une section repliée n'est qu'à un toucher de s'ouvrir.",
   "dashboardTrainingLoadSection": "Charge d’entraînement",
-  "dashboardTrainingLoadSectionHint": "Vos chiffres de forme, de fatigue et de fraîcheur. Replié parce que vous avez demandé l’essentiel : ouvrez-le quand vous voulez, ou choisissez Tout dans Réglages → Préférences."
+  "dashboardTrainingLoadSectionHint": "Vos chiffres de forme, de fatigue et de fraîcheur. Replié parce que vous avez demandé l’essentiel : ouvrez-le quand vous voulez, ou choisissez Tout dans Réglages → Préférences.",
+  "recapCardKicker": "Mon {period} en course",
+  "recapCardAcrossRuns": "{count, plural, =1{en 1 course} other{en {count} courses}}",
+  "recapCardStreakDays": "{days, plural, =1{1 jour} other{{days} jours}}",
+  "recapCardOnFoot": "En mouvement",
+  "recapCardClimbed": "Dénivelé",
+  "recapCardActiveMonths": "Mois actifs",
+  "recapShareSheetTitle": "Partager votre bilan",
+  "recapShareAspectSquare": "Carré",
+  "recapShareAspectStory": "Story",
+  "recapSharePreviewLabel": "Aperçu de l'image du bilan",
+  "recapShareImage": "Partager l'image",
+  "recapShareAsText": "Partager en texte",
+  "recapShareImageError": "Impossible de créer l'image du bilan. Réessayez."
 }

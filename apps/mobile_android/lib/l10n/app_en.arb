@@ -24986,5 +24986,72 @@
   "dashboardTrainingLoadSectionHint": "Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it, or ask for everything in Settings → Preferences.",
   "@dashboardTrainingLoadSectionHint": {
     "description": "One-line explanation under the Training load expander title on Home; names where the level is changed"
+  },
+  "recapCardKicker": "My {period} in running",
+  "@recapCardKicker": {
+    "description": "Letter-spaced kicker on the recap share image, printed in capitals; period is a year or a month and year",
+    "placeholders": {
+      "period": {
+        "type": "String"
+      }
+    }
+  },
+  "recapCardAcrossRuns": "{count, plural, =1{across 1 run} other{across {count} runs}}",
+  "@recapCardAcrossRuns": {
+    "description": "Subhead under the total distance on the recap share image",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "recapCardStreakDays": "{days, plural, =1{1 day} other{{days} days}}",
+  "@recapCardStreakDays": {
+    "description": "Best streak value on the recap share image",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "recapCardOnFoot": "On foot",
+  "@recapCardOnFoot": {
+    "description": "Recap share image stat label: total time spent moving"
+  },
+  "recapCardClimbed": "Climbed",
+  "@recapCardClimbed": {
+    "description": "Recap share image stat label: total elevation gain"
+  },
+  "recapCardActiveMonths": "Active months",
+  "@recapCardActiveMonths": {
+    "description": "Recap share image stat label: months with at least one run, shown as N / 12"
+  },
+  "recapShareSheetTitle": "Share your recap",
+  "@recapShareSheetTitle": {
+    "description": "Title of the sheet that shares the recap as an image or text"
+  },
+  "recapShareAspectSquare": "Square",
+  "@recapShareAspectSquare": {
+    "description": "Chip choosing the square (1:1) recap image, for a feed post"
+  },
+  "recapShareAspectStory": "Story",
+  "@recapShareAspectStory": {
+    "description": "Chip choosing the tall 9:16 recap image, for a story"
+  },
+  "recapSharePreviewLabel": "Preview of the recap image",
+  "@recapSharePreviewLabel": {
+    "description": "Screen-reader label for the preview of the recap share image"
+  },
+  "recapShareImage": "Share image",
+  "@recapShareImage": {
+    "description": "Button that shares the recap image through the system share sheet"
+  },
+  "recapShareAsText": "Share as text",
+  "@recapShareAsText": {
+    "description": "Button that shares the recap as a few lines of text instead of an image"
+  },
+  "recapShareImageError": "Couldn't make the recap image. Try again.",
+  "@recapShareImageError": {
+    "description": "Banner when the recap image could not be made or shared"
   }
 }

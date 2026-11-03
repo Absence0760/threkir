@@ -30970,6 +30970,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it, or ask for everything in Settings → Preferences.'**
   String get dashboardTrainingLoadSectionHint;
+
+  /// Letter-spaced kicker on the recap share image, printed in capitals; period is a year or a month and year
+  ///
+  /// In en, this message translates to:
+  /// **'My {period} in running'**
+  String recapCardKicker(String period);
+
+  /// Subhead under the total distance on the recap share image
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{across 1 run} other{across {count} runs}}'**
+  String recapCardAcrossRuns(int count);
+
+  /// Best streak value on the recap share image
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, =1{1 day} other{{days} days}}'**
+  String recapCardStreakDays(int days);
+
+  /// Recap share image stat label: total time spent moving
+  ///
+  /// In en, this message translates to:
+  /// **'On foot'**
+  String get recapCardOnFoot;
+
+  /// Recap share image stat label: total elevation gain
+  ///
+  /// In en, this message translates to:
+  /// **'Climbed'**
+  String get recapCardClimbed;
+
+  /// Recap share image stat label: months with at least one run, shown as N / 12
+  ///
+  /// In en, this message translates to:
+  /// **'Active months'**
+  String get recapCardActiveMonths;
+
+  /// Title of the sheet that shares the recap as an image or text
+  ///
+  /// In en, this message translates to:
+  /// **'Share your recap'**
+  String get recapShareSheetTitle;
+
+  /// Chip choosing the square (1:1) recap image, for a feed post
+  ///
+  /// In en, this message translates to:
+  /// **'Square'**
+  String get recapShareAspectSquare;
+
+  /// Chip choosing the tall 9:16 recap image, for a story
+  ///
+  /// In en, this message translates to:
+  /// **'Story'**
+  String get recapShareAspectStory;
+
+  /// Screen-reader label for the preview of the recap share image
+  ///
+  /// In en, this message translates to:
+  /// **'Preview of the recap image'**
+  String get recapSharePreviewLabel;
+
+  /// Button that shares the recap image through the system share sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Share image'**
+  String get recapShareImage;
+
+  /// Button that shares the recap as a few lines of text instead of an image
+  ///
+  /// In en, this message translates to:
+  /// **'Share as text'**
+  String get recapShareAsText;
+
+  /// Banner when the recap image could not be made or shared
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t make the recap image. Try again.'**
+  String get recapShareImageError;
 }
 
 class _AppLocalizationsDelegate

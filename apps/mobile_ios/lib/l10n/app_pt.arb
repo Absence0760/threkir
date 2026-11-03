@@ -5344,5 +5344,18 @@
   "prefsDisclosureFull": "Tudo",
   "prefsDisclosureHint": "Quanto a aplicação abre antes de pedir mais. Automático lê o objetivo que definiu e quantas corridas já tem guardadas, e hoje escolhe {level}. Nada fica escondido para sempre: uma secção recolhida abre com um toque.",
   "dashboardTrainingLoadSection": "Carga de treino",
-  "dashboardTrainingLoadSectionHint": "Os seus números de condição física, fadiga e forma. Está recolhido porque pediu só o essencial: abra quando quiser, ou peça Tudo em Definições → Preferências."
+  "dashboardTrainingLoadSectionHint": "Os seus números de condição física, fadiga e forma. Está recolhido porque pediu só o essencial: abra quando quiser, ou peça Tudo em Definições → Preferências.",
+  "recapCardKicker": "O meu {period} a correr",
+  "recapCardAcrossRuns": "{count, plural, =1{em 1 corrida} other{em {count} corridas}}",
+  "recapCardStreakDays": "{days, plural, =1{1 dia} other{{days} dias}}",
+  "recapCardOnFoot": "Em movimento",
+  "recapCardClimbed": "Subida",
+  "recapCardActiveMonths": "Meses ativos",
+  "recapShareSheetTitle": "Partilhe a sua retrospectiva",
+  "recapShareAspectSquare": "Quadrado",
+  "recapShareAspectStory": "História",
+  "recapSharePreviewLabel": "Pré-visualização da imagem da retrospectiva",
+  "recapShareImage": "Partilhar imagem",
+  "recapShareAsText": "Partilhar como texto",
+  "recapShareImageError": "Não foi possível criar a imagem da retrospectiva. Tente novamente."
 }

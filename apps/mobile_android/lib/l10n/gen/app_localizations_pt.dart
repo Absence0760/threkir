@@ -19062,6 +19062,65 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get dashboardTrainingLoadSectionHint =>
       'Os seus números de condição física, fadiga e forma. Está recolhido porque pediu só o essencial: abra quando quiser, ou peça Tudo em Definições → Preferências.';
+
+  @override
+  String recapCardKicker(String period) {
+    return 'O meu $period a correr';
+  }
+
+  @override
+  String recapCardAcrossRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'em $count corridas',
+      one: 'em 1 corrida',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recapCardStreakDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days dias',
+      one: '1 dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recapCardOnFoot => 'Em movimento';
+
+  @override
+  String get recapCardClimbed => 'Subida';
+
+  @override
+  String get recapCardActiveMonths => 'Meses ativos';
+
+  @override
+  String get recapShareSheetTitle => 'Partilhe a sua retrospectiva';
+
+  @override
+  String get recapShareAspectSquare => 'Quadrado';
+
+  @override
+  String get recapShareAspectStory => 'História';
+
+  @override
+  String get recapSharePreviewLabel =>
+      'Pré-visualização da imagem da retrospectiva';
+
+  @override
+  String get recapShareImage => 'Partilhar imagem';
+
+  @override
+  String get recapShareAsText => 'Partilhar como texto';
+
+  @override
+  String get recapShareImageError =>
+      'Não foi possível criar a imagem da retrospectiva. Tente novamente.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -38109,4 +38168,62 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get dashboardTrainingLoadSectionHint =>
       'Seus números de condicionamento, fadiga e forma. Está recolhido porque você pediu só o básico: abra quando quiser, ou peça Tudo em Configurações → Preferências.';
+
+  @override
+  String recapCardKicker(String period) {
+    return 'Meu $period na corrida';
+  }
+
+  @override
+  String recapCardAcrossRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'em $count corridas',
+      one: 'em 1 corrida',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recapCardStreakDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days dias',
+      one: '1 dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recapCardOnFoot => 'Em movimento';
+
+  @override
+  String get recapCardClimbed => 'Subida';
+
+  @override
+  String get recapCardActiveMonths => 'Meses ativos';
+
+  @override
+  String get recapShareSheetTitle => 'Compartilhe sua retrospectiva';
+
+  @override
+  String get recapShareAspectSquare => 'Quadrado';
+
+  @override
+  String get recapShareAspectStory => 'Story';
+
+  @override
+  String get recapSharePreviewLabel => 'Prévia da imagem da retrospectiva';
+
+  @override
+  String get recapShareImage => 'Compartilhar imagem';
+
+  @override
+  String get recapShareAsText => 'Compartilhar como texto';
+
+  @override
+  String get recapShareImageError =>
+      'Não foi possível criar a imagem da retrospectiva. Tente de novo.';
 }

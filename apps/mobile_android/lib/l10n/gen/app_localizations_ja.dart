@@ -18174,4 +18174,49 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get dashboardTrainingLoadSectionHint =>
       'フィットネス、疲労、コンディションの数値です。「基本だけ」を選んだためたたんでいます。いつでも開けますし、設定 → 環境設定 で「すべて」を選べます。';
+
+  @override
+  String recapCardKicker(String period) {
+    return '$periodのランニング';
+  }
+
+  @override
+  String recapCardAcrossRuns(int count) {
+    return '$count回のランで';
+  }
+
+  @override
+  String recapCardStreakDays(int days) {
+    return '$days日';
+  }
+
+  @override
+  String get recapCardOnFoot => '運動時間';
+
+  @override
+  String get recapCardClimbed => '獲得標高';
+
+  @override
+  String get recapCardActiveMonths => 'アクティブな月';
+
+  @override
+  String get recapShareSheetTitle => '振り返りを共有';
+
+  @override
+  String get recapShareAspectSquare => '正方形';
+
+  @override
+  String get recapShareAspectStory => 'ストーリー';
+
+  @override
+  String get recapSharePreviewLabel => '振り返り画像のプレビュー';
+
+  @override
+  String get recapShareImage => '画像を共有';
+
+  @override
+  String get recapShareAsText => 'テキストで共有';
+
+  @override
+  String get recapShareImageError => '振り返り画像を作成できませんでした。もう一度お試しください。';
 }

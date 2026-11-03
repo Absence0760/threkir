@@ -19061,4 +19061,62 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get dashboardTrainingLoadSectionHint =>
       'Tus números de forma física, fatiga y frescura. Está plegado porque pediste solo lo básico: ábrelo cuando quieras, o pide Todo en Ajustes → Preferencias.';
+
+  @override
+  String recapCardKicker(String period) {
+    return 'Mi $period corriendo';
+  }
+
+  @override
+  String recapCardAcrossRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'en $count carreras',
+      one: 'en 1 carrera',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recapCardStreakDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days días',
+      one: '1 día',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recapCardOnFoot => 'En movimiento';
+
+  @override
+  String get recapCardClimbed => 'Desnivel';
+
+  @override
+  String get recapCardActiveMonths => 'Meses activos';
+
+  @override
+  String get recapShareSheetTitle => 'Comparte tu resumen';
+
+  @override
+  String get recapShareAspectSquare => 'Cuadrado';
+
+  @override
+  String get recapShareAspectStory => 'Historia';
+
+  @override
+  String get recapSharePreviewLabel => 'Vista previa de la imagen del resumen';
+
+  @override
+  String get recapShareImage => 'Compartir imagen';
+
+  @override
+  String get recapShareAsText => 'Compartir como texto';
+
+  @override
+  String get recapShareImageError =>
+      'No se pudo crear la imagen del resumen. Inténtalo de nuevo.';
 }

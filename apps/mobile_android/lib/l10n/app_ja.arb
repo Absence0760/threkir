@@ -5344,5 +5344,18 @@
   "prefsDisclosureFull": "すべて",
   "prefsDisclosureHint": "要求する前にアプリがどこまで展開するかです。自動は設定した目標と記録したランの件数を読み、現在は「{level}」を選んでいます。完全に隠れることはなく、たたんだセクションはタップ1回で開きます。",
   "dashboardTrainingLoadSection": "トレーニング負荷",
-  "dashboardTrainingLoadSectionHint": "フィットネス、疲労、コンディションの数値です。「基本だけ」を選んだためたたんでいます。いつでも開けますし、設定 → 環境設定 で「すべて」を選べます。"
+  "dashboardTrainingLoadSectionHint": "フィットネス、疲労、コンディションの数値です。「基本だけ」を選んだためたたんでいます。いつでも開けますし、設定 → 環境設定 で「すべて」を選べます。",
+  "recapCardKicker": "{period}のランニング",
+  "recapCardAcrossRuns": "{count}回のランで",
+  "recapCardStreakDays": "{days}日",
+  "recapCardOnFoot": "運動時間",
+  "recapCardClimbed": "獲得標高",
+  "recapCardActiveMonths": "アクティブな月",
+  "recapShareSheetTitle": "振り返りを共有",
+  "recapShareAspectSquare": "正方形",
+  "recapShareAspectStory": "ストーリー",
+  "recapSharePreviewLabel": "振り返り画像のプレビュー",
+  "recapShareImage": "画像を共有",
+  "recapShareAsText": "テキストで共有",
+  "recapShareImageError": "振り返り画像を作成できませんでした。もう一度お試しください。"
 }

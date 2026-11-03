@@ -1053,6 +1053,11 @@ jobs:
             echo "Fix scripts/sync_deno_lock.mjs (or its tests); reproduce with: node --test scripts/sync_deno_lock.test.mjs (needs deno on PATH, two cases skip without it)."
             exit 1
           fi
+          if ! node --test scripts/refresh_deno_lock_remote.test.mjs; then
+            echo "::error::The deno.lock remote-pin refresher's own unit tests failed, so the remedy the edge-functions job names for a stale esm.sh pin cannot be trusted. Nothing here is about the lockfile itself."
+            echo "Fix scripts/refresh_deno_lock_remote.mjs (or its tests); reproduce with: node --test scripts/refresh_deno_lock_remote.test.mjs (stdlib only, no network)."
+            exit 1
+          fi
       # These two checks parse source files only (no DB), so they run BEFORE
       # the Supabase stack starts. Keeping them after it meant a broken stack
       # — e.g. the run-26820381977 migration-version collision — silently
@@ -3764,9 +3769,18 @@ jobs:
         run: |
           files=$(find supabase/functions -type f -name '*.ts' | sort)
           for attempt in 1 2 3; do
-            if deno cache --no-check $files; then
+            if deno cache --no-check $files 2>&1 | tee "$RUNNER_TEMP/deno-cache.log"; [ "${PIPESTATUS[0]}" -eq 0 ]; then
               echo "deno deps cached"
               exit 0
+            fi
+            # A stale integrity pin is not a transient: esm.sh rebuilt the
+            # module in place, every retry fetches the same new bytes, and a
+            # warm cache only hides it (decisions § 2257). Name it and stop.
+            if grep -q 'Integrity check failed' "$RUNNER_TEMP/deno-cache.log"; then
+              spec=$(grep -m1 'Specifier:' "$RUNNER_TEMP/deno-cache.log" | awk '{print $2}')
+              echo "::error::deno.lock pins $spec at a hash esm.sh no longer serves. esm.sh rebuilt it in place; no retry or re-run can pass until the pin moves. Nothing here is about the Edge Function code or its tests."
+              echo "Run 'pnpm refresh:deno-lock-remote' locally, review each moved pin it prints, and commit deno.lock."
+              exit 1
             fi
             echo "::warning::deno cache attempt $attempt failed (esm.sh transient?); retrying"
             sleep $((attempt * 5))

@@ -639,6 +639,15 @@ const NOT_A_GUARD = new Map([
 /// state, or a stale entry, fails below.
 const OFF_THE_GATE = new Map([
 	[
+		'scripts/refresh_deno_lock_remote.mjs',
+		'audit.yml, weekly, as `--check` — on purpose off the merge gate, because the drift it ' +
+			'finds is esm.sh rebuilding a module in place, which no PR causes and no PR can ' +
+			'prevent; gating merges on it would fail unrelated changes the morning esm.sh ' +
+			'redeploys. The gate holds the two halves a PR CAN break: the edge-functions warm ' +
+			'step names a stale pin and this command, and the script\'s own suite runs in ' +
+			'parity-types (decisions § 2257).',
+	],
+	[
 		'apps/web/scripts/check_production_env.mjs',
 		'release-web.yml at tag time, and only there — the guard is an assertion ABOUT a ' +
 			'release env (a real https Supabase host, a set anon + MapTiler key), and CI has ' +

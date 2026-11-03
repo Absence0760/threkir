@@ -19312,4 +19312,106 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get shareCardVideoError =>
       'Der Browser konnte nicht geöffnet werden. Versuch es noch einmal.';
+
+  @override
+  String get streamerOverlayTitle => 'Streamer-Overlay';
+
+  @override
+  String get streamerOverlayIntro =>
+      'Füge diesen Link in OBS oder deiner Streaming-App als Browserquelle hinzu. Er zeigt deine Live-Werte, ohne deinen Lauf öffentlich zu machen.';
+
+  @override
+  String get streamerOverlayCreate => 'Overlay-Link erstellen';
+
+  @override
+  String get streamerOverlayCreated => 'Overlay-Link bereit';
+
+  @override
+  String get streamerOverlayCreateFailed =>
+      'Der Overlay-Link konnte nicht erstellt werden. Versuch es noch einmal.';
+
+  @override
+  String get streamerOverlayUrlLabel => 'URL der Browserquelle';
+
+  @override
+  String get streamerOverlayCopy => 'Link kopieren';
+
+  @override
+  String get streamerOverlayCopied => 'Link kopiert';
+
+  @override
+  String get streamerOverlayCopyFailed =>
+      'Der Link konnte nicht kopiert werden.';
+
+  @override
+  String get streamerOverlayReplace => 'Link ersetzen';
+
+  @override
+  String get streamerOverlayReplaceTitle => 'Overlay-Link ersetzen?';
+
+  @override
+  String get streamerOverlayReplaceMessage =>
+      'Der alte Link funktioniert sofort nicht mehr. Aktualisiere die Browserquelle in deiner Streaming-App.';
+
+  @override
+  String get streamerOverlayRevoke => 'Overlay ausschalten';
+
+  @override
+  String get streamerOverlayRevokeTitle => 'Streamer-Overlay ausschalten?';
+
+  @override
+  String get streamerOverlayRevokeMessage =>
+      'Der Link funktioniert sofort nicht mehr. Du kannst später einen neuen erstellen.';
+
+  @override
+  String get streamerOverlayRevoked => 'Streamer-Overlay ausgeschaltet';
+
+  @override
+  String get streamerOverlayRevokeFailed =>
+      'Das Overlay konnte nicht ausgeschaltet werden. Versuch es noch einmal.';
+
+  @override
+  String get streamerOverlayDelayLabel => 'Stream-Verzögerung';
+
+  @override
+  String get streamerOverlayDelayHelp =>
+      'Zuschauer sehen deine Werte erst so lange später. Die Verzögerung wird auf unserem Server angewendet, niemand kann sie überspringen.';
+
+  @override
+  String get streamerOverlayDelayNone => 'Keine Verzögerung';
+
+  @override
+  String streamerOverlayDelaySeconds(int seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String streamerOverlayDelayMinutes(int minutes) {
+    return '$minutes Min.';
+  }
+
+  @override
+  String get streamerOverlayDelaySaved => 'Verzögerung gespeichert';
+
+  @override
+  String get streamerOverlayDelayFailed =>
+      'Die Verzögerung konnte nicht geändert werden. Versuch es noch einmal.';
+
+  @override
+  String get streamerOverlayLoadFailed =>
+      'Dein Streamer-Overlay konnte nicht geladen werden.';
+
+  @override
+  String get streamerOverlayRetry => 'Erneut versuchen';
+
+  @override
+  String get streamerOverlayUnavailable =>
+      'Das Streamer-Overlay ist gerade nicht verfügbar.';
+
+  @override
+  String get streamerOverlayMapHeartRateNote =>
+      'Karte und Herzfrequenz bleiben aus, bis du sie im Web unter Einstellungen einschaltest.';
+
+  @override
+  String get liveSpectatorHeartRate => 'Herzfrequenz';
 }

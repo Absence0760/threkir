@@ -25264,5 +25264,131 @@
   "shareCardVideoError": "Couldn't open the browser. Try again.",
   "@shareCardVideoError": {
     "description": "Banner when no browser could open the web video export"
+  },
+  "streamerOverlayTitle": "Streamer overlay",
+  "@streamerOverlayTitle": {
+    "description": "Title of the streamer overlay sheet and its row in the live-share sheet"
+  },
+  "streamerOverlayIntro": "Add this link to OBS or your streaming app as a browser source. It shows your live stats without making your run public.",
+  "@streamerOverlayIntro": {
+    "description": "Explains what the streamer overlay link is for"
+  },
+  "streamerOverlayCreate": "Create overlay link",
+  "@streamerOverlayCreate": {
+    "description": "Button that makes the streamer overlay link"
+  },
+  "streamerOverlayCreated": "Overlay link ready",
+  "@streamerOverlayCreated": {
+    "description": "Confirmation after the overlay link is made or replaced"
+  },
+  "streamerOverlayCreateFailed": "Couldn't create the overlay link. Try again.",
+  "@streamerOverlayCreateFailed": {
+    "description": "Error when making the overlay link fails"
+  },
+  "streamerOverlayUrlLabel": "Browser source URL",
+  "@streamerOverlayUrlLabel": {
+    "description": "Label above the overlay link"
+  },
+  "streamerOverlayCopy": "Copy link",
+  "@streamerOverlayCopy": {
+    "description": "Button that copies the overlay link"
+  },
+  "streamerOverlayCopied": "Link copied",
+  "@streamerOverlayCopied": {
+    "description": "Confirmation after the overlay link is copied"
+  },
+  "streamerOverlayCopyFailed": "Couldn't copy the link.",
+  "@streamerOverlayCopyFailed": {
+    "description": "Error when copying the overlay link fails"
+  },
+  "streamerOverlayReplace": "Replace link",
+  "@streamerOverlayReplace": {
+    "description": "Button (and confirm action) that replaces the overlay link with a new one"
+  },
+  "streamerOverlayReplaceTitle": "Replace the overlay link?",
+  "@streamerOverlayReplaceTitle": {
+    "description": "Confirm dialog title for replacing the overlay link"
+  },
+  "streamerOverlayReplaceMessage": "The old link stops working at once. Update the browser source in your streaming app.",
+  "@streamerOverlayReplaceMessage": {
+    "description": "Confirm dialog body for replacing the overlay link"
+  },
+  "streamerOverlayRevoke": "Turn off overlay",
+  "@streamerOverlayRevoke": {
+    "description": "Button (and confirm action) that deletes the overlay link"
+  },
+  "streamerOverlayRevokeTitle": "Turn off the streamer overlay?",
+  "@streamerOverlayRevokeTitle": {
+    "description": "Confirm dialog title for deleting the overlay link"
+  },
+  "streamerOverlayRevokeMessage": "The link stops working at once. You can create a new one later.",
+  "@streamerOverlayRevokeMessage": {
+    "description": "Confirm dialog body for deleting the overlay link"
+  },
+  "streamerOverlayRevoked": "Streamer overlay turned off",
+  "@streamerOverlayRevoked": {
+    "description": "Confirmation after the overlay link is deleted"
+  },
+  "streamerOverlayRevokeFailed": "Couldn't turn off the overlay. Try again.",
+  "@streamerOverlayRevokeFailed": {
+    "description": "Error when deleting the overlay link fails"
+  },
+  "streamerOverlayDelayLabel": "Stream delay",
+  "@streamerOverlayDelayLabel": {
+    "description": "Heading of the overlay delay picker"
+  },
+  "streamerOverlayDelayHelp": "Viewers see your stats this long after they happen. The delay is applied on our server, so nobody can skip it.",
+  "@streamerOverlayDelayHelp": {
+    "description": "Explains the overlay delay"
+  },
+  "streamerOverlayDelayNone": "No delay",
+  "@streamerOverlayDelayNone": {
+    "description": "Delay option: pings shown as soon as they arrive"
+  },
+  "streamerOverlayDelaySeconds": "{seconds} s",
+  "@streamerOverlayDelaySeconds": {
+    "description": "Delay option in seconds",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "streamerOverlayDelayMinutes": "{minutes} min",
+  "@streamerOverlayDelayMinutes": {
+    "description": "Delay option in minutes",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "streamerOverlayDelaySaved": "Delay saved",
+  "@streamerOverlayDelaySaved": {
+    "description": "Confirmation after the overlay delay changes"
+  },
+  "streamerOverlayDelayFailed": "Couldn't change the delay. Try again.",
+  "@streamerOverlayDelayFailed": {
+    "description": "Error when changing the overlay delay fails"
+  },
+  "streamerOverlayLoadFailed": "Couldn't load your streamer overlay.",
+  "@streamerOverlayLoadFailed": {
+    "description": "Error when the overlay settings cannot be read"
+  },
+  "streamerOverlayRetry": "Retry",
+  "@streamerOverlayRetry": {
+    "description": "Retry button after the overlay settings fail to load"
+  },
+  "streamerOverlayUnavailable": "The streamer overlay isn't available right now.",
+  "@streamerOverlayUnavailable": {
+    "description": "Error when the server has the overlay switched off"
+  },
+  "streamerOverlayMapHeartRateNote": "The map and heart rate stay off unless you turn them on in Settings on the web.",
+  "@streamerOverlayMapHeartRateNote": {
+    "description": "Note that the map and heart rate are configured on the web"
+  },
+  "liveSpectatorHeartRate": "Heart rate",
+  "@liveSpectatorHeartRate": {
+    "description": "Live spectator stat label for the runner's current heart rate"
   }
 }

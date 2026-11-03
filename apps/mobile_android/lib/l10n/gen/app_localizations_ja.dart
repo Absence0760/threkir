@@ -18383,4 +18383,101 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get shareCardVideoError => 'ブラウザを開けませんでした。もう一度お試しください。';
+
+  @override
+  String get streamerOverlayTitle => '配信用オーバーレイ';
+
+  @override
+  String get streamerOverlayIntro =>
+      'このリンクを OBS や配信アプリにブラウザソースとして追加してください。ランを公開せずにライブの記録を表示できます。';
+
+  @override
+  String get streamerOverlayCreate => 'オーバーレイのリンクを作成';
+
+  @override
+  String get streamerOverlayCreated => 'オーバーレイのリンクを用意しました';
+
+  @override
+  String get streamerOverlayCreateFailed =>
+      'オーバーレイのリンクを作成できませんでした。もう一度お試しください。';
+
+  @override
+  String get streamerOverlayUrlLabel => 'ブラウザソースの URL';
+
+  @override
+  String get streamerOverlayCopy => 'リンクをコピー';
+
+  @override
+  String get streamerOverlayCopied => 'リンクをコピーしました';
+
+  @override
+  String get streamerOverlayCopyFailed => 'リンクをコピーできませんでした。';
+
+  @override
+  String get streamerOverlayReplace => 'リンクを置き換える';
+
+  @override
+  String get streamerOverlayReplaceTitle => 'オーバーレイのリンクを置き換えますか？';
+
+  @override
+  String get streamerOverlayReplaceMessage =>
+      '以前のリンクはすぐに使えなくなります。配信アプリのブラウザソースを更新してください。';
+
+  @override
+  String get streamerOverlayRevoke => 'オーバーレイをオフにする';
+
+  @override
+  String get streamerOverlayRevokeTitle => '配信用オーバーレイをオフにしますか？';
+
+  @override
+  String get streamerOverlayRevokeMessage =>
+      'リンクはすぐに使えなくなります。あとで新しいリンクを作成できます。';
+
+  @override
+  String get streamerOverlayRevoked => '配信用オーバーレイをオフにしました';
+
+  @override
+  String get streamerOverlayRevokeFailed => 'オーバーレイをオフにできませんでした。もう一度お試しください。';
+
+  @override
+  String get streamerOverlayDelayLabel => '配信の遅延';
+
+  @override
+  String get streamerOverlayDelayHelp =>
+      '視聴者にはこの時間だけ遅れて記録が表示されます。遅延はサーバー側で適用されるため、誰も飛ばすことはできません。';
+
+  @override
+  String get streamerOverlayDelayNone => '遅延なし';
+
+  @override
+  String streamerOverlayDelaySeconds(int seconds) {
+    return '$seconds 秒';
+  }
+
+  @override
+  String streamerOverlayDelayMinutes(int minutes) {
+    return '$minutes 分';
+  }
+
+  @override
+  String get streamerOverlayDelaySaved => '遅延を保存しました';
+
+  @override
+  String get streamerOverlayDelayFailed => '遅延を変更できませんでした。もう一度お試しください。';
+
+  @override
+  String get streamerOverlayLoadFailed => '配信用オーバーレイを読み込めませんでした。';
+
+  @override
+  String get streamerOverlayRetry => '再試行';
+
+  @override
+  String get streamerOverlayUnavailable => '配信用オーバーレイは現在利用できません。';
+
+  @override
+  String get streamerOverlayMapHeartRateNote =>
+      '地図と心拍数は、Web の設定でオンにするまでオフのままです。';
+
+  @override
+  String get liveSpectatorHeartRate => '心拍数';
 }

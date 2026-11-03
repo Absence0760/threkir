@@ -12,7 +12,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AppDatabase } from '#lib/core/database.ts';
-import { dbError } from '#lib/core/supabase_error.ts';
+import { dbError, thrownMessage } from '#lib/core/supabase_error.ts';
 
 export const OVERLAY_STATS = ['distance', 'pace', 'elapsed', 'hr'] as const;
 export type OverlayStat = (typeof OVERLAY_STATS)[number];
@@ -182,7 +182,7 @@ export async function readOverlayGate(read: () => Promise<boolean>): Promise<Ove
 	try {
 		return (await read()) ? 'open' : 'closed';
 	} catch (err) {
-		console.warn('live overlay: gate read failed', err instanceof Error ? err.message : String(err));
+		console.warn('live overlay: gate read failed', thrownMessage(err));
 		return 'error';
 	}
 }

@@ -569,6 +569,14 @@ func pathForKind(kind, base string, n NotificationRow) string {
 		return base + "/follow-requests"
 	case "challenge_complete":
 		return challengePath(base, n)
+	case "personal_record":
+		// The recipient's own run, with the PR card open in its share editor
+		// (decisions § 2266). The record times are owner-only, and so is the
+		// run detail page that reads them.
+		if n.RunID != nil {
+			return base + "/runs/" + *n.RunID + "?share=pr"
+		}
+		return inboxPath(base, n)
 	case "achievement":
 		// The public badge share page, not a profile tab: the recipient earned
 		// it, the page is readable without a session, and it is the surface

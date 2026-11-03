@@ -295,6 +295,55 @@ $neutralised$;`,
     },
   ],
   [
+    'live_overlay_feed',
+    {
+      why: 'drops the token match, the live_overlay gate, the in-progress / not-concluded live-stub pick and the delay cutoff, the whole access control here; keeps the `p_since` cursor. The function takes no run argument, so the rows come from every ping this transaction wrote',
+      sql: `create or replace function public.live_overlay_feed(p_token text, p_since timestamptz default null)
+ returns table(at timestamptz, elapsed_s integer, distance_m double precision, lat double precision, lng double precision, bpm integer)
+ language sql stable security definer set search_path to 'public', 'private'
+as $neutralised$
+  select p.at, p.elapsed_s, p.distance_m::double precision, p.lat, p.lng, p.bpm
+    from live_run_pings p
+   where (p_since is null or p.at > p_since)
+     and ${mine('p')}
+   order by p.at asc
+   limit 1000;
+$neutralised$;`,
+      subject: 'live_run_pings p',
+      witness: {
+        setup: `insert into runs (id, user_id, started_at, duration_s, distance_m, source, is_public, metadata)
+                 values ('00000000-0000-0000-0000-00000000c0e1',
+                         (select id from auth.users order by id limit 1),
+                         now(), 0, 0, 'app', false, '{"in_progress": true}');
+                insert into live_run_pings (run_id, user_id, lat, lng)
+                 values ('00000000-0000-0000-0000-00000000c0e1',
+                         (select id from auth.users order by id limit 1), 10.5, 20.5);`,
+        probe: `select count(*) from live_overlay_feed('pgtap-guard-not-a-token');`,
+      },
+    },
+  ],
+  [
+    'get_live_overlay',
+    {
+      why: 'drops `t.user_id = auth.uid()` and the live_overlay gate, the whole access control here; the function takes no argument, so there is no subject selector to keep',
+      sql: `create or replace function public.get_live_overlay()
+ returns table(token text, delay_s integer, show_map boolean, show_heart_rate boolean, created_at timestamptz)
+ language sql stable security definer set search_path to 'public', 'private'
+as $neutralised$
+  select t.token, t.delay_s, t.show_map, t.show_heart_rate, t.created_at
+    from private.live_overlay_tokens t
+   where ${mine('t')};
+$neutralised$;`,
+      subject: 'private.live_overlay_tokens t',
+      witness: {
+        setup: `insert into private.live_overlay_tokens (user_id, token)
+                 values ((select id from auth.users order by id limit 1), 'pgtap-guard-witness')
+                 on conflict (user_id) do update set token = excluded.token;`,
+        probe: `select count(*) from get_live_overlay();`,
+      },
+    },
+  ],
+  [
     'my_pending_safety_requests',
     {
       why: "drops the `lower(contact_email) = lower(me.email)` match against the caller — the whole access control here — and the `auth.users` join that carries it; keeps `confirmed_at is null`, which is what makes a request pending",

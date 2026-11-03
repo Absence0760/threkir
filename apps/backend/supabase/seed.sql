@@ -3111,3 +3111,13 @@ insert into private.feature_flags (name, enabled) values ('public_plan_share', t
 -- surfaces and their specs exercise it.
 insert into private.feature_flags (name, enabled) values ('challenge_invite_links', true)
   on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Streamer overlay gate (20271104000001) ───────────────────
+--
+-- The streamer overlay (a revocable, server-delayed token read of a live run)
+-- and bpm on live pings are fail-closed behind a private.feature_flags row no
+-- migration writes, so prod stays off until the CISO / Security Analyst
+-- sign-off in docs/ops/deployment.md (decisions § 2265). Local stacks and CI
+-- open it so the overlay, the spectator heart rate and their specs exercise it.
+insert into private.feature_flags (name, enabled) values ('live_overlay', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();

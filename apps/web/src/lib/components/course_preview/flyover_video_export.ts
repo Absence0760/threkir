@@ -33,6 +33,7 @@ import {
 
 const FLIGHT_ZOOM = 14;
 const SETTLE_TIMEOUT_MS = 4000;
+const SETTLE_NUDGE_MS = 100;
 const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 // The end card and the type are the share cards' dark palette, so a reel and
 // a share image from the same run look like one product.
@@ -95,6 +96,13 @@ function waitForLoad(map: maplibregl.Map, signal: AbortSignal): Promise<void> {
 /// Resolves once the frame is drawn with every visible tile in, or after a
 /// bound: a tile that never arrives costs that frame its detail, not the
 /// whole export.
+///
+/// `idle` fires only from a render, and a tile the host answers 404 (MapLibre
+/// reads that as "no data here", the DEM over open water) settles silently,
+/// scheduling none. When that tile was the last one out, the map is loaded
+/// with no render coming, and the frame used to wait out the whole bound.
+/// So while it waits, a loaded, still map is asked for the render that fires
+/// `idle`; a map still loading is left alone.
 function settle(map: maplibregl.Map, move: () => void): Promise<void> {
 	return new Promise((resolve) => {
 		let done = false;
@@ -102,10 +110,14 @@ function settle(map: maplibregl.Map, move: () => void): Promise<void> {
 			if (done) return;
 			done = true;
 			clearTimeout(timer);
+			clearInterval(nudge);
 			map.off('idle', finish);
 			resolve();
 		};
 		const timer = setTimeout(finish, SETTLE_TIMEOUT_MS);
+		const nudge = setInterval(() => {
+			if (map.loaded() && !map.isMoving()) map.triggerRepaint();
+		}, SETTLE_NUDGE_MS);
 		map.on('idle', finish);
 		move();
 		map.triggerRepaint();

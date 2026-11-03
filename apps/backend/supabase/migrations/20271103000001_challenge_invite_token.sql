@@ -32,8 +32,9 @@
 --
 -- The preview and the leaderboard keep the name rules the rest of the app
 -- follows: a creator's name only where private.profile_visible_to admits the
--- caller and the profile is not shadow-hidden, null otherwise, so the client
--- renders its `Runner #ABCD` handle. challenge_leaderboard is unchanged and
+-- caller and the profile is not shadow-hidden, null otherwise. The preview
+-- withholds the creator's id under the same rule, so the join page shows the
+-- anonymous runner label there rather than a handle derived from the id. challenge_leaderboard is unchanged and
 -- already applies the same rule to every participant.
 --
 -- Locks: a new table in the private schema, its FK to challenges (empty
@@ -188,9 +189,11 @@ comment on function public.rotate_challenge_invite_token(uuid) is
   'Same caller rule as get_challenge_invite_token.';
 
 -- What a link shows before anyone joins: the challenge's own fields, its
--- participant count (the trigger-maintained cache), and the creator's name
--- under the profile-visibility rule. No participant list: a private
--- challenge's board stays with its participants.
+-- participant count (the trigger-maintained cache), and the creator's id and
+-- name under the profile-visibility rule. The id is withheld with the name:
+-- an anon caller holding a private creator's id could open their profile
+-- route and pin the link to a person the name rule was keeping unnamed. No
+-- participant list: a private challenge's board stays with its participants.
 create or replace function public.challenge_invite_preview(p_token text)
 returns table (
   id                uuid,
@@ -225,7 +228,10 @@ as $$
     c.ends_at,
     c.is_public,
     c.participant_count,
-    c.creator_id,
+    case when p.id = (select auth.uid())
+           or (p.shadow_hidden = false
+               and private.profile_visible_to(p.id, (select auth.uid())))
+      then c.creator_id end as creator_id,
     case when p.id = (select auth.uid())
            or (p.shadow_hidden = false
                and private.profile_visible_to(p.id, (select auth.uid())))
@@ -253,7 +259,7 @@ comment on function public.challenge_invite_preview(text) is
   'The challenge an invite token names, for the join page. Empty for an '
   'unknown or rotated token, a shadow-hidden creator, a block either way '
   'between caller and creator, and while the challenge_invite_links gate is '
-  'closed. Creator name follows profile_visible_to (decisions § 2261).';
+  'closed. Creator id and name follow profile_visible_to (decisions § 2261).';
 
 -- Join by link. An unknown token returns NULL rather than raising: a raise
 -- would roll back the rate-limit counter with it, and then guessing tokens

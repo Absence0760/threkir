@@ -278,9 +278,9 @@ class EventCourseView {
 /// `metric` / `scope` stay raw strings here (the narrow unions live in
 /// challenge_progress.dart's enum + the DB CHECK); the UI maps them.
 /// What a challenge invite link shows before anyone joins
-/// (`challenge_invite_preview`, decisions § 2261). [creatorName] is null when
-/// the creator's profile is not visible to the caller; the screen renders the
-/// `Runner #ABCD` handle in its place.
+/// (`challenge_invite_preview`, decisions § 2261). [creatorId] and
+/// [creatorName] are both null when the creator's profile is not visible to
+/// the caller; the screen renders the anonymous runner label in their place.
 @immutable
 class ChallengeInvitePreview {
   final String id;

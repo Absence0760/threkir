@@ -2,17 +2,18 @@
 --
 -- Pins: the token is unreadable by any client role; only the creator (or a
 -- club admin) can mint or rotate it; the preview is anon-readable and keeps the
--- creator's private-profile name null; joining needs a session, is idempotent,
--- makes the private challenge visible to the joiner, keeps the leaderboard
--- name rule, returns NULL for an unknown or rotated token, is rate-limited, and
--- every path closes with the challenge_invite_links gate. The definer join
--- refuses, as it would an unknown token and still counting the attempt, a
--- block either way with the creator, an ended challenge and a shadow-hidden
--- creator; the preview withholds the last and a blocked caller too.
+-- creator's private-profile id and name null; joining needs a session, is
+-- idempotent, makes the private challenge visible to the joiner, keeps the
+-- leaderboard name rule, returns NULL for an unknown or rotated token, is
+-- rate-limited, and every path closes with the challenge_invite_links gate.
+-- The definer join refuses, as it would an unknown token and still counting
+-- the attempt, a block either way with the creator, an ended challenge and a
+-- shadow-hidden creator; the preview withholds the last and a blocked caller
+-- too.
 
 begin;
 
-select plan(32);
+select plan(34);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -94,6 +95,10 @@ select is(
   (select token from tok),
   'a second call returns the same token');
 select is(
+  (select creator_id from challenge_invite_preview((select token from tok))),
+  '00000000-0000-0000-0000-0000c1000001'::uuid,
+  'the creator previewing their own link gets their id back');
+select is(
   get_challenge_invite_token('eeeeeeee-eeee-eeee-eeee-eeeec1000002'), null,
   'a club_vs_club challenge gets no link');
 
@@ -114,6 +119,9 @@ select is(
 select is(
   (select creator_name from challenge_invite_preview((select token from tok))),
   null, 'a private creator''s name stays null in the preview');
+select is(
+  (select creator_id from challenge_invite_preview((select token from tok))),
+  null, 'a private creator''s id stays null in the preview with the name');
 select is(
   (select count(*)::int from challenge_invite_preview('not-a-token')),
   0, 'an unknown token previews nothing');

@@ -1,7 +1,8 @@
 // Widget tests for ChallengeInviteScreen, the mobile twin of the web
 // /challenges/join/[token] page (decisions § 2261): the challenge the link
 // names, one tap to join, a dead link said plainly, a private creator shown
-// by their handle, and a failed read offering a retry.
+// by the anonymous label (the preview withholds their id with their name), and
+// a failed read offering a retry.
 
 import 'dart:async';
 
@@ -13,6 +14,7 @@ import '../lib/screens/challenge_invite_screen.dart';
 import '../lib/social_service.dart';
 
 ChallengeInvitePreview _preview({
+  String? creatorId = 'abcd1234-0000-4000-8000-000000000009',
   String? creatorName = 'Cass',
   bool joined = false,
 }) =>
@@ -27,7 +29,7 @@ ChallengeInvitePreview _preview({
       endsAt: DateTime.now().add(const Duration(days: 20)),
       isPublic: false,
       participantCount: 12,
-      creatorId: 'abcd1234-0000-4000-8000-000000000009',
+      creatorId: creatorId,
       creatorName: creatorName,
       joined: joined,
     );
@@ -82,9 +84,10 @@ void main() {
     expect(find.byKey(const ValueKey('challenge-invite-join')), findsOneWidget);
   });
 
-  testWidgets('a private creator is shown by their handle, never a blank', (tester) async {
-    await _pump(tester, _FakeSocial(preview: _preview(creatorName: null)));
-    expect(find.text('Invited by Runner #ABCD'), findsOneWidget);
+  testWidgets('a private creator is shown by the anonymous label, never a blank', (tester) async {
+    await _pump(tester,
+        _FakeSocial(preview: _preview(creatorId: null, creatorName: null)));
+    expect(find.text('Invited by Runner'), findsOneWidget);
   });
 
   testWidgets('one tap joins with the link token and opens the challenge', (tester) async {

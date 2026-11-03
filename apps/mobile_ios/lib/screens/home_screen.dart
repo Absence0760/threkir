@@ -510,6 +510,8 @@ class _HomeScreenState extends State<HomeScreen>
         ));
       case PushTargetKind.run:
         await _openRun(target.id!);
+      case PushTargetKind.runPrCard:
+        await _openRun(target.id!, sharePr: true);
       case PushTargetKind.plans:
         await _pushScreen(PlansScreen(
           training: widget.training,
@@ -736,7 +738,10 @@ class _HomeScreenState extends State<HomeScreen>
   /// device, else the non-owner view. A run of the runner's own that is not on
   /// the device (an older one the history list has not paged in) takes the
   /// non-owner view too, which reads the owner's unclipped track for them.
-  Future<void> _openRun(String runId) async {
+  ///
+  /// [sharePr] opens the owner's share sheet on the run's PR card; a run that
+  /// is not the viewer's has no PR card to open, so it is ignored there.
+  Future<void> _openRun(String runId, {bool sharePr = false}) async {
     final api = widget.apiClient;
     final own = await widget.runStore.runById(runId);
     if (!mounted) return;
@@ -748,6 +753,7 @@ class _HomeScreenState extends State<HomeScreen>
         preferences: widget.preferences,
         apiClient: api,
         settingsSync: widget.settingsSync,
+        openPrCard: sharePr,
       ));
     }
     if (api == null) return;
@@ -758,7 +764,7 @@ class _HomeScreenState extends State<HomeScreen>
     final api = widget.apiClient;
     switch (link.kind) {
       case EntityLinkKind.run:
-        await _openRun(link.id);
+        await _openRun(link.id, sharePr: link.sharePr);
       case EntityLinkKind.route:
         final own = widget.routeStore.routes
             .where((r) => r.id == link.id)

@@ -19337,4 +19337,67 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get shareCardVideoError =>
       'Impossible d\'ouvrir le navigateur. Réessayez.';
+
+  @override
+  String get shareCardStylePr => 'Carte record';
+
+  @override
+  String get shareCardPrHeadline => 'Nouveau record personnel';
+
+  @override
+  String get shareCardPrHeld => 'Record personnel';
+
+  @override
+  String shareCardPrFaster(String time) {
+    return '$time plus rapide';
+  }
+
+  @override
+  String shareCardPrPrevious(String time) {
+    return 'Record précédent $time';
+  }
+
+  @override
+  String shareCardPrFirst(String distance) {
+    return 'Premier $distance enregistré';
+  }
+
+  @override
+  String get shareCardPrRecord => 'Record';
+
+  @override
+  String get shareCardPrHint =>
+      'Vos records restent privés. Seule cette image est partagée.';
+
+  @override
+  String get runDetailSharePr => 'Partager la carte record';
+
+  @override
+  String get profileNotifPersonalRecord =>
+      'Vous avez établi un nouveau record personnel';
+
+  @override
+  String get badgesMakePublic => 'Rendre public';
+
+  @override
+  String get badgesMakePrivate => 'Rendre privé';
+
+  @override
+  String get badgesPrivate => 'Privé';
+
+  @override
+  String get badgesShare => 'Partager le badge';
+
+  @override
+  String get badgesToggleError =>
+      'Impossible de modifier la visibilité. Réessayez.';
+
+  @override
+  String badgesShareText(String badge, String url) {
+    return 'J’ai obtenu le badge « $badge » sur Threkir : $url';
+  }
+
+  @override
+  String get badgesPrivateShareHint =>
+      'Rendez ce badge public pour le partager.';
 }

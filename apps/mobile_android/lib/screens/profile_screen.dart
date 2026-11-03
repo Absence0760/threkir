@@ -16,6 +16,7 @@ import '../social_service.dart';
 import '../training_service.dart';
 import '../undo_queue.dart';
 import '../widgets/badge_grid.dart';
+import '../widgets/badge_share_sheet.dart';
 import '../widgets/collapsing_tab_host.dart';
 import '../widgets/error_state.dart';
 import '../widgets/report_sheet.dart';
@@ -308,6 +309,19 @@ class _ProfileScreenState extends State<ProfileScreen>
       });
     }
   }
+
+  Future<void> _openBadge(AchievementRow badge) => showBadgeShareSheet(
+        context,
+        badge: badge,
+        setVisibility: (id, isPublic) =>
+            widget.api.setBadgeVisibility(id, isPublic: isPublic),
+        onChanged: (next) {
+          if (!mounted) return;
+          setState(() => _badges = [
+                for (final b in _badges) b.id == next.id ? next : b,
+              ]);
+        },
+      );
 
   Future<void> _loadBadges() async {
     if (!mounted) return;
@@ -959,7 +973,11 @@ class _ProfileScreenState extends State<ProfileScreen>
           loading: _badgesLoading,
           error: _badgesError,
           onRetry: _loadBadges,
-          child: () => BadgeGrid(badges: _badges, isOwner: _isSelf),
+          child: () => BadgeGrid(
+            badges: _badges,
+            isOwner: _isSelf,
+            onOpen: _openBadge,
+          ),
         ),
         ProfileTab.followers => _tabScope(
           loading: _followersLoading,
@@ -1489,6 +1507,10 @@ class _ProfileScreenState extends State<ProfileScreen>
       // decides: the owner's detail screen for a run on this device, else the
       // non-owner view, as web's /runs/[id] and the push path do.
       openRunLink(item.row.runId!);
+    } else if (kind == 'personal_record' && item.row.runId != null) {
+      // The recipient's own run, opened on its PR card (web's
+      // `/runs/<id>?share=pr`).
+      openRunLink(item.row.runId!, sharePr: true);
     } else if (kind == 'follow' && item.row.actorId != null) {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -1616,6 +1638,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         return l10n.profileNotifAchievement;
       case 'challenge_complete':
         return l10n.profileNotifChallengeComplete;
+      case 'personal_record':
+        return l10n.profileNotifPersonalRecord;
       case 'content_hidden':
         return l10n.profileNotifContentHidden;
       case 'data_export_ready':

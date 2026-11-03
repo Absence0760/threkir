@@ -5401,5 +5401,22 @@
   "shareCardStyleVideo": "Vídeo",
   "shareCardVideoBody": "Convierte esta carrera en un vídeo vertical de sobrevuelo en 3D. Se crea en tu navegador en threkir.com; compártelo o guárdalo desde allí.",
   "shareCardVideoOpen": "Abrir exportación de vídeo",
-  "shareCardVideoError": "No se pudo abrir el navegador. Inténtalo de nuevo."
+  "shareCardVideoError": "No se pudo abrir el navegador. Inténtalo de nuevo.",
+  "shareCardStylePr": "Tarjeta de marca",
+  "shareCardPrHeadline": "Nueva marca personal",
+  "shareCardPrHeld": "Marca personal",
+  "shareCardPrFaster": "{time} más rápido",
+  "shareCardPrPrevious": "Marca anterior {time}",
+  "shareCardPrFirst": "Primer {distance} registrado",
+  "shareCardPrRecord": "Marca",
+  "shareCardPrHint": "Tus marcas siguen siendo privadas. Al compartir solo sale esta imagen.",
+  "runDetailSharePr": "Compartir tarjeta de marca",
+  "profileNotifPersonalRecord": "Has conseguido una nueva marca personal",
+  "badgesMakePublic": "Hacer pública",
+  "badgesMakePrivate": "Hacer privada",
+  "badgesPrivate": "Privada",
+  "badgesShare": "Compartir insignia",
+  "badgesToggleError": "No se pudo cambiar la visibilidad. Inténtalo de nuevo.",
+  "badgesShareText": "He conseguido la insignia «{badge}» en Threkir: {url}",
+  "badgesPrivateShareHint": "Haz pública esta insignia para compartirla."
 }

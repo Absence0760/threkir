@@ -31312,6 +31312,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t open the browser. Try again.'**
   String get shareCardVideoError;
+
+  /// Share-sheet style chip: a card for a personal record this run set
+  ///
+  /// In en, this message translates to:
+  /// **'PR card'**
+  String get shareCardStylePr;
+
+  /// Headline printed on the PR card when the run beat or set a record
+  ///
+  /// In en, this message translates to:
+  /// **'New personal record'**
+  String get shareCardPrHeadline;
+
+  /// Headline printed on the PR card for a record set before the improvement log existed
+  ///
+  /// In en, this message translates to:
+  /// **'Personal record'**
+  String get shareCardPrHeld;
+
+  /// PR card line: how much faster than the previous record
+  ///
+  /// In en, this message translates to:
+  /// **'{time} faster'**
+  String shareCardPrFaster(String time);
+
+  /// PR card line: the record this run beat
+  ///
+  /// In en, this message translates to:
+  /// **'Previous best {time}'**
+  String shareCardPrPrevious(String time);
+
+  /// PR card line when the runner had no record at this distance before
+  ///
+  /// In en, this message translates to:
+  /// **'First {distance} on record'**
+  String shareCardPrFirst(String distance);
+
+  /// Label over the chips that pick which record the PR card shows
+  ///
+  /// In en, this message translates to:
+  /// **'Record'**
+  String get shareCardPrRecord;
+
+  /// Hint under the PR card preview
+  ///
+  /// In en, this message translates to:
+  /// **'Your record times stay private. Only this image leaves when you share it.'**
+  String get shareCardPrHint;
+
+  /// Run detail action that opens the share sheet on the PR card
+  ///
+  /// In en, this message translates to:
+  /// **'Share PR card'**
+  String get runDetailSharePr;
+
+  /// Inbox line for a personal_record notification
+  ///
+  /// In en, this message translates to:
+  /// **'You set a new personal record'**
+  String get profileNotifPersonalRecord;
+
+  /// Badge sheet action: show the badge on the profile and its share page
+  ///
+  /// In en, this message translates to:
+  /// **'Make public'**
+  String get badgesMakePublic;
+
+  /// Badge sheet action: hide the badge from everyone else
+  ///
+  /// In en, this message translates to:
+  /// **'Make private'**
+  String get badgesMakePrivate;
+
+  /// Flag on a badge only its owner can see
+  ///
+  /// In en, this message translates to:
+  /// **'Private'**
+  String get badgesPrivate;
+
+  /// Badge sheet action: share the badge page link
+  ///
+  /// In en, this message translates to:
+  /// **'Share badge'**
+  String get badgesShare;
+
+  /// Banner when changing a badge visibility fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t change visibility. Try again.'**
+  String get badgesToggleError;
+
+  /// Text handed to the OS share sheet with a public badge link
+  ///
+  /// In en, this message translates to:
+  /// **'I earned the {badge} badge on Threkir: {url}'**
+  String badgesShareText(String badge, String url);
+
+  /// Badge sheet hint while the badge is private
+  ///
+  /// In en, this message translates to:
+  /// **'Make this badge public to share it.'**
+  String get badgesPrivateShareHint;
 }
 
 class _AppLocalizationsDelegate

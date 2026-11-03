@@ -14,14 +14,21 @@ class EntityLink {
   final EntityLinkKind kind;
   final String id;
 
-  const EntityLink(this.kind, this.id);
+  /// Open the run's share sheet on its PR card (`?share=pr`, the
+  /// personal_record notification's link). Ignored for a route.
+  final bool sharePr;
+
+  const EntityLink(this.kind, this.id, {this.sharePr = false});
 
   @override
   bool operator ==(Object other) =>
-      other is EntityLink && other.kind == kind && other.id == id;
+      other is EntityLink &&
+      other.kind == kind &&
+      other.id == id &&
+      other.sharePr == sharePr;
 
   @override
-  int get hashCode => Object.hash(kind, id);
+  int get hashCode => Object.hash(kind, id, sharePr);
 }
 
 final RegExp _uuid = RegExp(
@@ -33,8 +40,9 @@ final RegExp _uuid = RegExp(
 /// app's own `com.threkir.app://runs/<id>` / `com.threkir.app://routes/<id>`.
 /// These are the links an owner hands out at the Followers and Specific
 /// people levels (decisions § 1879). Only a UUID id is a link: `/runs/new`,
-/// `/routes/heatmap` and `/routes/<id>/roadbook` are other web pages, and a
-/// query or fragment is ignored.
+/// `/routes/heatmap` and `/routes/<id>/roadbook` are other web pages. The one
+/// query read is a run's `share=pr`; anything else, and the fragment, is
+/// ignored.
 EntityLink? parseEntityLink(Uri uri) {
   final parts = _linkSegments(uri);
   if (parts == null || parts.length != 2 || !_uuid.hasMatch(parts[1])) return null;
@@ -43,7 +51,9 @@ EntityLink? parseEntityLink(Uri uri) {
     'routes' => EntityLinkKind.route,
     _ => null,
   };
-  return kind == null ? null : EntityLink(kind, parts[1].toLowerCase());
+  if (kind == null) return null;
+  return EntityLink(kind, parts[1].toLowerCase(),
+      sharePr: kind == EntityLinkKind.run && uri.queryParameters['share'] == 'pr');
 }
 
 /// The non-empty path segments of an in-app link, with the app scheme's host
@@ -93,8 +103,8 @@ final ValueNotifier<EntityLink?> pendingEntityLink =
 /// one place that can tell the viewer's own run from someone else's. For a
 /// surface such as the inbox that cannot construct the owner's detail screen
 /// (the shape of `openSettings`, decisions § 710).
-void openRunLink(String id) {
-  pendingEntityLink.value = EntityLink(EntityLinkKind.run, id);
+void openRunLink(String id, {bool sharePr = false}) {
+  pendingEntityLink.value = EntityLink(EntityLinkKind.run, id, sharePr: sharePr);
 }
 
 /// Routes run and route links into [pendingEntityLink], and plan links to

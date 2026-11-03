@@ -5401,5 +5401,22 @@
   "shareCardStyleVideo": "Vidéo",
   "shareCardVideoBody": "Transformez cette course en vidéo verticale de survol 3D. Elle est créée dans votre navigateur sur threkir.com ; partagez-la ou enregistrez-la depuis là.",
   "shareCardVideoOpen": "Ouvrir l'export vidéo",
-  "shareCardVideoError": "Impossible d'ouvrir le navigateur. Réessayez."
+  "shareCardVideoError": "Impossible d'ouvrir le navigateur. Réessayez.",
+  "shareCardStylePr": "Carte record",
+  "shareCardPrHeadline": "Nouveau record personnel",
+  "shareCardPrHeld": "Record personnel",
+  "shareCardPrFaster": "{time} plus rapide",
+  "shareCardPrPrevious": "Record précédent {time}",
+  "shareCardPrFirst": "Premier {distance} enregistré",
+  "shareCardPrRecord": "Record",
+  "shareCardPrHint": "Vos records restent privés. Seule cette image est partagée.",
+  "runDetailSharePr": "Partager la carte record",
+  "profileNotifPersonalRecord": "Vous avez établi un nouveau record personnel",
+  "badgesMakePublic": "Rendre public",
+  "badgesMakePrivate": "Rendre privé",
+  "badgesPrivate": "Privé",
+  "badgesShare": "Partager le badge",
+  "badgesToggleError": "Impossible de modifier la visibilité. Réessayez.",
+  "badgesShareText": "J’ai obtenu le badge « {badge} » sur Threkir : {url}",
+  "badgesPrivateShareHint": "Rendez ce badge public pour le partager."
 }

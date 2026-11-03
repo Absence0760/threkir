@@ -5401,5 +5401,22 @@
   "shareCardStyleVideo": "Vídeo",
   "shareCardVideoBody": "Transforme esta corrida em um vídeo vertical de sobrevoo em 3D. Ele é criado no seu navegador em threkir.com; compartilhe ou salve por lá.",
   "shareCardVideoOpen": "Abrir exportação de vídeo",
-  "shareCardVideoError": "Não foi possível abrir o navegador. Tente de novo."
+  "shareCardVideoError": "Não foi possível abrir o navegador. Tente de novo.",
+  "shareCardStylePr": "Card de recorde",
+  "shareCardPrHeadline": "Novo recorde pessoal",
+  "shareCardPrHeld": "Recorde pessoal",
+  "shareCardPrFaster": "{time} mais rápido",
+  "shareCardPrPrevious": "Recorde anterior {time}",
+  "shareCardPrFirst": "Primeiro {distance} registrado",
+  "shareCardPrRecord": "Recorde",
+  "shareCardPrHint": "Seus recordes continuam privados. Só esta imagem é compartilhada.",
+  "runDetailSharePr": "Compartilhar card de recorde",
+  "profileNotifPersonalRecord": "Você bateu um novo recorde pessoal",
+  "badgesMakePublic": "Tornar pública",
+  "badgesMakePrivate": "Tornar privada",
+  "badgesPrivate": "Privada",
+  "badgesShare": "Compartilhar medalha",
+  "badgesToggleError": "Não foi possível alterar a visibilidade. Tente novamente.",
+  "badgesShareText": "Ganhei a medalha “{badge}” no Threkir: {url}",
+  "badgesPrivateShareHint": "Torne esta medalha pública para compartilhá-la."
 }

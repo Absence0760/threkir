@@ -5401,5 +5401,22 @@
   "shareCardStyleVideo": "動画",
   "shareCardVideoBody": "このランを縦長の3Dフライオーバー動画にします。threkir.com上のブラウザで作成され、そこから共有・保存できます。",
   "shareCardVideoOpen": "動画の書き出しを開く",
-  "shareCardVideoError": "ブラウザを開けませんでした。もう一度お試しください。"
+  "shareCardVideoError": "ブラウザを開けませんでした。もう一度お試しください。",
+  "shareCardStylePr": "自己ベストカード",
+  "shareCardPrHeadline": "自己ベスト更新",
+  "shareCardPrHeld": "自己ベスト",
+  "shareCardPrFaster": "{time} 短縮",
+  "shareCardPrPrevious": "前回のベスト {time}",
+  "shareCardPrFirst": "初めての{distance}の記録",
+  "shareCardPrRecord": "記録",
+  "shareCardPrHint": "自己ベストのタイムは非公開のままです。共有されるのはこの画像だけです。",
+  "runDetailSharePr": "自己ベストカードを共有",
+  "profileNotifPersonalRecord": "自己ベストを更新しました",
+  "badgesMakePublic": "公開する",
+  "badgesMakePrivate": "非公開にする",
+  "badgesPrivate": "非公開",
+  "badgesShare": "バッジを共有",
+  "badgesToggleError": "公開設定を変更できませんでした。もう一度お試しください。",
+  "badgesShareText": "Threkir で「{badge}」バッジを獲得しました：{url}",
+  "badgesPrivateShareHint": "共有するには、このバッジを公開してください。"
 }

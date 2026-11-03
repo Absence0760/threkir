@@ -152,6 +152,14 @@ void main() {
       expect(groups.length, 2);
     });
 
+    test('personal records never collapse, even on one run', () {
+      final groups = groupNotifications([
+        n(id: 'p1', kind: 'personal_record', runId: 'r1', createdAt: ago(1000)),
+        n(id: 'p2', kind: 'personal_record', runId: 'r1', createdAt: ago(2000)),
+      ], nowMs: now);
+      expect(groups.length, 2);
+    });
+
     test('event RSVPs collapse per event, distinct events split', () {
       final groups = groupNotifications([
         n(id: 'e1a', kind: 'event_rsvp', eventId: 'ev1', createdAt: ago(1000)),

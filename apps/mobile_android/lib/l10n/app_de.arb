@@ -5401,5 +5401,22 @@
   "shareCardStyleVideo": "Video",
   "shareCardVideoBody": "Mach aus diesem Lauf ein vertikales 3D-Flyover-Video. Es entsteht in deinem Browser auf threkir.com; dort kannst du es teilen oder speichern.",
   "shareCardVideoOpen": "Video-Export öffnen",
-  "shareCardVideoError": "Der Browser konnte nicht geöffnet werden. Versuch es noch einmal."
+  "shareCardVideoError": "Der Browser konnte nicht geöffnet werden. Versuch es noch einmal.",
+  "shareCardStylePr": "Bestzeit-Karte",
+  "shareCardPrHeadline": "Neue persönliche Bestzeit",
+  "shareCardPrHeld": "Persönliche Bestzeit",
+  "shareCardPrFaster": "{time} schneller",
+  "shareCardPrPrevious": "Bisherige Bestzeit {time}",
+  "shareCardPrFirst": "Erste Zeit über {distance}",
+  "shareCardPrRecord": "Bestzeit",
+  "shareCardPrHint": "Deine Bestzeiten bleiben privat. Nur dieses Bild wird geteilt.",
+  "runDetailSharePr": "Bestzeit-Karte teilen",
+  "profileNotifPersonalRecord": "Du hast eine neue persönliche Bestzeit aufgestellt",
+  "badgesMakePublic": "Öffentlich machen",
+  "badgesMakePrivate": "Privat machen",
+  "badgesPrivate": "Privat",
+  "badgesShare": "Abzeichen teilen",
+  "badgesToggleError": "Sichtbarkeit konnte nicht geändert werden. Versuche es erneut.",
+  "badgesShareText": "Ich habe auf Threkir das Abzeichen „{badge}“ bekommen: {url}",
+  "badgesPrivateShareHint": "Mach dieses Abzeichen öffentlich, um es zu teilen."
 }

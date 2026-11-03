@@ -18383,4 +18383,63 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get shareCardVideoError => 'ブラウザを開けませんでした。もう一度お試しください。';
+
+  @override
+  String get shareCardStylePr => '自己ベストカード';
+
+  @override
+  String get shareCardPrHeadline => '自己ベスト更新';
+
+  @override
+  String get shareCardPrHeld => '自己ベスト';
+
+  @override
+  String shareCardPrFaster(String time) {
+    return '$time 短縮';
+  }
+
+  @override
+  String shareCardPrPrevious(String time) {
+    return '前回のベスト $time';
+  }
+
+  @override
+  String shareCardPrFirst(String distance) {
+    return '初めての$distanceの記録';
+  }
+
+  @override
+  String get shareCardPrRecord => '記録';
+
+  @override
+  String get shareCardPrHint => '自己ベストのタイムは非公開のままです。共有されるのはこの画像だけです。';
+
+  @override
+  String get runDetailSharePr => '自己ベストカードを共有';
+
+  @override
+  String get profileNotifPersonalRecord => '自己ベストを更新しました';
+
+  @override
+  String get badgesMakePublic => '公開する';
+
+  @override
+  String get badgesMakePrivate => '非公開にする';
+
+  @override
+  String get badgesPrivate => '非公開';
+
+  @override
+  String get badgesShare => 'バッジを共有';
+
+  @override
+  String get badgesToggleError => '公開設定を変更できませんでした。もう一度お試しください。';
+
+  @override
+  String badgesShareText(String badge, String url) {
+    return 'Threkir で「$badge」バッジを獲得しました：$url';
+  }
+
+  @override
+  String get badgesPrivateShareHint => '共有するには、このバッジを公開してください。';
 }

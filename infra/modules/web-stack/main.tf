@@ -1767,7 +1767,11 @@ resource "aws_cloudfront_response_headers_policy" "security" {
         # `data:text/html` XSS regression is the avatar_url CHECK
         # constraint (`~* '^https?://'`, migration 20260808_001),
         # not this CSP line. /audit/owasp May 2026 Medium #4.
-        "img-src 'self' data: https://*.supabase.co https://*.maptiler.com https://elevation-tiles-prod.s3.amazonaws.com https://lh3.googleusercontent.com https://*.appleid.apple.com",
+        # `blob:` is for object URLs the page mints itself: photo upload
+        # previews and the generated share-card PNGs. An injected script
+        # could only point an <img> at a blob it already holds, so it
+        # opens no exfiltration path the script did not already have.
+        "img-src 'self' data: blob: https://*.supabase.co https://*.maptiler.com https://elevation-tiles-prod.s3.amazonaws.com https://lh3.googleusercontent.com https://*.appleid.apple.com",
         "script-src 'self' 'unsafe-inline'",
         "style-src 'self' 'unsafe-inline'",
         "font-src 'self' data:",
@@ -1804,6 +1808,10 @@ resource "aws_cloudfront_response_headers_policy" "security" {
         # PUBLIC_LIVE_HUB_URL lands in prod. /audit/owasp May 2026
         # High #2a.
         "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.threkir.com https://*.maptiler.com https://elevation-tiles-prod.s3.amazonaws.com https://*.ingest.de.sentry.io wss://*.threkir.com",
+        # The recap video is encoded in the browser and previewed from an
+        # object URL; without this it falls back to default-src and the
+        # <video> stays blank.
+        "media-src 'self' blob:",
         "worker-src 'self' blob:",
         "manifest-src 'self'",
         "object-src 'none'",

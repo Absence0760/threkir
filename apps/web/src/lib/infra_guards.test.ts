@@ -265,6 +265,23 @@ test('CloudFront CSP allows the keyless terrain bucket, and no other S3 bucket',
 	}
 });
 
+test('CloudFront CSP lets the page show the object URLs it mints', () => {
+	// Reason: photo upload previews and the share-card PNGs render through
+	// <img src="blob:…">, and the recap video previews through
+	// <video src="blob:…">. Without `blob:` in img-src, and with no
+	// media-src at all (so default-src 'self' applies), both render blank in
+	// production only — the build's <meta> CSP sets only script-src and
+	// worker-src, so nothing fails before deploy.
+	const tf = read('../../infra/modules/web-stack/main.tf');
+	for (const directive of ['img-src', 'media-src']) {
+		const m = tf.match(new RegExp(`"${directive} ([^"]*)"`));
+		assert.ok(m, `Could not locate the ${directive} directive in the CloudFront CSP.`);
+		const sources = m![1].split(/\s+/);
+		assert.ok(sources.includes('blob:'), `CSP ${directive} must list blob:; got: ${m![1]}`);
+		assert.ok(sources.includes("'self'"), `CSP ${directive} must list 'self'; got: ${m![1]}`);
+	}
+});
+
 test('every POST to a Lambda origin sends the sigv4 payload hash', () => {
 	// Reason: CloudFront's Lambda OAC sigv4-signs each origin request, and
 	// sigv4 covers the payload hash. CloudFront does not compute it — the

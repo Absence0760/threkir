@@ -10,7 +10,8 @@ import {
 	insertRaceListing,
 	insertRoute
 } from '../fixtures/simulate';
-import { USER_B } from '../fixtures/users';
+import { setStorageOnLoad } from '../fixtures/helpers';
+import { USER_A, USER_B } from '../fixtures/users';
 
 /**
  * The race page's one race-to-plan entry point (decisions § 2154).
@@ -26,6 +27,8 @@ import { USER_B } from '../fixtures/users';
  * (decisions § 2156), and the plan page names the race. A listing whose
  * course is a public route shows that course and hands its climb and surface
  * to the AI description; a private one shows and sends nothing (§ 2157).
+ * The public course also draws its map, linked to the route, and offers the
+ * 3D course preview; a private one offers neither (§ 2252, issue #1270).
  *
  * The planted plan sits a year out so no other USER_B spec's plan window can
  * be the one the page chains after.
@@ -177,9 +180,13 @@ test.describe('/races/[id] — build a plan from a race', () => {
 		await expect(linked).toHaveAttribute('href', `/races/${id}`);
 	});
 
-	async function listingOnCourse(name: string, isPublic: boolean): Promise<string> {
+	async function listingOnCourse(
+		name: string,
+		isPublic: boolean,
+		ownerId: string = USER_B.id,
+	): Promise<{ id: string; routeId: string }> {
 		const routeId = await insertRoute({
-			user_id: USER_B.id,
+			user_id: ownerId,
 			name: `${name} course`,
 			waypoints: [
 				{ lat: 37.54, lng: -77.43 },
@@ -194,11 +201,11 @@ test.describe('/races/[id] — build a plan from a race', () => {
 		listings.push(id);
 		const { error } = await getAdminClient().from('race_listings').update({ route_id: routeId }).eq('id', id);
 		if (error) throw error;
-		return id;
+		return { id, routeId };
 	}
 
 	test('a public course is shown and goes into the AI description', async ({ page }) => {
-		const id = await listingOnCourse(`E2E Race Course ${Date.now()}`, true);
+		const { id } = await listingOnCourse(`E2E Race Course ${Date.now()}`, true);
 
 		await page.goto(`/races/${id}`);
 		const course = page.getByTestId('race-detail-course');
@@ -209,13 +216,57 @@ test.describe('/races/[id] — build a plan from a race', () => {
 	});
 
 	test('a private course is neither shown nor described', async ({ page }) => {
-		const id = await listingOnCourse(`E2E Race Private Course ${Date.now()}`, false);
+		const { id } = await listingOnCourse(`E2E Race Private Course ${Date.now()}`, false);
 
 		await page.goto(`/races/${id}`);
 		const ai = page.getByTestId('race-detail-tailor-ai');
 		await expect(ai).toBeVisible();
 		await expect(page.getByTestId('race-detail-course')).toHaveCount(0);
+		await expect(page.getByTestId('race-detail-course-map')).toHaveCount(0);
+		await expect(page.getByTestId('course-preview-open')).toHaveCount(0);
 		const href = new URL((await ai.getAttribute('href'))!, 'https://example.test');
 		expect(href.searchParams.get('describe') ?? '').not.toContain('Course:');
+	});
+
+	test('another runner\'s public course draws its map and opens the 3D preview named for the race', async ({
+		page,
+	}) => {
+		// Without map consent the dialog asks before loading any tile, so the
+		// case reaches no third-party host; the dialog itself is what is pinned
+		// here, and its modes are course-preview-3d.spec.ts's.
+		await setStorageOnLoad(page, { consent: 'rejected' });
+		const raceName = `E2E Race Flyover ${Date.now()}`;
+		const { id, routeId } = await listingOnCourse(raceName, true, USER_A.id);
+
+		await page.goto(`/races/${id}`);
+		const map = page.getByTestId('race-detail-course-map');
+		await expect(map).toHaveAttribute('href', `/routes/${routeId}`);
+		await expect(map).toContainText(`${raceName} course`);
+
+		const open = page.getByTestId('course-preview-open');
+		await expect(open).toHaveText(/Preview in 3D/);
+		await open.click();
+		const dialog = page.getByTestId('course-preview-3d');
+		await expect(dialog).toBeVisible();
+		await expect(dialog).toContainText(raceName);
+		await expect(dialog.getByTestId('course-preview-load')).toBeVisible();
+		await page.keyboard.press('Escape');
+		await expect(dialog).toBeHidden();
+		await expect(open).toBeFocused();
+	});
+
+	test('a listing with no course offers no map and no 3D preview', async ({ page }) => {
+		const id = await insertRaceListing({
+			provider: 'runsignup',
+			name: `E2E Race No Course ${Date.now()}`,
+			race_date: browserDate(70),
+			distance_m: 10_000,
+		});
+		listings.push(id);
+
+		await page.goto(`/races/${id}`);
+		await expect(page.getByTestId('race-detail-train')).toBeVisible();
+		await expect(page.getByTestId('race-detail-course')).toHaveCount(0);
+		await expect(page.getByTestId('course-preview-open')).toHaveCount(0);
 	});
 });

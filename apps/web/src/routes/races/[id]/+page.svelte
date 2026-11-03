@@ -24,6 +24,8 @@
 		fetchRaceListingPhotos,
 		fetchMyPlans,
 		fetchRuns,
+		fetchPublicRoute,
+		fetchRouteMarkers,
 		type RaceListingDetail,
 		type RaceListingRun,
 		type RaceListingPhoto
@@ -34,6 +36,10 @@
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { safeHref } from '#lib/util/html_escape.ts';
 	import { safeImageSrc } from '#lib/util/safe_image_src.ts';
+	import type { Route, RouteMarker } from '#lib/types.ts';
+	import CoursePreviewButton from '#lib/components/CoursePreviewButton.svelte';
+	import RouteTrackPreview from '#lib/components/RouteTrackPreview.svelte';
+	import { climbNamesFromMarkers, routePathPoints } from '#lib/routes/course_preview_points.ts';
 
 	let { data } = $props();
 
@@ -46,6 +52,8 @@
 	let importing = $state<RaceListingDetail | null>(null);
 	let ownPlans = $state<RacePlanOwnPlan[]>([]);
 	let recentEffort = $state<RacePlanEffort | null>(null);
+	let courseRoute = $state<Route | null>(null);
+	let courseMarkers = $state<RouteMarker[]>([]);
 
 	// The AI action sends the description to the plan assistant, so it exists
 	// only while that assistant is live (fail-closed: both flags unset → off).
@@ -78,7 +86,26 @@
 				if (race?.id === id) photos = p;
 			});
 			void loadPlanContext(id);
+			const routeId = race.course?.routeId;
+			if (routeId) void loadCourse(id, routeId);
 		}
+	}
+
+	// Auxiliary: the course's line and climb names draw the map and the 3D
+	// preview. `fetchPublicRoute` is the public-route read: `public_routes`
+	// plus `clip_route_for_viewer`, so a non-owner gets the privacy-clipped
+	// line the route's own page shows them. A failed read leaves the course
+	// summary on its own.
+	async function loadCourse(id: string, routeId: string) {
+		const [routeRes, markersRes] = await Promise.allSettled([
+			fetchPublicRoute(routeId),
+			fetchRouteMarkers(routeId),
+		]);
+		if (race?.id !== id) return;
+		if (routeRes.status === 'fulfilled') courseRoute = routeRes.value;
+		else console.error('race course read failed', routeRes.reason);
+		if (markersRes.status === 'fulfilled') courseMarkers = markersRes.value;
+		else console.error('race course markers read failed', markersRes.reason);
 	}
 
 	async function loadRuns(id: string) {
@@ -136,6 +163,8 @@
 		photos = [];
 		ownPlans = [];
 		recentEffort = null;
+		courseRoute = null;
+		courseMarkers = [];
 		void load();
 	});
 
@@ -195,6 +224,9 @@
 		if (c.surface) parts.push(routeSurfaceLabel(c.surface));
 		return parts;
 	});
+
+	const coursePoints = $derived(routePathPoints(courseRoute?.waypoints));
+	const courseClimbNames = $derived(climbNamesFromMarkers(courseMarkers, coursePoints));
 
 	let entryHref = $derived(race?.entry_url ? safeHref(race.entry_url) : null);
 	let resultsHref = $derived(race?.results_url ? safeHref(race.results_url) : null);
@@ -321,10 +353,27 @@
 			</p>
 		{/if}
 
-		{#if courseParts.length > 0}
+		{#if courseParts.length > 0 || courseRoute}
 			<section class="section" aria-labelledby="race-course-heading" data-testid="race-detail-course">
 				<h2 id="race-course-heading">{m('races.courseHeading')}</h2>
-				<p class="course-summary">{courseParts.join(' · ')}</p>
+				{#if courseParts.length > 0}
+					<p class="course-summary">{courseParts.join(' · ')}</p>
+				{/if}
+				{#if courseRoute && coursePoints.length > 1}
+					<a class="course-map card-elevated" href="/routes/{courseRoute.id}" data-testid="race-detail-course-map">
+						<span class="course-map-image">
+							<RouteTrackPreview
+								routeId={courseRoute.id}
+								waypoints={courseRoute.waypoints}
+								ownerUserId={courseRoute.user_id}
+							/>
+						</span>
+						<span class="course-name">{courseRoute.name}</span>
+					</a>
+					<div class="actions">
+						<CoursePreviewButton points={coursePoints} title={race.name} climbNames={courseClimbNames} />
+					</div>
+				{/if}
 			</section>
 		{/if}
 
@@ -444,6 +493,23 @@
 	}
 	.course-summary {
 		margin: 0;
+	}
+	.course-map {
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		color: var(--color-text);
+		text-decoration: none;
+		max-width: 32rem;
+	}
+	.course-map-image {
+		display: block;
+		height: 12rem;
+		background: var(--color-bg-secondary);
+	}
+	.course-name {
+		padding: var(--space-sm) var(--space-md);
+		font-weight: 600;
 	}
 	.runs {
 		list-style: none;

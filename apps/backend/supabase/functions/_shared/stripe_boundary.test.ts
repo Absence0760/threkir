@@ -1,35 +1,31 @@
+// The Stripe SDK enters the Edge Function tier through `_shared/stripe.ts`
+// alone, as `npm:stripe@<version>`.
+//
+// Three properties, each one a guard nothing else provides:
+//
+//   - no module imports Stripe from esm.sh. esm.sh rebuilds stripe's graph
+//     itself and its CDN has served two builds of one versioned module at
+//     once, which no `deno.lock` pin can match (decisions § 2257). An esm.sh
+//     import brings that back.
+//   - no module but the boundary names a Stripe specifier, so the
+//     compile-time assertion inside `stripe.ts` (which the `deno check` lane
+//     runs, and which is the only thing that notices the declarations
+//     collapsing to `any`, decisions § 765) covers every Stripe call.
+//   - the specifier's version matches the root package.json's `stripe`
+//     devDependency. `deno check` reads the declarations from the installed
+//     package and the runtime fetches the specifier, so two strings name one
+//     package and a mismatch types the tier against a version it does not run.
+
 import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 
-// The Stripe SDK's declarations bind only through `_shared/stripe.ts`, and
-// only because of the `@ts-types` directive in it — esm.sh rewrites stripe's
-// ambient `declare module 'stripe'` to name its own declaration file's URL,
-// which the runtime specifier is not, so an import straight from the URL
-// resolves to `any` and every Stripe call under it is checked against nothing
-// (decisions § 765).
-//
-// Two halves, and neither can do the other's job:
-//
-//   - a COLLAPSE back to `any` is invisible to a source grep, because the
-//     import text does not change. That half is a compile-time assertion
-//     inside `stripe.ts` itself, which the `deno check` lane runs.
-//   - a NEW function importing Stripe from the URL is invisible to the
-//     compiler, because `any` produces no error anywhere. That is this file.
-//
-// The version pin is checked here too: the runtime specifier and the
-// declaration specifier are two strings naming one package, so they can drift,
-// and a mismatch types the tier against a version it does not run.
-
 const FUNCTIONS_ROOT = new URL('../', import.meta.url);
-
-/// The module every Stripe import must go through, repo-relative to the
-/// functions tree.
 const BOUNDARY = '_shared/stripe.ts';
-const DECLARATIONS = '_shared/stripe_types.d.ts';
+const ROOT_PACKAGE_JSON = new URL('../../../../../package.json', import.meta.url);
 
-const STRIPE_URL = /['"](https:\/\/esm\.sh\/stripe@[^'"]+)['"]/g;
-const STRIPE_VERSION = /https:\/\/esm\.sh\/stripe@([0-9][^/?'"]*)/;
+const ESM_SH_STRIPE = /['"](https:\/\/esm\.sh\/stripe@[^'"]+)['"]/g;
+const ANY_STRIPE_SPECIFIER = /['"]((?:npm:|https:\/\/esm\.sh\/)stripe@[^'"]+)['"]/g;
+const NPM_STRIPE_VERSION = /['"]npm:stripe@([0-9][^/'"]*)['"]/;
 
-/// Every `*.ts` under the functions tree, repo-relative to it.
 async function tsFiles(dir = FUNCTIONS_ROOT, prefix = ''): Promise<string[]> {
 	const out: string[] = [];
 	for await (const entry of Deno.readDir(dir)) {
@@ -43,100 +39,88 @@ async function tsFiles(dir = FUNCTIONS_ROOT, prefix = ''): Promise<string[]> {
 	return out.sort();
 }
 
-Deno.test('only the shared boundary module imports Stripe from a URL', async () => {
-	const files = await tsFiles();
-	assert(
-		files.includes(BOUNDARY),
-		`${BOUNDARY} is gone. If the boundary moved, move this guard with it — deleting it ` +
-			'leaves nothing watching for a function that imports Stripe straight from esm.sh ' +
-			'and gets `any` for it.',
-	);
+const read = (file: string) => Deno.readTextFile(new URL(file, FUNCTIONS_ROOT));
 
-	// The boundary existing as a FILE is not the same as the boundary carrying
-	// the import — an emptied one satisfies every `offenders` check below while
-	// leaving the tier with no Stripe import to bind declarations to.
-	const boundarySrc = await Deno.readTextFile(new URL(BOUNDARY, FUNCTIONS_ROOT));
-	assert(
-		new RegExp(STRIPE_URL.source).test(boundarySrc),
-		`${BOUNDARY} no longer imports Stripe from esm.sh — the pattern this guard hunts ` +
-			'matches nothing anywhere, so it would report a clean tree either way',
-	);
-
+Deno.test('no module imports Stripe from esm.sh', async () => {
 	const offenders: string[] = [];
-	for (const file of files) {
-		if (file === BOUNDARY || file === DECLARATIONS) continue;
-		const src = await Deno.readTextFile(new URL(file, FUNCTIONS_ROOT));
-		for (const [, url] of src.matchAll(STRIPE_URL)) offenders.push(`${file} -> ${url}`);
+	for (const file of await tsFiles()) {
+		if (file === '_shared/stripe_boundary.test.ts') continue;
+		for (const [, url] of (await read(file)).matchAll(ESM_SH_STRIPE)) {
+			offenders.push(`${file} -> ${url}`);
+		}
 	}
-
 	assertEquals(
 		offenders,
 		[],
-		'These modules import the Stripe SDK straight from esm.sh. That import resolves to ' +
-			`\`any\` — it does not fail, it just stops checking — so import from ${BOUNDARY} ` +
-			`instead, which carries the directive that binds the declarations: ${
+		'These modules import Stripe from esm.sh, whose CDN has served two builds of one ' +
+			'versioned module at once — no deno.lock pin can match both, so the Edge Function ' +
+			`lane fails on whichever one a cold run is handed. Import from ${BOUNDARY}: ${
 				offenders.join(', ')
 			}`,
 	);
 });
 
-Deno.test('at least one function still goes through the boundary', async () => {
-	// Without this, the guard above passes vacuously the day the last Stripe
-	// caller is deleted or renamed, and would go on passing while a new one is
-	// written against the URL.
+Deno.test('only the shared boundary module names a Stripe specifier', async () => {
 	const files = await tsFiles();
-	const importers = [];
+	assert(
+		files.includes(BOUNDARY),
+		`${BOUNDARY} is gone. If the boundary moved, move this guard with it — deleting it ` +
+			'leaves nothing watching for a function that imports Stripe directly.',
+	);
+	assert(
+		NPM_STRIPE_VERSION.test(await read(BOUNDARY)),
+		`${BOUNDARY} no longer imports \`npm:stripe@<version>\`, so the pattern this guard ` +
+			'hunts matches nothing anywhere and it would report a clean tree either way.',
+	);
+	const offenders: string[] = [];
 	for (const file of files) {
+		if (file === BOUNDARY || file === '_shared/stripe_boundary.test.ts') continue;
+		for (const [, spec] of (await read(file)).matchAll(ANY_STRIPE_SPECIFIER)) {
+			offenders.push(`${file} -> ${spec}`);
+		}
+	}
+	assertEquals(
+		offenders,
+		[],
+		`These modules import the Stripe SDK without going through ${BOUNDARY}, which carries ` +
+			'the assertion that proves its declarations bound: ' + offenders.join(', '),
+	);
+});
+
+Deno.test('at least one function still goes through the boundary', async () => {
+	const importers = [];
+	for (const file of await tsFiles()) {
 		if (file === BOUNDARY) continue;
-		const src = await Deno.readTextFile(new URL(file, FUNCTIONS_ROOT));
-		if (/from\s*'[^']*_shared\/stripe\.ts'/.test(src)) importers.push(file);
+		if (/from\s*'[^']*_shared\/stripe\.ts'/.test(await read(file))) importers.push(file);
 	}
 	assert(
 		importers.length > 0,
-		`nothing imports ${BOUNDARY} any more, so the guard above enforces nothing. If the ` +
+		`nothing imports ${BOUNDARY} any more, so the guards above enforce nothing. If the ` +
 			'Stripe functions are gone, delete this file and the boundary with them; if they ' +
 			'moved, retarget it.',
 	);
 });
 
-Deno.test('the runtime specifier and the declarations name the same Stripe version', async () => {
-	const runtime = await Deno.readTextFile(new URL(BOUNDARY, FUNCTIONS_ROOT));
-	const declarations = await Deno.readTextFile(new URL(DECLARATIONS, FUNCTIONS_ROOT));
-
-	const runtimeVersion = runtime.match(STRIPE_VERSION)?.[1];
-	const declarationsVersion = declarations.match(STRIPE_VERSION)?.[1];
-
-	assert(
-		runtimeVersion,
-		`${BOUNDARY} no longer imports an esm.sh stripe URL, so there is no version to pin. ` +
-			'If the SDK moved to a different registry, this guard has to move with it.',
-	);
-	assert(
-		declarationsVersion,
-		`${DECLARATIONS} no longer imports an esm.sh stripe URL. That file exists only to name ` +
-			'the specifier the ambient declaration matches; without it the boundary is `any`.',
-	);
+Deno.test('the runtime specifier and the installed declarations name the same Stripe version', async () => {
+	const runtimeVersion = (await read(BOUNDARY)).match(NPM_STRIPE_VERSION)?.[1];
+	const pkg = JSON.parse(await Deno.readTextFile(ROOT_PACKAGE_JSON));
+	const installedVersion: unknown = pkg.devDependencies?.stripe;
+	assert(runtimeVersion, `${BOUNDARY} no longer imports \`npm:stripe@<version>\`.`);
 	assertEquals(
-		declarationsVersion,
+		installedVersion,
 		runtimeVersion,
-		`the tier runs stripe@${runtimeVersion} and is typed against stripe@${declarationsVersion}. ` +
-			'Two strings name one package here, so a bump has to touch both files: the params ' +
-			'and responses the compiler checks would otherwise be a different version\'s.',
+		`the tier runs stripe@${runtimeVersion} but the root package.json installs ` +
+			`stripe@${installedVersion} for \`deno check\` to read the declarations from. Pin both ` +
+			'to the same exact version: the params and responses the compiler checks would ' +
+			"otherwise be a different version's.",
 	);
 });
 
-Deno.test('the boundary carries the directive that binds the declarations', async () => {
-	// The compile-time half lives in stripe.ts and only the `deno check` lane
-	// runs it; this asserts the two pieces it needs are still there, so a tidy-up
-	// that drops either one fails here as well as there.
-	const src = await Deno.readTextFile(new URL(BOUNDARY, FUNCTIONS_ROOT));
+Deno.test('the boundary carries the assertion that proves the declarations bound', async () => {
+	const src = await read(BOUNDARY);
 	assert(
-		/^\/\/ @ts-types="\.\/stripe_types\.d\.ts"$/m.test(src),
-		`${BOUNDARY} has lost its \`@ts-types\` directive. Without it the import resolves to ` +
-			'`any` and every Stripe call in the tier stops being checked, silently.',
-	);
-	assert(
-		src.includes('@ts-expect-error'),
+		/@ts-expect-error[^\n]*\n\s*type StripeDeclarationsBind = MustBeNumber<Stripe\.Account\['id'\]>/
+			.test(src),
 		`${BOUNDARY} has lost the \`@ts-expect-error\` assertion that proves the declarations ` +
 			'bound. It is the only thing that fails when they collapse back to `any`: a ' +
 			'positive assertion cannot, because `any` satisfies every constraint.',

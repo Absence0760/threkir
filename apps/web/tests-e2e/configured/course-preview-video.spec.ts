@@ -74,6 +74,12 @@ test.describe('/routes/[id] flyover video export with a permitted basemap', () =
 		page,
 		mockRoute,
 	}) => {
+		// The render is real work on a GPU-less runner: SwiftShader rasterizes
+		// the 1080x1920 map when each frame is copied out, measured at ~13 s
+		// for the first frame (shaders, terrain) and ~0.8 s a frame after on
+		// four cores, so reaching 1% (four frames) needs the progress wait's
+		// 60 s on top of the page and preview setup.
+		test.setTimeout(90_000);
 		await page.emulateMedia({ reducedMotion: 'reduce' });
 		await mockRoute(
 			page,

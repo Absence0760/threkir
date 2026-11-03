@@ -5357,5 +5357,9 @@
   "recapSharePreviewLabel": "Aperçu de l'image du bilan",
   "recapShareImage": "Partager l'image",
   "recapShareAsText": "Partager en texte",
-  "recapShareImageError": "Impossible de créer l'image du bilan. Réessayez."
+  "recapShareImageError": "Impossible de créer l'image du bilan. Réessayez.",
+  "shareCardStyleVideo": "Vidéo",
+  "shareCardVideoBody": "Transformez cette course en vidéo verticale de survol 3D. Elle est créée dans votre navigateur sur threkir.com ; partagez-la ou enregistrez-la depuis là.",
+  "shareCardVideoOpen": "Ouvrir l'export vidéo",
+  "shareCardVideoError": "Impossible d'ouvrir le navigateur. Réessayez."
 }

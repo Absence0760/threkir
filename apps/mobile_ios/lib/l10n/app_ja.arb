@@ -5357,5 +5357,9 @@
   "recapSharePreviewLabel": "振り返り画像のプレビュー",
   "recapShareImage": "画像を共有",
   "recapShareAsText": "テキストで共有",
-  "recapShareImageError": "振り返り画像を作成できませんでした。もう一度お試しください。"
+  "recapShareImageError": "振り返り画像を作成できませんでした。もう一度お試しください。",
+  "shareCardStyleVideo": "動画",
+  "shareCardVideoBody": "このランを縦長の3Dフライオーバー動画にします。threkir.com上のブラウザで作成され、そこから共有・保存できます。",
+  "shareCardVideoOpen": "動画の書き出しを開く",
+  "shareCardVideoError": "ブラウザを開けませんでした。もう一度お試しください。"
 }

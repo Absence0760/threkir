@@ -19121,6 +19121,20 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get recapShareImageError =>
       'Não foi possível criar a imagem da retrospectiva. Tente novamente.';
+
+  @override
+  String get shareCardStyleVideo => 'Vídeo';
+
+  @override
+  String get shareCardVideoBody =>
+      'Transforme esta corrida num vídeo vertical de sobrevoo em 3D. É criado no seu navegador em threkir.com; partilhe-o ou guarde-o a partir daí.';
+
+  @override
+  String get shareCardVideoOpen => 'Abrir exportação de vídeo';
+
+  @override
+  String get shareCardVideoError =>
+      'Não foi possível abrir o navegador. Tente novamente.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -38226,4 +38240,18 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get recapShareImageError =>
       'Não foi possível criar a imagem da retrospectiva. Tente de novo.';
+
+  @override
+  String get shareCardStyleVideo => 'Vídeo';
+
+  @override
+  String get shareCardVideoBody =>
+      'Transforme esta corrida em um vídeo vertical de sobrevoo em 3D. Ele é criado no seu navegador em threkir.com; compartilhe ou salve por lá.';
+
+  @override
+  String get shareCardVideoOpen => 'Abrir exportação de vídeo';
+
+  @override
+  String get shareCardVideoError =>
+      'Não foi possível abrir o navegador. Tente de novo.';
 }

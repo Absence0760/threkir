@@ -25053,5 +25053,21 @@
   "recapShareImageError": "Couldn't make the recap image. Try again.",
   "@recapShareImageError": {
     "description": "Banner when the recap image could not be made or shared"
+  },
+  "shareCardStyleVideo": "Video",
+  "@shareCardStyleVideo": {
+    "description": "Share-sheet style chip that hands the run to the web flyover video export"
+  },
+  "shareCardVideoBody": "Turn this run into a vertical 3D flyover video. It's made in your browser on threkir.com; share or save it from there.",
+  "@shareCardVideoBody": {
+    "description": "Explanation shown when the Video share style is selected: the video is made by the web app in the browser"
+  },
+  "shareCardVideoOpen": "Open video export",
+  "@shareCardVideoOpen": {
+    "description": "Button that opens the web flyover video export for this run in the browser"
+  },
+  "shareCardVideoError": "Couldn't open the browser. Try again.",
+  "@shareCardVideoError": {
+    "description": "Banner when no browser could open the web video export"
   }
 }

@@ -31048,6 +31048,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t make the recap image. Try again.'**
   String get recapShareImageError;
+
+  /// Share-sheet style chip that hands the run to the web flyover video export
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get shareCardStyleVideo;
+
+  /// Explanation shown when the Video share style is selected: the video is made by the web app in the browser
+  ///
+  /// In en, this message translates to:
+  /// **'Turn this run into a vertical 3D flyover video. It\'s made in your browser on threkir.com; share or save it from there.'**
+  String get shareCardVideoBody;
+
+  /// Button that opens the web flyover video export for this run in the browser
+  ///
+  /// In en, this message translates to:
+  /// **'Open video export'**
+  String get shareCardVideoOpen;
+
+  /// Banner when no browser could open the web video export
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the browser. Try again.'**
+  String get shareCardVideoError;
 }
 
 class _AppLocalizationsDelegate

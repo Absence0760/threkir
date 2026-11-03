@@ -18928,4 +18928,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get recapShareImageError =>
       'Couldn\'t make the recap image. Try again.';
+
+  @override
+  String get shareCardStyleVideo => 'Video';
+
+  @override
+  String get shareCardVideoBody =>
+      'Turn this run into a vertical 3D flyover video. It\'s made in your browser on threkir.com; share or save it from there.';
+
+  @override
+  String get shareCardVideoOpen => 'Open video export';
+
+  @override
+  String get shareCardVideoError => 'Couldn\'t open the browser. Try again.';
 }

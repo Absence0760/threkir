@@ -19132,4 +19132,18 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get recapShareImageError =>
       'Das Rückblick-Bild konnte nicht erstellt werden. Versuch es noch einmal.';
+
+  @override
+  String get shareCardStyleVideo => 'Video';
+
+  @override
+  String get shareCardVideoBody =>
+      'Mach aus diesem Lauf ein vertikales 3D-Flyover-Video. Es entsteht in deinem Browser auf threkir.com; dort kannst du es teilen oder speichern.';
+
+  @override
+  String get shareCardVideoOpen => 'Video-Export öffnen';
+
+  @override
+  String get shareCardVideoError =>
+      'Der Browser konnte nicht geöffnet werden. Versuch es noch einmal.';
 }

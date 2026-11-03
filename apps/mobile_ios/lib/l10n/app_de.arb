@@ -5357,5 +5357,9 @@
   "recapSharePreviewLabel": "Vorschau des Rückblick-Bilds",
   "recapShareImage": "Bild teilen",
   "recapShareAsText": "Als Text teilen",
-  "recapShareImageError": "Das Rückblick-Bild konnte nicht erstellt werden. Versuch es noch einmal."
+  "recapShareImageError": "Das Rückblick-Bild konnte nicht erstellt werden. Versuch es noch einmal.",
+  "shareCardStyleVideo": "Video",
+  "shareCardVideoBody": "Mach aus diesem Lauf ein vertikales 3D-Flyover-Video. Es entsteht in deinem Browser auf threkir.com; dort kannst du es teilen oder speichern.",
+  "shareCardVideoOpen": "Video-Export öffnen",
+  "shareCardVideoError": "Der Browser konnte nicht geöffnet werden. Versuch es noch einmal."
 }

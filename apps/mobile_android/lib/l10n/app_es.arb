@@ -5357,5 +5357,9 @@
   "recapSharePreviewLabel": "Vista previa de la imagen del resumen",
   "recapShareImage": "Compartir imagen",
   "recapShareAsText": "Compartir como texto",
-  "recapShareImageError": "No se pudo crear la imagen del resumen. Inténtalo de nuevo."
+  "recapShareImageError": "No se pudo crear la imagen del resumen. Inténtalo de nuevo.",
+  "shareCardStyleVideo": "Vídeo",
+  "shareCardVideoBody": "Convierte esta carrera en un vídeo vertical de sobrevuelo en 3D. Se crea en tu navegador en threkir.com; compártelo o guárdalo desde allí.",
+  "shareCardVideoOpen": "Abrir exportación de vídeo",
+  "shareCardVideoError": "No se pudo abrir el navegador. Inténtalo de nuevo."
 }

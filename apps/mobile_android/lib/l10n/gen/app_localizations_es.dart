@@ -19119,4 +19119,18 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get recapShareImageError =>
       'No se pudo crear la imagen del resumen. Inténtalo de nuevo.';
+
+  @override
+  String get shareCardStyleVideo => 'Vídeo';
+
+  @override
+  String get shareCardVideoBody =>
+      'Convierte esta carrera en un vídeo vertical de sobrevuelo en 3D. Se crea en tu navegador en threkir.com; compártelo o guárdalo desde allí.';
+
+  @override
+  String get shareCardVideoOpen => 'Abrir exportación de vídeo';
+
+  @override
+  String get shareCardVideoError =>
+      'No se pudo abrir el navegador. Inténtalo de nuevo.';
 }

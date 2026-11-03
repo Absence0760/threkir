@@ -5357,5 +5357,9 @@
   "recapSharePreviewLabel": "Pré-visualização da imagem da retrospectiva",
   "recapShareImage": "Partilhar imagem",
   "recapShareAsText": "Partilhar como texto",
-  "recapShareImageError": "Não foi possível criar a imagem da retrospectiva. Tente novamente."
+  "recapShareImageError": "Não foi possível criar a imagem da retrospectiva. Tente novamente.",
+  "shareCardStyleVideo": "Vídeo",
+  "shareCardVideoBody": "Transforme esta corrida num vídeo vertical de sobrevoo em 3D. É criado no seu navegador em threkir.com; partilhe-o ou guarde-o a partir daí.",
+  "shareCardVideoOpen": "Abrir exportação de vídeo",
+  "shareCardVideoError": "Não foi possível abrir o navegador. Tente novamente."
 }

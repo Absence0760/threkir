@@ -18219,4 +18219,17 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get recapShareImageError => '振り返り画像を作成できませんでした。もう一度お試しください。';
+
+  @override
+  String get shareCardStyleVideo => '動画';
+
+  @override
+  String get shareCardVideoBody =>
+      'このランを縦長の3Dフライオーバー動画にします。threkir.com上のブラウザで作成され、そこから共有・保存できます。';
+
+  @override
+  String get shareCardVideoOpen => '動画の書き出しを開く';
+
+  @override
+  String get shareCardVideoError => 'ブラウザを開けませんでした。もう一度お試しください。';
 }

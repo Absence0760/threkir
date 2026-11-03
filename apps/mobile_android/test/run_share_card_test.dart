@@ -546,6 +546,7 @@ void main() {
       WidgetTester tester, {
       Future<XFile?> Function()? pick,
       RunShareImageSaver? save,
+      RunShareUrlOpener? openUrl,
       Run? run,
       Map<String, Object> prefs = const {},
     }) async {
@@ -565,6 +566,7 @@ void main() {
                 privacyZones: const [],
                 pickPhotoOverride: pick ?? () async => null,
                 saveImageOverride: save ?? (_, __) async {},
+                openUrlOverride: openUrl ?? (_) async => true,
               ),
               child: const Text('open'),
             ),
@@ -791,6 +793,61 @@ void main() {
       expect(button(tester, 'Save to Photos').enabled, isTrue,
           reason: 'a refused save must not leave the sheet stuck busy');
       await tester.pump(const Duration(seconds: 5));
+    });
+
+    testWidgets('a run with no line to draw is offered no Video style',
+        (tester) async {
+      await openSheet(tester);
+      expect(find.text('Sticker'), findsOneWidget);
+      expect(find.text('Video'), findsNothing);
+    });
+
+    testWidgets(
+        'Video explains the web export and opens this run in the browser',
+        (tester) async {
+      final opened = <Uri>[];
+      await openSheet(
+        tester,
+        run: _run(track: [_away(1), _away(2), _away(3)]),
+        openUrl: (url) async {
+          opened.add(url);
+          return true;
+        },
+      );
+      await tapChip(tester, 'Video');
+      expect(find.textContaining('vertical 3D flyover video'), findsOneWidget);
+      expect(find.text('Image'), findsNothing);
+      expect(find.text('Save to Photos'), findsNothing);
+      expect(find.text('Layout'), findsNothing);
+
+      await tester.tap(find.text('Open video export'));
+      await tester.pump();
+      expect(opened, [Uri.parse('https://threkir.com/runs/r1?video=1')]);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a browser that will not open says so', (tester) async {
+      await openSheet(
+        tester,
+        run: _run(track: [_away(1), _away(2), _away(3)]),
+        openUrl: (_) async => false,
+      );
+      await tapChip(tester, 'Video');
+      await tester.tap(find.text('Open video export'));
+      await pumpUntil(
+        tester,
+        () => find
+            .text("Couldn't open the browser. Try again.")
+            .evaluate()
+            .isNotEmpty,
+        describe: 'the browser-error banner',
+      );
+      await tester.pump(const Duration(seconds: 5));
+    });
+
+    test('the export URL names the run on the configured web origin', () {
+      expect(runVideoExportUrl('abc 1', webBase: 'https://preview.example/'),
+          Uri.parse('https://preview.example/runs/abc%201?video=1'));
     });
   });
 }

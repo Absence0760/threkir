@@ -11,6 +11,9 @@
 	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV, PUBLIC_SITE_URL, PUBLIC_TILE_STYLE_URL as PUBLIC_TILE_STYLE_URL_ENV } from '$app/env/public';
 	import RunMap, { type SelectedSegment } from '#lib/components/RunMap.svelte';
 	import RoutePreviewScrubber from '#lib/components/RoutePreviewScrubber.svelte';
+	import CoursePreviewButton from '#lib/components/CoursePreviewButton.svelte';
+	import { hasPreviewableCourse, trackPreview } from '#lib/routes/course_preview_points.ts';
+	import type { PathPoint } from '#lib/routes/flyover_path.ts';
 	import { interpolateAlongRoute } from '#lib/routes/route_geometry.ts';
 	import { buildLocalStaticMapUrl, buildStaticMapUrl } from '#lib/routes/static_map.ts';
 	import { mapTrackLine } from '#lib/routes/basemap_contrast.ts';
@@ -1345,6 +1348,11 @@
 			: trackLine(run?.track ?? []),
 	);
 	let hasMapTrack = $derived(baseTrack.length >= 2);
+	const ownReplay = $derived(trackPreview(run?.track, run?.source));
+	const canReplay = $derived(hasPreviewableCourse(ownReplay.points));
+	/// A non-owner's replay flies the track RunShareView drew, which came
+	/// through clip-public-track: never a second, unclipped read.
+	let sharedReplay = $state<{ points: PathPoint[]; noiseBandM: number | undefined; title: string } | null>(null);
 	// Gate the elevation chart on real samples, and carry the line across
 	// the ones that are missing rather than plotting them at sea level.
 	// Without any `ele` the array used to be all-zero and the chart rendered
@@ -1635,7 +1643,20 @@
 					<p class="other-run-note">{m('runDetail.otherRunViewerNote')}</p>
 				</div>
 			</div>
-			<RunShareView runId={pageData.id} />
+			{#if sharedReplay && hasPreviewableCourse(sharedReplay.points)}
+				<div class="other-run-replay">
+					<CoursePreviewButton
+						points={sharedReplay.points}
+						noiseBandM={sharedReplay.noiseBandM}
+						title={sharedReplay.title}
+						replay
+					/>
+				</div>
+			{/if}
+			<RunShareView
+				runId={pageData.id}
+				ontrack={(track, title, source) => (sharedReplay = { ...trackPreview(track, source), title })}
+			/>
 		</div>
 	</div>
 {:else if loadError}
@@ -2104,6 +2125,16 @@
 					onchange={(f) => (scrubFraction = f)}
 					onscrubbing={(active) => (scrubbing = active)}
 				/>
+				{#if canReplay}
+					<div class="replay-3d">
+						<CoursePreviewButton
+							points={ownReplay.points}
+							noiseBandM={ownReplay.noiseBandM}
+							title={runTitle || formatDate(run.started_at)}
+							replay
+						/>
+					</div>
+				{/if}
 			</section>
 		{/if}
 
@@ -2786,6 +2817,9 @@
 		width: 100%;
 		margin-inline: auto;
 		overflow-y: auto;
+	}
+	.replay-3d {
+		margin-top: var(--space-md);
 	}
 	.other-run-header {
 		display: flex;

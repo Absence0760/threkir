@@ -25,6 +25,8 @@
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import SendRouteDialog from '#lib/components/SendRouteDialog.svelte';
 	import RoutePreviewScrubber from '#lib/components/RoutePreviewScrubber.svelte';
+	import CoursePreviewButton from '#lib/components/CoursePreviewButton.svelte';
+	import { climbNamesFromMarkers, routePathPoints } from '#lib/routes/course_preview_points.ts';
 	import { interpolateAlongRoute } from '#lib/routes/route_geometry.ts';
 	import { distinctTags } from '#lib/routes/route_tags.ts';
 	import { routeElevation } from '#lib/routes/route_elevation.ts';
@@ -529,6 +531,8 @@
 	// the chart's idx-space lines up with what the map is drawing: a
 	// non-owner's chart idx → map marker must hit the clipped trace.
 	let elevation = $derived(routeElevation(route?.elevation_m ?? 0, displayWaypoints));
+	const previewPoints = $derived(routePathPoints(displayWaypoints));
+	const previewClimbNames = $derived(climbNamesFromMarkers(routeMarkers, previewPoints));
 
 	/// Linked-cursor index — same shape as /runs/[id]. ElevationProfile
 	/// onhover sets it; RunMap reads it.
@@ -733,6 +737,11 @@
 					{/if}
 				</div>
 				<div class="actions">
+					<CoursePreviewButton
+						points={previewPoints}
+						title={route.name}
+						climbNames={previewClimbNames}
+					/>
 					<button class="btn btn-outline btn-sm" onclick={handleExportGpx}>GPX</button>
 					<button class="btn btn-outline btn-sm" onclick={handleExportKml}>KML</button>
 					{#if routeMarkers.length > 0}

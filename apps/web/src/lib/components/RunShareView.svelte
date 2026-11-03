@@ -24,7 +24,15 @@
 		compact = false,
 		headerless = false,
 		hideAnonCta = false,
-	}: { runId: string; compact?: boolean; headerless?: boolean; hideAnonCta?: boolean } = $props();
+		ontrack,
+	}: {
+		runId: string;
+		compact?: boolean;
+		headerless?: boolean;
+		hideAnonCta?: boolean;
+		/** The track this view drew (clipped for a non-owner), the run's heading and source, once loaded. */
+		ontrack?: (track: TrackPoint[], title: string, source: string | null) => void;
+	} = $props();
 
 	let run = $state<Run | null>(null);
 	let track = $state<TrackPoint[]>([]);
@@ -106,6 +114,7 @@
 					track = [];
 				}
 			}
+			ontrack?.(track, runTitle || formatDate(r.started_at), r.source ?? null);
 		} else {
 			notFound = true;
 		}

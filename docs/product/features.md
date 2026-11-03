@@ -594,6 +594,25 @@ Used across: account deletion, run deletion, club leave, event cancel, RSVP chan
 
 These are stubs. Each closes a gap against a specific competitor (see `docs/product/competitors.md`) and is listed with its sizing + open decisions in `docs/product/roadmap.md § Competitor-parity backlog`. Flesh each one out on delivery — do **not** treat the stubs below as a spec.
 
+### Head-to-head card
+
+**Phase:** 3 | **Platform:** Web, Android + iOS twin | **Parity:** [see matrix](parity.md) | **Issue:** #1273 item 9
+
+**Why:** "me vs @friend" on a route both have run is a post a creator's followers react to, and it carries the Threkir mark to people who do not use the app yet.
+
+**Spec:**
+
+- **Targets:** a route, a route segment or a catalogue segment. Each side is that runner's fastest public attempt of the same activity type: the whole run on a route, the effort on a segment.
+- **Who:** mutual follows only, no block either way, and the friend's profile neither private nor hidden. Both runs must be public (not followers-only, not a DNF). The `head_to_head` read returns only friends who qualify, so the picker never offers one it would refuse, and every refusal looks the same as having nobody to compare.
+- **Card:** 360×450 logical, exported 1080×1350: the target's name, both names (the friend as `@handle` when they have one), both times with the winner's in the accent colour, the outcome line and the mark. No line, no map, so no track is read and no tile credit is owed.
+- **Not read:** `personal_records`, any track, the age record or gender.
+- **Free, no flag:** it returns a subset of what the caller can already see on the friend's public profile and the segment leaderboards (decisions § 2267).
+
+**Done when:**
+- The picker lists only friends with a public attempt, and a failed read shows an error with a retry, never the empty state
+- The card exports at 1080×1350 on web and shares or saves on mobile
+- pgTAP pins each rule and that every refusal is an empty result
+
 ### Training plan runner
 **Closes:** Runna, Garmin Coach.
 **Stub:** plan → weeks → workouts data model (already partially sketched in `roadmap.md § Premium tier`); web plan editor; "today's workout" dashboard card; execution loop in the run screen; auto-match planned vs actual.
@@ -605,6 +624,7 @@ These are stubs. Each closes a gap against a specific competitor (see `docs/prod
 ### Segments + leaderboards
 **Closes:** Strava.
 **Stub:** user-authored GPS segments; PostGIS line-matching RPC invoked on run insert to produce `segment_efforts`; weekly + all-time boards per segment; KOM/CR equivalent per segment.
+**Head-to-head:** any segment, route segment or route can be compared with a mutual-follow friend on a share card; see [Head-to-head card](#head-to-head-card).
 
 ### Heatmap / popular-route discovery
 **Closes:** Strava, Komoot.

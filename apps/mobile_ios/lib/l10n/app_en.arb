@@ -25272,5 +25272,82 @@
   "shareCardVideoError": "Couldn't open the browser. Try again.",
   "@shareCardVideoError": {
     "description": "Banner when no browser could open the web video export"
+  },
+  "headToHeadCompare": "Compare with a friend",
+  "@headToHeadCompare": {
+    "description": "Button that opens the head-to-head card: the runner's best on this route or segment against a mutual-follow friend's"
+  },
+  "headToHeadTitle": "Head to head",
+  "@headToHeadTitle": {
+    "description": "Title of the head-to-head sheet, and the kicker printed on the card"
+  },
+  "headToHeadStyleVersus": "Versus",
+  "@headToHeadStyleVersus": {
+    "description": "Share-sheet style chip for the head-to-head card"
+  },
+  "headToHeadFriend": "Friend",
+  "@headToHeadFriend": {
+    "description": "Label over the row of friends to compare with"
+  },
+  "headToHeadLoading": "Finding friends to compare with…",
+  "@headToHeadLoading": {
+    "description": "Shown while the friends who can be compared are loading"
+  },
+  "headToHeadEmpty": "No friend to compare with here yet. It takes a friend you follow who follows you back, with a public profile, and a public run here from each of you.",
+  "@headToHeadEmpty": {
+    "description": "Shown when no friend can be compared on this route or segment, saying what a comparison needs"
+  },
+  "headToHeadLoadFailed": "Couldn't load the comparison.",
+  "@headToHeadLoadFailed": {
+    "description": "Shown when the comparison could not be loaded"
+  },
+  "headToHeadRetry": "Try again",
+  "@headToHeadRetry": {
+    "description": "Button that retries loading the comparison"
+  },
+  "headToHeadMe": "Me",
+  "@headToHeadMe": {
+    "description": "How the card names the runner sharing it, beside the friend's name"
+  },
+  "headToHeadVs": "vs",
+  "@headToHeadVs": {
+    "description": "Printed between the two names on the card"
+  },
+  "headToHeadIWon": "I won by {margin}",
+  "@headToHeadIWon": {
+    "description": "Card line when the runner sharing it was faster",
+    "placeholders": {
+      "margin": {
+        "type": "String"
+      }
+    }
+  },
+  "headToHeadFriendWon": "{name} won by {margin}",
+  "@headToHeadFriendWon": {
+    "description": "Card line when the friend was faster",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "margin": {
+        "type": "String"
+      }
+    }
+  },
+  "headToHeadTie": "Dead heat",
+  "@headToHeadTie": {
+    "description": "Card line when both times are the same"
+  },
+  "headToHeadFriendFallback": "A friend",
+  "@headToHeadFriendFallback": {
+    "description": "Name printed for a friend with no handle or display name"
+  },
+  "headToHeadPreview": "Head-to-head card preview",
+  "@headToHeadPreview": {
+    "description": "Accessibility label of the card preview"
+  },
+  "headToHeadPrivacy": "Only friends who follow you back and have a public profile can be compared, and only on public runs.",
+  "@headToHeadPrivacy": {
+    "description": "Note under the card saying who can be compared"
   }
 }

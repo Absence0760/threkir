@@ -9,6 +9,7 @@ import '../preferences.dart';
 import '../typed_decimal.dart';
 import 'confirm_destructive.dart';
 import 'error_state.dart';
+import 'head_to_head_card.dart' show showHeadToHeadSheet;
 import 'top_banner.dart';
 
 /// Route-detail segments panel: lists every segment on the parent
@@ -307,6 +308,14 @@ class _SegmentsPanelState extends State<SegmentsPanel> {
                     seg.authorId, widget.api.userId, widget.isRouteOwner),
                 onTap: () => _toggleLeaderboard(seg),
                 onDelete: () => _confirmDelete(seg),
+                onCompare: widget.api.userId == null
+                    ? null
+                    : () => showHeadToHeadSheet(
+                          context,
+                          api: widget.api,
+                          kind: 'segment',
+                          targetId: seg.id,
+                        ),
                 genderFilter: _genderFilter,
                 ageFilter: _ageFilter,
                 onGenderChanged: (v) {
@@ -425,6 +434,7 @@ class _SegmentTile extends StatelessWidget {
   final bool canDelete;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final VoidCallback? onCompare;
   final String? genderFilter;
   final String? ageFilter;
   final ValueChanged<String?> onGenderChanged;
@@ -441,6 +451,7 @@ class _SegmentTile extends StatelessWidget {
     required this.canDelete,
     required this.onTap,
     required this.onDelete,
+    required this.onCompare,
     required this.genderFilter,
     required this.ageFilter,
     required this.onGenderChanged,
@@ -520,6 +531,17 @@ class _SegmentTile extends StatelessWidget {
                     genderFilter: genderFilter,
                     ageFilter: ageFilter,
                   ),
+                  if (onCompare != null)
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: TextButton.icon(
+                        key: Key('segment-head-to-head-${seg.id}'),
+                        onPressed: onCompare,
+                        icon: const Icon(Icons.people_outline, size: 18),
+                        label: Text(
+                            AppLocalizations.of(context).headToHeadCompare),
+                      ),
+                    ),
                 ],
               ),
             ),

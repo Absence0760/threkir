@@ -5403,5 +5403,21 @@
   "shareCardStyleVideo": "Vídeo",
   "shareCardVideoBody": "Transforme esta corrida em um vídeo vertical de sobrevoo em 3D. Ele é criado no seu navegador em threkir.com; compartilhe ou salve por lá.",
   "shareCardVideoOpen": "Abrir exportação de vídeo",
-  "shareCardVideoError": "Não foi possível abrir o navegador. Tente de novo."
+  "shareCardVideoError": "Não foi possível abrir o navegador. Tente de novo.",
+  "headToHeadCompare": "Comparar com um amigo",
+  "headToHeadTitle": "Frente a frente",
+  "headToHeadStyleVersus": "Duelo",
+  "headToHeadFriend": "Amigo",
+  "headToHeadLoading": "Procurando amigos para comparar…",
+  "headToHeadEmpty": "Ainda não há ninguém para comparar aqui. É preciso um amigo que você segue e que segue você, com perfil público, e uma corrida pública aqui de cada um.",
+  "headToHeadLoadFailed": "Não foi possível carregar a comparação.",
+  "headToHeadRetry": "Tentar de novo",
+  "headToHeadMe": "Eu",
+  "headToHeadVs": "vs",
+  "headToHeadIWon": "Ganhei por {margin}",
+  "headToHeadFriendWon": "{name} ganhou por {margin}",
+  "headToHeadTie": "Empate",
+  "headToHeadFriendFallback": "Um amigo",
+  "headToHeadPreview": "Prévia do cartão frente a frente",
+  "headToHeadPrivacy": "Só é possível comparar com amigos que seguem você de volta e têm perfil público, e apenas em corridas públicas."
 }

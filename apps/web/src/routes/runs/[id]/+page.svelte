@@ -25,6 +25,7 @@
 	import RunSocial from '#lib/components/RunSocial.svelte';
 	import RunShareView from '#lib/components/RunShareView.svelte';
 	import RunShareImageDialog from '#lib/components/RunShareImageDialog.svelte';
+	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
 	import StaticMapImage from '#lib/components/StaticMapImage.svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
@@ -863,6 +864,7 @@
 	let generatingImage = $state(false);
 	let showShareImage = $state(false);
 	let shareCardEl: HTMLElement | undefined = $state();
+	let showHeadToHead = $state(false);
 
 	/// Open the share-image editor. Every style draws the owner's track
 	/// clipped to their zones (`shareCardTrack`), so the editor cannot open
@@ -2216,6 +2218,17 @@
 					durationS={run.duration_s}
 					activityType={run.activity_type}
 				/>
+				{#if auth.user?.id === run.user_id}
+					<button
+						type="button"
+						class="btn btn-outline btn-sm h2h-open"
+						onclick={() => (showHeadToHead = true)}
+						data-testid="run-head-to-head-open"
+					>
+						<span class="material-symbols" aria-hidden="true">group</span>
+						{m('headToHead.compare')}
+					</button>
+				{/if}
 			</section>
 		{/if}
 
@@ -2712,7 +2725,16 @@
 		line={shareCardLine}
 		captureCard={captureShareCard}
 		fileBase={shareImageFileBase}
+		headToHead={run.route_id ? { kind: 'route', targetId: run.route_id } : null}
 	/>
+	{#if run.route_id}
+		<HeadToHeadDialog
+			open={showHeadToHead}
+			onclose={() => (showHeadToHead = false)}
+			kind="route"
+			targetId={run.route_id}
+		/>
+	{/if}
 {/if}
 
 <!-- Off-screen share card. 1080 square, rendered to PNG by
@@ -3512,6 +3534,12 @@
 		letter-spacing: 0.05em;
 	}
 
+	.h2h-open {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		margin-top: var(--space-md);
+	}
 	.section {
 		margin-bottom: var(--space-xl);
 		padding-top: var(--space-xl);

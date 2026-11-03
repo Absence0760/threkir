@@ -47,6 +47,7 @@ import 'guided_runs_screen.dart';
 import 'settings_preferences_screen.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/fundraiser_section.dart';
+import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
 import '../widgets/live_run_map.dart';
 import '../widgets/pace_segments.dart' show paceGradientRamp;
 import '../widgets/track_segment.dart';
@@ -2123,6 +2124,21 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
+                if (widget.apiClient case final api?) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    key: const Key('route-head-to-head-open'),
+                    onPressed: () => showHeadToHeadSheet(
+                      context,
+                      api: api,
+                      kind: 'route',
+                      targetId: run.routeId!,
+                      activityType: thisActivity,
+                    ),
+                    icon: const Icon(Icons.people_outline),
+                    label: Text(l10n.headToHeadCompare),
+                  ),
+                ],
               ],
             ),
           ),
@@ -2899,6 +2915,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         preferences: widget.preferences,
         title: _title,
         privacyZones: zones,
+        api: widget.apiClient,
       );
     } finally {
       if (mounted) {
@@ -2930,6 +2947,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       preferences: widget.preferences,
       title: _title,
       privacyZones: zones,
+      api: widget.apiClient,
     );
   }
 

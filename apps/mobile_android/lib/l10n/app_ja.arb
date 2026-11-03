@@ -5403,5 +5403,21 @@
   "shareCardStyleVideo": "動画",
   "shareCardVideoBody": "このランを縦長の3Dフライオーバー動画にします。threkir.com上のブラウザで作成され、そこから共有・保存できます。",
   "shareCardVideoOpen": "動画の書き出しを開く",
-  "shareCardVideoError": "ブラウザを開けませんでした。もう一度お試しください。"
+  "shareCardVideoError": "ブラウザを開けませんでした。もう一度お試しください。",
+  "headToHeadCompare": "友達と比べる",
+  "headToHeadTitle": "直接対決",
+  "headToHeadStyleVersus": "対決",
+  "headToHeadFriend": "友達",
+  "headToHeadLoading": "比べられる友達を探しています…",
+  "headToHeadEmpty": "ここで比べられる友達はまだいません。お互いにフォローしていて、公開プロフィールの友達と、それぞれのここでの公開ランが必要です。",
+  "headToHeadLoadFailed": "比較を読み込めませんでした。",
+  "headToHeadRetry": "再試行",
+  "headToHeadMe": "自分",
+  "headToHeadVs": "vs",
+  "headToHeadIWon": "{margin}差で勝ちました",
+  "headToHeadFriendWon": "{name}が{margin}差で勝ちました",
+  "headToHeadTie": "同タイム",
+  "headToHeadFriendFallback": "友達",
+  "headToHeadPreview": "直接対決カードのプレビュー",
+  "headToHeadPrivacy": "比べられるのは、フォローし返してくれていて公開プロフィールの友達だけで、公開ランのみが対象です。"
 }

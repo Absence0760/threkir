@@ -20,6 +20,7 @@
 	import { distanceInPreferred } from '#lib/format/units.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import ConfirmDialog from './ConfirmDialog.svelte';
+	import HeadToHeadDialog from './HeadToHeadDialog.svelte';
 
 	interface Props {
 		routeId: string;
@@ -80,6 +81,7 @@
 	});
 
 	let confirmDelete = $state<Segment | null>(null);
+	let headToHeadSegmentId = $state<string | null>(null);
 
 	async function load() {
 		loading = true;
@@ -412,6 +414,17 @@
 									{/each}
 								</ol>
 							{/if}
+							{#if auth.loggedIn}
+								<button
+									class="btn btn-outline btn-sm h2h-open"
+									type="button"
+									onclick={() => (headToHeadSegmentId = seg.id)}
+									data-testid="segment-head-to-head-open"
+								>
+									<span class="material-symbols" aria-hidden="true">group</span>
+									{t('headToHead.compare')}
+								</button>
+							{/if}
 							{#if auth.user?.id === seg.author_id || isOwner}
 								<button
 									class="link-btn danger"
@@ -429,6 +442,15 @@
 	{/if}
 </div>
 
+{#if headToHeadSegmentId}
+	<HeadToHeadDialog
+		open
+		onclose={() => (headToHeadSegmentId = null)}
+		kind="segment"
+		targetId={headToHeadSegmentId}
+	/>
+{/if}
+
 <ConfirmDialog
 	open={confirmDelete != null}
 	title={t('segments.deleteConfirmTitle')}
@@ -440,6 +462,13 @@
 />
 
 <style>
+	.h2h-open {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		align-self: flex-start;
+		margin-top: var(--space-sm);
+	}
 	.segments-panel {
 		display: flex;
 		flex-direction: column;

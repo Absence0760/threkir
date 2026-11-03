@@ -364,7 +364,7 @@ export async function loadShareFonts(): Promise<void> {
 // rounded at 180, the corner wordmark.svg gives it.
 const MARK_GLYPH = 'M30 10 H44 V90 H30 Z M44 29 H58 A21 21 0 0 1 58 71 H44 Z M44 42 H56 A8 8 0 0 1 56 58 H44 Z';
 
-function paintMark(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
+export function paintMark(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
 	ctx.save();
 	ctx.translate(x, y);
 	ctx.scale(size / 1024, size / 1024);

@@ -9,7 +9,7 @@
 -- deleted course gives null to every reader, the owner included.
 
 begin;
-select plan(21);
+select plan(23);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -188,14 +188,46 @@ select is(
   'a deleted course exposes no route id'
 );
 
--- 10. Making a linked route private withdraws its id from the calendar.
-update routes set is_public = false where id = 'c2c2c2c2-0000-0000-0000-0000000c0003';
-update routes set shadow_hidden = false where id = 'c2c2c2c2-0000-0000-0000-0000000c0003';
+-- 10. A course linked while public loses its id when made private, and again
+-- when moderated away after being made public once more.
+set local "request.jwt.claims" = '';
+insert into routes (id, user_id, name, waypoints, distance_m, elevation_m, surface, is_public, shadow_hidden)
+values ('c2c2c2c2-0000-0000-0000-0000000c0004', 'c1c1c1c1-0000-0000-0000-0000000c0001',
+        'Course to withdraw', '[]'::jsonb, 5000, 20, 'road', true, false);
+set local role service_role;
+insert into race_listings (id, provider, provider_race_id, name, race_date, distance_m, is_verified, route_id)
+values ('c3c3c3c3-0000-0000-0000-0000000c0005', 'runsignup', 'rlc-5', 'Withdrawn Course 5K', '2036-12-12', 5000, true,
+        'c2c2c2c2-0000-0000-0000-0000000c0004');
+reset role;
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"c1c1c1c1-0000-0000-0000-0000000c0002","role":"authenticated"}';
 select is(
-  (select course_route_id from public_race_listings where id = 'c3c3c3c3-0000-0000-0000-0000000c0003'),
+  (select course_route_id from public_race_listings where id = 'c3c3c3c3-0000-0000-0000-0000000c0005'),
+  'c2c2c2c2-0000-0000-0000-0000000c0004'::uuid,
+  'another runner reads a public course''s route id'
+);
+reset role;
+
+update routes set is_public = false where id = 'c2c2c2c2-0000-0000-0000-0000000c0004';
+set local role anon;
+set local "request.jwt.claims" = '';
+select is(
+  (select course_route_id from public_race_listings where id = 'c3c3c3c3-0000-0000-0000-0000000c0005'),
   null::uuid,
   'a course made private after the link exposes no route id'
 );
+reset role;
+
+update routes set is_public = true, shadow_hidden = true where id = 'c2c2c2c2-0000-0000-0000-0000000c0004';
+set local role anon;
+set local "request.jwt.claims" = '';
+select is(
+  (select course_route_id from public_race_listings where id = 'c3c3c3c3-0000-0000-0000-0000000c0005'),
+  null::uuid,
+  'a course moderated away after the link exposes no route id'
+);
+reset role;
 
 select * from finish();
 rollback;

@@ -3773,13 +3773,14 @@ jobs:
               echo "deno deps cached"
               exit 0
             fi
-            # A stale integrity pin is not a transient: esm.sh rebuilt the
-            # module in place, every retry fetches the same new bytes, and a
-            # warm cache only hides it (decisions § 2257). Name it and stop.
+            # An integrity mismatch is not a transient: esm.sh rebuilt the
+            # module, or its CDN is serving two builds of one URL, and a retry
+            # from this runner reaches the same edge (decisions § 2257).
+            # Name it and stop.
             if grep -q 'Integrity check failed' "$RUNNER_TEMP/deno-cache.log"; then
               spec=$(grep -m1 'Specifier:' "$RUNNER_TEMP/deno-cache.log" | awk '{print $2}')
-              echo "::error::deno.lock pins $spec at a hash esm.sh no longer serves. esm.sh rebuilt it in place; no retry or re-run can pass until the pin moves. Nothing here is about the Edge Function code or its tests."
-              echo "Run 'pnpm refresh:deno-lock-remote' locally, review each moved pin it prints, and commit deno.lock."
+              echo "::error::esm.sh served $spec with bytes that do not match its deno.lock pin. Either esm.sh rebuilt it, or its CDN is serving two builds of that URL (decisions § 2257). A retry from this runner reaches the same edge. Nothing here is about the Edge Function code or its tests."
+              echo "Run 'pnpm refresh:deno-lock-remote --check' locally a few times. If every run agrees, run it without --check, review each moved pin, and commit deno.lock. If they disagree, move that import off esm.sh to an npm: specifier, as the Stripe SDK was."
               exit 1
             fi
             echo "::warning::deno cache attempt $attempt failed (esm.sh transient?); retrying"
@@ -3800,13 +3801,13 @@ jobs:
       # scripts/edge_functions_typecheck_coverage.test.mjs runs that same
       # expression and fails when it stops covering the tree, so a `.ts` added
       # here cannot land outside this lane.
-      # `deno check` needs node_modules/@types/node on disk: `_shared/stripe.ts`
-      # imports `https://esm.sh/stripe@17.5.0?target=deno`, whose declarations
-      # reference the node types, so without them the check dies before reading
-      # a file ("Could not find \"@types/node\" in a node_modules folder").
-      # `deno install` provisions it from the ROOT package.json's own
-      # @types/node devDependency (decisions § 757) — it is not an npm
-      # workspace install and does not need setup-node.
+      # `deno check` needs node_modules on disk. The root package.json puts deno
+      # in node_modules mode, so `_shared/stripe.ts`'s `npm:stripe@17.5.0`
+      # resolves its declarations from node_modules/stripe, and those reference
+      # the node types; without either the check dies before reading a file.
+      # `deno install` provisions both from the ROOT package.json's own `stripe`
+      # and `@types/node` devDependencies (decisions § 757, § 2257) — it is not
+      # an npm workspace install and does not need setup-node.
       - name: Provision node types for the typecheck
         id: node_types
         if: ${{ !cancelled() && steps.deno.outcome == 'success' }}

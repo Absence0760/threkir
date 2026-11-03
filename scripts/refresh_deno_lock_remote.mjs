@@ -4,12 +4,14 @@
 //
 // esm.sh serves a versioned URL as `immutable`, but it rebuilds its output
 // when its own build changes, and the rebuilt bytes replace the old ones at
-// the same URL. The lock pins the old hash, so every COLD resolve fails with
-// "Integrity check failed for remote specifier" while every run that restores
-// the Actions DENO_DIR cache passes — which is how
-// `get-intrinsic@1.3.1/deno/get-intrinsic.mjs` sat stale from 2026-10-21 until
-// a cache eviction surfaced it on main on 2026-11-03 (decisions § 2257). No
-// retry can fix that, and the edge-functions warm step now says so.
+// the same URL. The lock keeps the old hash, so a COLD resolve fails with
+// "Integrity check failed for remote specifier" while a run that restores
+// the Actions DENO_DIR cache passes. Worse, esm.sh's CDN can serve both
+// builds at once: on 2026-11-03 `get-intrinsic@1.3.1/deno/get-intrinsic.mjs`
+// came back as two different hashes 45 minutes apart (decisions § 2257).
+// When that happens, moving the pin just fails the next cold run the other
+// way. So run `--check` more than once, and move a pin only when every run
+// agrees; when they disagree, the import belongs off esm.sh.
 //
 // The remedy is a cold resolve against the lock: deno names the first stale
 // specifier and stops, so this drops exactly that pin, resolves again so deno

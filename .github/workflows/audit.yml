@@ -129,13 +129,12 @@ jobs:
               --comment "Audit clean as of $(date -u +%Y-%m-%d) — closing automatically."
           fi
 
-  # esm.sh rebuilds a versioned URL in place while serving it as immutable, so
-  # a deno.lock integrity pin goes stale without any commit here. A run that
-  # restores the DENO_DIR cache never notices; the first cold resolve after an
-  # eviction fails the edge-functions job on whatever PR or merge it lands on
-  # (main, 2026-11-03, decisions § 2257). Resolving cold each week moves that
-  # failure here, off the merge path, naming the pin and the one command that
-  # moves it.
+  # esm.sh rebuilds a versioned URL while serving it as immutable, and its CDN
+  # can serve the old and new builds at once, so a deno.lock integrity pin can
+  # go stale without any commit here. A run that restores the DENO_DIR cache
+  # never notices; the first cold resolve fails the edge-functions job on
+  # whatever PR or merge it lands on (main, 2026-11-03, decisions § 2257).
+  # Resolving cold each week moves that failure here, off the merge path.
   deno-lock-pins:
     runs-on: ubuntu-latest
     steps:

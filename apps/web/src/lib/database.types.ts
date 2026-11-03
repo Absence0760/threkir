@@ -6357,6 +6357,7 @@ export type Database = {
         Args: { p_sms_opt_in?: boolean; p_token: string }
         Returns: boolean
       }
+      create_live_overlay_token: { Args: never; Returns: string }
       create_training_plan: {
         Args: { p_overlap?: string; p_plan: Json; p_weeks: Json }
         Returns: string
@@ -6674,6 +6675,17 @@ export type Database = {
           token_expiry: string
         }[]
       }
+      get_live_overlay: {
+        Args: never
+        Returns: {
+          created_at: string
+          delay_s: number
+          heart_rate_consent: boolean
+          show_heart_rate: boolean
+          show_map: boolean
+          token: string
+        }[]
+      }
       get_my_profile: {
         Args: never
         Returns: {
@@ -6952,6 +6964,19 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      live_heart_rate_shared: { Args: { p_user_id: string }; Returns: boolean }
+      live_overlay_enabled: { Args: never; Returns: boolean }
+      live_overlay_feed: {
+        Args: { p_since?: string; p_token: string }
+        Returns: {
+          at: string
+          bpm: number
+          distance_m: number
+          elapsed_s: number
+          lat: number
+          lng: number
+        }[]
       }
       map_match_track_source: {
         Args: { p_run_id: string }
@@ -7276,6 +7301,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      revoke_live_overlay_token: { Args: never; Returns: undefined }
       revoke_plan_calendar_feed: { Args: never; Returns: boolean }
       revoke_unmet_distance_achievements: {
         Args: { p_user: string }
@@ -7711,6 +7737,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      update_live_overlay_settings: {
+        Args: {
+          p_delay_s: number
+          p_show_heart_rate: boolean
+          p_show_map: boolean
+        }
+        Returns: undefined
       }
       upsert_checkpoint_crossing: {
         Args: {

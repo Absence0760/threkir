@@ -31420,6 +31420,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Only friends who follow you back and have a public profile can be compared, and only on public runs.'**
   String get headToHeadPrivacy;
+
+  /// Title of the streamer overlay sheet and its row in the live-share sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Streamer overlay'**
+  String get streamerOverlayTitle;
+
+  /// Explains what the streamer overlay link is for
+  ///
+  /// In en, this message translates to:
+  /// **'Add this link to OBS or your streaming app as a browser source. It shows your live stats without making your run public.'**
+  String get streamerOverlayIntro;
+
+  /// Button that makes the streamer overlay link
+  ///
+  /// In en, this message translates to:
+  /// **'Create overlay link'**
+  String get streamerOverlayCreate;
+
+  /// Confirmation after the overlay link is made or replaced
+  ///
+  /// In en, this message translates to:
+  /// **'Overlay link ready'**
+  String get streamerOverlayCreated;
+
+  /// Error when making the overlay link fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t create the overlay link. Try again.'**
+  String get streamerOverlayCreateFailed;
+
+  /// Label above the overlay link
+  ///
+  /// In en, this message translates to:
+  /// **'Browser source URL'**
+  String get streamerOverlayUrlLabel;
+
+  /// Button that copies the overlay link
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get streamerOverlayCopy;
+
+  /// Confirmation after the overlay link is copied
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied'**
+  String get streamerOverlayCopied;
+
+  /// Error when copying the overlay link fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t copy the link.'**
+  String get streamerOverlayCopyFailed;
+
+  /// Button (and confirm action) that replaces the overlay link with a new one
+  ///
+  /// In en, this message translates to:
+  /// **'Replace link'**
+  String get streamerOverlayReplace;
+
+  /// Confirm dialog title for replacing the overlay link
+  ///
+  /// In en, this message translates to:
+  /// **'Replace the overlay link?'**
+  String get streamerOverlayReplaceTitle;
+
+  /// Confirm dialog body for replacing the overlay link
+  ///
+  /// In en, this message translates to:
+  /// **'The old link stops working at once. Update the browser source in your streaming app.'**
+  String get streamerOverlayReplaceMessage;
+
+  /// Button (and confirm action) that deletes the overlay link
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off overlay'**
+  String get streamerOverlayRevoke;
+
+  /// Confirm dialog title for deleting the overlay link
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off the streamer overlay?'**
+  String get streamerOverlayRevokeTitle;
+
+  /// Confirm dialog body for deleting the overlay link
+  ///
+  /// In en, this message translates to:
+  /// **'The link stops working at once. You can create a new one later.'**
+  String get streamerOverlayRevokeMessage;
+
+  /// Confirmation after the overlay link is deleted
+  ///
+  /// In en, this message translates to:
+  /// **'Streamer overlay turned off'**
+  String get streamerOverlayRevoked;
+
+  /// Error when deleting the overlay link fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t turn off the overlay. Try again.'**
+  String get streamerOverlayRevokeFailed;
+
+  /// Heading of the overlay delay picker
+  ///
+  /// In en, this message translates to:
+  /// **'Stream delay'**
+  String get streamerOverlayDelayLabel;
+
+  /// Explains the overlay delay
+  ///
+  /// In en, this message translates to:
+  /// **'Viewers see your stats this long after they happen. The delay is applied on our server, so nobody can skip it.'**
+  String get streamerOverlayDelayHelp;
+
+  /// Delay option: pings shown as soon as they arrive
+  ///
+  /// In en, this message translates to:
+  /// **'No delay'**
+  String get streamerOverlayDelayNone;
+
+  /// Delay option in seconds
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds} s'**
+  String streamerOverlayDelaySeconds(int seconds);
+
+  /// Delay option in minutes
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String streamerOverlayDelayMinutes(int minutes);
+
+  /// Confirmation after the overlay delay changes
+  ///
+  /// In en, this message translates to:
+  /// **'Delay saved'**
+  String get streamerOverlayDelaySaved;
+
+  /// Error when changing the overlay delay fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t change the delay. Try again.'**
+  String get streamerOverlayDelayFailed;
+
+  /// Error when the overlay settings cannot be read
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your streamer overlay.'**
+  String get streamerOverlayLoadFailed;
+
+  /// Retry button after the overlay settings fail to load
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get streamerOverlayRetry;
+
+  /// Error when the server has the overlay switched off
+  ///
+  /// In en, this message translates to:
+  /// **'The streamer overlay isn\'t available right now.'**
+  String get streamerOverlayUnavailable;
+
+  /// Note naming the web settings page where the route trace and heart rate are turned on
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on the route trace and heart rate in Settings → Privacy & Sharing on the web.'**
+  String get streamerOverlayMapHeartRateNote;
+
+  /// Live spectator stat label for the runner's current heart rate
+  ///
+  /// In en, this message translates to:
+  /// **'Heart rate'**
+  String get liveSpectatorHeartRate;
 }
 
 class _AppLocalizationsDelegate

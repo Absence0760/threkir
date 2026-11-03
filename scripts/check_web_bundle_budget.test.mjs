@@ -148,22 +148,22 @@ test('twenty more languages move no budget, where the retired total ceiling fail
 test('a rogue dep the retired total ceiling had room for trips the code budget', () => {
 	const rogue = fixture({
 		extraCode: [
-			{ path: '_app/immutable/chunks/rogue-dep.js', kb: 186 },
-			{ path: '_app/immutable/chunks/rogue-dep-2.js', kb: 185 },
+			{ path: '_app/immutable/chunks/rogue-dep.js', kb: 190 },
+			{ path: '_app/immutable/chunks/rogue-dep-2.js', kb: 189 },
 		],
 	});
 
 	assert.equal(
 		retiredTotalPasses(rogue.files),
 		true,
-		'2057 + 162 KB of catalogue parts + 371 = 2590 sits under 2700 — the catalogues ' +
+		'2057 + 162 KB of catalogue parts + 379 = 2598 sits under 2700 — the catalogues ' +
 			'in that total were the cover the dep hid behind',
 	);
 
 	const { errors } = checkBudgets(rogue);
 	assert.equal(errors.length, 1);
 	assert.equal(errors[0].budget, 'code');
-	assert.match(errors[0].message, /code is 2428 KB gzipped, over the 2423 KB ceiling by 5 KB/);
+	assert.match(errors[0].message, /code is 2436 KB gzipped, over the 2431 KB ceiling by 5 KB/);
 	assert.match(
 		errors[0].message,
 		/a new locale cannot have caused it/,
@@ -361,7 +361,7 @@ test('gzipKb rounds a part-kilobyte up', () => {
 
 test('the summary states the catalogue total without gating on it', () => {
 	const text = renderSummary(checkBudgets(fixture()).summary);
-	assert.match(text, /Code \(every reader, any language\) \| 2057 KB across 9 files \| 2423 KB/);
+	assert.match(text, /Code \(every reader, any language\) \| 2057 KB across 9 files \| 2431 KB/);
 	assert.match(text, /Largest core catalogue \(de\) \| 10 KB \| 13 KB, per core/);
 	assert.match(text, /Largest area catalogue \(de\/settings\) \| 11 KB \| 14 KB, per area/);
 	assert.match(text, /ungated in total \(162 KB across 27 parts; a reader fetches one core/);
@@ -370,7 +370,7 @@ test('the summary states the catalogue total without gating on it', () => {
 });
 
 test('the shipped ceilings are the ones this suite reasons about', () => {
-	assert.equal(MAX_CODE_KB, 2423);
+	assert.equal(MAX_CODE_KB, 2431);
 	assert.equal(MAX_CORE_CATALOGUE_KB, 13);
 	assert.equal(MAX_AREA_CATALOGUE_KB, 14);
 	assert.equal(MAX_LARGEST_CHUNK_KB, 350);

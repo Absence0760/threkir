@@ -53,6 +53,7 @@ Map<String, dynamic> _ping(
   bool coarse = false,
   double distanceM = 2000,
   int elapsedS = 600,
+  int? bpm,
 }) => {
   'lat': -37.8136,
   'lng': 144.9631,
@@ -60,6 +61,7 @@ Map<String, dynamic> _ping(
   'elapsed_s': elapsedS,
   'at': at.toUtc().toIso8601String(),
   'coarse': coarse,
+  if (bpm != null) 'bpm': bpm,
 };
 
 /// The big value a keyed `_Metric` cell is currently rendering.
@@ -483,6 +485,45 @@ void main() {
         });
       },
     );
+  });
+
+  // decisions § 2265: bpm reaches a ping only with the runner's health-data
+  // consent and the live_overlay gate open, so its presence is the rule.
+  group('LiveSpectatorScreen — heart rate', () {
+    realtimeWidgetTest('a ping carrying bpm shows the heart-rate cell', (
+      tester,
+    ) async {
+      final now = DateTime.now().toUtc();
+      final api = _FakeApi(
+        run: _run(durationS: 0, startedAt: now.subtract(const Duration(minutes: 20))),
+        pings: [_ping(now.subtract(const Duration(seconds: 5)), bpm: 152)],
+      );
+      await tester.runAsync(() async {
+        await _pumpApi(tester, api);
+        await tester.pump();
+        await tester.pump();
+        expect(_metricValue(tester, 'heart-rate'), '152 bpm');
+        expect(find.text('HEART RATE'), findsOneWidget);
+        await tester.pumpWidget(const SizedBox());
+      });
+    });
+
+    realtimeWidgetTest('a ping without bpm shows no heart-rate cell', (
+      tester,
+    ) async {
+      final now = DateTime.now().toUtc();
+      final api = _FakeApi(
+        run: _run(durationS: 0, startedAt: now.subtract(const Duration(minutes: 20))),
+        pings: [_ping(now.subtract(const Duration(seconds: 5)))],
+      );
+      await tester.runAsync(() async {
+        await _pumpApi(tester, api);
+        await tester.pump();
+        await tester.pump();
+        expect(find.byKey(const Key('heart-rate')), findsNothing);
+        await tester.pumpWidget(const SizedBox());
+      });
+    });
   });
 
   group('LiveSpectatorScreen — race clock vs runner timer', () {

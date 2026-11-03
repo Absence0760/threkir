@@ -64,6 +64,7 @@ import '../route_match.dart';
 import '../run_altitude.dart';
 import '../run_stop_dock.dart';
 import '../safety_live_audience.dart';
+import '../streamer_overlay.dart';
 import '../safety_nudge.dart';
 import '../settings_sync.dart';
 import '../sim_watch_link.dart' show maybeDevBackendUrl;
@@ -95,6 +96,7 @@ import '../widgets/ghost_pacer.dart';
 import '../widgets/live_run_map.dart';
 import '../widgets/expected_return_dialog.dart';
 import '../widgets/live_share_indicator.dart';
+import '../widgets/streamer_overlay_sheet.dart';
 import '../widgets/loaded_workout_card.dart';
 import '../widgets/race_stop_sheet.dart';
 import '../widgets/safety_nudge_banner.dart';
@@ -596,6 +598,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   // The server's safety_audience gate, probed once per screen. Fail closed:
   // false until the probe answers, so nothing defaults on before then.
   bool _safetyAudienceEnabled = false;
+  // The server's `live_overlay` gate (decisions § 2265), read once; closed
+  // until it answers, so the overlay row never shows on a guess.
+  bool _liveOverlayEnabled = false;
   // The `runs.concluded_at` stamp is owed for this run id and hasn't landed.
   // Tracked separately from the broadcaster's attached state: an explicit
   // stop-share detaches the pump whether or not its conclude call succeeded,
@@ -826,6 +831,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _refreshUpcomingEvent();
     _refreshPlanOverview();
     unawaited(_probeSafetyAudience());
+    unawaited(_probeLiveOverlay());
     // Drain after first frame: if a deeper screen set
     // `pendingStartWorkout` *before* this State existed (lazy tab
     // construction), we'd have missed the listener fire. Run once
@@ -1696,16 +1702,30 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// two mid-run actions the runner previously had no way to reach: re-open
   /// the OS share sheet to (re)send the link, or stop the live share.
   Future<void> _onLiveShareIndicatorTap() async {
-    final action = await showLiveShareSheet(context);
+    final action = await showLiveShareSheet(context,
+        showStreamerOverlay: _liveOverlayEnabled);
     if (action == null || !mounted) return;
     switch (action) {
       case LiveShareAction.reshare:
         await _shareLiveLink();
+      case LiveShareAction.streamerOverlay:
+        await _openStreamerOverlay();
       case LiveShareAction.expectedReturn:
         await _setExpectedReturn();
       case LiveShareAction.stop:
         await _stopLiveShare();
     }
+  }
+
+  Future<void> _openStreamerOverlay() async {
+    final api = widget.apiClient;
+    if (api == null || api.userId == null) return;
+    await showStreamerOverlaySheet(
+      context,
+      controller: ApiStreamerOverlayController(api),
+      webBase: _liveLinkBase(),
+      unit: _unit,
+    );
   }
 
   /// The per-run "not back by X" deadline (docs/features/safety.md,
@@ -1887,6 +1907,20 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       if (mounted) _safetyAudienceEnabled = enabled;
     } catch (e) {
       debugPrint('safety_audience probe failed: $e');
+    }
+  }
+
+  /// L4 like the safety-audience probe: [ApiClient.liveOverlayEnabled]
+  /// already fails closed, so a failure only leaves the overlay row hidden.
+  Future<void> _probeLiveOverlay() async {
+    final api = widget.apiClient;
+    if (api == null || api.userId == null) return;
+    try {
+      final enabled =
+          await api.liveOverlayEnabled().timeout(kBackendLoadTimeout);
+      if (mounted) _liveOverlayEnabled = enabled;
+    } catch (e) {
+      debugPrint('live_overlay probe failed: $e');
     }
   }
 

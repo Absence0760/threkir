@@ -81,6 +81,8 @@ create index runs_public on runs (is_public, started_at desc) where is_public = 
 
 **Safety-contacts live audience** (migration `20270821000001`, [safety.md](../features/safety.md), decisions § 1964). A fifth, live-window-only audience for runs: `runs.safety_audience` marks a private live stub that only the owner's confirmed safety contacts may follow, each through a capability link in `private.run_safety_links` (token, run, contact; unique per run + contact; FKs cascade from the run and the contact; no client grant). Links are minted only by `enqueue_safety_overdue_emails()` and `escalate_run_off_route()` when they escalate such a run with the gate open, and each contact's `safety_email` / `safety_sms` payload carries its own `view_token`. `private.normalize_safety_audience()` (BEFORE INSERT/UPDATE OF `safety_audience` on `runs`) stores it false while `private.safety_audience_enabled()` — the `safety_audience` row of `private.feature_flags` — is off. `private.safety_link_admits(run, token)` is the one admission predicate (gate on, token for this run, `safety_audience`, in-progress and not concluded, contact still confirmed, link under 48 h). `live_run_pings` RLS is unchanged: the stub is private, so no anon / stranger / follower / linked-contact read reaches its pings except through the two token RPCs below.
 
+**Streamer overlay** (migration `20271104000001`, [flows.md § Streamer overlay](../features/flows.md#streamer-overlay), decisions § 2265). A token read of the owner's live run for an OBS browser source, without making the run public. `private.live_overlay_tokens` holds ONE row per user (`user_id` PK → `auth.users` cascade; `token` unique, 18 random bytes base64url; `delay_s` 0-900, default 60; `show_map` and `show_heart_rate`, both default false; no client grant). Owner RPCs, all SECURITY DEFINER: `get_live_overlay()` (stable, the caller's row plus `heart_rate_consent`), `create_live_overlay_token()` (makes or replaces, keeping the settings; `enforce_create_rate_limit` bucket `create_live_overlay_token`, 10/h), `revoke_live_overlay_token()` (works with the gate closed), `update_live_overlay_settings(p_delay_s, p_show_map, p_show_heart_rate)` (22023 out of range, 42501 `health_data_consent_required` when heart rate is turned on without consent, P0002 with no overlay). The reader `live_overlay_feed(p_token, p_since)` is granted to anon: it resolves the token to its owner's newest `in_progress`, unconcluded stub and returns `at`, `elapsed_s`, `distance_m`, `lat` / `lng` (null unless `show_map`, and always null on a `coarse` row) and `bpm` (null unless `show_heart_rate` and `private.live_heart_rate_admitted`), only for pings with `at <= now() - delay_s`, the newest 1000 oldest-first or, with a cursor, what became visible after it. No run or user id is returned. Gate: the `live_overlay` row of `private.feature_flags`, read by `public.live_overlay_enabled()` (anon); while it is closed the feed returns nothing and nothing can be made or configured.
+
 **`source` values:**
 
 | Value | Meaning |
@@ -1708,6 +1710,16 @@ create table live_run_pings (
   names them explicitly. `race_pings` carries the identical set on its own
   `lat` / `lng` / `distance_m` / `elapsed_s` / `bpm`. Pinned by
   `unbounded_numeric_column_bounds_test.sql`.
+- **`bpm` is stored only when it may be shown** (`20271104000001`,
+  [decisions § 2265](../architecture/decisions.md)). The
+  `live_run_pings_strip_bpm_before_insert` trigger (SECURITY DEFINER) nulls
+  an in-range `bpm` unless `private.live_heart_rate_admitted(user_id)`: the
+  `live_overlay` gate is open and the owner has `health_data_consent_at` on
+  record. Until then RLS handed every ping's heart rate to anyone who could
+  read a public live run. An out-of-range value is left for the CHECK to
+  refuse (23514). The Go hub applies the same rule through the
+  service-role-only `live_heart_rate_shared(p_user_id)` before it publishes.
+  Pinned by `live_overlay_test.sql`.
 - Added to `supabase_realtime` publication so change streams fan out to
   subscribed browsers.
 - RLS: `select` when the parent run is public or owned by the caller;

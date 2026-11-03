@@ -12,6 +12,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'chunk.dart';
 import 'direct_messages.dart';
 import 'effort_rank.dart';
+import 'live_overlay.dart';
 import 'segments_rank.dart';
 import 'smoothed_sidecar.dart';
 import 'ultrasignup_person.dart';
@@ -7220,7 +7221,7 @@ class ApiClient {
   Future<List<Map<String, dynamic>>> fetchLiveRunPings(String runId) async {
     final rows = await _client
         .from('live_run_pings')
-        .select('lat, lng, ele, distance_m, elapsed_s, at')
+        .select('lat, lng, ele, distance_m, elapsed_s, at, bpm')
         .eq('run_id', runId)
         .order('at', ascending: false)
         .limit(1000);
@@ -7290,6 +7291,56 @@ class ApiClient {
       debugPrint('safety_audience_enabled failed: $e');
       return false;
     }
+  }
+
+  /// Whether the streamer overlay is live (the server's `live_overlay` gate,
+  /// decisions § 2265). Fail closed: a read failure is "off", which only hides
+  /// the overlay entry.
+  Future<bool> liveOverlayEnabled() async {
+    try {
+      final result =
+          await _client.rpc('live_overlay_enabled', params: const {}, get: true);
+      return result == true;
+    } catch (e) {
+      debugPrint('live_overlay_enabled failed: $e');
+      return false;
+    }
+  }
+
+  /// The caller's streamer-overlay token and what it admits, or null when
+  /// none exists. A failed read throws, so the sheet can offer a retry
+  /// rather than claiming there is no overlay.
+  Future<LiveOverlay?> fetchLiveOverlay() async {
+    final rows =
+        await _client.rpc('get_live_overlay', params: const {}, get: true);
+    if (rows is! List || rows.isEmpty) return null;
+    return LiveOverlay.fromRow(Map<String, dynamic>.from(rows.first as Map));
+  }
+
+  /// Make the overlay token, or replace it: the old URL stops working at
+  /// once. Rate-limited server-side (10 an hour).
+  Future<String> createLiveOverlayToken() async {
+    final token = await _client.rpc('create_live_overlay_token');
+    if (token is! String || token.isEmpty) {
+      throw StateError('create_live_overlay_token returned no token');
+    }
+    return token;
+  }
+
+  Future<void> revokeLiveOverlayToken() async {
+    await _client.rpc('revoke_live_overlay_token');
+  }
+
+  Future<void> updateLiveOverlaySettings({
+    required int delaySeconds,
+    required bool showMap,
+    required bool showHeartRate,
+  }) async {
+    await _client.rpc('update_live_overlay_settings', params: {
+      'p_delay_s': delaySeconds,
+      'p_show_map': showMap,
+      'p_show_heart_rate': showHeartRate,
+    });
   }
 
   /// Append one spectator ping for an in-progress run. Intended to be

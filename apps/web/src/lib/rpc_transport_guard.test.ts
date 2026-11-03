@@ -38,6 +38,8 @@ const POST_EXEMPT: Record<string, string> = {
 		'takes a safety contact\'s view token; a GET would put it in the query string and every request-URL log (decisions § 1966)',
 	safety_live_pings:
 		'takes a safety contact\'s view token; a GET would put it in the query string and every request-URL log (decisions § 1966)',
+	live_overlay_feed:
+		'takes a streamer-overlay token; a GET would put it in the query string and every request-URL log (decisions § 2265)',
 };
 
 interface Site {

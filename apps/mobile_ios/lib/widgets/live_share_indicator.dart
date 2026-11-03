@@ -70,7 +70,7 @@ class LiveShareIndicator extends StatelessWidget {
 }
 
 /// The action the runner picked from [showLiveShareSheet].
-enum LiveShareAction { reshare, expectedReturn, stop }
+enum LiveShareAction { reshare, streamerOverlay, expectedReturn, stop }
 
 /// The action sheet the [LiveShareIndicator] opens: re-share the link, set
 /// the per-run "not back by X" alert, or stop the live share. Resolves the
@@ -81,7 +81,13 @@ enum LiveShareAction { reshare, expectedReturn, stop }
 /// the server, and a sheet that guessed at it from memory would tell a runner
 /// whose app was killed mid-run that nothing is armed. The dialog behind the
 /// row reads the truth before it renders.
-Future<LiveShareAction?> showLiveShareSheet(BuildContext context) {
+///
+/// [showStreamerOverlay] is the server's `live_overlay` gate as the caller
+/// last read it; the row is absent while it is closed.
+Future<LiveShareAction?> showLiveShareSheet(
+  BuildContext context, {
+  bool showStreamerOverlay = false,
+}) {
   final l10n = AppLocalizations.of(context);
   return showModalBottomSheet<LiveShareAction>(
     context: context,
@@ -120,6 +126,13 @@ Future<LiveShareAction?> showLiveShareSheet(BuildContext context) {
               title: Text(l10n.runLiveShareReshare),
               onTap: () => Navigator.of(ctx).pop(LiveShareAction.reshare),
             ),
+            if (showStreamerOverlay)
+              ListTile(
+                leading: const Icon(Icons.cast),
+                title: Text(l10n.streamerOverlayTitle),
+                onTap: () =>
+                    Navigator.of(ctx).pop(LiveShareAction.streamerOverlay),
+              ),
             ListTile(
               leading: const Icon(Icons.notifications_active),
               title: Text(l10n.runLiveShareExpectedReturn),

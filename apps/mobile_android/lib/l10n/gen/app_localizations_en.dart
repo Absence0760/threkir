@@ -19162,4 +19162,105 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get headToHeadPrivacy =>
       'Only friends who follow you back and have a public profile can be compared, and only on public runs.';
+
+  @override
+  String get streamerOverlayTitle => 'Streamer overlay';
+
+  @override
+  String get streamerOverlayIntro =>
+      'Add this link to OBS or your streaming app as a browser source. It shows your live stats without making your run public.';
+
+  @override
+  String get streamerOverlayCreate => 'Create overlay link';
+
+  @override
+  String get streamerOverlayCreated => 'Overlay link ready';
+
+  @override
+  String get streamerOverlayCreateFailed =>
+      'Couldn\'t create the overlay link. Try again.';
+
+  @override
+  String get streamerOverlayUrlLabel => 'Browser source URL';
+
+  @override
+  String get streamerOverlayCopy => 'Copy link';
+
+  @override
+  String get streamerOverlayCopied => 'Link copied';
+
+  @override
+  String get streamerOverlayCopyFailed => 'Couldn\'t copy the link.';
+
+  @override
+  String get streamerOverlayReplace => 'Replace link';
+
+  @override
+  String get streamerOverlayReplaceTitle => 'Replace the overlay link?';
+
+  @override
+  String get streamerOverlayReplaceMessage =>
+      'The old link stops working at once. Update the browser source in your streaming app.';
+
+  @override
+  String get streamerOverlayRevoke => 'Turn off overlay';
+
+  @override
+  String get streamerOverlayRevokeTitle => 'Turn off the streamer overlay?';
+
+  @override
+  String get streamerOverlayRevokeMessage =>
+      'The link stops working at once. You can create a new one later.';
+
+  @override
+  String get streamerOverlayRevoked => 'Streamer overlay turned off';
+
+  @override
+  String get streamerOverlayRevokeFailed =>
+      'Couldn\'t turn off the overlay. Try again.';
+
+  @override
+  String get streamerOverlayDelayLabel => 'Stream delay';
+
+  @override
+  String get streamerOverlayDelayHelp =>
+      'Viewers see your stats this long after they happen. The delay is applied on our server, so nobody can skip it.';
+
+  @override
+  String get streamerOverlayDelayNone => 'No delay';
+
+  @override
+  String streamerOverlayDelaySeconds(int seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String streamerOverlayDelayMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get streamerOverlayDelaySaved => 'Delay saved';
+
+  @override
+  String get streamerOverlayDelayFailed =>
+      'Couldn\'t change the delay. Try again.';
+
+  @override
+  String get streamerOverlayLoadFailed =>
+      'Couldn\'t load your streamer overlay.';
+
+  @override
+  String get streamerOverlayRetry => 'Retry';
+
+  @override
+  String get streamerOverlayUnavailable =>
+      'The streamer overlay isn\'t available right now.';
+
+  @override
+  String get streamerOverlayMapHeartRateNote =>
+      'Turn on the route trace and heart rate in Settings → Privacy & Sharing on the web.';
+
+  @override
+  String get liveSpectatorHeartRate => 'Heart rate';
 }

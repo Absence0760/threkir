@@ -297,6 +297,35 @@ each ping → project the runner onto the planned line
 
 The card shows the next cut-off's name, distance to go, projected arrival, and a green/amber/red margin chip. **The staleness contract is the whole point:** when `live_freshness` flags the last fix as stale (or pace is unknown), the helper returns `status: 'unknown'` — the card still names the checkpoint + distance but shows "waiting for a fresh signal" and **suppresses the verdict**, never fabricating an ETA off an 18 h-old fix. Projection is flat recent pace (grade-adjusted remaining deferred, mirroring `checkpoint_projection`). All reads, works logged-out. See [predictive_live_tracking.md](predictive_live_tracking.md) + [decisions.md § 156](../architecture/decisions.md#156-predictive-live-tracking-reuses-the-roadbook-cut-off-legs-and-fails-to-unknown-when-the-fix-is-stale).
 
+### Streamer overlay
+
+A creator streaming a run adds `/live/overlay` to OBS (or a streaming app) as a browser source (#1273 item 3, decisions § 2265). It is chromeless and transparent: the root layout drops its toasts, undo bar, offline and cookie banners on that one path, and the page loads no map tiles.
+
+```
+Creator, web Settings → Privacy & Sharing (or the phone's live-share sheet)
+  → create_live_overlay_token()            one token per user, rate-limited 10/h
+  → update_live_overlay_settings(delay, trace, heart rate)
+  → copies  https://<host>/live/overlay?stats=…&units=…&layout=…[&map=1]#<token>
+
+OBS browser source (no session)
+  → live_overlay_enabled()                 'unavailable' while the gate is closed
+  → every 5 s: live_overlay_feed(token, since)   POST; the token is the capability
+       server: token → owner → newest in-progress, unconcluded stub
+               → pings with at <= now() - delay_s
+               → lat/lng only with show_map (never for a coarse row)
+               → bpm only with show_heart_rate AND health-data consent
+  → every 12th poll reads without a cursor: an empty answer means the run ended
+```
+
+- **The token is per user, not per run.** A browser source is set up once; a per-run token would mean a new URL in OBS after every start. It resolves to whichever live stub the owner has open, so a run does not need to be public to be streamed. Replacing it kills the old URL at once; turning it off deletes it.
+- **The delay is the server's.** Rows newer than `delay_s` never leave the database, so nobody with the link can see further ahead than the creator chose. A public run is still watchable in real time on `/live/[id]`; the overlay does not change who can see a public run.
+- **The URL decides only the look.** Stats, units and layout ride in the query string so one token can serve several sources. The fragment carries the token, which the browser never sends to a server, so it stays out of CDN and request logs (the safety-contact link does the same).
+- **Pace is the last minute's,** from `overlayPaceSpan` in `lib/runs/live_overlay.ts`, falling back to the whole-run average until a minute of running with at least 20 m of movement exists.
+
+### Heart rate on live surfaces
+
+`live_run_pings.bpm` is Art 9 health data. It is stored only for an owner with `health_data_consent_at` on record while the `live_overlay` gate is open: the `live_run_pings_strip_bpm_before_insert` trigger nulls it otherwise, and the Go hub asks the service-role-only `live_heart_rate_shared(user_id)` before it fans a ping out (cached per room with the run's owner). `/live/[id]` and the phone's spectator screen show a Heart rate tile whenever the newest ping carries one, and the overlay shows it only when the creator has also switched it on. Withdrawing consent stops it on the overlay at the next poll and on new pings at once.
+
 ### Watch out
 
 - **Privacy-zone clipping must happen before the spectator sees the ping.** Realtime path: the RLS policy on `live_run_pings` invokes `clip_track_for_user`. WS path: `SupabaseZoneFetcher` clips on the hub before broadcast. Both routes are owner-blind by design (decisions §33).

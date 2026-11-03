@@ -19358,4 +19358,106 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get headToHeadPrivacy =>
       'Solo puedes comparar con amigos que te siguen y tienen perfil público, y solo con carreras públicas.';
+
+  @override
+  String get streamerOverlayTitle => 'Overlay para streaming';
+
+  @override
+  String get streamerOverlayIntro =>
+      'Añade este enlace en OBS o en tu app de streaming como fuente de navegador. Muestra tus datos en directo sin hacer pública tu carrera.';
+
+  @override
+  String get streamerOverlayCreate => 'Crear enlace del overlay';
+
+  @override
+  String get streamerOverlayCreated => 'Enlace del overlay listo';
+
+  @override
+  String get streamerOverlayCreateFailed =>
+      'No se pudo crear el enlace del overlay. Inténtalo de nuevo.';
+
+  @override
+  String get streamerOverlayUrlLabel => 'URL de la fuente de navegador';
+
+  @override
+  String get streamerOverlayCopy => 'Copiar enlace';
+
+  @override
+  String get streamerOverlayCopied => 'Enlace copiado';
+
+  @override
+  String get streamerOverlayCopyFailed => 'No se pudo copiar el enlace.';
+
+  @override
+  String get streamerOverlayReplace => 'Sustituir enlace';
+
+  @override
+  String get streamerOverlayReplaceTitle => '¿Sustituir el enlace del overlay?';
+
+  @override
+  String get streamerOverlayReplaceMessage =>
+      'El enlace anterior deja de funcionar al instante. Actualiza la fuente de navegador en tu app de streaming.';
+
+  @override
+  String get streamerOverlayRevoke => 'Desactivar overlay';
+
+  @override
+  String get streamerOverlayRevokeTitle =>
+      '¿Desactivar el overlay para streaming?';
+
+  @override
+  String get streamerOverlayRevokeMessage =>
+      'El enlace deja de funcionar al instante. Puedes crear uno nuevo más tarde.';
+
+  @override
+  String get streamerOverlayRevoked => 'Overlay para streaming desactivado';
+
+  @override
+  String get streamerOverlayRevokeFailed =>
+      'No se pudo desactivar el overlay. Inténtalo de nuevo.';
+
+  @override
+  String get streamerOverlayDelayLabel => 'Retraso del stream';
+
+  @override
+  String get streamerOverlayDelayHelp =>
+      'Los espectadores ven tus datos con este retraso. Se aplica en nuestro servidor, así que nadie puede saltárselo.';
+
+  @override
+  String get streamerOverlayDelayNone => 'Sin retraso';
+
+  @override
+  String streamerOverlayDelaySeconds(int seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String streamerOverlayDelayMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get streamerOverlayDelaySaved => 'Retraso guardado';
+
+  @override
+  String get streamerOverlayDelayFailed =>
+      'No se pudo cambiar el retraso. Inténtalo de nuevo.';
+
+  @override
+  String get streamerOverlayLoadFailed =>
+      'No se pudo cargar tu overlay para streaming.';
+
+  @override
+  String get streamerOverlayRetry => 'Reintentar';
+
+  @override
+  String get streamerOverlayUnavailable =>
+      'El overlay para streaming no está disponible ahora mismo.';
+
+  @override
+  String get streamerOverlayMapHeartRateNote =>
+      'Activa el trazado de la ruta y la frecuencia cardiaca en Ajustes → Privacidad y uso compartido en la web.';
+
+  @override
+  String get liveSpectatorHeartRate => 'Frecuencia cardiaca';
 }

@@ -616,6 +616,11 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	// Header over that same hero: white hover ink, 5.699:1 on the ramp's
 	// palest stop.
 	'lib/components/PublicHeader.svelte': { FFFFFF: [2, 'fixed-canvas'] },
+	// The streamer overlay paints onto a video stream, not onto a theme
+	// surface: OBS composites it over whatever the camera shows, so the trace
+	// keeps one brand-coral stroke under a dark plate in both themes. No text
+	// sits on it.
+	'routes/live/overlay/+page.svelte': { FF6B4A: [1, 'fixed-canvas'] },
 	// The auth shell's brand panel paints --brand-ramp, so its stops are an
 	// app.css declaration and are not listed. What is left is the panel's white
 	// copy and the recording readout's peach label and white figure on its

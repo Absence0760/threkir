@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart' show XFile;
 import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow;
 
 import '../l10n/gen/app_localizations.dart';

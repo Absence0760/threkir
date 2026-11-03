@@ -6800,6 +6800,27 @@ export type Database = {
           workout_id: string
         }[]
       }
+      head_to_head: {
+        Args: {
+          p_activity_type?: string
+          p_friend_id?: string
+          p_kind: string
+          p_target_id: string
+        }
+        Returns: {
+          friend_avatar_url: string
+          friend_display_name: string
+          friend_handle: string
+          friend_id: string
+          friend_run_id: string
+          friend_seconds: number
+          friend_started_at: string
+          my_run_id: string
+          my_seconds: number
+          my_started_at: string
+          target_name: string
+        }[]
+      }
       heatmap_points_in_bbox: {
         Args: {
           p_max_lat: number

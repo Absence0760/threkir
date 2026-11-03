@@ -14444,9 +14444,9 @@
   "@shareCardStatSpeed": {
     "description": "Stat label on the share card: speed"
   },
-  "shareCardBrandRun": "RUN",
+  "shareCardBrandRun": "Threkir",
   "@shareCardBrandRun": {
-    "description": "Branding wordmark on the run share card"
+    "description": "Brand name printed on every share image. The product name, the same in every locale."
   },
   "shareCardImageError": "Could not create share image",
   "@shareCardImageError": {
@@ -14455,6 +14455,114 @@
   "shareCardFileError": "Could not export file",
   "@shareCardFileError": {
     "description": "Banner when exporting a run file fails"
+  },
+  "shareCardStyleCard": "Map card",
+  "@shareCardStyleCard": {
+    "description": "Share-sheet style chip: the branded card with the route drawn on a map"
+  },
+  "shareCardStylePhoto": "Photo",
+  "@shareCardStylePhoto": {
+    "description": "Share-sheet style chip: the run's stats laid over a photo the user picks"
+  },
+  "shareCardStyleSticker": "Sticker",
+  "@shareCardStyleSticker": {
+    "description": "Share-sheet style chip: the stats on a transparent background, to add to a story or photo in another app"
+  },
+  "shareCardPickPhoto": "Choose a photo",
+  "@shareCardPickPhoto": {
+    "description": "Button shown in the photo style before a photo is picked; opens the photo library"
+  },
+  "shareCardChangePhoto": "Change photo",
+  "@shareCardChangePhoto": {
+    "description": "Button below the photo preview that picks a different photo"
+  },
+  "shareCardPhotoError": "Could not open that photo",
+  "@shareCardPhotoError": {
+    "description": "Banner when the picked photo cannot be loaded"
+  },
+  "shareCardStickerHint": "Transparent background. Save it, then add it to a story or photo as a sticker.",
+  "@shareCardStickerHint": {
+    "description": "Hint under the sticker preview explaining the transparent PNG and how to use it"
+  },
+  "shareCardLayout": "Layout",
+  "@shareCardLayout": {
+    "description": "Heading over the sticker layout choices on the run share sheet"
+  },
+  "shareCardLayoutStack": "Stack",
+  "@shareCardLayoutStack": {
+    "description": "Sticker layout: each stat on its own line with the route beneath"
+  },
+  "shareCardLayoutRoute": "Route",
+  "@shareCardLayoutRoute": {
+    "description": "Sticker layout: the route drawn large with the stats in a line under it"
+  },
+  "shareCardLayoutStrip": "Strip",
+  "@shareCardLayoutStrip": {
+    "description": "Sticker layout: every stat in one horizontal line"
+  },
+  "shareCardLayoutHero": "Big number",
+  "@shareCardLayoutHero": {
+    "description": "Sticker layout: the first stat printed very large"
+  },
+  "shareCardInk": "Colour",
+  "@shareCardInk": {
+    "description": "Heading over the text-colour choices for the share image"
+  },
+  "shareCardInkLight": "White",
+  "@shareCardInkLight": {
+    "description": "Share-image text colour: white, for dark photos"
+  },
+  "shareCardInkDark": "Black",
+  "@shareCardInkDark": {
+    "description": "Share-image text colour: black, for bright photos"
+  },
+  "shareCardInkBrand": "Coral",
+  "@shareCardInkBrand": {
+    "description": "Share-image text colour: the Threkir coral accent"
+  },
+  "shareCardAspect": "Size",
+  "@shareCardAspect": {
+    "description": "Heading over the photo canvas size choices"
+  },
+  "shareCardAspectStory": "Story 9:16",
+  "@shareCardAspectStory": {
+    "description": "Photo canvas size: a 9:16 Instagram-style story"
+  },
+  "shareCardAspectPost": "Post 4:5",
+  "@shareCardAspectPost": {
+    "description": "Photo canvas size: a 4:5 feed post"
+  },
+  "shareCardStats": "Stats",
+  "@shareCardStats": {
+    "description": "Heading over the chips that pick which stats the image prints"
+  },
+  "shareCardStatClimb": "Climb",
+  "@shareCardStatClimb": {
+    "description": "Stat label on the share image: total elevation gain"
+  },
+  "shareCardStatHeartRate": "Avg HR",
+  "@shareCardStatHeartRate": {
+    "description": "Stat label on the share image: average heart rate"
+  },
+  "shareCardSave": "Save to Photos",
+  "@shareCardSave": {
+    "description": "Button that saves the share image to the phone's photo library. Must match the button the iOS photo-add permission prompt names (NSPhotoLibraryAddUsageDescription in apps/mobile_ios/ios/Runner/InfoPlist.xcstrings)."
+  },
+  "shareCardSaved": "Saved to your photos",
+  "@shareCardSaved": {
+    "description": "Banner after the share image was saved to the photo library"
+  },
+  "shareCardSaveError": "Could not save the image",
+  "@shareCardSaveError": {
+    "description": "Banner when saving the share image to the photo library failed"
+  },
+  "shareCardSaveDenied": "Allow photo access in Settings to save images",
+  "@shareCardSaveDenied": {
+    "description": "Banner when the user has denied the app access to their photos"
+  },
+  "shareCardPreviewLabel": "Share image preview",
+  "@shareCardPreviewLabel": {
+    "description": "Screen-reader label for the share image preview"
   },
   "shareCardRouteTitle": "Share route",
   "@shareCardRouteTitle": {

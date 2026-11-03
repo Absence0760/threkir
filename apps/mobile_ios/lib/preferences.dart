@@ -1191,11 +1191,14 @@ class UnitFormat {
   /// `formatElevation` in `apps/web/src/lib/format/units.svelte.ts`.
   static String elevation(double? metres, DistanceUnit unit) {
     if (metres == null) return '—';
-    if (unit == DistanceUnit.mi) {
-      final ft = (metres * _feetPerMetre).round().toDouble();
-      return '${formatFixed(ft, 0, activeLocaleTag)} ft';
-    }
-    return '${formatFixed(metres.round().toDouble(), 0, activeLocaleTag)} m';
+    return '${elevationValue(metres, unit)} ${elevationLabel(unit)}';
+  }
+
+  /// [elevation] without its unit label, for a layout that sets the number
+  /// and the unit in different type.
+  static String elevationValue(double metres, DistanceUnit unit) {
+    final value = unit == DistanceUnit.mi ? metres * _feetPerMetre : metres;
+    return formatFixed(value.round().toDouble(), 0, activeLocaleTag);
   }
 
   /// Elevation unit label, "m" or "ft".

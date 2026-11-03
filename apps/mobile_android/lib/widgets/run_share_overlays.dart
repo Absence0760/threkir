@@ -1,0 +1,562 @@
+import 'package:core_models/core_models.dart';
+import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show AppTheme;
+
+import '../l10n/gen/app_localizations.dart';
+import '../preferences.dart';
+import '../privacy.dart';
+import '../run_share_stats.dart';
+import '../share_look.dart';
+import 'track_preview.dart' show projectTrack;
+
+/// Every share image is laid out at a fixed logical size and rasterised up to
+/// this many pixels across, so the PNG is the same whatever phone made it and
+/// a story or feed post is never upscaled.
+const double shareImageExportWidthPx = 1080;
+
+/// The colours one [RunShareInk] draws with. Labels take [muted], numbers and
+/// the route take [text]; [shadow] keeps both legible on whatever photo the
+/// image lands on, and [halo] is the soft casing under the route line.
+@immutable
+class RunShareInkSpec {
+  final Color text;
+  final Color muted;
+  final Color shadow;
+  final Color halo;
+
+  const RunShareInkSpec._({
+    required this.text,
+    required this.muted,
+    required this.shadow,
+    required this.halo,
+  });
+
+  static final _light = RunShareInkSpec._(
+    text: Colors.white,
+    muted: Colors.white.withValues(alpha: 0.85),
+    shadow: Colors.black.withValues(alpha: 0.55),
+    halo: Colors.black.withValues(alpha: 0.35),
+  );
+  static final _dark = RunShareInkSpec._(
+    text: AppTheme.ink,
+    muted: AppTheme.ink.withValues(alpha: 0.8),
+    shadow: Colors.white.withValues(alpha: 0.6),
+    halo: Colors.white.withValues(alpha: 0.5),
+  );
+  static final _brand = RunShareInkSpec._(
+    text: AppTheme.coral,
+    muted: Colors.white.withValues(alpha: 0.9),
+    shadow: Colors.black.withValues(alpha: 0.6),
+    halo: Colors.black.withValues(alpha: 0.4),
+  );
+
+  static RunShareInkSpec of(RunShareInk ink) => switch (ink) {
+        RunShareInk.light => _light,
+        RunShareInk.dark => _dark,
+        RunShareInk.brand => _brand,
+      };
+
+  List<Shadow> get shadows => [
+        Shadow(color: shadow, blurRadius: 10, offset: const Offset(0, 1)),
+      ];
+}
+
+/// The Threkir mark — the gradient tile and its white glyph — painted from the
+/// geometry of `apps/web/static/logo-mark.svg` (glyph, gradient) with the
+/// rounded tile `wordmark.svg` draws, so no share image depends on an asset
+/// load finishing before the capture.
+class ThrekirMarkPainter extends CustomPainter {
+  const ThrekirMarkPainter();
+
+  // logo-mark.svg's own units: a 1024 tile (rounded at 180, as wordmark.svg
+  // rounds it), the glyph drawn at scale 7.6 about (54.5, 50).
+  static const double _tile = 1024;
+  static const double _corner = 180;
+  static const double _glyphScale = 7.6;
+  static const _gradient = [
+    AppTheme.coralDeep,
+    Color(0xFFA8426A),
+    AppTheme.violet,
+  ];
+
+  static Offset _g(double x, double y) => Offset(
+        _tile / 2 + _glyphScale * (x - 54.5),
+        _tile / 2 + _glyphScale * (y - 50),
+      );
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    canvas.save();
+    canvas.scale(size.shortestSide / _tile);
+    const tile = Rect.fromLTWH(0, 0, _tile, _tile);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(tile, const Radius.circular(_corner)),
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: _gradient,
+        ).createShader(tile),
+    );
+    final glyph = Path()
+      ..fillType = PathFillType.evenOdd
+      ..addRect(Rect.fromPoints(_g(30, 10), _g(44, 90)))
+      ..moveTo(_g(44, 29).dx, _g(44, 29).dy)
+      ..lineTo(_g(58, 29).dx, _g(58, 29).dy)
+      ..arcToPoint(_g(58, 71), radius: const Radius.circular(21 * _glyphScale))
+      ..lineTo(_g(44, 71).dx, _g(44, 71).dy)
+      ..close()
+      ..moveTo(_g(44, 42).dx, _g(44, 42).dy)
+      ..lineTo(_g(56, 42).dx, _g(56, 42).dy)
+      ..arcToPoint(_g(56, 58), radius: const Radius.circular(8 * _glyphScale))
+      ..lineTo(_g(44, 58).dx, _g(44, 58).dy)
+      ..close();
+    canvas.drawPath(glyph, Paint()..color = Colors.white);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(ThrekirMarkPainter oldDelegate) => false;
+}
+
+/// The Threkir signature every share image carries: the mark beside the
+/// wordmark, in the image's ink.
+class ThrekirShareBrand extends StatelessWidget {
+  final Color color;
+  final List<Shadow> shadows;
+  final double markSize;
+
+  const ThrekirShareBrand({
+    super.key,
+    required this.color,
+    this.shadows = const [],
+    this.markSize = 18,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox.square(
+          dimension: markSize,
+          child: const CustomPaint(painter: ThrekirMarkPainter()),
+        ),
+        SizedBox(width: markSize * 0.45),
+        Text(
+          l10n.shareCardBrandRun.toUpperCase(),
+          maxLines: 1,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 2.6,
+                height: 1,
+                shadows: shadows,
+              ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The clipped [runShareCardTrack] as an outline with no basemap: the line the
+/// photo and sticker images draw. A soft [halo] keeps it legible on a busy
+/// photo. Nothing is drawn under two points.
+class RunRouteOutlinePainter extends CustomPainter {
+  final List<Waypoint> points;
+  final Color color;
+  final Color halo;
+
+  const RunRouteOutlinePainter(
+    this.points, {
+    this.color = Colors.white,
+    this.halo = Colors.black26,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.length < 2 || size.isEmpty) return;
+    final stroke = (size.shortestSide * 0.032).clamp(2.5, 7.0);
+    final projected =
+        projectTrack(points, size.width, size.height, pad: stroke * 2);
+    if (projected.length < 2) return;
+    final path = Path()..moveTo(projected.first.dx, projected.first.dy);
+    for (var i = 1; i < projected.length; i++) {
+      path.lineTo(projected[i].dx, projected[i].dy);
+    }
+    Paint line(double width, Color c) => Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = width
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..color = c;
+    canvas.drawPath(
+      path,
+      line(stroke * 2.4, halo)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, stroke),
+    );
+    canvas.drawPath(path, line(stroke, color));
+    canvas.drawCircle(projected.last, stroke * 1.3, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(RunRouteOutlinePainter oldDelegate) =>
+      !identical(oldDelegate.points, points) ||
+      oldDelegate.color != color ||
+      oldDelegate.halo != halo;
+}
+
+/// One figure as the overlays print it: a small uppercase label over a large
+/// value with its unit, each scaled down rather than clipped when a long value
+/// or a long label meets a narrow column.
+class _Figure extends StatelessWidget {
+  final RunShareStat stat;
+  final RunShareInkSpec ink;
+  final TextStyle? valueStyle;
+  final TextScaler valueScale;
+
+  const _Figure(
+    this.stat, {
+    required this.ink,
+    required this.valueStyle,
+    this.valueScale = TextScaler.noScaling,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final unit = stat.unit;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            stat.label.toUpperCase(),
+            maxLines: 1,
+            style: text.labelMedium?.copyWith(
+              color: ink.muted,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.6,
+              shadows: ink.shadows,
+            ),
+          ),
+        ),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                stat.value,
+                maxLines: 1,
+                textScaler: valueScale,
+                style: valueStyle?.copyWith(
+                  color: ink.text,
+                  fontWeight: FontWeight.w800,
+                  height: 1.05,
+                  letterSpacing: -0.5,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                  shadows: ink.shadows,
+                ),
+              ),
+              if (unit != null) ...[
+                const SizedBox(width: 4),
+                Text(
+                  unit,
+                  maxLines: 1,
+                  style: text.titleSmall?.copyWith(
+                    color: ink.muted,
+                    fontWeight: FontWeight.w700,
+                    shadows: ink.shadows,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The stats, route and signature of one [RunStickerLayout], laid out at
+/// [widthFor] logical pixels with no ground of its own: the photo style lays
+/// it over a photo, the sticker style exports it on transparency.
+class RunStickerContent extends StatelessWidget {
+  final RunStickerLayout layout;
+  final List<RunShareStat> stats;
+  final List<Waypoint> track;
+  final RunShareInkSpec ink;
+
+  const RunStickerContent({
+    super.key,
+    required this.layout,
+    required this.stats,
+    required this.track,
+    required this.ink,
+  });
+
+  /// The strip is a single line, so it is laid out wide; every other layout
+  /// stacks and is portrait.
+  static double widthFor(RunStickerLayout layout) =>
+      layout == RunStickerLayout.strip ? 560 : 320;
+
+  bool get _hasRoute => track.length >= 2;
+
+  Widget _route(double size) => SizedBox(
+        width: size,
+        height: size,
+        child: CustomPaint(
+          painter: RunRouteOutlinePainter(track, color: ink.text, halo: ink.halo),
+        ),
+      );
+
+  Widget _row(List<RunShareStat> row, TextStyle? style) => Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (final (i, stat) in row.indexed) ...[
+            if (i > 0) const SizedBox(width: 12),
+            Expanded(child: _Figure(stat, ink: ink, valueStyle: style)),
+          ],
+        ],
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final brand = ThrekirShareBrand(color: ink.text, shadows: ink.shadows);
+    final width = widthFor(layout);
+    switch (layout) {
+      case RunStickerLayout.stack:
+        return SizedBox(
+          width: width,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final stat in stats)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: _Figure(
+                    stat,
+                    ink: ink,
+                    valueStyle: text.displaySmall,
+                    valueScale: const TextScaler.linear(1.25),
+                  ),
+                ),
+              if (_hasRoute) ...[_route(150), const SizedBox(height: 16)],
+              brand,
+            ],
+          ),
+        );
+      case RunStickerLayout.route:
+        return SizedBox(
+          width: width,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_hasRoute) ...[_route(width * 0.82), const SizedBox(height: 14)],
+              _row(stats, text.headlineMedium),
+              const SizedBox(height: 16),
+              brand,
+            ],
+          ),
+        );
+      case RunStickerLayout.strip:
+        return SizedBox(
+          width: width,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  for (final (i, stat) in stats.indexed) ...[
+                    if (i > 0)
+                      Container(
+                        width: 2,
+                        height: 44,
+                        margin: const EdgeInsets.symmetric(horizontal: 10),
+                        color: ink.muted,
+                      ),
+                    Expanded(
+                      child: _Figure(
+                        stat,
+                        ink: ink,
+                        valueStyle: text.headlineMedium,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 12),
+              brand,
+            ],
+          ),
+        );
+      case RunStickerLayout.hero:
+        final rest = stats.skip(1).toList();
+        return SizedBox(
+          width: width,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _Figure(
+                stats.first,
+                ink: ink,
+                valueStyle: text.displayLarge,
+                valueScale: const TextScaler.linear(1.6),
+              ),
+              if (rest.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                _row(rest, text.titleLarge),
+              ],
+              const SizedBox(height: 16),
+              brand,
+            ],
+          ),
+        );
+    }
+  }
+}
+
+/// The run's stats as a sticker on a TRANSPARENT ground, cropped to its own
+/// content, to be saved and laid onto a story or photo in another app.
+class RunStickerShareCard extends StatelessWidget {
+  final Run run;
+  final Preferences preferences;
+  final List<PrivacyZone> privacyZones;
+  final RunShareLook look;
+
+  const RunStickerShareCard({
+    super.key,
+    required this.run,
+    required this.preferences,
+    required this.privacyZones,
+    this.look = const RunShareLook(),
+  });
+
+  /// The sticker's logical width, padding included: what the export scales to
+  /// [shareImageExportWidthPx].
+  static double canvasWidth(RunShareLook look) =>
+      RunStickerContent.widthFor(look.layout) + _pad * 2;
+
+  static const double _pad = 16;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(_pad),
+      child: RunStickerContent(
+        layout: look.layout,
+        stats:
+            runShareStats(l10n, run, preferences.unit, kinds: look.stats),
+        track: runShareCardTrack(run, privacyZones),
+        ink: RunShareInkSpec.of(look.ink),
+      ),
+    );
+  }
+}
+
+/// The run's title, stats and route laid over the runner's own [photo],
+/// cropped to fill a 4:5 post or a 9:16 story. A scrim on the side the stats
+/// sit makes the ink legible on any photo; on a story the stats stay clear of
+/// the bands the story viewer's own controls cover.
+class RunPhotoShareCard extends StatelessWidget {
+  final Run run;
+  final Preferences preferences;
+  final String title;
+  final List<PrivacyZone> privacyZones;
+  final ImageProvider photo;
+  final RunShareLook look;
+
+  const RunPhotoShareCard({
+    super.key,
+    required this.run,
+    required this.preferences,
+    required this.title,
+    required this.privacyZones,
+    required this.photo,
+    this.look = const RunShareLook(),
+  });
+
+  static Size canvasFor(RunPhotoAspect aspect) => switch (aspect) {
+        RunPhotoAspect.post => const Size(360, 450),
+        RunPhotoAspect.story => const Size(360, 640),
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final text = Theme.of(context).textTheme;
+    final ink = RunShareInkSpec.of(look.ink);
+    final size = canvasFor(look.aspect);
+    final scrim =
+        look.ink == RunShareInk.dark ? Colors.white : Colors.black;
+    // Story viewers cover roughly the bottom eighth with their reply bar.
+    final bottomInset =
+        look.aspect == RunPhotoAspect.story ? size.height * 0.13 : 22.0;
+    return SizedBox.fromSize(
+      size: size,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image(image: photo, fit: BoxFit.cover),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: const [0.3, 1],
+                colors: [
+                  scrim.withValues(alpha: 0),
+                  scrim.withValues(alpha: 0.7),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(20, 20, 20, bottomInset),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: text.titleLarge?.copyWith(
+                    color: ink.text,
+                    fontWeight: FontWeight.w800,
+                    shadows: ink.shadows,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Flexible, so a tall layout on a 4:5 post scales down into
+                // the height left under the title instead of overflowing it.
+                Flexible(
+                  child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.bottomCenter,
+                  child: RunStickerContent(
+                    layout: look.layout,
+                    stats: runShareStats(l10n, run, preferences.unit,
+                        kinds: look.stats),
+                    track: runShareCardTrack(run, privacyZones),
+                    ink: ink,
+                  ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -1,11 +1,11 @@
 {
 	"generator": "scripts/gen_web_icon_font.mjs",
 	"upstream": {
-		"package": "material-symbols@0.48.1",
+		"package": "material-symbols@0.48.2",
 		"file": "material-symbols-outlined.woff2",
-		"bytes": 4001808,
-		"sha256": "3ae08513a06396b0258cf1d1a1091c2d336977518fb755ea5b4a13aacdbdc6ef",
-		"ligatures": 4304
+		"bytes": 4006044,
+		"sha256": "1d0cc74e839c27054ecf4e122c713da83ce1a927efe6c972f120688c5fe60a41",
+		"ligatures": 4309
 	},
 	"pinnedAxes": {
 		"GRAD": 0,
@@ -20,8 +20,8 @@
 		"rclt"
 	],
 	"subset": {
-		"bytes": 71652,
-		"sha256": "51f1de0b6dba048f3474ef151eae453db55031c52aceaf88a1adf08982aedc45",
+		"bytes": 71660,
+		"sha256": "a0bc42bea907e4e4c3736176274b7e6c78638a213382437deeefce4cec4cd0bf",
 		"glyphs": 319,
 		"ligatures": 429
 	},

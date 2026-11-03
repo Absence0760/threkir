@@ -49,7 +49,7 @@ const _allowlist = <String, int>{
   // hexes are theme-free by design (§482), and so are their sizes.
   'lib/widgets/finisher_certificate_card.dart': 9,
   'lib/widgets/route_share_card.dart': 5,
-  'lib/widgets/run_share_card.dart': 7,
+  'lib/widgets/run_share_card.dart': 6,
   'lib/screens/period_summary_screen.dart': 6,
   // Map overlay chips / pins / cartographic markers: drawn over basemap
   // tiles, not over a theme surface, so they carry bespoke values per §482.

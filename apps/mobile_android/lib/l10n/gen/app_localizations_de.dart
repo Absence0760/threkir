@@ -10774,13 +10774,96 @@ class AppLocalizationsDe extends AppLocalizations {
   String get shareCardStatSpeed => 'Tempo';
 
   @override
-  String get shareCardBrandRun => 'RUN';
+  String get shareCardBrandRun => 'Threkir';
 
   @override
   String get shareCardImageError => 'Teilbild konnte nicht erstellt werden';
 
   @override
   String get shareCardFileError => 'Datei konnte nicht exportiert werden';
+
+  @override
+  String get shareCardStyleCard => 'Kartenbild';
+
+  @override
+  String get shareCardStylePhoto => 'Foto';
+
+  @override
+  String get shareCardStyleSticker => 'Sticker';
+
+  @override
+  String get shareCardPickPhoto => 'Foto auswählen';
+
+  @override
+  String get shareCardChangePhoto => 'Foto ändern';
+
+  @override
+  String get shareCardPhotoError => 'Dieses Foto konnte nicht geöffnet werden';
+
+  @override
+  String get shareCardStickerHint =>
+      'Transparenter Hintergrund. Speichere es und füge es als Sticker zu einer Story oder einem Foto hinzu.';
+
+  @override
+  String get shareCardLayout => 'Layout';
+
+  @override
+  String get shareCardLayoutStack => 'Gestapelt';
+
+  @override
+  String get shareCardLayoutRoute => 'Strecke';
+
+  @override
+  String get shareCardLayoutStrip => 'Leiste';
+
+  @override
+  String get shareCardLayoutHero => 'Große Zahl';
+
+  @override
+  String get shareCardInk => 'Farbe';
+
+  @override
+  String get shareCardInkLight => 'Weiß';
+
+  @override
+  String get shareCardInkDark => 'Schwarz';
+
+  @override
+  String get shareCardInkBrand => 'Koralle';
+
+  @override
+  String get shareCardAspect => 'Format';
+
+  @override
+  String get shareCardAspectStory => 'Story 9:16';
+
+  @override
+  String get shareCardAspectPost => 'Beitrag 4:5';
+
+  @override
+  String get shareCardStats => 'Werte';
+
+  @override
+  String get shareCardStatClimb => 'Anstieg';
+
+  @override
+  String get shareCardStatHeartRate => 'Ø Puls';
+
+  @override
+  String get shareCardSave => 'In Fotos sichern';
+
+  @override
+  String get shareCardSaved => 'In deinen Fotos gespeichert';
+
+  @override
+  String get shareCardSaveError => 'Das Bild konnte nicht gespeichert werden';
+
+  @override
+  String get shareCardSaveDenied =>
+      'Erlaube in den Einstellungen den Zugriff auf Fotos, um Bilder zu speichern';
+
+  @override
+  String get shareCardPreviewLabel => 'Vorschau des Teilbilds';
 
   @override
   String get shareCardRouteTitle => 'Route teilen';

@@ -937,7 +937,10 @@ contract
 contract_delete
 contract_edit
 contrast
+contrast_auto
 contrast_circle
+contrast_inverse
+contrast_inverse_auto
 contrast_rtl_off
 contrast_square
 control_camera
@@ -1999,6 +2002,7 @@ ink_selection
 inpatient
 input
 input_circle
+input_search
 insert_chart
 insert_chart_filled
 insert_chart_outlined
@@ -2281,6 +2285,7 @@ mail_asterisk
 mail_lock
 mail_off
 mail_outline
+mail_person
 mail_shield
 male
 man

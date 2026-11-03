@@ -1825,6 +1825,7 @@ create table rate_limits (
 | `clone_session_template` | 20 | 3600 | `clone_session_template()` |
 | `create_challenge` | 30 | 3600 | `enforce_challenge_create_rate_limit()` (before-insert trigger) |
 | `create_club` | 5 | 3600 | `clubs_create_rate_limit_trigger()` |
+| `create_live_overlay_token` | 10 | 3600 | `create_live_overlay_token()` |
 | `create_report` | 10 | 3600 | `submit_report()` |
 | `create_route` | 30 | 3600 | `routes_create_rate_limit_trigger()` |
 | `join_challenge_by_token` | 30 | 3600 | `join_challenge_by_token()` (misses included) |

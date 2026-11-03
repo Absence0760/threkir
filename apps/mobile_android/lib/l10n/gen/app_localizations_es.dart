@@ -13961,6 +13961,110 @@ class AppLocalizationsEs extends AppLocalizations {
   String get challengesLeaderboard => 'Clasificación';
 
   @override
+  String get challengeInviteTitle => 'Invitación a un desafío';
+
+  @override
+  String get challengeInviteLoadFailed =>
+      'No se pudo cargar esta invitación. Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
+  String get challengeInviteMissingTitle =>
+      'Este enlace de invitación no funciona';
+
+  @override
+  String get challengeInviteMissingBody =>
+      'Puede que quien lo compartió lo haya restablecido, o que los enlaces de invitación aún no estén disponibles. Pídele un enlace nuevo.';
+
+  @override
+  String challengeInviteFrom(String name) {
+    return 'Invitación de $name';
+  }
+
+  @override
+  String challengeInviteParticipants(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n corredores dentro',
+      one: '1 corredor dentro',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String challengeInviteStartsIn(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Empieza en $n días',
+      one: 'Empieza en 1 día',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get challengeInviteAlreadyIn => 'Ya participas en este desafío.';
+
+  @override
+  String get challengeInviteOpen => 'Abrir desafío';
+
+  @override
+  String get challengeInviteSignInBody =>
+      'Inicia sesión o crea una cuenta gratis y te unirás al momento.';
+
+  @override
+  String get challengeInviteJoin => 'Unirse al desafío';
+
+  @override
+  String get challengeInviteLinkTitle => 'Enlace de invitación';
+
+  @override
+  String get challengeInviteLinkBodyPrivate =>
+      'Cualquiera con este enlace puede ver este desafío y unirse, aunque no sea público.';
+
+  @override
+  String get challengeInviteLinkBodyPublic =>
+      'Cualquiera con este enlace puede unirse con un toque después de registrarse.';
+
+  @override
+  String get challengeInviteLinkLoadFailed =>
+      'No se pudo cargar el enlace de invitación.';
+
+  @override
+  String get challengeInviteShare => 'Compartir enlace';
+
+  @override
+  String get challengeInviteCopy => 'Copiar enlace';
+
+  @override
+  String get challengeInviteCopied => 'Enlace copiado';
+
+  @override
+  String get challengeInviteCopyFailed => 'No se pudo copiar el enlace.';
+
+  @override
+  String get challengeInviteRotate => 'Restablecer enlace';
+
+  @override
+  String get challengeInviteRotateTitle =>
+      '¿Restablecer el enlace de invitación?';
+
+  @override
+  String get challengeInviteRotateBody =>
+      'El enlace actual deja de funcionar al instante. Quien ya se haya unido sigue dentro.';
+
+  @override
+  String get challengeInviteRotateFailed =>
+      'No se pudo restablecer el enlace. Inténtalo de nuevo.';
+
+  @override
+  String get challengeInviteShareBody =>
+      'Los desafíos públicos también tienen una página para compartir que muestra la clasificación sin iniciar sesión.';
+
+  @override
+  String get challengeInviteSharePage => 'Compartir la página del desafío';
+
+  @override
   String get challengesLeaderboardEmpty => 'Aún no hay progreso registrado.';
 
   @override
@@ -15907,6 +16011,11 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String rateLimitCreateChallenge(String wait) {
     return 'Estás creando desafíos demasiado rápido: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
+  String rateLimitJoinChallenge(String wait) {
+    return 'Te estás uniendo a desafíos demasiado rápido: espera $wait e inténtalo de nuevo.';
   }
 
   @override

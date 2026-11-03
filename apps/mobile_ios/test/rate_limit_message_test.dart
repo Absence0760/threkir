@@ -18,6 +18,7 @@ const _buckets = <String>[
   'create_route',
   'create_report',
   'create_challenge',
+  'join_challenge_by_token',
   'clone_plan_template',
   'clone_public_plan',
   'clone_session_template',
@@ -156,6 +157,7 @@ void main() {
           'create_route',
           'create_report',
           'create_challenge',
+          'join_challenge_by_token',
           'clone_plan_template',
           'clone_session_template',
           'clone_gym_routine_template',
@@ -168,7 +170,7 @@ void main() {
         ])
           _render(l10n, bucket, 42),
       };
-      expect(distinct.length, 13,
+      expect(distinct.length, 14,
           reason: '$locale reuses one sentence for two different activities');
       expect(
         _render(l10n, 'clone_plan_template', 42),

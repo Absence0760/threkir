@@ -276,6 +276,60 @@ class EventCourseView {
 /// A challenge plus the caller-relative meta the list + detail surfaces need.
 /// `metric` / `scope` stay raw strings here (the narrow unions live in
 /// challenge_progress.dart's enum + the DB CHECK); the UI maps them.
+/// What a challenge invite link shows before anyone joins
+/// (`challenge_invite_preview`, decisions § 2261). [creatorName] is null when
+/// the creator's profile is not visible to the caller; the screen renders the
+/// `Runner #ABCD` handle in its place.
+@immutable
+class ChallengeInvitePreview {
+  final String id;
+  final String title;
+  final String? description;
+  final String metric;
+  final String scope;
+  final num? goalValue;
+  final DateTime startsAt;
+  final DateTime endsAt;
+  final bool isPublic;
+  final int participantCount;
+  final String? creatorId;
+  final String? creatorName;
+  final bool joined;
+
+  const ChallengeInvitePreview({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.metric,
+    required this.scope,
+    required this.goalValue,
+    required this.startsAt,
+    required this.endsAt,
+    required this.isPublic,
+    required this.participantCount,
+    required this.creatorId,
+    required this.creatorName,
+    required this.joined,
+  });
+
+  factory ChallengeInvitePreview.fromRow(Map<String, dynamic> r) =>
+      ChallengeInvitePreview(
+        id: r['id'] as String,
+        title: (r['title'] as String?) ?? '',
+        description: r['description'] as String?,
+        metric: r['metric'] as String,
+        scope: r['scope'] as String,
+        goalValue: r['goal_value'] as num?,
+        startsAt: parseIsoStrictRequired(r['starts_at'], 'starts_at'),
+        endsAt: parseIsoStrictRequired(r['ends_at'], 'ends_at'),
+        isPublic: r['is_public'] == true,
+        participantCount: (r['participant_count'] as num?)?.toInt() ?? 0,
+        creatorId: r['creator_id'] as String?,
+        creatorName: r['creator_name'] as String?,
+        joined: r['joined'] == true,
+      );
+}
+
 class ChallengeView implements MyProgressRow {
   @override
   final String id;
@@ -2830,6 +2884,50 @@ class SocialService extends ChangeNotifier {
       'team_club_id': teamClubId,
     });
     notifyListeners();
+  }
+
+  // Challenge invite links (decisions § 2261). The token lives in a private
+  // table, never on the `challenges` row, so every read goes through a
+  // definer RPC, and each answers "nothing" while the
+  // `challenge_invite_links` gate is closed.
+
+  Future<bool> challengeInviteLinksEnabled() async {
+    final raw = await _c.rpc('challenge_invite_links_enabled',
+        params: const {}, get: true);
+    return raw == true;
+  }
+
+  Future<String?> getChallengeInviteToken(String id) async {
+    final raw = await _c
+        .rpc('get_challenge_invite_token', params: {'p_challenge_id': id});
+    return raw is String && raw.isNotEmpty ? raw : null;
+  }
+
+  Future<String?> rotateChallengeInviteToken(String id) async {
+    final raw = await _c
+        .rpc('rotate_challenge_invite_token', params: {'p_challenge_id': id});
+    return raw is String && raw.isNotEmpty ? raw : null;
+  }
+
+  /// Null for an unknown or rotated token, or while the gate is closed. A
+  /// failed read throws, so the invite screen offers a retry rather than
+  /// calling a good link dead.
+  Future<ChallengeInvitePreview?> previewChallengeInvite(String token) async {
+    final raw = await _c.rpc('challenge_invite_preview',
+        params: {'p_token': token}, get: true);
+    final rows = (raw as List?) ?? const [];
+    if (rows.isEmpty) return null;
+    return ChallengeInvitePreview.fromRow(
+        (rows.first as Map).cast<String, dynamic>());
+  }
+
+  /// The joined challenge's id, or null when the token names nothing.
+  Future<String?> joinChallengeByToken(String token) async {
+    if (_uid == null) throw StateError('Not authenticated');
+    final raw =
+        await _c.rpc('join_challenge_by_token', params: {'p_token': token});
+    notifyListeners();
+    return raw is String && raw.isNotEmpty ? raw : null;
   }
 
   Future<void> leaveChallenge(String id) async {

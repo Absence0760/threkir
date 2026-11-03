@@ -14666,6 +14666,86 @@ export async function joinChallenge(id: string, teamClubId?: string | null): Pro
 	if (error && !isDuplicateKeyError(error)) throw dbError(error);
 }
 
+// ─── Challenge invite links (decisions § 2261) ───
+// The token lives in private.challenge_invite_tokens, never on the
+// `challenges` row, so every read here goes through a definer RPC. Each one
+// answers "nothing" while the `challenge_invite_links` gate is closed.
+
+export async function challengeInviteLinksEnabled(): Promise<boolean> {
+	const { data, error } = await supabase.rpc('challenge_invite_links_enabled', undefined, {
+		get: true
+	});
+	if (error) throw dbError(error);
+	return data === true;
+}
+
+export async function getChallengeInviteToken(id: string): Promise<string | null> {
+	const { data, error } = await supabase.rpc('get_challenge_invite_token', {
+		p_challenge_id: id
+	});
+	if (error) throw dbError(error);
+	return data ?? null;
+}
+
+export async function rotateChallengeInviteToken(id: string): Promise<string | null> {
+	const { data, error } = await supabase.rpc('rotate_challenge_invite_token', {
+		p_challenge_id: id
+	});
+	if (error) throw dbError(error);
+	return data ?? null;
+}
+
+export interface ChallengeInvitePreview {
+	id: string;
+	title: string;
+	description: string | null;
+	metric: ChallengeMetric;
+	scope: ChallengeScope;
+	goal_value: number | null;
+	activity_type: ActivityType | null;
+	starts_at: string;
+	ends_at: string;
+	is_public: boolean;
+	participant_count: number;
+	creator_id: string | null;
+	creator_name: string | null;
+	joined: boolean;
+}
+
+/// Null for an unknown or rotated token, or while the gate is closed. A failed
+/// read throws, so the join page can offer a retry instead of calling a good
+/// link dead.
+export async function previewChallengeInvite(
+	token: string
+): Promise<ChallengeInvitePreview | null> {
+	const { data, error } = await supabase
+		.rpc('challenge_invite_preview', { p_token: token }, { get: true })
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	return {
+		...data,
+		metric: data.metric as ChallengeMetric,
+		scope: data.scope as ChallengeScope,
+		activity_type: data.activity_type as ActivityType | null,
+		goal_value: data.goal_value ?? null,
+		participant_count: data.participant_count ?? 0,
+		joined: data.joined === true
+	};
+}
+
+/// The joined challenge's id, or null when the token names nothing. A
+/// rate-limit refusal surfaces as its friendly "wait N minutes" line.
+export async function joinChallengeByToken(token: string): Promise<string | null> {
+	const { data, error } = await supabase.rpc('join_challenge_by_token', { p_token: token });
+	if (error) {
+		const friendly = rateLimitErrorMessage(m, error);
+		if (friendly) throw new Error(friendly);
+		throw dbError(error);
+	}
+	return data ?? null;
+}
+
 export async function leaveChallenge(id: string): Promise<void> {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');

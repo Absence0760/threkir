@@ -114,6 +114,9 @@ const NOT_SPENT_BY_SPECS: Record<string, string> = {
 	create_challenge:
 		'No spec creates a challenge through the UI; challenges/*.spec.ts seed rows with the ' +
 		'service-role client, which migration 20260616_001 exempts from the limit outright.',
+	join_challenge_by_token:
+		'challenges/challenge-invite-link.spec.ts joins only as an ephemeral saga user, so the ' +
+		'bucket it spends is its own; pgtap covers the cap itself.',
 	send_direct_message:
 		'The messaging specs send as saga users, and the burst budget below is the same rail.',
 	send_direct_message_burst:

@@ -11,6 +11,7 @@ import {
 	overlayUrl,
 	parseOverlayConfig,
 	parseOverlayToken,
+	readOverlayGate,
 	type OverlayPing,
 } from './live_overlay.ts';
 
@@ -111,4 +112,21 @@ test('the trace fits the viewBox with its margin, north up', () => {
 	const nums = path.d.match(/-?\d+(\.\d+)?/g)!.map(Number);
 	for (const n of nums) assert.ok(n >= 6 && n <= 94, `${n} outside the padded box`);
 	assert.ok(nums[1] > nums[3], 'the northern point is drawn higher');
+});
+
+test('the overlay gate fails closed when it cannot be read', async () => {
+	assert.equal(await readOverlayGate(async () => true), 'open');
+	assert.equal(await readOverlayGate(async () => false), 'closed');
+	const warn = console.warn;
+	console.warn = () => {};
+	try {
+		assert.equal(
+			await readOverlayGate(async () => {
+				throw new Error('network');
+			}),
+			'error',
+		);
+	} finally {
+		console.warn = warn;
+	}
 });

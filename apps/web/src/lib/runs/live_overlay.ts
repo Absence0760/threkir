@@ -173,6 +173,20 @@ export async function liveOverlayEnabled(client: SupabaseClient<AppDatabase>): P
 	return data === true;
 }
 
+/// What the overlay page does with the gate. A failed read is 'error', not
+/// 'open': the page shows itself unavailable and asks the gate again rather
+/// than polling a feed it was never told it may read.
+export type OverlayGate = 'open' | 'closed' | 'error';
+
+export async function readOverlayGate(read: () => Promise<boolean>): Promise<OverlayGate> {
+	try {
+		return (await read()) ? 'open' : 'closed';
+	} catch (err) {
+		console.warn('live overlay: gate read failed', err instanceof Error ? err.message : String(err));
+		return 'error';
+	}
+}
+
 export async function fetchLiveOverlay(
 	client: SupabaseClient<AppDatabase>,
 ): Promise<LiveOverlaySettings | null> {

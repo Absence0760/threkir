@@ -15,6 +15,7 @@
 		OVERLAY_POLL_MS,
 		fetchLiveOverlayFeed,
 		liveOverlayEnabled,
+		readOverlayGate,
 		overlayPaceSpan,
 		overlayTracePath,
 		parseOverlayConfig,
@@ -71,18 +72,20 @@
 			status = 'bad-link';
 			return;
 		}
-		void (async () => {
-			try {
-				if (!(await liveOverlayEnabled(supabase))) {
-					status = 'unavailable';
-					return;
-				}
-			} catch (err) {
-				console.warn('live overlay: gate read failed', err);
-			}
-			await poll();
-		})();
+		void openGate();
 	});
+
+	async function openGate() {
+		if (stopped) return;
+		const gate = await readOverlayGate(() => liveOverlayEnabled(supabase));
+		if (stopped) return;
+		if (gate === 'open') {
+			await poll();
+			return;
+		}
+		status = 'unavailable';
+		if (gate === 'error') timer = setTimeout(() => void openGate(), OVERLAY_POLL_MS);
+	}
 
 	onDestroy(() => {
 		stopped = true;

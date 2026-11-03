@@ -308,7 +308,9 @@ Creator, web Settings → Privacy & Sharing (or the phone's live-share sheet)
   → copies  https://<host>/live/overlay?stats=…&units=…&layout=…[&map=1]#<token>
 
 OBS browser source (no session)
-  → live_overlay_enabled()                 'unavailable' while the gate is closed
+  → live_overlay_enabled()                 'unavailable' while the gate is closed;
+                                           a failed read is also 'unavailable' and is
+                                           asked again every 5 s, never the feed
   → every 5 s: live_overlay_feed(token, since)   POST; the token is the capability
        server: token → owner → newest in-progress, unconcluded stub
                → pings with at <= now() - delay_s

@@ -327,6 +327,10 @@ The foundation under both the generator and any hand-built plan: a data model fo
 
 ✓ **Shipped on web** (routes, races and run replay). The course on 3D terrain with a camera flying it, km/mi markers, a synced elevation strip and named climbs, each stated as net height to crest; "Preview in 3D" on `/routes/[id]` and on `/races/[id]` when the race's course is a public route, "Replay in 3D" on `/runs/[id]`. Free. Still open: a mobile equivalent. See [features § 3D course preview](features.md#3d-course-preview).
 
+✓ **Flyover video export (9:16)** (#1273 item 1, decisions § 2259): **Export video** in the dialog renders and encodes a vertical reel in the browser; the phone's run share sheet gains a **Video** style that opens it on the web. Pre-deploy: the operator confirms MapTiler's plan terms before `PUBLIC_FLYOVER_VIDEO_MAPTILER_ENABLED` is set; until then the export uses the keyless OSM style and AWS Terrain Tiles.
+
+✓ **Vertical recap** (#1273 item 8, decisions § 2260): the recap share image as a square or a 9:16 story on web and mobile, one layout pair. Still open: the recap slideshow video.
+
 ### Backend work (Phase 3)
 
 - [x] Add premium endpoints to Go service — shipped under `apps/job_worker/internal/premium/`. All four endpoints mounted on the existing `/health` listener as POSTs (consistent verb regardless of whether the endpoint reads or computes): `/v1/premium/training-plan` (Riegel-derived paces + phased weekly mileage), `/v1/premium/vo2max` (Daniels VDOT from the best qualifying run in the last 90 days), `/v1/premium/race-predictor` (Riegel from best effort), `/v1/premium/recovery` (90-day EWMA CTL/ATL/TSB + advice). Gated via `user_profiles.subscription_tier` (`pro` + `lifetime` count; anything else → 402) after a shared HS256 JWT extract that mirrors the live hub's auth path. Pure-compute helpers mirror `apps/web/src/lib/training/fitness.ts` + `apps/web/src/lib/training/training.ts`. 36 tests (16 pure-compute + 20 httptest), race-clean. See `docs/product/followups.md § #12` for the full surface, test list, and cutover recipe.

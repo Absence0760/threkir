@@ -53,9 +53,16 @@ byte-behaviour-identical; registered in the root `CLAUDE.md` parity list,
 - **Web monthly:** `/recap/[year]/[month]` — same `RecapView`, month engine,
   no 12-month strip.
 - **Web in-app share card:** `lib/share/recap_share_image.ts`
-  (`buildRecapShareSvg`, 1080² SVG) → rasterised client-side via
-  `lib/format/svg_raster.ts` → OS share sheet / download. Pass a `periodLabel`
-  for the monthly kicker.
+  (`buildRecapShareSvg`, a 1080² SVG, or 1080x1920 with `{ aspect: 'story' }`)
+  → rasterised client-side via `lib/format/svg_raster.ts` → OS share sheet /
+  download. Pass a `periodLabel` for the monthly kicker. **Share recap** shares
+  the square, **Share as story** the 9:16 one. Both aspects take their
+  coordinates from `lib/share/recap_card_layout.ts` (decisions § 2260).
+- **Mobile share image:** the share action on `RecapScreen` opens a sheet
+  (`widgets/recap_share_card.dart`) with a Square / Story choice, a preview, an
+  image share and the old text share. `RecapShareCard` paints the web card's
+  six cells in its dark palette from `recap_card_layout.dart`, the Dart half of
+  the `recap_card_layout` parity pair, so both platforms post the same layout.
 - **Mobile:** `RecapScreen` (from the dashboard). Web's two routes collapse into
   one screen: a Year / Month `SegmentedButton` picks the engine, and the
   chevrons below it step by year or by calendar month (`DateTime` normalises the

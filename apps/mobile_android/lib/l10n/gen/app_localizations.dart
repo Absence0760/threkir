@@ -17517,10 +17517,10 @@ abstract class AppLocalizations {
   /// **'Speed'**
   String get shareCardStatSpeed;
 
-  /// Branding wordmark on the run share card
+  /// Brand name printed on every share image. The product name, the same in every locale.
   ///
   /// In en, this message translates to:
-  /// **'RUN'**
+  /// **'Threkir'**
   String get shareCardBrandRun;
 
   /// Banner when the share image can't be created
@@ -17576,6 +17576,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Transparent background. Save it, then add it to a story or photo as a sticker.'**
   String get shareCardStickerHint;
+
+  /// Heading over the sticker layout choices on the run share sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Layout'**
+  String get shareCardLayout;
+
+  /// Sticker layout: each stat on its own line with the route beneath
+  ///
+  /// In en, this message translates to:
+  /// **'Stack'**
+  String get shareCardLayoutStack;
+
+  /// Sticker layout: the route drawn large with the stats in a line under it
+  ///
+  /// In en, this message translates to:
+  /// **'Route'**
+  String get shareCardLayoutRoute;
+
+  /// Sticker layout: every stat in one horizontal line
+  ///
+  /// In en, this message translates to:
+  /// **'Strip'**
+  String get shareCardLayoutStrip;
+
+  /// Sticker layout: the first stat printed very large
+  ///
+  /// In en, this message translates to:
+  /// **'Big number'**
+  String get shareCardLayoutHero;
+
+  /// Heading over the text-colour choices for the share image
+  ///
+  /// In en, this message translates to:
+  /// **'Colour'**
+  String get shareCardInk;
+
+  /// Share-image text colour: white, for dark photos
+  ///
+  /// In en, this message translates to:
+  /// **'White'**
+  String get shareCardInkLight;
+
+  /// Share-image text colour: black, for bright photos
+  ///
+  /// In en, this message translates to:
+  /// **'Black'**
+  String get shareCardInkDark;
+
+  /// Share-image text colour: the Threkir coral accent
+  ///
+  /// In en, this message translates to:
+  /// **'Coral'**
+  String get shareCardInkBrand;
+
+  /// Heading over the photo canvas size choices
+  ///
+  /// In en, this message translates to:
+  /// **'Size'**
+  String get shareCardAspect;
+
+  /// Photo canvas size: a 9:16 Instagram-style story
+  ///
+  /// In en, this message translates to:
+  /// **'Story 9:16'**
+  String get shareCardAspectStory;
+
+  /// Photo canvas size: a 4:5 feed post
+  ///
+  /// In en, this message translates to:
+  /// **'Post 4:5'**
+  String get shareCardAspectPost;
+
+  /// Heading over the chips that pick which stats the image prints
+  ///
+  /// In en, this message translates to:
+  /// **'Stats'**
+  String get shareCardStats;
+
+  /// Stat label on the share image: total elevation gain
+  ///
+  /// In en, this message translates to:
+  /// **'Climb'**
+  String get shareCardStatClimb;
+
+  /// Stat label on the share image: average heart rate
+  ///
+  /// In en, this message translates to:
+  /// **'Avg HR'**
+  String get shareCardStatHeartRate;
+
+  /// Button that saves the share image to the phone's photo library. Must match the button the iOS photo-add permission prompt names (NSPhotoLibraryAddUsageDescription in apps/mobile_ios/ios/Runner/InfoPlist.xcstrings).
+  ///
+  /// In en, this message translates to:
+  /// **'Save to Photos'**
+  String get shareCardSave;
+
+  /// Banner after the share image was saved to the photo library
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to your photos'**
+  String get shareCardSaved;
+
+  /// Banner when saving the share image to the photo library failed
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save the image'**
+  String get shareCardSaveError;
+
+  /// Banner when the user has denied the app access to their photos
+  ///
+  /// In en, this message translates to:
+  /// **'Allow photo access in Settings to save images'**
+  String get shareCardSaveDenied;
+
+  /// Screen-reader label for the share image preview
+  ///
+  /// In en, this message translates to:
+  /// **'Share image preview'**
+  String get shareCardPreviewLabel;
 
   /// Title of the route share sheet
   ///

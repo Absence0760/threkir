@@ -10226,7 +10226,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shareCardStatSpeed => '速度';
 
   @override
-  String get shareCardBrandRun => 'RUN';
+  String get shareCardBrandRun => 'Threkir';
 
   @override
   String get shareCardImageError => '共有画像を作成できませんでした';
@@ -10254,6 +10254,66 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get shareCardStickerHint => '背景は透明です。保存して、ストーリーや写真にステッカーとして追加できます。';
+
+  @override
+  String get shareCardLayout => 'レイアウト';
+
+  @override
+  String get shareCardLayoutStack => '縦並び';
+
+  @override
+  String get shareCardLayoutRoute => 'ルート';
+
+  @override
+  String get shareCardLayoutStrip => '横一列';
+
+  @override
+  String get shareCardLayoutHero => '大きな数字';
+
+  @override
+  String get shareCardInk => '色';
+
+  @override
+  String get shareCardInkLight => '白';
+
+  @override
+  String get shareCardInkDark => '黒';
+
+  @override
+  String get shareCardInkBrand => 'コーラル';
+
+  @override
+  String get shareCardAspect => 'サイズ';
+
+  @override
+  String get shareCardAspectStory => 'ストーリー 9:16';
+
+  @override
+  String get shareCardAspectPost => '投稿 4:5';
+
+  @override
+  String get shareCardStats => '表示する数値';
+
+  @override
+  String get shareCardStatClimb => '獲得標高';
+
+  @override
+  String get shareCardStatHeartRate => '平均心拍';
+
+  @override
+  String get shareCardSave => '写真に保存';
+
+  @override
+  String get shareCardSaved => '写真に保存しました';
+
+  @override
+  String get shareCardSaveError => '画像を保存できませんでした';
+
+  @override
+  String get shareCardSaveDenied => '画像を保存するには、設定で写真へのアクセスを許可してください';
+
+  @override
+  String get shareCardPreviewLabel => '共有画像のプレビュー';
 
   @override
   String get shareCardRouteTitle => 'ルートを共有';

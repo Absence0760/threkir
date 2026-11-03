@@ -10657,7 +10657,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shareCardStatSpeed => 'Speed';
 
   @override
-  String get shareCardBrandRun => 'RUN';
+  String get shareCardBrandRun => 'Threkir';
 
   @override
   String get shareCardImageError => 'Could not create share image';
@@ -10686,6 +10686,67 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get shareCardStickerHint =>
       'Transparent background. Save it, then add it to a story or photo as a sticker.';
+
+  @override
+  String get shareCardLayout => 'Layout';
+
+  @override
+  String get shareCardLayoutStack => 'Stack';
+
+  @override
+  String get shareCardLayoutRoute => 'Route';
+
+  @override
+  String get shareCardLayoutStrip => 'Strip';
+
+  @override
+  String get shareCardLayoutHero => 'Big number';
+
+  @override
+  String get shareCardInk => 'Colour';
+
+  @override
+  String get shareCardInkLight => 'White';
+
+  @override
+  String get shareCardInkDark => 'Black';
+
+  @override
+  String get shareCardInkBrand => 'Coral';
+
+  @override
+  String get shareCardAspect => 'Size';
+
+  @override
+  String get shareCardAspectStory => 'Story 9:16';
+
+  @override
+  String get shareCardAspectPost => 'Post 4:5';
+
+  @override
+  String get shareCardStats => 'Stats';
+
+  @override
+  String get shareCardStatClimb => 'Climb';
+
+  @override
+  String get shareCardStatHeartRate => 'Avg HR';
+
+  @override
+  String get shareCardSave => 'Save to Photos';
+
+  @override
+  String get shareCardSaved => 'Saved to your photos';
+
+  @override
+  String get shareCardSaveError => 'Could not save the image';
+
+  @override
+  String get shareCardSaveDenied =>
+      'Allow photo access in Settings to save images';
+
+  @override
+  String get shareCardPreviewLabel => 'Share image preview';
 
   @override
   String get shareCardRouteTitle => 'Share route';

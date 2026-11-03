@@ -41,6 +41,9 @@
 
 	let periodLabel = $derived(monthLabel(year, month));
 	let periodKey = $derived(`${year}-${String(month).padStart(2, '0')}`);
+	/// `?video=1` is the phone's Video share option handing the slideshow
+	/// export to the browser (decisions § 2269).
+	const videoRequested = $derived(page.url.searchParams.get('video') === '1');
 
 	onMount(async () => {
 		await auth.ready();
@@ -167,6 +170,11 @@
 			onsharestory={() => shareRecap('story')}
 			onpublish={publishAndShareLink}
 			{publishing}
+			video={{
+				title: t('recap.monthShareTitle', { period: periodLabel }),
+				fileStem: `recap ${periodKey}`,
+				autoStart: videoRequested,
+			}}
 		/>
 	{/if}
 </div>

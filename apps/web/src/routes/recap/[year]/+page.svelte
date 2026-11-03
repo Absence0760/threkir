@@ -26,6 +26,9 @@
 	let publishing = $state(false);
 
 	let year = $derived(parseInt(page.params.year ?? '0', 10));
+	/// `?video=1` is the phone's Video share option handing the slideshow
+	/// export to the browser (decisions § 2269).
+	const videoRequested = $derived(page.url.searchParams.get('video') === '1');
 	let valid = $derived(!Number.isNaN(year) && year >= 2010 && year <= 2100);
 
 	onMount(async () => {
@@ -154,6 +157,11 @@
 			onsharestory={() => shareRecap('story')}
 			onpublish={publishAndShareLink}
 			{publishing}
+			video={{
+				title: t('recap.shareTitle', { year: recap.year }),
+				fileStem: `recap ${recap.year}`,
+				autoStart: videoRequested,
+			}}
 		/>
 	{/if}
 </div>

@@ -1,9 +1,13 @@
 <script lang="ts">
+	import { onDestroy, onMount } from 'svelte';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import type { YearInRunningRecap } from '#lib/runs/recap.ts';
-	import { recapActiveMonths, recapDuration } from '#lib/share/recap_card_text.ts';
+	import { RECAP_SITE, recapActiveMonths, recapDuration } from '#lib/share/recap_card_text.ts';
+	import type { RecapSlideFormat } from '#lib/share/recap_slideshow.ts';
+	import type { VideoEncoderPlan } from '#lib/video/video_encoder.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
 
 	interface Props {
 		recap: YearInRunningRecap;
@@ -17,6 +21,9 @@
 		/** Optional "publish a public link" action shown alongside the image share. */
 		onpublish?: (() => void) | null;
 		publishing?: boolean;
+		/// Offers the 9:16 slideshow video (decisions § 2269). `autoStart` is
+		/// the phone's Video option arriving with `?video=1`.
+		video?: { title: string; fileStem: string; autoStart?: boolean } | null;
 	}
 
 	let {
@@ -27,7 +34,100 @@
 		onsharestory = null,
 		onpublish = null,
 		publishing = false,
+		video = null,
 	}: Props = $props();
+
+	type VideoState =
+		| { step: 'idle' }
+		| { step: 'rendering'; progress: number }
+		| { step: 'ready'; blob: Blob; url: string };
+
+	/// undefined while the browser is being asked; null when it can encode
+	/// nothing, which hides the action behind a note rather than a dead button.
+	let encoderPlan = $state<VideoEncoderPlan | null | undefined>(undefined);
+	let videoState = $state<VideoState>({ step: 'idle' });
+	let videoAbort: AbortController | null = null;
+
+	onMount(async () => {
+		if (!video) return;
+		try {
+			const { pickVideoEncoder } = await import('#lib/video/encode_video.ts');
+			encoderPlan = await pickVideoEncoder();
+		} catch (e) {
+			console.warn('recap: no video encoder', e);
+			encoderPlan = null;
+		}
+		if (encoderPlan && video.autoStart) void makeVideo();
+	});
+
+	onDestroy(() => discardVideo());
+
+	function slideFormat(): RecapSlideFormat {
+		const locale = activeFormatLocale();
+		return {
+			t,
+			kicker,
+			distance: (meters) => fmtKm(meters),
+			pace: (s) => fmtPace(s),
+			weekOf: fmtWeekStart,
+			monthName: (mo) => new Date(recap.year, mo - 1, 1).toLocaleDateString(locale, { month: 'long' }),
+			monthLetter: (mo) => new Date(recap.year, mo - 1, 1).toLocaleDateString(locale, { month: 'narrow' }),
+			count: (n) => n.toLocaleString(locale),
+			url: RECAP_SITE,
+		};
+	}
+
+	async function makeVideo() {
+		const plan = encoderPlan;
+		if (!plan || !video || videoState.step === 'rendering') return;
+		discardVideo();
+		const abort = new AbortController();
+		videoAbort = abort;
+		videoState = { step: 'rendering', progress: 0 };
+		try {
+			const { renderRecapSlideshow } = await import('#lib/share/recap_slideshow_video.ts');
+			const blob = await renderRecapSlideshow({
+				recap,
+				format: slideFormat(),
+				plan,
+				signal: abort.signal,
+				onprogress: (f) => {
+					if (videoAbort === abort) videoState = { step: 'rendering', progress: f };
+				},
+			});
+			if (videoAbort !== abort) return;
+			videoState = { step: 'ready', blob, url: URL.createObjectURL(blob) };
+		} catch (e) {
+			if (videoAbort !== abort) return;
+			videoState = { step: 'idle' };
+			if ((e as { name?: string })?.name === 'AbortError') return;
+			console.error('recap: video export failed', e);
+			showToast(t('recap.videoFailed'), 'error');
+		} finally {
+			if (videoAbort === abort) videoAbort = null;
+		}
+	}
+
+	function discardVideo() {
+		videoAbort?.abort();
+		videoAbort = null;
+		if (videoState.step === 'ready') URL.revokeObjectURL(videoState.url);
+		videoState = { step: 'idle' };
+	}
+
+	async function saveVideo() {
+		if (videoState.step !== 'ready' || !video) return;
+		const { blob } = videoState;
+		try {
+			const { deliverVideo } = await import('#lib/video/encode_video.ts');
+			const how = await deliverVideo(blob, video.fileStem, video.title);
+			if (how === 'downloaded') showToast(t('recap.videoSaved'), 'success');
+		} catch (e) {
+			if ((e as { name?: string })?.name === 'AbortError') return;
+			console.error('recap: video share failed', e);
+			showToast(t('recap.videoFailed'), 'error');
+		}
+	}
 
 	function fmtWeekStart(iso: string): string {
 		const d = new Date(iso + 'T00:00:00');
@@ -92,7 +192,42 @@
 				{publishing ? t('recap.publishing') : t('recap.publishAndShare')}
 			</button>
 		{/if}
+		{#if video && encoderPlan && videoState.step === 'idle'}
+			<button type="button" class="btn share-btn" data-testid="recap-make-video" onclick={makeVideo}>
+				<span class="material-symbols" aria-hidden="true">movie</span>
+				{t('recap.makeVideo')}
+			</button>
+		{/if}
 	</div>
+	{#if video && encoderPlan === null}
+		<p class="publish-note" data-testid="recap-video-unsupported">{t('recap.videoUnsupported')}</p>
+	{:else if videoState.step === 'rendering'}
+		<div class="video-row">
+			<p role="status" data-testid="recap-video-progress">
+				{t('recap.videoRendering', { percent: Math.floor(videoState.progress * 100) })}
+			</p>
+			<button type="button" class="btn share-btn" onclick={discardVideo}>{t('common.cancel')}</button>
+		</div>
+	{:else if videoState.step === 'ready'}
+		<div class="video-row">
+			<!-- svelte-ignore a11y_media_has_caption -->
+			<video
+				class="video-preview"
+				src={videoState.url}
+				controls
+				muted
+				playsinline
+				aria-label={t('recap.videoPreviewLabel')}
+				data-testid="recap-video-preview"
+			></video>
+			<p role="status">{t('recap.videoReady')}</p>
+			<button type="button" class="btn share-btn" data-testid="recap-save-video" onclick={saveVideo}>
+				<span class="material-symbols" aria-hidden="true">ios_share</span>
+				{t('recap.videoSave')}
+			</button>
+			<button type="button" class="btn share-btn" onclick={discardVideo}>{t('recap.videoDiscard')}</button>
+		</div>
+	{/if}
 	{#if onpublish}
 		<p class="publish-note">{t('recap.makePublicExplain')}</p>
 	{/if}
@@ -314,6 +449,25 @@
 	}
 	.publish-btn:hover:not(:disabled) {
 		background: rgba(255, 255, 255, 0.24);
+	}
+	.video-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-sm);
+		margin-top: var(--space-md);
+	}
+	.video-row p {
+		margin: 0;
+		flex-basis: 100%;
+		font-weight: 600;
+	}
+	.video-preview {
+		width: min(12rem, 60vw);
+		aspect-ratio: 9 / 16;
+		border-radius: var(--radius-lg);
+		background: var(--color-bg-secondary);
 	}
 	.publish-note {
 		margin: var(--space-sm) auto 0;

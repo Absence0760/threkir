@@ -3002,6 +3002,68 @@ export type Database = {
           },
         ]
       }
+      personal_record_improvements: {
+        Row: {
+          achieved_at: string
+          best_time_s: number
+          created_at: string
+          distance: string
+          id: string
+          previous_time_s: number | null
+          run_id: string
+          user_id: string
+        }
+        Insert: {
+          achieved_at: string
+          best_time_s: number
+          created_at?: string
+          distance: string
+          id?: string
+          previous_time_s?: number | null
+          run_id: string
+          user_id: string
+        }
+        Update: {
+          achieved_at?: string
+          best_time_s?: number
+          created_at?: string
+          distance?: string
+          id?: string
+          previous_time_s?: number | null
+          run_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personal_record_improvements_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "coached_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personal_record_improvements_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "public_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personal_record_improvements_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personal_record_improvements_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "shared_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       personal_records: {
         Row: {
           achieved_at: string

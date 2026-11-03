@@ -2942,7 +2942,8 @@ class SocialService extends ChangeNotifier {
   Future<String?>? _shareRef;
 
   /// The signed-in creator's own ref code, minted once and cached per
-  /// account; null while the gate is closed.
+  /// account; null while the gate is closed. A failed read is not cached, so
+  /// the next share tries again.
   Future<String?> myShareRef() {
     final uid = isReady ? _uid : null;
     if (uid == null) return Future.value(null);
@@ -2953,6 +2954,7 @@ class SocialService extends ChangeNotifier {
           return parseShareRef(await _c.rpc('my_share_ref'));
         } catch (e) {
           debugPrint('my_share_ref failed: $e');
+          _shareRef = null;
           return null;
         }
       }();

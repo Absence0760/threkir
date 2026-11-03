@@ -32,6 +32,7 @@ let cached: { uid: string; ref: Promise<string | null> } | null = null;
 
 /// The signed-in reader's own ref code when they own `ownerId`'s link, else
 /// null. Minted once per session and cached; null while the gate is closed.
+/// A failed read is not cached, so the next share tries again.
 export function ownShareRef(ownerId: string | null | undefined): Promise<string | null> {
 	const uid = auth.user?.id ?? null;
 	if (!uid || !ownerId || uid !== ownerId) return Promise.resolve(null);
@@ -42,6 +43,7 @@ export function ownShareRef(ownerId: string | null | undefined): Promise<string 
 				const { data, error } = await supabase.rpc('my_share_ref');
 				if (error) {
 					console.error('my_share_ref failed', error.message);
+					cached = null;
 					return null;
 				}
 				return parseShareRef(data);

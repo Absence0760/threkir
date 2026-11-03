@@ -40,6 +40,8 @@ indexed anyway).
 | `/share/race/[id]` | Lambda-SSR (`share-entity`) | `share_race_meta` | `SportsEvent` |
 | `/share/session/[id]` | Lambda-SSR (`share-entity`) | `share_session_meta` | `WebPage` + breadcrumb |
 | `/share/workout/[id]` | Lambda-SSR (`share-entity`) | `share_workout_meta` | `WebPage` + breadcrumb |
+| `/share/challenge/[id]`, `/og/challenge/[id].png` | Lambda-SSR (`share-entity`, the one surface it rasterises a card for) | `share_challenge_meta` | `Event` |
+| `/challenges/join/[token]` | CSR (shell-less, **anon-reachable**) | inline `<svelte:head>` title + `noindex` | — (an invite link; never indexed, decisions § 2261) |
 | `/runs/[id]`, `/routes/[id]`, `/u/[id]`, `/races` | CSR (app shell) | generic shell + canonical | — (auth-gated) |
 | `/segments` | CSR (app shell, **anon-reachable**) | inline `<svelte:head>` title | — (in the sitemap; see below) |
 | `/segments/[id]` | CSR (app shell) | generic shell | — (auth-gated, NOT in the sitemap) |
@@ -95,6 +97,14 @@ Two rows above are easy to misread, and both were wrong in this table before:
   finished them per step 2 of *Adding a new indexable surface*);
   `share_entity_dispatch_guard.test.ts` now fails if a `/share/<x>` route
   loses its CloudFront behaviour or its dispatcher branch.
+- **`/share/challenge/[id]` is NOT in the sitemap either** (decisions § 2261).
+  A creator's challenge is spread by the creator's own post, the page names
+  the top five on its board, and a crawlable list of every public challenge
+  would be a directory of who is running with whom. It is public challenges
+  only: a non-public one answers the not-found card there even for a reader
+  holding its invite link, whose page is `/challenges/join/<token>`. Its card
+  is the challenge's own fields, participant count and creator name as an
+  anonymous reader may see it; no participant name, nothing located.
 
 ### What the SPA shell carries in its `<head>`
 
@@ -443,6 +453,12 @@ The `/share/session/*` + `/share/workout/*` behaviours ride that same pending
 apply — no new Lambda, no new release step (the existing `share-entity` zip
 already carries their dispatcher branches), just two more
 `ordered_cache_behavior` blocks on the distribution.
+
+`/share/challenge/*` + `/og/challenge/*` (decisions § 2261) add two more
+behaviours and change the Lambda's shape: the bundle now carries the
+`@resvg` addon (the arm64 binary release-web.yml already installs for the
+other share Lambdas) and its memory goes 256 → 512 MB, applied by the same
+`terraform apply`.
 
 ### Fit with the minimal (Lean / Rock-bottom) deploy
 

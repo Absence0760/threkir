@@ -136,7 +136,10 @@ const NOT_SPENT_BY_SPECS: Record<string, string> = {
 		'it spends is its own; pgtap covers the cap itself.',
 	plan_calendar_rotate:
 		'settings/plan-calendar-feed.spec.ts mints and replaces the link only as an ephemeral ' +
-		'saga user, so the bucket it spends is its own; pgtap covers the cap itself.'
+		'saga user, so the bucket it spends is its own; pgtap covers the cap itself.',
+	create_live_overlay_token:
+		'live/overlay.spec.ts makes and replaces overlay tokens only as an ephemeral saga ' +
+		'user, so the bucket it spends is its own; pgtap covers the cap itself.'
 };
 
 function walk(dir: string, ext: string, out: string[] = []): string[] {

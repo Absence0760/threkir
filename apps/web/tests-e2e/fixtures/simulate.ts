@@ -658,6 +658,7 @@ export async function insertLivePings(opts: {
 		elapsed_s?: number;
 		at?: string;
 		coarse?: boolean;
+		bpm?: number;
 	}>;
 }): Promise<void> {
 	// Plant a sequence of live_run_pings rows for the spectator page to
@@ -675,7 +676,8 @@ export async function insertLivePings(opts: {
 		distance_m: p.distance_m ?? null,
 		elapsed_s: p.elapsed_s ?? null,
 		at: p.at ?? new Date(Date.now() - (opts.points.length - i) * 1000).toISOString(),
-		coarse: p.coarse ?? false
+		coarse: p.coarse ?? false,
+		bpm: p.bpm ?? null
 	}));
 	const { error } = await getAdminClient().from('live_run_pings').insert(rows);
 	if (error) {

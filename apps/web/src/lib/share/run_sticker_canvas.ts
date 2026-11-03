@@ -401,14 +401,20 @@ function paintRoute(
 	for (const p of pts.slice(1)) path.lineTo(p.x, p.y);
 	ctx.lineCap = 'round';
 	ctx.lineJoin = 'round';
-	// The halo is a blurred casing under the line; the shadow carries the blur
-	// because `ctx.filter` is not available in every browser this ships to.
-	ctx.strokeStyle = ink.halo;
+	// The halo is a blurred casing under the line. `ctx.filter` is missing from
+	// Safari, so the casing is stroked a canvas-width off to the left and only
+	// its shadow, offset back into place, lands in the image.
+	const away = 4 * SHARE_EXPORT_WIDTH_PX;
+	ctx.save();
+	ctx.translate(-away / pxPerUnit, 0);
+	// Opaque, because a shadow takes its alpha from the shape that casts it.
+	ctx.strokeStyle = 'black';
 	ctx.lineWidth = stroke * 2.4;
 	ctx.shadowColor = ink.halo;
 	ctx.shadowBlur = stroke * 2 * pxPerUnit;
+	ctx.shadowOffsetX = away;
 	ctx.stroke(path);
-	ctx.shadowColor = 'transparent';
+	ctx.restore();
 	ctx.strokeStyle = ink.text;
 	ctx.lineWidth = stroke;
 	ctx.stroke(path);

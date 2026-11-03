@@ -138,7 +138,7 @@ const EXCEPTIONS: Exception[] = [
 		why: 'exposed only in a secure context, so it is missing from a dev server reached over http at a LAN address on a browser well above the floor.',
 	},
 	{
-		file: 'src/routes/runs/[id]/+page.svelte',
+		file: 'src/lib/components/RunShareImageDialog.svelte',
 		probe: 'navigator.share',
 		count: 1,
 		reason: 'optional-capability',

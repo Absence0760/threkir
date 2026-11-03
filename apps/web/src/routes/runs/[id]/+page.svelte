@@ -23,6 +23,7 @@
 	import { cumulativeMetres, smoothElevation } from '#lib/runs/elevation_profile.ts';
 	import RunSocial from '#lib/components/RunSocial.svelte';
 	import RunShareView from '#lib/components/RunShareView.svelte';
+	import RunShareImageDialog from '#lib/components/RunShareImageDialog.svelte';
 	import StaticMapImage from '#lib/components/StaticMapImage.svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
@@ -859,67 +860,49 @@
 	}
 
 	let generatingImage = $state(false);
+	let showShareImage = $state(false);
 	let shareCardEl: HTMLElement | undefined = $state();
 
-	/// Render the off-screen `.share-card` DOM node to a 1080×1080 PNG
-	/// via `html-to-image`, then either invoke the Web Share API (with
-	/// the PNG as a File) or fall back to a plain download + toast
-	/// when Web Share isn't available or doesn't accept files.
+	/// Open the share-image editor. Every style draws the owner's track
+	/// clipped to their zones (`shareCardTrack`), so the editor cannot open
+	/// before the zones are known: an image would carry the unclipped line.
 	async function handleShareImage() {
 		if (!run || generatingImage) return;
 		generatingImage = true;
 		try {
-			// The card's map is the owner's track clipped to their zones
-			// (`shareCardTrack`), so an image cannot go out before the zones
-			// are known: it would carry the unclipped line.
 			if ((await loadOwnerZones()) === null) {
 				showToast(m('runDetail.shareZonesUnknown'), 'error');
 				return;
 			}
-			await tick();
-			// Dynamic import keeps the 30 KB lib out of the initial
-			// bundle for users who never click Share-as-image.
-			const { toPng } = await import('html-to-image');
-			if (!shareCardEl) throw new Error('share card not ready');
-			const dataUrl = await toPng(shareCardEl, {
-				pixelRatio: 2,
-				cacheBust: true,
-			});
-			const title =
-				((run.metadata as Record<string, unknown> | null)?.[METADATA_KEYS.title] as string) ||
-				`Run ${new Date(run.started_at).toISOString().slice(0, 10)}`;
-			const fileName =
-				title.replace(/[^a-z0-9\-_. ]/gi, '_').replace(/\s+/g, '_') + '.png';
-
-			// Try Web Share API first — on mobile this pops the OS
-			// share sheet with the image pre-attached, which is the
-			// whole point of this feature. Fall through to a download
-			// on desktop browsers that don't implement share-with-files.
-			const blob = await (await fetch(dataUrl)).blob();
-			const file = new File([blob], fileName, { type: 'image/png' });
-			if (
-				typeof navigator.share === 'function' &&
-				navigator.canShare &&
-				navigator.canShare({ files: [file] })
-			) {
-				await navigator.share({ title, files: [file] });
-			} else {
-				const a = document.createElement('a');
-				a.href = dataUrl;
-				a.download = fileName;
-				a.click();
-				showToast(m('runDetail.imageSaved'), 'success');
-			}
-		} catch (e) {
-			const msg = thrownMessage(e);
-			// User cancelling a Web Share sheet raises; that's fine.
-			if (!msg.includes('abort') && !msg.includes('cancel')) {
-				showToast(m('runDetail.imageGenerateFailed', { error: msg }), 'error');
-			}
+			showShareImage = true;
 		} finally {
 			generatingImage = false;
 		}
 	}
+
+	/// The map card as a 1080 px PNG, rasterised from the off-screen
+	/// `.share-card` DOM node by `html-to-image` at its own CSS size, the
+	/// width every share image is exported at (decisions § 2250).
+	async function captureShareCard(): Promise<Blob> {
+		await tick();
+		// Dynamic import keeps the 30 KB lib out of the initial
+		// bundle for users who never open the share editor.
+		const { toBlob } = await import('html-to-image');
+		if (!shareCardEl) throw new Error('share card not ready');
+		const blob = await toBlob(shareCardEl, { pixelRatio: 1, cacheBust: true });
+		if (!blob) throw new Error('share card produced no image');
+		return blob;
+	}
+
+	let shareImageTitle = $derived(
+		run
+			? ((run.metadata as Record<string, unknown> | null)?.[METADATA_KEYS.title] as string) ||
+					`Run ${new Date(run.started_at).toISOString().slice(0, 10)}`
+			: '',
+	);
+	let shareImageFileBase = $derived(
+		shareImageTitle.replace(/[^a-z0-9\-_. ]/gi, '_').replace(/\s+/g, '_'),
+	);
 
 	/// Owner-only: force a fresh map-match against the current track.
 	/// Resets run_matched_tracks to pending and queues a `map_match`
@@ -1573,29 +1556,33 @@
 	/// The line is the map track clipped to the owner's zones, and absent
 	/// until they are known (`shareCardTrack`).
 	let shareCardLine = $derived(shareCardTrack(baseTrack, ownerZones));
-	let shareMapUrl = $derived.by(() => {
+	/// The basemap the card draws and the credit its tile licence requires in
+	/// the exported pixels (decisions § 2250 / § 2251): OpenStreetMap's data
+	/// under both, MapTiler's rendering only under its own.
+	let shareMap = $derived.by((): { url: string; credit: string } | null => {
 		if (shareCardLine.length < 2) return null;
 		// Passed whole, so the image draws the smoothed line the run map draws
 		// (`previewPolyline`); the clip above already trimmed raw OR smoothed.
 		const pts = shareCardLine;
-		return (
-			buildLocalStaticMapUrl(pts, {
-				w: SHARE_CARD_MAP.w,
-				h: SHARE_CARD_MAP.h,
-				styleUrl: PUBLIC_TILE_STYLE_URL,
-				stroke: SHARE_CARD_STROKE,
-			}) ??
-			(consent.accepted
-				? buildStaticMapUrl(pts, {
-						w: SHARE_CARD_MAP.w,
-						h: SHARE_CARD_MAP.h,
-						style: 'streets-v2',
-						key: PUBLIC_MAPTILER_KEY,
-						stroke: SHARE_CARD_STROKE,
-					})
-				: null)
-		);
+		const local = buildLocalStaticMapUrl(pts, {
+			w: SHARE_CARD_MAP.w,
+			h: SHARE_CARD_MAP.h,
+			styleUrl: PUBLIC_TILE_STYLE_URL,
+			stroke: SHARE_CARD_STROKE,
+		});
+		if (local) return { url: local, credit: '© OpenStreetMap contributors' };
+		const tiler = consent.accepted
+			? buildStaticMapUrl(pts, {
+					w: SHARE_CARD_MAP.w,
+					h: SHARE_CARD_MAP.h,
+					style: 'streets-v2',
+					key: PUBLIC_MAPTILER_KEY,
+					stroke: SHARE_CARD_STROKE,
+				})
+			: null;
+		return tiler ? { url: tiler, credit: '© MapTiler © OpenStreetMap contributors' } : null;
 	});
+	let shareMapUrl = $derived(shareMap?.url ?? null);
 </script>
 
 <svelte:head>
@@ -2701,6 +2688,18 @@
 	data-testid="recalculate-distance-dialog"
 />
 
+{#if run}
+	<RunShareImageDialog
+		open={showShareImage}
+		onclose={() => (showShareImage = false)}
+		run={run}
+		title={shareImageTitle}
+		line={shareCardLine}
+		captureCard={captureShareCard}
+		fileBase={shareImageFileBase}
+	/>
+{/if}
+
 <!-- Off-screen share card. 1080 square, rendered to PNG by
      `html-to-image` when the user taps Share-as-image. Lives outside
      the main layout so it doesn't affect scrolling; positioned
@@ -2714,7 +2713,10 @@
 	aria-hidden="true"
 >
 	<div class="share-card-inner">
-		<div class="share-card-eyebrow">Threkir</div>
+		<div class="share-card-eyebrow">
+			<img src="/logo-mark.svg" alt="" class="share-card-mark" />
+			Threkir
+		</div>
 		{#if shareMapUrl}
 			<!-- Real map background so the share card shows WHERE the
 				 run happened, not just the stats numbers. crossorigin=
@@ -2724,16 +2726,19 @@
 				 attribute is what unlocks the canvas readback). A map
 				 that fails to load leaves the stats-only card, not a
 				 broken image in the capture. -->
-			<StaticMapImage
-				src={shareMapUrl}
-				alt=""
-				class="share-card-map"
-				crossorigin="anonymous"
-				testid="share-card-map"
-			/>
+			<div class="share-card-map-frame">
+				<StaticMapImage
+					src={shareMapUrl}
+					alt=""
+					class="share-card-map"
+					crossorigin="anonymous"
+					testid="share-card-map"
+				/>
+				<div class="share-card-credit" data-testid="share-card-credit">{shareMap?.credit}</div>
+			</div>
 		{/if}
 		<div class="share-card-stats">
-			<div class="share-stat">
+			<div class="share-stat hero">
 				<div class="share-stat-label">{m('runDetail.distance')}</div>
 				<div class="share-stat-value">{formatDistance(run.distance_m)}</div>
 			</div>
@@ -4056,11 +4061,25 @@
 		justify-content: space-between;
 	}
 	.share-card-eyebrow {
+		display: flex;
+		align-items: center;
+		gap: 20px;
 		font-size: 48px;
 		font-weight: 800;
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
-		opacity: 0.9;
+	}
+	.share-card-mark {
+		width: 64px;
+		height: 64px;
+		border-radius: 12px;
+		box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85);
+	}
+	.share-card-credit {
+		margin-top: 12px;
+		font-size: 22px;
+		opacity: 0.85;
+		text-align: end;
 	}
 	.share-card-inner :global(.share-card-map) {
 		display: block;
@@ -4071,10 +4090,16 @@
 		border: 4px solid rgba(255, 255, 255, 0.15);
 		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 	}
+	/* Distance across the card, time and pace side by side under it: three
+	   stacked 120 px rows did not fit under the map, and the capture cut the
+	   pace and the date off the bottom of the PNG. */
 	.share-card-stats {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr);
-		gap: 64px;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 28px 48px;
+	}
+	.share-stat.hero {
+		grid-column: 1 / -1;
 	}
 	.share-stat {
 		display: flex;
@@ -4087,10 +4112,14 @@
 		opacity: 0.7;
 	}
 	.share-stat-value {
-		font-size: 120px;
+		font-size: 80px;
 		font-weight: 900;
 		line-height: 1;
 		margin-top: 8px;
+		white-space: nowrap;
+	}
+	.share-stat.hero .share-stat-value {
+		font-size: 120px;
 	}
 	.share-card-date {
 		font-size: 42px;

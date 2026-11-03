@@ -208,6 +208,7 @@ Pure route-geometry helpers (`offRouteDistanceM`, `routeRemainingM`) are ported 
 - [x] Back link to run list
 - [x] Trace animation (replay run as moving dot with animated trace)
 - [x] Comparison against previous runs on same route — `lib/routes/route_history.ts` ports the mobile filter (same `route_id` + same `metadata.activity_type` + > 100 m, sorted by duration); `RouteHistory.svelte` mounts on `/runs/[id]` and renders the PB / "+Δs behind PB" / "Attempt N of M — PB: H:MM:SS" card. 10 unit tests in `lib/routes/route_history.test.ts`.
+- [x] Share a run as a map card, on your own photo, or as a transparent stats sticker (issue #1273 item 2) — the phone's three styles, four layouts, three inks, story and post sizes and stat picker in a web editor on `/runs/[id]`; photo and sticker drawn on a canvas at 1080 px (EXIF never exported, sticker cropped to its content), the map card now signed with the mark and its tile credit, look remembered per browser, decisions § 2258
 
 ### Account and integrations management
 

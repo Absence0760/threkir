@@ -445,6 +445,26 @@ Price: **$9.99 / month** or **$79.99 / year** (33% less than twelve months; year
 - A race whose course is a public route shows the course map and the button; a race with no course, or a private one, shows neither
 - A non-owner's preview or replay never shows geometry the 2D map hides
 
+
+### Run share images
+
+**Phase:** 3 | **Platform:** Android + iOS twin (§ 2248, § 2250), Web (§ 2258) | **Parity:** [see matrix](parity.md) | **Issue:** #1269 (mobile), #1273 item 2 (web)
+
+**Why:** a run reaches a runner's followers as a picture: a map card in the feed, the stats over a photo from the run, or a sticker dropped onto a story. Every one carries the Threkir mark, so it is also how the app's name reaches people who do not use it yet.
+
+**Spec:**
+
+- **Styles:** a map card, the runner's own photo under a scrim (9:16 story or 4:5 post), or a transparent sticker cropped to its own content.
+- **Look:** four layouts (stack, route, strip, big number), three inks (white, black, coral) and up to four stats from what the run measured: distance, pace (speed for a ride), time, plus climb and average heart rate when present. The look is remembered on the device, under `share_look`.
+- **Export:** fixed logical canvases rasterised 1080 px across. Mobile shares or saves to Photos; web shares through the Web Share API where the browser has one and downloads everywhere.
+- **Privacy:** every outline is the privacy-zone-clipped share line (`shareCardTrack` / `runShareCardTrack`), and the image cannot be made before the zones are known. A photo is re-encoded, so its EXIF and location never leave the device. The map card's basemap waits for cookie consent, and the card prints its tile credit.
+- **Free:** a growth feature with no per-user cost.
+
+**Done when:**
+- Each style exports a 1080 px PNG; the sticker's ground is transparent and it is no larger than what it draws
+- A photo's EXIF block is not in the export
+- A stat the run did not measure is never offered
+- The look chosen for one run is the one the next share opens with
 ---
 
 ## AI Coach

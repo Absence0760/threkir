@@ -679,6 +679,37 @@ Share-link visit counters, sign-up attribution and Your shares ([decisions § 22
 2. CISO / Security Analyst: decide whether sign-up attribution (`signup_share` in the GoTrue metadata, counted by the `auth.users` trigger) is a new purpose, and if so update [dpia.md](../compliance/dpia.md) and have counsel add its row to the privacy policy's § 3 purpose table. [sub-processors.md](../compliance/sub-processors.md) does not change: no vendor is involved.
 3. Then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('share_attribution', true) on conflict (name) do update set enabled = true, updated_at = now();`. Closing it again is the same statement with `false`; counting and attribution stop at once, and the existing buckets age out under `purge-share-link-daily`.
 
+### Public plan share ("Train with me") — after the CISO / Security Analyst review
+
+The logged-out `/share/plan/[id]` page ([training.md § Train with me](../features/training.md#train-with-me--public-plan-share-page), decisions § 2262, migration `20271103000002`) ships closed: no migration writes the `public_plan_share` row of `private.feature_flags` (`seed.sql` opens it for local and CI only), so `public_plan_share(p_id)` answers null and "Copy share link" stays hidden. From training.md's checklist:
+
+1. CISO / Security Analyst review of the redacted projection (what an anonymous reader sees, and that the author credit honours private profiles and blocks), recorded with the sign-off date.
+2. `terraform apply` for the `/share/plan/*` CloudFront behaviour and the `plan` upstream alarm, then a `web@*` deploy so the `share-entity` zip carries the dispatcher branch (see [the share-entity apply](#share-entity-behaviours-and-memory--terraform-apply-before-the-web-release) below).
+3. `insert into private.feature_flags (name, enabled) values ('public_plan_share', true) on conflict (name) do update set enabled = true;`
+
+### Flyover video and keyless terrain — operator and security sign-off
+
+The 3D course preview and its video export (decisions § 2251, § 2259) add two third-party map sources and one fail-closed build flag.
+
+1. **Operator:** confirm that the MapTiler plan's terms permit its terrain and imagery in a published, marketing video before setting `PUBLIC_FLYOVER_VIDEO_MAPTILER_ENABLED` (a `release-web.yml` secret, default off; [apps/web/deployment.md](../../apps/web/deployment.md)). It only decides whether the export may use the MapTiler key; the on-screen preview uses MapTiler either way.
+2. **CISO / Security Analyst:** confirm the classification of AWS Open Data Terrain Tiles (`elevation-tiles-prod.s3.amazonaws.com`) as a browser-side data recipient ([sub-processors.md](../compliance/sub-processors.md)): a public bucket outside our AWS account, so no DPA covers it, and each tile request carries the viewer's IP and the tile that locates the course. The on-screen preview reaches it only when no MapTiler key is set, which the release build refuses. **But while `PUBLIC_FLYOVER_VIDEO_MAPTILER_ENABLED` is off, the video export drops the key on threkir.com too** (`flyover_video_source.ts`), so every export there reads AWS Terrain Tiles and the keyless OSM raster style (`static/osm-fallback-style.json`, `{a,b,c}.tile.openstreetmap.org`). Review that prod path as well, and resolve the OSM half before the release: the OSM tile hosts are in neither the CloudFront CSP's `img-src` / `connect-src` nor sub-processors.md.
+3. **CISO / Security Analyst:** review the preview's consent wording, which is the gate in front of every terrain request: its own card ("Load the 3D preview?", "The preview loads map and terrain tiles from third-party providers, which receive your IP address", button **Load preview**, `coursePreview.consent*` in every locale) shown when cookie consent has not been accepted, the role the 2D maps' "Load map" placeholder plays. `consent_guards.test.ts` binds any caller of `resolveTerrainSource` to it. ([sub-processors.md](../compliance/sub-processors.md)'s Terrain Tiles row tells the reader not to tap "Load map" in the preview; the button there reads **Load preview**.)
+
+### Share-entity behaviours and memory — `terraform apply` before the web release
+
+PR #1271 changes `infra/modules/web-stack`, and the `web@*` release that carries the new share pages needs it applied first:
+
+- three `ordered_cache_behavior` blocks routing `/share/plan/*`, `/share/challenge/*` and `/og/challenge/*` to the `lambda-share-entity` origin (`main.tf`);
+- the `share-entity` Lambda at 512 MB instead of 256, because `/og/challenge/<id>.png` rasterises with `@resvg` (`main.tf`);
+- `plan` and `challenge` entries in the share upstream-unreachable alarms (`alarms.tf`);
+- `https://elevation-tiles-prod.s3.amazonaws.com` added to the CSP's `img-src` and `connect-src` for the keyless terrain rung (§ 2251).
+
+Run `terraform plan` in `infra/envs/prod` (and `preview`), check that only these change, apply, then cut the `web@*` tag so the `share-entity` zip carries the plan and challenge dispatcher branches. The plan and challenge pages stay dark behind their own flags after the apply.
+
+### Head-to-head read — release review item
+
+The `head_to_head(kind, target, friend?)` RPC (migration `20271104000003`, decisions § 2267) ships **without** a feature flag, because it returns only a subset of what the caller can already read: mutual follows, no block, a public non-hidden friend profile, and public, non-DNF runs on both sides, with every refusal the same empty result and no `personal_records`, track, age or gender read. It goes live with the `db push` and the web and mobile releases that carry it. The CISO / Security Analyst reviews it as a normal release item before those releases: the function's predicates, that its refusals are indistinguishable, and the pgTAP file that pins each rule.
+
 ### Coach run map — after the CISO / Security Analyst review
 
 A linked coach's clipped view of the athlete's run map ([coach_roster.md § Coach run map](../features/coach_roster.md#coach-run-map-decisions--1968), decisions § 1968) ships closed: no migration writes the `coach_run_map` row of `private.feature_flags`, so a coach keeps run rows and stats only, as before. Open it only after the CISO / Security Analyst has reviewed the `coached_runs` view and the coach branch of `clip-public-track` — then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('coach_run_map', true) on conflict (name) do update set enabled = true, updated_at = now();`. Closing it again is the same statement with `false`; both clients stop drawing the map and the view empties at once.

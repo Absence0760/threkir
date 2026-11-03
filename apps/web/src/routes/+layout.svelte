@@ -271,7 +271,9 @@
 
 	// Rendered into a stream (the OBS browser source, decisions § 2265): no
 	// toast, undo bar, offline or cookie banner may paint over the broadcast.
-	// The page loads nothing that needs consent.
+	// Hiding the banner means consent is never asked here: Sentry stays off
+	// unless this browser accepted it elsewhere, and then the overlay token
+	// in the fragment is redacted before it leaves (sentry/redact.ts).
 	const isChromeless = (path: string) => path === '/live/overlay';
 
 	// "Anon-allowed" surfaces: reachable without auth. Superset of shell-less

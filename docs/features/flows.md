@@ -319,7 +319,7 @@ OBS browser source (no session)
 
 - **The token is per user, not per run.** A browser source is set up once; a per-run token would mean a new URL in OBS after every start. It resolves to whichever live stub the owner has open, so a run does not need to be public to be streamed. Replacing it kills the old URL at once; turning it off deletes it.
 - **The delay is the server's.** Rows newer than `delay_s` never leave the database, so nobody with the link can see further ahead than the creator chose. A public run is still watchable in real time on `/live/[id]`; the overlay does not change who can see a public run.
-- **The URL decides only the look.** Stats, units and layout ride in the query string so one token can serve several sources. The fragment carries the token, which the browser never sends to a server, so it stays out of CDN and request logs (the safety-contact link does the same).
+- **The URL decides only the look.** Stats, units and layout ride in the query string so one token can serve several sources. The fragment carries the token, which the browser never sends to a server, so it stays out of CDN and request logs (the safety-contact link does the same). The browser's error reporter does see `location.href` whole, so `redactUrl` in `lib/sentry/redact.ts` replaces every URL fragment with `#[redacted]` in `request.url`, breadcrumbs and span names before an event leaves.
 - **Pace is the last minute's,** from `overlayPaceSpan` in `lib/runs/live_overlay.ts`, falling back to the whole-run average until a minute of running with at least 20 m of movement exists.
 
 ### Heart rate on live surfaces

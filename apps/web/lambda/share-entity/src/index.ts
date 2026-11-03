@@ -1,6 +1,6 @@
 // AWS Lambda Function URL handler for the shared entity-SSR surface.
 //
-// One HTML-only Lambda owning the six public /share/* entity paths, all
+// One HTML-only Lambda owning the seven public /share/* entity paths, all
 // routed here by CloudFront (see the share-entity behaviours in
 // infra/modules/web-stack/main.tf):
 //   - /share/event/<id>        public club event   → SportsEvent/Event JSON-LD
@@ -9,6 +9,7 @@
 //   - /share/race/<id>         race-calendar entry → SportsEvent JSON-LD
 //   - /share/session/<id>      public session plan → WebPage + breadcrumb
 //   - /share/workout/<id>      public gym workout  → WebPage + breadcrumb
+//   - /share/plan/<id>         public-library plan → WebPage + breadcrumb
 //
 // Each renders at request time so an entity created/edited after the last
 // build still unfurls with the right per-entity <head> before a crawler or
@@ -29,6 +30,7 @@ import { lookupSharedClub } from '../../../src/lib/share/share_club_lookup';
 import { lookupSharedRace } from '../../../src/lib/share/share_race_lookup';
 import { lookupSharedSession } from '../../../src/lib/share/share_session_lookup';
 import { lookupSharedWorkout } from '../../../src/lib/share/share_workout_lookup';
+import { lookupSharedPlan } from '../../../src/lib/share/share_plan_lookup';
 import {
 	buildShareEventHead,
 	renderShareEventHeadTags,
@@ -53,6 +55,7 @@ import {
 	buildShareWorkoutHead,
 	renderShareWorkoutHeadTags,
 } from '../../../src/lib/share/share_workout_meta';
+import { buildSharePlanHead, renderSharePlanHeadTags } from '../../../src/lib/share/share_plan_meta';
 import { injectEntityHead } from '../../../src/lib/share/entity_spa_shell';
 import { siteOrigin } from '../../../src/lib/core/site_url';
 import { shareMethodRefusal } from '../../../src/lib/share/share_method_gate';
@@ -131,6 +134,14 @@ const ROUTES: Array<{
 			return renderShareWorkoutHeadTags(
 				buildShareWorkoutHead({ id, workout, displayName, siteUrl: c.siteUrl }),
 			);
+		},
+	},
+	{
+		re: /^\/share\/plan\/([^/]+)\/?$/,
+		render: async (id, c) => {
+			const { plan } = await lookupSharedPlan(id, c);
+			if (!plan) return null;
+			return renderSharePlanHeadTags(buildSharePlanHead({ id, plan, siteUrl: c.siteUrl }));
 		},
 	},
 ];

@@ -5914,6 +5914,44 @@ export async function clonePublicPlan(
 	return data as string;
 }
 
+/// Whether a public-library plan may be shared as a logged-out page
+/// (`/share/plan/<id>`). The `public_plan_share` gate is closed in prod until
+/// the CISO / Security Analyst sign-off (decisions § 2262); a failed read is
+/// treated as closed, so the share link is hidden rather than broken.
+export async function publicPlanShareEnabled(): Promise<boolean> {
+	const { data, error } = await supabase.rpc('public_plan_share_enabled', undefined, { get: true });
+	if (error) {
+		console.error('public_plan_share_enabled failed', error.message);
+		return false;
+	}
+	return data === true;
+}
+
+export interface PlanStartedFrom {
+	/// Display name and handle of the author, or null when their profile is
+	/// hidden from the viewer.
+	author: { name: string | null; handle: string | null } | null;
+	/// The public plan it started from, while it is still published.
+	templateId: string | null;
+}
+
+/// "Started from @creator's plan" for the viewer's own copy of a public
+/// plan. Null for any plan that was not started from someone else's public
+/// plan, and for a plan the viewer does not own.
+export async function fetchPlanStartedFrom(planId: string): Promise<PlanStartedFrom | null> {
+	const { data, error } = await supabase.rpc('plan_started_from', { p_plan_id: planId }, { get: true });
+	if (error) throw dbError(error);
+	if (data == null || typeof data !== 'object' || Array.isArray(data)) return null;
+	const author = data.author;
+	const authorObj =
+		author != null && typeof author === 'object' && !Array.isArray(author) ? author : null;
+	const text = (v: unknown) => (typeof v === 'string' ? v : null);
+	return {
+		author: authorObj ? { name: text(authorObj.name), handle: text(authorObj.handle) } : null,
+		templateId: text(data.template_id),
+	};
+}
+
 /// Publish one of the viewer's plans to the public library: copy the
 /// plan row + every plan_week + plan_workout into a new
 /// `is_public_template = true` sibling, leaving the original plan

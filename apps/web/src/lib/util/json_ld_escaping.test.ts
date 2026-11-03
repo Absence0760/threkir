@@ -37,6 +37,7 @@ import { buildProfileJsonLd } from '../share/share_profile_meta';
 import { buildRaceJsonLd } from '../share/share_race_meta';
 import { buildSessionJsonLd } from '../share/share_session_meta';
 import { buildWorkoutJsonLd } from '../share/share_workout_meta';
+import { buildPlanJsonLd } from '../share/share_plan_meta';
 import { buildOrganizationJsonLd, buildWebSiteJsonLd } from '../share/site_meta';
 
 const __dirname = resolve(new URL('.', import.meta.url).pathname);
@@ -71,6 +72,11 @@ const hostileRow = {
 	sets: [],
 	blocks: [],
 	items: [],
+	goal_event: 'distance_full',
+	goal_distance_m: 42195,
+	days_per_week: 4,
+	author: { name: INJ, handle: INJ },
+	weeks: [],
 };
 
 const base = 'https://threkir.com';
@@ -124,6 +130,9 @@ const REGISTER: Record<string, Record<string, () => string>> = {
 	'src/lib/share/share_workout_meta.ts': {
 		buildWorkoutJsonLd: () =>
 			buildWorkoutJsonLd(hostileRow as never, { id: INJ, base, displayName: INJ }),
+	},
+	'src/lib/share/share_plan_meta.ts': {
+		buildPlanJsonLd: () => buildPlanJsonLd(hostileRow as never, { id: INJ, base }),
 	},
 	'src/lib/share/site_meta.ts': {
 		buildOrganizationJsonLd: () => buildOrganizationJsonLd(hostileBase),

@@ -33,7 +33,7 @@
 		TERRAIN_EXAGGERATION,
 		type TerrainSource,
 	} from '#lib/routes/terrain_source.ts';
-	import { flyoverVideoMaptilerKey } from '#lib/routes/flyover_video_flag.ts';
+	import { flyoverVideoBasemapPermitted, flyoverVideoMaptilerKey } from '#lib/routes/flyover_video_flag.ts';
 	import {
 		detectFlyoverCapability,
 		flyoverMode,
@@ -118,6 +118,7 @@
 	// The export never uses a MapTiler key until the operator has confirmed
 	// the plan allows MapTiler in published video (decisions § 2259).
 	const videoKey = flyoverVideoMaptilerKey(PUBLIC_MAPTILER_KEY);
+	const videoBasemapOk = flyoverVideoBasemapPermitted(videoKey);
 	type VideoState =
 		| { step: 'idle' }
 		| { step: 'rendering'; progress: number }
@@ -125,7 +126,9 @@
 	let encoderPlan = $state<VideoEncoderPlan | null>(null);
 	let video = $state<VideoState>({ step: 'idle' });
 	let videoAbort: AbortController | null = null;
-	const canExportVideo = $derived(!!videoSource && mode !== 'flat2d' && !mapFailed && encoderPlan !== null);
+	const canExportVideo = $derived(
+		videoBasemapOk && !!videoSource && mode !== 'flat2d' && !mapFailed && encoderPlan !== null,
+	);
 	const cursorX = $derived(stripX(playback.dM, path.totalM, STRIP_W));
 
 	$effect(() => {
@@ -147,7 +150,7 @@
 	function initMap(container: HTMLDivElement) {
 		if (map || !hasPath) return;
 		mode = flyoverMode(detectFlyoverCapability(window));
-		if (videoSource && mode !== 'flat2d') void probeEncoder();
+		if (videoBasemapOk && videoSource && mode !== 'flat2d') void probeEncoder();
 		terrainFailed = false;
 		mapFailed = false;
 		playback = { dM: 0, playing: false };

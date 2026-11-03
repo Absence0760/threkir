@@ -9,7 +9,9 @@ import { USER_A, USER_B } from '../fixtures/users';
 
 /**
  * The flyover video export in the 3D course preview (issue #1273 item 1,
- * decisions § 2259). Which mode a headless browser gets depends on its GPU,
+ * decisions § 2259), on a keyless build: the export is never offered here,
+ * because the only basemap is the OSM fallback. The case where it is offered,
+ * renders and cancels is configured/course-preview-video.spec.ts. Which mode a headless browser gets depends on its GPU,
  * and whether it can encode depends on its build, so each case asks the
  * browser and asserts what that answer implies rather than skipping.
  */
@@ -89,20 +91,22 @@ test.describe('/routes/[id] flyover video export', () => {
 			}
 		});
 
-		test('under reduced motion the export is offered, starts rendering, and cancels back to the button', async ({
-			page,
-			mockRoute,
-		}) => {
+		test('with no basemap a video may record, a capable browser is offered no export', async ({ page, mockRoute }) => {
+			// This lane builds like a keyless deploy: no MapTiler key and no
+			// tile-style override, so the only basemap is the OSM raster
+			// fallback, which a video export must not bulk-render (decisions
+			// § 2259). The offered case runs in the configured lane, which sets
+			// the override.
 			await page.emulateMedia({ reducedMotion: 'reduce' });
 			await mockRoute(
 				page,
 				(url) => FALLBACK_TILE_ORIGINS.has(url.origin),
 				(route) => route.fulfill({ status: 200, contentType: 'image/png', body: BLANK_TILE }),
 			);
-			const routeId = await insertPublicRoute(`Video export ${Date.now()}`);
+			const routeId = await insertPublicRoute(`Video keyless ${Date.now()}`);
 			try {
 				await page.goto(`/routes/${routeId}`);
-				const { webgl2, encoder } = await exportCapable(page);
+				const { webgl2 } = await exportCapable(page);
 				await mockRoute(
 					page,
 					(url) => url.hostname === AWS_TERRAIN_HOST,
@@ -110,7 +114,6 @@ test.describe('/routes/[id] flyover video export', () => {
 					webgl2 ? {} : { neverFires: 'without WebGL2 the preview is flat and loads no terrain' },
 				);
 				const terrain = webgl2 ? page.waitForRequest((r) => new URL(r.url()).hostname === AWS_TERRAIN_HOST) : null;
-
 				await page.getByTestId('course-preview-open').click();
 				const dialog = page.getByTestId('course-preview-3d');
 				await expect(dialog.locator('[data-flyover-mode]')).toHaveAttribute(
@@ -118,20 +121,8 @@ test.describe('/routes/[id] flyover video export', () => {
 					webgl2 ? 'static3d' : 'flat2d',
 				);
 				await terrain;
-				const exportButton = dialog.getByTestId('course-preview-export-video');
-				if (!webgl2 || !encoder) {
-					await expect(exportButton).toHaveCount(0);
-					return;
-				}
-				await exportButton.click();
-				// A whole render takes minutes on a software GPU, so the case pins
-				// that frames are being made and that Cancel stops it; the encoder
-				// and muxer are pinned by their unit suites.
-				const progress = dialog.getByTestId('course-preview-video-progress');
-				await expect(progress).toContainText(/Making your video… [1-9]\d*%/, { timeout: 60_000 });
-				await dialog.getByRole('button', { name: 'Cancel' }).click();
-				await expect(progress).toHaveCount(0);
-				await expect(exportButton).toBeVisible();
+				await expect(dialog.getByTestId('course-preview-scrub')).toBeVisible();
+				await expect(dialog.getByTestId('course-preview-export-video')).toHaveCount(0);
 			} finally {
 				await deleteRoute(routeId);
 			}

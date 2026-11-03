@@ -140,6 +140,12 @@ export function mapLiveLine(darkBasemap: boolean): string {
 	return mapTrackLine(darkBasemap);
 }
 
+/// A climb highlighted over the course line in the 3D course preview. Magenta,
+/// so it reads apart from the coral track it is drawn on top of.
+export function mapClimbLine(darkBasemap: boolean): string {
+	return darkBasemap ? '#F472B6' : '#9D174D';
+}
+
 /// A dashed hint line — the un-snapped preview, the waypoint tethers.
 export function mapHintLine(darkBasemap: boolean): string {
 	return darkBasemap ? '#94A3B8' : '#475569';

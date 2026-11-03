@@ -57,6 +57,7 @@ const MAP_SURFACES: Record<string, ['shared' | 'unkeyed', string]> = {
 	// 0.4 % margin, i.e. a value sitting ON the floor rather than above it, so
 	// it splits into `mapZoneBoundary`'s keyed pair like every other rung.
 	'lib/components/PrivacyZonePicker.svelte': ['shared', 'the privacy-zone circle'],
+	'lib/components/CoursePreview3D.svelte': ['shared', 'the 3D course preview'],
 };
 
 /// Infrastructure, not a surface: the MapLibre re-export and the resize
@@ -248,7 +249,7 @@ test('a map surface resolves its style URL through the shared precedence', () =>
 	}
 	assert.equal(
 		Object.keys(MAP_SURFACES).length,
-		7,
+		8,
 		'the population this scan ran over — a shrinking register would let it pass over nothing',
 	);
 	assert.deepEqual(

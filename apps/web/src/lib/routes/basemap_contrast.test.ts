@@ -28,6 +28,7 @@ import {
 	mapOverlapLine,
 	mapOverlayOutline,
 	mapPinnedLine,
+	mapClimbLine,
 	mapStartColour,
 	mapTrackLine,
 	MAP_ARROW_INK,
@@ -89,12 +90,13 @@ const GROUND_RUNGS: Array<[string, (dark: boolean) => string]> = [
 	['hint line', mapHintLine],
 	['featured halo', mapFeaturedHalo],
 	['zone boundary', mapZoneBoundary],
+	['climb line', mapClimbLine],
 ];
 
 test('every overlay rung clears 1.4.11 against the basemap it lands on', () => {
 	// § 534: assert the population, not only the property. A loop over an
 	// emptied list passes every assertion inside it.
-	assert.equal(GROUND_RUNGS.length, 13, 'the number of rungs this sweep graded');
+	assert.equal(GROUND_RUNGS.length, 14, 'the number of rungs this sweep graded');
 	for (const [name, resolve] of GROUND_RUNGS) {
 		const onDark = contrast(resolve(true), DARK_BASEMAP_SAMPLE);
 		assert.ok(

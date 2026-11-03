@@ -46,6 +46,7 @@ src/
     # Loose lib modules are grouped into topical subfolders: core/ (data + supabase client),
     # training/ routes/ segments/ social/ integrations/ backup/ share/ settings/ runs/ format/ util/ billing/ gym/ nutrition/ gear/ (gear_wear.ts wear classification, gear_backfill.ts post-create "attach past runs" candidates),
     # legal/ (operator.ts — the nullable operator-facts seam for the legal pages; nulls render fail-closed "pending" lines, decisions §243).
+    # video/ (the browser video export shared by the flyover and the recap slideshow: video_encoder.ts picks WebCodecs H.264 or MediaRecorder, mp4_mux.ts writes the MP4, frame_clock.ts the frame timestamps, encode_video.ts the probe, frame sink and share-or-download; it imports no map — decisions §2259, §2269).
     # Only types.ts + database.types.ts stay at the lib root (gen:types writes database.types.ts there; the
     # twin parity-pair paths in docs/architecture/conventions.md + shared-library-syncer.md track the new locations).
     core/data.ts         # All Supabase queries (fetchRuns, searchPublicRoutes, etc.)

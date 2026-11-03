@@ -5012,6 +5012,7 @@ export type Database = {
           race_listing_id: string | null
           rules: Json | null
           source: string
+          source_author_id: string | null
           start_date: string
           status: string
           trimmed_at: string | null
@@ -5039,6 +5040,7 @@ export type Database = {
           race_listing_id?: string | null
           rules?: Json | null
           source?: string
+          source_author_id?: string | null
           start_date: string
           status?: string
           trimmed_at?: string | null
@@ -5066,6 +5068,7 @@ export type Database = {
           race_listing_id?: string | null
           rules?: Json | null
           source?: string
+          source_author_id?: string | null
           start_date?: string
           status?: string
           trimmed_at?: string | null
@@ -7019,6 +7022,7 @@ export type Database = {
           last_fetched_at: string
         }[]
       }
+      plan_started_from: { Args: { p_plan_id: string }; Returns: Json }
       plan_workout_link_candidates: {
         Args: { p_run_id: string }
         Returns: {
@@ -7067,6 +7071,8 @@ export type Database = {
         }[]
       }
       prune_sign_in_devices: { Args: never; Returns: number }
+      public_plan_share: { Args: { p_id: string }; Returns: Json }
+      public_plan_share_enabled: { Args: never; Returns: boolean }
       public_profile_by_id: {
         Args: { p_id: string }
         Returns: {

@@ -4,7 +4,7 @@
 // privacy zone trimmed by `clipPointsToZones` (raw OR smoothed position in a
 // zone, the rule `clip_track_for_user` applies), and no line at all while
 // the zones are not known (`null`), which is never read as "no zones".
-// Mirrors `runShareCardTrack` in apps/mobile_android/lib/widgets/run_share_card.dart,
+// Mirrors `runShareCardTrack` in apps/mobile_android/lib/run_share_stats.dart,
 // whose caller likewise refuses to open the sheet until the zones are known.
 
 import { clipPointsToZones, type PrivacyZone } from '../routes/privacy';

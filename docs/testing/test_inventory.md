@@ -901,6 +901,22 @@ The run-detail Pacing strategy section: a 10-10-10 5K that went out too fast (ve
 
 The Dart twin of the spec above for `widgets/pacing_strategy_section.dart`: hidden without a strategy and for an unknown preset, the went-out-too-fast 5K phase by phase, the miles conversion of pace and gap, and the trackless run's note.
 
+### `apps/web/src/lib/share/share_look.test.ts` — 12 tests
+
+Mirror of `apps/mobile_android/test/share_look_test.dart` (12 each, decisions § 2258): `toggleShareStat` keeps display order, never empties the set and never grows it past four; `shareLookFromJson` round-trips every field, takes the default for an unknown value while keeping the rest, cuts an oversized set, and reads anything that is not an object as the default look; load / save over an in-memory store, with a corrupt value loading the default instead of throwing.
+
+### `apps/web/src/lib/share/run_share_stats.test.ts` — 11 tests
+
+Mirror of `apps/mobile_android/test/run_share_stats_test.dart` (11 each): only measured stats are offered (climb on a climbing track, heart rate when `avg_bpm` is positive), picks print in display order, an unavailable pick falls back to distance, heart rate rounds, climb prints in the runner's unit, a ride prints speed in the pace slot, moving time rounds a millisecond-stamped track to the second, and `formatShareDuration` drops the hour under an hour.
+
+### `apps/web/src/lib/share/run_sticker_canvas.test.ts` — 16 tests
+
+The canvas layout for the photo and sticker images, over a monospace stand-in for `measureText`: a sticker is its content plus the padding (so the PNG is cropped to what it draws), the strip is wide and the rest portrait, every layout carries the mark and wordmark, the route is drawn only with a line, each stat prints once, the strip has a divider between each pair, the hero's first stat is the largest, a long value scales into its column; the photo's post and story canvases, stats clear of the story reply bar, a wide strip fitted into the width, a tall layout shrunk under the title, no title line for an untitled run; and `wrapLines` breaking, ellipsising and cutting an over-wide word.
+
+### `apps/web/tests-e2e/runs/share-image-editor.spec.ts` — 3 tests
+
+The run share-image editor end to end, reading the downloaded PNG: the map card is 1080x1080; a strip sticker in black ink with heart rate added is 1080 wide, shorter than half its width and transparent at the corner, and the look survives a reload; a photo with a planted APP1 Exif block exports at 1080x1920 (story) and 1080x1350 (post) with neither the block's marker nor the `Exif` tag in the bytes.
+
 ### `apps/web/src/lib/social/event_occurrence.test.ts` — 16 tests
 
 Web-only (no Dart twin — mobile does not read `event_exceptions` outside its own event-detail screen). Pure tests for `lib/social/event_occurrence.ts`, the layer that subtracts cancelled occurrences from a recurrence expansion. `isOccurrenceCancelled` covers both ISO renderings of one instant matching (PostgREST `+00:00` vs a client `.000Z`), a different instant / empty list / null / undefined not matching, and an unparseable cancelled instant never matching. `nextLiveInstance` covers the nothing-cancelled fast path, skipping the cancelled next occurrence, skipping a run of consecutive cancellations, a cancellation further out leaving the next one alone, already-past cancellations not eating the search budget, every remaining occurrence cancelled returning null, an exhausted series returning null either way, and a cancelled one-off. `upcomingCancelledOccurrences` covers future-only + oldest-first ordering, an unparseable instant being dropped rather than sorted to an edge, and an occurrence starting exactly now counting as ahead.
@@ -1358,7 +1374,7 @@ The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets
 
 The runtime half of the guard `build-web` runs over the build output (`scripts/check_web_removed_kit_apis.mjs`). web@1.12.0 resolved @sentry/sveltekit's Svelte 4 tracing variant, which subscribes to `$app/stores` — a stub that throws on Kit 3 — and `hooks.client.ts` runs `Sentry.init` only when `!dev && PUBLIC_SENTRY_DSN && hasAcceptedConsent()`, so every reader who accepted error reporting got a blank page while every `vite dev` lane stayed green ([decisions § 1896](../architecture/decisions.md)). Runs under `playwright.built.config.ts`: a production build with a dummy DSN, served as CloudFront serves it by `tests-e2e/scripts/serve-build.mjs`. One case seeds consent the way `consent.set('accepted')` stores it and loads `/` (prerendered — the uncaught-error check is what fails there), `/help` and `/login` (the SPA shell — a throw leaves them blank); the other accepts through the banner itself, which reloads the page, and asserts it still renders. Both require a `*.sentry.io` request to have been answered, so neither can pass without `Sentry.init` having run. Against the pre-fix `vite.config.ts` (no `sentrySvelteKit()` plugin) both fail on the `app_stores_removed` page error.
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 2,362 declared tests across 622 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 2,365 declared tests across 623 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

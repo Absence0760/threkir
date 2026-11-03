@@ -740,8 +740,12 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	// and its ground recorded in the module itself. Five card builders used to
 	// spell these independently — 22 literals for 9 values, the two recap cards
 	// byte-identical.
+	// The photo / sticker inks and the mark's tile ramp join them: the inks land
+	// on the runner's own photo, so legibility rides on their shadow and the
+	// ink the runner picks, as the module records.
 	'lib/share/og_card_palette.ts': {
-		FFFFFF: [2, 'fixed-canvas'], C24E24: [1, 'fixed-canvas'],
+		FFFFFF: [3, 'fixed-canvas'], C24E24: [1, 'fixed-canvas'],
+		A8426A: [1, 'gradient-stop'], '5B4B8A': [1, 'gradient-stop'],
 		'1A1722': [1, 'fixed-canvas'], '5F5A6B': [1, 'fixed-canvas'],
 		'121117': [1, 'fixed-canvas'], F08A5D: [1, 'fixed-canvas'],
 		A9A4B6: [1, 'fixed-canvas'], E4E1EA: [1, 'fixed-canvas'],

@@ -240,7 +240,10 @@ as $$
   where private.challenge_invite_links_enabled()
     and p_token is not null
     and t.token = p_token
-    and c.scope <> 'club_vs_club';
+    and c.scope <> 'club_vs_club'
+    and (c.creator_id = (select auth.uid()) or not coalesce(p.shadow_hidden, false))
+    and ((select auth.uid()) is null
+         or not is_blocked_either_way((select auth.uid()), c.creator_id));
 $$;
 
 revoke execute on function public.challenge_invite_preview(text) from public;
@@ -248,12 +251,20 @@ grant execute on function public.challenge_invite_preview(text) to anon, authent
 
 comment on function public.challenge_invite_preview(text) is
   'The challenge an invite token names, for the join page. Empty for an '
-  'unknown or rotated token and while the challenge_invite_links gate is '
+  'unknown or rotated token, a shadow-hidden creator, a block either way '
+  'between caller and creator, and while the challenge_invite_links gate is '
   'closed. Creator name follows profile_visible_to (decisions § 2261).';
 
 -- Join by link. An unknown token returns NULL rather than raising: a raise
 -- would roll back the rate-limit counter with it, and then guessing tokens
 -- would cost nothing. 30 attempts per user per hour, hit or miss.
+--
+-- The insert runs as the definer, so the policy that guards an ordinary join
+-- never sees it. The checks a stranger's join needs are written here instead,
+-- and each refuses exactly as an unknown token does, so a refusal says
+-- nothing about which rule fired: a block either way between joiner and
+-- creator, a challenge that has ended, and a shadow-hidden creator (whose
+-- challenge the preview no longer shows either).
 create or replace function public.join_challenge_by_token(p_token text)
 returns uuid
 language plpgsql
@@ -280,9 +291,13 @@ begin
   select c.id into v_challenge
     from private.challenge_invite_tokens t
     join challenges c on c.id = t.challenge_id
+    left join user_profiles p on p.id = c.creator_id
    where p_token is not null
      and t.token = p_token
-     and c.scope <> 'club_vs_club';
+     and c.scope <> 'club_vs_club'
+     and c.ends_at > now()
+     and (c.creator_id = v_uid or not coalesce(p.shadow_hidden, false))
+     and not is_blocked_either_way(v_uid, c.creator_id);
 
   if v_challenge is null then
     return null;
@@ -301,6 +316,7 @@ grant execute on function public.join_challenge_by_token(text) to authenticated,
 
 comment on function public.join_challenge_by_token(text) is
   'Join the challenge an invite token names. Returns its id, or NULL for an '
-  'unknown or rotated token. Raises challenge_invite_links_disabled while the '
+  'unknown or rotated token, an ended challenge, a shadow-hidden creator or a '
+  'block either way between joiner and creator. Raises challenge_invite_links_disabled while the '
   'gate is closed; rate-limited to 30 attempts per user per hour '
   '(decisions § 2261).';

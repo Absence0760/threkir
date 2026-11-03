@@ -7,6 +7,7 @@
 	import {
 		PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV,
 		PUBLIC_TERRAIN_URL as PUBLIC_TERRAIN_URL_ENV,
+		PUBLIC_TILE_STYLE_URL,
 	} from '$app/env/public';
 	import { formatDistance, formatElevation } from '#lib/format/units.svelte.ts';
 	import { formatDecimal } from '#lib/format/number.ts';
@@ -33,7 +34,8 @@
 		TERRAIN_EXAGGERATION,
 		type TerrainSource,
 	} from '#lib/routes/terrain_source.ts';
-	import { flyoverVideoBasemapPermitted, flyoverVideoMaptilerKey } from '#lib/routes/flyover_video_flag.ts';
+	import { flyoverVideoMaptilerKey } from '#lib/routes/flyover_video_flag.ts';
+	import { videoBasemapPermitted } from '#lib/routes/flyover_video_source.ts';
 	import {
 		detectFlyoverCapability,
 		flyoverMode,
@@ -118,7 +120,7 @@
 	// The export never uses a MapTiler key until the operator has confirmed
 	// the plan allows MapTiler in published video (decisions § 2259).
 	const videoKey = flyoverVideoMaptilerKey(PUBLIC_MAPTILER_KEY);
-	const videoBasemapOk = flyoverVideoBasemapPermitted(videoKey);
+	const videoBasemapOk = videoBasemapPermitted(videoKey, PUBLIC_TILE_STYLE_URL);
 	type VideoState =
 		| { step: 'idle' }
 		| { step: 'rendering'; progress: number }

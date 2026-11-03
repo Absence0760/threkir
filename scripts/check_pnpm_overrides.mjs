@@ -4,10 +4,10 @@
 //
 // They are not preferences. Each one nudges a transitive dependency off a
 // version with a live advisory that its own parent has not bumped past —
-// `cookie` (GHSA-pxg6-pf52-xh8x), `devalue` (the <=5.9.2 uneval/stringify
-// advisories), `brace-expansion` (the <5.0.12 stack-exhaustion and quadratic
-// expansion advisories) and `source-map-js` (GHSA-68fv-2mgg-jv7q). The
-// rationale for each lives in root package.json's `_overrides_rationale`.
+// `devalue` (the <=5.9.2 uneval/stringify advisories), `glob` (GHSA-3g3m-2fjr-6pw4,
+// and through it minimatch's GHSA-g3hv-75wg-m249) and `source-map-js`
+// (GHSA-68fv-2mgg-jv7q). The rationale for each lives in root package.json's
+// `_overrides_rationale`.
 //
 // Why a guard rather than a shrug. Dependabot PR #812 (@types/node 26.1.2 ->
 // 26.2.0) regenerated pnpm-lock.yaml and dropped the top-level `overrides:`

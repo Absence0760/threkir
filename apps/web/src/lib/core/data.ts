@@ -2871,6 +2871,9 @@ export interface RaceListingCourse {
 	distanceM: number | null;
 	ascentM: number | null;
 	surface: string | null;
+	/// Null unless the route is public (decisions § 2253); its line is read
+	/// with `fetchPublicRoute`, never from this row.
+	routeId: string | null;
 }
 
 export async function fetchRaceListing(id: string): Promise<RaceListingDetail | null> {
@@ -2878,14 +2881,17 @@ export async function fetchRaceListing(id: string): Promise<RaceListingDetail | 
 	const { data, error } = await supabase
 		.from('public_race_listings')
 		.select(
-			'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface'
+			'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface, course_route_id'
 		)
 		.eq('id', id)
 		.maybeSingle();
 	if (error) throw dbError(error);
 	if (!data || !data.id || !data.name || !data.race_date || !data.provider) return null;
 	const hasCourse =
-		data.course_distance_m != null || data.course_elevation_m != null || data.course_surface != null;
+		data.course_distance_m != null ||
+		data.course_elevation_m != null ||
+		data.course_surface != null ||
+		data.course_route_id != null;
 	return {
 		id: data.id,
 		provider: data.provider,
@@ -2900,7 +2906,8 @@ export async function fetchRaceListing(id: string): Promise<RaceListingDetail | 
 			? {
 					distanceM: data.course_distance_m,
 					ascentM: data.course_elevation_m,
-					surface: data.course_surface
+					surface: data.course_surface,
+					routeId: data.course_route_id
 				}
 			: null
 	};

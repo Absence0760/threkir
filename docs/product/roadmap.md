@@ -325,7 +325,7 @@ The foundation under both the generator and any hand-built plan: a data model fo
 
 ### 3D course preview (#1270)
 
-✓ **Shipped on web** (routes + run replay). The course on 3D terrain with a camera flying it, km/mi markers, a synced elevation strip and named climbs, each stated as net height to crest; "Preview in 3D" on `/routes/[id]`, "Replay in 3D" on `/runs/[id]`. Free. Still open: the race page entry point (needs the public race view to expose a public course's route id) and a mobile equivalent. See [features § 3D course preview](features.md#3d-course-preview).
+✓ **Shipped on web** (routes, races and run replay). The course on 3D terrain with a camera flying it, km/mi markers, a synced elevation strip and named climbs, each stated as net height to crest; "Preview in 3D" on `/routes/[id]` and on `/races/[id]` when the race's course is a public route, "Replay in 3D" on `/runs/[id]`. Free. Still open: a mobile equivalent. See [features § 3D course preview](features.md#3d-course-preview).
 
 ### Backend work (Phase 3)
 

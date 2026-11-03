@@ -816,6 +816,13 @@ export type Database = {
             foreignKeyName: "direct_messages_route_id_fkey"
             columns: ["route_id"]
             isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["course_route_id"]
+          },
+          {
+            foreignKeyName: "direct_messages_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
             referencedRelation: "public_routes"
             referencedColumns: ["id"]
           },
@@ -1089,6 +1096,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_courses_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["course_route_id"]
           },
           {
             foreignKeyName: "event_courses_route_id_fkey"
@@ -1529,6 +1543,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "public_gym_routines"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["course_route_id"]
           },
           {
             foreignKeyName: "events_route_id_fkey"
@@ -3324,6 +3345,13 @@ export type Database = {
             foreignKeyName: "race_listings_route_id_fkey"
             columns: ["route_id"]
             isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["course_route_id"]
+          },
+          {
+            foreignKeyName: "race_listings_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
             referencedRelation: "public_routes"
             referencedColumns: ["id"]
           },
@@ -3640,6 +3668,13 @@ export type Database = {
             foreignKeyName: "route_conditions_route_id_fkey"
             columns: ["route_id"]
             isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["course_route_id"]
+          },
+          {
+            foreignKeyName: "route_conditions_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
             referencedRelation: "public_routes"
             referencedColumns: ["id"]
           },
@@ -3704,6 +3739,13 @@ export type Database = {
             foreignKeyName: "route_markers_route_id_fkey"
             columns: ["route_id"]
             isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["course_route_id"]
+          },
+          {
+            foreignKeyName: "route_markers_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
             referencedRelation: "public_routes"
             referencedColumns: ["id"]
           },
@@ -3755,6 +3797,13 @@ export type Database = {
           thumb_512_path?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "route_photos_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["course_route_id"]
+          },
           {
             foreignKeyName: "route_photos_route_id_fkey"
             columns: ["route_id"]
@@ -3811,6 +3860,13 @@ export type Database = {
             foreignKeyName: "route_reviews_route_id_fkey"
             columns: ["route_id"]
             isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["course_route_id"]
+          },
+          {
+            foreignKeyName: "route_reviews_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
             referencedRelation: "public_routes"
             referencedColumns: ["id"]
           },
@@ -3853,6 +3909,13 @@ export type Database = {
           route_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "route_shares_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["course_route_id"]
+          },
           {
             foreignKeyName: "route_shares_route_id_fkey"
             columns: ["route_id"]
@@ -4531,6 +4594,13 @@ export type Database = {
             foreignKeyName: "runs_route_id_fkey"
             columns: ["route_id"]
             isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["course_route_id"]
+          },
+          {
+            foreignKeyName: "runs_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
             referencedRelation: "public_routes"
             referencedColumns: ["id"]
           },
@@ -4606,6 +4676,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "saved_routes_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["course_route_id"]
+          },
           {
             foreignKeyName: "saved_routes_route_id_fkey"
             columns: ["route_id"]
@@ -4727,6 +4804,13 @@ export type Database = {
           start_distance_m?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "segments_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["course_route_id"]
+          },
           {
             foreignKeyName: "segments_route_id_fkey"
             columns: ["route_id"]
@@ -5551,6 +5635,7 @@ export type Database = {
         Row: {
           course_distance_m: number | null
           course_elevation_m: number | null
+          course_route_id: string | null
           course_surface: string | null
           created_at: string | null
           distance_m: number | null

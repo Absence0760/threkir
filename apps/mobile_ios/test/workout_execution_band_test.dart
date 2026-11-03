@@ -336,7 +336,7 @@ void main() {
       );
       expect(find.text('+420s'), findsNothing);
       // A walk has no pace target: the header states the walk and its length,
-      // never the plan's easy pace. 
+      // never the plan's easy pace.
       expect(find.text('Walk 1 of 7 · 1m 30s'), findsOneWidget);
       expect(find.textContaining('@'), findsNothing);
       expect(find.textContaining('5:00'), findsNothing);

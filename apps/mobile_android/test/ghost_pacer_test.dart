@@ -213,7 +213,7 @@ void main() {
     test('a walk-run step has no pace target, so there is no ghost', () {
       // Every step of a walk-run session is unpaced, and the easy pace it
       // carries is only the plan's distance estimate: a ghost moving at it
-      // would pace a walk at a run. 
+      // would pace a walk at a run.
       for (final kind in [
         WorkoutStepKind.walk,
         WorkoutStepKind.rep,

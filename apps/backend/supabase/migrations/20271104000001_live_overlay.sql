@@ -40,6 +40,14 @@
 --    local + CI. While it is closed the feed returns nothing, no token can be
 --    made or configured, and no ping keeps its bpm. Revoking always works.
 --
+-- 5. The feed's cursor is live_run_pings.at, so `at` has to be the time the
+--    row arrived. Every writer in the tree already leaves it to the column
+--    default; a client that wrote an older one would put its ping behind a
+--    cursor the overlay had already passed, and it would never be shown. A
+--    BEFORE INSERT trigger stamps `at := now()` on every anon / authenticated
+--    write. The service role (the live hub, e2e fixtures) and the table owner
+--    (pgTAP, cron) keep the `at` they write.
+--
 -- Locks: a new table in the private schema, function creation, and CREATE
 -- TRIGGER on live_run_pings (SHARE ROW EXCLUSIVE for the catalogue write
 -- only). No populated table is rewritten or scanned.
@@ -160,6 +168,28 @@ revoke execute on function private.live_run_pings_strip_bpm() from public, anon,
 create trigger live_run_pings_strip_bpm_before_insert
   before insert on public.live_run_pings
   for each row execute function private.live_run_pings_strip_bpm();
+
+-- SECURITY INVOKER on purpose: current_user is then the writing role. Under
+-- DEFINER it would always be the owner.
+create or replace function private.live_run_pings_stamp_at()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  if current_user in ('anon', 'authenticated') then
+    new.at := now();
+  end if;
+  return new;
+end;
+$$;
+
+revoke execute on function private.live_run_pings_stamp_at() from public, anon, authenticated;
+
+create trigger live_run_pings_stamp_at_before_insert
+  before insert on public.live_run_pings
+  for each row execute function private.live_run_pings_stamp_at();
 
 -- ─────────────────── the owner's RPCs ───────────────────
 
@@ -336,7 +366,8 @@ comment on function public.update_live_overlay_settings(integer, boolean, boolea
 -- became visible after it, oldest first, which is the overlay's poll. No run
 -- id or user id is returned: the token holder learns nothing it could use to
 -- reach the run any other way. Zero rows covers a wrong token, no live run,
--- and a closed gate alike.
+-- and a closed gate alike. Paging on `at` is sound because a client cannot
+-- choose it (live_run_pings_stamp_at above).
 create or replace function public.live_overlay_feed(
   p_token text,
   p_since timestamptz default null

@@ -6,11 +6,14 @@
 -- (never for a coarse last-seen row), bpm only with heart rate on AND
 -- health-data consent; a rotated, revoked or wrong token and a concluded run
 -- read nothing; heart rate cannot be turned on without consent; token creation
--- is rate-limited; and the hub's consent question is service-role only.
+-- is rate-limited; and the hub's consent question is service-role only. A
+-- client-written ping's `at` is stamped to its arrival, so a late upload lands
+-- after the overlay's cursor instead of behind it, while the service role
+-- keeps the `at` it writes.
 
 begin;
 
-select plan(34);
+select plan(37);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -225,29 +228,61 @@ select is(
   (select count(*)::int from live_overlay_feed((select token from tok)) where bpm is not null),
   0, 'withdrawing consent stops bpm at once, whatever the setting says');
 
+-- ── A late upload cannot fall behind the cursor ──
+-- The owner's phone writes a ping it claims is an hour old, after the overlay
+-- has already read up to the coarse row a second ago.
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"0e000000-0000-0000-0000-00000000000a","role":"authenticated"}';
+insert into live_run_pings (run_id, user_id, at, lat, lng, distance_m, elapsed_s)
+values ('0e001000-0000-0000-0000-000000000001', '0e000000-0000-0000-0000-00000000000a',
+        now() - interval '1 hour', 51.55, -0.15, 1400, 430);
+-- (29)
+select is(
+  (select at from live_run_pings
+    where run_id = '0e001000-0000-0000-0000-000000000001' and distance_m = 1400),
+  now(), 'a client-written ping''s at is stamped to the time it arrived');
+set local role anon;
+set local "request.jwt.claims" = '{"role":"anon"}';
+-- (30)
+select results_eq(
+  $$ select distance_m from live_overlay_feed((select token from tok), now() - interval '1 second') $$,
+  $$ values (1400::double precision) $$,
+  'a late upload comes back after the cursor the overlay already holds');
+
+set local role service_role;
+insert into live_run_pings (run_id, user_id, at, lat, lng, distance_m, elapsed_s)
+values ('0e001000-0000-0000-0000-000000000002', '0e000000-0000-0000-0000-00000000000b',
+        now() - interval '2 hours', 48.86, 2.36, 600, 230);
+reset role;
+-- (31)
+select is(
+  (select at from live_run_pings
+    where run_id = '0e001000-0000-0000-0000-000000000002' and distance_m = 600),
+  now() - interval '2 hours', 'the service role keeps the at it writes');
+
 -- ── Rotation, revocation, the end of the run ──
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"0e000000-0000-0000-0000-00000000000a","role":"authenticated"}';
--- (29)
+-- (32)
 select isnt(create_live_overlay_token(), (select token from tok), 'making it again replaces the token');
--- (30)
+-- (33)
 select is(
   (select count(*)::int from live_overlay_feed((select token from tok))), 0,
   'the replaced token reads nothing');
--- (31)
+-- (34)
 select is(
   (select delay_s from get_live_overlay()), 0, 'replacing the token keeps the settings');
 
 reset role;
 update runs set concluded_at = now() where id = '0e001000-0000-0000-0000-000000000001';
 set local role authenticated;
--- (32)
+-- (35)
 select is(
   (select count(*)::int from live_overlay_feed((select token from get_live_overlay()))), 0,
   'a concluded run reads nothing');
 
 select revoke_live_overlay_token();
--- (33)
+-- (36)
 select is((select count(*)::int from get_live_overlay()), 0, 'revoking deletes the overlay');
 
 -- ── Rate limit: 10 makes an hour ──
@@ -257,7 +292,7 @@ begin
     perform create_live_overlay_token();
   end loop;
 end $$;
--- (34)
+-- (37)
 select throws_ok(
   $$ select create_live_overlay_token() $$,
   'P0001', null, 'the 11th token made in an hour is refused');

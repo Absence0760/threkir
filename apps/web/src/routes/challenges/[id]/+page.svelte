@@ -229,6 +229,7 @@
 
 		<ChallengeInviteLink
 			challengeId={challenge.id}
+			creatorId={challenge.creator_id}
 			isPublic={challenge.is_public}
 			canManage={canManageChallenge && challenge.scope !== 'club_vs_club'}
 		/>

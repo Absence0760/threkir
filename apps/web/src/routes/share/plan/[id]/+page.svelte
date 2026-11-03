@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import SharePageShell from '#lib/components/SharePageShell.svelte';
@@ -14,6 +16,8 @@
 		buildPlanShareTitle,
 		planAuthorCredit
 	} from '#lib/share/share_plan_meta.ts';
+	import { shareRefFromSearch, withShareRef } from '#lib/share/share_ref.ts';
+	import { recordShareView } from '#lib/share/share_attribution.ts';
 
 	let { data } = $props();
 
@@ -26,8 +30,16 @@
 
 	// The in-app preview is where a signed-in runner picks a start date and
 	// clones; a signed-out one signs up first and lands there afterwards.
-	let startHref = $derived(`/plans/library/${data.id}`);
+	// The link's ref rides along, so a copy started there (after sign-up if
+	// need be) is attributed to it (decisions § 2268).
+	let startHref = $derived(
+		withShareRef(`/plans/library/${data.id}`, shareRefFromSearch(page.url.search))
+	);
 	let returnTo = $derived(encodeURIComponent(startHref));
+
+	onMount(() => {
+		if (data.plan) void recordShareView('plan', data.id);
+	});
 
 	function runs(workouts: SharedPlanWorkout[]): SharedPlanWorkout[] {
 		return workouts.filter((w) => w.kind !== 'rest');

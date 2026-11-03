@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import SharePageShell from '#lib/components/SharePageShell.svelte';
@@ -16,6 +18,8 @@
 		buildChallengeShareDescription,
 		buildChallengeShareTitle
 	} from '#lib/share/share_challenge_meta.ts';
+	import { shareRefFromSearch, withShareRef } from '#lib/share/share_ref.ts';
+	import { attributeShareStart, recordShareView } from '#lib/share/share_attribution.ts';
 
 	let { data } = $props();
 
@@ -28,7 +32,11 @@
 	let appHref = $derived(`/challenges/${data.id}`);
 	// Back here, not to the in-app page: /share/* skips the onboarding gates,
 	// so a brand-new account lands on this Join button rather than the wizard.
-	let returnTo = $derived(encodeURIComponent(`/share/challenge/${data.id}`));
+	// The link's ref rides through sign-up, so the join is attributed to it.
+	let arrivedRef = $derived(shareRefFromSearch(page.url.search));
+	let returnTo = $derived(
+		encodeURIComponent(withShareRef(`/share/challenge/${data.id}`, arrivedRef))
+	);
 	let busy = $state(false);
 	let joinFailed = $state(false);
 
@@ -40,12 +48,17 @@
 		return row.display_name ?? runnerHandle(row.user_id, handleLabels);
 	}
 
+	onMount(() => {
+		if (data.challenge) void recordShareView('challenge', data.id);
+	});
+
 	async function join() {
 		if (busy || !data.challenge) return;
 		busy = true;
 		joinFailed = false;
 		try {
 			await joinChallenge(data.challenge.id);
+			if (arrivedRef) await attributeShareStart('challenge', data.challenge.id, arrivedRef);
 			goto(appHref);
 		} catch (e) {
 			console.error('share challenge join failed', e);

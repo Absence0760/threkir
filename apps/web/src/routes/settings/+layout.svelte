@@ -5,6 +5,7 @@
 	import { supabase } from '#lib/core/supabase.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { BODY_METRICS_PAGE, PREFERENCES_PAGES } from '#lib/settings/preferences_ia.ts';
+	import { shareAttributionEnabled } from '#lib/share/share_attribution.ts';
 
 	type Tab = { href: string; label: string; icon: string };
 	type Section = { label: string; tabs: Tab[] };
@@ -17,6 +18,12 @@
 	// the highest-impact unset values so we don't badger users who
 	// deliberately left optional fields blank.
 	let unsetFields = $state<string[]>([]);
+	// Your shares is offered only while the share_attribution gate is open
+	// (decisions § 2268).
+	let sharesEnabled = $state(false);
+	onMount(() => {
+		void shareAttributionEnabled().then((on) => (sharesEnabled = on));
+	});
 	onMount(async () => {
 		if (!auth.user) return;
 		const checks: string[] = [];
@@ -56,6 +63,9 @@
 				{ href: '/settings/devices', label: m('settingsLayout.tabDevices'), icon: 'devices' },
 				{ href: '/settings/gear', label: m('settingsLayout.tabGear'), icon: 'directions_run' },
 				{ href: '/settings/payouts', label: m('settingsLayout.tabPayouts'), icon: 'payments' },
+				...(sharesEnabled
+					? [{ href: '/settings/shares', label: m('shares.tab'), icon: 'share' }]
+					: []),
 			],
 		},
 		{

@@ -7102,17 +7102,13 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible de dissocier la course. Réessayez.';
 
   @override
+  String get workoutMarkDone => 'Marquer comme fait';
+
+  @override
   String get workoutMarkNotDone => 'Marquer comme non fait';
 
   @override
-  String get workoutMarkNotDoneTitle => 'Marquer comme non fait ?';
-
-  @override
-  String get workoutMarkNotDoneBody =>
-      'La séance s\'affichera comme pas encore faite.';
-
-  @override
-  String get workoutMarkNotDoneError =>
+  String get workoutUpdateError =>
       'Impossible de mettre à jour la séance. Réessayez.';
 
   @override

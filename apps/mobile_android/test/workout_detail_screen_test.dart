@@ -35,6 +35,7 @@ class _FakeTraining extends TrainingService {
   final Completer<void>? gateCandidates;
   String? lastMarkRunId;
   bool markCalled = false;
+  bool? lastMarkManual;
 
   _FakeTraining(this.workout, this.candidates, {this.gateCandidates});
 
@@ -54,6 +55,7 @@ class _FakeTraining extends TrainingService {
       {bool manual = false}) async {
     markCalled = true;
     lastMarkRunId = runId;
+    lastMarkManual = manual;
   }
 }
 
@@ -236,16 +238,13 @@ void main() {
       expect(find.text('Completed'), findsOneWidget);
       expect(find.text('Start workout'), findsNothing);
 
+      // One tap, no dialog: the open panel's "Mark as done" puts it back.
       await tester.tap(find.text('Mark not done'));
       await tester.pumpAndSettle();
-      expect(find.text('Mark not done?'), findsOneWidget);
-      await tester.tap(find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.widgetWithText(TextButton, 'Mark not done'),
-      ));
-      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
       expect(training.markCalled, isTrue);
       expect(training.lastMarkRunId, isNull);
+      expect(training.lastMarkManual, isFalse);
     });
   });
 

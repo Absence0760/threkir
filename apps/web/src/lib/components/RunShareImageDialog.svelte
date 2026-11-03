@@ -30,8 +30,10 @@
 		type RunShareLook,
 	} from '#lib/share/share_look.ts';
 	import { canvasToPng, loadShareFonts, paintPhoto, paintSticker } from '#lib/share/run_sticker_canvas.ts';
+	import HeadToHeadPanel from '#lib/components/HeadToHeadPanel.svelte';
+	import type { HeadToHeadKind } from '#lib/social/head_to_head.ts';
 
-	type Style = 'card' | 'photo' | 'sticker';
+	type Style = 'card' | 'photo' | 'sticker' | 'versus';
 
 	interface Props {
 		open: boolean;
@@ -43,15 +45,21 @@
 		/// The map card's PNG, rasterised from the page's off-screen card.
 		captureCard: () => Promise<Blob>;
 		fileBase: string;
+		/// The route this run is on, which offers the Versus style: the
+		/// caller's best there against a mutual-follow friend's (§ 2267).
+		headToHead?: { kind: HeadToHeadKind; targetId: string } | null;
 	}
 
-	let { open, onclose, run, title, line, captureCard, fileBase }: Props = $props();
+	let { open, onclose, run, title, line, captureCard, fileBase, headToHead = null }: Props = $props();
 
 	const STYLES: { value: Style; label: MessageKey; icon: string }[] = [
 		{ value: 'card', label: 'runShare.styleCard', icon: 'map' },
 		{ value: 'photo', label: 'runShare.stylePhoto', icon: 'photo' },
 		{ value: 'sticker', label: 'runShare.styleSticker', icon: 'auto_awesome_motion' },
 	];
+	let styles = $derived(
+		headToHead ? [...STYLES, { value: 'versus' as const, label: 'headToHead.styleVersus' as MessageKey, icon: 'group' }] : STYLES,
+	);
 	const LAYOUT_LABELS: Record<RunShareLook['layout'], MessageKey> = {
 		stack: 'runShare.layoutStack',
 		route: 'runShare.layoutRoute',
@@ -157,7 +165,7 @@
 		const s = style;
 		const l = $state.snapshot(look) as RunShareLook;
 		const p = photo;
-		if (s === 'photo' && !p) return;
+		if (s === 'versus' || (s === 'photo' && !p)) return;
 		const key = JSON.stringify([s, l, s === 'photo' ? photoSeq : 0]);
 		if (preview?.key === key) return;
 		const seq = ++renderSeq;
@@ -238,7 +246,7 @@
 <Modal {open} {onclose} title={m('runShare.title')} wide data-testid="run-share-image-dialog">
 	<div class="share-editor">
 		<div class="chip-row" role="radiogroup" aria-label={m('runShare.style')}>
-			{#each STYLES as s (s.value)}
+			{#each styles as s (s.value)}
 				<button
 					type="button"
 					role="radio"
@@ -255,6 +263,9 @@
 			{/each}
 		</div>
 
+		{#if style === 'versus' && headToHead}
+			<HeadToHeadPanel kind={headToHead.kind} targetId={headToHead.targetId} activityType={run.activity_type ?? 'run'} />
+		{:else}
 		<div class="preview" class:checker={style === 'sticker'} aria-busy={rendering}>
 			{#if !hasImage}
 				<button type="button" class="btn btn-secondary" onclick={() => fileInput?.click()} disabled={picking}>
@@ -396,6 +407,7 @@
 				{m('runShare.download')}
 			</button>
 		</div>
+		{/if}
 	</div>
 </Modal>
 

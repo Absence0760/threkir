@@ -17,6 +17,7 @@
 	import { crownLabel } from '#lib/segments/segments.ts';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import RunMap from '#lib/components/RunMap.svelte';
+	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
 	import type { TrackPoint } from '#lib/types.ts';
 
 	let { data } = $props();
@@ -28,6 +29,7 @@
 	let boardFailed = $state(false);
 	let genderFilter = $state<SegmentGenderFilter | null>(null);
 	let ageFilter = $state<SegmentAgeBand | null>(null);
+	let showHeadToHead = $state(false);
 
 	// The catalogue geometry is public curated data (world-readable table),
 	// NOT any athlete's GPS track — safe to render directly. The leaderboard
@@ -172,7 +174,20 @@
 		{/if}
 
 		<section class="section">
-			<h2>{m('segmentDetail.leaderboard')}</h2>
+			<div class="board-head">
+				<h2>{m('segmentDetail.leaderboard')}</h2>
+				{#if auth.loggedIn}
+					<button
+						type="button"
+						class="btn btn-outline btn-sm h2h-open"
+						onclick={() => (showHeadToHead = true)}
+						data-testid="segment-head-to-head-open"
+					>
+						<span class="material-symbols" aria-hidden="true">group</span>
+						{m('headToHead.compare')}
+					</button>
+				{/if}
+			</div>
 			<div class="tier-filters">
 				<label>
 					{m('segments.gender')}
@@ -265,6 +280,12 @@
 			{/if}
 		</section>
 	</div>
+	<HeadToHeadDialog
+		open={showHeadToHead}
+		onclose={() => (showHeadToHead = false)}
+		kind="global_segment"
+		targetId={segment.id}
+	/>
 {/if}
 
 <style>
@@ -364,6 +385,22 @@
 	}
 	.section {
 		margin-top: var(--space-lg);
+	}
+	.board-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-sm);
+		margin-bottom: var(--space-sm);
+	}
+	.board-head h2 {
+		margin: 0;
+	}
+	.h2h-open {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
 	}
 	.section h2 {
 		margin: 0 0 var(--space-sm);

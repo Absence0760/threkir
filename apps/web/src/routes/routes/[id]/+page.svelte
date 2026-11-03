@@ -24,6 +24,7 @@
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import SendRouteDialog from '#lib/components/SendRouteDialog.svelte';
+	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
 	import RoutePreviewScrubber from '#lib/components/RoutePreviewScrubber.svelte';
 	import CoursePreviewButton from '#lib/components/CoursePreviewButton.svelte';
 	import { climbNamesFromMarkers, routePathPoints } from '#lib/routes/course_preview_points.ts';
@@ -406,6 +407,7 @@
 	// confirm has to remember which of them asked for it.
 	let shareIntent = $state<'link' | 'dm'>('link');
 	let showSendDm = $state(false);
+	let showHeadToHead = $state(false);
 
 	async function handleShare() {
 		if (!route || sharing) return;
@@ -790,6 +792,16 @@
 							{m('audience.sharedWithYou')}
 						</span>
 					{/if}
+					{#if auth.loggedIn}
+						<button
+							class="btn btn-outline btn-sm"
+							onclick={() => (showHeadToHead = true)}
+							data-testid="route-head-to-head-open"
+						>
+							<span class="material-symbols" aria-hidden="true">group</span>
+							{m('headToHead.compare')}
+						</button>
+					{/if}
 					{#if route.is_public || isOwner}
 						<button
 							class="btn btn-primary btn-sm"
@@ -1100,6 +1112,12 @@
 		confirmLabel={m('routeDetail.shareConfirmCta')}
 		onconfirm={confirmShare}
 		oncancel={() => (showShareConfirm = false)}
+	/>
+	<HeadToHeadDialog
+		open={showHeadToHead}
+		onclose={() => (showHeadToHead = false)}
+		kind="route"
+		targetId={route.id}
 	/>
 	<SendRouteDialog
 		open={showSendDm}

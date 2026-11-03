@@ -71,6 +71,7 @@ import {
 	type EventCourse,
 } from '../social/event_courses';
 import { parseHostEarningsRow, type HostEarningsInstance } from '../social/host_earnings';
+import { parseHeadToHeadRows, type HeadToHeadKind, type HeadToHeadRow } from '../social/head_to_head';
 import {
 	cancelledOccurrenceRefunds,
 	parseOccurrenceRefundSummary,
@@ -10496,6 +10497,29 @@ export async function fetchGlobalSegment(id: string): Promise<GlobalSegment | nu
 /// `fetchSegmentLeaderboardTiered` but calls the catalogue RPC (no route
 /// visibility branch — the catalogue is public; per-effort run privacy +
 /// the block graph are applied server-side).
+/// The caller's best public attempt against each mutual-follow friend's on one
+/// route or segment (`head_to_head`, decisions § 2267). With `friendId`, that
+/// friend's row or none. Throws on a failed read, so "no friend to compare"
+/// and "could not load" stay distinguishable to the reader.
+export async function fetchHeadToHead(
+	kind: HeadToHeadKind,
+	targetId: string,
+	opts: { friendId?: string | null; activityType?: string | null } = {},
+): Promise<HeadToHeadRow[]> {
+	const { data, error } = await supabase.rpc(
+		'head_to_head',
+		{
+			p_kind: kind,
+			p_target_id: targetId,
+			p_friend_id: opts.friendId ?? undefined,
+			p_activity_type: opts.activityType ?? undefined,
+		},
+		{ get: true },
+	);
+	if (error) throw dbError(error);
+	return parseHeadToHeadRows(data);
+}
+
 export async function fetchGlobalSegmentLeaderboard(
 	segmentId: string,
 	filter: {

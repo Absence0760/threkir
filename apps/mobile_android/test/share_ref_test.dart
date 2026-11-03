@@ -24,6 +24,22 @@ void main() {
         'https://threkir.com/share/challenge/c1');
   });
 
+  test('withShareRef replaces a ref the link already carries', () {
+    expect(
+        withShareRef(
+            'https://threkir.com/share/plan/x?ref=zzzzzzzzzz', 'a1b2c3d4e5'),
+        'https://threkir.com/share/plan/x?ref=a1b2c3d4e5');
+  });
+
+  test('ShareStat.kinds names the five kinds the creator view counts', () {
+    expect(ShareStat.kinds,
+        {'plan', 'challenge', 'profile', 'session', 'workout'});
+    for (final k in ['club', 'event', 'race', 'run', '']) {
+      expect(ShareStat.fromRow({'kind': k, 'entity_id': 'x'}), isNull,
+          reason: k);
+    }
+  });
+
   test('ShareStat.fromRow reads the counters and refuses an unknown kind', () {
     final s = ShareStat.fromRow({
       'kind': 'plan',

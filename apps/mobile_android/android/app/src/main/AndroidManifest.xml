@@ -114,6 +114,12 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"
                      tools:node="remove" />
 
+    <!-- gal writes a run share image to the photo library through MediaStore,
+         which needs no permission from API 30. API 26-29 still need the legacy
+         write permission, so it is capped there and never requested above it. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+                     android:maxSdkVersion="29" />
+
     <!-- workmanager (androidx.work) injects RECEIVE_BOOT_COMPLETED so
          its boot receiver can re-schedule the hourly background-sync
          task after a device reboot. registerBackgroundSync() in

@@ -69,6 +69,10 @@ dependencies:
   # fit for the long-lived "subscribe to one notification stream" shape
   # of an HR strap. /audit/all 2026-05-07.
   flutter_reactive_ble: ^5.5.0
+  # Saves a run share image straight to the photo library — the step a
+  # sticker needs before a story editor can place it. MediaStore on Android,
+  # PHPhotoLibrary add-only on iOS. BSD-3-Clause.
+  gal: ^2.3.3
   image_picker: ^1.1.2
   # Pure-Dart decode / EXIF-orientation bake / crop / rotate / JPEG encode for
   # the avatar crop step (lib/avatar_crop_screen.dart). Chosen over a native

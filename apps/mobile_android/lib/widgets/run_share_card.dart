@@ -1,12 +1,13 @@
 import 'dart:async' show unawaited;
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:gal/gal.dart';
 import 'package:image_picker/image_picker.dart' show ImagePicker, ImageSource;
-import 'package:latlong2/latlong.dart' hide Path;
+import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow;
 
@@ -21,45 +22,46 @@ import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../preferences.dart';
 import '../privacy.dart';
-import '../run_stats.dart';
+import '../run_share_stats.dart';
+import '../share_look.dart';
 import '../share_sheet.dart';
 import 'capture_png.dart';
-import 'track_preview.dart' show projectTrack;
+import 'run_share_overlays.dart';
 import '../widgets/top_banner.dart';
 
-/// The part of [run]'s track the share card draws: the stored track with its
-/// leading and trailing fixes inside any of the owner's [zones] trimmed, by the
-/// rule `clip_track_for_user` applies before a non-owner is served the same
-/// run (raw OR smoothed position in a zone, interior passes kept). Always
-/// applied when the owner has zones, with no opt-out: the PNG leaves the
-/// device and is posted where anyone can read it, so it must withhold exactly
-/// what the public run page withholds. Drawn from [trackLine]: an off-track
-/// fix is distance input the recorder stored for the server replay, and the
-/// public run page never serves one either.
-List<Waypoint> runShareCardTrack(Run run, List<PrivacyZone> zones) =>
-    clipPointsToZones<Waypoint>(
-      trackLine(run.track),
-      zones,
-      latOf: (w) => w.lat,
-      lngOf: (w) => w.lng,
-      smoothedLatOf: (w) => w.smoothedLat,
-      smoothedLngOf: (w) => w.smoothedLng,
-    );
-
-/// Whether the share card for [run] draws a basemap at all, and therefore
-/// whether a capture has any tiles to wait for. A clipped track that short
-/// renders the activity glyph instead.
-bool runShareCardHasMap(Run run, List<PrivacyZone> zones) =>
-    runShareCardTrack(run, zones).length >= 2;
+export '../run_share_stats.dart' show runShareCardTrack, runShareCardHasMap;
 
 /// What the share image is drawn on: the branded map [card], the runner's own
 /// [photo] under a scrim, or nothing at all ([sticker], a transparent PNG to
 /// lay over a story or photo in another app).
 enum RunShareStyle { card, photo, sticker }
 
-/// Opens a modal sheet showing a portrait "share card" for [run] and lets the
-/// user share it as a PNG in one of three [RunShareStyle]s, or export the raw
-/// GPX / TCX / FIT, via the system share sheet.
+/// Thrown by a [RunShareImageSaver] when the runner has refused the app access
+/// to their photos, so the sheet can say how to grant it rather than report a
+/// generic failure.
+class ShareSaveDenied implements Exception {
+  const ShareSaveDenied();
+}
+
+/// Writes a share PNG to the device's photo library.
+typedef RunShareImageSaver = Future<void> Function(Uint8List png, String name);
+
+Future<void> _saveToGallery(Uint8List png, String name) async {
+  try {
+    if (!await Gal.hasAccess() && !await Gal.requestAccess()) {
+      throw const ShareSaveDenied();
+    }
+    await Gal.putImageBytes(png, name: name);
+  } on GalException catch (e) {
+    if (e.type == GalExceptionType.accessDenied) throw const ShareSaveDenied();
+    rethrow;
+  }
+}
+
+/// Opens a modal sheet that shares [run] as an image in one of three
+/// [RunShareStyle]s, or exports the raw GPX / TCX / FIT, via the system share
+/// sheet — and saves the image straight to the photo library, which is the
+/// step a sticker needs before a story editor can place it.
 ///
 /// [privacyZones] is required so no entry point can open the sheet without
 /// deciding what the image withholds; pass the owner's zones. Every style
@@ -67,8 +69,9 @@ enum RunShareStyle { card, photo, sticker }
 /// track: they are the owner's own copy of their data, not a published
 /// rendering.
 ///
-/// [pickPhotoOverride] replaces the gallery picker so a widget test can drive
-/// the photo style without the image_picker platform channel.
+/// [pickPhotoOverride] and [saveImageOverride] replace the gallery picker and
+/// the photo-library write so a widget test can drive both without platform
+/// channels.
 Future<void> showRunShareSheet(
   BuildContext context, {
   required Run run,
@@ -76,6 +79,7 @@ Future<void> showRunShareSheet(
   required String title,
   required List<PrivacyZone> privacyZones,
   @visibleForTesting Future<XFile?> Function()? pickPhotoOverride,
+  @visibleForTesting RunShareImageSaver? saveImageOverride,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -89,6 +93,7 @@ Future<void> showRunShareSheet(
       title: title,
       privacyZones: privacyZones,
       pickPhotoOverride: pickPhotoOverride,
+      saveImage: saveImageOverride ?? _saveToGallery,
     ),
   );
 }
@@ -99,12 +104,14 @@ class _ShareRunSheet extends StatefulWidget {
   final String title;
   final List<PrivacyZone> privacyZones;
   final Future<XFile?> Function()? pickPhotoOverride;
+  final RunShareImageSaver saveImage;
 
   const _ShareRunSheet({
     required this.run,
     required this.preferences,
     required this.title,
     required this.privacyZones,
+    required this.saveImage,
     this.pickPhotoOverride,
   });
 
@@ -115,10 +122,29 @@ class _ShareRunSheet extends StatefulWidget {
 class _ShareRunSheetState extends State<_ShareRunSheet> {
   final GlobalKey _cardKey = GlobalKey();
   final MapTileReadiness _tiles = MapTileReadiness();
-  bool _capturing = false;
+  bool _busy = false;
   RunShareStyle _style = RunShareStyle.card;
+  RunShareLook _look = const RunShareLook();
   File? _photo;
   bool _picking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_restoreLook());
+  }
+
+  Future<void> _restoreLook() async {
+    final look = await loadShareLook();
+    if (!mounted) return;
+    setState(() => _look = look);
+  }
+
+  void _setLook(RunShareLook look) {
+    if (look == _look) return;
+    setState(() => _look = look);
+    unawaited(saveShareLook(look));
+  }
 
   String _caption(AppLocalizations l10n) {
     final unit = widget.preferences.unit;
@@ -126,18 +152,26 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
     return l10n.shareCardCaption(
       widget.title,
       dist,
-      _formatDuration(widget.run.duration),
+      formatShareDuration(widget.run.duration),
     );
   }
 
-  bool get _canShareImage =>
-      !_capturing && (_style != RunShareStyle.photo || _photo != null);
+  bool get _hasImage => _style != RunShareStyle.photo || _photo != null;
+  bool get _canExportImage => !_busy && !_picking && _hasImage;
+
+  /// The logical width of the canvas being rasterised, so the PNG comes out
+  /// [shareImageExportWidthPx] across whichever style it is.
+  double get _canvasWidth => switch (_style) {
+        RunShareStyle.card => RunShareCard.canvas.width,
+        RunShareStyle.photo => RunPhotoShareCard.canvasFor(_look.aspect).width,
+        RunShareStyle.sticker => RunStickerShareCard.canvasWidth(_look),
+      };
 
   Future<XFile?> _pick() {
     final override = widget.pickPhotoOverride;
     if (override != null) return override();
     // The pick is re-rasterised into the share PNG, so the original's EXIF
-    // (GPS included) never leaves the device. 2048 px covers the 3x capture.
+    // (GPS included) never leaves the device. 2048 px covers the export.
     return ImagePicker().pickImage(
       source: ImageSource.gallery,
       maxWidth: 2048,
@@ -183,28 +217,32 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
     if (style == RunShareStyle.photo && _photo == null) unawaited(_pickPhoto());
   }
 
+  /// The PNG of what the preview shows. Waits for the tiles the card is
+  /// actually showing, not for a guessed interval: a fixed sleep rasterised a
+  /// part-black map whenever a cold fetch outran it.
+  Future<Uint8List> _render() async {
+    if (_style == RunShareStyle.card &&
+        runShareCardHasMap(widget.run, widget.privacyZones)) {
+      await _tiles.settled();
+    }
+    await WidgetsBinding.instance.endOfFrame;
+    return capturePngBytes(
+      _cardKey,
+      pixelRatio: shareImageExportWidthPx / _canvasWidth,
+    );
+  }
+
+  String get _imageName => 'threkir-run-${widget.run.id}-${_style.name}';
+
   Future<void> _shareImage() async {
-    if (!_canShareImage) return;
+    if (!_canExportImage) return;
     final l10n = AppLocalizations.of(context);
-    setState(() => _capturing = true);
+    setState(() => _busy = true);
     try {
-      // Wait for the tiles the card is actually showing, not for a guessed
-      // interval: a fixed sleep rasterised a part-black map whenever a cold
-      // fetch outran it, and made every cached share wait for nothing. Only
-      // the card style draws a basemap.
-      if (_style == RunShareStyle.card &&
-          runShareCardHasMap(widget.run, widget.privacyZones)) {
-        await _tiles.settled();
-      }
-      await WidgetsBinding.instance.endOfFrame;
-
-      final bytes = await capturePngBytes(_cardKey);
-
+      final bytes = await _render();
       final tmp = await getTemporaryDirectory();
-      final file =
-          File('${tmp.path}/run-${widget.run.id}-${_style.name}.png');
+      final file = File('${tmp.path}/$_imageName.png');
       await file.writeAsBytes(bytes);
-
       if (!mounted) return;
       await shareFilesFrom(
         context,
@@ -212,13 +250,35 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
         text: _caption(l10n),
       );
     } catch (e) {
-      debugPrint('Failed to capture run share card: $e');
+      debugPrint('Failed to share run image: $e');
       if (mounted) {
         showTopBanner(
             context, AppLocalizations.of(context).shareCardImageError);
       }
     } finally {
-      if (mounted) setState(() => _capturing = false);
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _saveImage() async {
+    if (!_canExportImage) return;
+    setState(() => _busy = true);
+    try {
+      final bytes = await _render();
+      await widget.saveImage(bytes, _imageName);
+      if (!mounted) return;
+      showTopBanner(context, AppLocalizations.of(context).shareCardSaved);
+    } on ShareSaveDenied {
+      if (mounted) {
+        showTopBanner(context, AppLocalizations.of(context).shareCardSaveDenied);
+      }
+    } catch (e) {
+      debugPrint('Failed to save run image: $e');
+      if (mounted) {
+        showTopBanner(context, AppLocalizations.of(context).shareCardSaveError);
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -251,46 +311,225 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
     }
   }
 
-  Widget _preview(AppLocalizations l10n, ThemeData theme) {
+  /// The canvas the PNG is cut from, at its fixed logical size.
+  Widget _canvas() {
     switch (_style) {
       case RunShareStyle.card:
-        return RunShareCard(
-          run: widget.run,
-          preferences: widget.preferences,
-          title: widget.title,
-          privacyZones: widget.privacyZones,
-          tileReadiness: _tiles,
+        return SizedBox.fromSize(
+          size: RunShareCard.canvas,
+          child: RunShareCard(
+            run: widget.run,
+            preferences: widget.preferences,
+            title: widget.title,
+            privacyZones: widget.privacyZones,
+            tileReadiness: _tiles,
+          ),
         );
       case RunShareStyle.photo:
-        final photo = _photo;
-        if (photo == null) {
-          return ColoredBox(
-            color: theme.colorScheme.surfaceContainerHighest,
-            child: Center(
-              child: _picking
-                  ? const CircularProgressIndicator()
-                  : FilledButton.tonalIcon(
-                      onPressed: _pickPhoto,
-                      icon: const Icon(Icons.add_photo_alternate_outlined),
-                      label: Text(l10n.shareCardPickPhoto),
-                    ),
-            ),
-          );
-        }
         return RunPhotoShareCard(
           run: widget.run,
           preferences: widget.preferences,
           title: widget.title,
           privacyZones: widget.privacyZones,
-          photo: FileImage(photo),
+          photo: FileImage(_photo!),
+          look: _look,
         );
       case RunShareStyle.sticker:
         return RunStickerShareCard(
           run: widget.run,
           preferences: widget.preferences,
           privacyZones: widget.privacyZones,
+          look: _look,
         );
     }
+  }
+
+  Widget _preview(AppLocalizations l10n, ThemeData theme, double height) {
+    final Widget body;
+    if (!_hasImage) {
+      body = Center(
+        child: _picking
+            ? const CircularProgressIndicator()
+            : FilledButton.tonalIcon(
+                onPressed: _pickPhoto,
+                icon: const Icon(Icons.add_photo_alternate_outlined),
+                label: Text(l10n.shareCardPickPhoto),
+              ),
+      );
+    } else {
+      // The canvas keeps its own fixed size and is scaled to the preview, so
+      // the image is the same on every phone. Text scaling is pinned off
+      // inside it for the same reason: the OS text size is the viewer's
+      // setting, not part of the picture.
+      body = Padding(
+        padding: const EdgeInsets.all(8),
+        child: Center(
+          child: FittedBox(
+            fit: BoxFit.contain,
+            child: MediaQuery.withNoTextScaling(
+              child: RepaintBoundary(key: _cardKey, child: _canvas()),
+            ),
+          ),
+        ),
+      );
+    }
+    return Semantics(
+      label: l10n.shareCardPreviewLabel,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: SizedBox(
+          height: height,
+          width: double.infinity,
+          // The sticker is transparent, so its preview sits on a checkerboard
+          // OUTSIDE the boundary: the PNG keeps its alpha.
+          child: CustomPaint(
+            painter: _style == RunShareStyle.sticker
+                ? const _CheckerboardPainter()
+                : null,
+            child: ColoredBox(
+              color: _style == RunShareStyle.sticker
+                  ? Colors.transparent
+                  : theme.colorScheme.surfaceContainerHighest,
+              child: body,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _section(ThemeData theme, String label, Widget control) => Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 6),
+            control,
+          ],
+        ),
+      );
+
+  String _statLabel(AppLocalizations l10n, RunShareStatKind kind) {
+    switch (kind) {
+      case RunShareStatKind.distance:
+        return l10n.shareCardStatDistance;
+      case RunShareStatKind.pace:
+        final activity = ActivityType.fromName(
+            widget.run.metadata?['activity_type'] as String?);
+        return activity.usesSpeed
+            ? l10n.shareCardStatSpeed
+            : l10n.shareCardStatPace;
+      case RunShareStatKind.time:
+        return l10n.shareCardStatTime;
+      case RunShareStatKind.climb:
+        return l10n.shareCardStatClimb;
+      case RunShareStatKind.heartRate:
+        return l10n.shareCardStatHeartRate;
+    }
+  }
+
+  List<Widget> _lookControls(AppLocalizations l10n, ThemeData theme) {
+    final enabled = !_busy;
+    final available = availableShareStats(widget.run);
+    return [
+      _section(
+        theme,
+        l10n.shareCardLayout,
+        ChoiceChipRow<RunStickerLayout>(
+          options: [
+            ChoiceChipOption(
+              value: RunStickerLayout.stack,
+              label: l10n.shareCardLayoutStack,
+              icon: Icons.view_agenda_outlined,
+            ),
+            ChoiceChipOption(
+              value: RunStickerLayout.route,
+              label: l10n.shareCardLayoutRoute,
+              icon: Icons.route,
+            ),
+            ChoiceChipOption(
+              value: RunStickerLayout.strip,
+              label: l10n.shareCardLayoutStrip,
+              icon: Icons.view_week_outlined,
+            ),
+            ChoiceChipOption(
+              value: RunStickerLayout.hero,
+              label: l10n.shareCardLayoutHero,
+              icon: Icons.looks_one_outlined,
+            ),
+          ],
+          selected: _look.layout,
+          onChanged:
+              enabled ? (v) => _setLook(_look.copyWith(layout: v)) : null,
+        ),
+      ),
+      _section(
+        theme,
+        l10n.shareCardInk,
+        ChoiceChipRow<RunShareInk>(
+          options: [
+            ChoiceChipOption(
+                value: RunShareInk.light, label: l10n.shareCardInkLight),
+            ChoiceChipOption(
+                value: RunShareInk.dark, label: l10n.shareCardInkDark),
+            ChoiceChipOption(
+                value: RunShareInk.brand, label: l10n.shareCardInkBrand),
+          ],
+          selected: _look.ink,
+          onChanged: enabled ? (v) => _setLook(_look.copyWith(ink: v)) : null,
+        ),
+      ),
+      if (_style == RunShareStyle.photo)
+        _section(
+          theme,
+          l10n.shareCardAspect,
+          ChoiceChipRow<RunPhotoAspect>(
+            options: [
+              ChoiceChipOption(
+                value: RunPhotoAspect.story,
+                label: l10n.shareCardAspectStory,
+              ),
+              ChoiceChipOption(
+                value: RunPhotoAspect.post,
+                label: l10n.shareCardAspectPost,
+              ),
+            ],
+            selected: _look.aspect,
+            onChanged:
+                enabled ? (v) => _setLook(_look.copyWith(aspect: v)) : null,
+          ),
+        ),
+      _section(
+        theme,
+        l10n.shareCardStats,
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final kind in available)
+              FilterChip(
+                label: Text(_statLabel(l10n, kind)),
+                selected: _look.stats.contains(kind),
+                onSelected: !enabled ||
+                        (_look.stats.contains(kind)
+                            ? _look.stats
+                                    .where(available.contains)
+                                    .length <=
+                                1
+                            : _look.stats.length >= RunShareLook.maxStats)
+                    ? null
+                    : (_) => _setLook(_look.toggleStat(kind)),
+              ),
+          ],
+        ),
+      ),
+    ];
   }
 
   @override
@@ -298,10 +537,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
     final mq = MediaQuery.of(context);
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final boundary = RepaintBoundary(
-      key: _cardKey,
-      child: _preview(l10n, theme),
-    );
+    final previewHeight = (mq.size.height * 0.42).clamp(220.0, 440.0);
     return SafeArea(
       top: false,
       child: Padding(
@@ -313,13 +549,17 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
           ),
           padding: const EdgeInsets.all(16),
           // Scrolls rather than overflowing on a short phone or at a large
-          // text scale: the preview, style row, hint and buttons outgrow
-          // 640 dp together.
+          // text scale: the preview and the look controls outgrow 640 dp.
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(l10n.shareCardRunTitle, style: theme.textTheme.titleMedium),
+                Text(
+                  l10n.shareCardRunTitle,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleMedium,
+                ),
                 const SizedBox(height: 12),
                 ChoiceChipRow<RunShareStyle>(
                   alignment: WrapAlignment.center,
@@ -341,28 +581,17 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
                     ),
                   ],
                   selected: _style,
-                  onChanged: _capturing ? null : _selectStyle,
+                  onChanged: _busy ? null : _selectStyle,
                 ),
                 const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: AspectRatio(
-                    aspectRatio: 4 / 5,
-                    // The sticker is transparent, so its preview sits on a
-                    // checkerboard OUTSIDE the boundary: the PNG keeps its alpha.
-                    child: CustomPaint(
-                      painter: _style == RunShareStyle.sticker
-                          ? const _CheckerboardPainter()
-                          : null,
-                      child: boundary,
-                    ),
-                  ),
-                ),
+                _preview(l10n, theme, previewHeight),
                 if (_style == RunShareStyle.photo && _photo != null)
-                  TextButton.icon(
-                    onPressed: _capturing || _picking ? null : _pickPhoto,
-                    icon: const Icon(Icons.swap_horiz),
-                    label: Text(l10n.shareCardChangePhoto),
+                  Align(
+                    child: TextButton.icon(
+                      onPressed: _busy || _picking ? null : _pickPhoto,
+                      icon: const Icon(Icons.swap_horiz),
+                      label: Text(l10n.shareCardChangePhoto),
+                    ),
                   ),
                 if (_style == RunShareStyle.sticker)
                   Padding(
@@ -375,42 +604,46 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
                       ),
                     ),
                   ),
+                if (_style != RunShareStyle.card)
+                  ..._lookControls(l10n, theme),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: PopupMenuButton<String>(
-                        onSelected: _capturing ? null : _shareFile,
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(value: 'gpx', child: Text('GPX')),
-                          PopupMenuItem(value: 'tcx', child: Text('TCX')),
-                          PopupMenuItem(value: 'fit', child: Text('FIT')),
-                        ],
-                        child: OutlinedButton.icon(
-                          onPressed: _capturing ? null : () {},
-                          icon: const Icon(Icons.route),
-                          label: Text(l10n.shareCardExport),
-                        ),
-                      ),
+                // Stacked full width: the save label is the one the iOS photo
+                // permission prompt names, and in French or Portuguese it
+                // does not fit half a row.
+                FilledButton.icon(
+                  onPressed: _canExportImage ? _shareImage : null,
+                  icon: _busy
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.ios_share),
+                  label: Text(l10n.shareCardImage),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _canExportImage ? _saveImage : null,
+                  icon: const Icon(Icons.download_outlined),
+                  label: Text(l10n.shareCardSave),
+                ),
+                Align(
+                  child: PopupMenuButton<String>(
+                    onSelected: _busy ? null : _shareFile,
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'gpx', child: Text('GPX')),
+                      PopupMenuItem(value: 'tcx', child: Text('TCX')),
+                      PopupMenuItem(value: 'fit', child: Text('FIT')),
+                    ],
+                    child: TextButton.icon(
+                      onPressed: _busy ? null : () {},
+                      icon: const Icon(Icons.route),
+                      label: Text(l10n.shareCardExport),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: _canShareImage ? _shareImage : null,
-                        icon: _capturing
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(Icons.image_outlined),
-                        label: Text(l10n.shareCardImage),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
@@ -481,6 +714,11 @@ class RunShareCard extends StatelessWidget {
   /// or the user's map-style preference: the card rasterises a fixed
   /// dark PNG whose white type and overlays are drawn for a dark map.
   String get _tileUrl => tileUrlFor('dark', Brightness.dark);
+
+  /// The card's fixed logical size: the sheet scales it to the preview and
+  /// rasterises it to [shareImageExportWidthPx] across, so the stats row is
+  /// laid out at one width on every phone.
+  static const Size canvas = Size(360, 450);
 
   @override
   Widget build(BuildContext context) {
@@ -649,33 +887,41 @@ class RunShareCard extends StatelessWidget {
               ),
             ],
           ),
+          // Each stat takes a third and scales down inside it: a long pace in
+          // a long locale used to push the row 47 px past the card.
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              for (final stat in runShareStats(l10n, run, unit))
-                _stat(
-                  label: stat.label,
-                  value: stat.value,
-                  unitLabel: stat.unit,
+              for (final (i, stat) in runShareStats(l10n, run, unit).indexed) ...[
+                if (i > 0) const SizedBox(width: 10),
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: i == 0
+                        ? Alignment.bottomLeft
+                        : i == 2
+                            ? Alignment.bottomRight
+                            : Alignment.bottomCenter,
+                    child: _stat(
+                      label: stat.label,
+                      value: stat.value,
+                      unitLabel: stat.unit,
+                    ),
+                  ),
                 ),
+              ],
             ],
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Expanded(
-                child: Text(
-                  l10n.shareCardBrandRun,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 3,
-                    height: 1.0,
+              const Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: ThrekirShareBrand(color: Colors.white, markSize: 16),
                   ),
                 ),
               ),
@@ -745,342 +991,6 @@ class RunShareCard extends StatelessWidget {
     );
   }
 
-}
-
-/// The moving time every share style prints: [movingTimeOf] the stored track,
-/// or the elapsed duration when there is no track to measure it from.
-Duration runShareMovingTime(Run run) {
-  if (run.track.length < 2) return run.duration;
-  final computed = movingTimeOf(run.track);
-  if (computed.inSeconds == 0) return run.duration;
-  return computed;
-}
-
-/// Seconds per km over [movingTime], or null when the run is too short to
-/// carry a pace.
-double? runShareMovingPace(Run run, Duration movingTime) {
-  if (run.distanceMetres < 10) return null;
-  final seconds = movingTime.inSeconds;
-  if (seconds < 1) return null;
-  return seconds / (run.distanceMetres / 1000);
-}
-
-/// One headline stat as the share styles print it.
-typedef RunShareStat = ({String label, String value, String? unit});
-
-/// Distance, moving time and pace (or speed, for a speed activity), in the
-/// order every share style lays them out.
-List<RunShareStat> runShareStats(
-  AppLocalizations l10n,
-  Run run,
-  DistanceUnit unit,
-) {
-  final activity =
-      ActivityType.fromName(run.metadata?['activity_type'] as String?);
-  final moving = runShareMovingTime(run);
-  final pace = runShareMovingPace(run, moving);
-  return [
-    (
-      label: l10n.shareCardStatDistance,
-      value: UnitFormat.distanceValue(run.distanceMetres, unit),
-      unit: UnitFormat.distanceLabel(unit),
-    ),
-    (
-      label: l10n.shareCardStatTime,
-      value: _formatDuration(moving),
-      unit: null,
-    ),
-    activity.usesSpeed
-        ? (
-            label: l10n.shareCardStatSpeed,
-            value: UnitFormat.speed(pace, unit),
-            unit: UnitFormat.speedLabel(unit),
-          )
-        : (
-            label: l10n.shareCardStatPace,
-            value: UnitFormat.pace(pace, unit),
-            unit: UnitFormat.paceLabel(unit),
-          ),
-  ];
-}
-
-/// The clipped [runShareCardTrack] as a white outline with no basemap: the
-/// line the photo and sticker styles draw. A dark halo keeps it legible on a
-/// bright photo. Nothing is drawn under two points.
-class RunRouteOutlinePainter extends CustomPainter {
-  final List<Waypoint> points;
-
-  const RunRouteOutlinePainter(this.points);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (points.length < 2 || size.isEmpty) return;
-    final stroke = size.shortestSide * 0.035;
-    final projected =
-        projectTrack(points, size.width, size.height, pad: stroke * 2);
-    if (projected.length < 2) return;
-    final path = Path()..moveTo(projected.first.dx, projected.first.dy);
-    for (var i = 1; i < projected.length; i++) {
-      path.lineTo(projected[i].dx, projected[i].dy);
-    }
-    canvas.drawPath(
-      path,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = stroke * 2.2
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..color = Colors.black.withValues(alpha: 0.35)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, stroke),
-    );
-    canvas.drawPath(
-      path,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = stroke
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..color = Colors.white,
-    );
-  }
-
-  @override
-  bool shouldRepaint(RunRouteOutlinePainter oldDelegate) =>
-      !identical(oldDelegate.points, points);
-}
-
-const _overlayShadows = [
-  Shadow(color: Colors.black54, blurRadius: 8, offset: Offset(0, 1)),
-];
-
-/// A stat as the overlay styles print it: white type over whatever lies
-/// beneath, held legible by a soft shadow, scaled down rather than clipped
-/// when a long value meets a narrow column.
-class _OverlayStat extends StatelessWidget {
-  final RunShareStat stat;
-  final TextStyle? valueStyle;
-  final CrossAxisAlignment alignment;
-
-  const _OverlayStat(
-    this.stat, {
-    required this.valueStyle,
-    this.alignment = CrossAxisAlignment.start,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final unit = stat.unit;
-    return Column(
-      crossAxisAlignment: alignment,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            stat.label.toUpperCase(),
-            maxLines: 1,
-            style: text.labelSmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.2,
-              shadows: _overlayShadows,
-            ),
-          ),
-        ),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                stat.value,
-                style: valueStyle?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  height: 1.1,
-                  shadows: _overlayShadows,
-                ),
-              ),
-              if (unit != null) ...[
-                const SizedBox(width: 3),
-                Text(
-                  unit,
-                  style: text.labelMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    shadows: _overlayShadows,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-Widget _overlayBrand(BuildContext context, AppLocalizations l10n) => Text(
-      l10n.shareCardBrandRun,
-      maxLines: 1,
-      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 3,
-            shadows: _overlayShadows,
-          ),
-    );
-
-/// The run's headline stats and route outline laid over the runner's own
-/// [photo], cropped to fill. A scrim darkens the lower half so white type
-/// reads on any photo. No basemap: the photo is the ground, and the outline
-/// is [runShareCardTrack] of [privacyZones] like every other style.
-class RunPhotoShareCard extends StatelessWidget {
-  final Run run;
-  final Preferences preferences;
-  final String title;
-  final List<PrivacyZone> privacyZones;
-  final ImageProvider photo;
-
-  const RunPhotoShareCard({
-    super.key,
-    required this.run,
-    required this.preferences,
-    required this.title,
-    required this.privacyZones,
-    required this.photo,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final text = Theme.of(context).textTheme;
-    final stats = runShareStats(l10n, run, preferences.unit);
-    final track = runShareCardTrack(run, privacyZones);
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Image(image: photo, fit: BoxFit.cover),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              stops: const [0.35, 1],
-              colors: [
-                Colors.black.withValues(alpha: 0),
-                Colors.black.withValues(alpha: 0.72),
-              ],
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Spacer(),
-              if (track.length >= 2)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: FractionallySizedBox(
-                    widthFactor: 0.38,
-                    child: AspectRatio(
-                      aspectRatio: 1,
-                      child: CustomPaint(
-                        painter: RunRouteOutlinePainter(track),
-                      ),
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: text.titleMedium?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  shadows: _overlayShadows,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  for (final (i, stat) in stats.indexed) ...[
-                    if (i > 0) const SizedBox(width: 12),
-                    Expanded(
-                      child: _OverlayStat(stat, valueStyle: text.headlineSmall),
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 12),
-              _overlayBrand(context, l10n),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// The run's headline stats and route outline on a TRANSPARENT ground, to be
-/// saved and laid over a story or photo in another app. White type with a
-/// shadow, so it survives being placed on a light photo as well as a dark one.
-class RunStickerShareCard extends StatelessWidget {
-  final Run run;
-  final Preferences preferences;
-  final List<PrivacyZone> privacyZones;
-
-  const RunStickerShareCard({
-    super.key,
-    required this.run,
-    required this.preferences,
-    required this.privacyZones,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final text = Theme.of(context).textTheme;
-    final stats = runShareStats(l10n, run, preferences.unit);
-    final track = runShareCardTrack(run, privacyZones);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      child: Column(
-        children: [
-          for (final stat in stats)
-            Expanded(
-              flex: 2,
-              child: Center(
-                child: _OverlayStat(
-                  stat,
-                  valueStyle: text.displaySmall,
-                  alignment: CrossAxisAlignment.center,
-                ),
-              ),
-            ),
-          if (track.length >= 2)
-            Expanded(
-              flex: 3,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: AspectRatio(
-                  aspectRatio: 1,
-                  child: CustomPaint(painter: RunRouteOutlinePainter(track)),
-                ),
-              ),
-            ),
-          _overlayBrand(context, l10n),
-        ],
-      ),
-    );
-  }
 }
 
 /// The GPX, TCX and FIT exports carry the run's line ([trackLine]), as every
@@ -1281,14 +1191,3 @@ int fitCrc(int crc, int byte) {
   crc = crc ^ tmp ^ table[(byte >> 4) & 0xF];
   return crc;
 }
-
-String _formatDuration(Duration d) {
-  final h = d.inHours;
-  final m = d.inMinutes % 60;
-  final s = d.inSeconds % 60;
-  if (h > 0) {
-    return '$h:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-  }
-  return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-}
-

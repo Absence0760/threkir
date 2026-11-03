@@ -3597,6 +3597,52 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get routeBuilderDrawShape => 'Dessiner une forme';
+
+  @override
+  String get routeBuilderDrawHint =>
+      'Faites glisser sur la carte pour dessiner votre forme';
+
+  @override
+  String get routeBuilderDrawTooShort =>
+      'Dessinez une forme plus grande : la ligne doit faire au moins 300 m.';
+
+  @override
+  String get routeBuilderDrawTooLong =>
+      'Ce dessin dépasse 100 km. Zoomez et dessinez une forme plus petite.';
+
+  @override
+  String get routeBuilderDrawTooComplex =>
+      'Ce dessin est trop détaillé pour un itinéraire. Essayez une forme plus simple.';
+
+  @override
+  String get routeBuilderDrawNoRoads =>
+      'Une partie de votre dessin n\'a ni route ni chemin à proximité. Placez-le sur des rues ou des chemins et réessayez.';
+
+  @override
+  String get routeBuilderDrawUnavailable =>
+      'Le calcul d\'itinéraire est indisponible pour le moment : votre dessin n\'a pas pu être ajusté. Réessayez dans un instant.';
+
+  @override
+  String routeBuilderDrawPoorMatch(int score) {
+    return 'Les routes et chemins d\'ici ne correspondent qu\'à $score % de votre dessin : il n\'est donc pas devenu un itinéraire. Essayez une forme plus grande, ou dessinez le long des rues.';
+  }
+
+  @override
+  String routeBuilderDrawMatch(int score) {
+    return 'Correspondance avec votre dessin : $score %';
+  }
+
+  @override
+  String get routeBuilderDrawMatchClose => 'Très proche';
+
+  @override
+  String get routeBuilderDrawMatchRough => 'Approximative';
+
+  @override
+  String get routeBuilderDrawMatchPoor => 'Trop éloigné de votre dessin';
+
+  @override
   String routeBuilderRoutingFailed(String error) {
     return 'Échec du calcul d\'itinéraire : $error';
   }

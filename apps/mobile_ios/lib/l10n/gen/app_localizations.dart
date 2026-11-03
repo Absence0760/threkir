@@ -5957,6 +5957,78 @@ abstract class AppLocalizations {
   /// **'{count, plural, one{{count} segment couldn\'t snap to a road. Drag the affected pin to adjust.} other{{count} segments couldn\'t snap to a road. Drag the affected pins to adjust.}}'**
   String routeBuilderSegmentsFailed(int count);
 
+  /// Label and tooltip of the toggle that turns on Draw mode (draw a shape matched to roads)
+  ///
+  /// In en, this message translates to:
+  /// **'Draw a shape'**
+  String get routeBuilderDrawShape;
+
+  /// Status shown while Draw mode is on
+  ///
+  /// In en, this message translates to:
+  /// **'Drag on the map to draw your shape'**
+  String get routeBuilderDrawHint;
+
+  /// Banner when a drawn shape is too short to route
+  ///
+  /// In en, this message translates to:
+  /// **'Draw a bigger shape — the line needs to be at least 300 m long.'**
+  String get routeBuilderDrawTooShort;
+
+  /// Banner when a drawn shape is too long to route
+  ///
+  /// In en, this message translates to:
+  /// **'That drawing is longer than 100 km. Zoom in and draw a smaller shape.'**
+  String get routeBuilderDrawTooLong;
+
+  /// Banner when a drawn shape has too much detail to route
+  ///
+  /// In en, this message translates to:
+  /// **'That drawing has too much detail to route. Try a simpler shape.'**
+  String get routeBuilderDrawTooComplex;
+
+  /// Banner when part of a drawing has no road or path nearby
+  ///
+  /// In en, this message translates to:
+  /// **'Part of your drawing has no road or path nearby. Move it onto streets or paths and try again.'**
+  String get routeBuilderDrawNoRoads;
+
+  /// Banner when routing is down while matching a drawing
+  ///
+  /// In en, this message translates to:
+  /// **'Routing isn\'t available right now, so your drawing couldn\'t be matched. Try again in a moment.'**
+  String get routeBuilderDrawUnavailable;
+
+  /// Banner when the roads match too little of a drawing to keep it
+  ///
+  /// In en, this message translates to:
+  /// **'The roads and paths here match only {score}% of your drawing, so it hasn\'t become a route. Try a bigger shape, or draw along streets.'**
+  String routeBuilderDrawPoorMatch(int score);
+
+  /// Score showing how closely the matched route follows the drawing
+  ///
+  /// In en, this message translates to:
+  /// **'Matches your drawing: {score}%'**
+  String routeBuilderDrawMatch(int score);
+
+  /// Verdict for a drawing matched closely
+  ///
+  /// In en, this message translates to:
+  /// **'Close match'**
+  String get routeBuilderDrawMatchClose;
+
+  /// Verdict for a drawing matched roughly
+  ///
+  /// In en, this message translates to:
+  /// **'Rough match'**
+  String get routeBuilderDrawMatchRough;
+
+  /// Verdict for a drawing the roads could not follow
+  ///
+  /// In en, this message translates to:
+  /// **'Too far from your drawing'**
+  String get routeBuilderDrawMatchPoor;
+
   /// Banner shown when a routing pass throws
   ///
   /// In en, this message translates to:

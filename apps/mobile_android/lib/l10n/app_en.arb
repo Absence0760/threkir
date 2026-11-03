@@ -4661,6 +4661,64 @@
       }
     }
   },
+  "routeBuilderDrawShape": "Draw a shape",
+  "@routeBuilderDrawShape": {
+    "description": "Label and tooltip of the toggle that turns on Draw mode (draw a shape matched to roads)"
+  },
+  "routeBuilderDrawHint": "Drag on the map to draw your shape",
+  "@routeBuilderDrawHint": {
+    "description": "Status shown while Draw mode is on"
+  },
+  "routeBuilderDrawTooShort": "Draw a bigger shape — the line needs to be at least 300 m long.",
+  "@routeBuilderDrawTooShort": {
+    "description": "Banner when a drawn shape is too short to route"
+  },
+  "routeBuilderDrawTooLong": "That drawing is longer than 100 km. Zoom in and draw a smaller shape.",
+  "@routeBuilderDrawTooLong": {
+    "description": "Banner when a drawn shape is too long to route"
+  },
+  "routeBuilderDrawTooComplex": "That drawing has too much detail to route. Try a simpler shape.",
+  "@routeBuilderDrawTooComplex": {
+    "description": "Banner when a drawn shape has too much detail to route"
+  },
+  "routeBuilderDrawNoRoads": "Part of your drawing has no road or path nearby. Move it onto streets or paths and try again.",
+  "@routeBuilderDrawNoRoads": {
+    "description": "Banner when part of a drawing has no road or path nearby"
+  },
+  "routeBuilderDrawUnavailable": "Routing isn't available right now, so your drawing couldn't be matched. Try again in a moment.",
+  "@routeBuilderDrawUnavailable": {
+    "description": "Banner when routing is down while matching a drawing"
+  },
+  "routeBuilderDrawPoorMatch": "The roads and paths here match only {score}% of your drawing, so it hasn't become a route. Try a bigger shape, or draw along streets.",
+  "@routeBuilderDrawPoorMatch": {
+    "description": "Banner when the roads match too little of a drawing to keep it",
+    "placeholders": {
+      "score": {
+        "type": "int"
+      }
+    }
+  },
+  "routeBuilderDrawMatch": "Matches your drawing: {score}%",
+  "@routeBuilderDrawMatch": {
+    "description": "Score showing how closely the matched route follows the drawing",
+    "placeholders": {
+      "score": {
+        "type": "int"
+      }
+    }
+  },
+  "routeBuilderDrawMatchClose": "Close match",
+  "@routeBuilderDrawMatchClose": {
+    "description": "Verdict for a drawing matched closely"
+  },
+  "routeBuilderDrawMatchRough": "Rough match",
+  "@routeBuilderDrawMatchRough": {
+    "description": "Verdict for a drawing matched roughly"
+  },
+  "routeBuilderDrawMatchPoor": "Too far from your drawing",
+  "@routeBuilderDrawMatchPoor": {
+    "description": "Verdict for a drawing the roads could not follow"
+  },
   "routeBuilderRoutingFailed": "Routing failed: {error}",
   "@routeBuilderRoutingFailed": {
     "description": "Banner shown when a routing pass throws",

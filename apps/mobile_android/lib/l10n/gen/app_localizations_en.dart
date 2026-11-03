@@ -3551,6 +3551,51 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get routeBuilderDrawShape => 'Draw a shape';
+
+  @override
+  String get routeBuilderDrawHint => 'Drag on the map to draw your shape';
+
+  @override
+  String get routeBuilderDrawTooShort =>
+      'Draw a bigger shape — the line needs to be at least 300 m long.';
+
+  @override
+  String get routeBuilderDrawTooLong =>
+      'That drawing is longer than 100 km. Zoom in and draw a smaller shape.';
+
+  @override
+  String get routeBuilderDrawTooComplex =>
+      'That drawing has too much detail to route. Try a simpler shape.';
+
+  @override
+  String get routeBuilderDrawNoRoads =>
+      'Part of your drawing has no road or path nearby. Move it onto streets or paths and try again.';
+
+  @override
+  String get routeBuilderDrawUnavailable =>
+      'Routing isn\'t available right now, so your drawing couldn\'t be matched. Try again in a moment.';
+
+  @override
+  String routeBuilderDrawPoorMatch(int score) {
+    return 'The roads and paths here match only $score% of your drawing, so it hasn\'t become a route. Try a bigger shape, or draw along streets.';
+  }
+
+  @override
+  String routeBuilderDrawMatch(int score) {
+    return 'Matches your drawing: $score%';
+  }
+
+  @override
+  String get routeBuilderDrawMatchClose => 'Close match';
+
+  @override
+  String get routeBuilderDrawMatchRough => 'Rough match';
+
+  @override
+  String get routeBuilderDrawMatchPoor => 'Too far from your drawing';
+
+  @override
   String routeBuilderRoutingFailed(String error) {
     return 'Routing failed: $error';
   }

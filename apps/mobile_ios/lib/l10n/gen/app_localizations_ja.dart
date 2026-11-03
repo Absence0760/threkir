@@ -3385,6 +3385,48 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get routeBuilderDrawShape => '形を描く';
+
+  @override
+  String get routeBuilderDrawHint => '地図上をドラッグして形を描きます';
+
+  @override
+  String get routeBuilderDrawTooShort => 'もっと大きな形を描いてください。線は300 m以上必要です。';
+
+  @override
+  String get routeBuilderDrawTooLong => 'この図形は100 kmを超えています。拡大して小さな形を描いてください。';
+
+  @override
+  String get routeBuilderDrawTooComplex =>
+      'この図形は細かすぎてルートにできません。もっと単純な形を試してください。';
+
+  @override
+  String get routeBuilderDrawNoRoads => '図形の一部の近くに道路や道がありません。道路や道の上に描き直してください。';
+
+  @override
+  String get routeBuilderDrawUnavailable =>
+      '現在ルート計算を利用できないため、図形を道路に合わせられませんでした。少し後でもう一度お試しください。';
+
+  @override
+  String routeBuilderDrawPoorMatch(int score) {
+    return 'この付近の道路や道は図形の$score%にしか一致しないため、ルートにしませんでした。もっと大きな形にするか、道路に沿って描いてください。';
+  }
+
+  @override
+  String routeBuilderDrawMatch(int score) {
+    return '図形との一致度：$score%';
+  }
+
+  @override
+  String get routeBuilderDrawMatchClose => 'ほぼ一致';
+
+  @override
+  String get routeBuilderDrawMatchRough => 'おおむね一致';
+
+  @override
+  String get routeBuilderDrawMatchPoor => '図形から離れすぎています';
+
+  @override
   String routeBuilderRoutingFailed(String error) {
     return 'ルート計算に失敗しました: $error';
   }

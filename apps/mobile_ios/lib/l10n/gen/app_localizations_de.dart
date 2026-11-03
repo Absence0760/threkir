@@ -3594,6 +3594,53 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get routeBuilderDrawShape => 'Form zeichnen';
+
+  @override
+  String get routeBuilderDrawHint =>
+      'Zieh auf der Karte, um deine Form zu zeichnen';
+
+  @override
+  String get routeBuilderDrawTooShort =>
+      'Zeichne eine größere Form – die Linie muss mindestens 300 m lang sein.';
+
+  @override
+  String get routeBuilderDrawTooLong =>
+      'Diese Zeichnung ist länger als 100 km. Zoome hinein und zeichne eine kleinere Form.';
+
+  @override
+  String get routeBuilderDrawTooComplex =>
+      'Diese Zeichnung ist zu detailreich für eine Route. Versuch eine einfachere Form.';
+
+  @override
+  String get routeBuilderDrawNoRoads =>
+      'Ein Teil deiner Zeichnung hat keine Straße und keinen Weg in der Nähe. Verschieb sie auf Straßen oder Wege und versuch es noch einmal.';
+
+  @override
+  String get routeBuilderDrawUnavailable =>
+      'Die Routenberechnung ist gerade nicht verfügbar, deshalb konnte deine Zeichnung nicht zugeordnet werden. Versuch es gleich noch einmal.';
+
+  @override
+  String routeBuilderDrawPoorMatch(int score) {
+    return 'Die Straßen und Wege hier treffen nur $score % deiner Zeichnung, deshalb wurde daraus keine Route. Versuch eine größere Form oder zeichne entlang der Straßen.';
+  }
+
+  @override
+  String routeBuilderDrawMatch(int score) {
+    return 'Übereinstimmung mit deiner Zeichnung: $score %';
+  }
+
+  @override
+  String get routeBuilderDrawMatchClose => 'Sehr nah';
+
+  @override
+  String get routeBuilderDrawMatchRough => 'Ungefähr';
+
+  @override
+  String get routeBuilderDrawMatchPoor =>
+      'Zu weit von deiner Zeichnung entfernt';
+
+  @override
   String routeBuilderRoutingFailed(String error) {
     return 'Routing fehlgeschlagen: $error';
   }

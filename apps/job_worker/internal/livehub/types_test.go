@@ -27,6 +27,8 @@ func TestPing_Validate(t *testing.T) {
 		{"elapsed absurd", Ping{Lat: 0, Lng: 0, ElapsedS: 2_000_000}, true},
 		{"bpm too low", Ping{Lat: 0, Lng: 0, BPM: bpm(10)}, true},
 		{"bpm too high", Ping{Lat: 0, Lng: 0, BPM: bpm(400)}, true},
+		{"bpm at the live_run_pings_bpm_check ceiling", Ping{Lat: 0, Lng: 0, BPM: bpm(300)}, false},
+		{"bpm past the live_run_pings_bpm_check ceiling", Ping{Lat: 0, Lng: 0, BPM: bpm(301)}, true},
 		{"bpm zero rejected", Ping{Lat: 0, Lng: 0, BPM: bpm(0)}, true},
 		{"ele NaN", Ping{Lat: 0, Lng: 0, Elevation: ele(math.NaN())}, true},
 		{"ele too high (above Everest)", Ping{Lat: 0, Lng: 0, Elevation: ele(10_000)}, true},

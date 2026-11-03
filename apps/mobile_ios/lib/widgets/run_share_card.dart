@@ -751,7 +751,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
                       ChoiceChipOption(
                         value: RunShareStyle.pr,
                         label: l10n.shareCardStylePr,
-                        icon: Icons.military_tech_outlined,
+                        icon: Icons.military_tech,
                       ),
                   ],
                   selected: _style,

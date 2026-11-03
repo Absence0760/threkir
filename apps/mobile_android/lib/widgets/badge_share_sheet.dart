@@ -1,5 +1,6 @@
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show AppIconSize;
 
 import '../badges.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -119,7 +120,7 @@ class _BadgeShareSheetState extends State<_BadgeShareSheet> {
         children: [
           Icon(
             badgeIconData(tier?.icon ?? 'military_tech'),
-            size: 56,
+            size: AppIconSize.illustration,
             color: color,
           ),
           const SizedBox(height: 8),

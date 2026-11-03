@@ -113,13 +113,17 @@ class HeadToHeadCard extends StatelessWidget {
                       outcome.winner == HeadToHeadWinner.me),
                   SizedBox(
                     width: 44,
-                    child: Text(l10n.headToHeadVs.toUpperCase(),
-                        textAlign: TextAlign.center,
-                        style: base.copyWith(
-                            color: _label,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 2.6)),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(l10n.headToHeadVs.toUpperCase(),
+                          maxLines: 1,
+                          textAlign: TextAlign.center,
+                          style: base.copyWith(
+                              color: _label,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 2.6)),
+                    ),
                   ),
                   side(friend, row.friendSeconds,
                       outcome.winner == HeadToHeadWinner.friend),

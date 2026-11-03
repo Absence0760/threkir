@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show EmptyState, ListSkeleton;
+import 'package:ui_kit/ui_kit.dart' show EmptyState, ListSkeleton, StatGrid, StatTile;
 
 import '../backend_timeout.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -101,6 +101,21 @@ class _ShareCard extends StatelessWidget {
         _ => l10n.sharesKindWorkout,
       };
 
+  Widget _stat(ThemeData theme, AppLocalizations l10n, String label, int value, int viaRef) =>
+      Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          StatTile.large(label: label, value: '$value'),
+          if (viaRef > 0)
+            Text(
+              l10n.sharesViaYourLink(viaRef),
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+        ],
+      );
+
   String _title(AppLocalizations l10n) {
     if (stat.kind == 'profile') return l10n.sharesYourProfile;
     final t = stat.title?.trim() ?? '';
@@ -123,16 +138,14 @@ class _ShareCard extends StatelessWidget {
             const SizedBox(height: 2),
             Text(_title(l10n), style: theme.textTheme.titleMedium),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 24,
-              runSpacing: 12,
-              children: [
-                _Stat(label: l10n.sharesVisits, value: stat.visits, viaRef: stat.refVisits),
-                _Stat(label: l10n.sharesSignups, value: stat.signups),
+            StatGrid(
+              cells: [
+                _stat(theme, l10n, l10n.sharesVisits, stat.visits, stat.refVisits),
+                _stat(theme, l10n, l10n.sharesSignups, stat.signups, 0),
                 if (stat.kind == 'plan')
-                  _Stat(label: l10n.sharesStarts, value: stat.starts, viaRef: stat.refStarts),
+                  _stat(theme, l10n, l10n.sharesStarts, stat.starts, stat.refStarts),
                 if (stat.kind == 'challenge')
-                  _Stat(label: l10n.sharesJoins, value: stat.joins, viaRef: stat.refJoins),
+                  _stat(theme, l10n, l10n.sharesJoins, stat.joins, stat.refJoins),
               ],
             ),
             if (stat.botVisits > 0) ...[
@@ -142,28 +155,6 @@ class _ShareCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _Stat extends StatelessWidget {
-  final String label;
-  final int value;
-  final int viaRef;
-  const _Stat({required this.label, required this.value, this.viaRef = 0});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label, style: theme.textTheme.bodySmall),
-        Text('$value', style: theme.textTheme.titleLarge),
-        if (viaRef > 0) Text(l10n.sharesViaYourLink(viaRef), style: theme.textTheme.bodySmall),
-      ],
     );
   }
 }

@@ -1084,7 +1084,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
           if (_runRecords.isNotEmpty)
             IconButton(
               key: const Key('run-detail-share-pr'),
-              icon: const Icon(Icons.military_tech_outlined),
+              icon: const Icon(Icons.military_tech),
               tooltip: l10n.runDetailSharePr,
               onPressed: _sharing ? null : _sharePrCard,
             ),

@@ -19272,6 +19272,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get recapShareAspectStory => 'Historia';
 
   @override
+  String get recapShareStyleVideo => 'Vídeo';
+
+  @override
+  String get recapShareVideoBody =>
+      'Convierte este resumen en un vídeo vertical corto. Se crea en tu navegador en threkir.com; compártelo o guárdalo desde allí.';
+
+  @override
   String get recapSharePreviewLabel => 'Vista previa de la imagen del resumen';
 
   @override

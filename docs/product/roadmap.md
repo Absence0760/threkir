@@ -329,7 +329,7 @@ The foundation under both the generator and any hand-built plan: a data model fo
 
 ✓ **Flyover video export (9:16)** (#1273 item 1, decisions § 2259): **Export video** in the dialog renders and encodes a vertical reel in the browser; the phone's run share sheet gains a **Video** style that opens it on the web. Pre-deploy: the operator confirms MapTiler's plan terms before `PUBLIC_FLYOVER_VIDEO_MAPTILER_ENABLED` is set; until then the export uses the keyless OSM style and AWS Terrain Tiles.
 
-✓ **Vertical recap** (#1273 item 8, decisions § 2260): the recap share image as a square or a 9:16 story on web and mobile, one layout pair. Still open: the recap slideshow video.
+✓ **Vertical recap** (#1273 item 8, decisions § 2260): the recap share image as a square or a 9:16 story on web and mobile, one layout pair, its web labels now localised; and a 9:16 slideshow video of the monthly and yearly recap made in the browser on the flyover's encoder (§ 2269), which the phone's recap share sheet opens through its **Video** option.
 
 ### Route art (#1273 item 6)
 

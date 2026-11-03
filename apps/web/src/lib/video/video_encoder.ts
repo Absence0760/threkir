@@ -1,10 +1,10 @@
-/// Which encoder the flyover export uses, chosen from what the browser says it
+/// Which encoder a video export uses, chosen from what the browser says it
 /// supports. WebCodecs H.264 into an MP4 the export muxes itself is preferred:
 /// its frames carry exact timestamps, and H.264 MP4 is the file every social
 /// app takes. `MediaRecorder` over a canvas stream is the fallback where
 /// WebCodecs is missing; it timestamps frames by wall clock, so the export
 /// paces frames to real time on that path. The probing itself is browser glue
-/// (`flyover_video_export.ts`); this module only decides.
+/// (`encode_video.ts`); this module only decides.
 
 /// High, Main, then Constrained Baseline, all at level 4.0, which admits a
 /// 1080x1920 frame (8160 macroblocks against a 8192 ceiling).
@@ -39,7 +39,11 @@ export function chooseVideoEncoder(probe: EncoderProbe): VideoEncoderPlan | null
 	if (!probe.canvasStream) return null;
 	const type = RECORDER_TYPES.find((t) => probe.recorder.includes(t));
 	if (!type) return null;
-	return { kind: 'mediarecorder', mimeType: type, ext: type.startsWith('video/mp4') ? 'mp4' : 'webm' };
+	return { kind: 'mediarecorder', mimeType: type, ext: videoExt(type) };
+}
+
+export function videoExt(mimeType: string): 'mp4' | 'webm' {
+	return mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
 }
 
 /// No `avc.format`: its default is AVCC framing with the `avcC` record in

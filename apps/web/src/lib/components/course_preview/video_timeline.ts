@@ -1,13 +1,9 @@
 import { DEFAULT_FLYOVER_SPEED_MPS } from '#lib/routes/flyover_path.ts';
+import { VIDEO_FPS } from '#lib/video/frame_clock.ts';
 
-/// The exported flyover video's clock. Every frame is a function of its index
-/// alone, never of wall time, so a slow machine renders the same video a fast
-/// one does, only more slowly: frame `i` shows the course at the distance
+/// The exported flyover's timeline on the shared frame clock
+/// (`#lib/video/frame_clock.ts`): frame `i` shows the course at the distance
 /// `videoFrame` names and carries the timestamp `frameTimestampUs` names.
-
-export const VIDEO_WIDTH = 1080;
-export const VIDEO_HEIGHT = 1920;
-export const VIDEO_FPS = 30;
 
 /// A flight takes as long as the dialog's default speed would, held between
 /// these bounds: a 2 km loop still gets a reel worth posting, and an ultra
@@ -15,7 +11,6 @@ export const VIDEO_FPS = 30;
 export const MIN_FLIGHT_S = 8;
 export const MAX_FLIGHT_S = 20;
 export const END_CARD_S = 3;
-export const KEYFRAME_INTERVAL_S = 2;
 
 export interface VideoTimeline {
 	fps: number;
@@ -48,18 +43,4 @@ export function videoFrame(t: VideoTimeline, index: number, totalM: number): Vid
 	}
 	const e = i - t.flightFrames;
 	return { phase: 'end', dM: total, progress: t.endFrames > 1 ? e / (t.endFrames - 1) : 1 };
-}
-
-/// Whole microseconds, rounded from the exact rational time, so the gaps
-/// alternate 33333 / 33334 µs at 30 fps and never accumulate drift.
-export function frameTimestampUs(index: number, fps: number): number {
-	return Math.round((index * 1_000_000) / fps);
-}
-
-export function frameDurationUs(index: number, fps: number): number {
-	return frameTimestampUs(index + 1, fps) - frameTimestampUs(index, fps);
-}
-
-export function isKeyFrame(index: number, fps: number): boolean {
-	return index % Math.max(1, Math.round(fps * KEYFRAME_INTERVAL_S)) === 0;
 }

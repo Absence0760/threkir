@@ -19271,6 +19271,13 @@ class AppLocalizationsPt extends AppLocalizations {
   String get recapShareAspectStory => 'História';
 
   @override
+  String get recapShareStyleVideo => 'Vídeo';
+
+  @override
+  String get recapShareVideoBody =>
+      'Transforme esta retrospectiva num vídeo vertical curto. É criado no seu navegador em threkir.com; partilhe-o ou guarde-o a partir daí.';
+
+  @override
   String get recapSharePreviewLabel =>
       'Pré-visualização da imagem da retrospectiva';
 
@@ -38550,6 +38557,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get recapShareAspectStory => 'Story';
+
+  @override
+  String get recapShareStyleVideo => 'Vídeo';
+
+  @override
+  String get recapShareVideoBody =>
+      'Transforme esta retrospectiva em um vídeo vertical curto. Ele é criado no seu navegador em threkir.com; compartilhe ou salve por lá.';
 
   @override
   String get recapSharePreviewLabel => 'Prévia da imagem da retrospectiva';

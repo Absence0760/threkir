@@ -5394,6 +5394,8 @@
   "recapShareSheetTitle": "Comparte tu resumen",
   "recapShareAspectSquare": "Cuadrado",
   "recapShareAspectStory": "Historia",
+  "recapShareStyleVideo": "Vídeo",
+  "recapShareVideoBody": "Convierte este resumen en un vídeo vertical corto. Se crea en tu navegador en threkir.com; compártelo o guárdalo desde allí.",
   "recapSharePreviewLabel": "Vista previa de la imagen del resumen",
   "recapShareImage": "Compartir imagen",
   "recapShareAsText": "Compartir como texto",

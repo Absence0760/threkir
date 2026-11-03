@@ -25233,6 +25233,14 @@
   "@recapShareAspectStory": {
     "description": "Chip choosing the tall 9:16 recap image, for a story"
   },
+  "recapShareStyleVideo": "Video",
+  "@recapShareStyleVideo": {
+    "description": "Chip in the recap share sheet that offers a short vertical slideshow video, made on the web"
+  },
+  "recapShareVideoBody": "Turn this recap into a short vertical video. It's made in your browser on threkir.com; share or save it from there.",
+  "@recapShareVideoBody": {
+    "description": "Explains, in the recap share sheet, that the video is made in the browser on the website"
+  },
   "recapSharePreviewLabel": "Preview of the recap image",
   "@recapSharePreviewLabel": {
     "description": "Screen-reader label for the preview of the recap share image"

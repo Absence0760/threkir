@@ -201,6 +201,8 @@ class _RecapScreenState extends State<RecapScreen> {
       fileStem: 'threkir-$_periodKey',
       subject: _shareSubject(l10n, label),
       shareText: () => _share(recap, label),
+      videoUrl: recapVideoExportUrl(_year,
+          month: _period == RecapPeriod.month ? _month : null),
     );
   }
 

@@ -19077,6 +19077,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recapShareAspectStory => 'Story';
 
   @override
+  String get recapShareStyleVideo => 'Video';
+
+  @override
+  String get recapShareVideoBody =>
+      'Turn this recap into a short vertical video. It\'s made in your browser on threkir.com; share or save it from there.';
+
+  @override
   String get recapSharePreviewLabel => 'Preview of the recap image';
 
   @override

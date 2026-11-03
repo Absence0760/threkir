@@ -22,7 +22,8 @@
 // the last, which is a table that cannot rot (a stale entry fails):
 //
 //   1. Some source file imports it — `from 'p'`, `import 'p'`, `import('p')`,
-//      `require('p')`, a CSS `@import`, or any subpath of those.
+//      `require('p')`, a CSS `@import`, a Deno `npm:p@<version>`, or any
+//      subpath of those.
 //   2. It is `@types/x` and `x` is imported, is a module scheme some file
 //      imports through (`node:fs` for `@types/node`), or is named in a
 //      tsconfig's `compilerOptions.types`.
@@ -168,6 +169,20 @@ export function packageOf(specifier) {
 	return parts[0] || null;
 }
 
+/// The package a Deno `npm:` specifier names, version and subpath stripped.
+/// The root package.json puts deno in node_modules mode, so `npm:stripe@17.5.0`
+/// resolves out of the installed `stripe` and nowhere else: the declaration it
+/// reads is the one this guard is checking (decisions § 2257).
+/**
+ * @param {string} specifier
+ * @returns {string | null}
+ */
+export function npmSpecifierPackage(specifier) {
+	const bare = specifier.slice('npm:'.length).replace(/^\//, '');
+	const match = /^(@[\w.-]+\/[\w.-]+|[\w.-]+)(?:@[^/]*)?(?:\/.*)?$/.exec(bare);
+	return match?.[1] ?? null;
+}
+
 /// The import forms a bundler or Node resolves. Written as separate patterns
 /// rather than one alternation because the capture group has to stay at index
 /// 1 in every branch, and a `from` clause can be arbitrarily far from its
@@ -224,7 +239,7 @@ export function scanSource(text) {
 			if (inComment(text, match.index)) continue;
 			const scheme = /^([a-z][\w.-]*):/.exec(raw);
 			if (scheme && scheme[1]) usage.schemes.add(scheme[1]);
-			const name = packageOf(raw);
+			const name = raw.startsWith('npm:') ? npmSpecifierPackage(raw) : packageOf(raw);
 			if (name) usage.specifiers.add(name);
 		}
 	}

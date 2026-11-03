@@ -11,6 +11,7 @@ import {
 	emptyUsage,
 	invokedCommands,
 	isScannable,
+	npmSpecifierPackage,
 	packageOf,
 	readBy,
 	scanSource,
@@ -69,6 +70,24 @@ test('scanSource reads every import form a bundler resolves', () => {
 			'fixture-side-effect',
 		],
 	);
+});
+
+test('scanSource reads a Deno npm: specifier as its package, version and subpath stripped', () => {
+	const usage = scanSource(
+		[
+			"import Stripe from 'npm:stripe@17.5.0';",
+			"import { z } from 'npm:@scope/pkg@^1.2.3/sub/path';",
+			"import x from 'npm:/bare';",
+			"// import y from 'npm:commented@1.0.0';",
+		].join('\n'),
+	);
+	assert.deepEqual([...usage.specifiers].sort(), ['@scope/pkg', 'bare', 'stripe']);
+	assert.ok(usage.schemes.has('npm'));
+});
+
+test('npmSpecifierPackage rejects a specifier that names no package', () => {
+	assert.equal(npmSpecifierPackage('npm:'), null);
+	assert.equal(npmSpecifierPackage('npm:@scope'), null);
 });
 
 test('scanSource records the module scheme separately from the package', () => {

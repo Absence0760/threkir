@@ -1403,7 +1403,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                   child: Container(
                     key: const Key('plan-new-error'),
                     margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.errorContainer,
                       borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -1418,7 +1418,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                 ),
               if (preview != null)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.only(bottom: 8),
                   child: Text(
                     l10n.planNewSummary(
                       preview.weeks.length,
@@ -1524,7 +1524,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
         expandedCrossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(l10n.planNewAiHint, style: muted),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           TextField(
             key: const Key('plan-new-ai-field'),
             controller: _aiCtrl,
@@ -1558,16 +1558,16 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
             label: Text(_aiBusy ? l10n.planNewAiWorking : l10n.planNewAiButton),
           ),
           if (error != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Semantics(
               liveRegion: true,
               child: Container(
                 key: const Key('plan-new-ai-error'),
                 width: double.infinity,
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: cs.errorContainer,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1591,16 +1591,16 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
             ),
           ],
           if (applied != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Semantics(
               liveRegion: true,
               child: Container(
                 key: const Key('plan-new-ai-status'),
                 width: double.infinity,
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: cs.secondaryContainer,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1832,7 +1832,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                 ],
               ),
               if (p.pacesAreFallback) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Text(
                   l10n.planNewPacesFallback,
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -1900,7 +1900,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                   ),
                 ],
               ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Semantics(
               header: true,
               child: Text(
@@ -1960,7 +1960,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -2282,7 +2282,7 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(top: 4, bottom: 6),
+      padding: const EdgeInsets.only(top: 4, bottom: 8),
       child: Semantics(
         header: true,
         child: Text(

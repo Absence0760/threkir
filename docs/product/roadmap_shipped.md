@@ -59,7 +59,7 @@ Persist completed runs locally with distance, duration, average pace, and a map 
 - [x] Edit run title and notes (Android); manual-entry runs also let the user correct distance + duration in the same dialog
 - [x] Share run as GPX (Android)
 - [x] Share run as image card — map + headline stats (Android)
-- [x] Share run on your own photo, or as a transparent stats sticker for a story (Android + iOS twin) — style chips on the run share sheet, privacy-zone-clipped route outline, decisions § 2248
+- [x] Share run on your own photo, or as a transparent stats sticker for a story (Android + iOS twin) — four layouts, three inks, a stat picker with climb and heart rate, story and post sizes, 1080 px exports, Save to Photos, the Threkir mark on every image, and a remembered look; privacy-zone-clipped route outline, decisions § 2248 + § 2250
 - [x] Save a history run as a reusable route (Douglas–Peucker simplified track) (Android)
 - [x] Add a run manually — date/time, duration, distance, optional saved route (Android)
 - [x] Delete runs (Android)

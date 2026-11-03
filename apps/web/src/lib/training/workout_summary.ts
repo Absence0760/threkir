@@ -142,6 +142,19 @@ export function walkRunPattern(s: WorkoutStructure | null | undefined): WalkRunP
 	};
 }
 
+/// The walk-run pattern of a stored `plan_workouts` row, read defensively
+/// from its `structure`: the line a card shows under the session's size so a
+/// beginner sees "8 × (1 min run / 90 s walk)", not just the minutes. Null
+/// for any kind but `walk_run` and for a structure with no readable pattern.
+export function plannedWalkRunPattern(w: { kind: string; structure: unknown }): WalkRunPattern | null {
+	if (w.kind !== 'walk_run') return null;
+	const s =
+		w.structure != null && typeof w.structure === 'object' && !Array.isArray(w.structure)
+			? (w.structure as WorkoutStructure)
+			: null;
+	return walkRunPattern(s);
+}
+
 /// What a plan card states a session's size as. A walk-run session is
 /// prescribed in time (decisions § 91) and its `target_distance_m` is an
 /// estimate at a pace nobody chose, so it reads as its minutes; the
@@ -158,11 +171,7 @@ export function plannedWorkoutSize(w: {
 		const metres = positive(w.targetDistanceM);
 		return metres == null ? null : { kind: 'distance', metres };
 	}
-	const s =
-		w.structure != null && typeof w.structure === 'object' && !Array.isArray(w.structure)
-			? (w.structure as WorkoutStructure)
-			: null;
-	const p = walkRunPattern(s);
+	const p = plannedWalkRunPattern({ kind: w.kind, structure: w.structure });
 	if (p?.runM != null) return { kind: 'distance', metres: p.runM };
 	const seconds = p != null ? positive(p.totalS) : positive(w.targetDurationS);
 	return seconds == null ? null : { kind: 'duration', seconds };

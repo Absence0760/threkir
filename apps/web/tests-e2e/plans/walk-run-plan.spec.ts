@@ -197,12 +197,25 @@ test.describe('a walk-run plan', () => {
 		}
 	});
 
-	test("Home states today's walk-run session in minutes, with no pace", async ({ browser }) => {
-		await plantPlan(-2, [{ offset: -2, done: true }, { offset: 0 }, { offset: 2 }, { offset: 5 }, { offset: 7 }, { offset: 9, fiveK: true }]);
+	test("Home and plan detail state today's walk-run session as its minutes and its intervals, with no pace", async ({
+		browser
+	}) => {
+		const planId = await plantPlan(-2, [
+			{ offset: -2, done: true },
+			{ offset: 0 },
+			{ offset: 2 },
+			{ offset: 5 },
+			{ offset: 7 },
+			{ offset: 9, fiveK: true }
+		]);
+		const pattern = '5 min warm-up, 8 × (1 min run / 90 s walk), 5 min cool-down';
 		const page = await open(browser, '/dashboard');
 		try {
 			await expect(page.getByTestId('plan-hero-today-size')).toHaveText('29 min', { timeout: 15_000 });
+			await expect(page.getByTestId('plan-hero-today-pattern')).toHaveText(pattern);
 			await expect(page.getByText(/\/km/)).toHaveCount(0);
+			await page.goto(`/plans/${planId}`);
+			await expect(page.getByTestId('plan-today-pattern')).toHaveText(pattern, { timeout: 15_000 });
 		} finally {
 			await page.context().close();
 		}

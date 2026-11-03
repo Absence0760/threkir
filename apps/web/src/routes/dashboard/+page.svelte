@@ -90,8 +90,8 @@
 	import MissedWorkoutPrompt from '#lib/components/MissedWorkoutPrompt.svelte';
 	import PlanNudgeCard from '#lib/components/PlanNudgeCard.svelte';
 	import { DISMISSED_NUDGES_KEY, parseDismissedNudges, workoutOverrunMetres } from '#lib/training/plan_nudges.ts';
-	import { plannedWorkoutSize } from '#lib/training/workout_summary.ts';
-	import { formatPlannedSize } from '#lib/training/workout_summary_format.ts';
+	import { plannedWalkRunPattern, plannedWorkoutSize } from '#lib/training/workout_summary.ts';
+	import { formatPlannedSize, formatWalkRunPattern } from '#lib/training/workout_summary_format.ts';
 	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import { weeklyGoalTarget } from '#lib/training/week_lead.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
@@ -976,6 +976,14 @@
 		});
 		return size == null ? null : formatPlannedSize(m, size, (metres) => fmtKm(metres));
 	});
+	/// Today's walk-run intervals ("8 × (1 min run / 90 s walk)"), which the
+	/// minutes alone don't tell a beginner; null for any other session.
+	const todayPattern = $derived.by(() => {
+		const t = planOverview?.todayWorkout;
+		if (!t) return null;
+		const p = plannedWalkRunPattern({ kind: t.kind, structure: t.structure });
+		return p == null ? null : formatWalkRunPattern(m, p, fmtOverrun);
+	});
 	/// How far today's done workout ran past its target, when a linked run
 	/// says so (`workoutOverrunMetres`); null for a tick, a short run or noise.
 	const todayOverrunM = $derived.by(() => {
@@ -1429,6 +1437,11 @@
 										>
 									{/if}
 								</div>
+								{#if todayPattern != null}
+									<span class="plan-hero-today-pattern" data-testid="plan-hero-today-pattern"
+										>{todayPattern}</span
+									>
+								{/if}
 							</div>
 							<span class="material-symbols plan-hero-today-arrow">chevron_right</span>
 						</button>
@@ -2945,6 +2958,10 @@
 		color: var(--color-text-secondary);
 		font-size: 0.9rem;
 		font-variant-numeric: tabular-nums;
+	}
+	.plan-hero-today-pattern {
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
 	}
 	.plan-hero-today-meta-quiet {
 		font-size: 0.85rem;

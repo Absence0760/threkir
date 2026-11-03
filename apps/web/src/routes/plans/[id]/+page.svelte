@@ -105,8 +105,8 @@
 		todayISO
 	} from '#lib/training/training.ts';
 	import { weeklyDriftToDate, missedWorkoutAdvice, weekJudgedByDistance } from '#lib/training/plan_adherence.ts';
-	import { plannedWorkoutSize } from '#lib/training/workout_summary.ts';
-	import { formatPlannedSize } from '#lib/training/workout_summary_format.ts';
+	import { plannedWalkRunPattern, plannedWorkoutSize } from '#lib/training/workout_summary.ts';
+	import { formatPlannedSize, formatWalkRunPattern } from '#lib/training/workout_summary_format.ts';
 	import { resumeShift } from '#lib/training/plan_resume.ts';
 	import {
 		alignRestartStartIso,
@@ -1314,6 +1314,13 @@
 		return size == null ? null : formatPlannedSize(m, size, (metres) => fmtKm(metres, digits));
 	}
 
+	/// A walk-run session's intervals ("8 × (1 min run / 90 s walk)"), which
+	/// the minutes alone don't tell a beginner; null for any other session.
+	function patternLabel(wo: PlanWorkout): string | null {
+		const p = plannedWalkRunPattern({ kind: wo.kind, structure: wo.structure });
+		return p == null ? null : formatWalkRunPattern(m, p, fmtOverrun);
+	}
+
 	onMount(async () => {
 		// auth-store flips loading=false before fetchUser resolves, so
 		// the publish-as-template gate below must wait for `auth.user`
@@ -2126,6 +2133,9 @@
 								<span class="today-skipped">{m('planDetail.skippedLabel')}</span>
 							{/if}
 						</div>
+						{#if patternLabel(todayWorkout) != null}
+							<span class="today-pattern" data-testid="plan-today-pattern">{patternLabel(todayWorkout)}</span>
+						{/if}
 						{#if todayWorkout.notes}
 							<p class="today-notes">{todayWorkout.notes}</p>
 						{/if}
@@ -2158,6 +2168,9 @@
 								<span>{m('workoutDetail.atPace', { pace: fmtPace(nextWorkout.target_pace_sec_per_km) })}</span>
 							{/if}
 						</div>
+						{#if patternLabel(nextWorkout) != null}
+							<span class="today-pattern" data-testid="plan-next-pattern">{patternLabel(nextWorkout)}</span>
+						{/if}
 					</div>
 					<span class="material-symbols today-arrow">chevron_right</span>
 				</button>
@@ -3661,6 +3674,10 @@
 		color: var(--color-text-secondary);
 		font-weight: 600;
 	}
+	.today-pattern {
+		display: block;
+	}
+	.today-pattern,
 	.today-notes {
 		color: var(--color-text-secondary);
 		margin: 0.3rem 0 0;

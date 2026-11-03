@@ -213,6 +213,16 @@ WalkRunPattern? walkRunPattern(WorkoutStructure? s) {
   );
 }
 
+/// The walk-run pattern of a stored `plan_workouts` row, read defensively
+/// from its [structure]: the line a card shows under the session's size so a
+/// beginner sees "8 × (1 min run / 90 s walk)", not just the minutes. Null
+/// for any kind but `walk_run` and for a structure with no readable pattern.
+WalkRunPattern? plannedWalkRunPattern({
+  required String kind,
+  required Object? structure,
+}) =>
+    kind == 'walk_run' ? walkRunPattern(_structureOf(structure)) : null;
+
 /// What a plan card states a session's size as. A walk-run session is
 /// prescribed in time (decisions § 91) and its `target_distance_m` is an
 /// estimate at a pace nobody chose, so it reads as its minutes; the
@@ -230,7 +240,7 @@ StructureTotal? plannedWorkoutSize({
     final metres = _positive(targetDistanceM);
     return metres == null ? null : StructureTotalDistance(metres);
   }
-  final p = walkRunPattern(_structureOf(structure));
+  final p = plannedWalkRunPattern(kind: kind, structure: structure);
   if (p?.runM != null) return StructureTotalDistance(p!.runM!);
   final seconds = p != null ? _positive(p.totalS) : _positive(targetDurationS);
   return seconds == null ? null : StructureTotalDuration(seconds);

@@ -7,6 +7,7 @@ import type { WorkoutStructure } from './training';
 import {
 	aboutMinutes,
 	paceZoneName,
+	plannedWalkRunPattern,
 	plannedWorkoutSize,
 	spokenDuration,
 	structureSegments,
@@ -146,6 +147,18 @@ test('plannedWorkoutSize: a walk-run reads as minutes, its graduation 5K as 5 km
 	assert.equal(size('easy', null, 2400, null), null);
 	assert.equal(size('easy', 0, null, null), null);
 	assert.equal(size('rest', 3000, null, null), null);
+});
+
+test('plannedWalkRunPattern: a walk-run row reads its pattern, any other row or an unreadable structure none', () => {
+	const pattern = (kind: string, structure: unknown) => plannedWalkRunPattern({ kind, structure });
+	assert.deepEqual(pattern('walk_run', walkRunWeek1), walkRunPattern(walkRunWeek1));
+	assert.equal(pattern('walk_run', walkRunWeek1)?.count, 8);
+	// The same structure on a row of another kind is not a walk-run session.
+	assert.equal(pattern('easy', walkRunWeek1), null);
+	assert.equal(pattern('walk_run', null), null);
+	assert.equal(pattern('walk_run', 'x'), null);
+	assert.equal(pattern('walk_run', [1]), null);
+	assert.equal(pattern('walk_run', intervals), null);
 });
 
 test('walkRunPattern: null for a paced session and a distance-measured one', () => {

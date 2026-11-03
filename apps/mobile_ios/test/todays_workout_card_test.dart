@@ -53,7 +53,8 @@ Future<void> _pump(
 
 void main() {
   group('TodaysWorkoutCard', () {
-    testWidgets('a walk-run session reads as its minutes, with no km and no pace',
+    testWidgets(
+        'a walk-run session reads as its minutes and its intervals, with no km and no pace',
         (tester) async {
       final semantics = tester.ensureSemantics();
       await _pump(
@@ -81,10 +82,23 @@ void main() {
               of: find.byKey(const Key('todaysWorkoutSize')),
               matching: find.text('29 min')),
           findsOneWidget);
+      expect(
+          tester
+              .widget<Text>(find.byKey(const Key('todaysWorkoutPattern')))
+              .data,
+          '5 min warm-up, 8 × (1 min run / 90 s walk), 5 min cool-down');
       expect(find.textContaining('km'), findsNothing);
       expect(find.textContaining('/km'), findsNothing);
-      expect(find.bySemanticsLabel(RegExp(r'Walk-run, 29 min$')), findsOneWidget);
+      expect(
+          find.bySemanticsLabel(RegExp(
+              r'Walk-run, 29 min, 5 min warm-up, 8 × \(1 min run / 90 s walk\), 5 min cool-down$')),
+          findsOneWidget);
       semantics.dispose();
+    });
+
+    testWidgets('a paced session carries no interval line', (tester) async {
+      await _pump(tester, _workout());
+      expect(find.byKey(const Key('todaysWorkoutPattern')), findsNothing);
     });
 
     testWidgets('renders "TODAY\'S WORKOUT" label for an incomplete workout',

@@ -674,6 +674,7 @@ func main() {
 		// authorizer's run-meta fetcher (cache is shared per room).
 		Persister: client,
 		RunMeta:   runMetaFetcher,
+		HeartRate: runMetaFetcher,
 	}
 	// Reap idle push-rate-limiter buckets. They live on the Server, not
 	// the Hub, so this is backend-agnostic — gating it on the in-process

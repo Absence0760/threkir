@@ -80,14 +80,16 @@ Function moves per
    coordinate. Mirrors the `live_run_pings_drop_in_zone` BEFORE-INSERT
    trigger on the Supabase Realtime path so both transports honour
    the same contract. **Heart rate** (decisions §2265): `/push`
-   strips `bpm` before fan-out unless `RunMeta.HeartRateShared` is
-   true, which is the service-role `live_heart_rate_shared(user_id)`
-   RPC: the `live_overlay` flag is open AND the runner has
-   `health_data_consent_at` on record. Unknown is no: a nil
-   `RunMetaFetcher` or a failed lookup withholds `bpm` (fail closed on
-   the field, open on the location feed). The answer is cached with the
-   rest of the run meta, so an open room keeps it until the next
-   `CacheRefreshTTL` refresh. The `live_run_pings_strip_bpm_before_insert`
+   strips `bpm` before fan-out unless `Server.HeartRate` (a
+   `HeartRateConsentFetcher`) answers true, which is the service-role
+   `live_heart_rate_shared(user_id)` RPC: the `live_overlay` flag is
+   open AND the runner has `health_data_consent_at` on record. Unknown
+   is no: a nil fetcher or a failed lookup withholds `bpm` (fail closed
+   on the field, open on the location feed), and a failure is not
+   cached. The answer is cached per owner for `HeartRateTTL` (5 s),
+   deliberately apart from the room's `RunMeta` and its 60 s
+   `CacheRefreshTTL`, so a consent withdrawal stops bpm on the hub
+   within seconds. The `live_run_pings_strip_bpm_before_insert`
    trigger applies the same rule on the Realtime path, so the Bridge
    only ever republishes stripped rows. The streamer overlay
    (`/live/overlay`) does **not** read through the hub: it polls the

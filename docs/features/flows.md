@@ -326,7 +326,7 @@ OBS browser source (no session)
 
 ### Heart rate on live surfaces
 
-`live_run_pings.bpm` is Art 9 health data. It is stored only for an owner with `health_data_consent_at` on record while the `live_overlay` gate is open: the `live_run_pings_strip_bpm_before_insert` trigger nulls it otherwise, and the Go hub asks the service-role-only `live_heart_rate_shared(user_id)` before it fans a ping out (cached per room with the run's owner). `/live/[id]` and the phone's spectator screen show a Heart rate tile whenever the newest ping carries one, and the overlay shows it only when the creator has also switched it on. Withdrawing consent stops it on the overlay at the next poll and on new pings at once.
+`live_run_pings.bpm` is Art 9 health data. It is stored only for an owner with `health_data_consent_at` on record while the `live_overlay` gate is open: the `live_run_pings_strip_bpm_before_insert` trigger nulls it otherwise, and the Go hub asks the service-role-only `live_heart_rate_shared(user_id)` before it fans a ping out (cached per owner for at most 5 s, apart from the room's minute-long run-meta cache). `/live/[id]` and the phone's spectator screen show a Heart rate tile whenever the newest ping carries one, and the overlay shows it only when the creator has also switched it on. Withdrawing consent stops it on the overlay at the next poll, in `live_run_pings` on the next insert, and on the hub within 5 s.
 
 ### Watch out
 

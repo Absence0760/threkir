@@ -181,12 +181,9 @@ func runMetaWithConsent(t *testing.T, rpcStatus int, rpcBody string, gotRPC *str
 func TestSupabaseRunMetaFetcher_HeartRateSharedAsksForTheOwner(t *testing.T) {
 	var gotRPC string
 	f := runMetaWithConsent(t, http.StatusOK, `true`, &gotRPC)
-	meta, err := f.RunMeta(context.Background(), "run-1")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if meta == nil || !meta.HeartRateShared {
-		t.Fatalf("consenting owner must report HeartRateShared=true, got %+v", meta)
+	shared, err := f.HeartRateShared(context.Background(), "u-1")
+	if err != nil || !shared {
+		t.Fatalf("got (%v, %v), want consenting owner to report true", shared, err)
 	}
 	if !strings.Contains(gotRPC, `"p_user_id":"u-1"`) {
 		t.Errorf("consent RPC must name the run owner: %q", gotRPC)
@@ -196,23 +193,27 @@ func TestSupabaseRunMetaFetcher_HeartRateSharedAsksForTheOwner(t *testing.T) {
 func TestSupabaseRunMetaFetcher_HeartRateNotShared(t *testing.T) {
 	var gotRPC string
 	f := runMetaWithConsent(t, http.StatusOK, `false`, &gotRPC)
-	meta, err := f.RunMeta(context.Background(), "run-1")
-	if err != nil || meta == nil || meta.HeartRateShared {
-		t.Fatalf("got (%+v, %v), want HeartRateShared=false", meta, err)
+	shared, err := f.HeartRateShared(context.Background(), "u-1")
+	if err != nil || shared {
+		t.Fatalf("got (%v, %v), want false", shared, err)
 	}
 }
 
-// A failed consent lookup withholds bpm but must not deny the run: heart
-// rate is auxiliary to the location feed.
-func TestSupabaseRunMetaFetcher_HeartRateLookupFailureWithholdsOnly(t *testing.T) {
+// The run lookup no longer asks for consent: that answer lives in its own
+// short cache, so a failing consent RPC cannot touch the run meta.
+func TestSupabaseRunMetaFetcher_HeartRateLookupFailureIsAnError(t *testing.T) {
 	var gotRPC string
 	f := runMetaWithConsent(t, http.StatusServiceUnavailable, `{"message":"down"}`, &gotRPC)
-	meta, err := f.RunMeta(context.Background(), "run-1")
-	if err != nil {
-		t.Fatalf("a consent lookup failure must not fail the run lookup: %v", err)
+	if _, err := f.HeartRateShared(context.Background(), "u-1"); err == nil {
+		t.Fatal("a non-2xx consent lookup must return an error")
 	}
-	if meta == nil || meta.UserID != "u-1" || meta.HeartRateShared {
-		t.Fatalf("got %+v, want owner u-1 with HeartRateShared=false", meta)
+	gotRPC = ""
+	meta, err := f.RunMeta(context.Background(), "run-1")
+	if err != nil || meta == nil || meta.UserID != "u-1" {
+		t.Fatalf("got (%+v, %v), want owner u-1", meta, err)
+	}
+	if gotRPC != "" {
+		t.Errorf("the run lookup must not call the consent RPC, got %q", gotRPC)
 	}
 }
 

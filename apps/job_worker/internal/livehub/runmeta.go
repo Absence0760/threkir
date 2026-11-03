@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -20,15 +19,10 @@ import (
 // RunMeta captures the two `runs` columns the authorizer cares about:
 // the row owner (must match the JWT's `sub` to authorise a push or a
 // private spectator subscribe) and the public flag (anon spectators
-// are allowed when set), plus whether the owner's pings may carry
-// heart rate to an audience (decisions § 2265).
+// are allowed when set).
 type RunMeta struct {
 	UserID   string
 	IsPublic bool
-	// HeartRateShared is `live_heart_rate_shared(user_id)`: the
-	// live_overlay gate is open and the owner has health-data consent on
-	// record. False strips `bpm` before a ping is fanned out.
-	HeartRateShared bool
 }
 
 // RunMetaFetcher resolves [RunMeta] for a run id. Returns
@@ -39,6 +33,16 @@ type RunMeta struct {
 // [SupabaseRunMetaFetcher].
 type RunMetaFetcher interface {
 	RunMeta(ctx context.Context, runID string) (*RunMeta, error)
+}
+
+// HeartRateConsentFetcher answers `live_heart_rate_shared(user_id)`: the
+// live_overlay gate is open and the owner has health-data consent on
+// record (decisions § 2265). It is deliberately not part of [RunMeta],
+// whose per-room cache lives for CacheRefreshTTL: consent is withdrawn
+// mid-run, and the hub must stop fanning out bpm about as fast as the
+// database stops storing it.
+type HeartRateConsentFetcher interface {
+	HeartRateShared(ctx context.Context, userID string) (bool, error)
 }
 
 // SupabaseRunMetaFetcher reads a single `runs` row via PostgREST.
@@ -70,20 +74,11 @@ func (f *SupabaseRunMetaFetcher) RunMeta(ctx context.Context, runID string) (*Ru
 	if len(rows) == 0 {
 		return nil, nil
 	}
-	meta := &RunMeta{UserID: rows[0].UserID, IsPublic: rows[0].IsPublic}
-	// Heart rate is auxiliary to the location feed, so a failed lookup
-	// withholds bpm rather than denying the run: fail closed on the Art 9
-	// field, open on the broadcast itself.
-	shared, err := f.heartRateShared(ctx, meta.UserID)
-	if err != nil {
-		slog.Default().Warn("runmeta: heart-rate consent lookup failed; withholding bpm",
-			"err", err, "run_id", runID)
-	}
-	meta.HeartRateShared = err == nil && shared
-	return meta, nil
+	return &RunMeta{UserID: rows[0].UserID, IsPublic: rows[0].IsPublic}, nil
 }
 
-func (f *SupabaseRunMetaFetcher) heartRateShared(ctx context.Context, userID string) (bool, error) {
+// HeartRateShared implements [HeartRateConsentFetcher].
+func (f *SupabaseRunMetaFetcher) HeartRateShared(ctx context.Context, userID string) (bool, error) {
 	payload, err := json.Marshal(map[string]string{"p_user_id": userID})
 	if err != nil {
 		return false, err

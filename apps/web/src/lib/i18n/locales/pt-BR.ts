@@ -6765,7 +6765,7 @@ export const messages = {
 	"planEditor.dobHintAbsentLink": "Adicionar sua data de nascimento",
 	"planEditor.dobHintHealthData": "Os planos só podem usar sua data de nascimento para se ajustar à sua idade com o seu consentimento para o uso de dados de saúde.",
 	"planEditor.dobHintHealthDataLink": "Revisar consentimento",
-	"coursePreview.open": "Visualizar em 3D",
+	"coursePreview.openPreview": "Visualizar em 3D",
 	"coursePreview.replay": "Repetir em 3D",
 	"coursePreview.dialogTitle": "Prévia 3D: {title}",
 	"coursePreview.mapLabel": "Mapa 3D do percurso",

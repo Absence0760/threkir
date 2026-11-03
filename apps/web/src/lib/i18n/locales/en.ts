@@ -6798,7 +6798,7 @@ export const en = {
 	"planEditor.dobHintHealthData": "Plans can only use your date of birth to adjust for age with your consent to health-data use.",
 	"planEditor.dobHintHealthDataLink": "Review consent",
 	// 3D course preview (CoursePreview3D.svelte, #1270)
-	"coursePreview.open": "Preview in 3D",
+	"coursePreview.openPreview": "Preview in 3D",
 	"coursePreview.replay": "Replay in 3D",
 	"coursePreview.dialogTitle": "3D preview: {title}",
 	"coursePreview.mapLabel": "3D course map",

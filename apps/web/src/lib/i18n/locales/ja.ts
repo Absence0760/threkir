@@ -6761,7 +6761,7 @@ export const messages = {
 	"planEditor.dobHintAbsentLink": "生年月日を追加",
 	"planEditor.dobHintHealthData": "プランが年齢に合わせて生年月日を使うには、健康データの利用への同意が必要です。",
 	"planEditor.dobHintHealthDataLink": "同意を確認",
-	"coursePreview.open": "3Dでプレビュー",
+	"coursePreview.openPreview": "3Dでプレビュー",
 	"coursePreview.replay": "3Dでリプレイ",
 	"coursePreview.dialogTitle": "3Dプレビュー: {title}",
 	"coursePreview.mapLabel": "3Dコースマップ",

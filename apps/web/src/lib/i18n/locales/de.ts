@@ -6766,7 +6766,7 @@ export const messages = {
 	"planEditor.dobHintAbsentLink": "Geburtsdatum hinzufügen",
 	"planEditor.dobHintHealthData": "Pläne können dein Geburtsdatum nur mit deiner Einwilligung zur Nutzung von Gesundheitsdaten an dein Alter anpassen.",
 	"planEditor.dobHintHealthDataLink": "Einwilligung prüfen",
-	"coursePreview.open": "In 3D ansehen",
+	"coursePreview.openPreview": "In 3D ansehen",
 	"coursePreview.replay": "In 3D abspielen",
 	"coursePreview.dialogTitle": "3D-Vorschau: {title}",
 	"coursePreview.mapLabel": "3D-Streckenkarte",

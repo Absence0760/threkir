@@ -57,7 +57,7 @@
 		onclick={openPreview}
 	>
 		<span class="material-symbols" aria-hidden="true">terrain</span>
-		{replay ? m('coursePreview.replay') : m('coursePreview.open')}
+		{replay ? m('coursePreview.replay') : m('coursePreview.openPreview')}
 	</button>
 	{#if CoursePreview3D}
 		<CoursePreview3D

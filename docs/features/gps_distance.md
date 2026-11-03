@@ -174,7 +174,7 @@ So the server can recompute distance from a stored track with the same Doppler i
 | `offTrack` | — | `true` on a fix the estimator took that failed the recorder's track gate ([Stored track](#stored-track)); absent otherwise, never `false`. Dart `Waypoint.offTrack`, Kotlin `TrackWriter.append(..., offTrack)`, Swift `TrackPointRecord.offTrack` |
 | `baroEle` | m | the phone barometer's altitude, anchored to GPS altitude over a long window ([run_recording.md § Barometric altitude](run_recording.md#barometric-altitude)); `ele` stays the GPS altitude. Dart `Waypoint.baroElevationMetres` (`baroElevationMetres` in the local store's JSON), web `TrackPoint.baroEle`. Omitted on a phone with no barometer and before the anchor has a GPS altitude to level against |
 
-Old tracks have none of them and recompute through the position-only path, with post-hoc stop detection. `baroEle` plays no part in distance; climb, the elevation profile and grade-adjusted pace read it through `runAltitude` ([run_recording.md § Barometric altitude](run_recording.md#barometric-altitude)).
+Old tracks have none of them and recompute through the position-only path, with post-hoc stop detection. `baroEle` plays no part in distance; climb, the elevation profile, grade-adjusted pace and split elevation read it through `runAltitude` ([run_recording.md § Barometric altitude](run_recording.md#barometric-altitude)).
 
 Readers that draw the line, route-match or match pace segments prefer the smoothed pair when both halves are present and finite (web `lib/runs/track_line.ts`, Dart `Waypoint.lineLat` / `lineLng`, Go `parseTrack`); the estimator always reads raw.
 
@@ -194,6 +194,8 @@ Splits and moving time used to sum haversine over the raw stored fixes, so under
 2. **Otherwise** (an older recording, an import, a track mixing stamped and unstamped points): the hop-sum over the line position, the smoothed pair when the fix carries both halves, else the raw fix, unscaled. A phone run saved since v1.2 therefore measures on the smoother's line; anything older reads exactly as before.
 
 `computeRealSplits(track, tick, distance_m)` on web and `computeSplitDurations(track, tick, startedAt, totalDistanceMetres:)` on mobile take the run's distance; moving time takes none (a uniform scale does not move a 0.5 m/s floor enough to matter). So a new run's split table ends on `distance_m`, apart from the deliberate tail rule (a remainder under `SPLIT_TAIL_MIN_M`, 50 m, is not a split of its own). The custom watch's firmware port of these stats still reads raw positions.
+
+A split's elevation is the net change between its two boundaries in the altitude `runAltitudeSeries` picks: the barometer when the run has one, else GPS `ele`, never an off-track fix's. Each boundary's altitude is interpolated along the same `distM` axis between the nearest points that carry one, so a dropout (the barometer before its anchor levels, a sensor stall) is bridged and the first and last readings are held flat into a split that only partly overlaps them; a split wholly outside the measured stretch shows no elevation rather than 0 m. It used to read raw GPS `ele`, which on a barometer run disagreed with the climb figure and the profile beside it (decisions § 2252). Mobile computes it in `computeSplitDurations` (`RunSplit.elevationMetres`) but its split rows do not render it yet.
 
 ## Ports
 

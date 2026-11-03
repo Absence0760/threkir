@@ -7,7 +7,7 @@
 -- my_share_ref mints one stable code; a sign-up whose metadata names the
 -- owner's ref is counted once, on confirmation or on the OAuth metadata write,
 -- and a foreign ref is not; attribute_share_start marks a fresh copy or join
--- once and a client cannot write via_share_ref; my_share_stats returns the
+-- once and a client cannot write either mark; my_share_stats returns the
 -- caller's own links only; the purge job is scheduled and keeps 90 days.
 
 begin;
@@ -203,9 +203,8 @@ select ok(
     (select code from codes where user_id = '00000000-0000-0000-0000-0000a7700001')),
   'a copy is attributed once');
 
-update training_plans set via_share_ref = false where id = (select id from copy);
-select is((select via_share_ref from training_plans where id = (select id from copy)), true,
-  'a client cannot clear via_share_ref');
+select throws_ok($$ delete from private.plan_share_starts $$, '42501', null,
+  'a client cannot clear the start attribution');
 
 insert into challenge_participants (challenge_id, user_id)
 values ('eeeeeeee-eeee-eeee-eeee-eeeea7700001', '00000000-0000-0000-0000-0000a7700002');

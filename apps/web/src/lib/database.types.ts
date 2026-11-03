@@ -5019,7 +5019,6 @@ export type Database = {
           updated_at: string | null
           user_id: string
           vdot: number | null
-          via_share_ref: boolean
         }
         Insert: {
           assigned_by_coach_id?: string | null
@@ -5048,7 +5047,6 @@ export type Database = {
           updated_at?: string | null
           user_id: string
           vdot?: number | null
-          via_share_ref?: boolean
         }
         Update: {
           assigned_by_coach_id?: string | null
@@ -5077,7 +5075,6 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           vdot?: number | null
-          via_share_ref?: boolean
         }
         Relationships: [
           {

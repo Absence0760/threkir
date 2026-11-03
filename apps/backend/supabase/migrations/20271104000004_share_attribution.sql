@@ -42,13 +42,14 @@
 --    entity's owner, once per account (private.signup_share_counted), and
 --    only within a day of the account's creation.
 --
--- 6. Plan starts and challenge joins. training_plans.via_share_ref marks a
---    copy started through the author's link; it is frozen against client
---    writes in the 20270704000003 trigger shape, and the copy is readable by
---    its owner only. A join goes in private.challenge_share_joins instead of a
---    column: challenge_participants carries table-level SELECT for anon
---    (20270408_001), so a column there would publish how each participant of
---    a public challenge arrived. Both are written only by
+-- 6. Plan starts and challenge joins. private.plan_share_starts and
+--    private.challenge_share_joins mark a copy or a join that came through the
+--    owner's link. Private tables, not columns: challenge_participants carries
+--    table-level SELECT for anon (20270408_001), so a column there would
+--    publish how each participant of a public challenge arrived, and a column
+--    on training_plans would need a freeze trigger and reach every client row
+--    type for a fact only the counter reads. Each goes with its plan copy or
+--    participant row by FK cascade. Both are written only by
 --    attribute_share_start (definer) within ten minutes of the clone or join,
 --    and only when `ref` is the owner's code, so nobody can inflate a
 --    creator's numbers by editing a row.
@@ -58,14 +59,12 @@
 --    visits, sign-ups, plan starts and challenge joins (and how many of those
 --    came through the link). Only the caller's own entities.
 --
--- Locks: new private tables, functions and triggers (catalogue only).
--- ADD COLUMN ... boolean NOT NULL DEFAULT false on training_plans is a
--- catalogue change on PG 11+ (the constant default is stored, no rewrite), and
--- training_plans is not one of the high-volume tables
--- check_migration_online_safety.mjs guards. challenge_share_joins' FK to
--- challenge_participants is validated against an empty child, so the SHARE
--- ROW EXCLUSIVE lock on the parent is momentary. The auth.users triggers take
--- a brief catalogue lock and scan nothing.
+-- Locks: new private tables, functions and triggers (catalogue only). The FKs
+-- from plan_share_starts to training_plans and from challenge_share_joins to
+-- challenge_participants are validated against empty children, so the SHARE
+-- ROW EXCLUSIVE lock on each parent is momentary; no populated table gains a
+-- column or is scanned. The auth.users triggers take a brief catalogue lock
+-- and scan nothing.
 
 -- ── 1. The gate ─────────────────────────────────────────────────────────────
 
@@ -438,12 +437,17 @@ create trigger auth_users_count_signup_share_on_metadata
 
 -- ── 6. Plan starts and challenge joins ──────────────────────────────────────
 
-alter table training_plans
-  add column via_share_ref boolean not null default false;
+create table private.plan_share_starts (
+  plan_id    uuid primary key references public.training_plans (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
 
-comment on column training_plans.via_share_ref is
-  'True when this copy of a public plan was started from its author''s own '
-  'share link. Written by attribute_share_start only. decisions § 2268.';
+comment on table private.plan_share_starts is
+  'A copy of a public plan started from its author''s own share link '
+  '(decisions § 2268). Goes with the copy. Written by attribute_share_start only.';
+
+alter table private.plan_share_starts enable row level security;
+revoke all on table private.plan_share_starts from public, anon, authenticated;
 
 create table private.challenge_share_joins (
   challenge_id uuid not null,
@@ -461,28 +465,6 @@ comment on table private.challenge_share_joins is
 
 alter table private.challenge_share_joins enable row level security;
 revoke all on table private.challenge_share_joins from public, anon, authenticated;
-
--- Full body carried forward from 20271103000002; via_share_ref joins
--- source_author_id.
-create or replace function freeze_training_plan_managed_columns()
-returns trigger
-language plpgsql
-set search_path = public
-as $$
-begin
-  if current_user not in ('anon', 'authenticated') then
-    return new;
-  end if;
-  if tg_op = 'INSERT' then
-    new.source_author_id := null;
-    new.via_share_ref := false;
-  else
-    new.source_author_id := old.source_author_id;
-    new.via_share_ref := old.via_share_ref;
-  end if;
-  return new;
-end;
-$$;
 
 create or replace function public.attribute_share_start(
   p_kind text,
@@ -510,16 +492,15 @@ begin
 
   if p_kind = 'plan' then
     -- p_id is the caller's new copy, as clone_public_plan returned it.
-    update training_plans p
-       set via_share_ref = true
+    insert into private.plan_share_starts (plan_id)
+    select p.id
+      from training_plans p
+      join training_plans t on t.id = p.parent_template_id and t.is_public_template = true
      where p.id = p_id
        and p.user_id = v_uid
-       and p.via_share_ref = false
        and p.source_author_id = v_owner
        and p.created_at > now() - interval '10 minutes'
-       and exists (
-         select 1 from training_plans t
-          where t.id = p.parent_template_id and t.is_public_template = true);
+    on conflict (plan_id) do nothing;
     return found;
   elsif p_kind = 'challenge' then
     insert into private.challenge_share_joins (challenge_id, user_id)
@@ -584,13 +565,14 @@ as $$
   plan_starts as (
     select t.id as entity_id,
            count(c.id)::int as starts,
-           count(c.id) filter (where c.via_share_ref)::int as ref_starts
+           count(ss.plan_id)::int as ref_starts
       from training_plans t
       cross join me
       left join training_plans c
         on c.parent_template_id = t.id
        and c.source_author_id = me.uid
        and c.created_at >= me.since
+      left join private.plan_share_starts ss on ss.plan_id = c.id
      where t.user_id = me.uid and t.is_template = true and t.is_public_template = true
      group by t.id
   ),

@@ -337,6 +337,14 @@ The foundation under both the generator and any hand-built plan: a data model fo
 
 ✓ **Built on web and mobile, behind the default-off `share_attribution` gate** (decisions § 2268). A creator's own share links carry an opaque ref; the share page counts visits in aggregate daily buckets with no visitor identifier; a sign-up, plan copy or challenge join made through the link is attributed to it; **Your shares** (web `/settings/shares`, mobile Settings) shows visits, sign-ups, plan starts and challenge joins per link over 90 days. No analytics vendor. Pre-deploy: the CISO / Security Analyst review, DPIA and privacy-policy purpose row in [deployment.md](../ops/deployment.md).
 
+### Creator challenges with a join link (#1273 item 4)
+
+✓ **Built on web and mobile, behind the default-off `challenge_invite_links` gate** (decisions § 2261). The creator or a club admin gets a revocable join link (`/challenges/join/<token>`) for a challenge, and "Reset link" replaces it; a follower opens it, sees the challenge, signs up and joins in one tap, with `return_to` surviving email confirmation and OAuth. Joining by link is rate-limited to 30 attempts an hour; club-vs-club challenges get no link. Public challenges also get `/share/challenge/[id]` and its og card, which are not behind the gate. Free. Pre-deploy: the CISO / Security Analyst review in [deployment.md](../ops/deployment.md). See [challenges.md § Invite links](../features/challenges.md#invite-links-and-the-public-share-page-2026-11-03-decisions--2261).
+
+### "Train with me" plan share (#1273 item 5)
+
+✓ **Built on web and mobile, behind the default-off `public_plan_share` gate** (decisions § 2262). A published plan gets a logged-out page, `/share/plan/[id]`, showing its goal and weeks through a redacted RPC (no paces, VDOT, HR, goal time, notes, dates or owner id), with **Start this plan** through sign-up and **Copy share link** on the library preview. A copy started from it shows "Started from @creator's plan", from a column clients cannot write. Mobile opens the link in the plan library preview. Free. Not built: a verified-creator badge. Pre-deploy: the CISO / Security Analyst review and `terraform apply` in [training.md](../features/training.md#train-with-me--public-plan-share-page).
+
 ### Route art (#1273 item 6)
 
 ✓ **Shipped on web and mobile.** Draw a shape on the route builder map, have it matched to real roads and paths, and see how close the match is to the drawing; a match under 60 % is refused rather than saved as a different shape. Free. Saved art reaches the watches like any route. See [features § Full-screen route builder](features.md#full-screen-route-builder-web) and [decisions § 2263](../architecture/decisions.md).

@@ -9,9 +9,10 @@
 import type { YearInRunningRecap } from '../runs/recap';
 import { OG_CARD_DARK } from './og_card_palette';
 import { escapeXml } from '../util/html_escape';
+import { DEFAULT_SITE_URL } from '../core/site_url';
 import { recapCardLayout, recapCellOrigin, type RecapCardAspect } from './recap_card_layout';
 
-const SITE = 'threkir.com';
+const SITE = new URL(DEFAULT_SITE_URL).host;
 
 const BG = OG_CARD_DARK.bg;
 const BRAND = OG_CARD_DARK.brand;

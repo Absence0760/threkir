@@ -11,6 +11,7 @@ import {
 	planRouteBatches,
 	polylineLengthM,
 	prepareStroke,
+	routeArtBatchPath,
 	sampleAlong,
 	sliceAtAnchors,
 	stitchPolylines,
@@ -157,6 +158,20 @@ test('planRouteBatches shares each seam point and caps every call', () => {
 	]);
 	assert.deepEqual(planRouteBatches(1), []);
 	assert.deepEqual(planRouteBatches(5, 1), []);
+});
+
+test('routeArtBatchPath names every point and gives each a radius', () => {
+	assert.equal(
+		routeArtBatchPath(
+			[
+				[-0.1, 51.5],
+				[-0.0991, 51.5007],
+			],
+			'foot',
+			150,
+		),
+		'/route/v1/foot/-0.1,51.5;-0.0991,51.5007?overview=full&geometries=geojson&radiuses=150;150',
+	);
 });
 
 test('stitchPolylines drops a duplicated seam point only', () => {

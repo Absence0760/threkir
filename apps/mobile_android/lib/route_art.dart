@@ -48,6 +48,10 @@ const double kRouteArtToleranceMaxM = 120;
 const int kRouteArtMinScore = 60;
 const int kRouteArtCloseScore = 85;
 
+/// How far each drawn point may reach for a way, then the one retry's reach.
+const int kRouteArtSnapRadiusM = 150;
+const int kRouteArtWideSnapRadiusM = 400;
+
 /// Draggable pins left on a matched drawing.
 const double kRouteArtAnchorSpacingM = 500;
 const int kRouteArtMaxAnchors = 12;
@@ -212,6 +216,19 @@ List<RouteBatch> planRouteBatches(
     start = end;
   }
   return out;
+}
+
+/// The OSRM-shaped path for one call: every point is a waypoint the route
+/// must pass, each allowed [radiusM] to find a way.
+String routeArtBatchPath(
+  List<List<double>> points,
+  String profile,
+  int radiusM,
+) {
+  final coords = points.map((p) => '${p[0]},${p[1]}').join(';');
+  final radiuses = points.map((_) => '$radiusM').join(';');
+  return '/route/v1/$profile/$coords'
+      '?overview=full&geometries=geojson&radiuses=$radiuses';
 }
 
 /// Join per-call polylines, dropping a seam point the previous call ended on.

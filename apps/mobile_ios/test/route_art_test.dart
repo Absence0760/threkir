@@ -150,6 +150,17 @@ void main() {
     expect(planRouteBatches(5, 1), isEmpty);
   });
 
+  test('routeArtBatchPath names every point and gives each a radius', () {
+    expect(
+      routeArtBatchPath(const [
+        [-0.1, 51.5],
+        [-0.0991, 51.5007],
+      ], 'foot', 150),
+      '/route/v1/foot/-0.1,51.5;-0.0991,51.5007'
+      '?overview=full&geometries=geojson&radiuses=150;150',
+    );
+  });
+
   test('stitchPolylines drops a duplicated seam point only', () {
     final out = stitchPolylines(const [
       [

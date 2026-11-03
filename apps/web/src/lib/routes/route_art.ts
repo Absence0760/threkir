@@ -41,6 +41,9 @@ export const ROUTE_ART_TOLERANCE_MAX_M = 120;
 /** Below this the match is refused rather than saved as a different shape. */
 export const ROUTE_ART_MIN_SCORE = 60;
 export const ROUTE_ART_CLOSE_SCORE = 85;
+/** How far each drawn point may reach for a way, then the one retry's reach. */
+export const ROUTE_ART_SNAP_RADIUS_M = 150;
+export const ROUTE_ART_WIDE_SNAP_RADIUS_M = 400;
 /** Draggable pins left on a matched drawing. */
 export const ROUTE_ART_ANCHOR_SPACING_M = 500;
 export const ROUTE_ART_MAX_ANCHORS = 12;
@@ -160,6 +163,16 @@ export function planRouteBatches(
 		start = end;
 	}
 	return out;
+}
+
+/**
+ * The OSRM-shaped path for one call: every point is a waypoint the route must
+ * pass, each allowed `radiusM` to find a way.
+ */
+export function routeArtBatchPath(points: LngLat[], profile: 'foot' | 'car', radiusM: number): string {
+	const coords = points.map(([lng, lat]) => `${lng},${lat}`).join(';');
+	const radiuses = points.map(() => String(radiusM)).join(';');
+	return `/route/v1/${profile}/${coords}?overview=full&geometries=geojson&radiuses=${radiuses}`;
 }
 
 /** Join per-call polylines, dropping a seam point the previous call ended on. */

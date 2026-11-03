@@ -288,6 +288,8 @@ Controls panel (left sidebar):
 
 Drag-to-reshape: users can drag any point on the route polyline to redirect it, adding an implicit waypoint.
 
+Draw a shape (route art, #1273 item 6): with "Draw a shape" on, a drag on the map draws a freehand line — a heart, a letter, a logo — instead of panning. On release the stroke is simplified, densified and matched to roads and paths in batches inside the OSRM proxy's limits, and the sidebar shows how closely the result follows the drawing ("Matches your drawing: 87 % · Close match"). A match under 60 % is refused with that score rather than saved as a different shape. A kept drawing becomes the route with a few draggable pins, and dragging one re-routes only the pieces beside it. Placing points by click is unchanged with the toggle off. See [decisions § 2263](../architecture/decisions.md).
+
 Saved routes appear immediately in the mobile apps on next open.
 
 **Done when:**
@@ -368,6 +370,8 @@ A simplified version of the web route builder, optimised for touch:
 - Save to library or export as GPX
 
 Gesture UX: pinch to zoom, long-press to undo last waypoint, double-tap to finish.
+
+Draw a shape: the gesture button beside the mode chips turns one-finger drags into drawing (turn it off to pan again). The stroke is matched to roads and paths with the same shared helpers as web (`route_art.dart`), and a card above the controls shows the score and verdict; a match under 60 % is refused with a banner naming the score.
 
 **Done when:**
 - User can plan a 5km loop in under 3 minutes on a phone

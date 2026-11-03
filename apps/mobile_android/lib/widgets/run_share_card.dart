@@ -153,9 +153,19 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
       if (picked == null) return;
       final file = File(picked.path);
       // Decode before showing it, so a capture straight after the pick never
-      // rasterises the photo slot empty.
+      // rasterises the photo slot empty. precacheImage completes normally on
+      // a decode failure and only reports it, so the failure is caught here
+      // and thrown: an undecodable pick must take the banner path, not leave
+      // a blank photo the runner can share.
       if (!mounted) return;
-      await precacheImage(FileImage(file), context);
+      Object? decodeError;
+      await precacheImage(
+        FileImage(file),
+        context,
+        onError: (e, _) => decodeError = e,
+      );
+      final failure = decodeError;
+      if (failure != null) throw failure;
       if (!mounted) return;
       setState(() => _photo = file);
     } catch (e) {
@@ -302,103 +312,108 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
             borderRadius: BorderRadius.circular(20),
           ),
           padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(l10n.shareCardRunTitle, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 12),
-              ChoiceChipRow<RunShareStyle>(
-                alignment: WrapAlignment.center,
-                options: [
-                  ChoiceChipOption(
-                    value: RunShareStyle.card,
-                    label: l10n.shareCardStyleCard,
-                    icon: Icons.map_outlined,
-                  ),
-                  ChoiceChipOption(
-                    value: RunShareStyle.photo,
-                    label: l10n.shareCardStylePhoto,
-                    icon: Icons.photo_outlined,
-                  ),
-                  ChoiceChipOption(
-                    value: RunShareStyle.sticker,
-                    label: l10n.shareCardStyleSticker,
-                    icon: Icons.auto_awesome_motion_outlined,
-                  ),
-                ],
-                selected: _style,
-                onChanged: _capturing ? null : _selectStyle,
-              ),
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: AspectRatio(
-                  aspectRatio: 4 / 5,
-                  // The sticker is transparent, so its preview sits on a
-                  // checkerboard OUTSIDE the boundary: the PNG keeps its alpha.
-                  child: _style == RunShareStyle.sticker
-                      ? CustomPaint(
-                          painter: const _CheckerboardPainter(),
-                          child: boundary,
-                        )
-                      : boundary,
+          // Scrolls rather than overflowing on a short phone or at a large
+          // text scale: the preview, style row, hint and buttons outgrow
+          // 640 dp together.
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(l10n.shareCardRunTitle, style: theme.textTheme.titleMedium),
+                const SizedBox(height: 12),
+                ChoiceChipRow<RunShareStyle>(
+                  alignment: WrapAlignment.center,
+                  options: [
+                    ChoiceChipOption(
+                      value: RunShareStyle.card,
+                      label: l10n.shareCardStyleCard,
+                      icon: Icons.map_outlined,
+                    ),
+                    ChoiceChipOption(
+                      value: RunShareStyle.photo,
+                      label: l10n.shareCardStylePhoto,
+                      icon: Icons.photo_outlined,
+                    ),
+                    ChoiceChipOption(
+                      value: RunShareStyle.sticker,
+                      label: l10n.shareCardStyleSticker,
+                      icon: Icons.auto_awesome_motion_outlined,
+                    ),
+                  ],
+                  selected: _style,
+                  onChanged: _capturing ? null : _selectStyle,
                 ),
-              ),
-              if (_style == RunShareStyle.photo && _photo != null)
-                TextButton.icon(
-                  onPressed: _capturing || _picking ? null : _pickPhoto,
-                  icon: const Icon(Icons.swap_horiz),
-                  label: Text(l10n.shareCardChangePhoto),
-                ),
-              if (_style == RunShareStyle.sticker)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    l10n.shareCardStickerHint,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: AspectRatio(
+                    aspectRatio: 4 / 5,
+                    // The sticker is transparent, so its preview sits on a
+                    // checkerboard OUTSIDE the boundary: the PNG keeps its alpha.
+                    child: CustomPaint(
+                      painter: _style == RunShareStyle.sticker
+                          ? const _CheckerboardPainter()
+                          : null,
+                      child: boundary,
                     ),
                   ),
                 ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: PopupMenuButton<String>(
-                      onSelected: _capturing ? null : _shareFile,
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(value: 'gpx', child: Text('GPX')),
-                        PopupMenuItem(value: 'tcx', child: Text('TCX')),
-                        PopupMenuItem(value: 'fit', child: Text('FIT')),
-                      ],
-                      child: OutlinedButton.icon(
-                        onPressed: _capturing ? null : () {},
-                        icon: const Icon(Icons.route),
-                        label: Text(l10n.shareCardExport),
+                if (_style == RunShareStyle.photo && _photo != null)
+                  TextButton.icon(
+                    onPressed: _capturing || _picking ? null : _pickPhoto,
+                    icon: const Icon(Icons.swap_horiz),
+                    label: Text(l10n.shareCardChangePhoto),
+                  ),
+                if (_style == RunShareStyle.sticker)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      l10n.shareCardStickerHint,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: _canShareImage ? _shareImage : null,
-                      icon: _capturing
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.image_outlined),
-                      label: Text(l10n.shareCardImage),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: PopupMenuButton<String>(
+                        onSelected: _capturing ? null : _shareFile,
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(value: 'gpx', child: Text('GPX')),
+                          PopupMenuItem(value: 'tcx', child: Text('TCX')),
+                          PopupMenuItem(value: 'fit', child: Text('FIT')),
+                        ],
+                        child: OutlinedButton.icon(
+                          onPressed: _capturing ? null : () {},
+                          icon: const Icon(Icons.route),
+                          label: Text(l10n.shareCardExport),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _canShareImage ? _shareImage : null,
+                        icon: _capturing
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.image_outlined),
+                        label: Text(l10n.shareCardImage),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -860,14 +875,17 @@ class _OverlayStat extends StatelessWidget {
       crossAxisAlignment: alignment,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          stat.label.toUpperCase(),
-          maxLines: 1,
-          style: text.labelSmall?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1.2,
-            shadows: _overlayShadows,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            stat.label.toUpperCase(),
+            maxLines: 1,
+            style: text.labelSmall?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.2,
+              shadows: _overlayShadows,
+            ),
           ),
         ),
         FittedBox(

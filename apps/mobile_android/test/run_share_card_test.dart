@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:core_models/core_models.dart';
@@ -11,6 +12,8 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/share_sheet.dart' show XFile;
 import '../lib/widgets/run_share_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'pump_until.dart';
 
 Run _run({
   double distanceMetres = 5000,
@@ -493,6 +496,32 @@ void main() {
       await tester.tap(find.text('Choose a photo'));
       await tester.pumpAndSettle();
       expect(picks, 2);
+    });
+
+    testWidgets(
+        'a photo that cannot be decoded shows the error and stays unshareable',
+        (tester) async {
+      // precacheImage completes normally on a decode failure; the sheet has to
+      // catch it itself or it shows a blank photo the runner can share.
+      late File bad;
+      await tester.runAsync(() async {
+        final dir = await Directory.systemTemp.createTemp('share_photo');
+        bad = File('${dir.path}/bad.jpg');
+        await bad.writeAsBytes(const [1, 2, 3, 4, 5]);
+      });
+      addTearDown(() => bad.parent.deleteSync(recursive: true));
+
+      await openSheet(tester, pick: () async => XFile(bad.path));
+      await tester.tap(find.text('Photo'));
+      await pumpUntil(
+        tester,
+        () => find.text('Could not open that photo').evaluate().isNotEmpty,
+        describe: 'the photo-error banner',
+      );
+      expect(find.byType(RunPhotoShareCard), findsNothing);
+      expect(shareImageButton(tester).enabled, isFalse);
+      // Let the banner's dismiss timer run out so none is left pending.
+      await tester.pump(const Duration(seconds: 5));
     });
 
     testWidgets('choosing Sticker shows the transparent card and its hint',

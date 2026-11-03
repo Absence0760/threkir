@@ -355,37 +355,60 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                   fontWeight: FontWeight.w700,
                 )),
             const SizedBox(height: 4),
-            Text(
-                isRace && w.raceName != null
-                    ? w.raceName!
-                    : workoutKindLabel(l10n, kind),
-                key: const Key('workoutDetailHeading'),
-                style: theme.textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w700)),
+            Semantics(
+              header: true,
+              child: Text(
+                  isRace && w.raceName != null
+                      ? w.raceName!
+                      : workoutKindLabel(l10n, kind),
+                  key: const Key('workoutDetailHeading'),
+                  style: theme.textTheme.headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+            ),
             const SizedBox(height: 4),
             Text(_tagline(l10n, kind, structure),
                 style: theme.textTheme.bodyMedium
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
             if (walkRun != null) ...[
               const SizedBox(height: 12),
-              _label(theme, l10n.workoutMetricSession),
-              Text(formatWalkRunTotal(l10n, walkRun, (m) => fmtOverrun(m.toDouble())),
-                  key: const Key('walkRunTotal'),
-                  style: theme.textTheme.headlineMedium
-                      ?.copyWith(fontWeight: FontWeight.w700)),
-              Text(formatWalkRunPattern(l10n, walkRun, (m) => fmtOverrun(m.toDouble())),
-                  key: const Key('walkRunPattern'),
-                  style: theme.textTheme.bodyMedium),
+              MergeSemantics(
+                key: const Key('workoutDetailSessionFigure'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _label(theme, l10n.workoutMetricSession),
+                    Text(
+                        formatWalkRunTotal(
+                            l10n, walkRun, (m) => fmtOverrun(m.toDouble())),
+                        key: const Key('walkRunTotal'),
+                        style: theme.textTheme.headlineMedium
+                            ?.copyWith(fontWeight: FontWeight.w700)),
+                    Text(
+                        formatWalkRunPattern(
+                            l10n, walkRun, (m) => fmtOverrun(m.toDouble())),
+                        key: const Key('walkRunPattern'),
+                        style: theme.textTheme.bodyMedium),
+                  ],
+                ),
+              ),
             ] else if (hasPace) ...[
               const SizedBox(height: 12),
-              _label(theme, l10n.workoutMetricTargetPace),
-              Text(
-                w.targetPaceEndSecPerKm != null &&
-                        w.targetPaceEndSecPerKm != w.targetPaceSecPerKm
-                    ? '${fmtPace(w.targetPaceSecPerKm)} → ${fmtPace(w.targetPaceEndSecPerKm)}'
-                    : fmtPace(w.targetPaceSecPerKm),
-                style: theme.textTheme.headlineMedium
-                    ?.copyWith(fontWeight: FontWeight.w700),
+              MergeSemantics(
+                key: const Key('workoutDetailPaceFigure'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _label(theme, l10n.workoutMetricTargetPace),
+                    Text(
+                      w.targetPaceEndSecPerKm != null &&
+                              w.targetPaceEndSecPerKm != w.targetPaceSecPerKm
+                          ? '${fmtPace(w.targetPaceSecPerKm)} → ${fmtPace(w.targetPaceEndSecPerKm)}'
+                          : fmtPace(w.targetPaceSecPerKm),
+                      style: theme.textTheme.headlineMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
               ),
               if (w.targetPaceToleranceSec != null ||
                   (w.paceZone != null && w.paceZone!.trim().isNotEmpty))
@@ -417,7 +440,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 key: const Key('workoutDetailCoachEdited'),
                 children: [
                   Icon(Icons.sports,
-                      size: 16, color: theme.colorScheme.onSurfaceVariant),
+                      size: AppIconSize.inline,
+                      color: theme.colorScheme.onSurfaceVariant),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -606,8 +630,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     );
   }
 
+  // The caps are visual only: a screen reader is handed the label as written,
+  // so it never spells out an all-caps word letter by letter.
   Widget _label(ThemeData theme, String label) {
     return Text(label.toUpperCase(),
+        semanticsLabel: label,
         style: theme.textTheme.labelSmall?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
           letterSpacing: 0.6,
@@ -615,14 +642,16 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   Widget _metric(ThemeData theme, String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _label(theme, label),
-        Text(value,
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w700)),
-      ],
+    return MergeSemantics(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _label(theme, label),
+          Text(value,
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700)),
+        ],
+      ),
     );
   }
 
@@ -674,62 +703,65 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         {String? pace, String? recovery}) {
       rows.add(Padding(
         padding: const EdgeInsets.only(top: 10),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                width: 4,
-                decoration: BoxDecoration(
-                  color: _roleColor(theme, kind, role),
-                  borderRadius: BorderRadius.circular(AppRadius.xs),
+        child: MergeSemantics(
+          key: Key('workoutStep-${role.name}'),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  width: 4,
+                  decoration: BoxDecoration(
+                    color: _roleColor(theme, kind, role),
+                    borderRadius: BorderRadius.circular(AppRadius.xs),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 2,
-                  children: [
-                    TextLane(
-                      width: 90,
-                      child: Text(term,
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
-                          )),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(main,
-                            style: theme.textTheme.bodyMedium
-                                ?.copyWith(fontWeight: FontWeight.w700)),
-                        if (pace != null)
-                          Text(pace,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 2,
+                    children: [
+                      TextLane(
+                        width: 90,
+                        child: Text(term,
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w700,
+                            )),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(main,
+                              style: theme.textTheme.bodyMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700)),
+                          if (pace != null)
+                            Text(pace,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                )),
+                          if (recovery != null)
+                            Text.rich(
+                              key: const Key('workoutStepRecovery'),
+                              TextSpan(children: [
+                                TextSpan(
+                                    text: '${l10n.workoutStructRecovery}  ',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w700)),
+                                TextSpan(text: recovery),
+                              ]),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
-                              )),
-                        if (recovery != null)
-                          Text.rich(
-                            key: const Key('workoutStepRecovery'),
-                            TextSpan(children: [
-                              TextSpan(
-                                  text: '${l10n.workoutStructRecovery}  ',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w700)),
-                              TextSpan(text: recovery),
-                            ]),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+                              ),
                             ),
-                          ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ));

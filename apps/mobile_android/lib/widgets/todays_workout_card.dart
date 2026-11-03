@@ -1,6 +1,6 @@
 import 'package:core_models/core_models.dart' show PlanWorkoutRow;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppIconSize;
+import 'package:ui_kit/ui_kit.dart' show AppIconSize, AppRadius;
 
 import '../l10n/gen/app_localizations.dart';
 import '../overrun_format.dart';
@@ -136,7 +136,7 @@ class TodaysWorkoutCard extends StatelessWidget {
                             children: [
                               Icon(
                                 Icons.straighten,
-                                size: 14,
+                                size: AppIconSize.dense,
                                 color: theme.colorScheme.onPrimary,
                               ),
                               const SizedBox(width: 3),
@@ -158,7 +158,7 @@ class TodaysWorkoutCard extends StatelessWidget {
                             children: [
                               Icon(
                                 Icons.speed,
-                                size: 14,
+                                size: AppIconSize.dense,
                                 color: theme.colorScheme.onPrimary,
                               ),
                               const SizedBox(width: 3),
@@ -187,7 +187,7 @@ class TodaysWorkoutCard extends StatelessWidget {
 
     return Material(
       color: theme.colorScheme.primary,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppRadius.lg),
       clipBehavior: Clip.antiAlias,
       child: showStart
           ? Column(

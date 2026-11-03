@@ -737,10 +737,12 @@
 					{/if}
 				</div>
 				<div class="actions">
+					<!-- clip_route_for_viewer hands the owner the unclipped line, so only a non-owner gets the video export. -->
 					<CoursePreviewButton
 						points={previewPoints}
 						title={route.name}
 						climbNames={previewClimbNames}
+						videoSource={isOwner ? undefined : async () => ({ points: previewPoints })}
 					/>
 					<button class="btn btn-outline btn-sm" onclick={handleExportGpx}>GPX</button>
 					<button class="btn btn-outline btn-sm" onclick={handleExportKml}>KML</button>

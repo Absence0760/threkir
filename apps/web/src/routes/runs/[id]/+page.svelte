@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
@@ -1350,6 +1351,16 @@
 	let hasMapTrack = $derived(baseTrack.length >= 2);
 	const ownReplay = $derived(trackPreview(run?.track, run?.source));
 	const canReplay = $derived(hasPreviewableCourse(ownReplay.points));
+	/// The owner's video records the share card's line (`shareCardTrack`): the
+	/// track trimmed to their privacy zones, and nothing until those are known.
+	async function ownVideoSource(): Promise<{ points: PathPoint[]; noiseBandM?: number } | null> {
+		const zones = await loadOwnerZones();
+		if (zones === null || !run?.track) return null;
+		return trackPreview(shareCardTrack(run.track, zones), run.source);
+	}
+	/// `?video=1` is the phone's Video share style handing the export to the
+	/// browser (decisions § 2259); it opens the 3D preview, where the export is.
+	const videoRequested = $derived(page.url.searchParams.get('video') === '1');
 	/// A non-owner's replay flies the track RunShareView drew, which came
 	/// through clip-public-track: never a second, unclipped read.
 	let sharedReplay = $state<{ points: PathPoint[]; noiseBandM: number | undefined; title: string } | null>(null);
@@ -1663,6 +1674,7 @@
 						noiseBandM={sharedReplay.noiseBandM}
 						title={sharedReplay.title}
 						replay
+						videoSource={async () => sharedReplay}
 					/>
 				</div>
 			{/if}
@@ -2145,6 +2157,9 @@
 							noiseBandM={ownReplay.noiseBandM}
 							title={runTitle || formatDate(run.started_at)}
 							replay
+							videoSource={ownVideoSource}
+							videoSummary={`${formatDistance(run.distance_m)} · ${formatDuration(run.duration_s)}`}
+							autoOpen={videoRequested}
 						/>
 					</div>
 				{/if}

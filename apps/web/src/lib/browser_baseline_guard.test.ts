@@ -72,6 +72,20 @@ type Exception = {
 
 const EXCEPTIONS: Exception[] = [
 	{
+		file: 'src/lib/components/course_preview/flyover_video_export.ts',
+		probe: 'navigator.share',
+		count: 1,
+		reason: 'optional-capability',
+		why: 'the flyover video goes to the OS share sheet where the platform offers file sharing and to a download where it does not; desktop browsers well above the floor lack it (decisions § 2259).',
+	},
+	{
+		file: 'src/lib/components/course_preview/flyover_video_export.ts',
+		probe: 'HTMLCanvasElement.prototype.captureStream',
+		count: 1,
+		reason: 'optional-capability',
+		why: 'the MediaRecorder fallback needs a canvas stream, which some embedded webviews withhold at any version; without it and without WebCodecs H.264 the export is not offered (decisions § 2259).',
+	},
+	{
 		file: 'src/lib/util/clip_text.ts',
 		probe: 'Intl.Segmenter',
 		count: 1,

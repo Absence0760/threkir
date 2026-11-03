@@ -27,9 +27,9 @@ test('no encoder at all, or no canvas stream for the recorder, offers nothing', 
 	assert.equal(chooseVideoEncoder({ webcodecs: ['vp09.00.10.08'], recorder: [], canvasStream: true }), null);
 });
 
-test('the WebCodecs config asks for AVCC framing so the muxer gets an avcC record', () => {
+test('the WebCodecs config leaves the bitstream at its AVCC default, which the muxer reads', () => {
 	const c = webcodecsConfig('avc1.640028', 1080, 1920, 30);
-	assert.equal(c.avc.format, 'avc');
+	assert.ok(!('avc' in c));
 	assert.deepEqual([c.width, c.height, c.framerate], [1080, 1920, 30]);
 });
 
@@ -37,5 +37,5 @@ test('file names keep letters in any script and drop everything else', () => {
 	assert.equal(videoFileName('Saturday long run: 30 km!', 'mp4'), 'threkir-saturday-long-run-30-km.mp4');
 	assert.equal(videoFileName('Café côte', 'webm'), 'threkir-café-côte.webm');
 	assert.equal(videoFileName('朝ラン', 'mp4'), 'threkir-朝ラン.mp4');
-	assert.equal(videoFileName('../../', 'mp4'), 'threkir-flyover.mp4');
+	assert.equal(videoFileName('../../', 'mp4'), 'threkir-flyover-video.mp4');
 });

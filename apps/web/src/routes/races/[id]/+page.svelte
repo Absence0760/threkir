@@ -34,6 +34,7 @@
 	import { buildRaceShareCanonical } from '#lib/share/share_race_meta.ts';
 	import RaceImportDialog from '#lib/components/RaceImportDialog.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { safeHref } from '#lib/util/html_escape.ts';
 	import { safeImageSrc } from '#lib/util/safe_image_src.ts';
 	import type { Route, RouteMarker } from '#lib/types.ts';
@@ -369,7 +370,13 @@
 						<span class="course-name">{courseRoute.name}</span>
 					</a>
 					<div class="actions">
-						<CoursePreviewButton points={coursePoints} title={race.name} climbNames={courseClimbNames} />
+						<!-- clip_route_for_viewer hands the owner the unclipped line, so only a non-owner gets the video export. -->
+						<CoursePreviewButton
+							points={coursePoints}
+							title={race.name}
+							climbNames={courseClimbNames}
+							videoSource={courseRoute.user_id === auth.user?.id ? undefined : async () => ({ points: coursePoints })}
+						/>
 					</div>
 				{/if}
 			</section>

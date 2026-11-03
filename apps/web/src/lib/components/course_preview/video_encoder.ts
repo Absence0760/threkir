@@ -42,15 +42,11 @@ export function chooseVideoEncoder(probe: EncoderProbe): VideoEncoderPlan | null
 	return { kind: 'mediarecorder', mimeType: type, ext: type.startsWith('video/mp4') ? 'mp4' : 'webm' };
 }
 
+/// No `avc.format`: its default is AVCC framing with the `avcC` record in
+/// `decoderConfig.description`, which is what the muxer consumes; Annex B
+/// would have to be reframed first.
 export function webcodecsConfig(codec: string, width: number, height: number, fps: number) {
-	return {
-		codec,
-		width,
-		height,
-		bitrate: VIDEO_BITRATE,
-		framerate: fps,
-		avc: { format: 'avc' as const },
-	};
+	return { codec, width, height, bitrate: VIDEO_BITRATE, framerate: fps };
 }
 
 /// A file name the OS share sheet and a download both accept: the title's
@@ -62,5 +58,5 @@ export function videoFileName(title: string, ext: string): string {
 		.replace(/^-+|-+$/g, '')
 		.slice(0, 60)
 		.toLowerCase();
-	return `threkir-${stem || 'flyover'}.${ext}`;
+	return stem ? `threkir-${stem}.${ext}` : `threkir-flyover-video.${ext}`;
 }

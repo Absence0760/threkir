@@ -1,5 +1,4 @@
 <script lang="ts">
-	import type * as GeoJSON from 'geojson';
 	import { untrack } from 'svelte';
 	import Modal from './Modal.svelte';
 	import { m, currentLocale } from '#lib/i18n/store.svelte.ts';
@@ -15,14 +14,7 @@
 		basemapIsDarkFromEnv,
 		mapStyleUrlFromEnv as mapStyleUrl,
 	} from '#lib/routes/map-style.svelte.ts';
-	import {
-		mapAccentColour,
-		mapClimbLine,
-		mapLabelHalo,
-		mapLabelInk,
-		mapOverlayOutline,
-		mapTrackLine,
-	} from '#lib/routes/basemap_contrast.ts';
+	import { mapAccentColour, mapOverlayOutline } from '#lib/routes/basemap_contrast.ts';
 	import { watchMapResize } from '#lib/routes/map_resize.ts';
 	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
 	import {
@@ -34,12 +26,14 @@
 		pointAtDistance,
 		type PathPoint,
 	} from '#lib/routes/flyover_path.ts';
-	import { detectClimbs, elevationStrip } from '#lib/routes/course_climbs.ts';
+	import { detectClimbs, elevationStrip, type Climb } from '#lib/routes/course_climbs.ts';
 	import {
 		FLYOVER_PITCH,
 		resolveTerrainSource,
 		TERRAIN_EXAGGERATION,
+		type TerrainSource,
 	} from '#lib/routes/terrain_source.ts';
+	import { flyoverVideoMaptilerKey } from '#lib/routes/flyover_video_flag.ts';
 	import {
 		detectFlyoverCapability,
 		flyoverMode,
@@ -47,7 +41,10 @@
 	} from '#lib/routes/flyover_capability.ts';
 	import { play, seek, tick, type Playback } from './course_preview/playback.ts';
 	import { distanceAtStripOffset, stripGeometry, stripX } from './course_preview/strip_geometry.ts';
-	import { sliceCourse } from './course_preview/course_slice.ts';
+	import { addCourseLayers } from './course_preview/course_layers.ts';
+	import { chooseVideoEncoder, videoFileName, type VideoEncoderPlan } from './course_preview/video_encoder.ts';
+	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { DEFAULT_SITE_URL } from '#lib/core/site_url.ts';
 
 	interface Props {
 		open: boolean;
@@ -58,10 +55,19 @@
 		/// Elevation noise band for climb detection; a recorded run passes its
 		/// altitude source's `minDeltaM`. Omitted, climbs use the default band.
 		noiseBandM?: number;
+		/// The line the video export records. It leaves the page, so it must be
+		/// a privacy-clipped source (`shareCardTrack`, `clip-public-track`,
+		/// `clip_route_for_viewer`); null means the clip cannot be made yet and
+		/// the export refuses. Omitted, the dialog offers no export.
+		videoSource?: () => Promise<{ points: PathPoint[]; noiseBandM?: number } | null>;
+		/// The end card's headline (the run's own distance and time, formatted
+		/// as the page formats them); the drawn line's length otherwise.
+		videoSummary?: string;
 		onclose: () => void;
 	}
 
-	let { open, points, unit, title, climbNames, noiseBandM, onclose }: Props = $props();
+	let { open, points, unit, title, climbNames, noiseBandM, videoSource, videoSummary, onclose }: Props =
+		$props();
 
 	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
 	const PUBLIC_TERRAIN_URL = PUBLIC_TERRAIN_URL_ENV ?? '';
@@ -108,6 +114,18 @@
 	let lastTs: number | null = null;
 
 	const here = $derived(hasPath ? pointAtDistance(path, playback.dM) : null);
+
+	// The export never uses a MapTiler key until the operator has confirmed
+	// the plan allows MapTiler in published video (decisions § 2259).
+	const videoKey = flyoverVideoMaptilerKey(PUBLIC_MAPTILER_KEY);
+	type VideoState =
+		| { step: 'idle' }
+		| { step: 'rendering'; progress: number }
+		| { step: 'ready'; blob: Blob; name: string };
+	let encoderPlan = $state<VideoEncoderPlan | null>(null);
+	let video = $state<VideoState>({ step: 'idle' });
+	let videoAbort: AbortController | null = null;
+	const canExportVideo = $derived(!!videoSource && mode !== 'flat2d' && !mapFailed && encoderPlan !== null);
 	const cursorX = $derived(stripX(playback.dM, path.totalM, STRIP_W));
 
 	$effect(() => {
@@ -129,6 +147,7 @@
 	function initMap(container: HTMLDivElement) {
 		if (map || !hasPath) return;
 		mode = flyoverMode(detectFlyoverCapability(window));
+		if (videoSource && mode !== 'flat2d') void probeEncoder();
 		terrainFailed = false;
 		mapFailed = false;
 		playback = { dM: 0, playing: false };
@@ -160,7 +179,7 @@
 		});
 		created.on('load', () => {
 			addTerrain(created);
-			addOverlays(created);
+			addCourseLayers(created, { path, climbs, markers, darkBasemap });
 			frameCourse(created);
 			renderPosition();
 			if (mode === 'flight') {
@@ -171,6 +190,7 @@
 	}
 
 	function teardown() {
+		cancelVideo();
 		stopLoop();
 		stopResizeWatch?.();
 		stopResizeWatch = null;
@@ -228,91 +248,6 @@
 			map?.setTerrain(null);
 		} catch (e) {
 			console.warn('course preview: could not clear terrain', e);
-		}
-	}
-
-	function addOverlays(target: maplibregl.Map) {
-		const coords = path.points.map((p): [number, number] => [p.lng, p.lat]);
-		try {
-			target.addSource('course-line', {
-				type: 'geojson',
-				data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } },
-			});
-			target.addLayer({
-				id: 'course-line-casing',
-				type: 'line',
-				source: 'course-line',
-				paint: { 'line-color': mapOverlayOutline(darkBasemap), 'line-width': 8, 'line-opacity': 0.3 },
-				layout: { 'line-join': 'round', 'line-cap': 'round' },
-			});
-			target.addLayer({
-				id: 'course-line',
-				type: 'line',
-				source: 'course-line',
-				paint: { 'line-color': mapTrackLine(darkBasemap), 'line-width': 4 },
-				layout: { 'line-join': 'round', 'line-cap': 'round' },
-			});
-
-			const climbLines: GeoJSON.FeatureCollection<GeoJSON.LineString> = {
-				type: 'FeatureCollection',
-				features: climbs
-					.map((c) => sliceCourse(path, c.startM, c.endM))
-					.filter((line) => line.length >= 2)
-					.map((line) => ({
-						type: 'Feature',
-						properties: {},
-						geometry: { type: 'LineString', coordinates: line },
-					})),
-			};
-			if (climbLines.features.length > 0) {
-				target.addSource('course-climbs', { type: 'geojson', data: climbLines });
-				target.addLayer({
-					id: 'course-climbs',
-					type: 'line',
-					source: 'course-climbs',
-					paint: { 'line-color': mapClimbLine(darkBasemap), 'line-width': 6 },
-					layout: { 'line-join': 'round', 'line-cap': 'round' },
-				});
-			}
-
-			if (markers.length > 0) {
-				target.addSource('course-markers', {
-					type: 'geojson',
-					data: {
-						type: 'FeatureCollection',
-						features: markers.map((mk) => ({
-							type: 'Feature',
-							properties: { label: String(mk.label) },
-							geometry: { type: 'Point', coordinates: [mk.lng, mk.lat] },
-						})),
-					},
-				});
-				target.addLayer({
-					id: 'course-marker-bg',
-					type: 'circle',
-					source: 'course-markers',
-					paint: {
-						'circle-radius': 11,
-						'circle-color': mapLabelHalo(darkBasemap),
-						'circle-stroke-color': mapTrackLine(darkBasemap),
-						'circle-stroke-width': 2,
-					},
-				});
-				target.addLayer({
-					id: 'course-marker-text',
-					type: 'symbol',
-					source: 'course-markers',
-					layout: {
-						'text-field': ['get', 'label'],
-						'text-size': 11,
-						'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-						'text-allow-overlap': true,
-					},
-					paint: { 'text-color': mapLabelInk(darkBasemap) },
-				});
-			}
-		} catch (e) {
-			console.warn('course preview: overlay failed', e);
 		}
 	}
 
@@ -401,8 +336,8 @@
 		});
 	}
 
-	function climbLabel(i: number): string {
-		const c = climbs[i];
+	function climbLabel(i: number, list: readonly Climb[] = climbs): string {
+		const c = list[i];
 		return m('coursePreview.climbSummary', {
 			name: c.name ?? m('coursePreview.climbUnnamed', { n: i + 1 }),
 			gain: formatElevation(c.gainM),
@@ -410,8 +345,106 @@
 		});
 	}
 
+	async function probeEncoder() {
+		try {
+			const { probeVideoEncoders } = await import('./course_preview/flyover_video_export.ts');
+			encoderPlan = chooseVideoEncoder(await probeVideoEncoders());
+		} catch (e) {
+			console.warn('course preview: no video encoder', e);
+			encoderPlan = null;
+		}
+	}
+
+	function videoTerrain(): TerrainSource | null {
+		if (mode === 'flat2d' || terrainFailed) return null;
+		try {
+			return resolveTerrainSource({ maptilerKey: videoKey, override: PUBLIC_TERRAIN_URL });
+		} catch (e) {
+			console.warn('course preview: video terrain unavailable', e);
+			return null;
+		}
+	}
+
+	async function exportVideo() {
+		const plan = encoderPlan;
+		if (!plan || !videoSource || video.step === 'rendering') return;
+		pause();
+		const abort = new AbortController();
+		videoAbort = abort;
+		video = { step: 'rendering', progress: 0 };
+		try {
+			const source = await videoSource();
+			if (!source) {
+				showToast(m('coursePreview.videoZonesUnknown'), 'error');
+				video = { step: 'idle' };
+				return;
+			}
+			const vPath = buildFlyoverPath(source.points);
+			if (vPath.points.length < 2 || !(vPath.totalM > 0)) {
+				showToast(m('coursePreview.videoNoLine'), 'error');
+				video = { step: 'idle' };
+				return;
+			}
+			const vClimbs = detectClimbs(vPath, { names: climbNames, noiseBandM: source.noiseBandM ?? noiseBandM });
+			const { renderFlyoverVideo } = await import('./course_preview/flyover_video_export.ts');
+			const blob = await renderFlyoverVideo({
+				path: vPath,
+				unit,
+				climbs: vClimbs,
+				strip: elevationStrip(vPath, STRIP_SAMPLES),
+				maptilerKey: videoKey,
+				terrain: videoTerrain(),
+				text: {
+					title,
+					distanceAt: (dM) => formatDistance(dM),
+					ofTotal: m('coursePreview.videoOfTotal', { total: formatDistance(vPath.totalM) }),
+					elevationAt: (ele) => formatElevation(ele),
+					climbLabel: (i) => climbLabel(i, vClimbs),
+					endLines: [videoSummary ?? formatDistance(vPath.totalM), title],
+					url: new URL(DEFAULT_SITE_URL).host,
+				},
+				plan,
+				signal: abort.signal,
+				onprogress: (f) => {
+					if (videoAbort === abort) video = { step: 'rendering', progress: f };
+				},
+			});
+			if (videoAbort !== abort) return;
+			video = { step: 'ready', blob, name: videoFileName(title, plan.ext) };
+		} catch (e) {
+			if (videoAbort !== abort) return;
+			video = { step: 'idle' };
+			if ((e as { name?: string })?.name === 'AbortError') return;
+			console.error('course preview: video export failed', e);
+			showToast(m('coursePreview.videoFailed'), 'error');
+		} finally {
+			if (videoAbort === abort) videoAbort = null;
+		}
+	}
+
+	function cancelVideo() {
+		videoAbort?.abort();
+		videoAbort = null;
+		video = { step: 'idle' };
+	}
+
+	async function saveVideo() {
+		if (video.step !== 'ready') return;
+		const { blob, name } = video;
+		try {
+			const { deliverVideo } = await import('./course_preview/flyover_video_export.ts');
+			const how = await deliverVideo(blob, name, title);
+			if (how === 'downloaded') showToast(m('coursePreview.videoSaved'), 'success');
+		} catch (e) {
+			if ((e as { name?: string })?.name === 'AbortError') return;
+			console.error('course preview: video share failed', e);
+			showToast(m('coursePreview.videoFailed'), 'error');
+		}
+	}
+
 	function handleClose() {
 		pause();
+		cancelVideo();
 		onclose();
 	}
 </script>
@@ -546,6 +579,40 @@
 						<span>{formatDistance(playback.dM)}</span>
 						{#if here?.ele != null}<span>{formatElevation(here.ele)}</span>{/if}
 					</p>
+					{#if canExportVideo}
+						{#if video.step === 'idle'}
+							<button
+								type="button"
+								class="btn btn-outline btn-sm preview-video"
+								data-testid="course-preview-export-video"
+								onclick={exportVideo}
+							>
+								<span class="material-symbols" aria-hidden="true">movie</span>
+								{m('coursePreview.exportVideo')}
+							</button>
+						{:else if video.step === 'rendering'}
+							<p class="preview-video-status" role="status" data-testid="course-preview-video-progress">
+								{m('coursePreview.videoRendering', { percent: Math.floor(video.progress * 100) })}
+							</p>
+							<button type="button" class="btn btn-outline btn-sm" onclick={cancelVideo}>
+								{m('coursePreview.videoCancel')}
+							</button>
+						{:else}
+							<p class="preview-video-status" role="status">{m('coursePreview.videoReady')}</p>
+							<button
+								type="button"
+								class="btn btn-primary btn-sm preview-video"
+								data-testid="course-preview-save-video"
+								onclick={saveVideo}
+							>
+								<span class="material-symbols" aria-hidden="true">ios_share</span>
+								{m('coursePreview.videoSave')}
+							</button>
+							<button type="button" class="btn btn-outline btn-sm" onclick={cancelVideo}>
+								{m('coursePreview.videoDismiss')}
+							</button>
+						{/if}
+					{/if}
 				</div>
 
 				{#if climbs.length > 0}
@@ -698,6 +765,17 @@
 		font-size: 0.9rem;
 		font-variant-numeric: tabular-nums;
 		color: var(--color-text);
+	}
+	.preview-video {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-xs);
+	}
+	.preview-video-status {
+		margin: 0;
+		font-size: 0.85rem;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-text-secondary);
 	}
 	.preview-climbs h3 {
 		margin: 0 0 var(--space-xs);

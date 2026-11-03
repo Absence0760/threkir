@@ -424,6 +424,28 @@ Price: **$9.99 / month** or **$79.99 / year** (33% less than twelve months; year
 
 ---
 
+### 3D course preview
+
+**Phase:** 3 | **Platform:** Web (mobile not started) | **Parity:** [see matrix](parity.md#builder-and-library) | **Issue:** #1270
+
+**Why:** Runners study a course before race day. Seeing where the hills sit, in 3D, answers "where will this hurt?" better than a flat map and a chart, and it pairs with the elevation profile and grade-adjusted pace the app already shows. The social "course flyover" videos film this view directly.
+
+**Spec:**
+
+- **Entry points:** "Preview in 3D" on `/routes/[id]`; "Replay in 3D" on `/runs/[id]` for the owner and for a non-owner who can read the run. The button shows only when the line has length to fly (`hasPreviewableCourse`). The dialog loads on the first click, so the page bundles don't carry the 3D engine.
+- **View:** the course on MapLibre terrain (about 1.5x exaggeration, pitch about 60), the camera following a smoothed bearing with a look-ahead point, at a constant ground speed with a speed control; play, pause and scrub. Whole-km or whole-mile markers in the viewer's unit, an elevation strip synced to the camera, and named climbs with each climb's **net height to crest** (foot to crest, the figure a split's elevation and the watch's climb page use) and average grade. That is not total ascent: a dip inside a climb is not counted twice.
+- **Privacy:** the preview flies only what the page already draws. A non-owner's route is the `fetchRouteById` clipped waypoints; a non-owner's run is the `clip-public-track` output `RunShareView` already fetched. Climb names come from the route's `climb` markers, placed by projecting each onto the flown line, so a marker inside a clipped-away stretch is left out.
+- **Degrade:** terrain loads only behind the map consent the 2D maps use. No WebGL2 or a slow device shows the flat map; `prefers-reduced-motion` shows the static 3D view without the flight.
+- **Free:** a view, not analysis, with no per-user cost.
+- **Not yet:** the race page (`/races/[id]`) — the public race view carries the course's summary but not its route id. Video export is out of scope.
+
+**Done when:**
+- A route with geometry shows "Preview in 3D", opens the dialog, and Esc closes it and returns focus to the button
+- A route without geometry shows no button
+- A non-owner's preview or replay never shows geometry the 2D map hides
+
+---
+
 ## AI Coach
 
 **Phase:** 3 (shipped) | **Platform:** Web | **Parity:** [see matrix](parity.md#ai-coach)

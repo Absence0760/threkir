@@ -2537,6 +2537,7 @@
 	$effect(() => {
 		const _mode = mode;
 		if (routeCoordinates.length > 0) {
+			clearArt();
 			routeCoordinates = [];
 			routeElevations = [];
 			updateStraightLine();

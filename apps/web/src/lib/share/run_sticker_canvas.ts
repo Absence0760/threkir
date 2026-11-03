@@ -1,0 +1,536 @@
+// The photo and sticker share images, drawn on a 2D canvas. Web's twin of
+// `RunStickerContent` / `RunStickerShareCard` / `RunPhotoShareCard` in
+// apps/mobile_android/lib/widgets/run_share_overlays.dart: the same fixed
+// logical canvases (decisions § 2250), the same four layouts at the same
+// sizes and spacing, rasterised to 1080 px across.
+//
+// Layout is a pure function over a text-measuring callback, so it is unit
+// tested without a canvas; `paintSticker` / `paintPhoto` only execute the ops
+// it returns. The photo is drawn onto the canvas rather than forwarded, which
+// re-encodes its pixels and leaves its EXIF, location included, behind
+// (decisions § 2248). The sticker's canvas is its own content's size, so the
+// PNG is cropped to what it draws and keeps its alpha.
+
+import type { TrackPoint } from '../types';
+import { projectTrack } from '../routes/track_projection';
+import { SHARE_STICKER_INKS, THREKIR_MARK_GRADIENT } from './og_card_palette';
+import type { RunShareStat } from './run_share_stats';
+import type { RunPhotoAspect, RunShareInk, RunStickerLayout } from './share_look';
+
+/// Every share image is rasterised to this many pixels across, so a story or
+/// a feed post is never upscaled, whatever screen made it.
+export const SHARE_EXPORT_WIDTH_PX = 1080;
+
+/// Padding round a sticker's content, inside its own canvas.
+export const STICKER_PAD = 16;
+
+/// The strip is one line, so it is laid out wide; every other layout stacks.
+export function stickerContentWidth(layout: RunStickerLayout): number {
+	return layout === 'strip' ? 560 : 320;
+}
+
+export function stickerCanvasWidth(layout: RunStickerLayout): number {
+	return stickerContentWidth(layout) + STICKER_PAD * 2;
+}
+
+export function photoCanvasSize(aspect: RunPhotoAspect): { w: number; h: number } {
+	return aspect === 'post' ? { w: 360, h: 450 } : { w: 360, h: 640 };
+}
+
+export const SHARE_FONT_STACK = "'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+
+export interface FontSpec {
+	size: number;
+	weight: number;
+	letterSpacing: number;
+}
+
+/// Width of `text` in logical pixels at `font`, letter spacing included.
+export type MeasureText = (text: string, font: FontSpec) => number;
+
+export type InkRole = 'text' | 'muted';
+
+export type DrawOp =
+	| {
+			kind: 'text';
+			text: string;
+			/// The run's horizontal centre, or its left edge for `align: 'left'`.
+			x: number;
+			/// The alphabetic baseline.
+			y: number;
+			font: FontSpec;
+			ink: InkRole;
+			/// Scale-down applied about (x, y) so a long value fits its column.
+			scale: number;
+			align: 'center' | 'left';
+	  }
+	| { kind: 'route'; x: number; y: number; size: number }
+	| { kind: 'divider'; x: number; y: number; w: number; h: number }
+	| { kind: 'mark'; x: number; y: number; size: number };
+
+export interface Laid {
+	ops: DrawOp[];
+	width: number;
+	height: number;
+}
+
+// The Material 3 type steps the mobile overlays take from the theme.
+const LABEL = { size: 12, weight: 700, letterSpacing: 1.6, lineHeight: 16 };
+const UNIT = { size: 14, weight: 700, letterSpacing: 0 };
+const BRAND = { size: 14, weight: 800, letterSpacing: 2.6 };
+const BRAND_MARK = 18;
+const STEP = { displayLarge: 57, displaySmall: 36, headlineMedium: 28, titleLarge: 22 } as const;
+
+function translate(op: DrawOp, dx: number, dy: number): DrawOp {
+	return { ...op, x: op.x + dx, y: op.y + dy };
+}
+
+/// A small uppercase label over a large value with its unit, centred in a
+/// column `width` wide; each line scales down rather than overflowing it.
+function figure(stat: RunShareStat, valueSize: number, width: number, measure: MeasureText): Laid {
+	const label = stat.label.toUpperCase();
+	const labelFont: FontSpec = { size: LABEL.size, weight: LABEL.weight, letterSpacing: LABEL.letterSpacing };
+	const labelScale = Math.min(1, width / Math.max(1, measure(label, labelFont)));
+
+	const valueFont: FontSpec = { size: valueSize, weight: 800, letterSpacing: -0.5 };
+	const valueW = measure(stat.value, valueFont);
+	const unitW = stat.unit ? measure(stat.unit, UNIT) : 0;
+	const rowW = valueW + (stat.unit ? 4 + unitW : 0);
+	const valueScale = Math.min(1, width / Math.max(1, rowW));
+
+	const cx = width / 2;
+	const labelH = LABEL.lineHeight * labelScale;
+	const valueH = valueSize * 1.05 * valueScale;
+	const ops: DrawOp[] = [
+		{
+			kind: 'text',
+			text: label,
+			x: cx,
+			y: labelH * 0.5 + LABEL.size * 0.36 * labelScale,
+			font: labelFont,
+			ink: 'muted',
+			scale: labelScale,
+			align: 'center',
+		},
+	];
+	const baseline = labelH + valueH * 0.5 + valueSize * 0.36 * valueScale;
+	const left = cx - (rowW * valueScale) / 2;
+	ops.push({ kind: 'text', text: stat.value, x: left, y: baseline, font: valueFont, ink: 'text', scale: valueScale, align: 'left' });
+	if (stat.unit) {
+		ops.push({
+			kind: 'text',
+			text: stat.unit,
+			x: left + (valueW + 4) * valueScale,
+			y: baseline,
+			font: UNIT,
+			ink: 'muted',
+			scale: valueScale,
+			align: 'left',
+		});
+	}
+	return { ops, width, height: labelH + valueH };
+}
+
+function brand(width: number, wordmark: string, measure: MeasureText): Laid {
+	const text = wordmark.toUpperCase();
+	const gap = BRAND_MARK * 0.45;
+	const total = BRAND_MARK + gap + measure(text, BRAND);
+	const left = (width - total) / 2;
+	return {
+		ops: [
+			{ kind: 'mark', x: left, y: 0, size: BRAND_MARK },
+			{
+				kind: 'text',
+				text,
+				x: left + BRAND_MARK + gap,
+				y: BRAND_MARK / 2 + BRAND.size * 0.36,
+				font: BRAND,
+				ink: 'text',
+				scale: 1,
+				align: 'left',
+			},
+		],
+		width,
+		height: BRAND_MARK,
+	};
+}
+
+/// Stats side by side in equal columns, bottoms aligned.
+function row(stats: RunShareStat[], valueSize: number, width: number, gap: number, measure: MeasureText): Laid {
+	const col = (width - gap * (stats.length - 1)) / stats.length;
+	const figs = stats.map((s) => figure(s, valueSize, col, measure));
+	const height = Math.max(...figs.map((f) => f.height));
+	const ops = figs.flatMap((f, i) => f.ops.map((op) => translate(op, i * (col + gap), height - f.height)));
+	return { ops, width, height };
+}
+
+/// One layout's stats, route and signature, `stickerContentWidth(layout)`
+/// wide and as tall as it draws, with no ground of its own.
+export function layoutStickerContent(
+	layout: RunStickerLayout,
+	stats: RunShareStat[],
+	hasRoute: boolean,
+	wordmark: string,
+	measure: MeasureText,
+): Laid {
+	const width = stickerContentWidth(layout);
+	const ops: DrawOp[] = [];
+	let y = 0;
+	const place = (laid: Laid, dx = 0) => {
+		ops.push(...laid.ops.map((op) => translate(op, dx, y)));
+		y += laid.height;
+	};
+	const route = (size: number, after: number) => {
+		ops.push({ kind: 'route', x: (width - size) / 2, y, size });
+		y += size + after;
+	};
+
+	switch (layout) {
+		case 'stack':
+			for (const stat of stats) {
+				place(figure(stat, STEP.displaySmall * 1.25, width, measure));
+				y += 14;
+			}
+			if (hasRoute) route(150, 16);
+			break;
+		case 'route':
+			if (hasRoute) route(width * 0.82, 14);
+			place(row(stats, STEP.headlineMedium, width, 12, measure));
+			y += 16;
+			break;
+		case 'strip': {
+			const divider = 2;
+			const margin = 10;
+			const gap = divider + margin * 2;
+			const r = row(stats, STEP.headlineMedium, width, gap, measure);
+			const h = Math.max(44, r.height);
+			const col = (width - gap * (stats.length - 1)) / stats.length;
+			// Centred rather than bottom-aligned: the strip is a Row with
+			// `crossAxisAlignment.center` on mobile.
+			ops.push(...r.ops.map((op) => translate(op, 0, y + (h - r.height) / 2)));
+			for (let i = 1; i < stats.length; i++) {
+				ops.push({ kind: 'divider', x: i * (col + gap) - margin - divider, y: y + (h - 44) / 2, w: divider, h: 44 });
+			}
+			y += h + 12;
+			break;
+		}
+		case 'hero': {
+			const [first, ...rest] = stats;
+			place(figure(first, STEP.displayLarge * 1.6, width, measure));
+			if (rest.length > 0) {
+				y += 10;
+				place(row(rest, STEP.titleLarge, width, 12, measure));
+			}
+			y += 16;
+			break;
+		}
+	}
+	place(brand(width, wordmark, measure));
+	return { ops, width, height: y };
+}
+
+/// The sticker's whole canvas: its content inset by STICKER_PAD on every side.
+export function layoutSticker(
+	layout: RunStickerLayout,
+	stats: RunShareStat[],
+	hasRoute: boolean,
+	wordmark: string,
+	measure: MeasureText,
+): Laid {
+	const content = layoutStickerContent(layout, stats, hasRoute, wordmark, measure);
+	return {
+		ops: content.ops.map((op) => translate(op, STICKER_PAD, STICKER_PAD)),
+		width: content.width + STICKER_PAD * 2,
+		height: content.height + STICKER_PAD * 2,
+	};
+}
+
+const TITLE = { size: STEP.titleLarge, weight: 800, letterSpacing: 0, lineHeight: 28 };
+
+/// `text` broken into at most `maxLines` lines no wider than `width`, the last
+/// one ellipsised when the text runs on.
+export function wrapLines(text: string, font: FontSpec, width: number, maxLines: number, measure: MeasureText): string[] {
+	const words = text.trim().split(/\s+/).filter(Boolean);
+	const lines: string[] = [];
+	let line = '';
+	for (const word of words) {
+		const next = line ? `${line} ${word}` : word;
+		if (line && measure(next, font) > width) {
+			lines.push(line);
+			line = word;
+		} else {
+			line = next;
+		}
+	}
+	if (line) lines.push(line);
+	if (lines.length <= maxLines && lines.every((l) => measure(l, font) <= width)) return lines;
+	const kept = lines.slice(0, maxLines);
+	let last = kept[kept.length - 1];
+	const runsOn = lines.length > maxLines;
+	if (runsOn || measure(last, font) > width) {
+		while (last.length > 0 && measure(`${last}…`, font) > width) last = last.slice(0, -1).trimEnd();
+		kept[kept.length - 1] = `${last}…`;
+	}
+	return kept;
+}
+
+export interface PhotoLaid extends Laid {
+	/// The scale the sticker content was fitted at: under 1 when a tall layout
+	/// on a 4:5 post has to shrink into the height the title leaves.
+	contentScale: number;
+}
+
+/// The photo style's canvas: the title over the layout's content, bottom-
+/// aligned inside a 20 px margin. On a story the stats stay clear of the
+/// bottom eighth the story viewer's reply bar covers.
+export function layoutPhoto(
+	aspect: RunPhotoAspect,
+	layout: RunStickerLayout,
+	title: string,
+	stats: RunShareStat[],
+	hasRoute: boolean,
+	wordmark: string,
+	measure: MeasureText,
+): PhotoLaid {
+	const { w, h } = photoCanvasSize(aspect);
+	const pad = 20;
+	const bottom = aspect === 'story' ? h * 0.13 : 22;
+	const boxW = w - pad * 2;
+	const boxBottom = h - bottom;
+
+	const titleFont: FontSpec = { size: TITLE.size, weight: TITLE.weight, letterSpacing: 0 };
+	const lines = title.trim() ? wrapLines(title, titleFont, boxW, 2, measure) : [];
+	const titleH = lines.length * TITLE.lineHeight;
+	const titleGap = lines.length > 0 ? 12 : 0;
+
+	const content = layoutStickerContent(layout, stats, hasRoute, wordmark, measure);
+	const availH = boxBottom - pad - titleH - titleGap;
+	const contentScale = Math.min(1, boxW / content.width, availH / content.height);
+	const cw = content.width * contentScale;
+	const ch = content.height * contentScale;
+	const cx = (w - cw) / 2;
+	const cy = boxBottom - ch;
+
+	const ops: DrawOp[] = lines.map((text, i) => ({
+		kind: 'text',
+		text,
+		x: w / 2,
+		y: cy - titleGap - titleH + i * TITLE.lineHeight + TITLE.lineHeight / 2 + TITLE.size * 0.36,
+		font: titleFont,
+		ink: 'text',
+		scale: 1,
+		align: 'center',
+	}));
+	for (const op of content.ops) {
+		const scaled: DrawOp =
+			op.kind === 'text'
+				? { ...op, x: cx + op.x * contentScale, y: cy + op.y * contentScale, scale: op.scale * contentScale }
+				: op.kind === 'divider'
+					? { ...op, x: cx + op.x * contentScale, y: cy + op.y * contentScale, w: op.w * contentScale, h: op.h * contentScale }
+					: { ...op, x: cx + op.x * contentScale, y: cy + op.y * contentScale, size: op.size * contentScale };
+		ops.push(scaled);
+	}
+	return { ops, width: w, height: h, contentScale };
+}
+
+// ---------------------------------------------------------------------------
+// Painting. Everything below runs against a real CanvasRenderingContext2D.
+
+function cssFont(font: FontSpec): string {
+	return `${font.weight} ${font.size}px ${SHARE_FONT_STACK}`;
+}
+
+/// A MeasureText reading the canvas's own metrics, so layout and paint agree.
+export function canvasMeasure(ctx: CanvasRenderingContext2D): MeasureText {
+	return (text, font) => {
+		ctx.font = cssFont(font);
+		ctx.letterSpacing = `${font.letterSpacing}px`;
+		return ctx.measureText(text).width;
+	};
+}
+
+/// Waits for the product face at the weights the images use, so the first
+/// export is not drawn in the fallback face. A failed load draws the fallback.
+export async function loadShareFonts(): Promise<void> {
+	if (typeof document === 'undefined' || !document.fonts) return;
+	try {
+		await Promise.all([400, 700, 800].map((wt) => document.fonts.load(`${wt} 28px Manrope`)));
+	} catch (e) {
+		console.warn('share fonts not loaded; drawing the fallback face', e);
+	}
+}
+
+// logo-mark.svg's glyph, drawn at scale 7.6 about (54.5, 50) on a 1024 tile
+// rounded at 180, the corner wordmark.svg gives it.
+const MARK_GLYPH = 'M30 10 H44 V90 H30 Z M44 29 H58 A21 21 0 0 1 58 71 H44 Z M44 42 H56 A8 8 0 0 1 56 58 H44 Z';
+
+function paintMark(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
+	ctx.save();
+	ctx.translate(x, y);
+	ctx.scale(size / 1024, size / 1024);
+	const g = ctx.createLinearGradient(0, 0, 1024, 1024);
+	g.addColorStop(0, THREKIR_MARK_GRADIENT[0]);
+	g.addColorStop(0.5, THREKIR_MARK_GRADIENT[1]);
+	g.addColorStop(1, THREKIR_MARK_GRADIENT[2]);
+	ctx.fillStyle = g;
+	ctx.beginPath();
+	ctx.roundRect(0, 0, 1024, 1024, 180);
+	ctx.fill();
+	ctx.translate(512, 512);
+	ctx.scale(7.6, 7.6);
+	ctx.translate(-54.5, -50);
+	ctx.fillStyle = SHARE_STICKER_INKS.light.text;
+	ctx.fill(new Path2D(MARK_GLYPH), 'evenodd');
+	ctx.restore();
+}
+
+function paintRoute(
+	ctx: CanvasRenderingContext2D,
+	track: TrackPoint[],
+	op: { x: number; y: number; size: number },
+	ink: (typeof SHARE_STICKER_INKS)[RunShareInk],
+	pxPerUnit: number,
+) {
+	const stroke = Math.min(7, Math.max(2.5, op.size * 0.032));
+	const pts = projectTrack(track, op.size, op.size, stroke * 2);
+	if (pts.length < 2) return;
+	ctx.save();
+	ctx.translate(op.x, op.y);
+	const path = new Path2D();
+	path.moveTo(pts[0].x, pts[0].y);
+	for (const p of pts.slice(1)) path.lineTo(p.x, p.y);
+	ctx.lineCap = 'round';
+	ctx.lineJoin = 'round';
+	// The halo is a blurred casing under the line; the shadow carries the blur
+	// because `ctx.filter` is not available in every browser this ships to.
+	ctx.strokeStyle = ink.halo;
+	ctx.lineWidth = stroke * 2.4;
+	ctx.shadowColor = ink.halo;
+	ctx.shadowBlur = stroke * 2 * pxPerUnit;
+	ctx.stroke(path);
+	ctx.shadowColor = 'transparent';
+	ctx.strokeStyle = ink.text;
+	ctx.lineWidth = stroke;
+	ctx.stroke(path);
+	const end = pts[pts.length - 1];
+	ctx.fillStyle = ink.text;
+	ctx.beginPath();
+	ctx.arc(end.x, end.y, stroke * 1.3, 0, Math.PI * 2);
+	ctx.fill();
+	ctx.restore();
+}
+
+function paintOps(
+	ctx: CanvasRenderingContext2D,
+	ops: DrawOp[],
+	track: TrackPoint[],
+	inkName: RunShareInk,
+	pxPerUnit: number,
+) {
+	const ink = SHARE_STICKER_INKS[inkName];
+	for (const op of ops) {
+		switch (op.kind) {
+			case 'text': {
+				ctx.save();
+				ctx.translate(op.x, op.y);
+				ctx.scale(op.scale, op.scale);
+				ctx.font = cssFont(op.font);
+				ctx.letterSpacing = `${op.font.letterSpacing}px`;
+				ctx.textAlign = op.align;
+				ctx.textBaseline = 'alphabetic';
+				ctx.fillStyle = op.ink === 'text' ? ink.text : ink.muted;
+				// Shadow geometry is in device pixels, outside the transform.
+				ctx.shadowColor = ink.shadow;
+				ctx.shadowBlur = 10 * pxPerUnit * op.scale;
+				ctx.shadowOffsetY = pxPerUnit * op.scale;
+				ctx.fillText(op.text, 0, 0);
+				ctx.restore();
+				break;
+			}
+			case 'route':
+				paintRoute(ctx, track, op, ink, pxPerUnit);
+				break;
+			case 'divider':
+				ctx.fillStyle = ink.muted;
+				ctx.fillRect(op.x, op.y, op.w, op.h);
+				break;
+			case 'mark':
+				paintMark(ctx, op.x, op.y, op.size);
+				break;
+		}
+	}
+}
+
+/// A canvas `laid.width` logical pixels wide, scaled to SHARE_EXPORT_WIDTH_PX.
+function sizedCanvas(laid: Laid): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; k: number } {
+	const k = SHARE_EXPORT_WIDTH_PX / laid.width;
+	const canvas = document.createElement('canvas');
+	canvas.width = SHARE_EXPORT_WIDTH_PX;
+	canvas.height = Math.round(laid.height * k);
+	const ctx = canvas.getContext('2d');
+	if (!ctx) throw new Error('2D canvas unavailable');
+	ctx.scale(k, k);
+	return { canvas, ctx, k };
+}
+
+export interface StickerInput {
+	layout: RunStickerLayout;
+	ink: RunShareInk;
+	stats: RunShareStat[];
+	/// The clipped share line (`shareCardTrack`), never a raw track.
+	track: TrackPoint[];
+	wordmark: string;
+}
+
+/// The sticker on a transparent ground, cropped to its own content.
+export function paintSticker(input: StickerInput): HTMLCanvasElement {
+	const probe = document.createElement('canvas').getContext('2d');
+	if (!probe) throw new Error('2D canvas unavailable');
+	const laid = layoutSticker(input.layout, input.stats, input.track.length >= 2, input.wordmark, canvasMeasure(probe));
+	const { canvas, ctx, k } = sizedCanvas(laid);
+	paintOps(ctx, laid.ops, input.track, input.ink, k);
+	return canvas;
+}
+
+export interface PhotoInput extends StickerInput {
+	aspect: RunPhotoAspect;
+	title: string;
+	photo: CanvasImageSource & { width: number; height: number };
+}
+
+/// The runner's photo, cropped to fill the aspect, under a scrim and the
+/// title, stats, route and signature.
+export function paintPhoto(input: PhotoInput): HTMLCanvasElement {
+	const probe = document.createElement('canvas').getContext('2d');
+	if (!probe) throw new Error('2D canvas unavailable');
+	const laid = layoutPhoto(
+		input.aspect,
+		input.layout,
+		input.title,
+		input.stats,
+		input.track.length >= 2,
+		input.wordmark,
+		canvasMeasure(probe),
+	);
+	const { canvas, ctx, k } = sizedCanvas(laid);
+	const { w, h } = { w: laid.width, h: laid.height };
+	const cover = Math.max(w / input.photo.width, h / input.photo.height);
+	const pw = input.photo.width * cover;
+	const ph = input.photo.height * cover;
+	ctx.imageSmoothingQuality = 'high';
+	ctx.drawImage(input.photo, (w - pw) / 2, (h - ph) / 2, pw, ph);
+	const scrim = SHARE_STICKER_INKS[input.ink].scrim;
+	const g = ctx.createLinearGradient(0, 0, 0, h);
+	g.addColorStop(0.3, `rgba(${scrim}, 0)`);
+	g.addColorStop(1, `rgba(${scrim}, 0.7)`);
+	ctx.fillStyle = g;
+	ctx.fillRect(0, 0, w, h);
+	paintOps(ctx, laid.ops, input.track, input.ink, k);
+	return canvas;
+}
+
+export function canvasToPng(canvas: HTMLCanvasElement): Promise<Blob> {
+	return new Promise((resolve, reject) => {
+		canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('canvas produced no image'))), 'image/png');
+	});
+}

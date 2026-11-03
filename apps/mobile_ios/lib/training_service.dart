@@ -278,6 +278,43 @@ class PublicPlanLibraryEntry {
   });
 }
 
+/// Whose public-library plan a copy started from: the `plan_started_from`
+/// RPC (decisions § 2262). Web twin: `PlanStartedFrom` in
+/// `apps/web/src/lib/core/data.ts`.
+class PlanStartedFrom {
+  /// The author's display name and handle; both null when their profile is
+  /// hidden from the viewer.
+  final String? authorName;
+  final String? authorHandle;
+
+  /// The public plan it started from, while it is still published.
+  final String? templateId;
+
+  const PlanStartedFrom({this.authorName, this.authorHandle, this.templateId});
+
+  /// The RPC's jsonb document, or null when it is not one.
+  static PlanStartedFrom? fromJson(Object? data) {
+    if (data is! Map) return null;
+    final author = data['author'];
+    String? text(Object? v) => v is String ? v : null;
+    return PlanStartedFrom(
+      authorName: author is Map ? text(author['name']) : null,
+      authorHandle: author is Map ? text(author['handle']) : null,
+      templateId: text(data['template_id']),
+    );
+  }
+
+  /// The name the author is credited by: `@handle` when they set one,
+  /// otherwise their display name, otherwise null. Mirrors web
+  /// `planAuthorCredit` (`share_plan_meta.ts`).
+  String? get credit {
+    final handle = authorHandle?.trim() ?? '';
+    if (handle.isNotEmpty) return '@$handle';
+    final name = authorName?.trim() ?? '';
+    return name.isEmpty ? null : name;
+  }
+}
+
 /// Thrown when an active plan already covers some of the dates a write would
 /// activate — [TrainingService.resumePlan] up front, and either write when the
 /// `training_plans_active_no_overlap` constraint rejects it (23P01) after a
@@ -633,6 +670,42 @@ class TrainingService extends ChangeNotifier {
     }
     notifyListeners();
     return newId as String;
+  }
+
+  /// One public-library plan by id, for a "Train with me" link opened in the
+  /// app (decisions § 2262). Null when the plan is not, or no longer, in the
+  /// library. The same row and author lookup [fetchPublicPlanLibrary] builds.
+  Future<PublicPlanLibraryEntry?> fetchPublicPlanLibraryEntry(String id) async {
+    final row = await _c
+        .from('training_plans')
+        .select('*, is_official')
+        .eq('id', id)
+        .eq('is_public_template', true)
+        .maybeSingle();
+    if (row == null) return null;
+    final plan = TrainingPlanRow.fromJson(row);
+    final profile = await _c
+        .from('user_profiles')
+        .select('display_name')
+        .eq('id', plan.userId)
+        .maybeSingle();
+    return PublicPlanLibraryEntry(
+      plan: plan,
+      authorHandle: profile?['display_name'] as String?,
+      isOfficial: row['is_official'] == true,
+    );
+  }
+
+  /// "Started from @creator's plan" for the viewer's own copy of a public
+  /// plan. Null for a plan not started from someone else's public plan, and
+  /// for a plan the viewer does not own. Mirrors web `fetchPlanStartedFrom`.
+  Future<PlanStartedFrom?> fetchPlanStartedFrom(String planId) async {
+    final data = await _c.rpc(
+      'plan_started_from',
+      params: {'p_plan_id': planId},
+      get: true,
+    );
+    return PlanStartedFrom.fromJson(data);
   }
 
   /// Publish one of the viewer's plans to the public library: copy the

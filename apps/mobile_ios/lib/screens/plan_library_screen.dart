@@ -489,3 +489,83 @@ class _PlanLibraryPreviewScreenState extends State<PlanLibraryPreviewScreen> {
     );
   }
 }
+
+/// A public-library plan opened by id: a creator's `/share/plan/<id>` "Train
+/// with me" link, or the plan a copy started from (decisions § 2262). Loads
+/// the library entry, then shows [PlanLibraryPreviewScreen] for it.
+class PlanLibraryLinkScreen extends StatefulWidget {
+  final TrainingService training;
+  final String planId;
+
+  const PlanLibraryLinkScreen({
+    super.key,
+    required this.training,
+    required this.planId,
+  });
+
+  @override
+  State<PlanLibraryLinkScreen> createState() => _PlanLibraryLinkScreenState();
+}
+
+class _PlanLibraryLinkScreenState extends State<PlanLibraryLinkScreen> {
+  PublicPlanLibraryEntry? _entry;
+  bool _loading = true;
+  bool _error = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = false;
+    });
+    try {
+      final entry = await widget.training
+          .fetchPublicPlanLibraryEntry(widget.planId)
+          .timeout(kBackendLoadTimeout);
+      if (!mounted) return;
+      setState(() {
+        _entry = entry;
+        _loading = false;
+      });
+    } catch (e) {
+      debugPrint('plan library link load failed: $e');
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = true;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final entry = _entry;
+    if (entry != null) {
+      return PlanLibraryPreviewScreen(training: widget.training, entry: entry);
+    }
+    final l10n = AppLocalizations.of(context);
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.planLibraryTitle)),
+      body: _loading
+          ? ListSkeleton.section(
+              label: l10n.commonLoading,
+              rowHeight: 40,
+              hasLeading: false,
+            )
+          : _error
+              ? ErrorState(message: l10n.planLibraryLoadError, onRetry: _load)
+              : Center(
+                  key: const Key('planLibraryLinkNotFound'),
+                  child: EmptyState(
+                    icon: Icons.public_off,
+                    title: l10n.planLibraryNotFound,
+                  ),
+                ),
+    );
+  }
+}

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 
-import 'push_target.dart' show PushTarget, planTargetFromSegments;
+import 'push_target.dart' show PushTarget, PushTargetKind, planTargetFromSegments;
 
 enum EntityLinkKind { run, route }
 
@@ -66,11 +66,19 @@ List<String>? _linkSegments(Uri uri) {
 /// `com.threkir.app://plans/<id>/workouts/<workout id>` (one workout), the
 /// links the home-screen widget opens, and the same paths on threkir.com.
 /// Shares the push-notification table ([planTargetFromSegments]), so a plan
-/// link and a plan push open the same screen. Null for anything not under
-/// `/plans`.
+/// link and a plan push open the same screen. A creator's
+/// `https://threkir.com/share/plan/<id>` "Train with me" link opens that
+/// public plan's library preview (decisions § 2262). Null for anything else.
 PushTarget? parsePlanLink(Uri uri) {
   final parts = _linkSegments(uri);
-  if (parts == null || parts.isEmpty || parts.first != 'plans') return null;
+  if (parts == null || parts.isEmpty) return null;
+  if (parts.first == 'share') {
+    if (parts.length != 3 || parts[1] != 'plan' || !_uuid.hasMatch(parts[2])) {
+      return null;
+    }
+    return PushTarget(PushTargetKind.planLibrary, parts[2].toLowerCase());
+  }
+  if (parts.first != 'plans') return null;
   return planTargetFromSegments(parts);
 }
 

@@ -81,6 +81,16 @@ void main() {
           const PushTarget(PushTargetKind.plan, id));
     });
 
+    test('a Train with me link opens the library preview', () {
+      expect(parse('https://threkir.com/share/plan/$id'),
+          const PushTarget(PushTargetKind.planLibrary, id));
+      expect(parse('https://threkir.com/plans/library/$id'),
+          const PushTarget(PushTargetKind.planLibrary, id));
+      expect(parse('https://threkir.com/share/plan/not-a-uuid'), isNull);
+      expect(parse('https://threkir.com/share/run/$id'), isNull);
+      expect(parse('https://threkir.com/share/plan/$id/extra'), isNull);
+    });
+
     test('anything not under /plans is not a plan link', () {
       expect(parse('com.threkir.app://runs/$id'), isNull);
       expect(parse('https://example.com/plans/$id'), isNull);

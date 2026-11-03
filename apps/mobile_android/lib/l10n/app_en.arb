@@ -23473,6 +23473,19 @@
       }
     }
   },
+  "planDetailStartedFrom": "Started from {author}'s plan",
+  "@planDetailStartedFrom": {
+    "description": "Plan detail: the runner's copy of a public-library plan names whose plan it started from. author is the creator's @handle or display name.",
+    "placeholders": {
+      "author": {
+        "type": "String"
+      }
+    }
+  },
+  "planDetailStartedFromRunner": "Started from another runner's plan",
+  "@planDetailStartedFromRunner": {
+    "description": "Plan detail: the same line when the creator's profile is private to the viewer, so they are not named."
+  },
   "planDetailWeekOfN": "Week {week} of {total}",
   "@planDetailWeekOfN": {
     "description": "Plan-detail header: which week of the plan today is in",

@@ -29281,6 +29281,18 @@ abstract class AppLocalizations {
   /// **'Built for {race} · {date}'**
   String planDetailBuiltForRace(String race, String date);
 
+  /// Plan detail: the runner's copy of a public-library plan names whose plan it started from. author is the creator's @handle or display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Started from {author}\'s plan'**
+  String planDetailStartedFrom(String author);
+
+  /// Plan detail: the same line when the creator's profile is private to the viewer, so they are not named.
+  ///
+  /// In en, this message translates to:
+  /// **'Started from another runner\'s plan'**
+  String get planDetailStartedFromRunner;
+
   /// Plan-detail header: which week of the plan today is in
   ///
   /// In en, this message translates to:

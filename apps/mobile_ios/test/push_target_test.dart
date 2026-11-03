@@ -209,6 +209,14 @@ void main() {
           const PushTarget(PushTargetKind.plan, plan));
     });
 
+    test('a library plan, or its Train with me page, opens the preview', () {
+      expect(pushTargetFromUrl('$_base/plans/library/$plan'),
+          const PushTarget(PushTargetKind.planLibrary, plan));
+      expect(pushTargetFromUrl('$_base/share/plan/${plan.toUpperCase()}'),
+          const PushTarget(PushTargetKind.planLibrary, plan));
+      expect(pushTargetFromUrl('$_base/share/plan/not-a-uuid'), PushTarget.inbox);
+    });
+
     test('the workout id is part of equality', () {
       expect(const PushTarget(PushTargetKind.planWorkout, plan, wo),
           isNot(const PushTarget(PushTargetKind.planWorkout, plan, plan)));

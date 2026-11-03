@@ -241,6 +241,16 @@
                 <data android:scheme="https" android:host="threkir.com" android:pathPattern="/runs/........-....-....-....-............" />
                 <data android:scheme="https" android:host="threkir.com" android:pathPattern="/routes/........-....-....-....-............" />
             </intent-filter>
+            <!-- "Train with me" plan links (lib/entity_link.dart parsePlanLink,
+                 decisions § 2262): the public `/share/plan/<id>` page opens
+                 the plan's library preview, where the reader starts it. UUID
+                 ids only. Same App Link verification caveat as above. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="threkir.com" android:pathPattern="/share/plan/........-....-....-....-............" />
+            </intent-filter>
             <!-- Health Connect privacy-policy rationale entry-point.
                  Android invokes this intent when the user taps "Privacy
                  policy" inside the Health Connect permission sheet.

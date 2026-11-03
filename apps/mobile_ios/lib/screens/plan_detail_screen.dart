@@ -60,6 +60,7 @@ import '../disclosure_state.dart';
 import '../widgets/finish_plan_card.dart';
 import '../widgets/plan_recap_card.dart';
 import '../widgets/walk_run_graduation_card.dart';
+import 'plan_library_screen.dart' show PlanLibraryLinkScreen;
 import 'plan_new_screen.dart';
 import '../widgets/plan_break_card.dart';
 import '../widgets/missed_workout_prompt_card.dart';
@@ -241,6 +242,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
 
   /// The calendar race this plan was built for (decisions § 2156).
   RaceListingView? _linkedRace;
+
+  /// Whose public plan this copy started from (decisions § 2262).
+  PlanStartedFrom? _startedFrom;
   RaceService? _raceService;
   RaceService get _races => _raceService ??= widget.raceService ?? RaceService();
   // "Today" is derived on every build from widget.now(); these rebuild the
@@ -315,6 +319,24 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       }
     } catch (e) {
       debugPrint('PlanDetailScreen._loadAssigningCoach failed: $e');
+    }
+  }
+
+  // Auxiliary: a failed read leaves the plan without its attribution line.
+  Future<void> _loadStartedFrom() async {
+    final p = _plan;
+    if (p == null || p.sourceAuthorId == null || !_isOwner(p)) {
+      if (_startedFrom != null) setState(() => _startedFrom = null);
+      return;
+    }
+    final planId = p.id;
+    try {
+      final from = await widget.training
+          .fetchPlanStartedFrom(planId)
+          .timeout(kBackendLoadTimeout);
+      if (mounted && _plan?.id == planId) setState(() => _startedFrom = from);
+    } catch (e) {
+      debugPrint('PlanDetailScreen._loadStartedFrom failed: $e');
     }
   }
 
@@ -416,6 +438,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       _loadCoachesOwner();
       _loadAssigningCoach();
       unawaited(_loadLinkedRace());
+      unawaited(_loadStartedFrom());
       final loaded = _plan;
       if (widget.openResume &&
           !_resumeOffered &&
@@ -2229,6 +2252,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
           const SizedBox(height: 8),
           _linkedRaceRow(theme, l10n, _linkedRace!),
         ],
+        if (_startedFrom != null) ...[
+          const SizedBox(height: 8),
+          _startedFromRow(l10n, _startedFrom!),
+        ],
         if (graduation != null) ...[
           const SizedBox(height: 12),
           WalkRunGraduationCard(
@@ -3113,6 +3140,29 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         title: Text(l10n.planDetailBuiltForRace(race.name, date)),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => _openLinkedRace(race),
+      ),
+    );
+  }
+
+  Widget _startedFromRow(AppLocalizations l10n, PlanStartedFrom from) {
+    final credit = from.credit;
+    final templateId = from.templateId;
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        key: const Key('planDetailStartedFrom'),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+        leading: const Icon(Icons.person_outline),
+        title: Text(credit == null
+            ? l10n.planDetailStartedFromRunner
+            : l10n.planDetailStartedFrom(credit)),
+        trailing: templateId == null ? null : const Icon(Icons.chevron_right),
+        onTap: templateId == null
+            ? null
+            : () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) => PlanLibraryLinkScreen(
+                      training: widget.training, planId: templateId),
+                )),
       ),
     );
   }

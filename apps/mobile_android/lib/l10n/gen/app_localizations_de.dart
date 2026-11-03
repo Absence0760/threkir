@@ -17917,6 +17917,15 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String planDetailStartedFrom(String author) {
+    return 'Gestartet mit dem Plan von $author';
+  }
+
+  @override
+  String get planDetailStartedFromRunner =>
+      'Gestartet mit dem Plan einer anderen Person';
+
+  @override
   String planDetailWeekOfN(int week, int total) {
     return 'Woche $week von $total';
   }

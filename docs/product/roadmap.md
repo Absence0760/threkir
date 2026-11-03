@@ -335,6 +335,10 @@ The foundation under both the generator and any hand-built plan: a data model fo
 
 ✓ **Shipped on web and mobile.** Draw a shape on the route builder map, have it matched to real roads and paths, and see how close the match is to the drawing; a match under 60 % is refused rather than saved as a different shape. Free. Saved art reaches the watches like any route. See [features § Full-screen route builder](features.md#full-screen-route-builder-web) and [decisions § 2263](../architecture/decisions.md).
 
+### Head-to-head card (#1273 item 9)
+
+✓ **Shipped on web and mobile.** "Me vs @friend" on the same route, route segment or catalogue segment, as a share image with both times, the winner and the margin. Only a mutual follow with a public profile can be compared, and only on public runs; the picker lists just the friends who qualify. Opened from the route page, both segment surfaces, the run's route history and the Versus style of the run share sheet. Free, no feature flag: it reads nothing the caller cannot already see (decisions § 2267).
+
 ### Backend work (Phase 3)
 
 - [x] Add premium endpoints to Go service — shipped under `apps/job_worker/internal/premium/`. All four endpoints mounted on the existing `/health` listener as POSTs (consistent verb regardless of whether the endpoint reads or computes): `/v1/premium/training-plan` (Riegel-derived paces + phased weekly mileage), `/v1/premium/vo2max` (Daniels VDOT from the best qualifying run in the last 90 days), `/v1/premium/race-predictor` (Riegel from best effort), `/v1/premium/recovery` (90-day EWMA CTL/ATL/TSB + advice). Gated via `user_profiles.subscription_tier` (`pro` + `lifetime` count; anything else → 402) after a shared HS256 JWT extract that mirrors the live hub's auth path. Pure-compute helpers mirror `apps/web/src/lib/training/fitness.ts` + `apps/web/src/lib/training/training.ts`. 36 tests (16 pure-compute + 20 httptest), race-clean. See `docs/product/followups.md § #12` for the full surface, test list, and cutover recipe.

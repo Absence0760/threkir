@@ -463,6 +463,9 @@ Price: **$9.99 / month** or **$79.99 / year** (33% less than twelve months; year
 - **Look:** four layouts (stack, route, strip, big number), three inks (white, black, coral) and up to four stats from what the run measured: distance, pace (speed for a ride), time, plus climb and average heart rate when present. The look is remembered on the device, under `share_look`.
 - **Export:** fixed logical canvases rasterised 1080 px across. Mobile shares or saves to Photos; web shares through the Web Share API where the browser has one and downloads everywhere.
 - **Privacy:** every outline is the privacy-zone-clipped share line (`shareCardTrack` / `runShareCardTrack`), and the image cannot be made before the zones are known. A photo is re-encoded, so its EXIF and location never leave the device. The map card's basemap waits for cookie consent, and the card prints its tile credit.
+- **PR card (#1273 item 7, decisions § 2266):** a run that beat a personal record gets a **PR** style showing the bracket, the time, how much faster and the time it beat (a record from before the improvement log existed prints with no "faster" line). It opens from run detail and from the `personal_record` notification (`/runs/<id>?share=pr`). The times stay owner-only; only the exported image leaves.
+- **Versus (#1273 item 9):** a run on a route also offers the head-to-head card; see [Head-to-head card](#head-to-head-card).
+- **Video (#1273 item 1):** the phone's **Video** style opens the web flyover export; see [3D course preview](#3d-course-preview).
 - **Free:** a growth feature with no per-user cost.
 
 **Done when:**
@@ -470,6 +473,70 @@ Price: **$9.99 / month** or **$79.99 / year** (33% less than twelve months; year
 - A photo's EXIF block is not in the export
 - A stat the run did not measure is never offered
 - The look chosen for one run is the one the next share opens with
+
+### Head-to-head card
+
+**Phase:** 3 | **Platform:** Web, Android + iOS twin | **Parity:** [see matrix](parity.md) | **Issue:** #1273 item 9
+
+**Why:** "me vs @friend" on a route both have run is a post a creator's followers react to, and it carries the Threkir mark to people who do not use the app yet.
+
+**Spec:**
+
+- **Targets:** a route, a route segment or a catalogue segment. Each side is that runner's fastest public attempt of the same activity type: the whole run on a route, the effort on a segment.
+- **Who:** mutual follows only, no block either way, and the friend's profile neither private nor hidden. Both runs must be public (not followers-only, not a DNF). The `head_to_head` read returns only friends who qualify, so the picker never offers one it would refuse, and every refusal looks the same as having nobody to compare.
+- **Card:** 360×450 logical, exported 1080×1350: the target's name, both names (the friend as `@handle` when they have one), both times with the winner's in the accent colour, the outcome line and the mark. No line, no map, so no track is read and no tile credit is owed.
+- **Not read:** `personal_records`, any track, the age record or gender.
+- **Free, no flag:** it returns a subset of what the caller can already see on the friend's public profile and the segment leaderboards (decisions § 2267).
+
+**Done when:**
+- The picker lists only friends with a public attempt, and a failed read shows an error with a retry, never the empty state
+- The card exports at 1080×1350 on web and shares or saves on mobile
+- pgTAP pins each rule and that every refusal is an empty result
+
+### Recap share image and video
+
+**Phase:** 3 | **Platform:** Web, Android + iOS twin (image); Web (video) | **Parity:** [see matrix](parity.md) | **Issue:** #1273 item 8
+
+**Why:** a month or a year of running is the post a runner makes at the end of it, as a story as often as a square.
+
+**Spec:**
+
+- **Image (decisions § 2260):** the monthly and yearly recap share image comes square or as a 1080x1920 story, from one layout pair (`recap_card_layout.ts` ↔ `recap_card_layout.dart`). Mobile's share action opens a sheet with the aspect choice, a preview, the image share and the old text share. Web labels come from the locale catalogue.
+- **Video (decisions § 2269):** **Make a video** on `/recap/[year]` and `/recap/[year]/[month]` renders a 1080x1920, 30 fps slideshow in the browser: a title, at most six earned stat slides, then a Threkir end card, about 22 s for a full year. It uses the flyover's encoder from `lib/video/`. No map is drawn, so no consent or tile credit is involved. A browser that can encode nothing gets a note instead of the action. The phone's recap share sheet has a **Video** option that opens `/recap/<year>[/<month>]?video=1`.
+- **Free.**
+
+### Challenge invite links
+
+**Phase:** 3 | **Platform:** Web, Android + iOS twin | **Parity:** [see matrix](parity.md) | **Issue:** #1273 item 4
+
+**Why:** a creator posts "Run 50 km with me in November" and their followers should be in the challenge one tap after signing up.
+
+**Spec:** a revocable join link per challenge, minted and reset by the creator or a club admin; a join page that previews the challenge to anyone; joining rate-limited to 30 attempts an hour; no link for club-vs-club. Public challenges also get `/share/challenge/[id]` and an og card. Behind the default-off `challenge_invite_links` flag. Full spec: [challenges.md § Invite links](../features/challenges.md#invite-links-and-the-public-share-page-2026-11-03-decisions--2261), decisions § 2261.
+
+### "Train with me" plan share
+
+**Phase:** 3 | **Platform:** Web, Android + iOS twin | **Parity:** [see matrix](parity.md) | **Issue:** #1273 item 5
+
+**Why:** a creator's link to a plan they published should open for a follower who has never signed in, and let them start the same plan.
+
+**Spec:** `/share/plan/[id]` shows a public-library plan's goal and weeks through a redacted anonymous RPC (no paces, VDOT, HR, goal time, notes, dates or owner id); **Start this plan** goes through sign-up to the library preview; a copy started from it shows "Started from @creator's plan". Behind the default-off `public_plan_share` flag. Full spec: [training.md § Train with me](../features/training.md#train-with-me--public-plan-share-page), decisions § 2262.
+
+### Streamer overlay
+
+**Phase:** 3 | **Platform:** Web (the overlay page and its settings), Android + iOS twin (settings from the live-share sheet) | **Parity:** [see matrix](parity.md) | **Issue:** #1273 item 3
+
+**Why:** a creator streaming a run wants their distance, pace and time on screen without making the run public or showing where they are right now.
+
+**Spec:** `/live/overlay` is a transparent OBS browser source reached through one revocable token per user, carried in the URL fragment. The server returns only pings older than the creator's delay (0-900 s, default 60). The route trace and heart rate are opt-in; heart rate also needs health-data consent, and `bpm` is now stripped from every live ping unless both hold. Behind the default-off `live_overlay` flag. Full spec: [flows.md § Streamer overlay](../features/flows.md#streamer-overlay), decisions § 2265.
+
+### Share-link attribution and Your shares
+
+**Phase:** 3 | **Platform:** Web, Android + iOS twin | **Parity:** [see matrix](parity.md) | **Issue:** #1273 item 10
+
+**Why:** a creator wants to know which of their shares brought people in, without an analytics vendor.
+
+**Spec:** a creator's own share links carry an opaque `?ref=` code; the share page counts visits into aggregate daily buckets with no cookie, IP, user agent or user id; a sign-up, plan start or challenge join made through the link counts for it. **Your shares** (web `/settings/shares`, mobile Settings) lists visits, sign-ups, plan starts and challenge joins per link over 90 days. Behind the default-off `share_attribution` flag. Full spec: [seo.md § Share-link attribution](../features/seo.md#share-link-attribution-the-ref-parameter-and-the-visit-count), decisions § 2268.
+
 ---
 
 ## AI Coach
@@ -593,25 +660,6 @@ Used across: account deletion, run deletion, club leave, event cancel, RSVP chan
 ## Competitor-parity features (backlog — not yet in a phase)
 
 These are stubs. Each closes a gap against a specific competitor (see `docs/product/competitors.md`) and is listed with its sizing + open decisions in `docs/product/roadmap.md § Competitor-parity backlog`. Flesh each one out on delivery — do **not** treat the stubs below as a spec.
-
-### Head-to-head card
-
-**Phase:** 3 | **Platform:** Web, Android + iOS twin | **Parity:** [see matrix](parity.md) | **Issue:** #1273 item 9
-
-**Why:** "me vs @friend" on a route both have run is a post a creator's followers react to, and it carries the Threkir mark to people who do not use the app yet.
-
-**Spec:**
-
-- **Targets:** a route, a route segment or a catalogue segment. Each side is that runner's fastest public attempt of the same activity type: the whole run on a route, the effort on a segment.
-- **Who:** mutual follows only, no block either way, and the friend's profile neither private nor hidden. Both runs must be public (not followers-only, not a DNF). The `head_to_head` read returns only friends who qualify, so the picker never offers one it would refuse, and every refusal looks the same as having nobody to compare.
-- **Card:** 360×450 logical, exported 1080×1350: the target's name, both names (the friend as `@handle` when they have one), both times with the winner's in the accent colour, the outcome line and the mark. No line, no map, so no track is read and no tile credit is owed.
-- **Not read:** `personal_records`, any track, the age record or gender.
-- **Free, no flag:** it returns a subset of what the caller can already see on the friend's public profile and the segment leaderboards (decisions § 2267).
-
-**Done when:**
-- The picker lists only friends with a public attempt, and a failed read shows an error with a retry, never the empty state
-- The card exports at 1080×1350 on web and shares or saves on mobile
-- pgTAP pins each rule and that every refusal is an empty result
 
 ### Training plan runner
 **Closes:** Runna, Garmin Coach.

@@ -4,7 +4,8 @@
 ///
 /// The card carries the challenge's own fields, its participant count and the
 /// creator's name as an anonymous reader may see it (null for a private
-/// profile). No participant name and nothing located: the board is one tap
+/// profile). The name gets its own line: on the date line it was always the
+/// part the width clip cut. No participant name and nothing located: the board is one tap
 /// away on the page, where the name rules apply per viewer.
 
 import { escapeXml } from '../util/html_escape';
@@ -50,6 +51,13 @@ export function buildChallengeOgSvg(input: ChallengeImageInput): string {
 		);
 	}
 
+	const by = c && input.creatorName?.trim() ? `by ${input.creatorName.trim()}` : '';
+	if (by) {
+		parts.push(
+			`<text x="${PAD}" y="${H - PAD - 48}" font-family="${FONT}" font-size="32" font-weight="600" fill="${OG_CARD_LIGHT.ink}">${escapeXml(clipToWidthPx(by, W - PAD * 2, 32))}</text>`,
+		);
+	}
+
 	const sub = buildChallengeSubline(input);
 	if (sub) {
 		parts.push(
@@ -67,6 +75,5 @@ export function buildChallengeSubline(input: ChallengeImageInput): string {
 		c.participant_count > 0
 			? `${c.participant_count} ${c.participant_count === 1 ? 'runner' : 'runners'} in`
 			: '';
-	const by = input.creatorName?.trim() ? `by ${input.creatorName.trim()}` : '';
-	return [challengeWindowStable(c), joined, by].filter(Boolean).join(' · ');
+	return [challengeWindowStable(c), joined].filter(Boolean).join(' · ');
 }

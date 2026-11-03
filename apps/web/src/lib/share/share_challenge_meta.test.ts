@@ -64,8 +64,9 @@ test('the card escapes the title and names no participant', () => {
 	assert.ok(svg.includes('&lt;script&gt;'));
 	assert.equal(
 		buildChallengeSubline({ challenge: base, creatorName: 'Cass' }),
-		'1 Nov 2026 – 30 Nov 2026 · 12 runners in · by Cass',
+		'1 Nov 2026 – 30 Nov 2026 · 12 runners in',
 	);
+	assert.match(svg, />by Cass<\/text>/);
 	assert.equal(buildChallengeSubline({ challenge: null }), '');
 	assert.ok(buildChallengeOgSvg({ challenge: null }).includes('Challenge'));
 });

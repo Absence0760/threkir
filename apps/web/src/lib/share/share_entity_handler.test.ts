@@ -96,3 +96,25 @@ test('the handler records no share visit and serves the same answer with or with
 		globalThis.fetch = realFetch;
 	}
 });
+
+test('/og/challenge/<id>.png answers a cacheable PNG even when the challenge is unknown', async () => {
+	const realFetch = globalThis.fetch;
+	globalThis.fetch = (async () =>
+		new Response('[]', { status: 200, headers: { 'content-type': 'application/json' } })) as typeof fetch;
+	try {
+		const res = (await handler(urlEvent('/og/challenge/0b9f3c2e-1111-4222-8333-944455556666.png'))) as {
+			statusCode: number;
+			isBase64Encoded?: boolean;
+			body?: string;
+			headers?: Record<string, string>;
+		};
+		assert.equal(res.statusCode, 200);
+		assert.equal(res.headers?.['content-type'], 'image/png');
+		assert.match(res.headers?.['cache-control'] ?? '', /max-age=\d+/);
+		assert.equal(res.isBase64Encoded, true);
+		const png = Buffer.from(res.body ?? '', 'base64');
+		assert.ok(png.subarray(0, 4).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47])));
+	} finally {
+		globalThis.fetch = realFetch;
+	}
+});

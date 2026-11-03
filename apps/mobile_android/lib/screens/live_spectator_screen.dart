@@ -66,6 +66,10 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
   final List<Waypoint> _trace = [];
   double _distanceM = 0;
   int _elapsedS = 0;
+  // The newest ping's heart rate. The server keeps bpm on a ping only with
+  // the runner's health-data consent and the live_overlay gate open
+  // (decisions § 2265), so a ping without one hides the cell.
+  int? _bpm;
 
   // Freshness: epoch-ms of the last ping (UTC-normalised) plus a 1s
   // clock so "updated N ago" / the stale badge recompute even while no
@@ -298,6 +302,7 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
     if (dist != null) _distanceM = dist;
     final elapsed = (row['elapsed_s'] as num?)?.toInt();
     if (elapsed != null) _elapsedS = elapsed;
+    _bpm = (row['bpm'] as num?)?.toInt();
     if (dist != null && elapsed != null) {
       _recentSamples.add((distanceM: dist, elapsedS: elapsed));
       if (_recentSamples.length > _paceWindow) _recentSamples.removeAt(0);
@@ -589,6 +594,14 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
                                       : '—',
                                 ),
                               ),
+                              if (_bpm != null)
+                                Expanded(
+                                  child: _Metric(
+                                    key: const Key('heart-rate'),
+                                    label: l10n.liveSpectatorHeartRate,
+                                    value: l10n.prefsHrBpm(_bpm!),
+                                  ),
+                                ),
                               if (_status == 'live' &&
                                   _recentPaceSecPerKm != null)
                                 Expanded(

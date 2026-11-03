@@ -1,5 +1,5 @@
-/// A minimal MP4 (ISO BMFF) writer for one H.264 video track, which is all the
-/// flyover export produces. WebCodecs hands back AVCC-framed access units and
+/// A minimal MP4 (ISO BMFF) writer for one H.264 video track, which is all a
+/// video export produces. WebCodecs hands back AVCC-framed access units and
 /// the `avcC` record; this lays them out as `ftyp`, then `moov`, then one
 /// `mdat` chunk, with `moov` first so a player or an upload can start before
 /// the end of the file. Pure bytes in, bytes out, so the box layout is pinned

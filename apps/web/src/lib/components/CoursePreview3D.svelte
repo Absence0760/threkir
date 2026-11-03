@@ -42,7 +42,7 @@
 	import { play, seek, tick, type Playback } from './course_preview/playback.ts';
 	import { distanceAtStripOffset, stripGeometry, stripX } from './course_preview/strip_geometry.ts';
 	import { addCourseLayers } from './course_preview/course_layers.ts';
-	import { chooseVideoEncoder, videoFileName, type VideoEncoderPlan } from './course_preview/video_encoder.ts';
+	import { chooseVideoEncoder, videoFileName, type VideoEncoderPlan } from '#lib/video/video_encoder.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { DEFAULT_SITE_URL } from '#lib/core/site_url.ts';
 
@@ -347,7 +347,7 @@
 
 	async function probeEncoder() {
 		try {
-			const { probeVideoEncoders } = await import('./course_preview/flyover_video_export.ts');
+			const { probeVideoEncoders } = await import('#lib/video/encode_video.ts');
 			encoderPlan = chooseVideoEncoder(await probeVideoEncoders());
 		} catch (e) {
 			console.warn('course preview: no video encoder', e);
@@ -432,7 +432,7 @@
 		if (video.step !== 'ready') return;
 		const { blob, name } = video;
 		try {
-			const { deliverVideo } = await import('./course_preview/flyover_video_export.ts');
+			const { deliverVideo } = await import('#lib/video/encode_video.ts');
 			const how = await deliverVideo(blob, name, title);
 			if (how === 'downloaded') showToast(m('coursePreview.videoSaved'), 'success');
 		} catch (e) {

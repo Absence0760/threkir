@@ -126,4 +126,12 @@ regexes = [
   # defaults-key shape rather than a token shape -- a real key in the same file
   # is still a finding.
   '''^[a-z][a-z0-9_]*_v[0-9]+$''',
+  # challenge_invite_link_test.dart / challenge_invite_screen_test.dart (both
+  # twins) and live_overlay.test.ts: fixed invite and overlay token fixtures
+  # shaped like the real 24-char url-safe tokens so the parsers accept them. A
+  # real token is minted server-side per challenge or per user and never
+  # committed.
+  '''Ab3_dEf-Gh1jKl2mNo3pQr4s''',
+  '''Ab3_-xYz0123456789abcdEF''',
+  '''tok-abc12345''',
 ]

@@ -327,10 +327,10 @@ $neutralised$;`,
     {
       why: 'drops `t.user_id = auth.uid()` and the live_overlay gate, the whole access control here; the function takes no argument, so there is no subject selector to keep',
       sql: `create or replace function public.get_live_overlay()
- returns table(token text, delay_s integer, show_map boolean, show_heart_rate boolean, created_at timestamptz)
+ returns table(token text, delay_s integer, show_map boolean, show_heart_rate boolean, created_at timestamptz, heart_rate_consent boolean)
  language sql stable security definer set search_path to 'public', 'private'
 as $neutralised$
-  select t.token, t.delay_s, t.show_map, t.show_heart_rate, t.created_at
+  select t.token, t.delay_s, t.show_map, t.show_heart_rate, t.created_at, false
     from private.live_overlay_tokens t
    where ${mine('t')};
 $neutralised$;`,

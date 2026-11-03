@@ -174,22 +174,29 @@ $$;
 
 revoke execute on function private.new_live_overlay_token() from public, anon, authenticated;
 
--- The caller's overlay: its token and what it admits. Zero rows when there is
--- none or the gate is closed.
+-- The caller's overlay: its token and what it admits, plus whether the
+-- caller has health-data consent on record, so the heart-rate control can say
+-- why it is off before a write is refused. Zero rows when there is none or
+-- the gate is closed.
 create or replace function public.get_live_overlay()
 returns table (
-  token           text,
-  delay_s         integer,
-  show_map        boolean,
-  show_heart_rate boolean,
-  created_at      timestamptz
+  token              text,
+  delay_s            integer,
+  show_map           boolean,
+  show_heart_rate    boolean,
+  created_at         timestamptz,
+  heart_rate_consent boolean
 )
 language sql
 stable
 security definer
 set search_path = public, private
 as $$
-  select t.token, t.delay_s, t.show_map, t.show_heart_rate, t.created_at
+  select t.token, t.delay_s, t.show_map, t.show_heart_rate, t.created_at,
+         exists (
+           select 1 from user_profiles p
+            where p.id = t.user_id and p.health_data_consent_at is not null
+         )
     from private.live_overlay_tokens t
    where t.user_id = (select auth.uid())
      and private.live_overlay_enabled();

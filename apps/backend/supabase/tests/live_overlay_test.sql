@@ -110,9 +110,9 @@ set local role authenticated;
 
 -- (13)
 select results_eq(
-  $$ select token, delay_s, show_map, show_heart_rate from get_live_overlay() $$,
-  $$ select (select token from tok), 60, false, false $$,
-  'the overlay starts with a 60 s delay, no map and no heart rate');
+  $$ select token, delay_s, show_map, show_heart_rate, heart_rate_consent from get_live_overlay() $$,
+  $$ select (select token from tok), 60, false, false, true $$,
+  'the overlay starts with a 60 s delay, no map and no heart rate, and reports consent');
 -- (14)
 select throws_ok(
   $$ select update_live_overlay_settings(901, false, false) $$,

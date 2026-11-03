@@ -6680,6 +6680,7 @@ export type Database = {
         Returns: {
           created_at: string
           delay_s: number
+          heart_rate_consent: boolean
           show_heart_rate: boolean
           show_map: boolean
           token: string

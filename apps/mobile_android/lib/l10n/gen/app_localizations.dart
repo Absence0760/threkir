@@ -31312,6 +31312,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t open the browser. Try again.'**
   String get shareCardVideoError;
+
+  /// Button that opens the head-to-head card: the runner's best on this route or segment against a mutual-follow friend's
+  ///
+  /// In en, this message translates to:
+  /// **'Compare with a friend'**
+  String get headToHeadCompare;
+
+  /// Title of the head-to-head sheet, and the kicker printed on the card
+  ///
+  /// In en, this message translates to:
+  /// **'Head to head'**
+  String get headToHeadTitle;
+
+  /// Share-sheet style chip for the head-to-head card
+  ///
+  /// In en, this message translates to:
+  /// **'Versus'**
+  String get headToHeadStyleVersus;
+
+  /// Label over the row of friends to compare with
+  ///
+  /// In en, this message translates to:
+  /// **'Friend'**
+  String get headToHeadFriend;
+
+  /// Shown while the friends who can be compared are loading
+  ///
+  /// In en, this message translates to:
+  /// **'Finding friends to compare with…'**
+  String get headToHeadLoading;
+
+  /// Shown when no friend can be compared on this route or segment, saying what a comparison needs
+  ///
+  /// In en, this message translates to:
+  /// **'No friend to compare with here yet. It takes a friend you follow who follows you back, with a public profile, and a public run here from each of you.'**
+  String get headToHeadEmpty;
+
+  /// Shown when the comparison could not be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the comparison.'**
+  String get headToHeadLoadFailed;
+
+  /// Button that retries loading the comparison
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get headToHeadRetry;
+
+  /// How the card names the runner sharing it, beside the friend's name
+  ///
+  /// In en, this message translates to:
+  /// **'Me'**
+  String get headToHeadMe;
+
+  /// Printed between the two names on the card
+  ///
+  /// In en, this message translates to:
+  /// **'vs'**
+  String get headToHeadVs;
+
+  /// Card line when the runner sharing it was faster
+  ///
+  /// In en, this message translates to:
+  /// **'I won by {margin}'**
+  String headToHeadIWon(String margin);
+
+  /// Card line when the friend was faster
+  ///
+  /// In en, this message translates to:
+  /// **'{name} won by {margin}'**
+  String headToHeadFriendWon(String name, String margin);
+
+  /// Card line when both times are the same
+  ///
+  /// In en, this message translates to:
+  /// **'Dead heat'**
+  String get headToHeadTie;
+
+  /// Name printed for a friend with no handle or display name
+  ///
+  /// In en, this message translates to:
+  /// **'A friend'**
+  String get headToHeadFriendFallback;
+
+  /// Accessibility label of the card preview
+  ///
+  /// In en, this message translates to:
+  /// **'Head-to-head card preview'**
+  String get headToHeadPreview;
+
+  /// Note under the card saying who can be compared
+  ///
+  /// In en, this message translates to:
+  /// **'Only friends who follow you back and have a public profile can be compared, and only on public runs.'**
+  String get headToHeadPrivacy;
 }
 
 class _AppLocalizationsDelegate

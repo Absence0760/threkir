@@ -2,6 +2,7 @@ import 'dart:async' show unawaited;
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -27,6 +28,7 @@ import '../run_share_stats.dart';
 import '../share_look.dart';
 import '../share_sheet.dart';
 import 'capture_png.dart';
+import 'head_to_head_card.dart';
 import 'run_share_overlays.dart';
 import '../web_base_url.dart';
 import '../widgets/top_banner.dart';
@@ -38,8 +40,9 @@ export '../run_share_stats.dart' show runShareCardTrack, runShareCardHasMap;
 /// lay over a story or photo in another app). [video] is not an image: it
 /// hands the run to the web flyover export, which records the 3D course as a
 /// 9:16 video in the browser (decisions § 2259), because the phone has no 3D
-/// map stack to render one with (§ 8).
-enum RunShareStyle { card, photo, sticker, video }
+/// map stack to render one with (§ 8). [versus] is the head-to-head card: the
+/// runner's best on this run's route against a mutual-follow friend's (§ 2267).
+enum RunShareStyle { card, photo, sticker, video, versus }
 
 /// Opens a URL outside the app; returns whether anything took it.
 typedef RunShareUrlOpener = Future<bool> Function(Uri url);
@@ -63,7 +66,9 @@ class ShareSaveDenied implements Exception {
 /// Writes a share PNG to the device's photo library.
 typedef RunShareImageSaver = Future<void> Function(Uint8List png, String name);
 
-Future<void> _saveToGallery(Uint8List png, String name) async {
+/// The default [RunShareImageSaver]: the device's photo library, asking for
+/// access first.
+Future<void> saveShareImageToGallery(Uint8List png, String name) async {
   try {
     if (!await Gal.hasAccess() && !await Gal.requestAccess()) {
       throw const ShareSaveDenied();
@@ -98,6 +103,8 @@ Future<void> showRunShareSheet(
   @visibleForTesting Future<XFile?> Function()? pickPhotoOverride,
   @visibleForTesting RunShareImageSaver? saveImageOverride,
   @visibleForTesting RunShareUrlOpener? openUrlOverride,
+  ApiClient? api,
+  @visibleForTesting HeadToHeadLoader? headToHeadLoadOverride,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -111,8 +118,14 @@ Future<void> showRunShareSheet(
       title: title,
       privacyZones: privacyZones,
       pickPhotoOverride: pickPhotoOverride,
-      saveImage: saveImageOverride ?? _saveToGallery,
+      saveImage: saveImageOverride ?? saveShareImageToGallery,
       openUrl: openUrlOverride ?? _openExternally,
+      headToHeadLoad: headToHeadLoadOverride ??
+          (api != null && run.routeId != null
+              ? () => api.fetchHeadToHead('route', run.routeId!,
+                  activityType:
+                      run.metadata?['activity_type'] as String? ?? 'run')
+              : null),
     ),
   );
 }
@@ -125,6 +138,7 @@ class _ShareRunSheet extends StatefulWidget {
   final Future<XFile?> Function()? pickPhotoOverride;
   final RunShareImageSaver saveImage;
   final RunShareUrlOpener openUrl;
+  final HeadToHeadLoader? headToHeadLoad;
 
   const _ShareRunSheet({
     required this.run,
@@ -134,6 +148,7 @@ class _ShareRunSheet extends StatefulWidget {
     required this.saveImage,
     required this.openUrl,
     this.pickPhotoOverride,
+    this.headToHeadLoad,
   });
 
   @override
@@ -194,6 +209,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
 
   bool get _hasImage =>
       _style != RunShareStyle.video &&
+      _style != RunShareStyle.versus &&
       (_style != RunShareStyle.photo || _photo != null);
   bool get _canExportImage => !_busy && !_picking && _hasImage;
 
@@ -208,7 +224,9 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
         RunShareStyle.card => RunShareCard.canvas.width,
         RunShareStyle.photo => RunPhotoShareCard.canvasFor(_look.aspect).width,
         RunShareStyle.sticker => RunStickerShareCard.canvasWidth(_look),
-        RunShareStyle.video => throw StateError('the video style draws no canvas'),
+        RunShareStyle.video ||
+        RunShareStyle.versus =>
+          throw StateError('${_style.name} draws no canvas here'),
       };
 
   Future<XFile?> _pick() {
@@ -421,7 +439,8 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
           look: _look,
         );
       case RunShareStyle.video:
-        throw StateError('the video style draws no canvas');
+      case RunShareStyle.versus:
+        throw StateError('${_style.name} draws no canvas here');
       case RunShareStyle.sticker:
         return RunStickerShareCard(
           run: widget.run,
@@ -670,6 +689,12 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
                         label: l10n.shareCardStyleVideo,
                         icon: Icons.movie_outlined,
                       ),
+                    if (widget.headToHeadLoad != null)
+                      ChoiceChipOption(
+                        value: RunShareStyle.versus,
+                        label: l10n.headToHeadStyleVersus,
+                        icon: Icons.people_outline,
+                      ),
                   ],
                   selected: _style,
                   onChanged: _busy ? null : _selectStyle,
@@ -677,6 +702,12 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
                 const SizedBox(height: 12),
                 if (_style == RunShareStyle.video)
                   _videoPanel(l10n, theme, previewHeight)
+                else if (_style == RunShareStyle.versus)
+                  HeadToHeadPanel(
+                    load: widget.headToHeadLoad!,
+                    fileName: 'threkir-run-${widget.run.id}-versus',
+                    saveImage: widget.saveImage,
+                  )
                 else
                   _preview(l10n, theme, previewHeight),
                 if (_style == RunShareStyle.photo && _photo != null)
@@ -699,7 +730,8 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
                     ),
                   ),
                 if (_style != RunShareStyle.card &&
-                    _style != RunShareStyle.video)
+                    _style != RunShareStyle.video &&
+                    _style != RunShareStyle.versus)
                   ..._lookControls(l10n, theme),
                 const SizedBox(height: 16),
                 if (_style == RunShareStyle.video)
@@ -708,7 +740,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
                     icon: const Icon(Icons.open_in_new),
                     label: Text(l10n.shareCardVideoOpen),
                   )
-                else ...[
+                else if (_style != RunShareStyle.versus) ...[
                   // Stacked full width: the save label is the one the iOS photo
                   // permission prompt names, and in French or Portuguese it
                   // does not fit half a row.

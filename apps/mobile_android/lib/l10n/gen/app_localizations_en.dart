@@ -19101,4 +19101,58 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shareCardVideoError => 'Couldn\'t open the browser. Try again.';
+
+  @override
+  String get headToHeadCompare => 'Compare with a friend';
+
+  @override
+  String get headToHeadTitle => 'Head to head';
+
+  @override
+  String get headToHeadStyleVersus => 'Versus';
+
+  @override
+  String get headToHeadFriend => 'Friend';
+
+  @override
+  String get headToHeadLoading => 'Finding friends to compare with…';
+
+  @override
+  String get headToHeadEmpty =>
+      'No friend to compare with here yet. It takes a friend you follow who follows you back, with a public profile, and a public run here from each of you.';
+
+  @override
+  String get headToHeadLoadFailed => 'Couldn\'t load the comparison.';
+
+  @override
+  String get headToHeadRetry => 'Try again';
+
+  @override
+  String get headToHeadMe => 'Me';
+
+  @override
+  String get headToHeadVs => 'vs';
+
+  @override
+  String headToHeadIWon(String margin) {
+    return 'I won by $margin';
+  }
+
+  @override
+  String headToHeadFriendWon(String name, String margin) {
+    return '$name won by $margin';
+  }
+
+  @override
+  String get headToHeadTie => 'Dead heat';
+
+  @override
+  String get headToHeadFriendFallback => 'A friend';
+
+  @override
+  String get headToHeadPreview => 'Head-to-head card preview';
+
+  @override
+  String get headToHeadPrivacy =>
+      'Only friends who follow you back and have a public profile can be compared, and only on public runs.';
 }

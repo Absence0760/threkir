@@ -5595,6 +5595,35 @@ class ApiClient {
     return data == null ? null : GlobalSegmentRow.fromJson(data);
   }
 
+  /// The caller's best public attempt against each mutual-follow friend's on
+  /// one route (`kind` `route`), route segment (`segment`) or catalogue segment
+  /// (`global_segment`), from `head_to_head` (migration 20271104000003,
+  /// decisions § 2267). With [friendId], that friend's row or none. The raw
+  /// rows are returned for the app's `parseHeadToHeadRows`; a failed read
+  /// throws, so "nobody to compare" and "could not load" stay distinct.
+  Future<List<Map<String, dynamic>>> fetchHeadToHead(
+    String kind,
+    String targetId, {
+    String? friendId,
+    String activityType = 'run',
+  }) async {
+    final rows = await _client.rpc(
+      'head_to_head',
+      params: {
+        'p_kind': kind,
+        'p_target_id': targetId,
+        'p_friend_id': ?friendId,
+        'p_activity_type': activityType,
+      },
+      get: true,
+    );
+    if (rows is! List) return const [];
+    return [
+      for (final r in rows)
+        if (r is Map) r.cast<String, dynamic>(),
+    ];
+  }
+
   /// Block-guarded catalogue-segment leaderboard. Mirrors
   /// [fetchSegmentLeaderboardTiered] but calls `global_segment_leaderboard`
   /// (migration 20270411_001) — no per-route visibility branch, since the

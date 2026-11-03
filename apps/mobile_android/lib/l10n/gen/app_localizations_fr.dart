@@ -19337,4 +19337,58 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get shareCardVideoError =>
       'Impossible d\'ouvrir le navigateur. Réessayez.';
+
+  @override
+  String get headToHeadCompare => 'Comparer avec un ami';
+
+  @override
+  String get headToHeadTitle => 'Face-à-face';
+
+  @override
+  String get headToHeadStyleVersus => 'Duel';
+
+  @override
+  String get headToHeadFriend => 'Ami';
+
+  @override
+  String get headToHeadLoading => 'Recherche d\'amis à comparer…';
+
+  @override
+  String get headToHeadEmpty =>
+      'Personne avec qui comparer ici pour l\'instant. Il faut un ami que vous suivez et qui vous suit, avec un profil public, et une course publique ici de chacun de vous.';
+
+  @override
+  String get headToHeadLoadFailed => 'Impossible de charger la comparaison.';
+
+  @override
+  String get headToHeadRetry => 'Réessayer';
+
+  @override
+  String get headToHeadMe => 'Moi';
+
+  @override
+  String get headToHeadVs => 'vs';
+
+  @override
+  String headToHeadIWon(String margin) {
+    return 'J\'ai gagné de $margin';
+  }
+
+  @override
+  String headToHeadFriendWon(String name, String margin) {
+    return '$name a gagné de $margin';
+  }
+
+  @override
+  String get headToHeadTie => 'Égalité parfaite';
+
+  @override
+  String get headToHeadFriendFallback => 'Un ami';
+
+  @override
+  String get headToHeadPreview => 'Aperçu de la carte face-à-face';
+
+  @override
+  String get headToHeadPrivacy =>
+      'Seuls les amis qui vous suivent en retour et ont un profil public peuvent être comparés, et uniquement sur des courses publiques.';
 }

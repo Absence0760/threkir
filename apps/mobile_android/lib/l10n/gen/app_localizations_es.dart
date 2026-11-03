@@ -19297,4 +19297,58 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get shareCardVideoError =>
       'No se pudo abrir el navegador. Inténtalo de nuevo.';
+
+  @override
+  String get headToHeadCompare => 'Comparar con un amigo';
+
+  @override
+  String get headToHeadTitle => 'Cara a cara';
+
+  @override
+  String get headToHeadStyleVersus => 'Duelo';
+
+  @override
+  String get headToHeadFriend => 'Amigo';
+
+  @override
+  String get headToHeadLoading => 'Buscando amigos para comparar…';
+
+  @override
+  String get headToHeadEmpty =>
+      'Aún no hay nadie con quien comparar aquí. Hace falta un amigo al que sigas y que te siga, con perfil público, y una carrera pública aquí de cada uno.';
+
+  @override
+  String get headToHeadLoadFailed => 'No se pudo cargar la comparación.';
+
+  @override
+  String get headToHeadRetry => 'Reintentar';
+
+  @override
+  String get headToHeadMe => 'Yo';
+
+  @override
+  String get headToHeadVs => 'vs';
+
+  @override
+  String headToHeadIWon(String margin) {
+    return 'Gané por $margin';
+  }
+
+  @override
+  String headToHeadFriendWon(String name, String margin) {
+    return '$name ganó por $margin';
+  }
+
+  @override
+  String get headToHeadTie => 'Empate';
+
+  @override
+  String get headToHeadFriendFallback => 'Un amigo';
+
+  @override
+  String get headToHeadPreview => 'Vista previa de la tarjeta cara a cara';
+
+  @override
+  String get headToHeadPrivacy =>
+      'Solo puedes comparar con amigos que te siguen y tienen perfil público, y solo con carreras públicas.';
 }

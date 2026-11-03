@@ -19297,6 +19297,60 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get shareCardVideoError =>
       'Não foi possível abrir o navegador. Tente novamente.';
+
+  @override
+  String get headToHeadCompare => 'Comparar com um amigo';
+
+  @override
+  String get headToHeadTitle => 'Frente a frente';
+
+  @override
+  String get headToHeadStyleVersus => 'Duelo';
+
+  @override
+  String get headToHeadFriend => 'Amigo';
+
+  @override
+  String get headToHeadLoading => 'A procurar amigos para comparar…';
+
+  @override
+  String get headToHeadEmpty =>
+      'Ainda não há ninguém para comparar aqui. É preciso um amigo que segue e que o segue a si, com perfil público, e uma corrida pública aqui de cada um.';
+
+  @override
+  String get headToHeadLoadFailed => 'Não foi possível carregar a comparação.';
+
+  @override
+  String get headToHeadRetry => 'Tentar novamente';
+
+  @override
+  String get headToHeadMe => 'Eu';
+
+  @override
+  String get headToHeadVs => 'vs';
+
+  @override
+  String headToHeadIWon(String margin) {
+    return 'Ganhei por $margin';
+  }
+
+  @override
+  String headToHeadFriendWon(String name, String margin) {
+    return '$name ganhou por $margin';
+  }
+
+  @override
+  String get headToHeadTie => 'Empate';
+
+  @override
+  String get headToHeadFriendFallback => 'Um amigo';
+
+  @override
+  String get headToHeadPreview => 'Pré-visualização do cartão frente a frente';
+
+  @override
+  String get headToHeadPrivacy =>
+      'Só é possível comparar com amigos que o seguem de volta e têm perfil público, e apenas em corridas públicas.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -38577,4 +38631,58 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get shareCardVideoError =>
       'Não foi possível abrir o navegador. Tente de novo.';
+
+  @override
+  String get headToHeadCompare => 'Comparar com um amigo';
+
+  @override
+  String get headToHeadTitle => 'Frente a frente';
+
+  @override
+  String get headToHeadStyleVersus => 'Duelo';
+
+  @override
+  String get headToHeadFriend => 'Amigo';
+
+  @override
+  String get headToHeadLoading => 'Procurando amigos para comparar…';
+
+  @override
+  String get headToHeadEmpty =>
+      'Ainda não há ninguém para comparar aqui. É preciso um amigo que você segue e que segue você, com perfil público, e uma corrida pública aqui de cada um.';
+
+  @override
+  String get headToHeadLoadFailed => 'Não foi possível carregar a comparação.';
+
+  @override
+  String get headToHeadRetry => 'Tentar de novo';
+
+  @override
+  String get headToHeadMe => 'Eu';
+
+  @override
+  String get headToHeadVs => 'vs';
+
+  @override
+  String headToHeadIWon(String margin) {
+    return 'Ganhei por $margin';
+  }
+
+  @override
+  String headToHeadFriendWon(String name, String margin) {
+    return '$name ganhou por $margin';
+  }
+
+  @override
+  String get headToHeadTie => 'Empate';
+
+  @override
+  String get headToHeadFriendFallback => 'Um amigo';
+
+  @override
+  String get headToHeadPreview => 'Prévia do cartão frente a frente';
+
+  @override
+  String get headToHeadPrivacy =>
+      'Só é possível comparar com amigos que seguem você de volta e têm perfil público, e apenas em corridas públicas.';
 }

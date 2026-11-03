@@ -5401,5 +5401,21 @@
   "shareCardStyleVideo": "Video",
   "shareCardVideoBody": "Mach aus diesem Lauf ein vertikales 3D-Flyover-Video. Es entsteht in deinem Browser auf threkir.com; dort kannst du es teilen oder speichern.",
   "shareCardVideoOpen": "Video-Export öffnen",
-  "shareCardVideoError": "Der Browser konnte nicht geöffnet werden. Versuch es noch einmal."
+  "shareCardVideoError": "Der Browser konnte nicht geöffnet werden. Versuch es noch einmal.",
+  "headToHeadCompare": "Mit einem Freund vergleichen",
+  "headToHeadTitle": "Kopf an Kopf",
+  "headToHeadStyleVersus": "Duell",
+  "headToHeadFriend": "Freund",
+  "headToHeadLoading": "Freunde zum Vergleichen werden gesucht …",
+  "headToHeadEmpty": "Hier gibt es noch niemanden zum Vergleichen. Dafür braucht es einen Freund, dem du folgst und der dir zurückfolgt, mit öffentlichem Profil, und von euch beiden einen öffentlichen Lauf hier.",
+  "headToHeadLoadFailed": "Der Vergleich konnte nicht geladen werden.",
+  "headToHeadRetry": "Erneut versuchen",
+  "headToHeadMe": "Ich",
+  "headToHeadVs": "vs",
+  "headToHeadIWon": "Ich habe mit {margin} Vorsprung gewonnen",
+  "headToHeadFriendWon": "{name} hat mit {margin} Vorsprung gewonnen",
+  "headToHeadTie": "Totes Rennen",
+  "headToHeadFriendFallback": "Ein Freund",
+  "headToHeadPreview": "Vorschau der Kopf-an-Kopf-Karte",
+  "headToHeadPrivacy": "Verglichen werden können nur Freunde, die dir zurückfolgen und ein öffentliches Profil haben, und nur öffentliche Läufe."
 }

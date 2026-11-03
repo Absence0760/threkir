@@ -18383,4 +18383,58 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get shareCardVideoError => 'ブラウザを開けませんでした。もう一度お試しください。';
+
+  @override
+  String get headToHeadCompare => '友達と比べる';
+
+  @override
+  String get headToHeadTitle => '直接対決';
+
+  @override
+  String get headToHeadStyleVersus => '対決';
+
+  @override
+  String get headToHeadFriend => '友達';
+
+  @override
+  String get headToHeadLoading => '比べられる友達を探しています…';
+
+  @override
+  String get headToHeadEmpty =>
+      'ここで比べられる友達はまだいません。お互いにフォローしていて、公開プロフィールの友達と、それぞれのここでの公開ランが必要です。';
+
+  @override
+  String get headToHeadLoadFailed => '比較を読み込めませんでした。';
+
+  @override
+  String get headToHeadRetry => '再試行';
+
+  @override
+  String get headToHeadMe => '自分';
+
+  @override
+  String get headToHeadVs => 'vs';
+
+  @override
+  String headToHeadIWon(String margin) {
+    return '$margin差で勝ちました';
+  }
+
+  @override
+  String headToHeadFriendWon(String name, String margin) {
+    return '$nameが$margin差で勝ちました';
+  }
+
+  @override
+  String get headToHeadTie => '同タイム';
+
+  @override
+  String get headToHeadFriendFallback => '友達';
+
+  @override
+  String get headToHeadPreview => '直接対決カードのプレビュー';
+
+  @override
+  String get headToHeadPrivacy =>
+      '比べられるのは、フォローし返してくれていて公開プロフィールの友達だけで、公開ランのみが対象です。';
 }

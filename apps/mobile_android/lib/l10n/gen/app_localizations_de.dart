@@ -19312,4 +19312,59 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get shareCardVideoError =>
       'Der Browser konnte nicht geöffnet werden. Versuch es noch einmal.';
+
+  @override
+  String get headToHeadCompare => 'Mit einem Freund vergleichen';
+
+  @override
+  String get headToHeadTitle => 'Kopf an Kopf';
+
+  @override
+  String get headToHeadStyleVersus => 'Duell';
+
+  @override
+  String get headToHeadFriend => 'Freund';
+
+  @override
+  String get headToHeadLoading => 'Freunde zum Vergleichen werden gesucht …';
+
+  @override
+  String get headToHeadEmpty =>
+      'Hier gibt es noch niemanden zum Vergleichen. Dafür braucht es einen Freund, dem du folgst und der dir zurückfolgt, mit öffentlichem Profil, und von euch beiden einen öffentlichen Lauf hier.';
+
+  @override
+  String get headToHeadLoadFailed =>
+      'Der Vergleich konnte nicht geladen werden.';
+
+  @override
+  String get headToHeadRetry => 'Erneut versuchen';
+
+  @override
+  String get headToHeadMe => 'Ich';
+
+  @override
+  String get headToHeadVs => 'vs';
+
+  @override
+  String headToHeadIWon(String margin) {
+    return 'Ich habe mit $margin Vorsprung gewonnen';
+  }
+
+  @override
+  String headToHeadFriendWon(String name, String margin) {
+    return '$name hat mit $margin Vorsprung gewonnen';
+  }
+
+  @override
+  String get headToHeadTie => 'Totes Rennen';
+
+  @override
+  String get headToHeadFriendFallback => 'Ein Freund';
+
+  @override
+  String get headToHeadPreview => 'Vorschau der Kopf-an-Kopf-Karte';
+
+  @override
+  String get headToHeadPrivacy =>
+      'Verglichen werden können nur Freunde, die dir zurückfolgen und ein öffentliches Profil haben, und nur öffentliche Läufe.';
 }

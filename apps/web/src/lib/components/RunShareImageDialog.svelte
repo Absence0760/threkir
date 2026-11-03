@@ -147,6 +147,9 @@
 			cardBlob = null;
 			if (preview) URL.revokeObjectURL(preview.url);
 			preview = null;
+			// A decoded photo holds its full-resolution pixels until closed.
+			photo?.close();
+			photo = null;
 		};
 	});
 

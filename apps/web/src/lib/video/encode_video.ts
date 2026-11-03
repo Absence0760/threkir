@@ -8,9 +8,12 @@
 import { muxMp4, type Mp4Sample } from './mp4_mux.ts';
 import { frameDurationUs, frameTimestampUs, isKeyFrame, VIDEO_HEIGHT, VIDEO_WIDTH } from './frame_clock.ts';
 import {
+	chooseVideoEncoder,
 	H264_CODECS,
 	RECORDER_TYPES,
 	VIDEO_BITRATE,
+	videoExt,
+	videoFileName,
 	webcodecsConfig,
 	type EncoderProbe,
 	type VideoEncoderPlan,
@@ -22,7 +25,7 @@ export function videoAbortError(): DOMException {
 	return new DOMException('The video export was cancelled', 'AbortError');
 }
 
-export async function probeVideoEncoders(): Promise<EncoderProbe> {
+async function probeVideoEncoders(): Promise<EncoderProbe> {
 	const webcodecs: string[] = [];
 	if (typeof VideoEncoder !== 'undefined' && typeof VideoFrame !== 'undefined') {
 		for (const codec of H264_CODECS) {
@@ -47,6 +50,12 @@ export async function probeVideoEncoders(): Promise<EncoderProbe> {
 	const canvasStream =
 		typeof HTMLCanvasElement !== 'undefined' && typeof HTMLCanvasElement.prototype.captureStream === 'function';
 	return { webcodecs, recorder, canvasStream };
+}
+
+/// The encoder this browser offers, or null when it can encode no video at
+/// all, in which case a consumer hides its export behind a note.
+export async function pickVideoEncoder(): Promise<VideoEncoderPlan | null> {
+	return chooseVideoEncoder(await probeVideoEncoders());
 }
 
 export interface FrameSink {
@@ -158,8 +167,10 @@ export function createFrameSink(plan: VideoEncoderPlan, canvas: HTMLCanvasElemen
 
 /// The OS share sheet when it takes files (phones, Safari), a download
 /// otherwise. Must run inside a fresh user gesture: a share sheet opened at
-/// the end of a long render has long lost the one that started it.
-export async function deliverVideo(blob: Blob, fileName: string, title: string): Promise<'shared' | 'downloaded'> {
+/// the end of a long render has long lost the one that started it. The file
+/// is named from `stem` (`videoFileName`) in the container the encoder wrote.
+export async function deliverVideo(blob: Blob, stem: string, title: string): Promise<'shared' | 'downloaded'> {
+	const fileName = videoFileName(stem, videoExt(blob.type));
 	const file = new File([blob], fileName, { type: blob.type });
 	if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [file] })) {
 		await navigator.share({ files: [file], title });

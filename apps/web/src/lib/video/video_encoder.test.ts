@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
-import { chooseVideoEncoder, videoFileName, webcodecsConfig } from './video_encoder.ts';
+import { chooseVideoEncoder, videoExt, videoFileName, webcodecsConfig } from './video_encoder.ts';
 
 test('WebCodecs H.264 wins, at the highest profile the browser accepts', () => {
 	assert.deepEqual(
@@ -38,4 +38,10 @@ test('file names keep letters in any script and drop everything else', () => {
 	assert.equal(videoFileName('Café côte', 'webm'), 'threkir-café-côte.webm');
 	assert.equal(videoFileName('朝ラン', 'mp4'), 'threkir-朝ラン.mp4');
 	assert.equal(videoFileName('../../', 'mp4'), 'threkir-flyover-video.mp4');
+});
+
+test('the file extension follows the container the encoder wrote', () => {
+	assert.equal(videoExt('video/mp4'), 'mp4');
+	assert.equal(videoExt('video/mp4;codecs=avc1'), 'mp4');
+	assert.equal(videoExt('video/webm;codecs=vp9'), 'webm');
 });

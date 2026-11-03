@@ -39,7 +39,11 @@ export function chooseVideoEncoder(probe: EncoderProbe): VideoEncoderPlan | null
 	if (!probe.canvasStream) return null;
 	const type = RECORDER_TYPES.find((t) => probe.recorder.includes(t));
 	if (!type) return null;
-	return { kind: 'mediarecorder', mimeType: type, ext: type.startsWith('video/mp4') ? 'mp4' : 'webm' };
+	return { kind: 'mediarecorder', mimeType: type, ext: videoExt(type) };
+}
+
+export function videoExt(mimeType: string): 'mp4' | 'webm' {
+	return mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
 }
 
 /// No `avc.format`: its default is AVCC framing with the `avcC` record in

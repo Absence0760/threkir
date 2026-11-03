@@ -42,7 +42,7 @@
 	import { play, seek, tick, type Playback } from './course_preview/playback.ts';
 	import { distanceAtStripOffset, stripGeometry, stripX } from './course_preview/strip_geometry.ts';
 	import { addCourseLayers } from './course_preview/course_layers.ts';
-	import { chooseVideoEncoder, videoFileName, type VideoEncoderPlan } from '#lib/video/video_encoder.ts';
+	import type { VideoEncoderPlan } from '#lib/video/video_encoder.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { DEFAULT_SITE_URL } from '#lib/core/site_url.ts';
 
@@ -121,7 +121,7 @@
 	type VideoState =
 		| { step: 'idle' }
 		| { step: 'rendering'; progress: number }
-		| { step: 'ready'; blob: Blob; name: string };
+		| { step: 'ready'; blob: Blob };
 	let encoderPlan = $state<VideoEncoderPlan | null>(null);
 	let video = $state<VideoState>({ step: 'idle' });
 	let videoAbort: AbortController | null = null;
@@ -347,8 +347,8 @@
 
 	async function probeEncoder() {
 		try {
-			const { probeVideoEncoders } = await import('#lib/video/encode_video.ts');
-			encoderPlan = chooseVideoEncoder(await probeVideoEncoders());
+			const { pickVideoEncoder } = await import('#lib/video/encode_video.ts');
+			encoderPlan = await pickVideoEncoder();
 		} catch (e) {
 			console.warn('course preview: no video encoder', e);
 			encoderPlan = null;
@@ -410,7 +410,7 @@
 				},
 			});
 			if (videoAbort !== abort) return;
-			video = { step: 'ready', blob, name: videoFileName(title, plan.ext) };
+			video = { step: 'ready', blob };
 		} catch (e) {
 			if (videoAbort !== abort) return;
 			video = { step: 'idle' };
@@ -430,10 +430,10 @@
 
 	async function saveVideo() {
 		if (video.step !== 'ready') return;
-		const { blob, name } = video;
+		const { blob } = video;
 		try {
 			const { deliverVideo } = await import('#lib/video/encode_video.ts');
-			const how = await deliverVideo(blob, name, title);
+			const how = await deliverVideo(blob, title, title);
 			if (how === 'downloaded') showToast(m('coursePreview.videoSaved'), 'success');
 		} catch (e) {
 			if ((e as { name?: string })?.name === 'AbortError') return;

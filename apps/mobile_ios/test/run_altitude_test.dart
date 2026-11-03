@@ -148,6 +148,26 @@ void main() {
     });
   });
 
+  test('runAltitudeSeries: the series runAltitude reads, index for index '
+      'over the stored track', () {
+    final baro = [
+      pt(0, 400),
+      pt(1, 410, 300),
+      pt(2, 460, 360).withOffTrack(true),
+      pt(3, 405, 302),
+    ];
+    expect(runAltitudeSeries(baro), [null, 300, null, 302]);
+    final gps = [
+      pt(0, 400),
+      pt(1, 460).withOffTrack(true),
+      pt(2),
+      pt(3, double.nan),
+      pt(4, 402),
+    ];
+    expect(runAltitudeSeries(gps), [400, null, null, null, 402]);
+    expect(runAltitudeSeries(const []), isEmpty);
+  });
+
   group('computeRunElevationLoss', () {
     test('reads the same series and band as the gain beside it', () {
       expect(computeRunElevationLoss(gpsWander, RunSource.app), 0);

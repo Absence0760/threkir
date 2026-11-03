@@ -1,5 +1,6 @@
 import type { TrackPoint } from '../types';
 import { lineLat, lineLng } from './track_line';
+import { runAltitudeSeries } from './run_altitude';
 
 /**
  * Whether every point of [track] carries the recorder's cumulative credited
@@ -122,7 +123,14 @@ export const SPLIT_TAIL_MIN_M = 50;
  * caller converts to the display unit (`formatPaceNoSuffix`).
  *
  * Elevation per split is the net gain/loss (positive = gain) over that
- * segment. Null when the track has no elevation data.
+ * segment, read off `runAltitudeSeries` — the barometer when the run carries
+ * one, else GPS altitude, never an off-track fix's — so it agrees with the
+ * run's climb, the elevation chart and the 3D replay. The altitude at a
+ * boundary is interpolated along the distance axis between the nearest points
+ * that carry one, so a dropout is carried across exactly as the climb rule
+ * carries it, and held flat past the first and last of them. Null for a split
+ * wholly outside the stretch that carries an altitude, so on every split when
+ * no point does.
  *
  * Distance is `trackCumulativeMetres(track, totalDistanceM)`: pass the run's
  * `distance_m` and a track that carries the recorder's `distM` ends its last
@@ -139,7 +147,6 @@ export function computeRealSplits(
 	const hasTs = track.some((p) => p.ts != null);
 	if (!hasTs) return [];
 
-	const hasEle = track.some((p) => p.ele != null);
 
 	// Seed the first split's start time from the first point that actually
 	// carries a parseable timestamp, not track[0]: a first GPS fix that lands
@@ -151,30 +158,29 @@ export function computeRealSplits(
 	const startMs = firstTimed ? Date.parse(firstTimed.ts as string) : NaN;
 
 	const cum = trackCumulativeMetres(track, totalDistanceM);
+	const elevationOf = splitElevationReader(runAltitudeSeries(track), cum);
 	let cumDist = 0;
-	let splitStart = { dist: 0, timeMs: startMs, ele: track[0].ele ?? null };
+	let splitStart = { dist: 0, timeMs: startMs };
 	const splits: Split[] = [];
 
 	// Close the current split at cumulative distance `endDist`, using the
-	// (interpolated) crossing time + elevation, then re-seed the next split
-	// from there. Pace is normalised by the split's actual distance, so a
-	// split that isn't exactly `tickMetres` still reports a correct per-km pace.
-	const emit = (endDist: number, endTimeMs: number, endEle: number | null) => {
+	// (interpolated) crossing time, then re-seed the next split from there.
+	// Pace is normalised by the split's actual distance, so a split that isn't
+	// exactly `tickMetres` still reports a correct per-km pace.
+	const emit = (endDist: number, endTimeMs: number) => {
 		const durationS =
 			Number.isFinite(endTimeMs) && Number.isFinite(splitStart.timeMs)
 				? (endTimeMs - splitStart.timeMs) / 1000
 				: 0;
 		const splitDist = endDist - splitStart.dist;
 		const paceS = durationS > 0 && splitDist > 0 ? Math.round(durationS / (splitDist / 1000)) : 0;
-		const eleNet =
-			hasEle && endEle != null && splitStart.ele != null ? Math.round(endEle - splitStart.ele) : null;
 		splits.push({
 			km: splits.length + 1,
 			pace_s: paceS,
 			distance_m: Math.round(splitDist),
-			elevation_m: eleNet,
+			elevation_m: elevationOf(splitStart.dist, endDist),
 		});
-		splitStart = { dist: endDist, timeMs: endTimeMs, ele: endEle };
+		splitStart = { dist: endDist, timeMs: endTimeMs };
 	};
 
 	for (let i = 1; i < track.length; i++) {
@@ -189,16 +195,14 @@ export function computeRealSplits(
 		// A single segment can straddle several tick boundaries when there is a
 		// long gap between two fixes (a tunnel, a canyon/forest signal loss, or
 		// a downsampled Strava/Garmin import). Emit a split AT each boundary,
-		// interpolating the crossing time + elevation by the distance fraction
-		// along the segment — so the gap becomes one correctly-sized split per
-		// tick instead of one oversized split followed by zero-distance slivers.
+		// interpolating the crossing time by the distance fraction along the
+		// segment — so the gap becomes one correctly-sized split per tick
+		// instead of one oversized split followed by zero-distance slivers.
 		let boundaryDist = (splits.length + 1) * tickMetres;
 		while (segDist > 0 && cumDist >= boundaryDist) {
 			const f = (boundaryDist - segStart) / segDist;
 			const crossMs = Number.isFinite(aMs) && Number.isFinite(bMs) ? aMs + f * (bMs - aMs) : bMs;
-			const crossEle =
-				hasEle && a.ele != null && b.ele != null ? a.ele + f * (b.ele - a.ele) : (b.ele ?? null);
-			emit(boundaryDist, crossMs, crossEle);
+			emit(boundaryDist, crossMs);
 			boundaryDist = (splits.length + 1) * tickMetres;
 		}
 	}
@@ -217,11 +221,52 @@ export function computeRealSplits(
 		const lastPoint = track[track.length - 1];
 		const endTimeMs = lastPoint.ts ? Date.parse(lastPoint.ts) : NaN;
 		if (cumDist - splitStart.dist > SPLIT_TAIL_MIN_M) {
-			emit(cumDist, endTimeMs, lastPoint.ele ?? null);
+			emit(cumDist, endTimeMs);
 		}
 	}
 
 	return splits;
+}
+
+/**
+ * The net elevation, whole metres, of the split from `start` to `end` along
+ * the split axis: [cum] with the first point at 0, the axis the boundary loop
+ * in `computeRealSplits` walks. The altitude at each end is linear between the
+ * nearest points of [altitudes] that carry one, and held at the first / last
+ * of them for a split that only partly overlaps the measured stretch. A split
+ * wholly before the first or after the last altitude is null, not a held 0 m
+ * that would read as measured. Twin of `_splitElevationReader` in
+ * `run_stats.dart`.
+ */
+function splitElevationReader(
+	altitudes: readonly (number | null)[],
+	cum: readonly number[]
+): (start: number, end: number) => number | null {
+	const at: number[] = [];
+	const alt: number[] = [];
+	for (let i = 0; i < altitudes.length; i++) {
+		const v = altitudes[i];
+		if (v == null) continue;
+		at.push(i === 0 ? 0 : cum[i]);
+		alt.push(v);
+	}
+	if (alt.length === 0) return () => null;
+	const altitudeAt = (d: number): number => {
+		if (d <= at[0]) return alt[0];
+		const last = at.length - 1;
+		if (d >= at[last]) return alt[last];
+		let lo = 0;
+		let hi = last;
+		while (hi - lo > 1) {
+			const mid = (lo + hi) >> 1;
+			if (at[mid] <= d) lo = mid;
+			else hi = mid;
+		}
+		const span = at[hi] - at[lo];
+		return span > 0 ? alt[lo] + ((d - at[lo]) / span) * (alt[hi] - alt[lo]) : alt[hi];
+	};
+	return (start, end) =>
+		end <= at[0] || start >= at[at.length - 1] ? null : Math.round(altitudeAt(end) - altitudeAt(start));
 }
 
 /**

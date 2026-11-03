@@ -10,6 +10,7 @@ import {
 	hasRecordedDistances,
 	trackCumulativeMetres,
 } from './run_stats';
+import { runAltitude } from './run_altitude';
 import { stripComments } from '../core/strip_comments';
 import type { TrackPoint } from '../types';
 
@@ -429,6 +430,60 @@ test('computeRealSplits — mile splits on distM land on the mile boundaries', (
 	for (const sp of splits) assert.equal(sp.pace_s, 400, `split ${sp.km} pace ${sp.pace_s}`);
 	const summed = splits.reduce((a, sp) => a + sp.distance_m, 0);
 	assert.ok(Math.abs(summed - 5300) <= splits.length, `splits sum to ${summed}`);
+});
+
+// A barometer run whose GPS altitude disagrees with it in shape and level:
+// the barometer climbs 2 m per 100 m, GPS altitude falls 1 m per 100 m and
+// sits 50 m above it. 2.1 km on distM, a fix every 10 m and 3 s.
+function baroRun(baroAt: (i: number) => number | undefined = (i) => 100 + 0.2 * i): TrackPoint[] {
+	const pts: TrackPoint[] = [];
+	for (let i = 0; i <= 210; i++) {
+		const p = at(i * 10, i * 3, i * 10);
+		p.ele = 150 - 0.1 * i + (i % 2 === 0 ? -6 : 6);
+		const baro = baroAt(i);
+		if (baro != null) p.baroEle = baro;
+		pts.push(p);
+	}
+	return pts;
+}
+
+test('computeRealSplits — a barometer run reads split elevation off the barometer, as the climb does', () => {
+	const pts = baroRun();
+	const splits = computeRealSplits(pts, 1000, 2100);
+	assert.deepEqual(splits.map((sp) => sp.elevation_m), [20, 20, 2]);
+	const line = runAltitude(pts, 'app').track;
+	assert.deepEqual(
+		[line[100].ele! - line[0].ele!, line[200].ele! - line[100].ele!, line[210].ele! - line[200].ele!].map(Math.round),
+		[20, 20, 2],
+	);
+	const gpsOnly = computeRealSplits(pts.map(({ baroEle: _b, ...p }) => p), 1000, 2100);
+	assert.deepEqual(gpsOnly.map((sp) => sp.elevation_m), [-10, -10, -1]);
+});
+
+test('computeRealSplits — split elevation carries a dropout across and never reads an off-track fix', () => {
+	// No barometer reading until the anchor levels (the first five fixes) and
+	// none through a stall from 500 m to 1490 m; an off-track canopy fix at
+	// 1010 m, inside the stall and beside the 1 km boundary, carries a wild
+	// altitude in both series.
+	const pts = baroRun((i) => (i < 5 || (i >= 50 && i < 150) ? undefined : 100 + 0.2 * i));
+	pts[101] = { ...pts[101], ele: 999, baroEle: 999, offTrack: true };
+	const splits = computeRealSplits(pts, 1000, 2100);
+	// The first reading (101 m at 50 m) holds back to the start.
+	assert.deepEqual(splits.map((sp) => sp.elevation_m), [19, 20, 2]);
+	// A barometer that stops for good at 890 m: the split it reaches into
+	// holds its last reading, the ones after it read nothing rather than 0 m.
+	const stalled = computeRealSplits(baroRun((i) => (i < 90 ? 100 + 0.2 * i : undefined)), 1000, 2100);
+	assert.deepEqual(stalled.map((sp) => sp.elevation_m), [18, null, null]);
+});
+
+test('computeRealSplits — a half-metre split elevation rounds toward +infinity, as the Dart twin does', () => {
+	const pts: TrackPoint[] = [];
+	for (let i = 0; i <= 110; i++) {
+		const p = at(i * 10, i * 3, i * 10);
+		p.baroEle = 10 - 0.025 * i;
+		pts.push(p);
+	}
+	assert.equal(computeRealSplits(pts, 1000)[0].elevation_m, -2);
 });
 
 test('movingTimeSeconds — a recorded run, stop, run counts only the credited stretches', () => {

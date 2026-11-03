@@ -126,8 +126,9 @@ PacingAnalysis? analysePacing(List<Waypoint>? track) {
 /// Boundaries are the running sum of the splits' own lengths, so the slices
 /// land on exactly the boundaries the list already displays rather than on a
 /// second, independently-walked set that could drift by a point. Web passes its
-/// `Split[]` and reads `distance_m` off each; mobile's `RunSplit` carries only
-/// a tick and a duration, so the caller hands the lengths over directly.
+/// `Split[]` and reads `distance_m` off each; mobile's `RunSplit` carries no
+/// length (every one is a whole tick), so the caller hands the lengths over
+/// directly.
 List<int?> gradeAdjustedSplitPaces(
     List<Waypoint>? track, List<double> splitDistancesM) {
   if (splitDistancesM.isEmpty) return const [];

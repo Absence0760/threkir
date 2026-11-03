@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:core_models/core_models.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../lib/run_altitude.dart';
 import '../lib/run_stats.dart';
 
 void main() {
@@ -630,6 +631,105 @@ void main() {
         movingTimeOf([for (final w in pts) w.withCumulativeDistance(null)]),
         const Duration(seconds: 180),
       );
+    });
+  });
+  group('split elevation', () {
+    final start = DateTime.utc(2026, 4, 1, 7);
+    // A barometer run whose GPS altitude disagrees with it in shape and level:
+    // the barometer climbs 2 m per 100 m, GPS altitude falls 1 m per 100 m and
+    // sits 50 m above it. 2.1 km on the recorded distance, a fix every 10 m
+    // and 3 s. Twin of `baroRun` in run_stats.test.ts.
+    List<Waypoint> baroRun([double? Function(int i)? baroAt]) => [
+          for (var i = 0; i <= 210; i++)
+            Waypoint(
+              lat: 0,
+              lng: i * 10 / 111320,
+              timestamp: start.add(Duration(seconds: i * 3)),
+              cumulativeDistanceMetres: i * 10.0,
+              elevationMetres: 150 - 0.1 * i + (i.isEven ? -6 : 6),
+              baroElevationMetres:
+                  baroAt == null ? 100 + 0.2 * i : baroAt(i),
+            ),
+        ];
+
+    test('a barometer run reads split elevation off the barometer, as the '
+        'climb does', () {
+      final pts = baroRun();
+      final splits =
+          computeSplitDurations(pts, 1000, start, totalDistanceMetres: 2100);
+      // Whole ticks only: the 100 m tail web shows as a third split is not one
+      // here.
+      expect(splits.map((s) => s.elevationMetres), [20, 20]);
+      final line = runAltitude(pts, RunSource.app).track;
+      expect(
+        [
+          line[100].elevationMetres! - line[0].elevationMetres!,
+          line[200].elevationMetres! - line[100].elevationMetres!,
+        ].map((d) => d.round()),
+        [20, 20],
+      );
+      final gpsOnly = computeSplitDurations(
+        [
+          for (final w in pts)
+            Waypoint(
+              lat: w.lat,
+              lng: w.lng,
+              timestamp: w.timestamp,
+              cumulativeDistanceMetres: w.cumulativeDistanceMetres,
+              elevationMetres: w.elevationMetres,
+            ),
+        ],
+        1000,
+        start,
+        totalDistanceMetres: 2100,
+      );
+      expect(gpsOnly.map((s) => s.elevationMetres), [-10, -10]);
+    });
+
+    test('split elevation carries a dropout across and never reads an '
+        'off-track fix', () {
+      // No barometer reading until the anchor levels (the first five fixes)
+      // and none through a stall from 500 m to 1490 m; an off-track canopy fix
+      // at 1010 m, inside the stall and beside the 1 km boundary, carries a
+      // wild altitude in both series.
+      final pts = baroRun(
+          (i) => i < 5 || (i >= 50 && i < 150) ? null : 100 + 0.2 * i);
+      final w = pts[101];
+      pts[101] = Waypoint(
+        lat: w.lat,
+        lng: w.lng,
+        timestamp: w.timestamp,
+        cumulativeDistanceMetres: w.cumulativeDistanceMetres,
+        elevationMetres: 999,
+        baroElevationMetres: 999,
+        offTrack: true,
+      );
+      final splits =
+          computeSplitDurations(pts, 1000, start, totalDistanceMetres: 2100);
+      // The first reading (101 m at 50 m) holds back to the start.
+      expect(splits.map((s) => s.elevationMetres), [19, 20]);
+      // A barometer that stops for good at 890 m: the split it reaches into
+      // holds its last reading, the ones after it read nothing rather than
+      // 0 m.
+      final stalled = computeSplitDurations(
+          baroRun((i) => i < 90 ? 100 + 0.2 * i : null), 1000, start,
+          totalDistanceMetres: 2100);
+      expect(stalled.map((s) => s.elevationMetres), [18, null]);
+    });
+
+    test('a half-metre split elevation rounds toward +infinity, as the web '
+        'twin does', () {
+      final pts = [
+        for (var i = 0; i <= 110; i++)
+          Waypoint(
+            lat: 0,
+            lng: i * 10 / 111320,
+            timestamp: start.add(Duration(seconds: i * 3)),
+            cumulativeDistanceMetres: i * 10.0,
+            baroElevationMetres: 10 - 0.025 * i,
+          ),
+      ];
+      expect(computeSplitDurations(pts, 1000, start).first.elevationMetres, -2);
     });
   });
 }

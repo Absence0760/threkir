@@ -6,6 +6,7 @@ import {
 	ELEVATION_GAIN_GPS_MIN_DELTA_M,
 	hasBarometricAltitude,
 	runAltitude,
+	runAltitudeSeries,
 } from './run_altitude';
 import { ELEVATION_GAIN_MIN_DELTA_M } from '../routes/route_simplify';
 
@@ -106,4 +107,12 @@ test('hasBarometricAltitude — a non-finite reading is no reading', () => {
 	assert.equal(hasBarometricAltitude(gpsWander), false);
 	assert.equal(hasBarometricAltitude([pt(0, 400, Number.NaN)]), false);
 	assert.equal(hasBarometricAltitude([pt(0, 400), pt(1, undefined, 0)]), true);
+});
+
+test('runAltitudeSeries — the series runAltitude reads, index for index over the stored track', () => {
+	const baro: TrackPoint[] = [pt(0, 400), pt(1, 410, 300), { ...pt(2, 460, 360), offTrack: true }, pt(3, 405, 302)];
+	assert.deepEqual(runAltitudeSeries(baro), [null, 300, null, 302]);
+	const gps: TrackPoint[] = [pt(0, 400), { ...pt(1, 460), offTrack: true }, pt(2), pt(3, Number.NaN), pt(4, 402)];
+	assert.deepEqual(runAltitudeSeries(gps), [400, null, null, null, 402]);
+	assert.deepEqual(runAltitudeSeries([]), []);
 });

@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:core_models/core_models.dart';
 
 import 'l10n/gen/app_localizations.dart';
+import 'run_altitude.dart';
 
 /// Localized display name for a best-effort race distance. The dashboard +
 /// run-detail best-effort tables key their maps on the canonical English
@@ -227,12 +228,15 @@ Duration? fastestWindowOf(
   return best;
 }
 
-/// One completed split: the 1-based tick index (km or mile) and the elapsed
-/// time across it. Each split spans exactly one tick length by construction.
+/// One completed split: the 1-based tick index (km or mile), the elapsed
+/// time across it, and its net elevation change in whole metres (positive =
+/// gain; null when no point of the track carries an altitude). Each split
+/// spans exactly one tick length by construction.
 class RunSplit {
-  const RunSplit(this.tick, this.duration);
+  const RunSplit(this.tick, this.duration, {this.elevationMetres});
   final int tick;
   final Duration duration;
+  final int? elevationMetres;
 }
 
 /// Per-tick splits from a track. [tickLengthM] is 1000 for km, 1609.344 for
@@ -251,6 +255,16 @@ class RunSplit {
 /// Distance is [trackCumulativeMetres] with [totalDistanceMetres]: pass the
 /// run's distance and a track that carries the recorder's cumulative credit
 /// places every boundary on the same axis as the headline figure.
+///
+/// Elevation is the net change across the split, read off
+/// [runAltitudeSeries] — the barometer when the run carries one, else GPS
+/// altitude, never an off-track fix's — so it agrees with the run's climb and
+/// elevation chart. The altitude at a boundary is interpolated along the
+/// distance axis between the nearest points that carry one, so a dropout is
+/// carried across, and held flat past the first and last of them; a split
+/// wholly outside the stretch that carries an altitude is null. Rounded
+/// half toward +infinity, as `Math.round` does in the web twin
+/// `computeRealSplits`.
 List<RunSplit> computeSplitDurations(
   List<Waypoint> track,
   double tickLengthM,
@@ -264,10 +278,12 @@ List<RunSplit> computeSplitDurations(
   if (!track.any((w) => w.timestamp != null)) return const [];
   final cum =
       trackCumulativeMetres(track, totalDistanceMetres: totalDistanceMetres);
+  final elevationOf = _splitElevationReader(runAltitudeSeries(track), cum);
   final splits = <RunSplit>[];
   var cumulative = 0.0;
   var nextTick = 1;
   var tickStart = track.first.timestamp ?? startedAt;
+  var tickStartDist = 0.0;
 
   for (var i = 1; i < track.length; i++) {
     final a = track[i - 1];
@@ -298,12 +314,62 @@ List<RunSplit> computeSplitDurations(
       // correction.
       final crossTime =
           interpolated.isBefore(tickStart) ? tickStart : interpolated;
-      splits.add(RunSplit(nextTick, crossTime.difference(tickStart)));
+      splits.add(RunSplit(
+        nextTick,
+        crossTime.difference(tickStart),
+        elevationMetres: elevationOf(tickStartDist, boundaryDist),
+      ));
       tickStart = crossTime;
+      tickStartDist = boundaryDist;
       nextTick++;
     }
   }
   return splits;
+}
+
+/// The net elevation, whole metres, of the split from `start` to `end` along
+/// the split axis: [cum] with the first point at 0, the axis the boundary loop
+/// in [computeSplitDurations] walks. The altitude at each end is linear
+/// between the nearest points of [altitudes] that carry one, and held at the
+/// first / last of them for a split that only partly overlaps the measured
+/// stretch. A split wholly before the first or after the last altitude is
+/// null, not a held 0 m that would read as measured. Rounded half toward
+/// +infinity, as `Math.round` does. Twin of `splitElevationReader` in
+/// `run_stats.ts`.
+int? Function(double start, double end) _splitElevationReader(
+    List<double?> altitudes, List<double> cum) {
+  final at = <double>[];
+  final alt = <double>[];
+  for (var i = 0; i < altitudes.length; i++) {
+    final v = altitudes[i];
+    if (v == null) continue;
+    at.add(i == 0 ? 0 : cum[i]);
+    alt.add(v);
+  }
+  if (alt.isEmpty) return (_, __) => null;
+  double altitudeAt(double d) {
+    if (d <= at.first) return alt.first;
+    final last = at.length - 1;
+    if (d >= at[last]) return alt[last];
+    var lo = 0;
+    var hi = last;
+    while (hi - lo > 1) {
+      final mid = (lo + hi) >> 1;
+      if (at[mid] <= d) {
+        lo = mid;
+      } else {
+        hi = mid;
+      }
+    }
+    final span = at[hi] - at[lo];
+    return span > 0
+        ? alt[lo] + ((d - at[lo]) / span) * (alt[hi] - alt[lo])
+        : alt[hi];
+  }
+
+  return (start, end) => end <= at.first || start >= at.last
+      ? null
+      : (altitudeAt(end) - altitudeAt(start) + 0.5).floor();
 }
 
 /// Great-circle distance between two lat/lng points in metres.

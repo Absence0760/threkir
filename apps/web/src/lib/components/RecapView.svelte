@@ -4,7 +4,8 @@
 	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import type { YearInRunningRecap } from '#lib/runs/recap.ts';
-	import { RECAP_SITE, recapActiveMonths, recapDuration } from '#lib/share/recap_card_text.ts';
+	import { RECAP_SITE, recapActiveMonths } from '#lib/share/recap_card_text.ts';
+	import { formatHoursMinutes } from '#lib/format/time.ts';
 	import type { RecapSlideFormat } from '#lib/share/recap_slideshow.ts';
 	import type { VideoEncoderPlan } from '#lib/video/video_encoder.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -150,7 +151,7 @@
 	<div class="hero-meta">
 		<span class="hero-meta-item">
 			<span class="material-symbols">timer</span>
-			{t('recap.onFoot', { time: recapDuration(recap.totalDurationS) })}
+			{t('recap.onFoot', { time: formatHoursMinutes(recap.totalDurationS) })}
 		</span>
 		<span class="hero-meta-divider" aria-hidden="true"></span>
 		<span class="hero-meta-item">

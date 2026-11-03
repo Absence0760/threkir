@@ -7,6 +7,7 @@
 import type { YearInRunningRecap } from '../runs/recap';
 import type { MessageKey } from '../i18n/messages';
 import { DEFAULT_SITE_URL } from '../core/site_url';
+import { formatHoursMinutes } from '../format/time';
 
 export type RecapTranslate = (key: MessageKey, params?: Record<string, string | number>) => string;
 
@@ -28,14 +29,6 @@ export const RECAP_SITE = new URL(DEFAULT_SITE_URL).host;
 export function recapWholeDistance(meters: number, unit: 'km' | 'mi'): string {
 	if (unit === 'mi') return `${(meters / 1609.344).toFixed(0)} mi`;
 	return `${(meters / 1000).toFixed(0)} km`;
-}
-
-/// "110h 5m" / "42m", the recap page's time-on-foot figure.
-export function recapDuration(seconds: number): string {
-	const h = Math.floor(seconds / 3600);
-	const m = Math.floor((seconds % 3600) / 60);
-	if (h > 0) return `${h}h ${m}m`;
-	return `${m}m`;
 }
 
 export function recapActiveMonths(recap: YearInRunningRecap): number {
@@ -60,7 +53,7 @@ export function recapCardText(
 		subhead: t(recap.runCount === 1 ? 'recap.acrossRunsOne' : 'recap.acrossRunsMany', { n: recap.runCount }),
 		cells: [
 			{ label: t('recap.longestRun'), value: recapWholeDistance(recap.longestRunM, unit) },
-			{ label: t('recap.cardOnFoot'), value: recapDuration(recap.totalDurationS) },
+			{ label: t('recap.cardOnFoot'), value: formatHoursMinutes(recap.totalDurationS) },
 			{ label: t('recap.bestStreak'), value: t('recap.cardStreakDays', { n: recap.bestStreakDays }) },
 			{ label: t('recap.topWeek'), value: recapWholeDistance(recap.topWeek?.distanceM ?? 0, unit) },
 			{

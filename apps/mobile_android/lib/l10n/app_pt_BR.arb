@@ -5314,6 +5314,7 @@
   "planDetailRepeatWeekLastWeek": "Esta é a última semana do plano, então não há nada para adiar.",
   "planDetailRepeatWeekNotNow": "Só é possível repetir esta semana ou a anterior de um plano ativo.",
   "rateLimitRepeatWeek": "Você está repetindo semanas do plano rápido demais — espere {wait} e tente de novo.",
+  "rateLimitCreateOverlayLink": "Você está criando links de overlay rápido demais — espere {wait} e tente de novo.",
   "planDetailRepeatWeekOverlap": "Repetir esta semana faria o plano se sobrepor a outro plano ativo. Mova ou encerre esse plano primeiro.",
   "missedPromptRepeatWeekBody": "Perder uma sessão não custa nada. Siga em frente ou, se esta semana pareceu pesada, repita-a antes de avançar. Repetir uma semana não tem nenhuma penalidade.",
   "walkRunGraduationTitle": "Você conseguiu: do sofá aos 5 km",

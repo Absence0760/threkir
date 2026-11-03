@@ -18060,6 +18060,11 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String rateLimitCreateOverlayLink(String wait) {
+    return 'オーバーレイのリンクの作成が速すぎます。$wait待ってから、もう一度お試しください。';
+  }
+
+  @override
   String get planDetailRepeatWeekOverlap =>
       '今週を繰り返すと、プランが別の有効なプランと重なります。先にそのプランを移動するか終了してください。';
 

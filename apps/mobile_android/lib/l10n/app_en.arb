@@ -24824,6 +24824,15 @@
       }
     }
   },
+  "rateLimitCreateOverlayLink": "You're making new overlay links too quickly — please wait {wait} and try again.",
+  "@rateLimitCreateOverlayLink": {
+    "description": "Rate-limit refusal when the create_live_overlay_token bucket is spent (making a new streamer overlay link)",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
   "planDetailRepeatWeekOverlap": "Repeating this week would run the plan into another active plan. Move or end that plan first.",
   "@planDetailRepeatWeekOverlap": {
     "description": "Refusal: repeating the week would end the plan inside another active plan"

@@ -30785,6 +30785,12 @@ abstract class AppLocalizations {
   /// **'You\'re repeating plan weeks too quickly — please wait {wait} and try again.'**
   String rateLimitRepeatWeek(String wait);
 
+  /// Rate-limit refusal when the create_live_overlay_token bucket is spent (making a new streamer overlay link)
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re making new overlay links too quickly — please wait {wait} and try again.'**
+  String rateLimitCreateOverlayLink(String wait);
+
   /// Refusal: repeating the week would end the plan inside another active plan
   ///
   /// In en, this message translates to:

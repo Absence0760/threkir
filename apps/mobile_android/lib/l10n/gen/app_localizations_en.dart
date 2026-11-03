@@ -18758,6 +18758,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String rateLimitCreateOverlayLink(String wait) {
+    return 'You\'re making new overlay links too quickly — please wait $wait and try again.';
+  }
+
+  @override
   String get planDetailRepeatWeekOverlap =>
       'Repeating this week would run the plan into another active plan. Move or end that plan first.';
 

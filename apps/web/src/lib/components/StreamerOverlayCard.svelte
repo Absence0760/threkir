@@ -17,7 +17,7 @@
 		liveOverlayEnabled,
 		overlayUrl,
 		revokeLiveOverlayToken,
-		updateLiveOverlaySettings,
+		saveLiveOverlaySettings,
 		type LiveOverlaySettings,
 		type OverlayLayout,
 		type OverlayStat,
@@ -119,12 +119,11 @@
 	async function save(next: Partial<Pick<LiveOverlaySettings, 'delayS' | 'showMap' | 'showHeartRate'>>) {
 		if (!overlay) return;
 		const before = overlay;
-		const after = { ...overlay, ...next };
-		overlay = after;
+		overlay = { ...overlay, ...next };
 		actionError = null;
 		copied = false;
 		try {
-			await updateLiveOverlaySettings(supabase, after);
+			overlay = await saveLiveOverlaySettings(supabase, next);
 		} catch (e) {
 			console.error('streamer overlay: save failed', e);
 			overlay = before;

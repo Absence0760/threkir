@@ -101,9 +101,11 @@ class _StreamerOverlaySheetState extends State<StreamerOverlaySheet> {
     setState(() => _busy = true);
     try {
       final token = await widget.controller.create();
+      final fresh = await _reloadAfterCreate(token);
       if (!mounted) return;
       setState(() {
-        _overlay = _overlay?.copyWith(token: token) ??
+        _overlay = fresh ??
+            _overlay?.copyWith(token: token) ??
             LiveOverlay(
               token: token,
               delaySeconds: 60,
@@ -119,6 +121,18 @@ class _StreamerOverlaySheetState extends State<StreamerOverlaySheet> {
       }
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// The settings the new token carries, read back from the server; null
+  /// when that read fails, so the new link still shows.
+  Future<LiveOverlay?> _reloadAfterCreate(String token) async {
+    try {
+      final fresh = await widget.controller.load();
+      return fresh?.token == token ? fresh : null;
+    } catch (e) {
+      debugPrint('streamer overlay: reload after create failed: $e');
+      return null;
     }
   }
 
@@ -162,10 +176,10 @@ class _StreamerOverlaySheetState extends State<StreamerOverlaySheet> {
     if (current == null || current.delaySeconds == seconds) return;
     setState(() => _busy = true);
     try {
-      await widget.controller.setDelay(current, seconds);
+      final saved = await widget.controller.setDelay(seconds);
       if (!mounted) return;
-      setState(() => _overlay = current.copyWith(delaySeconds: seconds));
-      _say(l10n.streamerOverlayDelaySaved);
+      setState(() => _overlay = saved);
+      if (saved != null) _say(l10n.streamerOverlayDelaySaved);
     } catch (e) {
       debugPrint('streamer overlay: delay failed: $e');
       if (mounted) {

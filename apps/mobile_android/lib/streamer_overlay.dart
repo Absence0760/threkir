@@ -27,7 +27,10 @@ abstract class StreamerOverlayController {
   Future<LiveOverlay?> load();
   Future<String> create();
   Future<void> revoke();
-  Future<void> setDelay(LiveOverlay current, int delaySeconds);
+
+  /// Saves [delaySeconds] and returns the settings now on the server, or
+  /// null when the overlay no longer exists.
+  Future<LiveOverlay?> setDelay(int delaySeconds);
 }
 
 class ApiStreamerOverlayController implements StreamerOverlayController {
@@ -43,11 +46,18 @@ class ApiStreamerOverlayController implements StreamerOverlayController {
   @override
   Future<void> revoke() => api.revokeLiveOverlayToken();
 
+  /// `update_live_overlay_settings` writes all three settings, so the map
+  /// and heart-rate choices are read back from the server first: the copy
+  /// the sheet loaded may predate a change made on the web.
   @override
-  Future<void> setDelay(LiveOverlay current, int delaySeconds) =>
-      api.updateLiveOverlaySettings(
-        delaySeconds: delaySeconds,
-        showMap: current.showMap,
-        showHeartRate: current.showHeartRate,
-      );
+  Future<LiveOverlay?> setDelay(int delaySeconds) async {
+    final latest = await api.fetchLiveOverlay();
+    if (latest == null) return null;
+    await api.updateLiveOverlaySettings(
+      delaySeconds: delaySeconds,
+      showMap: latest.showMap,
+      showHeartRate: latest.showHeartRate,
+    );
+    return latest.copyWith(delaySeconds: delaySeconds);
+  }
 }

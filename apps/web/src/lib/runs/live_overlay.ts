@@ -231,6 +231,21 @@ export async function updateLiveOverlaySettings(
 	if (error) throw dbError(error);
 }
 
+/// Saves the settings in [next] and returns the overlay as the server now
+/// holds it, or null when it no longer exists. `update_live_overlay_settings`
+/// writes all three settings, so the ones not being changed are read back
+/// first: the copy a page loaded may predate a change made on the phone.
+export async function saveLiveOverlaySettings(
+	client: SupabaseClient<AppDatabase>,
+	next: Partial<Pick<LiveOverlaySettings, 'delayS' | 'showMap' | 'showHeartRate'>>,
+): Promise<LiveOverlaySettings | null> {
+	const latest = await fetchLiveOverlay(client);
+	if (!latest) return null;
+	const after = { ...latest, ...next };
+	await updateLiveOverlaySettings(client, after);
+	return after;
+}
+
 /// A POST: the token is the capability, and a GET would put it in the query
 /// string of every request log.
 export async function fetchLiveOverlayFeed(

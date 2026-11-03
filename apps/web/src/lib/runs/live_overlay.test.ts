@@ -1,5 +1,8 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+import type { AppDatabase } from '#lib/core/database.ts';
 
 import {
 	DEFAULT_OVERLAY_CONFIG,
@@ -12,6 +15,7 @@ import {
 	parseOverlayConfig,
 	parseOverlayToken,
 	readOverlayGate,
+	saveLiveOverlaySettings,
 	type OverlayPing,
 } from './live_overlay.ts';
 
@@ -129,4 +133,41 @@ test('the overlay gate fails closed when it cannot be read', async () => {
 	} finally {
 		console.warn = warn;
 	}
+});
+
+function overlayServer(row: Record<string, unknown> | null) {
+	const updates: unknown[] = [];
+	const client = {
+		rpc: async (name: string, args?: unknown) => {
+			if (name === 'get_live_overlay') return { data: row ? [row] : [], error: null };
+			if (name === 'update_live_overlay_settings') {
+				updates.push(args);
+				return { data: null, error: null };
+			}
+			throw new Error(`unexpected rpc ${name}`);
+		},
+	} as unknown as SupabaseClient<AppDatabase>;
+	return { client, updates };
+}
+
+test('saving one setting keeps the others as the server holds them now', async () => {
+	const { client, updates } = overlayServer({
+		token: TOKEN,
+		delay_s: 300,
+		show_map: false,
+		show_heart_rate: true,
+		created_at: '2026-11-03T10:00:00Z',
+		heart_rate_consent: true,
+	});
+	const saved = await saveLiveOverlaySettings(client, { showMap: true });
+	assert.deepEqual(updates, [{ p_delay_s: 300, p_show_map: true, p_show_heart_rate: true }]);
+	assert.equal(saved?.delayS, 300);
+	assert.equal(saved?.showMap, true);
+	assert.equal(saved?.showHeartRate, true);
+});
+
+test('saving writes nothing when the overlay no longer exists', async () => {
+	const { client, updates } = overlayServer(null);
+	assert.equal(await saveLiveOverlaySettings(client, { delayS: 30 }), null);
+	assert.deepEqual(updates, []);
 });

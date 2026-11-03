@@ -1,4 +1,4 @@
-import 'package:api_client/api_client.dart' show LiveOverlay;
+import 'package:api_client/api_client.dart' show ApiClient, LiveOverlay;
 import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +8,8 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/streamer_overlay.dart';
 import '../lib/widgets/streamer_overlay_sheet.dart';
 
+/// Stands in for the server: [overlay] is what `get_live_overlay` returns,
+/// and create / setDelay change it the way the RPCs do.
 class _FakeController implements StreamerOverlayController {
   LiveOverlay? overlay;
   Object? loadError;
@@ -16,7 +18,6 @@ class _FakeController implements StreamerOverlayController {
   int creates = 0;
   int revokes = 0;
   final delays = <int>[];
-  final passedThrough = <LiveOverlay>[];
 
   _FakeController({this.overlay});
 
@@ -31,17 +32,51 @@ class _FakeController implements StreamerOverlayController {
   Future<String> create() async {
     creates++;
     if (createError != null) throw createError!;
-    return 'tok-$creates';
+    final token = 'tok-$creates';
+    overlay = overlay?.copyWith(token: token) ??
+        LiveOverlay(
+            token: token,
+            delaySeconds: 60,
+            showMap: false,
+            showHeartRate: false);
+    return token;
   }
 
   @override
   Future<void> revoke() async => revokes++;
 
   @override
-  Future<void> setDelay(LiveOverlay current, int delaySeconds) async {
-    passedThrough.add(current);
+  Future<LiveOverlay?> setDelay(int delaySeconds) async {
     delays.add(delaySeconds);
+    overlay = overlay?.copyWith(delaySeconds: delaySeconds);
+    return overlay;
   }
+}
+
+class _FakeApi implements ApiClient {
+  LiveOverlay? server;
+  final updates = <Map<String, Object>>[];
+
+  _FakeApi(this.server);
+
+  @override
+  Future<LiveOverlay?> fetchLiveOverlay() async => server;
+
+  @override
+  Future<void> updateLiveOverlaySettings({
+    required int delaySeconds,
+    required bool showMap,
+    required bool showHeartRate,
+  }) async {
+    updates.add({
+      'delay': delaySeconds,
+      'map': showMap,
+      'hr': showHeartRate,
+    });
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 const _existing = LiveOverlay(
@@ -158,7 +193,47 @@ void main() {
         findsOneWidget);
   });
 
-  testWidgets('picking a delay saves it and keeps map and heart rate as they were',
+  testWidgets('Replace shows the settings the server kept, not the stale copy',
+      (tester) async {
+    final c = _FakeController(overlay: _existing);
+    await _pump(tester, c);
+    c.overlay = const LiveOverlay(
+        token: 'abc', delaySeconds: 300, showMap: false, showHeartRate: false);
+    await tester.tap(_key('streamer-overlay-replace'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.descendant(
+        of: find.byType(AlertDialog), matching: find.text('Replace link')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.ensureVisible(_key('streamer-overlay-delay-300'));
+    expect(
+        tester
+            .widget<ChoiceChip>(_key('streamer-overlay-delay-300'))
+            .selected,
+        isTrue);
+  });
+
+  test('setDelay sends the map and heart-rate choices the server holds now',
+      () async {
+    final api = _FakeApi(const LiveOverlay(
+        token: 'abc', delaySeconds: 60, showMap: false, showHeartRate: true));
+    final saved = await ApiStreamerOverlayController(api).setDelay(300);
+    expect(api.updates, [
+      {'delay': 300, 'map': false, 'hr': true}
+    ]);
+    expect(saved?.delaySeconds, 300);
+    expect(saved?.showMap, isFalse);
+    expect(saved?.showHeartRate, isTrue);
+  });
+
+  test('setDelay writes nothing when the overlay no longer exists', () async {
+    final api = _FakeApi(null);
+    expect(await ApiStreamerOverlayController(api).setDelay(300), isNull);
+    expect(api.updates, isEmpty);
+  });
+
+  testWidgets('picking a delay saves it',
       (tester) async {
     final c = _FakeController(overlay: _existing);
     await _pump(tester, c);
@@ -171,8 +246,6 @@ void main() {
     await tester.tap(_key('streamer-overlay-delay-300'));
     await tester.pump();
     expect(c.delays, [300]);
-    expect(c.passedThrough.single.showMap, isTrue);
-    expect(c.passedThrough.single.showHeartRate, isTrue);
     expect(
         tester
             .widget<ChoiceChip>(_key('streamer-overlay-delay-300'))

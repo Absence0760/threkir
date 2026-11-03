@@ -1,10 +1,12 @@
 package livehub
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -18,10 +20,15 @@ import (
 // RunMeta captures the two `runs` columns the authorizer cares about:
 // the row owner (must match the JWT's `sub` to authorise a push or a
 // private spectator subscribe) and the public flag (anon spectators
-// are allowed when set).
+// are allowed when set), plus whether the owner's pings may carry
+// heart rate to an audience (decisions § 2265).
 type RunMeta struct {
 	UserID   string
 	IsPublic bool
+	// HeartRateShared is `live_heart_rate_shared(user_id)`: the
+	// live_overlay gate is open and the owner has health-data consent on
+	// record. False strips `bpm` before a ping is fanned out.
+	HeartRateShared bool
 }
 
 // RunMetaFetcher resolves [RunMeta] for a run id. Returns
@@ -63,17 +70,54 @@ func (f *SupabaseRunMetaFetcher) RunMeta(ctx context.Context, runID string) (*Ru
 	if len(rows) == 0 {
 		return nil, nil
 	}
-	return &RunMeta{UserID: rows[0].UserID, IsPublic: rows[0].IsPublic}, nil
+	meta := &RunMeta{UserID: rows[0].UserID, IsPublic: rows[0].IsPublic}
+	// Heart rate is auxiliary to the location feed, so a failed lookup
+	// withholds bpm rather than denying the run: fail closed on the Art 9
+	// field, open on the broadcast itself.
+	shared, err := f.heartRateShared(ctx, meta.UserID)
+	if err != nil {
+		slog.Default().Warn("runmeta: heart-rate consent lookup failed; withholding bpm",
+			"err", err, "run_id", runID)
+	}
+	meta.HeartRateShared = err == nil && shared
+	return meta, nil
+}
+
+func (f *SupabaseRunMetaFetcher) heartRateShared(ctx context.Context, userID string) (bool, error) {
+	payload, err := json.Marshal(map[string]string{"p_user_id": userID})
+	if err != nil {
+		return false, err
+	}
+	body, err := f.do(ctx, http.MethodPost, "/rest/v1/rpc/live_heart_rate_shared", payload)
+	if err != nil {
+		return false, err
+	}
+	var shared bool
+	if err := json.Unmarshal(body, &shared); err != nil {
+		return false, fmt.Errorf("runmeta: decode heart-rate consent: %w", err)
+	}
+	return shared, nil
 }
 
 func (f *SupabaseRunMetaFetcher) get(ctx context.Context, path string) ([]byte, error) {
+	return f.do(ctx, http.MethodGet, path, nil)
+}
+
+func (f *SupabaseRunMetaFetcher) do(ctx context.Context, method, path string, payload []byte) ([]byte, error) {
 	base := strings.TrimRight(f.BaseURL, "/")
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+path, nil)
+	var reqBody io.Reader
+	if payload != nil {
+		reqBody = bytes.NewReader(payload)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, base+path, reqBody)
 	if err != nil {
 		return nil, err
 	}
 	supakey.SetAuthHeaders(req.Header, f.ServiceKey)
 	req.Header.Set("Accept", "application/json")
+	if payload != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	client := f.HTTP
 	if client == nil {
 		// Fallback timeout — http.DefaultClient has no deadline, so a

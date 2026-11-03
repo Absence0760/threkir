@@ -2,6 +2,7 @@ package livehub
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -93,7 +94,9 @@ func blockCheckerServing(t *testing.T, status int, body string) *SupabaseBlockCh
 func TestSupabaseRunMetaFetcher_PublicRow(t *testing.T) {
 	var gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotQuery = r.URL.RawQuery
+		if r.Method == http.MethodGet {
+			gotQuery = r.URL.RawQuery
+		}
 		_, _ = w.Write([]byte(`[{"user_id":"u-1","is_public":true}]`))
 	}))
 	defer srv.Close()
@@ -150,6 +153,66 @@ func TestSupabaseRunMetaFetcher_Non2xxFailsClosed(t *testing.T) {
 	f := runMetaServing(t, http.StatusServiceUnavailable, `{"message":"down"}`)
 	if _, err := f.RunMeta(context.Background(), "run-1"); err == nil {
 		t.Fatal("a non-2xx run-meta lookup must fail closed (error)")
+	}
+}
+
+// runMetaWithConsent answers the runs lookup with an owner and the
+// live_heart_rate_shared RPC with the given status + body, recording the
+// RPC's request body.
+func runMetaWithConsent(t *testing.T, rpcStatus int, rpcBody string, gotRPC *string) *SupabaseRunMetaFetcher {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/rpc/live_heart_rate_shared") {
+			if r.Method != http.MethodPost {
+				t.Errorf("consent RPC method = %s, want POST", r.Method)
+			}
+			b, _ := io.ReadAll(r.Body)
+			*gotRPC = string(b)
+			w.WriteHeader(rpcStatus)
+			_, _ = w.Write([]byte(rpcBody))
+			return
+		}
+		_, _ = w.Write([]byte(`[{"user_id":"u-1","is_public":true}]`))
+	}))
+	t.Cleanup(srv.Close)
+	return &SupabaseRunMetaFetcher{BaseURL: srv.URL, ServiceKey: "k", HTTP: srv.Client()}
+}
+
+func TestSupabaseRunMetaFetcher_HeartRateSharedAsksForTheOwner(t *testing.T) {
+	var gotRPC string
+	f := runMetaWithConsent(t, http.StatusOK, `true`, &gotRPC)
+	meta, err := f.RunMeta(context.Background(), "run-1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if meta == nil || !meta.HeartRateShared {
+		t.Fatalf("consenting owner must report HeartRateShared=true, got %+v", meta)
+	}
+	if !strings.Contains(gotRPC, `"p_user_id":"u-1"`) {
+		t.Errorf("consent RPC must name the run owner: %q", gotRPC)
+	}
+}
+
+func TestSupabaseRunMetaFetcher_HeartRateNotShared(t *testing.T) {
+	var gotRPC string
+	f := runMetaWithConsent(t, http.StatusOK, `false`, &gotRPC)
+	meta, err := f.RunMeta(context.Background(), "run-1")
+	if err != nil || meta == nil || meta.HeartRateShared {
+		t.Fatalf("got (%+v, %v), want HeartRateShared=false", meta, err)
+	}
+}
+
+// A failed consent lookup withholds bpm but must not deny the run: heart
+// rate is auxiliary to the location feed.
+func TestSupabaseRunMetaFetcher_HeartRateLookupFailureWithholdsOnly(t *testing.T) {
+	var gotRPC string
+	f := runMetaWithConsent(t, http.StatusServiceUnavailable, `{"message":"down"}`, &gotRPC)
+	meta, err := f.RunMeta(context.Background(), "run-1")
+	if err != nil {
+		t.Fatalf("a consent lookup failure must not fail the run lookup: %v", err)
+	}
+	if meta == nil || meta.UserID != "u-1" || meta.HeartRateShared {
+		t.Fatalf("got %+v, want owner u-1 with HeartRateShared=false", meta)
 	}
 }
 

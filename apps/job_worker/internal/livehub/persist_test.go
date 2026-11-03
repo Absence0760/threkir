@@ -60,7 +60,7 @@ func newPersistServer(t *testing.T, srv *Server) (string, func()) {
 
 func TestPersist_MirrorsAcceptedPushToLiveRunPings(t *testing.T) {
 	persister := newFakePersister()
-	meta := &fakeRunMetaFetcher{rows: map[string]*RunMeta{"run-1": {UserID: "user-A", IsPublic: true}}}
+	meta := &fakeRunMetaFetcher{rows: map[string]*RunMeta{"run-1": {UserID: "user-A", IsPublic: true, HeartRateShared: true}}}
 	base, teardown := newPersistServer(t, &Server{Persister: persister, RunMeta: meta})
 	defer teardown()
 
@@ -134,5 +134,39 @@ func TestPersist_SkippedWhenRunRowMissing(t *testing.T) {
 		t.Fatalf("insert attempted with missing run row: %+v", got)
 	case <-time.After(300 * time.Millisecond):
 		// Expected: no insert.
+	}
+}
+
+// bpm is Art 9 data: an owner who may not share it has it removed before the
+// ping is published or persisted (decisions § 2265).
+func TestPush_StripsBPMWhenHeartRateNotShared(t *testing.T) {
+	persister := newFakePersister()
+	meta := &fakeRunMetaFetcher{rows: map[string]*RunMeta{"run-1": {UserID: "user-A", IsPublic: true}}}
+	hub := NewHub()
+	base, teardown := newPersistServer(t, &Server{Hub: hub, Persister: persister, RunMeta: meta})
+	defer teardown()
+
+	pushOK(t, base, "run-1", `{"lat":51.5,"lng":-0.1,"distance_m":500,"elapsed_s":120,"bpm":150}`)
+
+	if last := hub.LastKnown("run-1"); last == nil || last.BPM != nil {
+		t.Fatalf("published ping must carry no bpm, got %+v", last)
+	}
+	select {
+	case got := <-persister.ch:
+		if got.ping.BPM != nil {
+			t.Fatalf("persisted ping must carry no bpm, got %+v", got.ping)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("push did not trigger a persist within the deadline")
+	}
+}
+
+func TestPush_StripsBPMWithoutARunMetaFetcher(t *testing.T) {
+	hub := NewHub()
+	base, teardown := newPersistServer(t, &Server{Hub: hub})
+	defer teardown()
+	pushOK(t, base, "run-1", `{"lat":1,"lng":2,"distance_m":0,"elapsed_s":0,"bpm":140}`)
+	if last := hub.LastKnown("run-1"); last == nil || last.BPM != nil {
+		t.Fatalf("unknown consent must withhold bpm, got %+v", last)
 	}
 }

@@ -334,6 +334,12 @@ func (s *Server) handlePush(w http.ResponseWriter, r *http.Request, runID string
 		http.Error(w, "invalid ping: "+err.Error(), http.StatusBadRequest)
 		return
 	}
+	// Art 9: bpm reaches an audience only when the owner may share it
+	// (decisions § 2265). The same rule strips it from live_run_pings on
+	// insert, so the hub and the table never disagree.
+	if p.BPM != nil && !s.heartRateShared(r.Context(), runID) {
+		p.BPM = nil
+	}
 	// Privacy-zone clip — fail-closed: if the zone fetch errors we
 	// drop the ping rather than risk publishing through a broken
 	// fetch. A persistent fetch failure surfaces in logs; a runner's
@@ -418,6 +424,20 @@ func (s *Server) persistLivePing(runID string, p Ping) {
 	if err := s.Persister.InsertLivePing(ctx, runID, meta.UserID, p); err != nil {
 		s.log().Warn("bridge persist: live_run_pings insert failed", "err", err, "run_id", runID)
 	}
+}
+
+// heartRateShared reports whether this run's pings may carry bpm. Unknown
+// is no: without a [RunMetaFetcher] (the dev path) or on a failed lookup
+// the field is withheld.
+func (s *Server) heartRateShared(ctx context.Context, runID string) bool {
+	if s.RunMeta == nil {
+		return false
+	}
+	meta, err := s.Hub.LoadRunMeta(ctx, runID, s.RunMeta)
+	if err != nil || meta == nil {
+		return false
+	}
+	return meta.HeartRateShared
 }
 
 // shouldDrop checks the ping against the broadcaster's cached

@@ -1,7 +1,5 @@
-/// How much of the 3D course preview a device gets. Terrain needs WebGL2, and
-/// a two-core or two-gigabyte device stutters through a flight badly enough
-/// that the 2D map is the better experience, so both drop to `flat2d`;
-/// `prefers-reduced-motion` keeps the 3D view but never flies the camera.
+/// A two-core or two-gigabyte device stutters through a terrain flight badly
+/// enough that the 2D map is the better experience.
 
 export type FlyoverMode = 'flight' | 'static3d' | 'flat2d';
 

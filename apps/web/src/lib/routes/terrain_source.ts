@@ -6,7 +6,7 @@
 /// set, then the keyless AWS Open Data Terrain Tiles so the preview still has
 /// relief on a deploy with no MapTiler key. Every rung is a third-party fetch
 /// that logs the requester IP, so a caller must sit behind the same cookie
-/// consent gate as the 2D maps (`consent_guards.test.ts`). decisions § 2251.
+/// consent gate as the 2D maps (`consent_guards.test.ts`).
 
 export interface TerrainSource {
 	tiles: string[];
@@ -22,7 +22,7 @@ export const FLYOVER_PITCH = 60;
 /// MapTiler's own TileJSON (`/tiles/terrain-rgb-v2/tiles.json`) declares this
 /// template, `maxzoom` 14 and `scale` 2, i.e. 512 px WebP tiles in the
 /// Mapbox Terrain-RGB encoding.
-export function maptilerTerrainSource(key: string): TerrainSource {
+function maptilerTerrainSource(key: string): TerrainSource {
 	return {
 		tiles: [
 			`https://api.maptiler.com/tiles/terrain-rgb-v2/{z}/{x}/{y}?key=${encodeURIComponent(key)}`,

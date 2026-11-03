@@ -22,6 +22,7 @@ import '../map_tile_readiness.dart';
 import 'plan_recap_card.dart' show planRecapBracketLabel;
 import '../pr_card.dart';
 import '../activity_type_labels.dart';
+import '../flyover_video_flag.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../preferences.dart';
@@ -237,9 +238,10 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
   bool get _canExportImage => !_busy && !_picking && _hasImage;
 
   /// The web export records the share card's clipped line, so the style is
-  /// offered only when that line exists.
+  /// offered only when that line exists, and only while the web offers the
+  /// export at all (decisions § 2271).
   bool get _canOfferVideo =>
-      runShareCardHasMap(widget.run, widget.privacyZones);
+      flyoverVideoGate && runShareCardHasMap(widget.run, widget.privacyZones);
 
   /// The logical width of the canvas being rasterised, so the PNG comes out
   /// [shareImageExportWidthPx] across whichever style it is.

@@ -172,6 +172,8 @@ void main() async {
   const weighInGateDef = String.fromEnvironment('WEIGH_IN_GATE');
   const weightFluidDef = String.fromEnvironment('WEIGHT_FLUID_ENABLED');
   const cyclePlansDef = String.fromEnvironment('CYCLE_PLANS_ENABLED');
+  const flyoverVideoDef =
+      String.fromEnvironment('FLYOVER_VIDEO_MAPTILER_ENABLED');
   const tileUrlTemplateDef = String.fromEnvironment('TILE_URL_TEMPLATE');
   const usdaFdcApiKeyDef = String.fromEnvironment('USDA_FDC_API_KEY');
   dotenv.loadFromString(
@@ -202,6 +204,8 @@ void main() async {
       if (weighInGateDef.isNotEmpty) 'WEIGH_IN_GATE=$weighInGateDef',
       if (weightFluidDef.isNotEmpty) 'WEIGHT_FLUID_ENABLED=$weightFluidDef',
       if (cyclePlansDef.isNotEmpty) 'CYCLE_PLANS_ENABLED=$cyclePlansDef',
+      if (flyoverVideoDef.isNotEmpty)
+        'FLYOVER_VIDEO_MAPTILER_ENABLED=$flyoverVideoDef',
       if (tileUrlTemplateDef.isNotEmpty) 'TILE_URL_TEMPLATE=$tileUrlTemplateDef',
       if (usdaFdcApiKeyDef.isNotEmpty) 'USDA_FDC_API_KEY=$usdaFdcApiKeyDef',
     ].join('\n'),

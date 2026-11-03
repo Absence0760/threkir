@@ -15,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/adaptive_fitness_flag.dart';
 import '../lib/env_flag.dart';
+import '../lib/flyover_video_flag.dart';
 import '../lib/nearby_flag.dart';
 import '../lib/off_route_flag.dart';
 import '../lib/weigh_in_flag.dart';
@@ -223,6 +224,7 @@ void main() {
       'offRouteEscalationGate': () => offRouteEscalationGate,
       'adaptiveFitnessGate': () => adaptiveFitnessGate,
       'weighInGate': () => weighInGate,
+      'flyoverVideoGate': () => flyoverVideoGate,
     };
 
     setUpAll(() => TestWidgetsFlutterBinding.ensureInitialized());
@@ -238,7 +240,7 @@ void main() {
     }
 
     test('and each gate still turns on once dotenv carries an affirmative', () {
-      // Without this the group above would pass against four gates hard-wired
+      // Without this the group above would pass against gates hard-wired
       // to false.
       dotenv.clean();
       dotenv.loadFromString(
@@ -247,6 +249,7 @@ void main() {
           '$kOffRouteEscalationEnvKey=yes',
           '$kAdaptiveFitnessGateEnvKey=yes',
           '$kWeighInEnvKey=yes',
+          '$kFlyoverVideoEnvKey=yes',
         ].join('\n'),
       );
       for (final gate in gates.entries) {
@@ -269,6 +272,7 @@ void main() {
       'WEIGH_IN_GATE': 'lib/weigh_in_flag.dart',
       'WEIGHT_FLUID_ENABLED': 'lib/weight_fluid_flag.dart',
       'CYCLE_PLANS_ENABLED': 'lib/cycle_plan_flag.dart',
+      'FLYOVER_VIDEO_MAPTILER_ENABLED': 'lib/flyover_video_flag.dart',
     };
 
     for (final owner in owners.entries) {
@@ -396,6 +400,7 @@ void main() {
       'WEIGH_IN_GATE',
       'WEIGHT_FLUID_ENABLED',
       'CYCLE_PLANS_ENABLED',
+      'FLYOVER_VIDEO_MAPTILER_ENABLED',
       'TILE_URL_TEMPLATE',
       'USDA_FDC_API_KEY',
     ]) {

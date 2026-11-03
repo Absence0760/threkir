@@ -4,8 +4,10 @@
 /// confirmed to allow its terrain and imagery in a published video (§ 2251).
 /// With the gate shut and no local tile-style override the export is not
 /// offered at all (`videoBasemapPermitted`, called where the dev-only
-/// `PUBLIC_TILE_STYLE_URL` is read, so this module names only the release
-/// flag). The on-screen preview is unaffected either way.
+/// tile-style override is read, so this module names only the release flag).
+/// The phone's run Video share style reads the same flag as
+/// `FLYOVER_VIDEO_MAPTILER_ENABLED` (decisions § 2271). The on-screen preview
+/// is unaffected either way.
 import { PUBLIC_FLYOVER_VIDEO_MAPTILER_ENABLED } from '$app/env/public';
 import { videoMaptilerKey } from './flyover_video_source';
 

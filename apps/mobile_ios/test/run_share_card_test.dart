@@ -9,6 +9,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../lib/flyover_video_flag.dart';
 import '../lib/preferences.dart';
 import '../lib/privacy.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -542,6 +543,9 @@ void main() {
   });
 
   group('share sheet', () {
+    setUp(() => dotenv.env[kFlyoverVideoEnvKey] = 'true');
+    tearDown(() => dotenv.env.remove(kFlyoverVideoEnvKey));
+
     Future<void> openSheet(
       WidgetTester tester, {
       Future<XFile?> Function()? pick,
@@ -800,6 +804,21 @@ void main() {
       await openSheet(tester);
       expect(find.text('Sticker'), findsOneWidget);
       expect(find.text('Video'), findsNothing);
+    });
+
+    testWidgets(
+        'a run with a line is offered no Video style while the web export is off',
+        (tester) async {
+      dotenv.env.remove(kFlyoverVideoEnvKey);
+      await openSheet(tester, run: _run(track: [_away(1), _away(2), _away(3)]));
+      expect(find.text('Sticker'), findsOneWidget);
+      expect(find.text('Video'), findsNothing);
+    });
+
+    testWidgets('a run with a line is offered the Video style with the flag on',
+        (tester) async {
+      await openSheet(tester, run: _run(track: [_away(1), _away(2), _away(3)]));
+      expect(find.text('Video'), findsOneWidget);
     });
 
     testWidgets(

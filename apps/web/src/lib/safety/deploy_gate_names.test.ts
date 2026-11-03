@@ -47,6 +47,7 @@ const GATES: readonly { web: string; dart: string }[] = [
 		dart: '../mobile_android/lib/weight_fluid_flag.dart',
 	},
 	{ web: 'src/lib/training/cycle_plan_flag.ts', dart: '../mobile_android/lib/cycle_plan_flag.dart' },
+	{ web: 'src/lib/routes/flyover_video_flag.ts', dart: '../mobile_android/lib/flyover_video_flag.dart' },
 ];
 
 /// Gates that exist on web and nowhere else, so there is no second name to
@@ -62,7 +63,6 @@ const WEB_ONLY = new Map<string, string>([
 	['src/lib/training/ai_plan_edit_flag.ts', 'AI plan edits are web-canonical (decisions § 24, § 1979); mobile has no surface to gate, and opens the Coach\'s plan-edit link on the web'],
 	['src/lib/training/ai_plan_flag.ts', 'mobile reads the plan assistant\'s availability from /app-capabilities.json (`ai_plan`, pro_sellable.dart), not from a gate module of its own'],
 	['src/lib/nutrition/plate_photo_flag.ts', 'mobile reads the plate-photo logger\'s availability from /app-capabilities.json (`plate_photo`, pro_sellable.dart), not from a gate module of its own'],
-	['src/lib/routes/flyover_video_flag.ts', 'the flyover video is rendered by the web export; the phone opens that page for it (decisions § 2259), so it has no renderer of its own to gate'],
 	['src/lib/nutrition/coach_fuel_flag.ts', 'the fuelling page the Coach links to is web-only; the phone opens that web page for the link, so it has no surface of its own to gate'],
 ]);
 

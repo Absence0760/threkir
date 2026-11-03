@@ -3,6 +3,7 @@
 	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import type { YearInRunningRecap } from '#lib/runs/recap.ts';
+	import { recapActiveMonths, recapDuration } from '#lib/share/recap_card_text.ts';
 
 	interface Props {
 		recap: YearInRunningRecap;
@@ -28,13 +29,6 @@
 		publishing = false,
 	}: Props = $props();
 
-	function fmtTime(seconds: number): string {
-		const h = Math.floor(seconds / 3600);
-		const m = Math.floor((seconds % 3600) / 60);
-		if (h > 0) return `${h}h ${m}m`;
-		return `${m}m`;
-	}
-
 	function fmtWeekStart(iso: string): string {
 		const d = new Date(iso + 'T00:00:00');
 		return d.toLocaleDateString(activeFormatLocale(), { day: 'numeric', month: 'short' });
@@ -42,10 +36,6 @@
 
 	function maxMonthlyDistance(monthly: YearInRunningRecap['monthly']): number {
 		return Math.max(1, ...monthly.map((m) => m.distanceM));
-	}
-
-	function activeMonths(monthly: YearInRunningRecap['monthly']): number {
-		return monthly.filter((m) => m.runCount > 0).length;
 	}
 
 	const MONTH_LABELS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
@@ -60,7 +50,7 @@
 	<div class="hero-meta">
 		<span class="hero-meta-item">
 			<span class="material-symbols">timer</span>
-			{t('recap.onFoot', { time: fmtTime(recap.totalDurationS) })}
+			{t('recap.onFoot', { time: recapDuration(recap.totalDurationS) })}
 		</span>
 		<span class="hero-meta-divider" aria-hidden="true"></span>
 		<span class="hero-meta-item">
@@ -72,10 +62,10 @@
 			<span class="hero-meta-item">
 				<span class="material-symbols">calendar_month</span>
 				{t(
-					activeMonths(recap.monthly) === 1
+					recapActiveMonths(recap) === 1
 						? 'recap.activeInMonthsOne'
 						: 'recap.activeInMonthsMany',
-					{ n: activeMonths(recap.monthly) }
+					{ n: recapActiveMonths(recap) }
 				)}
 			</span>
 		{/if}

@@ -6,6 +6,7 @@
 	import { fetchRunsForRecap, fetchRecapExtras, publishRecap, type RecapRun } from '#lib/core/data.ts';
 	import { buildMonthInRunningRecap, type YearInRunningRecap } from '#lib/runs/recap.ts';
 	import { buildRecapShareSvg } from '#lib/share/recap_share_image.ts';
+	import { recapCardText } from '#lib/share/recap_card_text.ts';
 	import { recapCardLayout, type RecapCardAspect } from '#lib/share/recap_card_layout.ts';
 	import { buildRecapShareCanonical } from '#lib/share/share_recap_meta.ts';
 	import { rasterizeSvgToPng } from '#lib/format/svg_raster.ts';
@@ -73,7 +74,8 @@
 
 		try {
 			const layout = recapCardLayout(aspect);
-			const svg = buildRecapShareSvg(recap, getUnit(), periodLabel, { aspect });
+			const card = recapCardText(recap, getUnit(), t, { periodLabel, locale: activeFormatLocale() });
+			const svg = buildRecapShareSvg(card, { aspect });
 			const blob = await rasterizeSvgToPng(svg, layout.width, layout.height);
 			const name = `threkir-${periodKey}${aspect === 'story' ? '-story' : ''}.png`;
 			const file = new File([blob], name, { type: 'image/png' });

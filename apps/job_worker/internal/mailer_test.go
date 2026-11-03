@@ -228,6 +228,8 @@ func TestRenderNotificationEmail_AllKinds(t *testing.T) {
 		{"follow_request", NotificationRow{Kind: "follow_request", UserID: "usr-1"}, base + "/follow-requests"},
 		{"challenge_complete", NotificationRow{Kind: "challenge_complete"}, base + "/challenges"},
 		{"achievement", NotificationRow{Kind: "achievement", UserID: "usr-1"}, base + "/u/usr-1?tab=notifications"},
+		{"personal_record", NotificationRow{Kind: "personal_record", RunID: &run}, base + "/runs/run-1?share=pr"},
+		{"personal_record without a run", NotificationRow{Kind: "personal_record", UserID: "usr-1"}, base + "/u/usr-1?tab=notifications"},
 		{"content_hidden", NotificationRow{Kind: "content_hidden", UserID: "usr-1"}, base + "/u/usr-1?tab=notifications"},
 		// The one kind whose link carries no id: the export lives in
 		// data_export_jobs, which the notifications row has no column for,

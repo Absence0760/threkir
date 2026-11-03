@@ -19460,4 +19460,67 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get liveSpectatorHeartRate => 'Frecuencia cardiaca';
+
+  @override
+  String get shareCardStylePr => 'Tarjeta de marca';
+
+  @override
+  String get shareCardPrHeadline => 'Nueva marca personal';
+
+  @override
+  String get shareCardPrHeld => 'Marca personal';
+
+  @override
+  String shareCardPrFaster(String time) {
+    return '$time más rápido';
+  }
+
+  @override
+  String shareCardPrPrevious(String time) {
+    return 'Marca anterior $time';
+  }
+
+  @override
+  String shareCardPrFirst(String distance) {
+    return 'Primer $distance registrado';
+  }
+
+  @override
+  String get shareCardPrRecord => 'Marca';
+
+  @override
+  String get shareCardPrHint =>
+      'Tus marcas siguen siendo privadas. Al compartir solo sale esta imagen.';
+
+  @override
+  String get runDetailSharePr => 'Compartir tarjeta de marca';
+
+  @override
+  String get profileNotifPersonalRecord =>
+      'Has conseguido una nueva marca personal';
+
+  @override
+  String get badgesMakePublic => 'Hacer pública';
+
+  @override
+  String get badgesMakePrivate => 'Hacer privada';
+
+  @override
+  String get badgesPrivate => 'Privada';
+
+  @override
+  String get badgesShare => 'Compartir insignia';
+
+  @override
+  String get badgesToggleError =>
+      'No se pudo cambiar la visibilidad. Inténtalo de nuevo.';
+
+  @override
+  String badgesShareText(String badge, String url) {
+    return 'He conseguido la insignia «$badge» en Threkir: $url';
+  }
+
+  @override
+  String get badgesPrivateShareHint =>
+      'Haz pública esta insignia para compartirla.';
 }

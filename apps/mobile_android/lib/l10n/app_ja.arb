@@ -5448,5 +5448,22 @@
   "streamerOverlayRetry": "再試行",
   "streamerOverlayUnavailable": "配信用オーバーレイは現在利用できません。",
   "streamerOverlayMapHeartRateNote": "ルートの軌跡と心拍数は、Web の設定 → プライバシーと共有でオンにできます。",
-  "liveSpectatorHeartRate": "心拍数"
+  "liveSpectatorHeartRate": "心拍数",
+  "shareCardStylePr": "自己ベストカード",
+  "shareCardPrHeadline": "自己ベスト更新",
+  "shareCardPrHeld": "自己ベスト",
+  "shareCardPrFaster": "{time} 短縮",
+  "shareCardPrPrevious": "前回のベスト {time}",
+  "shareCardPrFirst": "初めての{distance}の記録",
+  "shareCardPrRecord": "記録",
+  "shareCardPrHint": "自己ベストのタイムは非公開のままです。共有されるのはこの画像だけです。",
+  "runDetailSharePr": "自己ベストカードを共有",
+  "profileNotifPersonalRecord": "自己ベストを更新しました",
+  "badgesMakePublic": "公開する",
+  "badgesMakePrivate": "非公開にする",
+  "badgesPrivate": "非公開",
+  "badgesShare": "バッジを共有",
+  "badgesToggleError": "公開設定を変更できませんでした。もう一度お試しください。",
+  "badgesShareText": "Threkir で「{badge}」バッジを獲得しました：{url}",
+  "badgesPrivateShareHint": "共有するには、このバッジを公開してください。"
 }

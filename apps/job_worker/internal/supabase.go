@@ -2299,6 +2299,9 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		{name: "fitness_snapshots.json", table: schema.TableFitnessSnapshots, filter: uidEq, sel: "*"},
 		// personal_records.
 		{name: "personal_records.json", table: schema.TablePersonalRecords, filter: uidEq, sel: "*"},
+		// personal_record_improvements — each time a run beat the cache, with
+		// the time it replaced (the PR card's history).
+		{name: "personal_record_improvements.json", table: schema.TablePersonalRecordImprovements, filter: uidEq, sel: "*"},
 		// device_tokens — redact the raw token below.
 		{name: "device_tokens.json", table: schema.TableDeviceTokens, filter: uidEq, sel: "*"},
 		// sign_in_devices — the coarse (browser, platform) classes that have

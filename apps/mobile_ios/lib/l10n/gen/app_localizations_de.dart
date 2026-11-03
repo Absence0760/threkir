@@ -19476,4 +19476,67 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get liveSpectatorHeartRate => 'Herzfrequenz';
+
+  @override
+  String get shareCardStylePr => 'Bestzeit-Karte';
+
+  @override
+  String get shareCardPrHeadline => 'Neue persönliche Bestzeit';
+
+  @override
+  String get shareCardPrHeld => 'Persönliche Bestzeit';
+
+  @override
+  String shareCardPrFaster(String time) {
+    return '$time schneller';
+  }
+
+  @override
+  String shareCardPrPrevious(String time) {
+    return 'Bisherige Bestzeit $time';
+  }
+
+  @override
+  String shareCardPrFirst(String distance) {
+    return 'Erste Zeit über $distance';
+  }
+
+  @override
+  String get shareCardPrRecord => 'Bestzeit';
+
+  @override
+  String get shareCardPrHint =>
+      'Deine Bestzeiten bleiben privat. Nur dieses Bild wird geteilt.';
+
+  @override
+  String get runDetailSharePr => 'Bestzeit-Karte teilen';
+
+  @override
+  String get profileNotifPersonalRecord =>
+      'Du hast eine neue persönliche Bestzeit aufgestellt';
+
+  @override
+  String get badgesMakePublic => 'Öffentlich machen';
+
+  @override
+  String get badgesMakePrivate => 'Privat machen';
+
+  @override
+  String get badgesPrivate => 'Privat';
+
+  @override
+  String get badgesShare => 'Abzeichen teilen';
+
+  @override
+  String get badgesToggleError =>
+      'Sichtbarkeit konnte nicht geändert werden. Versuche es erneut.';
+
+  @override
+  String badgesShareText(String badge, String url) {
+    return 'Ich habe auf Threkir das Abzeichen „$badge“ bekommen: $url';
+  }
+
+  @override
+  String get badgesPrivateShareHint =>
+      'Mach dieses Abzeichen öffentlich, um es zu teilen.';
 }

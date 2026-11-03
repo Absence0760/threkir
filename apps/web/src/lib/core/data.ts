@@ -48,6 +48,7 @@ import {
 	type PlanTargets,
 } from '../nutrition/meal_plan';
 import { challengesToRecomputeForRun } from '../social/challenge_progress';
+import { prCardEntries, type PrCardEntry } from '../share/pr_card';
 import { mergeMyProgress } from '../social/challenge_list';
 import { selectEffectivePricing } from '../social/event_instance';
 import type { RepacePatch } from '../training/plan_repace';
@@ -2496,6 +2497,29 @@ export async function deleteRoute(id: string): Promise<void> {
 }
 
 // --- Dashboard stats ---
+
+/// The personal records `runId` set, for the PR share card: what the
+/// improvement log says it beat, plus any bracket it holds from before the log
+/// existed. Both tables are owner-only, so another user's run answers empty.
+export async function fetchRunPersonalRecords(runId: string): Promise<PrCardEntry[]> {
+	const userId = auth.user?.id;
+	if (!userId) return [];
+	const [improved, held] = await Promise.all([
+		supabase
+			.from(TABLES.personal_record_improvements)
+			.select('distance, best_time_s, previous_time_s')
+			.eq('user_id', userId)
+			.eq('run_id', runId),
+		supabase
+			.from(TABLES.personal_records)
+			.select('distance, best_time_s')
+			.eq('user_id', userId)
+			.eq('run_id', runId),
+	]);
+	if (improved.error) throw dbError(improved.error);
+	if (held.error) throw dbError(held.error);
+	return prCardEntries(improved.data ?? [], held.data ?? []);
+}
 
 export async function fetchPersonalRecords() {
 	// Read the trigger-maintained `personal_records` cache rather than

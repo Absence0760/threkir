@@ -103,6 +103,11 @@ const (
 	TableInstructorPayoutAccounts = "instructor_payout_accounts"
 )
 
+// TablePersonalRecordImprovements logs each time a run beat the user's
+// personal_records cache, with the time it replaced. Owner-only; exported by
+// the DSAR spec.
+const TablePersonalRecordImprovements = "personal_record_improvements"
+
 // Bucket is a Supabase Storage bucket name — the `<bucket>` in
 // `/storage/v1/object/<bucket>/`. Distinct from the like-named tables
 // (`run_photos` the table vs `run-photos` the bucket).

@@ -91,6 +91,7 @@ const _tables = <String>{
   'device_tokens',
   'fitness_snapshots',
   'personal_records',
+  'personal_record_improvements',
   'coach_messages',
   'user_follows',
   'follow_requests',

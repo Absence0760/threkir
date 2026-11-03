@@ -341,6 +341,10 @@ The foundation under both the generator and any hand-built plan: a data model fo
 
 ✓ **Shipped on web and mobile.** "Me vs @friend" on the same route, route segment or catalogue segment, as a share image with both times, the winner and the margin. Only a mutual follow with a public profile can be compared, and only on public runs; the picker lists just the friends who qualify. Opened from the route page, both segment surfaces, the run's route history and the Versus style of the run share sheet. Free, no feature flag: it reads nothing the caller cannot already see (decisions § 2267).
 
+### PR and milestone cards (#1273 item 7)
+
+✓ **Shipped on web and mobile** (decisions § 2266). A run that beats a personal record raises one `personal_record` notification, and the notification and the run's page open the share editor on a ready-made **PR card**: the bracket, the time, how much faster and the record it beat. Free; the times stay owner-only. Mobile also gained the owner's badge share sheet and visibility toggle, which were web-only. Not built: a "New PR" line on the watch run summary (the wrist summarises before the server decides a record).
+
 ### Backend work (Phase 3)
 
 - [x] Add premium endpoints to Go service — shipped under `apps/job_worker/internal/premium/`. All four endpoints mounted on the existing `/health` listener as POSTs (consistent verb regardless of whether the endpoint reads or computes): `/v1/premium/training-plan` (Riegel-derived paces + phased weekly mileage), `/v1/premium/vo2max` (Daniels VDOT from the best qualifying run in the last 90 days), `/v1/premium/race-predictor` (Riegel from best effort), `/v1/premium/recovery` (90-day EWMA CTL/ATL/TSB + advice). Gated via `user_profiles.subscription_tier` (`pro` + `lifetime` count; anything else → 402) after a shared HS256 JWT extract that mirrors the live hub's auth path. Pure-compute helpers mirror `apps/web/src/lib/training/fitness.ts` + `apps/web/src/lib/training/training.ts`. 36 tests (16 pure-compute + 20 httptest), race-clean. See `docs/product/followups.md § #12` for the full surface, test list, and cutover recipe.

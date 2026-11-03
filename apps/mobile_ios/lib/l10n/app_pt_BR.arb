@@ -5448,5 +5448,22 @@
   "streamerOverlayRetry": "Tentar de novo",
   "streamerOverlayUnavailable": "O overlay para transmissão não está disponível no momento.",
   "streamerOverlayMapHeartRateNote": "Ative o traçado do percurso e a frequência cardíaca em Configurações → Privacidade e compartilhamento na web.",
-  "liveSpectatorHeartRate": "Frequência cardíaca"
+  "liveSpectatorHeartRate": "Frequência cardíaca",
+  "shareCardStylePr": "Card de recorde",
+  "shareCardPrHeadline": "Novo recorde pessoal",
+  "shareCardPrHeld": "Recorde pessoal",
+  "shareCardPrFaster": "{time} mais rápido",
+  "shareCardPrPrevious": "Recorde anterior {time}",
+  "shareCardPrFirst": "Primeiro {distance} registrado",
+  "shareCardPrRecord": "Recorde",
+  "shareCardPrHint": "Seus recordes continuam privados. Só esta imagem é compartilhada.",
+  "runDetailSharePr": "Compartilhar card de recorde",
+  "profileNotifPersonalRecord": "Você bateu um novo recorde pessoal",
+  "badgesMakePublic": "Tornar pública",
+  "badgesMakePrivate": "Tornar privada",
+  "badgesPrivate": "Privada",
+  "badgesShare": "Compartilhar medalha",
+  "badgesToggleError": "Não foi possível alterar a visibilidade. Tente novamente.",
+  "badgesShareText": "Ganhei a medalha “{badge}” no Threkir: {url}",
+  "badgesPrivateShareHint": "Torne esta medalha pública para compartilhá-la."
 }

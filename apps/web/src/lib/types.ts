@@ -610,7 +610,8 @@ export type NotificationKind =
 	| 'comment_like'
 	| 'mention'
 	| 'workout_reminder'
-	| 'plan_ai_edit';
+	| 'plan_ai_edit'
+	| 'personal_record';
 
 // `invite_token` is excluded from the base type because the column-
 // level grant lockdown (migrations 20260801_001 + 20260818_001 redo)

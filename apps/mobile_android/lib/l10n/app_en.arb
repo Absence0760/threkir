@@ -25475,5 +25475,96 @@
   "liveSpectatorHeartRate": "Heart rate",
   "@liveSpectatorHeartRate": {
     "description": "Live spectator stat label for the runner's current heart rate"
+  },
+  "shareCardStylePr": "PR card",
+  "@shareCardStylePr": {
+    "description": "Share-sheet style chip: a card for a personal record this run set"
+  },
+  "shareCardPrHeadline": "New personal record",
+  "@shareCardPrHeadline": {
+    "description": "Headline printed on the PR card when the run beat or set a record"
+  },
+  "shareCardPrHeld": "Personal record",
+  "@shareCardPrHeld": {
+    "description": "Headline printed on the PR card for a record set before the improvement log existed"
+  },
+  "shareCardPrFaster": "{time} faster",
+  "@shareCardPrFaster": {
+    "description": "PR card line: how much faster than the previous record",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "shareCardPrPrevious": "Previous best {time}",
+  "@shareCardPrPrevious": {
+    "description": "PR card line: the record this run beat",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "shareCardPrFirst": "First {distance} on record",
+  "@shareCardPrFirst": {
+    "description": "PR card line when the runner had no record at this distance before",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "shareCardPrRecord": "Record",
+  "@shareCardPrRecord": {
+    "description": "Label over the chips that pick which record the PR card shows"
+  },
+  "shareCardPrHint": "Your record times stay private. Only this image leaves when you share it.",
+  "@shareCardPrHint": {
+    "description": "Hint under the PR card preview"
+  },
+  "runDetailSharePr": "Share PR card",
+  "@runDetailSharePr": {
+    "description": "Run detail action that opens the share sheet on the PR card"
+  },
+  "profileNotifPersonalRecord": "You set a new personal record",
+  "@profileNotifPersonalRecord": {
+    "description": "Inbox line for a personal_record notification"
+  },
+  "badgesMakePublic": "Make public",
+  "@badgesMakePublic": {
+    "description": "Badge sheet action: show the badge on the profile and its share page"
+  },
+  "badgesMakePrivate": "Make private",
+  "@badgesMakePrivate": {
+    "description": "Badge sheet action: hide the badge from everyone else"
+  },
+  "badgesPrivate": "Private",
+  "@badgesPrivate": {
+    "description": "Flag on a badge only its owner can see"
+  },
+  "badgesShare": "Share badge",
+  "@badgesShare": {
+    "description": "Badge sheet action: share the badge page link"
+  },
+  "badgesToggleError": "Couldn't change visibility. Try again.",
+  "@badgesToggleError": {
+    "description": "Banner when changing a badge visibility fails"
+  },
+  "badgesShareText": "I earned the {badge} badge on Threkir: {url}",
+  "@badgesShareText": {
+    "description": "Text handed to the OS share sheet with a public badge link",
+    "placeholders": {
+      "badge": {
+        "type": "String"
+      },
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "badgesPrivateShareHint": "Make this badge public to share it.",
+  "@badgesPrivateShareHint": {
+    "description": "Badge sheet hint while the badge is private"
   }
 }

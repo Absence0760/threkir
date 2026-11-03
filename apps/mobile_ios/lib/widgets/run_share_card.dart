@@ -19,6 +19,8 @@ import 'map_attribution.dart';
 
 import '../l10n/date_format.dart';
 import '../map_tile_readiness.dart';
+import 'plan_recap_card.dart' show planRecapBracketLabel;
+import '../pr_card.dart';
 import '../activity_type_labels.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
@@ -42,7 +44,9 @@ export '../run_share_stats.dart' show runShareCardTrack, runShareCardHasMap;
 /// 9:16 video in the browser (decisions § 2259), because the phone has no 3D
 /// map stack to render one with (§ 8). [versus] is the head-to-head card: the
 /// runner's best on this run's route against a mutual-follow friend's (§ 2267).
-enum RunShareStyle { card, photo, sticker, video, versus }
+/// [pr] is one personal record the run set, offered only when it set one
+/// (decisions § 2266).
+enum RunShareStyle { card, photo, sticker, video, versus, pr }
 
 /// Opens a URL outside the app; returns whether anything took it.
 typedef RunShareUrlOpener = Future<bool> Function(Uri url);
@@ -91,6 +95,10 @@ Future<void> saveShareImageToGallery(Uint8List png, String name) async {
 /// track: they are the owner's own copy of their data, not a published
 /// rendering.
 ///
+/// [records] are the personal records the run set (`prCardEntries`, longest
+/// first); the PR style is offered only when there is one, and
+/// [initialStyle] opens the sheet on it from a personal_record notification.
+///
 /// [pickPhotoOverride] and [saveImageOverride] replace the gallery picker and
 /// the photo-library write so a widget test can drive both without platform
 /// channels.
@@ -100,6 +108,8 @@ Future<void> showRunShareSheet(
   required Preferences preferences,
   required String title,
   required List<PrivacyZone> privacyZones,
+  List<PrCardEntry> records = const [],
+  RunShareStyle initialStyle = RunShareStyle.card,
   @visibleForTesting Future<XFile?> Function()? pickPhotoOverride,
   @visibleForTesting RunShareImageSaver? saveImageOverride,
   @visibleForTesting RunShareUrlOpener? openUrlOverride,
@@ -117,6 +127,10 @@ Future<void> showRunShareSheet(
       preferences: preferences,
       title: title,
       privacyZones: privacyZones,
+      records: records,
+      initialStyle: initialStyle == RunShareStyle.pr && records.isEmpty
+          ? RunShareStyle.card
+          : initialStyle,
       pickPhotoOverride: pickPhotoOverride,
       saveImage: saveImageOverride ?? saveShareImageToGallery,
       openUrl: openUrlOverride ?? _openExternally,
@@ -135,6 +149,8 @@ class _ShareRunSheet extends StatefulWidget {
   final Preferences preferences;
   final String title;
   final List<PrivacyZone> privacyZones;
+  final List<PrCardEntry> records;
+  final RunShareStyle initialStyle;
   final Future<XFile?> Function()? pickPhotoOverride;
   final RunShareImageSaver saveImage;
   final RunShareUrlOpener openUrl;
@@ -145,6 +161,8 @@ class _ShareRunSheet extends StatefulWidget {
     required this.preferences,
     required this.title,
     required this.privacyZones,
+    required this.records,
+    required this.initialStyle,
     required this.saveImage,
     required this.openUrl,
     this.pickPhotoOverride,
@@ -159,8 +177,13 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
   final GlobalKey _cardKey = GlobalKey();
   final MapTileReadiness _tiles = MapTileReadiness();
   bool _busy = false;
-  RunShareStyle _style = RunShareStyle.card;
+  late RunShareStyle _style = widget.initialStyle;
   RunShareLook _look = const RunShareLook();
+  int _prIndex = 0;
+
+  PrCardEntry? get _record => widget.records.isEmpty
+      ? null
+      : widget.records[_prIndex.clamp(0, widget.records.length - 1)];
   File? _photo;
   bool _picking = false;
 
@@ -224,6 +247,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
         RunShareStyle.card => RunShareCard.canvas.width,
         RunShareStyle.photo => RunPhotoShareCard.canvasFor(_look.aspect).width,
         RunShareStyle.sticker => RunStickerShareCard.canvasWidth(_look),
+        RunShareStyle.pr => RunPhotoShareCard.canvasFor(_look.aspect).width,
         RunShareStyle.video ||
         RunShareStyle.versus =>
           throw StateError('${_style.name} draws no canvas here'),
@@ -441,6 +465,13 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
       case RunShareStyle.video:
       case RunShareStyle.versus:
         throw StateError('${_style.name} draws no canvas here');
+      case RunShareStyle.pr:
+        return RunPrShareCard(
+          run: widget.run,
+          record: _record!,
+          privacyZones: widget.privacyZones,
+          look: _look,
+        );
       case RunShareStyle.sticker:
         return RunStickerShareCard(
           run: widget.run,
@@ -544,7 +575,25 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
   List<Widget> _lookControls(AppLocalizations l10n, ThemeData theme) {
     final enabled = !_busy;
     final available = availableShareStats(widget.run);
+    final pr = _style == RunShareStyle.pr;
     return [
+      if (pr && widget.records.length > 1)
+        _section(
+          theme,
+          l10n.shareCardPrRecord,
+          ChoiceChipRow<int>(
+            options: [
+              for (var i = 0; i < widget.records.length; i++)
+                ChoiceChipOption(
+                  value: i,
+                  label: planRecapBracketLabel(l10n, widget.records[i].distance),
+                ),
+            ],
+            selected: _prIndex.clamp(0, widget.records.length - 1),
+            onChanged: enabled ? (v) => setState(() => _prIndex = v) : null,
+          ),
+        ),
+      if (!pr)
       _section(
         theme,
         l10n.shareCardLayout,
@@ -592,7 +641,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
           onChanged: enabled ? (v) => _setLook(_look.copyWith(ink: v)) : null,
         ),
       ),
-      if (_style == RunShareStyle.photo)
+      if (_style == RunShareStyle.photo || pr)
         _section(
           theme,
           l10n.shareCardAspect,
@@ -612,6 +661,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
                 enabled ? (v) => _setLook(_look.copyWith(aspect: v)) : null,
           ),
         ),
+      if (!pr)
       _section(
         theme,
         l10n.shareCardStats,
@@ -695,6 +745,12 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
                         label: l10n.headToHeadStyleVersus,
                         icon: Icons.people_outline,
                       ),
+                    if (widget.records.isNotEmpty)
+                      ChoiceChipOption(
+                        value: RunShareStyle.pr,
+                        label: l10n.shareCardStylePr,
+                        icon: Icons.military_tech_outlined,
+                      ),
                   ],
                   selected: _style,
                   onChanged: _busy ? null : _selectStyle,
@@ -718,11 +774,14 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
                       label: Text(l10n.shareCardChangePhoto),
                     ),
                   ),
-                if (_style == RunShareStyle.sticker)
+                if (_style == RunShareStyle.sticker ||
+                    _style == RunShareStyle.pr)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
-                      l10n.shareCardStickerHint,
+                      _style == RunShareStyle.pr
+                          ? l10n.shareCardPrHint
+                          : l10n.shareCardStickerHint,
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,

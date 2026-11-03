@@ -181,6 +181,8 @@
 				return m('notificationBell.achievement');
 			case 'challenge_complete':
 				return m('notificationBell.challengeComplete');
+			case 'personal_record':
+				return m('notificationBell.personalRecord');
 			case 'content_hidden':
 				return m('notificationBell.contentHidden');
 			case 'data_export_ready':

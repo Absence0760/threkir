@@ -22,6 +22,10 @@ enum PushTargetKind {
   /// push carries — the in-app run, not the public page).
   run,
 
+  /// A run opened on its PR card (`/runs/<id>?share=pr`, the URL a
+  /// personal_record push carries). Carries the run UUID.
+  runPrCard,
+
   /// The recipient's own Achievements tab (`/share/badge/<id>`, the URL an
   /// achievement push carries). The badge is always the recipient's own, so
   /// no id is needed to place it.
@@ -142,11 +146,13 @@ PushTarget pushTargetFromUrl(String? url) {
   // separator. Wrapped because this runs on a payload we didn't author — a
   // throw here would lose the tap, and the inbox is the honest degrade.
   List<String> segments;
+  Map<String, String> query;
   try {
     final uri = Uri.tryParse(trimmed);
     if (uri == null) return PushTarget.inbox;
     segments =
         uri.pathSegments.where((s) => s.isNotEmpty).toList(growable: false);
+    query = uri.queryParameters;
   } catch (_) {
     return PushTarget.inbox;
   }
@@ -163,7 +169,10 @@ PushTarget pushTargetFromUrl(String? url) {
       return id == null ? const PushTarget(PushTargetKind.clubs)
                         : PushTarget(PushTargetKind.club, id);
     case 'runs':
-      return id == null ? PushTarget.inbox : PushTarget(PushTargetKind.run, id);
+      if (id == null) return PushTarget.inbox;
+      return query['share'] == 'pr'
+          ? PushTarget(PushTargetKind.runPrCard, id)
+          : PushTarget(PushTargetKind.run, id);
     case 'u':
       return id == null
           ? PushTarget.inbox

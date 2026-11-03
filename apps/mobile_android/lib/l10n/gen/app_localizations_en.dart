@@ -19263,4 +19263,64 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get liveSpectatorHeartRate => 'Heart rate';
+
+  @override
+  String get shareCardStylePr => 'PR card';
+
+  @override
+  String get shareCardPrHeadline => 'New personal record';
+
+  @override
+  String get shareCardPrHeld => 'Personal record';
+
+  @override
+  String shareCardPrFaster(String time) {
+    return '$time faster';
+  }
+
+  @override
+  String shareCardPrPrevious(String time) {
+    return 'Previous best $time';
+  }
+
+  @override
+  String shareCardPrFirst(String distance) {
+    return 'First $distance on record';
+  }
+
+  @override
+  String get shareCardPrRecord => 'Record';
+
+  @override
+  String get shareCardPrHint =>
+      'Your record times stay private. Only this image leaves when you share it.';
+
+  @override
+  String get runDetailSharePr => 'Share PR card';
+
+  @override
+  String get profileNotifPersonalRecord => 'You set a new personal record';
+
+  @override
+  String get badgesMakePublic => 'Make public';
+
+  @override
+  String get badgesMakePrivate => 'Make private';
+
+  @override
+  String get badgesPrivate => 'Private';
+
+  @override
+  String get badgesShare => 'Share badge';
+
+  @override
+  String get badgesToggleError => 'Couldn\'t change visibility. Try again.';
+
+  @override
+  String badgesShareText(String badge, String url) {
+    return 'I earned the $badge badge on Threkir: $url';
+  }
+
+  @override
+  String get badgesPrivateShareHint => 'Make this badge public to share it.';
 }

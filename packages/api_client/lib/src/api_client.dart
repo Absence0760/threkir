@@ -8626,6 +8626,40 @@ class ApiClient {
         .toList();
   }
 
+  /// The personal records [runId] set, for the PR share card: the logged
+  /// improvements (each with the time it beat) and the brackets the run holds
+  /// in the cache. Both tables are owner-only, so another user's run answers
+  /// empty. Mirrors web `fetchRunPersonalRecords`.
+  Future<
+      ({
+        List<PersonalRecordImprovementRow> improvements,
+        List<PersonalRecordRow> held,
+      })> fetchRunPersonalRecords(String runId) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return (improvements: const <PersonalRecordImprovementRow>[], held: const <PersonalRecordRow>[]);
+    final results = await Future.wait([
+      _client
+          .from(PersonalRecordImprovementRow.table)
+          .select()
+          .eq(PersonalRecordImprovementRow.colUserId, uid)
+          .eq(PersonalRecordImprovementRow.colRunId, runId),
+      _client
+          .from(PersonalRecordRow.table)
+          .select()
+          .eq(PersonalRecordRow.colUserId, uid)
+          .eq(PersonalRecordRow.colRunId, runId),
+    ]);
+    return (
+      improvements: results[0]
+          .map<PersonalRecordImprovementRow>(
+              (r) => PersonalRecordImprovementRow.fromJson(r))
+          .toList(),
+      held: results[1]
+          .map<PersonalRecordRow>((r) => PersonalRecordRow.fromJson(r))
+          .toList(),
+    );
+  }
+
   /// All-time `(current, best)` run-day streaks from the
   /// `run_streaks_for_user` gaps-and-islands aggregate (migration
   /// `20270501_001`) — the same one-row server read web's dashboard card
@@ -9110,6 +9144,22 @@ class ApiClient {
     return data
         .map<AchievementRow>((row) => AchievementRow.fromJson(row))
         .toList();
+  }
+
+  /// Show or hide one of the owner's badges on their profile and its public
+  /// share page. RLS allows the owner to update `is_public` only. Mirrors web
+  /// `setBadgeVisibility`.
+  Future<void> setBadgeVisibility(String id, {required bool isPublic}) async {
+    final updated = await _client
+        .from(AchievementRow.table)
+        .update({AchievementRow.colIsPublic: isPublic})
+        .eq(AchievementRow.colId, id)
+        .select(AchievementRow.colId);
+    // RLS filters a row the caller may not update out of the UPDATE instead
+    // of refusing it, so an empty answer is the refusal.
+    if (updated.isEmpty) {
+      throw StateError('badge $id was not updated');
+    }
   }
 
   /// The signed-in user's own badges (incl. private). Empty when signed out.

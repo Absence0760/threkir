@@ -19460,6 +19460,68 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get liveSpectatorHeartRate => 'Frequência cardíaca';
+
+  @override
+  String get shareCardStylePr => 'Cartão de recorde';
+
+  @override
+  String get shareCardPrHeadline => 'Novo recorde pessoal';
+
+  @override
+  String get shareCardPrHeld => 'Recorde pessoal';
+
+  @override
+  String shareCardPrFaster(String time) {
+    return '$time mais rápido';
+  }
+
+  @override
+  String shareCardPrPrevious(String time) {
+    return 'Recorde anterior $time';
+  }
+
+  @override
+  String shareCardPrFirst(String distance) {
+    return 'Primeiro $distance registado';
+  }
+
+  @override
+  String get shareCardPrRecord => 'Recorde';
+
+  @override
+  String get shareCardPrHint =>
+      'Os seus recordes continuam privados. Só esta imagem é partilhada.';
+
+  @override
+  String get runDetailSharePr => 'Partilhar cartão de recorde';
+
+  @override
+  String get profileNotifPersonalRecord => 'Bateu um novo recorde pessoal';
+
+  @override
+  String get badgesMakePublic => 'Tornar pública';
+
+  @override
+  String get badgesMakePrivate => 'Tornar privada';
+
+  @override
+  String get badgesPrivate => 'Privada';
+
+  @override
+  String get badgesShare => 'Partilhar medalha';
+
+  @override
+  String get badgesToggleError =>
+      'Não foi possível alterar a visibilidade. Tente novamente.';
+
+  @override
+  String badgesShareText(String badge, String url) {
+    return 'Ganhei a medalha “$badge” no Threkir: $url';
+  }
+
+  @override
+  String get badgesPrivateShareHint =>
+      'Torne esta medalha pública para a partilhar.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -38903,4 +38965,66 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get liveSpectatorHeartRate => 'Frequência cardíaca';
+
+  @override
+  String get shareCardStylePr => 'Card de recorde';
+
+  @override
+  String get shareCardPrHeadline => 'Novo recorde pessoal';
+
+  @override
+  String get shareCardPrHeld => 'Recorde pessoal';
+
+  @override
+  String shareCardPrFaster(String time) {
+    return '$time mais rápido';
+  }
+
+  @override
+  String shareCardPrPrevious(String time) {
+    return 'Recorde anterior $time';
+  }
+
+  @override
+  String shareCardPrFirst(String distance) {
+    return 'Primeiro $distance registrado';
+  }
+
+  @override
+  String get shareCardPrRecord => 'Recorde';
+
+  @override
+  String get shareCardPrHint =>
+      'Seus recordes continuam privados. Só esta imagem é compartilhada.';
+
+  @override
+  String get runDetailSharePr => 'Compartilhar card de recorde';
+
+  @override
+  String get profileNotifPersonalRecord => 'Você bateu um novo recorde pessoal';
+
+  @override
+  String get badgesMakePublic => 'Tornar pública';
+
+  @override
+  String get badgesMakePrivate => 'Tornar privada';
+
+  @override
+  String get badgesPrivate => 'Privada';
+
+  @override
+  String get badgesShare => 'Compartilhar medalha';
+
+  @override
+  String get badgesToggleError =>
+      'Não foi possível alterar a visibilidade. Tente novamente.';
+
+  @override
+  String badgesShareText(String badge, String url) {
+    return 'Ganhei a medalha “$badge” no Threkir: $url';
+  }
+
+  @override
+  String get badgesPrivateShareHint =>
+      'Torne esta medalha pública para compartilhá-la.';
 }

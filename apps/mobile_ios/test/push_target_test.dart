@@ -45,6 +45,15 @@ void main() {
           const PushTarget(PushTargetKind.run, 'run-9'));
     });
 
+    test('personal_record → /runs/{id}?share=pr opens the run on its PR card',
+        () {
+      expect(pushTargetFromUrl('$_base/runs/run-9?share=pr'),
+          const PushTarget(PushTargetKind.runPrCard, 'run-9'));
+      // Any other share value is the plain run.
+      expect(pushTargetFromUrl('$_base/runs/run-9?share=card'),
+          const PushTarget(PushTargetKind.run, 'run-9'));
+    });
+
     test('follow → /u/{id}', () {
       expect(pushTargetFromUrl('$_base/u/user-3'),
           const PushTarget(PushTargetKind.profile, 'user-3'));

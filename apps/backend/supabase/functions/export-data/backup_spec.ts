@@ -140,6 +140,12 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 		{ entry: 'fitness_snapshots.json', table: 'fitness_snapshots', filter: uidEq, select: '*' },
 		{ entry: 'personal_records.json', table: 'personal_records', filter: uidEq, select: '*' },
 		{
+			entry: 'personal_record_improvements.json',
+			table: 'personal_record_improvements',
+			filter: uidEq,
+			select: '*',
+		},
+		{
 			entry: 'device_tokens.json',
 			table: 'device_tokens',
 			filter: uidEq,

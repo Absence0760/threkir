@@ -14,7 +14,7 @@
 >
 > ## Shipped state (mobile read surface, 2026-06-20)
 >
-> The mobile twin mirrors web's **read** surfaces (profile grid + feed strip). Awards are still derived server-side by the trigger; mobile never writes `achievements`. The owner visibility-toggle, per-badge share-link, and the `/share/badge/[id]` page stay **web-only** (no Dart twin) — sharing a badge from mobile is a future follow-up.
+> The mobile twin mirrors web's **read** surfaces (profile grid + feed strip). Awards are still derived server-side by the trigger; the only `achievements` write mobile makes is the owner's `is_public` toggle (below). The `/share/badge/[id]` page stays web-only: the phone shares its link.
 >
 > - **Catalogue twin:** `apps/mobile_android/lib/badges.dart` — `kBadgeCatalogue` + `evaluateBadges` + `tierFor`, byte-identical ids / tier thresholds / tier order / icon ligature names to `badges.ts` (only the label/desc keys differ: web `MessageKey`s ↔ mobile camelCase ARB keys, not part of the lockstep). Registered as the `badges` parity pair; 15 mirror tests in `test/badges_test.dart`.
 > - **Widget:** `apps/mobile_android/lib/widgets/badge_grid.dart` — a tier-coloured tile `GridView` (`BadgeGrid`) + the shared `badgeLabelFor` / `badgeIconData` / `badgeTierColor` / `badgeTierLabel` resolvers (the Material-Symbols ligature → `IconData` map + the dotted-key → `AppLocalizations` switch). 6 tests in `test/badge_grid_test.dart`.
@@ -23,7 +23,13 @@
 > - **i18n:** the same key set as web, camelCased into all six mobile ARBs (`en/de/es/fr/ja/pt_BR` + the `pt` fallback), gen-l10n regenerated and mirrored to the iOS twin.
 > - **Twin:** every `lib/`+`test/` change mirrored byte-for-byte into `apps/mobile_ios/` ([decisions.md § 39](../architecture/decisions.md#39-mobile_android-and-mobile_ios-share-a-byte-for-byte-dart-codebase)).
 >
-> - **Deferred:** the CloudFront wiring + release-workflow entry for the `share-badge` Lambda (SvelteKit dev endpoints own the path locally; static build serves the SPA-shell fallback in prod until wired), the mobile owner visibility-toggle / badge share-sheet, and segment badges.
+> - **Owner badge sheet (mobile, 2026-11-03, issue #1273 item 7):** tapping one of your own badges on the Achievements tab opens `widgets/badge_share_sheet.dart` — the badge, a Share button that hands the public `/share/badge/<id>` link to the OS share sheet (disabled, with a hint, while the badge is private, since that page answers "not found" for it), and Make public / Make private through `ApiClient.setBadgeVisibility` (an UPDATE of `is_public`, which RLS limits to the owner; an empty answer is treated as the refusal it is). A private badge carries a lock icon on its tile for the owner. Mirrors the owner controls on web's `BadgeGrid.svelte`. Tests: `test/badge_share_sheet_test.dart`.
+> - **Share page in production:** `/share/badge/*` and `/og/badge/*` are CloudFront behaviours routed to the `share-badge` Lambda (`infra/modules/web-stack/main.tf`), bundled and deployed by `release-web.yml` on every `web@*` tag. (This section used to list that wiring as deferred; it shipped.)
+> - **Deferred:** segment badges.
+>
+> ## PR cards (2026-11-03, issue #1273 item 7)
+>
+> A run that beats the runner's `personal_records` cache raises one `personal_record` notification and logs what it beat in the owner-only `personal_record_improvements` table (migration `20271104000002`, [decisions § 2266](../architecture/decisions.md)). The detection lives inside `refresh_personal_records_for_user`, compared against the cache it replaced, so a no-op recompute raises nothing and a deleted PR run is not a record; one bell row per run however many brackets it improved, and only for a run started in the last 7 days, so a history import does not flood the bell. The notification opens the run on a **PR card** in the share editor (web `RunShareImageDialog.svelte` → `pr_card_canvas.ts`; mobile `run_share_card.dart` → `RunPrShareCard`): the bracket, the record time, how much faster and the time it beat, the run's date, its clipped route line and the Threkir mark, in the post or story canvas and the three inks. The run's own page offers it too (web: the "Share PR card" chip by the visibility chip; mobile: the medal action in the app bar). The pure half is the `pr_card` parity pair. Free; the times stay owner-only and only the exported image leaves. Bell-only by default like `achievement`: email and push only for a runner on `all`.
 
 # Achievements / badges — implementation plan
 

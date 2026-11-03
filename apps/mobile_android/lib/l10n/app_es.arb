@@ -5448,5 +5448,22 @@
   "streamerOverlayRetry": "Reintentar",
   "streamerOverlayUnavailable": "El overlay para streaming no está disponible ahora mismo.",
   "streamerOverlayMapHeartRateNote": "Activa el trazado de la ruta y la frecuencia cardiaca en Ajustes → Privacidad y uso compartido en la web.",
-  "liveSpectatorHeartRate": "Frecuencia cardiaca"
+  "liveSpectatorHeartRate": "Frecuencia cardiaca",
+  "shareCardStylePr": "Tarjeta de marca",
+  "shareCardPrHeadline": "Nueva marca personal",
+  "shareCardPrHeld": "Marca personal",
+  "shareCardPrFaster": "{time} más rápido",
+  "shareCardPrPrevious": "Marca anterior {time}",
+  "shareCardPrFirst": "Primer {distance} registrado",
+  "shareCardPrRecord": "Marca",
+  "shareCardPrHint": "Tus marcas siguen siendo privadas. Al compartir solo sale esta imagen.",
+  "runDetailSharePr": "Compartir tarjeta de marca",
+  "profileNotifPersonalRecord": "Has conseguido una nueva marca personal",
+  "badgesMakePublic": "Hacer pública",
+  "badgesMakePrivate": "Hacer privada",
+  "badgesPrivate": "Privada",
+  "badgesShare": "Compartir insignia",
+  "badgesToggleError": "No se pudo cambiar la visibilidad. Inténtalo de nuevo.",
+  "badgesShareText": "He conseguido la insignia «{badge}» en Threkir: {url}",
+  "badgesPrivateShareHint": "Haz pública esta insignia para compartirla."
 }

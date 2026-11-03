@@ -711,6 +711,19 @@ export const PAIRS = [
 			{ file: 'apps/mobile_android/lib/run_stats.dart', decl: '_pbBracketOrder', shape: 'keys' },
 			{ file: 'apps/web/src/lib/components/PlanRecapCard.svelte', decl: 'BRACKET_LABEL', shape: 'keys' },
 			{ file: 'apps/mobile_android/lib/widgets/plan_recap_card.dart', decl: 'planRecapBracketLabel', shape: 'switch' },
+			{ file: 'apps/web/src/lib/share/pr_card.ts', decl: 'PR_BRACKETS', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/pr_card.dart', decl: 'prBrackets', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/pr_card.dart', decl: 'prBracketMetres', shape: 'keys' },
+		],
+	},
+	{
+		// The improvement log takes the cache's brackets (20271104000002), and
+		// the PR card is the one client that reads it.
+		tableColumn: 'personal_record_improvements.distance',
+		clients: [
+			{ file: 'apps/web/src/lib/share/pr_card.ts', decl: 'PR_BRACKETS', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/pr_card.dart', decl: 'prBrackets', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/pr_card.dart', decl: 'prBracketMetres', shape: 'keys' },
 		],
 	},
 	{

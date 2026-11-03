@@ -31,6 +31,22 @@ void main() {
           const EntityLink(EntityLinkKind.run, id));
     });
 
+    test('a run link asking for its PR card, and only a run', () {
+      expect(parse('https://threkir.com/runs/$id?share=pr'),
+          const EntityLink(EntityLinkKind.run, id, sharePr: true));
+      expect(parse('https://threkir.com/runs/$id?share=pr'),
+          isNot(const EntityLink(EntityLinkKind.run, id)));
+      expect(parse('https://threkir.com/routes/$id?share=pr'),
+          const EntityLink(EntityLinkKind.route, id));
+    });
+
+    test('openRunLink hands the PR card request to the shell', () {
+      addTearDown(() => pendingEntityLink.value = null);
+      openRunLink(id, sharePr: true);
+      expect(pendingEntityLink.value,
+          const EntityLink(EntityLinkKind.run, id, sharePr: true));
+    });
+
     test('the app scheme links', () {
       expect(parse('com.threkir.app://runs/$id'),
           const EntityLink(EntityLinkKind.run, id));

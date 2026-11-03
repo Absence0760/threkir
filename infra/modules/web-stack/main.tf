@@ -1766,7 +1766,7 @@ resource "aws_cloudfront_response_headers_policy" "security" {
         # `data:text/html` XSS regression is the avatar_url CHECK
         # constraint (`~* '^https?://'`, migration 20260808_001),
         # not this CSP line. /audit/owasp May 2026 Medium #4.
-        "img-src 'self' data: https://*.supabase.co https://*.maptiler.com https://lh3.googleusercontent.com https://*.appleid.apple.com",
+        "img-src 'self' data: https://*.supabase.co https://*.maptiler.com https://elevation-tiles-prod.s3.amazonaws.com https://lh3.googleusercontent.com https://*.appleid.apple.com",
         "script-src 'self' 'unsafe-inline'",
         "style-src 'self' 'unsafe-inline'",
         "font-src 'self' data:",
@@ -1790,12 +1790,19 @@ resource "aws_cloudfront_response_headers_policy" "security" {
         # wss→https match; nothing upgrades https to wss). Without it
         # every postgres_changes channel — the live spectator page,
         # notifications, club and event pages — fails to connect with
-        # no server-side symptom. `*.maptiler.com` covers tile fetches.
+        # no server-side symptom. `*.maptiler.com` covers tile fetches,
+        # including MapTiler's terrain-rgb-v2 elevation tiles.
+        # `elevation-tiles-prod.s3.amazonaws.com` is the keyless AWS Open
+        # Data Terrain Tiles bucket the 3D course preview falls back to
+        # (decisions § 2251); MapLibre fetches DEM tiles with fetch() and
+        # falls back to <img>, so it sits in img-src too. It is the
+        # virtual-hosted bucket name on purpose: allowing the path-style
+        # `s3.amazonaws.com` would let a page post to ANY bucket.
         # `wss://*.threkir.com` covers the Go live-hub WS upgrade — the
         # spectator page would otherwise be CSP-blocked the moment
         # PUBLIC_LIVE_HUB_URL lands in prod. /audit/owasp May 2026
         # High #2a.
-        "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.threkir.com https://*.maptiler.com https://*.ingest.de.sentry.io wss://*.threkir.com",
+        "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.threkir.com https://*.maptiler.com https://elevation-tiles-prod.s3.amazonaws.com https://*.ingest.de.sentry.io wss://*.threkir.com",
         "worker-src 'self' blob:",
         "manifest-src 'self'",
         "object-src 'none'",

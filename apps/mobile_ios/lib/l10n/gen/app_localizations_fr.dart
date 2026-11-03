@@ -19337,4 +19337,84 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get shareCardVideoError =>
       'Impossible d\'ouvrir le navigateur. Réessayez.';
+
+  @override
+  String get sharesTitle => 'Vos partages';
+
+  @override
+  String get sharesTileSubtitle =>
+      'Visites, inscriptions et participations venues de vos liens';
+
+  @override
+  String get sharesTagline =>
+      'Les résultats de vos liens partagés sur les 90 derniers jours. Ce ne sont que des totaux : personne qui ouvre un lien n\'est identifié.';
+
+  @override
+  String get sharesLoadFailed => 'Impossible de charger vos partages.';
+
+  @override
+  String get sharesEmptyTitle => 'Rien de partagé pour l\'instant';
+
+  @override
+  String get sharesEmptyBody =>
+      'Partagez un plan public, un défi, une séance, un entraînement ou votre profil, et ses chiffres s\'afficheront ici.';
+
+  @override
+  String get sharesKindPlan => 'Plan';
+
+  @override
+  String get sharesKindChallenge => 'Défi';
+
+  @override
+  String get sharesKindProfile => 'Profil';
+
+  @override
+  String get sharesKindSession => 'Séance';
+
+  @override
+  String get sharesKindWorkout => 'Entraînement';
+
+  @override
+  String get sharesYourProfile => 'Votre profil';
+
+  @override
+  String get sharesUntitled => 'Sans titre';
+
+  @override
+  String get sharesVisits => 'Visites';
+
+  @override
+  String get sharesSignups => 'Inscriptions';
+
+  @override
+  String get sharesStarts => 'Plans démarrés';
+
+  @override
+  String get sharesJoins => 'Participations au défi';
+
+  @override
+  String sharesViaYourLink(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count via votre lien',
+      one: '$count via votre lien',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sharesBotVisits(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Plus $count visites de robots, non comptées ci-dessus.',
+      one: 'Plus $count visite d\'un robot, non comptée ci-dessus.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sharesFootnote =>
+      'Une inscription est comptée quand quelqu\'un crée un compte depuis un lien que vous avez partagé. Vos propres visites ne sont pas comptées.';
 }

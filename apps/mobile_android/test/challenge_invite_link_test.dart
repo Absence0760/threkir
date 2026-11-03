@@ -37,6 +37,17 @@ void main() {
           const ChallengeShareLink(id));
     });
 
+    test("the share page keeps a well-formed creator's ref and drops anything else", () {
+      expect(
+          parseChallengeLink(
+              Uri.parse('https://threkir.com/share/challenge/$id?ref=a1b2c3d4e5')),
+          const ChallengeShareLink(id, shareRef: 'a1b2c3d4e5'));
+      expect(
+          parseChallengeLink(
+              Uri.parse('https://threkir.com/share/challenge/$id?ref=<script>')),
+          const ChallengeShareLink(id));
+    });
+
     test('anything else is not a challenge link', () {
       for (final s in [
         'https://evil.example/challenges/join/$token',

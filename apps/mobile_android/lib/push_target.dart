@@ -71,13 +71,17 @@ enum PushTargetKind {
 /// A resolved push target: a [kind] plus the entity id when the kind carries
 /// one. Value type so tests can compare targets directly.
 class PushTarget {
-  const PushTarget(this.kind, [this.id, this.workoutId]);
+  const PushTarget(this.kind, [this.id, this.workoutId, this.shareRef]);
 
   final PushTargetKind kind;
   final String? id;
 
   /// The plan workout a [PushTargetKind.planWorkout] opens; null otherwise.
   final String? workoutId;
+
+  /// The `ref` a creator's share link carried, for the copy a
+  /// [PushTargetKind.planLibrary] link may lead to (decisions § 2268).
+  final String? shareRef;
 
   static const inbox = PushTarget(PushTargetKind.notifications);
 
@@ -86,10 +90,11 @@ class PushTarget {
       other is PushTarget &&
       other.kind == kind &&
       other.id == id &&
-      other.workoutId == workoutId;
+      other.workoutId == workoutId &&
+      other.shareRef == shareRef;
 
   @override
-  int get hashCode => Object.hash(kind, id, workoutId);
+  int get hashCode => Object.hash(kind, id, workoutId, shareRef);
 
   @override
   String toString() => 'PushTarget(${kind.name}'

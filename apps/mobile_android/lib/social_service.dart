@@ -19,6 +19,7 @@ import 'l10n/gen/app_localizations.dart';
 import 'l10n/locale_support.dart';
 import 'offline_sync_store.dart' show parseServerTimestamp;
 import 'recurrence.dart';
+import 'share_ref.dart';
 
 // Column-level grant lockdown: `clubs.invite_token` is revoked from
 // anon + authenticated (migration 20260801_001 + 20260818_001 redo).
@@ -2919,6 +2920,74 @@ class SocialService extends ChangeNotifier {
     if (rows.isEmpty) return null;
     return ChallengeInvitePreview.fromRow(
         (rows.first as Map).cast<String, dynamic>());
+  }
+
+  // Share-link attribution (decisions § 2268). Every call is auxiliary: a
+  // failure degrades to "no ref" / "not attributed", never a failed share or
+  // join.
+
+  /// Whether the share_attribution gate is open. False on any error.
+  Future<bool> shareAttributionEnabled() async {
+    try {
+      final raw = await _c.rpc('share_attribution_enabled',
+          params: const {}, get: true);
+      return raw == true;
+    } catch (e) {
+      debugPrint('share_attribution_enabled failed: $e');
+      return false;
+    }
+  }
+
+  String? _shareRefUid;
+  Future<String?>? _shareRef;
+
+  /// The signed-in creator's own ref code, minted once and cached per
+  /// account; null while the gate is closed.
+  Future<String?> myShareRef() {
+    final uid = isReady ? _uid : null;
+    if (uid == null) return Future.value(null);
+    if (_shareRefUid != uid || _shareRef == null) {
+      _shareRefUid = uid;
+      _shareRef = () async {
+        try {
+          return parseShareRef(await _c.rpc('my_share_ref'));
+        } catch (e) {
+          debugPrint('my_share_ref failed: $e');
+          return null;
+        }
+      }();
+    }
+    return _shareRef!;
+  }
+
+  /// Mark the caller's just-made join of [challengeId] as having come
+  /// through its creator's link. False when nothing was marked.
+  Future<bool> attributeChallengeJoin(String challengeId, String? ref) async {
+    final code = parseShareRef(ref);
+    if (code == null) return false;
+    try {
+      final raw = await _c.rpc('attribute_share_start', params: {
+        'p_kind': 'challenge',
+        'p_id': challengeId,
+        'p_ref': code,
+      });
+      return raw == true;
+    } catch (e) {
+      debugPrint('attribute_share_start failed: $e');
+      return false;
+    }
+  }
+
+  /// The caller's own links over the last 90 days. A failed read throws, so
+  /// the screen can tell "nothing shared yet" from "could not load".
+  Future<List<ShareStat>> fetchMyShareStats() async {
+    final raw = await _c.rpc('my_share_stats', params: const {}, get: true);
+    return [
+      for (final r in (raw as List?) ?? const [])
+        if (ShareStat.fromRow((r as Map).cast<String, dynamic>())
+            case final stat?)
+          stat,
+    ];
   }
 
   /// The joined challenge's id, or null when the token names nothing.

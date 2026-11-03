@@ -14,6 +14,13 @@ class _FakeSocial extends SocialService {
   bool enabled;
   String token = 'tokenOne_12345678';
   int rotations = 0;
+  int refReads = 0;
+
+  @override
+  Future<String?> myShareRef() async {
+    refReads++;
+    return 'a1b2c3d4e5';
+  }
 
   @override
   Future<bool> challengeInviteLinksEnabled() async => enabled;
@@ -30,7 +37,7 @@ class _FakeSocial extends SocialService {
 }
 
 Future<void> _pump(WidgetTester tester, _FakeSocial social,
-    {bool isPublic = false, bool canManage = true}) async {
+    {bool isPublic = false, bool canManage = true, bool isCreator = false}) async {
   await tester.pumpWidget(MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
@@ -41,6 +48,7 @@ Future<void> _pump(WidgetTester tester, _FakeSocial social,
           challengeId: 'c1',
           isPublic: isPublic,
           canManage: canManage,
+          isCreator: isCreator,
           webBaseOverride: 'https://threkir.com',
         ),
       ),
@@ -51,6 +59,25 @@ Future<void> _pump(WidgetTester tester, _FakeSocial social,
 }
 
 void main() {
+  testWidgets("the creator's public share link reads their ref (decisions § 2268)",
+      (tester) async {
+    final creator = _FakeSocial();
+    await _pump(tester, creator, isPublic: true, isCreator: true);
+    expect(creator.refReads, 1);
+  });
+
+  testWidgets('a club admin sharing it reads no ref', (tester) async {
+    final admin = _FakeSocial();
+    await _pump(tester, admin, isPublic: true);
+    expect(admin.refReads, 0);
+  });
+
+  testWidgets('a private challenge has no share link, so no ref is read', (tester) async {
+    final creator = _FakeSocial();
+    await _pump(tester, creator, isCreator: true);
+    expect(creator.refReads, 0);
+  });
+
   testWidgets('the creator sees the invite link on the web host', (tester) async {
     await _pump(tester, _FakeSocial());
     expect(find.text('https://threkir.com/challenges/join/tokenOne_12345678'), findsOneWidget);

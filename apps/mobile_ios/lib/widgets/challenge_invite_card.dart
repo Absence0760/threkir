@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../challenge_invite_link.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../share_ref.dart';
 import '../share_sheet.dart';
 import '../social_service.dart';
 import '../web_base_url.dart';
@@ -19,6 +20,10 @@ class ChallengeInviteCard extends StatefulWidget {
   final String challengeId;
   final bool isPublic;
   final bool canManage;
+
+  /// The share page link carries the creator's own ref (decisions § 2268);
+  /// a club admin handing it out is not the creator, so theirs goes out bare.
+  final bool isCreator;
   final String? webBaseOverride;
 
   const ChallengeInviteCard({
@@ -27,6 +32,7 @@ class ChallengeInviteCard extends StatefulWidget {
     required this.challengeId,
     required this.isPublic,
     required this.canManage,
+    this.isCreator = false,
     this.webBaseOverride,
   });
 
@@ -39,11 +45,19 @@ class _ChallengeInviteCardState extends State<ChallengeInviteCard> {
   bool _loadFailed = false;
   bool _busy = false;
   String? _token;
+  String? _shareRef;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadShareRef();
+  }
+
+  Future<void> _loadShareRef() async {
+    if (!widget.isCreator || !widget.isPublic) return;
+    final ref = await widget.social.myShareRef();
+    if (mounted && ref != null) setState(() => _shareRef = ref);
   }
 
   Future<void> _load() async {
@@ -175,8 +189,8 @@ class _ChallengeInviteCardState extends State<ChallengeInviteCard> {
                 alignment: AlignmentDirectional.centerStart,
                 child: OutlinedButton(
                   key: const ValueKey('challenge-share-page'),
-                  onPressed: () =>
-                      _share(_url(challengeSharePath(widget.challengeId))),
+                  onPressed: () => _share(withShareRef(
+                      _url(challengeSharePath(widget.challengeId)), _shareRef)),
                   child: Text(l10n.challengeInviteSharePage),
                 ),
               ),

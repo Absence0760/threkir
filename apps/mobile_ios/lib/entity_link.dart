@@ -4,6 +4,7 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 
 import 'push_target.dart' show PushTarget, PushTargetKind, planTargetFromSegments;
+import 'share_ref.dart';
 
 enum EntityLinkKind { run, route }
 
@@ -72,14 +73,20 @@ List<String>? _linkSegments(Uri uri) {
 PushTarget? parsePlanLink(Uri uri) {
   final parts = _linkSegments(uri);
   if (parts == null || parts.isEmpty) return null;
+  // A creator's link carries their ref to the copy it may lead to (§ 2268).
+  final ref = parseShareRef(uri.queryParameters[shareRefParam]);
   if (parts.first == 'share') {
     if (parts.length != 3 || parts[1] != 'plan' || !_uuid.hasMatch(parts[2])) {
       return null;
     }
-    return PushTarget(PushTargetKind.planLibrary, parts[2].toLowerCase());
+    return PushTarget(PushTargetKind.planLibrary, parts[2].toLowerCase(), null, ref);
   }
   if (parts.first != 'plans') return null;
-  return planTargetFromSegments(parts);
+  final target = planTargetFromSegments(parts);
+  if (target.kind == PushTargetKind.planLibrary && ref != null) {
+    return PushTarget(PushTargetKind.planLibrary, target.id, null, ref);
+  }
+  return target;
 }
 
 /// Cross-boot handoff for a run or route link. [EntityLinkService] and

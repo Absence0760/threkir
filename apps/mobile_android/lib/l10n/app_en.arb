@@ -25264,5 +25264,95 @@
   "shareCardVideoError": "Couldn't open the browser. Try again.",
   "@shareCardVideoError": {
     "description": "Banner when no browser could open the web video export"
+  },
+  "sharesTitle": "Your shares",
+  "@sharesTitle": {
+    "description": "Title of the Your shares screen and its settings row: the creator's own share links and their numbers"
+  },
+  "sharesTileSubtitle": "Visits, sign-ups and joins from links you shared",
+  "@sharesTileSubtitle": {
+    "description": "Subtitle of the Your shares row in settings"
+  },
+  "sharesTagline": "How your share links did over the last 90 days. These are counts only: nobody who opens a link is identified.",
+  "@sharesTagline": {
+    "description": "Line above the list on Your shares; says the numbers are counts only"
+  },
+  "sharesLoadFailed": "Couldn't load your shares.",
+  "@sharesLoadFailed": {
+    "description": "Error state when the share numbers could not be loaded"
+  },
+  "sharesEmptyTitle": "Nothing shared yet",
+  "@sharesEmptyTitle": {
+    "description": "Empty state title when the creator has no share links yet"
+  },
+  "sharesEmptyBody": "Share a public plan, a challenge, a session, a workout or your profile, and its numbers show up here.",
+  "@sharesEmptyBody": {
+    "description": "Empty state body naming what can be shared"
+  },
+  "sharesKindPlan": "Plan",
+  "@sharesKindPlan": {
+    "description": "Kind label on a share card: a public training plan"
+  },
+  "sharesKindChallenge": "Challenge",
+  "@sharesKindChallenge": {
+    "description": "Kind label on a share card: a challenge"
+  },
+  "sharesKindProfile": "Profile",
+  "@sharesKindProfile": {
+    "description": "Kind label on a share card: the creator's profile"
+  },
+  "sharesKindSession": "Session",
+  "@sharesKindSession": {
+    "description": "Kind label on a share card: a yoga / pilates session plan"
+  },
+  "sharesKindWorkout": "Workout",
+  "@sharesKindWorkout": {
+    "description": "Kind label on a share card: a gym workout"
+  },
+  "sharesYourProfile": "Your profile",
+  "@sharesYourProfile": {
+    "description": "Title of the share card for the creator's own profile"
+  },
+  "sharesUntitled": "Untitled",
+  "@sharesUntitled": {
+    "description": "Title of a share card whose plan, session or workout has no name"
+  },
+  "sharesVisits": "Visits",
+  "@sharesVisits": {
+    "description": "Stat label: views of the share page"
+  },
+  "sharesSignups": "Sign-ups",
+  "@sharesSignups": {
+    "description": "Stat label: accounts created from the link"
+  },
+  "sharesStarts": "Plan starts",
+  "@sharesStarts": {
+    "description": "Stat label: copies of the plan started"
+  },
+  "sharesJoins": "Challenge joins",
+  "@sharesJoins": {
+    "description": "Stat label: people who joined the challenge"
+  },
+  "sharesViaYourLink": "{count, plural, one{{count} through your link} other{{count} through your link}}",
+  "@sharesViaYourLink": {
+    "description": "Under a stat: how many of them came through the creator's own link",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sharesBotVisits": "{count, plural, one{Plus {count} visit from a crawler, not counted above.} other{Plus {count} visits from crawlers, not counted above.}}",
+  "@sharesBotVisits": {
+    "description": "Under a card: visits from crawlers, kept out of the visit count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sharesFootnote": "Sign-ups are counted when someone creates an account from a link you shared. Your own visits aren't counted.",
+  "@sharesFootnote": {
+    "description": "Footnote on Your shares explaining what counts as a sign-up"
   }
 }

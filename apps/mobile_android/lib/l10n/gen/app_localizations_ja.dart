@@ -18383,4 +18383,80 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get shareCardVideoError => 'ブラウザを開けませんでした。もう一度お試しください。';
+
+  @override
+  String get sharesTitle => '共有リンク';
+
+  @override
+  String get sharesTileSubtitle => '共有したリンクからの訪問・登録・参加';
+
+  @override
+  String get sharesTagline => '過去90日間の共有リンクの成果です。集計値のみで、リンクを開いた人は特定されません。';
+
+  @override
+  String get sharesLoadFailed => '共有リンクを読み込めませんでした。';
+
+  @override
+  String get sharesEmptyTitle => 'まだ何も共有していません';
+
+  @override
+  String get sharesEmptyBody =>
+      '公開プラン、チャレンジ、セッション、ワークアウト、プロフィールを共有すると、ここに数値が表示されます。';
+
+  @override
+  String get sharesKindPlan => 'プラン';
+
+  @override
+  String get sharesKindChallenge => 'チャレンジ';
+
+  @override
+  String get sharesKindProfile => 'プロフィール';
+
+  @override
+  String get sharesKindSession => 'セッション';
+
+  @override
+  String get sharesKindWorkout => 'ワークアウト';
+
+  @override
+  String get sharesYourProfile => 'あなたのプロフィール';
+
+  @override
+  String get sharesUntitled => '無題';
+
+  @override
+  String get sharesVisits => '訪問';
+
+  @override
+  String get sharesSignups => '登録';
+
+  @override
+  String get sharesStarts => 'プラン開始';
+
+  @override
+  String get sharesJoins => 'チャレンジ参加';
+
+  @override
+  String sharesViaYourLink(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'うち$count件はあなたのリンクから',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sharesBotVisits(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'このほかクローラーからの訪問が$count件（上の数には含まれません）。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sharesFootnote =>
+      'あなたが共有したリンクからアカウントが作成されると登録として数えます。あなた自身の訪問は数えません。';
 }

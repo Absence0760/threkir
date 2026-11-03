@@ -19312,4 +19312,84 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get shareCardVideoError =>
       'Der Browser konnte nicht geöffnet werden. Versuch es noch einmal.';
+
+  @override
+  String get sharesTitle => 'Deine Links';
+
+  @override
+  String get sharesTileSubtitle =>
+      'Besuche, Registrierungen und Beitritte über deine Links';
+
+  @override
+  String get sharesTagline =>
+      'So haben deine geteilten Links in den letzten 90 Tagen abgeschnitten. Es sind nur Zahlen: Wer einen Link öffnet, wird nicht erfasst.';
+
+  @override
+  String get sharesLoadFailed => 'Deine Links konnten nicht geladen werden.';
+
+  @override
+  String get sharesEmptyTitle => 'Noch nichts geteilt';
+
+  @override
+  String get sharesEmptyBody =>
+      'Teile einen öffentlichen Plan, eine Challenge, eine Einheit, ein Workout oder dein Profil, dann erscheinen die Zahlen hier.';
+
+  @override
+  String get sharesKindPlan => 'Plan';
+
+  @override
+  String get sharesKindChallenge => 'Challenge';
+
+  @override
+  String get sharesKindProfile => 'Profil';
+
+  @override
+  String get sharesKindSession => 'Einheit';
+
+  @override
+  String get sharesKindWorkout => 'Workout';
+
+  @override
+  String get sharesYourProfile => 'Dein Profil';
+
+  @override
+  String get sharesUntitled => 'Ohne Titel';
+
+  @override
+  String get sharesVisits => 'Besuche';
+
+  @override
+  String get sharesSignups => 'Registrierungen';
+
+  @override
+  String get sharesStarts => 'Planstarts';
+
+  @override
+  String get sharesJoins => 'Challenge-Beitritte';
+
+  @override
+  String sharesViaYourLink(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count über deinen Link',
+      one: '$count über deinen Link',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sharesBotVisits(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Dazu $count Besuche von Crawlern, oben nicht mitgezählt.',
+      one: 'Dazu $count Besuch eines Crawlers, oben nicht mitgezählt.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sharesFootnote =>
+      'Eine Registrierung zählt, wenn jemand über einen von dir geteilten Link ein Konto anlegt. Deine eigenen Besuche zählen nicht.';
 }

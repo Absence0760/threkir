@@ -113,7 +113,7 @@ Full technical details in `backend_scaling.md`.
 
 ### Live spectator tracking
 
-✓ **Shipped.** `/live/{run_id}` spectator page, pre-start share link, mobile per-ping broadcast to `live_run_pings`, the Go WebSocket hub (with Supabase Realtime fallback), and Redis-backed ephemeral position storage for late joiners. The spectator run-conclusion view (a positive `runs.concluded_at` marker → "Run complete" card + view-the-full-run CTA, plus recent-pace / course-progress enrichment) and the mobile recorder's persistent live-share indicator shipped 2026-07-23 (issue #613). Only the operator env-flip (Fly.io + Redis) remains. **Safety-contacts-only audience built 2026-10-15** (issue #1168 item 3, [safety.md](../features/safety.md), decisions § 1964 – § 1966): a live share can run on the runner's confirmed safety contacts through per-contact links an escalation mints, with no public flip, and the automatic share then defaults on for a runner who armed the net; closed behind the `safety_audience` feature flag until the CISO and counsel reviews ([deployment.md](../ops/deployment.md)). Full delivery checklist in [roadmap_shipped.md](roadmap_shipped.md).
+✓ **Shipped.** `/live/{run_id}` spectator page, pre-start share link, mobile per-ping broadcast to `live_run_pings`, the Go WebSocket hub (with Supabase Realtime fallback), and Redis-backed ephemeral position storage for late joiners. The spectator run-conclusion view (a positive `runs.concluded_at` marker → "Run complete" card + view-the-full-run CTA, plus recent-pace / course-progress enrichment) and the mobile recorder's persistent live-share indicator shipped 2026-07-23 (issue #613). Only the operator env-flip (Fly.io + Redis) remains. **Safety-contacts-only audience built 2026-10-15** (issue #1168 item 3, [safety.md](../features/safety.md), decisions § 1964 – § 1966): a live share can run on the runner's confirmed safety contacts through per-contact links an escalation mints, with no public flip, and the automatic share then defaults on for a runner who armed the net; closed behind the `safety_audience` feature flag until the CISO and counsel reviews ([deployment.md](../ops/deployment.md)). **Streamer overlay built 2026-11-03** (#1273 item 3, decisions § 2265): a transparent `/live/overlay` page for OBS, read through a revocable per-user token with a server-enforced delay, an optional privacy-clipped route trace and opt-in heart rate; heart rate also appears on `/live/[id]` and the phone's spectator screen for a runner with health-data consent. Managed from web Settings → Privacy & Sharing and from the phone's live-share sheet. Closed behind the `live_overlay` flag until the CISO / Security Analyst review ([deployment.md](../ops/deployment.md)). Full delivery checklist in [roadmap_shipped.md](roadmap_shipped.md).
 
 ### Backend work (Phase 2)
 
@@ -322,6 +322,40 @@ The foundation under both the generator and any hand-built plan: a data model fo
 ### Elevation and pace analysis (post-run)
 
 ✓ **Shipped.** Elevation profile + split table, interactive elevation/pace crosshair, best-effort auto-detection, and same-route PB comparison. Full delivery checklist in [roadmap_shipped.md](roadmap_shipped.md).
+
+### 3D course preview (#1270)
+
+✓ **Shipped on web** (routes, races and run replay). The course on 3D terrain with a camera flying it, km/mi markers, a synced elevation strip and named climbs, each stated as net height to crest; "Preview in 3D" on `/routes/[id]` and on `/races/[id]` when the race's course is a public route, "Replay in 3D" on `/runs/[id]`. Free. Still open: a mobile equivalent. See [features § 3D course preview](features.md#3d-course-preview).
+
+✓ **Flyover video export (9:16)** (#1273 item 1, decisions § 2259): **Export video** in the dialog renders and encodes a vertical reel in the browser; the phone's run share sheet gains a **Video** style that opens it on the web. Pre-deploy: the operator confirms MapTiler's plan terms before `PUBLIC_FLYOVER_VIDEO_MAPTILER_ENABLED` is set; until then a deploy with no local tile-style override offers no export at all (decisions § 2270).
+
+✓ **Streamer overlay** (#1273 item 3, decisions § 2265): an OBS browser source showing live distance, pace, time and, by choice, heart rate and a route trace, through a revocable token with a server-side delay, so a run can be streamed without being public. Web Settings → Privacy & Sharing and the phone's live-share sheet. Pre-deploy: the CISO / Security Analyst review before the `live_overlay` flag opens. See [flows.md § Streamer overlay](../features/flows.md#streamer-overlay).
+
+✓ **Vertical recap** (#1273 item 8, decisions § 2260): the recap share image as a square or a 9:16 story on web and mobile, one layout pair, its web labels now localised; and a 9:16 slideshow video of the monthly and yearly recap made in the browser on the flyover's encoder (§ 2269), which the phone's recap share sheet opens through its **Video** option.
+
+### Share-link attribution and a creator view (#1273 item 10)
+
+✓ **Built on web and mobile, behind the default-off `share_attribution` gate** (decisions § 2268). A creator's own share links carry an opaque ref; the share page counts visits in aggregate daily buckets with no visitor identifier; a sign-up, plan copy or challenge join made through the link is attributed to it; **Your shares** (web `/settings/shares`, mobile Settings) shows visits, sign-ups, plan starts and challenge joins per link over 90 days. No analytics vendor. Pre-deploy: the CISO / Security Analyst review, DPIA and privacy-policy purpose row in [deployment.md](../ops/deployment.md).
+
+### Creator challenges with a join link (#1273 item 4)
+
+✓ **Built on web and mobile, behind the default-off `challenge_invite_links` gate** (decisions § 2261). The creator or a club admin gets a revocable join link (`/challenges/join/<token>`) for a challenge, and "Reset link" replaces it; a follower opens it, sees the challenge, signs up and joins in one tap, with `return_to` surviving email confirmation and OAuth. Joining by link is rate-limited to 30 attempts an hour; club-vs-club challenges get no link. Public challenges also get `/share/challenge/[id]` and its og card, which are not behind the gate. Free. Pre-deploy: the CISO / Security Analyst review in [deployment.md](../ops/deployment.md). See [challenges.md § Invite links](../features/challenges.md#invite-links-and-the-public-share-page-2026-11-03-decisions--2261).
+
+### "Train with me" plan share (#1273 item 5)
+
+✓ **Built on web and mobile, behind the default-off `public_plan_share` gate** (decisions § 2262). A published plan gets a logged-out page, `/share/plan/[id]`, showing its goal and weeks through a redacted RPC (no paces, VDOT, HR, goal time, notes, dates or owner id), with **Start this plan** through sign-up and **Copy share link** on the library preview. A copy started from it shows "Started from @creator's plan", from a column clients cannot write. Mobile opens the link in the plan library preview. Free. Not built: a verified-creator badge. Pre-deploy: the CISO / Security Analyst review and `terraform apply` in [training.md](../features/training.md#train-with-me--public-plan-share-page).
+
+### Route art (#1273 item 6)
+
+✓ **Shipped on web and mobile.** Draw a shape on the route builder map, have it matched to real roads and paths, and see how close the match is to the drawing; a match under 60 % is refused rather than saved as a different shape. Free. Saved art reaches the watches like any route. See [features § Full-screen route builder](features.md#full-screen-route-builder-web) and [decisions § 2263](../architecture/decisions.md).
+
+### Head-to-head card (#1273 item 9)
+
+✓ **Shipped on web and mobile.** "Me vs @friend" on the same route, route segment or catalogue segment, as a share image with both times, the winner and the margin. Only a mutual follow with a public profile can be compared, and only on public runs; the picker lists just the friends who qualify. Opened from the route page, both segment surfaces, the run's route history and the Versus style of the run share sheet. Free, no feature flag: it reads nothing the caller cannot already see (decisions § 2267).
+
+### PR and milestone cards (#1273 item 7)
+
+✓ **Shipped on web and mobile** (decisions § 2266). A run that beats a personal record raises one `personal_record` notification, and the notification and the run's page open the share editor on a ready-made **PR card**: the bracket, the time, how much faster and the record it beat. Free; the times stay owner-only. Mobile also gained the owner's badge share sheet and visibility toggle, which were web-only. Not built: a "New PR" line on the watch run summary (the wrist summarises before the server decides a record).
 
 ### Backend work (Phase 3)
 

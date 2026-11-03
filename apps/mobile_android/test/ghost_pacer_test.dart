@@ -1,5 +1,6 @@
 import 'package:core_models/core_models.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:run_recorder/run_recorder.dart' show WorkoutStep, WorkoutStepKind;
 
 import '../lib/widgets/ghost_pacer.dart';
 
@@ -187,6 +188,56 @@ void main() {
               'must not be carried over from the source waypoints');
       expect(ghost.timestamp, isNull);
       expect(ghost.bpm, isNull);
+    });
+  });
+
+  group('workoutGhostPosition', () {
+    final path = [_wp(0), _wp(1000)];
+
+    test('a paced step moves the ghost at the step\'s target pace', () {
+      const rep = WorkoutStep(
+        kind: WorkoutStepKind.rep,
+        targetDistanceMetres: 1000,
+        targetPaceSecPerKm: 360,
+        label: 'Rep 1/5',
+      );
+      final ghost = workoutGhostPosition(
+        path: path,
+        step: rep,
+        elapsed: const Duration(seconds: 180),
+      );
+      expect(ghost, isNotNull);
+      expect(ghost!.lng, closeTo(8.54 + 500 / _metrePerDegLng, 1e-6));
+    });
+
+    test('a walk-run step has no pace target, so there is no ghost', () {
+      // Every step of a walk-run session is unpaced, and the easy pace it
+      // carries is only the plan's distance estimate: a ghost moving at it
+      // would pace a walk at a run.
+      for (final kind in [
+        WorkoutStepKind.walk,
+        WorkoutStepKind.rep,
+        WorkoutStepKind.warmup,
+        WorkoutStepKind.cooldown,
+      ]) {
+        final step = WorkoutStep(
+          kind: kind,
+          targetDistanceMetres: 0,
+          targetDurationSec: 90,
+          targetPaceSecPerKm: 732,
+          label: 'Walk 1/7',
+          paced: false,
+        );
+        expect(
+          workoutGhostPosition(
+            path: path,
+            step: step,
+            elapsed: const Duration(seconds: 45),
+          ),
+          isNull,
+          reason: '$kind',
+        );
+      }
     });
   });
 }

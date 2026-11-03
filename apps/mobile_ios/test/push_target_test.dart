@@ -45,6 +45,15 @@ void main() {
           const PushTarget(PushTargetKind.run, 'run-9'));
     });
 
+    test('personal_record → /runs/{id}?share=pr opens the run on its PR card',
+        () {
+      expect(pushTargetFromUrl('$_base/runs/run-9?share=pr'),
+          const PushTarget(PushTargetKind.runPrCard, 'run-9'));
+      // Any other share value is the plain run.
+      expect(pushTargetFromUrl('$_base/runs/run-9?share=card'),
+          const PushTarget(PushTargetKind.run, 'run-9'));
+    });
+
     test('follow → /u/{id}', () {
       expect(pushTargetFromUrl('$_base/u/user-3'),
           const PushTarget(PushTargetKind.profile, 'user-3'));
@@ -207,6 +216,14 @@ void main() {
           const PushTarget(PushTargetKind.plan, plan));
       expect(pushTargetFromUrl('$_base/plans/$plan/workouts/not-a-uuid'),
           const PushTarget(PushTargetKind.plan, plan));
+    });
+
+    test('a library plan, or its Train with me page, opens the preview', () {
+      expect(pushTargetFromUrl('$_base/plans/library/$plan'),
+          const PushTarget(PushTargetKind.planLibrary, plan));
+      expect(pushTargetFromUrl('$_base/share/plan/${plan.toUpperCase()}'),
+          const PushTarget(PushTargetKind.planLibrary, plan));
+      expect(pushTargetFromUrl('$_base/share/plan/not-a-uuid'), PushTarget.inbox);
     });
 
     test('the workout id is part of equality', () {

@@ -2142,7 +2142,7 @@ export const FILTERED_RPC_ARGUMENTS = [
  */
 
 const FUNCTION_WRITE =
-  /\binsert\s+into\s+(?:only\s+)?(?:public\.)?([a-z_][a-z0-9_]*)|\bdelete\s+from\s+(?:only\s+)?(?:public\.)?([a-z_][a-z0-9_]*)|\bupdate\s+(?:only\s+)?(?:public\.)?([a-z_][a-z0-9_]*)(?:\s+(?!set\b)[a-z0-9_]+)?\s+set\b/gi;
+  /\binsert\s+into\s+(?:only\s+)?(?:[a-z_][a-z0-9_]*\.)?([a-z_][a-z0-9_]*)|\bdelete\s+from\s+(?:only\s+)?(?:[a-z_][a-z0-9_]*\.)?([a-z_][a-z0-9_]*)|\bupdate\s+(?:only\s+)?(?:[a-z_][a-z0-9_]*\.)?([a-z_][a-z0-9_]*)(?:\s+(?!set\b)[a-z0-9_]+)?\s+set\b/gi;
 
 /**
  * Every function the migrations leave behind that writes a table, keyed by

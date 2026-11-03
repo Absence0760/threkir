@@ -40,6 +40,9 @@ indexed anyway).
 | `/share/race/[id]` | Lambda-SSR (`share-entity`) | `share_race_meta` | `SportsEvent` |
 | `/share/session/[id]` | Lambda-SSR (`share-entity`) | `share_session_meta` | `WebPage` + breadcrumb |
 | `/share/workout/[id]` | Lambda-SSR (`share-entity`) | `share_workout_meta` | `WebPage` + breadcrumb |
+| `/share/plan/[id]` | Lambda-SSR (`share-entity`) | `share_plan_meta` | `WebPage` + breadcrumb |
+| `/share/challenge/[id]`, `/og/challenge/[id].png` | Lambda-SSR (`share-entity`, the one surface it rasterises a card for) | `share_challenge_meta` | `Event` |
+| `/challenges/join/[token]` | CSR (shell-less, **anon-reachable**) | inline `<svelte:head>` title + `noindex` | — (an invite link; never indexed, decisions § 2261) |
 | `/runs/[id]`, `/routes/[id]`, `/u/[id]`, `/races` | CSR (app shell) | generic shell + canonical | — (auth-gated) |
 | `/segments` | CSR (app shell, **anon-reachable**) | inline `<svelte:head>` title | — (in the sitemap; see below) |
 | `/segments/[id]` | CSR (app shell) | generic shell | — (auth-gated, NOT in the sitemap) |
@@ -95,6 +98,25 @@ Two rows above are easy to misread, and both were wrong in this table before:
   finished them per step 2 of *Adding a new indexable surface*);
   `share_entity_dispatch_guard.test.ts` now fails if a `/share/<x>` route
   loses its CloudFront behaviour or its dispatcher branch.
+- **`/share/plan/[id]` is NOT in the sitemap either, and its in-app twin
+  emits no canonical.** It is the "Train with me" page for a public-library
+  plan ([decisions § 2262](../architecture/decisions.md)), read through the
+  redacted `public_plan_share` RPC because the plan tables are signed-in only.
+  That RPC answers null while the default-off `public_plan_share` gate is
+  closed, so in prod the page is the branded 404 until the CISO / Security
+  Analyst sign-off lands. A canonical from `/plans/library/[id]` to a page that
+  404s would tell a crawler the content lives nowhere, so the fold waits for
+  the gate; it belongs in the table below once the flag is on in prod. The
+  library stays link-discoverable, not crawl-enumerated, for the session-plan
+  reason above.
+- **`/share/challenge/[id]` is NOT in the sitemap either** (decisions § 2261).
+  A creator's challenge is spread by the creator's own post, the page names
+  the top five on its board, and a crawlable list of every public challenge
+  would be a directory of who is running with whom. It is public challenges
+  only: a non-public one answers the not-found card there even for a reader
+  holding its invite link, whose page is `/challenges/join/<token>`. Its card
+  is the challenge's own fields, participant count and creator name as an
+  anonymous reader may see it; no participant name, nothing located.
 
 ### What the SPA shell carries in its `<head>`
 
@@ -338,6 +360,20 @@ e2e-tested without standing up the Lambda.
   club/event/profile/route read is safe by default, but keep filtering
   explicitly on any new public surface for defense in depth.
 
+### Share-link attribution: the `ref` parameter and the visit count
+
+A creator's own copy of a plan, challenge, profile, session or workout link
+carries `?ref=<code>` (decisions § 2268), added by `withShareRef` around the
+entity's canonical builder, so the path is still defined once. The `ref` never
+reaches a `<head>`: the canonical, `og:url` and JSON-LD are built without it, so
+every ref'd copy of a link consolidates on the same canonical, and CloudFront's
+`share_entity` policies drop the query string, so a `ref` neither splits the
+edge cache nor reaches the Lambda. The visit is counted by the page in the
+visitor's browser (`recordShareView` → `record_share_visit`), not by the
+Lambda, which only sees edge misses; unfurl bots never run that script. A share
+page's sign-up link carries the `ref` back through `return_to` so the sign-up
+can be attributed. All of it waits on the default-off `share_attribution` gate.
+
 ### A signed-in visitor gets a way back into the app
 
 The share pages are the logged-out surface — `SharePageShell` carries a logo,
@@ -442,7 +478,18 @@ the routes; prod serves the SPA shell for the new `/share/*` paths.
 The `/share/session/*` + `/share/workout/*` behaviours ride that same pending
 apply — no new Lambda, no new release step (the existing `share-entity` zip
 already carries their dispatcher branches), just two more
-`ordered_cache_behavior` blocks on the distribution.
+`ordered_cache_behavior` blocks on the distribution. `/share/plan/*` is a third
+block on the same terms, plus a `plan` entry in `share_log_groups` for its
+upstream alarm. It needs one more step to show anything: the
+`public_plan_share` row in `private.feature_flags` (no migration writes it),
+which waits on the CISO / Security Analyst sign-off in
+[training.md](training.md#train-with-me--public-plan-share-page).
+
+`/share/challenge/*` + `/og/challenge/*` (decisions § 2261) add two more
+behaviours and change the Lambda's shape: the bundle now carries the
+`@resvg` addon (the arm64 binary release-web.yml already installs for the
+other share Lambdas) and its memory goes 256 → 512 MB, applied by the same
+`terraform apply`.
 
 ### Fit with the minimal (Lean / Rock-bottom) deploy
 

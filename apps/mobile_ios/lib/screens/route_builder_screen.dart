@@ -26,6 +26,7 @@ import '../preferences.dart';
 import '../quiet_location.dart';
 import '../rate_limit_errors.dart';
 import '../rate_limit_message.dart';
+import '../route_art.dart';
 import '../route_loop.dart';
 import '../route_overlap.dart';
 import '../routing.dart';
@@ -156,6 +157,16 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
   double _distanceM = 0;
   double _elevationGainM = 0;
   List<OverlapSpan> _overlapSpans = const [];
+
+  // Draw mode (route art, decisions § 2263): a drag on the map draws a
+  // shape that is matched to roads and paths instead of panning.
+  bool _drawing = false;
+  final List<LatLng> _stroke = [];
+  Offset? _lastStrokeOffset;
+
+  /// The score of the last drawing matched, kept until the route stops
+  /// being that drawing.
+  ArtFidelity? _artFidelity;
 
   // Mode toggle + in-flight flags.
   RouteBuilderMode _mode = RouteBuilderMode.trail;
@@ -342,6 +353,9 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
   /// helper called from every mutator (_onMapTap, _undo, drag commit,
   /// snap-to-start close).
   Future<void> _rerouteThrough(List<cm.Waypoint> waypoints) async {
+    // Any edit means the route is no longer the drawing that was scored.
+    _artFidelity = null;
+    _stroke.clear();
     if (_effectiveStraight) {
       setState(() {
         _waypoints
@@ -742,7 +756,10 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
     }
     if (!mounted) return;
     _segmentCache.clear();
+    _routeGeneration++;
     setState(() {
+      _artFidelity = null;
+      _stroke.clear();
       _waypoints.clear();
       _polyline = const [];
       _distanceM = 0;
@@ -980,6 +997,151 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
     await _rerouteThrough(next);
   }
 
+  void _toggleDrawing() {
+    setState(() {
+      _drawing = !_drawing;
+      _dragIndex = null;
+    });
+  }
+
+  void _onStrokeStart(DragStartDetails d) {
+    if (_routing || _saving) return;
+    _cameraClaimed = true;
+    setState(() {
+      _stroke
+        ..clear()
+        ..add(_map.camera.screenOffsetToLatLng(d.localPosition));
+      _lastStrokeOffset = d.localPosition;
+    });
+  }
+
+  void _onStrokeUpdate(DragUpdateDetails d) {
+    final last = _lastStrokeOffset;
+    if (last == null) return;
+    // A slow drag would otherwise pile up a point per frame.
+    if ((d.localPosition - last).distance < 3) return;
+    setState(() {
+      _stroke.add(_map.camera.screenOffsetToLatLng(d.localPosition));
+      _lastStrokeOffset = d.localPosition;
+    });
+  }
+
+  void _onStrokeEnd(DragEndDetails _) {
+    if (_lastStrokeOffset == null) return;
+    _lastStrokeOffset = null;
+    unawaited(matchDrawing([
+      for (final p in _stroke) [p.longitude, p.latitude],
+    ]));
+  }
+
+  /// Match a drawn stroke (`[lng, lat]` points) to roads and paths, and
+  /// adopt it as the route only when it stays close to the drawing. The
+  /// drawing stays on the map either way so the runner can compare it with
+  /// what the roads allow. Mirrors web's `matchDrawing` in
+  /// `RouteBuilder.svelte`.
+  @visibleForTesting
+  Future<void> matchDrawing(List<List<double>> raw) async {
+    final l10n = AppLocalizations.of(context);
+    final prepared = prepareStroke(raw);
+    if (!prepared.ok) {
+      showTopBanner(context, switch (prepared.rejection!) {
+        StrokeRejection.tooShort => l10n.routeBuilderDrawTooShort,
+        StrokeRejection.tooLong => l10n.routeBuilderDrawTooLong,
+        StrokeRejection.tooComplex => l10n.routeBuilderDrawTooComplex,
+      });
+      return;
+    }
+    if (!_snapAvailable) {
+      showTopBanner(context, l10n.routeBuilderDrawUnavailable);
+      return;
+    }
+    final myGen = ++_routeGeneration;
+    final profile = _osrmProfile;
+    setState(() {
+      _routing = true;
+      _artFidelity = null;
+      _dragIndex = null;
+      _waypoints.clear();
+      _polyline = const [];
+      _distanceM = 0;
+      _elevationGainM = 0;
+      _overlapSpans = const [];
+    });
+    try {
+      final parts = <List<List<double>>>[];
+      for (final batch in planRouteBatches(prepared.points.length)) {
+        final result = await fetchRouteArtBatch(
+          prepared.points.sublist(batch.start, batch.end + 1),
+          profile: profile,
+          fetcher: widget.osrmFetcher,
+          cancelled: () => myGen != _routeGeneration,
+        );
+        if (!mounted || myGen != _routeGeneration) return;
+        if (!result.ok) {
+          setState(() => _routing = false);
+          showTopBanner(
+            context,
+            result.failure == RouteArtBatchFailure.noRoads
+                ? l10n.routeBuilderDrawNoRoads
+                : l10n.routeBuilderDrawUnavailable,
+          );
+          return;
+        }
+        parts.add(result.line);
+      }
+      final matched = stitchPolylines(parts);
+      final fidelity = drawingFidelity(prepared.points, matched);
+      if (fidelity == null || fidelity.score < kRouteArtMinScore) {
+        setState(() {
+          _routing = false;
+          _artFidelity = fidelity;
+        });
+        showTopBanner(
+          context,
+          l10n.routeBuilderDrawPoorMatch(fidelity?.score ?? 0),
+        );
+        return;
+      }
+      final anchors = artAnchorIndices(matched);
+      final pins = [
+        for (final i in anchors) cm.Waypoint(lat: matched[i][1], lng: matched[i][0]),
+      ];
+      // Seed the cache with the matched pieces between pins, so dragging one
+      // pin re-routes only its two neighbouring pieces and the rest of the
+      // drawing survives.
+      final slices = sliceAtAnchors(matched, anchors);
+      for (var j = 0; j < slices.length; j++) {
+        _segmentCache.seed(
+          pins[j],
+          pins[j + 1],
+          profile,
+          [for (final p in slices[j]) cm.Waypoint(lat: p[1], lng: p[0])],
+          polylineLengthM(slices[j]),
+        );
+      }
+      final line = [
+        for (final p in matched) cm.Waypoint(lat: p[1], lng: p[0]),
+      ];
+      setState(() {
+        _waypoints
+          ..clear()
+          ..addAll(pins);
+        _polyline = line;
+        _distanceM = polylineLengthM(matched);
+        _overlapSpans = detectOverlapSpans(line);
+        _routing = false;
+        _artFidelity = fidelity;
+      });
+      _announceA11yState(l10n.routeBuilderDrawMatch(fidelity.score));
+      unawaited(_refreshElevation());
+    } catch (e) {
+      debugPrint('route builder drawing match failed: $e');
+      if (!mounted || myGen != _routeGeneration) return;
+      setState(() => _routing = false);
+      showTopBanner(context, l10n.routeBuilderDrawUnavailable);
+    }
+  }
+
   void _onModeChanged(RouteBuilderMode mode) {
     setState(() => _mode = mode);
     // The polyline's shape depends on the OSRM profile, so a placed route
@@ -1086,6 +1248,17 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
                 maxNativeZoom: 19,
                 maxZoom: 22,
               ),
+              if (_stroke.length >= 2)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: List.of(_stroke),
+                      strokeWidth: 3,
+                      color: theme.colorScheme.tertiary,
+                      pattern: StrokePattern.dashed(segments: const [8, 6]),
+                    ),
+                  ],
+                ),
               // Base polyline.
               if (polylineLatLngs.length >= 2)
                 PolylineLayer(
@@ -1159,6 +1332,18 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
                 ),
             ],
           ),
+          // Draw mode takes the drag gestures off the map: one finger draws,
+          // and turning the mode off brings panning back.
+          if (_drawing)
+            Positioned.fill(
+              child: GestureDetector(
+                key: const Key('route-builder-draw-surface'),
+                behavior: HitTestBehavior.opaque,
+                onPanStart: _onStrokeStart,
+                onPanUpdate: _onStrokeUpdate,
+                onPanEnd: _onStrokeEnd,
+              ),
+            ),
           // Top status pill — distance + elevation gain + spinner.
           Positioned(
             top: 12,
@@ -1210,6 +1395,14 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (_drawing || _artFidelity != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: _DrawStatusCard(
+                        drawing: _drawing,
+                        fidelity: _artFidelity,
+                      ),
+                    ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
@@ -1226,6 +1419,16 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
                                         : _onModeChanged,
                                   ),
                                 ),
+                        ),
+                        const SizedBox(width: 12),
+                        IconButton.filledTonal(
+                          key: const Key('route-builder-draw-toggle'),
+                          tooltip: l10n.routeBuilderDrawShape,
+                          isSelected: _drawing,
+                          icon: const Icon(Icons.gesture),
+                          selectedIcon: const Icon(Icons.edit_off),
+                          onPressed:
+                              _routing || _saving ? null : _toggleDrawing,
                         ),
                         const SizedBox(width: 12),
                         FloatingActionButton(
@@ -1711,6 +1914,56 @@ class _ModeToggle extends StatelessWidget {
           ],
           selected: mode,
           onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+}
+
+/// What Draw mode is doing: the hint while drawing, then the last
+/// drawing's score and verdict. Text wraps rather than truncates, so it
+/// stays whole at large OS text scales.
+class _DrawStatusCard extends StatelessWidget {
+  const _DrawStatusCard({required this.drawing, required this.fidelity});
+
+  final bool drawing;
+  final ArtFidelity? fidelity;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final f = fidelity;
+    final verdict = f == null
+        ? null
+        : switch (f.verdict) {
+            FidelityVerdict.close => l10n.routeBuilderDrawMatchClose,
+            FidelityVerdict.rough => l10n.routeBuilderDrawMatchRough,
+            FidelityVerdict.poor => l10n.routeBuilderDrawMatchPoor,
+          };
+    return Card(
+      key: const Key('route-builder-draw-status'),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            Icon(
+              f == null ? Icons.gesture : Icons.auto_awesome,
+              size: 20,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: f == null
+                  ? Text(l10n.routeBuilderDrawHint,
+                      style: theme.textTheme.bodyMedium)
+                  : Text(
+                      '${l10n.routeBuilderDrawMatch(f.score)} · $verdict',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+            ),
+          ],
         ),
       ),
     );

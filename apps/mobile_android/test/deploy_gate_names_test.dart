@@ -32,6 +32,7 @@ const Map<String, String> _gates = {
   'lib/adaptive_fitness_flag.dart': '../web/src/lib/training/adaptive_fitness_flag.ts',
   'lib/weight_fluid_flag.dart': '../web/src/lib/nutrition/weight_fluid_flag.ts',
   'lib/cycle_plan_flag.dart': '../web/src/lib/training/cycle_plan_flag.ts',
+  'lib/flyover_video_flag.dart': '../web/src/lib/routes/flyover_video_flag.ts',
 };
 
 /// Gates whose two names do NOT satisfy the convention, and why. An entry that

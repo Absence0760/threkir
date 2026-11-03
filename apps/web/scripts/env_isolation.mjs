@@ -65,6 +65,8 @@ const KNOWN_ENV_VARS = [
 export const NOT_ISOLATED_URL_VARS = {
 	PUBLIC_TILE_STYLE_URL:
 		'A read-only third-party basemap style (MapTiler), or the loopback Protomaps override when a developer starts one. Reading map tiles from the live style writes nothing and touches no user data, so the production value is the intended dev default.',
+	PUBLIC_TERRAIN_URL:
+		'A read-only elevation tile template for the 3D course preview (MapTiler or the AWS Open Data bucket), or a loopback tileserver when a developer runs one. Reading elevation tiles writes nothing and touches no user data, the same reasoning as PUBLIC_TILE_STYLE_URL.',
 	PUBLIC_REVENUECAT_WEB_CHECKOUT_URL:
 		'A RevenueCat-hosted checkout page with no loopback form. The dev/prod split is which RevenueCat project the link belongs to, which a URL-shape guard cannot see.',
 	PUBLIC_REVENUECAT_WEB_PORTAL_URL:

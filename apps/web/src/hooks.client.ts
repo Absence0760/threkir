@@ -24,16 +24,7 @@ if (!dev && dsn && hasAcceptedConsent()) {
 		tracesSampleRate: 0.1,
 		replaysSessionSampleRate: 0,
 		replaysOnErrorSampleRate: 0,
-		beforeBreadcrumb: (breadcrumb) => {
-			if (
-				breadcrumb.category === 'fetch' ||
-				breadcrumb.category === 'xhr' ||
-				breadcrumb.category === 'console'
-			) {
-				return redactBreadcrumb(breadcrumb);
-			}
-			return breadcrumb;
-		},
+		beforeBreadcrumb: (breadcrumb) => redactBreadcrumb(breadcrumb),
 		beforeSend: (event) => redactEventSignedUrls(event as SentryEventWithSpans) as typeof event,
 		beforeSendSpan: (span) => redactStreamedSpan(span),
 	});

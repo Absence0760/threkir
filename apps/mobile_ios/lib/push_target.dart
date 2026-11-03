@@ -22,6 +22,10 @@ enum PushTargetKind {
   /// push carries — the in-app run, not the public page).
   run,
 
+  /// A run opened on its PR card (`/runs/<id>?share=pr`, the URL a
+  /// personal_record push carries). Carries the run UUID.
+  runPrCard,
+
   /// The recipient's own Achievements tab (`/share/badge/<id>`, the URL an
   /// achievement push carries). The badge is always the recipient's own, so
   /// no id is needed to place it.
@@ -37,6 +41,11 @@ enum PushTargetKind {
   /// the plan UUID as [PushTarget.id] and the workout's as
   /// [PushTarget.workoutId].
   planWorkout,
+
+  /// A public-library plan's preview (`/plans/library/<id>`, or the
+  /// `/share/plan/<id>` "Train with me" page), where the reader starts it.
+  /// Carries the plan UUID.
+  planLibrary,
 
   /// The challenge list (`/challenges`).
   challenges,
@@ -66,13 +75,17 @@ enum PushTargetKind {
 /// A resolved push target: a [kind] plus the entity id when the kind carries
 /// one. Value type so tests can compare targets directly.
 class PushTarget {
-  const PushTarget(this.kind, [this.id, this.workoutId]);
+  const PushTarget(this.kind, [this.id, this.workoutId, this.shareRef]);
 
   final PushTargetKind kind;
   final String? id;
 
   /// The plan workout a [PushTargetKind.planWorkout] opens; null otherwise.
   final String? workoutId;
+
+  /// The `ref` a creator's share link carried, for the copy a
+  /// [PushTargetKind.planLibrary] link may lead to (decisions § 2268).
+  final String? shareRef;
 
   static const inbox = PushTarget(PushTargetKind.notifications);
 
@@ -81,10 +94,11 @@ class PushTarget {
       other is PushTarget &&
       other.kind == kind &&
       other.id == id &&
-      other.workoutId == workoutId;
+      other.workoutId == workoutId &&
+      other.shareRef == shareRef;
 
   @override
-  int get hashCode => Object.hash(kind, id, workoutId);
+  int get hashCode => Object.hash(kind, id, workoutId, shareRef);
 
   @override
   String toString() => 'PushTarget(${kind.name}'
@@ -99,11 +113,17 @@ final RegExp _uuid = RegExp(
 /// The plan surface a path under `/plans` names, given its non-empty
 /// segments starting at `plans`: `/plans/<id>` is that plan and
 /// `/plans/<id>/workouts/<workout id>` that workout, matching web's routes.
-/// Anything else under a plan id degrades to that plan, and anything else
-/// under `/plans` (`/plans/new`, `/plans/library/<id>`) to the plan list.
+/// `/plans/library/<id>` is a public-library plan's preview. Anything else
+/// under a plan id degrades to that plan, and anything else under `/plans`
+/// (`/plans/new`, `/plans/library`) to the plan list.
 PushTarget planTargetFromSegments(List<String> segments) {
   const list = PushTarget(PushTargetKind.plans);
   if (segments.isEmpty || segments.first != 'plans') return list;
+  if (segments.length == 3 &&
+      segments[1] == 'library' &&
+      _uuid.hasMatch(segments[2])) {
+    return PushTarget(PushTargetKind.planLibrary, segments[2].toLowerCase());
+  }
   if (segments.length < 2 || !_uuid.hasMatch(segments[1])) return list;
   final planId = segments[1].toLowerCase();
   if (segments.length == 4 &&
@@ -131,11 +151,13 @@ PushTarget pushTargetFromUrl(String? url) {
   // separator. Wrapped because this runs on a payload we didn't author — a
   // throw here would lose the tap, and the inbox is the honest degrade.
   List<String> segments;
+  Map<String, String> query;
   try {
     final uri = Uri.tryParse(trimmed);
     if (uri == null) return PushTarget.inbox;
     segments =
         uri.pathSegments.where((s) => s.isNotEmpty).toList(growable: false);
+    query = uri.queryParameters;
   } catch (_) {
     return PushTarget.inbox;
   }
@@ -152,7 +174,10 @@ PushTarget pushTargetFromUrl(String? url) {
       return id == null ? const PushTarget(PushTargetKind.clubs)
                         : PushTarget(PushTargetKind.club, id);
     case 'runs':
-      return id == null ? PushTarget.inbox : PushTarget(PushTargetKind.run, id);
+      if (id == null) return PushTarget.inbox;
+      return query['share'] == 'pr'
+          ? PushTarget(PushTargetKind.runPrCard, id)
+          : PushTarget(PushTargetKind.run, id);
     case 'u':
       return id == null
           ? PushTarget.inbox
@@ -181,6 +206,8 @@ PushTarget pushTargetFromUrl(String? url) {
       return switch (id) {
         'run' => PushTarget(PushTargetKind.run, entityId),
         'badge' => const PushTarget(PushTargetKind.badges),
+        'plan' when _uuid.hasMatch(entityId) =>
+          PushTarget(PushTargetKind.planLibrary, entityId.toLowerCase()),
         _ => PushTarget.inbox,
       };
     case 'notifications':

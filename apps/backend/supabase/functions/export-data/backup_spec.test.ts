@@ -59,7 +59,7 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 	// run_reactions + run_comment_likes, each on both legs (left by the subject
 	// + received on their runs / comments). Direct-message reports (migration
 	// 20271021000003) added reports_against_my_messages.
-	assertEquals(specs.length, 75, `expected 75 specs, got ${specs.length}`);
+	assertEquals(specs.length, 76, `expected 76 specs, got ${specs.length}`);
 	const entries = new Set(specs.map((s) => s.entry));
 	for (const expected of [
 		'coach_messages.json',
@@ -83,6 +83,7 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 		'gear_rotations.json',
 		'fitness_snapshots.json',
 		'personal_records.json',
+		'personal_record_improvements.json',
 		'device_tokens.json',
 		'sign_in_devices.json',
 		'live_run_pings.json',

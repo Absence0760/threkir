@@ -179,8 +179,9 @@ locals {
     local.sentry_env,
   )
 
-  # share-entity Lambda env. One HTML-only Lambda serving the six public
-  # /share/{event,profile,club,race,session,workout} entity paths; same
+  # share-entity Lambda env. One Lambda serving the public
+  # /share/{event,profile,club,race,session,workout,challenge} entity paths
+  # and the /og/challenge card; same
   # anon-key posture
   # as the other share Lambdas (reads only anon-readable public rows;
   # PUBLIC_SITE_URL for env-specific absolute canonical / og:url URLs).
@@ -1333,13 +1334,13 @@ resource "aws_lambda_permission" "cloudfront_invoke_function_share_badge" {
   }
 }
 
-# ─── Shared entity-SSR Lambda (/share/{event,profile,club,race,session,workout}) ───
+# ─── Shared entity-SSR Lambda (/share/{event,profile,club,race,session,workout,challenge}) ───
 #
-# One HTML-only Lambda serving the six public entity share paths (see
+# One Lambda serving the public entity share paths (see
 # apps/web/lambda/share-entity/README.md). Same execution role + log
 # group naming + CI-owns-code / Terraform-owns-shape lifecycle as the
-# other share Lambdas. No @resvg / PNG path, so it runs comfortably at
-# 256 MB (vs 512 for the image-rendering share Lambdas).
+# other share Lambdas. HTML only except /og/challenge/<id>.png, which
+# rasterises with @resvg like the image-rendering share Lambdas.
 
 resource "aws_cloudwatch_log_group" "lambda_share_entity" {
   name              = "/aws/lambda/${local.resource_prefix}-share-entity"
@@ -1356,9 +1357,9 @@ resource "aws_lambda_function" "share_entity" {
   # requires the esbuild target in apps/web/lambda/share-entity/build.mjs.
   runtime       = "nodejs24.x"
   architectures = ["arm64"]
-  # 256 MB — pure HTML handler (no PNG rasteriser), so it needs less
-  # headroom than the 512 MB image-rendering share Lambdas.
-  memory_size                    = 256
+  # 512 MB — the /og/challenge card rasterises with resvg, the same
+  # headroom the other image-rendering share Lambdas run at.
+  memory_size                    = 512
   timeout                        = 15
   reserved_concurrent_executions = var.lambda_reserved_concurrency
 
@@ -1766,7 +1767,11 @@ resource "aws_cloudfront_response_headers_policy" "security" {
         # `data:text/html` XSS regression is the avatar_url CHECK
         # constraint (`~* '^https?://'`, migration 20260808_001),
         # not this CSP line. /audit/owasp May 2026 Medium #4.
-        "img-src 'self' data: https://*.supabase.co https://*.maptiler.com https://lh3.googleusercontent.com https://*.appleid.apple.com",
+        # `blob:` is for object URLs the page mints itself: photo upload
+        # previews and the generated share-card PNGs. An injected script
+        # could only point an <img> at a blob it already holds, so it
+        # opens no exfiltration path the script did not already have.
+        "img-src 'self' data: blob: https://*.supabase.co https://*.maptiler.com https://elevation-tiles-prod.s3.amazonaws.com https://lh3.googleusercontent.com https://*.appleid.apple.com",
         "script-src 'self' 'unsafe-inline'",
         "style-src 'self' 'unsafe-inline'",
         "font-src 'self' data:",
@@ -1790,12 +1795,23 @@ resource "aws_cloudfront_response_headers_policy" "security" {
         # wss→https match; nothing upgrades https to wss). Without it
         # every postgres_changes channel — the live spectator page,
         # notifications, club and event pages — fails to connect with
-        # no server-side symptom. `*.maptiler.com` covers tile fetches.
+        # no server-side symptom. `*.maptiler.com` covers tile fetches,
+        # including MapTiler's terrain-rgb-v2 elevation tiles.
+        # `elevation-tiles-prod.s3.amazonaws.com` is the keyless AWS Open
+        # Data Terrain Tiles bucket the 3D course preview falls back to
+        # (decisions § 2251); MapLibre fetches DEM tiles with fetch() and
+        # falls back to <img>, so it sits in img-src too. It is the
+        # virtual-hosted bucket name on purpose: allowing the path-style
+        # `s3.amazonaws.com` would let a page post to ANY bucket.
         # `wss://*.threkir.com` covers the Go live-hub WS upgrade — the
         # spectator page would otherwise be CSP-blocked the moment
         # PUBLIC_LIVE_HUB_URL lands in prod. /audit/owasp May 2026
         # High #2a.
-        "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.threkir.com https://*.maptiler.com https://*.ingest.de.sentry.io wss://*.threkir.com",
+        "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.threkir.com https://*.maptiler.com https://elevation-tiles-prod.s3.amazonaws.com https://*.ingest.de.sentry.io wss://*.threkir.com",
+        # The recap video is encoded in the browser and previewed from an
+        # object URL; without this it falls back to default-src and the
+        # <video> stays blank.
+        "media-src 'self' blob:",
         "worker-src 'self' blob:",
         "manifest-src 'self'",
         "object-src 'none'",
@@ -2575,10 +2591,10 @@ resource "aws_cloudfront_distribution" "this" {
     }
   }
 
-  # Shared entity-SSR Lambda: per-request SSR HTML for the six public
-  # entity share paths so a newly-created/edited entity unfurls with the
-  # right per-entity head regardless of build cadence. HTML only (no
-  # og:image PNG). See apps/web/lambda/share-entity/README.md.
+  # Shared entity-SSR Lambda: per-request SSR HTML for the public entity
+  # share paths so a newly-created/edited entity unfurls with the right
+  # per-entity head regardless of build cadence. HTML only except the
+  # challenge card below. See apps/web/lambda/share-entity/README.md.
   ordered_cache_behavior {
     path_pattern               = "/share/event/*"
     target_origin_id           = "lambda-share-entity"
@@ -2681,6 +2697,69 @@ resource "aws_cloudfront_distribution" "this" {
 
   ordered_cache_behavior {
     path_pattern               = "/share/workout/*"
+    target_origin_id           = "lambda-share-entity"
+    viewer_protocol_policy     = "redirect-to-https"
+    allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+    cached_methods             = ["GET", "HEAD"]
+    compress                   = true
+    cache_policy_id            = aws_cloudfront_cache_policy.share_entity.id
+    origin_request_policy_id   = aws_cloudfront_origin_request_policy.share_entity.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
+
+    dynamic "function_association" {
+      for_each = local.www_redirect_associations
+      content {
+        event_type   = "viewer-request"
+        function_arn = function_association.value
+      }
+    }
+  }
+
+  ordered_cache_behavior {
+    path_pattern               = "/share/plan/*"
+    target_origin_id           = "lambda-share-entity"
+    viewer_protocol_policy     = "redirect-to-https"
+    allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+    cached_methods             = ["GET", "HEAD"]
+    compress                   = true
+    cache_policy_id            = aws_cloudfront_cache_policy.share_entity.id
+    origin_request_policy_id   = aws_cloudfront_origin_request_policy.share_entity.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
+
+    dynamic "function_association" {
+      for_each = local.www_redirect_associations
+      content {
+        event_type   = "viewer-request"
+        function_arn = function_association.value
+      }
+    }
+  }
+
+  # Creator challenges (decisions § 2261): the public share page and its
+  # og:image card. The one share-entity surface with a PNG, so the bundle
+  # carries the resvg addon the share-badge Lambda already ships.
+  ordered_cache_behavior {
+    path_pattern               = "/share/challenge/*"
+    target_origin_id           = "lambda-share-entity"
+    viewer_protocol_policy     = "redirect-to-https"
+    allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+    cached_methods             = ["GET", "HEAD"]
+    compress                   = true
+    cache_policy_id            = aws_cloudfront_cache_policy.share_entity.id
+    origin_request_policy_id   = aws_cloudfront_origin_request_policy.share_entity.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
+
+    dynamic "function_association" {
+      for_each = local.www_redirect_associations
+      content {
+        event_type   = "viewer-request"
+        function_arn = function_association.value
+      }
+    }
+  }
+
+  ordered_cache_behavior {
+    path_pattern               = "/og/challenge/*"
     target_origin_id           = "lambda-share-entity"
     viewer_protocol_policy     = "redirect-to-https"
     allowed_methods            = ["GET", "HEAD", "OPTIONS"]

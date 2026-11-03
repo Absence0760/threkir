@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 
-import 'push_target.dart' show PushTarget, planTargetFromSegments;
+import 'cold_start_link_echo.dart';
+import 'push_target.dart' show PushTarget, PushTargetKind, planTargetFromSegments;
+import 'share_ref.dart';
 
 enum EntityLinkKind { run, route }
 
@@ -14,14 +16,21 @@ class EntityLink {
   final EntityLinkKind kind;
   final String id;
 
-  const EntityLink(this.kind, this.id);
+  /// Open the run's share sheet on its PR card (`?share=pr`, the
+  /// personal_record notification's link). Ignored for a route.
+  final bool sharePr;
+
+  const EntityLink(this.kind, this.id, {this.sharePr = false});
 
   @override
   bool operator ==(Object other) =>
-      other is EntityLink && other.kind == kind && other.id == id;
+      other is EntityLink &&
+      other.kind == kind &&
+      other.id == id &&
+      other.sharePr == sharePr;
 
   @override
-  int get hashCode => Object.hash(kind, id);
+  int get hashCode => Object.hash(kind, id, sharePr);
 }
 
 final RegExp _uuid = RegExp(
@@ -33,8 +42,9 @@ final RegExp _uuid = RegExp(
 /// app's own `com.threkir.app://runs/<id>` / `com.threkir.app://routes/<id>`.
 /// These are the links an owner hands out at the Followers and Specific
 /// people levels (decisions § 1879). Only a UUID id is a link: `/runs/new`,
-/// `/routes/heatmap` and `/routes/<id>/roadbook` are other web pages, and a
-/// query or fragment is ignored.
+/// `/routes/heatmap` and `/routes/<id>/roadbook` are other web pages. The one
+/// query read is a run's `share=pr`; anything else, and the fragment, is
+/// ignored.
 EntityLink? parseEntityLink(Uri uri) {
   final parts = _linkSegments(uri);
   if (parts == null || parts.length != 2 || !_uuid.hasMatch(parts[1])) return null;
@@ -43,7 +53,9 @@ EntityLink? parseEntityLink(Uri uri) {
     'routes' => EntityLinkKind.route,
     _ => null,
   };
-  return kind == null ? null : EntityLink(kind, parts[1].toLowerCase());
+  if (kind == null) return null;
+  return EntityLink(kind, parts[1].toLowerCase(),
+      sharePr: kind == EntityLinkKind.run && uri.queryParameters['share'] == 'pr');
 }
 
 /// The non-empty path segments of an in-app link, with the app scheme's host
@@ -66,12 +78,26 @@ List<String>? _linkSegments(Uri uri) {
 /// `com.threkir.app://plans/<id>/workouts/<workout id>` (one workout), the
 /// links the home-screen widget opens, and the same paths on threkir.com.
 /// Shares the push-notification table ([planTargetFromSegments]), so a plan
-/// link and a plan push open the same screen. Null for anything not under
-/// `/plans`.
+/// link and a plan push open the same screen. A creator's
+/// `https://threkir.com/share/plan/<id>` "Train with me" link opens that
+/// public plan's library preview (decisions § 2262). Null for anything else.
 PushTarget? parsePlanLink(Uri uri) {
   final parts = _linkSegments(uri);
-  if (parts == null || parts.isEmpty || parts.first != 'plans') return null;
-  return planTargetFromSegments(parts);
+  if (parts == null || parts.isEmpty) return null;
+  // A creator's link carries their ref to the copy it may lead to (§ 2268).
+  final ref = parseShareRef(uri.queryParameters[shareRefParam]);
+  if (parts.first == 'share') {
+    if (parts.length != 3 || parts[1] != 'plan' || !_uuid.hasMatch(parts[2])) {
+      return null;
+    }
+    return PushTarget(PushTargetKind.planLibrary, parts[2].toLowerCase(), null, ref);
+  }
+  if (parts.first != 'plans') return null;
+  final target = planTargetFromSegments(parts);
+  if (target.kind == PushTargetKind.planLibrary && ref != null) {
+    return PushTarget(PushTargetKind.planLibrary, target.id, null, ref);
+  }
+  return target;
 }
 
 /// Cross-boot handoff for a run or route link. [EntityLinkService] and
@@ -85,8 +111,8 @@ final ValueNotifier<EntityLink?> pendingEntityLink =
 /// one place that can tell the viewer's own run from someone else's. For a
 /// surface such as the inbox that cannot construct the owner's detail screen
 /// (the shape of `openSettings`, decisions § 710).
-void openRunLink(String id) {
-  pendingEntityLink.value = EntityLink(EntityLinkKind.run, id);
+void openRunLink(String id, {bool sharePr = false}) {
+  pendingEntityLink.value = EntityLink(EntityLinkKind.run, id, sharePr: sharePr);
 }
 
 /// Routes run and route links into [pendingEntityLink], and plan links to
@@ -111,44 +137,21 @@ class EntityLinkService {
 
   StreamSubscription<Uri>? _sub;
 
-  // The plugin delivers the cold-start link twice, once from
-  // [processInitial] and once as the stream's first event, in either order.
-  // Exactly that one echo is dropped. Deduplicating every repeat instead
-  // would swallow a second tap on the same widget or link, which is a real
-  // request to open it again.
-  bool _streamStarted = false;
-  Uri? _firstStreamLink;
-  Uri? _initialEcho;
+  final ColdStartLinkEcho _echo = ColdStartLinkEcho();
 
   void start() {
     _sub ??= _links.listen(
-      _onStreamLink,
+      (uri) {
+        if (_echo.acceptStream(uri)) handle(uri);
+      },
       onError: (Object e) => debugPrint('entity link stream error: $e'),
     );
-  }
-
-  void _onStreamLink(Uri uri) {
-    if (!_streamStarted) {
-      _streamStarted = true;
-      if (uri == _initialEcho) {
-        _initialEcho = null;
-        return;
-      }
-      _firstStreamLink = uri;
-    }
-    handle(uri);
   }
 
   Future<void> processInitial() async {
     try {
       final uri = await _initialLink();
-      if (uri == null) return;
-      if (_streamStarted) {
-        if (uri == _firstStreamLink) return;
-      } else {
-        _initialEcho = uri;
-      }
-      handle(uri);
+      if (uri != null && _echo.acceptInitial(uri)) handle(uri);
     } catch (e) {
       debugPrint('entity initial link failed: $e');
     }

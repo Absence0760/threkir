@@ -72,6 +72,20 @@ type Exception = {
 
 const EXCEPTIONS: Exception[] = [
 	{
+		file: 'src/lib/video/encode_video.ts',
+		probe: 'navigator.share',
+		count: 1,
+		reason: 'optional-capability',
+		why: 'an exported video (the flyover, the recap slideshow) goes to the OS share sheet where the platform offers file sharing and to a download where it does not; desktop browsers well above the floor lack it (decisions § 2259).',
+	},
+	{
+		file: 'src/lib/video/encode_video.ts',
+		probe: 'HTMLCanvasElement.prototype.captureStream',
+		count: 1,
+		reason: 'optional-capability',
+		why: 'the MediaRecorder fallback needs a canvas stream, which some embedded webviews withhold at any version; without it and without WebCodecs H.264 no video export is offered (decisions § 2259, § 2269).',
+	},
+	{
 		file: 'src/lib/util/clip_text.ts',
 		probe: 'Intl.Segmenter',
 		count: 1,
@@ -138,7 +152,14 @@ const EXCEPTIONS: Exception[] = [
 		why: 'exposed only in a secure context, so it is missing from a dev server reached over http at a LAN address on a browser well above the floor.',
 	},
 	{
-		file: 'src/routes/runs/[id]/+page.svelte',
+		file: 'src/lib/components/RunShareImageDialog.svelte',
+		probe: 'navigator.share',
+		count: 1,
+		reason: 'optional-capability',
+		why: 'the Web Share API is a platform capability, not a version: desktop Firefox and Chrome on Linux are above the floor and have no share sheet to offer.',
+	},
+	{
+		file: 'src/lib/components/HeadToHeadPanel.svelte',
 		probe: 'navigator.share',
 		count: 1,
 		reason: 'optional-capability',

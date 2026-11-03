@@ -15,6 +15,7 @@ import '../catalogue_browse.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart';
 import '../widgets/error_state.dart';
+import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/track_preview.dart';
 
@@ -535,6 +536,21 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
           l10n.segmentCatalogueLeaderboard,
           style: theme.textTheme.titleSmall,
         ),
+        if (widget.api case final api? when api.userId != null)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              key: const Key('global-segment-head-to-head-open'),
+              onPressed: () => showHeadToHeadSheet(
+                context,
+                api: api,
+                kind: 'global_segment',
+                targetId: segment.id,
+              ),
+              icon: const Icon(Icons.people_outline, size: 18),
+              label: Text(l10n.headToHeadCompare),
+            ),
+          ),
         const SizedBox(height: 8),
         _buildBoard(context, l10n),
       ],

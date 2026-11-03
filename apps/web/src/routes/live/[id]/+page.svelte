@@ -62,6 +62,11 @@
 	let elapsed = $state(0);
 	let distance = $state(0);
 	let currentPace = $state('--:--');
+	// Art 9: a ping carries bpm only when the runner has health-data consent
+	// on record and the live_overlay gate is open. The server strips it
+	// otherwise (the live_run_pings insert trigger and the Go hub, decisions
+	// § 2265), so the page shows what it is given.
+	let currentBpm = $state<number | null>(null);
 	let runnerName = $state<string | null>(null);
 	// Owner-only "not back by X" escalation override. Only the run owner
 	// viewing their own in-progress broadcast can set it; the RPC re-checks
@@ -293,6 +298,7 @@
 		sent_at_ms?: number | null;
 		at?: string | null;
 		coarse?: boolean | null;
+		bpm?: number | null;
 	}) {
 		// Stamp freshness from the ping's own clock — `sent_at_ms` on the
 		// Go-hub path, the `at` column on the Supabase path. Finite-guard
@@ -308,6 +314,7 @@
 		if (ping.distance_m != null) distance = ping.distance_m;
 		if (ping.elapsed_s != null) elapsed = ping.elapsed_s;
 		if (distance > 0 && elapsed > 0) currentPace = formatPace(elapsed, distance);
+		currentBpm = typeof ping.bpm === 'number' && ping.bpm > 0 ? ping.bpm : null;
 
 		// Feed the next-cut-off card + the motion readout: latest fix plus a
 		// recent-ping buffer (only pings that carry both odometer fields, so
@@ -386,7 +393,7 @@
 		// is the last one pushed and wins the trace/pan.
 		const { data: rows, error } = await supabase
 			.from('live_run_pings')
-			.select('lat, lng, distance_m, elapsed_s, at, coarse')
+			.select('lat, lng, distance_m, elapsed_s, at, coarse, bpm')
 			.eq('run_id', data.id)
 			.order('at', { ascending: false })
 			.limit(1000);
@@ -444,6 +451,7 @@
 						elapsed_s: p.elapsed_s ?? null,
 						sent_at_ms: p.sent_at_ms ?? null,
 						coarse: p.coarse ?? null,
+						bpm: p.bpm ?? null,
 					});
 					if (status !== 'live') status = 'live';
 				},
@@ -473,6 +481,7 @@
 						elapsed_s: number | null;
 						at: string | null;
 						coarse: boolean | null;
+						bpm: number | null;
 					};
 					pushPing(row);
 					if (status !== 'live') status = 'live';
@@ -1093,6 +1102,12 @@
 					<span class="live-stat-value">{currentPace}</span>
 					<span class="live-stat-label">{m('live.statPace')}</span>
 				</div>
+				{#if currentBpm != null}
+					<div class="live-stat" data-testid="live-heart-rate">
+						<span class="live-stat-value">{m('live.bpmValue', { bpm: currentBpm })}</span>
+						<span class="live-stat-label">{m('live.statHeartRate')}</span>
+					</div>
+				{/if}
 				{#if status === 'live' && recentPaceSecPerKm != null}
 					<div class="live-stat" data-testid="recent-pace">
 						<span class="live-stat-value">{formatPace(recentPaceSecPerKm, 1000)}</span>

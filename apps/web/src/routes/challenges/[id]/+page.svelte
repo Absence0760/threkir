@@ -21,26 +21,13 @@
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
-	import { formatDistance, formatElevation } from '#lib/format/units.svelte.ts';
-	import { formatDuration } from '#lib/format/time.ts';
-	import type { ChallengeMetric } from '#lib/types.ts';
+	import {
+		challengeWindowLabel as windowLabel,
+		formatChallengeGoal as formatGoal
+	} from '#lib/format/challenge_labels.svelte.ts';
+	import ChallengeInviteLink from '#lib/components/ChallengeInviteLink.svelte';
 
 	const id = $derived(page.params.id ?? '');
-
-	function formatGoal(metric: ChallengeMetric, v: number): string {
-		switch (metric) {
-			case 'distance':
-				return formatDistance(v);
-			case 'duration':
-				return formatDuration(Math.round(v));
-			case 'vert':
-				return formatElevation(v);
-			case 'streak_days':
-				return m('challenges.unitDays', { n: Math.round(v) });
-			case 'activity_count':
-				return m('challenges.unitActivities', { n: Math.round(v) });
-		}
-	}
 
 	let challenge = $state<ChallengeWithMeta | null>(null);
 	let notFound = $state(false);
@@ -162,19 +149,6 @@
 		}
 	}
 
-	function daysLeft(endsIso: string): number {
-		return Math.ceil((new Date(endsIso).getTime() - Date.now()) / 86400000);
-	}
-
-	function windowLabel(c: ChallengeWithMeta): string {
-		const now = Date.now();
-		if (now < new Date(c.starts_at).getTime()) {
-			return m('challenges.startsIn', { n: Math.ceil((new Date(c.starts_at).getTime() - now) / 86400000) });
-		}
-		if (now >= new Date(c.ends_at).getTime()) return m('challenges.ended');
-		const d = daysLeft(c.ends_at);
-		return d <= 1 ? m('challenges.endsToday') : m('challenges.endsIn', { n: d });
-	}
 </script>
 
 <svelte:head>
@@ -252,6 +226,13 @@
 				</button>
 			{/if}
 		</div>
+
+		<ChallengeInviteLink
+			challengeId={challenge.id}
+			creatorId={challenge.creator_id}
+			isPublic={challenge.is_public}
+			canManage={canManageChallenge && challenge.scope !== 'club_vs_club'}
+		/>
 
 		<section class="board">
 			<h2>{m('challenges.leaderboard')}</h2>

@@ -291,7 +291,17 @@ export function unitPrefixes(unit: string): readonly string[] {
 /// of units (two areas, an area and an unregistered segment, or one such
 /// segment alone) are grouped by that exact set. A set whose keys reach
 /// `minBytes` of English source becomes a part of its own, loaded by every
-/// route under any of its units (`partsForRoute`); smaller sets stay in core.
+/// route under any of its units (`partsForRoute`).
+///
+/// A set short of `minBytes` is not left in core while a set whose units
+/// contain all of its own exists (decisions § 2272). Smallest first, it folds
+/// into the superset with ONE unit more, which can carry that set over the
+/// threshold; failing that, into the tightest superset that is already a
+/// group. Every reader of a folded key lies in the units of the set it joins,
+/// so it still loads that part; the cost is bytes a few routes download and
+/// do not render, never a request, and never a key on a route without it.
+/// Only a set with no superset at all stays in core.
+///
 /// Nobody lists a group or its keys: both follow from who renders what, so a
 /// key reused on a new surface moves to the right group, or to core, on the
 /// next build.
@@ -312,14 +322,49 @@ export function deriveGroups(
 		if (!list) bySet.set(name, (list = []));
 		list.push(key);
 	}
+	foldShortSets(bySet, sourceBytes, minBytes);
 	const out = new Map(parts);
 	const groups: Record<string, readonly string[]> = {};
 	for (const [name, keys] of [...bySet].sort(([a], [b]) => (a < b ? -1 : 1))) {
-		if (sourceBytes(keys) < minBytes) continue;
+		if (keys.length === 0 || sourceBytes(keys) < minBytes) continue;
 		groups[name] = [...new Set(name.split('~').flatMap(unitPrefixes))].sort();
 		for (const key of keys) out.set(key, name as GroupName);
 	}
 	return { parts: out, groups };
+}
+
+function foldShortSets(
+	bySet: Map<string, string[]>,
+	sourceBytes: (keys: readonly string[]) => number,
+	minBytes: number,
+): void {
+	const units = new Map([...bySet.keys()].map((name) => [name, new Set(name.split('~'))]));
+	const byWidth = [...bySet.keys()].sort(
+		(a, b) => units.get(a)!.size - units.get(b)!.size || (a < b ? -1 : 1),
+	);
+	const supersets = (name: string) => {
+		const own = units.get(name)!;
+		return byWidth.filter((other) => {
+			const theirs = units.get(other)!;
+			return theirs.size > own.size && [...own].every((u) => theirs.has(u));
+		});
+	};
+	const short = (name: string) => sourceBytes(bySet.get(name)!) < minBytes;
+	const move = (from: string, to: string) => {
+		bySet.get(to)!.push(...bySet.get(from)!);
+		bySet.set(from, []);
+	};
+	for (const name of byWidth) {
+		if (bySet.get(name)!.length === 0 || !short(name)) continue;
+		const width = units.get(name)!.size;
+		const next = supersets(name).find((other) => units.get(other)!.size === width + 1);
+		if (next) move(name, next);
+	}
+	for (const name of byWidth) {
+		if (bySet.get(name)!.length === 0 || !short(name)) continue;
+		const group = supersets(name).find((other) => bySet.get(other)!.length > 0 && !short(other));
+		if (group) move(name, group);
+	}
 }
 
 /// The sorted units every reader of a key lies in, or null when one of them

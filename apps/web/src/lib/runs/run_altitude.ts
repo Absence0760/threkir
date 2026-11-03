@@ -1,6 +1,6 @@
 import type { TrackPoint } from '../types';
 import { computeElevationGain, ELEVATION_GAIN_MIN_DELTA_M } from '../routes/route_simplify';
-import { trackLine } from './track_line';
+import { isOffTrack, trackLine } from './track_line';
 
 /**
  * Which altitude a recorded run's climb and elevation profile are read from,
@@ -50,7 +50,7 @@ export interface RunAltitude {
 export const ELEVATION_GAIN_GPS_MIN_DELTA_M = 10;
 
 /** True when any point carries a finite barometric altitude. */
-export function hasBarometricAltitude(track: TrackPoint[]): boolean {
+export function hasBarometricAltitude(track: readonly TrackPoint[]): boolean {
 	return track.some((p) => typeof p.baroEle === 'number' && Number.isFinite(p.baroEle));
 }
 
@@ -76,6 +76,24 @@ export function runAltitude(
 		minDeltaM: source === 'app' ? ELEVATION_GAIN_GPS_MIN_DELTA_M : ELEVATION_GAIN_MIN_DELTA_M,
 		barometric: false,
 	};
+}
+
+/**
+ * The altitude [runAltitude] reads at each point of the STORED track, index for
+ * index, null where it reads none: an off-track fix, or a dropout in the
+ * chosen series. For readers that measure on every stored point (splits walk
+ * the `distM` axis, which off-track fixes carry too) and so cannot take
+ * `runAltitude(...).track`, which is the line. Same series choice, so a
+ * split's elevation and the run's climb are read off one altitude. Twin of
+ * `runAltitudeSeries` in `run_altitude.dart`.
+ */
+export function runAltitudeSeries(stored: readonly TrackPoint[]): (number | null)[] {
+	const barometric = hasBarometricAltitude(trackLine(stored));
+	return stored.map((p) => {
+		if (isOffTrack(p)) return null;
+		const v = barometric ? p.baroEle : p.ele;
+		return typeof v === 'number' && Number.isFinite(v) ? v : null;
+	});
 }
 
 /** The climb of a recorded run, over the series and band [runAltitude] picks. */

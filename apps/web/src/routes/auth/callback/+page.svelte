@@ -7,6 +7,8 @@
 	import { defaultUnitForLocale } from '#lib/format/locale_defaults.ts';
 	import { emailOtpLink, verifyConsentStamped } from '#lib/core/auth_confirmation.ts';
 	import { postAuthDestination } from '#lib/core/post_auth_route.ts';
+	import { browserReturnStore, takePendingReturn } from '#lib/core/pending_return.ts';
+	import { signupShareFor } from '#lib/share/share_attribution.ts';
 	import AuthShell from '#lib/components/auth/AuthShell.svelte';
 	import { OAUTH_PROVIDER_STASH_KEY, keepAppleRevocationCredential } from '#lib/core/apple_revocation.ts';
 	import {
@@ -114,10 +116,12 @@
 		// stash is missing (Safari private mode, returning user, or a
 		// callback not initiated from /login), the /auth/confirm-age
 		// fallback below re-prompts.
+		let oauthSignUp = false;
 		try {
 			const stampedAge = sessionStorage.getItem('age_confirmed_at');
 			const stampedTerms = sessionStorage.getItem('terms_accepted_at');
 			if (stampedAge && stampedTerms) {
+				oauthSignUp = true;
 				// Seed the region unit default from the browser locale on the
 				// brand-new-row insert; a returning OAuth user's existing
 				// choice is preserved by the RPC's insert-only apply (#488).
@@ -144,7 +148,20 @@
 			return;
 		}
 
-		goto(linking ? SIGN_IN_METHODS_PATH : postAuthDestination(auth.user, '/dashboard'));
+		const target = linking ? null : takePendingReturn(browserReturnStore());
+
+		// An OAuth sign-up carries no sign-up metadata, so the share link it
+		// started from is written now, on the account's first callback; the
+		// auth.users trigger counts it once (decisions § 2268).
+		if (oauthSignUp) {
+			try {
+				const signupShare = await signupShareFor(target);
+				if (signupShare) await supabase.auth.updateUser({ data: { signup_share: { ...signupShare } } });
+			} catch (e) {
+				console.error('signup_share write failed', e);
+			}
+		}
+		goto(linking ? SIGN_IN_METHODS_PATH : postAuthDestination(auth.user, target ?? '/dashboard'));
 	});
 </script>
 

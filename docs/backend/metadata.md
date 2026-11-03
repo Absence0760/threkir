@@ -278,6 +278,16 @@ Written by the session follow-along runner on finish, when the logged `gym_worko
 | `session_step_results` | `array<{ item_id: string, movement_name: string, kind: string, side?: 'left' \| 'right', target_duration_s: int?, actual_duration_s: int?, status: 'completed' \| 'skipped' }>` | Same | Same (planned-vs-actual / completion view) | Optional; present alongside `session_plan_id` | One row per expanded step (per-side items split into L/R, matching `expandSessionSteps`). Both clients write snake_case (`item_id` / `movement_name`): the web writer in `sessions/[id]/+page.svelte` and the Dart `_stepResultJson` in `session_detail_screen.dart` must match. Owner-only — carries the runner's per-item completion detail. |
 | `session_adherence` | `string` — `completed` \| `partial` \| `abandoned` | Same | Same | Optional; present alongside `session_plan_id` | Same threshold semantics as `gym_adherence` / `workout_adherence`. Owner-only. |
 
+# Sign-up metadata (`auth.users.raw_user_meta_data`)
+
+The GoTrue `data` a client sends with a sign-up (or writes with `updateUser` on an OAuth account's first callback). Read only by server-side triggers on `auth.users`; never returned to another user. Retention: the account's lifetime.
+
+| Key | Shape | Writers | Readers | Required? | Notes |
+|---|---|---|---|---|---|
+| `age_confirmed_at` / `terms_accepted_at` | `string` (ISO 8601) | web `/login` + mobile sign-up, at the moment of the tick | `private.stamp_signup_consent()` (#1229) | Email sign-ups | The Art 8 / ToS evidence the confirmation trigger stamps onto `user_profiles`. |
+| `preferred_unit` | `'km' \| 'mi'` | the same sign-up, from the browser or device locale | `private.stamp_signup_consent()` | Optional | Seeds the profile's unit on its first insert only. |
+| `signup_share` | `{ kind: 'plan' \| 'challenge' \| 'profile' \| 'session' \| 'workout', id: string (uuid), ref: string (10 × [a-z0-9]) }` | web `/login` email sign-up (`signupShareFor`), web `/auth/callback` on an OAuth sign-up; only from a share link carrying its owner's ref, and only while the `share_attribution` gate is open | `private.count_signup_share()` (decisions § 2268) | Optional | The share link this sign-up started from. Counted once per account, within a day of creation, into that link's aggregate `signups`; a foreign or malformed ref counts nothing. Mobile never writes it. |
+
 ---
 
 ## Conventions

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
@@ -11,6 +12,9 @@
 	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV, PUBLIC_SITE_URL, PUBLIC_TILE_STYLE_URL as PUBLIC_TILE_STYLE_URL_ENV } from '$app/env/public';
 	import RunMap, { type SelectedSegment } from '#lib/components/RunMap.svelte';
 	import RoutePreviewScrubber from '#lib/components/RoutePreviewScrubber.svelte';
+	import CoursePreviewButton from '#lib/components/CoursePreviewButton.svelte';
+	import { hasPreviewableCourse, trackPreview } from '#lib/routes/course_preview_points.ts';
+	import type { PathPoint } from '#lib/routes/flyover_path.ts';
 	import { interpolateAlongRoute } from '#lib/routes/route_geometry.ts';
 	import { buildLocalStaticMapUrl, buildStaticMapUrl } from '#lib/routes/static_map.ts';
 	import { mapTrackLine } from '#lib/routes/basemap_contrast.ts';
@@ -20,6 +24,9 @@
 	import { cumulativeMetres, smoothElevation } from '#lib/runs/elevation_profile.ts';
 	import RunSocial from '#lib/components/RunSocial.svelte';
 	import RunShareView from '#lib/components/RunShareView.svelte';
+	import RunShareImageDialog from '#lib/components/RunShareImageDialog.svelte';
+	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
+	import type { PrCardEntry } from '#lib/share/pr_card.ts';
 	import StaticMapImage from '#lib/components/StaticMapImage.svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
@@ -36,6 +43,7 @@
 	import { formatDate, formatDuration } from '#lib/format/time.ts';
 	import {
 		fetchRunById,
+		fetchRunPersonalRecords,
 		fetchPublicRunAttribution,
 		type PublicRunAttribution,
 		deleteRun,
@@ -115,7 +123,7 @@
 	} from '#lib/runs/distance_recompute.ts';
 	import { supabase } from '#lib/core/supabase.ts';
 	import { METADATA_KEYS } from '#lib/core/schema.ts';
-	import { m } from '#lib/i18n/store.svelte.ts';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
 	import { activityTypeIcon, activityUsesSpeed } from '#lib/runs/activity_type.ts';
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import { buildRunShareCanonical } from '#lib/share/share_meta.ts';
@@ -295,6 +303,7 @@
 		}
 		loading = false;
 		void loadAudience();
+		void loadRunRecords();
 		// Best-effort matched-track fetch in the background. The map
 		// will swap to the matched line once it lands; until then it
 		// shows the raw track.
@@ -856,67 +865,79 @@
 	}
 
 	let generatingImage = $state(false);
+	let showShareImage = $state(false);
+	let shareStyle = $state<'card' | 'pr'>('card');
 	let shareCardEl: HTMLElement | undefined = $state();
+	let showHeadToHead = $state(false);
+	/// The personal records this run set, for the PR card (owner-only reads).
+	let runRecords = $state<PrCardEntry[]>([]);
+	let recordDate = $derived(
+		run
+			? new Date(run.started_at).toLocaleDateString(currentLocale(), {
+					day: 'numeric',
+					month: 'short',
+					year: 'numeric',
+				})
+			: '',
+	);
 
-	/// Render the off-screen `.share-card` DOM node to a 1080×1080 PNG
-	/// via `html-to-image`, then either invoke the Web Share API (with
-	/// the PNG as a File) or fall back to a plain download + toast
-	/// when Web Share isn't available or doesn't accept files.
-	async function handleShareImage() {
+	/// L4: a failed read leaves the PR card unoffered and nothing else.
+	/// `?share=pr` is the personal_record notification's link: it opens the
+	/// editor on the PR card once the records are known.
+	async function loadRunRecords() {
+		if (!run) return;
+		try {
+			runRecords = await fetchRunPersonalRecords(run.id);
+		} catch (e) {
+			console.warn('run personal records fetch failed', e);
+			return;
+		}
+		if (runRecords.length > 0 && page.url.searchParams.get('share') === 'pr') {
+			void handleShareImage('pr');
+		}
+	}
+
+	/// Open the share-image editor. Every style draws the owner's track
+	/// clipped to their zones (`shareCardTrack`), so the editor cannot open
+	/// before the zones are known: an image would carry the unclipped line.
+	async function handleShareImage(style: 'card' | 'pr' = 'card') {
 		if (!run || generatingImage) return;
 		generatingImage = true;
 		try {
-			// The card's map is the owner's track clipped to their zones
-			// (`shareCardTrack`), so an image cannot go out before the zones
-			// are known: it would carry the unclipped line.
 			if ((await loadOwnerZones()) === null) {
 				showToast(m('runDetail.shareZonesUnknown'), 'error');
 				return;
 			}
-			await tick();
-			// Dynamic import keeps the 30 KB lib out of the initial
-			// bundle for users who never click Share-as-image.
-			const { toPng } = await import('html-to-image');
-			if (!shareCardEl) throw new Error('share card not ready');
-			const dataUrl = await toPng(shareCardEl, {
-				pixelRatio: 2,
-				cacheBust: true,
-			});
-			const title =
-				((run.metadata as Record<string, unknown> | null)?.[METADATA_KEYS.title] as string) ||
-				`Run ${new Date(run.started_at).toISOString().slice(0, 10)}`;
-			const fileName =
-				title.replace(/[^a-z0-9\-_. ]/gi, '_').replace(/\s+/g, '_') + '.png';
-
-			// Try Web Share API first — on mobile this pops the OS
-			// share sheet with the image pre-attached, which is the
-			// whole point of this feature. Fall through to a download
-			// on desktop browsers that don't implement share-with-files.
-			const blob = await (await fetch(dataUrl)).blob();
-			const file = new File([blob], fileName, { type: 'image/png' });
-			if (
-				typeof navigator.share === 'function' &&
-				navigator.canShare &&
-				navigator.canShare({ files: [file] })
-			) {
-				await navigator.share({ title, files: [file] });
-			} else {
-				const a = document.createElement('a');
-				a.href = dataUrl;
-				a.download = fileName;
-				a.click();
-				showToast(m('runDetail.imageSaved'), 'success');
-			}
-		} catch (e) {
-			const msg = thrownMessage(e);
-			// User cancelling a Web Share sheet raises; that's fine.
-			if (!msg.includes('abort') && !msg.includes('cancel')) {
-				showToast(m('runDetail.imageGenerateFailed', { error: msg }), 'error');
-			}
+			shareStyle = style;
+			showShareImage = true;
 		} finally {
 			generatingImage = false;
 		}
 	}
+
+	/// The map card as a 1080 px PNG, rasterised from the off-screen
+	/// `.share-card` DOM node by `html-to-image` at its own CSS size, the
+	/// width every share image is exported at (decisions § 2250).
+	async function captureShareCard(): Promise<Blob> {
+		await tick();
+		// Dynamic import keeps the 30 KB lib out of the initial
+		// bundle for users who never open the share editor.
+		const { toBlob } = await import('html-to-image');
+		if (!shareCardEl) throw new Error('share card not ready');
+		const blob = await toBlob(shareCardEl, { pixelRatio: 1, cacheBust: true });
+		if (!blob) throw new Error('share card produced no image');
+		return blob;
+	}
+
+	let shareImageTitle = $derived(
+		run
+			? ((run.metadata as Record<string, unknown> | null)?.[METADATA_KEYS.title] as string) ||
+					`Run ${new Date(run.started_at).toISOString().slice(0, 10)}`
+			: '',
+	);
+	let shareImageFileBase = $derived(
+		shareImageTitle.replace(/[^a-z0-9\-_. ]/gi, '_').replace(/\s+/g, '_'),
+	);
 
 	/// Owner-only: force a fresh map-match against the current track.
 	/// Resets run_matched_tracks to pending and queues a `map_match`
@@ -1345,6 +1366,21 @@
 			: trackLine(run?.track ?? []),
 	);
 	let hasMapTrack = $derived(baseTrack.length >= 2);
+	const ownReplay = $derived(trackPreview(run?.track, run?.source));
+	const canReplay = $derived(hasPreviewableCourse(ownReplay.points));
+	/// The owner's video records the share card's line (`shareCardTrack`): the
+	/// track trimmed to their privacy zones, and nothing until those are known.
+	async function ownVideoSource(): Promise<{ points: PathPoint[]; noiseBandM?: number } | null> {
+		const zones = await loadOwnerZones();
+		if (zones === null || !run?.track) return null;
+		return trackPreview(shareCardTrack(run.track, zones), run.source);
+	}
+	/// `?video=1` is the phone's Video share style handing the export to the
+	/// browser (decisions § 2259); it opens the 3D preview, where the export is.
+	const videoRequested = $derived(page.url.searchParams.get('video') === '1');
+	/// A non-owner's replay flies the track RunShareView drew, which came
+	/// through clip-public-track: never a second, unclipped read.
+	let sharedReplay = $state<{ points: PathPoint[]; noiseBandM: number | undefined; title: string } | null>(null);
 	// Gate the elevation chart on real samples, and carry the line across
 	// the ones that are missing rather than plotting them at sea level.
 	// Without any `ele` the array used to be all-zero and the chart rendered
@@ -1352,7 +1388,20 @@
 	// genuinely flat route); with an intermittent `ele` it fell to 0 m at
 	// every dropout. Null when too few points carry an altitude to draw a
 	// profile at all.
-	let elevationSamples = $derived(elevationSeries(runAltitude(baseTrack, run?.source).track));
+	//
+	// The altitude is the stored track's (`altitude`), so the profile reads
+	// the series the climb and the splits read. A matched line keeps one point
+	// per on-track stored fix, so it indexes against `altitude.track` one for
+	// one, but it carries GPS `ele` only: the matcher drops `baroEle`, and
+	// reading the matched line drew GPS altitude under a barometric climb. A
+	// matched line of another length (one stored before the matcher became
+	// length-preserving, decisions § 1170) falls back to its own `ele`.
+	let profileAltitudeTrack = $derived(
+		altitude && altitude.track.length === baseTrack.length
+			? altitude.track
+			: runAltitude(baseTrack, run?.source).track,
+	);
+	let elevationSamples = $derived(elevationSeries(profileAltitudeTrack));
 	/// Drawn smoothed over an along-track window: phone GPS altitude wanders
 	/// by metres between fixes, which the raw series drew as a sawtooth.
 	let elevations = $derived(
@@ -1552,29 +1601,33 @@
 	/// The line is the map track clipped to the owner's zones, and absent
 	/// until they are known (`shareCardTrack`).
 	let shareCardLine = $derived(shareCardTrack(baseTrack, ownerZones));
-	let shareMapUrl = $derived.by(() => {
+	/// The basemap the card draws and the credit its tile licence requires in
+	/// the exported pixels (decisions § 2250 / § 2251): OpenStreetMap's data
+	/// under both, MapTiler's rendering only under its own.
+	let shareMap = $derived.by((): { url: string; credit: string } | null => {
 		if (shareCardLine.length < 2) return null;
 		// Passed whole, so the image draws the smoothed line the run map draws
 		// (`previewPolyline`); the clip above already trimmed raw OR smoothed.
 		const pts = shareCardLine;
-		return (
-			buildLocalStaticMapUrl(pts, {
-				w: SHARE_CARD_MAP.w,
-				h: SHARE_CARD_MAP.h,
-				styleUrl: PUBLIC_TILE_STYLE_URL,
-				stroke: SHARE_CARD_STROKE,
-			}) ??
-			(consent.accepted
-				? buildStaticMapUrl(pts, {
-						w: SHARE_CARD_MAP.w,
-						h: SHARE_CARD_MAP.h,
-						style: 'streets-v2',
-						key: PUBLIC_MAPTILER_KEY,
-						stroke: SHARE_CARD_STROKE,
-					})
-				: null)
-		);
+		const local = buildLocalStaticMapUrl(pts, {
+			w: SHARE_CARD_MAP.w,
+			h: SHARE_CARD_MAP.h,
+			styleUrl: PUBLIC_TILE_STYLE_URL,
+			stroke: SHARE_CARD_STROKE,
+		});
+		if (local) return { url: local, credit: '© OpenStreetMap contributors' };
+		const tiler = consent.accepted
+			? buildStaticMapUrl(pts, {
+					w: SHARE_CARD_MAP.w,
+					h: SHARE_CARD_MAP.h,
+					style: 'streets-v2',
+					key: PUBLIC_MAPTILER_KEY,
+					stroke: SHARE_CARD_STROKE,
+				})
+			: null;
+		return tiler ? { url: tiler, credit: '© MapTiler © OpenStreetMap contributors' } : null;
 	});
+	let shareMapUrl = $derived(shareMap?.url ?? null);
 </script>
 
 <svelte:head>
@@ -1635,7 +1688,21 @@
 					<p class="other-run-note">{m('runDetail.otherRunViewerNote')}</p>
 				</div>
 			</div>
-			<RunShareView runId={pageData.id} />
+			{#if sharedReplay && hasPreviewableCourse(sharedReplay.points)}
+				<div class="other-run-replay">
+					<CoursePreviewButton
+						points={sharedReplay.points}
+						noiseBandM={sharedReplay.noiseBandM}
+						title={sharedReplay.title}
+						replay
+						videoSource={async () => sharedReplay}
+					/>
+				</div>
+			{/if}
+			<RunShareView
+				runId={pageData.id}
+				ontrack={(track, title, source) => (sharedReplay = { ...trackPreview(track, source), title })}
+			/>
 		</div>
 	</div>
 {:else if loadError}
@@ -1830,6 +1897,18 @@
 										? m('audience.chipShared')
 										: m('runDetail.private')}
 						</span>
+						{#if runRecords.length > 0}
+							<button
+								type="button"
+								class="meta-item pr-chip"
+								onclick={() => handleShareImage('pr')}
+								disabled={generatingImage}
+								data-testid="run-share-pr"
+							>
+								<span class="material-symbols" aria-hidden="true">military_tech</span>
+								{m('runDetail.sharePr')}
+							</button>
+						{/if}
 						{#if guidedRunId}
 							{#if guidedRun}
 								<a
@@ -1939,7 +2018,7 @@
 							class="icon-btn"
 							aria-label={m('runDetail.shareAsImage')}
 							title={m('runDetail.shareAsImage')}
-							onclick={handleShareImage}
+							onclick={() => handleShareImage()}
 							disabled={generatingImage}
 						>
 							<span class="material-symbols">image</span>
@@ -2104,6 +2183,19 @@
 					onchange={(f) => (scrubFraction = f)}
 					onscrubbing={(active) => (scrubbing = active)}
 				/>
+				{#if canReplay}
+					<div class="replay-3d">
+						<CoursePreviewButton
+							points={ownReplay.points}
+							noiseBandM={ownReplay.noiseBandM}
+							title={runTitle || formatDate(run.started_at)}
+							replay
+							videoSource={ownVideoSource}
+							videoSummary={`${formatDistance(run.distance_m)} · ${formatDuration(run.duration_s)}`}
+							autoOpen={videoRequested}
+						/>
+					</div>
+				{/if}
 			</section>
 		{/if}
 
@@ -2170,6 +2262,17 @@
 					durationS={run.duration_s}
 					activityType={run.activity_type}
 				/>
+				{#if auth.user?.id === run.user_id}
+					<button
+						type="button"
+						class="btn btn-outline btn-sm h2h-open"
+						onclick={() => (showHeadToHead = true)}
+						data-testid="run-head-to-head-open"
+					>
+						<span class="material-symbols" aria-hidden="true">group</span>
+						{m('headToHead.compare')}
+					</button>
+				{/if}
 			</section>
 		{/if}
 
@@ -2657,6 +2760,30 @@
 	data-testid="recalculate-distance-dialog"
 />
 
+{#if run}
+	<RunShareImageDialog
+		open={showShareImage}
+		onclose={() => (showShareImage = false)}
+		run={run}
+		title={shareImageTitle}
+		line={shareCardLine}
+		captureCard={captureShareCard}
+		fileBase={shareImageFileBase}
+		headToHead={run.route_id ? { kind: 'route', targetId: run.route_id } : null}
+		records={runRecords}
+		{recordDate}
+		initialStyle={shareStyle}
+	/>
+	{#if run.route_id}
+		<HeadToHeadDialog
+			open={showHeadToHead}
+			onclose={() => (showHeadToHead = false)}
+			kind="route"
+			targetId={run.route_id}
+		/>
+	{/if}
+{/if}
+
 <!-- Off-screen share card. 1080 square, rendered to PNG by
      `html-to-image` when the user taps Share-as-image. Lives outside
      the main layout so it doesn't affect scrolling; positioned
@@ -2670,7 +2797,10 @@
 	aria-hidden="true"
 >
 	<div class="share-card-inner">
-		<div class="share-card-eyebrow">Threkir</div>
+		<div class="share-card-eyebrow">
+			<img src="/logo-mark.svg" alt="" class="share-card-mark" />
+			Threkir
+		</div>
 		{#if shareMapUrl}
 			<!-- Real map background so the share card shows WHERE the
 				 run happened, not just the stats numbers. crossorigin=
@@ -2680,16 +2810,19 @@
 				 attribute is what unlocks the canvas readback). A map
 				 that fails to load leaves the stats-only card, not a
 				 broken image in the capture. -->
-			<StaticMapImage
-				src={shareMapUrl}
-				alt=""
-				class="share-card-map"
-				crossorigin="anonymous"
-				testid="share-card-map"
-			/>
+			<div class="share-card-map-frame">
+				<StaticMapImage
+					src={shareMapUrl}
+					alt=""
+					class="share-card-map"
+					crossorigin="anonymous"
+					testid="share-card-map"
+				/>
+				<div class="share-card-credit" data-testid="share-card-credit">{shareMap?.credit}</div>
+			</div>
 		{/if}
 		<div class="share-card-stats">
-			<div class="share-stat">
+			<div class="share-stat hero">
 				<div class="share-stat-label">{m('runDetail.distance')}</div>
 				<div class="share-stat-value">{formatDistance(run.distance_m)}</div>
 			</div>
@@ -2786,6 +2919,9 @@
 		width: 100%;
 		margin-inline: auto;
 		overflow-y: auto;
+	}
+	.replay-3d {
+		margin-top: var(--space-md);
 	}
 	.other-run-header {
 		display: flex;
@@ -3315,6 +3451,27 @@
 		text-decoration: none;
 	}
 
+	.pr-chip {
+		padding: 0.2rem 0.55rem;
+		border-radius: 9999px;
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-primary);
+		color: var(--color-primary);
+		font: inherit;
+		font-weight: 600;
+		font-size: 0.72rem;
+		cursor: pointer;
+	}
+
+	.pr-chip:disabled {
+		cursor: progress;
+		opacity: 0.6;
+	}
+
+	.pr-chip .material-symbols {
+		color: var(--color-primary);
+	}
+
 	a.guided-chip:hover {
 		border-color: var(--color-primary);
 		color: var(--color-primary);
@@ -3445,6 +3602,12 @@
 		letter-spacing: 0.05em;
 	}
 
+	.h2h-open {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		margin-top: var(--space-md);
+	}
 	.section {
 		margin-bottom: var(--space-xl);
 		padding-top: var(--space-xl);
@@ -4009,11 +4172,25 @@
 		justify-content: space-between;
 	}
 	.share-card-eyebrow {
+		display: flex;
+		align-items: center;
+		gap: 20px;
 		font-size: 48px;
 		font-weight: 800;
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
-		opacity: 0.9;
+	}
+	.share-card-mark {
+		width: 64px;
+		height: 64px;
+		border-radius: 12px;
+		box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85);
+	}
+	.share-card-credit {
+		margin-top: 12px;
+		font-size: 22px;
+		opacity: 0.85;
+		text-align: end;
 	}
 	.share-card-inner :global(.share-card-map) {
 		display: block;
@@ -4024,10 +4201,16 @@
 		border: 4px solid rgba(255, 255, 255, 0.15);
 		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 	}
+	/* Distance across the card, time and pace side by side under it: three
+	   stacked 120 px rows did not fit under the map, and the capture cut the
+	   pace and the date off the bottom of the PNG. */
 	.share-card-stats {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr);
-		gap: 64px;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 28px 48px;
+	}
+	.share-stat.hero {
+		grid-column: 1 / -1;
 	}
 	.share-stat {
 		display: flex;
@@ -4040,10 +4223,14 @@
 		opacity: 0.7;
 	}
 	.share-stat-value {
-		font-size: 120px;
+		font-size: 80px;
 		font-weight: 900;
 		line-height: 1;
 		margin-top: 8px;
+		white-space: nowrap;
+	}
+	.share-stat.hero .share-stat-value {
+		font-size: 120px;
 	}
 	.share-card-date {
 		font-size: 42px;

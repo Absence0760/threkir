@@ -27,6 +27,7 @@
 		RouteRequestError,
 	} from '#lib/routes/route_request_client.ts';
 	import type { RoutePreference } from '#lib/routes/generate/graphhopper.ts';
+	import type { ArtFidelity, FidelityVerdict } from '#lib/routes/route_art.ts';
 
 	// True when the local Protomaps tile-style override is set —
 	// in that mode all three map-style buttons (streets/satellite/
@@ -49,6 +50,15 @@
 	let routeDescription = $state('');
 	let isPublic = $state(false);
 	let mode = $state<'road' | 'trail'>('road');
+	// Draw mode: a drag on the map draws a shape matched to roads and paths
+	// (decisions § 2263). The surface buttons still pick what is saved.
+	let drawMode = $state(false);
+	let artFidelity = $state<ArtFidelity | null>(null);
+	const ART_VERDICT_KEYS: Record<FidelityVerdict, MessageKey> = {
+		close: 'routeNew.drawMatchClose',
+		rough: 'routeNew.drawMatchRough',
+		poor: 'routeNew.drawMatchPoor',
+	};
 	let waypointCount = $state(0);
 	let distance = $state(0);
 	let elevation = $state(0);
@@ -744,6 +754,33 @@
 				</div>
 			</fieldset>
 
+			<div class="control-group draw-group">
+				<button
+					class="mode-btn draw-btn"
+					class:active={drawMode}
+					aria-pressed={drawMode}
+					aria-describedby="route-draw-hint"
+					data-testid="draw-mode-toggle"
+					onclick={() => (drawMode = !drawMode)}
+				>
+					<span class="material-symbols" aria-hidden="true">edit</span>
+					{m('routeNew.drawShape')}
+				</button>
+				<p class="builder-hint" id="route-draw-hint">{m('routeNew.drawShapeHint')}</p>
+				{#if artFidelity}
+					<div
+						class="art-match"
+						class:art-match-poor={artFidelity.verdict === 'poor'}
+						role="status"
+						data-testid="art-match"
+					>
+						<span class="art-match-label">{m('routeNew.drawMatchLabel')}</span>
+						<span class="art-match-score">{m('routeNew.drawMatchScore', { score: artFidelity.score })}</span>
+						<span class="art-match-verdict">{m(ART_VERDICT_KEYS[artFidelity.verdict])}</span>
+					</div>
+				{/if}
+			</div>
+
 			<fieldset class="control-group">
 				<legend class="section-label">{m('routeNew.mapStyle')}</legend>
 				<div class="style-toggle">
@@ -1212,6 +1249,8 @@
 		<RouteBuilder
 			bind:this={builder}
 			{mode}
+			drawing={drawMode}
+			onartmatch={(f) => (artFidelity = f)}
 			onupdate={handleUpdate}
 			onmapclick={handleMapPick}
 			onerror={handleRoutingError}
@@ -1224,7 +1263,7 @@
 			onrequestclear={handleClear}
 		/>
 
-		{#if waypointCount === 0 && !pickingPoint}
+		{#if waypointCount === 0 && !pickingPoint && !drawMode}
 			<div class="canvas-empty" role="status">
 				<span class="material-symbols">add_location</span>
 				<h3>{m('routeNew.canvasEmptyTitle')}</h3>
@@ -1536,6 +1575,40 @@
 		background: var(--color-primary-light);
 		border-color: var(--color-primary);
 		color: var(--color-primary);
+	}
+
+	.draw-group {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+	}
+	.art-match {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: var(--space-xs) var(--space-sm);
+		padding: var(--space-sm) var(--space-md);
+		border: 1.5px solid var(--color-primary);
+		border-radius: var(--radius-md);
+		background: var(--color-primary-light);
+		color: var(--color-text);
+	}
+	.art-match-poor {
+		border-color: var(--color-border);
+		background: var(--color-bg);
+	}
+	.art-match-label {
+		font-size: 0.85rem;
+		font-weight: 500;
+	}
+	.art-match-score {
+		font-size: 1.05rem;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+	}
+	.art-match-verdict {
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
 	}
 
 	.stats-row {

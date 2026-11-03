@@ -185,6 +185,9 @@ String formatWorkoutStepUtterance(WorkoutStep step, DistanceUnit unit,
   if (step.isDurationBased) {
     return l10n.ttsStepDuration(intro, _spokenDuration(step.targetDurationSec!, l10n));
   }
+  // A walk-run step has no pace target; the easy pace it carries is only the
+  // plan's distance estimate (decisions § 2074).
+  if (!step.paced) return l10n.ttsStepDistance(intro, dist);
   return l10n.ttsStepDistancePace(intro, dist, paceTail);
 }
 

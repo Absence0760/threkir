@@ -66,8 +66,8 @@ func (p *Ping) Validate() error {
 	if p.ElapsedS < 0 || p.ElapsedS > 1_000_000 {
 		return errors.New("elapsed_s must be in [0, 1e6]")
 	}
-	if p.BPM != nil && (*p.BPM < 20 || *p.BPM > 350) {
-		return errors.New("bpm must be in [20, 350]")
+	if p.BPM != nil && (*p.BPM < 20 || *p.BPM > 300) {
+		return errors.New("bpm must be in [20, 300]")
 	}
 	if p.Elevation != nil {
 		v := *p.Elevation

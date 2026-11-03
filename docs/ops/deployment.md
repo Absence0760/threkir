@@ -663,6 +663,53 @@ Migration `20270808000011` (decisions § 1918) changes a timezoned series' occur
 
 The followers level and named-person run / route shares ([sharing.md](../features/sharing.md), decisions § 1874) ship closed: no migration writes the `audience_sharing` row of `private.feature_flags`, so prod answers exactly as before. Open it only after the CISO / Security Analyst has reviewed the audience oracles, the `shared_runs` / `shared_routes` projections, and the `clip-public-track` branch — then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('audience_sharing', true) on conflict (name) do update set enabled = true, updated_at = now();`. Closing it again is the same statement with `false`; every read path falls back at once, and existing grants stay inert until it reopens.
 
+### Challenge invite links — after the CISO / Security Analyst review
+
+Challenge invite links ([challenges.md § Invite links](../features/challenges.md#invite-links-and-the-public-share-page-2026-11-03-decisions--2261), decisions § 2261) ship closed: no migration writes the `challenge_invite_links` row of `private.feature_flags`, so the invite card and the join-by-link page stay dark and a non-public challenge stays joinable only as before. Open it only after the CISO / Security Analyst has reviewed migration `20271103000001` (the private token table, the anon-callable `challenge_invite_preview` projection, the `join_challenge_by_token` rate limit) and both clients' join surfaces — then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('challenge_invite_links', true) on conflict (name) do update set enabled = true, updated_at = now();`. Closing it again is the same statement with `false`; every token stops resolving at once and no participant is removed. The public `/share/challenge` page is not behind it.
+
+### Streamer overlay and live heart rate — after the CISO / Security Analyst review
+
+The streamer overlay ([flows.md § Streamer overlay](../features/flows.md#streamer-overlay), decisions § 2265) ships closed: no migration writes the `live_overlay` row of `private.feature_flags`, so the Settings card, the phone's "Streamer overlay" entry and `/live/overlay` stay dark, and every live ping is stored and relayed **without** its `bpm`. Open it only after the CISO / Security Analyst has reviewed broadcasting live location and heart rate to an audience: migration `20271104000001` (the private `live_overlay_tokens` table, the anon-callable `live_overlay_feed` and its server-side delay, the `live_run_pings_strip_bpm_before_insert` trigger, the service-role-only `live_heart_rate_shared`), the Go hub's bpm strip (`apps/job_worker/internal/livehub/server.go`), and heart rate on `/live/[id]` and the phone's spectator screen. Then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('live_overlay', true) on conflict (name) do update set enabled = true, updated_at = now();`. Closing it again is the same statement with `false`: every overlay token stops resolving at once and new pings lose their `bpm` again. The hub caches the consent answer per room for `CacheRefreshTTL`, so a hub room already open keeps its answer until the next refresh.
+
+### Share-link attribution — after the CISO / Security Analyst review
+
+Share-link visit counters, sign-up attribution and Your shares ([decisions § 2268](../architecture/decisions.md), migration `20271104000004`) ship closed: no migration writes the `share_attribution` row of `private.feature_flags`, so no link carries a ref, no visit is counted, no sign-up records `signup_share`, and Your shares is hidden on both clients. In order:
+
+1. CISO / Security Analyst: confirm the aggregate counter (`private.share_link_daily`, written by the anon-callable `record_share_visit` from the share page; no cookie, IP, user agent, user id or browser storage) needs no cookie consent, and review the bounded write path (public entities only, capped daily counters, 90-day purge).
+2. CISO / Security Analyst: decide whether sign-up attribution (`signup_share` in the GoTrue metadata, counted by the `auth.users` trigger) is a new purpose, and if so update [dpia.md](../compliance/dpia.md) and have counsel add its row to the privacy policy's § 3 purpose table. [sub-processors.md](../compliance/sub-processors.md) does not change: no vendor is involved.
+3. Then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('share_attribution', true) on conflict (name) do update set enabled = true, updated_at = now();`. Closing it again is the same statement with `false`; counting and attribution stop at once, and the existing buckets age out under `purge-share-link-daily`.
+
+### Public plan share ("Train with me") — after the CISO / Security Analyst review
+
+The logged-out `/share/plan/[id]` page ([training.md § Train with me](../features/training.md#train-with-me--public-plan-share-page), decisions § 2262, migration `20271103000002`) ships closed: no migration writes the `public_plan_share` row of `private.feature_flags` (`seed.sql` opens it for local and CI only), so `public_plan_share(p_id)` answers null and "Copy share link" stays hidden. From training.md's checklist:
+
+1. CISO / Security Analyst review of the redacted projection (what an anonymous reader sees, and that the author credit honours private profiles and blocks), recorded with the sign-off date.
+2. `terraform apply` for the `/share/plan/*` CloudFront behaviour and the `plan` upstream alarm, then a `web@*` deploy so the `share-entity` zip carries the dispatcher branch (see [the share-entity apply](#share-entity-behaviours-and-memory--terraform-apply-before-the-web-release) below).
+3. `insert into private.feature_flags (name, enabled) values ('public_plan_share', true) on conflict (name) do update set enabled = true;`
+
+### Flyover video and keyless terrain — operator and security sign-off
+
+The 3D course preview and its video export (decisions § 2251, § 2259) add two third-party map sources and one fail-closed build flag.
+
+1. **Operator:** confirm that the MapTiler plan's terms permit its terrain and imagery in a published, marketing video before setting `PUBLIC_FLYOVER_VIDEO_MAPTILER_ENABLED` (a `release-web.yml` secret, default off; [apps/web/deployment.md](../../apps/web/deployment.md)) and, in the same release, the mobile `FLYOVER_VIDEO_MAPTILER_ENABLED` define. Until both are set, "Export video" is not offered on threkir.com and the phone hides its run **Video** share style (decisions § 2270): the export never falls back to OSM's public tile servers, whose usage policy does not allow frame-by-frame rendering. The on-screen preview uses MapTiler either way.
+2. **CISO / Security Analyst:** confirm the classification of AWS Open Data Terrain Tiles (`elevation-tiles-prod.s3.amazonaws.com`) as a browser-side data recipient ([sub-processors.md](../compliance/sub-processors.md)): a public bucket outside our AWS account, so no DPA covers it, and each tile request carries the viewer's IP and the tile that locates the course. The preview and the export reach it only when no MapTiler key is set, which the release build refuses.
+3. **CISO / Security Analyst:** review the preview's consent wording, which is the gate in front of every terrain request: its own card ("Load the 3D preview?", "The preview loads map and terrain tiles from third-party providers, which receive your IP address", button **Load preview**, `coursePreview.consent*` in every locale) shown when cookie consent has not been accepted, the role the 2D maps' "Load map" placeholder plays. `consent_guards.test.ts` binds any caller of `resolveTerrainSource` to it.
+
+### Share-entity behaviours and memory — `terraform apply` before the web release
+
+PR #1271 changes `infra/modules/web-stack`, and the `web@*` release that carries the new share pages needs it applied first:
+
+- three `ordered_cache_behavior` blocks routing `/share/plan/*`, `/share/challenge/*` and `/og/challenge/*` to the `lambda-share-entity` origin (`main.tf`);
+- the `share-entity` Lambda at 512 MB instead of 256, because `/og/challenge/<id>.png` rasterises with `@resvg` (`main.tf`);
+- `plan` and `challenge` entries in the share upstream-unreachable alarms (`alarms.tf`);
+- `https://elevation-tiles-prod.s3.amazonaws.com` added to the CSP's `img-src` and `connect-src` for the keyless terrain rung (§ 2251).
+
+Run `terraform plan` in `infra/envs/prod` (and `preview`), check that only these change, apply, then cut the `web@*` tag so the `share-entity` zip carries the plan and challenge dispatcher branches. The plan and challenge pages stay dark behind their own flags after the apply.
+
+### Head-to-head read — release review item
+
+The `head_to_head(kind, target, friend?)` RPC (migration `20271104000003`, decisions § 2267) ships **without** a feature flag, because it returns only a subset of what the caller can already read: mutual follows, no block, a public non-hidden friend profile, and public, non-DNF runs on both sides, with every refusal the same empty result and no `personal_records`, track, age or gender read. It goes live with the `db push` and the web and mobile releases that carry it. The CISO / Security Analyst reviews it as a normal release item before those releases: the function's predicates, that its refusals are indistinguishable, and the pgTAP file that pins each rule.
+
 ### Coach run map — after the CISO / Security Analyst review
 
 A linked coach's clipped view of the athlete's run map ([coach_roster.md § Coach run map](../features/coach_roster.md#coach-run-map-decisions--1968), decisions § 1968) ships closed: no migration writes the `coach_run_map` row of `private.feature_flags`, so a coach keeps run rows and stats only, as before. Open it only after the CISO / Security Analyst has reviewed the `coached_runs` view and the coach branch of `clip-public-track` — then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('coach_run_map', true) on conflict (name) do update set enabled = true, updated_at = now();`. Closing it again is the same statement with `false`; both clients stop drawing the map and the view empties at once.

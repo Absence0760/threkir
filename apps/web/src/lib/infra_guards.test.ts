@@ -9,6 +9,8 @@ import { strict as assert } from 'node:assert';
 import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { AWS_TERRAIN_TILES_HOST } from './routes/terrain_source';
+
 function read(...parts: string[]): string {
 	return readFileSync(resolve(...parts), 'utf-8');
 }
@@ -237,6 +239,47 @@ test('CloudFront CSP connect-src allows the Supabase Realtime websocket', () => 
 		sources.includes('https://*.supabase.co'),
 		`CSP connect-src must list https://*.supabase.co for Supabase REST/Auth/Storage; got: ${connect![1]}`,
 	);
+});
+
+test('CloudFront CSP allows the keyless terrain bucket, and no other S3 bucket', () => {
+	// Reason: the 3D course preview falls back to the AWS Open Data Terrain
+	// Tiles bucket when no MapTiler key is set (decisions § 2251). MapLibre
+	// fetches DEM tiles with fetch() and falls back to an <img>, so a CSP
+	// missing the host in either directive renders the course over flat
+	// ground with no server-side symptom. The host is the virtual-hosted
+	// bucket name, and `s3.amazonaws.com` bare must stay out: it would let
+	// an injected script post to any bucket on S3.
+	const tf = read('../../infra/modules/web-stack/main.tf');
+	for (const directive of ['img-src', 'connect-src']) {
+		const m = tf.match(new RegExp(`"${directive} ([^"]*)"`));
+		assert.ok(m, `Could not locate the ${directive} directive in the CloudFront CSP.`);
+		const sources = m![1].split(/\s+/);
+		assert.ok(
+			sources.includes(`https://${AWS_TERRAIN_TILES_HOST}`),
+			`CSP ${directive} must list https://${AWS_TERRAIN_TILES_HOST}; got: ${m![1]}`,
+		);
+		assert.ok(
+			!sources.some((s) => /^https:\/\/(\*\.)?s3\.amazonaws\.com$/.test(s)),
+			`CSP ${directive} must not allow every S3 bucket; got: ${m![1]}`,
+		);
+	}
+});
+
+test('CloudFront CSP lets the page show the object URLs it mints', () => {
+	// Reason: photo upload previews and the share-card PNGs render through
+	// <img src="blob:…">, and the recap video previews through
+	// <video src="blob:…">. Without `blob:` in img-src, and with no
+	// media-src at all (so default-src 'self' applies), both render blank in
+	// production only — the build's <meta> CSP sets only script-src and
+	// worker-src, so nothing fails before deploy.
+	const tf = read('../../infra/modules/web-stack/main.tf');
+	for (const directive of ['img-src', 'media-src']) {
+		const m = tf.match(new RegExp(`"${directive} ([^"]*)"`));
+		assert.ok(m, `Could not locate the ${directive} directive in the CloudFront CSP.`);
+		const sources = m![1].split(/\s+/);
+		assert.ok(sources.includes('blob:'), `CSP ${directive} must list blob:; got: ${m![1]}`);
+		assert.ok(sources.includes("'self'"), `CSP ${directive} must list 'self'; got: ${m![1]}`);
+	}
 });
 
 test('every POST to a Lambda origin sends the sigv4 payload hash', () => {

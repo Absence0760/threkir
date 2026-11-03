@@ -62,6 +62,26 @@ const double kElevationGainGpsMinDeltaM = 10;
 bool hasBarometricAltitude(List<Waypoint> track) =>
     track.any((w) => w.baroElevationMetres?.isFinite ?? false);
 
+/// The altitude [runAltitude] reads at each point of the STORED track, index
+/// for index, null where it reads none: an off-track fix, or a dropout in the
+/// chosen series. For readers that measure on every stored point (splits walk
+/// the recorded-distance axis, which off-track fixes carry too) and so cannot
+/// take `runAltitude(...).track`, which is the line. Same series choice, so a
+/// split's elevation and the run's climb are read off one altitude. Twin of
+/// `runAltitudeSeries` in `run_altitude.ts`.
+List<double?> runAltitudeSeries(List<Waypoint> stored) {
+  final barometric = hasBarometricAltitude(trackLine(stored));
+  return [
+    for (final w in stored)
+      if (w.offTrack)
+        null
+      else
+        _finiteOrNull(barometric ? w.baroElevationMetres : w.elevationMetres),
+  ];
+}
+
+double? _finiteOrNull(double? v) => (v != null && v.isFinite) ? v : null;
+
 /// The climb of a recorded run, over the series and band [runAltitude] picks.
 double computeRunElevationGain(List<Waypoint> track, RunSource? source) {
   final alt = runAltitude(track, source);

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 
+import 'cold_start_link_echo.dart';
+
 const String _invitePath = '/clubs/join/';
 
 /// The invite token in whatever a runner pasted or the OS opened: a bare
@@ -49,11 +51,13 @@ class ClubInviteLinkService {
   final Stream<Uri> _links;
   final Future<Uri?> Function() _initialLink;
   StreamSubscription<Uri>? _sub;
-  String? _lastToken;
+  final ColdStartLinkEcho _echo = ColdStartLinkEcho();
 
   void start() {
     _sub ??= _links.listen(
-      handle,
+      (uri) {
+        if (_echo.acceptStream(uri)) handle(uri);
+      },
       onError: (Object e) => debugPrint('club invite link stream error: $e'),
     );
   }
@@ -61,20 +65,15 @@ class ClubInviteLinkService {
   Future<void> processInitial() async {
     try {
       final uri = await _initialLink();
-      if (uri != null) handle(uri);
+      if (uri != null && _echo.acceptInitial(uri)) handle(uri);
     } catch (e) {
       debugPrint('club invite initial link failed: $e');
     }
   }
 
-  /// The plugin can deliver the cold-start link both from [processInitial]
-  /// and on the stream, so a token already handed off is not handed off
-  /// twice.
   void handle(Uri uri) {
     final token = parseClubInviteToken(uri.toString());
-    if (token == null || token == _lastToken) return;
-    _lastToken = token;
-    pendingClubInviteToken.value = token;
+    if (token != null) pendingClubInviteToken.value = token;
   }
 
   Future<void> dispose() async {

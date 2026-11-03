@@ -217,7 +217,11 @@ Shared pieces:
   recipient's `/u/{id}?tab=achievements&badge={id}`, since its reader is
   signed in (decisions § 2152), and the phone's `push_target.dart` maps the
   worker's `/share/run` and `/share/badge` URLs onto those same in-app
-  screens. The share page itself offers a signed-in visitor a way back into
+  screens. `personal_record` (decisions § 2266) links to the recipient's own
+  `/runs/{run_id}?share=pr` on every channel, the run opened on its PR card;
+  the phone reads `share=pr` into `PushTargetKind.runPrCard`. Like
+  `achievement` it is in neither important set, so it leaves the inbox only
+  for a runner on `all`. The share page itself offers a signed-in visitor a way back into
   the app. The worker's links need `plan_id`, `achievement_id` and
   `challenge_id` in all three `FetchNotificationFor*` projections; a partial
   projection silently degrades one channel to the list-page fallback, since one

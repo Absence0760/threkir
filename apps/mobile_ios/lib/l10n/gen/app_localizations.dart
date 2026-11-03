@@ -3971,6 +3971,12 @@ abstract class AppLocalizations {
   /// **'{label} · {target} @ {pace}'**
   String runWorkoutStepHeader(String label, String target, String pace);
 
+  /// Workout-execution band header for a walk-run step, which has no pace target: step name and its target distance/duration (e.g. 'Walk 1 of 7 · 1m 30s')
+  ///
+  /// In en, this message translates to:
+  /// **'{label} · {target}'**
+  String runWorkoutStepHeaderUnpaced(String label, String target);
+
   /// Workout-execution band step counter (current step of total)
   ///
   /// In en, this message translates to:
@@ -5950,6 +5956,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, one{{count} segment couldn\'t snap to a road. Drag the affected pin to adjust.} other{{count} segments couldn\'t snap to a road. Drag the affected pins to adjust.}}'**
   String routeBuilderSegmentsFailed(int count);
+
+  /// Label and tooltip of the toggle that turns on Draw mode (draw a shape matched to roads)
+  ///
+  /// In en, this message translates to:
+  /// **'Draw a shape'**
+  String get routeBuilderDrawShape;
+
+  /// Status shown while Draw mode is on
+  ///
+  /// In en, this message translates to:
+  /// **'Drag on the map to draw your shape'**
+  String get routeBuilderDrawHint;
+
+  /// Banner when a drawn shape is too short to route
+  ///
+  /// In en, this message translates to:
+  /// **'Draw a bigger shape — the line needs to be at least 300 m long.'**
+  String get routeBuilderDrawTooShort;
+
+  /// Banner when a drawn shape is too long to route
+  ///
+  /// In en, this message translates to:
+  /// **'That drawing is longer than 100 km. Zoom in and draw a smaller shape.'**
+  String get routeBuilderDrawTooLong;
+
+  /// Banner when a drawn shape has too much detail to route
+  ///
+  /// In en, this message translates to:
+  /// **'That drawing has too much detail to route. Try a simpler shape.'**
+  String get routeBuilderDrawTooComplex;
+
+  /// Banner when part of a drawing has no road or path nearby
+  ///
+  /// In en, this message translates to:
+  /// **'Part of your drawing has no road or path nearby. Move it onto streets or paths and try again.'**
+  String get routeBuilderDrawNoRoads;
+
+  /// Banner when routing is down while matching a drawing
+  ///
+  /// In en, this message translates to:
+  /// **'Routing isn\'t available right now, so your drawing couldn\'t be matched. Try again in a moment.'**
+  String get routeBuilderDrawUnavailable;
+
+  /// Banner when the roads match too little of a drawing to keep it
+  ///
+  /// In en, this message translates to:
+  /// **'The roads and paths here match only {score}% of your drawing, so it hasn\'t become a route. Try a bigger shape, or draw along streets.'**
+  String routeBuilderDrawPoorMatch(int score);
+
+  /// Score showing how closely the matched route follows the drawing
+  ///
+  /// In en, this message translates to:
+  /// **'Matches your drawing: {score}%'**
+  String routeBuilderDrawMatch(int score);
+
+  /// Verdict for a drawing matched closely
+  ///
+  /// In en, this message translates to:
+  /// **'Close match'**
+  String get routeBuilderDrawMatchClose;
+
+  /// Verdict for a drawing matched roughly
+  ///
+  /// In en, this message translates to:
+  /// **'Rough match'**
+  String get routeBuilderDrawMatchRough;
+
+  /// Verdict for a drawing the roads could not follow
+  ///
+  /// In en, this message translates to:
+  /// **'Too far from your drawing'**
+  String get routeBuilderDrawMatchPoor;
 
   /// Banner shown when a routing pass throws
   ///
@@ -11452,29 +11530,23 @@ abstract class AppLocalizations {
   /// **'Couldn\'t unlink the run. Try again.'**
   String get workoutUnlinkError;
 
+  /// Button on an open workout: marks it done without a recorded run (manually_completed)
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as done'**
+  String get workoutMarkDone;
+
   /// Button on a workout the runner marked done by hand (no linked run); clears the done mark
   ///
   /// In en, this message translates to:
   /// **'Mark not done'**
   String get workoutMarkNotDone;
 
-  /// Confirm dialog title before clearing a hand-marked done workout
-  ///
-  /// In en, this message translates to:
-  /// **'Mark not done?'**
-  String get workoutMarkNotDoneTitle;
-
-  /// Confirm dialog body before clearing a hand-marked done workout
-  ///
-  /// In en, this message translates to:
-  /// **'The workout will show as not yet done.'**
-  String get workoutMarkNotDoneBody;
-
-  /// Error banner when clearing a hand-marked done workout fails
+  /// Error banner on workout detail when marking the workout done, or clearing that mark, fails
   ///
   /// In en, this message translates to:
   /// **'Couldn\'t update the workout. Try again.'**
-  String get workoutMarkNotDoneError;
+  String get workoutUpdateError;
 
   /// Skipped badge on workout detail
   ///
@@ -18327,6 +18399,12 @@ abstract class AppLocalizations {
   /// **'{intro}. {duration}.'**
   String ttsStepDuration(String intro, String duration);
 
+  /// Workout-step cue for a walk-run step ended by distance, which has no pace target: intro then distance (e.g. 'Run. 5 kilometres.')
+  ///
+  /// In en, this message translates to:
+  /// **'{intro}. {distance}.'**
+  String ttsStepDistance(String intro, String distance);
+
   /// Workout-step cue: intro then distance at pace
   ///
   /// In en, this message translates to:
@@ -22856,6 +22934,156 @@ abstract class AppLocalizations {
   /// **'Leaderboard'**
   String get challengesLeaderboard;
 
+  /// App bar of the screen a challenge invite link opens
+  ///
+  /// In en, this message translates to:
+  /// **'Challenge invite'**
+  String get challengeInviteTitle;
+
+  /// Shown when the invite preview read fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this invite. Check your connection and try again.'**
+  String get challengeInviteLoadFailed;
+
+  /// Title when an invite token names no challenge
+  ///
+  /// In en, this message translates to:
+  /// **'This invite link doesn\'t work'**
+  String get challengeInviteMissingTitle;
+
+  /// Body when an invite token names no challenge
+  ///
+  /// In en, this message translates to:
+  /// **'It may have been reset by the person who shared it, or invite links aren\'t available yet. Ask them for a new link.'**
+  String get challengeInviteMissingBody;
+
+  /// Kicker above an invited challenge's title
+  ///
+  /// In en, this message translates to:
+  /// **'Invited by {name}'**
+  String challengeInviteFrom(String name);
+
+  /// How many people have joined the challenge
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 runner in} other{{n} runners in}}'**
+  String challengeInviteParticipants(int n);
+
+  /// Window label for a challenge that has not started
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{Starts in 1 day} other{Starts in {n} days}}'**
+  String challengeInviteStartsIn(int n);
+
+  /// Shown on the invite screen when the viewer has joined
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re already in this challenge.'**
+  String get challengeInviteAlreadyIn;
+
+  /// Button opening the challenge from its invite
+  ///
+  /// In en, this message translates to:
+  /// **'Open challenge'**
+  String get challengeInviteOpen;
+
+  /// Shown to a signed-out viewer above the Join button
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in or create a free account, then you join straight away.'**
+  String get challengeInviteSignInBody;
+
+  /// Button joining a challenge from its invite link
+  ///
+  /// In en, this message translates to:
+  /// **'Join challenge'**
+  String get challengeInviteJoin;
+
+  /// Heading of the invite-link card on a challenge
+  ///
+  /// In en, this message translates to:
+  /// **'Invite link'**
+  String get challengeInviteLinkTitle;
+
+  /// Invite card body on a non-public challenge
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone with this link can see this challenge and join it, even though it isn\'t public.'**
+  String get challengeInviteLinkBodyPrivate;
+
+  /// Invite card body on a public challenge
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone with this link can join in one tap after signing up.'**
+  String get challengeInviteLinkBodyPublic;
+
+  /// Invite card error
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the invite link.'**
+  String get challengeInviteLinkLoadFailed;
+
+  /// Opens the share sheet with the invite link
+  ///
+  /// In en, this message translates to:
+  /// **'Share link'**
+  String get challengeInviteShare;
+
+  /// Copies the invite link
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get challengeInviteCopy;
+
+  /// Banner after copying a challenge link
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied'**
+  String get challengeInviteCopied;
+
+  /// Banner when copying fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t copy the link.'**
+  String get challengeInviteCopyFailed;
+
+  /// Replaces the invite link with a new one
+  ///
+  /// In en, this message translates to:
+  /// **'Reset link'**
+  String get challengeInviteRotate;
+
+  /// Confirm dialog title for resetting the invite link
+  ///
+  /// In en, this message translates to:
+  /// **'Reset the invite link?'**
+  String get challengeInviteRotateTitle;
+
+  /// Confirm dialog body for resetting the invite link
+  ///
+  /// In en, this message translates to:
+  /// **'The current link stops working straight away. Anyone who already joined stays in.'**
+  String get challengeInviteRotateBody;
+
+  /// Banner when resetting fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reset the link. Try again.'**
+  String get challengeInviteRotateFailed;
+
+  /// Explains the public share page
+  ///
+  /// In en, this message translates to:
+  /// **'Public challenges also have a share page that shows the leaderboard without signing in.'**
+  String get challengeInviteShareBody;
+
+  /// Opens the share sheet with the public share page link
+  ///
+  /// In en, this message translates to:
+  /// **'Share the challenge page'**
+  String get challengeInviteSharePage;
+
   /// Empty leaderboard state
   ///
   /// In en, this message translates to:
@@ -26138,6 +26366,12 @@ abstract class AppLocalizations {
   /// **'You\'re creating challenges too quickly — please wait {wait} and try again.'**
   String rateLimitCreateChallenge(String wait);
 
+  /// Rate-limit refusal when the join_challenge_by_token bucket is spent
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re joining challenges too quickly — please wait {wait} and try again.'**
+  String rateLimitJoinChallenge(String wait);
+
   /// Rate-limit refusal when a training-plan adopt bucket is spent
   ///
   /// In en, this message translates to:
@@ -29275,6 +29509,18 @@ abstract class AppLocalizations {
   /// **'Built for {race} · {date}'**
   String planDetailBuiltForRace(String race, String date);
 
+  /// Plan detail: the runner's copy of a public-library plan names whose plan it started from. author is the creator's @handle or display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Started from {author}\'s plan'**
+  String planDetailStartedFrom(String author);
+
+  /// Plan detail: the same line when the creator's profile is private to the viewer, so they are not named.
+  ///
+  /// In en, this message translates to:
+  /// **'Started from another runner\'s plan'**
+  String get planDetailStartedFromRunner;
+
   /// Plan-detail header: which week of the plan today is in
   ///
   /// In en, this message translates to:
@@ -30539,6 +30785,12 @@ abstract class AppLocalizations {
   /// **'You\'re repeating plan weeks too quickly — please wait {wait} and try again.'**
   String rateLimitRepeatWeek(String wait);
 
+  /// Rate-limit refusal when the create_live_overlay_token bucket is spent (making a new streamer overlay link)
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re making new overlay links too quickly — please wait {wait} and try again.'**
+  String rateLimitCreateOverlayLink(String wait);
+
   /// Refusal: repeating the week would end the plan inside another active plan
   ///
   /// In en, this message translates to:
@@ -30964,6 +31216,612 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it, or ask for everything in Settings → Preferences.'**
   String get dashboardTrainingLoadSectionHint;
+
+  /// Letter-spaced kicker on the recap share image, printed in capitals; period is a year or a month and year
+  ///
+  /// In en, this message translates to:
+  /// **'My {period} in running'**
+  String recapCardKicker(String period);
+
+  /// Subhead under the total distance on the recap share image
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{across 1 run} other{across {count} runs}}'**
+  String recapCardAcrossRuns(int count);
+
+  /// Best streak value on the recap share image
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, =1{1 day} other{{days} days}}'**
+  String recapCardStreakDays(int days);
+
+  /// Recap share image stat label: total time spent moving
+  ///
+  /// In en, this message translates to:
+  /// **'On foot'**
+  String get recapCardOnFoot;
+
+  /// Recap share image stat label: total elevation gain
+  ///
+  /// In en, this message translates to:
+  /// **'Climbed'**
+  String get recapCardClimbed;
+
+  /// Recap share image stat label: months with at least one run, shown as N / 12
+  ///
+  /// In en, this message translates to:
+  /// **'Active months'**
+  String get recapCardActiveMonths;
+
+  /// Title of the sheet that shares the recap as an image or text
+  ///
+  /// In en, this message translates to:
+  /// **'Share your recap'**
+  String get recapShareSheetTitle;
+
+  /// Chip choosing the square (1:1) recap image, for a feed post
+  ///
+  /// In en, this message translates to:
+  /// **'Square'**
+  String get recapShareAspectSquare;
+
+  /// Chip choosing the tall 9:16 recap image, for a story
+  ///
+  /// In en, this message translates to:
+  /// **'Story'**
+  String get recapShareAspectStory;
+
+  /// Chip in the recap share sheet that offers a short vertical slideshow video, made on the web
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get recapShareStyleVideo;
+
+  /// Explains, in the recap share sheet, that the video is made in the browser on the website
+  ///
+  /// In en, this message translates to:
+  /// **'Turn this recap into a short vertical video. It\'s made in your browser on threkir.com; share or save it from there.'**
+  String get recapShareVideoBody;
+
+  /// Screen-reader label for the preview of the recap share image
+  ///
+  /// In en, this message translates to:
+  /// **'Preview of the recap image'**
+  String get recapSharePreviewLabel;
+
+  /// Button that shares the recap image through the system share sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Share image'**
+  String get recapShareImage;
+
+  /// Button that shares the recap as a few lines of text instead of an image
+  ///
+  /// In en, this message translates to:
+  /// **'Share as text'**
+  String get recapShareAsText;
+
+  /// Banner when the recap image could not be made or shared
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t make the recap image. Try again.'**
+  String get recapShareImageError;
+
+  /// Share-sheet style chip that hands the run to the web flyover video export
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get shareCardStyleVideo;
+
+  /// Explanation shown when the Video share style is selected: the video is made by the web app in the browser
+  ///
+  /// In en, this message translates to:
+  /// **'Turn this run into a vertical 3D flyover video. It\'s made in your browser on threkir.com; share or save it from there.'**
+  String get shareCardVideoBody;
+
+  /// Button that opens the web flyover video export for this run in the browser
+  ///
+  /// In en, this message translates to:
+  /// **'Open video export'**
+  String get shareCardVideoOpen;
+
+  /// Banner when no browser could open the web video export
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the browser. Try again.'**
+  String get shareCardVideoError;
+
+  /// Button that opens the head-to-head card: the runner's best on this route or segment against a mutual-follow friend's
+  ///
+  /// In en, this message translates to:
+  /// **'Compare with a friend'**
+  String get headToHeadCompare;
+
+  /// Title of the head-to-head sheet, and the kicker printed on the card
+  ///
+  /// In en, this message translates to:
+  /// **'Head to head'**
+  String get headToHeadTitle;
+
+  /// Share-sheet style chip for the head-to-head card
+  ///
+  /// In en, this message translates to:
+  /// **'Versus'**
+  String get headToHeadStyleVersus;
+
+  /// Label over the row of friends to compare with
+  ///
+  /// In en, this message translates to:
+  /// **'Friend'**
+  String get headToHeadFriend;
+
+  /// Shown while the friends who can be compared are loading
+  ///
+  /// In en, this message translates to:
+  /// **'Finding friends to compare with…'**
+  String get headToHeadLoading;
+
+  /// Shown when no friend can be compared on this route or segment, saying what a comparison needs
+  ///
+  /// In en, this message translates to:
+  /// **'No friend to compare with here yet. It takes a friend you follow who follows you back, with a public profile, and a public run here from each of you.'**
+  String get headToHeadEmpty;
+
+  /// Shown when the comparison could not be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the comparison.'**
+  String get headToHeadLoadFailed;
+
+  /// Button that retries loading the comparison
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get headToHeadRetry;
+
+  /// How the card names the runner sharing it, beside the friend's name
+  ///
+  /// In en, this message translates to:
+  /// **'Me'**
+  String get headToHeadMe;
+
+  /// Printed between the two names on the card
+  ///
+  /// In en, this message translates to:
+  /// **'vs'**
+  String get headToHeadVs;
+
+  /// Card line when the runner sharing it was faster
+  ///
+  /// In en, this message translates to:
+  /// **'I won by {margin}'**
+  String headToHeadIWon(String margin);
+
+  /// Card line when the friend was faster
+  ///
+  /// In en, this message translates to:
+  /// **'{name} won by {margin}'**
+  String headToHeadFriendWon(String name, String margin);
+
+  /// Card line when both times are the same
+  ///
+  /// In en, this message translates to:
+  /// **'Dead heat'**
+  String get headToHeadTie;
+
+  /// Name printed for a friend with no handle or display name
+  ///
+  /// In en, this message translates to:
+  /// **'A friend'**
+  String get headToHeadFriendFallback;
+
+  /// Accessibility label of the card preview
+  ///
+  /// In en, this message translates to:
+  /// **'Head-to-head card preview'**
+  String get headToHeadPreview;
+
+  /// Note under the card saying who can be compared
+  ///
+  /// In en, this message translates to:
+  /// **'Only friends who follow you back and have a public profile can be compared, and only on public runs.'**
+  String get headToHeadPrivacy;
+
+  /// Title of the streamer overlay sheet and its row in the live-share sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Streamer overlay'**
+  String get streamerOverlayTitle;
+
+  /// Explains what the streamer overlay link is for
+  ///
+  /// In en, this message translates to:
+  /// **'Add this link to OBS or your streaming app as a browser source. It shows your live stats without making your run public.'**
+  String get streamerOverlayIntro;
+
+  /// Button that makes the streamer overlay link
+  ///
+  /// In en, this message translates to:
+  /// **'Create overlay link'**
+  String get streamerOverlayCreate;
+
+  /// Confirmation after the overlay link is made or replaced
+  ///
+  /// In en, this message translates to:
+  /// **'Overlay link ready'**
+  String get streamerOverlayCreated;
+
+  /// Error when making the overlay link fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t create the overlay link. Try again.'**
+  String get streamerOverlayCreateFailed;
+
+  /// Label above the overlay link
+  ///
+  /// In en, this message translates to:
+  /// **'Browser source URL'**
+  String get streamerOverlayUrlLabel;
+
+  /// Button that copies the overlay link
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get streamerOverlayCopy;
+
+  /// Confirmation after the overlay link is copied
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied'**
+  String get streamerOverlayCopied;
+
+  /// Error when copying the overlay link fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t copy the link.'**
+  String get streamerOverlayCopyFailed;
+
+  /// Button (and confirm action) that replaces the overlay link with a new one
+  ///
+  /// In en, this message translates to:
+  /// **'Replace link'**
+  String get streamerOverlayReplace;
+
+  /// Confirm dialog title for replacing the overlay link
+  ///
+  /// In en, this message translates to:
+  /// **'Replace the overlay link?'**
+  String get streamerOverlayReplaceTitle;
+
+  /// Confirm dialog body for replacing the overlay link
+  ///
+  /// In en, this message translates to:
+  /// **'The old link stops working at once. Update the browser source in your streaming app.'**
+  String get streamerOverlayReplaceMessage;
+
+  /// Button (and confirm action) that deletes the overlay link
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off overlay'**
+  String get streamerOverlayRevoke;
+
+  /// Confirm dialog title for deleting the overlay link
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off the streamer overlay?'**
+  String get streamerOverlayRevokeTitle;
+
+  /// Confirm dialog body for deleting the overlay link
+  ///
+  /// In en, this message translates to:
+  /// **'The link stops working at once. You can create a new one later.'**
+  String get streamerOverlayRevokeMessage;
+
+  /// Confirmation after the overlay link is deleted
+  ///
+  /// In en, this message translates to:
+  /// **'Streamer overlay turned off'**
+  String get streamerOverlayRevoked;
+
+  /// Error when deleting the overlay link fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t turn off the overlay. Try again.'**
+  String get streamerOverlayRevokeFailed;
+
+  /// Heading of the overlay delay picker
+  ///
+  /// In en, this message translates to:
+  /// **'Stream delay'**
+  String get streamerOverlayDelayLabel;
+
+  /// Explains the overlay delay
+  ///
+  /// In en, this message translates to:
+  /// **'Viewers see your stats this long after they happen. The delay is applied on our server, so nobody can skip it.'**
+  String get streamerOverlayDelayHelp;
+
+  /// Delay option: pings shown as soon as they arrive
+  ///
+  /// In en, this message translates to:
+  /// **'No delay'**
+  String get streamerOverlayDelayNone;
+
+  /// Delay option in seconds
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds} s'**
+  String streamerOverlayDelaySeconds(int seconds);
+
+  /// Delay option in minutes
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String streamerOverlayDelayMinutes(int minutes);
+
+  /// Confirmation after the overlay delay changes
+  ///
+  /// In en, this message translates to:
+  /// **'Delay saved'**
+  String get streamerOverlayDelaySaved;
+
+  /// Error when changing the overlay delay fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t change the delay. Try again.'**
+  String get streamerOverlayDelayFailed;
+
+  /// Error when the overlay settings cannot be read
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your streamer overlay.'**
+  String get streamerOverlayLoadFailed;
+
+  /// Retry button after the overlay settings fail to load
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get streamerOverlayRetry;
+
+  /// Error when the server has the overlay switched off
+  ///
+  /// In en, this message translates to:
+  /// **'The streamer overlay isn\'t available right now.'**
+  String get streamerOverlayUnavailable;
+
+  /// Note naming the web settings page where the route trace and heart rate are turned on
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on the route trace and heart rate in Settings → Privacy & Sharing on the web.'**
+  String get streamerOverlayMapHeartRateNote;
+
+  /// Live spectator stat label for the runner's current heart rate
+  ///
+  /// In en, this message translates to:
+  /// **'Heart rate'**
+  String get liveSpectatorHeartRate;
+
+  /// Share-sheet style chip: a card for a personal record this run set
+  ///
+  /// In en, this message translates to:
+  /// **'PR card'**
+  String get shareCardStylePr;
+
+  /// Headline printed on the PR card when the run beat or set a record
+  ///
+  /// In en, this message translates to:
+  /// **'New personal record'**
+  String get shareCardPrHeadline;
+
+  /// Headline printed on the PR card for a record set before the improvement log existed
+  ///
+  /// In en, this message translates to:
+  /// **'Personal record'**
+  String get shareCardPrHeld;
+
+  /// PR card line: how much faster than the previous record
+  ///
+  /// In en, this message translates to:
+  /// **'{time} faster'**
+  String shareCardPrFaster(String time);
+
+  /// PR card line: the record this run beat
+  ///
+  /// In en, this message translates to:
+  /// **'Previous best {time}'**
+  String shareCardPrPrevious(String time);
+
+  /// PR card line when the runner had no record at this distance before
+  ///
+  /// In en, this message translates to:
+  /// **'First {distance} on record'**
+  String shareCardPrFirst(String distance);
+
+  /// Label over the chips that pick which record the PR card shows
+  ///
+  /// In en, this message translates to:
+  /// **'Record'**
+  String get shareCardPrRecord;
+
+  /// Hint under the PR card preview
+  ///
+  /// In en, this message translates to:
+  /// **'Your record times stay private. Only this image leaves when you share it.'**
+  String get shareCardPrHint;
+
+  /// Run detail action that opens the share sheet on the PR card
+  ///
+  /// In en, this message translates to:
+  /// **'Share PR card'**
+  String get runDetailSharePr;
+
+  /// Inbox line for a personal_record notification
+  ///
+  /// In en, this message translates to:
+  /// **'You set a new personal record'**
+  String get profileNotifPersonalRecord;
+
+  /// Badge sheet action: show the badge on the profile and its share page
+  ///
+  /// In en, this message translates to:
+  /// **'Make public'**
+  String get badgesMakePublic;
+
+  /// Badge sheet action: hide the badge from everyone else
+  ///
+  /// In en, this message translates to:
+  /// **'Make private'**
+  String get badgesMakePrivate;
+
+  /// Flag on a badge only its owner can see
+  ///
+  /// In en, this message translates to:
+  /// **'Private'**
+  String get badgesPrivate;
+
+  /// Badge sheet action: share the badge page link
+  ///
+  /// In en, this message translates to:
+  /// **'Share badge'**
+  String get badgesShare;
+
+  /// Banner when changing a badge visibility fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t change visibility. Try again.'**
+  String get badgesToggleError;
+
+  /// Text handed to the OS share sheet with a public badge link
+  ///
+  /// In en, this message translates to:
+  /// **'I earned the {badge} badge on Threkir: {url}'**
+  String badgesShareText(String badge, String url);
+
+  /// Badge sheet hint while the badge is private
+  ///
+  /// In en, this message translates to:
+  /// **'Make this badge public to share it.'**
+  String get badgesPrivateShareHint;
+
+  /// Title of the Your shares screen and its settings row: the creator's own share links and their numbers
+  ///
+  /// In en, this message translates to:
+  /// **'Your shares'**
+  String get sharesTitle;
+
+  /// Subtitle of the Your shares row in settings
+  ///
+  /// In en, this message translates to:
+  /// **'Visits, sign-ups and joins from links you shared'**
+  String get sharesTileSubtitle;
+
+  /// Line above the list on Your shares; says the numbers are counts only
+  ///
+  /// In en, this message translates to:
+  /// **'How your share links did over the last 90 days. These are counts only: nobody who opens a link is identified.'**
+  String get sharesTagline;
+
+  /// Error state when the share numbers could not be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your shares.'**
+  String get sharesLoadFailed;
+
+  /// Empty state title when the creator has no share links yet
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing shared yet'**
+  String get sharesEmptyTitle;
+
+  /// Empty state body naming what can be shared
+  ///
+  /// In en, this message translates to:
+  /// **'Share a public plan, a challenge, a session, a workout or your profile, and its numbers show up here.'**
+  String get sharesEmptyBody;
+
+  /// Kind label on a share card: a public training plan
+  ///
+  /// In en, this message translates to:
+  /// **'Plan'**
+  String get sharesKindPlan;
+
+  /// Kind label on a share card: a challenge
+  ///
+  /// In en, this message translates to:
+  /// **'Challenge'**
+  String get sharesKindChallenge;
+
+  /// Kind label on a share card: the creator's profile
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get sharesKindProfile;
+
+  /// Kind label on a share card: a yoga / pilates session plan
+  ///
+  /// In en, this message translates to:
+  /// **'Session'**
+  String get sharesKindSession;
+
+  /// Kind label on a share card: a gym workout
+  ///
+  /// In en, this message translates to:
+  /// **'Workout'**
+  String get sharesKindWorkout;
+
+  /// Title of the share card for the creator's own profile
+  ///
+  /// In en, this message translates to:
+  /// **'Your profile'**
+  String get sharesYourProfile;
+
+  /// Title of a share card whose plan, session or workout has no name
+  ///
+  /// In en, this message translates to:
+  /// **'Untitled'**
+  String get sharesUntitled;
+
+  /// Stat label: views of the share page
+  ///
+  /// In en, this message translates to:
+  /// **'Visits'**
+  String get sharesVisits;
+
+  /// Stat label: accounts created from the link
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-ups'**
+  String get sharesSignups;
+
+  /// Stat label: copies of the plan started
+  ///
+  /// In en, this message translates to:
+  /// **'Plan starts'**
+  String get sharesStarts;
+
+  /// Stat label: people who joined the challenge
+  ///
+  /// In en, this message translates to:
+  /// **'Challenge joins'**
+  String get sharesJoins;
+
+  /// Under a stat: how many of them came through the creator's own link
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} through your link} other{{count} through your link}}'**
+  String sharesViaYourLink(int count);
+
+  /// Under a card: visits from crawlers, kept out of the visit count
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Plus {count} visit from a crawler, not counted above.} other{Plus {count} visits from crawlers, not counted above.}}'**
+  String sharesBotVisits(int count);
+
+  /// Footnote on Your shares explaining what counts as a sign-up
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-ups are counted when someone creates an account from a link you shared. Your own visits aren\'t counted.'**
+  String get sharesFootnote;
 }
 
 class _AppLocalizationsDelegate

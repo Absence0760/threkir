@@ -3092,3 +3092,42 @@ insert into private.feature_flags (name, enabled) values ('coach_run_map', true)
 -- specs exercise it.
 insert into private.feature_flags (name, enabled) values ('hr_prescription', true)
   on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Public plan share gate (20271103000002) ───────────────────
+--
+-- The anonymous /share/plan/<id> view of a public-library plan is fail-closed
+-- behind a private.feature_flags row no migration writes, so prod stays off
+-- until the CISO / Security Analyst sign-off in docs/features/training.md.
+-- Local stacks and CI open it so the share page and its specs exercise it.
+insert into private.feature_flags (name, enabled) values ('public_plan_share', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Challenge invite links gate (20271103000001) ───────────────────
+--
+-- Joining a non-public challenge by link is fail-closed behind a
+-- private.feature_flags row no migration writes, so prod stays off until the
+-- CISO / Security Analyst sign-off in docs/features/challenges.md
+-- (decisions § 2261). Local stacks and CI open it so the invite + join-by-link
+-- surfaces and their specs exercise it.
+insert into private.feature_flags (name, enabled) values ('challenge_invite_links', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Streamer overlay gate (20271104000001) ───────────────────
+--
+-- The streamer overlay (a revocable, server-delayed token read of a live run)
+-- and bpm on live pings are fail-closed behind a private.feature_flags row no
+-- migration writes, so prod stays off until the CISO / Security Analyst
+-- sign-off in docs/ops/deployment.md (decisions § 2265). Local stacks and CI
+-- open it so the overlay, the spectator heart rate and their specs exercise it.
+insert into private.feature_flags (name, enabled) values ('live_overlay', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Share attribution gate (20271104000004) ───────────────────
+--
+-- Share-link visit counters, sign-up attribution and the Your shares view are
+-- fail-closed behind a private.feature_flags row no migration writes, so prod
+-- stays off until the CISO / Security Analyst sign-off in
+-- docs/ops/deployment.md (decisions § 2268). Local stacks and CI open it so
+-- the share pages, Your shares and their specs exercise it.
+insert into private.feature_flags (name, enabled) values ('share_attribution', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();

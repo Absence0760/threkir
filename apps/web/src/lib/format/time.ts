@@ -92,6 +92,14 @@ export function formatDuration(seconds: number): string {
 	return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+/** Duration as `110h 5m` (>= 1h) or `42m`, whole minutes truncated. */
+export function formatHoursMinutes(seconds: number): string {
+	const h = Math.floor(seconds / 3600);
+	const m = Math.floor((seconds % 3600) / 60);
+	if (h > 0) return `${h}h ${m}m`;
+	return `${m}m`;
+}
+
 const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 /**

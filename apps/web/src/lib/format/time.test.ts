@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
 	formatRelativeTime,
 	formatDuration,
+	formatHoursMinutes,
 	formatDate,
 	formatDateShort,
 	setActiveFormatLocale,
@@ -207,4 +208,12 @@ test('a four-digit year below 100 is not remapped into the 1900s', () => {
 		assert.match(formatDate('0026-06-15', 'en'), /\b26\b/);
 		assert.doesNotMatch(formatDate('0026-06-15', 'en'), /1926/);
 	});
+});
+
+test('formatHoursMinutes — whole minutes under an hour, hours and minutes past it', () => {
+	assert.equal(formatHoursMinutes(0), '0m');
+	assert.equal(formatHoursMinutes(59), '0m');
+	assert.equal(formatHoursMinutes(42 * 60 + 59), '42m');
+	assert.equal(formatHoursMinutes(3600), '1h 0m');
+	assert.equal(formatHoursMinutes(110 * 3600 + 5 * 60 + 30), '110h 5m');
 });

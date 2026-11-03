@@ -2344,6 +2344,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String runWorkoutStepHeaderUnpaced(String label, String target) {
+    return '$label · $target';
+  }
+
+  @override
   String runWorkoutStepCounter(int current, int total) {
     return '$current/$total';
   }
@@ -3587,6 +3592,53 @@ class AppLocalizationsDe extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get routeBuilderDrawShape => 'Form zeichnen';
+
+  @override
+  String get routeBuilderDrawHint =>
+      'Zieh auf der Karte, um deine Form zu zeichnen';
+
+  @override
+  String get routeBuilderDrawTooShort =>
+      'Zeichne eine größere Form – die Linie muss mindestens 300 m lang sein.';
+
+  @override
+  String get routeBuilderDrawTooLong =>
+      'Diese Zeichnung ist länger als 100 km. Zoome hinein und zeichne eine kleinere Form.';
+
+  @override
+  String get routeBuilderDrawTooComplex =>
+      'Diese Zeichnung ist zu detailreich für eine Route. Versuch eine einfachere Form.';
+
+  @override
+  String get routeBuilderDrawNoRoads =>
+      'Ein Teil deiner Zeichnung hat keine Straße und keinen Weg in der Nähe. Verschieb sie auf Straßen oder Wege und versuch es noch einmal.';
+
+  @override
+  String get routeBuilderDrawUnavailable =>
+      'Die Routenberechnung ist gerade nicht verfügbar, deshalb konnte deine Zeichnung nicht zugeordnet werden. Versuch es gleich noch einmal.';
+
+  @override
+  String routeBuilderDrawPoorMatch(int score) {
+    return 'Die Straßen und Wege hier treffen nur $score % deiner Zeichnung, deshalb wurde daraus keine Route. Versuch eine größere Form oder zeichne entlang der Straßen.';
+  }
+
+  @override
+  String routeBuilderDrawMatch(int score) {
+    return 'Übereinstimmung mit deiner Zeichnung: $score %';
+  }
+
+  @override
+  String get routeBuilderDrawMatchClose => 'Sehr nah';
+
+  @override
+  String get routeBuilderDrawMatchRough => 'Ungefähr';
+
+  @override
+  String get routeBuilderDrawMatchPoor =>
+      'Zu weit von deiner Zeichnung entfernt';
 
   @override
   String routeBuilderRoutingFailed(String error) {
@@ -7096,17 +7148,13 @@ class AppLocalizationsDe extends AppLocalizations {
       'Lauf konnte nicht entkoppelt werden. Versuche es erneut.';
 
   @override
+  String get workoutMarkDone => 'Als erledigt markieren';
+
+  @override
   String get workoutMarkNotDone => 'Als nicht erledigt markieren';
 
   @override
-  String get workoutMarkNotDoneTitle => 'Als nicht erledigt markieren?';
-
-  @override
-  String get workoutMarkNotDoneBody =>
-      'Das Training wird dann als noch nicht erledigt angezeigt.';
-
-  @override
-  String get workoutMarkNotDoneError =>
+  String get workoutUpdateError =>
       'Training konnte nicht aktualisiert werden. Versuche es erneut.';
 
   @override
@@ -11266,6 +11314,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String ttsStepDistance(String intro, String distance) {
+    return '$intro. $distance.';
+  }
+
+  @override
   String ttsStepDistancePace(String intro, String distance, String pace) {
     return '$intro. $distance bei $pace.';
   }
@@ -13967,6 +14020,111 @@ class AppLocalizationsDe extends AppLocalizations {
   String get challengesLeaderboard => 'Bestenliste';
 
   @override
+  String get challengeInviteTitle => 'Challenge-Einladung';
+
+  @override
+  String get challengeInviteLoadFailed =>
+      'Diese Einladung konnte nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.';
+
+  @override
+  String get challengeInviteMissingTitle =>
+      'Dieser Einladungslink funktioniert nicht';
+
+  @override
+  String get challengeInviteMissingBody =>
+      'Er wurde vielleicht von der Person zurückgesetzt, die ihn geteilt hat, oder Einladungslinks sind noch nicht verfügbar. Bitte sie um einen neuen Link.';
+
+  @override
+  String challengeInviteFrom(String name) {
+    return 'Eingeladen von $name';
+  }
+
+  @override
+  String challengeInviteParticipants(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Personen dabei',
+      one: '1 Person dabei',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String challengeInviteStartsIn(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Beginnt in $n Tagen',
+      one: 'Beginnt in 1 Tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get challengeInviteAlreadyIn =>
+      'Du bist schon bei dieser Challenge dabei.';
+
+  @override
+  String get challengeInviteOpen => 'Challenge öffnen';
+
+  @override
+  String get challengeInviteSignInBody =>
+      'Melde dich an oder erstelle ein kostenloses Konto, dann trittst du sofort bei.';
+
+  @override
+  String get challengeInviteJoin => 'Challenge beitreten';
+
+  @override
+  String get challengeInviteLinkTitle => 'Einladungslink';
+
+  @override
+  String get challengeInviteLinkBodyPrivate =>
+      'Jeder mit diesem Link kann diese Challenge sehen und beitreten, obwohl sie nicht öffentlich ist.';
+
+  @override
+  String get challengeInviteLinkBodyPublic =>
+      'Jeder mit diesem Link kann nach der Registrierung mit einem Tippen beitreten.';
+
+  @override
+  String get challengeInviteLinkLoadFailed =>
+      'Der Einladungslink konnte nicht geladen werden.';
+
+  @override
+  String get challengeInviteShare => 'Link teilen';
+
+  @override
+  String get challengeInviteCopy => 'Link kopieren';
+
+  @override
+  String get challengeInviteCopied => 'Link kopiert';
+
+  @override
+  String get challengeInviteCopyFailed =>
+      'Der Link konnte nicht kopiert werden.';
+
+  @override
+  String get challengeInviteRotate => 'Link zurücksetzen';
+
+  @override
+  String get challengeInviteRotateTitle => 'Einladungslink zurücksetzen?';
+
+  @override
+  String get challengeInviteRotateBody =>
+      'Der aktuelle Link funktioniert sofort nicht mehr. Wer schon beigetreten ist, bleibt dabei.';
+
+  @override
+  String get challengeInviteRotateFailed =>
+      'Der Link konnte nicht zurückgesetzt werden. Versuche es erneut.';
+
+  @override
+  String get challengeInviteShareBody =>
+      'Öffentliche Challenges haben außerdem eine Teilen-Seite, die die Bestenliste ohne Anmeldung zeigt.';
+
+  @override
+  String get challengeInviteSharePage => 'Challenge-Seite teilen';
+
+  @override
   String get challengesLeaderboardEmpty => 'Noch kein Fortschritt erfasst.';
 
   @override
@@ -15910,6 +16068,11 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String rateLimitCreateChallenge(String wait) {
     return 'Du erstellst zu schnell Challenges – bitte warte $wait und versuche es erneut.';
+  }
+
+  @override
+  String rateLimitJoinChallenge(String wait) {
+    return 'Du trittst zu schnell Challenges bei – bitte warte $wait und versuche es erneut.';
   }
 
   @override
@@ -17911,6 +18074,15 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String planDetailStartedFrom(String author) {
+    return 'Gestartet mit dem Plan von $author';
+  }
+
+  @override
+  String get planDetailStartedFromRunner =>
+      'Gestartet mit dem Plan einer anderen Person';
+
+  @override
   String planDetailWeekOfN(int week, int total) {
     return 'Woche $week von $total';
   }
@@ -18795,6 +18967,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String rateLimitCreateOverlayLink(String wait) {
+    return 'Du erstellst zu schnell neue Overlay-Links – bitte warte $wait und versuche es erneut.';
+  }
+
+  @override
   String get planDetailRepeatWeekOverlap =>
       'Mit der wiederholten Woche würde der Plan in einen anderen aktiven Plan hineinlaufen. Verschiebe oder beende jenen Plan zuerst.';
 
@@ -19068,4 +19245,383 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get dashboardTrainingLoadSectionHint =>
       'Deine Werte zu Fitness, Ermüdung und Form. Eingeklappt, weil du nur das Wichtigste wolltest — öffne es jederzeit, oder wähle unter Einstellungen → Voreinstellungen „Alles“.';
+
+  @override
+  String recapCardKicker(String period) {
+    return 'Mein $period im Laufen';
+  }
+
+  @override
+  String recapCardAcrossRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'in $count Läufen',
+      one: 'in 1 Lauf',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recapCardStreakDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days Tage',
+      one: '1 Tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recapCardOnFoot => 'Unterwegs';
+
+  @override
+  String get recapCardClimbed => 'Aufstieg';
+
+  @override
+  String get recapCardActiveMonths => 'Aktive Monate';
+
+  @override
+  String get recapShareSheetTitle => 'Rückblick teilen';
+
+  @override
+  String get recapShareAspectSquare => 'Quadrat';
+
+  @override
+  String get recapShareAspectStory => 'Story';
+
+  @override
+  String get recapShareStyleVideo => 'Video';
+
+  @override
+  String get recapShareVideoBody =>
+      'Mach aus diesem Rückblick ein kurzes vertikales Video. Es entsteht in deinem Browser auf threkir.com; dort kannst du es teilen oder speichern.';
+
+  @override
+  String get recapSharePreviewLabel => 'Vorschau des Rückblick-Bilds';
+
+  @override
+  String get recapShareImage => 'Bild teilen';
+
+  @override
+  String get recapShareAsText => 'Als Text teilen';
+
+  @override
+  String get recapShareImageError =>
+      'Das Rückblick-Bild konnte nicht erstellt werden. Versuch es noch einmal.';
+
+  @override
+  String get shareCardStyleVideo => 'Video';
+
+  @override
+  String get shareCardVideoBody =>
+      'Mach aus diesem Lauf ein vertikales 3D-Flyover-Video. Es entsteht in deinem Browser auf threkir.com; dort kannst du es teilen oder speichern.';
+
+  @override
+  String get shareCardVideoOpen => 'Video-Export öffnen';
+
+  @override
+  String get shareCardVideoError =>
+      'Der Browser konnte nicht geöffnet werden. Versuch es noch einmal.';
+
+  @override
+  String get headToHeadCompare => 'Mit einem Freund vergleichen';
+
+  @override
+  String get headToHeadTitle => 'Kopf an Kopf';
+
+  @override
+  String get headToHeadStyleVersus => 'Duell';
+
+  @override
+  String get headToHeadFriend => 'Freund';
+
+  @override
+  String get headToHeadLoading => 'Freunde zum Vergleichen werden gesucht …';
+
+  @override
+  String get headToHeadEmpty =>
+      'Hier gibt es noch niemanden zum Vergleichen. Dafür braucht es einen Freund, dem du folgst und der dir zurückfolgt, mit öffentlichem Profil, und von euch beiden einen öffentlichen Lauf hier.';
+
+  @override
+  String get headToHeadLoadFailed =>
+      'Der Vergleich konnte nicht geladen werden.';
+
+  @override
+  String get headToHeadRetry => 'Erneut versuchen';
+
+  @override
+  String get headToHeadMe => 'Ich';
+
+  @override
+  String get headToHeadVs => 'vs';
+
+  @override
+  String headToHeadIWon(String margin) {
+    return 'Ich habe mit $margin Vorsprung gewonnen';
+  }
+
+  @override
+  String headToHeadFriendWon(String name, String margin) {
+    return '$name hat mit $margin Vorsprung gewonnen';
+  }
+
+  @override
+  String get headToHeadTie => 'Totes Rennen';
+
+  @override
+  String get headToHeadFriendFallback => 'Ein Freund';
+
+  @override
+  String get headToHeadPreview => 'Vorschau der Kopf-an-Kopf-Karte';
+
+  @override
+  String get headToHeadPrivacy =>
+      'Verglichen werden können nur Freunde, die dir zurückfolgen und ein öffentliches Profil haben, und nur öffentliche Läufe.';
+
+  @override
+  String get streamerOverlayTitle => 'Streamer-Overlay';
+
+  @override
+  String get streamerOverlayIntro =>
+      'Füge diesen Link in OBS oder deiner Streaming-App als Browserquelle hinzu. Er zeigt deine Live-Werte, ohne deinen Lauf öffentlich zu machen.';
+
+  @override
+  String get streamerOverlayCreate => 'Overlay-Link erstellen';
+
+  @override
+  String get streamerOverlayCreated => 'Overlay-Link bereit';
+
+  @override
+  String get streamerOverlayCreateFailed =>
+      'Der Overlay-Link konnte nicht erstellt werden. Versuch es noch einmal.';
+
+  @override
+  String get streamerOverlayUrlLabel => 'URL der Browserquelle';
+
+  @override
+  String get streamerOverlayCopy => 'Link kopieren';
+
+  @override
+  String get streamerOverlayCopied => 'Link kopiert';
+
+  @override
+  String get streamerOverlayCopyFailed =>
+      'Der Link konnte nicht kopiert werden.';
+
+  @override
+  String get streamerOverlayReplace => 'Link ersetzen';
+
+  @override
+  String get streamerOverlayReplaceTitle => 'Overlay-Link ersetzen?';
+
+  @override
+  String get streamerOverlayReplaceMessage =>
+      'Der alte Link funktioniert sofort nicht mehr. Aktualisiere die Browserquelle in deiner Streaming-App.';
+
+  @override
+  String get streamerOverlayRevoke => 'Overlay ausschalten';
+
+  @override
+  String get streamerOverlayRevokeTitle => 'Streamer-Overlay ausschalten?';
+
+  @override
+  String get streamerOverlayRevokeMessage =>
+      'Der Link funktioniert sofort nicht mehr. Du kannst später einen neuen erstellen.';
+
+  @override
+  String get streamerOverlayRevoked => 'Streamer-Overlay ausgeschaltet';
+
+  @override
+  String get streamerOverlayRevokeFailed =>
+      'Das Overlay konnte nicht ausgeschaltet werden. Versuch es noch einmal.';
+
+  @override
+  String get streamerOverlayDelayLabel => 'Stream-Verzögerung';
+
+  @override
+  String get streamerOverlayDelayHelp =>
+      'Zuschauer sehen deine Werte erst so lange später. Die Verzögerung wird auf unserem Server angewendet, niemand kann sie überspringen.';
+
+  @override
+  String get streamerOverlayDelayNone => 'Keine Verzögerung';
+
+  @override
+  String streamerOverlayDelaySeconds(int seconds) {
+    return '$seconds s';
+  }
+
+  @override
+  String streamerOverlayDelayMinutes(int minutes) {
+    return '$minutes Min.';
+  }
+
+  @override
+  String get streamerOverlayDelaySaved => 'Verzögerung gespeichert';
+
+  @override
+  String get streamerOverlayDelayFailed =>
+      'Die Verzögerung konnte nicht geändert werden. Versuch es noch einmal.';
+
+  @override
+  String get streamerOverlayLoadFailed =>
+      'Dein Streamer-Overlay konnte nicht geladen werden.';
+
+  @override
+  String get streamerOverlayRetry => 'Erneut versuchen';
+
+  @override
+  String get streamerOverlayUnavailable =>
+      'Das Streamer-Overlay ist gerade nicht verfügbar.';
+
+  @override
+  String get streamerOverlayMapHeartRateNote =>
+      'Schalte die Streckenspur und die Herzfrequenz im Web unter Einstellungen → Datenschutz & Teilen ein.';
+
+  @override
+  String get liveSpectatorHeartRate => 'Herzfrequenz';
+
+  @override
+  String get shareCardStylePr => 'Bestzeit-Karte';
+
+  @override
+  String get shareCardPrHeadline => 'Neue persönliche Bestzeit';
+
+  @override
+  String get shareCardPrHeld => 'Persönliche Bestzeit';
+
+  @override
+  String shareCardPrFaster(String time) {
+    return '$time schneller';
+  }
+
+  @override
+  String shareCardPrPrevious(String time) {
+    return 'Bisherige Bestzeit $time';
+  }
+
+  @override
+  String shareCardPrFirst(String distance) {
+    return 'Erste Zeit über $distance';
+  }
+
+  @override
+  String get shareCardPrRecord => 'Bestzeit';
+
+  @override
+  String get shareCardPrHint =>
+      'Deine Bestzeiten bleiben privat. Nur dieses Bild wird geteilt.';
+
+  @override
+  String get runDetailSharePr => 'Bestzeit-Karte teilen';
+
+  @override
+  String get profileNotifPersonalRecord =>
+      'Du hast eine neue persönliche Bestzeit aufgestellt';
+
+  @override
+  String get badgesMakePublic => 'Öffentlich machen';
+
+  @override
+  String get badgesMakePrivate => 'Privat machen';
+
+  @override
+  String get badgesPrivate => 'Privat';
+
+  @override
+  String get badgesShare => 'Abzeichen teilen';
+
+  @override
+  String get badgesToggleError =>
+      'Sichtbarkeit konnte nicht geändert werden. Versuche es erneut.';
+
+  @override
+  String badgesShareText(String badge, String url) {
+    return 'Ich habe auf Threkir das Abzeichen „$badge“ bekommen: $url';
+  }
+
+  @override
+  String get badgesPrivateShareHint =>
+      'Mach dieses Abzeichen öffentlich, um es zu teilen.';
+
+  @override
+  String get sharesTitle => 'Deine Links';
+
+  @override
+  String get sharesTileSubtitle =>
+      'Besuche, Registrierungen und Beitritte über deine Links';
+
+  @override
+  String get sharesTagline =>
+      'So haben deine geteilten Links in den letzten 90 Tagen abgeschnitten. Es sind nur Zahlen: Wer einen Link öffnet, wird nicht erfasst.';
+
+  @override
+  String get sharesLoadFailed => 'Deine Links konnten nicht geladen werden.';
+
+  @override
+  String get sharesEmptyTitle => 'Noch nichts geteilt';
+
+  @override
+  String get sharesEmptyBody =>
+      'Teile einen öffentlichen Plan, eine Challenge, eine Einheit, ein Workout oder dein Profil, dann erscheinen die Zahlen hier.';
+
+  @override
+  String get sharesKindPlan => 'Plan';
+
+  @override
+  String get sharesKindChallenge => 'Challenge';
+
+  @override
+  String get sharesKindProfile => 'Profil';
+
+  @override
+  String get sharesKindSession => 'Einheit';
+
+  @override
+  String get sharesKindWorkout => 'Workout';
+
+  @override
+  String get sharesYourProfile => 'Dein Profil';
+
+  @override
+  String get sharesUntitled => 'Ohne Titel';
+
+  @override
+  String get sharesVisits => 'Besuche';
+
+  @override
+  String get sharesSignups => 'Registrierungen';
+
+  @override
+  String get sharesStarts => 'Planstarts';
+
+  @override
+  String get sharesJoins => 'Challenge-Beitritte';
+
+  @override
+  String sharesViaYourLink(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count über deinen Link',
+      one: '$count über deinen Link',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sharesBotVisits(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Dazu $count Besuche von Crawlern, oben nicht mitgezählt.',
+      one: 'Dazu $count Besuch eines Crawlers, oben nicht mitgezählt.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sharesFootnote =>
+      'Eine Registrierung zählt, wenn jemand über einen von dir geteilten Link ein Konto anlegt. Deine eigenen Besuche zählen nicht.';
 }

@@ -6,6 +6,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../leaderboard_standing.dart';
 import '../social_service.dart';
 import '../widgets/app_bar_actions.dart';
+import '../widgets/challenge_invite_card.dart';
 import '../widgets/challenge_progress_bar.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/error_state.dart';
@@ -16,7 +17,12 @@ import '../widgets/top_banner.dart';
 class ChallengeDetailScreen extends StatefulWidget {
   final SocialService social;
   final String challengeId;
-  const ChallengeDetailScreen({super.key, required this.social, required this.challengeId});
+
+  /// The creator's `ref` the share link that opened this carried; a join
+  /// made here is attributed to it (decisions § 2268).
+  final String? shareRef;
+  const ChallengeDetailScreen(
+      {super.key, required this.social, required this.challengeId, this.shareRef});
 
   @override
   State<ChallengeDetailScreen> createState() => _ChallengeDetailScreenState();
@@ -86,6 +92,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
     setState(() => _busy = true);
     try {
       await widget.social.joinChallenge(widget.challengeId);
+      await widget.social.attributeChallengeJoin(widget.challengeId, widget.shareRef);
       await _load();
     } catch (_) {
       if (mounted) showTopBanner(context, AppLocalizations.of(context).challengesJoinFailed);
@@ -201,6 +208,14 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                     Text(l10n.challengesLeaderboard, style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
                     _leaderboard(context, c),
+                    const SizedBox(height: 16),
+                    ChallengeInviteCard(
+                      social: widget.social,
+                      challengeId: c.id,
+                      isPublic: c.isPublic,
+                      canManage: isCreator && c.scope != 'club_vs_club',
+                      isCreator: isCreator,
+                    ),
                   ],
                 ),
     );

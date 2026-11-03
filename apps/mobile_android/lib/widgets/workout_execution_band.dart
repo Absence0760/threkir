@@ -9,6 +9,7 @@ import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
 import '../preferences.dart';
 import '../training.dart' show fmtPace;
+import '../workout_step_name.dart';
 
 /// Top-of-map overlay that surfaces the current [WorkoutRunner] step
 /// while the run screen is recording. Mirrors the spec in
@@ -139,11 +140,18 @@ class _Band extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  l10n.runWorkoutStepHeader(
-                    step.label,
-                    _fmtTarget(step),
-                    fmtPace(step.targetPaceSecPerKm),
-                  ),
+                  // A walk-run step has no pace target: the easy pace it
+                  // carries is only the plan's distance estimate.
+                  step.paced
+                      ? l10n.runWorkoutStepHeader(
+                          workoutStepName(step, l10n),
+                          _fmtTarget(step),
+                          fmtPace(step.targetPaceSecPerKm),
+                        )
+                      : l10n.runWorkoutStepHeaderUnpaced(
+                          workoutStepName(step, l10n),
+                          _fmtTarget(step),
+                        ),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),

@@ -48,6 +48,7 @@ import {
 	type PlanTargets,
 } from '../nutrition/meal_plan';
 import { challengesToRecomputeForRun } from '../social/challenge_progress';
+import { prCardEntries, type PrCardEntry } from '../share/pr_card';
 import { mergeMyProgress } from '../social/challenge_list';
 import { selectEffectivePricing } from '../social/event_instance';
 import type { RepacePatch } from '../training/plan_repace';
@@ -71,6 +72,7 @@ import {
 	type EventCourse,
 } from '../social/event_courses';
 import { parseHostEarningsRow, type HostEarningsInstance } from '../social/host_earnings';
+import { parseHeadToHeadRows, type HeadToHeadKind, type HeadToHeadRow } from '../social/head_to_head';
 import {
 	cancelledOccurrenceRefunds,
 	parseOccurrenceRefundSummary,
@@ -2496,6 +2498,29 @@ export async function deleteRoute(id: string): Promise<void> {
 
 // --- Dashboard stats ---
 
+/// The personal records `runId` set, for the PR share card: what the
+/// improvement log says it beat, plus any bracket it holds from before the log
+/// existed. Both tables are owner-only, so another user's run answers empty.
+export async function fetchRunPersonalRecords(runId: string): Promise<PrCardEntry[]> {
+	const userId = auth.user?.id;
+	if (!userId) return [];
+	const [improved, held] = await Promise.all([
+		supabase
+			.from(TABLES.personal_record_improvements)
+			.select('distance, best_time_s, previous_time_s')
+			.eq('user_id', userId)
+			.eq('run_id', runId),
+		supabase
+			.from(TABLES.personal_records)
+			.select('distance, best_time_s')
+			.eq('user_id', userId)
+			.eq('run_id', runId),
+	]);
+	if (improved.error) throw dbError(improved.error);
+	if (held.error) throw dbError(held.error);
+	return prCardEntries(improved.data ?? [], held.data ?? []);
+}
+
 export async function fetchPersonalRecords() {
 	// Read the trigger-maintained `personal_records` cache rather than
 	// recomputing from `runs`. The cache is already user-scoped by RLS,
@@ -2871,6 +2896,9 @@ export interface RaceListingCourse {
 	distanceM: number | null;
 	ascentM: number | null;
 	surface: string | null;
+	/// Null unless the route is public (decisions § 2253); its line is read
+	/// with `fetchPublicRoute`, never from this row.
+	routeId: string | null;
 }
 
 export async function fetchRaceListing(id: string): Promise<RaceListingDetail | null> {
@@ -2878,14 +2906,17 @@ export async function fetchRaceListing(id: string): Promise<RaceListingDetail | 
 	const { data, error } = await supabase
 		.from('public_race_listings')
 		.select(
-			'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface'
+			'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface, course_route_id'
 		)
 		.eq('id', id)
 		.maybeSingle();
 	if (error) throw dbError(error);
 	if (!data || !data.id || !data.name || !data.race_date || !data.provider) return null;
 	const hasCourse =
-		data.course_distance_m != null || data.course_elevation_m != null || data.course_surface != null;
+		data.course_distance_m != null ||
+		data.course_elevation_m != null ||
+		data.course_surface != null ||
+		data.course_route_id != null;
 	return {
 		id: data.id,
 		provider: data.provider,
@@ -2900,7 +2931,8 @@ export async function fetchRaceListing(id: string): Promise<RaceListingDetail | 
 			? {
 					distanceM: data.course_distance_m,
 					ascentM: data.course_elevation_m,
-					surface: data.course_surface
+					surface: data.course_surface,
+					routeId: data.course_route_id
 				}
 			: null
 	};
@@ -5905,6 +5937,44 @@ export async function clonePublicPlan(
 		throw dbError(error);
 	}
 	return data as string;
+}
+
+/// Whether a public-library plan may be shared as a logged-out page
+/// (`/share/plan/<id>`). The `public_plan_share` gate is closed in prod until
+/// the CISO / Security Analyst sign-off (decisions § 2262); a failed read is
+/// treated as closed, so the share link is hidden rather than broken.
+export async function publicPlanShareEnabled(): Promise<boolean> {
+	const { data, error } = await supabase.rpc('public_plan_share_enabled', undefined, { get: true });
+	if (error) {
+		console.error('public_plan_share_enabled failed', error.message);
+		return false;
+	}
+	return data === true;
+}
+
+export interface PlanStartedFrom {
+	/// Display name and handle of the author, or null when their profile is
+	/// hidden from the viewer.
+	author: { name: string | null; handle: string | null } | null;
+	/// The public plan it started from, while it is still published.
+	templateId: string | null;
+}
+
+/// "Started from @creator's plan" for the viewer's own copy of a public
+/// plan. Null for any plan that was not started from someone else's public
+/// plan, and for a plan the viewer does not own.
+export async function fetchPlanStartedFrom(planId: string): Promise<PlanStartedFrom | null> {
+	const { data, error } = await supabase.rpc('plan_started_from', { p_plan_id: planId }, { get: true });
+	if (error) throw dbError(error);
+	if (data == null || typeof data !== 'object' || Array.isArray(data)) return null;
+	const author = data.author;
+	const authorObj =
+		author != null && typeof author === 'object' && !Array.isArray(author) ? author : null;
+	const text = (v: unknown) => (typeof v === 'string' ? v : null);
+	return {
+		author: authorObj ? { name: text(authorObj.name), handle: text(authorObj.handle) } : null,
+		templateId: text(data.template_id),
+	};
 }
 
 /// Publish one of the viewer's plans to the public library: copy the
@@ -10451,6 +10521,29 @@ export async function fetchGlobalSegment(id: string): Promise<GlobalSegment | nu
 /// `fetchSegmentLeaderboardTiered` but calls the catalogue RPC (no route
 /// visibility branch — the catalogue is public; per-effort run privacy +
 /// the block graph are applied server-side).
+/// The caller's best public attempt against each mutual-follow friend's on one
+/// route or segment (`head_to_head`, decisions § 2267). With `friendId`, that
+/// friend's row or none. Throws on a failed read, so "no friend to compare"
+/// and "could not load" stay distinguishable to the reader.
+export async function fetchHeadToHead(
+	kind: HeadToHeadKind,
+	targetId: string,
+	opts: { friendId?: string | null; activityType?: string | null } = {},
+): Promise<HeadToHeadRow[]> {
+	const { data, error } = await supabase.rpc(
+		'head_to_head',
+		{
+			p_kind: kind,
+			p_target_id: targetId,
+			p_friend_id: opts.friendId ?? undefined,
+			p_activity_type: opts.activityType ?? undefined,
+		},
+		{ get: true },
+	);
+	if (error) throw dbError(error);
+	return parseHeadToHeadRows(data);
+}
+
 export async function fetchGlobalSegmentLeaderboard(
 	segmentId: string,
 	filter: {
@@ -14657,6 +14750,86 @@ export async function joinChallenge(id: string, teamClubId?: string | null): Pro
 	// a list whose `joined` flag was computed before another tab wrote the row
 	// — a duplicate, which is this call's own success condition restated.
 	if (error && !isDuplicateKeyError(error)) throw dbError(error);
+}
+
+// ─── Challenge invite links (decisions § 2261) ───
+// The token lives in private.challenge_invite_tokens, never on the
+// `challenges` row, so every read here goes through a definer RPC. Each one
+// answers "nothing" while the `challenge_invite_links` gate is closed.
+
+export async function challengeInviteLinksEnabled(): Promise<boolean> {
+	const { data, error } = await supabase.rpc('challenge_invite_links_enabled', undefined, {
+		get: true
+	});
+	if (error) throw dbError(error);
+	return data === true;
+}
+
+export async function getChallengeInviteToken(id: string): Promise<string | null> {
+	const { data, error } = await supabase.rpc('get_challenge_invite_token', {
+		p_challenge_id: id
+	});
+	if (error) throw dbError(error);
+	return data ?? null;
+}
+
+export async function rotateChallengeInviteToken(id: string): Promise<string | null> {
+	const { data, error } = await supabase.rpc('rotate_challenge_invite_token', {
+		p_challenge_id: id
+	});
+	if (error) throw dbError(error);
+	return data ?? null;
+}
+
+export interface ChallengeInvitePreview {
+	id: string;
+	title: string;
+	description: string | null;
+	metric: ChallengeMetric;
+	scope: ChallengeScope;
+	goal_value: number | null;
+	activity_type: ActivityType | null;
+	starts_at: string;
+	ends_at: string;
+	is_public: boolean;
+	participant_count: number;
+	creator_id: string | null;
+	creator_name: string | null;
+	joined: boolean;
+}
+
+/// Null for an unknown or rotated token, or while the gate is closed. A failed
+/// read throws, so the join page can offer a retry instead of calling a good
+/// link dead.
+export async function previewChallengeInvite(
+	token: string
+): Promise<ChallengeInvitePreview | null> {
+	const { data, error } = await supabase
+		.rpc('challenge_invite_preview', { p_token: token }, { get: true })
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	return {
+		...data,
+		metric: data.metric as ChallengeMetric,
+		scope: data.scope as ChallengeScope,
+		activity_type: data.activity_type as ActivityType | null,
+		goal_value: data.goal_value ?? null,
+		participant_count: data.participant_count ?? 0,
+		joined: data.joined === true
+	};
+}
+
+/// The joined challenge's id, or null when the token names nothing. A
+/// rate-limit refusal surfaces as its friendly "wait N minutes" line.
+export async function joinChallengeByToken(token: string): Promise<string | null> {
+	const { data, error } = await supabase.rpc('join_challenge_by_token', { p_token: token });
+	if (error) {
+		const friendly = rateLimitErrorMessage(m, error);
+		if (friendly) throw new Error(friendly);
+		throw dbError(error);
+	}
+	return data ?? null;
 }
 
 export async function leaveChallenge(id: string): Promise<void> {

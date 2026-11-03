@@ -1720,4 +1720,168 @@ void _registerOfflineSaveTests() {
     });
   });
 
+
+  // Draw mode (route art, decisions § 2263).
+  group('Draw mode', () {
+    Future<void> pumpDraw(
+      WidgetTester tester, {
+      Future<String> Function(Uri)? osrm,
+    }) async {
+      final store = (await tester.runAsync(() async {
+        final dir = Directory.systemTemp.createTempSync('rb_draw_test_');
+        addTearDown(() {
+          try {
+            dir.deleteSync(recursive: true);
+          } catch (_) {}
+        });
+        final s = LocalRouteStore();
+        await s.init(overrideDirectory: dir);
+        return s;
+      }))!;
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RouteBuilderScreen(
+            apiClient: ApiClient(),
+            routeStore: store,
+            initialCenter: const LatLng(51.5074, -0.1278),
+            osrmFetcher: osrm ?? _stubOsrm,
+            elevationFetcher: _stubElev,
+            geocodingFetcher: _stubGeocoding,
+            locateFn: _stubLocate,
+            snapAvailableOverride: true,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(Duration.zero);
+    }
+
+    Future<void> turnOn(WidgetTester tester) async {
+      await tester.tap(find.byKey(const Key('route-builder-draw-toggle')));
+      await tester.pump();
+    }
+
+    /// Drag a square of [side] logical pixels around the draw surface's
+    /// centre, ending where it began.
+    Future<void> drawSquare(WidgetTester tester, double side) async {
+      final c = tester.getCenter(
+          find.byKey(const Key('route-builder-draw-surface')));
+      final h = side / 2;
+      final corners = [
+        c + Offset(-h, -h),
+        c + Offset(h, -h),
+        c + Offset(h, h),
+        c + Offset(-h, h),
+        c + Offset(-h, -h),
+      ];
+      final g = await tester.startGesture(corners.first);
+      for (var k = 0; k < corners.length - 1; k++) {
+        for (var i = 1; i <= 10; i++) {
+          await g.moveTo(Offset.lerp(corners[k], corners[k + 1], i / 10)!);
+        }
+      }
+      await g.up();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(seconds: 1));
+    }
+
+    TextButton saveButton(WidgetTester tester) =>
+        tester.widget<TextButton>(find.widgetWithText(TextButton, 'Save'));
+
+    testWidgets('the toggle swaps panning for drawing and shows the hint',
+        (tester) async {
+      await pumpDraw(tester);
+      expect(find.byKey(const Key('route-builder-draw-surface')), findsNothing);
+      await turnOn(tester);
+      expect(
+          find.byKey(const Key('route-builder-draw-surface')), findsOneWidget);
+      expect(find.text('Drag on the map to draw your shape'), findsOneWidget);
+      expect(find.byTooltip('Draw a shape'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('route-builder-draw-toggle')));
+      await tester.pump();
+      expect(find.byKey(const Key('route-builder-draw-surface')), findsNothing);
+    });
+
+    testWidgets('a drawing the roads follow becomes the route with its score',
+        (tester) async {
+      final calls = <Uri>[];
+      await pumpDraw(tester, osrm: (u) {
+        calls.add(u);
+        return _stubOsrm(u);
+      });
+      await turnOn(tester);
+      await drawSquare(tester, 200);
+      expect(find.textContaining('Matches your drawing: 100%'), findsOneWidget);
+      expect(find.textContaining('Close match'), findsOneWidget);
+      expect(saveButton(tester).onPressed, isNotNull);
+      expect(calls, isNotEmpty);
+      for (final u in calls) {
+        final pairs = u.pathSegments.last.split(';');
+        expect(pairs.length, lessThanOrEqualTo(60));
+      }
+    });
+
+    testWidgets('a drawing the roads cannot follow is refused, not saved',
+        (tester) async {
+      await pumpDraw(tester, osrm: (u) async {
+        final pairs = u.pathSegments.last.split(';');
+        List<double> pt(String s) =>
+            [double.parse(s.split(',')[0]), double.parse(s.split(',')[1])];
+        return jsonEncode({
+          'code': 'Ok',
+          'routes': [
+            {
+              'distance': 10.0,
+              'geometry': {
+                'coordinates': [pt(pairs.first), pt(pairs.last)],
+              },
+            },
+          ],
+        });
+      });
+      await turnOn(tester);
+      await drawSquare(tester, 200);
+      expect(find.textContaining('Too far from your drawing'), findsOneWidget);
+      expect(find.textContaining('match only'), findsOneWidget);
+      expect(saveButton(tester).onPressed, isNull);
+      await tester.pump(const Duration(seconds: 6));
+    });
+
+    testWidgets('a drawing with no road nearby names the problem',
+        (tester) async {
+      await pumpDraw(tester,
+          osrm: (u) async => jsonEncode({'code': 'NoSegment'}));
+      await turnOn(tester);
+      await drawSquare(tester, 200);
+      expect(find.textContaining('no road or path nearby'), findsOneWidget);
+      expect(saveButton(tester).onPressed, isNull);
+      await tester.pump(const Duration(seconds: 6));
+    });
+
+    testWidgets('a scribble too small to route asks for a bigger shape',
+        (tester) async {
+      await pumpDraw(tester);
+      await turnOn(tester);
+      await drawSquare(tester, 12);
+      expect(find.textContaining('Draw a bigger shape'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 6));
+    });
+
+    for (final scale in [1.3, 2.0]) {
+      testWidgets('${scale}x: the draw status wraps instead of overflowing',
+          (tester) async {
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await pumpDraw(tester);
+        await turnOn(tester);
+        await drawSquare(tester, 200);
+        expect(tester.takeException(), isNull);
+        expect(find.byKey(const Key('route-builder-draw-status')),
+            findsOneWidget);
+      });
+    }
+  });
 }

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import Avatar from '#lib/components/Avatar.svelte';
@@ -10,6 +12,8 @@
 		buildProfileShareTitle,
 		profileDisplayName,
 	} from '#lib/share/share_profile_meta.ts';
+	import { shareRefFromSearch, shareSignupHref } from '#lib/share/share_ref.ts';
+	import { recordShareView } from '#lib/share/share_attribution.ts';
 
 	let { data } = $props();
 
@@ -23,6 +27,13 @@
 	let name = $derived(profileDisplayName(data.profile));
 	// Deep-link to the in-app profile page.
 	let appHref = $derived(`/u/${data.id}`);
+	let signupHref = $derived(
+		shareSignupHref(`/share/profile/${data.id}`, shareRefFromSearch(page.url.search))
+	);
+
+	onMount(() => {
+		if (data.profile) void recordShareView('profile', data.id);
+	});
 </script>
 
 <svelte:head>
@@ -76,7 +87,7 @@
 			<p class="kicker">{m('shareRun.ctaKicker')}</p>
 			<h2 id="signup-cta-heading">{m('shareRun.ctaHeading')}</h2>
 			<p class="signup-sub">{m('shareRun.ctaSub')}</p>
-			<a class="btn btn-primary" href="/login?signup=1">{m('shareRun.ctaButton')}</a>
+			<a class="btn btn-primary" href={signupHref}>{m('shareRun.ctaButton')}</a>
 		</section>
 	{/if}
 </SharePageShell>

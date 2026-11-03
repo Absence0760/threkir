@@ -12,6 +12,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'chunk.dart';
 import 'direct_messages.dart';
 import 'effort_rank.dart';
+import 'live_overlay.dart';
 import 'segments_rank.dart';
 import 'smoothed_sidecar.dart';
 import 'ultrasignup_person.dart';
@@ -5595,6 +5596,35 @@ class ApiClient {
     return data == null ? null : GlobalSegmentRow.fromJson(data);
   }
 
+  /// The caller's best public attempt against each mutual-follow friend's on
+  /// one route (`kind` `route`), route segment (`segment`) or catalogue segment
+  /// (`global_segment`), from `head_to_head` (migration 20271104000003,
+  /// decisions § 2267). With [friendId], that friend's row or none. The raw
+  /// rows are returned for the app's `parseHeadToHeadRows`; a failed read
+  /// throws, so "nobody to compare" and "could not load" stay distinct.
+  Future<List<Map<String, dynamic>>> fetchHeadToHead(
+    String kind,
+    String targetId, {
+    String? friendId,
+    String activityType = 'run',
+  }) async {
+    final rows = await _client.rpc(
+      'head_to_head',
+      params: {
+        'p_kind': kind,
+        'p_target_id': targetId,
+        'p_friend_id': ?friendId,
+        'p_activity_type': activityType,
+      },
+      get: true,
+    );
+    if (rows is! List) return const [];
+    return [
+      for (final r in rows)
+        if (r is Map) r.cast<String, dynamic>(),
+    ];
+  }
+
   /// Block-guarded catalogue-segment leaderboard. Mirrors
   /// [fetchSegmentLeaderboardTiered] but calls `global_segment_leaderboard`
   /// (migration 20270411_001) — no per-route visibility branch, since the
@@ -7191,7 +7221,7 @@ class ApiClient {
   Future<List<Map<String, dynamic>>> fetchLiveRunPings(String runId) async {
     final rows = await _client
         .from('live_run_pings')
-        .select('lat, lng, ele, distance_m, elapsed_s, at')
+        .select('lat, lng, ele, distance_m, elapsed_s, at, coarse, bpm')
         .eq('run_id', runId)
         .order('at', ascending: false)
         .limit(1000);
@@ -7261,6 +7291,56 @@ class ApiClient {
       debugPrint('safety_audience_enabled failed: $e');
       return false;
     }
+  }
+
+  /// Whether the streamer overlay is live (the server's `live_overlay` gate,
+  /// decisions § 2265). Fail closed: a read failure is "off", which only hides
+  /// the overlay entry.
+  Future<bool> liveOverlayEnabled() async {
+    try {
+      final result =
+          await _client.rpc('live_overlay_enabled', params: const {}, get: true);
+      return result == true;
+    } catch (e) {
+      debugPrint('live_overlay_enabled failed: $e');
+      return false;
+    }
+  }
+
+  /// The caller's streamer-overlay token and what it admits, or null when
+  /// none exists. A failed read throws, so the sheet can offer a retry
+  /// rather than claiming there is no overlay.
+  Future<LiveOverlay?> fetchLiveOverlay() async {
+    final rows =
+        await _client.rpc('get_live_overlay', params: const {}, get: true);
+    if (rows is! List || rows.isEmpty) return null;
+    return LiveOverlay.fromRow(Map<String, dynamic>.from(rows.first as Map));
+  }
+
+  /// Make the overlay token, or replace it: the old URL stops working at
+  /// once. Rate-limited server-side (10 an hour).
+  Future<String> createLiveOverlayToken() async {
+    final token = await _client.rpc('create_live_overlay_token');
+    if (token is! String || token.isEmpty) {
+      throw StateError('create_live_overlay_token returned no token');
+    }
+    return token;
+  }
+
+  Future<void> revokeLiveOverlayToken() async {
+    await _client.rpc('revoke_live_overlay_token');
+  }
+
+  Future<void> updateLiveOverlaySettings({
+    required int delaySeconds,
+    required bool showMap,
+    required bool showHeartRate,
+  }) async {
+    await _client.rpc('update_live_overlay_settings', params: {
+      'p_delay_s': delaySeconds,
+      'p_show_map': showMap,
+      'p_show_heart_rate': showHeartRate,
+    });
   }
 
   /// Append one spectator ping for an in-progress run. Intended to be
@@ -8546,6 +8626,40 @@ class ApiClient {
         .toList();
   }
 
+  /// The personal records [runId] set, for the PR share card: the logged
+  /// improvements (each with the time it beat) and the brackets the run holds
+  /// in the cache. Both tables are owner-only, so another user's run answers
+  /// empty. Mirrors web `fetchRunPersonalRecords`.
+  Future<
+      ({
+        List<PersonalRecordImprovementRow> improvements,
+        List<PersonalRecordRow> held,
+      })> fetchRunPersonalRecords(String runId) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return (improvements: const <PersonalRecordImprovementRow>[], held: const <PersonalRecordRow>[]);
+    final results = await Future.wait([
+      _client
+          .from(PersonalRecordImprovementRow.table)
+          .select()
+          .eq(PersonalRecordImprovementRow.colUserId, uid)
+          .eq(PersonalRecordImprovementRow.colRunId, runId),
+      _client
+          .from(PersonalRecordRow.table)
+          .select()
+          .eq(PersonalRecordRow.colUserId, uid)
+          .eq(PersonalRecordRow.colRunId, runId),
+    ]);
+    return (
+      improvements: results[0]
+          .map<PersonalRecordImprovementRow>(
+              (r) => PersonalRecordImprovementRow.fromJson(r))
+          .toList(),
+      held: results[1]
+          .map<PersonalRecordRow>((r) => PersonalRecordRow.fromJson(r))
+          .toList(),
+    );
+  }
+
   /// All-time `(current, best)` run-day streaks from the
   /// `run_streaks_for_user` gaps-and-islands aggregate (migration
   /// `20270501_001`) — the same one-row server read web's dashboard card
@@ -9030,6 +9144,22 @@ class ApiClient {
     return data
         .map<AchievementRow>((row) => AchievementRow.fromJson(row))
         .toList();
+  }
+
+  /// Show or hide one of the owner's badges on their profile and its public
+  /// share page. RLS allows the owner to update `is_public` only. Mirrors web
+  /// `setBadgeVisibility`.
+  Future<void> setBadgeVisibility(String id, {required bool isPublic}) async {
+    final updated = await _client
+        .from(AchievementRow.table)
+        .update({AchievementRow.colIsPublic: isPublic})
+        .eq(AchievementRow.colId, id)
+        .select(AchievementRow.colId);
+    // RLS filters a row the caller may not update out of the UPDATE instead
+    // of refusing it, so an empty answer is the refusal.
+    if (updated.isEmpty) {
+      throw StateError('badge $id was not updated');
+    }
   }
 
   /// The signed-in user's own badges (incl. private). Empty when signed out.

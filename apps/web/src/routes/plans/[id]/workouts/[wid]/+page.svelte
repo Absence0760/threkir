@@ -118,24 +118,30 @@
 		(workout?.structure as unknown as WorkoutStructure | null) ?? null
 	);
 
+	// Unlinking a matched run confirms: putting it back means finding the run
+	// again. A hand mark is set and cleared with one tap, as Skip is, because
+	// the other button on the same panel puts it back (conventions.md §
+	// Destructive actions). Mobile twin: WorkoutDetailScreen._setCompleted.
 	function unlink() {
 		if (!workout || !isWorkoutCompleted(workout)) return;
-		showUnlinkConfirm = true;
+		if (workout.completed_run_id) showUnlinkConfirm = true;
+		else void setCompleted(false);
 	}
 
-	let unlinking = $state(false);
-	async function confirmUnlink() {
-		if (!workout || unlinking) return;
-		unlinking = true;
+	let updating = $state(false);
+	async function setCompleted(done: boolean) {
+		if (!workout || updating) return;
+		updating = true;
+		const unlinkingRun = !done && workout.completed_run_id != null;
 		try {
-			await markWorkoutCompleted(workout.id, null);
+			await markWorkoutCompleted(workout.id, null, { manual: done });
 			showUnlinkConfirm = false;
 			await load();
 		} catch (e) {
-			console.error('markWorkoutCompleted(unlink) failed', e);
-			showToast(t('workoutDetail.unlinkFailed'), 'error');
+			console.error('markWorkoutCompleted failed', e);
+			showToast(t(unlinkingRun ? 'workoutDetail.unlinkFailed' : 'workoutDetail.updateFailed'), 'error');
 		} finally {
-			unlinking = false;
+			updating = false;
 		}
 	}
 
@@ -410,7 +416,7 @@
 								{t('workoutDetail.relink')}
 							</button>
 						{/if}
-						<button class="btn-ghost" onclick={unlink}>
+						<button class="btn-ghost" onclick={unlink} disabled={updating}>
 							{workout.completed_run_id ? t('workoutDetail.unlink') : t('workoutDetail.markNotDone')}
 						</button>
 					</div>
@@ -427,6 +433,9 @@
 				</div>
 			{:else if workout.kind !== 'rest'}
 				<div class="completed-actions skip-only">
+					<button class="btn-ghost" onclick={() => setCompleted(true)} disabled={updating}>
+						{t('workoutDetail.markDone')}
+					</button>
 					<button class="btn-ghost" onclick={toggleSkip} disabled={skipping}>
 						{t('workoutDetail.skip')}
 					</button>
@@ -557,12 +566,10 @@
 
 <ConfirmDialog
 	open={showUnlinkConfirm}
-	title={workout?.completed_run_id ? t('workoutDetail.unlinkRunTitle') : t('workoutDetail.markNotDoneTitle')}
-	message={workout?.completed_run_id
-		? t('workoutDetail.unlinkRunMessage')
-		: t('workoutDetail.markNotDoneMessage')}
-	confirmLabel={workout?.completed_run_id ? t('workoutDetail.unlink') : t('workoutDetail.markNotDone')}
-	onconfirm={confirmUnlink}
+	title={t('workoutDetail.unlinkRunTitle')}
+	message={t('workoutDetail.unlinkRunMessage')}
+	confirmLabel={t('workoutDetail.unlink')}
+	onconfirm={() => setCompleted(false)}
 	oncancel={() => showUnlinkConfirm = false}
 	danger
 />

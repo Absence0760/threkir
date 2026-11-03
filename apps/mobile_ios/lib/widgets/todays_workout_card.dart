@@ -1,6 +1,6 @@
 import 'package:core_models/core_models.dart' show PlanWorkoutRow;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show AppIconSize;
+import 'package:ui_kit/ui_kit.dart' show AppIconSize, AppRadius;
 
 import '../l10n/gen/app_localizations.dart';
 import '../overrun_format.dart';
@@ -8,6 +8,8 @@ import '../plan_current.dart';
 import '../planned_size_label.dart';
 import '../training.dart';
 import '../training_labels.dart';
+import '../workout_summary.dart';
+import '../workout_summary_format.dart';
 import 'plan_workout_status_style.dart';
 
 /// Today's planned workout, on Home (the plan hero), the Run tab's idle state
@@ -54,6 +56,12 @@ class TodaysWorkoutCard extends StatelessWidget {
                 : PlanWorkoutStatus.upcoming);
     final showStart = onStart != null && !done && !skipped;
     final size = plannedSizeLabel(l10n, w);
+    // The minutes alone don't tell a beginner what the session asks of them.
+    final walkRun =
+        plannedWalkRunPattern(kind: w.kind, structure: w.structure);
+    final pattern = walkRun == null
+        ? null
+        : formatWalkRunPattern(l10n, walkRun, (m) => fmtOverrun(m.toDouble()));
     final pace = w.targetPaceSecPerKm == null || w.kind == 'walk_run'
         ? null
         : l10n.todaysWorkoutAtPace(fmtPace(w.targetPaceSecPerKm));
@@ -63,6 +71,7 @@ class TodaysWorkoutCard extends StatelessWidget {
       if (overrun != null) l10n.planWorkoutOverrunA11y(overrun),
       workoutKindLabel(l10n, kind),
       ?size,
+      ?pattern,
       ?pace,
     ].join(', ');
 
@@ -136,7 +145,7 @@ class TodaysWorkoutCard extends StatelessWidget {
                             children: [
                               Icon(
                                 Icons.straighten,
-                                size: 14,
+                                size: AppIconSize.dense,
                                 color: theme.colorScheme.onPrimary,
                               ),
                               const SizedBox(width: 3),
@@ -158,7 +167,7 @@ class TodaysWorkoutCard extends StatelessWidget {
                             children: [
                               Icon(
                                 Icons.speed,
-                                size: 14,
+                                size: AppIconSize.dense,
                                 color: theme.colorScheme.onPrimary,
                               ),
                               const SizedBox(width: 3),
@@ -176,6 +185,15 @@ class TodaysWorkoutCard extends StatelessWidget {
                           ),
                       ],
                     ),
+                    if (pattern != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          pattern,
+                          key: const Key('todaysWorkoutPattern'),
+                          style: TextStyle(color: theme.colorScheme.onPrimary),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -187,7 +205,7 @@ class TodaysWorkoutCard extends StatelessWidget {
 
     return Material(
       color: theme.colorScheme.primary,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppRadius.lg),
       clipBehavior: Clip.antiAlias,
       child: showStart
           ? Column(

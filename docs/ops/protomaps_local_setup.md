@@ -132,6 +132,16 @@ File-level `resolveTileUrl(env, mapStyle:, brightness:)` reads `TILE_URL_TEMPLAT
 
 File-level `buildTileUrl(z, x, y, template, maptilerKey, styleSlug)` does the same: non-blank template wins, otherwise build the MapTiler URL. The `enabled` flag now lights up when EITHER `PUBLIC_TILE_URL_TEMPLATE` OR `PUBLIC_MAPTILER_KEY` is non-empty, so the dev path doesn't need a MapTiler key sitting around.
 
+### Terrain for the 3D course preview (web only — `PUBLIC_TERRAIN_URL`)
+
+The 3D course preview drapes the basemap over a `raster-dem` elevation source that is separate from the style above, so `bin/protomaps-dev.sh` does **not** cover it — the Protomaps basemap carries no elevation. `resolveTerrainSource` in `apps/web/src/lib/routes/terrain_source.ts` picks, in order: `PUBLIC_TERRAIN_URL`, then MapTiler `terrain-rgb-v2` when `PUBLIC_MAPTILER_KEY` is set, then the keyless AWS Open Data Terrain Tiles (`elevation-tiles-prod.s3.amazonaws.com/terrarium/…`). [decisions § 2251](../architecture/decisions.md).
+
+- **Online local dev needs nothing.** With the key unset the preview reads the keyless AWS bucket.
+- **Offline / self-hosted.** Serve an elevation tileset (an `.mbtiles` of Terrarium or Mapbox Terrain-RGB tiles) from any tile server — tileserver-gl serves an mbtiles at `http://localhost:8080/data/<id>/{z}/{x}/{y}.<ext>` — and set `PUBLIC_TERRAIN_URL` to that `{z}/{x}/{y}` **template** (not a style URL) in your shell env or `apps/web/.env.development.local` (the same precedence rule as the style override above). A template whose URL contains `terrarium` is read as Terrarium-encoded 256 px tiles (max zoom 15); anything else as Mapbox Terrain-RGB 512 px (max zoom 14), so name the tileset accordingly.
+- **No terrain source reachable.** The preview still opens; MapLibre gets no elevation tiles and the course renders tilted over flat ground.
+
+Like every map tile, terrain loads only after cookie consent.
+
 ## Tests
 
 Roughly two dozen web + a dozen mobile + ~20 Wear OS unit tests pin the URL builder behaviour against the empty/blank/non-empty override matrix (counts drift — recompute with `grep -cE`). See:

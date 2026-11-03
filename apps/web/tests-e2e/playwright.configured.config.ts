@@ -23,7 +23,11 @@ import { defineConfig, devices } from '@playwright/test';
  *
  * The same holds for a surface behind a fail-closed deploy gate whose off
  * state the sharded lane pins: `PUBLIC_ADAPTIVE_FITNESS_GATE` is on here for
- * the comeback ramp (decisions § 2207), and off everywhere else.
+ * the comeback ramp (decisions § 2207), and off everywhere else. The
+ * flyover video export is offered only with a basemap a video may record
+ * (decisions § 2259), so `PUBLIC_TILE_STYLE_URL` is set here to the OSM
+ * fallback style the keyless build already draws: the other specs' maps are
+ * unchanged, and the export spec stubs every tile it asks for.
  *
  * Its specs live under tests-e2e/configured and are excluded from the main
  * config via testIgnore, so they never run against a build without the id.
@@ -69,7 +73,7 @@ export default defineConfig({
 			// The comeback ramp (plan-volume-anchor.spec.ts) ships behind this
 			// fail-closed gate; the sharded lane runs with it off and pins that.
 			PUBLIC_ADAPTIVE_FITNESS_GATE: 'true',
-			PUBLIC_TILE_STYLE_URL: '',
+			PUBLIC_TILE_STYLE_URL: '/osm-fallback-style.json',
 			OSRM_URL: ''
 		}
 	},

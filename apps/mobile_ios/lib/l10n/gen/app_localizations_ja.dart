@@ -2214,6 +2214,11 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String runWorkoutStepHeaderUnpaced(String label, String target) {
+    return '$label · $target';
+  }
+
+  @override
   String runWorkoutStepCounter(int current, int total) {
     return '$current/$total';
   }
@@ -3378,6 +3383,48 @@ class AppLocalizationsJa extends AppLocalizations {
   String routeBuilderSegmentsFailed(int count) {
     return '$count 個の区間を道路に合わせられませんでした。該当するピンをドラッグして調整してください。';
   }
+
+  @override
+  String get routeBuilderDrawShape => '形を描く';
+
+  @override
+  String get routeBuilderDrawHint => '地図上をドラッグして形を描きます';
+
+  @override
+  String get routeBuilderDrawTooShort => 'もっと大きな形を描いてください。線は300 m以上必要です。';
+
+  @override
+  String get routeBuilderDrawTooLong => 'この図形は100 kmを超えています。拡大して小さな形を描いてください。';
+
+  @override
+  String get routeBuilderDrawTooComplex =>
+      'この図形は細かすぎてルートにできません。もっと単純な形を試してください。';
+
+  @override
+  String get routeBuilderDrawNoRoads => '図形の一部の近くに道路や道がありません。道路や道の上に描き直してください。';
+
+  @override
+  String get routeBuilderDrawUnavailable =>
+      '現在ルート計算を利用できないため、図形を道路に合わせられませんでした。少し後でもう一度お試しください。';
+
+  @override
+  String routeBuilderDrawPoorMatch(int score) {
+    return 'この付近の道路や道は図形の$score%にしか一致しないため、ルートにしませんでした。もっと大きな形にするか、道路に沿って描いてください。';
+  }
+
+  @override
+  String routeBuilderDrawMatch(int score) {
+    return '図形との一致度：$score%';
+  }
+
+  @override
+  String get routeBuilderDrawMatchClose => 'ほぼ一致';
+
+  @override
+  String get routeBuilderDrawMatchRough => 'おおむね一致';
+
+  @override
+  String get routeBuilderDrawMatchPoor => '図形から離れすぎています';
 
   @override
   String routeBuilderRoutingFailed(String error) {
@@ -6693,16 +6740,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get workoutUnlinkError => 'ランのリンクを解除できませんでした。もう一度お試しください。';
 
   @override
+  String get workoutMarkDone => '完了にする';
+
+  @override
   String get workoutMarkNotDone => '未完了にする';
 
   @override
-  String get workoutMarkNotDoneTitle => '未完了にしますか？';
-
-  @override
-  String get workoutMarkNotDoneBody => 'ワークアウトは未完了として表示されます。';
-
-  @override
-  String get workoutMarkNotDoneError => 'ワークアウトを更新できませんでした。もう一度お試しください。';
+  String get workoutUpdateError => 'ワークアウトを更新できませんでした。もう一度お試しください。';
 
   @override
   String get workoutSkipped => 'スキップ済み';
@@ -10709,6 +10753,11 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String ttsStepDistance(String intro, String distance) {
+    return '$intro。$distance。';
+  }
+
+  @override
   String ttsStepDistancePace(String intro, String distance, String pace) {
     return '$intro。$distanceを$paceで。';
   }
@@ -13306,6 +13355,102 @@ class AppLocalizationsJa extends AppLocalizations {
   String get challengesLeaderboard => 'ランキング';
 
   @override
+  String get challengeInviteTitle => 'チャレンジへの招待';
+
+  @override
+  String get challengeInviteLoadFailed =>
+      'この招待を読み込めませんでした。接続を確認して、もう一度お試しください。';
+
+  @override
+  String get challengeInviteMissingTitle => 'この招待リンクは使えません';
+
+  @override
+  String get challengeInviteMissingBody =>
+      '共有した人がリセットしたか、招待リンクがまだ利用できない可能性があります。新しいリンクを依頼してください。';
+
+  @override
+  String challengeInviteFrom(String name) {
+    return '$nameさんからの招待';
+  }
+
+  @override
+  String challengeInviteParticipants(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n人が参加中',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String challengeInviteStartsIn(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n日後に開始',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get challengeInviteAlreadyIn => 'このチャレンジにはすでに参加しています。';
+
+  @override
+  String get challengeInviteOpen => 'チャレンジを開く';
+
+  @override
+  String get challengeInviteSignInBody => 'サインインするか無料アカウントを作成すると、すぐに参加できます。';
+
+  @override
+  String get challengeInviteJoin => 'チャレンジに参加';
+
+  @override
+  String get challengeInviteLinkTitle => '招待リンク';
+
+  @override
+  String get challengeInviteLinkBodyPrivate =>
+      'このリンクを知っている人は、公開されていないこのチャレンジを見て参加できます。';
+
+  @override
+  String get challengeInviteLinkBodyPublic => 'このリンクを知っている人は、登録後ワンタップで参加できます。';
+
+  @override
+  String get challengeInviteLinkLoadFailed => '招待リンクを読み込めませんでした。';
+
+  @override
+  String get challengeInviteShare => 'リンクを共有';
+
+  @override
+  String get challengeInviteCopy => 'リンクをコピー';
+
+  @override
+  String get challengeInviteCopied => 'リンクをコピーしました';
+
+  @override
+  String get challengeInviteCopyFailed => 'リンクをコピーできませんでした。';
+
+  @override
+  String get challengeInviteRotate => 'リンクをリセット';
+
+  @override
+  String get challengeInviteRotateTitle => '招待リンクをリセットしますか？';
+
+  @override
+  String get challengeInviteRotateBody =>
+      '現在のリンクはすぐに使えなくなります。すでに参加している人はそのまま残ります。';
+
+  @override
+  String get challengeInviteRotateFailed => 'リンクをリセットできませんでした。もう一度お試しください。';
+
+  @override
+  String get challengeInviteShareBody =>
+      '公開チャレンジには、サインインせずにランキングを見られる共有ページもあります。';
+
+  @override
+  String get challengeInviteSharePage => 'チャレンジのページを共有';
+
+  @override
   String get challengesLeaderboardEmpty => 'まだ記録がありません。';
 
   @override
@@ -15179,6 +15324,11 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String rateLimitCreateChallenge(String wait) {
     return 'チャレンジの作成が速すぎます。$wait待ってから、もう一度お試しください。';
+  }
+
+  @override
+  String rateLimitJoinChallenge(String wait) {
+    return 'チャレンジへの参加が速すぎます。$wait待ってから、もう一度お試しください。';
   }
 
   @override
@@ -17071,6 +17221,14 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String planDetailStartedFrom(String author) {
+    return '$author のプランから開始';
+  }
+
+  @override
+  String get planDetailStartedFromRunner => '他のランナーのプランから開始';
+
+  @override
   String planDetailWeekOfN(int week, int total) {
     return '第$week週／全$total週';
   }
@@ -17902,6 +18060,11 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String rateLimitCreateOverlayLink(String wait) {
+    return 'オーバーレイのリンクの作成が速すぎます。$wait待ってから、もう一度お試しください。';
+  }
+
+  @override
   String get planDetailRepeatWeekOverlap =>
       '今週を繰り返すと、プランが別の有効なプランと重なります。先にそのプランを移動するか終了してください。';
 
@@ -18167,4 +18330,355 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get dashboardTrainingLoadSectionHint =>
       'フィットネス、疲労、コンディションの数値です。「基本だけ」を選んだためたたんでいます。いつでも開けますし、設定 → 環境設定 で「すべて」を選べます。';
+
+  @override
+  String recapCardKicker(String period) {
+    return '$periodのランニング';
+  }
+
+  @override
+  String recapCardAcrossRuns(int count) {
+    return '$count回のランで';
+  }
+
+  @override
+  String recapCardStreakDays(int days) {
+    return '$days日';
+  }
+
+  @override
+  String get recapCardOnFoot => '運動時間';
+
+  @override
+  String get recapCardClimbed => '獲得標高';
+
+  @override
+  String get recapCardActiveMonths => 'アクティブな月';
+
+  @override
+  String get recapShareSheetTitle => '振り返りを共有';
+
+  @override
+  String get recapShareAspectSquare => '正方形';
+
+  @override
+  String get recapShareAspectStory => 'ストーリー';
+
+  @override
+  String get recapShareStyleVideo => '動画';
+
+  @override
+  String get recapShareVideoBody =>
+      'この振り返りを縦長の短い動画にします。threkir.com上のブラウザで作成され、そこから共有・保存できます。';
+
+  @override
+  String get recapSharePreviewLabel => '振り返り画像のプレビュー';
+
+  @override
+  String get recapShareImage => '画像を共有';
+
+  @override
+  String get recapShareAsText => 'テキストで共有';
+
+  @override
+  String get recapShareImageError => '振り返り画像を作成できませんでした。もう一度お試しください。';
+
+  @override
+  String get shareCardStyleVideo => '動画';
+
+  @override
+  String get shareCardVideoBody =>
+      'このランを縦長の3Dフライオーバー動画にします。threkir.com上のブラウザで作成され、そこから共有・保存できます。';
+
+  @override
+  String get shareCardVideoOpen => '動画の書き出しを開く';
+
+  @override
+  String get shareCardVideoError => 'ブラウザを開けませんでした。もう一度お試しください。';
+
+  @override
+  String get headToHeadCompare => '友達と比べる';
+
+  @override
+  String get headToHeadTitle => '直接対決';
+
+  @override
+  String get headToHeadStyleVersus => '対決';
+
+  @override
+  String get headToHeadFriend => '友達';
+
+  @override
+  String get headToHeadLoading => '比べられる友達を探しています…';
+
+  @override
+  String get headToHeadEmpty =>
+      'ここで比べられる友達はまだいません。お互いにフォローしていて、公開プロフィールの友達と、それぞれのここでの公開ランが必要です。';
+
+  @override
+  String get headToHeadLoadFailed => '比較を読み込めませんでした。';
+
+  @override
+  String get headToHeadRetry => '再試行';
+
+  @override
+  String get headToHeadMe => '自分';
+
+  @override
+  String get headToHeadVs => 'vs';
+
+  @override
+  String headToHeadIWon(String margin) {
+    return '$margin差で勝ちました';
+  }
+
+  @override
+  String headToHeadFriendWon(String name, String margin) {
+    return '$nameが$margin差で勝ちました';
+  }
+
+  @override
+  String get headToHeadTie => '同タイム';
+
+  @override
+  String get headToHeadFriendFallback => '友達';
+
+  @override
+  String get headToHeadPreview => '直接対決カードのプレビュー';
+
+  @override
+  String get headToHeadPrivacy =>
+      '比べられるのは、フォローし返してくれていて公開プロフィールの友達だけで、公開ランのみが対象です。';
+
+  @override
+  String get streamerOverlayTitle => '配信用オーバーレイ';
+
+  @override
+  String get streamerOverlayIntro =>
+      'このリンクを OBS や配信アプリにブラウザソースとして追加してください。ランを公開せずにライブの記録を表示できます。';
+
+  @override
+  String get streamerOverlayCreate => 'オーバーレイのリンクを作成';
+
+  @override
+  String get streamerOverlayCreated => 'オーバーレイのリンクを用意しました';
+
+  @override
+  String get streamerOverlayCreateFailed =>
+      'オーバーレイのリンクを作成できませんでした。もう一度お試しください。';
+
+  @override
+  String get streamerOverlayUrlLabel => 'ブラウザソースの URL';
+
+  @override
+  String get streamerOverlayCopy => 'リンクをコピー';
+
+  @override
+  String get streamerOverlayCopied => 'リンクをコピーしました';
+
+  @override
+  String get streamerOverlayCopyFailed => 'リンクをコピーできませんでした。';
+
+  @override
+  String get streamerOverlayReplace => 'リンクを置き換える';
+
+  @override
+  String get streamerOverlayReplaceTitle => 'オーバーレイのリンクを置き換えますか？';
+
+  @override
+  String get streamerOverlayReplaceMessage =>
+      '以前のリンクはすぐに使えなくなります。配信アプリのブラウザソースを更新してください。';
+
+  @override
+  String get streamerOverlayRevoke => 'オーバーレイをオフにする';
+
+  @override
+  String get streamerOverlayRevokeTitle => '配信用オーバーレイをオフにしますか？';
+
+  @override
+  String get streamerOverlayRevokeMessage =>
+      'リンクはすぐに使えなくなります。あとで新しいリンクを作成できます。';
+
+  @override
+  String get streamerOverlayRevoked => '配信用オーバーレイをオフにしました';
+
+  @override
+  String get streamerOverlayRevokeFailed => 'オーバーレイをオフにできませんでした。もう一度お試しください。';
+
+  @override
+  String get streamerOverlayDelayLabel => '配信の遅延';
+
+  @override
+  String get streamerOverlayDelayHelp =>
+      '視聴者にはこの時間だけ遅れて記録が表示されます。遅延はサーバー側で適用されるため、誰も飛ばすことはできません。';
+
+  @override
+  String get streamerOverlayDelayNone => '遅延なし';
+
+  @override
+  String streamerOverlayDelaySeconds(int seconds) {
+    return '$seconds 秒';
+  }
+
+  @override
+  String streamerOverlayDelayMinutes(int minutes) {
+    return '$minutes 分';
+  }
+
+  @override
+  String get streamerOverlayDelaySaved => '遅延を保存しました';
+
+  @override
+  String get streamerOverlayDelayFailed => '遅延を変更できませんでした。もう一度お試しください。';
+
+  @override
+  String get streamerOverlayLoadFailed => '配信用オーバーレイを読み込めませんでした。';
+
+  @override
+  String get streamerOverlayRetry => '再試行';
+
+  @override
+  String get streamerOverlayUnavailable => '配信用オーバーレイは現在利用できません。';
+
+  @override
+  String get streamerOverlayMapHeartRateNote =>
+      'ルートの軌跡と心拍数は、Web の設定 → プライバシーと共有でオンにできます。';
+
+  @override
+  String get liveSpectatorHeartRate => '心拍数';
+
+  @override
+  String get shareCardStylePr => '自己ベストカード';
+
+  @override
+  String get shareCardPrHeadline => '自己ベスト更新';
+
+  @override
+  String get shareCardPrHeld => '自己ベスト';
+
+  @override
+  String shareCardPrFaster(String time) {
+    return '$time 短縮';
+  }
+
+  @override
+  String shareCardPrPrevious(String time) {
+    return '前回のベスト $time';
+  }
+
+  @override
+  String shareCardPrFirst(String distance) {
+    return '初めての$distanceの記録';
+  }
+
+  @override
+  String get shareCardPrRecord => '記録';
+
+  @override
+  String get shareCardPrHint => '自己ベストのタイムは非公開のままです。共有されるのはこの画像だけです。';
+
+  @override
+  String get runDetailSharePr => '自己ベストカードを共有';
+
+  @override
+  String get profileNotifPersonalRecord => '自己ベストを更新しました';
+
+  @override
+  String get badgesMakePublic => '公開する';
+
+  @override
+  String get badgesMakePrivate => '非公開にする';
+
+  @override
+  String get badgesPrivate => '非公開';
+
+  @override
+  String get badgesShare => 'バッジを共有';
+
+  @override
+  String get badgesToggleError => '公開設定を変更できませんでした。もう一度お試しください。';
+
+  @override
+  String badgesShareText(String badge, String url) {
+    return 'Threkir で「$badge」バッジを獲得しました：$url';
+  }
+
+  @override
+  String get badgesPrivateShareHint => '共有するには、このバッジを公開してください。';
+
+  @override
+  String get sharesTitle => '共有リンク';
+
+  @override
+  String get sharesTileSubtitle => '共有したリンクからの訪問・登録・参加';
+
+  @override
+  String get sharesTagline => '過去90日間の共有リンクの成果です。集計値のみで、リンクを開いた人は特定されません。';
+
+  @override
+  String get sharesLoadFailed => '共有リンクを読み込めませんでした。';
+
+  @override
+  String get sharesEmptyTitle => 'まだ何も共有していません';
+
+  @override
+  String get sharesEmptyBody =>
+      '公開プラン、チャレンジ、セッション、ワークアウト、プロフィールを共有すると、ここに数値が表示されます。';
+
+  @override
+  String get sharesKindPlan => 'プラン';
+
+  @override
+  String get sharesKindChallenge => 'チャレンジ';
+
+  @override
+  String get sharesKindProfile => 'プロフィール';
+
+  @override
+  String get sharesKindSession => 'セッション';
+
+  @override
+  String get sharesKindWorkout => 'ワークアウト';
+
+  @override
+  String get sharesYourProfile => 'あなたのプロフィール';
+
+  @override
+  String get sharesUntitled => '無題';
+
+  @override
+  String get sharesVisits => '訪問';
+
+  @override
+  String get sharesSignups => '登録';
+
+  @override
+  String get sharesStarts => 'プラン開始';
+
+  @override
+  String get sharesJoins => 'チャレンジ参加';
+
+  @override
+  String sharesViaYourLink(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'うち$count件はあなたのリンクから',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sharesBotVisits(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'このほかクローラーからの訪問が$count件（上の数には含まれません）。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sharesFootnote =>
+      'あなたが共有したリンクからアカウントが作成されると登録として数えます。あなた自身の訪問は数えません。';
 }

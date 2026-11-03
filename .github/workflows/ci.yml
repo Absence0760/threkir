@@ -1053,6 +1053,11 @@ jobs:
             echo "Fix scripts/sync_deno_lock.mjs (or its tests); reproduce with: node --test scripts/sync_deno_lock.test.mjs (needs deno on PATH, two cases skip without it)."
             exit 1
           fi
+          if ! node --test scripts/refresh_deno_lock_remote.test.mjs; then
+            echo "::error::The deno.lock remote-pin refresher's own unit tests failed, so the remedy the edge-functions job names for a stale esm.sh pin cannot be trusted. Nothing here is about the lockfile itself."
+            echo "Fix scripts/refresh_deno_lock_remote.mjs (or its tests); reproduce with: node --test scripts/refresh_deno_lock_remote.test.mjs (stdlib only, no network)."
+            exit 1
+          fi
       # These two checks parse source files only (no DB), so they run BEFORE
       # the Supabase stack starts. Keeping them after it meant a broken stack
       # — e.g. the run-26820381977 migration-version collision — silently
@@ -3734,6 +3739,31 @@ jobs:
           key: deno-${{ runner.os }}-${{ hashFiles('deno.lock') }}
           restore-keys: |
             deno-${{ runner.os }}-
+      # node_modules must be on disk before ANY Deno step reads the tree. The
+      # root package.json puts deno in node_modules mode, so
+      # `_shared/stripe.ts`'s `npm:stripe@17.5.0` resolves from
+      # node_modules/stripe: without it `deno cache` below fails with "Could not
+      # find \"stripe\" in a node_modules folder" (a deterministic error its
+      # retry loop used to report as an esm.sh transient), and `deno check`
+      # dies before reading a file, since the declarations reference the node
+      # types too.
+      # `deno install` provisions both from the ROOT package.json's own `stripe`
+      # and `@types/node` devDependencies (decisions § 757, § 2257) — it is not
+      # an npm workspace install and does not need setup-node.
+      - name: Provision node types for the typecheck
+        id: node_types
+        if: ${{ !cancelled() && steps.deno.outcome == 'success' }}
+        run: |
+          for attempt in 1 2 3; do
+            if deno install; then
+              exit 0
+            fi
+            echo "::warning::deno install attempt $attempt failed (npm registry transient?); retrying"
+            sleep $((attempt * 5))
+          done
+          echo "::error::Could not provision node_modules for the Edge Function typecheck after 3 attempts. Nothing here involves the Edge Functions themselves, the Supabase stack or the Deno test suites — this is dependency resolution against the root package.json and its lockfiles."
+          echo "Reproduce locally with: deno install (from the repo root)."
+          exit 1
       # Pre-fetch every module's deps so `deno check` and `deno test` resolve
       # from the warm cache instead of cold-fetching esm.sh. A transient
       # esm.sh 5xx (CI run 27554982327: a 522 on @supabase/supabase-js)
@@ -3754,19 +3784,30 @@ jobs:
       # no warm step downloads 403 URLs, a strict subset of these 776. So every
       # URL fetch the lane makes is inside this retry. The npm tarballs
       # `deno install` pulls for the node types are not — they get the same
-      # retry in their own step below. That holds only while both steps derive
+      # retry in their own step above. That holds only while both steps derive
       # the SAME file set, which
       # scripts/edge_functions_typecheck_coverage.test.mjs asserts by running
       # both `files=$(…)` expressions rather than restating either.
       - name: Warm the Deno dependency cache
         id: warm
+        if: ${{ !cancelled() && steps.node_types.outcome == 'success' }}
         working-directory: apps/backend
         run: |
           files=$(find supabase/functions -type f -name '*.ts' | sort)
           for attempt in 1 2 3; do
-            if deno cache --no-check $files; then
+            if deno cache --no-check $files 2>&1 | tee "$RUNNER_TEMP/deno-cache.log"; [ "${PIPESTATUS[0]}" -eq 0 ]; then
               echo "deno deps cached"
               exit 0
+            fi
+            # An integrity mismatch is not a transient: esm.sh rebuilt the
+            # module, or its CDN is serving two builds of one URL, and a retry
+            # from this runner reaches the same edge (decisions § 2257).
+            # Name it and stop.
+            if grep -q 'Integrity check failed' "$RUNNER_TEMP/deno-cache.log"; then
+              spec=$(grep -m1 'Specifier:' "$RUNNER_TEMP/deno-cache.log" | awk '{print $2}')
+              echo "::error::esm.sh served $spec with bytes that do not match its deno.lock pin. Either esm.sh rebuilt it, or its CDN is serving two builds of that URL (decisions § 2257). A retry from this runner reaches the same edge. Nothing here is about the Edge Function code or its tests."
+              echo "Run 'pnpm refresh:deno-lock-remote --check' locally a few times. If every run agrees, run it without --check, review each moved pin, and commit deno.lock. If they disagree, move that import off esm.sh to an npm: specifier, as the Stripe SDK was."
+              exit 1
             fi
             echo "::warning::deno cache attempt $attempt failed (esm.sh transient?); retrying"
             sleep $((attempt * 5))
@@ -3786,27 +3827,6 @@ jobs:
       # scripts/edge_functions_typecheck_coverage.test.mjs runs that same
       # expression and fails when it stops covering the tree, so a `.ts` added
       # here cannot land outside this lane.
-      # `deno check` needs node_modules/@types/node on disk: `_shared/stripe.ts`
-      # imports `https://esm.sh/stripe@17.5.0?target=deno`, whose declarations
-      # reference the node types, so without them the check dies before reading
-      # a file ("Could not find \"@types/node\" in a node_modules folder").
-      # `deno install` provisions it from the ROOT package.json's own
-      # @types/node devDependency (decisions § 757) — it is not an npm
-      # workspace install and does not need setup-node.
-      - name: Provision node types for the typecheck
-        id: node_types
-        if: ${{ !cancelled() && steps.deno.outcome == 'success' }}
-        run: |
-          for attempt in 1 2 3; do
-            if deno install; then
-              exit 0
-            fi
-            echo "::warning::deno install attempt $attempt failed (npm registry transient?); retrying"
-            sleep $((attempt * 5))
-          done
-          echo "::error::Could not provision node_modules for the Edge Function typecheck after 3 attempts. Nothing here involves the Edge Functions themselves, the Supabase stack or the Deno test suites — this is dependency resolution against the root package.json and its lockfiles."
-          echo "Reproduce locally with: deno install (from the repo root)."
-          exit 1
       - name: Edge Function typecheck
         if: ${{ !cancelled() && steps.warm.outcome == 'success' && steps.node_types.outcome == 'success' }}
         working-directory: apps/backend

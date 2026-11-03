@@ -45,6 +45,8 @@ String rateLimitMessage(AppLocalizations l10n, RateLimitInfo info) {
       return l10n.rateLimitCreateReport(wait);
     case 'create_challenge':
       return l10n.rateLimitCreateChallenge(wait);
+    case 'join_challenge_by_token':
+      return l10n.rateLimitJoinChallenge(wait);
     case 'clone_plan_template':
     case 'clone_public_plan':
       return l10n.rateLimitAdoptPlan(wait);
@@ -60,6 +62,8 @@ String rateLimitMessage(AppLocalizations l10n, RateLimitInfo info) {
       return l10n.rateLimitRestartPlan(wait);
     case 'repeat_plan_week':
       return l10n.rateLimitRepeatWeek(wait);
+    case 'create_live_overlay_token':
+      return l10n.rateLimitCreateOverlayLink(wait);
     case 'send_direct_message':
     case 'send_direct_message_burst':
       return l10n.rateLimitSendMessage(wait);

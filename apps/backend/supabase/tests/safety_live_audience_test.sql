@@ -90,9 +90,13 @@ select is(
   true,
   'with the gate open the stub keeps the safety audience');
 
+-- Written as the owner role: a client insert has its `at` stamped to now()
+-- (20271104000001), and the overdue scan below needs a ping 40 minutes old.
+reset role;
 insert into live_run_pings (run_id, user_id, at, lat, lng, distance_m, elapsed_s)
 values ('5afe1000-0000-0000-0000-000000000002', '5afe0000-0000-0000-0000-00000000000a',
         now() - interval '40 minutes', 51.5, -0.12, 800, 300);
+set local role authenticated;
 
 -- (5)
 select is(

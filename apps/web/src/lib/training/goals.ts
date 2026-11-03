@@ -19,6 +19,7 @@ import type { Run } from '../types';
 /// `RunForVolume` is one — the dashboard's read is ten columns, and demanding
 /// the whole row would make the caller assert one it never fetched.
 import { paceMinutesSeconds } from '../format/pace_format';
+import { formatHoursMinutes } from '../format/time';
 
 export type GoalPeriod = 'week' | 'month';
 
@@ -187,13 +188,6 @@ function formatKm(m: number): string {
 	return `${(m / 1000).toFixed(1)} km`;
 }
 
-function formatMinutes(s: number): string {
-	const h = Math.floor(s / 3600);
-	const m = Math.floor((s % 3600) / 60);
-	if (h > 0) return `${h}h ${m}m`;
-	return `${m}m`;
-}
-
 /// `secondsPerKm` -> `mm:ss/km` (or "—" if zero / negative).
 export function formatPaceSecPerKm(secPerKm: number): string {
 	if (!isFinite(secPerKm) || secPerKm <= 0) return '—';
@@ -296,8 +290,8 @@ export function evaluateGoal(
 		targets.push({
 			kind: 'time',
 			label: 'Time',
-			currentLabel: formatMinutes(totalSeconds),
-			targetLabel: formatMinutes(goal.timeSeconds),
+			currentLabel: formatHoursMinutes(totalSeconds),
+			targetLabel: formatHoursMinutes(goal.timeSeconds),
 			percent: pct,
 			complete: totalSeconds >= goal.timeSeconds,
 		});

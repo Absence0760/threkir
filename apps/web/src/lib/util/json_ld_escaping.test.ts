@@ -31,12 +31,14 @@ import { relative, resolve } from 'node:path';
 
 import { buildGuideJsonLd, buildLearnCollectionJsonLd } from '../learn/learn_meta';
 import { buildClubJsonLd } from '../share/share_club_meta';
+import { buildChallengeJsonLd } from '../share/share_challenge_meta';
 import { buildEventJsonLd } from '../share/share_event_meta';
 import { buildRouteJsonLd, buildRunJsonLd } from '../share/share_meta';
 import { buildProfileJsonLd } from '../share/share_profile_meta';
 import { buildRaceJsonLd } from '../share/share_race_meta';
 import { buildSessionJsonLd } from '../share/share_session_meta';
 import { buildWorkoutJsonLd } from '../share/share_workout_meta';
+import { buildPlanJsonLd } from '../share/share_plan_meta';
 import { buildOrganizationJsonLd, buildWebSiteJsonLd } from '../share/site_meta';
 
 const __dirname = resolve(new URL('.', import.meta.url).pathname);
@@ -71,6 +73,11 @@ const hostileRow = {
 	sets: [],
 	blocks: [],
 	items: [],
+	goal_event: 'distance_full',
+	goal_distance_m: 42195,
+	days_per_week: 4,
+	author: { name: INJ, handle: INJ },
+	weeks: [],
 };
 
 const base = 'https://threkir.com';
@@ -103,6 +110,9 @@ const REGISTER: Record<string, Record<string, () => string>> = {
 	'src/lib/share/share_club_meta.ts': {
 		buildClubJsonLd: () => buildClubJsonLd(hostileRow as never, { slug: INJ, base }),
 	},
+	'src/lib/share/share_challenge_meta.ts': {
+		buildChallengeJsonLd: () => buildChallengeJsonLd(hostileRow as never, { id: INJ, base }),
+	},
 	'src/lib/share/share_event_meta.ts': {
 		buildEventJsonLd: () => buildEventJsonLd(hostileRow as never, { id: INJ, base }),
 	},
@@ -124,6 +134,9 @@ const REGISTER: Record<string, Record<string, () => string>> = {
 	'src/lib/share/share_workout_meta.ts': {
 		buildWorkoutJsonLd: () =>
 			buildWorkoutJsonLd(hostileRow as never, { id: INJ, base, displayName: INJ }),
+	},
+	'src/lib/share/share_plan_meta.ts': {
+		buildPlanJsonLd: () => buildPlanJsonLd(hostileRow as never, { id: INJ, base }),
 	},
 	'src/lib/share/site_meta.ts': {
 		buildOrganizationJsonLd: () => buildOrganizationJsonLd(hostileBase),

@@ -616,6 +616,11 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	// Header over that same hero: white hover ink, 5.699:1 on the ramp's
 	// palest stop.
 	'lib/components/PublicHeader.svelte': { FFFFFF: [2, 'fixed-canvas'] },
+	// The streamer overlay paints onto a video stream, not onto a theme
+	// surface: OBS composites it over whatever the camera shows, so the trace
+	// keeps one brand-coral stroke under a dark plate in both themes. No text
+	// sits on it.
+	'routes/live/overlay/+page.svelte': { FF6B4A: [1, 'fixed-canvas'] },
 	// The auth shell's brand panel paints --brand-ramp, so its stops are an
 	// app.css declaration and are not listed. What is left is the panel's white
 	// copy and the recording readout's peach label and white figure on its
@@ -699,6 +704,7 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 		A78BFA: [1, 'cartographic'], '6D28D9': [1, 'cartographic'],
 		'60A5FA': [1, 'cartographic'], '1D4ED8': [1, 'cartographic'],
 		C084FC: [1, 'cartographic'], '7E22CE': [1, 'cartographic'],
+		F472B6: [1, 'cartographic'], '9D174D': [1, 'cartographic'],
 		'94A3B8': [1, 'cartographic'], '475569': [1, 'cartographic'],
 		FACC15: [1, 'cartographic'], '7A5C10': [1, 'cartographic'],
 		F1F5F9: [1, 'cartographic'], '1E293B': [1, 'cartographic'],
@@ -739,8 +745,12 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	// and its ground recorded in the module itself. Five card builders used to
 	// spell these independently — 22 literals for 9 values, the two recap cards
 	// byte-identical.
+	// The photo / sticker inks and the mark's tile ramp join them: the inks land
+	// on the runner's own photo, so legibility rides on their shadow and the
+	// ink the runner picks, as the module records.
 	'lib/share/og_card_palette.ts': {
-		FFFFFF: [2, 'fixed-canvas'], C24E24: [1, 'fixed-canvas'],
+		FFFFFF: [3, 'fixed-canvas'], C24E24: [1, 'fixed-canvas'],
+		A8426A: [1, 'gradient-stop'], '5B4B8A': [1, 'gradient-stop'],
 		'1A1722': [1, 'fixed-canvas'], '5F5A6B': [1, 'fixed-canvas'],
 		'121117': [1, 'fixed-canvas'], F08A5D: [1, 'fixed-canvas'],
 		A9A4B6: [1, 'fixed-canvas'], E4E1EA: [1, 'fixed-canvas'],

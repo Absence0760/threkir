@@ -13,6 +13,7 @@ import '../audio_cues.dart';
 import '../auth_change_aware.dart';
 import '../ble_heart_rate.dart';
 import '../ble_treadmill.dart';
+import '../challenge_invite_link.dart';
 import '../club_invite_link.dart' show pendingClubInviteToken;
 import '../entity_link.dart';
 import '../hr_prescription_gate.dart';
@@ -30,6 +31,7 @@ import '../main.dart'
         pendingPushTarget;
 import '../preferences.dart';
 import '../push_target.dart';
+import 'plan_library_screen.dart';
 import 'plan_target_screen.dart';
 import '../race_controller.dart';
 import '../race_service.dart';
@@ -54,6 +56,8 @@ import '../widgets/top_banner.dart';
 import 'add_run_screen.dart';
 import 'challenges_screen.dart';
 import 'club_detail_screen.dart';
+import 'challenge_detail_screen.dart';
+import 'challenge_invite_screen.dart';
 import 'club_invite_screen.dart';
 import 'clubs_screen.dart';
 import 'confirm_age_screen.dart';
@@ -259,6 +263,7 @@ class _HomeScreenState extends State<HomeScreen>
     pendingSettingsDestination.addListener(_onPendingSettingsDestination);
     pendingHelpDestination.addListener(_onPendingHelpDestination);
     pendingClubInviteToken.addListener(_onPendingClubInvite);
+    pendingChallengeLink.addListener(_onPendingChallengeLink);
     pendingEntityLink.addListener(_onPendingEntityLink);
     // A GPX/KML opened while the app was closed sets the notifier during
     // main() before this screen mounts, so drain any already-present value
@@ -272,6 +277,7 @@ class _HomeScreenState extends State<HomeScreen>
       _onPendingSettingsDestination();
       _onPendingHelpDestination();
       _onPendingClubInvite();
+      _onPendingChallengeLink();
       _onPendingEntityLink();
     });
     // Surface the recovery banner from main.dart's in-progress
@@ -504,6 +510,8 @@ class _HomeScreenState extends State<HomeScreen>
         ));
       case PushTargetKind.run:
         await _openRun(target.id!);
+      case PushTargetKind.runPrCard:
+        await _openRun(target.id!, sharePr: true);
       case PushTargetKind.plans:
         await _pushScreen(PlansScreen(
           training: widget.training,
@@ -514,6 +522,11 @@ class _HomeScreenState extends State<HomeScreen>
       case PushTargetKind.planWorkout:
         await _pushScreen(planTargetScreen(target,
             training: widget.training, runStore: widget.runStore));
+      case PushTargetKind.planLibrary:
+        await _pushScreen(PlanLibraryLinkScreen(
+            training: widget.training,
+            planId: target.id!,
+            shareRef: target.shareRef));
       case PushTargetKind.challenges:
         await _pushScreen(ChallengesScreen(social: widget.social));
       case PushTargetKind.clubs:
@@ -690,6 +703,22 @@ class _HomeScreenState extends State<HomeScreen>
     ));
   }
 
+  /// A challenge link the OS opened the app with (decisions § 2261): an
+  /// invite opens the join screen, which handles a signed-out viewer itself;
+  /// a public share page opens the challenge.
+  Future<void> _onPendingChallengeLink() async {
+    final link = pendingChallengeLink.value;
+    if (link == null || !mounted) return;
+    pendingChallengeLink.value = null;
+    await _pushScreen(switch (link) {
+      ChallengeInviteLink(:final token) =>
+        ChallengeInviteScreen(social: widget.social, token: token),
+      ChallengeShareLink(:final challengeId, :final shareRef) =>
+        ChallengeDetailScreen(
+            social: widget.social, challengeId: challengeId, shareRef: shareRef),
+    });
+  }
+
   /// A run or route link the OS opened the app with, or a run an in-app
   /// surface handed over with `openRunLink`. The runner's own run or
   /// route opens its owner screen from the device; anything else opens the
@@ -712,7 +741,10 @@ class _HomeScreenState extends State<HomeScreen>
   /// device, else the non-owner view. A run of the runner's own that is not on
   /// the device (an older one the history list has not paged in) takes the
   /// non-owner view too, which reads the owner's unclipped track for them.
-  Future<void> _openRun(String runId) async {
+  ///
+  /// [sharePr] opens the owner's share sheet on the run's PR card; a run that
+  /// is not the viewer's has no PR card to open, so it is ignored there.
+  Future<void> _openRun(String runId, {bool sharePr = false}) async {
     final api = widget.apiClient;
     final own = await widget.runStore.runById(runId);
     if (!mounted) return;
@@ -724,6 +756,7 @@ class _HomeScreenState extends State<HomeScreen>
         preferences: widget.preferences,
         apiClient: api,
         settingsSync: widget.settingsSync,
+        openPrCard: sharePr,
       ));
     }
     if (api == null) return;
@@ -734,7 +767,7 @@ class _HomeScreenState extends State<HomeScreen>
     final api = widget.apiClient;
     switch (link.kind) {
       case EntityLinkKind.run:
-        await _openRun(link.id);
+        await _openRun(link.id, sharePr: link.sharePr);
       case EntityLinkKind.route:
         final own = widget.routeStore.routes
             .where((r) => r.id == link.id)
@@ -890,6 +923,7 @@ class _HomeScreenState extends State<HomeScreen>
         .removeListener(_onPendingSettingsDestination);
     pendingHelpDestination.removeListener(_onPendingHelpDestination);
     pendingClubInviteToken.removeListener(_onPendingClubInvite);
+    pendingChallengeLink.removeListener(_onPendingChallengeLink);
     pendingEntityLink.removeListener(_onPendingEntityLink);
     _pageController.dispose();
     _currentIndex.removeListener(_syncRunPageShown);

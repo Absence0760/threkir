@@ -4543,6 +4543,82 @@ class NutritionPlanRow {
   );
 }
 
+/// Row shape for the `personal_record_improvements` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class PersonalRecordImprovementRow {
+  static const String table = 'personal_record_improvements';
+  static const String colId = 'id';
+  static const String colUserId = 'user_id';
+  static const String colRunId = 'run_id';
+  static const String colDistance = 'distance';
+  static const String colBestTimeS = 'best_time_s';
+  static const String colPreviousTimeS = 'previous_time_s';
+  static const String colAchievedAt = 'achieved_at';
+  static const String colCreatedAt = 'created_at';
+
+  final String id;
+  final String userId;
+  final String runId;
+  final String distance;
+  final int bestTimeS;
+  final int? previousTimeS;
+  final DateTime achievedAt;
+  final DateTime createdAt;
+
+  const PersonalRecordImprovementRow({
+    required this.id,
+    required this.userId,
+    required this.runId,
+    required this.distance,
+    required this.bestTimeS,
+    this.previousTimeS,
+    required this.achievedAt,
+    required this.createdAt,
+  });
+
+  factory PersonalRecordImprovementRow.fromJson(Map<String, dynamic> json) => PersonalRecordImprovementRow(
+    id: json['id'] as String,
+    userId: json['user_id'] as String,
+    runId: json['run_id'] as String,
+    distance: json['distance'] as String,
+    bestTimeS: (json['best_time_s'] as num).toInt(),
+    previousTimeS: (json['previous_time_s'] as num?)?.toInt(),
+    achievedAt: parseIsoStrictRequired(json['achieved_at'], 'achieved_at'),
+    createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colId: id,
+    colUserId: userId,
+    colRunId: runId,
+    colDistance: distance,
+    colBestTimeS: bestTimeS,
+    colPreviousTimeS: previousTimeS,
+    colAchievedAt: achievedAt.toIso8601String(),
+    colCreatedAt: createdAt.toIso8601String(),
+  };
+
+  PersonalRecordImprovementRow copyWith({
+    String? id,
+    String? userId,
+    String? runId,
+    String? distance,
+    int? bestTimeS,
+    int? previousTimeS,
+    DateTime? achievedAt,
+    DateTime? createdAt,
+  }) => PersonalRecordImprovementRow(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    runId: runId ?? this.runId,
+    distance: distance ?? this.distance,
+    bestTimeS: bestTimeS ?? this.bestTimeS,
+    previousTimeS: previousTimeS ?? this.previousTimeS,
+    achievedAt: achievedAt ?? this.achievedAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
+}
+
 /// Row shape for the `personal_records` table. Mirrors the Supabase schema
 /// exactly — field names are snake_case to match the JSON wire format.
 class PersonalRecordRow {
@@ -7160,6 +7236,7 @@ class TrainingPlanRow {
   static const String colTrimmedAt = 'trimmed_at';
   static const String colPausedAt = 'paused_at';
   static const String colRaceListingId = 'race_listing_id';
+  static const String colSourceAuthorId = 'source_author_id';
 
   final String id;
   final String userId;
@@ -7186,6 +7263,7 @@ class TrainingPlanRow {
   final DateTime? trimmedAt;
   final DateTime? pausedAt;
   final String? raceListingId;
+  final String? sourceAuthorId;
 
   const TrainingPlanRow({
     required this.id,
@@ -7213,6 +7291,7 @@ class TrainingPlanRow {
     this.trimmedAt,
     this.pausedAt,
     this.raceListingId,
+    this.sourceAuthorId,
   });
 
   factory TrainingPlanRow.fromJson(Map<String, dynamic> json) => TrainingPlanRow(
@@ -7241,6 +7320,7 @@ class TrainingPlanRow {
     trimmedAt: parseIsoStrictValue(json['trimmed_at']),
     pausedAt: parseIsoStrictValue(json['paused_at']),
     raceListingId: json['race_listing_id'] as String?,
+    sourceAuthorId: json['source_author_id'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -7269,6 +7349,7 @@ class TrainingPlanRow {
     colTrimmedAt: trimmedAt?.toIso8601String(),
     colPausedAt: pausedAt?.toIso8601String(),
     colRaceListingId: raceListingId,
+    colSourceAuthorId: sourceAuthorId,
   };
 
   TrainingPlanRow copyWith({
@@ -7297,6 +7378,7 @@ class TrainingPlanRow {
     DateTime? trimmedAt,
     DateTime? pausedAt,
     String? raceListingId,
+    String? sourceAuthorId,
   }) => TrainingPlanRow(
     id: id ?? this.id,
     userId: userId ?? this.userId,
@@ -7323,6 +7405,7 @@ class TrainingPlanRow {
     trimmedAt: trimmedAt ?? this.trimmedAt,
     pausedAt: pausedAt ?? this.pausedAt,
     raceListingId: raceListingId ?? this.raceListingId,
+    sourceAuthorId: sourceAuthorId ?? this.sourceAuthorId,
   );
 }
 

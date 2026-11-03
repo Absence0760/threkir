@@ -10,8 +10,12 @@
 		fetchPublicPlanLibrary,
 		clonePublicPlan,
 		fetchMyOverlappingActivePlans,
+		publicPlanShareEnabled,
 		type PlanOverlapChoice,
 	} from '#lib/core/data.ts';
+	import { buildPlanShareCanonical } from '#lib/share/share_plan_meta.ts';
+	import { shareRefFromSearch, withShareRef } from '#lib/share/share_ref.ts';
+	import { attributeShareStart, ownShareRef } from '#lib/share/share_attribution.ts';
 	import PlanOverlapDialog, { trimBlockedMessage } from '#lib/components/PlanOverlapDialog.svelte';
 	import { attemptPlanCreate, clonedPlanEndIso, type OverlapPlan } from '#lib/training/plan_overlap.ts';
 	import { formatDistance } from '#lib/format/units.svelte.ts';
@@ -21,6 +25,9 @@
 	import type { TrainingPlan, PlanWeek, PlanWorkout } from '#lib/types.ts';
 
 	const planId = page.params.id ?? '';
+	// The ref a creator's link carried here, through sign-up if need be; a
+	// copy started from it is attributed to that link (decisions § 2268).
+	const arrivedRef = shareRefFromSearch(page.url.search);
 
 	let plan = $state<TrainingPlan | null>(null);
 	let weeks = $state<PlanWeek[]>([]);
@@ -30,6 +37,8 @@
 	let loadError = $state<string | null>(null);
 	let notFound = $state(false);
 	let cloning = $state(false);
+	let shareEnabled = $state(false);
+	let shareRef = $state<string | null>(null);
 	let startDate = $state(defaultStartDate());
 
 	function defaultStartDate(): string {
@@ -84,6 +93,20 @@
 		const lib = await fetchPublicPlanLibrary('');
 		authorHandle = lib.plans.find((p) => p.id === planId)?.author_handle ?? null;
 		loading = false;
+		shareEnabled = await publicPlanShareEnabled();
+		if (shareEnabled) shareRef = await ownShareRef(res.plan.user_id);
+	}
+
+	async function copyShareLink() {
+		// The CURRENT origin, so a preview-host reader copies a preview link.
+		const url = withShareRef(buildPlanShareCanonical(location.origin, planId), shareRef);
+		try {
+			await navigator.clipboard.writeText(url);
+			showToast(m('session.shareLinkCopied'), 'success');
+		} catch (e) {
+			console.error('copy plan share link failed', e);
+			showToast(m('session.shareLinkError'), 'error');
+		}
 	}
 
 	// The clone asks the server to refuse an overlap and, when it does, names
@@ -111,6 +134,7 @@
 				showToast(trimBlockedMessage(outcome.overlapping, start), 'error');
 				return;
 			}
+			if (arrivedRef) await attributeShareStart('plan', outcome.value, arrivedRef);
 			showToast(m('planLibrary.cloneSuccess'));
 			goto(`/plans/${outcome.value}`);
 		} catch (e) {
@@ -163,6 +187,17 @@
 			<button class="btn btn-primary" type="button" disabled={cloning} onclick={() => clone()}>
 				{cloning ? m('planLibrary.cloning') : m('planLibrary.clone')}
 			</button>
+			{#if shareEnabled}
+				<button
+					class="btn btn-outline"
+					type="button"
+					onclick={copyShareLink}
+					data-testid="plan-library-copy-share"
+				>
+					<span class="material-symbols" aria-hidden="true">link</span>
+					{m('session.copyShareLink')}
+				</button>
+			{/if}
 		</section>
 
 		<section class="weeks">

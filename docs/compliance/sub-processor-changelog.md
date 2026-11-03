@@ -135,3 +135,15 @@ Last updated 2026-05-26. The audit trail of edits to this file is the
 git history of `docs/compliance/sub-processor-changelog.md`. If you
 need a notarised log of changes prior to a specific date, email
 `privacy@threkir.com`.
+
+---
+
+## 2026-11-02 — MapTiler — new data category; AWS Open Data Terrain Tiles — conditional fallback (no new sub-processor in threkir.com production)
+
+* **What changes**: the 3D course preview on routes, races and runs loads elevation tiles along the course it shows. With a MapTiler key configured (production) they come from MapTiler's `terrain-rgb-v2` tileset — the same provider, the same IP + tile-coordinate data as the basemap. With no key (self-hosted / local / keyless builds; the release build refuses to ship without one) they come from the AWS Open Data Terrain Tiles bucket `elevation-tiles-prod.s3.amazonaws.com`.
+* **Why**: a free 3D fly-over of a course (issue #1270, decisions § 2251).
+* **Activation date**: the release that ships the preview. No objection window applies to the MapTiler change (an existing sub-processor, an existing data category). The AWS Open Data rung is not reachable from threkir.com production; if a deploy is ever configured keyless, list it here 30 days before that deploy and get the CISO / Security Analyst classification first.
+* **Data categories affected**: requester IP and the tile coordinates of the course on screen (which locate the course, not the viewer). No account id, no track upload — tiles are requested by coordinate only.
+* **Region**: MapTiler EU + global edge (unchanged); AWS us-east-1 for the keyless rung.
+* **DPA**: MapTiler unchanged. The AWS Open Data bucket is a public request outside our AWS account, so no DPA applies; see [`sub-processors.md`](sub-processors.md).
+* **Opt-out path**: don't accept the cookie banner and don't tap "Load map" in the preview — like every map, it loads nothing before one of the two.

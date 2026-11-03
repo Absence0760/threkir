@@ -181,6 +181,21 @@ void main() {
     expect(size('rest', 3000, null, null), isNull);
   });
 
+  test(
+      'plannedWalkRunPattern: a walk-run row reads its pattern, any other row or an unreadable structure none',
+      () {
+    WalkRunPattern? pattern(String kind, Object? structure) =>
+        plannedWalkRunPattern(kind: kind, structure: structure);
+    expect(pattern('walk_run', _walkRunWeek1), walkRunPattern(_walkRunWeek1));
+    expect(pattern('walk_run', _walkRunWeek1)?.count, 8);
+    // The same structure on a row of another kind is not a walk-run session.
+    expect(pattern('easy', _walkRunWeek1), isNull);
+    expect(pattern('walk_run', null), isNull);
+    expect(pattern('walk_run', 'x'), isNull);
+    expect(pattern('walk_run', [1]), isNull);
+    expect(pattern('walk_run', _intervals), isNull);
+  });
+
   test('walkRunPattern: null for a paced session and a distance-measured one',
       () {
     expect(walkRunPattern(_intervals), isNull);

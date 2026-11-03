@@ -621,3 +621,43 @@ test('every AI consent prompt sends the runner to the one place that can record 
 		}
 	}
 });
+
+test('every surface that resolves a terrain source gates the map on consent', () => {
+	// Reason: the 3D course preview's elevation tiles come from MapTiler or the
+	// AWS Open Data Terrain Tiles bucket, and both log the requester IP per
+	// tile (decisions § 2251) — the same third-party hop as the 2D basemap. So
+	// any file that calls resolveTerrainSource must hold the map behind the
+	// cookie-consent gate RunMap uses: seed from hasAcceptedConsent(), never
+	// start consented, and stop init until consent is given. The scan is over
+	// the call, not a file list, so a later surface is bound the moment it
+	// reaches for terrain; the module exports no other source a file could
+	// take instead.
+	const srcRoot = resolve('src');
+	const callers: string[] = [];
+	const walk = (dir: string) => {
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const full = resolve(dir, entry.name);
+			if (entry.isDirectory()) walk(full);
+			else if (/\.(ts|svelte)$/.test(entry.name) && !entry.name.endsWith('.test.ts')) {
+				const code = stripComments(read(full));
+				if (/\bresolveTerrainSource\(|\bAWS_TERRAIN_SOURCE\b/.test(code) && !full.endsWith('terrain_source.ts')) {
+					callers.push(full);
+				}
+			}
+		}
+	};
+	walk(srcRoot);
+	for (const file of callers) {
+		const code = stripComments(read(file));
+		assert.match(
+			code,
+			/mapConsented\s*=\s*\$state\([^;]*\bhasAcceptedConsent\(\)/,
+			`${file} resolves a terrain source but does not seed mapConsented from hasAcceptedConsent() — terrain tiles would load before the cookie banner is accepted.`,
+		);
+		assert.match(
+			code,
+			/if\s*\((?:[^()]*[\s|])?!mapConsented\b[^()]*\)\s*return/,
+			`${file} must short-circuit map init while consent is pending (an \`if (… !mapConsented …) return\` guard), as RunMap does.`,
+		);
+	}
+});

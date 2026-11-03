@@ -10,19 +10,22 @@ import 'l10n/gen/app_localizations.dart';
 /// [WorkoutStep.label] is not used: it is the expander's English literal.
 String workoutStepName(WorkoutStep step, AppLocalizations l10n) {
   // A duration-based work rep is a walk-run "Run" interval; a distance-based
-  // one is an interval "Rep" (persona #22).
-  final durationBased = step.isDurationBased;
-  final hasIdx = step.repIndex != null && step.repTotal != null;
+  // one is an interval "Rep" (persona #22). An unpaced rep is always a
+  // walk-run "Run", the graduation 5K included, and a lone one has no count.
+  final run = step.isDurationBased || !step.paced;
+  final hasIdx = step.repIndex != null &&
+      step.repTotal != null &&
+      (step.paced || step.repTotal! > 1);
   // An unpaced warm-up / cool-down is the walking one of a walk-run session:
   // say so, or a beginner reads "Warmup" and starts running.
   return switch (step.kind) {
     WorkoutStepKind.warmup =>
       step.paced ? l10n.ttsStepWarmup : l10n.ttsStepWarmupWalk,
     WorkoutStepKind.rep => hasIdx
-        ? (durationBased
+        ? (run
             ? l10n.ttsStepRunOf(step.repIndex!, step.repTotal!)
             : l10n.ttsStepRepOf(step.repIndex!, step.repTotal!))
-        : (durationBased ? l10n.ttsStepRun : l10n.ttsStepRep),
+        : (run ? l10n.ttsStepRun : l10n.ttsStepRep),
     WorkoutStepKind.recovery => l10n.ttsStepRecovery,
     WorkoutStepKind.walk => hasIdx
         ? l10n.ttsStepWalkOf(step.repIndex!, step.repTotal!)

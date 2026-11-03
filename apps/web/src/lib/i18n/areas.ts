@@ -32,6 +32,8 @@ export const AREAS = {
 	settingsIntegrations: ['/settings/integrations'],
 	settingsGear: ['/settings/gear'],
 	settingsDevices: ['/settings/devices'],
+	settingsPrivacy: ['/settings/privacy'],
+	settingsShares: ['/settings/shares'],
 	clubs: ['/clubs'],
 	routes: ['/routes'],
 	routeBuilder: ['/routes/new'],

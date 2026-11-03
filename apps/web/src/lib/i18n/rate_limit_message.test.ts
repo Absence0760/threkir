@@ -22,12 +22,14 @@ const BUCKETS = [
 	'create_route',
 	'create_report',
 	'create_challenge',
+	'join_challenge_by_token',
 	'clone_plan_template',
 	'clone_public_plan',
 	'clone_session_template',
 	'clone_gym_routine_template',
 	'publish_gym_routine_as_template',
 	'plan_calendar_rotate',
+	'create_live_overlay_token',
 	'restart_training_plan',
 	'repeat_plan_week',
 	'send_direct_message',
@@ -178,6 +180,7 @@ for (const loc of SUPPORTED_LOCALES) {
 				'create_route',
 				'create_report',
 				'create_challenge',
+				'join_challenge_by_token',
 				'clone_plan_template',
 				'clone_session_template',
 				'clone_gym_routine_template',
@@ -189,7 +192,7 @@ for (const loc of SUPPORTED_LOCALES) {
 				'create_widget',
 			].map((bucket) => rateLimitMessage(t, { bucket, seconds: 42 })),
 		);
-		assert.equal(distinct.size, 13, `${loc} reuses one sentence for two different activities`);
+		assert.equal(distinct.size, 14, `${loc} reuses one sentence for two different activities`);
 		assert.equal(
 			rateLimitMessage(t, { bucket: 'clone_plan_template', seconds: 42 }),
 			rateLimitMessage(t, { bucket: 'clone_public_plan', seconds: 42 }),

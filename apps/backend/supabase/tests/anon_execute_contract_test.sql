@@ -74,6 +74,8 @@ create temporary table anon_callable (fn name, why text);
 insert into anon_callable (fn, why) values
   ('browse_public_challenges',        'logged-out challenge discovery'),
   ('challenge_leaderboard',           'public challenge board'),
+  ('challenge_invite_links_enabled',  'the logged-out join page asks whether invite links are live'),
+  ('challenge_invite_preview',        'a follower previews a challenge invite link before signing up'),
   ('clip_route_for_viewer',           'public route page geometry'),
   ('clubs_in_bbox',                   'logged-out map discovery'),
   ('confirm_safety_contact_by_token', 'a trusted contact confirms from an emailed link with no account'),
@@ -94,12 +96,17 @@ insert into anon_callable (fn, why) values
   ('is_public_event_by_id',           'named by the public_runs view'),
   ('is_public_route_by_id',           'named by the public_runs view'),
   ('latest_race_pings',               'logged-out spectator tracker'),
+  ('live_overlay_enabled',            'the streamer overlay, an OBS browser source with no session, asks whether the gate is open'),
+  ('live_overlay_feed',               'the streamer overlay reads its delayed pings with no session; the token argument is the capability'),
   ('nearby_routes',                   'logged-out route discovery'),
   ('popular_route_tags',              'logged-out route discovery'),
+  ('public_plan_share',               '/share/plan; null while the public_plan_share gate is closed'),
+  ('public_plan_share_enabled',       '/share/plan decides whether the gate is open'),
   ('public_profile_by_id',            '/share/profile and the logged-out /live/[id]'),
   ('public_recap_by_id',              '/share/recap'),
   ('public_run_gear',                 'public run page'),
   ('race_listing_photos',             '/share/race page'),
+  ('record_share_visit',              'a /share page counts one view in an aggregate bucket; no-op while the share_attribution gate is closed'),
   ('route_conditions_for_viewer',     'public route page'),
   ('route_markers_for_viewer',        'public route page'),
   ('routes_within_box',               'logged-out map discovery'),
@@ -111,7 +118,8 @@ insert into anon_callable (fn, why) values
   ('search_clubs',                    'logged-out search'),
   ('search_public_events',            'logged-out search'),
   ('search_race_listings',            'logged-out search'),
-  ('segment_effort_ranks',            'public segment board');
+  ('segment_effort_ranks',            'public segment board'),
+  ('share_attribution_enabled',       'a /share page decides whether to count the view');
 
 -- The routines this repo STATES are withheld from `authenticated` as well as
 -- anon — the cron and job-queue family (20270626000001, and
@@ -182,6 +190,7 @@ insert into server_only (fn, keeps_service_role) values
   ('jobs_backlog_summary', true),
   ('jobs_failed_summary', true),
   ('jobs_stuck_summary', true),
+  ('live_heart_rate_shared', true),
   ('map_match_track_source', true),
   ('notify_data_export_ready', true),
   ('plan_calendar_feed_events', true),

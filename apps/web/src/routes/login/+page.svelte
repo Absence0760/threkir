@@ -21,6 +21,8 @@
 	import { defaultUnitForLocale } from '#lib/format/locale_defaults.ts';
 	import { verifyConsentStamped } from '#lib/core/auth_confirmation.ts';
 	import { safeReturnTo as resolveReturnTo } from '#lib/core/safe_redirect.ts';
+	import { browserReturnStore, stashPendingReturn } from '#lib/core/pending_return.ts';
+	import { signupShareFor } from '#lib/share/share_attribution.ts';
 	import { postAuthDestination } from '#lib/core/post_auth_route.ts';
 	import { googleAuthEnabled } from '#lib/core/google_auth_flag.ts';
 	import { appleAuthEnabled } from '#lib/core/apple_auth_flag.ts';
@@ -122,6 +124,9 @@
 				   when the stash is missing. */
 			}
 		}
+		// The OAuth round trip lands on /auth/callback, which has no
+		// return_to of its own; it takes this stash instead.
+		stashPendingReturn(browserReturnStore(), safeReturnTo());
 		loading = true;
 		try {
 			await (provider === 'google' ? auth.signInWithGoogle() : auth.signInWithApple());
@@ -198,6 +203,9 @@
 				email = '';
 			} else if (isSignUp) {
 				const stamp = new Date().toISOString();
+				// The share link this sign-up started from, when it carried its
+				// owner's ref; counted once the account is confirmed (§ 2268).
+				const signupShare = await signupShareFor(safeReturnTo());
 				const { data, error: signUpError } = await supabase.auth.signUp({
 					email,
 					password,
@@ -217,6 +225,7 @@
 							age_confirmed_at: stamp,
 							terms_accepted_at: stamp,
 							preferred_unit: defaultUnitForLocale(navigator.language),
+							...(signupShare ? { signup_share: { ...signupShare } } : {}),
 						},
 					},
 				});
@@ -229,6 +238,9 @@
 					// used to enumerate accounts). Either way there is no
 					// session to navigate with; show the check-your-email
 					// state instead of a silent non-event.
+					// The confirmation link lands on /auth/callback, often in
+					// a new tab; the stash carries an invite's return_to there.
+					stashPendingReturn(browserReturnStore(), safeReturnTo());
 					showConfirmationPending(email);
 					return;
 				}

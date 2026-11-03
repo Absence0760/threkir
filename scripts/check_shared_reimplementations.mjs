@@ -145,12 +145,6 @@ export const MAX_OP_HOLDERS = 3;
 export const REGISTERED = [
 	{
 		kind: 'ops',
-		key: 'apps/web/src/lib/format/svg_raster.ts:rasterizeSvgToPng|apps/web/src/lib/util/avatar_render.ts:encodeAvatarCrop',
-		reason:
-			'Not a shared helper. What they share is how a browser spells "a canvas of this size": `createElement(\'canvas\')` then `getContext(\'2d\')`. `rasterizeSvgToPng` loads an SVG string through an <img> and paints it 1:1 into a PNG. `encodeAvatarCrop` paints a decoded photo through the avatar crop transform (`drawAvatarCrop`, rotate then crop in rotated space, the same function the on-screen preview uses) and encodes a JPEG at a size `outputSize` derives. A helper owning only the two calls would be longer at both sites than the calls themselves (decisions § 1762).',
-	},
-	{
-		kind: 'ops',
 		key: 'apps/web/src/lib/coach/body.ts:decodeLambdaBody|apps/web/src/lib/core/lambda_secrets.ts:kmsDecrypt',
 		reason:
 			'Not a shared helper. All they have in common is the two-call `Buffer.from(x, \'base64\').toString(\'utf8\')` idiom, which is how Node spells base64 rather than a contract either of them owns. `decodeLambdaBody` decodes a FUNCTION URL EVENT body: it takes the event\'s own `isBase64Encoded` flag, enforces `COACH_BODY_LIMIT_BYTES` and answers with an HTTP status (400 on bad encoding, 413 over the limit). `kmsDecrypt` is a signed KMS API call — SigV4 headers, `TrentService.Decrypt`, error-type extraction — whose last step happens to decode the `Plaintext` field, which KMS defines as base64 and which carries no size limit and no status. Extracting the shared two calls would leave both call sites longer than they are now and give the result a name that lies about one of them (decisions § 1671).',
@@ -164,16 +158,16 @@ export const REGISTERED = [
 	{
 		kind: 'clone',
 		key:
-			'apps/web/src/lib/share/share_event_meta.ts:renderShareEventHeadTags|apps/web/src/lib/share/share_race_meta.ts:renderShareRaceHeadTags|apps/web/src/lib/share/share_route_meta.ts:renderShareRouteHeadTags',
+			'apps/web/src/lib/share/share_challenge_meta.ts:renderShareChallengeHeadTags|apps/web/src/lib/share/share_event_meta.ts:renderShareEventHeadTags|apps/web/src/lib/share/share_race_meta.ts:renderShareRaceHeadTags|apps/web/src/lib/share/share_route_meta.ts:renderShareRouteHeadTags',
 		reason:
 			'Deliberate. Each renders the head tags for one `/share/{entity}` surface and they are identical only because the four surfaces currently carry the same tag set. They are per-entity by design (§ 205 gives each its own JSON-LD shape), so collapsing them would have to be undone the first time one surface needs a tag the others do not.',
 	},
 	{
 		kind: 'clone',
 		key:
-			'apps/web/src/lib/share/share_session_meta.ts:renderShareSessionHeadTags|apps/web/src/lib/share/share_workout_meta.ts:renderShareWorkoutHeadTags',
+			'apps/web/src/lib/share/share_plan_meta.ts:renderSharePlanHeadTags|apps/web/src/lib/share/share_session_meta.ts:renderShareSessionHeadTags|apps/web/src/lib/share/share_workout_meta.ts:renderShareWorkoutHeadTags',
 		reason:
-			'Deliberate, and the same reason as the three-way sibling group above: one head-tag renderer per /share/{entity} surface, identical today only because the two carry the same tag set, and per-entity by design so a collapse would have to be undone the first time one needs a tag the other does not.',
+			'Deliberate, and the same reason as the four-way sibling group above: one head-tag renderer per /share/{entity} surface, identical today only because the three carry the same tag set, and per-entity by design so a collapse would have to be undone the first time one needs a tag the others do not.',
 	},
 	{
 		kind: 'clone',

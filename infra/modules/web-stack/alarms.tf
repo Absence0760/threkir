@@ -341,15 +341,17 @@ locals {
     badge = aws_cloudwatch_log_group.lambda_share_badge.name
     # The shared entity Lambda logs a per-surface tag ([share-event] /
     # [share-profile] / [share-club] / [share-race] / [share-session] /
-    # [share-workout]) rather than a single [share-entity], so it gets one
+    # [share-workout] / [share-plan] / [share-challenge]) rather than a single [share-entity], so it gets one
     # metric filter per surface, all against its single log group, keeping
     # per-surface visibility.
-    event   = aws_cloudwatch_log_group.lambda_share_entity.name
-    profile = aws_cloudwatch_log_group.lambda_share_entity.name
-    club    = aws_cloudwatch_log_group.lambda_share_entity.name
-    race    = aws_cloudwatch_log_group.lambda_share_entity.name
-    session = aws_cloudwatch_log_group.lambda_share_entity.name
-    workout = aws_cloudwatch_log_group.lambda_share_entity.name
+    event     = aws_cloudwatch_log_group.lambda_share_entity.name
+    profile   = aws_cloudwatch_log_group.lambda_share_entity.name
+    club      = aws_cloudwatch_log_group.lambda_share_entity.name
+    race      = aws_cloudwatch_log_group.lambda_share_entity.name
+    session   = aws_cloudwatch_log_group.lambda_share_entity.name
+    workout   = aws_cloudwatch_log_group.lambda_share_entity.name
+    plan      = aws_cloudwatch_log_group.lambda_share_entity.name
+    challenge = aws_cloudwatch_log_group.lambda_share_entity.name
   }
 }
 

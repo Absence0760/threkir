@@ -47,6 +47,7 @@ import 'guided_runs_screen.dart';
 import 'settings_preferences_screen.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/fundraiser_section.dart';
+import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
 import '../widgets/live_run_map.dart';
 import '../widgets/pace_segments.dart' show paceGradientRamp;
 import '../widgets/track_segment.dart';
@@ -58,6 +59,7 @@ import '../widgets/run_race_section.dart';
 import '../widgets/run_photos.dart';
 import '../widgets/run_segment_efforts.dart';
 import '../widgets/audience_sheet.dart';
+import '../pr_card.dart';
 import '../widgets/run_share_card.dart';
 import '../widgets/run_social_section.dart';
 import '../widgets/pacing_strategy_section.dart';
@@ -121,6 +123,10 @@ class RunDetailScreen extends StatefulWidget {
   final ApiClient? apiClient;
   final SettingsSyncService? settingsSync;
 
+  /// Open the share sheet on the PR card once the run's records are known:
+  /// the personal_record notification's link (web's `?share=pr`).
+  final bool openPrCard;
+
   const RunDetailScreen({
     super.key,
     required this.run,
@@ -129,6 +135,7 @@ class RunDetailScreen extends StatefulWidget {
     required this.preferences,
     this.apiClient,
     this.settingsSync,
+    this.openPrCard = false,
   });
 
   @override
@@ -267,6 +274,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     _maybeFetchMatchedTrack();
     _maybeSuggestRoute();
     _loadViewerGender();
+    _loadRunRecords();
     _connectivitySub =
         Connectivity().onConnectivityChanged.listen(_onConnectivityChanged);
   }
@@ -282,6 +290,63 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     if (!online) return;
     if (!shouldRetryMatchFetch(_matchInfo, offline: _matchOffline)) return;
     _maybeFetchMatchedTrack();
+  }
+
+  /// The personal records this run set, for the PR card. L4: a failed read
+  /// leaves the PR card unoffered and nothing else.
+  List<PrCardEntry> _runRecords = const [];
+
+  Future<void> _loadRunRecords() async {
+    final api = widget.apiClient;
+    if (api == null || api.userId == null) return;
+    try {
+      final rows = await api.fetchRunPersonalRecords(run.id);
+      final entries = prCardEntries(
+        [
+          for (final r in rows.improvements)
+            PrImprovementRow(r.distance, r.bestTimeS, r.previousTimeS),
+        ],
+        [for (final r in rows.held) PrHeldRow(r.distance, r.bestTimeS)],
+      );
+      if (!mounted) return;
+      setState(() => _runRecords = entries);
+      if (widget.openPrCard && entries.isNotEmpty) unawaited(_sharePrCard());
+    } catch (e) {
+      debugPrint('run personal records fetch failed: $e');
+    }
+  }
+
+  /// The share sheet on the PR card. Only an image leaves, so unlike
+  /// [_shareRun] it asks nothing about the run's audience; it still waits for
+  /// the zones, because the card draws the clipped line.
+  Future<void> _sharePrCard() async {
+    if (_sharing || _runRecords.isEmpty) return;
+    _sharing = true;
+    setState(() {});
+    try {
+      final zones = await _knownPrivacyZones();
+      if (!mounted) return;
+      if (zones == null) {
+        showTopBanner(
+            context, AppLocalizations.of(context).runDetailShareZonesUnknown);
+        return;
+      }
+      await showRunShareSheet(
+        context,
+        run: run,
+        preferences: widget.preferences,
+        title: _title,
+        privacyZones: zones,
+        records: _runRecords,
+        initialStyle: RunShareStyle.pr,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _sharing = false);
+      } else {
+        _sharing = false;
+      }
+    }
   }
 
   Future<void> _loadViewerGender() async {
@@ -1016,6 +1081,13 @@ class _RunDetailScreenState extends State<RunDetailScreen>
             tooltip: l10n.runDetailShareTooltip,
             onPressed: _sharing ? null : _shareRun,
           ),
+          if (_runRecords.isNotEmpty)
+            IconButton(
+              key: const Key('run-detail-share-pr'),
+              icon: const Icon(Icons.military_tech),
+              tooltip: l10n.runDetailSharePr,
+              onPressed: _sharing ? null : _sharePrCard,
+            ),
           PopupMenuButton<String>(
             tooltip: l10n.runDetailMoreTooltip,
             onSelected: (action) {
@@ -2123,6 +2195,21 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
+                if (widget.apiClient case final api?) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    key: const Key('route-head-to-head-open'),
+                    onPressed: () => showHeadToHeadSheet(
+                      context,
+                      api: api,
+                      kind: 'route',
+                      targetId: run.routeId!,
+                      activityType: thisActivity,
+                    ),
+                    icon: const Icon(Icons.people_outline),
+                    label: Text(l10n.headToHeadCompare),
+                  ),
+                ],
               ],
             ),
           ),
@@ -2899,6 +2986,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         preferences: widget.preferences,
         title: _title,
         privacyZones: zones,
+        api: widget.apiClient,
+        records: _runRecords,
       );
     } finally {
       if (mounted) {
@@ -2930,6 +3019,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       preferences: widget.preferences,
       title: _title,
       privacyZones: zones,
+      api: widget.apiClient,
     );
   }
 

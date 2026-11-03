@@ -37,6 +37,7 @@ const KNOWN_DEPS: { name: string; license: string }[] = [
 	{ name: '@mapbox/jsonlint-lines-primitives', license: 'MIT (verified upstream)' },
 	{ name: 'mdsvex', license: 'MIT' },
 	{ name: 'MapTiler tiles', license: 'Commercial (MapTiler Cloud)' },
+	{ name: 'Terrain Tiles (AWS Open Data)', license: 'Open data (per source)' },
 	{ name: 'html-to-image', license: 'MIT' },
 ];
 

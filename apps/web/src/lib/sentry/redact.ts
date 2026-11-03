@@ -26,19 +26,34 @@ export function redactLiveHubToken(url: string): string {
 	return url.replace(/([?&])token=[^&]*/g, '$1token=<redacted>');
 }
 
+/// Replace the fragment of every URL in the string with `#[redacted]`.
+/// The streamer overlay and the safety live link carry their bearer token
+/// in the fragment, so it never reaches a server or a Referer — but the
+/// browser SDK records `location.href` whole in `request.url`, navigation
+/// breadcrumbs and span attributes. Nothing reads a fragment back out of
+/// Sentry. Only a `#` inside an absolute URL or a root-relative path is
+/// touched, so prose like "issue #12" in a console breadcrumb survives.
+const URL_FRAGMENT = /((?:[a-z][a-z0-9+.-]*:\/\/|(?<![\w/.])\/)[^\s#"'<>]*)#[^\s"'<>]+/gi;
+
+export function redactFragment(url: string): string {
+	return url.includes('#') ? url.replace(URL_FRAGMENT, '$1#[redacted]') : url;
+}
+
 /// Apply every URL redactor in series. Cheap (each is a single
 /// includes/test) and order-independent because each gates on its
 /// own URL shape.
 export function redactUrl(url: string): string {
-	return redactLiveHubToken(redactSignedUrl(url));
+	return redactFragment(redactLiveHubToken(redactSignedUrl(url)));
 }
 
 export function redactBreadcrumb<
 	T extends { category?: string; message?: string; data?: Record<string, unknown> },
 >(b: T): T {
-	const u = b.data?.url;
-	if (typeof u === 'string') {
-		b.data!.url = redactUrl(u);
+	if (b.data) {
+		for (const key of ['url', 'from', 'to'] as const) {
+			const v = b.data[key];
+			if (typeof v === 'string') b.data[key] = redactUrl(v);
+		}
 	}
 	// `console` breadcrumbs carry the log message in `message` and
 	// `data.arguments`. apps/web/src/lib/core/data.ts logs Storage paths via

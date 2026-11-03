@@ -164,6 +164,12 @@ roadbook, GPX export, live cut-off ETA).
   what the GPX export emits: one `<wpt>` per marker (kind → `<sym>`, cutoff +
   services in `<desc>`) alongside the route line, so a watch surfaces them
   mid-race. Shipped on web (route-detail + roadbook download) + mobile share.
+- **3D course preview** (#1270, web) — a `climb` marker with a label names
+  that climb in the `/routes/[id]` flyover. It is placed by projecting the
+  marker's position onto the line the preview flies (`climbNamesFromMarkers`
+  in `course_preview_points.ts`), not by `position_m`: that is measured along
+  the unclipped route, and a non-owner flies the clipped one. A marker more
+  than 100 m off the flown line names nothing.
 
 ## Deferred
 

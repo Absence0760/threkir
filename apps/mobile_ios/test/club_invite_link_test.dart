@@ -131,6 +131,28 @@ void main() {
       await links.close();
     });
 
+    test('the same link opened again after it was consumed opens again',
+        () async {
+      final links = StreamController<Uri>();
+      final uri = Uri.parse('https://threkir.com/clubs/join/abc123');
+      final service = ClubInviteLinkService(
+        links: links.stream,
+        initialLink: () async => null,
+      )..start();
+      await service.processInitial();
+      for (var i = 0; i < 2; i++) {
+        service.handle(uri);
+        expect(pendingClubInviteToken.value, 'abc123');
+        pendingClubInviteToken.value = null;
+        links.add(uri);
+        await Future<void>.delayed(Duration.zero);
+        expect(pendingClubInviteToken.value, 'abc123');
+        pendingClubInviteToken.value = null;
+      }
+      await service.dispose();
+      await links.close();
+    });
+
     test('the Android manifest registers the link shapes the parser reads',
         () {
       // Only mobile_android carries android/, and only mobile_android runs in

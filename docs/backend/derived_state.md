@@ -55,7 +55,8 @@ retention cron referenced in a comment that was never created.
   `runs.fastest_*_s` columns since `20270325_001`), DNF exclusion
   (`20260530000001`), mile bracket (`20261021_001`), the auth guard
   (`20260904_001`), consolidated by `20261009_001`, the parkrun/race source
-  widening (`20270424_001`), and the positive-time filters (`20270706000003`).
+  widening (`20270424_001`), the positive-time filters (`20270706000003`), and
+  the improvement hand-off (`20271104000002`, which changes no candidate).
   The live body is the **latest** migration that
   touches the function — read it, don't reconstruct from the originals.
 - **Every candidate time is positive** (`20270706000003`, decisions § 1078).
@@ -83,6 +84,18 @@ retention cron referenced in a comment that was never created.
   authoritative query returns, so it has to re-derive), and refreshes both the
   old and new owner on a `user_id` change. `trigger_award_achievements_runs`
   watches `activity_type` for the same reason.
+- **Improvement log + notification:** since `20271104000002` the refresher
+  reads the user's bests before its DELETE and hands them to
+  `private.record_personal_record_improvements` after its INSERT, which logs
+  each bracket now strictly faster (or newly filled) in
+  `personal_record_improvements` and raises one `personal_record` notification
+  per run started in the last 7 days ([decisions § 2266](../architecture/decisions.md)).
+  The comparison is against the cache as it stood, so the manual rebuild below,
+  an unrelated edit and a repeated backfill record and raise nothing; a deleted
+  PR run makes the cache slower, which is not an improvement. The log is
+  unique on `(run_id, distance)`, so a run returning to the cache is not
+  announced twice. A re-emission of the refresher must keep both the
+  before-read and the hand-off. Pinned by `personal_record_notifications_test.sql`.
 - **Manual rebuild:** `select refresh_personal_records_for_user(id) from auth.users;`
 - **Pinned by:** `personal_records_cache_invariants_test.sql` (mutate a run, assert
   the cache matches the authoritative query), `personal_records_statement_trigger_test.sql`

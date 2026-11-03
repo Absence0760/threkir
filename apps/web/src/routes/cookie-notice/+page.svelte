@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { consent } from '#lib/settings/consent.svelte.ts';
 
-	const lastUpdated = '2026-07-14';
+	const lastUpdated = '2026-11-02';
 
 	// audit/cookie-consent (May 2026): the prior page told users to
 	// use a "Cookie settings" link in the footer that does not exist.
@@ -98,7 +98,14 @@
 			<strong>MapTiler</strong> (EU, with global edge caching) — every map tile fetch logs the
 			requesting IP and the map viewport. Map tiles load only after you accept the consent banner;
 			on map screens (run detail, route detail, route builder, live spectator) the map renders as
-			a "Load map" placeholder until then.
+			a "Load map" placeholder until then. The 3D course preview loads MapTiler elevation tiles
+			along the course under the same rule.
+		</li>
+		<li>
+			<strong>AWS Open Data Terrain Tiles</strong> (US) — only on a deployment with no MapTiler
+			account, where the 3D course preview reads elevation from this public Amazon S3 bucket
+			instead. Each request logs your IP address and the map tile it asked for. It follows the same
+			rule as MapTiler: nothing loads until you accept the banner or tap "Load map".
 		</li>
 		<li>
 			<strong>Open-Meteo</strong> (EU) — fires when you build or view a route, to look up

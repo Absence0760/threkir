@@ -31,6 +31,22 @@ void main() {
           const EntityLink(EntityLinkKind.run, id));
     });
 
+    test('a run link asking for its PR card, and only a run', () {
+      expect(parse('https://threkir.com/runs/$id?share=pr'),
+          const EntityLink(EntityLinkKind.run, id, sharePr: true));
+      expect(parse('https://threkir.com/runs/$id?share=pr'),
+          isNot(const EntityLink(EntityLinkKind.run, id)));
+      expect(parse('https://threkir.com/routes/$id?share=pr'),
+          const EntityLink(EntityLinkKind.route, id));
+    });
+
+    test('openRunLink hands the PR card request to the shell', () {
+      addTearDown(() => pendingEntityLink.value = null);
+      openRunLink(id, sharePr: true);
+      expect(pendingEntityLink.value,
+          const EntityLink(EntityLinkKind.run, id, sharePr: true));
+    });
+
     test('the app scheme links', () {
       expect(parse('com.threkir.app://runs/$id'),
           const EntityLink(EntityLinkKind.run, id));
@@ -78,6 +94,27 @@ void main() {
       expect(parse('https://threkir.com/plans/$id/workouts/$wo'),
           const PushTarget(PushTargetKind.planWorkout, id, wo));
       expect(parse('https://preview.threkir.com/plans/$id/'),
+          const PushTarget(PushTargetKind.plan, id));
+    });
+
+    test('a Train with me link opens the library preview', () {
+      expect(parse('https://threkir.com/share/plan/$id'),
+          const PushTarget(PushTargetKind.planLibrary, id));
+      expect(parse('https://threkir.com/plans/library/$id'),
+          const PushTarget(PushTargetKind.planLibrary, id));
+      expect(parse('https://threkir.com/share/plan/not-a-uuid'), isNull);
+      expect(parse('https://threkir.com/share/run/$id'), isNull);
+      expect(parse('https://threkir.com/share/plan/$id/extra'), isNull);
+    });
+
+    test("a creator's ref rides a plan link to the copy it may lead to", () {
+      expect(parse('https://threkir.com/share/plan/$id?ref=a1b2c3d4e5'),
+          const PushTarget(PushTargetKind.planLibrary, id, null, 'a1b2c3d4e5'));
+      expect(parse('https://threkir.com/plans/library/$id?ref=a1b2c3d4e5'),
+          const PushTarget(PushTargetKind.planLibrary, id, null, 'a1b2c3d4e5'));
+      expect(parse('https://threkir.com/share/plan/$id?ref=NOT-VALID'),
+          const PushTarget(PushTargetKind.planLibrary, id));
+      expect(parse('https://threkir.com/plans/$id?ref=a1b2c3d4e5'),
           const PushTarget(PushTargetKind.plan, id));
     });
 

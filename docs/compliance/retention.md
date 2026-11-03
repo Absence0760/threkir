@@ -76,11 +76,12 @@ The GDPR Art 5(1)(e) storage-limitation principle requires retention to be "no l
 | `prune-sign-in-devices` (`prune_sign_in_devices()`) | 04:23 UTC daily (`23 4 * * *`) | `sign_in_devices` classes unseen for 180 days after refreshing `last_seen_at` from live `auth.sessions`, never an account's most recently seen class | `20270804000002_sign_in_devices.sql` |
 | `purge-stale-jobs` | 03:35 UTC daily | `jobs` rows in terminal state with `finished_at` older than 30 days | `20260928_001_gdpr_dsar_closeouts.sql` |
 | `purge-stale-direct-messages` | 03:41 UTC daily | `direct_messages` older than 2 years (`created_at`) | `20261119_001_purge_stale_direct_messages.sql` |
+| `purge-share-link-daily` | 04:07 UTC daily | `private.share_link_daily` aggregate share-link counters older than 90 days (`day`), the window the creator view reads; no visitor identifier is ever stored in them ([decisions § 2268](../architecture/decisions.md)) | `20271104000004_share_attribution.sql` |
 | `purge-stale-checkpoint-health-data` | 03:47 UTC daily | Scrubs (nulls) the Art 9 weigh-in / medical columns on `checkpoint_crossings` older than 90 days (`recorded_at`); the split-time rows survive | `20270317_001_checkpoint_health_retention.sql` |
 | `purge-stale-reports` | 03:59 UTC daily | Resolved `reports` (and their direct-message snapshots) 6 months after `reviewed_at` when dismissed, 12 months when reviewed; never a pending or `legal_hold` report. **Does nothing until `private.feature_flags` has `reports_retention_purge` enabled** (absent = off), pending counsel sign-off | `20271021000040_reports_keep_on_reporter_delete_retention.sql` |
 | `cleanup-deletion-audit-log` | 03:53 UTC daily | `deletion_audit_log` rows whose `deleted_at` is over 7 years old (six years being the longest ordinary civil limitation period among the jurisdictions served, plus a year of margin; nothing becomes eligible before September 2033) | `20270713000002_deletion_evidence_retention.sql` |
 
-Nineteen `cron.schedule`d retention jobs are live — every row above except
+Twenty `cron.schedule`d retention jobs are live — every row above except
 `cleanup-stale-export-blobs`, which is deliberately unscheduled and is listed
 so nobody re-derives it as missing. Each live one deletes rows, except the
 checkpoint health job (scrubs columns), the export reap (enqueues the job

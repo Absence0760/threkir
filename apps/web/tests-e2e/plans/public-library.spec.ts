@@ -132,12 +132,16 @@ test.describe('Public plan library — publish → browse → clone', () => {
 		// Clone → lands on the new plan's detail page.
 		await pageB.getByRole('button', { name: 'Clone into my plans' }).click();
 		await pageB.waitForURL(/\/plans\/[0-9a-f-]+$/, { timeout: 15_000 });
+		// The copy says whose plan it started from, and links back to it.
+		const startedFrom = pageB.getByTestId('plan-started-from');
+		await expect(startedFrom).toContainText('Started from', { timeout: 10_000 });
+		await expect(startedFrom).toHaveAttribute('href', `/plans/library/${tmpl.id}`);
 
 		const clones = await readRows(
 			'training_plans by user_id+parent_template_id',
 			admin
 				.from('training_plans')
-				.select('user_id, status, is_template, is_public_template, parent_template_id, vdot, current_5k_seconds')
+				.select('user_id, status, is_template, is_public_template, parent_template_id, source_author_id, vdot, current_5k_seconds')
 				.eq('user_id', USER_B.id)
 				.eq('parent_template_id', tmpl.id)
 		);
@@ -148,10 +152,12 @@ test.describe('Public plan library — publish → browse → clone', () => {
 			is_template: boolean;
 			is_public_template: boolean;
 			parent_template_id: string;
+			source_author_id: string | null;
 			vdot: number | null;
 			current_5k_seconds: number | null;
 		};
 		expect(clone.user_id).toBe(USER_B.id);
+		expect(clone.source_author_id).toBe(USER_A.id);
 		expect(clone.status).toBe('active');
 		expect(clone.is_template).toBe(false);
 		expect(clone.is_public_template).toBe(false);

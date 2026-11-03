@@ -2,11 +2,15 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show AppTheme;
 
+import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../l10n/locale_support.dart';
+import '../pr_card.dart';
 import '../preferences.dart';
 import '../privacy.dart';
 import '../run_share_stats.dart';
 import '../share_look.dart';
+import 'plan_recap_card.dart' show planRecapBracketLabel;
 import 'track_preview.dart' show projectTrack;
 
 /// Every share image is laid out at a fixed logical size and rasterised up to
@@ -556,6 +560,176 @@ class RunPhotoShareCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The ground each ink is drawn on for the PR card: the white and coral inks on
+/// the night card, the dark ink on white paper — web's `PR_CARD_GROUNDS`.
+Color prCardGround(RunShareInk ink) => switch (ink) {
+      RunShareInk.light => AppTheme.night,
+      RunShareInk.brand => AppTheme.night,
+      RunShareInk.dark => Colors.white,
+    };
+
+/// One personal record on a solid ground, in the photo style's post (4:5) or
+/// story (9:16) canvas: the headline, the bracket, the record time, how much
+/// faster it was than the record it beat, the run's date, the clipped route
+/// and the signature. Web's twin is `layoutPrCard` / `paintPrCard` in
+/// apps/web/src/lib/share/pr_card_canvas.ts.
+class RunPrShareCard extends StatelessWidget {
+  final Run run;
+  final PrCardEntry record;
+  final List<PrivacyZone> privacyZones;
+  final RunShareLook look;
+
+  const RunPrShareCard({
+    super.key,
+    required this.run,
+    required this.record,
+    required this.privacyZones,
+    this.look = const RunShareLook(),
+  });
+
+  /// The accent band across the top, in logical pixels.
+  static const double band = 6;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final text = Theme.of(context).textTheme;
+    final ink = RunShareInkSpec.of(look.ink);
+    final size = RunPhotoShareCard.canvasFor(look.aspect);
+    const pad = 28.0;
+    final bottomInset =
+        look.aspect == RunPhotoAspect.story ? size.height * 0.13 : pad;
+    final distance = planRecapBracketLabel(l10n, record.distance);
+    final improvement = formatPrImprovement(record);
+    final previous = record.previousS;
+    final detail = previous != null
+        ? l10n.shareCardPrPrevious(
+            formatShareDuration(Duration(seconds: previous)))
+        : record.kind == PrCardKind.first
+            ? l10n.shareCardPrFirst(distance)
+            : null;
+    final track = runShareCardTrack(run, privacyZones);
+
+    Widget line(String s, TextStyle? style, Color color) => FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            s,
+            maxLines: 1,
+            textAlign: TextAlign.center,
+            style: style?.copyWith(color: color, shadows: ink.shadows, height: 1.2),
+          ),
+        );
+
+    return SizedBox.fromSize(
+      size: size,
+      child: ColoredBox(
+        color: prCardGround(look.ink),
+        child: Column(
+          children: [
+            Container(
+              height: band,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppTheme.coralDeep, Color(0xFFA8426A), AppTheme.violet],
+                ),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(pad, pad, pad, bottomInset),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          line(
+                            (record.kind == PrCardKind.held
+                                    ? l10n.shareCardPrHeld
+                                    : l10n.shareCardPrHeadline)
+                                .toUpperCase(),
+                            text.labelLarge?.copyWith(
+                                fontWeight: FontWeight.w800, letterSpacing: 2),
+                            ink.muted,
+                          ),
+                          const SizedBox(height: 14),
+                          line(
+                            distance,
+                            text.headlineMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                            ink.text,
+                          ),
+                          const SizedBox(height: 4),
+                          line(
+                            formatShareDuration(Duration(seconds: record.timeS)),
+                            text.displayLarge?.copyWith(
+                                fontSize: 84,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -1),
+                            ink.text,
+                          ),
+                          const SizedBox(height: 10),
+                          if (improvement != null) ...[
+                            line(
+                              l10n.shareCardPrFaster(improvement),
+                              text.headlineSmall
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                              ink.text,
+                            ),
+                            const SizedBox(height: 6),
+                          ],
+                          if (detail != null) ...[
+                            line(
+                              detail,
+                              text.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                              ink.muted,
+                            ),
+                            const SizedBox(height: 6),
+                          ],
+                          line(
+                            formatDateMed(run.startedAt, activeLocaleTag),
+                            text.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                            ink.muted,
+                          ),
+                          // The route takes the room the lines leave, up to
+                          // 110: a 4:5 post leaves less than that.
+                          if (track.length >= 2) ...[
+                            const SizedBox(height: 22),
+                            Flexible(
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                    maxWidth: 110, maxHeight: 110),
+                                child: AspectRatio(
+                                  aspectRatio: 1,
+                                  child: CustomPaint(
+                                    painter: RunRouteOutlinePainter(
+                                      track,
+                                      color: ink.text,
+                                      halo: ink.halo,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    ThrekirShareBrand(color: ink.text, shadows: ink.shadows),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

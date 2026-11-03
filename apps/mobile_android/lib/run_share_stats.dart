@@ -31,13 +31,16 @@ List<Waypoint> runShareCardTrack(Run run, List<PrivacyZone> zones) =>
 bool runShareCardHasMap(Run run, List<PrivacyZone> zones) =>
     runShareCardTrack(run, zones).length >= 2;
 
-/// The moving time every share image prints: [movingTimeOf] the stored track,
-/// or the elapsed duration when there is no track to measure it from.
+/// The moving time every share image prints: [movingTimeOf] the stored track
+/// to the nearest second, or the elapsed duration when there is no track to
+/// measure it from. Rounded rather than truncated, as web's
+/// `movingTimeSeconds` is, so a track stamped to the millisecond prints the
+/// same seconds on both platforms.
 Duration runShareMovingTime(Run run) {
   if (run.track.length < 2) return run.duration;
-  final computed = movingTimeOf(run.track);
-  if (computed.inSeconds == 0) return run.duration;
-  return computed;
+  final seconds = (movingTimeOf(run.track).inMilliseconds / 1000).round();
+  if (seconds == 0) return run.duration;
+  return Duration(seconds: seconds);
 }
 
 /// Seconds per km over [movingTime], or null when the run is too short to

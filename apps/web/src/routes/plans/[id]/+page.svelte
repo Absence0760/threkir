@@ -14,6 +14,7 @@
 		fetchMyClubs,
 		fetchRuns,
 		fetchDisplayName,
+		fetchPlanStartedFrom,
 		fetchRaceListing,
 		fetchRunDistances,
 		publishPlanAsTemplate,
@@ -35,7 +36,9 @@
 		ActivePlanExistsError,
 		isActiveCoachOf,
 		type RaceListingDetail,
+		type PlanStartedFrom,
 	} from '#lib/core/data.ts';
+	import { planAuthorCredit } from '#lib/share/share_plan_meta.ts';
 	import { recoveryWorkoutPatch } from '#lib/training/plan_bulk_ops.ts';
 	import { planShiftImpact } from '#lib/training/plan_shift.ts';
 	import { planRaceDate, raceDateChange, type RaceDateChange, type RaceDateRefusal } from '#lib/training/plan_race_date.ts';
@@ -105,8 +108,8 @@
 		todayISO
 	} from '#lib/training/training.ts';
 	import { weeklyDriftToDate, missedWorkoutAdvice, weekJudgedByDistance } from '#lib/training/plan_adherence.ts';
-	import { plannedWorkoutSize } from '#lib/training/workout_summary.ts';
-	import { formatPlannedSize } from '#lib/training/workout_summary_format.ts';
+	import { plannedWalkRunPattern, plannedWorkoutSize } from '#lib/training/workout_summary.ts';
+	import { formatPlannedSize, formatWalkRunPattern } from '#lib/training/workout_summary_format.ts';
 	import { resumeShift } from '#lib/training/plan_resume.ts';
 	import {
 		alignRestartStartIso,
@@ -1206,6 +1209,8 @@
 	let assigningCoachName = $state<string | null>(null);
 	/// The calendar race this plan was built for (decisions § 2156).
 	let linkedRace = $state<RaceListingDetail | null>(null);
+	/// Whose public plan this copy started from (decisions § 2262).
+	let startedFrom = $state<PlanStartedFrom | null>(null);
 
 	// SvelteKit keeps this component mounted across /plans/A → /plans/B, so
 	// onMount's load never runs for B; the effect below loads it instead.
@@ -1232,6 +1237,16 @@
 		loading = false;
 		assigningCoachName = null;
 		linkedRace = null;
+		startedFrom = null;
+		const startedFromId = plan?.source_author_id ? plan.id : null;
+		if (loadError === null && startedFromId && plan?.user_id === auth.user?.id) {
+			// Auxiliary: a failed read falls back to the plain "cloned" chip.
+			fetchPlanStartedFrom(startedFromId)
+				.then((from) => {
+					if (plan?.id === startedFromId) startedFrom = from;
+				})
+				.catch((e) => console.error('fetchPlanStartedFrom failed', e));
+		}
 		const raceListingId = plan?.race_listing_id;
 		if (loadError === null && raceListingId) {
 			// Auxiliary: a failed read leaves the plan without its race line.
@@ -1312,6 +1327,13 @@
 			structure: wo.structure
 		});
 		return size == null ? null : formatPlannedSize(m, size, (metres) => fmtKm(metres, digits));
+	}
+
+	/// A walk-run session's intervals ("8 × (1 min run / 90 s walk)"), which
+	/// the minutes alone don't tell a beginner; null for any other session.
+	function patternLabel(wo: PlanWorkout): string | null {
+		const p = plannedWalkRunPattern({ kind: wo.kind, structure: wo.structure });
+		return p == null ? null : formatWalkRunPattern(m, p, fmtOverrun);
 	}
 
 	onMount(async () => {
@@ -1870,7 +1892,27 @@
 							})}
 						</a>
 					{/if}
-					{#if plan.parent_template_id}
+					{#if startedFrom}
+						{@const credit = planAuthorCredit(startedFrom.author)}
+						{@const label = credit
+							? m('planDetail.startedFrom', { author: credit })
+							: m('planDetail.startedFromRunner')}
+						{#if startedFrom.templateId}
+							<a
+								class="chip chip-link"
+								href="/plans/library/{startedFrom.templateId}"
+								data-testid="plan-started-from"
+							>
+								<span class="material-symbols" aria-hidden="true">person</span>
+								{label}
+							</a>
+						{:else}
+							<span class="chip" data-testid="plan-started-from">
+								<span class="material-symbols" aria-hidden="true">person</span>
+								{label}
+							</span>
+						{/if}
+					{:else if plan.parent_template_id}
 						<a class="chip chip-link" href="/plans/{plan.parent_template_id}">
 							<span class="material-symbols">link</span>
 							{m('planDetail.clonedFromTemplate')}
@@ -2126,6 +2168,9 @@
 								<span class="today-skipped">{m('planDetail.skippedLabel')}</span>
 							{/if}
 						</div>
+						{#if patternLabel(todayWorkout) != null}
+							<span class="today-pattern" data-testid="plan-today-pattern">{patternLabel(todayWorkout)}</span>
+						{/if}
 						{#if todayWorkout.notes}
 							<p class="today-notes">{todayWorkout.notes}</p>
 						{/if}
@@ -2158,6 +2203,9 @@
 								<span>{m('workoutDetail.atPace', { pace: fmtPace(nextWorkout.target_pace_sec_per_km) })}</span>
 							{/if}
 						</div>
+						{#if patternLabel(nextWorkout) != null}
+							<span class="today-pattern" data-testid="plan-next-pattern">{patternLabel(nextWorkout)}</span>
+						{/if}
 					</div>
 					<span class="material-symbols today-arrow">chevron_right</span>
 				</button>
@@ -3661,6 +3709,10 @@
 		color: var(--color-text-secondary);
 		font-weight: 600;
 	}
+	.today-pattern {
+		display: block;
+	}
+	.today-pattern,
 	.today-notes {
 		color: var(--color-text-secondary);
 		margin: 0.3rem 0 0;

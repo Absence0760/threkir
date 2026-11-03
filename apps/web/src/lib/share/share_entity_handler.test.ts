@@ -62,3 +62,59 @@ test('a path outside the dispatcher still answers the JSON 404', async () => {
 	const res = (await handler(urlEvent('/share/nothing/abc'))) as { statusCode: number };
 	assert.equal(res.statusCode, 404);
 });
+
+/// Share-link visits are counted by the page in the visitor's browser, not
+/// here (decisions § 2268): CloudFront caches this HTML for five minutes and
+/// strips the query string, so the Lambda would count edge misses and never
+/// see a `ref`. Pinned from both sides: the handler makes no call to the
+/// counter, and a `ref` in the query changes nothing it serves.
+test('the handler records no share visit and serves the same answer with or without a ref', async () => {
+	const realFetch = globalThis.fetch;
+	const calls: string[] = [];
+	globalThis.fetch = (async (input: string | URL | Request) => {
+		const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+		calls.push(url);
+		return new Response('[]', { status: 200, headers: { 'content-type': 'application/json' } });
+	}) as typeof fetch;
+	try {
+		const id = '0b9f3c2e-1111-4222-8333-944455556666';
+		const bare = (await handler(urlEvent(`/share/challenge/${id}`))) as { statusCode: number; body?: string };
+		const withRef = (await handler({
+			...urlEvent(`/share/challenge/${id}`),
+			rawQueryString: 'ref=a1b2c3d4e5',
+			queryStringParameters: { ref: 'a1b2c3d4e5' },
+		} as LambdaFunctionURLEvent)) as { statusCode: number; body?: string };
+		assert.equal(withRef.statusCode, bare.statusCode);
+		assert.equal(withRef.body, bare.body);
+		assert.ok(calls.length > 0, 'the lookup reached the stubbed network');
+		assert.deepEqual(
+			calls.filter((u) => /record_share_visit|share_link/.test(u)),
+			[],
+			'the Lambda must not write a share visit',
+		);
+	} finally {
+		globalThis.fetch = realFetch;
+	}
+});
+
+test('/og/challenge/<id>.png answers a cacheable PNG even when the challenge is unknown', async () => {
+	const realFetch = globalThis.fetch;
+	globalThis.fetch = (async () =>
+		new Response('[]', { status: 200, headers: { 'content-type': 'application/json' } })) as typeof fetch;
+	try {
+		const res = (await handler(urlEvent('/og/challenge/0b9f3c2e-1111-4222-8333-944455556666.png'))) as {
+			statusCode: number;
+			isBase64Encoded?: boolean;
+			body?: string;
+			headers?: Record<string, string>;
+		};
+		assert.equal(res.statusCode, 200);
+		assert.equal(res.headers?.['content-type'], 'image/png');
+		assert.match(res.headers?.['cache-control'] ?? '', /max-age=\d+/);
+		assert.equal(res.isBase64Encoded, true);
+		const png = Buffer.from(res.body ?? '', 'base64');
+		assert.ok(png.subarray(0, 4).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47])));
+	} finally {
+		globalThis.fetch = realFetch;
+	}
+});

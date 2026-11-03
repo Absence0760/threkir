@@ -118,6 +118,11 @@ test('challenge_complete links to the challenge', () => {
 	assert.equal(notificationLinkFor(make({ kind: 'challenge_complete' })), null);
 });
 
+test('personal_record opens the run on its PR card', () => {
+	assert.equal(notificationLinkFor(make({ kind: 'personal_record', run_id: 'r9' })), '/runs/r9?share=pr');
+	assert.equal(notificationLinkFor(make({ kind: 'personal_record' })), null);
+});
+
 test('content_hidden is informational — never links', () => {
 	assert.equal(notificationLinkFor(make({ kind: 'content_hidden' })), null);
 });

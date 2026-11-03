@@ -1,32 +1,24 @@
-/// The Stripe SDK for the whole tier, imported once so that its
-/// declarations actually resolve. Import Stripe from here, never from a
-/// URL — `stripe_boundary.test.ts` fails on a direct import.
+/// The Stripe SDK for the whole tier, imported once. Import Stripe from
+/// here, never by specifier — `stripe_boundary.test.ts` fails on a direct
+/// import.
 ///
-/// esm.sh does serve stripe's declarations: it advertises them on the
-/// module's `x-typescript-types` header and Deno fetches all ~450 of
-/// them, with no error anywhere in the graph. But it rewrites the ambient
-/// `declare module 'stripe'` inside the entry declaration to name that
-/// declaration file's own URL, and TypeScript matches an ambient module
-/// declaration against the LITERAL text of an import specifier rather
-/// than against what the specifier resolves to. A module importing
-/// `https://esm.sh/stripe@17.5.0?target=deno` therefore matches no
-/// ambient declaration; the file it does resolve to has no top-level
-/// exports of its own, since everything is inside that block; and the
-/// import silently becomes `any`. Every Stripe call in the tier was
-/// checked against nothing — worse than unchecked, because an `any`
-/// assigned into a narrowed local widens it back. Decisions § 765.
+/// It comes from npm, not esm.sh. esm.sh builds stripe's dependency graph
+/// itself (370 modules, `qs` -> `get-intrinsic` among them) and serves a
+/// rebuilt module under the same versioned URL, so in November 2026 its CDN
+/// handed out two different builds of `get-intrinsic@1.3.1` at once and no
+/// `deno.lock` pin could match both (decisions § 2257). An npm tarball is
+/// immutable once published, and its integrity is the registry's.
 ///
-/// The directive below points at a declaration file whose own import IS
-/// that literal string, which is what makes the declarations bind.
-/// Nothing about the runtime graph changes: the specifier still carries
-/// `?target=deno` per decisions § 699, and a declaration file is erased
-/// before anything is bundled.
+/// npm's own declarations bind directly, so the `@ts-types` shim that
+/// § 765 needed for esm.sh's rewritten ambient module is gone. The version
+/// must match the root package.json's `stripe` devDependency, which is what
+/// `deno check` reads the declarations from; the boundary test pins both.
+/// The Stripe functions already needed the npm registry to boot (stripe
+/// imports `node:http`, decisions § 699), so this adds no boot dependency.
+import Stripe from 'npm:stripe@17.5.0';
 
-// @ts-types="./stripe_types.d.ts"
-import Stripe from 'https://esm.sh/stripe@17.5.0?target=deno';
-
-/// The proof that the line above worked, and the reason this file cannot
-/// go quietly back to `any` on a Deno release, an esm.sh change or a
+/// The proof that the declarations bound, and the reason this file cannot
+/// go quietly back to `any` on a Deno release, a registry change or a
 /// version bump.
 ///
 /// It has to be a NEGATIVE test. Every assignability test passes under
@@ -34,11 +26,11 @@ import Stripe from 'https://esm.sh/stripe@17.5.0?target=deno';
 /// very collapse it exists to catch — including the usual
 /// `0 extends 1 & T` any-detector, which over this import resolves to
 /// `any` itself and then satisfies any constraint at all. That was tried
-/// first and reported nothing with the directive deleted, which is the
-/// failure mode this whole entry is about: a check that goes quiet.
-/// `Account.id` is a string, so constraining it to `number` must fail; if
-/// it ever stops failing, the directive below is unused and `deno check`
-/// reports THAT instead, naming this file. No source-grep guard could see
+/// first (decisions § 765) and reported nothing with the declarations
+/// unbound: a check that goes quiet. `Account.id` is a string, so
+/// constraining it to `number` must fail; if it ever stops failing, the
+/// `@ts-expect-error` below is unused and `deno check` reports THAT
+/// instead, naming this file. No source-grep guard could see
 /// a collapse here — the import it would grep for is unchanged.
 type MustBeNumber<T extends number> = T;
 // @ts-expect-error -- Stripe.Account['id'] is a string, not a number.
@@ -64,10 +56,10 @@ export type { StripeDeclarationsBind };
 ///
 /// The params helpers themselves stay Stripe-free on purpose:
 /// `events-checkout`'s is imported by `stripe-events-webhook`, which has
-/// no Stripe in its graph and must not grow the `?target=deno` polyfill
-/// tree to get one (decisions § 699 measured that at 228 KB -> 2.4 MB
-/// per eszip). So the assertion lives at the call site instead of in the
-/// helper's return type.
+/// no Stripe in its runtime graph and must not grow one (decisions § 699
+/// measured a value import at 228 KB -> 2.4 MB per eszip). So the
+/// assertion lives at the call site instead of in the helper's return
+/// type.
 export type UnknownParamKeys<Shape, Params> = Exclude<keyof Shape, keyof Params>;
 export type AssertNoUnknownParamKeys<K extends never> = K;
 

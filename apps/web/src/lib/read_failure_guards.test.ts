@@ -412,6 +412,7 @@ test('every fetchRouteMarkers caller decides what a failed read means', () => {
 	const editor = read('src/lib/components/RouteMarkerEditor.svelte');
 	const detail = read('src/routes/routes/[id]/+page.svelte');
 	const live = read('src/routes/live/[id]/+page.svelte');
+	const race = read('src/routes/races/[id]/+page.svelte');
 
 	const load = roadbook.match(/async function load\(\)[\s\S]*?\n\t\}/);
 	assert.ok(load, 'roadbook load body missing — rename?');
@@ -439,6 +440,12 @@ test('every fetchRouteMarkers caller decides what a failed read means', () => {
 		live,
 		/try \{\s*const \[route, markers\] = await Promise\.all\(\[\s*fetchRouteById\(run\.route_id\),\s*fetchRouteMarkers\(run\.route_id\),/,
 	);
+	// The race page's climb names are auxiliary to its course line: a failed
+	// marker read is logged and the course still draws without them.
+	assert.match(
+		race,
+		/Promise\.allSettled\(\[\s*fetchPublicRoute\(routeId\),\s*fetchRouteMarkers\(routeId\),\s*\]\)[\s\S]*?if \(markersRes\.status === 'fulfilled'\) courseMarkers = markersRes\.value;\s*else console\.error\(/,
+	);
 
 	const callers: Record<string, number> = {};
 	for (const rel of readdirSync(resolve('src'), { recursive: true }) as string[]) {
@@ -451,6 +458,7 @@ test('every fetchRouteMarkers caller decides what a failed read means', () => {
 		{
 			'lib/components/RouteMarkerEditor.svelte': 1,
 			'routes/live/[id]/+page.svelte': 1,
+			'routes/races/[id]/+page.svelte': 1,
 			'routes/routes/[id]/+page.svelte': 1,
 			'routes/routes/[id]/roadbook/+page.svelte': 2,
 		},

@@ -176,6 +176,7 @@ unwired gate now fails in `src/lib/ci_workflow_guards.test.ts`. Setting one to
 | `PUBLIC_WEIGHT_FLUID_ENABLED` | the "Fluid from body weight" toggle on the roadbook and `/nutrition/fuel` (decisions § 1976); off, neither page reads a body weight and the flat rate stands. Flip together with mobile's `WEIGHT_FLUID_ENABLED` | CISO + counsel review of a new Art 9 use of body weight against the health-data consent copy ([race_fueling_plan.md § Pre-deploy checklist (weight-based fluid)](../../docs/features/race_fueling_plan.md)) |
 | `PUBLIC_FUNDRAISING_ENABLED` | donations / fundraiser pages | Stripe Connect + owner + CISO + counsel |
 | `PUBLIC_CYCLE_PLANS_ENABLED` | the Art 9 cycle / pregnancy plan-adjust UI | owner + CISO + counsel |
+| `PUBLIC_FLYOVER_VIDEO_MAPTILER_ENABLED` | MapTiler's basemap and terrain in the flyover **video** export (decisions § 2259); off, and with no local `PUBLIC_TILE_STYLE_URL` override, the export is not offered at all (§ 2270), and the on-screen 3D preview is unaffected. Flip together with mobile's `FLYOVER_VIDEO_MAPTILER_ENABLED`, which offers the phone's run **Video** share style (§ 2271) | operator confirms MapTiler's plan terms permit its terrain and imagery in published video (§ 2251 checklist) |
 
 **Anything that should stay server-side does NOT have the `PUBLIC_` prefix and lives in the Lambda's env**, set by Terraform from the sops-encrypted file — not in the SvelteKit build, not in GitHub Secrets. The coach Lambda reads:
 

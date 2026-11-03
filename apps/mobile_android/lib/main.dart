@@ -38,6 +38,7 @@ import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'settings_cache.dart';
 import 'settings_sync.dart';
+import 'challenge_invite_link.dart';
 import 'club_invite_link.dart';
 import 'entity_link.dart';
 import 'shared_file_import.dart';
@@ -171,6 +172,8 @@ void main() async {
   const weighInGateDef = String.fromEnvironment('WEIGH_IN_GATE');
   const weightFluidDef = String.fromEnvironment('WEIGHT_FLUID_ENABLED');
   const cyclePlansDef = String.fromEnvironment('CYCLE_PLANS_ENABLED');
+  const flyoverVideoDef =
+      String.fromEnvironment('FLYOVER_VIDEO_MAPTILER_ENABLED');
   const tileUrlTemplateDef = String.fromEnvironment('TILE_URL_TEMPLATE');
   const usdaFdcApiKeyDef = String.fromEnvironment('USDA_FDC_API_KEY');
   dotenv.loadFromString(
@@ -201,6 +204,8 @@ void main() async {
       if (weighInGateDef.isNotEmpty) 'WEIGH_IN_GATE=$weighInGateDef',
       if (weightFluidDef.isNotEmpty) 'WEIGHT_FLUID_ENABLED=$weightFluidDef',
       if (cyclePlansDef.isNotEmpty) 'CYCLE_PLANS_ENABLED=$cyclePlansDef',
+      if (flyoverVideoDef.isNotEmpty)
+        'FLYOVER_VIDEO_MAPTILER_ENABLED=$flyoverVideoDef',
       if (tileUrlTemplateDef.isNotEmpty) 'TILE_URL_TEMPLATE=$tileUrlTemplateDef',
       if (usdaFdcApiKeyDef.isNotEmpty) 'USDA_FDC_API_KEY=$usdaFdcApiKeyDef',
     ].join('\n'),
@@ -726,6 +731,16 @@ void main() async {
     unawaited(inviteLinks.processInitial());
   } catch (e) {
     debugPrint('club invite link init failed: $e');
+  }
+
+  // Challenge links (`/challenges/join/<token>` and `/share/challenge/<id>` on
+  // the web host, or `com.threkir.app://challenges/join/<token>`): HomeScreen
+  // drains pendingChallengeLink. Guarded the same way.
+  try {
+    final challengeLinks = ChallengeLinkService()..start();
+    unawaited(challengeLinks.processInitial());
+  } catch (e) {
+    debugPrint('challenge link init failed: $e');
   }
 
   // Run and route links (`/runs/<id>`, `/routes/<id>` on the web host, or the

@@ -14,6 +14,7 @@ GDPR Art 35 requires a DPIA whenever a processing activity is "likely to result 
 | **AI Coach** (`apps/web/src/lib/coach/handler.ts`) | Automated processing of health data sent to a US sub-processor for response generation. |
 | **Live spectator tracking** (`live_run_pings` → web `/live/[id]` + Go live-hub) | Real-time location data shared with public viewers. |
 | **Public route + run sharing** (`is_public = true` rows) | Voluntary publication of historical location data. |
+| **Share-link attribution** (`private.share_link_daily`, `signup_share` sign-up metadata, decisions § 2268) | Not a WP248 trigger on its face: aggregate per-link counters with no visitor identifier, and a sign-up's source link recorded on the person's own sign-up. Listed so the CISO / Security Analyst can confirm whether sign-up attribution is a new purpose before the `share_attribution` gate opens ([deployment.md](../ops/deployment.md)). |
 
 ## Necessity + proportionality
 

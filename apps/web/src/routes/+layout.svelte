@@ -266,7 +266,15 @@
 		path.startsWith('/live/') ||
 		path.startsWith('/learn') ||
 		path.startsWith('/clubs/join/') ||
+		path.startsWith('/challenges/join/') ||
 		path.startsWith('/coaching/accept/');
+
+	// Rendered into a stream (the OBS browser source, decisions § 2265): no
+	// toast, undo bar, offline or cookie banner may paint over the broadcast.
+	// Hiding the banner means consent is never asked here: Sentry stays off
+	// unless this browser accepted it elsewhere, and then the overlay token
+	// in the fragment is redacted before it leaves (sentry/redact.ts).
+	const isChromeless = (path: string) => path === '/live/overlay';
 
 	// "Anon-allowed" surfaces: reachable without auth. Superset of shell-less
 	// — also includes the legal pages, marketing pages, and the guided /
@@ -525,9 +533,11 @@
 	{/if}
 </svelte:head>
 
-<ToastContainer />
-<UndoBar />
-<CookieConsentBanner />
+{#if !isChromeless(page.url.pathname)}
+	<ToastContainer />
+	<UndoBar />
+	<CookieConsentBanner />
+{/if}
 
 <!-- The region is permanently mounted and only the banner inside it comes and
      goes: a live region announces changes made INSIDE it, not its own arrival,
@@ -535,7 +545,7 @@
      § 736). The wrapper carries no styles — the banner keeps its own fixed
      positioning. -->
 <div role="status" aria-live="polite">
-	{#if isOffline}
+	{#if isOffline && !isChromeless(page.url.pathname)}
 		<div class="offline-banner" data-testid="offline-banner">
 			<span class="material-symbols offline-icon" aria-hidden="true">wifi_off</span>
 			{m('shell.offline')}

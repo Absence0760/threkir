@@ -711,6 +711,19 @@ export const PAIRS = [
 			{ file: 'apps/mobile_android/lib/run_stats.dart', decl: '_pbBracketOrder', shape: 'keys' },
 			{ file: 'apps/web/src/lib/components/PlanRecapCard.svelte', decl: 'BRACKET_LABEL', shape: 'keys' },
 			{ file: 'apps/mobile_android/lib/widgets/plan_recap_card.dart', decl: 'planRecapBracketLabel', shape: 'switch' },
+			{ file: 'apps/web/src/lib/share/pr_card.ts', decl: 'PR_BRACKETS', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/pr_card.dart', decl: 'prBrackets', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/pr_card.dart', decl: 'prBracketMetres', shape: 'keys' },
+		],
+	},
+	{
+		// The improvement log takes the cache's brackets (20271104000002), and
+		// the PR card is the one client that reads it.
+		tableColumn: 'personal_record_improvements.distance',
+		clients: [
+			{ file: 'apps/web/src/lib/share/pr_card.ts', decl: 'PR_BRACKETS', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/pr_card.dart', decl: 'prBrackets', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/pr_card.dart', decl: 'prBracketMetres', shape: 'keys' },
 		],
 	},
 	{
@@ -1082,21 +1095,31 @@ export function parseChecks(sql) {
 	// script reads ARE literals, so blanking them would empty every set.
 	const stripped = splitSqlStatements(sql).join(';');
 
-	const tableRe = /\b(?:create\s+table|alter\s+table)\s+(?:if\s+not\s+exists\s+)?(?:public\.)?([a-z_][a-z0-9_]*)/gi;
+	// A table outside `public` (the unexposed `private` schema) has no client
+	// row type and no client that can write it, so its CHECKs are not this
+	// guard's subject: it resets the current table rather than filing its
+	// clauses under the schema name.
+	const tableRe =
+		/\b(?:create\s+table|alter\s+table)\s+(?:if\s+not\s+exists\s+)?(?:([a-z_][a-z0-9_]*)\.)?([a-z_][a-z0-9_]*)/gi;
 	const checkRe =
 		/check\s*\(\s*(?:[a-z_][a-z0-9_]*\s+is\s+null\s+or\s+)?([a-z_][a-z0-9_]*)\s+in\s*\(([^)]*)\)\s*\)/gi;
 
 	/**
 	 * A discriminated union, spelled out because an inferred evolving array
 	 * widens `kind` to `string` and then nothing narrows `valuesRaw`.
-	 * @type {({ kind: 'table', index: number, table: string }
+	 * @type {({ kind: 'table', index: number, table: string | null }
 	 *   | { kind: 'check', index: number, column: string, valuesRaw: string })[]}
 	 */
 	const hits = [];
 	/** @type {RegExpExecArray | null} */
 	let m;
 	while ((m = tableRe.exec(stripped)) !== null) {
-		hits.push({ kind: 'table', index: m.index, table: m[1].toLowerCase() });
+		const schema = m[1]?.toLowerCase();
+		hits.push({
+			kind: 'table',
+			index: m.index,
+			table: schema && schema !== 'public' ? null : m[2].toLowerCase(),
+		});
 	}
 	while ((m = checkRe.exec(stripped)) !== null) {
 		hits.push({

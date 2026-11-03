@@ -17,7 +17,9 @@ import '../training_labels.dart';
 import '../training_service.dart';
 import '../backend_timeout.dart';
 import '../hr_prescription_gate.dart';
+import '../plan_current.dart' show PlanWorkoutStatus;
 import '../widgets/error_state.dart';
+import '../widgets/plan_workout_status_style.dart';
 import '../widgets/top_banner.dart';
 import '../workout_kind_color.dart';
 import '../workout_summary.dart';
@@ -63,7 +65,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   double? _linkedDistance;
   String? _linkedDistanceRunId;
   late bool _loading = widget.initial == null;
-  bool _unlinking = false;
+  bool _updating = false;
   bool _skipping = false;
   _WorkoutLoadError? _error;
 
@@ -161,24 +163,18 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     }
   }
 
-  // Unlinking the matched run resets the plan's progress for this workout,
-  // so it confirms first (parity with web's ConfirmDialog) and surfaces a
-  // failure instead of swallowing it. Guarded against a double-tap.
-  //
-  // A workout marked done by hand has no run to unlink; the same path clears
-  // the mark, under copy that says so. Mobile has no "mark done", so the
-  // confirm stays: the runner could not put it back from here.
-  Future<void> _confirmUnlink(PlanWorkoutRow w) async {
-    if (_unlinking) return;
+  // Unlinking the matched run resets the plan's progress for this workout and
+  // putting it back means finding the run again, so it confirms first (parity
+  // with web's ConfirmDialog). Guarded against a double-tap; a failure is
+  // surfaced, never swallowed.
+  Future<void> _confirmUnlink() async {
+    if (_updating) return;
     final l10n = AppLocalizations.of(context);
-    final hasRun = w.completedRunId != null;
     final ok = await showDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
-            title: Text(
-                hasRun ? l10n.workoutUnlinkTitle : l10n.workoutMarkNotDoneTitle),
-            content: Text(
-                hasRun ? l10n.workoutUnlinkBody : l10n.workoutMarkNotDoneBody),
+            title: Text(l10n.workoutUnlinkTitle),
+            content: Text(l10n.workoutUnlinkBody),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
@@ -188,26 +184,33 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 onPressed: () => Navigator.pop(context, true),
                 style: TextButton.styleFrom(
                     foregroundColor: Theme.of(context).colorScheme.error),
-                child: Text(
-                    hasRun ? l10n.workoutUnlink : l10n.workoutMarkNotDone),
+                child: Text(l10n.workoutUnlink),
               ),
             ],
           ),
         ) ??
         false;
     if (!ok || !mounted) return;
-    setState(() => _unlinking = true);
+    await _setCompleted(done: false, error: l10n.workoutUnlinkError);
+  }
+
+  // A workout done without a recording is marked by hand, and the mark is
+  // cleared the same way. Neither takes a guard (conventions.md § Destructive
+  // actions): each is put back by the other button on this same panel, as
+  // Skip / Un-skip are. Mirrors web's workout-detail page.
+  Future<void> _setCompleted({required bool done, String? error}) async {
+    if (_updating) return;
+    final l10n = AppLocalizations.of(context);
+    setState(() => _updating = true);
     try {
-      await widget.training.markCompleted(widget.workoutId, null);
+      await widget.training
+          .markCompleted(widget.workoutId, null, manual: done);
       await _load();
     } catch (e, s) {
-      debugPrint('WorkoutDetailScreen._confirmUnlink failed: $e\n$s');
-      if (mounted) {
-        showTopBanner(context,
-            hasRun ? l10n.workoutUnlinkError : l10n.workoutMarkNotDoneError);
-      }
+      debugPrint('WorkoutDetailScreen._setCompleted($done) failed: $e\n$s');
+      if (mounted) showTopBanner(context, error ?? l10n.workoutUpdateError);
     } finally {
-      if (mounted) setState(() => _unlinking = false);
+      if (mounted) setState(() => _updating = false);
     }
   }
 
@@ -355,37 +358,60 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                   fontWeight: FontWeight.w700,
                 )),
             const SizedBox(height: 4),
-            Text(
-                isRace && w.raceName != null
-                    ? w.raceName!
-                    : workoutKindLabel(l10n, kind),
-                key: const Key('workoutDetailHeading'),
-                style: theme.textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w700)),
+            Semantics(
+              header: true,
+              child: Text(
+                  isRace && w.raceName != null
+                      ? w.raceName!
+                      : workoutKindLabel(l10n, kind),
+                  key: const Key('workoutDetailHeading'),
+                  style: theme.textTheme.headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+            ),
             const SizedBox(height: 4),
             Text(_tagline(l10n, kind, structure),
                 style: theme.textTheme.bodyMedium
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
             if (walkRun != null) ...[
               const SizedBox(height: 12),
-              _label(theme, l10n.workoutMetricSession),
-              Text(formatWalkRunTotal(l10n, walkRun, (m) => fmtOverrun(m.toDouble())),
-                  key: const Key('walkRunTotal'),
-                  style: theme.textTheme.headlineMedium
-                      ?.copyWith(fontWeight: FontWeight.w700)),
-              Text(formatWalkRunPattern(l10n, walkRun, (m) => fmtOverrun(m.toDouble())),
-                  key: const Key('walkRunPattern'),
-                  style: theme.textTheme.bodyMedium),
+              MergeSemantics(
+                key: const Key('workoutDetailSessionFigure'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _label(theme, l10n.workoutMetricSession),
+                    Text(
+                        formatWalkRunTotal(
+                            l10n, walkRun, (m) => fmtOverrun(m.toDouble())),
+                        key: const Key('walkRunTotal'),
+                        style: theme.textTheme.headlineMedium
+                            ?.copyWith(fontWeight: FontWeight.w700)),
+                    Text(
+                        formatWalkRunPattern(
+                            l10n, walkRun, (m) => fmtOverrun(m.toDouble())),
+                        key: const Key('walkRunPattern'),
+                        style: theme.textTheme.bodyMedium),
+                  ],
+                ),
+              ),
             ] else if (hasPace) ...[
               const SizedBox(height: 12),
-              _label(theme, l10n.workoutMetricTargetPace),
-              Text(
-                w.targetPaceEndSecPerKm != null &&
-                        w.targetPaceEndSecPerKm != w.targetPaceSecPerKm
-                    ? '${fmtPace(w.targetPaceSecPerKm)} → ${fmtPace(w.targetPaceEndSecPerKm)}'
-                    : fmtPace(w.targetPaceSecPerKm),
-                style: theme.textTheme.headlineMedium
-                    ?.copyWith(fontWeight: FontWeight.w700),
+              MergeSemantics(
+                key: const Key('workoutDetailPaceFigure'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _label(theme, l10n.workoutMetricTargetPace),
+                    Text(
+                      w.targetPaceEndSecPerKm != null &&
+                              w.targetPaceEndSecPerKm != w.targetPaceSecPerKm
+                          ? '${fmtPace(w.targetPaceSecPerKm)} → ${fmtPace(w.targetPaceEndSecPerKm)}'
+                          : fmtPace(w.targetPaceSecPerKm),
+                      style: theme.textTheme.headlineMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
               ),
               if (w.targetPaceToleranceSec != null ||
                   (w.paceZone != null && w.paceZone!.trim().isNotEmpty))
@@ -417,7 +443,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 key: const Key('workoutDetailCoachEdited'),
                 children: [
                   Icon(Icons.sports,
-                      size: 16, color: theme.colorScheme.onSurfaceVariant),
+                      size: AppIconSize.inline,
+                      color: theme.colorScheme.onSurfaceVariant),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -476,7 +503,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             {required Key key,
             required Color bg,
             required Color fg,
+            Color? border,
             required IconData icon,
+            required Color iconColor,
             required String label,
             String? semanticsLabel,
             required List<Widget> actions}) =>
@@ -486,6 +515,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
           decoration: BoxDecoration(
             color: bg,
+            border: border == null ? null : Border.all(color: border),
             borderRadius: BorderRadius.circular(AppRadius.sm),
           ),
           child: Wrap(
@@ -495,7 +525,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon, size: AppIconSize.standard, color: fg),
+                  Icon(icon, size: AppIconSize.standard, color: iconColor),
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(label,
@@ -516,11 +546,14 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           ? workoutOverrunMetres(w.targetDistanceM, _linkedDistance, w.kind)
           : null;
       final overrun = overrunM == null ? null : fmtOverrun(overrunM);
+      final look = planWorkoutStatusLook(theme, PlanWorkoutStatus.done);
       return panel(
         key: const Key('workoutDetailCompleted'),
-        bg: theme.colorScheme.primaryContainer,
-        fg: theme.colorScheme.onPrimaryContainer,
-        icon: Icons.check_circle,
+        bg: look.fill!,
+        fg: theme.colorScheme.onSurface,
+        border: look.outline,
+        icon: look.glyph!,
+        iconColor: look.glyphColor,
         label: overrun == null
             ? l10n.workoutCompleted
             : '${l10n.workoutCompleted} · ${l10n.planWorkoutOverrun(overrun)}',
@@ -534,7 +567,12 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               child: Text(l10n.workoutRelink),
             ),
           TextButton(
-            onPressed: _unlinking ? null : () => _confirmUnlink(w),
+            key: const Key('workoutDetailMarkNotDone'),
+            onPressed: _updating
+                ? null
+                : w.completedRunId != null
+                    ? _confirmUnlink
+                    : () => _setCompleted(done: false),
             child: Text(w.completedRunId != null
                 ? l10n.workoutUnlink
                 : l10n.workoutMarkNotDone),
@@ -543,11 +581,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       );
     }
     if (w.skippedAt != null) {
+      final look = planWorkoutStatusLook(theme, PlanWorkoutStatus.skipped);
       return panel(
         key: const Key('workoutDetailSkipped'),
         bg: theme.colorScheme.surfaceContainerHighest,
         fg: theme.colorScheme.onSurfaceVariant,
-        icon: Icons.skip_next,
+        icon: look.glyph!,
+        iconColor: look.glyphColor,
         label: l10n.workoutSkipped,
         actions: [
           TextButton(
@@ -572,13 +612,22 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           ),
         ),
         const SizedBox(height: 4),
-        Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: TextButton.icon(
-            onPressed: _skipping ? null : () => _toggleSkip(w),
-            icon: const Icon(Icons.skip_next, size: AppIconSize.standard),
-            label: Text(l10n.workoutSkip),
-          ),
+        Wrap(
+          spacing: 8,
+          children: [
+            TextButton.icon(
+              key: const Key('workoutDetailMarkDone'),
+              onPressed: _updating ? null : () => _setCompleted(done: true),
+              icon: const Icon(Icons.check_circle_outline,
+                  size: AppIconSize.standard),
+              label: Text(l10n.workoutMarkDone),
+            ),
+            TextButton.icon(
+              onPressed: _skipping ? null : () => _toggleSkip(w),
+              icon: const Icon(Icons.skip_next, size: AppIconSize.standard),
+              label: Text(l10n.workoutSkip),
+            ),
+          ],
         ),
       ],
     );
@@ -606,8 +655,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     );
   }
 
+  // The caps are visual only: a screen reader is handed the label as written,
+  // so it never spells out an all-caps word letter by letter.
   Widget _label(ThemeData theme, String label) {
     return Text(label.toUpperCase(),
+        semanticsLabel: label,
         style: theme.textTheme.labelSmall?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
           letterSpacing: 0.6,
@@ -615,14 +667,16 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   Widget _metric(ThemeData theme, String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _label(theme, label),
-        Text(value,
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w700)),
-      ],
+    return MergeSemantics(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _label(theme, label),
+          Text(value,
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700)),
+        ],
+      ),
     );
   }
 
@@ -674,62 +728,65 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         {String? pace, String? recovery}) {
       rows.add(Padding(
         padding: const EdgeInsets.only(top: 10),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                width: 4,
-                decoration: BoxDecoration(
-                  color: _roleColor(theme, kind, role),
-                  borderRadius: BorderRadius.circular(AppRadius.xs),
+        child: MergeSemantics(
+          key: Key('workoutStep-${role.name}'),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  width: 4,
+                  decoration: BoxDecoration(
+                    color: _roleColor(theme, kind, role),
+                    borderRadius: BorderRadius.circular(AppRadius.xs),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 2,
-                  children: [
-                    TextLane(
-                      width: 90,
-                      child: Text(term,
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
-                          )),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(main,
-                            style: theme.textTheme.bodyMedium
-                                ?.copyWith(fontWeight: FontWeight.w700)),
-                        if (pace != null)
-                          Text(pace,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 2,
+                    children: [
+                      TextLane(
+                        width: 90,
+                        child: Text(term,
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w700,
+                            )),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(main,
+                              style: theme.textTheme.bodyMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700)),
+                          if (pace != null)
+                            Text(pace,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                )),
+                          if (recovery != null)
+                            Text.rich(
+                              key: const Key('workoutStepRecovery'),
+                              TextSpan(children: [
+                                TextSpan(
+                                    text: '${l10n.workoutStructRecovery}  ',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w700)),
+                                TextSpan(text: recovery),
+                              ]),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
-                              )),
-                        if (recovery != null)
-                          Text.rich(
-                            key: const Key('workoutStepRecovery'),
-                            TextSpan(children: [
-                              TextSpan(
-                                  text: '${l10n.workoutStructRecovery}  ',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w700)),
-                              TextSpan(text: recovery),
-                            ]),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+                              ),
                             ),
-                          ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ));

@@ -24,7 +24,10 @@
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import SendRouteDialog from '#lib/components/SendRouteDialog.svelte';
+	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
 	import RoutePreviewScrubber from '#lib/components/RoutePreviewScrubber.svelte';
+	import CoursePreviewButton from '#lib/components/CoursePreviewButton.svelte';
+	import { climbNamesFromMarkers, routePathPoints } from '#lib/routes/course_preview_points.ts';
 	import { interpolateAlongRoute } from '#lib/routes/route_geometry.ts';
 	import { distinctTags } from '#lib/routes/route_tags.ts';
 	import { routeElevation } from '#lib/routes/route_elevation.ts';
@@ -404,6 +407,7 @@
 	// confirm has to remember which of them asked for it.
 	let shareIntent = $state<'link' | 'dm'>('link');
 	let showSendDm = $state(false);
+	let showHeadToHead = $state(false);
 
 	async function handleShare() {
 		if (!route || sharing) return;
@@ -529,6 +533,8 @@
 	// the chart's idx-space lines up with what the map is drawing: a
 	// non-owner's chart idx → map marker must hit the clipped trace.
 	let elevation = $derived(routeElevation(route?.elevation_m ?? 0, displayWaypoints));
+	const previewPoints = $derived(routePathPoints(displayWaypoints));
+	const previewClimbNames = $derived(climbNamesFromMarkers(routeMarkers, previewPoints));
 
 	/// Linked-cursor index — same shape as /runs/[id]. ElevationProfile
 	/// onhover sets it; RunMap reads it.
@@ -733,6 +739,13 @@
 					{/if}
 				</div>
 				<div class="actions">
+					<!-- clip_route_for_viewer hands the owner the unclipped line, so only a non-owner gets the video export. -->
+					<CoursePreviewButton
+						points={previewPoints}
+						title={route.name}
+						climbNames={previewClimbNames}
+						videoSource={isOwner ? undefined : async () => ({ points: previewPoints })}
+					/>
 					<button class="btn btn-outline btn-sm" onclick={handleExportGpx}>GPX</button>
 					<button class="btn btn-outline btn-sm" onclick={handleExportKml}>KML</button>
 					{#if routeMarkers.length > 0}
@@ -778,6 +791,16 @@
 							<span class="material-symbols" aria-hidden="true">group</span>
 							{m('audience.sharedWithYou')}
 						</span>
+					{/if}
+					{#if auth.loggedIn}
+						<button
+							class="btn btn-outline btn-sm"
+							onclick={() => (showHeadToHead = true)}
+							data-testid="route-head-to-head-open"
+						>
+							<span class="material-symbols" aria-hidden="true">group</span>
+							{m('headToHead.compare')}
+						</button>
 					{/if}
 					{#if route.is_public || isOwner}
 						<button
@@ -1089,6 +1112,12 @@
 		confirmLabel={m('routeDetail.shareConfirmCta')}
 		onconfirm={confirmShare}
 		oncancel={() => (showShareConfirm = false)}
+	/>
+	<HeadToHeadDialog
+		open={showHeadToHead}
+		onclose={() => (showHeadToHead = false)}
+		kind="route"
+		targetId={route.id}
 	/>
 	<SendRouteDialog
 		open={showSendDm}

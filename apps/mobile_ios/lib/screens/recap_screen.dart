@@ -10,6 +10,7 @@ import '../preferences.dart';
 import '../recap.dart';
 import '../share_sheet.dart';
 import '../web_base_url.dart';
+import '../widgets/recap_share_card.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
 
@@ -24,7 +25,9 @@ enum RecapPeriod { year, month }
 ///
 /// Reads runs from the local store (no extra Supabase round-trip) and builds
 /// the hero numbers via `buildYearInRunningRecap` / `buildMonthInRunningRecap`.
-/// Includes a share CTA that hands a one-line summary to the OS share sheet,
+/// Includes a share CTA that opens a sheet sharing the recap as a square or
+/// story image (the web card's layout, `recap_card_layout.dart`) or as a
+/// short text summary,
 /// plus a "Publish & share link" action (when `api` is wired) that freezes a
 /// public snapshot via the web `public_recaps` table and shares the web
 /// /recap/share/[id] link — the device OS-share-sheet is the mobile-additive
@@ -190,6 +193,19 @@ class _RecapScreenState extends State<RecapScreen> {
     );
   }
 
+  Future<void> _openShareSheet(YearInRunningRecap recap, String label) {
+    final l10n = AppLocalizations.of(context);
+    return showRecapShareSheet(
+      context,
+      text: recapCardText(l10n, recap, widget.preferences.unit, label),
+      fileStem: 'threkir-$_periodKey',
+      subject: _shareSubject(l10n, label),
+      shareText: () => _share(recap, label),
+      videoUrl: recapVideoExportUrl(_year,
+          month: _period == RecapPeriod.month ? _month : null),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -223,7 +239,7 @@ class _RecapScreenState extends State<RecapScreen> {
             icon: const Icon(Icons.share_outlined),
             tooltip: l10n.recapShareTooltip,
             onPressed:
-                recap.runCount == 0 ? null : () => _share(recap, label),
+                recap.runCount == 0 ? null : () => _openShareSheet(recap, label),
           ),
         ],
       ),

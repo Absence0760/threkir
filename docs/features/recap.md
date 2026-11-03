@@ -53,9 +53,35 @@ byte-behaviour-identical; registered in the root `CLAUDE.md` parity list,
 - **Web monthly:** `/recap/[year]/[month]` — same `RecapView`, month engine,
   no 12-month strip.
 - **Web in-app share card:** `lib/share/recap_share_image.ts`
-  (`buildRecapShareSvg`, 1080² SVG) → rasterised client-side via
-  `lib/format/svg_raster.ts` → OS share sheet / download. Pass a `periodLabel`
-  for the monthly kicker.
+  (`buildRecapShareSvg`, a 1080² SVG, or 1080x1920 with `{ aspect: 'story' }`)
+  → rasterised client-side via `lib/format/svg_raster.ts` → OS share sheet /
+  download. The text comes from `lib/share/recap_card_text.ts`
+  (`recapCardText`), which reads the web catalogue (`recap.heroKicker` /
+  `recap.monthHeroKicker`, `recap.card*`), so the image is in the reader's
+  language; pass a `periodLabel` for the monthly kicker. **Share recap** shares
+  the square, **Share as story** the 9:16 one. Both aspects take their
+  coordinates from `lib/share/recap_card_layout.ts` (decisions § 2260).
+- **Web slideshow video (decisions § 2269):** **Make a video** in the recap
+  hero renders a 1080x1920, 30 fps MP4 (WebM where only `MediaRecorder` can
+  encode) in the browser and shows a preview, then **Share or save video**
+  hands it to the OS share sheet or a download. `lib/share/recap_slideshow.ts`
+  picks the slides (title, then up to six of longest run, biggest month with a
+  12-bar chart on a yearly recap, top week, fastest pace, best streak, climb,
+  personal records, trophies, then a Threkir end card) from the text
+  `RecapView` formats with the page's own `fmtKm` / `fmtPace` and catalogue
+  keys; `recap_slideshow_video.ts` draws them on a canvas and encodes through
+  `lib/video/encode_video.ts`, the encoder the flyover export uses. No map, so
+  no tiles and no consent gate. Where the browser can encode nothing the
+  action is replaced by a note. `?video=1` (the phone's Video option) starts
+  it on load. Both chunks load on first use.
+- **Mobile share image:** the share action on `RecapScreen` opens a sheet
+  (`widgets/recap_share_card.dart`) with a Square / Story choice, a preview, an
+  image share and the old text share. `RecapShareCard` paints the web card's
+  six cells in its dark palette from `recap_card_layout.dart`, the Dart half of
+  the `recap_card_layout` parity pair, so both platforms post the same layout.
+  A third **Video** option explains that the video is made on the web and
+  opens `/recap/<year>[/<month>]?video=1` in the browser
+  (`recapVideoExportUrl`), as the run share sheet's Video style does.
 - **Mobile:** `RecapScreen` (from the dashboard). Web's two routes collapse into
   one screen: a Year / Month `SegmentedButton` picks the engine, and the
   chevrons below it step by year or by calendar month (`DateTime` normalises the

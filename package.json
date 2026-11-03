@@ -92,6 +92,7 @@
 
     "//-- sync --": "deno.lock's `workspace` section is generated from the npm workspace's package.json files — re-sync it after any npm dep bump. Needs deno, but no network, no node_modules and no Docker. CI's parity-types job runs the :check half.",
     "sync:deno-lock": "node scripts/sync_deno_lock.mjs",
+    "refresh:deno-lock-remote": "node scripts/refresh_deno_lock_remote.mjs",
     "sync:deno-lock:check": "node scripts/sync_deno_lock.mjs --check",
 
     "//-- build --": "Production builds + install-to-device.",

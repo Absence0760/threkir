@@ -19,7 +19,16 @@ import { USER_A } from '../fixtures/users';
  * The elevation profile is what the assertions read, because it is the one
  * projection of `baseTrack` with numbers in the DOM: the map is a MapLibre
  * canvas. The two tracks are given disjoint elevation bands so the extremes
- * name which track was drawn and cannot be reached from the other.
+ * name which track's altitude was drawn and cannot be reached from the other.
+ * Since [§ 2254](../../../../docs/architecture/decisions.md) the profile reads
+ * altitude off the STORED track whenever the matched line is aligned with it
+ * point for point (the matcher keeps GPS `ele` and drops `baroEle`), and off
+ * the matched line's own `ele` only for a matched line of another length, one
+ * stored before the matcher became length-preserving (§ 1170). So the matched
+ * line's band is drawn only by a matched line of another length, which is
+ * what the matched case plants. The aligned branch is not asserted here: it
+ * draws the same band as the first frame, so a passing read of it cannot tell
+ * the § 2254 choice from a page that never swapped (the race below).
  *
  * **Every assertion here is a claim about the SETTLED page, and has to be
  * written as one.** `fetchRunMatchedTrack` is fired without `await` — the
@@ -59,10 +68,12 @@ const rawTrack = Array.from({ length: POINTS }, (_, i) => ({
 	ts: new Date(Date.UTC(2026, 0, 1, 9, i)).toISOString(),
 }));
 
-/** What the worker would write back: the same run snapped a little west,
- *  elevations 500..505 — a band the recorded trace never enters. */
-const matchedTrack = Array.from({ length: POINTS }, (_, i) => ({
-	lat: 51.46 + i * 0.0005,
+/** What the worker wrote back before it kept one point per stored fix
+ *  (§ 1170): the same run snapped a little west, at another length, with
+ *  elevations 500..506 — a band the recorded trace never enters. */
+const MATCHED_POINTS = POINTS + 1;
+const matchedTrack = Array.from({ length: MATCHED_POINTS }, (_, i) => ({
+	lat: 51.46 + (i * 0.0025) / (MATCHED_POINTS - 1),
 	lng: -0.3001,
 	ele: MATCHED_BASE_ELE + i,
 	ts: new Date(Date.UTC(2026, 0, 1, 9, i)).toISOString(),
@@ -95,7 +106,7 @@ test.describe('/runs/[id] — the matched line is what renders', () => {
 		runId = '';
 	});
 
-	test('a matched run draws the matched elevations, not the recorded ones', async ({ page }) => {
+	test('a matched line of another length draws its own elevations, not the recorded ones', async ({ page }) => {
 		await insertMatchedTrack({ run_id: runId, user_id: USER_A.id, track: matchedTrack });
 
 		// Armed before the navigation: this is the settle point the doc
@@ -114,7 +125,7 @@ test.describe('/runs/[id] — the matched line is what renders', () => {
 		// Max pill then min pill, in document order. Both come off the matched
 		// band; neither value exists anywhere in the recorded trace.
 		await expect.poll(() => extremeLabels(page), { timeout: 15_000 }).toEqual([
-			'\u25b2 505 m',
+			'\u25b2 506 m',
 			'\u25bc 500 m',
 		]);
 

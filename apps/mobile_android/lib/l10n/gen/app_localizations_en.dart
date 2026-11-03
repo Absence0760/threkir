@@ -7017,17 +7017,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workoutUnlinkError => 'Couldn\'t unlink the run. Try again.';
 
   @override
+  String get workoutMarkDone => 'Mark as done';
+
+  @override
   String get workoutMarkNotDone => 'Mark not done';
 
   @override
-  String get workoutMarkNotDoneTitle => 'Mark not done?';
-
-  @override
-  String get workoutMarkNotDoneBody => 'The workout will show as not yet done.';
-
-  @override
-  String get workoutMarkNotDoneError =>
-      'Couldn\'t update the workout. Try again.';
+  String get workoutUpdateError => 'Couldn\'t update the workout. Try again.';
 
   @override
   String get workoutSkipped => 'Skipped';

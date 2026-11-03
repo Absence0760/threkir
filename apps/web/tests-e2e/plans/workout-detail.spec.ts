@@ -225,11 +225,13 @@ test.describe('/plans/[id]/workouts/[wid]', () => {
 		}
 	});
 
-	test('a hand-marked done workout is cleared under "Mark not done" copy', async ({
+	test('a workout done without a recording is marked by hand, and cleared with one tap', async ({
 		page
 	}) => {
-		// With no run linked, the confirm used to say "Unlink the matched
-		// run?", a run that does not exist.
+		// #1186 parity: the detail page offered Skip but no "Mark as done", so a
+		// session run without the phone could only be ticked from the editor.
+		// Clearing a hand mark takes no dialog: "Mark as done" on the same
+		// panel puts it back, as Un-skip does for Skip.
 		const admin = getAdminClient();
 		const weekRow = await readMaybeRow(
 			'plan_weeks by plan_id+week_index',
@@ -254,33 +256,31 @@ test.describe('/plans/[id]/workouts/[wid]', () => {
 		);
 		expect(woRow).not.toBeNull();
 		const wo = woRow as { id: string };
+		const readManual = async () =>
+			(
+				(await readMaybeRow(
+					'plan_workouts by id',
+					admin.from('plan_workouts').select('manually_completed').eq('id', wo.id).maybeSingle()
+				)) as { manually_completed: boolean }
+			).manually_completed;
 
 		try {
 			await admin
 				.from('plan_workouts')
-				.update({
-					manually_completed: true,
-					completed_at: new Date().toISOString(),
-					skipped_at: null
-				})
+				.update({ manually_completed: false, completed_at: null, skipped_at: null })
 				.eq('id', wo.id);
 
 			await page.goto(`/plans/${SEED_PLAN_ID}/workouts/${wo.id}`);
+			await page.getByRole('button', { name: /^Mark as done$/ }).click();
+			await expect(page.getByTestId('workout-detail-done')).toBeVisible({ timeout: 10_000 });
+			expect(await readManual()).toBe(true);
+
 			await page.getByRole('button', { name: /^Mark not done$/ }).click();
-			const dialog = page.getByRole('dialog');
-			await expect(dialog.getByText('Mark not done?')).toBeVisible();
-			await expect(dialog.getByText('The workout will show as not yet done.')).toBeVisible();
-			await expect(dialog.getByText(/matched run/)).toHaveCount(0);
-			await dialog.getByRole('button', { name: /^Mark not done$/ }).click();
+			await expect(page.getByRole('dialog')).toHaveCount(0);
 			await expect(page.getByRole('button', { name: /^Skip this workout$/i })).toBeVisible({
 				timeout: 10_000
 			});
-
-			const after = await readMaybeRow(
-				'plan_workouts by id',
-				admin.from('plan_workouts').select('manually_completed').eq('id', wo.id).maybeSingle()
-			);
-			expect((after as { manually_completed: boolean }).manually_completed).toBe(false);
+			expect(await readManual()).toBe(false);
 		} finally {
 			await admin
 				.from('plan_workouts')

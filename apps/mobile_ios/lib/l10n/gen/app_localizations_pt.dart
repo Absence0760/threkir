@@ -7083,17 +7083,13 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível desvincular a corrida. Tente novamente.';
 
   @override
+  String get workoutMarkDone => 'Marcar como concluído';
+
+  @override
   String get workoutMarkNotDone => 'Marcar como não feito';
 
   @override
-  String get workoutMarkNotDoneTitle => 'Marcar como não feito?';
-
-  @override
-  String get workoutMarkNotDoneBody =>
-      'O treino aparecerá como ainda não feito.';
-
-  @override
-  String get workoutMarkNotDoneError =>
+  String get workoutUpdateError =>
       'Não foi possível atualizar o treino. Tente novamente.';
 
   @override
@@ -26140,17 +26136,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Não foi possível desvincular a corrida. Tente novamente.';
 
   @override
+  String get workoutMarkDone => 'Marcar como concluído';
+
+  @override
   String get workoutMarkNotDone => 'Marcar como não feito';
 
   @override
-  String get workoutMarkNotDoneTitle => 'Marcar como não feito?';
-
-  @override
-  String get workoutMarkNotDoneBody =>
-      'O treino aparecerá como ainda não feito.';
-
-  @override
-  String get workoutMarkNotDoneError =>
+  String get workoutUpdateError =>
       'Não foi possível atualizar o treino. Tente novamente.';
 
   @override

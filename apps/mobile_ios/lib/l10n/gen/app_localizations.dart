@@ -11452,29 +11452,23 @@ abstract class AppLocalizations {
   /// **'Couldn\'t unlink the run. Try again.'**
   String get workoutUnlinkError;
 
+  /// Button on an open workout: marks it done without a recorded run (manually_completed)
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as done'**
+  String get workoutMarkDone;
+
   /// Button on a workout the runner marked done by hand (no linked run); clears the done mark
   ///
   /// In en, this message translates to:
   /// **'Mark not done'**
   String get workoutMarkNotDone;
 
-  /// Confirm dialog title before clearing a hand-marked done workout
-  ///
-  /// In en, this message translates to:
-  /// **'Mark not done?'**
-  String get workoutMarkNotDoneTitle;
-
-  /// Confirm dialog body before clearing a hand-marked done workout
-  ///
-  /// In en, this message translates to:
-  /// **'The workout will show as not yet done.'**
-  String get workoutMarkNotDoneBody;
-
-  /// Error banner when clearing a hand-marked done workout fails
+  /// Error banner on workout detail when marking the workout done, or clearing that mark, fails
   ///
   /// In en, this message translates to:
   /// **'Couldn\'t update the workout. Try again.'**
-  String get workoutMarkNotDoneError;
+  String get workoutUpdateError;
 
   /// Skipped badge on workout detail
   ///

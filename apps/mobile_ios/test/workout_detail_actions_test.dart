@@ -10,17 +10,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart' show FullBodyLoader;
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/plan_current.dart' show PlanWorkoutStatus;
 import '../lib/screens/workout_detail_screen.dart';
 import '../lib/training_service.dart';
+import '../lib/widgets/plan_workout_status_style.dart';
 import 'pump_until.dart';
 
-PlanWorkoutRow _workout({DateTime? skippedAt}) => PlanWorkoutRow(
+PlanWorkoutRow _workout({DateTime? skippedAt, bool manual = false}) =>
+    PlanWorkoutRow(
       id: 'wo-1',
       weekId: 'week-1',
       scheduledDate: DateTime(2026, 4, 5),
       kind: 'easy',
       targetDistanceM: 5000,
-      manuallyCompleted: false,
+      manuallyCompleted: manual,
+      completedAt: manual ? DateTime(2026, 4, 5, 9) : null,
       skippedAt: skippedAt,
     );
 
@@ -30,8 +34,10 @@ class _FakeTraining extends TrainingService {
   final List<Object?> loads;
   PlanWorkoutRow workout;
   Object? skipError;
+  Object? markError;
   int fetchCalls = 0;
   final skipCalls = <bool>[];
+  final markCalls = <bool>[];
 
   _FakeTraining(this.workout, {this.loads = const [null]});
 
@@ -49,12 +55,26 @@ class _FakeTraining extends TrainingService {
     if (skipError != null) throw skipError!;
     workout = _workout(skippedAt: skipped ? DateTime(2026, 4, 5, 9) : null);
   }
+
+  @override
+  Future<void> markCompleted(
+    String workoutId,
+    String? runId, {
+    bool manual = false,
+  }) async {
+    markCalls.add(manual);
+    if (markError != null) throw markError!;
+    workout = _workout(manual: manual);
+  }
 }
 
 /// Opens the screen from a host route so a pop has somewhere to land, and
 /// returns the future of what it popped with.
-Future<Future<Object?>> _open(WidgetTester tester, _FakeTraining training,
-    {PlanWorkoutRow? initial}) async {
+Future<Future<Object?>> _open(
+  WidgetTester tester,
+  _FakeTraining training, {
+  PlanWorkoutRow? initial,
+}) async {
   late Future<Object?> popped;
   await tester.pumpWidget(
     MaterialApp(
@@ -94,8 +114,10 @@ void main() {
 
   group('load failures', () {
     testWidgets('a failed load says so, and retry recovers', (tester) async {
-      final training =
-          _FakeTraining(_workout(), loads: [Exception('boom'), null]);
+      final training = _FakeTraining(
+        _workout(),
+        loads: [Exception('boom'), null],
+      );
       await _open(tester, training);
 
       expect(find.text(en.workoutLoadError), findsOneWidget);
@@ -122,10 +144,13 @@ void main() {
   });
 
   group('a row handed in by the caller', () {
-    testWidgets('renders at once, and Start works with no signal',
-        (tester) async {
-      final training = _FakeTraining(_workout(),
-          loads: [const SocketException('no route')]);
+    testWidgets('renders at once, and Start works with no signal', (
+      tester,
+    ) async {
+      final training = _FakeTraining(
+        _workout(),
+        loads: [const SocketException('no route')],
+      );
       final popped = await _open(tester, training, initial: _workout());
 
       expect(training.fetchCalls, 1, reason: 'it still tries to refresh');
@@ -139,8 +164,9 @@ void main() {
     });
 
     testWidgets('a fresher row from the refresh replaces it', (tester) async {
-      final training =
-          _FakeTraining(_workout(skippedAt: DateTime(2026, 4, 5, 9)));
+      final training = _FakeTraining(
+        _workout(skippedAt: DateTime(2026, 4, 5, 9)),
+      );
       await _open(tester, training, initial: _workout());
 
       expect(find.byKey(const Key('workoutDetailSkipped')), findsOneWidget);
@@ -149,15 +175,18 @@ void main() {
   });
 
   testWidgets('a first load offline says offline', (tester) async {
-    await _open(tester,
-        _FakeTraining(_workout(), loads: [const SocketException('no route')]));
+    await _open(
+      tester,
+      _FakeTraining(_workout(), loads: [const SocketException('no route')]),
+    );
     expect(find.text(en.authErrorOffline), findsOneWidget);
     expect(find.text(en.workoutLoadError), findsNothing);
   });
 
   group('open-workout actions', () {
-    testWidgets('Start pops with the workout so the caller can run it',
-        (tester) async {
+    testWidgets('Start pops with the workout so the caller can run it', (
+      tester,
+    ) async {
       final popped = await _open(tester, _FakeTraining(_workout()));
 
       await tester.tap(find.text(en.workoutStart));
@@ -191,8 +220,9 @@ void main() {
       expect(find.byKey(const Key('workoutDetailSkipped')), findsNothing);
     });
 
-    testWidgets('a failed skip says so and leaves the workout open',
-        (tester) async {
+    testWidgets('a failed skip says so and leaves the workout open', (
+      tester,
+    ) async {
       final training = _FakeTraining(_workout())..skipError = Exception('no');
       await _open(tester, training);
 
@@ -204,6 +234,81 @@ void main() {
       expect(find.text(en.workoutStart), findsOneWidget);
       expect(find.byKey(const Key('workoutDetailSkipped')), findsNothing);
       await tester.pump(const Duration(seconds: 4));
+    });
+  });
+
+  // #1186 parity: web lets a runner tick a session they did without
+  // recording it; mobile had the service call and no button.
+  group('mark as done by hand', () {
+    testWidgets('marks it done in the shared done look, and Mark not done '
+        'reopens it with no dialog', (tester) async {
+      final training = _FakeTraining(_workout());
+      await _open(tester, training);
+
+      await tester.tap(find.byKey(const Key('workoutDetailMarkDone')));
+      await pumpUntil(
+        tester,
+        () => tester.any(find.byKey(const Key('workoutDetailCompleted'))),
+        describe: 'the completed panel after the reload',
+      );
+      expect(training.markCalls, [true]);
+      expect(find.text(en.workoutStart), findsNothing);
+
+      final context = tester.element(
+        find.byKey(const Key('workoutDetailCompleted')),
+      );
+      final done = planWorkoutStatusLook(
+        Theme.of(context),
+        PlanWorkoutStatus.done,
+      );
+      final box =
+          tester
+                  .widget<Container>(
+                    find.byKey(const Key('workoutDetailCompleted')),
+                  )
+                  .decoration!
+              as BoxDecoration;
+      expect(box.color, done.fill);
+      expect((box.border! as Border).top.color, done.outline);
+
+      await tester.tap(find.byKey(const Key('workoutDetailMarkNotDone')));
+      await pumpUntil(
+        tester,
+        () => tester.any(find.text(en.workoutStart)),
+        describe: 'the open workout after clearing the mark',
+      );
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(training.markCalls, [true, false]);
+    });
+
+    testWidgets('a failed mark says so and leaves the workout open', (
+      tester,
+    ) async {
+      final training = _FakeTraining(_workout())..markError = Exception('no');
+      await _open(tester, training);
+
+      await tester.tap(find.byKey(const Key('workoutDetailMarkDone')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text(en.workoutUpdateError), findsOneWidget);
+      expect(find.text(en.workoutStart), findsOneWidget);
+      expect(find.byKey(const Key('workoutDetailCompleted')), findsNothing);
+      await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets('a rest day offers no mark', (tester) async {
+      final training = _FakeTraining(
+        PlanWorkoutRow(
+          id: 'wo-1',
+          weekId: 'week-1',
+          scheduledDate: DateTime(2026, 4, 5),
+          kind: 'rest',
+          manuallyCompleted: false,
+        ),
+      );
+      await _open(tester, training);
+      expect(find.byKey(const Key('workoutDetailMarkDone')), findsNothing);
     });
   });
 }

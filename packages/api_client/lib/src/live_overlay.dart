@@ -1,3 +1,5 @@
+import 'package:core_models/core_models.dart';
+
 /// The caller's streamer overlay (decisions § 2265): the token an OBS browser
 /// source reads through, and what the server lets that token see.
 class LiveOverlay {
@@ -25,7 +27,7 @@ class LiveOverlay {
       delaySeconds: delay is num ? delay.toInt() : 60,
       showMap: row['show_map'] == true,
       showHeartRate: row['show_heart_rate'] == true,
-      createdAt: created is String ? DateTime.tryParse(created) : null,
+      createdAt: parseIsoStrictValue(created),
     );
   }
 

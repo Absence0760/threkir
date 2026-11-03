@@ -912,6 +912,42 @@ $neutralised$;`,
     },
   ],
   [
+    'challenge_invite_preview',
+    {
+      why: 'drops the challenge_invite_links gate, the club_vs_club exclusion, the shadow-hidden-creator and block-either-way filters and the creator id / name masks, the whole access control here; keeps `t.token = p_token`, the subject selector',
+      sql: `create or replace function public.challenge_invite_preview(p_token text)
+ returns table(id uuid, title text, description text, metric text, scope text,
+               goal_value numeric, activity_type text, starts_at timestamptz,
+               ends_at timestamptz, is_public boolean, participant_count integer,
+               creator_id uuid, creator_name text, joined boolean)
+ language sql stable security definer set search_path to 'public', 'private'
+as $neutralised$
+  select c.id, c.title, c.description, c.metric, c.scope, c.goal_value,
+         c.activity_type, c.starts_at, c.ends_at, c.is_public, c.participant_count,
+         c.creator_id, p.display_name, false
+    from private.challenge_invite_tokens t
+    join challenges c on c.id = t.challenge_id
+    left join user_profiles p on p.id = c.creator_id
+   where t.token = p_token
+     and ${mine('t')};
+$neutralised$;`,
+      subject: 'private.challenge_invite_tokens t',
+      witness: {
+        setup: `insert into user_profiles (id, display_name, shadow_hidden)
+                 values ((select id from auth.users order by id limit 1), 'pgtap guard witness', true)
+                 on conflict (id) do update set shadow_hidden = true;
+                insert into challenges (id, creator_id, title, metric, scope, goal_value,
+                                        starts_at, ends_at, is_public)
+                 values ('00000000-0000-0000-0000-00000000c1a1',
+                         (select id from auth.users order by id limit 1), 'pgtap guard witness',
+                         'distance', 'individual', 1000, now(), now() + interval '1 day', false);
+                insert into private.challenge_invite_tokens (challenge_id, token)
+                 values ('00000000-0000-0000-0000-00000000c1a1', 'pgtap-guard-witness');`,
+        probe: `select count(*) from challenge_invite_preview('pgtap-guard-witness');`,
+      },
+    },
+  ],
+  [
     'search_public_events',
     {
       why: "drops `e.is_public = true` and the `clubs.is_public = true` join term — the two predicates that keep a members-only event and a private club's event out of discovery. Every other filter is the search the caller typed and stays, so an assertion about one of THOSE cannot be killed by this replacement",

@@ -164,7 +164,7 @@ select is(
 set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000c1000004","role":"authenticated"}';
 select is(
   (select count(*)::int from challenge_invite_preview((select token from tok))),
-  0, 'a caller the creator blocked previews nothing');
+  0, 'a caller the creator blocked gets nothing from the preview');
 select is(
   join_challenge_by_token((select token from tok)), null,
   'a caller the creator blocked joins nothing, like an unknown token');

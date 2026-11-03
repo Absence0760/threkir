@@ -234,6 +234,7 @@ select is(
   1, 'the creator sees their profile''s visits');
 
 set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000a7700002","role":"authenticated"}';
+-- refusal: share stats are the owner's alone, and the creator's buckets exist
 select is((select count(*)::int from my_share_stats()), 0,
   'nobody else sees the creator''s numbers');
 
@@ -246,6 +247,7 @@ select record_share_visit('plan', 'aaaaaaaa-0000-0000-0000-0000a7700001');
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000a7700001","role":"authenticated"}';
 select is(my_share_ref(), null, 'no ref code while the gate is closed');
+-- refusal: the share_attribution gate is fail-closed, and the creator's buckets exist
 select is((select count(*)::int from my_share_stats()), 0, 'no creator view while the gate is closed');
 reset role;
 select is(

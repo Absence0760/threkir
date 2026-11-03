@@ -171,14 +171,17 @@ select is(
   0, 'another activity type compares nothing (I have no public cycle there)');
 
 -- Every refusal below is the same empty result as "no data".
+-- refusal: the mutual-follow rule is access control, and 03 has a public run here
 select is(
   (select count(*)::int from head_to_head('route', '66666666-6666-6666-6666-6666666bb001',
                                           '00000000-0000-0000-0000-00000000bb03')),
   0, 'a one-way follow is refused');
+-- refusal: a private profile is access control, and 04 has a public run here
 select is(
   (select count(*)::int from head_to_head('route', '66666666-6666-6666-6666-6666666bb001',
                                           '00000000-0000-0000-0000-00000000bb04')),
   0, 'a private profile cannot be compared against');
+-- refusal: the block is access control, and 05 has both edges and a public run here
 select is(
   (select count(*)::int from head_to_head('route', '66666666-6666-6666-6666-6666666bb001',
                                           '00000000-0000-0000-0000-00000000bb05')),
@@ -187,6 +190,7 @@ select is(
   (select count(*)::int from head_to_head('route', '66666666-6666-6666-6666-6666666bb001',
                                           '00000000-0000-0000-0000-00000000bb06')),
   0, 'a shadow-hidden profile is refused');
+-- refusal: run visibility is access control, and 07 has two runs here
 select is(
   (select count(*)::int from head_to_head('route', '66666666-6666-6666-6666-6666666bb001',
                                           '00000000-0000-0000-0000-00000000bb07')),
@@ -204,6 +208,7 @@ select is(
 
 -- The other direction of a one-way follow, seen from the followed side.
 set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-00000000bb03","role":"authenticated"}';
+-- refusal: the mutual-follow rule, from the side that only follows
 select is(
   (select count(*)::int from head_to_head('route', '66666666-6666-6666-6666-6666666bb001',
                                           '00000000-0000-0000-0000-00000000bb01')),
@@ -234,11 +239,13 @@ select is(
 reset role;
 update runs set is_public = false where id = '88888888-8888-8888-8888-8888888bb01a';
 set local role authenticated;
+-- refusal: 01 still has two runs here, both private now
 select is(
   (select count(*)::int from head_to_head('route', '66666666-6666-6666-6666-6666666bb001', '00000000-0000-0000-0000-00000000bb01')),
   0, 'once the other side''s only public attempt goes private, nothing is compared');
 
 set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-00000000bb01","role":"authenticated"}';
+-- refusal: the caller's own private runs are held back from the card too
 select is(
   (select count(*)::int from head_to_head('route', '66666666-6666-6666-6666-6666666bb001')),
   0, 'and the caller without a public attempt gets the same empty result');

@@ -948,6 +948,160 @@ $neutralised$;`,
     },
   ],
   [
+    'head_to_head',
+    {
+      why: "drops every predicate that decides whether the caller may compare against someone: both user_follows edges, the user_blocks check either way, the friend's `profile_private` and `shadow_hidden`, `private.is_route_visible_to` on the target, and the `is_public` / `followers_only` filters on each side's runs. Keeps the subject selectors: the kind and target (and an unknown target's empty return), the catalogue segment's `is_active`, the named friend, the caller never being their own friend, and the DNF / 100 m / activity-type / positive-time filters, which say which attempts count rather than who may see them",
+      sql: `create or replace function public.head_to_head(
+  p_kind text, p_target_id uuid, p_friend_id uuid default null, p_activity_type text default 'run')
+ returns table(friend_id uuid, friend_display_name text, friend_handle text, friend_avatar_url text,
+               target_name text, my_run_id uuid, my_seconds integer, my_started_at timestamptz,
+               friend_run_id uuid, friend_seconds integer, friend_started_at timestamptz)
+ language plpgsql stable security definer set search_path to 'public', 'private'
+as $neutralised$
+declare
+  v_caller uuid := auth.uid();
+  v_name text;
+begin
+  if v_caller is null then
+    raise exception 'head_to_head requires an authenticated caller' using errcode = '42501';
+  end if;
+  if p_kind is null or p_kind not in ('route', 'segment', 'global_segment') then
+    raise exception 'head_to_head: invalid p_kind %', p_kind using errcode = '22023';
+  end if;
+  if p_target_id is null or p_friend_id = v_caller then
+    return;
+  end if;
+  if p_kind = 'route' then
+    select r.name into v_name from public.routes r where r.id = p_target_id;
+  elsif p_kind = 'segment' then
+    select s.name into v_name from public.segments s where s.id = p_target_id;
+  else
+    select gs.name into v_name from public.global_segments gs
+     where gs.id = p_target_id and gs.is_active = true;
+  end if;
+  if v_name is null then
+    return;
+  end if;
+  return query
+  with attempts as (
+    select r.user_id, r.id as run_id, r.duration_s::integer as seconds, r.started_at
+      from public.runs r
+     where p_kind = 'route' and r.route_id = p_target_id
+       and r.is_dnf = false and r.distance_m > 100 and r.activity_type = p_activity_type
+       and ${mine('r')}
+    union all
+    select se.user_id, se.run_id, se.time_seconds::integer, se.started_at
+      from public.segment_efforts se
+      join public.runs r on r.id = se.run_id
+     where p_kind = 'segment' and se.segment_id = p_target_id
+       and r.is_dnf = false and r.activity_type = p_activity_type
+       and ${mine('r')}
+    union all
+    select ge.user_id, ge.run_id, ge.time_seconds::integer, ge.started_at
+      from public.global_segment_efforts ge
+      join public.runs r on r.id = ge.run_id
+     where p_kind = 'global_segment' and ge.global_segment_id = p_target_id
+       and r.is_dnf = false and r.activity_type = p_activity_type
+       and ${mine('r')}
+  ),
+  best as (
+    select distinct on (a.user_id) a.user_id, a.run_id, a.seconds, a.started_at
+      from attempts a
+     where a.seconds > 0
+     order by a.user_id, a.seconds asc, a.started_at asc
+  ),
+  mine as (
+    select * from best where best.user_id = v_caller
+  ),
+  friends as (
+    select up.id, up.display_name, up.handle, up.avatar_url
+      from public.user_profiles up
+     where (p_friend_id is null or up.id = p_friend_id)
+       and up.id <> v_caller
+  )
+  select fr.id, fr.display_name, fr.handle, fr.avatar_url, v_name,
+         mine.run_id, mine.seconds, mine.started_at,
+         fb.run_id, fb.seconds, fb.started_at
+    from mine
+    cross join friends fr
+    join best fb on fb.user_id = fr.id
+   order by lower(coalesce(fr.handle, fr.display_name, '')), fr.id
+   limit 100;
+end;
+$neutralised$;`,
+      subject: 'runs r — the attempts compared, not the profiles or follow edges that gate them',
+      witness: {
+        // Two users of its own, each with a public run on a public route, and
+        // no follow edge between them: the real read refuses them as strangers.
+        setup: `insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
+                  values ('00000000-0000-0000-0000-00000000c2a1', 'authenticated', 'authenticated',
+                          'pgtap-guard-h2h-1@local', '', now(), now()),
+                         ('00000000-0000-0000-0000-00000000c2a2', 'authenticated', 'authenticated',
+                          'pgtap-guard-h2h-2@local', '', now(), now());
+                insert into user_profiles (id, display_name, age_confirmed_at, terms_accepted_at)
+                  values ('00000000-0000-0000-0000-00000000c2a1', 'Guard witness 1', now(), now()),
+                         ('00000000-0000-0000-0000-00000000c2a2', 'Guard witness 2', now(), now())
+                  on conflict (id) do update set age_confirmed_at = excluded.age_confirmed_at,
+                                                 terms_accepted_at = excluded.terms_accepted_at;
+                insert into routes (id, user_id, name, waypoints, distance_m, is_public)
+                  values ('00000000-0000-0000-0000-00000000c2b1', '00000000-0000-0000-0000-00000000c2a1',
+                          'Guard witness', '[{"lat":47.37,"lng":8.54},{"lat":47.38,"lng":8.55}]', 5000, true);
+                insert into runs (id, user_id, route_id, started_at, distance_m, duration_s, source,
+                                  activity_type, is_public)
+                  values ('00000000-0000-0000-0000-00000000c2c1', '00000000-0000-0000-0000-00000000c2a1',
+                          '00000000-0000-0000-0000-00000000c2b1', now() - interval '2 days', 5000, 1500,
+                          'app', 'run', true),
+                         ('00000000-0000-0000-0000-00000000c2c2', '00000000-0000-0000-0000-00000000c2a2',
+                          '00000000-0000-0000-0000-00000000c2b1', now() - interval '1 day', 5000, 1600,
+                          'app', 'run', true);
+                select set_config('request.jwt.claims',
+                  '{"sub":"00000000-0000-0000-0000-00000000c2a1","role":"authenticated"}', true);`,
+        probe: `select count(*) from head_to_head('route', '00000000-0000-0000-0000-00000000c2b1');`,
+      },
+    },
+  ],
+  [
+    'my_share_stats',
+    {
+      why: "drops the caller-is-owner gates — `owner_id = auth.uid()` on the daily buckets and the per-kind ownership check on each link — the not-authenticated guard, and `private.share_attribution_enabled()`, the fail-closed feature gate. Keeps the 90-day window, a subject selector. The plan-start and challenge-join aggregates are NOT reproduced: every assertion this replacement is run for asks whether the caller sees any link at all, and a second copy of that arithmetic would be one more thing to keep in step for no measurement gained",
+      sql: `create or replace function public.my_share_stats()
+ returns table(kind text, entity_id uuid, title text, visits integer, ref_visits integer,
+               bot_visits integer, signups integer, starts integer, ref_starts integer,
+               joins integer, ref_joins integer)
+ language sql stable security definer set search_path to 'public', 'private'
+as $neutralised$
+  select d.kind, d.entity_id,
+         case d.kind
+           when 'plan' then (select p.name from training_plans p where p.id = d.entity_id)
+           when 'challenge' then (select c.title from challenges c where c.id = d.entity_id)
+           when 'session' then (select s.title from session_plans s where s.id = d.entity_id)
+           when 'workout' then (select w.title from gym_workouts w where w.id = d.entity_id)
+         end,
+         sum(d.visits)::int, sum(d.ref_visits)::int, sum(d.bot_visits)::int,
+         sum(d.signups)::int, 0, 0, 0, 0
+    from private.share_link_daily d
+   where d.day >= (now() at time zone 'utc')::date - 89
+     and ${mine('d')}
+   group by d.kind, d.entity_id
+   order by sum(d.visits) desc, d.kind, d.entity_id;
+$neutralised$;`,
+      subject: 'share_link_daily d — the per-link buckets, not the entities they count visits to',
+      witness: {
+        // A bucket owned by a user of its own, read by a caller who is not
+        // that owner: the real view shows a caller only their own links.
+        setup: `insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
+                  values ('00000000-0000-0000-0000-00000000c3a1', 'authenticated', 'authenticated',
+                          'pgtap-guard-share@local', '', now(), now());
+                insert into private.share_link_daily (kind, entity_id, day, owner_id, visits)
+                  values ('profile', '00000000-0000-0000-0000-00000000c3a1', (now() at time zone 'utc')::date,
+                          '00000000-0000-0000-0000-00000000c3a1', 1);
+                select set_config('request.jwt.claims',
+                  '{"sub":"00000000-0000-0000-0000-00000000c3b1","role":"authenticated"}', true);`,
+        probe: `select count(*) from my_share_stats();`,
+      },
+    },
+  ],
+  [
     'search_public_events',
     {
       why: "drops `e.is_public = true` and the `clubs.is_public = true` join term — the two predicates that keep a members-only event and a private club's event out of discovery. Every other filter is the search the caller typed and stays, so an assertion about one of THOSE cannot be killed by this replacement",

@@ -3586,6 +3586,52 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get routeBuilderDrawShape => 'Desenhar uma forma';
+
+  @override
+  String get routeBuilderDrawHint =>
+      'Arraste no mapa para desenhar a sua forma';
+
+  @override
+  String get routeBuilderDrawTooShort =>
+      'Desenhe uma forma maior — a linha tem de ter pelo menos 300 m.';
+
+  @override
+  String get routeBuilderDrawTooLong =>
+      'Esse desenho tem mais de 100 km. Aproxime o mapa e desenhe uma forma mais pequena.';
+
+  @override
+  String get routeBuilderDrawTooComplex =>
+      'Esse desenho tem demasiado detalhe para ser uma rota. Experimente uma forma mais simples.';
+
+  @override
+  String get routeBuilderDrawNoRoads =>
+      'Parte do seu desenho não tem estrada nem caminho por perto. Desenhe sobre ruas ou caminhos e tente novamente.';
+
+  @override
+  String get routeBuilderDrawUnavailable =>
+      'O cálculo de rotas não está disponível neste momento, por isso não foi possível ajustar o seu desenho. Tente novamente daqui a pouco.';
+
+  @override
+  String routeBuilderDrawPoorMatch(int score) {
+    return 'As ruas e caminhos daqui correspondem apenas a $score% do seu desenho, por isso não se tornou uma rota. Experimente uma forma maior ou desenhe ao longo das ruas.';
+  }
+
+  @override
+  String routeBuilderDrawMatch(int score) {
+    return 'Correspondência com o seu desenho: $score%';
+  }
+
+  @override
+  String get routeBuilderDrawMatchClose => 'Muito próxima';
+
+  @override
+  String get routeBuilderDrawMatchRough => 'Aproximada';
+
+  @override
+  String get routeBuilderDrawMatchPoor => 'Demasiado longe do seu desenho';
+
+  @override
   String routeBuilderRoutingFailed(String error) {
     return 'Falha ao traçar a rota: $error';
   }
@@ -22644,6 +22690,51 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     );
     return '$_temp0';
   }
+
+  @override
+  String get routeBuilderDrawShape => 'Desenhar uma forma';
+
+  @override
+  String get routeBuilderDrawHint => 'Arraste no mapa para desenhar sua forma';
+
+  @override
+  String get routeBuilderDrawTooShort =>
+      'Desenhe uma forma maior — a linha precisa ter pelo menos 300 m.';
+
+  @override
+  String get routeBuilderDrawTooLong =>
+      'Esse desenho tem mais de 100 km. Aproxime o mapa e desenhe uma forma menor.';
+
+  @override
+  String get routeBuilderDrawTooComplex =>
+      'Esse desenho tem detalhes demais para virar rota. Tente uma forma mais simples.';
+
+  @override
+  String get routeBuilderDrawNoRoads =>
+      'Parte do seu desenho não tem rua nem trilha por perto. Desenhe sobre ruas ou caminhos e tente de novo.';
+
+  @override
+  String get routeBuilderDrawUnavailable =>
+      'O cálculo de rotas não está disponível agora, então não foi possível ajustar seu desenho. Tente de novo daqui a pouco.';
+
+  @override
+  String routeBuilderDrawPoorMatch(int score) {
+    return 'As ruas e caminhos daqui correspondem a apenas $score% do seu desenho, então ele não virou rota. Tente uma forma maior ou desenhe seguindo as ruas.';
+  }
+
+  @override
+  String routeBuilderDrawMatch(int score) {
+    return 'Correspondência com seu desenho: $score%';
+  }
+
+  @override
+  String get routeBuilderDrawMatchClose => 'Muito próxima';
+
+  @override
+  String get routeBuilderDrawMatchRough => 'Aproximada';
+
+  @override
+  String get routeBuilderDrawMatchPoor => 'Longe demais do seu desenho';
 
   @override
   String routeBuilderRoutingFailed(String error) {

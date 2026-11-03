@@ -6,6 +6,8 @@ import 'package:core_models/core_models.dart' show Waypoint;
 import 'package:flutter/foundation.dart' show kReleaseMode, visibleForTesting;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import 'route_art.dart'
+    show kRouteArtSnapRadiusM, kRouteArtWideSnapRadiusM, routeArtBatchPath;
 import 'run_stats.dart' show haversineMetres;
 
 /// OSRM client for the in-app route builder. Two helpers: [snapToRoad]
@@ -447,6 +449,124 @@ class RouteSegmentCache {
   void clear() => _entries.clear();
 
   int get length => _entries.length;
+
+  /// Record a piece of route that is already known, so a later re-route
+  /// through [from] → [to] reuses it. The Draw mode seeds the matched
+  /// pieces between its pins this way, and dragging one pin then re-routes
+  /// only its two neighbours (decisions § 2263).
+  void seed(
+    Waypoint from,
+    Waypoint to,
+    OsrmProfile profile,
+    List<Waypoint> coordinates,
+    double distanceMetres,
+  ) {
+    _set(
+      segmentCacheKey(from, to, profile),
+      _RoutedSegment(
+        coordinates: coordinates,
+        distanceMetres: distanceMetres,
+        ok: true,
+      ),
+    );
+  }
+}
+
+/// Why a Draw-mode batch did not route.
+enum RouteArtBatchFailure { noRoads, unavailable, cancelled }
+
+/// Outcome of [fetchRouteArtBatch]: the matched `[lng, lat]` line, or why
+/// there is none.
+class RouteArtBatchResult {
+  const RouteArtBatchResult.ok(this.line) : failure = null;
+  const RouteArtBatchResult.failed(RouteArtBatchFailure this.failure)
+      : line = const [];
+
+  final List<List<double>> line;
+  final RouteArtBatchFailure? failure;
+
+  bool get ok => failure == null;
+}
+
+/// Route one Draw-mode batch: every point is a waypoint the route must pass.
+/// A "no way within reach" answer is retried once with a wider reach; an
+/// outage is retried once at the same reach and never widened, since a
+/// wider reach cannot fix an engine that is down. Mirrors web's
+/// `fetchArtBatch` in `RouteBuilder.svelte`.
+Future<RouteArtBatchResult> fetchRouteArtBatch(
+  List<List<double>> points, {
+  OsrmProfile profile = OsrmProfile.foot,
+  OsrmFetcher? fetcher,
+  OsrmCancellation? cancelled,
+}) async {
+  assertOsrmConfiguredForProd();
+  final f = fetcher ?? _defaultFetcher;
+  final isCancelled = cancelled ?? () => false;
+  var failure = RouteArtBatchFailure.unavailable;
+  for (final radius in const [kRouteArtSnapRadiusM, kRouteArtWideSnapRadiusM]) {
+    for (var attempt = 0; attempt < 2; attempt++) {
+      if (isCancelled()) {
+        return const RouteArtBatchResult.failed(RouteArtBatchFailure.cancelled);
+      }
+      final url = Uri.parse(
+        '${_osrmBaseUrl()}${routeArtBatchPath(points, profile.path, radius)}',
+      );
+      String body;
+      try {
+        body = await f(url).timeout(kOsrmRouteTimeout);
+      } on HttpException catch (e) {
+        // OSRM answers a coordinate with no way in reach as a 4xx whose
+        // body names NoSegment / NoRoute — geography, not an outage.
+        if (e.message.contains('NoSegment') || e.message.contains('NoRoute')) {
+          failure = RouteArtBatchFailure.noRoads;
+          break;
+        }
+        failure = RouteArtBatchFailure.unavailable;
+        if (attempt == 0) {
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+          continue;
+        }
+        break;
+      } catch (_) {
+        failure = RouteArtBatchFailure.unavailable;
+        if (attempt == 0) {
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+          continue;
+        }
+        break;
+      }
+      if (isCancelled()) {
+        return const RouteArtBatchResult.failed(RouteArtBatchFailure.cancelled);
+      }
+      try {
+        final data = jsonDecode(body) as Map<String, dynamic>;
+        final code = data['code'];
+        final routes = data['routes'] as List?;
+        if (code == 'Ok' && routes != null && routes.isNotEmpty) {
+          final geometry =
+              (routes.first as Map<String, dynamic>)['geometry'] as Map;
+          final raw = geometry['coordinates'] as List;
+          if (raw.length >= 2) {
+            return RouteArtBatchResult.ok([
+              for (final pair in raw)
+                [
+                  ((pair as List)[0] as num).toDouble(),
+                  (pair[1] as num).toDouble(),
+                ],
+            ]);
+          }
+        }
+        failure = code == 'NoSegment' || code == 'NoRoute'
+            ? RouteArtBatchFailure.noRoads
+            : RouteArtBatchFailure.unavailable;
+      } catch (_) {
+        failure = RouteArtBatchFailure.unavailable;
+      }
+      break;
+    }
+    if (failure == RouteArtBatchFailure.unavailable) break;
+  }
+  return RouteArtBatchResult.failed(failure);
 }
 
 /// Route a single segment from [from] → [to] with up to

@@ -75,6 +75,7 @@ export const TABLES = {
 	gear_rotation_members: 'gear_rotation_members',
 	fitness_snapshots: 'fitness_snapshots',
 	personal_records: 'personal_records',
+	personal_record_improvements: 'personal_record_improvements',
 	user_blocks: 'user_blocks',
 	follow_requests: 'follow_requests',
 	safety_contacts: 'safety_contacts',

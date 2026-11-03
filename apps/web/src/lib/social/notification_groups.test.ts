@@ -167,6 +167,17 @@ test('groupNotifications: workout reminders on the same plan never collapse', ()
 	assert.equal(groups.length, 2);
 });
 
+test('groupNotifications: personal records never collapse, even on one run', () => {
+	const groups = groupNotifications(
+		[
+			n({ id: 'p1', kind: 'personal_record', run_id: 'r1', created_at: ago(1000) }),
+			n({ id: 'p2', kind: 'personal_record', run_id: 'r1', created_at: ago(2000) }),
+		],
+		NOW,
+	);
+	assert.equal(groups.length, 2);
+});
+
 test('groupNotifications: event RSVPs collapse per event, distinct events split', () => {
 	const groups = groupNotifications(
 		[

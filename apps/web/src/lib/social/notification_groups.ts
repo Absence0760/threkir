@@ -81,6 +81,10 @@ function targetKeyFor(n: GroupableNotification): string {
 			return n.challenge_id ? `challenge:${n.challenge_id}` : solo;
 		case 'message':
 			return n.actor_id ? `message:${n.actor_id}` : solo;
+		case 'personal_record':
+			// One per run (the trigger collapses the brackets a run improved),
+			// and two runs are two records: "and 1 other" would hide one.
+			return solo;
 		case 'workout_reminder':
 			// One a day, each about that day's session: yesterday's is not a
 			// second actor on today's, so they never collapse.

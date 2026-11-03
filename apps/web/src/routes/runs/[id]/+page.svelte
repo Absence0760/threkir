@@ -25,6 +25,7 @@
 	import RunSocial from '#lib/components/RunSocial.svelte';
 	import RunShareView from '#lib/components/RunShareView.svelte';
 	import RunShareImageDialog from '#lib/components/RunShareImageDialog.svelte';
+	import type { PrCardEntry } from '#lib/share/pr_card.ts';
 	import StaticMapImage from '#lib/components/StaticMapImage.svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
@@ -41,6 +42,7 @@
 	import { formatDate, formatDuration } from '#lib/format/time.ts';
 	import {
 		fetchRunById,
+		fetchRunPersonalRecords,
 		fetchPublicRunAttribution,
 		type PublicRunAttribution,
 		deleteRun,
@@ -120,7 +122,7 @@
 	} from '#lib/runs/distance_recompute.ts';
 	import { supabase } from '#lib/core/supabase.ts';
 	import { METADATA_KEYS } from '#lib/core/schema.ts';
-	import { m } from '#lib/i18n/store.svelte.ts';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
 	import { activityTypeIcon, activityUsesSpeed } from '#lib/runs/activity_type.ts';
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import { buildRunShareCanonical } from '#lib/share/share_meta.ts';
@@ -300,6 +302,7 @@
 		}
 		loading = false;
 		void loadAudience();
+		void loadRunRecords();
 		// Best-effort matched-track fetch in the background. The map
 		// will swap to the matched line once it lands; until then it
 		// shows the raw track.
@@ -862,12 +865,40 @@
 
 	let generatingImage = $state(false);
 	let showShareImage = $state(false);
+	let shareStyle = $state<'card' | 'pr'>('card');
 	let shareCardEl: HTMLElement | undefined = $state();
+	/// The personal records this run set, for the PR card (owner-only reads).
+	let runRecords = $state<PrCardEntry[]>([]);
+	let recordDate = $derived(
+		run
+			? new Date(run.started_at).toLocaleDateString(currentLocale(), {
+					day: 'numeric',
+					month: 'short',
+					year: 'numeric',
+				})
+			: '',
+	);
+
+	/// L4: a failed read leaves the PR card unoffered and nothing else.
+	/// `?share=pr` is the personal_record notification's link: it opens the
+	/// editor on the PR card once the records are known.
+	async function loadRunRecords() {
+		if (!run) return;
+		try {
+			runRecords = await fetchRunPersonalRecords(run.id);
+		} catch (e) {
+			console.warn('run personal records fetch failed', e);
+			return;
+		}
+		if (runRecords.length > 0 && page.url.searchParams.get('share') === 'pr') {
+			void handleShareImage('pr');
+		}
+	}
 
 	/// Open the share-image editor. Every style draws the owner's track
 	/// clipped to their zones (`shareCardTrack`), so the editor cannot open
 	/// before the zones are known: an image would carry the unclipped line.
-	async function handleShareImage() {
+	async function handleShareImage(style: 'card' | 'pr' = 'card') {
 		if (!run || generatingImage) return;
 		generatingImage = true;
 		try {
@@ -875,6 +906,7 @@
 				showToast(m('runDetail.shareZonesUnknown'), 'error');
 				return;
 			}
+			shareStyle = style;
 			showShareImage = true;
 		} finally {
 			generatingImage = false;
@@ -1863,6 +1895,18 @@
 										? m('audience.chipShared')
 										: m('runDetail.private')}
 						</span>
+						{#if runRecords.length > 0}
+							<button
+								type="button"
+								class="meta-item pr-chip"
+								onclick={() => handleShareImage('pr')}
+								disabled={generatingImage}
+								data-testid="run-share-pr"
+							>
+								<span class="material-symbols" aria-hidden="true">military_tech</span>
+								{m('runDetail.sharePr')}
+							</button>
+						{/if}
 						{#if guidedRunId}
 							{#if guidedRun}
 								<a
@@ -1972,7 +2016,7 @@
 							class="icon-btn"
 							aria-label={m('runDetail.shareAsImage')}
 							title={m('runDetail.shareAsImage')}
-							onclick={handleShareImage}
+							onclick={() => handleShareImage()}
 							disabled={generatingImage}
 						>
 							<span class="material-symbols">image</span>
@@ -2712,6 +2756,9 @@
 		line={shareCardLine}
 		captureCard={captureShareCard}
 		fileBase={shareImageFileBase}
+		records={runRecords}
+		{recordDate}
+		initialStyle={shareStyle}
 	/>
 {/if}
 
@@ -3380,6 +3427,27 @@
 		font-weight: 600;
 		font-size: 0.72rem;
 		text-decoration: none;
+	}
+
+	.pr-chip {
+		padding: 0.2rem 0.55rem;
+		border-radius: 9999px;
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-primary);
+		color: var(--color-primary);
+		font: inherit;
+		font-weight: 600;
+		font-size: 0.72rem;
+		cursor: pointer;
+	}
+
+	.pr-chip:disabled {
+		cursor: progress;
+		opacity: 0.6;
+	}
+
+	.pr-chip .material-symbols {
+		color: var(--color-primary);
 	}
 
 	a.guided-chip:hover {

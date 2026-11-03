@@ -30,8 +30,11 @@
 		type RunShareLook,
 	} from '#lib/share/share_look.ts';
 	import { canvasToPng, loadShareFonts, paintPhoto, paintSticker } from '#lib/share/run_sticker_canvas.ts';
+	import { formatPrImprovement, type PrBracket, type PrCardEntry } from '#lib/share/pr_card.ts';
+	import { paintPrCard, type PrCardText } from '#lib/share/pr_card_canvas.ts';
+	import { formatShareDuration } from '#lib/share/run_share_stats.ts';
 
-	type Style = 'card' | 'photo' | 'sticker';
+	type Style = 'card' | 'photo' | 'sticker' | 'pr';
 
 	interface Props {
 		open: boolean;
@@ -43,15 +46,46 @@
 		/// The map card's PNG, rasterised from the page's off-screen card.
 		captureCard: () => Promise<Blob>;
 		fileBase: string;
+		/// The personal records this run set (`prCardEntries`), longest first;
+		/// the PR style is offered only when there is one.
+		records?: PrCardEntry[];
+		/// The run's date as the PR card prints it.
+		recordDate?: string;
+		/// The style the editor opens on, e.g. `pr` from a PR notification.
+		initialStyle?: Style;
 	}
 
-	let { open, onclose, run, title, line, captureCard, fileBase }: Props = $props();
+	let {
+		open,
+		onclose,
+		run,
+		title,
+		line,
+		captureCard,
+		fileBase,
+		records = [],
+		recordDate = '',
+		initialStyle = 'card',
+	}: Props = $props();
 
 	const STYLES: { value: Style; label: MessageKey; icon: string }[] = [
 		{ value: 'card', label: 'runShare.styleCard', icon: 'map' },
 		{ value: 'photo', label: 'runShare.stylePhoto', icon: 'photo' },
 		{ value: 'sticker', label: 'runShare.styleSticker', icon: 'auto_awesome_motion' },
+		{ value: 'pr', label: 'runShare.stylePr', icon: 'military_tech' },
 	];
+	const PR_LABELS: Record<PrBracket, MessageKey> = {
+		'1_mile': 'planRecap.bracketMile',
+		'5k': 'planRecap.bracket5k',
+		'8k': 'planRecap.bracket8k',
+		'10k': 'planRecap.bracket10k',
+		'12k': 'planRecap.bracket12k',
+		half_marathon: 'planRecap.bracketHalf',
+		marathon: 'planRecap.bracketMarathon',
+	};
+	let styles = $derived(STYLES.filter((s) => s.value !== 'pr' || records.length > 0));
+	let prIndex = $state(0);
+	let record = $derived(records[Math.min(prIndex, records.length - 1)] ?? null);
 	const LAYOUT_LABELS: Record<RunShareLook['layout'], MessageKey> = {
 		stack: 'runShare.layoutStack',
 		route: 'runShare.layoutRoute',
@@ -94,6 +128,8 @@
 	$effect(() => {
 		if (!open) return;
 		look = forThisRun(loadShareLook());
+		style = initialStyle === 'pr' && records.length === 0 ? 'card' : initialStyle;
+		prIndex = 0;
 		canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 		return () => {
 			cardBlob = null;
@@ -123,12 +159,36 @@
 		}
 	}
 
-	async function renderPng(s: Style, l: RunShareLook, p: ImageBitmap | null): Promise<Blob> {
+	function prText(r: PrCardEntry): PrCardText {
+		const distance = m(PR_LABELS[r.distance]);
+		const improvement = formatPrImprovement(r);
+		return {
+			headline: m(r.kind === 'held' ? 'runShare.prHeld' : 'runShare.prHeadline'),
+			distance,
+			time: formatShareDuration(r.timeS),
+			improvement: improvement ? m('runShare.prFaster', { time: improvement }) : null,
+			detail:
+				r.previousS != null
+					? m('runShare.prPrevious', { time: formatShareDuration(r.previousS) })
+					: r.kind === 'first'
+						? m('runShare.prFirst', { distance })
+						: null,
+			date: recordDate,
+		};
+	}
+
+	async function renderPng(s: Style, l: RunShareLook, p: ImageBitmap | null, r: PrCardEntry | null): Promise<Blob> {
 		if (s === 'card') {
 			cardBlob ??= await captureCard();
 			return cardBlob;
 		}
 		await loadShareFonts();
+		if (s === 'pr') {
+			if (!r) throw new Error('no personal record to draw');
+			return canvasToPng(
+				paintPrCard({ aspect: l.aspect, ink: l.ink, text: prText(r), track: line, wordmark: 'Threkir' }),
+			);
+		}
 		const stats = runShareStats(
 			{
 				distance: m('runShare.statDistance'),
@@ -157,12 +217,13 @@
 		const s = style;
 		const l = $state.snapshot(look) as RunShareLook;
 		const p = photo;
+		const r = record;
 		if (s === 'photo' && !p) return;
-		const key = JSON.stringify([s, l, s === 'photo' ? photoSeq : 0]);
+		const key = JSON.stringify([s, l, s === 'photo' ? photoSeq : 0, s === 'pr' ? r : null]);
 		if (preview?.key === key) return;
 		const seq = ++renderSeq;
 		rendering = true;
-		renderPng(s, l, p)
+		renderPng(s, l, p, r)
 			.then((blob) => {
 				if (seq !== renderSeq) return;
 				if (preview) URL.revokeObjectURL(preview.url);
@@ -238,7 +299,7 @@
 <Modal {open} {onclose} title={m('runShare.title')} wide data-testid="run-share-image-dialog">
 	<div class="share-editor">
 		<div class="chip-row" role="radiogroup" aria-label={m('runShare.style')}>
-			{#each STYLES as s (s.value)}
+			{#each styles as s (s.value)}
 				<button
 					type="button"
 					role="radio"
@@ -293,9 +354,31 @@
 			{/if}
 		{:else if style === 'sticker'}
 			<p class="hint">{m('runShare.stickerHint')}</p>
+		{:else if style === 'pr'}
+			<p class="hint">{m('runShare.prHint')}</p>
+			{#if records.length > 1}
+				<fieldset class="control">
+					<legend>{m('runShare.prRecord')}</legend>
+					<div class="chip-row" role="radiogroup" aria-label={m('runShare.prRecord')}>
+						{#each records as r, i (r.distance)}
+							<button
+								type="button"
+								role="radio"
+								aria-checked={record === r}
+								class="chip"
+								class:active={record === r}
+								disabled={busy}
+								onclick={() => (prIndex = i)}
+								data-testid="share-pr-{r.distance}">{m(PR_LABELS[r.distance])}</button
+							>
+						{/each}
+					</div>
+				</fieldset>
+			{/if}
 		{/if}
 
 		{#if style !== 'card'}
+			{#if style !== 'pr'}
 			<fieldset class="control">
 				<legend>{m('runShare.layout')}</legend>
 				<div class="chip-row" role="radiogroup" aria-label={m('runShare.layout')}>
@@ -313,6 +396,7 @@
 					{/each}
 				</div>
 			</fieldset>
+			{/if}
 			<fieldset class="control">
 				<legend>{m('runShare.ink')}</legend>
 				<div class="chip-row" role="radiogroup" aria-label={m('runShare.ink')}>
@@ -330,7 +414,7 @@
 					{/each}
 				</div>
 			</fieldset>
-			{#if style === 'photo'}
+			{#if style === 'photo' || style === 'pr'}
 				<fieldset class="control">
 					<legend>{m('runShare.aspect')}</legend>
 					<div class="chip-row" role="radiogroup" aria-label={m('runShare.aspect')}>
@@ -349,6 +433,7 @@
 					</div>
 				</fieldset>
 			{/if}
+			{#if style !== 'pr'}
 			<fieldset class="control">
 				<legend>{m('runShare.stats')}</legend>
 				<div class="chip-row">
@@ -368,6 +453,7 @@
 				</div>
 				<span class="hint">{m('runShare.statsHint', { max: MAX_SHARE_STATS })}</span>
 			</fieldset>
+			{/if}
 		{/if}
 
 		<div class="actions">

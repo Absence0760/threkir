@@ -131,7 +131,7 @@ function figure(stat: RunShareStat, valueSize: number, width: number, measure: M
 	return { ops, width, height: labelH + valueH };
 }
 
-function brand(width: number, wordmark: string, measure: MeasureText): Laid {
+export function brand(width: number, wordmark: string, measure: MeasureText): Laid {
 	const text = wordmark.toUpperCase();
 	const gap = BRAND_MARK * 0.45;
 	const total = BRAND_MARK + gap + measure(text, BRAND);
@@ -426,7 +426,7 @@ function paintRoute(
 	ctx.restore();
 }
 
-function paintOps(
+export function paintOps(
 	ctx: CanvasRenderingContext2D,
 	ops: DrawOp[],
 	track: TrackPoint[],
@@ -468,7 +468,7 @@ function paintOps(
 }
 
 /// A canvas `laid.width` logical pixels wide, scaled to SHARE_EXPORT_WIDTH_PX.
-function sizedCanvas(laid: Laid): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; k: number } {
+export function sizedCanvas(laid: Laid): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; k: number } {
 	const k = SHARE_EXPORT_WIDTH_PX / laid.width;
 	const canvas = document.createElement('canvas');
 	canvas.width = SHARE_EXPORT_WIDTH_PX;

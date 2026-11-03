@@ -238,6 +238,8 @@
 				return m('notificationsList.verbAchievement');
 			case 'challenge_complete':
 				return m('notificationsList.verbChallengeComplete');
+			case 'personal_record':
+				return m('notificationsList.verbPersonalRecord');
 			case 'content_hidden':
 				return m('notificationsList.verbContentHidden');
 			case 'data_export_ready':

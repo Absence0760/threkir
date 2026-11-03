@@ -67,6 +67,9 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 			return r.achievement_id
 				? `/u/${r.user_id}?tab=achievements&badge=${r.achievement_id}`
 				: null;
+		case 'personal_record':
+			// The run's own page with the PR card open in the share editor.
+			return r.run_id ? `/runs/${r.run_id}?share=pr` : null;
 		case 'challenge_complete':
 			return r.challenge_id ? `/challenges/${r.challenge_id}` : null;
 		case 'data_export_ready':

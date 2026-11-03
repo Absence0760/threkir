@@ -90,9 +90,9 @@ test.describe('/routes/new — Draw mode', () => {
 		await expect(page.locator('.canvas-empty')).toHaveCount(0);
 	});
 
-	test('a drawing the roads can follow becomes the route, with its score', async ({ page }) => {
+	test('a drawing the roads can follow becomes the route, with its score', async ({ page, mockRoute }) => {
 		const calls: [number, number][][] = [];
-		await page.route('**/api/routes/osrm/**', (route) => {
+		await mockRoute(page, '**/api/routes/osrm/**', (route) => {
 			const coords = routeCoords(route.request().url());
 			calls.push(coords);
 			route.fulfill({
@@ -115,8 +115,8 @@ test.describe('/routes/new — Draw mode', () => {
 		for (const c of calls) expect(c.length).toBeLessThanOrEqual(60);
 	});
 
-	test('a drawing the roads cannot follow says so and is not saveable', async ({ page }) => {
-		await page.route('**/api/routes/osrm/**', (route) => {
+	test('a drawing the roads cannot follow says so and is not saveable', async ({ page, mockRoute }) => {
+		await mockRoute(page, '**/api/routes/osrm/**', (route) => {
 			const coords = routeCoords(route.request().url());
 			// The engine answers with a straight line between the first and
 			// last point — a different picture from the square that was drawn.

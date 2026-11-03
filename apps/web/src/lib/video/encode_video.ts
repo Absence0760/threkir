@@ -147,8 +147,14 @@ function recorderSink(
 		},
 		finish() {
 			return new Promise((resolve, reject) => {
-				recorder.onstop = () => resolve(new Blob(parts, { type: plan.mimeType }));
-				recorder.onerror = (e) => reject((e as Event & { error?: unknown }).error ?? new Error('recorder failed'));
+				recorder.onstop = () => {
+					track.stop();
+					resolve(new Blob(parts, { type: plan.mimeType }));
+				};
+				recorder.onerror = (e) => {
+					track.stop();
+					reject((e as Event & { error?: unknown }).error ?? new Error('recorder failed'));
+				};
 				setTimeout(() => recorder.stop(), frameDurationUs(0, fps) / 1000);
 			});
 		},

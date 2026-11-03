@@ -19,6 +19,7 @@
 	import { consent } from '#lib/settings/consent.svelte.ts';
 	import { createPrefsPage } from '#lib/settings/prefs_page.svelte.ts';
 	import PrefsPage from '#lib/components/settings/PrefsPage.svelte';
+	import StreamerOverlayCard from '#lib/components/StreamerOverlayCard.svelte';
 
 	let privacyDefault = $state<'public' | 'followers' | 'private'>('followers');
 	let stravaAutoShare = $state(false);
@@ -288,6 +289,8 @@
 			</button>
 		</div>
 	</section>
+
+	<StreamerOverlayCard />
 
 	<!-- Telemetry consent (Sentry). Mirrors the cookie banner's accept/reject
 	     choice so a returning runner can withdraw an earlier acceptance per

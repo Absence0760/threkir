@@ -29,6 +29,7 @@ const BUCKETS = [
 	'clone_gym_routine_template',
 	'publish_gym_routine_as_template',
 	'plan_calendar_rotate',
+	'create_live_overlay_token',
 	'restart_training_plan',
 	'repeat_plan_week',
 	'send_direct_message',

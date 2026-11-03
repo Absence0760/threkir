@@ -168,6 +168,40 @@ test.describe('/recap/[year] — signed-in seed user', () => {
 		void shared;
 	});
 
+	test('Share as story shares a 1080x1920 card image', async ({ page }) => {
+		await page.addInitScript(() => {
+			const w = window as unknown as { __shared?: Record<string, unknown> };
+			Object.defineProperty(navigator, 'canShare', {
+				value: (data: { files?: unknown[] }) => Array.isArray(data?.files),
+				configurable: true
+			});
+			Object.defineProperty(navigator, 'share', {
+				value: async (data: { files?: File[] }) => {
+					const file = data.files?.[0];
+					const size = file
+						? await createImageBitmap(file).then((b) => [b.width, b.height])
+						: null;
+					w.__shared = { fileName: file?.name ?? null, size };
+				},
+				configurable: true
+			});
+		});
+
+		await page.goto(`/recap/${CURRENT_YEAR}`);
+		await expect(page.getByText(`My ${CURRENT_YEAR} in running`).first()).toBeVisible({
+			timeout: 10_000
+		});
+		await page.getByRole('button', { name: 'Share as story' }).click();
+
+		await expect
+			.poll(
+				async () =>
+					page.evaluate(() => (window as unknown as { __shared?: unknown }).__shared ?? null),
+				{ timeout: 5_000 }
+			)
+			.toEqual({ fileName: `threkir-${CURRENT_YEAR}-story.png`, size: [1080, 1920] });
+	});
+
 	test('Share recap downloads the card image when file-share is unavailable', async ({ page }) => {
 		await page.addInitScript(() => {
 			Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true });

@@ -6,6 +6,7 @@
 	import { fetchRunsForRecap, fetchRecapExtras, publishRecap, type RecapRun } from '#lib/core/data.ts';
 	import { buildMonthInRunningRecap, type YearInRunningRecap } from '#lib/runs/recap.ts';
 	import { buildRecapShareSvg } from '#lib/share/recap_share_image.ts';
+	import { recapCardLayout, type RecapCardAspect } from '#lib/share/recap_card_layout.ts';
 	import { buildRecapShareCanonical } from '#lib/share/share_recap_meta.ts';
 	import { rasterizeSvgToPng } from '#lib/format/svg_raster.ts';
 	import RecapView from '#lib/components/RecapView.svelte';
@@ -59,7 +60,7 @@
 		recap = buildMonthInRunningRecap(runs, year, month, extras);
 	});
 
-	async function shareRecap() {
+	async function shareRecap(aspect: RecapCardAspect = 'square') {
 		if (!recap) return;
 		const lines = [
 			t('recap.monthShareTitle', { period: periodLabel }),
@@ -71,9 +72,11 @@
 		const text = lines.join('\n');
 
 		try {
-			const svg = buildRecapShareSvg(recap, getUnit(), periodLabel);
-			const blob = await rasterizeSvgToPng(svg, 1080, 1080);
-			const file = new File([blob], `threkir-${periodKey}.png`, { type: 'image/png' });
+			const layout = recapCardLayout(aspect);
+			const svg = buildRecapShareSvg(recap, getUnit(), periodLabel, { aspect });
+			const blob = await rasterizeSvgToPng(svg, layout.width, layout.height);
+			const name = `threkir-${periodKey}${aspect === 'story' ? '-story' : ''}.png`;
+			const file = new File([blob], name, { type: 'image/png' });
 			if (navigator.canShare?.({ files: [file] })) {
 				await navigator.share({
 					files: [file],
@@ -85,7 +88,7 @@
 			const dl = URL.createObjectURL(blob);
 			const a = document.createElement('a');
 			a.href = dl;
-			a.download = `threkir-${periodKey}.png`;
+			a.download = name;
 			a.click();
 			URL.revokeObjectURL(dl);
 			return;
@@ -158,7 +161,8 @@
 			{recap}
 			kicker={t('recap.monthHeroKicker', { period: periodLabel })}
 			shareLabel={t('recap.shareMyMonth', { period: periodLabel })}
-			onshare={shareRecap}
+			onshare={() => shareRecap()}
+			onsharestory={() => shareRecap('story')}
 			onpublish={publishAndShareLink}
 			{publishing}
 		/>

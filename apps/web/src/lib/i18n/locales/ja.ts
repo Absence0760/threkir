@@ -3276,6 +3276,7 @@ export const messages = {
 	"recap.activeInMonthsOne": "{n}か月活動",
 	"recap.activeInMonthsMany": "{n}か月活動",
 	"recap.shareRecap": "まとめを共有",
+	"recap.shareStory": "ストーリーで共有",
 	"recap.longestRun": "最長ラン",
 	"recap.singleOuting": "1回のランで",
 	"recap.fastestPace": "最速ペース",

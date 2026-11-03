@@ -20,10 +20,10 @@
 		"rclt"
 	],
 	"subset": {
-		"bytes": 71660,
-		"sha256": "a0bc42bea907e4e4c3736176274b7e6c78638a213382437deeefce4cec4cd0bf",
-		"glyphs": 319,
-		"ligatures": 429
+		"bytes": 72412,
+		"sha256": "0890dad0ba643d1741a136f78e0d0e74dd9e7fb27cf5f46eb7497ca85a35b064",
+		"glyphs": 324,
+		"ligatures": 436
 	},
 	"icons": [
 		"10k",
@@ -40,6 +40,7 @@
 		"adjust",
 		"ads_click",
 		"alt_route",
+		"altitude",
 		"anchor",
 		"android",
 		"apps",
@@ -148,6 +149,7 @@
 		"fitness_center",
 		"flag",
 		"flag_circle",
+		"flight",
 		"floor",
 		"fluid",
 		"forest",
@@ -275,6 +277,7 @@
 		"satellite",
 		"satellite_alt",
 		"save",
+		"scale",
 		"schedule",
 		"schema",
 		"script",
@@ -291,11 +294,13 @@
 		"show_chart",
 		"skip_next",
 		"sleep",
+		"smartphone",
 		"sms",
 		"source",
 		"south",
 		"sports",
 		"sprint",
+		"square",
 		"star",
 		"star_border",
 		"star_outline",

@@ -3281,6 +3281,7 @@ export const messages = {
 	"recap.activeInMonthsOne": "actif·ve {n} mois",
 	"recap.activeInMonthsMany": "actif·ve {n} mois",
 	"recap.shareRecap": "Partager le récap",
+	"recap.shareStory": "Partager en story",
 	"recap.longestRun": "Course la plus longue",
 	"recap.singleOuting": "en une sortie",
 	"recap.fastestPace": "Allure la plus rapide",

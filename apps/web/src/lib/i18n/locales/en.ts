@@ -3294,6 +3294,7 @@ export const en = {
 	"recap.activeInMonthsOne": "active in {n} month",
 	"recap.activeInMonthsMany": "active in {n} months",
 	"recap.shareRecap": "Share recap",
+	"recap.shareStory": "Share as story",
 	"recap.longestRun": "Longest run",
 	"recap.singleOuting": "single outing",
 	"recap.fastestPace": "Fastest pace",

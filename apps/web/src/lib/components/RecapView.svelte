@@ -11,13 +11,22 @@
 		/** Closing-section CTA label (e.g. "Share my 2026"). */
 		shareLabel: string;
 		onshare: () => void;
+		/** Optional 9:16 story image share, shown beside the square one. */
+		onsharestory?: (() => void) | null;
 		/** Optional "publish a public link" action shown alongside the image share. */
 		onpublish?: (() => void) | null;
 		publishing?: boolean;
 	}
 
-	let { recap, kicker, shareLabel, onshare, onpublish = null, publishing = false }: Props =
-		$props();
+	let {
+		recap,
+		kicker,
+		shareLabel,
+		onshare,
+		onsharestory = null,
+		onpublish = null,
+		publishing = false,
+	}: Props = $props();
 
 	function fmtTime(seconds: number): string {
 		const h = Math.floor(seconds / 3600);
@@ -76,6 +85,12 @@
 			<span class="material-symbols">ios_share</span>
 			{t('recap.shareRecap')}
 		</button>
+		{#if onsharestory}
+			<button type="button" class="btn share-btn" data-testid="recap-share-story" onclick={onsharestory}>
+				<span class="material-symbols" aria-hidden="true">smartphone</span>
+				{t('recap.shareStory')}
+			</button>
+		{/if}
 		{#if onpublish}
 			<button
 				type="button"

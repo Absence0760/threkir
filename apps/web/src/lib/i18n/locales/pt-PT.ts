@@ -3280,6 +3280,7 @@ export const messages = {
 	"recap.activeInMonthsOne": "ativo em {n} mês",
 	"recap.activeInMonthsMany": "ativo em {n} meses",
 	"recap.shareRecap": "Partilhar resumo",
+	"recap.shareStory": "Partilhar como história",
 	"recap.longestRun": "Corrida mais longa",
 	"recap.singleOuting": "numa única saída",
 	"recap.fastestPace": "Ritmo mais rápido",

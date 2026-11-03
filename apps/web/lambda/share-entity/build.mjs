@@ -6,22 +6,28 @@
 //
 // Strategy: esbuild bundles src/index.ts (and everything it imports
 // transitively from #lib/*) into a single index.mjs. supabase-js is
-// inlined. Unlike share-run/route/badge/recap this Lambda serves HTML
-// ONLY (no per-entity og:image PNG), so there is NO native @resvg addon
-// to keep external + copy — the whole handler bundles cleanly. The
-// SPA shell 200.html is read from apps/web/build/200.html (built by
-// `npm run build`) and substituted in as the __SPA_SHELL_HTML__ constant.
+// inlined. The /og/challenge card rasterises with @resvg/resvg-js, a
+// NATIVE addon esbuild cannot inline, so the loader + its arm64 binary
+// are kept external and copied into the zip's node_modules exactly as
+// share-badge/build.mjs does (see its header for the arm64 install
+// recipe). The SPA shell 200.html is read from apps/web/build/200.html
+// (built by `npm run build`) and substituted in as __SPA_SHELL_HTML__.
 
 import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { mkdirSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync, existsSync, readFileSync, cpSync } from 'node:fs';
 import { execSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const webRoot = resolve(here, '..', '..');
 const distDir = resolve(here, 'dist');
 const spaShellPath = resolve(webRoot, 'build', '200.html');
+
+const RESVG_LOADER = '@resvg/resvg-js';
+const RESVG_ARM64 = '@resvg/resvg-js-linux-arm64-gnu';
+const RESVG_EXTERNAL = [RESVG_LOADER, RESVG_ARM64];
 
 if (!existsSync(spaShellPath)) {
 	console.error(
@@ -46,8 +52,9 @@ await build({
 	format: 'esm',
 	outfile: resolve(distDir, 'index.mjs'),
 	// Lambda's managed runtime only ships AWS SDK v3, which we don't use,
-	// so supabase-js + #lib helpers get inlined.
-	external: [],
+	// so supabase-js + #lib helpers get inlined; the native rasteriser is
+	// copied into node_modules below.
+	external: RESVG_EXTERNAL,
 	// Some transitive deps (e.g. inside @supabase/realtime-js) still ship
 	// CJS. Provide a `require` in the ESM bundle so they load.
 	banner: {
@@ -73,9 +80,33 @@ writeFileSync(
 	JSON.stringify({ type: 'module' }, null, 2) + '\n',
 );
 
-execSync('zip -qr share-entity.zip index.mjs index.mjs.map package.json', {
+copyResvgPackages();
+
+execSync('zip -qr share-entity.zip index.mjs index.mjs.map package.json node_modules', {
 	cwd: distDir,
 	stdio: 'inherit',
 });
 
 console.log(`built: ${resolve(distDir, 'share-entity.zip')}`);
+
+// Same copy as share-badge/build.mjs: the loader require()s the arm64
+// `.node` package by name at runtime, so both ship in the zip.
+function copyResvgPackages() {
+	const req = createRequire(resolve(webRoot, 'package.json'));
+	let arm64PkgDir;
+	try {
+		arm64PkgDir = dirname(req.resolve(`${RESVG_ARM64}/package.json`));
+	} catch {
+		console.error(
+			`[share-entity build] missing ${RESVG_ARM64}. The Lambda runs on arm64, so its ` +
+				`native binary must ship in the zip. Recipe: release-web.yml's install step ` +
+				`and apps/web/lambda/share-badge/README.md.`,
+		);
+		process.exit(1);
+	}
+	const loaderPkgDir = dirname(req.resolve(`${RESVG_LOADER}/package.json`));
+	const nm = resolve(distDir, 'node_modules', '@resvg');
+	mkdirSync(nm, { recursive: true });
+	cpSync(loaderPkgDir, resolve(nm, 'resvg-js'), { recursive: true });
+	cpSync(arm64PkgDir, resolve(nm, 'resvg-js-linux-arm64-gnu'), { recursive: true });
+}

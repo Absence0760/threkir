@@ -8,28 +8,22 @@
 /// renders a generic branded card rather than throwing — the caller returns
 /// it with HTTP 200 so a social unfurl never shows a broken image.
 
-import { Resvg } from '@resvg/resvg-js';
-
 import { buildRecapOgSvg } from './og_recap_image';
+import { renderOgPng } from './og_png_render';
 import {
 	lookupSharedRecap,
 	recapPeriodLabel,
 	type SharedRecapLookupConfig,
 } from './share_recap_lookup';
 
-const FALLBACK_PNG = Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
-	'base64',
-);
-
 export async function renderRecapOgPng(
 	id: string,
 	config: SharedRecapLookupConfig | null,
 ): Promise<Buffer> {
 	const { recap } = await lookupSharedRecap(id, config);
-	try {
+	return renderOgPng('recap', () => {
 		const snap = recap?.snapshot ?? {};
-		const svg = buildRecapOgSvg({
+		return buildRecapOgSvg({
 			year: snap.year,
 			month: snap.month,
 			totalDistanceM: snap.totalDistanceM,
@@ -41,12 +35,5 @@ export async function renderRecapOgPng(
 			displayName: recap?.displayName ?? null,
 			periodLabel: recap ? recapPeriodLabel(recap.periodKind, recap.periodKey) : null,
 		});
-		const resvg = new Resvg(svg, {
-			fitTo: { mode: 'width', value: 1200 },
-			font: { loadSystemFonts: true },
-		});
-		return resvg.render().asPng();
-	} catch (_) {
-		return FALLBACK_PNG;
-	}
+	});
 }

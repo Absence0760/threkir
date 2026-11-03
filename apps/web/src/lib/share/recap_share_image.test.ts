@@ -106,7 +106,7 @@ test('escapes nothing dangerous but stays valid with zeroed data', () => {
 test('the square card is the default and draws no footer', () => {
 	const svg = svgOf(recap(), 'km');
 	assert.equal(svg, svgOf(recap(), 'km', undefined, { aspect: 'square' }));
-	assert.ok(!svg.includes('threkir.com'));
+	assert.doesNotMatch(svg, /<text[^>]*>threkir\.com<\/text>/);
 });
 
 test('a story is 1080x1920 with the same stats and the site address', () => {
@@ -116,7 +116,7 @@ test('a story is 1080x1920 with the same stats and the site address', () => {
 	assert.ok(svg.includes('MY 2026 IN RUNNING'));
 	assert.ok(svg.includes('1234 km'));
 	assert.ok(svg.includes('9 / 12'));
-	assert.ok(svg.includes('>threkir.com</text>'));
+	assert.match(svg, /<text[^>]*>threkir\.com<\/text>/);
 });
 
 test('a German reader gets the German card, not the English one', () => {

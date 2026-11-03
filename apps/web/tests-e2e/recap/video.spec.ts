@@ -21,7 +21,8 @@ const YEAR = browserYear();
 /// ever asked for anything while one is made.
 const drawsAMap = (url: URL) =>
 	FALLBACK_TILE_ORIGINS.has(url.origin) ||
-	url.hostname.endsWith('maptiler.com') ||
+	url.hostname === 'maptiler.com' ||
+	url.hostname.endsWith('.maptiler.com') ||
 	url.hostname === 'elevation-tiles-prod.s3.amazonaws.com';
 
 async function canEncode(page: Page): Promise<boolean> {

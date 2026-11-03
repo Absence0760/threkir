@@ -656,7 +656,7 @@ test('every surface that resolves a terrain source gates the map on consent', ()
 		);
 		assert.match(
 			code,
-			/if\s*\([^()]*(?:^|[\s(|])!mapConsented\b[^()]*\)\s*return/,
+			/if\s*\((?:[^()]*[\s|])?!mapConsented\b[^()]*\)\s*return/,
 			`${file} must short-circuit map init while consent is pending (an \`if (… !mapConsented …) return\` guard), as RunMap does.`,
 		);
 	}

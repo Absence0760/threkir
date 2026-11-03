@@ -14,6 +14,7 @@ import { buildShareRouteHead } from './share_route_meta';
 import { buildShareRunMeta } from './share_run_meta';
 import { buildShareSessionHead } from './share_session_meta';
 import { buildShareWorkoutHead } from './share_workout_meta';
+import { buildSharePlanHead } from './share_plan_meta';
 
 /**
  * The clipping half of the `<head>` census, and the sibling of
@@ -210,6 +211,23 @@ const builders: Array<{ name: string; head: () => Record<string, unknown> }> = [
 					],
 				},
 				displayName: HUGE,
+				siteUrl: SITE,
+			}) as unknown as Record<string, unknown>,
+	},
+	{
+		name: 'buildSharePlanHead',
+		head: () =>
+			buildSharePlanHead({
+				id: 'p-1',
+				plan: {
+					id: 'p-1',
+					name: HUGE,
+					goal_event: 'custom',
+					goal_distance_m: 50000,
+					days_per_week: 5,
+					author: { name: HUGE, handle: HUGE },
+					weeks: [],
+				},
 				siteUrl: SITE,
 			}) as unknown as Record<string, unknown>,
 	},

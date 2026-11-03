@@ -17120,6 +17120,14 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String planDetailStartedFrom(String author) {
+    return '$author のプランから開始';
+  }
+
+  @override
+  String get planDetailStartedFromRunner => '他のランナーのプランから開始';
+
+  @override
   String planDetailWeekOfN(int week, int total) {
     return '第$week週／全$total週';
   }

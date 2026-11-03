@@ -17952,6 +17952,15 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String planDetailStartedFrom(String author) {
+    return 'Iniciado a partir do plano de $author';
+  }
+
+  @override
+  String get planDetailStartedFromRunner =>
+      'Iniciado a partir do plano de outro corredor';
+
+  @override
   String planDetailWeekOfN(int week, int total) {
     return 'Semana $week de $total';
   }
@@ -37044,6 +37053,15 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String planDetailBuiltForRace(String race, String date) {
     return 'Criado para $race · $date';
   }
+
+  @override
+  String planDetailStartedFrom(String author) {
+    return 'Iniciado a partir do plano de $author';
+  }
+
+  @override
+  String get planDetailStartedFromRunner =>
+      'Iniciado a partir do plano de outro corredor';
 
   @override
   String planDetailWeekOfN(int week, int total) {

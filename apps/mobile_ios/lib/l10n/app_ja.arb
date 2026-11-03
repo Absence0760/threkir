@@ -5078,6 +5078,8 @@
   "planDetailAssignedByCoach": "コーチが割り当て",
   "planDetailBuiltForRace": "{race}（{date}）向け",
   "planDetailWeekOfN": "第{week}週／全{total}週",
+  "planDetailStartedFrom": "{author} のプランから開始",
+  "planDetailStartedFromRunner": "他のランナーのプランから開始",
   "planDetailPausedChip": "一時停止中",
   "planDetailWeekDoneCount": "{done} / {total} 完了",
   "planDetailEarlierWeeks": "{count, plural, other{これまでの{count}週}}",

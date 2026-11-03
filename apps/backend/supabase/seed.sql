@@ -3092,3 +3092,12 @@ insert into private.feature_flags (name, enabled) values ('coach_run_map', true)
 -- specs exercise it.
 insert into private.feature_flags (name, enabled) values ('hr_prescription', true)
   on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Public plan share gate (20271103000002) ───────────────────
+--
+-- The anonymous /share/plan/<id> view of a public-library plan is fail-closed
+-- behind a private.feature_flags row no migration writes, so prod stays off
+-- until the CISO / Security Analyst sign-off in docs/features/training.md.
+-- Local stacks and CI open it so the share page and its specs exercise it.
+insert into private.feature_flags (name, enabled) values ('public_plan_share', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();

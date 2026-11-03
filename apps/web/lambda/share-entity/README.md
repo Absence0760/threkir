@@ -1,6 +1,6 @@
 # share-entity Lambda
 
-Per-request SSR for the six public **entity** share surfaces, so an
+Per-request SSR for the seven public **entity** share surfaces, so an
 entity created/edited after the last static build still unfurls with the
 right per-entity `<head>` (crawlers + chat-app link-unfurlers do not run
 the SPA's JS). One HTML-only Lambda behind a Function URL, fronted by
@@ -16,9 +16,10 @@ CloudFront.
 | `/share/race/<id>` | race-calendar listing | `SportsEvent` |
 | `/share/session/<id>` | public session plan | `WebPage` + breadcrumb |
 | `/share/workout/<id>` | public gym workout | `WebPage` + breadcrumb |
+| `/share/plan/<id>` | public-library training plan | `WebPage` + breadcrumb |
 
 The matching SvelteKit routes
-(`src/routes/share/{event,profile,club,race,session,workout}/[…]`) carry
+(`src/routes/share/{event,profile,club,race,session,workout,plan}/[…]`) carry
 `prerender = false` and run the same lookup + meta builders under `vite dev`,
 so every path works locally without standing up the Lambda.
 
@@ -27,17 +28,21 @@ Session plans + workouts read the **redacted** projections only — the
 for a workout, and for a plan the authored fields without the per-item `cue` /
 `tempo` teaching notes. An og:description is handed to every unfurler that
 touches the link, so the meta says how many sets / movements and how long,
-never what the owner wrote in them.
+never what the owner wrote in them. A training plan reads the
+`public_plan_share` RPC, the one surface here that is not a table read: its
+tables are signed-in only, so the RPC is a redacted projection (goal, weeks,
+workouts by day offset; no physiology, paces, notes, dates or user id) behind
+the default-off `public_plan_share` gate (decisions § 2262).
 
-## Why one Lambda (not six)
+## Why one Lambda (not seven)
 
 These surfaces share an identical shape — anon public lookup → pure
 `build*Head` → `render*HeadTags` → `injectEntityHead` into the SPA shell —
 and none needs a per-entity `og:image` PNG (the OG image is the branded
 card, or the avatar URL for profiles/clubs). So a single dispatcher
-Lambda serves all six with no native rasteriser, versus cloning the
+Lambda serves all seven with no native rasteriser, versus cloning the
 share-badge stack (Function URL + OAC + cache/origin-request policy +
-release/OIDC wiring) six times. See `../share-badge/README.md` for the
+release/OIDC wiring) seven times. See `../share-badge/README.md` for the
 one-per-type pattern this deliberately diverges from.
 
 ## Build

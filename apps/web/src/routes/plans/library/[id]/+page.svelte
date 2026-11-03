@@ -10,8 +10,10 @@
 		fetchPublicPlanLibrary,
 		clonePublicPlan,
 		fetchMyOverlappingActivePlans,
+		publicPlanShareEnabled,
 		type PlanOverlapChoice,
 	} from '#lib/core/data.ts';
+	import { buildPlanShareCanonical } from '#lib/share/share_plan_meta.ts';
 	import PlanOverlapDialog, { trimBlockedMessage } from '#lib/components/PlanOverlapDialog.svelte';
 	import { attemptPlanCreate, clonedPlanEndIso, type OverlapPlan } from '#lib/training/plan_overlap.ts';
 	import { formatDistance } from '#lib/format/units.svelte.ts';
@@ -30,6 +32,7 @@
 	let loadError = $state<string | null>(null);
 	let notFound = $state(false);
 	let cloning = $state(false);
+	let shareEnabled = $state(false);
 	let startDate = $state(defaultStartDate());
 
 	function defaultStartDate(): string {
@@ -84,6 +87,19 @@
 		const lib = await fetchPublicPlanLibrary('');
 		authorHandle = lib.plans.find((p) => p.id === planId)?.author_handle ?? null;
 		loading = false;
+		shareEnabled = await publicPlanShareEnabled();
+	}
+
+	async function copyShareLink() {
+		// The CURRENT origin, so a preview-host reader copies a preview link.
+		const url = buildPlanShareCanonical(location.origin, planId);
+		try {
+			await navigator.clipboard.writeText(url);
+			showToast(m('session.shareLinkCopied'), 'success');
+		} catch (e) {
+			console.error('copy plan share link failed', e);
+			showToast(m('session.shareLinkError'), 'error');
+		}
 	}
 
 	// The clone asks the server to refuse an overlap and, when it does, names
@@ -163,6 +179,17 @@
 			<button class="btn btn-primary" type="button" disabled={cloning} onclick={() => clone()}>
 				{cloning ? m('planLibrary.cloning') : m('planLibrary.clone')}
 			</button>
+			{#if shareEnabled}
+				<button
+					class="btn btn-outline"
+					type="button"
+					onclick={copyShareLink}
+					data-testid="plan-library-copy-share"
+				>
+					<span class="material-symbols" aria-hidden="true">link</span>
+					{m('session.copyShareLink')}
+				</button>
+			{/if}
 		</section>
 
 		<section class="weeks">

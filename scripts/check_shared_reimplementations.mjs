@@ -171,9 +171,9 @@ export const REGISTERED = [
 	{
 		kind: 'clone',
 		key:
-			'apps/web/src/lib/share/share_session_meta.ts:renderShareSessionHeadTags|apps/web/src/lib/share/share_workout_meta.ts:renderShareWorkoutHeadTags',
+			'apps/web/src/lib/share/share_plan_meta.ts:renderSharePlanHeadTags|apps/web/src/lib/share/share_session_meta.ts:renderShareSessionHeadTags|apps/web/src/lib/share/share_workout_meta.ts:renderShareWorkoutHeadTags',
 		reason:
-			'Deliberate, and the same reason as the three-way sibling group above: one head-tag renderer per /share/{entity} surface, identical today only because the two carry the same tag set, and per-entity by design so a collapse would have to be undone the first time one needs a tag the other does not.',
+			'Deliberate, and the same reason as the three-way sibling group above: one head-tag renderer per /share/{entity} surface, identical today only because the three carry the same tag set, and per-entity by design so a collapse would have to be undone the first time one needs a tag the others do not.',
 	},
 	{
 		kind: 'clone',

@@ -96,6 +96,8 @@ insert into anon_callable (fn, why) values
   ('latest_race_pings',               'logged-out spectator tracker'),
   ('nearby_routes',                   'logged-out route discovery'),
   ('popular_route_tags',              'logged-out route discovery'),
+  ('public_plan_share',               '/share/plan; null while the public_plan_share gate is closed'),
+  ('public_plan_share_enabled',       '/share/plan decides whether the gate is open'),
   ('public_profile_by_id',            '/share/profile and the logged-out /live/[id]'),
   ('public_recap_by_id',              '/share/recap'),
   ('public_run_gear',                 'public run page'),

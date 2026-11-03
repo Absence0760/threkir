@@ -30,6 +30,7 @@ import '../main.dart'
         pendingPushTarget;
 import '../preferences.dart';
 import '../push_target.dart';
+import 'plan_library_screen.dart';
 import 'plan_target_screen.dart';
 import '../race_controller.dart';
 import '../race_service.dart';
@@ -514,6 +515,9 @@ class _HomeScreenState extends State<HomeScreen>
       case PushTargetKind.planWorkout:
         await _pushScreen(planTargetScreen(target,
             training: widget.training, runStore: widget.runStore));
+      case PushTargetKind.planLibrary:
+        await _pushScreen(PlanLibraryLinkScreen(
+            training: widget.training, planId: target.id!));
       case PushTargetKind.challenges:
         await _pushScreen(ChallengesScreen(social: widget.social));
       case PushTargetKind.clubs:

@@ -5078,6 +5078,8 @@
   "planDetailAssignedByCoach": "Von deinem Coach zugewiesen",
   "planDetailBuiltForRace": "Erstellt für {race} · {date}",
   "planDetailWeekOfN": "Woche {week} von {total}",
+  "planDetailStartedFrom": "Gestartet mit dem Plan von {author}",
+  "planDetailStartedFromRunner": "Gestartet mit dem Plan einer anderen Person",
   "planDetailPausedChip": "Pausiert",
   "planDetailWeekDoneCount": "{done} / {total} erledigt",
   "planDetailEarlierWeeks": "{count, plural, one{1 frühere Woche} other{{count} frühere Wochen}}",

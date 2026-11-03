@@ -5078,6 +5078,8 @@
   "planDetailAssignedByCoach": "Asignado por tu entrenador",
   "planDetailBuiltForRace": "Creado para {race} · {date}",
   "planDetailWeekOfN": "Semana {week} de {total}",
+  "planDetailStartedFrom": "Empezado a partir del plan de {author}",
+  "planDetailStartedFromRunner": "Empezado a partir del plan de otro corredor",
   "planDetailPausedChip": "En pausa",
   "planDetailWeekDoneCount": "{done} / {total} hechos",
   "planDetailEarlierWeeks": "{count, plural, one{1 semana anterior} other{{count} semanas anteriores}}",

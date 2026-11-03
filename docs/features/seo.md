@@ -40,6 +40,7 @@ indexed anyway).
 | `/share/race/[id]` | Lambda-SSR (`share-entity`) | `share_race_meta` | `SportsEvent` |
 | `/share/session/[id]` | Lambda-SSR (`share-entity`) | `share_session_meta` | `WebPage` + breadcrumb |
 | `/share/workout/[id]` | Lambda-SSR (`share-entity`) | `share_workout_meta` | `WebPage` + breadcrumb |
+| `/share/plan/[id]` | Lambda-SSR (`share-entity`) | `share_plan_meta` | `WebPage` + breadcrumb |
 | `/runs/[id]`, `/routes/[id]`, `/u/[id]`, `/races` | CSR (app shell) | generic shell + canonical | — (auth-gated) |
 | `/segments` | CSR (app shell, **anon-reachable**) | inline `<svelte:head>` title | — (in the sitemap; see below) |
 | `/segments/[id]` | CSR (app shell) | generic shell | — (auth-gated, NOT in the sitemap) |
@@ -95,6 +96,17 @@ Two rows above are easy to misread, and both were wrong in this table before:
   finished them per step 2 of *Adding a new indexable surface*);
   `share_entity_dispatch_guard.test.ts` now fails if a `/share/<x>` route
   loses its CloudFront behaviour or its dispatcher branch.
+- **`/share/plan/[id]` is NOT in the sitemap either, and its in-app twin
+  emits no canonical.** It is the "Train with me" page for a public-library
+  plan ([decisions § 2262](../architecture/decisions.md)), read through the
+  redacted `public_plan_share` RPC because the plan tables are signed-in only.
+  That RPC answers null while the default-off `public_plan_share` gate is
+  closed, so in prod the page is the branded 404 until the CISO / Security
+  Analyst sign-off lands. A canonical from `/plans/library/[id]` to a page that
+  404s would tell a crawler the content lives nowhere, so the fold waits for
+  the gate; it belongs in the table below once the flag is on in prod. The
+  library stays link-discoverable, not crawl-enumerated, for the session-plan
+  reason above.
 
 ### What the SPA shell carries in its `<head>`
 
@@ -442,7 +454,12 @@ the routes; prod serves the SPA shell for the new `/share/*` paths.
 The `/share/session/*` + `/share/workout/*` behaviours ride that same pending
 apply — no new Lambda, no new release step (the existing `share-entity` zip
 already carries their dispatcher branches), just two more
-`ordered_cache_behavior` blocks on the distribution.
+`ordered_cache_behavior` blocks on the distribution. `/share/plan/*` is a third
+block on the same terms, plus a `plan` entry in `share_log_groups` for its
+upstream alarm. It needs one more step to show anything: the
+`public_plan_share` row in `private.feature_flags` (no migration writes it),
+which waits on the CISO / Security Analyst sign-off in
+[training.md](training.md#train-with-me--public-plan-share-page).
 
 ### Fit with the minimal (Lean / Rock-bottom) deploy
 

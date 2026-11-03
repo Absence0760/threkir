@@ -38,6 +38,11 @@ enum PushTargetKind {
   /// [PushTarget.workoutId].
   planWorkout,
 
+  /// A public-library plan's preview (`/plans/library/<id>`, or the
+  /// `/share/plan/<id>` "Train with me" page), where the reader starts it.
+  /// Carries the plan UUID.
+  planLibrary,
+
   /// The challenge list (`/challenges`).
   challenges,
 
@@ -99,11 +104,17 @@ final RegExp _uuid = RegExp(
 /// The plan surface a path under `/plans` names, given its non-empty
 /// segments starting at `plans`: `/plans/<id>` is that plan and
 /// `/plans/<id>/workouts/<workout id>` that workout, matching web's routes.
-/// Anything else under a plan id degrades to that plan, and anything else
-/// under `/plans` (`/plans/new`, `/plans/library/<id>`) to the plan list.
+/// `/plans/library/<id>` is a public-library plan's preview. Anything else
+/// under a plan id degrades to that plan, and anything else under `/plans`
+/// (`/plans/new`, `/plans/library`) to the plan list.
 PushTarget planTargetFromSegments(List<String> segments) {
   const list = PushTarget(PushTargetKind.plans);
   if (segments.isEmpty || segments.first != 'plans') return list;
+  if (segments.length == 3 &&
+      segments[1] == 'library' &&
+      _uuid.hasMatch(segments[2])) {
+    return PushTarget(PushTargetKind.planLibrary, segments[2].toLowerCase());
+  }
   if (segments.length < 2 || !_uuid.hasMatch(segments[1])) return list;
   final planId = segments[1].toLowerCase();
   if (segments.length == 4 &&
@@ -181,6 +192,8 @@ PushTarget pushTargetFromUrl(String? url) {
       return switch (id) {
         'run' => PushTarget(PushTargetKind.run, entityId),
         'badge' => const PushTarget(PushTargetKind.badges),
+        'plan' when _uuid.hasMatch(entityId) =>
+          PushTarget(PushTargetKind.planLibrary, entityId.toLowerCase()),
         _ => PushTarget.inbox,
       };
     case 'notifications':

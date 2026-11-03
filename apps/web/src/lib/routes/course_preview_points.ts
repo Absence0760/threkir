@@ -50,22 +50,24 @@ export function routePathPoints(
  * A recorded track as path points: the drawn line (smoothed position where
  * the fix carries one, off-track fixes dropped) with the altitude series the
  * run's own elevation profile reads (`runAltitude`), so the replay climbs the
- * same hills the chart shows. A non-owner's track must already be the
- * `clip-public-track` output.
+ * same hills the chart shows. `noiseBandM` is that series' noise band, which
+ * the climb detector widens its close on. A non-owner's track must already be
+ * the `clip-public-track` output.
  */
-export function trackPathPoints(
+export function trackPreview(
 	track: readonly TrackPoint[] | null | undefined,
 	source?: string | null,
-): PathPoint[] {
-	if (!track || track.length === 0) return [];
-	const out: PathPoint[] = [];
-	for (const p of runAltitude(track as TrackPoint[], source).track) {
+): { points: PathPoint[]; noiseBandM: number | undefined } {
+	if (!track || track.length === 0) return { points: [], noiseBandM: undefined };
+	const altitude = runAltitude(track as TrackPoint[], source);
+	const points: PathPoint[] = [];
+	for (const p of altitude.track) {
 		const lat = lineLat(p);
 		const lng = lineLng(p);
 		if (!finite(lat) || !finite(lng)) continue;
-		out.push({ lat, lng, ele: finite(p.ele) ? p.ele : null });
+		points.push({ lat, lng, ele: finite(p.ele) ? p.ele : null });
 	}
-	return out;
+	return { points, noiseBandM: altitude.minDeltaM };
 }
 
 /**

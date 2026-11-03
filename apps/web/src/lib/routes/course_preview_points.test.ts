@@ -6,7 +6,7 @@ import {
 	climbNamesFromMarkers,
 	hasPreviewableCourse,
 	routePathPoints,
-	trackPathPoints,
+	trackPreview,
 } from './course_preview_points';
 
 // 0.001 deg of latitude is ~111 m.
@@ -46,7 +46,7 @@ test('a track flies its drawn line: the smoothed position where a fix carries on
 		{ lat: 0, lng: 0, ele: 10, smoothedLat: 0.0001, smoothedLng: 0.0002 },
 		{ lat: 0.01, lng: 0, ele: 20 },
 	] as TrackPoint[];
-	assert.deepEqual(trackPathPoints(track, 'app'), [
+	assert.deepEqual(trackPreview(track, 'app').points, [
 		{ lat: 0.0001, lng: 0.0002, ele: 10 },
 		{ lat: 0.01, lng: 0, ele: 20 },
 	]);
@@ -59,7 +59,7 @@ test('a track drops its off-track fixes, as the run map does', () => {
 		{ lat: 0.01, lng: 0, ele: 20 },
 	] as TrackPoint[];
 	assert.deepEqual(
-		trackPathPoints(track, 'app').map((p) => p.lat),
+		trackPreview(track, 'app').points.map((p) => p.lat),
 		[0, 0.01],
 	);
 });
@@ -70,14 +70,25 @@ test('a barometric track climbs the barometer series, and a fix without one has 
 		{ lat: 0.01, lng: 0, ele: 20 },
 	] as TrackPoint[];
 	assert.deepEqual(
-		trackPathPoints(track, 'app').map((p) => p.ele),
+		trackPreview(track, 'app').points.map((p) => p.ele),
 		[100, null],
 	);
 });
 
+test('the noise band is the altitude series\' own: GPS on a phone, the route band for a barometer or an import', () => {
+	const gps = [
+		{ lat: 0, lng: 0, ele: 10 },
+		{ lat: 0.01, lng: 0, ele: 20 },
+	] as TrackPoint[];
+	assert.equal(trackPreview(gps, 'app').noiseBandM, 10);
+	assert.equal(trackPreview(gps, 'strava').noiseBandM, 3);
+	const baro = gps.map((p) => ({ ...p, baroEle: p.ele })) as TrackPoint[];
+	assert.equal(trackPreview(baro, 'app').noiseBandM, 3);
+});
+
 test('no track is no path', () => {
-	assert.deepEqual(trackPathPoints(null), []);
-	assert.deepEqual(trackPathPoints([]), []);
+	assert.deepEqual(trackPreview(null), { points: [], noiseBandM: undefined });
+	assert.deepEqual(trackPreview([]), { points: [], noiseBandM: undefined });
 });
 
 test('a climb marker is placed by projecting it onto the line, not by its stored position', () => {

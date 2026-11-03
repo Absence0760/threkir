@@ -1840,6 +1840,7 @@ Pinned by `data_export_jobs_test.sql` (19 assertions) + `data_export_ready_notif
 | `purge-stale-jobs` | `35 3 * * *` | Calls `private.purge_stale_jobs()` (GDPR DSAR close-out retention). | `20260928_001` |
 | `cleanup-stale-app-quota` | `15 4 * * *` | Deletes `app_quota` rows older than 2 days (Strava app-level rate-limit window). | `20261007_001` |
 | `purge-stale-direct-messages` | `41 3 * * *` | Calls `private.purge_stale_direct_messages()`. | `20261119_001` |
+| `purge-share-link-daily` | `7 4 * * *` | Calls `private.purge_share_link_daily()` — drops the aggregate share-link counter buckets older than 90 days ([§ 2268](../architecture/decisions.md)). | `20271104000004` |
 | `enqueue-event-reminders` | `0 * * * *` | Calls `enqueue_event_reminders()` to fan out upcoming-event reminder emails. | `20261130_001` |
 | `jobs-failed-alert` | `*/10 * * * *` | Calls `jobs_failed_summary()` — surfaces terminally-failed jobs for the observability scraper. | `20261201_001` |
 | `cleanup-stale-race-pings` | `*/30 * * * *` | Calls `cleanup_stale_race_pings()` (race-mode ping retention). | `20261213_001` |

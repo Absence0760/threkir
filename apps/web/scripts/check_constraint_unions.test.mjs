@@ -59,6 +59,14 @@ test('the nullable form and a later redefinition both land', () => {
 	assert.deepEqual(plain(parseChecks(sql)), { 'routes.surface': ['road', 'trail'] });
 });
 
+test('a CHECK on a table outside public is not filed under the schema name', () => {
+	const sql = [
+		"create table private.share_link_daily (kind text check (kind in ('plan', 'challenge')));",
+		"alter table public.runs add constraint c check (source in ('gps'));",
+	].join('\n');
+	assert.deepEqual(plain(parseChecks(sql)), { 'runs.source': ['gps'] });
+});
+
 test('a genuine trailing line comment is still removed', () => {
 	assert.deepEqual(
 		plain(

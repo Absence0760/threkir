@@ -5019,6 +5019,7 @@ export type Database = {
           updated_at: string | null
           user_id: string
           vdot: number | null
+          via_share_ref: boolean
         }
         Insert: {
           assigned_by_coach_id?: string | null
@@ -5047,6 +5048,7 @@ export type Database = {
           updated_at?: string | null
           user_id: string
           vdot?: number | null
+          via_share_ref?: boolean
         }
         Update: {
           assigned_by_coach_id?: string | null
@@ -5075,6 +5077,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           vdot?: number | null
+          via_share_ref?: boolean
         }
         Relationships: [
           {
@@ -6113,6 +6116,10 @@ export type Database = {
         }
         Returns: string
       }
+      attribute_share_start: {
+        Args: { p_id: string; p_kind: string; p_ref: string }
+        Returns: boolean
+      }
       audience_sharing_enabled: { Args: never; Returns: boolean }
       auto_hide_target: {
         Args: { p_target_id: string; p_target_kind: string }
@@ -6994,6 +7001,23 @@ export type Database = {
           owner_name: string
         }[]
       }
+      my_share_ref: { Args: never; Returns: string }
+      my_share_stats: {
+        Args: never
+        Returns: {
+          bot_visits: number
+          entity_id: string
+          joins: number
+          kind: string
+          ref_joins: number
+          ref_starts: number
+          ref_visits: number
+          signups: number
+          starts: number
+          title: string
+          visits: number
+        }[]
+      }
       nearby_routes: {
         Args: {
           lat: number
@@ -7180,6 +7204,10 @@ export type Database = {
           p_track_version: string
         }
         Returns: boolean
+      }
+      record_share_visit: {
+        Args: { p_bot?: boolean; p_id: string; p_kind: string; p_ref?: string }
+        Returns: undefined
       }
       redeem_coach_invite: { Args: { token: string }; Returns: string }
       refresh_club_member_count: {
@@ -7625,6 +7653,7 @@ export type Database = {
         Args: { p_id: string; p_opt_in: boolean }
         Returns: boolean
       }
+      share_attribution_enabled: { Args: never; Returns: boolean }
       shift_training_plan: {
         Args: { p_days: number; p_plan_id: string; p_shift_following?: boolean }
         Returns: undefined

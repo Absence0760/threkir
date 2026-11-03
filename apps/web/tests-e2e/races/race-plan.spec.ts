@@ -28,7 +28,7 @@ import { USER_A, USER_B } from '../fixtures/users';
  * course is a public route shows that course and hands its climb and surface
  * to the AI description; a private one shows and sends nothing (§ 2157).
  * The public course also draws its map, linked to the route, and offers the
- * 3D course preview; a private one offers neither (§ 2252, issue #1270).
+ * 3D course preview; a private one offers neither (§ 2253, issue #1270).
  *
  * The planted plan sits a year out so no other USER_B spec's plan window can
  * be the one the page chains after.

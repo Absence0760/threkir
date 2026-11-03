@@ -1,5 +1,5 @@
 -- The race page draws its course (issue #1190's course-map slice, #1270's
--- "Preview in 3D" on /races/[id]; decisions § 2252).
+-- "Preview in 3D" on /races/[id]; decisions § 2253).
 --
 -- 20270924000002 gave a listing a course and left the route's id out of
 -- public_race_listings: the race page needed only the summary, and the course

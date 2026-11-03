@@ -432,16 +432,17 @@ Price: **$9.99 / month** or **$79.99 / year** (33% less than twelve months; year
 
 **Spec:**
 
-- **Entry points:** "Preview in 3D" on `/routes/[id]`; "Replay in 3D" on `/runs/[id]` for the owner and for a non-owner who can read the run. The button shows only when the line has length to fly (`hasPreviewableCourse`). The dialog loads on the first click, so the page bundles don't carry the 3D engine.
+- **Entry points:** "Preview in 3D" on `/routes/[id]` and on `/races/[id]` when the race's course is a public route (titled with the race's name); "Replay in 3D" on `/runs/[id]` for the owner and for a non-owner who can read the run. The button shows only when the line has length to fly (`hasPreviewableCourse`). The dialog loads on the first click, so the page bundles don't carry the 3D engine.
 - **View:** the course on MapLibre terrain (about 1.5x exaggeration, pitch about 60), the camera following a smoothed bearing with a look-ahead point, at a constant ground speed with a speed control; play, pause and scrub. Whole-km or whole-mile markers in the viewer's unit, an elevation strip synced to the camera, and named climbs with each climb's **net height to crest** (foot to crest, the figure a split's elevation and the watch's climb page use) and average grade. That is not total ascent: a dip inside a climb is not counted twice.
-- **Privacy:** the preview flies only what the page already draws. A non-owner's route is the `fetchRouteById` clipped waypoints; a non-owner's run is the `clip-public-track` output `RunShareView` already fetched. Climb names come from the route's `climb` markers, placed by projecting each onto the flown line, so a marker inside a clipped-away stretch is left out.
+- **Privacy:** the preview flies only what the page already draws. A non-owner's route is the `fetchRouteById` clipped waypoints; a race's course is the `fetchPublicRoute` read of the route id `public_race_listings` exposes only while the route is public; a non-owner's run is the `clip-public-track` output `RunShareView` already fetched. Climb names come from the route's `climb` markers, placed by projecting each onto the flown line, so a marker inside a clipped-away stretch is left out.
 - **Degrade:** terrain loads only behind the map consent the 2D maps use. No WebGL2 or a slow device shows the flat map; `prefers-reduced-motion` shows the static 3D view without the flight.
 - **Free:** a view, not analysis, with no per-user cost.
-- **Not yet:** the race page (`/races/[id]`) — the public race view carries the course's summary but not its route id. Video export is out of scope.
+- **Not yet:** a mobile equivalent. Video export is out of scope.
 
 **Done when:**
 - A route with geometry shows "Preview in 3D", opens the dialog, and Esc closes it and returns focus to the button
 - A route without geometry shows no button
+- A race whose course is a public route shows the course map and the button; a race with no course, or a private one, shows neither
 - A non-owner's preview or replay never shows geometry the 2D map hides
 
 ---

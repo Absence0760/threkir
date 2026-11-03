@@ -4,6 +4,7 @@ import type { TrackPoint } from '../types';
 import {
 	CLIMB_MARKER_MAX_OFFSET_M,
 	climbNamesFromMarkers,
+	hasPreviewableCourse,
 	routePathPoints,
 	trackPathPoints,
 } from './course_preview_points';
@@ -119,4 +120,11 @@ test('a line too short to fly names no climbs', () => {
 		climbNamesFromMarkers([{ kind: 'climb', label: 'Hill', lat: 0, lng: 0 }], [LINE[0]]),
 		[],
 	);
+});
+
+test('a course is previewable only when it has length to fly', () => {
+	assert.equal(hasPreviewableCourse(LINE), true);
+	assert.equal(hasPreviewableCourse([]), false);
+	assert.equal(hasPreviewableCourse([LINE[0]]), false);
+	assert.equal(hasPreviewableCourse([LINE[0], { ...LINE[0] }]), false);
 });

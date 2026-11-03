@@ -1,5 +1,5 @@
 import type { TrackPoint } from '../types';
-import type { PathPoint } from './flyover_path';
+import { buildFlyoverPath, type PathPoint } from './flyover_path';
 import { progressAlongRoute } from './route_geometry';
 import { runAltitude } from '../runs/run_altitude';
 import { lineLat, lineLng } from '../runs/track_line';
@@ -16,6 +16,15 @@ export const CLIMB_MARKER_MAX_OFFSET_M = 100;
 
 /** The fewest points a line needs before there is a course to fly. */
 export const MIN_PREVIEW_POINTS = 2;
+
+/**
+ * Whether the points make a course the preview can fly: at least two distinct
+ * positions, so the path has a length for the camera to follow. The entry
+ * points hide their button otherwise, since the flyover has nothing to show.
+ */
+export function hasPreviewableCourse(points: readonly PathPoint[]): boolean {
+	return points.length >= MIN_PREVIEW_POINTS && buildFlyoverPath(points).totalM > 0;
+}
 
 function finite(v: unknown): v is number {
 	return typeof v === 'number' && Number.isFinite(v);

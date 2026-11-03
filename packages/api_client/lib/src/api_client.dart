@@ -7221,7 +7221,7 @@ class ApiClient {
   Future<List<Map<String, dynamic>>> fetchLiveRunPings(String runId) async {
     final rows = await _client
         .from('live_run_pings')
-        .select('lat, lng, ele, distance_m, elapsed_s, at, bpm')
+        .select('lat, lng, ele, distance_m, elapsed_s, at, coarse, bpm')
         .eq('run_id', runId)
         .order('at', ascending: false)
         .limit(1000);

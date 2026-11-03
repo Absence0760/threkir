@@ -108,6 +108,14 @@ void main() {
           reason: 'mirror web: an unbounded fetch ships tens of thousands of rows');
     });
 
+    test('selects coarse, which the spectator screen reads off each row', () {
+      // Without it the opening backlog never sets the "last seen near here"
+      // badge for a ping the privacy-zone trigger coarsened.
+      final select = RegExp(r"\.select\('([^']*)'\)").firstMatch(query);
+      expect(select, isNotNull);
+      expect(select!.group(1)!.split(',').map((c) => c.trim()), contains('coarse'));
+    });
+
     test('replays oldest-first so the newest ping wins the trace', () {
       expect(query.contains('.reversed'), isTrue,
           reason: 'newest-first rows must be reversed before replay');

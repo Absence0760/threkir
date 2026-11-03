@@ -18360,6 +18360,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get recapShareAspectStory => 'ストーリー';
 
   @override
+  String get recapShareStyleVideo => '動画';
+
+  @override
+  String get recapShareVideoBody =>
+      'この振り返りを縦長の短い動画にします。threkir.com上のブラウザで作成され、そこから共有・保存できます。';
+
+  @override
   String get recapSharePreviewLabel => '振り返り画像のプレビュー';
 
   @override

@@ -5394,6 +5394,8 @@
   "recapShareSheetTitle": "Compartilhe sua retrospectiva",
   "recapShareAspectSquare": "Quadrado",
   "recapShareAspectStory": "Story",
+  "recapShareStyleVideo": "Vídeo",
+  "recapShareVideoBody": "Transforme esta retrospectiva em um vídeo vertical curto. Ele é criado no seu navegador em threkir.com; compartilhe ou salve por lá.",
   "recapSharePreviewLabel": "Prévia da imagem da retrospectiva",
   "recapShareImage": "Compartilhar imagem",
   "recapShareAsText": "Compartilhar como texto",

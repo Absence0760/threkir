@@ -5394,6 +5394,8 @@
   "recapShareSheetTitle": "Rückblick teilen",
   "recapShareAspectSquare": "Quadrat",
   "recapShareAspectStory": "Story",
+  "recapShareStyleVideo": "Video",
+  "recapShareVideoBody": "Mach aus diesem Rückblick ein kurzes vertikales Video. Es entsteht in deinem Browser auf threkir.com; dort kannst du es teilen oder speichern.",
   "recapSharePreviewLabel": "Vorschau des Rückblick-Bilds",
   "recapShareImage": "Bild teilen",
   "recapShareAsText": "Als Text teilen",

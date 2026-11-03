@@ -31265,6 +31265,18 @@ abstract class AppLocalizations {
   /// **'Story'**
   String get recapShareAspectStory;
 
+  /// Chip in the recap share sheet that offers a short vertical slideshow video, made on the web
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get recapShareStyleVideo;
+
+  /// Explains, in the recap share sheet, that the video is made in the browser on the website
+  ///
+  /// In en, this message translates to:
+  /// **'Turn this recap into a short vertical video. It\'s made in your browser on threkir.com; share or save it from there.'**
+  String get recapShareVideoBody;
+
   /// Screen-reader label for the preview of the recap share image
   ///
   /// In en, this message translates to:

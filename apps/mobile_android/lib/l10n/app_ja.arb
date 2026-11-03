@@ -5394,6 +5394,8 @@
   "recapShareSheetTitle": "振り返りを共有",
   "recapShareAspectSquare": "正方形",
   "recapShareAspectStory": "ストーリー",
+  "recapShareStyleVideo": "動画",
+  "recapShareVideoBody": "この振り返りを縦長の短い動画にします。threkir.com上のブラウザで作成され、そこから共有・保存できます。",
   "recapSharePreviewLabel": "振り返り画像のプレビュー",
   "recapShareImage": "画像を共有",
   "recapShareAsText": "テキストで共有",

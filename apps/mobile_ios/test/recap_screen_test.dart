@@ -216,4 +216,75 @@ void main() {
     expect(tester.widget<RecapShareCard>(card).aspect, RecapCardAspect.story);
     expect(tester.getSize(card), const Size(1080, 1920));
   });
+
+  test('the video export URL names the recap period on the web', () {
+    expect(recapVideoExportUrl(2026, webBase: 'https://preview.example/'),
+        Uri.parse('https://preview.example/recap/2026?video=1'));
+    expect(recapVideoExportUrl(2026, month: 3, webBase: 'https://preview.example'),
+        Uri.parse('https://preview.example/recap/2026/3?video=1'));
+  });
+
+  testWidgets(
+      'the Video option explains the browser export and opens the recap page',
+      (tester) async {
+    final opened = <Uri>[];
+    var succeed = true;
+    final videoUrl = recapVideoExportUrl(pastYear,
+        month: 3, webBase: 'https://preview.example');
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showRecapShareSheet(
+                context,
+                text: const RecapCardText(
+                  kicker: 'MY MARCH IN RUNNING',
+                  hero: '42 km',
+                  subhead: 'across 6 runs',
+                  cells: [],
+                  footer: 'threkir.com',
+                ),
+                fileStem: 'threkir-recap',
+                subject: 'My March in running',
+                shareText: () async {},
+                videoUrl: videoUrl,
+                openUrl: (url) async {
+                  opened.add(url);
+                  return succeed;
+                },
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Open video export'), findsNothing);
+    await tester.tap(find.text('Video'));
+    await tester.pump();
+    expect(find.byType(RecapShareCard), findsNothing);
+    expect(find.text('Share image'), findsNothing);
+    expect(find.textContaining('made in your browser on threkir.com'),
+        findsOneWidget);
+    expect(find.text('Share as text'), findsOneWidget);
+
+    await tester.tap(find.text('Open video export'));
+    await tester.pump();
+    expect(opened, [videoUrl]);
+    expect(find.text("Couldn't open the browser. Try again."), findsNothing);
+
+    succeed = false;
+    await tester.tap(find.text('Open video export'));
+    await tester.pump();
+    expect(opened, [videoUrl, videoUrl]);
+    expect(find.text("Couldn't open the browser. Try again."), findsOneWidget);
+    await tester.pump(const Duration(seconds: 10));
+  });
 }

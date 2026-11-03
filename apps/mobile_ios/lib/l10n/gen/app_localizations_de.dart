@@ -19287,6 +19287,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get recapShareAspectStory => 'Story';
 
   @override
+  String get recapShareStyleVideo => 'Video';
+
+  @override
+  String get recapShareVideoBody =>
+      'Mach aus diesem Rückblick ein kurzes vertikales Video. Es entsteht in deinem Browser auf threkir.com; dort kannst du es teilen oder speichern.';
+
+  @override
   String get recapSharePreviewLabel => 'Vorschau des Rückblick-Bilds';
 
   @override

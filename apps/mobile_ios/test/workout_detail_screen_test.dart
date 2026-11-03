@@ -412,6 +412,52 @@ void main() {
       expect(find.text('Free-form run'), findsOneWidget);
     });
 
+    testWidgets('a screen reader hears the kind as a heading and each figure '
+        'with its label, not the caps letter by letter', (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pumpWith(
+          tester,
+          _FakeTraining(
+              PlanWorkoutRow(
+                id: 'fake-workout-id',
+                weekId: 'week-1',
+                scheduledDate: DateTime(2026, 4, 5),
+                kind: 'tempo',
+                targetPaceSecPerKm: 300,
+                targetDistanceM: 8000,
+                structure: const WorkoutStructure(
+                  warmup: {'distance_m': 2000, 'pace': 'easy'},
+                  steady: {'distance_m': 4000, 'pace_sec_per_km': 300},
+                  cooldown: {'distance_m': 2000, 'pace': 'easy'},
+                ).toJson(),
+                manuallyCompleted: false,
+              ),
+              const []));
+      await tester.pumpAndSettle();
+
+      expect(
+          tester
+              .getSemantics(find.byKey(const Key('workoutDetailHeading')))
+              .flagsCollection
+              .isHeader,
+          isTrue);
+
+      final pace = tester
+          .getSemantics(find.byKey(const Key('workoutDetailPaceFigure')))
+          .label;
+      expect(pace, startsWith('Target pace\n'));
+      expect(pace, contains('5:00'));
+      expect(pace, isNot(contains('TARGET PACE')));
+
+      expect(find.bySemanticsLabel(RegExp(r'^Distance\n8')), findsOneWidget);
+
+      final warmup = tester
+          .getSemantics(find.byKey(const Key('workoutStep-warmup')))
+          .label;
+      expect(warmup, 'Warmup\n2.0 km\n@ easy');
+      handle.dispose();
+    });
+
     testWidgets('a rest day has no free-form placeholder', (tester) async {
       await _pumpWith(tester, _FakeTraining(row(kind: 'rest'), const []));
       await tester.pumpAndSettle();

@@ -46,7 +46,7 @@ Issue #1273 item 4: a creator posts "Run 50 km with me in November", followers t
 - [ ] CISO / Security Analyst review of `20271103000001` (token storage, the anon-callable preview's projection, the rate limit) and the web/mobile join surfaces.
 - [ ] Then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('challenge_invite_links', true) on conflict (name) do update set enabled = true, updated_at = now();` Closing it again is the same statement with `false`.
 
-The public share page needs no flag: a public challenge and its board were already anon-readable.
+The public share page needs no flag: a public challenge and its board were already anon-readable. The creator's own copy of it carries their `?ref=` and its visits, sign-ups and joins are counted for them under the separate `share_attribution` gate (decisions § 2268).
 
 ## Goal & user value
 

@@ -2872,6 +2872,23 @@ Migrations `20270209_001_challenges.sql` (schema + RLS) + `20270210_001_challeng
 
 pgTAP: `challenges_rls_test.sql`, `challenge_leaderboard_test.sql`, `challenge_completion_test.sql`, `challenge_participants_completed_lockdown_test.sql`, `challenge_browse_test.sql`, `challenge_invite_token_test.sql`.
 
+### Share-link attribution (`20271104000004`, decisions § 2268)
+
+Every table here is in the unexposed `private` schema with RLS on and every client grant revoked; clients reach them only through the definer RPCs. Gate: the `share_attribution` row of `private.feature_flags` (no migration writes it; `seed.sql` opens it), read by `share_attribution_enabled()` (anon-callable).
+
+- `private.share_ref_codes (user_id pk → auth.users cascade, code text unique check '^[a-z0-9]{10}$', created_at)` — the opaque ref a creator's own links carry.
+- `private.share_link_daily (kind check in ('plan','challenge','profile','session','workout'), entity_id, day, owner_id → auth.users cascade, visits, ref_visits, bot_visits, signups; pk (kind, entity_id, day))` — aggregate counters, each capped at 1,000,000 per day; no visitor identifier. Purged after 90 days by `purge-share-link-daily`.
+- `private.signup_share_counted (user_id pk → auth.users cascade)` — an account whose sign-up has been counted once.
+- `private.plan_share_starts (plan_id pk → training_plans cascade)` / `private.challenge_share_joins ((challenge_id, user_id) → challenge_participants cascade)` — a copy or join that came through the owner's link.
+
+- **`my_share_ref()`** → `text`. SECURITY DEFINER, authenticated. The caller's code, minted on first call; null while the gate is closed.
+- **`record_share_visit(p_kind text, p_id uuid, p_ref text default null, p_bot boolean default false)`** → `void`. SECURITY DEFINER, **anon-callable** (in `anon_execute_contract_test.sql`'s list). Called once per view by the `/share/<kind>/<id>` page. Writes only for a publicly shared entity of a tracked kind (`private.share_link_owner`), never for the owner's own view; `ref_visits` only when the ref is the owner's code; a bot goes to `bot_visits` alone.
+- **`attribute_share_start(p_kind text, p_id uuid, p_ref text)`** → `boolean`. SECURITY DEFINER, authenticated. `plan` marks the caller's own copy `p_id` (from `clone_public_plan`, `source_author_id` = the ref's owner, under ten minutes old); `challenge` marks the caller's join of `p_id` (under ten minutes old, the creator's ref). Once per row.
+- **`my_share_stats()`** → `(kind, entity_id, title, visits, ref_visits, bot_visits, signups, starts, ref_starts, joins, ref_joins)`. SECURITY DEFINER, authenticated, STABLE. The caller's own links over the last 90 days: buckets, their public-library plans (starts = copies with `source_author_id` = caller), and the challenges they created (joins excluding themselves). Empty while the gate is closed.
+- Trigger `private.count_signup_share()` on `auth.users` (after insert when confirmed, after the confirmation, after a `signup_share` metadata write): adds one `signups` to the link the metadata names when its `ref` is the owner's code, once per account, within a day of creation.
+
+pgTAP: `share_attribution_test.sql`.
+
 ---
 
 ## Supabase Storage

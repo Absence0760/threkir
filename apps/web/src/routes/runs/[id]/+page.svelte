@@ -1360,7 +1360,20 @@
 	// genuinely flat route); with an intermittent `ele` it fell to 0 m at
 	// every dropout. Null when too few points carry an altitude to draw a
 	// profile at all.
-	let elevationSamples = $derived(elevationSeries(runAltitude(baseTrack, run?.source).track));
+	//
+	// The altitude is the stored track's (`altitude`), so the profile reads
+	// the series the climb and the splits read. A matched line keeps one point
+	// per on-track stored fix, so it indexes against `altitude.track` one for
+	// one, but it carries GPS `ele` only: the matcher drops `baroEle`, and
+	// reading the matched line drew GPS altitude under a barometric climb. A
+	// matched line of another length (one stored before the matcher became
+	// length-preserving, decisions § 1170) falls back to its own `ele`.
+	let profileAltitudeTrack = $derived(
+		altitude && altitude.track.length === baseTrack.length
+			? altitude.track
+			: runAltitude(baseTrack, run?.source).track,
+	);
+	let elevationSamples = $derived(elevationSeries(profileAltitudeTrack));
 	/// Drawn smoothed over an along-track window: phone GPS altitude wanders
 	/// by metres between fixes, which the raw series drew as a sawtooth.
 	let elevations = $derived(

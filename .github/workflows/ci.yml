@@ -3140,6 +3140,31 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      # The system image is fetched from Google on every run (the AVD cache
+      # holds the AVD, not the 1.5 GB image it boots, and the repo cache has no
+      # room for it). sdkmanager exits 0 when that download arrives as a
+      # corrupt zip, so the emulator action went on to boot an image that was
+      # never installed and failed as "could not connect to TCP port 5554".
+      # Install it here, judge success by the image being on disk rather than
+      # by the exit code, and fetch again when it is not. The action's own
+      # install then finds the package present and skips it.
+      - name: Install the emulator system image
+        run: |
+          sdkmanager="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          image="$ANDROID_SDK_ROOT/system-images/android-34/google_apis/x86_64"
+          yes | "$sdkmanager" --licenses > /dev/null || true
+          for attempt in 1 2 3; do
+            "$sdkmanager" --install 'system-images;android-34;google_apis;x86_64' --channel=0 > /dev/null || true
+            if [ -s "$image/system.img" ]; then
+              echo "system image installed on attempt $attempt"
+              exit 0
+            fi
+            echo "::warning::system image missing after attempt $attempt (corrupt download from dl.google.com?); fetching again"
+            rm -rf "$image" "$ANDROID_SDK_ROOT/.temp" "$ANDROID_SDK_ROOT/.downloadIntermediates"
+            sleep $((attempt * 15))
+          done
+          echo "::error::The Android 34 google_apis x86_64 system image did not install after 3 attempts, so no emulator can boot. Nothing here is about the app or its integration tests."
+          exit 1
       # The AVD and its cold-boot snapshot are cached so a run restores a
       # booted image instead of creating one and cold-booting it (minutes).
       # The key names everything the image is built from, so changing the

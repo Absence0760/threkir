@@ -34,6 +34,7 @@ export const variables = defineEnvVars({
 	PUBLIC_SENTRY_DSN: { public: true, schema: optional },
 	PUBLIC_SITE_URL: { public: true, schema: optional },
 	PUBLIC_STRAVA_CLIENT_ID: { public: true, schema: optional },
+	PUBLIC_TERRAIN_URL: { public: true, schema: optional },
 	PUBLIC_TILE_STYLE_URL: { public: true, schema: optional },
 	PUBLIC_USDA_FDC_API_KEY: { public: true, schema: optional },
 	PUBLIC_VAPID_PUBLIC_KEY: { public: true, schema: optional },

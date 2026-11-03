@@ -4,9 +4,12 @@
 -- route shows no course to anon, to another runner or to the route's owner.
 -- Only service_role writes route_id: a submitter's insert drops it and their
 -- update keeps the stored value. Deleting the route nulls the link.
+-- 20271024000001 adds course_route_id, read from the same public_routes join,
+-- so the id is exposed only while the route is public: a private, hidden or
+-- deleted course gives null to every reader, the owner included.
 
 begin;
-select plan(14);
+select plan(21);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -52,6 +55,11 @@ select results_eq(
   $$ values (42195::numeric, 180::numeric, 'road'::text) $$,
   'anon reads a public course''s distance, climb and surface'
 );
+select is(
+  (select course_route_id from public_race_listings where id = 'c3c3c3c3-0000-0000-0000-0000000c0001'),
+  'c2c2c2c2-0000-0000-0000-0000000c0001'::uuid,
+  'anon reads a public course''s route id'
+);
 
 -- 3. The listing on a private route is still listed...
 select is(
@@ -65,12 +73,22 @@ select ok(
    from public_race_listings where id = 'c3c3c3c3-0000-0000-0000-0000000c0002'),
   'a listing linked to a private route exposes no course to anon'
 );
+select is(
+  (select course_route_id from public_race_listings where id = 'c3c3c3c3-0000-0000-0000-0000000c0002'),
+  null::uuid,
+  'a listing linked to a private route exposes no route id to anon'
+);
 
 -- 5. A shadow-hidden route is not a course either.
 select ok(
   (select course_distance_m is null and course_surface is null
    from public_race_listings where id = 'c3c3c3c3-0000-0000-0000-0000000c0003'),
   'a listing linked to a moderated-away route exposes no course to anon'
+);
+select is(
+  (select course_route_id from public_race_listings where id = 'c3c3c3c3-0000-0000-0000-0000000c0003'),
+  null::uuid,
+  'a listing linked to a moderated-away route exposes no route id to anon'
 );
 reset role;
 
@@ -82,6 +100,11 @@ select ok(
   (select course_distance_m is null and course_elevation_m is null and course_surface is null
    from public_race_listings where id = 'c3c3c3c3-0000-0000-0000-0000000c0002'),
   'a listing linked to a private route exposes no course to another runner'
+);
+select is(
+  (select course_route_id from public_race_listings where id = 'c3c3c3c3-0000-0000-0000-0000000c0002'),
+  null::uuid,
+  'a listing linked to a private route exposes no route id to another runner'
 );
 select is(
   (select course_surface from public_race_listings where id = 'c3c3c3c3-0000-0000-0000-0000000c0001'),
@@ -98,6 +121,11 @@ select ok(
   (select course_distance_m is null
    from public_race_listings where id = 'c3c3c3c3-0000-0000-0000-0000000c0002'),
   'the calendar shows the owner no course on their own private route either'
+);
+select is(
+  (select course_route_id from public_race_listings where id = 'c3c3c3c3-0000-0000-0000-0000000c0002'),
+  null::uuid,
+  'the calendar gives the owner no route id for their own private route either'
 );
 
 -- 6. A submitter cannot attach a course on insert.
@@ -153,6 +181,20 @@ select is(
   (select name from race_listings where id = 'c3c3c3c3-0000-0000-0000-0000000c0001'),
   'Public Course Marathon',
   'deleting the route keeps the listing'
+);
+select is(
+  (select course_route_id from public_race_listings where id = 'c3c3c3c3-0000-0000-0000-0000000c0001'),
+  null::uuid,
+  'a deleted course exposes no route id'
+);
+
+-- 10. Making a linked route private withdraws its id from the calendar.
+update routes set is_public = false where id = 'c2c2c2c2-0000-0000-0000-0000000c0003';
+update routes set shadow_hidden = false where id = 'c2c2c2c2-0000-0000-0000-0000000c0003';
+select is(
+  (select course_route_id from public_race_listings where id = 'c3c3c3c3-0000-0000-0000-0000000c0003'),
+  null::uuid,
+  'a course made private after the link exposes no route id'
 );
 
 select * from finish();

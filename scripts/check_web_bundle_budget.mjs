@@ -251,10 +251,12 @@
 // sides, the root layout gained one path prefix and no import, and no web
 // dependency changed (the video muxer is in-tree). Same 6 KB of cover
 // (decisions § 2264).
-// Raised to 2431 for the streamer overlay (#1273 item 3), measured locally at
-// 2425 KB with the same placeholder env: the /live/overlay route, its helper
-// module and the Settings → Privacy card. Route-level code again, no
-// dependency added. Same 6 KB of cover (decisions § 2265).
+// Raised to 2450 for the second #1271 round, measured locally at 2417 -> 2444
+// KB (535 -> 544 files) with the same placeholder env and attributed merge by
+// merge: the recap slideshow video +5, the head-to-head card +6, the streamer
+// overlay +8, PR cards +2, share-link attribution and its Settings page +6.
+// Route-level code again, no dependency added; the largest code chunk is
+// still 288 KB. Same 6 KB of cover (decisions § 2265).
 // MAX_LARGEST_CHUNK_KB stays 350, unchanged: 245 KB * the 33% headroom that
 // number was always justified by is 326, so the existing figure still states
 // the rule. What changed is the population it measures, not the ceiling.
@@ -289,7 +291,7 @@ export const CLIENT_MANIFEST = join(
 );
 export const LOCALES_DIR = join(WEB_DIR, 'src', 'lib', 'i18n', 'locales');
 
-export const MAX_CODE_KB = 2431;
+export const MAX_CODE_KB = 2450;
 export const MAX_CORE_CATALOGUE_KB = 13;
 export const MAX_AREA_CATALOGUE_KB = 14;
 export const MAX_LARGEST_CHUNK_KB = 350;

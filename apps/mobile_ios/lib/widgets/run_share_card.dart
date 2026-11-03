@@ -137,7 +137,22 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
   Future<void> _restoreLook() async {
     final look = await loadShareLook();
     if (!mounted) return;
-    setState(() => _look = look);
+    setState(() => _look = _forThisRun(look));
+  }
+
+  /// [look] with the stats this run cannot print taken out, so the cap counts
+  /// what the image shows. A look saved on a hill run with a strap keeps its
+  /// climb and heart rate on disk for the next such run; only an edit made
+  /// here writes the narrowed set back.
+  RunShareLook _forThisRun(RunShareLook look) {
+    final available = availableShareStats(widget.run);
+    final printable = [
+      for (final k in look.stats)
+        if (available.contains(k)) k,
+    ];
+    return look.copyWith(
+      stats: printable.isEmpty ? RunShareLook.defaultStats : printable,
+    );
   }
 
   void _setLook(RunShareLook look) {
@@ -283,7 +298,9 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
   }
 
   Future<void> _shareFile(String format) async {
+    if (_busy) return;
     final l10n = AppLocalizations.of(context);
+    setState(() => _busy = true);
     try {
       final tmp = await getTemporaryDirectory();
       final run = widget.run;
@@ -308,6 +325,8 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
       if (mounted) {
         showTopBanner(context, AppLocalizations.of(context).shareCardFileError);
       }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -518,10 +537,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
                 selected: _look.stats.contains(kind),
                 onSelected: !enabled ||
                         (_look.stats.contains(kind)
-                            ? _look.stats
-                                    .where(available.contains)
-                                    .length <=
-                                1
+                            ? _look.stats.length <= 1
                             : _look.stats.length >= RunShareLook.maxStats)
                     ? null
                     : (_) => _setLook(_look.toggleStat(kind)),

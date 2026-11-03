@@ -62,13 +62,14 @@ class RunShareInkSpec {
 }
 
 /// The Threkir mark — the gradient tile and its white glyph — painted from the
-/// geometry of `apps/web/static/logo-mark.svg`, so no share image depends on
-/// an asset load finishing before the capture.
+/// geometry of `apps/web/static/logo-mark.svg` (glyph, gradient) with the
+/// rounded tile `wordmark.svg` draws, so no share image depends on an asset
+/// load finishing before the capture.
 class ThrekirMarkPainter extends CustomPainter {
   const ThrekirMarkPainter();
 
-  // logo-mark.svg's own units: a 1024 tile with 180-unit corners, the glyph
-  // drawn at scale 7.6 about (54.5, 50).
+  // logo-mark.svg's own units: a 1024 tile (rounded at 180, as wordmark.svg
+  // rounds it), the glyph drawn at scale 7.6 about (54.5, 50).
   static const double _tile = 1024;
   static const double _corner = 180;
   static const double _glyphScale = 7.6;

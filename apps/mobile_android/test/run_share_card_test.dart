@@ -714,6 +714,35 @@ void main() {
           reason: 'the only stat left must not be removable');
     });
 
+    testWidgets(
+        'a saved look counts only the stats this run can print toward the cap',
+        (tester) async {
+      // Saved on a hill run with a strap; this run has neither, so only two
+      // of the four print and a third must still be addable.
+      await openSheet(tester, prefs: {
+        shareLookPrefsKey: jsonEncode(const RunShareLook(stats: [
+          RunShareStatKind.distance,
+          RunShareStatKind.pace,
+          RunShareStatKind.climb,
+          RunShareStatKind.heartRate,
+        ]).toJson()),
+      });
+      await tapChip(tester, 'Sticker');
+      final time = tester.widget<FilterChip>(
+          find.ancestor(of: find.text('Time'), matching: find.byType(FilterChip)));
+      expect(time.selected, isFalse);
+      expect(time.onSelected, isNotNull,
+          reason: 'stats the run cannot print were counted toward the cap');
+      await tapChip(tester, 'Time');
+      final sticker =
+          tester.widget<RunStickerShareCard>(find.byType(RunStickerShareCard));
+      expect(sticker.look.stats, [
+        RunShareStatKind.distance,
+        RunShareStatKind.pace,
+        RunShareStatKind.time,
+      ]);
+    });
+
     testWidgets('offers climb and heart rate when the run measured them',
         (tester) async {
       await openSheet(tester,

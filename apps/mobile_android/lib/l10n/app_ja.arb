@@ -5429,6 +5429,6 @@
   "streamerOverlayLoadFailed": "配信用オーバーレイを読み込めませんでした。",
   "streamerOverlayRetry": "再試行",
   "streamerOverlayUnavailable": "配信用オーバーレイは現在利用できません。",
-  "streamerOverlayMapHeartRateNote": "地図と心拍数は、Web の設定でオンにするまでオフのままです。",
+  "streamerOverlayMapHeartRateNote": "ルートの軌跡と心拍数は、Web の設定 → プライバシーと共有でオンにできます。",
   "liveSpectatorHeartRate": "心拍数"
 }

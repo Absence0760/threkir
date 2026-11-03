@@ -5429,6 +5429,6 @@
   "streamerOverlayLoadFailed": "Impossible de charger ton overlay de streaming.",
   "streamerOverlayRetry": "Réessayer",
   "streamerOverlayUnavailable": "L'overlay de streaming n'est pas disponible pour le moment.",
-  "streamerOverlayMapHeartRateNote": "La carte et la fréquence cardiaque restent désactivées tant que tu ne les actives pas dans les Réglages sur le web.",
+  "streamerOverlayMapHeartRateNote": "Active le tracé du parcours et la fréquence cardiaque dans Réglages → Confidentialité et partage sur le web.",
   "liveSpectatorHeartRate": "Fréquence cardiaque"
 }

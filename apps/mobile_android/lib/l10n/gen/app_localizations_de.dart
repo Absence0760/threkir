@@ -19410,7 +19410,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get streamerOverlayMapHeartRateNote =>
-      'Karte und Herzfrequenz bleiben aus, bis du sie im Web unter Einstellungen einschaltest.';
+      'Schalte die Streckenspur und die Herzfrequenz im Web unter Einstellungen → Datenschutz & Teilen ein.';
 
   @override
   String get liveSpectatorHeartRate => 'Herzfrequenz';

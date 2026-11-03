@@ -31475,10 +31475,10 @@ abstract class AppLocalizations {
   /// **'The streamer overlay isn\'t available right now.'**
   String get streamerOverlayUnavailable;
 
-  /// Note that the map and heart rate are configured on the web
+  /// Note naming the web settings page where the route trace and heart rate are turned on
   ///
   /// In en, this message translates to:
-  /// **'The map and heart rate stay off unless you turn them on in Settings on the web.'**
+  /// **'Turn on the route trace and heart rate in Settings → Privacy & Sharing on the web.'**
   String get streamerOverlayMapHeartRateNote;
 
   /// Live spectator stat label for the runner's current heart rate

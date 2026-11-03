@@ -25383,9 +25383,9 @@
   "@streamerOverlayUnavailable": {
     "description": "Error when the server has the overlay switched off"
   },
-  "streamerOverlayMapHeartRateNote": "The map and heart rate stay off unless you turn them on in Settings on the web.",
+  "streamerOverlayMapHeartRateNote": "Turn on the route trace and heart rate in Settings → Privacy & Sharing on the web.",
   "@streamerOverlayMapHeartRateNote": {
-    "description": "Note that the map and heart rate are configured on the web"
+    "description": "Note naming the web settings page where the route trace and heart rate are turned on"
   },
   "liveSpectatorHeartRate": "Heart rate",
   "@liveSpectatorHeartRate": {

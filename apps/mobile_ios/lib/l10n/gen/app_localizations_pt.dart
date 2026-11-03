@@ -19395,7 +19395,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get streamerOverlayMapHeartRateNote =>
-      'O mapa e a frequência cardíaca ficam desativados até os ativar nas Definições na web.';
+      'Ative o traçado do percurso e a frequência cardíaca em Definições → Privacidade e partilha na web.';
 
   @override
   String get liveSpectatorHeartRate => 'Frequência cardíaca';
@@ -38777,7 +38777,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get streamerOverlayMapHeartRateNote =>
-      'O mapa e a frequência cardíaca ficam desativados até você ativá-los em Configurações na web.';
+      'Ative o traçado do percurso e a frequência cardíaca em Configurações → Privacidade e compartilhamento na web.';
 
   @override
   String get liveSpectatorHeartRate => 'Frequência cardíaca';

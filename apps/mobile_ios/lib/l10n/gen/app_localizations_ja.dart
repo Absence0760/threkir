@@ -18476,7 +18476,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get streamerOverlayMapHeartRateNote =>
-      '地図と心拍数は、Web の設定でオンにするまでオフのままです。';
+      'ルートの軌跡と心拍数は、Web の設定 → プライバシーと共有でオンにできます。';
 
   @override
   String get liveSpectatorHeartRate => '心拍数';

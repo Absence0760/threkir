@@ -5429,6 +5429,6 @@
   "streamerOverlayLoadFailed": "Não foi possível carregar seu overlay para transmissão.",
   "streamerOverlayRetry": "Tentar de novo",
   "streamerOverlayUnavailable": "O overlay para transmissão não está disponível no momento.",
-  "streamerOverlayMapHeartRateNote": "O mapa e a frequência cardíaca ficam desativados até você ativá-los em Configurações na web.",
+  "streamerOverlayMapHeartRateNote": "Ative o traçado do percurso e a frequência cardíaca em Configurações → Privacidade e compartilhamento na web.",
   "liveSpectatorHeartRate": "Frequência cardíaca"
 }

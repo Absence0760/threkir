@@ -19198,7 +19198,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get streamerOverlayMapHeartRateNote =>
-      'The map and heart rate stay off unless you turn them on in Settings on the web.';
+      'Turn on the route trace and heart rate in Settings → Privacy & Sharing on the web.';
 
   @override
   String get liveSpectatorHeartRate => 'Heart rate';

@@ -5429,6 +5429,6 @@
   "streamerOverlayLoadFailed": "Dein Streamer-Overlay konnte nicht geladen werden.",
   "streamerOverlayRetry": "Erneut versuchen",
   "streamerOverlayUnavailable": "Das Streamer-Overlay ist gerade nicht verfügbar.",
-  "streamerOverlayMapHeartRateNote": "Karte und Herzfrequenz bleiben aus, bis du sie im Web unter Einstellungen einschaltest.",
+  "streamerOverlayMapHeartRateNote": "Schalte die Streckenspur und die Herzfrequenz im Web unter Einstellungen → Datenschutz & Teilen ein.",
   "liveSpectatorHeartRate": "Herzfrequenz"
 }

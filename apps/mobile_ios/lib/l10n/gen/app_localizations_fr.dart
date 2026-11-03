@@ -19435,7 +19435,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get streamerOverlayMapHeartRateNote =>
-      'La carte et la fréquence cardiaque restent désactivées tant que tu ne les actives pas dans les Réglages sur le web.';
+      'Active le tracé du parcours et la fréquence cardiaque dans Réglages → Confidentialité et partage sur le web.';
 
   @override
   String get liveSpectatorHeartRate => 'Fréquence cardiaque';

@@ -17535,6 +17535,48 @@ abstract class AppLocalizations {
   /// **'Could not export file'**
   String get shareCardFileError;
 
+  /// Share-sheet style chip: the branded card with the route drawn on a map
+  ///
+  /// In en, this message translates to:
+  /// **'Map card'**
+  String get shareCardStyleCard;
+
+  /// Share-sheet style chip: the run's stats laid over a photo the user picks
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get shareCardStylePhoto;
+
+  /// Share-sheet style chip: the stats on a transparent background, to add to a story or photo in another app
+  ///
+  /// In en, this message translates to:
+  /// **'Sticker'**
+  String get shareCardStyleSticker;
+
+  /// Button shown in the photo style before a photo is picked; opens the photo library
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a photo'**
+  String get shareCardPickPhoto;
+
+  /// Button below the photo preview that picks a different photo
+  ///
+  /// In en, this message translates to:
+  /// **'Change photo'**
+  String get shareCardChangePhoto;
+
+  /// Banner when the picked photo cannot be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open that photo'**
+  String get shareCardPhotoError;
+
+  /// Hint under the sticker preview explaining the transparent PNG and how to use it
+  ///
+  /// In en, this message translates to:
+  /// **'Transparent background. Save it, then add it to a story or photo as a sticker.'**
+  String get shareCardStickerHint;
+
   /// Title of the route share sheet
   ///
   /// In en, this message translates to:

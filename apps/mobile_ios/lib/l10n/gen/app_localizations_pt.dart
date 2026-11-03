@@ -10774,6 +10774,28 @@ class AppLocalizationsPt extends AppLocalizations {
   String get shareCardFileError => 'Não foi possível exportar o ficheiro';
 
   @override
+  String get shareCardStyleCard => 'Cartão com mapa';
+
+  @override
+  String get shareCardStylePhoto => 'Fotografia';
+
+  @override
+  String get shareCardStyleSticker => 'Autocolante';
+
+  @override
+  String get shareCardPickPhoto => 'Escolher uma fotografia';
+
+  @override
+  String get shareCardChangePhoto => 'Alterar fotografia';
+
+  @override
+  String get shareCardPhotoError => 'Não foi possível abrir essa fotografia';
+
+  @override
+  String get shareCardStickerHint =>
+      'Fundo transparente. Guarde-o e adicione-o como autocolante a uma story ou fotografia.';
+
+  @override
   String get shareCardRouteTitle => 'Partilhar rota';
 
   @override
@@ -29737,6 +29759,28 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get shareCardFileError => 'Não foi possível exportar o arquivo';
+
+  @override
+  String get shareCardStyleCard => 'Cartão com mapa';
+
+  @override
+  String get shareCardStylePhoto => 'Foto';
+
+  @override
+  String get shareCardStyleSticker => 'Figurinha';
+
+  @override
+  String get shareCardPickPhoto => 'Escolher uma foto';
+
+  @override
+  String get shareCardChangePhoto => 'Trocar foto';
+
+  @override
+  String get shareCardPhotoError => 'Não foi possível abrir essa foto';
+
+  @override
+  String get shareCardStickerHint =>
+      'Fundo transparente. Salve e adicione como figurinha a um story ou foto.';
 
   @override
   String get shareCardRouteTitle => 'Compartilhar rota';

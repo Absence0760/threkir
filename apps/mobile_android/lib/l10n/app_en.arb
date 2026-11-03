@@ -14456,6 +14456,34 @@
   "@shareCardFileError": {
     "description": "Banner when exporting a run file fails"
   },
+  "shareCardStyleCard": "Map card",
+  "@shareCardStyleCard": {
+    "description": "Share-sheet style chip: the branded card with the route drawn on a map"
+  },
+  "shareCardStylePhoto": "Photo",
+  "@shareCardStylePhoto": {
+    "description": "Share-sheet style chip: the run's stats laid over a photo the user picks"
+  },
+  "shareCardStyleSticker": "Sticker",
+  "@shareCardStyleSticker": {
+    "description": "Share-sheet style chip: the stats on a transparent background, to add to a story or photo in another app"
+  },
+  "shareCardPickPhoto": "Choose a photo",
+  "@shareCardPickPhoto": {
+    "description": "Button shown in the photo style before a photo is picked; opens the photo library"
+  },
+  "shareCardChangePhoto": "Change photo",
+  "@shareCardChangePhoto": {
+    "description": "Button below the photo preview that picks a different photo"
+  },
+  "shareCardPhotoError": "Could not open that photo",
+  "@shareCardPhotoError": {
+    "description": "Banner when the picked photo cannot be loaded"
+  },
+  "shareCardStickerHint": "Transparent background. Save it, then add it to a story or photo as a sticker.",
+  "@shareCardStickerHint": {
+    "description": "Hint under the sticker preview explaining the transparent PNG and how to use it"
+  },
   "shareCardRouteTitle": "Share route",
   "@shareCardRouteTitle": {
     "description": "Title of the route share sheet"

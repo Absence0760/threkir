@@ -10783,6 +10783,28 @@ class AppLocalizationsDe extends AppLocalizations {
   String get shareCardFileError => 'Datei konnte nicht exportiert werden';
 
   @override
+  String get shareCardStyleCard => 'Kartenbild';
+
+  @override
+  String get shareCardStylePhoto => 'Foto';
+
+  @override
+  String get shareCardStyleSticker => 'Sticker';
+
+  @override
+  String get shareCardPickPhoto => 'Foto auswählen';
+
+  @override
+  String get shareCardChangePhoto => 'Foto ändern';
+
+  @override
+  String get shareCardPhotoError => 'Dieses Foto konnte nicht geöffnet werden';
+
+  @override
+  String get shareCardStickerHint =>
+      'Transparenter Hintergrund. Speichere es und füge es als Sticker zu einer Story oder einem Foto hinzu.';
+
+  @override
   String get shareCardRouteTitle => 'Route teilen';
 
   @override

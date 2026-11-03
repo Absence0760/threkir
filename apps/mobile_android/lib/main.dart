@@ -38,6 +38,7 @@ import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'settings_cache.dart';
 import 'settings_sync.dart';
+import 'challenge_invite_link.dart';
 import 'club_invite_link.dart';
 import 'entity_link.dart';
 import 'shared_file_import.dart';
@@ -726,6 +727,16 @@ void main() async {
     unawaited(inviteLinks.processInitial());
   } catch (e) {
     debugPrint('club invite link init failed: $e');
+  }
+
+  // Challenge links (`/challenges/join/<token>` and `/share/challenge/<id>` on
+  // the web host, or `com.threkir.app://challenges/join/<token>`): HomeScreen
+  // drains pendingChallengeLink. Guarded the same way.
+  try {
+    final challengeLinks = ChallengeLinkService()..start();
+    unawaited(challengeLinks.processInitial());
+  } catch (e) {
+    debugPrint('challenge link init failed: $e');
   }
 
   // Run and route links (`/runs/<id>`, `/routes/<id>` on the web host, or the

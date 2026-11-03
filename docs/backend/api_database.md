@@ -1774,6 +1774,7 @@ create table rate_limits (
 | `create_club` | 5 | 3600 | `clubs_create_rate_limit_trigger()` |
 | `create_report` | 10 | 3600 | `submit_report()` |
 | `create_route` | 30 | 3600 | `routes_create_rate_limit_trigger()` |
+| `join_challenge_by_token` | 30 | 3600 | `join_challenge_by_token()` (misses included) |
 | `plan_calendar_rotate` | 20 | 3600 | `rotate_plan_calendar_feed()` |
 | `publish_gym_routine_as_template` | 20 | 3600 | `publish_gym_routine_as_template()` |
 | `repeat_plan_week` | 20 | 3600 | `repeat_plan_week()` |
@@ -2859,7 +2860,16 @@ Migrations `20270209_001_challenges.sql` (schema + RLS) + `20270210_001_challeng
 - **`recompute_challenge_completion(p_challenge_id, p_user_id)`** — SECURITY DEFINER. Recomputes the user's value; when `goal_value` is met and no badge exists, inserts `challenge_badges` + stamps `completed_at` + inserts a `challenge_complete` notification. Idempotent (the unique badge row guards). Called opportunistically client-side after a run saves + by the daily `sweep_challenge_completions()` pg_cron job (`sweep-challenge-completions`).
 - **`browse_public_challenges(p_search text, p_limit int, p_offset int)`** → challenge fields + `participant_count` + `is_official` (since `20271021000030`; ranking unchanged). **SECURITY DEFINER** (`20270308_001`, ADR §190). The ranked, paginated, searchable Browse discovery feed: public, unjoined, still-open challenges ordered by popularity `participant_count + joins_7d*2` (size + 7-day join velocity), dead-board suppression past a 7-day grace window, limit capped at 100. DEFINER because the velocity term counts all recent joins an invoker's RLS would undercount; returns only public challenges + aggregate counts. `p_search` ILIKEs `title` OR `description` (literally since `20270817000031`, `private.like_escape`), both served by pg_trgm GIN indexes (`challenges_title_trgm` / `challenges_description_trgm`, `20270316_001`).
 
-pgTAP: `challenges_rls_test.sql`, `challenge_leaderboard_test.sql`, `challenge_completion_test.sql`, `challenge_participants_completed_lockdown_test.sql`, `challenge_browse_test.sql`.
+### Invite links (`20271103000001`, decisions § 2261)
+
+`private.challenge_invite_tokens (challenge_id uuid primary key references challenges on delete cascade, token text not null unique, created_at)` — one revocable token per challenge, url-safe base64 of 18 random bytes. In the unexposed `private` schema with RLS on and every client grant revoked: the token is deliberately **not** a `challenges` column, because `challenges` carries table-level SELECT for anon and authenticated and every client reads it with `select('*')`. Every path is fail-closed behind the `challenge_invite_links` row of `private.feature_flags`, which no migration writes (`seed.sql` opens it locally); `public.challenge_invite_links_enabled()` (anon + authenticated) tells the clients whether to offer the surfaces. `club_vs_club` challenges never get a link.
+
+- **`get_challenge_invite_token(p_challenge_id uuid)`** → `text`. SECURITY DEFINER, authenticated. Mints on first call; null unless the caller is the creator or an admin of the anchoring club (`private.can_manage_challenge_invite`) and the gate is open.
+- **`rotate_challenge_invite_token(p_challenge_id uuid)`** → `text`. Same rule; replaces the token so the old link stops working. Participants stay.
+- **`challenge_invite_preview(p_token text)`** → `(id, title, description, metric, scope, goal_value, activity_type, starts_at, ends_at, is_public, participant_count, creator_id, creator_name, joined)`. SECURITY DEFINER, **anon-callable** (in `anon_execute_contract_test.sql`'s list). Empty for an unknown or rotated token and while the gate is closed. `creator_name` follows `profile_visible_to` + `shadow_hidden` exactly as `challenge_leaderboard`'s names do; no participant list.
+- **`join_challenge_by_token(p_token text)`** → `uuid`. SECURITY DEFINER, authenticated. Inserts the caller's `challenge_participants` row (idempotent) and returns the challenge id, so a non-public challenge becomes visible to the joiner through the existing `is_challenge_visible`. An unknown token returns NULL rather than raising, so the `join_challenge_by_token` rate-limit counter (30/h, misses included) commits; raises `challenge_invite_links_disabled` while the gate is closed.
+
+pgTAP: `challenges_rls_test.sql`, `challenge_leaderboard_test.sql`, `challenge_completion_test.sql`, `challenge_participants_completed_lockdown_test.sql`, `challenge_browse_test.sql`, `challenge_invite_token_test.sql`.
 
 ---
 

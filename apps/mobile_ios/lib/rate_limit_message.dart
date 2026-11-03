@@ -45,6 +45,8 @@ String rateLimitMessage(AppLocalizations l10n, RateLimitInfo info) {
       return l10n.rateLimitCreateReport(wait);
     case 'create_challenge':
       return l10n.rateLimitCreateChallenge(wait);
+    case 'join_challenge_by_token':
+      return l10n.rateLimitJoinChallenge(wait);
     case 'clone_plan_template':
     case 'clone_public_plan':
       return l10n.rateLimitAdoptPlan(wait);

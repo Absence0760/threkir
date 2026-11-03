@@ -31,6 +31,7 @@ import { relative, resolve } from 'node:path';
 
 import { buildGuideJsonLd, buildLearnCollectionJsonLd } from '../learn/learn_meta';
 import { buildClubJsonLd } from '../share/share_club_meta';
+import { buildChallengeJsonLd } from '../share/share_challenge_meta';
 import { buildEventJsonLd } from '../share/share_event_meta';
 import { buildRouteJsonLd, buildRunJsonLd } from '../share/share_meta';
 import { buildProfileJsonLd } from '../share/share_profile_meta';
@@ -108,6 +109,9 @@ const REGISTER: Record<string, Record<string, () => string>> = {
 	},
 	'src/lib/share/share_club_meta.ts': {
 		buildClubJsonLd: () => buildClubJsonLd(hostileRow as never, { slug: INJ, base }),
+	},
+	'src/lib/share/share_challenge_meta.ts': {
+		buildChallengeJsonLd: () => buildChallengeJsonLd(hostileRow as never, { id: INJ, base }),
 	},
 	'src/lib/share/share_event_meta.ts': {
 		buildEventJsonLd: () => buildEventJsonLd(hostileRow as never, { id: INJ, base }),

@@ -33,6 +33,7 @@ const BUCKET_KEY: Record<string, MessageKey> = {
 	create_route: 'rateLimit.createRoute',
 	create_report: 'rateLimit.createReport',
 	create_challenge: 'rateLimit.createChallenge',
+	join_challenge_by_token: 'rateLimit.joinChallenge',
 	clone_plan_template: 'rateLimit.adoptPlan',
 	clone_public_plan: 'rateLimit.adoptPlan',
 	clone_session_template: 'rateLimit.adoptSessionPlan',

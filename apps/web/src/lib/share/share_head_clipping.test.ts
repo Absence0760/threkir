@@ -15,6 +15,7 @@ import { buildShareRunMeta } from './share_run_meta';
 import { buildShareSessionHead } from './share_session_meta';
 import { buildShareWorkoutHead } from './share_workout_meta';
 import { buildSharePlanHead } from './share_plan_meta';
+import { buildShareChallengeHead } from './share_challenge_meta';
 
 /**
  * The clipping half of the `<head>` census, and the sibling of
@@ -227,6 +228,26 @@ const builders: Array<{ name: string; head: () => Record<string, unknown> }> = [
 					days_per_week: 5,
 					author: { name: HUGE, handle: HUGE },
 					weeks: [],
+				},
+				siteUrl: SITE,
+			}) as unknown as Record<string, unknown>,
+	},
+	{
+		name: 'buildShareChallengeHead',
+		head: () =>
+			buildShareChallengeHead({
+				id: 'c-1',
+				challenge: {
+					id: 'c-1',
+					title: HUGE,
+					description: HUGE,
+					metric: 'distance',
+					scope: 'individual',
+					goal_value: 50000,
+					starts_at: '2026-11-01T00:00:00.000Z',
+					ends_at: '2026-12-01T00:00:00.000Z',
+					participant_count: 3,
+					creator_id: 'u-1',
 				},
 				siteUrl: SITE,
 			}) as unknown as Record<string, unknown>,

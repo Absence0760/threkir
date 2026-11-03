@@ -22934,6 +22934,156 @@ abstract class AppLocalizations {
   /// **'Leaderboard'**
   String get challengesLeaderboard;
 
+  /// App bar of the screen a challenge invite link opens
+  ///
+  /// In en, this message translates to:
+  /// **'Challenge invite'**
+  String get challengeInviteTitle;
+
+  /// Shown when the invite preview read fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this invite. Check your connection and try again.'**
+  String get challengeInviteLoadFailed;
+
+  /// Title when an invite token names no challenge
+  ///
+  /// In en, this message translates to:
+  /// **'This invite link doesn\'t work'**
+  String get challengeInviteMissingTitle;
+
+  /// Body when an invite token names no challenge
+  ///
+  /// In en, this message translates to:
+  /// **'It may have been reset by the person who shared it, or invite links aren\'t available yet. Ask them for a new link.'**
+  String get challengeInviteMissingBody;
+
+  /// Kicker above an invited challenge's title
+  ///
+  /// In en, this message translates to:
+  /// **'Invited by {name}'**
+  String challengeInviteFrom(String name);
+
+  /// How many people have joined the challenge
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 runner in} other{{n} runners in}}'**
+  String challengeInviteParticipants(int n);
+
+  /// Window label for a challenge that has not started
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{Starts in 1 day} other{Starts in {n} days}}'**
+  String challengeInviteStartsIn(int n);
+
+  /// Shown on the invite screen when the viewer has joined
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re already in this challenge.'**
+  String get challengeInviteAlreadyIn;
+
+  /// Button opening the challenge from its invite
+  ///
+  /// In en, this message translates to:
+  /// **'Open challenge'**
+  String get challengeInviteOpen;
+
+  /// Shown to a signed-out viewer above the Join button
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in or create a free account, then you join straight away.'**
+  String get challengeInviteSignInBody;
+
+  /// Button joining a challenge from its invite link
+  ///
+  /// In en, this message translates to:
+  /// **'Join challenge'**
+  String get challengeInviteJoin;
+
+  /// Heading of the invite-link card on a challenge
+  ///
+  /// In en, this message translates to:
+  /// **'Invite link'**
+  String get challengeInviteLinkTitle;
+
+  /// Invite card body on a non-public challenge
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone with this link can see this challenge and join it, even though it isn\'t public.'**
+  String get challengeInviteLinkBodyPrivate;
+
+  /// Invite card body on a public challenge
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone with this link can join in one tap after signing up.'**
+  String get challengeInviteLinkBodyPublic;
+
+  /// Invite card error
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the invite link.'**
+  String get challengeInviteLinkLoadFailed;
+
+  /// Opens the share sheet with the invite link
+  ///
+  /// In en, this message translates to:
+  /// **'Share link'**
+  String get challengeInviteShare;
+
+  /// Copies the invite link
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get challengeInviteCopy;
+
+  /// Banner after copying a challenge link
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied'**
+  String get challengeInviteCopied;
+
+  /// Banner when copying fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t copy the link.'**
+  String get challengeInviteCopyFailed;
+
+  /// Replaces the invite link with a new one
+  ///
+  /// In en, this message translates to:
+  /// **'Reset link'**
+  String get challengeInviteRotate;
+
+  /// Confirm dialog title for resetting the invite link
+  ///
+  /// In en, this message translates to:
+  /// **'Reset the invite link?'**
+  String get challengeInviteRotateTitle;
+
+  /// Confirm dialog body for resetting the invite link
+  ///
+  /// In en, this message translates to:
+  /// **'The current link stops working straight away. Anyone who already joined stays in.'**
+  String get challengeInviteRotateBody;
+
+  /// Banner when resetting fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reset the link. Try again.'**
+  String get challengeInviteRotateFailed;
+
+  /// Explains the public share page
+  ///
+  /// In en, this message translates to:
+  /// **'Public challenges also have a share page that shows the leaderboard without signing in.'**
+  String get challengeInviteShareBody;
+
+  /// Opens the share sheet with the public share page link
+  ///
+  /// In en, this message translates to:
+  /// **'Share the challenge page'**
+  String get challengeInviteSharePage;
+
   /// Empty leaderboard state
   ///
   /// In en, this message translates to:
@@ -26215,6 +26365,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You\'re creating challenges too quickly — please wait {wait} and try again.'**
   String rateLimitCreateChallenge(String wait);
+
+  /// Rate-limit refusal when the join_challenge_by_token bucket is spent
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re joining challenges too quickly — please wait {wait} and try again.'**
+  String rateLimitJoinChallenge(String wait);
 
   /// Rate-limit refusal when a training-plan adopt bucket is spent
   ///

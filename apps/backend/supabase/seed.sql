@@ -3101,3 +3101,13 @@ insert into private.feature_flags (name, enabled) values ('hr_prescription', tru
 -- Local stacks and CI open it so the share page and its specs exercise it.
 insert into private.feature_flags (name, enabled) values ('public_plan_share', true)
   on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Challenge invite links gate (20271103000001) ───────────────────
+--
+-- Joining a non-public challenge by link is fail-closed behind a
+-- private.feature_flags row no migration writes, so prod stays off until the
+-- CISO / Security Analyst sign-off in docs/features/challenges.md
+-- (decisions § 2261). Local stacks and CI open it so the invite + join-by-link
+-- surfaces and their specs exercise it.
+insert into private.feature_flags (name, enabled) values ('challenge_invite_links', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();

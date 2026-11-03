@@ -13355,6 +13355,102 @@ class AppLocalizationsJa extends AppLocalizations {
   String get challengesLeaderboard => 'ランキング';
 
   @override
+  String get challengeInviteTitle => 'チャレンジへの招待';
+
+  @override
+  String get challengeInviteLoadFailed =>
+      'この招待を読み込めませんでした。接続を確認して、もう一度お試しください。';
+
+  @override
+  String get challengeInviteMissingTitle => 'この招待リンクは使えません';
+
+  @override
+  String get challengeInviteMissingBody =>
+      '共有した人がリセットしたか、招待リンクがまだ利用できない可能性があります。新しいリンクを依頼してください。';
+
+  @override
+  String challengeInviteFrom(String name) {
+    return '$nameさんからの招待';
+  }
+
+  @override
+  String challengeInviteParticipants(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n人が参加中',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String challengeInviteStartsIn(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n日後に開始',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get challengeInviteAlreadyIn => 'このチャレンジにはすでに参加しています。';
+
+  @override
+  String get challengeInviteOpen => 'チャレンジを開く';
+
+  @override
+  String get challengeInviteSignInBody => 'サインインするか無料アカウントを作成すると、すぐに参加できます。';
+
+  @override
+  String get challengeInviteJoin => 'チャレンジに参加';
+
+  @override
+  String get challengeInviteLinkTitle => '招待リンク';
+
+  @override
+  String get challengeInviteLinkBodyPrivate =>
+      'このリンクを知っている人は、公開されていないこのチャレンジを見て参加できます。';
+
+  @override
+  String get challengeInviteLinkBodyPublic => 'このリンクを知っている人は、登録後ワンタップで参加できます。';
+
+  @override
+  String get challengeInviteLinkLoadFailed => '招待リンクを読み込めませんでした。';
+
+  @override
+  String get challengeInviteShare => 'リンクを共有';
+
+  @override
+  String get challengeInviteCopy => 'リンクをコピー';
+
+  @override
+  String get challengeInviteCopied => 'リンクをコピーしました';
+
+  @override
+  String get challengeInviteCopyFailed => 'リンクをコピーできませんでした。';
+
+  @override
+  String get challengeInviteRotate => 'リンクをリセット';
+
+  @override
+  String get challengeInviteRotateTitle => '招待リンクをリセットしますか？';
+
+  @override
+  String get challengeInviteRotateBody =>
+      '現在のリンクはすぐに使えなくなります。すでに参加している人はそのまま残ります。';
+
+  @override
+  String get challengeInviteRotateFailed => 'リンクをリセットできませんでした。もう一度お試しください。';
+
+  @override
+  String get challengeInviteShareBody =>
+      '公開チャレンジには、サインインせずにランキングを見られる共有ページもあります。';
+
+  @override
+  String get challengeInviteSharePage => 'チャレンジのページを共有';
+
+  @override
   String get challengesLeaderboardEmpty => 'まだ記録がありません。';
 
   @override
@@ -15228,6 +15324,11 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String rateLimitCreateChallenge(String wait) {
     return 'チャレンジの作成が速すぎます。$wait待ってから、もう一度お試しください。';
+  }
+
+  @override
+  String rateLimitJoinChallenge(String wait) {
+    return 'チャレンジへの参加が速すぎます。$wait待ってから、もう一度お試しください。';
   }
 
   @override

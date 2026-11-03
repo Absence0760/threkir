@@ -6,6 +6,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../leaderboard_standing.dart';
 import '../social_service.dart';
 import '../widgets/app_bar_actions.dart';
+import '../widgets/challenge_invite_card.dart';
 import '../widgets/challenge_progress_bar.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/error_state.dart';
@@ -201,6 +202,13 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                     Text(l10n.challengesLeaderboard, style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
                     _leaderboard(context, c),
+                    const SizedBox(height: 16),
+                    ChallengeInviteCard(
+                      social: widget.social,
+                      challengeId: c.id,
+                      isPublic: c.isPublic,
+                      canManage: isCreator && c.scope != 'club_vs_club',
+                    ),
                   ],
                 ),
     );

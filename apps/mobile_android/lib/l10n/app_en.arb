@@ -18470,6 +18470,121 @@
   "@challengesLeaderboard": {
     "description": "Leaderboard heading"
   },
+  "challengeInviteTitle": "Challenge invite",
+  "@challengeInviteTitle": {
+    "description": "App bar of the screen a challenge invite link opens"
+  },
+  "challengeInviteLoadFailed": "Couldn't load this invite. Check your connection and try again.",
+  "@challengeInviteLoadFailed": {
+    "description": "Shown when the invite preview read fails"
+  },
+  "challengeInviteMissingTitle": "This invite link doesn't work",
+  "@challengeInviteMissingTitle": {
+    "description": "Title when an invite token names no challenge"
+  },
+  "challengeInviteMissingBody": "It may have been reset by the person who shared it, or invite links aren't available yet. Ask them for a new link.",
+  "@challengeInviteMissingBody": {
+    "description": "Body when an invite token names no challenge"
+  },
+  "challengeInviteFrom": "Invited by {name}",
+  "@challengeInviteFrom": {
+    "description": "Kicker above an invited challenge's title",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "challengeInviteParticipants": "{n, plural, =1{1 runner in} other{{n} runners in}}",
+  "@challengeInviteParticipants": {
+    "description": "How many people have joined the challenge",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "challengeInviteStartsIn": "{n, plural, =1{Starts in 1 day} other{Starts in {n} days}}",
+  "@challengeInviteStartsIn": {
+    "description": "Window label for a challenge that has not started",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "challengeInviteAlreadyIn": "You're already in this challenge.",
+  "@challengeInviteAlreadyIn": {
+    "description": "Shown on the invite screen when the viewer has joined"
+  },
+  "challengeInviteOpen": "Open challenge",
+  "@challengeInviteOpen": {
+    "description": "Button opening the challenge from its invite"
+  },
+  "challengeInviteSignInBody": "Sign in or create a free account, then you join straight away.",
+  "@challengeInviteSignInBody": {
+    "description": "Shown to a signed-out viewer above the Join button"
+  },
+  "challengeInviteJoin": "Join challenge",
+  "@challengeInviteJoin": {
+    "description": "Button joining a challenge from its invite link"
+  },
+  "challengeInviteLinkTitle": "Invite link",
+  "@challengeInviteLinkTitle": {
+    "description": "Heading of the invite-link card on a challenge"
+  },
+  "challengeInviteLinkBodyPrivate": "Anyone with this link can see this challenge and join it, even though it isn't public.",
+  "@challengeInviteLinkBodyPrivate": {
+    "description": "Invite card body on a non-public challenge"
+  },
+  "challengeInviteLinkBodyPublic": "Anyone with this link can join in one tap after signing up.",
+  "@challengeInviteLinkBodyPublic": {
+    "description": "Invite card body on a public challenge"
+  },
+  "challengeInviteLinkLoadFailed": "Couldn't load the invite link.",
+  "@challengeInviteLinkLoadFailed": {
+    "description": "Invite card error"
+  },
+  "challengeInviteShare": "Share link",
+  "@challengeInviteShare": {
+    "description": "Opens the share sheet with the invite link"
+  },
+  "challengeInviteCopy": "Copy link",
+  "@challengeInviteCopy": {
+    "description": "Copies the invite link"
+  },
+  "challengeInviteCopied": "Link copied",
+  "@challengeInviteCopied": {
+    "description": "Banner after copying a challenge link"
+  },
+  "challengeInviteCopyFailed": "Couldn't copy the link.",
+  "@challengeInviteCopyFailed": {
+    "description": "Banner when copying fails"
+  },
+  "challengeInviteRotate": "Reset link",
+  "@challengeInviteRotate": {
+    "description": "Replaces the invite link with a new one"
+  },
+  "challengeInviteRotateTitle": "Reset the invite link?",
+  "@challengeInviteRotateTitle": {
+    "description": "Confirm dialog title for resetting the invite link"
+  },
+  "challengeInviteRotateBody": "The current link stops working straight away. Anyone who already joined stays in.",
+  "@challengeInviteRotateBody": {
+    "description": "Confirm dialog body for resetting the invite link"
+  },
+  "challengeInviteRotateFailed": "Couldn't reset the link. Try again.",
+  "@challengeInviteRotateFailed": {
+    "description": "Banner when resetting fails"
+  },
+  "challengeInviteShareBody": "Public challenges also have a share page that shows the leaderboard without signing in.",
+  "@challengeInviteShareBody": {
+    "description": "Explains the public share page"
+  },
+  "challengeInviteSharePage": "Share the challenge page",
+  "@challengeInviteSharePage": {
+    "description": "Opens the share sheet with the public share page link"
+  },
   "challengesLeaderboardEmpty": "No progress logged yet.",
   "@challengesLeaderboardEmpty": {
     "description": "Empty leaderboard state"
@@ -20825,6 +20940,15 @@
   "rateLimitCreateChallenge": "You're creating challenges too quickly — please wait {wait} and try again.",
   "@rateLimitCreateChallenge": {
     "description": "Rate-limit refusal when the create_challenge bucket is spent",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
+  "rateLimitJoinChallenge": "You're joining challenges too quickly — please wait {wait} and try again.",
+  "@rateLimitJoinChallenge": {
+    "description": "Rate-limit refusal when the join_challenge_by_token bucket is spent",
     "placeholders": {
       "wait": {
         "type": "String"

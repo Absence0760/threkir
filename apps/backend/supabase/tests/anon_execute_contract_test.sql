@@ -74,6 +74,8 @@ create temporary table anon_callable (fn name, why text);
 insert into anon_callable (fn, why) values
   ('browse_public_challenges',        'logged-out challenge discovery'),
   ('challenge_leaderboard',           'public challenge board'),
+  ('challenge_invite_links_enabled',  'the logged-out join page asks whether invite links are live'),
+  ('challenge_invite_preview',        'a follower previews a challenge invite link before signing up'),
   ('clip_route_for_viewer',           'public route page geometry'),
   ('clubs_in_bbox',                   'logged-out map discovery'),
   ('confirm_safety_contact_by_token', 'a trusted contact confirms from an emailed link with no account'),

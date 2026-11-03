@@ -1,10 +1,10 @@
 # share-entity Lambda
 
-Per-request SSR for the seven public **entity** share surfaces, so an
+Per-request SSR for the eight public **entity** share surfaces, so an
 entity created/edited after the last static build still unfurls with the
 right per-entity `<head>` (crawlers + chat-app link-unfurlers do not run
-the SPA's JS). One HTML-only Lambda behind a Function URL, fronted by
-CloudFront.
+the SPA's JS), plus the one per-entity card among them (`/og/challenge`).
+One Lambda behind a Function URL, fronted by CloudFront.
 
 ## Paths owned (routed here in `infra/modules/web-stack/main.tf`)
 
@@ -17,9 +17,11 @@ CloudFront.
 | `/share/session/<id>` | public session plan | `WebPage` + breadcrumb |
 | `/share/workout/<id>` | public gym workout | `WebPage` + breadcrumb |
 | `/share/plan/<id>` | public-library training plan | `WebPage` + breadcrumb |
+| `/share/challenge/<id>` | public challenge | `Event` |
+| `/og/challenge/<id>.png` | that challenge's 1200x630 card | — |
 
 The matching SvelteKit routes
-(`src/routes/share/{event,profile,club,race,session,workout,plan}/[…]`) carry
+(`src/routes/share/{event,profile,club,race,session,workout,plan,challenge}/[…]`, `src/routes/og/challenge/[id].png`) carry
 `prerender = false` and run the same lookup + meta builders under `vite dev`,
 so every path works locally without standing up the Lambda.
 
@@ -34,15 +36,16 @@ tables are signed-in only, so the RPC is a redacted projection (goal, weeks,
 workouts by day offset; no physiology, paces, notes, dates or user id) behind
 the default-off `public_plan_share` gate (decisions § 2262).
 
-## Why one Lambda (not seven)
+## Why one Lambda (not eight)
 
 These surfaces share an identical shape — anon public lookup → pure
 `build*Head` → `render*HeadTags` → `injectEntityHead` into the SPA shell —
-and none needs a per-entity `og:image` PNG (the OG image is the branded
-card, or the avatar URL for profiles/clubs). So a single dispatcher
-Lambda serves all seven with no native rasteriser, versus cloning the
-share-badge stack (Function URL + OAC + cache/origin-request policy +
-release/OIDC wiring) seven times. See `../share-badge/README.md` for the
+and all but one use the branded card (or the avatar URL for
+profiles/clubs) as the `og:image`. The challenge card is the exception
+(decisions § 2261): it rasterises with the `@resvg` addon share-badge
+already ships, so this bundle carries it too and runs at 512 MB. One
+dispatcher still beats cloning the share-badge stack (Function URL + OAC +
+cache/origin-request policy + release/OIDC wiring) per surface. See `../share-badge/README.md` for the
 one-per-type pattern this deliberately diverges from.
 
 ## Build
@@ -55,7 +58,9 @@ node lambda/share-entity/build.mjs
 ```
 
 Output: `lambda/share-entity/dist/share-entity.zip` (esbuild-bundled
-`index.mjs` + `package.json`; supabase-js inlined). CI's
+`index.mjs` + `package.json`; supabase-js inlined; `@resvg/resvg-js` and its
+arm64 binary copied into `node_modules`, so the arm64 package must be
+installed first, as for share-badge). CI's
 `release-web.yml` rebuilds + deploys it on every `web@*` tag.
 
 ## Fail-open posture

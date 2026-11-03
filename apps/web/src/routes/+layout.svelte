@@ -266,6 +266,7 @@
 		path.startsWith('/live/') ||
 		path.startsWith('/learn') ||
 		path.startsWith('/clubs/join/') ||
+		path.startsWith('/challenges/join/') ||
 		path.startsWith('/coaching/accept/');
 
 	// "Anon-allowed" surfaces: reachable without auth. Superset of shell-less

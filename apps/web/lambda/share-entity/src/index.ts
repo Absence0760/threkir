@@ -1,8 +1,8 @@
 // AWS Lambda Function URL handler for the shared entity-SSR surface.
 //
-// One HTML-only Lambda owning the seven public /share/* entity paths, all
-// routed here by CloudFront (see the share-entity behaviours in
-// infra/modules/web-stack/main.tf):
+// One Lambda owning the eight public /share/* entity paths and the challenge
+// card's /og/challenge PNG, all routed here by CloudFront (see the
+// share-entity behaviours in infra/modules/web-stack/main.tf):
 //   - /share/event/<id>        public club event   → SportsEvent/Event JSON-LD
 //   - /share/profile/<id>      public runner       → ProfilePage JSON-LD
 //   - /share/club/<slug>       public club         → SportsOrganization JSON-LD
@@ -10,13 +10,15 @@
 //   - /share/session/<id>      public session plan → WebPage + breadcrumb
 //   - /share/workout/<id>      public gym workout  → WebPage + breadcrumb
 //   - /share/plan/<id>         public-library plan → WebPage + breadcrumb
+//   - /share/challenge/<id>    public challenge    → Event JSON-LD
+//   - /og/challenge/<id>.png   that challenge's og:image card
 //
 // Each renders at request time so an entity created/edited after the last
 // build still unfurls with the right per-entity <head> before a crawler or
-// chat-app link-unfurler (which do not run the SPA's JS) can see it. Unlike
-// share-run/route/badge/recap there is NO per-entity og:image PNG — the OG
-// image is the branded card (or, for profiles/clubs, the avatar URL) — so
-// this Lambda serves HTML only and needs no native rasteriser.
+// chat-app link-unfurler (which do not run the SPA's JS) can see it. Every
+// surface but the challenge uses the branded card (or, for profiles/clubs,
+// the avatar URL) as its og:image; the challenge card is rasterised here
+// with the same @resvg addon share-badge ships (decisions § 2261).
 //
 // Fail-open posture: a private / missing entity yields the SPA shell at 404
 // with a noindex robots tag (a clean crawler signal), never a 5xx -- the same
@@ -31,6 +33,8 @@ import { lookupSharedRace } from '../../../src/lib/share/share_race_lookup';
 import { lookupSharedSession } from '../../../src/lib/share/share_session_lookup';
 import { lookupSharedWorkout } from '../../../src/lib/share/share_workout_lookup';
 import { lookupSharedPlan } from '../../../src/lib/share/share_plan_lookup';
+import { lookupSharedChallenge } from '../../../src/lib/share/share_challenge_lookup';
+import { renderChallengeOgPng } from '../../../src/lib/share/og_challenge_png';
 import {
 	buildShareEventHead,
 	renderShareEventHeadTags,
@@ -56,6 +60,10 @@ import {
 	renderShareWorkoutHeadTags,
 } from '../../../src/lib/share/share_workout_meta';
 import { buildSharePlanHead, renderSharePlanHeadTags } from '../../../src/lib/share/share_plan_meta';
+import {
+	buildShareChallengeHead,
+	renderShareChallengeHeadTags,
+} from '../../../src/lib/share/share_challenge_meta';
 import { injectEntityHead } from '../../../src/lib/share/entity_spa_shell';
 import { siteOrigin } from '../../../src/lib/core/site_url';
 import { shareMethodRefusal } from '../../../src/lib/share/share_method_gate';
@@ -144,7 +152,19 @@ const ROUTES: Array<{
 			return renderSharePlanHeadTags(buildSharePlanHead({ id, plan, siteUrl: c.siteUrl }));
 		},
 	},
+	{
+		re: /^\/share\/challenge\/([^/]+)\/?$/,
+		render: async (id, c) => {
+			const { challenge } = await lookupSharedChallenge(id, c);
+			if (!challenge) return null;
+			return renderShareChallengeHeadTags(
+				buildShareChallengeHead({ id, challenge, siteUrl: c.siteUrl }),
+			);
+		},
+	},
 ];
+
+const CHALLENGE_PNG_RE = /^\/og\/challenge\/([^/]+)\.png$/;
 
 export const handler = async (
 	event: LambdaFunctionURLEvent,
@@ -163,6 +183,22 @@ export const handler = async (
 			siteUrl: siteOrigin(process.env.PUBLIC_SITE_URL),
 		};
 		const path = event.rawPath || '/';
+		const pngMatch = path.match(CHALLENGE_PNG_RE);
+		if (pngMatch) {
+			// A missing config or an unknown id renders the generic card at 200:
+			// an unfurl image must never 404.
+			const key = decodeKey(pngMatch[1]) ?? '';
+			const png = await renderChallengeOgPng(
+				key,
+				config.supabaseUrl && config.supabaseAnonKey ? config : null,
+			);
+			return {
+				statusCode: 200,
+				isBase64Encoded: true,
+				headers: { 'content-type': 'image/png', 'cache-control': CACHE_CONTROL },
+				body: png.toString('base64'),
+			};
+		}
 		for (const route of ROUTES) {
 			const match = path.match(route.re);
 			if (!match) continue;

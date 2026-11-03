@@ -14,6 +14,7 @@ import { renderShareRecapHeadTags, type ShareRecapMeta } from './share_recap_met
 import { renderShareSessionHeadTags, type ShareSessionHead } from './share_session_meta';
 import { renderShareWorkoutHeadTags, type ShareWorkoutHead } from './share_workout_meta';
 import { renderSharePlanHeadTags, type SharePlanHead } from './share_plan_meta';
+import { renderShareChallengeHeadTags, type ShareChallengeHead } from './share_challenge_meta';
 
 // The render*HeadTags functions are the XSS boundary of the entity-SSR
 // Lambda: they interpolate broadcaster-controlled strings (a display name,
@@ -67,6 +68,7 @@ const cases: Array<{ name: string; out: () => string }> = [
 	{ name: 'renderShareSessionHeadTags', out: () => renderShareSessionHeadTags(withJsonLd as ShareSessionHead) },
 	{ name: 'renderShareWorkoutHeadTags', out: () => renderShareWorkoutHeadTags(withJsonLd as ShareWorkoutHead) },
 	{ name: 'renderSharePlanHeadTags', out: () => renderSharePlanHeadTags(withJsonLd as SharePlanHead) },
+	{ name: 'renderShareChallengeHeadTags', out: () => renderShareChallengeHeadTags(withJsonLd as ShareChallengeHead) },
 	{
 		name: 'renderShareRecapHeadTags',
 		out: () =>

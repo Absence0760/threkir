@@ -2871,9 +2871,8 @@ export interface RaceListingCourse {
 	distanceM: number | null;
 	ascentM: number | null;
 	surface: string | null;
-	/// The course route's id, exposed by the view under the same public gate
-	/// as the summary. Its line is read with `fetchPublicRoute`, the
-	/// privacy-clipped public-route path, never from this row.
+	/// Null unless the route is public (decisions § 2252); its line is read
+	/// with `fetchPublicRoute`, never from this row.
 	routeId: string | null;
 }
 

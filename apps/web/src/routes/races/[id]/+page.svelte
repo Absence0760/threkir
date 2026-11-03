@@ -91,11 +91,9 @@
 		}
 	}
 
-	// Auxiliary: the course's line and climb names draw the map and the 3D
-	// preview. `fetchPublicRoute` is the public-route read: `public_routes`
-	// plus `clip_route_for_viewer`, so a non-owner gets the privacy-clipped
-	// line the route's own page shows them. A failed read leaves the course
-	// summary on its own.
+	// The line comes from `fetchPublicRoute`, so a non-owner gets the
+	// privacy-clipped line the route's own page shows them, never one read
+	// off the race listing.
 	async function loadCourse(id: string, routeId: string) {
 		const [routeRes, markersRes] = await Promise.allSettled([
 			fetchPublicRoute(routeId),
@@ -353,7 +351,7 @@
 			</p>
 		{/if}
 
-		{#if courseParts.length > 0 || courseRoute}
+		{#if courseParts.length > 0 || coursePoints.length > 1}
 			<section class="section" aria-labelledby="race-course-heading" data-testid="race-detail-course">
 				<h2 id="race-course-heading">{m('races.courseHeading')}</h2>
 				{#if courseParts.length > 0}

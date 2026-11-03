@@ -42,8 +42,16 @@ async function tsFiles(dir = FUNCTIONS_ROOT, prefix = ''): Promise<string[]> {
 const read = (file: string) => Deno.readTextFile(new URL(file, FUNCTIONS_ROOT));
 
 Deno.test('no module imports Stripe from esm.sh', async () => {
+	// An empty offender list is also what a scan reading nothing returns, so
+	// first prove this scan sees the tree's real Stripe import.
+	const files = await tsFiles();
+	assert(
+		files.includes(BOUNDARY) && NPM_STRIPE_VERSION.test(await read(BOUNDARY)),
+		`the scan cannot see ${BOUNDARY}'s \`npm:stripe@<version>\` import, so a clean result ` +
+			'below would mean it read nothing, not that no module imports from esm.sh.',
+	);
 	const offenders: string[] = [];
-	for (const file of await tsFiles()) {
+	for (const file of files) {
 		if (file === '_shared/stripe_boundary.test.ts') continue;
 		for (const [, url] of (await read(file)).matchAll(ESM_SH_STRIPE)) {
 			offenders.push(`${file} -> ${url}`);

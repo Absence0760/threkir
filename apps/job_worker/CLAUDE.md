@@ -79,7 +79,21 @@ Function moves per
    Supabase outage drops the ping rather than risk leaking a home
    coordinate. Mirrors the `live_run_pings_drop_in_zone` BEFORE-INSERT
    trigger on the Supabase Realtime path so both transports honour
-   the same contract.
+   the same contract. **Heart rate** (decisions §2265): `/push`
+   strips `bpm` before fan-out unless `RunMeta.HeartRateShared` is
+   true, which is the service-role `live_heart_rate_shared(user_id)`
+   RPC: the `live_overlay` flag is open AND the runner has
+   `health_data_consent_at` on record. Unknown is no: a nil
+   `RunMetaFetcher` or a failed lookup withholds `bpm` (fail closed on
+   the field, open on the location feed). The answer is cached with the
+   rest of the run meta, so an open room keeps it until the next
+   `CacheRefreshTTL` refresh. The `live_run_pings_strip_bpm_before_insert`
+   trigger applies the same rule on the Realtime path, so the Bridge
+   only ever republishes stripped rows. The streamer overlay
+   (`/live/overlay`) does **not** read through the hub: it polls the
+   `live_overlay_feed` RPC, which returns only pings older than the
+   creator's delay (`at <= now() - delay_s`), so the delay is enforced
+   in Postgres and nothing newer leaves the database.
 
 **Build here:**
 

@@ -9,9 +9,10 @@
 import type { YearInRunningRecap } from '../runs/recap';
 import { OG_CARD_DARK } from './og_card_palette';
 import { escapeXml } from '../util/html_escape';
+import { DEFAULT_SITE_URL } from '../core/site_url';
+import { recapCardLayout, recapCellOrigin, type RecapCardAspect } from './recap_card_layout';
 
-const SIZE = 1080; // square — friendliest aspect for social shares
-const PAD = 72;
+const SITE = new URL(DEFAULT_SITE_URL).host;
 
 const BG = OG_CARD_DARK.bg;
 const BRAND = OG_CARD_DARK.brand;
@@ -64,8 +65,8 @@ function statCells(recap: YearInRunningRecap, unit: 'km' | 'mi'): StatCell[] {
 	];
 }
 
-/// Build the share-card SVG for a year-in-running recap. Returns an
-/// `<svg>` string sized for a 1080×1080 social card. The page
+/// Build the share-card SVG for a year-in-running recap: a 1080x1080 square
+/// by default, or a 1080x1920 story with `aspect: 'story'`. The page
 /// rasterises it to PNG before sharing / downloading. Pass `periodLabel`
 /// (e.g. "March 2026") to render a monthly card; omit it for the annual
 /// card, which uses the year.
@@ -73,53 +74,49 @@ export function buildRecapShareSvg(
 	recap: YearInRunningRecap,
 	unit: 'km' | 'mi',
 	periodLabel?: string,
+	opts: { aspect?: RecapCardAspect } = {},
 ): string {
+	const L = recapCardLayout(opts.aspect ?? 'square');
 	const F = 'system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
 	const parts: string[] = [];
 	parts.push(
-		`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SIZE} ${SIZE}" width="${SIZE}" height="${SIZE}">`,
+		`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${L.width} ${L.height}" width="${L.width}" height="${L.height}">`,
 	);
-	parts.push(`<rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>`);
+	parts.push(`<rect width="${L.width}" height="${L.height}" fill="${BG}"/>`);
 
-	// Brand strap, top-left.
 	parts.push(
-		`<text x="${PAD}" y="${PAD + 28}" font-family="${F}" font-size="40" font-weight="800" fill="${BRAND}">Threkir</text>`,
+		`<text x="${L.pad}" y="${L.brandY}" font-family="${F}" font-size="40" font-weight="800" fill="${BRAND}">Threkir</text>`,
 	);
 
-	// Kicker.
 	const kickerPeriod = (periodLabel ?? String(recap.year)).toUpperCase();
 	parts.push(
-		`<text x="${PAD}" y="${PAD + 110}" font-family="${F}" font-size="34" font-weight="700" fill="${LABEL_FILL}" letter-spacing="3">MY ${escapeXml(kickerPeriod)} IN RUNNING</text>`,
+		`<text x="${L.pad}" y="${L.kickerY}" font-family="${F}" font-size="34" font-weight="700" fill="${LABEL_FILL}" letter-spacing="3">MY ${escapeXml(kickerPeriod)} IN RUNNING</text>`,
 	);
 
-	// Hero — total distance.
 	parts.push(
-		`<text x="${PAD}" y="${PAD + 280}" font-family="${F}" font-size="200" font-weight="900" fill="${HERO_FILL}">${escapeXml(fmtDistance(recap.totalDistanceM, unit))}</text>`,
+		`<text x="${L.pad}" y="${L.heroY}" font-family="${F}" font-size="200" font-weight="900" fill="${HERO_FILL}">${escapeXml(fmtDistance(recap.totalDistanceM, unit))}</text>`,
 	);
 
-	// Subhead — run count.
 	const runWord = recap.runCount === 1 ? 'run' : 'runs';
 	parts.push(
-		`<text x="${PAD}" y="${PAD + 350}" font-family="${F}" font-size="44" font-weight="600" fill="${STAT_FILL}">across ${recap.runCount} ${runWord}</text>`,
+		`<text x="${L.pad}" y="${L.subheadY}" font-family="${F}" font-size="44" font-weight="600" fill="${STAT_FILL}">across ${recap.runCount} ${runWord}</text>`,
 	);
 
-	// Stat grid — 2 columns × 3 rows in the lower half.
-	const cells = statCells(recap, unit);
-	const gridTop = PAD + 440;
-	const colW = (SIZE - PAD * 2) / 2;
-	const rowH = 150;
-	cells.forEach((cell, i) => {
-		const col = i % 2;
-		const row = Math.floor(i / 2);
-		const x = PAD + col * colW;
-		const y = gridTop + row * rowH;
+	statCells(recap, unit).forEach((cell, i) => {
+		const o = recapCellOrigin(L, i);
 		parts.push(
-			`<text x="${x}" y="${y}" font-family="${F}" font-size="28" font-weight="700" fill="${LABEL_FILL}" letter-spacing="2">${escapeXml(cell.label.toUpperCase())}</text>`,
+			`<text x="${o.x}" y="${o.labelY}" font-family="${F}" font-size="28" font-weight="700" fill="${LABEL_FILL}" letter-spacing="2">${escapeXml(cell.label.toUpperCase())}</text>`,
 		);
 		parts.push(
-			`<text x="${x}" y="${y + 58}" font-family="${F}" font-size="64" font-weight="800" fill="${STAT_FILL}">${escapeXml(cell.value)}</text>`,
+			`<text x="${o.x}" y="${o.valueY}" font-family="${F}" font-size="64" font-weight="800" fill="${STAT_FILL}">${escapeXml(cell.value)}</text>`,
 		);
 	});
+
+	if (L.footerY !== null) {
+		parts.push(
+			`<text x="${L.pad}" y="${L.footerY}" font-family="${F}" font-size="36" font-weight="700" fill="${BRAND}">${SITE}</text>`,
+		);
+	}
 
 	parts.push('</svg>');
 	return parts.join('');

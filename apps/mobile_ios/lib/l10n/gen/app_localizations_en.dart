@@ -19030,4 +19030,75 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get dashboardTrainingLoadSectionHint =>
       'Your fitness, fatigue and form numbers. Folded because you asked for the basics — open it whenever you want it, or ask for everything in Settings → Preferences.';
+
+  @override
+  String recapCardKicker(String period) {
+    return 'My $period in running';
+  }
+
+  @override
+  String recapCardAcrossRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'across $count runs',
+      one: 'across 1 run',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recapCardStreakDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days',
+      one: '1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recapCardOnFoot => 'On foot';
+
+  @override
+  String get recapCardClimbed => 'Climbed';
+
+  @override
+  String get recapCardActiveMonths => 'Active months';
+
+  @override
+  String get recapShareSheetTitle => 'Share your recap';
+
+  @override
+  String get recapShareAspectSquare => 'Square';
+
+  @override
+  String get recapShareAspectStory => 'Story';
+
+  @override
+  String get recapSharePreviewLabel => 'Preview of the recap image';
+
+  @override
+  String get recapShareImage => 'Share image';
+
+  @override
+  String get recapShareAsText => 'Share as text';
+
+  @override
+  String get recapShareImageError =>
+      'Couldn\'t make the recap image. Try again.';
+
+  @override
+  String get shareCardStyleVideo => 'Video';
+
+  @override
+  String get shareCardVideoBody =>
+      'Turn this run into a vertical 3D flyover video. It\'s made in your browser on threkir.com; share or save it from there.';
+
+  @override
+  String get shareCardVideoOpen => 'Open video export';
+
+  @override
+  String get shareCardVideoError => 'Couldn\'t open the browser. Try again.';
 }

@@ -58,11 +58,18 @@ const MAP_SURFACES: Record<string, ['shared' | 'unkeyed', string]> = {
 	// it splits into `mapZoneBoundary`'s keyed pair like every other rung.
 	'lib/components/PrivacyZonePicker.svelte': ['shared', 'the privacy-zone circle'],
 	'lib/components/CoursePreview3D.svelte': ['shared', 'the 3D course preview'],
+	'lib/components/course_preview/flyover_video_export.ts': ['shared', 'the offscreen map the flyover video records'],
 };
 
 /// Infrastructure, not a surface: the MapLibre re-export and the resize
-/// observer instantiate no map and paint nothing.
-const NOT_SURFACES = new Set(['lib/routes/maplibre.ts', 'lib/routes/map_resize.ts']);
+/// observer instantiate no map and paint nothing, and the course-layer helper
+/// makes no map either: it paints onto the one its caller made, with the
+/// ground that caller resolved and passes in (both callers are surfaces above).
+const NOT_SURFACES = new Set([
+	'lib/routes/maplibre.ts',
+	'lib/routes/map_resize.ts',
+	'lib/components/course_preview/course_layers.ts',
+]);
 
 function sourceFiles(dir: string, out: string[] = []): string[] {
 	for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -249,7 +256,7 @@ test('a map surface resolves its style URL through the shared precedence', () =>
 	}
 	assert.equal(
 		Object.keys(MAP_SURFACES).length,
-		8,
+		9,
 		'the population this scan ran over — a shrinking register would let it pass over nothing',
 	);
 	assert.deepEqual(

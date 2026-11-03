@@ -20,10 +20,10 @@
 		"rclt"
 	],
 	"subset": {
-		"bytes": 72864,
-		"sha256": "daf32676666e48fce8ec8960171cb696e03e184b31219ccf225d4d86edaa6f8e",
-		"glyphs": 325,
-		"ligatures": 435
+		"bytes": 73116,
+		"sha256": "2ea4c91260347b4049b90fbb0d645136b694081f076bf501173cd3555f50f4b8",
+		"glyphs": 328,
+		"ligatures": 441
 	},
 	"icons": [
 		"10k",
@@ -210,6 +210,7 @@
 		"monitoring",
 		"more",
 		"move",
+		"movie",
 		"moving",
 		"my_location",
 		"near_me",
@@ -295,11 +296,13 @@
 		"show_chart",
 		"skip_next",
 		"sleep",
+		"smartphone",
 		"sms",
 		"source",
 		"south",
 		"sports",
 		"sprint",
+		"square",
 		"stack",
 		"star",
 		"star_border",

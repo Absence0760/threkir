@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart' show ImagePicker, ImageSource;
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow;
+import 'package:url_launcher/url_launcher.dart';
 
 import 'live_run_map.dart'
     show basemapTileLayer, basemapVoidColour, tileUrlFor;
@@ -27,14 +28,30 @@ import '../share_look.dart';
 import '../share_sheet.dart';
 import 'capture_png.dart';
 import 'run_share_overlays.dart';
+import '../web_base_url.dart';
 import '../widgets/top_banner.dart';
 
 export '../run_share_stats.dart' show runShareCardTrack, runShareCardHasMap;
 
 /// What the share image is drawn on: the branded map [card], the runner's own
 /// [photo] under a scrim, or nothing at all ([sticker], a transparent PNG to
-/// lay over a story or photo in another app).
-enum RunShareStyle { card, photo, sticker }
+/// lay over a story or photo in another app). [video] is not an image: it
+/// hands the run to the web flyover export, which records the 3D course as a
+/// 9:16 video in the browser (decisions § 2259), because the phone has no 3D
+/// map stack to render one with (§ 8).
+enum RunShareStyle { card, photo, sticker, video }
+
+/// Opens a URL outside the app; returns whether anything took it.
+typedef RunShareUrlOpener = Future<bool> Function(Uri url);
+
+Future<bool> _openExternally(Uri url) =>
+    launchUrl(url, mode: LaunchMode.externalApplication);
+
+/// The web page the Video style opens: the run's own page, with `video=1`
+/// asking it to open the 3D preview where the export lives.
+Uri runVideoExportUrl(String runId, {String? webBase}) =>
+    Uri.parse(webPageUrl('/runs/${Uri.encodeComponent(runId)}?video=1',
+        override: webBase));
 
 /// Thrown by a [RunShareImageSaver] when the runner has refused the app access
 /// to their photos, so the sheet can say how to grant it rather than report a
@@ -80,6 +97,7 @@ Future<void> showRunShareSheet(
   required List<PrivacyZone> privacyZones,
   @visibleForTesting Future<XFile?> Function()? pickPhotoOverride,
   @visibleForTesting RunShareImageSaver? saveImageOverride,
+  @visibleForTesting RunShareUrlOpener? openUrlOverride,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -94,6 +112,7 @@ Future<void> showRunShareSheet(
       privacyZones: privacyZones,
       pickPhotoOverride: pickPhotoOverride,
       saveImage: saveImageOverride ?? _saveToGallery,
+      openUrl: openUrlOverride ?? _openExternally,
     ),
   );
 }
@@ -105,6 +124,7 @@ class _ShareRunSheet extends StatefulWidget {
   final List<PrivacyZone> privacyZones;
   final Future<XFile?> Function()? pickPhotoOverride;
   final RunShareImageSaver saveImage;
+  final RunShareUrlOpener openUrl;
 
   const _ShareRunSheet({
     required this.run,
@@ -112,6 +132,7 @@ class _ShareRunSheet extends StatefulWidget {
     required this.title,
     required this.privacyZones,
     required this.saveImage,
+    required this.openUrl,
     this.pickPhotoOverride,
   });
 
@@ -171,8 +192,15 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
     );
   }
 
-  bool get _hasImage => _style != RunShareStyle.photo || _photo != null;
+  bool get _hasImage =>
+      _style != RunShareStyle.video &&
+      (_style != RunShareStyle.photo || _photo != null);
   bool get _canExportImage => !_busy && !_picking && _hasImage;
+
+  /// The web export records the share card's clipped line, so the style is
+  /// offered only when that line exists.
+  bool get _canOfferVideo =>
+      runShareCardHasMap(widget.run, widget.privacyZones);
 
   /// The logical width of the canvas being rasterised, so the PNG comes out
   /// [shareImageExportWidthPx] across whichever style it is.
@@ -180,6 +208,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
         RunShareStyle.card => RunShareCard.canvas.width,
         RunShareStyle.photo => RunPhotoShareCard.canvasFor(_look.aspect).width,
         RunShareStyle.sticker => RunStickerShareCard.canvasWidth(_look),
+        RunShareStyle.video => throw StateError('the video style draws no canvas'),
       };
 
   Future<XFile?> _pick() {
@@ -297,6 +326,44 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
     }
   }
 
+  Future<void> _openVideoExport() async {
+    if (_busy) return;
+    final url = runVideoExportUrl(widget.run.id);
+    var opened = false;
+    try {
+      opened = await widget.openUrl(url);
+    } catch (e) {
+      debugPrint('Failed to open the video export: $e');
+    }
+    if (!opened && mounted) {
+      showTopBanner(context, AppLocalizations.of(context).shareCardVideoError);
+    }
+  }
+
+  Widget _videoPanel(AppLocalizations l10n, ThemeData theme, double height) {
+    return Container(
+      constraints: BoxConstraints(minHeight: height * 0.6),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.movie_outlined,
+              size: 40, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(height: 12),
+          Text(
+            l10n.shareCardVideoBody,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium,
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _shareFile(String format) async {
     if (_busy) return;
     final l10n = AppLocalizations.of(context);
@@ -353,6 +420,8 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
           photo: FileImage(_photo!),
           look: _look,
         );
+      case RunShareStyle.video:
+        throw StateError('the video style draws no canvas');
       case RunShareStyle.sticker:
         return RunStickerShareCard(
           run: widget.run,
@@ -595,12 +664,21 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
                       label: l10n.shareCardStyleSticker,
                       icon: Icons.auto_awesome_motion_outlined,
                     ),
+                    if (_canOfferVideo)
+                      ChoiceChipOption(
+                        value: RunShareStyle.video,
+                        label: l10n.shareCardStyleVideo,
+                        icon: Icons.movie_outlined,
+                      ),
                   ],
                   selected: _style,
                   onChanged: _busy ? null : _selectStyle,
                 ),
                 const SizedBox(height: 12),
-                _preview(l10n, theme, previewHeight),
+                if (_style == RunShareStyle.video)
+                  _videoPanel(l10n, theme, previewHeight)
+                else
+                  _preview(l10n, theme, previewHeight),
                 if (_style == RunShareStyle.photo && _photo != null)
                   Align(
                     child: TextButton.icon(
@@ -620,32 +698,41 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
                       ),
                     ),
                   ),
-                if (_style != RunShareStyle.card)
+                if (_style != RunShareStyle.card &&
+                    _style != RunShareStyle.video)
                   ..._lookControls(l10n, theme),
                 const SizedBox(height: 16),
-                // Stacked full width: the save label is the one the iOS photo
-                // permission prompt names, and in French or Portuguese it
-                // does not fit half a row.
-                FilledButton.icon(
-                  onPressed: _canExportImage ? _shareImage : null,
-                  icon: _busy
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.ios_share),
-                  label: Text(l10n.shareCardImage),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: _canExportImage ? _saveImage : null,
-                  icon: const Icon(Icons.download_outlined),
-                  label: Text(l10n.shareCardSave),
-                ),
+                if (_style == RunShareStyle.video)
+                  FilledButton.icon(
+                    onPressed: _busy ? null : _openVideoExport,
+                    icon: const Icon(Icons.open_in_new),
+                    label: Text(l10n.shareCardVideoOpen),
+                  )
+                else ...[
+                  // Stacked full width: the save label is the one the iOS photo
+                  // permission prompt names, and in French or Portuguese it
+                  // does not fit half a row.
+                  FilledButton.icon(
+                    onPressed: _canExportImage ? _shareImage : null,
+                    icon: _busy
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.ios_share),
+                    label: Text(l10n.shareCardImage),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _canExportImage ? _saveImage : null,
+                    icon: const Icon(Icons.download_outlined),
+                    label: Text(l10n.shareCardSave),
+                  ),
+                ],
                 Align(
                   child: PopupMenuButton<String>(
                     onSelected: _busy ? null : _shareFile,

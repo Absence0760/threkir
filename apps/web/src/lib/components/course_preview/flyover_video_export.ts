@@ -1,0 +1,525 @@
+/// Browser glue for the flyover video export (decisions § 2259): an offscreen
+/// MapLibre map at the video's own size, stepped frame by frame by the pure
+/// clock in `video_timeline.ts`, composited with the overlays
+/// `video_overlay.ts` places, and encoded by whichever encoder
+/// `video_encoder.ts` chose. Everything that can be decided without a browser
+/// is decided in those modules; this file only drives the APIs.
+import maplibregl from '#lib/routes/maplibre.ts';
+import type { Climb, StripSample } from '#lib/routes/course_climbs.ts';
+import {
+	cameraAt,
+	distanceMarkers,
+	pointAtDistance,
+	type FlyoverPath,
+} from '#lib/routes/flyover_path.ts';
+import { FLYOVER_PITCH, TERRAIN_EXAGGERATION, type TerrainSource } from '#lib/routes/terrain_source.ts';
+import { basemapIsDarkFromEnv, mapStyleUrlFromEnv } from '#lib/routes/map-style.svelte.ts';
+import { mapAccentColour, mapOverlayOutline } from '#lib/routes/basemap_contrast.ts';
+import { OG_CARD_DARK } from '#lib/share/og_card_palette.ts';
+import { addCourseLayers } from './course_layers.ts';
+import { stripGeometry, stripX } from './strip_geometry.ts';
+import { muxMp4, type Mp4Sample } from './mp4_mux.ts';
+import {
+	H264_CODECS,
+	RECORDER_TYPES,
+	VIDEO_BITRATE,
+	webcodecsConfig,
+	type EncoderProbe,
+	type VideoEncoderPlan,
+} from './video_encoder.ts';
+import {
+	frameDurationUs,
+	frameTimestampUs,
+	isKeyFrame,
+	VIDEO_HEIGHT,
+	VIDEO_WIDTH,
+	videoFrame,
+	videoTimeline,
+	type VideoFrame,
+} from './video_timeline.ts';
+import {
+	climbIndexAt,
+	endCardAlpha,
+	videoAttribution,
+	videoOverlayLayout,
+	type TextSlot,
+	type VideoOverlayLayout,
+} from './video_overlay.ts';
+
+const FLIGHT_ZOOM = 14;
+const SETTLE_TIMEOUT_MS = 4000;
+const MAX_ENCODE_QUEUE = 8;
+const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+// The end card and the type are the share cards' dark palette, so a reel and
+// a share image from the same run look like one product.
+const INK = OG_CARD_DARK.hero;
+const END_BG = OG_CARD_DARK.bg;
+const BRAND = OG_CARD_DARK.brand;
+const CLIMB_FILL = 'rgba(219, 39, 119, 0.85)';
+
+export interface FlyoverVideoText {
+	title: string;
+	distanceAt: (dM: number) => string;
+	ofTotal: string;
+	elevationAt: (ele: number) => string;
+	climbLabel: (index: number) => string;
+	endLines: readonly string[];
+	url: string;
+}
+
+export interface FlyoverVideoInput {
+	path: FlyoverPath;
+	unit: 'km' | 'mi';
+	climbs: readonly Climb[];
+	strip: readonly StripSample[];
+	/// The key the export may use, already passed through the video gate
+	/// (`flyoverVideoMaptilerKey`): empty means the keyless basemap.
+	maptilerKey: string;
+	terrain: TerrainSource | null;
+	text: FlyoverVideoText;
+	plan: VideoEncoderPlan;
+	signal: AbortSignal;
+	onprogress: (fraction: number) => void;
+}
+
+function abortError(): DOMException {
+	return new DOMException('The video export was cancelled', 'AbortError');
+}
+
+export async function probeVideoEncoders(): Promise<EncoderProbe> {
+	const webcodecs: string[] = [];
+	if (typeof VideoEncoder !== 'undefined' && typeof VideoFrame !== 'undefined') {
+		for (const codec of H264_CODECS) {
+			try {
+				const res = await VideoEncoder.isConfigSupported(webcodecsConfig(codec, VIDEO_WIDTH, VIDEO_HEIGHT, 30));
+				if (res.supported) webcodecs.push(codec);
+			} catch {
+				// An unknown codec string rejects rather than answering false.
+			}
+		}
+	}
+	const recorder =
+		typeof MediaRecorder !== 'undefined'
+			? RECORDER_TYPES.filter((t) => {
+					try {
+						return MediaRecorder.isTypeSupported(t);
+					} catch {
+						return false;
+					}
+				})
+			: [];
+	const canvasStream =
+		typeof HTMLCanvasElement !== 'undefined' && typeof HTMLCanvasElement.prototype.captureStream === 'function';
+	return { webcodecs, recorder, canvasStream };
+}
+
+function loadImage(src: string): Promise<HTMLImageElement | null> {
+	return new Promise((resolve) => {
+		const img = new Image();
+		img.onload = () => resolve(img);
+		img.onerror = () => resolve(null);
+		img.src = src;
+	});
+}
+
+function waitForLoad(map: maplibregl.Map, signal: AbortSignal): Promise<void> {
+	return new Promise((resolve, reject) => {
+		if (map.loaded()) return resolve();
+		const onAbort = () => reject(abortError());
+		signal.addEventListener('abort', onAbort, { once: true });
+		map.once('load', () => {
+			signal.removeEventListener('abort', onAbort);
+			resolve();
+		});
+		map.once('error', (e) => {
+			if ((e as { sourceId?: string }).sourceId) return;
+			signal.removeEventListener('abort', onAbort);
+			reject(e.error ?? new Error('map failed to load'));
+		});
+	});
+}
+
+/// Resolves once the frame is drawn with every visible tile in, or after a
+/// bound: a tile that never arrives costs that frame its detail, not the
+/// whole export.
+function settle(map: maplibregl.Map, move: () => void): Promise<void> {
+	return new Promise((resolve) => {
+		let done = false;
+		const finish = () => {
+			if (done) return;
+			done = true;
+			clearTimeout(timer);
+			map.off('idle', finish);
+			resolve();
+		};
+		const timer = setTimeout(finish, SETTLE_TIMEOUT_MS);
+		map.on('idle', finish);
+		move();
+		map.triggerRepaint();
+	});
+}
+
+function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+	if (ctx.measureText(text).width <= maxWidth) return text;
+	let s = text;
+	while (s.length > 1 && ctx.measureText(`${s}…`).width > maxWidth) s = s.slice(0, -1);
+	return `${s.trimEnd()}…`;
+}
+
+function drawText(
+	ctx: CanvasRenderingContext2D,
+	text: string,
+	slot: TextSlot,
+	opts: { weight?: number; align?: CanvasTextAlign; color?: string } = {},
+) {
+	ctx.font = `${opts.weight ?? 700} ${slot.size}px ${FONT}`;
+	ctx.textAlign = opts.align ?? 'left';
+	ctx.textBaseline = 'alphabetic';
+	ctx.fillStyle = opts.color ?? INK;
+	ctx.fillText(fitText(ctx, text, slot.maxWidth), slot.x, slot.y);
+}
+
+/// The licence credits wrap onto a second line rather than being cut: a
+/// truncated attribution is a missing one.
+function drawAttribution(ctx: CanvasRenderingContext2D, text: string, slot: TextSlot) {
+	ctx.font = `500 ${slot.size}px ${FONT}`;
+	ctx.textAlign = 'left';
+	ctx.fillStyle = 'rgba(255,255,255,0.88)';
+	const words = text.split(' ');
+	const lines: string[] = [];
+	let line = '';
+	for (const w of words) {
+		const next = line ? `${line} ${w}` : w;
+		if (line && ctx.measureText(next).width > slot.maxWidth) {
+			lines.push(line);
+			line = w;
+		} else {
+			line = next;
+		}
+	}
+	if (line) lines.push(line);
+	lines.forEach((l, i) => ctx.fillText(l, slot.x, slot.y + i * (slot.size + 6)));
+}
+
+interface Scene {
+	input: FlyoverVideoInput;
+	darkBasemap: boolean;
+	layout: VideoOverlayLayout;
+	attribution: string;
+	mark: HTMLImageElement | null;
+	strip: { line: Path2D | null; area: Path2D | null; climbs: { x0: number; x1: number }[] };
+}
+
+function composeFrame(
+	ctx: CanvasRenderingContext2D,
+	scene: Scene,
+	mapCanvas: HTMLCanvasElement,
+	map: maplibregl.Map,
+	frame: VideoFrame,
+) {
+	const { input, layout: L } = scene;
+	const W = L.width;
+	const H = L.height;
+	ctx.globalAlpha = 1;
+	ctx.drawImage(mapCanvas, 0, 0, W, H);
+
+	const top = ctx.createLinearGradient(0, 0, 0, L.topScrim);
+	top.addColorStop(0, 'rgba(0,0,0,0.6)');
+	top.addColorStop(1, 'rgba(0,0,0,0)');
+	ctx.fillStyle = top;
+	ctx.fillRect(0, 0, W, L.topScrim);
+	const bottom = ctx.createLinearGradient(0, H - L.bottomScrim, 0, H);
+	bottom.addColorStop(0, 'rgba(0,0,0,0)');
+	bottom.addColorStop(1, 'rgba(0,0,0,0.75)');
+	ctx.fillStyle = bottom;
+	ctx.fillRect(0, H - L.bottomScrim, W, L.bottomScrim);
+
+	const here = pointAtDistance(input.path, frame.dM);
+	const at = map.project([here.lng, here.lat]);
+	ctx.beginPath();
+	ctx.arc(at.x, at.y, 14, 0, Math.PI * 2);
+	ctx.fillStyle = mapAccentColour(scene.darkBasemap);
+	ctx.fill();
+	ctx.lineWidth = 5;
+	ctx.strokeStyle = mapOverlayOutline(scene.darkBasemap);
+	ctx.stroke();
+
+	drawText(ctx, input.text.title, L.title, { weight: 800 });
+	if (scene.mark) ctx.drawImage(scene.mark, L.mark.x, L.mark.y, L.mark.size, L.mark.size);
+
+	const climb = climbIndexAt(input.climbs, frame.dM);
+	if (climb >= 0 && frame.phase === 'flight') {
+		const label = input.text.climbLabel(climb);
+		ctx.font = `700 ${L.climb.size}px ${FONT}`;
+		const w = Math.min(ctx.measureText(label).width, L.climb.maxWidth - 40) + 40;
+		ctx.fillStyle = CLIMB_FILL;
+		ctx.beginPath();
+		ctx.roundRect(L.climb.x, L.climb.y - L.climb.size - 6, w, L.climb.size + 28, 999);
+		ctx.fill();
+		drawText(ctx, label, { ...L.climb, x: L.climb.x + 20, y: L.climb.y + 4, maxWidth: w - 40 });
+	}
+
+	drawText(ctx, input.text.ofTotal, L.distanceLabel, { weight: 600, color: 'rgba(255,255,255,0.85)' });
+	drawText(ctx, input.text.distanceAt(frame.dM), L.distance, { weight: 900 });
+	if (here.ele != null) drawText(ctx, input.text.elevationAt(here.ele), L.elevation, { align: 'right', weight: 800 });
+
+	const S = L.strip;
+	ctx.save();
+	ctx.translate(S.x, S.y);
+	ctx.fillStyle = 'rgba(219, 39, 119, 0.3)';
+	for (const c of scene.strip.climbs) ctx.fillRect(c.x0, 0, Math.max(c.x1 - c.x0, 2), S.h);
+	if (scene.strip.area) {
+		ctx.fillStyle = 'rgba(255,255,255,0.22)';
+		ctx.fill(scene.strip.area);
+	}
+	if (scene.strip.line) {
+		ctx.strokeStyle = INK;
+		ctx.lineWidth = 4;
+		ctx.lineJoin = 'round';
+		ctx.stroke(scene.strip.line);
+	}
+	const cx = stripX(frame.dM, input.path.totalM, S.w);
+	ctx.strokeStyle = BRAND;
+	ctx.lineWidth = 5;
+	ctx.beginPath();
+	ctx.moveTo(cx, 0);
+	ctx.lineTo(cx, S.h);
+	ctx.stroke();
+	ctx.restore();
+
+	drawAttribution(ctx, scene.attribution, L.attribution);
+
+	if (frame.phase === 'end') {
+		ctx.globalAlpha = endCardAlpha(frame.progress);
+		ctx.fillStyle = END_BG;
+		ctx.fillRect(0, 0, W, H);
+		const E = L.end;
+		if (scene.mark) ctx.drawImage(scene.mark, E.mark.x, E.mark.y, E.mark.size, E.mark.size);
+		drawText(ctx, 'Threkir', E.wordmark, { align: 'center', weight: 900 });
+		input.text.endLines.forEach((line, i) => {
+			const slot = E.lines[i];
+			if (slot) drawText(ctx, line, slot, { align: 'center', weight: i === 0 ? 800 : 600 });
+		});
+		drawText(ctx, input.text.url, E.url, { align: 'center', weight: 700, color: BRAND });
+		// The credits stay on the end card too: it is still a frame of the map.
+		drawAttribution(ctx, scene.attribution, L.attribution);
+		ctx.globalAlpha = 1;
+	}
+}
+
+interface FrameSink {
+	push(canvas: HTMLCanvasElement, index: number): Promise<void>;
+	finish(): Promise<Blob>;
+	abort(): void;
+}
+
+function webcodecsSink(plan: Extract<VideoEncoderPlan, { kind: 'webcodecs' }>, fps: number): FrameSink {
+	const samples: Mp4Sample[] = [];
+	let avcC: Uint8Array | null = null;
+	let failure: unknown = null;
+	const encoder = new VideoEncoder({
+		output: (chunk, meta) => {
+			const desc = meta?.decoderConfig?.description;
+			if (desc && !avcC) {
+				avcC = ArrayBuffer.isView(desc)
+					? new Uint8Array(desc.buffer.slice(desc.byteOffset, desc.byteOffset + desc.byteLength))
+					: new Uint8Array(desc.slice(0));
+			}
+			const data = new Uint8Array(chunk.byteLength);
+			chunk.copyTo(data);
+			samples.push({
+				data,
+				timestampUs: chunk.timestamp,
+				durationUs: chunk.duration ?? frameDurationUs(samples.length, fps),
+				keyframe: chunk.type === 'key',
+			});
+		},
+		error: (e) => {
+			failure = e;
+		},
+	});
+	encoder.configure(webcodecsConfig(plan.codec, VIDEO_WIDTH, VIDEO_HEIGHT, fps));
+	return {
+		async push(canvas, index) {
+			if (failure) throw failure;
+			while (encoder.encodeQueueSize > MAX_ENCODE_QUEUE) {
+				await new Promise((r) => setTimeout(r, 10));
+			}
+			const frame = new VideoFrame(canvas, {
+				timestamp: frameTimestampUs(index, fps),
+				duration: frameDurationUs(index, fps),
+			});
+			try {
+				encoder.encode(frame, { keyFrame: isKeyFrame(index, fps) });
+			} finally {
+				frame.close();
+			}
+		},
+		async finish() {
+			await encoder.flush();
+			encoder.close();
+			if (failure) throw failure;
+			if (!avcC) throw new Error('the encoder produced no H.264 configuration');
+			const bytes = muxMp4({ width: VIDEO_WIDTH, height: VIDEO_HEIGHT, avcC, samples });
+			return new Blob([bytes as BlobPart], { type: plan.mimeType });
+		},
+		abort() {
+			if (encoder.state !== 'closed') encoder.close();
+		},
+	};
+}
+
+/// `MediaRecorder` stamps frames by wall clock, so each frame is handed over
+/// no earlier than its own time. A frame that takes longer than its slot to
+/// render stretches the recording there; the WebCodecs path has no such
+/// limit, which is why it is preferred.
+function recorderSink(
+	plan: Extract<VideoEncoderPlan, { kind: 'mediarecorder' }>,
+	canvas: HTMLCanvasElement,
+	fps: number,
+): FrameSink {
+	const stream = canvas.captureStream(0);
+	const track = stream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack;
+	const recorder = new MediaRecorder(stream, { mimeType: plan.mimeType, videoBitsPerSecond: VIDEO_BITRATE });
+	const parts: Blob[] = [];
+	recorder.ondataavailable = (e) => {
+		if (e.data.size > 0) parts.push(e.data);
+	};
+	recorder.start();
+	const t0 = performance.now();
+	return {
+		async push(_canvas, index) {
+			const due = t0 + frameTimestampUs(index, fps) / 1000;
+			const wait = due - performance.now();
+			if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+			track.requestFrame();
+		},
+		finish() {
+			return new Promise((resolve, reject) => {
+				recorder.onstop = () => resolve(new Blob(parts, { type: plan.mimeType }));
+				recorder.onerror = (e) => reject((e as Event & { error?: unknown }).error ?? new Error('recorder failed'));
+				setTimeout(() => recorder.stop(), frameDurationUs(0, fps) / 1000);
+			});
+		},
+		abort() {
+			if (recorder.state !== 'inactive') recorder.stop();
+			track.stop();
+		},
+	};
+}
+
+export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob> {
+	const { path, signal } = input;
+	if (signal.aborted) throw abortError();
+	const t = videoTimeline(path.totalM);
+	const layout = videoOverlayLayout(VIDEO_WIDTH, VIDEO_HEIGHT);
+	const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+	const darkBasemap = basemapIsDarkFromEnv(input.maptilerKey, prefersDark);
+
+	const host = document.createElement('div');
+	host.setAttribute('aria-hidden', 'true');
+	host.style.cssText = `position:fixed;left:0;top:0;width:${VIDEO_WIDTH}px;height:${VIDEO_HEIGHT}px;transform:translateX(-300vw);pointer-events:none;`;
+	document.body.appendChild(host);
+
+	const out = document.createElement('canvas');
+	out.width = VIDEO_WIDTH;
+	out.height = VIDEO_HEIGHT;
+	const ctx = out.getContext('2d');
+	let map: maplibregl.Map | null = null;
+	let sink: FrameSink | null = null;
+	try {
+		if (!ctx) throw new Error('no 2D canvas');
+		const first = cameraAt(path, 0);
+		map = new maplibregl.Map({
+			container: host,
+			style: mapStyleUrlFromEnv(input.maptilerKey, prefersDark),
+			center: first.center,
+			bearing: first.bearing,
+			pitch: FLYOVER_PITCH,
+			zoom: FLIGHT_ZOOM,
+			pixelRatio: 1,
+			interactive: false,
+			attributionControl: false,
+			fadeDuration: 0,
+			maxPitch: 85,
+			canvasContextAttributes: { preserveDrawingBuffer: true, antialias: true },
+		});
+		const m = map;
+		const [mark] = await Promise.all([loadImage('/logo-mark.svg'), waitForLoad(m, signal)]);
+		if (input.terrain) {
+			try {
+				m.addSource('course-terrain', { type: 'raster-dem', ...input.terrain });
+				m.setTerrain({ source: 'course-terrain', exaggeration: TERRAIN_EXAGGERATION });
+			} catch (e) {
+				console.warn('flyover video: terrain unavailable', e);
+			}
+		}
+		addCourseLayers(m, {
+			path,
+			climbs: input.climbs,
+			markers: distanceMarkers(path, input.unit),
+			darkBasemap,
+		});
+
+		const styleCredits = Object.values(m.getStyle().sources ?? {}).map(
+			(s) => (s as { attribution?: string }).attribution,
+		);
+		const geom = stripGeometry(input.strip, input.climbs, path.totalM, layout.strip.w, layout.strip.h);
+		const scene: Scene = {
+			input,
+			darkBasemap,
+			layout,
+			attribution: videoAttribution([...styleCredits, input.terrain?.attribution]),
+			mark,
+			strip: {
+				line: geom.line ? new Path2D(geom.line) : null,
+				area: geom.area ? new Path2D(geom.area) : null,
+				climbs: geom.climbs,
+			},
+		};
+
+		sink = input.plan.kind === 'webcodecs' ? webcodecsSink(input.plan, t.fps) : recorderSink(input.plan, out, t.fps);
+		const mapCanvas = m.getCanvas();
+		for (let i = 0; i < t.totalFrames; i++) {
+			if (signal.aborted) throw abortError();
+			const frame = videoFrame(t, i, path.totalM);
+			if (frame.phase === 'flight') {
+				const pose = cameraAt(path, frame.dM);
+				await settle(m, () =>
+					m.jumpTo({ center: pose.center, bearing: pose.bearing, pitch: FLYOVER_PITCH, zoom: FLIGHT_ZOOM }),
+				);
+			}
+			composeFrame(ctx, scene, mapCanvas, m, frame);
+			await sink.push(out, i);
+			input.onprogress((i + 1) / t.totalFrames);
+		}
+		const blob = await sink.finish();
+		sink = null;
+		return blob;
+	} finally {
+		sink?.abort();
+		map?.remove();
+		host.remove();
+	}
+}
+
+/// The OS share sheet when it takes files (phones, Safari), a download
+/// otherwise. Must run inside a fresh user gesture: a share sheet opened at
+/// the end of a minute-long render has long lost the one that started it.
+export async function deliverVideo(blob: Blob, fileName: string, title: string): Promise<'shared' | 'downloaded'> {
+	const file = new File([blob], fileName, { type: blob.type });
+	if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [file] })) {
+		await navigator.share({ files: [file], title });
+		return 'shared';
+	}
+	const url = URL.createObjectURL(blob);
+	try {
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = fileName;
+		a.click();
+	} finally {
+		setTimeout(() => URL.revokeObjectURL(url), 60_000);
+	}
+	return 'downloaded';
+}

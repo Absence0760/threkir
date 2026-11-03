@@ -190,8 +190,9 @@ answer; flag it as an open question for the user if they want the cheap path.
   parity-pair list in the root `CLAUDE.md`** (it is currently missing) and run
   the `shared-library-syncer` agent after any edit.
 - The share-image builders (`recap_share_image.ts`, `og_recap_image.ts`) are
-  **web-only** (the mobile share path renders natively / links to the web page) —
-  do not create Dart twins for those; note that explicitly.
+  **web-only** — do not create Dart twins for those. Their geometry is shared
+  instead: the recap image's square and 9:16 layouts are the
+  `recap_card_layout` pair (decisions § 2260), which the mobile painter reads.
 
 ## Tests (ship in the same commit as each piece)
 - **Playwright (web):**

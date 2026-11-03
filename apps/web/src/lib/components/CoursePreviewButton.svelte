@@ -11,12 +11,22 @@
 		climbNames = [],
 		noiseBandM,
 		replay = false,
+		videoSource,
+		videoSummary,
+		autoOpen = false,
 	}: {
 		points: PathPoint[];
 		title: string;
 		climbNames?: { dM: number; name: string }[];
 		noiseBandM?: number;
 		replay?: boolean;
+		/// Passed straight to the dialog: the clipped line its video export
+		/// records. Omitted, the dialog offers no export.
+		videoSource?: () => Promise<{ points: PathPoint[]; noiseBandM?: number } | null>;
+		videoSummary?: string;
+		/// Open the dialog once on mount: the phone's Video share style lands
+		/// here with `?video=1` (decisions § 2259).
+		autoOpen?: boolean;
 	} = $props();
 
 	// The dialog carries the 3D map engine, so it loads on the first click
@@ -28,6 +38,14 @@
 	let loading = $state(false);
 
 	const available = $derived(hasPreviewableCourse(points));
+
+	let autoOpened = false;
+	$effect(() => {
+		if (autoOpen && available && !autoOpened) {
+			autoOpened = true;
+			void openPreview();
+		}
+	});
 
 	async function openPreview() {
 		if (loading) return;
@@ -66,6 +84,8 @@
 			{title}
 			{climbNames}
 			{noiseBandM}
+			{videoSource}
+			{videoSummary}
 			unit={getUnit()}
 			onclose={() => (open = false)}
 		/>

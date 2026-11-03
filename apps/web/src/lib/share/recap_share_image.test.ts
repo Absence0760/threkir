@@ -82,3 +82,19 @@ test('escapes nothing dangerous but stays valid with zeroed data', () => {
 	assert.ok(svg.includes('across 0 runs'));
 	assert.ok(svg.includes('0 days'));
 });
+
+test('the square card is the default and draws no footer', () => {
+	const svg = buildRecapShareSvg(recap(), 'km');
+	assert.equal(svg, buildRecapShareSvg(recap(), 'km', undefined, { aspect: 'square' }));
+	assert.ok(!svg.includes('threkir.com'));
+});
+
+test('a story is 1080x1920 with the same stats and the site address', () => {
+	const svg = buildRecapShareSvg(recap(), 'km', undefined, { aspect: 'story' });
+	assert.ok(svg.includes('viewBox="0 0 1080 1920"'));
+	assert.ok(svg.includes('<rect width="1080" height="1920"'));
+	assert.ok(svg.includes('MY 2026 IN RUNNING'));
+	assert.ok(svg.includes('1234 km'));
+	assert.ok(svg.includes('9 / 12'));
+	assert.ok(svg.includes('>threkir.com</text>'));
+});

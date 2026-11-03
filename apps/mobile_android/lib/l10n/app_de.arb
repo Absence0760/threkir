@@ -5384,5 +5384,22 @@
   "prefsDisclosureFull": "Alles",
   "prefsDisclosureHint": "Wie viel die App zeigt, bevor du nach mehr fragst. Automatisch liest dein gesetztes Ziel und die Anzahl deiner aufgezeichneten Läufe und wählt heute {level}. Es wird nie etwas dauerhaft ausgeblendet — ein zugeklappter Abschnitt ist nur einen Tipp vom Öffnen entfernt.",
   "dashboardTrainingLoadSection": "Trainingsbelastung",
-  "dashboardTrainingLoadSectionHint": "Deine Werte zu Fitness, Ermüdung und Form. Eingeklappt, weil du nur das Wichtigste wolltest — öffne es jederzeit, oder wähle unter Einstellungen → Voreinstellungen „Alles“."
+  "dashboardTrainingLoadSectionHint": "Deine Werte zu Fitness, Ermüdung und Form. Eingeklappt, weil du nur das Wichtigste wolltest — öffne es jederzeit, oder wähle unter Einstellungen → Voreinstellungen „Alles“.",
+  "recapCardKicker": "Mein {period} im Laufen",
+  "recapCardAcrossRuns": "{count, plural, =1{in 1 Lauf} other{in {count} Läufen}}",
+  "recapCardStreakDays": "{days, plural, =1{1 Tag} other{{days} Tage}}",
+  "recapCardOnFoot": "Unterwegs",
+  "recapCardClimbed": "Aufstieg",
+  "recapCardActiveMonths": "Aktive Monate",
+  "recapShareSheetTitle": "Rückblick teilen",
+  "recapShareAspectSquare": "Quadrat",
+  "recapShareAspectStory": "Story",
+  "recapSharePreviewLabel": "Vorschau des Rückblick-Bilds",
+  "recapShareImage": "Bild teilen",
+  "recapShareAsText": "Als Text teilen",
+  "recapShareImageError": "Das Rückblick-Bild konnte nicht erstellt werden. Versuch es noch einmal.",
+  "shareCardStyleVideo": "Video",
+  "shareCardVideoBody": "Mach aus diesem Lauf ein vertikales 3D-Flyover-Video. Es entsteht in deinem Browser auf threkir.com; dort kannst du es teilen oder speichern.",
+  "shareCardVideoOpen": "Video-Export öffnen",
+  "shareCardVideoError": "Der Browser konnte nicht geöffnet werden. Versuch es noch einmal."
 }

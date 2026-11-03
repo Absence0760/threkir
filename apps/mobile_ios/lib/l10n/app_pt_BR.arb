@@ -5384,5 +5384,22 @@
   "prefsDisclosureFull": "Tudo",
   "prefsDisclosureHint": "Quanto o app abre antes de você pedir mais. Automático lê a meta que você definiu e quantas corridas já registrou, e hoje escolhe {level}. Nada fica escondido para sempre: uma seção recolhida abre com um toque.",
   "dashboardTrainingLoadSection": "Carga de treino",
-  "dashboardTrainingLoadSectionHint": "Seus números de condicionamento, fadiga e forma. Está recolhido porque você pediu só o básico: abra quando quiser, ou peça Tudo em Configurações → Preferências."
+  "dashboardTrainingLoadSectionHint": "Seus números de condicionamento, fadiga e forma. Está recolhido porque você pediu só o básico: abra quando quiser, ou peça Tudo em Configurações → Preferências.",
+  "recapCardKicker": "Meu {period} na corrida",
+  "recapCardAcrossRuns": "{count, plural, =1{em 1 corrida} other{em {count} corridas}}",
+  "recapCardStreakDays": "{days, plural, =1{1 dia} other{{days} dias}}",
+  "recapCardOnFoot": "Em movimento",
+  "recapCardClimbed": "Subida",
+  "recapCardActiveMonths": "Meses ativos",
+  "recapShareSheetTitle": "Compartilhe sua retrospectiva",
+  "recapShareAspectSquare": "Quadrado",
+  "recapShareAspectStory": "Story",
+  "recapSharePreviewLabel": "Prévia da imagem da retrospectiva",
+  "recapShareImage": "Compartilhar imagem",
+  "recapShareAsText": "Compartilhar como texto",
+  "recapShareImageError": "Não foi possível criar a imagem da retrospectiva. Tente de novo.",
+  "shareCardStyleVideo": "Vídeo",
+  "shareCardVideoBody": "Transforme esta corrida em um vídeo vertical de sobrevoo em 3D. Ele é criado no seu navegador em threkir.com; compartilhe ou salve por lá.",
+  "shareCardVideoOpen": "Abrir exportação de vídeo",
+  "shareCardVideoError": "Não foi possível abrir o navegador. Tente de novo."
 }

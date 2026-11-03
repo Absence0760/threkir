@@ -327,6 +327,10 @@ The foundation under both the generator and any hand-built plan: a data model fo
 
 ✓ **Shipped on web** (routes, races and run replay). The course on 3D terrain with a camera flying it, km/mi markers, a synced elevation strip and named climbs, each stated as net height to crest; "Preview in 3D" on `/routes/[id]` and on `/races/[id]` when the race's course is a public route, "Replay in 3D" on `/runs/[id]`. Free. Still open: a mobile equivalent. See [features § 3D course preview](features.md#3d-course-preview).
 
+✓ **Flyover video export (9:16)** (#1273 item 1, decisions § 2259): **Export video** in the dialog renders and encodes a vertical reel in the browser; the phone's run share sheet gains a **Video** style that opens it on the web. Pre-deploy: the operator confirms MapTiler's plan terms before `PUBLIC_FLYOVER_VIDEO_MAPTILER_ENABLED` is set; until then the export uses the keyless OSM style and AWS Terrain Tiles.
+
+✓ **Vertical recap** (#1273 item 8, decisions § 2260): the recap share image as a square or a 9:16 story on web and mobile, one layout pair. Still open: the recap slideshow video.
+
 ### Route art (#1273 item 6)
 
 ✓ **Shipped on web and mobile.** Draw a shape on the route builder map, have it matched to real roads and paths, and see how close the match is to the drawing; a match under 60 % is refused rather than saved as a different shape. Free. Saved art reaches the watches like any route. See [features § Full-screen route builder](features.md#full-screen-route-builder-web) and [decisions § 2263](../architecture/decisions.md).

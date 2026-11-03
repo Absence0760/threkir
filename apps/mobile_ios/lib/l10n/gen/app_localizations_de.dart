@@ -19240,4 +19240,76 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get dashboardTrainingLoadSectionHint =>
       'Deine Werte zu Fitness, Ermüdung und Form. Eingeklappt, weil du nur das Wichtigste wolltest — öffne es jederzeit, oder wähle unter Einstellungen → Voreinstellungen „Alles“.';
+
+  @override
+  String recapCardKicker(String period) {
+    return 'Mein $period im Laufen';
+  }
+
+  @override
+  String recapCardAcrossRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'in $count Läufen',
+      one: 'in 1 Lauf',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recapCardStreakDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days Tage',
+      one: '1 Tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recapCardOnFoot => 'Unterwegs';
+
+  @override
+  String get recapCardClimbed => 'Aufstieg';
+
+  @override
+  String get recapCardActiveMonths => 'Aktive Monate';
+
+  @override
+  String get recapShareSheetTitle => 'Rückblick teilen';
+
+  @override
+  String get recapShareAspectSquare => 'Quadrat';
+
+  @override
+  String get recapShareAspectStory => 'Story';
+
+  @override
+  String get recapSharePreviewLabel => 'Vorschau des Rückblick-Bilds';
+
+  @override
+  String get recapShareImage => 'Bild teilen';
+
+  @override
+  String get recapShareAsText => 'Als Text teilen';
+
+  @override
+  String get recapShareImageError =>
+      'Das Rückblick-Bild konnte nicht erstellt werden. Versuch es noch einmal.';
+
+  @override
+  String get shareCardStyleVideo => 'Video';
+
+  @override
+  String get shareCardVideoBody =>
+      'Mach aus diesem Lauf ein vertikales 3D-Flyover-Video. Es entsteht in deinem Browser auf threkir.com; dort kannst du es teilen oder speichern.';
+
+  @override
+  String get shareCardVideoOpen => 'Video-Export öffnen';
+
+  @override
+  String get shareCardVideoError =>
+      'Der Browser konnte nicht geöffnet werden. Versuch es noch einmal.';
 }

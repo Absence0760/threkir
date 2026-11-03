@@ -19265,4 +19265,76 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get dashboardTrainingLoadSectionHint =>
       'Vos chiffres de forme, de fatigue et de fraîcheur. Replié parce que vous avez demandé l’essentiel : ouvrez-le quand vous voulez, ou choisissez Tout dans Réglages → Préférences.';
+
+  @override
+  String recapCardKicker(String period) {
+    return 'Mon $period en course';
+  }
+
+  @override
+  String recapCardAcrossRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'en $count courses',
+      one: 'en 1 course',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recapCardStreakDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days jours',
+      one: '1 jour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recapCardOnFoot => 'En mouvement';
+
+  @override
+  String get recapCardClimbed => 'Dénivelé';
+
+  @override
+  String get recapCardActiveMonths => 'Mois actifs';
+
+  @override
+  String get recapShareSheetTitle => 'Partager votre bilan';
+
+  @override
+  String get recapShareAspectSquare => 'Carré';
+
+  @override
+  String get recapShareAspectStory => 'Story';
+
+  @override
+  String get recapSharePreviewLabel => 'Aperçu de l\'image du bilan';
+
+  @override
+  String get recapShareImage => 'Partager l\'image';
+
+  @override
+  String get recapShareAsText => 'Partager en texte';
+
+  @override
+  String get recapShareImageError =>
+      'Impossible de créer l\'image du bilan. Réessayez.';
+
+  @override
+  String get shareCardStyleVideo => 'Vidéo';
+
+  @override
+  String get shareCardVideoBody =>
+      'Transformez cette course en vidéo verticale de survol 3D. Elle est créée dans votre navigateur sur threkir.com ; partagez-la ou enregistrez-la depuis là.';
+
+  @override
+  String get shareCardVideoOpen => 'Ouvrir l\'export vidéo';
+
+  @override
+  String get shareCardVideoError =>
+      'Impossible d\'ouvrir le navigateur. Réessayez.';
 }

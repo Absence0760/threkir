@@ -22,6 +22,7 @@ export const variables = defineEnvVars({
 	PUBLIC_CYCLE_PLANS_ENABLED: { public: true, schema: optional },
 	PUBLIC_DONATE_URL: { public: true, schema: optional },
 	PUBLIC_EXPORT_HUB_URL: { public: true, schema: optional },
+	PUBLIC_FLYOVER_VIDEO_MAPTILER_ENABLED: { public: true, schema: optional },
 	PUBLIC_FUNDRAISING_ENABLED: { public: true, schema: optional },
 	PUBLIC_GOOGLE_AUTH_ENABLED: { public: true, schema: optional },
 	PUBLIC_LIVE_HUB_URL: { public: true, schema: optional },

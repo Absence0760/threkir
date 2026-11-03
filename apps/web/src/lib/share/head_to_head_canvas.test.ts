@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { MeasureText } from './run_sticker_canvas';
-import { HEAD_TO_HEAD_CANVAS, layoutHeadToHead, type HeadToHeadCardInput, type HeadToHeadOp } from './head_to_head_canvas';
+import type { HeadToHeadRow } from '../social/head_to_head';
+import { HEAD_TO_HEAD_CANVAS, headToHeadPreviewKey, layoutHeadToHead, type HeadToHeadCardInput, type HeadToHeadOp } from './head_to_head_canvas';
 
 const measure: MeasureText = (text, font) => text.length * (font.size * 0.6 + font.letterSpacing);
 
@@ -64,5 +65,30 @@ test('everything sits inside the canvas', () => {
 	for (const op of layoutHeadToHead(input(), measure)) {
 		assert.ok(op.x >= 0 && op.x <= HEAD_TO_HEAD_CANVAS.w);
 		assert.ok(op.y >= 0 && op.y <= HEAD_TO_HEAD_CANVAS.h);
+	}
+});
+
+test('the preview key changes when a reload brings new times for the same friend', () => {
+	const row: HeadToHeadRow = {
+		friendId: 'f1',
+		friendDisplayName: 'Sam',
+		friendHandle: 'sam',
+		friendAvatarUrl: null,
+		targetName: 'River Loop',
+		myRunId: 'r1',
+		mySeconds: 1900,
+		friendRunId: 'r2',
+		friendSeconds: 1950,
+	};
+	const key = headToHeadPreviewKey(row);
+	assert.equal(headToHeadPreviewKey({ ...row, friendAvatarUrl: 'https://x/a.png', myRunId: 'r9' }), key);
+	for (const over of [
+		{ friendId: 'f2' },
+		{ mySeconds: 1880 },
+		{ friendSeconds: 1940 },
+		{ targetName: 'Hill Loop' },
+		{ friendHandle: 'sammy' },
+	]) {
+		assert.notEqual(headToHeadPreviewKey({ ...row, ...over }), key, JSON.stringify(over));
 	}
 });

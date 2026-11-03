@@ -16,7 +16,7 @@ import {
 	type FontSpec,
 	type MeasureText,
 } from './run_sticker_canvas';
-import { formatHeadToHeadTime, headToHeadOutcome } from '../social/head_to_head';
+import { formatHeadToHeadTime, headToHeadOutcome, type HeadToHeadRow } from '../social/head_to_head';
 
 export const HEAD_TO_HEAD_CANVAS = { w: 360, h: 450 } as const;
 
@@ -135,6 +135,12 @@ const INKS: Record<HeadToHeadInk, string> = {
 };
 
 /// The card on its dark ground, SHARE_EXPORT_WIDTH_PX across.
+/// What the painted card depends on. A reload that brings the same friend
+/// back with a new best time must repaint, so the friend alone is not a key.
+export function headToHeadPreviewKey(r: HeadToHeadRow): string {
+	return JSON.stringify([r.friendId, r.mySeconds, r.friendSeconds, r.targetName, r.friendHandle, r.friendDisplayName]);
+}
+
 export function paintHeadToHead(input: HeadToHeadCardInput): HTMLCanvasElement {
 	const { w, h } = HEAD_TO_HEAD_CANVAS;
 	const k = SHARE_EXPORT_WIDTH_PX / w;

@@ -8,7 +8,7 @@
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { fetchHeadToHead } from '#lib/core/data.ts';
 	import { headToHeadName, type HeadToHeadKind, type HeadToHeadRow } from '#lib/social/head_to_head.ts';
-	import { paintHeadToHead } from '#lib/share/head_to_head_canvas.ts';
+	import { headToHeadPreviewKey, paintHeadToHead } from '#lib/share/head_to_head_canvas.ts';
 	import { canvasToPng, loadShareFonts } from '#lib/share/run_sticker_canvas.ts';
 
 	interface Props {
@@ -67,7 +67,7 @@
 	$effect(() => {
 		const r = selected;
 		if (!r) return;
-		const key = r.friendId;
+		const key = headToHeadPreviewKey(r);
 		if (preview?.key === key) return;
 		const seq = ++renderSeq;
 		rendering = true;
@@ -106,7 +106,7 @@
 			});
 	});
 
-	let ready = $derived(selected !== null && preview?.key === selected.friendId && !rendering && !busy);
+	let ready = $derived(selected !== null && preview?.key === headToHeadPreviewKey(selected) && !rendering && !busy);
 	let fileName = $derived(`threkir-head-to-head-${kind}-${targetId}.png`);
 
 	async function deliver(mode: 'share' | 'download') {

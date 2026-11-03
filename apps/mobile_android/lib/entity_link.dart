@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 
+import 'cold_start_link_echo.dart';
 import 'push_target.dart' show PushTarget, PushTargetKind, planTargetFromSegments;
 import 'share_ref.dart';
 
@@ -136,44 +137,21 @@ class EntityLinkService {
 
   StreamSubscription<Uri>? _sub;
 
-  // The plugin delivers the cold-start link twice, once from
-  // [processInitial] and once as the stream's first event, in either order.
-  // Exactly that one echo is dropped. Deduplicating every repeat instead
-  // would swallow a second tap on the same widget or link, which is a real
-  // request to open it again.
-  bool _streamStarted = false;
-  Uri? _firstStreamLink;
-  Uri? _initialEcho;
+  final ColdStartLinkEcho _echo = ColdStartLinkEcho();
 
   void start() {
     _sub ??= _links.listen(
-      _onStreamLink,
+      (uri) {
+        if (_echo.acceptStream(uri)) handle(uri);
+      },
       onError: (Object e) => debugPrint('entity link stream error: $e'),
     );
-  }
-
-  void _onStreamLink(Uri uri) {
-    if (!_streamStarted) {
-      _streamStarted = true;
-      if (uri == _initialEcho) {
-        _initialEcho = null;
-        return;
-      }
-      _firstStreamLink = uri;
-    }
-    handle(uri);
   }
 
   Future<void> processInitial() async {
     try {
       final uri = await _initialLink();
-      if (uri == null) return;
-      if (_streamStarted) {
-        if (uri == _firstStreamLink) return;
-      } else {
-        _initialEcho = uri;
-      }
-      handle(uri);
+      if (uri != null && _echo.acceptInitial(uri)) handle(uri);
     } catch (e) {
       debugPrint('entity initial link failed: $e');
     }

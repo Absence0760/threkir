@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 
+import 'cold_start_link_echo.dart';
 import 'share_ref.dart';
 
 /// A challenge link the OS opened the app with (decisions § 2261): a creator's
@@ -106,11 +107,13 @@ class ChallengeLinkService {
   final Stream<Uri> _links;
   final Future<Uri?> Function() _initialLink;
   StreamSubscription<Uri>? _sub;
-  ChallengeLink? _last;
+  final ColdStartLinkEcho _echo = ColdStartLinkEcho();
 
   void start() {
     _sub ??= _links.listen(
-      handle,
+      (uri) {
+        if (_echo.acceptStream(uri)) handle(uri);
+      },
       onError: (Object e) => debugPrint('challenge link stream error: $e'),
     );
   }
@@ -118,19 +121,15 @@ class ChallengeLinkService {
   Future<void> processInitial() async {
     try {
       final uri = await _initialLink();
-      if (uri != null) handle(uri);
+      if (uri != null && _echo.acceptInitial(uri)) handle(uri);
     } catch (e) {
       debugPrint('challenge initial link failed: $e');
     }
   }
 
-  /// The plugin can deliver the cold-start link both from [processInitial]
-  /// and on the stream, so a link already handed off is not handed off twice.
   void handle(Uri uri) {
     final link = parseChallengeLink(uri);
-    if (link == null || link == _last) return;
-    _last = link;
-    pendingChallengeLink.value = link;
+    if (link != null) pendingChallengeLink.value = link;
   }
 
   Future<void> dispose() async {

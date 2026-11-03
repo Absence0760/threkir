@@ -91,6 +91,29 @@ void main() {
       await links.close();
     });
 
+    test('the same link opened again after it was consumed opens again',
+        () async {
+      final links = StreamController<Uri>();
+      final uri = Uri.parse('https://threkir.com/challenges/join/$token');
+      final service = ChallengeLinkService(
+        links: links.stream,
+        initialLink: () async => uri,
+      )..start();
+      await service.processInitial();
+      pendingChallengeLink.value = null;
+      links.add(uri);
+      await Future<void>.delayed(Duration.zero);
+      expect(pendingChallengeLink.value, isNull);
+      for (var i = 0; i < 2; i++) {
+        links.add(uri);
+        await Future<void>.delayed(Duration.zero);
+        expect(pendingChallengeLink.value, const ChallengeInviteLink(token));
+        pendingChallengeLink.value = null;
+      }
+      await service.dispose();
+      await links.close();
+    });
+
     test('ignores a link that is not a challenge', () async {
       final service = ChallengeLinkService(
         links: const Stream.empty(),

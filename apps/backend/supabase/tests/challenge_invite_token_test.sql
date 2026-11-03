@@ -1,0 +1,161 @@
+-- Challenge invite links (migration 20271103000001, decisions § 2261).
+--
+-- Pins: the token is unreadable by any client role; only the creator (or a
+-- club admin) can mint or rotate it; the preview is anon-readable and keeps the
+-- creator's private-profile name null; joining needs a session, is idempotent,
+-- makes the private challenge visible to the joiner, keeps the leaderboard
+-- name rule, returns NULL for an unknown or rotated token, is rate-limited, and
+-- every path closes with the challenge_invite_links gate.
+
+begin;
+
+select plan(24);
+
+insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
+values
+  ('00000000-0000-0000-0000-0000c1000001', 'authenticated', 'authenticated', 'creator@ci.local', '', now(), now()),
+  ('00000000-0000-0000-0000-0000c1000002', 'authenticated', 'authenticated', 'joiner@ci.local', '', now(), now()),
+  ('00000000-0000-0000-0000-0000c1000003', 'authenticated', 'authenticated', 'stranger@ci.local', '', now(), now());
+
+insert into user_profiles (id, display_name)
+values
+  ('00000000-0000-0000-0000-0000c1000001', 'Creator Cass'),
+  ('00000000-0000-0000-0000-0000c1000002', 'Joiner Jo'),
+  ('00000000-0000-0000-0000-0000c1000003', 'Stranger Sam')
+on conflict (id) do update set display_name = excluded.display_name;
+
+update user_profiles set profile_private = true
+ where id = '00000000-0000-0000-0000-0000c1000001';
+
+insert into private.feature_flags (name, enabled) values ('challenge_invite_links', true)
+  on conflict (name) do update set enabled = true;
+
+insert into challenges (id, creator_id, title, metric, scope, goal_value, starts_at, ends_at, is_public)
+values
+  ('eeeeeeee-eeee-eeee-eeee-eeeec1000001', '00000000-0000-0000-0000-0000c1000001',
+   'Run 50 km with me', 'distance', 'individual', 50000,
+   now() - interval '1 day', now() + interval '29 days', false),
+  ('eeeeeeee-eeee-eeee-eeee-eeeec1000002', '00000000-0000-0000-0000-0000c1000001',
+   'Club battle', 'distance', 'club_vs_club', null,
+   now() - interval '1 day', now() + interval '29 days', true);
+
+insert into challenge_participants (challenge_id, user_id)
+values ('eeeeeeee-eeee-eeee-eeee-eeeec1000001', '00000000-0000-0000-0000-0000c1000001');
+
+-- ── The token never reaches a client role ──
+set local role anon;
+select throws_ok(
+  $$ select token from private.challenge_invite_tokens $$,
+  '42501', null, 'anon cannot read the invite token table');
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000c1000001","role":"authenticated"}';
+select throws_ok(
+  $$ select token from private.challenge_invite_tokens $$,
+  '42501', null, 'even the creator cannot read the invite token table directly');
+
+-- ── Minting ──
+select isnt(
+  get_challenge_invite_token('eeeeeeee-eeee-eeee-eeee-eeeec1000001'), null,
+  'the creator mints a token');
+reset role;
+create temporary table tok as
+  select t.token from private.challenge_invite_tokens t
+   where t.challenge_id = 'eeeeeeee-eeee-eeee-eeee-eeeec1000001';
+grant select on tok to anon, authenticated;
+set local role authenticated;
+
+select is(
+  get_challenge_invite_token('eeeeeeee-eeee-eeee-eeee-eeeec1000001'),
+  (select token from tok),
+  'a second call returns the same token');
+select is(
+  get_challenge_invite_token('eeeeeeee-eeee-eeee-eeee-eeeec1000002'), null,
+  'a club_vs_club challenge gets no link');
+
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000c1000003","role":"authenticated"}';
+select is(
+  get_challenge_invite_token('eeeeeeee-eeee-eeee-eeee-eeeec1000001'), null,
+  'a stranger cannot mint or read the token');
+select is(
+  rotate_challenge_invite_token('eeeeeeee-eeee-eeee-eeee-eeeec1000001'), null,
+  'a stranger cannot rotate the token');
+
+-- ── Preview ──
+set local role anon;
+set local "request.jwt.claims" = '{"role":"anon"}';
+select is(
+  (select title from challenge_invite_preview((select token from tok))),
+  'Run 50 km with me', 'anon previews the challenge the token names');
+select is(
+  (select creator_name from challenge_invite_preview((select token from tok))),
+  null, 'a private creator''s name stays null in the preview');
+select is(
+  (select count(*)::int from challenge_invite_preview('not-a-token')),
+  0, 'an unknown token previews nothing');
+select throws_ok(
+  $$ select join_challenge_by_token((select token from tok)) $$,
+  '42501', null, 'anon cannot join');
+
+-- ── Joining ──
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000c1000002","role":"authenticated"}';
+select is(
+  (select count(*)::int from challenges where id = 'eeeeeeee-eeee-eeee-eeee-eeeec1000001'),
+  0, 'before joining, the private challenge is invisible to the joiner');
+select is(
+  join_challenge_by_token((select token from tok)),
+  'eeeeeeee-eeee-eeee-eeee-eeeec1000001'::uuid, 'the joiner joins by token');
+select is(
+  join_challenge_by_token((select token from tok)),
+  'eeeeeeee-eeee-eeee-eeee-eeeec1000001'::uuid, 'joining again is a no-op, not an error');
+select is(
+  (select count(*)::int from challenges where id = 'eeeeeeee-eeee-eeee-eeee-eeeec1000001'),
+  1, 'after joining, the challenge is visible');
+select is(
+  (select joined from challenge_invite_preview((select token from tok))),
+  true, 'the preview reports the caller as joined');
+select is(
+  (select display_name from challenge_leaderboard('eeeeeeee-eeee-eeee-eeee-eeeec1000001')
+    where user_id = '00000000-0000-0000-0000-0000c1000001'),
+  null, 'the leaderboard keeps a private creator''s name null for a joiner');
+select is(
+  join_challenge_by_token('not-a-token'), null, 'an unknown token returns NULL');
+
+-- ── Rotation ──
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000c1000001","role":"authenticated"}';
+select isnt(
+  rotate_challenge_invite_token('eeeeeeee-eeee-eeee-eeee-eeeec1000001'),
+  (select token from tok), 'the creator rotates the token');
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000c1000003","role":"authenticated"}';
+select is(
+  join_challenge_by_token((select token from tok)), null,
+  'the rotated-out token joins nothing');
+
+-- ── Rate limit: 30 attempts an hour, misses included ──
+do $$
+begin
+  for i in 1..29 loop
+    perform join_challenge_by_token('guess-' || i);
+  end loop;
+end $$;
+select throws_ok(
+  $$ select join_challenge_by_token('guess-31') $$,
+  'P0001', null, 'the 31st attempt in an hour is refused');
+
+-- ── The gate closes every path ──
+reset role;
+update private.feature_flags set enabled = false where name = 'challenge_invite_links';
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000c1000001","role":"authenticated"}';
+select is(
+  get_challenge_invite_token('eeeeeeee-eeee-eeee-eeee-eeeec1000001'), null,
+  'gate closed: no token for the creator');
+select is(
+  challenge_invite_links_enabled(), false, 'gate closed: the reader reports false');
+select throws_ok(
+  $$ select join_challenge_by_token('anything') $$,
+  'P0001', 'challenge_invite_links_disabled', 'gate closed: joining raises');
+
+select * from finish();
+rollback;

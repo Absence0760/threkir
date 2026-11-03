@@ -6167,6 +6167,26 @@ export type Database = {
         Args: { p_event_id: string }
         Returns: boolean
       }
+      challenge_invite_links_enabled: { Args: never; Returns: boolean }
+      challenge_invite_preview: {
+        Args: { p_token: string }
+        Returns: {
+          activity_type: string
+          creator_id: string
+          creator_name: string
+          description: string
+          ends_at: string
+          goal_value: number
+          id: string
+          is_public: boolean
+          joined: boolean
+          metric: string
+          participant_count: number
+          scope: string
+          starts_at: string
+          title: string
+        }[]
+      }
       challenge_leaderboard: {
         Args: { p_by_team?: boolean; p_challenge_id: string }
         Returns: {
@@ -6630,6 +6650,10 @@ export type Database = {
           refresh_token: string
         }[]
       }
+      get_challenge_invite_token: {
+        Args: { p_challenge_id: string }
+        Returns: string
+      }
       get_club_invite_token: { Args: { target_club: string }; Returns: string }
       get_coach_usage: { Args: { p_user_id: string }; Returns: number }
       get_event_meet_point: {
@@ -6854,6 +6878,7 @@ export type Database = {
       jobs_backlog_summary: { Args: { p_queued_after?: string }; Returns: Json }
       jobs_failed_summary: { Args: { p_failed_within?: string }; Returns: Json }
       jobs_stuck_summary: { Args: { p_stuck_after?: string }; Returns: Json }
+      join_challenge_by_token: { Args: { p_token: string }; Returns: string }
       join_club_by_token: {
         Args: { activity_waiver_ack?: boolean; token: string }
         Returns: string
@@ -7228,6 +7253,10 @@ export type Database = {
       revoke_unmet_distance_achievements: {
         Args: { p_user: string }
         Returns: number
+      }
+      rotate_challenge_invite_token: {
+        Args: { p_challenge_id: string }
+        Returns: string
       }
       rotate_plan_calendar_feed: { Args: never; Returns: string }
       route_conditions_for_viewer: {

@@ -3,6 +3,7 @@
 	// transparent sticker, in the layouts, inks, aspects and stats the phone's
 	// share sheet offers (run_share_card.dart). The preview IS the export: each
 	// change re-renders the PNG that Share and Download hand over.
+	import { untrack } from 'svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { currentLocale } from '#lib/i18n/store.svelte.ts';
@@ -128,7 +129,9 @@
 	$effect(() => {
 		if (!open) return;
 		look = forThisRun(loadShareLook());
-		style = initialStyle === 'pr' && records.length === 0 ? 'card' : initialStyle;
+		// Read once per opening: records landing while the editor is open must
+		// not reset the style the runner is on.
+		style = untrack(() => (initialStyle === 'pr' && records.length === 0 ? 'card' : initialStyle));
 		prIndex = 0;
 		canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 		return () => {

@@ -345,6 +345,39 @@ void main() {
           'Cool-down walk. 5 minutes.');
     });
 
+    test(
+        'the graduation 5K, one unpaced run ended by distance, says "Run" and no pace',
+        () {
+      const fiveK = WorkoutStep(
+        kind: WorkoutStepKind.rep,
+        repIndex: 1,
+        repTotal: 1,
+        targetDistanceMetres: 5000,
+        targetPaceSecPerKm: 732,
+        label: 'Run 1/1',
+        paced: false,
+      );
+      expect(formatWorkoutStepUtterance(fiveK, DistanceUnit.km, 'en'),
+          'Run. 5 kilometres.');
+      expect(formatWorkoutStepUtterance(fiveK, DistanceUnit.mi, 'en'),
+          'Run. 3.1 miles.');
+    });
+
+    test('a walk-run run interval keeps its "Run i of n" count', () {
+      const run = WorkoutStep(
+        kind: WorkoutStepKind.rep,
+        repIndex: 2,
+        repTotal: 8,
+        targetDistanceMetres: 0,
+        targetDurationSec: 60,
+        targetPaceSecPerKm: 732,
+        label: 'Run 2/8',
+        paced: false,
+      );
+      expect(formatWorkoutStepUtterance(run, DistanceUnit.km, 'en'),
+          'Run 2 of 8. 1 minute.');
+    });
+
     test('warmup intro reads "Warmup."', () {
       final r = formatWorkoutStepUtterance(
           step(kind: WorkoutStepKind.warmup), DistanceUnit.km);

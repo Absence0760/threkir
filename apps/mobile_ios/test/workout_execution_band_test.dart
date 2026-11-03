@@ -88,8 +88,9 @@ void main() {
           abandoned: false,
         ),
       );
-      // Header line: "Rep 3/6 · 400 m @ 4:00/km"
-      expect(find.textContaining('Rep 3/6'), findsOneWidget);
+      // Header line: "Rep 3 of 6 · 400 m @ 4:00/km", the step named in the
+      // runner's language rather than the expander's English label.
+      expect(find.textContaining('Rep 3 of 6'), findsOneWidget);
       expect(find.textContaining('400 m'), findsOneWidget);
       expect(find.textContaining('4:00/km'), findsOneWidget);
       // Step counter and remaining-distance footer.
@@ -259,7 +260,7 @@ void main() {
         ),
       );
       // Header shows time target, not metres.
-      expect(find.textContaining('Stride · 30s'), findsOneWidget);
+      expect(find.textContaining('Run · 30s'), findsOneWidget);
       // Distance footer is replaced by a time remainder.
       expect(find.text('12s to go'), findsOneWidget);
       expect(find.text('0 m to go'), findsNothing,
@@ -318,6 +319,8 @@ void main() {
             targetDurationSec: 90,
             targetPaceSecPerKm: 300,
             label: 'Walk 1/7',
+            repIndex: 1,
+            repTotal: 7,
             paced: false,
           ),
           totalSteps: 17,
@@ -332,7 +335,88 @@ void main() {
         ),
       );
       expect(find.text('+420s'), findsNothing);
-      expect(find.textContaining('Walk 1/7'), findsOneWidget);
+      // A walk has no pace target: the header states the walk and its length,
+      // never the plan's easy pace. 
+      expect(find.text('Walk 1 of 7 · 1m 30s'), findsOneWidget);
+      expect(find.textContaining('@'), findsNothing);
+      expect(find.textContaining('5:00'), findsNothing);
+      expect(find.text('45s to go'), findsOneWidget);
+    });
+
+    testWidgets('a walk-run run interval and its walking warm-up show no pace',
+        (tester) async {
+      for (final (step, header) in const [
+        (
+          WorkoutStep(
+            kind: WorkoutStepKind.rep,
+            targetDistanceMetres: 0,
+            targetDurationSec: 60,
+            targetPaceSecPerKm: 732,
+            label: 'Run 2/8',
+            repIndex: 2,
+            repTotal: 8,
+            paced: false,
+          ),
+          'Run 2 of 8 · 1m',
+        ),
+        (
+          WorkoutStep(
+            kind: WorkoutStepKind.warmup,
+            targetDistanceMetres: 0,
+            targetDurationSec: 300,
+            targetPaceSecPerKm: 732,
+            label: 'Warmup',
+            paced: false,
+          ),
+          'Warm-up walk · 5m',
+        ),
+      ]) {
+        await _pumpBand(
+          tester,
+          state: WorkoutBandState(
+            step: step,
+            totalSteps: 17,
+            currentIndex: 1,
+            progress: 0.2,
+            remainingMetres: 0,
+            remainingDuration: const Duration(seconds: 40),
+            actualPaceSecPerKm: 690,
+            adherence: PaceAdherence.onPace,
+            complete: false,
+            abandoned: false,
+          ),
+        );
+        expect(find.text(header), findsOneWidget);
+        expect(find.textContaining('12:12'), findsNothing);
+      }
+    });
+
+    testWidgets('an unpaced distance step (the graduation 5K) shows no pace',
+        (tester) async {
+      await _pumpBand(
+        tester,
+        state: const WorkoutBandState(
+          step: WorkoutStep(
+            kind: WorkoutStepKind.rep,
+            targetDistanceMetres: 5000,
+            targetPaceSecPerKm: 732,
+            label: 'Run 1/1',
+            repIndex: 1,
+            repTotal: 1,
+            paced: false,
+          ),
+          totalSteps: 3,
+          currentIndex: 1,
+          progress: 0.1,
+          remainingMetres: 4500,
+          actualPaceSecPerKm: 700,
+          adherence: PaceAdherence.onPace,
+          complete: false,
+          abandoned: false,
+        ),
+      );
+      expect(find.text('Run · 5.0 km'), findsOneWidget);
+      expect(find.textContaining('12:12'), findsNothing);
     });
   });
 

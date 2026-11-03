@@ -1126,9 +1126,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
 
   /// Ghost-pacer position for the current workout step. Returns null
   /// (and the LiveRunMap hides the marker) whenever the ghost is
-  /// undefined or off the planned route — see [ghostPacerPosition]
-  /// for the cases. The marker is only useful when a planned route
-  /// is loaded: without one there's no "where you should be" path.
+  /// undefined, unpaced (a walk-run step) or off the planned route — see
+  /// [workoutGhostPosition] and [ghostPacerPosition] for the cases. The
+  /// marker is only useful when a planned route is loaded: without one
+  /// there's no "where you should be" path.
   cm.Waypoint? _computeGhostPosition() {
     final runner = _workoutRunner;
     if (runner == null) return null;
@@ -1138,10 +1139,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     if (route == null) return null;
     final path = route.waypoints;
     if (path.length < 2) return null;
-    return ghostPacerPosition(
+    return workoutGhostPosition(
       path: path,
+      step: step,
       elapsed: runner.stepElapsed,
-      targetPaceSecPerKm: step.targetPaceSecPerKm,
     );
   }
 

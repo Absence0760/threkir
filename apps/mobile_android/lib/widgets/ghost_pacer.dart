@@ -1,5 +1,6 @@
 import 'package:core_models/core_models.dart';
 import 'package:geolocator/geolocator.dart' show Geolocator;
+import 'package:run_recorder/run_recorder.dart' show WorkoutStep;
 
 /// Pure-geometry helper for the structured-workout ghost-pacer marker.
 ///
@@ -65,4 +66,23 @@ Waypoint? ghostPacerPosition({
   }
   // Ghost has run off the end of the path — nothing useful to draw.
   return null;
+}
+
+/// The ghost for the current workout [step], or null when the step has no
+/// pace for it to follow. Every step of a walk-run session is unpaced
+/// ([WorkoutStep.paced] is false): its `targetPaceSecPerKm` is the plan's easy
+/// pace, kept only for the distance estimate, and a ghost moving at it would
+/// pace a walk at a run. No walking pace is invented in its place, because
+/// the plan prescribes the walk by time alone.
+Waypoint? workoutGhostPosition({
+  required List<Waypoint> path,
+  required WorkoutStep step,
+  required Duration elapsed,
+}) {
+  if (!step.paced) return null;
+  return ghostPacerPosition(
+    path: path,
+    elapsed: elapsed,
+    targetPaceSecPerKm: step.targetPaceSecPerKm,
+  );
 }

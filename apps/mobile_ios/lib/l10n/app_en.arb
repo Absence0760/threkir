@@ -2999,6 +2999,18 @@
       }
     }
   },
+  "runWorkoutStepHeaderUnpaced": "{label} · {target}",
+  "@runWorkoutStepHeaderUnpaced": {
+    "description": "Workout-execution band header for a walk-run step, which has no pace target: step name and its target distance/duration (e.g. 'Walk 1 of 7 · 1m 30s')",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
   "runWorkoutStepCounter": "{current}/{total}",
   "@runWorkoutStepCounter": {
     "description": "Workout-execution band step counter (current step of total)",
@@ -15211,6 +15223,18 @@
         "type": "String"
       },
       "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsStepDistance": "{intro}. {distance}.",
+  "@ttsStepDistance": {
+    "description": "Workout-step cue for a walk-run step ended by distance, which has no pace target: intro then distance (e.g. 'Run. 5 kilometres.')",
+    "placeholders": {
+      "intro": {
+        "type": "String"
+      },
+      "distance": {
         "type": "String"
       }
     }

@@ -3971,6 +3971,12 @@ abstract class AppLocalizations {
   /// **'{label} · {target} @ {pace}'**
   String runWorkoutStepHeader(String label, String target, String pace);
 
+  /// Workout-execution band header for a walk-run step, which has no pace target: step name and its target distance/duration (e.g. 'Walk 1 of 7 · 1m 30s')
+  ///
+  /// In en, this message translates to:
+  /// **'{label} · {target}'**
+  String runWorkoutStepHeaderUnpaced(String label, String target);
+
   /// Workout-execution band step counter (current step of total)
   ///
   /// In en, this message translates to:
@@ -18326,6 +18332,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{intro}. {duration}.'**
   String ttsStepDuration(String intro, String duration);
+
+  /// Workout-step cue for a walk-run step ended by distance, which has no pace target: intro then distance (e.g. 'Run. 5 kilometres.')
+  ///
+  /// In en, this message translates to:
+  /// **'{intro}. {distance}.'**
+  String ttsStepDistance(String intro, String distance);
 
   /// Workout-step cue: intro then distance at pace
   ///

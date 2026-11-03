@@ -360,6 +360,20 @@ e2e-tested without standing up the Lambda.
   club/event/profile/route read is safe by default, but keep filtering
   explicitly on any new public surface for defense in depth.
 
+### Share-link attribution: the `ref` parameter and the visit count
+
+A creator's own copy of a plan, challenge, profile, session or workout link
+carries `?ref=<code>` (decisions § 2268), added by `withShareRef` around the
+entity's canonical builder, so the path is still defined once. The `ref` never
+reaches a `<head>`: the canonical, `og:url` and JSON-LD are built without it, so
+every ref'd copy of a link consolidates on the same canonical, and CloudFront's
+`share_entity` policies drop the query string, so a `ref` neither splits the
+edge cache nor reaches the Lambda. The visit is counted by the page in the
+visitor's browser (`recordShareView` → `record_share_visit`), not by the
+Lambda, which only sees edge misses; unfurl bots never run that script. A share
+page's sign-up link carries the `ref` back through `return_to` so the sign-up
+can be attributed. All of it waits on the default-off `share_attribution` gate.
+
 ### A signed-in visitor gets a way back into the app
 
 The share pages are the logged-out surface — `SharePageShell` carries a logo,

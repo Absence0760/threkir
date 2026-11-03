@@ -14,6 +14,7 @@ import '../dev_auto_login.dart';
 import '../preferences.dart';
 import '../settings_sync.dart';
 import '../sim_watch_link.dart';
+import '../social_service.dart';
 import '../widgets/top_banner.dart';
 import 'coaching_screen.dart';
 import 'devices_screen.dart';
@@ -28,6 +29,7 @@ import 'settings_pro_screen.dart';
 import 'settings_safety_screen.dart';
 import 'sign_in_screen.dart';
 import 'sim_watch_screen.dart';
+import 'your_shares_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final ApiClient? apiClient;
@@ -55,6 +57,10 @@ class SettingsScreen extends StatefulWidget {
   /// display name and avatar the You header draws).
   final VoidCallback? onSubScreenClosed;
 
+  /// Reads the share_attribution gate and backs Your shares; the global
+  /// client when null.
+  final SocialService? social;
+
   const SettingsScreen({
     super.key,
     this.apiClient,
@@ -70,6 +76,7 @@ class SettingsScreen extends StatefulWidget {
     this.devBackendUrl,
     this.header = const [],
     this.onSubScreenClosed,
+    this.social,
   });
 
   @override
@@ -77,6 +84,24 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  late final SocialService _social = widget.social ?? SocialService();
+
+  // Your shares is offered only while the share_attribution gate is open
+  // (decisions § 2268).
+  bool _sharesEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSharesGate();
+  }
+
+  Future<void> _loadSharesGate() async {
+    if (widget.apiClient?.userId == null || !_social.isReady) return;
+    final on = await _social.shareAttributionEnabled();
+    if (mounted && on) setState(() => _sharesEnabled = true);
+  }
+
   Future<void> _open(Widget Function(BuildContext) builder) async {
     await Navigator.push(context, MaterialPageRoute(builder: builder));
     widget.onSubScreenClosed?.call();
@@ -242,6 +267,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         )),
               );
             }(),
+            if (_sharesEnabled)
+              _tab(
+                icon: Icons.share_outlined,
+                label: l10n.sharesTitle,
+                subtitle: l10n.sharesTileSubtitle,
+                onTap: () => _openAfterSignIn((_) => YourSharesScreen(social: _social)),
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
               child: SectionHeader(label: l10n.settingsSectionAccountLegal),

@@ -19323,4 +19323,84 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get badgesPrivateShareHint => 'Make this badge public to share it.';
+
+  @override
+  String get sharesTitle => 'Your shares';
+
+  @override
+  String get sharesTileSubtitle =>
+      'Visits, sign-ups and joins from links you shared';
+
+  @override
+  String get sharesTagline =>
+      'How your share links did over the last 90 days. These are counts only: nobody who opens a link is identified.';
+
+  @override
+  String get sharesLoadFailed => 'Couldn\'t load your shares.';
+
+  @override
+  String get sharesEmptyTitle => 'Nothing shared yet';
+
+  @override
+  String get sharesEmptyBody =>
+      'Share a public plan, a challenge, a session, a workout or your profile, and its numbers show up here.';
+
+  @override
+  String get sharesKindPlan => 'Plan';
+
+  @override
+  String get sharesKindChallenge => 'Challenge';
+
+  @override
+  String get sharesKindProfile => 'Profile';
+
+  @override
+  String get sharesKindSession => 'Session';
+
+  @override
+  String get sharesKindWorkout => 'Workout';
+
+  @override
+  String get sharesYourProfile => 'Your profile';
+
+  @override
+  String get sharesUntitled => 'Untitled';
+
+  @override
+  String get sharesVisits => 'Visits';
+
+  @override
+  String get sharesSignups => 'Sign-ups';
+
+  @override
+  String get sharesStarts => 'Plan starts';
+
+  @override
+  String get sharesJoins => 'Challenge joins';
+
+  @override
+  String sharesViaYourLink(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count through your link',
+      one: '$count through your link',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sharesBotVisits(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Plus $count visits from crawlers, not counted above.',
+      one: 'Plus $count visit from a crawler, not counted above.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sharesFootnote =>
+      'Sign-ups are counted when someone creates an account from a link you shared. Your own visits aren\'t counted.';
 }

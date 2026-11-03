@@ -25,6 +25,7 @@ import 'plan_week.dart';
 import 'race_predictor.dart' show EffortForPrediction;
 import 'relink_candidates.dart';
 import 'settings_sync.dart' show activeSetting, updateActiveUniversal;
+import 'share_ref.dart';
 import 'training.dart';
 
 /// The window the goal-time check reads efforts from: the same 90 days the
@@ -670,6 +671,25 @@ class TrainingService extends ChangeNotifier {
     }
     notifyListeners();
     return newId as String;
+  }
+
+  /// Mark the caller's just-made copy [planId] as started from its author's
+  /// share link (decisions § 2268). Auxiliary: false on any failure, never a
+  /// failed clone.
+  Future<bool> attributePlanStart(String planId, String? ref) async {
+    final code = parseShareRef(ref);
+    if (code == null) return false;
+    try {
+      final raw = await _c.rpc('attribute_share_start', params: {
+        'p_kind': 'plan',
+        'p_id': planId,
+        'p_ref': code,
+      });
+      return raw == true;
+    } catch (e) {
+      debugPrint('attribute_share_start failed: $e');
+      return false;
+    }
   }
 
   /// One public-library plan by id, for a "Train with me" link opened in the

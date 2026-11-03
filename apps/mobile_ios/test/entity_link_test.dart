@@ -107,6 +107,17 @@ void main() {
       expect(parse('https://threkir.com/share/plan/$id/extra'), isNull);
     });
 
+    test("a creator's ref rides a plan link to the copy it may lead to", () {
+      expect(parse('https://threkir.com/share/plan/$id?ref=a1b2c3d4e5'),
+          const PushTarget(PushTargetKind.planLibrary, id, null, 'a1b2c3d4e5'));
+      expect(parse('https://threkir.com/plans/library/$id?ref=a1b2c3d4e5'),
+          const PushTarget(PushTargetKind.planLibrary, id, null, 'a1b2c3d4e5'));
+      expect(parse('https://threkir.com/share/plan/$id?ref=NOT-VALID'),
+          const PushTarget(PushTargetKind.planLibrary, id));
+      expect(parse('https://threkir.com/plans/$id?ref=a1b2c3d4e5'),
+          const PushTarget(PushTargetKind.plan, id));
+    });
+
     test('anything not under /plans is not a plan link', () {
       expect(parse('com.threkir.app://runs/$id'), isNull);
       expect(parse('https://example.com/plans/$id'), isNull);

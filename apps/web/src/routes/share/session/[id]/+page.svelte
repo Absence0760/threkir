@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import SharePageShell from '#lib/components/SharePageShell.svelte';
@@ -10,8 +12,18 @@
 		buildSessionShareTitle,
 		sessionEstimatedMinutes
 	} from '#lib/share/share_session_meta.ts';
+	import { shareRefFromSearch, shareSignupHref } from '#lib/share/share_ref.ts';
+	import { recordShareView } from '#lib/share/share_attribution.ts';
 
 	let { data } = $props();
+
+	let signupHref = $derived(
+		shareSignupHref(`/share/session/${data.id}`, shareRefFromSearch(page.url.search))
+	);
+
+	onMount(() => {
+		if (data.session) void recordShareView('session', data.id);
+	});
 
 	let hasSession = $derived(!!data.session);
 	let athlete = $derived(data.displayName ?? '');
@@ -143,7 +155,7 @@
 			<p class="kicker">{m('shareSession.ctaKicker')}</p>
 			<h2 id="signup-cta-heading">{m('shareSession.ctaHeading')}</h2>
 			<p class="signup-sub">{m('shareSession.ctaSub')}</p>
-			<a class="btn btn-primary" href="/login?signup=1">{m('shareSession.ctaButton')}</a>
+			<a class="btn btn-primary" href={signupHref}>{m('shareSession.ctaButton')}</a>
 		</section>
 	{/if}
 </SharePageShell>

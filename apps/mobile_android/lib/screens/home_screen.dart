@@ -524,7 +524,9 @@ class _HomeScreenState extends State<HomeScreen>
             training: widget.training, runStore: widget.runStore));
       case PushTargetKind.planLibrary:
         await _pushScreen(PlanLibraryLinkScreen(
-            training: widget.training, planId: target.id!));
+            training: widget.training,
+            planId: target.id!,
+            shareRef: target.shareRef));
       case PushTargetKind.challenges:
         await _pushScreen(ChallengesScreen(social: widget.social));
       case PushTargetKind.clubs:
@@ -711,8 +713,9 @@ class _HomeScreenState extends State<HomeScreen>
     await _pushScreen(switch (link) {
       ChallengeInviteLink(:final token) =>
         ChallengeInviteScreen(social: widget.social, token: token),
-      ChallengeShareLink(:final challengeId) =>
-        ChallengeDetailScreen(social: widget.social, challengeId: challengeId),
+      ChallengeShareLink(:final challengeId, :final shareRef) =>
+        ChallengeDetailScreen(
+            social: widget.social, challengeId: challengeId, shareRef: shareRef),
     });
   }
 

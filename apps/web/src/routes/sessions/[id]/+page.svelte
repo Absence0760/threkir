@@ -32,6 +32,8 @@
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import { PUBLIC_SITE_URL } from '$app/env/public';
 	import { buildSessionShareCanonical } from '#lib/share/share_session_meta.ts';
+	import { withShareRef } from '#lib/share/share_ref.ts';
+	import { ownShareRef } from '#lib/share/share_attribution.ts';
 
 	let plan = $state<SessionPlanWithItems | null>(null);
 	let loading = $state(true);
@@ -254,8 +256,9 @@
 		confirmShare = false;
 		// Same builder as the canonical, but based on the CURRENT origin: a
 		// preview-host user must get a preview link, not a prod one.
-		const url = buildSessionShareCanonical(location.origin, plan.id);
+		const base = buildSessionShareCanonical(location.origin, plan.id);
 		try {
+			const url = withShareRef(base, await ownShareRef(plan.author_id));
 			if (!plan.is_public) {
 				await setSessionPlanPublic(plan.id, true);
 				plan = { ...plan, is_public: true };

@@ -31696,6 +31696,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Make this badge public to share it.'**
   String get badgesPrivateShareHint;
+
+  /// Title of the Your shares screen and its settings row: the creator's own share links and their numbers
+  ///
+  /// In en, this message translates to:
+  /// **'Your shares'**
+  String get sharesTitle;
+
+  /// Subtitle of the Your shares row in settings
+  ///
+  /// In en, this message translates to:
+  /// **'Visits, sign-ups and joins from links you shared'**
+  String get sharesTileSubtitle;
+
+  /// Line above the list on Your shares; says the numbers are counts only
+  ///
+  /// In en, this message translates to:
+  /// **'How your share links did over the last 90 days. These are counts only: nobody who opens a link is identified.'**
+  String get sharesTagline;
+
+  /// Error state when the share numbers could not be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your shares.'**
+  String get sharesLoadFailed;
+
+  /// Empty state title when the creator has no share links yet
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing shared yet'**
+  String get sharesEmptyTitle;
+
+  /// Empty state body naming what can be shared
+  ///
+  /// In en, this message translates to:
+  /// **'Share a public plan, a challenge, a session, a workout or your profile, and its numbers show up here.'**
+  String get sharesEmptyBody;
+
+  /// Kind label on a share card: a public training plan
+  ///
+  /// In en, this message translates to:
+  /// **'Plan'**
+  String get sharesKindPlan;
+
+  /// Kind label on a share card: a challenge
+  ///
+  /// In en, this message translates to:
+  /// **'Challenge'**
+  String get sharesKindChallenge;
+
+  /// Kind label on a share card: the creator's profile
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get sharesKindProfile;
+
+  /// Kind label on a share card: a yoga / pilates session plan
+  ///
+  /// In en, this message translates to:
+  /// **'Session'**
+  String get sharesKindSession;
+
+  /// Kind label on a share card: a gym workout
+  ///
+  /// In en, this message translates to:
+  /// **'Workout'**
+  String get sharesKindWorkout;
+
+  /// Title of the share card for the creator's own profile
+  ///
+  /// In en, this message translates to:
+  /// **'Your profile'**
+  String get sharesYourProfile;
+
+  /// Title of a share card whose plan, session or workout has no name
+  ///
+  /// In en, this message translates to:
+  /// **'Untitled'**
+  String get sharesUntitled;
+
+  /// Stat label: views of the share page
+  ///
+  /// In en, this message translates to:
+  /// **'Visits'**
+  String get sharesVisits;
+
+  /// Stat label: accounts created from the link
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-ups'**
+  String get sharesSignups;
+
+  /// Stat label: copies of the plan started
+  ///
+  /// In en, this message translates to:
+  /// **'Plan starts'**
+  String get sharesStarts;
+
+  /// Stat label: people who joined the challenge
+  ///
+  /// In en, this message translates to:
+  /// **'Challenge joins'**
+  String get sharesJoins;
+
+  /// Under a stat: how many of them came through the creator's own link
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} through your link} other{{count} through your link}}'**
+  String sharesViaYourLink(int count);
+
+  /// Under a card: visits from crawlers, kept out of the visit count
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Plus {count} visit from a crawler, not counted above.} other{Plus {count} visits from crawlers, not counted above.}}'**
+  String sharesBotVisits(int count);
+
+  /// Footnote on Your shares explaining what counts as a sign-up
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-ups are counted when someone creates an account from a link you shared. Your own visits aren\'t counted.'**
+  String get sharesFootnote;
 }
 
 class _AppLocalizationsDelegate

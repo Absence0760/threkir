@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import SharePageShell from '#lib/components/SharePageShell.svelte';
@@ -11,10 +13,20 @@
 		buildWorkoutShareTitle,
 		distinctExerciseCount
 	} from '#lib/share/share_workout_meta.ts';
+	import { shareRefFromSearch, shareSignupHref } from '#lib/share/share_ref.ts';
+	import { recordShareView } from '#lib/share/share_attribution.ts';
 	import type { SharedWorkoutSet } from '#lib/share/share_workout_lookup.ts';
 	import { groupExerciseBlocks } from '#lib/gym/exercise_blocks.ts';
 
 	let { data } = $props();
+
+	let signupHref = $derived(
+		shareSignupHref(`/share/workout/${data.id}`, shareRefFromSearch(page.url.search))
+	);
+
+	onMount(() => {
+		if (data.workout) void recordShareView('workout', data.id);
+	});
 
 	let hasWorkout = $derived(!!data.workout);
 	let athlete = $derived(data.displayName ?? '');
@@ -132,7 +144,7 @@
 			<p class="kicker">{m('shareWorkout.ctaKicker')}</p>
 			<h2 id="signup-cta-heading">{m('shareWorkout.ctaHeading')}</h2>
 			<p class="signup-sub">{m('shareWorkout.ctaSub')}</p>
-			<a class="btn btn-primary" href="/login?signup=1">{m('shareWorkout.ctaButton')}</a>
+			<a class="btn btn-primary" href={signupHref}>{m('shareWorkout.ctaButton')}</a>
 		</section>
 	{/if}
 </SharePageShell>

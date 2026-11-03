@@ -46,6 +46,8 @@
 	import { PUBLIC_SITE_URL } from '$app/env/public';
 	import { buildBadgeShareCanonical } from '#lib/share/share_badge_meta.ts';
 	import { buildProfileShareCanonical } from '#lib/share/share_profile_meta.ts';
+	import { withShareRef } from '#lib/share/share_ref.ts';
+	import { ownShareRef } from '#lib/share/share_attribution.ts';
 	import RunShareView from '#lib/components/RunShareView.svelte';
 	import RunTrackPreview from '#lib/components/RunTrackPreview.svelte';
 	import NotificationsList from '#lib/components/NotificationsList.svelte';
@@ -624,7 +626,13 @@
 	}
 
 	async function shareProfile() {
-		const url = new URL(`/u/${userId}`, location.origin).toString();
+		// Your own profile, shared with attribution live, goes out as the public
+		// share page carrying your ref, which counts its visits and sign-ups
+		// (decisions § 2268); anyone else's stays the in-app profile link.
+		const ref = await ownShareRef(userId);
+		const url = ref
+			? withShareRef(buildProfileShareCanonical(location.origin, userId), ref)
+			: new URL(`/u/${userId}`, location.origin).toString();
 		const title = profile?.display_name ?? m('profile.runnerFallback');
 		// Try the OS share sheet first (mobile + Safari desktop). Fall
 		// back to clipboard copy on everything else.

@@ -106,6 +106,7 @@ insert into anon_callable (fn, why) values
   ('public_recap_by_id',              '/share/recap'),
   ('public_run_gear',                 'public run page'),
   ('race_listing_photos',             '/share/race page'),
+  ('record_share_visit',              'a /share page counts one view in an aggregate bucket; no-op while the share_attribution gate is closed'),
   ('route_conditions_for_viewer',     'public route page'),
   ('route_markers_for_viewer',        'public route page'),
   ('routes_within_box',               'logged-out map discovery'),
@@ -117,7 +118,8 @@ insert into anon_callable (fn, why) values
   ('search_clubs',                    'logged-out search'),
   ('search_public_events',            'logged-out search'),
   ('search_race_listings',            'logged-out search'),
-  ('segment_effort_ranks',            'public segment board');
+  ('segment_effort_ranks',            'public segment board'),
+  ('share_attribution_enabled',       'a /share page decides whether to count the view');
 
 -- The routines this repo STATES are withheld from `authenticated` as well as
 -- anon — the cron and job-queue family (20270626000001, and

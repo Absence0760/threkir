@@ -19523,4 +19523,84 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get badgesPrivateShareHint =>
       'Haz pública esta insignia para compartirla.';
+
+  @override
+  String get sharesTitle => 'Tus enlaces';
+
+  @override
+  String get sharesTileSubtitle =>
+      'Visitas, registros y uniones desde tus enlaces';
+
+  @override
+  String get sharesTagline =>
+      'Cómo les fue a tus enlaces compartidos en los últimos 90 días. Solo son recuentos: nadie que abre un enlace queda identificado.';
+
+  @override
+  String get sharesLoadFailed => 'No se pudieron cargar tus enlaces.';
+
+  @override
+  String get sharesEmptyTitle => 'Aún no has compartido nada';
+
+  @override
+  String get sharesEmptyBody =>
+      'Comparte un plan público, un reto, una sesión, un entreno o tu perfil y sus cifras aparecerán aquí.';
+
+  @override
+  String get sharesKindPlan => 'Plan';
+
+  @override
+  String get sharesKindChallenge => 'Reto';
+
+  @override
+  String get sharesKindProfile => 'Perfil';
+
+  @override
+  String get sharesKindSession => 'Sesión';
+
+  @override
+  String get sharesKindWorkout => 'Entreno';
+
+  @override
+  String get sharesYourProfile => 'Tu perfil';
+
+  @override
+  String get sharesUntitled => 'Sin título';
+
+  @override
+  String get sharesVisits => 'Visitas';
+
+  @override
+  String get sharesSignups => 'Registros';
+
+  @override
+  String get sharesStarts => 'Planes iniciados';
+
+  @override
+  String get sharesJoins => 'Uniones al reto';
+
+  @override
+  String sharesViaYourLink(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count desde tu enlace',
+      one: '$count desde tu enlace',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sharesBotVisits(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Además, $count visitas de rastreadores, no incluidas arriba.',
+      one: 'Además, $count visita de un rastreador, no incluida arriba.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sharesFootnote =>
+      'Un registro cuenta cuando alguien crea una cuenta desde un enlace que compartiste. Tus propias visitas no cuentan.';
 }

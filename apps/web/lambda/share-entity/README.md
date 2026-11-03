@@ -63,6 +63,19 @@ arm64 binary copied into `node_modules`, so the arm64 package must be
 installed first, as for share-badge). CI's
 `release-web.yml` rebuilds + deploys it on every `web@*` tag.
 
+## Share visits are not counted here
+
+Share-link attribution (decisions § 2268) counts a visit to a
+`/share/<kind>/<id>` page, but this Lambda does not do the counting.
+CloudFront caches its HTML for five minutes and strips the query string
+(the `share_entity` cache and origin-request policies), so the Lambda sees
+one request per edge per five minutes and never sees the `?ref=` a
+creator's link carries. The page itself calls the `record_share_visit` RPC
+once per view in the visitor's browser, which also leaves out unfurl bots,
+since they do not run its script. `share_entity_handler.test.ts` pins that
+the handler makes no counter call and serves the same answer with or
+without a `ref`.
+
 ## Fail-open posture
 
 A private / missing / deleted entity returns a **404 HTML** with a

@@ -19522,6 +19522,86 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get badgesPrivateShareHint =>
       'Torne esta medalha pública para a partilhar.';
+
+  @override
+  String get sharesTitle => 'As suas partilhas';
+
+  @override
+  String get sharesTileSubtitle =>
+      'Visitas, registos e adesões pelas suas ligações';
+
+  @override
+  String get sharesTagline =>
+      'Como correram as suas ligações partilhadas nos últimos 90 dias. São só contagens: ninguém que abre uma ligação é identificado.';
+
+  @override
+  String get sharesLoadFailed => 'Não foi possível carregar as suas partilhas.';
+
+  @override
+  String get sharesEmptyTitle => 'Ainda não partilhou nada';
+
+  @override
+  String get sharesEmptyBody =>
+      'Partilhe um plano público, um desafio, uma sessão, um treino ou o seu perfil e os números aparecem aqui.';
+
+  @override
+  String get sharesKindPlan => 'Plano';
+
+  @override
+  String get sharesKindChallenge => 'Desafio';
+
+  @override
+  String get sharesKindProfile => 'Perfil';
+
+  @override
+  String get sharesKindSession => 'Sessão';
+
+  @override
+  String get sharesKindWorkout => 'Treino';
+
+  @override
+  String get sharesYourProfile => 'O seu perfil';
+
+  @override
+  String get sharesUntitled => 'Sem título';
+
+  @override
+  String get sharesVisits => 'Visitas';
+
+  @override
+  String get sharesSignups => 'Registos';
+
+  @override
+  String get sharesStarts => 'Planos iniciados';
+
+  @override
+  String get sharesJoins => 'Adesões ao desafio';
+
+  @override
+  String sharesViaYourLink(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pela sua ligação',
+      one: '$count pela sua ligação',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sharesBotVisits(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Mais $count visitas de robôs, não contadas acima.',
+      one: 'Mais $count visita de um robô, não contada acima.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sharesFootnote =>
+      'Um registo conta quando alguém cria uma conta a partir de uma ligação que partilhou. As suas próprias visitas não contam.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -39027,4 +39107,85 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get badgesPrivateShareHint =>
       'Torne esta medalha pública para compartilhá-la.';
+
+  @override
+  String get sharesTitle => 'Seus compartilhamentos';
+
+  @override
+  String get sharesTileSubtitle =>
+      'Visitas, cadastros e entradas pelos seus links';
+
+  @override
+  String get sharesTagline =>
+      'Como seus links compartilhados se saíram nos últimos 90 dias. São só contagens: ninguém que abre um link é identificado.';
+
+  @override
+  String get sharesLoadFailed =>
+      'Não foi possível carregar seus compartilhamentos.';
+
+  @override
+  String get sharesEmptyTitle => 'Nada compartilhado ainda';
+
+  @override
+  String get sharesEmptyBody =>
+      'Compartilhe um plano público, um desafio, uma sessão, um treino ou seu perfil e os números aparecem aqui.';
+
+  @override
+  String get sharesKindPlan => 'Plano';
+
+  @override
+  String get sharesKindChallenge => 'Desafio';
+
+  @override
+  String get sharesKindProfile => 'Perfil';
+
+  @override
+  String get sharesKindSession => 'Sessão';
+
+  @override
+  String get sharesKindWorkout => 'Treino';
+
+  @override
+  String get sharesYourProfile => 'Seu perfil';
+
+  @override
+  String get sharesUntitled => 'Sem título';
+
+  @override
+  String get sharesVisits => 'Visitas';
+
+  @override
+  String get sharesSignups => 'Cadastros';
+
+  @override
+  String get sharesStarts => 'Planos iniciados';
+
+  @override
+  String get sharesJoins => 'Entradas no desafio';
+
+  @override
+  String sharesViaYourLink(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pelo seu link',
+      one: '$count pelo seu link',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sharesBotVisits(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Mais $count visitas de robôs, não contadas acima.',
+      one: 'Mais $count visita de um robô, não contada acima.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sharesFootnote =>
+      'Um cadastro conta quando alguém cria uma conta a partir de um link que você compartilhou. Suas próprias visitas não contam.';
 }

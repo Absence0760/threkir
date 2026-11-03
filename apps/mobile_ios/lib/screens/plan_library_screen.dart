@@ -284,10 +284,15 @@ class PlanLibraryPreviewScreen extends StatefulWidget {
   final TrainingService training;
   final PublicPlanLibraryEntry entry;
 
+  /// The `ref` the creator's link carried; a copy started here is attributed
+  /// to it (decisions § 2268).
+  final String? shareRef;
+
   const PlanLibraryPreviewScreen({
     super.key,
     required this.training,
     required this.entry,
+    this.shareRef,
   });
 
   @override
@@ -378,6 +383,7 @@ class _PlanLibraryPreviewScreenState extends State<PlanLibraryPreviewScreen> {
             onOverlap: action,
           )
           .timeout(kBackendLoadTimeout);
+      await widget.training.attributePlanStart(newId, widget.shareRef);
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
@@ -497,10 +503,14 @@ class PlanLibraryLinkScreen extends StatefulWidget {
   final TrainingService training;
   final String planId;
 
+  /// The `ref` the creator's link carried (decisions § 2268).
+  final String? shareRef;
+
   const PlanLibraryLinkScreen({
     super.key,
     required this.training,
     required this.planId,
+    this.shareRef,
   });
 
   @override
@@ -546,7 +556,8 @@ class _PlanLibraryLinkScreenState extends State<PlanLibraryLinkScreen> {
   Widget build(BuildContext context) {
     final entry = _entry;
     if (entry != null) {
-      return PlanLibraryPreviewScreen(training: widget.training, entry: entry);
+      return PlanLibraryPreviewScreen(
+          training: widget.training, entry: entry, shareRef: widget.shareRef);
     }
     final l10n = AppLocalizations.of(context);
     return Scaffold(

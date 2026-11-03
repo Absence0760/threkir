@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 
+import 'share_ref.dart';
+
 /// A challenge link the OS opened the app with (decisions § 2261): a creator's
 /// invite (`/challenges/join/<token>`), which joins a challenge that need not
 /// be public, or a public challenge's share page (`/share/challenge/<id>`).
@@ -27,14 +29,20 @@ class ChallengeInviteLink extends ChallengeLink {
 @immutable
 class ChallengeShareLink extends ChallengeLink {
   final String challengeId;
-  const ChallengeShareLink(this.challengeId);
+
+  /// The creator's `ref` the link carried, for the join it may lead to
+  /// (decisions § 2268).
+  final String? shareRef;
+  const ChallengeShareLink(this.challengeId, {this.shareRef});
 
   @override
   bool operator ==(Object other) =>
-      other is ChallengeShareLink && other.challengeId == challengeId;
+      other is ChallengeShareLink &&
+      other.challengeId == challengeId &&
+      other.shareRef == shareRef;
 
   @override
-  int get hashCode => challengeId.hashCode;
+  int get hashCode => Object.hash(challengeId, shareRef);
 }
 
 final RegExp _uuid = RegExp(
@@ -64,7 +72,8 @@ ChallengeLink? parseChallengeLink(Uri uri) {
     return ChallengeInviteLink(parts[2]);
   }
   if (parts[0] == 'share' && parts[1] == 'challenge' && _uuid.hasMatch(parts[2])) {
-    return ChallengeShareLink(parts[2].toLowerCase());
+    return ChallengeShareLink(parts[2].toLowerCase(),
+        shareRef: parseShareRef(uri.queryParameters[shareRefParam]));
   }
   return null;
 }

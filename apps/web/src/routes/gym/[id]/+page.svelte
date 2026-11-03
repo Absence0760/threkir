@@ -44,6 +44,8 @@
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import { PUBLIC_SITE_URL } from '$app/env/public';
 	import { buildWorkoutShareCanonical } from '#lib/share/share_workout_meta.ts';
+	import { withShareRef } from '#lib/share/share_ref.ts';
+	import { ownShareRef } from '#lib/share/share_attribution.ts';
 
 	const id = $derived(page.params.id ?? '');
 	const canonicalUrl = $derived(
@@ -328,8 +330,9 @@
 		confirmingShare = false;
 		// Same builder as the canonical, but based on the CURRENT origin: a
 		// preview-host user must get a preview link, not a prod one.
-		const url = buildWorkoutShareCanonical(location.origin, id);
+		const base = buildWorkoutShareCanonical(location.origin, id);
 		try {
+			const url = withShareRef(base, await ownShareRef(data?.workout.user_id));
 			if (data && !data.workout.is_public) {
 				await setGymWorkoutPublic(id, true);
 				data = { ...data, workout: { ...data.workout, is_public: true } };

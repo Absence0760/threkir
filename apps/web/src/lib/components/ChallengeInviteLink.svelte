@@ -8,12 +8,16 @@
 	} from '#lib/core/data.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { buildChallengeShareCanonical } from '#lib/share/share_challenge_meta.ts';
+	import { withShareRef } from '#lib/share/share_ref.ts';
+	import { ownShareRef } from '#lib/share/share_attribution.ts';
 
 	let {
 		challengeId,
+		creatorId,
 		isPublic,
 		canManage
-	}: { challengeId: string; isPublic: boolean; canManage: boolean } = $props();
+	}: { challengeId: string; creatorId: string | null; isPublic: boolean; canManage: boolean } =
+		$props();
 
 	// The invite link waits on the challenge_invite_links gate (decisions
 	// § 2261); the public share page does not, because a public challenge is
@@ -25,6 +29,9 @@
 	let confirmRotate = $state(false);
 	let copied = $state<'invite' | 'share' | null>(null);
 	let actionError = $state<string | null>(null);
+	// The creator's own share link carries their ref (decisions § 2268); a club
+	// admin handing it out is not the creator, so theirs goes out bare.
+	let shareRef = $state<string | null>(null);
 
 	const inviteUrl = $derived(
 		token && typeof location !== 'undefined'
@@ -32,7 +39,9 @@
 			: null
 	);
 	const shareUrl = $derived(
-		typeof location !== 'undefined' ? buildChallengeShareCanonical(location.origin, challengeId) : null
+		typeof location !== 'undefined'
+			? withShareRef(buildChallengeShareCanonical(location.origin, challengeId), shareRef)
+			: null
 	);
 
 	async function load() {
@@ -41,6 +50,7 @@
 		try {
 			enabled = await challengeInviteLinksEnabled();
 			if (enabled) token = await getChallengeInviteToken(challengeId);
+			shareRef = await ownShareRef(creatorId);
 		} catch (e) {
 			console.error('challenge invite link: load failed', e);
 			loadFailed = true;
@@ -131,7 +141,7 @@
 				>
 					{copied === 'share' ? m('challengeInvite.copied') : m('challengeInvite.copyShare')}
 				</button>
-				<a class="btn btn-outline btn-sm" href={shareUrl}>
+				<a class="btn btn-outline btn-sm" href={shareUrl} data-testid="challenge-share-view">
 					{m('challengeInvite.viewShare')}
 				</a>
 			</div>

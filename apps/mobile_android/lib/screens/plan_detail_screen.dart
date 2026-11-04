@@ -3490,6 +3490,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
           child: Semantics(
             button: !isRest,
             label: semanticsLabel,
+            // excludeSemantics drops the InkWell's actions, so the node
+            // carries them or a screen reader cannot open the workout.
+            onTap: isRest ? null : () => _openWorkout(wo),
+            onLongPress: _canEditWorkouts(p) ? () => _editWorkout(wo) : null,
             excludeSemantics: true,
             child: InkWell(
               onTap: isRest ? null : () => _openWorkout(wo),

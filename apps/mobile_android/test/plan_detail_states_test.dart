@@ -205,6 +205,22 @@ void main() {
     );
   });
 
+  // The row's Semantics excludes its InkWell, so open and edit have to be on
+  // the node itself or a screen reader can do neither.
+  testWidgets('a screen reader can open and edit a workout from its row',
+      (tester) async {
+    await _pump(tester, DateTime(2026, 3, 11));
+    final node = tester.widget<Semantics>(find
+        .descendant(
+          of: find.byKey(const ValueKey('planDetailWorkoutRow-e')),
+          matching: find.byWidgetPredicate((w) =>
+              w is Semantics && (w.properties.label ?? '').contains('Easy')),
+        )
+        .first);
+    expect(node.properties.onTap, isNotNull);
+    expect(node.properties.onLongPress, isNotNull);
+  });
+
   testWidgets('a paused plan says so in the header', (tester) async {
     await _pump(tester, DateTime(2026, 3, 11), status: 'paused');
     expect(_text(tester, const Key('planDetailPaused')), 'Paused');

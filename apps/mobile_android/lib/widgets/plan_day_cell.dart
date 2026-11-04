@@ -141,6 +141,9 @@ class PlanDayCell extends StatelessWidget {
             ? fmtKm(wo.targetDistanceM, 1)
             : null,
       ),
+      // excludeSemantics drops the InkWell's own tap action, so the node
+      // carries it or a screen reader's double-tap does nothing.
+      onTap: onSelect == null ? null : () => onSelect!(wo),
       excludeSemantics: true,
       child: InkWell(
         key: ValueKey('planDayCell-${toIsoDate(wo.scheduledDate)}'),

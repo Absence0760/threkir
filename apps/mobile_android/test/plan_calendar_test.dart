@@ -1,3 +1,5 @@
+import 'dart:ui' show SemanticsAction;
+
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -348,5 +350,47 @@ void main() {
       expect(find.text('INTERVALS'), findsNothing);
       expect(find.text('Int'), findsOneWidget);
     });
+  });
+
+  // The cell's Semantics excludes its InkWell, so the tap has to be on the
+  // node itself: a screen reader's double-tap used to do nothing.
+  testWidgets('a screen reader can open a workout from its cell',
+      (tester) async {
+    final handle = tester.ensureSemantics();
+    PlanWorkoutRow? opened;
+    final wo = PlanWorkoutRow(
+      id: 'wo1',
+      weekId: 'wk1',
+      scheduledDate: DateTime(2024, 4, 15),
+      kind: 'tempo',
+      targetDistanceM: 10000,
+      manuallyCompleted: false,
+    );
+    await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: PlanCalendar(
+          startDate: DateTime(2024, 4, 1),
+          endDate: DateTime(2024, 6, 30),
+          today: DateTime(2024, 4, 1),
+          workouts: [wo],
+          onSelect: (w) => opened = w,
+        ),
+      ),
+    ));
+    await tester.pump();
+
+    final label = RegExp(r'Tempo, 10\.0 km');
+    expect(
+        tester
+            .getSemantics(find.bySemanticsLabel(label))
+            .getSemanticsData()
+            .hasAction(SemanticsAction.tap),
+        isTrue);
+    tester.semantics.tap(find.semantics.byLabel(label));
+    await tester.pump();
+    expect(opened?.id, 'wo1');
+    handle.dispose();
   });
 }

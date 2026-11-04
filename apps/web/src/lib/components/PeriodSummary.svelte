@@ -7,6 +7,8 @@
 	import { formatISO } from '#lib/training/training.ts';
 	import { weekStartLocal } from '#lib/training/goals.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { formatElevation } from '#lib/format/units.svelte.ts';
+	import ThisWeekStrip from '#lib/components/ThisWeekStrip.svelte';
 	import { periodNeedsFullHistory, type PeriodType } from '#lib/core/dashboard_runs.ts';
 	import type { PeriodSummaryRun } from '#lib/core/data.ts';
 
@@ -155,8 +157,21 @@
 		const longest = periodRuns.length
 			? Math.max(...periodRuns.map((r) => r.distance_m))
 			: 0;
-		return { distance: d, duration: t, count: periodRuns.length, longest };
+		// Positive gains only: a run with no ascent recorded is not a run
+		// that went downhill.
+		const climb = periodRuns.reduce(
+			(s, r) => s + (r.elevation_gain_m != null && r.elevation_gain_m > 0 ? r.elevation_gain_m : 0),
+			0,
+		);
+		return { distance: d, duration: t, count: periodRuns.length, longest, climb };
 	});
+
+	// The day strip draws only the calendar week holding today, so it shows
+	// when that is the week on screen — the dashboard's This Week strip moved
+	// here when the week lead became Home's one this-week view (§ 2283).
+	let showsCurrentWeek = $derived(
+		type === 'week' && startDate.getTime() === weekStartLocal(new Date(), weekStartDay).getTime(),
+	);
 
 	async function handleShare() {
 		const lines = [
@@ -255,7 +270,17 @@
 					: '—'}
 			</span>
 		</div>
+		<div class="stat-card">
+			<span class="stat-label">{m('periodSummary.climb')}</span>
+			<span class="stat-value" data-testid="period-summary-climb">
+				{stats.climb > 0 ? formatElevation(stats.climb) : '—'}
+			</span>
+		</div>
 	</div>
+
+	{#if showsCurrentWeek && !pending}
+		<ThisWeekStrip activities={sourceRuns ?? []} weekStart={weekStartDay} />
+	{/if}
 
 	{#if pending}
 		<p class="muted" role="status">{m('periodSummary.loadingHistory')}</p>
@@ -379,11 +404,8 @@
 	}
 	.stats {
 		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
 		gap: var(--space-md);
-	}
-	@media (max-width: 40rem) {
-		.stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	}
 	.stat-card {
 		background: var(--color-surface);

@@ -69,7 +69,6 @@ test('every "this week" surface reads the shared helper', () => {
 		'lib/training/week_lead.ts',
 		'lib/core/weekly_mileage.ts',
 		'lib/components/PeriodSummary.svelte',
-		'routes/dashboard/+page.svelte',
 	]) {
 		const f = FILES.find((x) => x.rel === rel);
 		assert.ok(f, `${rel} moved — re-anchor this guard`);

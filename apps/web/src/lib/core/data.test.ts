@@ -1851,15 +1851,13 @@ test('no enumerated read, and no row type, names a column the client is not gran
 // field yields `undefined` rather than throwing, so the only assertion that can
 // see the defect is one the compiler makes (§ 1294 / § 1330).
 
-/// The period drilldown projects five of `runs`' twenty-four columns. Each of
+/// The period drilldown projects six of `runs`' twenty-four columns. Each of
 /// these was a field `Run` promised and the query never fetched. The
 /// `@ts-expect-error` is the mutation test: widen the return type back to
 /// `Run[]` and every directive here reports unused, which fails the build.
 export const periodSummaryWithheldReadsDoNotCompile = (r: PeriodSummaryRun) => [
 	// @ts-expect-error — the jsonb bag the drilldown does not read
 	r.metadata,
-	// @ts-expect-error — not in PERIOD_SUMMARY_RUN_COLUMNS
-	r.elevation_gain_m,
 	// @ts-expect-error — not in PERIOD_SUMMARY_RUN_COLUMNS
 	r.activity_type,
 	// @ts-expect-error — not in PERIOD_SUMMARY_RUN_COLUMNS

@@ -6,8 +6,10 @@ import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/sag
 import { insertRun } from '../fixtures/simulate';
 
 /**
- * The "This Week" tile and the mileage chart's current-week bar are the same
- * seven days, on either `week_start_day`.
+ * The week lead and the mileage chart's current-week bar are the same seven
+ * days, on either `week_start_day`. (The field report was against the grid's
+ * This Week tile, which left Home when the lead became its one this-week
+ * view, decisions § 2283; the lead counts the same seven days.)
  *
  * Field report: with week start set to Sunday the tile read 22.50 km "this
  * week" while the chart beside it read 7.50 km. The chart was fetched in the
@@ -38,7 +40,7 @@ async function setWeekStart(userId: string, day: 'monday' | 'sunday') {
 	if (error) throw new Error(`setting week_start_day failed: ${error.message}`);
 }
 
-test.describe('/dashboard this-week tile vs mileage chart', () => {
+test.describe('/dashboard week lead vs mileage chart', () => {
 	let runner: SagaUser;
 
 	test.beforeAll(async () => {
@@ -70,7 +72,7 @@ test.describe('/dashboard this-week tile vs mileage chart', () => {
 				await page.clock.setFixedTime(browserDayAt(SATURDAY, 22));
 				await page.goto('/dashboard');
 
-				await expect(page.getByTestId('dash-this-week-distance')).toHaveText(expected, {
+				await expect(page.getByTestId('dash-week-lead-distance')).toContainText(expected, {
 					timeout: 15_000,
 				});
 				const currentWeekBar = page.locator('.chart [role="listitem"]').last();

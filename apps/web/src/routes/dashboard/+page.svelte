@@ -78,6 +78,7 @@
 		revealOnNavigate,
 	} from '#lib/stores/modality_visibility.svelte.ts';
 	import DashboardWeekLead from '#lib/components/DashboardWeekLead.svelte';
+	import DashboardActionsMenu from '#lib/components/DashboardActionsMenu.svelte';
 	import FinishPlanPrompt from '#lib/components/FinishPlanPrompt.svelte';
 	import Recent5kPlanCard from '#lib/components/Recent5kPlanCard.svelte';
 	import {
@@ -98,7 +99,6 @@
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
 	import WorkoutEditor from '#lib/components/WorkoutEditor.svelte';
 	import PeriodSummary from '#lib/components/PeriodSummary.svelte';
-	import ThisWeekStrip from '#lib/components/ThisWeekStrip.svelte';
 	import ChallengesPanel from '#lib/components/ChallengesPanel.svelte';
 	import DisclosureSection from '#lib/components/DisclosureSection.svelte';
 	import {
@@ -126,10 +126,8 @@
 		loadGoals,
 		saveGoals,
 		evaluateGoal,
-		markedDoneTally,
 		newGoalId,
 		periodLabel,
-		weekStartLocal,
 		type RunGoal,
 	} from '#lib/training/goals.ts';
 	import type { Run, RunSource, ActivePlanOverview } from '#lib/types.ts';
@@ -922,15 +920,7 @@
 	const hidePr = (key: string) => setHiddenPrs([...new Set([...hiddenPrs, key])]);
 	const unhidePr = (key: string) => setHiddenPrs(hiddenPrs.filter((k) => k !== key));
 
-	// Persona-hunt Round 2 finding Intermediate #2: this "This Week"
-	// stat card used to hardcode Monday as the week start. The
-	// weekly-mileage goal card on the same page already honours the
-	// user's `week_start_day` preference via goals.ts. Reading the
-	// same pref here keeps the two adjacent cards in agreement —
-	// pre-fix a Sunday-week-start user saw Sunday's runs in their
-	// goal card but missing from the "This Week" stat.
 	const now = new Date();
-	let weekStart = $derived(weekStartLocal(now, weekStartDay));
 
 	let filteredRuns = $derived(
 		sourceFilter === 'all' ? runs : runs.filter((r) => r.source === sourceFilter)
@@ -942,17 +932,6 @@
 	let weeklyMileage = $derived(
 		bucketWeeklyMileage(filteredRuns, 12, currentLocale(), weekStartDay, now)
 	);
-	let thisWeekRuns = $derived(filteredRuns.filter((r) => new Date(r.started_at) >= weekStart));
-	let thisWeekRunDistance = $derived(thisWeekRuns.reduce((sum, r) => sum + r.distance_m, 0));
-
-	/// Plan workouts the user marked as done this week without
-	/// recording a run, folded into the "This Week" card through the
-	/// same `markedDoneTally` the week lead and the Goals section read,
-	/// so the three never count the week differently (decisions § 1813).
-	let thisWeekMarkedDone = $derived(
-		markedDoneTally(planOverview?.workouts ?? [], weekStart, now)
-	);
-
 	/// Calendar-position helpers for the active-plan hero card. Match
 	/// the shape of the corresponding helpers on /plans/+page.svelte so
 	/// the two surfaces line up (week index, calendar percentage, time
@@ -1101,30 +1080,12 @@
 		return d.toLocaleDateString(activeFormatLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
 	}
 
-	/// Combined distance + activity count for the "This Week" card.
-	/// Distance includes manually-completed workouts' target distance;
-	/// the count includes them too so "X runs / workouts" reflects
-	/// actions taken this week.
-	let thisWeekDistance = $derived(thisWeekRunDistance + thisWeekMarkedDone.distanceM);
-	let thisWeekActivityCount = $derived(thisWeekRuns.length + thisWeekMarkedDone.count);
 	// Lifetime totals from the all-time aggregate (not the ~2-year `runs`
 	// window), so the "all sources" / "all time" cards stay exact for a
 	// deep-history runner. Unlike the recency cards these are not scoped to
 	// the source filter — the sub-labels say "all sources" / "all time".
 	let totalRuns = $derived(allTimeStats.totalRuns);
 	let longestRun = $derived(allTimeStats.longestRunM);
-
-	/// Total elevation gain — vert — for the current week. Reads
-	/// metadata.elevation_m on each run (writes by the recorder at
-	/// save time + Strava import). Persona-hunt Round 3 Ultra #4:
-	/// ultra runners track vert as a first-class metric; without
-	/// this card the dashboard hid the data even when it existed.
-	let thisWeekVertMetres = $derived(
-		thisWeekRuns.reduce((sum, r) => {
-			const m = (r.metadata as Record<string, unknown> | null)?.elevation_m;
-			return sum + (typeof m === 'number' && m > 0 ? m : 0);
-		}, 0)
-	);
 
 	/// Current + best run streak. Daily granularity; Strava's grace
 	/// rule means a missing today doesn't break the streak if
@@ -1298,6 +1259,9 @@
 			>
 		</div>
 	{:else}
+		<div class="dash-toolbar">
+			<DashboardActionsMenu />
+		</div>
 		{#if isReturningRunner}
 			<section class="welcome-back-card">
 				<span class="material-symbols welcome-back-icon" aria-hidden="true">waving_hand</span>
@@ -1315,6 +1279,7 @@
 				weekStart={weekStartDay}
 				{now}
 				onopensession={(w) => (editingWorkout = w)}
+				onopenweek={() => (periodModal = { type: 'week', date: new Date() })}
 			/>
 		{/if}
 		{#if planOverview && planPosition}
@@ -1631,32 +1596,10 @@
 					{m('dash.viewRecap', { year: new Date().getFullYear() })}
 				</a>
 			</div>
+			<!-- This week lives on the week lead above, and its day strip, climb
+			     and pace in the weekly summary the lead opens (decisions § 2283):
+			     the grid keeps the all-time figures. -->
 			<div class="stat-grid">
-				<button
-					type="button"
-					class="stat-card stat-card-button"
-					onclick={() => (periodModal = { type: 'week', date: new Date() })}
-				>
-					<span class="stat-label">{m('dash.statThisWeek')}</span>
-					<!-- A week with nothing in it says so in words. "0 m" beside a
-					     lifetime total reads as a measurement of this week. -->
-					{#if thisWeekActivityCount === 0}
-						<span class="stat-value stat-value-empty">{m('dash.weekEmptyValue')}</span>
-						<span class="stat-sub">{m('dash.weekEmptySub')}</span>
-					{:else}
-						<span class="stat-value" data-testid="dash-this-week-distance">{formatDistance(thisWeekDistance)}</span>
-						<span class="stat-sub">
-							{thisWeekActivityCount === 1
-								? m('dash.activityCountOne', { n: thisWeekActivityCount })
-								: m('dash.activityCountOther', { n: thisWeekActivityCount })}
-							{#if thisWeekMarkedDone.count > 0}
-								<span class="manual-hint">
-									{m('dash.inclMarkedDone', { n: thisWeekMarkedDone.count })}
-								</span>
-							{/if}
-						</span>
-					{/if}
-				</button>
 				<div class="stat-card">
 					<span class="stat-label">{m('dash.statTotalRuns')}</span>
 					<span class="stat-value" data-testid="dash-total-runs">{totalRuns}</span>
@@ -1671,29 +1614,6 @@
 					<span class="stat-value">{formatDistance(longestRun)}</span>
 					<span class="stat-sub">{m('dash.allTime')}</span>
 				</button>
-				<div class="stat-card">
-					<span class="stat-label"><MetricLabel metric="vert" variant="thisWeek" /></span>
-					{#if thisWeekRuns.length === 0}
-						<span class="stat-value stat-value-empty">{m('dash.weekEmptyValue')}</span>
-					{:else}
-						<span class="stat-value">{formatElevation(thisWeekVertMetres)}</span>
-						<span class="stat-sub">{m('dash.elevationGain')}</span>
-					{/if}
-				</div>
-				<div class="stat-card">
-					<span class="stat-label">{m('dash.statThisWeekPace')}</span>
-					{#if thisWeekRuns.length === 0}
-						<span class="stat-value stat-value-empty">{m('dash.weekEmptyValue')}</span>
-					{:else}
-						<span class="stat-value">
-							{formatPace(
-								thisWeekRuns.reduce((s, r) => s + r.duration_s, 0),
-								thisWeekDistance,
-							)}
-						</span>
-						<span class="stat-sub">{m('dash.average')}</span>
-					{/if}
-				</div>
 				<div class="stat-card" class:streak-active={streakCard.current > 0}>
 					<span class="stat-label">{m('dash.statStreak')}</span>
 					<span class="stat-value">
@@ -1715,13 +1635,6 @@
 					</span>
 				</div>
 			</div>
-
-			<!-- Current calendar-week activity ribbon — the day-by-day shape
-			     behind the "This Week" stat card. Honours week_start_day +
-			     the source filter (filteredRuns). Distinct from the plan-detail
-			     CurrentWeekStrip, which anchors to the plan's week, not the
-			     calendar. Pure derivation in lib/training/current_week.ts. -->
-			<ThisWeekStrip activities={filteredRuns} weekStart={weekStartDay} {now} />
 
 			<!-- Week-over-week + month-over-month trend deltas on the summary
 			     stats (distance / time / runs). Compares each period-to-date
@@ -3103,15 +3016,10 @@
 
 	.stat-grid {
 		display: grid;
-		/* 6 columns to match the 6 stat cards rendered on desktop
-		   (This Week, Vert, Total Runs, Longest Run, This Week
-		   Pace, Streak). The U4 web commit `807e11e1` added the
-		   Vert card to the previously-5-column grid; without
-		   bumping this to 6 the cards wrapped to a second row at
-		   1440px wide (pinned by `dashboard/page.spec.ts:333`).
-		   The narrower breakpoints below collapse to 2-up as
-		   before — phones aren't affected. */
-		grid-template-columns: repeat(6, minmax(0, 1fr));
+		/* One column per card: Total Runs, Longest Run, Streak. The three
+		   this-week cards left with § 2283, so three stay one row at every
+		   width rather than leaving a lone card on a second row. */
+		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: var(--space-md);
 	}
 
@@ -3543,6 +3451,10 @@
 	}
 	.link-btn:hover { background: var(--color-primary-light); }
 
+	.dash-toolbar {
+		display: flex;
+		justify-content: flex-end;
+	}
 	.welcome-back-card {
 		display: flex;
 		align-items: center;
@@ -4250,14 +4162,9 @@
 	   other at typical 1024 widths. Two-col PRs/Recent stays side by
 	   side here — it doesn't have a hero band of metrics inside. */
 	@media (max-width: 1100px) {
-		/* 5 cards collapse straight to 2-up at this width — going via
-		   3-up first would leave an awkward 3+2 split (which is exactly
-		   what we just escaped at the wider size). */
-		.stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 		.fitness-row { grid-template-columns: repeat(auto-fit, minmax(min(8rem, 100%), 1fr)); }
 	}
 	@media (max-width: 768px) {
-		.stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 		.plan-hero,
 		.plan-promo {
 			padding: var(--space-md) var(--space-lg);

@@ -68,16 +68,11 @@ test.describe('dashboard legibility', () => {
 			await page.goto('/dashboard');
 			await expect(page.locator('.stat-grid')).toBeVisible({ timeout: 15_000 });
 
-			// 1.6 — an empty week in words, not a zero that reads as data.
-			const tile = (label: RegExp) =>
-				page
-					.locator('.stat-grid .stat-card')
-					.filter({ has: page.locator('.stat-label', { hasText: label }) })
-					.first();
-			for (const label of [/^This Week$/, /This Week Pace/]) {
-				await expect(tile(label).locator('.stat-value')).toHaveText('No runs yet');
-			}
-			await expect(tile(/^This Week$/)).not.toContainText('0 m');
+			// 1.6 — an empty week in words, not a zero that reads as data. The
+			// week lead is Home's one this-week view (§ 2283).
+			const lead = page.getByTestId('dash-week-lead');
+			await expect(lead.locator('.week-lead-value')).toHaveText('No runs yet');
+			await expect(lead).not.toContainText('0 m');
 			await expect(page.locator('.stat-grid')).not.toContainText('--');
 
 			// 1.1 — the readiness breakdown no longer borrows the TSB tile's name.

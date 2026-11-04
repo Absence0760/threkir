@@ -40,7 +40,8 @@ import { readMaybeRow, readRow } from '../fixtures/db-read';
  *   5. The run appears in the /runs list (All-time filter).
  *   6. /dashboard recent-runs panel shows the run (the `a.run-row`
  *      links to /runs/<id>, so we match on the href suffix).
- *   7. The dashboard This-Week strip (ThisWeekStrip.svelte) reflects the
+ *   7. The This-Week strip (ThisWeekStrip.svelte, in the weekly summary
+ *      the dashboard's week lead opens, decisions § 2283) reflects the
  *      run: because it started today, exactly one of the seven day
  *      cells carries the `.logged` class — the strip is the "your week
  *      so far" ribbon that a brand-new run must light up.
@@ -280,7 +281,8 @@ test.describe('onboarding → first run → dashboard journey', () => {
 				// shared user happens to fall in the same week — the contract
 				// under test is "the new run lights up the strip", not the
 				// exact count.
-				const strip = page.locator('.week-strip');
+				await page.getByTestId('dash-week-lead-open').click();
+				const strip = page.getByRole('dialog').locator('.week-strip');
 				await expect(strip).toBeVisible({ timeout: 10_000 });
 				await expect(
 					strip.locator('.day.logged').first()

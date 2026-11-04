@@ -600,20 +600,22 @@ export async function fetchRunStreaks(
 
 /// Exactly the columns `PeriodSummary` reads. The period drilldown has to
 /// ship every row — it lists them — so the saving is per-row width, not row
-/// count: no `metadata` jsonb bag, no elevation, no DNF flag.
+/// count: no `metadata` jsonb bag, no DNF flag. The climb tile reads the
+/// `elevation_gain_m` column, not the bag's `elevation_m` mirror.
 export const PERIOD_SUMMARY_RUN_COLUMNS = [
 	'id',
 	'started_at',
 	'distance_m',
 	'duration_s',
 	'source',
+	'elevation_gain_m',
 ] as const satisfies RunColumns;
 
-/// A run as the period drilldown reads it — the five values it renders, and
+/// A run as the period drilldown reads it — the six values it renders, and
 /// nothing it can read `undefined` off.
 export type PeriodSummaryRun = Pick<Run, (typeof PERIOD_SUMMARY_RUN_COLUMNS)[number]>;
 
-/// Complete run history for a `PeriodSummary`, column-narrowed to the five
+/// Complete run history for a `PeriodSummary`, column-narrowed to the six
 /// values it renders. Both drilldown entry points use it: the standalone
 /// /dashboard/period route, and the dashboard modal's lazy load when the
 /// requested period reaches past `DASHBOARD_RUNS_WINDOW_DAYS`. Throws on a

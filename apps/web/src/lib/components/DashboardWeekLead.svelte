@@ -19,8 +19,12 @@
 		weekStart: WeekStart;
 		now: Date;
 		onopensession?: (w: PlanWorkout) => void;
+		/// Opens this week's summary, the tap-through the Trends grid's Week
+		/// cell used to own.
+		onopenweek?: () => void;
 	}
-	let { activities, planWorkouts, weeklyGoal, weekStart, now, onopensession }: Props = $props();
+	let { activities, planWorkouts, weeklyGoal, weekStart, now, onopensession, onopenweek }: Props =
+		$props();
 
 	let lead = $derived(weekLead({ activities, planWorkouts, weeklyGoal, weekStart, now }));
 
@@ -59,7 +63,20 @@
 
 <section class="week-lead" aria-labelledby="week-lead-title" data-testid="dash-week-lead">
 	<div class="week-lead-week">
-		<h2 id="week-lead-title">{m('dash.leadTitle')}</h2>
+		<div class="week-lead-head">
+			<h2 id="week-lead-title">{m('dash.leadTitle')}</h2>
+			{#if onopenweek}
+				<button
+					type="button"
+					class="week-lead-open"
+					onclick={onopenweek}
+					data-testid="dash-week-lead-open"
+				>
+					{m('dash.leadOpenWeek')}
+					<span class="material-symbols" aria-hidden="true">chevron_right</span>
+				</button>
+			{/if}
+		</div>
 		{#if lead.count === 0}
 			<p class="week-lead-value week-lead-value-empty">{m('dash.weekEmptyValue')}</p>
 		{:else}
@@ -137,28 +154,42 @@
 			{/if}
 		</div>
 	{/if}
-
-	<div class="week-lead-actions">
-		<a class="btn btn-primary" href="/runs/new" data-testid="dash-week-lead-add">
-			<span class="material-symbols" aria-hidden="true">add</span>
-			{m('dash.addARun')}
-		</a>
-		<a class="btn btn-outline" href="/settings/integrations" data-testid="dash-week-lead-import">
-			{m('dash.importFromStravaGarmin')}
-		</a>
-	</div>
 </section>
 
 <style>
 	.week-lead {
 		display: grid;
-		grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto;
+		grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
 		align-items: center;
 		gap: var(--space-md) var(--space-lg);
 		padding: var(--space-lg);
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
+	}
+	.week-lead-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-xs) var(--space-sm);
+	}
+	.week-lead-open {
+		display: inline-flex;
+		align-items: center;
+		min-height: var(--tap-target-min);
+		padding: 0 var(--space-xs);
+		background: none;
+		border: none;
+		border-radius: var(--radius-md);
+		color: var(--color-primary);
+		font: inherit;
+		font-size: 0.9rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.week-lead-open:hover {
+		text-decoration: underline;
 	}
 	.week-lead h2 {
 		margin: 0;
@@ -252,27 +283,11 @@
 		font-size: 0.9rem;
 		color: var(--color-text-secondary);
 	}
-	.week-lead-actions {
-		display: flex;
-		flex-direction: column;
-		align-items: stretch;
-		gap: var(--space-sm);
-	}
-	.week-lead-actions .btn {
-		justify-content: center;
-	}
 
 	@media (max-width: 720px) {
 		.week-lead {
 			grid-template-columns: minmax(0, 1fr);
 			padding: var(--space-md);
-		}
-		.week-lead-actions {
-			flex-direction: row;
-			flex-wrap: wrap;
-		}
-		.week-lead-actions .btn {
-			flex: 1 1 auto;
 		}
 	}
 </style>

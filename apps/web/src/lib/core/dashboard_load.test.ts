@@ -116,11 +116,10 @@ test('dashboard: the weekly mileage chart is derived from the week_start_day it 
 		SRC,
 		/let weeklyMileage = \$derived\(\s*bucketWeeklyMileage\(filteredRuns, 12, [^,]+, weekStartDay, now\)/,
 	);
-	assert.match(
-		SRC,
-		/let weekStart = \$derived\(weekStartLocal\(now, weekStartDay\)\)/,
-		'the "This week" tile takes its window from the same helper',
-	);
+	// The page computes no week window of its own any more: the This Week
+	// tile left the grid (§ 2283), and the week lead and the weekly summary
+	// take theirs from weekStartLocal, which week_start_guard.test.ts pins.
+	assert.doesNotMatch(SRC, /\bweekStartLocal\(/);
 });
 
 test('dashboard: a failed plan read shows a load error, not the create-a-plan promo', () => {

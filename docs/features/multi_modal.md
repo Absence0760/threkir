@@ -411,10 +411,12 @@ becomes an **action button**, not a tab.
 > **Since 2026-11-03 (#1187, [decisions § 2281](../architecture/decisions.md))
 > the mobile lead is compact:** **Add a run** and **Import runs** left it for
 > the overflow (⋮) on Home's toolbar, which offers both on every Home state,
-> the welcome state included, so neither is more than two taps away. Web's
-> `DashboardWeekLead.svelte` still carries both buttons; that is a known,
-> recorded divergence, not drift.
-> `test/dashboard_week_lead_test.dart`.
+> the welcome state included, so neither is more than two taps away.
+> **Web matches since the same day:** `DashboardWeekLead.svelte` carries no
+> actions, and both sit in the **Add or import** menu
+> (`DashboardActionsMenu.svelte`) at the top of every loaded `/dashboard`
+> state. `test/dashboard_week_lead_test.dart`,
+> `tests-e2e/dashboard/week-lead.spec.ts`.
 
 Home is a vertical scroll of cards. The order is **driven by what the
 user logs**, not a fixed grid. The ordering algorithm:
@@ -451,8 +453,13 @@ user logs**, not a fixed grid. The ordering algorithm:
 > and the This Week day strip left Home; the lead's chevron opens the
 > weekly summary, which now draws the day strip for the current week and a
 > climb tile for every period. The period strip keeps Month and All time.
-> Web still shows all three. `test/dashboard_week_lead_test.dart`,
-> `test/period_summary_screen_test.dart`.
+> **Web matches:** `/dashboard`'s week lead is its one this-week view, its
+> **Week summary** opens the weekly `PeriodSummary`, which draws
+> `ThisWeekStrip` for the current week and a Climb tile (`elevation_gain_m`)
+> for every period; the stat grid keeps Total runs, Longest run and Streak,
+> having lost its This Week, this-week vert and this-week pace cells.
+> `test/dashboard_week_lead_test.dart`, `test/period_summary_screen_test.dart`,
+> `tests-e2e/dashboard/week-lead.spec.ts`, `tests-e2e/dashboard/week-strip.spec.ts`.
 >
 > **Next club event (web + mobile, 2026-11-03, [decisions § 2285](../architecture/decisions.md)):**
 > Home's Today block shows the runner's next `going` club event when it
@@ -464,7 +471,8 @@ user logs**, not a fixed grid. The ordering algorithm:
 > **Start, Coach and the week lead (mobile, 2026-11-03):** Home carries one
 > Start, on today's open plan workout or else on the week lead (§ 2282); the
 > Coach card closes the Today block (§ 2280); the lead is compact, with
-> **Add a run** and **Import runs** in the toolbar overflow (§ 2281). The
+> **Add a run** and **Import runs** in the toolbar overflow (§ 2281; web's
+> are in its **Add or import** menu). The
 > **Last run** card is a deliberate mobile-only card: web's Today block has
 > none.
 

@@ -21,8 +21,28 @@ import { USER_A } from '../fixtures/users';
  * button against the seeded athlete number, Garmin .fit / .zip upload.
  */
 
+/// USER_A's two seeded connections (seed.sql § 5). Several cases below lean on
+/// them, and two of them change them, so every case starts from and leaves
+/// exactly this state. Restoring through the UI is not enough: a case that
+/// fails after its disconnect would leave the row gone for every case and spec
+/// that runs after it.
+const SEED_INTEGRATIONS = [
+	{ user_id: USER_A.id, provider: 'parkrun', last_sync_at: '2026-04-01T10:00:00Z' },
+	{ user_id: USER_A.id, provider: 'strava', last_sync_at: '2026-03-30T08:00:00Z' }
+];
+
+async function restoreSeedIntegrations(): Promise<void> {
+	const { error } = await getAdminClient()
+		.from('integrations')
+		.upsert(SEED_INTEGRATIONS, { onConflict: 'user_id,provider' });
+	if (error) throw new Error(`restore seeded integrations failed: ${error.message}`);
+}
+
 test.describe('/settings/integrations', () => {
 	test.use({ storageState: USER_A.storageStatePath });
+
+	test.beforeEach(restoreSeedIntegrations);
+	test.afterEach(restoreSeedIntegrations);
 
 	test('the list offers what this deployment can honour, and nothing else', async ({
 		page
@@ -82,14 +102,24 @@ test.describe('/settings/integrations', () => {
 	});
 
 	test('parkrun connect → disconnect round-trip flips the button + the row class', async ({
-		page
+		page,
+		mockRoute
 	}) => {
-		// parkrun + garmin both go through the placeholder-connect path
+		// parkrun goes through the placeholder-connect path
 		// (`connectIntegration(provider)` upsert into integrations) —
 		// only Strava has live OAuth. parkrun starts connected per
-		// seed, so the round-trip is Disconnect → Connect → Disconnect.
+		// seed, so the round-trip is Disconnect → Connect.
 		// Tests the data-layer upsert + delete path that the canonical
 		// click handler funnels into.
+		//
+		// Once disconnected, the card stays only while the parkrun probe says
+		// the leg is deployed (`integrationIsVisible`). That gate has its own
+		// cases above; here it is answered yes, so this case tests the toggle
+		// rather than whether the stack's Edge Runtime is up, or whether the
+		// probe's per-user hourly bucket has room left.
+		await mockRoute(page, '**/functions/v1/parkrun-import', (route) =>
+			route.fulfill({ status: 200, json: { configured: true } })
+		);
 		await page.goto('/settings/integrations');
 
 		const parkrunCard = page.locator('.integration-card', { hasText: 'parkrun' });
@@ -104,7 +134,6 @@ test.describe('/settings/integrations', () => {
 		await expect(parkrunCard.getByRole('button', { name: 'Connect' }))
 			.toBeVisible();
 
-		// Reconnect to restore the seed state.
 		await parkrunCard.getByRole('button', { name: 'Connect' }).click();
 		await expect(parkrunCard).toHaveClass(/connected/, { timeout: 5_000 });
 	});
@@ -117,31 +146,18 @@ test.describe('/settings/integrations', () => {
 		// the tap — the only disclosure an unconfigured build ever made. The
 		// gate moves that disclosure ahead of the tap by not rendering the
 		// card, so there is no button left to press and no toast to raise.
-		const admin = getAdminClient();
-		try {
-			await admin
-				.from('integrations')
-				.delete()
-				.eq('user_id', USER_A.id)
-				.eq('provider', 'strava');
+		// afterEach puts the seeded Strava row back.
+		await getAdminClient()
+			.from('integrations')
+			.delete()
+			.eq('user_id', USER_A.id)
+			.eq('provider', 'strava');
 
-			await page.goto('/settings/integrations');
-			// parkrun is the proof the page rendered rather than merely failing
-			// to reach the assertion below.
-			await expect(page.getByTestId('integration-parkrun')).toBeVisible({ timeout: 10_000 });
-			await expect(page.getByTestId('integration-strava')).toHaveCount(0);
-		} finally {
-			// Restore seed state — Strava connected with the seeded
-			// last_sync_at so downstream tests asserting that row holds.
-			await admin.from('integrations').upsert(
-				{
-					user_id: USER_A.id,
-					provider: 'strava',
-					last_sync_at: '2026-03-30T08:00:00Z'
-				},
-				{ onConflict: 'user_id,provider' }
-			);
-		}
+		await page.goto('/settings/integrations');
+		// parkrun is the proof the page rendered rather than merely failing
+		// to reach the assertion below.
+		await expect(page.getByTestId('integration-parkrun')).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByTestId('integration-strava')).toHaveCount(0);
 	});
 
 	test('connected integration shows a last-sync timestamp', async ({ page }) => {

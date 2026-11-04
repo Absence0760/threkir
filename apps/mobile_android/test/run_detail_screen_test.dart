@@ -562,11 +562,7 @@ void main() {
       expect(api.calls, 1);
       expect(_sharePlatform.calls, isEmpty);
 
-      await tester.runAsync(() async {
-        api.gate.complete();
-        await Future<void>.delayed(Duration.zero);
-        await tester.pump();
-      });
+      await tester.runAsync(() async => api.gate.complete());
       await pumpUntil(
         tester,
         () => _sharePlatform.calls.isNotEmpty,

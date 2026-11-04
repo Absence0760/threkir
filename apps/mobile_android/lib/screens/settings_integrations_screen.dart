@@ -35,6 +35,25 @@ import 'plan_calendar_feed_screen.dart';
 import 'races_screen.dart';
 import 'watch_live_screen.dart';
 
+/// The reason a refused Strava connect gives, in the runner's language. The
+/// function's code picks it (`stravaConnectError`) and is never shown itself;
+/// web words the same reasons through `stravaConnectAppError`.
+String stravaConnectErrorMessage(
+    AppLocalizations l10n, StravaConnectError reason) {
+  switch (reason) {
+    case StravaConnectError.notConfigured:
+      return l10n.integrationsStravaErrNotConfigured;
+    case StravaConnectError.missingScope:
+      return l10n.integrationsStravaErrMissingScope;
+    case StravaConnectError.codeRejected:
+      return l10n.integrationsStravaErrCodeRejected;
+    case StravaConnectError.signedOut:
+      return l10n.authErrorNotSignedIn;
+    case StravaConnectError.generic:
+      return l10n.authErrorGeneric;
+  }
+}
+
 class SettingsIntegrationsScreen extends StatefulWidget {
   final ApiClient? apiClient;
   final BleHeartRate heartRate;
@@ -200,13 +219,15 @@ class _SettingsIntegrationsScreenState
       );
       final cb = parseStravaCallback(resultUrl);
       if (!cb.isSuccess) {
+        // The callback URL's `error` names the reason; it is never shown.
+        debugPrint('[SettingsIntegrationsScreen] Strava callback: ${cb.error}');
         if (!mounted) return;
         showTopBanner(
           context,
           cb.error == 'access_denied'
               ? l10n.integrationsStravaCancelled
               : l10n.integrationsStravaSignInFailed(
-                  cb.error ?? 'no code returned'),
+                  l10n.integrationsStravaErrCodeRejected),
         );
         return;
       }
@@ -223,7 +244,12 @@ class _SettingsIntegrationsScreenState
       if (!mounted) return;
       final err = res.error;
       if (err != null) {
-        showTopBanner(context, l10n.integrationsStravaConnectFailed(err));
+        debugPrint('[SettingsIntegrationsScreen] Strava connect error: $err');
+        showTopBanner(
+          context,
+          l10n.integrationsStravaConnectFailed(
+              stravaConnectErrorMessage(l10n, stravaConnectError(err))),
+        );
         return;
       }
       // Connecting triggers a 90-day backfill, and Strava can throttle it
@@ -249,7 +275,12 @@ class _SettingsIntegrationsScreenState
       debugPrint('[SettingsIntegrationsScreen] Strava sign-in failed: $e');
       if (!mounted) return;
       showTopBanner(
-          context, l10n.integrationsStravaSignInFailed(friendlyError(l10n, e)));
+        context,
+        e is StravaConnectFailure
+            ? l10n.integrationsStravaConnectFailed(
+                stravaConnectErrorMessage(l10n, e.reason))
+            : l10n.integrationsStravaSignInFailed(friendlyError(l10n, e)),
+      );
     } finally {
       if (mounted) setState(() => _stravaBusy = false);
     }

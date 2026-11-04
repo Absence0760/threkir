@@ -11255,6 +11255,18 @@
       }
     }
   },
+  "integrationsStravaErrNotConfigured": "Strava isn't set up on this server yet.",
+  "@integrationsStravaErrNotConfigured": {
+    "description": "Reason after 'Strava connect failed:' when the server has no Strava credentials or redirect allow-list"
+  },
+  "integrationsStravaErrMissingScope": "Strava didn't share all your activities. Connect again and leave every permission ticked.",
+  "@integrationsStravaErrMissingScope": {
+    "description": "Reason after 'Strava connect failed:' when the runner unticked the activity permission on Strava"
+  },
+  "integrationsStravaErrCodeRejected": "Strava didn't accept the sign-in. Try connecting again.",
+  "@integrationsStravaErrCodeRejected": {
+    "description": "Reason when Strava refused the authorization code or the sign-in returned none"
+  },
   "integrationsStravaConnected": "Strava connected.",
   "@integrationsStravaConnected": {
     "description": "Banner shown after Strava connects successfully"

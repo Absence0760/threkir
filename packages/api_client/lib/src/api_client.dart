@@ -7162,20 +7162,34 @@ class ApiClient {
   /// in the same graded shape as [syncStrava] — a first import Strava
   /// throttled is partial, and saying "connected, N imported" is what stops
   /// the runner coming back for the rest.
+  ///
+  /// A refusal the function codes (`connect_errors.ts`) and the screen words
+  /// throws [StravaConnectFailure]; any other failure — a dropped connection,
+  /// an unworded refusal — throws as it came, for `friendlyError`.
   Future<StravaSyncResult> completeStravaOAuth({
     required String code,
     required String scope,
     required String redirectUri,
   }) async {
-    final res = await _client.functions.invoke(
-      'strava-import',
-      body: {
-        'action': 'connect',
-        'code': code,
-        'scope': scope,
-        'redirect_uri': redirectUri,
-      },
-    );
+    final FunctionResponse res;
+    try {
+      res = await _client.functions.invoke(
+        'strava-import',
+        body: {
+          'action': 'connect',
+          'code': code,
+          'scope': scope,
+          'redirect_uri': redirectUri,
+        },
+      );
+    } on FunctionException catch (e) {
+      final details = e.details;
+      final errorCode = details is Map ? details['error'] : null;
+      final reason = stravaConnectError(errorCode is String ? errorCode : null);
+      if (reason == StravaConnectError.generic) rethrow;
+      throw StravaConnectFailure(reason,
+          code: errorCode as String, cause: e);
+    }
     return stravaSyncResultFromResponse(res.data);
   }
 

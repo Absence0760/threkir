@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:core_models/core_models.dart';
 import 'package:test/test.dart';
 
@@ -205,5 +207,46 @@ void main() {
     expect(kStravaLookbackOptions.every(isStravaLookbackReachable), isTrue);
     expect(isStravaLookbackReachable(kStravaLookbackMaxDays + 1), isFalse);
     expect(isStravaLookbackReachable(0), isFalse);
+  });
+
+  test('a connect refusal code names the reason the screen words, never itself',
+      () {
+    expect(stravaConnectError('strava_not_configured'),
+        StravaConnectError.notConfigured);
+    expect(stravaConnectError('invalid_redirect_uri'),
+        StravaConnectError.notConfigured);
+    expect(stravaConnectError('missing_scope'), StravaConnectError.missingScope);
+    expect(stravaConnectError('strava_token_exchange_failed'),
+        StravaConnectError.codeRejected);
+    expect(stravaConnectError('invalid_code'), StravaConnectError.codeRejected);
+    expect(stravaConnectError('unauthorized'), StravaConnectError.signedOut);
+    expect(stravaConnectError('store_tokens_failed'), StravaConnectError.generic);
+    expect(
+        stravaConnectError(
+            'Strava connection is missing the activity:read_all scope.'),
+        StravaConnectError.generic);
+    expect(stravaConnectError(null), StravaConnectError.generic);
+  });
+
+  test(
+      'every code the connect action answers is either worded or deliberately '
+      'generic', () {
+    final src = File(
+            '../../apps/backend/supabase/functions/strava-import/connect_errors.ts')
+        .readAsStringSync();
+    final list = RegExp(r'STRAVA_CONNECT_ERROR_CODES = \[([^\]]*)\]')
+        .firstMatch(src)
+        ?.group(1);
+    expect(list, isNotNull,
+        reason: 'connect_errors.ts no longer declares STRAVA_CONNECT_ERROR_CODES');
+    final codes = [
+      for (final m in RegExp(r"'([a-z_]+)'").allMatches(list!)) m.group(1)!,
+    ];
+    final generic = codes
+        .where((c) => stravaConnectError(c) == StravaConnectError.generic)
+        .toList()
+      ..sort();
+    expect(generic,
+        ['invalid_scope', 'store_integration_failed', 'store_tokens_failed']);
   });
 }

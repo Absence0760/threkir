@@ -8430,6 +8430,18 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get integrationsStravaErrNotConfigured =>
+      'Strava n\'est pas encore configuré sur ce serveur.';
+
+  @override
+  String get integrationsStravaErrMissingScope =>
+      'Strava n\'a pas partagé toutes vos activités. Reconnectez-vous en laissant toutes les autorisations cochées.';
+
+  @override
+  String get integrationsStravaErrCodeRejected =>
+      'Strava n\'a pas accepté la connexion. Réessayez de vous connecter.';
+
+  @override
   String get integrationsStravaConnected => 'Strava connecté.';
 
   @override

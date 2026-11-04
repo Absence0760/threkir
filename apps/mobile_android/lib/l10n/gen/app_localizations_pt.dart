@@ -8408,6 +8408,18 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get integrationsStravaErrNotConfigured =>
+      'O Strava ainda não está configurado neste servidor.';
+
+  @override
+  String get integrationsStravaErrMissingScope =>
+      'O Strava não partilhou todas as suas atividades. Ligue novamente e deixe todas as permissões assinaladas.';
+
+  @override
+  String get integrationsStravaErrCodeRejected =>
+      'O Strava não aceitou o início de sessão. Tente ligar novamente.';
+
+  @override
   String get integrationsStravaConnected => 'Strava ligado.';
 
   @override
@@ -28425,6 +28437,18 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String integrationsStravaConnectFailed(String error) {
     return 'Falha ao conectar com o Strava: $error';
   }
+
+  @override
+  String get integrationsStravaErrNotConfigured =>
+      'O Strava ainda não está configurado neste servidor.';
+
+  @override
+  String get integrationsStravaErrMissingScope =>
+      'O Strava não compartilhou todas as suas atividades. Conecte de novo e deixe todas as permissões marcadas.';
+
+  @override
+  String get integrationsStravaErrCodeRejected =>
+      'O Strava não aceitou o login. Tente conectar de novo.';
 
   @override
   String get integrationsStravaConnected => 'Strava conectado.';

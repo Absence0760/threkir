@@ -9,6 +9,7 @@ import { disconnectStravaLocally } from '../_shared/strava_disconnect.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
 import { isExactRedirectAllowed, parseRedirectAllowlist } from '../_shared/redirect_allowlist.ts';
 import { backfill } from './backfill.ts';
+import { connectRefusal } from './connect_errors.ts';
 
 // `strava-import` handles two modes, selected by the `action` field:
 //
@@ -85,13 +86,13 @@ Deno.serve(withCors(withSentry('strava-import', async (req: Request) => {
 	let lookbackDays = 90;
 	if (action === 'connect') {
 		if (typeof body.code !== 'string' || body.code.length === 0) {
-			return Response.json({ error: 'invalid_code' }, { status: 400 });
+			return connectRefusal('invalid_code', 400);
 		}
 		if (typeof body.scope !== 'string') {
-			return Response.json({ error: 'invalid_scope' }, { status: 400 });
+			return connectRefusal('invalid_scope', 400);
 		}
 		if (typeof body.redirect_uri !== 'string') {
-			return Response.json({ error: 'invalid_redirect_uri' }, { status: 400 });
+			return connectRefusal('invalid_redirect_uri', 400);
 		}
 		code = body.code;
 		scope = body.scope;
@@ -264,7 +265,7 @@ async function handleConnect(
 	// `supabase secrets set`.
 	const allowed = parseRedirectAllowlist(Deno.env.get('STRAVA_ALLOWED_REDIRECTS'));
 	if (allowed.length === 0) {
-		return Response.json({ error: 'strava_not_configured' }, { status: 503 });
+		return connectRefusal('strava_not_configured', 503);
 	}
 	if (!isExactRedirectAllowed(redirectUri, allowed)) {
 		// audit/strava May 2026 Low #1 — debug log only on the host
@@ -282,7 +283,7 @@ async function handleConnect(
 			received_host: receivedHost,
 			allowed_count: allowed.length,
 		});
-		return Response.json({ error: 'invalid_redirect_uri' }, { status: 400 });
+		return connectRefusal('invalid_redirect_uri', 400);
 	}
 
 	const tokenResponse = await fetch('https://www.strava.com/oauth/token', {
@@ -302,7 +303,7 @@ async function handleConnect(
 		// and shouldn't sit in function logs. The status alone is
 		// enough to debug a real exchange failure.
 		console.error('strava-import: token exchange failed', { status: tokenResponse.status });
-		return Response.json({ error: 'strava_token_exchange_failed' }, { status: 502 });
+		return connectRefusal('strava_token_exchange_failed', 502);
 	}
 
 	const tokens = (await tokenResponse.json()) as StravaTokens;
@@ -313,13 +314,10 @@ async function handleConnect(
 	// `activity:read_all` is missing, the backfill below would
 	// silently 401 every page and the user would see "connected,
 	// 0 imports" instead of a useful "missing permission, please
-	// reconnect" prompt.
+	// reconnect" prompt. A code, not a sentence: the clients word it.
 	const grantedScopes = (tokens.scope ?? '').split(',').map((s) => s.trim()).filter(Boolean);
 	if (!grantedScopes.includes('activity:read_all')) {
-		return new Response(
-			'Strava connection is missing the activity:read_all scope. Please reconnect and accept all permissions.',
-			{ status: 400 },
-		);
+		return connectRefusal('missing_scope', 400);
 	}
 
 	// Upsert non-secret fields (external_id, scope) directly; the
@@ -342,7 +340,7 @@ async function handleConnect(
 	);
 	if (upsertErr) {
 		console.error('strava-import: integrations upsert failed:', upsertErr?.message ?? String(upsertErr));
-		return Response.json({ error: 'store_integration_failed' }, { status: 500 });
+		return connectRefusal('store_integration_failed', 500);
 	}
 
 	const { error: tokErr } = await supabase.rpc('set_integration_tokens', {
@@ -364,7 +362,7 @@ async function handleConnect(
 			error_class: 'vault_write',
 			error: msg,
 		});
-		return Response.json({ error: 'store_tokens_failed' }, { status: 500 });
+		return connectRefusal('store_tokens_failed', 500);
 	}
 
 	// First-time connects always trigger a backfill so the user sees data

@@ -13365,6 +13365,24 @@ abstract class AppLocalizations {
   /// **'Strava connect failed: {error}'**
   String integrationsStravaConnectFailed(String error);
 
+  /// Reason after 'Strava connect failed:' when the server has no Strava credentials or redirect allow-list
+  ///
+  /// In en, this message translates to:
+  /// **'Strava isn\'t set up on this server yet.'**
+  String get integrationsStravaErrNotConfigured;
+
+  /// Reason after 'Strava connect failed:' when the runner unticked the activity permission on Strava
+  ///
+  /// In en, this message translates to:
+  /// **'Strava didn\'t share all your activities. Connect again and leave every permission ticked.'**
+  String get integrationsStravaErrMissingScope;
+
+  /// Reason when Strava refused the authorization code or the sign-in returned none
+  ///
+  /// In en, this message translates to:
+  /// **'Strava didn\'t accept the sign-in. Try connecting again.'**
+  String get integrationsStravaErrCodeRejected;
+
   /// Banner shown after Strava connects successfully
   ///
   /// In en, this message translates to:

@@ -126,3 +126,41 @@ const List<int> kStravaLookbackOptions = [90, 180, 365];
 /// window that will come back empty.
 bool isStravaLookbackReachable(int days) =>
     days > 0 && days <= kStravaLookbackMaxDays;
+
+/// Why a `connect` failed, in the terms the Settings screen words
+/// differently. The function answers a stable code
+/// (`strava-import/connect_errors.ts`) and a client never renders it: an
+/// unknown or absent code is [StravaConnectError.generic], which the screen
+/// reads through `friendlyError` so a dropped connection still says "you're
+/// offline". TS twin: `stravaConnectError` in `strava_sync_result.ts`.
+enum StravaConnectError { notConfigured, missingScope, codeRejected, signedOut, generic }
+
+StravaConnectError stravaConnectError(String? code) {
+  switch (code) {
+    case 'strava_not_configured':
+    case 'invalid_redirect_uri':
+      return StravaConnectError.notConfigured;
+    case 'missing_scope':
+      return StravaConnectError.missingScope;
+    case 'strava_token_exchange_failed':
+    case 'invalid_code':
+      return StravaConnectError.codeRejected;
+    case 'unauthorized':
+      return StravaConnectError.signedOut;
+    default:
+      return StravaConnectError.generic;
+  }
+}
+
+/// A `connect` the function refused with a code. [cause] is the transport's
+/// exception, kept for the log.
+class StravaConnectFailure implements Exception {
+  const StravaConnectFailure(this.reason, {this.code, this.cause});
+
+  final StravaConnectError reason;
+  final String? code;
+  final Object? cause;
+
+  @override
+  String toString() => 'StravaConnectFailure(${reason.name}, $code, $cause)';
+}

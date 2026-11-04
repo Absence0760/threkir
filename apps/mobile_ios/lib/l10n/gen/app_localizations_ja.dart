@@ -7943,6 +7943,18 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get integrationsStravaErrNotConfigured =>
+      'このサーバーではまだ Strava が設定されていません。';
+
+  @override
+  String get integrationsStravaErrMissingScope =>
+      'Strava がすべてのアクティビティを共有しませんでした。もう一度連携し、すべての権限にチェックを入れたままにしてください。';
+
+  @override
+  String get integrationsStravaErrCodeRejected =>
+      'Strava がサインインを受け付けませんでした。もう一度連携してください。';
+
+  @override
   String get integrationsStravaConnected => 'Stravaを接続しました。';
 
   @override

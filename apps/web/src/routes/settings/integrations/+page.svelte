@@ -153,16 +153,13 @@
 					result.complete ? 'success' : 'info',
 				);
 			} catch (err) {
-				// `exchangeStravaCode` rethrows the function's machine code, so
-				// the not-configured build gets its own sentence instead of a
-				// code in a slot the runner cannot read.
-				const code = thrownMessage(err);
+				// `completeStravaOAuth` throws an `AppError` naming the sentence for
+				// each refusal the function codes (`stravaConnectError`), so the
+				// reason slot never carries the function's code or its text.
 				showToast(
-					code === 'strava_not_configured'
-						? m('settingsIntegrations.stravaNotConfigured')
-						: m('settingsIntegrations.stravaConnectFailed', {
-								error: errorCopy(err, m, 'settingsIntegrations.stravaConnectFailed'),
-							}),
+					m('settingsIntegrations.stravaConnectFailed', {
+						error: errorCopy(err, m, 'settingsIntegrations.stravaConnectFailed'),
+					}),
 					'error',
 				);
 			} finally {

@@ -11096,6 +11096,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get shareCardExport => 'Exporter';
 
   @override
+  String get shareCardShareLink => 'Partager le lien';
+
+  @override
   String get shareCardImage => 'Image';
 
   @override

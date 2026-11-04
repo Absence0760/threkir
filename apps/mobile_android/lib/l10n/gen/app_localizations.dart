@@ -17823,6 +17823,12 @@ abstract class AppLocalizations {
   /// **'Export'**
   String get shareCardExport;
 
+  /// Button in the run share sheet that shares the run's web link; it asks who may see the run first
+  ///
+  /// In en, this message translates to:
+  /// **'Share link'**
+  String get shareCardShareLink;
+
   /// Button to share the run as an image
   ///
   /// In en, this message translates to:

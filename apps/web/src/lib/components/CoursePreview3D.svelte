@@ -26,7 +26,7 @@
 		pointAtDistance,
 		type PathPoint,
 	} from '#lib/routes/flyover_path.ts';
-	import { detectClimbs, elevationStrip, type Climb } from '#lib/routes/course_climbs.ts';
+	import { detectClimbs, elevationStrip, type Climb, type ClimbSource } from '#lib/routes/course_climbs.ts';
 	import {
 		FLYOVER_PITCH,
 		resolveTerrainSource,
@@ -57,6 +57,9 @@
 		/// Elevation noise band for climb detection; a recorded run passes its
 		/// altitude source's `minDeltaM`. Omitted, climbs use the default band.
 		noiseBandM?: number;
+		/// A recorded run's altitude keeps the watch's noise-tolerant climb
+		/// rule; a route or race course is read by the planned rule.
+		climbSource: ClimbSource;
 		/// The line the video export records. It leaves the page, so it must be
 		/// a privacy-clipped source (`shareCardTrack`, `clip-public-track`,
 		/// `clip_route_for_viewer`); null means the clip cannot be made yet and
@@ -68,8 +71,18 @@
 		onclose: () => void;
 	}
 
-	let { open, points, unit, title, climbNames, noiseBandM, videoSource, videoSummary, onclose }: Props =
-		$props();
+	let {
+		open,
+		points,
+		unit,
+		title,
+		climbNames,
+		noiseBandM,
+		climbSource,
+		videoSource,
+		videoSummary,
+		onclose,
+	}: Props = $props();
 
 	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
 	const PUBLIC_TERRAIN_URL = PUBLIC_TERRAIN_URL_ENV ?? '';
@@ -98,7 +111,7 @@
 	const path = $derived(buildFlyoverPath(points));
 	const hasPath = $derived(path.points.length >= 2 && path.totalM > 0);
 	const markers = $derived(hasPath ? distanceMarkers(path, unit) : []);
-	const climbs = $derived(hasPath ? detectClimbs(path, { names: climbNames, noiseBandM }) : []);
+	const climbs = $derived(hasPath ? detectClimbs(path, { source: climbSource, names: climbNames, noiseBandM }) : []);
 	const strip = $derived(hasPath ? elevationStrip(path, STRIP_SAMPLES) : []);
 	const geometry = $derived(stripGeometry(strip, climbs, path.totalM, STRIP_W, STRIP_H));
 	const hasElevation = $derived(geometry.line !== '');
@@ -395,7 +408,11 @@
 				video = { step: 'idle' };
 				return;
 			}
-			const vClimbs = detectClimbs(vPath, { names: climbNames, noiseBandM: source.noiseBandM ?? noiseBandM });
+			const vClimbs = detectClimbs(vPath, {
+				source: climbSource,
+				names: climbNames,
+				noiseBandM: source.noiseBandM ?? noiseBandM,
+			});
 			const { renderFlyoverVideo } = await import('./course_preview/flyover_video_export.ts');
 			const blob = await renderFlyoverVideo({
 				path: vPath,

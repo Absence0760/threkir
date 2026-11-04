@@ -84,6 +84,7 @@
 			{title}
 			{climbNames}
 			{noiseBandM}
+			climbSource={replay ? 'recorded' : 'planned'}
 			{videoSource}
 			{videoSummary}
 			unit={getUnit()}

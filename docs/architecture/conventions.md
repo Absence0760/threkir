@@ -1361,7 +1361,8 @@ action can honestly be reversed:
   failure there is logged and the sign-out still runs, since signing out is
   the core action; so is a settle still running after
   `SIGN_OUT_SETTLE_TIMEOUT_MS`, 5 s, whose request keeps its own token and may
-  still land), and a
+  still land); Delete account settles the same way (`settleBeforeSessionEnds`)
+  before it calls the delete, while the account still exists; and a
   session that ends or changes some other way (another tab) runs Undo instead,
   from the root layout, so it never commits with no session or as the next
   account. A commit already running when the session ends is not stopped; the

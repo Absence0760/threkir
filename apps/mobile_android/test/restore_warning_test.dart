@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/backup.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/loggable_message.dart';
 import '../lib/restore_warning.dart';
 
 class _PostgrestShaped implements Exception {
@@ -66,11 +67,29 @@ void main() {
     );
   });
 
-  test('the raw failure stays in the log line', () {
-    final w = RestoreWarning(RestoreWarningKind.track,
-        itemId: 'run-abc', error: _PostgrestShaped());
-    expect('$w', contains('runs_hr_series_url_path_shape'));
-    expect('$w', contains('run-abc'));
+  test('the log line carries no archive-written text', () {
+    // Reason: debugPrint output becomes a Sentry breadcrumb once the reader
+    // consents, and the archive is a user-supplied file, so its row ids and
+    // its JSON keys are text a stranger chose.
+    final w = RestoreWarning(RestoreWarningKind.columnsDropped,
+        itemId: 'Jane Doe 07700 900123',
+        index: 4,
+        columns: const ['home_address_42_acacia_avenue', 'b'],
+        error: _PostgrestShaped());
+    final line = '$w';
+    expect(line, isNot(contains('Jane Doe')));
+    expect(line, isNot(contains('home_address')));
+    expect(line, isNot(contains('runs_hr_series_url_path_shape')));
+    expect(line,
+        'columnsDropped <invalid> #4 columns=2 ${loggableMessage('${_PostgrestShaped()}')}');
+    expect(line, contains('PostgrestException'));
+    expect(line, contains('23514'));
+  });
+
+  test('a uuid-shaped id stays in the log line', () {
+    const id = '0b6f2d3e-6c1a-4f7e-9a51-2f9b0d2c7e11';
+    expect('${const RestoreWarning(RestoreWarningKind.run, itemId: id)}',
+        'run $id');
   });
 
   test('an incomplete archive leads the list', () {

@@ -16,6 +16,7 @@ import type { Translate } from './rate_limit_message';
 import { rateLimitErrorMessage } from './rate_limit_message';
 import { databaseCodeDecides } from '../core/auth_errors';
 import { AppError } from '../core/app_error';
+import { loggableMessage } from '../util/loggable_message';
 
 function field(e: unknown, name: 'code' | 'message' | 'name'): string {
 	if (e && typeof e === 'object') {
@@ -108,26 +109,6 @@ export function errorCopyKey(e: unknown): MessageKey {
 		return 'errorCopy.invalid';
 	}
 	return 'errorCopy.generic';
-}
-
-/// Longest message `errorCopy` logs.
-export const LOGGED_MESSAGE_MAX_CHARS = 160;
-
-/// A thrown message as `errorCopy` logs it. Console output reaches error
-/// reporting as breadcrumbs once a reader has consented to it, and server
-/// text can quote the row it refused (`Key (email)=(…)`, `invalid input
-/// syntax for type uuid: "…"`). Quoted runs, key/value details and email
-/// addresses are blanked and the rest is cut short; the code and the context
-/// still say which failure it was.
-export function loggableMessage(message: string): string {
-	const cleaned = message
-		.replace(/\([^()]*\)=\([^()]*\)/g, '(…)=(…)')
-		.replace(/"[^"]*"/g, '"…"')
-		.replace(/'[^']*'/g, "'…'")
-		.replace(/[^\s@"'()]+@[^\s@"'()]+/g, '<email>');
-	return cleaned.length > LOGGED_MESSAGE_MAX_CHARS
-		? `${cleaned.slice(0, LOGGED_MESSAGE_MAX_CHARS - 1)}…`
-		: cleaned;
 }
 
 /// Localized copy for a thrown value, to drop into a `{error}` slot or show

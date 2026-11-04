@@ -682,7 +682,7 @@ class BackupService {
       RestoreWarningKind.columnsDropped,
       columns: [...dropped]..sort(),
     ));
-    debugPrint('[restore] $section: dropped columns ${dropped.join(', ')}');
+    debugPrint('[restore] $section: dropped ${dropped.length} columns');
   }
 
   /// Carry an archive's own completeness verdict into the restore result.
@@ -939,7 +939,10 @@ class BackupService {
     try {
       return ApiClient.decodeTrackBlob(file.content as List<int>);
     } catch (e) {
-      debugPrint('[backup._decodeTrack] $e');
+      // The type only: a decode failure's message quotes the blob it choked
+      // on, which is the archive's own bytes (GPS points), and debugPrint
+      // reaches Sentry as a breadcrumb.
+      debugPrint('[backup._decodeTrack] ${e.runtimeType}');
       return const [];
     }
   }

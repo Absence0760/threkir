@@ -25,7 +25,8 @@ import {
 	RUN_RESTORE_COLUMNS
 } from './restore_columns';
 import { thrownMessage } from '../core/supabase_error';
-import { loggableMessage } from '../i18n/error_copy';
+import { loggableMessage } from '../util/loggable_message';
+import { isEntityId } from '../core/entity_id';
 
 export interface RestoreProgress {
 	stage: 'reading' | 'profile' | 'tracks' | 'runs' | 'routes' | 'done';
@@ -149,17 +150,29 @@ function noteDroppedColumns(
 	warn(result, { kind: 'columnsDropped', section, columns: [...dropped].sort() });
 }
 
-/// Record a warning and log what it carries. The failure's text goes through
-/// `loggableMessage`, which scrubs quoted values and emails, the same way
-/// `errorCopy` logs.
-function warn(result: RestoreResult, w: RestoreWarning): void {
-	console.warn('[restore]', w.kind, {
-		itemId: w.itemId,
+/**
+ * What the log records for a warning: nothing the archive could have written.
+ *
+ * Console output becomes a Sentry breadcrumb once the reader consents, and the
+ * archive is a file anyone can hand-edit, so its row ids and its JSON keys are
+ * free text a stranger chose. An id is kept only when it is shaped like one
+ * of our row ids; dropped columns are counted, never named; the caught
+ * failure goes through `loggableMessage`. `kind`, `index` and `section` are
+ * the orchestrator's own values. The warning itself still carries the raw id
+ * and names for the page.
+ */
+export function restoreWarningLogFields(w: RestoreWarning): Record<string, unknown> {
+	return {
+		itemId: w.itemId === undefined ? undefined : isEntityId(w.itemId) ? w.itemId : '<invalid>',
 		index: w.index,
 		section: w.section,
-		columns: w.columns,
+		columnsDropped: w.columns?.length,
 		error: w.error === undefined ? undefined : loggableMessage(thrownMessage(w.error))
-	});
+	};
+}
+
+function warn(result: RestoreResult, w: RestoreWarning): void {
+	console.warn('[restore]', w.kind, restoreWarningLogFields(w));
 	result.warnings.push(w);
 }
 

@@ -272,8 +272,13 @@ migrations — see `personal_data_export_profile_guard_test.go` and
   list of `RestoreWarning` on both platforms (`restore_warning.dart`,
   `restore_orchestrator.ts`): a kind, the archive's own row id or position,
   the dropped column names, and the caught failure in `error`. The failure is
-  logged (`debugPrint` on mobile, `console.warn` through `loggableMessage` on
-  web) and never rendered as text: the mobile import screen shows each warning
+  logged (`debugPrint` on mobile, `console.warn` on web, both through the
+  `loggable_message` parity pair) and never rendered as text. Both logs become
+  Sentry breadcrumbs once the reader consents, and the archive is a file
+  anyone can edit, so the log line carries nothing the archive wrote: an id
+  only when it is uuid-shaped (else `<invalid>`), a COUNT of dropped columns
+  rather than their names, and the scrubbed failure (`restoreWarningLogFields`
+  on web, `RestoreWarning.toString` on mobile). The mobile import screen shows each warning
   through `restoreWarningText`, whose only route from `error` to the sentence
   is `importErrorText`, and web shows the count. Each used to be
   `'run <id>: <exception>'`, which put PostgREST's English (table and

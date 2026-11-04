@@ -28,6 +28,12 @@ paragraph that replaces the baseline, with an AI-attribution line. Gating is
   model to keep every distance and climb in it (`routeDescribeUserMessage`), so
   a miles runner is never handed a paragraph in kilometres. The templated
   fallback the endpoint returns is in the same unit.
+- **Which text is shown**: every response carries `source` (`'ai'` from the
+  model, `'template'` on any fallback). The endpoint's template is
+  `assembleEnglish`, English by contract, so neither client ever displays it:
+  `shownDescription(localised, response)` — a `route_description` parity-pair
+  helper on both sides — swaps in the server text only when `source` is
+  `'ai'`, and otherwise keeps the client's own sentence in the viewer's locale.
 - **Web**: `localisedTemplate` (`apps/web/src/lib/routes/route_description.ts`)
   + `route_describe_client.ts` on `/routes/[id]`.
 - **Mobile**: the `describeRoute` twin helper

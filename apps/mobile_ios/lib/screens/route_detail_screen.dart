@@ -419,8 +419,9 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     final input = _describeInput();
     final parts = describeRoute(input);
     // L1 baseline: render the localised templated sentence immediately.
+    final localised = _localisedTemplate(parts, input.name, l10n, unit);
     setState(() {
-      _genDescription = _localisedTemplate(parts, input.name, l10n, unit);
+      _genDescription = localised;
       _genSource = 'template';
     });
 
@@ -449,7 +450,8 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
           await (widget.describeAi ?? requestAiDescription)(input, unit);
       if (!mounted) return;
       setState(() {
-        _genDescription = ai.description;
+        _genDescription = shownDescription(localised,
+            description: ai.description, source: ai.source);
         _genSource = ai.source;
         _showUpgradeHint = ai.upgrade;
       });

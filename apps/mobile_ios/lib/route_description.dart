@@ -190,3 +190,16 @@ String assembleEnglish(RouteDescriptionParts parts, String name,
   }
   return '${clauses.join(' ')}.';
 }
+
+/// The text the route-detail screen shows once the enhancement endpoint has
+/// answered. Only a model-written paragraph ([source] `'ai'`) replaces the
+/// viewer's localised template: the server's own fallback is
+/// [assembleEnglish], which is English by contract, so taking it would hand a
+/// non-English viewer an English sentence in place of the one already
+/// rendered in their language.
+String shownDescription(
+  String localised, {
+  required String description,
+  required String source,
+}) =>
+    source == 'ai' ? description : localised;

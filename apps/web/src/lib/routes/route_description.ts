@@ -252,3 +252,17 @@ export function assembleEnglish(
 	}
 	return clauses.join(' ') + '.';
 }
+
+/**
+ * The text the route-detail page shows once the enhancement endpoint has
+ * answered. Only a model-written paragraph replaces the viewer's localised
+ * template: the server's own fallback is `assembleEnglish`, which is
+ * English by contract, so taking it would hand a non-English viewer an
+ * English sentence in place of the one already rendered in their language.
+ */
+export function shownDescription(
+	localised: string,
+	server: { description: string; source: 'ai' | 'template' },
+): string {
+	return server.source === 'ai' ? server.description : localised;
+}

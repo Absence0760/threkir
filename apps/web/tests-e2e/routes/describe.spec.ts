@@ -12,8 +12,9 @@ import { USER_A, USER_C_PRO } from '../fixtures/users';
  * (JWT verify, is_pro gate, model call, templated fallback) is unit-
  * tested in `src/lib/routes/route_describe/handler.test.ts`. Here we
  * verify the page wiring — the templated baseline renders instantly,
- * the AI text replaces it on a Pro success, the upgrade hint shows for
- * a free user, and a hard failure keeps the baseline.
+ * the AI text replaces it on a Pro success, a server template never
+ * replaces it, the upgrade hint shows for a free user, and a hard
+ * failure keeps the baseline.
  *
  * The seeded route (RUNNER_PUBLIC_ROUTE_ID) has no stored description,
  * so the Describe button is present. Each beforeEach clears any
@@ -40,7 +41,7 @@ test.describe('/routes/[id] — Describe (free user)', () => {
 				status: 200,
 				contentType: 'application/json',
 				body: JSON.stringify({
-					description: 'E2E demo public route is a 10.00 km road point-to-point route.',
+					description: 'Server English template sentinel.',
 					source: 'template',
 					upgrade: true
 				})
@@ -62,6 +63,9 @@ test.describe('/routes/[id] — Describe (free user)', () => {
 		await expect(page.locator('.desc-upgrade')).toContainText(/Pro/i);
 		// No AI attribution on the free / templated path.
 		await expect(page.locator('.desc-attribution')).toHaveCount(0);
+		// The server's template is English by contract; the page keeps its
+		// own sentence, rendered in the viewer's locale.
+		await expect(page.locator('.route-description')).not.toContainText('sentinel');
 		expect(called).toBe(true);
 	});
 

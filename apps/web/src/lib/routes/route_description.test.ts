@@ -7,14 +7,15 @@ import {
 	elevationProfile,
 	localisedTemplate,
 	routeShape,
+	shownDescription,
 	LOOP_CLOSE_M,
 	type RouteDescriptionInput,
 } from './route_description';
 
 /**
  * The `describeRoute` / `elevationProfile` / `routeShape` /
- * `assembleEnglish` cases are the twin of
- * `apps/mobile_android/test/route_description_test.dart` — keep those 12
+ * `assembleEnglish` / `shownDescription` cases are the twin of
+ * `apps/mobile_android/test/route_description_test.dart` — keep those 14
  * in lockstep. The `localisedTemplate` cases below are web-only (the
  * mobile UI renders its own localised string from the same parts) and
  * are not part of the twin count.
@@ -179,6 +180,18 @@ test('assembleEnglish states miles and feet for a miles viewer', () => {
 });
 
 // ── localisedTemplate (web-only; not part of the twin count) ──
+
+test('shownDescription keeps the localised template unless the model wrote the text', () => {
+	const localised = 'Parcours est une boucle de 5,0 km.';
+	assert.equal(
+		shownDescription(localised, { description: 'Parcours is a 5.0 km loop route.', source: 'template' }),
+		localised,
+	);
+	assert.equal(
+		shownDescription(localised, { description: 'A quick, flat loop.', source: 'ai' }),
+		'A quick, flat loop.',
+	);
+});
 
 test('localisedTemplate emits a climb clause for an elevated route', () => {
 	const parts = describeRoute({

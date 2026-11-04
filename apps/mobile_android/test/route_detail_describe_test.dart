@@ -28,6 +28,7 @@ Future<void> _pump(
   Future<AiDescriptionResult> Function(RouteDescriptionInput, cm.DistanceUnit)?
       describeAi,
   bool useMiles = false,
+  Locale? locale,
 }) async {
   SharedPreferences.setMockInitialValues({'use_miles': useMiles});
   final prefs = Preferences();
@@ -35,6 +36,7 @@ Future<void> _pump(
 
   await tester.pumpWidget(
     MaterialApp(
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: RouteDetailScreen(
@@ -120,6 +122,34 @@ void main() {
       // The upgrade hint is gone for a Pro user whose call returned upgrade:false.
       expect(find.text('AI descriptions are a Pro feature. Upgrade to enhance.'),
           findsNothing);
+    });
+
+    testWidgets("a server template keeps the viewer's localised sentence",
+        (tester) async {
+      // The endpoint's fallback is its English assembler, so taking it would
+      // swap a French viewer's sentence for an English one.
+      await _pump(
+        tester,
+        locale: const Locale('fr'),
+        checkPro: () async => true,
+        describeAi: (_, __) async => const AiDescriptionResult(
+          description: 'River Loop is a 5.0 km trail point-to-point route.',
+          source: 'template',
+          upgrade: false,
+        ),
+      );
+      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.pump();
+      await tester.tap(find.text('Décrire cet itinéraire'));
+      await tester.pump();
+      await tester.pump(Duration.zero);
+
+      expect(
+        find.textContaining(
+            'River Loop est un itinéraire point à point sur sentier'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('River Loop is a'), findsNothing);
     });
 
     for (final unit in cm.DistanceUnit.values) {

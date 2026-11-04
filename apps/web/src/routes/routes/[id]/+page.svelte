@@ -34,7 +34,11 @@
 	import { distinctTags } from '#lib/routes/route_tags.ts';
 	import { routeElevation } from '#lib/routes/route_elevation.ts';
 	import { buildRouteShareCanonical } from '#lib/share/share_meta.ts';
-	import { describeRoute, localisedTemplate } from '#lib/routes/route_description.ts';
+	import {
+		describeRoute,
+		localisedTemplate,
+		shownDescription,
+	} from '#lib/routes/route_description.ts';
 	import { requestAiDescription } from '#lib/routes/route_describe_client.ts';
 	import { AI_DISCLOSURE_ERROR } from '#lib/core/ai_disclosure.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
@@ -333,7 +337,8 @@
 	/// Generate a description. Always shows the templated baseline first
 	/// (instant, offline), then — for Pro users — asks the server to
 	/// enhance it. A free user's request returns the templated text with
-	/// `upgrade:true`, which surfaces the Pro upsell. Any hard failure
+	/// `upgrade:true`, which surfaces the Pro upsell; any server template
+	/// is English, so only an AI paragraph replaces the localised baseline. Any hard failure
 	/// (network / non-200) leaves the templated text in place and shows a
 	/// non-blocking error; the baseline is never lost.
 	async function describe() {
@@ -344,14 +349,15 @@
 		const input = describeInput();
 		const parts = describeRoute(input);
 		// L1 baseline: render the localised templated sentence immediately.
-		genDescription = localisedTemplate(parts, input.name, {
+		const localised = localisedTemplate(parts, input.name, {
 			t: (key, params) => m(key as MessageKey, params),
 			formatDistance,
 		});
+		genDescription = localised;
 		genSource = 'template';
 		try {
 			const ai = await requestAiDescription(input, getUnit());
-			genDescription = ai.description;
+			genDescription = shownDescription(localised, ai);
 			genSource = ai.source;
 			showUpgradeHint = ai.upgrade;
 		} catch (e) {

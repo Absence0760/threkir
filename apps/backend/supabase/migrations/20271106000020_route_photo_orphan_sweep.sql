@@ -204,16 +204,23 @@ comment on function public.enqueue_route_photo_orphan_sweep() is
 -- to a paths job this transaction already queued, which nothing else can see
 -- or claim before commit, and starts a new one only when that job holds 1000
 -- paths. A transaction queues ceil(paths / 1000) jobs, never one per route.
--- `scheduled_at` and `created_at` both defaulting to now() (the transaction's
--- start) find that job through the jobs_queued_v2 partial index: a committed
--- job from another transaction can only match by starting in the same
--- microsecond, and taking its paths in too is harmless because the worklist
--- re-checks every path.
+--
+-- That job is found by the id the firing that queued it recorded in the
+-- transaction-local setting `threkir.route_photo_orphan_sweep_job`, not by
+-- matching timestamps: now() is only the transaction's start, which a
+-- concurrent transaction can share to the microsecond, and its committed job
+-- is claimable by the worker. Nor by `xmin = pg_current_xact_id()`: the insert
+-- runs inside the exception block's subtransaction, so the row's xmin is the
+-- subtransaction's id and never matches. The setting is local, so it is gone
+-- at commit, and it is rolled back with the block whose insert it records.
 --
 -- The enqueue is auxiliary to the delete it rides on (conventions.md §
--- Layered resilience): any error in it is caught, reported as a warning that
+-- Layered resilience): an error in it is caught, reported as a warning that
 -- names no path or user, and the delete commits. The bytes are then left to
--- the nightly backstop, which finds every unreferenced object anyway.
+-- the nightly backstop, which finds every unreferenced object anyway. A
+-- class 40 error (serialization failure, deadlock) is the exception: the
+-- whole transaction is meant to be retried, and committing the delete without
+-- its enqueue would turn a retry that succeeds into a night's delay.
 --
 -- The payload holds `{owner}/{photo}` paths, the same identifiers
 -- route_photo_process payloads already carry, and `purge-stale-jobs` drops
@@ -226,6 +233,7 @@ set search_path = public, pg_temp
 as $$
 declare
   v_cap constant integer := 1000;
+  v_setting constant text := 'threkir.route_photo_orphan_sweep_job';
   v_paths text[];
   v_job bigint;
   v_room integer;
@@ -249,21 +257,22 @@ begin
          where g.thumb_512_path is not null and g.thumb_512_path <> ''
       ) s;
 
-    while coalesce(cardinality(v_paths), 0) > 0 loop
-      select j.id, v_cap - jsonb_array_length(j.payload -> 'paths')
-        into v_job, v_room
-        from public.jobs j
-       where j.kind = 'route_photo_orphan_sweep'
-         and j.status = 'queued'
-         and j.scheduled_at = now()
-         and j.created_at = now()
-         and case when jsonb_typeof(j.payload -> 'paths') = 'array'
-                  then jsonb_array_length(j.payload -> 'paths') end < v_cap
-       order by j.id desc
-       limit 1
-       for update;
+    v_job := nullif(current_setting(v_setting, true), '')::bigint;
 
-      if found then
+    while coalesce(cardinality(v_paths), 0) > 0 loop
+      v_room := null;
+      if v_job is not null then
+        select v_cap - jsonb_array_length(j.payload -> 'paths')
+          into v_room
+          from public.jobs j
+         where j.id = v_job
+           and j.kind = 'route_photo_orphan_sweep'
+           and j.status = 'queued'
+           and j.created_at = now()
+           and jsonb_typeof(j.payload -> 'paths') = 'array';
+      end if;
+
+      if coalesce(v_room, 0) > 0 then
         v_take := least(v_room, cardinality(v_paths));
         update public.jobs
            set payload = jsonb_build_object(
@@ -277,13 +286,18 @@ begin
           'route_photo_orphan_sweep',
           jsonb_build_object('paths', to_jsonb(v_paths[1:v_take])),
           3
-        );
+        )
+        returning id into v_job;
+        perform set_config(v_setting, v_job::text, true);
       end if;
 
       v_paths := v_paths[v_take + 1:];
     end loop;
-  exception when others then
-    raise warning 'route_photo_orphan_sweep: prompt enqueue failed (%), the nightly backstop will erase these objects', sqlstate;
+  exception
+    when transaction_rollback then
+      raise;
+    when others then
+      raise warning 'route_photo_orphan_sweep: prompt enqueue failed (%), the nightly backstop will erase these objects', sqlstate;
   end;
   return null;
 end;

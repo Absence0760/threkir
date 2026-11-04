@@ -1349,7 +1349,9 @@ action can honestly be reversed:
   putting the snapshot back, so ordering survives; if the delete cascades
   children server-side, filter the children out too or the list renders orphans.
   A held mutation belongs to the account that made it: Sign out commits it
-  first (`signOutWithScope`'s `settlePending`, passed `undoStore.flush`), and a
+  first (`signOutWithScope`'s `settlePending`, passed `undoStore.flush`; a
+  failure there is logged and the sign-out still runs, since signing out is
+  the core action), and a
   session that ends or changes some other way (another tab) runs Undo instead,
   from the root layout, so it never commits with no session or as the next
   account.

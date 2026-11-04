@@ -3,9 +3,11 @@ import 'dart:io';
 
 import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'ai_disclosure.dart';
+import 'l10n/locale_support.dart';
 import 'payload_hash.dart';
 import 'route_description.dart';
 import 'web_base_url.dart';
@@ -42,10 +44,17 @@ class AiDescriptionResult {
   });
 }
 
-/// The request body. [unit] is the viewer's, so the paragraph comes back in
-/// the unit they read.
+/// The canonical tag (`en`, `pt-PT`, `pt-BR`) for the app's resolved
+/// `Localizations` locale — the identifier the endpoint accepts, the same one
+/// web sends. Normalised through [negotiateLocale] so the generated delegate's
+/// bare `pt` base still reads as the European catalogue it renders.
+String routeDescribeLocaleTag(Locale resolved) =>
+    localeToTag(negotiateLocale(localeToTag(resolved), const []));
+
+/// The request body. [unit] and [locale] are the viewer's, so the paragraph
+/// comes back in the unit and the language they read.
 Map<String, dynamic> routeDescribeBody(
-        RouteDescriptionInput input, DistanceUnit unit) =>
+        RouteDescriptionInput input, DistanceUnit unit, String locale) =>
     {
       'name': input.name,
       'distance_m': input.distanceM,
@@ -58,6 +67,7 @@ Map<String, dynamic> routeDescribeBody(
           ? null
           : {'lat': input.end!.lat, 'lng': input.end!.lng},
       'unit': unit.name,
+      'locale': locale,
     };
 
 /// Does this non-200 response say the caller has not accepted the AI
@@ -81,8 +91,8 @@ bool isAiDisclosureDenial(int status, String body) {
 /// throws [kAiDisclosureError] so the caller can lead the runner to the
 /// disclosure instead of offering a retry that can never succeed.
 Future<AiDescriptionResult> requestAiDescription(
-    RouteDescriptionInput input, DistanceUnit unit) async {
-  final body = jsonEncode(routeDescribeBody(input, unit));
+    RouteDescriptionInput input, DistanceUnit unit, String locale) async {
+  final body = jsonEncode(routeDescribeBody(input, unit, locale));
   final uri = Uri.parse('${resolveWebBaseUrl()}/api/coach/route-describe');
 
   String? token = Supabase.instance.client.auth.currentSession?.accessToken;

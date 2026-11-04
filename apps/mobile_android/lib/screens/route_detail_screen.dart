@@ -102,7 +102,7 @@ class RouteDetailScreen extends StatefulWidget {
   /// stub to exercise the enhance / upgrade / failure paths without a
   /// network or a Supabase session.
   final Future<AiDescriptionResult> Function(
-      RouteDescriptionInput, DistanceUnit)? describeAi;
+      RouteDescriptionInput, DistanceUnit, String locale)? describeAi;
 
   /// Injectable Pro check. Defaults to `apiClient.isPro()`; tests pass a
   /// fixed value to drive the Pro vs free branch deterministically.
@@ -409,6 +409,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     if (_describing) return;
     final l10n = AppLocalizations.of(context);
     final unit = widget.preferences.unit;
+    final locale = routeDescribeLocaleTag(Localizations.localeOf(context));
     setState(() {
       _describing = true;
       _describeFailed = false;
@@ -447,7 +448,8 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
 
     try {
       final ai =
-          await (widget.describeAi ?? requestAiDescription)(input, unit);
+          await (widget.describeAi ?? requestAiDescription)(
+              input, unit, locale);
       if (!mounted) return;
       setState(() {
         _genDescription = shownDescription(localised,

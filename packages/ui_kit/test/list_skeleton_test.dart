@@ -144,4 +144,72 @@ void main() {
       expect(barColor(), first);
     });
   });
+
+  group('SkeletonBlock', () {
+    Color blockColor(WidgetTester tester) => (tester
+            .widget<Container>(find.descendant(
+              of: find.byType(SkeletonBlock),
+              matching: find.byType(Container),
+            ))
+            .decoration as BoxDecoration)
+        .color!;
+
+    testWidgets('occupies the size it stands in for', (tester) async {
+      await _pump(
+        tester,
+        const Column(children: [SkeletonBlock(height: 220)]),
+      );
+      final size = tester.getSize(find.byType(SkeletonBlock));
+      expect(size.height, 220);
+      expect(size.width, 800, reason: 'fills the width when none is given');
+      await tester.pump(const Duration(milliseconds: 400));
+    });
+
+    testWidgets('is silent unless it carries the label', (tester) async {
+      await _pump(
+        tester,
+        const Column(children: [
+          SkeletonBlock(height: 40),
+          SkeletonBlock(height: 40, label: 'Chargement…'),
+        ]),
+      );
+      expect(find.bySemanticsLabel('Chargement…'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 400));
+    });
+
+    testWidgets('pulses on the same cycle as the rows', (tester) async {
+      await _pump(
+        tester,
+        const Column(children: [SkeletonBlock(height: 40)]),
+      );
+      final first = blockColor(tester);
+      await tester.pump(const Duration(milliseconds: 450));
+      expect(blockColor(tester), isNot(first));
+    });
+
+    testWidgets('holds the same static pose as the rows under reduced motion',
+        (tester) async {
+      await _pump(
+        tester,
+        const Column(children: [
+          SkeletonBlock(height: 40),
+          ListSkeleton.section(label: 'Loading…', rows: 1),
+        ]),
+        reduceMotion: true,
+      );
+      final first = blockColor(tester);
+      final bar = (tester
+              .widget<Container>(find
+                  .descendant(
+                    of: find.byType(FractionallySizedBox),
+                    matching: find.byType(Container),
+                  )
+                  .first)
+              .decoration as BoxDecoration)
+          .color!;
+      expect(first, bar, reason: 'one surface, one pose');
+      await tester.pump(const Duration(milliseconds: 450));
+      expect(blockColor(tester), first);
+    });
+  });
 }

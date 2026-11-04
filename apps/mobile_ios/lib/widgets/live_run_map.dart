@@ -337,6 +337,29 @@ Color mapHoverLine({required bool darkBasemap}) =>
 Color mapPinnedLine({required bool darkBasemap}) =>
     darkBasemap ? const Color(0xFFA78BFA) : const Color(0xFF6D28D9);
 
+/// The opacity the personal heatmap's cells and its track lines rest at.
+/// Each rung of [mapHeatRamp] and the [mapTrackLine] it crossfades into is
+/// held to 3:1 composited at this value. Twin of web's `MAP_HEAT_OPACITY`.
+const double mapHeatOpacity = 0.85;
+
+/// The personal heatmap's density ramp, low to high, for the basemap it is
+/// drawn over. Twin of web's `mapHeatRamp` (`basemap_contrast.ts`): the
+/// cool-to-hot hue order of the fixed set it replaced, at the rung of each
+/// hue that clears the floor on every ground of its own basemap.
+List<Color> mapHeatRamp({required bool darkBasemap}) => darkBasemap
+    ? const [
+        Color(0xFF60A5FA),
+        Color(0xFF34D399),
+        Color(0xFFFBBF24),
+        Color(0xFFF87171),
+      ]
+    : const [
+        Color(0xFF1D4ED8),
+        Color(0xFF065F46),
+        Color(0xFF92400E),
+        Color(0xFF991B1B),
+      ];
+
 /// Dark casing under every solid map line, wider than the line so a 1.5 px
 /// edge shows either side and holds it apart from the raster's road
 /// strokes, which are baked into the tile and cannot be drawn under it.

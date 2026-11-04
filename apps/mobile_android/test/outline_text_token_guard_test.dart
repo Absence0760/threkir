@@ -184,8 +184,6 @@ const _colorHelpers = <String, int>{
   // Course start/finish checkpoint hues + a `#rrggbb` string parser; both feed
   // map pins and a `BoxDecoration`, never a `TextStyle`.
   'lib/screens/roadbook_screen.dart': 2,
-  // Heat-density cell fill, drawn over map tiles.
-  'lib/screens/run_heatmap_screen.dart': 1,
   // Badge tier hue — reaches the tier ring and the trophy glyph.
   'lib/widgets/badge_grid.dart': 1,
   // Course-marker pin fill parsed out of the marker kind's `#rrggbb`.

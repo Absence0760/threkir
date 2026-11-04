@@ -77,12 +77,6 @@ const _dataPalettes = <String, Map<String, int>>{
     'FACC15': 1,
     'DC2626': 1,
   },
-  // Heat-density scale + its legend gradient.
-  'lib/screens/run_heatmap_screen.dart': {
-    '10B981': 2,
-    'F59E0B': 2,
-    'EF4444': 2,
-  },
   // Heat-density dots, the featured map-pin ring, and ONE "kept" route line.
   // The violet is legible over arbitrary basemap tiles and is drawn on the map
   // and nowhere else: the count is what stops a fourth chrome site importing it
@@ -97,7 +91,14 @@ const _dataPalettes = <String, Map<String, int>>{
   // darker rung the ban list doesn't carry, because `#F59E0B` computes to
   // 1.87:1 against a light basemap. Contrast is pinned by property in
   // live_run_map_tile_url_test.dart, not by this literal count.
-  'lib/widgets/live_run_map.dart': {'F59E0B': 1},
+  // Plus the personal heatmap's dark-basemap density ramp (`mapHeatRamp`),
+  // graded composited at `mapHeatOpacity` in live_run_map_tile_url_test.dart.
+  'lib/widgets/live_run_map.dart': {
+    'F59E0B': 1,
+    '34D399': 1,
+    'FBBF24': 1,
+    'F87171': 1,
+  },
   // Painted start/finish caps on the mini track preview.
   'lib/widgets/track_preview.dart': {'22C55E': 1, 'EF4444': 1},
   // Course start/finish checkpoint hues beside the kindSpec marker catalogue.

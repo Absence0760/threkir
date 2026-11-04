@@ -9,6 +9,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -16,7 +17,9 @@ import 'package:flutter_test/flutter_test.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_run_store.dart';
 import '../lib/screens/run_heatmap_screen.dart';
+import '../lib/widgets/live_run_map.dart' show mapHeatOpacity, mapHeatRamp;
 import '../lib/widgets/map_attribution.dart';
+import 'pump_until.dart';
 
 /// The screen reads the viewer id to decide whether to fetch server
 /// runs at all, so a fake must declare it rather than falling through
@@ -141,6 +144,42 @@ void main() {
     // Both tracks aggregated → the two-run legend summary, distinct from
     // the AppBar/legend title (which share the "Your heatmap" string).
     expect(find.text(l10n.runHeatmapLegendSummaryMany(2)), findsOneWidget);
+  });
+
+  testWidgets('cells and legend paint the basemap\'s heat ramp, not one '
+      'fixed set', (tester) async {
+    await _pump(
+      tester,
+      fetchRunsFn: () async => [_run('a', trackUrl: 'u/a.json.gz')],
+      fetchTrackFn: (_) async => _track(),
+    );
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await pumpUntil(
+      tester,
+      () => find.text(l10n.runHeatmapLegendSummaryOne(1)).evaluate().isNotEmpty,
+      describe: 'the one-run legend',
+    );
+    final ramps = [
+      mapHeatRamp(darkBasemap: false),
+      mapHeatRamp(darkBasemap: true),
+    ];
+    final legend = tester.widget<Container>(
+        find.byKey(const Key('runHeatmapLegendScale')));
+    final stops =
+        ((legend.decoration! as BoxDecoration).gradient! as LinearGradient)
+            .colors;
+    expect(
+        ramps.map((r) => [for (final c in r) c.withValues(alpha: mapHeatOpacity)]),
+        anyElement(orderedEquals(stops)));
+    final opaque = [for (final c in stops) c.withValues(alpha: 1)];
+    final cells = tester
+        .widgetList<CircleLayer>(find.byType(CircleLayer))
+        .expand((l) => l.circles);
+    expect(cells, isNotEmpty);
+    for (final cell in cells) {
+      expect(opaque, contains(cell.color.withValues(alpha: 1)));
+      expect(cell.color.a, lessThanOrEqualTo(mapHeatOpacity + 1e-9));
+    }
   });
 
   testWidgets('shows the empty state when no run carries a track',

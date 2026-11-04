@@ -467,6 +467,76 @@ void main() {
     });
   });
 
+  group('mapHeatRamp', () {
+    // Composite [fg] at [alpha] over an opaque [bg], as the eye sees it.
+    Color over(Color fg, double alpha, Color bg) => Color.fromARGB(
+          255,
+          // ignore: deprecated_member_use
+          (fg.red * alpha + bg.red * (1 - alpha)).round(),
+          // ignore: deprecated_member_use
+          (fg.green * alpha + bg.green * (1 - alpha)).round(),
+          // ignore: deprecated_member_use
+          (fg.blue * alpha + bg.blue * (1 - alpha)).round(),
+        );
+    const lightGrounds = [
+      _lightBasemapSample,
+      Color(0xFFAAD3DF),
+      Color(0xFFDCDCDC),
+    ];
+
+    test('every rung and the line it fades into clear the floor at the '
+        'opacity they rest at', () {
+      var graded = 0;
+      for (final dark in [false, true]) {
+        for (final c in [
+          ...mapHeatRamp(darkBasemap: dark),
+          mapTrackLine(darkBasemap: dark),
+        ]) {
+          for (final ground in dark ? [_darkBasemapSample] : lightGrounds) {
+            graded++;
+            expect(_contrast(over(c, mapHeatOpacity, ground), ground),
+                greaterThanOrEqualTo(_overlayFloor),
+                reason: '$c at $mapHeatOpacity on $ground');
+          }
+        }
+      }
+      expect(graded, 20, reason: 'five marks on three light grounds and one dark');
+    });
+
+    test('the fixed ramp and violet line it replaced did not', () {
+      for (final c in const [
+        Color(0xFF3B82F6),
+        Color(0xFF10B981),
+        Color(0xFFF59E0B),
+        Color(0xFFEF4444),
+      ]) {
+        expect(
+            _contrast(over(c, 0.85 * 0.5, _lightBasemapSample),
+                _lightBasemapSample),
+            lessThan(_overlayFloor));
+      }
+      expect(
+          _contrast(over(const Color(0xFF6366F1), 0.55, _darkBasemapSample),
+              _darkBasemapSample),
+          lessThan(_overlayFloor));
+    });
+
+    test("is web's mapHeatRamp, low to high", () {
+      expect(mapHeatRamp(darkBasemap: false), const [
+        Color(0xFF1D4ED8),
+        Color(0xFF065F46),
+        Color(0xFF92400E),
+        Color(0xFF991B1B),
+      ]);
+      expect(mapHeatRamp(darkBasemap: true), const [
+        Color(0xFF60A5FA),
+        Color(0xFF34D399),
+        Color(0xFFFBBF24),
+        Color(0xFFF87171),
+      ]);
+    });
+  });
+
   group('mapTrackLine', () {
     test('a direction chevron keeps a 3:1 edge on the line of either basemap',
         () {

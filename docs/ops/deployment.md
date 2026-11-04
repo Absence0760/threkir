@@ -483,6 +483,19 @@ Nothing in this repository can read, set, or verify any of the above -- branch
 protection is not readable by the workflow token -- so this section is the only
 record that the state was ever intended.
 
+**A PR's `security.yml` run is never cancelled once it has started**, so the
+ruleset's wait for CodeQL results on a fresh push can include finishing the
+analysis already in flight for the previous one (the Kotlin leg is the longest,
+~12 minutes). That is deliberate: a CodeQL job killed mid-analysis uploads a
+"failed run" SARIF ("unsuccessful execution, exit code: 0"), and the PRs that
+cancelled them most were what put "CodeQL is reporting errors" on the Security
+tab. A newer push still replaces a run that is only *pending*, which starts no
+job and uploads nothing, so a burst of pushes costs one extra analysis, not
+one per push. The three Trivy jobs install Trivy through
+`.github/actions/setup-trivy` (pinned, checksummed, retried, cached) rather than
+trivy-action's own unretried fetch, and upload SARIF only when the scan wrote
+one ([§ 2273](../architecture/decisions.md)).
+
 ### A merged PR's branch is deleted on merge
 
 **Automatically delete head branches** (`delete_branch_on_merge`) is on as of

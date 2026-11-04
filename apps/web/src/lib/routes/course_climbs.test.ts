@@ -7,6 +7,7 @@ import {
 	CLIMB_MIN_GRADE_PCT,
 	CLIMB_START_GAIN_M,
 	climbEndDropM,
+	courseReliefM,
 	detectClimbs,
 	elevationStrip,
 	PLANNED_CLIMB_MIN_GAIN_M,
@@ -387,4 +388,14 @@ test('the strip needs at least two samples', () => {
 	assert.deepEqual(elevationStrip(p, 0), []);
 	assert.deepEqual(elevationStrip(p, Number.NaN), []);
 	assert.equal(elevationStrip(p, 2.9).length, 2);
+});
+
+test('the relief is highest less lowest height, skipping points without one', () => {
+	assert.equal(courseReliefM(path(profile(PHILLY))), 44);
+	assert.equal(courseReliefM(path([[0, 120], [500, null], [1000, 80], [1500, 95]])), 40);
+});
+
+test('a path with no readable elevation has no relief', () => {
+	assert.equal(courseReliefM(path([[0, null], [1000, null]])), null);
+	assert.equal(courseReliefM(path(profile([[0, 0], [1000, 0]]))), null);
 });

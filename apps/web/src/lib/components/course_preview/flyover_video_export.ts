@@ -12,11 +12,12 @@ import {
 	pointAtDistance,
 	type FlyoverPath,
 } from '#lib/routes/flyover_path.ts';
-import { FLYOVER_PITCH, TERRAIN_EXAGGERATION, type TerrainSource } from '#lib/routes/terrain_source.ts';
+import { FLYOVER_PITCH, type TerrainSource } from '#lib/routes/terrain_source.ts';
 import { basemapIsDarkFromEnv, mapStyleUrlFromEnv } from '#lib/routes/map-style.svelte.ts';
 import { mapAccentColour, mapOverlayOutline } from '#lib/routes/basemap_contrast.ts';
 import { OG_CARD_DARK } from '#lib/share/og_card_palette.ts';
 import { addCourseLayers } from './course_layers.ts';
+import { addCourseTerrain } from './course_terrain.ts';
 import { stripGeometry, stripX } from './strip_geometry.ts';
 import type { VideoEncoderPlan } from '#lib/video/video_encoder.ts';
 import { VIDEO_HEIGHT, VIDEO_WIDTH } from '#lib/video/frame_clock.ts';
@@ -61,6 +62,8 @@ export interface FlyoverVideoInput {
 	/// (`flyoverVideoMaptilerKey`): empty means the keyless basemap.
 	maptilerKey: string;
 	terrain: TerrainSource | null;
+	/// `terrainExaggeration` of the recorded line's relief, as the dialog uses.
+	exaggeration: number;
 	text: FlyoverVideoText;
 	plan: VideoEncoderPlan;
 	signal: AbortSignal;
@@ -312,8 +315,7 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 		const [mark] = await Promise.all([loadImage('/logo-mark.svg'), waitForLoad(m, signal)]);
 		if (input.terrain) {
 			try {
-				m.addSource('course-terrain', { type: 'raster-dem', ...input.terrain });
-				m.setTerrain({ source: 'course-terrain', exaggeration: TERRAIN_EXAGGERATION });
+				addCourseTerrain(m, input.terrain, { exaggeration: input.exaggeration, darkBasemap });
 			} catch (e) {
 				console.warn('flyover video: terrain unavailable', e);
 			}

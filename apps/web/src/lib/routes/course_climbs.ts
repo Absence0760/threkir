@@ -237,6 +237,20 @@ export function detectClimbs(
 	});
 }
 
+/// Highest less lowest height along the path, or null when it carries no
+/// elevation worth reading (the same rule the climbs and the strip use).
+export function courseReliefM(path: FlyoverPath): number | null {
+	const samples = elevationSamples(path);
+	if (samples.length < 2) return null;
+	let lo = Infinity;
+	let hi = -Infinity;
+	for (const s of samples) {
+		if (s.ele < lo) lo = s.ele;
+		if (s.ele > hi) hi = s.ele;
+	}
+	return hi - lo;
+}
+
 /// `samples` heights at even distances from the start to the finish of the
 /// path, interpolated linearly in distance between its own elevation samples.
 /// A point without one is skipped, not read as 0 m, and a gap before the first

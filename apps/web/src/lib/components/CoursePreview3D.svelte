@@ -26,11 +26,17 @@
 		pointAtDistance,
 		type PathPoint,
 	} from '#lib/routes/flyover_path.ts';
-	import { detectClimbs, elevationStrip, type Climb, type ClimbSource } from '#lib/routes/course_climbs.ts';
+	import {
+		courseReliefM,
+		detectClimbs,
+		elevationStrip,
+		type Climb,
+		type ClimbSource,
+	} from '#lib/routes/course_climbs.ts';
 	import {
 		FLYOVER_PITCH,
 		resolveTerrainSource,
-		TERRAIN_EXAGGERATION,
+		terrainExaggeration,
 		type TerrainSource,
 	} from '#lib/routes/terrain_source.ts';
 	import { flyoverVideoMaptilerKey } from '#lib/routes/flyover_video_flag.ts';
@@ -43,6 +49,12 @@
 	import { play, seek, tick, type Playback } from './course_preview/playback.ts';
 	import { distanceAtStripOffset, stripGeometry, stripX } from './course_preview/strip_geometry.ts';
 	import { addCourseLayers } from './course_preview/course_layers.ts';
+	import {
+		addCourseTerrain,
+		HILLSHADE_SOURCE_ID,
+		removeCourseTerrain,
+		TERRAIN_SOURCE_ID,
+	} from './course_preview/course_terrain.ts';
 	import { drawFlightFrame, flightCamera } from './course_preview/flight_frame.ts';
 	import type { VideoEncoderPlan } from '#lib/video/video_encoder.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -86,7 +98,6 @@
 
 	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
 	const PUBLIC_TERRAIN_URL = PUBLIC_TERRAIN_URL_ENV ?? '';
-	const TERRAIN_SOURCE_ID = 'course-terrain';
 	const FLIGHT_ZOOM = 14;
 	const FLIGHT_VIEW = { pitch: FLYOVER_PITCH, zoom: FLIGHT_ZOOM };
 	const STRIP_SAMPLES = 240;
@@ -194,7 +205,8 @@
 			mapFailed = true;
 		});
 		created.on('error', (e) => {
-			if ((e as { sourceId?: string }).sourceId === TERRAIN_SOURCE_ID) dropTerrain();
+			const sourceId = (e as { sourceId?: string }).sourceId;
+			if (sourceId === TERRAIN_SOURCE_ID || sourceId === HILLSHADE_SOURCE_ID) dropTerrain();
 		});
 		created.on('load', () => {
 			addTerrain(created);
@@ -245,15 +257,10 @@
 				maptilerKey: PUBLIC_MAPTILER_KEY,
 				override: PUBLIC_TERRAIN_URL,
 			});
-			target.addSource(TERRAIN_SOURCE_ID, {
-				type: 'raster-dem',
-				tiles: source.tiles,
-				encoding: source.encoding,
-				tileSize: source.tileSize,
-				maxzoom: source.maxzoom,
-				attribution: source.attribution,
+			addCourseTerrain(target, source, {
+				exaggeration: terrainExaggeration(courseReliefM(path)),
+				darkBasemap,
 			});
-			target.setTerrain({ source: TERRAIN_SOURCE_ID, exaggeration: TERRAIN_EXAGGERATION });
 		} catch (e) {
 			console.warn('course preview: terrain unavailable', e);
 			dropTerrain();
@@ -263,11 +270,7 @@
 	function dropTerrain() {
 		if (terrainFailed) return;
 		terrainFailed = true;
-		try {
-			map?.setTerrain(null);
-		} catch (e) {
-			console.warn('course preview: could not clear terrain', e);
-		}
+		if (map) removeCourseTerrain(map);
 	}
 
 	function frameCourse(target: maplibregl.Map) {
@@ -421,6 +424,7 @@
 				strip: elevationStrip(vPath, STRIP_SAMPLES),
 				maptilerKey: videoKey,
 				terrain: videoTerrain(),
+				exaggeration: terrainExaggeration(courseReliefM(vPath)),
 				text: {
 					title,
 					distanceAt: (dM) => formatDistance(dM),

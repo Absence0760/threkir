@@ -4358,15 +4358,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get exploreRoutesSurfaceTrailShort => 'Trail';
-
-  @override
-  String get exploreRoutesSurfaceMixedShort => 'Mixed';
-
-  @override
-  String get exploreRoutesSurfaceRoadShort => 'Road';
-
-  @override
   String get exploreRoutesDistanceUnderKm => 'Under 5 km';
 
   @override

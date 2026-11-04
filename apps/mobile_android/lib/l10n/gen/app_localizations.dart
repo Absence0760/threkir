@@ -7240,24 +7240,6 @@ abstract class AppLocalizations {
   /// **'Removed \"{name}\" from your library'**
   String exploreRoutesRemoved(String name);
 
-  /// Surface badge label for trail routes on an explore route card
-  ///
-  /// In en, this message translates to:
-  /// **'Trail'**
-  String get exploreRoutesSurfaceTrailShort;
-
-  /// Surface badge label for mixed-surface routes on an explore route card
-  ///
-  /// In en, this message translates to:
-  /// **'Mixed'**
-  String get exploreRoutesSurfaceMixedShort;
-
-  /// Surface badge label for road routes on an explore route card
-  ///
-  /// In en, this message translates to:
-  /// **'Road'**
-  String get exploreRoutesSurfaceRoadShort;
-
   /// Distance-filter label (km) for short routes on the explore screen
   ///
   /// In en, this message translates to:

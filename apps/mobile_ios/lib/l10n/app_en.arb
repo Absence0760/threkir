@@ -5800,18 +5800,6 @@
       }
     }
   },
-  "exploreRoutesSurfaceTrailShort": "Trail",
-  "@exploreRoutesSurfaceTrailShort": {
-    "description": "Surface badge label for trail routes on an explore route card"
-  },
-  "exploreRoutesSurfaceMixedShort": "Mixed",
-  "@exploreRoutesSurfaceMixedShort": {
-    "description": "Surface badge label for mixed-surface routes on an explore route card"
-  },
-  "exploreRoutesSurfaceRoadShort": "Road",
-  "@exploreRoutesSurfaceRoadShort": {
-    "description": "Surface badge label for road routes on an explore route card"
-  },
   "exploreRoutesDistanceUnderKm": "Under 5 km",
   "@exploreRoutesDistanceUnderKm": {
     "description": "Distance-filter label (km) for short routes on the explore screen"

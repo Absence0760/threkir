@@ -4401,15 +4401,6 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get exploreRoutesSurfaceTrailShort => 'Trilho';
-
-  @override
-  String get exploreRoutesSurfaceMixedShort => 'Mista';
-
-  @override
-  String get exploreRoutesSurfaceRoadShort => 'Estrada';
-
-  @override
   String get exploreRoutesDistanceUnderKm => 'Menos de 5 km';
 
   @override
@@ -24095,15 +24086,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String exploreRoutesRemoved(String name) {
     return '“$name” removida da sua biblioteca';
   }
-
-  @override
-  String get exploreRoutesSurfaceTrailShort => 'Trilha';
-
-  @override
-  String get exploreRoutesSurfaceMixedShort => 'Mista';
-
-  @override
-  String get exploreRoutesSurfaceRoadShort => 'Estrada';
 
   @override
   String get exploreRoutesDistanceUnderKm => 'Menos de 5 km';

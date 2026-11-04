@@ -17,6 +17,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart'
     show formatDistanceForPref, formatElevationForPref;
 import '../quiet_location.dart';
+import '../route_surface_label.dart';
 import '../widgets/live_run_map.dart'
     show
         basemapTileLayer,
@@ -351,9 +352,10 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                       child: Text(
                         <String>[
                           formatDistanceForPref(p.distanceM),
-                          if (p.surface.isNotEmpty) p.surface,
+                          if (p.surface.isNotEmpty)
+                            routeSurfaceLabel(AppLocalizations.of(ctx), p.surface),
                           if (p.runCount > 0)
-                            '${p.runCount} run${p.runCount == 1 ? '' : 's'}',
+                            AppLocalizations.of(ctx).routeDetailRunCount(p.runCount),
                         ].join(' · '),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1073,7 +1075,8 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
     final band = bandForDistance(p.distanceM);
     final meta = <String>[
       formatDistanceForPref(p.distanceM),
-      if (p.surface.isNotEmpty) p.surface,
+      if (p.surface.isNotEmpty)
+        routeSurfaceLabel(AppLocalizations.of(context), p.surface),
       if (p.runCount > 0)
         AppLocalizations.of(context).routeDetailRunCount(p.runCount),
     ].join(' · ');
@@ -1130,7 +1133,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
       formatDistanceForPref(p.distanceM),
       if (p.elevationM != null && p.elevationM! > 0)
         formatElevationForPref(p.elevationM),
-      if (p.surface.isNotEmpty) p.surface,
+      if (p.surface.isNotEmpty) routeSurfaceLabel(l10n, p.surface),
       if (p.runCount > 0) l10n.routeDetailRunCount(p.runCount),
     ].join(' · ');
     return Material(

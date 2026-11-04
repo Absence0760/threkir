@@ -11,6 +11,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../local_route_store.dart';
 import '../preferences.dart';
 import '../quiet_location.dart';
+import '../route_surface_label.dart';
 import '../auth_error.dart';
 import '../backend_timeout.dart';
 import '../widgets/error_state.dart';
@@ -775,7 +776,7 @@ class _RouteCard extends StatelessWidget {
                                   route.elevationGainMetres, unit)),
                         if (route.surface != null)
                           _tag(_surfaceIcon(route.surface),
-                              _surfaceLabel(l10n, route.surface)),
+                              routeSurfaceLabel(l10n, route.surface!)),
                         if (route.runCount > 0)
                           _tag(Icons.directions_run, '${route.runCount}'),
                       ],
@@ -843,17 +844,6 @@ class _RouteCard extends StatelessWidget {
         return Icons.alt_route;
       default:
         return Icons.route;
-    }
-  }
-
-  static String _surfaceLabel(AppLocalizations l10n, String? surface) {
-    switch (surface) {
-      case 'trail':
-        return l10n.exploreRoutesSurfaceTrailShort;
-      case 'mixed':
-        return l10n.exploreRoutesSurfaceMixedShort;
-      default:
-        return l10n.exploreRoutesSurfaceRoadShort;
     }
   }
 }

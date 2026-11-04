@@ -4414,15 +4414,6 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get exploreRoutesSurfaceTrailShort => 'Sentier';
-
-  @override
-  String get exploreRoutesSurfaceMixedShort => 'Mixte';
-
-  @override
-  String get exploreRoutesSurfaceRoadShort => 'Route';
-
-  @override
   String get exploreRoutesDistanceUnderKm => 'Moins de 5 km';
 
   @override

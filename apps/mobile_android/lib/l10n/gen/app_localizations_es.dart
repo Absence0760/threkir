@@ -4398,15 +4398,6 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get exploreRoutesSurfaceTrailShort => 'Sendero';
-
-  @override
-  String get exploreRoutesSurfaceMixedShort => 'Mixta';
-
-  @override
-  String get exploreRoutesSurfaceRoadShort => 'Carretera';
-
-  @override
   String get exploreRoutesDistanceUnderKm => 'Menos de 5 km';
 
   @override

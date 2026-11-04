@@ -12,13 +12,13 @@ import '../race_plan_prefill.dart';
 import '../race_plan_preset.dart';
 import '../race_predictor.dart' show predictRaceLadder;
 import '../race_service.dart';
+import '../route_surface_label.dart';
 import '../share_sheet.dart';
 import '../training.dart' show toIsoDate;
 import '../training_service.dart';
 import '../web_base_url.dart';
 import '../widgets/error_state.dart';
 import '../widgets/top_banner.dart';
-import 'global_segments_screen.dart' show catalogueSurfaceLabel;
 import 'plan_new_screen.dart';
 import 'races_screen.dart' show showRaceImportSheet;
 
@@ -297,7 +297,7 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
         if ((course.ascentM ?? 0) > 0)
           l.racesCourseGain(formatElevationForPref(course.ascentM)),
         if ((course.surface ?? '').isNotEmpty)
-          catalogueSurfaceLabel(l, course.surface!),
+          routeSurfaceLabel(l, course.surface!),
       ],
     ];
     final meta = <String>[

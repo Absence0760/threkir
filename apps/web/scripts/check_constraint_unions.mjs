@@ -924,8 +924,8 @@ export const PAIRS = [
 				shape: 'strings',
 			},
 			{
-				file: 'apps/mobile_android/lib/screens/global_segments_screen.dart',
-				decl: 'catalogueSurfaceLabel',
+				file: 'apps/mobile_android/lib/route_surface_label.dart',
+				decl: 'routeSurfaceLabel',
 				shape: 'switch',
 			},
 			{
@@ -946,12 +946,6 @@ export const PAIRS = [
 			{
 				file: 'apps/mobile_android/lib/screens/explore_routes_screen.dart',
 				decl: '_surfaceIcon',
-				shape: 'switch',
-				allowMissing: ['road'],
-			},
-			{
-				file: 'apps/mobile_android/lib/screens/explore_routes_screen.dart',
-				decl: '_surfaceLabel',
 				shape: 'switch',
 				allowMissing: ['road'],
 			},

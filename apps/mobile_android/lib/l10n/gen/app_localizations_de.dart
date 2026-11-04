@@ -4413,15 +4413,6 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get exploreRoutesSurfaceTrailShort => 'Trail';
-
-  @override
-  String get exploreRoutesSurfaceMixedShort => 'Gemischt';
-
-  @override
-  String get exploreRoutesSurfaceRoadShort => 'Straße';
-
-  @override
   String get exploreRoutesDistanceUnderKm => 'Unter 5 km';
 
   @override

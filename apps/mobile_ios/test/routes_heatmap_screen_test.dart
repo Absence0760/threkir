@@ -102,12 +102,14 @@ class _FakeApiClient extends ApiClient {
 Future<void> _pump(
   WidgetTester tester,
   _FakeApiClient api, {
+  Locale? locale,
   Future<String> Function(Uri)? geocodingFetcher,
   Future<Position> Function()? locateFn,
   Future<Position?> Function()? backgroundLocateFn,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: RoutesHeatmapScreen(
@@ -134,13 +136,14 @@ cm.DiscoverableRoutePin _pin({
   double lng = -105.0,
   bool official = false,
   double? elevationM,
+  String surface = 'road',
 }) =>
     cm.DiscoverableRoutePin(
       id: id,
       name: name,
       featured: featured,
       distanceM: distanceM,
-      surface: 'road',
+      surface: surface,
       runCount: runCount,
       lat: lat,
       lng: lng,
@@ -479,6 +482,20 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('Wash Park 5K Loop'), findsOneWidget);
+    });
+
+    testWidgets('a result row names the surface in the reader\'s language, '
+        'not the stored token', (tester) async {
+      final api = _FakeApiClient()
+        ..nextPins = [_pin(surface: 'trail', runCount: 2)];
+      await _pump(tester, api, locale: const Locale('fr'));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.textContaining('1 '));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.textContaining('Sentier'), findsOneWidget);
+      expect(find.textContaining('trail'), findsNothing);
+      expect(find.textContaining('2 runs'), findsNothing);
     });
 
     testWidgets('the Filters sheet swaps the lens + refetches',

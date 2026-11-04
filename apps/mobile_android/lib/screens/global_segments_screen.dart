@@ -14,23 +14,11 @@ import '../backend_timeout.dart';
 import '../catalogue_browse.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart';
+import '../route_surface_label.dart';
 import '../widgets/error_state.dart';
 import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/track_preview.dart';
-
-/// Localized name for a stored `surface` token. An unrecognised value is
-/// returned VERBATIM: the CHECK constraint means a stray token can only appear
-/// when this client is older than the database, and a prettified guess is
-/// indistinguishable from a real translation. Mirrors web's
-/// `routeSurfaceLabel`.
-String catalogueSurfaceLabel(AppLocalizations l10n, String surface) =>
-    switch (surface) {
-      'road' => l10n.routesSurfaceRoad,
-      'trail' => l10n.routesSurfaceTrail,
-      'mixed' => l10n.routesSurfaceMixed,
-      _ => surface,
-    };
 
 /// Browse list for the curated famous-segment catalogue (decisions §233).
 /// Mobile mirror of web `/segments`: search with accent folding, region and
@@ -234,7 +222,7 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
                     for (final s in surfaces)
                       DropdownMenuItem(
                         value: s,
-                        child: Text(catalogueSurfaceLabel(l10n, s)),
+                        child: Text(routeSurfaceLabel(l10n, s)),
                       ),
                   ],
                   onChanged: (v) => setState(() => _surface = v),
@@ -318,7 +306,7 @@ class _CatalogueCard extends StatelessWidget {
                   formatDistanceForPref((segment.distanceM ?? 0).toDouble()),
                   if (elevation != null && elevation > 0)
                     formatElevationForPref(elevation.toDouble()),
-                  catalogueSurfaceLabel(l10n, segment.surface),
+                  routeSurfaceLabel(l10n, segment.surface),
                 ].join(' · '),
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
@@ -515,7 +503,7 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
               ),
             StatTile.medium(
               label: l10n.segmentCatalogueStatSurface,
-              value: catalogueSurfaceLabel(l10n, segment.surface),
+              value: routeSurfaceLabel(l10n, segment.surface),
             ),
           ],
         ),

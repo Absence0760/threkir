@@ -14740,6 +14740,12 @@ abstract class AppLocalizations {
   /// **'Preferences'**
   String get prefsTitle;
 
+  /// Notice on the Preferences screen when settings are served from the on-device copy because the server could not be reached
+  ///
+  /// In en, this message translates to:
+  /// **'Offline — edits stay on this device and sync when you reconnect.'**
+  String get prefsOfflineNotice;
+
   /// Unit subtitle when kilometres are selected
   ///
   /// In en, this message translates to:

@@ -8773,6 +8773,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get prefsTitle => '環境設定';
 
   @override
+  String get prefsOfflineNotice => 'オフライン — 変更はこの端末に保存され、再接続時に同期されます。';
+
+  @override
   String get prefsUnitMetric => 'km、m';
 
   @override

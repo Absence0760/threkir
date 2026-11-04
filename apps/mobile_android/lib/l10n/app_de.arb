@@ -2497,6 +2497,7 @@
   "discardChangesCancel": "Abbrechen",
   "discardChangesDiscard": "Verwerfen",
   "prefsTitle": "Voreinstellungen",
+  "prefsOfflineNotice": "Offline — Änderungen bleiben auf diesem Gerät und werden bei erneuter Verbindung synchronisiert.",
   "prefsUnitMetric": "km, m",
   "prefsUnitImperial": "mi, ft",
   "prefsSyncedSuffix": "{base} · mit deinen anderen Geräten synchronisiert",

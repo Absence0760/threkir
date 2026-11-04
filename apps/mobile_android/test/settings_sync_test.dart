@@ -569,7 +569,6 @@ void main() {
 
       expect(svc.synced, isFalse);
       expect(svc.service, isNull);
-      expect(svc.lastError, isNull);
     });
 
     test('writes load the service on demand when onSignedIn never ran',

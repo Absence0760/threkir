@@ -2497,6 +2497,7 @@
   "discardChangesCancel": "Annuler",
   "discardChangesDiscard": "Ignorer",
   "prefsTitle": "Préférences",
+  "prefsOfflineNotice": "Hors ligne — vos modifications restent sur cet appareil et seront synchronisées à la reconnexion.",
   "prefsUnitMetric": "km, m",
   "prefsUnitImperial": "mi, ft",
   "prefsSyncedSuffix": "{base} · synchronisé avec vos autres appareils",

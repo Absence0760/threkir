@@ -9286,6 +9286,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get prefsTitle => 'Preferências';
 
   @override
+  String get prefsOfflineNotice =>
+      'Offline — as alterações ficam neste dispositivo e serão sincronizadas quando reconectar.';
+
+  @override
   String get prefsUnitMetric => 'km, m';
 
   @override
@@ -29201,6 +29205,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get prefsTitle => 'Preferências';
+
+  @override
+  String get prefsOfflineNotice =>
+      'Offline — as alterações ficam neste dispositivo e serão sincronizadas quando você reconectar.';
 
   @override
   String get prefsUnitMetric => 'km, m';

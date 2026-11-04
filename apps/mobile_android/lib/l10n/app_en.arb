@@ -12373,6 +12373,10 @@
   "@prefsTitle": {
     "description": "AppBar title for the Settings > Preferences screen"
   },
+  "prefsOfflineNotice": "Offline — edits stay on this device and sync when you reconnect.",
+  "@prefsOfflineNotice": {
+    "description": "Notice on the Preferences screen when settings are served from the on-device copy because the server could not be reached"
+  },
   "prefsUnitMetric": "km, m",
   "@prefsUnitMetric": {
     "description": "Unit subtitle when kilometres are selected"

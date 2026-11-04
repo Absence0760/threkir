@@ -1537,7 +1537,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     final offlineNotice =
         widget.settingsSync?.synced == true &&
             widget.settingsSync?.service?.isServerHydrated == false
-        ? widget.settingsSync?.lastError
+        ? AppLocalizations.of(context).prefsOfflineNotice
         : null;
     return Scaffold(
       appBar: AppBar(title: Text(l10n.prefsTitle)),

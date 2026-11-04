@@ -9281,6 +9281,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get prefsTitle => 'Preferencias';
 
   @override
+  String get prefsOfflineNotice =>
+      'Sin conexión: los cambios se quedan en este dispositivo y se sincronizarán cuando vuelvas a conectarte.';
+
+  @override
   String get prefsUnitMetric => 'km, m';
 
   @override

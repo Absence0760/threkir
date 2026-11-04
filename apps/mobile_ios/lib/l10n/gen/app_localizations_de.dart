@@ -9297,6 +9297,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get prefsTitle => 'Voreinstellungen';
 
   @override
+  String get prefsOfflineNotice =>
+      'Offline — Änderungen bleiben auf diesem Gerät und werden bei erneuter Verbindung synchronisiert.';
+
+  @override
   String get prefsUnitMetric => 'km, m';
 
   @override

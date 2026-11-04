@@ -9309,6 +9309,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get prefsTitle => 'Préférences';
 
   @override
+  String get prefsOfflineNotice =>
+      'Hors ligne — vos modifications restent sur cet appareil et seront synchronisées à la reconnexion.';
+
+  @override
   String get prefsUnitMetric => 'km, m';
 
   @override

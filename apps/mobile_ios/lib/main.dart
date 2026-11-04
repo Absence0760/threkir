@@ -631,8 +631,8 @@ void main() async {
           debugPrint('Auto sign-in failed: $e');
         }
       }
-      // Best-effort — the service stores `lastError` for the settings
-      // screen to surface.
+      // Best-effort — a failed load leaves `synced` false and the settings
+      // screen reads that.
       try {
         await settingsSync?.onSignedIn();
       } catch (e) {

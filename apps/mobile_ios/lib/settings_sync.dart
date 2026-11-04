@@ -43,7 +43,6 @@ class SettingsSyncService extends ChangeNotifier {
   SettingsService? _settings;
 
   bool _synced = false;
-  String? _lastError;
 
   SettingsService? get service => _settings;
 
@@ -53,7 +52,6 @@ class SettingsSyncService extends ChangeNotifier {
   /// a cache (or on a brand-new device while offline) it falls back to
   /// the pre-cache semantics: only true after a successful server load.
   bool get synced => _synced;
-  String? get lastError => _lastError;
 
   /// Called when the user signs out. Drops the cached [SettingsService]
   /// instance (which holds the previously-signed-in user's universal +
@@ -77,7 +75,6 @@ class SettingsSyncService extends ChangeNotifier {
   Future<void> onSignedOut({String? priorUserId}) async {
     _settings = null;
     _synced = false;
-    _lastError = null;
     await preferences.resetAccountScopedPrefs();
     if (priorUserId != null && priorUserId.isNotEmpty) {
       try {
@@ -100,12 +97,11 @@ class SettingsSyncService extends ChangeNotifier {
       _applyDevice(loaded.device);
       _mirrorAppleWatchHrZones(loaded);
       _synced = true;
-      _lastError = loaded.isServerHydrated ? null : _offlineNotice;
       await _syncTimeZone(loaded);
     } catch (e) {
+      debugPrint('[SettingsSyncService] settings load failed: $e');
       _settings = null;
       _synced = false;
-      _lastError = e.toString();
     }
     notifyListeners();
   }
@@ -127,9 +123,6 @@ class SettingsSyncService extends ChangeNotifier {
       debugPrint('[SettingsSyncService] time zone sync failed: $e');
     }
   }
-
-  static const _offlineNotice =
-      'Offline — edits stay on this device and sync when you reconnect.';
 
   Future<SettingsService> _loadService() {
     final loader = _serviceLoader;
@@ -172,7 +165,6 @@ class SettingsSyncService extends ChangeNotifier {
     final loaded = await _loadService();
     _settings = loaded;
     _synced = true;
-    _lastError = loaded.isServerHydrated ? null : _offlineNotice;
     return loaded;
   }
 

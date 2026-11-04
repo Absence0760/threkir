@@ -2497,6 +2497,7 @@
   "discardChangesCancel": "キャンセル",
   "discardChangesDiscard": "破棄",
   "prefsTitle": "環境設定",
+  "prefsOfflineNotice": "オフライン — 変更はこの端末に保存され、再接続時に同期されます。",
   "prefsUnitMetric": "km、m",
   "prefsUnitImperial": "mi、ft",
   "prefsSyncedSuffix": "{base} · 他の端末と同期済み",

@@ -4408,7 +4408,7 @@ void main() {
       );
       expect(
         RegExp(
-          r'rateLimitErrorMessage\(\s*\n?\s*AppLocalizations\.of\(context\)',
+          r'rateLimitErrorMessage\(\s*\n?\s*(?:AppLocalizations\.of\(context\)|l10n\b)',
         ).hasMatch(source),
         isTrue,
         reason:

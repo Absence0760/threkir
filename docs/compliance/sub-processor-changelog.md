@@ -147,3 +147,12 @@ need a notarised log of changes prior to a specific date, email
 * **Region**: MapTiler EU + global edge (unchanged); AWS us-east-1 for the keyless rung.
 * **DPA**: MapTiler unchanged. The AWS Open Data bucket is a public request outside our AWS account, so no DPA applies; see [`sub-processors.md`](sub-processors.md).
 * **Opt-out path**: don't accept the cookie banner and don't tap "Load map" in the preview — like every map, it loads nothing before one of the two.
+
+---
+
+## 2026-11-04 — MapTiler / AWS Open Data Terrain Tiles — the 3D course preview reaches logged-out visitors (no new sub-processor, no new data category)
+
+* **What changes**: "Preview in 3D" is also offered on the public route share page `/share/route/[id]` (issue #1282), so a visitor without an account can now cause the elevation-tile requests the 2026-11-02 entry describes. Same providers, same data (requester IP + the tile coordinates of the course on screen).
+* **Gate**: stricter than the signed-in surfaces. The dialog always shows its "Load preview" card on this page, even when the cookie banner was accepted, as the page's 2D map already does; nothing is requested before that tap. The course it draws is the privacy-clipped line the page already shows (`clip_route_for_viewer`), and the page offers no video export.
+* **Activation date**: the release that ships it. No objection window applies (existing sub-processors, existing data category). **CISO / Security Analyst to confirm before release**, since it extends a third-party request to an unauthenticated audience.
+* **Opt-out path**: don't tap "Load preview".

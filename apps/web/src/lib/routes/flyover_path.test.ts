@@ -209,6 +209,57 @@ test('cameraAt on an exact out-and-back reversal still yields a finite bearing',
 	assert.ok(Number.isFinite(bearing) && bearing >= 0 && bearing < 360);
 });
 
+/** 3 km north, a hairpin `gapM` east, 3 km back south: an out-and-back course's turnaround. */
+function outAndBack(gapM: number): { path: ReturnType<typeof buildFlyoverPath>; turnM: number } {
+	const pts: PathPoint[] = [];
+	for (let m = 0; m <= 3000; m += 10) pts.push(p(m / M_PER_DEG_LAT, 0));
+	const east = gapM / M_PER_DEG_LAT;
+	for (let m = 3000; m >= 0; m -= 10) pts.push(p(m / M_PER_DEG_LAT, east));
+	const path = buildFlyoverPath(pts);
+	return { path, turnM: path.cumM[300] };
+}
+
+for (const gapM of [0, 15]) {
+	test(`the camera swings round an out-and-back turnaround (${gapM} m wide) instead of flipping`, () => {
+		const { path, turnM } = outAndBack(gapM);
+		let prev = cameraAt(path, turnM - 800).bearing;
+		let worstPerMetre = 0;
+		for (let d = turnM - 800; d <= turnM + 800; d += 1) {
+			const b = cameraAt(path, d).bearing;
+			worstPerMetre = Math.max(worstPerMetre, angleDiff(b, prev));
+			prev = b;
+		}
+		assert.ok(worstPerMetre <= 0.61, `turned ${worstPerMetre.toFixed(1)} deg in one metre`);
+		const frameM = 1000 / 60;
+		for (let d = turnM - 800; d <= turnM + 800; d += frameM) {
+			const step = angleDiff(cameraAt(path, d).bearing, cameraAt(path, d + frameM).bearing);
+			assert.ok(step <= 10.5, `turned ${step.toFixed(1)} deg in one 60 fps frame at 1000 m/s`);
+		}
+		assert.ok(angleDiff(cameraAt(path, turnM - 800).bearing, 0) < 0.5);
+		assert.ok(angleDiff(cameraAt(path, turnM + 800).bearing, 180) < 0.5);
+		assert.ok(angleDiff(cameraAt(path, turnM).bearing, 90) < 15, 'faces across the turn at the turnaround');
+	});
+}
+
+test('an ordinary 90 degree corner is not slowed by the turn limit', () => {
+	const pts: PathPoint[] = [];
+	for (let m = 0; m <= 2000; m += 10) pts.push(p(m / M_PER_DEG_LAT, 0));
+	for (let m = 10; m <= 2000; m += 10) pts.push(p(2000 / M_PER_DEG_LAT, m / M_PER_DEG_LAT));
+	const path = buildFlyoverPath(pts);
+	const corner = path.cumM[200];
+	assert.ok(angleDiff(cameraAt(path, corner).bearing, 45) < 1);
+	assert.ok(angleDiff(cameraAt(path, corner + 250).bearing, 90) < 0.5);
+});
+
+test('the turnaround bearing is the same however the flight reaches it', () => {
+	const { path, turnM } = outAndBack(15);
+	const scrubbed = cameraAt(path, turnM + 37.5).bearing;
+	const fresh = cameraAt(outAndBack(15).path, turnM + 37.5).bearing;
+	for (let d = 0; d < turnM; d += 250) cameraAt(path, d);
+	assert.equal(cameraAt(path, turnM + 37.5).bearing, scrubbed);
+	assert.equal(fresh, scrubbed);
+});
+
 test('cameraAt across the antimeridian heads east, not west', () => {
 	const path = buildFlyoverPath([p(0, 179.99), p(0, -179.99)]);
 	assert.ok(angleDiff(cameraAt(path, path.totalM / 2).bearing, 90) < 0.01);

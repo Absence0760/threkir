@@ -93,8 +93,19 @@ export function pointAtDistance(
 /**
  * The bearing is the length-weighted average of the path's segment headings
  * over a window centred on `dM`, summed as unit vectors so a heading of 359°
- * and one of 1° average to 0° rather than 180°. A switchback inside the window
- * cancels out instead of whipping the camera round.
+ * and one of 1° average to 0° rather than 180°. A short switchback inside the
+ * window cancels out instead of whipping the camera round.
+ *
+ * A reversal longer than the window does not cancel: at an out-and-back
+ * turnaround the outbound and return headings meet head-on, the summed vector
+ * passes through zero, and the window heading swings 180° in a few metres —
+ * one or two frames at flyover speed, which reads as a flash. So the smoothed
+ * heading is then limited to `MAX_TURN_DEG_PER_M` along the course, run once
+ * forwards and once backwards and averaged, so the camera starts turning
+ * before the turnaround as much as it finishes after it. The table is a pure
+ * function of the path and the smoothing, so a scrubbed, played or exported
+ * frame at the same distance gets the same bearing (decisions § 2274).
+ * `smoothingM: 0` is the raw segment heading, unsmoothed and unlimited.
  */
 export function cameraAt(
 	path: FlyoverPath,
@@ -108,11 +119,99 @@ export function cameraAt(
 	const ahead = pointAtDistance(path, Math.min(path.totalM, d + lookAheadM));
 	const center: [number, number] = [here.lng, here.lat];
 	const lookAt: [number, number] = [ahead.lng, ahead.lat];
+	const bearing =
+		smoothingM > 0 && path.totalM > 0
+			? normalizeBearing(lookupBearing(bearingTable(path, smoothingM), d))
+			: windowBearing(path, d, smoothingM, lookAheadM);
+	return { center, bearing, lookAt };
+}
 
+const BEARING_STEP_M = 5;
+const MAX_TURN_DEG_PER_M = 0.6;
+
+interface BearingTable {
+	stepM: number;
+	totalM: number;
+	deg: Float64Array;
+}
+
+const bearingTables = new WeakMap<FlyoverPath, Map<number, BearingTable>>();
+
+function bearingTable(path: FlyoverPath, smoothingM: number): BearingTable {
+	let bySmoothing = bearingTables.get(path);
+	if (!bySmoothing) {
+		bySmoothing = new Map();
+		bearingTables.set(path, bySmoothing);
+	}
+	const cached = bySmoothing.get(smoothingM);
+	if (cached && cached.totalM === path.totalM) return cached;
+	const table = buildBearingTable(path, smoothingM);
+	bySmoothing.set(smoothingM, table);
+	return table;
+}
+
+/** Unwrapped degrees at `sampleAt(k)`, so a turn through north is a run of numbers, not a jump from 359 to 0. */
+function buildBearingTable(path: FlyoverPath, smoothingM: number): BearingTable {
+	const totalM = path.totalM;
+	const n = Math.ceil(totalM / BEARING_STEP_M);
+	const at = (k: number) => Math.min(totalM, k * BEARING_STEP_M);
+	const raw = new Float64Array(n + 1);
+	for (let k = 0; k <= n; k++) {
+		const d = at(k);
+		const deg = windowBearing(path, d, smoothingM, DEFAULT_LOOK_AHEAD_M);
+		raw[k] = k === 0 ? deg : raw[k - 1] + shortestTurn(raw[k - 1], deg);
+	}
+	const forward = new Float64Array(n + 1);
+	forward[0] = raw[0];
+	for (let k = 1; k <= n; k++) {
+		const limit = MAX_TURN_DEG_PER_M * (at(k) - at(k - 1));
+		forward[k] = forward[k - 1] + clampAbs(raw[k] - forward[k - 1], limit);
+	}
+	const backward = new Float64Array(n + 1);
+	backward[n] = raw[n];
+	for (let k = n - 1; k >= 0; k--) {
+		const limit = MAX_TURN_DEG_PER_M * (at(k + 1) - at(k));
+		backward[k] = backward[k + 1] + clampAbs(raw[k] - backward[k + 1], limit);
+	}
+	const deg = new Float64Array(n + 1);
+	for (let k = 0; k <= n; k++) deg[k] = (forward[k] + backward[k]) / 2;
+	return { stepM: BEARING_STEP_M, totalM, deg };
+}
+
+function lookupBearing(table: BearingTable, d: number): number {
+	const { deg, stepM, totalM } = table;
+	const last = deg.length - 1;
+	const k = Math.min(last, Math.floor(d / stepM));
+	if (k >= last) return deg[last];
+	const from = k * stepM;
+	const to = Math.min(totalM, (k + 1) * stepM);
+	const t = to > from ? (d - from) / (to - from) : 0;
+	return deg[k] + (deg[k + 1] - deg[k]) * t;
+}
+
+function windowBearing(path: FlyoverPath, d: number, smoothingM: number, lookAheadM: number): number {
 	let [x, y] = windowHeading(path, d - smoothingM / 2, d + smoothingM / 2);
 	if (x === 0 && y === 0) [x, y] = windowHeading(path, d, d + 1e-6);
-	if (x === 0 && y === 0) [x, y] = planarUnit(here, ahead);
-	return { center, bearing: toBearing(x, y), lookAt };
+	if (x === 0 && y === 0) {
+		const ahead = pointAtDistance(path, Math.min(path.totalM, d + lookAheadM));
+		[x, y] = planarUnit(pointAtDistance(path, d), ahead);
+	}
+	return toBearing(x, y);
+}
+
+/** Signed degrees in (-180, 180] from `from` to `to`. */
+function shortestTurn(from: number, to: number): number {
+	const diff = (((to - from) % 360) + 540) % 360 - 180;
+	return diff === -180 ? 180 : diff;
+}
+
+function clampAbs(v: number, limit: number): number {
+	return Math.max(-limit, Math.min(limit, v));
+}
+
+function normalizeBearing(deg: number): number {
+	const b = ((deg % 360) + 360) % 360;
+	return b === 360 ? 0 : b;
 }
 
 export function distanceMarkers(path: FlyoverPath, unit: 'km' | 'mi'): DistanceMarker[] {

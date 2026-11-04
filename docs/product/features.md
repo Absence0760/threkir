@@ -38,6 +38,8 @@ On receipt, the file is parsed into a `Route` object (name, waypoint list, total
 
 Routes are stored locally in JSON files (mobile Android via `path_provider` + `dart:convert`) and synced to Supabase in the background.
 
+A route its owner no longer wants, such as an import with bad elevation, is deleted from its detail page on web and mobile. The confirm names what depends on the route first (race listings and club events using it as a course, other runners' bookmarks, segments and reviews, the runs that followed it, its photos and markers); runs, events and race listings keep living with the link removed. See [decisions § 2293](../architecture/decisions.md).
+
 **Done when:**
 - User can export a KML from Google My Maps on iPhone and open it in the app via share sheet
 - Route appears on map within 2 seconds of opening

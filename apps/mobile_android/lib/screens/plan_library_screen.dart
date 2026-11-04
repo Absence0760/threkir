@@ -98,6 +98,19 @@ class _PlanLibraryScreenState extends State<PlanLibraryScreen> {
     } catch (e) {
       debugPrint('PlanLibraryScreen._load failed: $e');
       if (!mounted || seq != _requestSeq) return;
+      // Results already on screen stay there; a failed search or refresh is
+      // a banner over them rather than an error page that drops them.
+      if (_loaded) {
+        setState(() => _loading = false);
+        final l10n = AppLocalizations.of(context);
+        showTopBanner(
+          context,
+          e is TimeoutException || classifyAuthError(e) == AuthErrorKind.offline
+              ? l10n.commonStaleOffline
+              : l10n.commonStaleRefreshFailed,
+        );
+        return;
+      }
       setState(() {
         _error = true;
         _loading = false;

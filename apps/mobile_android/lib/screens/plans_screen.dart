@@ -114,6 +114,10 @@ class _PlansScreenState extends State<PlansScreen> {
   }
 
   Future<void> _load() async {
+    // A list already on screen stays there while it refreshes; a failed
+    // refresh is a banner over it, as on plan detail, not an error page that
+    // takes the plans away. The list reloads on every TrainingService change.
+    final refreshing = _plans.isNotEmpty;
     setState(() {
       _loading = true;
       _error = null;
@@ -126,22 +130,27 @@ class _PlansScreenState extends State<PlansScreen> {
         _plans = p;
         _loading = false;
       });
-    } on TimeoutException catch (e) {
-      debugPrint('PlansScreen._load timed out: $e');
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = _PlansLoadError.timeout;
-        });
-      }
     } catch (e, s) {
       debugPrint('PlansScreen._load failed: $e\n$s');
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = _PlansLoadError.generic;
-        });
+      if (!mounted) return;
+      if (refreshing) {
+        setState(() => _loading = false);
+        final l10n = AppLocalizations.of(context);
+        showTopBanner(
+          context,
+          e is TimeoutException ||
+                  classifyAuthError(e) == AuthErrorKind.offline
+              ? l10n.commonStaleOffline
+              : l10n.commonStaleRefreshFailed,
+        );
+        return;
       }
+      setState(() {
+        _loading = false;
+        _error = e is TimeoutException
+            ? _PlansLoadError.timeout
+            : _PlansLoadError.generic;
+      });
     }
   }
 

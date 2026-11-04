@@ -231,6 +231,26 @@ void main() {
       await tester.pumpAndSettle();
       expect(training.fetchCalls, greaterThan(before));
     });
+
+    // The list reloads on every TrainingService change, so one blip used to
+    // swap a loaded list for the full error page.
+    testWidgets('a failed refresh keeps the plans on screen under a banner',
+        (tester) async {
+      final training = _FakeTraining([_activePlan()]);
+      await _pumpSignedIn(tester, training);
+      expect(find.text('Richmond Half'), findsOneWidget);
+
+      training.loadError = Exception('boom');
+      await tester.fling(find.text('Richmond Half'), const Offset(0, 400), 1000);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.text('Richmond Half'), findsOneWidget);
+      expect(find.byType(ErrorState), findsNothing);
+      final en = lookupAppLocalizations(const Locale('en'));
+      expect(find.text(en.commonStaleRefreshFailed), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5));
+    });
   });
 
   group('PlansScreen — cards', () {

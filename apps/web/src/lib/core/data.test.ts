@@ -2381,3 +2381,36 @@ test('reschedulePlanAfterBreak sends the previewed change as one RPC and surface
 	assert.match(body, /if \(error\) throw dbError\(error\);/);
 	assert.doesNotMatch(body, /\.from\(/, 'the reschedule must not write tables around the RPC');
 });
+
+test('deleteRoute removes the photo files only after the row delete succeeded, and never fails on them', () => {
+	// Reason: removing the files first and then failing the row delete left a
+	// route whose photos 404 forever; and a storage error after the row is gone
+	// must not report the delete as failed, because the route IS deleted and a
+	// retry would only meet "not found". Orphaned files are logged, not thrown.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const start = source.indexOf('export async function deleteRoute(');
+	assert.ok(start >= 0, 'Could not locate deleteRoute — rename?');
+	const next = source.indexOf('\nexport ', start + 1);
+	const body = source.slice(start, next > start ? next : undefined);
+
+	const rowDelete = body.search(/\.from\('routes'\)\s*\.delete\(\)/);
+	const rowError = body.indexOf('if (error) throw dbError(error);', rowDelete);
+	const refused = body.indexOf("throw new DbError('route delete refused'");
+	const remove = body.search(/\.storage\.from\(BUCKETS\.route_photos\)\.remove\(/);
+	assert.ok(rowDelete >= 0 && rowError > rowDelete, 'deleteRoute must throw on a failed row delete.');
+	assert.ok(refused > rowError, 'deleteRoute must throw when RLS silently deleted nothing.');
+	assert.ok(remove > refused, 'the storage remove must come after every way the row delete can fail.');
+	assert.equal(
+		body.match(/\.remove\(/g)?.length,
+		1,
+		'deleteRoute must remove the photo files in exactly one place.',
+	);
+
+	const tail = body.slice(remove);
+	const tryAt = body.lastIndexOf('try {', remove);
+	assert.ok(tryAt > refused, 'the storage remove must sit inside its own try, so a thrown error is caught.');
+	assert.match(tail, /catch \(e\) \{\s*removeError = e;\s*\}/, 'a thrown storage error must be captured, not rethrown.');
+	assert.match(tail, /if \(removeError\) \{\s*console\.warn\(/, 'a storage failure must be logged as orphaned files.');
+	assert.doesNotMatch(tail, /\bthrow\b/, 'nothing after the storage remove may throw — the route is already gone.');
+	assert.doesNotMatch(tail, /\breturn\b/, 'deleteRoute resolves void once the row is gone.');
+});

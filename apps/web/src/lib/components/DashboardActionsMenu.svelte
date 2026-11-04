@@ -5,8 +5,10 @@
 	/// The dashboard's occasional jobs, adding a run after the fact and
 	/// importing history, behind one labelled menu button at the top of the
 	/// page rather than as two buttons on every visit's week lead
-	/// (decisions § 2281). Same ARIA menu-button shape as the /history Log
-	/// menu: arrow keys, Home / End, Escape back to the trigger.
+	/// (decisions § 2281). The ARIA menu-button shape: ArrowDown / ArrowUp on
+	/// the trigger open it on the first / last item, arrow keys cycle, Home /
+	/// End jump, Escape closes back to the trigger, and Tab or a click outside
+	/// closes it where focus went.
 
 	let open = $state(false);
 	let trigger = $state<HTMLButtonElement | null>(null);
@@ -24,12 +26,20 @@
 		all[(i + all.length) % all.length]?.focus();
 	}
 
-	async function toggle() {
+	async function toggle(focusLast = false) {
 		open = !open;
 		if (open) {
 			await tick();
-			focusItem(0);
+			focusItem(focusLast ? -1 : 0);
 		}
+	}
+
+	/// Tab and Shift+Tab move focus out of the menu, which closes it; a menu
+	/// left open behind the focus covers the page it moved to. A null
+	/// relatedTarget is the window losing focus, not the runner leaving.
+	function onPanelFocusout(e: FocusEvent) {
+		const next = e.relatedTarget as Node | null;
+		if (next && !panel?.contains(next)) open = false;
 	}
 
 	function onPanelKeydown(e: KeyboardEvent) {
@@ -79,11 +89,11 @@
 		class="btn btn-outline dash-actions-trigger"
 		aria-haspopup="menu"
 		aria-expanded={open}
-		onclick={toggle}
+		onclick={() => void toggle()}
 		onkeydown={(e) => {
 			if (!open && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
 				e.preventDefault();
-				void toggle();
+				void toggle(e.key === 'ArrowUp');
 			}
 		}}
 		data-testid="dash-actions-trigger"
@@ -100,6 +110,7 @@
 			tabindex="-1"
 			aria-label={m('dash.actionsMenu')}
 			onkeydown={onPanelKeydown}
+			onfocusout={onPanelFocusout}
 		>
 			<a class="dash-actions-item" role="menuitem" href="/runs/new" data-testid="dash-actions-add">
 				<span class="material-symbols" aria-hidden="true">edit_note</span>{m('dash.addARun')}

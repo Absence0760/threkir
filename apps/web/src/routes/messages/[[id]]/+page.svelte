@@ -81,10 +81,17 @@
 	// Mute, archive and delete-for-me act on the conversation, which exists
 	// once a message does (migration 20271105000010). The inbox row carries the
 	// viewer's state; a thread opened before the list loaded falls back to the
-	// conversation its messages name.
+	// conversation its messages name, and its state to what the viewer last
+	// wrote to it, so a toggle on that path still flips.
 	const conversationId = $derived(activeThread?.conversationId ?? messages.at(-1)?.conversation_id ?? null);
-	const muted = $derived(activeThread?.muted ?? false);
-	const archived = $derived(activeThread?.archived ?? false);
+	const muted = $derived(
+		activeThread?.muted ?? (conversationId ? messagesInbox.writtenFlag(conversationId, 'muted') : undefined) ?? false
+	);
+	const archived = $derived(
+		activeThread?.archived ??
+			(conversationId ? messagesInbox.writtenFlag(conversationId, 'archived') : undefined) ??
+			false
+	);
 	let conversationBusy = $state(false);
 	// The route the viewer just deleted for themselves. The pane says so until
 	// they undo or leave; leaving commits the delete (UndoBar flushes on

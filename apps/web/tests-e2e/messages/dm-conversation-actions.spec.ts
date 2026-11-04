@@ -99,6 +99,45 @@ test.describe('/messages — mute, archive and delete a conversation', () => {
 		}
 	});
 
+	test('a conversation the inbox list never loaded still flips its toggles', async ({ browser }) => {
+		const { viewer, partner, conversationId } = await pair('unlisted');
+		const ctx = await browser.newContext({ storageState: viewer.storageStatePath });
+		await acceptCookieConsent(ctx);
+		const page = await ctx.newPage();
+		// The list read fails throughout, so the open conversation has no inbox
+		// row and its state can only come from what the viewer wrote.
+		await page.route('**/rest/v1/rpc/dm_threads**', (route) =>
+			route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"boom"}' })
+		);
+		try {
+			await page.goto(`/messages/${partner.id}`);
+			const mute = page.getByTestId('dm-mute-toggle');
+			await expect(mute).toHaveAttribute('aria-pressed', 'false', { timeout: 10_000 });
+
+			await mute.click();
+			await expect(mute).toHaveAttribute('aria-pressed', 'true');
+			await expect
+				.poll(async () => (await viewerState(viewer, conversationId))?.muted_at ?? null, { timeout: 10_000 })
+				.not.toBeNull();
+
+			// A second tap unmutes rather than resending the mute.
+			await mute.click();
+			await expect(mute).toHaveAttribute('aria-pressed', 'false');
+			await expect
+				.poll(async () => (await viewerState(viewer, conversationId))?.muted_at ?? null, { timeout: 10_000 })
+				.toBeNull();
+
+			const archive = page.getByTestId('dm-archive-toggle');
+			await archive.click();
+			await expect(archive).toHaveAttribute('aria-pressed', 'true');
+			await expect
+				.poll(async () => (await viewerState(viewer, conversationId))?.archived_at ?? null, { timeout: 10_000 })
+				.not.toBeNull();
+		} finally {
+			await ctx.close();
+		}
+	});
+
 	test('Archive files the conversation away until a newer message arrives', async ({ browser }) => {
 		const { viewer, partner, stamp } = await pair('archive');
 		const ctx = await browser.newContext({ storageState: viewer.storageStatePath });

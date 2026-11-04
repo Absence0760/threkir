@@ -13,16 +13,14 @@ import 'package:flutter/material.dart';
 /// | [standard] | 300  | an animated scroll or page change | 180, 300, 300                         |
 /// | [pulse]    | 1500 | a repeating loop                  | 600, 720, 900, 1050, 1100, 1500, 1500 |
 ///
-/// Four of those seven loop values stay **off** the [pulse] rung, and
-/// deliberately: the coach typing dots (600), the skeleton shimmer (900) and
-/// the two remaining `ActivityLoader` gait cadences (720, 1050) are
-/// indeterminate-progress rhythms rather than chrome timing. A gait cycle and
-/// a typing rhythm carry their meaning at their own speed, and the loader's
-/// three are ported frame-for-frame from web's `ActivityLoader.svelte` — the
-/// cross-platform match is the contract there, so retiming them would be the
-/// divergence. They are not a fourth rung either: there is no mode across the
-/// four to derive one from, and an invented number wearing a tier's clothes is
-/// worse than four honest locals.
+/// The off-rung loop values are indeterminate-progress rhythms rather than
+/// chrome timing, and stay local deliberately: the coach typing dots (600)
+/// and the skeleton pulse (900) carry their meaning at their own speed. They
+/// are not a further rung either: there is no mode between them to derive one
+/// from, and an invented number wearing a tier's clothes is worse than honest
+/// locals. (720 and 1050 were the running-figure loader's gait cadences; the
+/// figure was retired when every loading screen moved to a skeleton, but the
+/// table records the population the rungs were derived from.)
 abstract final class AppMotion {
   static const brief = Duration(milliseconds: 200);
   static const standard = Duration(milliseconds: 300);

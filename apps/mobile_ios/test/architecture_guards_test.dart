@@ -5418,11 +5418,13 @@ void main() {
     // A bare `Center(child: CircularProgressIndicator())` tells the user only
     // that something is happening: it occupies none of the space the content
     // will, so the arriving frame lands as a re-layout rather than a fill.
-    // Round 7 shipped the two named treatments (`ListSkeleton` for a row-
-    // shaped surface, `FullBodyLoader` for a mixed one) and converted 16 of
-    // the 30 sites; round 10 closed the remaining 14 (decisions.md § 492).
-    // The trap is not a bug in one file — it is the shape every screen
-    // reached for because there was nothing named to reach for.
+    // Round 7 shipped the named treatments and converted 16 of the 30 sites;
+    // round 10 closed the remaining 14 (decisions.md § 492). Since § 2288 a
+    // loading screen is a skeleton shaped like the screen it becomes —
+    // `ListSkeleton`, `.section` and `SkeletonBlock`, composed — and the
+    // running-figure loader that mixed layouts used to take is gone. The
+    // trap is not a bug in one file — it is the shape every screen reached
+    // for because there was nothing named to reach for.
     late List<File> sources;
     setUpAll(() {
       sources = Directory('lib')
@@ -5442,7 +5444,37 @@ void main() {
       expect(offenders, isEmpty,
           reason: 'use ListSkeleton where the surface is rows, '
               'ListSkeleton.section where it is one section of a scrollable, '
-              'FullBodyLoader where the layout is mixed');
+              'and compose SkeletonBlock beside them (or a '
+              'widgets/loading_skeletons.dart composition) where the layout '
+              'is mixed');
+    });
+
+    test('no screen loads its content behind a running figure', () {
+      // The figure stood in the middle of an otherwise empty page, so it
+      // held none of the layout the content would take and was the one
+      // high-contrast thing on screen while a detail route faded in over
+      // the page it left (decisions.md § 2288). A wait that is not page
+      // content (GPS acquisition, finishing a sign-in) may earn a figure
+      // back, but it gets a new name and a reason here, not this one.
+      final figure = RegExp(r'\b(?:ActivityLoader|FullBodyLoader)\b');
+      final scanned = [
+        ...sources,
+        ...Directory('../../packages/ui_kit/lib')
+            .listSync(recursive: true)
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.dart')),
+      ];
+      expect(scanned.length, greaterThan(sources.length),
+          reason: 'the ui_kit scan must actually reach the package');
+      final offenders = <String>[
+        for (final f in scanned)
+          if (figure.hasMatch(f.readAsStringSync())) f.path,
+      ];
+      expect(offenders, isEmpty,
+          reason: 'a screen loading content shows a skeleton shaped like the '
+              'screen it becomes: compose ListSkeleton, ListSkeleton.section '
+              'and SkeletonBlock, or use a widgets/loading_skeletons.dart '
+              'composition');
     });
 
     test('no screen hand-rolls its own empty state', () {

@@ -54,7 +54,8 @@ const _bannedHexes = [
   'EF4444', 'DC2626', 'B91C1C', 'F87171', 'F44336', 'D32F2F',
   // crown gold
   'F5B30A',
-  // route-heatmap "kept on map" violet — cartographic, map-layer only
+  // the route heatmap's former "kept on map" violet. The map layers now draw
+  // through the basemap-aware `mapPinnedLine` rungs, so no site may use it.
   '8B5CF6',
 ];
 

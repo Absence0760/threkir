@@ -1351,7 +1351,9 @@ action can honestly be reversed:
   A held mutation belongs to the account that made it: Sign out commits it
   first (`signOutWithScope`'s `settlePending`, passed `undoStore.flush`; a
   failure there is logged and the sign-out still runs, since signing out is
-  the core action), and a
+  the core action; so is a settle still running after
+  `SIGN_OUT_SETTLE_TIMEOUT_MS`, 5 s, whose request keeps its own token and may
+  still land), and a
   session that ends or changes some other way (another tab) runs Undo instead,
   from the root layout, so it never commits with no session or as the next
   account.

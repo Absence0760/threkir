@@ -1,9 +1,14 @@
-import { test } from 'node:test';
+import { mock, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { signOutWithScope, type AuthSignOutClient, type SignOutScope } from './sign_out';
+import {
+	SIGN_OUT_SETTLE_TIMEOUT_MS,
+	signOutWithScope,
+	type AuthSignOutClient,
+	type SignOutScope,
+} from './sign_out';
 
 function mockAuth(error: { message?: string } | null = null): {
 	client: AuthSignOutClient;
@@ -82,6 +87,48 @@ test('a pending delete that cannot settle never keeps the session open', async (
 		console.error = warn;
 	}
 	assert.deepEqual(scopes, ['local']);
+});
+
+// Reason: the settle had no time limit, so a commit request that never
+// answered (a stalled network) kept Sign out spinning with the session still
+// open on the device the user was leaving.
+test('a pending delete that never settles stops holding the sign-out after the cap', async () => {
+	assert.equal(SIGN_OUT_SETTLE_TIMEOUT_MS, 5_000);
+	mock.timers.enable({ apis: ['setTimeout'] });
+	const warn = console.warn;
+	const warned: unknown[] = [];
+	console.warn = (...args: unknown[]) => warned.push(args[0]);
+	try {
+		const { client, calls } = mockAuth();
+		const done = signOutWithScope(client, 'local', () => new Promise<void>(() => {}));
+		await Promise.resolve();
+		mock.timers.tick(SIGN_OUT_SETTLE_TIMEOUT_MS - 1);
+		await Promise.resolve();
+		assert.deepEqual(calls, []);
+		mock.timers.tick(1);
+		assert.equal(await done, null);
+		assert.deepEqual(calls, ['local']);
+		assert.equal(warned.length, 1);
+		assert.match(String(warned[0]), /had not settled after 5000 ms/);
+	} finally {
+		console.warn = warn;
+		mock.timers.reset();
+	}
+});
+
+test('a pending delete that settles quickly signs out at once, with no cap left running', async () => {
+	mock.timers.enable({ apis: ['setTimeout'] });
+	try {
+		const { client, calls } = mockAuth();
+		const err = await signOutWithScope(client, 'local', async () => {});
+		assert.equal(err, null);
+		assert.deepEqual(calls, ['local']);
+		// The cap's timer was cleared: running the clock past it fires nothing.
+		mock.timers.tick(SIGN_OUT_SETTLE_TIMEOUT_MS * 2);
+		assert.deepEqual(calls, ['local']);
+	} finally {
+		mock.timers.reset();
+	}
 });
 
 // Source-level guard for the store wiring — auth.svelte.ts uses Svelte $state

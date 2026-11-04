@@ -1135,7 +1135,7 @@ void main() {
     });
 
     // The phone Scaffold resizes for the keyboard, which lifted the docked
-    // button over the recorder's START (decisions § 2279).
+    // button over the recorder's START (decisions § 2286).
     testWidgets('the docked button steps aside while the keyboard is up',
         (tester) async {
       final s = await _makeStores();
@@ -1166,7 +1166,7 @@ void main() {
 
   // A kept-alive page kept its focused field after the runner left it, and
   // the pop of any route above the shell (the route picker) handed focus
-  // back to it, raising the keyboard over the Run page (decisions § 2279).
+  // back to it, raising the keyboard over the Run page (decisions § 2286).
   group('focus left behind on a page', () {
     testWidgets('is dropped when the runner moves to another page, so a '
         'later pop cannot restore it', (tester) async {

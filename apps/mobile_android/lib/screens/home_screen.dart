@@ -226,7 +226,7 @@ class _HomeScreenState extends State<HomeScreen>
   /// to another page (Android's back hides the keyboard without unfocusing),
   /// and Flutter hands focus back to it whenever a route above the shell
   /// pops, which raised the keyboard over a page with no field on it
-  /// (decisions § 2279). Leaving the page is when that focus stops meaning
+  /// (decisions § 2286). Leaving the page is when that focus stops meaning
   /// anything, so it is dropped then, along with the scope's memory of it.
   void _dropFocusLeftBehind() {
     final focused = FocusManager.instance.primaryFocus;

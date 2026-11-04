@@ -302,8 +302,9 @@ class _PublicRouteScreenState extends State<PublicRouteScreen> {
               ),
               StatTile.large(
                 label: l10n.publicRouteStatElevation,
-                value: '${route.elevationGainMetres.round()}',
-                unit: 'm',
+                value: UnitFormat.elevationValue(
+                    route.elevationGainMetres, activeDistanceUnit),
+                unit: UnitFormat.elevationLabel(activeDistanceUnit),
               ),
               StatTile.large(
                 label: l10n.publicRouteStatWaypoints,

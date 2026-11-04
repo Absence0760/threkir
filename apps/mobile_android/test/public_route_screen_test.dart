@@ -6,6 +6,7 @@ import 'package:ui_kit/ui_kit.dart' show FullBodyLoader;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/preferences.dart';
 import '../lib/screens/public_route_screen.dart';
 
 bool _supabaseReady = false;
@@ -84,4 +85,57 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
     });
   });
+
+  testWidgets('the elevation stat reads in the reader\'s unit',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({'use_miles': true});
+    final prefs = Preferences();
+    await prefs.init();
+    registerActivePreferences(prefs);
+    addTearDown(() async {
+      SharedPreferences.setMockInitialValues({});
+      final km = Preferences();
+      await km.init();
+      registerActivePreferences(km);
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: PublicRouteScreen(api: _OwnerApi(), routeId: 'r1'),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('751'), findsOneWidget);
+    expect(find.text('ft'), findsOneWidget);
+    expect(find.text('229'), findsNothing);
+    // Drain the screen's request timeouts.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 30));
+  });
+}
+
+class _OwnerApi extends ApiClient {
+  @override
+  String? get userId => 'owner';
+
+  @override
+  Future<({cm.Route? route, String? ownerId})> fetchRouteById(
+    String routeId,
+  ) async =>
+      (
+        route: cm.Route(
+          id: routeId,
+          userId: 'owner',
+          name: 'Hill Loop',
+          waypoints: [
+            cm.Waypoint(lat: 0, lng: 0),
+            cm.Waypoint(lat: 0, lng: 0.01),
+          ],
+          distanceMetres: 5000,
+          elevationGainMetres: 229,
+        ),
+        ownerId: 'owner',
+      );
 }

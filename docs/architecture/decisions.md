@@ -32344,3 +32344,23 @@ Delete-for-me, mute and archive (issue #1216) are facts one participant holds ab
 ## 2306. The web unread-DM badge subtracts conversations whose delete is still inside the undo window, matching mobile
 
 2026-11-04, PR #1280. The badge counts from each conversation's state (`fetchDmBadgeStates`, replacing the summed `fetchUnreadDmCount`) minus the conversations in `dmPendingHides`, now shared by the inbox list and the badge, as mobile's `DmPendingHides` is. A pending delete is subtracted from the states already held, and only Undo, a refused commit or a landed commit re-reads the server. A landed commit also drops the conversation from the held states so it is not counted again before that read returns.
+
+## 2307. One database-code rule on web and Dart, keyed on real SQLSTATE classes (amends § 2304)
+
+2026-11-04, PR #1280. "A database code" is now one rule, `isDatabaseCode` in `core/auth_errors.ts` and its Dart twin in `auth_error.dart`, which `i18n/error_copy.ts` imports. It accepts `PGRST` plus three digits, or five `[0-9A-Z]` characters whose first two are a Postgres/PL/pgSQL SQLSTATE class or one of the project's own (`RR`, `RW`, `TR`), case-insensitively. The earlier bare 5-character test also took errnos like `EPIPE` and any five-letter word, and never read their messages. The `P0001` exemption moves to `databaseCodeDecides`, and both suites fail on any migration `errcode` the class list doesn't cover.
+
+## 2308. A top banner shown from the root navigator measures the screen on top
+
+2026-11-04, PR #1280. A callback that outlives its screen, like a DM delete committed after the thread was popped, can only reach the root navigator's context, where `Scaffold.maybeOf` is null, so the pill drew over the next screen's AppBar title. Fixing each caller would mean guessing which screen sits underneath (the thread opens from four places). Instead, `showTopBanner` falls back, only for a context outside every route, to the current top route's `subtreeContext` and takes the tallest `ScaffoldState.appBarMaxHeight` in it. Screen contexts behave as before.
+
+## 2309. Web undoable deletes are settled before the session changes, and the DM inbox holds a delete against list reads that predate it
+
+2026-11-04, PR #1280. A delete held in its undo window could finish after sign-out (with no session, or as whoever signed in next), and an inbox poll that started before a conversation delete landed could put the row back for up to one 30 s poll. Sign out now commits the pending delete first, while the session still exists (`signOutWithScope`'s `settlePending`, passed `undoStore.flush`). A session that ends or changes some other way runs Undo instead, from the root layout, keyed on the user id so a refreshed user object is not a change; Undo is the honest outcome there because nothing was deleted. The inbox records when each conversation delete landed (`#hiddenAt`) and leaves the row out of any read that started at or before that time, the same scheme as the read-state and mute/archive markers; a time marker was chosen over clearing a flag because clearing it cannot tell an old read from a new one. The badge needs no marker: it applies only its newest read. A refused mute/archive now reverts to the last value the server confirmed, not the one the list showed.
+
+## 2310. The route-photo sweep trigger merges cascaded firings into one job per transaction and never blocks the delete (amends § 2305)
+
+2026-11-04, PR #1280. The delete trigger runs once per cascaded parent row (an account deletion fires it once per route), so each firing appends to the paths job its own transaction already queued and starts another only at 1000 paths, giving ceil(paths / 1000) jobs per transaction; paths past 1000 are no longer left to the backstop. An error in the enqueue is caught and raised as a warning that names no path or user, so the photo, route or account delete commits and the nightly backstop takes the bytes. The sweep's three definers carry `search_path = public, pg_temp`.
+
+## 2311. The route-delete impact count inlines the run-visibility rule, pinned against it
+
+2026-11-04, PR #1280. `route_delete_impact.linked_runs` called `private.is_run_visible_to` once per run, and a popular public route has thousands. The rule is now the same predicate written as joins (own; public behind `profile_visible_to` or in progress; active coach; followers-only or shared under `audience_sharing` and no block), with the gate flag read once. This puts a copy of the shared rule outside `is_run_visible_to`, so `route_delete_test.sql` compares the count with `count(*) filter (where is_run_visible_to(...))` over one run per arm; changing the shared rule without changing this one fails CI.

@@ -2110,7 +2110,7 @@ export const messages = {
 	"settingsIntegrations.parkrunDescription": "parkrun の全履歴をインポート",
 	"settingsIntegrations.parkrunRegionNote": "parkrun は一部の国でのみ開催されており、お近くにイベントがない場合があります。parkrun のアスリート ID をお持ちであれば連携できます。",
 	"settingsIntegrations.garminDescription": ".fit ファイルの一括インポート（単一アクティビティまたはアカウントデータの完全エクスポート）。ライブ OAuth には Garmin デベロッパープログラムの承認が必要です。",
-	"settingsIntegrations.healthkitDescription": "iOS アプリのリリース後、端末上で同期されます（近日対応）。",
+	"settingsIntegrations.healthkitDescription": "iPhone の iOS アプリ内で同期されます。ウェブブラウザからは同期しません。",
 	"settingsIntegrations.lastSynced": "最終同期 {date}",
 	"settingsIntegrations.syncNotePrefix": "同期では選んだ期間を、最長 1 年前まで取得します。それより古いアクティビティには ",
 	"settingsIntegrations.syncNoteBold": "Strava エクスポートからの一括インポート",

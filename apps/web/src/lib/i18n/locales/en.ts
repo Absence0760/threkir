@@ -2128,7 +2128,7 @@ export const en = {
 	"settingsIntegrations.parkrunDescription": "Import your complete parkrun history",
 	"settingsIntegrations.parkrunRegionNote": "parkrun operates in a limited set of countries and may not have events near you — you can still connect if you have a parkrun athlete ID.",
 	"settingsIntegrations.garminDescription": "Bulk-import .fit files (single activity or full Account Data export). Live OAuth needs Garmin developer-program approval.",
-	"settingsIntegrations.healthkitDescription": "Will sync on-device once the iOS app ships (coming soon).",
+	"settingsIntegrations.healthkitDescription": "Syncs on your iPhone, in the iOS app, not from a web browser.",
 	"settingsIntegrations.lastSynced": "Last synced {date}",
 	"settingsIntegrations.syncNotePrefix": "Sync pulls the window you pick, up to a year back. For anything older, use ",
 	"settingsIntegrations.syncNoteBold": "Bulk import from a Strava export",

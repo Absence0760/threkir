@@ -2115,7 +2115,7 @@ export const messages = {
 	"settingsIntegrations.parkrunDescription": "Importez tout votre historique parkrun",
 	"settingsIntegrations.parkrunRegionNote": "parkrun n'est présent que dans certains pays et il se peut qu'aucun événement n'ait lieu près de chez vous — vous pouvez quand même vous connecter avec votre identifiant d'athlète parkrun.",
 	"settingsIntegrations.garminDescription": "Import groupé de fichiers .fit (activité unique ou export complet des données du compte). L'OAuth en direct nécessite l'approbation du programme développeur Garmin.",
-	"settingsIntegrations.healthkitDescription": "Se synchronisera sur l'appareil une fois l'app iOS disponible (bientôt).",
+	"settingsIntegrations.healthkitDescription": "Se synchronise sur votre iPhone, dans l'app iOS, et non depuis un navigateur web.",
 	"settingsIntegrations.lastSynced": "Dernière synchro {date}",
 	"settingsIntegrations.syncNotePrefix": "La synchro récupère la période que vous choisissez, jusqu'à un an en arrière. Pour tout ce qui est plus ancien, utilisez ",
 	"settingsIntegrations.syncNoteBold": "Import groupé depuis un export Strava",

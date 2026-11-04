@@ -96,15 +96,9 @@ export function pointAtDistance(
  * and one of 1° average to 0° rather than 180°. A short switchback inside the
  * window cancels out instead of whipping the camera round.
  *
- * A reversal longer than the window does not cancel: at an out-and-back
- * turnaround the outbound and return headings meet head-on, the summed vector
- * passes through zero, and the window heading swings 180° in a few metres —
- * one or two frames at flyover speed, which reads as a flash. So the smoothed
- * heading is then limited to `MAX_TURN_DEG_PER_M` along the course, run once
- * forwards and once backwards and averaged, so the camera starts turning
- * before the turnaround as much as it finishes after it. The table is a pure
- * function of the path and the smoothing, so a scrubbed, played or exported
- * frame at the same distance gets the same bearing (decisions § 2275).
+ * A reversal longer than the window does not cancel: the summed vector passes
+ * through zero and would flip the camera 180° in a frame, so the smoothed
+ * heading is also turn-rate limited along the course.
  * `smoothingM: 0` is the raw segment heading, unsmoothed and unlimited.
  */
 export function cameraAt(

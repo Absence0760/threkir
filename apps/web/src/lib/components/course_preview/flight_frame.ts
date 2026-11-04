@@ -26,17 +26,9 @@ export function flightCamera(path: FlyoverPath, dM: number, view: FlightView): F
 	return { center: pose.center, bearing: pose.bearing, pitch: view.pitch, zoom: view.zoom };
 }
 
-/// Moves the camera, then puts the dot on the camera's centre, so the dot is
-/// projected through the transform the canvas draws.
-///
-/// `inAnimationFrame`: a camera move asks MapLibre for a render on the next
-/// requestAnimationFrame, and one requested from inside an animation frame
-/// lands in the FOLLOWING frame. The DOM dot paints now, so without a
-/// synchronous redraw the canvas shows the previous frame's camera under it
-/// and the dot sits one frame of travel ahead of its own spot on the course,
-/// by a distance that changes with every frame time — the dot shakes against
-/// the line (decisions § 2274). Outside an animation frame the scheduled
-/// render lands before the next paint, so a redraw would only add a render.
+/// A camera move made inside an animation frame renders one frame late while
+/// the DOM dot paints now, so the dot shakes against the line unless the map
+/// redraws synchronously.
 export function drawFlightFrame(
 	target: FlightTarget,
 	dot: FlightDot,

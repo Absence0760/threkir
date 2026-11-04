@@ -276,8 +276,7 @@
 		if (!positionMarker) {
 			const el = document.createElement('div');
 			el.className = 'course-preview-position';
-			// MapLibre otherwise rounds the dot to whole pixels after every
-			// jump, flipping it a pixel either way when the centre is a half pixel.
+			// Without it MapLibre rounds the dot to whole pixels, flipping it on half-pixel centres.
 			positionMarker = new maplibregl.Marker({ element: el, subpixelPositioning: true })
 				.setLngLat(at)
 				.addTo(map);

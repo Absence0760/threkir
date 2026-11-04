@@ -663,6 +663,8 @@ Two RPCs back the read surfaces:
 
 Matching stays narrow — end-to-end against curated geometry via `computeGlobalSegmentEffort` (reusing `computeEffortFromTrack`); arbitrary-geometry HMM/Hausdorff matching is deferred. pgTAP `global_segments_test.sql`.
 
+**Curated rows ship in migrations**, like the exercise catalogue: fixed ids, `on conflict (id) do nothing`, `created_by` null, attribution in `description`. The first set is the NYC Marathon bridges and the Fifth Avenue climb (migration `20271105000001`, issue #1274, [decisions § 2276](../architecture/decisions.md)): Verrazzano-Narrows, Pulaski, Queensboro, Willis Avenue and Madison Avenue bridges plus Fifth Avenue from East 110th to East 90th Street, all `surface = 'road'`, `region = 'New York, NY'`, `country_code = 'US'`. Geometry is the chain of OpenStreetMap ways for each road in race direction (ODbL); `elevation_m` is null on the bridges, because bare-earth elevation models read the water under a deck, and 29 m (USGS 3DEP) on Fifth Avenue. pgTAP `nyc_marathon_bridge_segments_test.sql` pins the six rows, their location fields, anon visibility, and that each `distance_m` is the haversine length of its own line.
+
 ---
 
 #### `reports`

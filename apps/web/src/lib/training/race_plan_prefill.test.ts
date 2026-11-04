@@ -88,6 +88,30 @@ test('describe: distances, clocks and ages format the same on both platforms', (
 	);
 });
 
+test('describe: a miles runner reads miles and feet', () => {
+	assert.equal(
+		racePlanDescribe({ ...FULL, unit: 'mi' }),
+		'Race: Richmond Marathon on 2026-11-14. Distance: 26.2 mi. Goal time: 3:45:00. ' +
+			'Recent effort: 6.2 mi in 48:30, 12 days ago. Course: 822 ft ascent, 787 ft descent, road surface.',
+	);
+});
+
+test('describe: mile distances round the same on both platforms', () => {
+	const at = (distanceM: number) =>
+		racePlanDescribe({ race: { name: 'R', raceDateIso: '2027-04-04', distanceM }, unit: 'mi' });
+	assert.equal(at(5000), 'Race: R on 2027-04-04. Distance: 3.1 mi.');
+	assert.equal(at(21_097.5), 'Race: R on 2027-04-04. Distance: 13.1 mi.');
+	assert.equal(at(50_000), 'Race: R on 2027-04-04. Distance: 31.1 mi.');
+	assert.equal(at(160_934.4), 'Race: R on 2027-04-04. Distance: 100 mi.');
+	assert.ok(
+		racePlanDescribe({
+			race: { name: 'R', raceDateIso: '2027-04-04', distanceM: null },
+			recentEffort: { distanceM: 1609.344, durationS: 400, ageDays: 1 },
+			unit: 'mi',
+		}).endsWith('Recent effort: 1 mi in 6:40, 1 day ago.'),
+	);
+});
+
 test('chain: follows the latest active plan ending before race day', () => {
 	const plans = [
 		plan({ id: 'a', endDateIso: '2026-09-20', goalDistanceM: 21_097.5 }),

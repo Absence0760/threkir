@@ -126,11 +126,21 @@ test('an unreadable today keeps nothing', () => {
 test('a distance outside 5 km .. 400 km drops the race; the bounds are inclusive', () => {
 	assert.equal(v([{ ...RICHMOND, distance_km: 5 }]).races[0].distanceM, 5000);
 	assert.equal(v([{ ...RICHMOND, distance_km: 400 }]).races[0].distanceM, 400_000);
-	for (const distance_km of [4.99, 400.01, 0, -42, 1e9, undefined, null, '42.195', NaN, Infinity]) {
+	for (const distance_km of [4.9, 400.1, 0, -42, 1e9, undefined, null, '42.195', NaN, Infinity]) {
 		const r = v([{ ...RICHMOND, distance_km }]);
 		assert.deepEqual(r.races, [], String(distance_km));
 		assert.deepEqual(r.assumptions, ['race_dropped_distance']);
 	}
+});
+
+test('a race heard in tenths of a mile keeps the distance it names', () => {
+	// 3.1 mi is 4,989 m: snapped before the 5 km floor, so a miles runner's 5K
+	// is not dropped as too short (decisions § 2292).
+	assert.equal(v([{ ...RICHMOND, distance_km: 4.989 }]).races[0].distanceM, 5000);
+	assert.equal(v([{ ...RICHMOND, distance_km: 9.978 }]).races[0].distanceM, 10_000);
+	assert.equal(v([{ ...RICHMOND, distance_km: 50.05 }]).races[0].distanceM, 50_000);
+	assert.equal(v([{ ...RICHMOND, distance_km: 80.47 }]).races[0].distanceM, 80_467);
+	assert.equal(v([{ ...RICHMOND, distance_km: 87.7 }]).races[0].distanceM, 87_700, 'a stated 87.7 km stays');
 });
 
 test('a distance within half a percent of a standard road distance snaps to it', () => {

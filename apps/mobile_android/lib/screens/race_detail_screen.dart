@@ -5,7 +5,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart'
-    show formatDistanceForPref, formatEffortTime, formatElevationForPref;
+    show
+        activeDistanceUnit,
+        formatDistanceForPref,
+        formatEffortTime,
+        formatElevationForPref;
 import '../pro_sellable.dart' show fetchAiPlanAvailable;
 import '../race_plan_prefill.dart';
 import '../race_plan_preset.dart';
@@ -293,6 +297,7 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
                     ascentM: course.ascentM,
                     surface: course.surface,
                   ),
+            unit: activeDistanceUnit,
           )
         : null;
     final courseParts = <String>[

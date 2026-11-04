@@ -146,7 +146,10 @@ const SYSTEM_PROMPT =
 	'time to whole seconds ("sub-2" for a half = 7200, "26:30" = 1590, ' +
 	'"3:45" for a marathon = 13500). Map "5k"/"parkrun" to distance_5k, ' +
 	'"10k" to distance_10k, "half"/"half marathon"/"13.1" to distance_half, ' +
-	'and "marathon"/"full"/"26.2" to distance_full. A race longer than a ' +
+	'and "marathon"/"full"/"26.2" to distance_full. Distances may be in ' +
+	'kilometres or miles (1 mi = 1.609344 km): "3.1 mi" is distance_5k, ' +
+	'"6.2 mi" distance_10k, and a recent effort over 3.1 mi is a 5K time. ' +
+	'A race longer than a ' +
 	'marathon is an ultra: put its distance in kilometres in ultra_distance_km ' +
 	'and omit goal_event ("50k" = 50, "Two Oceans" = 56, "Comrades" = the ' +
 	'distance stated, else 90, "100 miles" = 160.934, "50 miles" = 80.467; give miles to three decimals). When the runner has never ' +

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatDistance, formatElevation } from '#lib/format/units.svelte.ts';
+	import { formatDistance, formatElevation, getUnit } from '#lib/format/units.svelte.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import { formatDate, formatDuration } from '#lib/format/time.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -203,6 +203,7 @@
 			course: race?.course
 				? { ascentM: race.course.ascentM, surface: race.course.surface }
 				: null,
+			unit: getUnit(),
 		});
 		return racePlanHref({
 			race: planRace,

@@ -20,6 +20,7 @@
 import { lengthLimit } from '../../core/column_limits';
 import { GOAL_DISTANCES_M, isUltraDistance, type GoalEvent } from '../training';
 import { RACE_GOAL_MAX_HOURS } from '../plan_races';
+import { snapStatedDistanceM } from '../stated_distance';
 
 export type PlanRequestGoalEvent = Exclude<GoalEvent, 'custom'>;
 
@@ -136,11 +137,12 @@ function goalTimeFitsPace(goalTimeSec: number, distanceM: number): boolean {
 }
 
 /// An ultra distance in km from the model, as whole metres, or null when it
-/// is not a number past the marathon and inside the band.
+/// is not a number past the marathon and inside the band. A distance heard in
+/// tenths of a mile snaps back to the whole kilometre or mile it names.
 function validUltraDistanceM(raw: unknown): number | null {
 	const km = finiteNumber(raw);
 	if (km === null) return null;
-	const m = Math.round(km * 1000);
+	const m = Math.round(snapStatedDistanceM(km * 1000));
 	return isUltraDistance(m) && m <= MAX_ULTRA_DISTANCE_M ? m : null;
 }
 

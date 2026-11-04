@@ -19,10 +19,12 @@
 //      date ("4 April") to this year when the runner meant the next one, so
 //      it moves forward a year (`race_date_next_year`); anything else —
 //      today included — is dropped (`race_dropped_date`).
-//   3. Distance: 5 km to 400 km, inclusive. Outside it the race is dropped
-//      (`race_dropped_distance`), never clamped — a clamped distance names a
-//      race that does not exist. A distance within 0.5 % of a standard road
-//      distance snaps to it exactly, so "42.2" plans as a marathon.
+//   3. Distance: a distance within 0.5 % of a standard road distance snaps
+//      to it exactly, so "42.2" plans as a marathon and "3.1 mi" as a 5K;
+//      any other snaps to the whole kilometre or mile a tenth-of-a-mile
+//      figure names (`snapStatedDistanceM`). Then 5 km to 400 km, inclusive:
+//      outside it the race is dropped (`race_dropped_distance`), never
+//      clamped — a clamped distance names a race that does not exist.
 //   4. Goal time: kept only when its pace sits between 2:30 and 20:00 per km;
 //      otherwise the race keeps no goal (`goal_time_dropped`). The slow end
 //      is wider than the plan wizard's because a 100-mile goal is mostly
@@ -42,6 +44,7 @@
 
 import { isoEpochDay, MAX_RACE_DATE_YEARS } from '../plan_request/inputs';
 import { GOAL_DISTANCES_M } from '../training';
+import { snapStatedDistanceM } from '../stated_distance';
 import type { SeasonRace, SeasonRacePriority, SeasonRequestResult } from '../season_types';
 
 /// Why the race list holds what it holds when it is not simply what the
@@ -122,12 +125,14 @@ function resolveDate(raw: unknown, todayIso: string): DateOutcome {
 function resolveDistanceM(raw: unknown): number | null {
 	const km = finiteNumber(raw);
 	if (km === null) return null;
-	const m = km * 1000;
+	const heard = km * 1000;
+	// Snapped before the band: a 5K heard as 3.1 mi is 4,990 m.
+	const standard = Object.values(GOAL_DISTANCES_M).find(
+		(d) => Math.abs(heard - d) <= d * STANDARD_SNAP_FRACTION,
+	);
+	const m = standard ?? Math.round(snapStatedDistanceM(heard));
 	if (m < MIN_SEASON_RACE_DISTANCE_M || m > MAX_SEASON_RACE_DISTANCE_M) return null;
-	for (const standard of Object.values(GOAL_DISTANCES_M)) {
-		if (Math.abs(m - standard) <= standard * STANDARD_SNAP_FRACTION) return standard;
-	}
-	return Math.round(m);
+	return m;
 }
 
 function resolvePriority(raw: unknown): SeasonRacePriority | null {

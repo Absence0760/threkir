@@ -280,11 +280,27 @@ test('isoEpochDay refuses rolled-over and malformed dates', () => {
 	assert.equal(isoEpochDay(20270314), null);
 });
 
+test('an ultra heard in tenths of a mile snaps back to the race it names', () => {
+	// The AI plan box says "31.1 mi" for a 50K (decisions § 2292); the model's
+	// kilometres for it are 50.05, which is no race and no wizard preset.
+	for (const [km, m] of [
+		[50.05, 50_000],
+		[50.051, 50_000],
+		[99.94, 100_000],
+		[80.467, 80_467],
+		[160.9, 160_934],
+	] as const) {
+		const r = validatePlanInputs({ ultra_distance_km: km }, TODAY);
+		assert.equal(r.goalEvent, 'custom', String(km));
+		assert.equal(r.goalDistanceM, m, String(km));
+	}
+});
+
 test('an ultra distance in km becomes a custom goal of that many metres', () => {
 	for (const [km, m] of [
 		[56, 56_000],
 		[87.7, 87_700],
-		[160.9, 160_900],
+		[161.2, 161_200],
 		[42.2, 42_200],
 		[400, 400_000],
 	] as const) {

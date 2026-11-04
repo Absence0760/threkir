@@ -112,7 +112,8 @@ const SYSTEM_PROMPT =
 	'runner names a well-known race without a date or distance, use its usual ' +
 	'date and distance (Comrades is about 87-90 km, Two Oceans 56 km). Give ' +
 	'distance_km as a number in kilometres ("marathon" = 42.195, "half" = ' +
-	'21.0975, "50 miler" = 80.47, "100 miles" = 160.934). Give the race\'s ' +
+	'21.0975, "50 miler" = 80.47, "100 miles" = 160.934, and any distance in ' +
+	'miles at 1.609344 km per mile). Give the race\'s ' +
 	'name as the runner wrote it, or a short description such as "10K" when ' +
 	'they give none. Set priority to A, B or C only when the runner says so ' +
 	'or calls a race their main / goal race (A) or a tune-up / training race ' +

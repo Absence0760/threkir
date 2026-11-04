@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
-	import { appErrorMessage, DbError } from '#lib/core/supabase_error.ts';
+	import { DbError } from '#lib/core/supabase_error.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import {
 		markWorkoutCompleted,
 		markWorkoutSkipped,
@@ -276,9 +277,31 @@
 		'easy', 'long', 'recovery', 'tempo', 'interval', 'marathon_pace', 'race', 'rest'
 	];
 
+	/// Edits saved on the way to Mark done / Skip whose toggle then failed: the
+	/// parent has to reload even if the runner closes the editor next.
+	let editsSaved = false;
+
+	function close() {
+		if (editsSaved) onSaved();
+		else onClose();
+	}
+
+	/// Mark done and Skip close the editor, so any unsaved edits are saved
+	/// first rather than dropped. False when that save was refused, and the
+	/// toggle must not run.
+	async function saveEditsFirst(): Promise<boolean> {
+		if (!dirty.isDirty()) return true;
+		if (!(await persist())) return false;
+		dirty.rebaseline();
+		editsSaved = true;
+		return true;
+	}
+
 	async function toggleCompleted() {
-		busy = true;
+		if (busy) return;
 		error = null;
+		if (!(await saveEditsFirst())) return;
+		busy = true;
 		try {
 			if (wasCompleted) {
 				// Both paths clear via runId=null. The unlink confirm flow on
@@ -292,15 +315,18 @@
 			dirty.rebaseline();
 			onSaved();
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? t('workoutEditor.updateFailed');
+			const key = wasCompleted ? 'workoutEditor.markNotDoneFailed' : 'workoutEditor.markDoneFailed';
+			error = t(key, { error: errorCopy(e, t, key) });
 		} finally {
 			busy = false;
 		}
 	}
 
 	async function toggleSkipped() {
-		busy = true;
+		if (busy) return;
 		error = null;
+		if (!(await saveEditsFirst())) return;
+		busy = true;
 		try {
 			// Skipping clears any manual completion server-side; un-skipping
 			// just drops the flag and leaves the workout as a plain to-do.
@@ -308,7 +334,8 @@
 			dirty.rebaseline();
 			onSaved();
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? t('workoutEditor.updateFailed');
+			const key = wasSkipped ? 'workoutEditor.unskipFailed' : 'workoutEditor.skipFailed';
+			error = t(key, { error: errorCopy(e, t, key) });
 		} finally {
 			busy = false;
 		}
@@ -363,11 +390,20 @@
 	}
 
 	async function save() {
+		if (busy) return;
 		error = null;
+		if (!(await persist())) return;
+		dirty.rebaseline();
+		onSaved();
+	}
+
+	/// Validate and write the form. Sets `error` and answers false on any
+	/// refusal; the caller decides what a success closes.
+	async function persist(): Promise<boolean> {
 		const goal = raceGoalInputSeconds(goalHours, goalMin, goalSec);
 		if (kind === 'race' && !goal.ok) {
 			error = t('workoutEditor.raceGoalInvalid', { max: RACE_GOAL_MAX_HOURS });
-			return;
+			return false;
 		}
 		const isRestKind = kind === 'rest';
 		const rpe = isRestKind
@@ -378,11 +414,11 @@
 			: parseTargetRange(hrMin, hrMax, TARGET_HR_BOUNDS);
 		if (!rpe.ok) {
 			error = rangeError(rpe, RPE_BOUNDS);
-			return;
+			return false;
 		}
 		if (hrPrescription && !hr.ok) {
 			error = rangeError(hr, TARGET_HR_BOUNDS);
-			return;
+			return false;
 		}
 		busy = true;
 		try {
@@ -445,13 +481,15 @@
 						? { target_hr_min_bpm: null, target_hr_max_bpm: null }
 						: {})
 			});
-			dirty.rebaseline();
-			onSaved();
+			return true;
 		} catch (e: unknown) {
 			error =
 				e instanceof DbError && e.code === '42501' && (hrMin != null || hrMax != null)
 					? t('workoutEditor.hrTargetNeedsConsent')
-					: (appErrorMessage(e) ?? t('workoutEditor.saveFailed'));
+					: t('workoutEditor.saveFailedDetail', {
+							error: errorCopy(e, t, 'workoutEditor.saveFailedDetail'),
+						});
+			return false;
 		} finally {
 			busy = false;
 		}
@@ -463,7 +501,7 @@
 <Modal
 	open={true}
 	title={t('workoutEditor.title', { date: workout.scheduled_date ?? '' })}
-	onclose={onClose}
+	onclose={close}
 >
 	<div class="editor-form">
 		{#if moveDays.length > 0}
@@ -592,6 +630,7 @@
 						max="59"
 						bind:value={paceMin}
 						placeholder={t('workoutEditor.min')}
+						aria-label={t('workoutEditor.paceFromMinutes')}
 						aria-describedby="wo-pace-hint wo-pace-end-hint"
 					/>
 					<span>:</span>
@@ -601,6 +640,7 @@
 						max="59"
 						bind:value={paceSec}
 						placeholder={t('workoutEditor.sec')}
+						aria-label={t('workoutEditor.paceFromSeconds')}
 						aria-describedby="wo-pace-hint wo-pace-end-hint"
 					/>
 					<span class="arrow">→</span>
@@ -610,6 +650,7 @@
 						max="59"
 						bind:value={paceEndMin}
 						placeholder={t('workoutEditor.min')}
+						aria-label={t('workoutEditor.paceToMinutes')}
 						aria-describedby="wo-pace-hint wo-pace-end-hint"
 					/>
 					<span>:</span>
@@ -619,6 +660,7 @@
 						max="59"
 						bind:value={paceEndSec}
 						placeholder={t('workoutEditor.sec')}
+						aria-label={t('workoutEditor.paceToSeconds')}
 						aria-describedby="wo-pace-hint wo-pace-end-hint"
 					/>
 				</div>
@@ -799,6 +841,7 @@
 									max="59"
 									bind:value={repeatsPaceMin}
 									placeholder={t('workoutEditor.min')}
+									aria-label={t('workoutEditor.repPaceMinutes')}
 									aria-describedby="wo-repeats-hint"
 								/>
 								<span>:</span>
@@ -808,6 +851,7 @@
 									max="59"
 									bind:value={repeatsPaceSec}
 									placeholder={t('workoutEditor.sec')}
+									aria-label={t('workoutEditor.repPaceSeconds')}
 									aria-describedby="wo-repeats-hint"
 								/>
 							</div>
@@ -854,6 +898,7 @@
 									max="59"
 									bind:value={steadyPaceMin}
 									placeholder={t('workoutEditor.min')}
+									aria-label={t('workoutEditor.steadyPaceMinutes')}
 									aria-describedby="wo-steady-hint"
 								/>
 								<span>:</span>
@@ -863,6 +908,7 @@
 									max="59"
 									bind:value={steadyPaceSec}
 									placeholder={t('workoutEditor.sec')}
+									aria-label={t('workoutEditor.steadyPaceSeconds')}
 									aria-describedby="wo-steady-hint"
 								/>
 							</div>
@@ -890,11 +936,11 @@
 		</label>
 
 		{#if error}
-			<p class="error">{error}</p>
+			<p class="error" role="alert">{error}</p>
 		{/if}
 
 		<div class="actions">
-			<button class="btn btn-secondary" onclick={onClose} disabled={busy}>{t('workoutEditor.cancel')}</button>
+			<button class="btn btn-secondary" onclick={close} disabled={busy}>{t('workoutEditor.cancel')}</button>
 			<button
 				class="btn btn-outline"
 				onclick={toggleCompleted}

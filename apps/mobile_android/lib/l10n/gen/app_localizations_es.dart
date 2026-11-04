@@ -352,6 +352,73 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get importRestoreWarnOffline =>
+      'Restaurado sin conexión: las carreras se guardan en este dispositivo y se sincronizarán cuando inicies sesión. Se omitieron el perfil y los ajustes.';
+
+  @override
+  String get importRestoreWarnArchiveIncomplete =>
+      'Esta copia indica que estaba incompleta cuando se creó. No se sobrescribió nada: restaura una copia completa para cubrir lo que falta.';
+
+  @override
+  String importRestoreWarnProfile(String error) {
+    return 'No se restauraron el perfil ni los ajustes: $error';
+  }
+
+  @override
+  String importRestoreWarnRunNoId(int index) {
+    return 'La carrera n.º $index de la copia no tiene ID y se omitió.';
+  }
+
+  @override
+  String importRestoreWarnRouteNoId(int index) {
+    return 'La ruta n.º $index de la copia no tiene ID y se omitió.';
+  }
+
+  @override
+  String importRestoreWarnRunPresent(String id) {
+    return 'La carrera $id ya está en este dispositivo y se omitió.';
+  }
+
+  @override
+  String importRestoreWarnTrack(String id, String error) {
+    return 'No se restauró el recorrido GPS de la carrera $id: $error';
+  }
+
+  @override
+  String importRestoreWarnHeartRate(String id, String error) {
+    return 'No se restauraron los datos de frecuencia cardíaca de la carrera $id: $error';
+  }
+
+  @override
+  String importRestoreWarnRun(String id, String error) {
+    return 'No se restauró la carrera $id: $error';
+  }
+
+  @override
+  String importRestoreWarnRoute(String id, String error) {
+    return 'No se restauró la ruta $id: $error';
+  }
+
+  @override
+  String importRestoreWarnGym(String error) {
+    return 'No se restauraron los entrenamientos de gimnasio: $error';
+  }
+
+  @override
+  String importRestoreWarnFood(String error) {
+    return 'No se restauró el registro de comidas: $error';
+  }
+
+  @override
+  String importRestoreWarnColumnsDropped(String names) {
+    return 'Se omitieron campos que esta versión de la app no usa: $names';
+  }
+
+  @override
+  String get importRestoreWarnRunsSkipped =>
+      'No se restauraron las carreras: el almacenamiento de carreras de este dispositivo no está disponible.';
+
+  @override
   String importFailuresHeading(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

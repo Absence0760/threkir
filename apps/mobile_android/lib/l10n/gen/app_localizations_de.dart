@@ -352,6 +352,73 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get importRestoreWarnOffline =>
+      'Offline wiederhergestellt: Läufe sind auf diesem Gerät gespeichert und werden synchronisiert, sobald du dich anmeldest. Profil und Einstellungen wurden übersprungen.';
+
+  @override
+  String get importRestoreWarnArchiveIncomplete =>
+      'Dieses Backup war laut eigener Angabe beim Erstellen unvollständig. Nichts wurde überschrieben – stelle ein vollständiges Backup wieder her, um die Lücken zu füllen.';
+
+  @override
+  String importRestoreWarnProfile(String error) {
+    return 'Profil und Einstellungen wurden nicht wiederhergestellt: $error';
+  }
+
+  @override
+  String importRestoreWarnRunNoId(int index) {
+    return 'Lauf #$index im Backup hat keine ID und wurde übersprungen.';
+  }
+
+  @override
+  String importRestoreWarnRouteNoId(int index) {
+    return 'Route #$index im Backup hat keine ID und wurde übersprungen.';
+  }
+
+  @override
+  String importRestoreWarnRunPresent(String id) {
+    return 'Lauf $id ist bereits auf diesem Gerät und wurde übersprungen.';
+  }
+
+  @override
+  String importRestoreWarnTrack(String id, String error) {
+    return 'Der GPS-Track von Lauf $id wurde nicht wiederhergestellt: $error';
+  }
+
+  @override
+  String importRestoreWarnHeartRate(String id, String error) {
+    return 'Die Herzfrequenzdaten von Lauf $id wurden nicht wiederhergestellt: $error';
+  }
+
+  @override
+  String importRestoreWarnRun(String id, String error) {
+    return 'Lauf $id wurde nicht wiederhergestellt: $error';
+  }
+
+  @override
+  String importRestoreWarnRoute(String id, String error) {
+    return 'Route $id wurde nicht wiederhergestellt: $error';
+  }
+
+  @override
+  String importRestoreWarnGym(String error) {
+    return 'Krafttrainings wurden nicht wiederhergestellt: $error';
+  }
+
+  @override
+  String importRestoreWarnFood(String error) {
+    return 'Das Ernährungsprotokoll wurde nicht wiederhergestellt: $error';
+  }
+
+  @override
+  String importRestoreWarnColumnsDropped(String names) {
+    return 'Übersprungene Felder, die diese App-Version nicht verwendet: $names';
+  }
+
+  @override
+  String get importRestoreWarnRunsSkipped =>
+      'Läufe wurden nicht wiederhergestellt: Der Laufspeicher dieses Geräts ist nicht verfügbar.';
+
+  @override
   String importFailuresHeading(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

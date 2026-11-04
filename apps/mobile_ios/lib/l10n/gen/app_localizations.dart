@@ -647,6 +647,90 @@ abstract class AppLocalizations {
   /// **'... and {count} more'**
   String importErrorsMore(Object count);
 
+  /// Backup-restore warning: the restore ran without a session
+  ///
+  /// In en, this message translates to:
+  /// **'Restored offline: runs are saved on this device and will sync once you sign in. Profile and settings were skipped.'**
+  String get importRestoreWarnOffline;
+
+  /// Backup-restore warning: the archive's manifest says it was short of the account
+  ///
+  /// In en, this message translates to:
+  /// **'This backup says it was incomplete when it was made. Nothing was overwritten — restore from a complete backup to fill the gaps.'**
+  String get importRestoreWarnArchiveIncomplete;
+
+  /// Backup-restore warning: the profile or settings failed to save
+  ///
+  /// In en, this message translates to:
+  /// **'Profile and settings weren\'t restored: {error}'**
+  String importRestoreWarnProfile(String error);
+
+  /// Backup-restore warning: a run row had no id. index is 1-based
+  ///
+  /// In en, this message translates to:
+  /// **'Run #{index} in the backup has no ID and was skipped.'**
+  String importRestoreWarnRunNoId(int index);
+
+  /// Backup-restore warning: a route row had no id. index is 1-based
+  ///
+  /// In en, this message translates to:
+  /// **'Route #{index} in the backup has no ID and was skipped.'**
+  String importRestoreWarnRouteNoId(int index);
+
+  /// Backup-restore warning: the run is already on this device
+  ///
+  /// In en, this message translates to:
+  /// **'Run {id} is already on this device and was skipped.'**
+  String importRestoreWarnRunPresent(String id);
+
+  /// Backup-restore warning: a run's GPS track failed to upload
+  ///
+  /// In en, this message translates to:
+  /// **'The GPS track for run {id} wasn\'t restored: {error}'**
+  String importRestoreWarnTrack(String id, String error);
+
+  /// Backup-restore warning: a run's heart-rate data failed to upload
+  ///
+  /// In en, this message translates to:
+  /// **'The heart-rate data for run {id} wasn\'t restored: {error}'**
+  String importRestoreWarnHeartRate(String id, String error);
+
+  /// Backup-restore warning: a run failed to save
+  ///
+  /// In en, this message translates to:
+  /// **'Run {id} wasn\'t restored: {error}'**
+  String importRestoreWarnRun(String id, String error);
+
+  /// Backup-restore warning: a route failed to save
+  ///
+  /// In en, this message translates to:
+  /// **'Route {id} wasn\'t restored: {error}'**
+  String importRestoreWarnRoute(String id, String error);
+
+  /// Backup-restore warning: gym workouts failed to restore
+  ///
+  /// In en, this message translates to:
+  /// **'Gym workouts weren\'t restored: {error}'**
+  String importRestoreWarnGym(String error);
+
+  /// Backup-restore warning: the food log failed to restore
+  ///
+  /// In en, this message translates to:
+  /// **'The food log wasn\'t restored: {error}'**
+  String importRestoreWarnFood(String error);
+
+  /// Backup-restore warning: the archive carried columns this build does not know; names is a comma-separated list of column names
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped fields this version of the app doesn\'t use: {names}'**
+  String importRestoreWarnColumnsDropped(String names);
+
+  /// Backup-restore warning: no run store was available
+  ///
+  /// In en, this message translates to:
+  /// **'Runs weren\'t restored: this device\'s run storage isn\'t available.'**
+  String get importRestoreWarnRunsSkipped;
+
   /// Heading above the import failure report, counting the activities that did not import
   ///
   /// In en, this message translates to:

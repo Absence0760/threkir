@@ -341,6 +341,73 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get importRestoreWarnOffline =>
+      'オフラインで復元しました。ランはこの端末に保存され、サインインすると同期されます。プロフィールと設定はスキップされました。';
+
+  @override
+  String get importRestoreWarnArchiveIncomplete =>
+      'このバックアップは作成時に不完全だったと記録されています。上書きされたデータはありません。不足分は完全なバックアップから復元してください。';
+
+  @override
+  String importRestoreWarnProfile(String error) {
+    return 'プロフィールと設定は復元されませんでした: $error';
+  }
+
+  @override
+  String importRestoreWarnRunNoId(int index) {
+    return 'バックアップ内のラン #$index にはIDがないため、スキップしました。';
+  }
+
+  @override
+  String importRestoreWarnRouteNoId(int index) {
+    return 'バックアップ内のルート #$index にはIDがないため、スキップしました。';
+  }
+
+  @override
+  String importRestoreWarnRunPresent(String id) {
+    return 'ラン $id はすでにこの端末にあるため、スキップしました。';
+  }
+
+  @override
+  String importRestoreWarnTrack(String id, String error) {
+    return 'ラン $id のGPSトラックは復元されませんでした: $error';
+  }
+
+  @override
+  String importRestoreWarnHeartRate(String id, String error) {
+    return 'ラン $id の心拍データは復元されませんでした: $error';
+  }
+
+  @override
+  String importRestoreWarnRun(String id, String error) {
+    return 'ラン $id は復元されませんでした: $error';
+  }
+
+  @override
+  String importRestoreWarnRoute(String id, String error) {
+    return 'ルート $id は復元されませんでした: $error';
+  }
+
+  @override
+  String importRestoreWarnGym(String error) {
+    return 'ジムのワークアウトは復元されませんでした: $error';
+  }
+
+  @override
+  String importRestoreWarnFood(String error) {
+    return '食事記録は復元されませんでした: $error';
+  }
+
+  @override
+  String importRestoreWarnColumnsDropped(String names) {
+    return 'このバージョンのアプリで使用しない項目をスキップしました: $names';
+  }
+
+  @override
+  String get importRestoreWarnRunsSkipped =>
+      'ランは復元されませんでした。この端末のラン保存領域を利用できません。';
+
+  @override
   String importFailuresHeading(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

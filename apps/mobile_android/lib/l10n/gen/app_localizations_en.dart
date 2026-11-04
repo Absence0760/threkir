@@ -348,6 +348,73 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get importRestoreWarnOffline =>
+      'Restored offline: runs are saved on this device and will sync once you sign in. Profile and settings were skipped.';
+
+  @override
+  String get importRestoreWarnArchiveIncomplete =>
+      'This backup says it was incomplete when it was made. Nothing was overwritten — restore from a complete backup to fill the gaps.';
+
+  @override
+  String importRestoreWarnProfile(String error) {
+    return 'Profile and settings weren\'t restored: $error';
+  }
+
+  @override
+  String importRestoreWarnRunNoId(int index) {
+    return 'Run #$index in the backup has no ID and was skipped.';
+  }
+
+  @override
+  String importRestoreWarnRouteNoId(int index) {
+    return 'Route #$index in the backup has no ID and was skipped.';
+  }
+
+  @override
+  String importRestoreWarnRunPresent(String id) {
+    return 'Run $id is already on this device and was skipped.';
+  }
+
+  @override
+  String importRestoreWarnTrack(String id, String error) {
+    return 'The GPS track for run $id wasn\'t restored: $error';
+  }
+
+  @override
+  String importRestoreWarnHeartRate(String id, String error) {
+    return 'The heart-rate data for run $id wasn\'t restored: $error';
+  }
+
+  @override
+  String importRestoreWarnRun(String id, String error) {
+    return 'Run $id wasn\'t restored: $error';
+  }
+
+  @override
+  String importRestoreWarnRoute(String id, String error) {
+    return 'Route $id wasn\'t restored: $error';
+  }
+
+  @override
+  String importRestoreWarnGym(String error) {
+    return 'Gym workouts weren\'t restored: $error';
+  }
+
+  @override
+  String importRestoreWarnFood(String error) {
+    return 'The food log wasn\'t restored: $error';
+  }
+
+  @override
+  String importRestoreWarnColumnsDropped(String names) {
+    return 'Skipped fields this version of the app doesn\'t use: $names';
+  }
+
+  @override
+  String get importRestoreWarnRunsSkipped =>
+      'Runs weren\'t restored: this device\'s run storage isn\'t available.';
+
+  @override
   String importFailuresHeading(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

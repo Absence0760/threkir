@@ -145,7 +145,7 @@ void main() {
         settingsPrefs: const {},
       );
       final result = await restoreFromBytes(bytes);
-      expect(result.warnings.where((w) => w.contains('manifest')), isEmpty);
+      expect(result.warnings.where((w) => '$w'.contains('manifest')), isEmpty);
       expect(result.runsImported, 0);
     });
 
@@ -588,7 +588,7 @@ void main() {
         settingsPrefs: const {},
       );
       final result = await restoreFromBytes(bytes);
-      expect(result.warnings.any((w) => w.contains('manifest')), isFalse);
+      expect(result.warnings.any((w) => '$w'.contains('manifest')), isFalse);
     });
   });
 

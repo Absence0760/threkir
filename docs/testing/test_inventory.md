@@ -209,7 +209,7 @@ HTTP-level coverage for the four `SupabaseClient` methods added in the May 2026 
 
 **Cross-cutting (5 tests):** `FetchExportRoutes` with every optional pointer field set decodes to non-nil pointers (DistanceM, ElevationM, Surface, IsPublic, Slug, Featured, RunCount, IsStarred, Description, ClubID, CreatedAt, UpdatedAt); context cancellation propagates; all 4 new methods carry both apikey + Authorization headers via the shared `do()` helper (defensive guard against a future refactor that bypasses it).
 
-### `apps/web/src/lib/backup/restore_orchestrator.test.ts` — 36 tests
+### `apps/web/src/lib/backup/restore_orchestrator.test.ts` — 37 tests
 
 Pure-logic coverage of the restore orchestrator extracted from `backup.ts`. The Supabase upserts live behind a small `RestoreBackend` interface; tests substitute a counter-tracking fake so the loop is observable without booting supabase-js. Production wires a thin supabase-js adapter (`supabaseRestoreBackend()` in `backup.ts`); tests wire the fake (`makeFakeBackend()`).
 

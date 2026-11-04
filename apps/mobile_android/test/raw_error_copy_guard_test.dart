@@ -35,6 +35,8 @@
 // `e.message.contains(...)` or `e.message == x` is classification, not copy,
 // and is not a hit.
 
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'source_scan.dart';
@@ -371,6 +373,41 @@ void main() {
         if (!keys.contains(k)) k,
     ];
     expect(stale, isEmpty, reason: 'Drop the stale entries:\n${stale.join('\n')}');
+  });
+
+  // A restore warning is data the import screen renders through
+  // `restoreWarningText`, so a caught failure can only reach it as `error`,
+  // which that renderer classifies. A `String` field — or a `List<String>`
+  // of warnings — would be a sink this scan cannot see: the text is built in
+  // backup.dart, nowhere near the `Text` that shows it.
+  group('restore warnings stay structured', () {
+    Map<String, String> fieldsOf(String path, String cls) {
+      final src = blankNonCode(File(path).readAsStringSync());
+      final start = RegExp('\\bclass\\s+$cls\\b[^{]*\\{').firstMatch(src);
+      expect(start, isNotNull, reason: '$cls moved out of $path');
+      final body = src.substring(start!.end - 1, _matchClose(src, start.end - 1));
+      return {
+        for (final m in RegExp(r'^\s*final\s+([\w<>?, ]+?)\s+(\w+)\s*[;=]',
+                multiLine: true)
+            .allMatches(body))
+          m.group(2)!: m.group(1)!.replaceAll(' ', ''),
+      };
+    }
+
+    test('RestoreResult.warnings is a list of RestoreWarning', () {
+      expect(fieldsOf('lib/backup.dart', 'RestoreResult')['warnings'],
+          'List<RestoreWarning>');
+    });
+
+    test('RestoreWarning carries no free text', () {
+      expect(fieldsOf('lib/restore_warning.dart', 'RestoreWarning'), {
+        'kind': 'RestoreWarningKind',
+        'itemId': 'String?',
+        'index': 'int?',
+        'columns': 'List<String>',
+        'error': 'Object?',
+      });
+    });
   });
 
   group('the scanner', () {

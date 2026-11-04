@@ -16,6 +16,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
 import '../preferences.dart';
+import '../restore_warning.dart';
 import '../settings_sync.dart';
 import '../strava_importer.dart';
 import '../widgets/import_failure_report.dart';
@@ -108,7 +109,7 @@ class _ImportScreenState extends State<ImportScreen> {
   int _total = 0;
   // Warnings from the backup-ZIP restore, which reports whole-archive
   // problems rather than per-activity ones.
-  List<String> _errors = [];
+  List<RestoreWarning> _errors = [];
   ImportFailureLog _failures = newImportFailureLog();
   String _failureProvider = '';
   // How many runs of the last import are on this device and not on the
@@ -916,9 +917,9 @@ class _ImportScreenState extends State<ImportScreen> {
                             fontWeight: FontWeight.w600,
                           )),
                       const SizedBox(height: 4),
-                      ..._errors.take(10).map((e) => Padding(
+                      ..._errors.take(10).map((w) => Padding(
                             padding: const EdgeInsets.symmetric(vertical: 2),
-                            child: Text(e,
+                            child: Text(restoreWarningText(l10n, w),
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.error,
                                 )),

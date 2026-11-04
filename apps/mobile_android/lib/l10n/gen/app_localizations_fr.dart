@@ -350,6 +350,73 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get importRestoreWarnOffline =>
+      'Restauré hors ligne : les courses sont enregistrées sur cet appareil et seront synchronisées dès que vous vous connecterez. Le profil et les réglages ont été ignorés.';
+
+  @override
+  String get importRestoreWarnArchiveIncomplete =>
+      'Cette sauvegarde indique qu\'elle était incomplète lors de sa création. Rien n\'a été écrasé : restaurez une sauvegarde complète pour combler les manques.';
+
+  @override
+  String importRestoreWarnProfile(String error) {
+    return 'Le profil et les réglages n\'ont pas été restaurés : $error';
+  }
+
+  @override
+  String importRestoreWarnRunNoId(int index) {
+    return 'La course n° $index de la sauvegarde n\'a pas d\'identifiant et a été ignorée.';
+  }
+
+  @override
+  String importRestoreWarnRouteNoId(int index) {
+    return 'L\'itinéraire n° $index de la sauvegarde n\'a pas d\'identifiant et a été ignoré.';
+  }
+
+  @override
+  String importRestoreWarnRunPresent(String id) {
+    return 'La course $id est déjà sur cet appareil et a été ignorée.';
+  }
+
+  @override
+  String importRestoreWarnTrack(String id, String error) {
+    return 'La trace GPS de la course $id n\'a pas été restaurée : $error';
+  }
+
+  @override
+  String importRestoreWarnHeartRate(String id, String error) {
+    return 'Les données de fréquence cardiaque de la course $id n\'ont pas été restaurées : $error';
+  }
+
+  @override
+  String importRestoreWarnRun(String id, String error) {
+    return 'La course $id n\'a pas été restaurée : $error';
+  }
+
+  @override
+  String importRestoreWarnRoute(String id, String error) {
+    return 'L\'itinéraire $id n\'a pas été restauré : $error';
+  }
+
+  @override
+  String importRestoreWarnGym(String error) {
+    return 'Les séances de musculation n\'ont pas été restaurées : $error';
+  }
+
+  @override
+  String importRestoreWarnFood(String error) {
+    return 'Le journal alimentaire n\'a pas été restauré : $error';
+  }
+
+  @override
+  String importRestoreWarnColumnsDropped(String names) {
+    return 'Champs ignorés, inutilisés par cette version de l\'application : $names';
+  }
+
+  @override
+  String get importRestoreWarnRunsSkipped =>
+      'Les courses n\'ont pas été restaurées : le stockage des courses de cet appareil n\'est pas disponible.';
+
+  @override
   String importFailuresHeading(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

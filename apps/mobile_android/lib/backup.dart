@@ -16,6 +16,9 @@ import 'local_gym_store.dart';
 import 'local_route_store.dart';
 import 'local_run_store.dart';
 import 'restore_columns.dart';
+import 'restore_warning.dart';
+
+export 'restore_warning.dart' show RestoreWarning, RestoreWarningKind;
 
 /// Full round-trip backup and restore for the signed-in user's data.
 /// See [docs/ops/backup_restore.md](../../../docs/ops/backup_restore.md) for the
@@ -504,7 +507,7 @@ class BackupService {
           });
         }
       } catch (e) {
-        result.warnings.add('profile: $e');
+        result.warn(RestoreWarning(RestoreWarningKind.profile, error: e));
       }
     }
 
@@ -544,7 +547,7 @@ class BackupService {
         // re-run died at the same row forever.
         final origId = r['id'];
         if (origId is! String || origId.isEmpty) {
-          result.warnings.add('run $i: missing id, skipped');
+          result.warn(RestoreWarning(RestoreWarningKind.runNoId, index: i));
           i++;
           continue;
         }
@@ -564,7 +567,8 @@ class BackupService {
             trackUrl = '$uid/$newId.json.gz';
             result.tracksUploaded++;
           } catch (e) {
-            result.warnings.add('track $origId: $e');
+            result.warn(
+                RestoreWarning(RestoreWarningKind.track, itemId: origId, error: e));
           }
         }
 
@@ -584,7 +588,8 @@ class BackupService {
             );
             hrSeriesUrl = '$uid/$newId.hr.json.gz';
           } catch (e) {
-            result.warnings.add('hr-series $origId: $e');
+            result.warn(RestoreWarning(RestoreWarningKind.heartRate,
+                itemId: origId, error: e));
           }
         }
 
@@ -611,7 +616,8 @@ class BackupService {
           await apiNonNull.upsertRunRowRaw(known.row);
           result.runsImported++;
         } catch (e) {
-          result.warnings.add('run $origId: $e');
+          result.warn(
+              RestoreWarning(RestoreWarningKind.run, itemId: origId, error: e));
         }
         i++;
       }
@@ -637,7 +643,8 @@ class BackupService {
           await client.from('routes').upsert(known.row);
           result.routesImported++;
         } catch (e) {
-          result.warnings.add('route $origId: $e');
+          result.warn(RestoreWarning(RestoreWarningKind.route,
+              itemId: origId is String ? origId : null, index: i, error: e));
         }
         i++;
       }
@@ -671,10 +678,11 @@ class BackupService {
     RestoreResult result,
   ) {
     if (dropped.isEmpty) return;
-    final names = [...dropped]..sort();
-    result.warnings.add(
-      '$section: dropped ${names.join(', ')} — not columns of this schema',
-    );
+    result.warn(RestoreWarning(
+      RestoreWarningKind.columnsDropped,
+      columns: [...dropped]..sort(),
+    ));
+    debugPrint('[restore] $section: dropped columns ${dropped.join(', ')}');
   }
 
   /// Carry an archive's own completeness verdict into the restore result.
@@ -698,13 +706,9 @@ class BackupService {
         const <String>[];
     result.archiveIncomplete = true;
     result.archiveIncompleteSections = sections;
-    result.warnings.insert(
-      0,
-      sections.isEmpty
-          ? 'This archive says it is incomplete — it was short of the account '
-              'when it was written. Nothing was overwritten.'
-          : 'This archive says it is incomplete: ${sections.join(', ')} were '
-              'short when it was written. Nothing was overwritten.',
+    result.warn(
+      const RestoreWarning(RestoreWarningKind.archiveIncomplete),
+      first: true,
     );
   }
 
@@ -731,7 +735,7 @@ class BackupService {
             generateNewIds: generateNewIds,
           );
         } catch (e) {
-          result.warnings.add('gym_workouts: $e');
+          result.warn(RestoreWarning(RestoreWarningKind.gym, error: e));
         }
       }
     }
@@ -747,7 +751,7 @@ class BackupService {
             generateNewIds: generateNewIds,
           );
         } catch (e) {
-          result.warnings.add('food_log: $e');
+          result.warn(RestoreWarning(RestoreWarningKind.food, error: e));
         }
       }
     }
@@ -773,10 +777,7 @@ class BackupService {
     required void Function(RestoreProgress)? onProgress,
   }) async {
     final result = RestoreResult();
-    result.warnings.add(
-      'Restoring offline — runs are queued locally and will sync once you '
-      'sign in. Profile and settings were skipped.',
-    );
+    result.warn(const RestoreWarning(RestoreWarningKind.offline));
 
     // Runs.
     if (runStore != null) {
@@ -789,7 +790,7 @@ class BackupService {
           final r = Map<String, dynamic>.from(entry);
           final origId = r['id'];
           if (origId is! String || origId.isEmpty) {
-            result.warnings.add('run $i: missing id, skipped');
+            result.warn(RestoreWarning(RestoreWarningKind.runNoId, index: i));
             i++;
             continue;
           }
@@ -801,7 +802,8 @@ class BackupService {
           // track-less while the on-device file still holds the full GPS
           // trace — and `save()` would overwrite it with the empty one.
           if (!generateNewIds && runStore.hasRun(newId)) {
-            result.warnings.add('run $origId: already present locally, skipped');
+            result.warn(
+                RestoreWarning(RestoreWarningKind.runPresent, itemId: origId));
             i++;
             continue;
           }
@@ -839,13 +841,14 @@ class BackupService {
             result.runsImported++;
             if (track.isNotEmpty) result.tracksUploaded++;
           } catch (e) {
-            result.warnings.add('run $origId: $e');
+            result.warn(
+              RestoreWarning(RestoreWarningKind.run, itemId: origId, error: e));
           }
           i++;
         }
       }
     } else {
-      result.warnings.add('runs: no LocalRunStore supplied — skipped');
+      result.warn(const RestoreWarning(RestoreWarningKind.runsSkipped));
     }
 
     // Routes.
@@ -859,7 +862,7 @@ class BackupService {
           final r = Map<String, dynamic>.from(entry);
           final origId = r['id'];
           if (origId is! String || origId.isEmpty) {
-            result.warnings.add('route $i: missing id, skipped');
+            result.warn(RestoreWarning(RestoreWarningKind.routeNoId, index: i));
             i++;
             continue;
           }
@@ -905,7 +908,8 @@ class BackupService {
             await routeStore.save(route);
             result.routesImported++;
           } catch (e) {
-            result.warnings.add('route $origId: $e');
+            result.warn(RestoreWarning(RestoreWarningKind.route,
+              itemId: origId, error: e));
           }
           i++;
         }
@@ -1054,5 +1058,17 @@ class RestoreResult {
   int gymWorkoutsImported = 0;
   int foodLogImported = 0;
   bool profileRestored = false;
-  final List<String> warnings = [];
+
+  /// Structured, never text: [restoreWarningText] renders each one.
+  final List<RestoreWarning> warnings = [];
+
+  /// Record [w], logging its raw detail. [first] puts it ahead of the rest.
+  void warn(RestoreWarning w, {bool first = false}) {
+    debugPrint('[restore] $w');
+    if (first) {
+      warnings.insert(0, w);
+    } else {
+      warnings.add(w);
+    }
+  }
 }

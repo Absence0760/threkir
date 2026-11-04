@@ -536,6 +536,130 @@
       }
     }
   },
+  "importRestoreWarnOffline": "Restored offline: runs are saved on this device and will sync once you sign in. Profile and settings were skipped.",
+  "@importRestoreWarnOffline": {
+    "description": "Backup-restore warning: the restore ran without a session"
+  },
+  "importRestoreWarnArchiveIncomplete": "This backup says it was incomplete when it was made. Nothing was overwritten — restore from a complete backup to fill the gaps.",
+  "@importRestoreWarnArchiveIncomplete": {
+    "description": "Backup-restore warning: the archive's manifest says it was short of the account"
+  },
+  "importRestoreWarnProfile": "Profile and settings weren't restored: {error}",
+  "@importRestoreWarnProfile": {
+    "description": "Backup-restore warning: the profile or settings failed to save",
+    "placeholders": {
+      "error": {
+        "type": "String",
+        "example": "Something went wrong."
+      }
+    }
+  },
+  "importRestoreWarnRunNoId": "Run #{index} in the backup has no ID and was skipped.",
+  "@importRestoreWarnRunNoId": {
+    "description": "Backup-restore warning: a run row had no id. index is 1-based",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "importRestoreWarnRouteNoId": "Route #{index} in the backup has no ID and was skipped.",
+  "@importRestoreWarnRouteNoId": {
+    "description": "Backup-restore warning: a route row had no id. index is 1-based",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "importRestoreWarnRunPresent": "Run {id} is already on this device and was skipped.",
+  "@importRestoreWarnRunPresent": {
+    "description": "Backup-restore warning: the run is already on this device",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "importRestoreWarnTrack": "The GPS track for run {id} wasn't restored: {error}",
+  "@importRestoreWarnTrack": {
+    "description": "Backup-restore warning: a run's GPS track failed to upload",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "importRestoreWarnHeartRate": "The heart-rate data for run {id} wasn't restored: {error}",
+  "@importRestoreWarnHeartRate": {
+    "description": "Backup-restore warning: a run's heart-rate data failed to upload",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "importRestoreWarnRun": "Run {id} wasn't restored: {error}",
+  "@importRestoreWarnRun": {
+    "description": "Backup-restore warning: a run failed to save",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "importRestoreWarnRoute": "Route {id} wasn't restored: {error}",
+  "@importRestoreWarnRoute": {
+    "description": "Backup-restore warning: a route failed to save",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "importRestoreWarnGym": "Gym workouts weren't restored: {error}",
+  "@importRestoreWarnGym": {
+    "description": "Backup-restore warning: gym workouts failed to restore",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "importRestoreWarnFood": "The food log wasn't restored: {error}",
+  "@importRestoreWarnFood": {
+    "description": "Backup-restore warning: the food log failed to restore",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "importRestoreWarnColumnsDropped": "Skipped fields this version of the app doesn't use: {names}",
+  "@importRestoreWarnColumnsDropped": {
+    "description": "Backup-restore warning: the archive carried columns this build does not know; names is a comma-separated list of column names",
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "importRestoreWarnRunsSkipped": "Runs weren't restored: this device's run storage isn't available.",
+  "@importRestoreWarnRunsSkipped": {
+    "description": "Backup-restore warning: no run store was available"
+  },
   "importFailuresHeading": "{count, plural, one{1 activity didn't import} other{{count} activities didn't import}}",
   "@importFailuresHeading": {
     "description": "Heading above the import failure report, counting the activities that did not import",

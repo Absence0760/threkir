@@ -101,10 +101,8 @@ void main() {
         result,
       );
       expect(result.warnings, hasLength(1));
-      expect(
-        result.warnings.single,
-        'runs: dropped kind, legacy_pace — not columns of this schema',
-      );
+      expect(result.warnings.single.kind, RestoreWarningKind.columnsDropped);
+      expect(result.warnings.single.columns, ['kind', 'legacy_pace']);
     });
 
     test('nothing dropped says nothing', () {

@@ -169,7 +169,9 @@ test('upsertProfile error becomes a warning, settings + runs still process', asy
 	);
 	assert.equal(result.profileRestored, false);
 	assert.ok(
-		result.warnings.some((w) => w.startsWith('profile:') && w.includes('rls denied')),
+		result.warnings.some(
+			(w) => w.kind === 'profile' && (w.error as Error).message.includes('rls denied')
+		),
 		`expected profile warning; got ${JSON.stringify(result.warnings)}`
 	);
 	// Subsequent stages still ran — partial-success contract.
@@ -222,7 +224,7 @@ test('upsertSettings error becomes a warning, runs still process', async () => {
 		backend
 	);
 	assert.ok(
-		result.warnings.some((w) => w.startsWith('settings_prefs:')),
+		result.warnings.some((w) => w.kind === 'settings'),
 		`got warnings: ${JSON.stringify(result.warnings)}`
 	);
 	assert.equal(result.runsImported, 1);
@@ -422,7 +424,7 @@ test('uploadTrack failure becomes a warning, row still upserts (no track_url)', 
 		}
 	);
 	assert.ok(
-		result.warnings.some((w) => w.startsWith('track run-1:')),
+		result.warnings.some((w) => w.kind === 'track' && w.itemId === 'run-1'),
 		`got: ${JSON.stringify(result.warnings)}`
 	);
 	// runsImported still reflects the row landing — we don't sink
@@ -447,7 +449,7 @@ test('upsertRun failure becomes a warning, other rows continue', async () => {
 	);
 	assert.equal(result.runsImported, 2);
 	assert.equal(
-		result.warnings.filter((w) => w.startsWith('run r-bad:')).length,
+		result.warnings.filter((w) => w.kind === 'run' && w.itemId === 'r-bad').length,
 		1
 	);
 });
@@ -641,7 +643,7 @@ test('upsertRoute failure becomes a warning, other routes continue', async () =>
 	);
 	assert.equal(result.routesImported, 2);
 	assert.equal(
-		result.warnings.filter((w) => w.startsWith('route rt-bad:')).length,
+		result.warnings.filter((w) => w.kind === 'route' && w.itemId === 'rt-bad').length,
 		1
 	);
 });
@@ -800,9 +802,9 @@ test('the dropped names are ONE warning per section, not one per row', async () 
 	);
 	assert.equal(result.runsImported, 50);
 	assert.deepEqual(result.warnings, [
-		'profile: dropped favourite_colour — not columns of this schema',
-		'runs: dropped kind, pace_s_per_km — not columns of this schema',
-		'routes: dropped legacy_polyline — not columns of this schema'
+		{ kind: 'columnsDropped', section: 'profile', columns: ['favourite_colour'] },
+		{ kind: 'columnsDropped', section: 'runs', columns: ['kind', 'pace_s_per_km'] },
+		{ kind: 'columnsDropped', section: 'routes', columns: ['legacy_polyline'] }
 	]);
 });
 
@@ -841,6 +843,30 @@ test('a prototype key in the archive is a dropped column, never a column', async
 		'user_id'
 	]);
 	assert.deepEqual(result.warnings, [
-		'runs: dropped constructor, toString — not columns of this schema'
+		{ kind: 'columnsDropped', section: 'runs', columns: ['constructor', 'toString'] }
 	]);
+});
+
+test('a warning carries the caught failure as a value, never as text', async () => {
+	// Reason: `run r-bad: <PostgREST message>` put table and constraint names in
+	// a field a page could render. Every field but `error` is the archive's own
+	// id, a position or a column name; the failure stays an object.
+	const backend = makeFakeBackend();
+	const failure = new Error('new row for relation "runs" violates check constraint "x"');
+	backend.upsertRunSelectiveFailure = () => failure;
+	const result = await restoreOrchestrate(
+		makeParsedBackup({ runs: [{ id: 'r-bad' }, 'not a row' as unknown as JsonObject] }),
+		'uid',
+		backend
+	);
+	assert.deepEqual(result.warnings, [
+		{ kind: 'run', itemId: 'r-bad', error: failure },
+		{ kind: 'runUnreadable', index: 1 }
+	]);
+	for (const w of result.warnings) {
+		for (const [key, value] of Object.entries(w)) {
+			if (key === 'error') continue;
+			assert.ok(!String(value).includes('violates'), `${key} carries the failure text`);
+		}
+	}
 });

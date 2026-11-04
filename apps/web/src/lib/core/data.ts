@@ -216,6 +216,7 @@ import {
 	type EventGymTemplate
 } from '../social/event_gym_template';
 import { m } from '../i18n/store.svelte';
+import type { RouteDeleteImpact } from '../routes/route_delete_impact';
 import { rateLimitErrorMessage } from '../i18n/rate_limit_message';
 import {
 	DM_THREAD_ORDER,
@@ -2485,33 +2486,72 @@ export async function saveRoute(route: {
 	return asRoute(data);
 }
 
+/// Delete a route its caller owns (or administers through a club). Every
+/// reference to it is handled by its foreign key (decisions § 2292): the
+/// route's own photos, markers, conditions, reviews, shares, bookmarks and
+/// segments cascade, and runs, events, event courses, race listings and DMs
+/// keep living with the link nulled.
+///
+/// The photo bytes go after the row. A route photo's Storage object is
+/// readable to its uploader through their own folder, so the sweep still
+/// reaches it once the cascade has taken the route_photos row, and a route
+/// delete that fails never leaves a standing route with its photos gone. A
+/// sweep that fails leaves private bytes only the uploader can read, which
+/// account deletion's folder sweep removes.
+///
+/// RLS filters a refused DELETE rather than raising, so an empty result is
+/// read back: a route the caller can still see was refused, one they cannot
+/// is already gone (another tab, another device) and the delete is done.
 export async function deleteRoute(id: string): Promise<void> {
-	const { data: photos } = await supabase
+	const { data: photos, error: photosError } = await supabase
 		.from(TABLES.route_photos)
 		.select('storage_path, thumb_512_path')
 		.eq('route_id', id);
-	if (photos && photos.length > 0) {
-		// Sweep route-photo blobs before the row delete. The FK cascade
-		// removes the route_photos rows (so the Storage SELECT join hides
-		// the bytes), but the blobs would otherwise orphan in the bucket —
-		// the same gap deleteRun closes for run photos. Best-effort.
-		const paths = photos
-			.flatMap((p: { storage_path: string | null; thumb_512_path: string | null }) => [
-				p.storage_path,
-				p.thumb_512_path,
-			])
-			.filter((p: string | null): p is string => !!p);
-		if (paths.length > 0) {
-			try {
-				await supabase.storage.from(BUCKETS.route_photos).remove(paths);
-			} catch (e) {
-				console.warn('deleteRoute: photo storage removal failed (orphaned files)', { route_id: id, count: paths.length, error: e });
-			}
+	if (photosError) throw dbError(photosError);
+	const paths = (photos ?? [])
+		.flatMap((p) => [p.storage_path, p.thumb_512_path])
+		.filter((p): p is string => !!p);
+
+	markListsStale('routes');
+	const { data: deleted, error } = await supabase
+		.from('routes')
+		.delete()
+		.eq('id', id)
+		.select('id');
+	if (error) throw dbError(error);
+	if (!deleted || deleted.length === 0) {
+		const { data: still, error: readError } = await supabase
+			.from('routes')
+			.select('id')
+			.eq('id', id)
+			.maybeSingle();
+		if (readError) throw dbError(readError);
+		if (still) throw new Error(m('routeDetail.deleteNotAllowed'));
+	}
+
+	if (paths.length > 0) {
+		let removeError: unknown = null;
+		try {
+			removeError = (await supabase.storage.from(BUCKETS.route_photos).remove(paths)).error;
+		} catch (e) {
+			removeError = e;
+		}
+		if (removeError) {
+			console.warn('deleteRoute: photo storage removal failed (orphaned files)', { route_id: id, count: paths.length, error: removeError });
 		}
 	}
-	markListsStale('routes');
-	const { error } = await supabase.from('routes').delete().eq('id', id);
+}
+
+/// What deleting a route takes with it or detaches, for the confirm the owner
+/// reads first. Counts other runners' bookmarks and the race listings using it
+/// as a course, which the owner's own session cannot read. Throws when the
+/// caller may not delete the route (42501) or the read fails.
+export async function fetchRouteDeleteImpact(id: string): Promise<RouteDeleteImpact> {
+	const { data, error } = await supabase.rpc('route_delete_impact', { p_route_id: id }, { get: true });
 	if (error) throw dbError(error);
+	const row = data?.[0];
+	if (!row) throw new Error('route_delete_impact returned no row');
+	return row;
 }
 
 // --- Dashboard stats ---

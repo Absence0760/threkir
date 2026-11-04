@@ -5,7 +5,9 @@
 	import { formatElevation } from '#lib/format/units.svelte.ts';
 	import { toGpx, toKml, downloadFile } from '#lib/routes/gpx.ts';
 	import { toRouteGpxWithMarkers, type RouteGpxMarker } from '#lib/routes/route_gpx.ts';
-	import { fetchClippedRouteForViewer, fetchRouteById, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, setRoutePublic, setRouteStar, audienceSharingEnabled, fetchShares } from '#lib/core/data.ts';
+	import { fetchClippedRouteForViewer, fetchRouteById, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, setRoutePublic, setRouteStar, audienceSharingEnabled, fetchShares, deleteRoute, fetchRouteDeleteImpact } from '#lib/core/data.ts';
+	import { routeDeleteImpactLines } from '#lib/routes/route_delete_impact.ts';
+	import { goto } from '$app/navigation';
 	import AudienceDialog from '#lib/components/AudienceDialog.svelte';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import { audienceOf, type AudienceColumns } from '#lib/social/run_visibility.ts';
@@ -251,6 +253,49 @@
 		return `${window.location.origin}/routes/${id}`;
 	}
 	let showReportDialog = $state(false);
+
+	// Deleting a route cascades its photos, markers and other runners' reviews,
+	// bookmarks and segments, none of which a re-insert could bring back, so it
+	// takes the confirm and no undo (conventions.md § Destructive actions). The
+	// confirm is opened only once route_delete_impact has said who else depends
+	// on the route; a failed count still lets the owner delete, and says the
+	// count is missing rather than implying nothing depends on it.
+	let showDeleteConfirm = $state(false);
+	let deleteChecking = $state(false);
+	let deleteMessage = $state('');
+
+	async function openDeleteConfirm() {
+		if (!route || !isOwner || deleteChecking) return;
+		deleteChecking = true;
+		const parts = [m('routeDetail.deleteBody')];
+		try {
+			const impact = await fetchRouteDeleteImpact(route.id);
+			for (const line of routeDeleteImpactLines(impact, route.is_public === true)) {
+				parts.push(m(line.key, { count: line.count }));
+			}
+		} catch (e) {
+			console.warn('route_delete_impact failed', e);
+			parts.push(m('routeDetail.deleteImpactUnknown'));
+		} finally {
+			deleteChecking = false;
+		}
+		deleteMessage = parts.join(' ');
+		showDeleteConfirm = true;
+	}
+
+	async function confirmDelete() {
+		if (!route) return;
+		try {
+			await deleteRoute(route.id);
+		} catch (e) {
+			showDeleteConfirm = false;
+			showToast(m('routeDetail.deleteFailed', { error: thrownMessage(e) }), 'error');
+			return;
+		}
+		showDeleteConfirm = false;
+		showToast(m('routeDetail.deleted'), 'success');
+		await goto('/routes');
+	}
 	let reportReviewId = $state<string | null>(null);
 
 	// "Describe this route" affordance. The templated description is the
@@ -837,6 +882,18 @@
 							disabled={sharing}>{m('routeDetail.sendToFollower')}</button
 						>
 					{/if}
+					{#if isOwner}
+						<button
+							class="btn btn-outline btn-sm"
+							data-testid="route-delete-btn"
+							onclick={openDeleteConfirm}
+							disabled={deleteChecking}
+							aria-busy={deleteChecking}
+						>
+							<span class="material-symbols" aria-hidden="true">delete</span>
+							{m('routeDetail.deleteRoute')}
+						</button>
+					{/if}
 					{#if !isOwner && auth.user}
 						<button
 							class="btn btn-outline btn-sm"
@@ -1144,6 +1201,16 @@
 		confirmLabel={m('routeDetail.shareConfirmCta')}
 		onconfirm={confirmShare}
 		oncancel={() => (showShareConfirm = false)}
+	/>
+	<ConfirmDialog
+		open={showDeleteConfirm}
+		data-testid="route-delete-confirm-dialog"
+		title={m('routeDetail.deleteTitle')}
+		message={deleteMessage}
+		confirmLabel={m('routeDetail.deleteRoute')}
+		danger
+		onconfirm={confirmDelete}
+		oncancel={() => (showDeleteConfirm = false)}
 	/>
 	<HeadToHeadDialog
 		open={showHeadToHead}

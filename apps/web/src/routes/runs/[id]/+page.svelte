@@ -4,6 +4,7 @@
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import type { MetricId } from '#lib/metrics/metric_registry.ts';
 	import { onMount, tick } from 'svelte';
 	import { fmtPace, getUnit, formatPaceNoSuffix } from '#lib/format/units.svelte.ts';
@@ -1636,21 +1637,23 @@
 
 {#if loading}
 	<div class="run-detail">
-		<div class="loading-grid" aria-busy="true" aria-label={m('runDetail.loadingRun')}>
-			<div class="loading-map skeleton-shimmer"></div>
+		<div class="loading-grid" aria-hidden="true" data-testid="run-detail-skeleton">
+			<div class="loading-map"><SkeletonBlock height="100%" radius="var(--radius-md)" /></div>
 			<div class="loading-stats">
-				<div class="skeleton-shimmer skeleton-title"></div>
-				<div class="skeleton-shimmer skeleton-line"></div>
+				<SkeletonBlock height="1.8rem" width="60%" radius="var(--radius-md)" />
+				<SkeletonBlock height="0.9rem" width="40%" radius="var(--radius-md)" />
 				<div class="loading-key-stats">
-					<div class="skeleton-shimmer skeleton-stat"></div>
-					<div class="skeleton-shimmer skeleton-stat"></div>
-					<div class="skeleton-shimmer skeleton-stat"></div>
-					<div class="skeleton-shimmer skeleton-stat"></div>
+					{#each Array(4) as _, i (i)}
+						<SkeletonBlock height="3.5rem" radius="var(--radius-md)" />
+					{/each}
 				</div>
-				<div class="skeleton-shimmer skeleton-block"></div>
-				<div class="skeleton-shimmer skeleton-block"></div>
+				<div class="loading-blocks">
+					<SkeletonBlock height="8rem" radius="var(--radius-md)" />
+					<SkeletonBlock height="8rem" radius="var(--radius-md)" />
+				</div>
 			</div>
 		</div>
+		<p class="visually-hidden" role="status">{m('runDetail.loadingRun')}</p>
 	</div>
 {:else if otherRunOwner}
 	<!--
@@ -2874,25 +2877,11 @@
 		gap: var(--space-md);
 		margin-top: var(--space-sm);
 	}
-	.skeleton-shimmer {
-		background: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		animation: skeleton-shimmer 1.4s ease-in-out infinite;
-		border-radius: var(--radius-md);
-	}
-	.skeleton-title { height: 1.8rem; width: 60%; }
-	.skeleton-line { height: 0.9rem; width: 40%; }
-	.skeleton-stat { height: 3.5rem; }
-	.skeleton-block { height: 8rem; margin-top: var(--space-sm); }
-	.back-link-skeleton { height: 2.5rem; }
-	@keyframes skeleton-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
+	.loading-blocks {
+		display: flex;
+		flex-direction: column;
+		gap: calc(var(--space-md) + var(--space-sm));
+		margin-top: var(--space-sm);
 	}
 	@media (max-width: 900px) {
 		.loading-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: 40vh 1fr; }

@@ -10,7 +10,10 @@
  * until a read started after it landed carries it, and a refused write puts
  * back the one field it changed. A deleted conversation brought back by Undo
  * (or a refused delete) is likewise put back as one row, not as the list from
- * before the delete.
+ * before the delete. A delete is held the same way: a read that started
+ * before the server hid the conversation still lists it, so the row is left
+ * out of every such read until one started after the delete landed is
+ * applied.
  *
  * Web only: the mobile store keeps its own (apps/mobile_android).
  */
@@ -29,6 +32,36 @@ export interface ConversationWrite {
 	value: boolean;
 	/// When the server accepted it, in ms; `Infinity` while it is in flight.
 	at: number;
+	/// What the server held before this write, as far as the client knows;
+	/// a refusal puts this back. Undefined when the list never held the row.
+	/// Updated in place when an earlier write to the same flag lands while
+	/// this one is in flight.
+	prior?: boolean;
+}
+
+/// What the server holds for a flag before a new write to it: the value of
+/// the last write that landed, or, while one is still in flight, what that
+/// one would put back. The list itself shows the in-flight value, so reading
+/// the prior off it made a second refused write restore the first one's.
+export function confirmedFlagValue(
+	previous: ConversationWrite | undefined,
+	listed: boolean | undefined,
+): boolean | undefined {
+	if (!previous) return listed;
+	return previous.at === Infinity ? previous.prior : previous.value;
+}
+
+/// Records that `landed` was accepted at `at`. A later write to the same flag
+/// still in flight now reverts to this value if it is refused.
+export function settleLandedWrite(
+	writes: Map<string, ConversationWrite>,
+	landed: ConversationWrite,
+	at: number,
+): void {
+	const key = conversationWriteKey(landed.conversationId, landed.flag);
+	const latest = writes.get(key);
+	if (latest === landed) writes.set(key, { ...landed, at });
+	else if (latest && latest.at === Infinity) latest.prior = landed.value;
 }
 
 export function conversationWriteKey(conversationId: string, flag: ConversationFlag): string {
@@ -110,4 +143,22 @@ export function restoreHiddenConversation<T extends { conversationId: string; la
 	const out = [...rows];
 	out.splice(i === -1 ? out.length : i, 0, hidden);
 	return out;
+}
+
+/// The rows a list read returned, without the conversations deleted since that
+/// read started. `hiddenAt` maps a conversation to when its delete landed, in
+/// ms, or `Infinity` while its undo window is open or the delete is in flight.
+export function withoutHiddenConversations<T extends { conversationId: string }>(
+	rows: readonly T[],
+	hiddenAt: ReadonlyMap<string, number>,
+	readStartedAt: number,
+): T[] {
+	if (hiddenAt.size === 0) return [...rows];
+	return rows.filter((r) => (hiddenAt.get(r.conversationId) ?? -Infinity) < readStartedAt);
+}
+
+/// The deletes a read started at `readStartedAt` already carries; their
+/// markers can be forgotten once that read is applied.
+export function settledHides(hiddenAt: ReadonlyMap<string, number>, readStartedAt: number): string[] {
+	return [...hiddenAt].filter(([, at]) => at < readStartedAt).map(([id]) => id);
 }

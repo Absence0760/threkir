@@ -86,6 +86,12 @@ class _YouScreenState extends State<YouScreen>
       _dmStates = const [];
   int _seenHideRemovals = DmPendingHides.instance.removals;
 
+  /// Bumped by every badge read. Reads overlap — a poll or a sub-screen
+  /// return can still be in flight when a committed delete asks for another —
+  /// and only the newest may answer: an older one lists the deleted
+  /// conversation, and its pending hide is already gone.
+  int _unreadGen = 0;
+
   @override
   void initState() {
     super.initState();
@@ -133,10 +139,11 @@ class _YouScreenState extends State<YouScreen>
   Future<void> _refreshUnread() async {
     final api = widget.apiClient;
     final asked = api?.userId;
+    final gen = ++_unreadGen;
     if (api == null || asked == null) return;
     try {
       final states = await api.fetchDmBadgeStates();
-      if (!mounted || api.userId != asked) return;
+      if (!mounted || gen != _unreadGen || api.userId != asked) return;
       setState(() {
         _dmStates = states;
         _unreadDms = _countUnread();

@@ -15,7 +15,8 @@
 	import CookieConsentBanner from '#lib/components/CookieConsentBanner.svelte';
 	import ToastContainer from '#lib/components/ToastContainer.svelte';
 	import UndoBar from '#lib/components/UndoBar.svelte';
-	import { setUndoWindowS } from '#lib/stores/undo.svelte.ts';
+	import { setUndoWindowS, undoStore } from '#lib/stores/undo.svelte.ts';
+	import { dmPendingHides } from '#lib/stores/dm_pending_hides.svelte.ts';
 	import NotificationBell from '#lib/components/NotificationBell.svelte';
 	import { notificationStore } from '#lib/stores/notifications.svelte.ts';
 	import { dmUnreadStore, DM_UNREAD_POLL_MS } from '#lib/stores/dm_unread.svelte.ts';
@@ -186,12 +187,26 @@
 		};
 	});
 
+	// A delete still inside its undo window belongs to the account that made
+	// it. Our own Sign out commits it first (signOutWithScope); a session that
+	// ends or changes some other way (another tab) can no longer commit it as
+	// that account, so it is put back rather than run as nobody or as the next
+	// account. Keyed on the id alone: a refreshed user object is not a change.
+	const undoOwnerId = $derived(auth.user?.id);
+	$effect(() => {
+		const uid = undoOwnerId;
+		return () => {
+			if (uid) undoStore.undo();
+		};
+	});
+
 	// Messages badge — the inbox has no Realtime channel, so it is read on
 	// auth-ready, on focus, and every minute while the tab is visible.
 	$effect(() => {
 		const uid = auth.user?.id;
 		if (!browser || !uid) {
 			dmUnreadStore.clear();
+			dmPendingHides.clear();
 			return;
 		}
 		dmUnreadStore.refresh();

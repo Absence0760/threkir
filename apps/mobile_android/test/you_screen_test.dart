@@ -35,6 +35,21 @@ class _FakeApi extends ApiClient {
   bool failProfile = false;
   int badgeReads = 0;
 
+  /// When set, the badge read answers with these instead of [unread].
+  List<({String conversationId, int unread, bool muted, bool archived})>?
+      states;
+
+  /// Each badge read takes the first gate, while any is queued.
+  final List<
+          Completer<
+              List<
+                  ({
+                    String conversationId,
+                    int unread,
+                    bool muted,
+                    bool archived
+                  })>>> badgeGates = [];
+
   @override
   String? get userId => 'u1';
 
@@ -54,6 +69,9 @@ class _FakeApi extends ApiClient {
               ({String conversationId, int unread, bool muted, bool archived})>>
       fetchDmBadgeStates() async {
     badgeReads++;
+    if (badgeGates.isNotEmpty) return badgeGates.removeAt(0).future;
+    final set = states;
+    if (set != null) return set;
     return [
       (conversationId: 'c-1', unread: unread, muted: false, archived: false),
       (conversationId: 'c-2', unread: 0, muted: false, archived: false),
@@ -270,6 +288,54 @@ void main() {
       describe: 'the badge back after the re-read',
     );
     expect(api.badgeReads, reads + 1);
+  });
+
+  testWidgets('a read that started before a delete was committed does not '
+      'count the deleted conversation', (tester) async {
+    addTearDown(DmPendingHides.instance.debugClear);
+    final api = _FakeApi()
+      ..states = [
+        (conversationId: 'c-1', unread: 3, muted: false, archived: false),
+        (conversationId: 'c-2', unread: 2, muted: false, archived: false),
+      ];
+    await pump(tester, api: api);
+    final icon = find.byKey(const ValueKey('you-messages'));
+    bool badge(String n) => find
+        .descendant(of: icon, matching: find.text(n))
+        .evaluate()
+        .isNotEmpty;
+    await pumpUntil(tester, () => badge('5'), describe: 'the unread badge');
+
+    DmPendingHides.instance.add('c-1');
+    await tester.pump();
+    expect(badge('2'), isTrue);
+
+    // Any removal asks for a read; this one stands in for a poll or a
+    // sub-screen return that is still in flight when the delete commits.
+    final stale = Completer<
+        List<({String conversationId, int unread, bool muted, bool archived})>>();
+    api.badgeGates.add(stale);
+    DmPendingHides.instance
+      ..add('c-9')
+      ..remove('c-9');
+    await tester.pump();
+
+    api.states = [
+      (conversationId: 'c-2', unread: 2, muted: false, archived: false),
+    ];
+    DmPendingHides.instance.remove('c-1');
+    await tester.pump();
+    await tester.pump();
+    expect(badge('2'), isTrue);
+
+    stale.complete([
+      (conversationId: 'c-1', unread: 3, muted: false, archived: false),
+      (conversationId: 'c-2', unread: 2, muted: false, archived: false),
+    ]);
+    await tester.pump();
+    await tester.pump();
+    expect(badge('5'), isFalse);
+    expect(badge('2'), isTrue);
   });
 
   testWidgets('no badge with nothing unread', (tester) async {

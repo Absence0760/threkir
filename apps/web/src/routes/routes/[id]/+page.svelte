@@ -3,6 +3,7 @@
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import { onMount } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';
+	import { formatElevation } from '#lib/format/units.svelte.ts';
 	import { toGpx, toKml, downloadFile } from '#lib/routes/gpx.ts';
 	import { toRouteGpxWithMarkers, type RouteGpxMarker } from '#lib/routes/route_gpx.ts';
 	import { fetchRouteById, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, setRoutePublic, setRouteStar, audienceSharingEnabled, fetchShares } from '#lib/core/data.ts';
@@ -654,7 +655,7 @@
 						</div>
 						{#if route.elevation_m != null && route.elevation_m > 0}
 							<div class="key-stat">
-								<span class="key-stat-value" data-testid="route-key-gain">{elevation.gain} m</span>
+								<span class="key-stat-value" data-testid="route-key-gain">{formatElevation(route.elevation_m)}</span>
 								<span class="key-stat-label">{m('routeDetail.statElevationGain')}</span>
 							</div>
 						{/if}
@@ -869,7 +870,7 @@
 								<span class="material-symbols">trending_up</span>
 								{m('routeDetail.elevGain')}
 							</span>
-							<span class="elev-value" data-testid="route-elev-gain">{elevation.gain} m</span>
+							<span class="elev-value" data-testid="route-elev-gain">{formatElevation(route.elevation_m)}</span>
 						</div>
 						{#if elevation.loss != null}
 							<div class="elev-tile">
@@ -877,7 +878,7 @@
 									<span class="material-symbols">trending_down</span>
 									{m('routeDetail.elevLoss')}
 								</span>
-								<span class="elev-value">{elevation.loss} m</span>
+								<span class="elev-value">{formatElevation(elevation.loss)}</span>
 							</div>
 						{/if}
 						{#if elevation.profile}
@@ -886,14 +887,14 @@
 									<span class="material-symbols">terrain</span>
 									{m('routeDetail.elevMax')}
 								</span>
-								<span class="elev-value">{elevation.max} m</span>
+								<span class="elev-value">{formatElevation(elevation.max)}</span>
 							</div>
 							<div class="elev-tile">
 								<span class="elev-label">
 									<span class="material-symbols">vertical_align_bottom</span>
 									{m('routeDetail.elevMin')}
 								</span>
-								<span class="elev-value">{elevation.min} m</span>
+								<span class="elev-value">{formatElevation(elevation.min)}</span>
 							</div>
 						{/if}
 					</div>

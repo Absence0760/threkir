@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { formatDistance, formatElevation } from '#lib/format/units.svelte.ts';
 	import { minMax } from '#lib/util/min_max.ts';
 	import { elevationDomain } from '#lib/runs/elevation_profile.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -171,7 +171,7 @@
 			</span>
 			<span class="tt-cell">
 				<span class="tt-label">{m('elevationProfile.elevation')}</span>
-				<span class="tt-value">{Math.round(crosshair.ele)} m</span>
+				<span class="tt-value">{formatElevation(crosshair.ele)}</span>
 			</span>
 			<span class="tt-cell">
 				<span class="tt-label">{m('elevationProfile.gainSoFar')}</span>
@@ -182,8 +182,8 @@
 							const d = elevations[i] - elevations[i - 1];
 							if (d > 0) g += d;
 						}
-						return Math.round(g);
-					})()} m
+						return formatElevation(g);
+					})()}
 				</span>
 			</span>
 		{:else if elevations.length >= 2}
@@ -191,7 +191,7 @@
 			{#if totalGain != null}
 				<span class="tt-cell tt-cell-right">
 					<span class="tt-label">{m('elevationProfile.totalGain')}</span>
-					<span class="tt-value" data-testid="elevation-profile-total-gain">{totalGain} m</span>
+					<span class="tt-value" data-testid="elevation-profile-total-gain">{formatElevation(totalGain)}</span>
 				</span>
 			{/if}
 		{/if}
@@ -241,15 +241,15 @@
 				<!-- The run's own min / max as corner pills; the axis itself is
 				     padded past both. -->
 				<g class="extreme">
-					<rect x={padding.left + 4} y={padding.top - 12} width="56" height="16" rx="4" class="extreme-pill" />
-					<text x={padding.left + 32} y={padding.top - 0.5} class="extreme-text" text-anchor="middle">
-						▲ {Math.round(dataMax)} m
+					<rect x={padding.left + 4} y={padding.top - 12} width="72" height="16" rx="4" class="extreme-pill" />
+					<text x={padding.left + 40} y={padding.top - 0.5} class="extreme-text" text-anchor="middle">
+						▲ {formatElevation(dataMax)}
 					</text>
 				</g>
 				<g class="extreme">
-					<rect x={padding.left + 4} y={padding.top + plotHeight - 4} width="56" height="16" rx="4" class="extreme-pill" />
-					<text x={padding.left + 32} y={padding.top + plotHeight + 7.5} class="extreme-text" text-anchor="middle">
-						▼ {Math.round(dataMin)} m
+					<rect x={padding.left + 4} y={padding.top + plotHeight - 4} width="72" height="16" rx="4" class="extreme-pill" />
+					<text x={padding.left + 40} y={padding.top + plotHeight + 7.5} class="extreme-text" text-anchor="middle">
+						▼ {formatElevation(dataMin)}
 					</text>
 				</g>
 

@@ -2423,7 +2423,7 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		},
 		// conversation_participants — the subject's own view of each
 		// conversation (joined, deleted-for-me, muted, archived; migration
-		// 20271105000001). Only their own row.
+		// 20271105000010). Only their own row.
 		{
 			name: "conversation_settings.json", table: schema.TableConversationParticipants,
 			filter: "user_id=eq." + uid, sel: "conversation_id,joined_at,hidden_before,muted_at,archived_at",

@@ -1,7 +1,7 @@
--- Validates the two constraints 20271105000001 added NOT VALID, in their own
+-- Validates the two constraints 20271105000010 added NOT VALID, in their own
 -- transaction (docs/backend/migration_locks.md): each scan runs under SHARE
 -- UPDATE EXCLUSIVE, so reads and writes on direct_messages proceed while it
--- runs. 20271105000001 backfilled every existing message and its trigger
+-- runs. 20271105000010 backfilled every existing message and its trigger
 -- assigns every new one, so nothing here can fail on data.
 --
 -- SET NOT NULL then trusts the validated CHECK and skips its own scan (PG12+),

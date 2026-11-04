@@ -78,7 +78,7 @@
 	const partnerName = $derived(activeThread?.partnerName ?? tr('messages.runnerFallback'));
 
 	// Mute, archive and delete-for-me act on the conversation, which exists
-	// once a message does (migration 20271105000001). The inbox row carries the
+	// once a message does (migration 20271105000010). The inbox row carries the
 	// viewer's state; a thread opened before the list loaded falls back to the
 	// conversation its messages name.
 	const conversationId = $derived(activeThread?.conversationId ?? messages.at(-1)?.conversation_id ?? null);

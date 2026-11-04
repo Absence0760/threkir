@@ -10993,7 +10993,7 @@ export interface DirectMessage {
 	unsent_at: string | null;
 	deleted_partner_key: string | null;
 	/// The conversation the message belongs to, assigned by the server on
-	/// send (migration 20271105000001).
+	/// send (migration 20271105000010).
 	conversation_id: string;
 }
 
@@ -11222,7 +11222,7 @@ export async function unsendDm(messageId: string): Promise<DirectMessage> {
 	return data as DirectMessage;
 }
 
-/// Deletes a conversation for the viewer only (migration 20271105000001):
+/// Deletes a conversation for the viewer only (migration 20271105000010):
 /// every message so far leaves their reads, the other participant keeps
 /// theirs, and a newer message brings the conversation back. The caller holds
 /// it behind an undo window (conventions.md § Destructive actions), since

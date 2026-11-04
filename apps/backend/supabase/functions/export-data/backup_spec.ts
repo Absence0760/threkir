@@ -251,7 +251,7 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 		},
 		// conversation_participants — the subject's own view of each
 		// conversation: when they joined, and whether they deleted it for
-		// themselves, muted it or archived it (migration 20271105000001). Only
+		// themselves, muted it or archived it (migration 20271105000010). Only
 		// their own row: the other participant's state is theirs.
 		{
 			entry: 'conversation_settings.json',

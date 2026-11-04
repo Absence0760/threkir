@@ -50,7 +50,7 @@ const Duration kMessageThreadPollInterval = Duration(seconds: 10);
 /// The overflow menu blocks or unblocks the partner, the same toggle the
 /// profile carries (decisions § 1952): Block is confirmed, Unblock is not.
 /// It also mutes, archives and deletes the conversation for the viewer
-/// (migration 20271105000001). Delete is held behind the undo bar and tells
+/// (migration 20271105000010). Delete is held behind the undo bar and tells
 /// the server only when the window closes, so it is not confirmed.
 /// While the viewer's block stands the composer gives way to a notice, since
 /// the INSERT policy refuses a send either way across a block.

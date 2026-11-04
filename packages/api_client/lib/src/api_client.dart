@@ -9341,7 +9341,7 @@ class ApiClient {
     );
   }
 
-  /// Deletes a conversation for the viewer only (migration 20271105000001):
+  /// Deletes a conversation for the viewer only (migration 20271105000010):
   /// every message so far leaves their reads, the other participant keeps
   /// theirs, and a newer message brings it back. The caller holds it behind
   /// the undo window, since nothing is sent until the window closes. A

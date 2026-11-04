@@ -1,4 +1,4 @@
--- Pins 20271105000001 (issue #1216): conversations + per-participant state.
+-- Pins 20271105000010 (issue #1216): conversations + per-participant state.
 -- A message is assigned its pair's conversation by the server; "delete
 -- conversation" hides it for the caller only and a newer message brings it
 -- back; mute silences the notification; archive holds until a newer message;

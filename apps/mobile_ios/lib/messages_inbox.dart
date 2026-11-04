@@ -83,7 +83,7 @@ List<InboxEntry<T>> inboxEntries<T>(
 
 /// The inbox's conversations and its Archived list, each in the order given.
 /// A conversation is archived only while nothing newer than the archive
-/// arrived, which `dm_threads()` (migration 20271105000001) has already
+/// arrived, which `dm_threads()` (migration 20271105000010) has already
 /// decided, so a reply is never filed away.
 ({List<T> inbox, List<T> archived}) partitionArchived<T>(
   List<T> threads, {

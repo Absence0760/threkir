@@ -1,6 +1,6 @@
 -- Direct messages: a conversation model with per-participant state, so each
 -- side can delete a conversation for themselves, mute it and archive it
--- without touching the other person's copy (issue #1216, decisions § 2276).
+-- without touching the other person's copy (issue #1216, decisions § 2286).
 --
 -- ── Why a table, not a per-pair state row ────────────────────────────────
 --
@@ -58,7 +58,7 @@
 -- ── Locking ──────────────────────────────────────────────────────────────
 --
 -- The FK and the not-null CHECK on direct_messages.conversation_id are added
--- NOT VALID and validated by 20271105000002 in its own transaction, which also
+-- NOT VALID and validated by 20271105000011 in its own transaction, which also
 -- promotes the CHECK to NOT NULL without a scan. The ADD COLUMN is nullable
 -- with no default (catalogue-only). The new index and trigger take brief
 -- write-blocking locks on a table the playbook classes as small.

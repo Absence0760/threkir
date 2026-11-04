@@ -24,7 +24,7 @@ class DmDeletedPartnerThread extends DmThreadTarget {
 /// partner plus how many of theirs the viewer has not read. Mirrors web's
 /// `DmThread` (`apps/web/src/lib/core/data.ts`), aggregated server-side by the
 /// `dm_threads()` RPC (migrations 20270117_001, 20271021000003,
-/// 20271105000001).
+/// 20271105000010).
 class DmThread {
   const DmThread({
     required this.conversationId,

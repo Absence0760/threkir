@@ -124,7 +124,7 @@ export const PAIRS = [
 	{
 		tableColumn: 'conversations.kind',
 		clients: [],
-		note: 'only direct exists (migration 20271105000001); written by the direct_messages_set_conversation trigger and never named by a client.',
+		note: 'only direct exists (migration 20271105000010); written by the direct_messages_set_conversation trigger and never named by a client.',
 	},
 	{
 		tableColumn: 'challenges.activity_type',

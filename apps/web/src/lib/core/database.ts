@@ -60,7 +60,7 @@ type WithComputedFields<Tables> = {
 ///
 /// The generator makes a NOT NULL column with no SQL default required on
 /// `Insert`, because it cannot see a trigger. `direct_messages.conversation_id`
-/// (migration 20271105000001) is assigned by `direct_messages_set_conversation`
+/// (migration 20271105000010) is assigned by `direct_messages_set_conversation`
 /// and carries no client INSERT grant, so a send that named it would be refused;
 /// the insert shape has to leave it out.
 type TriggerAssigned = { direct_messages: 'conversation_id' };

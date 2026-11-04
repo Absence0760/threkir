@@ -36,7 +36,7 @@ While the viewer's own block stands, the composer gives way to a notice ("You bl
 
 ## Mute, archive and delete for me
 
-Since migration `20271105000001` ([decisions § 2276](../architecture/decisions.md)) every message belongs to a `conversations` row, and each participant has their own `conversation_participants` row. Mute, archive and delete-for-me write only the viewer's row; the other person never learns of any of them (the rows are owner-read).
+Since migration `20271105000010` ([decisions § 2286](../architecture/decisions.md)) every message belongs to a `conversations` row, and each participant has their own `conversation_participants` row. Mute, archive and delete-for-me write only the viewer's row; the other person never learns of any of them (the rows are owner-read).
 
 | Action | What it does | Guard | Web | Mobile |
 |---|---|---|---|---|

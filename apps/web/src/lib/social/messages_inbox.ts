@@ -72,7 +72,7 @@ export function inboxEntries<T extends { lastAt: string }>(
 }
 
 /// The conversation state the inbox splits and counts by (dm_threads(),
-/// migration 20271105000001).
+/// migration 20271105000010).
 export interface DmThreadState {
 	unread: number;
 	muted: boolean;

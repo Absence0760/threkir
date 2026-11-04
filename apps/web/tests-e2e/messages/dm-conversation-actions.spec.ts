@@ -7,7 +7,7 @@ import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/sag
 
 /**
  * Mute, archive and delete-for-me from the conversation header (issue #1216,
- * migration 20271105000001). Each writes the viewer's own
+ * migration 20271105000010). Each writes the viewer's own
  * conversation_participants row and nothing of the partner's; pgtap
  * (dm_conversations_test.sql) pins the read-path and notification rules, and
  * this pins what the page does with them.

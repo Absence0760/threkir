@@ -59,7 +59,7 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 	// run_reactions + run_comment_likes, each on both legs (left by the subject
 	// + received on their runs / comments). Direct-message reports (migration
 	// 20271021000003) added reports_against_my_messages. Conversations
-	// (migration 20271105000001) added conversation_settings.
+	// (migration 20271105000010) added conversation_settings.
 	assertEquals(specs.length, 77, `expected 77 specs, got ${specs.length}`);
 	const entries = new Set(specs.map((s) => s.entry));
 	for (const expected of [

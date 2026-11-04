@@ -3166,6 +3166,7 @@ export const en = {
 	"messages.deleteConversation": "Delete conversation",
 	"messages.conversationDeleted": "Conversation deleted",
 	"messages.conversationDeletedNotice": "You deleted this conversation for yourself. The other person keeps their copy, and a new message brings it back.",
+	"messages.conversationDeletedNoticeDeletedAccount": "You deleted this conversation. The other account no longer exists, so nothing brings it back, and the messages are erased within a day.",
 	"messages.conversationActionFailed": "Couldn't update the conversation: {error}",
 	"messages.archivedCount": "Archived ({count})",
 	"messages.backToInbox": "Back to inbox",

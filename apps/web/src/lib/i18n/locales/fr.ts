@@ -3153,6 +3153,7 @@ export const messages = {
 	"messages.deleteConversation": "Supprimer la conversation",
 	"messages.conversationDeleted": "Conversation supprimée",
 	"messages.conversationDeletedNotice": "Vous avez supprimé cette conversation pour vous. L'autre personne garde sa copie, et un nouveau message la fera réapparaître.",
+	"messages.conversationDeletedNoticeDeletedAccount": "Vous avez supprimé cette conversation. L'autre compte n'existe plus, donc rien ne la fera réapparaître, et les messages sont effacés sous 24 heures.",
 	"messages.conversationActionFailed": "Impossible de mettre à jour la conversation : {error}",
 	"messages.archivedCount": "Archivées ({count})",
 	"messages.backToInbox": "Retour à la boîte de réception",

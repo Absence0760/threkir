@@ -1,6 +1,6 @@
 import { expect, test } from '../fixtures/test';
 
-import { readMaybeRow, readRows } from '../fixtures/db-read';
+import { readMaybeRow, readRow, readRows } from '../fixtures/db-read';
 import { acceptCookieConsent } from '../fixtures/helpers';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
@@ -210,6 +210,89 @@ test.describe('/messages — mute, archive and delete a conversation', () => {
 				getAdminClient().from('direct_messages').select('id').eq('conversation_id', conversationId)
 			);
 			expect(partnerCopy).toHaveLength(1);
+		} finally {
+			await ctx.close();
+		}
+	});
+
+	// Reason: the delete commits when the undo window closes, and stamping
+	// that moment hid a message the viewer never saw (migration
+	// 20271107000002). It stops at the newest message on screen instead.
+	test('a message that arrives during the undo window is not deleted with the conversation', async ({ browser }) => {
+		const { viewer, partner, stamp, conversationId } = await pair('late');
+		const admin = getAdminClient();
+		const ctx = await browser.newContext({ storageState: viewer.storageStatePath });
+		await acceptCookieConsent(ctx);
+		const page = await ctx.newPage();
+		try {
+			await page.goto(`/messages/${partner.id}`);
+			await expect(page.locator('.messages').getByText(`hello ${stamp}`, { exact: true })).toBeVisible({ timeout: 10_000 });
+			await expect(page.getByTestId('dm-conversation-deleted')).toHaveCount(0);
+
+			await page.getByTestId('dm-delete-conversation').click();
+			await expect(page.getByTestId('dm-conversation-deleted')).toHaveText(
+				'You deleted this conversation for yourself. The other person keeps their copy, and a new message brings it back.'
+			);
+			const late = `late ${stamp}`;
+			const { error } = await admin
+				.from('direct_messages')
+				.insert({ sender_id: partner.id, recipient_id: viewer.id, body: late });
+			if (error) throw new Error(`late message seed failed: ${error.message}`);
+			await page.getByTestId('undo-dismiss').click();
+			await expect
+				.poll(async () => (await viewerState(viewer, conversationId))?.hidden_before ?? null, {
+					timeout: 10_000
+				})
+				.not.toBeNull();
+
+			const first = await readRow(
+				'the message on screen',
+				admin.from('direct_messages').select('created_at').eq('body', `hello ${stamp}`).single()
+			);
+			const state = await viewerState(viewer, conversationId);
+			expect(Date.parse(state?.hidden_before ?? '')).toBe(Date.parse(first.created_at));
+
+			await page.goto('/messages');
+			await expect(page.locator('.thread', { hasText: late })).toBeVisible({ timeout: 10_000 });
+		} finally {
+			await ctx.close();
+		}
+	});
+
+	test("deleting a deleted account's thread does not promise it comes back", async ({ browser }) => {
+		const { viewer, partner, stamp } = await pair('gone');
+		const admin = getAdminClient();
+		const mine = `mine ${stamp}`;
+		const { error } = await admin
+			.from('direct_messages')
+			.insert({ sender_id: viewer.id, recipient_id: partner.id, body: mine });
+		if (error) throw new Error(`message seed failed: ${error.message}`);
+		await deleteSagaUsers([partner]);
+		users = [viewer];
+		const { deleted_partner_key: key, conversation_id: conversationId } = await readRow(
+			'the deleted partner thread',
+			admin.from('direct_messages').select('deleted_partner_key, conversation_id').eq('body', mine).single()
+		);
+
+		const ctx = await browser.newContext({ storageState: viewer.storageStatePath });
+		await acceptCookieConsent(ctx);
+		const page = await ctx.newPage();
+		try {
+			await page.goto(`/messages/deleted-${key}`);
+			await expect(page.locator('.messages').getByText(mine, { exact: true })).toBeVisible({ timeout: 10_000 });
+
+			await page.getByTestId('dm-delete-conversation').click();
+			const notice = page.getByTestId('dm-conversation-deleted');
+			await expect(notice).toHaveText(
+				'You deleted this conversation. The other account no longer exists, so nothing brings it back, and the messages are erased within a day.'
+			);
+			await expect(notice).not.toContainText('keeps their copy');
+			await page.getByTestId('undo-dismiss').click();
+			await expect
+				.poll(async () => (await viewerState(viewer, conversationId as string))?.hidden_before ?? null, {
+					timeout: 10_000
+				})
+				.not.toBeNull();
 		} finally {
 			await ctx.close();
 		}

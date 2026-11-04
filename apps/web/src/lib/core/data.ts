@@ -11306,12 +11306,17 @@ export async function unsendDm(messageId: string): Promise<DirectMessage> {
 }
 
 /// Deletes a conversation for the viewer only (migration 20271105000010):
-/// every message so far leaves their reads, the other participant keeps
-/// theirs, and a newer message brings the conversation back. The caller holds
-/// it behind an undo window (conventions.md § Destructive actions), since
-/// nothing is sent until the window closes.
-export async function hideDmConversation(conversationId: string): Promise<void> {
-	const { error } = await supabase.rpc('hide_conversation', { p_conversation_id: conversationId });
+/// every message up to and including `throughMessageId`, the newest one the
+/// viewer had on screen, leaves their reads, and anything sent after it stays
+/// (20271107000002). The other participant keeps theirs, and a newer message
+/// brings the conversation back. The caller holds it behind an undo window
+/// (conventions.md § Destructive actions), and a message that arrives during
+/// the window is one the viewer never saw.
+export async function hideDmConversation(conversationId: string, throughMessageId: string): Promise<void> {
+	const { error } = await supabase.rpc('hide_conversation', {
+		p_conversation_id: conversationId,
+		p_through_message_id: throughMessageId,
+	});
 	if (error) throw dbError(error);
 }
 

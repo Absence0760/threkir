@@ -4982,6 +4982,7 @@
   "messagesDeleteConversation": "Eliminar conversación",
   "messagesConversationDeleted": "Conversación eliminada",
   "messagesConversationDeletedNotice": "Has eliminado esta conversación para ti. La otra persona conserva su copia, y un mensaje nuevo la hará volver.",
+  "messagesConversationDeletedNoticeDeletedAccount": "Has eliminado esta conversación. La otra cuenta ya no existe, así que nada la hará volver, y los mensajes se borran en un plazo de un día.",
   "messagesConversationActionFailed": "No se pudo actualizar la conversación: {error}",
   "messagesArchivedCount": "Archivadas ({count})",
   "messagesBackToInbox": "Volver a la bandeja de entrada",

@@ -17505,6 +17505,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'You deleted this conversation for yourself. The other person keeps their copy, and a new message brings it back.';
 
   @override
+  String get messagesConversationDeletedNoticeDeletedAccount =>
+      'You deleted this conversation. The other account no longer exists, so nothing brings it back, and the messages are erased within a day.';
+
+  @override
   String messagesConversationActionFailed(String error) {
     return 'Couldn\'t update the conversation: $error';
   }

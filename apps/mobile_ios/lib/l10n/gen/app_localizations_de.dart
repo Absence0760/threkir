@@ -17703,6 +17703,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Du hast diese Unterhaltung für dich gelöscht. Die andere Person behält ihre Kopie, und eine neue Nachricht holt sie zurück.';
 
   @override
+  String get messagesConversationDeletedNoticeDeletedAccount =>
+      'Du hast diese Unterhaltung gelöscht. Das andere Konto existiert nicht mehr, daher holt nichts sie zurück, und die Nachrichten werden innerhalb eines Tages endgültig gelöscht.';
+
+  @override
   String messagesConversationActionFailed(String error) {
     return 'Die Unterhaltung konnte nicht aktualisiert werden: $error';
   }

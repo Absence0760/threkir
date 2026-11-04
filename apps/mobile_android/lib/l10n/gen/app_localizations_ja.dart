@@ -16855,6 +16855,10 @@ class AppLocalizationsJa extends AppLocalizations {
       'この会話を自分の画面から削除しました。相手側には残り、新しいメッセージが届くと再び表示されます。';
 
   @override
+  String get messagesConversationDeletedNoticeDeletedAccount =>
+      'この会話を削除しました。相手のアカウントはすでに存在しないため、会話が再び表示されることはなく、メッセージは1日以内に消去されます。';
+
+  @override
   String messagesConversationActionFailed(String error) {
     return '会話を更新できませんでした: $error';
   }

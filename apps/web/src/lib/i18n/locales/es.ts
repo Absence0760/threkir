@@ -3153,6 +3153,7 @@ export const messages = {
 	"messages.deleteConversation": "Eliminar conversación",
 	"messages.conversationDeleted": "Conversación eliminada",
 	"messages.conversationDeletedNotice": "Has eliminado esta conversación para ti. La otra persona conserva su copia, y un mensaje nuevo la hará volver.",
+	"messages.conversationDeletedNoticeDeletedAccount": "Has eliminado esta conversación. La otra cuenta ya no existe, así que nada la hará volver, y los mensajes se borran en un plazo de un día.",
 	"messages.conversationActionFailed": "No se pudo actualizar la conversación: {error}",
 	"messages.archivedCount": "Archivadas ({count})",
 	"messages.backToInbox": "Volver a la bandeja de entrada",

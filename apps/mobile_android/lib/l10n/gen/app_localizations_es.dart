@@ -17681,6 +17681,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Has eliminado esta conversación para ti. La otra persona conserva su copia, y un mensaje nuevo la hará volver.';
 
   @override
+  String get messagesConversationDeletedNoticeDeletedAccount =>
+      'Has eliminado esta conversación. La otra cuenta ya no existe, así que nada la hará volver, y los mensajes se borran en un plazo de un día.';
+
+  @override
   String messagesConversationActionFailed(String error) {
     return 'No se pudo actualizar la conversación: $error';
   }

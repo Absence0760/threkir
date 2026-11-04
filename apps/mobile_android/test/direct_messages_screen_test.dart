@@ -315,7 +315,7 @@ class _FakeApi extends ApiClient {
 
   final List<(String, bool)> mutes = [];
   final List<(String, bool)> archives = [];
-  final List<String> hides = [];
+  final List<(String, String)> hides = [];
   Object? conversationError;
   ({bool muted, DateTime? archivedAt})? conversationState;
   final List<String> stateReads = [];
@@ -337,8 +337,9 @@ class _FakeApi extends ApiClient {
   Object? hideError;
 
   @override
-  Future<void> hideDmConversation(String conversationId) async {
-    hides.add(conversationId);
+  Future<void> hideDmConversation(String conversationId,
+      {required String throughMessageId}) async {
+    hides.add((conversationId, throughMessageId));
     if (hideError != null) throw hideError!;
   }
 
@@ -1231,8 +1232,50 @@ void main() {
 
       await tester.pump(const Duration(seconds: kDefaultUndoWindowS + 1));
       await tester.pump();
-      expect(api.hides, ['c-1']);
+      expect(api.hides, [('c-1', 'm1')]);
       expect(DmPendingHides.instance.contains('c-1'), isFalse);
+    });
+
+    testWidgets('a message that arrives during the undo window is not '
+        'deleted with the conversation', (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1')];
+      await _pumpThread(tester, api);
+
+      await openMenu(tester);
+      await tester.tap(find.text(l10n.messagesDeleteConversation));
+      await tester.pump();
+      expect(find.text(l10n.messagesConversationDeletedNotice), findsOneWidget);
+      api.newest = [_msg('m1'), _msg('m2', minute: 5)];
+
+      await tester.pump(const Duration(seconds: kDefaultUndoWindowS + 1));
+      await tester.pump();
+      expect(api.hides, [('c-1', 'm1')],
+          reason: 'the delete stops at the newest message on screen when it '
+              'was tapped');
+    });
+
+    testWidgets('deleting a deleted account\'s thread does not promise it '
+        'comes back', (tester) async {
+      final api = _FakeApi()
+        ..newest = [_msg('m1', from: _me, body: 'still here?')];
+      await tester.pumpWidget(_app(MessageThreadScreen.deletedPartner(
+        api: api,
+        deletedPartnerKey: 'k-1',
+        pollInterval: _quiet,
+      )));
+      await tester.pump();
+      await tester.pump();
+
+      await openMenu(tester);
+      await tester.tap(find.text(l10n.messagesDeleteConversation));
+      await tester.pump();
+      expect(find.text(l10n.messagesConversationDeletedNoticeDeletedAccount),
+          findsOneWidget);
+      expect(find.text(l10n.messagesConversationDeletedNotice), findsNothing);
+
+      await tester.pump(const Duration(seconds: kDefaultUndoWindowS + 1));
+      await tester.pump();
+      expect(api.hides, [('c-1', 'm1')]);
     });
 
     testWidgets('a Delete that fails after the thread was left says so over '
@@ -1272,7 +1315,7 @@ void main() {
 
       await tester.pump(const Duration(seconds: kDefaultUndoWindowS + 1));
       await tester.pump();
-      expect(api.hides, ['c-1']);
+      expect(api.hides, [('c-1', 'm1')]);
       expect(DmPendingHides.instance.contains('c-1'), isFalse);
       final failed = find.textContaining(
           l10n.messagesConversationActionFailed('').trim());

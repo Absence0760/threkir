@@ -4982,6 +4982,7 @@
   "messagesDeleteConversation": "会話を削除",
   "messagesConversationDeleted": "会話を削除しました",
   "messagesConversationDeletedNotice": "この会話を自分の画面から削除しました。相手側には残り、新しいメッセージが届くと再び表示されます。",
+  "messagesConversationDeletedNoticeDeletedAccount": "この会話を削除しました。相手のアカウントはすでに存在しないため、会話が再び表示されることはなく、メッセージは1日以内に消去されます。",
   "messagesConversationActionFailed": "会話を更新できませんでした: {error}",
   "messagesArchivedCount": "アーカイブ済み ({count})",
   "messagesBackToInbox": "受信箱に戻る",

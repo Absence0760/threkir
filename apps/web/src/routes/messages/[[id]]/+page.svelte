@@ -316,12 +316,17 @@
 	// Delete-for-me is honestly undoable: nothing reaches the server until the
 	// undo window closes, so it takes the undo bar and no confirm
 	// (conventions.md § Destructive actions). The other person keeps theirs.
+	// The delete stops at the newest message on screen, so one that arrives
+	// during the window is not hidden unseen.
+	const deleteThrough = $derived(messages.findLast((m) => m.conversation_id === conversationId) ?? null);
 	function deleteConversation() {
 		const id = conversationId;
 		const route = activeId;
-		if (!id || !route) return;
+		const through = deleteThrough;
+		if (!id || !route || !through) return;
 		deletedHere = route;
 		messagesInbox.hide(id, {
+			throughMessageId: through.id,
 			message: tr('messages.conversationDeleted'),
 			onRestore: () => {
 				if (deletedHere === route) deletedHere = null;
@@ -465,6 +470,7 @@
 					type="button"
 					class="icon-action"
 					data-testid="dm-delete-conversation"
+					disabled={!deleteThrough}
 					title={tr('messages.deleteConversation')}
 					aria-label={tr('messages.deleteConversation')}
 					onclick={deleteConversation}
@@ -488,7 +494,11 @@
 	</header>
 	<div class="messages" bind:this={scroller}>
 		{#if deleted}
-			<p class="muted center" data-testid="dm-conversation-deleted">{tr('messages.conversationDeletedNotice')}</p>
+			<p class="muted center" data-testid="dm-conversation-deleted">
+				{activeTarget?.kind === 'deleted'
+					? tr('messages.conversationDeletedNoticeDeletedAccount')
+					: tr('messages.conversationDeletedNotice')}
+			</p>
 		{:else if loadingThread}
 			<p class="muted center">{tr('shell.loading')}</p>
 		{:else if threadError}

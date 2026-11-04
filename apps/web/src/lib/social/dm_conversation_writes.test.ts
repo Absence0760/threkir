@@ -275,7 +275,7 @@ test('the inbox store holds a delete against reads that started before it landed
 	const hide = src.slice(src.indexOf('\thide(conversationId'), src.indexOf('\tmarkRead('));
 	assert.match(hide, /this\.#hiddenAt\.set\(conversationId, Infinity\)/);
 	const commit = hide.slice(hide.indexOf('commit:'), hide.indexOf('restore:'));
-	assert.match(commit, /await hideDmConversation\(conversationId\);\s*if \(this\.#userId === userId\) this\.#hiddenAt\.set\(conversationId, performance\.now\(\)\)/);
+	assert.match(commit, /await hideDmConversation\(conversationId, opts\.throughMessageId\);\s*if \(this\.#userId === userId\) this\.#hiddenAt\.set\(conversationId, performance\.now\(\)\)/);
 	assert.match(hide.slice(hide.indexOf('restore:')), /this\.#hiddenAt\.delete\(conversationId\)/);
 	const bind = src.slice(src.indexOf('\tbind(userId'), src.indexOf('\t#apply(rows'));
 	assert.match(bind, /this\.#hiddenAt\.clear\(\)/);

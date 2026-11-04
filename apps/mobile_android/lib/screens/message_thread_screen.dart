@@ -381,10 +381,14 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
   /// the window closes — so it takes the undo bar and no confirm
   /// (conventions.md § Destructive actions). The inbox under this screen
   /// leaves the conversation out until then, and out of any read that
-  /// started before the delete landed ([DmPendingHides]).
+  /// started before the delete landed ([DmPendingHides]). The delete stops
+  /// at the newest message on screen when it was tapped, so one a poll brings
+  /// in during the window is not hidden unseen.
   void _deleteConversation() {
     final id = _conversationId;
-    if (id == null || _deleted) return;
+    final through =
+        _messages.where((m) => m.conversationId == id).lastOrNull;
+    if (id == null || through == null || _deleted) return;
     final l10n = AppLocalizations.of(context);
     final api = widget.api;
     final hides = DmPendingHides.instance;
@@ -400,7 +404,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
         message: l10n.messagesConversationDeleted,
         // A refused commit is put back by restore.
         commit: () async {
-          await api.hideDmConversation(id);
+          await api.hideDmConversation(id, throughMessageId: through.id);
           hides.landed(id);
         },
         restore: () {
@@ -752,7 +756,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
-                if (_conversationId != null)
+                if (_conversationId != null && _messages.isNotEmpty)
                   PopupMenuItem(
                     key: const ValueKey('message-thread-delete'),
                     value: 'delete',
@@ -792,7 +796,9 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
                           key: const ValueKey('message-thread-deleted'),
                           icon: Icons.delete_outline,
                           title: l10n.messagesConversationDeleted,
-                          body: l10n.messagesConversationDeletedNotice,
+                          body: widget.deletedPartnerKey != null
+                              ? l10n.messagesConversationDeletedNoticeDeletedAccount
+                              : l10n.messagesConversationDeletedNotice,
                         )
                       : _body(l10n),
                 ),

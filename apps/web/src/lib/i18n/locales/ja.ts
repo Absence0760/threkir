@@ -3148,6 +3148,7 @@ export const messages = {
 	"messages.deleteConversation": "会話を削除",
 	"messages.conversationDeleted": "会話を削除しました",
 	"messages.conversationDeletedNotice": "この会話を自分の画面から削除しました。相手側には残り、新しいメッセージが届くと再び表示されます。",
+	"messages.conversationDeletedNoticeDeletedAccount": "この会話を削除しました。相手のアカウントはすでに存在しないため、会話が再び表示されることはなく、メッセージは1日以内に消去されます。",
 	"messages.conversationActionFailed": "会話を更新できませんでした: {error}",
 	"messages.archivedCount": "アーカイブ済み ({count})",
 	"messages.backToInbox": "受信箱に戻る",

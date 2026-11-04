@@ -4982,6 +4982,7 @@
   "messagesDeleteConversation": "Supprimer la conversation",
   "messagesConversationDeleted": "Conversation supprimée",
   "messagesConversationDeletedNotice": "Vous avez supprimé cette conversation pour vous. L'autre personne garde sa copie, et un nouveau message la fera réapparaître.",
+  "messagesConversationDeletedNoticeDeletedAccount": "Vous avez supprimé cette conversation. L'autre compte n'existe plus, donc rien ne la fera réapparaître, et les messages sont effacés sous 24 heures.",
   "messagesConversationActionFailed": "Impossible de mettre à jour la conversation : {error}",
   "messagesArchivedCount": "Archivées ({count})",
   "messagesBackToInbox": "Retour à la boîte de réception",

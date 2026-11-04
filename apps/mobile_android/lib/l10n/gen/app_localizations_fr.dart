@@ -17723,6 +17723,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Vous avez supprimé cette conversation pour vous. L\'autre personne garde sa copie, et un nouveau message la fera réapparaître.';
 
   @override
+  String get messagesConversationDeletedNoticeDeletedAccount =>
+      'Vous avez supprimé cette conversation. L\'autre compte n\'existe plus, donc rien ne la fera réapparaître, et les messages sont effacés sous 24 heures.';
+
+  @override
   String messagesConversationActionFailed(String error) {
     return 'Impossible de mettre à jour la conversation : $error';
   }

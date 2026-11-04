@@ -17685,6 +17685,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Eliminou esta conversa para si. A outra pessoa mantém a cópia dela, e uma nova mensagem fá-la voltar.';
 
   @override
+  String get messagesConversationDeletedNoticeDeletedAccount =>
+      'Eliminou esta conversa. A outra conta já não existe, por isso nada a faz voltar, e as mensagens são apagadas no prazo de um dia.';
+
+  @override
   String messagesConversationActionFailed(String error) {
     return 'Não foi possível atualizar a conversa: $error';
   }
@@ -37718,6 +37722,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get messagesConversationDeletedNotice =>
       'Você excluiu esta conversa para você. A outra pessoa mantém a cópia dela, e uma nova mensagem faz a conversa voltar.';
+
+  @override
+  String get messagesConversationDeletedNoticeDeletedAccount =>
+      'Você excluiu esta conversa. A outra conta não existe mais, então nada faz a conversa voltar, e as mensagens são apagadas em até um dia.';
 
   @override
   String messagesConversationActionFailed(String error) {

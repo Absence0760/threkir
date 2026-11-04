@@ -23045,6 +23045,10 @@
   "@messagesConversationDeletedNotice": {
     "description": "Shown in the conversation pane once the viewer deleted it for themselves"
   },
+  "messagesConversationDeletedNoticeDeletedAccount": "You deleted this conversation. The other account no longer exists, so nothing brings it back, and the messages are erased within a day.",
+  "@messagesConversationDeletedNoticeDeletedAccount": {
+    "description": "Shown in the conversation pane once the viewer deleted a deleted account's conversation: no new message can arrive, and the daily purge erases what nobody can see"
+  },
   "messagesConversationActionFailed": "Couldn't update the conversation: {error}",
   "@messagesConversationActionFailed": {
     "description": "Error when muting, archiving or deleting a conversation failed",

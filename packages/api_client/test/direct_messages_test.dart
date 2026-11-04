@@ -276,12 +276,14 @@ void main() {
   });
 
   group('conversation state', () {
-    test('hideDmConversation calls hide_conversation with the id', () async {
+    test('hideDmConversation sends the id and the newest message seen',
+        () async {
       await _signIn(client);
-      await api.hideDmConversation('c-9');
+      await api.hideDmConversation('c-9', throughMessageId: 'm-4');
       final req = fake.to('/rest/v1/rpc/hide_conversation').single as http.Request;
       expect(req.method, 'POST');
-      expect(jsonDecode(req.body), {'p_conversation_id': 'c-9'});
+      expect(jsonDecode(req.body),
+          {'p_conversation_id': 'c-9', 'p_through_message_id': 'm-4'});
     });
 
     test('setDmConversationMuted sends the flag', () async {
@@ -308,7 +310,8 @@ void main() {
         'code': 'P0002',
         'message': 'hide_conversation: conversation not found',
       };
-      expect(api.hideDmConversation('c-x'), throwsA(isA<PostgrestException>()));
+      expect(api.hideDmConversation('c-x', throughMessageId: 'm-x'),
+          throwsA(isA<PostgrestException>()));
     });
   });
 

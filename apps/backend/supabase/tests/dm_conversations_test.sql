@@ -55,7 +55,7 @@ grant select on conv to authenticated;
 
 set local role anon;
 select throws_ok(
-  $$select hide_conversation('dc000000-0000-0000-0000-0000000000ff')$$,
+  $$select hide_conversation('dc000000-0000-0000-0000-0000000000ff', 'dc000000-0000-0000-0000-0000000000ff')$$,
   '42501', null,
   'anon cannot call hide_conversation');
 select throws_ok(
@@ -110,7 +110,7 @@ select throws_ok(
 
 set local "request.jwt.claims" = '{"sub":"dc000000-0000-0000-0000-00000000000c","role":"authenticated"}';
 select throws_ok(
-  $$select hide_conversation((select id from conv))$$,
+  $$select hide_conversation((select id from conv), 'dc000000-0000-0000-0000-0000000000a3')$$,
   'P0002', null,
   'a non-participant cannot delete the conversation');
 select throws_ok(
@@ -133,7 +133,7 @@ select isnt_empty(
   $$select 1 from dm_threads() where conversation_id = (select id from conv)$$,
   'before deleting, the conversation is in A''s inbox');
 select lives_ok(
-  $$select hide_conversation((select id from conv))$$,
+  $$select hide_conversation((select id from conv), 'dc000000-0000-0000-0000-0000000000a3')$$,
   'a participant can delete the conversation for themselves');
 select is(
   (select count(*)::int from direct_messages where conversation_id = (select id from conv)),
@@ -258,10 +258,13 @@ select is(
   (select count(*)::int from conversations where id = (select id from old_conv)),
   0,
   'the purge drops a conversation once its last message is purged');
+-- A deleted every message A sent before B left, so nobody can see what is
+-- left and 20271107000002's erase empties the conversation too
+-- (dm_purge_hidden_test.sql pins the keep side).
 select is(
   (select count(*)::int from conversations where id = (select id from conv)),
-  1,
-  'the purge keeps a conversation that still has messages');
+  0,
+  'the purge erases a deleted account''s thread its remaining participant had deleted');
 
 -- ── The backfill ────────────────────────────────────────────────────────
 --

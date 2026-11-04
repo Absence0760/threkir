@@ -6990,7 +6990,7 @@ export type Database = {
         }[]
       }
       hide_conversation: {
-        Args: { p_conversation_id: string }
+        Args: { p_conversation_id: string; p_through_message_id: string }
         Returns: undefined
       }
       host_can_take_payment: { Args: { p_user_id: string }; Returns: boolean }

@@ -267,9 +267,14 @@
 	let showDeleteConfirm = $state(false);
 	let deleteChecking = $state(false);
 	let deleteMessage = $state('');
+	// Set from the confirm until the page leaves. ConfirmDialog locks its own
+	// buttons only while the dialog is open; once a successful delete closes
+	// it, the page's Delete button would otherwise reopen it for a route that
+	// is already gone while the navigation to /routes is still pending.
+	let deleting = $state(false);
 
 	async function openDeleteConfirm() {
-		if (!route || !isOwner || deleteChecking) return;
+		if (!route || !isOwner || deleteChecking || deleting) return;
 		deleteChecking = true;
 		const parts = [m('routeDetail.deleteBody')];
 		try {
@@ -288,10 +293,12 @@
 	}
 
 	async function confirmDelete() {
-		if (!route) return;
+		if (!route || deleting) return;
+		deleting = true;
 		try {
 			await deleteRoute(route.id);
 		} catch (e) {
+			deleting = false;
 			showDeleteConfirm = false;
 			showToast(m('routeDetail.deleteFailed', { error: errorCopy(e, m, 'routeDetail.deleteFailed') }), 'error');
 			return;
@@ -893,8 +900,8 @@
 							class="btn btn-outline btn-sm"
 							data-testid="route-delete-btn"
 							onclick={openDeleteConfirm}
-							disabled={deleteChecking}
-							aria-busy={deleteChecking}
+							disabled={deleteChecking || deleting}
+							aria-busy={deleteChecking || deleting}
 						>
 							<span class="material-symbols" aria-hidden="true">delete</span>
 							{m('routeDetail.deleteRoute')}

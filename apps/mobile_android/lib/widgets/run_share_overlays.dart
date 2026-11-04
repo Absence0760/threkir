@@ -297,12 +297,17 @@ class RunStickerContent extends StatelessWidget {
   final List<Waypoint> track;
   final RunShareInkSpec ink;
 
+  /// Whether the Threkir signature closes the content; off when the runner
+  /// turned the mark off.
+  final bool mark;
+
   const RunStickerContent({
     super.key,
     required this.layout,
     required this.stats,
     required this.track,
     required this.ink,
+    this.mark = true,
   });
 
   /// The strip is a single line, so it is laid out wide; every other layout
@@ -353,7 +358,7 @@ class RunStickerContent extends StatelessWidget {
                   ),
                 ),
               if (_hasRoute) ...[_route(150), const SizedBox(height: 16)],
-              brand,
+              if (mark) brand,
             ],
           ),
         );
@@ -366,7 +371,7 @@ class RunStickerContent extends StatelessWidget {
               if (_hasRoute) ...[_route(width * 0.82), const SizedBox(height: 14)],
               _row(stats, text.headlineMedium),
               const SizedBox(height: 16),
-              brand,
+              if (mark) brand,
             ],
           ),
         );
@@ -398,7 +403,7 @@ class RunStickerContent extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              brand,
+              if (mark) brand,
             ],
           ),
         );
@@ -420,7 +425,7 @@ class RunStickerContent extends StatelessWidget {
                 _row(rest, text.titleLarge),
               ],
               const SizedBox(height: 16),
-              brand,
+              if (mark) brand,
             ],
           ),
         );
@@ -462,6 +467,7 @@ class RunStickerShareCard extends StatelessWidget {
             runShareStats(l10n, run, preferences.unit, kinds: look.stats),
         track: runShareCardTrack(run, privacyZones),
         ink: RunShareInkSpec.of(look.ink),
+        mark: look.mark,
       ),
     );
   }
@@ -553,6 +559,7 @@ class RunPhotoShareCard extends StatelessWidget {
                         kinds: look.stats),
                     track: runShareCardTrack(run, privacyZones),
                     ink: ink,
+                    mark: look.mark,
                   ),
                   ),
                 ),
@@ -723,7 +730,8 @@ class RunPrShareCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 18),
-                    ThrekirShareBrand(color: ink.text, shadows: ink.shadows),
+                    if (look.mark)
+                      ThrekirShareBrand(color: ink.text, shadows: ink.shadows),
                   ],
                 ),
               ),

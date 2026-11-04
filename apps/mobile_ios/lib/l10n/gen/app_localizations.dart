@@ -17937,6 +17937,12 @@ abstract class AppLocalizations {
   /// **'Share link'**
   String get shareCardShareLink;
 
+  /// Switch in the run share sheet: whether the image carries the Threkir logo. On by default
+  ///
+  /// In en, this message translates to:
+  /// **'Show the Threkir mark'**
+  String get shareCardMark;
+
   /// Button to share the run as an image
   ///
   /// In en, this message translates to:

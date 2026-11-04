@@ -14958,6 +14958,10 @@
   "@shareCardShareLink": {
     "description": "Button in the run share sheet that shares the run's web link; it asks who may see the run first"
   },
+  "shareCardMark": "Show the Threkir mark",
+  "@shareCardMark": {
+    "description": "Switch in the run share sheet: whether the image carries the Threkir logo. On by default"
+  },
   "shareCardImage": "Image",
   "@shareCardImage": {
     "description": "Button to share the run as an image"

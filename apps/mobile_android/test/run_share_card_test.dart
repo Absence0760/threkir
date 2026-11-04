@@ -171,6 +171,25 @@ void main() {
       );
     });
 
+    testWidgets('with the mark turned off carries no Threkir signature',
+        (tester) async {
+      await tester.pumpWidget(_app(SizedBox(
+        width: 400,
+        height: 500,
+        child: RunShareCard(
+          run: _run(),
+          preferences: await _makePrefs(),
+          title: 'Morning run',
+          privacyZones: const [],
+          mark: false,
+        ),
+      )));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      expect(find.text('THREKIR'), findsNothing);
+      expect(find.byType(ThrekirShareBrand), findsNothing);
+    });
+
     testWidgets(
         'renders directions_run icon instead of a map when track has fewer '
         'than 2 points', (tester) async {
@@ -353,6 +372,24 @@ void main() {
           expect(find.text('DISTANCE'), findsOneWidget);
         });
       }
+    }
+
+    for (final layout in RunStickerLayout.values) {
+      testWidgets('${layout.name} with the mark off draws no signature',
+          (tester) async {
+        await _pumpCanvas(
+          tester,
+          RunStickerShareCard(
+            run: _run(track: _hillTrack),
+            preferences: await _makePrefs(),
+            privacyZones: const [],
+            look: RunShareLook(layout: layout, mark: false),
+          ),
+        );
+        expect(tester.takeException(), isNull);
+        expect(find.text('THREKIR'), findsNothing);
+        expect(find.text('DISTANCE'), findsOneWidget);
+      });
     }
 
     testWidgets('prints the stats the look picks, climb and heart rate too',
@@ -686,6 +723,28 @@ void main() {
       final json = jsonDecode(stored!) as Map<String, dynamic>;
       expect(json['layout'], 'strip');
       expect(json['ink'], 'dark');
+    });
+
+    testWidgets('the mark switch drops the signature and is kept for next '
+        'time', (tester) async {
+      await openSheet(tester);
+      await tapChip(tester, 'Sticker');
+      final markSwitch = find.byKey(const ValueKey('share-mark'));
+      await tester.ensureVisible(markSwitch);
+      expect(tester.widget<Switch>(markSwitch).value, isTrue);
+      await tester.tap(markSwitch);
+      await tester.pumpAndSettle();
+
+      final sticker =
+          tester.widget<RunStickerShareCard>(find.byType(RunStickerShareCard));
+      expect(sticker.look.mark, isFalse);
+      final json = jsonDecode((await SharedPreferences.getInstance())
+          .getString(shareLookPrefsKey)!) as Map<String, dynamic>;
+      expect(json['mark'], isFalse);
+
+      await tapChip(tester, 'Map card');
+      expect(
+          tester.widget<RunShareCard>(find.byType(RunShareCard)).mark, isFalse);
     });
 
     testWidgets('opens with the look saved on this device', (tester) async {

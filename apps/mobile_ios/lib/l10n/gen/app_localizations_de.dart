@@ -11169,6 +11169,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get shareCardShareLink => 'Link teilen';
 
   @override
+  String get shareCardMark => 'Threkir-Logo anzeigen';
+
+  @override
   String get shareCardImage => 'Bild';
 
   @override

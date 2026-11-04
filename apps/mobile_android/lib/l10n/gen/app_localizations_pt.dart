@@ -11156,6 +11156,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get shareCardShareLink => 'Partilhar ligação';
 
   @override
+  String get shareCardMark => 'Mostrar o logótipo Threkir';
+
+  @override
   String get shareCardImage => 'Imagem';
 
   @override
@@ -31189,6 +31192,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get shareCardShareLink => 'Compartilhar link';
+
+  @override
+  String get shareCardMark => 'Mostrar o logo da Threkir';
 
   @override
   String get shareCardImage => 'Imagem';

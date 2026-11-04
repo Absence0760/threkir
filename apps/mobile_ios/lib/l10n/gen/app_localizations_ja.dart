@@ -10589,6 +10589,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shareCardShareLink => 'リンクを共有';
 
   @override
+  String get shareCardMark => 'Threkirのロゴを表示';
+
+  @override
   String get shareCardImage => '画像';
 
   @override

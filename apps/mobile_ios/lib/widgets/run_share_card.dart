@@ -457,6 +457,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
             title: widget.title,
             privacyZones: widget.privacyZones,
             tileReadiness: _tiles,
+            mark: _look.mark,
           ),
         );
       case RunShareStyle.photo:
@@ -798,6 +799,24 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
                     _style != RunShareStyle.video &&
                     _style != RunShareStyle.versus)
                   ..._lookControls(l10n, theme),
+                if (_style != RunShareStyle.video &&
+                    _style != RunShareStyle.versus)
+                  // A Row, not a SwitchListTile: the sheet's tinted
+                  // container would hide a ListTile's ink.
+                  MergeSemantics(
+                    child: Row(
+                      children: [
+                        Expanded(child: Text(l10n.shareCardMark)),
+                        Switch(
+                          key: const ValueKey('share-mark'),
+                          value: _look.mark,
+                          onChanged: _busy
+                              ? null
+                              : (v) => _setLook(_look.copyWith(mark: v)),
+                        ),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: 16),
                 if (_style == RunShareStyle.video)
                   FilledButton.icon(
@@ -904,6 +923,10 @@ class RunShareCard extends StatelessWidget {
   /// basemap instead of sleeping. Null for a plain on-screen render.
   final MapTileReadiness? tileReadiness;
 
+  /// Whether the card's footer carries the Threkir mark; off when the runner
+  /// turned it off in the sheet.
+  final bool mark;
+
   const RunShareCard({
     super.key,
     required this.run,
@@ -911,6 +934,7 @@ class RunShareCard extends StatelessWidget {
     required this.title,
     required this.privacyZones,
     this.tileReadiness,
+    this.mark = true,
   });
 
   /// Tile URL for the share card. Honours the `TILE_URL_TEMPLATE`
@@ -1126,14 +1150,17 @@ class RunShareCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const Expanded(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: ThrekirShareBrand(color: Colors.white, markSize: 16),
-                  ),
-                ),
+              Expanded(
+                child: mark
+                    ? const Align(
+                        alignment: Alignment.centerLeft,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: ThrekirShareBrand(
+                              color: Colors.white, markSize: 16),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
               ),
               const Text(
                 '© MapTiler · OpenStreetMap',

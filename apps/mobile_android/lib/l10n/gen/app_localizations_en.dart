@@ -11044,6 +11044,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shareCardShareLink => 'Share link';
 
   @override
+  String get shareCardMark => 'Show the Threkir mark';
+
+  @override
   String get shareCardImage => 'Image';
 
   @override

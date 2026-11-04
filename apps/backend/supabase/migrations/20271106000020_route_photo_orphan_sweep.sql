@@ -94,7 +94,7 @@ returns setof text
 language plpgsql
 stable
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   v_limit integer := least(greatest(coalesce(p_limit, 100), 1), 500);
@@ -150,7 +150,7 @@ comment on function public.route_photo_orphan_paths(text[], integer) is
   'behind a mobile placeholder row). With p_paths null, only objects last '
   'written over 24 hours ago; with p_paths, those paths. At most 500 per '
   'call. Empty unless private.feature_flags route_photo_orphan_sweep is '
-  'enabled. Service role only; decisions 2293.';
+  'enabled. Service role only; decisions 2305.';
 
 -- ─────────────────── 4. nightly enqueue ───────────────────
 
@@ -162,7 +162,7 @@ create or replace function public.enqueue_route_photo_orphan_sweep()
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 begin
   if not coalesce(
@@ -192,25 +192,44 @@ comment on function public.enqueue_route_photo_orphan_sweep() is
   'when private.feature_flags route_photo_orphan_sweep is enabled. '
   'Singleton per queued/running backstop. Scheduled by pg_cron '
   'enqueue-route-photo-orphan-sweep; service_role may call it by hand. '
-  'decisions 2293.';
+  'decisions 2305.';
 
 -- ─────────────────── 5. prompt enqueue on delete ───────────────────
 
 -- Statement-level with a transition table, so a route delete that cascades
--- fifty photos queues ONE job, not fifty. The paths are capped at 1000 per
--- statement (an account deletion cascades every photo the user owns in one
--- statement); anything past the cap is still unreferenced and the backstop
--- erases it. The payload holds `{owner}/{photo}` paths, the same identifiers
+-- fifty photos hands over fifty paths at once. A foreign-key cascade is not
+-- one statement, though: Postgres runs it as one DELETE per parent row, so an
+-- account deletion fires this trigger once per route (and once more for the
+-- photos the user put on other people's routes). Each firing therefore appends
+-- to a paths job this transaction already queued, which nothing else can see
+-- or claim before commit, and starts a new one only when that job holds 1000
+-- paths. A transaction queues ceil(paths / 1000) jobs, never one per route.
+-- `scheduled_at` and `created_at` both defaulting to now() (the transaction's
+-- start) find that job through the jobs_queued_v2 partial index: a committed
+-- job from another transaction can only match by starting in the same
+-- microsecond, and taking its paths in too is harmless because the worklist
+-- re-checks every path.
+--
+-- The enqueue is auxiliary to the delete it rides on (conventions.md §
+-- Layered resilience): any error in it is caught, reported as a warning that
+-- names no path or user, and the delete commits. The bytes are then left to
+-- the nightly backstop, which finds every unreferenced object anyway.
+--
+-- The payload holds `{owner}/{photo}` paths, the same identifiers
 -- route_photo_process payloads already carry, and `purge-stale-jobs` drops
 -- the row 30 days after it finishes.
 create or replace function public.enqueue_route_photo_orphan_sweep_on_delete()
 returns trigger
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
+  v_cap constant integer := 1000;
   v_paths text[];
+  v_job bigint;
+  v_room integer;
+  v_take integer;
 begin
   if not coalesce(
     (select f.enabled from private.feature_flags f
@@ -220,25 +239,52 @@ begin
     return null;
   end if;
 
-  select array_agg(p order by p)
-    into v_paths
-    from (
-      select g.storage_path as p from gone g where g.storage_path <> ''
-      union
-      select g.thumb_512_path from gone g
-       where g.thumb_512_path is not null and g.thumb_512_path <> ''
-    ) s;
+  begin
+    select array_agg(p order by p)
+      into v_paths
+      from (
+        select g.storage_path as p from gone g where g.storage_path <> ''
+        union
+        select g.thumb_512_path from gone g
+         where g.thumb_512_path is not null and g.thumb_512_path <> ''
+      ) s;
 
-  if v_paths is null then
-    return null;
-  end if;
+    while coalesce(cardinality(v_paths), 0) > 0 loop
+      select j.id, v_cap - jsonb_array_length(j.payload -> 'paths')
+        into v_job, v_room
+        from public.jobs j
+       where j.kind = 'route_photo_orphan_sweep'
+         and j.status = 'queued'
+         and j.scheduled_at = now()
+         and j.created_at = now()
+         and case when jsonb_typeof(j.payload -> 'paths') = 'array'
+                  then jsonb_array_length(j.payload -> 'paths') end < v_cap
+       order by j.id desc
+       limit 1
+       for update;
 
-  insert into public.jobs (kind, payload, max_attempts)
-  values (
-    'route_photo_orphan_sweep',
-    jsonb_build_object('paths', to_jsonb(v_paths[1:1000])),
-    3
-  );
+      if found then
+        v_take := least(v_room, cardinality(v_paths));
+        update public.jobs
+           set payload = jsonb_build_object(
+                 'paths', (payload -> 'paths') || to_jsonb(v_paths[1:v_take])),
+               updated_at = now()
+         where id = v_job;
+      else
+        v_take := least(v_cap, cardinality(v_paths));
+        insert into public.jobs (kind, payload, max_attempts)
+        values (
+          'route_photo_orphan_sweep',
+          jsonb_build_object('paths', to_jsonb(v_paths[1:v_take])),
+          3
+        );
+      end if;
+
+      v_paths := v_paths[v_take + 1:];
+    end loop;
+  exception when others then
+    raise warning 'route_photo_orphan_sweep: prompt enqueue failed (%), the nightly backstop will erase these objects', sqlstate;
+  end;
   return null;
 end;
 $$;

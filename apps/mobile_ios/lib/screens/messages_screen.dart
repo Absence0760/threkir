@@ -101,7 +101,15 @@ class _MessagesScreenState extends State<MessagesScreen>
   bool _loading = true;
   Object? _loadError;
   List<DmThread> _threads = const [];
-  bool _refreshing = false;
+
+  /// Bumped when a pending delete is committed or undone. A list read started
+  /// before that still lists the conversation, and the pending hide that kept
+  /// it out is gone, so the read is dropped rather than painted.
+  int _readGen = 0;
+
+  /// The [_readGen] of the poll in flight, null when none is. A poll from an
+  /// older generation does not hold off the read the removal asks for.
+  int? _pollGen;
 
   /// When each conversation was last opened here. A list read that started
   /// before that answers with the count from before the thread marked itself
@@ -263,6 +271,7 @@ class _MessagesScreenState extends State<MessagesScreen>
     final removals = DmPendingHides.instance.removals;
     if (removals == _seenHideRemovals) return;
     _seenHideRemovals = removals;
+    _readGen++;
     _refresh();
   }
 
@@ -283,16 +292,19 @@ class _MessagesScreenState extends State<MessagesScreen>
       _loading = true;
       _loadError = null;
     });
+    final gen = _readGen;
     final startedAt = DateTime.now();
     try {
       final rows = await widget.api.fetchDmThreads();
       if (!mounted) return;
+      if (gen != _readGen) return _load();
       setState(() {
         _threads = _applyOpened(rows, startedAt);
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
+      if (gen != _readGen) return _load();
       setState(() {
         _loadError = e;
         _loading = false;
@@ -302,20 +314,23 @@ class _MessagesScreenState extends State<MessagesScreen>
 
   /// A poll keeps the list it has on a failure: the next tick is the retry.
   Future<void> _refresh() async {
-    if (_loading || _refreshing) return;
+    if (_loading || _pollGen == _readGen) return;
     final lifecycle = WidgetsBinding.instance.lifecycleState;
     if (lifecycle != null && lifecycle != AppLifecycleState.resumed) return;
     if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
     if (_loadError != null) return _load();
-    _refreshing = true;
+    final gen = _readGen;
+    _pollGen = gen;
     final startedAt = DateTime.now();
     try {
       final rows = await widget.api.fetchDmThreads();
-      if (mounted) setState(() => _threads = _applyOpened(rows, startedAt));
+      if (mounted && gen == _readGen) {
+        setState(() => _threads = _applyOpened(rows, startedAt));
+      }
     } catch (e) {
       debugPrint('messages inbox poll failed: $e');
     } finally {
-      _refreshing = false;
+      if (_pollGen == gen) _pollGen = null;
     }
     await _refreshCoachPreview();
   }

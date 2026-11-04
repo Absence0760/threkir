@@ -19,7 +19,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/last_map_view.dart';
+import '../lib/preferences.dart';
 import '../lib/screens/routes_heatmap_screen.dart';
+import '../lib/widgets/live_run_map.dart'
+    show mapHoverLine, mapLineCasing;
 import '../lib/widgets/map_attribution.dart';
 import '../lib/widgets/official_badge.dart';
 import 'pump_until.dart';
@@ -130,6 +133,7 @@ cm.DiscoverableRoutePin _pin({
   double lat = 39.74,
   double lng = -105.0,
   bool official = false,
+  double? elevationM,
 }) =>
     cm.DiscoverableRoutePin(
       id: id,
@@ -141,6 +145,7 @@ cm.DiscoverableRoutePin _pin({
       lat: lat,
       lng: lng,
       official: official,
+      elevationM: elevationM,
     );
 
 Position _fakePosition({double lat = 40.7128, double lng = -74.0060}) =>
@@ -586,6 +591,53 @@ void main() {
       expect(find.text('View route'), findsOneWidget);
       expect(find.byKey(const ValueKey('heatmap-selected-route')),
           findsOneWidget);
+      // The basemap-aware preview rung over the shared casing: no
+      // MAPTILER_KEY in tests, so the basemap is the light OSM fallback,
+      // where the old fixed cyan held under 3:1.
+      final lines = tester
+          .widget<PolylineLayer>(
+              find.byKey(const ValueKey('heatmap-selected-route')))
+          .polylines;
+      expect(lines.first.color, mapLineCasing);
+      expect(lines.last.color, mapHoverLine(darkBasemap: false));
+    });
+
+    testWidgets('the selection card reads elevation and runs in the reader\'s '
+        'unit and language', (tester) async {
+      SharedPreferences.setMockInitialValues({'use_miles': true});
+      final prefs = Preferences();
+      await prefs.init();
+      registerActivePreferences(prefs);
+      addTearDown(() async {
+        SharedPreferences.setMockInitialValues({});
+        final km = Preferences();
+        await km.init();
+        registerActivePreferences(km);
+      });
+      final api = _FakeApiClient()
+        ..nextPins = [_pin(elevationM: 229, runCount: 1)]
+        ..nextRouteById = cm.Route(
+          id: 'a',
+          userId: 'u',
+          name: 'Wash Park 5K Loop',
+          waypoints: const [
+            Waypoint(lat: 39.740, lng: -105.000),
+            Waypoint(lat: 39.745, lng: -105.005),
+          ],
+          distanceMetres: 5000,
+        );
+      await _pump(tester, api);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.text('1 route'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Wash Park 5K Loop'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.textContaining('751 ft'), findsOneWidget);
+      expect(find.textContaining('229 m'), findsNothing);
+      expect(find.textContaining('1 run'), findsWidgets);
     });
   });
 

@@ -328,6 +328,15 @@ Color mapDraftLine({required bool darkBasemap}) =>
 Color mapOverlapLine({required bool darkBasemap}) =>
     darkBasemap ? const Color(0xFFC084FC) : const Color(0xFF7E22CE);
 
+/// The previewed route on the routes heatmap. Twin of web's `mapHoverLine`.
+Color mapHoverLine({required bool darkBasemap}) =>
+    darkBasemap ? const Color(0xFF22D3EE) : const Color(0xFF0E7490);
+
+/// A route pinned ("kept on map") on the routes heatmap, distinct from
+/// [mapHoverLine]. Twin of web's `mapPinnedLine`.
+Color mapPinnedLine({required bool darkBasemap}) =>
+    darkBasemap ? const Color(0xFFA78BFA) : const Color(0xFF6D28D9);
+
 /// Dark casing under every solid map line, wider than the line so a 1.5 px
 /// edge shows either side and holds it apart from the raster's road
 /// strokes, which are baked into the tile and cannot be drawn under it.

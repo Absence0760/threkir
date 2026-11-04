@@ -14,14 +14,18 @@ import '../distance_bands.dart';
 import '../geocoding.dart';
 import '../heatmap_clustering.dart';
 import '../l10n/gen/app_localizations.dart';
-import '../preferences.dart' show formatDistanceForPref;
+import '../preferences.dart'
+    show formatDistanceForPref, formatElevationForPref;
 import '../quiet_location.dart';
 import '../widgets/live_run_map.dart'
     show
         basemapTileLayer,
         basemapVoidColour,
         currentBasemapIsDark,
-        currentTileUrl;
+        currentTileUrl,
+        mapHoverLine,
+        mapPinnedLine,
+        solidMapLine;
 import '../last_map_view.dart';
 import '../widgets/map_attribution.dart';
 import '../widgets/official_badge.dart';
@@ -798,48 +802,28 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                       ),
                   ],
                 ),
-              // Pinned ("kept") route lines — violet, distinct from the
-              // cyan preview, drawn below it and persistent until unpinned.
-              // Cartographic, like the cyan and the casing under both: chosen
-              // against arbitrary basemap tiles, so it is a fixed hex on the
-              // MAP and nowhere else. The chrome that names the same state
-              // takes `colorScheme.primary`, which is measured per brightness.
+              // Pinned ("kept") route lines, distinct from the preview, drawn
+              // below it and persistent until unpinned. Both take web's
+              // basemap-aware rungs (`mapPinnedLine` / `mapHoverLine`) over the
+              // shared casing: the fixed dark-map hexes held under 3:1 on a
+              // light basemap.
               if (_pinnedIds.isNotEmpty)
                 PolylineLayer(
                   key: const ValueKey('heatmap-pinned-routes'),
                   polylines: [
                     for (final id in _pinnedIds)
-                      if (_geomCache[id] != null) ...[
-                        Polyline(
-                          points: _geomCache[id]!,
-                          strokeWidth: 6,
-                          color: const Color(0x731E293B),
-                        ),
-                        Polyline(
-                          points: _geomCache[id]!,
-                          strokeWidth: 3.5,
-                          color: const Color(0xFF8B5CF6),
-                        ),
-                      ],
+                      if (_geomCache[id] != null)
+                        ...solidMapLine(_geomCache[id]!,
+                            mapPinnedLine(darkBasemap: darkBasemap)),
                   ],
                 ),
               // The previewed route's line — hidden until a pin / row is
-              // tapped. Dark casing + cyan body, matching web.
+              // tapped.
               if (_selectedLine != null)
                 PolylineLayer(
                   key: const ValueKey('heatmap-selected-route'),
-                  polylines: [
-                    Polyline(
-                      points: _selectedLine!,
-                      strokeWidth: 7,
-                      color: const Color(0x731E293B),
-                    ),
-                    Polyline(
-                      points: _selectedLine!,
-                      strokeWidth: 4,
-                      color: const Color(0xFF22D3EE),
-                    ),
-                  ],
+                  polylines: solidMapLine(
+                      _selectedLine!, mapHoverLine(darkBasemap: darkBasemap)),
                 ),
               // Halo ring under the selected route's start dot.
               if (_selectedPin != null)
@@ -849,8 +833,9 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                       point: LatLng(_selectedPin!.lat, _selectedPin!.lng),
                       radius: 16,
                       useRadiusInMeter: false,
-                      color: const Color(0x2922D3EE),
-                      borderColor: const Color(0xFF22D3EE),
+                      color: mapHoverLine(darkBasemap: darkBasemap)
+                          .withValues(alpha: 0.16),
+                      borderColor: mapHoverLine(darkBasemap: darkBasemap),
                       borderStrokeWidth: 2,
                     ),
                   ],
@@ -1089,7 +1074,8 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
     final meta = <String>[
       formatDistanceForPref(p.distanceM),
       if (p.surface.isNotEmpty) p.surface,
-      if (p.runCount > 0) '${p.runCount} run${p.runCount == 1 ? '' : 's'}',
+      if (p.runCount > 0)
+        AppLocalizations.of(context).routeDetailRunCount(p.runCount),
     ].join(' · ');
     return ListTile(
       dense: true,
@@ -1143,9 +1129,9 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
     final meta = <String>[
       formatDistanceForPref(p.distanceM),
       if (p.elevationM != null && p.elevationM! > 0)
-        '${p.elevationM!.round()} m',
+        formatElevationForPref(p.elevationM),
       if (p.surface.isNotEmpty) p.surface,
-      if (p.runCount > 0) '${p.runCount} run${p.runCount == 1 ? '' : 's'}',
+      if (p.runCount > 0) l10n.routeDetailRunCount(p.runCount),
     ].join(' · ');
     return Material(
       elevation: 8,

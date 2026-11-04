@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:ui_kit/ui_kit.dart' show AppSemanticColors;
 import '../lib/geocoding.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/l10n/gen/app_localizations_en.dart';
@@ -182,6 +183,30 @@ void main() {
         (tester) async {
       await _pump(tester, [_ultra, _richmond]);
       expect(find.text(_en.coachSeasonHint), findsNothing);
+      await drainRealtimeTimers(tester);
+    });
+  });
+
+  group('the daily allowance banner', () {
+    testWidgets('a count of messages left sits on the neutral surface',
+        (tester) async {
+      await _pump(tester, [_richmond]);
+      final banner = tester.widget<Container>(
+          find.byKey(const Key('coach-limit-banner')));
+      final cs = Theme.of(tester.element(find.byType(CoachScreen))).colorScheme;
+      expect(find.text(_en.coachMessagesLeft(2)), findsOneWidget);
+      expect(banner.color, cs.surfaceContainerHighest);
+      await drainRealtimeTimers(tester);
+    });
+
+    testWidgets('only an exhausted allowance takes the warning colour',
+        (tester) async {
+      await _pump(tester, [_richmond], usage: 2);
+      final banner = tester.widget<Container>(
+          find.byKey(const Key('coach-limit-banner')));
+      final theme = Theme.of(tester.element(find.byType(CoachScreen)));
+      expect(find.text(_en.coachLimitReachedFree), findsOneWidget);
+      expect(banner.color, AppSemanticColors.ofTheme(theme).warning);
       await drainRealtimeTimers(tester);
     });
   });

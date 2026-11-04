@@ -1617,13 +1617,20 @@ class _CoachScreenState extends State<CoachScreen> {
     } else {
       text = l10n.coachMessagesLeft(_remaining);
     }
+    // A count of what is left is information, so it sits on the neutral
+    // surface; only an exhausted allowance takes the warning colour.
+    final sem = AppSemanticColors.ofTheme(theme);
+    final background =
+        _limitReached ? sem.warning : cs.surfaceContainerHighest;
+    final foreground = _limitReached ? sem.onWarning : cs.onSurfaceVariant;
     return Container(
+      key: const Key('coach-limit-banner'),
       width: double.infinity,
-      color: cs.tertiaryContainer,
+      color: background,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Text(
         text,
-        style: theme.textTheme.bodySmall?.copyWith(color: cs.onTertiaryContainer),
+        style: theme.textTheme.bodySmall?.copyWith(color: foreground),
       ),
     );
   }

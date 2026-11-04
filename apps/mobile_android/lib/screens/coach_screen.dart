@@ -192,6 +192,10 @@ Uri? coachPlanAdjustWebUri(String href, String webBase) {
 /// Plan ids are uuids, so it can never be one.
 const kCoachSeasonOption = 'season';
 
+/// The plan-picker entry that opens the race calendar rather than picking a
+/// plan scope. Plan ids are uuids, so it can never be one.
+const kCoachFindRaceOption = 'find-race';
+
 /// The `/api/coach` request body. `plan_scope` says what the Coach reads:
 /// `plan` (the plan [planId], else the current one), `season` ([planId] and
 /// the plans queued after it) or `none` (no plan); `plan_id` is the plan the
@@ -1257,8 +1261,6 @@ class _CoachScreenState extends State<CoachScreen> {
                     ],
                   ),
                   if (_ctx != null) _buildContextStrip(theme, l10n),
-                  if (_ctx != null && _seasonPlans.length == 1)
-                    _buildSeasonHint(theme, l10n),
                   if (_viewingArchiveAt != null)
                     _buildArchiveBanner(theme, l10n),
                   if (_remaining <= 3) _buildLimitBanner(theme, l10n, cs),
@@ -1530,7 +1532,8 @@ class _CoachScreenState extends State<CoachScreen> {
         enabled: !_busy,
         tooltip: l10n.coachPlanPickerTooltip,
         initialValue: value,
-        onSelected: _onPlanChanged,
+        onSelected: (v) =>
+            v == kCoachFindRaceOption ? _openRaces() : _onPlanChanged(v),
         itemBuilder: (_) => [
           PopupMenuItem(value: '', child: Text(l10n.coachNoPlanOption)),
           if (_seasonPlans.length > 1)
@@ -1547,6 +1550,28 @@ class _CoachScreenState extends State<CoachScreen> {
                       ? l10n.coachPlanDone(p.name)
                       : p.name)),
             ),
+          // My season is only offered once a plan is queued behind the
+          // current one, so with one plan the menu says how to get it.
+          if (_seasonPlans.length == 1) ...[
+            const PopupMenuDivider(),
+            PopupMenuItem(
+              key: const Key('coach-season-hint-action'),
+              value: kCoachFindRaceOption,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(l10n.coachSeasonHint,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant)),
+                  const SizedBox(height: 4),
+                  Text(l10n.coachSeasonHintAction,
+                      style: theme.textTheme.labelLarge
+                          ?.copyWith(color: cs.primary)),
+                ],
+              ),
+            ),
+          ],
         ],
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1568,29 +1593,6 @@ class _CoachScreenState extends State<CoachScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  /// Shown while the runner has one plan and nothing queued after it: My
-  /// season only appears once a second plan is chained, and nothing else
-  /// on this screen says so.
-  Widget _buildSeasonHint(ThemeData theme, AppLocalizations l10n) {
-    final cs = theme.colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-      child: Wrap(
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Text(l10n.coachSeasonHint,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: cs.onSurfaceVariant)),
-          TextButton(
-            key: const Key('coach-season-hint-action'),
-            onPressed: _openRaces,
-            child: Text(l10n.coachSeasonHintAction),
-          ),
-        ],
       ),
     );
   }

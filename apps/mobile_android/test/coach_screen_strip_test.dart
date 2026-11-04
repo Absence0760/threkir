@@ -1,5 +1,6 @@
 // The Coach screen's header: the context strip (plan picker, runs window,
-// settings chips), the season hint under it and the daily-allowance banner.
+// settings chips), the season hint in the plan picker's menu and the
+// daily-allowance banner.
 // Pumped on a 360 dp phone, the narrow end of what the app supports.
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
@@ -163,12 +164,25 @@ void main() {
 
   group('the season hint', () {
     testWidgets(
-        'with one plan and nothing queued, points to adding the next race',
+        'with one plan and nothing queued, the picker menu points to adding '
+        'the next race, and the chat carries no standing hint',
         (tester) async {
       await _pump(tester, [_richmond]);
-      expect(find.text(_en.coachSeasonHint), findsOneWidget);
+      expect(find.text(_en.coachSeasonHint), findsNothing);
+      await tester.tap(find.byKey(const Key('coach-plan-picker')));
       final action = find.byKey(const Key('coach-season-hint-action'));
-      await tester.ensureVisible(action);
+      await pumpUntil(
+        tester,
+        () => action.evaluate().isNotEmpty,
+        describe: 'the season hint in the opened picker',
+      );
+      expect(
+          find.descendant(
+              of: action, matching: find.text(_en.coachSeasonHint)),
+          findsOneWidget);
+      expect(find.text(_en.coachSeasonOption), findsNothing);
+      // The menu's open transition runs on the fake clock.
+      await tester.pump(const Duration(milliseconds: 300));
       await tester.tap(action);
       await pumpUntil(
         tester,
@@ -181,13 +195,14 @@ void main() {
     testWidgets('is gone once a plan is queued, where My season is offered',
         (tester) async {
       await _pump(tester, [_ultra, _richmond]);
-      expect(find.text(_en.coachSeasonHint), findsNothing);
       await tester.tap(find.byKey(const Key('coach-plan-picker')));
       await pumpUntil(
         tester,
         () => find.text(_en.coachSeasonOption).evaluate().isNotEmpty,
         describe: 'the My season option in the opened picker',
       );
+      expect(find.text(_en.coachSeasonHint), findsNothing);
+      expect(find.byKey(const Key('coach-season-hint-action')), findsNothing);
       await drainRealtimeTimers(tester);
     });
   });

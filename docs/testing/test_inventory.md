@@ -475,7 +475,7 @@ Issue #1213: the mobile Coach plan picker. `coachRequestBody` carries `plan_scop
 
 ### `apps/mobile_android/test/coach_screen_strip_test.dart` — 7 tests
 
-The Coach screen header on a 360 dp phone, everything awaited through `pumpUntil`. With one plan and nothing queued, the season hint is shown and its action opens `RacesScreen`; with a plan queued it is gone. The messages-left banner sits on `surfaceContainerHighest` and only an exhausted allowance takes `AppSemanticColors.warning`. The context strip keeps the runs window on screen at text scale 1.0 and 2.0 (one declaration, two cases) and the composer stays on screen. The plan is named once, untruncated, in the strip's picker (the AppBar dropdown that duplicated it is gone), and a long plan name wraps at 2x text instead of being cut off.
+The Coach screen header on a 360 dp phone, every async load awaited through `pumpUntil` (only the plan menu's open transition advances the fake clock). With one plan and nothing queued, the season hint is not a standing line on the screen: it is the last entry of the opened plan picker's menu, and choosing it opens `RacesScreen`; with a plan queued the menu offers My season and no hint. The messages-left banner sits on `surfaceContainerHighest` and only an exhausted allowance takes `AppSemanticColors.warning`. The context strip keeps the runs window on screen at text scale 1.0 and 2.0 (one declaration, two cases) and the composer stays on screen. The plan is named once, untruncated, in the strip's picker (the AppBar dropdown that duplicated it is gone), and a long plan name wraps at 2x text instead of being cut off.
 
 ### `apps/mobile_android/test/coach_screen_helpers_test.dart` — 19 tests
 

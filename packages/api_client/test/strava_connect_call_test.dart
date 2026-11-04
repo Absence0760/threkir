@@ -88,4 +88,28 @@ void main() {
     );
     await expectLater(connect(), throwsA(isA<FunctionException>()));
   });
+
+  test('a sync Strava refuses for a revoked grant throws the reconnect reason',
+      () async {
+    fake.answer = (
+      401,
+      jsonEncode({'error': 'refresh_failed', 'reconnect_required': true}),
+      'application/json'
+    );
+    await expectLater(
+      api.syncStrava(),
+      throwsA(isA<StravaConnectFailure>()
+          .having((f) => f.reason, 'reason', StravaConnectError.reconnect)
+          .having((f) => f.code, 'code', 'refresh_failed')),
+    );
+    expect(jsonDecode(fake.requests.single.body),
+        {'action': 'sync', 'lookbackDays': 90});
+  });
+
+  test('an unworded sync refusal passes through as the transport raised it',
+      () async {
+    fake.answer =
+        (400, jsonEncode({'error': 'strava_not_connected'}), 'application/json');
+    await expectLater(api.syncStrava(), throwsA(isA<FunctionException>()));
+  });
 }

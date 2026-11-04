@@ -13,6 +13,7 @@ export const STRAVA_CONNECT_ERROR_KEYS: Record<Exclude<StravaConnectError, 'gene
 	missing_scope: 'settingsIntegrations.stravaErrMissingScope',
 	code_rejected: 'settingsIntegrations.stravaErrCodeRejected',
 	signed_out: 'errorCopy.signedOut',
+	reconnect: 'settingsIntegrations.stravaErrReconnect',
 };
 
 /// The error to throw for a connect the function refused with [code], or null

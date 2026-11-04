@@ -114,9 +114,11 @@ export function isStravaLookbackReachable(days: number): boolean {
 	return Number.isFinite(days) && days > 0 && days <= STRAVA_LOOKBACK_MAX_DAYS;
 }
 
-/// Why a `connect` failed, in the terms the Settings card words differently.
-/// The function answers a stable code (`strava-import/connect_errors.ts`) and
-/// a client never renders it: an unknown or absent code is `generic`, which
+/// Why a `strava-import` call failed, in the terms the Settings card words
+/// differently. The function answers a stable code (`connect` from
+/// `strava-import/connect_errors.ts`; `sync` adds `refresh_failed`, Strava
+/// refusing the stored grant, which only connecting again repairs) and a
+/// client never renders it: an unknown or absent code is `generic`, which
 /// each surface reads through its own error classifier so a dropped
 /// connection still says "you're offline".
 export type StravaConnectError =
@@ -124,6 +126,7 @@ export type StravaConnectError =
 	| 'missing_scope'
 	| 'code_rejected'
 	| 'signed_out'
+	| 'reconnect'
 	| 'generic';
 
 export function stravaConnectError(code: string | null | undefined): StravaConnectError {
@@ -138,6 +141,8 @@ export function stravaConnectError(code: string | null | undefined): StravaConne
 			return 'code_rejected';
 		case 'unauthorized':
 			return 'signed_out';
+		case 'refresh_failed':
+			return 'reconnect';
 		default:
 			return 'generic';
 	}

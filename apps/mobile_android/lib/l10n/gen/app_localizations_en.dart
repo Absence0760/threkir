@@ -8334,6 +8334,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Strava didn\'t accept the sign-in. Try connecting again.';
 
   @override
+  String get integrationsStravaErrReconnect =>
+      'Strava no longer accepts this connection. Disconnect Strava, then connect it again.';
+
+  @override
   String get integrationsStravaConnected => 'Strava connected.';
 
   @override

@@ -35,9 +35,9 @@ import 'plan_calendar_feed_screen.dart';
 import 'races_screen.dart';
 import 'watch_live_screen.dart';
 
-/// The reason a refused Strava connect gives, in the runner's language. The
-/// function's code picks it (`stravaConnectError`) and is never shown itself;
-/// web words the same reasons through `stravaConnectAppError`.
+/// The reason a refused Strava connect or sync gives, in the runner's
+/// language. The function's code picks it (`stravaConnectError`) and is never
+/// shown itself; web words the same reasons through `stravaConnectAppError`.
 String stravaConnectErrorMessage(
     AppLocalizations l10n, StravaConnectError reason) {
   switch (reason) {
@@ -49,6 +49,8 @@ String stravaConnectErrorMessage(
       return l10n.integrationsStravaErrCodeRejected;
     case StravaConnectError.signedOut:
       return l10n.authErrorNotSignedIn;
+    case StravaConnectError.reconnect:
+      return l10n.integrationsStravaErrReconnect;
     case StravaConnectError.generic:
       return l10n.authErrorGeneric;
   }
@@ -322,7 +324,12 @@ class _SettingsIntegrationsScreenState
     } catch (e) {
       debugPrint('[SettingsIntegrationsScreen] Strava sync failed: $e');
       if (!mounted) return;
-      showTopBanner(context, l10n.integrationsSyncFailed(friendlyError(l10n, e)));
+      showTopBanner(
+        context,
+        l10n.integrationsSyncFailed(e is StravaConnectFailure
+            ? stravaConnectErrorMessage(l10n, e.reason)
+            : friendlyError(l10n, e)),
+      );
     } finally {
       if (mounted) setState(() => _stravaBusy = false);
     }

@@ -11267,6 +11267,10 @@
   "@integrationsStravaErrCodeRejected": {
     "description": "Reason when Strava refused the authorization code or the sign-in returned none"
   },
+  "integrationsStravaErrReconnect": "Strava no longer accepts this connection. Disconnect Strava, then connect it again.",
+  "@integrationsStravaErrReconnect": {
+    "description": "Reason after 'Strava sync failed:' when Strava no longer accepts the stored connection (revoked grant); only disconnecting and connecting again repairs it"
+  },
   "integrationsStravaConnected": "Strava connected.",
   "@integrationsStravaConnected": {
     "description": "Banner shown after Strava connects successfully"

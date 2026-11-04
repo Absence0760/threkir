@@ -2155,6 +2155,7 @@ export const messages = {
 	"settingsIntegrations.stravaConnectFailed": "Falha ao ligar o Strava: {error}",
 	"settingsIntegrations.stravaErrMissingScope": "O Strava não partilhou todas as suas atividades. Ligue novamente e deixe todas as permissões assinaladas.",
 	"settingsIntegrations.stravaErrCodeRejected": "O Strava não aceitou o início de sessão. Tente ligar novamente.",
+	"settingsIntegrations.stravaErrReconnect": "O Strava deixou de aceitar esta ligação. Desligue o Strava e volte a ligá-lo.",
 	"settingsIntegrations.stravaErrDenied": "O acesso não foi permitido no Strava.",
 	"settingsIntegrations.stravaErrStateMismatch": "Não foi possível verificar o início de sessão. Recomece a partir das Definições; se continuar a acontecer, o seu navegador pode estar a bloquear o armazenamento deste separador.",
 	"settingsIntegrations.stravaNotConfigured": "O Strava não está configurado nesta build (PUBLIC_STRAVA_CLIENT_ID ausente).",

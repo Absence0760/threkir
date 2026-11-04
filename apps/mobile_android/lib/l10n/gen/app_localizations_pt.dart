@@ -8420,6 +8420,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'O Strava não aceitou o início de sessão. Tente ligar novamente.';
 
   @override
+  String get integrationsStravaErrReconnect =>
+      'O Strava deixou de aceitar esta ligação. Desligue o Strava e volte a ligá-lo.';
+
+  @override
   String get integrationsStravaConnected => 'Strava ligado.';
 
   @override
@@ -28452,6 +28456,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get integrationsStravaErrCodeRejected =>
       'O Strava não aceitou o login. Tente conectar de novo.';
+
+  @override
+  String get integrationsStravaErrReconnect =>
+      'O Strava não aceita mais esta conexão. Desconecte o Strava e conecte de novo.';
 
   @override
   String get integrationsStravaConnected => 'Strava conectado.';

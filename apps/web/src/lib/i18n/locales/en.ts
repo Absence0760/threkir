@@ -2169,6 +2169,7 @@ export const en = {
 	"settingsIntegrations.stravaConnectFailed": "Strava connect failed: {error}",
 	"settingsIntegrations.stravaErrMissingScope": "Strava didn't share all your activities. Connect again and leave every permission ticked.",
 	"settingsIntegrations.stravaErrCodeRejected": "Strava didn't accept the sign-in. Try connecting again.",
+	"settingsIntegrations.stravaErrReconnect": "Strava no longer accepts this connection. Disconnect Strava, then connect it again.",
 	"settingsIntegrations.stravaErrDenied": "Access wasn't allowed on Strava.",
 	"settingsIntegrations.stravaErrStateMismatch": "The sign-in couldn't be verified. Start again from Settings; if it keeps happening, your browser may be blocking storage for this tab.",
 	"settingsIntegrations.stravaNotConfigured": "Strava is not configured on this build (missing PUBLIC_STRAVA_CLIENT_ID).",

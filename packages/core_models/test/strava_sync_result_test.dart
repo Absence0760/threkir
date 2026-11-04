@@ -228,6 +228,14 @@ void main() {
     expect(stravaConnectError(null), StravaConnectError.generic);
   });
 
+  test('a grant Strava refuses asks the runner to connect again', () {
+    // `sync` answers `refresh_failed` when Strava rejects the stored refresh
+    // token; retrying cannot help, so it is a reason of its own, not generic.
+    expect(stravaConnectError('refresh_failed'), StravaConnectError.reconnect);
+    expect(stravaConnectError('strava_not_connected'),
+        StravaConnectError.generic);
+  });
+
   test(
       'every code the connect action answers is either worded or deliberately '
       'generic', () {

@@ -207,6 +207,13 @@ test('a connect refusal code names the reason the card words, never itself', () 
 	assert.equal(stravaConnectError(undefined), 'generic');
 });
 
+test('a grant Strava refuses asks the runner to connect again', () => {
+	// `sync` answers `refresh_failed` when Strava rejects the stored refresh
+	// token; retrying cannot help, so it is a reason of its own, not `generic`.
+	assert.equal(stravaConnectError('refresh_failed'), 'reconnect');
+	assert.equal(stravaConnectError('strava_not_connected'), 'generic');
+});
+
 test('every code the connect action answers is either worded or deliberately generic', () => {
 	// The function's list is the contract (`connect_errors.ts`). A code added
 	// there falls to `generic` here until someone decides it deserves words,

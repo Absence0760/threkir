@@ -2151,6 +2151,7 @@ export const messages = {
 	"settingsIntegrations.stravaConnectFailed": "Strava の連携に失敗しました: {error}",
 	"settingsIntegrations.stravaErrMissingScope": "Strava がすべてのアクティビティを共有しませんでした。もう一度連携し、すべての権限にチェックを入れたままにしてください。",
 	"settingsIntegrations.stravaErrCodeRejected": "Strava がサインインを受け付けませんでした。もう一度連携してください。",
+	"settingsIntegrations.stravaErrReconnect": "Strava がこの連携を受け付けなくなりました。連携を解除してから、もう一度連携してください。",
 	"settingsIntegrations.stravaErrDenied": "Strava でアクセスが許可されませんでした。",
 	"settingsIntegrations.stravaErrStateMismatch": "サインインを確認できませんでした。設定からやり直してください。繰り返し発生する場合は、ブラウザがこのタブのストレージをブロックしている可能性があります。",
 	"settingsIntegrations.stravaNotConfigured": "このビルドでは Strava が設定されていません（PUBLIC_STRAVA_CLIENT_ID がありません）。",

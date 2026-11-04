@@ -2250,6 +2250,7 @@
   "integrationsStravaErrNotConfigured": "Strava ist auf diesem Server noch nicht eingerichtet.",
   "integrationsStravaErrMissingScope": "Strava hat nicht alle deine Aktivitäten freigegeben. Verbinde dich erneut und lass alle Berechtigungen angehakt.",
   "integrationsStravaErrCodeRejected": "Strava hat die Anmeldung nicht akzeptiert. Versuche es erneut.",
+  "integrationsStravaErrReconnect": "Strava akzeptiert diese Verbindung nicht mehr. Trenne Strava und verbinde es dann erneut.",
   "integrationsStravaConnected": "Strava verbunden.",
   "integrationsSyncResult": "Synchronisiert. {imported} neu, {skipped} bereits vorhanden.",
   "integrationsSyncPartial": "Synchronisierung vorzeitig beendet. {imported} neu, {skipped} bereits vorhanden – einige Aktivitäten wurden nicht abgerufen. Erneut synchronisieren, um sie zu vervollständigen.",

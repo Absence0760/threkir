@@ -5,7 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/settings_integrations_screen.dart';
 
-/// A refused Strava connect used to put whatever the function's body held
+/// A refused Strava connect (or a sync Strava refuses for a revoked grant,
+/// `refresh_failed`) used to put whatever the function's body held
 /// into "Strava connect failed: {error}" — a machine code, or for a missing
 /// permission an English sentence in every locale. The code now picks a
 /// reason and the reason picks the sentence.
@@ -18,6 +19,7 @@ void main() {
     'invalid_code',
     'unauthorized',
     'store_tokens_failed',
+    'refresh_failed',
   ];
 
   for (final locale in AppLocalizations.supportedLocales) {
@@ -42,6 +44,8 @@ void main() {
         l10n.integrationsStravaErrCodeRejected);
     expect(stravaConnectErrorMessage(l10n, StravaConnectError.signedOut),
         l10n.authErrorNotSignedIn);
+    expect(stravaConnectErrorMessage(l10n, StravaConnectError.reconnect),
+        l10n.integrationsStravaErrReconnect);
     expect(stravaConnectErrorMessage(l10n, StravaConnectError.generic),
         l10n.authErrorGeneric);
   });

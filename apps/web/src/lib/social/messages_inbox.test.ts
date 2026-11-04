@@ -6,7 +6,9 @@ import {
 	MESSAGES_COACH_ROW_KEY,
 	coachInboxPreview,
 	inboxEntries,
-	parseCoachInboxPlacement
+	parseCoachInboxPlacement,
+	partitionArchived,
+	unreadDmBadgeCount
 } from './messages_inbox';
 
 const thread = (id: string, lastAt: string) => ({ id, lastAt });
@@ -127,4 +129,26 @@ test('a long preview is cut on a code point with an ellipsis', () => {
 	assert.equal(Array.from(cut).length, COACH_PREVIEW_MAX);
 	assert.equal(Array.from(cut)[0], '\u{1F3C3}');
 	assert.equal(coachInboxPreview('x'.repeat(COACH_PREVIEW_MAX)), 'x'.repeat(COACH_PREVIEW_MAX));
+});
+
+test('archived conversations leave the inbox for the Archived list, order kept', () => {
+	const t = (id: string, archived: boolean) => ({ id, unread: 0, muted: false, archived });
+	const { inbox, archived } = partitionArchived([t('a', false), t('b', true), t('c', false), t('d', true)]);
+	assert.deepEqual(inbox.map((x) => x.id), ['a', 'c']);
+	assert.deepEqual(archived.map((x) => x.id), ['b', 'd']);
+	assert.deepEqual(partitionArchived([]), { inbox: [], archived: [] });
+});
+
+test('the badge counts unread only in conversations neither muted nor archived', () => {
+	assert.equal(
+		unreadDmBadgeCount([
+			{ unread: 2, muted: false, archived: false },
+			{ unread: 5, muted: true, archived: false },
+			{ unread: 3, muted: false, archived: true },
+			{ unread: 1, muted: false, archived: false },
+		]),
+		3
+	);
+	assert.equal(unreadDmBadgeCount([{ unread: -4, muted: false, archived: false }]), 0);
+	assert.equal(unreadDmBadgeCount([]), 0);
 });

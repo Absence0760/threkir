@@ -81,6 +81,34 @@ List<InboxEntry<T>> inboxEntries<T>(
   return [...dms.sublist(0, index), row, ...dms.sublist(index)];
 }
 
+/// The inbox's conversations and its Archived list, each in the order given.
+/// A conversation is archived only while nothing newer than the archive
+/// arrived, which `dm_threads()` (migration 20271105000001) has already
+/// decided, so a reply is never filed away.
+({List<T> inbox, List<T> archived}) partitionArchived<T>(
+  List<T> threads, {
+  required bool Function(T) archived,
+}) {
+  final inbox = <T>[];
+  final filed = <T>[];
+  for (final t in threads) {
+    (archived(t) ? filed : inbox).add(t);
+  }
+  return (inbox: inbox, archived: filed);
+}
+
+/// The nav badge: unread messages in conversations the runner has neither
+/// muted nor archived. A muted one is still listed with its own count.
+int unreadDmBadgeCount(
+    Iterable<({int unread, bool muted, bool archived})> threads) {
+  var total = 0;
+  for (final t in threads) {
+    if (t.muted || t.archived) continue;
+    total += t.unread < 0 ? 0 : t.unread;
+  }
+  return total;
+}
+
 /// How long the Coach row's preview may run, in code points, before it is cut
 /// with an ellipsis.
 const int kCoachPreviewMax = 140;

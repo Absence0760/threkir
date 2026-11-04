@@ -2964,7 +2964,7 @@ export const messages = {
 	"landing.featurePlansBody": "目標レース、目標タイム、週あたりの日数を入れると、今の走力から各週を組み立てます。",
 	"landing.platformLive": "公開中",
 	"landing.platformInTesting": "テスト中",
-	"landing.platformsNote": "スマートフォンとウォッチのアプリは完成して社内テスト中ですが、まだアプリストアには出ていません。まずはウェブで始めれば、公開時にアカウントがそのまま使えます。",
+	"landing.platformsNote": "{platforms}のアプリは社内テスト中で、まだアプリストアには出ていません。いまは他のプラットフォームで始めておけば、公開時にアカウントがそのまま使えます。",
 	"landing.createFreeAccount": "無料アカウントを作成",
 	"landing.navApps": "アプリ",
 	"landing.navFeatures": "機能",

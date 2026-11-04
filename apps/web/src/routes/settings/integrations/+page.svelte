@@ -3,6 +3,7 @@
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
@@ -388,16 +389,16 @@
 		<div class="skeleton-stack" aria-hidden="true">
 			{#each Array(4) as _, i (i)}
 				<div class="skel-row">
-					<span class="skel skel-icon"></span>
+					<SkeletonBlock height="2rem" width="2rem" radius="var(--radius-md)" />
 					<div class="skel-info">
-						<span class="skel skel-line skel-w-30"></span>
-						<span class="skel skel-line skel-w-60"></span>
+						<SkeletonBlock height="0.85rem" width="30%" />
+						<SkeletonBlock height="0.85rem" width="60%" />
 					</div>
-					<span class="skel skel-btn"></span>
+					<SkeletonBlock height="2.2rem" width="6rem" radius="var(--radius-md)" />
 				</div>
 			{/each}
 		</div>
-		<p class="sr-only" role="status">{m('settingsIntegrations.loading')}</p>
+		<p class="visually-hidden" role="status">{m('settingsIntegrations.loading')}</p>
 	{:else}
 		{#if integrations.every((i) => !i.connected)}
 			<section class="card empty-card">
@@ -786,32 +787,7 @@
 		padding: var(--space-lg);
 		pointer-events: none;
 	}
-	.skel-icon { width: 2rem; height: 2rem; border-radius: var(--radius-md); flex-shrink: 0; }
 	.skel-info { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; }
-	.skel-btn { width: 6rem; height: 2.2rem; border-radius: var(--radius-md); flex-shrink: 0; }
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line { height: 0.85rem; }
-	.skel-w-30 { width: 30%; }
-	.skel-w-60 { width: 60%; }
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
 	.sr-only {
 		position: absolute;
 		width: 1px;

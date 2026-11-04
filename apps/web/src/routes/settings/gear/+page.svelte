@@ -40,6 +40,7 @@
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 
 	let gear = $state<GearWithDistance[]>([]);
 	let loading = $state(true);
@@ -558,14 +559,14 @@
 			{#each Array(3) as _, i (i)}
 				<div class="skel-row">
 					<div class="skel-info">
-						<span class="skel skel-line skel-w-40"></span>
-						<span class="skel skel-bar"></span>
-						<span class="skel skel-line skel-w-30"></span>
+						<SkeletonBlock height="0.85rem" width="40%" />
+						<SkeletonBlock height="0.4rem" radius="3px" />
+						<SkeletonBlock height="0.85rem" width="30%" />
 					</div>
 				</div>
 			{/each}
 		</div>
-		<p class="sr-only" role="status">{t('settingsGear.loadingGear')}</p>
+		<p class="visually-hidden" role="status">{t('settingsGear.loadingGear')}</p>
 	{:else if visible.length === 0}
 		<section class="card empty-card">
 			<span class="material-symbols empty-icon" aria-hidden="true">
@@ -1104,30 +1105,6 @@
 		pointer-events: none;
 	}
 	.skel-info { flex: 1; display: flex; flex-direction: column; gap: 0.4rem; }
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line { height: 0.85rem; }
-	.skel-bar { height: 0.4rem; border-radius: 3px; }
-	.skel-w-30 { width: 30%; }
-	.skel-w-40 { width: 40%; }
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
 	.sr-only {
 		position: absolute;
 		width: 1px;

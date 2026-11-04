@@ -19,6 +19,7 @@
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { effective, loadSettings, updateUniversal } from '#lib/settings/settings.ts';
 	import { isOffRouteEscalationEnabled } from '#lib/safety/off_route_flag.ts';
 	import { normaliseE164 } from '#lib/safety/e164.ts';
@@ -285,10 +286,10 @@
 
 		{#if loading}
 			<div class="skel-list" aria-hidden="true">
-				<span class="skel skel-row"></span>
-				<span class="skel skel-row"></span>
+				<SkeletonBlock height="3.25rem" radius="var(--radius-md)" />
+				<SkeletonBlock height="3.25rem" radius="var(--radius-md)" />
 			</div>
-			<p class="sr-only" role="status">{m('safety.loading')}</p>
+			<p class="visually-hidden" role="status">{m('safety.loading')}</p>
 		{:else if loadError}
 			<div class="error-banner" role="alert" data-testid="safety-load-error">
 				<span class="material-symbols" aria-hidden="true">error</span>
@@ -712,23 +713,6 @@
 	}
 
 	.skel-list { display: flex; flex-direction: column; gap: var(--space-sm); }
-	.skel {
-		display: block;
-		background: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 25%,
-			var(--color-fill-subtle) 50%,
-			var(--color-bg-tertiary) 75%
-		);
-		background-size: 200% 100%;
-		animation: shimmer 1.4s ease-in-out infinite;
-		border-radius: var(--radius-md);
-	}
-	.skel-row { height: 3.25rem; }
-	@keyframes shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
 
 	.material-symbols {
 		font-family: 'Material Symbols Outlined', system-ui;
@@ -740,20 +724,7 @@
 	.spin { animation: spin 0.9s linear infinite; }
 	@keyframes spin { to { transform: rotate(360deg); } }
 
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
-
 	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
 		.spin { animation: none; }
 	}
 </style>

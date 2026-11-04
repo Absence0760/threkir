@@ -153,9 +153,9 @@ need a notarised log of changes prior to a specific date, email
 ## 2026-11-04 — MapTiler / AWS Open Data Terrain Tiles — the 3D course preview reaches logged-out visitors (no new sub-processor, no new data category)
 
 * **What changes**: "Preview in 3D" is also offered on the public route share page `/share/route/[id]` (issue #1282), so a visitor without an account can now cause the elevation-tile requests the 2026-11-02 entry describes. Same providers, same data (requester IP + the tile coordinates of the course on screen).
-* **Gate**: stricter than the signed-in surfaces. The dialog always shows its "Load preview" card on this page, even when the cookie banner was accepted, as the page's 2D map already does; nothing is requested before that tap. The course it draws is the privacy-clipped line the page already shows (`clip_route_for_viewer`), and the page offers no video export.
+* **Gate**: stricter than the signed-in surfaces. The dialog always shows its "Load preview" card on this page, even when the cookie banner was accepted; nothing is requested before that tap. *Corrected 2026-11-04 (decisions § 2337):* this entry first said the page's 2D map already worked this way. It didn't: with the banner accepted, the 2D map skipped its "Load map" card and rendered blank. Since PR #1289, the 2D map on both share pages (`/share/run/[id]`, `/share/route/[id]`) also waits for its own "Load map" tap on every view, banner or no banner, and nothing is requested before that tap. The course it draws is the privacy-clipped line the page already shows (`clip_route_for_viewer`), and the page offers no video export.
 * **Activation date**: the release that ships it. No objection window applies (existing sub-processors, existing data category). **CISO / Security Analyst to confirm before release**, since it extends a third-party request to an unauthenticated audience.
-* **Opt-out path**: don't tap "Load preview".
+* **Opt-out path**: don't tap "Load preview" (or "Load map" for the 2D map).
 
 ## 2026-11-04 — Anthropic — the route-describe prompt is now listed (no new sub-processor, no new data category)
 

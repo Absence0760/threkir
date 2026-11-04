@@ -10,6 +10,7 @@ import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow, Status
 import '../l10n/gen/app_localizations.dart';
 import '../local_route_store.dart';
 import '../preferences.dart';
+import '../quiet_location.dart';
 import '../auth_error.dart';
 import '../backend_timeout.dart';
 import '../widgets/error_state.dart';
@@ -29,11 +30,16 @@ class ExploreRoutesScreen extends StatefulWidget {
   final LocalRouteStore routeStore;
   final Preferences preferences;
 
+  /// Test seam for the "Near me" fix. Production callers leave it null and
+  /// get [locateForBrowse].
+  final Future<Position> Function()? locateFn;
+
   const ExploreRoutesScreen({
     super.key,
     this.apiClient,
     required this.routeStore,
     required this.preferences,
+    this.locateFn,
   });
 
   @override
@@ -232,12 +238,10 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
     });
 
     try {
-      var perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) {
-        perm = await Geolocator.requestPermission();
-      }
-      if (perm == LocationPermission.denied ||
-          perm == LocationPermission.deniedForever) {
+      final Position pos;
+      try {
+        pos = await (widget.locateFn ?? locateForBrowse)();
+      } on PermissionDeniedException {
         if (mounted) {
           setState(() {
             _error = AppLocalizations.of(context)
@@ -247,13 +251,6 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
         }
         return;
       }
-
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.low,
-          timeLimit: Duration(seconds: 10),
-        ),
-      );
 
       final results = await api.nearbyPublicRoutes(
         lat: pos.latitude,

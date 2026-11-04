@@ -23,6 +23,7 @@ import '../widgets/live_run_map.dart'
         basemapVoidColour,
         currentBasemapIsDark,
         currentTileUrl;
+import '../last_map_view.dart';
 import '../widgets/map_attribution.dart';
 import '../widgets/official_badge.dart';
 import '../widgets/top_banner.dart';
@@ -45,9 +46,11 @@ import 'public_route_screen.dart';
 ///   * AppBar Filters button — lens (popular/friends/featured/hidden
 ///     gems) + multi-select race-distance bands (5K/10K/Half/Marathon/
 ///     Ultra), with an active-filter badge.
-///   * Locate-me FAB — Geolocator current-position fix at zoom 14. The
+///   * Locate-me FAB — a browse fix (`locateForBrowse`) at zoom 14. The
 ///     map also auto-centres on the user's location once on open (until
-///     they pan), rather than sitting at the neutral London default.
+///     they pan). Until a fix lands, and when none does, it opens on the
+///     view it was last left on (`last_map_view.dart`); with neither, it
+///     widens to the route data.
 class RoutesHeatmapScreen extends StatefulWidget {
   final ApiClient api;
 
@@ -139,6 +142,14 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
   /// so the multiple give-up paths don't widen the camera more than once.
   bool _dataFallbackStarted = false;
 
+  /// Where the map was last left, read once on open. The camera opens there
+  /// while a fix is pending and stays there when none arrives.
+  MapView? _savedView;
+
+  /// The camera as of the last map event, saved as the next visit's
+  /// [_savedView] when the screen closes.
+  MapCamera? _lastCamera;
+
   /// Pixel radius for merging pins into a cluster at the current zoom.
   static const double _clusterRadiusPx = 50.0;
 
@@ -188,11 +199,26 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
   @override
   void initState() {
     super.initState();
+    unawaited(_loadSavedView());
     unawaited(_backgroundLocate());
+  }
+
+  /// Read beside the location fix rather than ahead of it, so a slow or
+  /// failing preferences read never holds up centring on the runner.
+  Future<void> _loadSavedView() async {
+    final saved = await loadLastBrowseMapView();
+    if (!mounted || saved == null) return;
+    _savedView = saved;
+    _openOnSavedView();
   }
 
   @override
   void dispose() {
+    final camera = _lastCamera;
+    if (camera != null && (_didInitialFit || _userMovedMap)) {
+      unawaited(
+          saveLastBrowseMapView((center: camera.center, zoom: camera.zoom)));
+    }
     _debounce?.cancel();
     _searchDebounce?.cancel();
     _searchCtl.dispose();
@@ -511,7 +537,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
     try {
       final pos = widget.locateFn != null
           ? await widget.locateFn!()
-          : await _platformLocate();
+          : await locateForBrowse();
       if (!mounted) return;
       final ll = LatLng(pos.latitude, pos.longitude);
       _mapController.move(ll, 14);
@@ -581,7 +607,26 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
       return;
     }
     _dataFallbackStarted = true;
-    _mapController.move(const LatLng(30, 0), 2);
+    final saved = _savedView;
+    if (saved != null) {
+      _mapController.move(saved.center, saved.zoom);
+      _didInitialFit = true;
+    } else {
+      _mapController.move(const LatLng(30, 0), 2);
+    }
+    _refresh();
+  }
+
+  /// Moves to [_savedView] while the on-open fix is still pending, so the
+  /// map does not sit on the London default in the meantime, or after the
+  /// locate has already given up and widened to the world.
+  void _openOnSavedView() {
+    final saved = _savedView;
+    if (saved == null || !_mapReady || _userMovedMap || _didInitialFit) {
+      return;
+    }
+    _mapController.move(saved.center, saved.zoom);
+    if (_wantDataFit) _didInitialFit = true;
     _refresh();
   }
 
@@ -619,23 +664,6 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
     _didInitialFit = true;
     _refresh();
     return true;
-  }
-
-  Future<Position> _platformLocate() async {
-    if (kIsWeb) {
-      throw UnsupportedError('Locate unavailable on web');
-    }
-    final perm = await Geolocator.checkPermission();
-    if (perm == LocationPermission.denied) {
-      final asked = await Geolocator.requestPermission();
-      if (asked == LocationPermission.denied ||
-          asked == LocationPermission.deniedForever) {
-        throw StateError('Location permission denied');
-      }
-    } else if (perm == LocationPermission.deniedForever) {
-      throw StateError('Location permission denied forever');
-    }
-    return Geolocator.getCurrentPosition();
   }
 
   Future<void> _onSearchChanged(String query) async {
@@ -731,6 +759,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
               initialZoom: widget.initialZoom ?? 11,
               onMapReady: () {
                 _mapReady = true;
+                _lastCamera = _mapController.camera;
                 // If a fix already arrived, open centred on it. If the
                 // locate already gave up, widen to the data view. Otherwise
                 // load the default view while a fix is still pending.
@@ -739,9 +768,14 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                   _startDataFallback();
                   return;
                 }
+                final saved = _savedView;
+                if (saved != null) {
+                  _mapController.move(saved.center, saved.zoom);
+                }
                 _refresh();
               },
               onPositionChanged: (pos, hasGesture) {
+                _lastCamera = pos;
                 if (hasGesture) {
                   _userMovedMap = true;
                   _scheduleRefresh();

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart' show DistanceUnit;
-import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -898,7 +898,7 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
     try {
       final pos = widget.locateFn != null
           ? await widget.locateFn!()
-          : await _platformLocate();
+          : await locateForBrowse();
       if (!mounted) return;
       _map.move(LatLng(pos.latitude, pos.longitude), 15);
     } catch (e) {
@@ -907,26 +907,6 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
       showTopBanner(context,
           AppLocalizations.of(context).routeBuilderLocationUnavailable(friendlyError(AppLocalizations.of(context), e)));
     }
-  }
-
-  // Default locate path — kept separate so widget.locateFn can stub
-  // the whole platform-channel call in tests.
-  Future<Position> _platformLocate() async {
-    if (kIsWeb) {
-      throw UnsupportedError('Locate unavailable on web');
-    }
-    // Permission gate matches the recorder's own pattern.
-    final perm = await Geolocator.checkPermission();
-    if (perm == LocationPermission.denied) {
-      final asked = await Geolocator.requestPermission();
-      if (asked == LocationPermission.denied ||
-          asked == LocationPermission.deniedForever) {
-        throw StateError('Location permission denied');
-      }
-    } else if (perm == LocationPermission.deniedForever) {
-      throw StateError('Location permission denied forever');
-    }
-    return Geolocator.getCurrentPosition();
   }
 
   Future<void> _onSearchChanged(String query) async {

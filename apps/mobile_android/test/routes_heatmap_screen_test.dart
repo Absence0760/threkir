@@ -15,11 +15,14 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
+import '../lib/last_map_view.dart';
 import '../lib/screens/routes_heatmap_screen.dart';
 import '../lib/widgets/map_attribution.dart';
 import '../lib/widgets/official_badge.dart';
+import 'pump_until.dart';
 
 class _FakeApiClient extends ApiClient {
   int fetchCalls = 0;
@@ -334,6 +337,58 @@ void main() {
           reason: 'a failed locate must widen off London so the discovery '
               'bbox brackets the Virginia routes — not strand the user on '
               'the London default whose tight bbox returns nothing.');
+    });
+
+    testWidgets(
+        'with no location fix, reopens on the view it was last left on',
+        (tester) async {
+      // Sydney: far from London and from the (30, 0) world fallback.
+      SharedPreferences.setMockInitialValues({
+        kLastBrowseMapViewKey:
+            jsonEncode({'lat': -33.8688, 'lng': 151.2093, 'zoom': 12.0}),
+      });
+      final api = _FakeApiClient()
+        ..nextPins = [_pin(id: 'va', lat: 37.5407, lng: -77.436)];
+      await _pump(tester, api, backgroundLocateFn: () async => null);
+      await pumpUntil(
+        tester,
+        () =>
+            api.lastMinLng != null &&
+            api.lastMinLng! <= 151.2093 &&
+            api.lastMaxLng! >= 151.2093,
+        describe: 'a discovery fetch over the saved Sydney view',
+      );
+      expect(api.lastMinLat! <= -33.8688 && api.lastMaxLat! >= -33.8688,
+          isTrue);
+      expect(api.lastMaxLng! - api.lastMinLng!, lessThan(5),
+          reason: 'the saved city-scale view, not the whole world and not '
+              'a fit to routes on another continent');
+    });
+
+    testWidgets('closing the map saves the view for the next visit',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final api = _FakeApiClient();
+      await _pump(
+        tester,
+        api,
+        backgroundLocateFn: () async =>
+            _fakePosition(lat: 40.7128, lng: -74.0060),
+      );
+      await pumpUntil(
+        tester,
+        () => api.lastMinLng != null && api.lastMinLng! <= -74.0060,
+        describe: 'a discovery fetch over the NYC fix',
+      );
+      await tester.pumpWidget(const SizedBox());
+      MapView? saved;
+      await tester.runAsync(() async {
+        saved = await loadLastBrowseMapView();
+      });
+      expect(saved, isNotNull);
+      expect(saved!.center.latitude, closeTo(40.7128, 0.01));
+      expect(saved!.center.longitude, closeTo(-74.0060, 0.01));
+      expect(saved!.zoom, 14);
     });
 
     testWidgets('fetches discovery on mount with a valid bbox; heat is off',

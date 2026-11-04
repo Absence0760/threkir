@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -244,7 +243,7 @@ class _PrivacyZonesScreenState extends State<PrivacyZonesScreen> {
     try {
       final pos = widget.locateFn != null
           ? await widget.locateFn!()
-          : await _platformLocate();
+          : await locateForBrowse();
       if (!mounted) return;
       final ll = LatLng(pos.latitude, pos.longitude);
       _centeredOnce = true;
@@ -257,21 +256,6 @@ class _PrivacyZonesScreenState extends State<PrivacyZonesScreen> {
         AppLocalizations.of(context).privacyZonesLocationUnavailable(e),
       );
     }
-  }
-
-  Future<Position> _platformLocate() async {
-    if (kIsWeb) throw UnsupportedError('Locate unavailable on web');
-    final perm = await Geolocator.checkPermission();
-    if (perm == LocationPermission.denied) {
-      final asked = await Geolocator.requestPermission();
-      if (asked == LocationPermission.denied ||
-          asked == LocationPermission.deniedForever) {
-        throw StateError('Location permission denied');
-      }
-    } else if (perm == LocationPermission.deniedForever) {
-      throw StateError('Location permission denied forever');
-    }
-    return Geolocator.getCurrentPosition();
   }
 
   // ── Place search ─────────────────────────────────────────────────────

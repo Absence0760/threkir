@@ -4,6 +4,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -96,6 +97,7 @@ Future<void> _pump(
   required Preferences prefs,
   required LocalRouteStore routeStore,
   ApiClient? api,
+  Future<Position> Function()? locateFn,
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -105,10 +107,39 @@ Future<void> _pump(
         apiClient: api,
         routeStore: routeStore,
         preferences: prefs,
+        locateFn: locateFn,
       ),
     ),
   );
 }
+
+class _NearbyApi extends _BookmarkApi {
+  final nearbyCalls = <(double, double)>[];
+
+  @override
+  Future<List<cm.Route>> nearbyPublicRoutes({
+    required double lat,
+    required double lng,
+    double radiusM = 50000,
+    int limit = 50,
+  }) async {
+    nearbyCalls.add((lat, lng));
+    return [_route('n1', 'Riverside 10K')];
+  }
+}
+
+Position _fix(double lat, double lng) => Position(
+      latitude: lat,
+      longitude: lng,
+      timestamp: DateTime.utc(2026, 1, 1),
+      accuracy: 50,
+      altitude: 0,
+      altitudeAccuracy: 0,
+      heading: 0,
+      headingAccuracy: 0,
+      speed: 0,
+      speedAccuracy: 0,
+    );
 
 void main() {
   setUpAll(_ensureSupabase);
@@ -222,6 +253,44 @@ void main() {
       await settle(tester);
       expect(api.bookmarkCalls, ['r1']);
       await tester.pump(const Duration(seconds: 8));
+    });
+  });
+
+  group('ExploreRoutesScreen — Near me', () {
+    testWidgets('searches around the browse fix', (tester) async {
+      final s = await _makeStores();
+      final api = _NearbyApi();
+      await _pump(tester,
+          prefs: s.prefs,
+          routeStore: s.routeStore,
+          api: api,
+          locateFn: () async => _fix(37.54, -77.43));
+      await tester.pump();
+      await tester.tap(find.text('Near Me'));
+      await tester.pump();
+      await tester.pump();
+      expect(api.nearbyCalls, [(37.54, -77.43)]);
+      expect(find.text('Riverside 10K'), findsOneWidget);
+    });
+
+    testWidgets('a refused permission says why instead of a generic failure',
+        (tester) async {
+      final s = await _makeStores();
+      final api = _NearbyApi();
+      await _pump(tester,
+          prefs: s.prefs,
+          routeStore: s.routeStore,
+          api: api,
+          locateFn: () async =>
+              throw const PermissionDeniedException('denied'));
+      await tester.pump();
+      await tester.tap(find.text('Near Me'));
+      await tester.pump();
+      await tester.pump();
+      expect(api.nearbyCalls, isEmpty);
+      expect(
+          find.text('Location permission required to find nearby routes'),
+          findsOneWidget);
     });
   });
 }

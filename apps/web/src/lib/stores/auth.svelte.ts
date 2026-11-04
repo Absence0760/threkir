@@ -5,6 +5,7 @@ import { dropUserCache } from '#lib/settings/settings.ts';
 import { setUnit } from '#lib/format/units.svelte.ts';
 import { defaultUnitForLocale } from '#lib/format/locale_defaults.ts';
 import { showToast } from '#lib/stores/toast.svelte.ts';
+import { undoStore } from '#lib/stores/undo.svelte.ts';
 import { m } from '#lib/i18n/store.svelte.ts';
 import { parsePreferredUnit, parseSubscriptionTier } from '#lib/types.ts';
 import { createReadyGate, isAuthSettled } from './auth_ready';
@@ -261,7 +262,7 @@ function createAuthStore() {
 		// everywhere is the separate `logoutEverywhere()` affordance,
 		// not the default Sign out button.
 		const priorUserId = user?.id;
-		await signOutWithScope(supabase.auth, 'local');
+		await signOutWithScope(supabase.auth, 'local', undoStore.flush);
 		user = null;
 		loggedIn = false;
 		resetProfileState();
@@ -282,7 +283,7 @@ function createAuthStore() {
 		// down the local session and imply success; surface it and let the
 		// caller keep the user signed in so they can retry.
 		const priorUserId = user?.id;
-		const error = await signOutWithScope(supabase.auth, 'global');
+		const error = await signOutWithScope(supabase.auth, 'global', undoStore.flush);
 		if (error) throw new Error(error.message ?? 'sign-out-everywhere failed');
 		user = null;
 		loggedIn = false;

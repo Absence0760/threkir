@@ -1348,6 +1348,11 @@ action can honestly be reversed:
   snapshotting the list (`const before = rows; rows = rows.filter(...)`) and
   putting the snapshot back, so ordering survives; if the delete cascades
   children server-side, filter the children out too or the list renders orphans.
+  A held mutation belongs to the account that made it: Sign out commits it
+  first (`signOutWithScope`'s `settlePending`, passed `undoStore.flush`), and a
+  session that ends or changes some other way (another tab) runs Undo instead,
+  from the root layout, so it never commits with no session or as the next
+  account.
 - **Not undoable** → keep the `ConfirmDialog`. Use it when the delete cascades
   something the actor could not reconstruct, or when the row is an authored
   reusable artefact rather than a line of data (a routine, a saved meal, a

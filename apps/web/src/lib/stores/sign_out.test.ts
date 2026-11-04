@@ -41,6 +41,28 @@ test('signOutWithScope returns the provider error rather than throwing', async (
 	assert.equal(err?.message, 'network down');
 });
 
+test('a delete still inside its undo window commits before the session ends', async () => {
+	const order: string[] = [];
+	let release!: () => void;
+	const committing = new Promise<void>((r) => (release = r));
+	const client: AuthSignOutClient = {
+		async signOut({ scope }) {
+			order.push(`signOut:${scope}`);
+			return { error: null };
+		},
+	};
+	const done = signOutWithScope(client, 'local', async () => {
+		order.push('flush:start');
+		await committing;
+		order.push('flush:done');
+	});
+	await Promise.resolve();
+	assert.deepEqual(order, ['flush:start']);
+	release();
+	await done;
+	assert.deepEqual(order, ['flush:start', 'flush:done', 'signOut:local']);
+});
+
 // Source-level guard for the store wiring — auth.svelte.ts uses Svelte $state
 // runes (and imports the runes-laden units signal), so it can't execute under
 // raw tsx. These assertions pin that the two affordances stay distinct: the
@@ -52,15 +74,15 @@ const store = readFileSync(resolve(here, './auth.svelte.ts'), 'utf8');
 
 test('logout() routes through the local scope', () => {
 	const body = store.slice(store.indexOf('async function logout('), store.indexOf('async function logoutEverywhere('));
-	assert.match(body, /signOutWithScope\(\s*supabase\.auth\s*,\s*'local'\s*\)/);
-	assert.doesNotMatch(body, /signOutWithScope\(\s*supabase\.auth\s*,\s*'global'\s*\)/);
+	assert.match(body, /signOutWithScope\(\s*supabase\.auth\s*,\s*'local'\s*,\s*undoStore\.flush\s*\)/);
+	assert.doesNotMatch(body, /signOutWithScope\(\s*supabase\.auth\s*,\s*'global'/);
 });
 
 test('logoutEverywhere() routes through the global scope and fails closed', () => {
 	const start = store.indexOf('async function logoutEverywhere(');
 	assert.ok(start > 0, 'logoutEverywhere must exist on the store');
 	const body = store.slice(start, store.indexOf('// Listen for auth state changes'));
-	assert.match(body, /signOutWithScope\(\s*supabase\.auth\s*,\s*'global'\s*\)/);
+	assert.match(body, /signOutWithScope\(\s*supabase\.auth\s*,\s*'global'\s*,\s*undoStore\.flush\s*\)/);
 	// The error branch must throw BEFORE the local teardown (user = null),
 	// so a failed global revocation can't masquerade as a successful sign-out.
 	const throwIdx = body.indexOf('throw');
@@ -71,4 +93,18 @@ test('logoutEverywhere() routes through the global scope and fails closed', () =
 
 test('the store exposes logoutEverywhere alongside logout', () => {
 	assert.match(store, /\blogoutEverywhere\b\s*,/);
+});
+
+const layout = readFileSync(resolve(here, '../../routes/+layout.svelte'), 'utf8');
+
+test('a session that ends or changes outside our Sign out puts a pending delete back', () => {
+	assert.match(layout, /const undoOwnerId = \$derived\(auth\.user\?\.id\);/);
+	assert.match(
+		layout,
+		/\$effect\(\(\) => \{\s*const uid = undoOwnerId;\s*return \(\) => \{\s*if \(uid\) undoStore\.undo\(\);\s*\};\s*\}\);/,
+	);
+});
+
+test('signing out drops the conversation deletes held for the unread badge', () => {
+	assert.match(layout, /if \(!browser \|\| !uid\) \{\s*dmUnreadStore\.clear\(\);\s*dmPendingHides\.clear\(\);/);
 });

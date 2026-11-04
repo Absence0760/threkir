@@ -15,10 +15,16 @@ export interface AuthSignOutClient {
 /// user reaches for when they suspect a token was exfiltrated. Returns the
 /// provider error (or null) rather than throwing so each caller can decide
 /// whether to swallow it (local Sign out) or fail closed (global).
+///
+/// `settlePending` runs first, while the session still exists: it commits a
+/// delete still inside its undo window, which would otherwise fire after the
+/// sign-out with no session, or under whoever signs in next.
 export async function signOutWithScope(
 	client: AuthSignOutClient,
 	scope: SignOutScope,
+	settlePending: () => Promise<void> = async () => {},
 ): Promise<SignOutError | null> {
+	await settlePending();
 	const { error } = await client.signOut({ scope });
 	return error;
 }

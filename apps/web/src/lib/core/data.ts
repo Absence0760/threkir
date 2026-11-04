@@ -2495,23 +2495,30 @@ export async function saveRoute(route: {
 /// The photo bytes go after the row. A route photo's Storage object is
 /// readable to its uploader through their own folder, so the sweep still
 /// reaches it once the cascade has taken the route_photos row, and a route
-/// delete that fails never leaves a standing route with its photos gone. A
-/// sweep that fails leaves private bytes only the uploader can read, which
-/// account deletion's folder sweep removes.
+/// delete that fails never leaves a standing route with its photos gone. The
+/// path read only feeds that sweep, so its failure costs the sweep and never
+/// the delete. Bytes a skipped or failed sweep leaves behind are erased by the
+/// server's route-photo orphan sweep (behind its feature flag, decisions
+/// § 2305), and by account deletion's folder sweep in any case.
 ///
 /// RLS filters a refused DELETE rather than raising, so an empty result is
 /// read back: a route the caller can still see was refused (thrown as the
 /// 42501 RLS would have raised), one they cannot is already gone (another
 /// tab, another device) and the delete is done.
 export async function deleteRoute(id: string): Promise<void> {
-	const { data: photos, error: photosError } = await supabase
-		.from(TABLES.route_photos)
-		.select('storage_path, thumb_512_path')
-		.eq('route_id', id);
-	if (photosError) throw dbError(photosError);
-	const paths = (photos ?? [])
-		.flatMap((p) => [p.storage_path, p.thumb_512_path])
-		.filter((p): p is string => !!p);
+	let paths: string[] = [];
+	try {
+		const { data: photos, error: photosError } = await supabase
+			.from(TABLES.route_photos)
+			.select('storage_path, thumb_512_path')
+			.eq('route_id', id);
+		if (photosError) throw photosError;
+		paths = (photos ?? [])
+			.flatMap((p) => [p.storage_path, p.thumb_512_path])
+			.filter((p): p is string => !!p);
+	} catch (e) {
+		console.warn('deleteRoute: photo path read failed, skipping the photo sweep', { route_id: id, error: e });
+	}
 
 	markListsStale('routes');
 	const { data: deleted, error } = await supabase

@@ -2387,6 +2387,8 @@ test('deleteRoute removes the photo files only after the row delete succeeded, a
 	// route whose photos 404 forever; and a storage error after the row is gone
 	// must not report the delete as failed, because the route IS deleted and a
 	// retry would only meet "not found". Orphaned files are logged, not thrown.
+	// The photo path read before the delete only feeds that sweep, so a failed
+	// read must cost the sweep and still let the row delete run.
 	const source = stripComments(read('src/lib/core/data.ts'));
 	const start = source.indexOf('export async function deleteRoute(');
 	assert.ok(start >= 0, 'Could not locate deleteRoute — rename?');
@@ -2395,6 +2397,16 @@ test('deleteRoute removes the photo files only after the row delete succeeded, a
 
 	const rowDelete = body.search(/\.from\('routes'\)\s*\.delete\(\)/);
 	const rowError = body.indexOf('if (error) throw dbError(error);', rowDelete);
+
+	const photoRead = body.search(/\.from\(TABLES\.route_photos\)\s*\.select\(/);
+	assert.ok(photoRead >= 0 && photoRead < rowDelete, 'deleteRoute must read the photo paths before the row cascade takes them.');
+	const readTry = body.lastIndexOf('try {', photoRead);
+	const readCatch = body.indexOf('} catch (e) {', photoRead);
+	assert.ok(readTry >= 0 && readCatch > photoRead && readCatch < rowDelete, 'the photo path read must sit in its own try/catch that closes before the row delete.');
+	const readCatchBody = body.slice(readCatch, rowDelete);
+	assert.match(readCatchBody, /console\.warn\(/, 'a failed photo path read must be logged.');
+	assert.doesNotMatch(readCatchBody, /\b(throw|return)\b/, 'a failed photo path read must not stop the row delete.');
+	assert.doesNotMatch(body, /throw dbError\(photosError\)/, 'a photo path read error must not be rethrown out of deleteRoute.');
 	const refused = body.indexOf("throw new DbError('route delete refused'");
 	const remove = body.search(/\.storage\.from\(BUCKETS\.route_photos\)\.remove\(/);
 	assert.ok(rowDelete >= 0 && rowError > rowDelete, 'deleteRoute must throw on a failed row delete.');

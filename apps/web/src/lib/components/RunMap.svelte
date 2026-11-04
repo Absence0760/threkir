@@ -36,6 +36,7 @@
 		type PaceStop,
 	} from '#lib/segments/pace_segments.ts';
 	import { snapToPolyline } from '#lib/routes/route_snap.ts';
+	import { computeDistanceMarkers, METRES_PER_MILE } from '#lib/runs/distance_markers.ts';
 	import {
 		haversineMetres as haversine,
 		buildTrackIndex,
@@ -178,7 +179,33 @@
 	// one). See `basemap_contrast.ts`.
 	const darkBasemap = $derived(basemapIsDarkFromEnv(PUBLIC_MAPTILER_KEY, prefersDark));
 
-	const METRES_PER_MILE = 1609.344;
+	const DISTANCE_BADGE_ID = 'distance-marker-badge';
+	const DISTANCE_BADGE_RATIO = 2;
+
+	/// The km / mile badge as an image, so the badge and its number are one
+	/// symbol that collides as a unit: a filled circle of radius 11 with a
+	/// 2 px ring in the track colour. Null when the browser gives no 2D
+	/// context, in which case the map simply draws no badges.
+	function distanceBadgeImage(
+		fill: string,
+		stroke: string,
+	): { width: number; height: number; data: Uint8ClampedArray } | null {
+		const size = 26 * DISTANCE_BADGE_RATIO;
+		const canvas = document.createElement('canvas');
+		canvas.width = size;
+		canvas.height = size;
+		const ctx = canvas.getContext('2d');
+		if (!ctx) return null;
+		ctx.scale(DISTANCE_BADGE_RATIO, DISTANCE_BADGE_RATIO);
+		ctx.beginPath();
+		ctx.arc(13, 13, 11, 0, Math.PI * 2);
+		ctx.fillStyle = fill;
+		ctx.fill();
+		ctx.lineWidth = 2;
+		ctx.strokeStyle = stroke;
+		ctx.stroke();
+		return { width: size, height: size, data: ctx.getImageData(0, 0, size, size).data };
+	}
 
 	function buildMarkerFeatures(
 		pins: MapMarkerPin[]
@@ -191,63 +218,6 @@
 				geometry: { type: 'Point', coordinates: [m.lng, m.lat] }
 			}))
 		};
-	}
-
-	/// Walk the polyline and emit a GeoJSON FeatureCollection of point
-	/// markers — one at every kilometre (or mile, depending on the user
-	/// preference). Each feature's `label` property carries the digit
-	/// rendered in the marker pin (1, 2, 3, …). Markers near the start
-	/// and end are skipped since the green / red caps cover those.
-	function computeDistanceMarkers(coords: [number, number][]): GeoJSON.FeatureCollection<GeoJSON.Point, { label: string }> {
-		const features: GeoJSON.Feature<GeoJSON.Point, { label: string }>[] = [];
-		if (coords.length < 2) return { type: 'FeatureCollection', features };
-		const unit = getUnit();
-		const stepM = unit === 'mi' ? METRES_PER_MILE : 1000;
-
-		// Total polyline length — used both as the iteration bound and
-		// as the denominator for the legacy-sparse-waypoints rescale
-		// path below.
-		let polylineTotal = 0;
-		for (let i = 1; i < coords.length; i++) {
-			polylineTotal += haversine(coords[i - 1], coords[i]);
-		}
-
-		// When the authoritative route distance is meaningfully greater
-		// than what the polyline measures (sparse user clicks / seed
-		// data), scale every marker's *along-the-polyline* position by
-		// `polyline / real`. The marker count then reflects the real
-		// distance even though the rendered geometry is a coarse
-		// approximation.
-		const realTotal = totalDistanceM && totalDistanceM > polylineTotal * 1.1
-			? totalDistanceM
-			: polylineTotal;
-		const scale = polylineTotal > 0 ? polylineTotal / realTotal : 1;
-
-		let cumulative = 0;
-		let nextMarker = stepM * scale;
-		const maxAlongPolyline = polylineTotal;
-		for (let i = 1; i < coords.length; i++) {
-			const segmentM = haversine(coords[i - 1], coords[i]);
-			while (
-				cumulative + segmentM >= nextMarker &&
-				segmentM > 0 &&
-				nextMarker <= maxAlongPolyline + 0.5
-			) {
-				const t = (nextMarker - cumulative) / segmentM;
-				const lng = coords[i - 1][0] + (coords[i][0] - coords[i - 1][0]) * t;
-				const lat = coords[i - 1][1] + (coords[i][1] - coords[i - 1][1]) * t;
-				const realPos = nextMarker / scale;
-				const idx = Math.round(realPos / stepM);
-				features.push({
-					type: 'Feature',
-					geometry: { type: 'Point', coordinates: [lng, lat] },
-					properties: { label: String(idx) },
-				});
-				nextMarker += stepM * scale;
-			}
-			cumulative += segmentM;
-		}
-		return { type: 'FeatureCollection', features };
 	}
 
 	let mapContainer = $state<HTMLDivElement>();
@@ -582,32 +552,36 @@
 			},
 		});
 
-		const distanceMarkers = computeDistanceMarkers(coords);
-		if (distanceMarkers.features.length > 0) {
+		const distanceMarkers = computeDistanceMarkers(
+			coords,
+			getUnit() === 'mi' ? METRES_PER_MILE : 1000,
+			totalDistanceM,
+		);
+		const badge = distanceBadgeImage(mapLabelHalo(darkBasemap), mapTrackLine(darkBasemap));
+		if (distanceMarkers.features.length > 0 && badge) {
+			if (map.hasImage(DISTANCE_BADGE_ID)) map.updateImage(DISTANCE_BADGE_ID, badge);
+			else map.addImage(DISTANCE_BADGE_ID, badge, { pixelRatio: DISTANCE_BADGE_RATIO });
 			map.addSource('distance-markers', {
 				type: 'geojson',
 				data: distanceMarkers,
 			});
+			// One symbol per badge, so MapLibre's collision pass drops the ones
+			// that would overlap (a marathon zoomed to fit, both legs of an
+			// out-and-back). The sort key places every 10th, then every 5th
+			// first, so zooming out keeps 10, 20, 30 and zooming in brings the
+			// rest back.
 			map.addLayer({
-				id: 'distance-marker-bg',
-				type: 'circle',
-				source: 'distance-markers',
-				paint: {
-					'circle-radius': 11,
-					'circle-color': mapLabelHalo(darkBasemap),
-					'circle-stroke-color': mapTrackLine(darkBasemap),
-					'circle-stroke-width': 2,
-				},
-			});
-			map.addLayer({
-				id: 'distance-marker-text',
+				id: 'distance-marker',
 				type: 'symbol',
 				source: 'distance-markers',
 				layout: {
+					'icon-image': DISTANCE_BADGE_ID,
+					'icon-allow-overlap': false,
 					'text-field': ['get', 'label'],
 					'text-size': 11,
 					'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-					'text-allow-overlap': true,
+					'text-allow-overlap': false,
+					'symbol-sort-key': ['get', 'rank'],
 				},
 				paint: {
 					'text-color': mapLabelInk(darkBasemap),

@@ -69,6 +69,55 @@ void main() {
     expect(signedOut, isTrue);
   });
 
+  // Reason: the undo queue's flush returned at once when its window timer had
+  // already started the commit, so Sign out went ahead while the delete was
+  // on the wire and its failure reached nobody.
+  testWidgets('sign-out waits for a commit already in flight, and its failure '
+      'reports before the session ends', (tester) async {
+    setUndoWindowS(8);
+    final order = <String>[];
+    final commit = Completer<void>();
+    undoQueue.defer(DeferredDestruction(
+      message: 'Removed',
+      commit: () => commit.future,
+      restore: () => order.add('restore'),
+      onCommitError: (_) => order.add('report'),
+    ));
+    await tester.pump(const Duration(seconds: 8));
+    expect(undoQueue.hasPending(), isFalse,
+        reason: 'the window closed and the commit is on the wire');
+    final done = signOutAfterSettling(
+      settlePending: undoQueue.flush,
+      signOut: () async => order.add('signOut'),
+    );
+    await tester.pump(const Duration(seconds: 1));
+    expect(order, isEmpty, reason: 'sign-out is held by the in-flight commit');
+    commit.completeError(StateError('500'));
+    await tester.pump();
+    await done;
+    expect(order, ['restore', 'report', 'signOut']);
+  });
+
+  testWidgets('a commit in flight slower than the cap stops holding the '
+      'sign-out at 5 s', (tester) async {
+    setUndoWindowS(8);
+    undoQueue.defer(DeferredDestruction(
+      message: 'Removed',
+      commit: () => Completer<void>().future,
+      restore: () {},
+    ));
+    await tester.pump(const Duration(seconds: 8));
+    var signedOut = false;
+    unawaited(signOutAfterSettling(
+      settlePending: undoQueue.flush,
+      signOut: () async => signedOut = true,
+    ));
+    await tester.pump(kSignOutSettleTimeout - const Duration(milliseconds: 1));
+    expect(signedOut, isFalse);
+    await tester.pump(const Duration(milliseconds: 1));
+    expect(signedOut, isTrue);
+  });
+
   test('the sign-out itself failing still reaches the caller', () async {
     await expectLater(
       signOutAfterSettling(

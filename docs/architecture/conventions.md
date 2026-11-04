@@ -1362,7 +1362,12 @@ action can honestly be reversed:
   the core action; so is a settle still running after
   `SIGN_OUT_SETTLE_TIMEOUT_MS`, 5 s, whose request keeps its own token and may
   still land); Delete account settles the same way (`settleBeforeSessionEnds`)
-  before it calls the delete, while the account still exists; and a
+  before it calls the delete, while the account still exists. `flush` waits
+  for every commit the queue has started, not only the one still in the slot:
+  a commit the window timer or a second delete already set going is on the
+  wire with the slot empty, and a sign-out that went ahead under it left that
+  commit's failure to a signed-out reader, logged and never restored or
+  reported. The 5 s cap bounds that wait too. And a
   session that ends or changes some other way (another tab) runs Undo instead,
   from the root layout, so it never commits with no session or as the next
   account. A commit already running when the session ends is not stopped; the
@@ -1375,7 +1380,8 @@ action can honestly be reversed:
   still restores and reports.
   Mobile follows the same rules. Settings → Sign out and the age-gate's Sign
   out go through `signOutAfterSettling` (`lib/sign_out.dart`, passed
-  `undoQueue.flush`, capped at `kSignOutSettleTimeout`, 5 s); Delete account
+  `undoQueue.flush`, which waits for in-flight commits the same way, capped
+  at `kSignOutSettleTimeout`, 5 s); Delete account
   settles before it calls the delete, while the account still exists. Any
   other session change (a revoked token, another account) runs Undo from
   `UndoSessionGuard` at the app root, which also keeps the queue's owner

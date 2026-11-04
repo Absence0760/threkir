@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { errorCopy, errorCopyKey, isDatabaseCode, loggableMessage, LOGGED_MESSAGE_MAX_CHARS } from './error_copy';
+import { errorCopy, errorCopyKey, loggableMessage, LOGGED_MESSAGE_MAX_CHARS } from './error_copy';
 import { DbError, PlanOverlapError } from '../core/supabase_error';
 import { interpolate } from './interpolate';
 import { SUPPORTED_LOCALES } from './locale';
@@ -102,11 +102,14 @@ test('codes that name a category without a message are mapped', () => {
 	assert.equal(errorCopyKey(new DbError('query returned no rows', 'P0002')), 'errorCopy.notFound');
 });
 
-test('isDatabaseCode tells SQLSTATE and PostgREST codes from auth codes and P0001', () => {
-	for (const c of ['23505', '42501', '22P02', 'PGRST116', 'PGRST303', 'XX000']) assert.ok(isDatabaseCode(c), c);
-	for (const c of ['', 'P0001', 'over_email_send_rate_limit', 'same_password', 'weak_password']) {
-		assert.ok(!isDatabaseCode(c), c);
-	}
+test('a five-character code that is not a SQLSTATE still has its message read', () => {
+	// Node's errno for a socket closed mid-write, and a lower-case word: both
+	// passed the old bare five-character test and were filed as generic.
+	assert.equal(errorCopyKey({ code: 'EPIPE', message: 'request timed out' }), 'errorCopy.timeout');
+	assert.equal(errorCopyKey({ code: 'stale', message: 'session not found' }), 'errorCopy.notFound');
+	// A SQLSTATE in lower case is still one.
+	assert.equal(errorCopyKey({ code: '23514', message: 'row not found' }), 'errorCopy.invalid');
+	assert.equal(errorCopyKey({ code: 'pgrst116', message: 'request timed out' }), 'errorCopy.generic');
 });
 
 test('the logged message drops quoted values, key details and emails, and is cut short', () => {

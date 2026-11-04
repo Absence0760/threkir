@@ -14,6 +14,7 @@
 import type { MessageKey } from './messages';
 import type { Translate } from './rate_limit_message';
 import { rateLimitErrorMessage } from './rate_limit_message';
+import { databaseCodeDecides } from '../core/auth_errors';
 
 function field(e: unknown, name: 'code' | 'message' | 'name'): string {
 	if (e && typeof e === 'object') {
@@ -31,16 +32,6 @@ function status(e: unknown): number | null {
 	return null;
 }
 
-/// A SQLSTATE or a PostgREST `PGRST…` code: the database named the failure
-/// itself, so its code decides and the message text is not read. `P0001` is
-/// the exception, because a bare `raise exception` carries it whatever the
-/// failure is, and its message is all there is. Without this a coded error
-/// whose message merely mentions "not found", "timed out" or "rate limit"
-/// (a constraint, a parameter, a bucket name) is filed under that word.
-export function isDatabaseCode(code: string): boolean {
-	return code !== 'P0001' && (/^[0-9A-Z]{5}$/.test(code) || code.startsWith('PGRST'));
-}
-
 /// The catalogue key for a failure. A rate-limit refusal has a sentence of
 /// its own, which `errorCopy` checks for first.
 export function errorCopyKey(e: unknown): MessageKey {
@@ -48,7 +39,9 @@ export function errorCopyKey(e: unknown): MessageKey {
 	const name = field(e, 'name');
 	const msg = field(e, 'message').toLowerCase();
 	const httpStatus = status(e);
-	const says = (text: string) => !isDatabaseCode(code) && msg.includes(text);
+	// A coded database failure is classified by its code, not by a word its
+	// message happens to contain (a constraint, parameter or bucket name).
+	const says = (text: string) => !databaseCodeDecides(code) && msg.includes(text);
 
 	if (code === '23P01') return 'planDetail.planOverlap';
 	if (name === 'AbortError' || name === 'TimeoutError' || code === '57014' || says('timed out')) {

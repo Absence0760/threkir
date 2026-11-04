@@ -16501,6 +16501,50 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get messagesMute => 'ミュート';
+
+  @override
+  String get messagesUnmute => 'ミュートを解除';
+
+  @override
+  String get messagesArchive => 'アーカイブ';
+
+  @override
+  String get messagesUnarchive => 'アーカイブを解除';
+
+  @override
+  String get messagesDeleteConversation => '会話を削除';
+
+  @override
+  String get messagesConversationDeleted => '会話を削除しました';
+
+  @override
+  String get messagesConversationDeletedNotice =>
+      'この会話を自分の画面から削除しました。相手側には残り、新しいメッセージが届くと再び表示されます。';
+
+  @override
+  String messagesConversationActionFailed(String error) {
+    return '会話を更新できませんでした: $error';
+  }
+
+  @override
+  String messagesArchivedCount(int count) {
+    return 'アーカイブ済み ($count)';
+  }
+
+  @override
+  String get messagesBackToInbox => '受信箱に戻る';
+
+  @override
+  String get messagesMutedMark => 'ミュート中';
+
+  @override
+  String get messagesMutedToast => 'ミュートしました。この会話の新しいメッセージは通知されません。';
+
+  @override
+  String get messagesArchivedToast => 'アーカイブしました。新しいメッセージが届くと受信箱に戻ります。';
+
+  @override
   String get profileMessage => 'メッセージ';
 
   @override

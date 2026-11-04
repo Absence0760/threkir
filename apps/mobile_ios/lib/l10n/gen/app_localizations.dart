@@ -28364,6 +28364,84 @@ abstract class AppLocalizations {
   /// **'You blocked {name}, so neither of you can message the other.'**
   String messagesBlockedNotice(String name);
 
+  /// Conversation action that mutes it: no notification for new messages, and its unread count leaves the badge
+  ///
+  /// In en, this message translates to:
+  /// **'Mute'**
+  String get messagesMute;
+
+  /// Conversation action that lifts a mute
+  ///
+  /// In en, this message translates to:
+  /// **'Unmute'**
+  String get messagesUnmute;
+
+  /// Conversation action that moves it to the Archived list until a new message arrives
+  ///
+  /// In en, this message translates to:
+  /// **'Archive'**
+  String get messagesArchive;
+
+  /// Conversation action that moves an archived conversation back to the inbox
+  ///
+  /// In en, this message translates to:
+  /// **'Unarchive'**
+  String get messagesUnarchive;
+
+  /// Conversation action that deletes it for the viewer only (the other person keeps theirs); undoable for a few seconds
+  ///
+  /// In en, this message translates to:
+  /// **'Delete conversation'**
+  String get messagesDeleteConversation;
+
+  /// Undo bar message after deleting a conversation for yourself
+  ///
+  /// In en, this message translates to:
+  /// **'Conversation deleted'**
+  String get messagesConversationDeleted;
+
+  /// Shown in the conversation pane once the viewer deleted it for themselves
+  ///
+  /// In en, this message translates to:
+  /// **'You deleted this conversation for yourself. The other person keeps their copy, and a new message brings it back.'**
+  String get messagesConversationDeletedNotice;
+
+  /// Error when muting, archiving or deleting a conversation failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the conversation: {error}'**
+  String messagesConversationActionFailed(String error);
+
+  /// Inbox control that opens the Archived conversations list; count is how many
+  ///
+  /// In en, this message translates to:
+  /// **'Archived ({count})'**
+  String messagesArchivedCount(int count);
+
+  /// Control in the Archived list that returns to the main inbox
+  ///
+  /// In en, this message translates to:
+  /// **'Back to inbox'**
+  String get messagesBackToInbox;
+
+  /// Marker on an inbox row for a muted conversation (read by screen readers)
+  ///
+  /// In en, this message translates to:
+  /// **'Muted'**
+  String get messagesMutedMark;
+
+  /// Confirmation after muting a conversation
+  ///
+  /// In en, this message translates to:
+  /// **'Muted. You won\'t be notified about new messages here.'**
+  String get messagesMutedToast;
+
+  /// Confirmation after archiving a conversation
+  ///
+  /// In en, this message translates to:
+  /// **'Archived. A new message brings it back to your inbox.'**
+  String get messagesArchivedToast;
+
   /// Profile action opening a direct-message conversation with this runner
   ///
   /// In en, this message translates to:

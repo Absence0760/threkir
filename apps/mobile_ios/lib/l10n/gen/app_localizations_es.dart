@@ -17300,6 +17300,52 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get messagesMute => 'Silenciar';
+
+  @override
+  String get messagesUnmute => 'Dejar de silenciar';
+
+  @override
+  String get messagesArchive => 'Archivar';
+
+  @override
+  String get messagesUnarchive => 'Desarchivar';
+
+  @override
+  String get messagesDeleteConversation => 'Eliminar conversación';
+
+  @override
+  String get messagesConversationDeleted => 'Conversación eliminada';
+
+  @override
+  String get messagesConversationDeletedNotice =>
+      'Has eliminado esta conversación para ti. La otra persona conserva su copia, y un mensaje nuevo la hará volver.';
+
+  @override
+  String messagesConversationActionFailed(String error) {
+    return 'No se pudo actualizar la conversación: $error';
+  }
+
+  @override
+  String messagesArchivedCount(int count) {
+    return 'Archivadas ($count)';
+  }
+
+  @override
+  String get messagesBackToInbox => 'Volver a la bandeja de entrada';
+
+  @override
+  String get messagesMutedMark => 'Silenciada';
+
+  @override
+  String get messagesMutedToast =>
+      'Silenciada. No recibirás avisos de los mensajes nuevos aquí.';
+
+  @override
+  String get messagesArchivedToast =>
+      'Archivada. Un mensaje nuevo la devolverá a tu bandeja de entrada.';
+
+  @override
   String get profileMessage => 'Mensaje';
 
   @override

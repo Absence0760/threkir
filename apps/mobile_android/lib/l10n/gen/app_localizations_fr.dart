@@ -17341,6 +17341,52 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get messagesMute => 'Mettre en sourdine';
+
+  @override
+  String get messagesUnmute => 'Réactiver les notifications';
+
+  @override
+  String get messagesArchive => 'Archiver';
+
+  @override
+  String get messagesUnarchive => 'Désarchiver';
+
+  @override
+  String get messagesDeleteConversation => 'Supprimer la conversation';
+
+  @override
+  String get messagesConversationDeleted => 'Conversation supprimée';
+
+  @override
+  String get messagesConversationDeletedNotice =>
+      'Vous avez supprimé cette conversation pour vous. L\'autre personne garde sa copie, et un nouveau message la fera réapparaître.';
+
+  @override
+  String messagesConversationActionFailed(String error) {
+    return 'Impossible de mettre à jour la conversation : $error';
+  }
+
+  @override
+  String messagesArchivedCount(int count) {
+    return 'Archivées ($count)';
+  }
+
+  @override
+  String get messagesBackToInbox => 'Retour à la boîte de réception';
+
+  @override
+  String get messagesMutedMark => 'En sourdine';
+
+  @override
+  String get messagesMutedToast =>
+      'En sourdine. Vous ne serez pas notifié des nouveaux messages ici.';
+
+  @override
+  String get messagesArchivedToast =>
+      'Archivée. Un nouveau message la ramènera dans votre boîte de réception.';
+
+  @override
   String get profileMessage => 'Message';
 
   @override

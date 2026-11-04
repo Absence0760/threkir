@@ -17128,6 +17128,52 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get messagesMute => 'Mute';
+
+  @override
+  String get messagesUnmute => 'Unmute';
+
+  @override
+  String get messagesArchive => 'Archive';
+
+  @override
+  String get messagesUnarchive => 'Unarchive';
+
+  @override
+  String get messagesDeleteConversation => 'Delete conversation';
+
+  @override
+  String get messagesConversationDeleted => 'Conversation deleted';
+
+  @override
+  String get messagesConversationDeletedNotice =>
+      'You deleted this conversation for yourself. The other person keeps their copy, and a new message brings it back.';
+
+  @override
+  String messagesConversationActionFailed(String error) {
+    return 'Couldn\'t update the conversation: $error';
+  }
+
+  @override
+  String messagesArchivedCount(int count) {
+    return 'Archived ($count)';
+  }
+
+  @override
+  String get messagesBackToInbox => 'Back to inbox';
+
+  @override
+  String get messagesMutedMark => 'Muted';
+
+  @override
+  String get messagesMutedToast =>
+      'Muted. You won\'t be notified about new messages here.';
+
+  @override
+  String get messagesArchivedToast =>
+      'Archived. A new message brings it back to your inbox.';
+
+  @override
   String get profileMessage => 'Message';
 
   @override

@@ -17304,6 +17304,52 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get messagesMute => 'Silenciar';
+
+  @override
+  String get messagesUnmute => 'Deixar de silenciar';
+
+  @override
+  String get messagesArchive => 'Arquivar';
+
+  @override
+  String get messagesUnarchive => 'Desarquivar';
+
+  @override
+  String get messagesDeleteConversation => 'Eliminar conversa';
+
+  @override
+  String get messagesConversationDeleted => 'Conversa eliminada';
+
+  @override
+  String get messagesConversationDeletedNotice =>
+      'Eliminou esta conversa para si. A outra pessoa mantém a cópia dela, e uma nova mensagem fá-la voltar.';
+
+  @override
+  String messagesConversationActionFailed(String error) {
+    return 'Não foi possível atualizar a conversa: $error';
+  }
+
+  @override
+  String messagesArchivedCount(int count) {
+    return 'Arquivadas ($count)';
+  }
+
+  @override
+  String get messagesBackToInbox => 'Voltar à caixa de entrada';
+
+  @override
+  String get messagesMutedMark => 'Silenciada';
+
+  @override
+  String get messagesMutedToast =>
+      'Silenciada. Não vai ser notificado de novas mensagens aqui.';
+
+  @override
+  String get messagesArchivedToast =>
+      'Arquivada. Uma nova mensagem trá-la de volta à sua caixa de entrada.';
+
+  @override
   String get profileMessage => 'Mensagem';
 
   @override
@@ -36932,6 +36978,52 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String messagesBlockedNotice(String name) {
     return 'Você bloqueou $name, então nenhum de vocês dois pode enviar mensagens para o outro.';
   }
+
+  @override
+  String get messagesMute => 'Silenciar';
+
+  @override
+  String get messagesUnmute => 'Reativar notificações';
+
+  @override
+  String get messagesArchive => 'Arquivar';
+
+  @override
+  String get messagesUnarchive => 'Desarquivar';
+
+  @override
+  String get messagesDeleteConversation => 'Excluir conversa';
+
+  @override
+  String get messagesConversationDeleted => 'Conversa excluída';
+
+  @override
+  String get messagesConversationDeletedNotice =>
+      'Você excluiu esta conversa para você. A outra pessoa mantém a cópia dela, e uma nova mensagem faz a conversa voltar.';
+
+  @override
+  String messagesConversationActionFailed(String error) {
+    return 'Não foi possível atualizar a conversa: $error';
+  }
+
+  @override
+  String messagesArchivedCount(int count) {
+    return 'Arquivadas ($count)';
+  }
+
+  @override
+  String get messagesBackToInbox => 'Voltar para a caixa de entrada';
+
+  @override
+  String get messagesMutedMark => 'Silenciada';
+
+  @override
+  String get messagesMutedToast =>
+      'Silenciada. Você não será notificado sobre novas mensagens aqui.';
+
+  @override
+  String get messagesArchivedToast =>
+      'Arquivada. Uma nova mensagem traz a conversa de volta para sua caixa de entrada.';
 
   @override
   String get profileMessage => 'Mensagem';

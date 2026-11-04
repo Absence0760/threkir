@@ -17320,6 +17320,52 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get messagesMute => 'Stummschalten';
+
+  @override
+  String get messagesUnmute => 'Stummschaltung aufheben';
+
+  @override
+  String get messagesArchive => 'Archivieren';
+
+  @override
+  String get messagesUnarchive => 'Aus dem Archiv holen';
+
+  @override
+  String get messagesDeleteConversation => 'Unterhaltung löschen';
+
+  @override
+  String get messagesConversationDeleted => 'Unterhaltung gelöscht';
+
+  @override
+  String get messagesConversationDeletedNotice =>
+      'Du hast diese Unterhaltung für dich gelöscht. Die andere Person behält ihre Kopie, und eine neue Nachricht holt sie zurück.';
+
+  @override
+  String messagesConversationActionFailed(String error) {
+    return 'Die Unterhaltung konnte nicht aktualisiert werden: $error';
+  }
+
+  @override
+  String messagesArchivedCount(int count) {
+    return 'Archiviert ($count)';
+  }
+
+  @override
+  String get messagesBackToInbox => 'Zurück zum Posteingang';
+
+  @override
+  String get messagesMutedMark => 'Stummgeschaltet';
+
+  @override
+  String get messagesMutedToast =>
+      'Stummgeschaltet. Du wirst über neue Nachrichten hier nicht benachrichtigt.';
+
+  @override
+  String get messagesArchivedToast =>
+      'Archiviert. Eine neue Nachricht holt sie in deinen Posteingang zurück.';
+
+  @override
   String get profileMessage => 'Nachricht';
 
   @override

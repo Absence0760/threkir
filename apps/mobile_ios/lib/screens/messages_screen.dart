@@ -337,7 +337,10 @@ class _MessagesScreenState extends State<MessagesScreen>
     try {
       final rows = await widget.api.fetchDmThreads();
       if (!mounted || widget.api.userId != userId) return;
-      if (gen != _readGen) return await _load();
+      if (gen != _readGen) {
+        unawaited(_load());
+        return;
+      }
       setState(() {
         _hold(rows, startedAt);
         _loading = false;

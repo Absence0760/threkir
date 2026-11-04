@@ -1,4 +1,4 @@
-// The Build and Import FABs are one-shot entry points with a transition long
+// The Build FAB and the Import action are one-shot entry points with a transition long
 // enough to tap twice. Neither carried an in-flight guard, so a double-tap on
 // Build stacked two route builders — build and save in the top one, it pops,
 // and you land on a second empty builder as though the save was discarded.
@@ -63,15 +63,22 @@ Future<void> _pump(WidgetTester tester, Preferences prefs) {
   );
 }
 
-// Build is the extended FAB, labelled; Import is the small one above it,
-// named by its tooltip.
-Finder _fab(String label) => find.ancestor(
-      of: label == 'Import' ? find.byTooltip(label) : find.text(label),
-      matching: find.byType(FloatingActionButton),
-    );
+// Build is the one FAB, labelled; Import is an AppBar action, named by its
+// tooltip.
+Finder _fab(String label) => label == 'Import'
+    ? find.ancestor(
+        of: find.byTooltip(label),
+        matching: find.byType(IconButton),
+      )
+    : find.ancestor(
+        of: find.text(label),
+        matching: find.byType(FloatingActionButton),
+      );
 
 VoidCallback? _onPressed(WidgetTester tester, String label) =>
-    tester.widget<FloatingActionButton>(_fab(label)).onPressed;
+    label == 'Import'
+        ? tester.widget<IconButton>(_fab(label)).onPressed
+        : tester.widget<FloatingActionButton>(_fab(label)).onPressed;
 
 void main() {
   late _HeldFilePicker picker;
@@ -101,7 +108,7 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('both FABs are disabled while one of them has a surface open',
+  testWidgets('Build and Import are disabled while one of them has a surface open',
       (tester) async {
     final prefs = await _makePrefs();
     await _pump(tester, prefs);
@@ -119,7 +126,7 @@ void main() {
 
     picker.completer.complete(null);
     await pumpUntil(tester, () => _onPressed(tester, 'Import') != null,
-        describe: 'the released picker to re-arm both FABs');
+        describe: 'the released picker to re-arm Build and Import');
     await tester.pumpAndSettle();
 
     expect(_onPressed(tester, 'Build'), isNotNull);

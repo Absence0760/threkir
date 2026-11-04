@@ -105,7 +105,10 @@ class MessagesInboxStore {
 		return true;
 	}
 
-	#apply(rows: DmThread[], startedAt: number) {
+	/// `userId` is the account the read was made for: one that lands after the
+	/// store was bound to another account is that account's list, not this one's.
+	#apply(rows: DmThread[], startedAt: number, userId: string | null) {
+		if (userId !== this.#userId) return;
 		const visible = overlayConversationWrites(
 			withoutHiddenConversations(rows, this.#hiddenAt, startedAt),
 			this.#writes.values(),
@@ -122,9 +125,10 @@ class MessagesInboxStore {
 
 	async loadThreads() {
 		this.threadsError = false;
-		const startedAt = Date.now();
+		const userId = this.#userId;
+		const startedAt = performance.now();
 		try {
-			this.#apply(await fetchDmThreads(), startedAt);
+			this.#apply(await fetchDmThreads(), startedAt, userId);
 		} catch {
 			this.threadsError = true;
 		}
@@ -137,9 +141,10 @@ class MessagesInboxStore {
 		if (this.#polling) return;
 		if (this.threadsError) return this.loadThreads();
 		this.#polling = true;
-		const startedAt = Date.now();
+		const userId = this.#userId;
+		const startedAt = performance.now();
 		try {
-			this.#apply(await fetchDmThreads(), startedAt);
+			this.#apply(await fetchDmThreads(), startedAt, userId);
 		} catch (e) {
 			console.warn('messages inbox poll failed', e);
 		} finally {
@@ -151,9 +156,10 @@ class MessagesInboxStore {
 	/// After a send or an unsend. The write already renders in the thread, so
 	/// a failed list read leaves the previews as they were.
 	async refreshThreads() {
-		const startedAt = Date.now();
+		const userId = this.#userId;
+		const startedAt = performance.now();
 		try {
-			this.#apply(await fetchDmThreads(), startedAt);
+			this.#apply(await fetchDmThreads(), startedAt, userId);
 		} catch {
 			// Corrected by the next poll.
 		}
@@ -216,7 +222,7 @@ class MessagesInboxStore {
 			}
 			throw e;
 		}
-		settleLandedWrite(this.#writes, pending, Date.now());
+		settleLandedWrite(this.#writes, pending, performance.now());
 		// A row the list did not have is read now, so the conversation joins the
 		// list with the state just written.
 		if (listed === undefined) void this.refreshThreads();
@@ -238,7 +244,7 @@ class MessagesInboxStore {
 			commit: async () => {
 				try {
 					await hideDmConversation(conversationId);
-					if (this.#userId === userId) this.#hiddenAt.set(conversationId, Date.now());
+					if (this.#userId === userId) this.#hiddenAt.set(conversationId, performance.now());
 					// Hidden on the server now: drop it from the held count so the
 					// badge does not count it again before the read below lands.
 					dmUnreadStore.forget(conversationId);
@@ -269,7 +275,7 @@ class MessagesInboxStore {
 	}
 
 	markRead(routeId: string) {
-		this.#markedReadAt.set(routeId, Date.now());
+		this.#markedReadAt.set(routeId, performance.now());
 		this.threads = this.threads.map((t) => (dmThreadRouteId(t) === routeId ? { ...t, unread: 0 } : t));
 	}
 

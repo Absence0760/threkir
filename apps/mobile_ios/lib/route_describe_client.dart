@@ -52,10 +52,13 @@ String routeDescribeLocaleTag(Locale resolved) =>
     localeToTag(negotiateLocale(localeToTag(resolved), const []));
 
 /// The request body. [unit] and [locale] are the viewer's, so the paragraph
-/// comes back in the unit and the language they read.
-Map<String, dynamic> routeDescribeBody(
-        RouteDescriptionInput input, DistanceUnit unit, String locale) =>
+/// comes back in the unit and the language they read. [routeId] is how the
+/// server decides whether the name may go to the model at all (owner or public
+/// route only); `name` only shapes the templated fallback it answers with.
+Map<String, dynamic> routeDescribeBody(RouteDescriptionInput input,
+        DistanceUnit unit, String locale, String routeId) =>
     {
+      'route_id': routeId,
       'name': input.name,
       'distance_m': input.distanceM,
       'elevation_m': input.elevationM,
@@ -90,9 +93,9 @@ bool isAiDisclosureDenial(int status, String body) {
 /// server's own fallback) is a normal, non-throwing result. A consent gap
 /// throws [kAiDisclosureError] so the caller can lead the runner to the
 /// disclosure instead of offering a retry that can never succeed.
-Future<AiDescriptionResult> requestAiDescription(
-    RouteDescriptionInput input, DistanceUnit unit, String locale) async {
-  final body = jsonEncode(routeDescribeBody(input, unit, locale));
+Future<AiDescriptionResult> requestAiDescription(RouteDescriptionInput input,
+    DistanceUnit unit, String locale, String routeId) async {
+  final body = jsonEncode(routeDescribeBody(input, unit, locale, routeId));
   final uri = Uri.parse('${resolveWebBaseUrl()}/api/coach/route-describe');
 
   String? token = Supabase.instance.client.auth.currentSession?.accessToken;

@@ -63,12 +63,20 @@ const ROUTE_DESCRIBE_MAX_TOKENS = 1024;
 const ROUTE_DESCRIBE_TIMEOUT_MS = 12_000;
 
 /**
- * Cap on the inbound name — the only free-text field that reaches the
+ * Cap on the route name — the only free-text field that reaches the
  * prompt. The rest of the input is numeric. Names longer than this are
  * almost certainly junk / an injection attempt; truncate rather than
  * reject so a legitimately long name still yields a description.
  */
 export const MAX_ROUTE_NAME_CHARS = 200;
+
+/**
+ * What the prompt calls the route when its name may not be sent: the caller
+ * neither owns the route nor is it public, or the route could not be resolved.
+ */
+export const WITHHELD_ROUTE_NAME = 'This route';
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /// The structural surface the handler uses — narrow enough that a test can
 /// hand in a fake without the SDK's whole client.
@@ -127,7 +135,7 @@ function parseInput(raw: unknown): RouteDescriptionInput | null {
 	const o = raw as Record<string, unknown>;
 	if (typeof o.distance_m !== 'number') return null;
 	const name =
-		typeof o.name === 'string' ? o.name.slice(0, MAX_ROUTE_NAME_CHARS) : 'This route';
+		typeof o.name === 'string' ? o.name.slice(0, MAX_ROUTE_NAME_CHARS) : WITHHELD_ROUTE_NAME;
 	const surface =
 		o.surface === 'road' || o.surface === 'trail' || o.surface === 'mixed'
 			? o.surface
@@ -147,6 +155,59 @@ function parseInput(raw: unknown): RouteDescriptionInput | null {
 		start: pt(o.start),
 		end: pt(o.end),
 	};
+}
+
+/** The `route_id` the caller named, or null when absent or not a UUID. */
+export function parseRouteId(raw: unknown): string | null {
+	if (!raw || typeof raw !== 'object') return null;
+	const id = (raw as Record<string, unknown>).route_id;
+	return typeof id === 'string' && UUID.test(id) ? id : null;
+}
+
+/**
+ * The route name the prompt may carry, read from the database rather than the
+ * request body: the stored name when the caller owns the route or it is
+ * public, else null. A club-mate, a named share recipient or a follower can
+ * open a route that is neither, and that route's name is its owner's, so it
+ * does not go to a sub-processor on someone else's tap. The body's `name` is
+ * never trusted here — a caller could otherwise send any route's name under
+ * their own route's id. Every failure is null: the paragraph is still written,
+ * just without the name.
+ */
+export async function promptRouteName(
+	supabase: ReturnType<SupabaseClientFactory>,
+	userId: string,
+	routeId: string | null,
+): Promise<string | null> {
+	if (!routeId) return null;
+	try {
+		const own = await supabase
+			.from('routes')
+			.select('name, user_id, is_public')
+			.eq('id', routeId)
+			.maybeSingle();
+		if (own.error) {
+			console.error('[route-describe] route name lookup failed', supabaseErrorFields(own.error));
+			return null;
+		}
+		const row = own.data as { name?: unknown; user_id?: unknown; is_public?: unknown } | null;
+		if (row && (row.user_id === userId || row.is_public === true)) {
+			return typeof row.name === 'string' ? row.name.slice(0, MAX_ROUTE_NAME_CHARS) : null;
+		}
+		// A public route the caller does not own is not readable on the base
+		// table (decisions § 33); the view is the public read, and it already
+		// leaves out a shadow-hidden route.
+		const pub = await supabase.from('public_routes').select('name').eq('id', routeId).maybeSingle();
+		if (pub.error) {
+			console.error('[route-describe] public route name lookup failed', supabaseErrorFields(pub.error));
+			return null;
+		}
+		const name = (pub.data as { name?: unknown } | null)?.name;
+		return typeof name === 'string' ? name.slice(0, MAX_ROUTE_NAME_CHARS) : null;
+	} catch (e) {
+		console.error('[route-describe] route name lookup threw', { message: thrownMessage(e) });
+		return null;
+	}
 }
 
 /**
@@ -240,12 +301,20 @@ const UNIT_RULE: Record<PreferredUnit, string> = {
  * viewer's language. The facts stay English — they are the model's input,
  * not the reader's text.
  */
-export function routeDescribeUserMessage(
-	parts: RouteDescriptionParts,
-	name: string,
-	unit: PreferredUnit,
-	locale: Locale,
-): string {
+export interface RouteDescribePromptInput {
+	parts: RouteDescriptionParts;
+	/** `promptRouteName`'s answer, or `WITHHELD_ROUTE_NAME`. */
+	name: string;
+	unit: PreferredUnit;
+	locale: Locale;
+}
+
+export function routeDescribeUserMessage({
+	parts,
+	name,
+	unit,
+	locale,
+}: RouteDescribePromptInput): string {
 	return (
 		`Facts about the route:\n${assembleEnglish(parts, name, unit)}\n\n` +
 		`Surface: ${parts.surface ?? 'unspecified'}. ` +
@@ -285,6 +354,7 @@ export async function handleRouteDescribe(
 	if (!input) return json(400, { error: 'invalid route input' });
 
 	const parts = describeRoute(input);
+	const routeId = parseRouteId(rawBody);
 	const requestedUnit = parseRequestedUnit(rawBody);
 	const requestedLocale = parseRequestedLocale(rawBody);
 
@@ -305,8 +375,8 @@ export async function handleRouteDescribe(
 		return json(401, { error: 'not authenticated' });
 	}
 
-	// GDPR Art 6(1)(a) — issue #734. This endpoint ships the route's name
-	// and stats to Anthropic, which the Coach-scoped disclosure never
+	// GDPR Art 6(1)(a) — issue #734. This endpoint ships the route's stats
+	// (and its name, when the caller owns it or it is public) to Anthropic, which the Coach-scoped disclosure never
 	// described, so it requires the widened version of the record. A user
 	// who only ever accepted the Coach disclosure is refused here until
 	// they accept the wider one. The bypass flag is deliberately NOT
@@ -405,6 +475,7 @@ export async function handleRouteDescribe(
 	// one is the server's English template, which both clients replace with
 	// their own localised sentence.
 	const locale = requestedLocale ?? (await storedLocale(supabase, userId));
+	const promptName = (await promptRouteName(supabase, userId, routeId)) ?? WITHHELD_ROUTE_NAME;
 
 	async function refundSlot(reason: string): Promise<void> {
 		await refundRouteRateLimitSlot(supabase, userId, ROUTE_DESCRIBE_RATE_BUCKET, spendId, reason);
@@ -421,7 +492,10 @@ export async function handleRouteDescribe(
 				thinking: { type: 'adaptive' },
 				system: SYSTEM_PROMPT,
 				messages: [
-					{ role: 'user', content: routeDescribeUserMessage(parts, input.name, unit, locale) },
+					{
+						role: 'user',
+						content: routeDescribeUserMessage({ parts, name: promptName, unit, locale }),
+					},
 				],
 			},
 			{ timeout: ROUTE_DESCRIBE_TIMEOUT_MS },

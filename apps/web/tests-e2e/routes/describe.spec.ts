@@ -35,8 +35,10 @@ test.describe('/routes/[id] — Describe (free user)', () => {
 
 	test('Describe renders the templated baseline + a Pro upgrade hint', async ({ page, mockRoute }) => {
 		let called = false;
+		let sentRouteId: unknown = null;
 		await mockRoute(page, '**/api/coach/route-describe', async (route) => {
 			called = true;
+			sentRouteId = (route.request().postDataJSON() as { route_id?: unknown }).route_id;
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -67,6 +69,8 @@ test.describe('/routes/[id] — Describe (free user)', () => {
 		// own sentence, rendered in the viewer's locale.
 		await expect(page.locator('.route-description')).not.toContainText('sentinel');
 		expect(called).toBe(true);
+		// The server decides from the id whether the name may reach the model.
+		expect(sentRouteId).toBe(RUNNER_PUBLIC_ROUTE_ID);
 	});
 
 	test('hard failure keeps the templated baseline and shows a non-blocking error', async ({

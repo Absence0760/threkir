@@ -20,6 +20,16 @@ paragraph that replaces the baseline, with an AI-attribution line. Gating is
 
 - **Server**: the endpoint enforces `is_pro()` and degrades to the templated
   text on every failure (`decisions.md § 151`).
+- **Route name scope**: the route's name reaches the model only when the
+  caller owns the route or it is public. Both clients send the route's
+  `route_id`; the handler reads the name itself (`promptRouteName` — the base
+  `routes` row under the caller's RLS, then the `public_routes` view) and
+  never takes it from the body, so a club-mate, a named share recipient or a
+  follower describing someone else's non-public route sends Anthropic the
+  stats with "This route" in place of the name (`WITHHELD_ROUTE_NAME`). A
+  missing or malformed id, a route that does not resolve and a failed lookup
+  all withhold it too. The body's `name` only shapes the templated fallback
+  the endpoint answers with, which never leaves the server for the model.
 - **Unit**: both clients send the viewer's `unit` (`km` / `mi`). The handler
   admits only `PreferredUnit`'s two members (`parseRequestedUnit`); a missing
   or malformed value falls back to the account's stored `preferred_unit`, then

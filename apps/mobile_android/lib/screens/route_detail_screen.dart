@@ -101,8 +101,8 @@ class RouteDetailScreen extends StatefulWidget {
   /// affordance. Defaults to the real Pro-gated endpoint; tests pass a
   /// stub to exercise the enhance / upgrade / failure paths without a
   /// network or a Supabase session.
-  final Future<AiDescriptionResult> Function(
-      RouteDescriptionInput, DistanceUnit, String locale)? describeAi;
+  final Future<AiDescriptionResult> Function(RouteDescriptionInput,
+      DistanceUnit, String locale, String routeId)? describeAi;
 
   /// Injectable Pro check. Defaults to `apiClient.isPro()`; tests pass a
   /// fixed value to drive the Pro vs free branch deterministically.
@@ -449,7 +449,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     try {
       final ai =
           await (widget.describeAi ?? requestAiDescription)(
-              input, unit, locale);
+              input, unit, locale, widget.route.id);
       if (!mounted) return;
       setState(() {
         _genDescription = shownDescription(localised,

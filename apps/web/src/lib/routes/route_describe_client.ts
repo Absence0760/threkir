@@ -29,14 +29,18 @@ export interface AiDescriptionResult {
 /**
  * Map the route's stored fields into the endpoint's request body. `unit` and
  * `locale` are the viewer's, so the paragraph comes back in the unit and the
- * language they read.
+ * language they read. `route_id` is how the server decides whether the name may
+ * go to the model at all (owner or public route only); `name` only shapes the
+ * templated fallback it answers with.
  */
 function toBody(
 	input: RouteDescriptionInput,
 	unit: PreferredUnit,
 	locale: Locale,
+	routeId: string,
 ): Record<string, unknown> {
 	return {
+		route_id: routeId,
 		name: input.name,
 		distance_m: input.distanceM,
 		elevation_m: input.elevationM,
@@ -57,8 +61,9 @@ export async function requestAiDescription(
 	input: RouteDescriptionInput,
 	unit: PreferredUnit,
 	locale: Locale,
+	routeId: string,
 ): Promise<AiDescriptionResult> {
-	const body = JSON.stringify(toBody(input, unit, locale));
+	const body = JSON.stringify(toBody(input, unit, locale, routeId));
 	// CloudFront's Lambda OAC can't hash the body itself — the client
 	// supplies the sigv4 payload hash or the Function URL 403s (#590).
 	const bodyHash = await payloadSha256Hex(body);

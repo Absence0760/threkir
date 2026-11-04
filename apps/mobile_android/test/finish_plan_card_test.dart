@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -12,8 +14,12 @@ class _Training extends TrainingService {
   _Training({this.fail = false});
   final bool fail;
   final finished = <String>[];
+
+  /// Holds the finish open until completed, when set.
+  Completer<void>? gate;
   @override
   Future<void> finishPlan(String id) async {
+    await gate?.future;
     if (fail) throw Exception('offline');
     finished.add(id);
   }
@@ -79,6 +85,24 @@ void main() {
 
     await tester.tap(find.byKey(const Key('finishPlanButton')));
     await tester.pump();
+    expect(told, 0);
+    expect(find.text(l10n.planFinishFailed), findsOneWidget);
+    final button =
+        tester.widget<FilledButton>(find.byKey(const Key('finishPlanButton')));
+    expect(button.onPressed, isNotNull);
+    await tester.pump(const Duration(seconds: 6));
+  });
+
+  testWidgets('a finish the backend never answers gives up and says so',
+      (tester) async {
+    final training = _Training()..gate = Completer<void>();
+    var told = 0;
+    await _pump(tester, training, onFinished: () => told++);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+
+    await tester.tap(find.byKey(const Key('finishPlanButton')));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 16));
     expect(told, 0);
     expect(find.text(l10n.planFinishFailed), findsOneWidget);
     final button =

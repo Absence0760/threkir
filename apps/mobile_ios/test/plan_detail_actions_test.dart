@@ -2,6 +2,8 @@
 // Shift dates, Export, Delete) and the per-week menu (Duplicate, Make
 // recovery week).
 
+import 'dart:async';
+
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -72,9 +74,15 @@ class _FakeTraining extends TrainingService {
   final DateTime? pausedAt;
   final resumeCalls = <ResumeShift?>[];
 
+  /// Holds every resume open until completed, when set: a write the
+  /// backend never answers.
+  Completer<void>? resumeGate;
+
   @override
-  Future<void> resumePlan(String id, {ResumeShift? shift}) async =>
-      resumeCalls.add(shift);
+  Future<void> resumePlan(String id, {ResumeShift? shift}) async {
+    resumeCalls.add(shift);
+    await resumeGate?.future;
+  }
 
   /// What each shift call does, in order: null succeeds, an object throws.
   final List<Object?> shiftOutcomes;
@@ -583,6 +591,23 @@ void main() {
       await tester.tap(find.text('Cancel').last);
       await tester.pumpAndSettle();
       expect(training.resumeCalls, isEmpty);
+    });
+
+    // supabase-dart's HTTP call does not give up on its own for minutes; the
+    // write timeout turns that into a banner instead of a screen stuck busy.
+    testWidgets('a resume the backend never answers gives up and says so',
+        (tester) async {
+      final training = _FakeTraining(
+          status: 'paused', pausedAt: DateTime(2026, 3, 10, 9))
+        ..resumeGate = Completer<void>();
+      await _pump(tester, training);
+      await resume(tester);
+      expect(training.resumeCalls, [null]);
+      expect(find.textContaining("Couldn't update the plan"), findsNothing);
+
+      await tester.pump(const Duration(seconds: 16));
+      expect(find.textContaining("Couldn't update the plan"), findsOneWidget);
+      await _drainBanner(tester);
     });
 
     testWidgets('a pause inside the same plan week resumes with nothing moved',

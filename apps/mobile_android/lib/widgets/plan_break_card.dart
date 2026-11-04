@@ -2,6 +2,7 @@ import 'package:api_client/api_client.dart' show SettingsKeys;
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 
+import '../backend_timeout.dart';
 import '../auth_error.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -256,12 +257,14 @@ class _PlanBreakCardState extends State<PlanBreakCard> {
     if (!ok || !mounted) return;
     setState(() => _busy = true);
     try {
-      await widget.training.reschedulePlanAfterBreak(
-        widget.plan.id,
-        change,
-        found.fromIso,
-        _todayIso,
-      );
+      await widget.training
+          .reschedulePlanAfterBreak(
+            widget.plan.id,
+            change,
+            found.fromIso,
+            _todayIso,
+          )
+          .timeout(kBackendLoadTimeout);
     } on ActivePlanExistsError {
       if (mounted) {
         setState(() => _busy = false);

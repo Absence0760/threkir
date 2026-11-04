@@ -1279,9 +1279,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     setState(() => _bulkBusy = true);
     try {
       if (paused) {
-        await widget.training.pausePlan(p.id);
+        await widget.training.pausePlan(p.id).timeout(kBackendLoadTimeout);
       } else {
-        await widget.training.resumePlan(p.id, shift: shift);
+        await widget.training
+            .resumePlan(p.id, shift: shift)
+            .timeout(kBackendLoadTimeout);
       }
       if (!mounted) return;
       setState(() => _bulkBusy = false);

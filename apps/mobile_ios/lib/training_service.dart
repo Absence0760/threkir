@@ -684,7 +684,7 @@ class TrainingService extends ChangeNotifier {
         'p_kind': 'plan',
         'p_id': planId,
         'p_ref': code,
-      });
+      }).timeout(kBackendLoadTimeout);
       return raw == true;
     } catch (e) {
       debugPrint('attribute_share_start failed: $e');

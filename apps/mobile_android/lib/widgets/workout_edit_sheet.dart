@@ -2,6 +2,7 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
+import '../backend_timeout.dart';
 import '../auth_error.dart';
 import '../goal_time.dart';
 import '../hr_prescription_gate.dart';
@@ -527,7 +528,7 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
         hr: isRest || !widget.hrPrescription
             ? null
             : (min: hr.min, max: hr.max),
-      );
+      ).timeout(kBackendLoadTimeout);
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       debugPrint('workout edit save error: $e');

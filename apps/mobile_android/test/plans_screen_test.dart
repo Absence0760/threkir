@@ -50,11 +50,15 @@ class _FakeTraining extends TrainingService {
     return plans;
   }
 
+  /// Holds the status write open until completed, when set.
+  Completer<void>? updateGate;
+
   @override
   Future<void> updateStatus(String id, String status) async {
     updateCalls++;
     lastUpdateId = id;
     lastUpdateStatus = status;
+    await updateGate?.future;
     if (throwOnUpdate) throw Exception('boom');
   }
 
@@ -473,6 +477,25 @@ void main() {
 
       expect(training.updateCalls, 1);
       expect(training.lastUpdateStatus, 'abandoned');
+    });
+
+    testWidgets('an abandon the backend never answers gives up and says so',
+        (tester) async {
+      final training = _FakeTraining([_activePlan()])
+        ..updateGate = Completer<void>();
+      await _pumpSignedIn(tester, training);
+
+      await tester.tap(find.text('Abandon'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.descendant(
+          of: find.byType(AlertDialog), matching: find.text('Abandon')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.textContaining("Couldn't update the plan"), findsNothing);
+
+      await tester.pump(const Duration(seconds: 16));
+      expect(find.textContaining("Couldn't update the plan"), findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
     });
 
     testWidgets('a failed abandon surfaces a banner', (tester) async {

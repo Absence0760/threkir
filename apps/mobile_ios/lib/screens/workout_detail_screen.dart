@@ -156,7 +156,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     );
     if (picked == null || !mounted) return;
     try {
-      await widget.training.markCompleted(widget.workoutId, picked);
+      await widget.training
+          .markCompleted(widget.workoutId, picked)
+          .timeout(kBackendLoadTimeout);
       await _load();
     } catch (e, s) {
       debugPrint('WorkoutDetailScreen._openRelinkPicker re-link failed: $e\n$s');
@@ -205,7 +207,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     setState(() => _updating = true);
     try {
       await widget.training
-          .markCompleted(widget.workoutId, null, manual: done);
+          .markCompleted(widget.workoutId, null, manual: done)
+          .timeout(kBackendLoadTimeout);
       await _load();
     } catch (e, s) {
       debugPrint('WorkoutDetailScreen._setCompleted($done) failed: $e\n$s');
@@ -220,7 +223,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     final l10n = AppLocalizations.of(context);
     setState(() => _skipping = true);
     try {
-      await widget.training.setSkipped(widget.workoutId, w.skippedAt == null);
+      await widget.training
+          .setSkipped(widget.workoutId, w.skippedAt == null)
+          .timeout(kBackendLoadTimeout);
       await _load();
     } catch (e, s) {
       debugPrint('WorkoutDetailScreen._toggleSkip failed: $e\n$s');

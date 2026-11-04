@@ -102,7 +102,7 @@ class _PlansScreenState extends State<PlansScreen> {
   /// with no explanation. On success the list reloads.
   Future<void> _runPlanAction(Future<void> Function() action) async {
     try {
-      await action();
+      await action().timeout(kBackendLoadTimeout);
     } catch (e) {
       debugPrint('plans action failed: $e');
       if (mounted) {

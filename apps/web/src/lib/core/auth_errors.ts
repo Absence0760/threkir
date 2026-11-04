@@ -17,12 +17,40 @@ export type AuthErrorKind =
 	| 'weakPassword'
 	| 'generic';
 
-/// A SQLSTATE or PostgREST `pgrst…` code (lower-cased), other than the
-/// `p0001` a bare `raise exception` carries: the database named the failure,
-/// so the message is not read for a category its code does not have.
-/// Mirrors `_isDatabaseCode` in mobile's auth_error.dart.
-function isDatabaseCode(code: string | null): boolean {
-	return code !== null && code !== 'p0001' && (/^[0-9a-z]{5}$/.test(code) || code.startsWith('pgrst'));
+/// SQLSTATE classes a database error can carry: every class Postgres and
+/// PL/pgSQL define, plus the classes this project's own RPCs raise
+/// (`RR` restart_training_plan, `RW` the recurrence dry run, `TR`
+/// trim_training_plan). A test reads every `errcode` in the migrations and
+/// fails when a new one is not covered here.
+const SQLSTATE_CLASSES = new Set([
+	'00', '01', '02', '03', '08', '09', '0A', '0B', '0F', '0L', '0P', '0Z',
+	'20', '21', '22', '23', '24', '25', '26', '27', '28', '2B', '2D', '2F',
+	'34', '38', '39', '3B', '3D', '3F', '40', '42', '44', '53', '54', '55',
+	'57', '58', '72', 'F0', 'HV', 'P0', 'XX',
+	'RR', 'RW', 'TR',
+]);
+
+/// Whether `code` is a SQLSTATE or a PostgREST `PGRST` code, in any case.
+/// A bare five-character test also took Node's `EPIPE` and any five-letter
+/// word an auth or storage service might send; a SQLSTATE is five
+/// characters of `[0-9A-Z]` whose first two name a known class, and
+/// GoTrue's snake_case codes and Storage's CamelCase ones can never be one.
+/// Mirrors `isDatabaseCode` in mobile's auth_error.dart; `i18n/error_copy.ts`
+/// uses this one too.
+export function isDatabaseCode(code: string | null | undefined): boolean {
+	if (!code) return false;
+	const c = code.toUpperCase();
+	if (/^PGRST\d{3}$/.test(c)) return true;
+	return /^[0-9A-Z]{5}$/.test(c) && SQLSTATE_CLASSES.has(c.slice(0, 2));
+}
+
+/// A database code that decides the category on its own, so the message is
+/// not read for one its code does not have. `P0001` is the exception: a
+/// bare `raise exception` carries it whatever the failure is, and its
+/// message is all there is. Mirrors `databaseCodeDecides` in mobile's
+/// auth_error.dart.
+export function databaseCodeDecides(code: string | null | undefined): boolean {
+	return isDatabaseCode(code) && code!.toUpperCase() !== 'P0001';
 }
 
 /// Classify an arbitrary auth error. Structural / duck-typed: reads the
@@ -37,7 +65,7 @@ export function classifyAuthError(error: unknown): AuthErrorKind {
 	const msg = (
 		typeof shaped?.message === 'string' ? shaped.message : String(error ?? '')
 	).toLowerCase();
-	const readMsg = !isDatabaseCode(code);
+	const readMsg = !databaseCodeDecides(code);
 	const says = (text: string) => readMsg && msg.includes(text);
 
 	if (says('failed to fetch') || says('networkerror') || says('load failed')) {

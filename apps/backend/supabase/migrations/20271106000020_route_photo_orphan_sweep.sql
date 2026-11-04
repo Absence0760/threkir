@@ -196,31 +196,43 @@ comment on function public.enqueue_route_photo_orphan_sweep() is
 
 -- ─────────────────── 5. prompt enqueue on delete ───────────────────
 
--- Statement-level with a transition table, so a route delete that cascades
--- fifty photos hands over fifty paths at once. A foreign-key cascade is not
--- one statement, though: Postgres runs it as one DELETE per parent row, so an
--- account deletion fires this trigger once per route (and once more for the
--- photos the user put on other people's routes). Each firing therefore appends
--- to a paths job this transaction already queued, which nothing else can see
--- or claim before commit, and starts a new one only when that job holds 1000
--- paths. A transaction queues ceil(paths / 1000) jobs, never one per route.
+-- Two triggers, because a foreign-key cascade is not one statement: Postgres
+-- runs it as one DELETE per parent row, so an account deletion fires a
+-- statement trigger once per route (and once more for the photos the user put
+-- on other people's routes). Writing the job from each firing would rewrite a
+-- growing jsonb payload once per route; a thousand-route account would leave
+-- a thousand row versions of one job behind. Instead:
 --
--- That job is found by the id the firing that queued it recorded in the
--- transaction-local setting `threkir.route_photo_orphan_sweep_job`, not by
--- matching timestamps: now() is only the transaction's start, which a
--- concurrent transaction can share to the microsecond, and its committed job
--- is claimable by the worker. Nor by `xmin = pg_current_xact_id()`: the insert
--- runs inside the exception block's subtransaction, so the row's xmin is the
--- subtransaction's id and never matches. The setting is local, so it is gone
--- at commit, and it is rolled back with the block whose insert it records.
+--   * `route_photos_enqueue_orphan_sweep` (statement level, transition table)
+--     appends the deleted rows' paths to the transaction-local setting
+--     `threkir.route_photo_orphan_sweep_paths`, as comma-joined JSON strings.
+--     A setting, not a temp table: the common case is one photo or one route,
+--     and a temp table would write and then delete its pg_class, pg_type and
+--     pg_attribute rows (and a TOAST table's) in every such transaction,
+--     bloating the catalogs, where a setting writes nothing. It is rolled back
+--     with a savepoint or exception block that set it, and gone at commit.
+--   * `route_photos_flush_orphan_sweep` (a DEFERRABLE INITIALLY DEFERRED
+--     constraint trigger) fires at commit, once per deleted row. The first
+--     firing that finds the buffer non-empty empties it and inserts
+--     ceil(paths / 1000) jobs; every later firing finds it empty and returns.
+--     Each job row is written once and never updated.
+--
+-- A caller that runs `set constraints ... immediate` gets the flush at the end
+-- of each statement instead, ahead of that statement's own buffering, so its
+-- paths wait for the next flush in the transaction or for the backstop.
+--
+-- 1000 paths is the most one job may carry: the worker erases at most
+-- RoutePhotoOrphanMaxBatches x RoutePhotoOrphanBatchSize objects a run
+-- (handler_route_photo_orphan_sweep.go).
 --
 -- The enqueue is auxiliary to the delete it rides on (conventions.md §
--- Layered resilience): an error in it is caught, reported as a warning that
--- names no path or user, and the delete commits. The bytes are then left to
--- the nightly backstop, which finds every unreferenced object anyway. A
--- class 40 error (serialization failure, deadlock) is the exception: the
--- whole transaction is meant to be retried, and committing the delete without
--- its enqueue would turn a retry that succeeds into a night's delay.
+-- Layered resilience): an error in either trigger is caught, reported as a
+-- warning that names no path or user, and the delete commits. The bytes are
+-- then left to the nightly backstop, which finds every unreferenced object
+-- anyway. A class 40 error (serialization failure, deadlock) is the
+-- exception: the whole transaction is meant to be retried, and committing the
+-- delete without its enqueue would turn a retry that succeeds into a night's
+-- delay.
 --
 -- The payload holds `{owner}/{photo}` paths, the same identifiers
 -- route_photo_process payloads already carry, and `purge-stale-jobs` drops
@@ -232,12 +244,8 @@ security definer
 set search_path = public, pg_temp
 as $$
 declare
-  v_cap constant integer := 1000;
-  v_setting constant text := 'threkir.route_photo_orphan_sweep_job';
-  v_paths text[];
-  v_job bigint;
-  v_room integer;
-  v_take integer;
+  v_setting constant text := 'threkir.route_photo_orphan_sweep_paths';
+  v_more text;
 begin
   if not coalesce(
     (select f.enabled from private.feature_flags f
@@ -248,8 +256,8 @@ begin
   end if;
 
   begin
-    select array_agg(p order by p)
-      into v_paths
+    select string_agg(to_jsonb(s.p)::text, ',')
+      into v_more
       from (
         select g.storage_path as p from gone g where g.storage_path <> ''
         union
@@ -257,42 +265,12 @@ begin
          where g.thumb_512_path is not null and g.thumb_512_path <> ''
       ) s;
 
-    v_job := nullif(current_setting(v_setting, true), '')::bigint;
-
-    while coalesce(cardinality(v_paths), 0) > 0 loop
-      v_room := null;
-      if v_job is not null then
-        select v_cap - jsonb_array_length(j.payload -> 'paths')
-          into v_room
-          from public.jobs j
-         where j.id = v_job
-           and j.kind = 'route_photo_orphan_sweep'
-           and j.status = 'queued'
-           and j.created_at = now()
-           and jsonb_typeof(j.payload -> 'paths') = 'array';
-      end if;
-
-      if coalesce(v_room, 0) > 0 then
-        v_take := least(v_room, cardinality(v_paths));
-        update public.jobs
-           set payload = jsonb_build_object(
-                 'paths', (payload -> 'paths') || to_jsonb(v_paths[1:v_take])),
-               updated_at = now()
-         where id = v_job;
-      else
-        v_take := least(v_cap, cardinality(v_paths));
-        insert into public.jobs (kind, payload, max_attempts)
-        values (
-          'route_photo_orphan_sweep',
-          jsonb_build_object('paths', to_jsonb(v_paths[1:v_take])),
-          3
-        )
-        returning id into v_job;
-        perform set_config(v_setting, v_job::text, true);
-      end if;
-
-      v_paths := v_paths[v_take + 1:];
-    end loop;
+    if v_more is not null then
+      perform set_config(
+        v_setting,
+        concat_ws(',', nullif(current_setting(v_setting, true), ''), v_more),
+        true);
+    end if;
   exception
     when transaction_rollback then
       raise;
@@ -305,10 +283,63 @@ $$;
 
 revoke execute on function public.enqueue_route_photo_orphan_sweep_on_delete() from public, anon, authenticated;
 
+create or replace function public.flush_route_photo_orphan_sweep()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_cap constant integer := 1000;
+  v_setting constant text := 'threkir.route_photo_orphan_sweep_paths';
+  v_buffer text := nullif(current_setting(v_setting, true), '');
+  v_paths text[];
+begin
+  if v_buffer is null then
+    return null;
+  end if;
+  perform set_config(v_setting, '', true);
+
+  if not coalesce(
+    (select f.enabled from private.feature_flags f
+      where f.name = 'route_photo_orphan_sweep'),
+    false
+  ) then
+    return null;
+  end if;
+
+  begin
+    select array_agg(distinct e.p order by e.p)
+      into v_paths
+      from jsonb_array_elements_text(('[' || v_buffer || ']')::jsonb) as e(p);
+
+    insert into public.jobs (kind, payload, max_attempts)
+    select 'route_photo_orphan_sweep',
+           jsonb_build_object('paths', to_jsonb(v_paths[i:i + v_cap - 1])),
+           3
+      from generate_series(1, coalesce(cardinality(v_paths), 0), v_cap) as i
+     order by i;
+  exception
+    when transaction_rollback then
+      raise;
+    when others then
+      raise warning 'route_photo_orphan_sweep: prompt enqueue failed (%), the nightly backstop will erase these objects', sqlstate;
+  end;
+  return null;
+end;
+$$;
+
+revoke execute on function public.flush_route_photo_orphan_sweep() from public, anon, authenticated;
+
 create trigger route_photos_enqueue_orphan_sweep
   after delete on public.route_photos
   referencing old table as gone
   for each statement execute function public.enqueue_route_photo_orphan_sweep_on_delete();
+
+create constraint trigger route_photos_flush_orphan_sweep
+  after delete on public.route_photos
+  deferrable initially deferred
+  for each row execute function public.flush_route_photo_orphan_sweep();
 
 -- ─────────────────── 6. schedule ───────────────────
 

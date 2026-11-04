@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Modal from './Modal.svelte';
-	import { appErrorMessage } from '#lib/core/supabase_error.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -41,7 +41,7 @@
 		try {
 			checkpoints = await fetchEventCheckpoints(eventId);
 		} catch (e) {
-			showToast(appErrorMessage(e) ?? m('checkpoint.loadFailed'), 'error');
+			showToast(errorCopy(e, m, 'checkpoint.loadFailed', 'checkpoint.loadFailed'), 'error');
 		} finally {
 			loading = false;
 		}
@@ -132,7 +132,7 @@
 			showEditor = false;
 			await load();
 		} catch (e) {
-			showToast(appErrorMessage(e) ?? m('checkpoint.saveFailed'), 'error');
+			showToast(errorCopy(e, m, 'checkpoint.saveFailed', 'checkpoint.saveFailed'), 'error');
 		} finally {
 			busy = false;
 		}
@@ -146,7 +146,7 @@
 			await deleteEventCheckpoint(cp.id);
 			await load();
 		} catch (e) {
-			showToast(appErrorMessage(e) ?? m('checkpoint.deleteFailed'), 'error');
+			showToast(errorCopy(e, m, 'checkpoint.deleteFailed', 'checkpoint.deleteFailed'), 'error');
 		}
 	}
 
@@ -160,7 +160,7 @@
 				reload: load
 			});
 		} catch (e) {
-			showToast(appErrorMessage(e) ?? m('checkpoint.saveFailed'), 'error');
+			showToast(errorCopy(e, m, 'checkpoint.saveFailed', 'checkpoint.saveFailed'), 'error');
 		} finally {
 			busy = false;
 		}

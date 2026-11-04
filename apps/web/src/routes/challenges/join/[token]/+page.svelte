@@ -7,7 +7,7 @@
 		previewChallengeInvite,
 		type ChallengeInvitePreview
 	} from '#lib/core/data.ts';
-	import { appErrorMessage } from '#lib/core/supabase_error.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import {
@@ -61,7 +61,7 @@
 			}
 			goto(`/challenges/${id}`);
 		} catch (e) {
-			joinError = appErrorMessage(e) ?? m('challengeJoin.joinFailed');
+			joinError = errorCopy(e, m, 'challengeJoin.joinFailed', 'challengeJoin.joinFailed');
 		} finally {
 			busy = false;
 		}

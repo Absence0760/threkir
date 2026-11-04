@@ -321,9 +321,12 @@ class _FakeApi extends ApiClient {
     if (conversationError != null) throw conversationError!;
   }
 
+  Object? hideError;
+
   @override
   Future<void> hideDmConversation(String conversationId) async {
     hides.add(conversationId);
+    if (hideError != null) throw hideError!;
   }
 
   @override
@@ -1217,6 +1220,51 @@ void main() {
       await tester.pump();
       expect(api.hides, ['c-1']);
       expect(DmPendingHides.instance.contains('c-1'), isFalse);
+    });
+
+    testWidgets('a Delete that fails after the thread was left says so over '
+        'the screen under it', (tester) async {
+      final api = _FakeApi()
+        ..newest = [_msg('m1')]
+        ..hideError = StateError('offline');
+      await tester.pumpWidget(_app(Builder(
+        builder: (context) => Scaffold(
+          body: TextButton(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => MessageThreadScreen(
+                api: api,
+                partnerId: _partner,
+                partnerName: 'Ada',
+                pollInterval: _quiet,
+              ),
+            )),
+            child: const Text('open'),
+          ),
+        ),
+      )));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      await openMenu(tester);
+      await tester.tap(find.text(l10n.messagesDeleteConversation));
+      await tester.pump();
+      tester.state<NavigatorState>(find.byType(Navigator)).pop();
+      // Not pumpAndSettle: the undo pill's countdown would run it through
+      // the whole window.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byType(MessageThreadScreen), findsNothing);
+      expect(api.hides, isEmpty);
+
+      await tester.pump(const Duration(seconds: 9));
+      await tester.pump();
+      expect(api.hides, ['c-1']);
+      expect(DmPendingHides.instance.contains('c-1'), isFalse);
+      expect(
+          find.textContaining(
+              l10n.messagesConversationActionFailed('').trim()),
+          findsOneWidget);
+      await _drainBanner(tester);
     });
 
     testWidgets('the inbox leaves out a conversation whose delete is pending',

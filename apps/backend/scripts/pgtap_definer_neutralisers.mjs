@@ -1600,6 +1600,12 @@ $neutralised$;`,
 // hands them at merge time.
 export const UNREGISTERED_DEFINER_RELATIONS = [
   {
+    relation: 'route_photo_orphan_paths',
+    assertion: 'gate off: the worklist is empty although an orphan exists',
+    reason:
+      "the function carries no access-control filter to drop. It is a definer so the service-role sweep job can read `storage.objects`, and who may call it is enforced by the EXECUTE grant (service_role only), which the same file's 42501 throws_ok assertions pin for authenticated and anon. Its two zero-count assertions (worklist and paths mode) claim that the `route_photo_orphan_sweep` feature flag being off stops the sweep - a fail-closed rollout gate, not a visibility. Emptiness is not what it turns on either: `results_eq` positives in the same transaction, after the flag is turned on, name the orphans the function DOES return",
+  },
+  {
     relation: 'fetch_pending_reports',
     assertion: 'resolved target is gone from the queue',
     reason:

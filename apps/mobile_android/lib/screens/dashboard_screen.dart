@@ -185,6 +185,8 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
+enum _HomeMenuAction { addRun, importRuns }
+
 /// What the SERVER says about this account's history — the one thing the
 /// runless welcome state is a claim about and local disk cannot answer. A
 /// fresh install hydrates an empty store before the first frame, so a
@@ -744,7 +746,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   void _openImport() {
-    // From the welcome empty state. Routes into the existing
+    // From the welcome empty state and Home's overflow. Routes into the existing
     // ImportScreen which handles Strava ZIP / Health Connect /
     // GPX-folder paths. The user might not be signed in (apiClient
     // null) — ImportScreen handles that internally by greying out
@@ -842,8 +844,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       hasPlan: planWorkouts != null,
       unit: unit,
       onOpenSession: _openPlanSession,
-      onAddRun: _openAddRun,
-      onImport: _openImport,
     );
   }
 
@@ -1517,13 +1517,38 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
           ),
       ],
+      // Logging a run after the fact and importing history are occasional
+      // jobs, so they sit in the overflow rather than on the week lead, where
+      // they took the lead's whole bottom row on every visit (decisions
+      // § 2277). Neither needs a session: both work offline and signed out.
+      PopupMenuButton<_HomeMenuAction>(
+        key: const Key('dashboardMoreMenu'),
+        tooltip: l10n.commonMore,
+        icon: const Icon(Icons.more_vert),
+        onSelected: (a) => switch (a) {
+          _HomeMenuAction.addRun => _openAddRun(),
+          _HomeMenuAction.importRuns => _openImport(),
+        },
+        itemBuilder: (_) => [
+          PopupMenuItem(
+            key: const Key('dashboardMenuAddRun'),
+            value: _HomeMenuAction.addRun,
+            child: Text(l10n.dashboardLeadAddRun),
+          ),
+          PopupMenuItem(
+            key: const Key('dashboardMenuImport'),
+            value: _HomeMenuAction.importRuns,
+            child: Text(l10n.dashboardImportRuns),
+          ),
+        ],
+      ),
     ];
     // Home opened on four glyphs and no title at all — nothing on the screen
     // said which surface it was, and the bottom-nav label is 700 dp away at
     // the other end of the phone. The title is the row's first child so the
     // actions read as belonging to it.
     final actionToolbar = Padding(
-      padding: EdgeInsets.fromLTRB(16, 8, actions.isEmpty ? 16 : 8, 0),
+      padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
       child: Row(
         children: [
           Expanded(
@@ -2275,8 +2300,6 @@ class _DashboardWeekLead extends StatelessWidget {
   final bool hasPlan;
   final DistanceUnit unit;
   final ValueChanged<LeadPlanWorkout> onOpenSession;
-  final VoidCallback onAddRun;
-  final VoidCallback onImport;
 
   const _DashboardWeekLead({
     super.key,
@@ -2284,8 +2307,6 @@ class _DashboardWeekLead extends StatelessWidget {
     required this.hasPlan,
     required this.unit,
     required this.onOpenSession,
-    required this.onAddRun,
-    required this.onImport,
   });
 
   String _whenLabel(AppLocalizations l10n, String iso, int? inDays) {
@@ -2407,26 +2428,6 @@ class _DashboardWeekLead extends StatelessWidget {
                   style: theme.textTheme.bodyMedium?.copyWith(color: muted),
                 ),
             ],
-            const SizedBox(height: 16),
-            // A Wrap so the two labels stack in a locale too long to fit both
-            // on one line rather than overflowing.
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                FilledButton.icon(
-                  key: const Key('dashboardWeekLeadAddRun'),
-                  onPressed: onAddRun,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: Text(l10n.dashboardLeadAddRun),
-                ),
-                OutlinedButton(
-                  key: const Key('dashboardWeekLeadImport'),
-                  onPressed: onImport,
-                  child: Text(l10n.dashboardImportRuns),
-                ),
-              ],
-            ),
           ],
         ),
       ),

@@ -3,7 +3,7 @@
 // `week_lead.dart` parity pair's own suite; this one pins what the screen does
 // with them: where the card sits, which yardstick line it shows, the
 // next-session half appearing only with an active plan, the unit preference,
-// the two actions, and the card staying off the runless welcome state.
+// the two actions now in Home's overflow, and the card staying off the runless welcome state.
 
 import 'dart:io';
 
@@ -21,6 +21,7 @@ import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/add_run_screen.dart';
 import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/import_screen.dart';
 import '../lib/training_service.dart';
 import 'pump_until.dart';
 
@@ -169,9 +170,12 @@ void main() {
     expect(find.byKey(const Key('dashboardWeekLeadMeter')), findsNothing);
     // No active plan, so no next-session half at all.
     expect(find.text('Next session'), findsNothing);
-    expect(find.byKey(const Key('dashboardWeekLeadAddRun')), findsOneWidget);
+    // Compact: the occasional Add a run / Import moved to Home's overflow
+    // (decisions § 2277).
+    expect(find.descendant(of: _lead, matching: find.text('Add a run')),
+        findsNothing);
     expect(find.descendant(of: _lead, matching: find.text('Import runs')),
-        findsOneWidget);
+        findsNothing);
 
     // It is the first card under the toolbar: above the period strip.
     expect(tester.getBottomLeft(_lead).dy,
@@ -272,7 +276,8 @@ void main() {
     expect(find.byKey(const Key('dashboardWeekLeadNext')), findsNothing);
   });
 
-  testWidgets('Add a run opens the manual add-run form', (tester) async {
+  testWidgets('Home\'s overflow offers Add a run, which opens the manual '
+      'add-run form', (tester) async {
     final now = DateTime.now();
     await _mount(
       tester,
@@ -280,11 +285,34 @@ void main() {
       ready: () => _lead.evaluate().isNotEmpty,
       describe: 'the week lead to mount',
     );
-    await tester.tap(find.byKey(const Key('dashboardWeekLeadAddRun')));
+    await tester.tap(find.byKey(const Key('dashboardMoreMenu')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const Key('dashboardMenuImport')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('dashboardMenuAddRun')));
     await pumpUntil(
       tester,
       () => find.byType(AddRunScreen).evaluate().isNotEmpty,
       describe: 'the add-run form to open',
+    );
+  });
+
+  testWidgets('Home\'s overflow offers Import runs, which opens the import '
+      'screen, on the welcome state too', (tester) async {
+    await _mount(
+      tester,
+      runs: const [],
+      ready: () => find.text('Welcome!').evaluate().isNotEmpty,
+      describe: 'the welcome state to mount',
+    );
+    await tester.tap(find.byKey(const Key('dashboardMoreMenu')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const Key('dashboardMenuImport')));
+    await pumpUntil(
+      tester,
+      () => find.byType(ImportScreen).evaluate().isNotEmpty,
+      describe: 'the import screen to open',
     );
   });
 

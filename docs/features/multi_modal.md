@@ -408,6 +408,12 @@ becomes an **action button**, not a tab.
 > **Import runs** label, since `ImportScreen` takes more than Strava and
 > Garmin ([decisions § 1800](../architecture/decisions.md)). A lifter with no
 > runs, and the runless welcome state, get no lead.
+> **Since 2026-11-03 (#1187, [decisions § 2277](../architecture/decisions.md))
+> the mobile lead is compact:** **Add a run** and **Import runs** left it for
+> the overflow (⋮) on Home's toolbar, which offers both on every Home state,
+> the welcome state included, so neither is more than two taps away. Web's
+> `DashboardWeekLead.svelte` still carries both buttons; that is a known,
+> recorded divergence, not drift.
 > `test/dashboard_week_lead_test.dart`.
 
 Home is a vertical scroll of cards. The order is **driven by what the

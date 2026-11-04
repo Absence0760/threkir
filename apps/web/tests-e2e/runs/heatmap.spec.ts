@@ -61,13 +61,14 @@ test.describe('/runs/heatmap — signed-in seed user', () => {
 
 		// The component downloads the user's tracks then either renders a
 		// legend (data present) or an empty state (no mapped runs). Either
-		// is a pass; what must NOT persist is the loading spinner.
-		await expect(page.getByTestId('personal-heatmap-loading')).toHaveCount(0, {
-			timeout: 20_000
-		});
+		// is a pass. Wait on that terminal state, not on the spinner's
+		// absence: "no spinner" is also true before the component mounts
+		// and while a cold dev server reloads the document, so it can pass
+		// early and leave the real wait on a short budget.
 		const legend = page.getByTestId('personal-heatmap-legend');
 		const empty = page.getByTestId('personal-heatmap-empty');
-		await expect(legend.or(empty)).toBeVisible();
+		await expect(legend.or(empty)).toBeVisible({ timeout: 20_000 });
+		await expect(page.getByTestId('personal-heatmap-loading')).toHaveCount(0);
 	});
 
 	test('crossfades from a heat cloud (zoomed out) to track lines (zoomed in)', async ({
@@ -80,6 +81,16 @@ test.describe('/runs/heatmap — signed-in seed user', () => {
 		});
 		// The seed user owns mapped runs, so data must resolve to the legend.
 		await expect(page.getByTestId('personal-heatmap-legend')).toBeVisible();
+		// The legend marks the DATA resolving, which races the basemap
+		// style: before the style's `load` the component stashes the data
+		// and has added no layers, and `getPaintProperty` on a style that
+		// isn't loaded throws. Wait for the layers the load handler adds.
+		await page.waitForFunction(() => {
+			const map = (
+				window as { __personalHeatmap?: { getLayer(id: string): unknown } }
+			).__personalHeatmap;
+			return !!map?.getLayer('personal-heat-layer') && !!map.getLayer('personal-lines-layer');
+		});
 
 		const state = await page.evaluate(() => {
 			type MiniMap = {

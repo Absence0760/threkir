@@ -13,6 +13,7 @@ import 'chunk.dart';
 import 'direct_messages.dart';
 import 'effort_rank.dart';
 import 'live_overlay.dart';
+import 'route_delete.dart';
 import 'segments_rank.dart';
 import 'smoothed_sidecar.dart';
 import 'ultrasignup_person.dart';
@@ -1392,43 +1393,80 @@ class ApiClient {
     return _runFromRow(data);
   }
 
-  /// Delete a route from the backend. Mirrors `apps/web/src/lib/core/data.ts:
-  /// deleteRoute`. RLS gates the delete to the owner; foreign-key
-  /// cascades clean up `saved_routes`, `segments`, and `route_reviews`
-  /// rows automatically. Throws on RLS rejection or network failure
-  /// so the caller can surface the error and avoid the
-  /// "deleted-locally-but-cloud-row-persists" silent-divergence bug
-  /// that mobile shipped before this method existed — every refresh
-  /// would re-pull the route the user thought they'd deleted.
+  /// Delete a route the caller owns (or administers through a club). Mirrors
+  /// web `data.ts: deleteRoute`. Every reference is handled by its foreign key
+  /// (decisions § 2292): the route's photos, markers, conditions, reviews,
+  /// shares, bookmarks and segments cascade; runs, events, event courses,
+  /// race listings and DMs keep living with the link nulled.
+  ///
+  /// The photo bytes go after the row: their uploader can read their own
+  /// folder, so the sweep still reaches them once the cascade has taken the
+  /// route_photos rows, and a failed route delete never leaves a standing
+  /// route with its photos gone. A failed sweep leaves private bytes only the
+  /// uploader can read, which account deletion's folder sweep removes.
+  ///
+  /// RLS filters a refused DELETE rather than raising, so an empty result is
+  /// read back: a route the caller can still see throws
+  /// [RouteDeleteRefusedException]; one they cannot see is already gone and
+  /// the delete is done. Throws on network failure so the caller can surface
+  /// it and keep the local copy for a retry.
   Future<void> deleteRoute(String routeId) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
-    try {
-      // Sweep route-photo blobs before the row delete. The FK cascade
-      // removes the route_photos rows (so the Storage SELECT join hides
-      // the bytes), but the blobs would otherwise orphan in the bucket —
-      // the same gap deleteRun closes for run photos. Best-effort.
-      final photoRows = await _client
-          .from(RoutePhotoRow.table)
-          .select(
-            '${RoutePhotoRow.colStoragePath}, ${RoutePhotoRow.colThumb512Path}',
-          )
-          .eq(RoutePhotoRow.colRouteId, routeId);
-      final paths = <String>[];
-      for (final row in photoRows) {
-        final storage = row[RoutePhotoRow.colStoragePath] as String?;
-        final thumb = row[RoutePhotoRow.colThumb512Path] as String?;
-        if (storage != null && storage.isNotEmpty) paths.add(storage);
-        if (thumb != null && thumb.isNotEmpty) paths.add(thumb);
-      }
-      if (paths.isNotEmpty) {
-        await _client.storage.from(StorageBuckets.routePhotos).remove(paths);
-      }
-    } catch (e) {
-      // Best-effort — the row delete matters more than the file cleanup.
-      debugPrint('deleteRoute: photo cleanup failed: ${safeErrorLabel(e)}');
+    final photoRows = await _client
+        .from(RoutePhotoRow.table)
+        .select(
+          '${RoutePhotoRow.colStoragePath}, ${RoutePhotoRow.colThumb512Path}',
+        )
+        .eq(RoutePhotoRow.colRouteId, routeId);
+    final paths = <String>[];
+    for (final row in photoRows) {
+      final storage = row[RoutePhotoRow.colStoragePath] as String?;
+      final thumb = row[RoutePhotoRow.colThumb512Path] as String?;
+      if (storage != null && storage.isNotEmpty) paths.add(storage);
+      if (thumb != null && thumb.isNotEmpty) paths.add(thumb);
     }
-    await _client.from(RouteRow.table).delete().eq(RouteRow.colId, routeId);
+
+    final deleted = await _client
+        .from(RouteRow.table)
+        .delete()
+        .eq(RouteRow.colId, routeId)
+        .select(RouteRow.colId);
+    if (deleted.isEmpty) {
+      final still = await _client
+          .from(RouteRow.table)
+          .select(RouteRow.colId)
+          .eq(RouteRow.colId, routeId)
+          .maybeSingle();
+      if (still != null) throw RouteDeleteRefusedException(routeId);
+    }
+
+    if (paths.isNotEmpty) {
+      try {
+        await _client.storage.from(StorageBuckets.routePhotos).remove(paths);
+      } catch (e) {
+        debugPrint('deleteRoute: photo cleanup failed: ${safeErrorLabel(e)}');
+      }
+    }
+  }
+
+  /// What deleting [routeId] takes with it or detaches, for the confirm the
+  /// owner reads first. Mirrors web `fetchRouteDeleteImpact`. Counts other
+  /// runners' bookmarks and the race listings using it as a course, which the
+  /// owner's own session cannot read. Throws when the caller may not delete
+  /// the route (42501) or the read fails.
+  Future<RouteDeleteImpact> fetchRouteDeleteImpact(String routeId) async {
+    final data = await _client.rpc(
+      'route_delete_impact',
+      params: {'p_route_id': routeId},
+      get: true,
+    );
+    if (data is List && data.isNotEmpty && data.first is Map) {
+      return RouteDeleteImpact.fromRow(
+        Map<String, dynamic>.from(data.first as Map),
+      );
+    }
+    throw StateError('route_delete_impact returned no row');
   }
 
   /// Course markers for a route, ordered by distance along the line. Reads

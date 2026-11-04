@@ -4276,6 +4276,145 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get routeDetailDeleteImpactUnknown =>
+      'Impossible de vérifier ce qui utilise encore cet itinéraire.';
+
+  @override
+  String get routeDetailDeleteNotAllowed =>
+      'Seul le propriétaire de l\'itinéraire peut le supprimer.';
+
+  @override
+  String get routeDetailDeleteImpactPublic =>
+      'Il est public : d\'autres coureurs peuvent le trouver et le suivre.';
+
+  @override
+  String routeDetailDeleteImpactRaceListings(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count courses l’utilisent comme parcours et perdront leur parcours.',
+      one: '$count course l’utilise comme parcours et perdra son parcours.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactEvents(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count événements de club l’utilisent et perdront leur itinéraire.',
+      one: '$count événement de club l’utilise et perdra son itinéraire.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactSaved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count autres coureurs l’ont enregistré.',
+      one: '$count autre coureur l’a enregistré.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactShares(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count personnes avec qui il est partagé perdront l’accès.',
+      one: '$count personne avec qui il est partagé perdra l’accès.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactSegments(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count segments créés dessus par d’autres coureurs seront supprimés.',
+      one: '$count segment créé dessus par d’autres coureurs sera supprimé.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactEfforts(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count efforts d’autres coureurs sur ses segments seront supprimés.',
+      one: '$count effort d’autres coureurs sur ses segments sera supprimé.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactReviews(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count avis d’autres coureurs seront supprimés.',
+      one: '$count avis d’un autre coureur sera supprimé.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactConditions(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count signalements d’état d’autres coureurs seront supprimés.',
+      one: '$count signalement d’état d’un autre coureur sera supprimé.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count sorties qui l’ont suivi gardent leurs statistiques mais perdent le lien.',
+      one:
+          '$count sortie qui l’a suivi garde ses statistiques mais perd le lien.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactPhotos(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Ses $count photos seront supprimées.',
+      one: 'Sa $count photo sera supprimée.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactMarkers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Ses $count repères seront supprimés.',
+      one: 'Son $count repère sera supprimé.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get routeDetailPreview => 'Aperçu';
 
   @override

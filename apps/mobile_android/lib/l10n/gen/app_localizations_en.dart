@@ -4222,6 +4222,143 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get routeDetailDeleteImpactUnknown =>
+      'We couldn\'t check what else uses this route.';
+
+  @override
+  String get routeDetailDeleteNotAllowed =>
+      'Only the route\'s owner can delete it.';
+
+  @override
+  String get routeDetailDeleteImpactPublic =>
+      'It is public, so other runners can find and follow it.';
+
+  @override
+  String routeDetailDeleteImpactRaceListings(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count race listings use it as their course and will lose the course.',
+      one:
+          '$count race listing uses it as its course and will lose the course.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactEvents(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count club events use it and will lose their route.',
+      one: '$count club event uses it and will lose its route.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactSaved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count other runners have saved it.',
+      one: '$count other runner has saved it.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactShares(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count people it is shared with will lose access.',
+      one: '$count person it is shared with will lose access.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactSegments(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count segments other runners made on it will be deleted.',
+      one: '$count segment other runners made on it will be deleted.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactEfforts(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count efforts other runners logged on its segments will be deleted.',
+      one:
+          '$count effort other runners logged on its segments will be deleted.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactReviews(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count reviews by other runners will be deleted.',
+      one: '$count review by another runner will be deleted.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactConditions(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count condition reports by other runners will be deleted.',
+      one: '$count condition report by another runner will be deleted.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count runs that followed it keep their stats but lose the link.',
+      one: '$count run that followed it keeps its stats but loses the link.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactPhotos(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Its $count photos will be deleted.',
+      one: 'Its $count photo will be deleted.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactMarkers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Its $count markers will be deleted.',
+      one: 'Its $count marker will be deleted.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get routeDetailPreview => 'Preview';
 
   @override

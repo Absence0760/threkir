@@ -4275,6 +4275,145 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get routeDetailDeleteImpactUnknown =>
+      'Wir konnten nicht prüfen, was diese Route sonst noch verwendet.';
+
+  @override
+  String get routeDetailDeleteNotAllowed =>
+      'Nur wem die Route gehört, kann sie löschen.';
+
+  @override
+  String get routeDetailDeleteImpactPublic =>
+      'Sie ist öffentlich, andere Läufer können sie also finden und ihr folgen.';
+
+  @override
+  String routeDetailDeleteImpactRaceListings(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Rennen nutzen sie als Strecke und verlieren die Strecke.',
+      one: '$count Rennen nutzt sie als Strecke und verliert die Strecke.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactEvents(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Club-Events nutzen sie und verlieren ihre Route.',
+      one: '$count Club-Event nutzt sie und verliert seine Route.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactSaved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count andere Läufer haben sie gespeichert.',
+      one: '$count anderer Läufer hat sie gespeichert.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactShares(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count Personen, mit denen sie geteilt ist, verlieren den Zugriff.',
+      one: '$count Person, mit der sie geteilt ist, verliert den Zugriff.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactSegments(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count Segmente, die andere Läufer darauf angelegt haben, werden gelöscht.',
+      one:
+          '$count Segment, das andere Läufer darauf angelegt haben, wird gelöscht.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactEfforts(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count Leistungen anderer Läufer auf ihren Segmenten werden gelöscht.',
+      one: '$count Leistung anderer Läufer auf ihren Segmenten wird gelöscht.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactReviews(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Bewertungen anderer Läufer werden gelöscht.',
+      one: '$count Bewertung eines anderen Läufers wird gelöscht.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactConditions(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Zustandsmeldungen anderer Läufer werden gelöscht.',
+      one: '$count Zustandsmeldung eines anderen Läufers wird gelöscht.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count Läufe auf dieser Route behalten ihre Werte, verlieren aber die Verknüpfung.',
+      one:
+          '$count Lauf auf dieser Route behält seine Werte, verliert aber die Verknüpfung.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactPhotos(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Ihre $count Fotos werden gelöscht.',
+      one: 'Ihr $count Foto wird gelöscht.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactMarkers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Ihre $count Markierungen werden gelöscht.',
+      one: 'Ihre $count Markierung wird gelöscht.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get routeDetailPreview => 'Vorschau';
 
   @override

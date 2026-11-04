@@ -5630,6 +5630,117 @@
       }
     }
   },
+  "routeDetailDeleteImpactUnknown": "We couldn't check what else uses this route.",
+  "@routeDetailDeleteImpactUnknown": {
+    "description": "Line in the route delete confirm when the dependents count failed to load"
+  },
+  "routeDetailDeleteNotAllowed": "Only the route's owner can delete it.",
+  "@routeDetailDeleteNotAllowed": {
+    "description": "Banner when the server refused a route delete because the caller does not own it"
+  },
+  "routeDetailDeleteImpactPublic": "It is public, so other runners can find and follow it.",
+  "@routeDetailDeleteImpactPublic": {
+    "description": "Line in the route delete confirm naming what depends on the route"
+  },
+  "routeDetailDeleteImpactRaceListings": "{count, plural, one {{count} race listing uses it as its course and will lose the course.} other {{count} race listings use it as their course and will lose the course.}}",
+  "@routeDetailDeleteImpactRaceListings": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeDetailDeleteImpactEvents": "{count, plural, one {{count} club event uses it and will lose its route.} other {{count} club events use it and will lose their route.}}",
+  "@routeDetailDeleteImpactEvents": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeDetailDeleteImpactSaved": "{count, plural, one {{count} other runner has saved it.} other {{count} other runners have saved it.}}",
+  "@routeDetailDeleteImpactSaved": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeDetailDeleteImpactShares": "{count, plural, one {{count} person it is shared with will lose access.} other {{count} people it is shared with will lose access.}}",
+  "@routeDetailDeleteImpactShares": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeDetailDeleteImpactSegments": "{count, plural, one {{count} segment other runners made on it will be deleted.} other {{count} segments other runners made on it will be deleted.}}",
+  "@routeDetailDeleteImpactSegments": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeDetailDeleteImpactEfforts": "{count, plural, one {{count} effort other runners logged on its segments will be deleted.} other {{count} efforts other runners logged on its segments will be deleted.}}",
+  "@routeDetailDeleteImpactEfforts": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeDetailDeleteImpactReviews": "{count, plural, one {{count} review by another runner will be deleted.} other {{count} reviews by other runners will be deleted.}}",
+  "@routeDetailDeleteImpactReviews": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeDetailDeleteImpactConditions": "{count, plural, one {{count} condition report by another runner will be deleted.} other {{count} condition reports by other runners will be deleted.}}",
+  "@routeDetailDeleteImpactConditions": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeDetailDeleteImpactRuns": "{count, plural, one {{count} run that followed it keeps its stats but loses the link.} other {{count} runs that followed it keep their stats but lose the link.}}",
+  "@routeDetailDeleteImpactRuns": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeDetailDeleteImpactPhotos": "{count, plural, one {Its {count} photo will be deleted.} other {Its {count} photos will be deleted.}}",
+  "@routeDetailDeleteImpactPhotos": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeDetailDeleteImpactMarkers": "{count, plural, one {Its {count} marker will be deleted.} other {Its {count} markers will be deleted.}}",
+  "@routeDetailDeleteImpactMarkers": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "routeDetailPreview": "Preview",
   "@routeDetailPreview": {
     "description": "Label on the route-detail preview scrubber"

@@ -7012,6 +7012,90 @@ abstract class AppLocalizations {
   /// **'Delete failed: {error}'**
   String routeDetailDeleteFailed(String error);
 
+  /// Line in the route delete confirm when the dependents count failed to load
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t check what else uses this route.'**
+  String get routeDetailDeleteImpactUnknown;
+
+  /// Banner when the server refused a route delete because the caller does not own it
+  ///
+  /// In en, this message translates to:
+  /// **'Only the route\'s owner can delete it.'**
+  String get routeDetailDeleteNotAllowed;
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'It is public, so other runners can find and follow it.'**
+  String get routeDetailDeleteImpactPublic;
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} race listing uses it as its course and will lose the course.} other {{count} race listings use it as their course and will lose the course.}}'**
+  String routeDetailDeleteImpactRaceListings(int count);
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} club event uses it and will lose its route.} other {{count} club events use it and will lose their route.}}'**
+  String routeDetailDeleteImpactEvents(int count);
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} other runner has saved it.} other {{count} other runners have saved it.}}'**
+  String routeDetailDeleteImpactSaved(int count);
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} person it is shared with will lose access.} other {{count} people it is shared with will lose access.}}'**
+  String routeDetailDeleteImpactShares(int count);
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} segment other runners made on it will be deleted.} other {{count} segments other runners made on it will be deleted.}}'**
+  String routeDetailDeleteImpactSegments(int count);
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} effort other runners logged on its segments will be deleted.} other {{count} efforts other runners logged on its segments will be deleted.}}'**
+  String routeDetailDeleteImpactEfforts(int count);
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} review by another runner will be deleted.} other {{count} reviews by other runners will be deleted.}}'**
+  String routeDetailDeleteImpactReviews(int count);
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} condition report by another runner will be deleted.} other {{count} condition reports by other runners will be deleted.}}'**
+  String routeDetailDeleteImpactConditions(int count);
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} run that followed it keeps its stats but loses the link.} other {{count} runs that followed it keep their stats but lose the link.}}'**
+  String routeDetailDeleteImpactRuns(int count);
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {Its {count} photo will be deleted.} other {Its {count} photos will be deleted.}}'**
+  String routeDetailDeleteImpactPhotos(int count);
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {Its {count} marker will be deleted.} other {Its {count} markers will be deleted.}}'**
+  String routeDetailDeleteImpactMarkers(int count);
+
   /// Label on the route-detail preview scrubber
   ///
   /// In en, this message translates to:

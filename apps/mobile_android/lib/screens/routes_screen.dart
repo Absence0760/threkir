@@ -532,18 +532,23 @@ class RoutesScreenState extends State<RoutesScreen> {
     setState(() => _deleting = true);
     final ids = Set<String>.from(_selected);
     final failedIds = <String>{};
+    final refusedIds = <String>{};
     final api = widget.apiClient;
     if (api != null && api.userId != null) {
       for (final id in ids) {
         try {
           await api.deleteRoute(id);
+        } on RouteDeleteRefusedException {
+          // Terminal: queueing it would retry a delete the server refuses
+          // forever. The local copy stays, and the banner counts it failed.
+          refusedIds.add(id);
         } catch (e) {
           debugPrint('deleteRoute failed for $id: $e');
           failedIds.add(id);
         }
       }
     }
-    final ok2 = ids.difference(failedIds);
+    final ok2 = ids.difference(failedIds).difference(refusedIds);
     if (ok2.isNotEmpty) await widget.routeStore.deleteMany(ok2);
     if (failedIds.isNotEmpty) {
       // Queue the failed ids for retry so a partial-delete failure
@@ -563,10 +568,10 @@ class RoutesScreenState extends State<RoutesScreen> {
       _selected.clear();
       _deleting = false;
     });
-    if (failedIds.isNotEmpty) {
+    if (failedIds.isNotEmpty || refusedIds.isNotEmpty) {
       showTopBanner(
         context,
-        l10n.routesDeletePartial(ok2.length, failedIds.length),
+        l10n.routesDeletePartial(ok2.length, failedIds.length + refusedIds.length),
       );
     } else {
       showTopBanner(

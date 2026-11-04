@@ -157,6 +157,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   // refresh it without rebuilding the screen.
   late String? _clubId = widget.route.clubId;
   bool _transferBusy = false;
+  bool _deleteBusy = false;
 
   // Lazy SocialService — production uses the global Supabase client;
   // tests inject a fake via the constructor.
@@ -1175,7 +1176,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                   icon: const Icon(Icons.delete_outline),
                   label: l10n.routeDetailDeleteRoute,
                   destructive: true,
-                  onPressed: () => _confirmDelete(context),
+                  onPressed: _deleteBusy ? null : () => _confirmDelete(context),
                 ),
             ],
           ),
@@ -2174,13 +2175,42 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     }
   }
 
+  // Deleting a route cascades its photos, markers and other runners'
+  // reviews, bookmarks and segments, none of which a re-insert could bring
+  // back, so it takes the confirm and no undo (conventions.md § Destructive
+  // actions). [_deleteBusy] spans the impact read, the dialog and the delete,
+  // so a second tap cannot open a second dialog or send a second delete.
   Future<void> _confirmDelete(BuildContext context) async {
+    if (_deleteBusy) return;
+    setState(() => _deleteBusy = true);
+    try {
+      await _runDelete(context);
+    } finally {
+      if (mounted) setState(() => _deleteBusy = false);
+    }
+  }
+
+  Future<void> _runDelete(BuildContext context) async {
+    final api = widget.apiClient;
+    final signedIn = api != null && api.userId != null;
+    RouteDeleteImpact? impact;
+    if (signedIn) {
+      try {
+        impact = await api.fetchRouteDeleteImpact(widget.route.id);
+      } catch (e) {
+        debugPrint('route_delete_impact failed: $e');
+      }
+    }
+    if (!context.mounted) return;
     final l10n = AppLocalizations.of(context);
+    final body = signedIn
+        ? routeDeleteConfirmLines(l10n, impact, isPublic: _isPublic).join(' ')
+        : l10n.routeDetailDeleteBody;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l10n.routeDetailDeleteTitle),
-        content: Text(l10n.routeDetailDeleteBody),
+        content: Text(body),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -2207,10 +2237,13 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     // the error and KEEP the local file so the user can retry once
     // they're back online. Falls back to local-only delete when the
     // ApiClient isn't available (signed-out / no-Supabase build).
-    final api = widget.apiClient;
-    if (api != null && api.userId != null) {
+    if (signedIn) {
       try {
         await api.deleteRoute(widget.route.id);
+      } on RouteDeleteRefusedException {
+        if (!context.mounted) return;
+        showTopBanner(context, AppLocalizations.of(context).routeDetailDeleteNotAllowed);
+        return;
       } catch (e) {
         debugPrint('route detail delete failed: $e');
         if (!context.mounted) return;
@@ -2247,6 +2280,40 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
         return l10n.routeDetailSurfaceRoad;
     }
   }
+}
+
+/// The confirm's body: the irreversibility sentence, then one line per
+/// thing that depends on the route, from `route_delete_impact`. Mirrors web
+/// `routeDeleteImpactLines` — other people's things first, then the owner's
+/// own content, zero counts saying nothing. Null [impact] means the count
+/// failed, which says so rather than implying nothing depends on it.
+List<String> routeDeleteConfirmLines(
+  AppLocalizations l10n,
+  RouteDeleteImpact? impact, {
+  required bool isPublic,
+}) {
+  final lines = <String>[l10n.routeDetailDeleteBody];
+  if (isPublic) lines.add(l10n.routeDetailDeleteImpactPublic);
+  if (impact == null) {
+    lines.add(l10n.routeDetailDeleteImpactUnknown);
+    return lines;
+  }
+  void add(int count, String Function(int) line) {
+    if (count > 0) lines.add(line(count));
+  }
+
+  add(impact.raceListings, l10n.routeDetailDeleteImpactRaceListings);
+  add(impact.events, l10n.routeDetailDeleteImpactEvents);
+  add(impact.savedByOthers, l10n.routeDetailDeleteImpactSaved);
+  add(impact.shares, l10n.routeDetailDeleteImpactShares);
+  add(impact.segmentsByOthers, l10n.routeDetailDeleteImpactSegments);
+  add(impact.segmentEffortsByOthers, l10n.routeDetailDeleteImpactEfforts);
+  add(impact.reviewsByOthers, l10n.routeDetailDeleteImpactReviews);
+  add(impact.conditionsByOthers, l10n.routeDetailDeleteImpactConditions);
+  add(impact.linkedRuns, l10n.routeDetailDeleteImpactRuns);
+  add(impact.photos, l10n.routeDetailDeleteImpactPhotos);
+  add(impact.markers, l10n.routeDetailDeleteImpactMarkers);
+  return lines;
 }
 
 String _routeToKml(cm.Route route) {

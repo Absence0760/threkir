@@ -36,6 +36,7 @@ import { effective, loadSettings, updateUniversal } from '#lib/settings/settings
 import { dmThreadRouteId } from '#lib/social/dm_thread.ts';
 import {
 	conversationWriteKey,
+	dropRefusedWrite,
 	overlayConversationWrites,
 	restoreHiddenConversation,
 	revertConversationFlag,
@@ -173,7 +174,8 @@ class MessagesInboxStore {
 	/// The write is held in #writes until a list read carries it, so a poll
 	/// that started before it landed cannot flip the toggle back. A refusal
 	/// reverts that one field on that one row: restoring a snapshot of the
-	/// whole list would also undo whatever a poll brought in meanwhile.
+	/// whole list would also undo whatever a poll brought in meanwhile. A
+	/// refusal that a later write to the same flag superseded reverts nothing.
 	async #setFlag(
 		conversationId: string,
 		flag: ConversationFlag,
@@ -188,7 +190,7 @@ class MessagesInboxStore {
 		try {
 			await write(conversationId, value);
 		} catch (e) {
-			if (this.#writes.get(key) === pending) this.#writes.delete(key);
+			if (!dropRefusedWrite(this.#writes, pending)) throw e;
 			if (prior !== undefined) {
 				this.threads = revertConversationFlag(this.threads, conversationId, flag, prior);
 			} else {

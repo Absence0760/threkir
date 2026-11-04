@@ -69,6 +69,20 @@ export function settledConversationWrites(
 	return [...writes].filter((w) => !overrides(w, readStartedAt));
 }
 
+/// A refused write is forgotten only while it is still the latest one for its
+/// conversation and flag. Returns whether the caller should revert the field:
+/// when a later write superseded it, that write owns the field, and putting
+/// back the value from before the refused one would overwrite it.
+export function dropRefusedWrite(
+	writes: Map<string, ConversationWrite>,
+	refused: ConversationWrite,
+): boolean {
+	const key = conversationWriteKey(refused.conversationId, refused.flag);
+	if (writes.get(key) !== refused) return false;
+	writes.delete(key);
+	return true;
+}
+
 /// Puts back the one field a refused write changed, leaving every other row
 /// and field as the latest read left them.
 export function revertConversationFlag<T extends ConversationFlags>(

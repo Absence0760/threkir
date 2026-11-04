@@ -732,7 +732,7 @@ class TrainingService extends ChangeNotifier {
   /// made server-side by `publish_plan_to_library`, in one transaction that
   /// also links it from the source's `library_copy_id`: it keeps the plan's
   /// design and drops the publisher's dates, paces, goal time and notes
-  /// (decisions § 2337). Publishing an already-published plan returns its
+  /// (decisions § 2340). Publishing an already-published plan returns its
   /// existing copy. Returns the copy's id. Mirrors web
   /// `core/data.ts:publishPlanToLibrary`.
   Future<String> publishPlanToLibrary({required String planId}) async {

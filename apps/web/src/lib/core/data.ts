@@ -6051,7 +6051,7 @@ export async function fetchPlanStartedFrom(planId: string): Promise<PlanStartedF
 /// server-side by `publish_plan_to_library`, in one transaction that also
 /// links it from the source's `library_copy_id`: it keeps the plan's design
 /// and drops the publisher's dates, paces, goal time and notes (decisions
-/// § 2337). Publishing an already-published plan returns its existing copy.
+/// § 2340). Publishing an already-published plan returns its existing copy.
 /// Returns the copy's id.
 export async function publishPlanToLibrary(sourcePlanId: string): Promise<string> {
 	markListsStale('plans');

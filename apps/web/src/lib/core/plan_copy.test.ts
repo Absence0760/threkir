@@ -292,7 +292,7 @@ test('every training_plans column is either copied on publish or excused', () =>
 		['trimmed_at', "publisher-private plan state: when the owner ended the plan early — the published copy was never trimmed"],
 		['paused_at', "publisher-private plan state: when the owner paused it — a template is never paused"],
 		['race_listing_id', "publisher-private: the race the owner built the plan for — the trigger nulls it on every template"],
-		['library_copy_id', "the source plan's link to its own library copy; publish_plan_to_library writes it and a template never carries one (decisions § 2337)"],
+		['library_copy_id', "the source plan's link to its own library copy; publish_plan_to_library writes it and a template never carries one (decisions § 2340)"],
 		['source_author_id', 'whose public plan a copy started from; clone_public_plan writes it and a client write is discarded (decisions § 2262)'],
 	]);
 	const copied = planHeadCopyFields(sourcePlan);
@@ -331,7 +331,7 @@ test('the club publisher shapes its rows through this module', () => {
 test('a library publish goes through the redacting RPC, never a client-built copy', () => {
 	// Reason: a library copy must lose the publisher's dates, paces, goal time
 	// and notes, and its dates can only be moved by the server, which knows the
-	// source's start (decisions § 2337). A client that inserted the copy itself
+	// source's start (decisions § 2340). A client that inserted the copy itself
 	// would publish the real ones, and the database now refuses that insert.
 	const source = readFileSync(resolve('src/lib/core/data.ts'), 'utf-8');
 	const start = source.indexOf('export async function publishPlanToLibrary(');

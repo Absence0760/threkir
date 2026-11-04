@@ -235,7 +235,7 @@ void main() {
       await _drainBanner(tester);
     });
 
-    // The link lives on this plan (library_copy_id, decisions § 2337): a
+    // The link lives on this plan (library_copy_id, decisions § 2340): a
     // rename cannot lose it and another plan's copy cannot claim it.
     testWidgets('the toggle follows the plan\'s own library link',
         (tester) async {

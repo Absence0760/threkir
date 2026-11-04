@@ -204,7 +204,7 @@ void main() {
       'trimmed_at', // the owner's plan state, not the design
       'paused_at', // the owner's plan state: a template is never paused
       'race_listing_id', // the owner's own race: nulled on every template
-      'library_copy_id', // the source's link to its library copy; publish_plan_to_library only, never on a template (decisions § 2337)
+      'library_copy_id', // the source's link to its library copy; publish_plan_to_library only, never on a template (decisions § 2340)
       'source_author_id', // whose public plan a copy started from; clone_public_plan only (decisions § 2262)
     };
     expect(
@@ -230,7 +230,7 @@ void main() {
   });
 
   // A library copy loses the publisher's dates, paces, goal time and notes,
-  // and only the server can move its dates (decisions § 2337); the database
+  // and only the server can move its dates (decisions § 2340); the database
   // refuses a client-built copy.
   test('a library publish goes through the redacting RPC, never a client-built copy', () {
     final source = File('lib/training_service.dart').readAsStringSync();

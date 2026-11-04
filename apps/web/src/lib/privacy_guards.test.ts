@@ -693,7 +693,7 @@ test('plan publishers never copy the publisher private fields onto a template', 
 	// holds; this guard keeps the clients honest so the row never carries
 	// the value in the first place. The library publisher builds no row of
 	// its own: publish_plan_to_library makes the copy server-side (decisions
-	// § 2337, pinned in plan_copy.test.ts), so the club publisher is the one
+	// § 2340, pinned in plan_copy.test.ts), so the club publisher is the one
 	// client insert left to hold to this.
 	const source = read(__dirname, 'core/data.ts');
 	const publishers = ['publishPlanAsTemplate'];

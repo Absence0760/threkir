@@ -1,5 +1,5 @@
 -- A plan points at its own library copy, and the copy carries the design only
--- (decisions § 2337, reversing the direction § 2289 rejected).
+-- (decisions § 2340, reversing the direction § 2289 rejected).
 --
 -- ── A. The link moves to the source plan ───────────────────────────────────
 --
@@ -72,7 +72,7 @@ create unique index training_plans_library_copy_id_key
 
 comment on column training_plans.library_copy_id is
   'The owner''s public-library copy of this plan. Written by '
-  'publish_plan_to_library only; null on every template. decisions § 2337.';
+  'publish_plan_to_library only; null on every template. decisions § 2340.';
 
 -- The newest copy wins when one source was published twice.
 update training_plans src
@@ -362,7 +362,7 @@ grant execute on function public.publish_plan_to_library(uuid) to authenticated,
 comment on function public.publish_plan_to_library(uuid) is
   'Publish the caller''s own plan to the public library: a redacted copy (no '
   'dates, paces, goal time or notes) linked from the source''s '
-  'library_copy_id, in one transaction. decisions § 2337.';
+  'library_copy_id, in one transaction. decisions § 2340.';
 
 -- ── Existing copies ─────────────────────────────────────────────────────────
 

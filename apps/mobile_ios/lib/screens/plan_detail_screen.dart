@@ -2077,7 +2077,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   }
 
   /// The plan names its own library copy (`library_copy_id`, decisions
-  /// § 2337), so the toggle is read off the row already loaded.
+  /// § 2340), so the toggle is read off the row already loaded.
   void _loadPublishedState() {
     final plan = _plan;
     if (plan == null || !_isOwner(plan) || plan.isTemplate) return;

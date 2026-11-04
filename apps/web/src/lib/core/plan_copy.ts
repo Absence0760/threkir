@@ -5,7 +5,7 @@
 /// while it did: every published workout lost its `target_pace_end_sec_per_km`
 /// and `pace_zone`, and the head lost `source` and `rules`. A library copy is
 /// now made server-side by `publish_plan_to_library`, which keeps the design
-/// and none of the publisher's data (decisions § 2337); a club template is
+/// and none of the publisher's data (decisions § 2340); a club template is
 /// shared with the club's members and keeps the full prescription.
 ///
 /// Pure and Supabase-free so `plan_copy.test.ts` can assert the shape against

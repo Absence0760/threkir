@@ -29,7 +29,7 @@ set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"2096aaaa-0000-0000-0000-0000000000a1","role":"authenticated"}';
 
 -- A client may not flip a plan PUBLIC any more (publish_plan_to_library is the
--- only door, decisions § 2337), so the owner's flip here is to a private
+-- only door, decisions § 2340), so the owner's flip here is to a private
 -- template, which the bpm strip covers the same way.
 select lives_ok(
   $$ update training_plans set is_template = true, status = 'completed'

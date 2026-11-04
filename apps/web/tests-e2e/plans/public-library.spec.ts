@@ -20,7 +20,7 @@ import { createThrowawayPlan, deleteThrowawayPlan, type ThrowawayPlan } from '..
  *   2. A stranger can see + preview the public template (RLS).
  *   3. The copy carries the plan's design and none of the publisher's
  *      data: no goal time, no absolute pace, no notes, and dates moved onto
- *      the reference week of 2001-01-01 (decisions § 2337).
+ *      the reference week of 2001-01-01 (decisions § 2340).
  *   4. The clone is owned by the stranger, active, parent-linked to the
  *      template, and carries no publisher fitness data.
  */
@@ -239,7 +239,7 @@ test.describe('Public plan library — publish → browse → clone', () => {
 });
 
 // The plan page finds its library copy by its own `library_copy_id`, the link
-// publish_plan_to_library writes on the source (decisions § 2337), never by name: by name, a rename lost the copy (no
+// publish_plan_to_library writes on the source (decisions § 2340), never by name: by name, a rename lost the copy (no
 // Unpublish, and a republish minted a duplicate) and two plans sharing a name
 // both claimed the first copy. Each test runs on an account of its own, so a
 // rename or a second same-named plan never touches the seeded plan.

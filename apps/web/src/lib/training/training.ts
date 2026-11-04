@@ -431,7 +431,7 @@ export type WorkoutStructure = {
 	// Walk-run (C25K / Galloway) sessions use duration-based reps with a
 	// 'walk' recovery; see docs/features/training.md § walk-run.
 	// `pace_sec_per_km` is absent on a public-library copy, which carries no
-	// absolute pace (decisions § 2337).
+	// absolute pace (decisions § 2340).
 	repeats?: {
 		count: number;
 		distance_m?: number;

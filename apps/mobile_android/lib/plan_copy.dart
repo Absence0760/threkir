@@ -6,7 +6,7 @@
 /// and `race_taper_applied_at`, and the library head lost `source` and
 /// `rules`. A library copy is now made server-side by
 /// `publish_plan_to_library`, which keeps the design and none of the
-/// publisher's data (decisions § 2337). Web twin:
+/// publisher's data (decisions § 2340). Web twin:
 /// `apps/web/src/lib/core/plan_copy.ts` — keep the field lists alike.
 ///
 /// Pure and Supabase-free so `test/plan_copy_test.dart` can hold the lists

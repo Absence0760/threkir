@@ -52,7 +52,7 @@ begin
 
   -- A template owned by the coach, carrying a progression workout: a pace
   -- RANGE (300 -> 270) inside a named zone. It is made public only before the
-  -- clone_public_plan block: a public-library copy holds no paces (§ 2337).
+  -- clone_public_plan block: a public-library copy holds no paces (§ 2340).
   insert into training_plans (
     id, user_id, name, goal_event, goal_distance_m,
     start_date, end_date, days_per_week, status, is_template
@@ -181,7 +181,7 @@ select is((select rules from _assigned_head), '["80% easy", "sleep 8h"]'::jsonb,
 -- The path 20270517_001 did not name. A runner adopting a plan out of the
 -- public library went through this one, and it flattened the progression the
 -- other two were fixed to carry. Since 20271107000001 a public template is a
--- redacted copy with no absolute pace (decisions § 2337), so this path now
+-- redacted copy with no absolute pace (decisions § 2340), so this path now
 -- pins the zone carried and the paces absent.
 reset role;
 update training_plans set is_public_template = true where name = 'Pace template' and is_template;

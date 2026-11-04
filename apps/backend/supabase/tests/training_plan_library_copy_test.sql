@@ -1,4 +1,4 @@
--- Pins migration 20271107000001 (decisions § 2337).
+-- Pins migration 20271107000001 (decisions § 2340).
 --
 -- A: a plan links its own library copy through library_copy_id, which only
 -- publish_plan_to_library writes, which no template carries, and which goes

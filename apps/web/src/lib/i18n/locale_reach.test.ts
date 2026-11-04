@@ -490,6 +490,9 @@ const REGISTER_EXEMPT_PREFIXES: string[] = [];
  */
 const VARIANT_WORD_PAIRS: Record<string, string> = {
 	equipa: "equipe",
+	// "this tab": the contraction agrees with the noun, masculine `separador`
+	// in Portugal and feminine `aba` in Brazil.
+	deste: "desta",
 };
 
 function registerExempt(key: string): boolean {

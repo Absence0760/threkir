@@ -16,9 +16,22 @@
 // `?worker&url` makes Vite bundle the worker as a real, self-contained
 // asset (its sibling maplibre-gl-shared.mjs import gets bundled in, which a
 // plain `?url` copy would leave dangling) and hands back the hashed URL.
+//
+// In `vite dev` only, maps pointed at the local Protomaps tileserver swap to
+// the keyless fallback style while the viewport is outside the extract the
+// tileserver serves (issue #1285, `dev_basemap_fallback.ts`).
+// `import.meta.env.DEV` is statically false in a build, so the call and
+// the module behind it are dropped from production bundles.
+import { PUBLIC_TILE_STYLE_URL } from '$app/env/public';
 import * as maplibregl from 'maplibre-gl';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
+import { installDevBasemapFallback } from './dev_basemap_fallback';
+import { resolveStyleOverride } from './map-style-url';
 
 maplibregl.setWorkerUrl(workerUrl);
+
+if (import.meta.env.DEV) {
+	installDevBasemapFallback(maplibregl, resolveStyleOverride(() => PUBLIC_TILE_STYLE_URL));
+}
 
 export default maplibregl;

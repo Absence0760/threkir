@@ -65,8 +65,14 @@ const MAP_SURFACES: Record<string, ['shared' | 'unkeyed', string]> = {
 /// observer instantiate no map and paint nothing, and the course-layer helper
 /// makes no map either: it paints onto the one its caller made, with the
 /// ground that caller resolved and passes in (both callers are surfaces above).
+/// The dev basemap fallback (`vite dev` only) paints nothing either: it swaps
+/// the local `basic` style, light ground, for the light OSM raster, so the
+/// ground the surface resolved still holds. An override naming the local
+/// `dark` style keeps its dark-ground palette over the light fallback, a
+/// dev-only mismatch accepted over a second fallback style.
 const NOT_SURFACES = new Set([
 	'lib/routes/maplibre.ts',
+	'lib/routes/dev_basemap_fallback.ts',
 	'lib/routes/map_resize.ts',
 	'lib/components/course_preview/course_layers.ts',
 ]);

@@ -22,9 +22,15 @@
 --          reads its impact, counting the uploader's public run on it but not
 --          their private one.
 --   25.    anon cannot call route_delete_impact.
+--   3a-3b. linked_runs counts exactly the runs private.is_run_visible_to admits,
+--          over one run per arm of that rule: a public run, a private
+--          profile's public run unfollowed (no), followed (yes) and in
+--          progress (yes), a coached athlete's private run, a followers-only
+--          run of someone the caller follows, a run shared with the caller,
+--          and a shared run whose owner blocked the caller (no).
 
 begin;
-select plan(26);
+select plan(28);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -156,6 +162,79 @@ select results_eq(
   'and linked_runs leaving out another runner''s private run');
 
 
+-- ── 3a-3b: linked_runs is is_run_visible_to, set-based ─────────────────────
+reset role;
+set local "request.jwt.claims" = '{}';
+insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
+select ('d1286000-0000-0000-0000-0000000000a' || n)::uuid, 'authenticated', 'authenticated',
+       'rd-u' || n || '@rd.local', '', now(), now()
+  from generate_series(4, 7) n;
+
+insert into user_profiles (id, profile_private)
+values ('d1286000-0000-0000-0000-0000000000a4', true),
+       ('d1286000-0000-0000-0000-0000000000a5', true)
+on conflict (id) do update set profile_private = true;
+
+insert into private.feature_flags (name, enabled) values ('audience_sharing', true)
+on conflict (name) do update set enabled = true;
+
+insert into routes (id, user_id, name, waypoints, distance_m, is_public)
+values ('d1286000-0000-0000-0000-0000000000b3', 'd1286000-0000-0000-0000-0000000000a1', 'Busy loop',
+        '[{"lat":51.5,"lng":-0.1},{"lat":51.51,"lng":-0.11}]'::jsonb, 5000, true);
+
+insert into runs (id, user_id, route_id, started_at, distance_m, duration_s, source, metadata,
+                  is_public, followers_only)
+values
+  ('d1286000-0000-0000-0000-0000000001d1', 'd1286000-0000-0000-0000-0000000000a2', 'd1286000-0000-0000-0000-0000000000b3',
+   now() - interval '1 day', 5000, 1500, 'app', '{"activity_type":"run"}', true, false),
+  ('d1286000-0000-0000-0000-0000000001d2', 'd1286000-0000-0000-0000-0000000000a4', 'd1286000-0000-0000-0000-0000000000b3',
+   now() - interval '1 day', 5000, 1500, 'app', '{"activity_type":"run"}', true, false),
+  ('d1286000-0000-0000-0000-0000000001d3', 'd1286000-0000-0000-0000-0000000000a5', 'd1286000-0000-0000-0000-0000000000b3',
+   now() - interval '1 day', 5000, 1500, 'app', '{"activity_type":"run"}', true, false),
+  ('d1286000-0000-0000-0000-0000000001d4', 'd1286000-0000-0000-0000-0000000000a4', 'd1286000-0000-0000-0000-0000000000b3',
+   now() - interval '1 hour', 2000, 600, 'app', '{"activity_type":"run","in_progress":"true"}', true, false),
+  ('d1286000-0000-0000-0000-0000000001d5', 'd1286000-0000-0000-0000-0000000000a6', 'd1286000-0000-0000-0000-0000000000b3',
+   now() - interval '1 day', 5000, 1500, 'app', '{"activity_type":"run"}', false, false),
+  ('d1286000-0000-0000-0000-0000000001d6', 'd1286000-0000-0000-0000-0000000000a2', 'd1286000-0000-0000-0000-0000000000b3',
+   now() - interval '1 day', 5000, 1500, 'app', '{"activity_type":"run"}', false, true),
+  ('d1286000-0000-0000-0000-0000000001d7', 'd1286000-0000-0000-0000-0000000000a4', 'd1286000-0000-0000-0000-0000000000b3',
+   now() - interval '2 days', 5000, 1500, 'app', '{"activity_type":"run"}', false, false),
+  ('d1286000-0000-0000-0000-0000000001d8', 'd1286000-0000-0000-0000-0000000000a7', 'd1286000-0000-0000-0000-0000000000b3',
+   now() - interval '1 day', 5000, 1500, 'app', '{"activity_type":"run"}', false, false);
+
+insert into user_follows (follower_id, followee_id)
+values ('d1286000-0000-0000-0000-0000000000a1', 'd1286000-0000-0000-0000-0000000000a5'),
+       ('d1286000-0000-0000-0000-0000000000a1', 'd1286000-0000-0000-0000-0000000000a2');
+
+insert into coach_athletes (coach_id, athlete_id, status, invite_token, accepted_at)
+values ('d1286000-0000-0000-0000-0000000000a1', 'd1286000-0000-0000-0000-0000000000a6', 'active',
+        'rd-1286-coach', now());
+
+insert into run_shares (run_id, owner_id, recipient_id)
+values ('d1286000-0000-0000-0000-0000000001d7', 'd1286000-0000-0000-0000-0000000000a4',
+        'd1286000-0000-0000-0000-0000000000a1'),
+       ('d1286000-0000-0000-0000-0000000001d8', 'd1286000-0000-0000-0000-0000000000a7',
+        'd1286000-0000-0000-0000-0000000000a1');
+
+insert into user_blocks (blocker_id, blocked_id)
+values ('d1286000-0000-0000-0000-0000000000a7', 'd1286000-0000-0000-0000-0000000000a1');
+
+set local "request.jwt.claims" = '{"sub":"d1286000-0000-0000-0000-0000000000a1","role":"authenticated"}';
+
+select is(
+  (select linked_runs from route_delete_impact('d1286000-0000-0000-0000-0000000000b3')),
+  (select count(*)::int from runs
+    where route_id = 'd1286000-0000-0000-0000-0000000000b3'
+      and private.is_run_visible_to(id, 'd1286000-0000-0000-0000-0000000000a1')),
+  'linked_runs counts exactly the runs private.is_run_visible_to admits');
+
+select is(
+  (select linked_runs from route_delete_impact('d1286000-0000-0000-0000-0000000000b3')),
+  6,
+  'one run per arm: public, followed private profile, in progress, coached, followers-only '
+  'and shared count; the unfollowed private profile''s run and the blocker''s share do not');
+set local role authenticated;
+
 -- ── 4-5: a stranger's delete ───────────────────────────────────────────────
 set local "request.jwt.claims" = '{"sub":"d1286000-0000-0000-0000-0000000000a2","role":"authenticated"}';
 
@@ -166,7 +245,7 @@ select isnt_empty(
 delete from routes where id = 'd1286000-0000-0000-0000-0000000000b1';
 reset role;
 
--- refusal: routes RLS admits the delete to the uploader and club admins only
+-- routes RLS admits the delete to the uploader and club admins only
 select is(
   (select count(*)::int from routes where id = 'd1286000-0000-0000-0000-0000000000b1'),
   1,

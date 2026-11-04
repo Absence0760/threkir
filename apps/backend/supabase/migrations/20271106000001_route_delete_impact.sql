@@ -65,6 +65,7 @@ set search_path = public, pg_temp
 as $$
 declare
   v_uid uuid := (select auth.uid());
+  v_audience boolean := private.audience_sharing_enabled();
 begin
   -- The same principals the routes DELETE policies admit: the uploader, or an
   -- admin of the club that owns the route. A missing route answers the same
@@ -97,12 +98,53 @@ begin
        where e.route_id = p_route_id
           or exists (select 1 from event_courses ec
                      where ec.event_id = e.id and ec.route_id = p_route_id)),
-    -- Only runs the caller could open anyway: their own, and others' runs
-    -- under the shared visibility rule. A club admin who is not the uploader
-    -- must not learn that private runs follow the route.
-    (select count(*)::int from runs ru
-       where ru.route_id = p_route_id
-         and (ru.user_id = v_uid or private.is_run_visible_to(ru.id, v_uid))),
+    -- Only runs the caller could open anyway. A club admin who is not the
+    -- uploader must not learn that private runs follow the route. This is
+    -- private.is_run_visible_to(run, v_uid) with its helpers
+    -- (profile_visible_to, is_active_coach_of, run_audience_admits) inlined as
+    -- joins, because a popular public route has thousands of runs and the
+    -- per-run call re-reads the run and each helper's tables once per row.
+    -- route_delete_test.sql compares the two over runs admitted by every arm,
+    -- so a change to the shared rule that is not made here fails there.
+    (select count(*)::int
+       from runs ru
+       left join user_profiles up on up.id = ru.user_id
+       left join user_follows fo
+              on fo.follower_id = v_uid and fo.followee_id = ru.user_id
+      where ru.route_id = p_route_id
+        and (
+          ru.user_id = v_uid
+          or (
+            ru.is_public = true
+            and (
+              not coalesce(up.profile_private, false)
+              or fo.follower_id is not null
+              or (ru.concluded_at is null and ru.metadata ->> 'in_progress' = 'true')
+            )
+          )
+          or exists (
+            select 1 from coach_athletes ca
+             where ca.coach_id = v_uid
+               and ca.athlete_id = ru.user_id
+               and ca.status = 'active'
+          )
+          or (
+            v_audience
+            and ru.user_id <> v_uid
+            and (
+              (ru.followers_only and fo.follower_id is not null)
+              or exists (
+                select 1 from run_shares rs
+                 where rs.run_id = ru.id and rs.recipient_id = v_uid
+              )
+            )
+            and not exists (
+              select 1 from user_blocks b
+               where (b.blocker_id = ru.user_id and b.blocked_id = v_uid)
+                  or (b.blocker_id = v_uid and b.blocked_id = ru.user_id)
+            )
+          )
+        )),
     (select count(*)::int from route_photos rp where rp.route_id = p_route_id),
     (select count(*)::int from route_markers rm where rm.route_id = p_route_id);
 end;

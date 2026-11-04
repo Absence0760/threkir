@@ -293,4 +293,44 @@ void main() {
           findsOneWidget);
     });
   });
+
+  testWidgets('a result card reads elevation in the reader\'s unit',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({'use_miles': true});
+    final prefs = Preferences();
+    await prefs.init();
+    await _pump(tester,
+        prefs: prefs, routeStore: LocalRouteStore(), api: _ClimbApi());
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Hill loop'), findsOneWidget);
+    expect(find.text('751 ft'), findsOneWidget);
+    expect(find.text('229m'), findsNothing);
+  });
+}
+
+class _ClimbApi extends _BookmarkApi {
+  @override
+  Future<cm.KeysetPage<cm.Route>> searchPublicRoutes({
+    String? query,
+    double? minDistanceM,
+    double? maxDistanceM,
+    String? surface,
+    List<String>? tags,
+    bool featuredOnly = false,
+    String sort = 'newest',
+    int limit = 50,
+    List<Object?>? after,
+  }) async =>
+      after == null
+          ? cm.KeysetPage([
+              cm.Route(
+                id: 'h1',
+                name: 'Hill loop',
+                waypoints: const [],
+                distanceMetres: 5000,
+                elevationGainMetres: 229,
+              ),
+            ], null)
+          : const cm.KeysetPage(<cm.Route>[], null);
 }

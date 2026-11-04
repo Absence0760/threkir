@@ -771,7 +771,8 @@ class _RouteCard extends StatelessWidget {
                             UnitFormat.distance(route.distanceMetres, unit)),
                         if (route.elevationGainMetres > 0)
                           _tag(Icons.trending_up,
-                              '${route.elevationGainMetres.round()}m'),
+                              UnitFormat.elevation(
+                                  route.elevationGainMetres, unit)),
                         if (route.surface != null)
                           _tag(_surfaceIcon(route.surface),
                               _surfaceLabel(l10n, route.surface)),

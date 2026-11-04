@@ -520,11 +520,6 @@ type LiteralRole =
 	| 'svg-art';
 
 const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
-	// Running-shoe / apple loader illustration. No text on it.
-	'lib/components/ActivityLoader.svelte': {
-		'7C5A3A': [1, 'svg-art'], '4FB477': [1, 'svg-art'],
-		FF6B5B: [1, 'svg-art'], FF8C7E: [1, 'svg-art'],
-	},
 	// Help-guide illustration placeholders: never painted. Each is the sentinel
 	// a text-free illustration SVG uses for one theme token, and the renderer
 	// swaps it for that theme's colour before anything is drawn, so no contrast

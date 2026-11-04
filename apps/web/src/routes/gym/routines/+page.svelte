@@ -3,7 +3,7 @@
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { fetchGymRoutinesWithError, type GymRoutineSummary } from '#lib/core/data.ts';
 	import { formatDate } from '#lib/format/time.ts';
-	import ActivityLoader from '#lib/components/ActivityLoader.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 
 	let routines = $state<GymRoutineSummary[]>([]);
@@ -53,7 +53,18 @@
 	</header>
 
 	{#if loading}
-		<div class="act-load"><ActivityLoader kind="train" size={76} label={t('shell.loading')} /></div>
+		<ul class="routine-list" aria-hidden="true" data-testid="routine-skeleton">
+			{#each Array(4) as _, i (i)}
+				<li class="card-elevated routine-row">
+					<div class="row-main">
+						<SkeletonBlock height="1rem" width="{40 + (i % 3) * 12}%" />
+						<SkeletonBlock height="0.8rem" width="24%" />
+					</div>
+					<SkeletonBlock height="2rem" width="3rem" />
+				</li>
+			{/each}
+		</ul>
+		<p class="visually-hidden" role="status">{t('shell.loading')}</p>
 	{:else if loadError}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
@@ -95,11 +106,6 @@
 </div>
 
 <style>
-	.act-load {
-		display: flex;
-		justify-content: center;
-		padding: var(--space-2xl) 0;
-	}
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
 	}

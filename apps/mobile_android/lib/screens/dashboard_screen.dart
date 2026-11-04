@@ -69,6 +69,7 @@ import '../widgets/run_list_tile.dart';
 import '../widgets/this_week_strip.dart';
 import '../widgets/goal_editor_sheet.dart';
 import '../widgets/todays_workout_card.dart';
+import '../widgets/runner_menu.dart' show todaysOpenWorkout;
 import '../widgets/plan_nudge_card.dart';
 import '../plan_nudges.dart' show PlanNudge, PlanNudgeKind, workoutOverrunMetres;
 import '../workout_summary.dart' show plannedWorkoutSize;
@@ -84,6 +85,7 @@ import '../recent_5k_suggestion.dart';
 import '../widgets/training_load_chart.dart';
 import 'add_run_screen.dart';
 import 'coach_screen.dart';
+import 'run_screen.dart' show runRecordingActive;
 import 'feed_screen.dart';
 import 'gym_detail_screen.dart';
 import 'gym_screen.dart';
@@ -156,6 +158,13 @@ class DashboardScreen extends StatefulWidget {
   /// dead, as with [onStartRun].
   final VoidCallback? onLogLift;
 
+  /// Loads today's open plan workout onto the recorder, from the Start on
+  /// Home's today's-workout card. The host wires it to the same handoff the
+  /// centre button's long-press menu uses (`pendingStartWorkout`), so the
+  /// recorder's own start screen still runs its permission and first-run
+  /// checks. Null leaves that card without a Start.
+  final ValueChanged<PlanWorkoutRow>? onStartWorkout;
+
   /// Pushes the unsynced runs now, from the pending-sync banner's Retry. The
   /// host wires it to `SyncService` — the one run drain — rather than this
   /// screen pushing runs itself. Null leaves runs counted but not retried.
@@ -177,6 +186,7 @@ class DashboardScreen extends StatefulWidget {
     this.settingsSync,
     this.onStartRun,
     this.onLogLift,
+    this.onStartWorkout,
     this.onSyncRuns,
     this.loadPerks,
   });
@@ -294,6 +304,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     // reach this keep-alive page without a remount.
     widget.settingsSync?.addListener(_onChange);
     widget.training?.addListener(_refreshPlanOverview);
+    runRecordingActive.addListener(_onChange);
     WidgetsBinding.instance.addObserver(this);
     _refreshPlanOverview();
     _hydrateModalities();
@@ -520,6 +531,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     widget.foodStore.removeListener(_onChange);
     widget.settingsSync?.removeListener(_onChange);
     widget.training?.removeListener(_refreshPlanOverview);
+    runRecordingActive.removeListener(_onChange);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -820,7 +832,8 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _weekLeadCard(
-      List<Run> runs, List<RunGoal> goals, DistanceUnit unit, DateTime now) {
+      List<Run> runs, List<RunGoal> goals, DistanceUnit unit, DateTime now,
+      {VoidCallback? onStart}) {
     // A finished plan has no sessions left to offer; Home asks to file it
     // instead (FinishPlanCard), so the lead says nothing about the plan.
     final planWorkouts = _planFinished(now) ? null : _leadPlanWorkouts();
@@ -844,6 +857,9 @@ class _DashboardScreenState extends State<DashboardScreen>
       hasPlan: planWorkouts != null,
       unit: unit,
       onOpenSession: _openPlanSession,
+      onStart: onStart,
+      startActivity:
+          ActivityType.fromName(widget.preferences.defaultActivityType),
     );
   }
 
@@ -1213,10 +1229,9 @@ class _DashboardScreenState extends State<DashboardScreen>
     final svc = widget.training;
     final p = _planOverview;
     if (svc == null || p == null) return;
-    // Dashboard's role is overview, not start-a-run. Tap routes into
-    // plan_detail so the runner can see the full week + drill into
-    // the workout. The Run tab already has the "start now" dialog
-    // for runners who tap from there.
+    // The card's body is the overview: a tap routes into plan_detail so the
+    // runner can see the full week + drill into the workout. Starting it is
+    // the card's own Start button (decisions § 2278).
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => PlanDetailScreen(
@@ -1562,13 +1577,29 @@ class _DashboardScreenState extends State<DashboardScreen>
     // Active-plan hero + the goals block: both outlive the welcome state,
     // because onboarding can mint a plan and a goal before the first run
     // exists and neither is a derived metric.
-    final todayCard = _planOverview?.todayWorkout != null
+    // Home's primary action (decisions § 2278): one Start, on today's
+    // workout when there is an open one to follow, else on the week lead.
+    // None while a run records, since the centre button is then the way back
+    // to it and a second "Start" would misstate what a tap does.
+    final recording = runRecordingActive.value;
+    final openWorkout = recording || widget.onStartWorkout == null
+        ? null
+        : todaysOpenWorkout(_planOverview?.workouts ?? const [], now);
+    final todayWorkout = _planOverview?.todayWorkout;
+    final startsTodayWorkout =
+        openWorkout != null && openWorkout.id == todayWorkout?.id;
+    final todayCard = todayWorkout != null
         ? TodaysWorkoutCard(
-            workout: _planOverview!.todayWorkout!,
+            workout: todayWorkout,
             onTap: _openTodayWorkout,
+            onStart: startsTodayWorkout
+                ? () => widget.onStartWorkout!(openWorkout)
+                : null,
             overrunMetres: _todayOverrun(runs),
           )
         : null;
+    final leadStart =
+        recording || startsTodayWorkout ? null : widget.onStartRun;
     final missedPrompt = _missedPromptCard(now);
     final nudgeCard = _planNudgeCard(runs, now);
     final heroCards = [
@@ -1701,8 +1732,9 @@ class _DashboardScreenState extends State<DashboardScreen>
       // The week lead opens Home for an account with runs (#905 workstream
       // 3). A lifter with no runs reaches this branch too and has no running
       // week to lead with.
-      final weekLeadCard =
-          runs.isNotEmpty ? _weekLeadCard(runs, goals, unit, now) : null;
+      final weekLeadCard = runs.isNotEmpty
+          ? _weekLeadCard(runs, goals, unit, now, onStart: leadStart)
+          : null;
       final raceCard = _nextRaceCard(now) ?? _planDiscoveryCard(now);
       // Active-plan hero: surface the day's structured workout above
       // goals so a plan-runner sees what's next before scrolling. Hidden
@@ -2301,12 +2333,18 @@ class _DashboardWeekLead extends StatelessWidget {
   final DistanceUnit unit;
   final ValueChanged<LeadPlanWorkout> onOpenSession;
 
+  /// Opens the recorder for [startActivity]; null hides the Start.
+  final VoidCallback? onStart;
+  final ActivityType startActivity;
+
   const _DashboardWeekLead({
     super.key,
     required this.lead,
     required this.hasPlan,
     required this.unit,
     required this.onOpenSession,
+    required this.onStart,
+    required this.startActivity,
   });
 
   String _whenLabel(AppLocalizations l10n, String iso, int? inDays) {
@@ -2427,6 +2465,15 @@ class _DashboardWeekLead extends StatelessWidget {
                   key: const Key('dashboardWeekLeadNoNext'),
                   style: theme.textTheme.bodyMedium?.copyWith(color: muted),
                 ),
+            ],
+            if (onStart != null) ...[
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                key: const Key('dashboardWeekLeadStart'),
+                onPressed: onStart,
+                icon: Icon(startActivity.icon),
+                label: Text(startActivityCaption(l10n, startActivity)),
+              ),
             ],
           ],
         ),

@@ -835,6 +835,7 @@ class _HomeScreenState extends State<HomeScreen>
           settingsSync: widget.settingsSync,
           onStartRun: () => _performLogAction(LogAction.run),
           onLogLift: () => _performLogAction(LogAction.lift),
+          onStartWorkout: _startTodaysWorkout,
           onSyncRuns: widget.syncService == null
               ? null
               : () => widget.syncService!.triggerSync('manual'),

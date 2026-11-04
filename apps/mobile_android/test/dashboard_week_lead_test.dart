@@ -22,7 +22,9 @@ import '../lib/preferences.dart';
 import '../lib/screens/add_run_screen.dart';
 import '../lib/screens/dashboard_screen.dart';
 import '../lib/screens/import_screen.dart';
+import '../lib/screens/run_screen.dart' show runRecordingActive;
 import '../lib/training_service.dart';
+import '../lib/widgets/todays_workout_card.dart';
 import 'pump_until.dart';
 
 class _FakeTraining extends TrainingService {
@@ -89,6 +91,8 @@ Future<({Preferences prefs, Directory dir})> _mount(
   TrainingService? training,
   bool useMiles = false,
   List<RunGoal> goals = const [],
+  VoidCallback? onStartRun,
+  ValueChanged<PlanWorkoutRow>? onStartWorkout,
   required bool Function() ready,
   required String describe,
 }) async {
@@ -125,6 +129,8 @@ Future<({Preferences prefs, Directory dir})> _mount(
         foodStore: LocalFoodStore(),
         preferences: prefs,
         training: training,
+        onStartRun: onStartRun,
+        onStartWorkout: onStartWorkout,
       ),
     ));
   });
@@ -325,5 +331,91 @@ void main() {
       describe: 'the welcome state to mount',
     );
     expect(_lead, findsNothing);
+  });
+
+  group('Home\'s Start (decisions § 2278)', () {
+    final leadStart = find.byKey(const Key('dashboardWeekLeadStart'));
+    final cardStart = find.byKey(const Key('todaysWorkoutStart'));
+
+    testWidgets('without a plan the week lead carries the Start, captioned '
+        'for the default activity, and it opens the recorder', (tester) async {
+      var started = 0;
+      await _mount(
+        tester,
+        runs: [_run('r1', DateTime.now(), 5000)],
+        onStartRun: () => started++,
+        ready: () => leadStart.evaluate().isNotEmpty,
+        describe: 'the lead Start to mount',
+      );
+      expect(find.descendant(of: leadStart, matching: find.text('Start run')),
+          findsOneWidget);
+      await tester.tap(leadStart);
+      expect(started, 1);
+    });
+
+    testWidgets('an open workout today takes the Start, which loads that '
+        'workout, and the lead carries none', (tester) async {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final todays = _workout('wo-today', today, 'easy', distanceM: 6000);
+      PlanWorkoutRow? loaded;
+      await _mount(
+        tester,
+        training: _FakeTraining(_overview([todays], today: todays)),
+        runs: [_run('r1', now, 5000)],
+        onStartRun: () {},
+        onStartWorkout: (w) => loaded = w,
+        ready: () => cardStart.evaluate().isNotEmpty,
+        describe: 'the workout card Start to mount',
+      );
+      expect(leadStart, findsNothing);
+      await tester.tap(cardStart);
+      expect(loaded?.id, 'wo-today');
+    });
+
+    testWidgets('a workout already done today hands the Start back to the '
+        'lead', (tester) async {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final todays =
+          _workout('wo-today', today, 'easy', distanceM: 6000, done: true);
+      await _mount(
+        tester,
+        training: _FakeTraining(_overview([todays], today: todays)),
+        runs: [_run('r1', now, 5000)],
+        onStartRun: () {},
+        onStartWorkout: (_) {},
+        ready: () =>
+            find.byType(TodaysWorkoutCard).evaluate().isNotEmpty &&
+            leadStart.evaluate().isNotEmpty,
+        describe: 'the done workout card and the lead Start to mount',
+      );
+      expect(cardStart, findsNothing);
+    });
+
+    testWidgets('no Start anywhere while a run records', (tester) async {
+      runRecordingActive.value = true;
+      addTearDown(() => runRecordingActive.value = false);
+      await _mount(
+        tester,
+        runs: [_run('r1', DateTime.now(), 5000)],
+        onStartRun: () {},
+        ready: () => _lead.evaluate().isNotEmpty,
+        describe: 'the week lead to mount',
+      );
+      expect(leadStart, findsNothing);
+      expect(cardStart, findsNothing);
+    });
+
+    testWidgets('no Start when the host cannot reach the recorder',
+        (tester) async {
+      await _mount(
+        tester,
+        runs: [_run('r1', DateTime.now(), 5000)],
+        ready: () => _lead.evaluate().isNotEmpty,
+        describe: 'the week lead to mount',
+      );
+      expect(leadStart, findsNothing);
+    });
   });
 }

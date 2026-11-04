@@ -26,9 +26,13 @@
 --          so 1100 cascaded paths are two jobs (1000 + the rest), none lost.
 --   19-20. With the enqueue made to fail, the photo delete still commits and
 --          queues nothing.
+--   21-22. A queued paths job the trigger did not queue in this transaction
+--          is never appended to, though its timestamps equal this
+--          transaction's now() (another transaction that started in the same
+--          microsecond): the paths go to the trigger's own job.
 
 begin;
-select plan(20);
+select plan(22);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values ('d2293000-0000-0000-0000-0000000000a1', 'authenticated', 'authenticated', 'ps-owner@ps.local', '', now(), now());
@@ -273,6 +277,31 @@ select results_eq(
   'the row is gone and the failed enqueue queued nothing, leaving the bytes to the backstop');
 
 alter table public.jobs drop constraint test_reject_sweep;
+
+-- ── 21-22: only this transaction's own job is appended to ──────────────────
+-- Inserted here by hand, so its created_at and scheduled_at are this
+-- transaction's now(), exactly as a job committed by a concurrent transaction
+-- that started in the same microsecond would read; its id is the newest.
+insert into public.jobs (kind, payload, max_attempts)
+values ('route_photo_orphan_sweep', '{"paths":["someone-else/x.jpg"]}'::jsonb, 3);
+
+insert into route_photos (id, route_id, owner_id, storage_path)
+values ('d2293000-0000-0000-0000-0000000000fb', 'd2293000-0000-0000-0000-0000000000c5',
+        'd2293000-0000-0000-0000-0000000000a1', 'd2293000-0000-0000-0000-0000000000a1/own.jpg');
+delete from route_photos where id = 'd2293000-0000-0000-0000-0000000000fb';
+
+select is(
+  (select payload from public.jobs
+    where kind = 'route_photo_orphan_sweep' and payload -> 'paths' ? 'someone-else/x.jpg'),
+  '{"paths":["someone-else/x.jpg"]}'::jsonb,
+  'a job another transaction queued is left exactly as it was');
+
+select is(
+  (select jsonb_array_length(payload -> 'paths') from public.jobs
+    where kind = 'route_photo_orphan_sweep'
+      and payload -> 'paths' ? 'd2293000-0000-0000-0000-0000000000a1/own.jpg'),
+  105,
+  'the path is appended to the job this transaction''s trigger queued');
 
 select * from finish();
 rollback;

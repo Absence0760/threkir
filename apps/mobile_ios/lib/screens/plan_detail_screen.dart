@@ -48,7 +48,6 @@ import '../goal_time.dart' show formatGoalTimeS, formatRaceGoalTimeS;
 import '../training.dart';
 import '../training_labels.dart';
 import '../training_load.dart';
-import '../plan_copy.dart' show libraryCopyOf;
 import '../training_service.dart';
 import '../settings_sync.dart' show activeWeekStartDay;
 import '../preferences.dart' show activePreferences;
@@ -2077,20 +2076,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     }
   }
 
-  Future<void> _loadPublishedState() async {
+  /// The plan names its own library copy (`library_copy_id`, decisions
+  /// § 2340), so the toggle is read off the row already loaded.
+  void _loadPublishedState() {
     final plan = _plan;
     if (plan == null || !_isOwner(plan) || plan.isTemplate) return;
-    try {
-      final published = await widget.training
-          .fetchMyPublishedPlans()
-          .timeout(kBackendLoadTimeout);
-      if (!mounted) return;
-      setState(() {
-        _publishedTemplateId = libraryCopyOf(published, plan.id)?.id;
-      });
-    } catch (_) {
-      /* L4 best-effort — leave the toggle in publish state. */
-    }
+    setState(() => _publishedTemplateId = plan.libraryCopyId);
   }
 
   Future<void> _publishToLibrary(TrainingPlanRow plan) async {

@@ -6061,70 +6061,17 @@ export async function fetchPlanStartedFrom(planId: string): Promise<PlanStartedF
 	};
 }
 
-/// Publish one of the viewer's plans to the public library: copy the
-/// plan row + every plan_week + plan_workout into a new
-/// `is_public_template = true` sibling, leaving the original plan
-/// untouched on the user's list (mirrors `publishPlanAsTemplate`, in the
-/// public direction). Publisher fitness data (vdot/current_5k_seconds)
-/// is stripped so it can't leak to cloners. Returns the new template id.
+/// Publish one of the viewer's plans to the public library. The copy is made
+/// server-side by `publish_plan_to_library`, in one transaction that also
+/// links it from the source's `library_copy_id`: it keeps the plan's design
+/// and drops the publisher's dates, paces, goal time and notes (decisions
+/// § 2340). Publishing an already-published plan returns its existing copy.
+/// Returns the copy's id.
 export async function publishPlanToLibrary(sourcePlanId: string): Promise<string> {
-	const userId = auth.user?.id;
-	if (!userId) throw new Error('Not signed in');
-
-	const source = await fetchPlan(sourcePlanId);
-	if (!source.plan) throw new Error('Source plan not found');
-	if (source.plan.user_id !== userId) {
-		throw new Error('Only the plan owner can publish');
-	}
-	const src = source.plan;
-
 	markListsStale('plans');
-	const { data: tmpl, error: planErr } = await supabase
-		.from('training_plans')
-		.insert({
-			...planHeadCopyFields(src),
-			user_id: userId,
-			vdot: null,
-			current_5k_seconds: null,
-			notes: null,
-			status: 'completed',
-			is_template: true,
-			is_public_template: true,
-			club_id: null,
-			parent_template_id: null,
-			published_from_plan_id: src.id,
-		})
-		.select('id')
-		.single();
-	if (planErr || !tmpl) throw planErr ? dbError(planErr) : new Error('Template insert failed');
-	const newPlanId = tmpl.id as string;
-
-	if (source.weeks.length === 0) return newPlanId;
-
-	const weekRows = planWeekCopyRows(source.weeks, newPlanId);
-	const { data: weekRes, error: weekErr } = await supabase
-		.from('plan_weeks')
-		.insert(weekRows)
-		.select('id, week_index');
-	if (weekErr || !weekRes) throw weekErr ? dbError(weekErr) : new Error('Weeks insert failed');
-
-	const byIdx = new Map<number, string>();
-	for (const w of weekRes as { id: string; week_index: number }[]) {
-		byIdx.set(w.week_index, w.id);
-	}
-	const oldToNew = new Map<string, string>();
-	for (const old of source.weeks) {
-		const newId = byIdx.get(old.week_index);
-		if (newId) oldToNew.set(old.id, newId);
-	}
-
-	const workoutRows = planWorkoutCopyRows(source.workouts, oldToNew);
-	if (workoutRows.length > 0) {
-		const { error: woErr } = await supabase.from('plan_workouts').insert(workoutRows);
-		if (woErr) throw dbError(woErr);
-	}
-
-	return newPlanId;
+	const { data, error } = await supabase.rpc('publish_plan_to_library', { p_plan_id: sourcePlanId });
+	if (error) throw dbError(error);
+	return data;
 }
 
 /// Unpublish a public-library template the viewer owns — deletes the
@@ -6137,24 +6084,6 @@ export async function unpublishFromLibrary(templateId: string): Promise<void> {
 		.eq('id', templateId)
 		.eq('is_public_template', true);
 	if (error) throw dbError(error);
-}
-
-/// The viewer's own published public-library plans (so the plan-detail
-/// page can show whether a plan is already published and offer Unpublish).
-export async function fetchMyPublishedPlans(): Promise<TrainingPlan[]> {
-	const userId = auth.user?.id;
-	if (!userId) return [];
-	const { data, error } = await supabase
-		.from('training_plans')
-		.select('*')
-		.eq('is_public_template', true)
-		.eq('user_id', userId)
-		.order('created_at', { ascending: false });
-	if (error) {
-		console.error('fetchMyPublishedPlans failed', error);
-		return [];
-	}
-	return (data ?? []) as TrainingPlan[];
 }
 
 /**
@@ -11320,12 +11249,17 @@ export async function unsendDm(messageId: string): Promise<DirectMessage> {
 }
 
 /// Deletes a conversation for the viewer only (migration 20271105000010):
-/// every message so far leaves their reads, the other participant keeps
-/// theirs, and a newer message brings the conversation back. The caller holds
-/// it behind an undo window (conventions.md § Destructive actions), since
-/// nothing is sent until the window closes.
-export async function hideDmConversation(conversationId: string): Promise<void> {
-	const { error } = await supabase.rpc('hide_conversation', { p_conversation_id: conversationId });
+/// every message up to and including `throughMessageId`, the newest one the
+/// viewer had on screen, leaves their reads, and anything sent after it stays
+/// (20271107000002). The other participant keeps theirs, and a newer message
+/// brings the conversation back. The caller holds it behind an undo window
+/// (conventions.md § Destructive actions), and a message that arrives during
+/// the window is one the viewer never saw.
+export async function hideDmConversation(conversationId: string, throughMessageId: string): Promise<void> {
+	const { error } = await supabase.rpc('hide_conversation', {
+		p_conversation_id: conversationId,
+		p_through_message_id: throughMessageId,
+	});
 	if (error) throw dbError(error);
 }
 

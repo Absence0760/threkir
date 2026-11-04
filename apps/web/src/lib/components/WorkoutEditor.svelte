@@ -166,14 +166,14 @@
 	);
 	let repeatsPaceMin = $state<number | null>(
 		untrack(() =>
-			initialStructure?.repeats
+			initialStructure?.repeats?.pace_sec_per_km != null
 				? paceParts(paceFromCanonical(initialStructure.repeats.pace_sec_per_km)).minutes
 				: null
 		)
 	);
 	let repeatsPaceSec = $state<number | null>(
 		untrack(() =>
-			initialStructure?.repeats
+			initialStructure?.repeats?.pace_sec_per_km != null
 				? paceParts(paceFromCanonical(initialStructure.repeats.pace_sec_per_km)).seconds
 				: null
 		)
@@ -197,14 +197,14 @@
 	);
 	let steadyPaceMin = $state<number | null>(
 		untrack(() =>
-			initialStructure?.steady
+			initialStructure?.steady?.pace_sec_per_km != null
 				? paceParts(paceFromCanonical(initialStructure.steady.pace_sec_per_km)).minutes
 				: null
 		)
 	);
 	let steadyPaceSec = $state<number | null>(
 		untrack(() =>
-			initialStructure?.steady
+			initialStructure?.steady?.pace_sec_per_km != null
 				? paceParts(paceFromCanonical(initialStructure.steady.pace_sec_per_km)).seconds
 				: null
 		)

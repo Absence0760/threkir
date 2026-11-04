@@ -366,7 +366,7 @@
 		genDescription = localised;
 		genSource = 'template';
 		try {
-			const ai = await requestAiDescription(input, getUnit(), currentLocale());
+			const ai = await requestAiDescription(input, getUnit(), currentLocale(), route.id);
 			genDescription = shownDescription(localised, ai);
 			genSource = ai.source;
 			showUpgradeHint = ai.upgrade;

@@ -20,6 +20,16 @@ paragraph that replaces the baseline, with an AI-attribution line. Gating is
 
 - **Server**: the endpoint enforces `is_pro()` and degrades to the templated
   text on every failure (`decisions.md § 151`).
+- **Route name scope**: the route's name reaches the model only when the
+  caller owns the route or it is public. Both clients send the route's
+  `route_id`; the handler reads the name itself (`promptRouteName` — the base
+  `routes` row under the caller's RLS, then the `public_routes` view) and
+  never takes it from the body, so a club-mate, a named share recipient or a
+  follower describing someone else's non-public route sends Anthropic the
+  stats with "This route" in place of the name (`WITHHELD_ROUTE_NAME`). A
+  missing or malformed id, a route that does not resolve and a failed lookup
+  all withhold it too. The body's `name` only shapes the templated fallback
+  the endpoint answers with, which never leaves the server for the model.
 - **Unit**: both clients send the viewer's `unit` (`km` / `mi`). The handler
   admits only `PreferredUnit`'s two members (`parseRequestedUnit`); a missing
   or malformed value falls back to the account's stored `preferred_unit`, then
@@ -62,7 +72,7 @@ paragraph that replaces the baseline, with an AI-attribution line. Gating is
 
 ## What's shipped (Component A — request → constraints)
 
-A "Describe the route you want" box on `/routes/new` calls `/api/coach/route-request` (`claude-opus-4-8`, **forced tool_choice** `extract_route_constraints`), which extracts a strictly validated constraints object the existing deterministic generator consumes. The LLM never routes; `route_request/constraints.ts` (`validateConstraints`) is the single trust boundary — every field (distance band, shape, surface, avoid-highways, road-design preference) is clamped/whitelisted before it reaches the generator, so a hallucinated value collapses to a safe default. Pro-gated server-side on `is_pro()`, **fail-closed** (unknown Pro status → 503; non-Pro → 403 upsell); purely additive — the manual generator form is untouched on any failure. The box populates distance + surface and surfaces shape / avoid-highways / preference / assumptions as a review hint.
+A "Describe the route you want" box on `/routes/new` calls `/api/coach/route-request` (`claude-opus-4-8`, **forced tool_choice** `extract_route_constraints`), which extracts a strictly validated constraints object the existing deterministic generator consumes. The LLM never routes; `route_request/constraints.ts` (`validateConstraints`) is the single trust boundary — every field (distance band, shape, surface, avoid-highways, road-design preference) is clamped/whitelisted before it reaches the generator, so a hallucinated value collapses to a safe default. The optional `location_label` hint is a place label only: the builder labels a typed or map-picked start with its own coordinates to four decimals, so both the client (`route_request_client.ts`) and the handler drop any label that states a position (`promptLocationLabel` in `route_request/location_label.ts`), keeping the consent copy's "never your precise coordinates" true even for an older client. Pro-gated server-side on `is_pro()`, **fail-closed** (unknown Pro status → 503; non-Pro → 403 upsell); purely additive — the manual generator form is untouched on any failure. The box populates distance + surface and surfaces shape / avoid-highways / preference / assumptions as a review hint.
 
 **Road-design preference (2026-08-30, decisions § 798).** `preference` is `'quiet' | 'scenic' | 'cul_de_sac'` — the generator's own `RoutePreference` vocabulary, whitelisted against a `ReadonlySet` exactly as `shape` and `surface` are, so the model cannot invent a fourth. It is the one field whose absence is carried as `null` rather than defaulted: the others fall back to something the runner would plausibly have picked, whereas a defaulted preference would bias every generated route toward a design nobody asked for. When the model names none, one is **derived** from what it did name — `avoid_highways` → `quiet`, then a `trail` surface → `scenic`, with the stated road constraint outranking the surface inference — and the derivation is recorded in `assumptions` so the review panel shows it. `cul_de_sac` is never derived, only asked for: it inverts part of the loop score ([graph_cycle_loop_generation.md § Extension](graph_cycle_loop_generation.md)), so inferring it would hand a runner dead-end spurs. `avoidHighways` stays on the object beside `preference` — the form checkbox binds to the boolean, the generate body carries the enum. Files: `route_request/handler.ts` + `route_request/constraints.ts` + `route_request_client.ts` + the `/api/coach/route-request` SvelteKit endpoint + the coach Lambda `/route-request` dispatch. Tests: `constraints.test.ts` (clamp/validate) + `handler.test.ts` (pre-Supabase branches) + Playwright `route-request.spec.ts` (mocked endpoint).
 

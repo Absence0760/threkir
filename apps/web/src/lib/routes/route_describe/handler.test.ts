@@ -7,10 +7,12 @@ import {
 	MAX_ROUTE_NAME_CHARS,
 	parseRequestedLocale,
 	parseRequestedUnit,
+	parseRouteId,
 	routeDescribeUserMessage,
 	ROUTE_DESCRIBE_RATE_BUCKET,
 	ROUTE_DESCRIBE_RATE_MAX,
 	ROUTE_DESCRIBE_RATE_WINDOW_S,
+	WITHHELD_ROUTE_NAME,
 } from './handler';
 import type { RouteDescribeConfig } from './handler';
 import { describeRoute } from '../route_description';
@@ -212,13 +214,18 @@ test('the dev paywall bypass does not bypass the consent gate', async () => {
 
 /// A Pro caller whose throttle hands out ticket `ticket-1`; records every RPC.
 /// [profile] is merged into the consenting profile row `get_my_profile` returns;
-/// [settings] is what a `user_settings` read answers.
+/// [settings] is what a `user_settings` read answers; [routes] what a read of
+/// `routes` (the base table, under the caller's RLS) and of the `public_routes`
+/// view answer.
+type Answer = { data?: unknown; error?: unknown; throws?: boolean };
 function proClient(
 	profile: Record<string, unknown> = {},
-	settings: { data?: unknown; error?: unknown; throws?: boolean } = {},
+	settings: Answer = {},
+	routes: { routes?: Answer; public_routes?: Answer } = {},
 ) {
 	const calls: Array<{ name: string; args?: unknown }> = [];
 	const settingsReads: Array<{ table: string; column: string; value: unknown }> = [];
+	const routeReads: Array<{ table: string; column: string; value: unknown }> = [];
 	const factory = () =>
 		({
 			auth: { getUser: async () => ({ data: { user: { id: 'user-1' } }, error: null }) },
@@ -226,9 +233,13 @@ function proClient(
 				select: () => ({
 					eq: (column: string, value: unknown) => ({
 						maybeSingle: async () => {
-							settingsReads.push({ table, column, value });
-							if (settings.throws) throw new Error('socket hang up');
-							return { data: settings.data ?? null, error: settings.error ?? null };
+							const isRoute = table === 'routes' || table === 'public_routes';
+							(isRoute ? routeReads : settingsReads).push({ table, column, value });
+							const answer: Answer = isRoute
+								? (routes[table as 'routes' | 'public_routes'] ?? {})
+								: settings;
+							if (answer.throws) throw new Error('socket hang up');
+							return { data: answer.data ?? null, error: answer.error ?? null };
 						},
 					}),
 				}),
@@ -252,7 +263,7 @@ function proClient(
 				return Promise.resolve({ data: true, error: null });
 			},
 		}) as never;
-	return { factory, names: () => calls.map((c) => c.name), calls, settingsReads };
+	return { factory, names: () => calls.map((c) => c.name), calls, settingsReads, routeReads };
 }
 
 function fakeModel(respond: () => unknown) {
@@ -359,14 +370,14 @@ const SUMMIT = describeRoute({
 });
 
 test('the prompt for a km viewer states km and m and requires them', () => {
-	const msg = routeDescribeUserMessage(SUMMIT, 'Summit Trail', 'km', 'en');
+	const msg = routeDescribeUserMessage({ parts: SUMMIT, name: 'Summit Trail', unit: 'km', locale: 'en' });
 	assert.match(msg, /Summit Trail is a 12\.0 km trail point-to-point route with 480 m of climbing/);
 	assert.match(msg, /Write every distance in kilometres \(km\) and every climb in metres \(m\)\. Never use miles or feet\./);
 	assert.doesNotMatch(msg, /\bmi\b|\bft\b/);
 });
 
 test('the prompt for a miles viewer states mi and ft and requires them', () => {
-	const msg = routeDescribeUserMessage(SUMMIT, 'Summit Trail', 'mi', 'en');
+	const msg = routeDescribeUserMessage({ parts: SUMMIT, name: 'Summit Trail', unit: 'mi', locale: 'en' });
 	assert.match(msg, /Summit Trail is a 7\.5 mi trail point-to-point route with 1575 ft of climbing/);
 	assert.match(msg, /Write every distance in miles \(mi\) and every climb in feet \(ft\)\. Never use kilometres or metres\./);
 	assert.doesNotMatch(msg, /\bkm\b|\d m\b/);
@@ -442,7 +453,7 @@ test('the templated fallback is in the viewer unit too', async () => {
 
 test('the prompt names the viewer language in English and keeps names untranslated', () => {
 	for (const locale of SUPPORTED_LOCALES) {
-		const msg = routeDescribeUserMessage(SUMMIT, 'Summit Trail', 'km', locale);
+		const msg = routeDescribeUserMessage({ parts: SUMMIT, name: 'Summit Trail', unit: 'km', locale });
 		assert.ok(
 			msg.includes(`Write the paragraph in ${LANGUAGE_NAME[locale]}.`),
 			`${locale}: ${msg}`,
@@ -521,4 +532,112 @@ test('a caller who never reaches the model costs no settings read', async () => 
 		}),
 	);
 	assert.deepEqual(sb.settingsReads, []);
+});
+
+// ─────────────── Route name scope: owner or public only ───────────────
+
+const ROUTE_ID = '5f0c1e2a-3b4c-4d5e-8f60-718293a4b5c6';
+
+test('parseRouteId admits only a UUID', () => {
+	assert.equal(parseRouteId({ route_id: ROUTE_ID }), ROUTE_ID);
+	for (const id of ['', 'route-1', 7, null, undefined, [ROUTE_ID], `${ROUTE_ID}x`]) {
+		assert.equal(parseRouteId({ route_id: id }), null, `route_id ${JSON.stringify(id)}`);
+	}
+	assert.equal(parseRouteId(null), null);
+});
+
+/// Drive one model-reaching request and return the user turn the model got.
+async function promptFor(
+	body: Record<string, unknown>,
+	routes: Parameters<typeof proClient>[2],
+): Promise<{ prompt: string; sb: ReturnType<typeof proClient> }> {
+	const model = capturingModel();
+	const sb = proClient({}, { data: { prefs: { locale: 'en' } } }, routes);
+	const r = parse(
+		await quietly(() =>
+			handleRouteDescribe('Bearer x', body, {
+				...baseConfig(),
+				createClient: sb.factory,
+				createAnthropic: model.create,
+			}),
+		),
+	);
+	assert.equal(r.body.source, 'ai');
+	assert.equal(model.prompts.length, 1);
+	return { prompt: model.prompts[0], sb };
+}
+
+test("the owner's route name reaches the prompt, read from the database, not the body", async () => {
+	const { prompt, sb } = await promptFor(
+		{ ...VALID_BODY, name: 'Typed by the client', route_id: ROUTE_ID },
+		{ routes: { data: { name: 'Stored Name', user_id: 'user-1', is_public: false } } },
+	);
+	assert.match(prompt, /Stored Name is a /);
+	assert.ok(!prompt.includes('Typed by the client'));
+	assert.deepEqual(sb.routeReads, [{ table: 'routes', column: 'id', value: ROUTE_ID }]);
+});
+
+test("a public route's name reaches the prompt, through the view when the base table hides it", async () => {
+	const viaView = await promptFor(
+		{ ...VALID_BODY, route_id: ROUTE_ID },
+		{ public_routes: { data: { name: 'Public Loop' } } },
+	);
+	assert.match(viaView.prompt, /Public Loop is a /);
+	assert.deepEqual(
+		viaView.sb.routeReads.map((r) => r.table),
+		['routes', 'public_routes'],
+	);
+	const viaBase = await promptFor(
+		{ ...VALID_BODY, route_id: ROUTE_ID },
+		{ routes: { data: { name: 'Club Public', user_id: 'someone-else', is_public: true } } },
+	);
+	assert.match(viaBase.prompt, /Club Public is a /);
+});
+
+test("a route the caller can open but neither owns nor is public keeps its name out of the prompt", async () => {
+	// A club-mate, a named share recipient or a follower reads the row under
+	// RLS; the name is still the owner's.
+	const { prompt } = await promptFor(
+		{ ...VALID_BODY, route_id: ROUTE_ID },
+		{ routes: { data: { name: 'Secret Club Route', user_id: 'someone-else', is_public: false } } },
+	);
+	assert.ok(!prompt.includes('Secret Club Route'));
+	assert.ok(!prompt.includes('Riverside 10K'));
+	assert.match(prompt, new RegExp(`${WITHHELD_ROUTE_NAME} is a `));
+});
+
+test('no route id, an unresolvable one, or a failed lookup sends no name at all', async () => {
+	for (const [label, body, routes] of [
+		['no route_id', VALID_BODY, {}],
+		['malformed route_id', { ...VALID_BODY, route_id: 'r1' }, {}],
+		['not found', { ...VALID_BODY, route_id: ROUTE_ID }, {}],
+		['base error', { ...VALID_BODY, route_id: ROUTE_ID }, { routes: { error: { message: 'boom' } } }],
+		['view error', { ...VALID_BODY, route_id: ROUTE_ID }, { public_routes: { error: { message: 'boom' } } }],
+		['throws', { ...VALID_BODY, route_id: ROUTE_ID }, { routes: { throws: true } }],
+	] as const) {
+		const { prompt } = await promptFor(body, routes);
+		assert.ok(!prompt.includes('Riverside 10K'), label);
+		assert.match(prompt, new RegExp(`${WITHHELD_ROUTE_NAME} is a `), label);
+	}
+});
+
+test('the stored name is cut to MAX_ROUTE_NAME_CHARS', async () => {
+	const { prompt } = await promptFor(
+		{ ...VALID_BODY, route_id: ROUTE_ID },
+		{ routes: { data: { name: 'x'.repeat(MAX_ROUTE_NAME_CHARS + 50), user_id: 'user-1', is_public: false } } },
+	);
+	assert.ok(prompt.includes('x'.repeat(MAX_ROUTE_NAME_CHARS)));
+	assert.ok(!prompt.includes('x'.repeat(MAX_ROUTE_NAME_CHARS + 1)));
+});
+
+test('a caller who never reaches the model costs no route read', async () => {
+	const sb = proClient();
+	await quietly(() =>
+		handleRouteDescribe('Bearer x', { ...VALID_BODY, route_id: ROUTE_ID }, {
+			...baseConfig(),
+			anthropicApiKey: undefined,
+			createClient: sb.factory,
+		}),
+	);
+	assert.deepEqual(sb.routeReads, []);
 });

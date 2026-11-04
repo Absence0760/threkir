@@ -18,7 +18,10 @@ import { createThrowawayPlan, deleteThrowawayPlan, type ThrowawayPlan } from '..
  *   1. Publish creates exactly one public-library copy and leaves the
  *      source plan untouched.
  *   2. A stranger can see + preview the public template (RLS).
- *   3. The clone is owned by the stranger, active, parent-linked to the
+ *   3. The copy carries the plan's design and none of the publisher's
+ *      data: no goal time, no absolute pace, no notes, and dates moved onto
+ *      the reference week of 2001-01-01 (decisions § 2340).
+ *   4. The clone is owned by the stranger, active, parent-linked to the
  *      template, and carries no publisher fitness data.
  */
 
@@ -82,7 +85,7 @@ test.describe('Public plan library — publish → browse → clone', () => {
 			'training_plans by is_public_template+name',
 			admin
 				.from('training_plans')
-				.select('id, is_public_template, is_template, user_id, vdot, current_5k_seconds')
+				.select('id, is_public_template, is_template, user_id, vdot, current_5k_seconds, goal_time_seconds, start_date')
 				.eq('is_public_template', true)
 				.eq('name', PLAN_NAME)
 		);
@@ -94,22 +97,42 @@ test.describe('Public plan library — publish → browse → clone', () => {
 			user_id: string;
 			vdot: number | null;
 			current_5k_seconds: number | null;
+			goal_time_seconds: number | null;
+			start_date: string;
 		};
 		expect(tmpl.is_template).toBe(true);
 		expect(tmpl.user_id).toBe(USER_A.id);
 		expect(tmpl.vdot).toBeNull();
 		expect(tmpl.current_5k_seconds).toBeNull();
+		expect(tmpl.goal_time_seconds).toBeNull();
+		expect(tmpl.start_date).toMatch(/^2001-01-0[1-7]$/);
+
+		const copyWorkouts = (await readRows(
+			'plan_workouts of the library copy',
+			admin
+				.from('plan_workouts')
+				.select('target_pace_sec_per_km, target_pace_end_sec_per_km, notes, structure, plan_weeks!inner(plan_id)')
+				.eq('plan_weeks.plan_id', tmpl.id)
+		)) as { target_pace_sec_per_km: number | null; target_pace_end_sec_per_km: number | null; notes: string | null; structure: unknown }[];
+		expect(copyWorkouts.length).toBeGreaterThan(0);
+		for (const w of copyWorkouts) {
+			expect(w.target_pace_sec_per_km).toBeNull();
+			expect(w.target_pace_end_sec_per_km).toBeNull();
+			expect(w.notes).toBeNull();
+			expect(JSON.stringify(w.structure ?? null)).not.toContain('pace_sec_per_km');
+		}
 
 		const source = await readMaybeRow(
 			'training_plans by id',
 			admin
 				.from('training_plans')
-				.select('is_template, is_public_template')
+				.select('is_template, is_public_template, library_copy_id')
 				.eq('id', SOURCE_PLAN_ID)
 				.maybeSingle()
 		);
 		expect((source as { is_template: boolean }).is_template).toBe(false);
 		expect((source as { is_public_template: boolean }).is_public_template).toBe(false);
+		expect((source as { library_copy_id: string | null }).library_copy_id).toBe(tmpl.id);
 
 		await ctxA.close();
 
@@ -215,8 +238,8 @@ test.describe('Public plan library — publish → browse → clone', () => {
 	});
 });
 
-// The plan page finds its library copy by `published_from_plan_id`, the link
-// the publisher writes, never by name: by name, a rename lost the copy (no
+// The plan page finds its library copy by its own `library_copy_id`, the link
+// publish_plan_to_library writes on the source (decisions § 2340), never by name: by name, a rename lost the copy (no
 // Unpublish, and a republish minted a duplicate) and two plans sharing a name
 // both claimed the first copy. Each test runs on an account of its own, so a
 // rename or a second same-named plan never touches the seeded plan.
@@ -230,15 +253,17 @@ test.describe('Public plan library — the copy follows its plan, not its name',
 		plan = undefined;
 	});
 
-	function copiesOf(planIds: string[]) {
-		return readRows(
-			'library copies by published_from_plan_id',
+	/// Each plan's library copy, as { source, id }, for the plans that have one.
+	async function copiesOf(planIds: string[]) {
+		const rows = (await readRows(
+			'library_copy_id of the source plans',
 			getAdminClient()
 				.from('training_plans')
-				.select('id, published_from_plan_id')
-				.eq('is_public_template', true)
-				.in('published_from_plan_id', planIds)
-		) as Promise<{ id: string; published_from_plan_id: string }[]>;
+				.select('id, library_copy_id')
+				.in('id', planIds)
+				.not('library_copy_id', 'is', null)
+		)) as { id: string; library_copy_id: string }[];
+		return rows.map((r) => ({ source: r.id, id: r.library_copy_id }));
 	}
 
 	async function publish(page: Page, planId: string) {
@@ -311,8 +336,8 @@ test.describe('Public plan library — the copy follows its plan, not its name',
 
 			const copies = await copiesOf([plan.planId, secondId]);
 			expect(copies).toHaveLength(2);
-			const firstCopy = copies.find((c) => c.published_from_plan_id === plan!.planId);
-			const secondCopy = copies.find((c) => c.published_from_plan_id === secondId);
+			const firstCopy = copies.find((c) => c.source === plan!.planId);
+			const secondCopy = copies.find((c) => c.source === secondId);
 			expect(firstCopy).toBeDefined();
 			expect(secondCopy).toBeDefined();
 			expect(firstCopy!.id).not.toBe(secondCopy!.id);

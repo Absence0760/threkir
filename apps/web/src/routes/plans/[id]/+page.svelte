@@ -20,7 +20,6 @@
 		publishPlanAsTemplate,
 		publishPlanToLibrary,
 		unpublishFromLibrary,
-		fetchMyPublishedPlans,
 		applyWorkoutAdjustments,
 		answerMissedWorkouts,
 		updatePlanWorkout,
@@ -39,7 +38,6 @@
 		type PlanStartedFrom,
 	} from '#lib/core/data.ts';
 	import { planAuthorCredit } from '#lib/share/share_plan_meta.ts';
-	import { libraryCopyOf } from '#lib/core/plan_copy.ts';
 	import { recoveryWorkoutPatch } from '#lib/training/plan_bulk_ops.ts';
 	import { planShiftImpact } from '#lib/training/plan_shift.ts';
 	import { planRaceDate, raceDateChange, type RaceDateChange, type RaceDateRefusal } from '#lib/training/plan_race_date.ts';
@@ -1406,20 +1404,18 @@
 			adminClubs = clubs.filter(
 				(c) => c.viewer_role === 'owner' || c.viewer_role === 'admin'
 			);
-			const published = await fetchMyPublishedPlans();
-			publishedTemplate = plan ? libraryCopyOf(published, plan.id) : null;
+			libraryCopyId = plan?.library_copy_id ?? null;
 		}
 	});
 
-	let publishedTemplate = $state<TrainingPlan | null>(null);
+	let libraryCopyId = $state<string | null>(null);
 	let libraryBusy = $state(false);
 
 	async function publishToLibrary() {
 		if (!plan || libraryBusy) return;
 		libraryBusy = true;
 		try {
-			const newId = await publishPlanToLibrary(plan.id);
-			publishedTemplate = { ...plan, id: newId, is_public_template: true };
+			libraryCopyId = await publishPlanToLibrary(plan.id);
 			showToast(m('planDetail.publishLibrarySuccess'));
 		} catch (e) {
 			showToast(m('planDetail.publishLibraryFailed', { error: errorCopy(e, m, 'planDetail.publishLibraryFailed') }), 'error');
@@ -1434,11 +1430,11 @@
 	let unpublishOpen = $state(false);
 
 	async function unpublishFromLibraryAction() {
-		if (!publishedTemplate || libraryBusy) return;
+		if (!libraryCopyId || libraryBusy) return;
 		libraryBusy = true;
 		try {
-			await unpublishFromLibrary(publishedTemplate.id);
-			publishedTemplate = null;
+			await unpublishFromLibrary(libraryCopyId);
+			libraryCopyId = null;
 			unpublishOpen = false;
 			showToast(m('planDetail.unpublishLibrarySuccess'));
 		} catch (e) {
@@ -2618,7 +2614,7 @@
 				{/if}
 				<div class="publish-row">
 					<span class="publish-label">{m('planDetail.publishLibraryLabel')}</span>
-					{#if publishedTemplate}
+					{#if libraryCopyId}
 						<span class="publish-hint">{m('planDetail.alreadyPublished')}</span>
 						<button
 							class="btn btn-outline"

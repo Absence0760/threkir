@@ -1,4 +1,4 @@
-import type { FlyoverPath } from '#lib/routes/flyover_path.ts';
+import { shortestTurn, type FlyoverPath } from '#lib/routes/flyover_path.ts';
 
 /// The flight's ending (#1284): from the chase camera at the finish, ease out
 /// to a north-up view of the whole course at a lower pitch, then turn slowly
@@ -69,12 +69,6 @@ function easeInOut(t: number): number {
 
 function clamp01(t: number): number {
 	return Number.isFinite(t) ? Math.min(1, Math.max(0, t)) : 1;
-}
-
-/// The signed turn from `from` to `to` the short way round, in (-180, 180].
-export function shortestTurn(from: number, to: number): number {
-	const d = (((to - from) % 360) + 540) % 360 - 180;
-	return d === -180 ? 180 : d;
 }
 
 /// The camera `tMs` after the flight ended. Before 0 it is the finish pose;

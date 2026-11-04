@@ -194,7 +194,7 @@ function windowBearing(path: FlyoverPath, d: number, smoothingM: number, lookAhe
 }
 
 /** Signed degrees in (-180, 180] from `from` to `to`. */
-function shortestTurn(from: number, to: number): number {
+export function shortestTurn(from: number, to: number): number {
 	const diff = (((to - from) % 360) + 540) % 360 - 180;
 	return diff === -180 ? 180 : diff;
 }

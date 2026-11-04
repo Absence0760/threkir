@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildFlyoverPath } from '#lib/routes/flyover_path.ts';
+import { buildFlyoverPath, shortestTurn } from '#lib/routes/flyover_path.ts';
 import {
 	finaleCamera,
 	finaleDurationMs,
@@ -10,7 +10,6 @@ import {
 	OVERVIEW_PITCH,
 	overviewPose,
 	pathBounds,
-	shortestTurn,
 	type CameraPose,
 } from './overview.ts';
 

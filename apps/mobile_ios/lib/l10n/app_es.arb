@@ -2012,6 +2012,8 @@
   "coachArchiveDeleteBody": "Esta conversación archivada se elimina definitivamente.",
   "coachContextNoPlan": "Sin plan",
   "coachContextPlanWeeks": "{name} · {weeks} sem.",
+  "coachSeasonHint": "¿Otra carrera después de este plan? Toca «Añadir a mi temporada» en la carrera y «Mi temporada» aparecerá aquí.",
+  "coachSeasonHintAction": "Buscar una carrera",
   "coachContextNoRuns": "Sin carreras",
   "coachContextLast": "Últimas",
   "coachContextHr": "FC",

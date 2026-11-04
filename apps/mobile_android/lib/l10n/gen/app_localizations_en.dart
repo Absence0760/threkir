@@ -7314,6 +7314,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get coachSeasonHint =>
+      'Racing again after this plan? Tap Add to my season on the race, and My season shows up here.';
+
+  @override
+  String get coachSeasonHintAction => 'Find a race';
+
+  @override
   String get coachContextNoRuns => 'No runs';
 
   @override

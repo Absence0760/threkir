@@ -2012,6 +2012,8 @@
   "coachArchiveDeleteBody": "このアーカイブされた会話は完全に削除されます。",
   "coachContextNoPlan": "プランなし",
   "coachContextPlanWeeks": "{name} · {weeks}週",
+  "coachSeasonHint": "このプランの後にもレースがありますか？レースで「シーズンに追加」をタップすると、ここに「マイシーズン」が表示されます。",
+  "coachSeasonHintAction": "レースを探す",
   "coachContextNoRuns": "ランなし",
   "coachContextLast": "直近",
   "coachContextHr": "心拍",

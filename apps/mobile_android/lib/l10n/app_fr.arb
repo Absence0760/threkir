@@ -2012,6 +2012,8 @@
   "coachArchiveDeleteBody": "Cette conversation archivée sera définitivement supprimée.",
   "coachContextNoPlan": "Aucun plan",
   "coachContextPlanWeeks": "{name} · {weeks} sem.",
+  "coachSeasonHint": "Une autre course après ce plan ? Appuyez sur « Ajouter à ma saison » sur la course, et « Ma saison » apparaîtra ici.",
+  "coachSeasonHintAction": "Trouver une course",
   "coachContextNoRuns": "Aucune course",
   "coachContextLast": "Dernières",
   "coachContextHr": "FC",

@@ -24,6 +24,7 @@ import '../backend_timeout.dart';
 import '../auth_error.dart';
 import '../payload_hash.dart';
 import '../preferences.dart' show activeDistanceUnit;
+import '../race_service.dart';
 import '../pro_sellable.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -42,6 +43,7 @@ import '../widgets/surface_peer_strip.dart';
 import '../widgets/top_banner.dart';
 import 'guided_runs_screen.dart';
 import 'plan_new_screen.dart';
+import 'races_screen.dart';
 
 /// Truncate a coach message to a sidebar-thread title. Strips repeated
 /// whitespace so multi-line user prompts collapse to a single line, then
@@ -228,6 +230,9 @@ class CoachScreen extends StatefulWidget {
   /// local midnight a season shrinks at.
   final DateTime Function()? now;
 
+  /// Backs the races list the season hint opens. Tests inject a fake.
+  final RaceService? raceService;
+
   const CoachScreen({
     super.key,
     required this.api,
@@ -235,6 +240,7 @@ class CoachScreen extends StatefulWidget {
     this.initialPlanId,
     this.loadAiPlanAvailable,
     this.now,
+    this.raceService,
   });
 
   @override
@@ -1272,6 +1278,8 @@ class _CoachScreenState extends State<CoachScreen> {
             ],
           ),
           if (_ctx != null) _buildContextStrip(theme, l10n),
+          if (_ctx != null && _seasonPlans.length == 1)
+            _buildSeasonHint(theme, l10n),
           if (_viewingArchiveAt != null) _buildArchiveBanner(theme, l10n),
           if (_remaining <= 3) _buildLimitBanner(theme, l10n, cs),
           Expanded(
@@ -1510,6 +1518,42 @@ class _CoachScreenState extends State<CoachScreen> {
         child: Row(children: chips),
       ),
     );
+  }
+
+  /// Shown while the runner has one plan and nothing queued after it: My
+  /// season only appears once a second plan is chained, and nothing else
+  /// on this screen says so.
+  Widget _buildSeasonHint(ThemeData theme, AppLocalizations l10n) {
+    final cs = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(l10n.coachSeasonHint,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: cs.onSurfaceVariant)),
+          TextButton(
+            key: const Key('coach-season-hint-action'),
+            onPressed: _openRaces,
+            child: Text(l10n.coachSeasonHintAction),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openRaces() async {
+    try {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              RacesScreen(service: widget.raceService ?? RaceService()),
+        ),
+      );
+    } catch (e) {
+      debugPrint('coach_screen: opening races failed: $e');
+    }
   }
 
   Widget _chip(ColorScheme cs,

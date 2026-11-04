@@ -6982,6 +6982,13 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get coachSeasonHint =>
+      'このプランの後にもレースがありますか？レースで「シーズンに追加」をタップすると、ここに「マイシーズン」が表示されます。';
+
+  @override
+  String get coachSeasonHintAction => 'レースを探す';
+
+  @override
   String get coachContextNoRuns => 'ランなし';
 
   @override

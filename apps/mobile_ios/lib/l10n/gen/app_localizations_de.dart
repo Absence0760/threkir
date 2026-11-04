@@ -7399,6 +7399,13 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get coachSeasonHint =>
+      'Noch ein Rennen nach diesem Plan? Tippe beim Rennen auf „Zu meiner Saison hinzufügen“, dann erscheint hier „Meine Saison“.';
+
+  @override
+  String get coachSeasonHintAction => 'Rennen finden';
+
+  @override
   String get coachContextNoRuns => 'Keine Läufe';
 
   @override

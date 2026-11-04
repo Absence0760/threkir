@@ -7386,6 +7386,13 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get coachSeasonHint =>
+      'Outra corrida depois deste plano? Toque em “Adicionar à minha época” na corrida e “A minha época” aparece aqui.';
+
+  @override
+  String get coachSeasonHintAction => 'Encontrar uma corrida';
+
+  @override
   String get coachContextNoRuns => 'Sem corridas';
 
   @override
@@ -27070,6 +27077,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String coachContextPlanWeeks(String name, int weeks) {
     return '$name · $weeks sem.';
   }
+
+  @override
+  String get coachSeasonHint =>
+      'Outra corrida depois deste plano? Toque em “Adicionar à minha temporada” na corrida e “Minha temporada” aparece aqui.';
+
+  @override
+  String get coachSeasonHintAction => 'Encontrar uma corrida';
 
   @override
   String get coachContextNoRuns => 'Sem corridas';

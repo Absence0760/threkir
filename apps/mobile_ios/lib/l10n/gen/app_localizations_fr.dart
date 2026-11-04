@@ -7400,6 +7400,13 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get coachSeasonHint =>
+      'Une autre course après ce plan ? Appuyez sur « Ajouter à ma saison » sur la course, et « Ma saison » apparaîtra ici.';
+
+  @override
+  String get coachSeasonHintAction => 'Trouver une course';
+
+  @override
   String get coachContextNoRuns => 'Aucune course';
 
   @override

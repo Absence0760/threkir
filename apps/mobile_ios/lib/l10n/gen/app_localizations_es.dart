@@ -7381,6 +7381,13 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get coachSeasonHint =>
+      '¿Otra carrera después de este plan? Toca «Añadir a mi temporada» en la carrera y «Mi temporada» aparecerá aquí.';
+
+  @override
+  String get coachSeasonHintAction => 'Buscar una carrera';
+
+  @override
   String get coachContextNoRuns => 'Sin carreras';
 
   @override

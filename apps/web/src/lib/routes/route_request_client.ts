@@ -15,6 +15,7 @@ import { supabase } from '../core/supabase';
 import { AI_DISCLOSURE_ERROR } from '../core/ai_disclosure';
 import { payloadSha256Hex } from '../util/payload_hash';
 import type { RouteConstraints } from './route_request/constraints';
+import { promptLocationLabel } from './route_request/location_label';
 
 export type { RouteConstraints } from './route_request/constraints';
 
@@ -62,7 +63,7 @@ export async function requestRouteConstraints(
 ): Promise<RouteConstraints> {
 	const body = JSON.stringify({
 		request,
-		location_label: locationLabel ?? null,
+		location_label: promptLocationLabel(locationLabel),
 	});
 	// CloudFront's Lambda OAC can't hash the body itself — the client
 	// supplies the sigv4 payload hash or the Function URL 403s (#590).

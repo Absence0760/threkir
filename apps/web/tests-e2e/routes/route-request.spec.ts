@@ -153,4 +153,33 @@ test.describe('/routes/new — AI route request', () => {
 		await expect(page.locator('.ai-request-applied')).toHaveCount(0);
 		await expect(page.locator('.target-slider')).toBeVisible();
 	});
+
+	test('a map-picked start is never sent as the location hint', async ({ page, mockRoute }) => {
+		// The builder labels a picked point with its own coordinates; the
+		// consent copy promises the assistant never gets them.
+		let sentLabel: unknown = 'not sent';
+		await mockRoute(page, '**/api/coach/route-request', async (route) => {
+			sentLabel = (route.request().postDataJSON() as { location_label?: unknown }).location_label;
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ constraints: { distanceM: 5000, assumptions: [] } })
+			});
+		});
+
+		await openDistancePanel(page);
+		await page.waitForFunction(() => '__routeBuilderPage' in window);
+		await page.evaluate(() => {
+			(
+				window as unknown as {
+					__routeBuilderPage: { setStartPoint: (p: { lat: number; lng: number }) => void };
+				}
+			).__routeBuilderPage.setStartPoint({ lat: 51.5074, lng: -0.1278 });
+		});
+
+		await page.getByPlaceholder(/a flat 10k loop avoiding main roads/i).fill('a 5k loop');
+		await page.getByRole('button', { name: /^Fill$/i }).click();
+		await expect(page.locator('.ai-request-applied')).toBeVisible({ timeout: 10_000 });
+		expect(sentLabel).toBeNull();
+	});
 });

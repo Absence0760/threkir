@@ -36,6 +36,7 @@ import {
 	aiDisclosureDenialBody,
 	gateAiDisclosure,
 } from '../../core/ai_disclosure';
+import { promptLocationLabel } from './location_label';
 import { refundRouteRateLimitSlot, spendRouteRateLimitSlot } from '../rate_limit';
 import { supabaseErrorFields, thrownMessage } from '../../core/supabase_error';
 
@@ -105,15 +106,14 @@ function json(status: number, payload: Record<string, unknown>): RouteRequestRes
 	};
 }
 
-interface ParsedInput {
+export interface ParsedInput {
 	requestText: string;
-	/// Caller's location context, passed verbatim into the prompt as a
-	/// human hint only ("near my current location"). It does NOT set the
-	/// generator's start point — that stays the user's explicit pick /
-	/// map centre on the client. We never send raw coordinates to the
-	/// model: a place label is enough for intent and avoids egressing a
-	/// precise location into the prompt (privacy: same posture as the
-	/// coach, sub-processor already disclosed).
+	/// Caller's location context, passed into the prompt as a human hint
+	/// only ("near my current location"). It does NOT set the generator's
+	/// start point — that stays the user's explicit pick / map centre on the
+	/// client. We never send coordinates to the model: a label that states a
+	/// position is dropped here (`promptLocationLabel`), so only a place label
+	/// reaches the prompt.
 	locationLabel: string | null;
 }
 
@@ -124,8 +124,8 @@ function parseInput(raw: unknown): ParsedInput | null {
 	const requestText = o.request.trim().slice(0, MAX_REQUEST_TEXT_CHARS);
 	if (requestText.length === 0) return null;
 	const locationLabel =
-		typeof o.location_label === 'string' && o.location_label.trim().length > 0
-			? o.location_label.trim().slice(0, MAX_REQUEST_TEXT_CHARS)
+		typeof o.location_label === 'string'
+			? promptLocationLabel(o.location_label.slice(0, MAX_REQUEST_TEXT_CHARS))
 			: null;
 	return { requestText, locationLabel };
 }
@@ -193,6 +193,16 @@ export const EXTRACT_TOOL: Anthropic.Tool = {
 		},
 	},
 };
+
+/// Every value the user turn interpolates is a field of its argument, which is
+/// how `ai_prompt_disclosures.test.ts` reads what this prompt sends.
+export function routeRequestUserMessage({ requestText, locationLabel }: ParsedInput): string {
+	return (
+		`Runner's request: ${requestText}\n\n` +
+		(locationLabel ? `Approximate location: ${locationLabel}.\n\n` : '') +
+		'Call extract_route_constraints with what the request specifies.'
+	);
+}
 
 /**
  * Extract validated route-generation constraints from an NL request.
@@ -308,13 +318,6 @@ export async function handleRouteRequest(
 		const anthropic: RouteRequestModelClient = config.createAnthropic
 			? config.createAnthropic(config.anthropicApiKey)
 			: new Anthropic({ apiKey: config.anthropicApiKey });
-		const userContent =
-			`Runner's request: ${input.requestText}\n\n` +
-			(input.locationLabel
-				? `Approximate location: ${input.locationLabel}.\n\n`
-				: '') +
-			'Call extract_route_constraints with what the request specifies.';
-
 		const message = await anthropic.messages.create(
 			{
 				model: ROUTE_REQUEST_MODEL,
@@ -324,7 +327,7 @@ export async function handleRouteRequest(
 				// never prose. tool_choice pins the single extraction tool.
 				tools: [EXTRACT_TOOL],
 				tool_choice: { type: 'tool', name: EXTRACT_TOOL.name },
-				messages: [{ role: 'user', content: userContent }],
+				messages: [{ role: 'user', content: routeRequestUserMessage(input) }],
 			},
 			{ timeout: ROUTE_REQUEST_TIMEOUT_MS },
 		);

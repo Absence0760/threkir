@@ -3319,6 +3319,7 @@ class _ElevationChartState extends State<_ElevationChart> {
     final labelStyle = theme.textTheme.labelSmall
         ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
     final total = _cum.isEmpty ? 0.0 : _cum.last;
+    final textScaler = MediaQuery.textScalerOf(context);
     var widest = 0.0;
     for (final ele in [profile.dataMin, profile.dataMax]) {
       final tp = TextPainter(
@@ -3327,6 +3328,7 @@ class _ElevationChartState extends State<_ElevationChart> {
           style: theme.textTheme.labelSmall,
         ),
         textDirection: TextDirection.ltr,
+        textScaler: textScaler,
       )..layout();
       if (tp.width > widest) widest = tp.width;
     }
@@ -3335,7 +3337,7 @@ class _ElevationChartState extends State<_ElevationChart> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(
-          height: 20,
+          height: textScaler.scale(20),
           child: _touchIdx != null ? _buildCrosshairLabel() : null,
         ),
         SizedBox(
@@ -3357,6 +3359,7 @@ class _ElevationChartState extends State<_ElevationChart> {
                 theme: theme,
                 gutter: _gutter,
                 unit: widget.unit,
+                textScaler: textScaler,
                 touchIdx: _touchIdx,
               ),
               size: const Size(double.infinity, _chartHeight),
@@ -3365,8 +3368,8 @@ class _ElevationChartState extends State<_ElevationChart> {
         ),
         Padding(
           padding: EdgeInsets.only(left: _gutter, top: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
             children: [
               Text(UnitFormat.distance(0, widget.unit), style: labelStyle),
               Text(UnitFormat.distance(total, widget.unit), style: labelStyle),
@@ -3535,6 +3538,7 @@ class _ElevationPainter extends CustomPainter {
   final ThemeData theme;
   final double gutter;
   final DistanceUnit unit;
+  final TextScaler textScaler;
   final int? touchIdx;
 
   _ElevationPainter({
@@ -3546,6 +3550,7 @@ class _ElevationPainter extends CustomPainter {
     required this.theme,
     required this.gutter,
     required this.unit,
+    required this.textScaler,
     this.touchIdx,
   });
 
@@ -3568,6 +3573,7 @@ class _ElevationPainter extends CustomPainter {
     final labelHeight = (TextPainter(
       text: TextSpan(text: '0 m', style: labelStyle),
       textDirection: TextDirection.ltr,
+      textScaler: textScaler,
     )..layout())
         .height;
     for (final ele in elevationGutterLabels(
@@ -3588,6 +3594,7 @@ class _ElevationPainter extends CustomPainter {
       final tp = TextPainter(
         text: TextSpan(text: UnitFormat.elevation(ele, unit), style: labelStyle),
         textDirection: TextDirection.ltr,
+        textScaler: textScaler,
       )..layout(maxWidth: gutter - 4);
       tp.paint(canvas, Offset(gutter - 4 - tp.width, y - tp.height / 2));
     }
@@ -3650,6 +3657,7 @@ class _ElevationPainter extends CustomPainter {
       old.touchIdx != touchIdx ||
       old.gutter != gutter ||
       old.unit != unit ||
+      old.textScaler != textScaler ||
       old.theme != theme;
 }
 

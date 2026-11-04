@@ -1623,6 +1623,35 @@ void main() {
       expect(find.textContaining(RegExp(r'^0(\.0+)? ?(km|mi)$')), findsWidgets);
     });
 
+    testWidgets('elevation chart side labels grow with the OS text size',
+        (tester) async {
+      tester.view.physicalSize = const Size(1000, 5000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      // The painter is private; read what it was handed rather than its
+      // pixels, since flutter_test's font makes absolute widths meaningless.
+      dynamic painter() => tester
+          .widgetList<CustomPaint>(find.byType(CustomPaint))
+          .firstWhere(
+              (p) => p.painter.runtimeType.toString() == '_ElevationPainter')
+          .painter;
+
+      await _pump(tester, _elevationRun());
+      // ignore: avoid_dynamic_calls
+      final normalGutter = painter().gutter as double;
+      await _pump(tester, _elevationRun(), textScale: 2.0);
+      // ignore: avoid_dynamic_calls
+      final largeGutter = painter().gutter as double;
+
+      expect(largeGutter, greaterThan(normalGutter * 1.5),
+          reason: 'the label lane widens with the labels it holds');
+      // ignore: avoid_dynamic_calls
+      final scaler = painter().textScaler as TextScaler;
+      expect(scaler.scale(10), 20,
+          reason: 'the labels are painted at the reader\'s text size');
+    });
+
     testWidgets('elevation gain, loss and the crosshair read in feet for a '
         'mile runner', (tester) async {
       tester.view.physicalSize = const Size(1000, 5000);

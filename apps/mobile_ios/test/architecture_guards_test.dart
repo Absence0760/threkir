@@ -1923,6 +1923,22 @@ void main() {
       );
     });
 
+    test('backup.dart logs no raw caught error (decisions § 2332)', () {
+      // A debugPrint becomes a Sentry breadcrumb once a reader consents, and
+      // a Storage download error can carry the signed URL it was fetching.
+      // Every caught error a log line interpolates goes through
+      // loggableMessage, which blanks quoted values, key details and emails.
+      final raw = File('lib/backup.dart')
+          .readAsLinesSync()
+          .where((l) => l.contains('debugPrint('))
+          .map((l) => l.replaceAll("loggableMessage('\$e')", ''))
+          // `${e.runtimeType}` names the type only, which is safe.
+          .where((l) => RegExp(r'\$e\b|\$\{e(\}|\.(?!runtimeType))').hasMatch(l))
+          .toList();
+      expect(raw, isEmpty,
+          reason: 'wrap the caught error in loggableMessage(\'\$e\')');
+    });
+
     test('Single-file route import dispatches to compute()', () {
       // Reason: a 5MB GPX file (long ride exported as a route) parses on
       // a single XmlDocument call that takes hundreds of ms on a phone.

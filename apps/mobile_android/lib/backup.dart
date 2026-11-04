@@ -12,6 +12,7 @@ import 'package:uuid/uuid.dart';
 
 import 'import_refusal.dart';
 import 'local_food_store.dart';
+import 'loggable_message.dart';
 import 'local_gym_store.dart';
 import 'local_route_store.dart';
 import 'local_run_store.dart';
@@ -264,7 +265,7 @@ class BackupService {
               final bytes = await fetchTrackBytes(url);
               return (id, bytes);
             } catch (e) {
-              debugPrint('track download failed $id: $e');
+              debugPrint('track download failed $id: ${loggableMessage('$e')}');
               return null;
             }
           }),
@@ -305,7 +306,7 @@ class BackupService {
             try {
               return (id, await fetchTrackBytes(url));
             } catch (e) {
-              debugPrint('hr-series download failed $id: $e');
+              debugPrint('hr-series download failed $id: ${loggableMessage('$e')}');
               return null;
             }
           }),

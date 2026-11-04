@@ -2,7 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_ROUTE_ID } from '../fixtures/seeded-data';
-import { USER_A } from '../fixtures/users';
+import { USER_A, USER_B } from '../fixtures/users';
 import { readRow } from '../fixtures/db-read';
 import { shareChoosingPublic } from '../fixtures/share';
 import { deleteRoute, insertRoute } from '../fixtures/simulate';
@@ -11,7 +11,7 @@ import { deleteRoute, insertRoute } from '../fixtures/simulate';
  * /routes/[id] — owner-only route detail page.
  *
  * Operations covered: public toggle, star toggle (with /routes filter
- * round-trip), tag add + remove. The anon /share/route/[id] view is
+ * round-trip), tag add + remove, name + description edit. The anon /share/route/[id] view is
  * in share/route.spec.ts, and the owner's Delete in routes/delete.spec.ts.
  */
 
@@ -411,6 +411,101 @@ test.describe('/routes/[id]', () => {
 		}
 	});
 
+	test('edit name + description → reload persists → clearing the description stores null', async ({
+		page
+	}) => {
+		// The test owns its route: the seeded one's name is read by other
+		// spec files running in parallel workers.
+		const routeId = await insertRoute({
+			user_id: USER_A.id,
+			name: `Rename round trip ${Date.now()}`,
+			waypoints: [
+				{ lat: 51.5007, lng: -0.1246 },
+				{ lat: 51.5033, lng: -0.1195 }
+			],
+			distance_m: 450,
+			is_public: true
+		});
+		const admin = getAdminClient();
+		const readDetails = () =>
+			readRow(
+				'routes by id',
+				admin.from('routes').select('name, description').eq('id', routeId).single()
+			);
+		try {
+			await page.goto(`/routes/${routeId}`);
+			const editBtn = page.getByTestId('route-edit-details');
+			await expect(editBtn).toBeVisible({ timeout: 10_000 });
+			await editBtn.click();
+
+			const form = page.getByTestId('route-details-form');
+			await expect(form).toContainText('This route is public');
+			await form.getByLabel('Name').fill('  Richmond Marathon 2026 course (unofficial)  ');
+			await form.getByLabel('Description').fill('Redrawn by Threkir.');
+			await form.getByRole('button', { name: 'Save' }).click();
+
+			await expect(form).toBeHidden();
+			await expect(
+				page.getByRole('heading', { level: 1, name: 'Richmond Marathon 2026 course (unofficial)' })
+			).toBeVisible();
+			await expect(page.locator('.route-description')).toHaveText('Redrawn by Threkir.');
+			expect(await readDetails()).toEqual({
+				name: 'Richmond Marathon 2026 course (unofficial)',
+				description: 'Redrawn by Threkir.'
+			});
+
+			await page.reload();
+			await expect(
+				page.getByRole('heading', { level: 1, name: 'Richmond Marathon 2026 course (unofficial)' })
+			).toBeVisible({ timeout: 10_000 });
+
+			// Clearing the description writes null, which brings the
+			// "Describe this route" affordance back.
+			await page.getByTestId('route-edit-details').click();
+			await form.getByLabel('Description').fill('   ');
+			await form.getByRole('button', { name: 'Save' }).click();
+			await expect(form).toBeHidden();
+			await expect(page.locator('.describe-btn')).toBeVisible();
+			await expect.poll(async () => (await readDetails()).description).toBeNull();
+		} finally {
+			await deleteRoute(routeId);
+		}
+	});
+
+	test('edit details refuses a blank name and writes nothing', async ({ page }) => {
+		const name = `Blank name guard ${Date.now()}`;
+		const routeId = await insertRoute({
+			user_id: USER_A.id,
+			name,
+			waypoints: [
+				{ lat: 51.5007, lng: -0.1246 },
+				{ lat: 51.5033, lng: -0.1195 }
+			],
+			distance_m: 450
+		});
+		try {
+			let patched = false;
+			page.on('request', (r) => {
+				if (r.method() === 'PATCH' && r.url().includes('/rest/v1/routes')) patched = true;
+			});
+			await page.goto(`/routes/${routeId}`);
+			await page.getByTestId('route-edit-details').click();
+			const form = page.getByTestId('route-details-form');
+			// `required` would stop a native submit of an empty field, so fill
+			// whitespace: the trim rule is what has to catch it.
+			await form.getByLabel('Name').fill('   ');
+			await form.getByRole('button', { name: 'Save' }).click();
+			await expect(form.getByRole('alert')).toHaveText('Give the route a name.');
+			expect(patched).toBe(false);
+
+			await form.getByRole('button', { name: 'Cancel' }).click();
+			await expect(form).toBeHidden();
+			await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
+		} finally {
+			await deleteRoute(routeId);
+		}
+	});
+
 	test('not-found: visiting a missing route id shows "Route not found" with a way back', async ({
 		page
 	}) => {
@@ -427,5 +522,32 @@ test.describe('/routes/[id]', () => {
 		await expect(
 			page.getByRole('link', { name: 'Back to your routes' })
 		).toBeVisible();
+	});
+});
+
+test.describe('/routes/[id] as a non-owner', () => {
+	test.use({ storageState: USER_B.storageStatePath });
+
+	test('a public route shows no edit button to someone who does not own it', async ({ page }) => {
+		// Its own public route: the seeded one is flipped private by other
+		// specs, and a not-found page would pass this vacuously.
+		const name = `Not mine to edit ${Date.now()}`;
+		const routeId = await insertRoute({
+			user_id: USER_A.id,
+			name,
+			waypoints: [
+				{ lat: 51.5007, lng: -0.1246 },
+				{ lat: 51.5033, lng: -0.1195 }
+			],
+			distance_m: 450,
+			is_public: true
+		});
+		try {
+			await page.goto(`/routes/${routeId}`);
+			await expect(page.getByRole('heading', { level: 1, name })).toBeVisible({ timeout: 10_000 });
+			await expect(page.getByTestId('route-edit-details')).toHaveCount(0);
+		} finally {
+			await deleteRoute(routeId);
+		}
 	});
 });

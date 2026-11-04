@@ -5,7 +5,7 @@
 	import { formatElevation, getUnit } from '#lib/format/units.svelte.ts';
 	import { toGpx, toKml, downloadFile } from '#lib/routes/gpx.ts';
 	import { toRouteGpxWithMarkers, type RouteGpxMarker } from '#lib/routes/route_gpx.ts';
-	import { fetchClippedRouteForViewer, fetchRouteById, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, setRoutePublic, setRouteStar, audienceSharingEnabled, fetchShares, deleteRoute, fetchRouteDeleteImpact } from '#lib/core/data.ts';
+	import { fetchClippedRouteForViewer, fetchRouteById, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, updateRouteDetails, setRoutePublic, setRouteStar, audienceSharingEnabled, fetchShares, deleteRoute, fetchRouteDeleteImpact } from '#lib/core/data.ts';
 	import { routeDeleteImpactLines } from '#lib/routes/route_delete_impact.ts';
 	import { goto } from '$app/navigation';
 	import AudienceDialog from '#lib/components/AudienceDialog.svelte';
@@ -49,6 +49,8 @@
 	import { PUBLIC_SITE_URL } from '$app/env/public';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { routeDetailsPatch } from '#lib/routes/route_details.ts';
+	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import type { Route } from '#lib/types.ts';
@@ -418,6 +420,56 @@
 		}
 	}
 
+	let editingDetails = $state(false);
+	let nameDraft = $state('');
+	let descriptionDraft = $state('');
+	let detailsSaving = $state(false);
+	let detailsError = $state<string | null>(null);
+
+	function startEditDetails() {
+		if (!route || !isOwner) return;
+		nameDraft = route.name;
+		descriptionDraft = route.description ?? '';
+		detailsError = null;
+		editingDetails = true;
+	}
+
+	async function saveDetails() {
+		if (!route || !isOwner || detailsSaving) return;
+		const result = routeDetailsPatch(
+			{ name: route.name, description: route.description },
+			{ name: nameDraft, description: descriptionDraft },
+		);
+		if (result.kind === 'unchanged') {
+			editingDetails = false;
+			return;
+		}
+		if (result.kind === 'nameRequired') {
+			detailsError = m('routeDetail.nameRequired');
+			return;
+		}
+		if (result.kind === 'tooLong') {
+			detailsError = m('routeDetail.detailsTooLong');
+			return;
+		}
+		detailsSaving = true;
+		detailsError = null;
+		try {
+			await updateRouteDetails(route.id, result.patch);
+			if (result.patch.name !== undefined) route.name = result.patch.name;
+			if (result.patch.description !== undefined) route.description = result.patch.description;
+			editingDetails = false;
+			showToast(m('routeDetail.detailsSaved'), 'success');
+		} catch (e) {
+			showToast(
+				m('routeDetail.detailsSaveFailed', { error: errorCopy(e, m, 'routeDetail.detailsSaveFailed') }),
+				'error',
+			);
+		} finally {
+			detailsSaving = false;
+		}
+	}
+
 	async function toggleStar() {
 		if (!route || !isOwner) return;
 		const next = !route.is_starred;
@@ -717,6 +769,18 @@
 							>
 								<span class="material-symbols">star</span>
 							</button>
+							<button
+								type="button"
+								class="edit-details-btn"
+								title={m('routeDetail.editDetails')}
+								aria-label={m('routeDetail.editDetailsAria')}
+								aria-expanded={editingDetails}
+								onclick={startEditDetails}
+								disabled={editingDetails}
+								data-testid="route-edit-details"
+							>
+								<span class="material-symbols">edit</span>
+							</button>
 						{/if}
 					</div>
 					<!-- Key-stats tile grid (matches /runs/[id] panel layout
@@ -761,7 +825,53 @@
 							</div>
 						{/if}
 					</div>
-					{#if route.description}
+					{#if editingDetails}
+						<form
+							class="details-form"
+							data-testid="route-details-form"
+							onsubmit={(e) => {
+								e.preventDefault();
+								void saveDetails();
+							}}
+						>
+							<label for="route-name-input">{m('routeDetail.nameLabel')}</label>
+							<input
+								id="route-name-input"
+								type="text"
+								bind:value={nameDraft}
+								maxlength={lengthLimit('routes.name')}
+								disabled={detailsSaving}
+								required
+							/>
+							<label for="route-description-input">{m('routeDetail.descriptionLabel')}</label>
+							<textarea
+								id="route-description-input"
+								rows="4"
+								bind:value={descriptionDraft}
+								maxlength={lengthLimit('routes.description')}
+								disabled={detailsSaving}
+							></textarea>
+							{#if route.is_public}
+								<p class="details-hint">{m('routeDetail.editPublicHint')}</p>
+							{/if}
+							{#if detailsError}
+								<p class="desc-error" role="alert">{detailsError}</p>
+							{/if}
+							<div class="details-actions">
+								<button
+									type="button"
+									class="btn btn-outline btn-sm"
+									disabled={detailsSaving}
+									onclick={() => (editingDetails = false)}
+								>
+									{m('routeDetail.cancel')}
+								</button>
+								<button type="submit" class="btn btn-primary btn-sm" disabled={detailsSaving}>
+									{detailsSaving ? m('routeDetail.saving') : m('routeDetail.save')}
+								</button>
+							</div>
+						</form>
+					{:else if route.description}
 						<p class="route-description">{route.description}</p>
 					{:else if genDescription}
 						<p class="route-description">{genDescription}</p>
@@ -1472,7 +1582,8 @@
 		flex-wrap: wrap;
 	}
 
-	.star-btn {
+	.star-btn,
+	.edit-details-btn {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
@@ -1488,7 +1599,8 @@
 			color var(--transition-fast);
 	}
 
-	.star-btn:hover {
+	.star-btn:hover,
+	.edit-details-btn:hover:not(:disabled) {
 		background: var(--color-bg-tertiary);
 	}
 
@@ -1496,7 +1608,13 @@
 		color: var(--color-crown);
 	}
 
-	.star-btn .material-symbols {
+	.edit-details-btn:disabled {
+		opacity: 0.5;
+		cursor: default;
+	}
+
+	.star-btn .material-symbols,
+	.edit-details-btn .material-symbols {
 		font-family: 'Material Symbols Outlined';
 		font-size: 1.4rem;
 		font-variation-settings: 'FILL' 0;
@@ -1554,6 +1672,46 @@
 		font-size: 0.92rem;
 		line-height: 1.5;
 		white-space: pre-wrap;
+	}
+
+	.details-form {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+		margin-top: var(--space-sm);
+	}
+
+	.details-form label {
+		font-size: 0.8rem;
+		font-weight: 600;
+		color: var(--color-text-secondary);
+	}
+
+	.details-form input,
+	.details-form textarea {
+		padding: var(--space-sm);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		font: inherit;
+		font-size: 0.9rem;
+		background: var(--color-surface);
+		color: var(--color-text);
+	}
+
+	.details-form textarea {
+		resize: vertical;
+	}
+
+	.details-hint {
+		margin: 0;
+		font-size: 0.8rem;
+		color: var(--color-text-tertiary);
+	}
+
+	.details-actions {
+		display: flex;
+		gap: var(--space-xs);
+		justify-content: flex-end;
 	}
 
 	.describe-btn {

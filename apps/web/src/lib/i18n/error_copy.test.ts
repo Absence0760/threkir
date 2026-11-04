@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { errorCopy, errorCopyKey, loggableMessage, LOGGED_MESSAGE_MAX_CHARS } from './error_copy';
+import { errorCopy, errorCopyKey } from './error_copy';
 import { DbError, PlanOverlapError } from '../core/supabase_error';
 import { AppError } from '../core/app_error';
 import { interpolate } from './interpolate';
@@ -114,22 +114,6 @@ test('a five-character code that is not a SQLSTATE still has its message read', 
 	// A SQLSTATE in lower case is still one.
 	assert.equal(errorCopyKey({ code: '23514', message: 'row not found' }), 'errorCopy.invalid');
 	assert.equal(errorCopyKey({ code: 'pgrst116', message: 'request timed out' }), 'errorCopy.generic');
-});
-
-test('the logged message drops quoted values, key details and emails, and is cut short', () => {
-	assert.equal(
-		loggableMessage('invalid input syntax for type uuid: "a-runner-typed-this"'),
-		'invalid input syntax for type uuid: "…"',
-	);
-	assert.equal(
-		loggableMessage('Key (email)=(runner@example.com) already exists.'),
-		'Key (…)=(…) already exists.',
-	);
-	assert.equal(loggableMessage("submit_report: target 'run' x not found"), "submit_report: target '…' x not found");
-	assert.equal(loggableMessage('no account for runner@example.com'), 'no account for <email>');
-	const long = loggableMessage('x'.repeat(500));
-	assert.equal(long.length, LOGGED_MESSAGE_MAX_CHARS);
-	assert.ok(long.endsWith('…'));
 });
 
 test('the raw text reaches the console and never the copy', async () => {

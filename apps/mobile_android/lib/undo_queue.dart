@@ -205,26 +205,54 @@ class UndoQueue {
     return c;
   }
 
+  /// Commits that have left the slot and not yet settled. [_take] detaches
+  /// an entry before its commit runs, so without this a flush that found
+  /// the slot empty could not see a commit the timer or [defer] had already
+  /// started.
+  final Set<Future<void>> _inFlight = {};
+
+  Future<void> _settle(_Entry taken) {
+    final destruction = taken.destruction;
+    Future<void> run() async {
+      try {
+        await destruction.commit();
+      } catch (error) {
+        if (_owner() != taken.owner) {
+          _log(
+            'undo: a held delete failed after the account that made it '
+            'signed out',
+            error,
+          );
+          return;
+        }
+        destruction.restore();
+        destruction.onCommitError?.call(error);
+      }
+    }
+
+    final settling = run();
+    _inFlight.add(settling);
+    settling.then(
+      (_) => _inFlight.remove(settling),
+      onError: (Object _) => _inFlight.remove(settling),
+    );
+    return settling;
+  }
+
   /// Commit the pending destruction now — the dismiss button, a
-  /// navigation, or a second destruction arriving.
+  /// navigation, a second destruction arriving, or a sign-out. Completes
+  /// once every commit this queue has started has settled, including one
+  /// the window timer or a later [defer] set going before this call: a
+  /// sign-out that awaits it ends the session only after a failure has
+  /// restored and reported to the account that made the delete.
   Future<void> flush() async {
     final taken = _take();
-    if (taken == null) return;
-    final destruction = taken.destruction;
-    try {
-      await destruction.commit();
-    } catch (error) {
-      if (_owner() != taken.owner) {
-        _log(
-          'undo: a held delete failed after the account that made it '
-          'signed out',
-          error,
-        );
-        return;
-      }
-      destruction.restore();
-      destruction.onCommitError?.call(error);
-    }
+    final own = taken == null ? null : _settle(taken);
+    final others = _inFlight.where((f) => !identical(f, own)).toList();
+    await Future.wait(
+      others.map((f) => f.then((_) {}, onError: (Object _) {})),
+    );
+    if (own != null) await own;
   }
 
   void defer(DeferredDestruction destruction) {

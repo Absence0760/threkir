@@ -1,5 +1,6 @@
 import 'import_refusal.dart';
 import 'l10n/gen/app_localizations.dart';
+import 'loggable_message.dart';
 
 /// What went wrong (or what a reader should know) about one part of a backup
 /// restore.
@@ -55,6 +56,10 @@ enum RestoreWarningKind {
   runsSkipped,
 }
 
+final RegExp _uuid = RegExp(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    caseSensitive: false);
+
 class RestoreWarning {
   const RestoreWarning(
     this.kind, {
@@ -83,13 +88,19 @@ class RestoreWarning {
   /// position.
   String get itemLabel => itemId ?? '#${(index ?? 0) + 1}';
 
+  /// The warning as the log records it: nothing the archive could have
+  /// written. `debugPrint` output becomes a Sentry breadcrumb once the reader
+  /// consents, and the archive is a file anyone can hand-edit, so its row ids
+  /// and its JSON keys are free text a stranger chose. An id is kept only when
+  /// it is shaped like one of our row ids, dropped columns are counted rather
+  /// than named, and the caught failure goes through [loggableMessage].
   @override
   String toString() => [
         kind.name,
-        if (itemId != null) itemId,
+        if (itemId != null) _uuid.hasMatch(itemId!) ? itemId : '<invalid>',
         if (index != null) '#$index',
-        if (columns.isNotEmpty) columns.join(','),
-        if (error != null) '$error',
+        if (columns.isNotEmpty) 'columns=${columns.length}',
+        if (error != null) loggableMessage('$error'),
       ].join(' ');
 }
 

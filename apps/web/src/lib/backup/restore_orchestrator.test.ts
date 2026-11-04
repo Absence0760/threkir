@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import {
 	noteIncompleteArchive,
 	restoreOrchestrate,
+	restoreWarningLogFields,
 	type RestoreBackend,
 	type RestoreResult
 } from './restore_orchestrator';
@@ -869,4 +870,77 @@ test('a warning carries the caught failure as a value, never as text', async () 
 			assert.ok(!String(value).includes('violates'), `${key} carries the failure text`);
 		}
 	}
+});
+
+/// Every `console.warn` the call makes, with its arguments, and nothing printed.
+async function capturingWarn<T>(fn: () => Promise<T>): Promise<{ value: T; logged: unknown[][] }> {
+	const original = console.warn;
+	const logged: unknown[][] = [];
+	console.warn = (...args: unknown[]) => {
+		logged.push(args);
+	};
+	try {
+		return { value: await fn(), logged };
+	} finally {
+		console.warn = original;
+	}
+}
+
+test('the restore log carries no archive-written text', async () => {
+	// Reason: console output becomes a Sentry breadcrumb once the reader
+	// consents, and the archive is a user-supplied file, so its row ids and its
+	// JSON keys are text a stranger chose. They used to be logged verbatim.
+	const backend = makeFakeBackend();
+	const failure = new Error('invalid input syntax for type uuid: "runner@example.com"');
+	backend.upsertRunSelectiveFailure = () => failure;
+	backend.upsertRouteSelectiveFailure = () => failure;
+	const secretId = 'Jane Doe 07700 900123';
+	const secretKey = 'home_address_42_acacia_avenue';
+	const { value: result, logged } = await capturingWarn(() =>
+		restoreOrchestrate(
+			makeParsedBackup({
+				runs: [{ id: secretId, [secretKey]: 'x' }],
+				routes: [{ id: secretId, name: 'Loop' }],
+				profile: { display_name: 'Tester', [secretKey]: 'x' }
+			}),
+			'uid',
+			backend
+		)
+	);
+	assert.equal(logged.length, result.warnings.length);
+	const text = JSON.stringify(logged);
+	for (const leaked of [secretId, secretKey, 'runner@example.com']) {
+		assert.ok(!text.includes(leaked), `the log carries ${leaked}`);
+	}
+	// The page still gets the raw id and names to show.
+	assert.ok(result.warnings.some((w) => w.itemId === secretId));
+	assert.ok(result.warnings.some((w) => w.columns?.includes(secretKey)));
+});
+
+test('restoreWarningLogFields keeps a uuid id, counts columns and scrubs the failure', () => {
+	const id = '0b6f2d3e-6c1a-4f7e-9a51-2f9b0d2c7e11';
+	assert.deepEqual(
+		restoreWarningLogFields({
+			kind: 'run',
+			itemId: id,
+			error: new Error("Key (email)=(a@b.co) already exists in 'x'")
+		}),
+		{
+			itemId: id,
+			index: undefined,
+			section: undefined,
+			columnsDropped: undefined,
+			error: "Key (…)=(…) already exists in '…'"
+		}
+	);
+	assert.deepEqual(
+		restoreWarningLogFields({ kind: 'columnsDropped', section: 'runs', columns: ['a', 'b', 'c'] }),
+		{ itemId: undefined, index: undefined, section: 'runs', columnsDropped: 3, error: undefined }
+	);
+	assert.equal(restoreWarningLogFields({ kind: 'track', itemId: 'r-1' }).itemId, '<invalid>');
+	assert.equal(
+		restoreWarningLogFields({ kind: 'track', itemId: 7 as unknown as string }).itemId,
+		'<invalid>'
+	);
+	assert.equal(restoreWarningLogFields({ kind: 'routeUnreadable', index: 4 }).index, 4);
 });

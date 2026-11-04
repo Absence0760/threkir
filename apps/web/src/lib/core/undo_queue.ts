@@ -110,7 +110,11 @@ export interface UndoQueue {
 	defer: (destruction: DeferredDestruction) => void;
 	undo: () => void;
 	/// Commit the pending destruction now — the dismiss button, a
-	/// navigation, or a second destruction arriving.
+	/// navigation, a second destruction arriving, or a sign-out. Resolves
+	/// once every commit this queue has started has settled, including one
+	/// the window timer or a later `defer` set going before this call: a
+	/// sign-out that awaits it ends the session only after a failure has
+	/// restored and reported to the account that made the delete.
 	flush: () => Promise<void>;
 	pause: () => void;
 	resume: () => void;
@@ -170,20 +174,39 @@ export function createUndoQueue(deps: UndoQueueDeps): UndoQueue {
 		return { destruction: c.destruction, owner: c.owner };
 	}
 
+	/// Commits that have left the slot and not yet settled. `take` detaches
+	/// an entry before its commit runs, so without this a flush that found
+	/// the slot empty could not see a commit the timer or `defer` had
+	/// already started.
+	const inFlight = new Set<Promise<void>>();
+
+	function settle(taken: { destruction: DeferredDestruction; owner: UndoOwner }): Promise<void> {
+		const { destruction } = taken;
+		const settling = (async () => {
+			try {
+				await destruction.commit();
+			} catch (error) {
+				if (undoOwnerChanged(taken.owner, owner())) {
+					console.error('undo: a held delete failed after the account that made it signed out', error);
+					return;
+				}
+				destruction.restore();
+				destruction.onCommitError?.(error);
+			}
+		})();
+		inFlight.add(settling);
+		const forget = () => {
+			inFlight.delete(settling);
+		};
+		settling.then(forget, forget);
+		return settling;
+	}
+
 	async function flush(): Promise<void> {
 		const taken = take();
-		if (taken === null) return;
-		const { destruction } = taken;
-		try {
-			await destruction.commit();
-		} catch (error) {
-			if (undoOwnerChanged(taken.owner, owner())) {
-				console.error('undo: a held delete failed after the account that made it signed out', error);
-				return;
-			}
-			destruction.restore();
-			destruction.onCommitError?.(error);
-		}
+		const own = taken === null ? null : settle(taken);
+		await Promise.allSettled([...inFlight].filter((p) => p !== own));
+		if (own !== null) await own;
 	}
 
 	function defer(destruction: DeferredDestruction): void {

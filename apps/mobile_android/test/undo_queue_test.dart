@@ -1,7 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import '../lib/undo_queue.dart';
 
-/// Mirror of web `core/undo_queue.test.ts` — same 14 cases, same order.
+/// Mirror of web `core/undo_queue.test.ts` — same 18 cases, same order.
 /// Deterministic clock + timer pair: `advance` fires every timer whose
 /// deadline has passed, in deadline order, so a re-armed timer created
 /// mid-advance still lands correctly.
@@ -9,6 +11,8 @@ class _Harness {
   _Harness([this.windowMs = 8000]);
 
   int windowMs;
+  String? owner = 'a';
+  final List<(String, Object)> logged = [];
   int _clock = 0;
   int _nextHandle = 1;
   final Map<int, _FakeTimer> _timers = {};
@@ -26,6 +30,8 @@ class _Harness {
       clearTimer: (handle) => _timers.remove(handle as int),
       now: () => _clock,
       onChange: published.add,
+      owner: () => owner,
+      log: (message, error) => logged.add((message, error)),
     ));
     return this;
   }
@@ -148,6 +154,94 @@ void main() {
     await h.advance(8000);
     expect(restore.count, 1);
     expect(onCommitError.args, [boom]);
+  });
+
+  // Reason: a commit already running when the session ended failed with no
+  // session, and the queue showed "couldn't delete" to the signed-out reader
+  // and restored the row into whatever list was showing.
+  test('a commit that fails after its account signed out is logged, not '
+      'bannered or restored', () async {
+    final h = _Harness().init();
+    final restore = _Spy();
+    final onCommitError = _Spy();
+    final held = Completer<void>();
+    h.queue.defer(DeferredDestruction(
+      message: 'Removed',
+      commit: () => held.future,
+      restore: restore.call,
+      onCommitError: onCommitError.withArg,
+    ));
+    final flushing = h.queue.flush();
+    h.owner = null;
+    final boom = StateError('no session');
+    held.completeError(boom);
+    await flushing;
+    expect(restore.count, 0);
+    expect(onCommitError.count, 0);
+    expect(h.logged, hasLength(1));
+    expect(h.logged.single.$2, boom);
+  });
+
+  test('a commit that fails after another account signed in leaves that '
+      'account alone', () async {
+    final h = _Harness().init();
+    final restore = _Spy();
+    final onCommitError = _Spy();
+    final held = Completer<void>();
+    h.queue.defer(DeferredDestruction(
+      message: 'Removed',
+      commit: () => held.future,
+      restore: restore.call,
+      onCommitError: onCommitError.withArg,
+    ));
+    await h.advance(8000);
+    h.owner = 'b';
+    held.completeError(StateError('JWT expired'));
+    for (var i = 0; i < 5; i++) {
+      await Future<void>.value();
+    }
+    expect(restore.count, 0);
+    expect(onCommitError.count, 0);
+  });
+
+  test('a commit that fails while its account is still signed in still '
+      'restores and reports', () async {
+    final h = _Harness().init();
+    final restore = _Spy();
+    final onCommitError = _Spy();
+    final held = Completer<void>();
+    h.queue.defer(DeferredDestruction(
+      message: 'Removed',
+      commit: () => held.future,
+      restore: restore.call,
+      onCommitError: onCommitError.withArg,
+    ));
+    final flushing = h.queue.flush();
+    final boom = StateError('23503');
+    held.completeError(boom);
+    await flushing;
+    expect(restore.count, 1);
+    expect(onCommitError.args, [boom]);
+  });
+
+  test('the owner is the account signed in when the delete was queued, not '
+      'when it commits', () async {
+    final h = _Harness().init();
+    h.owner = 'b';
+    final restore = _Spy();
+    final onCommitError = _Spy();
+    final held = Completer<void>();
+    h.queue.defer(DeferredDestruction(
+      message: 'Removed',
+      commit: () => held.future,
+      restore: restore.call,
+      onCommitError: onCommitError.withArg,
+    ));
+    final flushing = h.queue.flush();
+    held.completeError(StateError('boom'));
+    await flushing;
+    expect(restore.count, 1);
+    expect(onCommitError.count, 1);
   });
 
   // -------------------------------------------------------------------------

@@ -9,6 +9,7 @@
 	import { formatISO } from '#lib/training/training.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import PeriodSummary from '#lib/components/PeriodSummary.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 
 	type PeriodType = 'week' | 'month' | 'all';
 
@@ -113,12 +114,12 @@
 	{#if loading}
 		<div class="skel-card" aria-hidden="true">
 			<div class="skel-row">
-				<span class="skel skel-line skel-w-20"></span>
-				<span class="skel skel-line skel-w-30"></span>
+				<SkeletonBlock height="0.85rem" width="20%" />
+				<SkeletonBlock height="0.85rem" width="30%" />
 			</div>
-			<span class="skel skel-block"></span>
-			<span class="skel skel-block"></span>
-			<span class="skel skel-block"></span>
+			<SkeletonBlock height="2.6rem" radius="var(--radius-md)" />
+			<SkeletonBlock height="2.6rem" radius="var(--radius-md)" />
+			<SkeletonBlock height="2.6rem" radius="var(--radius-md)" />
 		</div>
 		<p class="sr-only" role="status">{m('period.loading')}</p>
 	{:else if loadFailed}
@@ -191,31 +192,6 @@
 		display: flex;
 		justify-content: space-between;
 	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line { height: 0.85rem; }
-	.skel-block { height: 2.6rem; border-radius: var(--radius-md); }
-	.skel-w-20 { width: 20%; }
-	.skel-w-30 { width: 30%; }
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
-
 	.sr-only {
 		position: absolute;
 		width: 1px;

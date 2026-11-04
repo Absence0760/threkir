@@ -64,6 +64,7 @@
 	import { isWithinWindow } from '#lib/nutrition/diary_day.ts';
 	import { sumMacros } from '#lib/nutrition/nutrition_totals.ts';
 	import NutritionRingsCard from '#lib/components/NutritionRingsCard.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import TrainingLoadChart from '#lib/components/TrainingLoadChart.svelte';
 	import RacePredictorCard from '#lib/components/RacePredictorCard.svelte';
 	import ConsistencyCard from '#lib/components/ConsistencyCard.svelte';
@@ -1234,17 +1235,19 @@
 	-->
 	<h1 class="visually-hidden">{m('dash.pageHeading')}</h1>
 	{#if loading}
-		<div class="skeleton-hero"></div>
-		<div class="skeleton-filter"></div>
-		<div class="stat-grid">
-			<div class="stat-card skeleton-card"></div>
-			<div class="stat-card skeleton-card"></div>
-			<div class="stat-card skeleton-card"></div>
-			<div class="stat-card skeleton-card"></div>
-			<div class="stat-card skeleton-card"></div>
+		<SkeletonBlock height="5rem" radius="var(--radius-lg)" />
+		<SkeletonBlock height="2rem" width="22rem" radius="var(--radius-lg)" />
+		<div class="stat-grid" aria-hidden="true" data-testid="dash-skeleton">
+			{#each Array(5) as _, i (i)}
+				<div class="stat-card skeleton-card">
+					<SkeletonBlock height="0.75rem" width="50%" />
+					<SkeletonBlock height="1.6rem" width="65%" />
+				</div>
+			{/each}
 		</div>
-		<div class="skeleton-block skeleton-block-tall"></div>
-		<div class="skeleton-block"></div>
+		<SkeletonBlock height="18rem" radius="var(--radius-lg)" />
+		<SkeletonBlock height="12rem" radius="var(--radius-lg)" />
+		<p class="visually-hidden" role="status">{m('shell.loading')}</p>
 	{:else if loadError}
 		<div class="dash-load-error" role="alert" data-testid="dash-load-error">
 			<span class="material-symbols" aria-hidden="true">error</span>
@@ -2540,26 +2543,6 @@
 		border-radius: var(--radius-sm);
 	}
 
-	/* Skeleton loader — replaces the silent &nbsp; with structured
-	   placeholders so the page rhythm is visible before data lands. */
-	.skeleton-hero,
-	.skeleton-filter,
-	.skeleton-block,
-	.skeleton-card {
-		background: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-lg);
-		animation: skeleton-shimmer 1.6s ease-in-out infinite;
-	}
-	.skeleton-hero { height: 5rem; }
-	.skeleton-filter { height: 2rem; width: 22rem; max-width: 100%; }
-	.skeleton-block { height: 12rem; }
-
 	.dash-load-error {
 		display: flex;
 		align-items: center;
@@ -2584,17 +2567,10 @@
 		color: var(--color-danger-text);
 		font-size: 1.4rem;
 	}
-	.skeleton-block-tall { height: 18rem; }
-	.skeleton-card { height: 6.5rem; }
-	@keyframes skeleton-shimmer {
-		0% { background-position: 100% 0; }
-		100% { background-position: -100% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skeleton-hero,
-		.skeleton-filter,
-		.skeleton-block,
-		.skeleton-card { animation: none; }
+	.skeleton-card {
+		height: 6.5rem;
+		gap: var(--space-sm);
+		pointer-events: none;
 	}
 
 	.filter-row {

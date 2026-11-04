@@ -5336,7 +5336,9 @@ void main() {
     test('every weekStartLocal call on a Home surface passes the preference',
         () {
       for (final path in [
-        'lib/screens/dashboard_screen.dart',
+        // The heatmap's weeks; it moved off Home onto the weekly summary
+        // (decisions § 2280) and still windows by the preference.
+        'lib/widgets/activity_heatmap.dart',
         'lib/mileage_trend.dart',
         'lib/current_week.dart',
       ]) {

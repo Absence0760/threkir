@@ -22,6 +22,7 @@ import '../lib/screens/run_detail_screen.dart';
 import 'pump_until.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/mileage_trend_card.dart';
+import '../lib/widgets/activity_heatmap.dart';
 import '../lib/widgets/run_list_tile.dart';
 import '../lib/widgets/todays_workout_card.dart';
 

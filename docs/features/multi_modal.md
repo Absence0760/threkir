@@ -495,7 +495,7 @@ Density rules so it never becomes a wall of cards:
 > Today block: on web it sits above the source filter and the stat grid, on
 > a phone above Goals, and on a tablet above the period row. Below it the
 > trend cards fold in five named groups, in one order on both platforms:
-> **Volume** (mileage, plus consistency on web and the heatmap on mobile),
+> **Volume** (mileage, plus consistency on web; the heatmap left mobile Home for the weekly summary, § 2280),
 > **Fitness and form** (readiness, the fitness snapshot, load ramp /
 > comeback, the training-load chart), **Performance** (race predictor,
 > personal bests), **Effort** (HR-zone intensity, plus the easy/hard balance

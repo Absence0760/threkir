@@ -19,6 +19,7 @@ import '../settings_sync.dart';
 import '../share_sheet.dart';
 import '../widgets/capture_png.dart';
 import 'run_detail_screen.dart';
+import '../widgets/activity_heatmap.dart';
 import '../widgets/run_list_tile.dart';
 import '../widgets/this_week_strip.dart';
 import '../widgets/top_banner.dart';
@@ -280,6 +281,13 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
     return end.isAfter(now.add(const Duration(days: 1)));
   }
 
+  void _showWeek(DateTime anchor) {
+    setState(() {
+      _anchor = anchor;
+      _recompute();
+    });
+  }
+
   void _previous() {
     setState(() {
       switch (_period) {
@@ -398,6 +406,22 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
                   unit: unit,
                   weekStartDay: _weekStartDay,
                   now: DateTime.now(),
+                ),
+              ),
+            ),
+          ],
+          // The 20-week heatmap that left Home (decisions § 2280) is this
+          // screen's week picker: a tapped column moves the summary to it.
+          if (_period == PeriodType.week) ...[
+            const SizedBox(height: 16),
+            Card(
+              key: const Key('periodSummaryHeatmap'),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: ActivityHeatmap(
+                  runs: widget.runStore.summaryRuns,
+                  weekStartDay: _weekStartDay,
+                  onWeekTap: _showWeek,
                 ),
               ),
             ),

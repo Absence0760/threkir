@@ -19,6 +19,7 @@ import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/dashboard_screen.dart';
 import '../lib/widgets/mileage_trend_card.dart';
+import '../lib/widgets/activity_heatmap.dart';
 import 'pump_until.dart';
 
 Run _run(String id, DateTime startedAt) => Run(
@@ -121,6 +122,13 @@ void main() {
     expect(top(order[1]), lessThan(top(order[2])));
     expect(find.byKey(const ValueKey('dashboard-trend-effort')), findsNothing);
     expect(find.byKey(const ValueKey('dashboard-trend-recent')), findsNothing);
+
+    // Volume is the mileage chart alone: the 20-week heatmap left Home for
+    // the weekly summary, as web's did (decisions § 513, § 2280).
+    final volume = order.first;
+    expect(find.descendant(of: volume, matching: find.byType(MileageTrendCard)),
+        findsOneWidget);
+    expect(find.byType(ActivityHeatmap), findsNothing);
   });
 
   testWidgets('a group folds to its heading and stays folded next time',

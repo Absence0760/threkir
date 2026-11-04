@@ -26,14 +26,14 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// The surfaces in scope, and for `dashboard_screen.dart` the region of it that
-/// is a chart — the file is a whole screen, so only the heatmap counts.
+/// The surfaces in scope, each with an optional region marker for a file that
+/// is more than a chart.
 const _surfaces = <String, String?>{
   'lib/widgets/this_week_strip.dart': null,
   'lib/widgets/mileage_trend_card.dart': null,
   'lib/widgets/intensity_card.dart': null,
   'lib/widgets/training_load_chart.dart': null,
-  'lib/screens/dashboard_screen.dart': 'class _RunHeatmap',
+  'lib/widgets/activity_heatmap.dart': null,
 };
 
 /// Dashboard cards that carry a header but draw no marks, so only the header
@@ -113,7 +113,6 @@ void main() {
 
   test('no dashboard card reaches for the section-title size', () {
     for (final path in [..._headerSurfaces, ..._surfaces.keys]) {
-      if (path.endsWith('dashboard_screen.dart')) continue;
       expect(_bannedInCards.allMatches(File(path).readAsStringSync()).length, 0,
           reason: '$path heads itself, so a titleMedium in it is a second '
               'header grammar — pass the title to ChartCardHeader instead');

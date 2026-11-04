@@ -60,7 +60,7 @@ returns table (
 language plpgsql
 stable
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   v_uid uuid := (select auth.uid());
@@ -96,7 +96,12 @@ begin
        where e.route_id = p_route_id
           or exists (select 1 from event_courses ec
                      where ec.event_id = e.id and ec.route_id = p_route_id)),
-    (select count(*)::int from runs ru where ru.route_id = p_route_id),
+    -- Only runs the caller could open anyway: their own, and others' runs
+    -- under the shared visibility rule. A club admin who is not the uploader
+    -- must not learn that private runs follow the route.
+    (select count(*)::int from runs ru
+       where ru.route_id = p_route_id
+         and (ru.user_id = v_uid or private.is_run_visible_to(ru.id, v_uid))),
     (select count(*)::int from route_photos rp where rp.route_id = p_route_id),
     (select count(*)::int from route_markers rm where rm.route_id = p_route_id);
 end;
@@ -106,7 +111,8 @@ comment on function public.route_delete_impact(uuid) is
   'What deleting a route takes or detaches, for the confirm the owner reads first: '
   'other runners'' bookmarks, reviews, condition reports, segments and efforts '
   '(cascade), shares (cascade), race listings and events using it as a course and '
-  'the runs that followed it (link nulled), and its photos and markers (cascade). '
+  'the runs that followed it that the caller can see (link nulled), and its '
+  'photos and markers (cascade). '
   'Owner or club admin only (42501 otherwise, including for a missing route).';
 
 revoke all on function public.route_delete_impact(uuid) from public, anon;

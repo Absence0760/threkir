@@ -31852,6 +31852,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Try again'**
   String get routeDetailLineRetry;
+
+  /// Reason after "Location unavailable:" when a Locate tap finds location permission refused. Lower-case: it follows a colon.
+  ///
+  /// In en, this message translates to:
+  /// **'location permission is off'**
+  String get locationErrorPermissionDenied;
+
+  /// Reason after "Location unavailable:" when a Locate tap finds the device location switched off. Lower-case: it follows a colon.
+  ///
+  /// In en, this message translates to:
+  /// **'location is turned off on this device'**
+  String get locationErrorServicesOff;
+
+  /// Reason after "Location unavailable:" when a Locate tap gets no position in time. Lower-case: it follows a colon.
+  ///
+  /// In en, this message translates to:
+  /// **'no position yet, try again in a moment'**
+  String get locationErrorNoFix;
 }
 
 class _AppLocalizationsDelegate

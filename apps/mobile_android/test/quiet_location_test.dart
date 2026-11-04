@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 
+import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/quiet_location.dart';
 
 Position _fix(double lat) => Position(
@@ -224,6 +226,28 @@ void main() {
         ),
         throwsA(isA<LocationServiceDisabledException>()),
       );
+    });
+  });
+
+  group('browseLocateErrorText', () {
+    final l10n = lookupAppLocalizations(const Locale('en'));
+
+    test('names the reason a Locate tap failed', () {
+      expect(
+          browseLocateErrorText(
+              l10n, const PermissionDeniedException('denied')),
+          'location permission is off');
+      expect(
+          browseLocateErrorText(l10n, const LocationServiceDisabledException()),
+          'location is turned off on this device');
+      expect(browseLocateErrorText(l10n, TimeoutException('fix')),
+          'no position yet, try again in a moment');
+    });
+
+    test('anything else reads as the generic error, never the raw text', () {
+      final text = browseLocateErrorText(l10n, StateError('plugin internals'));
+      expect(text, l10n.authErrorGeneric);
+      expect(text, isNot(contains('plugin internals')));
     });
   });
 

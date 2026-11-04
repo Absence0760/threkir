@@ -5491,5 +5491,8 @@
   "sharesFootnote": "Um registo conta quando alguém cria uma conta a partir de uma ligação que partilhou. As suas próprias visitas não contam.",
   "routeDetailLineLoadFailed": "Não foi possível carregar a linha da rota. Verifique a sua ligação e tente novamente.",
   "routeDetailLineEmpty": "Esta rota não tem nenhuma linha para mostrar.",
-  "routeDetailLineRetry": "Tentar novamente"
+  "routeDetailLineRetry": "Tentar novamente",
+  "locationErrorPermissionDenied": "a permissão de localização está desativada",
+  "locationErrorServicesOff": "a localização está desligada neste dispositivo",
+  "locationErrorNoFix": "ainda sem posição, tente novamente daqui a pouco"
 }

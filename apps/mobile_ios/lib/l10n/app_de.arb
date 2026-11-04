@@ -5491,5 +5491,8 @@
   "sharesFootnote": "Eine Registrierung zählt, wenn jemand über einen von dir geteilten Link ein Konto anlegt. Deine eigenen Besuche zählen nicht.",
   "routeDetailLineLoadFailed": "Die Streckenlinie konnte nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.",
   "routeDetailLineEmpty": "Für diese Route gibt es keine Linie zum Anzeigen.",
-  "routeDetailLineRetry": "Erneut versuchen"
+  "routeDetailLineRetry": "Erneut versuchen",
+  "locationErrorPermissionDenied": "die Standortberechtigung ist deaktiviert",
+  "locationErrorServicesOff": "die Standortermittlung ist auf diesem Gerät ausgeschaltet",
+  "locationErrorNoFix": "noch keine Position, versuche es gleich noch einmal"
 }

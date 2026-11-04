@@ -5491,5 +5491,8 @@
   "sharesFootnote": "Une inscription est comptée quand quelqu'un crée un compte depuis un lien que vous avez partagé. Vos propres visites ne sont pas comptées.",
   "routeDetailLineLoadFailed": "Impossible de charger le tracé de l'itinéraire. Vérifiez votre connexion et réessayez.",
   "routeDetailLineEmpty": "Cet itinéraire n'a aucun tracé à afficher.",
-  "routeDetailLineRetry": "Réessayer"
+  "routeDetailLineRetry": "Réessayer",
+  "locationErrorPermissionDenied": "l'autorisation de localisation est désactivée",
+  "locationErrorServicesOff": "la localisation est désactivée sur cet appareil",
+  "locationErrorNoFix": "pas encore de position, réessayez dans un instant"
 }

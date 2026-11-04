@@ -10,7 +10,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, StatusPill, StatusPillSize;
 
-import '../auth_error.dart';
 import '../distance_bands.dart';
 import '../geocoding.dart';
 import '../heatmap_clustering.dart';
@@ -548,7 +547,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
       debugPrint('heatmap location unavailable: $e');
       if (!mounted) return;
       showTopBanner(
-          context, AppLocalizations.of(context).heatmapLocationUnavailable(friendlyError(AppLocalizations.of(context), e)));
+          context, AppLocalizations.of(context).heatmapLocationUnavailable(browseLocateErrorText(AppLocalizations.of(context), e)));
     }
   }
 

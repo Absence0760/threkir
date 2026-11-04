@@ -19667,4 +19667,16 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get routeDetailLineRetry => 'Réessayer';
+
+  @override
+  String get locationErrorPermissionDenied =>
+      'l\'autorisation de localisation est désactivée';
+
+  @override
+  String get locationErrorServicesOff =>
+      'la localisation est désactivée sur cet appareil';
+
+  @override
+  String get locationErrorNoFix =>
+      'pas encore de position, réessayez dans un instant';
 }

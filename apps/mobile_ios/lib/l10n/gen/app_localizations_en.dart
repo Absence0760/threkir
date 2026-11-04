@@ -19426,4 +19426,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get routeDetailLineRetry => 'Try again';
+
+  @override
+  String get locationErrorPermissionDenied => 'location permission is off';
+
+  @override
+  String get locationErrorServicesOff =>
+      'location is turned off on this device';
+
+  @override
+  String get locationErrorNoFix => 'no position yet, try again in a moment';
 }

@@ -5491,5 +5491,8 @@
   "sharesFootnote": "Un registro cuenta cuando alguien crea una cuenta desde un enlace que compartiste. Tus propias visitas no cuentan.",
   "routeDetailLineLoadFailed": "No se pudo cargar la línea de la ruta. Comprueba tu conexión e inténtalo de nuevo.",
   "routeDetailLineEmpty": "Esta ruta no tiene ninguna línea que mostrar.",
-  "routeDetailLineRetry": "Reintentar"
+  "routeDetailLineRetry": "Reintentar",
+  "locationErrorPermissionDenied": "el permiso de ubicación está desactivado",
+  "locationErrorServicesOff": "la ubicación está desactivada en este dispositivo",
+  "locationErrorNoFix": "aún no hay posición, inténtalo de nuevo en un momento"
 }

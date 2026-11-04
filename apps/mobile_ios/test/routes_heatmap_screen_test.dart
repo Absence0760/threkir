@@ -237,6 +237,25 @@ void main() {
               "repopulates around the user's location.");
     });
 
+    testWidgets('a refused Locate says the permission is off, not a raw error',
+        (tester) async {
+      final api = _FakeApiClient();
+      await _pump(
+        tester,
+        api,
+        locateFn: () async =>
+            throw const PermissionDeniedException('Location permission denied'),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
+      expect(find.text('Location unavailable: location permission is off'),
+          findsOneWidget);
+      expect(find.textContaining('PermissionDenied'), findsNothing);
+      // Let the banner's dismiss timer run out.
+      await tester.pump(const Duration(seconds: 10));
+    });
+
     testWidgets('search degrades silently when MapTiler is unconfigured',
         (tester) async {
       final api = _FakeApiClient();

@@ -25685,5 +25685,17 @@
   "routeDetailLineRetry": "Try again",
   "@routeDetailLineRetry": {
     "description": "Retry button on the route detail map placeholder"
+  },
+  "locationErrorPermissionDenied": "location permission is off",
+  "@locationErrorPermissionDenied": {
+    "description": "Reason after \"Location unavailable:\" when a Locate tap finds location permission refused. Lower-case: it follows a colon."
+  },
+  "locationErrorServicesOff": "location is turned off on this device",
+  "@locationErrorServicesOff": {
+    "description": "Reason after \"Location unavailable:\" when a Locate tap finds the device location switched off. Lower-case: it follows a colon."
+  },
+  "locationErrorNoFix": "no position yet, try again in a moment",
+  "@locationErrorNoFix": {
+    "description": "Reason after \"Location unavailable:\" when a Locate tap gets no position in time. Lower-case: it follows a colon."
   }
 }

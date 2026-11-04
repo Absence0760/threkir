@@ -1,5 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+
+import 'auth_error.dart';
+import 'l10n/gen/app_localizations.dart';
 
 /// Location for **browsing**: centring a map, a Locate button, "routes near
 /// me". The one place a screen outside the run recorder reads a position.
@@ -113,6 +118,21 @@ Future<Position> locateForBrowse({
     if (last != null) return last;
     Error.throwWithStackTrace(e, st);
   }
+}
+
+/// Why a [locateForBrowse] call failed, for the "Location unavailable:
+/// {error}" banners: refused permission, location switched off and no fix in
+/// time each say so, anything else reads as [friendlyError]. Never the raw
+/// exception text, which is English and names plugin internals.
+String browseLocateErrorText(AppLocalizations l10n, Object error) {
+  if (error is PermissionDeniedException) {
+    return l10n.locationErrorPermissionDenied;
+  }
+  if (error is LocationServiceDisabledException) {
+    return l10n.locationErrorServicesOff;
+  }
+  if (error is TimeoutException) return l10n.locationErrorNoFix;
+  return friendlyError(l10n, error);
 }
 
 bool _granted(LocationPermission perm) =>

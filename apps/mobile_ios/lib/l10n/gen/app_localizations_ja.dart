@@ -18698,4 +18698,13 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get routeDetailLineRetry => '再試行';
+
+  @override
+  String get locationErrorPermissionDenied => '位置情報の許可がオフです';
+
+  @override
+  String get locationErrorServicesOff => 'この端末の位置情報がオフです';
+
+  @override
+  String get locationErrorNoFix => 'まだ位置を取得できません。少し待ってからもう一度お試しください';
 }

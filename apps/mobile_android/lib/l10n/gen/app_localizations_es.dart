@@ -19627,4 +19627,16 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get routeDetailLineRetry => 'Reintentar';
+
+  @override
+  String get locationErrorPermissionDenied =>
+      'el permiso de ubicación está desactivado';
+
+  @override
+  String get locationErrorServicesOff =>
+      'la ubicación está desactivada en este dispositivo';
+
+  @override
+  String get locationErrorNoFix =>
+      'aún no hay posición, inténtalo de nuevo en un momento';
 }

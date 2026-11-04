@@ -908,7 +908,7 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
       debugPrint('route builder location unavailable: $e');
       if (!mounted) return;
       showTopBanner(context,
-          AppLocalizations.of(context).routeBuilderLocationUnavailable(friendlyError(AppLocalizations.of(context), e)));
+          AppLocalizations.of(context).routeBuilderLocationUnavailable(browseLocateErrorText(AppLocalizations.of(context), e)));
     }
   }
 

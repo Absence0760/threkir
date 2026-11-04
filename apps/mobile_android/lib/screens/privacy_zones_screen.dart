@@ -253,7 +253,8 @@ class _PrivacyZonesScreenState extends State<PrivacyZonesScreen> {
       if (!mounted) return;
       showTopBanner(
         context,
-        AppLocalizations.of(context).privacyZonesLocationUnavailable(e),
+        AppLocalizations.of(context).privacyZonesLocationUnavailable(
+            browseLocateErrorText(AppLocalizations.of(context), e)),
       );
     }
   }

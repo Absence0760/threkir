@@ -5491,5 +5491,8 @@
   "sharesFootnote": "あなたが共有したリンクからアカウントが作成されると登録として数えます。あなた自身の訪問は数えません。",
   "routeDetailLineLoadFailed": "ルートの線を読み込めませんでした。接続を確認して再試行してください。",
   "routeDetailLineEmpty": "このルートには表示できる線がありません。",
-  "routeDetailLineRetry": "再試行"
+  "routeDetailLineRetry": "再試行",
+  "locationErrorPermissionDenied": "位置情報の許可がオフです",
+  "locationErrorServicesOff": "この端末の位置情報がオフです",
+  "locationErrorNoFix": "まだ位置を取得できません。少し待ってからもう一度お試しください"
 }

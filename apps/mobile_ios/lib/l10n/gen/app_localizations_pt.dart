@@ -19626,6 +19626,18 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get routeDetailLineRetry => 'Tentar novamente';
+
+  @override
+  String get locationErrorPermissionDenied =>
+      'a permissão de localização está desativada';
+
+  @override
+  String get locationErrorServicesOff =>
+      'a localização está desligada neste dispositivo';
+
+  @override
+  String get locationErrorNoFix =>
+      'ainda sem posição, tente novamente daqui a pouco';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -39236,4 +39248,16 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get routeDetailLineRetry => 'Tentar novamente';
+
+  @override
+  String get locationErrorPermissionDenied =>
+      'a permissão de localização está desativada';
+
+  @override
+  String get locationErrorServicesOff =>
+      'a localização está desativada neste aparelho';
+
+  @override
+  String get locationErrorNoFix =>
+      'ainda sem posição, tente novamente em instantes';
 }

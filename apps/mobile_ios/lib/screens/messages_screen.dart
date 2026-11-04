@@ -251,12 +251,18 @@ class _MessagesScreenState extends State<MessagesScreen>
     super.dispose();
   }
 
+  int _seenHideRemovals = DmPendingHides.instance.removals;
+
   /// A conversation deleted in a thread leaves the list while its undo window
   /// is open, and comes back on Undo; the list read after the commit is the
-  /// server's answer either way.
+  /// server's answer either way. The delete itself needs no read: the list
+  /// already holds the row it leaves out.
   void _onPendingHidesChanged() {
     if (!mounted) return;
     setState(() {});
+    final removals = DmPendingHides.instance.removals;
+    if (removals == _seenHideRemovals) return;
+    _seenHideRemovals = removals;
     _refresh();
   }
 

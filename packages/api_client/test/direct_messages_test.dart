@@ -253,9 +253,9 @@ void main() {
       ];
 
       expect(await api.fetchDmBadgeStates(), [
-        (unread: 2, muted: false, archived: false),
-        (unread: 5, muted: true, archived: false),
-        (unread: 1, muted: false, archived: true),
+        (conversationId: 'c-1', unread: 2, muted: false, archived: false),
+        (conversationId: 'c-2', unread: 5, muted: true, archived: false),
+        (conversationId: 'c-3', unread: 1, muted: false, archived: true),
       ]);
       expect(fake.to(_threadsPath).single.method, 'GET');
       expect(fake.to(_profilesPath), isEmpty);

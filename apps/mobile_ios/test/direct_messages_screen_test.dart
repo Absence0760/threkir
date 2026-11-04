@@ -1275,16 +1275,21 @@ void main() {
       await tester.pump();
       expect(find.text('Ada'), findsOneWidget);
 
+      final reads = api.threadsCalls;
       DmPendingHides.instance.add('c-p-1');
       await tester.pump();
       await tester.pump();
       expect(find.text('Ada'), findsNothing);
       expect(find.text('Grace'), findsOneWidget);
+      expect(api.threadsCalls, reads,
+          reason: 'the list already holds the row it leaves out');
 
       DmPendingHides.instance.remove('c-p-1');
       await tester.pump();
       await tester.pump();
       expect(find.text('Ada'), findsOneWidget);
+      expect(api.threadsCalls, reads + 1,
+          reason: 'Undo or the commit is the server\'s to answer');
     });
   });
 

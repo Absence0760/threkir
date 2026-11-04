@@ -9350,13 +9350,18 @@ class ApiClient {
   /// (`unreadDmBadgeCount` in the app, the twin of web's). The same
   /// `dm_threads()` aggregation as [fetchDmThreads], without its partner-name
   /// read. Throws on a failed read; signed out answers empty without a call.
-  Future<List<({int unread, bool muted, bool archived})>>
+  /// The conversation id lets the badge leave out a conversation whose
+  /// delete is still inside its undo window.
+  Future<
+          List<
+              ({String conversationId, int unread, bool muted, bool archived})>>
       fetchDmBadgeStates() async {
     if (_client.auth.currentUser == null) return const [];
     final res = await _client.rpc('dm_threads', params: const {}, get: true);
     return [
       for (final r in (res as List).cast<Map<String, dynamic>>())
         (
+          conversationId: r['conversation_id'] as String,
           unread: (r['unread'] as num?)?.toInt() ?? 0,
           muted: r['muted'] == true,
           archived: r['archived'] == true,

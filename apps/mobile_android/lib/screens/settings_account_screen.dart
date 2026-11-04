@@ -394,10 +394,8 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       final url = job.url;
       if (job.status != ExportJobStatus.ready || url == null) return;
       final tmp = await getTemporaryDirectory();
-      final ts = DateTime.now().toIso8601String().replaceAll(
-        RegExp(r'[:.]'),
-        '-',
-      );
+      final ts =
+          DateTime.now().toIso8601String().replaceAll(RegExp(r'[:.]'), '-');
       final ext = job.format == 'csv' ? 'csv' : 'zip';
       final file = File('${tmp.path}/run-app-export-$ts.$ext');
       await client.downloadToFile(url: Uri.parse(url), outputFile: file);
@@ -1109,10 +1107,8 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
         );
       }
       final tmp = await getTemporaryDirectory();
-      final ts = DateTime.now().toIso8601String().replaceAll(
-        RegExp(r'[:.]'),
-        '-',
-      );
+      final ts =
+          DateTime.now().toIso8601String().replaceAll(RegExp(r'[:.]'), '-');
       final file = File('${tmp.path}/runs-$ts.csv');
       await file.writeAsString(buf.toString());
       await shareFilesFrom(
@@ -1143,10 +1139,8 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     showTopBanner(context, l10n.settingsAccountBackupPreparing);
     try {
       final tmp = await getTemporaryDirectory();
-      final ts = DateTime.now().toIso8601String().replaceAll(
-        RegExp(r'[:.]'),
-        '-',
-      );
+      final ts =
+          DateTime.now().toIso8601String().replaceAll(RegExp(r'[:.]'), '-');
       final file = File('${tmp.path}/run-app-backup-$ts.zip');
       final outcome = await BackupService(
         api: api,

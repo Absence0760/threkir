@@ -4575,7 +4575,7 @@ export const messages = {
 	"workoutEditor.sec": "sec",
 	"workoutEditor.paceEndHint": "Le côté droit est facultatif — à utiliser quand l'allure évolue au fil d'une phase (p. ex. MP 7:15 → 6:41).",
 	"workoutEditor.paceTolerance": "Tolérance d'allure",
-	"workoutEditor.plusMinusSeconds": "± secondes",
+	"workoutEditor.plusMinusSeconds": "± secondes par {unit}",
 	"workoutEditor.paceToleranceHint": "De combien vous pouvez vous écarter de part et d'autre de l'objectif tout en le tenant. À élargir un jour vallonné ou venteux ; zéro vous astreint à l'allure exacte.",
 	"workoutEditor.zoneLabel": "Étiquette de zone",
 	"workoutEditor.zoneHint": "facultatif — E, T, I, MP…",

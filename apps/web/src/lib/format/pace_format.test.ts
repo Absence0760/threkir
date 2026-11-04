@@ -1,6 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { paceMinutesSeconds, paceParts, isMeaningfulPace, paceToleranceLabel } from './pace_format';
+import {
+	paceMinutesSeconds,
+	paceParts,
+	isMeaningfulPace,
+	paceToleranceFromUnit,
+	paceToleranceLabel,
+	paceToleranceToUnit
+} from './pace_format';
 
 test('formats whole and exact paces', () => {
 	assert.equal(paceMinutesSeconds(330), '5:30');
@@ -76,4 +83,21 @@ test('a pace tolerance is converted to the pace unit and labelled with it', () =
 	// 10 s/km is 16.09 s/mi.
 	assert.equal(paceToleranceLabel(10, 'mi'), '±16s/mi');
 	assert.equal(paceToleranceLabel(15, 'mi'), '±24s/mi');
+});
+
+// The editor shows and takes the tolerance per the display unit; the column
+// is per km. ±10 s/mi typed as-is was stored as ±10 s/km and read back as
+// "±16s/mi" beside the pace.
+test('an editor tolerance round-trips through the per-km column', () => {
+	assert.equal(paceToleranceFromUnit(10, 'mi'), 6);
+	assert.equal(paceToleranceToUnit(6, 'mi'), 10);
+	assert.equal(paceToleranceLabel(paceToleranceFromUnit(10, 'mi'), 'mi'), '±10s/mi');
+	assert.equal(paceToleranceFromUnit(10, 'km'), 10);
+	assert.equal(paceToleranceToUnit(10, 'km'), 10);
+	// The column is whole seconds per km, about 1.6 s per mile, so a mile
+	// tolerance comes back within a second of what was typed, never 60% off.
+	for (let typed = 0; typed <= 60; typed++) {
+		const back = paceToleranceToUnit(paceToleranceFromUnit(typed, 'mi'), 'mi');
+		assert.ok(Math.abs(back - typed) <= 1, `${typed} s/mi came back as ${back}`);
+	}
 });

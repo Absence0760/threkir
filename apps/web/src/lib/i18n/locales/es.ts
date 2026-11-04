@@ -4575,7 +4575,7 @@ export const messages = {
 	"workoutEditor.sec": "seg",
 	"workoutEditor.paceEndHint": "El lado derecho es opcional: úsalo cuando el ritmo progresa a lo largo de una fase (p. ej. MP 7:15 → 6:41).",
 	"workoutEditor.paceTolerance": "Tolerancia de ritmo",
-	"workoutEditor.plusMinusSeconds": "± segundos",
+	"workoutEditor.plusMinusSeconds": "± segundos por {unit}",
 	"workoutEditor.paceToleranceHint": "Cuánto puedes desviarte a cada lado del objetivo y seguir cumpliéndolo. Amplíalo en un día con cuestas o viento; cero te obliga al ritmo exacto.",
 	"workoutEditor.zoneLabel": "Etiqueta de zona",
 	"workoutEditor.zoneHint": "opcional — E, T, I, MP…",

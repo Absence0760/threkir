@@ -4575,7 +4575,7 @@ export const messages = {
 	"workoutEditor.sec": "Sek",
 	"workoutEditor.paceEndHint": "Die rechte Seite ist optional – nutze sie, wenn das Tempo über eine Phase hinweg ansteigt (z. B. MP 7:15 → 6:41).",
 	"workoutEditor.paceTolerance": "Tempotoleranz",
-	"workoutEditor.plusMinusSeconds": "± Sekunden",
+	"workoutEditor.plusMinusSeconds": "± Sekunden pro {unit}",
 	"workoutEditor.paceToleranceHint": "Wie weit du nach beiden Seiten vom Ziel abweichen darfst und es trotzdem triffst. An einem hügeligen oder windigen Tag größer wählen; null bindet dich exakt ans Tempo.",
 	"workoutEditor.zoneLabel": "Zonen-Label",
 	"workoutEditor.zoneHint": "optional – E, T, I, MP…",

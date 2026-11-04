@@ -82,4 +82,37 @@ test.describe('WorkoutEditor in miles', () => {
 			await deleteSagaUsers([runner]);
 		}
 	});
+
+	// The tolerance column is per km too. It used to be shown and saved raw,
+	// so ±15 typed beside a /mi pace was stored as ±15 s/km and read back on
+	// the workout page as "±24s/mi".
+	test('the pace tolerance is shown and saved per mile', async ({ browser }) => {
+		const [runner] = await createSagaUsers(1, { displayNames: ['Mile Tolerance Runner'] });
+		const ids = { plan: crypto.randomUUID(), week: crypto.randomUUID(), workout: crypto.randomUUID() };
+		const ctx = await browser.newContext({ storageState: runner.storageStatePath });
+		await acceptCookieConsent(ctx);
+		try {
+			await seed(runner.id, ids);
+			const page = await ctx.newPage();
+			await page.goto(`/plans/${ids.plan}/workouts/${ids.workout}`);
+			await expect(page.locator('.tol')).toHaveText('±10s/mi', { timeout: 15_000 });
+
+			const modal = await openEditor(page, ids.plan);
+			await expect(modal).toContainText('± seconds per mi');
+			const tolerance = modal.getByLabel(/Pace tolerance/);
+			await expect(tolerance).toHaveValue('10');
+			await tolerance.fill('15');
+			await modal.getByRole('button', { name: /^Save/ }).click();
+			await expect(modal).toHaveCount(0);
+
+			// 15 s/mi is 9.32 s/km, stored as 9.
+			expect((await readWorkout(ids.workout)).target_pace_tolerance_sec).toBe(9);
+			await page.goto(`/plans/${ids.plan}/workouts/${ids.workout}`);
+			await expect(page.locator('.tol')).toHaveText('±14s/mi', { timeout: 15_000 });
+		} finally {
+			await ctx.close();
+			await getAdminClient().from('training_plans').delete().eq('id', ids.plan);
+			await deleteSagaUsers([runner]);
+		}
+	});
 });

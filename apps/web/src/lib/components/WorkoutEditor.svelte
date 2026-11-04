@@ -28,7 +28,11 @@
 	import type { WorkoutMoveDay } from '#lib/training/plan_move.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { getUnit } from '#lib/format/units.svelte.ts';
-	import { paceParts } from '#lib/format/pace_format.ts';
+	import {
+		paceParts,
+		paceToleranceFromUnit,
+		paceToleranceToUnit
+	} from '#lib/format/pace_format.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import type { PlanWorkout } from '#lib/types.ts';
 	import type { JsonObject } from '#lib/types.ts';
@@ -92,7 +96,11 @@
 			: null
 	));
 	let toleranceSec = $state<number | null>(
-		untrack(() => workout.target_pace_tolerance_sec)
+		untrack(() =>
+			workout.target_pace_tolerance_sec != null
+				? paceToleranceToUnit(workout.target_pace_tolerance_sec, unit)
+				: null
+		)
 	);
 	let zone = $state<string>(untrack(() => workout.pace_zone ?? ''));
 	let notes = $state<string>(untrack(() => workout.notes ?? ''));
@@ -422,7 +430,8 @@
 						: null,
 				target_pace_sec_per_km: isRest ? null : paceStart,
 				target_pace_end_sec_per_km: isRest ? null : paceEnd,
-				target_pace_tolerance_sec: isRest ? null : toleranceSec,
+				target_pace_tolerance_sec:
+					isRest || toleranceSec == null ? null : paceToleranceFromUnit(toleranceSec, unit),
 				pace_zone: isRest ? null : zone.trim() || null,
 				notes: notes.trim() || null,
 				structure: isUnstructured
@@ -623,7 +632,7 @@
 				<label>
 					<span
 						>{t('workoutEditor.paceTolerance')}
-						<span class="hint">{t('workoutEditor.plusMinusSeconds')}</span></span
+						<span class="hint">{t('workoutEditor.plusMinusSeconds', { unit })}</span></span
 					>
 					<input
 						type="number"

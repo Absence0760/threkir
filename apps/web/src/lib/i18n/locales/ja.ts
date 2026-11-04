@@ -4570,7 +4570,7 @@ export const messages = {
 	"workoutEditor.sec": "秒",
 	"workoutEditor.paceEndHint": "右側は任意です。フェーズ内でペースが変化する場合に使います（例: MP 7:15 → 6:41）。",
 	"workoutEditor.paceTolerance": "ペース許容範囲",
-	"workoutEditor.plusMinusSeconds": "± 秒",
+	"workoutEditor.plusMinusSeconds": "± 秒（{unit}あたり）",
 	"workoutEditor.paceToleranceHint": "目標の前後どこまでを達成とみなすかです。起伏や風の強い日は広めにし、ゼロにするとぴったりのペースが求められます。",
 	"workoutEditor.zoneLabel": "ゾーンラベル",
 	"workoutEditor.zoneHint": "任意 — E、T、I、MP…",

@@ -4593,7 +4593,7 @@ export const en = {
 	"workoutEditor.sec": "sec",
 	"workoutEditor.paceEndHint": "Right side is optional — use when the pace progresses across a phase (e.g. MP 7:15 → 6:41).",
 	"workoutEditor.paceTolerance": "Pace tolerance",
-	"workoutEditor.plusMinusSeconds": "± seconds",
+	"workoutEditor.plusMinusSeconds": "± seconds per {unit}",
 	"workoutEditor.paceToleranceHint": "How far either side of the target still counts as hitting it. Widen it for a hilly or windy day; zero holds you to the exact pace.",
 	"workoutEditor.zoneLabel": "Zone label",
 	"workoutEditor.zoneHint": "optional — E, T, I, MP…",

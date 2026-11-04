@@ -45,6 +45,17 @@ export function isMeaningfulPace(seconds: number, metres: number): boolean {
 /// Next to a /mi pace it has to be per mile too, and say so: "±10s" beside
 /// "8:03/mi" read as ten seconds a mile when it meant sixteen.
 export function paceToleranceLabel(secPerKm: number, unit: 'km' | 'mi'): string {
-	const sec = unit === 'mi' ? secPerKm * (1609.344 / 1000) : secPerKm;
-	return `±${Math.round(sec)}s/${unit}`;
+	return `±${paceToleranceToUnit(secPerKm, unit)}s/${unit}`;
+}
+
+/// The tolerance an editor shows, in whole seconds per the display unit.
+export function paceToleranceToUnit(secPerKm: number, unit: 'km' | 'mi'): number {
+	return Math.round(unit === 'mi' ? secPerKm * (1609.344 / 1000) : secPerKm);
+}
+
+/// What an editor stores for a tolerance typed per the display unit: whole
+/// seconds per km, the column's unit. Typed as-is, ±10 s/mi was saved as
+/// ±10 s/km and read back beside the pace as "±16s/mi".
+export function paceToleranceFromUnit(secPerUnit: number, unit: 'km' | 'mi'): number {
+	return Math.round(unit === 'mi' ? secPerUnit / (1609.344 / 1000) : secPerUnit);
 }

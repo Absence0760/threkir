@@ -380,7 +380,8 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
   /// Delete-for-me is honestly undoable — nothing reaches the server until
   /// the window closes — so it takes the undo bar and no confirm
   /// (conventions.md § Destructive actions). The inbox under this screen
-  /// leaves the conversation out until then ([DmPendingHides]).
+  /// leaves the conversation out until then, and out of any read that
+  /// started before the delete landed ([DmPendingHides]).
   void _deleteConversation() {
     final id = _conversationId;
     if (id == null || _deleted) return;
@@ -397,12 +398,10 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
       context,
       DeferredDestruction(
         message: l10n.messagesConversationDeleted,
+        // A refused commit is put back by restore.
         commit: () async {
-          try {
-            await api.hideDmConversation(id);
-          } finally {
-            hides.remove(id);
-          }
+          await api.hideDmConversation(id);
+          hides.landed(id);
         },
         restore: () {
           hides.remove(id);

@@ -1317,7 +1317,7 @@ void main() {
       api
         ..threadsGate = null
         ..threads = [_thread('p-2', name: 'Grace')];
-      DmPendingHides.instance.remove('c-p-1');
+      DmPendingHides.instance.landed('c-p-1');
       await tester.pump();
       await tester.pump();
       expect(api.threadsCalls, reads + 1,
@@ -1331,6 +1331,84 @@ void main() {
       await tester.pump();
       expect(find.text('Ada'), findsNothing);
       expect(find.text('Grace'), findsOneWidget);
+    });
+
+    testWidgets('a landed delete stays out of the list while the read after '
+        'it is in flight, and its marker goes once that read is held',
+        (tester) async {
+      final api = _FakeApi()
+        ..threads = [_thread('p-1', name: 'Ada'), _thread('p-2', name: 'Grace')];
+      await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+      DmPendingHides.instance.add('c-p-1');
+      await tester.pump();
+      expect(find.text('Ada'), findsNothing);
+
+      final fresh = Completer<List<DmThread>>();
+      api.threadsGate = fresh;
+      final reads = api.threadsCalls;
+      DmPendingHides.instance.landed('c-p-1');
+      await tester.pump();
+      await tester.pump();
+      expect(api.threadsCalls, reads + 1);
+      expect(DmPendingHides.instance.contains('c-p-1'), isFalse);
+      expect(find.text('Ada'), findsNothing,
+          reason: 'the list held started before the delete landed');
+      expect(DmPendingHides.instance.debugHasMarker('c-p-1'), isTrue);
+
+      fresh.complete([_thread('p-2', name: 'Grace')]);
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Ada'), findsNothing);
+      expect(find.text('Grace'), findsOneWidget);
+      expect(DmPendingHides.instance.debugHasMarker('c-p-1'), isFalse,
+          reason: 'no read the list holds can list it any more');
+    });
+
+    testWidgets('Undo brings the row back at once, before the re-read answers',
+        (tester) async {
+      final api = _FakeApi()
+        ..threads = [_thread('p-1', name: 'Ada'), _thread('p-2', name: 'Grace')];
+      await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+      DmPendingHides.instance.add('c-p-1');
+      await tester.pump();
+      expect(find.text('Ada'), findsNothing);
+
+      final fresh = Completer<List<DmThread>>();
+      api.threadsGate = fresh;
+      DmPendingHides.instance.remove('c-p-1');
+      await tester.pump();
+      expect(find.text('Ada'), findsOneWidget);
+      expect(DmPendingHides.instance.debugHasMarker('c-p-1'), isFalse);
+
+      fresh.complete(
+          [_thread('p-1', name: 'Ada'), _thread('p-2', name: 'Grace')]);
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Ada'), findsOneWidget);
+    });
+
+    testWidgets('a conversation the server lists again after the delete '
+        'landed shows on the next read', (tester) async {
+      final api = _FakeApi()
+        ..threads = [_thread('p-1', name: 'Ada'), _thread('p-2', name: 'Grace')];
+      await tester.pumpWidget(_app(MessagesScreen(
+          api: api, pollInterval: const Duration(seconds: 30))));
+      await tester.pump();
+      DmPendingHides.instance.add('c-p-1');
+      await tester.pump();
+      api.threads = [_thread('p-2', name: 'Grace')];
+      DmPendingHides.instance.landed('c-p-1');
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Ada'), findsNothing);
+
+      // A newer message brings the conversation back on the server.
+      api.threads = [_thread('p-1', name: 'Ada'), _thread('p-2', name: 'Grace')];
+      await tester.pump(const Duration(seconds: 30));
+      await tester.pump();
+      expect(find.text('Ada'), findsOneWidget);
     });
   });
 

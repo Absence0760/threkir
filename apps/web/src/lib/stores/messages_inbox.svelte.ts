@@ -11,6 +11,8 @@
  * consent `coach_messages` is not read at all, so the row says what the Coach
  * is and nothing it said.
  */
+import { SvelteMap } from 'svelte/reactivity';
+
 import { coachEnabled } from '#lib/coach/coach_flag.ts';
 import {
 	AI_DISCLOSURE_VERSION_COACH,
@@ -73,8 +75,9 @@ class MessagesInboxStore {
 	/// returns them; they stay out of the list until then.
 	#pendingHidden = new Set<string>();
 	/// The runner's mute / archive writes a list read may predate
-	/// (dm_conversation_writes.ts), keyed by conversation and flag.
-	#writes = new Map<string, ConversationWrite>();
+	/// (dm_conversation_writes.ts), keyed by conversation and flag. Reactive,
+	/// because a conversation the list has not loaded reads its state here.
+	#writes = new SvelteMap<string, ConversationWrite>();
 
 	/// Binds the store to the signed-in runner, dropping what another account
 	/// left behind. Returns true when the user changed.
@@ -149,6 +152,14 @@ class MessagesInboxStore {
 		this.threads = this.threads.map((t) => (t.conversationId === conversationId ? { ...t, ...change } : t));
 	}
 
+	/// The runner's latest mute / archive write to a conversation, until a list
+	/// read carries it. The open conversation reads this when its row is not in
+	/// the list — a deep link before the inbox loaded, or a list read that
+	/// failed — so the toggle shows what was just written instead of `false`.
+	writtenFlag(conversationId: string, flag: ConversationFlag): boolean | undefined {
+		return this.#writes.get(conversationWriteKey(conversationId, flag))?.value;
+	}
+
 	/// Mutes or unmutes at once: both are one tap back. A refused write puts
 	/// the flag back and rethrows for the caller to report.
 	setMuted(conversationId: string, muted: boolean) {
@@ -188,6 +199,9 @@ class MessagesInboxStore {
 			throw e;
 		}
 		if (this.#writes.get(key) === pending) this.#writes.set(key, { ...pending, at: Date.now() });
+		// A row the list did not have is read now, so the conversation joins the
+		// list with the state just written.
+		if (prior === undefined) void this.refreshThreads();
 		void dmUnreadStore.refresh();
 	}
 

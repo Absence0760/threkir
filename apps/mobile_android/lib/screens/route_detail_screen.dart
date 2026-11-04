@@ -520,7 +520,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              _lineFailed ? Icons.cloud_off_outlined : Icons.route_outlined,
+              _lineFailed ? Icons.cloud_off : Icons.route,
               color: theme.colorScheme.onSurfaceVariant,
             ),
             const SizedBox(height: 12),

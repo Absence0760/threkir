@@ -453,6 +453,20 @@ user logs**, not a fixed grid. The ordering algorithm:
 > climb tile for every period. The period strip keeps Month and All time.
 > Web still shows all three. `test/dashboard_week_lead_test.dart`,
 > `test/period_summary_screen_test.dart`.
+>
+> **Next club event (web + mobile, 2026-11-03, [decisions § 2281](../architecture/decisions.md)):**
+> Home's Today block shows the runner's next `going` club event when it
+> starts within seven days (web was 48 hours; mobile Home had no card), after
+> the next-race card. The Run tab keeps its own 48-hour card.
+> `test/dashboard_upcoming_event_test.dart`,
+> `tests-e2e/dashboard/upcoming-event.spec.ts`.
+>
+> **Start, Coach and the week lead (mobile, 2026-11-03):** Home carries one
+> Start, on today's open plan workout or else on the week lead (§ 2278); the
+> Coach card closes the Today block (§ 2276); the lead is compact, with
+> **Add a run** and **Import runs** in the toolbar overflow (§ 2277). The
+> **Last run** card is a deliberate mobile-only card: web's Today block has
+> none.
 
 ```
   Home                                    (today)

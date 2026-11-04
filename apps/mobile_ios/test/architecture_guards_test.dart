@@ -4021,8 +4021,19 @@ void main() {
           'concludeLiveBroadcast',
           'fetchPlanForWorkout',
           'fetchNextRsvpedEvent',
-          'fetchMyClubs',
         ];
+        // The event card's club lookup moved into the shared
+        // `openUpcomingEvent` (Home and the Run tab both tap through it,
+        // decisions § 2281), so its timeout is pinned there.
+        final eventCard =
+            File('lib/widgets/upcoming_event_card.dart').readAsStringSync();
+        expect(
+          RegExp(r'\.fetchMyClubs\(\)\s*\.timeout\(kBackendLoadTimeout\)')
+              .hasMatch(eventCard),
+          isTrue,
+          reason: 'openUpcomingEvent must bound fetchMyClubs with '
+              'kBackendLoadTimeout',
+        );
         for (final name in methodNames) {
           final pattern = RegExp(
             r'\.' + RegExp.escape(name) + r'\s*\([\s\S]{0,400}?\)'

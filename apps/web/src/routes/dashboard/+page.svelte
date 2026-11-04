@@ -240,6 +240,10 @@
 	let preferredUnit = $state<'km' | 'mi'>('km');
 	let weekStartDay = $state<'monday' | 'sunday'>('monday');
 	let upcomingEvent = $state<Awaited<ReturnType<typeof fetchNextRsvpedEvent>>>(null);
+	/// How far ahead the Today block looks for the next `going` club event:
+	/// a week, so a Saturday group run is on Home from the Sunday before
+	/// (decisions § 2281). Mobile Home's `kHomeEventWindow` is the twin.
+	const HOME_EVENT_WINDOW_HOURS = 7 * 24;
 	let fitnessHistory = $state<FitnessSnapshotRow[]>([]);
 	let liveSnap = $derived(computeSnapshot(runs));
 
@@ -680,7 +684,7 @@
 			fetchRunAllTimeStats(),
 			fetchPersonalRecords(),
 			fetchActivePlanOverview(),
-			fetchNextRsvpedEvent(48),
+			fetchNextRsvpedEvent(HOME_EVENT_WINDOW_HOURS),
 			fetchFitnessSnapshots(60),
 			uid ? loadSettings(uid).catch(() => null) : Promise.resolve(null),
 			// Multi-modal: fold logged gym sessions into the same load curve as
@@ -1527,9 +1531,9 @@
 			</a>
 		{/if}
 
-		<!-- Upcoming RSVP'd event within 48h — promotes to the top of
-		     the dashboard so runners remember to show up. Mirrors
-		     Android's upcoming_event_card. Hides when nothing matches. -->
+		<!-- Next RSVP'd event within the week, in the Today block so runners
+		     remember to show up. Mirrors mobile Home's UpcomingEventCard.
+		     Hides when nothing matches. -->
 		{#if upcomingEvent}
 			{@const when = new Date(upcomingEvent.instance_start)}
 			{@const whenLabel = when.toLocaleString(activeFormatLocale(), {
@@ -1542,6 +1546,7 @@
 			<a
 				href="/clubs/{upcomingEvent.club_slug}/events/{upcomingEvent.event_id}"
 				class="event-card"
+				data-testid="dash-upcoming-event"
 			>
 				<div class="event-icon">
 					<span class="material-symbols">event</span>

@@ -836,6 +836,7 @@ class _HomeScreenState extends State<HomeScreen>
           onStartRun: () => _performLogAction(LogAction.run),
           onLogLift: () => _performLogAction(LogAction.lift),
           onStartWorkout: _startTodaysWorkout,
+          social: widget.social,
           onSyncRuns: widget.syncService == null
               ? null
               : () => widget.syncService!.triggerSync('manual'),

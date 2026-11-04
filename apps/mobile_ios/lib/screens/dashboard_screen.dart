@@ -13,6 +13,8 @@ import 'package:ui_kit/ui_kit.dart'
         ProgressBar;
 
 import '../activity_type_labels.dart';
+import '../backend_timeout.dart';
+import '../social_service.dart';
 import '../adaptive_fitness_flag.dart';
 import '../adaptive_width.dart';
 import '../age_grade.dart';
@@ -67,6 +69,7 @@ import '../widgets/recent_lifts_card.dart';
 import '../widgets/run_list_tile.dart';
 import '../widgets/goal_editor_sheet.dart';
 import '../widgets/todays_workout_card.dart';
+import '../widgets/upcoming_event_card.dart';
 import '../widgets/runner_menu.dart' show todaysOpenWorkout;
 import '../widgets/plan_nudge_card.dart';
 import '../plan_nudges.dart' show PlanNudge, PlanNudgeKind, workoutOverrunMetres;
@@ -163,6 +166,10 @@ class DashboardScreen extends StatefulWidget {
   /// checks. Null leaves that card without a Start.
   final ValueChanged<PlanWorkoutRow>? onStartWorkout;
 
+  /// Reads the runner's next club event for the Today block. Null (no social
+  /// layer, as in most tests) leaves the card off.
+  final SocialService? social;
+
   /// Pushes the unsynced runs now, from the pending-sync banner's Retry. The
   /// host wires it to `SyncService` — the one run drain — rather than this
   /// screen pushing runs itself. Null leaves runs counted but not retried.
@@ -185,6 +192,7 @@ class DashboardScreen extends StatefulWidget {
     this.onStartRun,
     this.onLogLift,
     this.onStartWorkout,
+    this.social,
     this.onSyncRuns,
     this.loadPerks,
   });
@@ -268,6 +276,9 @@ class _DashboardScreenState extends State<DashboardScreen>
   /// simply doesn't render (graceful degrade).
   UserProfileRow? _viewerProfile;
 
+  /// The next club event the runner is going to, inside [kHomeEventWindow].
+  EventView? _upcomingEvent;
+
   /// Whether the Coach is live on this deploy. False until the manifest says
   /// so, so an unknown or unreachable manifest hides the coach card, as it
   /// hides the Messages inbox's Coach row (decisions § 2227).
@@ -306,6 +317,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     WidgetsBinding.instance.addObserver(this);
     _refreshPlanOverview();
     _hydrateModalities();
+    _loadUpcomingEvent();
     _loadPersonalRecords();
     _loadViewerProfile();
     _loadRunStreaks();
@@ -399,6 +411,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       await Future.wait([
         _refreshPlanOverview(),
         _hydrateModalities(),
+        _loadUpcomingEvent(),
         _loadPersonalRecords(),
         _loadViewerProfile(),
         _loadRunStreaks(),
@@ -427,6 +440,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       _planOverview = null;
       _nutritionTargets = null;
       _viewerProfile = null;
+      _upcomingEvent = null;
       _allTimeStreaks = null;
       _history = _AccountHistory.unknown;
       _bestEffortCache.clear();
@@ -437,9 +451,26 @@ class _DashboardScreenState extends State<DashboardScreen>
     _loadTrendOpen();
     _refreshPlanOverview();
     _hydrateModalities();
+    _loadUpcomingEvent();
     _loadPersonalRecords();
     _loadViewerProfile();
     _loadRunStreaks();
+  }
+
+  /// The runner's next `going` club event within [kHomeEventWindow], for the
+  /// Today block (decisions § 2281). L4: a failed read leaves the card off and
+  /// the rest of Home as it was.
+  Future<void> _loadUpcomingEvent() async {
+    final social = widget.social;
+    if (social == null) return;
+    try {
+      final evt = await social
+          .fetchNextRsvpedEvent(window: kHomeEventWindow)
+          .timeout(kBackendLoadTimeout);
+      if (mounted) setState(() => _upcomingEvent = evt);
+    } catch (e) {
+      debugPrint('dashboard: upcoming event fetch failed: $e');
+    }
   }
 
   /// Best-effort load of the server PB cache (L4 — a failure just leaves the
@@ -1726,6 +1757,17 @@ class _DashboardScreenState extends State<DashboardScreen>
           ? _weekLeadCard(runs, goals, unit, now, onStart: leadStart)
           : null;
       final raceCard = _nextRaceCard(now) ?? _planDiscoveryCard(now);
+      final social = widget.social;
+      final eventCard = _upcomingEvent == null || social == null
+          ? null
+          : UpcomingEventCard(
+              key: const Key('dashboardUpcomingEvent'),
+              event: _upcomingEvent!,
+              onTap: () async {
+                await openUpcomingEvent(context, social, _upcomingEvent!);
+                _loadUpcomingEvent();
+              },
+            );
       // Active-plan hero: surface the day's structured workout above
       // goals so a plan-runner sees what's next before scrolling. Hidden
       // when no active plan or no workout today.
@@ -2028,6 +2070,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               pendingBanner,
               if (weekLeadCard != null) ...[weekLeadCard, _kSectionGap],
               if (raceCard != null) ...[raceCard, _kSectionGap],
+              if (eventCard != null) ...[eventCard, _kSectionGap],
               if (leadColumn != null && goalsSection != null)
                 Row(
                   key: const Key('dashboardExpandedLeadRow'),
@@ -2078,6 +2121,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             if (workoutCard != null) ...[workoutCard, _kSectionGap],
             // After today's session, which is the more urgent of the two.
             if (raceCard != null) ...[raceCard, _kSectionGap],
+            if (eventCard != null) ...[eventCard, _kSectionGap],
             for (final block in todayBlocks) ...[block, _kSectionGap],
             if (coach != null) ...[coach, _kSectionGap],
             trendsDivider,

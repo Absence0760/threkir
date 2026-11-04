@@ -209,7 +209,7 @@
 		try {
 			const p = await fetchPublicProfile(userId);
 			profile = p.profile;
-			loadError = p.error;
+			loadError = p.error ? errorCopy(p.error, m, 'u/[id]: loadError') : null;
 			if (auth.loggedIn && auth.user?.id !== userId) {
 				try {
 					viewerHasBlocked = await isBlockedByViewer(userId);

@@ -91,30 +91,6 @@ const RESULT_ERROR = '[\\w$]+\\??\\.error';
 
 const DATA_LAYER = 'src/lib/core/data.ts';
 
-/// Readers in `core/data.ts` that still return error text, not yet moved
-/// with their screens onto `error: Error | null`. The set is exact: a reader
-/// that moves has to leave it, and a new one cannot join it.
-const TEXT_READERS = new Set([
-	'fetchClubBySlug',
-	'fetchEventPhotos',
-	'fetchExerciseCatalogue',
-	'fetchMySafetyContacts',
-	'fetchPendingSafetyRequests',
-	'fetchPlan',
-	'fetchPublicGymRoutineLibrary',
-	'fetchPublicPlanLibrary',
-	'fetchPublicProfile',
-	'fetchPublicRun',
-	'fetchPublicRunAttribution',
-	'fetchRunById',
-	'fetchRunsForDashboard',
-	'fetchSafetyContactOf',
-	'fetchSharedRun',
-	'fetchViewableRun',
-	'fetchWorkout',
-	'type PlanOverviewRead',
-]);
-
 /// Offset of the `{` that opens the object type around `at`, or -1.
 function enclosingBrace(src: string, at: number): number {
 	let depth = 0;
@@ -258,18 +234,12 @@ test('no UI file shows a thrown error\'s own text', () => {
 
 test('no data-layer reader returns error text', () => {
 	const src = stripComments(readFileSync(resolve(webRoot, DATA_LAYER), 'utf-8'));
-	const found = readersReturningErrorText(src);
 	assert.deepEqual(
-		found.filter((name) => !TEXT_READERS.has(name)),
+		readersReturningErrorText(src),
 		[],
 		`a reader in ${DATA_LAYER} returns its failure as text. Return the caught value, put ` +
 			'through `dbError` (`{ rows, error: Error | null }`), and let the screen render it with ' +
 			'`errorCopy(res.error, m, key)`: text here is English the scan above cannot see.',
-	);
-	assert.deepEqual(
-		[...TEXT_READERS].filter((name) => !found.includes(name)),
-		[],
-		'these readers no longer return error text: take them out of TEXT_READERS',
 	);
 });
 

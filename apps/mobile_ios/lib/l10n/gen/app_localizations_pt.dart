@@ -11149,6 +11149,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get shareCardExport => 'Exportar';
 
   @override
+  String get shareCardShareLink => 'Partilhar ligação';
+
+  @override
   String get shareCardImage => 'Imagem';
 
   @override
@@ -31175,6 +31178,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get shareCardExport => 'Exportar';
+
+  @override
+  String get shareCardShareLink => 'Compartilhar link';
 
   @override
   String get shareCardImage => 'Imagem';

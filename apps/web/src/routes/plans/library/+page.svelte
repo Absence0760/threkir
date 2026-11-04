@@ -12,7 +12,7 @@
 
 	let plans = $state<PublicPlanLibraryEntry[]>([]);
 	let loading = $state(true);
-	let loadError = $state<string | null>(null);
+	let loadError = $state<Error | null>(null);
 	let query = $state('');
 
 	function weeksOf(p: PublicPlanLibraryEntry): number {

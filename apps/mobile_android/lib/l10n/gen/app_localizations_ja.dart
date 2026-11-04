@@ -10582,6 +10582,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shareCardExport => 'エクスポート';
 
   @override
+  String get shareCardShareLink => 'リンクを共有';
+
+  @override
   String get shareCardImage => '画像';
 
   @override

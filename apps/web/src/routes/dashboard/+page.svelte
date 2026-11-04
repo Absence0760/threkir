@@ -222,13 +222,13 @@
 	let pausedPlan = $state<{ id: string; name: string } | null>(null);
 	/// The plan read failed: the plan slot says so rather than offering to
 	/// create a plan the runner may already have.
-	let planLoadError = $state<string | null>(null);
+	let planLoadError = $state<Error | null>(null);
 	/// When the runner last dismissed the recent-5K plan suggestion: null for
 	/// never, undefined while the settings bag is unread or failed to read, so
 	/// an unknown answer never shows a suggestion they already waved away.
 	let recent5kDismissedAt = $state<string | null | undefined>(undefined);
 	let loading = $state(true);
-	let loadError = $state<string | null>(null);
+	let loadError = $state<Error | null>(null);
 	let mileageView = $state<'weekly' | 'monthly' | 'yearly'>('weekly');
 	let sourceFilter = $state<RunSource | 'all'>('all');
 	/// User's weekly mileage goal in metres, from the universal settings
@@ -663,7 +663,7 @@
 		// Promise.all rejects the whole batch, and a settings or gym blip must
 		// not take the run-derived cards down with it — the same contract the
 		// per-read try/catch blocks gave.
-		let runsRead: { runs: DashboardRun[]; error: string | null };
+		let runsRead: { runs: DashboardRun[]; error: Error | null };
 		let planRead: PlanOverviewRead;
 		let settingsRead: LoadedSettings | null;
 		let gymRead: [GymWorkout[], GymSetWithDate[]] | null;

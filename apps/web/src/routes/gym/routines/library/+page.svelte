@@ -5,7 +5,7 @@
 
 	let routines = $state<PublicGymRoutineEntry[]>([]);
 	let loading = $state(true);
-	let loadError = $state<string | null>(null);
+	let loadError = $state<Error | null>(null);
 	let query = $state('');
 
 	let searchTimer: ReturnType<typeof setTimeout> | undefined;

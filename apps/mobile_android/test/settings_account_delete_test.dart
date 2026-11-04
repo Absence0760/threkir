@@ -7,7 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/settings_account_screen.dart';
+import '../lib/undo_queue.dart';
 import '../lib/widgets/top_banner.dart' show kTopBannerMaxDuration;
+import '../lib/widgets/undo_bar.dart';
 import 'pump_until.dart';
 import 'supabase_test_init.dart';
 
@@ -19,6 +21,7 @@ const _relayEmail = '4554ffzhy7@privaterelay.appleid.com';
 class _DeleteApi extends ApiClient {
   int deleteCalls = 0;
   int signOutCalls = 0;
+  final List<String> calls = [];
 
   @override
   String? get userId => 'u1';
@@ -36,11 +39,13 @@ class _DeleteApi extends ApiClient {
   @override
   Future<void> deleteAccount() async {
     deleteCalls++;
+    calls.add('deleteAccount');
   }
 
   @override
   Future<void> signOut() async {
     signOutCalls++;
+    calls.add('signOut');
   }
 }
 
@@ -139,6 +144,33 @@ void main() {
     );
     expect(api.deleteCalls, 1);
     // Let the "Account deleted" banner's dismiss timer expire.
+    await tester.pump(kTopBannerMaxDuration);
+  });
+
+  // Reason: deleting the account with a delete still held in its undo
+  // window ended the session first, so the held commit fired afterwards
+  // with no session.
+  testWidgets('a delete held in its undo window commits before the account '
+      'is deleted', (tester) async {
+    addTearDown(debugResetUndo);
+    setUndoWindowS(0);
+    final api = _DeleteApi();
+    undoQueue.defer(DeferredDestruction(
+      message: 'Removed',
+      commit: () async => api.calls.add('commit'),
+      restore: () {},
+    ));
+    await _openDialog(tester, api);
+
+    await _type(tester, 'DELETE');
+    await tester.tap(find.descendant(
+        of: find.byType(AlertDialog), matching: find.byType(FilledButton)));
+    await pumpUntil(
+      tester,
+      () => api.signOutCalls == 1,
+      describe: 'deleteAccount + signOut after confirming',
+    );
+    expect(api.calls, ['commit', 'deleteAccount', 'signOut']);
     await tester.pump(kTopBannerMaxDuration);
   });
 

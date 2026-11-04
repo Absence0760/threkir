@@ -14950,6 +14950,10 @@
   "@shareCardExport": {
     "description": "Button to export a run to a file format"
   },
+  "shareCardShareLink": "Share link",
+  "@shareCardShareLink": {
+    "description": "Button in the run share sheet that shares the run's web link; it asks who may see the run first"
+  },
   "shareCardImage": "Image",
   "@shareCardImage": {
     "description": "Button to share the run as an image"

@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../legal_links.dart';
+import '../sign_out.dart';
+import '../widgets/undo_bar.dart';
 
 /// Whether [profile] records both the Art 8 age affirmation and terms
 /// acceptance. A missing row is "not recorded". Same rule as web
@@ -76,7 +78,10 @@ class _ConfirmAgeScreenState extends State<ConfirmAgeScreen> {
       _error = null;
     });
     try {
-      await widget.apiClient.signOut();
+      await signOutAfterSettling(
+        settlePending: undoQueue.flush,
+        signOut: widget.apiClient.signOut,
+      );
     } catch (e) {
       debugPrint('ConfirmAgeScreen: sign-out failed: $e');
       if (!mounted) return;

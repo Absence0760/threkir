@@ -705,7 +705,7 @@
 			event = ev;
 			exceptions = exc;
 			if (clubRead.error) {
-				loadError = clubRead.error;
+				loadError = errorCopy(clubRead.error, m, 'clubs/[slug]/events/[id]: loadError');
 				return;
 			}
 			if (!event) return;
@@ -781,7 +781,7 @@
 			console.warn('fetchMyEventCourse failed', ce);
 		}
 		eventPhotos = res[5].photos;
-		eventPhotosError = res[5].error;
+		eventPhotosError = res[5].error ? errorCopy(res[5].error, m, 'clubEvent.photosLoadFailed') : null;
 		rsvpSummary = res[6];
 		photoSteward = res[7];
 		pricing = await fetchEventPricing(event.id, activeInstance);
@@ -931,7 +931,7 @@
 		if (!event || !activeInstance) return;
 		const res = await fetchEventPhotos(event.id, activeInstance);
 		eventPhotos = res.photos;
-		eventPhotosError = res.error;
+		eventPhotosError = res.error ? errorCopy(res.error, m, 'clubEvent.photosLoadFailed') : null;
 	}
 
 	async function handleAddEventPhoto(e: Event) {

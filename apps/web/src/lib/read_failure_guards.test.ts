@@ -356,7 +356,7 @@ test('a club list survives a membership blip instead of becoming an error page',
 	);
 	assert.match(
 		data,
-		/if \(rolesError\) return \{ club: null, error: thrownMessage\(rolesError\) \};/,
+		/if \(rolesError\) return \{ club: null, error: rolesError \};/,
 		'fetchClubBySlug must still fail — an unknown role hides an owner admin controls',
 	);
 

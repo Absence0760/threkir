@@ -46,6 +46,23 @@ test('known failures map to their own catalogue copy', () => {
 	);
 	assert.equal(errorCopyKey(new PlanOverlapError()), 'planDetail.planOverlap');
 	assert.equal(errorCopyKey(new DbError('something odd', 'XX000')), 'errorCopy.generic');
+	assert.equal(
+		errorCopyKey({ name: 'AuthApiError', message: 'Email rate limit exceeded', status: 429, code: 'over_email_send_rate_limit' }),
+		'errorCopy.tooManyRequests',
+	);
+	assert.equal(
+		errorCopyKey({ message: 'For security purposes, you can only request this after 42 seconds.' }),
+		'errorCopy.tooManyRequests',
+	);
+	assert.equal(
+		errorCopyKey({ message: 'New password should be different from the old password.', status: 422, code: 'same_password' }),
+		'errorCopy.samePassword',
+	);
+	assert.equal(errorCopyKey({ message: 'Password is known to be weak', code: 'weak_password' }), 'errorCopy.weakPassword');
+	assert.equal(
+		errorCopyKey({ message: 'A user with this email address has already been registered', code: 'email_exists' }),
+		'errorCopy.emailTaken',
+	);
 	assert.equal(errorCopyKey({}), 'errorCopy.generic');
 	assert.equal(errorCopyKey(null), 'errorCopy.generic');
 });
@@ -82,6 +99,23 @@ test('a rate-limit refusal keeps its own sentence', async () => {
 	}
 });
 
+test('a fallback key replaces only the generic line', async () => {
+	const { en, t } = await english();
+	const log = quiet();
+	try {
+		assert.equal(
+			errorCopy(new DbError('something odd', 'XX000'), t, 'ctx', 'settingsAccount.passwordUpdateFailed'),
+			en['settingsAccount.passwordUpdateFailed'],
+		);
+		assert.equal(
+			errorCopy(new TypeError('Failed to fetch'), t, 'ctx', 'settingsAccount.passwordUpdateFailed'),
+			en['errorCopy.offline'],
+		);
+	} finally {
+		log.restore();
+	}
+});
+
 test('every errorCopy key is translated in every locale', async () => {
 	const keys = [
 		'errorCopy.offline',
@@ -91,6 +125,10 @@ test('every errorCopy key is translated in every locale', async () => {
 		'errorCopy.invalid',
 		'errorCopy.notFound',
 		'errorCopy.duplicate',
+		'errorCopy.tooManyRequests',
+		'errorCopy.samePassword',
+		'errorCopy.weakPassword',
+		'errorCopy.emailTaken',
 		'errorCopy.generic',
 	];
 	const { en } = await english();

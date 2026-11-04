@@ -61,6 +61,19 @@ export function errorCopyKey(e: unknown): MessageKey {
 	if (code === '42501' || httpStatus === 403 || msg.includes('only the plan owner')) {
 		return 'errorCopy.forbidden';
 	}
+	if (
+		httpStatus === 429 ||
+		code === 'over_request_rate_limit' ||
+		code === 'over_email_send_rate_limit' ||
+		code === 'over_sms_send_rate_limit' ||
+		msg.includes('rate limit') ||
+		msg.includes('for security purposes, you can only request this')
+	) {
+		return 'errorCopy.tooManyRequests';
+	}
+	if (code === 'same_password') return 'errorCopy.samePassword';
+	if (code === 'weak_password') return 'errorCopy.weakPassword';
+	if (code === 'email_exists' || code === 'user_already_exists') return 'errorCopy.emailTaken';
 	if (code === '23505') return 'errorCopy.duplicate';
 	if (code === 'PGRST116' || httpStatus === 404 || msg.includes('not found')) {
 		return 'errorCopy.notFound';
@@ -81,10 +94,20 @@ export function errorCopyKey(e: unknown): MessageKey {
 
 /// Localized copy for a thrown value, to drop into a `{error}` slot or show
 /// on its own. The raw code and message go to the console, never the UI.
-export function errorCopy(e: unknown, t: Translate, context = 'operation failed'): string {
+///
+/// `fallback` replaces the generic line for a failure the app cannot name,
+/// for a surface that shows the copy on its own and has a sentence of its
+/// own that says more than "Something went wrong".
+export function errorCopy(
+	e: unknown,
+	t: Translate,
+	context = 'operation failed',
+	fallback?: MessageKey,
+): string {
 	console.error(context, { code: field(e, 'code') || undefined, message: field(e, 'message') });
 	const code = field(e, 'code');
 	const rateLimited = rateLimitErrorMessage(t, { code, message: field(e, 'message') });
 	if (rateLimited) return rateLimited;
-	return t(errorCopyKey(e));
+	const key = errorCopyKey(e);
+	return t(key === 'errorCopy.generic' && fallback ? fallback : key);
 }

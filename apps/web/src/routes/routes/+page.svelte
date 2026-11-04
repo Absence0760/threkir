@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { page } from '$app/state';
@@ -11,6 +10,7 @@
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import { fold, compareFoldedNames } from '#lib/segments/catalogue_browse.ts';
 	import ImportRoute from '#lib/components/ImportRoute.svelte';
@@ -234,8 +234,8 @@
 			routes = routes.map((r) => (r.id === routeId ? { ...r, is_starred: !next } : r));
 			showToast(
 				next
-					? m('routesPage.starError', { error: thrownMessage(e) })
-					: m('routesPage.unstarError', { error: thrownMessage(e) }),
+					? m('routesPage.starError', { error: errorCopy(e, m, 'routesPage.starError') })
+					: m('routesPage.unstarError', { error: errorCopy(e, m, 'routesPage.unstarError') }),
 				'error',
 			);
 		}

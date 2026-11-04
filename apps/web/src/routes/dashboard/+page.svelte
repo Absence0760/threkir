@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { formatPace, formatDistance, sourceLabel } from '#lib/core/mock-data.ts';
@@ -120,6 +119,7 @@
 	import { paceMinutesSeconds } from '#lib/format/pace_format.ts';
 	import { formatSignedInteger } from '#lib/format/number.ts';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -866,7 +866,7 @@
 			await updateUniversal(uid, { hidden_prs: next });
 		} catch (e) {
 			hiddenPrs = previous;
-			showToast(m('dash.hidePrFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('dash.hidePrFailed', { error: errorCopy(e, m, 'dash.hidePrFailed') }), 'error');
 		}
 	}
 	/// Remembering the expander is auxiliary (L4): the section is open for this

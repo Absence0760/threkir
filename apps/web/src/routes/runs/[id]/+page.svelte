@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
@@ -125,6 +124,7 @@
 	import { supabase } from '#lib/core/supabase.ts';
 	import { METADATA_KEYS } from '#lib/core/schema.ts';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { activityTypeIcon, activityUsesSpeed } from '#lib/runs/activity_type.ts';
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import { buildRunShareCanonical } from '#lib/share/share_meta.ts';
@@ -665,7 +665,7 @@
 				editing = false;
 			}
 		} catch (e) {
-			showToast(m('runDetail.saveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('runDetail.saveFailed', { error: errorCopy(e, m, 'runDetail.saveFailed') }), 'error');
 		} finally {
 			savingEdit = false;
 		}
@@ -683,7 +683,7 @@
 			await deleteRun(run.id);
 			goto('/runs');
 		} catch (e) {
-			showToast(m('runDetail.deleteFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('runDetail.deleteFailed', { error: errorCopy(e, m, 'runDetail.deleteFailed') }), 'error');
 		}
 	}
 
@@ -756,7 +756,7 @@
 				await navigator.clipboard.writeText(`${window.location.origin}/runs/${run.id}`);
 				showToast(m('audience.linkCopied'), 'success');
 			} catch (e) {
-				showToast(m('runDetail.shareFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('runDetail.shareFailed', { error: errorCopy(e, m, 'runDetail.shareFailed') }), 'error');
 			}
 			return;
 		}
@@ -808,7 +808,7 @@
 			await navigator.clipboard.writeText(url);
 			showToast(m('runDetail.shareLinkCopied'), 'success');
 		} catch (e) {
-			showToast(m('runDetail.shareFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('runDetail.shareFailed', { error: errorCopy(e, m, 'runDetail.shareFailed') }), 'error');
 		} finally {
 			shareBusy = false;
 		}
@@ -823,7 +823,7 @@
 			run = { ...run, is_public: false } as Run;
 			showToast(m('runDetail.madePrivate'), 'success');
 		} catch (e) {
-			showToast(m('runDetail.makePrivateFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('runDetail.makePrivateFailed', { error: errorCopy(e, m, 'runDetail.makePrivateFailed') }), 'error');
 		} finally {
 			shareBusy = false;
 		}
@@ -859,7 +859,7 @@
 			showToast(m('runDetail.savedAsRoute'), 'success');
 			goto(`/routes/${id}`);
 		} catch (e) {
-			showToast(m('runDetail.saveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('runDetail.saveFailed', { error: errorCopy(e, m, 'runDetail.saveFailed') }), 'error');
 		} finally {
 			savingRoute = false;
 		}
@@ -954,7 +954,7 @@
 			matchInfo = await fetchRunMatchedTrack(run.id);
 			showToast(m('runDetail.reSnapping'), 'success');
 		} catch (e) {
-			const msg = thrownMessage(e);
+			const msg = errorCopy(e, m, 'runs/[id]: msg');
 			showToast(m('runDetail.rematchFailed', { error: msg }), 'error');
 		} finally {
 			rematchBusy = false;
@@ -981,7 +981,7 @@
 					: kind === 'no_track'
 						? m('runDetail.recalculateDistanceNoTrack')
 						: m('runDetail.recalculateDistanceFailed', {
-								error: thrownMessage(e),
+								error: errorCopy(e, m, 'runDetail.recalculateDistanceFailed'),
 							}),
 				'error',
 			);

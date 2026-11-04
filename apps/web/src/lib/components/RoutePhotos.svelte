@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import {
 		fetchRoutePhotosWithError,
@@ -11,6 +10,7 @@
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import { safeImageSrc } from '#lib/util/safe_image_src.ts';
 
@@ -46,7 +46,7 @@
 			}
 			photos = res.photos;
 		} catch (e) {
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, m, 'RoutePhotos: loadError');
 		} finally {
 			loading = false;
 		}
@@ -78,7 +78,7 @@
 			pendingCaption = '';
 			if (fileInput) fileInput.value = '';
 		} catch (e: any) {
-			showToast(m('routePhotos.uploadFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('routePhotos.uploadFailed', { error: errorCopy(e, m, 'routePhotos.uploadFailed') }), 'error');
 		} finally {
 			uploading = false;
 		}
@@ -99,7 +99,7 @@
 			photos = photos.filter((p) => p.id !== target.id);
 			if (lightbox?.id === target.id) lightbox = null;
 		} catch (e: any) {
-			showToast(m('routePhotos.deleteFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('routePhotos.deleteFailed', { error: errorCopy(e, m, 'routePhotos.deleteFailed') }), 'error');
 		}
 	}
 
@@ -117,7 +117,7 @@
 			await updateRoutePhotoCaption(id, next);
 			photos = photos.map((p) => (p.id === id ? { ...p, caption: next } : p));
 		} catch (e: any) {
-			showToast(m('routePhotos.captionUpdateFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('routePhotos.captionUpdateFailed', { error: errorCopy(e, m, 'routePhotos.captionUpdateFailed') }), 'error');
 		}
 	}
 </script>

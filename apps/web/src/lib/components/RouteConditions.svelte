@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import {
 		fetchRouteConditionsWithError,
@@ -11,6 +10,7 @@
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { formatRelativeTime } from '#lib/format/time.ts';
 	import { formatDistance } from '#lib/format/units.svelte.ts';
 
@@ -65,7 +65,7 @@
 			}
 			conditions = res.conditions;
 		} catch (e) {
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, m, 'RouteConditions: loadError');
 		} finally {
 			loading = false;
 		}
@@ -132,7 +132,7 @@
 			composerOpen = false;
 			showToast(m('routeConditions.reported'), 'success');
 		} catch (e: any) {
-			showToast(m('routeConditions.reportFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('routeConditions.reportFailed', { error: errorCopy(e, m, 'routeConditions.reportFailed') }), 'error');
 		} finally {
 			submitting = false;
 		}
@@ -152,7 +152,7 @@
 			},
 			onCommitError: (e) =>
 				showToast(
-					m('routeConditions.deleteFailed', { error: thrownMessage(e) }),
+					m('routeConditions.deleteFailed', { error: errorCopy(e, m, 'routeConditions.deleteFailed') }),
 					'error',
 				),
 		});

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import { onMount } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';
@@ -43,6 +42,7 @@
 	const coachOn = coachEnabled();
 	import { PUBLIC_SITE_URL } from '$app/env/public';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import type { Route } from '#lib/types.ts';
@@ -167,7 +167,7 @@
 			showReviewForm = false;
 			reviewComment = '';
 		} catch (e) {
-			showToast(m('routeDetail.reviewSubmitFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('routeDetail.reviewSubmitFailed', { error: errorCopy(e, m, 'routeDetail.reviewSubmitFailed') }), 'error');
 		} finally {
 			reviewSubmitting = false;
 		}
@@ -191,7 +191,7 @@
 				reviews = before;
 			},
 			onCommitError: (e) =>
-				showToast(m('routeDetail.reviewDeleteFailed', { error: thrownMessage(e) }), 'error'),
+				showToast(m('routeDetail.reviewDeleteFailed', { error: errorCopy(e, m, 'routeDetail.reviewDeleteFailed') }), 'error'),
 		});
 	}
 
@@ -339,7 +339,7 @@
 			route.tags = updated;
 			tagDraft = '';
 		} catch (e) {
-			showToast(m('routeDetail.tagSaveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('routeDetail.tagSaveFailed', { error: errorCopy(e, m, 'routeDetail.tagSaveFailed') }), 'error');
 		} finally {
 			tagsSaving = false;
 		}
@@ -353,7 +353,7 @@
 			await updateRouteTags(route.id, updated);
 			route.tags = updated;
 		} catch (e) {
-			showToast(m('routeDetail.tagRemoveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('routeDetail.tagRemoveFailed', { error: errorCopy(e, m, 'routeDetail.tagRemoveFailed') }), 'error');
 		} finally {
 			tagsSaving = false;
 		}
@@ -370,8 +370,8 @@
 			route.is_starred = !next;
 			showToast(
 				next
-					? m('routeDetail.starFailed', { error: thrownMessage(e) })
-					: m('routeDetail.unstarFailed', { error: thrownMessage(e) }),
+					? m('routeDetail.starFailed', { error: errorCopy(e, m, 'routeDetail.starFailed') })
+					: m('routeDetail.unstarFailed', { error: errorCopy(e, m, 'routeDetail.unstarFailed') }),
 				'error',
 			);
 		}
@@ -501,7 +501,7 @@
 				route = { ...route, is_public: true, followers_only: false };
 				showToast(m('routeDetail.madePublicForLink'), 'info');
 			} catch (e) {
-				showToast(m('routeDetail.makePublicFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('routeDetail.makePublicFailed', { error: errorCopy(e, m, 'routeDetail.makePublicFailed') }), 'error');
 				return;
 			}
 		}
@@ -531,7 +531,7 @@
 		} catch (e) {
 			// Roll back on failure so the UI matches reality.
 			route = { ...route, is_public: !next };
-			showToast(m('routeDetail.visibilityUpdateFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('routeDetail.visibilityUpdateFailed', { error: errorCopy(e, m, 'routeDetail.visibilityUpdateFailed') }), 'error');
 		}
 	}
 

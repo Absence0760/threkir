@@ -6,10 +6,10 @@
 	import { untrack } from 'svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { currentLocale } from '#lib/i18n/store.svelte.ts';
 	import { getUnit } from '#lib/format/units.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import type { TrackPoint } from '#lib/types.ts';
 	import {
@@ -247,7 +247,7 @@
 			.catch((e) => {
 				if (seq !== renderSeq) return;
 				console.warn('share image render failed', e);
-				showToast(m('runDetail.imageGenerateFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('runDetail.imageGenerateFailed', { error: errorCopy(e, m, 'runDetail.imageGenerateFailed') }), 'error');
 			})
 			.finally(() => {
 				if (seq === renderSeq) rendering = false;
@@ -303,7 +303,7 @@
 		} catch (e) {
 			// Cancelling the OS share sheet rejects with AbortError: not a failure.
 			if (!(e instanceof DOMException && e.name === 'AbortError')) {
-				showToast(m('runDetail.imageGenerateFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('runDetail.imageGenerateFailed', { error: errorCopy(e, m, 'runDetail.imageGenerateFailed') }), 'error');
 			}
 		} finally {
 			busy = false;

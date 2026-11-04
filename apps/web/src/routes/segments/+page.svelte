@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
@@ -52,7 +52,7 @@
 			// A rejected fetch would otherwise leave `loading` false with an
 			// empty list, which reads as "the catalogue is empty" — the exact
 			// lie fetchGlobalSegmentsWithError's error contract exists to stop.
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, m, 'segments: loadError');
 		} finally {
 			loading = false;
 		}

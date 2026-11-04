@@ -2,7 +2,6 @@
 	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';
 	import { getUnit } from '#lib/format/units.svelte.ts';
@@ -19,6 +18,7 @@
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import RouteTrackPreview from './RouteTrackPreview.svelte';
 
@@ -106,7 +106,7 @@
 			searchError = false;
 		} catch (e) {
 			searchError = true;
-			showToast(t('routeExplorer.searchError', { error: thrownMessage(e) }), 'error');
+			showToast(t('routeExplorer.searchError', { error: errorCopy(e, t, 'routeExplorer.searchError') }), 'error');
 		} finally {
 			loading = false;
 		}
@@ -121,7 +121,7 @@
 			routesNext = more.next;
 			hasMore = more.next !== null;
 		} catch (e) {
-			showToast(t('routeExplorer.searchError', { error: thrownMessage(e) }), 'error');
+			showToast(t('routeExplorer.searchError', { error: errorCopy(e, t, 'routeExplorer.searchError') }), 'error');
 		} finally {
 			loading = false;
 		}
@@ -167,7 +167,7 @@
 				showToast(t('routeExplorer.toastSaved', { name: route.name ?? '' }), 'success');
 			}
 		} catch (e) {
-			showToast(t('routeExplorer.toastBookmarkError', { error: thrownMessage(e) }), 'error');
+			showToast(t('routeExplorer.toastBookmarkError', { error: errorCopy(e, t, 'routeExplorer.toastBookmarkError') }), 'error');
 		} finally {
 			const next = new Set(bookmarkBusy);
 			next.delete(route.id);
@@ -206,7 +206,7 @@
 		} catch (e) {
 			locationError = e instanceof GeolocationPositionError
 				? t('routeExplorer.locationDenied')
-				: t('routeExplorer.locationError', { error: thrownMessage(e) });
+				: t('routeExplorer.locationError', { error: errorCopy(e, t, 'routeExplorer.locationError') });
 		}
 		loading = false;
 	}

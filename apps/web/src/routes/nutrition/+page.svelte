@@ -90,6 +90,7 @@
 	import MealPlanEditor from '#lib/components/MealPlanEditor.svelte';
 	import NutritionPlanLibrary from '#lib/components/NutritionPlanLibrary.svelte';
 	import NutritionAdherencePanel from '#lib/components/NutritionAdherencePanel.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 
 	// The diary day the page is showing — today unless `?date=` names an
 	// earlier one. Held as state rather than derived so `load()` and every
@@ -773,10 +774,11 @@
 
 	{#if loading}
 		<div class="skeleton-stack" aria-hidden="true">
-			<div class="skel skel-rings"></div>
-			<div class="skel skel-row"></div>
-			<div class="skel skel-block"></div>
+			<SkeletonBlock height="12rem" radius="var(--radius-lg)" />
+			<SkeletonBlock height="5.5rem" radius="var(--radius-lg)" />
+			<SkeletonBlock height="16rem" radius="var(--radius-lg)" />
 		</div>
+		<p class="visually-hidden" role="status">{m('nutrition.loading')}</p>
 	{:else if loadError !== null}
 		<div class="load-error-banner" role="alert" data-testid="nutrition-load-error">
 			<span class="material-symbols" aria-hidden="true">error</span>
@@ -1414,7 +1416,6 @@
 		flex-wrap: wrap;
 	}
 
-
 	.card-head {
 		display: flex;
 		flex-wrap: wrap;
@@ -1975,22 +1976,6 @@
 
 	/* Loading skeleton — matches card heights so data arrival doesn't jump. */
 	.skeleton-stack { display: flex; flex-direction: column; gap: var(--space-lg); }
-	.skel {
-		border-radius: var(--radius-lg);
-		background: linear-gradient(90deg, var(--color-bg-tertiary) 25%, var(--color-bg-secondary) 50%, var(--color-bg-tertiary) 75%);
-		background-size: 200% 100%;
-		animation: shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-rings { height: 12rem; }
-	.skel-row { height: 5.5rem; }
-	.skel-block { height: 16rem; }
-	@keyframes shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
 
 	@media (max-width: 36rem) {
 		.rings { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }

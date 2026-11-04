@@ -63,6 +63,27 @@ test('a delete still inside its undo window commits before the session ends', as
 	assert.deepEqual(order, ['flush:start', 'flush:done', 'signOut:local']);
 });
 
+test('a pending delete that cannot settle never keeps the session open', async () => {
+	const scopes: string[] = [];
+	const client: AuthSignOutClient = {
+		async signOut({ scope }) {
+			scopes.push(scope);
+			return { error: null };
+		},
+	};
+	const warn = console.error;
+	console.error = () => {};
+	try {
+		const err = await signOutWithScope(client, 'local', async () => {
+			throw new Error('restore threw');
+		});
+		assert.equal(err, null);
+	} finally {
+		console.error = warn;
+	}
+	assert.deepEqual(scopes, ['local']);
+});
+
 // Source-level guard for the store wiring — auth.svelte.ts uses Svelte $state
 // runes (and imports the runes-laden units signal), so it can't execute under
 // raw tsx. These assertions pin that the two affordances stay distinct: the

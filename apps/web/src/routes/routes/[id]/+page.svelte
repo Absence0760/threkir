@@ -47,7 +47,7 @@
 	// AI-enhancement upsell below it only makes sense when the Coach is live.
 	const coachOn = coachEnabled();
 	import { PUBLIC_SITE_URL } from '$app/env/public';
-	import { m } from '#lib/i18n/store.svelte.ts';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
@@ -345,7 +345,8 @@
 	/// (instant, offline), then — for Pro users — asks the server to
 	/// enhance it. A free user's request returns the templated text with
 	/// `upgrade:true`, which surfaces the Pro upsell; any server template
-	/// is English, so only an AI paragraph replaces the localised baseline. Any hard failure
+	/// is English, so only an AI paragraph (written in the viewer's locale)
+	/// replaces the localised baseline. Any hard failure
 	/// (network / non-200) leaves the templated text in place and shows a
 	/// non-blocking error; the baseline is never lost.
 	async function describe() {
@@ -363,7 +364,7 @@
 		genDescription = localised;
 		genSource = 'template';
 		try {
-			const ai = await requestAiDescription(input, getUnit());
+			const ai = await requestAiDescription(input, getUnit(), currentLocale());
 			genDescription = shownDescription(localised, ai);
 			genSource = ai.source;
 			showUpgradeHint = ai.upgrade;

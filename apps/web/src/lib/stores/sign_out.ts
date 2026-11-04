@@ -18,13 +18,19 @@ export interface AuthSignOutClient {
 ///
 /// `settlePending` runs first, while the session still exists: it commits a
 /// delete still inside its undo window, which would otherwise fire after the
-/// sign-out with no session, or under whoever signs in next.
+/// sign-out with no session, or under whoever signs in next. Settling is
+/// auxiliary to signing out, so its failure is logged and the sign-out
+/// still runs.
 export async function signOutWithScope(
 	client: AuthSignOutClient,
 	scope: SignOutScope,
 	settlePending: () => Promise<void> = async () => {},
 ): Promise<SignOutError | null> {
-	await settlePending();
+	try {
+		await settlePending();
+	} catch (e) {
+		console.error('sign-out: settling a pending delete failed', e);
+	}
 	const { error } = await client.signOut({ scope });
 	return error;
 }

@@ -100,8 +100,11 @@ test.describe('/routes/[id] — Describe (Pro user)', () => {
 
 	test('Describe replaces the baseline with AI text + attribution', async ({ page, mockRoute }) => {
 		let sentUnit: unknown;
+		let sentLocale: unknown;
 		await mockRoute(page, '**/api/coach/route-describe', async (route) => {
-			sentUnit = (route.request().postDataJSON() as { unit?: unknown }).unit;
+			const sent = route.request().postDataJSON() as { unit?: unknown; locale?: unknown };
+			sentUnit = sent.unit;
+			sentLocale = sent.locale;
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -128,5 +131,8 @@ test.describe('/routes/[id] — Describe (Pro user)', () => {
 		await expect(page.locator('.desc-upgrade')).toHaveCount(0);
 		// The viewer's unit rides along so the paragraph comes back in it.
 		expect(['km', 'mi']).toContain(sentUnit);
+		// So does the active UI locale, so the paragraph comes back in the
+		// reader's language rather than always in English.
+		expect(sentLocale).toBe('en');
 	});
 });

@@ -458,7 +458,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   /// The runner's next `going` club event within [kHomeEventWindow], for the
-  /// Today block (decisions § 2284). L4: a failed read leaves the card off and
+  /// Today block (decisions § 2285). L4: a failed read leaves the card off and
   /// the rest of Home as it was.
   Future<void> _loadUpcomingEvent() async {
     final social = widget.social;
@@ -1261,7 +1261,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (svc == null || p == null) return;
     // The card's body is the overview: a tap routes into plan_detail so the
     // runner can see the full week + drill into the workout. Starting it is
-    // the card's own Start button (decisions § 2281).
+    // the card's own Start button (decisions § 2282).
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => PlanDetailScreen(
@@ -1556,7 +1556,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       // Logging a run after the fact and importing history are occasional
       // jobs, so they sit in the overflow rather than on the week lead, where
       // they took the lead's whole bottom row on every visit (decisions
-      // § 2280). Neither needs a session: both work offline and signed out.
+      // § 2281). Neither needs a session: both work offline and signed out.
       PopupMenuButton<_HomeMenuAction>(
         key: const Key('dashboardMoreMenu'),
         tooltip: l10n.commonMore,
@@ -1598,7 +1598,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     // Active-plan hero + the goals block: both outlive the welcome state,
     // because onboarding can mint a plan and a goal before the first run
     // exists and neither is a derived metric.
-    // Home's primary action (decisions § 2281): one Start, on today's
+    // Home's primary action (decisions § 2282): one Start, on today's
     // workout when there is an open one to follow, else on the week lead.
     // None while a run records, since the centre button is then the way back
     // to it and a second "Start" would misstate what a tap does.
@@ -1746,7 +1746,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       // The coach entry — the AI coach stays one persistent tap from Home (it
       // has no bottom-nav slot), closing the Today block rather than opening
       // it: today's plan and what was logged today are what Home is opened
-      // for (decisions § 139, amended by § 2279). Gated on api + training, on
+      // for (decisions § 139, amended by § 2280). Gated on api + training, on
       // the Coach being live, plus runs.isNotEmpty (#272) so it never
       // dominates a zero-runs first screen.
       final coach = runs.isNotEmpty ? _coachEntry() : null;
@@ -1788,7 +1788,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           ? null
           : _goalsSection(theme, unit, runs, goals, now);
       // Month and all-time stat strip. The week is the week lead's alone
-      // (decisions § 2282): a Week cell here and a This Week strip below were
+      // (decisions § 2283): a Week cell here and a This Week strip below were
       // the second and third copies of one number, so the cell went and the
       // lead's chevron opens the weekly summary, which now carries the day
       // strip and the week's climb.

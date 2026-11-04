@@ -610,7 +610,7 @@ void main() {
           // section cards — pin its all-caps labels to prove the strip
           // mounted.
           expect(find.text('Last run'), findsOneWidget);
-          // The week is the week lead's alone (decisions § 2282).
+          // The week is the week lead's alone (decisions § 2283).
           expect(find.text('WEEK'), findsNothing);
           expect(find.text('MONTH'), findsOneWidget);
           expect(find.text('ALL TIME'), findsOneWidget);
@@ -842,7 +842,7 @@ void main() {
     testWidgets('activity stat strip shows distance + run count per period',
         (tester) async {
       // Verifies the Month / All time strip (the week is the week lead's
-      // alone, decisions § 2282) surfaces both the rounded distance value AND the per-card run
+      // alone, decisions § 2283) surfaces both the rounded distance value AND the per-card run
       // count copy. Catches a regression where the strip would drop
       // the run-count subtitle.
       await tester.runAsync(() async {
@@ -1325,7 +1325,7 @@ void main() {
             ),
             findsOneWidget,
           );
-          // Below what Home is opened for (decisions § 2279), above Trends.
+          // Below what Home is opened for (decisions § 2280), above Trends.
           double bottomOf(String key) =>
               tester.getBottomLeft(find.byKey(Key(key))).dy;
           final coachTop = tester.getTopLeft(find.text('Ask your coach')).dy;

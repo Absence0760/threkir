@@ -393,7 +393,7 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
           const SizedBox(height: 16),
           _buildStatsCard(theme, unit, stats),
           // The day-by-day strip Home used to show beside the week lead
-          // (decisions § 2282). It draws the calendar week holding today, so
+          // (decisions § 2283). It draws the calendar week holding today, so
           // it shows on that week only.
           if (_showsCurrentWeek) ...[
             const SizedBox(height: 16),
@@ -410,7 +410,7 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
               ),
             ),
           ],
-          // The 20-week heatmap that left Home (decisions § 2283) is this
+          // The 20-week heatmap that left Home (decisions § 2284) is this
           // screen's week picker: a tapped column moves the summary to it.
           if (_period == PeriodType.week) ...[
             const SizedBox(height: 16),

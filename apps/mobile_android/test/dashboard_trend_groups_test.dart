@@ -124,7 +124,7 @@ void main() {
     expect(find.byKey(const ValueKey('dashboard-trend-recent')), findsNothing);
 
     // Volume is the mileage chart alone: the 20-week heatmap left Home for
-    // the weekly summary, as web's did (decisions § 513, § 2283).
+    // the weekly summary, as web's did (decisions § 513, § 2284).
     final volume = order.first;
     expect(find.descendant(of: volume, matching: find.byType(MileageTrendCard)),
         findsOneWidget);

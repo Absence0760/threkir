@@ -4024,7 +4024,7 @@ void main() {
         ];
         // The event card's club lookup moved into the shared
         // `openUpcomingEvent` (Home and the Run tab both tap through it,
-        // decisions § 2284), so its timeout is pinned there.
+        // decisions § 2285), so its timeout is pinned there.
         final eventCard =
             File('lib/widgets/upcoming_event_card.dart').readAsStringSync();
         expect(
@@ -5348,7 +5348,7 @@ void main() {
         () {
       for (final path in [
         // The heatmap's weeks; it moved off Home onto the weekly summary
-        // (decisions § 2283) and still windows by the preference.
+        // (decisions § 2284) and still windows by the preference.
         'lib/widgets/activity_heatmap.dart',
         'lib/mileage_trend.dart',
         'lib/current_week.dart',

@@ -38,7 +38,7 @@ DateTime heatmapGridStart(DateTime now, int weeks,
 /// GitHub-style activity heatmap — a 7×[weeks] grid of squares, intensity
 /// scaled to the day's run count. Rightmost column is the current week;
 /// leftmost is `weeks - 1` weeks ago. It lives on the weekly summary as a
-/// week picker since it left Home, as web's did (decisions § 513, § 2283).
+/// week picker since it left Home, as web's did (decisions § 513, § 2284).
 class ActivityHeatmap extends StatelessWidget {
   final List<Run> runs;
   final int weeks;

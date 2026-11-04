@@ -9,7 +9,7 @@ import { USER_A } from '../fixtures/users';
 
 /**
  * /dashboard's Today block shows the runner's next `going` club event when it
- * starts within the next seven days (decisions § 2284, issue #1187). It used to
+ * starts within the next seven days (decisions § 2285, issue #1187). It used to
  * be 48 hours, so a Saturday group run only appeared on the Thursday.
  *
  * A fresh saga user keeps the read honest: the card shows only the EARLIEST

@@ -190,8 +190,17 @@ test.describe('/routes/[id] 3D course preview', () => {
 			await expect(preview).toHaveAttribute('data-flyover-mode', 'flight');
 			await dialog.getByTestId('course-preview-speed').selectOption('1000');
 
-			// 3.3 km at 1000 m/s, then the 5 s ease and orbit.
-			await expect(preview).toHaveAttribute('data-flyover-overview', '', { timeout: 20_000 });
+			// The flight's clock caps each frame at 100 ms, so its wall time
+			// scales with the frame rate, and software WebGL on a cold page
+			// draws a few frames a second. Seek to the last 200 m, which
+			// pauses, and fly that: one or two frames reach the finish however
+			// slow they are. The 5 s ease and orbit after it run on wall time.
+			const scrub = dialog.getByTestId('course-preview-scrub');
+			const max = Number(await scrub.getAttribute('max'));
+			await scrub.fill(String(Math.round(max - 200)));
+			await expect(dialog.getByTestId('course-preview-play')).toHaveText(/Play/);
+			await dialog.getByTestId('course-preview-play').click();
+			await expect(preview).toHaveAttribute('data-flyover-overview', '');
 			await expect(dialog.getByTestId('course-preview-play')).toHaveText(/Play/);
 
 			await dialog.getByTestId('course-preview-play').click();

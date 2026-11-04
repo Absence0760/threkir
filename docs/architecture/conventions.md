@@ -1121,16 +1121,22 @@ A list group's uppercased eyebrow is ui_kit's `SectionHeader`. It is deliberatel
 
 On the Flutter apps, a whole-surface "nothing here yet / not found" state renders ui_kit's `EmptyState` (icon 48, `all(32)` padding, titleMedium title, bodySmall body, optional CTA — reusing `ErrorState`'s icon size and padding; [decisions.md § 485](decisions.md)), never a hand-rolled centred `Text` or bespoke icon column; tiny inline empty hints inside a larger card/list section stay inline. `architecture_guards_test.dart` fails any `class …EmptyState` declared in `lib/`.
 
-## Mobile loading surfaces — never a bare centred spinner
+## Loading surfaces — a skeleton shaped like the screen it becomes
 
-On the Flutter apps a loading surface says what is coming, and holds the space it will occupy. **Never `Center(child: CircularProgressIndicator())`** — it reports only that something is happening, occupies none of the room the content needs, and lands the arriving frame as a re-layout instead of a fill. Choose by the shape of the surface that is loading ([decisions.md § 492](decisions.md) for the primitives, § 502 for the per-surface split):
+**A screen loading content shows a skeleton shaped like the screen it becomes**, on every platform ([decisions.md § 2288](decisions.md), superseding § 199 and the loader half of § 492 / § 504). It holds the space the content will occupy, so the arriving frame fills the blocks instead of re-laying the page out. There is one loading language: no spinner, and no running figure — the animated athlete that detail pages used to show is deleted on both platforms, and a guard on each fails if it returns.
+
+**Mobile.** **Never `Center(child: CircularProgressIndicator())`.** Compose ui_kit's three primitives into the loaded layout ([decisions.md § 492](decisions.md), § 504, § 2288):
 
 - **Rows in a bounded host** (a tab body, a `Scaffold` body, a settings form, a chat pane inside an `Expanded`) → `ListSkeleton(rows:, rowHeight:, hasLeading:)`. It owns a non-scrolling viewport, so it clips rather than overflowing when the host is short.
 - **One section of an already-laid-out scrollable** (a comment list under a run, a picker inside a dialog) → `ListSkeleton.section(...)`. Same rows at intrinsic height, no viewport, so it is safe where the incoming height is unbounded and the default constructor would throw.
-- **A genuinely mixed layout** (a map plus stats, a detail body of prose and controls) → `FullBodyLoader(kind:, label:)`.
-- **A composite** — compose the primitives into the shape the surface settles into rather than reaching for a fourth thing; `profile_screen`'s header-plus-tabs load is a `section` block, a `Divider`, and an `Expanded(ListSkeleton(...))`.
+- **A part with no row rhythm** (a map, a chart, a stat strip, a barcode, a form field) → `SkeletonBlock(height:, width:, radius:)`, beside the rows. Same 900 ms pulse and reduced-motion pose as `ListSkeleton`.
+- **A shape several screens share** → the compositions in `lib/widgets/loading_skeletons.dart`: `MapDetailSkeleton` (hero map at `detailMapHeight`, stat strip, rows), `TabbedDetailSkeleton` (header band, tab strip, rows — `profile_screen`'s whole-profile load is the same shape), `SectionedDetailSkeleton` (title band, optional stats and action, rows). Anything else composes the primitives inline in the screen. Don't add a fourth primitive; composition has covered every screen so far.
 
-ui_kit carries no localisations, so every one of these takes a `label` for the screen reader — pass `l10n.commonLoading` rather than a literal. `architecture_guards_test.dart` fails any bare centred spinner in `lib/`.
+Keep the loaded screen's `AppBar` on the loading `Scaffold` (an empty `AppBar()` when the title is not known yet), so back works during the fetch and the bar does not pop in. ui_kit carries no localisations, so pass `l10n.commonLoading` as the `label` — once per composition: `ListSkeleton` requires it, and a `SkeletonBlock` stays silent unless it is the only element. `architecture_guards_test.dart` fails any bare centred spinner in `lib/` and any `ActivityLoader` / `FullBodyLoader` in `lib/` or ui_kit.
+
+**Web.** Compose `lib/components/SkeletonBlock.svelte` (or a page's own `.skel` rows, the older shape the list pages draw) into the loaded layout, mark the skeleton `aria-hidden="true"`, and announce the load once with a `<p class="visually-hidden" role="status">` line. `loading_skeleton_guard.test.ts` fails any `ActivityLoader` under `src/`.
+
+A wait that is **not** page content — GPS acquisition, finishing a sign-in — may earn an indicator of its own, but under a new name and with the reason recorded beside the guard.
 
 ## Mobile shared controls — three widgets a screen may not rebuild by hand
 
@@ -1216,7 +1222,7 @@ On the Flutter apps, every list of runs draws `RunListTile` (`lib/widgets/run_li
 
 ## Mobile motion — `AppMotion`'s rungs, and a loop that stops rather than hurries
 
-On the Flutter apps, an animation's duration comes from `AppMotion` (`packages/ui_kit/lib/src/motion.dart`) — `brief` (200 ms, an element changing in place), `standard` (300 ms, an animated scroll or page change), `pulse` (1500 ms, a repeating loop) — and its curve from `AppMotion.curveStandard` / `curveEmphasised` / `curveOvershoot` / `curveLinear`. Each rung is the **modal value of its role** in what was already shipping, so the tier moved the off-mode sites and left the majority alone; a new role with no mode to derive from gets a documented local, not an invented fourth rung (the indeterminate-progress cadences — typing dots at 600, skeleton shimmer at 900, `ActivityLoader`'s web-ported 720/1050/1500 gait — are that case). `reduce_motion_test.dart` (both twins) fails any `Curves.` outside `motion.dart` and requires every rung to have an adopter.
+On the Flutter apps, an animation's duration comes from `AppMotion` (`packages/ui_kit/lib/src/motion.dart`) — `brief` (200 ms, an element changing in place), `standard` (300 ms, an animated scroll or page change), `pulse` (1500 ms, a repeating loop) — and its curve from `AppMotion.curveStandard` / `curveEmphasised` / `curveOvershoot` / `curveLinear`. Each rung is the **modal value of its role** in what was already shipping, so the tier moved the off-mode sites and left the majority alone; a new role with no mode to derive from gets a documented local, not an invented fourth rung (the indeterminate-progress cadences — typing dots at 600, skeleton pulse at 900 — are that case; the running-figure loader's 720/1050 gait was the third until § 2288 retired it). `reduce_motion_test.dart` (both twins) fails any `Curves.` outside `motion.dart` and requires every rung to have an adopter.
 
 **Reduce-motion is not a duration problem, and the framework only half-covers it.** Flutter scales a one-shot `forward`/`reverse`/`animateTo` to 5 % when `MediaQuery.disableAnimations` is set, so implicit widgets and one-shot controllers are handled already. It does **not** touch `repeat()` — `AnimationController._animateToInternal` holds the scale and `repeat` does not, for the reason its own source gives — and it does not touch an animated scroll, because `DrivenScrollActivity` runs on an `AnimationController.unbounded` that defaults to `AnimationBehavior.preserve`. Those two are the whole gap:
 

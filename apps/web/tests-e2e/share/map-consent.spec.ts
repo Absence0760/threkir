@@ -26,7 +26,9 @@ const TRACK = [
 ];
 
 const isTileHost = (url: URL) =>
-	FALLBACK_TILE_ORIGINS.has(url.origin) || url.hostname.endsWith('maptiler.com');
+	FALLBACK_TILE_ORIGINS.has(url.origin) ||
+	url.hostname === 'maptiler.com' ||
+	url.hostname.endsWith('.maptiler.com');
 
 /** Records every request that reaches a tile host. */
 function watchTiles(page: Page): Request[] {

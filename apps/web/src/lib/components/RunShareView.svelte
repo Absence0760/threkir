@@ -207,11 +207,10 @@
 	{#if track.length > 0}
 		<div class="map-container" class:compact>
 			<!--
-				requireExplicitConsent=true gates MapTiler init behind a
-				"Load map" tap until the user has accepted the cookie
-				banner (auto-passes when accepted). Anon visitors on
-				/share/run/[id] are the load-bearing case for this
-				audit/cookie-consent (2026-05-25) finding.
+				requireExplicitConsent holds MapTiler behind this view's
+				"Load map" tap even after the cookie banner was accepted:
+				the banner covers error reporting only (decisions § 2298
+				amendment).
 			-->
 			<RunMap
 				{track}

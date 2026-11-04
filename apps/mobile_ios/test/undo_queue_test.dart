@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import '../lib/undo_queue.dart';
 
-/// Mirror of web `core/undo_queue.test.ts` — same 18 cases, same order.
+/// Mirror of web `core/undo_queue.test.ts`, in the same order.
 /// Deterministic clock + timer pair: `advance` fires every timer whose
 /// deadline has passed, in deadline order, so a re-armed timer created
 /// mid-advance still lands correctly.
@@ -301,6 +301,71 @@ void main() {
     await h.queue.flush();
     await h.queue.flush();
     expect(commit.count, 1);
+  });
+
+  // Reason: flush returned at once when the slot was already empty, so a
+  // sign-out that awaited it went ahead while a commit the window timer (or a
+  // second delete) had started was still on the wire, and that commit's
+  // failure was only logged to a signed-out reader instead of restored and
+  // reported.
+  test('flush waits for a commit the window timer already started, and its '
+      'failure reports first', () async {
+    final h = _Harness().init();
+    final order = <String>[];
+    final commit = Completer<void>();
+    h.queue.defer(DeferredDestruction(
+      message: 'Removed',
+      commit: () => commit.future,
+      restore: () => order.add('restore'),
+      onCommitError: (_) => order.add('report'),
+    ));
+    await h.advance(8000);
+    expect(h.queue.hasPending(), isFalse, reason: 'the timer took the entry');
+    final flushed = h.queue.flush().then((_) => order.add('flushed'));
+    await Future<void>.value();
+    await Future<void>.value();
+    expect(order, isEmpty,
+        reason: 'flush is still waiting on the in-flight commit');
+    commit.completeError(StateError('500'));
+    await flushed;
+    expect(order, ['restore', 'report', 'flushed']);
+  });
+
+  test('flush waits for the commit a second destruction displaced', () async {
+    final h = _Harness().init();
+    final order = <String>[];
+    final land = Completer<void>();
+    h.queue.defer(DeferredDestruction(
+      message: 'One',
+      commit: () => land.future,
+      restore: () {},
+    ));
+    h.queue.defer(DeferredDestruction(
+      message: 'Two',
+      commit: () async => order.add('two'),
+      restore: () {},
+    ));
+    final flushed = h.queue.flush().then((_) => order.add('flushed'));
+    await Future<void>.value();
+    await Future<void>.value();
+    expect(order, ['two'],
+        reason: 'the slot committed, the displaced one has not landed');
+    land.complete();
+    await flushed;
+    expect(order, ['two', 'flushed']);
+  });
+
+  test('a settled commit is no longer waited on', () async {
+    final h = _Harness().init();
+    h.queue.defer(DeferredDestruction(
+      message: 'Removed',
+      commit: () async {},
+      restore: () {},
+    ));
+    await h.advance(8000);
+    var done = false;
+    await h.queue.flush().then((_) => done = true);
+    expect(done, isTrue);
   });
 
   // -------------------------------------------------------------------------

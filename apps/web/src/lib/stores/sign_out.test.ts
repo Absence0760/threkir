@@ -10,6 +10,7 @@ import {
 	type AuthSignOutClient,
 	type SignOutScope,
 } from './sign_out';
+import { createUndoQueue } from '../core/undo_queue';
 
 function mockAuth(error: { message?: string } | null = null): {
 	client: AuthSignOutClient;
@@ -128,6 +129,80 @@ test('a pending delete that settles quickly signs out at once, with no cap left 
 		mock.timers.tick(SIGN_OUT_SETTLE_TIMEOUT_MS * 2);
 		assert.deepEqual(calls, ['local']);
 	} finally {
+		mock.timers.reset();
+	}
+});
+
+function queueUnderMockTimers() {
+	return createUndoQueue({
+		windowMs: () => 8_000,
+		setTimer: (cb, ms) => setTimeout(cb, ms),
+		clearTimer: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
+		now: () => Date.now(),
+		onChange: () => {},
+		owner: () => 'a',
+	});
+}
+
+async function drain() {
+	for (let i = 0; i < 10; i++) await Promise.resolve();
+}
+
+// Reason: the undo queue's flush returned at once when its window timer had
+// already started the commit, so Sign out went ahead while the delete was on
+// the wire and its failure reached nobody.
+test('sign-out waits for a commit already in flight, and its failure reports before the session ends', async () => {
+	mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+	try {
+		const order: string[] = [];
+		let fail!: (e: Error) => void;
+		const queue = queueUnderMockTimers();
+		queue.defer({
+			message: 'Removed',
+			commit: () => new Promise<void>((_, reject) => (fail = reject)),
+			restore: () => order.push('restore'),
+			onCommitError: () => order.push('report'),
+		});
+		mock.timers.tick(8_000);
+		assert.equal(queue.hasPending(), false, 'the window closed and the commit is on the wire');
+		const client: AuthSignOutClient = {
+			async signOut({ scope }) {
+				order.push(`signOut:${scope}`);
+				return { error: null };
+			},
+		};
+		const done = signOutWithScope(client, 'local', queue.flush);
+		await drain();
+		mock.timers.tick(1_000);
+		await drain();
+		assert.deepEqual(order, [], 'sign-out is held by the in-flight commit');
+		fail(new Error('500'));
+		await done;
+		assert.deepEqual(order, ['restore', 'report', 'signOut:local']);
+	} finally {
+		mock.timers.reset();
+	}
+});
+
+test('a commit in flight slower than the cap stops holding the sign-out at 5 s', async () => {
+	mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+	const warn = console.warn;
+	console.warn = () => {};
+	try {
+		const queue = queueUnderMockTimers();
+		queue.defer({ message: 'Removed', commit: () => new Promise<void>(() => {}), restore: () => {} });
+		mock.timers.tick(8_000);
+		const { client, calls } = mockAuth();
+		const done = signOutWithScope(client, 'local', queue.flush);
+		await drain();
+		mock.timers.tick(SIGN_OUT_SETTLE_TIMEOUT_MS - 1);
+		await drain();
+		assert.deepEqual(calls, []);
+		mock.timers.tick(1);
+		assert.equal(await done, null);
+		assert.deepEqual(calls, ['local']);
+	} finally {
+		console.warn = warn;
 		mock.timers.reset();
 	}
 });

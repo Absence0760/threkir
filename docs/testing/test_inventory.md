@@ -824,8 +824,8 @@ The TrainingLoadChart component on `/dashboard` renders the three series; `hasTr
 
 **Test-runner constraint:** `tsx --test` runs raw TypeScript through the Node loader and does not understand Svelte runes. That means `*.svelte.ts` modules (`units.svelte.ts`, `stores/auth.svelte.ts`, `stores/toast.svelte.ts`) cannot be imported — the `$state(...)` call at module load fails with `ReferenceError: $state is not defined`. Keep test-targeted modules (`training.ts`, `fitness.ts`, etc.) free of imports from `.svelte.ts` files. The unit-aware formatters `fmtKm` / `fmtPace` live in `units.svelte.ts` for that reason; UI code imports them from `#lib/format/units.svelte` directly. Adding vitest with the Svelte plugin would lift this restriction — not done yet.
 
-### `apps/web/src/lib/core/undo_queue.test.ts` — 14 tests
-
+### `apps/web/src/lib/core/undo_queue.test.ts` — 18 tests
+ A commit that fails after the account that queued it signed out, or after another account signed in, is logged with no `restore` and no `onCommitError`; the owner is read when the delete is queued, and a failure while it is still signed in restores and reports as before.
 The deferred-commit undo contract (issue #666 U8, decisions § 514). A fake clock + timer pair drives `createUndoQueue`, so every assertion is deterministic: `defer` does NOT commit; `undo` cancels the mutation entirely (commit never runs, `restore` does); the window elapsing commits and does NOT restore; a failed commit restores AND reports; a second destruction commits the first and disarms its timer (the one-slot rule); a stale `undo` after the window closed is a no-op rather than a false claim that the row came back; `flush` is idempotent. The WCAG 2.2.1 half is pinned too — `pause` disarms and a 60 s hover consumes none of the window, `resume` re-arms with only the remainder, the published `id` + `windowMs` stay stable across a pause so the bar's CSS countdown does not restart, a `0` window arms no timer at all and is still undoable ten minutes later, and a negative window clamps to no-limit rather than firing instantly. Plus `undoWindowSFromPref`: every offered choice round-trips, and absent / corrupt / unrecognised values fall back to the 8 s default and **never** to no-limit.
 
 The reactive shell (`stores/undo.svelte.ts`) and the bar itself are covered e2e — see `nutrition.spec.ts`, `route-conditions.spec.ts`, `runs/social.spec.ts` and `cross-user/comments.spec.ts` below, plus round 12's four adopters: `u/notifications.spec.ts`, `routes/review.spec.ts`, `routes/markers.spec.ts` and `settings/gear.spec.ts` (the last carrying the keyboard-only in-modal leg).
@@ -1107,7 +1107,7 @@ Three source-level resilience guards were added on 2026-09-03 in the same idiom 
 
 The handful of Wear OS surfaces NOT covered (need instrumentation): `Pedometer` sensor binding itself, `HeartRateMonitor.MeasureCallback` registration with Health Services, `GpsRecorder`'s `GPS_PROVIDER` and `FusedLocationProviderClient` callbacks, foreground-service lifecycle, Compose UI screen rendering (the team deliberately stayed off Robolectric — `ScreenWiringTest`'s source-grep approach is the cheap-but-effective alternative).
 
-### `apps/job_worker/internal/**/*_test.go` — 1008 tests across 96 files (Go unit tests)
+### `apps/job_worker/internal/**/*_test.go` — 1009 tests across 96 files (Go unit tests)
 
 Run with `go test ./...` from `apps/job_worker`. No network or Postgres dependency — the worker tests use a fake `Backend`, the matcher tests use `httptest.Server` to stand in for OSRM. Gated in CI by the `test-worker` job (`go vet` + `go test ./...`), so a Go-side guard like `internal/personal_data_export_guard_test.go` (the GDPR Art 20 export-completeness tripwire — fails the build when a new `user_id`-bearing table isn't wired into `exportPersonalDataSpecs` or the reasoned exclusion list) now fails a PR, not just a local run. Files:
 

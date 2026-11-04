@@ -308,8 +308,9 @@ test('the inbox store times its reads and markers on the monotonic clock', () =>
 
 test('the badge applies only its newest read, so a read from before a delete cannot land after it', () => {
 	const src = readFileSync(new URL('../stores/dm_unread.svelte.ts', import.meta.url), 'utf8');
-	assert.match(src, /new CoalescingRefetcher<DmBadgeState\[\]>/);
-	assert.match(src, /async refresh\(\) \{\s*await this\.#refetcher\.runNow\(\);/);
+	assert.match(src, /#reader = new DmBadgeReader\(/);
+	assert.match(src, /async refresh\(\) \{\s*await this\.#reader\.refresh\(\);/);
+	assert.match(src, /clear\(\) \{\s*this\.#reader\.bind\(null\);/);
 	const inbox = readFileSync(new URL('../stores/messages_inbox.svelte.ts', import.meta.url), 'utf8');
 	const commit = inbox.slice(inbox.indexOf('commit: async'), inbox.indexOf('restore:'));
 	assert.match(commit, /dmUnreadStore\.forget\(conversationId\);[\s\S]*dmPendingHides\.delete\(conversationId\);[\s\S]*void dmUnreadStore\.refresh\(\);/);

@@ -1,8 +1,15 @@
 -- Pins the route-photo orphan sweep (migration 20271106000020, decisions
 -- § 2305): which `route-photos` objects the worklist hands the Go worker,
 -- that the gate keeps it empty and enqueues nothing while off, that a
--- transaction's route_photos deletes share one paths job up to 1000 paths,
--- and that a failed enqueue never aborts the delete.
+-- transaction's route_photos deletes are buffered and written at commit as
+-- ceil(paths / 1000) jobs, each written once, and that a failed enqueue never
+-- aborts the delete.
+--
+-- The whole file is one transaction that rolls back, so the deferred flush
+-- never reaches a commit. pg_temp.commit_sweep() stands in for it: setting
+-- the constraint trigger IMMEDIATE fires its pending events retroactively,
+-- exactly as commit would, and setting it back to DEFERRED lets the next
+-- section buffer again.
 --
 --   1-3.   Gate off: the worklist is empty although an orphan exists, and
 --          neither the nightly enqueue nor a delete queues a job.
@@ -15,27 +22,36 @@
 --   7.     Paths mode: only the handed paths that exist and are unreferenced,
 --          with no grace.
 --   8-9.   The nightly enqueue queues one backstop job and is a singleton.
---   10-12. Deleting the route as its owner queues ONE paths job holding the
---          cascaded photos' original and thumb paths (no placeholder ''),
---          and those paths are now on the worklist.
+--   10-12. Deleting the route as its owner queues ONE paths job at commit,
+--          holding the cascaded photos' original and thumb paths (no
+--          placeholder ''), and those paths are now on the worklist.
 --   13.    A delete that removes no photo queues nothing.
 --   14-15. anon and authenticated cannot call the worklist.
---   16.    Two routes deleted in one statement cascade as two firings, and
---          both append to the transaction's existing paths job.
---   17-18. Past 1000 paths the firing fills that job and starts one more,
---          so 1100 cascaded paths are two jobs (1000 + the rest), none lost.
---   19-20. With the enqueue made to fail, the photo delete still commits and
+--   16.    Two routes deleted in one statement (two cascaded firings) and a
+--          photo deleted in another statement are one job at commit.
+--   17-20. 2,500 paths cascaded from 25 routes, one statement each, are
+--          three jobs (1000, 1000, 500), every path once; the jobs table
+--          took three inserts and no update, so no payload was rewritten
+--          per firing; and the buffer is empty after the flush.
+--   21.    A delete rolled back to a savepoint leaves nothing to flush.
+--   22-23. With the enqueue made to fail, the photo delete still commits and
 --          queues nothing.
---   21-22. A queued paths job the trigger did not queue in this transaction
---          is never appended to, though its timestamps equal this
---          transaction's now() (another transaction that started in the same
---          microsecond): the paths go to the trigger's own job.
---   23-24. A serialization failure or a deadlock inside the enqueue is not
---          swallowed: it aborts the delete so the caller retries the whole
+--   24-25. A queued paths job another transaction committed, with this
+--          transaction's timestamps, is left as it was: the paths go to a
+--          job of their own.
+--   26-27. A serialization failure or a deadlock inside the enqueue is not
+--          swallowed: it aborts the commit so the caller retries the whole
 --          transaction.
 
 begin;
-select plan(24);
+select plan(27);
+
+create function pg_temp.commit_sweep() returns void language plpgsql as $f$
+begin
+  set constraints public.route_photos_flush_orphan_sweep immediate;
+  set constraints public.route_photos_flush_orphan_sweep deferred;
+end;
+$f$;
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values ('d2293000-0000-0000-0000-0000000000a1', 'authenticated', 'authenticated', 'ps-owner@ps.local', '', now(), now());
@@ -87,17 +103,18 @@ select is(
   0,
   'gate off: the worklist is empty although an orphan exists');
 
+insert into route_photos (id, route_id, owner_id, storage_path)
+values ('d2293000-0000-0000-0000-0000000000f8', 'd2293000-0000-0000-0000-0000000000b1',
+        'd2293000-0000-0000-0000-0000000000a1', 'd2293000-0000-0000-0000-0000000000a1/gate-off.jpg');
+
 select public.enqueue_route_photo_orphan_sweep();
-delete from route_photos where id = 'd2293000-0000-0000-0000-0000000000f9';
+delete from route_photos where id = 'd2293000-0000-0000-0000-0000000000f8';
+select pg_temp.commit_sweep();
 
 select is(
   (select count(*)::int from public.jobs where kind = 'route_photo_orphan_sweep'),
   (select n from sweep_jobs_before),
   'gate off: neither the nightly enqueue nor a delete queues a job');
-
-insert into route_photos (id, route_id, owner_id, storage_path)
-values ('d2293000-0000-0000-0000-0000000000f9', 'd2293000-0000-0000-0000-0000000000b1',
-        'd2293000-0000-0000-0000-0000000000a1', '');
 
 select is(
   (select count(*)::int from public.route_photo_orphan_paths(array['d2293000-0000-0000-0000-0000000000a1/fresh.jpg'])),
@@ -158,12 +175,13 @@ set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"d2293000-0000-0000-0000-0000000000a1","role":"authenticated"}';
 delete from routes where id = 'd2293000-0000-0000-0000-0000000000b1';
 reset role;
+select pg_temp.commit_sweep();
 
 select is(
   (select count(*)::int from public.jobs
     where kind = 'route_photo_orphan_sweep' and payload ? 'paths'),
   1,
-  'deleting a route whose photos cascade queues one paths job');
+  'deleting a route whose photos cascade queues one paths job at commit');
 
 select set_eq(
   $$ select jsonb_array_elements_text(payload -> 'paths') from public.jobs
@@ -182,6 +200,7 @@ select set_eq(
 
 -- ── 13: a delete that removes no photo ─────────────────────────────────────
 delete from routes where id = 'd2293000-0000-0000-0000-0000000000b2';
+select pg_temp.commit_sweep();
 
 select is(
   (select count(*)::int from public.jobs
@@ -204,94 +223,146 @@ select throws_ok(
   'authenticated cannot read the orphan worklist');
 reset role;
 
--- ── 16: one statement, several cascades ────────────────────────────────────
--- The whole test is one transaction, so the paths job test 10 queued is the
--- one every later firing appends to. These are superuser writes, so the
--- owner's claims from test 10 are cleared first.
+-- ── 16: several statements, one job ────────────────────────────────────────
+-- Each later section starts from no paths job, so its counts are its own.
+-- These are superuser writes, so the owner's claims from test 10 are cleared.
 set local "request.jwt.claims" = '{}';
+delete from public.jobs where kind = 'route_photo_orphan_sweep' and payload ? 'paths';
+
 insert into routes (id, user_id, name, waypoints, distance_m, is_public)
-select ('d2293000-0000-0000-0000-0000000000c' || n)::uuid,
+select ('d2293000-0000-0000-0000-0000000000' || to_char(n, 'FM00'))::uuid,
        'd2293000-0000-0000-0000-0000000000a1', 'Cascade ' || n,
        '[{"lat":51.5,"lng":-0.1},{"lat":51.51,"lng":-0.11}]'::jsonb, 5000, true
-  from generate_series(1, 5) n;
+  from generate_series(10, 39) n;
 
-insert into route_photos (route_id, owner_id, storage_path)
-values ('d2293000-0000-0000-0000-0000000000c1', 'd2293000-0000-0000-0000-0000000000a1',
-        'd2293000-0000-0000-0000-0000000000a1/c1.jpg'),
-       ('d2293000-0000-0000-0000-0000000000c2', 'd2293000-0000-0000-0000-0000000000a1',
-        'd2293000-0000-0000-0000-0000000000a1/c2.jpg');
+insert into route_photos (id, route_id, owner_id, storage_path)
+values ('d2293000-0000-0000-0000-0000000000e1', 'd2293000-0000-0000-0000-000000000010',
+        'd2293000-0000-0000-0000-0000000000a1', 'd2293000-0000-0000-0000-0000000000a1/c10.jpg'),
+       ('d2293000-0000-0000-0000-0000000000e2', 'd2293000-0000-0000-0000-000000000011',
+        'd2293000-0000-0000-0000-0000000000a1', 'd2293000-0000-0000-0000-0000000000a1/c11.jpg'),
+       ('d2293000-0000-0000-0000-0000000000e3', 'd2293000-0000-0000-0000-000000000012',
+        'd2293000-0000-0000-0000-0000000000a1', 'd2293000-0000-0000-0000-0000000000a1/c12.jpg');
 
-delete from routes where id in ('d2293000-0000-0000-0000-0000000000c1',
-                                'd2293000-0000-0000-0000-0000000000c2');
+delete from routes where id in ('d2293000-0000-0000-0000-000000000010',
+                                'd2293000-0000-0000-0000-000000000011');
+delete from route_photos where id = 'd2293000-0000-0000-0000-0000000000e3';
+select pg_temp.commit_sweep();
 
 select results_eq(
-  $$ select count(*)::int, sum(jsonb_array_length(payload -> 'paths'))::int from public.jobs
+  $$ select payload -> 'paths' from public.jobs
       where kind = 'route_photo_orphan_sweep' and payload ? 'paths' $$,
-  $$ values (1, 4) $$,
-  'two routes deleted in one statement append their photos to the one queued paths job');
+  $$ values ('["d2293000-0000-0000-0000-0000000000a1/c10.jpg",
+               "d2293000-0000-0000-0000-0000000000a1/c11.jpg",
+               "d2293000-0000-0000-0000-0000000000a1/c12.jpg"]'::jsonb) $$,
+  'two cascaded firings and a later statement are one job at commit, paths sorted');
 
--- ── 17-18: the 1000-path cap ───────────────────────────────────────────────
+-- ── 17-20: ceil(paths / 1000) jobs, each written once ──────────────────────
+delete from public.jobs where kind = 'route_photo_orphan_sweep' and payload ? 'paths';
+
 insert into route_photos (route_id, owner_id, storage_path)
-select case when n <= 600 then 'd2293000-0000-0000-0000-0000000000c3'::uuid
-            else 'd2293000-0000-0000-0000-0000000000c4'::uuid end,
+select ('d2293000-0000-0000-0000-0000000000' || to_char(15 + (n - 1) / 100, 'FM00'))::uuid,
        'd2293000-0000-0000-0000-0000000000a1',
        'd2293000-0000-0000-0000-0000000000a1/bulk-' || n || '.jpg'
-  from generate_series(1, 1100) n;
+  from generate_series(1, 2500) n;
 
-delete from routes where id in ('d2293000-0000-0000-0000-0000000000c3',
-                                'd2293000-0000-0000-0000-0000000000c4');
+create temporary table jobs_writes_before as
+  select n_tup_ins, n_tup_upd from pg_stat_xact_user_tables
+   where schemaname = 'public' and relname = 'jobs';
+
+do $d$
+declare r int;
+begin
+  for r in 15..39 loop
+    delete from routes where id = ('d2293000-0000-0000-0000-0000000000' || r)::uuid;
+  end loop;
+end;
+$d$;
+select pg_temp.commit_sweep();
 
 select results_eq(
   $$ select jsonb_array_length(payload -> 'paths') from public.jobs
       where kind = 'route_photo_orphan_sweep' and payload ? 'paths' order by id $$,
-  $$ values (1000), (104) $$,
-  'past 1000 paths the job is filled and one more is started');
+  $$ values (1000), (1000), (500) $$,
+  '2,500 paths cascaded from 25 routes are three jobs of at most 1000');
 
-select is(
-  (select count(distinct p)::int from public.jobs j,
-          jsonb_array_elements_text(j.payload -> 'paths') p
-    where j.kind = 'route_photo_orphan_sweep'),
-  1104,
+select results_eq(
+  $$ select count(*)::int, count(distinct p)::int from public.jobs j,
+            jsonb_array_elements_text(j.payload -> 'paths') p
+      where j.kind = 'route_photo_orphan_sweep' $$,
+  $$ values (2500, 2500) $$,
   'every cascaded path is queued exactly once');
 
--- ── 19-20: a failed enqueue never aborts the delete ────────────────────────
--- A CHECK no sweep job can pass, added NOT VALID so the rows above stay put:
--- both the append and the insert now raise inside the trigger.
+select results_eq(
+  $$ select s.n_tup_ins - b.n_tup_ins, s.n_tup_upd - b.n_tup_upd
+       from pg_stat_xact_user_tables s, jobs_writes_before b
+      where s.schemaname = 'public' and s.relname = 'jobs' $$,
+  $$ values (3::bigint, 0::bigint) $$,
+  'the 25 firings wrote three job rows and rewrote none');
+
+select is(
+  current_setting('threkir.route_photo_orphan_sweep_paths', true),
+  '',
+  'the flush empties the buffer, so no later firing writes the paths again');
+
+-- ── 21: a rolled-back delete leaves nothing to flush ───────────────────────
+delete from public.jobs where kind = 'route_photo_orphan_sweep' and payload ? 'paths';
+
+insert into route_photos (id, route_id, owner_id, storage_path)
+values ('d2293000-0000-0000-0000-0000000000fd', 'd2293000-0000-0000-0000-000000000012',
+        'd2293000-0000-0000-0000-0000000000a1', 'd2293000-0000-0000-0000-0000000000a1/kept.jpg');
+
+savepoint before_delete;
+delete from route_photos where id = 'd2293000-0000-0000-0000-0000000000fd';
+rollback to savepoint before_delete;
+select pg_temp.commit_sweep();
+
+select is(
+  (select count(*)::int from public.jobs
+    where kind = 'route_photo_orphan_sweep' and payload ? 'paths'),
+  0,
+  'a delete rolled back to a savepoint queues nothing at commit');
+
+-- ── 22-23: a failed enqueue never aborts the delete ────────────────────────
+-- A CHECK no sweep job can pass, added NOT VALID so the backstop row stays
+-- put: the flush's insert now raises inside the trigger.
 alter table public.jobs
   add constraint test_reject_sweep check (kind <> 'route_photo_orphan_sweep') not valid;
 
 insert into route_photos (id, route_id, owner_id, storage_path)
-values ('d2293000-0000-0000-0000-0000000000fa', 'd2293000-0000-0000-0000-0000000000c5',
+values ('d2293000-0000-0000-0000-0000000000fa', 'd2293000-0000-0000-0000-000000000012',
         'd2293000-0000-0000-0000-0000000000a1', 'd2293000-0000-0000-0000-0000000000a1/fails.jpg');
 
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"d2293000-0000-0000-0000-0000000000a1","role":"authenticated"}';
-select lives_ok(
-  $$ delete from route_photos where id = 'd2293000-0000-0000-0000-0000000000fa' $$,
-  'the owner''s photo delete succeeds although its enqueue fails');
+delete from route_photos where id = 'd2293000-0000-0000-0000-0000000000fa';
 reset role;
+set local "request.jwt.claims" = '{}';
+
+select lives_ok(
+  $$ select pg_temp.commit_sweep() $$,
+  'the owner''s photo delete commits although its enqueue fails');
 
 select results_eq(
   $$ select (select count(*)::int from route_photos where id = 'd2293000-0000-0000-0000-0000000000fa'),
-            (select count(distinct p)::int from public.jobs j,
-                    jsonb_array_elements_text(j.payload -> 'paths') p
-              where j.kind = 'route_photo_orphan_sweep') $$,
-  $$ values (0, 1104) $$,
+            (select count(*)::int from public.jobs
+              where kind = 'route_photo_orphan_sweep' and payload ? 'paths') $$,
+  $$ values (0, 0) $$,
   'the row is gone and the failed enqueue queued nothing, leaving the bytes to the backstop');
 
 alter table public.jobs drop constraint test_reject_sweep;
 
--- ── 21-22: only this transaction's own job is appended to ──────────────────
+-- ── 24-25: another transaction's job is never touched ──────────────────────
 -- Inserted here by hand, so its created_at and scheduled_at are this
 -- transaction's now(), exactly as a job committed by a concurrent transaction
--- that started in the same microsecond would read; its id is the newest.
+-- that started in the same microsecond would read.
 insert into public.jobs (kind, payload, max_attempts)
 values ('route_photo_orphan_sweep', '{"paths":["someone-else/x.jpg"]}'::jsonb, 3);
 
 insert into route_photos (id, route_id, owner_id, storage_path)
-values ('d2293000-0000-0000-0000-0000000000fb', 'd2293000-0000-0000-0000-0000000000c5',
+values ('d2293000-0000-0000-0000-0000000000fb', 'd2293000-0000-0000-0000-000000000012',
         'd2293000-0000-0000-0000-0000000000a1', 'd2293000-0000-0000-0000-0000000000a1/own.jpg');
 delete from route_photos where id = 'd2293000-0000-0000-0000-0000000000fb';
+select pg_temp.commit_sweep();
 
 select is(
   (select payload from public.jobs
@@ -300,13 +371,13 @@ select is(
   'a job another transaction queued is left exactly as it was');
 
 select is(
-  (select jsonb_array_length(payload -> 'paths') from public.jobs
+  (select payload from public.jobs
     where kind = 'route_photo_orphan_sweep'
       and payload -> 'paths' ? 'd2293000-0000-0000-0000-0000000000a1/own.jpg'),
-  105,
-  'the path is appended to the job this transaction''s trigger queued');
+  '{"paths":["d2293000-0000-0000-0000-0000000000a1/own.jpg"]}'::jsonb,
+  'the path goes to a job of its own');
 
--- ── 23-24: class 40 errors propagate ───────────────────────────────────────
+-- ── 26-27: class 40 errors propagate ───────────────────────────────────────
 create function pg_temp.raise_class_40() returns trigger language plpgsql as $f$
 begin
   if new.kind = 'route_photo_orphan_sweep' then
@@ -319,20 +390,23 @@ create trigger test_raise_class_40 before insert or update on public.jobs
   for each row execute function pg_temp.raise_class_40();
 
 insert into route_photos (id, route_id, owner_id, storage_path)
-values ('d2293000-0000-0000-0000-0000000000fc', 'd2293000-0000-0000-0000-0000000000c5',
+values ('d2293000-0000-0000-0000-0000000000fc', 'd2293000-0000-0000-0000-000000000012',
         'd2293000-0000-0000-0000-0000000000a1', 'd2293000-0000-0000-0000-0000000000a1/retry.jpg');
+delete from route_photos where id = 'd2293000-0000-0000-0000-0000000000fc';
 
+-- throws_ok runs its statement in a subtransaction, so the failed flush is
+-- undone with it: the buffer and the pending event are back for the second.
 set local test.sqlstate = '40001';
 select throws_ok(
-  $$ delete from route_photos where id = 'd2293000-0000-0000-0000-0000000000fc' $$,
+  $$ select pg_temp.commit_sweep() $$,
   '40001', null,
-  'a serialization failure in the enqueue aborts the delete for a retry');
+  'a serialization failure in the enqueue aborts the commit for a retry');
 
 set local test.sqlstate = '40P01';
 select throws_ok(
-  $$ delete from route_photos where id = 'd2293000-0000-0000-0000-0000000000fc' $$,
+  $$ select pg_temp.commit_sweep() $$,
   '40P01', null,
-  'a deadlock in the enqueue aborts the delete for a retry');
+  'a deadlock in the enqueue aborts the commit for a retry');
 
 drop trigger test_raise_class_40 on public.jobs;
 

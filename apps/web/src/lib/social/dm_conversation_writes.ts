@@ -8,7 +8,9 @@
  * whole list on a refused write threw away everything a poll had brought in
  * meanwhile. Each write is therefore kept here, per conversation and flag,
  * until a read started after it landed carries it, and a refused write puts
- * back the one field it changed.
+ * back the one field it changed. A deleted conversation brought back by Undo
+ * (or a refused delete) is likewise put back as one row, not as the list from
+ * before the delete.
  *
  * Web only: the mobile store keeps its own (apps/mobile_android).
  */
@@ -76,4 +78,22 @@ export function revertConversationFlag<T extends ConversationFlags>(
 	value: boolean,
 ): T[] {
 	return rows.map((row) => (row.conversationId === conversationId ? { ...row, [flag]: value } : row));
+}
+
+/// Puts a conversation whose delete was undone or refused back into the list,
+/// at its place by latest message, keeping every row the reads since the
+/// delete brought in. Null when the row was never in the list (the delete
+/// came from a conversation opened before the list loaded): the caller reads
+/// the list instead.
+export function restoreHiddenConversation<T extends { conversationId: string; lastAt: string }>(
+	rows: readonly T[],
+	hidden: T | undefined,
+): T[] | null {
+	if (!hidden) return null;
+	if (rows.some((r) => r.conversationId === hidden.conversationId)) return [...rows];
+	const at = Date.parse(hidden.lastAt);
+	const i = rows.findIndex((r) => Date.parse(r.lastAt) < at);
+	const out = [...rows];
+	out.splice(i === -1 ? out.length : i, 0, hidden);
+	return out;
 }

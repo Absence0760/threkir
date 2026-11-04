@@ -37,6 +37,7 @@ import { dmThreadRouteId } from '#lib/social/dm_thread.ts';
 import {
 	conversationWriteKey,
 	overlayConversationWrites,
+	restoreHiddenConversation,
 	revertConversationFlag,
 	settledConversationWrites,
 	type ConversationFlag,
@@ -207,7 +208,7 @@ class MessagesInboxStore {
 	/// the server is told only when the window closes, so Undo cancels a timer.
 	/// `onRestore` lets the open conversation pane come back with the row.
 	hide(conversationId: string, opts: { message: string; onCommitError: (e: unknown) => void; onRestore?: () => void }) {
-		const before = this.threads;
+		const hidden = this.threads.find((t) => t.conversationId === conversationId);
 		dmPendingHides.add(conversationId);
 		this.threads = this.threads.filter((t) => t.conversationId !== conversationId);
 		deferDestructive({
@@ -227,7 +228,11 @@ class MessagesInboxStore {
 			// the delete and re-reads now, the server being what knows.
 			restore: () => {
 				dmPendingHides.delete(conversationId);
-				this.threads = before;
+				// The one row comes back: a snapshot of the whole list would also
+				// undo whatever a poll brought in during the window.
+				const restored = restoreHiddenConversation(this.threads, hidden);
+				if (restored) this.threads = restored;
+				else void this.refreshThreads();
 				opts.onRestore?.();
 				void dmUnreadStore.refresh();
 			},

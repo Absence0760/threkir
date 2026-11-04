@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import {
 	conversationWriteKey,
 	overlayConversationWrites,
+	restoreHiddenConversation,
 	revertConversationFlag,
 	settledConversationWrites,
 	type ConversationWrite,
@@ -81,4 +82,35 @@ test('the inbox store reverts one field on a refused write, never a snapshot of 
 	assert.match(body, /revertConversationFlag\(/);
 	assert.doesNotMatch(body, /this\.threads = before/);
 	assert.match(src, /#apply\(rows[^)]*\)\s*\{[\s\S]*?overlayConversationWrites\(/);
+});
+
+type Listed = { conversationId: string; lastAt: string; lastBody: string };
+const listed = (conversationId: string, lastAt: string, lastBody = 'x'): Listed => ({ conversationId, lastAt, lastBody });
+
+test('an undone delete puts back its one row by latest message and keeps what a poll brought in', () => {
+	const hidden = listed('b', '2026-11-02T10:00:00Z', 'old');
+	// During the window a poll brought a reply into `a` and a new conversation `d`.
+	const polled = [listed('d', '2026-11-04T09:00:00Z'), listed('a', '2026-11-03T08:00:00Z', 'reply'), listed('c', '2026-11-01T00:00:00Z')];
+	assert.deepEqual(restoreHiddenConversation(polled, hidden), [polled[0], polled[1], hidden, polled[2]]);
+	assert.deepEqual(restoreHiddenConversation([listed('a', '2026-11-01T00:00:00Z')], hidden)?.map((r) => r.conversationId), ['b', 'a']);
+	assert.deepEqual(restoreHiddenConversation([], hidden), [hidden]);
+});
+
+test('a restore does not duplicate a row a read already brought back', () => {
+	const fresh = listed('b', '2026-11-04T00:00:00Z', 'newer');
+	const out = restoreHiddenConversation([fresh], listed('b', '2026-11-02T00:00:00Z', 'old'));
+	assert.deepEqual(out, [fresh]);
+});
+
+test('a row the list never held asks for a list read', () => {
+	assert.equal(restoreHiddenConversation([listed('a', '2026-11-01T00:00:00Z')], undefined), null);
+});
+
+test('the inbox store restores one hidden row on undo, never a snapshot of the list', () => {
+	const src = readFileSync(new URL('../stores/messages_inbox.svelte.ts', import.meta.url), 'utf8');
+	const hide = src.slice(src.indexOf('\thide(conversationId'), src.indexOf('\tmarkRead('));
+	assert.match(hide, /restoreHiddenConversation\(this\.threads, hidden\)/);
+	assert.match(hide, /else void this\.refreshThreads\(\)/);
+	assert.doesNotMatch(hide, /this\.threads = before/);
+	assert.doesNotMatch(hide, /const before = this\.threads/);
 });

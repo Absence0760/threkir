@@ -167,4 +167,47 @@ test.describe('Public plan library — publish → browse → clone', () => {
 
 		await ctxB.close();
 	});
+
+	// Unpublishing deletes the library row, so every shared link to it stops
+	// resolving and a republish mints a new id: it confirms before deleting.
+	test('Unpublish asks first; Cancel keeps the library copy', async ({ browser }) => {
+		const admin = getAdminClient();
+		const ctx = await browser.newContext({ storageState: USER_A.storageStatePath });
+		await acceptCookieConsent(ctx);
+		const page = await ctx.newPage();
+		await page.goto(`/plans/${SOURCE_PLAN_ID}`);
+		const libraryRow = page.locator('.publish-row').filter({ hasText: 'Public plan library' });
+		await expect(libraryRow).toBeVisible({ timeout: 10_000 });
+		await libraryRow.getByRole('button', { name: 'Publish to library' }).click();
+		await expect(libraryRow.getByText('This plan is in the public library.')).toBeVisible({
+			timeout: 10_000
+		});
+
+		const published = () =>
+			readRows(
+				'training_plans by is_public_template+name',
+				admin
+					.from('training_plans')
+					.select('id')
+					.eq('is_public_template', true)
+					.eq('name', PLAN_NAME)
+			);
+
+		await page.getByTestId('plan-unpublish-library').click();
+		const confirm = page.getByTestId('unpublish-confirm-dialog');
+		await expect(confirm).toBeVisible();
+		await expect(confirm).toContainText('Unpublish this plan?');
+		await confirm.getByRole('button', { name: 'Cancel' }).click();
+		await expect(confirm).toBeHidden();
+		expect((await published()).length).toBe(1);
+
+		await page.getByTestId('plan-unpublish-library').click();
+		await confirm.getByRole('button', { name: 'Unpublish' }).click();
+		await expect(libraryRow.getByRole('button', { name: 'Publish to library' })).toBeVisible({
+			timeout: 10_000
+		});
+		expect((await published()).length).toBe(0);
+
+		await ctx.close();
+	});
 });

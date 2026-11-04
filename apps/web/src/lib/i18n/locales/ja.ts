@@ -881,6 +881,8 @@ export const messages = {
 	"planDetail.publishLibrarySuccess": "プランを公開ライブラリに公開しました。あなた個人のプランは変わりません。",
 	"planDetail.publishLibraryFailed": "公開に失敗しました: {error}",
 	"planDetail.unpublishLibrary": "公開を取り消す",
+	"planDetail.unpublishLibraryTitle": "このプランの公開を取り消しますか？",
+	"planDetail.unpublishLibraryMessage": "公開ライブラリから削除されます。共有したリンクを開いた人にはプランが見つからなくなり、再度公開すると新しいリンクになります。",
 	"planDetail.unpublishLibrarySuccess": "公開ライブラリから削除しました。",
 	"planDetail.unpublishLibraryFailed": "取り消しに失敗しました: {error}",
 	"planDetail.alreadyPublished": "このプランは公開ライブラリにあります。",

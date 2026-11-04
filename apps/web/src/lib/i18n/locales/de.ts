@@ -886,6 +886,8 @@ export const messages = {
 	"planDetail.publishLibrarySuccess": "Plan in der öffentlichen Bibliothek veröffentlicht. Dein persönlicher Plan bleibt unverändert.",
 	"planDetail.publishLibraryFailed": "Veröffentlichen fehlgeschlagen: {error}",
 	"planDetail.unpublishLibrary": "Zurückziehen",
+	"planDetail.unpublishLibraryTitle": "Diesen Plan zurückziehen?",
+	"planDetail.unpublishLibraryMessage": "Der Plan verschwindet aus der öffentlichen Bibliothek. Wer einen geteilten Link dazu öffnet, findet ihn nicht mehr, und erneutes Veröffentlichen erzeugt einen neuen Link.",
 	"planDetail.unpublishLibrarySuccess": "Aus der öffentlichen Bibliothek entfernt.",
 	"planDetail.unpublishLibraryFailed": "Zurückziehen fehlgeschlagen: {error}",
 	"planDetail.alreadyPublished": "Dieser Plan ist in der öffentlichen Bibliothek.",

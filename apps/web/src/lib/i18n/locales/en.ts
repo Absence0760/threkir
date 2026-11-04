@@ -899,6 +899,8 @@ export const en = {
 	"planDetail.publishLibrarySuccess": "Plan published to the public library. Your personal plan is unchanged.",
 	"planDetail.publishLibraryFailed": "Failed to publish: {error}",
 	"planDetail.unpublishLibrary": "Unpublish",
+	"planDetail.unpublishLibraryTitle": "Unpublish this plan?",
+	"planDetail.unpublishLibraryMessage": "It leaves the public library. Anyone who opens a link you shared to it will find it gone, and publishing again creates a new link.",
 	"planDetail.unpublishLibrarySuccess": "Removed from the public library.",
 	"planDetail.unpublishLibraryFailed": "Failed to unpublish: {error}",
 	"planDetail.alreadyPublished": "This plan is in the public library.",

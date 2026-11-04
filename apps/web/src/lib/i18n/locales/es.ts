@@ -886,6 +886,8 @@ export const messages = {
 	"planDetail.publishLibrarySuccess": "Plan publicado en la biblioteca pública. Tu plan personal no cambia.",
 	"planDetail.publishLibraryFailed": "Error al publicar: {error}",
 	"planDetail.unpublishLibrary": "Retirar",
+	"planDetail.unpublishLibraryTitle": "¿Retirar este plan?",
+	"planDetail.unpublishLibraryMessage": "Sale de la biblioteca pública. Quien abra un enlace que hayas compartido verá que ya no está, y al volver a publicarlo se crea un enlace nuevo.",
 	"planDetail.unpublishLibrarySuccess": "Eliminado de la biblioteca pública.",
 	"planDetail.unpublishLibraryFailed": "Error al retirar: {error}",
 	"planDetail.alreadyPublished": "Este plan está en la biblioteca pública.",

@@ -1413,12 +1413,18 @@
 		}
 	}
 
+	// Unpublishing deletes the library copy: a later publish mints a new id, so
+	// every shared "Train with me" link to this one stops resolving. Not
+	// reversible, so it confirms first; a failure keeps the dialog open.
+	let unpublishOpen = $state(false);
+
 	async function unpublishFromLibraryAction() {
 		if (!publishedTemplate || libraryBusy) return;
 		libraryBusy = true;
 		try {
 			await unpublishFromLibrary(publishedTemplate.id);
 			publishedTemplate = null;
+			unpublishOpen = false;
 			showToast(m('planDetail.unpublishLibrarySuccess'));
 		} catch (e) {
 			showToast(m('planDetail.unpublishLibraryFailed', { error: thrownMessage(e) }), 'error');
@@ -2599,7 +2605,8 @@
 							class="btn btn-outline"
 							type="button"
 							disabled={libraryBusy}
-							onclick={unpublishFromLibraryAction}
+							data-testid="plan-unpublish-library"
+							onclick={() => (unpublishOpen = true)}
 						>
 							{m('planDetail.unpublishLibrary')}
 						</button>
@@ -2969,6 +2976,18 @@
 	cancelLabel={m('planDetail.replanCancel')}
 	onconfirm={runBulkConfirm}
 	oncancel={() => (bulkConfirm = null)}
+/>
+
+<ConfirmDialog
+	open={unpublishOpen}
+	danger
+	data-testid="unpublish-confirm-dialog"
+	title={m('planDetail.unpublishLibraryTitle')}
+	message={m('planDetail.unpublishLibraryMessage')}
+	confirmLabel={m('planDetail.unpublishLibrary')}
+	cancelLabel={m('planDetail.replanCancel')}
+	onconfirm={unpublishFromLibraryAction}
+	oncancel={() => (unpublishOpen = false)}
 />
 
 <ConfirmDialog

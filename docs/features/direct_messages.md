@@ -34,6 +34,18 @@ The conversation header carries Block / Unblock for a live partner (web: a heade
 
 While the viewer's own block stands, the composer gives way to a notice ("You blocked {name}, so neither of you can message the other.") with an Unblock button. The block state is read with `isBlockedByViewer` when the conversation opens; a failed read leaves the composer up, and the server still refuses a blocked send. A deleted partner's thread has no Block. Unblocking brings the composer back, but with the follow edge gone a send is refused until one of the two follows the other again.
 
+## Mute, archive and delete for me
+
+Since migration `20271105000001` ([decisions § 2276](../architecture/decisions.md)) every message belongs to a `conversations` row, and each participant has their own `conversation_participants` row. Mute, archive and delete-for-me write only the viewer's row; the other person never learns of any of them (the rows are owner-read).
+
+| Action | What it does | Guard | Web | Mobile |
+|---|---|---|---|---|
+| Mute | No `message` notification for new messages; the conversation's unread count leaves the nav badge. The row still shows its own count, greyed, with a muted mark. | None: Unmute is one tap away | header icon button `dm-mute-toggle` | overflow menu `message-thread-mute` |
+| Archive | The conversation moves to the inbox's **Archived (n)** list until a newer message arrives (`dm_threads().archived` compares the archive stamp with the newest message, so a reply un-archives it without a write). Its unread count leaves the badge. | None: Unarchive is in the Archived list | header icon button `dm-archive-toggle` | overflow menu `message-thread-archive` |
+| Delete conversation | Every message so far leaves the viewer's reads (the SELECT policy hides messages at or before `hidden_before`); a newer message brings it back with only that message. The other person keeps theirs, and a report's snapshot is untouched. | **Undo bar, no confirm** ([conventions.md § Destructive actions](../architecture/conventions.md)): the server is told only when the window closes | header icon button `dm-delete-conversation`; the inbox hides the row while the window is open (`messagesInbox.hide`) | overflow menu `message-thread-delete`; the inbox hides the row while the window is open (`DmPendingHides`) |
+
+A deleted partner's thread offers Archive and Delete but not Mute or Block. The inbox split and the badge rule are the `messages_inbox` parity pair (`partitionArchived`, `unreadDmBadgeCount`). Mobile threads opened from outside the inbox (a profile, a route) read the viewer's state with `ApiClient.fetchDmConversationState`.
+
 ## Unsend, report and deleted accounts
 
 Sender-only soft unsend, a recipient-only `direct_message` report with a server-side snapshot, and keep-on-delete threads shown as "Deleted account" — see [decisions § 2221](../architecture/decisions.md) and [retention.md](../compliance/retention.md).
@@ -55,11 +67,11 @@ A conversation poll re-reads the **newest page** rather than asking for messages
 
 ## Tests
 
-- pgtap: `direct_messages_test.sql`, `dm_unsend_report_keep_on_delete_test.sql`, `direct_message_route_attachment_test.sql`
+- pgtap: `direct_messages_test.sql`, `dm_unsend_report_keep_on_delete_test.sql`, `direct_message_route_attachment_test.sql`, `dm_conversations_test.sql`
 - web unit: `social/dm_thread.test.ts`, `core/visible_poll.test.ts`, `social/messages_inbox.test.ts`
-- Playwright: `tests-e2e/messages/` — `dm-thread-block.spec.ts` (block from the conversation), `dm-live-poll.spec.ts` (thread and inbox polls, driven by Playwright's clock), `coach-inbox-row.spec.ts` (the Coach row: no-consent, preview, AI label, unpin and hide persisting, the `/coach` redirect), plus the send, paging, permission, unsend/report and route-attachment specs
+- Playwright: `tests-e2e/messages/` — `dm-thread-block.spec.ts` (block from the conversation), `dm-conversation-actions.spec.ts` (mute, archive, delete with undo), `dm-live-poll.spec.ts` (thread and inbox polls, driven by Playwright's clock), `coach-inbox-row.spec.ts` (the Coach row: no-consent, preview, AI label, unpin and hide persisting, the `/coach` redirect), plus the send, paging, permission, unsend/report and route-attachment specs
 - mobile: `direct_messages_screen_test.dart`, `messages_coach_row_test.dart`, `messages_inbox_test.dart`, api_client `direct_messages_test.dart`
 
 ## Not built yet (issue #1216)
 
-Delete-for-me, mute and archive (a per-participant conversations model), read receipts, edit, Realtime delivery, a message-requests inbox for non-followers, and group conversations.
+Read receipts, edit, Realtime delivery, a message-requests inbox for non-followers, and group conversations. The `conversations` model takes a group or club chat without another migration of the participant state; only `kind = 'direct'` exists, and the send path still addresses a single recipient.

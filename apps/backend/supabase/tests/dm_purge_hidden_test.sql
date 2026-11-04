@@ -1,4 +1,4 @@
--- Pins 20271107000002 (PR #1289 item D, decisions § 2337): "Delete
+-- Pins 20271107000002 (PR #1289 item D, decisions § 2339): "Delete
 -- conversation" stamps the newest message the deleter saw, not now(), and
 -- never moves backwards; the daily purge erases a message once every person
 -- it names has deleted the conversation past it, including a deleted

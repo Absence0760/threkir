@@ -236,6 +236,22 @@ and never in an against-me export (`reports_against_me.json` /
 `reports_against_my_messages.json`), so the reported person is not told a
 report is being kept for legal reasons.
 
+**Added 2026-11-04 (decisions § 2287, § 2339): deleted-for-me messages
+are still in the export.** "Delete conversation" hides messages from the
+deleter's own reads and erases nothing by itself, so both rails
+(`direct_messages_sent.json` / `direct_messages_received.json`, read by
+`sender_id` / `recipient_id` with the service role, not through the
+SELECT policy) still include every message the subject hid, alongside
+`conversation_settings.json`, whose `hidden_before` shows where each
+delete stops. That is the intended Art 15 answer: the data is still held,
+because the other participant can still read it. A hidden message leaves
+the export only when it is erased: once no participant can see it (both
+sides deleted past it, or the remaining participant deleted a deleted
+account's thread), the daily `purge-stale-direct-messages` run removes it
+(`20271107000002`, [retention.md](retention.md)). An operator answering a
+subject who asks why a "deleted" conversation is in their archive gives
+this explanation.
+
 **Corrected 2026-08-31, and the same class one level down:** `user_profiles`
 reaches the archive through `FetchExportProfile`'s enumerated projection and
 through nothing else — it is not in `exportPersonalDataSpecs`, so the

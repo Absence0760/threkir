@@ -1,6 +1,6 @@
 -- Direct messages: erase what nobody can see any more, and bound "Delete
 -- conversation" to what the deleter actually saw (PR #1289 item D, from the
--- #1280 sign-off review of 20271105000010; decisions § 2337).
+-- #1280 sign-off review of 20271105000010; decisions § 2339).
 --
 -- ── 1. The daily purge erases messages no participant can still see ──────
 --

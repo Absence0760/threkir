@@ -126,7 +126,7 @@ class MessagesInboxStore {
 	async loadThreads() {
 		this.threadsError = false;
 		const userId = this.#userId;
-		const startedAt = Date.now();
+		const startedAt = performance.now();
 		try {
 			this.#apply(await fetchDmThreads(), startedAt, userId);
 		} catch {
@@ -142,7 +142,7 @@ class MessagesInboxStore {
 		if (this.threadsError) return this.loadThreads();
 		this.#polling = true;
 		const userId = this.#userId;
-		const startedAt = Date.now();
+		const startedAt = performance.now();
 		try {
 			this.#apply(await fetchDmThreads(), startedAt, userId);
 		} catch (e) {
@@ -157,7 +157,7 @@ class MessagesInboxStore {
 	/// a failed list read leaves the previews as they were.
 	async refreshThreads() {
 		const userId = this.#userId;
-		const startedAt = Date.now();
+		const startedAt = performance.now();
 		try {
 			this.#apply(await fetchDmThreads(), startedAt, userId);
 		} catch {
@@ -222,7 +222,7 @@ class MessagesInboxStore {
 			}
 			throw e;
 		}
-		settleLandedWrite(this.#writes, pending, Date.now());
+		settleLandedWrite(this.#writes, pending, performance.now());
 		// A row the list did not have is read now, so the conversation joins the
 		// list with the state just written.
 		if (listed === undefined) void this.refreshThreads();
@@ -244,7 +244,7 @@ class MessagesInboxStore {
 			commit: async () => {
 				try {
 					await hideDmConversation(conversationId);
-					if (this.#userId === userId) this.#hiddenAt.set(conversationId, Date.now());
+					if (this.#userId === userId) this.#hiddenAt.set(conversationId, performance.now());
 					// Hidden on the server now: drop it from the held count so the
 					// badge does not count it again before the read below lands.
 					dmUnreadStore.forget(conversationId);
@@ -275,7 +275,7 @@ class MessagesInboxStore {
 	}
 
 	markRead(routeId: string) {
-		this.#markedReadAt.set(routeId, Date.now());
+		this.#markedReadAt.set(routeId, performance.now());
 		this.threads = this.threads.map((t) => (dmThreadRouteId(t) === routeId ? { ...t, unread: 0 } : t));
 	}
 

@@ -275,7 +275,7 @@ test('the inbox store holds a delete against reads that started before it landed
 	const hide = src.slice(src.indexOf('\thide(conversationId'), src.indexOf('\tmarkRead('));
 	assert.match(hide, /this\.#hiddenAt\.set\(conversationId, Infinity\)/);
 	const commit = hide.slice(hide.indexOf('commit:'), hide.indexOf('restore:'));
-	assert.match(commit, /await hideDmConversation\(conversationId\);\s*if \(this\.#userId === userId\) this\.#hiddenAt\.set\(conversationId, Date\.now\(\)\)/);
+	assert.match(commit, /await hideDmConversation\(conversationId\);\s*if \(this\.#userId === userId\) this\.#hiddenAt\.set\(conversationId, performance\.now\(\)\)/);
 	assert.match(hide.slice(hide.indexOf('restore:')), /this\.#hiddenAt\.delete\(conversationId\)/);
 	const bind = src.slice(src.indexOf('\tbind(userId'), src.indexOf('\t#apply(rows'));
 	assert.match(bind, /this\.#hiddenAt\.clear\(\)/);
@@ -292,6 +292,18 @@ test('the inbox store applies a list read only to the account it was read for', 
 	assert.equal(calls.length, 3);
 	for (const call of calls) assert.match(call, /this\.#apply\(await fetchDmThreads\(\), startedAt, userId\)/);
 	assert.equal(reads.match(/const userId = this\.#userId;\s*const startedAt/g)?.length, 3);
+});
+
+// Reason: every marker here (#hiddenAt, #writes, #markedReadAt) is compared
+// with when a list read started. On the wall clock a step backwards (an NTP
+// correction after sleep, a manual change) leaves each marker newer than every
+// read for as long as the step: a deleted conversation a new message brought
+// back stays hidden, a write overrides what the server says, and a thread
+// opened before the step shows no unread for new messages.
+test('the inbox store times its reads and markers on the monotonic clock', () => {
+	const src = readFileSync(new URL('../stores/messages_inbox.svelte.ts', import.meta.url), 'utf8');
+	assert.doesNotMatch(src, /Date\.now\(\)/);
+	assert.equal(src.match(/const startedAt = performance\.now\(\);/g)?.length, 3);
 });
 
 test('the badge applies only its newest read, so a read from before a delete cannot land after it', () => {
@@ -385,5 +397,5 @@ test('the inbox store reverts to the confirmed value, never one read off the opt
 	const body = src.slice(src.indexOf('async #setFlag('), src.indexOf('/// Deletes a conversation for the runner'));
 	assert.match(body, /prior: confirmedFlagValue\(this\.#writes\.get\(key\), listed\)/);
 	assert.match(body, /revertConversationFlag\(this\.threads, conversationId, flag, pending\.prior\)/);
-	assert.match(body, /settleLandedWrite\(this\.#writes, pending, Date\.now\(\)\)/);
+	assert.match(body, /settleLandedWrite\(this\.#writes, pending, performance\.now\(\)\)/);
 });

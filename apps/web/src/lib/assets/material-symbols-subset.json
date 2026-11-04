@@ -20,10 +20,10 @@
 		"rclt"
 	],
 	"subset": {
-		"bytes": 73116,
-		"sha256": "2ea4c91260347b4049b90fbb0d645136b694081f076bf501173cd3555f50f4b8",
-		"glyphs": 328,
-		"ligatures": 441
+		"bytes": 72804,
+		"sha256": "a485ac849644b755b637a6f107b0aa00221e774639f146a36005899d6b035ad1",
+		"glyphs": 327,
+		"ligatures": 440
 	},
 	"icons": [
 		"10k",
@@ -332,7 +332,6 @@
 		"today",
 		"token",
 		"toolbar",
-		"train",
 		"transform",
 		"trending_down",
 		"trending_flat",

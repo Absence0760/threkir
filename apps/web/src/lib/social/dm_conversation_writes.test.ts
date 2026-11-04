@@ -281,6 +281,19 @@ test('the inbox store holds a delete against reads that started before it landed
 	assert.match(bind, /this\.#hiddenAt\.clear\(\)/);
 });
 
+// Reason: a list read carries the session it started under. One that lands
+// after the inbox was bound to another account (a sign-out or a sign-in in
+// another tab) would show the previous account's conversations to the next.
+test('the inbox store applies a list read only to the account it was read for', () => {
+	const src = readFileSync(new URL('../stores/messages_inbox.svelte.ts', import.meta.url), 'utf8');
+	assert.match(src, /#apply\(rows: DmThread\[\], startedAt: number, userId: string \| null\) \{\s*if \(userId !== this\.#userId\) return;/);
+	const reads = src.slice(src.indexOf('\tasync loadThreads('), src.indexOf('\t#patch('));
+	const calls = reads.match(/this\.#apply\([^)]*\)\)?[^;]*;/g) ?? [];
+	assert.equal(calls.length, 3);
+	for (const call of calls) assert.match(call, /this\.#apply\(await fetchDmThreads\(\), startedAt, userId\)/);
+	assert.equal(reads.match(/const userId = this\.#userId;\s*const startedAt/g)?.length, 3);
+});
+
 test('the badge applies only its newest read, so a read from before a delete cannot land after it', () => {
 	const src = readFileSync(new URL('../stores/dm_unread.svelte.ts', import.meta.url), 'utf8');
 	assert.match(src, /new CoalescingRefetcher<DmBadgeState\[\]>/);

@@ -105,7 +105,10 @@ class MessagesInboxStore {
 		return true;
 	}
 
-	#apply(rows: DmThread[], startedAt: number) {
+	/// `userId` is the account the read was made for: one that lands after the
+	/// store was bound to another account is that account's list, not this one's.
+	#apply(rows: DmThread[], startedAt: number, userId: string | null) {
+		if (userId !== this.#userId) return;
 		const visible = overlayConversationWrites(
 			withoutHiddenConversations(rows, this.#hiddenAt, startedAt),
 			this.#writes.values(),
@@ -122,9 +125,10 @@ class MessagesInboxStore {
 
 	async loadThreads() {
 		this.threadsError = false;
+		const userId = this.#userId;
 		const startedAt = Date.now();
 		try {
-			this.#apply(await fetchDmThreads(), startedAt);
+			this.#apply(await fetchDmThreads(), startedAt, userId);
 		} catch {
 			this.threadsError = true;
 		}
@@ -137,9 +141,10 @@ class MessagesInboxStore {
 		if (this.#polling) return;
 		if (this.threadsError) return this.loadThreads();
 		this.#polling = true;
+		const userId = this.#userId;
 		const startedAt = Date.now();
 		try {
-			this.#apply(await fetchDmThreads(), startedAt);
+			this.#apply(await fetchDmThreads(), startedAt, userId);
 		} catch (e) {
 			console.warn('messages inbox poll failed', e);
 		} finally {
@@ -151,9 +156,10 @@ class MessagesInboxStore {
 	/// After a send or an unsend. The write already renders in the thread, so
 	/// a failed list read leaves the previews as they were.
 	async refreshThreads() {
+		const userId = this.#userId;
 		const startedAt = Date.now();
 		try {
-			this.#apply(await fetchDmThreads(), startedAt);
+			this.#apply(await fetchDmThreads(), startedAt, userId);
 		} catch {
 			// Corrected by the next poll.
 		}

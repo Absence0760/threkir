@@ -13,6 +13,7 @@ import '../lib/main.dart' show pendingStartRunWithRoute;
 import '../lib/preferences.dart';
 import '../lib/screens/route_detail_screen.dart';
 import '../lib/social_service.dart' show ClubView;
+import 'pump_until.dart';
 
 cm.Route _route({
   String name = 'River Loop',
@@ -41,6 +42,23 @@ class _ThrowingTagsApi extends ApiClient {
   @override
   Future<void> updateRouteTags(String routeId, List<String> tags) async {
     throw StateError('network down');
+  }
+}
+
+/// A viewer who does not own the route, so the screen asks the server for
+/// the privacy-clipped line. Each call takes the next queued outcome.
+class _ClipApi extends ApiClient {
+  final List<Object> outcomes;
+  int clipCalls = 0;
+  _ClipApi(this.outcomes);
+  @override
+  String? get userId => 'viewer';
+  @override
+  Future<List<cm.Waypoint>> clipRouteForViewer(String routeId) async {
+    final next = outcomes[clipCalls++];
+    if (next is Completer<List<cm.Waypoint>>) return next.future;
+    if (next is List<cm.Waypoint>) return next;
+    throw next;
   }
 }
 
@@ -135,6 +153,7 @@ Future<void> _pump(
   cm.Route route, {
   bool isOwner = false,
   bool useMiles = false,
+  ApiClient? apiClient,
 }) async {
   SharedPreferences.setMockInitialValues({'use_miles': useMiles});
   final prefs = Preferences();
@@ -148,6 +167,7 @@ Future<void> _pump(
         route: route,
         routeStore: LocalRouteStore(),
         preferences: prefs,
+        apiClient: apiClient,
         isOwner: isOwner,
       ),
     ),
@@ -466,6 +486,52 @@ void main() {
       expect(find.text('45'), findsOneWidget);
       expect(find.text('m'), findsOneWidget);
       expect(find.text('ft'), findsNothing);
+    });
+
+    group('map slot without a line to draw', () {
+      const line = [
+        cm.Waypoint(lat: 51.5, lng: -0.1),
+        cm.Waypoint(lat: 51.51, lng: -0.11),
+      ];
+
+      testWidgets('a failed clip says so and retries, never "Waiting for GPS"',
+          (tester) async {
+        final api = _ClipApi([StateError('network down'), line]);
+        await _pump(tester, _route(waypoints: line, userId: 'owner'),
+            apiClient: api);
+        final failed = find.text(
+            "Couldn't load the route line. Check your connection and try again.");
+        await pumpUntil(tester, () => failed.evaluate().isNotEmpty,
+            describe: 'the load-failed placeholder');
+        expect(find.text('Waiting for GPS...'), findsNothing);
+
+        await tester.tap(find.widgetWithText(TextButton, 'Try again'));
+        await pumpUntil(tester, () => failed.evaluate().isEmpty,
+            describe: 'the retried clip to replace the placeholder');
+        expect(api.clipCalls, 2);
+        expect(find.text('Waiting for GPS...'), findsNothing);
+        expect(find.text('Try again'), findsNothing);
+        // The map that mounted queues zero-length tile-fetch timers.
+        await tester.pump(Duration.zero);
+      });
+
+      testWidgets('while the clip is in flight it shows a spinner',
+          (tester) async {
+        final pending = Completer<List<cm.Waypoint>>();
+        final api = _ClipApi([pending]);
+        await _pump(tester, _route(waypoints: line, userId: 'owner'),
+            apiClient: api);
+        expect(find.byType(CircularProgressIndicator), findsWidgets);
+        expect(find.text('Waiting for GPS...'), findsNothing);
+        pending.complete(const []);
+        await pumpUntil(
+            tester,
+            () => find.text('This route has no line to show.')
+                .evaluate()
+                .isNotEmpty,
+            describe: 'the clipped-to-empty placeholder');
+        expect(find.text('Try again'), findsNothing);
+      });
     });
 
     testWidgets('renders the Reviews header', (tester) async {

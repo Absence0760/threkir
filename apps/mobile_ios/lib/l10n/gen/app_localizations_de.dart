@@ -19635,4 +19635,15 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get sharesFootnote =>
       'Eine Registrierung zählt, wenn jemand über einen von dir geteilten Link ein Konto anlegt. Deine eigenen Besuche zählen nicht.';
+
+  @override
+  String get routeDetailLineLoadFailed =>
+      'Die Streckenlinie konnte nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.';
+
+  @override
+  String get routeDetailLineEmpty =>
+      'Für diese Route gibt es keine Linie zum Anzeigen.';
+
+  @override
+  String get routeDetailLineRetry => 'Erneut versuchen';
 }

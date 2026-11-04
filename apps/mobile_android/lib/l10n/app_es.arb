@@ -5489,5 +5489,8 @@
   "sharesJoins": "Uniones al reto",
   "sharesViaYourLink": "{count, plural, one{{count} desde tu enlace} other{{count} desde tu enlace}}",
   "sharesBotVisits": "{count, plural, one{Además, {count} visita de un rastreador, no incluida arriba.} other{Además, {count} visitas de rastreadores, no incluidas arriba.}}",
-  "sharesFootnote": "Un registro cuenta cuando alguien crea una cuenta desde un enlace que compartiste. Tus propias visitas no cuentan."
+  "sharesFootnote": "Un registro cuenta cuando alguien crea una cuenta desde un enlace que compartiste. Tus propias visitas no cuentan.",
+  "routeDetailLineLoadFailed": "No se pudo cargar la línea de la ruta. Comprueba tu conexión e inténtalo de nuevo.",
+  "routeDetailLineEmpty": "Esta ruta no tiene ninguna línea que mostrar.",
+  "routeDetailLineRetry": "Reintentar"
 }

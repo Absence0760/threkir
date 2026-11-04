@@ -187,6 +187,12 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   // LiveRunMap's plannedRoute prop.
   List<cm.Waypoint> _displayWaypoints = const [];
 
+  // With no line to draw, LiveRunMap falls back to its live-recording
+  // "Waiting for GPS..." state, which is meaningless on a route page. These
+  // let the map slot say what actually happened instead.
+  bool _lineLoading = true;
+  bool _lineFailed = false;
+
   // Course-marker wiring between RouteMarkersPanel (owns the data) and the
   // LiveRunMap (renders the pins + reports placement / pin taps).
   final GlobalKey<RouteMarkersPanelState> _markersPanelKey = GlobalKey();
@@ -257,6 +263,14 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     }
   }
 
+  Future<void> _retryDisplayWaypoints() async {
+    setState(() {
+      _lineLoading = true;
+      _lineFailed = false;
+    });
+    await _resolveDisplayWaypoints();
+  }
+
   Future<void> _resolveDisplayWaypoints() async {
     final api = widget.apiClient;
     final viewerId = api?.userId;
@@ -273,29 +287,47 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     // opening a freshly-built route shows "Waiting for GPS..." instead
     // of the polyline — the user's report.
     if (viewerId != null && (viewerId == ownerId || ownerId.isEmpty)) {
-      setState(() => _displayWaypoints = widget.route.waypoints);
+      setState(() {
+        _displayWaypoints = widget.route.waypoints;
+        _lineLoading = false;
+      });
       return;
     }
     // Signed-out viewer looking at a locally-built route — same
     // logic, no cloud row to clip against. Use the row waypoints.
     if (viewerId == null && ownerId.isEmpty) {
-      setState(() => _displayWaypoints = widget.route.waypoints);
+      setState(() {
+        _displayWaypoints = widget.route.waypoints;
+        _lineLoading = false;
+      });
       return;
     }
     // Non-owner (incl. anon api == null): fetch clipped output. The
     // helper fails closed — an RPC error renders an empty map rather
     // than fall through to the unclipped row column.
     if (api == null) {
-      setState(() => _displayWaypoints = const []);
+      setState(() {
+        _displayWaypoints = const [];
+        _lineLoading = false;
+      });
       return;
     }
     try {
       final clipped = await api.clipRouteForViewer(widget.route.id);
       if (!mounted) return;
-      setState(() => _displayWaypoints = clipped);
+      setState(() {
+        _displayWaypoints = clipped;
+        _lineLoading = false;
+      });
     } catch (e) {
       debugPrint('clipRouteForViewer failed for ${widget.route.id}: $e');
-      if (mounted) setState(() => _displayWaypoints = const []);
+      if (mounted) {
+        setState(() {
+          _displayWaypoints = const [];
+          _lineLoading = false;
+          _lineFailed = true;
+        });
+      }
     }
   }
 
@@ -443,6 +475,40 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     if (recorded == null || !mounted) return;
     setState(() => _describeConsentRequired = false);
     await _describe();
+  }
+
+  Widget _lineUnavailable(ThemeData theme, AppLocalizations l10n) {
+    if (_lineLoading) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+    }
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _lineFailed ? Icons.cloud_off_outlined : Icons.route_outlined,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _lineFailed ? l10n.routeDetailLineLoadFailed : l10n.routeDetailLineEmpty,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            if (_lineFailed) ...[
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: _retryDisplayWaypoints,
+                child: Text(l10n.routeDetailLineRetry),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   /// The "Describe this route" surface shown when the route has no
@@ -1123,29 +1189,31 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
               _KeepAliveMap(
                 child: SizedBox(
                   height: detailMapHeight(viewport.maxHeight),
-                  child: LiveRunMap(
-                    track: const [],
-                    plannedRoute: _displayWaypoints,
-                    offlinePackRouteId: widget.route.id,
-                    followRunner: false,
-                    courseMarkers: _markerPins,
-                    markerPlacing: _markerPlacing,
-                    onMarkerPlace: (wp) =>
-                        _markersPanelKey.currentState?.placeAt(wp),
-                    onMarkerTap: (id) =>
-                        _markersPanelKey.currentState?.selectMarker(id),
-                    // Only mount the preview-runner pulse while the user
-                    // is actually scrubbing — releasing the thumb fades
-                    // back to the static polyline view so the marker
-                    // doesn't sit at the start indefinitely after a
-                    // single drag.
-                    previewPosition: _scrubbing
-                        ? interpolateAlongRoute(
-                            _displayWaypoints,
-                            _scrubFraction,
-                          )
-                        : null,
-                  ),
+                  child: _displayWaypoints.length < 2
+                      ? _lineUnavailable(theme, l10n)
+                      : LiveRunMap(
+                        track: const [],
+                        plannedRoute: _displayWaypoints,
+                        offlinePackRouteId: widget.route.id,
+                        followRunner: false,
+                        courseMarkers: _markerPins,
+                        markerPlacing: _markerPlacing,
+                        onMarkerPlace: (wp) =>
+                            _markersPanelKey.currentState?.placeAt(wp),
+                        onMarkerTap: (id) =>
+                            _markersPanelKey.currentState?.selectMarker(id),
+                        // Only mount the preview-runner pulse while the user
+                        // is actually scrubbing — releasing the thumb fades
+                        // back to the static polyline view so the marker
+                        // doesn't sit at the start indefinitely after a
+                        // single drag.
+                        previewPosition: _scrubbing
+                            ? interpolateAlongRoute(
+                                _displayWaypoints,
+                                _scrubFraction,
+                              )
+                            : null,
+                      ),
                 ),
               ),
               // Diagnostic for the "I'm still not seeing the map"

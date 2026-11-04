@@ -5489,5 +5489,8 @@
   "sharesJoins": "チャレンジ参加",
   "sharesViaYourLink": "{count, plural, other{うち{count}件はあなたのリンクから}}",
   "sharesBotVisits": "{count, plural, other{このほかクローラーからの訪問が{count}件（上の数には含まれません）。}}",
-  "sharesFootnote": "あなたが共有したリンクからアカウントが作成されると登録として数えます。あなた自身の訪問は数えません。"
+  "sharesFootnote": "あなたが共有したリンクからアカウントが作成されると登録として数えます。あなた自身の訪問は数えません。",
+  "routeDetailLineLoadFailed": "ルートの線を読み込めませんでした。接続を確認して再試行してください。",
+  "routeDetailLineEmpty": "このルートには表示できる線がありません。",
+  "routeDetailLineRetry": "再試行"
 }

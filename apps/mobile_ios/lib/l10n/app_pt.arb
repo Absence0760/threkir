@@ -5489,5 +5489,8 @@
   "sharesJoins": "Adesões ao desafio",
   "sharesViaYourLink": "{count, plural, one{{count} pela sua ligação} other{{count} pela sua ligação}}",
   "sharesBotVisits": "{count, plural, one{Mais {count} visita de um robô, não contada acima.} other{Mais {count} visitas de robôs, não contadas acima.}}",
-  "sharesFootnote": "Um registo conta quando alguém cria uma conta a partir de uma ligação que partilhou. As suas próprias visitas não contam."
+  "sharesFootnote": "Um registo conta quando alguém cria uma conta a partir de uma ligação que partilhou. As suas próprias visitas não contam.",
+  "routeDetailLineLoadFailed": "Não foi possível carregar a linha da rota. Verifique a sua ligação e tente novamente.",
+  "routeDetailLineEmpty": "Esta rota não tem nenhuma linha para mostrar.",
+  "routeDetailLineRetry": "Tentar novamente"
 }

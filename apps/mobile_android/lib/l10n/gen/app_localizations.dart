@@ -31840,6 +31840,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign-ups are counted when someone creates an account from a link you shared. Your own visits aren\'t counted.'**
   String get sharesFootnote;
+
+  /// Route detail map placeholder when the route line could not be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the route line. Check your connection and try again.'**
+  String get routeDetailLineLoadFailed;
+
+  /// Route detail map placeholder when the route has fewer than two points to draw
+  ///
+  /// In en, this message translates to:
+  /// **'This route has no line to show.'**
+  String get routeDetailLineEmpty;
+
+  /// Retry button on the route detail map placeholder
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get routeDetailLineRetry;
 }
 
 class _AppLocalizationsDelegate

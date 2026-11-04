@@ -5489,5 +5489,8 @@
   "sharesJoins": "Entradas no desafio",
   "sharesViaYourLink": "{count, plural, one{{count} pelo seu link} other{{count} pelo seu link}}",
   "sharesBotVisits": "{count, plural, one{Mais {count} visita de um robô, não contada acima.} other{Mais {count} visitas de robôs, não contadas acima.}}",
-  "sharesFootnote": "Um cadastro conta quando alguém cria uma conta a partir de um link que você compartilhou. Suas próprias visitas não contam."
+  "sharesFootnote": "Um cadastro conta quando alguém cria uma conta a partir de um link que você compartilhou. Suas próprias visitas não contam.",
+  "routeDetailLineLoadFailed": "Não foi possível carregar a linha da rota. Verifique sua conexão e tente novamente.",
+  "routeDetailLineEmpty": "Esta rota não tem nenhuma linha para mostrar.",
+  "routeDetailLineRetry": "Tentar novamente"
 }

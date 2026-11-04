@@ -19659,4 +19659,15 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get sharesFootnote =>
       'Une inscription est comptée quand quelqu\'un crée un compte depuis un lien que vous avez partagé. Vos propres visites ne sont pas comptées.';
+
+  @override
+  String get routeDetailLineLoadFailed =>
+      'Impossible de charger le tracé de l\'itinéraire. Vérifiez votre connexion et réessayez.';
+
+  @override
+  String get routeDetailLineEmpty =>
+      'Cet itinéraire n\'a aucun tracé à afficher.';
+
+  @override
+  String get routeDetailLineRetry => 'Réessayer';
 }

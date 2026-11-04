@@ -25677,5 +25677,17 @@
   "sharesFootnote": "Sign-ups are counted when someone creates an account from a link you shared. Your own visits aren't counted.",
   "@sharesFootnote": {
     "description": "Footnote on Your shares explaining what counts as a sign-up"
+  },
+  "routeDetailLineLoadFailed": "Couldn't load the route line. Check your connection and try again.",
+  "@routeDetailLineLoadFailed": {
+    "description": "Route detail map placeholder when the route line could not be loaded"
+  },
+  "routeDetailLineEmpty": "This route has no line to show.",
+  "@routeDetailLineEmpty": {
+    "description": "Route detail map placeholder when the route has fewer than two points to draw"
+  },
+  "routeDetailLineRetry": "Try again",
+  "@routeDetailLineRetry": {
+    "description": "Retry button on the route detail map placeholder"
   }
 }

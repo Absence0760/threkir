@@ -5489,5 +5489,8 @@
   "sharesJoins": "Participations au défi",
   "sharesViaYourLink": "{count, plural, one{{count} via votre lien} other{{count} via votre lien}}",
   "sharesBotVisits": "{count, plural, one{Plus {count} visite d'un robot, non comptée ci-dessus.} other{Plus {count} visites de robots, non comptées ci-dessus.}}",
-  "sharesFootnote": "Une inscription est comptée quand quelqu'un crée un compte depuis un lien que vous avez partagé. Vos propres visites ne sont pas comptées."
+  "sharesFootnote": "Une inscription est comptée quand quelqu'un crée un compte depuis un lien que vous avez partagé. Vos propres visites ne sont pas comptées.",
+  "routeDetailLineLoadFailed": "Impossible de charger le tracé de l'itinéraire. Vérifiez votre connexion et réessayez.",
+  "routeDetailLineEmpty": "Cet itinéraire n'a aucun tracé à afficher.",
+  "routeDetailLineRetry": "Réessayer"
 }

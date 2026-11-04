@@ -19618,6 +19618,17 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get sharesFootnote =>
       'Um registo conta quando alguém cria uma conta a partir de uma ligação que partilhou. As suas próprias visitas não contam.';
+
+  @override
+  String get routeDetailLineLoadFailed =>
+      'Não foi possível carregar a linha da rota. Verifique a sua ligação e tente novamente.';
+
+  @override
+  String get routeDetailLineEmpty =>
+      'Esta rota não tem nenhuma linha para mostrar.';
+
+  @override
+  String get routeDetailLineRetry => 'Tentar novamente';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -39220,4 +39231,15 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get sharesFootnote =>
       'Um cadastro conta quando alguém cria uma conta a partir de um link que você compartilhou. Suas próprias visitas não contam.';
+
+  @override
+  String get routeDetailLineLoadFailed =>
+      'Não foi possível carregar a linha da rota. Verifique sua conexão e tente novamente.';
+
+  @override
+  String get routeDetailLineEmpty =>
+      'Esta rota não tem nenhuma linha para mostrar.';
+
+  @override
+  String get routeDetailLineRetry => 'Tentar novamente';
 }

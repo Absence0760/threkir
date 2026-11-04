@@ -19619,4 +19619,15 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get sharesFootnote =>
       'Un registro cuenta cuando alguien crea una cuenta desde un enlace que compartiste. Tus propias visitas no cuentan.';
+
+  @override
+  String get routeDetailLineLoadFailed =>
+      'No se pudo cargar la línea de la ruta. Comprueba tu conexión e inténtalo de nuevo.';
+
+  @override
+  String get routeDetailLineEmpty =>
+      'Esta ruta no tiene ninguna línea que mostrar.';
+
+  @override
+  String get routeDetailLineRetry => 'Reintentar';
 }

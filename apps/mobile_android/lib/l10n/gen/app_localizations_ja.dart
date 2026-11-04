@@ -18692,4 +18692,13 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get sharesFootnote =>
       'あなたが共有したリンクからアカウントが作成されると登録として数えます。あなた自身の訪問は数えません。';
+
+  @override
+  String get routeDetailLineLoadFailed => 'ルートの線を読み込めませんでした。接続を確認して再試行してください。';
+
+  @override
+  String get routeDetailLineEmpty => 'このルートには表示できる線がありません。';
+
+  @override
+  String get routeDetailLineRetry => '再試行';
 }

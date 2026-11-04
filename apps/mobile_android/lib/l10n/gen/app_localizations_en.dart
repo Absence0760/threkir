@@ -19419,4 +19419,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get sharesFootnote =>
       'Sign-ups are counted when someone creates an account from a link you shared. Your own visits aren\'t counted.';
+
+  @override
+  String get routeDetailLineLoadFailed =>
+      'Couldn\'t load the route line. Check your connection and try again.';
+
+  @override
+  String get routeDetailLineEmpty => 'This route has no line to show.';
+
+  @override
+  String get routeDetailLineRetry => 'Try again';
 }

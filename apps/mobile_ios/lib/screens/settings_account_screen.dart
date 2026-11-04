@@ -29,11 +29,13 @@ import '../preferences.dart';
 import '../text_limits.dart';
 import '../settings_sync.dart';
 import '../share_sheet.dart';
+import '../sign_out.dart';
 import '../web_base_url.dart';
 import '../widgets/ai_disclosure_notice.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/password_field.dart';
 import '../widgets/top_banner.dart';
+import '../widgets/undo_bar.dart';
 import 'avatar_crop_screen.dart';
 import 'import_screen.dart';
 import 'sign_in_screen.dart';
@@ -688,7 +690,10 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     if (api == null || _accountBusy) return;
     setState(() => _accountBusy = true);
     try {
-      await api.signOut();
+      await signOutAfterSettling(
+        settlePending: undoQueue.flush,
+        signOut: api.signOut,
+      );
       if (mounted) setState(() {});
     } catch (e) {
       if (mounted) {
@@ -1058,6 +1063,9 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
         showTopBanner(context, l10n.settingsAccountDeleteSignInFirst);
         return;
       }
+      // A delete still inside its undo window commits while the account
+      // it belongs to still exists.
+      await settleBeforeSessionEnds(undoQueue.flush);
       await api.deleteAccount();
       await api.signOut();
       if (mounted) {

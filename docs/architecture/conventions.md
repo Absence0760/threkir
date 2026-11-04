@@ -1370,6 +1370,17 @@ action can honestly be reversed:
   by the root layout) and, if that commit fails once another account (or none)
   is signed in, only logs it: no `onCommitError` toast to a signed-out reader
   and no `restore` into the next account's list.
+  Mobile follows the same rules. Settings → Sign out and the age-gate's Sign
+  out go through `signOutAfterSettling` (`lib/sign_out.dart`, passed
+  `undoQueue.flush`, capped at `kSignOutSettleTimeout`, 5 s); Delete account
+  settles before it calls the delete, while the account still exists. Any
+  other session change (a revoked token, another account) runs Undo from
+  `UndoSessionGuard` at the app root, which also keeps the queue's owner
+  (`setUndoOwner`) current, so a commit that fails after its account is gone
+  is logged only. Mobile's timer belongs to the app-wide queue rather than to
+  any screen, so without this the held commit fired on schedule after the
+  sign-out. `sign_out_test.dart` fails when a file in `lib/` calls `signOut`
+  without settling the queue.
 - **Not undoable** → keep the `ConfirmDialog`. Use it when the delete cascades
   something the actor could not reconstruct, or when the row is an authored
   reusable artefact rather than a line of data (a routine, a saved meal, a

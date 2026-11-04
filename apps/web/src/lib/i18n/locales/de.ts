@@ -2969,7 +2969,7 @@ export const messages = {
 	"landing.featurePlansBody": "Zielwettkampf, Zielzeit, Tage pro Woche — der Generator schreibt die Wochen aus deiner aktuellen Form.",
 	"landing.platformLive": "Live",
 	"landing.platformInTesting": "Im Test",
-	"landing.platformsNote": "Die Smartphone- und Uhren-Apps sind fertig und laufen im internen Test — in den App-Stores sind sie noch nicht. Fang im Web an, dann steht dein Konto bereit, sobald sie erscheinen.",
+	"landing.platformsNote": "{platforms} {n, plural, one {ist im} other {sind im}} internen Test und noch nicht in den App-Stores. Fang jetzt auf einer anderen Plattform an, dann steht dein Konto bereit, sobald {n, plural, one {die App erscheint} other {die Apps erscheinen}}.",
 	"landing.createFreeAccount": "Kostenloses Konto erstellen",
 	"landing.navApps": "Apps",
 	"landing.navFeatures": "Funktionen",

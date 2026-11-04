@@ -6,6 +6,8 @@
 	import RunMap from '#lib/components/RunMap.svelte';
 	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
 	import { routeElevation } from '#lib/routes/route_elevation.ts';
+	import CoursePreviewButton from '#lib/components/CoursePreviewButton.svelte';
+	import { hasPreviewableCourse, routePathPoints } from '#lib/routes/course_preview_points.ts';
 	import RoutePhotos from '#lib/components/RoutePhotos.svelte';
 	import RouteConditions from '#lib/components/RouteConditions.svelte';
 	import SharePageShell from '#lib/components/SharePageShell.svelte';
@@ -55,6 +57,11 @@
 	onMount(load);
 
 	let elevation = $derived(routeElevation(route?.elevation_m ?? 0, waypoints));
+	// The line the 2D map draws, so the preview flies no more of the route
+	// than the page already shows a non-owner (the clip_route_for_viewer
+	// output). No video export here: the owner's read is unclipped, and this
+	// page's viewer can be anyone.
+	let previewPoints = $derived(routePathPoints(waypoints));
 	let metaSource = $derived(route ?? data.route ?? null);
 	let pageTitle = $derived(buildRouteShareTitle(metaSource));
 	let pageDesc = $derived(buildRouteShareDescription(metaSource));
@@ -142,6 +149,11 @@
 				<div class="map-container">
 					<RunMap track={waypoints} requireExplicitConsent />
 				</div>
+				{#if hasPreviewableCourse(previewPoints)}
+					<div class="preview-action">
+						<CoursePreviewButton points={previewPoints} title={route.name} requireExplicitConsent />
+					</div>
+				{/if}
 
 				{#if elevation.profile}
 					<section class="card">
@@ -246,6 +258,12 @@
 		overflow: hidden;
 		margin-bottom: var(--space-md);
 		border: 1px solid var(--color-border);
+	}
+
+	.preview-action {
+		display: flex;
+		justify-content: center;
+		margin-bottom: var(--space-md);
 	}
 
 	.card {

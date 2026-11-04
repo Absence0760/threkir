@@ -3760,15 +3760,16 @@ jobs:
             deno-${{ runner.os }}-
       # node_modules must be on disk before ANY Deno step reads the tree. The
       # root package.json puts deno in node_modules mode, so
-      # `_shared/stripe.ts`'s `npm:stripe@17.5.0` resolves from
-      # node_modules/stripe: without it `deno cache` below fails with "Could not
-      # find \"stripe\" in a node_modules folder" (a deterministic error its
-      # retry loop used to report as an esm.sh transient), and `deno check`
-      # dies before reading a file, since the declarations reference the node
-      # types too.
-      # `deno install` provisions both from the ROOT package.json's own `stripe`
-      # and `@types/node` devDependencies (decisions § 757, § 2257) — it is not
-      # an npm workspace install and does not need setup-node.
+      # `_shared/stripe.ts`'s `npm:stripe@17.5.0` and every function's
+      # `npm:@supabase/supabase-js@2.110.0` resolve from node_modules: without
+      # it `deno cache` below fails with "Could not find \"stripe\" in a
+      # node_modules folder" (a deterministic error its retry loop used to
+      # report as an esm.sh transient), and `deno check` dies before reading a
+      # file, since the declarations reference the node types too.
+      # `deno install` provisions all three from the ROOT package.json's own
+      # `stripe`, `@supabase/supabase-js` and `@types/node` devDependencies
+      # (decisions § 757, § 2257, § 2341) — it is not an npm workspace install
+      # and does not need setup-node.
       - name: Provision node types for the typecheck
         id: node_types
         if: ${{ !cancelled() && steps.deno.outcome == 'success' }}

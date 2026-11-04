@@ -116,8 +116,20 @@ class _FakeApi extends ApiClient {
 
   ProfileSummary? summary;
 
+  /// The signed-in account; change it, then [switchTo] tells the screens.
+  String me = _me;
+  final _authChanges = StreamController<String?>.broadcast();
+
   @override
-  String? get userId => signedIn ? _me : null;
+  String? get userId => signedIn ? me : null;
+
+  @override
+  Stream<String?> get authUserChanges => _authChanges.stream;
+
+  void switchTo(String id) {
+    me = id;
+    _authChanges.add(id);
+  }
 
   Completer<List<DmThread>>? threadsGate;
 
@@ -1387,6 +1399,52 @@ void main() {
       await tester.pump();
       await tester.pump();
       expect(find.text('Ada'), findsOneWidget);
+    });
+
+    testWidgets('a list read that lands after the account changed is dropped, '
+        'and the list is read again for the new one', (tester) async {
+      final api = _FakeApi()..threads = [_thread('p-1', name: 'Ada')];
+      await tester.pumpWidget(_app(MessagesScreen(
+          api: api, pollInterval: const Duration(seconds: 30))));
+      await tester.pump();
+      expect(find.text('Ada'), findsOneWidget);
+
+      final stale = Completer<List<DmThread>>();
+      api.threadsGate = stale;
+      await tester.pump(const Duration(seconds: 30));
+
+      api
+        ..threadsGate = null
+        ..threads = [_thread('p-2', name: 'Grace')];
+      api.switchTo('someone-else');
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Ada'), findsNothing);
+      expect(find.text('Grace'), findsOneWidget);
+
+      stale.complete([_thread('p-1', name: 'Ada')]);
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Ada'), findsNothing,
+          reason: 'that read was the previous account\'s list');
+      expect(find.text('Grace'), findsOneWidget);
+    });
+
+    testWidgets('a list read is dropped when the account changed before it '
+        'landed, even before the change is announced', (tester) async {
+      final api = _FakeApi()..threads = [_thread('p-1', name: 'Ada')];
+      await tester.pumpWidget(_app(MessagesScreen(
+          api: api, pollInterval: const Duration(seconds: 30))));
+      await tester.pump();
+
+      final stale = Completer<List<DmThread>>();
+      api.threadsGate = stale;
+      await tester.pump(const Duration(seconds: 30));
+      api.me = 'someone-else';
+      stale.complete([_thread('p-9', name: 'Zed')]);
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Zed'), findsNothing);
     });
 
     testWidgets('a conversation the server lists again after the delete '

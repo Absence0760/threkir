@@ -98,11 +98,23 @@ class _SwitchableApi extends ApiClient {
       ? null
       : UserProfileRow(profilePrivate: false, id: uid!, displayName: name, shadowHidden: false);
 
+  /// The next badge read waits on this (then it clears).
+  Completer<
+          List<({String conversationId, int unread, bool muted, bool archived})>>?
+      badgeGate;
+  List<({String conversationId, int unread, bool muted, bool archived})>
+      badgeStates = const [];
+
   @override
   Future<
           List<
               ({String conversationId, int unread, bool muted, bool archived})>>
-      fetchDmBadgeStates() async => const [];
+      fetchDmBadgeStates() async {
+    final gate = badgeGate;
+    badgeGate = null;
+    if (gate != null) return gate.future;
+    return badgeStates;
+  }
 
   @override
   Stream<String?> get authUserChanges => _controller.stream;
@@ -335,6 +347,37 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(badge('5'), isFalse);
+    expect(badge('2'), isTrue);
+  });
+
+  testWidgets('a badge read that lands after the account changed is dropped',
+      (tester) async {
+    final api = _SwitchableApi();
+    final stale = Completer<
+        List<({String conversationId, int unread, bool muted, bool archived})>>();
+    api.badgeGate = stale;
+    await pump(tester, api: api);
+    final icon = find.byKey(const ValueKey('you-messages'));
+    bool badge(String n) => find
+        .descendant(of: icon, matching: find.text(n))
+        .evaluate()
+        .isNotEmpty;
+
+    api
+      ..uid = 'u2'
+      ..badgeStates = [
+        (conversationId: 'c-2', unread: 2, muted: false, archived: false),
+      ];
+    api.emit();
+    await pumpUntil(tester, () => badge('2'), describe: 'the new badge');
+
+    stale.complete([
+      (conversationId: 'c-1', unread: 7, muted: false, archived: false),
+    ]);
+    await tester.pump();
+    await tester.pump();
+    expect(badge('7'), isFalse,
+        reason: 'that read was the previous account\'s count');
     expect(badge('2'), isTrue);
   });
 

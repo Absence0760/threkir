@@ -13,6 +13,7 @@ import '../local_gym_store.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
 import '../messages_inbox.dart' show unreadDmBadgeCount;
+import '../monotonic_clock.dart';
 import '../parkrun_barcode_cache.dart';
 import '../preferences.dart';
 import '../settings_sync.dart';
@@ -87,7 +88,7 @@ class _YouScreenState extends State<YouScreen>
 
   /// When the read [_dmStates] came from started, which decides the deleted
   /// conversations it still counts ([DmPendingHides.hides]).
-  DateTime? _dmStatesReadAt;
+  Duration? _dmStatesReadAt;
   final DmHideReader _hideReader = DmPendingHides.instance.reader();
   int _seenHideOutcomes = DmPendingHides.instance.outcomes;
 
@@ -147,7 +148,7 @@ class _YouScreenState extends State<YouScreen>
     final asked = api?.userId;
     final gen = ++_unreadGen;
     if (api == null || asked == null) return;
-    final startedAt = DateTime.now();
+    final startedAt = monotonicNow();
     try {
       final states = await api.fetchDmBadgeStates();
       if (!mounted || gen != _unreadGen || api.userId != asked) return;

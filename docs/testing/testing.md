@@ -323,6 +323,18 @@ Three ways to satisfy it, in order of preference:
 
 Reaching a screen's completion path for the first time can surface a *second* pending-work failure underneath the first — the framework's own `A Timer is still pending even after the widget tree was disposed`. Do not pump a fixed duration past it. That assertion is raised from **inside the test body**, after the harness unmounts the tree and before any `tearDown` runs, so no harness cleanup can reach it and the only remedy available to a test was a drain pump; the durable answer is for the widget to own its own clock, which is what `showTopBanner`'s pill now does (decisions.md § 1195). A pending timer under a widget you control is that widget's bug, not the test's.
 
+### 5a. A mobile suite boots Supabase through `initializeTestSupabase`
+
+`supabase_flutter` opens an `app_links` deep-link stream on `Supabase.initialize`. No plugin answers it under `flutter test`, so the `MissingPluginException` arrives on the **real** event loop and lands as an unhandled error in whichever test happens to be turning that loop (`runAsync`, `pumpUntil`) when it fires. The failure is timing-dependent and names an innocent case: it was fixed one suite at a time — the photo EXIF suite in #733, the account-delete suite in #1069, the pinned-Start suite in #1191, then the Coach strip suite in commit `1264726bf` —, each by pasting the same channel stub, while 67 other suites booted the client bare and were merely lucky.
+
+`apps/mobile_android/test/supabase_test_init.dart` owns the stub and the boot together:
+
+```dart
+await initializeTestSupabase();
+```
+
+It mocks `com.llfbandit.app_links/events` and `/messages`, then initializes against the local stack's URL with a dummy key (nothing is reached). Keep the suite's own `_supabaseReady` flag: the helper is per call, not idempotent. `supabase_test_init_guard_test.dart` fails any other test file whose code (comments and strings excluded, via `source_scan.dart`) calls `Supabase.initialize` directly, and checks the helper stubs before it initializes.
+
 ### 6. Owning the day — a Playwright spec may not assert over rows it did not seed
 
 `decisions.md § 728` covers the *zone* half of this: a seed built with local-time `Date` getters lands on the adjacent calendar day from the one the UTC-pinned browser reads. The other half is that a row can be on the right day and still not be yours. `apps/backend/supabase/seed.sql` places rows for the shared users relative to the database's own `now()` — four `food_log` meals on USER_A's day at −8 h / −5 h / −4 h / −1 h, plus `body_metrics`, `gym_workouts`, `runs` and challenge windows — so a surface that aggregates "everything today" sees them alongside whatever the spec seeded.

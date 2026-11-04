@@ -15,6 +15,7 @@ import type { MessageKey } from './messages';
 import type { Translate } from './rate_limit_message';
 import { rateLimitErrorMessage } from './rate_limit_message';
 import { databaseCodeDecides } from '../core/auth_errors';
+import { AppError } from '../core/app_error';
 
 function field(e: unknown, name: 'code' | 'message' | 'name'): string {
 	if (e && typeof e === 'object') {
@@ -32,9 +33,10 @@ function status(e: unknown): number | null {
 	return null;
 }
 
-/// The catalogue key for a failure. A rate-limit refusal has a sentence of
-/// its own, which `errorCopy` checks for first.
+/// The catalogue key for a failure. An `AppError` names its own; a rate-limit
+/// refusal has a sentence of its own, which `errorCopy` checks for first.
 export function errorCopyKey(e: unknown): MessageKey {
+	if (e instanceof AppError) return e.key;
 	const code = field(e, 'code');
 	const name = field(e, 'name');
 	const msg = field(e, 'message').toLowerCase();
@@ -50,6 +52,9 @@ export function errorCopyKey(e: unknown): MessageKey {
 	if (
 		(name === 'TypeError' &&
 			(msg.includes('failed to fetch') || msg.includes('networkerror') || msg === 'load failed')) ||
+		// supabase-js's wrapper for a fetch that rejected before an Edge
+		// Function answered: the same failure as the bare TypeError above.
+		name === 'FunctionsFetchError' ||
 		(typeof navigator !== 'undefined' && navigator.onLine === false)
 	) {
 		return 'errorCopy.offline';
@@ -123,7 +128,8 @@ export function loggableMessage(message: string): string {
 
 /// Localized copy for a thrown value, to drop into a `{error}` slot or show
 /// on its own. The code and a scrubbed message (`loggableMessage`) go to the
-/// console, never the UI.
+/// console, never the UI. An `AppError` renders its own key and params: the
+/// one way a thrown failure says something more specific than its category.
 ///
 /// `fallback` replaces the generic line for a failure the app cannot name,
 /// for a surface that shows the copy on its own and has a sentence of its
@@ -138,6 +144,7 @@ export function errorCopy(
 		code: field(e, 'code') || undefined,
 		message: loggableMessage(field(e, 'message')),
 	});
+	if (e instanceof AppError) return t(e.key, e.params);
 	const code = field(e, 'code');
 	const rateLimited = rateLimitErrorMessage(t, { code, message: field(e, 'message') });
 	if (rateLimited) return rateLimited;

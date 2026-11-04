@@ -8,11 +8,13 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../ai_disclosure.dart';
 import '../ai_disclosure_memo.dart';
+import '../auth_change_aware.dart';
 import '../dm_pending_hides.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../messages_inbox.dart';
+import '../monotonic_clock.dart';
 import '../pro_sellable.dart';
 import '../settings_sync.dart';
 import '../training_service.dart';
@@ -96,15 +98,19 @@ class MessagesScreen extends StatefulWidget {
 }
 
 class _MessagesScreenState extends State<MessagesScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, AuthChangeAware<MessagesScreen> {
   Timer? _poll;
   bool _loading = true;
   Object? _loadError;
   List<DmThread> _threads = const [];
 
-  /// Bumped when a pending delete is committed or undone. A list read started
-  /// before that still lists the conversation, and the pending hide that kept
-  /// it out is gone, so the read is dropped rather than painted.
+  /// When the read [_threads] came from started, which decides the deleted
+  /// conversations it still lists ([DmPendingHides.hides]).
+  Duration? _threadsReadAt;
+  final DmHideReader _hideReader = DmPendingHides.instance.reader();
+
+  /// Bumped when a delete lands or is undone. A list read started before that
+  /// is the wrong answer either way, so it is dropped rather than painted.
   int _readGen = 0;
 
   /// The [_readGen] of the poll in flight, null when none is. A poll from an
@@ -115,7 +121,7 @@ class _MessagesScreenState extends State<MessagesScreen>
   /// before that answers with the count from before the thread marked itself
   /// read, and assigning it as-is put the badge back on the conversation just
   /// left — the race web's `markedReadAt` closes the same way.
-  final Map<String, DateTime> _openedAt = {};
+  final Map<String, Duration> _openedAt = {};
 
   /// Null while unknown and whenever the Coach row is off.
   _CoachRowState? _coach;
@@ -134,6 +140,30 @@ class _MessagesScreenState extends State<MessagesScreen>
     _load();
     _loadCoach();
     _poll = Timer.periodic(widget.pollInterval, (_) => _refresh());
+  }
+
+  @override
+  ApiClient? get authApi => widget.api;
+
+  /// Everything held belongs to the account that left. A read still in flight
+  /// for it is dropped when it lands (each read carries the user it was made
+  /// for), and the list is read again for whoever is signed in now.
+  @override
+  void onAuthUserChanged(String? userId) {
+    _readGen++;
+    _coachGeneration++;
+    setState(() {
+      _threads = const [];
+      _threadsReadAt = null;
+      _openedAt.clear();
+      _coach = null;
+      _loadError = null;
+      _showingArchived = false;
+    });
+    if (userId == null) return;
+    _load();
+    _loadCoach();
+    _poll ??= Timer.periodic(widget.pollInterval, (_) => _refresh());
   }
 
   /// Decides the Coach row. Each step fails toward showing less: an
@@ -255,24 +285,32 @@ class _MessagesScreenState extends State<MessagesScreen>
   void dispose() {
     _poll?.cancel();
     DmPendingHides.instance.removeListener(_onPendingHidesChanged);
+    _hideReader.close();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  int _seenHideRemovals = DmPendingHides.instance.removals;
+  int _seenHideOutcomes = DmPendingHides.instance.outcomes;
 
   /// A conversation deleted in a thread leaves the list while its undo window
-  /// is open, and comes back on Undo; the list read after the commit is the
-  /// server's answer either way. The delete itself needs no read: the list
-  /// already holds the row it leaves out.
+  /// is open and comes back on Undo. Once the delete lands, the list it holds
+  /// still leaves it out until a read started after that replaces it; the
+  /// read is the server's answer either way. The delete itself needs no read:
+  /// the list already holds the row it leaves out.
   void _onPendingHidesChanged() {
     if (!mounted) return;
     setState(() {});
-    final removals = DmPendingHides.instance.removals;
-    if (removals == _seenHideRemovals) return;
-    _seenHideRemovals = removals;
+    final outcomes = DmPendingHides.instance.outcomes;
+    if (outcomes == _seenHideOutcomes) return;
+    _seenHideOutcomes = outcomes;
     _readGen++;
     _refresh();
+  }
+
+  void _hold(List<DmThread> rows, Duration startedAt) {
+    _threads = _applyOpened(rows, startedAt);
+    _threadsReadAt = startedAt;
+    _hideReader.applied(startedAt);
   }
 
   @override
@@ -280,9 +318,9 @@ class _MessagesScreenState extends State<MessagesScreen>
     if (state == AppLifecycleState.resumed) _refresh();
   }
 
-  List<DmThread> _applyOpened(List<DmThread> rows, DateTime startedAt) => [
+  List<DmThread> _applyOpened(List<DmThread> rows, Duration startedAt) => [
         for (final t in rows)
-          (_openedAt[t.threadKey]?.isAfter(startedAt) ?? false)
+          (_openedAt[t.threadKey] ?? Duration.zero) > startedAt
               ? t.copyWith(unread: 0)
               : t,
       ];
@@ -293,17 +331,18 @@ class _MessagesScreenState extends State<MessagesScreen>
       _loadError = null;
     });
     final gen = _readGen;
-    final startedAt = DateTime.now();
+    final userId = widget.api.userId;
+    final startedAt = monotonicNow();
     try {
       final rows = await widget.api.fetchDmThreads();
-      if (!mounted) return;
+      if (!mounted || widget.api.userId != userId) return;
       if (gen != _readGen) return _load();
       setState(() {
-        _threads = _applyOpened(rows, startedAt);
+        _hold(rows, startedAt);
         _loading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || widget.api.userId != userId) return;
       if (gen != _readGen) return _load();
       setState(() {
         _loadError = e;
@@ -318,14 +357,16 @@ class _MessagesScreenState extends State<MessagesScreen>
     final lifecycle = WidgetsBinding.instance.lifecycleState;
     if (lifecycle != null && lifecycle != AppLifecycleState.resumed) return;
     if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
+    final userId = widget.api.userId;
+    if (userId == null) return;
     if (_loadError != null) return _load();
     final gen = _readGen;
     _pollGen = gen;
-    final startedAt = DateTime.now();
+    final startedAt = monotonicNow();
     try {
       final rows = await widget.api.fetchDmThreads();
-      if (mounted && gen == _readGen) {
-        setState(() => _threads = _applyOpened(rows, startedAt));
+      if (mounted && gen == _readGen && widget.api.userId == userId) {
+        setState(() => _hold(rows, startedAt));
       }
     } catch (e) {
       debugPrint('messages inbox poll failed: $e');
@@ -361,7 +402,7 @@ class _MessagesScreenState extends State<MessagesScreen>
       ),
     );
     if (!mounted) return;
-    _openedAt[t.threadKey] = DateTime.now();
+    _openedAt[t.threadKey] = monotonicNow();
     setState(() {
       _threads = [
         for (final x in _threads)
@@ -387,12 +428,13 @@ class _MessagesScreenState extends State<MessagesScreen>
     }
     final coach = _coach;
     final hides = DmPendingHides.instance;
+    final readAt = _threadsReadAt;
     // Archived conversations sit in their own list until a newer message
     // arrives (dm_threads() decides that). The Coach row belongs to the inbox.
     final split = partitionArchived<DmThread>(
       [
         for (final t in _threads)
-          if (!hides.contains(t.conversationId)) t,
+          if (readAt == null || !hides.hides(t.conversationId, readAt)) t,
       ],
       archived: (t) => t.archived,
     );

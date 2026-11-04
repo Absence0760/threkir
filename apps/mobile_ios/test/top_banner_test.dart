@@ -312,6 +312,79 @@ void main() {
   });
 
   group('showTopBanner — position', () {
+    // 24 logical px of status bar: the app bar spans it, and the pill
+    // sits the gap under the app bar, not the status bar again lower.
+    void statusBar(WidgetTester tester) {
+      tester.view.padding = FakeViewPadding(top: 24 * tester.view.devicePixelRatio);
+      addTearDown(tester.view.resetPadding);
+    }
+
+    testWidgets('under a status bar, the pill sits 12 px under the app bar',
+        (tester) async {
+      statusBar(tester);
+      late BuildContext screen;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          appBar: AppBar(title: const Text('host')),
+          body: Builder(builder: (ctx) {
+            screen = ctx;
+            return const SizedBox.expand();
+          }),
+        ),
+      ));
+      final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
+      expect(appBarBottom, 24 + kToolbarHeight);
+
+      showTopBanner(screen, 'here');
+      await tester.pump();
+      expect(tester.getTopLeft(find.byKey(const ValueKey('top_banner:up:here'))).dy,
+          appBarBottom + 12);
+      hideTopBanner();
+      await tester.pump();
+    });
+
+    testWidgets('under a status bar, said from the root navigator, the pill '
+        'sits 12 px under the top screen\'s app bar', (tester) async {
+      statusBar(tester);
+      final navigator = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(MaterialApp(
+        navigatorKey: navigator,
+        home: Scaffold(
+          appBar: AppBar(title: const Text('host')),
+          body: const SizedBox.expand(),
+        ),
+      ));
+      final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
+
+      showTopBanner(navigator.currentContext!, 'root');
+      await tester.pump();
+      expect(tester.getTopLeft(find.byKey(const ValueKey('top_banner:up:root'))).dy,
+          appBarBottom + 12);
+      hideTopBanner();
+      await tester.pump();
+    });
+
+    testWidgets('under a status bar with no app bar, the pill sits 12 px '
+        'under the status bar', (tester) async {
+      statusBar(tester);
+      late BuildContext screen;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(builder: (ctx) {
+            screen = ctx;
+            return const SizedBox.expand();
+          }),
+        ),
+      ));
+
+      showTopBanner(screen, 'bare');
+      await tester.pump();
+      expect(tester.getTopLeft(find.byKey(const ValueKey('top_banner:up:bare'))).dy,
+          24 + 12);
+      hideTopBanner();
+      await tester.pump();
+    });
+
     testWidgets(
       'said from the root navigator, the pill sits under the app bar of the '
       'screen on top',

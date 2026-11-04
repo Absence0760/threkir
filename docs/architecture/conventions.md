@@ -914,7 +914,7 @@ A derived metric's name (VO₂ max, CTL / ATL / TSB, VDOT, 1RM, RPE, age grade, 
 
 ## Mobile in-app notifications — `showTopBanner`
 
-On the Flutter apps (`apps/mobile_android`, `apps/mobile_ios`), the canonical transient notification primitive is `showTopBanner(context, message, ...)` from `lib/widgets/top_banner.dart`. It renders a top-anchored pill via `Overlay`, auto-positions below an `AppBar` when one is present (said from the root navigator's own context, as a callback that outlives its screen must be, it measures the screen on top), and coalesces to a single banner at a time.
+On the Flutter apps (`apps/mobile_android`, `apps/mobile_ios`), the canonical transient notification primitive is `showTopBanner(context, message, ...)` from `lib/widgets/top_banner.dart`. It renders a top-anchored pill via `Overlay`, auto-positions below an `AppBar` when one is present (said from the root navigator's own context, as a callback that outlives its screen must be, it measures the screen on top; a primary `Scaffold`'s `appBarMaxHeight` already spans the status bar, so the pill sits 12 px under the app bar, or 12 px under the safe-area top on a screen without one), and coalesces to a single banner at a time.
 
 **Don't call `ScaffoldMessenger.of(context).showSnackBar(...)` inside `lib/screens/` or `lib/widgets/`.** Material's floating SnackBar docks at the bottom of the screen, where it overlapped the Pause / Stop / Lap controls on the recording surface — a runner couldn't reach Stop without dismissing a snack first. Top-anchored eliminates that overlap on every screen and gives notifications a consistent shape app-wide. Two architecture-guard tests in `apps/mobile_android/test/architecture_guards_test.dart` (mirrored on iOS) fail any new `showSnackBar` or `ScaffoldMessenger.of(context)` use under those folders.
 
@@ -1349,7 +1349,9 @@ action can honestly be reversed:
   putting the snapshot back, so ordering survives; if the delete cascades
   children server-side, filter the children out too or the list renders orphans.
   A held mutation belongs to the account that made it: Sign out commits it
-  first (`signOutWithScope`'s `settlePending`, passed `undoStore.flush`), and a
+  first (`signOutWithScope`'s `settlePending`, passed `undoStore.flush`; a
+  failure there is logged and the sign-out still runs, since signing out is
+  the core action), and a
   session that ends or changes some other way (another tab) runs Undo instead,
   from the root layout, so it never commits with no session or as the next
   account.

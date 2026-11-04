@@ -16,6 +16,7 @@ import { AI_DISCLOSURE_ERROR } from '../core/ai_disclosure';
 import { payloadSha256Hex } from '../util/payload_hash';
 import type { RouteDescriptionInput } from './route_description';
 import type { PreferredUnit } from '../types';
+import type { Locale } from '../i18n/locale';
 
 export interface AiDescriptionResult {
 	description: string;
@@ -26,10 +27,15 @@ export interface AiDescriptionResult {
 }
 
 /**
- * Map the route's stored fields into the endpoint's request body. `unit` is
- * the viewer's, so the paragraph comes back in the unit they read.
+ * Map the route's stored fields into the endpoint's request body. `unit` and
+ * `locale` are the viewer's, so the paragraph comes back in the unit and the
+ * language they read.
  */
-function toBody(input: RouteDescriptionInput, unit: PreferredUnit): Record<string, unknown> {
+function toBody(
+	input: RouteDescriptionInput,
+	unit: PreferredUnit,
+	locale: Locale,
+): Record<string, unknown> {
 	return {
 		name: input.name,
 		distance_m: input.distanceM,
@@ -38,6 +44,7 @@ function toBody(input: RouteDescriptionInput, unit: PreferredUnit): Record<strin
 		start: input.start ?? null,
 		end: input.end ?? null,
 		unit,
+		locale,
 	};
 }
 
@@ -49,8 +56,9 @@ function toBody(input: RouteDescriptionInput, unit: PreferredUnit): Record<strin
 export async function requestAiDescription(
 	input: RouteDescriptionInput,
 	unit: PreferredUnit,
+	locale: Locale,
 ): Promise<AiDescriptionResult> {
-	const body = JSON.stringify(toBody(input, unit));
+	const body = JSON.stringify(toBody(input, unit, locale));
 	// CloudFront's Lambda OAC can't hash the body itself — the client
 	// supplies the sigv4 payload hash or the Function URL 403s (#590).
 	const bodyHash = await payloadSha256Hex(body);

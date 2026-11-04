@@ -98,11 +98,23 @@ class _SwitchableApi extends ApiClient {
       ? null
       : UserProfileRow(profilePrivate: false, id: uid!, displayName: name, shadowHidden: false);
 
+  /// The next badge read waits on this (then it clears).
+  Completer<
+          List<({String conversationId, int unread, bool muted, bool archived})>>?
+      badgeGate;
+  List<({String conversationId, int unread, bool muted, bool archived})>
+      badgeStates = const [];
+
   @override
   Future<
           List<
               ({String conversationId, int unread, bool muted, bool archived})>>
-      fetchDmBadgeStates() async => const [];
+      fetchDmBadgeStates() async {
+    final gate = badgeGate;
+    badgeGate = null;
+    if (gate != null) return gate.future;
+    return badgeStates;
+  }
 
   @override
   Stream<String?> get authUserChanges => _controller.stream;
@@ -323,7 +335,7 @@ void main() {
     api.states = [
       (conversationId: 'c-2', unread: 2, muted: false, archived: false),
     ];
-    DmPendingHides.instance.remove('c-1');
+    DmPendingHides.instance.landed('c-1');
     await tester.pump();
     await tester.pump();
     expect(badge('2'), isTrue);
@@ -336,6 +348,75 @@ void main() {
     await tester.pump();
     expect(badge('5'), isFalse);
     expect(badge('2'), isTrue);
+  });
+
+  testWidgets('a badge read that lands after the account changed is dropped',
+      (tester) async {
+    final api = _SwitchableApi();
+    final stale = Completer<
+        List<({String conversationId, int unread, bool muted, bool archived})>>();
+    api.badgeGate = stale;
+    await pump(tester, api: api);
+    final icon = find.byKey(const ValueKey('you-messages'));
+    bool badge(String n) => find
+        .descendant(of: icon, matching: find.text(n))
+        .evaluate()
+        .isNotEmpty;
+
+    api
+      ..uid = 'u2'
+      ..badgeStates = [
+        (conversationId: 'c-2', unread: 2, muted: false, archived: false),
+      ];
+    api.emit();
+    await pumpUntil(tester, () => badge('2'), describe: 'the new badge');
+
+    stale.complete([
+      (conversationId: 'c-1', unread: 7, muted: false, archived: false),
+    ]);
+    await tester.pump();
+    await tester.pump();
+    expect(badge('7'), isFalse,
+        reason: 'that read was the previous account\'s count');
+    expect(badge('2'), isTrue);
+  });
+
+  testWidgets('a landed delete stays out of the count while the read after it '
+      'is in flight', (tester) async {
+    addTearDown(DmPendingHides.instance.debugClear);
+    final api = _FakeApi()
+      ..states = [
+        (conversationId: 'c-1', unread: 3, muted: false, archived: false),
+        (conversationId: 'c-2', unread: 2, muted: false, archived: false),
+      ];
+    await pump(tester, api: api);
+    final icon = find.byKey(const ValueKey('you-messages'));
+    bool badge(String n) => find
+        .descendant(of: icon, matching: find.text(n))
+        .evaluate()
+        .isNotEmpty;
+    await pumpUntil(tester, () => badge('5'), describe: 'the unread badge');
+
+    DmPendingHides.instance.add('c-1');
+    await tester.pump();
+    expect(badge('2'), isTrue);
+
+    final fresh = Completer<
+        List<({String conversationId, int unread, bool muted, bool archived})>>();
+    api.badgeGates.add(fresh);
+    DmPendingHides.instance.landed('c-1');
+    await tester.pump();
+    expect(badge('2'), isTrue,
+        reason: 'the count held was read before the delete landed');
+    expect(DmPendingHides.instance.debugHasMarker('c-1'), isTrue);
+
+    fresh.complete([
+      (conversationId: 'c-2', unread: 2, muted: false, archived: false),
+    ]);
+    await tester.pump();
+    await tester.pump();
+    expect(badge('2'), isTrue);
+    expect(DmPendingHides.instance.debugHasMarker('c-1'), isFalse);
   });
 
   testWidgets('no badge with nothing unread', (tester) async {

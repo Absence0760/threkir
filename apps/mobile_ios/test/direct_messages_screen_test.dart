@@ -116,8 +116,20 @@ class _FakeApi extends ApiClient {
 
   ProfileSummary? summary;
 
+  /// The signed-in account; change it, then [switchTo] tells the screens.
+  String me = _me;
+  final _authChanges = StreamController<String?>.broadcast();
+
   @override
-  String? get userId => signedIn ? _me : null;
+  String? get userId => signedIn ? me : null;
+
+  @override
+  Stream<String?> get authUserChanges => _authChanges.stream;
+
+  void switchTo(String id) {
+    me = id;
+    _authChanges.add(id);
+  }
 
   Completer<List<DmThread>>? threadsGate;
 
@@ -1317,7 +1329,7 @@ void main() {
       api
         ..threadsGate = null
         ..threads = [_thread('p-2', name: 'Grace')];
-      DmPendingHides.instance.remove('c-p-1');
+      DmPendingHides.instance.landed('c-p-1');
       await tester.pump();
       await tester.pump();
       expect(api.threadsCalls, reads + 1,
@@ -1331,6 +1343,130 @@ void main() {
       await tester.pump();
       expect(find.text('Ada'), findsNothing);
       expect(find.text('Grace'), findsOneWidget);
+    });
+
+    testWidgets('a landed delete stays out of the list while the read after '
+        'it is in flight, and its marker goes once that read is held',
+        (tester) async {
+      final api = _FakeApi()
+        ..threads = [_thread('p-1', name: 'Ada'), _thread('p-2', name: 'Grace')];
+      await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+      DmPendingHides.instance.add('c-p-1');
+      await tester.pump();
+      expect(find.text('Ada'), findsNothing);
+
+      final fresh = Completer<List<DmThread>>();
+      api.threadsGate = fresh;
+      final reads = api.threadsCalls;
+      DmPendingHides.instance.landed('c-p-1');
+      await tester.pump();
+      await tester.pump();
+      expect(api.threadsCalls, reads + 1);
+      expect(DmPendingHides.instance.contains('c-p-1'), isFalse);
+      expect(find.text('Ada'), findsNothing,
+          reason: 'the list held started before the delete landed');
+      expect(DmPendingHides.instance.debugHasMarker('c-p-1'), isTrue);
+
+      fresh.complete([_thread('p-2', name: 'Grace')]);
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Ada'), findsNothing);
+      expect(find.text('Grace'), findsOneWidget);
+      expect(DmPendingHides.instance.debugHasMarker('c-p-1'), isFalse,
+          reason: 'no read the list holds can list it any more');
+    });
+
+    testWidgets('Undo brings the row back at once, before the re-read answers',
+        (tester) async {
+      final api = _FakeApi()
+        ..threads = [_thread('p-1', name: 'Ada'), _thread('p-2', name: 'Grace')];
+      await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+      DmPendingHides.instance.add('c-p-1');
+      await tester.pump();
+      expect(find.text('Ada'), findsNothing);
+
+      final fresh = Completer<List<DmThread>>();
+      api.threadsGate = fresh;
+      DmPendingHides.instance.remove('c-p-1');
+      await tester.pump();
+      expect(find.text('Ada'), findsOneWidget);
+      expect(DmPendingHides.instance.debugHasMarker('c-p-1'), isFalse);
+
+      fresh.complete(
+          [_thread('p-1', name: 'Ada'), _thread('p-2', name: 'Grace')]);
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Ada'), findsOneWidget);
+    });
+
+    testWidgets('a list read that lands after the account changed is dropped, '
+        'and the list is read again for the new one', (tester) async {
+      final api = _FakeApi()..threads = [_thread('p-1', name: 'Ada')];
+      await tester.pumpWidget(_app(MessagesScreen(
+          api: api, pollInterval: const Duration(seconds: 30))));
+      await tester.pump();
+      expect(find.text('Ada'), findsOneWidget);
+
+      final stale = Completer<List<DmThread>>();
+      api.threadsGate = stale;
+      await tester.pump(const Duration(seconds: 30));
+
+      api
+        ..threadsGate = null
+        ..threads = [_thread('p-2', name: 'Grace')];
+      api.switchTo('someone-else');
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Ada'), findsNothing);
+      expect(find.text('Grace'), findsOneWidget);
+
+      stale.complete([_thread('p-1', name: 'Ada')]);
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Ada'), findsNothing,
+          reason: 'that read was the previous account\'s list');
+      expect(find.text('Grace'), findsOneWidget);
+    });
+
+    testWidgets('a list read is dropped when the account changed before it '
+        'landed, even before the change is announced', (tester) async {
+      final api = _FakeApi()..threads = [_thread('p-1', name: 'Ada')];
+      await tester.pumpWidget(_app(MessagesScreen(
+          api: api, pollInterval: const Duration(seconds: 30))));
+      await tester.pump();
+
+      final stale = Completer<List<DmThread>>();
+      api.threadsGate = stale;
+      await tester.pump(const Duration(seconds: 30));
+      api.me = 'someone-else';
+      stale.complete([_thread('p-9', name: 'Zed')]);
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Zed'), findsNothing);
+    });
+
+    testWidgets('a conversation the server lists again after the delete '
+        'landed shows on the next read', (tester) async {
+      final api = _FakeApi()
+        ..threads = [_thread('p-1', name: 'Ada'), _thread('p-2', name: 'Grace')];
+      await tester.pumpWidget(_app(MessagesScreen(
+          api: api, pollInterval: const Duration(seconds: 30))));
+      await tester.pump();
+      DmPendingHides.instance.add('c-p-1');
+      await tester.pump();
+      api.threads = [_thread('p-2', name: 'Grace')];
+      DmPendingHides.instance.landed('c-p-1');
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Ada'), findsNothing);
+
+      // A newer message brings the conversation back on the server.
+      api.threads = [_thread('p-1', name: 'Ada'), _thread('p-2', name: 'Grace')];
+      await tester.pump(const Duration(seconds: 30));
+      await tester.pump();
+      expect(find.text('Ada'), findsOneWidget);
     });
   });
 

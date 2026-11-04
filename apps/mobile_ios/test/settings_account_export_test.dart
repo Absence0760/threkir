@@ -562,7 +562,8 @@ void main() {
 
   testWidgets('a refusal with no retry window still surfaces', (tester) async {
     // Only a 429 carries a window the subject can act on; every other
-    // refusal has to reach them as itself rather than as silence.
+    // refusal has to reach them as a failure rather than as silence — in the
+    // catalogue's words, not the service's.
     final service = _FakeExportService(
       latest: [<String, dynamic>{'status': 'none'}],
       enqueueError: const BackupServerError('export request failed (status 500)',
@@ -574,7 +575,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(find.textContaining('status 500'), findsOneWidget);
+    final l10n = lookupAppLocalizations(const Locale('en'));
+    expect(
+        find.text(l10n.settingsAccountExportRequestFailed(l10n.authErrorGeneric)),
+        findsOneWidget);
+    expect(find.textContaining('status 500'), findsNothing);
     expect(find.byKey(const Key('account-export-building')), findsNothing);
     expect(service.downloads, 0);
     await tester.pump(const Duration(seconds: 4));

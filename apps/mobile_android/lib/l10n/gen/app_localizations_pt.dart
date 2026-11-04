@@ -238,6 +238,31 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get importFileUnreadable =>
+      'Este ficheiro não está no formato esperado.';
+
+  @override
+  String importRefusedTooLarge(int sizeMb, int limitMb) {
+    return 'Este ficheiro tem $sizeMb MB e excede o limite de $limitMb MB. Divida-o em exportações mais pequenas e importe cada uma.';
+  }
+
+  @override
+  String get importRefusedNotStravaExport =>
+      'Isto não é uma exportação do Strava: não contém nenhum activities.csv.';
+
+  @override
+  String get importRefusedColumnsMissing =>
+      'A lista de atividades desta exportação não tem as colunas necessárias.';
+
+  @override
+  String get importRefusedNotBackup =>
+      'Isto não é uma cópia de segurança criada por esta app.';
+
+  @override
+  String get importRefusedBackupTooNew =>
+      'Esta cópia de segurança foi criada por uma versão mais recente da app. Atualize a app e depois restaure-a.';
+
+  @override
   String get importStatusRestoringBackup => 'A restaurar backup...';
 
   @override
@@ -20167,6 +20192,31 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String importCsvFailed(Object error) {
     return 'Falha na importação do CSV: $error';
   }
+
+  @override
+  String get importFileUnreadable =>
+      'Este arquivo não está no formato esperado.';
+
+  @override
+  String importRefusedTooLarge(int sizeMb, int limitMb) {
+    return 'Este arquivo tem $sizeMb MB e passa do limite de $limitMb MB. Divida-o em exportações menores e importe cada uma.';
+  }
+
+  @override
+  String get importRefusedNotStravaExport =>
+      'Isto não é uma exportação do Strava: não há nenhum activities.csv dentro dela.';
+
+  @override
+  String get importRefusedColumnsMissing =>
+      'A lista de atividades desta exportação não tem as colunas necessárias.';
+
+  @override
+  String get importRefusedNotBackup =>
+      'Isto não é um backup feito por este app.';
+
+  @override
+  String get importRefusedBackupTooNew =>
+      'Este backup foi feito por uma versão mais recente do app. Atualize o app e depois restaure-o.';
 
   @override
   String get importStatusRestoringBackup => 'Restaurando backup...';

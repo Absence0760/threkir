@@ -20,6 +20,7 @@ import '../backup.dart';
 import '../exif_strip.dart';
 import '../backup_server_client.dart';
 import '../export_job.dart';
+import '../import_refusal.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
@@ -284,6 +285,7 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       showTopBanner(context, l10n.settingsAccountExportQueued);
       _scheduleExportPoll(0);
     } on BackupServerError catch (e) {
+      debugPrint('[SettingsAccountScreen] export request failed: $e');
       // Surfaced, never swallowed: the rail this replaced fell through
       // to the on-device writer on any non-200, so a refused Art 20
       // request reached the subject as a narrower archive they were
@@ -294,7 +296,7 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
         context,
         e.isRateLimited && retry != null
             ? l10n.settingsAccountExportRateLimited(retry)
-            : l10n.settingsAccountExportRequestFailed(e.message),
+            : l10n.settingsAccountExportRequestFailed(friendlyError(l10n, e)),
       );
     } catch (e) {
       if (mounted) {
@@ -1111,8 +1113,11 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
         text: l10n.settingsAccountCsvShareText,
       );
     } catch (e) {
-      if (mounted)
-        showTopBanner(context, l10n.settingsAccountCsvExportFailed(e));
+      debugPrint('[SettingsAccountScreen] CSV export failed: $e');
+      if (mounted) {
+        showTopBanner(
+            context, l10n.settingsAccountCsvExportFailed(friendlyError(l10n, e)));
+      }
     } finally {
       if (mounted) setState(() => _accountBusy = false);
     }
@@ -1162,7 +1167,11 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
         );
       }
     } catch (e) {
-      if (mounted) showTopBanner(context, l10n.settingsAccountBackupFailed(e));
+      debugPrint('[SettingsAccountScreen] backup failed: $e');
+      if (mounted) {
+        showTopBanner(
+            context, l10n.settingsAccountBackupFailed(friendlyError(l10n, e)));
+      }
     } finally {
       if (mounted) setState(() => _accountBusy = false);
     }
@@ -1231,7 +1240,11 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
         ),
       );
     } catch (e) {
-      if (mounted) showTopBanner(context, l10n.settingsAccountRestoreFailed(e));
+      debugPrint('[SettingsAccountScreen] restore failed: $e');
+      if (mounted) {
+        showTopBanner(
+            context, l10n.settingsAccountRestoreFailed(importErrorText(l10n, e)));
+      }
     } finally {
       if (mounted) setState(() => _accountBusy = false);
     }

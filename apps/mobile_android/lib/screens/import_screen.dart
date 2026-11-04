@@ -11,6 +11,7 @@ import '../cross_source_dedup.dart';
 import '../csv_run_importer.dart';
 import '../health_connect_importer.dart';
 import '../import_failures.dart';
+import '../import_refusal.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
@@ -196,10 +197,12 @@ class _ImportScreenState extends State<ImportScreen> {
       if (!mounted) return;
       setState(() => _withheldRouteIds = imported.withheldSessionIds);
     } catch (e) {
+      debugPrint('[ImportScreen] health import failed: $e');
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _status = l10n.importHealthFailed(_healthLabel(l10n), e);
+        _status = l10n.importHealthFailed(
+            _healthLabel(l10n), importErrorText(l10n, e));
       });
     }
   }
@@ -243,11 +246,13 @@ class _ImportScreenState extends State<ImportScreen> {
         _status = l10n.importHealthRoutesAdded(backfill.filled);
       });
     } catch (e) {
+      debugPrint('[ImportScreen] health import failed: $e');
       if (!mounted) return;
       setState(() {
         _busy = false;
         _withheldRouteIds = const {};
-        _status = l10n.importHealthFailed(_healthLabel(l10n), e);
+        _status = l10n.importHealthFailed(
+            _healthLabel(l10n), importErrorText(l10n, e));
       });
     }
   }
@@ -499,10 +504,11 @@ class _ImportScreenState extends State<ImportScreen> {
         failures: parsed.failures,
       );
     } catch (e) {
+      debugPrint('[ImportScreen] CSV import failed: $e');
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _status = l10n.importCsvFailed(e);
+        _status = l10n.importCsvFailed(importErrorText(l10n, e));
       });
     }
   }
@@ -542,10 +548,11 @@ class _ImportScreenState extends State<ImportScreen> {
         _errors = res.warnings;
       });
     } catch (e) {
+      debugPrint('[ImportScreen] backup restore failed: $e');
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _status = l10n.importBackupFailed(e);
+        _status = l10n.importBackupFailed(importErrorText(l10n, e));
       });
     }
   }
@@ -580,10 +587,11 @@ class _ImportScreenState extends State<ImportScreen> {
         failures: parsed.failures,
       );
     } catch (e) {
+      debugPrint('[ImportScreen] Strava import failed: $e');
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _status = l10n.importStravaFailed(e);
+        _status = l10n.importStravaFailed(importErrorText(l10n, e));
       });
     }
   }

@@ -507,8 +507,10 @@ void main() {
       await tester.tap(find.byIcon(Icons.upload));
       await _settleStore(tester);
 
-      expect(find.textContaining('Screens push failed'), findsOneWidget);
-      expect(find.textContaining('no radio'), findsOneWidget);
+      final l10n = lookupAppLocalizations(const Locale('en'));
+      expect(find.text(l10n.watchScreensPushFailed(l10n.authErrorGeneric)),
+          findsOneWidget);
+      expect(find.textContaining('no radio'), findsNothing);
       expect(transport.disconnectCount, 1);
     });
   });

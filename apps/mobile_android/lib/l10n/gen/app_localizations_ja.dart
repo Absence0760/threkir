@@ -234,6 +234,28 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get importFileUnreadable => 'このファイルは想定された形式ではありません。';
+
+  @override
+  String importRefusedTooLarge(int sizeMb, int limitMb) {
+    return 'このファイルは$sizeMb MBで、上限の$limitMb MBを超えています。小さなエクスポートに分けて、1つずつインポートしてください。';
+  }
+
+  @override
+  String get importRefusedNotStravaExport =>
+      'これはStravaのエクスポートではありません。activities.csvが含まれていません。';
+
+  @override
+  String get importRefusedColumnsMissing => 'このエクスポートのアクティビティ一覧に必要な列がありません。';
+
+  @override
+  String get importRefusedNotBackup => 'これはこのアプリで作成したバックアップではありません。';
+
+  @override
+  String get importRefusedBackupTooNew =>
+      'このバックアップは新しいバージョンのアプリで作成されています。アプリを更新してから復元してください。';
+
+  @override
   String get importStatusRestoringBackup => 'バックアップを復元中...';
 
   @override

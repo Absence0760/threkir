@@ -211,15 +211,14 @@ void main() {
     });
 
     testWidgets(
-        'non-rate-limit errors still surface verbatim (debug info preserved)',
+        'non-rate-limit errors show the classified copy, never the raw text',
         (tester) async {
-      // The catch in club_form_sheet should ONLY translate the rate-
-      // limit path; unrelated PostgrestExceptions (RLS denies, foreign
-      // key violations, etc.) keep their raw text so debugging info
-      // isn't hidden.
+      // Anything but the rate-limit path reads as friendlyError's copy; the
+      // database's own wording names tables and constraints, so it stays in
+      // the log (docs/architecture/conventions.md § Mobile error copy).
       final fake = _FakeSocialService(PostgrestException(
-        message: 'permission denied for table clubs',
-        code: '42501',
+        message: 'insert or update on table clubs violates foreign key',
+        code: '23503',
       ));
       await _openSheet(tester, social: fake);
 
@@ -230,8 +229,9 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Create'));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('permission denied for table clubs'),
-          findsOneWidget);
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(find.text(l10n.authErrorGeneric), findsOneWidget);
+      expect(find.textContaining('violates foreign key'), findsNothing);
       expect(find.textContaining('creating clubs too quickly'),
           findsNothing);
     });

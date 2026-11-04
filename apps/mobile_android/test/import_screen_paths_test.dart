@@ -197,11 +197,15 @@ void main() {
           tester, store, _write('other.zip', ZipEncoder().encode(archive)));
 
       await _tapUntil(tester, _stravaButton,
-          until: () => tester.any(find.textContaining('Not a Strava export')),
+          until: () => tester.any(find.text(
+              l10n.importStravaFailed(l10n.importRefusedNotStravaExport))),
           describe: 'the archive to be rejected as not a Strava export');
 
       expect(store.summaryRuns, isEmpty);
-      expect(find.textContaining('Not a Strava export'), findsOneWidget);
+      expect(
+          find.text(l10n.importStravaFailed(l10n.importRefusedNotStravaExport)),
+          findsOneWidget);
+      expect(find.textContaining('activities.csv found'), findsNothing);
     });
 
     testWidgets('a file that is not a ZIP fails visibly rather than silently',
@@ -215,9 +219,13 @@ void main() {
           describe: 'the unreadable file to surface an import failure');
 
       expect(store.summaryRuns, isEmpty);
-      // The message is the decoder's, but something failure-shaped must show:
-      // a silent "nothing happened" is the outcome the report exists to stop.
-      expect(find.textContaining('Import failed:'), findsOneWidget);
+      // Something failure-shaped must show — a silent "nothing happened" is
+      // the outcome the report exists to stop. The decoder reads the bytes as
+      // an empty archive, so the refusal is the missing activities.csv, in
+      // the catalogue's words.
+      expect(
+          find.text(l10n.importStravaFailed(l10n.importRefusedNotStravaExport)),
+          findsOneWidget);
     });
 
     testWidgets('a row whose track file is missing is reported, not dropped',
@@ -394,11 +402,14 @@ void main() {
       );
 
       await _tapUntil(tester, _backupButton,
-          until: () => tester.any(find.textContaining('Not a valid backup')),
+          until: () => tester.any(find.text(
+              l10n.importBackupFailed(l10n.importRefusedNotBackup))),
           describe: 'the archive to be rejected as not a backup');
 
       expect(store.summaryRuns, isEmpty);
-      expect(find.textContaining('Not a valid backup'), findsOneWidget);
+      expect(find.text(l10n.importBackupFailed(l10n.importRefusedNotBackup)),
+          findsOneWidget);
+      expect(find.textContaining('manifest.json'), findsNothing);
     });
 
     testWidgets('a backup from a newer app version refuses', (tester) async {
@@ -411,11 +422,14 @@ void main() {
       );
 
       await _tapUntil(tester, _backupButton,
-          until: () => tester.any(find.textContaining('Backup restore failed:')),
+          until: () => tester.any(find.text(
+              l10n.importBackupFailed(l10n.importRefusedBackupTooNew))),
           describe: 'the newer-version backup to be refused');
 
       expect(store.summaryRuns, isEmpty);
-      expect(find.textContaining('Backup restore failed:'), findsOneWidget);
+      expect(
+          find.text(l10n.importBackupFailed(l10n.importRefusedBackupTooNew)),
+          findsOneWidget);
     });
 
     testWidgets('a pick with no readable path is a no-op on all three paths',

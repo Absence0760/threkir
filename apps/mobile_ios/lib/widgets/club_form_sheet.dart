@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow;
 
+import '../auth_error.dart';
 import '../club_slug.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../rate_limit_message.dart';
@@ -236,9 +237,10 @@ class _ClubFormScreenState extends State<_ClubFormScreen> {
       // 20260907_001) and surface the localized "wait N minutes"
       // message instead of the raw PostgrestException toString.
       // Mirror of the web fix in apps/web/src/lib/core/data.ts +
-      // ClubEditor.svelte. Unknown errors fall through to the raw
-      // toString so debugging information isn't hidden.
-      String message = e.toString();
+      // ClubEditor.svelte. Anything else reads as the classified copy; the
+      // raw text stays in the log.
+      debugPrint('[ClubFormSheet] save failed: $e');
+      String message = friendlyError(l10n, e);
       if (e is PostgrestException) {
         final friendly =
             rateLimitErrorMessage(l10n, code: e.code, message: e.message);

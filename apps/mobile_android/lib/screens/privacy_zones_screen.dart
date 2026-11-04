@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../auth_error.dart';
 import '../geocoding.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../privacy.dart';
@@ -123,8 +124,9 @@ class _PrivacyZonesScreenState extends State<PrivacyZonesScreen> {
       _dirty = false;
       showTopBanner(context, l10n.privacyZonesSaved);
     } catch (e) {
+      debugPrint('[PrivacyZonesScreen] save failed: $e');
       if (!mounted) return;
-      showTopBanner(context, l10n.privacyZonesSaveFailed(e));
+      showTopBanner(context, l10n.privacyZonesSaveFailed(friendlyError(l10n, e)));
     } finally {
       if (mounted) setState(() => _saving = false);
     }

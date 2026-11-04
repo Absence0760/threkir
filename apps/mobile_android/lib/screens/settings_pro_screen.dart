@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../auth_error.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
@@ -203,8 +204,10 @@ class _SettingsProScreenState extends State<SettingsProScreen>
       try {
         await shareTextFrom(context, text: url);
       } catch (e) {
+        debugPrint('[SettingsProScreen] share fallback failed: $e');
         if (!context.mounted) return;
-        showTopBanner(context, AppLocalizations.of(context).proCouldNotOpen(e));
+        final l10n = AppLocalizations.of(context);
+        showTopBanner(context, l10n.proCouldNotOpen(friendlyError(l10n, e)));
       }
     }
   }

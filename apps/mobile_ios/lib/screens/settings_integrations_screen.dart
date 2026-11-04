@@ -9,6 +9,7 @@ import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../auth_error.dart';
 import '../column_limits.dart';
 import '../integration_visibility.dart';
 import '../ble_heart_rate.dart';
@@ -167,8 +168,11 @@ class _SettingsIntegrationsScreenState
       try {
         await shareTextFrom(context, text: url);
       } catch (e) {
+        debugPrint('[SettingsIntegrationsScreen] share fallback failed: $e');
         if (!mounted) return;
-        showTopBanner(context, AppLocalizations.of(context).integrationsCouldNotOpen(e));
+        final l10n = AppLocalizations.of(context);
+        showTopBanner(
+            context, l10n.integrationsCouldNotOpen(friendlyError(l10n, e)));
       }
     }
   }
@@ -242,8 +246,10 @@ class _SettingsIntegrationsScreenState
       );
       await _refreshIntegrations();
     } catch (e) {
+      debugPrint('[SettingsIntegrationsScreen] Strava sign-in failed: $e');
       if (!mounted) return;
-      showTopBanner(context, l10n.integrationsStravaSignInFailed(e));
+      showTopBanner(
+          context, l10n.integrationsStravaSignInFailed(friendlyError(l10n, e)));
     } finally {
       if (mounted) setState(() => _stravaBusy = false);
     }
@@ -283,8 +289,9 @@ class _SettingsIntegrationsScreenState
       );
       await _refreshIntegrations();
     } catch (e) {
+      debugPrint('[SettingsIntegrationsScreen] Strava sync failed: $e');
       if (!mounted) return;
-      showTopBanner(context, l10n.integrationsSyncFailed(e));
+      showTopBanner(context, l10n.integrationsSyncFailed(friendlyError(l10n, e)));
     } finally {
       if (mounted) setState(() => _stravaBusy = false);
     }
@@ -321,8 +328,10 @@ class _SettingsIntegrationsScreenState
       if (!mounted) return;
       showTopBanner(context, l10n.integrationsStravaDisconnected);
     } catch (e) {
+      debugPrint('[SettingsIntegrationsScreen] Strava disconnect failed: $e');
       if (!mounted) return;
-      showTopBanner(context, l10n.integrationsDisconnectFailed(e));
+      showTopBanner(
+          context, l10n.integrationsDisconnectFailed(friendlyError(l10n, e)));
     } finally {
       if (mounted) setState(() => _stravaBusy = false);
     }
@@ -459,9 +468,10 @@ class _SettingsIntegrationsScreenState
                 : l10n.integrationsParkrunNoneNew,
       );
     } catch (e) {
+      debugPrint('[SettingsIntegrationsScreen] import failed: $e');
       if (!mounted) return;
       Navigator.of(context).pop();
-      showTopBanner(context, l10n.integrationsImportFailed(e));
+      showTopBanner(context, l10n.integrationsImportFailed(friendlyError(l10n, e)));
     }
   }
 
@@ -794,9 +804,11 @@ class _HeartRateMonitorTileState extends State<HeartRateMonitorTile> {
       try {
         await widget.heartRate.pair(device);
       } catch (e) {
+        debugPrint('[SettingsIntegrationsScreen] HR pair failed: $e');
         if (mounted) {
+          final l10n = AppLocalizations.of(context);
           showTopBanner(
-              context, AppLocalizations.of(context).integrationsHrPairFailed(e));
+              context, l10n.integrationsHrPairFailed(friendlyError(l10n, e)));
         }
       }
       await _refresh();
@@ -1075,9 +1087,11 @@ class _TreadmillTileState extends State<TreadmillTile> {
       try {
         await widget.treadmill.pair(device);
       } catch (e) {
+        debugPrint('[SettingsIntegrationsScreen] treadmill pair failed: $e');
         if (mounted) {
+          final l10n = AppLocalizations.of(context);
           showTopBanner(context,
-              AppLocalizations.of(context).integrationsTreadmillPairFailed(e));
+              l10n.integrationsTreadmillPairFailed(friendlyError(l10n, e)));
         }
       }
       await _refresh();

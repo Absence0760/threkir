@@ -377,6 +377,38 @@
       }
     }
   },
+  "importFileUnreadable": "This file isn't in the expected format.",
+  "@importFileUnreadable": {
+    "description": "Error detail inside an import-failed status when the chosen file is not in the format the importer expects"
+  },
+  "importRefusedTooLarge": "This file is {sizeMb} MB, over the {limitMb} MB limit. Split it into smaller exports and import each one.",
+  "@importRefusedTooLarge": {
+    "description": "Error detail inside an import-failed status when the chosen file is over the importer's size limit",
+    "placeholders": {
+      "sizeMb": {
+        "type": "int"
+      },
+      "limitMb": {
+        "type": "int"
+      }
+    }
+  },
+  "importRefusedNotStravaExport": "This isn't a Strava export: there's no activities.csv inside it.",
+  "@importRefusedNotStravaExport": {
+    "description": "Error detail inside an import-failed status when the chosen ZIP has no activities.csv, so it is not a Strava account export"
+  },
+  "importRefusedColumnsMissing": "The activity list in this export is missing the columns it needs.",
+  "@importRefusedColumnsMissing": {
+    "description": "Error detail inside an import-failed status when the export's activity list lacks the columns the importer needs"
+  },
+  "importRefusedNotBackup": "This isn't a backup made by this app.",
+  "@importRefusedNotBackup": {
+    "description": "Error detail inside a restore-failed status when the chosen ZIP is not a backup written by this app"
+  },
+  "importRefusedBackupTooNew": "This backup was made by a newer version of the app. Update the app, then restore it.",
+  "@importRefusedBackupTooNew": {
+    "description": "Error detail inside a restore-failed status when the backup was written by a newer app version than this one"
+  },
   "importStatusRestoringBackup": "Restoring backup...",
   "@importStatusRestoringBackup": {
     "description": "Status while restoring from a full-backup ZIP"

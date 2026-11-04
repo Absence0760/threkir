@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import 'import_refusal.dart';
 import 'local_food_store.dart';
 import 'local_gym_store.dart';
 import 'local_route_store.dart';
@@ -423,11 +424,13 @@ class BackupService {
 
     final manifest = _readJson(archive, 'manifest.json');
     if (manifest == null || manifest['format'] != _format) {
-      throw Exception('Not a valid backup — missing or wrong manifest.json');
+      throw const ImportRefused(ImportRefusalKind.notBackup,
+          'Not a valid backup — missing or wrong manifest.json');
     }
     final version = (manifest['version'] as num?)?.toInt() ?? 0;
     if (version > _version) {
-      throw Exception(
+      throw ImportRefused(
+        ImportRefusalKind.backupTooNew,
         'Backup is from a newer version ($version). Update the app before restoring.',
       );
     }

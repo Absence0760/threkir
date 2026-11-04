@@ -467,6 +467,42 @@ abstract class AppLocalizations {
   /// **'CSV import failed: {error}'**
   String importCsvFailed(Object error);
 
+  /// Error detail inside an import-failed status when the chosen file is not in the format the importer expects
+  ///
+  /// In en, this message translates to:
+  /// **'This file isn\'t in the expected format.'**
+  String get importFileUnreadable;
+
+  /// Error detail inside an import-failed status when the chosen file is over the importer's size limit
+  ///
+  /// In en, this message translates to:
+  /// **'This file is {sizeMb} MB, over the {limitMb} MB limit. Split it into smaller exports and import each one.'**
+  String importRefusedTooLarge(int sizeMb, int limitMb);
+
+  /// Error detail inside an import-failed status when the chosen ZIP has no activities.csv, so it is not a Strava account export
+  ///
+  /// In en, this message translates to:
+  /// **'This isn\'t a Strava export: there\'s no activities.csv inside it.'**
+  String get importRefusedNotStravaExport;
+
+  /// Error detail inside an import-failed status when the export's activity list lacks the columns the importer needs
+  ///
+  /// In en, this message translates to:
+  /// **'The activity list in this export is missing the columns it needs.'**
+  String get importRefusedColumnsMissing;
+
+  /// Error detail inside a restore-failed status when the chosen ZIP is not a backup written by this app
+  ///
+  /// In en, this message translates to:
+  /// **'This isn\'t a backup made by this app.'**
+  String get importRefusedNotBackup;
+
+  /// Error detail inside a restore-failed status when the backup was written by a newer app version than this one
+  ///
+  /// In en, this message translates to:
+  /// **'This backup was made by a newer version of the app. Update the app, then restore it.'**
+  String get importRefusedBackupTooNew;
+
   /// Status while restoring from a full-backup ZIP
   ///
   /// In en, this message translates to:

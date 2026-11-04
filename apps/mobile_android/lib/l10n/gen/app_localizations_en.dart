@@ -237,6 +237,29 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get importFileUnreadable => 'This file isn\'t in the expected format.';
+
+  @override
+  String importRefusedTooLarge(int sizeMb, int limitMb) {
+    return 'This file is $sizeMb MB, over the $limitMb MB limit. Split it into smaller exports and import each one.';
+  }
+
+  @override
+  String get importRefusedNotStravaExport =>
+      'This isn\'t a Strava export: there\'s no activities.csv inside it.';
+
+  @override
+  String get importRefusedColumnsMissing =>
+      'The activity list in this export is missing the columns it needs.';
+
+  @override
+  String get importRefusedNotBackup => 'This isn\'t a backup made by this app.';
+
+  @override
+  String get importRefusedBackupTooNew =>
+      'This backup was made by a newer version of the app. Update the app, then restore it.';
+
+  @override
   String get importStatusRestoringBackup => 'Restoring backup...';
 
   @override

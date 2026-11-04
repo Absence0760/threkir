@@ -238,6 +238,30 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get importFileUnreadable => 'Ce fichier n\'est pas au format attendu.';
+
+  @override
+  String importRefusedTooLarge(int sizeMb, int limitMb) {
+    return 'Ce fichier fait $sizeMb Mo, au-delà de la limite de $limitMb Mo. Divisez-le en exports plus petits et importez-les un par un.';
+  }
+
+  @override
+  String get importRefusedNotStravaExport =>
+      'Ce n\'est pas un export Strava : il ne contient pas de fichier activities.csv.';
+
+  @override
+  String get importRefusedColumnsMissing =>
+      'Il manque à la liste d\'activités de cet export les colonnes nécessaires.';
+
+  @override
+  String get importRefusedNotBackup =>
+      'Ce n\'est pas une sauvegarde créée par cette application.';
+
+  @override
+  String get importRefusedBackupTooNew =>
+      'Cette sauvegarde a été créée par une version plus récente de l\'application. Mettez l\'application à jour, puis restaurez-la.';
+
+  @override
   String get importStatusRestoringBackup => 'Restauration de la sauvegarde…';
 
   @override

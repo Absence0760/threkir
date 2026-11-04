@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow, EmptyState, ListSkeleton;
 
+import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../reactive_ble_watch_transport.dart';
 import '../sim_watch_sync.dart';
@@ -379,8 +380,10 @@ class _WatchScreensEditorScreenState extends State<WatchScreensEditorScreen> {
           ? l10n.watchScreensCleared
           : l10n.watchScreensPushed(screens.length));
     } catch (e) {
+      debugPrint('[WatchScreensEditorScreen] screens push failed: $e');
       if (!mounted) return;
-      setState(() => _message = l10n.watchScreensPushFailed('$e'));
+      setState(() =>
+          _message = l10n.watchScreensPushFailed(friendlyError(l10n, e)));
     } finally {
       if (mounted) setState(() => _pushing = false);
     }

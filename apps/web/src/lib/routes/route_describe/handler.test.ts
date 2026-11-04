@@ -1,17 +1,3 @@
-// Unit tests for the pre-Supabase early-return paths in
-// handleRouteDescribe. Run via
-// `npx tsx --test apps/web/src/lib/routes/route_describe/handler.test.ts`.
-//
-// Like the coach handler, this short-circuits on two branches BEFORE
-// it ever instantiates a Supabase client or calls Anthropic:
-//   - 400 when the body has no numeric distance_m (unparseable input)
-//   - 401 when there's no Authorization header
-// Those are mock-free. The downstream branches (auth.getUser, is_pro
-// RPC, the Anthropic call, the templated fallback on each failure mode)
-// need a real local Supabase + the Pro/free dev accounts and are
-// exercised by the Playwright spec in
-// `tests-e2e/routes/route-describe.spec.ts`.
-
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

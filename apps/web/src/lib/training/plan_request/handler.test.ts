@@ -483,6 +483,7 @@ test('the tool schema names exactly the fields the validator reads', () => {
 		'race_date',
 		'recent_5k_sec',
 		'ultra_distance_km',
+		'ultra_distance_unit',
 		'weeks',
 	]);
 });

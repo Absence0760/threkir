@@ -21,8 +21,10 @@
 //      today included — is dropped (`race_dropped_date`).
 //   3. Distance: a distance within 0.5 % of a standard road distance snaps
 //      to it exactly, so "42.2" plans as a marathon and "3.1 mi" as a 5K;
-//      any other snaps to the whole kilometre or mile a tenth-of-a-mile
-//      figure names (`snapStatedDistanceM`). Then 5 km to 400 km, inclusive:
+//      any other snaps to the whole kilometre or mile a figure written to a
+//      tenth of the runner's unit names (`snapStatedDistanceM`, by the
+//      race's `distance_unit`: half a tenth of a mile for `mi`, of a km
+//      otherwise). Then 5 km to 400 km, inclusive:
 //      outside it the race is dropped (`race_dropped_distance`), never
 //      clamped — a clamped distance names a race that does not exist.
 //   4. Goal time: kept only when its pace sits between 2:30 and 20:00 per km;
@@ -44,7 +46,7 @@
 
 import { isoEpochDay, MAX_RACE_DATE_YEARS } from '../plan_request/inputs';
 import { GOAL_DISTANCES_M } from '../training';
-import { snapStatedDistanceM } from '../stated_distance';
+import { parseStatedDistanceUnit, snapStatedDistanceM } from '../stated_distance';
 import type { SeasonRace, SeasonRacePriority, SeasonRequestResult } from '../season_types';
 
 /// Why the race list holds what it holds when it is not simply what the
@@ -122,7 +124,7 @@ function resolveDate(raw: unknown, todayIso: string): DateOutcome {
 	return { date: isoFromEpochDay(next), rolled: true };
 }
 
-function resolveDistanceM(raw: unknown): number | null {
+function resolveDistanceM(raw: unknown, rawUnit: unknown): number | null {
 	const km = finiteNumber(raw);
 	if (km === null) return null;
 	const heard = km * 1000;
@@ -130,7 +132,7 @@ function resolveDistanceM(raw: unknown): number | null {
 	const standard = Object.values(GOAL_DISTANCES_M).find(
 		(d) => Math.abs(heard - d) <= d * STANDARD_SNAP_FRACTION,
 	);
-	const m = standard ?? Math.round(snapStatedDistanceM(heard));
+	const m = standard ?? Math.round(snapStatedDistanceM(heard, parseStatedDistanceUnit(rawUnit)));
 	if (m < MIN_SEASON_RACE_DISTANCE_M || m > MAX_SEASON_RACE_DISTANCE_M) return null;
 	return m;
 }
@@ -181,7 +183,7 @@ export function validateSeasonRaces(raw: unknown, todayIso: string): SeasonReque
 			note('race_dropped_date');
 			continue;
 		}
-		const distanceM = resolveDistanceM(o.distance_km);
+		const distanceM = resolveDistanceM(o.distance_km, o.distance_unit);
 		if (distanceM === null) {
 			note('race_dropped_distance');
 			continue;

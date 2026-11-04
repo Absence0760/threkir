@@ -95,7 +95,7 @@
 	let pendingError = $state<string | null>(null);
 	let pendingRetrying = $state(false);
 	let loading = $state(true);
-	let loadError = $state<string | null>(null);
+	let loadError = $state<Error | null>(null);
 	type Tab = 'feed' | 'events' | 'routes' | 'templates' | 'photos' | 'members';
 	const TABS: readonly Tab[] = ['feed', 'events', 'routes', 'templates', 'photos', 'members'];
 	let tab = $state<Tab>('feed');

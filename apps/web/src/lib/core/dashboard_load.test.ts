@@ -130,7 +130,7 @@ test('dashboard: a failed plan read shows a load error, not the create-a-plan pr
 	const reader = data.slice(data.indexOf('async function planOverviewFor('));
 	const body = reader.slice(0, reader.indexOf('\n}\n'));
 	assert.match(body, /error: rowsErr \} = await supabase/);
-	assert.match(body, /if \(rowsErr\) return \{ overview: null, error: rowsErr\.message \}/);
+	assert.match(body, /if \(rowsErr\) return \{ overview: null, error: dbError\(rowsErr\) \}/);
 	assert.match(body, /if \(planErr\) return \{ overview: null, error: planErr \}/);
 	assert.match(SRC, /planLoadError = planRead\.error/);
 	const errorBranch = SRC.indexOf('{:else if planLoadError}');

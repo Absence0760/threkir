@@ -497,7 +497,7 @@ export type DashboardRun = Pick<Run, (typeof DASHBOARD_RUN_COLUMNS)[number]>;
 
 export async function fetchRunsForDashboard(): Promise<{
 	runs: DashboardRun[];
-	error: string | null;
+	error: Error | null;
 }> {
 	const userId = auth.user?.id;
 	if (!userId) return { runs: [], error: null };
@@ -513,7 +513,7 @@ export async function fetchRunsForDashboard(): Promise<{
 		.eq('user_id', userId)
 		.gte('started_at', windowStart.toISOString())
 		.order('started_at', { ascending: false });
-	if (error) return { runs: [], error: error.message };
+	if (error) return { runs: [], error: dbError(error) };
 	if (!data) return { runs: [], error: null };
 	return {
 		// All three narrowed on read, the same defence `fetchRunById` applies one
@@ -777,7 +777,7 @@ export async function fetchPublicRecap(
 /// indistinguishable from a deleted run and rendered "Run not found".
 export async function fetchRunById(
 	id: string
-): Promise<{ run: Run | null; error: string | null }> {
+): Promise<{ run: Run | null; error: Error | null }> {
 	const userId = auth.user?.id;
 	if (!userId) return { run: null, error: null };
 	const { data, error } = await supabase
@@ -789,7 +789,7 @@ export async function fetchRunById(
 
 	// PGRST116 is "no rows matched" — a genuine not-found (or not-owner),
 	// not a failure to find out.
-	if (error && error.code !== 'PGRST116') return { run: null, error: error.message };
+	if (error && error.code !== 'PGRST116') return { run: null, error: dbError(error) };
 	if (!data) return { run: null, error: null };
 
 	// Lazy-load the GPS track from Storage when the run has one.
@@ -1111,7 +1111,7 @@ async function decompressGzip(buf: ArrayBuffer): Promise<Uint8Array> {
 
 export async function fetchPublicRun(
 	id: string,
-): Promise<{ run: Run | null; error: string | null }> {
+): Promise<{ run: Run | null; error: Error | null }> {
 	// Public reads go through the public_runs view (decisions §33,
 	// migration 20260626_001) which strips external_id, redacts the
 	// metadata bag's audit / sync / training-plan-linkage keys, and
@@ -1137,7 +1137,7 @@ export async function fetchPublicRun(
 	// whenever the read merely failed. `fetchRunById` was fixed for exactly
 	// this and says so; the public half is the one strangers hit, and a
 	// stranger has no way to tell a broken read from a deleted run.
-	if (error && error.code !== 'PGRST116') return { run: null, error: error.message };
+	if (error && error.code !== 'PGRST116') return { run: null, error: dbError(error) };
 	if (!data) return { run: null, error: null };
 	return { run: { ...data, track: null } as Run, error: null };
 }
@@ -1151,13 +1151,13 @@ export async function fetchPublicRun(
 /// a failed read is reported apart from "not shared with you".
 export async function fetchSharedRun(
 	id: string,
-): Promise<{ run: Run | null; error: string | null }> {
+): Promise<{ run: Run | null; error: Error | null }> {
 	const { data, error } = await supabase
 		.from('shared_runs')
 		.select('*')
 		.eq('id', id)
 		.maybeSingle();
-	if (error) return { run: null, error: error.message };
+	if (error) return { run: null, error: dbError(error) };
 	if (!data) return { run: null, error: null };
 	return { run: { ...data, track: null } as Run, error: null };
 }
@@ -1167,7 +1167,7 @@ export async function fetchSharedRun(
 /// and `shared_runs` is not granted to anon.
 export async function fetchViewableRun(
 	id: string,
-): Promise<{ run: Run | null; error: string | null; shared: boolean }> {
+): Promise<{ run: Run | null; error: Error | null; shared: boolean }> {
 	const pub = await fetchPublicRun(id);
 	if (pub.error || pub.run) return { ...pub, shared: false };
 	if (!(await currentViewerId())) return { run: null, error: null, shared: false };
@@ -1202,7 +1202,7 @@ export interface PublicRunAttribution {
 /// surface is `/coaching/athletes/[id]`.
 export async function fetchPublicRunAttribution(
 	runId: string,
-): Promise<{ attribution: PublicRunAttribution | null; error: string | null }> {
+): Promise<{ attribution: PublicRunAttribution | null; error: Error | null }> {
 	// Reported separately for the same reason `fetchRunById` reports it: the
 	// caller decides whether the viewer is a non-owner or whether nothing has
 	// been established yet, and an errored read is evidence of neither.
@@ -1211,7 +1211,7 @@ export async function fetchPublicRunAttribution(
 		.select('user_id')
 		.eq('id', runId)
 		.maybeSingle();
-	if (error) return { attribution: null, error: error.message };
+	if (error) return { attribution: null, error: dbError(error) };
 	let ownerId = (run as { user_id?: string | null } | null)?.user_id;
 	if (!ownerId) {
 		// Not public: the run may still be shared with this viewer — a
@@ -1222,7 +1222,7 @@ export async function fetchPublicRunAttribution(
 			.select('user_id')
 			.eq('id', runId)
 			.maybeSingle();
-		if (sharedError) return { attribution: null, error: sharedError.message };
+		if (sharedError) return { attribution: null, error: dbError(sharedError) };
 		ownerId = (shared as { user_id?: string | null } | null)?.user_id;
 	}
 	if (!ownerId) return { attribution: null, error: null };
@@ -3495,16 +3495,16 @@ export async function fetchMyClubs(): Promise<ClubWithMeta[]> {
 /// did not exist whenever the request merely failed.
 export async function fetchClubBySlug(
 	slug: string
-): Promise<{ club: ClubWithMeta | null; error: string | null }> {
+): Promise<{ club: ClubWithMeta | null; error: Error | null }> {
 	const { data, error } = await supabase
 		.from('clubs')
 		.select(CLUB_SELECT_COLS)
 		.eq('slug', slug)
 		.maybeSingle();
-	if (error) return { club: null, error: error.message };
+	if (error) return { club: null, error: dbError(error) };
 	if (!data) return { club: null, error: null };
 	const { clubs: enrichedClubs, error: rolesError } = await enrichClubs([asClub(data)]);
-	if (rolesError) return { club: null, error: thrownMessage(rolesError) };
+	if (rolesError) return { club: null, error: rolesError };
 	const [enriched] = enrichedClubs;
 	if (!enriched) return { club: null, error: null };
 	if (enriched.viewer_role === 'owner' || enriched.viewer_role === 'admin') {
@@ -5958,7 +5958,7 @@ export type PublicPlanLibraryEntry = TrainingPlan & {
 export async function fetchPublicPlanLibrary(
 	query = '',
 	limit = 100
-): Promise<{ plans: PublicPlanLibraryEntry[]; error: string | null }> {
+): Promise<{ plans: PublicPlanLibraryEntry[]; error: Error | null }> {
 	let q = supabase
 		.from('training_plans')
 		.select('*, is_official')
@@ -5968,7 +5968,7 @@ export async function fetchPublicPlanLibrary(
 	const trimmed = query.trim();
 	if (trimmed) q = q.regexIMatch('name', literalSubstringPattern(trimmed));
 	const { data, error } = await q;
-	if (error) return { plans: [], error: error.message };
+	if (error) return { plans: [], error: dbError(error) };
 	const rows = (data ?? []) as TrainingPlan[];
 	const authorIds = [...new Set(rows.map((r) => r.user_id))];
 	const byId = new Map<string, string | null>();
@@ -6222,7 +6222,7 @@ export async function fetchPlan(id: string): Promise<{
 	plan: TrainingPlan | null;
 	weeks: PlanWeek[];
 	workouts: PlanWorkout[];
-	error: string | null;
+	error: Error | null;
 }> {
 	// One round trip: the embed needs no `in (...)` list of week ids, so no
 	// chunking either. Ordered here because an embed's order is per parent.
@@ -6234,7 +6234,7 @@ export async function fetchPlan(id: string): Promise<{
 	// Surface a query error so the detail page can show a "couldn't load —
 	// retry" state instead of the not-found page (a real error otherwise
 	// reads as a missing plan when the row just comes back null).
-	if (!data) return { plan: null, weeks: [], workouts: [], error: error?.message ?? null };
+	if (!data) return { plan: null, weeks: [], workouts: [], error: error ? dbError(error) : null };
 	const { plan_weeks: weekRows, ...plan } = data;
 	const weeks: PlanWeek[] = [];
 	const workouts: PlanWorkout[] = [];
@@ -6275,13 +6275,13 @@ export async function fetchPrecedingPlan(startIso: string): Promise<{
 	if (error) throw dbError(error);
 	if (!data) return null;
 	const read = await fetchPlan(data.id);
-	if (read.error) throw new Error(read.error);
+	if (read.error) throw dbError(read.error);
 	return read.plan ? { plan: read.plan, weeks: read.weeks, workouts: read.workouts } : null;
 }
 
 export async function fetchWorkout(
 	id: string
-): Promise<{ workout: PlanWorkout | null; error: string | null }> {
+): Promise<{ workout: PlanWorkout | null; error: Error | null }> {
 	// Thread the query error so the detail page can show a "couldn't load —
 	// retry" state instead of the not-found page (a transient error otherwise
 	// reads as a deleted workout when the row just comes back null), mirroring
@@ -6291,7 +6291,7 @@ export async function fetchWorkout(
 		.select('*')
 		.eq('id', id)
 		.maybeSingle();
-	return { workout: (data as PlanWorkout | null) ?? null, error: error?.message ?? null };
+	return { workout: (data as PlanWorkout | null) ?? null, error: error ? dbError(error) : null };
 }
 
 /// Distances of the runs linked to plan workouts, by run id, for the
@@ -6371,7 +6371,7 @@ export async function fetchPlanOwnerId(planId: string): Promise<string | null> {
 /// plan that exists.
 export type PlanOverviewRead = {
 	overview: ActivePlanOverview | null;
-	error: string | null;
+	error: Error | null;
 	/// The runner's most recently paused plan, read only when there is no
 	/// active one to show, so Home can offer to resume it instead of acting
 	/// as though they have no plan.
@@ -6409,7 +6409,7 @@ async function planOverviewFor(userId: string): Promise<PlanOverviewRead> {
 		.eq('user_id', userId)
 		.eq('status', 'active')
 		.eq('is_template', false);
-	if (rowsErr) return { overview: null, error: rowsErr.message };
+	if (rowsErr) return { overview: null, error: dbError(rowsErr) };
 	const active = (rows ?? []) as TrainingPlan[];
 	if (active.length === 0) return { overview: null, error: null };
 	// Local-tz today — `toISOString().slice(0,10)` returns the UTC date,
@@ -7212,7 +7212,7 @@ export interface ProfileSummary extends PublicProfile {
 /// a block stands between the two.
 export async function fetchPublicProfile(
 	userId: string
-): Promise<{ profile: ProfileSummary | null; error: string | null }> {
+): Promise<{ profile: ProfileSummary | null; error: Error | null }> {
 	const [profileRes, summaryRes] = await Promise.all([
 		supabase
 			.from('user_profiles')
@@ -7225,10 +7225,8 @@ export async function fetchPublicProfile(
 	// Surface a query error so the profile page can show a "couldn't load —
 	// retry" state instead of the not-found page (a real error otherwise
 	// reads as a missing user when the row just comes back null).
-	const error =
-		(profileRes as { error?: { message?: string } | null }).error?.message ??
-		(summaryRes as { error?: { message?: string } | null }).error?.message ??
-		null;
+	const failed = profileRes.error ?? summaryRes.error;
+	const error = failed ? dbError(failed) : null;
 	if (!profileRes.data || !summaryRes.data) return { profile: null, error };
 	const summary = summaryRes.data;
 
@@ -8599,7 +8597,7 @@ export async function fetchEventPhotos(
 	eventId: string,
 	instanceStart: string,
 	limit = 100,
-): Promise<{ photos: EventPhoto[]; error: string | null }> {
+): Promise<{ photos: EventPhoto[]; error: Error | null }> {
 	// `event_gallery_photos` returns no `run_id`, so a private run's UUID can't
 	// leak to an event viewer who can't see that run.
 	const { data, error } = await supabase.rpc(
@@ -8613,7 +8611,7 @@ export async function fetchEventPhotos(
 	);
 	if (error) {
 		console.error('fetchEventPhotos failed', error);
-		return { photos: [], error: `${error.message}${error.code ? ` (${error.code})` : ''}` };
+		return { photos: [], error: dbError(error) };
 	}
 	// The generator types a RETURNS TABLE column as non-null; these three are nullable.
 	const rows = (data ?? []).map((r) => ({
@@ -9981,16 +9979,16 @@ export interface PendingSafetyRequest {
 /// error, not an empty list.
 export async function fetchMySafetyContacts(): Promise<{
 	contacts: SafetyContact[];
-	error: string | null;
+	error: Error | null;
 }> {
 	const userId = auth.user?.id;
-	if (!userId) return { contacts: [], error: 'Not signed in' };
+	if (!userId) return { contacts: [], error: new AppError('errorCopy.signedOut', { message: 'Not signed in' }) };
 	const { data, error } = await supabase
 		.from(TABLES.safety_contacts)
 		.select('id, contact_email, contact_phone, contact_user_id, confirmed_at, sms_opt_in_at, created_at')
 		.eq('owner_id', userId)
 		.order('created_at', { ascending: false });
-	return { contacts: (data ?? []) as SafetyContact[], error: error?.message ?? null };
+	return { contacts: (data ?? []) as SafetyContact[], error: error ? dbError(error) : null };
 }
 
 /// Add a safety contact by email. The address is stored as-is; a confirm
@@ -10062,16 +10060,16 @@ export interface SafetyContactOf {
 /// a signed-out caller is an error, not "you are nobody's contact".
 export async function fetchSafetyContactOf(): Promise<{
 	relationships: SafetyContactOf[];
-	error: string | null;
+	error: Error | null;
 }> {
 	const userId = auth.user?.id;
-	if (!userId) return { relationships: [], error: 'Not signed in' };
+	if (!userId) return { relationships: [], error: new AppError('errorCopy.signedOut', { message: 'Not signed in' }) };
 	const { data, error } = await supabase
 		.from(TABLES.safety_contacts)
 		.select('id, owner_id, contact_phone, sms_opt_in_at, created_at')
 		.eq('contact_user_id', userId)
 		.order('created_at', { ascending: false });
-	if (error) return { relationships: [], error: error.message };
+	if (error) return { relationships: [], error: dbError(error) };
 	const rows = (data ?? []) as {
 		id: string;
 		owner_id: string;
@@ -10101,12 +10099,12 @@ export async function fetchSafetyContactOf(): Promise<{
 /// directly readable until they link by confirming).
 export async function fetchPendingSafetyRequests(): Promise<{
 	requests: PendingSafetyRequest[];
-	error: string | null;
+	error: Error | null;
 }> {
 	const { data, error } = await supabase.rpc('my_pending_safety_requests', undefined, { get: true });
 	return {
 		requests: (data ?? []) as PendingSafetyRequest[],
-		error: error?.message ?? null,
+		error: error ? dbError(error) : null,
 	};
 }
 
@@ -12210,7 +12208,7 @@ const EXERCISE_ORDER: readonly KeysetKey[] = [
 /// a second, swallowing name would be a shim that reads safe.
 export async function fetchExerciseCatalogue(): Promise<{
 	catalogue: Exercise[];
-	error: string | null;
+	error: Error | null;
 }> {
 	// Signed out is not a vouched-for empty catalogue either — the read never
 	// happened, so nothing downstream may claim a typed name is free. The `/gym`
@@ -12218,7 +12216,7 @@ export async function fetchExerciseCatalogue(): Promise<{
 	// this branch, which is exactly why the branch has to be right on its own:
 	// the next caller inherits whatever it says, and `null` here says the
 	// catalogue is known to hold nothing.
-	if (!auth.user?.id) return { catalogue: [], error: 'signed_out' };
+	if (!auth.user?.id) return { catalogue: [], error: new AppError('errorCopy.signedOut', { message: 'signed_out' }) };
 	// Walked by cursor: PostgREST caps an unranged select at `db.max-rows`, and
 	// an OFFSET walk over a catalogue someone adds a custom entry to mid-read
 	// skips or repeats a row (§ 1936).
@@ -12231,11 +12229,8 @@ export async function fetchExerciseCatalogue(): Promise<{
 		return q.limit(limit);
 	});
 	if (!walk.complete) {
-		const error = walk.error as { message?: unknown; code?: unknown } | null;
 		console.error('fetchExerciseCatalogue failed', walk.error);
-		const message = typeof error?.message === 'string' ? error.message : 'unavailable';
-		const code = typeof error?.code === 'string' && error.code ? ` (${error.code})` : '';
-		return { catalogue: [], error: `${message}${code}` };
+		return { catalogue: [], error: dbError(walk.error) };
 	}
 	const rows = walk.rows as Exercise[];
 	return { catalogue: dedupeShadowedExercises(rows), error: null };
@@ -14169,7 +14164,7 @@ export type PublicGymRoutineEntry = GymRoutineSummary & {
 export async function fetchPublicGymRoutineLibrary(
 	query = '',
 	limit = 100
-): Promise<{ routines: PublicGymRoutineEntry[]; error: string | null }> {
+): Promise<{ routines: PublicGymRoutineEntry[]; error: Error | null }> {
 	// public_gym_routines redacts external_id + last_modified_at (migration
 	// 20270319_001); created_at stands in for the required summary field.
 	let q = supabase
@@ -14180,7 +14175,7 @@ export async function fetchPublicGymRoutineLibrary(
 	const trimmed = query.trim();
 	if (trimmed) q = q.regexIMatch('title', literalSubstringPattern(trimmed));
 	const { data, error } = await q;
-	if (error) return { routines: [], error: error.message };
+	if (error) return { routines: [], error: dbError(error) };
 	const rows = ((data ?? []) as Array<Omit<GymRoutineSummary, 'last_modified_at'>>).map(
 		(r) => ({ ...r, last_modified_at: r.created_at }) as GymRoutineSummary
 	);

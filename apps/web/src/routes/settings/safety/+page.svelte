@@ -58,7 +58,8 @@
 		contacts = c.contacts;
 		pending = p.requests;
 		contactOf = co.relationships;
-		loadError = c.error ?? p.error ?? co.error;
+		const failure = c.error ?? p.error ?? co.error;
+		loadError = failure ? errorCopy(failure, m, 'settings/safety: loadError') : null;
 	}
 
 	// Overdue escalation (docs/features/safety.md): a universal pref holding

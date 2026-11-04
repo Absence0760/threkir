@@ -1241,7 +1241,7 @@
 		loadedId = id;
 		try {
 			const res = await fetchPlan(id);
-			loadError = res.error;
+			loadError = res.error ? errorCopy(res.error, m, 'plans/[id]: loadError') : null;
 			plan = res.plan;
 			weeks = res.weeks;
 			workouts = res.workouts;

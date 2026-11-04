@@ -48,7 +48,7 @@
 		const lib = await fetchPublicGymRoutineLibrary('');
 		// The library read carries its own error field, which was being
 		// discarded — a failure silently rendered the author as "Anonymous".
-		loadError = lib.error ?? null;
+		loadError = lib.error ? errorCopy(lib.error, t, 'gym/routines/library/[id]: loadError') : null;
 		authorHandle = lib.routines.find((r) => r.id === routineId)?.author_handle ?? null;
 		loading = false;
 	}

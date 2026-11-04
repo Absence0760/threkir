@@ -287,8 +287,7 @@ Rules:
   `throw dbError(res.error)`. A string-typed `error` field put PostgREST's English in
   front of the reader through a field no scan could tell from copy;
   `error_copy_guard.test.ts` fails the PR on a `core/data.ts` reader that
-  declares one, outside a shrinking `TEXT_READERS` list of readers not yet
-  moved.
+  declares one; there is no allowlist.
 - **Keep a genuine miss distinguishable.** A read that succeeded and matched
   nothing is still an empty result: preserve it. `supabase-js` gives
   `PGRST116` for `.single()` no-rows and `{data: null, error: null}` for

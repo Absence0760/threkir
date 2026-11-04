@@ -46,38 +46,37 @@ Run _run({
   bool withTrack = false,
   List<Waypoint>? track,
   Map<String, dynamic>? metadata,
-}) => Run(
-  id: 'run-1',
-  startedAt: DateTime.utc(2026, 4, 15, 7, 30),
-  duration: duration,
-  distanceMetres: distanceMetres,
-  source: RunSource.app,
-  metadata:
-      metadata ??
-      (title != null ? {'title': title, 'activity_type': 'run'} : null),
-  // The secondary-stats row (which hosts the Calories pill) is
-  // gated on `run.track.length >= 2 || _hasElevation`. A
-  // 2-waypoint stub track is the cheapest way to make the gate
-  // fire when a test cares about secondary stats; the values
-  // aren't used by the calorie math (which derives from
-  // distanceMetres + bodyWeightKg + activityType only).
-  track:
-      track ??
-      (withTrack
-          ? [
-              Waypoint(
-                lat: -37.8136,
-                lng: 144.9631,
-                timestamp: DateTime.utc(2026, 4, 15, 7, 30),
-              ),
-              Waypoint(
-                lat: -37.8137,
-                lng: 144.9632,
-                timestamp: DateTime.utc(2026, 4, 15, 7, 31),
-              ),
-            ]
-          : const []),
-);
+}) =>
+    Run(
+      id: 'run-1',
+      startedAt: DateTime.utc(2026, 4, 15, 7, 30),
+      duration: duration,
+      distanceMetres: distanceMetres,
+      source: RunSource.app,
+      metadata: metadata ??
+          (title != null ? {'title': title, 'activity_type': 'run'} : null),
+      // The secondary-stats row (which hosts the Calories pill) is
+      // gated on `run.track.length >= 2 || _hasElevation`. A
+      // 2-waypoint stub track is the cheapest way to make the gate
+      // fire when a test cares about secondary stats; the values
+      // aren't used by the calorie math (which derives from
+      // distanceMetres + bodyWeightKg + activityType only).
+      track: track ??
+          (withTrack
+              ? [
+                  Waypoint(
+                    lat: -37.8136,
+                    lng: 144.9631,
+                    timestamp: DateTime.utc(2026, 4, 15, 7, 30),
+                  ),
+                  Waypoint(
+                    lat: -37.8137,
+                    lng: 144.9632,
+                    timestamp: DateTime.utc(2026, 4, 15, 7, 31),
+                  ),
+                ]
+              : const []),
+    );
 
 /// Signed-in fake whose compare-and-swap edit push lands. The seeded copy
 /// carries no server stamp, so the push reads the row first.
@@ -91,20 +90,20 @@ class _EditOkApi extends ApiClient {
 
   @override
   Future<List<Run>> getRunsByIds(Iterable<String> ids) async => [
-    for (final id in ids)
-      Run(
-        id: id,
-        startedAt: DateTime.utc(2026, 4, 15, 7, 30),
-        duration: const Duration(minutes: 25),
-        distanceMetres: 5000,
-        source: RunSource.app,
-        metadata: const {
-          'title': 'Morning Tempo',
-          'activity_type': 'run',
-          MetadataKeys.serverUpdatedAt: '2026-04-15T08:00:00.000001+00:00',
-        },
-      ),
-  ];
+        for (final id in ids)
+          Run(
+            id: id,
+            startedAt: DateTime.utc(2026, 4, 15, 7, 30),
+            duration: const Duration(minutes: 25),
+            distanceMetres: 5000,
+            source: RunSource.app,
+            metadata: const {
+              'title': 'Morning Tempo',
+              'activity_type': 'run',
+              MetadataKeys.serverUpdatedAt: '2026-04-15T08:00:00.000001+00:00',
+            },
+          ),
+      ];
 
   @override
   Future<Run?> updateRunFieldsIfUnchanged(
@@ -162,15 +161,13 @@ class _AudienceShareApi extends _SlowShareApi {
 
   @override
   Future<({bool isPublic, bool followersOnly})?> fetchAudienceColumns(
-    ShareableKind kind,
-    String id,
-  ) async => (isPublic: false, followersOnly: false);
+          ShareableKind kind, String id) async =>
+      (isPublic: false, followersOnly: false);
 
   @override
   Future<List<ShareRecipient>> fetchShares(
-    ShareableKind kind,
-    String id,
-  ) async => const [];
+          ShareableKind kind, String id) async =>
+      const [];
 
   @override
   Future<List<UserProfileRow>> fetchShareCandidates() async => const [];
@@ -295,7 +292,8 @@ class _LocalSidecarApi extends ApiClient {
     List<Waypoint> track, {
     double toleranceMetres = 100,
     int maxResults = 10,
-  }) async => const [];
+  }) async =>
+      const [];
 
   @override
   Future<List<Waypoint>?> smoothedLocalTrack(Run run) async {
@@ -343,7 +341,7 @@ class _DeleteOkApi extends ApiClient {
 /// falls through to the caller's fallback. Never touches Supabase.
 class _FakeSettingsService extends SettingsService {
   _FakeSettingsService(this._values)
-    : super(deviceId: 'test-device', platform: 'android');
+      : super(deviceId: 'test-device', platform: 'android');
 
   final Map<String, dynamic> _values;
 
@@ -354,7 +352,7 @@ class _FakeSettingsService extends SettingsService {
 
 class _FakeSettingsSync extends SettingsSyncService {
   _FakeSettingsSync(Preferences prefs, this._service)
-    : super(preferences: prefs);
+      : super(preferences: prefs);
 
   final SettingsService? _service;
 
@@ -365,17 +363,14 @@ class _FakeSettingsSync extends SettingsSyncService {
   SettingsService? get service => _service;
 }
 
-Future<void> _pump(
-  WidgetTester tester,
-  Run run, {
-  double? bodyWeightKg,
-  LocalRouteStore? routeStore,
-  ApiClient? apiClient,
-  SettingsSyncService? settingsSync,
-  bool showRawTrack = false,
-  bool useMiles = false,
-  double textScale = 1.0,
-}) async {
+Future<void> _pump(WidgetTester tester, Run run,
+    {double? bodyWeightKg,
+    LocalRouteStore? routeStore,
+    ApiClient? apiClient,
+    SettingsSyncService? settingsSync,
+    bool showRawTrack = false,
+    bool useMiles = false,
+    double textScale = 1.0}) async {
   SharedPreferences.setMockInitialValues({
     if (bodyWeightKg != null) 'body_weight_kg': bodyWeightKg,
     if (showRawTrack) 'show_raw_track': true,
@@ -393,9 +388,8 @@ Future<void> _pump(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(
-          context,
-        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
         child: child!,
       ),
       home: RunDetailScreen(
@@ -431,26 +425,22 @@ void main() {
   });
 
   group('RunDetailScreen', () {
-    testWidgets('renders the run date as the app-bar title when no title set', (
-      tester,
-    ) async {
+    testWidgets('renders the run date as the app-bar title when no title set',
+        (tester) async {
       final run = _run();
       await _pump(tester, run);
       // The title is built from the date when metadata has no 'title' key.
       expect(find.textContaining('Apr'), findsAtLeastNWidgets(1));
     });
 
-    testWidgets('renders the metadata title in the app bar when set', (
-      tester,
-    ) async {
+    testWidgets('renders the metadata title in the app bar when set',
+        (tester) async {
       final run = _run(title: 'Morning Tempo');
       await _pump(tester, run);
       expect(find.text('Morning Tempo'), findsOneWidget);
     });
 
-    testWidgets('renders Distance and Time primary stat labels', (
-      tester,
-    ) async {
+    testWidgets('renders Distance and Time primary stat labels', (tester) async {
       final run = _run();
       await _pump(tester, run);
       expect(find.text('Distance'), findsOneWidget);
@@ -703,9 +693,8 @@ void main() {
       await _dropTree(tester);
     });
 
-    testWidgets('make-private confirms then calls makeRunPrivate', (
-      tester,
-    ) async {
+    testWidgets('make-private confirms then calls makeRunPrivate',
+        (tester) async {
       final run = _run(title: 'Morning Tempo');
       final api = _MakePrivateApi();
       await _pump(tester, run, apiClient: api);
@@ -725,20 +714,20 @@ void main() {
 
       // Dialog-scoped finder — the menu item and the confirm button
       // share the 'Make private' label.
-      await tester.tap(
-        find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.widgetWithText(FilledButton, 'Make private'),
-        ),
-      );
+      await tester.tap(find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(FilledButton, 'Make private'),
+      ));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(api.calls, 1);
       expect(find.text('Run is now private'), findsOneWidget);
+
     });
 
-    testWidgets('make-private cancel leaves the run untouched', (tester) async {
+    testWidgets('make-private cancel leaves the run untouched',
+        (tester) async {
       final run = _run(title: 'Morning Tempo');
       final api = _MakePrivateApi();
       await _pump(tester, run, apiClient: api);
@@ -750,12 +739,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      await tester.tap(
-        find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.widgetWithText(TextButton, 'Cancel'),
-        ),
-      );
+      await tester.tap(find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(TextButton, 'Cancel'),
+      ));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
@@ -763,9 +750,8 @@ void main() {
       expect(find.text('Run is now private'), findsNothing);
     });
 
-    testWidgets('make-private failure surfaces the error banner', (
-      tester,
-    ) async {
+    testWidgets('make-private failure surfaces the error banner',
+        (tester) async {
       final run = _run(title: 'Morning Tempo');
       final api = _MakePrivateApi()..shouldThrow = true;
       await _pump(tester, run, apiClient: api);
@@ -776,17 +762,16 @@ void main() {
       await tester.tap(find.text('Make private'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
-      await tester.tap(
-        find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.widgetWithText(FilledButton, 'Make private'),
-        ),
-      );
+      await tester.tap(find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(FilledButton, 'Make private'),
+      ));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(api.calls, 1);
-      expect(find.textContaining('Could not make run private'), findsOneWidget);
+      expect(find.textContaining('Could not make run private'),
+          findsOneWidget);
       expect(find.text('Run is now private'), findsNothing);
 
       await tester.pump(const Duration(seconds: 4));
@@ -806,12 +791,12 @@ void main() {
 
     group('recalculate distance', () {
       Run recomputable({Map<String, dynamic> extra = const {}}) => _run(
-        metadata: {
-          'activity_type': 'run',
-          'track_url': 'user-1/run-1.json.gz',
-          ...extra,
-        },
-      );
+            metadata: {
+              'activity_type': 'run',
+              'track_url': 'user-1/run-1.json.gz',
+              ...extra,
+            },
+          );
 
       Future<void> openMenu(WidgetTester tester) async {
         await tester.tap(find.byTooltip('More'));
@@ -825,12 +810,10 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 300));
         expect(find.text('Recalculate distance?'), findsOneWidget);
-        await tester.tap(
-          find.descendant(
-            of: find.byType(AlertDialog),
-            matching: find.widgetWithText(FilledButton, 'Recalculate'),
-          ),
-        );
+        await tester.tap(find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.widgetWithText(FilledButton, 'Recalculate'),
+        ));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 300));
       }
@@ -851,11 +834,8 @@ void main() {
         for (final run in cases) {
           await _pump(tester, run, apiClient: _RecomputeApi());
           await openMenu(tester);
-          expect(
-            find.text('Recalculate distance'),
-            findsNothing,
-            reason: '${run.metadata}',
-          );
+          expect(find.text('Recalculate distance'), findsNothing,
+              reason: '${run.metadata}');
           await tester.pumpWidget(const SizedBox());
           if (_runsDir.existsSync()) _runsDir.deleteSync(recursive: true);
         }
@@ -874,29 +854,24 @@ void main() {
         await tester.tap(find.text('Recalculate distance'));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 300));
-        await tester.tap(
-          find.descendant(
-            of: find.byType(AlertDialog),
-            matching: find.widgetWithText(TextButton, 'Cancel'),
-          ),
-        );
+        await tester.tap(find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.widgetWithText(TextButton, 'Cancel'),
+        ));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 300));
         expect(api.calls, isEmpty);
       });
 
-      testWidgets('confirm calls the RPC, banners, and stops offering it', (
-        tester,
-      ) async {
+      testWidgets('confirm calls the RPC, banners, and stops offering it',
+          (tester) async {
         final api = _RecomputeApi();
         await _pump(tester, recomputable(), apiClient: api);
         await confirmRecompute(tester);
 
         expect(api.calls, ['run-1']);
-        expect(
-          find.text('Recalculating — refresh in a minute'),
-          findsOneWidget,
-        );
+        expect(find.text('Recalculating — refresh in a minute'),
+            findsOneWidget);
 
         await tester.pump(const Duration(seconds: 4));
         await tester.pump(const Duration(milliseconds: 500));
@@ -904,14 +879,13 @@ void main() {
         expect(find.text('Recalculate distance'), findsNothing);
       });
 
-      testWidgets('each failure is surfaced distinctly and keeps the action', (
-        tester,
-      ) async {
+      testWidgets('each failure is surfaced distinctly and keeps the action',
+          (tester) async {
         final cases = <Object, String>{
           const DistanceRecomputeRefused(
-            DistanceRecomputeRefusal.notAuthorized,
-          ): 'Only the runner who recorded this run can recalculate its '
-              'distance.',
+                  DistanceRecomputeRefusal.notAuthorized):
+              'Only the runner who recorded this run can recalculate its '
+                  'distance.',
           const DistanceRecomputeRefused(DistanceRecomputeRefusal.noTrack):
               'This run has no GPS track to recalculate from.',
           Exception('offline'): "Couldn't recalculate distance:",
@@ -922,15 +896,10 @@ void main() {
           await confirmRecompute(tester);
 
           expect(api.calls, ['run-1']);
-          expect(
-            find.textContaining(entry.value),
-            findsOneWidget,
-            reason: '${entry.key}',
-          );
-          expect(
-            find.text('Recalculating — refresh in a minute'),
-            findsNothing,
-          );
+          expect(find.textContaining(entry.value), findsOneWidget,
+              reason: '${entry.key}');
+          expect(find.text('Recalculating — refresh in a minute'),
+              findsNothing);
 
           await tester.pump(const Duration(seconds: 4));
           await tester.pump(const Duration(milliseconds: 500));
@@ -941,43 +910,32 @@ void main() {
         }
       });
 
-      testWidgets('a recomputed run shows its original distance', (
-        tester,
-      ) async {
+      testWidgets('a recomputed run shows its original distance',
+          (tester) async {
         await _pump(
           tester,
-          recomputable(
-            extra: {
-              'distance_estimator': 'kalman_v2',
-              'distance_recorded_m': 6309.4,
-            },
-          ),
+          recomputable(extra: {
+            'distance_estimator': 'kalman_v2',
+            'distance_recorded_m': 6309.4,
+          }),
           apiClient: _RecomputeApi(),
         );
-        expect(
-          find.byKey(const ValueKey('distance-recorded-note')),
-          findsOneWidget,
-        );
-        expect(
-          find.textContaining('Originally recorded: 6.31 km'),
-          findsOneWidget,
-        );
+        expect(find.byKey(const ValueKey('distance-recorded-note')),
+            findsOneWidget);
+        expect(find.textContaining('Originally recorded: 6.31 km'),
+            findsOneWidget);
       });
 
-      testWidgets('a never-recomputed run shows no original-distance note', (
-        tester,
-      ) async {
+      testWidgets('a never-recomputed run shows no original-distance note',
+          (tester) async {
         await _pump(tester, recomputable(), apiClient: _RecomputeApi());
-        expect(
-          find.byKey(const ValueKey('distance-recorded-note')),
-          findsNothing,
-        );
+        expect(find.byKey(const ValueKey('distance-recorded-note')),
+            findsNothing);
       });
     });
 
-    testWidgets('save-as-route shows an error banner when the store throws', (
-      tester,
-    ) async {
+    testWidgets('save-as-route shows an error banner when the store throws',
+        (tester) async {
       final run = _run(title: 'Morning Tempo', withTrack: true);
       await _pump(tester, run, routeStore: _ThrowingRouteStore());
 
@@ -997,6 +955,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.textContaining('as a route'), findsOneWidget);
+
     });
 
     // a11y: the h/m/s duration subfields in the edit dialog had no
@@ -1026,9 +985,8 @@ void main() {
       expect(find.text('Run'), findsAtLeastNWidgets(1));
     });
 
-    testWidgets('surfaces parkrun age_grade as a secondary stat (#9)', (
-      tester,
-    ) async {
+    testWidgets('surfaces parkrun age_grade as a secondary stat (#9)',
+        (tester) async {
       final run = _run(
         withTrack: true,
         metadata: {'activity_type': 'run', 'age_grade': '55.42%'},
@@ -1038,79 +996,62 @@ void main() {
       expect(find.text('55.42%'), findsOneWidget);
     });
 
-    testWidgets(
-      'mounts the pacing-strategy review for a run recorded under one',
-      (tester) async {
-        final run = _run(
-          metadata: {
-            'activity_type': 'run',
-            'pacing_strategy': {
-              'preset': 'negative_split',
-              'distance_m': 5000,
-              'goal_time_s': 1500,
-            },
-          },
-        );
-        await _pump(tester, run);
-        final section = find.byKey(const Key('pacing-strategy-section'));
-        await tester.scrollUntilVisible(
-          section,
-          300,
-          scrollable: find.byType(Scrollable).first,
-        );
-        expect(section, findsOneWidget);
-        expect(find.text('Pacing strategy'), findsOneWidget);
-      },
-    );
+    testWidgets('mounts the pacing-strategy review for a run recorded under one',
+        (tester) async {
+      final run = _run(metadata: {
+        'activity_type': 'run',
+        'pacing_strategy': {
+          'preset': 'negative_split',
+          'distance_m': 5000,
+          'goal_time_s': 1500,
+        },
+      });
+      await _pump(tester, run);
+      final section = find.byKey(const Key('pacing-strategy-section'));
+      await tester.scrollUntilVisible(section, 300,
+          scrollable: find.byType(Scrollable).first);
+      expect(section, findsOneWidget);
+      expect(find.text('Pacing strategy'), findsOneWidget);
+    });
 
-    testWidgets('renders the Garmin discipline chip from sub_sport', (
-      tester,
-    ) async {
-      final run = _run(
-        metadata: {'activity_type': 'run', 'sub_sport': 'trail'},
-      );
+    testWidgets('renders the Garmin discipline chip from sub_sport',
+        (tester) async {
+      final run = _run(metadata: {'activity_type': 'run', 'sub_sport': 'trail'});
       await _pump(tester, run);
       expect(find.text('Trail'), findsOneWidget);
     });
 
     testWidgets(
-      'renders the Incomplete badge from metadata.recovered_unfinished',
-      (tester) async {
-        // A run recovered from the watch's mid-run checkpoint carries
-        // totals-so-far. Without the badge the screen presents a reboot at
-        // mile 60 as the runner's whole day (decisions §323).
-        final run = _run(
-          metadata: {
-            'activity_type': 'run',
-            MetadataKeys.recoveredUnfinished: true,
-          },
-        );
-        await _pump(tester, run);
-        expect(find.text('Incomplete'), findsOneWidget);
-      },
-    );
+        'renders the Incomplete badge from metadata.recovered_unfinished',
+        (tester) async {
+      // A run recovered from the watch's mid-run checkpoint carries
+      // totals-so-far. Without the badge the screen presents a reboot at
+      // mile 60 as the runner's whole day (decisions §323).
+      final run = _run(metadata: {
+        'activity_type': 'run',
+        MetadataKeys.recoveredUnfinished: true,
+      });
+      await _pump(tester, run);
+      expect(find.text('Incomplete'), findsOneWidget);
+    });
 
-    testWidgets('omits the Incomplete badge on an ordinary run', (
-      tester,
-    ) async {
+    testWidgets('omits the Incomplete badge on an ordinary run',
+        (tester) async {
       await _pump(tester, _run(metadata: {'activity_type': 'run'}));
       expect(find.text('Incomplete'), findsNothing);
     });
 
-    testWidgets('renders a Running Dynamics block from running_dynamics', (
-      tester,
-    ) async {
-      final run = _run(
-        metadata: {
-          'activity_type': 'run',
-          'running_dynamics': {
-            'vertical_oscillation_mm': 8.4,
-            'gct_ms': 240,
-            'stride_length_m': 1.18,
-            'power_w': 290,
-          },
+    testWidgets('renders a Running Dynamics block from running_dynamics',
+        (tester) async {
+      final run = _run(metadata: {
+        'activity_type': 'run',
+        'running_dynamics': {
+          'vertical_oscillation_mm': 8.4,
+          'gct_ms': 240,
+          'stride_length_m': 1.18,
+          'power_w': 290,
         },
-      );
+      });
       await _pump(tester, run);
       expect(find.text('Running Dynamics'), findsOneWidget);
       expect(find.text('Vertical oscillation'), findsOneWidget);
@@ -1120,9 +1061,8 @@ void main() {
       expect(find.text('290 W'), findsOneWidget);
     });
 
-    testWidgets('omits the Running Dynamics block when the key is absent', (
-      tester,
-    ) async {
+    testWidgets('omits the Running Dynamics block when the key is absent',
+        (tester) async {
       final run = _run(metadata: {'activity_type': 'run'});
       await _pump(tester, run);
       expect(find.text('Running Dynamics'), findsNothing);
@@ -1146,21 +1086,18 @@ void main() {
   // kcal value correctly across the documented 70 kg fallback +
   // user-set values.
   group('RunDetailScreen — body_weight_kg → calorie estimate', () {
-    testWidgets(
-      'renders ~350 kcal for a 5km run at the default 70 kg fallback',
-      (tester) async {
-        // No bodyWeightKg set → page falls back to 70 kg.
-        // kcal = round(70 × 1.0 × 5000 / 1000) = 350.
-        // (kcalPerKgPerKm for run is 1.0 — verified in preferences.dart.)
-        final run = _run(withTrack: true);
-        await _pump(tester, run);
-        expect(find.text('350 kcal'), findsOneWidget);
-      },
-    );
+    testWidgets('renders ~350 kcal for a 5km run at the default 70 kg fallback',
+        (tester) async {
+      // No bodyWeightKg set → page falls back to 70 kg.
+      // kcal = round(70 × 1.0 × 5000 / 1000) = 350.
+      // (kcalPerKgPerKm for run is 1.0 — verified in preferences.dart.)
+      final run = _run(withTrack: true);
+      await _pump(tester, run);
+      expect(find.text('350 kcal'), findsOneWidget);
+    });
 
-    testWidgets('honours a persisted bodyWeightKg=90 → 450 kcal for 5km', (
-      tester,
-    ) async {
+    testWidgets('honours a persisted bodyWeightKg=90 → 450 kcal for 5km',
+        (tester) async {
       // Headline regression net: a user who sets their weight to 90 kg
       // on /settings (web) or the universal settings bag must see the
       // calorie estimate scale up. 90 × 1.0 × 5 = 450 kcal.
@@ -1173,18 +1110,16 @@ void main() {
       expect(find.text('350 kcal'), findsNothing);
     });
 
-    testWidgets('honours a persisted bodyWeightKg=50 → 250 kcal for 5km', (
-      tester,
-    ) async {
+    testWidgets('honours a persisted bodyWeightKg=50 → 250 kcal for 5km',
+        (tester) async {
       // Lower end of the realistic adult range. 50 × 1.0 × 5 = 250.
       final run = _run(withTrack: true);
       await _pump(tester, run, bodyWeightKg: 50);
       expect(find.text('250 kcal'), findsOneWidget);
     });
 
-    testWidgets('scales linearly with distance at fixed bodyWeightKg', (
-      tester,
-    ) async {
+    testWidgets('scales linearly with distance at fixed bodyWeightKg',
+        (tester) async {
       // 10 km run × 70 kg fallback = 700 kcal. Pin the linearity
       // contract so a refactor that mis-applied an exponent or a
       // unit factor would fail.
@@ -1201,9 +1136,8 @@ void main() {
   // Default (pref absent / no settings) → the tile shows; pref explicitly
   // false → hidden.
   group('RunDetailScreen — show_calories pref', () {
-    testWidgets('shows the calorie tile by default (pref absent)', (
-      tester,
-    ) async {
+    testWidgets('shows the calorie tile by default (pref absent)',
+        (tester) async {
       final run = _run(withTrack: true);
       SharedPreferences.setMockInitialValues({});
       final prefs = Preferences();
@@ -1217,9 +1151,8 @@ void main() {
       expect(find.text('350 kcal'), findsOneWidget);
     });
 
-    testWidgets('hides the calorie tile when show_calories is false', (
-      tester,
-    ) async {
+    testWidgets('hides the calorie tile when show_calories is false',
+        (tester) async {
       final run = _run(withTrack: true);
       SharedPreferences.setMockInitialValues({});
       final prefs = Preferences();
@@ -1239,22 +1172,22 @@ void main() {
 
   group('HR medication disclaimer', () {
     Run runWithHr() => Run(
-      id: 'run-hr',
-      startedAt: DateTime.utc(2026, 4, 15, 7, 30),
-      duration: const Duration(minutes: 25),
-      distanceMetres: 5000,
-      source: RunSource.app,
-      metadata: const {'activity_type': 'run'},
-      track: [
-        for (final e in const [110, 135, 160, 175])
-          Waypoint(
-            lat: -37.8136,
-            lng: 144.9631,
-            timestamp: DateTime.utc(2026, 4, 15, 7, 30),
-            bpm: e,
-          ),
-      ],
-    );
+          id: 'run-hr',
+          startedAt: DateTime.utc(2026, 4, 15, 7, 30),
+          duration: const Duration(minutes: 25),
+          distanceMetres: 5000,
+          source: RunSource.app,
+          metadata: const {'activity_type': 'run'},
+          track: [
+            for (final e in const [110, 135, 160, 175])
+              Waypoint(
+                lat: -37.8136,
+                lng: 144.9631,
+                timestamp: DateTime.utc(2026, 4, 15, 7, 30),
+                bpm: e,
+              ),
+          ],
+        );
 
     // The HR-zone section sits deep in the lazy run-detail ListView. Give
     // the test a tall surface so the whole list builds eagerly and the
@@ -1266,9 +1199,8 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
     }
 
-    testWidgets('shows the disclaimer when zones are age-estimated', (
-      tester,
-    ) async {
+    testWidgets('shows the disclaimer when zones are age-estimated',
+        (tester) async {
       useTallSurface(tester);
       SharedPreferences.setMockInitialValues({});
       final prefs = Preferences();
@@ -1281,9 +1213,8 @@ void main() {
       expect(find.text('Set max HR'), findsOneWidget);
     });
 
-    testWidgets('hides the disclaimer when a max_hr_bpm override is set', (
-      tester,
-    ) async {
+    testWidgets('hides the disclaimer when a max_hr_bpm override is set',
+        (tester) async {
       useTallSurface(tester);
       SharedPreferences.setMockInitialValues({});
       final prefs = Preferences();
@@ -1291,19 +1222,16 @@ void main() {
       await _pump(
         tester,
         runWithHr(),
-        settingsSync: _FakeSettingsSync(
-          prefs,
-          _FakeSettingsService({'max_hr_bpm': 185}),
-        ),
+        settingsSync:
+            _FakeSettingsSync(prefs, _FakeSettingsService({'max_hr_bpm': 185})),
       );
       // The HR section still renders (zone rows present); only the
       // age-estimated disclaimer is suppressed.
       expect(find.text('Set max HR'), findsNothing);
     });
 
-    testWidgets('hides the disclaimer when explicit hr_zones are set', (
-      tester,
-    ) async {
+    testWidgets('hides the disclaimer when explicit hr_zones are set',
+        (tester) async {
       useTallSurface(tester);
       SharedPreferences.setMockInitialValues({});
       final prefs = Preferences();
@@ -1331,32 +1259,27 @@ void main() {
         w.withSmoothedPosition(w.lat + 0.00001, w.lng - 0.00001),
     ];
 
-    testWidgets(
-      'a watch run relayed through the phone draws the smoothed line',
-      (tester) async {
-        final api = _LocalSidecarApi(line: smoothed);
-        await _pump(
-          tester,
-          _run(track: recorded, metadata: {'smoothed_sidecar_sha256': sha}),
-          apiClient: api,
-        );
-        await tester.pump();
+    testWidgets('a watch run relayed through the phone draws the smoothed line',
+        (tester) async {
+      final api = _LocalSidecarApi(line: smoothed);
+      await _pump(
+        tester,
+        _run(
+          track: recorded,
+          metadata: {'smoothed_sidecar_sha256': sha},
+        ),
+        apiClient: api,
+      );
+      await tester.pump();
 
-        expect(api.calls, ['run-1']);
-        final drawn = tester.widget<LiveRunMap>(find.byType(LiveRunMap)).track;
-        expect(drawn, hasLength(recorded.length));
-        expect(
-          drawn.every((w) => w.hasSmoothedPosition),
-          isTrue,
-          reason: 'the map line takes the sidecar the run names',
-        );
-        expect(
-          drawn.first.lat,
-          recorded.first.lat,
-          reason: 'raw lat/lng stay as recorded',
-        );
-      },
-    );
+      expect(api.calls, ['run-1']);
+      final drawn = tester.widget<LiveRunMap>(find.byType(LiveRunMap)).track;
+      expect(drawn, hasLength(recorded.length));
+      expect(drawn.every((w) => w.hasSmoothedPosition), isTrue,
+          reason: 'the map line takes the sidecar the run names');
+      expect(drawn.first.lat, recorded.first.lat,
+          reason: 'raw lat/lng stay as recorded');
+    });
 
     testWidgets('a run that names no sidecar asks for none', (tester) async {
       final api = _LocalSidecarApi(line: smoothed);
@@ -1368,13 +1291,15 @@ void main() {
       expect(drawn.any((w) => w.hasSmoothedPosition), isFalse);
     });
 
-    testWidgets('"Show raw GPS track" draws the raw fixes, not the sidecar', (
-      tester,
-    ) async {
+    testWidgets('"Show raw GPS track" draws the raw fixes, not the sidecar',
+        (tester) async {
       final api = _LocalSidecarApi(line: smoothed);
       await _pump(
         tester,
-        _run(track: recorded, metadata: {'smoothed_sidecar_sha256': sha}),
+        _run(
+          track: recorded,
+          metadata: {'smoothed_sidecar_sha256': sha},
+        ),
         apiClient: api,
         showRawTrack: true,
       );
@@ -1386,28 +1311,29 @@ void main() {
     });
 
     testWidgets(
-      '"Show raw GPS track" clears the smoothed pair a phone save stored',
-      (tester) async {
-        await _pump(tester, _run(track: smoothed), showRawTrack: true);
-        await tester.pump();
+        '"Show raw GPS track" clears the smoothed pair a phone save stored',
+        (tester) async {
+      await _pump(tester, _run(track: smoothed), showRawTrack: true);
+      await tester.pump();
 
-        final drawn = tester.widget<LiveRunMap>(find.byType(LiveRunMap)).track;
-        expect(drawn, hasLength(recorded.length));
-        for (var i = 0; i < drawn.length; i++) {
-          expect(drawn[i].hasSmoothedPosition, isFalse);
-          expect(drawn[i].lineLat, recorded[i].lat);
-          expect(drawn[i].lineLng, recorded[i].lng);
-        }
-      },
-    );
+      final drawn = tester.widget<LiveRunMap>(find.byType(LiveRunMap)).track;
+      expect(drawn, hasLength(recorded.length));
+      for (var i = 0; i < drawn.length; i++) {
+        expect(drawn[i].hasSmoothedPosition, isFalse);
+        expect(drawn[i].lineLat, recorded[i].lat);
+        expect(drawn[i].lineLng, recorded[i].lng);
+      }
+    });
 
-    testWidgets('a sidecar that cannot be read leaves the raw line', (
-      tester,
-    ) async {
+    testWidgets('a sidecar that cannot be read leaves the raw line',
+        (tester) async {
       final api = _LocalSidecarApi(error: Exception('storage down'));
       await _pump(
         tester,
-        _run(track: recorded, metadata: {'smoothed_sidecar_sha256': sha}),
+        _run(
+          track: recorded,
+          metadata: {'smoothed_sidecar_sha256': sha},
+        ),
         apiClient: api,
       );
       await tester.pump();
@@ -1425,9 +1351,8 @@ void main() {
   // flutter_test) and runs a repeating pulse animation, so pumpAndSettle
   // would hang (same constraint as live_run_map_test.dart).
   group('RunDetailScreen — expanded two-pane layout', () {
-    testWidgets('map renders beside the stats column at >=840dp', (
-      tester,
-    ) async {
+    testWidgets('map renders beside the stats column at >=840dp',
+        (tester) async {
       tester.view.physicalSize = const Size(2560, 1440);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.reset);
@@ -1463,10 +1388,8 @@ void main() {
       expect(mapRect.height, closeTo(detailMapHeight(800 - kToolbarHeight), 1));
       final distanceRect = tester.getRect(find.text('Distance'));
       expect(distanceRect.top, greaterThan(mapRect.bottom));
-      expect(
-        800 - kToolbarHeight - mapRect.height,
-        greaterThanOrEqualTo(kDetailMapMinPeek),
-      );
+      expect(800 - kToolbarHeight - mapRect.height,
+          greaterThanOrEqualTo(kDetailMapMinPeek));
     });
   });
 
@@ -1476,15 +1399,14 @@ void main() {
     // MissingPluginException (harmlessly swallowed under pure
     // fake-async) as an unexpected test exception. Stub the stream so
     // the channel activates cleanly.
-    const connectivityChannel = EventChannel(
-      'dev.fluttercommunity.plus/connectivity_status',
-    );
+    const connectivityChannel =
+        EventChannel('dev.fluttercommunity.plus/connectivity_status');
     setUp(() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockStreamHandler(
-            connectivityChannel,
-            MockStreamHandler.inline(onListen: (arguments, events) {}),
-          );
+        connectivityChannel,
+        MockStreamHandler.inline(onListen: (arguments, events) {}),
+      );
     });
     tearDown(() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -1502,7 +1424,8 @@ void main() {
 
       _runsDir = Directory.systemTemp.createTempSync('run_detail_delete_test_');
       final runStore = LocalRunStore();
-      await tester.runAsync(() => runStore.init(overrideDirectory: _runsDir));
+      await tester.runAsync(
+          () => runStore.init(overrideDirectory: _runsDir));
       runStore.debugSeed([run], dir: _runsDir);
 
       await tester.pumpWidget(
@@ -1585,7 +1508,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
     }
 
-    testWidgets('failed cloud delete keeps the run locally, queues a retry '
+    testWidgets(
+        'failed cloud delete keeps the run locally, queues a retry '
         'tombstone, and surfaces a banner', (tester) async {
       final run = _run(title: 'Morning Tempo');
       final api = _DeleteFailApi();
@@ -1624,45 +1548,43 @@ void main() {
       expect(runStore.pendingRemoteDeleteIds, contains(run.id));
       expect(runStore.debugPendingRemoteDeleteOwner(run.id), 'user-1');
       // Failure surfaced, screen not popped.
-      expect(
-        find.textContaining("Couldn't delete from the cloud"),
-        findsOneWidget,
-      );
+      expect(find.textContaining("Couldn't delete from the cloud"),
+          findsOneWidget);
       expect(find.byType(RunDetailScreen), findsOneWidget);
 
       // A resync that pulls the still-live server row must not clear the
       // tombstone — the queued delete survives so it can't zombie back.
       await tester.runAsync(() => runStore.saveFromRemote(run));
       expect(runStore.pendingRemoteDeleteIds, contains(run.id));
+
     });
 
     testWidgets(
-      'successful cloud delete removes the run locally, queues nothing, '
-      'and pops',
-      (tester) async {
-        final run = _run(title: 'Morning Tempo');
-        final api = _DeleteOkApi();
-        final runStore = await pumpForDelete(tester, run, apiClient: api);
+        'successful cloud delete removes the run locally, queues nothing, '
+        'and pops', (tester) async {
+      final run = _run(title: 'Morning Tempo');
+      final api = _DeleteOkApi();
+      final runStore = await pumpForDelete(tester, run, apiClient: api);
 
-        await deleteViaMenu(
-          tester,
-          // Popping the detail route is the last thing this flow does, after
-          // the local store I/O the delete awaits.
-          settled: () => find.byType(RunDetailScreen).evaluate().isEmpty,
-        );
+      await deleteViaMenu(
+        tester,
+        // Popping the detail route is the last thing this flow does, after
+        // the local store I/O the delete awaits.
+        settled: () => find.byType(RunDetailScreen).evaluate().isEmpty,
+      );
 
-        expect(api.calls, 1);
-        // Gone locally and nothing queued: the cloud row was removed, so
-        // a resync has nothing to pull back.
-        expect(runStore.runs, isEmpty);
-        expect(runStore.summaries, isEmpty);
-        expect(runStore.pendingRemoteDeleteIds, isEmpty);
-        expect(find.byType(RunDetailScreen), findsNothing);
-        expect(find.text('open detail'), findsOneWidget);
-      },
-    );
+      expect(api.calls, 1);
+      // Gone locally and nothing queued: the cloud row was removed, so
+      // a resync has nothing to pull back.
+      expect(runStore.runs, isEmpty);
+      expect(runStore.summaries, isEmpty);
+      expect(runStore.pendingRemoteDeleteIds, isEmpty);
+      expect(find.byType(RunDetailScreen), findsNothing);
+      expect(find.text('open detail'), findsOneWidget);
+    });
 
-    testWidgets('signed-out delete stays local-only and pops', (tester) async {
+    testWidgets('signed-out delete stays local-only and pops',
+        (tester) async {
       final run = _run(title: 'Morning Tempo');
       final runStore = await pumpForDelete(tester, run);
 
@@ -1681,15 +1603,14 @@ void main() {
     // Same runAsync-window caveat as the delete group: pumping the real event
     // loop activates the connectivity EventChannel, which is harmless under
     // pure fake-async but throws unmocked.
-    const connectivityChannel = EventChannel(
-      'dev.fluttercommunity.plus/connectivity_status',
-    );
+    const connectivityChannel =
+        EventChannel('dev.fluttercommunity.plus/connectivity_status');
     setUp(() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockStreamHandler(
-            connectivityChannel,
-            MockStreamHandler.inline(onListen: (arguments, events) {}),
-          );
+        connectivityChannel,
+        MockStreamHandler.inline(onListen: (arguments, events) {}),
+      );
     });
     tearDown(() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -1751,17 +1672,14 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 400));
         await tester.enterText(
-          find.widgetWithText(TextField, 'Title'),
-          'Evening Tempo',
-        );
+            find.widgetWithText(TextField, 'Title'), 'Evening Tempo');
         await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       });
       await pumpUntil(tester, until, describe: describe);
     }
 
-    testWidgets('a landed edit push leaves nothing pending or to re-upload', (
-      tester,
-    ) async {
+    testWidgets('a landed edit push leaves nothing pending or to re-upload',
+        (tester) async {
       // M2: the whole-row drain would re-gzip + re-upload the entire GPS track
       // for a title edit. A synced run's edit is a pending field edit, pushed
       // as a compare-and-swap of the title alone (decisions § 2147).
@@ -1769,66 +1687,54 @@ void main() {
       final api = _EditOkApi();
       final runStore = await pumpForEdit(tester, run, api);
 
-      await saveViaEditDialog(
-        tester,
-        until: () => api.attempts > 0 && runStore.pendingEdit(run.id) == null,
-        describe: 'the edit push to land and clear the pending edit',
-      );
+      await saveViaEditDialog(tester,
+          until: () => api.attempts > 0 && runStore.pendingEdit(run.id) == null,
+          describe: 'the edit push to land and clear the pending edit');
 
       expect(api.updated, [run.id]);
       expect(api.fields.single, {RunEditField.metadata('title')});
-      expect(
-        runStore.unsyncedRuns,
-        isEmpty,
-        reason: 'nothing is left for the whole-row drain',
-      );
+      expect(runStore.unsyncedRuns, isEmpty,
+          reason: 'nothing is left for the whole-row drain');
       await pumpUntilStoreWritesSettle(tester);
     });
 
-    testWidgets(
-      'a failed edit push leaves the edit pending for the next sync',
-      (tester) async {
-        final run = _run(title: 'Morning Tempo', withTrack: true);
-        final api = _EditFailApi();
-        final runStore = await pumpForEdit(tester, run, api);
+    testWidgets('a failed edit push leaves the edit pending for the next sync',
+        (tester) async {
+      final run = _run(title: 'Morning Tempo', withTrack: true);
+      final api = _EditFailApi();
+      final runStore = await pumpForEdit(tester, run, api);
 
-        await saveViaEditDialog(
-          tester,
+      await saveViaEditDialog(tester,
           until: () => api.attempts > 0,
-          describe: 'the edit push to be attempted and fail',
-        );
+          describe: 'the edit push to be attempted and fail');
 
-        expect(runStore.pendingEdit(run.id)?.fields, {
-          RunEditField.metadata('title'),
-        });
-        expect(runStore.unsyncedRuns, isEmpty);
-      },
-    );
+      expect(runStore.pendingEdit(run.id)?.fields,
+          {RunEditField.metadata('title')});
+      expect(runStore.unsyncedRuns, isEmpty);
+    });
   });
 
   group('RunDetailScreen — narrow-width overflow (issue #666 V7)', () {
     testWidgets(
-      'renders at 320 logical width with the activity-type label bounded '
-      'so a long localized label ellipsizes instead of striping',
-      (tester) async {
-        tester.view.physicalSize = const Size(320, 1200);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.reset);
+        'renders at 320 logical width with the activity-type label bounded '
+        'so a long localized label ellipsizes instead of striping',
+        (tester) async {
+      tester.view.physicalSize = const Size(320, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
 
-        await _pump(tester, _run());
+      await _pump(tester, _run());
 
-        expect(
-          find.ancestor(of: find.text('Run'), matching: find.byType(Flexible)),
-          findsWidgets,
-        );
-      },
-    );
+      expect(
+        find.ancestor(of: find.text('Run'), matching: find.byType(Flexible)),
+        findsWidgets,
+      );
+    });
 
     // The map draws one solid line by default; pace colouring is an
     // explicit choice, and its legend only appears once it is on.
-    testWidgets('map pace colours are off until the chip is toggled', (
-      tester,
-    ) async {
+    testWidgets('map pace colours are off until the chip is toggled',
+        (tester) async {
       tester.view.physicalSize = const Size(1000, 5000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -1933,12 +1839,10 @@ void main() {
   group('splits bar at OS text scale (issue #666 V12)', () {
     // The bar is the only widget in the tree carrying this constraint.
     final bar = find.byWidgetPredicate(
-      (w) => w is Container && w.constraints?.minHeight == 26,
-    );
+        (w) => w is Container && w.constraints?.minHeight == 26);
 
-    testWidgets('the pace bar grows with the label instead of clipping it', (
-      tester,
-    ) async {
+    testWidgets('the pace bar grows with the label instead of clipping it',
+        (tester) async {
       final run = _run(track: _straightTrack(3));
 
       // A tall viewport so the whole ListView mounts — the splits sit far
@@ -1957,7 +1861,8 @@ void main() {
       // overflow stripe and no exception — just an unreadable number.
       final grown = tester.getSize(bar.first).height;
       expect(grown, greaterThan(small));
-      final label = find.descendant(of: bar.first, matching: find.byType(Text));
+      final label =
+          find.descendant(of: bar.first, matching: find.byType(Text));
       expect(tester.getSize(label).height, lessThanOrEqualTo(grown));
 
       // Round 8 had to consume an overflow here: the map's attribution Row
@@ -1967,134 +1872,116 @@ void main() {
     });
   });
 
-  group(
-    'run-detail numeric lanes at OS text scale (issue #666, horizontal)',
-    () {
-      /// The `SizedBox` lane wrapping [text], and the width it was given.
-      ({double lane, double wanted}) _lane(WidgetTester tester, String text) {
-        final box = find
-            .ancestor(
-              of: find.text(text),
-              matching: find.byWidgetPredicate(
-                (w) => w is SizedBox && w.width != null && w.child is Text,
-              ),
-            )
-            .first;
-        final para = tester.renderObject<RenderParagraph>(
-          find.descendant(of: box, matching: find.byType(Text)),
-        );
-        return (
-          lane: tester.getSize(box).width,
-          wanted: para.getMaxIntrinsicWidth(double.infinity),
-        );
+  group('run-detail numeric lanes at OS text scale (issue #666, horizontal)',
+      () {
+    /// The `SizedBox` lane wrapping [text], and the width it was given.
+    ({double lane, double wanted}) _lane(WidgetTester tester, String text) {
+      final box = find
+          .ancestor(
+            of: find.text(text),
+            matching: find.byWidgetPredicate(
+                (w) => w is SizedBox && w.width != null && w.child is Text),
+          )
+          .first;
+      final para = tester.renderObject<RenderParagraph>(
+          find.descendant(of: box, matching: find.byType(Text)));
+      return (
+        lane: tester.getSize(box).width,
+        wanted: para.getMaxIntrinsicWidth(double.infinity),
+      );
+    }
+
+    testWidgets('the split lanes scale with the text they hold',
+        (tester) async {
+      // 30 s per 100 m makes every split 05:00, which in Roboto wants 72.3
+      // px of the 54 px lane at 2x and was cropped with no overflow stripe.
+      // The assertion is the derivation, not an absolute fit: this harness
+      // renders in a fixed-advance test font, so only the ratio between the
+      // lane and the text it holds is a font-independent claim.
+      final run = _run(track: _straightTrack(3));
+      tester.view.physicalSize = const Size(400, 6000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await _pump(tester, run);
+      final tickAt1x = _lane(tester, '1');
+      final durationAt1x = _lane(tester, '05:00');
+      expect(tickAt1x.lane, 36);
+      expect(durationAt1x.lane, 54);
+
+      await _pump(tester, run, textScale: 2.0);
+      final tick = _lane(tester, '1');
+      final duration = _lane(tester, '05:00');
+      for (final (before, after) in [
+        (tickAt1x, tick),
+        (durationAt1x, duration),
+      ]) {
+        expect(after.lane / before.lane, 2.0);
+        expect(after.wanted,
+            lessThanOrEqualTo(before.wanted * (after.lane / before.lane) + 0.05));
       }
+      expect(tester.takeException(), isNull);
+    });
 
-      testWidgets('the split lanes scale with the text they hold', (
-        tester,
-      ) async {
-        // 30 s per 100 m makes every split 05:00, which in Roboto wants 72.3
-        // px of the 54 px lane at 2x and was cropped with no overflow stripe.
-        // The assertion is the derivation, not an absolute fit: this harness
-        // renders in a fixed-advance test font, so only the ratio between the
-        // lane and the text it holds is a font-independent claim.
-        final run = _run(track: _straightTrack(3));
-        tester.view.physicalSize = const Size(400, 6000);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.reset);
+    testWidgets('the pace label is fitted to the bar, never cropped by it',
+        (tester) async {
+      // The bar's width encodes the pace ranking, so unlike its height it
+      // cannot grow: on a 320 dp screen at 2x the label was 6.1 px wider
+      // than the bar and the enclosing ClipRRect swallowed the difference.
+      final run = _run(track: _straightTrack(3));
+      tester.view.physicalSize = const Size(320, 6000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
 
-        await _pump(tester, run);
-        final tickAt1x = _lane(tester, '1');
-        final durationAt1x = _lane(tester, '05:00');
-        expect(tickAt1x.lane, 36);
-        expect(durationAt1x.lane, 54);
+      await _pump(tester, run, textScale: 2.0);
+      final bar = find.byWidgetPredicate(
+          (w) => w is Container && w.constraints?.minHeight == 26);
+      final fitted =
+          find.descendant(of: bar.first, matching: find.byType(FittedBox));
+      expect(fitted, findsOneWidget);
+      // 8 px of padding on each side of the label inside the bar.
+      expect(tester.getSize(fitted).width + 16,
+          lessThanOrEqualTo(tester.getSize(bar.first).width + 0.05));
+      expect(tester.takeException(), isNull);
+    });
 
-        await _pump(tester, run, textScale: 2.0);
-        final tick = _lane(tester, '1');
-        final duration = _lane(tester, '05:00');
-        for (final (before, after) in [
-          (tickAt1x, tick),
-          (durationAt1x, duration),
-        ]) {
-          expect(after.lane / before.lane, 2.0);
-          expect(
-            after.wanted,
-            lessThanOrEqualTo(
-              before.wanted * (after.lane / before.lane) + 0.05,
+    testWidgets('the HR-zone percentage lane scales too', (tester) async {
+      final run = Run(
+        id: 'run-hr',
+        startedAt: DateTime.utc(2026, 4, 15, 7, 30),
+        duration: const Duration(minutes: 25),
+        distanceMetres: 5000,
+        source: RunSource.app,
+        metadata: const {'activity_type': 'run'},
+        track: [
+          for (final e in const [110, 135, 160, 175])
+            Waypoint(
+              lat: -37.8136,
+              lng: 144.9631,
+              timestamp: DateTime.utc(2026, 4, 15, 7, 30),
+              bpm: e,
             ),
-          );
-        }
-        expect(tester.takeException(), isNull);
-      });
+        ],
+      );
+      tester.view.physicalSize = const Size(1200, 6000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
 
-      testWidgets('the pace label is fitted to the bar, never cropped by it', (
-        tester,
-      ) async {
-        // The bar's width encodes the pace ranking, so unlike its height it
-        // cannot grow: on a 320 dp screen at 2x the label was 6.1 px wider
-        // than the bar and the enclosing ClipRRect swallowed the difference.
-        final run = _run(track: _straightTrack(3));
-        tester.view.physicalSize = const Size(320, 6000);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.reset);
+      await _pump(tester, run);
+      final at1x = _lane(tester, '25%');
+      expect(at1x.lane, 36);
 
-        await _pump(tester, run, textScale: 2.0);
-        final bar = find.byWidgetPredicate(
-          (w) => w is Container && w.constraints?.minHeight == 26,
-        );
-        final fitted = find.descendant(
-          of: bar.first,
-          matching: find.byType(FittedBox),
-        );
-        expect(fitted, findsOneWidget);
-        // 8 px of padding on each side of the label inside the bar.
-        expect(
-          tester.getSize(fitted).width + 16,
-          lessThanOrEqualTo(tester.getSize(bar.first).width + 0.05),
-        );
-        expect(tester.takeException(), isNull);
-      });
-
-      testWidgets('the HR-zone percentage lane scales too', (tester) async {
-        final run = Run(
-          id: 'run-hr',
-          startedAt: DateTime.utc(2026, 4, 15, 7, 30),
-          duration: const Duration(minutes: 25),
-          distanceMetres: 5000,
-          source: RunSource.app,
-          metadata: const {'activity_type': 'run'},
-          track: [
-            for (final e in const [110, 135, 160, 175])
-              Waypoint(
-                lat: -37.8136,
-                lng: 144.9631,
-                timestamp: DateTime.utc(2026, 4, 15, 7, 30),
-                bpm: e,
-              ),
-          ],
-        );
-        tester.view.physicalSize = const Size(1200, 6000);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.reset);
-
-        await _pump(tester, run);
-        final at1x = _lane(tester, '25%');
-        expect(at1x.lane, 36);
-
-        await _pump(tester, run, textScale: 2.0);
-        final pct = _lane(tester, '25%');
-        expect(pct.lane / at1x.lane, 2.0);
-        expect(
-          pct.wanted,
-          lessThanOrEqualTo(at1x.wanted * (pct.lane / at1x.lane) + 0.05),
-        );
-      });
-    },
-  );
+      await _pump(tester, run, textScale: 2.0);
+      final pct = _lane(tester, '25%');
+      expect(pct.lane / at1x.lane, 2.0);
+      expect(pct.wanted,
+          lessThanOrEqualTo(at1x.wanted * (pct.lane / at1x.lane) + 0.05));
+    });
+  });
 
   group('pacing halves + grade-adjusted split column', () {
-    testWidgets('a steady run reads as an even split with no terrain note', (
-      tester,
-    ) async {
+    testWidgets('a steady run reads as an even split with no terrain note',
+        (tester) async {
       tester.view.physicalSize = const Size(400, 6000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -2109,9 +1996,8 @@ void main() {
       expect(find.text('Grade-adj.'), findsNothing);
     });
 
-    testWidgets('a fading run reads as a positive split with the delta', (
-      tester,
-    ) async {
+    testWidgets('a fading run reads as a positive split with the delta',
+        (tester) async {
       tester.view.physicalSize = const Size(400, 6000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -2122,9 +2008,8 @@ void main() {
       expect(find.text('100s slower over the second half'), findsOneWidget);
     });
 
-    testWidgets('a climbing second half adds the terrain note + the column', (
-      tester,
-    ) async {
+    testWidgets('a climbing second half adds the terrain note + the column',
+        (tester) async {
       tester.view.physicalSize = const Size(400, 6000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -2134,24 +2019,23 @@ void main() {
       expect(find.text('Positive split'), findsOneWidget);
       expect(
         find.text(
-          'Adjusted for the terrain, your effort was even across both halves.',
-        ),
+            'Adjusted for the terrain, your effort was even across both halves.'),
         findsOneWidget,
       );
       expect(find.text('Grade-adj.'), findsOneWidget);
       expect(
         find.text(
-          'Grade-adjusted pace is the flat-ground pace that would have cost the same effort as the hills you actually ran.',
-        ),
+            'Grade-adjusted pace is the flat-ground pace that would have cost the same effort as the hills you actually ran.'),
         findsOneWidget,
       );
     });
   });
 
   group('RunDetailScreen — the guided-run readout', () {
-    Run guided(String? id) => _run(
-      metadata: {'activity_type': 'run', if (id != null) 'guided_run_id': id},
-    );
+    Run guided(String? id) => _run(metadata: {
+          'activity_type': 'run',
+          if (id != null) 'guided_run_id': id,
+        });
 
     testWidgets('names the script the run was recorded under', (tester) async {
       await _pump(tester, guided('easy-30'));
@@ -2164,18 +2048,14 @@ void main() {
       expect(find.byIcon(Icons.headset_mic_outlined), findsNothing);
     });
 
-    testWidgets('an id this build no longer ships says so, without the slug', (
-      tester,
-    ) async {
+    testWidgets('an id this build no longer ships says so, without the slug',
+        (tester) async {
       // The library is versioned in code, so a renamed or dropped workout
       // leaves live rows pointing at an id nothing answers to.
       await _pump(tester, guided('easy-30-remix'));
       expect(find.text('Guided run no longer in the library'), findsOneWidget);
-      expect(
-        find.textContaining('easy-30-remix'),
-        findsNothing,
-        reason: 'the id is an internal identifier, not a label',
-      );
+      expect(find.textContaining('easy-30-remix'), findsNothing,
+          reason: 'the id is an internal identifier, not a label');
     });
 
     testWidgets('tapping through opens the script it names', (tester) async {
@@ -2193,11 +2073,8 @@ void main() {
 /// step over the first half and [secondStepS] over the second. [climbPerStep]
 /// raises the second half by that many metres per step (the first half is
 /// flat), so the run fades in raw pace while effort holds.
-List<Waypoint> _pacedTrack(
-  int firstStepS,
-  int secondStepS, {
-  double? climbPerStep,
-}) {
+List<Waypoint> _pacedTrack(int firstStepS, int secondStepS,
+    {double? climbPerStep}) {
   const metresPerDegreeLat = 111320.0;
   const stepsPerHalf = 20;
   var t = DateTime.utc(2026, 4, 15, 7, 30);
@@ -2206,50 +2083,42 @@ List<Waypoint> _pacedTrack(
   for (var half = 0; half < 2; half++) {
     for (var i = 0; i < stepsPerHalf; i++) {
       final idx = half * stepsPerHalf + i;
-      out.add(
-        Waypoint(
-          lat: -37.8136 + (idx * 100) / metresPerDegreeLat,
-          lng: 144.9631,
-          elevationMetres: ele,
-          timestamp: t,
-        ),
-      );
+      out.add(Waypoint(
+        lat: -37.8136 + (idx * 100) / metresPerDegreeLat,
+        lng: 144.9631,
+        elevationMetres: ele,
+        timestamp: t,
+      ));
       t = t.add(Duration(seconds: half == 0 ? firstStepS : secondStepS));
       if (ele != null && half == 1) ele += climbPerStep!;
     }
   }
-  out.add(
-    Waypoint(
-      lat: -37.8136 + (2 * stepsPerHalf * 100) / metresPerDegreeLat,
-      lng: 144.9631,
-      elevationMetres: ele,
-      timestamp: t,
-    ),
-  );
+  out.add(Waypoint(
+    lat: -37.8136 + (2 * stepsPerHalf * 100) / metresPerDegreeLat,
+    lng: 144.9631,
+    elevationMetres: ele,
+    timestamp: t,
+  ));
   return out;
 }
 
 /// A run whose track carries elevation, so the elevation section renders.
 Run _elevationRun() => Run(
-  id: 'run-ele',
-  startedAt: DateTime.utc(2026, 4, 15, 7, 30),
-  duration: const Duration(minutes: 25),
-  distanceMetres: 5000,
-  source: RunSource.app,
-  metadata: const {'activity_type': 'run'},
-  track: [
-    for (var i = 0; i < 6; i++)
-      Waypoint(
-        lat: -37.8136 + i * 0.001,
-        lng: 144.9631 + i * 0.001,
-        elevationMetres: 10.0 + i * 4,
-        timestamp: DateTime.utc(
-          2026,
-          4,
-          15,
-          7,
-          30,
-        ).add(Duration(seconds: i * 40)),
-      ),
-  ],
-);
+      id: 'run-ele',
+      startedAt: DateTime.utc(2026, 4, 15, 7, 30),
+      duration: const Duration(minutes: 25),
+      distanceMetres: 5000,
+      source: RunSource.app,
+      metadata: const {'activity_type': 'run'},
+      track: [
+        for (var i = 0; i < 6; i++)
+          Waypoint(
+            lat: -37.8136 + i * 0.001,
+            lng: 144.9631 + i * 0.001,
+            elevationMetres: 10.0 + i * 4,
+            timestamp: DateTime.utc(2026, 4, 15, 7, 30).add(
+              Duration(seconds: i * 40),
+            ),
+          ),
+      ],
+    );

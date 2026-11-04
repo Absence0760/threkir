@@ -150,28 +150,24 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   late final TrainingService _training = TrainingService();
   bool _loadingTrack = false;
   bool _trackFetchFailed = false;
-
   /// Indoor/treadmill HR sidecar samples (bpm + timestamp, no coordinates),
   /// fetched lazily when the GPS track has no per-point bpm but the run has an
   /// `hr_series_url`. Feeds the HR-zone breakdown so trackless runs still show
   /// zones (decisions §116). Empty when not applicable / not yet loaded.
   List<Waypoint> _hrSeries = const [];
   Route? _linkedRoute;
-
   /// Map-match metadata + matched track. L4 per docs/architecture/conventions.md
   /// § Layered resilience — the raw `run.track` keeps rendering on
   /// first paint; this lands in the background and the map widget
   /// switches to it when present. A failure here cannot break the
   /// page.
   RunMatchInfo? _matchInfo;
-
   /// The job_worker's smoothed-position sidecar merged onto a track this
   /// device holds, for the map line only, and the [Run.track] it was merged
   /// over ([_maybeMergeLocalSidecar]). Ignored once `run.track` is another
   /// list (a dropped track).
   List<Waypoint>? _sidecarLine;
   List<Waypoint>? _sidecarLineSource;
-
   /// The last map-match read couldn't reach the backend/network (the
   /// PostgREST row query threw a transport error, or a `matched` row's
   /// gz wouldn't download). The raw track still renders; the status pill
@@ -180,18 +176,15 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// `failed`/`skipped` server verdict.
   bool _matchOffline = false;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
-
   /// True while an owner-initiated re-match RPC is in flight. Drives
   /// the disabled state on the Re-match button so a rapid double-tap
   /// can't fire two redundant enqueues (the unique-index dedupe would
   /// catch it server-side anyway, but the UI feedback matters).
   bool _rematchBusy = false;
   bool _recomputeBusy = false;
-
   /// Set once the distance recompute is queued so the action stops offering
   /// itself; the new distance lands only after the background job runs.
   bool _recomputeRequested = false;
-
   /// Auto-link suggestion: when run.routeId is null AND the track
   /// confidently overlaps one of the runner's saved routes, surface
   /// a one-tap "Looks like you ran X — link?" banner. Stays null
@@ -241,14 +234,14 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   ({int min, int max, int avg})? _cachedBpmStats;
   List<HrZoneBucket>? _cachedHrBuckets;
   bool _hrCacheChecked = false;
-
   /// Persona-hunt Round 3 finding Woman #5. Loaded once on mount
   /// from `user_profiles.gender`. Null when unset → calorie
   /// estimate uses the unmodified (male-derived) curve.
   CalorieGender _viewerGender;
 
   void _resetStatsCacheIfStale() {
-    if (_statsCacheRunId == run.id && _statsCacheTrackLen == run.track.length) {
+    if (_statsCacheRunId == run.id &&
+        _statsCacheTrackLen == run.track.length) {
       return;
     }
     _statsCacheRunId = run.id;
@@ -282,9 +275,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     _maybeSuggestRoute();
     _loadViewerGender();
     _loadRunRecords();
-    _connectivitySub = Connectivity().onConnectivityChanged.listen(
-      _onConnectivityChanged,
-    );
+    _connectivitySub =
+        Connectivity().onConnectivityChanged.listen(_onConnectivityChanged);
   }
 
   /// Retry the map-match read when connectivity returns, but only when
@@ -336,9 +328,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       if (!mounted) return;
       if (zones == null) {
         showTopBanner(
-          context,
-          AppLocalizations.of(context).runDetailShareZonesUnknown,
-        );
+            context, AppLocalizations.of(context).runDetailShareZonesUnknown);
         return;
       }
       await showRunShareSheet(
@@ -395,8 +385,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       final candidates = await api.fetchRoutesIntersectingTrack(_line);
       if (candidates.isEmpty) return;
       final best = candidates.first;
-      final lengthRatio =
-          (best.distanceM - run.distanceMetres).abs() /
+      final lengthRatio = (best.distanceM - run.distanceMetres).abs() /
           math.max(run.distanceMetres, 1);
       if (best.startOffsetM + best.endOffsetM < 200 && lengthRatio < 0.2) {
         if (mounted) setState(() => _suggestedRoute = best);
@@ -431,16 +420,12 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       });
       _loadLinkedRoute();
       showTopBanner(
-        context,
-        AppLocalizations.of(context).runDetailRouteLinked(candidate.name),
-      );
+          context, AppLocalizations.of(context).runDetailRouteLinked(candidate.name));
     } catch (e) {
       debugPrint('linkRunToRoute failed: $e');
       if (mounted) {
         showTopBanner(
-          context,
-          AppLocalizations.of(context).runDetailRouteLinkFailed,
-        );
+            context, AppLocalizations.of(context).runDetailRouteLinkFailed);
       }
     } finally {
       if (mounted) setState(() => _linkingRoute = false);
@@ -491,11 +476,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       debugPrint('run detail rematch failed: $e');
       if (!mounted) return;
       showTopBanner(
-        context,
-        AppLocalizations.of(context).runDetailRematchFailed(
-          friendlyError(AppLocalizations.of(context), e),
-        ),
-      );
+          context, AppLocalizations.of(context).runDetailRematchFailed(friendlyError(AppLocalizations.of(context), e)));
     } finally {
       if (mounted) setState(() => _rematchBusy = false);
     }
@@ -550,9 +531,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         RecomputeFailure.notAuthorized =>
           l10n.runDetailRecalculateDistanceNotOwner,
         RecomputeFailure.noTrack => l10n.runDetailRecalculateDistanceNoTrack,
-        RecomputeFailure.other => l10n.runDetailRecalculateDistanceFailed(
-          friendlyError(l10n, e),
-        ),
+        RecomputeFailure.other => l10n
+            .runDetailRecalculateDistanceFailed(friendlyError(l10n, e)),
       };
       showTopBanner(context, message);
     } finally {
@@ -618,9 +598,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     final id = run.routeId;
     if (id == null) return;
     try {
-      _linkedRoute = widget.routeStore.routes
-          .where((r) => r.id == id)
-          .firstOrNull;
+      _linkedRoute =
+          widget.routeStore.routes.where((r) => r.id == id).firstOrNull;
     } catch (_) {
       _linkedRoute = null;
     }
@@ -681,9 +660,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     final api = widget.apiClient;
     if (api == null) return;
     try {
-      final line = await api
-          .smoothedLocalTrack(run)
-          .timeout(kBackendLoadTimeout);
+      final line =
+          await api.smoothedLocalTrack(run).timeout(kBackendLoadTimeout);
       if (line == null || !mounted || !identical(source, run.track)) return;
       setState(() {
         _sidecarLine = trackLine(line);
@@ -697,8 +675,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// The track the map line draws when no matched line replaces it:
   /// [_sidecarLine] while it is still over `run.track`, else [_line]. Never
   /// the sidecar under "Show raw GPS track". Either way, only on-track fixes.
-  List<Waypoint> get _lineTrack =>
-      !widget.preferences.showRawTrack &&
+  List<Waypoint> get _lineTrack => !widget.preferences.showRawTrack &&
           _sidecarLine != null &&
           identical(_sidecarLineSource, run.track)
       ? _sidecarLine!
@@ -775,8 +752,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       if (series.isNotEmpty && mounted) {
         setState(() {
           _hrSeries = series;
-          _hrCacheChecked =
-              false; // recompute the zone breakdown off the sidecar
+          _hrCacheChecked = false; // recompute the zone breakdown off the sidecar
         });
       }
     } catch (e) {
@@ -786,10 +762,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
 
   String get _title =>
       (run.metadata?[MetadataKeys.title] as String?) ??
-      formatDateMed(
-        run.startedAt,
-        localeToTag(Localizations.localeOf(context)),
-      );
+      formatDateMed(run.startedAt, localeToTag(Localizations.localeOf(context)));
   String get _notes => (run.metadata?[MetadataKeys.notes] as String?) ?? '';
 
   static const _metresPerMile = 1609.344;
@@ -834,96 +807,91 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(l10n.runDetailEditTitle),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+        title: Text(l10n.runDetailEditTitle),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: titleCtl,
+                decoration: InputDecoration(labelText: l10n.runDetailFieldTitle),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: notesCtl,
+                decoration: InputDecoration(labelText: l10n.runDetailFieldNotes),
+                maxLines: 4,
+              ),
+              if (canEditStats) ...[
+                const SizedBox(height: 16),
                 TextField(
-                  controller: titleCtl,
+                  controller: distanceCtl,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: typedDecimalInputFormatters,
                   decoration: InputDecoration(
-                    labelText: l10n.runDetailFieldTitle,
+                    labelText: l10n.runDetailFieldDistance,
+                    suffixText: UnitFormat.distanceLabel(unit),
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: notesCtl,
-                  decoration: InputDecoration(
-                    labelText: l10n.runDetailFieldNotes,
-                  ),
-                  maxLines: 4,
-                ),
-                if (canEditStats) ...[
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: distanceCtl,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
+                Text(l10n.runDetailFieldDuration),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _durationSubField(
+                        hoursCtl,
+                        'h',
+                        l10n.runDetailFieldDuration,
+                      ),
                     ),
-                    inputFormatters: typedDecimalInputFormatters,
-                    decoration: InputDecoration(
-                      labelText: l10n.runDetailFieldDistance,
-                      suffixText: UnitFormat.distanceLabel(unit),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _durationSubField(
+                        minutesCtl,
+                        'm',
+                        l10n.runDetailFieldDuration,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(l10n.runDetailFieldDuration),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _durationSubField(
-                          hoursCtl,
-                          'h',
-                          l10n.runDetailFieldDuration,
-                        ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _durationSubField(
+                        secondsCtl,
+                        's',
+                        l10n.runDetailFieldDuration,
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _durationSubField(
-                          minutesCtl,
-                          'm',
-                          l10n.runDetailFieldDuration,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _durationSubField(
-                          secondsCtl,
-                          's',
-                          l10n.runDetailFieldDuration,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 8),
-                // Marking a run as DNF (Did Not Finish) excludes it from
-                // personal-record scoring server-side (the PR trigger drops it
-                // on the next refresh). Mirrors the web run-detail edit toggle.
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  value: dnf,
-                  onChanged: (v) => setDialogState(() => dnf = v ?? false),
-                  title: Text(l10n.runDetailMarkDnf),
-                  subtitle: Text(l10n.runDetailMarkDnfSubtitle),
+                    ),
+                  ],
                 ),
               ],
-            ),
+              const SizedBox(height: 8),
+              // Marking a run as DNF (Did Not Finish) excludes it from
+              // personal-record scoring server-side (the PR trigger drops it
+              // on the next refresh). Mirrors the web run-detail edit toggle.
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: dnf,
+                onChanged: (v) => setDialogState(() => dnf = v ?? false),
+                title: Text(l10n.runDetailMarkDnf),
+                subtitle: Text(l10n.runDetailMarkDnfSubtitle),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(l10n.runDetailCancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(l10n.runDetailSave),
-            ),
-          ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.runDetailCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.runDetailSave),
+          ),
+        ],
+      ),
       ),
     );
     if (ok != true) return;
@@ -1009,7 +977,10 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         controller: ctl,
         keyboardType: TextInputType.number,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        decoration: InputDecoration(isDense: true, suffixText: suffix),
+        decoration: InputDecoration(
+          isDense: true,
+          suffixText: suffix,
+        ),
       ),
     );
   }
@@ -1052,7 +1023,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
             if (_isDnf) ...[
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.errorContainer,
                   borderRadius: BorderRadius.circular(4),
@@ -1060,9 +1032,10 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                 child: Text(
                   l10n.runDetailDnfBadge,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onErrorContainer,
-                    fontWeight: FontWeight.w700,
-                  ),
+                        color:
+                            Theme.of(context).colorScheme.onErrorContainer,
+                        fontWeight: FontWeight.w700,
+                      ),
                 ),
               ),
             ],
@@ -1071,10 +1044,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
               Tooltip(
                 message: l10n.runDetailIncompleteTooltip,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.tertiaryContainer,
                     borderRadius: BorderRadius.circular(4),
@@ -1082,9 +1053,11 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                   child: Text(
                     l10n.runDetailIncompleteBadge,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onTertiaryContainer,
-                      fontWeight: FontWeight.w700,
-                    ),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onTertiaryContainer,
+                          fontWeight: FontWeight.w700,
+                        ),
                   ),
                 ),
               ),
@@ -1163,16 +1136,11 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                 value: 'delete',
                 child: ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: Icon(
-                    Icons.delete_outline,
-                    color: AppSemanticColors.of(context).danger,
-                  ),
-                  title: Text(
-                    l10n.runDetailDeleteRun,
-                    style: TextStyle(
-                      color: AppSemanticColors.of(context).danger,
-                    ),
-                  ),
+                  leading: Icon(Icons.delete_outline,
+                      color: AppSemanticColors.of(context).danger),
+                  title: Text(l10n.runDetailDeleteRun,
+                      style: TextStyle(
+                          color: AppSemanticColors.of(context).danger)),
                 ),
               ),
             ],
@@ -1189,12 +1157,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     );
   }
 
-  Widget _buildBody(
-    ThemeData theme,
-    AppLocalizations l10n,
-    DistanceUnit unit,
-    double viewportHeight,
-  ) {
+  Widget _buildBody(ThemeData theme, AppLocalizations l10n, DistanceUnit unit,
+      double viewportHeight) {
     final hasMap = run.track.isNotEmpty || _linkedRoute != null;
     final sections = _buildSections(theme, l10n, unit);
     // Expanded (>= 840dp — a landscape tablet) mirrors the web run-detail
@@ -1269,11 +1233,14 @@ class _RunDetailScreenState extends State<RunDetailScreen>
             );
             return LiveRunMap(
               track: mapTrack,
-              plannedRoute: mapTrack.isEmpty ? _linkedRoute?.waypoints : null,
+              plannedRoute: mapTrack.isEmpty
+                  ? _linkedRoute?.waypoints
+                  : null,
               followRunner: false,
               finishedRun: true,
               colourByPace: _colourByPace,
-              currentPosition: dotIndex != null ? mapTrack[dotIndex] : null,
+              currentPosition:
+                  dotIndex != null ? mapTrack[dotIndex] : null,
               // Authoritative index for the smoothed-dot
               // snap — loop routes (start == end coord)
               // need the explicit index, otherwise the
@@ -1295,8 +1262,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
               // which has a different index space. The sidecar
               // line and the raw view are the line point for
               // point.
-              hoverIdx:
-                  !identical(mapTrack, _matchInfo?.track) &&
+              hoverIdx: !identical(mapTrack, _matchInfo?.track) &&
                       mapTrack.length == _line.length
                   ? _chartHoverIdx
                   : null,
@@ -1311,12 +1277,14 @@ class _RunDetailScreenState extends State<RunDetailScreen>
             child: _SegmentStatsCard(
               segment: _selectedSegment!,
               unit: widget.preferences.unit,
-              onDismiss: () => setState(() => _selectedSegment = null),
+              onDismiss: () =>
+                  setState(() => _selectedSegment = null),
             ),
           ),
         Builder(
           builder: (context) {
-            final kind = matchPillKind(_matchInfo, offline: _matchOffline);
+            final kind = matchPillKind(_matchInfo,
+                offline: _matchOffline);
             if (kind == MatchPillKind.hidden) {
               return const SizedBox.shrink();
             }
@@ -1330,7 +1298,9 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                 // already implies the viewer is the owner.
                 // The RPC self-gates with 42501 anyway as a
                 // defence in depth.
-                onRematch: widget.apiClient == null ? null : _handleRematch,
+                onRematch: widget.apiClient == null
+                    ? null
+                    : _handleRematch,
                 busy: _rematchBusy,
               ),
             );
@@ -1386,10 +1356,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      l10n.runDetailLoadingGps,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+                    Text(l10n.runDetailLoadingGps,
+                        style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ),
               ),
@@ -1405,16 +1373,11 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.cloud_off,
-                      size: 14,
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
+                    Icon(Icons.cloud_off, size: 14,
+                        color: Theme.of(context).colorScheme.outline),
                     const SizedBox(width: 8),
-                    Text(
-                      l10n.runDetailGpsUnavailable,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+                    Text(l10n.runDetailGpsUnavailable,
+                        style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ),
               ),
@@ -1425,10 +1388,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   }
 
   List<Widget> _buildSections(
-    ThemeData theme,
-    AppLocalizations l10n,
-    DistanceUnit unit,
-  ) {
+      ThemeData theme, AppLocalizations l10n, DistanceUnit unit) {
     final blockedReason = widget.runStore.blockedReason(run.id);
     final secondaryStats = _secondaryStatCells(l10n, unit);
     return [
@@ -1462,11 +1422,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
         child: Row(
           children: [
-            Icon(
-              _activityType.icon,
-              size: 18,
-              color: theme.colorScheme.outline,
-            ),
+            Icon(_activityType.icon, size: 18, color: theme.colorScheme.outline),
             const SizedBox(width: 6),
             Flexible(
               child: Text(
@@ -1543,8 +1499,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
           child: Text(
             l10n.runDetailOriginallyRecorded(
-              UnitFormat.distance(_recordedDistanceM!, unit),
-            ),
+                UnitFormat.distance(_recordedDistanceM!, unit)),
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -1568,10 +1523,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       if (_hasElevationProfile) ...[
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-          child: Text(
-            l10n.runDetailSectionElevation,
-            style: theme.textTheme.titleMedium,
-          ),
+          child: Text(l10n.runDetailSectionElevation,
+              style: theme.textTheme.titleMedium),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1579,7 +1532,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
             track: _altitudeTrack,
             theme: theme,
             unit: unit,
-            onHoverIdx: (idx) => setState(() => _chartHoverIdx = idx),
+            onHoverIdx: (idx) =>
+                setState(() => _chartHoverIdx = idx),
           ),
         ),
         const SizedBox(height: 16),
@@ -1590,10 +1544,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       if (_laps.isNotEmpty) ...[
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-          child: Text(
-            l10n.runDetailSectionLaps,
-            style: theme.textTheme.titleMedium,
-          ),
+          child: Text(l10n.runDetailSectionLaps,
+              style: theme.textTheme.titleMedium),
         ),
         ..._buildLaps(theme, l10n, unit),
         const Divider(),
@@ -1604,17 +1556,17 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       if (_buildRunningDynamics(theme, l10n).isNotEmpty) ...[
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-          child: Text(
-            l10n.runDetailSectionRunningDynamics,
-            style: theme.textTheme.titleMedium,
-          ),
+          child: Text(l10n.runDetailSectionRunningDynamics,
+              style: theme.textTheme.titleMedium),
         ),
         ..._buildRunningDynamics(theme, l10n),
         const Divider(),
       ],
 
       // Best efforts — auto-detect fastest 1k, 1mi, 5k, 10k, HM, M
-      if (run.track.length >= 2) ...[..._buildBestEfforts(theme, l10n, unit)],
+      if (run.track.length >= 2) ...[
+        ..._buildBestEfforts(theme, l10n, unit),
+      ],
 
       // Structured-workout review — only when the recorder linked
       // this run to a planned plan_workouts row.
@@ -1622,7 +1574,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
 
       // Race-strategy review — only when the run was recorded under a
       // pacing strategy this build can read (metadata.pacing_strategy).
-      PacingStrategySection(metadata: run.metadata, track: _line, unit: unit),
+      PacingStrategySection(
+          metadata: run.metadata, track: _line, unit: unit),
 
       // HR zone breakdown — only when the track carries per-point bpm
       // (Strava streams, FIT/TCX imports, future watch recorders).
@@ -1632,10 +1585,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       if (run.track.length >= 2) ...[
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-          child: Text(
-            l10n.runDetailSectionSplits,
-            style: theme.textTheme.titleMedium,
-          ),
+          child: Text(l10n.runDetailSectionSplits,
+              style: theme.textTheme.titleMedium),
         ),
         ..._buildSplits(theme, l10n, unit),
       ],
@@ -1645,10 +1596,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       if (widget.apiClient != null) ...[
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-          child: Text(
-            l10n.runDetailSectionSegments,
-            style: theme.textTheme.titleMedium,
-          ),
+          child: Text(l10n.runDetailSectionSegments,
+              style: theme.textTheme.titleMedium),
         ),
         RunSegmentEfforts(
           api: widget.apiClient!,
@@ -1788,9 +1737,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     ];
   }
 
-  ActivityType get _activityType => ActivityType.fromName(
-    run.metadata?[MetadataKeys.activityType] as String?,
-  );
+  ActivityType get _activityType =>
+      ActivityType.fromName(run.metadata?[MetadataKeys.activityType] as String?);
 
   bool get _hasElevation =>
       _altitudeTrack.any((w) => w.elevationMetres != null);
@@ -1836,10 +1784,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   }
 
   List<Widget> _buildLaps(
-    ThemeData theme,
-    AppLocalizations l10n,
-    DistanceUnit unit,
-  ) {
+      ThemeData theme, AppLocalizations l10n, DistanceUnit unit) {
     // Canonical per-lap shape (`docs/backend/metadata.md` § laps):
     //   { index, start_offset_s, distance_m, duration_s }
     // `distance_m` and `duration_s` are the *per-lap* deltas, not the
@@ -1851,11 +1796,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       return ListTile(
         leading: CircleAvatar(
           backgroundColor: theme.colorScheme.tertiaryContainer,
-          child: Icon(
-            Icons.flag_outlined,
-            size: 18,
-            color: theme.colorScheme.tertiary,
-          ),
+          child: Icon(Icons.flag_outlined, size: 18, color: theme.colorScheme.tertiary),
         ),
         title: Text(l10n.runDetailLapNumber(number)),
         subtitle: Text(UnitFormat.distance(distM, unit)),
@@ -1888,11 +1829,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         child: guided == null
             ? Row(
                 children: [
-                  Icon(
-                    Icons.headset_mic_outlined,
-                    size: 16,
-                    color: theme.colorScheme.outline,
-                  ),
+                  Icon(Icons.headset_mic_outlined,
+                      size: 16, color: theme.colorScheme.outline),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -1929,36 +1867,23 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     final rows = <Widget>[];
     // `decimals` flags the stride-length row, the only metric formatted
     // with two decimal places — the rest read as whole numbers.
-    void addRow(
-      String label,
-      Object? value,
-      String suffix, {
-      bool decimals = false,
-    }) {
+    void addRow(String label, Object? value, String suffix,
+        {bool decimals = false}) {
       if (value is! num) return;
       final formatted = decimals
           ? formatFixed(value.toDouble(), 2, activeLocaleTag)
           : value.toString();
-      rows.add(
-        ListTile(
-          dense: true,
-          title: Text(label),
-          trailing: Text(
-            '$formatted $suffix',
-            style: theme.textTheme.titleMedium,
-          ),
-        ),
-      );
+      rows.add(ListTile(
+        dense: true,
+        title: Text(label),
+        trailing: Text('$formatted $suffix', style: theme.textTheme.titleMedium),
+      ));
     }
 
     addRow(l10n.runDetailDynVerticalOsc, rd['vertical_oscillation_mm'], 'mm');
     addRow(l10n.runDetailDynGroundContact, rd['gct_ms'], 'ms');
-    addRow(
-      l10n.runDetailDynStrideLength,
-      rd['stride_length_m'],
-      'm',
-      decimals: true,
-    );
+    addRow(l10n.runDetailDynStrideLength, rd['stride_length_m'], 'm',
+        decimals: true);
     addRow(l10n.runDetailDynAvgPower, rd['power_w'], 'W');
     return rows;
   }
@@ -2023,9 +1948,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// weight is set). Mirrors web's `/runs/[id]` gate: shown unless the pref
   /// is explicitly `false`.
   bool get _showCalories =>
-      widget.settingsSync?.service?.effective<bool>(
-        SettingsKeys.showCalories,
-      ) !=
+      widget.settingsSync?.service?.effective<bool>(SettingsKeys.showCalories) !=
       false;
 
   double get _elevationGain {
@@ -2063,11 +1986,11 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   // when `_viewerGender == 'female'` (loaded in initState). Persona-
   // hunt Round 3 finding Woman #5 + ADR §77.
   int get _estimatedCalories => estimateRunCalories(
-    distanceM: run.distanceMetres,
-    weightKg: widget.preferences.bodyWeightKg,
-    activityKcalPerKgPerKm: _activityType.kcalPerKgPerKm,
-    gender: _viewerGender,
-  );
+        distanceM: run.distanceMetres,
+        weightKg: widget.preferences.bodyWeightKg,
+        activityKcalPerKgPerKm: _activityType.kcalPerKgPerKm,
+        gender: _viewerGender,
+      );
 
   int get _steps {
     final s = run.metadata?[MetadataKeys.steps];
@@ -2130,9 +2053,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   String? get _ageGrade {
     final v = run.metadata?[MetadataKeys.ageGrade];
     if (v is String && v.trim().isNotEmpty) return v.trim();
-    final dob = widget.settingsSync?.service?.effective<String>(
-      SettingsKeys.dateOfBirth,
-    );
+    final dob =
+        widget.settingsSync?.service?.effective<String>(SettingsKeys.dateOfBirth);
     final result = ageGradeForRun(
       distanceM: run.distanceMetres,
       durationSec: run.duration.inSeconds.toDouble(),
@@ -2167,20 +2089,15 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   }
 
   List<Widget> _buildBestEfforts(
-    ThemeData theme,
-    AppLocalizations l10n,
-    DistanceUnit unit,
-  ) {
+      ThemeData theme, AppLocalizations l10n, DistanceUnit unit) {
     final efforts = _bestEfforts;
     if (efforts.isEmpty) return const [];
 
     return [
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-        child: Text(
-          l10n.runDetailSectionBestEfforts,
-          style: theme.textTheme.titleMedium,
-        ),
+        child: Text(l10n.runDetailSectionBestEfforts,
+            style: theme.textTheme.titleMedium),
       ),
       ...efforts.map((e) {
         final paceSecPerKm =
@@ -2188,18 +2105,13 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         return ListTile(
           leading: CircleAvatar(
             backgroundColor: theme.colorScheme.tertiaryContainer,
-            child: Icon(
-              Icons.emoji_events,
-              size: 18,
-              color: theme.colorScheme.tertiary,
-            ),
+            child: Icon(Icons.emoji_events,
+                size: 18, color: theme.colorScheme.tertiary),
           ),
           title: Text(bestEffortDistanceLabel(l10n, e.key)),
-          subtitle: Text(
-            _activityType.usesSpeed
-                ? '${UnitFormat.speed(paceSecPerKm, unit)} ${UnitFormat.speedLabel(unit)}'
-                : '${UnitFormat.pace(paceSecPerKm, unit)} ${UnitFormat.paceLabel(unit)}',
-          ),
+          subtitle: Text(_activityType.usesSpeed
+              ? '${UnitFormat.speed(paceSecPerKm, unit)} ${UnitFormat.speedLabel(unit)}'
+              : '${UnitFormat.pace(paceSecPerKm, unit)} ${UnitFormat.paceLabel(unit)}'),
           trailing: Text(
             _formatDuration(e.value),
             style: theme.textTheme.titleMedium,
@@ -2211,29 +2123,20 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   }
 
   List<Widget> _buildRouteComparison(
-    ThemeData theme,
-    AppLocalizations l10n,
-    DistanceUnit unit,
-  ) {
+      ThemeData theme, AppLocalizations l10n, DistanceUnit unit) {
     if (run.routeId == null) return const [];
 
-    final thisActivity =
-        run.metadata?[MetadataKeys.activityType] as String? ?? 'run';
+    final thisActivity = run.metadata?[MetadataKeys.activityType] as String? ?? 'run';
     // Reads the full-history index so the route PB isn't lost once the run
     // store windows — only routeId / distance / activityType / duration / id
     // are used, all carried by the summary (no track, no detail nav here).
-    final attempts =
-        widget.runStore.summaryRuns
-            .where(
-              (r) =>
-                  r.routeId == run.routeId &&
-                  r.distanceMetres > 100 &&
-                  (r.metadata?[MetadataKeys.activityType] as String? ??
-                          'run') ==
-                      thisActivity,
-            )
-            .toList()
-          ..sort((a, b) => a.duration.compareTo(b.duration));
+    final attempts = widget.runStore.summaryRuns
+        .where((r) =>
+            r.routeId == run.routeId &&
+            r.distanceMetres > 100 &&
+            (r.metadata?[MetadataKeys.activityType] as String? ?? 'run') == thisActivity)
+        .toList()
+      ..sort((a, b) => a.duration.compareTo(b.duration));
 
     if (attempts.length < 2) return const [];
 
@@ -2247,10 +2150,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     return [
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-        child: Text(
-          l10n.runDetailSectionRouteHistory,
-          style: theme.textTheme.titleMedium,
-        ),
+        child: Text(l10n.runDetailSectionRouteHistory,
+            style: theme.textTheme.titleMedium),
       ),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -2275,8 +2176,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                         isBest
                             ? l10n.runDetailPersonalBest(routeName)
                             : l10n.runDetailBehindPb(
-                                _formatDeltaDuration(delta),
-                              ),
+                                _formatDeltaDuration(delta)),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: isBest
@@ -2290,10 +2190,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                 const SizedBox(height: 8),
                 Text(
                   l10n.runDetailAttemptOf(
-                    rank,
-                    attempts.length,
-                    _formatDuration(best.duration),
-                  ),
+                      rank, attempts.length, _formatDuration(best.duration)),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -2352,12 +2249,11 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     final colors = ChartPalette.ofTheme(theme).zones;
 
     Widget bar() {
-      final total = buckets.fold<int>(
-        0,
-        (sum, b) => sum + (b.pct < 0 ? 0 : b.pct),
-      );
+      final total =
+          buckets.fold<int>(0, (sum, b) => sum + (b.pct < 0 ? 0 : b.pct));
       if (total <= 0) return const SizedBox.shrink();
-      final shown = buckets.where((b) => (b.pct < 0 ? 0 : b.pct) > 0).toList();
+      final shown =
+          buckets.where((b) => (b.pct < 0 ? 0 : b.pct) > 0).toList();
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: SizedBox(
@@ -2386,10 +2282,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     return [
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-        child: Text(
-          l10n.runDetailSectionHeartRateZones,
-          style: theme.textTheme.titleMedium,
-        ),
+        child: Text(l10n.runDetailSectionHeartRateZones,
+            style: theme.textTheme.titleMedium),
       ),
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
@@ -2476,9 +2370,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
             children: [
               Text(
                 l10n.runDetailHrDisclaimer,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
               Align(
                 alignment: AlignmentDirectional.centerStart,
@@ -2518,8 +2411,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   bool _zonesAreAgeEstimated() {
     final svc = widget.settingsSync?.service;
     if (svc == null) return true;
-    final hasExplicit =
-        parseHrZones(svc.effective<Map>(SettingsKeys.hrZones)) != null;
+    final hasExplicit = parseHrZones(svc.effective<Map>(SettingsKeys.hrZones)) != null;
     final hasMaxHr = svc.effective<num>(SettingsKeys.maxHrBpm) != null;
     return !hasExplicit && !hasMaxHr;
   }
@@ -2580,12 +2472,10 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     // interpolate a boundary crossing inside a long inter-fix gap (see
     // computeSplitDurations); the previous inline loop re-used a segment's end
     // time for every boundary it crossed, emitting 0:00 phantom splits.
-    return computeSplitDurations(
-      run.track,
-      tickLength,
-      run.startedAt,
-      totalDistanceMetres: run.distanceMetres,
-    ).map((s) => _Split(s.tick, s.duration)).toList();
+    return computeSplitDurations(run.track, tickLength, run.startedAt,
+            totalDistanceMetres: run.distanceMetres)
+        .map((s) => _Split(s.tick, s.duration))
+        .toList();
   }
 
   /// First-half vs second-half pacing, and the same comparison on
@@ -2614,9 +2504,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     const metresPerMile = 1609.344;
     final tickLength = unit == DistanceUnit.mi ? metresPerMile : 1000.0;
     final gap = gradeAdjustedSplitPaces(
-      _altitudeTrack,
-      List.filled(_splitsFor(unit).length, tickLength),
-    );
+        _altitudeTrack, List.filled(_splitsFor(unit).length, tickLength));
     _cachedSplitGap = gap;
     _statsCacheSplitGapUnit = unit;
     return gap;
@@ -2645,10 +2533,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   }
 
   List<Widget> _buildSplits(
-    ThemeData theme,
-    AppLocalizations l10n,
-    DistanceUnit unit,
-  ) {
+      ThemeData theme, AppLocalizations l10n, DistanceUnit unit) {
     if (run.track.length < 2) {
       return [
         Padding(
@@ -2704,8 +2589,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       final (barColor, barTextColor) = isFastest
           ? (semantic.success, semantic.onSuccess)
           : isSlowest
-          ? (semantic.danger, semantic.onDanger)
-          : (theme.colorScheme.primary, theme.colorScheme.onPrimary);
+              ? (semantic.danger, semantic.onDanger)
+              : (theme.colorScheme.primary, theme.colorScheme.onPrimary);
 
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 3),
@@ -2835,29 +2720,25 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     ];
   }
 
-  Widget _buildPacingCard(
-    ThemeData theme,
-    AppLocalizations l10n,
-    DistanceUnit unit,
-    PacingAnalysis pacing,
-  ) {
+  Widget _buildPacingCard(ThemeData theme, AppLocalizations l10n,
+      DistanceUnit unit, PacingAnalysis pacing) {
     final semantic = AppSemanticColors.ofTheme(theme);
     final (verdictLabel, verdictBg, verdictFg) = switch (pacing.raw.verdict) {
       PacingVerdict.negative => (
-        l10n.runDetailPacingNegative,
-        semantic.success,
-        semantic.onSuccess,
-      ),
+          l10n.runDetailPacingNegative,
+          semantic.success,
+          semantic.onSuccess
+        ),
       PacingVerdict.positive => (
-        l10n.runDetailPacingPositive,
-        semantic.warning,
-        semantic.onWarning,
-      ),
+          l10n.runDetailPacingPositive,
+          semantic.warning,
+          semantic.onWarning
+        ),
       PacingVerdict.even => (
-        l10n.runDetailPacingEven,
-        theme.colorScheme.surfaceContainerHighest,
-        theme.colorScheme.onSurfaceVariant,
-      ),
+          l10n.runDetailPacingEven,
+          theme.colorScheme.surfaceContainerHighest,
+          theme.colorScheme.onSurfaceVariant
+        ),
     };
 
     final String summary;
@@ -2900,23 +2781,13 @@ class _RunDetailScreenState extends State<RunDetailScreen>
               runSpacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                _pacingHalf(
-                  theme,
-                  l10n.runDetailPacingFirstHalf,
-                  pacing.raw.first.paceSecPerKm,
-                  unit,
-                ),
-                _pacingHalf(
-                  theme,
-                  l10n.runDetailPacingSecondHalf,
-                  pacing.raw.second.paceSecPerKm,
-                  unit,
-                ),
+                _pacingHalf(theme, l10n.runDetailPacingFirstHalf,
+                    pacing.raw.first.paceSecPerKm, unit),
+                _pacingHalf(theme, l10n.runDetailPacingSecondHalf,
+                    pacing.raw.second.paceSecPerKm, unit),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: verdictBg,
                     borderRadius: BorderRadius.circular(4),
@@ -2958,11 +2829,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   }
 
   Widget _pacingHalf(
-    ThemeData theme,
-    String label,
-    int paceSecPerKm,
-    DistanceUnit unit,
-  ) {
+      ThemeData theme, String label, int paceSecPerKm, DistanceUnit unit) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -3031,10 +2898,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     if (saved != true) return;
 
     final name = nameCtl.text.trim().isEmpty ? _title : nameCtl.text.trim();
-    final simplified = simplifyTrack(
-      runAltitude(run.track, run.source).track,
-      epsilonMetres: 10,
-    );
+    final simplified =
+        simplifyTrack(runAltitude(run.track, run.source).track, epsilonMetres: 10);
     final gain = computeRunElevationGain(run.track, run.source);
 
     final route = Route(
@@ -3057,13 +2922,9 @@ class _RunDetailScreenState extends State<RunDetailScreen>
 
     if (!mounted) return;
     showTopBanner(
-      context,
-      l10n.runDetailRouteSaved(
-        name,
-        simplified.length,
-        _line.length - simplified.length,
-      ),
-    );
+        context,
+        l10n.runDetailRouteSaved(
+            name, simplified.length, _line.length - simplified.length));
   }
 
   /// Open the share sheet. An image, a sticker or an exported file is the
@@ -3079,9 +2940,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       if (!mounted) return;
       if (zones == null) {
         showTopBanner(
-          context,
-          AppLocalizations.of(context).runDetailShareZonesUnknown,
-        );
+            context, AppLocalizations.of(context).runDetailShareZonesUnknown);
         return;
       }
       final api = widget.apiClient;
@@ -3181,9 +3040,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     if (!mounted) return;
     if (zones == null) {
       showTopBanner(
-        context,
-        AppLocalizations.of(context).runDetailShareZonesUnknown,
-      );
+          context, AppLocalizations.of(context).runDetailShareZonesUnknown);
       return;
     }
     await showRunShareSheet(
@@ -3264,11 +3121,9 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       debugPrint('makeRunPrivate failed: $e');
       if (!mounted) return;
       showTopBanner(
-        context,
-        AppLocalizations.of(context).runDetailMakePrivateFailed(
-          friendlyError(AppLocalizations.of(context), e),
-        ),
-      );
+          context,
+          AppLocalizations.of(context).runDetailMakePrivateFailed(
+              friendlyError(AppLocalizations.of(context), e)));
       return;
     }
     if (!mounted) return;
@@ -3286,8 +3141,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     final body = intersectsZone
         ? l10n.runDetailMakePublicBodyZone
         : hasZones
-        ? l10n.runDetailMakePublicBodyHasZones
-        : l10n.runDetailMakePublicBodyNoZones;
+            ? l10n.runDetailMakePublicBodyHasZones
+            : l10n.runDetailMakePublicBodyNoZones;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -3388,12 +3243,12 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     }
   }
 
+
   static String _formatDuration(Duration d) {
     final h = d.inHours;
     final m = d.inMinutes % 60;
     final s = d.inSeconds % 60;
-    if (h > 0)
-      return '$h:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+    if (h > 0) return '$h:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 }
@@ -3412,7 +3267,6 @@ class _ElevationChart extends StatefulWidget {
   final List<Waypoint> track;
   final ThemeData theme;
   final DistanceUnit unit;
-
   /// Linked-cursor: fires with the track-index currently under the
   /// pointer (null on touch release). Lets `run_detail_screen` paint
   /// the matching marker on `LiveRunMap` — Nike/Strava-style brushing.
@@ -3435,12 +3289,7 @@ class _ElevationProfile {
   final double dataMin;
   final double dataMax;
   final ({double lo, double hi}) domain;
-  const _ElevationProfile(
-    this.smoothed,
-    this.dataMin,
-    this.dataMax,
-    this.domain,
-  );
+  const _ElevationProfile(this.smoothed, this.dataMin, this.dataMax, this.domain);
 }
 
 class _ElevationChartState extends State<_ElevationChart> {
@@ -3497,9 +3346,8 @@ class _ElevationChartState extends State<_ElevationChart> {
     final profile = _profile;
     if (profile == null) return const SizedBox.shrink();
     final theme = widget.theme;
-    final labelStyle = theme.textTheme.labelSmall?.copyWith(
-      color: theme.colorScheme.onSurfaceVariant,
-    );
+    final labelStyle = theme.textTheme.labelSmall
+        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
     final total = _cum.isEmpty ? 0.0 : _cum.last;
     final textScaler = MediaQuery.textScalerOf(context);
     var widest = 0.0;
@@ -3603,10 +3451,8 @@ class _ElevationChartState extends State<_ElevationChart> {
         double segDist = 0;
         for (var i = windowStart + 1; i <= windowEnd; i++) {
           segDist += haversineMetres(
-            widget.track[i - 1].lineLat,
-            widget.track[i - 1].lineLng,
-            widget.track[i].lineLat,
-            widget.track[i].lineLng,
+            widget.track[i - 1].lineLat, widget.track[i - 1].lineLng,
+            widget.track[i].lineLat, widget.track[i].lineLng,
           );
         }
         if (segDist > 10) {
@@ -3747,20 +3593,19 @@ class _ElevationPainter extends CustomPainter {
     final plotWidth = size.width - gutter;
     final range = domain.hi - domain.lo;
     double xAt(int i) => plotLeft + cumulativeM[i] / total * plotWidth;
-    double yAt(double ele) =>
-        size.height - (ele - domain.lo) / range * size.height;
+    double yAt(double ele) => size.height - (ele - domain.lo) / range * size.height;
 
     final colour = ChartPalette.ofTheme(theme).series.first;
-    final labelStyle = theme.textTheme.labelSmall!.copyWith(
-      color: theme.colorScheme.onSurfaceVariant,
-    );
+    final labelStyle = theme.textTheme.labelSmall!
+        .copyWith(color: theme.colorScheme.onSurfaceVariant);
     // Gridlines and labels at the data's own low and high points, in the
     // gutter rather than on the plot, so neither ever sits on the line.
     final labelHeight = (TextPainter(
       text: TextSpan(text: '0 m', style: labelStyle),
       textDirection: TextDirection.ltr,
       textScaler: textScaler,
-    )..layout()).height;
+    )..layout())
+        .height;
     for (final ele in elevationGutterLabels(
       dataMin: dataMin,
       dataMax: dataMax,
@@ -3884,15 +3729,13 @@ class _RouteSuggestBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(text: l10n.runDetailSuggestRanRoute),
-                      TextSpan(
-                        text: routeName,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
+                  TextSpan(children: [
+                    TextSpan(text: l10n.runDetailSuggestRanRoute),
+                    TextSpan(
+                      text: routeName,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ]),
                   style: theme.textTheme.bodyMedium,
                 ),
                 Text(
@@ -3905,9 +3748,7 @@ class _RouteSuggestBanner extends StatelessWidget {
             ),
           ),
           TextButton(
-            onPressed: onDismiss,
-            child: Text(l10n.runDetailSuggestDismiss),
-          ),
+              onPressed: onDismiss, child: Text(l10n.runDetailSuggestDismiss)),
           const SizedBox(width: 4),
           FilledButton(
             onPressed: onLink,
@@ -3946,17 +3787,13 @@ class _MatchStatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final (icon, label) = switch (kind) {
-      MatchPillKind.pending => (
-        Icons.hourglass_top,
-        l10n.runDetailMatchPending,
-      ),
+      MatchPillKind.pending => (Icons.hourglass_top, l10n.runDetailMatchPending),
       MatchPillKind.offline => (Icons.cloud_off, l10n.runDetailMatchOffline),
       MatchPillKind.skipped => (Icons.block, l10n.runDetailMatchSkipped),
       MatchPillKind.failed => (Icons.error_outline, l10n.runDetailMatchFailed),
       MatchPillKind.hidden => (Icons.check_circle, l10n.runDetailMatchMatched),
     };
-    final showRematch =
-        onRematch != null &&
+    final showRematch = onRematch != null &&
         (kind == MatchPillKind.skipped || kind == MatchPillKind.failed);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -3984,7 +3821,8 @@ class _MatchStatusPill extends StatelessWidget {
               onTap: busy ? null : onRematch,
               borderRadius: BorderRadius.circular(999),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -3995,9 +3833,7 @@ class _MatchStatusPill extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      busy
-                          ? l10n.runDetailRematchQueueing
-                          : l10n.runDetailRematch,
+                      busy ? l10n.runDetailRematchQueueing : l10n.runDetailRematch,
                       style: TextStyle(
                         color: busy ? Colors.white38 : Colors.white,
                         fontSize: 12,
@@ -4033,30 +3869,18 @@ class _SegmentStatsCard extends StatelessWidget {
     final dur = segment.duration;
     final pace = segment.paceSecondsPerKm;
     final stats = <Widget>[
-      _stat(
-        theme,
-        l10n.runDetailSegStatDistance,
-        UnitFormat.distance(segment.distanceMetres, unit),
-      ),
+      _stat(theme, l10n.runDetailSegStatDistance,
+          UnitFormat.distance(segment.distanceMetres, unit)),
       if (dur != null) _stat(theme, l10n.runDetailSegStatTime, _formatDur(dur)),
       if (pace != null)
-        _stat(
-          theme,
-          l10n.runDetailSegStatPace,
-          '${UnitFormat.pace(pace, unit)} ${UnitFormat.paceLabel(unit)}',
-        ),
+        _stat(theme, l10n.runDetailSegStatPace,
+            '${UnitFormat.pace(pace, unit)} ${UnitFormat.paceLabel(unit)}'),
       if (segment.avgBpm != null)
-        _stat(
-          theme,
-          l10n.runDetailSegStatHr,
-          '${segment.avgBpm} ${l10n.runUnitBpm}',
-        ),
+        _stat(theme, l10n.runDetailSegStatHr,
+            '${segment.avgBpm} ${l10n.runUnitBpm}'),
       if (segment.eleGainMetres > 0)
-        _stat(
-          theme,
-          l10n.runDetailSegStatGain,
-          '+${UnitFormat.elevation(segment.eleGainMetres, unit)}',
-        ),
+        _stat(theme, l10n.runDetailSegStatGain,
+            '+${UnitFormat.elevation(segment.eleGainMetres, unit)}'),
     ];
     return Card(
       child: Padding(
@@ -4064,7 +3888,13 @@ class _SegmentStatsCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Expanded(child: Wrap(spacing: 16, runSpacing: 4, children: stats)),
+            Expanded(
+              child: Wrap(
+                spacing: 16,
+                runSpacing: 4,
+                children: stats,
+              ),
+            ),
             IconButton(
               icon: const Icon(Icons.close, size: 18),
               tooltip: l10n.runDetailSegDismiss,
@@ -4089,7 +3919,10 @@ class _SegmentStatsCard extends StatelessWidget {
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
+        Text(
+          value,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
       ],
     );
   }
@@ -4153,6 +3986,7 @@ void applyDnfFlag(Map<String, dynamic> metadata, bool dnf) {
   }
 }
 
+
 /// Preserves its child's State when it scrolls out of the enclosing
 /// ListView's cache extent. Wraps the run-detail map so the FlutterMap +
 /// MapController aren't disposed and rebuilt (with a full tile reload) on
@@ -4202,9 +4036,8 @@ class _BlockedPushCard extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final body = switch (reason) {
-      RunPushBlockReason.trackTooLarge => l10n.runDetailBlockedTrackTooLarge(
-        waypoints,
-      ),
+      RunPushBlockReason.trackTooLarge =>
+        l10n.runDetailBlockedTrackTooLarge(waypoints),
     };
     return Card(
       color: theme.colorScheme.errorContainer,
@@ -4215,11 +4048,8 @@ class _BlockedPushCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.cloud_off,
-                  size: 20,
-                  color: theme.colorScheme.onErrorContainer,
-                ),
+                Icon(Icons.cloud_off,
+                    size: 20, color: theme.colorScheme.onErrorContainer),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -4235,9 +4065,8 @@ class _BlockedPushCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               body,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onErrorContainer,
-              ),
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onErrorContainer),
             ),
             const SizedBox(height: 12),
             Wrap(

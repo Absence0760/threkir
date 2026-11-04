@@ -20,10 +20,8 @@ import 'package:flutter_test/flutter_test.dart';
 String _extractMethodBody(String source, String signaturePattern) {
   final match = RegExp(signaturePattern).firstMatch(source);
   if (match == null) {
-    fail(
-      'Could not find "$signaturePattern" — rename? '
-      'Update this guard to match the new name.',
-    );
+    fail('Could not find "$signaturePattern" — rename? '
+        'Update this guard to match the new name.');
   }
   // Regex consumed the opening `{`; start inside the body with depth 1.
   final start = match.end;
@@ -78,9 +76,8 @@ String _withoutTryCatchBlocks(String body) {
       }
       i++;
     }
-    final catchMatch = RegExp(
-      r'^\s*catch\s*\([^)]*\)\s*\{',
-    ).firstMatch(body.substring(i + 1));
+    final catchMatch =
+        RegExp(r'^\s*catch\s*\([^)]*\)\s*\{').firstMatch(body.substring(i + 1));
     if (catchMatch == null) {
       cursor = i + 1;
       continue;
@@ -106,26 +103,20 @@ void main() {
       source = File('lib/screens/run_screen.dart').readAsStringSync();
     });
 
-    test(
-      'turn-cue announced state is cleared at the start of every recording',
-      () {
-        // TurnCueAnnouncer latches each fired band for its lifetime, and the
-        // announcer is only rebuilt when the SELECTED ROUTE changes — so without
-        // a per-recording reset a second run over the same route announces
-        // nothing at all (the repeated-loop / backyard-ultra case). _begin() is
-        // the one path every recording funnels through.
-        final begin = _extractMethodBody(
-          source,
-          r'Future<void> _begin\(\) async \{',
-        );
-        expect(
-          begin.contains('_turnAnnouncer?.reset()'),
-          isTrue,
-          reason:
-              'every recording must start from a cleared announced-turn set',
-        );
-      },
-    );
+    test('turn-cue announced state is cleared at the start of every recording',
+        () {
+      // TurnCueAnnouncer latches each fired band for its lifetime, and the
+      // announcer is only rebuilt when the SELECTED ROUTE changes — so without
+      // a per-recording reset a second run over the same route announces
+      // nothing at all (the repeated-loop / backyard-ultra case). _begin() is
+      // the one path every recording funnels through.
+      final begin = _extractMethodBody(source, r'Future<void> _begin\(\) async \{');
+      expect(
+        begin.contains('_turnAnnouncer?.reset()'),
+        isTrue,
+        reason: 'every recording must start from a cleared announced-turn set',
+      );
+    });
 
     test('a foreground-only location grant is disclosed when it costs the run, '
         'never at run start', () {
@@ -138,15 +129,11 @@ void main() {
       // read as "recording is broken" at the exact moment nothing was wrong;
       // it belongs on the real event — the runner returning to a recording run
       // that received no fix while the app was off screen (#785).
-      final begin = _extractMethodBody(
-        source,
-        r'Future<void> _begin\(\) async \{',
-      );
+      final begin = _extractMethodBody(source, r'Future<void> _begin\(\) async \{');
       expect(
         begin.contains('_notifyBackgroundLocationLimited()'),
         isFalse,
-        reason:
-            'run start must not warn about background permission — '
+        reason: 'run start must not warn about background permission — '
             'nothing has gone wrong yet',
       );
       final lifecycle = _extractMethodBody(
@@ -156,15 +143,13 @@ void main() {
       expect(
         lifecycle.contains('shouldDiscloseBackgroundLocationLimit('),
         isTrue,
-        reason:
-            'the disclosure must be driven by the app-lifecycle event and '
+        reason: 'the disclosure must be driven by the app-lifecycle event and '
             'gated on the evidenced-gap decision',
       );
       expect(
         lifecycle.contains('_notifyBackgroundLocationLimited()'),
         isTrue,
-        reason:
-            'the disclosure must reach the runner as a banner, not be '
+        reason: 'the disclosure must reach the runner as a banner, not be '
             'dropped on the floor',
       );
       // L4: the disclosure is auxiliary to recording and carries its own
@@ -202,11 +187,9 @@ void main() {
       // duplicate-safe semantics can't silently drift.
       expect(
         source.contains(
-          '(autoLiveShareEnabled || liveShareRequested) && !broadcasterActive',
-        ),
+            '(autoLiveShareEnabled || liveShareRequested) && !broadcasterActive'),
         isTrue,
-        reason:
-            'the run-start gate must fire only on the pref OR an explicit '
+        reason: 'the run-start gate must fire only on the pref OR an explicit '
             'share request, and must skip an already-attached broadcaster',
       );
       // _attachRecordingSideEffects routes the run-start hook through that gate
@@ -219,8 +202,7 @@ void main() {
       expect(
         gateIdx,
         greaterThan(-1),
-        reason:
-            'the _begin() hook must gate through '
+        reason: 'the _begin() hook must gate through '
             'shouldStartBroadcastOnRunStart',
       );
       // The whole unawaited(...) call the gate guards, balanced on its
@@ -231,8 +213,7 @@ void main() {
         callIdx > -1 &&
             sideEffects.startsWith('unawaited(_startLiveBroadcast(', callIdx),
         isTrue,
-        reason:
-            'the auto share is fire-and-forget — _begin() must not '
+        reason: 'the auto share is fire-and-forget — _begin() must not '
             'await the network before starting the clock',
       );
       var depth = 0;
@@ -249,8 +230,7 @@ void main() {
       expect(
         hookCall.contains('catchError'),
         isTrue,
-        reason:
-            'the auto share needs its own error path (L4) so a '
+        reason: 'the auto share needs its own error path (L4) so a '
             'failure cannot surface as an unhandled zone error mid-start',
       );
       // The manual share path reuses the same broadcast starter, so the
@@ -280,8 +260,7 @@ void main() {
       expect(
         body.contains('setState('),
         isFalse,
-        reason:
-            '_onSnapshot must not call setState — '
+        reason: '_onSnapshot must not call setState — '
             'update _statsNotifier.value instead.',
       );
     });
@@ -304,15 +283,13 @@ void main() {
       expect(
         notifierIdx,
         greaterThan(-1),
-        reason:
-            '_onSnapshot must publish to _statsNotifier — '
+        reason: '_onSnapshot must publish to _statsNotifier — '
             'this is what drives the visible stats.',
       );
       expect(
         firstTryIdx,
         greaterThan(notifierIdx),
-        reason:
-            '_onSnapshot has a try-block before the _statsNotifier '
+        reason: '_onSnapshot has a try-block before the _statsNotifier '
             'publish. Move the L0/L1 update (mirror fields + '
             '_statsNotifier.value = ...) above every L4 effect, so a '
             'thrown auxiliary cannot freeze the clock and distance.',
@@ -334,8 +311,7 @@ void main() {
       expect(
         tryCount,
         equals(catchCount),
-        reason:
-            'Every try in _onSnapshot must have a matching catch. '
+        reason: 'Every try in _onSnapshot must have a matching catch. '
             'A bare try with no catch lets a throw escape and kill the '
             'snapshot pipeline.',
       );
@@ -346,8 +322,7 @@ void main() {
       expect(
         tryCount,
         greaterThanOrEqualTo(7),
-        reason:
-            '_onSnapshot is expected to host >=7 individually '
+        reason: '_onSnapshot is expected to host >=7 individually '
             'wrapped L4 effects. A drop usually means effects were '
             'collapsed under a shared try, which re-introduces the '
             'failure mode the layering rule is meant to prevent.',
@@ -375,8 +350,7 @@ void main() {
       expect(
         blocks.length,
         greaterThanOrEqualTo(7),
-        reason:
-            'expected one catch per L4 effect in _onSnapshot; found '
+        reason: 'expected one catch per L4 effect in _onSnapshot; found '
             '${blocks.length}. If the effects were collapsed under a shared '
             'catch, re-split them.',
       );
@@ -385,22 +359,19 @@ void main() {
         expect(
           block.trim(),
           isNotEmpty,
-          reason:
-              'catch #$i in _onSnapshot is empty — an auxiliary that '
+          reason: 'catch #$i in _onSnapshot is empty — an auxiliary that '
               'has silently stopped working leaves no trace at all.',
         );
         expect(
           block.contains('debugPrint'),
           isTrue,
-          reason:
-              'catch #$i in _onSnapshot does not report the failure. '
+          reason: 'catch #$i in _onSnapshot does not report the failure. '
               'Every L4 catch must debugPrint what it absorbed:\n$block',
         );
         expect(
           block.contains('rethrow'),
           isFalse,
-          reason:
-              'catch #$i in _onSnapshot rethrows, so the throw escapes '
+          reason: 'catch #$i in _onSnapshot rethrows, so the throw escapes '
               'into the snapshot pipeline and every LATER effect stops '
               'running. The layering rule is that an L4 failure is '
               'absorbed where it happens:\n$block',
@@ -436,12 +407,12 @@ void main() {
         r'assert\(\(\) \{|final v = _statsNotifier\.value;|'
         r'return v\.|v\.|identical\(|\}\(\),)',
       );
-      final unexpected = stray.where((l) => !allowed.hasMatch(l)).toList();
+      final unexpected =
+          stray.where((l) => !allowed.hasMatch(l)).toList();
       expect(
         unexpected,
         isEmpty,
-        reason:
-            'these statements sit between the L0/L1 publish and the end '
+        reason: 'these statements sit between the L0/L1 publish and the end '
             'of _onSnapshot without a try/catch, so a throw in one skips '
             'every L4 effect below it: $unexpected',
       );
@@ -457,8 +428,7 @@ void main() {
       expect(
         match,
         isNotNull,
-        reason:
-            '_formattedElevation must read the incrementally-updated '
+        reason: '_formattedElevation must read the incrementally-updated '
             'ElevationGainAccumulator. Do not iterate _track here.',
       );
     });
@@ -479,22 +449,19 @@ void main() {
       expect(
         body,
         contains('_elevationGain.add('),
-        reason:
-            '_onSnapshot must append new waypoints to the shared '
+        reason: '_onSnapshot must append new waypoints to the shared '
             'RunElevationGainAccumulator.',
       );
       expect(
         source,
         contains('final RunElevationGainAccumulator _elevationGain'),
-        reason:
-            'The live gain must be the run_altitude.dart accumulator, '
+        reason: 'The live gain must be the run_altitude.dart accumulator, '
             'so it reads the same series and band as the run-detail figure.',
       );
       expect(
         body.contains('_elevationGainMetres +='),
         isFalse,
-        reason:
-            'No hand-rolled elevation sum in _onSnapshot — an ungated '
+        reason: 'No hand-rolled elevation sum in _onSnapshot — an ungated '
             'copy re-introduces phantom vert on a flat run.',
       );
       expect(
@@ -505,8 +472,7 @@ void main() {
       expect(
         RegExp(r'minDeltaM|kElevationGain\w*MinDeltaM').hasMatch(source),
         isFalse,
-        reason:
-            'The noise bands belong to run_altitude.dart and '
+        reason: 'The noise bands belong to run_altitude.dart and '
             'route_simplify.dart; do not fork a threshold here.',
       );
     });
@@ -535,15 +501,13 @@ void main() {
       expect(
         body.contains('averagePaceSecPerKm(_distanceMetres'),
         isFalse,
-        reason:
-            'The split cue average pace must use the same distance the '
+        reason: 'The split cue average pace must use the same distance the '
             'split itself was counted from.',
       );
       expect(
         RegExp(r'phaseAt\(_phasePlan, phaseDistance\)').hasMatch(body),
         isTrue,
-        reason:
-            'The phase block should resolve its distance once through '
+        reason: 'The phase block should resolve its distance once through '
             '_displayDistanceMetres.',
       );
     });
@@ -565,14 +529,14 @@ void main() {
         expect(
           source,
           contains(field),
-          reason:
-              '_LiveStats is missing "$field" — the hot-path UI '
+          reason: '_LiveStats is missing "$field" — the hot-path UI '
               'depends on this field. See run_screen.dart.',
         );
       }
     });
 
-    test('live tree wraps stats-driven subtrees in ValueListenableBuilder', () {
+    test('live tree wraps stats-driven subtrees in ValueListenableBuilder',
+        () {
       // Reason: if the map / off-route banner / route-remaining badge /
       // stats panel stop subscribing to _statsNotifier, they'll freeze at
       // whatever values they held at the last setState.
@@ -580,20 +544,19 @@ void main() {
         source,
         r'Widget _buildLive\(BuildContext context\)\s*\{',
       );
-      final matches = RegExp(
-        r'ValueListenableBuilder<_LiveStats>',
-      ).allMatches(buildLive);
+      final matches = RegExp(r'ValueListenableBuilder<_LiveStats>')
+          .allMatches(buildLive);
       expect(
         matches.length,
         greaterThanOrEqualTo(4),
-        reason:
-            '_buildLive expects at least 4 '
+        reason: '_buildLive expects at least 4 '
             'ValueListenableBuilder<_LiveStats> wrappers (map, '
             'route-remaining badge, off-route banner, stats panel).',
       );
     });
 
-    test('_buildLive shares one LiveRunMap across countdown and recording', () {
+    test('_buildLive shares one LiveRunMap across countdown and recording',
+        () {
       // Reason: keeping a single LiveRunMap mounted across the
       // countdown→recording stage flip is what kills the brief "flash to
       // default backdrop" the runner used to see at the end of the
@@ -610,22 +573,18 @@ void main() {
       expect(
         RegExp(r'Widget _buildCountdown\b').hasMatch(src),
         isFalse,
-        reason:
-            '_buildCountdown was unified into _buildLive — '
+        reason: '_buildCountdown was unified into _buildLive — '
             're-introducing it splits the map across two subtrees and '
             'brings back the flash.',
       );
       // _buildLive should contain exactly one LiveRunMap construction.
-      final body = _extractMethodBody(
-        src,
-        r'Widget _buildLive\(BuildContext context\)\s*\{',
-      );
+      final body =
+          _extractMethodBody(src, r'Widget _buildLive\(BuildContext context\)\s*\{');
       final mapCtors = RegExp(r'\bLiveRunMap\(').allMatches(body).length;
       expect(
         mapCtors,
         1,
-        reason:
-            '_buildLive must contain exactly one LiveRunMap '
+        reason: '_buildLive must contain exactly one LiveRunMap '
             'construction; found $mapCtors. Two would defeat the '
             'shared-element optimisation.',
       );
@@ -646,8 +605,7 @@ void main() {
       expect(
         body,
         contains('reviewMetadata'),
-        reason:
-            '_saveInProgress must call WorkoutRunner.reviewMetadata '
+        reason: '_saveInProgress must call WorkoutRunner.reviewMetadata '
             'so a crashed workout keeps its review on recovery.',
       );
     });
@@ -662,23 +620,13 @@ void main() {
         source,
         r'Future<void> _saveInProgress\(\)\s*async\s*\{',
       );
-      expect(
-        body,
-        contains('List.unmodifiable(_storedTrack)'),
-        reason: 'the checkpoint must persist the stored track',
-      );
-      expect(
-        body,
-        contains('storedTrackComplete'),
-        reason: 'the checkpoint carries track_complete for the resume',
-      );
-      expect(
-        source,
-        contains('trackComplete:'),
-        reason:
-            'the resume hands the checkpoint\'s claim back to the '
-            'recorder',
-      );
+      expect(body, contains('List.unmodifiable(_storedTrack)'),
+          reason: 'the checkpoint must persist the stored track');
+      expect(body, contains('storedTrackComplete'),
+          reason: 'the checkpoint carries track_complete for the resume');
+      expect(source, contains('trackComplete:'),
+          reason: 'the resume hands the checkpoint\'s claim back to the '
+              'recorder');
     });
 
     test('_stop stamps workout review metadata via the same helper', () {
@@ -692,52 +640,42 @@ void main() {
       expect(
         body,
         contains('reviewMetadata'),
-        reason:
-            '_stop must call WorkoutRunner.reviewMetadata — '
+        reason: '_stop must call WorkoutRunner.reviewMetadata — '
             'keeps the contract symmetric with _saveInProgress.',
       );
     });
 
-    test(
-      '_stop saves the run BEFORE clearing the in-progress recovery file',
-      () {
-        // Reason: the in_progress.json recovery file is the safety net for
-        // the window between "user tapped stop" and "run is on disk in
-        // its final form". The previous order was clearInProgress() →
-        // setState(finished) → await audio cue → save(run); if the OS
-        // killed the process during the audio cue (Samsung Freecess,
-        // OOM, force-stop, user backgrounded the app), BOTH the
-        // in_progress.json AND the saved run file were gone — the run
-        // was lost forever. Pinned the new order so a future refactor
-        // can't quietly reintroduce the data-loss window.
-        final body = _extractMethodBody(
-          source,
-          r'Future<void> _stop\(\)\s*async\s*\{',
-        );
-        final saveIdx = body.indexOf('widget.runStore.save(');
-        final clearIdx = body.indexOf('widget.runStore.clearInProgress(');
-        expect(
-          saveIdx,
-          greaterThan(-1),
-          reason: '_stop must call runStore.save(run)',
-        );
-        expect(
-          clearIdx,
-          greaterThan(-1),
-          reason: '_stop must call runStore.clearInProgress()',
-        );
-        expect(
-          saveIdx,
-          lessThan(clearIdx),
-          reason:
-              'runStore.save MUST appear before runStore.clearInProgress '
-              'in _stop. The reverse order opens a data-loss window: if '
-              'the process is killed between clearInProgress and save, '
-              'both the in_progress.json recovery file AND the saved run '
-              'file are gone — that lost a real user\'s run in May 2026.',
-        );
-      },
-    );
+    test('_stop saves the run BEFORE clearing the in-progress recovery file',
+        () {
+      // Reason: the in_progress.json recovery file is the safety net for
+      // the window between "user tapped stop" and "run is on disk in
+      // its final form". The previous order was clearInProgress() →
+      // setState(finished) → await audio cue → save(run); if the OS
+      // killed the process during the audio cue (Samsung Freecess,
+      // OOM, force-stop, user backgrounded the app), BOTH the
+      // in_progress.json AND the saved run file were gone — the run
+      // was lost forever. Pinned the new order so a future refactor
+      // can't quietly reintroduce the data-loss window.
+      final body = _extractMethodBody(
+        source,
+        r'Future<void> _stop\(\)\s*async\s*\{',
+      );
+      final saveIdx = body.indexOf('widget.runStore.save(');
+      final clearIdx = body.indexOf('widget.runStore.clearInProgress(');
+      expect(saveIdx, greaterThan(-1),
+          reason: '_stop must call runStore.save(run)');
+      expect(clearIdx, greaterThan(-1),
+          reason: '_stop must call runStore.clearInProgress()');
+      expect(
+        saveIdx,
+        lessThan(clearIdx),
+        reason: 'runStore.save MUST appear before runStore.clearInProgress '
+            'in _stop. The reverse order opens a data-loss window: if '
+            'the process is killed between clearInProgress and save, '
+            'both the in_progress.json recovery file AND the saved run '
+            'file are gone — that lost a real user\'s run in May 2026.',
+      );
+    });
 
     test('_stop does not gate the local save on `mounted`', () {
       // Reason: paired guarantee with the save-before-clear ordering.
@@ -762,15 +700,15 @@ void main() {
       expect(
         RegExp(r'if\s*\(\s*!\s*mounted\s*\)\s*return').hasMatch(beforeSave),
         isFalse,
-        reason:
-            'No `if (!mounted) return;` may appear before the '
+        reason: 'No `if (!mounted) return;` may appear before the '
             'runStore.save call in _stop. The recorder is stopped and '
             'the data is in memory — an unmount must not evaporate the '
             'run before it lands on disk.',
       );
     });
 
-    test('_stop shows the finished screen before the route auto-link RPC', () {
+    test('_stop shows the finished screen before the route auto-link RPC',
+        () {
       // Reason: the auto-link RPC ships the whole track over the network
       // with a 15 s timeout. Awaited ahead of the finish flip, it left the
       // recording UI on screen for seconds after the hold-to-stop completed,
@@ -782,26 +720,17 @@ void main() {
       );
       final flipIdx = body.indexOf('_setScreenState(_ScreenState.finished)');
       final rpcIdx = body.indexOf('fetchRoutesIntersectingTrack');
-      expect(
-        flipIdx,
-        greaterThan(-1),
-        reason: '_stop must flip to the finished screen',
-      );
-      expect(
-        rpcIdx,
-        greaterThan(-1),
-        reason: '_stop must still auto-link unmatched runs to a route',
-      );
-      expect(
-        flipIdx,
-        lessThan(rpcIdx),
-        reason:
-            'The finish flip must come before the auto-link RPC in '
-            '_stop; a network await ahead of it delays the stop.',
-      );
+      expect(flipIdx, greaterThan(-1),
+          reason: '_stop must flip to the finished screen');
+      expect(rpcIdx, greaterThan(-1),
+          reason: '_stop must still auto-link unmatched runs to a route');
+      expect(flipIdx, lessThan(rpcIdx),
+          reason: 'The finish flip must come before the auto-link RPC in '
+              '_stop; a network await ahead of it delays the stop.');
     });
 
-    test('_stop is guarded against re-entry before it awaits the recorder', () {
+    test('_stop is guarded against re-entry before it awaits the recorder',
+        () {
       // Reason: _stop() awaits the recorder, the local save, and the cloud
       // push, and never nulls _recorder. A second trigger — the lock-screen
       // Stop action racing the on-screen hold-to-stop, or a cold-start Stop
@@ -817,21 +746,14 @@ void main() {
       );
       final guardIdx = body.indexOf('_stopRequested');
       final stopAwaitIdx = body.indexOf('.stop()');
-      expect(
-        guardIdx,
-        greaterThan(-1),
-        reason: '_stop must consult a _stopRequested re-entrancy guard',
-      );
-      expect(
-        stopAwaitIdx,
-        greaterThan(-1),
-        reason: '_stop must await the recorder stop()',
-      );
+      expect(guardIdx, greaterThan(-1),
+          reason: '_stop must consult a _stopRequested re-entrancy guard');
+      expect(stopAwaitIdx, greaterThan(-1),
+          reason: '_stop must await the recorder stop()');
       expect(
         guardIdx,
         lessThan(stopAwaitIdx),
-        reason:
-            'The _stopRequested guard MUST appear before the awaited '
+        reason: 'The _stopRequested guard MUST appear before the awaited '
             'recorder .stop() in _stop. A guard placed after the first '
             'await lets a racing Stop (lock-screen vs hold-to-stop, or a '
             'flushed cold-start intent) double-save + double-push the run.',
@@ -841,8 +763,7 @@ void main() {
       expect(
         discardBody,
         contains('_stopRequested = false'),
-        reason:
-            '_discard must clear _stopRequested so a subsequent run is '
+        reason: '_discard must clear _stopRequested so a subsequent run is '
             'stoppable; otherwise the second run can never be stopped.',
       );
     });
@@ -851,26 +772,26 @@ void main() {
       // Reason: runStore.notifyListeners() fires every 10s via
       // _saveInProgress. Without this gate, we'd get a full-screen
       // rebuild every 10s for no visible change.
-      final body = _extractMethodBody(source, r'void _onPrefsChange\(\)\s*\{');
+      final body = _extractMethodBody(
+        source,
+        r'void _onPrefsChange\(\)\s*\{',
+      );
       expect(
         body,
         contains('_ScreenState.recording'),
-        reason:
-            '_onPrefsChange must bail out while recording — see '
+        reason: '_onPrefsChange must bail out while recording — see '
             'the runStore-notify rebuild storm fix.',
       );
       expect(
         body,
         contains('_ScreenState.countdown'),
-        reason:
-            '_onPrefsChange must bail during countdown — '
+        reason: '_onPrefsChange must bail during countdown — '
             'same rebuild storm applies while waiting to start.',
       );
       expect(
         body,
         contains('_ScreenState.paused'),
-        reason:
-            '_onPrefsChange must bail while paused — '
+        reason: '_onPrefsChange must bail while paused — '
             'runStore.notifyListeners fires every 10s regardless.',
       );
     });
@@ -890,8 +811,7 @@ void main() {
       expect(
         body,
         contains('addPostFrameCallback'),
-        reason:
-            '_onStatsOverlaySized must wrap its setState in '
+        reason: '_onStatsOverlaySized must wrap its setState in '
             'WidgetsBinding.instance.addPostFrameCallback so the '
             'rebuild lands in the next frame, not during the layout '
             'pass that reported the size.',
@@ -926,8 +846,7 @@ void main() {
       expect(
         m,
         isNotNull,
-        reason:
-            '_HoldToStopButton must wrap its Listener with '
+        reason: '_HoldToStopButton must wrap its Listener with '
             'HitTestBehavior.opaque so taps anywhere inside the 48–68 px '
             'square fire onPointerDown — see the collapsed-bar stop '
             'button regression.',
@@ -937,8 +856,7 @@ void main() {
       expect(
         body,
         contains('Listener('),
-        reason:
-            'The Listener call site must live inside '
+        reason: 'The Listener call site must live inside '
             '_HoldToStopButtonState.build — moving it elsewhere defeats '
             'the regression check.',
       );
@@ -973,13 +891,9 @@ void main() {
     for (final signature in runEntryPoints) {
       test('LocalRunStore.$signature is serialised', () {
         final match = RegExp('$signature\\s*=>[^;]*;').firstMatch(runStore);
-        expect(
-          match,
-          isNotNull,
-          reason:
-              'entry point moved — update this guard, and keep it on '
-              'the chain',
-        );
+        expect(match, isNotNull,
+            reason: 'entry point moved — update this guard, and keep it on '
+                'the chain');
         expect(match!.group(0), contains('_serialised'));
       });
     }
@@ -997,13 +911,9 @@ void main() {
     for (final signature in routeEntryPoints) {
       test('LocalRouteStore.$signature is serialised', () {
         final match = RegExp('$signature\\s*=>[^;]*;').firstMatch(routeStore);
-        expect(
-          match,
-          isNotNull,
-          reason:
-              'entry point moved — update this guard, and keep it on '
-              'the chain',
-        );
+        expect(match, isNotNull,
+            reason: 'entry point moved — update this guard, and keep it on '
+                'the chain');
         expect(match!.group(0), contains('_serialised'));
       });
     }
@@ -1022,13 +932,9 @@ void main() {
         r'Future<void> _clearInProgress\(\)\s*async\s*\{',
         r'Future<Run\?> loadInProgress\(\)\s*async\s*\{',
       ]) {
-        expect(
-          _extractMethodBody(runStore, signature),
-          isNot(contains('_serialised')),
-          reason:
-              'an L1 recording write must not queue behind a directory '
-              'operation',
-        );
+        expect(_extractMethodBody(runStore, signature), isNot(contains('_serialised')),
+            reason: 'an L1 recording write must not queue behind a directory '
+                'operation');
       }
     });
 
@@ -1064,8 +970,7 @@ void main() {
       expect(
         body.contains('writeAsString(jsonEncode'),
         isFalse,
-        reason:
-            'markSynced must not rewrite the run JSON. '
+        reason: 'markSynced must not rewrite the run JSON. '
             'Use the sidecar (_persistSyncedIds).',
       );
       expect(
@@ -1090,8 +995,7 @@ void main() {
       expect(
         body,
         contains('compute('),
-        reason:
-            'saveInProgress must offload jsonEncode + write to '
+        reason: 'saveInProgress must offload jsonEncode + write to '
             'an isolate.',
       );
     });
@@ -1111,15 +1015,13 @@ void main() {
       expect(
         body,
         contains('compute('),
-        reason:
-            'save must offload the full-Run jsonEncode to an isolate '
+        reason: 'save must offload the full-Run jsonEncode to an isolate '
             'so finishing a huge track does not freeze the UI.',
       );
       expect(
         body.contains('writeJsonAtomic('),
         isFalse,
-        reason:
-            'save must not call writeJsonAtomic (which jsonEncodes on '
+        reason: 'save must not call writeJsonAtomic (which jsonEncodes on '
             'the UI isolate) — encode via compute() then writeStringAtomic.',
       );
     });
@@ -1134,8 +1036,7 @@ void main() {
       expect(
         body,
         contains('Future.wait'),
-        reason:
-            '_loadAll should batch file reads with Future.wait, '
+        reason: '_loadAll should batch file reads with Future.wait, '
             'not loop-await each one.',
       );
     });
@@ -1157,8 +1058,7 @@ void main() {
       expect(
         body,
         contains('listSync'),
-        reason:
-            '_loadAll must use _dir.listSync() — the async _dir.list() '
+        reason: '_loadAll must use _dir.listSync() — the async _dir.list() '
             'form deadlocks RunsScreen widget tests under the flutter_test '
             'binding. Per-file reads stay async via Future.wait.',
       );
@@ -1178,15 +1078,13 @@ void main() {
       expect(
         body,
         contains('_readIndex'),
-        reason:
-            '_loadAll must read index.json first (the windowed fast path) '
+        reason: '_loadAll must read index.json first (the windowed fast path) '
             'and fall back to the full walk only on a missing/drifted index.',
       );
       expect(
         body,
         contains('residentWindow'),
-        reason:
-            '_loadAll must hydrate only the resident window on the fast '
+        reason: '_loadAll must hydrate only the resident window on the fast '
             'path (newest residentWindow ∪ all unsynced).',
       );
     });
@@ -1203,8 +1101,7 @@ void main() {
         expect(
           _extractMethodBody(source, signature),
           contains('_withLastModified('),
-          reason:
-              '$signature must stamp the write clock the index merge '
+          reason: '$signature must stamp the write clock the index merge '
               'orders on',
         );
       }
@@ -1231,11 +1128,8 @@ void main() {
         r'Future<bool> _writeRemoteBatch\(List<Run> runs\)\s*async\s*\{',
       ]) {
         final caller = _extractMethodBody(source, signature);
-        expect(
-          caller,
-          contains('_mergeRemote('),
-          reason: '$signature must take the one merge rule',
-        );
+        expect(caller, contains('_mergeRemote('),
+            reason: '$signature must take the one merge rule');
         expect(caller.contains('_lastModifiedOf('), isFalse);
       }
     });
@@ -1282,8 +1176,7 @@ void main() {
         expect(
           source.contains('writeAsString('),
           isFalse,
-          reason:
-              '$path must persist via writeJsonAtomic / '
+          reason: '$path must persist via writeJsonAtomic / '
               'writeStringAtomic, not a truncate-then-write writeAsString.',
         );
       });
@@ -1298,215 +1191,158 @@ void main() {
     ]) {
       test('$path uses the crash-atomic helper writeJsonAtomic', () {
         final source = File(path).readAsStringSync();
-        expect(
-          source.contains('writeJsonAtomic('),
-          isTrue,
-          reason: '$path should use the crash-atomic helper.',
-        );
+        expect(source.contains('writeJsonAtomic('), isTrue,
+            reason: '$path should use the crash-atomic helper.');
       });
     }
 
-    test(
-      'OfflineSyncStore.rewriteAll writes new files before deleting orphans',
-      () {
-        // Reason: the old per-store _rewriteAll deleted every file then
-        // rewrote — a crash in the gap emptied the directory and lost
-        // unsynced pendingCreate rows. The fixed order is write-all-then-
-        // prune. The gear / gym / food stores share this single base impl
-        // now (decisions §122).
-        // The public `rewriteAll` is a thin wrapper that puts the transition on
-        // the store's serial write chain; `_rewriteAll` holds the ordering this
-        // guard is about. Both are named, so a rename can't quietly vacate it.
-        final source = File('lib/offline_sync_store.dart').readAsStringSync();
-        expect(
-          RegExp(
-            r'Future<void> rewriteAll\(\)[^}]*_serialised\(_rewriteAll\)',
-          ).hasMatch(source),
-          isTrue,
-          reason:
-              'rewriteAll must delegate to _rewriteAll on the write chain — '
-              'the body this guard reads lives there.',
-        );
-        final body = _extractMethodBody(
-          source,
-          r'Future<void> _rewriteAll\(\)\s*async\s*\{',
-        );
-        final firstWrite = body.indexOf('writeJsonAtomic(');
-        final firstDelete = body.indexOf('.delete()');
-        expect(
-          firstWrite,
-          greaterThanOrEqualTo(0),
-          reason: 'rewriteAll must write via writeJsonAtomic',
-        );
-        expect(
-          firstDelete,
-          greaterThanOrEqualTo(0),
-          reason: 'rewriteAll must prune orphaned files',
-        );
-        expect(
-          firstWrite,
-          lessThan(firstDelete),
-          reason:
-              'rewriteAll must write the new state BEFORE deleting '
-              'any file — never empty the directory first.',
-        );
-        expect(
-          body.contains('deleteSync()'),
-          isFalse,
-          reason:
-              'rewriteAll should not use a catch-free synchronous '
-              'delete for the prune phase.',
-        );
-      },
-    );
+    test('OfflineSyncStore.rewriteAll writes new files before deleting orphans',
+        () {
+      // Reason: the old per-store _rewriteAll deleted every file then
+      // rewrote — a crash in the gap emptied the directory and lost
+      // unsynced pendingCreate rows. The fixed order is write-all-then-
+      // prune. The gear / gym / food stores share this single base impl
+      // now (decisions §122).
+      // The public `rewriteAll` is a thin wrapper that puts the transition on
+      // the store's serial write chain; `_rewriteAll` holds the ordering this
+      // guard is about. Both are named, so a rename can't quietly vacate it.
+      final source = File('lib/offline_sync_store.dart').readAsStringSync();
+      expect(
+        RegExp(r'Future<void> rewriteAll\(\)[^}]*_serialised\(_rewriteAll\)')
+            .hasMatch(source),
+        isTrue,
+        reason: 'rewriteAll must delegate to _rewriteAll on the write chain — '
+            'the body this guard reads lives there.',
+      );
+      final body = _extractMethodBody(
+        source,
+        r'Future<void> _rewriteAll\(\)\s*async\s*\{',
+      );
+      final firstWrite = body.indexOf('writeJsonAtomic(');
+      final firstDelete = body.indexOf('.delete()');
+      expect(firstWrite, greaterThanOrEqualTo(0),
+          reason: 'rewriteAll must write via writeJsonAtomic');
+      expect(firstDelete, greaterThanOrEqualTo(0),
+          reason: 'rewriteAll must prune orphaned files');
+      expect(firstWrite, lessThan(firstDelete),
+          reason: 'rewriteAll must write the new state BEFORE deleting '
+              'any file — never empty the directory first.');
+      expect(
+        body.contains('deleteSync()'),
+        isFalse,
+        reason: 'rewriteAll should not use a catch-free synchronous '
+            'delete for the prune phase.',
+      );
+    });
   });
 
   group('share-button consent before flipping is_public', () {
-    test(
-      'run_detail_screen._shareRunLink gates makeRunPublic on a confirm dialog',
-      () {
-        // Reason: a casual user tapping Share on a freshly-recorded run
-        // used to silently flip is_public — no warning, no copy
-        // explaining that the share link exposes the full track
-        // (incl. home / work coords) to anyone with the URL. Privacy-
-        // zone default is OFF (decisions §33). The fix requires the
-        // share path to call a `_confirmMakePublic` dialog before
-        // reaching makeRunPublic. Catches a regression that removes
-        // the gate.
-        final source = File(
-          'lib/screens/run_detail_screen.dart',
-        ).readAsStringSync();
-        expect(
-          source,
-          contains('_confirmMakePublic'),
-          reason:
-              '_shareRun must route through a _confirmMakePublic '
-              'dialog before calling api.makeRunPublic. See decisions §33.',
-        );
-        expect(
-          source,
-          contains('runDetailMakePublicTitle'),
-          reason:
-              'The consent dialog title is the canonical surface a '
-              'regression would mangle; pin the localized key (the English '
-              'copy now lives in the ARB catalogues).',
-        );
-        // makeRunPublic must NOT appear ahead of the dialog gate. The
-        // gate-then-call ordering: _confirmMakePublic completes first,
-        // then makeRunPublic. Both names must appear; ordering checked
-        // by line index — if makeRunPublic appears at any line BEFORE
-        // _confirmMakePublic, the regression is back.
-        final confirmIdx = source.indexOf('_confirmMakePublic');
-        final makePublicIdx = source.indexOf('api.makeRunPublic');
-        expect(
-          makePublicIdx > confirmIdx,
-          isTrue,
-          reason:
-              'api.makeRunPublic must NOT precede _confirmMakePublic '
+    test('run_detail_screen._shareRunLink gates makeRunPublic on a confirm dialog',
+        () {
+      // Reason: a casual user tapping Share on a freshly-recorded run
+      // used to silently flip is_public — no warning, no copy
+      // explaining that the share link exposes the full track
+      // (incl. home / work coords) to anyone with the URL. Privacy-
+      // zone default is OFF (decisions §33). The fix requires the
+      // share path to call a `_confirmMakePublic` dialog before
+      // reaching makeRunPublic. Catches a regression that removes
+      // the gate.
+      final source =
+          File('lib/screens/run_detail_screen.dart').readAsStringSync();
+      expect(
+        source,
+        contains('_confirmMakePublic'),
+        reason: '_shareRun must route through a _confirmMakePublic '
+            'dialog before calling api.makeRunPublic. See decisions §33.',
+      );
+      expect(
+        source,
+        contains('runDetailMakePublicTitle'),
+        reason: 'The consent dialog title is the canonical surface a '
+            'regression would mangle; pin the localized key (the English '
+            'copy now lives in the ARB catalogues).',
+      );
+      // makeRunPublic must NOT appear ahead of the dialog gate. The
+      // gate-then-call ordering: _confirmMakePublic completes first,
+      // then makeRunPublic. Both names must appear; ordering checked
+      // by line index — if makeRunPublic appears at any line BEFORE
+      // _confirmMakePublic, the regression is back.
+      final confirmIdx = source.indexOf('_confirmMakePublic');
+      final makePublicIdx = source.indexOf('api.makeRunPublic');
+      expect(makePublicIdx > confirmIdx, isTrue,
+          reason: 'api.makeRunPublic must NOT precede _confirmMakePublic '
               'in source order — that would mean the call site is back '
-              'to flipping is_public ahead of the consent dialog.',
-        );
-      },
-    );
+              'to flipping is_public ahead of the consent dialog.');
+    });
 
-    test(
-      'run_screen keeps makeRunPublic behind the post-live-share dialog',
-      () {
-        // Reason (issue #664): the live-broadcast stop path used to call
-        // makeRunPublic unconditionally, so a runner who shared a live
-        // link FOR SAFETY (incl. the Settings → Safety auto-live-share
-        // pref) had every such run left permanently public with no
-        // consent step — bypassing exactly the dialog the guard above
-        // pins on run_detail. The fix confines makeRunPublic to
-        // _resolvePostLiveVisibility, downstream of the keep-public
-        // AlertDialog whose affirmative action is the ONLY path to it.
-        final source = File('lib/screens/run_screen.dart').readAsStringSync();
-        expect(
-          source,
-          contains('_resolvePostLiveVisibility'),
-          reason:
-              'the stop path must resolve post-live visibility '
-              'explicitly rather than re-asserting is_public.',
-        );
-        expect(
-          source,
-          contains('runLiveShareEndedTitle'),
-          reason:
-              'the keep-public dialog is the consent surface; pin '
-              'its localized title key.',
-        );
-        final dialogIdx = source.indexOf('runLiveShareEndedTitle');
-        final makePublicIdx = source.indexOf('api!.makeRunPublic');
-        expect(
-          makePublicIdx,
-          greaterThanOrEqualTo(0),
-          reason:
-              'the explicit keep-public choice still calls '
-              'makeRunPublic (inside _resolvePostLiveVisibility).',
-        );
-        expect(
-          makePublicIdx > dialogIdx,
-          isTrue,
-          reason:
-              'api.makeRunPublic must sit AFTER the keep-public '
+    test('run_screen keeps makeRunPublic behind the post-live-share dialog',
+        () {
+      // Reason (issue #664): the live-broadcast stop path used to call
+      // makeRunPublic unconditionally, so a runner who shared a live
+      // link FOR SAFETY (incl. the Settings → Safety auto-live-share
+      // pref) had every such run left permanently public with no
+      // consent step — bypassing exactly the dialog the guard above
+      // pins on run_detail. The fix confines makeRunPublic to
+      // _resolvePostLiveVisibility, downstream of the keep-public
+      // AlertDialog whose affirmative action is the ONLY path to it.
+      final source =
+          File('lib/screens/run_screen.dart').readAsStringSync();
+      expect(source, contains('_resolvePostLiveVisibility'),
+          reason: 'the stop path must resolve post-live visibility '
+              'explicitly rather than re-asserting is_public.');
+      expect(source, contains('runLiveShareEndedTitle'),
+          reason: 'the keep-public dialog is the consent surface; pin '
+              'its localized title key.');
+      final dialogIdx = source.indexOf('runLiveShareEndedTitle');
+      final makePublicIdx = source.indexOf('api!.makeRunPublic');
+      expect(makePublicIdx, greaterThanOrEqualTo(0),
+          reason: 'the explicit keep-public choice still calls '
+              'makeRunPublic (inside _resolvePostLiveVisibility).');
+      expect(makePublicIdx > dialogIdx, isTrue,
+          reason: 'api.makeRunPublic must sit AFTER the keep-public '
               'dialog in _resolvePostLiveVisibility — earlier means the '
-              'unconditional stop-path flip is back.',
-        );
-        expect(
-          source.contains('api2.makeRunPublic'),
-          isFalse,
-          reason:
-              'the wind-down block must not re-grow its own '
-              'makeRunPublic call outside the dialog gate.',
-        );
-      },
-    );
+              'unconditional stop-path flip is back.');
+      expect(source.contains('api2.makeRunPublic'), isFalse,
+          reason: 'the wind-down block must not re-grow its own '
+              'makeRunPublic call outside the dialog gate.');
+    });
   });
 
   group('run-detail map survives ListView scroll', () {
-    test(
-      'the map card is wrapped in a keep-alive so scroll does not rebuild it',
-      () {
-        // Reason: the run-detail map is a live FlutterMap rendered as an
-        // ordinary ListView child. A bare list child is disposed once it
-        // scrolls past the cache extent, tearing down the FlutterMap +
-        // MapController; scrolling back rebuilt it from scratch — a visible
-        // tile reload plus a jank spike (GitHub #274). The fix wraps the map
-        // card in a keep-alive (AutomaticKeepAliveClientMixin, wantKeepAlive
-        // => true), which both preserves its State and pauses its pulse ticker
-        // while off-screen. Catches a regression that unwraps the map.
-        final source = File(
-          'lib/screens/run_detail_screen.dart',
-        ).readAsStringSync();
-        expect(
-          source,
-          contains('class _KeepAliveMap'),
-          reason:
-              'The run-detail map must keep a _KeepAliveMap wrapper so the '
-              'ListView does not dispose + rebuild the FlutterMap on scroll.',
-        );
-        expect(
-          source,
-          contains('AutomaticKeepAliveClientMixin'),
-          reason:
-              '_KeepAliveMap must mix in AutomaticKeepAliveClientMixin — '
-              'that is what keeps the map State alive past the cache extent.',
-        );
-        // The map (LiveRunMap, inside the SizedBox card) must sit UNDER the
-        // wrapper: _KeepAliveMap( must appear before the map's LiveRunMap in
-        // source order. If LiveRunMap moves ahead of the wrapper, the card is
-        // a bare list child again and the reload regression is back.
-        final wrapIdx = source.indexOf('_KeepAliveMap(');
-        final mapIdx = source.indexOf('LiveRunMap(');
-        expect(
-          wrapIdx >= 0 && wrapIdx < mapIdx,
-          isTrue,
-          reason:
-              '_KeepAliveMap( must wrap the map card (appear before '
-              'LiveRunMap in source order).',
-        );
-      },
-    );
+    test('the map card is wrapped in a keep-alive so scroll does not rebuild it',
+        () {
+      // Reason: the run-detail map is a live FlutterMap rendered as an
+      // ordinary ListView child. A bare list child is disposed once it
+      // scrolls past the cache extent, tearing down the FlutterMap +
+      // MapController; scrolling back rebuilt it from scratch — a visible
+      // tile reload plus a jank spike (GitHub #274). The fix wraps the map
+      // card in a keep-alive (AutomaticKeepAliveClientMixin, wantKeepAlive
+      // => true), which both preserves its State and pauses its pulse ticker
+      // while off-screen. Catches a regression that unwraps the map.
+      final source =
+          File('lib/screens/run_detail_screen.dart').readAsStringSync();
+      expect(
+        source,
+        contains('class _KeepAliveMap'),
+        reason: 'The run-detail map must keep a _KeepAliveMap wrapper so the '
+            'ListView does not dispose + rebuild the FlutterMap on scroll.',
+      );
+      expect(
+        source,
+        contains('AutomaticKeepAliveClientMixin'),
+        reason: '_KeepAliveMap must mix in AutomaticKeepAliveClientMixin — '
+            'that is what keeps the map State alive past the cache extent.',
+      );
+      // The map (LiveRunMap, inside the SizedBox card) must sit UNDER the
+      // wrapper: _KeepAliveMap( must appear before the map's LiveRunMap in
+      // source order. If LiveRunMap moves ahead of the wrapper, the card is
+      // a bare list child again and the reload regression is back.
+      final wrapIdx = source.indexOf('_KeepAliveMap(');
+      final mapIdx = source.indexOf('LiveRunMap(');
+      expect(wrapIdx >= 0 && wrapIdx < mapIdx, isTrue,
+          reason: '_KeepAliveMap( must wrap the map card (appear before '
+              'LiveRunMap in source order).');
+    });
   });
 
   group('privacy-zone removal confirms before erasing', () {
@@ -1517,29 +1353,16 @@ void main() {
       // confirms the equivalent removeZone. The fix requires both to route
       // through a showDialog<bool> confirm, and the marker to carry a
       // Semantics label (it was a bare GestureDetector under 48dp).
-      final source = File(
-        'lib/screens/privacy_zones_screen.dart',
-      ).readAsStringSync();
-      expect(
-        source,
-        contains('_confirmRemoveZone'),
-        reason: 'the zone marker tap must go through _confirmRemoveZone',
-      );
-      expect(
-        source,
-        contains('_confirmClearAll'),
-        reason: 'Clear-all must go through _confirmClearAll',
-      );
-      expect(
-        source,
-        contains('showDialog<bool>'),
-        reason: 'both confirms present an AlertDialog',
-      );
-      expect(
-        source,
-        contains('privacyZonesRemoveSemantics'),
-        reason: 'the remove marker must carry a Semantics label',
-      );
+      final source =
+          File('lib/screens/privacy_zones_screen.dart').readAsStringSync();
+      expect(source, contains('_confirmRemoveZone'),
+          reason: 'the zone marker tap must go through _confirmRemoveZone');
+      expect(source, contains('_confirmClearAll'),
+          reason: 'Clear-all must go through _confirmClearAll');
+      expect(source, contains('showDialog<bool>'),
+          reason: 'both confirms present an AlertDialog');
+      expect(source, contains('privacyZonesRemoveSemantics'),
+          reason: 'the remove marker must carry a Semantics label');
       // The Clear-all button must not wipe zones directly from onPressed.
       expect(
         source.contains('onPressed: () => setState(() => _zones = [])'),
@@ -1558,36 +1381,31 @@ void main() {
       // destructive arms to route through a _confirmRaceAction dialog;
       // Arm / Fire Go stay one-tap. Catches a regression that drops the
       // confirm or wires a button straight to _raceMutation.
-      final source = File(
-        'lib/screens/event_detail_screen.dart',
-      ).readAsStringSync();
+      final source =
+          File('lib/screens/event_detail_screen.dart').readAsStringSync();
       expect(
         source,
         contains('_confirmRaceAction'),
-        reason:
-            'The End/Cancel race buttons must route through a '
+        reason: 'The End/Cancel race buttons must route through a '
             '_confirmRaceAction dialog before calling _raceMutation.',
       );
       expect(
         source,
         contains('showDialog<bool>'),
-        reason:
-            '_confirmRaceAction must present an AlertDialog confirm '
+        reason: '_confirmRaceAction must present an AlertDialog confirm '
             '(showDialog<bool>) before the mutation.',
       );
       // Neither destructive arm may be invoked directly from an onPressed.
       expect(
         source,
         isNot(contains('_raceMutation(_RaceAction.end)')),
-        reason:
-            'End must go through _confirmRaceAction, not call '
+        reason: 'End must go through _confirmRaceAction, not call '
             '_raceMutation(_RaceAction.end) directly from a button.',
       );
       expect(
         source,
         isNot(contains('_raceMutation(_RaceAction.cancel)')),
-        reason:
-            'Cancel must go through _confirmRaceAction, not call '
+        reason: 'Cancel must go through _confirmRaceAction, not call '
             '_raceMutation(_RaceAction.cancel) directly from a button.',
       );
       // Arm / Fire Go remain one-tap (non-destructive) — guard that the
@@ -1618,9 +1436,8 @@ void main() {
       // isPublic: ...)\n  .timeout(...)`. Both encode the same
       // semantic — the isPublic kwarg must reach the API call.
       expect(
-        RegExp(
-          r'\.saveRun\s*\(\s*run\s*,\s*\n?\s*isPublic\s*:',
-        ).hasMatch(source),
+        RegExp(r'\.saveRun\s*\(\s*run\s*,\s*\n?\s*isPublic\s*:')
+            .hasMatch(source),
         isTrue,
         reason:
             'The api.saveRun call in _stop must pass isPublic so the '
@@ -1633,7 +1450,8 @@ void main() {
       final source = File('lib/screens/run_screen.dart').readAsStringSync();
       expect(
         source,
-        contains('followersOnly: widget.preferences.newRunsAreFollowersOnly'),
+        contains(
+            'followersOnly: widget.preferences.newRunsAreFollowersOnly'),
         reason: 'the followers privacy default must reach the run row',
       );
     });
@@ -1678,8 +1496,7 @@ void main() {
       expect(
         source,
         contains('filterRunsForCurrentUser'),
-        reason:
-            'background_sync.dart MUST route the unsynced list '
+        reason: 'background_sync.dart MUST route the unsynced list '
             'through filterRunsForCurrentUser (from sync_service.dart) '
             'before passing it to saveRunsBatch — without this, the '
             'WorkManager path bypasses the shared-device owner-tag '
@@ -1700,15 +1517,13 @@ void main() {
       expect(
         source,
         contains('AuthChangeEvent.signedIn'),
-        reason:
-            'main.dart must subscribe to the auth-state stream '
+        reason: 'main.dart must subscribe to the auth-state stream '
             'so it can react to signedIn.',
       );
       expect(
         source,
         contains("syncService.triggerSync('signin')"),
-        reason:
-            'main.dart\'s signedIn handler MUST call '
+        reason: 'main.dart\'s signedIn handler MUST call '
             'syncService.triggerSync(\'signin\') — without it, runs '
             'recorded offline sit unsynced until the next foreground '
             'transition or manual tap.',
@@ -1727,15 +1542,15 @@ void main() {
       expect(
         source,
         contains('pendingRemoteDeletesForUser'),
-        reason:
-            '_drainPendingDeletes must call '
+        reason: '_drainPendingDeletes must call '
             'runStore.pendingRemoteDeletesForUser(api.userId), not '
             'the unfiltered pendingRemoteDeleteIds, so foreign-owned '
             'deletes stay queued for their rightful owner.',
       );
     });
 
-    test('background_sync WorkManager frequency is hourly + keep-existing', () {
+    test('background_sync WorkManager frequency is hourly + keep-existing',
+        () {
       // Reason: WorkManager fires periodic tasks on the device. A
       // tighter frequency (every 5 min, every 15 min) multiplied
       // across the install base produces N× more Supabase requests
@@ -1754,32 +1569,21 @@ void main() {
       // — Duration(minutes: <60>) or Duration(seconds: ...) would
       // be a regression. Match the hours-form and assert the
       // numeric is ≥ 1.
-      final freqRe = RegExp(
-        r'frequency:\s*const\s+Duration\(\s*hours:\s*(\d+)\s*\)',
-      );
+      final freqRe = RegExp(r'frequency:\s*const\s+Duration\(\s*hours:\s*(\d+)\s*\)');
       final m = freqRe.firstMatch(source);
-      expect(
-        m,
-        isNotNull,
-        reason:
-            'background_sync.dart must declare frequency as '
-            'Duration(hours: N). Sub-hour intervals are an N× '
-            'multiplier on Supabase request volume across the '
-            'install base.',
-      );
+      expect(m, isNotNull,
+          reason: 'background_sync.dart must declare frequency as '
+              'Duration(hours: N). Sub-hour intervals are an N× '
+              'multiplier on Supabase request volume across the '
+              'install base.');
       final hours = int.parse(m!.group(1)!);
-      expect(
-        hours,
-        greaterThanOrEqualTo(1),
-        reason:
-            'WorkManager frequency must be ≥ 1 hour, was '
-            '$hours. /audit/cost-controls baseline.',
-      );
+      expect(hours, greaterThanOrEqualTo(1),
+          reason: 'WorkManager frequency must be ≥ 1 hour, was '
+              '$hours. /audit/cost-controls baseline.');
       expect(
         source,
         contains('ExistingPeriodicWorkPolicy.keep'),
-        reason:
-            'WorkManager registration must use '
+        reason: 'WorkManager registration must use '
             'ExistingPeriodicWorkPolicy.keep so re-registration '
             'on app launch doesn\'t cancel-and-restart the existing '
             'task (which would reset the first-run window every '
@@ -1806,19 +1610,14 @@ void main() {
         r'if\s*\(\s*res\.statusCode\s*==\s*429\s*\)\s*\{([\s\S]*?)\n\s{0,12}\}',
       );
       final m = branchRe.firstMatch(source);
-      expect(
-        m,
-        isNotNull,
-        reason:
-            'Could not locate the 429 branch in coach_screen.dart '
-            '— has the comparison shape moved?',
-      );
+      expect(m, isNotNull,
+          reason: 'Could not locate the 429 branch in coach_screen.dart '
+              '— has the comparison shape moved?');
       final branchBody = m!.group(1)!;
       expect(
         branchBody.contains('_send('),
         isFalse,
-        reason:
-            'coach_screen 429 branch MUST NOT call _send() — a '
+        reason: 'coach_screen 429 branch MUST NOT call _send() — a '
             'retry-on-429 loop is a denial-of-wallet vector (one '
             'device pinned on requests that can\'t succeed until '
             'the daily cap resets at UTC midnight, and a server-'
@@ -1847,75 +1646,65 @@ void main() {
       expect(
         source,
         contains('?.onSignedOut(priorUserId:'),
-        reason:
-            'main.dart\'s signedOut handler MUST call '
+        reason: 'main.dart\'s signedOut handler MUST call '
             'settingsSync?.onSignedOut(priorUserId: …) — without it, the '
             'previous user\'s privacy_zones stay cached (and their bag-'
             'mirrored Preferences carry over) into the next account.',
       );
     });
 
-    test(
-      'main.dart stamps the watch-ingest queue before draining on signin',
-      () {
-        // Reason: WatchIngestQueue files queued while signed-out carry
-        // an `intended_owner_user_id` stamp set from the
-        // setLastKnownOwner cache. drain() skips files whose stamp
-        // names a different user from the one currently signed in. For
-        // that filter to work on signin, main.dart must update the
-        // last-known-owner stamp to the FRESHLY-SIGNED-IN user BEFORE
-        // calling drain — otherwise the drain still sees the previous
-        // user's stamp and skips every file (or, worse, if a previous
-        // user never signed in, drains everything to the new user).
-        // Pinned because a refactor that reordered the listener body
-        // (e.g. hoisting drain ahead of the stamp call) would silently
-        // re-open the shared-device contamination window the stamp was
-        // added to close.
-        final mainSource = File('lib/main.dart').readAsStringSync();
-        final stampIdx = mainSource.indexOf(
-          'watchQueue.setLastKnownOwner(apiNonNull.userId)',
-        );
-        final drainIdx = mainSource.indexOf('watchQueue.drain(apiNonNull)');
-        expect(
-          stampIdx,
-          greaterThan(-1),
-          reason:
-              'main.dart must call watchQueue.setLastKnownOwner '
+    test('main.dart stamps the watch-ingest queue before draining on signin',
+        () {
+      // Reason: WatchIngestQueue files queued while signed-out carry
+      // an `intended_owner_user_id` stamp set from the
+      // setLastKnownOwner cache. drain() skips files whose stamp
+      // names a different user from the one currently signed in. For
+      // that filter to work on signin, main.dart must update the
+      // last-known-owner stamp to the FRESHLY-SIGNED-IN user BEFORE
+      // calling drain — otherwise the drain still sees the previous
+      // user's stamp and skips every file (or, worse, if a previous
+      // user never signed in, drains everything to the new user).
+      // Pinned because a refactor that reordered the listener body
+      // (e.g. hoisting drain ahead of the stamp call) would silently
+      // re-open the shared-device contamination window the stamp was
+      // added to close.
+      final mainSource = File('lib/main.dart').readAsStringSync();
+      final stampIdx = mainSource.indexOf(
+        'watchQueue.setLastKnownOwner(apiNonNull.userId)',
+      );
+      final drainIdx = mainSource.indexOf(
+        'watchQueue.drain(apiNonNull)',
+      );
+      expect(stampIdx, greaterThan(-1),
+          reason: 'main.dart must call watchQueue.setLastKnownOwner '
               'in the signedIn listener — without the update, the '
               'queue\'s stamp stays at the previous user and drain '
-              'misclassifies new files.',
-        );
-        expect(
-          drainIdx,
-          greaterThan(-1),
-          reason: 'main.dart must call watchQueue.drain on signedIn.',
-        );
-        expect(
-          stampIdx,
-          lessThan(drainIdx),
-          reason:
-              'watchQueue.setLastKnownOwner MUST appear before '
-              'watchQueue.drain in the signedIn handler. The reverse '
-              'order leaves drain running with the PREVIOUS user\'s '
-              'stamp — a fresh user-b sign-in would skip every file '
-              '(because the stamp is still user-a), and the queue '
-              'would never drain for either user.',
-        );
-        // Also pin the bootstrap call so a process restart with a
-        // cached session writes the stamp before any payloads can
-        // arrive.
-        expect(
-          mainSource,
-          contains('watchQueue.setLastKnownOwner(api.userId)'),
-          reason:
-              'main.dart bootstrap must call '
-              'watchQueue.setLastKnownOwner(api.userId) when restoring '
-              'a cached session — without it, payloads arriving during '
-              'a signed-out window after the restart carry no stamp '
-              'and adopt to whichever user signs in next.',
-        );
-      },
-    );
+              'misclassifies new files.');
+      expect(drainIdx, greaterThan(-1),
+          reason: 'main.dart must call watchQueue.drain on signedIn.');
+      expect(
+        stampIdx,
+        lessThan(drainIdx),
+        reason: 'watchQueue.setLastKnownOwner MUST appear before '
+            'watchQueue.drain in the signedIn handler. The reverse '
+            'order leaves drain running with the PREVIOUS user\'s '
+            'stamp — a fresh user-b sign-in would skip every file '
+            '(because the stamp is still user-a), and the queue '
+            'would never drain for either user.',
+      );
+      // Also pin the bootstrap call so a process restart with a
+      // cached session writes the stamp before any payloads can
+      // arrive.
+      expect(
+        mainSource,
+        contains('watchQueue.setLastKnownOwner(api.userId)'),
+        reason: 'main.dart bootstrap must call '
+            'watchQueue.setLastKnownOwner(api.userId) when restoring '
+            'a cached session — without it, payloads arriving during '
+            'a signed-out window after the restart carry no stamp '
+            'and adopt to whichever user signs in next.',
+      );
+    });
 
     test('LiveBroadcaster drops in-zone pings client-side', () {
       // Reason: the `live_run_pings_drop_in_zone` BEFORE INSERT
@@ -1929,31 +1718,30 @@ void main() {
       // guard pins both ends of the contract: the broadcaster must
       // accept a privacy-zones provider, and the run_screen must
       // wire it from settingsSync.
-      final lbSource = File('lib/live_broadcaster.dart').readAsStringSync();
+      final lbSource =
+          File('lib/live_broadcaster.dart').readAsStringSync();
       expect(
         lbSource,
         contains('privacyZonesProvider'),
-        reason:
-            'LiveBroadcaster must accept a privacy-zones provider '
+        reason: 'LiveBroadcaster must accept a privacy-zones provider '
             '— the Go-hub transport has no server-side privacy gate, '
             'so client-side dropping is the only enforcement.',
       );
       expect(
         lbSource,
         contains('isInAnyZone'),
-        reason:
-            'LiveBroadcaster.pushPing must call isInAnyZone on '
+        reason: 'LiveBroadcaster.pushPing must call isInAnyZone on '
             'the current ping coordinates and short-circuit when '
             'true — the in-zone drop must happen before the request '
             'leaves the device.',
       );
 
-      final rsSource = File('lib/screens/run_screen.dart').readAsStringSync();
+      final rsSource =
+          File('lib/screens/run_screen.dart').readAsStringSync();
       expect(
         rsSource,
         contains('privacyZonesProvider:'),
-        reason:
-            'run_screen must wire privacyZonesProvider when '
+        reason: 'run_screen must wire privacyZonesProvider when '
             'constructing LiveBroadcaster — without the wire the '
             'broadcaster has no zones to filter against and the '
             'Go-hub leak returns.',
@@ -1961,8 +1749,7 @@ void main() {
       expect(
         rsSource,
         contains('_currentPrivacyZones'),
-        reason:
-            'the provider must read the zones live from '
+        reason: 'the provider must read the zones live from '
             '_currentPrivacyZones (which reads from settingsSync), '
             'not a constant — mid-run zone additions in Settings '
             'must take effect on the next ping, not the next run.',
@@ -1976,19 +1763,18 @@ void main() {
       // every entry is "untagged" and the filter degrades to "drain
       // by any user", which is exactly the bug the tag was added to
       // prevent.
-      final source = File('lib/screens/runs_screen.dart').readAsStringSync();
+      final source =
+          File('lib/screens/runs_screen.dart').readAsStringSync();
       expect(
         source,
         contains('markManyPendingRemoteDelete('),
-        reason:
-            'runs_screen must queue failed deletes through '
+        reason: 'runs_screen must queue failed deletes through '
             'markManyPendingRemoteDelete.',
       );
       expect(
         source,
         contains('ownerUserId: api?.userId'),
-        reason:
-            'runs_screen MUST pass api?.userId as ownerUserId so '
+        reason: 'runs_screen MUST pass api?.userId as ownerUserId so '
             'the queued delete carries the current user\'s tag — '
             'without it, the entry is untagged and a different '
             'user\'s drain would attempt it (and fail under RLS).',
@@ -2004,8 +1790,7 @@ void main() {
       expect(
         source,
         contains("'signin'"),
-        reason:
-            'sync_service.dart must list \'signin\' in the '
+        reason: 'sync_service.dart must list \'signin\' in the '
             '_backoffBypassReasons set.',
       );
       // Also pin that the gating predicate is the set, not the old
@@ -2014,8 +1799,7 @@ void main() {
       expect(
         source,
         contains('_backoffBypassReasons.contains(reason)'),
-        reason:
-            '_trySync must consult the _backoffBypassReasons set '
+        reason: '_trySync must consult the _backoffBypassReasons set '
             'instead of a literal "manual" check — the set is what '
             'lets new bypass reasons (signin, future: post-recovery) '
             'work without revisiting the gate.',
@@ -2029,8 +1813,7 @@ void main() {
       expect(
         source,
         contains('markManySynced'),
-        reason:
-            'Bulk importers should flush the sidecar once, '
+        reason: 'Bulk importers should flush the sidecar once, '
             'not per run.',
       );
     });
@@ -2043,14 +1826,13 @@ void main() {
       // The enum moved to `core_models` so a pure parser could reach the
       // vocabulary without a widget toolkit (decisions § 1013); the getter
       // travelled with it, being physics rather than presentation.
-      final source = File(
-        '../../packages/core_models/lib/src/activity_type.dart',
-      ).readAsStringSync();
+      final source =
+          File('../../packages/core_models/lib/src/activity_type.dart')
+              .readAsStringSync();
       expect(
         source,
         contains('double get strideMetres'),
-        reason:
-            'ActivityType.strideMetres feeds the indoor pedometer '
+        reason: 'ActivityType.strideMetres feeds the indoor pedometer '
             'distance fallback. Do not remove without also dropping '
             '_displayDistanceMetres in run_screen.dart.',
       );
@@ -2069,15 +1851,13 @@ void main() {
       expect(
         body,
         contains('Future.wait'),
-        reason:
-            'routeStore._loadAll must use Future.wait — mirrors '
+        reason: 'routeStore._loadAll must use Future.wait — mirrors '
             'the same optimization applied to runStore.',
       );
       expect(
         body,
         contains('listSync'),
-        reason:
-            'routeStore._loadAll must use _dir.listSync() — '
+        reason: 'routeStore._loadAll must use _dir.listSync() — '
             'mirrors the runStore listing decision (async _dir.list() '
             'deadlocks RunsScreen widget tests under flutter_test).',
       );
@@ -2099,8 +1879,7 @@ void main() {
       expect(
         body,
         contains('compute('),
-        reason:
-            'importFromZip must dispatch ZipDecoder + per-file parse '
+        reason: 'importFromZip must dispatch ZipDecoder + per-file parse '
             'into compute() — the parsers run synchronously and would '
             'otherwise block the UI for tens of seconds on a large export.',
       );
@@ -2125,24 +1904,21 @@ void main() {
       expect(
         src,
         contains('ZipFileEncoder'),
-        reason:
-            'backup.dart must keep the ZipFileEncoder streaming '
+        reason: 'backup.dart must keep the ZipFileEncoder streaming '
             'writer — buffering an in-memory Archive instead OOMs on '
             'phones at ~2000 runs (decisions.md § 66).',
       );
       expect(
         src,
         contains('InputFileStream'),
-        reason:
-            'backup.dart restore must read via InputFileStream — '
+        reason: 'backup.dart restore must read via InputFileStream — '
             'zipFile.readAsBytes() pulls the whole archive into RAM '
             '(decisions.md § 66).',
       );
       expect(
         src,
         contains('decodeStream'),
-        reason:
-            'backup.dart restore must use ZipDecoder.decodeStream — '
+        reason: 'backup.dart restore must use ZipDecoder.decodeStream — '
             'decodeBytes pulls all entries into RAM at once.',
       );
     });
@@ -2160,8 +1936,7 @@ void main() {
       expect(
         body,
         contains('compute('),
-        reason:
-            '_pickAndImport must run RouteParser.fromGpx / fromKml inside '
+        reason: '_pickAndImport must run RouteParser.fromGpx / fromKml inside '
             'compute() so a large file does not freeze the routes screen.',
       );
     });
@@ -2211,8 +1986,7 @@ void main() {
       expect(
         source,
         contains('addPostFrameCallback'),
-        reason:
-            'main() must defer the network-gated init block via '
+        reason: 'main() must defer the network-gated init block via '
             'addPostFrameCallback.',
       );
       // settingsSync.onSignedIn() should appear AFTER the
@@ -2228,8 +2002,7 @@ void main() {
         expect(
           settingsSyncIdx > postFrameIdx,
           isTrue,
-          reason:
-              'settingsSync.onSignedIn() must run inside the '
+          reason: 'settingsSync.onSignedIn() must run inside the '
               'addPostFrameCallback block — not on the critical path.',
         );
       }
@@ -2245,16 +2018,14 @@ void main() {
       expect(
         source,
         contains('ErrorWidget.builder'),
-        reason:
-            'main.dart must install an ErrorWidget.builder in '
+        reason: 'main.dart must install an ErrorWidget.builder in '
             'release builds so a widget crash replaces only the '
             'offending subtree, not the whole screen.',
       );
       expect(
         source,
         contains('kReleaseMode'),
-        reason:
-            'The override must be gated on kReleaseMode — keep the '
+        reason: 'The override must be gated on kReleaseMode — keep the '
             'default red screen in debug so developers see crashes.',
       );
     });
@@ -2268,14 +2039,11 @@ void main() {
       // health free text) into logcat/os_log on a release build.
       // /audit/pii-in-logs.
       final source = File('lib/main.dart').readAsStringSync();
-      final releaseBlock = source.substring(
-        source.indexOf('if (kReleaseMode)'),
-      );
+      final releaseBlock = source.substring(source.indexOf('if (kReleaseMode)'));
       expect(
         releaseBlock,
         contains('debugPrint = (String? message, {int? wrapWidth}) {};'),
-        reason:
-            'main.dart must no-op debugPrint inside the kReleaseMode '
+        reason: 'main.dart must no-op debugPrint inside the kReleaseMode '
             'block so exception dumps never reach device logs on a '
             'release build.',
       );
@@ -2301,181 +2069,127 @@ void main() {
       expect(
         source,
         contains('"geolocator_channel_01"'),
-        reason:
-            'GEOLOCATOR_CHANNEL_ID must match '
+        reason: 'GEOLOCATOR_CHANNEL_ID must match '
             'com.baseflow.geolocator.GeolocatorLocationService.CHANNEL_ID. '
             'Check the geolocator_android changelog on bumps.',
       );
       expect(
         source,
         contains('75415'),
-        reason:
-            'GEOLOCATOR_NOTIFICATION_ID must match '
+        reason: 'GEOLOCATOR_NOTIFICATION_ID must match '
             'GeolocatorLocationService.ONGOING_NOTIFICATION_ID.',
       );
     });
 
-    test(
-      'split notification reuses one fixed transient id, cleared with the run (#303)',
-      () {
-        // Reason: the per-km split row used to stack — a new notification
-        // per kilometre, persisting across runs, burying the shade. The
-        // fix pins a single fixed SPLIT_NOTIFICATION_ID (distinct from the
-        // geolocator ongoing id) so each split replaces in place, makes the
-        // row transient (auto-cancel + timeout, never ongoing), and cancels
-        // it on run stop ("clear") as well as run start (clear_split from
-        // Dart). Shared host file — skip on the iOS twin.
-        final file = File(
-          'android/app/src/main/kotlin/com/threkir/app/RunNotificationBridge.kt',
-        );
-        if (!file.existsSync()) return;
-        final source = file.readAsStringSync();
+    test('split notification reuses one fixed transient id, cleared with the run (#303)', () {
+      // Reason: the per-km split row used to stack — a new notification
+      // per kilometre, persisting across runs, burying the shade. The
+      // fix pins a single fixed SPLIT_NOTIFICATION_ID (distinct from the
+      // geolocator ongoing id) so each split replaces in place, makes the
+      // row transient (auto-cancel + timeout, never ongoing), and cancels
+      // it on run stop ("clear") as well as run start (clear_split from
+      // Dart). Shared host file — skip on the iOS twin.
+      final file = File(
+        'android/app/src/main/kotlin/com/threkir/app/RunNotificationBridge.kt',
+      );
+      if (!file.existsSync()) return;
+      final source = file.readAsStringSync();
 
-        final idDecl = RegExp(
-          r'SPLIT_NOTIFICATION_ID\s*=\s*(\d+)',
-        ).firstMatch(source);
-        expect(
-          idDecl,
-          isNotNull,
-          reason: 'the split row must post on a named fixed id constant',
-        );
-        expect(
-          idDecl!.group(1),
-          isNot('75415'),
-          reason:
-              'the split id must be distinct from the geolocator '
-              'ongoing-run id or splits would clobber the live stats row',
-        );
+      final idDecl = RegExp(
+        r'SPLIT_NOTIFICATION_ID\s*=\s*(\d+)',
+      ).firstMatch(source);
+      expect(idDecl, isNotNull,
+          reason: 'the split row must post on a named fixed id constant');
+      expect(idDecl!.group(1), isNot('75415'),
+          reason: 'the split id must be distinct from the geolocator '
+              'ongoing-run id or splits would clobber the live stats row');
 
-        final postSplit = source.substring(source.indexOf('fun postSplit'));
-        final postSplitBody = postSplit.substring(
-          0,
-          postSplit.indexOf('fun post('),
-        );
-        expect(
-          postSplitBody,
-          contains('.notify(SPLIT_NOTIFICATION_ID'),
-          reason:
-              'every split reposts on the SAME id — replace in '
-              'place, never one row per kilometre',
-        );
-        expect(
-          postSplitBody,
-          contains('.setAutoCancel(true)'),
-          reason: 'the split row must dismiss on tap',
-        );
-        expect(
-          postSplitBody,
-          contains('.setTimeoutAfter('),
-          reason:
-              'the split row must time itself out — it never '
-              'demands a manual swipe',
-        );
-        expect(
-          postSplitBody,
-          contains('.setOngoing(false)'),
-          reason: 'a split is transient, not an ongoing row',
-        );
+      final postSplit = source.substring(source.indexOf('fun postSplit'));
+      final postSplitBody =
+          postSplit.substring(0, postSplit.indexOf('fun post('));
+      expect(postSplitBody, contains('.notify(SPLIT_NOTIFICATION_ID'),
+          reason: 'every split reposts on the SAME id — replace in '
+              'place, never one row per kilometre');
+      expect(postSplitBody, contains('.setAutoCancel(true)'),
+          reason: 'the split row must dismiss on tap');
+      expect(postSplitBody, contains('.setTimeoutAfter('),
+          reason: 'the split row must time itself out — it never '
+              'demands a manual swipe');
+      expect(postSplitBody, contains('.setOngoing(false)'),
+          reason: 'a split is transient, not an ongoing row');
 
-        final clearBranch = source.substring(source.indexOf('"clear" ->'));
-        final clearBody = clearBranch.substring(
-          0,
-          clearBranch.indexOf('"clear_split"'),
-        );
-        expect(
-          clearBody,
-          contains('cancel(SPLIT_NOTIFICATION_ID)'),
-          reason:
-              'run stop must clear the split row too, so it cannot '
-              'outlive its run',
-        );
+      final clearBranch = source.substring(source.indexOf('"clear" ->'));
+      final clearBody =
+          clearBranch.substring(0, clearBranch.indexOf('"clear_split"'));
+      expect(clearBody, contains('cancel(SPLIT_NOTIFICATION_ID)'),
+          reason: 'run stop must clear the split row too, so it cannot '
+              'outlive its run');
+      expect(source, contains('"clear_split"'),
+          reason: 'run start clears a previous run\'s leftover split row');
+    });
+
+    test('the ongoing run notification stays eligible for an Android 16 Live Update', () {
+      // Reason: Android only promotes a notification to the lock-screen
+      // card and status-bar chip when it asks to be promoted, the app holds
+      // POST_PROMOTED_NOTIFICATIONS, and the row is not colorized and has no
+      // custom view. Losing any one demotes it to an ordinary row with no
+      // error anywhere (decisions § 2239). Shared host file — skip on the
+      // iOS twin.
+      final file = File(
+        'android/app/src/main/kotlin/com/threkir/app/RunNotificationBridge.kt',
+      );
+      if (!file.existsSync()) return;
+      final source = file.readAsStringSync();
+      final post = source.substring(source.indexOf('private fun post('));
+      final postBody = post.substring(0, post.indexOf('companion object'));
+      expect(postBody, contains('.setRequestPromotedOngoing(true)'),
+          reason: 'the run row must ask to be promoted to a Live Update');
+      expect(postBody, contains('.setUsesChronometer(true)'),
+          reason: 'the card and chip clock tick on-device from an anchor');
+      for (final disqualifier in [
+        'setColorized',
+        'setCustomContentView',
+        'setCustomBigContentView',
+        'DecoratedCustomViewStyle',
+      ]) {
+        expect(postBody, isNot(contains(disqualifier)),
+            reason: '$disqualifier makes the row ineligible for promotion');
+      }
+      final manifest =
+          File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+      expect(
+        manifest,
+        contains('android.permission.POST_PROMOTED_NOTIFICATIONS'),
+        reason: 'without the permission the promotion request is ignored',
+      );
+    });
+
+    test('RunNotificationBridge sources its user-facing strings from resources', () {
+      // audit/i18n-readiness W-OS-3: the channel name (shown in system
+      // notification settings), the title fallback, and the lock-screen
+      // action labels are user-facing, so they must come from string
+      // resources (localisable) rather than hard-coded English. Reverting
+      // any of them to a literal drops the matching R.string reference and
+      // trips this guard. Shared host file — skip on the iOS twin.
+      final file = File(
+        'android/app/src/main/kotlin/com/threkir/app/RunNotificationBridge.kt',
+      );
+      if (!file.existsSync()) return;
+      final source = file.readAsStringSync();
+      for (final res in [
+        'R.string.run_notif_channel_name',
+        'R.string.run_notif_title_fallback',
+        'R.string.run_notif_action_resume',
+        'R.string.run_notif_action_pause',
+      ]) {
         expect(
           source,
-          contains('"clear_split"'),
-          reason: 'run start clears a previous run\'s leftover split row',
+          contains(res),
+          reason: '$res must back a user-facing notification string '
+              '(W-OS-3): do not hard-code the English literal.',
         );
-      },
-    );
-
-    test(
-      'the ongoing run notification stays eligible for an Android 16 Live Update',
-      () {
-        // Reason: Android only promotes a notification to the lock-screen
-        // card and status-bar chip when it asks to be promoted, the app holds
-        // POST_PROMOTED_NOTIFICATIONS, and the row is not colorized and has no
-        // custom view. Losing any one demotes it to an ordinary row with no
-        // error anywhere (decisions § 2239). Shared host file — skip on the
-        // iOS twin.
-        final file = File(
-          'android/app/src/main/kotlin/com/threkir/app/RunNotificationBridge.kt',
-        );
-        if (!file.existsSync()) return;
-        final source = file.readAsStringSync();
-        final post = source.substring(source.indexOf('private fun post('));
-        final postBody = post.substring(0, post.indexOf('companion object'));
-        expect(
-          postBody,
-          contains('.setRequestPromotedOngoing(true)'),
-          reason: 'the run row must ask to be promoted to a Live Update',
-        );
-        expect(
-          postBody,
-          contains('.setUsesChronometer(true)'),
-          reason: 'the card and chip clock tick on-device from an anchor',
-        );
-        for (final disqualifier in [
-          'setColorized',
-          'setCustomContentView',
-          'setCustomBigContentView',
-          'DecoratedCustomViewStyle',
-        ]) {
-          expect(
-            postBody,
-            isNot(contains(disqualifier)),
-            reason: '$disqualifier makes the row ineligible for promotion',
-          );
-        }
-        final manifest = File(
-          'android/app/src/main/AndroidManifest.xml',
-        ).readAsStringSync();
-        expect(
-          manifest,
-          contains('android.permission.POST_PROMOTED_NOTIFICATIONS'),
-          reason: 'without the permission the promotion request is ignored',
-        );
-      },
-    );
-
-    test(
-      'RunNotificationBridge sources its user-facing strings from resources',
-      () {
-        // audit/i18n-readiness W-OS-3: the channel name (shown in system
-        // notification settings), the title fallback, and the lock-screen
-        // action labels are user-facing, so they must come from string
-        // resources (localisable) rather than hard-coded English. Reverting
-        // any of them to a literal drops the matching R.string reference and
-        // trips this guard. Shared host file — skip on the iOS twin.
-        final file = File(
-          'android/app/src/main/kotlin/com/threkir/app/RunNotificationBridge.kt',
-        );
-        if (!file.existsSync()) return;
-        final source = file.readAsStringSync();
-        for (final res in [
-          'R.string.run_notif_channel_name',
-          'R.string.run_notif_title_fallback',
-          'R.string.run_notif_action_resume',
-          'R.string.run_notif_action_pause',
-        ]) {
-          expect(
-            source,
-            contains(res),
-            reason:
-                '$res must back a user-facing notification string '
-                '(W-OS-3): do not hard-code the English literal.',
-          );
-        }
-      },
-    );
+      }
+    });
 
     test('the lock-screen notification has no Stop action', () {
       // Reason: a Stop button on the lock-screen card ends the run with
@@ -2487,145 +2201,106 @@ void main() {
       );
       if (!file.existsSync()) return;
       final source = file.readAsStringSync();
-      expect(
-        source,
-        isNot(contains('ACTION_STOP')),
-        reason: 'the notification must not post a Stop action',
-      );
-      expect(
-        source,
-        isNot(contains('run_notif_action_stop')),
-        reason: 'the notification must not label a Stop action',
-      );
+      expect(source, isNot(contains('ACTION_STOP')),
+          reason: 'the notification must not post a Stop action');
+      expect(source, isNot(contains('run_notif_action_stop')),
+          reason: 'the notification must not label a Stop action');
       final dart = File('lib/run_notification_bridge.dart').readAsStringSync();
-      expect(
-        dart,
-        isNot(contains('onStop')),
-        reason: 'no lock-screen action may end the run',
-      );
+      expect(dart, isNot(contains('onStop')),
+          reason: 'no lock-screen action may end the run');
     });
 
-    test(
-      'lock-screen action buttons broadcast, never launch an activity (#270)',
-      () {
-        // Reason: a getActivity PendingIntent on the Pause/Resume button
-        // launches MainActivity, which trips the keyguard unlock prompt on
-        // a locked phone — the user must unlock before the action fires.
-        // A true lock-screen control must work locked, so the buttons must
-        // route through a BroadcastReceiver (getBroadcast → RunActionReceiver
-        // → dispatchAction). Reverting actionIntent to getActivity /
-        // MainActivity re-introduces the bug. Shared host files — skip on the
-        // iOS twin.
-        final bridge = File(
-          'android/app/src/main/kotlin/com/threkir/app/RunNotificationBridge.kt',
-        );
-        if (!bridge.existsSync()) return;
-        final bridgeSrc = bridge.readAsStringSync();
+    test('lock-screen action buttons broadcast, never launch an activity (#270)',
+        () {
+      // Reason: a getActivity PendingIntent on the Pause/Resume button
+      // launches MainActivity, which trips the keyguard unlock prompt on
+      // a locked phone — the user must unlock before the action fires.
+      // A true lock-screen control must work locked, so the buttons must
+      // route through a BroadcastReceiver (getBroadcast → RunActionReceiver
+      // → dispatchAction). Reverting actionIntent to getActivity /
+      // MainActivity re-introduces the bug. Shared host files — skip on the
+      // iOS twin.
+      final bridge = File(
+        'android/app/src/main/kotlin/com/threkir/app/RunNotificationBridge.kt',
+      );
+      if (!bridge.existsSync()) return;
+      final bridgeSrc = bridge.readAsStringSync();
 
-        final actionIntent = bridgeSrc.substring(
-          bridgeSrc.indexOf('fun actionIntent'),
-        );
-        final actionIntentBody = actionIntent.substring(
-          0,
-          actionIntent.indexOf('\n    }'),
-        );
-        expect(
-          actionIntentBody,
-          contains('PendingIntent.getBroadcast'),
-          reason:
-              'the action buttons must fire a broadcast so they work '
-              'on a locked phone without a keyguard unlock (#270)',
-        );
-        expect(
-          actionIntentBody,
-          contains('RunActionReceiver::class.java'),
-          reason: 'the action broadcast must target RunActionReceiver',
-        );
-        expect(
-          actionIntentBody,
-          isNot(contains('getActivity')),
-          reason:
-              'an action button that launches an activity trips the '
-              'keyguard unlock prompt — the bug this guards against',
-        );
+      final actionIntent =
+          bridgeSrc.substring(bridgeSrc.indexOf('fun actionIntent'));
+      final actionIntentBody =
+          actionIntent.substring(0, actionIntent.indexOf('\n    }'));
+      expect(actionIntentBody, contains('PendingIntent.getBroadcast'),
+          reason: 'the action buttons must fire a broadcast so they work '
+              'on a locked phone without a keyguard unlock (#270)');
+      expect(actionIntentBody, contains('RunActionReceiver::class.java'),
+          reason: 'the action broadcast must target RunActionReceiver');
+      expect(actionIntentBody, isNot(contains('getActivity')),
+          reason: 'an action button that launches an activity trips the '
+              'keyguard unlock prompt — the bug this guards against');
 
-        final receiver = File(
-          'android/app/src/main/kotlin/com/threkir/app/RunActionReceiver.kt',
-        );
-        expect(
-          receiver.existsSync(),
-          isTrue,
-          reason: 'RunActionReceiver must exist to receive the broadcast',
-        );
-        expect(
-          receiver.readAsStringSync(),
+      final receiver = File(
+        'android/app/src/main/kotlin/com/threkir/app/RunActionReceiver.kt',
+      );
+      expect(receiver.existsSync(), isTrue,
+          reason: 'RunActionReceiver must exist to receive the broadcast');
+      expect(receiver.readAsStringSync(),
           contains('RunNotificationBridge.instance?.dispatchAction'),
-          reason: 'the receiver must forward the action into the bridge',
-        );
+          reason: 'the receiver must forward the action into the bridge');
 
-        final manifest = File(
-          'android/app/src/main/AndroidManifest.xml',
-        ).readAsStringSync();
-        expect(
-          manifest,
-          contains('android:name=".RunActionReceiver"'),
-          reason:
-              'the receiver must be declared in the manifest or the '
-              'broadcast is dropped',
-        );
-      },
-    );
+      final manifest =
+          File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+      expect(manifest, contains('android:name=".RunActionReceiver"'),
+          reason: 'the receiver must be declared in the manifest or the '
+              'broadcast is dropped');
+    });
   });
 
   group('thumbnail privacy-zone clipping', () {
-    test(
-      'RunTrackPreview routes non-owner fetches through clip-public-track EF',
-      () {
-        // Reason: feed thumbnails are shown to non-owner viewers. The
-        // pre-20260619_001 pattern was "fetchTrackByPath then
-        // clipTrackForUser client-side" but that leaked the unclipped
-        // blob via direct Storage download. Non-owner thumbnails must
-        // now go through fetchClippedTrackForRun (which calls the
-        // clip-public-track Edge Function — server-side download +
-        // clip). Owners keep the direct path since the per-user-folder
-        // Storage policy still gates them.
-        final source = File(
-          'lib/widgets/run_track_preview.dart',
-        ).readAsStringSync();
-        expect(
-          source,
-          contains('fetchClippedTrackForRun'),
-          reason:
-              'Non-owner thumbnails must use fetchClippedTrackForRun '
-              '— direct Storage download leaks the unclipped blob. See '
-              'decisions §33.',
-        );
-      },
-    );
+    test('RunTrackPreview routes non-owner fetches through clip-public-track EF',
+        () {
+      // Reason: feed thumbnails are shown to non-owner viewers. The
+      // pre-20260619_001 pattern was "fetchTrackByPath then
+      // clipTrackForUser client-side" but that leaked the unclipped
+      // blob via direct Storage download. Non-owner thumbnails must
+      // now go through fetchClippedTrackForRun (which calls the
+      // clip-public-track Edge Function — server-side download +
+      // clip). Owners keep the direct path since the per-user-folder
+      // Storage policy still gates them.
+      final source = File('lib/widgets/run_track_preview.dart')
+          .readAsStringSync();
+      expect(
+        source,
+        contains('fetchClippedTrackForRun'),
+        reason: 'Non-owner thumbnails must use fetchClippedTrackForRun '
+            '— direct Storage download leaks the unclipped blob. See '
+            'decisions §33.',
+      );
+    });
 
     test('feed_screen passes runId + ownerUserId to RunTrackPreview', () {
       // Reason: the EF non-owner clip path needs the run id (server
       // resolves track_url + clips inline). Without the prop,
       // RunTrackPreview can't reach the EF and renders a placeholder
       // instead of the clipped polyline.
-      final source = File('lib/screens/feed_screen.dart').readAsStringSync();
+      final source =
+          File('lib/screens/feed_screen.dart').readAsStringSync();
       expect(
         source,
         matches(RegExp(r'RunTrackPreview\([^)]*runId:', dotAll: true)),
-        reason:
-            'feed_screen must thread the run id into '
+        reason: 'feed_screen must thread the run id into '
             'RunTrackPreview so the clip-public-track EF can resolve it.',
       );
       expect(
         source,
         matches(RegExp(r'RunTrackPreview\([^)]*ownerUserId:', dotAll: true)),
-        reason:
-            'feed_screen must thread the run owner id into '
+        reason: 'feed_screen must thread the run owner id into '
             'RunTrackPreview so the privacy-zone clip kicks in.',
       );
     });
 
-    test('the shared run row passes runId + ownerUserId to RunTrackPreview', () {
+    test('the shared run row passes runId + ownerUserId to RunTrackPreview',
+        () {
       // Reason: /u/[id] (the public profile) renders OTHER users' runs.
       // Pre-fix the runs-tab thumbnail mounted RunTrackPreview without
       // ownerUserId, which makes _shouldClip return false and serves
@@ -2636,154 +2311,129 @@ void main() {
       expect(
         row,
         matches(RegExp(r'RunTrackPreview\([^)]*runId:', dotAll: true)),
-        reason:
-            'the run row must thread the run id into RunTrackPreview so '
+        reason: 'the run row must thread the run id into RunTrackPreview so '
             'the clip-public-track EF can resolve it.',
       );
       expect(
         row,
         matches(RegExp(r'RunTrackPreview\([^)]*ownerUserId:', dotAll: true)),
-        reason:
-            'the run row must thread the run owner id into '
+        reason: 'the run row must thread the run owner id into '
             'RunTrackPreview so the privacy-zone clip kicks in.',
       );
       expect(
         File('lib/screens/profile_screen.dart').readAsStringSync(),
         contains('ownerUserId: widget.userId'),
-        reason:
-            'and the profile must supply it — this list is the one that '
+        reason: 'and the profile must supply it — this list is the one that '
             'shows other runners\' runs.',
       );
     });
 
-    test(
-      'the coach view clips the athlete map as the athlete, not the coach',
-      () {
-        // Reason: decisions § 1968 serves a linked coach the athlete's run map
-        // only through clip-public-track. Without ownerUserId the preview
-        // would take the owner branch and ask Storage for the raw bytes.
-        final source = File(
-          'lib/screens/coaching_athlete_screen.dart',
-        ).readAsStringSync();
-        expect(
-          source,
-          matches(RegExp(r'RunTrackPreview\([^)]*runId: r\.id', dotAll: true)),
-          reason: 'the coach view must thread the run id into RunTrackPreview.',
-        );
-        expect(
-          source,
-          matches(
-            RegExp(
-              r'RunTrackPreview\([^)]*ownerUserId: widget\.athleteId',
-              dotAll: true,
-            ),
-          ),
-          reason:
-              'the coach view must name the athlete as the owner, so the '
-              'privacy-zone clip runs against the athlete\'s zones.',
-        );
-      },
-    );
+    test('the coach view clips the athlete map as the athlete, not the coach',
+        () {
+      // Reason: decisions § 1968 serves a linked coach the athlete's run map
+      // only through clip-public-track. Without ownerUserId the preview
+      // would take the owner branch and ask Storage for the raw bytes.
+      final source =
+          File('lib/screens/coaching_athlete_screen.dart').readAsStringSync();
+      expect(
+        source,
+        matches(RegExp(r'RunTrackPreview\([^)]*runId: r\.id', dotAll: true)),
+        reason: 'the coach view must thread the run id into RunTrackPreview.',
+      );
+      expect(
+        source,
+        matches(RegExp(r'RunTrackPreview\([^)]*ownerUserId: widget\.athleteId',
+            dotAll: true)),
+        reason: 'the coach view must name the athlete as the owner, so the '
+            'privacy-zone clip runs against the athlete\'s zones.',
+      );
+    });
 
     test('RunTrackPreview cache is bounded (LRU)', () {
       // Reason: without the cap a long session through 1000+ runs
       // holds every deserialised track in memory until app restart.
       // Map preserves insertion order so dropping `keys.first` evicts
       // the oldest.
-      final source = File(
-        'lib/widgets/run_track_preview.dart',
-      ).readAsStringSync();
+      final source = File('lib/widgets/run_track_preview.dart')
+          .readAsStringSync();
       expect(
         source,
         contains('_cacheMax'),
-        reason:
-            'RunTrackPreview cache must have a bounded size — see '
+        reason: 'RunTrackPreview cache must have a bounded size — see '
             'the _cacheMax constant.',
       );
       expect(
         source,
         contains('_cache.remove(_cache.keys.first)'),
-        reason:
-            'LRU eviction must drop the oldest entry when the cache '
+        reason: 'LRU eviction must drop the oldest entry when the cache '
             'is full.',
       );
     });
 
-    test(
-      'public_run_screen routes non-owner tracks through clip-public-track EF',
-      () {
-        // Reason: /share/run/[id] (and the feed-card → public_run_screen
-        // navigation path) renders runs from arbitrary owners. The pre-
-        // 20260619_001 pattern of "fetchTrackByPath then clipTrackForUser"
-        // leaked the unclipped blob via direct Storage download. The
-        // screen must now branch on `api.userId == row.userId`: owners
-        // take fetchTrackByPath (direct, gated by per-user-folder
-        // policy), non-owners take fetchClippedTrackForRun (EF,
-        // server-side clip).
-        final source = File(
-          'lib/screens/public_run_screen.dart',
-        ).readAsStringSync();
-        expect(
-          source,
-          contains('fetchClippedTrackForRun'),
-          reason:
-              'public_run_screen must use fetchClippedTrackForRun '
-              'for non-owner viewers. See decisions §33.',
-        );
-        // The owner gate must compare against widget.api.userId — not
-        // some hard-coded "always clip" or "never clip".
-        expect(
-          source,
-          matches(RegExp(r'widget\.api\.userId')),
-          reason:
-              'public_run_screen must read the viewer id from '
-              'widget.api.userId so the clip step is skipped only for the '
-              'run owner.',
-        );
-      },
-    );
+    test('public_run_screen routes non-owner tracks through clip-public-track EF',
+        () {
+      // Reason: /share/run/[id] (and the feed-card → public_run_screen
+      // navigation path) renders runs from arbitrary owners. The pre-
+      // 20260619_001 pattern of "fetchTrackByPath then clipTrackForUser"
+      // leaked the unclipped blob via direct Storage download. The
+      // screen must now branch on `api.userId == row.userId`: owners
+      // take fetchTrackByPath (direct, gated by per-user-folder
+      // policy), non-owners take fetchClippedTrackForRun (EF,
+      // server-side clip).
+      final source =
+          File('lib/screens/public_run_screen.dart').readAsStringSync();
+      expect(
+        source,
+        contains('fetchClippedTrackForRun'),
+        reason: 'public_run_screen must use fetchClippedTrackForRun '
+            'for non-owner viewers. See decisions §33.',
+      );
+      // The owner gate must compare against widget.api.userId — not
+      // some hard-coded "always clip" or "never clip".
+      expect(
+        source,
+        matches(RegExp(r'widget\.api\.userId')),
+        reason: 'public_run_screen must read the viewer id from '
+            'widget.api.userId so the clip step is skipped only for the '
+            'run owner.',
+      );
+    });
 
-    test(
-      'public_route_screen routes non-owner waypoints through clipRouteForViewer',
-      () {
-        // Reason: /share/route/[id] is reachable by anyone with the
-        // link, including unauthenticated viewers. Routes own a planned
-        // polyline that leaks the same start / end / interior locations
-        // a recorded run would. Same gate as public_run_screen — clip
-        // unless the viewer is the route owner. Use the route-specific
-        // RPC `clipRouteForViewer`, NOT the run-bound
-        // `fetchClippedTrackForRun` (which resolves a RUN id through the
-        // clip-public-track Edge Function and knows nothing about route
-        // visibility).
-        final source = File(
-          'lib/screens/public_route_screen.dart',
-        ).readAsStringSync();
-        expect(
-          source,
-          contains('clipRouteForViewer'),
-          reason:
-              'public_route_screen must clip non-owner waypoints '
-              'through `clipRouteForViewer`, the route-specific RPC. '
-              'See decisions §33.',
-        );
-        expect(
-          source,
-          isNot(matches(RegExp(r'\.fetchClippedTrackForRun\s*\('))),
-          reason:
-              'public_route_screen must not clip through the run path — '
-              'it takes a run id and skips route visibility / club-member '
-              'checks. Use clipRouteForViewer.',
-        );
-        expect(
-          source,
-          matches(RegExp(r'widget\.api\.userId')),
-          reason:
-              'public_route_screen must read the viewer id from '
-              'widget.api.userId so the clip step is skipped only for the '
-              'route owner.',
-        );
-      },
-    );
+    test('public_route_screen routes non-owner waypoints through clipRouteForViewer',
+        () {
+      // Reason: /share/route/[id] is reachable by anyone with the
+      // link, including unauthenticated viewers. Routes own a planned
+      // polyline that leaks the same start / end / interior locations
+      // a recorded run would. Same gate as public_run_screen — clip
+      // unless the viewer is the route owner. Use the route-specific
+      // RPC `clipRouteForViewer`, NOT the run-bound
+      // `fetchClippedTrackForRun` (which resolves a RUN id through the
+      // clip-public-track Edge Function and knows nothing about route
+      // visibility).
+      final source =
+          File('lib/screens/public_route_screen.dart').readAsStringSync();
+      expect(
+        source,
+        contains('clipRouteForViewer'),
+        reason: 'public_route_screen must clip non-owner waypoints '
+            'through `clipRouteForViewer`, the route-specific RPC. '
+            'See decisions §33.',
+      );
+      expect(
+        source,
+        isNot(matches(RegExp(r'\.fetchClippedTrackForRun\s*\('))),
+        reason: 'public_route_screen must not clip through the run path — '
+            'it takes a run id and skips route visibility / club-member '
+            'checks. Use clipRouteForViewer.',
+      );
+      expect(
+        source,
+        matches(RegExp(r'widget\.api\.userId')),
+        reason: 'public_route_screen must read the viewer id from '
+            'widget.api.userId so the clip step is skipped only for the '
+            'route owner.',
+      );
+    });
 
     test('fetchRouteById exposes owner id alongside the Route', () {
       // Reason: Route (the domain class) drops `user_id` to keep its
@@ -2792,18 +2442,14 @@ void main() {
       // either over-clips (blanks the owner's own map) or under-clips
       // (privacy leak). The record-shaped return is the contract that
       // makes the clip gate safe.
-      final source = File(
-        '../../packages/api_client/lib/src/api_client.dart',
-      ).readAsStringSync();
+      final source =
+          File('../../packages/api_client/lib/src/api_client.dart')
+              .readAsStringSync();
       expect(
         source,
-        matches(
-          RegExp(
-            r'Future<\(\{Route\? route, String\? ownerId\}\)>\s+fetchRouteById',
-          ),
-        ),
-        reason:
-            'fetchRouteById must return both the Route and the '
+        matches(RegExp(
+            r'Future<\(\{Route\? route, String\? ownerId\}\)>\s+fetchRouteById')),
+        reason: 'fetchRouteById must return both the Route and the '
             'owner id so public_route_screen can clip for non-owner '
             'viewers. See decisions §33.',
       );
@@ -2817,105 +2463,91 @@ void main() {
       // _displayWaypoints via clipRouteForViewer for non-owners; the
       // owner branch reads route.waypoints directly so an outage
       // doesn't blank the owner's own map.
-      final source = File(
-        'lib/screens/route_detail_screen.dart',
-      ).readAsStringSync();
+      final source =
+          File('lib/screens/route_detail_screen.dart').readAsStringSync();
       expect(
         source,
         contains('clipRouteForViewer'),
-        reason:
-            'route_detail_screen must call clipRouteForViewer for '
+        reason: 'route_detail_screen must call clipRouteForViewer for '
             'non-owner viewers — bare route.waypoints render leaks the '
             'unclipped polyline. See decisions §33.',
       );
       expect(
         source,
         matches(RegExp(r'plannedRoute:\s*_displayWaypoints')),
-        reason:
-            'route_detail_screen must hand _displayWaypoints to '
+        reason: 'route_detail_screen must hand _displayWaypoints to '
             'LiveRunMap, not route.waypoints — the row column is the '
             'unclipped polyline for non-owners.',
       );
     });
 
-    test(
-      'routes_screen + club_detail + explore_routes use RouteTrackPreview',
-      () {
-        // Reason: same audit. Three list-view screens previously
-        // rendered <TrackPreview points: route.waypoints>. Owned rows
-        // were fine but bookmarked / club / community-public rows leaked.
-        // RouteTrackPreview wraps with the same lazy clip + cache
-        // pattern as RunTrackPreview so non-owner viewers see clipped
-        // output and owners short-circuit to the row column.
-        for (final path in const [
-          'lib/screens/routes_screen.dart',
-          'lib/screens/club_detail_screen.dart',
-          'lib/screens/explore_routes_screen.dart',
-        ]) {
-          final source = File(path).readAsStringSync();
-          expect(
-            source,
-            contains('RouteTrackPreview'),
-            reason:
-                '$path must use RouteTrackPreview rather than bare TrackPreview — '
-                'non-owner thumbnails leak the unclipped polyline otherwise. '
-                'See decisions §33.',
-          );
-        }
-      },
-    );
+    test('routes_screen + club_detail + explore_routes use RouteTrackPreview',
+        () {
+      // Reason: same audit. Three list-view screens previously
+      // rendered <TrackPreview points: route.waypoints>. Owned rows
+      // were fine but bookmarked / club / community-public rows leaked.
+      // RouteTrackPreview wraps with the same lazy clip + cache
+      // pattern as RunTrackPreview so non-owner viewers see clipped
+      // output and owners short-circuit to the row column.
+      for (final path in const [
+        'lib/screens/routes_screen.dart',
+        'lib/screens/club_detail_screen.dart',
+        'lib/screens/explore_routes_screen.dart',
+      ]) {
+        final source = File(path).readAsStringSync();
+        expect(
+          source,
+          contains('RouteTrackPreview'),
+          reason:
+              '$path must use RouteTrackPreview rather than bare TrackPreview — '
+              'non-owner thumbnails leak the unclipped polyline otherwise. '
+              'See decisions §33.',
+        );
+      }
+    });
 
-    test(
-      'RouteTrackPreview routes non-owner fetches through clip_route_for_viewer',
-      () {
-        // Reason: clipRouteForViewer is the only path that returns
-        // clipped waypoints without first leaking the row's `waypoints`
-        // column to the wire. Owner reads use the prop directly;
-        // non-owner reads must call ApiClient.clipRouteForViewer.
-        final source = File(
-          'lib/widgets/route_track_preview.dart',
-        ).readAsStringSync();
-        expect(
-          source,
-          contains('clipRouteForViewer'),
-          reason:
-              'RouteTrackPreview must use ApiClient.clipRouteForViewer '
-              'for non-owner viewers. See decisions §33.',
-        );
-        // LRU bound — same shape as RunTrackPreview.
-        expect(
-          source,
-          contains('_cacheMax'),
-          reason:
-              'RouteTrackPreview cache must have a bounded size — '
-              'see RunTrackPreview for the LRU shape.',
-        );
-      },
-    );
+    test('RouteTrackPreview routes non-owner fetches through clip_route_for_viewer',
+        () {
+      // Reason: clipRouteForViewer is the only path that returns
+      // clipped waypoints without first leaking the row's `waypoints`
+      // column to the wire. Owner reads use the prop directly;
+      // non-owner reads must call ApiClient.clipRouteForViewer.
+      final source =
+          File('lib/widgets/route_track_preview.dart').readAsStringSync();
+      expect(
+        source,
+        contains('clipRouteForViewer'),
+        reason: 'RouteTrackPreview must use ApiClient.clipRouteForViewer '
+            'for non-owner viewers. See decisions §33.',
+      );
+      // LRU bound — same shape as RunTrackPreview.
+      expect(
+        source,
+        contains('_cacheMax'),
+        reason: 'RouteTrackPreview cache must have a bounded size — '
+            'see RunTrackPreview for the LRU shape.',
+      );
+    });
 
     test('clipRouteForViewer fails closed on RPC error', () {
       // Reason: the same fail-closed contract fetchClippedTrackForRun
       // keeps for runs. Returning the unclipped row column on RPC error
       // would defeat the helper.
-      final source = File(
-        '../../packages/api_client/lib/src/api_client.dart',
-      ).readAsStringSync();
+      final source =
+          File('../../packages/api_client/lib/src/api_client.dart')
+              .readAsStringSync();
       final body = _extractMethodBody(
         source,
         r'Future<List<Waypoint>> clipRouteForViewer\([^)]*\)\s*async\s*\{',
       );
       final tail = body.substring(body.indexOf('try'));
-      expect(
-        RegExp(r'catch \([^)]*\) \{').hasMatch(tail),
-        isTrue,
-        reason: 'clipRouteForViewer must have an explicit catch branch.',
-      );
+      expect(RegExp(r'catch \([^)]*\) \{').hasMatch(tail), isTrue,
+          reason: 'clipRouteForViewer must have an explicit catch branch.');
       final catchBody = _extractMethodBody(tail, r'catch \([^)]*\) \{');
       expect(
         catchBody.contains('return const []'),
         isTrue,
-        reason:
-            'clipRouteForViewer must return [] on RPC failure — '
+        reason: 'clipRouteForViewer must return [] on RPC failure — '
             'see decisions §33.',
       );
     });
@@ -2929,22 +2561,24 @@ void main() {
       // Every public-runs reader must read from the view. fetchRunById
       // was renamed to fetchPublicRunById in the same change to make
       // the contract explicit.
-      final source = File(
-        '../../packages/api_client/lib/src/api_client.dart',
-      ).readAsStringSync();
+      final source =
+          File('../../packages/api_client/lib/src/api_client.dart')
+              .readAsStringSync();
       for (final fn in const [
         'fetchPublicRunById',
         'fetchPublicRunsByUser',
         'fetchFollowingFeed',
       ]) {
         final start = source.indexOf(' $fn(');
-        expect(start >= 0, isTrue, reason: 'Could not locate $fn — rename?');
+        expect(start >= 0, isTrue,
+            reason: 'Could not locate $fn — rename?');
         // Walk forward to the next blank-line + close-brace which is
         // the natural end of an api_client method body. Concrete
         // enough for the assertion: we just need the .from() call
         // present somewhere in the body region.
         final end = source.indexOf('\n  }\n', start);
-        expect(end > start, isTrue, reason: 'Could not locate end of $fn body');
+        expect(end > start, isTrue,
+            reason: 'Could not locate end of $fn body');
         final body = source.substring(start, end);
         expect(
           body.contains("from('public_runs')"),
@@ -2971,14 +2605,15 @@ void main() {
       // non-owner now returns [] rather than erroring, so the cross-modal
       // following feed silently lost every followee's public lift
       // (issue #527). The view is the only non-owner lift read path.
-      final source = File(
-        '../../packages/api_client/lib/src/api_client.dart',
-      ).readAsStringSync();
+      final source =
+          File('../../packages/api_client/lib/src/api_client.dart')
+              .readAsStringSync();
       const fn = '_fetchFollowingLifts';
       // Anchored on the declaration, not a bare ` $fn(` — the call site in
       // fetchFollowingActivityFeed comes first in the file and would scope
       // the assertion to the wrong body.
-      final start = source.indexOf('Future<List<LiftFeedEntry>> $fn(');
+      final start =
+          source.indexOf('Future<List<LiftFeedEntry>> $fn(');
       expect(start >= 0, isTrue, reason: 'Could not locate $fn — rename?');
       final end = source.indexOf('\n  }\n', start);
       expect(end > start, isTrue, reason: 'Could not locate end of $fn body');
@@ -3012,20 +2647,19 @@ void main() {
       // pass that drifts from the trigger semantics. Same trust
       // contract documented on `live_spectator_screen.dart` and the
       // web equivalents.
-      final source = File('lib/race_controller.dart').readAsStringSync();
+      final source =
+          File('lib/race_controller.dart').readAsStringSync();
       expect(
         source.contains('privacy_in_any_zone'),
         isFalse,
-        reason:
-            'race_controller.dart must not call privacy_in_any_zone — '
+        reason: 'race_controller.dart must not call privacy_in_any_zone — '
             'the DB trigger is the single line of defence; see '
             'apps/backend/supabase/migrations/20260704_001_clip_race_pings_to_privacy_zones.sql.',
       );
       expect(
         source.contains('clipPointsToZones'),
         isFalse,
-        reason:
-            'race_controller.dart must not call clipPointsToZones — '
+        reason: 'race_controller.dart must not call clipPointsToZones — '
             'the DB trigger is the single line of defence.',
       );
       // Audit pass 3 widened this check: lib/privacy.dart exposes both
@@ -3036,8 +2670,7 @@ void main() {
       expect(
         source.contains('isInAnyZone'),
         isFalse,
-        reason:
-            'race_controller.dart must not call isInAnyZone — '
+        reason: 'race_controller.dart must not call isInAnyZone — '
             'fetching the broadcaster\'s zones to the client (which is '
             'what isInAnyZone requires) defeats the trigger-only '
             'trust contract documented in decisions §33.',
@@ -3065,10 +2698,7 @@ void main() {
 
     test('no direct showSnackBar calls in lib/screens or lib/widgets', () {
       final offenders = <String>[];
-      for (final f in [
-        ..._libDartFiles('screens'),
-        ..._libDartFiles('widgets'),
-      ]) {
+      for (final f in [..._libDartFiles('screens'), ..._libDartFiles('widgets')]) {
         // Skip the helper itself; its doc comment legitimately mentions
         // the API it replaces.
         if (f.path.endsWith('top_banner.dart')) continue;
@@ -3080,37 +2710,30 @@ void main() {
       expect(
         offenders,
         isEmpty,
-        reason:
-            'Use showTopBanner(context, ...) instead of '
+        reason: 'Use showTopBanner(context, ...) instead of '
             'ScaffoldMessenger.showSnackBar — see '
             'lib/widgets/top_banner.dart. Offenders: $offenders',
       );
     });
 
-    test(
-      'no ScaffoldMessenger.of(context) lookups in lib/screens or lib/widgets',
-      () {
-        final offenders = <String>[];
-        for (final f in [
-          ..._libDartFiles('screens'),
-          ..._libDartFiles('widgets'),
-        ]) {
-          if (f.path.endsWith('top_banner.dart')) continue;
-          final src = f.readAsStringSync();
-          if (src.contains('ScaffoldMessenger.of(')) {
-            offenders.add(f.path);
-          }
+    test('no ScaffoldMessenger.of(context) lookups in lib/screens or lib/widgets',
+        () {
+      final offenders = <String>[];
+      for (final f in [..._libDartFiles('screens'), ..._libDartFiles('widgets')]) {
+        if (f.path.endsWith('top_banner.dart')) continue;
+        final src = f.readAsStringSync();
+        if (src.contains('ScaffoldMessenger.of(')) {
+          offenders.add(f.path);
         }
-        expect(
-          offenders,
-          isEmpty,
-          reason:
-              'ScaffoldMessenger.of(context) is the SnackBar entrypoint; '
-              'route notifications through showTopBanner instead. '
-              'Offenders: $offenders',
-        );
-      },
-    );
+      }
+      expect(
+        offenders,
+        isEmpty,
+        reason: 'ScaffoldMessenger.of(context) is the SnackBar entrypoint; '
+            'route notifications through showTopBanner instead. '
+            'Offenders: $offenders',
+      );
+    });
   });
 
   group('explore-screen save never copies a non-owner route', () {
@@ -3125,103 +2748,77 @@ void main() {
     // detail screen it opens owns any clipped fetch. This guard pins
     // that the screen keeps it that way.
 
-    final src = File(
-      'lib/screens/explore_routes_screen.dart',
-    ).readAsStringSync();
+    final src =
+        File('lib/screens/explore_routes_screen.dart').readAsStringSync();
 
     test('_toggleBookmark writes a saved_routes reference, not a copy', () {
       final body = _extractMethodBody(
         src,
         r'Future<void> _toggleBookmark\(cm\.Route route\)\s*async\s*\{',
       );
-      expect(
-        body.contains('bookmarkRoute(route.id)'),
-        isTrue,
-        reason:
-            'saving from Explore must go through '
-            'ApiClient.bookmarkRoute, the saved_routes reference.',
-      );
-      expect(
-        body.contains('unbookmarkRoute(route.id)'),
-        isTrue,
-        reason:
-            'a second tap must remove the reference via '
-            'ApiClient.unbookmarkRoute.',
-      );
-      expect(
-        body.contains('routeStore'),
-        isFalse,
-        reason:
-            'the bookmark must not persist the route locally — '
-            'an Explore row has no clipped polyline to store.',
-      );
+      expect(body.contains('bookmarkRoute(route.id)'), isTrue,
+          reason: 'saving from Explore must go through '
+              'ApiClient.bookmarkRoute, the saved_routes reference.');
+      expect(body.contains('unbookmarkRoute(route.id)'), isTrue,
+          reason: 'a second tap must remove the reference via '
+              'ApiClient.unbookmarkRoute.');
+      expect(body.contains('routeStore'), isFalse,
+          reason: 'the bookmark must not persist the route locally — '
+              'an Explore row has no clipped polyline to store.');
     });
 
     test('nothing on the screen saves a route into the local store', () {
-      expect(
-        RegExp(r'routeStore\s*\.\s*save').hasMatch(src),
-        isFalse,
-        reason:
-            'Explore must not copy a public route into '
-            'LocalRouteStore; if a local copy is ever needed again, it '
-            'must come from ApiClient.fetchRouteById (owner-aware '
-            'clipping), and this guard must pin that order.',
-      );
+      expect(RegExp(r'routeStore\s*\.\s*save').hasMatch(src), isFalse,
+          reason: 'Explore must not copy a public route into '
+              'LocalRouteStore; if a local copy is ever needed again, it '
+              'must come from ApiClient.fetchRouteById (owner-aware '
+              'clipping), and this guard must pin that order.');
     });
   });
 
-  group(
-    'live spectator cutoff card reads route geometry via fetchRouteById',
-    () {
-      // Reason: audit/privacy-zones Medium (2026-07-02) — the next-cutoff
-      // ETA card on the live spectator surface projects the runner's live
-      // position against the linked route's waypoints, and the viewer is
-      // usually NOT the route owner (a club member or an anon visitor with
-      // the public share link). ApiClient.fetchRouteById is the owner-aware
-      // reader: it returns the raw polyline only to the owner and routes
-      // every other viewer through clip_route_for_viewer, failing closed to
-      // an empty polyline on RPC error. The screen must source the roadbook
-      // waypoints from that helper only — a direct routes-table read here
-      // would resurrect the unclipped wire-leak that was closed at the
-      // data-fetch root (decisions §33).
+  group('live spectator cutoff card reads route geometry via fetchRouteById',
+      () {
+    // Reason: audit/privacy-zones Medium (2026-07-02) — the next-cutoff
+    // ETA card on the live spectator surface projects the runner's live
+    // position against the linked route's waypoints, and the viewer is
+    // usually NOT the route owner (a club member or an anon visitor with
+    // the public share link). ApiClient.fetchRouteById is the owner-aware
+    // reader: it returns the raw polyline only to the owner and routes
+    // every other viewer through clip_route_for_viewer, failing closed to
+    // an empty polyline on RPC error. The screen must source the roadbook
+    // waypoints from that helper only — a direct routes-table read here
+    // would resurrect the unclipped wire-leak that was closed at the
+    // data-fetch root (decisions §33).
 
-      test(
-        '_loadCutoffLegs sources waypoints from api.fetchRouteById only',
-        () {
-          final src = File(
-            'lib/screens/live_spectator_screen.dart',
-          ).readAsStringSync();
-          final body = _extractMethodBody(
-            src,
-            r'Future<void> _loadCutoffLegs\([^)]*\)\s*async\s*\{',
-          );
-          expect(
-            body.contains('fetchRouteById'),
-            isTrue,
-            reason:
-                '_loadCutoffLegs must fetch the route via '
-                'ApiClient.fetchRouteById — the owner-aware reader that clips '
-                'waypoints for non-owner viewers.',
-          );
-          expect(
-            src.contains("from('routes')"),
-            isFalse,
-            reason:
-                'live_spectator_screen.dart must not read the routes table '
-                'directly — RLS surfaces unclipped club-owned rows to club '
-                'members, and only fetchRouteById applies the non-owner clip.',
-          );
-          expect(
-            src.contains('RouteRow.table'),
-            isFalse,
-            reason:
-                'live_spectator_screen.dart must not query RouteRow.table — '
-                'route reads go through ApiClient.fetchRouteById.',
-          );
-        },
+    test('_loadCutoffLegs sources waypoints from api.fetchRouteById only', () {
+      final src =
+          File('lib/screens/live_spectator_screen.dart').readAsStringSync();
+      final body = _extractMethodBody(
+        src,
+        r'Future<void> _loadCutoffLegs\([^)]*\)\s*async\s*\{',
       );
-    },
-  );
+      expect(
+        body.contains('fetchRouteById'),
+        isTrue,
+        reason: '_loadCutoffLegs must fetch the route via '
+            'ApiClient.fetchRouteById — the owner-aware reader that clips '
+            'waypoints for non-owner viewers.',
+      );
+      expect(
+        src.contains("from('routes')"),
+        isFalse,
+        reason: 'live_spectator_screen.dart must not read the routes table '
+            'directly — RLS surfaces unclipped club-owned rows to club '
+            'members, and only fetchRouteById applies the non-owner clip.',
+      );
+      expect(
+        src.contains('RouteRow.table'),
+        isFalse,
+        reason: 'live_spectator_screen.dart must not query RouteRow.table — '
+            'route reads go through ApiClient.fetchRouteById.',
+      );
+    });
+  });
 
   group('release builds never load .env.development', () {
     // Reason: pubspec.yaml ships .env.development as a Flutter asset for
@@ -3234,56 +2831,53 @@ void main() {
     // dotenv.load call in main.dart — release builds skip the load
     // entirely so the asset bytes, even if extractable from the APK, are
     // never read by the app. /audit/all High (secrets agent, 2026-05-07).
-    test(
-      'main.dart only calls dotenv.load(\'.env.development\') under kDebugMode',
-      () {
-        final source = File('lib/main.dart').readAsStringSync();
-        // Locate the `.env.development` filename argument. The call may be
-        // formatted across several lines (dart format splits it once the
-        // argument list grows), so don't assume `dotenv.load(` and the
-        // `fileName:` argument share a line.
-        final fileArgIdx = source.indexOf("fileName: '.env.development'");
-        expect(
-          fileArgIdx,
-          greaterThan(0),
-          reason:
-              'Expected dotenv.load(fileName: \'.env.development\', ...) in main.dart. '
-              'If the call has been replaced or removed, update this guard.',
-        );
-        // That argument must belong to a dotenv.load(...) call.
-        final loadIdx = source.lastIndexOf('dotenv.load(', fileArgIdx);
-        expect(
-          loadIdx,
-          greaterThan(0),
-          reason:
-              'fileName: \'.env.development\' must be an argument to dotenv.load(...).',
-        );
-        // Walk backwards to find the nearest `if (` opening — the load
-        // must sit inside an `if (kDebugMode) { ... }` block.
-        final preceding = source.substring(0, loadIdx);
-        final guardIdx = preceding.lastIndexOf('if (kDebugMode)');
-        expect(
-          guardIdx,
-          greaterThan(0),
-          reason:
-              'dotenv.load(\'.env.development\', ...) must sit inside an '
-              '`if (kDebugMode) { ... }` block. Removing the guard re-opens '
-              'the audit/secrets High where release-built APKs leak the '
-              'developer\'s local secrets via the bundled asset.',
-        );
-        // Sanity check: no other `if (` clause must intercede between
-        // the kDebugMode guard and the load — otherwise the kDebugMode
-        // block could be empty while the load lives elsewhere.
-        final between = source.substring(guardIdx, loadIdx);
-        expect(
-          between.indexOf('if (', 'if (kDebugMode)'.length),
-          -1,
-          reason:
-              'The kDebugMode guard must directly wrap the dotenv.load '
-              'call — no intermediate conditional.',
-        );
-      },
-    );
+    test('main.dart only calls dotenv.load(\'.env.development\') under kDebugMode',
+        () {
+      final source = File('lib/main.dart').readAsStringSync();
+      // Locate the `.env.development` filename argument. The call may be
+      // formatted across several lines (dart format splits it once the
+      // argument list grows), so don't assume `dotenv.load(` and the
+      // `fileName:` argument share a line.
+      final fileArgIdx = source.indexOf("fileName: '.env.development'");
+      expect(
+        fileArgIdx,
+        greaterThan(0),
+        reason:
+            'Expected dotenv.load(fileName: \'.env.development\', ...) in main.dart. '
+            'If the call has been replaced or removed, update this guard.',
+      );
+      // That argument must belong to a dotenv.load(...) call.
+      final loadIdx = source.lastIndexOf('dotenv.load(', fileArgIdx);
+      expect(
+        loadIdx,
+        greaterThan(0),
+        reason:
+            'fileName: \'.env.development\' must be an argument to dotenv.load(...).',
+      );
+      // Walk backwards to find the nearest `if (` opening — the load
+      // must sit inside an `if (kDebugMode) { ... }` block.
+      final preceding = source.substring(0, loadIdx);
+      final guardIdx = preceding.lastIndexOf('if (kDebugMode)');
+      expect(
+        guardIdx,
+        greaterThan(0),
+        reason:
+            'dotenv.load(\'.env.development\', ...) must sit inside an '
+            '`if (kDebugMode) { ... }` block. Removing the guard re-opens '
+            'the audit/secrets High where release-built APKs leak the '
+            'developer\'s local secrets via the bundled asset.',
+      );
+      // Sanity check: no other `if (` clause must intercede between
+      // the kDebugMode guard and the load — otherwise the kDebugMode
+      // block could be empty while the load lives elsewhere.
+      final between = source.substring(guardIdx, loadIdx);
+      expect(
+        between.indexOf('if (', 'if (kDebugMode)'.length),
+        -1,
+        reason: 'The kDebugMode guard must directly wrap the dotenv.load '
+            'call — no intermediate conditional.',
+      );
+    });
 
     // Reason: the startup seed auto-login (DEV_USER_EMAIL/PASSWORD) must
     // never sign a user into production. The gate lives in
@@ -3295,20 +2889,12 @@ void main() {
       final source = File('lib/main.dart').readAsStringSync();
       final gateIdx = source.indexOf('shouldAutoLogin(');
       final signInIdx = source.indexOf('api!.signIn(');
-      expect(
-        gateIdx,
-        greaterThan(0),
-        reason:
-            'main.dart must call shouldAutoLogin(...) — the loopback '
-            'guard that stops seed creds reaching a production backend.',
-      );
-      expect(
-        signInIdx,
-        greaterThan(gateIdx),
-        reason:
-            'the auto api!.signIn(...) must sit inside the '
-            'shouldAutoLogin(...) gate, not before it.',
-      );
+      expect(gateIdx, greaterThan(0),
+          reason: 'main.dart must call shouldAutoLogin(...) — the loopback '
+              'guard that stops seed creds reaching a production backend.');
+      expect(signInIdx, greaterThan(gateIdx),
+          reason: 'the auto api!.signIn(...) must sit inside the '
+              'shouldAutoLogin(...) gate, not before it.');
     });
   });
 
@@ -3335,7 +2921,8 @@ void main() {
       'lib/race_controller.dart',
       'lib/backup.dart',
     ];
-    final apiClientPath = '../../packages/api_client/lib/src/api_client.dart';
+    final apiClientPath =
+        '../../packages/api_client/lib/src/api_client.dart';
 
     for (final path in [...mobileSources, apiClientPath]) {
       test('$path enumerates columns on clubs/events reads', () {
@@ -3364,8 +2951,7 @@ void main() {
           expect(
             p.hasMatch(stripped),
             isFalse,
-            reason:
-                'Pattern ${p.pattern} matched in $path. '
+            reason: 'Pattern ${p.pattern} matched in $path. '
                 'PostgREST `*` expansion raises 42501 against the '
                 'column-grant lockdown on clubs / events — enumerate '
                 'columns via `_clubSafeCols` / `_eventSafeCols` (or '
@@ -3416,8 +3002,7 @@ void main() {
       expect(
         sites.length,
         1,
-        reason:
-            'Expected exactly one club-insert site (the one in '
+        reason: 'Expected exactly one club-insert site (the one in '
             'social_service.dart that retries on 23505 and mints the '
             'invite token). Found: $sites. A second insert path to a '
             'unique column is a trap for whoever calls it next — route '
@@ -3432,7 +3017,8 @@ void main() {
     // that the audit pass identified as submission blockers. The
     // checks short-circuit on the iOS twin (no android/ directory).
     test('READ_MEDIA_IMAGES is stripped, never actively declared', () {
-      final file = File('android/app/src/main/AndroidManifest.xml');
+      final file =
+          File('android/app/src/main/AndroidManifest.xml');
       if (!file.existsSync()) return;
       final body = file.readAsStringSync();
       // image_picker (image_picker_android) transitively injects
@@ -3449,127 +3035,108 @@ void main() {
       final hasStrip = RegExp(
         r'READ_MEDIA_IMAGES"\s+tools:node="remove"',
       ).hasMatch(body);
-      expect(
-        hasStrip,
-        isTrue,
-        reason:
-            'AndroidManifest.xml must strip the transitively-injected '
-            'READ_MEDIA_IMAGES via tools:node="remove" so it never '
-            'reaches the merged manifest.',
-      );
+      expect(hasStrip, isTrue,
+          reason:
+              'AndroidManifest.xml must strip the transitively-injected '
+              'READ_MEDIA_IMAGES via tools:node="remove" so it never '
+              'reaches the merged manifest.');
       final hasActiveDeclaration = RegExp(
         r'READ_MEDIA_IMAGES"\s*/>',
       ).hasMatch(body);
+      expect(hasActiveDeclaration, isFalse,
+          reason:
+              'READ_MEDIA_IMAGES may appear ONLY as a tools:node="remove" '
+              'strip, never as an active <uses-permission> — the app uses '
+              'the Android Photo Picker and needs no media permission.');
+    });
+
+    test('allowBackup is disabled so GPS/HR + auth tokens stay out of cloud backup', () {
+      final file = File('android/app/src/main/AndroidManifest.xml');
+      if (!file.existsSync()) return;
+      final body = file.readAsStringSync();
+      // The local run/route/gym/food JSON caches (under app_flutter via
+      // path_provider) hold GPS traces + per-point HR, and the Supabase
+      // session (access + refresh JWT) lives in SharedPreferences. Android
+      // Auto-Backup would otherwise sweep all of it into Google's cloud.
+      // It's all server-re-derivable cache + tokens, so we opt the whole
+      // app out rather than surgically exclude. See decisions.md (at-rest
+      // / backup posture) + remediation plan 3c-b.
       expect(
-        hasActiveDeclaration,
-        isFalse,
-        reason:
-            'READ_MEDIA_IMAGES may appear ONLY as a tools:node="remove" '
-            'strip, never as an active <uses-permission> — the app uses '
-            'the Android Photo Picker and needs no media permission.',
+        body,
+        contains('android:allowBackup="false"'),
+        reason: 'AndroidManifest.xml must set android:allowBackup="false" '
+            'so the GPS/HR run cache and the SharedPreferences-stored '
+            'Supabase session are never extracted via Android Auto-Backup.',
       );
     });
 
-    test(
-      'allowBackup is disabled so GPS/HR + auth tokens stay out of cloud backup',
-      () {
-        final file = File('android/app/src/main/AndroidManifest.xml');
-        if (!file.existsSync()) return;
-        final body = file.readAsStringSync();
-        // The local run/route/gym/food JSON caches (under app_flutter via
-        // path_provider) hold GPS traces + per-point HR, and the Supabase
-        // session (access + refresh JWT) lives in SharedPreferences. Android
-        // Auto-Backup would otherwise sweep all of it into Google's cloud.
-        // It's all server-re-derivable cache + tokens, so we opt the whole
-        // app out rather than surgically exclude. See decisions.md (at-rest
-        // / backup posture) + remediation plan 3c-b.
-        expect(
-          body,
-          contains('android:allowBackup="false"'),
-          reason:
-              'AndroidManifest.xml must set android:allowBackup="false" '
-              'so the GPS/HR run cache and the SharedPreferences-stored '
-              'Supabase session are never extracted via Android Auto-Backup.',
-        );
-      },
-    );
+    test('AndroidManifest explicitly overrides geolocator service with foregroundServiceType="location"', () {
+      // Reason: the plugin's manifest declares the type via manifest
+      // merge — but the Play Data Safety reviewer reads the AS-
+      // COMPILED manifest, and Android 14's runtime check throws
+      // SecurityException if the merged result silently loses the
+      // type attribute (a plugin version bump or merge conflict can
+      // strip it without a build warning). The app's own manifest
+      // declares the service with tools:node="merge" so the type is
+      // visible in OUR file AND the plugin's other attributes
+      // (enabled, exported) survive merge. /audit/app-store-
+      // privacy May 2026 High closeout.
+      final file = File('android/app/src/main/AndroidManifest.xml');
+      if (!file.existsSync()) return;
+      final body = file.readAsStringSync();
+      expect(
+        body,
+        contains(
+            'android:name="com.baseflow.geolocator.GeolocatorLocationService"'),
+        reason: 'AndroidManifest.xml must explicitly declare the '
+            'geolocator service with our own <service> block so the '
+            'compiled manifest has foregroundServiceType="location" '
+            'visible without depending on the plugin\'s manifest merge.',
+      );
+      // The same <service> block must carry the type attribute. We
+      // grep for both literal forms (single-line + multi-line) by
+      // matching the substring after the service name.
+      expect(
+        RegExp(
+          r'GeolocatorLocationService"[\s\S]{0,200}foregroundServiceType="location"',
+        ).hasMatch(body),
+        isTrue,
+        reason: 'The explicit <service> block for '
+            'GeolocatorLocationService must carry '
+            'android:foregroundServiceType="location". Without it, a '
+            'future plugin bump that drops the attribute from the '
+            'merged manifest silently breaks Android 14 + the Play '
+            'reviewer\'s Data Safety cross-check.',
+      );
+    });
 
-    test(
-      'AndroidManifest explicitly overrides geolocator service with foregroundServiceType="location"',
-      () {
-        // Reason: the plugin's manifest declares the type via manifest
-        // merge — but the Play Data Safety reviewer reads the AS-
-        // COMPILED manifest, and Android 14's runtime check throws
-        // SecurityException if the merged result silently loses the
-        // type attribute (a plugin version bump or merge conflict can
-        // strip it without a build warning). The app's own manifest
-        // declares the service with tools:node="merge" so the type is
-        // visible in OUR file AND the plugin's other attributes
-        // (enabled, exported) survive merge. /audit/app-store-
-        // privacy May 2026 High closeout.
-        final file = File('android/app/src/main/AndroidManifest.xml');
-        if (!file.existsSync()) return;
-        final body = file.readAsStringSync();
-        expect(
-          body,
-          contains(
-            'android:name="com.baseflow.geolocator.GeolocatorLocationService"',
-          ),
-          reason:
-              'AndroidManifest.xml must explicitly declare the '
-              'geolocator service with our own <service> block so the '
-              'compiled manifest has foregroundServiceType="location" '
-              'visible without depending on the plugin\'s manifest merge.',
-        );
-        // The same <service> block must carry the type attribute. We
-        // grep for both literal forms (single-line + multi-line) by
-        // matching the substring after the service name.
-        expect(
-          RegExp(
-            r'GeolocatorLocationService"[\s\S]{0,200}foregroundServiceType="location"',
-          ).hasMatch(body),
-          isTrue,
-          reason:
-              'The explicit <service> block for '
-              'GeolocatorLocationService must carry '
-              'android:foregroundServiceType="location". Without it, a '
-              'future plugin bump that drops the attribute from the '
-              'merged manifest silently breaks Android 14 + the Play '
-              'reviewer\'s Data Safety cross-check.',
-        );
-      },
-    );
-
-    test(
-      'geolocator service pins stopWithTask=false so recording survives a Recents swipe',
-      () {
-        // Reason: geolocator's GeolocatorLocationService declares neither
-        // android:stopWithTask nor an onTaskRemoved() override, so nothing
-        // keeps the foreground GPS service alive when the user swipes the
-        // app card off Recents mid-run — the service (and its hosting
-        // process) is torn down and recording dies silently (issue #250).
-        // Our <service> override pins stopWithTask="false" so the run
-        // survives. A regression that drops the attribute re-opens the bug.
-        final file = File('android/app/src/main/AndroidManifest.xml');
-        if (!file.existsSync()) return;
-        final body = file.readAsStringSync();
-        expect(
-          RegExp(
-            r'GeolocatorLocationService"[\s\S]{0,200}stopWithTask="false"',
-          ).hasMatch(body),
-          isTrue,
-          reason:
-              'The explicit <service> block for '
-              'GeolocatorLocationService must carry '
-              'android:stopWithTask="false" so swiping the app off Recents '
-              'mid-run does not silently tear down the recording foreground '
-              'service (issue #250).',
-        );
-      },
-    );
+    test('geolocator service pins stopWithTask=false so recording survives a Recents swipe', () {
+      // Reason: geolocator's GeolocatorLocationService declares neither
+      // android:stopWithTask nor an onTaskRemoved() override, so nothing
+      // keeps the foreground GPS service alive when the user swipes the
+      // app card off Recents mid-run — the service (and its hosting
+      // process) is torn down and recording dies silently (issue #250).
+      // Our <service> override pins stopWithTask="false" so the run
+      // survives. A regression that drops the attribute re-opens the bug.
+      final file = File('android/app/src/main/AndroidManifest.xml');
+      if (!file.existsSync()) return;
+      final body = file.readAsStringSync();
+      expect(
+        RegExp(
+          r'GeolocatorLocationService"[\s\S]{0,200}stopWithTask="false"',
+        ).hasMatch(body),
+        isTrue,
+        reason: 'The explicit <service> block for '
+            'GeolocatorLocationService must carry '
+            'android:stopWithTask="false" so swiping the app off Recents '
+            'mid-run does not silently tear down the recording foreground '
+            'service (issue #250).',
+      );
+    });
 
     test('foreground services that we actually promote declare a type', () {
-      final file = File('android/app/src/main/AndroidManifest.xml');
+      final file =
+          File('android/app/src/main/AndroidManifest.xml');
       if (!file.existsSync()) return;
       final body = file.readAsStringSync();
       // Android 14+ (SDK 34+) crashes a foreground service that
@@ -3588,8 +3155,7 @@ void main() {
       expect(
         body,
         contains(
-          '<uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"',
-        ),
+            '<uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"'),
         reason:
             'AndroidManifest.xml must declare FOREGROUND_SERVICE_LOCATION '
             'so geolocator can promote its location service on SDK 34+.',
@@ -3600,8 +3166,7 @@ void main() {
       // declare it.
       expect(
         body.contains(
-          '<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"',
-        ),
+            '<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"'),
         isFalse,
         reason:
             'Do not declare FOREGROUND_SERVICE_DATA_SYNC — it backs a '
@@ -3612,12 +3177,12 @@ void main() {
     });
 
     test('Health Connect permissions XML is wired', () {
-      final manifest = File('android/app/src/main/AndroidManifest.xml');
+      final manifest =
+          File('android/app/src/main/AndroidManifest.xml');
       if (!manifest.existsSync()) return;
       final body = manifest.readAsStringSync();
       final xmlFile = File(
-        'android/app/src/main/res/xml/health_permissions.xml',
-      );
+          'android/app/src/main/res/xml/health_permissions.xml');
       expect(
         xmlFile.existsSync(),
         isTrue,
@@ -3635,7 +3200,8 @@ void main() {
       );
       expect(
         body,
-        contains('androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE'),
+        contains(
+            'androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE'),
         reason:
             'MainActivity needs an intent-filter for the Health '
             'Connect rationale entry-point so the permission sheet '
@@ -3684,7 +3250,8 @@ void main() {
     });
 
     test('targetSdk is pinned to 35 or higher', () {
-      final gradle = File('android/app/build.gradle.kts');
+      final gradle =
+          File('android/app/build.gradle.kts');
       if (!gradle.existsSync()) return;
       final body = gradle.readAsStringSync();
       // Play Console requires targetSdk >= 35 for new + updated apps.
@@ -3705,7 +3272,8 @@ void main() {
       expect(
         pin >= 35,
         isTrue,
-        reason: 'targetSdk must be >= 35 (Play Console floor). Found $pin.',
+        reason:
+            'targetSdk must be >= 35 (Play Console floor). Found $pin.',
       );
     });
 
@@ -3726,8 +3294,7 @@ void main() {
             'android.permission.$perm"[\\s\\S]{0,80}tools:node="remove"',
           ).hasMatch(body),
           isTrue,
-          reason:
-              '$perm must be declared with tools:node="remove" — it '
+          reason: '$perm must be declared with tools:node="remove" — it '
               'is injected transitively and the app uses no biometric '
               'auth, so it must not reach the binary undisclosed.',
         );
@@ -3746,10 +3313,8 @@ void main() {
       expect(
         body,
         contains(
-          '<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />',
-        ),
-        reason:
-            'RECEIVE_BOOT_COMPLETED must be declared explicitly so it '
+            '<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />'),
+        reason: 'RECEIVE_BOOT_COMPLETED must be declared explicitly so it '
             'is visible to the Play Data Safety form rather than only '
             'appearing in the merged binary via workmanager.',
       );
@@ -3763,9 +3328,8 @@ void main() {
       // 3.1.1 + Play subscription policy require it on every
       // subscription app. Source-grep guard so a future refactor
       // can't quietly drop it.
-      final source = File(
-        'lib/screens/settings_pro_screen.dart',
-      ).readAsStringSync();
+      final source =
+          File('lib/screens/settings_pro_screen.dart').readAsStringSync();
       final arb = File('lib/l10n/app_en.arb').readAsStringSync();
       // The tile title is localized via gen-l10n (proRestorePurchases);
       // the English copy lives in the ARB. Pin both so a refactor can't
@@ -3798,15 +3362,13 @@ void main() {
       // wires the tile to _openManageSubscription which prefers RC's
       // URL and falls back to the web upgrade page. /audit/app-store-
       // privacy May 2026 High closeout.
-      final source = File(
-        'lib/screens/settings_pro_screen.dart',
-      ).readAsStringSync();
+      final source =
+          File('lib/screens/settings_pro_screen.dart').readAsStringSync();
       final arb = File('lib/l10n/app_en.arb').readAsStringSync();
       expect(
         source,
         contains('l10n.proManageSubscription'),
-        reason:
-            'settings_pro_screen.dart must surface a "Manage '
+        reason: 'settings_pro_screen.dart must surface a "Manage '
             'subscription" tile (localized via l10n.proManageSubscription) so '
             'the user can reach the cancel / change-plan path from inside the '
             'app.',
@@ -3819,16 +3381,14 @@ void main() {
       expect(
         source,
         contains('_openManageSubscription(context)'),
-        reason:
-            'settings_pro_screen.dart must wire the tile to '
+        reason: 'settings_pro_screen.dart must wire the tile to '
             '_openManageSubscription() — a missing wire produces a '
             'visible-but-dead button.',
       );
       expect(
         source,
         contains('await resolveManageSubscriptionUrl('),
-        reason:
-            '_openManageSubscription must resolve its target through '
+        reason: '_openManageSubscription must resolve its target through '
             'resolveManageSubscriptionUrl(...), which asks RC for the '
             'store-specific manage page. A hard-coded URL would bypass the '
             'cancel paths Apple + Play require, and on iOS would point at '
@@ -3836,13 +3396,11 @@ void main() {
       );
       final rc = File('lib/revenuecat.dart').readAsStringSync();
       final resolver = rc.substring(
-        rc.indexOf('Future<String> resolveManageSubscriptionUrl('),
-      );
+          rc.indexOf('Future<String> resolveManageSubscriptionUrl('));
       expect(
         resolver,
         contains('await managementUrl('),
-        reason:
-            'resolveManageSubscriptionUrl must try managementUrl(...) '
+        reason: 'resolveManageSubscriptionUrl must try managementUrl(...) '
             'before falling back, or a store subscriber is sent to a page '
             'that cannot cancel their subscription.',
       );
@@ -3857,9 +3415,8 @@ void main() {
       // subtitle includes "$9.99/month" + "Auto-renews monthly until
       // cancelled" — pin both so a future "simplify the copy"
       // refactor can't strip them. /audit/app-store-privacy May 2026.
-      final source = File(
-        'lib/screens/settings_pro_screen.dart',
-      ).readAsStringSync();
+      final source =
+          File('lib/screens/settings_pro_screen.dart').readAsStringSync();
       final arb = File('lib/l10n/app_en.arb').readAsStringSync();
       // Title copy is localized: the screen passes a price into
       // proSubscribeTitle, whose English template is "Subscribe to Pro —
@@ -3870,47 +3427,40 @@ void main() {
       expect(
         source,
         contains('l10n.proSubscribeTitle(priceLabel)'),
-        reason:
-            'Subscribe-to-Pro tile title must include the price for '
+        reason: 'Subscribe-to-Pro tile title must include the price for '
             'App Store + Play in-app disclosure compliance.',
       );
       expect(
         source,
         contains('.storeProduct.priceString'),
-        reason:
-            'Subscribe-to-Pro tile must source the displayed price from '
+        reason: 'Subscribe-to-Pro tile must source the displayed price from '
             'the store (the RevenueCat package priceString) — Apple 3.1.1 / '
             'Play policy forbid a hard-coded price that ignores the territory.',
       );
       expect(
         source,
         contains('l10n.proSubscribeTitleAnnual(priceLabel)'),
-        reason:
-            'the annual plan must state its own price and period on the '
+        reason: 'the annual plan must state its own price and period on the '
             'Subscribe tile, not borrow the monthly copy.',
       );
       expect(
         source,
         contains(r"$9.99"),
-        reason:
-            'settings_pro_screen.dart must keep the \$9.99 USD list price '
+        reason: 'settings_pro_screen.dart must keep the \$9.99 USD list price '
             'as the fallback shown when RevenueCat is unconfigured or the '
             'offering has not yet loaded.',
       );
       expect(
         arb,
         contains(r'"proSubscribeTitle": "Subscribe to Pro — {price}/month"'),
-        reason:
-            'app_en.arb proSubscribeTitle must keep the "{price}/month" '
+        reason: 'app_en.arb proSubscribeTitle must keep the "{price}/month" '
             'shape so the price + period stay visible in-app.',
       );
       expect(
         arb,
         contains(
-          r'"proSubscribeTitleAnnual": "Subscribe to Pro — {price}/year"',
-        ),
-        reason:
-            'app_en.arb proSubscribeTitleAnnual must keep the '
+            r'"proSubscribeTitleAnnual": "Subscribe to Pro — {price}/year"'),
+        reason: 'app_en.arb proSubscribeTitleAnnual must keep the '
             '"{price}/year" shape so the annual price + period stay visible.',
       );
       expect(
@@ -3921,8 +3471,7 @@ void main() {
       expect(
         RegExp(r'Auto-renews|cancelled').hasMatch(arb),
         isTrue,
-        reason:
-            'Subscribe-to-Pro tile subtitle must communicate '
+        reason: 'Subscribe-to-Pro tile subtitle must communicate '
             'auto-renewal AND how to cancel — at minimum the words '
             '"Auto-renews" or "cancelled" appear in the ARB copy.',
       );
@@ -3952,20 +3501,18 @@ void main() {
           expect(
             unlimited.hasMatch(entry.value as String),
             isFalse,
-            reason:
-                '${file.path} ${entry.key} must not claim unlimited use: '
+            reason: '${file.path} ${entry.key} must not claim unlimited use: '
                 '"${entry.value}"',
           );
         }
       }
 
       final coach = File('lib/screens/coach_screen.dart').readAsStringSync();
-      final cap = RegExp(
-        r'static const _proDailyLimit = (\d+);',
-      ).firstMatch(coach)!.group(1);
-      final en =
-          jsonDecode(File('lib/l10n/app_en.arb').readAsStringSync())
-              as Map<String, dynamic>;
+      final cap = RegExp(r'static const _proDailyLimit = (\d+);')
+          .firstMatch(coach)!
+          .group(1);
+      final en = jsonDecode(File('lib/l10n/app_en.arb').readAsStringSync())
+          as Map<String, dynamic>;
       for (final key in [
         'proSubscribeSubtitleConfigured',
         'proSubscribeSubtitleConfiguredAnnual',
@@ -3973,8 +3520,7 @@ void main() {
         expect(
           en[key] as String,
           startsWith('$cap AI coach messages a day'),
-          reason:
-              '$key must state the same Pro coach cap the coach screen '
+          reason: '$key must state the same Pro coach cap the coach screen '
               'enforces (_proDailyLimit = $cap), on both plans alike.',
         );
       }
@@ -4020,8 +3566,7 @@ void main() {
         expect(
           source,
           contains(key),
-          reason:
-              'run_screen.dart must wrap the matching control in '
+          reason: 'run_screen.dart must wrap the matching control in '
               "Semantics(label: $key) so TalkBack / VoiceOver "
               'announce it correctly. audit/accessibility Critical.',
         );
@@ -4033,8 +3578,7 @@ void main() {
       expect(
         source,
         contains('paused ? l10n.runResumeA11yLabel : l10n.runPauseA11yLabel'),
-        reason:
-            'Pause/Resume Semantics label must flip on `paused` '
+        reason: 'Pause/Resume Semantics label must flip on `paused` '
             'so a screen reader announces the current state. '
             'audit/accessibility Critical.',
       );
@@ -4075,16 +3619,14 @@ void main() {
       expect(
         holdBtn,
         contains('label: l10n.runStopA11yLabel'),
-        reason:
-            '_HoldToStopButton must wrap its visible button in '
+        reason: '_HoldToStopButton must wrap its visible button in '
             'Semantics(label: l10n.runStopA11yLabel) so TalkBack / '
             'VoiceOver announce it.',
       );
       expect(
         holdBtn,
         contains('onTap: widget.onHoldComplete'),
-        reason:
-            '_HoldToStopButton must give the Semantics node an '
+        reason: '_HoldToStopButton must give the Semantics node an '
             'onTap that fires onHoldComplete — a screen-reader user '
             'cannot perform the sustained hold gesture, so without '
             'this the run can never be stopped in voice-only mode.',
@@ -4100,8 +3642,7 @@ void main() {
       expect(
         source,
         contains('label: l10n.runStartA11yLabel'),
-        reason:
-            'run_screen.dart must wrap the idle-surface START '
+        reason: 'run_screen.dart must wrap the idle-surface START '
             'button in Semantics(label: l10n.runStartA11yLabel). '
             '(Label localized via gen-l10n in the i18n run-recording pass.)',
       );
@@ -4113,8 +3654,7 @@ void main() {
       expect(
         source,
         contains('SemanticsService.announce'),
-        reason:
-            'run_screen.dart must call SemanticsService.announce '
+        reason: 'run_screen.dart must call SemanticsService.announce '
             'on start / pause / resume / lap / finish transitions so '
             'screen-reader users hear status changes — the TTS audio '
             'cues are gated on a user pref and cannot satisfy '
@@ -4134,8 +3674,7 @@ void main() {
         expect(
           source,
           contains(key),
-          reason:
-              'run_screen.dart must announce $key via '
+          reason: 'run_screen.dart must announce $key via '
               'SemanticsService.announce — see audit/accessibility '
               '(2026-05-25).',
         );
@@ -4173,8 +3712,7 @@ void main() {
       expect(
         offenders,
         isEmpty,
-        reason:
-            'Silent catch (_) {} sites violate the layered-resilience '
+        reason: 'Silent catch (_) {} sites violate the layered-resilience '
             'contract (docs/architecture/conventions.md). Replace with '
             'catch (e) { debugPrint(\'...\'); } so failures stay '
             'observable. Found:\n  ${offenders.join('\n  ')}',
@@ -4183,22 +3721,18 @@ void main() {
   });
 
   group('segments v2 wiring', () {
-    test(
-      'SegmentsPanel widget calls the v2 tiered RPC, not the v1 fetcher',
-      () {
-        // Reason: the panel switched to fetchSegmentLeaderboardTiered when
-        // v2 shipped. Reaching for v1 silently drops the gender + age-band
-        // filtering even when the dropdowns are populated.
-        final source = File(
-          'lib/widgets/segments_panel.dart',
-        ).readAsStringSync();
-        expect(
-          source.contains('fetchSegmentLeaderboardTiered'),
-          isTrue,
-          reason: 'segments_panel.dart must route through the v2 RPC',
-        );
-      },
-    );
+    test('SegmentsPanel widget calls the v2 tiered RPC, not the v1 fetcher',
+        () {
+      // Reason: the panel switched to fetchSegmentLeaderboardTiered when
+      // v2 shipped. Reaching for v1 silently drops the gender + age-band
+      // filtering even when the dropdowns are populated.
+      final source = File('lib/widgets/segments_panel.dart').readAsStringSync();
+      expect(
+        source.contains('fetchSegmentLeaderboardTiered'),
+        isTrue,
+        reason: 'segments_panel.dart must route through the v2 RPC',
+      );
+    });
 
     test('SegmentsPanel uses the shared kSegmentAgeBands constant', () {
       // Reason: a panel-local copy of the age bins would drift from the
@@ -4208,8 +3742,7 @@ void main() {
       expect(
         source.contains('kSegmentAgeBands'),
         isTrue,
-        reason:
-            'segments_panel.dart must read kSegmentAgeBands from api_client',
+        reason: 'segments_panel.dart must read kSegmentAgeBands from api_client',
       );
       expect(
         source.contains("const kSegmentAgeBands = <String>["),
@@ -4224,33 +3757,22 @@ void main() {
       // lastTime=-1 sentinel that collided with a real time of 0/-1.
       // Both paths now route through the shared helper. The check pulls
       // each function body by slicing between known anchor points.
-      final source = File(
-        '../../packages/api_client/lib/src/api_client.dart',
-      ).readAsStringSync();
+      final source =
+          File('../../packages/api_client/lib/src/api_client.dart')
+              .readAsStringSync();
       final v1Start = source.indexOf('fetchSegmentLeaderboardWithAthletes(');
       final v2Start = source.indexOf('fetchSegmentLeaderboardTiered(');
-      final fetchEffortsStart = source.indexOf(
-        'fetchEffortsForRunWithSegments(',
-      );
+      final fetchEffortsStart = source.indexOf('fetchEffortsForRunWithSegments(');
       expect(v1Start, greaterThan(0), reason: 'v1 fetcher missing');
       expect(v2Start, greaterThan(v1Start), reason: 'v2 fetcher missing');
-      expect(
-        fetchEffortsStart,
-        greaterThan(v2Start),
-        reason: 'method ordering changed — update the slice anchors',
-      );
+      expect(fetchEffortsStart, greaterThan(v2Start),
+          reason: 'method ordering changed — update the slice anchors');
       final v1Body = source.substring(v1Start, v2Start);
       final v2Body = source.substring(v2Start, fetchEffortsStart);
-      expect(
-        v1Body.contains('assignCompetitionRanks'),
-        isTrue,
-        reason: 'v1 must route through assignCompetitionRanks',
-      );
-      expect(
-        v2Body.contains('assignCompetitionRanks'),
-        isTrue,
-        reason: 'v2 must route through assignCompetitionRanks',
-      );
+      expect(v1Body.contains('assignCompetitionRanks'), isTrue,
+          reason: 'v1 must route through assignCompetitionRanks');
+      expect(v2Body.contains('assignCompetitionRanks'), isTrue,
+          reason: 'v2 must route through assignCompetitionRanks');
     });
 
     test('SegmentsPanel widget renders a KOM/QOM crown on rank-1 rows', () {
@@ -4259,36 +3781,24 @@ void main() {
       // exactly one row per filtered view. The crownLabel() pipe means
       // the tooltip mentions the active tier rather than a generic
       // "King" label.
-      final source = File('lib/widgets/segments_panel.dart').readAsStringSync();
-      expect(
-        source.contains('Icons.emoji_events'),
-        isTrue,
-        reason: 'crown glyph missing',
-      );
-      expect(
-        source.contains('entry.rank == 1'),
-        isTrue,
-        reason: 'crown gate missing',
-      );
-      expect(
-        source.contains('crownLabel'),
-        isTrue,
-        reason: 'crown tooltip not piped through crownLabel()',
-      );
+      final source =
+          File('lib/widgets/segments_panel.dart').readAsStringSync();
+      expect(source.contains('Icons.emoji_events'), isTrue,
+          reason: 'crown glyph missing');
+      expect(source.contains('entry.rank == 1'), isTrue,
+          reason: 'crown gate missing');
+      expect(source.contains('crownLabel'), isTrue,
+          reason: 'crown tooltip not piped through crownLabel()');
       // The viewer-holds-crown banner copy was migrated to the i18n
       // catalogue; pin the localized key wiring instead of the raw
       // English string.
-      expect(
-        source.contains('segmentsPanelCrownBanner'),
-        isTrue,
-        reason: 'viewer-holds-crown banner copy not wired through l10n',
-      );
-      final arb = File('lib/l10n/app_en.arb').readAsStringSync();
-      expect(
-        arb.contains('"segmentsPanelCrownBanner": "You hold this crown'),
-        isTrue,
-        reason: 'viewer-holds-crown banner copy missing from app_en.arb',
-      );
+      expect(source.contains('segmentsPanelCrownBanner'), isTrue,
+          reason: 'viewer-holds-crown banner copy not wired through l10n');
+      final arb =
+          File('lib/l10n/app_en.arb').readAsStringSync();
+      expect(arb.contains('"segmentsPanelCrownBanner": "You hold this crown'),
+          isTrue,
+          reason: 'viewer-holds-crown banner copy missing from app_en.arb');
     });
 
     test('Dashboard wires its streak card through computeRunStreaks()', () {
@@ -4296,19 +3806,12 @@ void main() {
       // lib/streaks.dart, not an inline reimplementation. The helper
       // is unit-tested and twinned with web; inline drift would silently
       // disagree on the Strava grace rule.
-      final source = File(
-        'lib/screens/dashboard_screen.dart',
-      ).readAsStringSync();
-      expect(
-        source.contains('computeRunStreaks'),
-        isTrue,
-        reason: 'dashboard must call the pure helper',
-      );
-      expect(
-        source.contains('_StreakRow'),
-        isTrue,
-        reason: 'streak card widget missing',
-      );
+      final source =
+          File('lib/screens/dashboard_screen.dart').readAsStringSync();
+      expect(source.contains('computeRunStreaks'), isTrue,
+          reason: 'dashboard must call the pure helper');
+      expect(source.contains('_StreakRow'), isTrue,
+          reason: 'streak card widget missing');
     });
 
     test('kSegmentAgeBands list matches the migration SQL regex', () {
@@ -4350,48 +3853,42 @@ void main() {
     // front of every reader, which is the defect that ADR closed.
     test('club_form_sheet imports + calls rateLimitErrorMessage with a '
         'localizer', () {
-      final source = File(
-        'lib/widgets/club_form_sheet.dart',
-      ).readAsStringSync();
+      final source =
+          File('lib/widgets/club_form_sheet.dart').readAsStringSync();
       expect(
         source.contains("import '../rate_limit_message.dart'"),
         isTrue,
-        reason:
-            'club_form_sheet must import rate_limit_message.dart so the '
+        reason: 'club_form_sheet must import rate_limit_message.dart so the '
             'create-club catch path runs through the helper.',
       );
       expect(
         source.contains('rateLimitErrorMessage(l10n,'),
         isTrue,
-        reason:
-            'club_form_sheet catch block must call '
+        reason: 'club_form_sheet catch block must call '
             'rateLimitErrorMessage(l10n, …).',
       );
     });
 
-    test('route_builder_screen imports + renders through rateLimitMessage', () {
-      final source = File(
-        'lib/screens/route_builder_screen.dart',
-      ).readAsStringSync();
+    test('route_builder_screen imports + renders through rateLimitMessage',
+        () {
+      final source =
+          File('lib/screens/route_builder_screen.dart').readAsStringSync();
       expect(
         source.contains("import '../rate_limit_message.dart'"),
         isTrue,
-        reason:
-            'route_builder_screen must import rate_limit_message.dart '
+        reason: 'route_builder_screen must import rate_limit_message.dart '
             'so the saveRoute catch path runs through the helper.',
       );
       expect(
         source.contains('parseRateLimitError('),
         isTrue,
-        reason:
-            'route_builder_screen save catch block must call '
+        reason: 'route_builder_screen save catch block must call '
             'parseRateLimitError.',
       );
       expect(
         RegExp(r'rateLimitMessage\(\s*\n?\s*context != null').hasMatch(source),
         isTrue,
-        reason:
-            'formatSaveRouteError must render the refusal through '
+        reason: 'formatSaveRouteError must render the refusal through '
             'rateLimitMessage with the caller\'s AppLocalizations when it '
             'has a context.',
       );
@@ -4402,17 +3899,14 @@ void main() {
       expect(
         source.contains("import '../rate_limit_message.dart'"),
         isTrue,
-        reason:
-            'report_sheet must import rate_limit_message.dart so the '
+        reason: 'report_sheet must import rate_limit_message.dart so the '
             'create_report catch path runs through the helper.',
       );
       expect(
-        RegExp(
-          r'rateLimitErrorMessage\(\s*\n?\s*(?:AppLocalizations\.of\(context\)|l10n\b)',
-        ).hasMatch(source),
+        RegExp(r'rateLimitErrorMessage\(\s*\n?\s*(?:AppLocalizations\.of\(context\)|l10n\b)')
+            .hasMatch(source),
         isTrue,
-        reason:
-            'report_sheet catch block must call rateLimitErrorMessage '
+        reason: 'report_sheet catch block must call rateLimitErrorMessage '
             'with the sheet\'s AppLocalizations.',
       );
     });
@@ -4430,175 +3924,147 @@ void main() {
 
     test('routing.dart pins kOsrmSnapTimeout + kOsrmRouteTimeout', () {
       final source = File('lib/routing.dart').readAsStringSync();
-      expect(
-        source.contains('const Duration kOsrmSnapTimeout'),
-        isTrue,
-        reason: 'kOsrmSnapTimeout constant removed — restore.',
-      );
-      expect(
-        source.contains('const Duration kOsrmRouteTimeout'),
-        isTrue,
-        reason: 'kOsrmRouteTimeout constant removed — restore.',
-      );
-      expect(
-        source.contains('.timeout(kOsrmSnapTimeout)'),
-        isTrue,
-        reason:
-            'snapToRoad must apply .timeout(kOsrmSnapTimeout) to the fetcher call.',
-      );
-      expect(
-        source.contains('.timeout(kOsrmRouteTimeout)'),
-        isTrue,
-        reason: 'fetchRouteThrough must apply .timeout(kOsrmRouteTimeout).',
-      );
+      expect(source.contains('const Duration kOsrmSnapTimeout'), isTrue,
+          reason: 'kOsrmSnapTimeout constant removed — restore.');
+      expect(source.contains('const Duration kOsrmRouteTimeout'), isTrue,
+          reason: 'kOsrmRouteTimeout constant removed — restore.');
+      expect(source.contains('.timeout(kOsrmSnapTimeout)'), isTrue,
+          reason:
+              'snapToRoad must apply .timeout(kOsrmSnapTimeout) to the fetcher call.');
+      expect(source.contains('.timeout(kOsrmRouteTimeout)'), isTrue,
+          reason:
+              'fetchRouteThrough must apply .timeout(kOsrmRouteTimeout).');
     });
 
     test('elevation.dart pins kElevationFetchTimeout', () {
       final source = File('lib/elevation.dart').readAsStringSync();
-      expect(
-        source.contains('const Duration kElevationFetchTimeout'),
-        isTrue,
-        reason: 'kElevationFetchTimeout constant removed — restore.',
-      );
-      expect(
-        source.contains('.timeout(kElevationFetchTimeout)'),
-        isTrue,
-        reason:
-            'fetchElevations batch loop must apply .timeout(kElevationFetchTimeout).',
-      );
+      expect(source.contains('const Duration kElevationFetchTimeout'), isTrue,
+          reason: 'kElevationFetchTimeout constant removed — restore.');
+      expect(source.contains('.timeout(kElevationFetchTimeout)'), isTrue,
+          reason:
+              'fetchElevations batch loop must apply .timeout(kElevationFetchTimeout).');
     });
 
     test('geocoding.dart pins kGeocodingTimeout', () {
       final source = File('lib/geocoding.dart').readAsStringSync();
-      expect(
-        source.contains('const Duration kGeocodingTimeout'),
-        isTrue,
-        reason: 'kGeocodingTimeout constant removed — restore.',
-      );
-      expect(
-        source.contains('.timeout(kGeocodingTimeout)'),
-        isTrue,
-        reason: 'searchPlaces must apply .timeout(kGeocodingTimeout).',
-      );
+      expect(source.contains('const Duration kGeocodingTimeout'), isTrue,
+          reason: 'kGeocodingTimeout constant removed — restore.');
+      expect(source.contains('.timeout(kGeocodingTimeout)'), isTrue,
+          reason: 'searchPlaces must apply .timeout(kGeocodingTimeout).');
     });
 
-    test('fetchActiveOverview bounds its own read, so its saved-copy fallback '
-        'runs before any caller gives up', () {
-      // A caller-side .timeout of the same length fires first and skips
-      // the fallback to the saved active plan (active_plan_cache.dart), so
-      // the deadline lives in the service and the callers await it bare.
-      final source = File('lib/training_service.dart').readAsStringSync();
-      final at = source.indexOf(
-        'Future<ActivePlanOverview?> fetchActiveOverview()',
-      );
-      expect(at, greaterThan(0));
-      final body = source.substring(at, source.indexOf('\n  }\n', at));
-      expect(body, contains('.timeout(kBackendLoadTimeout)'));
-      expect(body, contains('readActivePlanCache('));
-      for (final caller in const [
-        'lib/screens/run_screen.dart',
-        'lib/screens/home_screen.dart',
-        'lib/screens/dashboard_screen.dart',
-      ]) {
-        expect(
-          RegExp(
-            r'fetchActiveOverview\(\)\s*\.timeout\(',
-          ).hasMatch(File(caller).readAsStringSync()),
-          isFalse,
-          reason:
-              '$caller wraps fetchActiveOverview in its own timeout, '
-              'which races the service deadline and loses the offline copy',
-        );
-      }
-    });
+    test(
+      'fetchActiveOverview bounds its own read, so its saved-copy fallback '
+      'runs before any caller gives up',
+      () {
+        // A caller-side .timeout of the same length fires first and skips
+        // the fallback to the saved active plan (active_plan_cache.dart), so
+        // the deadline lives in the service and the callers await it bare.
+        final source = File('lib/training_service.dart').readAsStringSync();
+        final at = source.indexOf('Future<ActivePlanOverview?> fetchActiveOverview()');
+        expect(at, greaterThan(0));
+        final body = source.substring(at, source.indexOf('\n  }\n', at));
+        expect(body, contains('.timeout(kBackendLoadTimeout)'));
+        expect(body, contains('readActivePlanCache('));
+        for (final caller in const [
+          'lib/screens/run_screen.dart',
+          'lib/screens/home_screen.dart',
+          'lib/screens/dashboard_screen.dart',
+        ]) {
+          expect(
+            RegExp(r'fetchActiveOverview\(\)\s*\.timeout\(')
+                .hasMatch(File(caller).readAsStringSync()),
+            isFalse,
+            reason: '$caller wraps fetchActiveOverview in its own timeout, '
+                'which races the service deadline and loses the offline copy',
+          );
+        }
+      },
+    );
 
-    test('run_screen.dart bounds every Supabase / training / social await '
-        'with kBackendLoadTimeout', () {
-      // Reason: the run screen is the most-used surface AND the one
-      // where a hung backend has the biggest UX cost — every
-      // initState fetch and every finish-flow Supabase call must
-      // resolve or fail within a fixed window, or the user can\'t
-      // start a run (initState hang blocks idle-card paint) and
-      // can\'t leave the finish summary (saveRun hang strands them).
-      // Local recording is already isolated from network; this
-      // guard pins the timeouts on the small set of backend
-      // surfaces that bleed in around the edges.
-      //
-      // The architecture is: every `await api.X(...)` /
-      // `await widget.training.X(...)` / `await widget.social.X(...)`
-      // in run_screen.dart must be followed by .timeout(...).
-      // Greps for the bare-await pattern to catch any new call
-      // that lands without one.
-      final source = File('lib/screens/run_screen.dart').readAsStringSync();
-      // Each pattern is the call name; the asserter checks that
-      // every `await api.X(` / `await widget.{training,social}.X(`
-      // line has a `.timeout(` somewhere in the next ~5 lines.
-      // Method-name only (not `api.X` or `widget.training.X`) so
-      // the regex tolerates the wrapped-method-chain style
-      // `await api\n  .saveRun(...)\n  .timeout(...)` that dartfmt
-      // produces for long arg lists. The semantic the guard cares
-      // about — every remote await must be bounded by a timeout —
-      // doesn\'t depend on the receiver chain anyway.
-      const methodNames = [
-        'beginLiveBroadcast',
-        'fetchRoutesIntersectingTrack',
-        'saveRun',
-        'makeRunPublic',
-        'makeRunPrivate',
-        'concludeLiveBroadcast',
-        'fetchPlanForWorkout',
-        'fetchNextRsvpedEvent',
-      ];
-      // The event card's club lookup moved into the shared
-      // `openUpcomingEvent` (Home and the Run tab both tap through it,
-      // decisions § 2285), so its timeout is pinned there.
-      final eventCard = File(
-        'lib/widgets/upcoming_event_card.dart',
-      ).readAsStringSync();
-      expect(
-        RegExp(
-          r'\.fetchMyClubs\(\)\s*\.timeout\(kBackendLoadTimeout\)',
-        ).hasMatch(eventCard),
-        isTrue,
-        reason:
-            'openUpcomingEvent must bound fetchMyClubs with '
-            'kBackendLoadTimeout',
-      );
-      for (final name in methodNames) {
-        final pattern = RegExp(
-          r'\.' +
-              RegExp.escape(name) +
-              r'\s*\([\s\S]{0,400}?\)'
-                  r'[\s\S]{0,40}?\.timeout\(',
-        );
+    test(
+      'run_screen.dart bounds every Supabase / training / social await '
+      'with kBackendLoadTimeout',
+      () {
+        // Reason: the run screen is the most-used surface AND the one
+        // where a hung backend has the biggest UX cost — every
+        // initState fetch and every finish-flow Supabase call must
+        // resolve or fail within a fixed window, or the user can\'t
+        // start a run (initState hang blocks idle-card paint) and
+        // can\'t leave the finish summary (saveRun hang strands them).
+        // Local recording is already isolated from network; this
+        // guard pins the timeouts on the small set of backend
+        // surfaces that bleed in around the edges.
+        //
+        // The architecture is: every `await api.X(...)` /
+        // `await widget.training.X(...)` / `await widget.social.X(...)`
+        // in run_screen.dart must be followed by .timeout(...).
+        // Greps for the bare-await pattern to catch any new call
+        // that lands without one.
+        final source =
+            File('lib/screens/run_screen.dart').readAsStringSync();
+        // Each pattern is the call name; the asserter checks that
+        // every `await api.X(` / `await widget.{training,social}.X(`
+        // line has a `.timeout(` somewhere in the next ~5 lines.
+        // Method-name only (not `api.X` or `widget.training.X`) so
+        // the regex tolerates the wrapped-method-chain style
+        // `await api\n  .saveRun(...)\n  .timeout(...)` that dartfmt
+        // produces for long arg lists. The semantic the guard cares
+        // about — every remote await must be bounded by a timeout —
+        // doesn\'t depend on the receiver chain anyway.
+        const methodNames = [
+          'beginLiveBroadcast',
+          'fetchRoutesIntersectingTrack',
+          'saveRun',
+          'makeRunPublic',
+          'makeRunPrivate',
+          'concludeLiveBroadcast',
+          'fetchPlanForWorkout',
+          'fetchNextRsvpedEvent',
+        ];
+        // The event card's club lookup moved into the shared
+        // `openUpcomingEvent` (Home and the Run tab both tap through it,
+        // decisions § 2285), so its timeout is pinned there.
+        final eventCard =
+            File('lib/widgets/upcoming_event_card.dart').readAsStringSync();
         expect(
-          pattern.hasMatch(source),
+          RegExp(r'\.fetchMyClubs\(\)\s*\.timeout\(kBackendLoadTimeout\)')
+              .hasMatch(eventCard),
           isTrue,
-          reason:
-              '.$name(...) must be followed by .timeout(...) — '
-              'the wrapped-method-chain shape (newline + dot before '
-              'timeout) is OK. Backend hangs on this call would '
-              'freeze the run-start or finish-summary UI.',
+          reason: 'openUpcomingEvent must bound fetchMyClubs with '
+              'kBackendLoadTimeout',
         );
-      }
-      // Also pin the import + the constant reference so a future
-      // refactor that drops backend_timeout.dart triggers this
-      // guard, not a runtime regression.
-      expect(
-        source.contains("import '../backend_timeout.dart';"),
-        isTrue,
-        reason:
-            'run_screen.dart must import backend_timeout.dart '
-            'for the kBackendLoadTimeout ceiling.',
-      );
-      expect(
-        source.contains('kBackendLoadTimeout'),
-        isTrue,
-        reason:
-            'run_screen.dart must reference kBackendLoadTimeout '
-            'on its remote awaits.',
-      );
-    });
+        for (final name in methodNames) {
+          final pattern = RegExp(
+            r'\.' + RegExp.escape(name) + r'\s*\([\s\S]{0,400}?\)'
+            r'[\s\S]{0,40}?\.timeout\(',
+          );
+          expect(
+            pattern.hasMatch(source),
+            isTrue,
+            reason: '.$name(...) must be followed by .timeout(...) — '
+                'the wrapped-method-chain shape (newline + dot before '
+                'timeout) is OK. Backend hangs on this call would '
+                'freeze the run-start or finish-summary UI.',
+          );
+        }
+        // Also pin the import + the constant reference so a future
+        // refactor that drops backend_timeout.dart triggers this
+        // guard, not a runtime regression.
+        expect(
+          source.contains("import '../backend_timeout.dart';"),
+          isTrue,
+          reason: 'run_screen.dart must import backend_timeout.dart '
+              'for the kBackendLoadTimeout ceiling.',
+        );
+        expect(
+          source.contains('kBackendLoadTimeout'),
+          isTrue,
+          reason: 'run_screen.dart must reference kBackendLoadTimeout '
+              'on its remote awaits.',
+        );
+      },
+    );
   });
 
   group('route_builder_screen._SaveRouteDialog scrollable content', () {
@@ -4613,19 +4079,15 @@ void main() {
     // future refactor that 'simplifies' the dialog can't drop it.
 
     test('_SaveRouteDialog wraps its Column in SingleChildScrollView', () {
-      final source = File(
-        'lib/screens/route_builder_screen.dart',
-      ).readAsStringSync();
+      final source =
+          File('lib/screens/route_builder_screen.dart').readAsStringSync();
       // Find the dialog's build() body and assert it goes
       //   content: SingleChildScrollView( child: Column(...
       // not
       //   content: Column(...
       final dialogIdx = source.indexOf('class _SaveRouteDialogState');
-      expect(
-        dialogIdx,
-        greaterThanOrEqualTo(0),
-        reason: '_SaveRouteDialogState class moved or renamed.',
-      );
+      expect(dialogIdx, greaterThanOrEqualTo(0),
+          reason: '_SaveRouteDialogState class moved or renamed.');
       final tail = source.substring(dialogIdx);
       expect(
         tail.contains('content: SingleChildScrollView('),
@@ -4656,39 +4118,33 @@ void main() {
     // These guards pin the multi-part fix in place so a future
     // refactor doesn't quietly undo it.
 
-    test(
-      'main.dart gates ApiClient construction on ApiClient.isInitialized',
-      () {
-        // Without this gate, a silent Supabase init failure leaves the
-        // SDK's `late client` field unset and the first call into
-        // ApiClient explodes with LateInitializationError.
-        final src = File('lib/main.dart').readAsStringSync();
-        expect(
-          src,
-          contains('ApiClient.isInitialized'),
-          reason:
-              'main.dart must gate `api = ApiClient()` on the static '
-              '`ApiClient.isInitialized` flag — otherwise a silent '
-              'Supabase.initialize failure produces ApiClient instances '
-              'whose first method call throws LateInitializationError.',
-        );
-      },
-    );
+    test('main.dart gates ApiClient construction on ApiClient.isInitialized',
+        () {
+      // Without this gate, a silent Supabase init failure leaves the
+      // SDK's `late client` field unset and the first call into
+      // ApiClient explodes with LateInitializationError.
+      final src = File('lib/main.dart').readAsStringSync();
+      expect(
+        src,
+        contains('ApiClient.isInitialized'),
+        reason: 'main.dart must gate `api = ApiClient()` on the static '
+            '`ApiClient.isInitialized` flag — otherwise a silent '
+            'Supabase.initialize failure produces ApiClient instances '
+            'whose first method call throws LateInitializationError.',
+      );
+    });
 
     test('_client getter has a non-bypassable initialized check', () {
       // The override branch lets tests inject a fake; the non-override
       // branch must check the static `isInitialized` probe before
       // falling through to `Supabase.instance.client`.
-      final src = File(
-        '../../packages/api_client/lib/src/api_client.dart',
-      ).readAsStringSync();
+      final src = File('../../packages/api_client/lib/src/api_client.dart')
+          .readAsStringSync();
       expect(
         src,
         matches(
-          RegExp(r'SupabaseClient\s+get\s+_client\s*\{[^}]*isInitialized'),
-        ),
-        reason:
-            'The `_client` getter must inspect `isInitialized` (after '
+            RegExp(r'SupabaseClient\s+get\s+_client\s*\{[^}]*isInitialized')),
+        reason: 'The `_client` getter must inspect `isInitialized` (after '
             'falling through the test override). Returning '
             '`Supabase.instance.client` unconditionally re-introduces '
             'the LateInitializationError surface.',
@@ -4700,14 +4156,12 @@ void main() {
       // The defence is what users see when the gate above fails. Pin
       // both the error-type matcher and the friendly copy so the two
       // sides can't drift apart.
-      final src = File(
-        'lib/screens/route_builder_screen.dart',
-      ).readAsStringSync();
+      final src =
+          File('lib/screens/route_builder_screen.dart').readAsStringSync();
       expect(
         src,
         contains('LateInitializationError'),
-        reason:
-            'formatSaveRouteError must explicitly match '
+        reason: 'formatSaveRouteError must explicitly match '
             'LateInitializationError so the SDK\'s late-field error '
             'surfaces a friendly "Can\'t reach the server" message '
             'instead of leaking the SDK\'s internal field name.',
@@ -4715,8 +4169,7 @@ void main() {
       expect(
         src,
         contains("Can't reach the server"),
-        reason:
-            'The friendly translation must be the literal copy '
+        reason: 'The friendly translation must be the literal copy '
             'shown to the user. Tests in route_builder_screen_test.dart '
             'assert the same phrase.',
       );
@@ -4739,8 +4192,7 @@ void main() {
         expect(
           src,
           contains('ApiClient.isInitialized'),
-          reason:
-              '$path must guard its _c getter on '
+          reason: '$path must guard its _c getter on '
               'ApiClient.isInitialized — same bug class as the '
               'original ApiClient.saveRoute report.',
         );
@@ -4756,8 +4208,7 @@ void main() {
       expect(
         src,
         contains('ApiClient.isInitialized'),
-        reason:
-            'SettingsService.dart must guard its static _client '
+        reason: 'SettingsService.dart must guard its static _client '
             'getter on ApiClient.isInitialized. Without the guard, '
             'reading any setting from a half-initialized session '
             'reproduces the original LateInitializationError surface.',
@@ -4785,85 +4236,52 @@ void main() {
   //
   // See decisions.md § 64 for the design rationale.
   group('WearRoutesBridge cross-language wiring guards', () {
-    test('Dart-side WearRoutesBridge declares the channel name + path keys', () {
-      final src = File('lib/wear_routes_bridge.dart').readAsStringSync();
-      expect(
-        src,
-        contains("MethodChannel('run_app/wear_routes')"),
-        reason:
-            'channel name must match the Kotlin handler in '
-            'android/app/src/main/kotlin/com/threkir/app/WearRoutesBridge.kt — '
-            'if you rename it, rename it in BOTH files in the same commit',
-      );
-      expect(
-        src,
-        contains("'routes_json'"),
-        reason:
-            'routes_json data-map key — must match the Kotlin '
-            'WearRoutesBridge.kt writer AND the watch-side RoutesBridge.kt '
-            'parser',
-      );
-      expect(
-        src,
-        contains("'updated_at_ms'"),
-        reason:
-            'updated_at_ms data-map key — drives the stale-push '
-            'protection on the watch side',
-      );
-      expect(
-        src,
-        contains('kMaxRoutesPerPush'),
-        reason:
-            'the push cap is load-bearing and must equal the watch '
-            'store\'s LocalRouteStore.MAX_ROUTES, which '
-            'scripts/check_shared_constants.mjs reads on both rails; do '
-            'not remove the constant',
-      );
+    test('Dart-side WearRoutesBridge declares the channel name + path keys',
+        () {
+      final src =
+          File('lib/wear_routes_bridge.dart').readAsStringSync();
+      expect(src, contains("MethodChannel('run_app/wear_routes')"),
+          reason: 'channel name must match the Kotlin handler in '
+              'android/app/src/main/kotlin/com/threkir/app/WearRoutesBridge.kt — '
+              'if you rename it, rename it in BOTH files in the same commit');
+      expect(src, contains("'routes_json'"),
+          reason: 'routes_json data-map key — must match the Kotlin '
+              'WearRoutesBridge.kt writer AND the watch-side RoutesBridge.kt '
+              'parser');
+      expect(src, contains("'updated_at_ms'"),
+          reason: 'updated_at_ms data-map key — drives the stale-push '
+              'protection on the watch side');
+      expect(src, contains('kMaxRoutesPerPush'),
+          reason: 'the push cap is load-bearing and must equal the watch '
+              'store\'s LocalRouteStore.MAX_ROUTES, which '
+              'scripts/check_shared_constants.mjs reads on both rails; do '
+              'not remove the constant');
     });
 
-    test('Phone-side WearRoutesBridge.kt mirrors the Dart channel + path', () {
+    test('Phone-side WearRoutesBridge.kt mirrors the Dart channel + path',
+        () {
       final file = File(
-        'android/app/src/main/kotlin/com/threkir/app/WearRoutesBridge.kt',
-      );
+          'android/app/src/main/kotlin/com/threkir/app/WearRoutesBridge.kt');
       // The Dart `lib/` + `test/` directories are byte-identical
       // between mobile_android and mobile_ios per the twin
       // invariant, but each app has its own native sub-tree.
       // Skip on the iOS twin where there's no `android/` folder.
       if (!file.existsSync()) return;
       final src = file.readAsStringSync();
-      expect(
-        src,
-        contains('"run_app/wear_routes"'),
-        reason: 'Kotlin channel name must match the Dart writer',
-      );
-      expect(
-        src,
-        contains('"/saved_routes"'),
-        reason:
-            'DataLayer path must match the watch-side RoutesBridge.kt — '
-            "drift here means the watch's listener never fires",
-      );
-      expect(
-        src,
-        contains('"routes_json"'),
-        reason:
-            'routes_json data-map key must match BOTH the Dart '
-            'writer and the watch parser',
-      );
-      expect(
-        src,
-        contains('"updated_at_ms"'),
-        reason:
-            'updated_at_ms data-map key must match the Dart writer '
-            "AND the watch's stale-push gate",
-      );
-      expect(
-        src,
-        contains('PutDataMapRequest'),
-        reason:
-            'the bridge must use PutDataMapRequest, not raw '
-            'PutDataRequest — DataMap fields are how the keys ship',
-      );
+      expect(src, contains('"run_app/wear_routes"'),
+          reason: 'Kotlin channel name must match the Dart writer');
+      expect(src, contains('"/saved_routes"'),
+          reason: 'DataLayer path must match the watch-side RoutesBridge.kt — '
+              "drift here means the watch's listener never fires");
+      expect(src, contains('"routes_json"'),
+          reason: 'routes_json data-map key must match BOTH the Dart '
+              'writer and the watch parser');
+      expect(src, contains('"updated_at_ms"'),
+          reason: 'updated_at_ms data-map key must match the Dart writer '
+              "AND the watch's stale-push gate");
+      expect(src, contains('PutDataMapRequest'),
+          reason: 'the bridge must use PutDataMapRequest, not raw '
+              'PutDataRequest — DataMap fields are how the keys ship');
     });
 
     test('MainActivity.kt registers the WearRoutesBridge in '
@@ -4875,25 +4293,16 @@ void main() {
       // the Dart bridge swallows — the user sees no error, but
       // the watch never gets updates).
       final file = File(
-        'android/app/src/main/kotlin/com/threkir/app/MainActivity.kt',
-      );
+          'android/app/src/main/kotlin/com/threkir/app/MainActivity.kt');
       if (!file.existsSync()) return;
       final src = file.readAsStringSync();
-      expect(
-        src,
-        contains('WearRoutesBridge('),
-        reason:
-            'MainActivity must construct WearRoutesBridge inside '
-            'configureFlutterEngine; dropping the registration means '
-            'every phone→watch push silently fails',
-      );
-      expect(
-        src,
-        contains('flutterEngine.dartExecutor.binaryMessenger'),
-        reason:
-            'the bridge needs the FlutterEngine binary messenger '
-            'to bind its MethodChannel',
-      );
+      expect(src, contains('WearRoutesBridge('),
+          reason: 'MainActivity must construct WearRoutesBridge inside '
+              'configureFlutterEngine; dropping the registration means '
+              'every phone→watch push silently fails');
+      expect(src, contains('flutterEngine.dartExecutor.binaryMessenger'),
+          reason: 'the bridge needs the FlutterEngine binary messenger '
+              'to bind its MethodChannel');
     });
 
     test('main.dart attaches WearRoutesBridge after Supabase init '
@@ -4903,52 +4312,34 @@ void main() {
       // attach() is dropped, no LocalRouteStore changes fire the
       // push — the watch never sees the user's starred set.
       final src = File('lib/main.dart').readAsStringSync();
-      expect(
-        src,
-        contains('WearRoutesBridge'),
-        reason:
-            'main.dart must import + attach WearRoutesBridge — '
-            'see the wear_auth_bridge import alongside it',
-      );
-      expect(
-        src,
-        contains('.attach(routeStore)'),
-        reason:
-            'WearRoutesBridge must be attached to the same '
-            'LocalRouteStore that drives the routes screen — '
-            "otherwise stars on the phone don't propagate",
-      );
+      expect(src, contains('WearRoutesBridge'),
+          reason: 'main.dart must import + attach WearRoutesBridge — '
+              'see the wear_auth_bridge import alongside it');
+      expect(src, contains('.attach(routeStore)'),
+          reason: 'WearRoutesBridge must be attached to the same '
+              'LocalRouteStore that drives the routes screen — '
+              "otherwise stars on the phone don't propagate");
     });
 
-    test(
-      'pickRoutesForWatchPush + encodeRoutesForWatch are @visibleForTesting',
-      () {
-        // The extracted pure helpers are the testable seam — a future
-        // refactor that inlines them back into _push must update the
-        // tests in lockstep. Pin the @visibleForTesting attribute so
-        // the helpers stay reachable from the test surface.
-        final src = File('lib/wear_routes_bridge.dart').readAsStringSync();
-        expect(
-          src,
-          contains('@visibleForTesting'),
-          reason:
-              'pickRoutesForWatchPush + encodeRoutesForWatch must '
+    test('pickRoutesForWatchPush + encodeRoutesForWatch are @visibleForTesting',
+        () {
+      // The extracted pure helpers are the testable seam — a future
+      // refactor that inlines them back into _push must update the
+      // tests in lockstep. Pin the @visibleForTesting attribute so
+      // the helpers stay reachable from the test surface.
+      final src =
+          File('lib/wear_routes_bridge.dart').readAsStringSync();
+      expect(src, contains('@visibleForTesting'),
+          reason: 'pickRoutesForWatchPush + encodeRoutesForWatch must '
               'stay @visibleForTesting so the tests can reach them; '
               'inlining them back into _push without the annotation '
-              'means a tests-go-stale situation',
-        );
-        expect(
-          src,
-          contains('static List<Route> pickRoutesForWatchPush('),
-          reason: 'extracted helper for the starred filter + cap',
-        );
-        expect(
-          src,
+              'means a tests-go-stale situation');
+      expect(src, contains('static List<Route> pickRoutesForWatchPush('),
+          reason: 'extracted helper for the starred filter + cap');
+      expect(src,
           contains('static List<Map<String, Object>> encodeRoutesForWatch('),
-          reason: 'extracted helper for the wire-format encoding',
-        );
-      },
-    );
+          reason: 'extracted helper for the wire-format encoding');
+    });
 
     test('debounce window + Timer wiring stays intact', () {
       // Reason: a 250ms coalescing window catches star-storm + bulk
@@ -4966,44 +4357,30 @@ void main() {
       //
       // The first push from attach() is INTENTIONALLY not
       // debounced — a newly-paired watch sees data immediately.
-      final src = File('lib/wear_routes_bridge.dart').readAsStringSync();
-      expect(
-        src,
-        contains('static Duration kPushDebounceWindow'),
-        reason:
-            'debounce window constant must exist as a static '
-            'so tests + future ops tuning can override it',
-      );
-      expect(
-        src,
-        contains('Timer? _pendingPush'),
-        reason:
-            'pending debounce Timer must exist; without it '
-            "the bridge can't coalesce rapid bursts",
-      );
-      expect(
-        src,
-        contains('_pendingPush?.cancel()'),
-        reason:
-            'detach() must cancel the pending timer or a '
-            'fire-after-detach race produces ghost pushes',
-      );
-      expect(
-        src,
-        contains('_scheduleDebouncedPush'),
-        reason:
-            'the listener must route through the debounce '
-            'scheduler — calling _push directly would skip '
-            'coalescing entirely',
-      );
+      final src =
+          File('lib/wear_routes_bridge.dart').readAsStringSync();
+      expect(src, contains('static Duration kPushDebounceWindow'),
+          reason: 'debounce window constant must exist as a static '
+              'so tests + future ops tuning can override it');
+      expect(src, contains('Timer? _pendingPush'),
+          reason: 'pending debounce Timer must exist; without it '
+              "the bridge can't coalesce rapid bursts");
+      expect(src, contains('_pendingPush?.cancel()'),
+          reason: 'detach() must cancel the pending timer or a '
+              'fire-after-detach race produces ghost pushes');
+      expect(src, contains('_scheduleDebouncedPush'),
+          reason: 'the listener must route through the debounce '
+              'scheduler — calling _push directly would skip '
+              'coalescing entirely');
       // The initial push from attach() goes through _push directly,
       // NOT through the scheduler — a fresh watch should see data
       // immediately, not 250ms late.
       expect(
         src,
-        contains(RegExp(r'store\.addListener\(_listener!\);\s*_push\(store\)')),
-        reason:
-            'attach must call _push directly for the initial '
+        contains(RegExp(
+          r'store\.addListener\(_listener!\);\s*_push\(store\)',
+        )),
+        reason: 'attach must call _push directly for the initial '
             'sync (not _scheduleDebouncedPush) so a freshly '
             'paired watch sees state without delay',
       );
@@ -5021,53 +4398,33 @@ void main() {
 
       // Web (TypeScript): routes/map-style-url.ts uses `.trim()` +
       // length check.
-      final webSrc = File(
-        '../web/src/lib/routes/map-style-url.ts',
-      ).readAsStringSync();
-      expect(
-        webSrc,
-        contains('.trim()'),
-        reason:
-            'web builder must trim the override before length-checking — '
-            'otherwise whitespace in .env.local silently disables MapTiler',
-      );
+      final webSrc =
+          File('../web/src/lib/routes/map-style-url.ts').readAsStringSync();
+      expect(webSrc, contains('.trim()'),
+          reason: 'web builder must trim the override before length-checking — '
+              'otherwise whitespace in .env.local silently disables MapTiler');
 
       // Mobile (Dart): live_run_map.dart uses `.trim()` +
       // isNotEmpty.
-      final mobileSrc = File(
-        'lib/widgets/live_run_map.dart',
-      ).readAsStringSync();
-      expect(
-        mobileSrc,
-        contains("env['TILE_URL_TEMPLATE']"),
-        reason: 'mobile builder must read the canonical env var name',
-      );
-      expect(
-        mobileSrc,
-        contains('.trim()'),
-        reason: 'mobile builder must trim the override (May 2026 audit)',
-      );
+      final mobileSrc =
+          File('lib/widgets/live_run_map.dart').readAsStringSync();
+      expect(mobileSrc, contains("env['TILE_URL_TEMPLATE']"),
+          reason: 'mobile builder must read the canonical env var name');
+      expect(mobileSrc, contains('.trim()'),
+          reason: 'mobile builder must trim the override (May 2026 audit)');
       expect(mobileSrc, contains('isNotEmpty'));
 
       // Wear OS (Kotlin): TileSource.kt uses `.isNotBlank()`
       // (Kotlin's equivalent of trim-then-check-empty).
       final wearSrc = File(
-        '../watch_wear/android/app/src/main/kotlin/com/runapp/watchwear/ui/TileSource.kt',
-      ).readAsStringSync();
-      expect(
-        wearSrc,
-        contains('template.isNotBlank()'),
-        reason:
-            'Wear OS builder must use isNotBlank — equivalent '
-            'of Dart trim-then-isNotEmpty',
-      );
-      expect(
-        wearSrc,
-        contains('tileSourceEnabled('),
-        reason:
-            'enabled-flag must be extracted as a testable helper, '
-            'not inlined as a BuildConfig OR-chain',
-      );
+              '../watch_wear/android/app/src/main/kotlin/com/runapp/watchwear/ui/TileSource.kt')
+          .readAsStringSync();
+      expect(wearSrc, contains('template.isNotBlank()'),
+          reason: 'Wear OS builder must use isNotBlank — equivalent '
+              'of Dart trim-then-isNotEmpty');
+      expect(wearSrc, contains('tileSourceEnabled('),
+          reason: 'enabled-flag must be extracted as a testable helper, '
+              'not inlined as a BuildConfig OR-chain');
     });
 
     test('Protomaps env-var documentation is consistent across '
@@ -5077,27 +4434,18 @@ void main() {
       // purpose, but every .env.example must document its variant
       // so a new contributor doesn't miss any.
       final webEnv = File('../web/.env.example').readAsStringSync();
-      expect(
-        webEnv,
-        contains('PUBLIC_TILE_STYLE_URL='),
-        reason: 'web .env.example must document the override',
-      );
+      expect(webEnv, contains('PUBLIC_TILE_STYLE_URL='),
+          reason: 'web .env.example must document the override');
 
       final mobileEnv = File('.env.example').readAsStringSync();
-      expect(
-        mobileEnv,
-        contains('TILE_URL_TEMPLATE='),
-        reason: 'mobile .env.example must document the override',
-      );
+      expect(mobileEnv, contains('TILE_URL_TEMPLATE='),
+          reason: 'mobile .env.example must document the override');
 
       final wearEnv = File(
         '../watch_wear/android/.env.example',
       ).readAsStringSync();
-      expect(
-        wearEnv,
-        contains('PUBLIC_TILE_URL_TEMPLATE='),
-        reason: 'Wear .env.example must document the override',
-      );
+      expect(wearEnv, contains('PUBLIC_TILE_URL_TEMPLATE='),
+          reason: 'Wear .env.example must document the override');
 
       // Cross-reference doc: each must point at the canonical
       // setup guide or the ADR. A future cleanup pass that loses
@@ -5114,8 +4462,7 @@ void main() {
             contains('decisions.md § 68'),
             contains('decisions.md#68'),
           ),
-          reason:
-              '${entry.key} .env.example must link to the setup '
+          reason: '${entry.key} .env.example must link to the setup '
               "guide or the ADR — otherwise the var sits unexplained",
         );
       }
@@ -5124,55 +4471,33 @@ void main() {
     test('Protomaps bootstrap script exists + is executable + has clean '
         'bash syntax + only real config', () {
       final script = File('../../bin/protomaps-dev.sh');
-      expect(
-        script.existsSync(),
-        isTrue,
-        reason:
-            'bin/protomaps-dev.sh must exist as the documented '
-            'entry point in docs/ops/protomaps_local_setup.md',
-      );
+      expect(script.existsSync(), isTrue,
+          reason: 'bin/protomaps-dev.sh must exist as the documented '
+              'entry point in docs/ops/protomaps_local_setup.md');
 
       // Permission bit — owner-exec is what makes
       // `bin/protomaps-dev.sh start` work without an explicit bash
       // prefix.
       final mode = script.statSync().modeString();
-      expect(
-        mode.contains('x'),
-        isTrue,
-        reason:
-            'script must be executable (`chmod +x`) — '
-            "else `bin/protomaps-dev.sh start` errors with permission denied",
-      );
+      expect(mode.contains('x'), isTrue,
+          reason: 'script must be executable (`chmod +x`) — '
+              "else `bin/protomaps-dev.sh start` errors with permission denied");
 
       final body = script.readAsStringSync();
       // Subcommand dispatch must include every documented command.
       // A future rewrite that drops one silently breaks the docs.
-      for (final cmd in const [
-        'fetch',
-        'start',
-        'restart',
-        'stop',
-        'status',
-        'logs',
-        'env',
-      ]) {
-        expect(
-          body,
-          contains('cmd_$cmd'),
-          reason: 'subcommand `$cmd` must be implemented + dispatched',
-        );
+      for (final cmd in const ['fetch', 'start', 'restart', 'stop', 'status',
+        'logs', 'env']) {
+        expect(body, contains('cmd_$cmd'),
+            reason: 'subcommand `$cmd` must be implemented + dispatched');
       }
 
       // Pin the Docker image is a real tag (not the made-up v5.0.0
       // the May 2026 audit caught). `latest` is also forbidden —
       // a moving tag would silently break the schema below it.
-      expect(
-        body,
-        contains('maptiler/tileserver-gl:v5.'),
-        reason:
-            'Docker tag must be a real v5.x pin, not `latest` '
-            "and not the audit's bogus v5.0.0",
-      );
+      expect(body, contains('maptiler/tileserver-gl:v5.'),
+          reason: 'Docker tag must be a real v5.x pin, not `latest` '
+              "and not the audit's bogus v5.0.0");
 
       // Pin the bogus `build.protomaps.com/<region>.pmtiles` URL
       // doesn't sneak back. (It was wrong — Protomaps publishes
@@ -5180,8 +4505,7 @@ void main() {
       expect(
         body,
         isNot(contains(RegExp(r'build\.protomaps\.com/[a-z-]+\.pmtiles'))),
-        reason:
-            'Protomaps does not publish per-region .pmtiles '
+        reason: 'Protomaps does not publish per-region .pmtiles '
             "pre-builds — the May 2026 audit removed the fake URL; "
             "use `pmtiles extract` from the world build instead",
       );
@@ -5192,8 +4516,7 @@ void main() {
       expect(
         body,
         isNot(contains(RegExp(r'^\s*//', multiLine: true))),
-        reason:
-            'lines starting with `//` (C-style comments) will fail '
+        reason: 'lines starting with `//` (C-style comments) will fail '
             'as bash commands — use `#` for shell comments',
       );
     });
@@ -5202,15 +4525,13 @@ void main() {
       // Run `bash -n` against the script as a CI-friendly syntax
       // check. Catches typos that the existing arch_guards can't
       // (e.g. mismatched quotes, malformed heredocs, unclosed `if`).
-      final result = Process.runSync('bash', [
-        '-n',
-        'bin/protomaps-dev.sh',
-      ], workingDirectory: '../..');
-      expect(
-        result.exitCode,
-        0,
-        reason: 'bash -n must pass — stderr was:\n${result.stderr}',
+      final result = Process.runSync(
+        'bash',
+        ['-n', 'bin/protomaps-dev.sh'],
+        workingDirectory: '../..',
       );
+      expect(result.exitCode, 0,
+          reason: 'bash -n must pass — stderr was:\n${result.stderr}');
     });
 
     test('Protomaps bootstrap script — meaningful Docker daemon errors '
@@ -5225,22 +4546,17 @@ void main() {
       // timeout — otherwise the user gets a useless "check the logs"
       // hint and has to dig through the container manually.
       final body = File('../../bin/protomaps-dev.sh').readAsStringSync();
-      expect(
-        body,
-        contains('check_docker_daemon'),
-        reason: 'extracted helper must exist + be called from cmd_start',
-      );
-      expect(
-        body,
-        contains('tail_container_logs'),
-        reason: 'auto-tail helper must exist',
-      );
+      expect(body, contains('check_docker_daemon'),
+          reason: 'extracted helper must exist + be called from cmd_start');
+      expect(body, contains('tail_container_logs'),
+          reason: 'auto-tail helper must exist');
       // Specifically, it must fire on wait-loop timeout (i == 30).
       expect(
         body,
-        contains(RegExp(r'i == 30[\s\S]{0,300}?tail_container_logs')),
-        reason:
-            'wait-loop timeout path must call tail_container_logs '
+        contains(RegExp(
+          r'i == 30[\s\S]{0,300}?tail_container_logs',
+        )),
+        reason: 'wait-loop timeout path must call tail_container_logs '
             'so the user sees real container output, not a generic '
             '"check the logs" hint',
       );
@@ -5254,22 +4570,18 @@ void main() {
       // found" error. The May 2026 audit round added a pre-flight
       // check; pin that it stays in place.
       final body = File('../../bin/protomaps-dev.sh').readAsStringSync();
-      expect(
-        body,
-        contains('PMTILES_FILE lives outside PROTOMAPS_HOME'),
-        reason:
-            'the mount-mismatch guard must exist — without it, '
-            'users with a custom PMTiles path hit an opaque '
-            "container-side error",
-      );
+      expect(body, contains('PMTILES_FILE lives outside PROTOMAPS_HOME'),
+          reason: 'the mount-mismatch guard must exist — without it, '
+              'users with a custom PMTiles path hit an opaque '
+              "container-side error");
       // Confirm the guard ACTUALLY compares the two paths.
       expect(
         body,
-        contains(
-          RegExp(r'pmtiles_dir.*=.*dirname.*PMTILES_FILE', dotAll: true),
-        ),
-        reason:
-            'guard must compute dirname(PMTILES_FILE) to compare '
+        contains(RegExp(
+          r'pmtiles_dir.*=.*dirname.*PMTILES_FILE',
+          dotAll: true,
+        )),
+        reason: 'guard must compute dirname(PMTILES_FILE) to compare '
             'against PROTOMAPS_HOME',
       );
     });
@@ -5302,29 +4614,27 @@ void main() {
         'geocoding_math.ts',
       };
       final offenders = <String>[];
-      for (final f
-          in dir
-              .listSync(recursive: true)
-              .whereType<File>()
-              .where((f) => f.path.endsWith('.svelte'))) {
+      for (final f in dir
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.svelte'))) {
         final body = f.readAsStringSync();
         if (!body.contains('api.maptiler.com/maps/')) continue;
         // This file has a hardcoded URL. Confirm it ALSO contains
         // either `TILE_STYLE_OVERRIDE` (the in-file ternary) OR
         // `mapStyleUrlFromEnv` (the canonical helper).
-        final gated =
-            body.contains('TILE_STYLE_OVERRIDE') ||
+        final gated = body.contains('TILE_STYLE_OVERRIDE') ||
             body.contains('mapStyleUrlFromEnv') ||
             body.contains('mapStyleUrl(');
-        if (!gated && !allowedFiles.contains(f.path.split('/').last)) {
+        if (!gated &&
+            !allowedFiles.contains(f.path.split('/').last)) {
           offenders.add(f.path);
         }
       }
       expect(
         offenders,
         isEmpty,
-        reason:
-            'these web map surfaces hardcode the MapTiler URL '
+        reason: 'these web map surfaces hardcode the MapTiler URL '
             'without an override gate — they will bypass '
             'PUBLIC_TILE_STYLE_URL silently:\n  '
             "${offenders.join('\n  ')}\n"
@@ -5349,13 +4659,9 @@ void main() {
         'dev:tiles:logs',
         'dev:tiles:env',
       ]) {
-        expect(
-          pkg,
-          contains('"$cmd"'),
-          reason:
-              'root package.json must export `$cmd` so the '
-              'lifecycle matches the rest of the dev tooling',
-        );
+        expect(pkg, contains('"$cmd"'),
+            reason: 'root package.json must export `$cmd` so the '
+                'lifecycle matches the rest of the dev tooling');
       }
       // Every wrapper must call the bash script directly — no
       // duplicated logic that could drift from the source of
@@ -5363,8 +4669,7 @@ void main() {
       expect(
         pkg,
         contains(RegExp(r'"dev:tiles:up":\s*"bin/protomaps-dev\.sh start"')),
-        reason:
-            'dev:tiles:up must wrap bin/protomaps-dev.sh start; '
+        reason: 'dev:tiles:up must wrap bin/protomaps-dev.sh start; '
             'duplicating the docker run command in package.json '
             'would drift the moment the bash script gets a new flag',
       );
@@ -5381,13 +4686,8 @@ void main() {
       final body = File('../../bin/protomaps-dev.sh').readAsStringSync();
       expect(
         body,
-        contains(
-          RegExp(
-            r'curl\s+-fs\s+"http://localhost:\$\{PROTOMAPS_PORT\}/health"',
-          ),
-        ),
-        reason:
-            'wait-loop must use /health as the probe — the live boot '
+        contains(RegExp(r'curl\s+-fs\s+"http://localhost:\$\{PROTOMAPS_PORT\}/health"')),
+        reason: 'wait-loop must use /health as the probe — the live boot '
             'confirmed it exists despite the earlier audit doubting it',
       );
       // The previous fallback path (`||` of /styles.json + /) must
@@ -5395,16 +4695,8 @@ void main() {
       // path on purpose.
       expect(
         body,
-        isNot(
-          contains(
-            RegExp(
-              r'/styles\.json[^"]*"\s*>/dev/null[\s\S]{0,40}\\\s*$',
-              multiLine: true,
-            ),
-          ),
-        ),
-        reason:
-            'the /styles.json fallback was redundant after /health '
+        isNot(contains(RegExp(r'/styles\.json[^"]*"\s*>/dev/null[\s\S]{0,40}\\\s*$', multiLine: true))),
+        reason: 'the /styles.json fallback was redundant after /health '
             'was confirmed — keep the probe to one curl per iteration',
       );
     });
@@ -5418,13 +4710,9 @@ void main() {
       // dev sidecar — bring it up on demand, keep it up through
       // daemon restarts, but obey explicit `stop`.
       final body = File('../../bin/protomaps-dev.sh').readAsStringSync();
-      expect(
-        body,
-        contains('--restart unless-stopped'),
-        reason:
-            'docker run must carry --restart unless-stopped so the '
-            'container survives docker daemon reloads',
-      );
+      expect(body, contains('--restart unless-stopped'),
+          reason: 'docker run must carry --restart unless-stopped so the '
+              'container survives docker daemon reloads');
     });
 
     test('LocalRunStore owner-tag stamping (offline-record contract)', () {
@@ -5444,34 +4732,31 @@ void main() {
       //      `filterRunsForCurrentUser` before pushing.
       //
       // See `docs/architecture/decisions.md § 67`.
-      final storeSrc = File('lib/local_run_store.dart').readAsStringSync();
+      final storeSrc =
+          File('lib/local_run_store.dart').readAsStringSync();
       expect(
         storeSrc,
         contains('String? Function()? currentUserIdProvider'),
-        reason:
-            'LocalRunStore must expose currentUserIdProvider — '
+        reason: 'LocalRunStore must expose currentUserIdProvider — '
             'without it, save() has no way to know who owns the run',
       );
       expect(
         storeSrc,
         contains(RegExp(r'currentUserIdProvider\?\.call\(\)')),
-        reason:
-            'save() must invoke the provider on EACH save '
+        reason: 'save() must invoke the provider on EACH save '
             '(not memoise) — otherwise sign-out + sign-in mid-session '
             'still stamps the stale userId',
       );
       expect(
         storeSrc,
         contains('_withCreatedByUserId'),
-        reason:
-            'the stamping helper must exist so save() can produce '
+        reason: 'the stamping helper must exist so save() can produce '
             'a fresh Run with the owner tag without mutating input',
       );
       expect(
         storeSrc,
         contains('static Run withCreatedByUserId'),
-        reason:
-            'public static for the SyncService to adopt untagged '
+        reason: 'public static for the SyncService to adopt untagged '
             'runs onto the current user (legacy / signed-out-at-save)',
       );
 
@@ -5479,18 +4764,17 @@ void main() {
       expect(
         mainSrc,
         contains('store.currentUserIdProvider = () => api?.userId'),
-        reason:
-            'main.dart must wire the provider — without this, '
+        reason: 'main.dart must wire the provider — without this, '
             'production saved runs never carry the tag and the '
             "filter can't differentiate User A's runs from User B's",
       );
 
-      final syncSrc = File('lib/sync_service.dart').readAsStringSync();
+      final syncSrc =
+          File('lib/sync_service.dart').readAsStringSync();
       expect(
         syncSrc,
         contains('filterRunsForCurrentUser'),
-        reason:
-            'SyncService must call the filter before invoking '
+        reason: 'SyncService must call the filter before invoking '
             'saveRunsBatch — otherwise the queue pushes foreign runs '
             'under the current user',
       );
@@ -5510,28 +4794,20 @@ void main() {
       //   4. The cache update happens ONLY on successful push (a
       //      swallowed PlatformException must not poison the cache
       //      so the next attempt re-fires).
-      final src = File('lib/wear_routes_bridge.dart').readAsStringSync();
-      expect(
-        src,
-        contains('_lastPushedRoutesJson'),
-        reason:
-            'diff cache field must exist; without it every '
-            'LocalRouteStore.save fires a redundant DataLayer push',
-      );
-      expect(
-        src,
-        contains('if (routesJson == _lastPushedRoutesJson) return'),
-        reason:
-            'diff gate must short-circuit BEFORE the channel '
-            'invocation — otherwise the gate is a no-op',
-      );
+      final src =
+          File('lib/wear_routes_bridge.dart').readAsStringSync();
+      expect(src, contains('_lastPushedRoutesJson'),
+          reason: 'diff cache field must exist; without it every '
+              'LocalRouteStore.save fires a redundant DataLayer push');
+      expect(src, contains('if (routesJson == _lastPushedRoutesJson) return'),
+          reason: 'diff gate must short-circuit BEFORE the channel '
+              'invocation — otherwise the gate is a no-op');
       expect(
         src,
         contains(
-          RegExp(r'_lastPushedRoutesJson = null\s*;[\s\S]*?Future<void> _push'),
+            RegExp(r'_lastPushedRoutesJson = null\s*;[\s\S]*?Future<void> _push'),
         ),
-        reason:
-            'detach() must reset _lastPushedRoutesJson so a re-attach '
+        reason: 'detach() must reset _lastPushedRoutesJson so a re-attach '
             'fires unconditionally',
       );
       // The cache update is INSIDE the try block, after the
@@ -5540,8 +4816,7 @@ void main() {
       expect(
         src.indexOf("_lastPushedRoutesJson = routesJson"),
         greaterThan(src.indexOf("await _channel.invokeMethod")),
-        reason:
-            'cache must be updated AFTER the channel invoke '
+        reason: 'cache must be updated AFTER the channel invoke '
             'succeeds — otherwise a swallowed PlatformException '
             'leaves the cache claiming we sent something that '
             'never landed',
@@ -5558,37 +4833,22 @@ void main() {
       // Moving the file silently skips both — pin the canonical
       // path here.
       final f = File('../../fixtures/wear_routes_payload.json');
-      expect(
-        f.existsSync(),
-        isTrue,
-        reason:
-            'fixture must live at ${f.absolute.path} so both '
-            'platform tests can read it',
-      );
+      expect(f.existsSync(), isTrue,
+          reason: 'fixture must live at ${f.absolute.path} so both '
+              'platform tests can read it');
     });
 
     test('fixture declares the three contract keys the tests rely on', () {
       final f = File('../../fixtures/wear_routes_payload.json');
       final body = f.readAsStringSync();
-      expect(
-        body,
-        contains('"input_routes"'),
-        reason: 'Dart side reads input_routes to feed the encoder',
-      );
-      expect(
-        body,
-        contains('"expected_payload_json"'),
-        reason:
-            'wire shape — both the Dart side asserts the encoder '
-            'produces this AND the Kotlin side parses this',
-      );
-      expect(
-        body,
-        contains('"expected_parsed_routes"'),
-        reason:
-            'Kotlin side asserts parseRoutesJson produces this '
-            'from expected_payload_json',
-      );
+      expect(body, contains('"input_routes"'),
+          reason: 'Dart side reads input_routes to feed the encoder');
+      expect(body, contains('"expected_payload_json"'),
+          reason: 'wire shape — both the Dart side asserts the encoder '
+              'produces this AND the Kotlin side parses this');
+      expect(body, contains('"expected_parsed_routes"'),
+          reason: 'Kotlin side asserts parseRoutesJson produces this '
+              'from expected_payload_json');
     });
   });
 
@@ -5605,18 +4865,16 @@ void main() {
       expect(
         source,
         contains('void assertOsrmConfiguredForProd('),
-        reason:
-            'routing.dart must declare assertOsrmConfiguredForProd '
+        reason: 'routing.dart must declare assertOsrmConfiguredForProd '
             'so callers can be gated by it.',
       );
-      final assertCalls = RegExp(
-        r'\bassertOsrmConfiguredForProd\(\);',
-      ).allMatches(source).length;
+      final assertCalls = RegExp(r'\bassertOsrmConfiguredForProd\(\);')
+          .allMatches(source)
+          .length;
       expect(
         assertCalls,
         greaterThanOrEqualTo(2),
-        reason:
-            'snapToRoad and fetchRouteThrough must both call '
+        reason: 'snapToRoad and fetchRouteThrough must both call '
             'assertOsrmConfiguredForProd() before issuing an outbound '
             'HTTP request — see audit/third-party-data-flows.',
       );
@@ -5627,8 +4885,7 @@ void main() {
       expect(
         source,
         contains("dotenv.env['OSRM_URL']"),
-        reason:
-            'routing.dart must read the OSRM endpoint from dotenv '
+        reason: 'routing.dart must read the OSRM endpoint from dotenv '
             'so deployments can point at the self-hosted Fly.io '
             'instance documented in apps/job_worker/osrm/.',
       );
@@ -5638,8 +4895,7 @@ void main() {
       expect(
         source.contains("'\$_kOsrmBase/"),
         isFalse,
-        reason:
-            'routing.dart must not interpolate a static '
+        reason: 'routing.dart must not interpolate a static '
             '_kOsrmBase — use the dotenv-aware _osrmBaseUrl() helper.',
       );
     });
@@ -5652,7 +4908,8 @@ void main() {
       // hard-pin the regression here so it never reappears. The
       // placeholder string is reconstructed at runtime so this
       // assertion source doesn't trigger itself.
-      final placeholder = 'protomaps' + '-dev' + '@' + 'localhost';
+      final placeholder =
+          'protomaps' + '-dev' + '@' + 'localhost';
       final hits = <String>[];
       final entries = Directory('lib').listSync(recursive: true);
       for (final entry in entries) {
@@ -5666,8 +4923,7 @@ void main() {
       expect(
         hits,
         isEmpty,
-        reason:
-            'OSM Foundation usage policy requires a reachable '
+        reason: 'OSM Foundation usage policy requires a reachable '
             'contact email on Nominatim requests. Use '
             'privacy@threkir.com instead of the placeholder shipped '
             'from a different project.',
@@ -5686,8 +4942,7 @@ void main() {
       expect(
         src.contains('!prefs.sentryOptOut'),
         isTrue,
-        reason:
-            'main.dart must compute `shouldUseSentry` against '
+        reason: 'main.dart must compute `shouldUseSentry` against '
             'prefs.sentryOptOut — otherwise the Settings → Privacy '
             'toggle does not stop Sentry from initialising.',
       );
@@ -5718,28 +4973,23 @@ void main() {
       expect(
         body,
         contains('startClockMin: _startClockMin()'),
-        reason:
-            'buildRoadbook must be given the start clock or no '
+        reason: 'buildRoadbook must be given the start clock or no '
             'cutoff_clock marker ever produces a cutoff.',
       );
       // The legs are built while staging, before the real start exists, so
       // both entry points into a running state must rebuild them.
       expect(
-        RegExp(
-          r'_runStartedAtWall = DateTime\.now\(\);\s*\n(\s*//[^\n]*\n)*\s*_loadCutoffLegs\(\);',
-        ).hasMatch(source),
+        RegExp(r'_runStartedAtWall = DateTime\.now\(\);\s*\n(\s*//[^\n]*\n)*\s*_loadCutoffLegs\(\);')
+            .hasMatch(source),
         isTrue,
-        reason:
-            'starting a run must re-run _loadCutoffLegs against the real '
+        reason: 'starting a run must re-run _loadCutoffLegs against the real '
             'start clock.',
       );
       expect(
-        RegExp(
-          r'_runStartedAtWall = partial\.startedAt;\s*\n(\s*//[^\n]*\n)*\s*_loadCutoffLegs\(\);',
-        ).hasMatch(source),
+        RegExp(r'_runStartedAtWall = partial\.startedAt;\s*\n(\s*//[^\n]*\n)*\s*_loadCutoffLegs\(\);')
+            .hasMatch(source),
         isTrue,
-        reason:
-            'resuming a partial run must re-anchor the cutoff clocks to '
+        reason: 'resuming a partial run must re-anchor the cutoff clocks to '
             'when that run actually began.',
       );
     });
@@ -5751,9 +5001,7 @@ void main() {
       // event_organiser, and web's canManageEvents matches. Gating the mobile
       // create affordance on isAdmin locked the one role that exists to run
       // events out of creating them — on mobile only.
-      final src = File(
-        'lib/screens/club_detail_screen.dart',
-      ).readAsStringSync();
+      final src = File('lib/screens/club_detail_screen.dart').readAsStringSync();
       expect(src, contains('final showCreate = c.isEventOrganiser;'));
       expect(
         src.contains('final showCreate = c.isAdmin;'),
@@ -5782,8 +5030,7 @@ void main() {
       expect(
         src,
         contains('_startSteps = event.steps - _stepsCarriedIn;'),
-        reason:
-            'the deferred baseline must subtract the carried-in steps so a '
+        reason: 'the deferred baseline must subtract the carried-in steps so a '
             'resumed run continues from them',
       );
       // Resume seeds the carry-in; a fresh start clears it.
@@ -5801,17 +5048,12 @@ void main() {
       // waypoints until some unrelated future edit fires the listener.
       final src = File('lib/main.dart').readAsStringSync();
       final signedOut = src.indexOf('event.event == AuthChangeEvent.signedOut');
-      expect(
-        signedOut,
-        isNonNegative,
-        reason: 'signedOut handler not found — update this guard',
-      );
+      expect(signedOut, isNonNegative,
+          reason: 'signedOut handler not found — update this guard');
       // The handler is long (comments); take everything up to the bootstrap
       // attach that follows the auth listener.
       final block = src.substring(
-        signedOut,
-        src.indexOf('WearAuthBridge().attach(', signedOut),
-      );
+          signedOut, src.indexOf('WearAuthBridge().attach(', signedOut));
       expect(
         block,
         contains('WearRoutesBridge().attach(routeStore);'),
@@ -5829,17 +5071,14 @@ void main() {
       // as adoptable — so on a shared device the next account to sign in
       // pushed a previous user's crashed run as its own (§67).
       final src = File('lib/main.dart').readAsStringSync();
-      final provider = src.indexOf(
-        'store.currentUserIdProvider = () => api?.userId;',
-      );
+      final provider = src.indexOf('store.currentUserIdProvider = () => api?.userId;');
       final recover = src.indexOf('await store.save(evaluation.recovered!);');
       expect(provider, isNonNegative);
       expect(recover, isNonNegative);
       expect(
         provider < recover,
         isTrue,
-        reason:
-            'in-progress recovery must run after the owner tag is wired, '
+        reason: 'in-progress recovery must run after the owner tag is wired, '
             'or the recovered run is adoptable by the next account.',
       );
     });
@@ -5861,17 +5100,13 @@ void main() {
       for (final entity in Directory('lib').listSync(recursive: true)) {
         if (entity is! File || !entity.path.endsWith('.dart')) continue;
         final src = entity.readAsStringSync();
-        for (final m in RegExp(
-          r'class\s+(\w+)\s+extends\s+OfflineSyncStore<',
-        ).allMatches(src)) {
+        for (final m in RegExp(r'class\s+(\w+)\s+extends\s+OfflineSyncStore<')
+            .allMatches(src)) {
           subclassNames.add(m.group(1)!);
         }
       }
-      expect(
-        subclassNames,
-        isNotEmpty,
-        reason: 'the subclass scan itself must find the stores',
-      );
+      expect(subclassNames, isNotEmpty,
+          reason: 'the subclass scan itself must find the stores');
 
       final mainSrc = File('lib/main.dart').readAsStringSync();
       final wipeSrc = File('lib/offline_store_wipe.dart').readAsStringSync();
@@ -5882,8 +5117,7 @@ void main() {
         expect(
           constructed.hasMatch(mainSrc) || constructed.hasMatch(wipeSrc),
           isTrue,
-          reason:
-              '$name is an OfflineSyncStore subclass but is neither an '
+          reason: '$name is an OfflineSyncStore subclass but is neither an '
               'app-singleton cleared in main.dart nor listed in '
               'buildScreenOwnedOfflineStores() — its rows would survive '
               'sign-out and leak to (and be adopted by) the next account.',
@@ -5892,57 +5126,48 @@ void main() {
     });
   });
 
-  group(
-    'a screen-owned OfflineSyncStore is init()ed, never only loadAll()ed',
-    () {
-      // Reason (followups 2026-08-18): `nutrition_screen.dart` constructed its
-      // meal-template + recipe stores and called `loadAll()` on them. `loadAll`
-      // tolerates a null `dir` and returns, so the store read as alive while
-      // every write refused — a saved meal or recipe lived in memory for the
-      // session and reached neither disk nor the server. Only `init()` resolves
-      // the directory, so a screen that owns one of these stores must call it.
-      test('every field holding one calls init() on it', () {
-        final sources = <String, String>{};
-        for (final entity in Directory('lib').listSync(recursive: true)) {
-          if (entity is! File || !entity.path.endsWith('.dart')) continue;
-          sources[entity.path] = entity.readAsStringSync();
+  group('a screen-owned OfflineSyncStore is init()ed, never only loadAll()ed',
+      () {
+    // Reason (followups 2026-08-18): `nutrition_screen.dart` constructed its
+    // meal-template + recipe stores and called `loadAll()` on them. `loadAll`
+    // tolerates a null `dir` and returns, so the store read as alive while
+    // every write refused — a saved meal or recipe lived in memory for the
+    // session and reached neither disk nor the server. Only `init()` resolves
+    // the directory, so a screen that owns one of these stores must call it.
+    test('every field holding one calls init() on it', () {
+      final sources = <String, String>{};
+      for (final entity in Directory('lib').listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.dart')) continue;
+        sources[entity.path] = entity.readAsStringSync();
+      }
+      final storeTypes = <String>{};
+      for (final src in sources.values) {
+        for (final m
+            in RegExp(r'class\s+(\w+)\s+extends\s+OfflineSyncStore<')
+                .allMatches(src)) {
+          storeTypes.add(m.group(1)!);
         }
-        final storeTypes = <String>{};
-        for (final src in sources.values) {
-          for (final m in RegExp(
-            r'class\s+(\w+)\s+extends\s+OfflineSyncStore<',
-          ).allMatches(src)) {
-            storeTypes.add(m.group(1)!);
-          }
-        }
-        expect(
-          storeTypes,
-          isNotEmpty,
-          reason: 'the subclass scan itself must find the stores',
-        );
+      }
+      expect(storeTypes, isNotEmpty,
+          reason: 'the subclass scan itself must find the stores');
 
-        final offenders = <String>[];
-        sources.forEach((path, src) {
-          for (final m in RegExp(r'(\w+)\s*=\s*(\w+)\(\)').allMatches(src)) {
-            final field = m.group(1)!;
-            if (!storeTypes.contains(m.group(2)!)) continue;
-            if (RegExp('${RegExp.escape(field)}\\.init\\(').hasMatch(src)) {
-              continue;
-            }
-            offenders.add('$path: $field');
+      final offenders = <String>[];
+      sources.forEach((path, src) {
+        for (final m in RegExp(r'(\w+)\s*=\s*(\w+)\(\)').allMatches(src)) {
+          final field = m.group(1)!;
+          if (!storeTypes.contains(m.group(2)!)) continue;
+          if (RegExp('${RegExp.escape(field)}\\.init\\(').hasMatch(src)) {
+            continue;
           }
-        });
-        expect(
-          offenders,
-          isEmpty,
-          reason:
-              'these fields hold an OfflineSyncStore that is never '
-              'init()ed, so every write to them refuses and the rows never '
-              'reach disk or the server: ${offenders.join(', ')}',
-        );
+          offenders.add('$path: $field');
+        }
       });
-    },
-  );
+      expect(offenders, isEmpty,
+          reason: 'these fields hold an OfflineSyncStore that is never '
+              'init()ed, so every write to them refuses and the rows never '
+              'reach disk or the server: ${offenders.join(', ')}');
+    });
+  });
 
   group('every replaceFromServer refuses before it touches rowsById', () {
     // Reason (followups 2026-08-18): `rewriteAll` used to return silently on a
@@ -5990,29 +5215,20 @@ void main() {
           }
           found.add(entity.path);
           final firstStatement = src.substring(open + 1).trimLeft();
-          if (!firstStatement.startsWith(
-            "requireInitialised('replaceFromServer');",
-          )) {
+          if (!firstStatement
+              .startsWith("requireInitialised('replaceFromServer');")) {
             offenders.add(entity.path);
           }
         }
       }
-      expect(
-        found.length,
-        greaterThanOrEqualTo(7),
-        reason:
-            'the scan itself must find the replaceFromServer overrides, '
-            'found: ${found.join(', ')}',
-      );
-      expect(
-        offenders,
-        isEmpty,
-        reason:
-            'these replaceFromServer overrides rebuild rowsById before '
-            'anything checks the store was init()ed, so a fill that can '
-            'never reach disk still replaces what the screen is showing: '
-            '${offenders.join(', ')}',
-      );
+      expect(found.length, greaterThanOrEqualTo(7),
+          reason: 'the scan itself must find the replaceFromServer overrides, '
+              'found: ${found.join(', ')}');
+      expect(offenders, isEmpty,
+          reason: 'these replaceFromServer overrides rebuild rowsById before '
+              'anything checks the store was init()ed, so a fill that can '
+              'never reach disk still replaces what the screen is showing: '
+              '${offenders.join(', ')}');
     });
   });
 
@@ -6031,8 +5247,7 @@ void main() {
     // it can only fail in a DST timezone and CI runs UTC — so these source
     // guards are what actually catch a regression.
     const weekBoundaryFns = <String, String>{
-      'lib/goals.dart':
-          r'DateTime weekStartLocal\(DateTime now, '
+      'lib/goals.dart': r'DateTime weekStartLocal\(DateTime now, '
           r'\{String weekStartDay = .monday.\}\) \{',
       'lib/screens/period_summary_screen.dart':
           r'DateTime periodEnd\(PeriodType period, DateTime anchor,\s*'
@@ -6046,8 +5261,7 @@ void main() {
         expect(
           body.contains('Duration(days:'),
           isFalse,
-          reason:
-              'a fixed 24-hour day skews on a DST transition — use '
+          reason: 'a fixed 24-hour day skews on a DST transition — use '
               'DateTime(y, m, d ± n), see streaks.dart _previousLocalDay',
         );
       });
@@ -6116,8 +5330,7 @@ void main() {
         'lib/recurrence.dart': 'weekly-recurrence anchor (web recurrence.ts)',
       };
       final pattern = RegExp(
-        r'weekday - 1\)\)|weekday - DateTime\.monday|_mondayOf\(|_weekStartMidnight\(',
-      );
+          r'weekday - 1\)\)|weekday - DateTime\.monday|_mondayOf\(|_weekStartMidnight\(');
       final offenders = Directory('lib')
           .listSync(recursive: true)
           .whereType<File>()
@@ -6126,38 +5339,29 @@ void main() {
           .where((f) => pattern.hasMatch(f.readAsStringSync()))
           .map((f) => f.path)
           .toList();
-      expect(
-        offenders,
-        isEmpty,
-        reason:
-            'take the week window from weekStartLocal(now, '
-            'weekStartDay: …) in goals.dart',
-      );
+      expect(offenders, isEmpty,
+          reason: 'take the week window from weekStartLocal(now, '
+              'weekStartDay: …) in goals.dart');
     });
 
-    test(
-      'every weekStartLocal call on a Home surface passes the preference',
-      () {
-        for (final path in [
-          // The heatmap's weeks; it moved off Home onto the weekly summary
-          // (decisions § 2284) and still windows by the preference.
-          'lib/widgets/activity_heatmap.dart',
-          'lib/mileage_trend.dart',
-          'lib/current_week.dart',
-        ]) {
-          final source = File(path).readAsStringSync();
-          final calls = RegExp(r'weekStartLocal\(([^)]*)\)').allMatches(source);
-          expect(calls, isNotEmpty, reason: '$path must read weekStartLocal');
-          for (final c in calls) {
-            expect(
-              c.group(1),
-              contains('weekStartDay:'),
-              reason: '$path: `${c.group(0)}` falls back to Monday',
-            );
-          }
+    test('every weekStartLocal call on a Home surface passes the preference',
+        () {
+      for (final path in [
+        // The heatmap's weeks; it moved off Home onto the weekly summary
+        // (decisions § 2284) and still windows by the preference.
+        'lib/widgets/activity_heatmap.dart',
+        'lib/mileage_trend.dart',
+        'lib/current_week.dart',
+      ]) {
+        final source = File(path).readAsStringSync();
+        final calls = RegExp(r'weekStartLocal\(([^)]*)\)').allMatches(source);
+        expect(calls, isNotEmpty, reason: '$path must read weekStartLocal');
+        for (final c in calls) {
+          expect(c.group(1), contains('weekStartDay:'),
+              reason: '$path: `${c.group(0)}` falls back to Monday');
         }
-      },
-    );
+      }
+    });
   });
 
   group('remote images always carry a failure path', () {
@@ -6184,13 +5388,9 @@ void main() {
         for (final f in sources)
           if (f.readAsStringSync().contains('DecorationImage(')) f.path,
       ];
-      expect(
-        offenders,
-        isEmpty,
-        reason:
-            'DecorationImage cannot report a load failure — layer an '
-            'Image with an errorBuilder over the fallback instead',
-      );
+      expect(offenders, isEmpty,
+          reason: 'DecorationImage cannot report a load failure — layer an '
+              'Image with an errorBuilder over the fallback instead');
     });
 
     test('no CircleAvatar hides its fallback behind a backgroundImage', () {
@@ -6198,13 +5398,9 @@ void main() {
         for (final f in sources)
           if (f.readAsStringSync().contains('backgroundImage:')) f.path,
       ];
-      expect(
-        offenders,
-        isEmpty,
-        reason:
-            'CircleAvatar paints backgroundImage over its child, so a '
-            'failed load shows an empty disc — use IdentityAvatar',
-      );
+      expect(offenders, isEmpty,
+          reason: 'CircleAvatar paints backgroundImage over its child, so a '
+              'failed load shows an empty disc — use IdentityAvatar');
     });
 
     test('every avatar routes through ui_kit IdentityAvatar', () {
@@ -6212,13 +5408,9 @@ void main() {
         for (final f in sources)
           if (f.readAsStringSync().contains('NetworkImage(')) f.path,
       ];
-      expect(
-        offenders,
-        isEmpty,
-        reason:
-            'a bare NetworkImage has no errorBuilder of its own — use '
-            'IdentityAvatar for identities, Image.network elsewhere',
-      );
+      expect(offenders, isEmpty,
+          reason: 'a bare NetworkImage has no errorBuilder of its own — use '
+              'IdentityAvatar for identities, Image.network elsewhere');
     });
   });
 
@@ -6246,20 +5438,15 @@ void main() {
       final offenders = <String>[
         for (final f in sources)
           if (f.readAsStringSync().contains(
-            'Center(child: CircularProgressIndicator())',
-          ))
+              'Center(child: CircularProgressIndicator())'))
             f.path,
       ];
-      expect(
-        offenders,
-        isEmpty,
-        reason:
-            'use ListSkeleton where the surface is rows, '
-            'ListSkeleton.section where it is one section of a scrollable, '
-            'and compose SkeletonBlock beside them (or a '
-            'widgets/loading_skeletons.dart composition) where the layout '
-            'is mixed',
-      );
+      expect(offenders, isEmpty,
+          reason: 'use ListSkeleton where the surface is rows, '
+              'ListSkeleton.section where it is one section of a scrollable, '
+              'and compose SkeletonBlock beside them (or a '
+              'widgets/loading_skeletons.dart composition) where the layout '
+              'is mixed');
     });
 
     test('no screen loads its content behind a running figure', () {
@@ -6277,39 +5464,29 @@ void main() {
             .whereType<File>()
             .where((f) => f.path.endsWith('.dart')),
       ];
-      expect(
-        scanned.length,
-        greaterThan(sources.length),
-        reason: 'the ui_kit scan must actually reach the package',
-      );
+      expect(scanned.length, greaterThan(sources.length),
+          reason: 'the ui_kit scan must actually reach the package');
       final offenders = <String>[
         for (final f in scanned)
           if (figure.hasMatch(f.readAsStringSync())) f.path,
       ];
-      expect(
-        offenders,
-        isEmpty,
-        reason:
-            'a screen loading content shows a skeleton shaped like the '
-            'screen it becomes: compose ListSkeleton, ListSkeleton.section '
-            'and SkeletonBlock, or use a widgets/loading_skeletons.dart '
-            'composition',
-      );
+      expect(offenders, isEmpty,
+          reason: 'a screen loading content shows a skeleton shaped like the '
+              'screen it becomes: compose ListSkeleton, ListSkeleton.section '
+              'and SkeletonBlock, or use a widgets/loading_skeletons.dart '
+              'composition');
     });
 
     test('no screen hand-rolls its own empty state', () {
       final offenders = <String>[
         for (final f in sources)
-          if (RegExp(r'class \w*EmptyState\b').hasMatch(f.readAsStringSync()))
+          if (RegExp(r'class \w*EmptyState\b')
+              .hasMatch(f.readAsStringSync()))
             f.path,
       ];
-      expect(
-        offenders,
-        isEmpty,
-        reason:
-            'ui_kit EmptyState owns the icon/title/body proportions and '
-            'the bounded-vs-unbounded host contract (decisions.md § 485)',
-      );
+      expect(offenders, isEmpty,
+          reason: 'ui_kit EmptyState owns the icon/title/body proportions and '
+              'the bounded-vs-unbounded host contract (decisions.md § 485)');
     });
   });
 
@@ -6374,9 +5551,7 @@ void main() {
         final m = RegExp('AlertDialog[(]').firstMatch(out.substring(1));
         if (m == null) return out;
         final open = m.start + 1 + 'AlertDialog'.length;
-        out =
-            out.substring(0, m.start + 1) +
-            out.substring(matchBlock(out, open));
+        out = out.substring(0, m.start + 1) + out.substring(matchBlock(out, open));
       }
     }
 
@@ -6384,13 +5559,12 @@ void main() {
     /// `lib/` whose actions block carries no error emphasis.
     Map<String, int> unemphasised() {
       final counts = <String, int>{};
-      final files =
-          Directory('lib')
-              .listSync(recursive: true)
-              .whereType<File>()
-              .where((f) => f.path.endsWith('.dart'))
-              .toList()
-            ..sort((a, b) => a.path.compareTo(b.path));
+      final files = Directory('lib')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
       for (final f in files) {
         final src = f.readAsStringSync();
         for (final m in RegExp('AlertDialog[(]').allMatches(src)) {
@@ -6402,14 +5576,12 @@ void main() {
             final lb = block.indexOf('[', am.start);
             actions = block.substring(lb, matchBlock(block, lb));
           }
-          if (RegExp(
-            r'colorScheme\.error|AppSemanticColors|\.danger',
-          ).hasMatch(actions)) {
+          if (RegExp(r'colorScheme\.error|AppSemanticColors|\.danger')
+              .hasMatch(actions)) {
             continue;
           }
-          final tm = RegExp(
-            r'title:\s*(?:const\s*)?Text\(([^\n]*)',
-          ).firstMatch(block);
+          final tm =
+              RegExp(r'title:\s*(?:const\s*)?Text\(([^\n]*)').firstMatch(block);
           var title = (tm?.group(1) ?? '').trim();
           if (title.endsWith('),')) {
             title = title.substring(0, title.length - 2);
@@ -6448,13 +5620,10 @@ void main() {
       'screens/run_detail_screen.dart::l10n.runDetailEditTitle': 1,
       // A race director's result correction form: the save is the edit, and
       // the same form makes the next one.
-      'screens/event_detail_screen.dart::l10n.eventResultEditTitle(widget.name)':
-          1,
-      'screens/settings_account_screen.dart::l10n.settingsAccountDisplayName':
-          1,
+      'screens/event_detail_screen.dart::l10n.eventResultEditTitle(widget.name)': 1,
+      'screens/settings_account_screen.dart::l10n.settingsAccountDisplayName': 1,
       'screens/settings_preferences_screen.dart::l10n.prefsTargetPace': 1,
-      'screens/settings_preferences_screen.dart::l10n.prefsHrZonesDialogTitle':
-          1,
+      'screens/settings_preferences_screen.dart::l10n.prefsHrZonesDialogTitle': 1,
       'screens/settings_preferences_screen.dart::title': 3,
       'screens/settings_safety_screen.dart::l10n.safetyTitle': 1,
       'screens/workout_detail_screen.dart::l10n.workoutRelinkTitle': 1,
@@ -6470,8 +5639,7 @@ void main() {
       'screens/nutrition_screen.dart::l10n.nutritionSaveAsMealTitle': 1,
       'screens/nutrition_screen.dart::l10n.nutritionSaveAsRecipeTitle': 1,
       // Copies rather than replaces; the source plan is untouched.
-      'screens/plan_detail_screen.dart::dl10n.planDetailDuplicateConfirmTitle':
-          1,
+      'screens/plan_detail_screen.dart::dl10n.planDetailDuplicateConfirmTitle': 1,
       // Moves dates only; shifting back by the same amount restores them.
       'screens/plan_detail_screen.dart::l10n.planDetailShiftTitle': 1,
       // Restart copies the plan and retires the live one as abandoned, a
@@ -6485,8 +5653,7 @@ void main() {
       'screens/run_detail_screen.dart::l10n.runDetailSaveAsRouteTitle': 1,
       // Re-derives the distance from the stored track; the recorded figure
       // is kept in metadata.distance_recorded_m, so nothing is discarded.
-      'screens/run_detail_screen.dart::l10n.runDetailRecalculateDistanceDialogTitle':
-          1,
+      'screens/run_detail_screen.dart::l10n.runDetailRecalculateDistanceDialogTitle': 1,
       // States what the OS just refused and offers the Settings shortcut.
       // Either action finishes onboarding; nothing is discarded by it.
       'screens/onboarding_screen.dart::l10n.onboardingLocationDeniedTitle': 1,
@@ -6496,31 +5663,24 @@ void main() {
       'screens/run_screen.dart::_l10n.runLiveShareEndedTitle': 1,
       'screens/run_screen.dart::_l10n.runResumeDialogTitle': 1,
       // Credential changes the user is performing on purpose.
-      'screens/settings_account_screen.dart::l10n.settingsAccountChangeEmail':
-          1,
-      'screens/settings_account_screen.dart::l10n.settingsAccountChangePassword':
-          1,
+      'screens/settings_account_screen.dart::l10n.settingsAccountChangeEmail': 1,
+      'screens/settings_account_screen.dart::l10n.settingsAccountChangePassword': 1,
       // Restore is an upsert — it never deletes a run or route absent from
       // the backup, and the copy says so.
-      'screens/settings_account_screen.dart::l10n.settingsAccountRestoreTitle':
-          1,
+      'screens/settings_account_screen.dart::l10n.settingsAccountRestoreTitle': 1,
       // Every integration here reconnects in one tap.
       'screens/settings_integrations_screen.dart::(no title)': 1,
       'screens/settings_integrations_screen.dart::l10n.integrationsHrTitle': 1,
-      'screens/settings_integrations_screen.dart::l10n.integrationsParkrunTitle':
-          1,
-      'screens/settings_integrations_screen.dart::l10n.integrationsStravaDisconnectTitle':
-          1,
-      'screens/settings_integrations_screen.dart::l10n.integrationsTreadmillTitle':
-          1,
+      'screens/settings_integrations_screen.dart::l10n.integrationsParkrunTitle': 1,
+      'screens/settings_integrations_screen.dart::l10n.integrationsStravaDisconnectTitle': 1,
+      'screens/settings_integrations_screen.dart::l10n.integrationsTreadmillTitle': 1,
       // The athlete-number form on the barcode screen: it opens prefilled with
       // the current number, so the same dialog puts back whatever it replaced.
       'screens/parkrun_barcode_screen.dart::l10n.parkrunBarcodeTitle': 1,
       // Chooses how far back a Strava sync reaches. Imports are additive and
       // deduped against what is already there, so a wider window can only add
       // runs — there is nothing here to lose.
-      'screens/settings_integrations_screen.dart::l10n.integrationsStravaLookbackTitle':
-          1,
+      'screens/settings_integrations_screen.dart::l10n.integrationsStravaLookbackTitle': 1,
       // Explains what a feature is. Its only action is dismissal; nothing is
       // decided here and nothing can be lost by tapping it.
       'widgets/info_tip.dart::title': 1,
@@ -6535,26 +5695,18 @@ void main() {
         for (final e in found.entries)
           if (!exempt.containsKey(e.key)) e.key: e.value,
       };
-      expect(
-        unreviewed,
-        isEmpty,
-        reason:
-            'a new AlertDialog has an unemphasised confirm. If it is '
-            'destructive, route it through confirmDestructive; if it is '
-            'not, add it to `exempt` with the reason it cannot lose data',
-      );
+      expect(unreviewed, isEmpty,
+          reason: 'a new AlertDialog has an unemphasised confirm. If it is '
+              'destructive, route it through confirmDestructive; if it is '
+              'not, add it to `exempt` with the reason it cannot lose data');
     });
 
     test('the reviewed set has not silently grown or shrunk', () {
       final found = unemphasised();
       for (final e in exempt.entries) {
-        expect(
-          found[e.key],
-          e.value,
-          reason:
-              '${e.key} changed shape — re-check whether it is still a '
-              'non-destructive dialog before adjusting the count',
-        );
+        expect(found[e.key], e.value,
+            reason: '${e.key} changed shape — re-check whether it is still a '
+                'non-destructive dialog before adjusting the count');
       }
     });
 
@@ -6566,28 +5718,22 @@ void main() {
       // top_banner's Dismissible dismisses a banner, which destroys nothing
       // (issue #666 U7).
       final offenders = <String>[
-        for (final f
-            in Directory('lib')
-                .listSync(recursive: true)
-                .whereType<File>()
-                .where((f) => f.path.endsWith('.dart')))
+        for (final f in Directory('lib')
+            .listSync(recursive: true)
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.dart')))
           if (f.path != 'lib/widgets/top_banner.dart' &&
               f.readAsStringSync().contains('Dismissible('))
             f.path,
       ];
-      expect(
-        offenders,
-        isEmpty,
-        reason:
-            'a swipe is undiscoverable and unlabelled — put the '
-            'destructive action in a PopupMenuButton and confirm it',
-      );
+      expect(offenders, isEmpty,
+          reason: 'a swipe is undiscoverable and unlabelled — put the '
+              'destructive action in a PopupMenuButton and confirm it');
     });
 
     test('confirmDestructive is the only destructive-dialog builder', () {
-      final src = File(
-        'lib/widgets/confirm_destructive.dart',
-      ).readAsStringSync();
+      final src =
+          File('lib/widgets/confirm_destructive.dart').readAsStringSync();
       // Cancel first, unstyled; the confirm second, carrying the error colour.
       expect(
         src.indexOf('cancelLabel ?? l10n.commonCancel'),
@@ -6611,7 +5757,9 @@ void main() {
     test('every screen with a scrolling FAB body uses fabScrollClearance', () {
       // Screens whose FAB floats over something that does not scroll — a map
       // — have no last row to cover.
-      const nonScrolling = {'lib/screens/privacy_zones_screen.dart'};
+      const nonScrolling = {
+        'lib/screens/privacy_zones_screen.dart',
+      };
       // Hosts that hoist a sub-screen's FAB into their own Scaffold. The
       // clearance belongs to the list, which lives in the sub-screen.
       const hoists = {
@@ -6619,41 +5767,35 @@ void main() {
         'lib/screens/social_screen.dart',
       };
       final offenders = [
-        for (final f in Directory(
-          'lib/screens',
-        ).listSync().whereType<File>().where((f) => f.path.endsWith('.dart')))
+        for (final f in Directory('lib/screens')
+            .listSync()
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.dart')))
           if (!nonScrolling.contains(f.path) && !hoists.contains(f.path))
             if (f.readAsStringSync().contains('floatingActionButton:') &&
                 !f.readAsStringSync().contains('fabScrollClearance('))
               f.path,
       ];
-      expect(
-        offenders,
-        isEmpty,
-        reason:
-            'reserve fabScrollClearance(context) at the end of the '
-            'scroll view, or add the screen to one of the lists above',
-      );
+      expect(offenders, isEmpty,
+          reason: 'reserve fabScrollClearance(context) at the end of the '
+              'scroll view, or add the screen to one of the lists above');
     });
 
     test('no screen hard-codes its own FAB clearance', () {
       final offenders = <String>[];
-      for (final f in Directory(
-        'lib/screens',
-      ).listSync().whereType<File>().where((f) => f.path.endsWith('.dart'))) {
+      for (final f in Directory('lib/screens')
+          .listSync()
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'))) {
         final src = f.readAsStringSync();
         if (!src.contains('fabScrollClearance(')) continue;
         if (RegExp(r'viewPaddingOf\(context\)\.bottom').hasMatch(src)) {
           offenders.add(f.path);
         }
       }
-      expect(
-        offenders,
-        isEmpty,
-        reason:
-            'fabScrollClearance already folds in the system inset — a '
-            'second viewPadding read double-counts it',
-      );
+      expect(offenders, isEmpty,
+          reason: 'fabScrollClearance already folds in the system inset — a '
+              'second viewPadding read double-counts it');
     });
   });
   group('deferred-commit undo outlives its surface', () {
@@ -6688,24 +5830,17 @@ void main() {
       return blocks;
     }
 
-    Iterable<File> _adopters() =>
-        [
+    Iterable<File> _adopters() => [
           ...Directory('lib/screens').listSync(recursive: true),
           ...Directory('lib/widgets').listSync(recursive: true),
-        ].whereType<File>().where(
-          (f) =>
-              f.path.endsWith('.dart') &&
-              f.readAsStringSync().contains('deferDestructive('),
-        );
+        ].whereType<File>().where((f) =>
+            f.path.endsWith('.dart') &&
+            f.readAsStringSync().contains('deferDestructive('));
 
     test('every adopting surface exists and is found by the guard', () {
-      expect(
-        _adopters(),
-        isNotEmpty,
-        reason:
-            'the guard silently passes if the call-site search breaks — '
-            'rename deferDestructive and this fails first',
-      );
+      expect(_adopters(), isNotEmpty,
+          reason: 'the guard silently passes if the call-site search breaks — '
+              'rename deferDestructive and this fails first');
     });
 
     test('no commit closure reads a BuildContext', () {
@@ -6723,13 +5858,9 @@ void main() {
           }
         }
       }
-      expect(
-        offenders,
-        isEmpty,
-        reason:
-            'a deferred commit runs after the surface may have been '
-            'popped; resolve strings at defer time. Offenders: $offenders',
-      );
+      expect(offenders, isEmpty,
+          reason: 'a deferred commit runs after the surface may have been '
+              'popped; resolve strings at defer time. Offenders: $offenders');
     });
 
     test('every restore closure is mount-guarded', () {
@@ -6742,36 +5873,26 @@ void main() {
             continue;
           }
           final onError = block.indexOf('onCommitError:');
-          final body = block.substring(
-            start,
-            onError > start ? onError : block.length,
-          );
+          final body =
+              block.substring(start, onError > start ? onError : block.length);
           if (!body.contains('mounted')) {
             offenders.add('${f.path} (unguarded restore)');
           }
         }
       }
-      expect(
-        offenders,
-        isEmpty,
-        reason:
-            'restore runs on undo and on a commit failure, either of '
-            'which can land after a pop. Offenders: $offenders',
-      );
+      expect(offenders, isEmpty,
+          reason: 'restore runs on undo and on a commit failure, either of '
+              'which can land after a pop. Offenders: $offenders');
     });
 
     test('the host is a root overlay entry, never a SnackBar', () {
       final src = File('lib/widgets/undo_bar.dart').readAsStringSync();
       expect(src.contains('rootOverlay: true'), isTrue);
-      expect(
-        src.contains('ScaffoldMessenger'),
-        isFalse,
-        reason:
-            'a snack bar lives inside the route Scaffold, which a modal '
-            'barrier drops from the semantics tree entirely — measured in '
-            'undo_bar_test.dart. An undo a screen reader cannot reach is '
-            'not an undo (WCAG 2.1.1)',
-      );
+      expect(src.contains('ScaffoldMessenger'), isFalse,
+          reason: 'a snack bar lives inside the route Scaffold, which a modal '
+              'barrier drops from the semantics tree entirely — measured in '
+              'undo_bar_test.dart. An undo a screen reader cannot reach is '
+              'not an undo (WCAG 2.1.1)');
     });
 
     test('the recording surface and account deletion keep their confirms', () {
@@ -6783,11 +5904,9 @@ void main() {
         'lib/screens/run_screen.dart',
         'lib/screens/settings_account_screen.dart',
       ]) {
-        expect(
-          File(path).readAsStringSync().contains('deferDestructive('),
-          isFalse,
-          reason: '$path must keep confirm-then-gone',
-        );
+        expect(File(path).readAsStringSync().contains('deferDestructive('),
+            isFalse,
+            reason: '$path must keep confirm-then-gone');
       }
     });
   });
@@ -6804,33 +5923,23 @@ void main() {
   // be a bare English label.
   test('the lock-screen notification body carries no English literal', () {
     final src = File('lib/run_notification_bridge.dart').readAsStringSync();
-    final match = RegExp(
-      r'final statsBig =([\s\S]{0,400}?);\n',
-    ).firstMatch(src);
-    expect(
-      match,
-      isNotNull,
-      reason:
-          'could not find the statsBig body in run_notification_bridge.dart '
-          '— if the lock-screen body moved, move this guard with it',
-    );
+    final match = RegExp(r'final statsBig =([\s\S]{0,400}?);\n').firstMatch(src);
+    expect(match, isNotNull,
+        reason: 'could not find the statsBig body in run_notification_bridge.dart '
+            '— if the lock-screen body moved, move this guard with it');
     final body = match!.group(1)!;
     for (final label in ['Time:', 'Distance:', 'Speed:', 'Pace:']) {
       expect(
         body.contains(label),
         isFalse,
-        reason:
-            'the lock-screen body spells "$label" as an English literal. '
+        reason: 'the lock-screen body spells "$label" as an English literal. '
             'Resolve it through l10n — runStatTime / runStatDistance / '
             'runStatSpeed / runStatPace already carry these exact strings in '
             'all seven catalogues.',
       );
     }
-    expect(
-      body.contains(r'$'),
-      isTrue,
-      reason: 'the body interpolates nothing — the match is probably wrong',
-    );
+    expect(body.contains(r'$'), isTrue,
+        reason: 'the body interpolates nothing — the match is probably wrong');
   });
 
   // A number the user typed reaches the app through a TextEditingController,
@@ -6841,28 +5950,27 @@ void main() {
   // as 52 km. Both failures are silent. parseTypedDecimal is the one reader
   // that accepts either separator; these guards keep new fields on it.
   group('typed decimals are read locale-tolerantly', () {
-    List<File> libSources() =>
-        Directory('lib')
-            .listSync(recursive: true)
-            .whereType<File>()
-            .where((f) => f.path.endsWith('.dart'))
-            .toList()
-          ..sort((a, b) => a.path.compareTo(b.path));
+    List<File> libSources() => Directory('lib')
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.dart'))
+        .toList()
+      ..sort((a, b) => a.path.compareTo(b.path));
 
     test('no controller text is parsed with a bare double.tryParse', () {
       final offenders = <String>[];
       for (final f in libSources()) {
-        for (final m in RegExp(
-          r'double\.tryParse\([^)]*\.text',
-        ).allMatches(f.readAsStringSync())) {
+        for (final m
+            in RegExp(r'double\.tryParse\([^)]*\.text').allMatches(
+          f.readAsStringSync(),
+        )) {
           offenders.add('${f.path}: ${m.group(0)}');
         }
       }
       expect(
         offenders,
         isEmpty,
-        reason:
-            'read typed text with parseTypedDecimal (lib/typed_decimal.dart) '
+        reason: 'read typed text with parseTypedDecimal (lib/typed_decimal.dart) '
             'so a comma decimal survives:\n${offenders.join('\n')}',
       );
     });
@@ -6872,9 +5980,7 @@ void main() {
       for (final f in libSources()) {
         if (f.path.endsWith('typed_decimal.dart')) continue;
         final src = f.readAsStringSync();
-        for (final m in RegExp(
-          r"allow\(RegExp\(r'\[[^\]]*\]'\)\)",
-        ).allMatches(src)) {
+        for (final m in RegExp(r"allow\(RegExp\(r'\[[^\]]*\]'\)\)").allMatches(src)) {
           final pattern = m.group(0)!;
           if (pattern.contains('.') && !pattern.contains(',')) {
             offenders.add('${f.path}: $pattern');
@@ -6884,8 +5990,7 @@ void main() {
       expect(
         offenders,
         isEmpty,
-        reason:
-            'a filter that admits "." but not "," deletes the comma a de/'
+        reason: 'a filter that admits "." but not "," deletes the comma a de/'
             'es/fr/pt keyboard produces, turning 5,2 into 52 before any parse. '
             'Use typedDecimalInputFormatters:\n${offenders.join('\n')}',
       );
@@ -6903,13 +6008,12 @@ void main() {
   group('every share goes through share_sheet.dart', () {
     const helper = 'lib/share_sheet.dart';
 
-    List<File> libSources() =>
-        Directory('lib')
-            .listSync(recursive: true)
-            .whereType<File>()
-            .where((f) => f.path.endsWith('.dart'))
-            .toList()
-          ..sort((a, b) => a.path.compareTo(b.path));
+    List<File> libSources() => Directory('lib')
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.dart'))
+        .toList()
+      ..sort((a, b) => a.path.compareTo(b.path));
 
     test('share_plus is imported by the helper and nothing else', () {
       var helperImports = false;
@@ -6922,22 +6026,14 @@ void main() {
           offenders.add(f.path);
         }
       }
-      expect(
-        helperImports,
-        isTrue,
-        reason:
-            '$helper must import share_plus — it is the only wrapper, '
-            'and the scan below is meaningless if it stops doing so',
-      );
-      expect(
-        offenders,
-        isEmpty,
-        reason:
-            'these reach share_plus directly and can therefore share '
-            'without a popover anchor, which is broken on iPad. Call '
-            'shareFilesFrom / shareTextFrom from $helper instead: '
-            '${offenders.join(', ')}',
-      );
+      expect(helperImports, isTrue,
+          reason: '$helper must import share_plus — it is the only wrapper, '
+              'and the scan below is meaningless if it stops doing so');
+      expect(offenders, isEmpty,
+          reason: 'these reach share_plus directly and can therefore share '
+              'without a popover anchor, which is broken on iPad. Call '
+              'shareFilesFrom / shareTextFrom from $helper instead: '
+              '${offenders.join(', ')}');
     });
 
     test('no raw share call exists outside the helper', () {
@@ -6949,13 +6045,9 @@ void main() {
           offenders.add('${f.path}: ${m.group(0)}');
         }
       }
-      expect(
-        offenders,
-        isEmpty,
-        reason:
-            'a raw share call cannot carry the sharePositionOrigin iPad '
-            'requires. Route it through $helper: ${offenders.join(', ')}',
-      );
+      expect(offenders, isEmpty,
+          reason: 'a raw share call cannot carry the sharePositionOrigin iPad '
+              'requires. Route it through $helper: ${offenders.join(', ')}');
     });
 
     test('every share the helper makes carries a position origin', () {
@@ -6974,42 +6066,28 @@ void main() {
           i++;
         }
         final args = src.substring(at, i);
-        expect(
-          args.contains('sharePositionOrigin:'),
-          isTrue,
-          reason:
-              'a ShareParams in $helper omits sharePositionOrigin, which '
-              'is the whole reason the helper exists:\n$args',
-        );
+        expect(args.contains('sharePositionOrigin:'), isTrue,
+            reason: 'a ShareParams in $helper omits sharePositionOrigin, which '
+                'is the whole reason the helper exists:\n$args');
         from = i;
       }
-      expect(
-        found,
-        greaterThanOrEqualTo(2),
-        reason: 'expected the file + text share paths — did they move?',
-      );
+      expect(found, greaterThanOrEqualTo(2),
+          reason: 'expected the file + text share paths — did they move?');
     });
 
     test('every share entry point takes the context it anchors on', () {
       final src = File(helper).readAsStringSync();
-      final entries = RegExp(
-        r'^Future<[^>]*> (share\w+)\(\s*\n?\s*([^,)]*)',
-        multiLine: true,
-      ).allMatches(src).toList();
-      expect(
-        entries,
-        isNotEmpty,
-        reason: 'no share entry point found in $helper — renamed?',
-      );
+      final entries =
+          RegExp(r'^Future<[^>]*> (share\w+)\(\s*\n?\s*([^,)]*)', multiLine: true)
+              .allMatches(src)
+              .toList();
+      expect(entries, isNotEmpty,
+          reason: 'no share entry point found in $helper — renamed?');
       for (final m in entries) {
-        expect(
-          m.group(2)!.trim(),
-          'BuildContext context',
-          reason:
-              '${m.group(1)} must take the BuildContext it derives the '
-              'anchor from as its first parameter. An optional Rect lets a '
-              'caller omit the anchor, which is the bug this replaced.',
-        );
+        expect(m.group(2)!.trim(), 'BuildContext context',
+            reason: '${m.group(1)} must take the BuildContext it derives the '
+                'anchor from as its first parameter. An optional Rect lets a '
+                'caller omit the anchor, which is the bug this replaced.');
       }
     });
   });
@@ -7028,8 +6106,7 @@ void main() {
     /// off it. Every entry is asserted to still be unreachable that way, so
     /// the list cannot rot into a blanket exemption.
     const baseFallbackExempt = <String, String>{
-      'pt-BR':
-          'Portuguese ships two catalogues and the bare `pt` base is the '
+      'pt-BR': 'Portuguese ships two catalogues and the bare `pt` base is the '
           'European one (Portugal and Angola share that orthography), so '
           'pt-BR is reached by its exact tag — a pt-BR device, or the picker.',
     };
@@ -7072,17 +6149,15 @@ void main() {
       return source.substring(at + marker.length, i - 1);
     }
 
-    Set<String> localeTags(String literal) =>
-        RegExp(r"Locale\('(\w+)'(?:,\s*'(\w+)')?\)").allMatches(literal).map((
-          m,
-        ) {
+    Set<String> localeTags(String literal) => RegExp(
+          r"Locale\('(\w+)'(?:,\s*'(\w+)')?\)",
+        ).allMatches(literal).map((m) {
           final country = m.group(2);
           return country == null ? m.group(1)! : '${m.group(1)}-$country';
         }).toSet();
 
-    Set<String> mapKeys(String literal) => RegExp(
-      r"'([\w-]+)'\s*:",
-    ).allMatches(literal).map((m) => m.group(1)!).toSet();
+    Set<String> mapKeys(String literal) =>
+        RegExp(r"'([\w-]+)'\s*:").allMatches(literal).map((m) => m.group(1)!).toSet();
 
     String withoutComments(String source) => source
         .replaceAll(RegExp(r'/\*[\s\S]*?\*/'), '')
@@ -7104,9 +6179,8 @@ void main() {
           .toSet();
       declared = catalogues.map((t) => arbTagOverride[t] ?? t).toSet();
       support = File('lib/l10n/locale_support.dart').readAsStringSync();
-      generated = File(
-        'lib/l10n/gen/app_localizations.dart',
-      ).readAsStringSync();
+      generated =
+          File('lib/l10n/gen/app_localizations.dart').readAsStringSync();
     });
 
     test('a catalogue exists for exactly the locales we say we support', () {
@@ -7114,8 +6188,7 @@ void main() {
       expect(
         localeTags(literalAfter(support, 'supportedLocales = <Locale>[')),
         declared,
-        reason:
-            'supportedLocales is what MaterialApp negotiates against. A '
+        reason: 'supportedLocales is what MaterialApp negotiates against. A '
             'catalogue missing from it is dead weight in the binary; an entry '
             'with no catalogue resolves to a locale gen-l10n cannot load.',
       );
@@ -7125,8 +6198,7 @@ void main() {
       expect(
         localeTags(literalAfter(generated, 'supportedLocales = <Locale>[')),
         catalogues,
-        reason:
-            'gen/app_localizations.dart is regenerated from the ARB '
+        reason: 'gen/app_localizations.dart is regenerated from the ARB '
             'directory — a mismatch means the checked-in output is stale.',
       );
     });
@@ -7135,8 +6207,7 @@ void main() {
       expect(
         mapKeys(literalAfter(support, 'localeLabels = <String, String>{')),
         declared,
-        reason:
-            'the picker names each locale in its own language; a locale '
+        reason: 'the picker names each locale in its own language; a locale '
             'the table cannot name renders a blank row.',
       );
     });
@@ -7145,68 +6216,46 @@ void main() {
       expect(
         localeTags(literalAfter(support, '_exact = <String, Locale>{')),
         declared,
-        reason:
-            '_exact is the only path a stored preference or an exactly '
+        reason: '_exact is the only path a stored preference or an exactly '
             'matching device tag takes; a catalogue absent from its VALUES '
             'can be selected by nobody.',
       );
     });
 
-    test(
-      'the language picker is derived from the supported set, not listed',
-      () {
-        final body = withoutComments(
-          _extractMethodBody(
-            File(
-              'lib/screens/settings_preferences_screen.dart',
-            ).readAsStringSync(),
-            r'Future<void> _editLanguage\(\) async \{',
-          ),
-        );
-        expect(
-          body.contains('supportedLocales'),
-          isTrue,
-          reason: 'the picker must build its options from supportedLocales.',
-        );
-        for (final tag in catalogues) {
-          expect(
-            body.contains("'$tag'"),
-            isFalse,
-            reason:
-                'the picker spells $tag out. A hand-written list is how '
-                'European Portuguese came to be unpickable while shipping.',
-          );
-        }
-      },
-    );
+    test('the language picker is derived from the supported set, not listed',
+        () {
+      final body = withoutComments(_extractMethodBody(
+        File('lib/screens/settings_preferences_screen.dart').readAsStringSync(),
+        r'Future<void> _editLanguage\(\) async \{',
+      ));
+      expect(body.contains('supportedLocales'), isTrue,
+          reason: 'the picker must build its options from supportedLocales.');
+      for (final tag in catalogues) {
+        expect(body.contains("'$tag'"), isFalse,
+            reason: 'the picker spells $tag out. A hand-written list is how '
+                'European Portuguese came to be unpickable while shipping.');
+      }
+    });
 
     test('the ARB parity suite covers every catalogue', () {
       final listed = RegExp(r"'([\w_]+)'")
-          .allMatches(
-            literalAfter(
+          .allMatches(literalAfter(
               File('test/l10n_parity_test.dart').readAsStringSync(),
-              'localeTags = [',
-            ),
-          )
+              'localeTags = ['))
           .map((m) => m.group(1)!.replaceFirst('_', '-'))
           .toSet();
-      expect(
-        listed,
-        catalogues,
-        reason:
-            'l10n_parity_test.dart names its locales by hand, so a new '
-            'catalogue is silently unchecked for missing keys until it is '
-            'added there too.',
-      );
+      expect(listed, catalogues,
+          reason: 'l10n_parity_test.dart names its locales by hand, so a new '
+              'catalogue is silently unchecked for missing keys until it is '
+              'added there too.');
     });
 
     // A locale absent from CFBundleLocalizations is one the App Store and the
     // iOS language picker will not offer the app in, however complete its ARB.
     // Reachable from either twin's directory: `..` is `apps/`.
     String bundleLocalizations() {
-      final plist = File(
-        '../mobile_ios/ios/Runner/Info.plist',
-      ).readAsStringSync();
+      final plist =
+          File('../mobile_ios/ios/Runner/Info.plist').readAsStringSync();
       final at = plist.indexOf('<key>CFBundleLocalizations</key>');
       if (at < 0) fail('CFBundleLocalizations is gone from Info.plist.');
       final open = plist.indexOf('<array>', at);
@@ -7214,14 +6263,14 @@ void main() {
     }
 
     test('the iOS bundle advertises exactly the catalogue set', () {
-      final advertised = RegExp(
-        r'<string>([\w-]+)</string>',
-      ).allMatches(bundleLocalizations()).map((m) => m.group(1)!).toSet();
+      final advertised = RegExp(r'<string>([\w-]+)</string>')
+          .allMatches(bundleLocalizations())
+          .map((m) => m.group(1)!)
+          .toSet();
       expect(
         advertised,
         declared,
-        reason:
-            'Info.plist and lib/l10n disagree about which locales ship. '
+        reason: 'Info.plist and lib/l10n disagree about which locales ship. '
             'Apple names a locale by its region, which is the spelling the '
             'canonical tag set now uses everywhere — the plist needs no '
             'override of its own any more.',
@@ -7230,21 +6279,13 @@ void main() {
 
     test('every ARB filename override is still an override', () {
       for (final entry in arbTagOverride.entries) {
-        expect(
-          catalogues,
-          contains(entry.key),
-          reason:
-              '${entry.key} is renamed by arbTagOverride but ships no '
-              'catalogue file — drop the entry.',
-        );
-        expect(
-          catalogues,
-          isNot(contains(entry.value)),
-          reason:
-              'lib/l10n now holds app_${entry.value.replaceAll('-', '_')}'
-              '.arb, so the filename and the tag agree — drop '
-              '${entry.key} from arbTagOverride.',
-        );
+        expect(catalogues, contains(entry.key),
+            reason: '${entry.key} is renamed by arbTagOverride but ships no '
+                'catalogue file — drop the entry.');
+        expect(catalogues, isNot(contains(entry.value)),
+            reason: 'lib/l10n now holds app_${entry.value.replaceAll('-', '_')}'
+                '.arb, so the filename and the tag agree — drop '
+                '${entry.key} from arbTagOverride.');
       }
     });
 
@@ -7257,35 +6298,29 @@ void main() {
         '../mobile_android/android/app/src/main/res/xml/locales_config.xml',
       ).readAsStringSync();
       expect(
-        RegExp(
-          r'android:name="([\w-]+)"',
-        ).allMatches(config).map((m) => m.group(1)!).toSet(),
+        RegExp(r'android:name="([\w-]+)"')
+            .allMatches(config)
+            .map((m) => m.group(1)!)
+            .toSet(),
         declared,
-        reason:
-            'locales_config.xml and lib/l10n disagree about which locales '
+        reason: 'locales_config.xml and lib/l10n disagree about which locales '
             'ship, so the OS language picker offers the wrong set.',
       );
     });
 
     test('a catalogue no base-language tag reaches carries a reason', () {
-      final reachedByBase = localeTags(
-        literalAfter(support, '_baseToLocale = <String, Locale>{'),
-      );
-      final unreached =
-          declared
-              .difference(reachedByBase)
-              .where((t) => !baseFallbackExempt.containsKey(t))
-              .toList()
-            ..sort();
-      expect(
-        unreached,
-        isEmpty,
-        reason:
-            'a device reporting only a base language (`pt`, `de`) lands '
-            'on _baseToLocale. These catalogues are off it with no recorded '
-            'reason — either map the base to one of them, or add the entry '
-            'to baseFallbackExempt saying how a reader reaches it.',
-      );
+      final reachedByBase =
+          localeTags(literalAfter(support, '_baseToLocale = <String, Locale>{'));
+      final unreached = declared
+          .difference(reachedByBase)
+          .where((t) => !baseFallbackExempt.containsKey(t))
+          .toList()
+        ..sort();
+      expect(unreached, isEmpty,
+          reason: 'a device reporting only a base language (`pt`, `de`) lands '
+              'on _baseToLocale. These catalogues are off it with no recorded '
+              'reason — either map the base to one of them, or add the entry '
+              'to baseFallbackExempt saying how a reader reaches it.');
     });
 
     /// Words that only one of the two Portuguese variants uses. A catalogue
@@ -7318,19 +6353,9 @@ void main() {
       'login',
     ];
     const europeanOnly = <String>[
-      'palavra-passe',
-      'ecrã',
-      'ficheiro',
-      'telemóvel',
-      'passadeira',
-      'partilhar',
-      'quilómetro',
-      'género',
-      'autocarro',
-      'frigorífico',
-      'chávena',
-      'utilizador',
-      'ginásio',
+      'palavra-passe', 'ecrã', 'ficheiro', 'telemóvel', 'passadeira',
+      'partilhar', 'quilómetro', 'género', 'autocarro', 'frigorífico',
+      'chávena', 'utilizador', 'ginásio',
     ];
 
     /// Which variant a catalogue's tag CLAIMS, for the tags that make a claim.
@@ -7346,10 +6371,8 @@ void main() {
       // words being dropped from the list — dropping them would blind the
       // guard to the delete and file senses everywhere else.
       const senseExempt = <String>{
-        'runDetailMarkDnfSubtitle',
-        'coachArchiveBanner',
-        'coachArchiveDeleteFailed',
-        'coachArchiveDeleteBody',
+        'runDetailMarkDnfSubtitle', 'coachArchiveBanner',
+        'coachArchiveDeleteFailed', 'coachArchiveDeleteBody',
         'prefsExcludeGymFromReadiness',
         'settingsAccountRestoreIncompleteArchive',
         'settingsAccountBackupTracksPartialNotice',
@@ -7358,14 +6381,10 @@ void main() {
         final file = arbTagOverride.entries
             .where((e) => e.value == entry.key)
             .map((e) => e.key)
-            .followedBy([entry.key])
-            .first;
+            .followedBy([entry.key]).first;
         final arb = File('lib/l10n/app_${file.replaceAll('-', '_')}.arb');
-        expect(
-          arb.existsSync(),
-          isTrue,
-          reason: '${entry.key} claims a catalogue at ${arb.path}.',
-        );
+        expect(arb.existsSync(), isTrue,
+            reason: '${entry.key} claims a catalogue at ${arb.path}.');
         final messages =
             (jsonDecode(arb.readAsStringSync()) as Map<String, dynamic>)
               ..removeWhere((k, v) => k.startsWith('@') || v is! String);
@@ -7373,24 +6392,18 @@ void main() {
         for (final message in messages.entries) {
           if (senseExempt.contains(message.key)) continue;
           for (final word in entry.value) {
-            if (RegExp(
-              '(?<![a-zà-ÿ])$word(s|es)?(?![a-zà-ÿ])',
-              caseSensitive: false,
-              unicode: true,
-            ).hasMatch(message.value as String)) {
+            if (RegExp('(?<![a-zà-ÿ])$word(s|es)?(?![a-zà-ÿ])',
+                    caseSensitive: false, unicode: true)
+                .hasMatch(message.value as String)) {
               offenders.add('${message.key}: "$word"');
             }
           }
         }
-        expect(
-          offenders,
-          isEmpty,
-          reason:
-              '${arb.path} is tagged ${entry.key} but reads as the other '
-              'variant. A tag that disagrees with its content is worse than '
-              'a missing catalogue: the reader is told this is their '
-              'Portuguese and it is not.',
-        );
+        expect(offenders, isEmpty,
+            reason: '${arb.path} is tagged ${entry.key} but reads as the other '
+                'variant. A tag that disagrees with its content is worse than '
+                'a missing catalogue: the reader is told this is their '
+                'Portuguese and it is not.');
       }
     });
 
@@ -7416,63 +6429,45 @@ void main() {
       ),
     };
 
-    test(
-      'a sense-split word survives only where the other sense was recorded',
-      () {
-        for (final entry in senseSplit.entries) {
-          final (pattern, onlyAt) = entry.value;
-          final word = RegExp(
-            '(?<![a-zà-ÿ])$pattern(?![a-zà-ÿ])',
-            caseSensitive: false,
-            unicode: true,
-          );
-          final file = arbTagOverride.entries
-              .where((e) => e.value == entry.key)
-              .map((e) => e.key)
-              .followedBy([entry.key])
-              .first;
-          final arb = File('lib/l10n/app_${file.replaceAll('-', '_')}.arb');
-          final messages =
-              (jsonDecode(arb.readAsStringSync()) as Map<String, dynamic>)
-                ..removeWhere((k, v) => k.startsWith('@') || v is! String);
-          expect(
+    test('a sense-split word survives only where the other sense was recorded',
+        () {
+      for (final entry in senseSplit.entries) {
+        final (pattern, onlyAt) = entry.value;
+        final word = RegExp('(?<![a-zà-ÿ])$pattern(?![a-zà-ÿ])',
+            caseSensitive: false, unicode: true);
+        final file = arbTagOverride.entries
+            .where((e) => e.value == entry.key)
+            .map((e) => e.key)
+            .followedBy([entry.key]).first;
+        final arb = File('lib/l10n/app_${file.replaceAll('-', '_')}.arb');
+        final messages =
+            (jsonDecode(arb.readAsStringSync()) as Map<String, dynamic>)
+              ..removeWhere((k, v) => k.startsWith('@') || v is! String);
+        expect(
             messages.entries
-                .where(
-                  (m) =>
-                      !onlyAt.contains(m.key) &&
-                      word.hasMatch(m.value as String),
-                )
+                .where((m) =>
+                    !onlyAt.contains(m.key) && word.hasMatch(m.value as String))
                 .map((m) => m.key)
                 .toList(),
             isEmpty,
-            reason:
-                '${arb.path} spends $pattern on a sense Portugal does not '
+            reason: '${arb.path} spends $pattern on a sense Portugal does not '
                 'use it for. A default is a `predefinição`; `padrão` is a '
                 'standard or a pattern. If one of these really is the other '
                 'sense, add it to senseSplit with the English source in a '
-                'comment.',
-          );
-          // A named site that no longer says the word is a dead entry, and a dead
-          // entry is how an allowlist stops being a decision and becomes noise.
-          for (final key in onlyAt) {
-            expect(
-              messages,
-              contains(key),
-              reason:
-                  '${entry.key}: senseSplit names $key, which the '
-                  'catalogue no longer has.',
-            );
-            expect(
-              word.hasMatch(messages[key] as String),
-              isTrue,
-              reason:
-                  '${entry.key}: $key no longer says $pattern — drop it '
-                  'from senseSplit so the guard covers the key again.',
-            );
-          }
+                'comment.');
+        // A named site that no longer says the word is a dead entry, and a dead
+        // entry is how an allowlist stops being a decision and becomes noise.
+        for (final key in onlyAt) {
+          expect(messages, contains(key),
+              reason: '${entry.key}: senseSplit names $key, which the '
+                  'catalogue no longer has.');
+          expect(word.hasMatch(messages[key] as String), isTrue,
+              reason: '${entry.key}: $key no longer says $pattern — drop it '
+                  'from senseSplit so the guard covers the key again.');
         }
-      },
-    );
+      }
+    });
+
 
     /// Which SECOND PERSON a catalogue addresses its reader in. Portuguese has
     /// two and they do not mix inside one catalogue: `tu` takes `teu`/`tua`,
@@ -7503,50 +6498,21 @@ void main() {
     /// prose, and web pt-PT ships those same two keys as `(tu)` and `Tu: `
     /// after § 760 put the pronoun back into them.
     const tuOnlyMarkers = <String>[
-      'teu',
-      'tua',
-      'teus',
-      'tuas',
-      'podes',
-      'estás',
-      'tens',
-      'queres',
-      'vais',
-      'deves',
-      'sabes',
-      'fazes',
-      'és',
-      'vês',
-      'dizes',
-      'escolhes',
-      'alteras',
-      'tomas',
-      'tiveres',
-      'estiveres',
-      'quiseres',
-      'puderes',
-      'fizeres',
-      'fizeste',
-      'foste',
-      'tiveste',
-      'estiveste',
-      'tenhas',
-      'estejas',
-      'sejas',
-      'possas',
-      'vás',
-      'faças',
+      'teu', 'tua', 'teus', 'tuas',
+      'podes', 'estás', 'tens', 'queres', 'vais', 'deves', 'sabes', 'fazes',
+      'és', 'vês', 'dizes', 'escolhes', 'alteras', 'tomas',
+      'tiveres', 'estiveres', 'quiseres', 'puderes', 'fizeres',
+      'fizeste', 'foste', 'tiveste', 'estiveste',
+      'tenhas', 'estejas', 'sejas', 'possas', 'vás', 'faças',
       'contigo',
     ];
 
     /// The enclitic object pronoun. `você` takes `-lhe` or `-o`/`-a`, never
     /// this, so a hyphen followed by exactly `te` is a tu marker wherever it
     /// lands. Verified to fire on nothing else across all seven catalogues.
-    final tuEnclitic = RegExp(
-      r'(?<![a-zà-ÿ])[a-zà-ÿ]+-te(?![a-zà-ÿ])',
-      caseSensitive: false,
-      unicode: true,
-    );
+    final tuEnclitic =
+        RegExp(r'(?<![a-zà-ÿ])[a-zà-ÿ]+-te(?![a-zà-ÿ])',
+            caseSensitive: false, unicode: true);
 
     /// Key prefixes allowed to address the reader as `tu`, with the reason.
     /// **Empty, and that is the finding.** § 760 unified the `tts*` voice cues
@@ -7593,15 +6559,13 @@ void main() {
         registerExemptPrefixes.any((p) => key.startsWith(p));
 
     List<String> tuMarkersIn(String value) => [
-      for (final marker in tuOnlyMarkers)
-        if (RegExp(
-          '(?<![a-zà-ÿ])$marker(?![a-zà-ÿ])',
-          caseSensitive: false,
-          unicode: true,
-        ).hasMatch(value))
-          '"$marker"',
-      if (tuEnclitic.hasMatch(value)) 'the "-te" enclitic',
-    ];
+          for (final marker in tuOnlyMarkers)
+            if (RegExp('(?<![a-zà-ÿ])$marker(?![a-zà-ÿ])',
+                    caseSensitive: false, unicode: true)
+                .hasMatch(value))
+              '"$marker"',
+          if (tuEnclitic.hasMatch(value)) 'the "-te" enclitic',
+        ];
 
     test('a Portuguese catalogue addresses its reader in one register', () {
       // Both catalogues, not just the European one. `app_pt_BR.arb` is the
@@ -7616,70 +6580,59 @@ void main() {
             offenders.add('${message.key}: $marker');
           }
         }
-        expect(
-          offenders,
-          isEmpty,
-          reason:
-              'app_$tag.arb addresses its reader as `tu` here and as '
-              '`você` everywhere else. One catalogue cannot be two products '
-              'to one reader: use `seu`/`sua`, `-lhe` and a third-person '
-              'verb, per decisions § 755. If a string really must be tu, it '
-              'belongs in the spoken-cue block or in registerExemptPrefixes '
-              'with the reason written down.',
-        );
+        expect(offenders, isEmpty,
+            reason: 'app_$tag.arb addresses its reader as `tu` here and as '
+                '`você` everywhere else. One catalogue cannot be two products '
+                'to one reader: use `seu`/`sua`, `-lhe` and a third-person '
+                'verb, per decisions § 755. If a string really must be tu, it '
+                'belongs in the spoken-cue block or in registerExemptPrefixes '
+                'with the reason written down.');
       }
     });
 
-    test(
-      'the pt-PT catalogue uses no tu imperative its Brazilian twin does not',
-      () {
-        // Derived rather than listed, because the tu affirmative imperative is
-        // spelled exactly like the third-person present indicative and no token
-        // can separate them. `app_pt_BR.arb` is uniformly `você` (pinned by the
-        // test above), so a word this catalogue uses where Brazilian uses the
-        // same stem with the imperative's other ending IS the tu form: `Tenta`
-        // against `Tente`, `Adiciona` against `Adicione`, `Escolhe` against
-        // `Escolha`. No threshold, no vocabulary list, and a new one fails here
-        // the day it lands.
-        final european = arbMessages('lib/l10n/app_pt.arb');
-        final brazilian = arbMessages('lib/l10n/app_pt_BR.arb');
-        final word = RegExp(r'[a-zà-ÿ]+', caseSensitive: false, unicode: true);
-        Set<String> wordsOf(String v) =>
-            word.allMatches(v).map((m) => m.group(0)!.toLowerCase()).toSet();
+    test('the pt-PT catalogue uses no tu imperative its Brazilian twin does not',
+        () {
+      // Derived rather than listed, because the tu affirmative imperative is
+      // spelled exactly like the third-person present indicative and no token
+      // can separate them. `app_pt_BR.arb` is uniformly `você` (pinned by the
+      // test above), so a word this catalogue uses where Brazilian uses the
+      // same stem with the imperative's other ending IS the tu form: `Tenta`
+      // against `Tente`, `Adiciona` against `Adicione`, `Escolhe` against
+      // `Escolha`. No threshold, no vocabulary list, and a new one fails here
+      // the day it lands.
+      final european = arbMessages('lib/l10n/app_pt.arb');
+      final brazilian = arbMessages('lib/l10n/app_pt_BR.arb');
+      final word = RegExp(r'[a-zà-ÿ]+', caseSensitive: false, unicode: true);
+      Set<String> wordsOf(String v) =>
+          word.allMatches(v).map((m) => m.group(0)!.toLowerCase()).toSet();
 
-        final offenders = <String>[];
-        for (final message in european.entries) {
-          if (registerExempt(message.key)) continue;
-          final other = brazilian[message.key];
-          if (other == null) continue;
-          final ours = wordsOf(message.value);
-          final theirs = wordsOf(other);
-          for (final a in ours.difference(theirs)) {
-            if (a.length < 4) continue;
-            for (final b in theirs.difference(ours)) {
-              if (b.length < 4) continue;
-              if (a.substring(0, a.length - 1) !=
-                  b.substring(0, b.length - 1)) {
-                continue;
-              }
-              final swap = '${a[a.length - 1]}${b[b.length - 1]}';
-              if (swap != 'ae' && swap != 'ea') continue;
-              if (variantWordPairs[a] == b) continue;
-              offenders.add('${message.key}: "$a" where pt-BR says "$b"');
+      final offenders = <String>[];
+      for (final message in european.entries) {
+        if (registerExempt(message.key)) continue;
+        final other = brazilian[message.key];
+        if (other == null) continue;
+        final ours = wordsOf(message.value);
+        final theirs = wordsOf(other);
+        for (final a in ours.difference(theirs)) {
+          if (a.length < 4) continue;
+          for (final b in theirs.difference(ours)) {
+            if (b.length < 4) continue;
+            if (a.substring(0, a.length - 1) != b.substring(0, b.length - 1)) {
+              continue;
             }
+            final swap = '${a[a.length - 1]}${b[b.length - 1]}';
+            if (swap != 'ae' && swap != 'ea') continue;
+            if (variantWordPairs[a] == b) continue;
+            offenders.add('${message.key}: "$a" where pt-BR says "$b"');
           }
         }
-        expect(
-          offenders,
-          isEmpty,
-          reason:
-              'app_pt.arb gives an imperative in the tu form. Portugal '
+      }
+      expect(offenders, isEmpty,
+          reason: 'app_pt.arb gives an imperative in the tu form. Portugal '
               'says `Tente`, not `Tenta`, in the register this catalogue uses '
               'everywhere else (decisions § 755). If the word is not a verb, '
-              'add the pair to variantWordPairs with what it means.',
-        );
-      },
-    );
+              'add the pair to variantWordPairs with what it means.');
+    });
 
     test('every register exemption still needs its exemption', () {
       // An exemption that covers nothing has stopped being a decision and
@@ -7691,16 +6644,11 @@ void main() {
       final brazilian = arbMessages('lib/l10n/app_pt_BR.arb');
       for (final prefix in registerExemptPrefixes) {
         final covered = european.entries.where(
-          (e) => e.key.startsWith(prefix) && tuMarkersIn(e.value).isNotEmpty,
-        );
-        expect(
-          covered,
-          isNotEmpty,
-          reason:
-              'registerExemptPrefixes carries "$prefix", but no key '
-              'under it says `tu` any more. Drop the prefix so the guard '
-              'covers those keys again.',
-        );
+            (e) => e.key.startsWith(prefix) && tuMarkersIn(e.value).isNotEmpty);
+        expect(covered, isNotEmpty,
+            reason: 'registerExemptPrefixes carries "$prefix", but no key '
+                'under it says `tu` any more. Drop the prefix so the guard '
+                'covers those keys again.');
       }
       final whole = <String>[
         ...european.values,
@@ -7709,39 +6657,26 @@ void main() {
       for (final pair in variantWordPairs.entries) {
         for (final word in [pair.key, pair.value]) {
           expect(
-            RegExp(
-              '(?<![a-zà-ÿ])$word(?![a-zà-ÿ])',
-              caseSensitive: false,
-              unicode: true,
-            ).hasMatch(whole),
-            isTrue,
-            reason:
-                'variantWordPairs names "$word", which neither '
-                'Portuguese catalogue uses any more.',
-          );
+              RegExp('(?<![a-zà-ÿ])$word(?![a-zà-ÿ])',
+                      caseSensitive: false, unicode: true)
+                  .hasMatch(whole),
+              isTrue,
+              reason: 'variantWordPairs names "$word", which neither '
+                  'Portuguese catalogue uses any more.');
         }
       }
     });
     test('every base-fallback exemption still needs its exemption', () {
-      final reachedByBase = localeTags(
-        literalAfter(support, '_baseToLocale = <String, Locale>{'),
-      );
+      final reachedByBase =
+          localeTags(literalAfter(support, '_baseToLocale = <String, Locale>{'));
       for (final entry in baseFallbackExempt.entries) {
-        expect(
-          declared,
-          contains(entry.key),
-          reason:
-              '${entry.key} is exempted from the base-fallback rule but '
-              'ships no catalogue — drop the entry.',
-        );
-        expect(
-          reachedByBase,
-          isNot(contains(entry.key)),
-          reason:
-              '${entry.key} is now a base-fallback target '
-              '(${entry.value}) — drop it from baseFallbackExempt so the '
-              'guard covers it.',
-        );
+        expect(declared, contains(entry.key),
+            reason: '${entry.key} is exempted from the base-fallback rule but '
+                'ships no catalogue — drop the entry.');
+        expect(reachedByBase, isNot(contains(entry.key)),
+            reason: '${entry.key} is now a base-fallback target '
+                '(${entry.value}) — drop it from baseFallbackExempt so the '
+                'guard covers it.');
         expect(entry.value.trim(), isNotEmpty);
       }
     });
@@ -7774,13 +6709,9 @@ void main() {
     ]..sort();
 
     test('every translated ARB names its quotation marks', () {
-      expect(
-        arbLocales,
-        unorderedEquals(marks.keys),
-        reason:
-            'add the locale\'s glossary marks to `marks` (or drop a '
-            'locale that no longer ships)',
-      );
+      expect(arbLocales, unorderedEquals(marks.keys),
+          reason: 'add the locale\'s glossary marks to `marks` (or drop a '
+              'locale that no longer ships)');
     });
 
     for (final loc in arbLocales) {
@@ -7795,21 +6726,16 @@ void main() {
                 (e.value as String).contains('"'))
               e.key,
         ];
-        expect(
-          straight,
-          isEmpty,
-          reason:
-              'app_$loc.arb quotes with a straight " in these messages; '
-              'its glossary uses ${marks[loc]}',
-        );
+        expect(straight, isEmpty,
+            reason: 'app_$loc.arb quotes with a straight " in these messages; '
+                'its glossary uses ${marks[loc]}');
       });
     }
 
     final getterFiles = [
       for (final f in Directory('lib/l10n/gen').listSync().whereType<File>())
-        if (RegExp(
-              r'^app_localizations_\w+\.dart$',
-            ).hasMatch(f.uri.pathSegments.last) &&
+        if (RegExp(r'^app_localizations_\w+\.dart$')
+                .hasMatch(f.uri.pathSegments.last) &&
             f.uri.pathSegments.last != 'app_localizations_en.dart')
           f.path,
     ]..sort();
@@ -7819,12 +6745,10 @@ void main() {
       // of each ARB suffix is what must have a file.
       final languages = {for (final l in arbLocales) l.split('_').first};
       expect(
-        getterFiles.map(
-          (p) =>
-              RegExp(r'app_localizations_(\w+)\.dart$').firstMatch(p)!.group(1),
-        ),
-        unorderedEquals(languages),
-      );
+          getterFiles.map((p) => RegExp(r'app_localizations_(\w+)\.dart$')
+              .firstMatch(p)!
+              .group(1)),
+          unorderedEquals(languages));
     });
 
     for (final path in getterFiles) {
@@ -7835,16 +6759,13 @@ void main() {
         final lines = File(path).readAsLinesSync();
         final straight = [
           for (var i = 0; i < lines.length; i++)
-            if (!lines[i].trimLeft().startsWith('//') && lines[i].contains('"'))
+            if (!lines[i].trimLeft().startsWith('//') &&
+                lines[i].contains('"'))
               i + 1,
         ];
-        expect(
-          straight,
-          isEmpty,
-          reason:
-              '$name quotes with a straight " on these lines; its '
-              'glossary sets its own quotation marks',
-        );
+        expect(straight, isEmpty,
+            reason: '$name quotes with a straight " on these lines; its '
+                'glossary sets its own quotation marks');
       });
     }
   });
@@ -7882,20 +6803,12 @@ void main() {
           }
         }
       }
-      expect(
-        scanned,
-        greaterThan(100),
-        reason:
-            'the scan found almost nothing — the pattern or the walk '
-            'is broken, not the tree',
-      );
-      expect(
-        stale,
-        isEmpty,
-        reason:
-            'a header names a web file that no longer exists at that '
-            'path; find where it moved and update the comment',
-      );
+      expect(scanned, greaterThan(100),
+          reason: 'the scan found almost nothing — the pattern or the walk '
+              'is broken, not the tree');
+      expect(stale, isEmpty,
+          reason: 'a header names a web file that no longer exists at that '
+              'path; find where it moved and update the comment');
     });
   });
 
@@ -7914,9 +6827,8 @@ void main() {
       // the "you are already on this page" banner, which names a PAGE, not a
       // tab, and must not re-admit the very name this guard exists to catch.
       final home = File('lib/screens/home_screen.dart').readAsStringSync();
-      final hub = File(
-        'lib/screens/fitness_hub_screen.dart',
-      ).readAsStringSync();
+      final hub =
+          File('lib/screens/fitness_hub_screen.dart').readAsStringSync();
       final labelled = RegExp(r'label:\s*(?:Text\(\s*)?l(?:10n)?\.(\w+)');
       final tabArm = RegExp(r'FitnessTab\.\w+\s*=>\s*l(?:10n)?\.(\w+)');
       final keys = <String>{
@@ -7924,30 +6836,21 @@ void main() {
           for (final m in labelled.allMatches(src)) m.group(1)!,
         for (final m in tabArm.allMatches(hub)) m.group(1)!,
       };
-      final arb =
-          jsonDecode(File('lib/l10n/app_en.arb').readAsStringSync())
-              as Map<String, dynamic>;
+      final arb = jsonDecode(File('lib/l10n/app_en.arb').readAsStringSync())
+          as Map<String, dynamic>;
       final oneWord = RegExp(r'^[A-Z][a-z]+$');
       final live = <String>{
         for (final k in keys)
           if (arb[k] is String && oneWord.hasMatch(arb[k] as String))
             arb[k] as String,
       };
-      expect(
-        live,
-        containsAll(<String>['Home', 'Fitness', 'Social', 'You']),
-        reason:
-            'the bottom-nav labels did not resolve — the shell changed '
-            'shape, so this guard is reading nothing',
-      );
-      expect(
-        live.contains('Run'),
-        isFalse,
-        reason:
-            'the recorder is reached from the Log action, not a tab — a '
-            '"Run" label back in a tab strip means this guard needs '
-            'rewriting, not that the old copy became true',
-      );
+      expect(live, containsAll(<String>['Home', 'Fitness', 'Social', 'You']),
+          reason: 'the bottom-nav labels did not resolve — the shell changed '
+              'shape, so this guard is reading nothing');
+      expect(live.contains('Run'), isFalse,
+          reason: 'the recorder is reached from the Log action, not a tab — a '
+              '"Run" label back in a tab strip means this guard needs '
+              'rewriting, not that the old copy became true');
       final named = RegExp(r'\b([A-Z][a-z]+) tab\b');
       final stale = <String, String>{};
       for (final e in arb.entries) {
@@ -7956,14 +6859,10 @@ void main() {
           if (!live.contains(m.group(1))) stale[e.key] = m.group(0)!;
         }
       }
-      expect(
-        stale,
-        isEmpty,
-        reason:
-            'user-facing copy names a tab the app no longer has — name a '
-            'surface that exists, and give the string a CTA if it is the '
-            'only instruction someone gets',
-      );
+      expect(stale, isEmpty,
+          reason: 'user-facing copy names a tab the app no longer has — name a '
+              'surface that exists, and give the string a CTA if it is the '
+              'only instruction someone gets');
     });
   });
 }

@@ -13,7 +13,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow;
 import 'package:url_launcher/url_launcher.dart';
 
-import 'live_run_map.dart' show basemapTileLayer, basemapVoidColour, tileUrlFor;
+import 'live_run_map.dart'
+    show basemapTileLayer, basemapVoidColour, tileUrlFor;
 import 'map_attribution.dart';
 
 import '../l10n/date_format.dart';
@@ -56,9 +57,9 @@ Future<bool> _openExternally(Uri url) =>
 
 /// The web page the Video style opens: the run's own page, with `video=1`
 /// asking it to open the 3D preview where the export lives.
-Uri runVideoExportUrl(String runId, {String? webBase}) => Uri.parse(
-  webPageUrl('/runs/${Uri.encodeComponent(runId)}?video=1', override: webBase),
-);
+Uri runVideoExportUrl(String runId, {String? webBase}) =>
+    Uri.parse(webPageUrl('/runs/${Uri.encodeComponent(runId)}?video=1',
+        override: webBase));
 
 /// Thrown by a [RunShareImageSaver] when the runner has refused the app access
 /// to their photos, so the sheet can say how to grant it rather than report a
@@ -136,15 +137,11 @@ Future<void> showRunShareSheet(
       onShareLink: onShareLink,
       saveImage: saveImageOverride ?? saveShareImageToGallery,
       openUrl: openUrlOverride ?? _openExternally,
-      headToHeadLoad:
-          headToHeadLoadOverride ??
+      headToHeadLoad: headToHeadLoadOverride ??
           (api != null && run.routeId != null
-              ? () => api.fetchHeadToHead(
-                  'route',
-                  run.routeId!,
+              ? () => api.fetchHeadToHead('route', run.routeId!,
                   activityType:
-                      run.metadata?['activity_type'] as String? ?? 'run',
-                )
+                      run.metadata?['activity_type'] as String? ?? 'run')
               : null),
     ),
   );
@@ -253,14 +250,14 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
   /// The logical width of the canvas being rasterised, so the PNG comes out
   /// [shareImageExportWidthPx] across whichever style it is.
   double get _canvasWidth => switch (_style) {
-    RunShareStyle.card => RunShareCard.canvas.width,
-    RunShareStyle.photo => RunPhotoShareCard.canvasFor(_look.aspect).width,
-    RunShareStyle.sticker => RunStickerShareCard.canvasWidth(_look),
-    RunShareStyle.pr => RunPhotoShareCard.canvasFor(_look.aspect).width,
-    RunShareStyle.video || RunShareStyle.versus => throw StateError(
-      '${_style.name} draws no canvas here',
-    ),
-  };
+        RunShareStyle.card => RunShareCard.canvas.width,
+        RunShareStyle.photo => RunPhotoShareCard.canvasFor(_look.aspect).width,
+        RunShareStyle.sticker => RunStickerShareCard.canvasWidth(_look),
+        RunShareStyle.pr => RunPhotoShareCard.canvasFor(_look.aspect).width,
+        RunShareStyle.video ||
+        RunShareStyle.versus =>
+          throw StateError('${_style.name} draws no canvas here'),
+      };
 
   Future<XFile?> _pick() {
     final override = widget.pickPhotoOverride;
@@ -300,10 +297,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
     } catch (e) {
       debugPrint('Failed to load share photo: $e');
       if (mounted) {
-        showTopBanner(
-          context,
-          AppLocalizations.of(context).shareCardPhotoError,
-        );
+        showTopBanner(context, AppLocalizations.of(context).shareCardPhotoError);
       }
     } finally {
       if (mounted) setState(() => _picking = false);
@@ -351,9 +345,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
       debugPrint('Failed to share run image: $e');
       if (mounted) {
         showTopBanner(
-          context,
-          AppLocalizations.of(context).shareCardImageError,
-        );
+            context, AppLocalizations.of(context).shareCardImageError);
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -370,10 +362,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
       showTopBanner(context, AppLocalizations.of(context).shareCardSaved);
     } on ShareSaveDenied {
       if (mounted) {
-        showTopBanner(
-          context,
-          AppLocalizations.of(context).shareCardSaveDenied,
-        );
+        showTopBanner(context, AppLocalizations.of(context).shareCardSaveDenied);
       }
     } catch (e) {
       debugPrint('Failed to save run image: $e');
@@ -410,11 +399,8 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.movie_outlined,
-            size: 40,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+          Icon(Icons.movie_outlined,
+              size: 40, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(height: 12),
           Text(
             l10n.shareCardVideoBody,
@@ -447,11 +433,8 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
           await file.writeAsString(_runToGpx(run, title));
       }
       if (!mounted) return;
-      await shareFilesFrom(
-        context,
-        files: [XFile(file.path)],
-        text: _caption(l10n),
-      );
+      await shareFilesFrom(context,
+          files: [XFile(file.path)], text: _caption(l10n));
     } catch (e) {
       debugPrint('Failed to export run file: $e');
       if (mounted) {
@@ -560,21 +543,21 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
   }
 
   Widget _section(ThemeData theme, String label, Widget control) => Padding(
-    padding: const EdgeInsets.only(top: 12),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.labelLarge?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+        padding: const EdgeInsets.only(top: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 6),
+            control,
+          ],
         ),
-        const SizedBox(height: 6),
-        control,
-      ],
-    ),
-  );
+      );
 
   String _statLabel(AppLocalizations l10n, RunShareStatKind kind) {
     switch (kind) {
@@ -582,8 +565,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
         return l10n.shareCardStatDistance;
       case RunShareStatKind.pace:
         final activity = ActivityType.fromName(
-          widget.run.metadata?['activity_type'] as String?,
-        );
+            widget.run.metadata?['activity_type'] as String?);
         return activity.usesSpeed
             ? l10n.shareCardStatSpeed
             : l10n.shareCardStatPace;
@@ -610,10 +592,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
               for (var i = 0; i < widget.records.length; i++)
                 ChoiceChipOption(
                   value: i,
-                  label: planRecapBracketLabel(
-                    l10n,
-                    widget.records[i].distance,
-                  ),
+                  label: planRecapBracketLabel(l10n, widget.records[i].distance),
                 ),
             ],
             selected: _prIndex.clamp(0, widget.records.length - 1),
@@ -621,55 +600,48 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
           ),
         ),
       if (!pr)
-        _section(
-          theme,
-          l10n.shareCardLayout,
-          ChoiceChipRow<RunStickerLayout>(
-            options: [
-              ChoiceChipOption(
-                value: RunStickerLayout.stack,
-                label: l10n.shareCardLayoutStack,
-                icon: Icons.view_agenda_outlined,
-              ),
-              ChoiceChipOption(
-                value: RunStickerLayout.route,
-                label: l10n.shareCardLayoutRoute,
-                icon: Icons.route,
-              ),
-              ChoiceChipOption(
-                value: RunStickerLayout.strip,
-                label: l10n.shareCardLayoutStrip,
-                icon: Icons.view_week_outlined,
-              ),
-              ChoiceChipOption(
-                value: RunStickerLayout.hero,
-                label: l10n.shareCardLayoutHero,
-                icon: Icons.looks_one_outlined,
-              ),
-            ],
-            selected: _look.layout,
-            onChanged: enabled
-                ? (v) => _setLook(_look.copyWith(layout: v))
-                : null,
-          ),
+      _section(
+        theme,
+        l10n.shareCardLayout,
+        ChoiceChipRow<RunStickerLayout>(
+          options: [
+            ChoiceChipOption(
+              value: RunStickerLayout.stack,
+              label: l10n.shareCardLayoutStack,
+              icon: Icons.view_agenda_outlined,
+            ),
+            ChoiceChipOption(
+              value: RunStickerLayout.route,
+              label: l10n.shareCardLayoutRoute,
+              icon: Icons.route,
+            ),
+            ChoiceChipOption(
+              value: RunStickerLayout.strip,
+              label: l10n.shareCardLayoutStrip,
+              icon: Icons.view_week_outlined,
+            ),
+            ChoiceChipOption(
+              value: RunStickerLayout.hero,
+              label: l10n.shareCardLayoutHero,
+              icon: Icons.looks_one_outlined,
+            ),
+          ],
+          selected: _look.layout,
+          onChanged:
+              enabled ? (v) => _setLook(_look.copyWith(layout: v)) : null,
         ),
+      ),
       _section(
         theme,
         l10n.shareCardInk,
         ChoiceChipRow<RunShareInk>(
           options: [
             ChoiceChipOption(
-              value: RunShareInk.light,
-              label: l10n.shareCardInkLight,
-            ),
+                value: RunShareInk.light, label: l10n.shareCardInkLight),
             ChoiceChipOption(
-              value: RunShareInk.dark,
-              label: l10n.shareCardInkDark,
-            ),
+                value: RunShareInk.dark, label: l10n.shareCardInkDark),
             ChoiceChipOption(
-              value: RunShareInk.brand,
-              label: l10n.shareCardInkBrand,
-            ),
+                value: RunShareInk.brand, label: l10n.shareCardInkBrand),
           ],
           selected: _look.ink,
           onChanged: enabled ? (v) => _setLook(_look.copyWith(ink: v)) : null,
@@ -691,34 +663,32 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
               ),
             ],
             selected: _look.aspect,
-            onChanged: enabled
-                ? (v) => _setLook(_look.copyWith(aspect: v))
-                : null,
+            onChanged:
+                enabled ? (v) => _setLook(_look.copyWith(aspect: v)) : null,
           ),
         ),
       if (!pr)
-        _section(
-          theme,
-          l10n.shareCardStats,
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              for (final kind in available)
-                FilterChip(
-                  label: Text(_statLabel(l10n, kind)),
-                  selected: _look.stats.contains(kind),
-                  onSelected:
-                      !enabled ||
-                          (_look.stats.contains(kind)
-                              ? _look.stats.length <= 1
-                              : _look.stats.length >= RunShareLook.maxStats)
-                      ? null
-                      : (_) => _setLook(_look.toggleStat(kind)),
-                ),
-            ],
-          ),
+      _section(
+        theme,
+        l10n.shareCardStats,
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final kind in available)
+              FilterChip(
+                label: Text(_statLabel(l10n, kind)),
+                selected: _look.stats.contains(kind),
+                onSelected: !enabled ||
+                        (_look.stats.contains(kind)
+                            ? _look.stats.length <= 1
+                            : _look.stats.length >= RunShareLook.maxStats)
+                    ? null
+                    : (_) => _setLook(_look.toggleStat(kind)),
+              ),
+          ],
         ),
+      ),
     ];
   }
 
@@ -907,9 +877,7 @@ class _CheckerboardPainter extends CustomPainter {
       for (var x = 0; x * _cell < size.width; x++) {
         if ((x + y).isOdd) continue;
         canvas.drawRect(
-          Rect.fromLTWH(x * _cell, y * _cell, _cell, _cell),
-          dark,
-        );
+            Rect.fromLTWH(x * _cell, y * _cell, _cell, _cell), dark);
       }
     }
   }
@@ -966,20 +934,21 @@ class RunShareCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final unit = preferences.unit;
     final l10n = AppLocalizations.of(context);
-    final activity = ActivityType.fromName(
-      run.metadata?['activity_type'] as String?,
-    );
-    final track = runShareCardTrack(
-      run,
-      privacyZones,
-    ).map((w) => LatLng(w.lineLat, w.lineLng)).toList();
+    final activity =
+        ActivityType.fromName(run.metadata?['activity_type'] as String?);
+    final track = runShareCardTrack(run, privacyZones)
+        .map((w) => LatLng(w.lineLat, w.lineLng))
+        .toList();
 
     return Container(
       color: const Color(0xFF121117),
       child: Column(
         children: [
           Expanded(flex: 3, child: _buildMap(track)),
-          Expanded(flex: 2, child: _buildStats(l10n, activity, unit)),
+          Expanded(
+            flex: 2,
+            child: _buildStats(l10n, activity, unit),
+          ),
         ],
       ),
     );
@@ -988,7 +957,8 @@ class RunShareCard extends StatelessWidget {
   Widget _buildMap(List<LatLng> track) {
     if (track.length < 2) {
       return const Center(
-        child: Icon(Icons.directions_run, size: 96, color: Color(0xFFC24E24)),
+        child: Icon(Icons.directions_run,
+            size: 96, color: Color(0xFFC24E24)),
       );
     }
 
@@ -1002,7 +972,8 @@ class RunShareCard extends StatelessWidget {
       if (p.longitude < minLng) minLng = p.longitude;
       if (p.longitude > maxLng) maxLng = p.longitude;
     }
-    final hasSpan = (maxLat - minLat) > 1e-6 || (maxLng - minLng) > 1e-6;
+    final hasSpan =
+        (maxLat - minLat) > 1e-6 || (maxLng - minLng) > 1e-6;
 
     final options = hasSpan
         ? MapOptions(
@@ -1131,11 +1102,7 @@ class RunShareCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              for (final (i, stat) in runShareStats(
-                l10n,
-                run,
-                unit,
-              ).indexed) ...[
+              for (final (i, stat) in runShareStats(l10n, run, unit).indexed) ...[
                 if (i > 0) const SizedBox(width: 10),
                 Expanded(
                   child: FittedBox(
@@ -1143,8 +1110,8 @@ class RunShareCard extends StatelessWidget {
                     alignment: i == 0
                         ? Alignment.bottomLeft
                         : i == 2
-                        ? Alignment.bottomRight
-                        : Alignment.bottomCenter,
+                            ? Alignment.bottomRight
+                            : Alignment.bottomCenter,
                     child: _stat(
                       label: stat.label,
                       value: stat.value,
@@ -1233,6 +1200,7 @@ class RunShareCard extends StatelessWidget {
       ],
     );
   }
+
 }
 
 /// The GPX, TCX and FIT exports carry the run's line ([trackLine]), as every
@@ -1247,8 +1215,7 @@ String _runToGpx(Run r, String title) {
   final buf = StringBuffer();
   buf.writeln('<?xml version="1.0" encoding="UTF-8"?>');
   buf.writeln(
-    '<gpx version="1.1" creator="Run" xmlns="http://www.topografix.com/GPX/1/1">',
-  );
+      '<gpx version="1.1" creator="Run" xmlns="http://www.topografix.com/GPX/1/1">');
   buf.writeln('  <metadata>');
   buf.writeln('    <name>${esc(title)}</name>');
   buf.writeln('    <time>${r.startedAt.toUtc().toIso8601String()}</time>');
@@ -1281,28 +1248,23 @@ String _runToTcx(Run r, String title) {
   final buf = StringBuffer();
   buf.writeln('<?xml version="1.0" encoding="UTF-8"?>');
   buf.writeln(
-    '<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">',
-  );
+      '<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">');
   buf.writeln('  <Activities>');
   buf.writeln('    <Activity Sport="Running">');
-  buf.writeln('      <Id>${r.startedAt.toUtc().toIso8601String()}</Id>');
+  buf.writeln(
+      '      <Id>${r.startedAt.toUtc().toIso8601String()}</Id>');
   buf.writeln('      <Notes>${esc(title)}</Notes>');
+  buf.writeln('      <Lap StartTime="${r.startedAt.toUtc().toIso8601String()}">');
   buf.writeln(
-    '      <Lap StartTime="${r.startedAt.toUtc().toIso8601String()}">',
-  );
+      '        <TotalTimeSeconds>${r.duration.inSeconds}</TotalTimeSeconds>');
   buf.writeln(
-    '        <TotalTimeSeconds>${r.duration.inSeconds}</TotalTimeSeconds>',
-  );
-  buf.writeln(
-    '        <DistanceMeters>${r.distanceMetres.toStringAsFixed(1)}</DistanceMeters>',
-  );
+      '        <DistanceMeters>${r.distanceMetres.toStringAsFixed(1)}</DistanceMeters>');
   buf.writeln('        <Track>');
   for (final w in trackLine(r.track)) {
     buf.writeln('          <Trackpoint>');
     if (w.timestamp != null) {
       buf.writeln(
-        '            <Time>${w.timestamp!.toUtc().toIso8601String()}</Time>',
-      );
+          '            <Time>${w.timestamp!.toUtc().toIso8601String()}</Time>');
     }
     buf.writeln('            <Position>');
     buf.writeln('              <LatitudeDegrees>${w.lat}</LatitudeDegrees>');
@@ -1310,8 +1272,7 @@ String _runToTcx(Run r, String title) {
     buf.writeln('            </Position>');
     if (w.elevationMetres != null) {
       buf.writeln(
-        '            <AltitudeMeters>${w.elevationMetres}</AltitudeMeters>',
-      );
+          '            <AltitudeMeters>${w.elevationMetres}</AltitudeMeters>');
     }
     buf.writeln('          </Trackpoint>');
   }
@@ -1336,14 +1297,12 @@ List<int> _runToFitBytes(Run r) {
     out.add(v & 0xFF);
     out.add((v >> 8) & 0xFF);
   }
-
   void writeU32LE(int v) {
     out.add(v & 0xFF);
     out.add((v >> 8) & 0xFF);
     out.add((v >> 16) & 0xFF);
     out.add((v >> 24) & 0xFF);
   }
-
   void writeSint32LE(int v) => writeU32LE(v < 0 ? v + 0x100000000 : v);
 
   // Definition message helper. Returns the local message type used.
@@ -1373,16 +1332,12 @@ List<int> _runToFitBytes(Run r) {
   for (var i = 0; i < 14; i++) out.add(0); // placeholder
 
   // -- File ID message (mesg 0) --
-  writeDefinition(
-    localType: 0,
-    globalMesgNum: 0,
-    fields: [
-      [0, 1, 0], // type: enum (4=activity)
-      [1, 2, 132], // manufacturer: uint16
-      [3, 4, 134], // serial: uint32z
-      [4, 4, 134], // time_created: uint32
-    ],
-  );
+  writeDefinition(localType: 0, globalMesgNum: 0, fields: [
+    [0, 1, 0],   // type: enum (4=activity)
+    [1, 2, 132], // manufacturer: uint16
+    [3, 4, 134], // serial: uint32z
+    [4, 4, 134], // time_created: uint32
+  ]);
   writeDataHeader(0);
   writeU8(4); // type = activity
   writeU16LE(1); // manufacturer = 1 (Garmin, generic)
@@ -1390,16 +1345,12 @@ List<int> _runToFitBytes(Run r) {
   writeU32LE(fitTimestamp(r.startedAt));
 
   // -- Record messages (mesg 20) --
-  writeDefinition(
-    localType: 1,
-    globalMesgNum: 20,
-    fields: [
-      [253, 4, 134], // timestamp: uint32
-      [0, 4, 133], // position_lat: sint32
-      [1, 4, 133], // position_lng: sint32
-      [2, 2, 132], // altitude: uint16 (scale 5, offset 500)
-    ],
-  );
+  writeDefinition(localType: 1, globalMesgNum: 20, fields: [
+    [253, 4, 134], // timestamp: uint32
+    [0, 4, 133],   // position_lat: sint32
+    [1, 4, 133],   // position_lng: sint32
+    [2, 2, 132],   // altitude: uint16 (scale 5, offset 500)
+  ]);
   for (final w in trackLine(r.track)) {
     writeDataHeader(1);
     writeU32LE(fitTimestamp(w.timestamp ?? r.startedAt));
@@ -1442,22 +1393,8 @@ List<int> _runToFitBytes(Run r) {
 @visibleForTesting
 int fitCrc(int crc, int byte) {
   const table = [
-    0x0000,
-    0xCC01,
-    0xD801,
-    0x1400,
-    0xF001,
-    0x3C00,
-    0x2800,
-    0xE401,
-    0xA001,
-    0x6C00,
-    0x7800,
-    0xB401,
-    0x5000,
-    0x9C01,
-    0x8801,
-    0x4400,
+    0x0000, 0xCC01, 0xD801, 0x1400, 0xF001, 0x3C00, 0x2800, 0xE401,
+    0xA001, 0x6C00, 0x7800, 0xB401, 0x5000, 0x9C01, 0x8801, 0x4400,
   ];
   var tmp = table[crc & 0xF] ^ table[byte & 0xF];
   crc = (crc >> 4) & 0x0FFF;

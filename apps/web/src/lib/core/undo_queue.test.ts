@@ -307,6 +307,62 @@ test('flush is idempotent and a no-op with nothing pending', async () => {
 	assert.equal(commit.count, 1);
 });
 
+// Reason: flush returned at once when the slot was already empty, so a
+// sign-out that awaited it went ahead while a commit the window timer (or a
+// second delete) had started was still on the wire, and that commit's failure
+// was only logged to a signed-out reader instead of restored and reported.
+test('flush waits for a commit the window timer already started, and its failure reports first', async () => {
+	const h = harness();
+	const order: string[] = [];
+	let fail!: (e: Error) => void;
+	h.queue.defer({
+		message: 'Removed',
+		commit: () => new Promise<void>((_, reject) => (fail = reject)),
+		restore: () => order.push('restore'),
+		onCommitError: () => order.push('report'),
+	});
+	await h.advance(8000);
+	assert.equal(h.queue.hasPending(), false, 'the timer took the entry');
+	const flushed = h.queue.flush().then(() => order.push('flushed'));
+	await Promise.resolve();
+	await Promise.resolve();
+	assert.deepEqual(order, [], 'flush is still waiting on the in-flight commit');
+	fail(new Error('500'));
+	await flushed;
+	assert.deepEqual(order, ['restore', 'report', 'flushed']);
+});
+
+test('flush waits for the commit a second destruction displaced', async () => {
+	const h = harness();
+	const order: string[] = [];
+	let land!: () => void;
+	h.queue.defer({
+		message: 'One',
+		commit: () => new Promise<void>((r) => (land = r)),
+		restore: () => {},
+	});
+	h.queue.defer({ message: 'Two', commit: async () => void order.push('two'), restore: () => {} });
+	const flushed = h.queue.flush().then(() => order.push('flushed'));
+	await Promise.resolve();
+	await Promise.resolve();
+	assert.deepEqual(order, ['two'], 'the slot committed, the displaced one has not landed');
+	land();
+	await flushed;
+	assert.deepEqual(order, ['two', 'flushed']);
+});
+
+test('a settled commit is no longer waited on', async () => {
+	const h = harness();
+	h.queue.defer({ message: 'Removed', commit: async () => {}, restore: () => {} });
+	await h.advance(8000);
+	let done = false;
+	const flushed = h.queue.flush().then(() => (done = true));
+	await Promise.resolve();
+	await Promise.resolve();
+	await flushed;
+	assert.equal(done, true);
+});
+
 // ---------------------------------------------------------------------------
 // WCAG 2.2.1 — pause while the bar has hover/focus, and turn the limit off
 // ---------------------------------------------------------------------------

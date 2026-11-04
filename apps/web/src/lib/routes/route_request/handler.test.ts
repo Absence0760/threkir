@@ -348,3 +348,36 @@ test('a missing key spends no slot', async () => {
 	assert.equal(sb.names().includes('spend_rate_limit_slot'), false);
 	assert.equal(model.calls(), 0);
 });
+
+// ─────────────── Location hint: a place label, never a position ───────────────
+
+test('a coordinate-shaped location label never reaches the prompt', async () => {
+	// The route builder labels a typed or map-picked start with the point
+	// itself, to four decimals. The consent copy promises no coordinates.
+	for (const [label, expected] of [
+		['Boston, MA', 'Approximate location: Boston, MA.'],
+		['51.5074, -0.1278', null],
+		['-33.9249,18.4241', null],
+		['near 40.7128, -74.0060 please', null],
+		['  ', null],
+	] as const) {
+		const prompts: string[] = [];
+		await quietly(() =>
+			handleRouteRequest('Bearer x', { request: 'a 10k loop', location_label: label }, {
+				...baseConfig(),
+				createClient: proClient().factory,
+				createAnthropic: () => ({
+					messages: {
+						create: async (body: { messages: Array<{ content: unknown }> }) => {
+							prompts.push(String(body.messages[0].content));
+							return { stop_reason: 'end_turn', content: [] } as never;
+						},
+					},
+				}),
+			}),
+		);
+		assert.equal(prompts.length, 1, label);
+		if (expected) assert.ok(prompts[0].includes(expected), label);
+		else assert.ok(!prompts[0].includes('Approximate location'), label);
+	}
+});

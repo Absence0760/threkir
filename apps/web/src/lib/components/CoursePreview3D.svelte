@@ -160,6 +160,10 @@
 	let finaleRaf = 0;
 	let finale: { from: CameraPose; to: CameraPose; plan: FinalePlan; startTs: number | null } | null = null;
 	let atOverview = $state(false);
+	// Set by the viewer's own Play, Pause or seek. The style's `load` can land
+	// after any of those on a slow device, and must not restart a flight the
+	// viewer already moved, or cancel the ending of one that already finished.
+	let viewerDrove = false;
 
 	const here = $derived(hasPath ? pointAtDistance(path, playback.dM) : null);
 
@@ -202,6 +206,7 @@
 		terrainFailed = false;
 		mapFailed = false;
 		playback = { dM: 0, playing: false };
+		viewerDrove = false;
 		try {
 			map = new maplibregl.Map({
 				container,
@@ -234,7 +239,7 @@
 			addCourseLayers(created, { path, climbs, markers, darkBasemap });
 			frameCourse(created);
 			renderPosition();
-			if (mode === 'flight') {
+			if (mode === 'flight' && !viewerDrove) {
 				playback = play(playback, path.totalM);
 				startLoop();
 			}
@@ -411,6 +416,7 @@
 	}
 
 	function togglePlay() {
+		viewerDrove = true;
 		if (playback.playing) {
 			pause();
 			return;
@@ -420,6 +426,7 @@
 	}
 
 	function seekTo(dM: number) {
+		viewerDrove = true;
 		stopLoop();
 		stopFinale();
 		playback = seek(dM, path.totalM);

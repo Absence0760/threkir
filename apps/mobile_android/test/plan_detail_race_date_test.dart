@@ -77,9 +77,6 @@ class _FakeTraining extends TrainingService {
       );
 
   @override
-  Future<List<TrainingPlanRow>> fetchMyPublishedPlans() async => const [];
-
-  @override
   Future<void> changePlanRaceDate(
       String planId, RaceDateChange change, String todayIso) async {
     changeCalls.add((change, todayIso));

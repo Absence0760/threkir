@@ -100,7 +100,7 @@ function json(status: number, payload: Record<string, unknown>): PlatePhotoResul
 	};
 }
 
-interface ParsedInput {
+export interface ParsedInput {
 	image: { mediaType: 'image/jpeg' | 'image/png' | 'image/webp'; base64: string };
 	note: string;
 }
@@ -184,6 +184,21 @@ function textTurn(note: string): string {
 		`${NOTE_OPEN}\n${body}\n${NOTE_CLOSE}\n\n` +
 		'Call propose_food_entries for the food in this photo.'
 	);
+}
+
+/// Every value the user turn carries is a field of its argument, which is
+/// how `ai_prompt_disclosures.test.ts` reads what this prompt sends.
+export function platePhotoUserContent({
+	image,
+	note,
+}: ParsedInput): Anthropic.ContentBlockParam[] {
+	return [
+		{
+			type: 'image',
+			source: { type: 'base64', media_type: image.mediaType, data: image.base64 },
+		},
+		{ type: 'text', text: textTurn(note) },
+	];
 }
 
 /**
@@ -282,17 +297,7 @@ export async function handlePlatePhoto(
 				messages: [
 					{
 						role: 'user',
-						content: [
-							{
-								type: 'image',
-								source: {
-									type: 'base64',
-									media_type: input.image.mediaType,
-									data: input.image.base64,
-								},
-							},
-							{ type: 'text', text: textTurn(input.note) },
-						],
+						content: platePhotoUserContent(input),
 					},
 				],
 			},

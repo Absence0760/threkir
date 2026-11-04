@@ -492,7 +492,9 @@
 										distance: stepAmount(reps.distance_m, reps.duration_s, 2)
 									})}
 								</span>
-								<span class="step-pace">{t('workoutDetail.atPace', { pace: fmtPace(reps.pace_sec_per_km) })}</span>
+								{#if reps.pace_sec_per_km != null}
+									<span class="step-pace">{t('workoutDetail.atPace', { pace: fmtPace(reps.pace_sec_per_km) })}</span>
+								{/if}
 								{#if recovery}
 									<span class="step-sub" data-testid="step-recovery">
 										<span class="sub-label">{t('workoutDetail.recovery')}</span>
@@ -507,7 +509,9 @@
 							<span class="step-kind">{t('workoutDetail.steady')}</span>
 							<span class="step-body">
 								<span class="step-main">{stepAmount(structure.steady.distance_m, structure.steady.duration_s, 1)}</span>
-								<span class="step-pace">{t('workoutDetail.atPace', { pace: fmtPace(structure.steady.pace_sec_per_km) })}</span>
+								{#if structure.steady.pace_sec_per_km != null}
+									<span class="step-pace">{t('workoutDetail.atPace', { pace: fmtPace(structure.steady.pace_sec_per_km) })}</span>
+								{/if}
 							</span>
 						</li>
 					{/if}

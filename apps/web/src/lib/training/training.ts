@@ -430,16 +430,18 @@ export type WorkoutStructure = {
 	// (duration_s) — the runner reads whichever is present (distance wins).
 	// Walk-run (C25K / Galloway) sessions use duration-based reps with a
 	// 'walk' recovery; see docs/features/training.md § walk-run.
+	// `pace_sec_per_km` is absent on a public-library copy, which carries no
+	// absolute pace (decisions § 2340).
 	repeats?: {
 		count: number;
 		distance_m?: number;
 		duration_s?: number;
-		pace_sec_per_km: number;
+		pace_sec_per_km?: number;
 		recovery_distance_m?: number;
 		recovery_duration_s?: number;
 		recovery_pace: 'easy' | 'jog' | 'walk';
 	};
-	steady?: { distance_m?: number; duration_s?: number; pace_sec_per_km: number };
+	steady?: { distance_m?: number; duration_s?: number; pace_sec_per_km?: number };
 	cooldown?: { distance_m?: number; duration_s?: number; pace: 'easy' };
 };
 

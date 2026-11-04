@@ -691,9 +691,12 @@ test('plan publishers never copy the publisher private fields onto a template', 
 	// button leaked it — not merely a crafted REST call. Migration
 	// 20270508_001 strips all three in a trigger, which is what actually
 	// holds; this guard keeps the clients honest so the row never carries
-	// the value in the first place.
+	// the value in the first place. The library publisher builds no row of
+	// its own: publish_plan_to_library makes the copy server-side (decisions
+	// § 2340, pinned in plan_copy.test.ts), so the club publisher is the one
+	// client insert left to hold to this.
 	const source = read(__dirname, 'core/data.ts');
-	const publishers = ['publishPlanToLibrary', 'publishPlanAsTemplate'];
+	const publishers = ['publishPlanAsTemplate'];
 	for (const fn of publishers) {
 		const start = source.indexOf(`export async function ${fn}(`);
 		assert.ok(start > 0, `${fn} not found — rename it here too.`);

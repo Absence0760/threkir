@@ -62,6 +62,13 @@ export interface CoachInboxState {
 	latest: LatestCoachMessage | null;
 }
 
+type HideOptions = {
+	throughMessageId: string;
+	message: string;
+	onCommitError: (e: unknown) => void;
+	onRestore?: () => void;
+};
+
 class MessagesInboxStore {
 	threads = $state<DmThread[]>([]);
 	threadsError = $state(false);
@@ -233,7 +240,9 @@ class MessagesInboxStore {
 	/// (conventions.md § Destructive actions): the row leaves the list now and
 	/// the server is told only when the window closes, so Undo cancels a timer.
 	/// `onRestore` lets the open conversation pane come back with the row.
-	hide(conversationId: string, opts: { message: string; onCommitError: (e: unknown) => void; onRestore?: () => void }) {
+	/// `throughMessageId` is the newest message the runner had on screen: the
+	/// delete stops there, so one sent during the window stays.
+	hide(conversationId: string, opts: HideOptions) {
 		const hidden = this.threads.find((t) => t.conversationId === conversationId);
 		const userId = this.#userId;
 		this.#hiddenAt.set(conversationId, Infinity);
@@ -243,7 +252,7 @@ class MessagesInboxStore {
 			message: opts.message,
 			commit: async () => {
 				try {
-					await hideDmConversation(conversationId);
+					await hideDmConversation(conversationId, opts.throughMessageId);
 					if (this.#userId === userId) this.#hiddenAt.set(conversationId, performance.now());
 					// Hidden on the server now: drop it from the held count so the
 					// badge does not count it again before the read below lands.

@@ -110,9 +110,6 @@ class _Training extends TrainingService {
         weeks: _weeks(race: race),
         workouts: _workouts(race: race),
       );
-
-  @override
-  Future<List<TrainingPlanRow>> fetchMyPublishedPlans() async => const [];
 }
 
 class _Social extends SocialService {

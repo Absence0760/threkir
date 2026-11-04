@@ -9414,15 +9414,21 @@ class ApiClient {
   }
 
   /// Deletes a conversation for the viewer only (migration 20271105000010):
-  /// every message so far leaves their reads, the other participant keeps
-  /// theirs, and a newer message brings it back. The caller holds it behind
-  /// the undo window, since nothing is sent until the window closes. A
-  /// conversation the viewer is not in raises P0002. Mirrors web
-  /// `hideDmConversation`.
-  Future<void> hideDmConversation(String conversationId) async {
+  /// every message up to and including [throughMessageId], the newest one
+  /// the viewer had on screen, leaves their reads, and anything sent after
+  /// it stays (20271107000002). The other participant keeps theirs, and a
+  /// newer message brings it back. The caller holds it behind the undo
+  /// window, and a message that arrives during the window is one the viewer
+  /// never saw. A conversation the viewer is not in, or a message outside it,
+  /// raises P0002. Mirrors web `hideDmConversation`.
+  Future<void> hideDmConversation(String conversationId,
+      {required String throughMessageId}) async {
     await _client.rpc(
       'hide_conversation',
-      params: {'p_conversation_id': conversationId},
+      params: {
+        'p_conversation_id': conversationId,
+        'p_through_message_id': throughMessageId,
+      },
     );
   }
 

@@ -2,6 +2,7 @@
 	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { onMount, onDestroy } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
@@ -2058,23 +2059,23 @@
 		</span>
 		<div class="hero skel-hero" aria-hidden="true">
 			<div class="skel-hero-text">
-				<span class="skel skel-line skel-w-20"></span>
-				<span class="skel skel-line skel-w-60"></span>
-				<span class="skel skel-line skel-w-40"></span>
-				<span class="skel skel-line skel-w-80"></span>
+				<SkeletonBlock height="0.75rem" width="20%" />
+				<SkeletonBlock height="0.75rem" width="60%" />
+				<SkeletonBlock height="0.75rem" width="40%" />
+				<SkeletonBlock height="0.75rem" width="80%" />
 			</div>
 			<div class="skel-hero-actions">
-				<span class="skel skel-block"></span>
-				<span class="skel skel-block"></span>
-				<span class="skel skel-block"></span>
+				<SkeletonBlock height="2.4rem" radius="var(--radius-md)" />
+				<SkeletonBlock height="2.4rem" radius="var(--radius-md)" />
+				<SkeletonBlock height="2.4rem" radius="var(--radius-md)" />
 			</div>
 		</div>
 		<div class="skel-card" aria-hidden="true">
-			<span class="skel skel-line skel-w-30"></span>
-			<span class="skel skel-line skel-w-80"></span>
+			<SkeletonBlock height="0.75rem" width="30%" />
+			<SkeletonBlock height="0.75rem" width="80%" />
 		</div>
 	</div>
-	<p class="sr-only" role="status">{m('clubEvent.loadingEventStatus')}</p>
+	<p class="visually-hidden" role="status">{m('clubEvent.loadingEventStatus')}</p>
 {:else if loadError !== null}
 	<div class="page">
 		<a class="back" href="/clubs/{slug}">
@@ -4392,7 +4393,6 @@
 		color: var(--color-danger-text);
 	}
 
-
 	.error {
 		color: var(--color-danger-text);
 		background: var(--color-danger-light);
@@ -4526,29 +4526,6 @@
 		margin-bottom: var(--space-md);
 		opacity: 0.5;
 	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line { height: 0.75rem; }
-	.skel-block {
-		height: 2.4rem;
-		border-radius: var(--radius-md);
-	}
-	.skel-w-20 { width: 20%; }
-	.skel-w-30 { width: 30%; }
-	.skel-w-40 { width: 40%; }
-	.skel-w-60 { width: 60%; }
-	.skel-w-80 { width: 80%; }
 	.skel-hero {
 		grid-template-columns: 1fr minmax(14rem, 18rem);
 	}
@@ -4573,25 +4550,6 @@
 		flex-direction: column;
 		gap: 0.6rem;
 		margin-bottom: var(--space-md);
-	}
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 
 	@media (max-width: 60rem) {

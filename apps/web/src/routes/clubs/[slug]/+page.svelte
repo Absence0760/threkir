@@ -3,6 +3,7 @@
 	import { appErrorMessage, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
@@ -833,35 +834,35 @@
 			{tr('clubHome.allClubs')}
 		</span>
 		<div class="hero skel-hero" aria-hidden="true">
-			<span class="skel skel-avatar-lg"></span>
+			<SkeletonBlock height="4.5rem" width="4.5rem" radius="50%" />
 			<div class="skel-hero-text">
-				<span class="skel skel-line skel-w-40"></span>
-				<span class="skel skel-line skel-w-30"></span>
-				<span class="skel skel-line skel-w-80"></span>
+				<SkeletonBlock height="0.75rem" width="40%" />
+				<SkeletonBlock height="0.75rem" width="30%" />
+				<SkeletonBlock height="0.75rem" width="80%" />
 			</div>
 		</div>
 		<div class="tabs-skel" aria-hidden="true">
 			{#each Array(5) as _, i (i)}
-				<span class="skel skel-line skel-tab"></span>
+				<SkeletonBlock height="0.9rem" width="4rem" />
 			{/each}
 		</div>
 		<div class="feed-skel" aria-hidden="true">
 			{#each Array(3) as _, i (i)}
 				<div class="skel-post">
 					<div class="skel-post-head">
-						<span class="skel skel-avatar"></span>
+						<SkeletonBlock height="2.1rem" width="2.1rem" radius="50%" />
 						<div class="skel-post-meta">
-							<span class="skel skel-line skel-w-30"></span>
-							<span class="skel skel-line skel-w-20"></span>
+							<SkeletonBlock height="0.75rem" width="30%" />
+							<SkeletonBlock height="0.75rem" width="20%" />
 						</div>
 					</div>
-					<span class="skel skel-line skel-w-80"></span>
-					<span class="skel skel-line skel-w-60"></span>
+					<SkeletonBlock height="0.75rem" width="80%" />
+					<SkeletonBlock height="0.75rem" width="60%" />
 				</div>
 			{/each}
 		</div>
 	</div>
-	<p class="sr-only" role="status">{tr('clubHome.loadingClub')}</p>
+	<p class="visually-hidden" role="status">{tr('clubHome.loadingClub')}</p>
 {:else if loadError}
 	<div class="not-found" role="alert" data-testid="club-load-error">
 		<h2>{tr('clubHome.loadErrorTitle')}</h2>
@@ -1933,8 +1934,6 @@
 		margin-bottom: var(--space-lg);
 	}
 
-
-
 	.hero-logo {
 		display: flex;
 		flex-direction: column;
@@ -2770,7 +2769,7 @@
 		text-transform: capitalize;
 	}
 
-	/* Skeleton — same shimmer language as /clubs + /routes. The hero / tab
+	/* Skeleton layout for SkeletonBlock. The hero / tab
 	   / feed scaffold lands at the real layout's height so the data swap
 	   doesn't shift the page. */
 	.back-skel {
@@ -2782,26 +2781,8 @@
 		margin-bottom: var(--space-md);
 		opacity: 0.5;
 	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
 	.skel-hero {
 		grid-template-columns: auto 1fr;
-	}
-	.skel-avatar-lg {
-		width: 4.5rem;
-		height: 4.5rem;
-		border-radius: 50%;
 	}
 	.skel-hero-text {
 		display: flex;
@@ -2809,30 +2790,12 @@
 		gap: 0.5rem;
 		justify-content: center;
 	}
-	.skel-avatar {
-		width: 2.1rem;
-		height: 2.1rem;
-		border-radius: 50%;
-		flex-shrink: 0;
-	}
-	.skel-line {
-		height: 0.75rem;
-	}
-	.skel-w-20 { width: 20%; }
-	.skel-w-30 { width: 30%; }
-	.skel-w-40 { width: 40%; }
-	.skel-w-60 { width: 60%; }
-	.skel-w-80 { width: 80%; }
 	.tabs-skel {
 		display: flex;
 		gap: 1.5rem;
 		margin-bottom: var(--space-md);
 		padding-bottom: 0.7rem;
 		border-bottom: 1px solid var(--color-border);
-	}
-	.skel-tab {
-		width: 4rem;
-		height: 0.9rem;
 	}
 	.feed-skel {
 		display: flex;
@@ -2859,25 +2822,6 @@
 		flex-direction: column;
 		gap: 0.35rem;
 		flex: 1;
-	}
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 
 	/* <=50rem (small tablet / large phone). Stack hero action column

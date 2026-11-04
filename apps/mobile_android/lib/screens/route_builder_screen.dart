@@ -41,7 +41,10 @@ import '../widgets/live_run_map.dart'
         basemapTileLayer,
         basemapVoidColour,
         currentBasemapIsDark,
-        currentTileUrl;
+        currentTileUrl,
+        mapDraftLine,
+        mapOverlapLine,
+        solidMapLine;
 import '../widgets/map_attribution.dart';
 import '../widgets/snap_to_start.dart';
 import '../widgets/top_banner.dart';
@@ -1239,28 +1242,23 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
                     ),
                   ],
                 ),
-              // Base polyline.
               if (polylineLatLngs.length >= 2)
                 PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: polylineLatLngs,
-                      strokeWidth: 5,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ],
+                  key: const ValueKey('builder-draft-line'),
+                  polylines: solidMapLine(
+                    polylineLatLngs,
+                    mapDraftLine(darkBasemap: darkBasemap),
+                  ),
                 ),
-              // Overlap (out-and-back) over-stroke — purple, matches
-              // the web spec.
               if (overlapLatLngs.isNotEmpty)
                 PolylineLayer(
+                  key: const ValueKey('builder-overlap-line'),
                   polylines: [
                     for (final span in overlapLatLngs)
                       if (span.length >= 2)
-                        Polyline(
-                          points: span,
-                          strokeWidth: 6,
-                          color: const Color(0xCCB084EE),
+                        ...solidMapLine(
+                          span,
+                          mapOverlapLine(darkBasemap: darkBasemap),
                         ),
                   ],
                 ),

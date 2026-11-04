@@ -7,7 +7,7 @@ import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart'
-    show FlutterMap, MapCamera, TileLayer;
+    show FlutterMap, MapCamera, Polyline, PolylineLayer, TileLayer;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -24,7 +24,10 @@ import '../lib/rate_limit_message.dart';
 import '../lib/route_overlap.dart';
 import '../lib/screens/route_builder_screen.dart';
 import '../lib/widgets/app_bar_actions.dart';
+import '../lib/widgets/live_run_map.dart'
+    show mapDraftLine, mapLineCasing, mapLineWidth;
 import '../lib/widgets/map_attribution.dart';
+import 'pump_until.dart';
 
 class _FakePathProvider extends PathProviderPlatform with MockPlatformInterfaceMixin {
   final Directory _tmp;
@@ -537,6 +540,34 @@ void main() {
       // The selector hides so it cannot cover the results dropdown.
       expect(find.text('Trail'), findsNothing);
     });
+  });
+
+  // The draft line was the app theme's primary at 5 px with no casing, so
+  // its colour followed the app theme rather than the basemap under it.
+  testWidgets('the drafted line is the basemap-keyed draft colour over a casing',
+      (tester) async {
+    final store = await _store();
+    await _pumpScreen(tester, store);
+    await tester.tap(find.text('Straight'));
+    await tester.pump();
+    final map = tester.getRect(find.byType(FlutterMap));
+    await tester.tapAt(map.center.translate(-60, 0));
+    await tester.pump();
+    await tester.tapAt(map.center.translate(60, 40));
+    await tester.pump();
+
+    final draft = find.byKey(const ValueKey('builder-draft-line'));
+    await pumpUntil(tester, () => draft.evaluate().isNotEmpty,
+        describe: 'the two-waypoint draft line');
+    final lines = tester.widget<PolylineLayer>(draft).polylines;
+    expect(lines, hasLength(2));
+    final Polyline casing = lines.first, line = lines.last;
+    // No MAPTILER_KEY in the test env, so the basemap is the light OSM
+    // fallback.
+    expect(line.color, mapDraftLine(darkBasemap: false));
+    expect(line.strokeWidth, mapLineWidth);
+    expect(casing.color, mapLineCasing);
+    expect(casing.strokeWidth, greaterThan(line.strokeWidth));
   });
 
   testWidgets('mode toggle has Trail / Road / Straight segments',

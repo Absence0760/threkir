@@ -318,6 +318,16 @@ Color mapTrackLine({required bool darkBasemap}) =>
 Color mapCourseGuideLine({required bool darkBasemap}) =>
     darkBasemap ? const Color(0xFF94A3B8) : const Color(0xFF475569);
 
+/// The route being drafted in the route builder. Twin of web's
+/// `mapDraftLine`.
+Color mapDraftLine({required bool darkBasemap}) =>
+    darkBasemap ? const Color(0xFF60A5FA) : const Color(0xFF1D4ED8);
+
+/// The stretch of a drafted route that doubles back over itself. Twin of
+/// web's `mapOverlapLine`.
+Color mapOverlapLine({required bool darkBasemap}) =>
+    darkBasemap ? const Color(0xFFC084FC) : const Color(0xFF7E22CE);
+
 /// Dark casing under every solid map line, wider than the line so a 1.5 px
 /// edge shows either side and holds it apart from the raster's road
 /// strokes, which are baked into the tile and cannot be drawn under it.
@@ -327,7 +337,6 @@ const double mapLineWidth = 5;
 
 /// [points] as one opaque line over its casing, round-capped and
 /// round-joined so a hairpin does not spike.
-@visibleForTesting
 List<Polyline> solidMapLine(List<LatLng> points, Color color) => [
       Polyline(
         points: points,

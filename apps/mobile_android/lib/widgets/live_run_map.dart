@@ -1756,10 +1756,6 @@ const List<Shadow> chevronOutline = [
   Shadow(color: Colors.white, offset: Offset(-1, 1)),
 ];
 
-/// Direction chevrons along [coords], spaced [chevronSpacingPx] apart on
-/// screen at whatever zoom the map is at. Reads the camera so a pinch
-/// re-spaces them, and caches per snapped zoom level so a pan doesn't
-/// re-walk the track.
 /// The km / mile badges, thinned to the ones that fit at the current zoom
 /// (`thinDistanceMarkers`). The zoom is snapped down to the half level, as
 /// the chevrons do, so a pinch doesn't re-walk the track every frame.
@@ -1818,6 +1814,10 @@ class _DistanceMarkerLayerState extends State<_DistanceMarkerLayer> {
   }
 }
 
+/// Direction chevrons along [coords], spaced [chevronSpacingPx] apart on
+/// screen at whatever zoom the map is at. Reads the camera so a pinch
+/// re-spaces them, and caches per snapped zoom level so a pan doesn't
+/// re-walk the track.
 class _ChevronLayer extends StatefulWidget {
   final List<LatLng> coords;
   const _ChevronLayer({required this.coords});

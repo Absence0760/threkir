@@ -1831,7 +1831,7 @@
   "planImportErrorBadGoalTime": "Não foi possível ler o tempo-alvo “{cell}”. Use h:mm:ss.",
   "planImportErrorBadWeek": "Não foi possível ler o número da semana “{cell}”.",
   "planImportErrorBadDate": "Não foi possível ler a data “{cell}”. Use AAAA-MM-DD.",
-  "planImportErrorUnknownKind": "“{cell}” não é um tipo de treino que este app conheça.",
+  "planImportErrorUnknownKind": "“{cell}” não é um tipo de treino reconhecido.",
   "planImportErrorRaceFieldsOnNonRace": "Prova, prioridade e meta só se aplicam a linhas de prova, e o treino de {date} não é uma prova.",
   "planImportErrorNoRows": "Nenhuma linha de treino encontrada. Cole uma tabela com as colunas Week, Date e Type.",
   "planImportErrorNoGoalDistance": "Não foi possível determinar a distância-alvo do plano.",

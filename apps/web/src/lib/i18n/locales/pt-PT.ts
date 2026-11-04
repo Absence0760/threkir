@@ -3221,7 +3221,7 @@ export const messages = {
 	"planImport.badGoalTime": "Não foi possível ler o tempo-objetivo “{cell}”. Use h:mm:ss.",
 	"planImport.badWeek": "Não foi possível ler o número da semana “{cell}”.",
 	"planImport.badDate": "Não foi possível ler a data “{cell}”. Use AAAA-MM-DD.",
-	"planImport.unknownKind": "“{cell}” não é um tipo de treino que esta app conheça.",
+	"planImport.unknownKind": "“{cell}” não é um tipo de treino reconhecido.",
 	"planImport.raceFieldsOnNonRace": "Prova, prioridade e objetivo só se aplicam a linhas de prova, e o treino de {date} não é uma prova.",
 	"planImport.noRows": "Não foram encontradas linhas de treino. Cole uma tabela com as colunas Week, Date e Type.",
 	"planImport.noGoalDistance": "Não foi possível determinar a distância-objetivo do plano.",

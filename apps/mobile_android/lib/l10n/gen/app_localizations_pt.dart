@@ -6669,7 +6669,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String planImportErrorUnknownKind(String cell) {
-    return '“$cell” não é um tipo de treino que esta app conheça.';
+    return '“$cell” não é um tipo de treino reconhecido.';
   }
 
   @override
@@ -26450,7 +26450,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String planImportErrorUnknownKind(String cell) {
-    return '“$cell” não é um tipo de treino que este app conheça.';
+    return '“$cell” não é um tipo de treino reconhecido.';
   }
 
   @override

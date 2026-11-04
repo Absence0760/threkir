@@ -3,10 +3,10 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { startVisiblePoll } from '#lib/core/visible_poll.ts';
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { hashHue } from '#lib/format/avatar.ts';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import AiTag from '#lib/components/AiTag.svelte';
@@ -105,7 +105,7 @@
 		try {
 			await messagesInbox.setCoachPlacement(pinned ? 'listed' : 'pinned');
 		} catch (e) {
-			showToast(m('prefs.saveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('prefs.saveFailed', { error: errorCopy(e, m, 'prefs.saveFailed') }), 'error');
 		} finally {
 			placing = false;
 		}

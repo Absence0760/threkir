@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appErrorMessage, isPlanOverlapError, thrownMessage } from '#lib/core/supabase_error.ts';
+	import { appErrorMessage, isPlanOverlapError } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { page } from '$app/state';
@@ -22,6 +22,7 @@
 	import { formatDistance, formatPace } from '#lib/format/units.svelte.ts';
 	import { formatDuration, formatDate } from '#lib/format/time.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import { isWorkoutSkipped } from '#lib/training/training.ts';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
@@ -103,7 +104,7 @@
 			// A rejected fetch (auth/timeout/RLS) would otherwise leave the
 			// page stuck on its loading spinner forever — surface it with a
 			// retry instead.
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, m, 'coaching/athletes/[id]: loadError');
 		}
 		loading = false;
 	}

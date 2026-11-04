@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { formatDuration, formatRelativeTime } from '#lib/format/time.ts';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import {
 		fetchFollowingActivityFeed,
@@ -113,7 +113,7 @@
 			exhausted = entries.length < 20;
 			engagement = await fetchEngagementSummaries(runIds(entries));
 		} catch (e) {
-			showToast(m('socialFeed.loadFeedError', { error: thrownMessage(e) }), 'error');
+			showToast(m('socialFeed.loadFeedError', { error: errorCopy(e, m, 'socialFeed.loadFeedError') }), 'error');
 		} finally {
 			loading = false;
 			loaded = true;
@@ -141,7 +141,7 @@
 			// more" scroll trigger left the user scrolling forever
 			// waiting for entries that never arrived. Surface so they
 			// know to retry.
-			showToast(m('socialFeed.loadMoreError', { error: thrownMessage(e) }), 'error');
+			showToast(m('socialFeed.loadMoreError', { error: errorCopy(e, m, 'socialFeed.loadMoreError') }), 'error');
 		} finally {
 			loadingMore = false;
 		}
@@ -172,7 +172,7 @@
 				});
 			}
 		} catch (e) {
-			showToast(m('socialFeed.kudosError', { error: thrownMessage(e) }), 'error');
+			showToast(m('socialFeed.kudosError', { error: errorCopy(e, m, 'socialFeed.kudosError') }), 'error');
 		} finally {
 			const next = new Set(kudosBusy);
 			next.delete(runId);

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { goto } from '$app/navigation';
 	import Avatar from '#lib/components/Avatar.svelte';
@@ -14,6 +13,7 @@
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { fmtKm } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { eventCancelMessage } from '#lib/social/event_cancel_copy.ts';
 	import { waitlistSlotMessage } from '#lib/social/event_waitlist_offer.ts';
 	import { notificationLinkFor } from '#lib/social/notification_link.ts';
@@ -112,7 +112,7 @@
 				row: { ...x.row, read_at: x.row.read_at ?? new Date().toISOString() },
 			}));
 		} catch (e) {
-			showToast(m('notificationBell.markAllFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('notificationBell.markAllFailed', { error: errorCopy(e, m, 'notificationBell.markAllFailed') }), 'error');
 		}
 	}
 

@@ -6,6 +6,7 @@
 	import { redeemCoachInvite } from '#lib/core/data.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	let token = $derived(page.params.token as string);
 	let status = $state<'joining' | 'error' | 'not-authed'>('joining');
@@ -38,10 +39,17 @@
 			goto('/coaching');
 		} catch (e: unknown) {
 			status = 'error';
-			// Surface the real reason the redeem RPC raised (self-coaching, already
-			// linked, already redeemed) rather than the generic "invalid or expired".
-			const raw = thrownMessage(e);
-			errorMsg = raw.trim() !== '' ? raw : m('coachingAccept.inviteInvalidOrExpired');
+			// Name the reason the redeem RPC raised (self-coaching, already
+			// linked) in the reader's language; anything else is the invite itself.
+			if (e instanceof Error && e.message.includes('invite not found')) {
+				errorMsg = m('coachingAccept.inviteInvalidOrExpired');
+			} else if (e instanceof Error && e.message.includes('already linked')) {
+				errorMsg = m('coachingAccept.alreadyLinked');
+			} else if (e instanceof Error && e.message.includes('cannot coach yourself')) {
+				errorMsg = m('coachingAccept.cannotCoachSelf');
+			} else {
+				errorMsg = errorCopy(e, m, 'coachingAccept.redeem', 'coachingAccept.inviteInvalidOrExpired');
+			}
 		}
 	}
 

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
@@ -21,6 +20,7 @@
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { reportTargetHref, reportTargetLabelKey } from './report_target';
 
 	type QueueTarget = Pick<
@@ -64,7 +64,7 @@
 		try {
 			queue = await fetchPendingReports();
 		} catch (e) {
-			showToast(t('admin.reports.loadFailed', { error: thrownMessage(e) }), 'error');
+			showToast(t('admin.reports.loadFailed', { error: errorCopy(e, t, 'admin.reports.loadFailed') }), 'error');
 		}
 	}
 
@@ -75,7 +75,7 @@
 			resolved = await fetchResolvedReports();
 			resolvedLoaded = true;
 		} catch (e) {
-			resolvedError = t('admin.reports.resolvedLoadFailed', { error: thrownMessage(e) });
+			resolvedError = t('admin.reports.resolvedLoadFailed', { error: errorCopy(e, t, 'admin.reports.resolvedLoadFailed') });
 		} finally {
 			resolvedLoading = false;
 		}
@@ -95,7 +95,7 @@
 			if (selected) detail = await fetchReportsForTarget(selected.target_kind, selected.target_id);
 			if (resolvedLoaded) await loadResolved();
 		} catch (e) {
-			showToast(t('admin.reports.holdFailed', { error: thrownMessage(e) }), 'error');
+			showToast(t('admin.reports.holdFailed', { error: errorCopy(e, t, 'admin.reports.holdFailed') }), 'error');
 		} finally {
 			holdBusy = null;
 		}
@@ -109,7 +109,7 @@
 		try {
 			detail = await fetchReportsForTarget(target.target_kind, target.target_id);
 		} catch (e) {
-			showToast(t('admin.reports.detailFailed', { error: thrownMessage(e) }), 'error');
+			showToast(t('admin.reports.detailFailed', { error: errorCopy(e, t, 'admin.reports.detailFailed') }), 'error');
 		} finally {
 			detailLoading = false;
 		}
@@ -137,7 +137,7 @@
 			await loadQueue();
 			if (resolvedLoaded) await loadResolved();
 		} catch (e) {
-			showToast(t('admin.reports.resolveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(t('admin.reports.resolveFailed', { error: errorCopy(e, t, 'admin.reports.resolveFailed') }), 'error');
 		} finally {
 			resolving = false;
 		}
@@ -162,7 +162,7 @@
 					: q,
 			);
 		} catch (e) {
-			showToast(t('admin.reports.unhideFailed', { error: thrownMessage(e) }), 'error');
+			showToast(t('admin.reports.unhideFailed', { error: errorCopy(e, t, 'admin.reports.unhideFailed') }), 'error');
 		} finally {
 			unhiding = false;
 		}

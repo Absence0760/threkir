@@ -13,7 +13,7 @@
 	import { afterNavigate, goto } from '$app/navigation';
 	import { buildEventShareCanonical } from '#lib/share/share_event_meta.ts';
 	import { supabase } from '#lib/core/supabase.ts';
-	import { appErrorMessage, thrownMessage } from '#lib/core/supabase_error.ts';
+	import { appErrorMessage } from '#lib/core/supabase_error.ts';
 	import type { RealtimeChannel } from '@supabase/supabase-js';
 	import {
 		fetchEventById,
@@ -137,6 +137,7 @@
 	import { hasEventPhotoWindowOpened } from '#lib/social/event_photo_window.ts';
 	import { consent } from '#lib/settings/consent.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { rsvpStatusLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import type {
@@ -732,7 +733,7 @@
 		} catch (e) {
 			// A rejection anywhere in here used to escape and leave `loading`
 			// true, so the race-day page skeletoned forever with no way out.
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, m, 'clubs/[slug]/events/[id]: loadError');
 		} finally {
 			loading = false;
 		}
@@ -747,7 +748,7 @@
 			await readInstance();
 			instanceError = null;
 		} catch (e) {
-			instanceError = thrownMessage(e);
+			instanceError = errorCopy(e, m, 'clubs/[slug]/events/[id]: instanceError');
 		}
 	}
 
@@ -834,7 +835,7 @@
 			attendeesNext = more.next;
 			attendeesHasMore = more.next !== null;
 		} catch (e) {
-			showToast(m('profile.loadMoreError', { error: thrownMessage(e) }), 'error');
+			showToast(m('profile.loadMoreError', { error: errorCopy(e, m, 'profile.loadMoreError') }), 'error');
 		} finally {
 			attendeesLoadingMore = false;
 		}
@@ -906,7 +907,7 @@
 			photoRunOptions = await fetchRunsForEventPhoto(activeInstance);
 		} catch (err) {
 			photoRunOptions = [];
-			photoRunOptionsError = thrownMessage(err);
+			photoRunOptionsError = errorCopy(err, m, 'clubs/[slug]/events/[id]: photoRunOptionsError');
 		} finally {
 			photoRunOptionsLoading = false;
 		}
@@ -988,7 +989,7 @@
 			onCommitError: (err) =>
 				showToast(
 					m('clubEvent.photoModerateFailed', {
-						error: thrownMessage(err)
+						error: errorCopy(err, m, 'clubEvent.photoModerateFailed')
 					}),
 					'error'
 				)
@@ -1008,7 +1009,7 @@
 		} catch (err) {
 			showToast(
 				m('clubEvent.photoModerateFailed', {
-					error: thrownMessage(err)
+					error: errorCopy(err, m, 'clubEvent.photoModerateFailed')
 				}),
 				'error'
 			);
@@ -1031,7 +1032,7 @@
 			onCommitError: (err) =>
 				showToast(
 					m('clubEvent.photoDeleteFailed', {
-						error: thrownMessage(err)
+						error: errorCopy(err, m, 'clubEvent.photoDeleteFailed')
 					}),
 					'error'
 				)
@@ -1876,7 +1877,7 @@
 				return;
 			}
 			showToast(
-				m('clubHome.deleteEventFailed', { error: thrownMessage(e) }),
+				m('clubHome.deleteEventFailed', { error: errorCopy(e, m, 'clubHome.deleteEventFailed') }),
 				'error'
 			);
 			return;

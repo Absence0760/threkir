@@ -2,10 +2,10 @@
 	import AvatarCropDialog from './AvatarCropDialog.svelte';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import { uploadClubLogo, removeClubLogo } from '#lib/core/data.ts';
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { AVATAR_SOURCE_MAX_BYTES } from '#lib/util/avatar_render.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	interface Props {
 		clubId: string;
@@ -41,7 +41,7 @@
 			onchange(await uploadClubLogo(clubId, cropped));
 			showToast(m('clubLogo.saved'), 'success');
 		} catch (err) {
-			showToast(m('clubLogo.failed', { error: thrownMessage(err) }), 'error');
+			showToast(m('clubLogo.failed', { error: errorCopy(err, m, 'clubLogo.failed') }), 'error');
 		} finally {
 			busy = false;
 		}
@@ -56,7 +56,7 @@
 			onchange(null);
 			showToast(m('clubLogo.removed'), 'success');
 		} catch (err) {
-			showToast(m('clubLogo.failed', { error: thrownMessage(err) }), 'error');
+			showToast(m('clubLogo.failed', { error: errorCopy(err, m, 'clubLogo.failed') }), 'error');
 		} finally {
 			busy = false;
 		}

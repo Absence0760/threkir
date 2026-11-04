@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -29,6 +28,7 @@
 	const coachOn = coachEnabled();
 	import type { TrainingPlan } from '#lib/types.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	// The Coach's conversation lives in Messages (decisions § 2227); `/coach`
 	// redirects here with its query kept.
@@ -140,7 +140,7 @@
 			}
 			aiDisclosure = { version: row.version, acceptedAt: row.accepted_at };
 		} catch (e) {
-			coachConsentError = m('coachPage.consentRecordError', { error: thrownMessage(e) });
+			coachConsentError = m('coachPage.consentRecordError', { error: errorCopy(e, m, 'coachPage.consentRecordError') });
 		} finally {
 			coachConsentSaving = false;
 		}

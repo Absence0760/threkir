@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
-	import { appErrorMessage, thrownMessage } from '#lib/core/supabase_error.ts';
+	import { appErrorMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { clubRoleLabel, joinPolicyLabel, routeSurfaceLabel, rsvpStatusLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import { onMount, onDestroy } from 'svelte';
 	import { handleTablistKeydown } from '#lib/util/tablist.ts';
@@ -255,7 +256,7 @@
 			pendingError = null;
 			return rows;
 		} catch (e) {
-			pendingError = thrownMessage(e);
+			pendingError = errorCopy(e, tr, 'clubs/[slug]: pendingError');
 			return [];
 		}
 	}
@@ -282,7 +283,7 @@
 			membersNext = more.next;
 			membersHasMore = more.next !== null;
 		} catch (e) {
-			showToast(tr('profile.loadMoreError', { error: thrownMessage(e) }), 'error');
+			showToast(tr('profile.loadMoreError', { error: errorCopy(e, tr, 'profile.loadMoreError') }), 'error');
 		} finally {
 			membersLoadingMore = false;
 		}
@@ -297,7 +298,7 @@
 			goto(`/gym/routines/${newId}`);
 		} catch (e) {
 			showToast(
-				tr('clubHome.toastFailed', { error: thrownMessage(e) }),
+				tr('clubHome.toastFailed', { error: errorCopy(e, tr, 'clubHome.toastFailed') }),
 				'error'
 			);
 		} finally {
@@ -313,7 +314,7 @@
 			showToast(tr('clubHome.sessionAdopted'));
 		} catch (e) {
 			showToast(
-				tr('clubHome.toastFailed', { error: thrownMessage(e) }),
+				tr('clubHome.toastFailed', { error: errorCopy(e, tr, 'clubHome.toastFailed') }),
 				'error'
 			);
 		} finally {
@@ -334,7 +335,7 @@
 			showToast(tr('clubHome.toastTemplateRemoved'), 'success');
 			await load();
 		} catch (e) {
-			showToast(tr('clubHome.toastFailed', { error: thrownMessage(e) }), 'error');
+			showToast(tr('clubHome.toastFailed', { error: errorCopy(e, tr, 'clubHome.toastFailed') }), 'error');
 		} finally {
 			unpublishBusyId = null;
 		}
@@ -356,7 +357,7 @@
 			showToast(tr('clubHome.toastRouteTransferred'));
 			await load();
 		} catch (e) {
-			showToast(tr('clubHome.toastRouteTransferFailed', { error: thrownMessage(e) }), 'error');
+			showToast(tr('clubHome.toastRouteTransferFailed', { error: errorCopy(e, tr, 'clubHome.toastRouteTransferFailed') }), 'error');
 		}
 	}
 
@@ -372,7 +373,7 @@
 			showToast(tr('clubHome.toastRouteReturned'));
 			await load();
 		} catch (e) {
-			showToast(tr('clubHome.toastRouteRemoveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(tr('clubHome.toastRouteRemoveFailed', { error: errorCopy(e, tr, 'clubHome.toastRouteRemoveFailed') }), 'error');
 		}
 	}
 
@@ -606,7 +607,7 @@
 			await approveMember(club.id, userId);
 			await load();
 		} catch (e: unknown) {
-			showToast(tr('clubHome.toastApproveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(tr('clubHome.toastApproveFailed', { error: errorCopy(e, tr, 'clubHome.toastApproveFailed') }), 'error');
 		} finally {
 			const next = new Set(pendingBusy);
 			next.delete(userId);
@@ -626,7 +627,7 @@
 			await load();
 			showToast(tr('clubHome.toastApprovedAll'));
 		} catch (e: unknown) {
-			showToast(tr('clubHome.toastApproveAllFailed', { error: thrownMessage(e) }), 'error');
+			showToast(tr('clubHome.toastApproveAllFailed', { error: errorCopy(e, tr, 'clubHome.toastApproveAllFailed') }), 'error');
 		} finally {
 			approvingAll = false;
 		}
@@ -641,7 +642,7 @@
 			await rejectMember(club.id, userId);
 			await load();
 		} catch (e: unknown) {
-			showToast(tr('clubHome.toastRejectFailed', { error: thrownMessage(e) }), 'error');
+			showToast(tr('clubHome.toastRejectFailed', { error: errorCopy(e, tr, 'clubHome.toastRejectFailed') }), 'error');
 		} finally {
 			const next = new Set(pendingBusy);
 			next.delete(userId);
@@ -657,7 +658,7 @@
 			await removeMember(club.id, userId);
 			await load();
 		} catch (e) {
-			showToast(tr('clubHome.toastRemoveMemberFailed', { error: thrownMessage(e) }), 'error');
+			showToast(tr('clubHome.toastRemoveMemberFailed', { error: errorCopy(e, tr, 'clubHome.toastRemoveMemberFailed') }), 'error');
 		}
 	}
 
@@ -681,7 +682,7 @@
 			club = { ...club, invite_token: token };
 		} catch (e) {
 			showToast(
-				tr('clubHome.regenerateFailed', { error: thrownMessage(e) }),
+				tr('clubHome.regenerateFailed', { error: errorCopy(e, tr, 'clubHome.regenerateFailed') }),
 				'error'
 			);
 		}
@@ -697,7 +698,7 @@
 			expandedThreads = { ...expandedThreads, [postId]: replies };
 		} catch (e) {
 			showToast(
-				tr('clubHome.repliesLoadFailed', { error: thrownMessage(e) }),
+				tr('clubHome.repliesLoadFailed', { error: errorCopy(e, tr, 'clubHome.repliesLoadFailed') }),
 				'error'
 			);
 		}
@@ -719,7 +720,7 @@
 			// The draft is only cleared once the write lands, so it is still
 			// in the box to send again.
 			showToast(
-				tr('clubHome.replyFailed', { error: thrownMessage(e) }),
+				tr('clubHome.replyFailed', { error: errorCopy(e, tr, 'clubHome.replyFailed') }),
 				'error'
 			);
 		} finally {
@@ -756,7 +757,7 @@
 			posts = await fetchClubPosts(club.id, 20);
 		} catch (e) {
 			showToast(
-				tr('clubHome.deletePostFailed', { error: thrownMessage(e) }),
+				tr('clubHome.deletePostFailed', { error: errorCopy(e, tr, 'clubHome.deletePostFailed') }),
 				'error'
 			);
 		}
@@ -778,7 +779,7 @@
 				return;
 			}
 			showToast(
-				tr('clubHome.deleteClubFailed', { error: thrownMessage(e) }),
+				tr('clubHome.deleteClubFailed', { error: errorCopy(e, tr, 'clubHome.deleteClubFailed') }),
 				'error'
 			);
 			return;
@@ -1687,7 +1688,7 @@
 												m.role = newRole;
 											} catch (err) {
 												target.value = m.role;
-												showToast(tr('clubHome.toastRoleChangeFailed', { error: thrownMessage(err) }), 'error');
+												showToast(tr('clubHome.toastRoleChangeFailed', { error: errorCopy(err, tr, 'clubHome.toastRoleChangeFailed') }), 'error');
 											}
 										}}
 									>

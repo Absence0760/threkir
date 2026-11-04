@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import Modal from './Modal.svelte';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import { hashHue } from '#lib/format/avatar.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -103,7 +103,7 @@
 			await sendDm(recipient.id, shareUrl, routeId);
 			sentTo = recipient;
 		} catch (e) {
-			sendError = thrownMessage(e);
+			sendError = errorCopy(e, tr, 'SendRouteDialog: sendError');
 		} finally {
 			sendingTo = null;
 		}

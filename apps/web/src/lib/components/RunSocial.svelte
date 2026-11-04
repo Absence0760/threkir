@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import { formatRelativeTime } from '#lib/format/time.ts';
 	import { currentLocale, m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import {
 		fetchKudosForRunWithError,
@@ -91,7 +91,7 @@
 			comments = c.comments;
 			await loadExtras(c.comments);
 		} catch (e) {
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, t, 'RunSocial: loadError');
 		} finally {
 			loading = false;
 		}
@@ -139,7 +139,7 @@
 				: await removeRunReaction(runId, key);
 			reactions = applyReactionToggle(reactions, key, nowReacted, changed);
 		} catch (e) {
-			showToast(t('runSocial.reactionUpdateFailed', { error: thrownMessage(e) }), 'error');
+			showToast(t('runSocial.reactionUpdateFailed', { error: errorCopy(e, t, 'runSocial.reactionUpdateFailed') }), 'error');
 		} finally {
 			reactionBusy = null;
 		}
@@ -161,7 +161,7 @@
 			});
 			likes = next;
 		} catch (e) {
-			showToast(t('runSocial.likeUpdateFailed', { error: thrownMessage(e) }), 'error');
+			showToast(t('runSocial.likeUpdateFailed', { error: errorCopy(e, t, 'runSocial.likeUpdateFailed') }), 'error');
 		} finally {
 			likeBusy = null;
 		}
@@ -224,7 +224,7 @@
 				};
 			}
 		} catch (e) {
-			showToast(t('runSocial.kudosUpdateFailed', { error: thrownMessage(e) }), 'error');
+			showToast(t('runSocial.kudosUpdateFailed', { error: errorCopy(e, t, 'runSocial.kudosUpdateFailed') }), 'error');
 		} finally {
 			kudosBusy = false;
 		}
@@ -240,7 +240,7 @@
 			closeMentions();
 			await load();
 		} catch (e) {
-			showToast(t('runSocial.commentPostFailed', { error: thrownMessage(e) }), 'error');
+			showToast(t('runSocial.commentPostFailed', { error: errorCopy(e, t, 'runSocial.commentPostFailed') }), 'error');
 		} finally {
 			posting = false;
 		}
@@ -257,7 +257,7 @@
 			closeMentions();
 			await load();
 		} catch (e) {
-			showToast(t('runSocial.replyPostFailed', { error: thrownMessage(e) }), 'error');
+			showToast(t('runSocial.replyPostFailed', { error: errorCopy(e, t, 'runSocial.replyPostFailed') }), 'error');
 		} finally {
 			posting = false;
 		}
@@ -283,7 +283,7 @@
 			},
 			onCommitError: (e) =>
 				showToast(
-					t('runSocial.deleteFailed', { error: thrownMessage(e) }),
+					t('runSocial.deleteFailed', { error: errorCopy(e, t, 'runSocial.deleteFailed') }),
 					'error',
 				),
 		});

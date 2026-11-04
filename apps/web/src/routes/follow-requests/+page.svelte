@@ -1,9 +1,9 @@
 <script lang="ts">
 	import Avatar from '#lib/components/Avatar.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { formatRelativeTime } from '#lib/format/time.ts';
 	import {
 		approveFollowRequest,
@@ -23,7 +23,7 @@
 		try {
 			requests = await fetchIncomingFollowRequests();
 		} catch (e) {
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, m, 'follow-requests: loadError');
 		} finally {
 			loading = false;
 		}
@@ -48,7 +48,7 @@
 				'success'
 			);
 		} catch (e) {
-			showToast(m('followRequests.actionError', { error: thrownMessage(e) }), 'error');
+			showToast(m('followRequests.actionError', { error: errorCopy(e, m, 'followRequests.actionError') }), 'error');
 		} finally {
 			const next = new Set(busy);
 			next.delete(r.id);

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
@@ -19,6 +18,7 @@
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	let query = $state('');
 	let results = $state<PeopleSuggestion[]>([]);
@@ -87,7 +87,7 @@
 			// the user looking at an empty results list with no
 			// feedback. Surface the failure so they know to retry.
 			if (gen === searchGen) {
-				showToast(m('socialPeople.searchFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('socialPeople.searchFailed', { error: errorCopy(e, m, 'socialPeople.searchFailed') }), 'error');
 			}
 		} finally {
 			if (gen === searchGen) searching = false;
@@ -120,7 +120,7 @@
 			}
 		} catch (err) {
 			flipFollow(target.id, wasFollowing);
-			showToast(m('socialPeople.followFailed', { error: thrownMessage(err) }), 'error');
+			showToast(m('socialPeople.followFailed', { error: errorCopy(err, m, 'socialPeople.followFailed') }), 'error');
 		} finally {
 			const next = new Set(rowBusy);
 			next.delete(target.id);

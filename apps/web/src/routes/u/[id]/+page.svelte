@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import { page } from '$app/state';
 	import { handleTablistKeydown } from '#lib/util/tablist.ts';
@@ -8,6 +7,7 @@
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { formatDuration, formatRelativeTime, activeFormatLocale } from '#lib/format/time.ts';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { ACTIVITY_TYPE_ICONS } from '#lib/runs/activity_type.ts';
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import { goto } from '$app/navigation';
@@ -144,7 +144,7 @@
 			badges = rows;
 			badgesFor = forUser;
 		} catch (e) {
-			badgesError = thrownMessage(e);
+			badgesError = errorCopy(e, m, 'u/[id]: badgesError');
 		}
 	}
 
@@ -220,7 +220,7 @@
 		} catch (e) {
 			// A rejected fetch would otherwise leave the profile stuck on its
 			// loading skeleton forever — surface it with a retry instead.
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, m, 'u/[id]: loadError');
 		} finally {
 			loading = false;
 		}
@@ -232,7 +232,7 @@
 		try {
 			runs = await fetchPublicRunsByUser(userId, 20);
 		} catch (e) {
-			runsError = thrownMessage(e);
+			runsError = errorCopy(e, m, 'u/[id]: runsError');
 		} finally {
 			runsLoading = false;
 		}
@@ -248,7 +248,7 @@
 			followersHasMore = fr.next !== null;
 			hydrateViewerFollows();
 		} catch (e) {
-			followersError = thrownMessage(e);
+			followersError = errorCopy(e, m, 'u/[id]: followersError');
 		} finally {
 			followersLoading = false;
 		}
@@ -264,7 +264,7 @@
 			followingHasMore = fg.next !== null;
 			hydrateViewerFollows();
 		} catch (e) {
-			followingError = thrownMessage(e);
+			followingError = errorCopy(e, m, 'u/[id]: followingError');
 		} finally {
 			followingLoading = false;
 		}
@@ -283,7 +283,7 @@
 			followersHasMore = more.next !== null;
 			hydrateViewerFollows();
 		} catch (e) {
-			showToast(m('profile.loadMoreFollowersError', { error: thrownMessage(e) }), 'error');
+			showToast(m('profile.loadMoreFollowersError', { error: errorCopy(e, m, 'profile.loadMoreFollowersError') }), 'error');
 		} finally {
 			followersLoadingMore = false;
 		}
@@ -302,7 +302,7 @@
 			followingHasMore = more.next !== null;
 			hydrateViewerFollows();
 		} catch (e) {
-			showToast(m('profile.loadMoreError', { error: thrownMessage(e) }), 'error');
+			showToast(m('profile.loadMoreError', { error: errorCopy(e, m, 'profile.loadMoreError') }), 'error');
 		} finally {
 			followingLoadingMore = false;
 		}
@@ -395,7 +395,7 @@
 			feedExhausted = feedEntries.length < 20;
 			feedEngagement = await fetchEngagementSummaries(feedEntries.map((e) => e.id));
 		} catch (e) {
-			showToast(m('profile.loadFeedError', { error: thrownMessage(e) }), 'error');
+			showToast(m('profile.loadFeedError', { error: errorCopy(e, m, 'profile.loadFeedError') }), 'error');
 		} finally {
 			feedLoading = false;
 			feedLoaded = true;
@@ -422,7 +422,7 @@
 			// Without this catch the explicit "load more" scroll
 			// trigger silently swallowed network errors and the user
 			// scrolled forever waiting for entries that never arrived.
-			showToast(m('profile.loadMoreError', { error: thrownMessage(e) }), 'error');
+			showToast(m('profile.loadMoreError', { error: errorCopy(e, m, 'profile.loadMoreError') }), 'error');
 		} finally {
 			feedLoadingMore = false;
 		}
@@ -453,7 +453,7 @@
 				});
 			}
 		} catch (e) {
-			showToast(m('profile.updateKudosError', { error: thrownMessage(e) }), 'error');
+			showToast(m('profile.updateKudosError', { error: errorCopy(e, m, 'profile.updateKudosError') }), 'error');
 		} finally {
 			const next = new Set(kudosBusy);
 			next.delete(runId);
@@ -499,7 +499,7 @@
 				}
 			}
 		} catch (e) {
-			showToast(m('profile.updateFollowError', { error: thrownMessage(e) }), 'error');
+			showToast(m('profile.updateFollowError', { error: errorCopy(e, m, 'profile.updateFollowError') }), 'error');
 		} finally {
 			busy = false;
 		}
@@ -523,7 +523,7 @@
 			};
 			showToast(m('profile.blockedToast', { name: profile.display_name ?? m('profile.thisRunner') }), 'success');
 		} catch (e) {
-			showToast(m('profile.blockError', { error: thrownMessage(e) }), 'error');
+			showToast(m('profile.blockError', { error: errorCopy(e, m, 'profile.blockError') }), 'error');
 		} finally {
 			blockBusy = false;
 		}
@@ -537,7 +537,7 @@
 			viewerHasBlocked = false;
 			showToast(m('profile.unblockedToast', { name: profile.display_name ?? m('profile.thisRunner') }), 'success');
 		} catch (e) {
-			showToast(m('profile.unblockError', { error: thrownMessage(e) }), 'error');
+			showToast(m('profile.unblockError', { error: errorCopy(e, m, 'profile.unblockError') }), 'error');
 		} finally {
 			blockBusy = false;
 		}
@@ -586,7 +586,7 @@
 					? profile.following_count + 1
 					: Math.max(profile.following_count - 1, 0);
 			}
-			showToast(m('profile.updateFollowError', { error: thrownMessage(e) }), 'error');
+			showToast(m('profile.updateFollowError', { error: errorCopy(e, m, 'profile.updateFollowError') }), 'error');
 		} finally {
 			const done = new Set(rowBusy);
 			done.delete(targetId);

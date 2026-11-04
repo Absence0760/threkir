@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { activeFormatLocale } from '#lib/format/time.ts';
-	import { appErrorMessage, thrownMessage } from '#lib/core/supabase_error.ts';
+	import { appErrorMessage } from '#lib/core/supabase_error.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { startVisiblePoll } from '#lib/core/visible_poll.ts';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { dmUnreadStore } from '#lib/stores/dm_unread.svelte.ts';
 	import { tick } from 'svelte';
 	import { page } from '$app/state';
@@ -253,7 +254,7 @@
 			if (partner === activePartnerId) blockedByMe = true;
 			showToast(tr('profile.blockedToast', { name }), 'success');
 		} catch (e) {
-			showToast(tr('profile.blockError', { error: thrownMessage(e) }), 'error');
+			showToast(tr('profile.blockError', { error: errorCopy(e, tr, 'profile.blockError') }), 'error');
 		} finally {
 			blockBusy = false;
 		}
@@ -270,7 +271,7 @@
 			if (partner === activePartnerId) blockedByMe = false;
 			showToast(tr('profile.unblockedToast', { name }), 'success');
 		} catch (e) {
-			showToast(tr('profile.unblockError', { error: thrownMessage(e) }), 'error');
+			showToast(tr('profile.unblockError', { error: errorCopy(e, tr, 'profile.unblockError') }), 'error');
 		} finally {
 			blockBusy = false;
 		}
@@ -285,7 +286,7 @@
 			await messagesInbox.setMuted(id, next);
 			if (next) showToast(tr('messages.mutedToast'), 'success');
 		} catch (e) {
-			showToast(tr('messages.conversationActionFailed', { error: thrownMessage(e) }), 'error');
+			showToast(tr('messages.conversationActionFailed', { error: errorCopy(e, tr, 'messages.conversationActionFailed') }), 'error');
 		} finally {
 			conversationBusy = false;
 		}
@@ -300,7 +301,7 @@
 			await messagesInbox.setArchived(id, next);
 			if (next) showToast(tr('messages.archivedToast'), 'success');
 		} catch (e) {
-			showToast(tr('messages.conversationActionFailed', { error: thrownMessage(e) }), 'error');
+			showToast(tr('messages.conversationActionFailed', { error: errorCopy(e, tr, 'messages.conversationActionFailed') }), 'error');
 		} finally {
 			conversationBusy = false;
 		}
@@ -320,7 +321,7 @@
 				if (deletedHere === route) deletedHere = null;
 			},
 			onCommitError: (e) =>
-				showToast(tr('messages.conversationActionFailed', { error: thrownMessage(e) }), 'error'),
+				showToast(tr('messages.conversationActionFailed', { error: errorCopy(e, tr, 'messages.conversationActionFailed') }), 'error'),
 		});
 	}
 

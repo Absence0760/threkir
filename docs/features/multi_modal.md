@@ -425,6 +425,21 @@ user logs**, not a fixed grid. The ordering algorithm:
    at most a single slim "＋ Log your first meal" affordance at the very
    bottom, below the fold.
 
+> **Status (mobile, 2026-11-03, #1187):** rule 2 is now how mobile Home
+> orders its Today block, on the phone stack and the tablet lead column
+> alike. Under the plan cards (today's workout, then the next race) come
+> the cards for what was logged today, most recently started first: the
+> last run when it started today, and the lift + nutrition pair, placed by
+> the later of today's lift and today's newest meal. "Touched" is read as
+> the entry's start time, the one timestamp all three carry. The **Last
+> run** card stays on Home when its run is from an earlier day — it answers
+> "did that save?" — but it then follows the pair, so a run from last week
+> no longer sits above the lift and the meals logged this morning. The
+> pair keeps its 2-up layout and its internal order. Web has no last-run
+> card in its Today block (recent runs live in the Recent trend group), so
+> this is a mobile-only arrangement of a mobile-only card, not a parity
+> change. `test/dashboard_today_order_test.dart`.
+
 ```
   Home                                    (today)
   ┌─────────────────────────────────────────────┐

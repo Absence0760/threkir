@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 
 import {
 	handleRouteDescribe,
+	LANGUAGE_NAME,
 	MAX_ROUTE_NAME_CHARS,
+	parseRequestedLocale,
 	parseRequestedUnit,
 	routeDescribeUserMessage,
 	ROUTE_DESCRIBE_RATE_BUCKET,
@@ -12,6 +14,7 @@ import {
 } from './handler';
 import type { RouteDescribeConfig } from './handler';
 import { describeRoute } from '../route_description';
+import { SUPPORTED_LOCALES } from '../../i18n/locale';
 
 function baseConfig(): RouteDescribeConfig {
 	return {
@@ -208,12 +211,28 @@ test('the dev paywall bypass does not bypass the consent gate', async () => {
 // ─────────────── Rate-limit slot: spent before the model, refunded on failure ───────────────
 
 /// A Pro caller whose throttle hands out ticket `ticket-1`; records every RPC.
-/// [profile] is merged into the consenting profile row `get_my_profile` returns.
-function proClient(profile: Record<string, unknown> = {}) {
+/// [profile] is merged into the consenting profile row `get_my_profile` returns;
+/// [settings] is what a `user_settings` read answers.
+function proClient(
+	profile: Record<string, unknown> = {},
+	settings: { data?: unknown; error?: unknown; throws?: boolean } = {},
+) {
 	const calls: Array<{ name: string; args?: unknown }> = [];
+	const settingsReads: Array<{ table: string; column: string; value: unknown }> = [];
 	const factory = () =>
 		({
 			auth: { getUser: async () => ({ data: { user: { id: 'user-1' } }, error: null }) },
+			from: (table: string) => ({
+				select: () => ({
+					eq: (column: string, value: unknown) => ({
+						maybeSingle: async () => {
+							settingsReads.push({ table, column, value });
+							if (settings.throws) throw new Error('socket hang up');
+							return { data: settings.data ?? null, error: settings.error ?? null };
+						},
+					}),
+				}),
+			}),
 			rpc: (name: string, args?: unknown) => {
 				calls.push({ name, args });
 				if (name === 'get_my_profile') {
@@ -233,7 +252,7 @@ function proClient(profile: Record<string, unknown> = {}) {
 				return Promise.resolve({ data: true, error: null });
 			},
 		}) as never;
-	return { factory, names: () => calls.map((c) => c.name), calls };
+	return { factory, names: () => calls.map((c) => c.name), calls, settingsReads };
 }
 
 function fakeModel(respond: () => unknown) {
@@ -340,14 +359,14 @@ const SUMMIT = describeRoute({
 });
 
 test('the prompt for a km viewer states km and m and requires them', () => {
-	const msg = routeDescribeUserMessage(SUMMIT, 'Summit Trail', 'km');
+	const msg = routeDescribeUserMessage(SUMMIT, 'Summit Trail', 'km', 'en');
 	assert.match(msg, /Summit Trail is a 12\.0 km trail point-to-point route with 480 m of climbing/);
 	assert.match(msg, /Write every distance in kilometres \(km\) and every climb in metres \(m\)\. Never use miles or feet\./);
 	assert.doesNotMatch(msg, /\bmi\b|\bft\b/);
 });
 
 test('the prompt for a miles viewer states mi and ft and requires them', () => {
-	const msg = routeDescribeUserMessage(SUMMIT, 'Summit Trail', 'mi');
+	const msg = routeDescribeUserMessage(SUMMIT, 'Summit Trail', 'mi', 'en');
 	assert.match(msg, /Summit Trail is a 7\.5 mi trail point-to-point route with 1575 ft of climbing/);
 	assert.match(msg, /Write every distance in miles \(mi\) and every climb in feet \(ft\)\. Never use kilometres or metres\./);
 	assert.doesNotMatch(msg, /\bkm\b|\d m\b/);
@@ -417,4 +436,89 @@ test('the templated fallback is in the viewer unit too', async () => {
 	assert.equal(r.body.source, 'template');
 	assert.equal(r.body.upgrade, true);
 	assert.match(r.body.description ?? '', /^Riverside 10K is a 6\.2 mi /);
+});
+
+// ─────────────── the viewer's language (a French reader gets French) ───────────────
+
+test('the prompt names the viewer language in English and keeps names untranslated', () => {
+	for (const locale of SUPPORTED_LOCALES) {
+		const msg = routeDescribeUserMessage(SUMMIT, 'Summit Trail', 'km', locale);
+		assert.ok(
+			msg.includes(`Write the paragraph in ${LANGUAGE_NAME[locale]}.`),
+			`${locale}: ${msg}`,
+		);
+		assert.match(msg, /Keep the route name and any place names exactly as given; do not translate them\./);
+		// The unit rule from the miles fix survives alongside the language rule.
+		assert.match(msg, /Write every distance in kilometres \(km\)/);
+	}
+	assert.equal(LANGUAGE_NAME['pt-PT'], 'European Portuguese (as written in Portugal)');
+	assert.equal(LANGUAGE_NAME['pt-BR'], 'Brazilian Portuguese');
+});
+
+test('parseRequestedLocale admits only the seven canonical tags the clients ship', () => {
+	for (const locale of SUPPORTED_LOCALES) {
+		assert.equal(parseRequestedLocale({ locale }), locale);
+	}
+	for (const locale of ['pt', 'pt-br', 'PT-PT', 'fr-CA', 'de_DE', 'zh', '', 1, null, undefined, ['fr'], { fr: true }]) {
+		assert.equal(parseRequestedLocale({ locale }), null, `locale ${JSON.stringify(locale)}`);
+	}
+	assert.equal(parseRequestedLocale(null), null);
+});
+
+test('the requested locale reaches the prompt and wins over the stored language, with no settings read', async () => {
+	const model = capturingModel();
+	const sb = proClient({}, { data: { prefs: { locale: 'de' } } });
+	await handleRouteDescribe('Bearer x', { ...VALID_BODY, locale: 'ja' }, {
+		...baseConfig(),
+		createClient: sb.factory,
+		createAnthropic: model.create,
+	});
+	assert.match(model.prompts[0], /Write the paragraph in Japanese\./);
+	assert.deepEqual(sb.settingsReads, []);
+});
+
+test('a missing or malformed locale falls back to the stored language, then English', async () => {
+	for (const [body, settings, expected] of [
+		[VALID_BODY, { data: { prefs: { locale: 'fr' } } }, 'French'],
+		[{ ...VALID_BODY, locale: 'klingon' }, { data: { prefs: { locale: 'pt-BR' } } }, 'Brazilian Portuguese'],
+		// The stored tag is whatever a client wrote, so it is normalised like
+		// the email renderer does: exact, then base language, then English.
+		[VALID_BODY, { data: { prefs: { locale: 'pt' } } }, 'European Portuguese (as written in Portugal)'],
+		[VALID_BODY, { data: { prefs: { locale: 'de-AT' } } }, 'German'],
+		[VALID_BODY, { data: { prefs: { locale: 'zh' } } }, 'English'],
+		[VALID_BODY, { data: { prefs: { locale: 7 } } }, 'English'],
+		[VALID_BODY, { data: { prefs: {} } }, 'English'],
+		[VALID_BODY, { data: null }, 'English'],
+		[VALID_BODY, { error: { message: 'boom', code: 'XX000' } }, 'English'],
+		[VALID_BODY, { throws: true }, 'English'],
+	] as const) {
+		const model = capturingModel();
+		const sb = proClient({}, settings);
+		const r = parse(
+			await quietly(() =>
+				handleRouteDescribe('Bearer x', body, {
+					...baseConfig(),
+					createClient: sb.factory,
+					createAnthropic: model.create,
+				}),
+			),
+		);
+		const label = `${JSON.stringify(body)} / ${JSON.stringify(settings)}`;
+		// A failed lookup is auxiliary: the paragraph is still written.
+		assert.equal(r.body.source, 'ai', label);
+		assert.ok(model.prompts[0].includes(`Write the paragraph in ${expected}.`), label);
+		assert.deepEqual(sb.settingsReads, [{ table: 'user_settings', column: 'user_id', value: 'user-1' }], label);
+	}
+});
+
+test('a caller who never reaches the model costs no settings read', async () => {
+	const sb = proClient();
+	await quietly(() =>
+		handleRouteDescribe('Bearer x', VALID_BODY, {
+			...baseConfig(),
+			anthropicApiKey: undefined,
+			createClient: sb.factory,
+		}),
+	);
+	assert.deepEqual(sb.settingsReads, []);
 });

@@ -25,7 +25,8 @@ cm.Route _route() => cm.Route(
 Future<void> _pump(
   WidgetTester tester, {
   Future<bool> Function()? checkPro,
-  Future<AiDescriptionResult> Function(RouteDescriptionInput, cm.DistanceUnit)?
+  Future<AiDescriptionResult> Function(
+          RouteDescriptionInput, cm.DistanceUnit, String)?
       describeAi,
   bool useMiles = false,
   Locale? locale,
@@ -81,7 +82,7 @@ void main() {
       await _pump(
         tester,
         checkPro: () async => false,
-        describeAi: (_, __) async {
+        describeAi: (_, __, ___) async {
           aiCalled = true;
           return const AiDescriptionResult(
               description: 'AI', source: 'ai', upgrade: false);
@@ -106,7 +107,7 @@ void main() {
       await _pump(
         tester,
         checkPro: () async => true,
-        describeAi: (_, __) async => const AiDescriptionResult(
+        describeAi: (_, __, ___) async => const AiDescriptionResult(
           description: 'A gorgeous riverside trail loop with a steady climb.',
           source: 'ai',
           upgrade: false,
@@ -132,7 +133,7 @@ void main() {
         tester,
         locale: const Locale('fr'),
         checkPro: () async => true,
-        describeAi: (_, __) async => const AiDescriptionResult(
+        describeAi: (_, __, ___) async => const AiDescriptionResult(
           description: 'River Loop is a 5.0 km trail point-to-point route.',
           source: 'template',
           upgrade: false,
@@ -160,7 +161,7 @@ void main() {
           tester,
           checkPro: () async => true,
           useMiles: unit == cm.DistanceUnit.mi,
-          describeAi: (_, u) async {
+          describeAi: (_, u, __) async {
             sent.add(u);
             return const AiDescriptionResult(
                 description: 'A loop.', source: 'ai', upgrade: false);
@@ -171,12 +172,41 @@ void main() {
       });
     }
 
+    for (final (shown, tag) in const [
+      (Locale('en'), 'en'),
+      (Locale('fr'), 'fr'),
+      (Locale('ja'), 'ja'),
+      (Locale('pt', 'BR'), 'pt-BR'),
+    ]) {
+      testWidgets("hands the app's resolved locale ($tag) to the AI call",
+          (tester) async {
+        final sent = <String>[];
+        await _pump(
+          tester,
+          locale: shown,
+          checkPro: () async => true,
+          describeAi: (_, __, locale) async {
+            sent.add(locale);
+            return const AiDescriptionResult(
+                description: 'A loop.', source: 'ai', upgrade: false);
+          },
+        );
+        await tester.drag(find.byType(ListView), const Offset(0, -600));
+        await tester.pump();
+        await tester
+            .tap(find.text(lookupAppLocalizations(shown).routeDetailDescribe));
+        await tester.pump();
+        await tester.pump(Duration.zero);
+        expect(sent, [tag]);
+      });
+    }
+
     testWidgets('AI failure keeps the templated baseline + shows the error',
         (tester) async {
       await _pump(
         tester,
         checkPro: () async => true,
-        describeAi: (_, __) async => throw StateError('boom'),
+        describeAi: (_, __, ___) async => throw StateError('boom'),
       );
       await _tapDescribe(tester);
 
@@ -197,7 +227,7 @@ void main() {
       await _pump(
         tester,
         checkPro: () async => true,
-        describeAi: (_, __) async => throw StateError(kAiDisclosureError),
+        describeAi: (_, __, ___) async => throw StateError(kAiDisclosureError),
       );
       await _tapDescribe(tester);
 
@@ -230,7 +260,23 @@ void main() {
   test('the request body carries the unit the server writes the paragraph in',
       () {
     const input = RouteDescriptionInput(name: 'River Loop', distanceM: 5000);
-    expect(routeDescribeBody(input, cm.DistanceUnit.mi)['unit'], 'mi');
-    expect(routeDescribeBody(input, cm.DistanceUnit.km)['unit'], 'km');
+    expect(routeDescribeBody(input, cm.DistanceUnit.mi, 'en')['unit'], 'mi');
+    expect(routeDescribeBody(input, cm.DistanceUnit.km, 'en')['unit'], 'km');
+  });
+
+  test('the request body carries the locale the server writes the paragraph in',
+      () {
+    const input = RouteDescriptionInput(name: 'River Loop', distanceM: 5000);
+    expect(routeDescribeBody(input, cm.DistanceUnit.km, 'pt-BR')['locale'],
+        'pt-BR');
+  });
+
+  test('the locale tag is the canonical identifier web sends', () {
+    expect(routeDescribeLocaleTag(const Locale('en')), 'en');
+    expect(routeDescribeLocaleTag(const Locale('ja')), 'ja');
+    expect(routeDescribeLocaleTag(const Locale('pt', 'BR')), 'pt-BR');
+    expect(routeDescribeLocaleTag(const Locale('pt', 'PT')), 'pt-PT');
+    // gen-l10n's bare base is the European catalogue.
+    expect(routeDescribeLocaleTag(const Locale('pt')), 'pt-PT');
   });
 }

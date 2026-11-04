@@ -28,6 +28,22 @@ paragraph that replaces the baseline, with an AI-attribution line. Gating is
   model to keep every distance and climb in it (`routeDescribeUserMessage`), so
   a miles runner is never handed a paragraph in kilometres. The templated
   fallback the endpoint returns is in the same unit.
+- **Language**: both clients also send the viewer's UI `locale` — web the
+  active i18n locale (`currentLocale()`), mobile the app's resolved
+  `Localizations` locale as its canonical tag (`routeDescribeLocaleTag`, so
+  gen-l10n's bare `pt` base reads as `pt-PT`). The handler admits only the
+  seven tags the apps ship (`parseRequestedLocale` — `en`, `de`, `fr`, `es`,
+  `ja`, `pt-PT`, `pt-BR`, exact); anything else falls back to the account's
+  stored `user_settings.prefs.locale` (normalised exact → base language →
+  English, like the email renderer), then English. That lookup runs only on
+  the path that reaches the model, and a failed read is logged and answered in
+  English rather than refusing the paragraph. The user turn names the language
+  in English (`LANGUAGE_NAME` — Portuguese names its variant) and tells the
+  model to keep the route name and place names untranslated; the facts and the
+  unit rule stay English, since they are the model's input, not the reader's
+  text. Before this, every AI paragraph was English whatever the reader's
+  locale. Unlike the Coach, which answers in the language the runner writes
+  in, this endpoint has no free text from the runner to infer a language from.
 - **Which text is shown**: every response carries `source` (`'ai'` from the
   model, `'template'` on any fallback). The endpoint's template is
   `assembleEnglish`, English by contract, so neither client ever displays it:

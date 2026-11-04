@@ -143,6 +143,44 @@ test.describe('Legal pages', () => {
 		expect(body).toContain('dmca@threkir.com');
 	});
 
+	test('/privacy discloses the AI assistants, logged-out share visitors, and what deleting a conversation does', async ({
+		page
+	}) => {
+		// The #1280 sign-off reviews found the route assistant, plan
+		// assistant and plan edits missing, the share pages described as
+		// banner-gated when they ask per view, and "Delete conversation"
+		// left undescribed although it erases nothing at that moment.
+		await page.goto('/privacy');
+		const body = await page.locator('.legal-page').innerText();
+		const assistants = await page.getByTestId('ai-assistants-sub-processor').innerText();
+		for (const feature of [
+			'Route assistant, request',
+			'Route assistant, description',
+			'Plan assistant',
+			'Season planner',
+			'Plan edits'
+		]) {
+			expect(assistants).toContain(feature);
+		}
+		expect(assistants).toContain('included only when the route is yours or is public');
+		expect(body).toMatch(/AI route assistant, AI plan assistant[^\n]*Consent — Art 6\(1\)\(a\)/);
+		expect(body).not.toMatch(/preferred language \(for\s+emails\)/);
+		expect(await page.getByTestId('logged-out-visitors').innerText()).toMatch(
+			/tap covers that one view/
+		);
+		expect(body).not.toContain('loads only after you accept the cookie banner');
+		expect(body).toMatch(/"Delete conversation" hides the conversation from you and erases nothing/);
+	});
+
+	test('/cookie-notice says share-page maps ask on every view, not after the banner', async ({
+		page
+	}) => {
+		await page.goto('/cookie-notice');
+		const share = await page.getByTestId('share-page-map-tap').innerText();
+		expect(share).toMatch(/ask on every view, whatever you chose on\s+the banner/);
+		expect(share).toContain('error monitoring (Sentry) only');
+	});
+
 	test('/cookie-notice categorises trackers into necessary vs consent-gated buckets', async ({
 		page
 	}) => {

@@ -209,6 +209,7 @@
 			dmPendingHides.clear();
 			return;
 		}
+		dmUnreadStore.bind(uid);
 		dmUnreadStore.refresh();
 		const onFocus = () => dmUnreadStore.refresh();
 		window.addEventListener('focus', onFocus);

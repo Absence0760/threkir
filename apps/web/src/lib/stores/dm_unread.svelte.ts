@@ -11,10 +11,14 @@
  * leaves the count at once, from the states already held; the inbox store
  * re-reads only when the window closes or is undone, since only the server
  * knows the outcome.
+ *
+ * Each read carries the account it started under and is dropped if the badge
+ * was bound to another account (or none) by the time it lands — a read the
+ * sign-out's own undo commit starts would otherwise repaint the previous
+ * account's count after `clear()`.
  */
 import { fetchDmBadgeStates } from '#lib/core/data.ts';
-import { CoalescingRefetcher } from '#lib/runs/live_refetch.ts';
-import { unreadDmBadgeCountExcept, type DmBadgeState } from '#lib/social/dm_badge.ts';
+import { DmBadgeReader, unreadDmBadgeCountExcept, type DmBadgeState } from '#lib/social/dm_badge.ts';
 import { dmPendingHides } from '#lib/stores/dm_pending_hides.svelte.ts';
 
 export const DM_UNREAD_POLL_MS = 60_000;
@@ -23,7 +27,7 @@ class DmUnreadStore {
 	#states = $state<DmBadgeState[]>([]);
 	count = $derived(unreadDmBadgeCountExcept(this.#states, dmPendingHides));
 
-	#refetcher = new CoalescingRefetcher<DmBadgeState[]>({
+	#reader = new DmBadgeReader({
 		fetch: () => fetchDmBadgeStates(),
 		apply: (states) => {
 			this.#states = states;
@@ -31,8 +35,12 @@ class DmUnreadStore {
 		onError: (e) => console.warn('unread DM refresh failed', e),
 	});
 
+	bind(userId: string) {
+		if (this.#reader.bind(userId)) this.#states = [];
+	}
+
 	async refresh() {
-		await this.#refetcher.runNow();
+		await this.#reader.refresh();
 	}
 
 	/// A conversation the server has just hidden for the runner.
@@ -41,6 +49,7 @@ class DmUnreadStore {
 	}
 
 	clear() {
+		this.#reader.bind(null);
 		this.#states = [];
 	}
 }

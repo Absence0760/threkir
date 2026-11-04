@@ -1,11 +1,12 @@
 <script lang="ts">
-	import { dbError, thrownMessage } from '#lib/core/supabase_error.ts';
+	import { dbError } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
 	import { effective } from '#lib/settings/settings.ts';
 	import { applyTheme, loadTheme, type Theme } from '#lib/settings/theme.ts';
 	import { m, currentLocale, setLocale } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { SUPPORTED_LOCALES, LOCALE_LABELS, type Locale } from '#lib/i18n/locale.ts';
 	import { setUnit, setWeightUnit } from '#lib/format/units.svelte.ts';
 	import { defaultWeekStartForLocale } from '#lib/format/locale_defaults.ts';
@@ -149,7 +150,7 @@
 				if (error) throw dbError(error);
 			} catch (e) {
 				prefs.status = 'idle';
-				showToast(m('prefs.saveFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('prefs.saveFailed', { error: errorCopy(e, m, 'prefs.saveFailed') }), 'error');
 				return;
 			}
 		}

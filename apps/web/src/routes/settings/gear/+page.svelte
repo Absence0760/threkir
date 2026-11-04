@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
@@ -40,6 +39,7 @@
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 
 	let gear = $state<GearWithDistance[]>([]);
@@ -112,7 +112,7 @@
 			wearNote = '';
 			wearArea = '';
 		} catch (e) {
-			showToast(t('settingsGear.wearLogAddFailed', { error: thrownMessage(e) }), 'error');
+			showToast(t('settingsGear.wearLogAddFailed', { error: errorCopy(e, t, 'settingsGear.wearLogAddFailed') }), 'error');
 		} finally {
 			addingWear = false;
 		}
@@ -144,7 +144,7 @@
 			onCommitError: (e) =>
 				showToast(
 					t('settingsGear.wearLogDeleteFailed', {
-						error: thrownMessage(e),
+						error: errorCopy(e, t, 'settingsGear.wearLogDeleteFailed'),
 					}),
 					'error',
 				),
@@ -183,7 +183,7 @@
 			newRotationName = '';
 			await reloadRotations();
 		} catch (e) {
-			showToast(t('settingsGear.rotationSaveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(t('settingsGear.rotationSaveFailed', { error: errorCopy(e, t, 'settingsGear.rotationSaveFailed') }), 'error');
 		} finally {
 			creatingRotation = false;
 		}
@@ -199,7 +199,7 @@
 			renameRotationName = '';
 			await reloadRotations();
 		} catch (e) {
-			showToast(t('settingsGear.rotationSaveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(t('settingsGear.rotationSaveFailed', { error: errorCopy(e, t, 'settingsGear.rotationSaveFailed') }), 'error');
 		}
 	}
 
@@ -210,7 +210,7 @@
 			await deleteGearRotation(r.id);
 			await reloadRotations();
 		} catch (e) {
-			showToast(t('settingsGear.rotationSaveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(t('settingsGear.rotationSaveFailed', { error: errorCopy(e, t, 'settingsGear.rotationSaveFailed') }), 'error');
 		} finally {
 			confirmingRotationDelete = null;
 		}
@@ -237,7 +237,7 @@
 			managingRotation = null;
 			await reloadRotations();
 		} catch (e) {
-			showToast(t('settingsGear.rotationSaveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(t('settingsGear.rotationSaveFailed', { error: errorCopy(e, t, 'settingsGear.rotationSaveFailed') }), 'error');
 		} finally {
 			savingMembers = false;
 		}
@@ -276,7 +276,7 @@
 			await setDefaultGear(g.id, g.kind);
 			gear = await fetchMyGear();
 		} catch (e) {
-			showToast(t('settingsGear.failed', { error: thrownMessage(e) }), 'error');
+			showToast(t('settingsGear.failed', { error: errorCopy(e, t, 'settingsGear.failed') }), 'error');
 		} finally {
 			movingStar = false;
 		}
@@ -447,7 +447,7 @@
 			showCreate = false;
 			if (created) await maybeOfferBackfill(created);
 		} catch (e) {
-			showToast(t('settingsGear.saveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(t('settingsGear.saveFailed', { error: errorCopy(e, t, 'settingsGear.saveFailed') }), 'error');
 		} finally {
 			saving = false;
 		}
@@ -462,7 +462,7 @@
 			await setDefaultGear(g.is_default ? null : g.id, g.kind);
 			gear = await fetchMyGear();
 		} catch (e) {
-			showToast(t('settingsGear.failed', { error: thrownMessage(e) }), 'error');
+			showToast(t('settingsGear.failed', { error: errorCopy(e, t, 'settingsGear.failed') }), 'error');
 		}
 	}
 
@@ -475,7 +475,7 @@
 			}
 			gear = await fetchMyGear();
 		} catch (e) {
-			showToast(t('settingsGear.failed', { error: thrownMessage(e) }), 'error');
+			showToast(t('settingsGear.failed', { error: errorCopy(e, t, 'settingsGear.failed') }), 'error');
 		}
 	}
 
@@ -485,7 +485,7 @@
 			await deleteGear(confirmingDelete.id);
 			gear = await fetchMyGear();
 		} catch (e) {
-			showToast(t('settingsGear.deleteFailed', { error: thrownMessage(e) }), 'error');
+			showToast(t('settingsGear.deleteFailed', { error: errorCopy(e, t, 'settingsGear.deleteFailed') }), 'error');
 		} finally {
 			confirmingDelete = null;
 		}

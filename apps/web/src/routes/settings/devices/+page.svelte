@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -14,6 +13,7 @@
 	} from '#lib/util/push.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { ACTIVITY_TYPES } from '#lib/runs/activity_type.ts';
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
@@ -74,7 +74,7 @@
 			await refreshCurrentDeviceRow();
 			showToast(m('settingsDevices.pushEnabledToast'), 'success');
 		} catch (e) {
-			showToast(m('settingsDevices.pushEnableFailedToast', { message: thrownMessage(e) }), 'error');
+			showToast(m('settingsDevices.pushEnableFailedToast', { message: errorCopy(e, m, 'settingsDevices.pushEnableFailedToast') }), 'error');
 		} finally {
 			pushBusy = false;
 		}
@@ -88,7 +88,7 @@
 			await refreshCurrentDeviceRow();
 			showToast(m('settingsDevices.pushDisabledToast'), 'success');
 		} catch (e) {
-			showToast(m('settingsDevices.pushDisableFailedToast', { message: thrownMessage(e) }), 'error');
+			showToast(m('settingsDevices.pushDisableFailedToast', { message: errorCopy(e, m, 'settingsDevices.pushDisableFailedToast') }), 'error');
 		} finally {
 			pushBusy = false;
 		}
@@ -127,7 +127,7 @@
 			.eq('user_id', auth.user.id)
 			.eq('device_id', deviceId);
 		if (error) {
-			showToast(m('settingsDevices.renameFailedToast', { message: error.message }), 'error');
+			showToast(m('settingsDevices.renameFailedToast', { message: errorCopy(error, m, 'settingsDevices.renameFailedToast') }), 'error');
 			return;
 		}
 		devices = devices.map((d) =>
@@ -144,7 +144,7 @@
 			.eq('user_id', auth.user.id)
 			.eq('device_id', deviceId);
 		if (error) {
-			showToast(m('settingsDevices.removeDeviceFailedToast', { message: error.message }), 'error');
+			showToast(m('settingsDevices.removeDeviceFailedToast', { message: errorCopy(error, m, 'settingsDevices.removeDeviceFailedToast') }), 'error');
 			return;
 		}
 		devices = devices.filter((d) => d.device_id !== deviceId);
@@ -256,7 +256,7 @@
 		// since the page loaded.
 		const { data, error } = await mergeOverrides(device, { [key]: null });
 		if (error) {
-			showToast(m('settingsDevices.clearOverrideFailedToast', { message: error.message }), 'error');
+			showToast(m('settingsDevices.clearOverrideFailedToast', { message: errorCopy(error, m, 'settingsDevices.clearOverrideFailedToast') }), 'error');
 			return;
 		}
 		devices = devices.map((d) =>
@@ -398,7 +398,7 @@
 		const { data, error } = await mergeOverrides(device, { [addKey]: value });
 		addBusy = false;
 		if (error) {
-			showToast(m('settingsDevices.addOverrideFailedToast', { message: error.message }), 'error');
+			showToast(m('settingsDevices.addOverrideFailedToast', { message: errorCopy(error, m, 'settingsDevices.addOverrideFailedToast') }), 'error');
 			return;
 		}
 		devices = devices.map((d) =>

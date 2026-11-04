@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import Modal from '#lib/components/Modal.svelte';
 	import { addGearToRuns } from '#lib/core/data.ts';
 	import { formatDate } from '#lib/format/time.ts';
 	import { formatDistance } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { activityTypeIcon } from '#lib/runs/activity_type.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 
@@ -69,7 +69,7 @@
 			saving = false;
 			showToast(
 				m('settingsGear.backfillAttachFailed', {
-					error: thrownMessage(e),
+					error: errorCopy(e, m, 'settingsGear.backfillAttachFailed'),
 				}),
 				'error',
 			);

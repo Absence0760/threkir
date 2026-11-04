@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
@@ -19,6 +18,7 @@
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { effective, loadSettings, updateUniversal } from '#lib/settings/settings.ts';
 	import { isOffRouteEscalationEnabled } from '#lib/safety/off_route_flag.ts';
@@ -89,7 +89,7 @@
 			await updateUniversal(auth.user.id, { safety_off_route_alerts: offRouteAlerts });
 			showToast(m('safety.offRouteSaved'), 'success');
 		} catch (e) {
-			showToast(m('safety.addFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('safety.addFailed', { error: errorCopy(e, m, 'safety.addFailed') }), 'error');
 		}
 	}
 
@@ -101,7 +101,7 @@
 			});
 			showToast(m('safety.overdueSaved'), 'success');
 		} catch (e) {
-			showToast(m('safety.addFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('safety.addFailed', { error: errorCopy(e, m, 'safety.addFailed') }), 'error');
 		}
 	}
 
@@ -127,7 +127,7 @@
 			await reload();
 			showToast(m('safety.addedToast'), 'success');
 		} catch (e) {
-			showToast(m('safety.addFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('safety.addFailed', { error: errorCopy(e, m, 'safety.addFailed') }), 'error');
 		} finally {
 			adding = false;
 		}
@@ -139,7 +139,7 @@
 			await reload();
 			showToast(m('safety.removedToast'), 'info');
 		} catch (e) {
-			showToast(m('safety.removeFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('safety.removeFailed', { error: errorCopy(e, m, 'safety.removeFailed') }), 'error');
 		} finally {
 			confirmingRemove = null;
 		}
@@ -154,7 +154,7 @@
 			await reload();
 			showToast(m('safety.confirmedToast'), 'success');
 		} catch (e) {
-			showToast(m('safety.addFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('safety.addFailed', { error: errorCopy(e, m, 'safety.addFailed') }), 'error');
 		} finally {
 			respondingId = null;
 		}
@@ -168,7 +168,7 @@
 			await reload();
 			showToast(m('safety.declinedToast'), 'info');
 		} catch (e) {
-			showToast(m('safety.addFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('safety.addFailed', { error: errorCopy(e, m, 'safety.addFailed') }), 'error');
 		} finally {
 			respondingId = null;
 		}
@@ -197,7 +197,7 @@
 		} catch (e) {
 			input.checked = !next;
 			showToast(
-				m('safety.contactOfSmsFailed', { error: thrownMessage(e) }),
+				m('safety.contactOfSmsFailed', { error: errorCopy(e, m, 'safety.contactOfSmsFailed') }),
 				'error',
 			);
 		} finally {
@@ -221,7 +221,7 @@
 		} catch (e) {
 			showToast(
 				m('safety.contactOfWithdrawFailed', {
-					error: thrownMessage(e),
+					error: errorCopy(e, m, 'safety.contactOfWithdrawFailed'),
 				}),
 				'error',
 			);

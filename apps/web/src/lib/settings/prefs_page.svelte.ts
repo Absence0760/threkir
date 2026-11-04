@@ -2,6 +2,7 @@ import { onMount, tick } from 'svelte';
 import { beforeNavigate } from '$app/navigation';
 import { auth } from '#lib/stores/auth.svelte.ts';
 import { m, currentLocale } from '#lib/i18n/store.svelte.ts';
+import { errorCopy } from '#lib/i18n/error_copy.ts';
 import { showToast } from '#lib/stores/toast.svelte.ts';
 import {
 	loadSettings,
@@ -12,7 +13,6 @@ import {
 	type PrefsBag,
 } from './settings';
 import { PrefsSaveQueue, type PrefsSaveStatus } from './prefs_save_queue';
-import { thrownMessage } from '../core/supabase_error';
 
 export type PrefsLoadPhase = 'loading' | 'ready' | 'failed';
 
@@ -42,7 +42,7 @@ export function createPrefsPage(load: (ctx: PrefsLoadContext) => Promise<void>) 
 			if (uid) await updateUniversal(uid, batch);
 		},
 		onStatus: (status) => (state.status = status),
-		onError: (e) => showToast(m('prefs.saveFailed', { error: e.message }), 'error'),
+		onError: (e) => showToast(m('prefs.saveFailed', { error: errorCopy(e, m, 'prefs.saveFailed') }), 'error'),
 	});
 
 	function save(changes: PrefsBag) {
@@ -75,7 +75,7 @@ export function createPrefsPage(load: (ctx: PrefsLoadContext) => Promise<void>) 
 			state.phase = 'ready';
 		} catch (e) {
 			console.warn('Settings load failed', e);
-			state.error = thrownMessage(e);
+			state.error = errorCopy(e, m, 'settings/prefs_page: error');
 			state.phase = 'failed';
 			return;
 		}

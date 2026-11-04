@@ -3,6 +3,7 @@
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { onMount } from 'svelte';
@@ -159,7 +160,9 @@
 				showToast(
 					code === 'strava_not_configured'
 						? m('settingsIntegrations.stravaNotConfigured')
-						: m('settingsIntegrations.stravaConnectFailed', { error: code }),
+						: m('settingsIntegrations.stravaConnectFailed', {
+								error: errorCopy(err, m, 'settingsIntegrations.stravaConnectFailed'),
+							}),
 					'error',
 				);
 			} finally {
@@ -206,7 +209,7 @@
 		} catch (err) {
 			showToast(
 				m('settingsIntegrations.connectFailed', {
-					error: thrownMessage(err)
+					error: errorCopy(err, m, 'settingsIntegrations.connectFailed')
 				}),
 				'error'
 			);
@@ -231,7 +234,7 @@
 		} catch (err) {
 			showToast(
 				m('settingsIntegrations.disconnectFailed', {
-					error: thrownMessage(err)
+					error: errorCopy(err, m, 'settingsIntegrations.disconnectFailed')
 				}),
 				'error'
 			);
@@ -366,7 +369,9 @@
 			showToast(
 				code === 'strava_not_configured'
 					? m('settingsIntegrations.stravaNotConfigured')
-					: m('settingsIntegrations.stravaSyncFailed', { error: code }),
+					: m('settingsIntegrations.stravaSyncFailed', {
+						error: errorCopy(err, m, 'settingsIntegrations.stravaSyncFailed'),
+					}),
 				'error',
 			);
 		} finally {

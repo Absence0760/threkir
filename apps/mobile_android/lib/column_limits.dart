@@ -70,6 +70,11 @@ const Map<String, ColumnLimit> kColumnLimits = {
   // Below the column's 120 — a plan name is a header, and 80 is what both
   // plan editors and the create wizard already offered.
   'training_plans.name': ColumnLimit.length(80),
+  // EQUAL to the columns' 120 and 2000: the route-detail edit must accept
+  // any name or description a route can already hold, or opening it on an
+  // existing route would refuse to save the text it was shown.
+  'routes.name': ColumnLimit.length(120),
+  'routes.description': ColumnLimit.length(2000),
   // EQUAL to the column's 32. A parkrun athlete id is `A` + digits and never
   // approaches either number, so there is no product reason to be stricter —
   // and being stricter is what silently truncated an id on the phone while

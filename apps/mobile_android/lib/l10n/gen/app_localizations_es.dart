@@ -8418,6 +8418,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Strava no aceptó el inicio de sesión. Intenta conectar de nuevo.';
 
   @override
+  String get integrationsStravaErrReconnect =>
+      'Strava ya no acepta esta conexión. Desconecta Strava y vuelve a conectarlo.';
+
+  @override
   String get integrationsStravaConnected => 'Strava conectado.';
 
   @override

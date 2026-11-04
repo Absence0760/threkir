@@ -13383,6 +13383,12 @@ abstract class AppLocalizations {
   /// **'Strava didn\'t accept the sign-in. Try connecting again.'**
   String get integrationsStravaErrCodeRejected;
 
+  /// Reason after 'Strava sync failed:' when Strava no longer accepts the stored connection (revoked grant); only disconnecting and connecting again repairs it
+  ///
+  /// In en, this message translates to:
+  /// **'Strava no longer accepts this connection. Disconnect Strava, then connect it again.'**
+  String get integrationsStravaErrReconnect;
+
   /// Banner shown after Strava connects successfully
   ///
   /// In en, this message translates to:

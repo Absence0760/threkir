@@ -2250,6 +2250,7 @@
   "integrationsStravaErrNotConfigured": "Strava todavía no está configurado en este servidor.",
   "integrationsStravaErrMissingScope": "Strava no compartió todas tus actividades. Vuelve a conectar y deja marcados todos los permisos.",
   "integrationsStravaErrCodeRejected": "Strava no aceptó el inicio de sesión. Intenta conectar de nuevo.",
+  "integrationsStravaErrReconnect": "Strava ya no acepta esta conexión. Desconecta Strava y vuelve a conectarlo.",
   "integrationsStravaConnected": "Strava conectado.",
   "integrationsSyncResult": "Sincronizado. {imported} nuevas, {skipped} ya presentes.",
   "integrationsSyncPartial": "La sincronización se detuvo antes de tiempo. {imported} nuevas, {skipped} ya presentes: algunas actividades no se descargaron. Vuelve a sincronizar para terminar.",

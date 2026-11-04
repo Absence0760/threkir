@@ -7143,12 +7143,31 @@ class ApiClient {
   /// whether it reached the end of the lookback window, and a caller that
   /// reads only the counts renders a truncated import as a finished one.
   /// See `StravaSyncResult` for why that costs runs rather than a click.
+  ///
+  /// A refusal the screen words (`refresh_failed`: Strava revoked the grant,
+  /// so only connecting again helps) throws [StravaConnectFailure], as
+  /// [completeStravaOAuth] does; any other failure throws as it came.
   Future<StravaSyncResult> syncStrava({int lookbackDays = 90}) async {
-    final res = await _client.functions.invoke(
-      'strava-import',
-      body: {'action': 'sync', 'lookbackDays': lookbackDays},
-    );
+    final res = await _invokeStravaImport(
+        {'action': 'sync', 'lookbackDays': lookbackDays});
     return stravaSyncResultFromResponse(res.data);
+  }
+
+  /// `strava-import` with its coded refusals turned into
+  /// [StravaConnectFailure]. A code `stravaConnectError` has no words for, or
+  /// a body with no code, rethrows the transport's exception so
+  /// `friendlyError` can still say "offline". Mirrors web `stravaRefusal`.
+  Future<FunctionResponse> _invokeStravaImport(Map<String, Object?> body) async {
+    try {
+      return await _client.functions.invoke('strava-import', body: body);
+    } on FunctionException catch (e) {
+      final details = e.details;
+      final errorCode = details is Map ? details['error'] : null;
+      final reason = stravaConnectError(errorCode is String ? errorCode : null);
+      if (reason == StravaConnectError.generic) rethrow;
+      throw StravaConnectFailure(reason,
+          code: errorCode as String, cause: e);
+    }
   }
 
   /// Complete the in-app Strava OAuth exchange. The caller (Settings)
@@ -7171,25 +7190,12 @@ class ApiClient {
     required String scope,
     required String redirectUri,
   }) async {
-    final FunctionResponse res;
-    try {
-      res = await _client.functions.invoke(
-        'strava-import',
-        body: {
-          'action': 'connect',
-          'code': code,
-          'scope': scope,
-          'redirect_uri': redirectUri,
-        },
-      );
-    } on FunctionException catch (e) {
-      final details = e.details;
-      final errorCode = details is Map ? details['error'] : null;
-      final reason = stravaConnectError(errorCode is String ? errorCode : null);
-      if (reason == StravaConnectError.generic) rethrow;
-      throw StravaConnectFailure(reason,
-          code: errorCode as String, cause: e);
-    }
+    final res = await _invokeStravaImport({
+      'action': 'connect',
+      'code': code,
+      'scope': scope,
+      'redirect_uri': redirectUri,
+    });
     return stravaSyncResultFromResponse(res.data);
   }
 

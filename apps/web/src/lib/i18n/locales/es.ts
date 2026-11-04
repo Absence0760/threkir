@@ -2156,6 +2156,7 @@ export const messages = {
 	"settingsIntegrations.stravaConnectFailed": "Error al conectar con Strava: {error}",
 	"settingsIntegrations.stravaErrMissingScope": "Strava no compartió todas tus actividades. Vuelve a conectar y deja marcados todos los permisos.",
 	"settingsIntegrations.stravaErrCodeRejected": "Strava no aceptó el inicio de sesión. Intenta conectar de nuevo.",
+	"settingsIntegrations.stravaErrReconnect": "Strava ya no acepta esta conexión. Desconecta Strava y vuelve a conectarlo.",
 	"settingsIntegrations.stravaErrDenied": "No se permitió el acceso en Strava.",
 	"settingsIntegrations.stravaErrStateMismatch": "No se pudo verificar el inicio de sesión. Empieza de nuevo desde Ajustes; si sigue ocurriendo, puede que tu navegador esté bloqueando el almacenamiento de esta pestaña.",
 	"settingsIntegrations.stravaNotConfigured": "Strava no está configurado en esta versión (falta PUBLIC_STRAVA_CLIENT_ID).",

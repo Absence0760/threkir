@@ -2156,6 +2156,7 @@ export const messages = {
 	"settingsIntegrations.stravaConnectFailed": "Strava-Verbindung fehlgeschlagen: {error}",
 	"settingsIntegrations.stravaErrMissingScope": "Strava hat nicht alle deine Aktivitäten freigegeben. Verbinde dich erneut und lass alle Berechtigungen angehakt.",
 	"settingsIntegrations.stravaErrCodeRejected": "Strava hat die Anmeldung nicht akzeptiert. Versuche es erneut.",
+	"settingsIntegrations.stravaErrReconnect": "Strava akzeptiert diese Verbindung nicht mehr. Trenne Strava und verbinde es dann erneut.",
 	"settingsIntegrations.stravaErrDenied": "Der Zugriff wurde auf Strava nicht erlaubt.",
 	"settingsIntegrations.stravaErrStateMismatch": "Die Anmeldung konnte nicht überprüft werden. Starte erneut über die Einstellungen; passiert das wiederholt, blockiert dein Browser möglicherweise den Speicher für diesen Tab.",
 	"settingsIntegrations.stravaNotConfigured": "Strava ist in diesem Build nicht konfiguriert (PUBLIC_STRAVA_CLIENT_ID fehlt).",

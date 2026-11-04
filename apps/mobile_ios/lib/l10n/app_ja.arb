@@ -2250,6 +2250,7 @@
   "integrationsStravaErrNotConfigured": "このサーバーではまだ Strava が設定されていません。",
   "integrationsStravaErrMissingScope": "Strava がすべてのアクティビティを共有しませんでした。もう一度連携し、すべての権限にチェックを入れたままにしてください。",
   "integrationsStravaErrCodeRejected": "Strava がサインインを受け付けませんでした。もう一度連携してください。",
+  "integrationsStravaErrReconnect": "Strava がこの連携を受け付けなくなりました。接続を解除してから、もう一度連携してください。",
   "integrationsStravaConnected": "Stravaを接続しました。",
   "integrationsSyncResult": "同期しました。新規 {imported} 件、既存 {skipped} 件。",
   "integrationsSyncPartial": "同期が途中で停止しました。新規 {imported} 件、既存 {skipped} 件 — 一部のアクティビティは取得されていません。もう一度同期して完了させてください。",

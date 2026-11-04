@@ -7955,6 +7955,10 @@ class AppLocalizationsJa extends AppLocalizations {
       'Strava がサインインを受け付けませんでした。もう一度連携してください。';
 
   @override
+  String get integrationsStravaErrReconnect =>
+      'Strava がこの連携を受け付けなくなりました。接続を解除してから、もう一度連携してください。';
+
+  @override
   String get integrationsStravaConnected => 'Stravaを接続しました。';
 
   @override

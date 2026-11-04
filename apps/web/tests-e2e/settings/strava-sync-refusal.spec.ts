@@ -74,18 +74,20 @@ test.describe('/settings/integrations — Strava sync refusals', () => {
 		await expect(page.locator('.toast')).not.toContainText(/non-2xx|Edge Function/);
 	});
 
-	test('a revoked connection shows catalogue copy, not its code or the invoke internals', async ({
+	test('a revoked connection tells the runner to connect Strava again, not its code', async ({
 		page,
 		mockRoute
 	}) => {
-		// `refresh_failed` is what the function returns when Strava rejects
-		// the stored refresh token. The code is logged, never shown: a machine
-		// code is not a sentence a runner can act on.
-		await syncWith(mockRoute, page, 502, { error: 'refresh_failed' });
+		// `refresh_failed` (401) is what the function returns when Strava
+		// rejects the stored refresh token. Retrying cannot help, so the toast
+		// names the repair rather than "Something went wrong"; the code is
+		// logged, never shown.
+		await syncWith(mockRoute, page, 401, { error: 'refresh_failed', reconnect_required: true });
 
 		const toast = page.locator('.toast').first();
 		await expect(toast).toBeVisible({ timeout: 10_000 });
 		await expect(toast).toContainText('Strava sync failed');
+		await expect(toast).toContainText('Disconnect Strava, then connect it again');
 		await expect(page.locator('.toast')).not.toContainText('refresh_failed');
 		await expect(page.locator('.toast')).not.toContainText(/non-2xx|Edge Function/);
 	});

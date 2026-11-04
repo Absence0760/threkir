@@ -8442,6 +8442,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Strava n\'a pas accepté la connexion. Réessayez de vous connecter.';
 
   @override
+  String get integrationsStravaErrReconnect =>
+      'Strava n\'accepte plus cette connexion. Déconnectez Strava, puis connectez-le à nouveau.';
+
+  @override
   String get integrationsStravaConnected => 'Strava connecté.';
 
   @override

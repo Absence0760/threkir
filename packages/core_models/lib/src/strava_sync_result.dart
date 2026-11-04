@@ -127,13 +127,22 @@ const List<int> kStravaLookbackOptions = [90, 180, 365];
 bool isStravaLookbackReachable(int days) =>
     days > 0 && days <= kStravaLookbackMaxDays;
 
-/// Why a `connect` failed, in the terms the Settings screen words
-/// differently. The function answers a stable code
-/// (`strava-import/connect_errors.ts`) and a client never renders it: an
-/// unknown or absent code is [StravaConnectError.generic], which the screen
-/// reads through `friendlyError` so a dropped connection still says "you're
-/// offline". TS twin: `stravaConnectError` in `strava_sync_result.ts`.
-enum StravaConnectError { notConfigured, missingScope, codeRejected, signedOut, generic }
+/// Why a `strava-import` call failed, in the terms the Settings screen words
+/// differently. The function answers a stable code (`connect` from
+/// `strava-import/connect_errors.ts`; `sync` adds `refresh_failed`, Strava
+/// refusing the stored grant, which only connecting again repairs) and a
+/// client never renders it: an unknown or absent code is
+/// [StravaConnectError.generic], which the screen reads through
+/// `friendlyError` so a dropped connection still says "you're offline". TS
+/// twin: `stravaConnectError` in `strava_sync_result.ts`.
+enum StravaConnectError {
+  notConfigured,
+  missingScope,
+  codeRejected,
+  signedOut,
+  reconnect,
+  generic,
+}
 
 StravaConnectError stravaConnectError(String? code) {
   switch (code) {
@@ -147,6 +156,8 @@ StravaConnectError stravaConnectError(String? code) {
       return StravaConnectError.codeRejected;
     case 'unauthorized':
       return StravaConnectError.signedOut;
+    case 'refresh_failed':
+      return StravaConnectError.reconnect;
     default:
       return StravaConnectError.generic;
   }

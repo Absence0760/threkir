@@ -2,7 +2,8 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { goto, replaceState } from '$app/navigation';
 	import { supabase } from '#lib/core/supabase.ts';
-	import { appErrorMessage, dbError } from '#lib/core/supabase_error.ts';
+	import { dbError } from '#lib/core/supabase_error.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { checkPasswordPair } from '#lib/core/auth_gates.ts';
 	import { emailOtpLink } from '#lib/core/auth_confirmation.ts';
@@ -89,7 +90,7 @@
 			await auth.refreshSession();
 			goto('/dashboard');
 		} catch (err) {
-			error = appErrorMessage(err) ?? m('authReset.errorGeneric');
+			error = errorCopy(err, m, 'authReset.errorGeneric', 'authReset.errorGeneric');
 			busy = false;
 		}
 	}

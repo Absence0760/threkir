@@ -7,6 +7,7 @@ import { inspect } from 'node:util';
 
 import {
 	appErrorMessage,
+	refusalCode,
 	DbError,
 	dbError,
 	isPlanOverlapError,
@@ -229,6 +230,24 @@ test('appErrorMessage reads an app-raised Error and leaves a database failure to
 	assert.equal(appErrorMessage({ message: 'invalid invite token', code: 'P0001' }), null);
 	assert.equal(appErrorMessage('x'), null);
 	assert.equal(appErrorMessage(undefined), null);
+});
+
+test('refusalCode reads an app-raised machine code and nothing else', () => {
+	// Reason: a page that maps a server refusal to its own copy compared
+	// `appErrorMessage(e) ?? ''`, which also handed it sentences and the
+	// browser's "Failed to fetch". Only a snake_case code is a refusal.
+	assert.equal(refusalCode(new Error('event_full')), 'event_full');
+	assert.equal(refusalCode(new Error('stripe_not_configured')), 'stripe_not_configured');
+	assert.equal(refusalCode(new Error('amount_below_minimum')), 'amount_below_minimum');
+	assert.equal(refusalCode(new TypeError('Failed to fetch')), '');
+	assert.equal(refusalCode(new Error('You already have a pending report against this content.')), '');
+	assert.equal(refusalCode(new Error('Edge Function returned a non-2xx status code')), '');
+	assert.equal(refusalCode(new Error('importRoute.kmzNoKml')), '');
+	assert.equal(refusalCode(new Error('')), '');
+	assert.equal(refusalCode(dbError({ code: 'P0001', message: 'event_full' })), '');
+	assert.equal(refusalCode({ message: 'event_full' }), '');
+	assert.equal(refusalCode('event_full'), '');
+	assert.equal(refusalCode(undefined), '');
 });
 
 test('dbError turns a 23P01 plan-window overlap into a readable PlanOverlapError', () => {

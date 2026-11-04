@@ -26,7 +26,13 @@ import { stripComments, stripSvelteComments } from '../core/strip_comments';
  *   2. `<caught>.message`, where `<caught>` is one of the names a catch or a
  *      Supabase result's error is bound to here, unless it is only compared
  *      (`=== X`, `.includes(…)`, `.startsWith(…)`, `/re/.test(…)`);
- *   3. `String(<caught>)` and `${<caught>}`.
+ *   3. `String(<caught>)` and `${<caught>}`;
+ *   4. any call to `appErrorMessage(…)`. `appErrorMessage(e) ?? m('copy')`
+ *      showed any `Error` the app raised as it was: an English sentence from
+ *      the data layer, a machine code, the browser's `TypeError: Failed to
+ *      fetch`. A specific sentence is thrown as an `AppError` carrying its
+ *      catalogue key, which `errorCopy` renders; a refusal code is compared
+ *      through `refusalCode(e)`.
  *
  * Invocation:
  *   npx tsx --test src/lib/i18n/error_copy_guard.test.ts
@@ -51,6 +57,18 @@ const ALLOWED: Record<string, { hits: number; reason: string }> = {
 	'src/lib/components/RunRaceResult.svelte': {
 		hits: 1,
 		reason: 'classifier: compares the text with the race-import refusal codes; every branch shows catalogue copy',
+	},
+	'src/routes/coaching/+page.svelte': {
+		hits: 2,
+		reason: 'appErrorMessage: converted with core/data.ts by the data-layer lane; delete this entry then',
+	},
+	'src/routes/coaching/athletes/[id]/+page.svelte': {
+		hits: 1,
+		reason: 'appErrorMessage: converted with core/data.ts by the data-layer lane; delete this entry then',
+	},
+	'src/routes/settings/account/+page.svelte': {
+		hits: 1,
+		reason: 'appErrorMessage: converted with core/data.ts by the data-layer lane; delete this entry then',
 	},
 	'src/routes/clubs/[slug]/events/[id]/board/+page.svelte': {
 		hits: 1,
@@ -115,7 +133,7 @@ export function findRawErrorText(src: string): string[] {
 		if (!exempt(at)) hits.push(`${lineOf(at)}: ${text}`);
 	};
 
-	for (const m of src.matchAll(/\bthrownMessage\s*\(/g)) push(m.index!, m[0]);
+	for (const m of src.matchAll(/\b(?:thrownMessage|appErrorMessage)\s*\(/g)) push(m.index!, m[0]);
 
 	const message = new RegExp(`(?<![\\w$.])${CAUGHT}\\??\\.message\\b`, 'g');
 	for (const m of src.matchAll(message)) {
@@ -148,9 +166,12 @@ test('no UI file shows a thrown error\'s own text', () => {
 		found,
 		[],
 		'show a failure as `errorCopy(e, m, key)` (i18n/error_copy.ts), framed by the action\'s own ' +
-			'sentence: `m(key, { error: errorCopy(e, m, key) })`. It maps offline, timeout, signed ' +
+			'sentence: `m(key, { error: errorCopy(e, m, key) })`, or as `errorCopy(e, m, context, ' +
+			'fallbackKey)` where the surface has a line of its own. It maps offline, timeout, signed ' +
 			'out, permission, not found, a refused value and a rate limit to catalogue copy and logs ' +
-			'the raw text. A raw message is English inside a localized page and can name a table or ' +
+			'the raw text. Compare a refusal code with `refusalCode(e)`; throw a failure that needs ' +
+			'its own sentence as `new AppError(key)` (core/app_error.ts). A raw message is English ' +
+			'inside a localized page and can name a table or ' +
 			'constraint. Log the raw text with `console.error(…)` if you need it.',
 	);
 });
@@ -176,6 +197,8 @@ test('the scanner bites on every raw shape and passes the safe ones', () => {
 		'passwordError = err?.message;',
 		'status = String(e);',
 		'banner = `Failed: ${err}`;',
+		"error = appErrorMessage(e) ?? m('clubJoin.invalidOrExpired');",
+		"const code = appErrorMessage(e) ?? '';",
 	];
 	for (const src of bites) assert.ok(findRawErrorText(src).length > 0, `must flag: ${src}`);
 	const passes = [
@@ -187,6 +210,8 @@ test('the scanner bites on every raw shape and passes the safe ones', () => {
 		"if (error.message.includes('handle_taken')) handleError = m('h.taken');",
 		'if (/42501|permission/i.test(e.message)) denied = true;',
 		'const label = route.message;',
+		"error = errorCopy(e, m, 'clubJoin.invalidOrExpired', 'clubJoin.invalidOrExpired');",
+		"const code = refusalCode(e);",
 	];
 	for (const src of passes) assert.deepEqual(findRawErrorText(src), [], `must pass: ${src}`);
 });

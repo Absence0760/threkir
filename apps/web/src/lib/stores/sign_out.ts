@@ -16,20 +16,42 @@ export interface AuthSignOutClient {
 /// provider error (or null) rather than throwing so each caller can decide
 /// whether to swallow it (local Sign out) or fail closed (global).
 ///
+/// How long a sign-out waits for a pending delete to settle before it signs
+/// out anyway. The commit is a single request; one that has not answered in
+/// this long is a stalled network, and a Sign out that never finishes leaves
+/// the session open on the very device the user is leaving.
+export const SIGN_OUT_SETTLE_TIMEOUT_MS = 5_000;
+
 /// `settlePending` runs first, while the session still exists: it commits a
 /// delete still inside its undo window, which would otherwise fire after the
 /// sign-out with no session, or under whoever signs in next. Settling is
 /// auxiliary to signing out, so its failure is logged and the sign-out
-/// still runs.
+/// still runs, and so is a settle still running after
+/// `SIGN_OUT_SETTLE_TIMEOUT_MS`: the request already in flight keeps the
+/// token it was sent with and may still land.
 export async function signOutWithScope(
 	client: AuthSignOutClient,
 	scope: SignOutScope,
 	settlePending: () => Promise<void> = async () => {},
 ): Promise<SignOutError | null> {
-	try {
-		await settlePending();
-	} catch (e) {
-		console.error('sign-out: settling a pending delete failed', e);
+	const settled = (async () => {
+		try {
+			await settlePending();
+		} catch (e) {
+			console.error('sign-out: settling a pending delete failed', e);
+		}
+		return true;
+	})();
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const timedOut = new Promise<false>((resolve) => {
+		timer = setTimeout(() => resolve(false), SIGN_OUT_SETTLE_TIMEOUT_MS);
+	});
+	const inTime = await Promise.race([settled, timedOut]);
+	clearTimeout(timer);
+	if (!inTime) {
+		console.warn(
+			`sign-out: a pending delete had not settled after ${SIGN_OUT_SETTLE_TIMEOUT_MS} ms; signing out anyway`,
+		);
 	}
 	const { error } = await client.signOut({ scope });
 	return error;

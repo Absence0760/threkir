@@ -160,9 +160,11 @@ test.describe('reports — Report dialog wires up to submit_report', () => {
 			await dialog.getByRole('button', { name: 'Submit report' }).click();
 
 			// The dialog stays open with the inline error — toast does
-			// NOT fire because submitReport threw before showToast.
+			// NOT fire because submitReport threw before showToast. The
+			// sentence is the catalogue's (an AppError), not the data
+			// layer's English, and not the generic submit failure.
 			await expect(
-				dialog.getByText(/already have a pending report/i),
+				dialog.getByText(/already reported this/i),
 			).toBeVisible({ timeout: 5_000 });
 		} finally {
 			await admin.from('clubs').delete().eq('id', clubId);

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
-	import { appErrorMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
@@ -574,7 +573,7 @@
 			}
 			await load();
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? tr('clubHome.failedToJoin');
+			error = errorCopy(e, tr, 'clubHome.failedToJoin', 'clubHome.failedToJoin');
 		} finally {
 			joinBusy = false;
 		}
@@ -593,7 +592,7 @@
 			await leaveClub(club.id);
 			await load();
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? tr('clubHome.failedToLeave');
+			error = errorCopy(e, tr, 'clubHome.failedToLeave', 'clubHome.failedToLeave');
 		} finally {
 			joinBusy = false;
 		}
@@ -737,7 +736,7 @@
 			draftPost = '';
 			posts = await fetchClubPosts(club.id, 20);
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? tr('clubHome.failedToPost');
+			error = errorCopy(e, tr, 'clubHome.failedToPost', 'clubHome.failedToPost');
 		} finally {
 			postingBusy = false;
 		}

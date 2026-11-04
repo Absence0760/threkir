@@ -1,8 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
 	classifyAuthError,
 	authErrorMessageKey,
+	databaseCodeDecides,
+	isDatabaseCode,
 	signUpErrorRevealsAccountExistence
 } from './auth_errors.js';
 
@@ -117,6 +121,55 @@ test('a bare-raise P0001 is still read by its message', () => {
 		classifyAuthError(authError('rate limit exceeded for create_club, retry in 30s', { code: 'P0001' })),
 		'rateLimited'
 	);
+});
+
+test('a five-character code that is not a SQLSTATE still has its message read', () => {
+	assert.equal(classifyAuthError(authError('Failed to fetch', { code: 'EPIPE' })), 'offline');
+	assert.equal(classifyAuthError(authError('Invalid login credentials', { code: 'stale' })), 'invalidCredentials');
+});
+
+test('isDatabaseCode accepts SQLSTATE and PostgREST codes in either case', () => {
+	const codes = ['23505', '42501', '42P01', '22P02', '57014', 'P0001', 'P0002', 'XX000', 'HV000', 'F0000',
+		'TR001', 'RR001', 'RR002', 'RW001', 'PGRST116', 'PGRST301', 'PGRST303'];
+	for (const c of codes) {
+		assert.ok(isDatabaseCode(c), c);
+		assert.ok(isDatabaseCode(c.toLowerCase()), c.toLowerCase());
+	}
+	for (const c of codes.filter((c) => c !== 'P0001')) assert.ok(databaseCodeDecides(c), c);
+	assert.ok(!databaseCodeDecides('P0001'));
+	assert.ok(!databaseCodeDecides('p0001'));
+});
+
+test('no GoTrue, Storage or network code is taken for a database code', () => {
+	const codes = [
+		// GoTrue (auth-js ErrorCode): snake_case words, the shortest seven long.
+		'bad_jwt', 'bad_json', 'conflict', 'not_admin', 'otp_expired', 'invalid_credentials', 'invalid_grant',
+		'email_exists', 'user_already_exists', 'email_not_confirmed', 'weak_password', 'same_password',
+		'over_request_rate_limit', 'over_email_send_rate_limit', 'session_not_found', 'user_not_found',
+		// Storage API codes, and its string statusCode.
+		'NoSuchKey', 'NoSuchBucket', 'InvalidJWT', 'AccessDenied', 'EntityTooLarge', 'S3Error', '404', '400',
+		// Node / undici network errnos, five-letter ones included.
+		'EPIPE', 'EPERM', 'EBUSY', 'EXDEV', 'ECONNREFUSED', 'ETIMEDOUT', 'EAI_AGAIN', 'UND_ERR_CONNECT_TIMEOUT',
+		// Five characters but no SQLSTATE class, and PGRST without its digits.
+		'10000', 'ABCDE', 'stale', 'PGRST', 'PGRSTX', '',
+	];
+	for (const c of codes) {
+		assert.ok(!isDatabaseCode(c), c);
+		assert.ok(!isDatabaseCode(c.toLowerCase()), c.toLowerCase());
+	}
+	assert.ok(!isDatabaseCode(null));
+	assert.ok(!isDatabaseCode(undefined));
+});
+
+test('every SQLSTATE a migration raises is a database code', () => {
+	const dir = resolve('../backend/supabase/migrations');
+	const seen = new Set<string>();
+	for (const file of readdirSync(dir).filter((f) => f.endsWith('.sql'))) {
+		const sql = readFileSync(resolve(dir, file), 'utf-8');
+		for (const m of sql.matchAll(/errcode\s*=\s*'([0-9A-Za-z]{5})'/gi)) seen.add(m[1]);
+	}
+	assert.ok(seen.size >= 10, `read ${seen.size} SQLSTATEs from the migrations`);
+	for (const c of seen) assert.ok(isDatabaseCode(c), `${c} is raised by a migration`);
 });
 
 test('unrecognised error → generic', () => {

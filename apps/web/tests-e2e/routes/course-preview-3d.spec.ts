@@ -163,6 +163,44 @@ test.describe('/routes/[id] 3D course preview', () => {
 		}
 	});
 
+	test('the flight ends on the whole-course overview, and Play from there flies again (#1284)', async ({
+		page,
+		mockRoute,
+	}) => {
+		await page.addInitScript(() => {
+			Object.defineProperty(Navigator.prototype, 'hardwareConcurrency', { get: () => 8 });
+		});
+		await mockRoute(
+			page,
+			(url) => FALLBACK_TILE_ORIGINS.has(url.origin),
+			(route) => route.fulfill({ status: 200, contentType: 'image/png', body: BLANK_TILE }),
+		);
+		const routeId = await insertRouteWith(`3D preview overview ${Date.now()}`, COURSE);
+		try {
+			await page.goto(`/routes/${routeId}`);
+			test.skip(!(await browserHasWebgl2(page)), 'the flight needs WebGL2');
+			await mockRoute(
+				page,
+				(url) => url.hostname === AWS_TERRAIN_HOST,
+				(route) => route.fulfill({ status: 404 }),
+			);
+			await page.getByTestId('course-preview-open').click();
+			const dialog = page.getByTestId('course-preview-3d');
+			const preview = dialog.locator('[data-flyover-mode]');
+			await expect(preview).toHaveAttribute('data-flyover-mode', 'flight');
+			await dialog.getByTestId('course-preview-speed').selectOption('1000');
+
+			// 3.3 km at 1000 m/s, then the 5 s ease and orbit.
+			await expect(preview).toHaveAttribute('data-flyover-overview', '', { timeout: 20_000 });
+			await expect(dialog.getByTestId('course-preview-play')).toHaveText(/Play/);
+
+			await dialog.getByTestId('course-preview-play').click();
+			await expect(preview).not.toHaveAttribute('data-flyover-overview', '');
+		} finally {
+			await deleteRoute(routeId);
+		}
+	});
+
 	test('a route with no line to fly offers no preview', async ({ page }) => {
 		const routeId = await insertRouteWith(`3D preview single point ${Date.now()}`, [COURSE[0]]);
 		try {

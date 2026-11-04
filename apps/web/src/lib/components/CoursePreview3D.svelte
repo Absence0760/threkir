@@ -56,6 +56,18 @@
 		TERRAIN_SOURCE_ID,
 	} from './course_preview/course_terrain.ts';
 	import { drawFlightFrame, flightCamera } from './course_preview/flight_frame.ts';
+	import {
+		finaleCamera,
+		finaleDurationMs,
+		finalePlan,
+		OVERVIEW_PADDING_PX,
+		OVERVIEW_PITCH,
+		overviewPose,
+		pathBounds,
+		type CameraPose,
+		type FinalePlan,
+	} from './course_preview/overview.ts';
+	import { motion } from '#lib/motion/motion.svelte.ts';
 	import type { VideoEncoderPlan } from '#lib/video/video_encoder.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { DEFAULT_SITE_URL } from '#lib/core/site_url.ts';
@@ -139,6 +151,10 @@
 	let stopResizeWatch: (() => void) | null = null;
 	let raf = 0;
 	let lastTs: number | null = null;
+	// The ending's own clock: the overview ease and orbit after the finish.
+	let finaleRaf = 0;
+	let finale: { from: CameraPose; to: CameraPose; plan: FinalePlan; startTs: number | null } | null = null;
+	let atOverview = $state(false);
 
 	const here = $derived(hasPath ? pointAtDistance(path, playback.dM) : null);
 
@@ -223,6 +239,7 @@
 	function teardown() {
 		cancelVideo();
 		stopLoop();
+		stopFinale();
 		stopResizeWatch?.();
 		stopResizeWatch = null;
 		positionMarker?.remove();
@@ -232,20 +249,7 @@
 	}
 
 	function courseBounds(): [[number, number], [number, number]] {
-		let minLng = Infinity;
-		let minLat = Infinity;
-		let maxLng = -Infinity;
-		let maxLat = -Infinity;
-		for (const p of path.points) {
-			if (p.lng < minLng) minLng = p.lng;
-			if (p.lng > maxLng) maxLng = p.lng;
-			if (p.lat < minLat) minLat = p.lat;
-			if (p.lat > maxLat) maxLat = p.lat;
-		}
-		return [
-			[minLng, minLat],
-			[maxLng, maxLat],
-		];
+		return pathBounds(path);
 	}
 
 	// Terrain is an auxiliary layer: any failure to add it, or a tile error
@@ -312,9 +316,78 @@
 		playback = tick(playback, elapsed, speed, path.totalM);
 		renderPosition(true);
 		if (playback.playing) raf = requestAnimationFrame(frame);
+		else if (playback.dM >= path.totalM) startFinale();
+	}
+
+	// Auxiliary to the flight: a failure here leaves the camera at the finish.
+	function startFinale() {
+		if (!map || !here) return;
+		try {
+			const fit = map.cameraForBounds(courseBounds(), {
+				padding: OVERVIEW_PADDING_PX,
+				bearing: 0,
+				pitch: OVERVIEW_PITCH,
+			});
+			if (!fit?.center || fit.zoom == null) return;
+			const c = maplibregl.LngLat.convert(fit.center);
+			finale = {
+				from: flightCamera(path, path.totalM, FLIGHT_VIEW),
+				to: overviewPose({ center: [c.lng, c.lat], zoom: fit.zoom }),
+				plan: finalePlan(motion.reduced),
+				startTs: null,
+			};
+			finaleRaf = requestAnimationFrame(finaleFrame);
+		} catch (e) {
+			console.warn('course preview: overview unavailable', e);
+			stopFinale();
+		}
+	}
+
+	function finaleFrame(ts: number) {
+		finaleRaf = 0;
+		const f = finale;
+		if (!f || !map) return;
+		f.startTs ??= ts;
+		const t = ts - f.startTs;
+		try {
+			map.jumpTo(finaleCamera(f.from, f.to, t, f.plan));
+			map.redraw();
+		} catch (e) {
+			console.warn('course preview: overview frame failed', e);
+			stopFinale();
+			return;
+		}
+		if (t >= finaleDurationMs(f.plan)) {
+			finale = null;
+			atOverview = true;
+			return;
+		}
+		finaleRaf = requestAnimationFrame(finaleFrame);
+	}
+
+	// A hidden tab or a close mid-ending lands on the ending's last pose
+	// rather than freezing half way out.
+	function settleFinale() {
+		const f = finale;
+		if (!f) return;
+		stopFinale();
+		try {
+			map?.jumpTo(finaleCamera(f.from, f.to, finaleDurationMs(f.plan), f.plan));
+			atOverview = true;
+		} catch (e) {
+			console.warn('course preview: overview frame failed', e);
+		}
+	}
+
+	function stopFinale() {
+		if (finaleRaf) cancelAnimationFrame(finaleRaf);
+		finaleRaf = 0;
+		finale = null;
+		atOverview = false;
 	}
 
 	function startLoop() {
+		stopFinale();
 		if (raf) return;
 		lastTs = null;
 		raf = requestAnimationFrame(frame);
@@ -328,6 +401,7 @@
 
 	function pause() {
 		stopLoop();
+		settleFinale();
 		playback = { ...playback, playing: false };
 	}
 
@@ -342,6 +416,7 @@
 
 	function seekTo(dM: number) {
 		stopLoop();
+		stopFinale();
 		playback = seek(dM, path.totalM);
 		renderPosition();
 	}
@@ -487,7 +562,7 @@
 	fullscreen
 	data-testid="course-preview-3d"
 >
-	<div class="preview" data-flyover-mode={mode}>
+	<div class="preview" data-flyover-mode={mode} data-flyover-overview={atOverview ? '' : undefined}>
 		{#if !hasPath}
 			<p class="preview-empty">{m('coursePreview.noTrack')}</p>
 		{:else if !mapConsented}

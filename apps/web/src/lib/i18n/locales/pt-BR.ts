@@ -3152,7 +3152,7 @@ export const messages = {
 	"messages.deleteConversation": "Excluir conversa",
 	"messages.conversationDeleted": "Conversa excluída",
 	"messages.conversationDeletedNotice": "Você excluiu esta conversa para você. A outra pessoa mantém a cópia dela, e uma nova mensagem faz a conversa voltar.",
-	"messages.conversationDeletedNoticeDeletedAccount": "Você excluiu esta conversa. A outra conta não existe mais, então nada faz a conversa voltar, e as mensagens são apagadas em até um dia.",
+	"messages.conversationDeletedNoticeDeletedAccount": "Você excluiu esta conversa. A outra conta não existe mais, então nada fará a conversa voltar, e as mensagens são apagadas em até um dia.",
 	"messages.conversationActionFailed": "Não foi possível atualizar a conversa: {error}",
 	"messages.archivedCount": "Arquivadas ({count})",
 	"messages.backToInbox": "Voltar para a caixa de entrada",

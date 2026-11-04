@@ -17704,7 +17704,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get messagesConversationDeletedNoticeDeletedAccount =>
-      'Du hast diese Unterhaltung gelöscht. Das andere Konto existiert nicht mehr, daher holt nichts sie zurück, und die Nachrichten werden innerhalb eines Tages endgültig gelöscht.';
+      'Du hast diese Unterhaltung gelöscht. Das andere Konto existiert nicht mehr, daher kann sie nicht wieder erscheinen, und die Nachrichten werden innerhalb eines Tages endgültig gelöscht.';
 
   @override
   String messagesConversationActionFailed(String error) {

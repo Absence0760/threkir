@@ -17686,7 +17686,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get messagesConversationDeletedNoticeDeletedAccount =>
-      'Eliminou esta conversa. A outra conta já não existe, por isso nada a faz voltar, e as mensagens são apagadas no prazo de um dia.';
+      'Eliminou esta conversa. A outra conta já não existe, por isso nada a fará voltar, e as mensagens são apagadas no prazo de um dia.';
 
   @override
   String messagesConversationActionFailed(String error) {
@@ -37725,7 +37725,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get messagesConversationDeletedNoticeDeletedAccount =>
-      'Você excluiu esta conversa. A outra conta não existe mais, então nada faz a conversa voltar, e as mensagens são apagadas em até um dia.';
+      'Você excluiu esta conversa. A outra conta não existe mais, então nada fará a conversa voltar, e as mensagens são apagadas em até um dia.';
 
   @override
   String messagesConversationActionFailed(String error) {

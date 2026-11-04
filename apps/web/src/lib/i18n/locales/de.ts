@@ -3153,7 +3153,7 @@ export const messages = {
 	"messages.deleteConversation": "Unterhaltung löschen",
 	"messages.conversationDeleted": "Unterhaltung gelöscht",
 	"messages.conversationDeletedNotice": "Du hast diese Unterhaltung für dich gelöscht. Die andere Person behält ihre Kopie, und eine neue Nachricht holt sie zurück.",
-	"messages.conversationDeletedNoticeDeletedAccount": "Du hast diese Unterhaltung gelöscht. Das andere Konto existiert nicht mehr, daher holt nichts sie zurück, und die Nachrichten werden innerhalb eines Tages endgültig gelöscht.",
+	"messages.conversationDeletedNoticeDeletedAccount": "Du hast diese Unterhaltung gelöscht. Das andere Konto existiert nicht mehr, daher kann sie nicht wieder erscheinen, und die Nachrichten werden innerhalb eines Tages endgültig gelöscht.",
 	"messages.conversationActionFailed": "Die Unterhaltung konnte nicht aktualisiert werden: {error}",
 	"messages.archivedCount": "Archiviert ({count})",
 	"messages.backToInbox": "Zurück zum Posteingang",

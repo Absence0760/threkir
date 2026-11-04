@@ -4982,7 +4982,7 @@
   "messagesDeleteConversation": "Eliminar conversa",
   "messagesConversationDeleted": "Conversa eliminada",
   "messagesConversationDeletedNotice": "Eliminou esta conversa para si. A outra pessoa mantém a cópia dela, e uma nova mensagem fá-la voltar.",
-  "messagesConversationDeletedNoticeDeletedAccount": "Eliminou esta conversa. A outra conta já não existe, por isso nada a faz voltar, e as mensagens são apagadas no prazo de um dia.",
+  "messagesConversationDeletedNoticeDeletedAccount": "Eliminou esta conversa. A outra conta já não existe, por isso nada a fará voltar, e as mensagens são apagadas no prazo de um dia.",
   "messagesConversationActionFailed": "Não foi possível atualizar a conversa: {error}",
   "messagesArchivedCount": "Arquivadas ({count})",
   "messagesBackToInbox": "Voltar à caixa de entrada",

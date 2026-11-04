@@ -1212,6 +1212,7 @@
   "exploreRoutesSearchFailed": "検索に失敗しました。再試行をタップしてもう一度試してください。",
   "exploreRoutesLoadMoreFailed": "これ以上読み込めませんでした — 接続を確認してください",
   "exploreRoutesLocationPermissionRequired": "近くのルートを探すには位置情報の許可が必要です",
+  "exploreRoutesNearbyLocationUnavailable": "位置情報を取得できません: {error}",
   "exploreRoutesNearbyFailed": "近くのルートが見つかりませんでした。再試行をタップしてもう一度試してください。",
   "exploreRoutesEmptyNoPublic": "まだ公開ルートがありません",
   "exploreRoutesEmptyNoMatch": "検索に一致するルートはありません",

@@ -1212,6 +1212,7 @@
   "exploreRoutesSearchFailed": "Échec de la recherche. Appuyez sur Réessayer pour recommencer.",
   "exploreRoutesLoadMoreFailed": "Impossible de charger plus — vérifiez votre connexion",
   "exploreRoutesLocationPermissionRequired": "Autorisation de localisation requise pour trouver des itinéraires à proximité",
+  "exploreRoutesNearbyLocationUnavailable": "Position indisponible : {error}",
   "exploreRoutesNearbyFailed": "Impossible de trouver des itinéraires à proximité. Appuyez sur Réessayer pour recommencer.",
   "exploreRoutesEmptyNoPublic": "Aucun itinéraire public pour l'instant",
   "exploreRoutesEmptyNoMatch": "Aucun itinéraire ne correspond à votre recherche",

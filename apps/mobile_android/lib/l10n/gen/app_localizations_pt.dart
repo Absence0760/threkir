@@ -4343,6 +4343,11 @@ class AppLocalizationsPt extends AppLocalizations {
       'Permissão de localização necessária para encontrar rotas próximas';
 
   @override
+  String exploreRoutesNearbyLocationUnavailable(String error) {
+    return 'Localização indisponível: $error';
+  }
+
+  @override
   String get exploreRoutesNearbyFailed =>
       'Não foi possível encontrar rotas próximas. Toque em Tentar novamente.';
 
@@ -24028,6 +24033,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get exploreRoutesLocationPermissionRequired =>
       'Permissão de localização necessária para encontrar rotas próximas';
+
+  @override
+  String exploreRoutesNearbyLocationUnavailable(String error) {
+    return 'Localização indisponível: $error';
+  }
 
   @override
   String get exploreRoutesNearbyFailed =>

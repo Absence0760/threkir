@@ -4355,6 +4355,11 @@ class AppLocalizationsFr extends AppLocalizations {
       'Autorisation de localisation requise pour trouver des itinéraires à proximité';
 
   @override
+  String exploreRoutesNearbyLocationUnavailable(String error) {
+    return 'Position indisponible : $error';
+  }
+
+  @override
   String get exploreRoutesNearbyFailed =>
       'Impossible de trouver des itinéraires à proximité. Appuyez sur Réessayer pour recommencer.';
 

@@ -4086,6 +4086,11 @@ class AppLocalizationsJa extends AppLocalizations {
       '近くのルートを探すには位置情報の許可が必要です';
 
   @override
+  String exploreRoutesNearbyLocationUnavailable(String error) {
+    return '位置情報を取得できません: $error';
+  }
+
+  @override
   String get exploreRoutesNearbyFailed =>
       '近くのルートが見つかりませんでした。再試行をタップしてもう一度試してください。';
 

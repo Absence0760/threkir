@@ -5722,6 +5722,15 @@
   "@exploreRoutesLocationPermissionRequired": {
     "description": "Error state shown when location permission is denied in near-me mode"
   },
+  "exploreRoutesNearbyLocationUnavailable": "Location unavailable: {error}",
+  "@exploreRoutesNearbyLocationUnavailable": {
+    "description": "Error state shown when a near-me search cannot get a position; {error} is the lower-case reason (location off, no fix in time)",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "exploreRoutesNearbyFailed": "Could not find nearby routes. Tap retry to try again.",
   "@exploreRoutesNearbyFailed": {
     "description": "Error state shown when a near-me search fails"

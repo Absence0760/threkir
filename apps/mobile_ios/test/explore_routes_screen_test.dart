@@ -292,6 +292,48 @@ void main() {
           find.text('Location permission required to find nearby routes'),
           findsOneWidget);
     });
+
+    testWidgets('location switched off says so, not a generic failure',
+        (tester) async {
+      final s = await _makeStores();
+      final api = _NearbyApi();
+      await _pump(tester,
+          prefs: s.prefs,
+          routeStore: s.routeStore,
+          api: api,
+          locateFn: () async =>
+              throw const LocationServiceDisabledException());
+      await tester.pump();
+      await tester.tap(find.text('Near Me'));
+      await tester.pump();
+      await tester.pump();
+      expect(api.nearbyCalls, isEmpty);
+      expect(
+          find.text(
+              'Location unavailable: location is turned off on this device'),
+          findsOneWidget);
+    });
+
+    testWidgets('a fix that never arrives is not called a network timeout',
+        (tester) async {
+      final s = await _makeStores();
+      final api = _NearbyApi();
+      await _pump(tester,
+          prefs: s.prefs,
+          routeStore: s.routeStore,
+          api: api,
+          locateFn: () async => throw TimeoutException('no fix'));
+      await tester.pump();
+      await tester.tap(find.text('Near Me'));
+      await tester.pump();
+      await tester.pump();
+      expect(api.nearbyCalls, isEmpty);
+      expect(
+          find.text(
+              'Location unavailable: no position yet, try again in a moment'),
+          findsOneWidget);
+      expect(find.textContaining('Connection timed out'), findsNothing);
+    });
   });
 
   testWidgets('a result card reads elevation in the reader\'s unit',

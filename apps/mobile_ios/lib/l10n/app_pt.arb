@@ -1212,6 +1212,7 @@
   "exploreRoutesSearchFailed": "Falha na pesquisa. Toque em Tentar novamente.",
   "exploreRoutesLoadMoreFailed": "Não foi possível carregar mais — verifique a sua ligação",
   "exploreRoutesLocationPermissionRequired": "Permissão de localização necessária para encontrar rotas próximas",
+  "exploreRoutesNearbyLocationUnavailable": "Localização indisponível: {error}",
   "exploreRoutesNearbyFailed": "Não foi possível encontrar rotas próximas. Toque em Tentar novamente.",
   "exploreRoutesEmptyNoPublic": "Nenhuma rota pública ainda",
   "exploreRoutesEmptyNoMatch": "Nenhuma rota corresponde à sua pesquisa",

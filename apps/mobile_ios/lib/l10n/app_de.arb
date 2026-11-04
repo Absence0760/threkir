@@ -1212,6 +1212,7 @@
   "exploreRoutesSearchFailed": "Suche fehlgeschlagen. Tippe auf Wiederholen, um es erneut zu versuchen.",
   "exploreRoutesLoadMoreFailed": "Weitere konnten nicht geladen werden — überprüfe deine Verbindung",
   "exploreRoutesLocationPermissionRequired": "Standortberechtigung erforderlich, um Routen in der Nähe zu finden",
+  "exploreRoutesNearbyLocationUnavailable": "Standort nicht verfügbar: {error}",
   "exploreRoutesNearbyFailed": "Routen in der Nähe konnten nicht gefunden werden. Tippe auf Wiederholen, um es erneut zu versuchen.",
   "exploreRoutesEmptyNoPublic": "Noch keine öffentlichen Routen",
   "exploreRoutesEmptyNoMatch": "Keine Routen entsprechen deiner Suche",

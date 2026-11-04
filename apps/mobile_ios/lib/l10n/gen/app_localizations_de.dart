@@ -4354,6 +4354,11 @@ class AppLocalizationsDe extends AppLocalizations {
       'Standortberechtigung erforderlich, um Routen in der Nähe zu finden';
 
   @override
+  String exploreRoutesNearbyLocationUnavailable(String error) {
+    return 'Standort nicht verfügbar: $error';
+  }
+
+  @override
   String get exploreRoutesNearbyFailed =>
       'Routen in der Nähe konnten nicht gefunden werden. Tippe auf Wiederholen, um es erneut zu versuchen.';
 

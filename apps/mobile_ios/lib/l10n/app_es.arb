@@ -1212,6 +1212,7 @@
   "exploreRoutesSearchFailed": "Error en la búsqueda. Toca Reintentar para volver a intentarlo.",
   "exploreRoutesLoadMoreFailed": "No se pudieron cargar más — comprueba tu conexión",
   "exploreRoutesLocationPermissionRequired": "Se requiere permiso de ubicación para encontrar rutas cercanas",
+  "exploreRoutesNearbyLocationUnavailable": "Ubicación no disponible: {error}",
   "exploreRoutesNearbyFailed": "No se pudieron encontrar rutas cercanas. Toca Reintentar para volver a intentarlo.",
   "exploreRoutesEmptyNoPublic": "Aún no hay rutas públicas",
   "exploreRoutesEmptyNoMatch": "Ninguna ruta coincide con tu búsqueda",

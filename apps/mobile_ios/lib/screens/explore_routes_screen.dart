@@ -251,6 +251,20 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
           });
         }
         return;
+      } catch (e) {
+        // Caught here, not below: a fix that never arrives is a
+        // TimeoutException too, and the outer catch would call it a
+        // backend timeout.
+        debugPrint('ExploreRoutesScreen._searchNearby locate failed: $e');
+        if (mounted) {
+          final l10n = AppLocalizations.of(context);
+          setState(() {
+            _error = l10n.exploreRoutesNearbyLocationUnavailable(
+                browseLocateErrorText(l10n, e));
+            _loading = false;
+          });
+        }
+        return;
       }
 
       final results = await api.nearbyPublicRoutes(

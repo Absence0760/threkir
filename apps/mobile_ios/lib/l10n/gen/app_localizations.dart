@@ -7138,6 +7138,12 @@ abstract class AppLocalizations {
   /// **'Location permission required to find nearby routes'**
   String get exploreRoutesLocationPermissionRequired;
 
+  /// Error state shown when a near-me search cannot get a position; {error} is the lower-case reason (location off, no fix in time)
+  ///
+  /// In en, this message translates to:
+  /// **'Location unavailable: {error}'**
+  String exploreRoutesNearbyLocationUnavailable(String error);
+
   /// Error state shown when a near-me search fails
   ///
   /// In en, this message translates to:

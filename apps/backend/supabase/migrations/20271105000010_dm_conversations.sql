@@ -1,6 +1,6 @@
 -- Direct messages: a conversation model with per-participant state, so each
 -- side can delete a conversation for themselves, mute it and archive it
--- without touching the other person's copy (issue #1216, decisions § 2286).
+-- without touching the other person's copy (issue #1216, decisions § 2287).
 --
 -- ── Why a table, not a per-pair state row ────────────────────────────────
 --

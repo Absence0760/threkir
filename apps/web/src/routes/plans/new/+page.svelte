@@ -422,7 +422,7 @@
 
 <div class="page">
 	<a href={backHref} class="back-link" onclick={handleBack}>
-		<span class="material-symbols">arrow_back</span>
+		<span class="material-symbols" aria-hidden="true">arrow_back</span>
 		{backLabel}
 	</a>
 

@@ -1813,7 +1813,7 @@
 {:else if loadError !== null}
 	<div class="page">
 		<a class="back" href={backHref} onclick={handleBack}>
-			<span class="material-symbols">arrow_back</span>
+			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{backLabel}
 		</a>
 		<div class="error-banner" role="alert">
@@ -1828,7 +1828,7 @@
 {:else if !plan}
 	<div class="page">
 		<a class="back" href={backHref} onclick={handleBack}>
-			<span class="material-symbols">arrow_back</span>
+			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{backLabel}
 		</a>
 		<div class="empty">
@@ -1841,7 +1841,7 @@
 {:else}
 	<div class="page">
 		<a class="back" href={backHref} onclick={handleBack}>
-			<span class="material-symbols">arrow_back</span>
+			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{backLabel}
 		</a>
 
@@ -1857,7 +1857,7 @@
 							aria-label={m('planDetail.editPlanAria')}
 							onclick={() => (editingPlanMeta = true)}
 						>
-							<span class="material-symbols">edit</span>
+							<span class="material-symbols" aria-hidden="true">edit</span>
 							{m('planDetail.editPlan')}
 						</button>
 						<button
@@ -1874,7 +1874,7 @@
 					{#if isOwner && workouts.length > 0}
 						<details class="export-menu" bind:this={exportMenu} ontoggle={onExportToggle}>
 							<summary class="btn btn-outline btn-sm">
-								<span class="material-symbols">ios_share</span>
+								<span class="material-symbols" aria-hidden="true">ios_share</span>
 								{m('planDetail.export')}
 							</summary>
 							<div class="export-actions" role="menu" tabindex="-1" onkeydown={onExportMenuKeydown}>
@@ -1935,13 +1935,13 @@
 						{/if}
 					{:else if plan.parent_template_id}
 						<a class="chip chip-link" href="/plans/{plan.parent_template_id}">
-							<span class="material-symbols">link</span>
+							<span class="material-symbols" aria-hidden="true">link</span>
 							{m('planDetail.clonedFromTemplate')}
 						</a>
 					{/if}
 					{#if plan.is_template && plan.club_id}
 						<span class="chip">
-							<span class="material-symbols">groups</span>
+							<span class="material-symbols" aria-hidden="true">groups</span>
 							{m('planDetail.clubTemplate')}
 						</span>
 					{/if}
@@ -1959,38 +1959,38 @@
 					{#if heroRace}
 						{#if heroRace.distanceM != null}
 							<span>
-								<span class="material-symbols">flag</span>
+								<span class="material-symbols" aria-hidden="true">flag</span>
 								{fmtKm(heroRace.distanceM, 1)}
 							</span>
 						{/if}
 						{#if heroRace.goalTimeSec != null}
 							<span>
-								<span class="material-symbols">timer</span>
+								<span class="material-symbols" aria-hidden="true">timer</span>
 								{fmtHms(heroRace.goalTimeSec)}
 							</span>
 						{/if}
 					{:else}
 						<span>
-							<span class="material-symbols">flag</span>
+							<span class="material-symbols" aria-hidden="true">flag</span>
 							{fmtKm(plan.goal_distance_m, 1)}
 						</span>
 						{#if plan.goal_time_seconds}
 							<span>
-								<span class="material-symbols">timer</span>
+								<span class="material-symbols" aria-hidden="true">timer</span>
 								{fmtHms(plan.goal_time_seconds)}
 							</span>
 						{/if}
 					{/if}
 					{#if plan.vdot}
 						<span>
-							<span class="material-symbols">trending_up</span>
+							<span class="material-symbols" aria-hidden="true">trending_up</span>
 							<MetricLabel metric="vdot" />
 							{Number(plan.vdot).toFixed(1)}
 						</span>
 					{/if}
 					{#if planPosition}
 						<span>
-							<span class="material-symbols">event</span>
+							<span class="material-symbols" aria-hidden="true">event</span>
 							{fmtRaceDate(heroRace?.date ?? plan.end_date)}
 						</span>
 					{/if}
@@ -2156,13 +2156,13 @@
 						class:skipped={isWorkoutSkipped(todayWorkout)}
 					>
 						{#if isWorkoutCompleted(todayWorkout)}
-							<span class="material-symbols">check_circle</span>
+							<span class="material-symbols" aria-hidden="true">check_circle</span>
 						{:else if isWorkoutSkipped(todayWorkout)}
-							<span class="material-symbols">skip_next</span>
+							<span class="material-symbols" aria-hidden="true">skip_next</span>
 						{:else if todayWorkout.kind === 'rest'}
-							<span class="material-symbols">self_improvement</span>
+							<span class="material-symbols" aria-hidden="true">self_improvement</span>
 						{:else}
-							<span class="material-symbols">directions_run</span>
+							<span class="material-symbols" aria-hidden="true">directions_run</span>
 						{/if}
 					</div>
 					<div class="today-body">
@@ -2196,7 +2196,7 @@
 							<p class="today-notes">{todayWorkout.notes}</p>
 						{/if}
 					</div>
-					<span class="material-symbols today-arrow">chevron_right</span>
+					<span class="material-symbols today-arrow" aria-hidden="true">chevron_right</span>
 				</button>
 			</section>
 		{:else if nextWorkout}
@@ -2208,7 +2208,7 @@
 					onclick={() => nextWorkout && openWorkout(nextWorkout)}
 				>
 					<div class="today-icon">
-						<span class="material-symbols">event_upcoming</span>
+						<span class="material-symbols" aria-hidden="true">event_upcoming</span>
 					</div>
 					<div class="today-body">
 						<span class="today-label">{m('planDetail.nextUp')}</span>
@@ -2228,14 +2228,14 @@
 							<span class="today-pattern" data-testid="plan-next-pattern">{patternLabel(nextWorkout)}</span>
 						{/if}
 					</div>
-					<span class="material-symbols today-arrow">chevron_right</span>
+					<span class="material-symbols today-arrow" aria-hidden="true">chevron_right</span>
 				</button>
 			</section>
 		{:else if planPosition?.raceState === 'today'}
 			<section class="today">
 				<div class="today-link today-static">
 					<div class="today-icon">
-						<span class="material-symbols">emoji_events</span>
+						<span class="material-symbols" aria-hidden="true">emoji_events</span>
 					</div>
 					<div class="today-body">
 						<span class="today-label">{m('planDetail.raceDay')}</span>
@@ -2247,7 +2247,7 @@
 			<section class="today">
 				<div class="today-link today-static">
 					<div class="today-icon">
-						<span class="material-symbols">self_improvement</span>
+						<span class="material-symbols" aria-hidden="true">self_improvement</span>
 					</div>
 					<div class="today-body">
 						<span class="today-label">{m('planDetail.today')}</span>
@@ -2292,7 +2292,7 @@
 			<section class="adherence" aria-label={m('planDetail.adherenceAria')}>
 				{#if currentWeekDrift}
 					<p class="adherence-flag drift-{currentWeekDrift.direction}">
-						<span class="material-symbols">monitoring</span>
+						<span class="material-symbols" aria-hidden="true">monitoring</span>
 						{currentWeekDrift.direction === 'over'
 							? m('planDetail.driftOverFlag', {
 									pct: Math.round(currentWeekDrift.driftFraction * 100)
@@ -2305,7 +2305,7 @@
 				{/if}
 				{#if missedLongRun}
 					<p class="adherence-flag missed-{missedLongRun.recommendation}">
-						<span class="material-symbols">event_busy</span>
+						<span class="material-symbols" aria-hidden="true">event_busy</span>
 						{missedLongRun.reason === 'taper'
 							? m('planDetail.missedLongTaper')
 							: missedLongRun.reason === 'recovery_soon'
@@ -2390,7 +2390,7 @@
 					<div class="plan-progress-stats">
 						{#if distanceBanked.plannedMetres > 0 && !restartWalkRun}
 							<div class="stat-chip">
-								<span class="material-symbols">route</span>
+								<span class="material-symbols" aria-hidden="true">route</span>
 								<span class="stat-label"><MetricLabel metric="distanceBanked" /></span>
 								<span class="stat-value">
 									{m('planDetail.distanceBankedValue', {
@@ -2402,7 +2402,7 @@
 						{/if}
 						{#if longestLongRunMetres != null}
 							<div class="stat-chip" title={m('planDetail.longestLongRun')}>
-								<span class="material-symbols">trending_up</span>
+								<span class="material-symbols" aria-hidden="true">trending_up</span>
 								<span class="stat-label">{m('planDetail.longestLongRun')}</span>
 								<span class="stat-value">{fmtKm(longestLongRunMetres)}</span>
 							</div>
@@ -2493,7 +2493,7 @@
 									disabled={bulkBusy}
 									title={m('planDetail.markRecovery')}
 								>
-									<span class="material-symbols">trending_down</span>
+									<span class="material-symbols" aria-hidden="true">trending_down</span>
 									{m('planDetail.markRecovery')}
 								</button>
 							{/if}
@@ -2506,7 +2506,7 @@
 									disabled={bulkBusy}
 									title={m('planDetail.repeatWeekHint')}
 								>
-									<span class="material-symbols">replay</span>
+									<span class="material-symbols" aria-hidden="true">replay</span>
 									{m('planDetail.repeatWeekAction')}
 								</button>
 							{/if}
@@ -2518,7 +2518,7 @@
 									disabled={bulkBusy}
 									title={m('planDetail.duplicateWeek')}
 								>
-									<span class="material-symbols">content_copy</span>
+									<span class="material-symbols" aria-hidden="true">content_copy</span>
 									{m('planDetail.duplicateWeek')}
 								</button>
 							{/if}
@@ -2576,12 +2576,12 @@
 		</DisclosureSection>
 
 		<a class="coach-link" href="/messages/coach?plan={plan.id}">
-			<span class="material-symbols">sports</span>
+			<span class="material-symbols" aria-hidden="true">sports</span>
 			<div class="coach-link-body">
 				<strong>{m('planDetail.coachLinkTitle')}</strong>
 				<span>{m('planDetail.coachLinkSubtitle')}</span>
 			</div>
-			<span class="material-symbols arrow">chevron_right</span>
+			<span class="material-symbols arrow" aria-hidden="true">chevron_right</span>
 		</a>
 
 		{#if !plan.is_template && plan.user_id === auth.user?.id}

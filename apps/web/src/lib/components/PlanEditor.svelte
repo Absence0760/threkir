@@ -1311,6 +1311,8 @@
 							<button
 								type="button"
 								class="week-row"
+								aria-expanded={expandedWeek === weekIdx}
+								aria-controls="plan-editor-week-{weekIdx}"
 								onclick={() => (expandedWeek = expandedWeek === weekIdx ? null : weekIdx)}
 							>
 								<span class="week-num">#{w.week_index + 1}</span>
@@ -1319,13 +1321,13 @@
 								<span class="week-workouts">
 									{t(sessionCount === 1 ? 'planEditor.nSessionsOne' : 'planEditor.nSessionsMany', { n: sessionCount })}
 								</span>
-								<span class="caret material-symbols">
+								<span class="caret material-symbols" aria-hidden="true">
 									{expandedWeek === weekIdx ? 'expand_less' : 'expand_more'}
 								</span>
 							</button>
 
 							{#if expandedWeek === weekIdx}
-								<div class="week-editor">
+								<div class="week-editor" id="plan-editor-week-{weekIdx}">
 									{#each w.workouts as wo, woIdx (woIdx)}
 										<div class="wo-row">
 											<div class="wo-date">

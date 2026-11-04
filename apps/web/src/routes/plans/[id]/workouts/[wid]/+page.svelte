@@ -266,7 +266,7 @@
 {#if loading}
 	<div class="page" aria-busy="true" aria-label={t('workoutDetail.loadingWorkout')}>
 		<span class="back-skel" aria-hidden="true">
-			<span class="material-symbols">arrow_back</span>
+			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{t('workoutDetail.backToPlan')}
 		</span>
 		<div class="hero skel-hero" aria-hidden="true">

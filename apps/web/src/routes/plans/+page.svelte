@@ -315,7 +315,7 @@
 						aria-pressed={statusFilter === f.value}
 						type="button"
 					>
-						<span class="material-symbols">{f.icon}</span>
+						<span class="material-symbols" aria-hidden="true">{f.icon}</span>
 						<span class="activity-label">{f.label()}</span>
 						{#if counts[f.value] > 0}
 							<span class="count-pill">{counts[f.value]}</span>
@@ -326,17 +326,17 @@
 
 			<div class="toolbar-actions">
 				<a class="add-btn add-btn-outline" href="/plans/library">
-					<span class="material-symbols">public</span>
+					<span class="material-symbols" aria-hidden="true">public</span>
 					{m('plansPage.browseLibrary')}
 				</a>
 				{#if showAiPlan}
 					<a class="add-btn add-btn-outline" href={AI_PLAN_HREF}>
-						<span class="material-symbols">auto_awesome</span>
+						<span class="material-symbols" aria-hidden="true">auto_awesome</span>
 						{m('plansPage.describeWithAi')}
 					</a>
 				{/if}
 				<button class="add-btn" type="button" onclick={() => (showPlanModal = true)}>
-					<span class="material-symbols">add</span>
+					<span class="material-symbols" aria-hidden="true">add</span>
 					{m('plansPage.newPlan')}
 				</button>
 			</div>
@@ -379,7 +379,7 @@
 				{m('plansPage.emptyLead')}
 			</p>
 			<button class="btn-primary" type="button" onclick={() => (showPlanModal = true)}>
-				<span class="material-symbols">add</span>
+				<span class="material-symbols" aria-hidden="true">add</span>
 				{m('plansPage.createFirst')}
 			</button>
 			{#if showAiPlan}
@@ -418,17 +418,20 @@
 				{@const isUpcoming = isActive && p.start_date > todayISO()}
 				{@const week = isActive ? currentWeek(p) : null}
 				{@const pct = isActive ? calendarPct(p) : null}
-				<a class="card" class:card-active={isActive} href="/plans/{p.id}">
+				<!-- The card is not itself a link: it holds Abandon / Delete, and a
+				     button inside an <a> is an interactive element nested in another.
+				     The title link stretches over the card instead (.card-link::after). -->
+				<div class="card" class:card-active={isActive}>
 					<div class="card-head">
-						<h3>{p.name}</h3>
+						<h3><a class="card-link" href="/plans/{p.id}">{p.name}</a></h3>
 						{#if isUpcoming}
 							<span class="badge status-upcoming">
-								<span class="material-symbols">event_upcoming</span>
+								<span class="material-symbols" aria-hidden="true">event_upcoming</span>
 								{m('plansPage.statusUpcoming')}
 							</span>
 						{:else}
 							<span class="badge status-{p.status}">
-								<span class="material-symbols">{statusIcon[p.status] ?? 'help'}</span>
+								<span class="material-symbols" aria-hidden="true">{statusIcon[p.status] ?? 'help'}</span>
 								{statusLabel(p.status)}
 							</span>
 						{/if}
@@ -453,11 +456,11 @@
 
 					<div class="meta">
 						<span class="meta-item">
-							<span class="material-symbols">date_range</span>
+							<span class="material-symbols" aria-hidden="true">date_range</span>
 							{formatDateShort(p.start_date)} → {formatDateShort(p.end_date)}
 						</span>
 						<span class="meta-item">
-							<span class="material-symbols">view_week</span>
+							<span class="material-symbols" aria-hidden="true">view_week</span>
 							{planLengthLabel(m, total, p.days_per_week)}
 						</span>
 					</div>
@@ -485,23 +488,17 @@
 							<button
 								class="card-action-btn"
 								type="button"
-								onclick={(e) => {
-									e.preventDefault();
-									abandon(p);
-								}}>{m('plansPage.abandon')}</button
+								onclick={() => abandon(p)}>{m('plansPage.abandon')}</button
 							>
 						{:else}
 							<button
 								class="card-action-btn danger"
 								type="button"
-								onclick={(e) => {
-									e.preventDefault();
-									remove(p);
-								}}>{m('plansPage.delete')}</button
+								onclick={() => remove(p)}>{m('plansPage.delete')}</button
 							>
 						{/if}
 					</div>
-				</a>
+				</div>
 			{/each}
 		</div>
 
@@ -680,6 +677,7 @@
 	}
 
 	.card {
+		position: relative;
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-md);
@@ -698,9 +696,22 @@
 		box-shadow: var(--shadow-md);
 		transform: translateY(-2px);
 	}
-	.card:focus-visible {
+	.card:has(.card-link:focus-visible) {
 		outline: 2px solid var(--color-primary);
 		outline-offset: 2px;
+	}
+	.card-link {
+		color: inherit;
+		text-decoration: none;
+	}
+	.card-link:focus-visible {
+		outline: none;
+	}
+	.card-link::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
 	}
 	.card-active {
 		border-color: var(--color-primary-light);
@@ -832,6 +843,8 @@
 	}
 
 	.card-actions {
+		position: relative;
+		z-index: 1;
 		display: flex;
 		justify-content: flex-end;
 		margin-top: auto;

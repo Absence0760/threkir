@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { dbError, refusalCode } from '#lib/core/supabase_error.ts';
+	import { AppError } from '#lib/core/app_error.ts';
 	import { parseImportCompleteness } from '#lib/integrations/import_completeness.ts';
 	import { normalizeParkrunAthleteNumber } from '#lib/integrations/parkrun_barcode.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
@@ -273,7 +274,7 @@
 		parkrunImporting = true;
 		try {
 			const { data: { session } } = await supabase.auth.getSession();
-			if (!session) throw new Error(m('settingsAccount.notSignedIn'));
+			if (!session) throw new AppError('settingsAccount.notSignedIn', { message: m('settingsAccount.notSignedIn') });
 			const url = `${PUBLIC_SUPABASE_URL}/functions/v1/parkrun-import`;
 			const resp = await fetch(url, {
 				method: 'POST',
@@ -1249,7 +1250,7 @@
 			// against an account that is already gone.
 			await settleBeforeSessionEnds(undoStore.flush);
 			const { data: { session } } = await supabase.auth.getSession();
-			if (!session) throw new Error(m('settingsAccount.notSignedIn'));
+			if (!session) throw new AppError('settingsAccount.notSignedIn', { message: m('settingsAccount.notSignedIn') });
 			const resp = await fetch(
 				`${PUBLIC_SUPABASE_URL}/functions/v1/delete-account`,
 				{

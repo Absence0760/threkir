@@ -38,7 +38,7 @@ test('clip-public-track rate-limit calls fail closed on RPC error', () => {
 
 test('createClub + saveRoute + submitReport + createChallenge all translate P0001 via the shared helper', () => {
 	// Reason: every P0001 rate-limit bucket on the web client must route
-	// through `rateLimitErrorMessage` so users see a "wait N minutes" line
+	// through `rateLimitAppError` so users see a "wait N minutes" line
 	// instead of the raw `rate limit exceeded for <bucket>, retry in Ns`
 	// postgres exception. Previously each call-site carried its own ad-hoc
 	// translation (e.g. submitReport's old "Too many reports — please wait
@@ -52,8 +52,8 @@ test('createClub + saveRoute + submitReport + createChallenge all translate P000
 	const source = read('src/lib/core/data.ts');
 	assert.match(
 		source,
-		/import\s+\{\s*rateLimitErrorMessage\s*\}\s+from\s+['"]\.\.\/i18n\/rate_limit_message['"]/,
-		'data.ts must import rateLimitErrorMessage from ../i18n/rate_limit_message.',
+		/import\s+\{\s*rateLimitAppError\s*\}\s+from\s+['"]\.\.\/i18n\/rate_limit_message['"]/,
+		'data.ts must import rateLimitAppError from ../i18n/rate_limit_message.',
 	);
 	assert.match(
 		source,
@@ -61,7 +61,7 @@ test('createClub + saveRoute + submitReport + createChallenge all translate P000
 		'data.ts must import the message lookup `m` — it is the localizer every rate-limit sentence is resolved through.',
 	);
 	// Slice each function body and assert the helper appears with the
-	// "throw new Error(friendly)" follow-up. Using the same bodyAfter
+	// "if (limited) throw limited" follow-up. Using the same bodyAfter
 	// landmark approach as the public-runs test above so a nested type
 	// literal can't trip a naive `^}` regex.
 	function bodyAfter(needle: string, until: string): string {
@@ -101,13 +101,13 @@ test('createClub + saveRoute + submitReport + createChallenge all translate P000
 	] as const) {
 		assert.match(
 			body,
-			/rateLimitErrorMessage\(m,/,
-			`${name} must call rateLimitErrorMessage(m, …) — every P0001 bucket goes through the shared helper, with the localizer passed in.`,
+			/rateLimitAppError\(m,/,
+			`${name} must call rateLimitAppError(m, …) — every P0001 bucket goes through the shared helper, with the localizer passed in.`,
 		);
 		assert.match(
 			body,
-			/if\s*\(friendly\)\s*throw\s+new\s+Error\(friendly\)/,
-			`${name} must throw the friendly string when the helper recognises the bucket. Skipping the throw drops back to the raw postgres exception.`,
+			/if\s*\(limited\)\s*throw\s+limited/,
+			`${name} must throw the AppError when the helper recognises the bucket. Skipping the throw drops back to the raw postgres exception, and a plain Error(sentence) reads as the generic fallback through errorCopy.`,
 		);
 	}
 });
@@ -120,8 +120,8 @@ test('template-clone / publish RPC wrappers translate P0001 via the shared helpe
 	// create_route. Their data.ts wrappers used to `if (error) throw
 	// error` the raw postgres string straight into the caller's toast
 	// (e.g. plans/new, plans/library, clubs/[slug] adopt). Pin that
-	// each wrapper now routes the error through rateLimitErrorMessage +
-	// re-throws the friendly string, matching createClub / saveRoute /
+	// each wrapper now routes the error through rateLimitAppError +
+	// re-throws it, matching createClub / saveRoute /
 	// submitReport above.
 	const source = read('src/lib/core/data.ts');
 	function bodyOf(needle: string): string {
@@ -141,13 +141,13 @@ test('template-clone / publish RPC wrappers translate P0001 via the shared helpe
 		const body = bodyOf(name);
 		assert.match(
 			body,
-			/rateLimitErrorMessage\(m,/,
-			`${name} must call rateLimitErrorMessage(m, …) — every P0001 rate-limit bucket goes through the shared helper, with the localizer passed in.`,
+			/rateLimitAppError\(m,/,
+			`${name} must call rateLimitAppError(m, …) — every P0001 rate-limit bucket goes through the shared helper, with the localizer passed in.`,
 		);
 		assert.match(
 			body,
-			/if\s*\(friendly\)\s*throw\s+new\s+Error\(friendly\)/,
-			`${name} must throw the friendly string when the helper recognises the bucket. Skipping the throw drops back to the raw postgres exception.`,
+			/if\s*\(limited\)\s*throw\s+limited/,
+			`${name} must throw the AppError when the helper recognises the bucket. Skipping the throw drops back to the raw postgres exception, and a plain Error(sentence) reads as the generic fallback through errorCopy.`,
 		);
 	}
 });
@@ -170,16 +170,16 @@ test('sendDm translates the direct_messages send buckets via the shared helper',
 	const body = source.slice(start, end);
 	assert.match(
 		body,
-		/rateLimitErrorMessage\(m,/,
-		'sendDm must call rateLimitErrorMessage(m, …) — every P0001 bucket goes through the shared helper, with the localizer passed in.',
+		/rateLimitAppError\(m,/,
+		'sendDm must call rateLimitAppError(m, …) — every P0001 bucket goes through the shared helper, with the localizer passed in.',
 	);
 	assert.match(
 		body,
-		/if\s*\(friendly\)\s*throw\s+new\s+Error\(friendly\)/,
-		'sendDm must throw the friendly string when the helper recognises the bucket.',
+		/if\s*\(limited\)\s*throw\s+limited/,
+		'sendDm must throw the AppError when the helper recognises the bucket.',
 	);
 	assert.ok(
-		body.indexOf("=== '42501'") < body.indexOf('rateLimitErrorMessage(m,'),
+		body.indexOf("=== '42501'") < body.indexOf('rateLimitAppError(m,'),
 		'the 42501 follow-graph branch must be checked before the rate-limit branch.',
 	);
 });

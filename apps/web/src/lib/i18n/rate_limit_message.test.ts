@@ -15,7 +15,9 @@ import { resolve } from 'node:path';
 import { interpolate } from './interpolate';
 import { CATALOGUE_LOADERS } from './catalogues';
 import { SUPPORTED_LOCALES, type Locale } from './locale';
-import { rateLimitErrorMessage, rateLimitMessage, type Translate } from './rate_limit_message';
+import { rateLimitAppError, rateLimitErrorMessage, rateLimitMessage, type Translate } from './rate_limit_message';
+import { errorCopy } from './error_copy';
+import { AppError } from '../core/app_error';
 
 const BUCKETS = [
 	'create_club',
@@ -278,3 +280,21 @@ test('no mapped bucket has stopped being throttled', () => {
 	);
 });
 
+
+test('a thrown rate-limit refusal renders as its bucket sentence through errorCopy, not the fallback', async () => {
+	// The data layer used to throw `new Error(sentence)`; errorCopy reads only
+	// an AppError's key, so every UI file showed its own generic fallback.
+	const t = await translatorFor('en');
+	const thrown = rateLimitAppError(t, err('create_club', 42));
+	assert.ok(thrown instanceof AppError);
+	assert.equal(thrown.key, 'rateLimit.createClub');
+	assert.equal(thrown.message, "You're creating clubs too quickly — please wait 42 seconds and try again.");
+	const quiet = console.error;
+	console.error = () => {};
+	try {
+		assert.equal(errorCopy(thrown, t, 'ctx', 'clubEditor.createFailed'), thrown.message);
+	} finally {
+		console.error = quiet;
+	}
+	assert.equal(rateLimitAppError(t, { code: '23505', message: 'duplicate key' }), null);
+});

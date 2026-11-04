@@ -219,7 +219,7 @@ import {
 } from '../social/event_gym_template';
 import { m } from '../i18n/store.svelte';
 import type { RouteDeleteImpact } from '../routes/route_delete_impact';
-import { rateLimitErrorMessage } from '../i18n/rate_limit_message';
+import { rateLimitAppError } from '../i18n/rate_limit_message';
 import {
 	DM_THREAD_ORDER,
 	DM_THREAD_PAGE_SIZE,
@@ -1462,7 +1462,7 @@ export async function revokeShare(kind: ShareableKind, id: string, recipientId: 
 					.eq('recipient_id', recipientId)
 					.select('recipient_id');
 	if (error) throw dbError(error);
-	if (!data || data.length === 0) throw new Error(m('audience.revokeRefused'));
+	if (!data || data.length === 0) throw new AppError('audience.revokeRefused', { message: m('audience.revokeRefused') });
 }
 
 /// Move a run or route to a level. Only me revokes every grant first, so the
@@ -1486,7 +1486,7 @@ export async function setAudience(kind: ShareableKind, id: string, level: Audien
 			? await supabase.from(TABLES.runs).update(columns).eq('id', id).select('id')
 			: await supabase.from('routes').update(columns).eq('id', id).select('id');
 	if (error) throw dbError(error);
-	if (!data || data.length === 0) throw new Error(m('audience.updateRefused'));
+	if (!data || data.length === 0) throw new AppError('audience.updateRefused', { message: m('audience.updateRefused') });
 }
 
 /// Persist at most one fitness snapshot per user per UTC day. The dashboard
@@ -2480,8 +2480,8 @@ export async function saveRoute(route: {
 		// 20260907_001 — 30 routes / hour per user, generous enough for
 		// bulk Strava / Garmin imports) as a friendlier "wait N minutes"
 		// message instead of the raw postgres exception.
-		const friendly = rateLimitErrorMessage(m, error);
-		if (friendly) throw new Error(friendly);
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
 		throw dbError(error);
 	}
 	return asRoute(data);
@@ -3693,8 +3693,8 @@ export async function createClub(input: {
 		// converted to a friendlier 'wait N minutes' message rather than
 		// the raw `rate limit exceeded for create_club, retry in Ns`.
 		if (error && !isDuplicateKeyError(error)) {
-			const friendly = rateLimitErrorMessage(m, error);
-			if (friendly) throw new Error(friendly);
+			const limited = rateLimitAppError(m, error);
+			if (limited) throw limited;
 			throw dbError(error);
 		}
 	}
@@ -5908,8 +5908,8 @@ export async function clonePlanTemplate(
 		p_overlap: overlap,
 	});
 	if (error) {
-		const friendly = rateLimitErrorMessage(m, error);
-		if (friendly) throw new Error(friendly);
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
 		throw dbError(error);
 	}
 	return data as string;
@@ -6002,8 +6002,8 @@ export async function clonePublicPlan(
 		p_overlap: overlap,
 	});
 	if (error) {
-		const friendly = rateLimitErrorMessage(m, error);
-		if (friendly) throw new Error(friendly);
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
 		throw dbError(error);
 	}
 	return data as string;
@@ -7143,8 +7143,8 @@ export async function restartTrainingPlan(planId: string, startIso: string): Pro
 		p_start_date: startIso
 	});
 	if (error) {
-		const friendly = rateLimitErrorMessage(m, error);
-		if (friendly) throw new Error(friendly);
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
 		throw dbError(error);
 	}
 	return data;
@@ -11045,8 +11045,8 @@ export async function submitReport(input: {
 		// consistent "filing reports too quickly — please wait N minutes"
 		// rather than this function carrying its own copy of the
 		// translation rule.
-		const friendly = rateLimitErrorMessage(m, error);
-		if (friendly) throw new Error(friendly);
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
 		throw dbError(error);
 	}
 	return data as string;
@@ -11283,10 +11283,10 @@ export async function sendDm(
 		.single();
 	if (error || !data) {
 		if (error?.code === '42501') {
-			throw new Error(m('messages.sendNotAllowed'));
+			throw new AppError('messages.sendNotAllowed', { message: m('messages.sendNotAllowed') });
 		}
-		const friendly = rateLimitErrorMessage(m, error);
-		if (friendly) throw new Error(friendly);
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
 		throw error ? dbError(error) : new Error('Send failed');
 	}
 	return data as DirectMessage;
@@ -14097,8 +14097,8 @@ export async function cloneSessionTemplate(templateId: string): Promise<string> 
 		template_id: templateId
 	});
 	if (error) {
-		const friendly = rateLimitErrorMessage(m, error);
-		if (friendly) throw new Error(friendly);
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
 		throw dbError(error);
 	}
 	return data as string;
@@ -14129,8 +14129,8 @@ export async function publishGymRoutineAsTemplate(routineId: string, clubId: str
 		p_club_id: clubId
 	});
 	if (error) {
-		const friendly = rateLimitErrorMessage(m, error);
-		if (friendly) throw new Error(friendly);
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
 		throw dbError(error);
 	}
 	return data as string;
@@ -14144,8 +14144,8 @@ export async function cloneGymRoutineTemplate(templateId: string): Promise<strin
 		p_template_id: templateId
 	});
 	if (error) {
-		const friendly = rateLimitErrorMessage(m, error);
-		if (friendly) throw new Error(friendly);
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
 		throw dbError(error);
 	}
 	return data as string;
@@ -14754,8 +14754,8 @@ export async function createChallenge(input: {
 		// 20270610_001 routed the trigger through the shared helper, so it
 		// finally carries the bucket + retry figure) as the friendly
 		// "wait N minutes" line instead of the editor's generic toast.
-		const friendly = rateLimitErrorMessage(m, error);
-		if (friendly) throw new Error(friendly);
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
 		throw dbError(error);
 	}
 	return challengeFromRow(data);
@@ -14957,8 +14957,8 @@ export async function previewChallengeInvite(
 export async function joinChallengeByToken(token: string): Promise<string | null> {
 	const { data, error } = await supabase.rpc('join_challenge_by_token', { p_token: token });
 	if (error) {
-		const friendly = rateLimitErrorMessage(m, error);
-		if (friendly) throw new Error(friendly);
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
 		throw dbError(error);
 	}
 	return data ?? null;

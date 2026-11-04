@@ -1726,11 +1726,13 @@
 	.limit-bar {
 		display: flex; align-items: center; gap: 0.5rem;
 		padding: var(--space-sm) var(--space-md);
-		background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2);
+		/* A spent allowance is a warning, not an error: nothing failed. */
+		background: var(--color-warning-light);
+		border: 1px solid color-mix(in srgb, var(--color-warning) 35%, transparent);
 		border-radius: var(--radius-md); margin: 0 var(--space-sm) var(--space-sm);
 		font-size: 0.82rem; color: var(--color-text-secondary);
 	}
-	.limit-bar .material-symbols { font-size: 1.1rem; color: var(--color-danger-text); }
+	.limit-bar .material-symbols { font-size: 1.1rem; color: var(--color-warning-text); }
 	.archive-banner {
 		display: flex; align-items: center; gap: 0.5rem;
 		padding: 0.5rem 0.8rem; margin: 0 var(--space-sm);

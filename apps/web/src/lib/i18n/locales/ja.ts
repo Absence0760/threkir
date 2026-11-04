@@ -4549,6 +4549,8 @@ export const messages = {
 	"workoutDetail.relinkHint": "このワークアウトの日付に近いランを選んで、このセッションとして数えます。すでに別のワークアウトに紐づいているランは表示されません。",
 	"workoutDetail.relinkLoading": "ランを検索中…",
 	"workoutDetail.relinkError": "ランを読み込めませんでした。もう一度お試しください。",
+	"workoutDetail.relinkRetry": "再試行",
+	"workoutDetail.relinkSaveFailed": "そのランを紐付けできませんでした：{error} もう一度選ぶと再試行します。",
 	"workoutDetail.unlinkFailed": "ランのリンクを解除できませんでした。もう一度お試しください。",
 	"workoutDetail.skipped": "スキップ済み",
 	"workoutDetail.skip": "このワークアウトをスキップ",

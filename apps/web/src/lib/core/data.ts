@@ -6803,22 +6803,27 @@ export async function fetchRelinkCandidateRuns(
 	// the explicit scope is defence in depth: a future RLS edit that broke
 	// the chain must not widen it). A run linked to ANOTHER workout must not
 	// be offered.
-	const { data: plans } = await supabase
+	// Every read below throws on failure: an empty list here reads as "no
+	// eligible runs", which would hide a failed load behind a true-sounding
+	// answer and leave the picker's Retry unreachable.
+	const { data: plans, error: plansErr } = await supabase
 		.from('training_plans')
 		.select('id, plan_weeks(id)')
 		.eq('user_id', userId);
+	if (plansErr) throw dbError(plansErr);
 	const weekIds = (plans ?? []).flatMap((p) =>
 		((p as { plan_weeks: { id: string }[] }).plan_weeks ?? []).map((w) => w.id)
 	);
 	const linkedRunIds: string[] = [];
 	if (weekIds.length > 0) {
-		const { data: linkedRows } = await queryChunked(weekIds, (part) =>
+		const { data: linkedRows, error: linkedErr } = await queryChunked(weekIds, (part) =>
 			supabase
 				.from('plan_workouts')
 				.select('completed_run_id')
 				.in('week_id', part)
 				.not('completed_run_id', 'is', null)
 		);
+		if (linkedErr) throw dbError(linkedErr);
 		for (const row of linkedRows ?? []) {
 			const id = (row as { completed_run_id: string | null }).completed_run_id;
 			if (id) linkedRunIds.push(id);
@@ -6849,7 +6854,8 @@ export async function fetchRelinkCandidateRuns(
 				`and(started_at.gte.${loIso},started_at.lte.${hiIso}),id.eq.${currentRunId}`
 			)
 		: runQuery.gte('started_at', loIso).lte('started_at', hiIso);
-	const { data: runRows } = await runQuery.order('started_at', { ascending: false });
+	const { data: runRows, error: runsErr } = await runQuery.order('started_at', { ascending: false });
+	if (runsErr) throw dbError(runsErr);
 
 	const runs: RelinkCandidateRun[] = (runRows ?? []).map((r) => ({
 		id: (r as { id: string }).id,

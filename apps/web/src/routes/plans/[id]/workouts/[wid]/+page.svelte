@@ -26,6 +26,7 @@
 	import Modal from '#lib/components/Modal.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import type { PlanWorkout } from '#lib/types.ts';
 	import type { WorkoutStructure } from '#lib/training/training.ts';
 	import {
@@ -58,6 +59,9 @@
 	let relinkError = $state(false);
 	let relinkCandidates = $state<RelinkCandidateRun[]>([]);
 	let relinkSaving = $state(false);
+	/// A failed link, as opposed to a failed load: the candidates stay on
+	/// screen so another tap retries.
+	let relinkSaveError = $state<string | null>(null);
 
 	let cameFromPlan = $state(false);
 	afterNavigate(({ from }) => {
@@ -149,6 +153,7 @@
 		if (!workout) return;
 		showRelink = true;
 		relinkError = false;
+		relinkSaveError = null;
 		relinkLoading = true;
 		relinkCandidates = [];
 		try {
@@ -179,13 +184,15 @@
 	async function pickRelink(runId: string) {
 		if (!workout || relinkSaving) return;
 		relinkSaving = true;
+		relinkSaveError = null;
 		try {
 			await markWorkoutCompleted(workout.id, runId);
 			showRelink = false;
 			await load();
 		} catch (e) {
-			console.error('re-link failed', e);
-			relinkError = true;
+			relinkSaveError = t('workoutDetail.relinkSaveFailed', {
+				error: errorCopy(e, t, 'workoutDetail.relinkSaveFailed'),
+			});
 		} finally {
 			relinkSaving = false;
 		}
@@ -585,10 +592,18 @@
 	{#if relinkLoading}
 		<p class="relink-status" role="status">{t('workoutDetail.relinkLoading')}</p>
 	{:else if relinkError}
-		<p class="relink-status relink-error" role="alert">{t('workoutDetail.relinkError')}</p>
+		<div class="relink-status relink-error" role="alert">
+			<p>{t('workoutDetail.relinkError')}</p>
+			<button class="btn btn-secondary btn-sm" onclick={openRelink}>
+				{t('workoutDetail.relinkRetry')}
+			</button>
+		</div>
 	{:else if relinkCandidates.length === 0}
 		<p class="relink-status">{t('workoutDetail.relinkEmpty')}</p>
 	{:else}
+		{#if relinkSaveError}
+			<p class="relink-status relink-error" role="alert">{relinkSaveError}</p>
+		{/if}
 		<ul class="relink-list">
 			{#each relinkCandidates as run (run.id)}
 				<li>

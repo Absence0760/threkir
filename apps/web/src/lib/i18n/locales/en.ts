@@ -4572,6 +4572,8 @@ export const en = {
 	"workoutDetail.relinkHint": "Pick a run near this workout's date to count it as this session. Runs already linked to another workout aren't shown.",
 	"workoutDetail.relinkLoading": "Finding your runs…",
 	"workoutDetail.relinkError": "Couldn't load your runs. Try again.",
+	"workoutDetail.relinkRetry": "Retry",
+	"workoutDetail.relinkSaveFailed": "Couldn't link that run: {error} Pick it again to retry.",
 	"workoutDetail.unlinkFailed": "Couldn't unlink the run. Try again.",
 	"workoutDetail.skipped": "Skipped",
 	"workoutDetail.skip": "Skip this workout",

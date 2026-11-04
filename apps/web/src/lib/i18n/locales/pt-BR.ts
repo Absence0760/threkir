@@ -4553,6 +4553,8 @@ export const messages = {
 	"workoutDetail.relinkHint": "Escolha uma corrida próxima da data deste treino para contá-la como esta sessão. Corridas já vinculadas a outro treino não são exibidas.",
 	"workoutDetail.relinkLoading": "Procurando suas corridas…",
 	"workoutDetail.relinkError": "Não foi possível carregar suas corridas. Tente novamente.",
+	"workoutDetail.relinkRetry": "Tentar novamente",
+	"workoutDetail.relinkSaveFailed": "Não foi possível vincular essa corrida: {error} Escolha-a novamente para tentar outra vez.",
 	"workoutDetail.unlinkFailed": "Não foi possível desvincular a corrida. Tente novamente.",
 	"workoutDetail.skipped": "Ignorado",
 	"workoutDetail.skip": "Ignorar este treino",

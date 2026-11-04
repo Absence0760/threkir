@@ -4554,6 +4554,8 @@ export const messages = {
 	"workoutDetail.relinkHint": "Wähle einen Lauf in der Nähe des Workout-Datums, um ihn als diese Einheit zu zählen. Läufe, die bereits mit einem anderen Workout verknüpft sind, werden nicht angezeigt.",
 	"workoutDetail.relinkLoading": "Läufe werden gesucht…",
 	"workoutDetail.relinkError": "Läufe konnten nicht geladen werden. Versuche es erneut.",
+	"workoutDetail.relinkRetry": "Erneut versuchen",
+	"workoutDetail.relinkSaveFailed": "Dieser Lauf konnte nicht verknüpft werden: {error} Wähle ihn erneut, um es noch einmal zu versuchen.",
 	"workoutDetail.unlinkFailed": "Lauf konnte nicht entkoppelt werden. Versuche es erneut.",
 	"workoutDetail.skipped": "Übersprungen",
 	"workoutDetail.skip": "Diese Einheit überspringen",

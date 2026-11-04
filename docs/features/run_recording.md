@@ -308,6 +308,10 @@ Other recorders are deliberately unchanged:
 - **Apple Watch.** Core Location again, with no way to force the watch's own receiver: watchOS may use the paired iPhone's location while it is nearby. Unmeasured.
 - **Garmin Connect IQ and the custom watch.** Both already read their own GNSS receivers; there is no fused layer to route around.
 
+### Location outside the recorder
+
+The fused-provider request above is the only one in the app allowed to ask Android for better location settings. geolocator_android's `FusedLocationClient.startPositionUpdates` runs `SettingsClient.checkLocationSettings` for every request, a one-shot `getCurrentPosition` included, and on `RESOLUTION_REQUIRED` starts Google's "For a better experience, your device will need to use Location Accuracy" dialog, at any accuracy. At run start that dialog is worth its interruption. Anywhere else it is not, so every other screen reads its position through `lib/quiet_location.dart` (`quietPositionFixes` on open, `locateForBrowse` on a Locate tap), which uses `browseLocationSettings()`: balanced accuracy through `LocationManager` (`forceLocationManager: true`), which never shows the dialog. On Android 12+ that still reaches the fused provider through `LocationManager` (see *Why not `forceLocationManager`* above), which is fine for centring a map and is why it is no route to raw GPS for a track. `test/quiet_location_test.dart` fails a file in `lib/` that reads a position or asks for settings or accuracy outside the helper ([decisions § 2277](../architecture/decisions.md), [conventions.md § Mobile location has two intents](../architecture/conventions.md)).
+
 ### Precise location
 
 A location grant without precision (iOS 14+ with Precise Location off, Android 12+ with Approximate only) serves fixes kilometres wide. Every one fails the accuracy gate, so the run would record a clock and no track. Each recorder checks the grant at run start ([decisions § 1985](../architecture/decisions.md)); the accuracy gate itself is unchanged and no metadata key records the grant.

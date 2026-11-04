@@ -2,8 +2,13 @@
 	// A placeholder rectangle for a part of a loading page — a map, a chart, a
 	// row's title bar. Composed into the shape the page settles into so the
 	// loaded frame fills the blocks instead of re-laying the page out
-	// (decisions § 2288). Same shimmer as the page-local `.skel` rows on
-	// /runs, /gym and /history, and frozen under reduced motion.
+	// (decisions § 2288). The only shimmer on web: pages compose this rather
+	// than copying a `.skel` rule (loading_skeleton_guard.test.ts), and it is
+	// frozen under reduced motion.
+	//
+	// Painted in --color-fill-subtle, the subtle-fill token: --color-bg-tertiary
+	// is byte-identical to --color-surface in dark, so a block on a card would
+	// vanish between sweeps.
 	//
 	// Decorative: the host page announces the load once, through a
 	// `role="status"` line, not once per block.
@@ -27,12 +32,12 @@
 		display: block;
 		flex-shrink: 0;
 		max-width: 100%;
-		background: var(--color-bg-tertiary);
+		background: var(--color-fill-subtle);
 		background-image: linear-gradient(
 			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
+			var(--color-fill-subtle) 0%,
+			var(--color-bg-tertiary) 50%,
+			var(--color-fill-subtle) 100%
 		);
 		background-size: 200% 100%;
 		animation: skeleton-shimmer 1.4s ease-in-out infinite;

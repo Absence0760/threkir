@@ -7500,6 +7500,22 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      route_delete_impact: {
+        Args: { p_route_id: string }
+        Returns: {
+          conditions_by_others: number
+          events: number
+          linked_runs: number
+          markers: number
+          photos: number
+          race_listings: number
+          reviews_by_others: number
+          saved_by_others: number
+          segment_efforts_by_others: number
+          segments_by_others: number
+          shares: number
+        }[]
+      }
       route_markers_for_viewer: {
         Args: { p_route_id: string }
         Returns: {

@@ -1685,6 +1685,12 @@ class _DashboardScreenState extends State<DashboardScreen>
       final latestRun = _latestRun(runs);
       final latestRunSection =
           latestRun == null ? null : _latestRunSection(latestRun, unit);
+      final todayBlocks = _orderTodayBlocks(
+        latestRun: latestRun,
+        latestRunSection: latestRunSection,
+        modalityBody: _todayModalityBody(),
+        now: now,
+      );
       // An empty-goals card earns the slot above the runner's own numbers on
       // a new account, not on visit 200: once there is a run it shrinks to a
       // one-line link under the period stats.
@@ -1973,8 +1979,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         // the chart cards flow into two vertical columns. Blocks
         // alternate columns; internally self-hiding cards render
         // zero-height so a hidden card never reserves a grid cell.
-        final modalityBody = _todayModalityBody();
-        final leadBlocks = [?workoutCard, ?latestRunSection, ?modalityBody];
+        final leadBlocks = [?workoutCard, ...todayBlocks];
         final leadColumn = leadBlocks.isEmpty
             ? null
             : Column(
@@ -2062,12 +2067,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             if (workoutCard != null) ...[workoutCard, _kSectionGap],
             // After today's session, which is the more urgent of the two.
             if (raceCard != null) ...[raceCard, _kSectionGap],
-            if (latestRunSection != null) ...[latestRunSection, _kSectionGap],
-            // Today's logged non-run modalities (gym + nutrition).
-            // Self-hiding: each card only renders when that modality was
-            // logged today, so a pure runner sees nothing new here
-            // (multi_modal.md § Home, anti-clutter checklist).
-            ..._todayModalitySection(),
+            for (final block in todayBlocks) ...[block, _kSectionGap],
             trendsDivider,
             if (goalsSection != null) ...[goalsSection, _kSectionGap],
             periodRow,
@@ -2146,10 +2146,48 @@ class _DashboardScreenState extends State<DashboardScreen>
     return body;
   }
 
-  List<Widget> _todayModalitySection() {
-    final body = _todayModalityBody();
-    if (body == null) return const [];
-    return [body, _kSectionGap];
+  /// The Today block under the plan cards, in multi_modal.md § Home rule 2's
+  /// order: what was logged today, most recently started first, then the last
+  /// run when it is from an earlier day, so a run from last week never sits
+  /// above the lift and the meals logged this morning.
+  List<Widget> _orderTodayBlocks({
+    required Run? latestRun,
+    required Widget? latestRunSection,
+    required Widget? modalityBody,
+    required DateTime now,
+  }) {
+    final dayStart = DateTime(now.year, now.month, now.day);
+    final runAt = latestRun?.startedAt.toLocal();
+    final runIsToday = runAt != null && !runAt.isBefore(dayStart);
+    if (latestRunSection == null || modalityBody == null) {
+      return [?latestRunSection, ?modalityBody];
+    }
+    if (!runIsToday) return [modalityBody, latestRunSection];
+    final modalityAt = _todayModalityStartedAt();
+    final runFirst = modalityAt == null || !runAt.isBefore(modalityAt);
+    return runFirst
+        ? [latestRunSection, modalityBody]
+        : [modalityBody, latestRunSection];
+  }
+
+  /// When the newest shown lift or meal of today started; null when none
+  /// carries a time.
+  DateTime? _todayModalityStartedAt() {
+    DateTime? latest;
+    void consider(DateTime? at) {
+      final local = at?.toLocal();
+      if (local != null && (latest == null || local.isAfter(latest!))) {
+        latest = local;
+      }
+    }
+
+    if (_gymShown) consider(_todaysLift?.startedAt);
+    if (_nutritionShown) {
+      for (final f in _todaysFood) {
+        consider(f.startedAt);
+      }
+    }
+    return latest;
   }
 
   Widget _goalsSection(

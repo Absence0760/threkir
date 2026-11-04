@@ -744,6 +744,7 @@ export const messages = {
 	"planDetail.bulkConfirm": "Anwenden",
 	"planDetail.replan": "Restwochen neu planen",
 	"planDetail.replanOnTrack": "Dein Plan ist auf Kurs — nichts anzupassen.",
+	"planDetail.replanRunsUnavailable": "Deine letzten Läufe konnten nicht geladen werden, daher lässt sich der Plan noch nicht mit ihnen abgleichen. Versuche es gleich noch einmal.",
 	"planDetail.replanApplied": "{n, plural, one {# Einheit angepasst} other {# Einheiten angepasst}}",
 	"planDetail.replanPreviewAria": "Vorgeschlagene Planänderungen",
 	"planDetail.replanPreviewTitle": "Vorgeschlagene Änderungen",

@@ -739,6 +739,7 @@ export const messages = {
 	"planDetail.bulkConfirm": "適用",
 	"planDetail.replan": "残りの週を再計画",
 	"planDetail.replanOnTrack": "プランは順調です — 調整は不要です。",
+	"planDetail.replanRunsUnavailable": "最近のランを読み込めなかったため、まだプランと照らし合わせられません。少し待ってからもう一度お試しください。",
 	"planDetail.replanApplied": "{n, plural, other {#件のワークアウトを調整しました}}",
 	"planDetail.replanPreviewAria": "提案されたプラン変更",
 	"planDetail.replanPreviewTitle": "提案された変更",

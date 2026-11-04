@@ -201,4 +201,33 @@ test.describe('/plans/[id] adherence flags', () => {
 			await deleteSagaUsers([runner]);
 		}
 	});
+
+	// A failed recent-runs read used to leave an empty list behind, which the
+	// drift flag read as "ran nothing": "0.0 km of the 24.0 km due". Runs that
+	// never loaded are unknown, so nothing is flagged.
+	test('a recent-runs read that fails flags nothing', async ({ browser }) => {
+		const [runner] = await createSagaUsers(1, { displayNames: ['Runs Unavailable Runner'] });
+		const admin = getAdminClient();
+		const planId = crypto.randomUUID();
+		const ctx = await browser.newContext({ storageState: runner.storageStatePath });
+		try {
+			await seedWeek(admin, planId, runner.id, 'e2e runs unavailable');
+			const page = await ctx.newPage();
+			let failed = 0;
+			await page.route(/\/rest\/v1\/runs\?.*limit=50/, (route) => {
+				if (route.request().method() !== 'GET') return route.fallback();
+				failed++;
+				return route.fulfill({ status: 500, body: '{"message":"boom"}' });
+			});
+			await page.goto(`/plans/${planId}`);
+			await expect(page.getByRole('heading', { level: 1, name: 'e2e runs unavailable' }))
+				.toBeVisible({ timeout: 15_000 });
+			await expect.poll(() => failed).toBeGreaterThan(0);
+			await expect(page.locator('.adherence-flag.drift-under')).toHaveCount(0);
+		} finally {
+			await ctx.close();
+			await admin.from('training_plans').delete().eq('id', planId);
+			await deleteSagaUsers([runner]);
+		}
+	});
 });

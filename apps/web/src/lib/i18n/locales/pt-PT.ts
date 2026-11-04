@@ -743,6 +743,7 @@ export const messages = {
 	"planDetail.bulkConfirm": "Aplicar",
 	"planDetail.replan": "Replanear as semanas restantes",
 	"planDetail.replanOnTrack": "O seu plano está em dia — nada a ajustar.",
+	"planDetail.replanRunsUnavailable": "Não foi possível carregar as suas corridas recentes, por isso o plano ainda não pode ser comparado com elas. Tente novamente daqui a pouco.",
 	"planDetail.replanApplied": "{n, plural, one {# treino ajustado} other {# treinos ajustados}}",
 	"planDetail.replanPreviewAria": "Alterações propostas no plano",
 	"planDetail.replanPreviewTitle": "Alterações propostas",

@@ -154,6 +154,10 @@
 	let publishingTo = $state('');
 	let editingPlanMeta = $state(false);
 	let recentRuns = $state<Run[]>([]);
+	/// False until the owner's recent runs have landed. Until then an empty
+	/// list means "unknown", not "ran nothing": the drift flag and the re-plan
+	/// would otherwise judge the week against zero kilometres.
+	let recentRunsLoaded = $state(false);
 	let weekStart = $state<WeekStart>('monday');
 
 	let isOwner = $derived(plan != null && plan.user_id === auth.user?.id);
@@ -1043,6 +1047,10 @@
 
 	function proposeReplan(): void {
 		if (!plan || !isOwner || bulkBusy) return;
+		if (!recentRunsLoaded) {
+			showToast(m('planDetail.replanRunsUnavailable'), 'error');
+			return;
+		}
 		makeUpAnswers = null;
 		const input = buildReplanInput();
 		const changes = preferVolumeAnchor(
@@ -1071,6 +1079,10 @@
 
 	function proposeAdaptiveReplan(): void {
 		if (!plan || !isOwner || bulkBusy) return;
+		if (!recentRunsLoaded) {
+			showToast(m('planDetail.replanRunsUnavailable'), 'error');
+			return;
+		}
 		makeUpAnswers = null;
 		const input = buildReplanInput();
 		const r = adaptiveReplanRemaining({
@@ -1182,7 +1194,8 @@
 	/// re-anchored to what the runner last ran, through the same preview. It
 	/// proposes only; nothing changes until Apply.
 	async function offerAnchor(): Promise<void> {
-		if (!plan || !isOwner || plan.is_template || plan.status !== 'active') return;
+		if (!plan || !isOwner || !recentRunsLoaded || plan.is_template || plan.status !== 'active')
+			return;
 		const anchor = volumeAnchor(buildReplanInput());
 		if (!anchor) return;
 		taperPreview = null;
@@ -1283,10 +1296,12 @@
 			// projection (within 21 days) and the current-week adherence
 			// drift flag (any time). 50 covers a heavy week comfortably.
 			try {
-				recentRuns = await fetchRuns({ limit: 50 });
-			} catch (_) {
-				// Best-effort: the adherence/projection extras degrade
-				// gracefully without recent runs — don't fail the page.
+				recentRuns = await fetchRuns({ limit: 50, throwOnError: true });
+				recentRunsLoaded = true;
+			} catch (e) {
+				// Best-effort: the adherence/projection extras stay hidden
+				// without recent runs — don't fail the page.
+				console.warn('plan detail recent runs failed', e);
 			}
 		}
 		await loadLinkedRunDistances();
@@ -1693,7 +1708,8 @@
 	/// already ended, so a part-elapsed week is not judged against its full
 	/// seven-day target. Null unless the drift trips the flag.
 	let currentWeekDrift = $derived.by(() => {
-		if (!plan || !isOwner || currentWeek == null || currentWeekIndex == null) return null;
+		if (!plan || !isOwner || !recentRunsLoaded || currentWeek == null || currentWeekIndex == null)
+			return null;
 		const weekStartD = addDays(parseISO(plan.start_date), currentWeekIndex * 7);
 		const weekEndD = addDays(weekStartD, 7);
 		const runs = [];

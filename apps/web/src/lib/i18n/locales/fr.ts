@@ -744,6 +744,7 @@ export const messages = {
 	"planDetail.bulkConfirm": "Appliquer",
 	"planDetail.replan": "Replanifier les semaines restantes",
 	"planDetail.replanOnTrack": "Votre plan est sur la bonne voie — rien à ajuster.",
+	"planDetail.replanRunsUnavailable": "Impossible de charger vos sorties récentes : le plan ne peut pas encore être comparé à celles-ci. Réessayez dans un instant.",
 	"planDetail.replanApplied": "{n, plural, one {# séance ajustée} other {# séances ajustées}}",
 	"planDetail.replanPreviewAria": "Modifications proposées du plan",
 	"planDetail.replanPreviewTitle": "Modifications proposées",

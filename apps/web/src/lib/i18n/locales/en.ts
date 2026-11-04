@@ -757,6 +757,7 @@ export const en = {
 	"planDetail.bulkConfirm": "Apply",
 	"planDetail.replan": "Re-plan remaining weeks",
 	"planDetail.replanOnTrack": "Your plan's on track — nothing to adjust.",
+	"planDetail.replanRunsUnavailable": "Couldn't load your recent runs, so the plan can't be checked against them yet. Try again in a moment.",
 	"planDetail.replanApplied": "{n, plural, one {Adjusted # workout} other {Adjusted # workouts}}",
 	"planDetail.replanPreviewAria": "Proposed plan changes",
 	"planDetail.replanPreviewTitle": "Proposed changes",

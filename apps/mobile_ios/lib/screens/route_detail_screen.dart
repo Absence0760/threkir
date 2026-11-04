@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppMotion, AppSemanticColors, StatGrid, StatTile, StatusPill, motionDuration, motionScrollTo;
+    show AppSemanticColors, StatGrid, StatTile, StatusPill, motionScrollTo;
 
 import '../ai_disclosure.dart';
 import '../apple_watch_route_bridge.dart';
@@ -55,6 +55,7 @@ import '../widgets/route_markers_panel.dart';
 import '../widgets/route_conditions.dart';
 import '../widgets/route_photos.dart';
 import '../widgets/route_share_card.dart';
+import '../widgets/scrolled_away_title.dart';
 import '../widgets/segments_panel.dart';
 import '../widgets/send_route_sheet.dart';
 import '../widgets/sign_in_required_state.dart';
@@ -202,11 +203,8 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   // fold, so "tap the map to place" arrived with no map on screen.
   final ScrollController _scrollController = ScrollController();
 
-  // The toolbar's three actions leave a long name a few characters, so the
-  // full name is a wrapping heading under the map and the toolbar only
-  // repeats it once that heading has scrolled under the bar.
-  final GlobalKey _nameHeadingKey = GlobalKey();
-  final ValueNotifier<bool> _nameUnderBar = ValueNotifier(false);
+  late final ScrolledAwayTitleController _nameTitle =
+      ScrolledAwayTitleController(_scrollController);
 
   /// 0.0 = start, 1.0 = finish. Drives the route-preview scrubber:
   /// dragging the slider feeds an interpolated lat/lng to the
@@ -241,31 +239,6 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     _loadBookmarkState();
     _resolveDisplayWaypoints();
     _resolveAppleWatchAvailability();
-    _scrollController.addListener(_trackNameHeading);
-  }
-
-  bool _nameCheckQueued = false;
-
-  // Measured after the frame: a scroll listener runs before the list has
-  // laid out at the new offset, so measuring there reads the last frame.
-  void _trackNameHeading() {
-    if (_nameCheckQueued) return;
-    _nameCheckQueued = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _nameCheckQueued = false;
-      if (mounted) _measureNameHeading();
-    });
-  }
-
-  void _measureNameHeading() {
-    final box =
-        _nameHeadingKey.currentContext?.findRenderObject() as RenderBox?;
-    // A heading the list has already disposed is far above the bar.
-    final under = box == null || !box.attached
-        ? _scrollController.offset > 0
-        : box.localToGlobal(Offset(0, box.size.height)).dy <=
-            MediaQuery.paddingOf(context).top + kToolbarHeight;
-    _nameUnderBar.value = under;
   }
 
   Future<void> _resolveAppleWatchAvailability() async {
@@ -277,8 +250,8 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   @override
   void dispose() {
     _tilePackStore?.dispose();
+    _nameTitle.dispose();
     _scrollController.dispose();
-    _nameUnderBar.dispose();
     super.dispose();
   }
 
@@ -1052,13 +1025,8 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
             )
           : null,
       appBar: AppBar(
-        title: ValueListenableBuilder<bool>(
-          valueListenable: _nameUnderBar,
-          builder: (context, under, child) => AnimatedOpacity(
-            opacity: under ? 1 : 0,
-            duration: motionDuration(context, AppMotion.brief),
-            child: child,
-          ),
+        title: ScrolledAwayTitle(
+          controller: _nameTitle,
           child: Text(route.name),
         ),
         // Six concurrent owner actions left a measured 0dp of a 360dp toolbar
@@ -1254,14 +1222,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                       ),
                 ),
               ),
-              Padding(
-                key: _nameHeadingKey,
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                child: Semantics(
-                  header: true,
-                  child: Text(route.name, style: theme.textTheme.headlineSmall),
-                ),
-              ),
+              ScrolledAwayHeading(controller: _nameTitle, text: route.name),
               // Diagnostic for the "I'm still not seeing the map"
               // user report — when neither `MAPTILER_KEY` nor
               // `TILE_URL_TEMPLATE` is set, the LiveRunMap above renders the

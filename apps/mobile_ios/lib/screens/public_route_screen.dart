@@ -1,11 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart'
-    show
-        AppSemanticColors,
-        StatGrid,
-        StatTile;
+import 'package:ui_kit/ui_kit.dart' show StatGrid, StatTile;
 
 import '../auth_error.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -17,6 +13,7 @@ import '../widgets/error_state.dart';
 import '../widgets/live_run_map.dart';
 import '../widgets/route_conditions.dart';
 import '../widgets/route_photos.dart';
+import '../widgets/scrolled_away_title.dart';
 import '../widgets/segments_panel.dart';
 import '../widgets/shared_with_you_chip.dart';
 import '../widgets/top_banner.dart';
@@ -68,11 +65,21 @@ class _PublicRouteScreenState extends State<PublicRouteScreen> {
   bool _isOwner = false;
   bool? _bookmarked;
   bool _bookmarkBusy = false;
+  final ScrollController _scrollController = ScrollController();
+  late final ScrolledAwayTitleController _nameTitle =
+      ScrolledAwayTitleController(_scrollController);
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _nameTitle.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -200,7 +207,12 @@ class _PublicRouteScreenState extends State<PublicRouteScreen> {
         route != null && !_isOwner && widget.api.userId != null;
     return Scaffold(
       appBar: AppBar(
-        title: Text(route?.name ?? l10n.publicRouteFallbackTitle),
+        title: route == null
+            ? Text(l10n.publicRouteFallbackTitle)
+            : ScrolledAwayTitle(
+                controller: _nameTitle,
+                child: Text(route.name),
+              ),
         actions: [
           if (canBookmark)
             IconButton(
@@ -218,8 +230,6 @@ class _PublicRouteScreenState extends State<PublicRouteScreen> {
           ? FloatingActionButton.extended(
               heroTag: 'public_route_start_run',
               onPressed: () => _startRun(route),
-              backgroundColor: AppSemanticColors.of(context).success,
-              foregroundColor: AppSemanticColors.of(context).onSuccess,
               icon: const Icon(Icons.play_arrow),
               label: Text(
                 l10n.routeDetailStartRun,
@@ -258,6 +268,7 @@ class _PublicRouteScreenState extends State<PublicRouteScreen> {
     // can only have come through `shared_routes`.
     final sharedWithMe = !_isOwner && !route.isPublic && route.clubId == null;
     return ListView(
+      controller: _scrollController,
       children: [
         SizedBox(
           height: detailMapHeight(viewportHeight),
@@ -266,6 +277,11 @@ class _PublicRouteScreenState extends State<PublicRouteScreen> {
             plannedRoute: _waypoints,
             followRunner: false,
           ),
+        ),
+        ScrolledAwayHeading(
+          controller: _nameTitle,
+          text: route.name,
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
         ),
         if (sharedWithMe)
           const Padding(
@@ -302,10 +318,11 @@ class _PublicRouteScreenState extends State<PublicRouteScreen> {
                     route.elevationGainMetres, activeDistanceUnit),
                 unit: UnitFormat.elevationLabel(activeDistanceUnit),
               ),
-              StatTile.large(
-                label: l10n.publicRouteStatWaypoints,
-                value: '${_waypoints.length}',
-              ),
+              if (_waypoints.isNotEmpty)
+                StatTile.large(
+                  label: l10n.publicRouteStatWaypoints,
+                  value: '${_waypoints.length}',
+                ),
             ],
           ),
         ),

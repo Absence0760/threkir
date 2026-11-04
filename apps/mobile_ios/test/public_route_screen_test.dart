@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -8,6 +9,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/public_route_screen.dart';
 import '../lib/widgets/loading_skeletons.dart';
+import 'pump_until.dart';
 
 bool _supabaseReady = false;
 
@@ -114,9 +116,105 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 30));
   });
+
+  group('PublicRouteScreen — matches route detail', () {
+    testWidgets('a long name is shown in full under the map, and the bar '
+        'repeats it only once that heading scrolls away', (tester) async {
+      const name = 'Philadelphia Marathon full course, Art Museum to '
+          'Manayunk and back';
+      await _pumpLoaded(tester, _OwnerApi(name: name),
+          size: const Size(360, 780));
+
+      final inBody = find.descendant(
+          of: find.byType(ListView), matching: find.text(name));
+      final inBar =
+          find.descendant(of: find.byType(AppBar), matching: find.text(name));
+      expect(inBody, findsOneWidget);
+      expect(tester.renderObject<RenderParagraph>(inBody).didExceedMaxLines,
+          isFalse,
+          reason: 'the body heading wraps rather than truncating');
+      double barOpacity() => tester
+          .widget<AnimatedOpacity>(find.ancestor(
+              of: inBar, matching: find.byType(AnimatedOpacity)))
+          .opacity;
+      expect(barOpacity(), 0,
+          reason: 'no second, truncated copy while the heading is on screen');
+
+      // Scrolled directly: a drag over the map would pan the map instead.
+      tester
+          .state<ScrollableState>(find
+              .descendant(
+                  of: find.byType(ListView), matching: find.byType(Scrollable))
+              .first)
+          .position
+          .jumpTo(700);
+      await pumpUntil(tester, () => barOpacity() == 1,
+          describe: 'the bar to name the route once its heading is gone');
+      await _drain(tester);
+    });
+
+    testWidgets('a route with no line does not headline "0 Waypoints"',
+        (tester) async {
+      await _pumpLoaded(tester, _OwnerApi(waypoints: const []));
+      expect(find.text('Distance'), findsOneWidget);
+      expect(find.text('Waypoints'), findsNothing);
+      await _drain(tester);
+    });
+
+    testWidgets('a route with a line counts its waypoints', (tester) async {
+      await _pumpLoaded(tester, _OwnerApi());
+      expect(find.text('Waypoints'), findsOneWidget);
+      await _drain(tester);
+    });
+
+    testWidgets('Start run wears the theme\'s start colour, not success green',
+        (tester) async {
+      await _pumpLoaded(tester, _OwnerApi());
+      final fab = tester.widget<FloatingActionButton>(
+          find.widgetWithText(FloatingActionButton, 'Start run'));
+      expect(fab.backgroundColor, isNull,
+          reason: 'the FAB theme (Home\'s Start) supplies the colour');
+      expect(fab.foregroundColor, isNull);
+      await _drain(tester);
+    });
+  });
+}
+
+Future<void> _pumpLoaded(WidgetTester tester, _OwnerApi api,
+    {Size size = const Size(800, 3000)}) async {
+  tester.view.physicalSize = size;
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(
+    MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: PublicRouteScreen(api: api, routeId: 'r1'),
+    ),
+  );
+  await pumpUntil(
+      tester, () => find.byType(MapDetailSkeleton).evaluate().isEmpty,
+      describe: 'the route to load');
+}
+
+// Drain the screen's request timeouts.
+Future<void> _drain(WidgetTester tester) async {
+  await tester.pumpWidget(const SizedBox());
+  await tester.pump(const Duration(seconds: 30));
 }
 
 class _OwnerApi extends ApiClient {
+  _OwnerApi({
+    this.name = 'Hill Loop',
+    this.waypoints = const [
+      cm.Waypoint(lat: 0, lng: 0),
+      cm.Waypoint(lat: 0, lng: 0.01),
+    ],
+  });
+
+  final String name;
+  final List<cm.Waypoint> waypoints;
+
   @override
   String? get userId => 'owner';
 
@@ -128,11 +226,8 @@ class _OwnerApi extends ApiClient {
         route: cm.Route(
           id: routeId,
           userId: 'owner',
-          name: 'Hill Loop',
-          waypoints: [
-            cm.Waypoint(lat: 0, lng: 0),
-            cm.Waypoint(lat: 0, lng: 0.01),
-          ],
+          name: name,
+          waypoints: waypoints,
           distanceMetres: 5000,
           elevationGainMetres: 229,
         ),

@@ -46,6 +46,9 @@ AuthErrorKind classifyAuthError(Object error) {
       code == 'over_email_send_rate_limit' ||
       code == 'over_request_rate_limit' ||
       says('rate limit') ||
+      // The Edge Functions' shared limiter answers 429 with this code, and a
+      // caller that rethrows the code as its message loses the status.
+      says('rate_limit_exceeded') ||
       says('too many requests')) {
     return AuthErrorKind.rateLimited;
   }

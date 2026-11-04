@@ -193,14 +193,20 @@
 	// that account, so it is put back rather than run as nobody or as the next
 	// account. A commit already running when that happens is not stopped; if it
 	// fails, the queue sees the owner changed and only logs it. Keyed on the id
-	// alone: a refreshed user object is not a change.
+	// alone: a refreshed user object is not a change. The queue is told a
+	// session ended only when it has (`null`); a live session whose profile is
+	// not loaded yet is `undefined`, so the same account's failure still
+	// restores and reports.
 	const undoOwnerId = $derived(auth.user?.id);
+	const undoSessionEnded = $derived(!auth.loading && !auth.loggedIn);
 	$effect(() => {
 		const uid = undoOwnerId;
-		setUndoOwner(uid ?? null);
 		return () => {
 			if (uid) undoStore.undo();
 		};
+	});
+	$effect(() => {
+		setUndoOwner(undoOwnerId ?? (undoSessionEnded ? null : undefined));
 	});
 
 	// Messages badge — the inbox has no Realtime channel, so it is read on

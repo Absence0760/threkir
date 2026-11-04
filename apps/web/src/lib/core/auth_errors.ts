@@ -76,6 +76,9 @@ export function classifyAuthError(error: unknown): AuthErrorKind {
 		status === 429 ||
 		(code !== null && code.includes('rate')) ||
 		says('rate limit') ||
+		// The Edge Functions' shared limiter answers 429 with this code, and a
+		// caller that rethrows the code as its message loses the status.
+		says('rate_limit_exceeded') ||
 		says('too many requests')
 	) {
 		return 'rateLimited';

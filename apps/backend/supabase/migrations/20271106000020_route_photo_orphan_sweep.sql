@@ -196,16 +196,19 @@ comment on function public.enqueue_route_photo_orphan_sweep() is
 
 -- ─────────────────── 5. prompt enqueue on delete ───────────────────
 
--- Two triggers, because a foreign-key cascade is not one statement: Postgres
--- runs it as one DELETE per parent row, so an account deletion fires a
--- statement trigger once per route (and once more for the photos the user put
--- on other people's routes). Writing the job from each firing would rewrite a
--- growing jsonb payload once per route; a thousand-route account would leave
--- a thousand row versions of one job behind. Instead:
+-- Two triggers, because one transaction can delete photos in many statements
+-- (a client or function removing routes one at a time), and writing the job
+-- from each statement would rewrite a growing jsonb payload per statement,
+-- leaving that many row versions of one job behind. A foreign-key cascade is
+-- not that case: every cascaded DELETE under one top-level statement shares
+-- one transition table, so `delete from auth.users` fires the statement
+-- trigger once for all the user's photos, on their own routes and on others'
+-- (measured on 17.6, 100 routes: one firing seeing 100 rows). Instead:
 --
 --   * `route_photos_enqueue_orphan_sweep` (statement level, transition table)
 --     appends the deleted rows' paths to the transaction-local setting
---     `threkir.route_photo_orphan_sweep_paths`, as comma-joined JSON strings.
+--     `threkir.route_photo_orphan_sweep_paths`, as comma-joined JSON strings,
+--     and their running count to `threkir.route_photo_orphan_sweep_count`.
 --     A setting, not a temp table: the common case is one photo or one route,
 --     and a temp table would write and then delete its pg_class, pg_type and
 --     pg_attribute rows (and a TOAST table's) in every such transaction,
@@ -216,6 +219,27 @@ comment on function public.enqueue_route_photo_orphan_sweep() is
 --     firing that finds the buffer non-empty empties it and inserts
 --     ceil(paths / 1000) jobs; every later firing finds it empty and returns.
 --     Each job row is written once and never updated.
+--
+-- The buffer is capped at 2000 paths per transaction. Each append copies the
+-- whole buffer, so a transaction of many single-photo statements costs
+-- quadratic time: measured on 17.6, appending one path per statement takes
+-- 0.1 s to reach 2000 paths, 0.24 s for 3000, 0.42 s for 4000, 0.82 s for
+-- 5000 and 13 s for 20,000. 2000 keeps that worst shape near 0.1 s, well
+-- inside any statement_timeout. A statement is appended whole as long as the
+-- buffer is under the cap when it fires, so a single statement (an account
+-- deletion, a route delete) is never cut short however many paths it takes;
+-- once a transaction's buffer holds 2000, its later statements read the count
+-- setting and return without touching the buffer, and their bytes are left
+-- to the nightly backstop, a day's delay rather than a slow delete.
+--
+-- The constraint trigger is row level because a constraint trigger cannot be
+-- statement level, and a deferred statement trigger does not exist. So every
+-- deleted route_photos row queues one after-trigger event, even with the flag
+-- off, and each event at commit is a function call that reads one empty
+-- setting and returns. That cost is accepted: it is linear, a few dozen
+-- bytes of in-memory event queue per row, and measured on 17.6 the flag-off
+-- account deletion of 20,000 photo rows spends 10 ms in the flush. Gating the trigger itself on the flag would take
+-- DDL to open the gate, where the flag is a row.
 --
 -- A caller that runs `set constraints ... immediate` gets the flush at the end
 -- of each statement instead, ahead of that statement's own buffering, so its
@@ -245,8 +269,12 @@ security definer
 set search_path = public, pg_temp
 as $$
 declare
+  v_buffer_cap constant integer := 2000;
   v_setting constant text := 'threkir.route_photo_orphan_sweep_paths';
+  v_count_setting constant text := 'threkir.route_photo_orphan_sweep_count';
+  v_count integer;
   v_more text;
+  v_more_count integer;
 begin
   if not coalesce(
     (select f.enabled from private.feature_flags f
@@ -257,8 +285,13 @@ begin
   end if;
 
   begin
-    select string_agg(to_jsonb(s.p)::text, ',')
-      into v_more
+    v_count := coalesce(nullif(current_setting(v_count_setting, true), '')::integer, 0);
+    if v_count >= v_buffer_cap then
+      return null;
+    end if;
+
+    select string_agg(to_jsonb(s.p)::text, ','), count(*)
+      into v_more, v_more_count
       from (
         select g.storage_path as p from gone g where g.storage_path <> ''
         union
@@ -271,6 +304,7 @@ begin
         v_setting,
         concat_ws(',', nullif(current_setting(v_setting, true), ''), v_more),
         true);
+      perform set_config(v_count_setting, (v_count + v_more_count)::text, true);
     end if;
   exception
     when transaction_rollback then
@@ -300,6 +334,7 @@ begin
     return null;
   end if;
   perform set_config(v_setting, '', true);
+  perform set_config('threkir.route_photo_orphan_sweep_count', '', true);
 
   if not coalesce(
     (select f.enabled from private.feature_flags f

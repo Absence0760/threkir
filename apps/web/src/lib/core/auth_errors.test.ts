@@ -51,6 +51,12 @@ test('over_email_send_rate_limit code → rateLimited', () => {
 	);
 });
 
+test('an Edge Function limiter code rethrown as the message → rateLimited', () => {
+	// `_shared/rate_limit.ts` answers 429 with `rate_limit_exceeded`; a caller
+	// that rethrows `new Error(code)` keeps the code and drops the status.
+	assert.equal(classifyAuthError(new Error('rate_limit_exceeded')), 'rateLimited');
+});
+
 test('user_already_exists code → emailExists', () => {
 	assert.equal(
 		classifyAuthError(authError('User already registered', { code: 'user_already_exists', status: 422 })),

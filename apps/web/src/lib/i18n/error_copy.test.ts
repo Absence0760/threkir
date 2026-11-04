@@ -51,6 +51,9 @@ test('known failures map to their own catalogue copy', () => {
 		errorCopyKey({ name: 'AuthApiError', message: 'Email rate limit exceeded', status: 429, code: 'over_email_send_rate_limit' }),
 		'errorCopy.tooManyRequests',
 	);
+	// The Edge Functions' shared limiter code, rethrown with no status.
+	assert.equal(errorCopyKey(new Error('rate_limit_exceeded')), 'errorCopy.tooManyRequests');
+	assert.equal(errorCopyKey({ code: 'rate_limit_exceeded' }), 'errorCopy.tooManyRequests');
 	assert.equal(
 		errorCopyKey({ message: 'For security purposes, you can only request this after 42 seconds.' }),
 		'errorCopy.tooManyRequests',

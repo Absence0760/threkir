@@ -7,6 +7,8 @@
 	import { goto } from '$app/navigation';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { undoStore } from '#lib/stores/undo.svelte.ts';
+	import { settleBeforeSessionEnds } from '#lib/stores/sign_out.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import DangerZone from '#lib/components/DangerZone.svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
@@ -1242,6 +1244,10 @@
 		showDeleteAccount = false;
 		deleting = true;
 		try {
+			// A delete still inside its undo window commits while the account
+			// exists; settled afterwards (by the logout below) it would run
+			// against an account that is already gone.
+			await settleBeforeSessionEnds(undoStore.flush);
 			const { data: { session } } = await supabase.auth.getSession();
 			if (!session) throw new Error(m('settingsAccount.notSignedIn'));
 			const resp = await fetch(

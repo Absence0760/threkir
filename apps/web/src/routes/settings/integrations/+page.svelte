@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -362,13 +361,12 @@
 				result.complete ? 'success' : 'info',
 			);
 		} catch (err) {
-			const code = thrownMessage(err);
+			// `syncStrava` throws an `AppError` for each refusal the card words
+			// (`stravaRefusal`), so the slot never carries the function's code.
 			showToast(
-				code === 'strava_not_configured'
-					? m('settingsIntegrations.stravaNotConfigured')
-					: m('settingsIntegrations.stravaSyncFailed', {
-						error: errorCopy(err, m, 'settingsIntegrations.stravaSyncFailed'),
-					}),
+				m('settingsIntegrations.stravaSyncFailed', {
+					error: errorCopy(err, m, 'settingsIntegrations.stravaSyncFailed'),
+				}),
 				'error',
 			);
 		} finally {

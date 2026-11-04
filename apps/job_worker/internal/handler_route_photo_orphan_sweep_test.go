@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -245,32 +246,42 @@ func TestSupabaseClient_RoutePhotoOrphanPathsBody(t *testing.T) {
 	}
 }
 
-// The delete trigger caps a paths job at the migration's v_cap, and one run
-// of this handler erases at most RoutePhotoOrphanMaxBatches x
-// RoutePhotoOrphanBatchSize objects. A cap above that budget would leave the
-// tail of every full job to the nightly backstop while the job reports
-// success. The worklist clamp is the other half: a clamp below the batch size
-// returns a short page, which this handler reads as "nothing left".
+// The delete trigger caps a paths job at its v_cap, and one run of this
+// handler erases at most RoutePhotoOrphanMaxBatches x RoutePhotoOrphanBatchSize
+// objects. A cap above that budget would leave the tail of every full job to
+// the nightly backstop while the job reports success. The worklist clamp is
+// the other half: a clamp below the batch size returns a short page, which
+// this handler reads as "nothing left".
+//
+// Both numbers are read from the LAST migration that defines each function,
+// in the version order release-backend applies them, so a later
+// `create or replace` cannot move either one past this guard.
 func TestRoutePhotoOrphanSweep_MigrationCapFitsOneRun(t *testing.T) {
-	src, err := os.ReadFile(filepath.Join("..", "..", "backend", "supabase", "migrations",
-		"20271106000020_route_photo_orphan_sweep.sql"))
+	migrations, err := readMigrations(filepath.Join("..", "..", "backend", "supabase", "migrations"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	only := func(re *regexp.Regexp, what string) int {
+	only := func(fn string, re *regexp.Regexp, what string) int {
 		t.Helper()
-		m := re.FindAllSubmatch(src, -1)
-		if len(m) != 1 {
-			t.Fatalf("found %d %s in the migration, want exactly 1", len(m), what)
+		file, body, ok := lastFunctionBody(migrations, fn)
+		if !ok {
+			t.Fatalf("no migration defines public.%s", fn)
 		}
-		n, err := strconv.Atoi(string(m[0][1]))
+		m := re.FindAllStringSubmatch(body, -1)
+		if len(m) != 1 {
+			t.Fatalf("found %d %s in public.%s as %s last defines it, want exactly 1",
+				len(m), what, fn, file)
+		}
+		n, err := strconv.Atoi(m[0][1])
 		if err != nil {
 			t.Fatal(err)
 		}
 		return n
 	}
-	pathCap := only(regexp.MustCompile(`v_cap\s+constant\s+integer\s*:=\s*(\d+)\s*;`), "v_cap declarations")
-	clamp := only(regexp.MustCompile(`least\(greatest\(coalesce\(p_limit,\s*\d+\),\s*1\),\s*(\d+)\)`), "p_limit clamps")
+	pathCap := only("flush_route_photo_orphan_sweep",
+		regexp.MustCompile(`v_cap\s+constant\s+integer\s*:=\s*(\d+)\s*;`), "v_cap declarations")
+	clamp := only("route_photo_orphan_paths",
+		regexp.MustCompile(`least\(greatest\(coalesce\(p_limit,\s*\d+\),\s*1\),\s*(\d+)\)`), "p_limit clamps")
 
 	if budget := RoutePhotoOrphanMaxBatches * RoutePhotoOrphanBatchSize; pathCap > budget {
 		t.Fatalf("the delete trigger queues up to %d paths a job, but one run erases at most %d x %d = %d",
@@ -280,4 +291,83 @@ func TestRoutePhotoOrphanSweep_MigrationCapFitsOneRun(t *testing.T) {
 		t.Fatalf("route_photo_orphan_paths clamps p_limit to %d, below the handler's batch of %d",
 			clamp, RoutePhotoOrphanBatchSize)
 	}
+}
+
+func TestLastFunctionBody_TakesTheLatestVersionNotTheLatestFilename(t *testing.T) {
+	migrations := sortMigrations([]migration{
+		{name: "20271201_001_later.sql", src: "create or replace function public.f(a int)\nreturns int as $$ select 3 $$;\n"},
+		{name: "20271106000020_first.sql", src: "create function public.f(a int)\nreturns int as $$ select 1 $$;\n" +
+			"create or replace function public.f_other()\nreturns int as $$ select 9 $$;\n"},
+		{name: "20271106_001_eight_digit.sql", src: "create or replace function f(a int) returns int as $$ select 2 $$;\n"},
+	})
+	file, body, ok := lastFunctionBody(migrations, "f")
+	if !ok || file != "20271201_001_later.sql" || !strings.Contains(body, "select 3") {
+		t.Fatalf("lastFunctionBody = %q, %q, %v", file, body, ok)
+	}
+	if strings.Contains(body, "select 9") {
+		t.Fatalf("body ran into the next definition: %q", body)
+	}
+	if _, _, ok := lastFunctionBody(migrations, "missing"); ok {
+		t.Fatal("found a function no migration defines")
+	}
+}
+
+type migration struct{ name, src string }
+
+func readMigrations(dir string) ([]migration, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	var out []migration
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sql") {
+			continue
+		}
+		b, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, migration{name: e.Name(), src: string(b)})
+	}
+	return sortMigrations(out), nil
+}
+
+// sortMigrations orders by the version key the CLI and
+// scripts/apply-pending-migrations.sh use (the digits before the first
+// underscore, compared as strings), not by filename: '20260601' applies
+// before '20260601000001' although '_' sorts after '0'.
+func sortMigrations(ms []migration) []migration {
+	version := func(name string) string {
+		if i := strings.IndexByte(name, '_'); i >= 0 {
+			return name[:i]
+		}
+		return name
+	}
+	sort.SliceStable(ms, func(i, j int) bool { return version(ms[i].name) < version(ms[j].name) })
+	return ms
+}
+
+// lastFunctionBody returns the text of the last definition of public.<fn>
+// across migrations in apply order, from its `create` to the next `$$;`.
+func lastFunctionBody(ms []migration, fn string) (file, body string, ok bool) {
+	def := regexp.MustCompile(`(?i)create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?` +
+		regexp.QuoteMeta(fn) + `\s*\(`)
+	for _, m := range ms {
+		locs := def.FindAllStringIndex(m.src, -1)
+		if len(locs) == 0 {
+			continue
+		}
+		rest := m.src[locs[len(locs)-1][0]:]
+		open := strings.Index(rest, "$$")
+		if open < 0 {
+			continue
+		}
+		end := strings.Index(rest[open+2:], "$$")
+		if end < 0 {
+			continue
+		}
+		file, body, ok = m.name, rest[:open+2+end+2], true
+	}
+	return file, body, ok
 }

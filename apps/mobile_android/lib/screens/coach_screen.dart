@@ -1258,30 +1258,47 @@ class _CoachScreenState extends State<CoachScreen> {
       drawer: _buildArchivesDrawer(theme, l10n),
       body: Column(
         children: [
-          // Guided runs are coach-driven training content, and web reaches
-          // them from a rail on `/coach`. On mobile they were filed under
-          // Settings → Account, where nothing about the surrounding screen
-          // (sign-in, backup, delete account) suggests a workout library
-          // (#666 I7). A labelled peer is the mobile shape of that rail.
-          SurfacePeerStrip(
-            label: l10n.coachTitle,
-            peers: [
-              SurfacePeer(label: l10n.coachTitle),
-              SurfacePeer(
-                label: l10n.guidedRunsTitle,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const GuidedRunsScreen(),
+          // The header scrolls on its own once it would take more than its
+          // share of the screen: at a large text scale the wrapped strip,
+          // hint and banner together outgrow a phone and pushed the composer
+          // off the bottom.
+          ConstrainedBox(
+            constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * 0.4),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Guided runs are coach-driven training content, and web
+                  // reaches them from a rail on `/coach`. On mobile they were
+                  // filed under Settings → Account, where nothing about the
+                  // surrounding screen (sign-in, backup, delete account)
+                  // suggests a workout library (#666 I7). A labelled peer is
+                  // the mobile shape of that rail.
+                  SurfacePeerStrip(
+                    label: l10n.coachTitle,
+                    peers: [
+                      SurfacePeer(label: l10n.coachTitle),
+                      SurfacePeer(
+                        label: l10n.guidedRunsTitle,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const GuidedRunsScreen(),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
+                  if (_ctx != null) _buildContextStrip(theme, l10n),
+                  if (_ctx != null && _seasonPlans.length == 1)
+                    _buildSeasonHint(theme, l10n),
+                  if (_viewingArchiveAt != null)
+                    _buildArchiveBanner(theme, l10n),
+                  if (_remaining <= 3) _buildLimitBanner(theme, l10n, cs),
+                ],
               ),
-            ],
+            ),
           ),
-          if (_ctx != null) _buildContextStrip(theme, l10n),
-          if (_ctx != null && _seasonPlans.length == 1)
-            _buildSeasonHint(theme, l10n),
-          if (_viewingArchiveAt != null) _buildArchiveBanner(theme, l10n),
-          if (_remaining <= 3) _buildLimitBanner(theme, l10n, cs),
           Expanded(
             child: _threadLoaded
                 ? _buildScroll(theme, l10n, hasPlan)
@@ -1511,18 +1528,19 @@ class _CoachScreenState extends State<CoachScreen> {
           icon: Icons.flag_outlined,
           label: l10n.coachContextWeeklyGoal(distance, unit.name)));
     }
+    // Wrapped, not scrolled sideways: a horizontal scroller clipped the runs
+    // window at the right edge on a 360 dp phone, with nothing saying more
+    // of the strip was off screen.
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(children: chips),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        runSpacing: 6,
+        children: chips,
       ),
     );
   }
 
-  /// Shown while the runner has one plan and nothing queued after it: My
-  /// season only appears once a second plan is chained, and nothing else
-  /// on this screen says so.
   Widget _buildSeasonHint(ThemeData theme, AppLocalizations l10n) {
     final cs = theme.colorScheme;
     return Padding(
@@ -1572,11 +1590,13 @@ class _CoachScreenState extends State<CoachScreen> {
           children: [
             Icon(icon, size: 14, color: color),
             const SizedBox(width: 6),
-            Text(label,
-                style: Theme.of(context)
-                    .textTheme
-                    .labelMedium
-                    ?.copyWith(color: color)),
+            Flexible(
+              child: Text(label,
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelMedium
+                      ?.copyWith(color: color)),
+            ),
           ],
         ),
       ),

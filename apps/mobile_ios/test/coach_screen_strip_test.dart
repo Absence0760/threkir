@@ -210,4 +210,24 @@ void main() {
       await drainRealtimeTimers(tester);
     });
   });
+
+  group('the context strip', () {
+    for (final scale in [1.0, 2.0]) {
+      testWidgets('fits the runs window on screen at text scale $scale',
+          (tester) async {
+        await _pump(tester, [_richmond], textScale: scale);
+        expect(tester.takeException(), isNull);
+        final width = tester.view.physicalSize.width /
+            tester.view.devicePixelRatio;
+        final runs = tester.getRect(find.byType(DropdownButton<int>));
+        expect(runs.right, lessThanOrEqualTo(width));
+        expect(runs.left, greaterThanOrEqualTo(0));
+        // Nothing in the header pushes the composer off the bottom.
+        expect(tester.getRect(find.byType(TextField)).bottom,
+            lessThanOrEqualTo(tester.view.physicalSize.height /
+                tester.view.devicePixelRatio));
+        await drainRealtimeTimers(tester);
+      });
+    }
+  });
 }

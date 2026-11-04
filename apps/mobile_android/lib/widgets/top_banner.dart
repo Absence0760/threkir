@@ -12,10 +12,11 @@ import 'package:flutter/material.dart';
 ///
 /// Renders via [Overlay] so callers don't need to plumb a banner into
 /// every screen's [Scaffold] body. The pill auto-positions just below
-/// the AppBar when the calling context lives under one (read via
-/// [Scaffold.maybeOf]); on AppBar-less screens it sits at the safe-
-/// area top. A context above every screen — the root navigator's own —
-/// measures the AppBar of the screen on top instead.
+/// the lowest AppBar of every Scaffold enclosing the calling context; on
+/// AppBar-less screens it sits under the view's status bar, whatever
+/// SafeArea the caller lives in. A context with no enclosing Scaffold — a
+/// screen State's own, or the root navigator's — measures the AppBars of
+/// its route, or of the screen on top.
 ///
 /// Single-banner semantics, mirroring SnackBar: a new call coalesces
 /// the existing entry — there is never more than one banner on screen.
@@ -66,16 +67,18 @@ void showTopBanner(
       Navigator.maybeOf(context, rootNavigator: true)?.overlay;
   if (overlay == null) return;
 
-  // Read the AppBar height from the nearest Scaffold (if any) so the
-  // pill sits below it. Captured at show-time — the Overlay context
-  // is above the screen's Scaffold so the entry's own builder
-  // wouldn't see it.
-  // A primary Scaffold's appBarMaxHeight already spans the status bar, so
-  // the safe-area top only counts where no app bar does.
-  final mq = MediaQuery.of(context);
-  final appBarBottom = _appBarHeightFor(context);
+  // Measured at show-time — the Overlay context is above the screen's
+  // Scaffold, so the entry's own builder wouldn't see it. The status bar is
+  // read from the view, not the caller: under a SafeArea or a Scaffold body
+  // the caller's MediaQuery has had its top padding removed, which put the
+  // pill under the notch on an AppBar-less screen.
+  final view = View.maybeOf(context);
+  final statusBar = view != null
+      ? MediaQueryData.fromView(view).padding.top
+      : MediaQuery.paddingOf(context).top;
+  final appBarBottom = _appBarBottomFor(context, overlay);
   final topInset =
-      (appBarBottom > mq.padding.top ? appBarBottom : mq.padding.top) + 12;
+      (appBarBottom > statusBar ? appBarBottom : statusBar) + 12;
 
   _current?.dismiss();
   _current = null;
@@ -114,36 +117,62 @@ void showTopBanner(
   _current = tracker;
 }
 
-double _appBarHeightFor(BuildContext context) {
-  final scaffold = Scaffold.maybeOf(context);
-  if (scaffold != null) return scaffold.appBarMaxHeight ?? 0;
-  // Inside a route with no Scaffold: an AppBar-less screen.
-  if (ModalRoute.of(context) != null) return 0;
-  // Above every route — a banner said after its screen was popped. Without
-  // this it drew over the title of whatever screen was left showing.
-  // A predicate that holds at once pops nothing: it reads the top route.
-  Route<dynamic>? top;
-  Navigator.maybeOf(context, rootNavigator: true)?.popUntil((route) {
-    top = route;
+/// The lowest app-bar edge on screen, in the overlay's coordinates.
+///
+/// Every enclosing Scaffold counts, not only the nearest: a Scaffold nested
+/// in another one's body (a tab inside a shell) has no app bar of its own,
+/// and the nearest alone put the pill over the outer one. A context with no
+/// enclosing Scaffold — a screen State's own `context`, which sits above the
+/// Scaffold it builds, or the root navigator's — measures the route instead.
+double _appBarBottomFor(BuildContext context, OverlayState overlay) {
+  final overlayBox = overlay.context.findRenderObject();
+  var bottom = 0.0;
+  void measure(ScaffoldState scaffold) {
+    final height = scaffold.appBarMaxHeight;
+    if (height == null) return;
+    var top = 0.0;
+    final box = scaffold.context.findRenderObject();
+    if (box is RenderBox && box.attached && box.hasSize) {
+      top = box
+          .localToGlobal(Offset.zero,
+              ancestor: overlayBox is RenderBox ? overlayBox : null)
+          .dy;
+    }
+    if (top + height > bottom) bottom = top + height;
+  }
+
+  context.visitAncestorElements((element) {
+    if (element is StatefulElement && element.state is ScaffoldState) {
+      measure(element.state as ScaffoldState);
+    }
     return true;
   });
-  final route = top;
-  final subtree = route is ModalRoute ? route.subtreeContext : null;
+  if (bottom > 0 || Scaffold.maybeOf(context) != null) return bottom;
+
+  var route = ModalRoute.of(context);
+  if (route == null) {
+    // Above every route — a banner said after its screen was popped. Without
+    // this it drew over the title of whatever screen was left showing.
+    // A predicate that holds at once pops nothing: it reads the top route.
+    Route<dynamic>? top;
+    Navigator.maybeOf(context, rootNavigator: true)?.popUntil((r) {
+      top = r;
+      return true;
+    });
+    final candidate = top;
+    if (candidate is ModalRoute) route = candidate;
+  }
+  final subtree = route?.subtreeContext;
   if (subtree == null) return 0;
-  var height = 0.0;
   void visit(Element element) {
-    if (element is StatefulElement) {
-      final state = element.state;
-      if (state is ScaffoldState) {
-        final h = state.appBarMaxHeight ?? 0;
-        if (h > height) height = h;
-      }
+    if (element is StatefulElement && element.state is ScaffoldState) {
+      measure(element.state as ScaffoldState);
     }
     element.visitChildElements(visit);
   }
 
   subtree.visitChildElements(visit);
-  return height;
+  return bottom;
 }
 
 /// Dismiss the currently visible banner, if any. Safe to call from

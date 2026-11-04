@@ -385,6 +385,108 @@ void main() {
       await tester.pump();
     });
 
+    testWidgets('an AppBar-less screen whose body is in a SafeArea keeps the '
+        'pill under the status bar', (tester) async {
+      statusBar(tester);
+      late BuildContext screen;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SafeArea(
+            child: Builder(builder: (ctx) {
+              screen = ctx;
+              return const SizedBox.expand();
+            }),
+          ),
+        ),
+      ));
+      expect(MediaQuery.paddingOf(screen).top, 0,
+          reason: 'the SafeArea strips the caller\'s top padding');
+
+      showTopBanner(screen, 'safe');
+      await tester.pump();
+      expect(tester.getTopLeft(find.byKey(const ValueKey('top_banner:up:safe'))).dy,
+          24 + 12);
+      hideTopBanner();
+      await tester.pump();
+    });
+
+    testWidgets('a Scaffold nested in another one\'s body puts the pill under '
+        'the outer app bar', (tester) async {
+      statusBar(tester);
+      late BuildContext tab;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          appBar: AppBar(title: const Text('shell')),
+          body: Scaffold(
+            body: Builder(builder: (ctx) {
+              tab = ctx;
+              return const SizedBox.expand();
+            }),
+          ),
+        ),
+      ));
+      final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
+      expect(appBarBottom, 24 + kToolbarHeight);
+
+      showTopBanner(tab, 'nested');
+      await tester.pump();
+      expect(tester.getTopLeft(find.byKey(const ValueKey('top_banner:up:nested'))).dy,
+          appBarBottom + 12);
+      hideTopBanner();
+      await tester.pump();
+    });
+
+    testWidgets('a nested Scaffold with its own app bar puts the pill under the '
+        'lower one', (tester) async {
+      statusBar(tester);
+      late BuildContext tab;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          appBar: AppBar(title: const Text('shell')),
+          body: Scaffold(
+            appBar: AppBar(title: const Text('tab')),
+            body: Builder(builder: (ctx) {
+              tab = ctx;
+              return const SizedBox.expand();
+            }),
+          ),
+        ),
+      ));
+      final inner =
+          tester.getBottomLeft(find.widgetWithText(AppBar, 'tab')).dy;
+      expect(inner, 24 + 2 * kToolbarHeight);
+
+      showTopBanner(tab, 'inner');
+      await tester.pump();
+      expect(tester.getTopLeft(find.byKey(const ValueKey('top_banner:up:inner'))).dy,
+          inner + 12);
+      hideTopBanner();
+      await tester.pump();
+    });
+
+    testWidgets('a screen State\'s own context, above the Scaffold it builds, '
+        'puts the pill under that Scaffold\'s app bar', (tester) async {
+      statusBar(tester);
+      late BuildContext screen;
+      await tester.pumpWidget(MaterialApp(
+        home: Builder(builder: (ctx) {
+          screen = ctx;
+          return Scaffold(
+            appBar: AppBar(title: const Text('host')),
+            body: const SizedBox.expand(),
+          );
+        }),
+      ));
+      final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
+
+      showTopBanner(screen, 'above');
+      await tester.pump();
+      expect(tester.getTopLeft(find.byKey(const ValueKey('top_banner:up:above'))).dy,
+          appBarBottom + 12);
+      hideTopBanner();
+      await tester.pump();
+    });
+
     testWidgets(
       'said from the root navigator, the pill sits under the app bar of the '
       'screen on top',

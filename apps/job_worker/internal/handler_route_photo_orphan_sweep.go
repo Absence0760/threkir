@@ -9,7 +9,7 @@ import (
 )
 
 // The route-photo orphan sweep (kind='route_photo_orphan_sweep', migration
-// 20271106000020, the decisions § 2293 amendment).
+// 20271106000020, decisions § 2305).
 //
 // Deleting a route takes its `route_photos` rows by cascade, and after that
 // nothing references the bytes in the `route-photos` bucket. A client sweep

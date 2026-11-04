@@ -1,5 +1,5 @@
 -- Server-side sweep of route-photo BYTES that no `route_photos` row references
--- (decisions § 2293 amendment). Deleting a route is row-then-client-sweep: the
+-- (decisions § 2305). Deleting a route is row-then-client-sweep: the
 -- cascade takes the `route_photos` rows and the client then removes the
 -- Storage objects. Two cases left the bytes behind with nothing pointing at
 -- them, personal data kept invisibly until account deletion:

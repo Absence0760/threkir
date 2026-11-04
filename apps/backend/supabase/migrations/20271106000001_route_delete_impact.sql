@@ -29,8 +29,9 @@
 -- clients therefore swept the bytes BEFORE deleting the route, and a route
 -- delete that then failed left the route standing with its photos gone. A
 -- folder owner may now read their own objects, so the clients delete the route
--- first and sweep after: a sweep that fails leaves private bytes only their
--- uploader can reach, which delete-account's folder sweep removes.
+-- first and sweep after. Bytes a failed sweep leaves are erased by the
+-- route-photo orphan sweep (20271106000020, behind its feature flag), and by
+-- delete-account's folder sweep in any case.
 --
 -- No table DDL: one storage policy and one function.
 

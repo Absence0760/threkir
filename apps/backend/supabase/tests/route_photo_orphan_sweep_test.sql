@@ -1,5 +1,5 @@
--- Pins the route-photo orphan sweep (migration 20271106000020, the § 2293
--- amendment): which `route-photos` objects the worklist hands the Go worker,
+-- Pins the route-photo orphan sweep (migration 20271106000020, decisions
+-- § 2305): which `route-photos` objects the worklist hands the Go worker,
 -- that the gate keeps it empty and enqueues nothing while off, and that a
 -- route_photos delete queues one paths job per statement.
 --

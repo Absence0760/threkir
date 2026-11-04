@@ -1402,8 +1402,9 @@ class ApiClient {
   /// The photo bytes go after the row: their uploader can read their own
   /// folder, so the sweep still reaches them once the cascade has taken the
   /// route_photos rows, and a failed route delete never leaves a standing
-  /// route with its photos gone. A failed sweep leaves private bytes only the
-  /// uploader can read, which account deletion's folder sweep removes.
+  /// route with its photos gone. Bytes a skipped or failed sweep leaves are
+  /// erased by the server's route-photo orphan sweep (behind its feature flag,
+  /// decisions § 2305), and by account deletion's folder sweep in any case.
   ///
   /// RLS filters a refused DELETE rather than raising, so an empty result is
   /// read back: a route the caller can still see throws
@@ -1414,8 +1415,7 @@ class ApiClient {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
     // The path read only feeds the photo sweep, so its failure costs the
-    // sweep and never the delete: the bytes left behind are the same private
-    // leftovers a failed sweep leaves.
+    // sweep and never the delete.
     final paths = <String>[];
     try {
       final photoRows = await _client

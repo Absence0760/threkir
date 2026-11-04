@@ -3,10 +3,13 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:core_models/core_models.dart' show Run;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../lib/health_connect_importer.dart';
+import '../lib/import_failures.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_run_store.dart';
 import '../lib/screens/import_screen.dart';
@@ -459,6 +462,77 @@ void main() {
 
       expect(store.summaryRuns, isEmpty);
       expect(find.textContaining('Backup restore failed:'), findsOneWidget);
+    });
+  });
+
+  // Health Connect hands back records, never a file the runner picked, so a
+  // FormatException on these paths is a parsing bug of ours — it must not
+  // tell the runner their file is unreadable.
+  group('Health Connect', () {
+    Future<void> pumpHealth(
+      WidgetTester tester,
+      LocalRunStore store, {
+      required Future<HealthConnectImport> Function() workouts,
+      Future<HealthConnectRoutes> Function()? routes,
+    }) async {
+      await tester.binding.setSurfaceSize(const Size(800, 2400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ImportScreen(
+            runStore: store,
+            requestHealthPermissionFn: () async => true,
+            fetchHealthWorkoutsFn: workouts,
+            requestHealthRoutePermissionFn: () async => true,
+            fetchHealthRoutesFn: routes,
+          ),
+        ),
+      );
+      await tester.pump();
+    }
+
+    final label = healthLabelFor(l10n, isIOS: Platform.isIOS);
+    final failed = l10n.importHealthFailed(label, l10n.authErrorGeneric);
+
+    testWidgets('a read that throws a FormatException is not a bad file',
+        (tester) async {
+      final store = await _makeStore();
+      await pumpHealth(tester, store,
+          workouts: () async => throw const FormatException('bad record'));
+
+      await _tapUntil(
+          tester, find.widgetWithText(FilledButton, 'Import from $label'),
+          until: () => tester.any(find.text(failed)),
+          describe: 'the read failure to surface');
+
+      expect(find.textContaining(l10n.importFileUnreadable), findsNothing);
+    });
+
+    testWidgets('a route backfill that throws a FormatException is not a bad '
+        'file', (tester) async {
+      final store = await _makeStore();
+      await pumpHealth(
+        tester,
+        store,
+        workouts: () async => (
+          runs: <Run>[],
+          withheldSessionIds: {'s1'},
+          failures: newImportFailureLog(),
+        ),
+        routes: () async => throw const FormatException('bad route'),
+      );
+      await _tapUntil(
+          tester, find.widgetWithText(FilledButton, 'Import from $label'),
+          until: () => tester.any(find.text(l10n.importHealthRoutesAllowButton)),
+          describe: 'the route offer to appear');
+
+      await _tapUntil(tester, find.text(l10n.importHealthRoutesAllowButton),
+          until: () => tester.any(find.text(failed)),
+          describe: 'the backfill failure to surface');
+
+      expect(find.textContaining(l10n.importFileUnreadable), findsNothing);
     });
   });
 }

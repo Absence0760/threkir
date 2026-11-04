@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, ProgressBar;
 
+import '../auth_error.dart';
 import '../backup.dart';
 import '../cross_source_dedup.dart';
 import '../csv_run_importer.dart';
@@ -202,8 +203,11 @@ class _ImportScreenState extends State<ImportScreen> {
       if (!mounted) return;
       setState(() {
         _busy = false;
+        // Health Connect hands back records, not a file the runner picked, so
+        // a FormatException here is ours: importErrorText would call it an
+        // unreadable file.
         _status = l10n.importHealthFailed(
-            _healthLabel(l10n), importErrorText(l10n, e));
+            _healthLabel(l10n), friendlyError(l10n, e));
       });
     }
   }
@@ -253,7 +257,7 @@ class _ImportScreenState extends State<ImportScreen> {
         _busy = false;
         _withheldRouteIds = const {};
         _status = l10n.importHealthFailed(
-            _healthLabel(l10n), importErrorText(l10n, e));
+            _healthLabel(l10n), friendlyError(l10n, e));
       });
     }
   }

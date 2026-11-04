@@ -7283,6 +7283,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Läufe konnten nicht geladen werden. Versuche es erneut.';
 
   @override
+  String get workoutRelinkSaveError =>
+      'Dieser Lauf konnte nicht verknüpft werden. Versuche es erneut.';
+
+  @override
   String get workoutRelinkEmpty =>
       'Keine passenden Läufe in der Nähe dieses Datums.';
 

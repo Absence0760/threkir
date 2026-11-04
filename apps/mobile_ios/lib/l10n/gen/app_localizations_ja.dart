@@ -6868,6 +6868,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get workoutRelinkError => 'ランを読み込めませんでした。もう一度お試しください。';
 
   @override
+  String get workoutRelinkSaveError => 'そのランを紐付けできませんでした。もう一度お試しください。';
+
+  @override
   String get workoutRelinkEmpty => 'この日付の近くに対象のランがありません。';
 
   @override

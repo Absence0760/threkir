@@ -11722,6 +11722,12 @@ abstract class AppLocalizations {
   /// **'Couldn\'t load your runs. Try again.'**
   String get workoutRelinkError;
 
+  /// Banner after re-linking a workout to a different run fails; distinct from workoutRelinkError, which is the picker's failed load
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t link that run. Try again.'**
+  String get workoutRelinkSaveError;
+
   /// Empty state in the re-link picker
   ///
   /// In en, this message translates to:

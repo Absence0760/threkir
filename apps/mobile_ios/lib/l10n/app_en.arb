@@ -9791,6 +9791,10 @@
   "@workoutRelinkError": {
     "description": "Error state in the re-link picker"
   },
+  "workoutRelinkSaveError": "Couldn't link that run. Try again.",
+  "@workoutRelinkSaveError": {
+    "description": "Banner after re-linking a workout to a different run fails; distinct from workoutRelinkError, which is the picker's failed load"
+  },
   "workoutRelinkEmpty": "No eligible runs near this date.",
   "@workoutRelinkEmpty": {
     "description": "Empty state in the re-link picker"

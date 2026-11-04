@@ -7269,6 +7269,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível carregar as suas corridas. Tente novamente.';
 
   @override
+  String get workoutRelinkSaveError =>
+      'Não foi possível associar essa corrida. Tente novamente.';
+
+  @override
   String get workoutRelinkEmpty => 'Nenhuma corrida elegível perto desta data.';
 
   @override
@@ -27049,6 +27053,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get workoutRelinkError =>
       'Não foi possível carregar suas corridas. Tente novamente.';
+
+  @override
+  String get workoutRelinkSaveError =>
+      'Não foi possível vincular essa corrida. Tente novamente.';
 
   @override
   String get workoutRelinkEmpty => 'Nenhuma corrida elegível perto desta data.';

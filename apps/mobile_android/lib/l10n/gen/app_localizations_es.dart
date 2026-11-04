@@ -7264,6 +7264,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudieron cargar tus carreras. Inténtalo de nuevo.';
 
   @override
+  String get workoutRelinkSaveError =>
+      'No se pudo vincular esa carrera. Inténtalo de nuevo.';
+
+  @override
   String get workoutRelinkEmpty =>
       'No hay carreras válidas cerca de esta fecha.';
 

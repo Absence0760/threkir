@@ -7198,6 +7198,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workoutRelinkError => 'Couldn\'t load your runs. Try again.';
 
   @override
+  String get workoutRelinkSaveError => 'Couldn\'t link that run. Try again.';
+
+  @override
   String get workoutRelinkEmpty => 'No eligible runs near this date.';
 
   @override

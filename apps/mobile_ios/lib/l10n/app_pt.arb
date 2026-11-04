@@ -1974,6 +1974,7 @@
   "workoutRelinkHint": "Escolha uma corrida próxima da data deste treino para contá-la como esta sessão. Corridas já vinculadas a outro treino não são exibidas.",
   "workoutRelinkLoading": "A procurar as suas corridas…",
   "workoutRelinkError": "Não foi possível carregar as suas corridas. Tente novamente.",
+  "workoutRelinkSaveError": "Não foi possível associar essa corrida. Tente novamente.",
   "workoutRelinkEmpty": "Nenhuma corrida elegível perto desta data.",
   "workoutRelinkCurrent": "Atual",
   "workoutStart": "Iniciar treino",

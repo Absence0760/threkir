@@ -1974,6 +1974,7 @@
   "workoutRelinkHint": "Choisissez une course proche de la date de cette séance pour la compter comme cette séance. Les courses déjà associées à une autre séance ne sont pas affichées.",
   "workoutRelinkLoading": "Recherche de vos courses…",
   "workoutRelinkError": "Impossible de charger vos courses. Réessayez.",
+  "workoutRelinkSaveError": "Impossible d'associer cette course. Réessayez.",
   "workoutRelinkEmpty": "Aucune course éligible près de cette date.",
   "workoutRelinkCurrent": "Actuelle",
   "workoutStart": "Démarrer la séance",

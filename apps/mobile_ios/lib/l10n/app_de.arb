@@ -1974,6 +1974,7 @@
   "workoutRelinkHint": "Wähle einen Lauf in der Nähe des Workout-Datums, um ihn als diese Einheit zu zählen. Läufe, die bereits mit einem anderen Workout verknüpft sind, werden nicht angezeigt.",
   "workoutRelinkLoading": "Läufe werden gesucht…",
   "workoutRelinkError": "Läufe konnten nicht geladen werden. Versuche es erneut.",
+  "workoutRelinkSaveError": "Dieser Lauf konnte nicht verknüpft werden. Versuche es erneut.",
   "workoutRelinkEmpty": "Keine passenden Läufe in der Nähe dieses Datums.",
   "workoutRelinkCurrent": "Aktuell",
   "workoutStart": "Training starten",

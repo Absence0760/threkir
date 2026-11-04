@@ -7283,6 +7283,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible de charger vos courses. Réessayez.';
 
   @override
+  String get workoutRelinkSaveError =>
+      'Impossible d\'associer cette course. Réessayez.';
+
+  @override
   String get workoutRelinkEmpty => 'Aucune course éligible près de cette date.';
 
   @override

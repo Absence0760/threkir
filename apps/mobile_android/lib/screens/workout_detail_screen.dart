@@ -169,7 +169,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       await _load();
     } catch (e, s) {
       debugPrint('WorkoutDetailScreen._openRelinkPicker re-link failed: $e\n$s');
-      if (mounted) showTopBanner(context, l10n.workoutRelinkError);
+      if (mounted) showTopBanner(context, l10n.workoutRelinkSaveError);
     } finally {
       if (mounted) setState(() => _relinking = false);
     }
@@ -953,6 +953,12 @@ class _RelinkPickerDialogState extends State<_RelinkPickerDialog> {
   }
 
   Future<void> _fetch() async {
+    if (!_loading) {
+      setState(() {
+        _loading = true;
+        _error = false;
+      });
+    }
     try {
       final c = await widget.training
           .fetchRelinkCandidates(widget.workout)
@@ -988,7 +994,19 @@ class _RelinkPickerDialogState extends State<_RelinkPickerDialog> {
         hasLeading: false,
       );
     } else if (_error) {
-      body = Text(l10n.workoutRelinkError);
+      body = Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.workoutRelinkError),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            key: const Key('workoutRelinkRetry'),
+            onPressed: _fetch,
+            child: Text(l10n.errorStateRetry),
+          ),
+        ],
+      );
     } else if (_candidates.isEmpty) {
       body = Text(l10n.workoutRelinkEmpty);
     } else {

@@ -41,6 +41,12 @@ class _FakeTraining extends TrainingService {
   /// Holds the re-link write open until completed, when set.
   Completer<void>? markGate;
 
+  /// What each candidate read does, in order; the last repeats. An [Object]
+  /// is thrown, null serves [candidates].
+  List<Object?> candidateLoads = const [null];
+  int candidateCalls = 0;
+  Object? markError;
+
   _FakeTraining(this.workout, this.candidates, {this.gateCandidates});
 
   @override
@@ -51,6 +57,10 @@ class _FakeTraining extends TrainingService {
     PlanWorkoutRow workout,
   ) async {
     await gateCandidates?.future;
+    final outcome =
+        candidateLoads[candidateCalls.clamp(0, candidateLoads.length - 1)];
+    candidateCalls++;
+    if (outcome != null) throw outcome;
     return candidates;
   }
 
@@ -61,6 +71,7 @@ class _FakeTraining extends TrainingService {
     lastMarkRunId = runId;
     lastMarkManual = manual;
     await markGate?.future;
+    if (markError != null) throw markError!;
   }
 }
 
@@ -224,6 +235,51 @@ void main() {
       gate.complete();
       await tester.pumpAndSettle();
       expect(button('workoutDetailRelink').onPressed, isNotNull);
+    });
+
+    // A failed candidate read was a dead end: the text said "try again" and
+    // the dialog offered only Cancel.
+    testWidgets('a failed candidate load offers a Retry that loads them',
+        (tester) async {
+      final training = _FakeTraining(
+        _completedWorkout(),
+        [_cand('run-current', '2026-04-05T07:00:00Z')],
+      )..candidateLoads = [Exception('offline'), null];
+      await _pumpWith(tester, training);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Re-link'));
+      await tester.pumpAndSettle();
+      expect(find.text("Couldn't load your runs. Try again."), findsOneWidget);
+      expect(find.byType(ListTile), findsNothing);
+
+      await tester.tap(find.byKey(const Key('workoutRelinkRetry')));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(training.candidateCalls, 2);
+      expect(find.byType(ListTile), findsOneWidget);
+      expect(find.text("Couldn't load your runs. Try again."), findsNothing);
+    });
+
+    // A failed link said the runs had not loaded, which they had.
+    testWidgets('a failed re-link says the link failed, not the load',
+        (tester) async {
+      final training = _FakeTraining(
+        _completedWorkout(),
+        [
+          _cand('run-current', '2026-04-05T07:00:00Z'),
+          _cand('run-other', '2026-04-06T07:00:00Z'),
+        ],
+      )..markError = Exception('refused');
+      await _pumpWith(tester, training);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Re-link'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(ListTile).at(1));
+      await tester.pump();
+      await tester.pump();
+      expect(find.text("Couldn't link that run. Try again."), findsOneWidget);
+      expect(find.text("Couldn't load your runs. Try again."), findsNothing);
+      await tester.pump(const Duration(seconds: 4));
     });
 
     testWidgets('picker shows the empty state when no candidates', (tester) async {

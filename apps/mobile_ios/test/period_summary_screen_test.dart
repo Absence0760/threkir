@@ -157,7 +157,7 @@ void main() {
   });
 
   // Home keeps one this-week view (the week lead); the day strip and the
-  // week's climb it used to show beside it live here (decisions § 2279).
+  // week's climb it used to show beside it live here (decisions § 2282).
   group('PeriodSummaryScreen — what Home handed over', () {
     Future<void> seed(LocalRunStore store, DateTime at, double vert) =>
         store.save(Run(

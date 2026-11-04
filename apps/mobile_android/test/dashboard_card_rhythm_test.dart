@@ -81,7 +81,7 @@ void main() {
         // its section gap, so the run is anchored on the streak's own card
         // rather than on a fixed offset that any block added above it would
         // shift. (It was anchored on the This Week strip until that left Home,
-        // decisions § 2279.)
+        // decisions § 2282.)
         final stripCard = find
             .ancestor(
                 of: find.byKey(const Key('dashboardStreakRow')),

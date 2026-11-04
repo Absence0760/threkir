@@ -242,7 +242,7 @@
 	let upcomingEvent = $state<Awaited<ReturnType<typeof fetchNextRsvpedEvent>>>(null);
 	/// How far ahead the Today block looks for the next `going` club event:
 	/// a week, so a Saturday group run is on Home from the Sunday before
-	/// (decisions § 2281). Mobile Home's `kHomeEventWindow` is the twin.
+	/// (decisions § 2284). Mobile Home's `kHomeEventWindow` is the twin.
 	const HOME_EVENT_WINDOW_HOURS = 7 * 24;
 	let fitnessHistory = $state<FitnessSnapshotRow[]>([]);
 	let liveSnap = $derived(computeSnapshot(runs));

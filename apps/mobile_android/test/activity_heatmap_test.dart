@@ -7,7 +7,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/activity_heatmap.dart';
 
 /// Issue #666 round 10 S7. The activity heatmap (on the weekly summary since
-/// decisions § 2280) was the fifth dashboard chart
+/// decisions § 2283) was the fifth dashboard chart
 /// and the only one with no header at all, and its four-level scale was
 /// `colorScheme.primary` at 35 % / 65 % / 100 % over
 /// `surfaceContainerHighest`. Composited and measured against the card that

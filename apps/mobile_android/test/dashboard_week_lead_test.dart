@@ -179,7 +179,7 @@ void main() {
     // No active plan, so no next-session half at all.
     expect(find.text('Next session'), findsNothing);
     // Compact: the occasional Add a run / Import moved to Home's overflow
-    // (decisions § 2277).
+    // (decisions § 2280).
     expect(find.descendant(of: _lead, matching: find.text('Add a run')),
         findsNothing);
     expect(find.descendant(of: _lead, matching: find.text('Import runs')),
@@ -332,7 +332,7 @@ void main() {
       ready: () => _lead.evaluate().isNotEmpty,
       describe: 'the week lead to mount',
     );
-    // decisions § 2279: no This Week strip and no Week stat cell on Home.
+    // decisions § 2282: no This Week strip and no Week stat cell on Home.
     expect(find.byType(ThisWeekStrip), findsNothing);
     expect(find.text('WEEK'), findsNothing);
     await tester.tap(find.byKey(const Key('dashboardWeekLeadOpenWeek')));
@@ -355,7 +355,7 @@ void main() {
     expect(_lead, findsNothing);
   });
 
-  group('Home\'s Start (decisions § 2278)', () {
+  group('Home\'s Start (decisions § 2281)', () {
     final leadStart = find.byKey(const Key('dashboardWeekLeadStart'));
     final cardStart = find.byKey(const Key('todaysWorkoutStart'));
 

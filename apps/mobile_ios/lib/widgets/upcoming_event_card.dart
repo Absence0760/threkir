@@ -7,7 +7,7 @@ import '../screens/event_detail_screen.dart';
 import '../social_service.dart';
 
 /// How far ahead Home's Today block looks for the runner's next club event
-/// (decisions § 2281). The Run tab keeps `fetchNextRsvpedEvent`'s own 48 h
+/// (decisions § 2284). The Run tab keeps `fetchNextRsvpedEvent`'s own 48 h
 /// default, where the card stands in for the last run just before the event.
 const kHomeEventWindow = Duration(days: 7);
 

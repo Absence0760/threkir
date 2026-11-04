@@ -1,5 +1,5 @@
 // Home's Today block shows the runner's next `going` club event when it starts
-// within seven days (decisions § 2281, issue #1187). The window itself is the
+// within seven days (decisions § 2284, issue #1187). The window itself is the
 // server read's; this suite pins that Home asks for seven days, where the card
 // sits, and that a failed read leaves the rest of Home standing.
 

@@ -7,11 +7,11 @@ import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../lib/backup.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
+import 'supabase_test_init.dart';
 
 /// Cross-platform compatibility test for the `run-app-backup` v1
 /// wire format. The Go service at `apps/job_worker/internal/dataexport`
@@ -33,10 +33,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 

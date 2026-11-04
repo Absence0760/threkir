@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/rendering.dart';
 import 'package:ui_kit/ui_kit.dart' show ListSkeleton, TextLane;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/relink_candidates.dart';
@@ -14,6 +13,7 @@ import '../lib/screens/workout_detail_screen.dart';
 import '../lib/training.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/loading_skeletons.dart';
+import 'supabase_test_init.dart';
 
 PlanWorkoutRow _completedWorkout({String? completedRunId = 'run-current'}) {
   return PlanWorkoutRow(
@@ -102,10 +102,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 

@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/public_route_screen.dart';
 import '../lib/screens/public_run_screen.dart';
 import '../lib/widgets/live_run_map.dart';
 import '../lib/widgets/shared_with_you_chip.dart';
+import 'supabase_test_init.dart';
 
 /// The phone's recipient view of a run or route shared through an audience
 /// (decisions § 1874): it opens through the shared view, shows the clipped
@@ -173,10 +173,7 @@ Future<void> _ensureSupabase() async {
   TestWidgetsFlutterBinding.ensureInitialized();
   dotenv.loadFromString(isOptional: true);
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 

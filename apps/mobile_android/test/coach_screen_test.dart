@@ -5,7 +5,6 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
 import '../lib/ai_disclosure.dart';
 import '../lib/ai_disclosure_memo.dart';
@@ -17,6 +16,7 @@ import '../lib/widgets/surface_peer_strip.dart';
 import '../lib/widgets/sign_in_required_state.dart';
 import '../lib/training_service.dart';
 import 'realtime_drain.dart';
+import 'supabase_test_init.dart';
 
 /// Reports a non-null consent timestamp so the screen renders its main
 /// (consented) Scaffold — the one whose left drawer used to swallow the
@@ -107,10 +107,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 

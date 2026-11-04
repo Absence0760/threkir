@@ -16,7 +16,7 @@ import 'package:path_provider_platform_interface/path_provider_platform_interfac
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
-    show PostgrestException, Supabase;
+    show PostgrestException;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_route_store.dart';
@@ -28,6 +28,7 @@ import '../lib/widgets/live_run_map.dart'
     show mapDraftLine, mapLineCasing, mapLineWidth;
 import '../lib/widgets/map_attribution.dart';
 import 'pump_until.dart';
+import 'supabase_test_init.dart';
 
 class _FakePathProvider extends PathProviderPlatform with MockPlatformInterfaceMixin {
   final Directory _tmp;
@@ -120,10 +121,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 

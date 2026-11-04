@@ -1,16 +1,15 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/settings_account_screen.dart';
 import '../lib/widgets/top_banner.dart' show kTopBannerMaxDuration;
 import 'pump_until.dart';
+import 'supabase_test_init.dart';
 
 // Issue #1064: the delete-account challenge is one fixed localized word for
 // every account. The email is a Hide My Email relay address here — the case
@@ -51,22 +50,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  // supabase_flutter opens an app_links deep-link stream on init; pumpUntil
-  // turns the real event loop, so the MissingPluginException would land as
-  // an unhandled error without a stub.
-  for (final name in const [
-    'com.llfbandit.app_links/events',
-    'com.llfbandit.app_links/messages',
-  ]) {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-            MethodChannel(name, const StandardMethodCodec()),
-            (call) async => null);
-  }
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 

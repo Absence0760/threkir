@@ -5,12 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart' show AppSemanticColors;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/live_spectator_screen.dart';
 import 'realtime_drain.dart';
+import 'supabase_test_init.dart';
 
 /// Drives the predictive next-cutoff card on `live_spectator_screen.dart`.
 /// The fake api returns a live (non-terminal) run linked to a public route
@@ -137,10 +137,7 @@ Future<void> _ensureSupabase() async {
   TestWidgetsFlutterBinding.ensureInitialized();
   dotenv.loadFromString(isOptional: true);
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 

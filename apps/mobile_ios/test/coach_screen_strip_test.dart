@@ -8,7 +8,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart' show AppSemanticColors;
 import '../lib/geocoding.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -19,6 +18,7 @@ import '../lib/screens/races_screen.dart';
 import '../lib/training_service.dart';
 import 'pump_until.dart';
 import 'realtime_drain.dart';
+import 'supabase_test_init.dart';
 
 final _en = AppLocalizationsEn();
 
@@ -123,22 +123,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  // supabase_flutter opens an app_links deep-link stream on init. pumpUntil
-  // turns the real event loop, so without a stub the MissingPluginException
-  // lands as an unhandled error in whichever case is running when it fires.
-  for (final name in const [
-    'com.llfbandit.app_links/events',
-    'com.llfbandit.app_links/messages',
-  ]) {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-            MethodChannel(name, const StandardMethodCodec()),
-            (call) async => null);
-  }
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 

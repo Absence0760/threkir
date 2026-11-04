@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../lib/l10n/date_format.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -17,6 +16,7 @@ import '../lib/screens/settings_pro_screen.dart';
 import '../lib/store_links.dart';
 import 'pro_plan_fixtures.dart';
 import 'pump_until.dart';
+import 'supabase_test_init.dart';
 
 class _FakeProStore implements ProStore {
   _FakeProStore(
@@ -85,7 +85,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     SharedPreferences.setMockInitialValues({});
-    await Supabase.initialize(url: 'http://127.0.0.1:24321', anonKey: 'eyJ.local.test');
+    await initializeTestSupabase();
     await initializeDateFormatting();
   });
 

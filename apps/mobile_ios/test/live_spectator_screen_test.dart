@@ -5,13 +5,13 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart' show SkeletonBlock;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/live_spectator_screen.dart';
 import '../lib/widgets/error_state.dart';
 import 'realtime_drain.dart';
+import 'supabase_test_init.dart';
 
 /// Test seam: returns a canned public-run row + ping backlog so the
 /// terminal-state branch in `_hydrate` can be driven without a backend.
@@ -85,10 +85,7 @@ Future<void> _ensureSupabase() async {
   // the terminal-state tests mount the map with a hydrated trace.
   dotenv.loadFromString(isOptional: true);
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 

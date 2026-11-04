@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/live_broadcast.dart';
 import '../lib/screens/live_spectator_screen.dart';
 import '../lib/screens/public_run_screen.dart';
 import '../lib/widgets/loading_skeletons.dart';
+import 'supabase_test_init.dart';
 
 /// Test seam: returns a canned public run + author profile so `_load`
 /// resolves without a backend. Track fetches are stubbed to empty so
@@ -88,10 +88,7 @@ Future<void> _ensureSupabase() async {
   // those reads return '' instead of throwing NotInitializedError.
   dotenv.loadFromString(isOptional: true);
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 

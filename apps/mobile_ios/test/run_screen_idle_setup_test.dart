@@ -9,7 +9,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wakelock_plus_platform_interface/wakelock_plus_platform_interface.dart';
 
 import '../lib/audio_cues.dart';
@@ -30,6 +29,7 @@ import '../lib/widgets/todays_workout_card.dart';
 import '../lib/widgets/top_banner.dart' show kTopBannerMaxDuration;
 import 'pre_run_dialogs.dart';
 import 'pump_until.dart';
+import 'supabase_test_init.dart';
 
 /// The Run start screen's setup state (issue #1226): what the runner loads
 /// before GO must be visible, removable, and must not outlive the run it was
@@ -242,10 +242,7 @@ void main() {
       isOptional: true,
     );
     if (!supabaseReady) {
-      await Supabase.initialize(
-        url: 'http://127.0.0.1:24321',
-        anonKey: 'eyJ.local.test',
-      );
+      await initializeTestSupabase();
       supabaseReady = true;
     }
   });

@@ -18,6 +18,7 @@ import '../lib/social_service.dart';
 import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
 import 'realtime_drain.dart';
+import 'supabase_test_init.dart';
 
 ClubView _club(String? viewerRole) => ClubView(
   row: ClubRow(
@@ -475,10 +476,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 

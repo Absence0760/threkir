@@ -9,7 +9,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wakelock_plus_platform_interface/wakelock_plus_platform_interface.dart';
 
 import '../lib/audio_cues.dart';
@@ -25,6 +24,7 @@ import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import 'pump_until.dart';
 import 'pre_run_dialogs.dart';
+import 'supabase_test_init.dart';
 
 /// Pins the issue #664 fix: a run whose live share is active when the
 /// runner stops must NOT be silently left `is_public = true`. The stop
@@ -213,10 +213,7 @@ void main() {
       isOptional: true,
     );
     if (!supabaseReady) {
-      await Supabase.initialize(
-        url: 'http://127.0.0.1:24321',
-        anonKey: 'eyJ.local.test',
-      );
+      await initializeTestSupabase();
       supabaseReady = true;
     }
   });

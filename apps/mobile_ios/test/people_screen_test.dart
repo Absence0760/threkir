@@ -15,16 +15,14 @@ import '../lib/screens/people_screen.dart';
 import '../lib/settings_destination.dart';
 import '../lib/widgets/error_state.dart';
 import '../lib/widgets/sign_in_required_state.dart';
+import 'supabase_test_init.dart';
 
 bool _supabaseReady = false;
 Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 

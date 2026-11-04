@@ -1673,12 +1673,12 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         StatTile.small(
           icon: Icons.trending_up,
           label: l10n.runDetailStatElevGain,
-          value: '${_elevationGain.round()}m',
+          value: UnitFormat.elevation(_elevationGain, unit),
         ),
         StatTile.small(
           icon: Icons.trending_down,
           label: l10n.runDetailStatElevLoss,
-          value: '${_elevationLoss.round()}m',
+          value: UnitFormat.elevation(_elevationLoss, unit),
         ),
       ],
       if (_showGradeAdjustedPace)
@@ -3264,7 +3264,11 @@ class _ElevationProfile {
 
 class _ElevationChartState extends State<_ElevationChart> {
   static const double _chartHeight = 140;
-  static const double _gutter = 40;
+  static const double _minGutter = 40;
+
+  /// Wide enough for the longer of the two gutter labels in the runner's
+  /// unit: "8,848 m" fits the old fixed 40 px, "5,577 ft" does not.
+  double _gutter = _minGutter;
 
   int? _touchIdx;
   int? _lastEmittedIdx;
@@ -3315,6 +3319,18 @@ class _ElevationChartState extends State<_ElevationChart> {
     final labelStyle = theme.textTheme.labelSmall
         ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
     final total = _cum.isEmpty ? 0.0 : _cum.last;
+    var widest = 0.0;
+    for (final ele in [profile.dataMin, profile.dataMax]) {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: UnitFormat.elevation(ele, widget.unit),
+          style: theme.textTheme.labelSmall,
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      if (tp.width > widest) widest = tp.width;
+    }
+    _gutter = math.max(_minGutter, (widest + 8).ceilToDouble());
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -3340,6 +3356,7 @@ class _ElevationChartState extends State<_ElevationChart> {
                 domain: profile.domain,
                 theme: theme,
                 gutter: _gutter,
+                unit: widget.unit,
                 touchIdx: _touchIdx,
               ),
               size: const Size(double.infinity, _chartHeight),
@@ -3347,7 +3364,7 @@ class _ElevationChartState extends State<_ElevationChart> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.only(left: _gutter, top: 4),
+          padding: EdgeInsets.only(left: _gutter, top: 4),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -3431,7 +3448,7 @@ class _ElevationChartState extends State<_ElevationChart> {
           const SizedBox(width: 16),
           if (ele != null)
             Text(
-              '${ele.round()}m',
+              UnitFormat.elevation(ele, widget.unit),
               style: theme.textTheme.bodySmall?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -3517,6 +3534,7 @@ class _ElevationPainter extends CustomPainter {
   final ({double lo, double hi}) domain;
   final ThemeData theme;
   final double gutter;
+  final DistanceUnit unit;
   final int? touchIdx;
 
   _ElevationPainter({
@@ -3527,6 +3545,7 @@ class _ElevationPainter extends CustomPainter {
     required this.domain,
     required this.theme,
     required this.gutter,
+    required this.unit,
     this.touchIdx,
   });
 
@@ -3567,7 +3586,7 @@ class _ElevationPainter extends CustomPainter {
           ..strokeWidth = 1,
       );
       final tp = TextPainter(
-        text: TextSpan(text: '${ele.round()} m', style: labelStyle),
+        text: TextSpan(text: UnitFormat.elevation(ele, unit), style: labelStyle),
         textDirection: TextDirection.ltr,
       )..layout(maxWidth: gutter - 4);
       tp.paint(canvas, Offset(gutter - 4 - tp.width, y - tp.height / 2));
@@ -3629,6 +3648,8 @@ class _ElevationPainter extends CustomPainter {
   bool shouldRepaint(covariant _ElevationPainter old) =>
       !identical(old.smoothed, smoothed) ||
       old.touchIdx != touchIdx ||
+      old.gutter != gutter ||
+      old.unit != unit ||
       old.theme != theme;
 }
 
@@ -3818,7 +3839,7 @@ class _SegmentStatsCard extends StatelessWidget {
             '${segment.avgBpm} ${l10n.runUnitBpm}'),
       if (segment.eleGainMetres > 0)
         _stat(theme, l10n.runDetailSegStatGain,
-            '+${segment.eleGainMetres.round()} m'),
+            '+${UnitFormat.elevation(segment.eleGainMetres, unit)}'),
     ];
     return Card(
       child: Padding(

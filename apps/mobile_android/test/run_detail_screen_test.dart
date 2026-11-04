@@ -307,10 +307,12 @@ Future<void> _pump(WidgetTester tester, Run run,
     ApiClient? apiClient,
     SettingsSyncService? settingsSync,
     bool showRawTrack = false,
+    bool useMiles = false,
     double textScale = 1.0}) async {
   SharedPreferences.setMockInitialValues({
     if (bodyWeightKg != null) 'body_weight_kg': bodyWeightKg,
     if (showRawTrack) 'show_raw_track': true,
+    if (useMiles) 'use_miles': true,
   });
   final prefs = Preferences();
   await prefs.init();
@@ -1619,6 +1621,37 @@ void main() {
 
       expect(find.text('Elevation'), findsWidgets);
       expect(find.textContaining(RegExp(r'^0(\.0+)? ?(km|mi)$')), findsWidgets);
+    });
+
+    testWidgets('elevation gain, loss and the crosshair read in feet for a '
+        'mile runner', (tester) async {
+      tester.view.physicalSize = const Size(1000, 5000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await _pump(tester, _elevationRun(), useMiles: true);
+
+      final feet = find.textContaining(RegExp(r'^[\d,]+ ft$'));
+      final metres = find.textContaining(RegExp(r'^[\d,]+ ?m$'));
+      // 12 m of gain is 39.4 ft; the tiles used to print "12m" and "0m".
+      expect(find.text('39 ft'), findsOneWidget);
+      expect(find.text('0 ft'), findsOneWidget);
+      expect(metres, findsNothing);
+
+      final chart = find.byWidgetPredicate((w) =>
+          w is CustomPaint &&
+          w.painter.runtimeType.toString() == '_ElevationPainter');
+      expect(chart, findsOneWidget);
+      await tester.ensureVisible(chart);
+      await tester.pump();
+      final gesture = await tester.startGesture(tester.getCenter(chart));
+      // Past the tap recognizer's press deadline, so onTapDown fires while
+      // the pan recognizer is still in the arena.
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(feet, findsNWidgets(3));
+      expect(metres, findsNothing);
+      await gesture.up();
+      await tester.pump();
     });
   });
 

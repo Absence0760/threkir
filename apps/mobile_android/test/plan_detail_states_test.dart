@@ -192,6 +192,23 @@ void main() {
     expect(find.byKey(const ValueKey('planDetailWeek-0')), findsOneWidget);
   });
 
+  // The row opened and closed without saying so: only the chevron's label
+  // changed, and a screen reader heard no state on the row itself.
+  testWidgets('the earlier-weeks row announces whether it is open',
+      (tester) async {
+    final handle = tester.ensureSemantics();
+    await _pump(tester, DateTime(2026, 3, 18));
+    final row = find.byKey(const Key('planDetailEarlierWeeks'));
+    expect(tester.getSemantics(row),
+        containsSemantics(hasExpandedState: true, isExpanded: false));
+
+    await tester.tap(row);
+    await tester.pump();
+    expect(tester.getSemantics(row),
+        containsSemantics(hasExpandedState: true, isExpanded: true));
+    handle.dispose();
+  });
+
   testWidgets('a past workout left open reads as missed to a screen reader',
       (tester) async {
     await _pump(tester, DateTime(2026, 3, 18));

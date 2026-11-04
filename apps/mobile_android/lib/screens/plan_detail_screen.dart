@@ -2580,47 +2580,50 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (earlier.isNotEmpty) ...[
-          Material(
-            type: MaterialType.transparency,
-            child: InkWell(
-              key: const Key('planDetailEarlierWeeks'),
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              onTap: () =>
-                  setState(() => _showEarlierWeeks = !_showEarlierWeeks),
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-                decoration: planCardDecoration(theme),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Wrap(
-                        spacing: 8,
-                        children: [
-                          Text(l10n.planDetailEarlierWeeks(earlier.length),
-                              style: theme.textTheme.titleSmall
-                                  ?.copyWith(fontWeight: FontWeight.w700)),
-                          Text(
-                              l10n.planDetailWeekDoneCount(
-                                  earlierWorkouts
-                                      .where(isWorkoutCompleted)
-                                      .length,
-                                  _activeCount(earlierWorkouts)),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              )),
-                        ],
+          Semantics(
+            expanded: _showEarlierWeeks,
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                key: const Key('planDetailEarlierWeeks'),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                onTap: () =>
+                    setState(() => _showEarlierWeeks = !_showEarlierWeeks),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+                  decoration: planCardDecoration(theme),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Wrap(
+                          spacing: 8,
+                          children: [
+                            Text(l10n.planDetailEarlierWeeks(earlier.length),
+                                style: theme.textTheme.titleSmall
+                                    ?.copyWith(fontWeight: FontWeight.w700)),
+                            Text(
+                                l10n.planDetailWeekDoneCount(
+                                    earlierWorkouts
+                                        .where(isWorkoutCompleted)
+                                        .length,
+                                    _activeCount(earlierWorkouts)),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                )),
+                          ],
+                        ),
                       ),
-                    ),
-                    Icon(
-                      _showEarlierWeeks ? Icons.expand_less : Icons.expand_more,
-                      semanticLabel: _showEarlierWeeks
-                          ? l10n.planDetailHideEarlierWeeks
-                          : l10n.planDetailShowEarlierWeeks,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 8),
-                  ],
+                      Icon(
+                        _showEarlierWeeks ? Icons.expand_less : Icons.expand_more,
+                        semanticLabel: _showEarlierWeeks
+                            ? l10n.planDetailHideEarlierWeeks
+                            : l10n.planDetailShowEarlierWeeks,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                  ),
                 ),
               ),
             ),

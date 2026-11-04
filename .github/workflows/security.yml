@@ -185,13 +185,18 @@ jobs:
         # matching would build nothing, and a Go database with no source
         # extracted is exactly the state the legacy autobuild silently
         # papers over.
+        #
+        # POSIX `find` only (`-exec dirname`, not GNU `-printf '%h'`):
+        # `scripts/check_codeql_coverage.mjs` runs this expression verbatim and
+        # refuses a GNU-only primary, so the guard runs on a macOS workstation's
+        # BSD find as well as on the runner.
         shell: bash
         run: |
           set -euo pipefail
           MODULES=$(find . -name go.mod \
             -not -path './node_modules/*' \
             -not -path './.git/*' \
-            -printf '%h\n' | sort)
+            -exec dirname {} + | sort)
           COUNT=$(printf '%s' "$MODULES" | grep -c . || true)
           if [ "$COUNT" -lt 2 ]; then
             echo "::error::found $COUNT Go module(s) under the repo root; this repo has at least 2 (apps/job_worker, apps/graph_cycle). A walk that stopped matching would leave CodeQL analysing no Go source at all, so this fails rather than scanning nothing."
@@ -281,7 +286,7 @@ jobs:
           PROJECTS=$(find . \( -name settings.gradle -o -name settings.gradle.kts \) \
             -not -path './node_modules/*' \
             -not -path './.git/*' \
-            -printf '%h\n' | sort -u)
+            -exec dirname {} + | sort -u)
           COUNT=$(printf '%s' "$PROJECTS" | grep -c . || true)
           if [ "$COUNT" -lt 2 ]; then
             echo "::error::found $COUNT Gradle project(s) under the repo root; this repo has at least 2 (apps/watch_wear/android, apps/mobile_android/android). A walk that stopped matching would build nothing, and a java-kotlin database with no source extracted is indistinguishable from a clean scan."

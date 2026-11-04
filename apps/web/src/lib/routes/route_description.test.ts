@@ -156,6 +156,28 @@ test('assembleEnglish handles a flat road loop with no climbing', () => {
 	assert.equal(text, 'Track is a 5.0 km road loop route with little to no elevation change.');
 });
 
+test('assembleEnglish states miles and feet for a miles viewer', () => {
+	const parts = describeRoute({
+		name: 'Summit Trail',
+		distanceM: 12000,
+		elevationM: 480,
+		surface: 'trail',
+		start: { lat: 51.5, lng: -0.12 },
+		end: { lat: 51.7, lng: 0.0 },
+	});
+	const text = assembleEnglish(parts, 'Summit Trail', 'mi');
+	assert.equal(
+		text,
+		'Summit Trail is a 7.5 mi trail point-to-point route with 1575 ft of climbing (hilly, about 211 ft per mile).',
+	);
+	assert.doesNotMatch(text, /\bkm\b|\d m\b/);
+	const short = describeRoute({ name: 'Strides', distanceM: 800, elevationM: 0, surface: null });
+	assert.equal(
+		assembleEnglish(short, 'Strides', 'mi'),
+		'Strides is a 0.50 mi point-to-point route with little to no elevation change.',
+	);
+});
+
 // ── localisedTemplate (web-only; not part of the twin count) ──
 
 test('localisedTemplate emits a climb clause for an elevated route', () => {

@@ -24,7 +24,9 @@ import {
 	assembleEnglish,
 	describeRoute,
 	type RouteDescriptionInput,
+	type RouteDescriptionParts,
 } from '../route_description';
+import { parsePreferredUnit, type PreferredUnit } from '../../types';
 import { parseAuthHeader } from '../../coach/limits';
 import type { SupabaseClientFactory } from '../../coach/types';
 import {
@@ -146,6 +148,47 @@ function parseInput(raw: unknown): RouteDescriptionInput | null {
 	};
 }
 
+/**
+ * The unit the caller asked for, or null when the field is absent or not one
+ * of `PreferredUnit`'s members — the handler then falls back to the account's
+ * stored preference rather than trusting a malformed value.
+ */
+export function parseRequestedUnit(raw: unknown): PreferredUnit | null {
+	if (!raw || typeof raw !== 'object') return null;
+	const unit = (raw as Record<string, unknown>).unit;
+	return unit === 'km' || unit === 'mi' ? unit : null;
+}
+
+/** Read `preferred_unit` off the profile row; anything unrecognised is km. */
+function storedUnit(row: unknown): PreferredUnit {
+	const raw = row && typeof row === 'object' ? (row as Record<string, unknown>).preferred_unit : null;
+	return parsePreferredUnit(typeof raw === 'string' ? raw : null);
+}
+
+const UNIT_RULE: Record<PreferredUnit, string> = {
+	km: 'Write every distance in kilometres (km) and every climb in metres (m). Never use miles or feet.',
+	mi: 'Write every distance in miles (mi) and every climb in feet (ft). Never use kilometres or metres.',
+};
+
+/**
+ * The user turn: the verified facts, stated in the viewer's unit, and an
+ * instruction that the paragraph keeps to that unit.
+ */
+export function routeDescribeUserMessage(
+	parts: RouteDescriptionParts,
+	name: string,
+	unit: PreferredUnit,
+): string {
+	return (
+		`Facts about the route:\n${assembleEnglish(parts, name, unit)}\n\n` +
+		`Surface: ${parts.surface ?? 'unspecified'}. ` +
+		`Elevation character: ${parts.elevation}. ` +
+		`Shape: ${parts.shape}.\n\n` +
+		`${UNIT_RULE[unit]}\n\n` +
+		'Write the description paragraph now.'
+	);
+}
+
 const SYSTEM_PROMPT =
 	'You write short, vivid descriptions of running routes for a running app. ' +
 	'You are given the verified facts about one route (distance, surface, ' +
@@ -153,7 +196,8 @@ const SYSTEM_PROMPT =
 	'runner browsing routes would find useful and inviting. Stay strictly ' +
 	'grounded in the facts provided — do not invent landmarks, scenery, ' +
 	'difficulty ratings, or place names that are not in the facts. Do not use ' +
-	'markdown, headings, or bullet points. Return only the paragraph.';
+	'markdown, headings, or bullet points. Write distances and climbing only ' +
+	'in the unit the facts are given in. Return only the paragraph.';
 
 /**
  * Enhance a route description with Claude. Always resolves to a
@@ -170,11 +214,8 @@ export async function handleRouteDescribe(
 	const input = parseInput(rawBody);
 	if (!input) return json(400, { error: 'invalid route input' });
 
-	// The templated description is computed up front: it's the response
-	// on every non-200-worthy branch below, and the prose the model is
-	// asked to enhance.
 	const parts = describeRoute(input);
-	const templated = assembleEnglish(parts, input.name);
+	const requestedUnit = parseRequestedUnit(rawBody);
 
 	const accessToken = parseAuthHeader(authHeader);
 	if (!accessToken) return json(401, { error: 'not authenticated' });
@@ -205,11 +246,22 @@ export async function handleRouteDescribe(
 	// there is exactly one place the fan-out can be reasoned about. The
 	// templated description still rides along on the 403, so the L1
 	// baseline survives a refusal (layered resilience).
+	let profileRow: unknown = null;
 	const disclosure = await gateAiDisclosure(
-		() => supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle(),
+		async () => {
+			const res = await supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle();
+			profileRow = res.data;
+			return res;
+		},
 		AI_DISCLOSURE_VERSION_ROUTE_AI,
 		'route-describe',
 	);
+	// A client that sent no unit (or one outside `PreferredUnit`) is answered
+	// in the account's stored unit, km when that is unset. The templated
+	// description in that unit is the response on every branch from here
+	// that does not reach the model.
+	const unit = requestedUnit ?? storedUnit(profileRow);
+	const templated = assembleEnglish(parts, input.name, unit);
 	if (!disclosure.ok) {
 		return json(disclosure.status, {
 			error:
@@ -293,15 +345,7 @@ export async function handleRouteDescribe(
 				thinking: { type: 'adaptive' },
 				system: SYSTEM_PROMPT,
 				messages: [
-					{
-						role: 'user',
-						content:
-							`Facts about the route:\n${templated}\n\n` +
-							`Surface: ${parts.surface ?? 'unspecified'}. ` +
-							`Elevation character: ${parts.elevation}. ` +
-							`Shape: ${parts.shape}.\n\n` +
-							'Write the description paragraph now.',
-					},
+					{ role: 'user', content: routeDescribeUserMessage(parts, input.name, unit) },
 				],
 			},
 			{ timeout: ROUTE_DESCRIBE_TIMEOUT_MS },

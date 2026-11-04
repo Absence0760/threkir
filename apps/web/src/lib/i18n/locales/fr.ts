@@ -2969,7 +2969,7 @@ export const messages = {
 	"landing.featurePlansBody": "Course visée, temps visé, jours par semaine : le générateur écrit les semaines à partir de votre forme actuelle.",
 	"landing.platformLive": "Disponible",
 	"landing.platformInTesting": "En test",
-	"landing.platformsNote": "Les applications téléphone et montre sont développées et en test interne — elles ne sont pas encore sur les stores. Commencez sur le web, votre compte vous attendra à leur sortie.",
+	"landing.platformsNote": "{platforms} {n, plural, one {est en} other {sont en}} test interne et pas encore sur les stores. Commencez dès maintenant sur une autre plateforme, votre compte vous attendra à {n, plural, one {sa sortie} other {leur sortie}}.",
 	"landing.createFreeAccount": "Créer un compte gratuit",
 	"landing.navApps": "Applis",
 	"landing.navFeatures": "Fonctionnalités",

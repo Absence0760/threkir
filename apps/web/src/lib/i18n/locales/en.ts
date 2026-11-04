@@ -2982,7 +2982,7 @@ export const en = {
 	"landing.featurePlansBody": "Goal race, target time, days per week — the generator writes the weeks from your current fitness.",
 	"landing.platformLive": "Live",
 	"landing.platformInTesting": "In testing",
-	"landing.platformsNote": "The phone and watch apps are built and running in internal testing — they are not in the app stores yet. Start on the web and your account will be waiting when they land.",
+	"landing.platformsNote": "{platforms} {n, plural, one {is in} other {are in}} internal testing and not in the app stores yet. Start on another platform now and your account will be waiting when {n, plural, one {it lands} other {they land}}.",
 	"landing.createFreeAccount": "Create a free account",
 	"landing.navApps": "Apps",
 	"landing.navFeatures": "Features",

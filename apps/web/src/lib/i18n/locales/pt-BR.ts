@@ -2968,7 +2968,7 @@ export const messages = {
 	"landing.featurePlansBody": "Prova alvo, tempo alvo, dias por semana — o gerador escreve as semanas a partir do seu condicionamento atual.",
 	"landing.platformLive": "No ar",
 	"landing.platformInTesting": "Em teste",
-	"landing.platformsNote": "Os apps de celular e relógio estão prontos e em teste interno — ainda não estão nas lojas. Comece pela web e sua conta estará esperando quando eles chegarem.",
+	"landing.platformsNote": "{platforms} {n, plural, one {está em} other {estão em}} teste interno e ainda não {n, plural, one {chegou às} other {chegaram às}} lojas. Comece agora em outra plataforma e sua conta estará esperando quando {n, plural, one {o app chegar} other {os apps chegarem}}.",
 	"landing.createFreeAccount": "Criar uma conta grátis",
 	"landing.navApps": "Apps",
 	"landing.navFeatures": "Recursos",

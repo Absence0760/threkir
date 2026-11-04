@@ -12142,13 +12142,13 @@ abstract class AppLocalizations {
   /// **'{name} · {weeks}w'**
   String coachContextPlanWeeks(String name, int weeks);
 
-  /// Coach hint under the context strip while the runner has one plan and nothing queued after it; names the race page's Add to my season button and the My season picker option
+  /// Note at the foot of the Coach plan picker's menu while the runner has one plan and nothing queued after it; names the race page's Add to my season button and the My season picker option (here = this menu)
   ///
   /// In en, this message translates to:
   /// **'Racing again after this plan? Tap Add to my season on the race, and My season shows up here.'**
   String get coachSeasonHint;
 
-  /// Button beside the Coach season hint; opens the race calendar
+  /// Action under the season note in the Coach plan picker's menu; opens the race calendar
   ///
   /// In en, this message translates to:
   /// **'Find a race'**

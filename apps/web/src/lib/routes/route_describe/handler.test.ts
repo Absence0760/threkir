@@ -18,11 +18,14 @@ import assert from 'node:assert/strict';
 import {
 	handleRouteDescribe,
 	MAX_ROUTE_NAME_CHARS,
+	parseRequestedUnit,
+	routeDescribeUserMessage,
 	ROUTE_DESCRIBE_RATE_BUCKET,
 	ROUTE_DESCRIBE_RATE_MAX,
 	ROUTE_DESCRIBE_RATE_WINDOW_S,
 } from './handler';
 import type { RouteDescribeConfig } from './handler';
+import { describeRoute } from '../route_description';
 
 function baseConfig(): RouteDescribeConfig {
 	return {
@@ -219,7 +222,8 @@ test('the dev paywall bypass does not bypass the consent gate', async () => {
 // ─────────────── Rate-limit slot: spent before the model, refunded on failure ───────────────
 
 /// A Pro caller whose throttle hands out ticket `ticket-1`; records every RPC.
-function proClient() {
+/// [profile] is merged into the consenting profile row `get_my_profile` returns.
+function proClient(profile: Record<string, unknown> = {}) {
 	const calls: Array<{ name: string; args?: unknown }> = [];
 	const factory = () =>
 		({
@@ -229,7 +233,7 @@ function proClient() {
 				if (name === 'get_my_profile') {
 					return {
 						maybeSingle: async () => ({
-							data: { ai_disclosure_version: 2, coach_consent_at: ACCEPTED_AT },
+							data: { ai_disclosure_version: 2, coach_consent_at: ACCEPTED_AT, ...profile },
 							error: null,
 						}),
 					};
@@ -336,4 +340,95 @@ test('a missing key serves the template without spending a slot', async () => {
 	);
 	assert.equal(r.body.source, 'template');
 	assert.equal(sb.names().includes('spend_rate_limit_slot'), false);
+});
+
+// ─────────────── the viewer's unit (miles runners get miles) ───────────────
+
+const SUMMIT = describeRoute({
+	name: 'Summit Trail',
+	distanceM: 12000,
+	elevationM: 480,
+	surface: 'trail',
+	start: { lat: 51.5, lng: -0.12 },
+	end: { lat: 51.7, lng: 0.0 },
+});
+
+test('the prompt for a km viewer states km and m and requires them', () => {
+	const msg = routeDescribeUserMessage(SUMMIT, 'Summit Trail', 'km');
+	assert.match(msg, /Summit Trail is a 12\.0 km trail point-to-point route with 480 m of climbing/);
+	assert.match(msg, /Write every distance in kilometres \(km\) and every climb in metres \(m\)\. Never use miles or feet\./);
+	assert.doesNotMatch(msg, /\bmi\b|\bft\b/);
+});
+
+test('the prompt for a miles viewer states mi and ft and requires them', () => {
+	const msg = routeDescribeUserMessage(SUMMIT, 'Summit Trail', 'mi');
+	assert.match(msg, /Summit Trail is a 7\.5 mi trail point-to-point route with 1575 ft of climbing/);
+	assert.match(msg, /Write every distance in miles \(mi\) and every climb in feet \(ft\)\. Never use kilometres or metres\./);
+	assert.doesNotMatch(msg, /\bkm\b|\d m\b/);
+});
+
+test('parseRequestedUnit admits only the PreferredUnit members', () => {
+	assert.equal(parseRequestedUnit({ unit: 'km' }), 'km');
+	assert.equal(parseRequestedUnit({ unit: 'mi' }), 'mi');
+	for (const unit of ['MI', 'miles', 'm', '', 1, null, undefined, ['mi'], { mi: true }]) {
+		assert.equal(parseRequestedUnit({ unit }), null, `unit ${JSON.stringify(unit)}`);
+	}
+	assert.equal(parseRequestedUnit(null), null);
+});
+
+/// A model fake that records the user turn it was sent.
+function capturingModel() {
+	const prompts: string[] = [];
+	return {
+		create: () => ({
+			messages: {
+				create: async (body: { messages: Array<{ content: unknown }> }) => {
+					prompts.push(String(body.messages[0].content));
+					return { stop_reason: 'end_turn', content: [{ type: 'text', text: 'A loop.' }] } as never;
+				},
+			},
+		}),
+		prompts,
+	};
+}
+
+test('the requested unit reaches the prompt and wins over the stored preference', async () => {
+	const model = capturingModel();
+	await handleRouteDescribe('Bearer x', { ...VALID_BODY, unit: 'mi' }, {
+		...baseConfig(),
+		createClient: proClient({ preferred_unit: 'km' }).factory,
+		createAnthropic: model.create,
+	});
+	assert.equal(model.prompts.length, 1);
+	assert.match(model.prompts[0], /6\.2 mi/);
+	assert.match(model.prompts[0], /Write every distance in miles/);
+});
+
+test('a missing or malformed unit falls back to the stored preference, then km', async () => {
+	for (const [body, stored, expected] of [
+		[VALID_BODY, 'mi', /6\.2 mi/],
+		[{ ...VALID_BODY, unit: 'furlongs' }, 'mi', /6\.2 mi/],
+		[{ ...VALID_BODY, unit: 'furlongs' }, null, /10\.0 km/],
+		[VALID_BODY, 'leagues', /10\.0 km/],
+	] as const) {
+		const model = capturingModel();
+		await handleRouteDescribe('Bearer x', body, {
+			...baseConfig(),
+			createClient: proClient({ preferred_unit: stored }).factory,
+			createAnthropic: model.create,
+		});
+		assert.match(model.prompts[0], expected, `${JSON.stringify(body)} / stored ${stored}`);
+	}
+});
+
+test('the templated fallback is in the viewer unit too', async () => {
+	const r = parse(
+		await handleRouteDescribe('Bearer x', { ...VALID_BODY, unit: 'mi' }, {
+			...baseConfig(),
+			createClient: stubClient({ ai_disclosure_version: 2, coach_consent_at: ACCEPTED_AT }),
+		}),
+	);
+	assert.equal(r.body.source, 'template');
+	assert.equal(r.body.upgrade, true);
+	assert.match(r.body.description ?? '', /^Riverside 10K is a 6\.2 mi /);
 });

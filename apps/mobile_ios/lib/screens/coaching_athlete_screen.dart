@@ -212,11 +212,19 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
               ),
       );
     } catch (e) {
-      // Any other refusal: the RPC's raise text names the function and the
-      // athlete's id, so it stays in the log and the coach gets the copy.
+      // Offline, signed out and rate limited each name their own fix. What
+      // is left is a refusal (no longer linked, a plan the coach can't use)
+      // or an unknown failure: the RPC's raise text names the function and
+      // the athlete's id, so it stays in the log and the coach gets the copy.
+      // Web twin: errorCopy(e, m, 'coachingAthlete.assignError').
       debugPrint('[CoachingAthleteScreen] assign failed: $e');
       if (!mounted) return;
-      showTopBanner(context, l10n.coachingAthleteAssignError);
+      showTopBanner(
+        context,
+        classifyAuthError(e) == AuthErrorKind.generic
+            ? l10n.coachingAthleteAssignError
+            : friendlyError(l10n, e),
+      );
     } finally {
       if (mounted) setState(() => _assigning = false);
     }

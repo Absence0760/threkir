@@ -9160,10 +9160,13 @@ class ApiClient {
 
   /// Assign one of the coach's plans to a linked athlete via the
   /// `assign_plan_to_athlete` RPC (migration 20270106_001). An overlap with
-  /// one of the athlete's active plans throws [PlanAssignOverlapException];
-  /// any other refusal rethrows the [PostgrestException] untouched so the
-  /// caller can classify it. Its raise text is log detail, not copy. Returns
-  /// the new plan id.
+  /// one of the athlete's active plans throws [PlanAssignOverlapException].
+  /// Every other failure reaches the caller untouched for it to classify: a
+  /// refusal (signed out, not an active coach of the athlete, a source plan
+  /// that is missing or not the caller's to use) as the RPC's
+  /// [PostgrestException], whose raise text is log detail, not copy; a
+  /// transport failure as whatever the HTTP client threw. Returns the new
+  /// plan id.
   Future<String> assignPlanToAthlete({
     required String sourcePlanId,
     required String athleteId,

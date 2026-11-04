@@ -651,6 +651,40 @@ void main() {
   });
 
   testWidgets(
+      'an assign that fails offline says so, not that the assign was refused',
+      (tester) async {
+    final prefs = await _prefs();
+    final api = _FakeApi(
+      plans: [_sourcePlan()],
+      assignError: const SocketException("Failed host lookup: 'xyz.supabase.co'"),
+    );
+    await _pump(tester, api, prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await pickSourceAndAssign(tester, l10n);
+
+    expect(find.text(l10n.authErrorOffline), findsOneWidget);
+    expect(find.text(l10n.coachingAthleteAssignError), findsNothing);
+  });
+
+  testWidgets('an assign refused for a signed-out caller asks them to sign in',
+      (tester) async {
+    final prefs = await _prefs();
+    final api = _FakeApi(
+      plans: [_sourcePlan()],
+      assignError: const PostgrestException(
+        code: 'P0001',
+        message: 'assign_plan_to_athlete: not authenticated',
+      ),
+    );
+    await _pump(tester, api, prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await pickSourceAndAssign(tester, l10n);
+
+    expect(find.text(l10n.authErrorNotSignedIn), findsOneWidget);
+    expect(find.text(l10n.coachingAthleteAssignError), findsNothing);
+  });
+
+  testWidgets(
       'a re-read that fails after the plan is assigned still reports the '
       'assign, and clears the pick so it is not sent twice', (tester) async {
     final prefs = await _prefs();

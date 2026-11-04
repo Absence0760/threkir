@@ -226,6 +226,7 @@ import {
 	type DmPage,
 	type DmThreadTarget,
 } from '../social/dm_thread';
+import { unreadDmBadgeCount } from '../social/messages_inbox';
 import type { ParsedResultRow } from '../runs/event_results_csv';
 import {
 	normalisePlanWorkoutNotes,
@@ -10991,9 +10992,14 @@ export interface DirectMessage {
 	route_id: string | null;
 	unsent_at: string | null;
 	deleted_partner_key: string | null;
+	/// The conversation the message belongs to, assigned by the server on
+	/// send (migration 20271105000001).
+	conversation_id: string;
 }
 
 export interface DmThread {
+	/// The conversation the mute, archive and delete-for-me actions act on.
+	conversationId: string;
 	/// Null when the partner deleted their account; the thread is then keyed
 	/// on `deletedPartnerKey` and holds only the viewer's own messages.
 	partnerId: string | null;
@@ -11006,6 +11012,10 @@ export interface DmThread {
 	lastAt: string;
 	lastFromMe: boolean;
 	unread: number;
+	/// The viewer muted it: no notification, and left out of the nav badge.
+	muted: boolean;
+	/// The viewer archived it and nothing newer has arrived since.
+	archived: boolean;
 }
 
 /// The newest message of the runner's current (not archived) Coach
@@ -11041,16 +11051,19 @@ export async function fetchLatestCoachMessage(): Promise<LatestCoachMessage | nu
 	};
 }
 
-/// Total unread direct messages across every conversation: the badge on the
-/// sidebar's Messages entry. The same `dm_threads()` aggregation as
-/// [fetchDmThreads] without its partner-profile read, as mobile's
-/// `ApiClient.fetchUnreadDmCount` does. Throws on a failed read, so the store
-/// keeps the last count rather than reading a blip as "nothing unread".
+/// Total unread direct messages across the conversations the viewer has not
+/// muted or archived: the badge on the sidebar's Messages entry. The same
+/// `dm_threads()` aggregation as [fetchDmThreads] without its partner-profile
+/// read, as mobile's `ApiClient.fetchUnreadDmCount` does. Throws on a failed
+/// read, so the store keeps the last count rather than reading a blip as
+/// "nothing unread".
 export async function fetchUnreadDmCount(): Promise<number> {
 	if (!auth.user?.id) return 0;
 	const { data, error } = await supabase.rpc('dm_threads', undefined, { get: true });
 	if (error) throw new Error(`dm_threads failed: ${error.message}`);
-	return (data ?? []).reduce((total, r) => total + (Number(r.unread) || 0), 0);
+	return unreadDmBadgeCount(
+		(data ?? []).map((r) => ({ unread: Number(r.unread) || 0, muted: r.muted, archived: r.archived })),
+	);
 }
 
 /// Conversation list: the latest message per partner + an unread count.
@@ -11074,6 +11087,7 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 	// deleted_partner_key and last_body are each null in one case (a deleted
 	// partner, a live partner, an unsent message).
 	const threads: DmThread[] = (data as {
+		conversation_id: string;
 		partner_id: string | null;
 		deleted_partner_key: string | null;
 		last_body: string | null;
@@ -11081,7 +11095,10 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 		last_at: string;
 		last_from_me: boolean;
 		unread: number;
+		muted: boolean;
+		archived: boolean;
 	}[]).map((r) => ({
+		conversationId: r.conversation_id,
 		partnerId: r.partner_id,
 		deletedPartnerKey: r.deleted_partner_key,
 		partnerName: null,
@@ -11091,6 +11108,8 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 		lastAt: r.last_at,
 		lastFromMe: r.last_from_me,
 		unread: Number(r.unread) || 0,
+		muted: r.muted === true,
+		archived: r.archived === true,
 	}));
 	const byPartner = new Map(
 		threads.flatMap((t) => (t.partnerId ? [[t.partnerId, t] as const] : [])),
@@ -11201,6 +11220,39 @@ export async function unsendDm(messageId: string): Promise<DirectMessage> {
 	});
 	if (error || !data) throw error ? dbError(error) : new Error('Unsend failed');
 	return data as DirectMessage;
+}
+
+/// Deletes a conversation for the viewer only (migration 20271105000001):
+/// every message so far leaves their reads, the other participant keeps
+/// theirs, and a newer message brings the conversation back. The caller holds
+/// it behind an undo window (conventions.md § Destructive actions), since
+/// nothing is sent until the window closes.
+export async function hideDmConversation(conversationId: string): Promise<void> {
+	const { error } = await supabase.rpc('hide_conversation', { p_conversation_id: conversationId });
+	if (error) throw dbError(error);
+}
+
+/// Mutes or unmutes a conversation for the viewer: a muted one raises no
+/// message notification and is left out of the unread badge.
+export async function setDmConversationMuted(conversationId: string, muted: boolean): Promise<void> {
+	const { error } = await supabase.rpc('set_conversation_muted', {
+		p_conversation_id: conversationId,
+		p_muted: muted,
+	});
+	if (error) throw dbError(error);
+}
+
+/// Archives or unarchives a conversation for the viewer. An archived one stays
+/// in the Archived list until a newer message arrives.
+export async function setDmConversationArchived(
+	conversationId: string,
+	archived: boolean,
+): Promise<void> {
+	const { error } = await supabase.rpc('set_conversation_archived', {
+		p_conversation_id: conversationId,
+		p_archived: archived,
+	});
+	if (error) throw dbError(error);
 }
 
 /// Marks the partner's unread messages read up to and including `through`, the

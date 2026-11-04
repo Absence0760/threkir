@@ -12,7 +12,7 @@
 	import AiTag from '#lib/components/AiTag.svelte';
 	import { messagesInbox } from '#lib/stores/messages_inbox.svelte.ts';
 	import { DM_INBOX_POLL_MS, dmThreadRouteId } from '#lib/social/dm_thread.ts';
-	import { coachInboxPreview, inboxEntries } from '#lib/social/messages_inbox.ts';
+	import { coachInboxPreview, inboxEntries, partitionArchived } from '#lib/social/messages_inbox.ts';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -25,14 +25,20 @@
 	const activeId = $derived(page.params.id ?? null);
 	const hasActive = $derived(activeId !== null || onCoach);
 
+	// Archived conversations sit in their own list until a newer message
+	// arrives (dm_threads() decides that). The Coach row belongs to the inbox.
+	const split = $derived(partitionArchived(messagesInbox.threads));
+	const showingArchived = $derived(messagesInbox.showingArchived && split.archived.length > 0);
 	const entries = $derived(
-		inboxEntries(
-			messagesInbox.threads,
-			messagesInbox.coach && {
-				placement: messagesInbox.coach.placement,
-				lastAt: messagesInbox.coach.latest?.createdAt ?? null,
-			},
-		),
+		showingArchived
+			? split.archived.map((thread) => ({ kind: 'dm' as const, thread }))
+			: inboxEntries(
+					split.inbox,
+					messagesInbox.coach && {
+						placement: messagesInbox.coach.placement,
+						lastAt: messagesInbox.coach.latest?.createdAt ?? null,
+					},
+				),
 	);
 	const coach = $derived(messagesInbox.coach);
 	const pinned = $derived(coach?.placement === 'pinned');
@@ -115,7 +121,20 @@
 	{:else}
 		<div class="layout">
 			<aside class="threads" class:has-active={hasActive}>
-				<header class="pane-head"><h2>{m('messages.heading')}</h2></header>
+				<header class="pane-head">
+					{#if showingArchived}
+						<button
+							type="button"
+							class="btn btn-secondary btn-sm"
+							data-testid="inbox-back-to-inbox"
+							onclick={() => (messagesInbox.showingArchived = false)}
+						>
+							{m('messages.backToInbox')}
+						</button>
+					{:else}
+						<h2>{m('messages.heading')}</h2>
+					{/if}
+				</header>
 				{#if messagesInbox.threadsError}
 					<p class="muted empty" role="alert">
 						{m('messages.threadsLoadFailed')}
@@ -185,7 +204,13 @@
 										<span class="thread-body">
 											<span class="thread-top">
 												<strong>{name}</strong>
-												{#if t.unread > 0}<span class="badge">{t.unread}</span>{/if}
+												{#if t.muted}
+													<span class="muted-mark" title={m('messages.mutedMark')} data-testid="inbox-muted-mark">
+														<span class="material-symbols" aria-hidden="true">notifications_off</span>
+														<span class="visually-hidden">{m('messages.mutedMark')}</span>
+													</span>
+												{/if}
+												{#if t.unread > 0}<span class="badge" class:quiet={t.muted}>{t.unread}</span>{/if}
 											</span>
 											<span class="preview" class:unsent={t.lastUnsent}
 												>{t.lastFromMe ? m('messages.youPrefix') : ''}{t.lastUnsent
@@ -199,8 +224,19 @@
 						{/each}
 					</ul>
 				{/if}
-				{#if !messagesInbox.threadsError && messagesInbox.threads.length === 0}
+				{#if !messagesInbox.threadsError && split.inbox.length === 0 && !showingArchived}
 					<p class="muted empty">{m('messages.emptyThreads')}</p>
+				{/if}
+				{#if !showingArchived && split.archived.length > 0}
+					<button
+						type="button"
+						class="archived-toggle"
+						data-testid="inbox-show-archived"
+						onclick={() => (messagesInbox.showingArchived = true)}
+					>
+						<span class="material-symbols" aria-hidden="true">archive</span>
+						{m('messages.archivedCount', { count: split.archived.length })}
+					</button>
 				{/if}
 			</aside>
 
@@ -296,6 +332,39 @@
 		font-size: var(--font-size-section-label);
 		padding: 0.05rem 0.4rem;
 		font-weight: 700;
+	}
+	.badge.quiet {
+		background: var(--color-text-secondary);
+	}
+	.muted-mark {
+		display: inline-flex;
+		flex: 0 0 auto;
+		color: var(--color-text-tertiary);
+	}
+	.muted-mark .material-symbols {
+		font-size: 0.95rem;
+	}
+	.archived-toggle {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		width: 100%;
+		min-height: 2.75rem;
+		padding: var(--space-sm) var(--space-lg);
+		background: transparent;
+		border: none;
+		border-top: 1px solid var(--color-border);
+		color: var(--color-text-secondary);
+		font: inherit;
+		text-align: start;
+		cursor: pointer;
+	}
+	.archived-toggle:hover,
+	.archived-toggle:focus-visible {
+		background: var(--color-bg-secondary);
+	}
+	.archived-toggle .material-symbols {
+		font-size: 1.1rem;
 	}
 	.preview {
 		font-size: 0.8rem;

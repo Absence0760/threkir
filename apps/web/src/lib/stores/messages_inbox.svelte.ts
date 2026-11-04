@@ -20,10 +20,15 @@ import {
 import {
 	fetchDmThreads,
 	fetchLatestCoachMessage,
+	hideDmConversation,
+	setDmConversationArchived,
+	setDmConversationMuted,
 	type DmThread,
 	type LatestCoachMessage,
 } from '#lib/core/data.ts';
 import { supabase } from '#lib/core/supabase.ts';
+import { deferDestructive } from '#lib/stores/undo.svelte.ts';
+import { dmUnreadStore } from '#lib/stores/dm_unread.svelte.ts';
 import { effective, loadSettings, updateUniversal } from '#lib/settings/settings.ts';
 import { dmThreadRouteId } from '#lib/social/dm_thread.ts';
 import {
@@ -45,6 +50,8 @@ class MessagesInboxStore {
 	threadsError = $state(false);
 	/// Null while unknown and whenever the Coach is off for this deploy.
 	coach = $state<CoachInboxState | null>(null);
+	/// The inbox is showing its Archived list.
+	showingArchived = $state(false);
 
 	#userId: string | null = null;
 	#polling = false;
@@ -53,6 +60,10 @@ class MessagesInboxStore {
 	/// before that answers with the count from before the mark, and assigning
 	/// it as-is put the badge back on the conversation just opened.
 	#markedReadAt = new Map<string, number>();
+	/// Conversations deleted for the runner while the undo window is open. The
+	/// server has not been told yet, so every list read until the commit still
+	/// returns them; they stay out of the list until then.
+	#pendingHidden = new Set<string>();
 
 	/// Binds the store to the signed-in runner, dropping what another account
 	/// left behind. Returns true when the user changed.
@@ -62,15 +73,19 @@ class MessagesInboxStore {
 		this.threads = [];
 		this.threadsError = false;
 		this.coach = null;
+		this.showingArchived = false;
 		this.#markedReadAt.clear();
+		this.#pendingHidden.clear();
 		this.#coachGeneration++;
 		return true;
 	}
 
 	#apply(rows: DmThread[], startedAt: number) {
-		this.threads = rows.map((t) =>
-			(this.#markedReadAt.get(dmThreadRouteId(t)) ?? -Infinity) >= startedAt ? { ...t, unread: 0 } : t,
-		);
+		this.threads = rows
+			.filter((t) => !this.#pendingHidden.has(t.conversationId))
+			.map((t) =>
+				(this.#markedReadAt.get(dmThreadRouteId(t)) ?? -Infinity) >= startedAt ? { ...t, unread: 0 } : t,
+			);
 	}
 
 	async loadThreads() {
@@ -105,10 +120,75 @@ class MessagesInboxStore {
 	/// a failed list read leaves the previews as they were.
 	async refreshThreads() {
 		try {
-			this.threads = await fetchDmThreads();
+			const rows = await fetchDmThreads();
+			this.threads = rows.filter((t) => !this.#pendingHidden.has(t.conversationId));
 		} catch {
 			// Corrected by the next poll.
 		}
+	}
+
+	#patch(conversationId: string, change: Partial<DmThread>) {
+		this.threads = this.threads.map((t) => (t.conversationId === conversationId ? { ...t, ...change } : t));
+	}
+
+	/// Mutes or unmutes at once: both are one tap back. A refused write puts
+	/// the row back and rethrows for the caller to report.
+	async setMuted(conversationId: string, muted: boolean) {
+		const before = this.threads;
+		this.#patch(conversationId, { muted });
+		try {
+			await setDmConversationMuted(conversationId, muted);
+		} catch (e) {
+			this.threads = before;
+			throw e;
+		}
+		void dmUnreadStore.refresh();
+	}
+
+	/// Archives or unarchives at once; the conversation moves between the
+	/// inbox and the Archived list, where Unarchive is one tap away.
+	async setArchived(conversationId: string, archived: boolean) {
+		const before = this.threads;
+		this.#patch(conversationId, { archived });
+		try {
+			await setDmConversationArchived(conversationId, archived);
+		} catch (e) {
+			this.threads = before;
+			throw e;
+		}
+		void dmUnreadStore.refresh();
+	}
+
+	/// Deletes a conversation for the runner, held behind the undo window
+	/// (conventions.md § Destructive actions): the row leaves the list now and
+	/// the server is told only when the window closes, so Undo cancels a timer.
+	/// `onRestore` lets the open conversation pane come back with the row.
+	hide(conversationId: string, opts: { message: string; onCommitError: (e: unknown) => void; onRestore?: () => void }) {
+		const before = this.threads;
+		this.#pendingHidden.add(conversationId);
+		this.threads = this.threads.filter((t) => t.conversationId !== conversationId);
+		deferDestructive({
+			message: opts.message,
+			commit: async () => {
+				try {
+					await hideDmConversation(conversationId);
+				} finally {
+					this.#pendingHidden.delete(conversationId);
+				}
+				void dmUnreadStore.refresh();
+			},
+			restore: () => {
+				this.#pendingHidden.delete(conversationId);
+				this.threads = before;
+				opts.onRestore?.();
+			},
+			// restore() has already put the row back; the list read brings in
+			// anything that arrived during the window.
+			onCommitError: (e) => {
+				opts.onCommitError(e);
+				void this.refreshThreads();
+			},
+		});
 	}
 
 	markRead(routeId: string) {

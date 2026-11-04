@@ -43,23 +43,42 @@ create index training_plans_published_from_idx
   on training_plans (published_from_plan_id)
   where published_from_plan_id is not null;
 
-with tmpl as (
-  select user_id, name, min(id::text)::uuid as id
-    from training_plans
-   where is_public_template = true
-   group by user_id, name
-  having count(*) = 1
-),
-src as (
-  select user_id, name, min(id::text)::uuid as id
-    from training_plans
-   where is_template = false
-   group by user_id, name
-  having count(*) = 1
-)
-update training_plans t
-   set published_from_plan_id = src.id
-  from tmpl
-  join src on src.user_id = tmpl.user_id and src.name = tmpl.name
- where t.id = tmpl.id
-   and t.published_from_plan_id is null;
+-- A function so the pgtap suite runs this exact statement against fixtures
+-- (training_plan_published_from_test.sql). Nothing calls it after this
+-- migration; a second run links nothing already linked.
+create or replace function private.backfill_training_plan_published_from()
+returns integer
+language plpgsql
+set search_path = public, pg_temp
+as $$
+declare
+  v_linked integer;
+begin
+  with tmpl as (
+    select user_id, name, min(id::text)::uuid as id
+      from training_plans
+     where is_public_template = true
+     group by user_id, name
+    having count(*) = 1
+  ),
+  src as (
+    select user_id, name, min(id::text)::uuid as id
+      from training_plans
+     where is_template = false
+     group by user_id, name
+    having count(*) = 1
+  )
+  update training_plans t
+     set published_from_plan_id = src.id
+    from tmpl
+    join src on src.user_id = tmpl.user_id and src.name = tmpl.name
+   where t.id = tmpl.id
+     and t.published_from_plan_id is null;
+  get diagnostics v_linked = row_count;
+  return v_linked;
+end;
+$$;
+
+revoke execute on function private.backfill_training_plan_published_from() from public, anon, authenticated;
+
+select private.backfill_training_plan_published_from();

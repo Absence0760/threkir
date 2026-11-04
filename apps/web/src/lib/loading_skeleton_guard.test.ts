@@ -53,3 +53,81 @@ test('the pages that took the figure hold their layout with a skeleton', () => {
 		);
 	}
 });
+
+// One shimmer, in SkeletonBlock.svelte. Pages used to carry their own copy of
+// the `.skel` rule and its keyframes (29 of them by 2026-11-03), each free to
+// drift in tint, cadence or reduced-motion handling, and most painted
+// --color-bg-tertiary, which in dark is byte-identical to --color-surface, so
+// the block vanished on a card between sweeps.
+const SKELETON_BLOCK = join('src', 'lib', 'components', 'SkeletonBlock.svelte');
+
+// A keyframe that sweeps `background-position` is a shimmer whatever it is
+// called; the name check catches one written some other way.
+function handRolledShimmers(src: string): string[] {
+	const found: string[] = [];
+	const kf = /@keyframes\s+([\w-]+)\s*\{/g;
+	for (let m = kf.exec(src); m; m = kf.exec(src)) {
+		let depth = 1;
+		let i = kf.lastIndex;
+		while (i < src.length && depth > 0) {
+			if (src[i] === '{') depth++;
+			else if (src[i] === '}') depth--;
+			i++;
+		}
+		const body = src.slice(kf.lastIndex, i);
+		if (/shimmer|skel/i.test(m[1]) || /background-position/.test(body)) {
+			found.push(`@keyframes ${m[1]}`);
+		}
+	}
+	if (/\.skel(?![\w-])/.test(src)) found.push('.skel selector');
+	if (/class(?::[\w-]+)?=["{][^"}]*(?<![\w-])skel(?![\w-])/.test(src)) found.push('class="skel"');
+	return found;
+}
+
+test('handRolledShimmers flags the copied shape and spares the shared one', () => {
+	assert.deepEqual(
+		handRolledShimmers(
+			'<span class="skel skel-line"></span>\n.skel { animation: skel-shimmer 1.4s; }\n' +
+				'@keyframes skel-shimmer { 0% { background-position: 200% 0; } }'
+		),
+		['@keyframes skel-shimmer', '.skel selector', 'class="skel"']
+	);
+	assert.deepEqual(
+		handRolledShimmers('@keyframes wave { to { background-position: -100% 0; } }'),
+		['@keyframes wave']
+	);
+	assert.deepEqual(
+		handRolledShimmers(
+			'<div class="skel-card"><SkeletonBlock height="1rem" /></div>\n' +
+				'.skel-card { display: flex; }\n@keyframes pulse { 50% { opacity: 0.4; } }'
+		),
+		[]
+	);
+});
+
+test('no page hand-rolls a skeleton shimmer; SkeletonBlock is the one implementation', () => {
+	const files = [...walk(SRC).filter((f) => f.endsWith('.svelte')), join(SRC, 'app.css')].filter(
+		(f) => f !== SKELETON_BLOCK
+	);
+	const offenders = files.flatMap((f) =>
+		handRolledShimmers(readFileSync(f, 'utf-8')).map((hit) => `${relative(SRC, f)}: ${hit}`)
+	);
+	assert.deepEqual(
+		offenders,
+		[],
+		'draw a loading placeholder with <SkeletonBlock height= width= radius=> ' +
+			'(lib/components/SkeletonBlock.svelte); a `.skel-*` layout wrapper is fine, ' +
+			'a copied `.skel` fill or shimmer keyframe is not'
+	);
+	const block = readFileSync(SKELETON_BLOCK, 'utf-8');
+	assert.match(
+		block,
+		/prefers-reduced-motion:\s*reduce/,
+		'the shared shimmer must freeze under reduced motion'
+	);
+	assert.match(
+		block,
+		/--color-fill-subtle/,
+		'a skeleton is a subtle FILL (conventions.md § Web boundaries)'
+	);
+});

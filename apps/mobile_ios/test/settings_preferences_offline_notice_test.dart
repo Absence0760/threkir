@@ -13,6 +13,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/settings_preferences_screen.dart';
 import '../lib/settings_sync.dart';
+import 'pump_until.dart';
 
 class _FakeSettingsService implements SettingsService {
   _FakeSettingsService({required this.serverHydrated});
@@ -57,7 +58,11 @@ Future<void> _pump(
       home: SettingsPreferencesScreen(preferences: prefs, settingsSync: sync),
     ),
   );
-  await tester.pumpAndSettle();
+  // The sync settled before the pump; what is left is the locale's catalogue
+  // load, and the screen is ready once its title reads in that locale.
+  final title = (await AppLocalizations.delegate.load(locale)).prefsTitle;
+  await pumpUntil(tester, () => find.text(title).evaluate().isNotEmpty,
+      describe: 'the preferences screen to build in $locale');
 }
 
 void main() {

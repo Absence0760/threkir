@@ -445,6 +445,14 @@ user logs**, not a fixed grid. The ordering algorithm:
 > card in its Today block (recent runs live in the Recent trend group), so
 > this is a mobile-only arrangement of a mobile-only card, not a parity
 > change. `test/dashboard_today_order_test.dart`.
+>
+> **One this-week view (mobile, 2026-11-03, [decisions § 2279](../architecture/decisions.md)):**
+> mobile Home shows this week once, in the week lead. The Week stat cell
+> and the This Week day strip left Home; the lead's chevron opens the
+> weekly summary, which now draws the day strip for the current week and a
+> climb tile for every period. The period strip keeps Month and All time.
+> Web still shows all three. `test/dashboard_week_lead_test.dart`,
+> `test/period_summary_screen_test.dart`.
 
 ```
   Home                                    (today)

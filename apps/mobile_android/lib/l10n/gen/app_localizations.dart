@@ -15232,12 +15232,6 @@ abstract class AppLocalizations {
   /// **'Log a gym session'**
   String get dashboardFirstRunGymAction;
 
-  /// Label for the weekly period stat card on the dashboard
-  ///
-  /// In en, this message translates to:
-  /// **'Week'**
-  String get dashboardPeriodWeek;
-
   /// Label for the monthly period stat card on the dashboard
   ///
   /// In en, this message translates to:

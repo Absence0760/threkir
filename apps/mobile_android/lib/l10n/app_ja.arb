@@ -2570,7 +2570,6 @@
   "dashboardFirstRunBodyWithPlan": "プランは上に用意できています。最初のランを記録すると、距離・ペース・プランに対する進み具合がこのページに表示されます。",
   "dashboardFirstRunGymHint": "筋トレをしますか？",
   "dashboardFirstRunGymAction": "ジムのセッションを記録",
-  "dashboardPeriodWeek": "週",
   "dashboardPeriodMonth": "月",
   "dashboardPeriodAllTime": "全期間",
   "dashboardSectionStreak": "連続記録",

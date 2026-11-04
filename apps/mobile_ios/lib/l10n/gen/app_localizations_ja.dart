@@ -8942,9 +8942,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dashboardFirstRunGymAction => 'ジムのセッションを記録';
 
   @override
-  String get dashboardPeriodWeek => '週';
-
-  @override
   String get dashboardPeriodMonth => '月';
 
   @override

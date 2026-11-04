@@ -9451,9 +9451,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get dashboardFirstRunGymAction => 'Gym-Einheit eintragen';
 
   @override
-  String get dashboardPeriodWeek => 'Woche';
-
-  @override
   String get dashboardPeriodMonth => 'Monat';
 
   @override

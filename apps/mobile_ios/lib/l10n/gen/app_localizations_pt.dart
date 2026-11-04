@@ -9441,9 +9441,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get dashboardFirstRunGymAction => 'Registe uma sessão de ginásio';
 
   @override
-  String get dashboardPeriodWeek => 'Semana';
-
-  @override
   String get dashboardPeriodMonth => 'Mês';
 
   @override
@@ -29059,9 +29056,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get dashboardFirstRunGymAction => 'Registre uma sessão de academia';
-
-  @override
-  String get dashboardPeriodWeek => 'Semana';
 
   @override
   String get dashboardPeriodMonth => 'Mês';

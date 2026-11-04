@@ -9438,9 +9438,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get dashboardFirstRunGymAction => 'Registra una sesión de gimnasio';
 
   @override
-  String get dashboardPeriodWeek => 'Semana';
-
-  @override
   String get dashboardPeriodMonth => 'Mes';
 
   @override

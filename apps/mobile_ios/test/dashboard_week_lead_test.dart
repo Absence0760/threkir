@@ -22,8 +22,10 @@ import '../lib/preferences.dart';
 import '../lib/screens/add_run_screen.dart';
 import '../lib/screens/dashboard_screen.dart';
 import '../lib/screens/import_screen.dart';
+import '../lib/screens/period_summary_screen.dart';
 import '../lib/screens/run_screen.dart' show runRecordingActive;
 import '../lib/training_service.dart';
+import '../lib/widgets/this_week_strip.dart';
 import '../lib/widgets/todays_workout_card.dart';
 import 'pump_until.dart';
 
@@ -185,7 +187,7 @@ void main() {
 
     // It is the first card under the toolbar: above the period strip.
     expect(tester.getBottomLeft(_lead).dy,
-        lessThan(tester.getTopLeft(find.text('WEEK')).dy));
+        lessThan(tester.getTopLeft(find.text('MONTH')).dy));
   });
 
   testWidgets('the distance honours the miles preference', (tester) async {
@@ -320,6 +322,26 @@ void main() {
       () => find.byType(ImportScreen).evaluate().isNotEmpty,
       describe: 'the import screen to open',
     );
+  });
+
+  testWidgets('the lead is Home\'s one this-week view, and its chevron opens '
+      'the weekly summary', (tester) async {
+    await _mount(
+      tester,
+      runs: [_run('r1', DateTime.now(), 5000)],
+      ready: () => _lead.evaluate().isNotEmpty,
+      describe: 'the week lead to mount',
+    );
+    // decisions § 2279: no This Week strip and no Week stat cell on Home.
+    expect(find.byType(ThisWeekStrip), findsNothing);
+    expect(find.text('WEEK'), findsNothing);
+    await tester.tap(find.byKey(const Key('dashboardWeekLeadOpenWeek')));
+    await pumpUntil(
+      tester,
+      () => find.byType(PeriodSummaryScreen).evaluate().isNotEmpty,
+      describe: 'the weekly summary to open',
+    );
+    expect(find.text('Weekly Summary'), findsOneWidget);
   });
 
   testWidgets('the runless first-run state carries no week lead',

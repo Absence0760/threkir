@@ -66,7 +66,6 @@ import '../widgets/nutrition_rings_card.dart';
 import '../widgets/readiness_card.dart';
 import '../widgets/recent_lifts_card.dart';
 import '../widgets/run_list_tile.dart';
-import '../widgets/this_week_strip.dart';
 import '../widgets/goal_editor_sheet.dart';
 import '../widgets/todays_workout_card.dart';
 import '../widgets/runner_menu.dart' show todaysOpenWorkout;
@@ -853,6 +852,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
     return _DashboardWeekLead(
       key: const Key('dashboardWeekLead'),
+      onOpenWeek: () => _openPeriodSummary(PeriodType.week),
       lead: lead,
       hasPlan: planWorkouts != null,
       unit: unit,
@@ -1416,7 +1416,6 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     final now = DateTime.now();
     _breakNow = _homeBreak(runs, now);
-    final weekStart = weekStartLocal(now, weekStartDay: _weekStartDay);
     final monthStart = DateTime(now.year, now.month, 1);
     // Compute the training-load series ONCE — FitnessCard, ReadinessCard, and
     // the chart all read this same instance instead of each re-running the
@@ -1427,9 +1426,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     // One pass over the runs list collects everything every card needs —
     // week totals, month totals, all-time totals, and the PB candidates.
     // Replaces four separate `.where().fold()` chains. Matters at 10k+ runs.
-    var weekRunCount = 0;
-    var weekDistance = 0.0;
-    var weekVert = 0.0;
     var monthRunCount = 0;
     var monthDistance = 0.0;
     var monthVert = 0.0;
@@ -1445,13 +1441,8 @@ class _DashboardScreenState extends State<DashboardScreen>
     final bestEfforts = <String, Duration>{};
     for (final r in runs) {
       allDistance += r.distanceMetres;
-      final vert = _vertOf(r);
+      final vert = runVertMetres(r);
       allVert += vert;
-      if (!r.startedAt.isBefore(weekStart)) {
-        weekRunCount++;
-        weekDistance += r.distanceMetres;
-        weekVert += vert;
-      }
       if (!r.startedAt.isBefore(monthStart)) {
         monthRunCount++;
         monthDistance += r.distanceMetres;
@@ -1755,24 +1746,13 @@ class _DashboardScreenState extends State<DashboardScreen>
       final goalsSection = goals.isEmpty && runs.isNotEmpty
           ? null
           : _goalsSection(theme, unit, runs, goals, now);
-      // Compact 3-column stat strip — replaced the previous stacked
-      // "This Week" / "This Month" / "All Time" cards (~480 px each +
-      // section headers). Same data, same tap-through into PeriodSummary
-      // for week / month; all-time has no period summary so it isn't
-      // tappable.
+      // Month and all-time stat strip. The week is the week lead's alone
+      // (decisions § 2279): a Week cell here and a This Week strip below were
+      // the second and third copies of one number, so the cell went and the
+      // lead's chevron opens the weekly summary, which now carries the day
+      // strip and the week's climb.
       final periodRow = Row(
         children: [
-          Expanded(
-            child: _PeriodStatCard(
-              label: l10n.dashboardPeriodWeek,
-              distanceMetres: weekDistance,
-              runCount: weekRunCount,
-              vertMetres: weekVert,
-              unit: unit,
-              onTap: () => _openPeriodSummary(PeriodType.week),
-            ),
-          ),
-          const SizedBox(width: 8),
           Expanded(
             child: _PeriodStatCard(
               label: l10n.dashboardPeriodMonth,
@@ -1838,17 +1818,6 @@ class _DashboardScreenState extends State<DashboardScreen>
               : recapButton != null
                   ? Align(alignment: Alignment.centerRight, child: recapButton)
                   : null;
-      final thisWeekCard = Card(
-        child: Padding(
-          padding: _kCardPadding,
-          child: ThisWeekStrip(
-            runs: runs,
-            unit: unit,
-            weekStartDay: _weekStartDay,
-            now: now,
-          ),
-        ),
-      );
       final streakCard = Card(
         child: Padding(
           padding: _kCardPadding,
@@ -2090,8 +2059,6 @@ class _DashboardScreenState extends State<DashboardScreen>
               periodRow,
               if (periodLinks != null) periodLinks,
               _kSectionGap,
-              thisWeekCard,
-              _kSectionGap,
               Row(
                 key: const Key('dashboardExpandedChartColumns'),
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2135,7 +2102,6 @@ class _DashboardScreenState extends State<DashboardScreen>
             // stack separates by the card grammar (§482's 4dp vertical margin
             // on each side) and _kSectionGap marks only a real block boundary
             // — a group of cards under one heading, or a non-card block.
-            thisWeekCard,
             streakCard,
             ...trendGroups,
           ],
@@ -2299,19 +2265,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     return raw == null || raw == 'run';
   }
 
-  /// Positive-only elevation gain (metres) for the period-stat
-  /// aggregates. Mirrors web's `metadata.elevation_m` read on
-  /// `/dashboard/+page.svelte`. Same canonical key the recap helper
-  /// already uses (`lib/recap.dart#_elevationOf`).
-  static double _vertOf(Run r) {
-    final raw = r.metadata?['elevation_m'];
-    if (raw is num) {
-      final v = raw.toDouble();
-      return v > 0 ? v : 0;
-    }
-    return 0;
-  }
-
   static String _formatDuration(Duration d) {
     final h = d.inHours;
     final m = d.inMinutes % 60;
@@ -2337,8 +2290,12 @@ class _DashboardWeekLead extends StatelessWidget {
   final VoidCallback? onStart;
   final ActivityType startActivity;
 
+  /// Opens this week's summary, the day-by-day detail the lead stands for.
+  final VoidCallback onOpenWeek;
+
   const _DashboardWeekLead({
     super.key,
+    required this.onOpenWeek,
     required this.lead,
     required this.hasPlan,
     required this.unit,
@@ -2397,7 +2354,15 @@ class _DashboardWeekLead extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ChartCardHeader(title: l10n.dashboardLeadTitle),
+            ChartCardHeader(
+              title: l10n.dashboardLeadTitle,
+              action: IconButton(
+                key: const Key('dashboardWeekLeadOpenWeek'),
+                tooltip: l10n.periodWeeklySummary,
+                icon: const Icon(Icons.chevron_right),
+                onPressed: onOpenWeek,
+              ),
+            ),
             const SizedBox(height: 8),
             if (lead.count == 0)
               Text(

@@ -2570,7 +2570,6 @@
   "dashboardFirstRunBodyWithPlan": "Votre plan est prêt ci-dessus. Enregistrez votre première course et cette page se remplit : votre distance, votre allure et votre avancement dans le plan.",
   "dashboardFirstRunGymHint": "Plutôt musculation ?",
   "dashboardFirstRunGymAction": "Note une séance de musculation",
-  "dashboardPeriodWeek": "Semaine",
   "dashboardPeriodMonth": "Mois",
   "dashboardPeriodAllTime": "Tout",
   "dashboardSectionStreak": "Série",

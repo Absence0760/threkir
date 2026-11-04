@@ -9343,9 +9343,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboardFirstRunGymAction => 'Log a gym session';
 
   @override
-  String get dashboardPeriodWeek => 'Week';
-
-  @override
   String get dashboardPeriodMonth => 'Month';
 
   @override

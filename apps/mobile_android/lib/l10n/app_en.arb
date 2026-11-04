@@ -12618,10 +12618,6 @@
   "@dashboardFirstRunGymAction": {
     "description": "Dashboard empty-state button that opens the Gym log"
   },
-  "dashboardPeriodWeek": "Week",
-  "@dashboardPeriodWeek": {
-    "description": "Label for the weekly period stat card on the dashboard"
-  },
   "dashboardPeriodMonth": "Month",
   "@dashboardPeriodMonth": {
     "description": "Label for the monthly period stat card on the dashboard"

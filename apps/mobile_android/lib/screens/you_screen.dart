@@ -5,6 +5,7 @@ import 'package:ui_kit/ui_kit.dart' show IdentityAvatar;
 import '../auth_change_aware.dart';
 import '../ble_heart_rate.dart';
 import '../ble_treadmill.dart';
+import '../dm_pending_hides.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_gear_store.dart';
 import '../local_food_store.dart';
@@ -79,10 +80,17 @@ class _YouScreenState extends State<YouScreen>
 
   int _unreadDms = 0;
 
+  /// The last badge read, kept so a conversation deleted in a thread drops
+  /// out of the count at once rather than on the next read.
+  List<({String conversationId, int unread, bool muted, bool archived})>
+      _dmStates = const [];
+  int _seenHideRemovals = DmPendingHides.instance.removals;
+
   @override
   void initState() {
     super.initState();
     ParkrunBarcodeCache.changes.addListener(_refreshBarcode);
+    DmPendingHides.instance.addListener(_onPendingHidesChanged);
     _refreshBarcode();
     _refreshIdentity();
     _refreshUnread();
@@ -91,6 +99,7 @@ class _YouScreenState extends State<YouScreen>
   @override
   void dispose() {
     ParkrunBarcodeCache.changes.removeListener(_refreshBarcode);
+    DmPendingHides.instance.removeListener(_onPendingHidesChanged);
     super.dispose();
   }
 
@@ -126,13 +135,37 @@ class _YouScreenState extends State<YouScreen>
     final asked = api?.userId;
     if (api == null || asked == null) return;
     try {
-      final count = unreadDmBadgeCount(await api.fetchDmBadgeStates());
+      final states = await api.fetchDmBadgeStates();
       if (!mounted || api.userId != asked) return;
-      setState(() => _unreadDms = count);
+      setState(() {
+        _dmStates = states;
+        _unreadDms = _countUnread();
+      });
     } catch (e) {
       // L4 — a failed count leaves the badge dark; the inbox still opens.
       debugPrint('YouScreen unread-DM read failed: ${safeErrorLabel(e)}');
     }
+  }
+
+  int _countUnread() {
+    final hides = DmPendingHides.instance;
+    return unreadDmBadgeCount([
+      for (final s in _dmStates)
+        if (!hides.contains(s.conversationId))
+          (unread: s.unread, muted: s.muted, archived: s.archived),
+    ]);
+  }
+
+  /// A pending delete is applied to the count already held; Undo or the
+  /// commit is answered by a fresh read, the server being the one that knows
+  /// what happened.
+  void _onPendingHidesChanged() {
+    if (!mounted) return;
+    setState(() => _unreadDms = _countUnread());
+    final removals = DmPendingHides.instance.removals;
+    if (removals == _seenHideRemovals) return;
+    _seenHideRemovals = removals;
+    _refreshUnread();
   }
 
   void _refreshAfterSubScreen() {
@@ -146,6 +179,7 @@ class _YouScreenState extends State<YouScreen>
       _displayName = null;
       _avatarUrl = null;
       _unreadDms = 0;
+      _dmStates = const [];
     });
     _refreshBarcode();
     _refreshIdentity();

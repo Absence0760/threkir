@@ -1413,18 +1413,25 @@ class ApiClient {
   Future<void> deleteRoute(String routeId) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
-    final photoRows = await _client
-        .from(RoutePhotoRow.table)
-        .select(
-          '${RoutePhotoRow.colStoragePath}, ${RoutePhotoRow.colThumb512Path}',
-        )
-        .eq(RoutePhotoRow.colRouteId, routeId);
+    // The path read only feeds the photo sweep, so its failure costs the
+    // sweep and never the delete: the bytes left behind are the same private
+    // leftovers a failed sweep leaves.
     final paths = <String>[];
-    for (final row in photoRows) {
-      final storage = row[RoutePhotoRow.colStoragePath] as String?;
-      final thumb = row[RoutePhotoRow.colThumb512Path] as String?;
-      if (storage != null && storage.isNotEmpty) paths.add(storage);
-      if (thumb != null && thumb.isNotEmpty) paths.add(thumb);
+    try {
+      final photoRows = await _client
+          .from(RoutePhotoRow.table)
+          .select(
+            '${RoutePhotoRow.colStoragePath}, ${RoutePhotoRow.colThumb512Path}',
+          )
+          .eq(RoutePhotoRow.colRouteId, routeId);
+      for (final row in photoRows) {
+        final storage = row[RoutePhotoRow.colStoragePath] as String?;
+        final thumb = row[RoutePhotoRow.colThumb512Path] as String?;
+        if (storage != null && storage.isNotEmpty) paths.add(storage);
+        if (thumb != null && thumb.isNotEmpty) paths.add(thumb);
+      }
+    } catch (e) {
+      debugPrint('deleteRoute: photo path read failed: ${safeErrorLabel(e)}');
     }
 
     final deleted = await _client
@@ -9343,13 +9350,18 @@ class ApiClient {
   /// (`unreadDmBadgeCount` in the app, the twin of web's). The same
   /// `dm_threads()` aggregation as [fetchDmThreads], without its partner-name
   /// read. Throws on a failed read; signed out answers empty without a call.
-  Future<List<({int unread, bool muted, bool archived})>>
+  /// The conversation id lets the badge leave out a conversation whose
+  /// delete is still inside its undo window.
+  Future<
+          List<
+              ({String conversationId, int unread, bool muted, bool archived})>>
       fetchDmBadgeStates() async {
     if (_client.auth.currentUser == null) return const [];
     final res = await _client.rpc('dm_threads', params: const {}, get: true);
     return [
       for (final r in (res as List).cast<Map<String, dynamic>>())
         (
+          conversationId: r['conversation_id'] as String,
           unread: (r['unread'] as num?)?.toInt() ?? 0,
           muted: r['muted'] == true,
           archived: r['archived'] == true,

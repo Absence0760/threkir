@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { errorCopy, errorCopyKey } from './error_copy';
+import { errorCopy, errorCopyKey, isDatabaseCode, loggableMessage, LOGGED_MESSAGE_MAX_CHARS } from './error_copy';
 import { DbError, PlanOverlapError } from '../core/supabase_error';
 import { interpolate } from './interpolate';
 import { SUPPORTED_LOCALES } from './locale';
@@ -67,6 +67,64 @@ test('known failures map to their own catalogue copy', () => {
 	assert.equal(errorCopyKey(null), 'errorCopy.generic');
 });
 
+test('a database code decides; a word in its message does not', () => {
+	// Each message names a different category than its code does.
+	assert.equal(
+		errorCopyKey(new DbError('create_training_plan: race listing not found', '22023')),
+		'errorCopy.invalid',
+	);
+	assert.equal(
+		errorCopyKey(new DbError('duplicate key value violates unique constraint "rate limit buckets_pkey"', '23505')),
+		'errorCopy.duplicate',
+	);
+	assert.equal(
+		errorCopyKey(new DbError('new row violates check constraint "session timed out flag"', '23514')),
+		'errorCopy.invalid',
+	);
+	assert.equal(
+		errorCopyKey(new DbError('permission denied: plan not found for caller', '42501')),
+		'errorCopy.forbidden',
+	);
+	assert.equal(errorCopyKey(new DbError('jwt expired somewhere in a hint', 'XX000')), 'errorCopy.generic');
+});
+
+test('a message is still read when there is no code, or only the bare-raise P0001', () => {
+	assert.equal(errorCopyKey(new DbError('clone_plan_template: template not found', 'P0001')), 'errorCopy.notFound');
+	assert.equal(errorCopyKey(new Error('request timed out')), 'errorCopy.timeout');
+	assert.equal(errorCopyKey({ message: 'Email rate limit exceeded' }), 'errorCopy.tooManyRequests');
+	// The RPCs' signed-out guard keeps its meaning under its 42501.
+	assert.equal(errorCopyKey(new DbError('not authenticated', '42501')), 'errorCopy.signedOut');
+});
+
+test('codes that name a category without a message are mapped', () => {
+	assert.equal(errorCopyKey(new DbError('canceling statement due to statement timeout', '57014')), 'errorCopy.timeout');
+	assert.equal(errorCopyKey(new DbError('JWT expired', 'PGRST303', 401)), 'errorCopy.signedOut');
+	assert.equal(errorCopyKey(new DbError('query returned no rows', 'P0002')), 'errorCopy.notFound');
+});
+
+test('isDatabaseCode tells SQLSTATE and PostgREST codes from auth codes and P0001', () => {
+	for (const c of ['23505', '42501', '22P02', 'PGRST116', 'PGRST303', 'XX000']) assert.ok(isDatabaseCode(c), c);
+	for (const c of ['', 'P0001', 'over_email_send_rate_limit', 'same_password', 'weak_password']) {
+		assert.ok(!isDatabaseCode(c), c);
+	}
+});
+
+test('the logged message drops quoted values, key details and emails, and is cut short', () => {
+	assert.equal(
+		loggableMessage('invalid input syntax for type uuid: "a-runner-typed-this"'),
+		'invalid input syntax for type uuid: "…"',
+	);
+	assert.equal(
+		loggableMessage('Key (email)=(runner@example.com) already exists.'),
+		'Key (…)=(…) already exists.',
+	);
+	assert.equal(loggableMessage("submit_report: target 'run' x not found"), "submit_report: target '…' x not found");
+	assert.equal(loggableMessage('no account for runner@example.com'), 'no account for <email>');
+	const long = loggableMessage('x'.repeat(500));
+	assert.equal(long.length, LOGGED_MESSAGE_MAX_CHARS);
+	assert.ok(long.endsWith('…'));
+});
+
 test('the raw text reaches the console and never the copy', async () => {
 	const { en, t } = await english();
 	const raw =
@@ -79,6 +137,8 @@ test('the raw text reaches the console and never the copy', async () => {
 		assert.equal(log.logged.length, 1);
 		assert.equal(log.logged[0][0], 'saving a workout failed');
 		assert.match(JSON.stringify(log.logged[0][1]), /violates check constraint/);
+		assert.doesNotMatch(JSON.stringify(log.logged[0][1]), /plan_workouts_kind_check/);
+		assert.match(JSON.stringify(log.logged[0][1]), /23514/);
 	} finally {
 		log.restore();
 	}

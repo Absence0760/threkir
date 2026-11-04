@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/ble_heart_rate.dart';
 import '../lib/ble_treadmill.dart';
+import '../lib/dm_pending_hides.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_gear_store.dart';
 import '../lib/local_route_store.dart';
@@ -32,6 +33,7 @@ class _FakeApi extends ApiClient {
   final String? displayName;
   final int unread;
   bool failProfile = false;
+  int badgeReads = 0;
 
   @override
   String? get userId => 'u1';
@@ -47,9 +49,16 @@ class _FakeApi extends ApiClient {
   }
 
   @override
-  Future<List<({int unread, bool muted, bool archived})>>
-      fetchDmBadgeStates() async =>
-          [(unread: unread, muted: false, archived: false)];
+  Future<
+          List<
+              ({String conversationId, int unread, bool muted, bool archived})>>
+      fetchDmBadgeStates() async {
+    badgeReads++;
+    return [
+      (conversationId: 'c-1', unread: unread, muted: false, archived: false),
+      (conversationId: 'c-2', unread: 0, muted: false, archived: false),
+    ];
+  }
 }
 
 /// Drives auth transitions: mutate [uid]/[email]/[name], then [emit] a tick
@@ -72,7 +81,9 @@ class _SwitchableApi extends ApiClient {
       : UserProfileRow(profilePrivate: false, id: uid!, displayName: name, shadowHidden: false);
 
   @override
-  Future<List<({int unread, bool muted, bool archived})>>
+  Future<
+          List<
+              ({String conversationId, int unread, bool muted, bool archived})>>
       fetchDmBadgeStates() async => const [];
 
   @override
@@ -226,6 +237,39 @@ void main() {
     expect(data.value, '3 unread messages');
     expect(data.flagsCollection.isButton, isTrue);
     handle.dispose();
+  });
+
+  testWidgets('a conversation whose delete is pending leaves the count at once, '
+      'and Undo or the commit re-reads it', (tester) async {
+    addTearDown(DmPendingHides.instance.debugClear);
+    final api = _FakeApi(unread: 3);
+    await pump(tester, api: api);
+    final icon = find.byKey(const ValueKey('you-messages'));
+    await pumpUntil(
+      tester,
+      () => find
+          .descendant(of: icon, matching: find.text('3'))
+          .evaluate()
+          .isNotEmpty,
+      describe: 'the unread badge',
+    );
+    final reads = api.badgeReads;
+
+    DmPendingHides.instance.add('c-1');
+    await tester.pump();
+    expect(find.descendant(of: icon, matching: find.text('3')), findsNothing);
+    expect(api.badgeReads, reads);
+
+    DmPendingHides.instance.remove('c-1');
+    await pumpUntil(
+      tester,
+      () => find
+          .descendant(of: icon, matching: find.text('3'))
+          .evaluate()
+          .isNotEmpty,
+      describe: 'the badge back after the re-read',
+    );
+    expect(api.badgeReads, reads + 1);
   });
 
   testWidgets('no badge with nothing unread', (tester) async {

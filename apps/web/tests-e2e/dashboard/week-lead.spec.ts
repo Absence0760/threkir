@@ -105,6 +105,66 @@ test.describe('/dashboard — this week leads', () => {
 		}
 	});
 
+	test('the Add or import menu keeps the menu-button keyboard contract', async ({ browser }) => {
+		const ctx = await browser.newContext({ storageState: user.storageStatePath });
+		await acceptCookieConsent(ctx);
+		const page = await ctx.newPage();
+		try {
+			await page.goto('/dashboard');
+			const trigger = page.getByTestId('dash-actions-trigger');
+			await expect(trigger).toBeVisible({ timeout: 15_000 });
+			const menu = page.getByRole('menu');
+			const add = menu.getByRole('menuitem', { name: 'Add a run' });
+			const importLink = menu.getByRole('menuitem', { name: 'Import from Strava / Garmin' });
+
+			// ArrowDown on the trigger opens on the first item; arrows cycle.
+			await trigger.focus();
+			await page.keyboard.press('ArrowDown');
+			await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+			await expect(add).toBeFocused();
+			await page.keyboard.press('ArrowDown');
+			await expect(importLink).toBeFocused();
+			await page.keyboard.press('ArrowDown');
+			await expect(add).toBeFocused();
+			await page.keyboard.press('ArrowUp');
+			await expect(importLink).toBeFocused();
+			await page.keyboard.press('Home');
+			await expect(add).toBeFocused();
+			await page.keyboard.press('End');
+			await expect(importLink).toBeFocused();
+
+			// Escape closes back to the trigger.
+			await page.keyboard.press('Escape');
+			await expect(menu).toHaveCount(0);
+			await expect(trigger).toBeFocused();
+			await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+
+			// ArrowUp on the trigger opens on the last item; Tab out closes.
+			await page.keyboard.press('ArrowUp');
+			await expect(importLink).toBeFocused();
+			await page.keyboard.press('Tab');
+			await expect(menu).toHaveCount(0);
+			await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+
+			// Shift+Tab from the first item goes back to the trigger, closed.
+			await trigger.focus();
+			await page.keyboard.press('ArrowDown');
+			await expect(add).toBeFocused();
+			await page.keyboard.press('Shift+Tab');
+			await expect(menu).toHaveCount(0);
+			await expect(trigger).toBeFocused();
+
+			// A click outside closes it.
+			await trigger.click();
+			await expect(menu).toBeVisible();
+			await page.getByTestId('dash-week-lead-vs').click({ position: { x: 2, y: 2 } });
+			await expect(menu).toHaveCount(0);
+			await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+		} finally {
+			await ctx.close();
+		}
+	});
+
 	test('a weekly distance goal replaces the recent average as the yardstick', async ({ browser }) => {
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
 		await acceptCookieConsent(ctx, {

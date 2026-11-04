@@ -147,15 +147,19 @@ const SYSTEM_PROMPT =
 	'"3:45" for a marathon = 13500). Map "5k"/"parkrun" to distance_5k, ' +
 	'"10k" to distance_10k, "half"/"half marathon"/"13.1" to distance_half, ' +
 	'and "marathon"/"full"/"26.2" to distance_full. Distances may be in ' +
-	'kilometres or miles (1 mi = 1.609344 km): "3.1 mi" is distance_5k, ' +
-	'"6.2 mi" distance_10k, and a recent effort over 3.1 mi is a 5K time. ' +
+	'kilometres or miles (1 mi = 1.609344 km): 5 km = 3.1 mi = distance_5k ' +
+	'and 10 km = 6.2 mi = distance_10k, so a recent time for 3.1 mi is a ' +
+	'5K time. ' +
 	'A race longer than a ' +
 	'marathon is an ultra: put its distance in kilometres in ultra_distance_km ' +
 	'and omit goal_event ("50k" = 50, "Two Oceans" = 56, "Comrades" = the ' +
-	'distance stated, else 90, "100 miles" = 160.934, "50 miles" = 80.467; give miles to three decimals). When the runner has never ' +
+	'distance stated, else 90, "100 miles" = 160.934, "50 miles" = 80.467; give miles to three decimals), ' +
+	'and set ultra_distance_unit to "mi" when the runner gave that distance ' +
+	'in miles, "km" otherwise. When the runner has never ' +
 	'run before, wants couch to 5k, or calls themself a complete beginner, ' +
-	'set beginner_walk_run true. A recent race time over 5K goes in ' +
-	'recent_5k_sec; a goal time for the goal race goes in goal_time_sec. ' +
+	'set beginner_walk_run true. A recent time for a 5K (5 km or 3.1 mi) ' +
+	'goes in recent_5k_sec, and a time for any other distance does not; a ' +
+	'goal time for the goal race goes in goal_time_sec. ' +
 	'Only set plan_name when the runner names the plan.';
 
 /// Exported so `handler.test.ts` can pin that every goal event the model is
@@ -177,6 +181,12 @@ export const EXTRACT_TOOL: Anthropic.Tool = {
 				type: 'number',
 				description:
 					'The race distance in kilometres when it is longer than a marathon (an ultra). Omit for road races and when unspecified.',
+			},
+			ultra_distance_unit: {
+				type: 'string',
+				enum: ['km', 'mi'],
+				description:
+					'The unit the runner wrote the ultra distance in: mi for miles, km otherwise. Only with ultra_distance_km.',
 			},
 			race_date: {
 				type: 'string',

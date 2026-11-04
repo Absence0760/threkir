@@ -4,8 +4,9 @@
 /// dropped the database's or the browser's English into a localized sentence:
 /// "Échec de la publication : new row violates check constraint …" or
 /// "… : Failed to fetch". This maps the failures the app knows how to name to
-/// catalogue copy and everything else to a generic line, and sends the raw
-/// text to the console instead, where it still helps whoever debugs it.
+/// catalogue copy and everything else to a generic line, and sends the code
+/// and a scrubbed copy of the text to the console instead, where it still
+/// helps whoever debugs it.
 ///
 /// The lookup arrives as an argument, like `rate_limit_message.ts`: `m` lives
 /// in a runes module the `tsx --test` runner cannot compile.
@@ -30,6 +31,16 @@ function status(e: unknown): number | null {
 	return null;
 }
 
+/// A SQLSTATE or a PostgREST `PGRST…` code: the database named the failure
+/// itself, so its code decides and the message text is not read. `P0001` is
+/// the exception, because a bare `raise exception` carries it whatever the
+/// failure is, and its message is all there is. Without this a coded error
+/// whose message merely mentions "not found", "timed out" or "rate limit"
+/// (a constraint, a parameter, a bucket name) is filed under that word.
+export function isDatabaseCode(code: string): boolean {
+	return code !== 'P0001' && (/^[0-9A-Z]{5}$/.test(code) || code.startsWith('PGRST'));
+}
+
 /// The catalogue key for a failure. A rate-limit refusal has a sentence of
 /// its own, which `errorCopy` checks for first.
 export function errorCopyKey(e: unknown): MessageKey {
@@ -37,9 +48,10 @@ export function errorCopyKey(e: unknown): MessageKey {
 	const name = field(e, 'name');
 	const msg = field(e, 'message').toLowerCase();
 	const httpStatus = status(e);
+	const says = (text: string) => !isDatabaseCode(code) && msg.includes(text);
 
 	if (code === '23P01') return 'planDetail.planOverlap';
-	if (name === 'AbortError' || name === 'TimeoutError' || msg.includes('timed out')) {
+	if (name === 'AbortError' || name === 'TimeoutError' || code === '57014' || says('timed out')) {
 		return 'errorCopy.timeout';
 	}
 	if (
@@ -52,13 +64,17 @@ export function errorCopyKey(e: unknown): MessageKey {
 	if (
 		httpStatus === 401 ||
 		code === 'PGRST301' ||
-		msg.includes('not signed in') ||
-		msg.includes('not authenticated') ||
-		msg.includes('jwt expired')
+		code === 'PGRST303' ||
+		// The RPCs' own signed-out guard: `raise exception 'not authenticated'
+		// using errcode = '42501'` when auth.uid() is null.
+		(code === '42501' && msg.includes('not authenticated')) ||
+		says('not signed in') ||
+		says('not authenticated') ||
+		says('jwt expired')
 	) {
 		return 'errorCopy.signedOut';
 	}
-	if (code === '42501' || httpStatus === 403 || msg.includes('only the plan owner')) {
+	if (code === '42501' || httpStatus === 403 || says('only the plan owner')) {
 		return 'errorCopy.forbidden';
 	}
 	if (
@@ -66,8 +82,8 @@ export function errorCopyKey(e: unknown): MessageKey {
 		code === 'over_request_rate_limit' ||
 		code === 'over_email_send_rate_limit' ||
 		code === 'over_sms_send_rate_limit' ||
-		msg.includes('rate limit') ||
-		msg.includes('for security purposes, you can only request this')
+		says('rate limit') ||
+		says('for security purposes, you can only request this')
 	) {
 		return 'errorCopy.tooManyRequests';
 	}
@@ -75,7 +91,7 @@ export function errorCopyKey(e: unknown): MessageKey {
 	if (code === 'weak_password') return 'errorCopy.weakPassword';
 	if (code === 'email_exists' || code === 'user_already_exists') return 'errorCopy.emailTaken';
 	if (code === '23505') return 'errorCopy.duplicate';
-	if (code === 'PGRST116' || httpStatus === 404 || msg.includes('not found')) {
+	if (code === 'PGRST116' || code === 'P0002' || httpStatus === 404 || says('not found')) {
 		return 'errorCopy.notFound';
 	}
 	if (
@@ -92,8 +108,29 @@ export function errorCopyKey(e: unknown): MessageKey {
 	return 'errorCopy.generic';
 }
 
+/// Longest message `errorCopy` logs.
+export const LOGGED_MESSAGE_MAX_CHARS = 160;
+
+/// A thrown message as `errorCopy` logs it. Console output reaches error
+/// reporting as breadcrumbs once a reader has consented to it, and server
+/// text can quote the row it refused (`Key (email)=(…)`, `invalid input
+/// syntax for type uuid: "…"`). Quoted runs, key/value details and email
+/// addresses are blanked and the rest is cut short; the code and the context
+/// still say which failure it was.
+export function loggableMessage(message: string): string {
+	const cleaned = message
+		.replace(/\([^()]*\)=\([^()]*\)/g, '(…)=(…)')
+		.replace(/"[^"]*"/g, '"…"')
+		.replace(/'[^']*'/g, "'…'")
+		.replace(/[^\s@"'()]+@[^\s@"'()]+/g, '<email>');
+	return cleaned.length > LOGGED_MESSAGE_MAX_CHARS
+		? `${cleaned.slice(0, LOGGED_MESSAGE_MAX_CHARS - 1)}…`
+		: cleaned;
+}
+
 /// Localized copy for a thrown value, to drop into a `{error}` slot or show
-/// on its own. The raw code and message go to the console, never the UI.
+/// on its own. The code and a scrubbed message (`loggableMessage`) go to the
+/// console, never the UI.
 ///
 /// `fallback` replaces the generic line for a failure the app cannot name,
 /// for a surface that shows the copy on its own and has a sentence of its
@@ -104,7 +141,10 @@ export function errorCopy(
 	context = 'operation failed',
 	fallback?: MessageKey,
 ): string {
-	console.error(context, { code: field(e, 'code') || undefined, message: field(e, 'message') });
+	console.error(context, {
+		code: field(e, 'code') || undefined,
+		message: loggableMessage(field(e, 'message')),
+	});
 	const code = field(e, 'code');
 	const rateLimited = rateLimitErrorMessage(t, { code, message: field(e, 'message') });
 	if (rateLimited) return rateLimited;

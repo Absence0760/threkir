@@ -3,21 +3,25 @@
 -- conversation" hides it for the caller only and a newer message brings it
 -- back; mute silences the notification; archive holds until a newer message;
 -- participant state is private to its owner and written only by the RPCs; an
--- account deletion keeps the remaining participant's conversation; and the
--- purge drops a conversation once nothing references it.
+-- account deletion keeps the remaining participant's conversation; the
+-- purge drops a conversation once nothing references it; anon reaches none
+-- of the RPCs; and the migration's backfill assigns every pre-trigger
+-- message, live pair or deleted partner, and refuses to leave one behind.
 --
 -- now() is the transaction's start for every statement here, so the RPCs'
 -- stamps are all "now" and each message that must land AFTER a stamp is
 -- seeded as superuser with an explicit later created_at.
 
 begin;
-select plan(30);
+select plan(42);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
   ('dc000000-0000-0000-0000-00000000000a', 'authenticated', 'authenticated', 'a@conv.local', '', now(), now()),
   ('dc000000-0000-0000-0000-00000000000b', 'authenticated', 'authenticated', 'b@conv.local', '', now(), now()),
-  ('dc000000-0000-0000-0000-00000000000c', 'authenticated', 'authenticated', 'c@conv.local', '', now(), now());
+  ('dc000000-0000-0000-0000-00000000000c', 'authenticated', 'authenticated', 'c@conv.local', '', now(), now()),
+  ('dc000000-0000-0000-0000-00000000000d', 'authenticated', 'authenticated', 'd@conv.local', '', now(), now()),
+  ('dc000000-0000-0000-0000-00000000000e', 'authenticated', 'authenticated', 'e@conv.local', '', now(), now());
 
 insert into user_follows (follower_id, followee_id) values
   ('dc000000-0000-0000-0000-00000000000a', 'dc000000-0000-0000-0000-00000000000b');
@@ -46,7 +50,32 @@ create temporary table conv as
   select conversation_id as id from direct_messages where id = 'dc000000-0000-0000-0000-0000000000a1';
 grant select on conv to authenticated;
 
+-- ── anon, and a user with no conversation ───────────────────────────────
+
+set local role anon;
+select throws_ok(
+  $$select hide_conversation('dc000000-0000-0000-0000-0000000000ff')$$,
+  '42501', null,
+  'anon cannot call hide_conversation');
+select throws_ok(
+  $$select set_conversation_muted('dc000000-0000-0000-0000-0000000000ff', true)$$,
+  '42501', null,
+  'anon cannot call set_conversation_muted');
+select throws_ok(
+  $$select set_conversation_archived('dc000000-0000-0000-0000-0000000000ff', true)$$,
+  '42501', null,
+  'anon cannot call set_conversation_archived');
+select throws_ok(
+  $$select * from dm_threads()$$,
+  '42501', null,
+  'anon cannot call dm_threads');
+reset role;
+
 set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"dc000000-0000-0000-0000-00000000000c","role":"authenticated"}';
+select is_empty(
+  $$select 1 from dm_threads()$$,
+  'dm_threads is empty for a user in no conversation');
 set local "request.jwt.claims" = '{"sub":"dc000000-0000-0000-0000-00000000000a","role":"authenticated"}';
 
 select throws_ok(
@@ -201,6 +230,12 @@ select is(
 -- ── Account deletion and purge ──────────────────────────────────────────
 
 reset role;
+select is(
+  (select row(hidden_before, muted_at, archived_at)::text from conversation_participants
+    where conversation_id = (select id from conv) and user_id = 'dc000000-0000-0000-0000-00000000000b'),
+  '(,,)',
+  'A''s delete, mute and archive left B''s participant row untouched');
+
 delete from auth.users where id = 'dc000000-0000-0000-0000-00000000000b';
 
 select is(
@@ -226,6 +261,70 @@ select is(
   (select count(*)::int from conversations where id = (select id from conv)),
   1,
   'the purge keeps a conversation that still has messages');
+
+-- ── The backfill ────────────────────────────────────────────────────────
+--
+-- Rows as they stood before 20271105000010: no conversation_id, assigned by no
+-- trigger. Column and triggers are relaxed inside this transaction only.
+
+alter table direct_messages alter column conversation_id drop not null;
+alter table direct_messages disable trigger user;
+
+insert into direct_messages (id, sender_id, recipient_id, deleted_partner_key, body, created_at) values
+  ('dc000000-0000-0000-0000-0000000000d1', 'dc000000-0000-0000-0000-00000000000d', 'dc000000-0000-0000-0000-00000000000e', null,
+   'd to e', now() - interval '5 days'),
+  ('dc000000-0000-0000-0000-0000000000e1', 'dc000000-0000-0000-0000-00000000000e', 'dc000000-0000-0000-0000-00000000000d', null,
+   'e to d', now() - interval '4 days'),
+  ('dc000000-0000-0000-0000-0000000000d2', 'dc000000-0000-0000-0000-00000000000d', null, 'dc000000-0000-0000-0000-00000000aa01',
+   'to a leaver', now() - interval '6 days'),
+  ('dc000000-0000-0000-0000-0000000000d3', 'dc000000-0000-0000-0000-00000000000d', null, 'dc000000-0000-0000-0000-00000000aa01',
+   'to the same leaver', now() - interval '3 days'),
+  ('dc000000-0000-0000-0000-0000000000d4', 'dc000000-0000-0000-0000-00000000000d', null, 'dc000000-0000-0000-0000-00000000aa02',
+   'to another leaver', now() - interval '2 days');
+
+select is(
+  private.backfill_direct_message_conversations(),
+  3,
+  'the backfill creates one conversation per live pair and per (sender, deleted partner)');
+select is(
+  (select count(*)::int from direct_messages where conversation_id is null),
+  0,
+  'the backfill leaves no message without a conversation');
+select is(
+  (select array_agg(distinct p.user_id order by p.user_id)::text
+     from direct_messages m
+     join conversation_participants p on p.conversation_id = m.conversation_id
+    where m.id in ('dc000000-0000-0000-0000-0000000000d1', 'dc000000-0000-0000-0000-0000000000e1')),
+  '{dc000000-0000-0000-0000-00000000000d,dc000000-0000-0000-0000-00000000000e}',
+  'both directions of a backfilled pair share one conversation holding the pair');
+select is(
+  (select count(distinct m.conversation_id)::int || ':' ||
+          (select string_agg(distinct p.user_id::text, ',')
+             from conversation_participants p
+            where p.conversation_id in (select conversation_id from direct_messages
+                                         where id in ('dc000000-0000-0000-0000-0000000000d2',
+                                                      'dc000000-0000-0000-0000-0000000000d4')))
+     from direct_messages m
+    where m.id in ('dc000000-0000-0000-0000-0000000000d2', 'dc000000-0000-0000-0000-0000000000d3',
+                   'dc000000-0000-0000-0000-0000000000d4')),
+  '2:dc000000-0000-0000-0000-00000000000d',
+  'a deleted partner''s messages get one conversation per key, holding the sender alone');
+select is(
+  (select c.created_at from conversations c
+     join direct_messages m on m.conversation_id = c.id
+    where m.id = 'dc000000-0000-0000-0000-0000000000e1'),
+  (select created_at from direct_messages where id = 'dc000000-0000-0000-0000-0000000000d1'),
+  'a backfilled conversation starts at its first message');
+
+-- A row neither branch can key (no recipient and no deleted-partner key) must
+-- fail the migration, not reach 20271105000011's validation.
+alter table direct_messages drop constraint direct_messages_deleted_partner_key_check;
+insert into direct_messages (id, sender_id, recipient_id, deleted_partner_key, body) values
+  ('dc000000-0000-0000-0000-0000000000d5', 'dc000000-0000-0000-0000-00000000000d', null, null, 'unkeyed');
+select throws_ok(
+  $$select private.backfill_direct_message_conversations()$$,
+  '23502', null,
+  'the backfill refuses to finish while a message is left without a conversation');
 
 select * from finish();
 rollback;

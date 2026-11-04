@@ -12,6 +12,12 @@ class DmPendingHides extends ChangeNotifier {
   static final DmPendingHides instance = DmPendingHides._();
 
   final Set<String> _ids = {};
+  int _removals = 0;
+
+  /// Bumped by every [remove]. A listener re-reads the server only when this
+  /// moved: an add is answered by leaving out what it already holds, while a
+  /// removal means a commit or an Undo whose outcome only the server knows.
+  int get removals => _removals;
 
   bool contains(String conversationId) => _ids.contains(conversationId);
 
@@ -20,7 +26,10 @@ class DmPendingHides extends ChangeNotifier {
   }
 
   void remove(String conversationId) {
-    if (_ids.remove(conversationId)) notifyListeners();
+    if (_ids.remove(conversationId)) {
+      _removals++;
+      notifyListeners();
+    }
   }
 
   @visibleForTesting

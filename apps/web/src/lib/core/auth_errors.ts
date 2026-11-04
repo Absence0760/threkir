@@ -17,10 +17,19 @@ export type AuthErrorKind =
 	| 'weakPassword'
 	| 'generic';
 
+/// A SQLSTATE or PostgREST `pgrst…` code (lower-cased), other than the
+/// `p0001` a bare `raise exception` carries: the database named the failure,
+/// so the message is not read for a category its code does not have.
+/// Mirrors `_isDatabaseCode` in mobile's auth_error.dart.
+function isDatabaseCode(code: string | null): boolean {
+	return code !== null && code !== 'p0001' && (/^[0-9a-z]{5}$/.test(code) || code.startsWith('pgrst'));
+}
+
 /// Classify an arbitrary auth error. Structural / duck-typed: reads the
 /// error's `code` + `status` when present (supabase-js `AuthApiError`
 /// carries both) and falls back to matching the message, so plain
-/// `TypeError: Failed to fetch` network failures classify too.
+/// `TypeError: Failed to fetch` network failures classify too. A database
+/// code is never overridden by a word in its message.
 export function classifyAuthError(error: unknown): AuthErrorKind {
 	const shaped = error as { code?: unknown; status?: unknown; message?: unknown } | null;
 	const code = typeof shaped?.code === 'string' ? shaped.code.toLowerCase() : null;
@@ -28,16 +37,18 @@ export function classifyAuthError(error: unknown): AuthErrorKind {
 	const msg = (
 		typeof shaped?.message === 'string' ? shaped.message : String(error ?? '')
 	).toLowerCase();
+	const readMsg = !isDatabaseCode(code);
+	const says = (text: string) => readMsg && msg.includes(text);
 
-	if (msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('load failed')) {
+	if (says('failed to fetch') || says('networkerror') || says('load failed')) {
 		return 'offline';
 	}
 
 	if (
 		status === 429 ||
 		(code !== null && code.includes('rate')) ||
-		msg.includes('rate limit') ||
-		msg.includes('too many requests')
+		says('rate limit') ||
+		says('too many requests')
 	) {
 		return 'rateLimited';
 	}
@@ -50,34 +61,34 @@ export function classifyAuthError(error: unknown): AuthErrorKind {
 	// so this specific-message check has to win first — otherwise the
 	// user gets a "wrong password" banner and no resend affordance for
 	// what is really an unconfirmed account (issue #486).
-	if (code === 'email_not_confirmed' || msg.includes('email not confirmed')) {
+	if (code === 'email_not_confirmed' || says('email not confirmed')) {
 		return 'emailNotConfirmed';
 	}
 
 	// An emailed magic / confirmation / reset link opened after it expired
 	// or a second time. The fix is a fresh link, which no other kind says.
-	if (code === 'otp_expired' || msg.includes('link is invalid or has expired')) {
+	if (code === 'otp_expired' || says('link is invalid or has expired')) {
 		return 'linkExpired';
 	}
 
 	if (
 		code === 'invalid_credentials' ||
 		code === 'invalid_grant' ||
-		msg.includes('invalid login credentials') ||
-		msg.includes('invalid credentials')
+		says('invalid login credentials') ||
+		says('invalid credentials')
 	) {
 		return 'invalidCredentials';
 	}
 
-	if (code === 'user_already_exists' || code === 'email_exists' || msg.includes('already registered')) {
+	if (code === 'user_already_exists' || code === 'email_exists' || says('already registered')) {
 		return 'emailExists';
 	}
 
 	if (
 		code === 'weak_password' ||
-		msg.includes('weak password') ||
-		msg.includes('password should be at least') ||
-		msg.includes('password should contain at least')
+		says('weak password') ||
+		says('password should be at least') ||
+		says('password should contain at least')
 	) {
 		return 'weakPassword';
 	}

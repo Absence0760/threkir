@@ -103,6 +103,22 @@ test('"password should be at least" message (no code) → weakPassword', () => {
 	assert.equal(classifyAuthError(authError('Password should be at least 6 characters')), 'weakPassword');
 });
 
+test('a database code is not overridden by a word in its message', () => {
+	assert.equal(
+		classifyAuthError(authError('duplicate key value violates unique constraint "rate limit buckets_pkey"', { code: '23505' })),
+		'generic'
+	);
+	assert.equal(classifyAuthError(authError('relation "invalid credentials" does not exist', { code: '42P01' })), 'generic');
+	assert.equal(classifyAuthError(authError('failed to fetch row', { code: 'PGRST116' })), 'generic');
+});
+
+test('a bare-raise P0001 is still read by its message', () => {
+	assert.equal(
+		classifyAuthError(authError('rate limit exceeded for create_club, retry in 30s', { code: 'P0001' })),
+		'rateLimited'
+	);
+});
+
 test('unrecognised error → generic', () => {
 	assert.equal(classifyAuthError(new Error('boom')), 'generic');
 });

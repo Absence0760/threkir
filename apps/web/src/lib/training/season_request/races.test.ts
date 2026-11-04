@@ -138,9 +138,16 @@ test('a race heard in tenths of a mile keeps the distance it names', () => {
 	// is not dropped as too short (decisions § 2292).
 	assert.equal(v([{ ...RICHMOND, distance_km: 4.989 }]).races[0].distanceM, 5000);
 	assert.equal(v([{ ...RICHMOND, distance_km: 9.978 }]).races[0].distanceM, 10_000);
-	assert.equal(v([{ ...RICHMOND, distance_km: 50.05 }]).races[0].distanceM, 50_000);
-	assert.equal(v([{ ...RICHMOND, distance_km: 80.47 }]).races[0].distanceM, 80_467);
+	assert.equal(v([{ ...RICHMOND, distance_km: 50.05, distance_unit: 'mi' }]).races[0].distanceM, 50_000);
+	assert.equal(v([{ ...RICHMOND, distance_km: 80.47, distance_unit: 'mi' }]).races[0].distanceM, 80_467);
 	assert.equal(v([{ ...RICHMOND, distance_km: 87.7 }]).races[0].distanceM, 87_700, 'a stated 87.7 km stays');
+});
+
+test('a race stated in km snaps only within a tenth of a km', () => {
+	// 60 m off 50 km: the mile rounding would rewrite it, the km rounding keeps it.
+	assert.equal(v([{ ...RICHMOND, distance_km: 50.06, distance_unit: 'km' }]).races[0].distanceM, 50_060);
+	assert.equal(v([{ ...RICHMOND, distance_km: 50.06 }]).races[0].distanceM, 50_060, 'no unit reads as km');
+	assert.equal(v([{ ...RICHMOND, distance_km: 50.06, distance_unit: 'mi' }]).races[0].distanceM, 50_000);
 });
 
 test('a distance within half a percent of a standard road distance snaps to it', () => {

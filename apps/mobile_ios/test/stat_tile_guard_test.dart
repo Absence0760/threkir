@@ -40,6 +40,10 @@ const _notTiles = <String, String>{
   // Label above the value inside a Card. One caller, so a `labelAbove` flag
   // on StatTile would serve exactly this screen.
   'lib/screens/recap_screen.dart::_StatCard': 'label-above card body',
+  // The loading placeholder for a StatGrid: blank pulsing blocks, no value
+  // and no label, so there is no tile in it to migrate (decisions § 2288).
+  'lib/widgets/loading_skeletons.dart::SkeletonStatStrip':
+      'loading placeholder for a stat row, holds no value or label',
   // A dismissible Card of inline label:value chips in a Wrap — a panel, and
   // its chips are not stacked pairs.
   'lib/screens/run_detail_screen.dart::_SegmentStatsCard':

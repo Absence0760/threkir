@@ -6614,6 +6614,7 @@ export type Database = {
       enqueue_event_reminders: { Args: never; Returns: undefined }
       enqueue_export_blob_reap: { Args: never; Returns: undefined }
       enqueue_lifecycle_drip: { Args: never; Returns: number }
+      enqueue_route_photo_orphan_sweep: { Args: never; Returns: undefined }
       enqueue_run_rematch: { Args: { p_run_id: string }; Returns: Json }
       enqueue_safety_overdue_emails: { Args: never; Returns: undefined }
       enqueue_weekly_digests: { Args: never; Returns: number }
@@ -7537,6 +7538,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      route_photo_orphan_paths: {
+        Args: { p_limit?: number; p_paths?: string[] }
+        Returns: string[]
       }
       routes_intersecting_track: {
         Args: {

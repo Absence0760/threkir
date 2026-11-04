@@ -522,6 +522,21 @@ func (c *SupabaseClient) DeleteStorageObjects(ctx context.Context, bucket string
 	return err
 }
 
+// RoutePhotoOrphanPaths calls `route_photo_orphan_paths`, the service-role
+// worklist for the route-photo orphan sweep. A nil `paths` is sent as SQL
+// NULL (the graced backstop); a non-nil one scopes the result to it.
+func (c *SupabaseClient) RoutePhotoOrphanPaths(ctx context.Context, paths []string, limit int) ([]string, error) {
+	params := map[string]any{"p_paths": nil, "p_limit": limit}
+	if paths != nil {
+		params["p_paths"] = paths
+	}
+	var out []string
+	if err := c.rpc(ctx, "route_photo_orphan_paths", params, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UploadPhoto writes a run photo back to the run-photos bucket. Used by
 // the photo_process handler after EXIF stripping.
 func (c *SupabaseClient) UploadPhoto(ctx context.Context, path string, body []byte, contentType string) error {

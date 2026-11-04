@@ -18056,6 +18056,10 @@
       }
     }
   },
+  "coachingAthleteAssignError": "Couldn't assign the plan. Please try again.",
+  "@coachingAthleteAssignError": {
+    "description": "Banner when assigning a plan to an athlete fails for any reason other than an overlap"
+  },
   "coachingAthleteComplete": "complete",
   "@coachingAthleteComplete": {
     "description": "Word following the completion percentage, e.g. '40% complete'"

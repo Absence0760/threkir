@@ -13757,6 +13757,10 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get coachingAthleteAssignError =>
+      'No se pudo asignar el plan. Inténtalo de nuevo.';
+
+  @override
   String get coachingAthleteComplete => 'completado';
 
   @override

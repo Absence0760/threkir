@@ -3850,6 +3850,7 @@
   "coachingAthleteAssignAfterMany": "{name} tiene {count} planes por delante: {plans}. Un plan asignado no puede solaparse con ninguno, así que haz que empiece después del {end} o en un hueco entre ellos.",
   "coachingAthleteAssignOverlapNamed": "Esas fechas se solapan con el plan «{plan}» de {name} ({start} – {end}). Elige una fecha de inicio posterior a su fin.",
   "coachingAthleteAssignOverlap": "Esas fechas se solapan con uno de los planes activos de {name}. Elige una fecha de inicio posterior a su fin.",
+  "coachingAthleteAssignError": "No se pudo asignar el plan. Inténtalo de nuevo.",
   "coachingAthleteComplete": "completado",
   "coachingAthleteDoneCount": "{done} de {total} hechos",
   "coachingAthleteMissedCount": "{n} perdidos",

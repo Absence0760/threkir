@@ -13788,6 +13788,10 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get coachingAthleteAssignError =>
+      'Impossible d\'attribuer le plan. Veuillez réessayer.';
+
+  @override
   String get coachingAthleteComplete => 'terminé';
 
   @override

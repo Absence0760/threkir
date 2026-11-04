@@ -3850,6 +3850,7 @@
   "coachingAthleteAssignAfterMany": "{name} hat noch {count} Pläne vor sich: {plans}. Ein zugewiesener Plan darf sich mit keinem davon überschneiden, beginne ihn also nach {end} oder in einer Lücke dazwischen.",
   "coachingAthleteAssignOverlapNamed": "Diese Daten überschneiden sich mit {name}s Plan „{plan}“ ({start} – {end}). Wähle ein Startdatum nach dessen Ende.",
   "coachingAthleteAssignOverlap": "Diese Daten überschneiden sich mit einem aktiven Plan von {name}. Wähle ein Startdatum nach dessen Ende.",
+  "coachingAthleteAssignError": "Plan konnte nicht zugewiesen werden. Bitte versuche es erneut.",
   "coachingAthleteComplete": "abgeschlossen",
   "coachingAthleteDoneCount": "{done} von {total} erledigt",
   "coachingAthleteMissedCount": "{n} verpasst",

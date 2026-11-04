@@ -13094,6 +13094,9 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get coachingAthleteAssignError => 'プランを割り当てできませんでした。もう一度お試しください。';
+
+  @override
   String get coachingAthleteComplete => '完了';
 
   @override

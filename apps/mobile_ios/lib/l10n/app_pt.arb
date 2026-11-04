@@ -3850,6 +3850,7 @@
   "coachingAthleteAssignAfterMany": "{name} tem ainda {count} planos pela frente: {plans}. Um plano atribuído não pode sobrepor-se a nenhum deles, por isso comece-o depois de {end} ou num intervalo entre eles.",
   "coachingAthleteAssignOverlapNamed": "Essas datas sobrepõem-se ao plano “{plan}” de {name} ({start} – {end}). Escolha uma data de início depois de ele terminar.",
   "coachingAthleteAssignOverlap": "Essas datas sobrepõem-se a um dos planos ativos de {name}. Escolha uma data de início depois de ele terminar.",
+  "coachingAthleteAssignError": "Não foi possível atribuir o plano. Tente novamente.",
   "coachingAthleteComplete": "concluído",
   "coachingAthleteDoneCount": "{done} de {total} feitos",
   "coachingAthleteMissedCount": "{n} perdidos",

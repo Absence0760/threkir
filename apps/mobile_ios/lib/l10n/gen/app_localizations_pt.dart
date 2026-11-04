@@ -13760,6 +13760,10 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get coachingAthleteAssignError =>
+      'Não foi possível atribuir o plano. Tente novamente.';
+
+  @override
   String get coachingAthleteComplete => 'concluído';
 
   @override
@@ -33678,6 +33682,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String coachingAthleteAssignOverlap(String name) {
     return 'Essas datas se sobrepõem a um dos planos ativos de $name. Escolha uma data de início depois que ele terminar.';
   }
+
+  @override
+  String get coachingAthleteAssignError =>
+      'Não foi possível atribuir o plano. Tente novamente.';
 
   @override
   String get coachingAthleteComplete => 'concluído';

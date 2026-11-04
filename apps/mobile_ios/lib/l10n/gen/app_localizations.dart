@@ -22280,6 +22280,12 @@ abstract class AppLocalizations {
   /// **'Those dates overlap one of {name}\'s active plans. Pick a start date after it ends.'**
   String coachingAthleteAssignOverlap(String name);
 
+  /// Banner when assigning a plan to an athlete fails for any reason other than an overlap
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t assign the plan. Please try again.'**
+  String get coachingAthleteAssignError;
+
   /// Word following the completion percentage, e.g. '40% complete'
   ///
   /// In en, this message translates to:

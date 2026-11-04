@@ -203,19 +203,14 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
               ),
       );
     } catch (e) {
-      // Any other refusal: assignPlanToAthlete rethrows the RPC's RAISE text
-      // as an Exception. Surface it rather than swallow — strip the leading
-      // "Exception: " the toString() adds.
+      // Any other refusal: the RPC's raise text names the function and the
+      // athlete's id, so it stays in the log and the coach gets the copy.
+      debugPrint('[CoachingAthleteScreen] assign failed: $e');
       if (!mounted) return;
-      showTopBanner(context, _cleanMessage(e));
+      showTopBanner(context, l10n.coachingAthleteAssignError);
     } finally {
       if (mounted) setState(() => _assigning = false);
     }
-  }
-
-  static String _cleanMessage(Object e) {
-    final s = '$e';
-    return s.startsWith('Exception: ') ? s.substring('Exception: '.length) : s;
   }
 
   Future<void> _pickStartDate() async {

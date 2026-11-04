@@ -9147,8 +9147,9 @@ class ApiClient {
   /// Assign one of the coach's plans to a linked athlete via the
   /// `assign_plan_to_athlete` RPC (migration 20270106_001). An overlap with
   /// one of the athlete's active plans throws [PlanAssignOverlapException];
-  /// any other refusal throws an Exception carrying the RPC's raise text,
-  /// which the caller surfaces. Returns the new plan id.
+  /// any other refusal rethrows the [PostgrestException] untouched so the
+  /// caller can classify it. Its raise text is log detail, not copy. Returns
+  /// the new plan id.
   Future<String> assignPlanToAthlete({
     required String sourcePlanId,
     required String athleteId,
@@ -9167,9 +9168,7 @@ class ApiClient {
       // (migration 20270830000008); typed so the caller can say which dates
       // to pick instead of showing the raw raise text.
       if (e.code == '23P01') throw PlanAssignOverlapException(e.message);
-      // Any other refusal: the RPC's RAISE text verbatim rather than the noisy
-      // PostgrestException.toString(), so the caller can show it directly.
-      throw Exception(e.message);
+      rethrow;
     }
   }
 

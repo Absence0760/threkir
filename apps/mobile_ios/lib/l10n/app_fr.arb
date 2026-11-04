@@ -3850,6 +3850,7 @@
   "coachingAthleteAssignAfterMany": "{name} a encore {count} plans à venir : {plans}. Un plan attribué ne peut chevaucher aucun d'eux : faites-le commencer après le {end} ou dans un intervalle entre eux.",
   "coachingAthleteAssignOverlapNamed": "Ces dates chevauchent le plan « {plan} » de {name} ({start} – {end}). Choisissez une date de début après sa fin.",
   "coachingAthleteAssignOverlap": "Ces dates chevauchent l'un des plans actifs de {name}. Choisissez une date de début après sa fin.",
+  "coachingAthleteAssignError": "Impossible d'attribuer le plan. Veuillez réessayer.",
   "coachingAthleteComplete": "terminé",
   "coachingAthleteDoneCount": "{done} sur {total} faits",
   "coachingAthleteMissedCount": "{n} manqués",

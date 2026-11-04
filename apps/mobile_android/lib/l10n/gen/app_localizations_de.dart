@@ -13773,6 +13773,10 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get coachingAthleteAssignError =>
+      'Plan konnte nicht zugewiesen werden. Bitte versuche es erneut.';
+
+  @override
   String get coachingAthleteComplete => 'abgeschlossen';
 
   @override

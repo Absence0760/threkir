@@ -13624,6 +13624,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get coachingAthleteAssignError =>
+      'Couldn\'t assign the plan. Please try again.';
+
+  @override
   String get coachingAthleteComplete => 'complete';
 
   @override

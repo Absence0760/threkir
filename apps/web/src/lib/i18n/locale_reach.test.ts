@@ -493,6 +493,9 @@ const VARIANT_WORD_PAIRS: Record<string, string> = {
 	// "this tab": the contraction agrees with the noun, masculine `separador`
 	// in Portugal and feminine `aba` in Brazil.
 	deste: "desta",
+	// "this backup": the demonstrative agrees with the noun, feminine `cópia de
+	// segurança` in Portugal and masculine `backup` in Brazil.
+	esta: "este",
 };
 
 function registerExempt(key: string): boolean {

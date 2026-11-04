@@ -115,8 +115,9 @@ export function carryOverlays<N extends StyleLike>(previous: StyleLike, next: N,
 	for (const key of ['terrain', 'sky', 'projection'] as const) {
 		if (previous[key] !== undefined) carried[key] = previous[key];
 	}
-	for (const key of ['glyphs', 'sprite'] as const) {
-		if (next[key] === undefined && previous[key] !== undefined) carried[key] = previous[key];
-	}
+	// Spelled out rather than looped over a key list: the quoted key is an
+	// icon ligature to the font subsetter, which would ship a glyph nothing draws.
+	if (next.glyphs === undefined && previous.glyphs !== undefined) carried.glyphs = previous.glyphs;
+	if (next.sprite === undefined && previous.sprite !== undefined) carried.sprite = previous.sprite;
 	return out;
 }

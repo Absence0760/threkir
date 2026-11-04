@@ -62,7 +62,7 @@
 	import { updateUniversal } from '#lib/settings/settings.ts';
 	import type { HealthUseDobState } from '#lib/core/health_consent.ts';
 	import { fmtKm, fmtPace, getUnit } from '#lib/format/units.svelte.ts';
-	import { paceMinutesSeconds } from '#lib/format/pace_format.ts';
+	import { paceFieldFromSecPerKm, secPerKmFromPaceField } from '#lib/format/pace_format.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
@@ -585,25 +585,16 @@
 		'rest',
 	];
 
-	function paceToInput(secPerKm: number | null): string {
-		if (secPerKm == null || secPerKm <= 0) return '';
-		return paceMinutesSeconds(secPerKm);
-	}
-
-	function inputToPace(raw: string): number | null {
-		const trimmed = raw.trim();
-		if (!trimmed) return null;
-		const m = trimmed.match(/^(\d{1,2}):(\d{2})$/);
-		if (!m) return null;
-		return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
-	}
-
+	// The outline's pace is typed in the runner's unit, beside distances in
+	// that unit, and stored per km.
 	function paceInputHandler(weekIdx: number, woIdx: number) {
 		return (e: Event) => {
 			if (!plan) return;
 			const value = (e.currentTarget as HTMLInputElement).value;
-			const sec = inputToPace(value);
-			plan.weeks[weekIdx].workouts[woIdx].target_pace_sec_per_km = sec;
+			plan.weeks[weekIdx].workouts[woIdx].target_pace_sec_per_km = secPerKmFromPaceField(
+				value,
+				distanceUnit,
+			);
 		};
 	}
 
@@ -1367,13 +1358,13 @@
 												/>
 											</label>
 											<label class="wo-field">
-												<span>{t('planEditor.paceMmSs')}</span>
+												<span>{t('planEditor.paceMmSs', { unit: distanceUnit })}</span>
 												<input
 													type="text"
 													inputmode="numeric"
 													pattern={'[0-9]{1,2}:[0-9]{2}'}
 													placeholder="—"
-													value={paceToInput(wo.target_pace_sec_per_km)}
+													value={paceFieldFromSecPerKm(wo.target_pace_sec_per_km, distanceUnit)}
 													aria-describedby="week-outline-hint"
 													oninput={paceInputHandler(weekIdx, woIdx)}
 													disabled={wo.kind === 'rest'}

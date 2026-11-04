@@ -3233,7 +3233,7 @@ export const messages = {
 	"planEditor.nSessionsMany": "{n}セッション",
 	"planEditor.runType": "ランの種類",
 	"planEditor.distance": "距離 ({unit})",
-	"planEditor.paceMmSs": "ペース (mm:ss)",
+	"planEditor.paceMmSs": "ペース（{unit}あたり mm:ss）",
 	"planEditor.notes": "メモ",
 	"planEditor.fillFormForPreview": "フォームに入力するとプレビューが表示されます。",
 	"planEditor.overlapTitle": "このプランはアクティブなプランと期間が重なっています",

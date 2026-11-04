@@ -48,6 +48,25 @@ export function paceToleranceLabel(secPerKm: number, unit: 'km' | 'mi'): string 
 	return `±${paceToleranceToUnit(secPerKm, unit)}s/${unit}`;
 }
 
+/// A stored pace (seconds per km) as an "m:ss" field in the runner's unit,
+/// or '' when there is none.
+export function paceFieldFromSecPerKm(secPerKm: number | null, unit: 'km' | 'mi'): string {
+	if (secPerKm == null || secPerKm <= 0) return '';
+	return paceMinutesSeconds(unit === 'mi' ? secPerKm * (1609.344 / 1000) : secPerKm);
+}
+
+/// An "m:ss" field typed in the runner's unit, as whole seconds per km for
+/// the integer pace column; null when it is empty or not "m:ss". The plan
+/// wizard used to store the typed value as-is, so 8:51 meant for a mile
+/// became 8:51/km.
+export function secPerKmFromPaceField(raw: string, unit: 'km' | 'mi'): number | null {
+	const m = raw.trim().match(/^(\d{1,2}):([0-5]\d)$/);
+	if (!m) return null;
+	const perUnit = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+	if (perUnit <= 0) return null;
+	return Math.round(unit === 'mi' ? perUnit / (1609.344 / 1000) : perUnit);
+}
+
 /// The tolerance an editor shows, in whole seconds per the display unit.
 export function paceToleranceToUnit(secPerKm: number, unit: 'km' | 'mi'): number {
 	return Math.round(unit === 'mi' ? secPerKm * (1609.344 / 1000) : secPerKm);

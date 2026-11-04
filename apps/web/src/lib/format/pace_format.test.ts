@@ -1,12 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+	paceFieldFromSecPerKm,
 	paceMinutesSeconds,
 	paceParts,
 	isMeaningfulPace,
 	paceToleranceFromUnit,
 	paceToleranceLabel,
-	paceToleranceToUnit
+	paceToleranceToUnit,
+	secPerKmFromPaceField
 } from './pace_format';
 
 test('formats whole and exact paces', () => {
@@ -99,5 +101,28 @@ test('an editor tolerance round-trips through the per-km column', () => {
 	for (let typed = 0; typed <= 60; typed++) {
 		const back = paceToleranceToUnit(paceToleranceFromUnit(typed, 'mi'), 'mi');
 		assert.ok(Math.abs(back - typed) <= 1, `${typed} s/mi came back as ${back}`);
+	}
+});
+
+// The plan wizard's outline pace sits beside distances in the runner's unit.
+// It used to be shown and stored per km whatever the unit: 5:30/km read as a
+// mile pace, and 8:51 typed for a mile was stored as 8:51/km (14:15/mi).
+test('a pace field reads and writes in the runner\'s unit', () => {
+	assert.equal(paceFieldFromSecPerKm(330, 'km'), '5:30');
+	assert.equal(paceFieldFromSecPerKm(330, 'mi'), '8:51');
+	assert.equal(paceFieldFromSecPerKm(null, 'mi'), '');
+	assert.equal(paceFieldFromSecPerKm(0, 'km'), '');
+	assert.equal(secPerKmFromPaceField('5:30', 'km'), 330);
+	assert.equal(secPerKmFromPaceField('8:51', 'mi'), 330);
+	assert.equal(secPerKmFromPaceField(' 8:51 ', 'mi'), 330);
+	assert.equal(secPerKmFromPaceField('', 'mi'), null);
+	assert.equal(secPerKmFromPaceField('8:75', 'mi'), null);
+	assert.equal(secPerKmFromPaceField('851', 'mi'), null);
+	assert.equal(secPerKmFromPaceField('0:00', 'km'), null);
+	// Whole seconds per km, the column's type, and stable on a second pass.
+	for (const secPerKm of [180, 240, 299, 300, 330, 420, 600]) {
+		const field = paceFieldFromSecPerKm(secPerKm, 'mi');
+		assert.ok(Number.isInteger(secPerKmFromPaceField(field, 'mi')));
+		assert.equal(paceFieldFromSecPerKm(secPerKmFromPaceField(field, 'mi'), 'mi'), field);
 	}
 });

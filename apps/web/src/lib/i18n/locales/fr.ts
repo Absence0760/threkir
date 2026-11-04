@@ -3238,7 +3238,7 @@ export const messages = {
 	"planEditor.nSessionsMany": "{n} séances",
 	"planEditor.runType": "Type de course",
 	"planEditor.distance": "Distance ({unit})",
-	"planEditor.paceMmSs": "Allure (mm:ss)",
+	"planEditor.paceMmSs": "Allure (mm:ss par {unit})",
 	"planEditor.notes": "Notes",
 	"planEditor.fillFormForPreview": "Remplissez le formulaire pour voir un aperçu.",
 	"planEditor.overlapTitle": "Ce plan chevauche un plan actif",

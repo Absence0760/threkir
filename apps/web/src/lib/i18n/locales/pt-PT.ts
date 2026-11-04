@@ -3237,7 +3237,7 @@ export const messages = {
 	"planEditor.nSessionsMany": "{n} sessões",
 	"planEditor.runType": "Tipo de corrida",
 	"planEditor.distance": "Distância ({unit})",
-	"planEditor.paceMmSs": "Ritmo (mm:ss)",
+	"planEditor.paceMmSs": "Ritmo (mm:ss por {unit})",
 	"planEditor.notes": "Notas",
 	"planEditor.fillFormForPreview": "Preencha o formulário para ver uma prévia.",
 	"planEditor.overlapTitle": "Este plano sobrepõe-se a um plano ativo",

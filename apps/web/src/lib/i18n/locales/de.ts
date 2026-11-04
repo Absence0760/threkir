@@ -3238,7 +3238,7 @@ export const messages = {
 	"planEditor.nSessionsMany": "{n} Einheiten",
 	"planEditor.runType": "Lauftyp",
 	"planEditor.distance": "Distanz ({unit})",
-	"planEditor.paceMmSs": "Pace (mm:ss)",
+	"planEditor.paceMmSs": "Pace (mm:ss pro {unit})",
 	"planEditor.notes": "Notizen",
 	"planEditor.fillFormForPreview": "Fülle das Formular aus, um eine Vorschau zu sehen.",
 	"planEditor.overlapTitle": "Dieser Plan überschneidet sich mit einem aktiven Plan",

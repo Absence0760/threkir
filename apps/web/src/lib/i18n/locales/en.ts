@@ -3251,7 +3251,7 @@ export const en = {
 	"planEditor.nSessionsMany": "{n} sessions",
 	"planEditor.runType": "Run type",
 	"planEditor.distance": "Distance ({unit})",
-	"planEditor.paceMmSs": "Pace (mm:ss)",
+	"planEditor.paceMmSs": "Pace (mm:ss per {unit})",
 	"planEditor.notes": "Notes",
 	"planEditor.fillFormForPreview": "Fill in the form to see a preview.",
 	"planEditor.overlapTitle": "This plan overlaps an active plan",

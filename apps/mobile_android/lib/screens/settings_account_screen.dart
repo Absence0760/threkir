@@ -94,6 +94,7 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
   // restore, CSV export, sign-out) so a double-tap can't fire two backup
   // builds / two share sheets / two restore loops.
   bool _accountBusy = false;
+
   /// Last server-built archive that came back short of the account's run
   /// history. Held on the screen rather than only bannered: a truncated
   /// Art. 20 export is a claim the runner has to be able to re-read after
@@ -297,7 +298,11 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       );
     } catch (e) {
       if (mounted) {
-        showTopBanner(context, l10n.settingsAccountExportRequestFailed('$e'));
+        debugPrint('export request failed: $e');
+        showTopBanner(
+          context,
+          l10n.settingsAccountExportRequestFailed(friendlyError(l10n, e)),
+        );
       }
     } finally {
       if (mounted) setState(() => _exportBusy = false);
@@ -309,11 +314,13 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     _exportPollTimer = null;
     final job = _exportJob;
     if (job == null || !isExportJobActive(job.status)) return;
-    _exportPollTimer =
-        Timer(Duration(milliseconds: exportPollDelayMs(attempt)), () {
-      _exportPollTimer = null;
-      unawaited(_readExportJob(attempt + 1));
-    });
+    _exportPollTimer = Timer(
+      Duration(milliseconds: exportPollDelayMs(attempt)),
+      () {
+        _exportPollTimer = null;
+        unawaited(_readExportJob(attempt + 1));
+      },
+    );
   }
 
   Future<void> _readExportJob(int attempt) async {
@@ -337,8 +344,9 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       return;
     }
     if (!mounted) return;
-    final wasBuilding =
-        isExportJobActive(_exportJob?.status ?? ExportJobStatus.none);
+    final wasBuilding = isExportJobActive(
+      _exportJob?.status ?? ExportJobStatus.none,
+    );
     setState(() {
       _exportPollFailures = 0;
       _exportStatusUnreadable = false;
@@ -353,7 +361,9 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       // the same code path.
       showTopBanner(
         context,
-        AppLocalizations.of(context).settingsAccountExportReadyBanner(job.count ?? 0),
+        AppLocalizations.of(
+          context,
+        ).settingsAccountExportReadyBanner(job.count ?? 0),
       );
     }
     _scheduleExportPoll(attempt);
@@ -380,8 +390,10 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       final url = job.url;
       if (job.status != ExportJobStatus.ready || url == null) return;
       final tmp = await getTemporaryDirectory();
-      final ts =
-          DateTime.now().toIso8601String().replaceAll(RegExp(r'[:.]'), '-');
+      final ts = DateTime.now().toIso8601String().replaceAll(
+        RegExp(r'[:.]'),
+        '-',
+      );
       final ext = job.format == 'csv' ? 'csv' : 'zip';
       final file = File('${tmp.path}/run-app-export-$ts.$ext');
       await client.downloadToFile(url: Uri.parse(url), outputFile: file);
@@ -400,7 +412,11 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       }
     } catch (e) {
       if (mounted) {
-        showTopBanner(context, l10n.settingsAccountExportDownloadFailed('$e'));
+        debugPrint('export download failed: $e');
+        showTopBanner(
+          context,
+          l10n.settingsAccountExportDownloadFailed(friendlyError(l10n, e)),
+        );
       }
     } finally {
       if (mounted) setState(() => _exportBusy = false);
@@ -507,8 +523,9 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     if (_profileLoad != _ProfileLoad.ready) return;
     XFile? f;
     try {
-      f = await (widget.pickAvatarOverride ??
-          () => _avatarPicker.pickImage(
+      f =
+          await (widget.pickAvatarOverride ??
+              () => _avatarPicker.pickImage(
                 source: ImageSource.gallery,
                 imageQuality: 90,
                 maxWidth: 1024,
@@ -517,7 +534,10 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     } catch (e) {
       debugPrint('settings account avatar failed: $e');
       if (!mounted) return;
-      showTopBanner(context, l10n.settingsAccountAvatarFailed(friendlyError(l10n, e)));
+      showTopBanner(
+        context,
+        l10n.settingsAccountAvatarFailed(friendlyError(l10n, e)),
+      );
       return;
     }
     if (f == null) return;
@@ -527,7 +547,10 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     } catch (e) {
       debugPrint('settings account avatar read failed: $e');
       if (!mounted) return;
-      showTopBanner(context, l10n.settingsAccountAvatarFailed(friendlyError(l10n, e)));
+      showTopBanner(
+        context,
+        l10n.settingsAccountAvatarFailed(friendlyError(l10n, e)),
+      );
       return;
     }
     // The format comes from the bytes, not the picked filename: a HEIC named
@@ -546,7 +569,10 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       // the strip stays because the avatars bucket is public with no
       // server-side strip worker, and this is the last rail before it.
       final clean = stripImageExif(cropped, 'image/jpeg');
-      final url = await api.uploadAvatar(bytes: clean, contentType: 'image/jpeg');
+      final url = await api.uploadAvatar(
+        bytes: clean,
+        contentType: 'image/jpeg',
+      );
       if (!mounted) return;
       setState(() {
         _avatarUrl = url;
@@ -557,7 +583,10 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       debugPrint('settings account avatar failed: $e');
       if (!mounted) return;
       setState(() => _avatarBusy = false);
-      showTopBanner(context, l10n.settingsAccountAvatarFailed(friendlyError(l10n, e)));
+      showTopBanner(
+        context,
+        l10n.settingsAccountAvatarFailed(friendlyError(l10n, e)),
+      );
     }
   }
 
@@ -587,7 +616,10 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       debugPrint('settings account avatar failed: $e');
       if (!mounted) return;
       setState(() => _avatarBusy = false);
-      showTopBanner(context, l10n.settingsAccountAvatarFailed(friendlyError(l10n, e)));
+      showTopBanner(
+        context,
+        l10n.settingsAccountAvatarFailed(friendlyError(l10n, e)),
+      );
     }
   }
 
@@ -619,9 +651,11 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       debugPrint('SettingsAccountScreen AI-consent withdraw failed: $e');
       if (mounted) {
         showTopBanner(
-            context,
-            l10n.settingsAccountCoachConsentWithdrawFailed(
-                friendlyError(l10n, e)));
+          context,
+          l10n.settingsAccountCoachConsentWithdrawFailed(
+            friendlyError(l10n, e),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _coachConsentWithdrawing = false);
@@ -636,7 +670,9 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     final api = widget.apiClient;
     if (api == null) {
       showTopBanner(
-          context, AppLocalizations.of(context).settingsAccountBackendNotConfigured);
+        context,
+        AppLocalizations.of(context).settingsAccountBackendNotConfigured,
+      );
       return;
     }
     final ok = await Navigator.of(context).push<bool>(
@@ -655,7 +691,9 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     } catch (e) {
       if (mounted) {
         showTopBanner(
-            context, AppLocalizations.of(context).settingsAccountSignOutFailed);
+          context,
+          AppLocalizations.of(context).settingsAccountSignOutFailed,
+        );
       }
     } finally {
       if (mounted) setState(() => _accountBusy = false);
@@ -689,7 +727,8 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
         bool sendingReset = false;
         return StatefulBuilder(
           builder: (ctx, setInner) {
-            final allFilled = currentCtl.text.isNotEmpty &&
+            final allFilled =
+                currentCtl.text.isNotEmpty &&
                 pwdCtl.text.isNotEmpty &&
                 confirmCtl.text.isNotEmpty;
 
@@ -800,9 +839,12 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
                     ),
                     if (error != null) ...[
                       const SizedBox(height: 8),
-                      Text(error!,
-                          style: TextStyle(
-                              color: AppSemanticColors.of(ctx).danger)),
+                      Text(
+                        error!,
+                        style: TextStyle(
+                          color: AppSemanticColors.of(ctx).danger,
+                        ),
+                      ),
                     ],
                     Align(
                       alignment: AlignmentDirectional.centerStart,
@@ -897,9 +939,10 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
                 ),
                 if (error != null) ...[
                   const SizedBox(height: 8),
-                  Text(error!,
-                      style:
-                          TextStyle(color: AppSemanticColors.of(ctx).danger)),
+                  Text(
+                    error!,
+                    style: TextStyle(color: AppSemanticColors.of(ctx).danger),
+                  ),
                 ],
               ],
             ),
@@ -913,8 +956,9 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
                   final v = emailCtl.text.trim();
                   if (!looksLikeEmail(v) ||
                       v.toLowerCase() == current.toLowerCase()) {
-                    setInner(() =>
-                        error = l10n.settingsAccountEmailChangeInvalid);
+                    setInner(
+                      () => error = l10n.settingsAccountEmailChangeInvalid,
+                    );
                     return;
                   }
                   Navigator.pop(ctx, v);
@@ -943,8 +987,10 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     } catch (e) {
       debugPrint('SettingsAccountScreen email update failed: $e');
       if (!mounted) return;
-      showTopBanner(context,
-          l10n.settingsAccountEmailChangeFailed(friendlyError(l10n, e)));
+      showTopBanner(
+        context,
+        l10n.settingsAccountEmailChangeFailed(friendlyError(l10n, e)),
+      );
     }
   }
 
@@ -960,7 +1006,8 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setInner) {
-          final met = challengeCtl.text.trim().toLowerCase() ==
+          final met =
+              challengeCtl.text.trim().toLowerCase() ==
               challengeTarget.trim().toLowerCase();
           return AlertDialog(
             title: Text(l10n.settingsAccountDeleteTitle),
@@ -975,8 +1022,9 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
                   autocorrect: false,
                   enableSuggestions: false,
                   decoration: InputDecoration(
-                    labelText:
-                        l10n.settingsAccountDeleteChallengeText(challengeTarget),
+                    labelText: l10n.settingsAccountDeleteChallengeText(
+                      challengeTarget,
+                    ),
                   ),
                   onChanged: (_) => setInner(() {}),
                 ),
@@ -1018,7 +1066,9 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       debugPrint('SettingsAccountScreen delete account failed: $e');
       if (!mounted) return;
       showTopBanner(
-          context, l10n.settingsAccountDeleteFailed(friendlyError(l10n, e)));
+        context,
+        l10n.settingsAccountDeleteFailed(friendlyError(l10n, e)),
+      );
     }
   }
 
@@ -1033,8 +1083,9 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     if (_accountBusy) return;
     setState(() => _accountBusy = true);
     try {
-      final buf =
-          StringBuffer('date,distance_m,duration_s,pace_s_per_km,source\n');
+      final buf = StringBuffer(
+        'date,distance_m,duration_s,pace_s_per_km,source\n',
+      );
       for (final r in runs) {
         final pace = r.distanceMetres > 0
             ? (r.duration.inSeconds / (r.distanceMetres / 1000)).round()
@@ -1048,8 +1099,10 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
         );
       }
       final tmp = await getTemporaryDirectory();
-      final ts =
-          DateTime.now().toIso8601String().replaceAll(RegExp(r'[:.]'), '-');
+      final ts = DateTime.now().toIso8601String().replaceAll(
+        RegExp(r'[:.]'),
+        '-',
+      );
       final file = File('${tmp.path}/runs-$ts.csv');
       await file.writeAsString(buf.toString());
       await shareFilesFrom(
@@ -1058,7 +1111,8 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
         text: l10n.settingsAccountCsvShareText,
       );
     } catch (e) {
-      if (mounted) showTopBanner(context, l10n.settingsAccountCsvExportFailed(e));
+      if (mounted)
+        showTopBanner(context, l10n.settingsAccountCsvExportFailed(e));
     } finally {
       if (mounted) setState(() => _accountBusy = false);
     }
@@ -1076,11 +1130,14 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     showTopBanner(context, l10n.settingsAccountBackupPreparing);
     try {
       final tmp = await getTemporaryDirectory();
-      final ts =
-          DateTime.now().toIso8601String().replaceAll(RegExp(r'[:.]'), '-');
+      final ts = DateTime.now().toIso8601String().replaceAll(
+        RegExp(r'[:.]'),
+        '-',
+      );
       final file = File('${tmp.path}/run-app-backup-$ts.zip');
-      final outcome = await BackupService(api: api)
-          .createBackup(outputFile: file, runStore: widget.runStore);
+      final outcome = await BackupService(
+        api: api,
+      ).createBackup(outputFile: file, runStore: widget.runStore);
       final localShort = outcome.localShortfall;
       if (mounted) {
         setState(() {
@@ -1159,8 +1216,9 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
         routeStore: widget.routeStore,
       );
       if (!mounted) return;
-      setState(() =>
-          _lastIncompleteRestore = res.archiveIncomplete ? res : null);
+      setState(
+        () => _lastIncompleteRestore = res.archiveIncomplete ? res : null,
+      );
       showTopBanner(
         context,
         l10n.settingsAccountRestoreDone(
@@ -1188,8 +1246,9 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
     bool emphasis = true,
   }) {
     final theme = Theme.of(context);
-    final color =
-        emphasis ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant;
+    final color = emphasis
+        ? theme.colorScheme.error
+        : theme.colorScheme.onSurfaceVariant;
     return Padding(
       key: key,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -1228,10 +1287,12 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       // be able to read that rather than discover it by pressing a tile
       // — the alternative is them taking the on-device backup below in
       // the belief that it is the same thing.
-      widgets.add(_accountNotice(
-        key: const Key('account-export-unavailable'),
-        text: l10n.settingsAccountExportUnavailable,
-      ));
+      widgets.add(
+        _accountNotice(
+          key: const Key('account-export-unavailable'),
+          text: l10n.settingsAccountExportUnavailable,
+        ),
+      );
       return widgets;
     }
     final unsynced = widget.runStore?.unsyncedRuns.length ?? 0;
@@ -1239,66 +1300,88 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
       // The server builds from the cloud rows, so a run still sitting
       // on this device cannot be in the archive. Standing fact about
       // the account, so it is a notice rather than a banner.
-      widgets.add(_accountNotice(
-        key: const Key('account-export-unsynced'),
-        text: l10n.settingsAccountExportUnsyncedWarning(unsynced),
-      ));
+      widgets.add(
+        _accountNotice(
+          key: const Key('account-export-unsynced'),
+          text: l10n.settingsAccountExportUnsyncedWarning(unsynced),
+        ),
+      );
     }
     final job = _exportJob;
     if (job != null && job.status != ExportJobStatus.none) {
       switch (job.status) {
         case ExportJobStatus.queued:
         case ExportJobStatus.running:
-          widgets.add(_accountNotice(
-            key: const Key('account-export-building'),
-            text: l10n.settingsAccountExportBuildingNotice,
-            emphasis: false,
-          ));
+          widgets.add(
+            _accountNotice(
+              key: const Key('account-export-building'),
+              text: l10n.settingsAccountExportBuildingNotice,
+              emphasis: false,
+            ),
+          );
         case ExportJobStatus.ready:
-          widgets.add(_accountNotice(
-            key: const Key('account-export-ready'),
-            text: l10n.settingsAccountExportReadyNotice,
-            emphasis: false,
-          ));
-          widgets.add(ListTile(
-            key: const Key('account-export-download'),
-            leading: const Icon(Icons.download_outlined),
-            title: Text(l10n.settingsAccountExportDownload),
-            enabled: !_exportBusy,
-            onTap: _downloadAccountExport,
-          ));
+          widgets.add(
+            _accountNotice(
+              key: const Key('account-export-ready'),
+              text: l10n.settingsAccountExportReadyNotice,
+              emphasis: false,
+            ),
+          );
+          widgets.add(
+            ListTile(
+              key: const Key('account-export-download'),
+              leading: const Icon(Icons.download_outlined),
+              title: Text(l10n.settingsAccountExportDownload),
+              enabled: !_exportBusy,
+              onTap: _downloadAccountExport,
+            ),
+          );
         case ExportJobStatus.expired:
-          widgets.add(_accountNotice(
-            key: const Key('account-export-expired'),
-            text: l10n.settingsAccountExportExpiredNotice,
-          ));
+          widgets.add(
+            _accountNotice(
+              key: const Key('account-export-expired'),
+              text: l10n.settingsAccountExportExpiredNotice,
+            ),
+          );
         case ExportJobStatus.stalled:
-          widgets.add(_accountNotice(
-            key: const Key('account-export-stalled'),
-            text: l10n.settingsAccountExportStalledNotice,
-          ));
+          widgets.add(
+            _accountNotice(
+              key: const Key('account-export-stalled'),
+              text: l10n.settingsAccountExportStalledNotice,
+            ),
+          );
         case ExportJobStatus.failed:
-          widgets.add(_accountNotice(
-            key: const Key('account-export-failed'),
-            text: l10n.settingsAccountExportFailedNotice(
-                job.errorCode ?? 'unknown'),
-          ));
+          widgets.add(
+            _accountNotice(
+              key: const Key('account-export-failed'),
+              text: l10n.settingsAccountExportFailedNotice(
+                job.errorCode ?? 'unknown',
+              ),
+            ),
+          );
         case ExportJobStatus.none:
           break;
       }
     }
     if (_exportStatusUnreadable) {
-      widgets.add(_accountNotice(
-        key: const Key('account-export-status-unreadable'),
-        text: l10n.settingsAccountExportStatusUnavailable,
-      ));
+      widgets.add(
+        _accountNotice(
+          key: const Key('account-export-status-unreadable'),
+          text: l10n.settingsAccountExportStatusUnavailable,
+        ),
+      );
     }
     final short = _exportShortfall;
     if (short != null) {
-      widgets.add(_accountNotice(
-        key: const Key('account-export-shortfall'),
-        text: l10n.settingsAccountBackupPartialNotice(short.count, short.total),
-      ));
+      widgets.add(
+        _accountNotice(
+          key: const Key('account-export-shortfall'),
+          text: l10n.settingsAccountBackupPartialNotice(
+            short.count,
+            short.total,
+          ),
+        ),
+      );
     }
     return widgets;
   }
@@ -1319,15 +1402,16 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
                 backgroundColor: signedIn
                     ? theme.colorScheme.primaryContainer
                     : theme.colorScheme.surfaceContainerHighest,
-                child: Text(
-                  email.isNotEmpty ? email[0].toUpperCase() : '?',
-                ),
+                child: Text(email.isNotEmpty ? email[0].toUpperCase() : '?'),
               ),
               title: Text(
-                  email.isEmpty ? l10n.settingsAccountOfflineMode : email),
-              subtitle: Text(signedIn
-                  ? l10n.settingsAccountSignedInSync
-                  : l10n.settingsAccountSignInToSync),
+                email.isEmpty ? l10n.settingsAccountOfflineMode : email,
+              ),
+              subtitle: Text(
+                signedIn
+                    ? l10n.settingsAccountSignedInSync
+                    : l10n.settingsAccountSignInToSync,
+              ),
               trailing: signedIn
                   ? IconButton(
                       icon: const Icon(Icons.logout),
@@ -1342,8 +1426,10 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
             if (signedIn && _profileLoad == _ProfileLoad.failed)
               ListTile(
                 key: const ValueKey('account-profile-load-error'),
-                leading: Icon(Icons.error_outline,
-                    color: theme.colorScheme.error),
+                leading: Icon(
+                  Icons.error_outline,
+                  color: theme.colorScheme.error,
+                ),
                 title: Text(l10n.settingsAccountProfileLoadFailed),
                 trailing: TextButton(
                   onPressed: _retryProfileLoad,
@@ -1368,12 +1454,12 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : (_avatarUrl != null && _avatarUrl!.isNotEmpty)
-                        ? IconButton(
-                            icon: const Icon(Icons.delete_outline),
-                            tooltip: l10n.settingsAccountAvatarRemove,
-                            onPressed: _removeAvatar,
-                          )
-                        : const Icon(Icons.photo_camera),
+                    ? IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        tooltip: l10n.settingsAccountAvatarRemove,
+                        onPressed: _removeAvatar,
+                      )
+                    : const Icon(Icons.photo_camera),
                 onTap: _avatarBusy ? null : _pickAvatar,
               ),
             if (signedIn && _profileLoad != _ProfileLoad.failed)
@@ -1385,8 +1471,8 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
                   _profileLoad == _ProfileLoad.loading
                       ? l10n.commonLoading
                       : (_displayName != null && _displayName!.isNotEmpty)
-                          ? _displayName!
-                          : l10n.settingsAccountDisplayNameUnset,
+                      ? _displayName!
+                      : l10n.settingsAccountDisplayNameUnset,
                 ),
                 trailing: _displayNameBusy
                     ? const SizedBox(
@@ -1416,12 +1502,16 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
             if (signedIn && !_aiConsentCurrent)
               ListTile(
                 leading: const Icon(Icons.verified_user_outlined),
-                title: Text(_aiConsentGranted
-                    ? l10n.settingsAccountAiConsentUpdateTitle
-                    : l10n.settingsAccountAiConsentGrantTitle),
-                subtitle: Text(_aiConsentGranted
-                    ? l10n.settingsAccountAiConsentUpdateSubtitle
-                    : l10n.settingsAccountAiConsentGrantSubtitle),
+                title: Text(
+                  _aiConsentGranted
+                      ? l10n.settingsAccountAiConsentUpdateTitle
+                      : l10n.settingsAccountAiConsentGrantTitle,
+                ),
+                subtitle: Text(
+                  _aiConsentGranted
+                      ? l10n.settingsAccountAiConsentUpdateSubtitle
+                      : l10n.settingsAccountAiConsentGrantSubtitle,
+                ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: _acceptAiDisclosure,
               ),
@@ -1437,8 +1527,7 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : null,
-                onTap:
-                    _coachConsentWithdrawing ? null : _withdrawAiDisclosure,
+                onTap: _coachConsentWithdrawing ? null : _withdrawAiDisclosure,
               ),
             if (widget.runStore != null) ...[
               const Divider(),
@@ -1468,7 +1557,8 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
                 title: Text(l10n.settingsAccountAccountExport),
                 subtitle: Text(l10n.settingsAccountAccountExportSubtitle),
                 trailing: const Icon(Icons.chevron_right),
-                enabled: !_exportBusy &&
+                enabled:
+                    !_exportBusy &&
                     !_exportJobBuilding &&
                     _resolveExportClient() != null,
                 onTap: _requestAccountExport,
@@ -1507,7 +1597,8 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
                             _backupLocalShortfall!.blobsMissing,
                             _backupLocalShortfall!.blobsWanted,
                           ),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
                                 color: Theme.of(context).colorScheme.error,
                               ),
                         ),
@@ -1549,7 +1640,8 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
                           l10n.settingsAccountRestoreIncompleteArchive(
                             _lastIncompleteRestore!.runsImported,
                           ),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
                                 color: Theme.of(context).colorScheme.error,
                               ),
                         ),
@@ -1565,8 +1657,12 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
                 title: Text(l10n.settingsAccountChangeEmail),
                 subtitle: _pendingEmailNew == null
                     ? null
-                    : Text(l10n.settingsAccountEmailChangePending(
-                        _pendingEmailOld, _pendingEmailNew!)),
+                    : Text(
+                        l10n.settingsAccountEmailChangePending(
+                          _pendingEmailOld,
+                          _pendingEmailNew!,
+                        ),
+                      ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: _changeEmail,
               ),
@@ -1577,12 +1673,13 @@ class _SettingsAccountScreenState extends State<SettingsAccountScreen>
                 onTap: _changePassword,
               ),
               ListTile(
-                leading: Icon(Icons.delete_outline,
-                    color: AppSemanticColors.of(context).danger),
+                leading: Icon(
+                  Icons.delete_outline,
+                  color: AppSemanticColors.of(context).danger,
+                ),
                 title: Text(
                   l10n.settingsAccountDeleteAccount,
-                  style:
-                      TextStyle(color: AppSemanticColors.of(context).danger),
+                  style: TextStyle(color: AppSemanticColors.of(context).danger),
                 ),
                 subtitle: Text(l10n.settingsAccountDeleteAccountSubtitle),
                 trailing: const Icon(Icons.chevron_right),

@@ -164,7 +164,8 @@ void main() {
     await pumpUntil(
       tester,
       () => find
-          .text("Couldn't save your athlete number: Exception: refused")
+          .text("Couldn't save your athlete number: "
+              'Something went wrong. Please try again.')
           .evaluate()
           .isNotEmpty,
       describe: 'the save-failed banner',

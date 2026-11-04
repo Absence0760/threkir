@@ -79,6 +79,6 @@ begin
 end;
 $$;
 
-revoke execute on function private.backfill_training_plan_published_from() from public, anon, authenticated;
+revoke execute on function private.backfill_training_plan_published_from() from public, anon, authenticated, service_role;
 
 select private.backfill_training_plan_published_from();

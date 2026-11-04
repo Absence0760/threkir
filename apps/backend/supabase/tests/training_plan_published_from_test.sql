@@ -3,10 +3,10 @@
 -- plan never carries it, and deleting the source plan nulls the link without
 -- deleting the library copy. The migration's name-matching backfill links a
 -- copy only when the owner has exactly one public template and exactly one
--- plan of that name.
+-- plan of that name, and no client role, service_role included, may run it.
 
 begin;
-select plan(9);
+select plan(10);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -129,6 +129,13 @@ select is(
   0,
   'a second run links nothing'
 );
+
+select ok(
+  not exists (
+    select 1 from unnest(array['anon', 'authenticated', 'service_role']) r
+     where has_function_privilege(r, 'private.backfill_training_plan_published_from()', 'execute')
+  ),
+  'the name-matching backfill is callable by no client role, service_role included');
 
 select * from finish();
 rollback;

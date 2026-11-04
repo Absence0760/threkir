@@ -6,14 +6,15 @@
 -- account deletion keeps the remaining participant's conversation; the
 -- purge drops a conversation once nothing references it; anon reaches none
 -- of the RPCs; and the migration's backfill assigns every pre-trigger
--- message, live pair or deleted partner, and refuses to leave one behind.
+-- message, live pair or deleted partner, refuses to leave one behind, and is
+-- callable by no client role, service_role included.
 --
 -- now() is the transaction's start for every statement here, so the RPCs'
 -- stamps are all "now" and each message that must land AFTER a stamp is
 -- seeded as superuser with an explicit later created_at.
 
 begin;
-select plan(42);
+select plan(43);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -325,6 +326,13 @@ select throws_ok(
   $$select private.backfill_direct_message_conversations()$$,
   '23502', null,
   'the backfill refuses to finish while a message is left without a conversation');
+
+select ok(
+  not exists (
+    select 1 from unnest(array['anon', 'authenticated', 'service_role']) r
+     where has_function_privilege(r, 'private.backfill_direct_message_conversations()', 'execute')
+  ),
+  'the conversation backfill is callable by no client role, service_role included');
 
 select * from finish();
 rollback;

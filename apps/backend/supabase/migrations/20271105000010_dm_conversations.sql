@@ -288,7 +288,7 @@ begin
 end;
 $$;
 
-revoke execute on function private.backfill_direct_message_conversations() from public, anon, authenticated;
+revoke execute on function private.backfill_direct_message_conversations() from public, anon, authenticated, service_role;
 
 select private.backfill_direct_message_conversations();
 

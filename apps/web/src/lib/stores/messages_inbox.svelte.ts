@@ -31,11 +31,14 @@ import {
 import { supabase } from '#lib/core/supabase.ts';
 import { deferDestructive } from '#lib/stores/undo.svelte.ts';
 import { dmUnreadStore } from '#lib/stores/dm_unread.svelte.ts';
+import { dmPendingHides } from '#lib/stores/dm_pending_hides.svelte.ts';
 import { effective, loadSettings, updateUniversal } from '#lib/settings/settings.ts';
 import { dmThreadRouteId } from '#lib/social/dm_thread.ts';
 import {
 	conversationWriteKey,
+	dropRefusedWrite,
 	overlayConversationWrites,
+	restoreHiddenConversation,
 	revertConversationFlag,
 	settledConversationWrites,
 	type ConversationFlag,
@@ -70,10 +73,6 @@ class MessagesInboxStore {
 	/// before that answers with the count from before the mark, and assigning
 	/// it as-is put the badge back on the conversation just opened.
 	#markedReadAt = new Map<string, number>();
-	/// Conversations deleted for the runner while the undo window is open. The
-	/// server has not been told yet, so every list read until the commit still
-	/// returns them; they stay out of the list until then.
-	#pendingHidden = new Set<string>();
 	/// The runner's mute / archive writes a list read may predate
 	/// (dm_conversation_writes.ts), keyed by conversation and flag. Reactive,
 	/// because a conversation the list has not loaded reads its state here.
@@ -89,7 +88,7 @@ class MessagesInboxStore {
 		this.coach = null;
 		this.showingArchived = false;
 		this.#markedReadAt.clear();
-		this.#pendingHidden.clear();
+		dmPendingHides.clear();
 		this.#writes.clear();
 		this.#coachGeneration++;
 		return true;
@@ -97,7 +96,7 @@ class MessagesInboxStore {
 
 	#apply(rows: DmThread[], startedAt: number) {
 		const visible = overlayConversationWrites(
-			rows.filter((t) => !this.#pendingHidden.has(t.conversationId)),
+			rows.filter((t) => !dmPendingHides.has(t.conversationId)),
 			this.#writes.values(),
 			startedAt,
 		);
@@ -175,7 +174,8 @@ class MessagesInboxStore {
 	/// The write is held in #writes until a list read carries it, so a poll
 	/// that started before it landed cannot flip the toggle back. A refusal
 	/// reverts that one field on that one row: restoring a snapshot of the
-	/// whole list would also undo whatever a poll brought in meanwhile.
+	/// whole list would also undo whatever a poll brought in meanwhile. A
+	/// refusal that a later write to the same flag superseded reverts nothing.
 	async #setFlag(
 		conversationId: string,
 		flag: ConversationFlag,
@@ -190,7 +190,7 @@ class MessagesInboxStore {
 		try {
 			await write(conversationId, value);
 		} catch (e) {
-			if (this.#writes.get(key) === pending) this.#writes.delete(key);
+			if (!dropRefusedWrite(this.#writes, pending)) throw e;
 			if (prior !== undefined) {
 				this.threads = revertConversationFlag(this.threads, conversationId, flag, prior);
 			} else {
@@ -210,23 +210,33 @@ class MessagesInboxStore {
 	/// the server is told only when the window closes, so Undo cancels a timer.
 	/// `onRestore` lets the open conversation pane come back with the row.
 	hide(conversationId: string, opts: { message: string; onCommitError: (e: unknown) => void; onRestore?: () => void }) {
-		const before = this.threads;
-		this.#pendingHidden.add(conversationId);
+		const hidden = this.threads.find((t) => t.conversationId === conversationId);
+		dmPendingHides.add(conversationId);
 		this.threads = this.threads.filter((t) => t.conversationId !== conversationId);
 		deferDestructive({
 			message: opts.message,
 			commit: async () => {
 				try {
 					await hideDmConversation(conversationId);
+					// Hidden on the server now: drop it from the held count so the
+					// badge does not count it again before the read below lands.
+					dmUnreadStore.forget(conversationId);
 				} finally {
-					this.#pendingHidden.delete(conversationId);
+					dmPendingHides.delete(conversationId);
 				}
 				void dmUnreadStore.refresh();
 			},
+			// Undo, or a refused commit: the badge dropped the conversation on
+			// the delete and re-reads now, the server being what knows.
 			restore: () => {
-				this.#pendingHidden.delete(conversationId);
-				this.threads = before;
+				dmPendingHides.delete(conversationId);
+				// The one row comes back: a snapshot of the whole list would also
+				// undo whatever a poll brought in during the window.
+				const restored = restoreHiddenConversation(this.threads, hidden);
+				if (restored) this.threads = restored;
+				else void this.refreshThreads();
 				opts.onRestore?.();
+				void dmUnreadStore.refresh();
 			},
 			// restore() has already put the row back; the list read brings in
 			// anything that arrived during the window.

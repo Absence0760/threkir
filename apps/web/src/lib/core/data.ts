@@ -227,7 +227,7 @@ import {
 	type DmPage,
 	type DmThreadTarget,
 } from '../social/dm_thread';
-import { unreadDmBadgeCount } from '../social/messages_inbox';
+import type { DmBadgeState } from '../social/dm_badge';
 import type { ParsedResultRow } from '../runs/event_results_csv';
 import {
 	normalisePlanWorkoutNotes,
@@ -11121,19 +11121,23 @@ export async function fetchLatestCoachMessage(): Promise<LatestCoachMessage | nu
 	};
 }
 
-/// Total unread direct messages across the conversations the viewer has not
-/// muted or archived: the badge on the sidebar's Messages entry. The same
-/// `dm_threads()` aggregation as [fetchDmThreads] without its partner-profile
-/// read, as mobile's `ApiClient.fetchUnreadDmCount` does. Throws on a failed
-/// read, so the store keeps the last count rather than reading a blip as
-/// "nothing unread".
-export async function fetchUnreadDmCount(): Promise<number> {
-	if (!auth.user?.id) return 0;
+/// Each conversation's unread count and mute / archive state: what the badge
+/// on the sidebar's Messages entry is counted from (`unreadDmBadgeCountExcept`
+/// in dm_badge.ts). The same `dm_threads()` aggregation as [fetchDmThreads]
+/// without its partner-profile read, as mobile's `ApiClient.fetchDmBadgeStates`
+/// does. The conversation id lets the badge leave out a conversation whose
+/// delete is still inside its undo window. Throws on a failed read, so the
+/// store keeps the last count rather than reading a blip as "nothing unread".
+export async function fetchDmBadgeStates(): Promise<DmBadgeState[]> {
+	if (!auth.user?.id) return [];
 	const { data, error } = await supabase.rpc('dm_threads', undefined, { get: true });
 	if (error) throw new Error(`dm_threads failed: ${error.message}`);
-	return unreadDmBadgeCount(
-		(data ?? []).map((r) => ({ unread: Number(r.unread) || 0, muted: r.muted, archived: r.archived })),
-	);
+	return (data ?? []).map((r) => ({
+		conversationId: r.conversation_id,
+		unread: Number(r.unread) || 0,
+		muted: r.muted === true,
+		archived: r.archived === true,
+	}));
 }
 
 /// Conversation list: the latest message per partner + an unread count.

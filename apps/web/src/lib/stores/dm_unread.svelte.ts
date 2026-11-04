@@ -6,19 +6,27 @@
  * visible, and an explicit `refresh()` from /messages after it marks a thread
  * read. Polled rather than Realtime because `direct_messages` is not in the
  * Realtime publication, and the inbox itself polls.
+ *
+ * A conversation whose delete is inside its undo window (`dmPendingHides`)
+ * leaves the count at once, from the states already held; the inbox store
+ * re-reads only when the window closes or is undone, since only the server
+ * knows the outcome.
  */
-import { fetchUnreadDmCount } from '#lib/core/data.ts';
+import { fetchDmBadgeStates } from '#lib/core/data.ts';
 import { CoalescingRefetcher } from '#lib/runs/live_refetch.ts';
+import { unreadDmBadgeCountExcept, type DmBadgeState } from '#lib/social/dm_badge.ts';
+import { dmPendingHides } from '#lib/stores/dm_pending_hides.svelte.ts';
 
 export const DM_UNREAD_POLL_MS = 60_000;
 
 class DmUnreadStore {
-	count = $state(0);
+	#states = $state<DmBadgeState[]>([]);
+	count = $derived(unreadDmBadgeCountExcept(this.#states, dmPendingHides));
 
-	#refetcher = new CoalescingRefetcher<number>({
-		fetch: () => fetchUnreadDmCount(),
-		apply: (count) => {
-			this.count = count;
+	#refetcher = new CoalescingRefetcher<DmBadgeState[]>({
+		fetch: () => fetchDmBadgeStates(),
+		apply: (states) => {
+			this.#states = states;
 		},
 		onError: (e) => console.warn('unread DM refresh failed', e),
 	});
@@ -27,8 +35,13 @@ class DmUnreadStore {
 		await this.#refetcher.runNow();
 	}
 
+	/// A conversation the server has just hidden for the runner.
+	forget(conversationId: string) {
+		this.#states = this.#states.filter((s) => s.conversationId !== conversationId);
+	}
+
 	clear() {
-		this.count = 0;
+		this.#states = [];
 	}
 }
 

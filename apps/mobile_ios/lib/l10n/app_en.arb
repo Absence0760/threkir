@@ -4391,6 +4391,10 @@
   "@routesSyncFailedOffline": {
     "description": "Banner shown when the initial route sync fails and the app falls back to the cached list"
   },
+  "routesBookmarksLoadFailed": "Could not load your bookmarked routes",
+  "@routesBookmarksLoadFailed": {
+    "description": "Banner shown on the Routes list when the routes the runner bookmarked from others could not be loaded; their own routes still show"
+  },
   "routesLoadMoreFailed": "Could not load more routes",
   "@routesLoadMoreFailed": {
     "description": "Banner shown when loading the next page of routes fails"

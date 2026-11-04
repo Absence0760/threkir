@@ -3380,6 +3380,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Routen konnten nicht synchronisiert werden — offline';
 
   @override
+  String get routesBookmarksLoadFailed =>
+      'Deine Routen mit Lesezeichen konnten nicht geladen werden';
+
+  @override
   String get routesLoadMoreFailed =>
       'Weitere Routen konnten nicht geladen werden';
 

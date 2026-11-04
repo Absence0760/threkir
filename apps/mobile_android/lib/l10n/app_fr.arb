@@ -919,6 +919,7 @@
   "publicRunStatPace": "Allure",
   "publicRunSectionSegments": "Segments",
   "routesSyncFailedOffline": "Impossible de synchroniser les itinéraires — hors ligne",
+  "routesBookmarksLoadFailed": "Impossible de charger vos itinéraires en signets",
   "routesLoadMoreFailed": "Impossible de charger plus d'itinéraires",
   "routesStarUpdateFailed": "Impossible de mettre à jour le favori : {error}",
   "routesImportFailedLocalOnly": "Échec de l'import : choisissez le fichier dans le stockage local, pas dans un sélecteur de documents uniquement cloud.",

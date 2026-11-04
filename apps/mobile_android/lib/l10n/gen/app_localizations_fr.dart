@@ -3384,6 +3384,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible de synchroniser les itinéraires — hors ligne';
 
   @override
+  String get routesBookmarksLoadFailed =>
+      'Impossible de charger vos itinéraires en signets';
+
+  @override
   String get routesLoadMoreFailed =>
       'Impossible de charger plus d\'itinéraires';
 

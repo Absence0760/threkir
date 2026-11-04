@@ -188,11 +188,17 @@ class RoutesScreenState extends State<RoutesScreen> {
     final api = widget.apiClient;
     if (api == null || api.userId == null) return;
     try {
-      final marks = await api.fetchBookmarkedRoutes();
+      final marks =
+          await api.fetchBookmarkedRoutes().timeout(kBackendLoadTimeout);
       if (!mounted) return;
       setState(() => _bookmarks = marks);
-    } catch (_) {
-      // Best-effort; the owned list still renders.
+    } catch (e) {
+      // The owned list still renders; the bookmarks already shown stay.
+      debugPrint('Fetch bookmarked routes failed: $e');
+      if (mounted) {
+        showTopBanner(
+            context, AppLocalizations.of(context).routesBookmarksLoadFailed);
+      }
     }
   }
 

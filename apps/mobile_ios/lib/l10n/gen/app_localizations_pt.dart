@@ -3374,6 +3374,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível sincronizar as rotas — a trabalhar offline';
 
   @override
+  String get routesBookmarksLoadFailed =>
+      'Não foi possível carregar as suas rotas marcadas';
+
+  @override
   String get routesLoadMoreFailed => 'Não foi possível carregar mais rotas';
 
   @override
@@ -23064,6 +23068,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get routesSyncFailedOffline =>
       'Não foi possível sincronizar as rotas — trabalhando offline';
+
+  @override
+  String get routesBookmarksLoadFailed =>
+      'Não foi possível carregar suas rotas marcadas';
 
   @override
   String get routesLoadMoreFailed => 'Não foi possível carregar mais rotas';

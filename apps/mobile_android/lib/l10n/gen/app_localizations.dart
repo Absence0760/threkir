@@ -5663,6 +5663,12 @@ abstract class AppLocalizations {
   /// **'Could not sync routes — working offline'**
   String get routesSyncFailedOffline;
 
+  /// Banner shown on the Routes list when the routes the runner bookmarked from others could not be loaded; their own routes still show
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load your bookmarked routes'**
+  String get routesBookmarksLoadFailed;
+
   /// Banner shown when loading the next page of routes fails
   ///
   /// In en, this message translates to:

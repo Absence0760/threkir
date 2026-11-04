@@ -919,6 +919,7 @@
   "publicRunStatPace": "ペース",
   "publicRunSectionSegments": "セグメント",
   "routesSyncFailedOffline": "ルートを同期できませんでした — オフラインで動作中",
+  "routesBookmarksLoadFailed": "ブックマークしたルートを読み込めませんでした",
   "routesLoadMoreFailed": "これ以上ルートを読み込めませんでした",
   "routesStarUpdateFailed": "スターを更新できませんでした: {error}",
   "routesImportFailedLocalOnly": "インポートに失敗しました: クラウド専用のドキュメント選択ではなく、ローカルストレージからファイルを選んでください。",

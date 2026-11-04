@@ -919,6 +919,7 @@
   "publicRunStatPace": "Ritmo",
   "publicRunSectionSegments": "Segmentos",
   "routesSyncFailedOffline": "Não foi possível sincronizar as rotas — trabalhando offline",
+  "routesBookmarksLoadFailed": "Não foi possível carregar suas rotas marcadas",
   "routesLoadMoreFailed": "Não foi possível carregar mais rotas",
   "routesStarUpdateFailed": "Não foi possível atualizar a estrela: {error}",
   "routesImportFailedLocalOnly": "Falha na importação: escolha o arquivo do armazenamento local, não de um seletor de documentos apenas na nuvem.",

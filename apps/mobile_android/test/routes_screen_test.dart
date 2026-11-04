@@ -8,10 +8,33 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_route_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/routes_screen.dart';
+import 'pump_until.dart';
 
 /// Signed-out fake — non-null so the api-gated Discover entries render,
 /// null userId so no fetch paths fire.
 class _FakeApi extends ApiClient {}
+
+/// Signed in, owns no routes, and cannot load the routes it bookmarked.
+class _BookmarksDownApi extends ApiClient {
+  int bookmarkCalls = 0;
+
+  @override
+  String? get userId => 'u';
+
+  @override
+  Future<cm.KeysetPage<cm.Route>> getRoutes({
+    int limit = 200,
+    List<Object?>? after,
+    bool starredOnly = false,
+  }) async =>
+      const cm.KeysetPage(<cm.Route>[], null);
+
+  @override
+  Future<List<cm.Route>> fetchBookmarkedRoutes({int limit = 200}) async {
+    bookmarkCalls++;
+    throw Exception('saved_routes unreachable');
+  }
+}
 
 List<cm.Route> _makeRoutes(int count) {
   return [
@@ -171,6 +194,26 @@ void main() {
         findsOneWidget,
       );
       expect(find.textContaining('Import a GPX'), findsOneWidget);
+    });
+  });
+
+  group('RoutesScreen — bookmarks', () {
+    testWidgets('a failed bookmark load says so instead of vanishing silently',
+        (tester) async {
+      final prefs = await _makePrefs();
+      final api = _BookmarksDownApi();
+      await _pump(tester, prefs: prefs, api: api);
+      await pumpUntil(
+        tester,
+        () => find
+            .text('Could not load your bookmarked routes')
+            .evaluate()
+            .isNotEmpty,
+        describe: 'the bookmarks-failed banner',
+      );
+      expect(api.bookmarkCalls, 1);
+      // Drain the banner's auto-dismiss timer.
+      await tester.pump(const Duration(seconds: 7));
     });
   });
 

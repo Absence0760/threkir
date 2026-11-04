@@ -3375,6 +3375,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudieron sincronizar las rutas — sin conexión';
 
   @override
+  String get routesBookmarksLoadFailed =>
+      'No se pudieron cargar tus rutas marcadas';
+
+  @override
   String get routesLoadMoreFailed => 'No se pudieron cargar más rutas';
 
   @override

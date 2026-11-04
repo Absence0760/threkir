@@ -3208,6 +3208,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get routesSyncFailedOffline => 'ルートを同期できませんでした — オフラインで動作中';
 
   @override
+  String get routesBookmarksLoadFailed => 'ブックマークしたルートを読み込めませんでした';
+
+  @override
   String get routesLoadMoreFailed => 'これ以上ルートを読み込めませんでした';
 
   @override

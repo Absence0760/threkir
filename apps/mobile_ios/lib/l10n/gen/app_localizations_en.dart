@@ -3341,6 +3341,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Could not sync routes — working offline';
 
   @override
+  String get routesBookmarksLoadFailed =>
+      'Could not load your bookmarked routes';
+
+  @override
   String get routesLoadMoreFailed => 'Could not load more routes';
 
   @override

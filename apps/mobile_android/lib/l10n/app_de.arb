@@ -919,6 +919,7 @@
   "publicRunStatPace": "Tempo",
   "publicRunSectionSegments": "Segmente",
   "routesSyncFailedOffline": "Routen konnten nicht synchronisiert werden — offline",
+  "routesBookmarksLoadFailed": "Deine Routen mit Lesezeichen konnten nicht geladen werden",
   "routesLoadMoreFailed": "Weitere Routen konnten nicht geladen werden",
   "routesStarUpdateFailed": "Stern konnte nicht aktualisiert werden: {error}",
   "routesImportFailedLocalOnly": "Import fehlgeschlagen: Wähle die Datei aus dem lokalen Speicher, nicht aus einem reinen Cloud-Dokumentenauswähler.",

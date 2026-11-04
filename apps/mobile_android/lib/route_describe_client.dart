@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -41,7 +42,11 @@ class AiDescriptionResult {
   });
 }
 
-Map<String, dynamic> _toBody(RouteDescriptionInput input) => {
+/// The request body. [unit] is the viewer's, so the paragraph comes back in
+/// the unit they read.
+Map<String, dynamic> routeDescribeBody(
+        RouteDescriptionInput input, DistanceUnit unit) =>
+    {
       'name': input.name,
       'distance_m': input.distanceM,
       'elevation_m': input.elevationM,
@@ -52,6 +57,7 @@ Map<String, dynamic> _toBody(RouteDescriptionInput input) => {
       'end': input.end == null
           ? null
           : {'lat': input.end!.lat, 'lng': input.end!.lng},
+      'unit': unit.name,
     };
 
 /// Does this non-200 response say the caller has not accepted the AI
@@ -75,8 +81,8 @@ bool isAiDisclosureDenial(int status, String body) {
 /// throws [kAiDisclosureError] so the caller can lead the runner to the
 /// disclosure instead of offering a retry that can never succeed.
 Future<AiDescriptionResult> requestAiDescription(
-    RouteDescriptionInput input) async {
-  final body = jsonEncode(_toBody(input));
+    RouteDescriptionInput input, DistanceUnit unit) async {
+  final body = jsonEncode(routeDescribeBody(input, unit));
   final uri = Uri.parse('${resolveWebBaseUrl()}/api/coach/route-describe');
 
   String? token = Supabase.instance.client.auth.currentSession?.accessToken;

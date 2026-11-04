@@ -25,9 +25,11 @@ cm.Route _route() => cm.Route(
 Future<void> _pump(
   WidgetTester tester, {
   Future<bool> Function()? checkPro,
-  Future<AiDescriptionResult> Function(RouteDescriptionInput)? describeAi,
+  Future<AiDescriptionResult> Function(RouteDescriptionInput, cm.DistanceUnit)?
+      describeAi,
+  bool useMiles = false,
 }) async {
-  SharedPreferences.setMockInitialValues({});
+  SharedPreferences.setMockInitialValues({'use_miles': useMiles});
   final prefs = Preferences();
   await tester.runAsync(() => prefs.init());
 
@@ -77,7 +79,7 @@ void main() {
       await _pump(
         tester,
         checkPro: () async => false,
-        describeAi: (_) async {
+        describeAi: (_, __) async {
           aiCalled = true;
           return const AiDescriptionResult(
               description: 'AI', source: 'ai', upgrade: false);
@@ -102,7 +104,7 @@ void main() {
       await _pump(
         tester,
         checkPro: () async => true,
-        describeAi: (_) async => const AiDescriptionResult(
+        describeAi: (_, __) async => const AiDescriptionResult(
           description: 'A gorgeous riverside trail loop with a steady climb.',
           source: 'ai',
           upgrade: false,
@@ -120,12 +122,31 @@ void main() {
           findsNothing);
     });
 
+    for (final unit in cm.DistanceUnit.values) {
+      testWidgets("hands the viewer's unit (${unit.name}) to the AI call",
+          (tester) async {
+        final sent = <cm.DistanceUnit>[];
+        await _pump(
+          tester,
+          checkPro: () async => true,
+          useMiles: unit == cm.DistanceUnit.mi,
+          describeAi: (_, u) async {
+            sent.add(u);
+            return const AiDescriptionResult(
+                description: 'A loop.', source: 'ai', upgrade: false);
+          },
+        );
+        await _tapDescribe(tester);
+        expect(sent, [unit]);
+      });
+    }
+
     testWidgets('AI failure keeps the templated baseline + shows the error',
         (tester) async {
       await _pump(
         tester,
         checkPro: () async => true,
-        describeAi: (_) async => throw StateError('boom'),
+        describeAi: (_, __) async => throw StateError('boom'),
       );
       await _tapDescribe(tester);
 
@@ -146,7 +167,7 @@ void main() {
       await _pump(
         tester,
         checkPro: () async => true,
-        describeAi: (_) async => throw StateError(kAiDisclosureError),
+        describeAi: (_, __) async => throw StateError(kAiDisclosureError),
       );
       await _tapDescribe(tester);
 
@@ -174,5 +195,12 @@ void main() {
       expect(isAiDisclosureDenial(403, ''), isFalse);
       expect(isAiDisclosureDenial(403, '[]'), isFalse);
     });
+  });
+
+  test('the request body carries the unit the server writes the paragraph in',
+      () {
+    const input = RouteDescriptionInput(name: 'River Loop', distanceM: 5000);
+    expect(routeDescribeBody(input, cm.DistanceUnit.mi)['unit'], 'mi');
+    expect(routeDescribeBody(input, cm.DistanceUnit.km)['unit'], 'km');
   });
 }

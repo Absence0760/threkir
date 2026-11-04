@@ -95,7 +95,9 @@ test.describe('/routes/[id] — Describe (Pro user)', () => {
 	test.beforeEach(clearDescription);
 
 	test('Describe replaces the baseline with AI text + attribution', async ({ page, mockRoute }) => {
+		let sentUnit: unknown;
 		await mockRoute(page, '**/api/coach/route-describe', async (route) => {
+			sentUnit = (route.request().postDataJSON() as { unit?: unknown }).unit;
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
@@ -120,5 +122,7 @@ test.describe('/routes/[id] — Describe (Pro user)', () => {
 		// AI source shows the attribution; no upgrade hint.
 		await expect(page.locator('.desc-attribution')).toBeVisible();
 		await expect(page.locator('.desc-upgrade')).toHaveCount(0);
+		// The viewer's unit rides along so the paragraph comes back in it.
+		expect(['km', 'mi']).toContain(sentUnit);
 	});
 });

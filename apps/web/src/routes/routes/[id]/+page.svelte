@@ -2,7 +2,7 @@
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import { onMount } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';
-	import { formatElevation } from '#lib/format/units.svelte.ts';
+	import { formatElevation, getUnit } from '#lib/format/units.svelte.ts';
 	import { toGpx, toKml, downloadFile } from '#lib/routes/gpx.ts';
 	import { toRouteGpxWithMarkers, type RouteGpxMarker } from '#lib/routes/route_gpx.ts';
 	import { fetchClippedRouteForViewer, fetchRouteById, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, setRoutePublic, setRouteStar, audienceSharingEnabled, fetchShares, deleteRoute, fetchRouteDeleteImpact } from '#lib/core/data.ts';
@@ -350,7 +350,7 @@
 		});
 		genSource = 'template';
 		try {
-			const ai = await requestAiDescription(input);
+			const ai = await requestAiDescription(input, getUnit());
 			genDescription = ai.description;
 			genSource = ai.source;
 			showUpgradeHint = ai.upgrade;

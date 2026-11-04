@@ -36,6 +36,8 @@ test.describe('/runs — load failure', () => {
 		// Error state, not the "no runs yet" onboarding card.
 		await expect(page.getByTestId('runs-load-error')).toBeVisible({ timeout: 15_000 });
 		await expect(page.getByTestId('runs-empty-no-data')).toHaveCount(0);
+		// The detail line is catalogue copy, not the response's own English.
+		await expect(page.getByTestId('runs-load-error')).not.toContainText('simulated failure');
 
 		// Retry recovers — the second runs fetch is allowed through, so the
 		// list resolves and the error card clears.

@@ -386,10 +386,14 @@
 				paceMin != null ? paceMin * 60 + (paceSec ?? 0) : null;
 			const paceEndUnit =
 				paceEndMin != null ? paceEndMin * 60 + (paceEndSec ?? 0) : null;
+			// The pace columns are whole seconds per km, and a /mi pace
+			// converts to a fraction of one: unrounded, PostgREST refused the
+			// write ("invalid input syntax for type integer") and every save of
+			// a paced workout by a mile runner failed.
 			const paceStart =
-				paceStartUnit != null ? paceStartUnit / paceFactor : null;
+				paceStartUnit != null ? Math.round(paceStartUnit / paceFactor) : null;
 			const paceEnd =
-				paceEndUnit != null ? paceEndUnit / paceFactor : null;
+				paceEndUnit != null ? Math.round(paceEndUnit / paceFactor) : null;
 			const isRest = kind === 'rest';
 			const unstructuredKinds = ['easy', 'long', 'recovery', 'rest'] as const;
 			const isUnstructured = (unstructuredKinds as readonly string[]).includes(kind);

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
+	import { onMount } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';
 	import { formatDuration } from '#lib/format/time.ts';
 	import {
@@ -18,6 +18,7 @@
 	import { goto } from '$app/navigation';
 	import { formatWeight } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { MenuButton } from '#lib/util/menu_button.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { hasNonRunData, modalityVisible } from '#lib/stores/modality_visibility.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
@@ -189,9 +190,7 @@
 	let showRunModal = $state(false);
 	let showWorkoutModal = $state(false);
 	let showFoodModal = $state(false);
-	let logMenuOpen = $state(false);
-	let logMenuTrigger = $state<HTMLButtonElement | null>(null);
-	let logMenuPanel = $state<HTMLDivElement | null>(null);
+	const logMenu = new MenuButton();
 
 	/// The Log actions on offer. Run always; Workout and Food only while Gym and
 	/// Nutrition are surfaced (show_gym / show_nutrition, decisions § 1739). The
@@ -233,7 +232,7 @@
 	}
 
 	function openLog(kind: 'run' | 'workout' | 'meal') {
-		logMenuOpen = false;
+		logMenu.open = false;
 		if (kind === 'run') {
 			showRunModal = true;
 		} else if (kind === 'workout') {
@@ -279,68 +278,7 @@
 		goto(`/runs/${run.id}`);
 	}
 
-	onMount(() => {
-		function onDocClick(e: MouseEvent) {
-			if (!logMenuOpen) return;
-			const target = e.target as Node | null;
-			if (logMenuPanel?.contains(target ?? null)) return;
-			if (logMenuTrigger?.contains(target ?? null)) return;
-			logMenuOpen = false;
-		}
-		function onKeydown(e: KeyboardEvent) {
-			if (logMenuOpen && e.key === 'Escape') {
-				logMenuOpen = false;
-				logMenuTrigger?.focus();
-			}
-		}
-		document.addEventListener('mousedown', onDocClick);
-		document.addEventListener('keydown', onKeydown);
-		return () => {
-			document.removeEventListener('mousedown', onDocClick);
-			document.removeEventListener('keydown', onKeydown);
-		};
-	});
-
-	// --- Log menu keyboard support (ARIA menu-button pattern) ---
-	function logMenuItems(): HTMLButtonElement[] {
-		return logMenuPanel
-			? Array.from(logMenuPanel.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
-			: [];
-	}
-	function focusLogItem(i: number) {
-		const items = logMenuItems();
-		if (items.length === 0) return;
-		items[(i + items.length) % items.length]?.focus();
-	}
-	async function toggleLogMenu() {
-		logMenuOpen = !logMenuOpen;
-		if (logMenuOpen) {
-			// Move focus into the menu so arrow keys + Escape work immediately.
-			await tick();
-			focusLogItem(0);
-		}
-	}
-	/// Roving focus among the menu items. Items stay tabbable too (Tab
-	/// still works); this just adds the arrow/Home/End navigation the menu
-	/// role implies. Escape is handled by the document listener above.
-	function onLogMenuKeydown(e: KeyboardEvent) {
-		const items = logMenuItems();
-		if (items.length === 0) return;
-		const cur = items.indexOf(document.activeElement as HTMLButtonElement);
-		if (e.key === 'ArrowDown') {
-			e.preventDefault();
-			focusLogItem(cur + 1);
-		} else if (e.key === 'ArrowUp') {
-			e.preventDefault();
-			focusLogItem(cur - 1);
-		} else if (e.key === 'Home') {
-			e.preventDefault();
-			focusLogItem(0);
-		} else if (e.key === 'End') {
-			e.preventDefault();
-			focusLogItem(items.length - 1);
-		}
-	}
+	onMount(() => logMenu.listen());
 
 	/// Preserve the loaded feed + active tab + scroll position across in-app
 	/// navigation so tapping a row then `back` lands where the user was,
@@ -452,25 +390,29 @@
 				{:else}
 					<div class="log-menu">
 						<button
-							bind:this={logMenuTrigger}
+							bind:this={logMenu.trigger}
 							type="button"
 							class="add-btn"
 							aria-haspopup="menu"
-							aria-expanded={logMenuOpen}
-							onclick={toggleLogMenu}
-							onkeydown={(e) => {
-								if (!logMenuOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-									e.preventDefault();
-									void toggleLogMenu();
-								}
-							}}
+							aria-expanded={logMenu.open}
+							onmousedown={logMenu.onTriggerMousedown}
+							onclick={() => void logMenu.toggle()}
+							onkeydown={logMenu.onTriggerKeydown}
 						>
 							<span class="material-symbols" aria-hidden="true">add</span>
 							{m('history.logAction')}
-							<span class="material-symbols caret" class:open={logMenuOpen} aria-hidden="true">expand_more</span>
+							<span class="material-symbols caret" class:open={logMenu.open} aria-hidden="true">expand_more</span>
 						</button>
-						{#if logMenuOpen}
-							<div bind:this={logMenuPanel} class="log-menu-panel" role="menu" tabindex="-1" onkeydown={onLogMenuKeydown}>
+						{#if logMenu.open}
+							<div
+								bind:this={logMenu.panel}
+								class="log-menu-panel"
+								role="menu"
+								tabindex="-1"
+								aria-label={m('history.logAction')}
+								onkeydown={logMenu.onPanelKeydown}
+								onfocusout={logMenu.onPanelFocusout}
+							>
 								<button type="button" class="log-menu-item" role="menuitem" onclick={() => openLog('run')}>
 									<span class="material-symbols" aria-hidden="true">directions_run</span>{m('history.logRun')}
 								</button>

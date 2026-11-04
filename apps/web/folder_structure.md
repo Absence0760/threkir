@@ -101,6 +101,7 @@ src/
     integrations/garmin-zip.ts   # Garmin bulk import (single .fit OR Account Data .zip; routes inner .gpx/.tcx via parseRouteFile)
     integrations/garmin-fit.ts   # Single FIT-buffer parser (lazy-loads fit-file-parser to keep the integrations bundle small)
     util/push.ts         # Web push subscribe / unsubscribe (registers /sw.js, persists to user_device_settings.prefs.push_subscription)
+    util/menu_button.svelte.ts # MenuButton — the ARIA menu-button keyboard and focus contract (open on first / last item, arrows / Home / End, Escape back to the trigger, Tab out and outside click close, a trigger click while open closes) shared by DashboardActionsMenu and the /history Log menu.
     util/smart_back.ts   # smartBack() — history-aware back control for detail/create pages reachable from >1 surface (afterNavigate latches an in-app referrer; handle() pops history.back() to it, else falls through to the anchor href). Replaces the copy-pasted afterNavigate+history.back idiom. See conventions.md § Web back links.
     util/avatar_crop.ts  # Pure crop geometry for AvatarCropDialog: quarter-turn rotation, cover-fit zoom, clamped pan, the rotated-space crop rect and output size. TS twin of mobile avatar_crop.dart.
     util/avatar_render.ts # Browser half of the avatar crop: decodes with EXIF orientation applied (createImageBitmap from-image), paints a CropState onto a canvas for both the preview and the upload, encodes the JPEG.

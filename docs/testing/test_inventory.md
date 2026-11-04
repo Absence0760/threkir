@@ -1462,6 +1462,7 @@ tests-e2e/
     add-consecutive-runs-journey.spec.ts — by clicks: + Add run → detail → All runs (history.back() into the /runs snapshot) lists the run just added → add a second from the same list → both listed newest first, one DB row each (decisions § 1822)
   history/
     log-run-back-to-timeline-journey.spec.ts — Log → Log run → save → All runs returns to the /history timeline (snapshot restore) holding the new run, which opens again from there (decisions § 1822)
+    log-menu-keyboard.spec.ts  — the /history Log menu keeps the `MenuButton` contract it shares with the dashboard's Add or import menu: ArrowDown / ArrowUp on the trigger open on the first / last item, Home / End, Escape back to the trigger, Tab and Shift+Tab out close it, and a click on the trigger while open closes it (rather than the focusout closing and the click reopening)
   gym/
     destinations.spec.ts       — /gym Gym routines and Session plans are named apart (never bare Routines / Sessions), sit in the labelled destinations row rather than the header, and each carries a visible description (strength template vs timed yoga / pilates sequence)
     gym.spec.ts                — /gym lightweight loop: log a free-form workout (title + exercise + sets) → PR badge on the list → detail per-exercise PR chip + set rows → delete (DB assertions throughout)

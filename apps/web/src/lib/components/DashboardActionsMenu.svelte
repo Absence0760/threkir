@@ -1,116 +1,44 @@
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
+	import { onMount } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { MenuButton } from '#lib/util/menu_button.svelte.ts';
 
 	/// The dashboard's occasional jobs, adding a run after the fact and
 	/// importing history, behind one labelled menu button at the top of the
 	/// page rather than as two buttons on every visit's week lead
-	/// (decisions § 2281). The ARIA menu-button shape: ArrowDown / ArrowUp on
-	/// the trigger open it on the first / last item, arrow keys cycle, Home /
-	/// End jump, Escape closes back to the trigger, and Tab or a click outside
-	/// closes it where focus went.
+	/// (decisions § 2281), with the keyboard and focus contract `MenuButton`
+	/// shares with the /history Log menu.
 
-	let open = $state(false);
-	let trigger = $state<HTMLButtonElement | null>(null);
-	let panel = $state<HTMLDivElement | null>(null);
+	const menu = new MenuButton();
 
-	function items(): HTMLAnchorElement[] {
-		return panel
-			? Array.from(panel.querySelectorAll<HTMLAnchorElement>('[role="menuitem"]'))
-			: [];
-	}
-
-	function focusItem(i: number) {
-		const all = items();
-		if (all.length === 0) return;
-		all[(i + all.length) % all.length]?.focus();
-	}
-
-	async function toggle(focusLast = false) {
-		open = !open;
-		if (open) {
-			await tick();
-			focusItem(focusLast ? -1 : 0);
-		}
-	}
-
-	/// Tab and Shift+Tab move focus out of the menu, which closes it; a menu
-	/// left open behind the focus covers the page it moved to. A null
-	/// relatedTarget is the window losing focus, not the runner leaving.
-	function onPanelFocusout(e: FocusEvent) {
-		const next = e.relatedTarget as Node | null;
-		if (next && !panel?.contains(next)) open = false;
-	}
-
-	function onPanelKeydown(e: KeyboardEvent) {
-		const all = items();
-		const cur = all.indexOf(document.activeElement as HTMLAnchorElement);
-		if (e.key === 'ArrowDown') {
-			e.preventDefault();
-			focusItem(cur + 1);
-		} else if (e.key === 'ArrowUp') {
-			e.preventDefault();
-			focusItem(cur - 1);
-		} else if (e.key === 'Home') {
-			e.preventDefault();
-			focusItem(0);
-		} else if (e.key === 'End') {
-			e.preventDefault();
-			focusItem(all.length - 1);
-		}
-	}
-
-	onMount(() => {
-		function onDocPointer(e: MouseEvent) {
-			if (!open) return;
-			const target = e.target as Node | null;
-			if (panel?.contains(target) || trigger?.contains(target)) return;
-			open = false;
-		}
-		function onDocKeydown(e: KeyboardEvent) {
-			if (open && e.key === 'Escape') {
-				open = false;
-				trigger?.focus();
-			}
-		}
-		document.addEventListener('mousedown', onDocPointer);
-		document.addEventListener('keydown', onDocKeydown);
-		return () => {
-			document.removeEventListener('mousedown', onDocPointer);
-			document.removeEventListener('keydown', onDocKeydown);
-		};
-	});
+	onMount(() => menu.listen());
 </script>
 
 <div class="dash-actions" data-testid="dash-actions">
 	<button
-		bind:this={trigger}
+		bind:this={menu.trigger}
 		type="button"
 		class="btn btn-outline dash-actions-trigger"
 		aria-haspopup="menu"
-		aria-expanded={open}
-		onclick={() => void toggle()}
-		onkeydown={(e) => {
-			if (!open && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-				e.preventDefault();
-				void toggle(e.key === 'ArrowUp');
-			}
-		}}
+		aria-expanded={menu.open}
+		onmousedown={menu.onTriggerMousedown}
+		onclick={() => void menu.toggle()}
+		onkeydown={menu.onTriggerKeydown}
 		data-testid="dash-actions-trigger"
 	>
 		<span class="material-symbols" aria-hidden="true">add</span>
 		{m('dash.actionsMenu')}
-		<span class="material-symbols caret" class:open aria-hidden="true">expand_more</span>
+		<span class="material-symbols caret" class:open={menu.open} aria-hidden="true">expand_more</span>
 	</button>
-	{#if open}
+	{#if menu.open}
 		<div
-			bind:this={panel}
+			bind:this={menu.panel}
 			class="dash-actions-panel"
 			role="menu"
 			tabindex="-1"
 			aria-label={m('dash.actionsMenu')}
-			onkeydown={onPanelKeydown}
-			onfocusout={onPanelFocusout}
+			onkeydown={menu.onPanelKeydown}
+			onfocusout={menu.onPanelFocusout}
 		>
 			<a class="dash-actions-item" role="menuitem" href="/runs/new" data-testid="dash-actions-add">
 				<span class="material-symbols" aria-hidden="true">edit_note</span>{m('dash.addARun')}

@@ -154,6 +154,15 @@ test.describe('/dashboard — this week leads', () => {
 			await expect(menu).toHaveCount(0);
 			await expect(trigger).toBeFocused();
 
+			// A click on the trigger while it is open closes it, rather than
+			// the focus leaving the panel closing it and the click reopening it.
+			await trigger.click();
+			await expect(add).toBeFocused();
+			await trigger.click();
+			await expect(menu).toHaveCount(0);
+			await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+			await expect(trigger).toBeFocused();
+
 			// A click outside closes it.
 			await trigger.click();
 			await expect(menu).toBeVisible();

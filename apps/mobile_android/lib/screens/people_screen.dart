@@ -210,6 +210,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
             context, AppLocalizations.of(context).profileRequestSent);
       }
     } catch (e) {
+      debugPrint('[PeopleScreen] follow failed: $e');
       if (!mounted) return;
       final signedOut = isSignedOutError(e);
       setState(() {
@@ -218,7 +219,9 @@ class _PeopleScreenState extends State<PeopleScreen> {
       });
       if (!signedOut) {
         showTopBanner(
-          context, AppLocalizations.of(context).peopleFollowFailedBanner(e));
+          context,
+          AppLocalizations.of(context).peopleFollowFailedBanner(
+              friendlyError(AppLocalizations.of(context), e)));
       }
     } finally {
       if (mounted) setState(() => _rowBusy.remove(id));

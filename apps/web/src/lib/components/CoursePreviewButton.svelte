@@ -14,6 +14,7 @@
 		videoSource,
 		videoSummary,
 		autoOpen = false,
+		requireExplicitConsent = false,
 	}: {
 		points: PathPoint[];
 		title: string;
@@ -27,6 +28,8 @@
 		/// Open the dialog once on mount: the phone's Video share style lands
 		/// here with `?video=1` (decisions § 2259).
 		autoOpen?: boolean;
+		/// The anonymous share page's per-view consent tap (see `RunMap`).
+		requireExplicitConsent?: boolean;
 	} = $props();
 
 	// The dialog carries the 3D map engine, so it loads on the first click
@@ -84,8 +87,10 @@
 			{title}
 			{climbNames}
 			{noiseBandM}
+			climbSource={replay ? 'recorded' : 'planned'}
 			{videoSource}
 			{videoSummary}
+			{requireExplicitConsent}
 			unit={getUnit()}
 			onclose={() => (open = false)}
 		/>

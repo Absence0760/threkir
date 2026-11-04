@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import Modal from './Modal.svelte';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import { hashHue } from '#lib/format/avatar.ts';
@@ -141,7 +141,7 @@
 			onlevel(audienceColumns(next));
 			showToast(tr('audience.updated'), 'success');
 		} catch (e) {
-			showToast(tr('audience.updateFailed', { error: thrownMessage(e) }), 'error');
+			showToast(tr('audience.updateFailed', { error: errorCopy(e, tr, 'audience.updateFailed') }), 'error');
 		} finally {
 			busy = false;
 		}
@@ -168,7 +168,7 @@
 			];
 			showToast(tr('audience.shared', { name: nameOf(person.displayName) }), 'success');
 		} catch (e) {
-			showToast(tr('audience.shareFailed', { error: thrownMessage(e) }), 'error');
+			showToast(tr('audience.shareFailed', { error: errorCopy(e, tr, 'audience.shareFailed') }), 'error');
 		} finally {
 			pendingRecipient = null;
 		}
@@ -183,7 +183,7 @@
 			if (level === 'specific') picked = 'specific';
 			showToast(tr('audience.revoked', { name: nameOf(person.displayName) }), 'success');
 		} catch (e) {
-			showToast(tr('audience.revokeFailed', { error: thrownMessage(e) }), 'error');
+			showToast(tr('audience.revokeFailed', { error: errorCopy(e, tr, 'audience.revokeFailed') }), 'error');
 		} finally {
 			pendingRecipient = null;
 		}

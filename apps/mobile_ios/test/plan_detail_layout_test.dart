@@ -2,7 +2,6 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui_kit/ui_kit.dart' show FullBodyLoader;
 import '../lib/disclosure_state.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/main.dart' show pendingStartWorkout;
@@ -12,6 +11,7 @@ import '../lib/training_service.dart';
 import '../lib/widgets/current_week_strip.dart';
 import '../lib/widgets/plan_calendar.dart';
 import '../lib/widgets/todays_workout_card.dart';
+import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
 
 const _owner = 'owner-uuid';
@@ -111,7 +111,7 @@ Future<void> _pump(WidgetTester tester, {String viewerId = _owner}) async {
   );
   await pumpUntil(
     tester,
-    () => !tester.any(find.byType(FullBodyLoader)),
+    () => !tester.any(find.byType(SectionedDetailSkeleton)),
     describe: 'the plan fetch to replace the full-body loader',
   );
   await tester.pump();

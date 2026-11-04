@@ -1237,7 +1237,7 @@ void main() {
   });
 
   group('share-button consent before flipping is_public', () {
-    test('run_detail_screen._shareRun gates makeRunPublic on a confirm dialog',
+    test('run_detail_screen._shareRunLink gates makeRunPublic on a confirm dialog',
         () {
       // Reason: a casual user tapping Share on a freshly-recorded run
       // used to silently flip is_public — no warning, no copy
@@ -1921,6 +1921,22 @@ void main() {
         reason: 'backup.dart restore must use ZipDecoder.decodeStream — '
             'decodeBytes pulls all entries into RAM at once.',
       );
+    });
+
+    test('backup.dart logs no raw caught error (decisions § 2332)', () {
+      // A debugPrint becomes a Sentry breadcrumb once a reader consents, and
+      // a Storage download error can carry the signed URL it was fetching.
+      // Every caught error a log line interpolates goes through
+      // loggableMessage, which blanks quoted values, key details and emails.
+      final raw = File('lib/backup.dart')
+          .readAsLinesSync()
+          .where((l) => l.contains('debugPrint('))
+          .map((l) => l.replaceAll("loggableMessage('\$e')", ''))
+          // `${e.runtimeType}` names the type only, which is safe.
+          .where((l) => RegExp(r'\$e\b|\$\{e(\}|\.(?!runtimeType))').hasMatch(l))
+          .toList();
+      expect(raw, isEmpty,
+          reason: 'wrap the caught error in loggableMessage(\'\$e\')');
     });
 
     test('Single-file route import dispatches to compute()', () {
@@ -3903,7 +3919,7 @@ void main() {
             'create_report catch path runs through the helper.',
       );
       expect(
-        RegExp(r'rateLimitErrorMessage\(\s*\n?\s*AppLocalizations\.of\(context\)')
+        RegExp(r'rateLimitErrorMessage\(\s*\n?\s*(?:AppLocalizations\.of\(context\)|l10n\b)')
             .hasMatch(source),
         isTrue,
         reason: 'report_sheet catch block must call rateLimitErrorMessage '
@@ -4021,8 +4037,19 @@ void main() {
           'concludeLiveBroadcast',
           'fetchPlanForWorkout',
           'fetchNextRsvpedEvent',
-          'fetchMyClubs',
         ];
+        // The event card's club lookup moved into the shared
+        // `openUpcomingEvent` (Home and the Run tab both tap through it,
+        // decisions § 2285), so its timeout is pinned there.
+        final eventCard =
+            File('lib/widgets/upcoming_event_card.dart').readAsStringSync();
+        expect(
+          RegExp(r'\.fetchMyClubs\(\)\s*\.timeout\(kBackendLoadTimeout\)')
+              .hasMatch(eventCard),
+          isTrue,
+          reason: 'openUpcomingEvent must bound fetchMyClubs with '
+              'kBackendLoadTimeout',
+        );
         for (final name in methodNames) {
           final pattern = RegExp(
             r'\.' + RegExp.escape(name) + r'\s*\([\s\S]{0,400}?\)'
@@ -5336,7 +5363,9 @@ void main() {
     test('every weekStartLocal call on a Home surface passes the preference',
         () {
       for (final path in [
-        'lib/screens/dashboard_screen.dart',
+        // The heatmap's weeks; it moved off Home onto the weekly summary
+        // (decisions § 2284) and still windows by the preference.
+        'lib/widgets/activity_heatmap.dart',
         'lib/mileage_trend.dart',
         'lib/current_week.dart',
       ]) {
@@ -5405,11 +5434,13 @@ void main() {
     // A bare `Center(child: CircularProgressIndicator())` tells the user only
     // that something is happening: it occupies none of the space the content
     // will, so the arriving frame lands as a re-layout rather than a fill.
-    // Round 7 shipped the two named treatments (`ListSkeleton` for a row-
-    // shaped surface, `FullBodyLoader` for a mixed one) and converted 16 of
-    // the 30 sites; round 10 closed the remaining 14 (decisions.md § 492).
-    // The trap is not a bug in one file — it is the shape every screen
-    // reached for because there was nothing named to reach for.
+    // Round 7 shipped the named treatments and converted 16 of the 30 sites;
+    // round 10 closed the remaining 14 (decisions.md § 492). Since § 2288 a
+    // loading screen is a skeleton shaped like the screen it becomes —
+    // `ListSkeleton`, `.section` and `SkeletonBlock`, composed — and the
+    // running-figure loader that mixed layouts used to take is gone. The
+    // trap is not a bug in one file — it is the shape every screen reached
+    // for because there was nothing named to reach for.
     late List<File> sources;
     setUpAll(() {
       sources = Directory('lib')
@@ -5429,7 +5460,37 @@ void main() {
       expect(offenders, isEmpty,
           reason: 'use ListSkeleton where the surface is rows, '
               'ListSkeleton.section where it is one section of a scrollable, '
-              'FullBodyLoader where the layout is mixed');
+              'and compose SkeletonBlock beside them (or a '
+              'widgets/loading_skeletons.dart composition) where the layout '
+              'is mixed');
+    });
+
+    test('no screen loads its content behind a running figure', () {
+      // The figure stood in the middle of an otherwise empty page, so it
+      // held none of the layout the content would take and was the one
+      // high-contrast thing on screen while a detail route faded in over
+      // the page it left (decisions.md § 2288). A wait that is not page
+      // content (GPS acquisition, finishing a sign-in) may earn a figure
+      // back, but it gets a new name and a reason here, not this one.
+      final figure = RegExp(r'\b(?:ActivityLoader|FullBodyLoader)\b');
+      final scanned = [
+        ...sources,
+        ...Directory('../../packages/ui_kit/lib')
+            .listSync(recursive: true)
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.dart')),
+      ];
+      expect(scanned.length, greaterThan(sources.length),
+          reason: 'the ui_kit scan must actually reach the package');
+      final offenders = <String>[
+        for (final f in scanned)
+          if (figure.hasMatch(f.readAsStringSync())) f.path,
+      ];
+      expect(offenders, isEmpty,
+          reason: 'a screen loading content shows a skeleton shaped like the '
+              'screen it becomes: compose ListSkeleton, ListSkeleton.section '
+              'and SkeletonBlock, or use a widgets/loading_skeletons.dart '
+              'composition');
     });
 
     test('no screen hand-rolls its own empty state', () {
@@ -5601,8 +5662,6 @@ void main() {
       // status change that keeps its history; the second dialog is the
       // race-ahead refusal, whose only action is dismissal.
       'screens/plan_detail_screen.dart::l10n.planDetailRestartTitle': 2,
-      // Abandon: a status change, not a deletion.
-      'screens/plans_screen.dart::title': 1,
       // Visibility toggles and a share that only widens visibility.
       'screens/route_detail_screen.dart::l10n.routeDetailShareConfirmTitle': 1,
       'screens/run_detail_screen.dart::l10n.runDetailMakePrivateTitle': 1,

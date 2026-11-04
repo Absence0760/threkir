@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { activeFormatLocale } from '#lib/format/time.ts';
-	import { appErrorMessage, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { startVisiblePoll } from '#lib/core/visible_poll.ts';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { dmUnreadStore } from '#lib/stores/dm_unread.svelte.ts';
 	import { tick } from 'svelte';
 	import { page } from '$app/state';
@@ -77,6 +77,27 @@
 	let showBlockConfirm = $state(false);
 	const partnerName = $derived(activeThread?.partnerName ?? tr('messages.runnerFallback'));
 
+	// Mute, archive and delete-for-me act on the conversation, which exists
+	// once a message does (migration 20271105000010). The inbox row carries the
+	// viewer's state; a thread opened before the list loaded falls back to the
+	// conversation its messages name, and its state to what the viewer last
+	// wrote to it, so a toggle on that path still flips.
+	const conversationId = $derived(activeThread?.conversationId ?? messages.at(-1)?.conversation_id ?? null);
+	const muted = $derived(
+		activeThread?.muted ?? (conversationId ? messagesInbox.writtenFlag(conversationId, 'muted') : undefined) ?? false
+	);
+	const archived = $derived(
+		activeThread?.archived ??
+			(conversationId ? messagesInbox.writtenFlag(conversationId, 'archived') : undefined) ??
+			false
+	);
+	let conversationBusy = $state(false);
+	// The route the viewer just deleted for themselves. The pane says so until
+	// they undo or leave; leaving commits the delete (UndoBar flushes on
+	// navigation).
+	let deletedHere = $state<string | null>(null);
+	const deleted = $derived(deletedHere !== null && deletedHere === activeId);
+
 	// Load the open conversation whenever the route param changes.
 	$effect(() => {
 		const id = activeId;
@@ -84,6 +105,7 @@
 		// above the composer made it read as an error in the new conversation.
 		sendError = null;
 		actionError = null;
+		if (deletedHere !== id) deletedHere = null;
 		if (!id || !auth.user) {
 			messages = [];
 			hasMore = false;
@@ -238,7 +260,7 @@
 			if (partner === activePartnerId) blockedByMe = true;
 			showToast(tr('profile.blockedToast', { name }), 'success');
 		} catch (e) {
-			showToast(tr('profile.blockError', { error: thrownMessage(e) }), 'error');
+			showToast(tr('profile.blockError', { error: errorCopy(e, tr, 'profile.blockError') }), 'error');
 		} finally {
 			blockBusy = false;
 		}
@@ -255,10 +277,58 @@
 			if (partner === activePartnerId) blockedByMe = false;
 			showToast(tr('profile.unblockedToast', { name }), 'success');
 		} catch (e) {
-			showToast(tr('profile.unblockError', { error: thrownMessage(e) }), 'error');
+			showToast(tr('profile.unblockError', { error: errorCopy(e, tr, 'profile.unblockError') }), 'error');
 		} finally {
 			blockBusy = false;
 		}
+	}
+
+	async function toggleMuted() {
+		const id = conversationId;
+		if (!id || conversationBusy) return;
+		const next = !muted;
+		conversationBusy = true;
+		try {
+			await messagesInbox.setMuted(id, next);
+			if (next) showToast(tr('messages.mutedToast'), 'success');
+		} catch (e) {
+			showToast(tr('messages.conversationActionFailed', { error: errorCopy(e, tr, 'messages.conversationActionFailed') }), 'error');
+		} finally {
+			conversationBusy = false;
+		}
+	}
+
+	async function toggleArchived() {
+		const id = conversationId;
+		if (!id || conversationBusy) return;
+		const next = !archived;
+		conversationBusy = true;
+		try {
+			await messagesInbox.setArchived(id, next);
+			if (next) showToast(tr('messages.archivedToast'), 'success');
+		} catch (e) {
+			showToast(tr('messages.conversationActionFailed', { error: errorCopy(e, tr, 'messages.conversationActionFailed') }), 'error');
+		} finally {
+			conversationBusy = false;
+		}
+	}
+
+	// Delete-for-me is honestly undoable: nothing reaches the server until the
+	// undo window closes, so it takes the undo bar and no confirm
+	// (conventions.md § Destructive actions). The other person keeps theirs.
+	function deleteConversation() {
+		const id = conversationId;
+		const route = activeId;
+		if (!id || !route) return;
+		deletedHere = route;
+		messagesInbox.hide(id, {
+			message: tr('messages.conversationDeleted'),
+			onRestore: () => {
+				if (deletedHere === route) deletedHere = null;
+			},
+			onCommitError: (e) =>
+				showToast(tr('messages.conversationActionFailed', { error: errorCopy(e, tr, 'messages.conversationActionFailed') }), 'error'),
+		});
 	}
 
 	// The first page is the newest end of the conversation, so it opens there.
@@ -309,7 +379,7 @@
 			// refresh must not claim "send failed".
 			await messagesInbox.refreshThreads();
 		} catch (e) {
-			sendError = appErrorMessage(e) ?? tr('messages.sendFailed');
+			sendError = errorCopy(e, tr, 'messages.sendFailed', 'messages.sendFailed');
 		} finally {
 			sending = false;
 		}
@@ -325,7 +395,7 @@
 			localWrites++;
 			if (id === activeId) messages = mergeDmMessages(messages, [updated]);
 		} catch (e) {
-			actionError = appErrorMessage(e) ?? tr('messages.unsendFailed');
+			actionError = errorCopy(e, tr, 'messages.unsendFailed', 'messages.unsendFailed');
 		} finally {
 			unsendTarget = null;
 		}
@@ -360,6 +430,50 @@
 		<a class="back" href="/messages" aria-label={tr('messages.backAria')}>←</a>
 		{#if activePartnerId}
 			<a class="who" href={`/u/${activePartnerId}`}>{partnerName}</a>
+		{:else}
+			<span class="who">{tr('messages.deletedAccount')}</span>
+		{/if}
+		{#if conversationId && !deleted}
+			<div class="head-actions">
+				{#if activePartnerId}
+					<button
+						type="button"
+						class="icon-action"
+						data-testid="dm-mute-toggle"
+						aria-pressed={muted}
+						disabled={conversationBusy}
+						title={muted ? tr('messages.unmute') : tr('messages.mute')}
+						aria-label={muted ? tr('messages.unmute') : tr('messages.mute')}
+						onclick={() => void toggleMuted()}
+					>
+						<span class="material-symbols" aria-hidden="true">{muted ? 'notifications' : 'notifications_off'}</span>
+					</button>
+				{/if}
+				<button
+					type="button"
+					class="icon-action"
+					data-testid="dm-archive-toggle"
+					aria-pressed={archived}
+					disabled={conversationBusy}
+					title={archived ? tr('messages.unarchive') : tr('messages.archive')}
+					aria-label={archived ? tr('messages.unarchive') : tr('messages.archive')}
+					onclick={() => void toggleArchived()}
+				>
+					<span class="material-symbols" aria-hidden="true">{archived ? 'unarchive' : 'archive'}</span>
+				</button>
+				<button
+					type="button"
+					class="icon-action"
+					data-testid="dm-delete-conversation"
+					title={tr('messages.deleteConversation')}
+					aria-label={tr('messages.deleteConversation')}
+					onclick={deleteConversation}
+				>
+					<span class="material-symbols" aria-hidden="true">delete</span>
+				</button>
+			</div>
+		{/if}
+		{#if activePartnerId && !deleted}
 			<button
 				type="button"
 				class="btn btn-secondary btn-sm head-action"
@@ -370,12 +484,12 @@
 			>
 				{blockedByMe ? tr('messages.unblock') : tr('messages.block')}
 			</button>
-		{:else}
-			<span class="who">{tr('messages.deletedAccount')}</span>
 		{/if}
 	</header>
 	<div class="messages" bind:this={scroller}>
-		{#if loadingThread}
+		{#if deleted}
+			<p class="muted center" data-testid="dm-conversation-deleted">{tr('messages.conversationDeletedNotice')}</p>
+		{:else if loadingThread}
 			<p class="muted center">{tr('shell.loading')}</p>
 		{:else if threadError}
 			<p class="muted center" role="alert">
@@ -444,7 +558,9 @@
 	</div>
 	{#if actionError}<p class="send-error" role="alert">{actionError}</p>{/if}
 	{#if sendError}<p class="send-error" role="alert">{sendError}</p>{/if}
-	{#if !activePartnerId}
+	{#if deleted}
+		<!-- No composer over a conversation the viewer just deleted. -->
+	{:else if !activePartnerId}
 		<p class="muted closed">{tr('messages.deletedAccountClosed')}</p>
 	{:else if blockedByMe}
 		<div class="closed blocked" data-testid="dm-blocked-notice">
@@ -531,8 +647,51 @@
 		color: var(--color-text);
 		text-decoration: none;
 	}
+	.conv-head .who {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.head-actions {
+		margin-inline-start: auto;
+		display: flex;
+		gap: 0.15rem;
+		flex: 0 0 auto;
+	}
+	.head-actions + .head-action {
+		margin-inline-start: 0;
+	}
 	.head-action {
 		margin-inline-start: auto;
+		flex: 0 0 auto;
+	}
+	.icon-action {
+		min-width: 2.75rem;
+		min-height: 2.75rem;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--radius-md);
+		color: var(--color-text-secondary);
+		cursor: pointer;
+	}
+	.icon-action[aria-pressed='true'] {
+		color: var(--color-primary);
+	}
+	.icon-action:hover,
+	.icon-action:focus-visible {
+		border-color: var(--color-border);
+		color: var(--color-primary);
+	}
+	.icon-action:disabled {
+		opacity: 0.6;
+		cursor: default;
+	}
+	.icon-action .material-symbols {
+		font-size: 1.2rem;
 	}
 	.blocked {
 		display: flex;

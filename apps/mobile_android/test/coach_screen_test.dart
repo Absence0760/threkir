@@ -5,8 +5,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:ui_kit/ui_kit.dart' show FullBodyLoader, ListSkeleton;
+import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
 import '../lib/ai_disclosure.dart';
 import '../lib/ai_disclosure_memo.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -17,6 +16,7 @@ import '../lib/widgets/surface_peer_strip.dart';
 import '../lib/widgets/sign_in_required_state.dart';
 import '../lib/training_service.dart';
 import 'realtime_drain.dart';
+import 'supabase_test_init.dart';
 
 /// Reports a non-null consent timestamp so the screen renders its main
 /// (consented) Scaffold — the one whose left drawer used to swallow the
@@ -107,10 +107,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 
@@ -307,13 +304,12 @@ void main() {
     });
 
     testWidgets(
-      'does not render the plan-switcher dropdown when there is at most one plan',
+      'does not render the plan picker when the runner has no plans',
       (tester) async {
-        // Reason: the title-row dropdown only mounts when _plans has
-        // more than one entry — in tests there's no Supabase data so
-        // the list stays empty and the dropdown stays hidden.
+        // In tests there's no Supabase data, so the plan list stays empty
+        // and there is nothing to pick between.
         await _pump(tester);
-        expect(find.byType(DropdownButton<String>), findsNothing);
+        expect(find.byKey(const Key('coach-plan-picker')), findsNothing);
         await _drain(tester);
       },
     );
@@ -373,7 +369,7 @@ void main() {
         'coach_consent_at': '2026-01-01T00:00:00Z',
       });
       await _pump(tester, api: api);
-      expect(find.byType(FullBodyLoader), findsNothing);
+      expect(find.byKey(const ValueKey('coach-consent-skeleton')), findsNothing);
       expect(find.text("Before you use Threkir's AI features"), findsNothing);
       expect(find.byType(ListSkeleton), findsOneWidget,
           reason: 'the chat surface is up, waiting on its thread');
@@ -389,7 +385,7 @@ void main() {
         'coach_consent_at': '2026-01-01T00:00:00Z',
       });
       await _pump(tester, api: first);
-      expect(find.byType(FullBodyLoader), findsOneWidget);
+      expect(find.byKey(const ValueKey('coach-consent-skeleton')), findsOneWidget);
       first.release.complete();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
@@ -401,7 +397,7 @@ void main() {
 
       final second = _SlowConsentApi();
       await _pump(tester, api: second);
-      expect(find.byType(FullBodyLoader), findsNothing);
+      expect(find.byKey(const ValueKey('coach-consent-skeleton')), findsNothing);
       expect(find.text("Before you use Threkir's AI features"), findsNothing);
       second.release.complete();
       await tester.pump();
@@ -412,7 +408,7 @@ void main() {
         (tester) async {
       final api = _SlowConsentApi();
       await _pump(tester, api: api);
-      expect(find.byType(FullBodyLoader), findsOneWidget);
+      expect(find.byKey(const ValueKey('coach-consent-skeleton')), findsOneWidget);
       api.release.complete();
       await tester.pump();
       await _drain(tester);
@@ -423,7 +419,7 @@ void main() {
       AiDisclosureMemo.remember('another-user', granted);
       final api = _SlowConsentApi();
       await _pump(tester, api: api);
-      expect(find.byType(FullBodyLoader), findsOneWidget);
+      expect(find.byKey(const ValueKey('coach-consent-skeleton')), findsOneWidget);
       api.release.complete();
       await tester.pump();
       await _drain(tester);

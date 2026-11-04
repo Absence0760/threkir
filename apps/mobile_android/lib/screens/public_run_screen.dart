@@ -18,6 +18,7 @@ import '../widgets/report_sheet.dart';
 import '../widgets/run_segment_efforts.dart';
 import '../widgets/run_social_section.dart';
 import '../widgets/shared_with_you_chip.dart';
+import '../widgets/loading_skeletons.dart';
 
 /// Read-only non-owner view of a single run. Mirrors the web
 /// `/share/run/[id]` route for a public run, and the non-owner branch of
@@ -155,10 +156,7 @@ class _PublicRunScreenState extends State<PublicRunScreen> {
         ],
       ),
       body: _loading
-          ? FullBodyLoader(
-              kind: ActivityLoaderKind.run,
-              label: l10n.commonLoading,
-            )
+          ? MapDetailSkeleton(label: l10n.commonLoading)
           : _loadError != null
               ? ErrorState(
                   message: l10n.publicRunLoadError,

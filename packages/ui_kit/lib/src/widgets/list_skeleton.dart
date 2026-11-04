@@ -11,7 +11,7 @@ import '../motion.dart';
 ///
 /// [label] is the screen-reader announcement — ui_kit has no localisations of
 /// its own, so the caller passes the translated string.
-class ListSkeleton extends StatefulWidget {
+class ListSkeleton extends StatelessWidget {
   final int rows;
   final double rowHeight;
   final bool hasLeading;
@@ -47,10 +47,108 @@ class ListSkeleton extends StatefulWidget {
   }) : _intrinsic = true;
 
   @override
-  State<ListSkeleton> createState() => _ListSkeletonState();
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: label,
+      liveRegion: true,
+      container: true,
+      child: _SkeletonPulse(
+        builder: (context, block) {
+          Widget row(int i) => _SkeletonRow(
+                color: block,
+                height: rowHeight,
+                hasLeading: hasLeading,
+                // Stagger the bar widths so the stack reads as content in
+                // waiting rather than as a rendered table.
+                titleFactor: 0.44 + (i % 3) * 0.12,
+              );
+          if (_intrinsic) {
+            return Padding(
+              padding: padding,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i = 0; i < rows; i++) ...[
+                    if (i > 0) const SizedBox(height: 10),
+                    row(i),
+                  ],
+                ],
+              ),
+            );
+          }
+          return ListView.separated(
+            padding: padding,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: rows,
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            itemBuilder: (_, i) => row(i),
+          );
+        },
+      ),
+    );
+  }
 }
 
-class _ListSkeletonState extends State<ListSkeleton>
+/// A plain placeholder rectangle for a part of a loading screen that has no
+/// row rhythm — a map, a chart, a hero stat strip, a barcode.
+///
+/// Composed beside [ListSkeleton] into the shape the screen will settle into,
+/// so the loaded frame fills the blocks rather than re-laying the page out.
+/// Pulses on the same 900 ms cycle and holds the same reduced-motion pose as
+/// the rows, so a composite reads as one surface.
+///
+/// [label] is optional because a composite announces once: give it to one
+/// element (usually the [ListSkeleton]) and leave the blocks silent. A block
+/// that stands alone takes the label itself.
+class SkeletonBlock extends StatelessWidget {
+  final double height;
+  final double? width;
+  final double radius;
+  final String? label;
+
+  const SkeletonBlock({
+    super.key,
+    required this.height,
+    this.width,
+    this.radius = 12,
+    this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final block = _SkeletonPulse(
+      builder: (context, color) => Container(
+        width: width ?? double.infinity,
+        height: height,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(radius),
+        ),
+      ),
+    );
+    final label = this.label;
+    if (label == null) return ExcludeSemantics(child: block);
+    return Semantics(
+      label: label,
+      liveRegion: true,
+      container: true,
+      child: block,
+    );
+  }
+}
+
+/// The one skeleton pulse: a 900 ms reversing loop over the block alpha,
+/// parked mid-cycle under reduced motion.
+class _SkeletonPulse extends StatefulWidget {
+  final Widget Function(BuildContext context, Color block) builder;
+
+  const _SkeletonPulse({required this.builder});
+
+  @override
+  State<_SkeletonPulse> createState() => _SkeletonPulseState();
+}
+
+class _SkeletonPulseState extends State<_SkeletonPulse>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
@@ -72,46 +170,11 @@ class _ListSkeletonState extends State<ListSkeleton>
   @override
   Widget build(BuildContext context) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    return Semantics(
-      label: widget.label,
-      liveRegion: true,
-      container: true,
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) {
-          final block = onSurface.withValues(
-            alpha: 0.05 + 0.06 * _controller.value,
-          );
-          Widget row(int i) => _SkeletonRow(
-                color: block,
-                height: widget.rowHeight,
-                hasLeading: widget.hasLeading,
-                // Stagger the bar widths so the stack reads as content in
-                // waiting rather than as a rendered table.
-                titleFactor: 0.44 + (i % 3) * 0.12,
-              );
-          if (widget._intrinsic) {
-            return Padding(
-              padding: widget.padding,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (var i = 0; i < widget.rows; i++) ...[
-                    if (i > 0) const SizedBox(height: 10),
-                    row(i),
-                  ],
-                ],
-              ),
-            );
-          }
-          return ListView.separated(
-            padding: widget.padding,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: widget.rows,
-            separatorBuilder: (_, _) => const SizedBox(height: 10),
-            itemBuilder: (_, i) => row(i),
-          );
-        },
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) => widget.builder(
+        context,
+        onSurface.withValues(alpha: 0.05 + 0.06 * _controller.value),
       ),
     );
   }

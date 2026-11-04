@@ -43,6 +43,7 @@ void main() {
         ink: RunShareInk.brand,
         aspect: RunPhotoAspect.post,
         stats: [RunShareStatKind.distance, RunShareStatKind.heartRate],
+        mark: false,
       );
       expect(RunShareLook.fromJson(jsonDecode(jsonEncode(look.toJson()))),
           look);
@@ -72,6 +73,14 @@ void main() {
       for (final junk in [null, 7, 'stack', <Object>[]]) {
         expect(RunShareLook.fromJson(junk), const RunShareLook(), reason: '$junk');
       }
+    });
+
+    test('the mark is on by default and only a stored boolean turns it off',
+        () {
+      expect(const RunShareLook().mark, isTrue);
+      expect(RunShareLook.fromJson({'layout': 'strip'}).mark, isTrue);
+      expect(RunShareLook.fromJson({'mark': 'no'}).mark, isTrue);
+      expect(RunShareLook.fromJson({'mark': false}).mark, isFalse);
     });
 
     test('an empty or absent stat list is the default set', () {

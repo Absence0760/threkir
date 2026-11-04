@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
@@ -28,6 +28,7 @@
 	import { diaryWindow, isoDateOf } from '#lib/nutrition/diary_day.ts';
 	import { formatWeight } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);
@@ -105,7 +106,7 @@
 			});
 			recompute();
 		} catch (e) {
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, m, 'nutrition/targets: loadError');
 		}
 		loading = false;
 	}
@@ -128,7 +129,7 @@
 		try {
 			await updateUniversal(auth.user!.id, changes);
 		} catch (e) {
-			saveError = thrownMessage(e);
+			saveError = errorCopy(e, m, 'nutrition/targets: saveError');
 		}
 	}
 
@@ -156,10 +157,10 @@
 
 	{#if loading}
 		<div class="skeleton-stack" aria-hidden="true">
-			<div class="skel skel-block"></div>
-			<div class="skel skel-block"></div>
+			<SkeletonBlock height="12rem" radius="var(--radius-lg)" />
+			<SkeletonBlock height="12rem" radius="var(--radius-lg)" />
 		</div>
-		<p class="sr-only" role="status">{m('shell.loading')}</p>
+		<p class="visually-hidden" role="status">{m('shell.loading')}</p>
 	{:else if loadError !== null}
 		<div class="load-error-banner" role="alert" data-testid="targets-load-error">
 			<span class="material-symbols" aria-hidden="true">error</span>
@@ -547,46 +548,4 @@
 		gap: var(--space-md);
 	}
 
-	.skel {
-		border-radius: var(--radius-lg);
-		background: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 25%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 75%
-		);
-		background-size: 200% 100%;
-		animation: shimmer 1.4s ease-in-out infinite;
-	}
-
-	.skel-block {
-		height: 12rem;
-	}
-
-	@keyframes shimmer {
-		0% {
-			background-position: 200% 0;
-		}
-		100% {
-			background-position: -200% 0;
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.skel {
-			animation: none;
-		}
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
 </style>

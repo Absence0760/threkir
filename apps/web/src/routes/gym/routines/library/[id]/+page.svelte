@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -12,6 +11,7 @@
 	import { formatWeight } from '#lib/format/units.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	const routineId = $derived(page.params.id ?? '');
 
@@ -32,7 +32,7 @@
 		} catch (e) {
 			// The loadError banner below was previously unreachable — nothing
 			// ever assigned it, so a failed read showed "Routine not found".
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, t, 'gym/routines/library/[id]: loadError');
 			loading = false;
 			return;
 		}
@@ -48,7 +48,7 @@
 		const lib = await fetchPublicGymRoutineLibrary('');
 		// The library read carries its own error field, which was being
 		// discarded — a failure silently rendered the author as "Anonymous".
-		loadError = lib.error ?? null;
+		loadError = lib.error ? errorCopy(lib.error, t, 'gym/routines/library/[id]: loadError') : null;
 		authorHandle = lib.routines.find((r) => r.id === routineId)?.author_handle ?? null;
 		loading = false;
 	}

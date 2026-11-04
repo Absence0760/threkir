@@ -61,7 +61,7 @@ test.describe('/settings/payouts — onboarding refusals', () => {
 		await expect(page).toHaveURL(/\/settings\/payouts/);
 	});
 
-	test('a genuine failure still reads as an error, with a code rather than the invoke internals', async ({
+	test('a genuine failure still reads as an error, in catalogue copy rather than the code or the invoke internals', async ({
 		page,
 		mockRoute
 	}) => {
@@ -70,7 +70,9 @@ test.describe('/settings/payouts — onboarding refusals', () => {
 		const toast = page.locator('.toast').first();
 		await expect(toast).toBeVisible({ timeout: 10_000 });
 		await expect(toast).toHaveClass(/toast-error/);
-		await expect(toast).toContainText('stripe_account_create_failed');
+		// The code goes to the console, never the toast (decisions § 2291).
+		await expect(toast).toContainText(/Could not start payment setup/);
+		await expect(toast).not.toContainText('stripe_account_create_failed');
 		await expect(page.locator('.toast')).not.toContainText(/non-2xx|Edge Function/);
 	});
 

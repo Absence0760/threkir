@@ -58,8 +58,9 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 	// Reactions and comment likes (migration 20270826000001) added
 	// run_reactions + run_comment_likes, each on both legs (left by the subject
 	// + received on their runs / comments). Direct-message reports (migration
-	// 20271021000003) added reports_against_my_messages.
-	assertEquals(specs.length, 76, `expected 76 specs, got ${specs.length}`);
+	// 20271021000003) added reports_against_my_messages. Conversations
+	// (migration 20271105000010) added conversation_settings.
+	assertEquals(specs.length, 77, `expected 77 specs, got ${specs.length}`);
 	const entries = new Set(specs.map((s) => s.entry));
 	for (const expected of [
 		'coach_messages.json',
@@ -104,6 +105,7 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 		'reports_against_my_messages.json',
 		'direct_messages_sent.json',
 		'direct_messages_received.json',
+		'conversation_settings.json',
 		'coaching_as_coach.json',
 		'coaching_as_athlete.json',
 		'event_results.json',
@@ -349,6 +351,15 @@ Deno.test('run reactions + comment likes exported left and received, via inner j
 	const likesIn = by('run_comment_likes_received.json');
 	assertEquals(likesIn.filter, `run_comments.author_id=eq.${TEST_UID}`);
 	assertEquals(likesIn.select, '*,run_comments!inner(author_id)');
+});
+
+Deno.test('conversation_participants exports only the subject\'s own row (GDPR Art 20)', () => {
+	const specs = buildBackupSpecs('user-A');
+	const own = specs.find((s) => s.entry === 'conversation_settings.json');
+	if (!own) throw new Error('conversation_settings.json missing');
+	assertEquals(own.table, 'conversation_participants');
+	assertEquals(own.filter, 'user_id=eq.user-A');
+	assertEquals(own.select, 'conversation_id,joined_at,hidden_before,muted_at,archived_at');
 });
 
 Deno.test('direct_messages exported in both directions (GDPR Art 20)', () => {

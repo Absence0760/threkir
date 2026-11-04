@@ -30,11 +30,16 @@ class RunShareLook {
   final RunPhotoAspect aspect;
   final List<RunShareStatKind> stats;
 
+  /// Whether the image carries the Threkir mark. On unless the runner turns
+  /// it off; free on every tier.
+  final bool mark;
+
   const RunShareLook({
     this.layout = RunStickerLayout.stack,
     this.ink = RunShareInk.light,
     this.aspect = RunPhotoAspect.story,
     this.stats = defaultStats,
+    this.mark = true,
   });
 
   static const defaultStats = [
@@ -52,12 +57,14 @@ class RunShareLook {
     RunShareInk? ink,
     RunPhotoAspect? aspect,
     List<RunShareStatKind>? stats,
+    bool? mark,
   }) =>
       RunShareLook(
         layout: layout ?? this.layout,
         ink: ink ?? this.ink,
         aspect: aspect ?? this.aspect,
         stats: stats ?? this.stats,
+        mark: mark ?? this.mark,
       );
 
   /// [stats] with [kind] added or removed. Never empties the set, and never
@@ -79,6 +86,7 @@ class RunShareLook {
         'ink': ink.name,
         'aspect': aspect.name,
         'stats': [for (final k in stats) k.name],
+        'mark': mark,
       };
 
   /// Reads a stored look, field by field: an unknown or missing value takes
@@ -107,6 +115,7 @@ class RunShareLook {
       stats: stats.isEmpty
           ? defaultStats
           : stats.take(maxStats).toList(growable: false),
+      mark: json['mark'] is bool ? json['mark'] as bool : d.mark,
     );
   }
 
@@ -116,10 +125,12 @@ class RunShareLook {
       other.layout == layout &&
       other.ink == ink &&
       other.aspect == aspect &&
+      other.mark == mark &&
       listEquals(other.stats, stats);
 
   @override
-  int get hashCode => Object.hash(layout, ink, aspect, Object.hashAll(stats));
+  int get hashCode =>
+      Object.hash(layout, ink, aspect, mark, Object.hashAll(stats));
 }
 
 /// Device-local, not a synced setting: see docs/backend/settings.md §

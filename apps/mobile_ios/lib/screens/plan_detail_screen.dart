@@ -48,6 +48,7 @@ import '../goal_time.dart' show formatGoalTimeS, formatRaceGoalTimeS;
 import '../training.dart';
 import '../training_labels.dart';
 import '../training_load.dart';
+import '../plan_copy.dart' show libraryCopyOf;
 import '../training_service.dart';
 import '../settings_sync.dart' show activeWeekStartDay;
 import '../preferences.dart' show activePreferences;
@@ -76,6 +77,7 @@ import '../widgets/plan_races_list.dart';
 import '../widgets/todays_workout_card.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/workout_edit_sheet.dart';
+import '../widgets/loading_skeletons.dart';
 import 'workout_detail_screen.dart';
 
 /// Wider than kContentMaxWidth — the week grid and calendar read better with
@@ -542,6 +544,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   /// Best-effort fetch of the viewer's recent runs so the adherence banner
   /// + re-plan flow can compare actual weekly mileage to the plan. A failure
   /// leaves the adherence surfaces hidden — the rest of the plan still loads.
+  /// Until it lands the empty list means "unknown", never "ran nothing".
   Future<void> _loadRecentRuns() async {
     final plan = _plan;
     if (plan == null || !_isOwner(plan)) return;
@@ -553,8 +556,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         _recentRuns = runs;
         _recentRunsLoaded = true;
       });
-    } catch (_) {
-      /* L4 best-effort — leave the adherence surfaces hidden. */
+    } catch (e) {
+      debugPrint('PlanDetailScreen._loadRecentRuns failed: $e');
     }
   }
 
@@ -639,7 +642,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   /// already ended, so a part-elapsed week is not judged against its full
   /// seven-day target.
   WeeklyDrift? _currentWeekDrift(TrainingPlanRow plan) {
-    if (!_isOwner(plan) || _weeks.isEmpty) return null;
+    if (!_isOwner(plan) || !_recentRunsLoaded || _weeks.isEmpty) return null;
     final idx = _currentWeekIndex(plan);
     if (idx >= _weeks.length) return null;
     final week = _weeks[idx];
@@ -707,6 +710,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   /// The runs the re-plan judges by: the device's run store when the host
   /// handed one over, which is what Home's plan card judged by, so a card's
   /// Review opens the same proposal; the recent-runs read otherwise.
+  /// Whether the runs the re-plan judges by are known: the run store always
+  /// is, the recent-runs read only once it has landed.
+  bool get _replanRunsKnown => widget.runStore != null || _recentRunsLoaded;
+
   List<NudgeInputRun> get _replanRuns {
     final store = widget.runStore;
     if (store != null) {
@@ -930,8 +937,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
 
   void _proposeReplan(TrainingPlanRow plan) {
     if (!_isOwner(plan) || _bulkBusy) return;
-    _makeUpAnswers = null;
     final l10n = AppLocalizations.of(context);
+    if (!_replanRunsKnown) {
+      showTopBanner(context, l10n.planDetailReplanRunsUnavailable);
+      return;
+    }
+    _makeUpAnswers = null;
     final input = _buildReplanInput(plan);
     final changes = preferVolumeAnchor(
       _volumeAnchor(input),
@@ -955,7 +966,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   void _offerAnchor() {
     final p = _plan;
     if (!mounted || p == null || !_isOwner(p) || p.isTemplate) return;
-    if (p.status != 'active') return;
+    if (p.status != 'active' || !_replanRunsKnown) return;
     final anchor = _volumeAnchor(_buildReplanInput(p));
     if (anchor == null) return;
     setState(() {
@@ -991,8 +1002,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   /// weeks show a sustained drift, suppressing single-week noise.
   void _proposeAdaptiveReplan(TrainingPlanRow plan) {
     if (!_isOwner(plan) || _bulkBusy) return;
-    _makeUpAnswers = null;
     final l10n = AppLocalizations.of(context);
+    if (!_replanRunsKnown) {
+      showTopBanner(context, l10n.planDetailReplanRunsUnavailable);
+      return;
+    }
+    _makeUpAnswers = null;
     final input = _buildReplanInput(plan);
     final res = adaptiveReplanRemaining(
       weeks: input,
@@ -1264,9 +1279,11 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     setState(() => _bulkBusy = true);
     try {
       if (paused) {
-        await widget.training.pausePlan(p.id);
+        await widget.training.pausePlan(p.id).timeout(kBackendLoadTimeout);
       } else {
-        await widget.training.resumePlan(p.id, shift: shift);
+        await widget.training
+            .resumePlan(p.id, shift: shift)
+            .timeout(kBackendLoadTimeout);
       }
       if (!mounted) return;
       setState(() => _bulkBusy = false);
@@ -2069,8 +2086,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
           .timeout(kBackendLoadTimeout);
       if (!mounted) return;
       setState(() {
-        _publishedTemplateId =
-            published.where((t) => t.name == plan.name).map((t) => t.id).firstOrNull;
+        _publishedTemplateId = libraryCopyOf(published, plan.id)?.id;
       });
     } catch (_) {
       /* L4 best-effort — leave the toggle in publish state. */
@@ -2103,6 +2119,16 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     final templateId = _publishedTemplateId;
     if (templateId == null || _libraryBusy) return;
     final l10n = AppLocalizations.of(context);
+    // Unpublishing deletes the library copy: a republish mints a new id, so
+    // every shared "Train with me" link to this one stops resolving.
+    final ok = await confirmDestructive(
+      context,
+      title: l10n.planDetailUnpublishTitle,
+      body: l10n.planDetailUnpublishBody,
+      confirmLabel: l10n.planDetailUnpublishLibrary,
+      cancelLabel: l10n.plansCancel,
+    );
+    if (!ok || !mounted || _libraryBusy) return;
     setState(() => _libraryBusy = true);
     try {
       await widget.training
@@ -2127,9 +2153,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     final l10n = AppLocalizations.of(context);
     if (_loading) {
       return Scaffold(
-        body: FullBodyLoader(
-          kind: ActivityLoaderKind.run,
+        appBar: AppBar(),
+        body: SectionedDetailSkeleton(
           label: l10n.commonLoading,
+          statCells: 3,
+          rows: 5,
+          rowHeight: 72,
         ),
       );
     }
@@ -2551,47 +2580,50 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (earlier.isNotEmpty) ...[
-          Material(
-            type: MaterialType.transparency,
-            child: InkWell(
-              key: const Key('planDetailEarlierWeeks'),
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              onTap: () =>
-                  setState(() => _showEarlierWeeks = !_showEarlierWeeks),
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-                decoration: planCardDecoration(theme),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Wrap(
-                        spacing: 8,
-                        children: [
-                          Text(l10n.planDetailEarlierWeeks(earlier.length),
-                              style: theme.textTheme.titleSmall
-                                  ?.copyWith(fontWeight: FontWeight.w700)),
-                          Text(
-                              l10n.planDetailWeekDoneCount(
-                                  earlierWorkouts
-                                      .where(isWorkoutCompleted)
-                                      .length,
-                                  _activeCount(earlierWorkouts)),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              )),
-                        ],
+          Semantics(
+            expanded: _showEarlierWeeks,
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                key: const Key('planDetailEarlierWeeks'),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                onTap: () =>
+                    setState(() => _showEarlierWeeks = !_showEarlierWeeks),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+                  decoration: planCardDecoration(theme),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Wrap(
+                          spacing: 8,
+                          children: [
+                            Text(l10n.planDetailEarlierWeeks(earlier.length),
+                                style: theme.textTheme.titleSmall
+                                    ?.copyWith(fontWeight: FontWeight.w700)),
+                            Text(
+                                l10n.planDetailWeekDoneCount(
+                                    earlierWorkouts
+                                        .where(isWorkoutCompleted)
+                                        .length,
+                                    _activeCount(earlierWorkouts)),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                )),
+                          ],
+                        ),
                       ),
-                    ),
-                    Icon(
-                      _showEarlierWeeks ? Icons.expand_less : Icons.expand_more,
-                      semanticLabel: _showEarlierWeeks
-                          ? l10n.planDetailHideEarlierWeeks
-                          : l10n.planDetailShowEarlierWeeks,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 8),
-                  ],
+                      Icon(
+                        _showEarlierWeeks ? Icons.expand_less : Icons.expand_more,
+                        semanticLabel: _showEarlierWeeks
+                            ? l10n.planDetailHideEarlierWeeks
+                            : l10n.planDetailShowEarlierWeeks,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -2795,15 +2827,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                       size: 18, color: theme.colorScheme.primary),
                   const SizedBox(width: 8),
                   Flexible(
-                    child: Text('${l10n.planDetailLongestLongRun}: ',
-                        overflow: TextOverflow.ellipsis,
+                    child: Text(l10n.planDetailLongestLongRun(fmtKm(longest)),
+                        key: const Key('planDetailLongestLongRun'),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         )),
                   ),
-                  Text(fmtKm(longest),
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(fontWeight: FontWeight.w600)),
                 ],
               ),
             ],
@@ -3480,6 +3509,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
           child: Semantics(
             button: !isRest,
             label: semanticsLabel,
+            // excludeSemantics drops the InkWell's actions, so the node
+            // carries them or a screen reader cannot open the workout.
+            onTap: isRest ? null : () => _openWorkout(wo),
+            onLongPress: _canEditWorkouts(p) ? () => _editWorkout(wo) : null,
             excludeSemantics: true,
             child: InkWell(
               onTap: isRest ? null : () => _openWorkout(wo),

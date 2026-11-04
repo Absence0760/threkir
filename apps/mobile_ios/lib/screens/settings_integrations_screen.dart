@@ -9,6 +9,7 @@ import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../auth_error.dart';
 import '../column_limits.dart';
 import '../integration_visibility.dart';
 import '../ble_heart_rate.dart';
@@ -33,6 +34,27 @@ import 'parkrun_barcode_screen.dart';
 import 'plan_calendar_feed_screen.dart';
 import 'races_screen.dart';
 import 'watch_live_screen.dart';
+
+/// The reason a refused Strava connect or sync gives, in the runner's
+/// language. The function's code picks it (`stravaConnectError`) and is never
+/// shown itself; web words the same reasons through `stravaConnectAppError`.
+String stravaConnectErrorMessage(
+    AppLocalizations l10n, StravaConnectError reason) {
+  switch (reason) {
+    case StravaConnectError.notConfigured:
+      return l10n.integrationsStravaErrNotConfigured;
+    case StravaConnectError.missingScope:
+      return l10n.integrationsStravaErrMissingScope;
+    case StravaConnectError.codeRejected:
+      return l10n.integrationsStravaErrCodeRejected;
+    case StravaConnectError.signedOut:
+      return l10n.authErrorNotSignedIn;
+    case StravaConnectError.reconnect:
+      return l10n.integrationsStravaErrReconnect;
+    case StravaConnectError.generic:
+      return l10n.authErrorGeneric;
+  }
+}
 
 class SettingsIntegrationsScreen extends StatefulWidget {
   final ApiClient? apiClient;
@@ -167,8 +189,11 @@ class _SettingsIntegrationsScreenState
       try {
         await shareTextFrom(context, text: url);
       } catch (e) {
+        debugPrint('[SettingsIntegrationsScreen] share fallback failed: $e');
         if (!mounted) return;
-        showTopBanner(context, AppLocalizations.of(context).integrationsCouldNotOpen(e));
+        final l10n = AppLocalizations.of(context);
+        showTopBanner(
+            context, l10n.integrationsCouldNotOpen(friendlyError(l10n, e)));
       }
     }
   }
@@ -196,13 +221,15 @@ class _SettingsIntegrationsScreenState
       );
       final cb = parseStravaCallback(resultUrl);
       if (!cb.isSuccess) {
+        // The callback URL's `error` names the reason; it is never shown.
+        debugPrint('[SettingsIntegrationsScreen] Strava callback: ${cb.error}');
         if (!mounted) return;
         showTopBanner(
           context,
           cb.error == 'access_denied'
               ? l10n.integrationsStravaCancelled
               : l10n.integrationsStravaSignInFailed(
-                  cb.error ?? 'no code returned'),
+                  l10n.integrationsStravaErrCodeRejected),
         );
         return;
       }
@@ -219,7 +246,12 @@ class _SettingsIntegrationsScreenState
       if (!mounted) return;
       final err = res.error;
       if (err != null) {
-        showTopBanner(context, l10n.integrationsStravaConnectFailed(err));
+        debugPrint('[SettingsIntegrationsScreen] Strava connect error: $err');
+        showTopBanner(
+          context,
+          l10n.integrationsStravaConnectFailed(
+              stravaConnectErrorMessage(l10n, stravaConnectError(err))),
+        );
         return;
       }
       // Connecting triggers a 90-day backfill, and Strava can throttle it
@@ -242,8 +274,15 @@ class _SettingsIntegrationsScreenState
       );
       await _refreshIntegrations();
     } catch (e) {
+      debugPrint('[SettingsIntegrationsScreen] Strava sign-in failed: $e');
       if (!mounted) return;
-      showTopBanner(context, l10n.integrationsStravaSignInFailed(e));
+      showTopBanner(
+        context,
+        e is StravaConnectFailure
+            ? l10n.integrationsStravaConnectFailed(
+                stravaConnectErrorMessage(l10n, e.reason))
+            : l10n.integrationsStravaSignInFailed(friendlyError(l10n, e)),
+      );
     } finally {
       if (mounted) setState(() => _stravaBusy = false);
     }
@@ -283,8 +322,14 @@ class _SettingsIntegrationsScreenState
       );
       await _refreshIntegrations();
     } catch (e) {
+      debugPrint('[SettingsIntegrationsScreen] Strava sync failed: $e');
       if (!mounted) return;
-      showTopBanner(context, l10n.integrationsSyncFailed(e));
+      showTopBanner(
+        context,
+        l10n.integrationsSyncFailed(e is StravaConnectFailure
+            ? stravaConnectErrorMessage(l10n, e.reason)
+            : friendlyError(l10n, e)),
+      );
     } finally {
       if (mounted) setState(() => _stravaBusy = false);
     }
@@ -321,8 +366,10 @@ class _SettingsIntegrationsScreenState
       if (!mounted) return;
       showTopBanner(context, l10n.integrationsStravaDisconnected);
     } catch (e) {
+      debugPrint('[SettingsIntegrationsScreen] Strava disconnect failed: $e');
       if (!mounted) return;
-      showTopBanner(context, l10n.integrationsDisconnectFailed(e));
+      showTopBanner(
+          context, l10n.integrationsDisconnectFailed(friendlyError(l10n, e)));
     } finally {
       if (mounted) setState(() => _stravaBusy = false);
     }
@@ -459,9 +506,10 @@ class _SettingsIntegrationsScreenState
                 : l10n.integrationsParkrunNoneNew,
       );
     } catch (e) {
+      debugPrint('[SettingsIntegrationsScreen] import failed: $e');
       if (!mounted) return;
       Navigator.of(context).pop();
-      showTopBanner(context, l10n.integrationsImportFailed(e));
+      showTopBanner(context, l10n.integrationsImportFailed(friendlyError(l10n, e)));
     }
   }
 
@@ -794,9 +842,11 @@ class _HeartRateMonitorTileState extends State<HeartRateMonitorTile> {
       try {
         await widget.heartRate.pair(device);
       } catch (e) {
+        debugPrint('[SettingsIntegrationsScreen] HR pair failed: $e');
         if (mounted) {
+          final l10n = AppLocalizations.of(context);
           showTopBanner(
-              context, AppLocalizations.of(context).integrationsHrPairFailed(e));
+              context, l10n.integrationsHrPairFailed(friendlyError(l10n, e)));
         }
       }
       await _refresh();
@@ -1075,9 +1125,11 @@ class _TreadmillTileState extends State<TreadmillTile> {
       try {
         await widget.treadmill.pair(device);
       } catch (e) {
+        debugPrint('[SettingsIntegrationsScreen] treadmill pair failed: $e');
         if (mounted) {
+          final l10n = AppLocalizations.of(context);
           showTopBanner(context,
-              AppLocalizations.of(context).integrationsTreadmillPairFailed(e));
+              l10n.integrationsTreadmillPairFailed(friendlyError(l10n, e)));
         }
       }
       await _refresh();

@@ -130,3 +130,13 @@ export function planWorkoutCopyRows(
 	}
 	return rows;
 }
+
+/// The owner's public-library copy of `planId`, found by the link the
+/// publisher writes on it (`published_from_plan_id`). Never by name: a rename
+/// would lose the copy, and two same-named plans would share one.
+export function libraryCopyOf(
+	published: readonly TrainingPlan[],
+	planId: string,
+): TrainingPlan | null {
+	return published.find((t) => t.published_from_plan_id === planId) ?? null;
+}

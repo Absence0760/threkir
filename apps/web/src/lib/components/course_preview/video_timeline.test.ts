@@ -5,6 +5,7 @@ import {
 	END_CARD_S,
 	MAX_FLIGHT_S,
 	MIN_FLIGHT_S,
+	VIDEO_FINALE,
 	videoFrame,
 	videoTimeline,
 } from './video_timeline.ts';
@@ -15,10 +16,24 @@ test('a short course still flies for the minimum, a long one is capped', () => {
 	assert.equal(videoTimeline(3000).flightFrames, 12 * 30);
 });
 
-test('the end card adds its own seconds after the flight', () => {
+test('the overview and the end card add their own seconds after the flight', () => {
 	const t = videoTimeline(3000);
+	assert.equal(t.overviewFrames, 5 * 30);
 	assert.equal(t.endFrames, END_CARD_S * 30);
-	assert.equal(t.totalFrames, t.flightFrames + t.endFrames);
+	assert.equal(t.totalFrames, t.flightFrames + t.overviewFrames + t.endFrames);
+});
+
+test('the video always carries the full ending, orbit included', () => {
+	assert.ok(VIDEO_FINALE.easeMs > 0);
+	assert.ok(VIDEO_FINALE.orbitDeg > 0);
+});
+
+test('overview frames hold the finish and step the ending clock to its last pose', () => {
+	const t = videoTimeline(5000);
+	assert.deepEqual(videoFrame(t, t.flightFrames, 5000), { phase: 'overview', dM: 5000, tMs: 1000 / 30 });
+	const last = videoFrame(t, t.flightFrames + t.overviewFrames - 1, 5000);
+	assert.equal(last.phase, 'overview');
+	assert.ok(last.phase === 'overview' && Math.abs(last.tMs - (VIDEO_FINALE.easeMs + VIDEO_FINALE.orbitMs)) < 1e-9);
 });
 
 test('the flight starts on the start and its last frame is the finish', () => {
@@ -32,7 +47,7 @@ test('the flight starts on the start and its last frame is the finish', () => {
 
 test('end-card frames hold the finish and run their own progress to 1', () => {
 	const t = videoTimeline(5000);
-	assert.deepEqual(videoFrame(t, t.flightFrames, 5000), { phase: 'end', dM: 5000, progress: 0 });
+	assert.deepEqual(videoFrame(t, t.flightFrames + t.overviewFrames, 5000), { phase: 'end', dM: 5000, progress: 0 });
 	assert.deepEqual(videoFrame(t, t.totalFrames - 1, 5000), { phase: 'end', dM: 5000, progress: 1 });
 	assert.deepEqual(videoFrame(t, t.totalFrames + 50, 5000), videoFrame(t, t.totalFrames - 1, 5000));
 });

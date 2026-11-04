@@ -105,7 +105,6 @@ import '../widgets/top_banner.dart';
 import '../widgets/track_preview.dart' show projectTrack;
 import '../widgets/upcoming_event_card.dart';
 import '../widgets/workout_execution_band.dart';
-import 'event_detail_screen.dart';
 import 'help_screen.dart';
 import 'plan_detail_screen.dart';
 import 'plans_screen.dart';
@@ -4813,32 +4812,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                         child: UpcomingEventCard(
                           event: _upcomingEvent!,
                           onTap: () async {
-                            final evt = _upcomingEvent!;
-                            List<ClubView> clubs = const [];
-                            try {
-                              clubs = await widget.social
-                                  .fetchMyClubs()
-                                  .timeout(kBackendLoadTimeout);
-                            } catch (e) {
-                              debugPrint('fetchMyClubs failed: $e');
-                            }
-                            final match = clubs
-                                .where((c) => c.row.id == evt.row.clubId)
-                                .toList();
-                            if (!mounted) return;
-                            final slug = match.isEmpty
-                                ? null
-                                : match.first.row.slug;
-                            if (slug == null) return;
-                            await Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => EventDetailScreen(
-                                  social: widget.social,
-                                  clubSlug: slug,
-                                  eventId: evt.row.id,
-                                ),
-                              ),
-                            );
+                            await openUpcomingEvent(
+                                context, widget.social, _upcomingEvent!);
                             _refreshUpcomingEvent();
                           },
                         ),
@@ -7001,7 +6976,7 @@ class _RoutePreviewCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '${route.elevationGainMetres.round()} m',
+                        formatElevationForPref(route.elevationGainMetres),
                         style: theme.textTheme.bodySmall,
                       ),
                     ],

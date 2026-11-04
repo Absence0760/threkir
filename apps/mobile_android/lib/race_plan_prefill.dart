@@ -9,12 +9,15 @@
 /// `racePlanHref` has no twin: the phone opens `PlanNewScreen` with the same
 /// fields as constructor arguments.
 ///
-/// The description is English and metric on purpose: it is a machine-read
-/// request to the plan extractor, like the Coach's own handoff, not UI copy.
-/// It carries only what the AI plan consent bullet names — the goal race, a
-/// target time and a recent time. Weekly volume and the longest recent run are
-/// deliberately left out: the bullet does not cover them (decisions § 2154).
+/// The description is English, and in the runner's own distance unit: it
+/// prefills a box the runner reads and edits before it goes to the plan
+/// extractor, which reads either unit. It carries only what the AI plan
+/// consent bullet names — the goal race, a target time and a recent time.
+/// Weekly volume and the longest recent run are deliberately left out: the
+/// bullet does not cover them (decisions § 2154, units amended by § 2292).
 library;
+
+import 'package:core_models/core_models.dart' show DistanceUnit, kMetresPerMile;
 
 import 'race_plan_preset.dart';
 import 'season_plan.dart' show seasonRecoveryDays;
@@ -27,6 +30,7 @@ const int kRacePlanDescribeNameMax = 120;
 const int kRacePlanSurfaceMax = 40;
 
 const int _dayMs = 86400000;
+const double _feetPerMetre = 3.28084;
 
 class RacePlanRace {
   final String name;
@@ -174,8 +178,12 @@ int? racePlanGoalTimeS(List<RacePlanOwnPlan> plans, String raceDateIso) {
   return null;
 }
 
-String _kmText(num metres) {
-  final tenths = (metres / 100).round();
+/// A distance to one decimal, without a trailing `.0`.
+String _distanceText(num metres, DistanceUnit unit) {
+  final tenths = (unit == DistanceUnit.mi
+          ? metres * 10 / kMetresPerMile
+          : metres / 100)
+      .round();
   final whole = tenths ~/ 10;
   final frac = tenths % 10;
   return frac == 0 ? '$whole' : '$whole.$frac';
@@ -209,12 +217,17 @@ String racePlanDescribe({
   num? goalTimeS,
   RacePlanEffort? recentEffort,
   RacePlanCourse? course,
+  DistanceUnit unit = DistanceUnit.km,
   int maxChars = kRacePlanDescribeMax,
 }) {
+  final label = unit.name;
+  String climb(num m) => unit == DistanceUnit.mi
+      ? '${(m * _feetPerMetre).round()} ft'
+      : '${m.round()} m';
   final name = _cut(_collapse(race.name), kRacePlanDescribeNameMax).trim();
   final sentences = <String>['Race: $name on ${race.raceDateIso}.'];
   if (_positive(race.distanceM)) {
-    sentences.add('Distance: ${_kmText(race.distanceM!)} km.');
+    sentences.add('Distance: ${_distanceText(race.distanceM!, unit)} $label.');
   }
   if (_positive(goalTimeS)) {
     sentences.add('Goal time: ${_clockText(goalTimeS!)}.');
@@ -231,13 +244,13 @@ String racePlanDescribe({
             ? '1 day ago'
             : '$days days ago';
     sentences.add(
-        'Recent effort: ${_kmText(e.distanceM)} km in ${_clockText(e.durationS)}, $when.');
+        'Recent effort: ${_distanceText(e.distanceM, unit)} $label in ${_clockText(e.durationS)}, $when.');
   }
   final c = course;
   if (c != null) {
     final parts = <String>[];
-    if (_positive(c.ascentM)) parts.add('${c.ascentM!.round()} m ascent');
-    if (_positive(c.descentM)) parts.add('${c.descentM!.round()} m descent');
+    if (_positive(c.ascentM)) parts.add('${climb(c.ascentM!)} ascent');
+    if (_positive(c.descentM)) parts.add('${climb(c.descentM!)} descent');
     final surface = c.surface == null
         ? ''
         : _cut(_collapse(c.surface!), kRacePlanSurfaceMax).trim();

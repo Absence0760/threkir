@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
@@ -20,6 +19,7 @@
 	import { attemptPlanCreate, clonedPlanEndIso, type OverlapPlan } from '#lib/training/plan_overlap.ts';
 	import { formatDistance } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { goalEventLabel, planLengthLabel } from '#lib/training/goal_event_label.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import type { TrainingPlan, PlanWeek, PlanWorkout } from '#lib/types.ts';
@@ -74,7 +74,7 @@
 		notFound = false;
 		const res = await fetchPlan(planId);
 		if (res.error) {
-			loadError = res.error;
+			loadError = errorCopy(res.error, m, 'plans/library/[id]: loadError');
 			loading = false;
 			return;
 		}
@@ -138,7 +138,7 @@
 			showToast(m('planLibrary.cloneSuccess'));
 			goto(`/plans/${outcome.value}`);
 		} catch (e) {
-			showToast(m('planLibrary.cloneFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planLibrary.cloneFailed', { error: errorCopy(e, m, 'planLibrary.cloneFailed') }), 'error');
 		} finally {
 			cloning = false;
 		}

@@ -122,6 +122,11 @@ export const PAIRS = [
 		note: 'server-side quota bookkeeping; the two values are written by SQL and never named by a client.',
 	},
 	{
+		tableColumn: 'conversations.kind',
+		clients: [],
+		note: 'only direct exists (migration 20271105000010); written by the direct_messages_set_conversation trigger and never named by a client.',
+	},
+	{
 		tableColumn: 'challenges.activity_type',
 		clients: [
 			{ file: TS_TYPES, decl: 'ActivityType', shape: 'union' },
@@ -919,8 +924,8 @@ export const PAIRS = [
 				shape: 'strings',
 			},
 			{
-				file: 'apps/mobile_android/lib/screens/global_segments_screen.dart',
-				decl: 'catalogueSurfaceLabel',
+				file: 'apps/mobile_android/lib/route_surface_label.dart',
+				decl: 'routeSurfaceLabel',
 				shape: 'switch',
 			},
 			{
@@ -941,12 +946,6 @@ export const PAIRS = [
 			{
 				file: 'apps/mobile_android/lib/screens/explore_routes_screen.dart',
 				decl: '_surfaceIcon',
-				shape: 'switch',
-				allowMissing: ['road'],
-			},
-			{
-				file: 'apps/mobile_android/lib/screens/explore_routes_screen.dart',
-				decl: '_surfaceLabel',
 				shape: 'switch',
 				allowMissing: ['road'],
 			},

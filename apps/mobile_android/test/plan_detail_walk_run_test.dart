@@ -2,11 +2,11 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:ui_kit/ui_kit.dart' show FullBodyLoader;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
+import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
 
 /// A couch-to-5K plan on plan detail (decisions § 2203, § 2204): every
@@ -109,7 +109,7 @@ Future<void> _pump(WidgetTester tester, _Training training) async {
       now: () => DateTime(2026, 3, 13),
     ),
   ));
-  await pumpUntil(tester, () => !tester.any(find.byType(FullBodyLoader)),
+  await pumpUntil(tester, () => !tester.any(find.byType(SectionedDetailSkeleton)),
       describe: 'the plan fetch to replace the full-body loader');
   await tester.pump();
 }

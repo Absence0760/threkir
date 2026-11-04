@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Absence0760/threkir/apps/job_worker/internal/nativepush"
+	"github.com/Absence0760/threkir/apps/job_worker/internal/schema"
 )
 
 // fakeBackend records every call so tests can pin the worker's
@@ -36,7 +37,16 @@ type fakeBackend struct {
 	storageDeleteCalls    int
 	storageDeleteErrAfter int
 	storageListErr        error
-	trackURL              string
+	// storageDeleteIgnored makes DeleteStorageObjects record the call and
+	// erase nothing, the API accepting names that match no object.
+	storageDeleteIgnored bool
+	// routePhotoOrphans models route_photo_orphan_paths: the unreferenced,
+	// past-grace set. The fake answers with the entries still present in
+	// the route-photos bucket, which is how an erased object drops out.
+	routePhotoOrphans    []string
+	routePhotoOrphanErr  error
+	routePhotoOrphanArgs [][]string
+	trackURL             string
 	// Optional override: when non-nil, ReadRunTrackSource returns
 	// trackURLs[i] on the i-th call (clamped to the last entry).
 	// Lets tests simulate a re-upload mid-match — the worker reads
@@ -381,6 +391,9 @@ func (f *fakeBackend) DeleteStorageObjects(ctx context.Context, bucket string, p
 		return errors.New("storage delete refused")
 	}
 	f.storageDeleted = append(f.storageDeleted, append([]string(nil), paths...))
+	if f.storageDeleteIgnored {
+		return nil
+	}
 	remaining := f.storageObjects[bucket][:0]
 	for _, o := range f.storageObjects[bucket] {
 		if !slicesContains(paths, o.Path) {
@@ -389,6 +402,29 @@ func (f *fakeBackend) DeleteStorageObjects(ctx context.Context, bucket string, p
 	}
 	f.storageObjects[bucket] = remaining
 	return nil
+}
+
+func (f *fakeBackend) RoutePhotoOrphanPaths(ctx context.Context, paths []string, limit int) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.routePhotoOrphanArgs = append(f.routePhotoOrphanArgs, paths)
+	if f.routePhotoOrphanErr != nil {
+		return nil, f.routePhotoOrphanErr
+	}
+	var out []string
+	for _, o := range f.storageObjects[schema.BucketRoutePhotos] {
+		if len(out) == limit {
+			break
+		}
+		if !slicesContains(f.routePhotoOrphans, o.Path) {
+			continue
+		}
+		if paths != nil && !slicesContains(paths, o.Path) {
+			continue
+		}
+		out = append(out, o.Path)
+	}
+	return out, nil
 }
 
 func (f *fakeBackend) DownloadClubPhoto(ctx context.Context, path string) ([]byte, string, error) {

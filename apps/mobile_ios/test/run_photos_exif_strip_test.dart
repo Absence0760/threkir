@@ -15,11 +15,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/run_photos.dart';
 import 'pump_until.dart';
+import 'supabase_test_init.dart';
 
 class _CapturingApi extends ApiClient {
   Uint8List? uploaded;
@@ -125,22 +125,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  // supabase_flutter opens an app_links deep-link stream on init. The upload
-  // is driven under runAsync, so without a stub the real event loop turns and
-  // the MissingPluginException lands as an unhandled error in this test.
-  for (final name in const [
-    'com.llfbandit.app_links/events',
-    'com.llfbandit.app_links/messages',
-  ]) {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-            MethodChannel(name, const StandardMethodCodec()),
-            (call) async => null);
-  }
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 

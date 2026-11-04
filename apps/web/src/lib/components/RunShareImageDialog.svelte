@@ -6,10 +6,10 @@
 	import { untrack } from 'svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { currentLocale } from '#lib/i18n/store.svelte.ts';
 	import { getUnit } from '#lib/format/units.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import type { TrackPoint } from '#lib/types.ts';
 	import {
@@ -47,7 +47,7 @@
 		/// The clipped share line (`shareCardTrack`), never a raw track.
 		line: TrackPoint[];
 		/// The map card's PNG, rasterised from the page's off-screen card.
-		captureCard: () => Promise<Blob>;
+		captureCard: (mark: boolean) => Promise<Blob>;
 		fileBase: string;
 		/// The route this run is on, which offers the Versus style: the
 		/// caller's best there against a mutual-follow friend's (§ 2267).
@@ -119,7 +119,7 @@
 	let rendering = $state(false);
 	let busy = $state(false);
 	let preview = $state<{ url: string; blob: Blob; key: string } | null>(null);
-	let cardBlob: Blob | null = null;
+	let cardBlob: { mark: boolean; blob: Blob } | null = null;
 	let fileInput = $state<HTMLInputElement | null>(null);
 	let canShare = $state(false);
 	let photoSeq = $state(0);
@@ -194,14 +194,14 @@
 
 	async function renderPng(s: Style, l: RunShareLook, p: ImageBitmap | null, r: PrCardEntry | null): Promise<Blob> {
 		if (s === 'card') {
-			cardBlob ??= await captureCard();
-			return cardBlob;
+			if (cardBlob?.mark !== l.mark) cardBlob = { mark: l.mark, blob: await captureCard(l.mark) };
+			return cardBlob.blob;
 		}
 		await loadShareFonts();
 		if (s === 'pr') {
 			if (!r) throw new Error('no personal record to draw');
 			return canvasToPng(
-				paintPrCard({ aspect: l.aspect, ink: l.ink, text: prText(r), track: line, wordmark: 'Threkir' }),
+				paintPrCard({ aspect: l.aspect, ink: l.ink, text: prText(r), track: line, wordmark: l.mark ? 'Threkir' : null }),
 			);
 		}
 		const stats = runShareStats(
@@ -218,7 +218,7 @@
 			getUnit(),
 			{ kinds: l.stats, locale: currentLocale() },
 		);
-		const base = { layout: l.layout, ink: l.ink, stats, track: line, wordmark: 'Threkir' };
+		const base = { layout: l.layout, ink: l.ink, stats, track: line, wordmark: l.mark ? 'Threkir' : null };
 		const canvas =
 			s === 'sticker'
 				? paintSticker(base)
@@ -247,7 +247,7 @@
 			.catch((e) => {
 				if (seq !== renderSeq) return;
 				console.warn('share image render failed', e);
-				showToast(m('runDetail.imageGenerateFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('runDetail.imageGenerateFailed', { error: errorCopy(e, m, 'runDetail.imageGenerateFailed') }), 'error');
 			})
 			.finally(() => {
 				if (seq === renderSeq) rendering = false;
@@ -303,7 +303,7 @@
 		} catch (e) {
 			// Cancelling the OS share sheet rejects with AbortError: not a failure.
 			if (!(e instanceof DOMException && e.name === 'AbortError')) {
-				showToast(m('runDetail.imageGenerateFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('runDetail.imageGenerateFailed', { error: errorCopy(e, m, 'runDetail.imageGenerateFailed') }), 'error');
 			}
 		} finally {
 			busy = false;
@@ -474,6 +474,17 @@
 			{/if}
 		{/if}
 
+		<label class="mark-switch">
+			<input
+				type="checkbox"
+				checked={look.mark}
+				disabled={busy}
+				onchange={(e) => setLook({ ...look, mark: e.currentTarget.checked })}
+				data-testid="share-mark"
+			/>
+			{m('runShare.mark')}
+		</label>
+
 		<div class="actions">
 			{#if canShare}
 				<button
@@ -510,6 +521,18 @@
 		flex-direction: column;
 		gap: var(--space-md);
 		min-width: 0;
+	}
+	.mark-switch {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-sm);
+		min-height: 44px;
+		cursor: pointer;
+	}
+	.mark-switch input {
+		width: 1.25rem;
+		height: 1.25rem;
+		accent-color: var(--color-primary);
 	}
 	.chip-row {
 		display: flex;

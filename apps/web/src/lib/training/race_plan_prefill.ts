@@ -10,12 +10,13 @@
  * `racePlanHref` is web-only: the phone opens `PlanNewScreen` with the same
  * fields as constructor arguments.
  *
- * The description is English and metric on purpose: it is a machine-read
- * request to the plan extractor (`/api/coach/plan-request`), like the Coach's
- * own `?describe=` handoff, not UI copy. It carries only what the AI plan
- * consent bullet names — the goal race, a target time and a recent time.
- * Weekly volume and the longest recent run are deliberately left out: the
- * bullet does not cover them (decisions § 2154).
+ * The description is English, and in the runner's own distance unit: it
+ * prefills a box the runner reads and edits before it goes to the plan
+ * extractor (`/api/coach/plan-request`), which reads either unit. It carries
+ * only what the AI plan consent bullet names — the goal race, a target time
+ * and a recent time. Weekly volume and the longest recent run are
+ * deliberately left out: the bullet does not cover them (decisions § 2154,
+ * units amended by § 2292).
  */
 
 import { racePlanPreset } from './race_plan_preset';
@@ -26,6 +27,11 @@ export const RACE_PLAN_DESCRIBE_MAX = 600;
 /// A listing name longer than this is cut, so the race always fits the cap.
 export const RACE_PLAN_DESCRIBE_NAME_MAX = 120;
 export const RACE_PLAN_SURFACE_MAX = 40;
+
+export type RacePlanUnit = 'km' | 'mi';
+
+const METRES_PER_MILE = 1609.344;
+const FEET_PER_METRE = 3.28084;
 
 export interface RacePlanRace {
 	name: string;
@@ -142,8 +148,9 @@ export function racePlanGoalTimeS(
 	return null;
 }
 
-function kmText(metres: number): string {
-	const tenths = Math.round(metres / 100);
+/// A distance to one decimal, without a trailing `.0`.
+function distanceText(metres: number, unit: RacePlanUnit): string {
+	const tenths = Math.round(unit === 'mi' ? (metres * 10) / METRES_PER_MILE : metres / 100);
 	const whole = Math.trunc(tenths / 10);
 	const frac = tenths % 10;
 	return frac === 0 ? `${whole}` : `${whole}.${frac}`;
@@ -181,24 +188,30 @@ export function racePlanDescribe(
 		goalTimeS?: number | null;
 		recentEffort?: RacePlanEffort | null;
 		course?: RacePlanCourse | null;
+		/// The runner's distance unit; elevation follows it (m / ft).
+		unit?: RacePlanUnit;
 	},
 	maxChars: number = RACE_PLAN_DESCRIBE_MAX,
 ): string {
+	const unit: RacePlanUnit = input.unit === 'mi' ? 'mi' : 'km';
+	const climb = (m: number) => (unit === 'mi' ? `${Math.round(m * FEET_PER_METRE)} ft` : `${Math.round(m)} m`);
 	const name = collapse(input.race.name).slice(0, RACE_PLAN_DESCRIBE_NAME_MAX).trim();
 	const sentences: string[] = [`Race: ${name} on ${input.race.raceDateIso}.`];
-	if (positive(input.race.distanceM)) sentences.push(`Distance: ${kmText(input.race.distanceM)} km.`);
+	if (positive(input.race.distanceM)) sentences.push(`Distance: ${distanceText(input.race.distanceM, unit)} ${unit}.`);
 	if (positive(input.goalTimeS)) sentences.push(`Goal time: ${clockText(input.goalTimeS)}.`);
 	const e = input.recentEffort;
 	if (e && positive(e.distanceM) && positive(e.durationS) && Number.isFinite(e.ageDays)) {
 		const days = Math.max(0, Math.round(e.ageDays));
 		const when = days === 0 ? 'today' : days === 1 ? '1 day ago' : `${days} days ago`;
-		sentences.push(`Recent effort: ${kmText(e.distanceM)} km in ${clockText(e.durationS)}, ${when}.`);
+		sentences.push(
+			`Recent effort: ${distanceText(e.distanceM, unit)} ${unit} in ${clockText(e.durationS)}, ${when}.`,
+		);
 	}
 	const c = input.course;
 	if (c) {
 		const parts: string[] = [];
-		if (positive(c.ascentM)) parts.push(`${Math.round(c.ascentM)} m ascent`);
-		if (positive(c.descentM)) parts.push(`${Math.round(c.descentM)} m descent`);
+		if (positive(c.ascentM)) parts.push(`${climb(c.ascentM)} ascent`);
+		if (positive(c.descentM)) parts.push(`${climb(c.descentM)} descent`);
 		const surface = c.surface ? collapse(c.surface).slice(0, RACE_PLAN_SURFACE_MAX).trim() : '';
 		if (surface) parts.push(`${surface} surface`);
 		if (parts.length > 0) sentences.push(`Course: ${parts.join(', ')}.`);

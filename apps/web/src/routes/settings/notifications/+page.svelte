@@ -3,6 +3,7 @@
 	import { supabase } from '#lib/core/supabase.ts';
 	import { effective } from '#lib/settings/settings.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { createPrefsPage } from '#lib/settings/prefs_page.svelte.ts';
 	import PrefsPage from '#lib/components/settings/PrefsPage.svelte';
@@ -62,7 +63,7 @@
 		prefs.save({ [key]: on ? 'on' : 'off' });
 		if (!on || !auth.user) return;
 		const { error } = await supabase.rpc('clear_my_unsubscribe_suppression');
-		if (error) showToast(m('prefs.saveFailed', { error: error.message }), 'error');
+		if (error) showToast(m('prefs.saveFailed', { error: errorCopy(error, m, 'prefs.saveFailed') }), 'error');
 	}
 </script>
 

@@ -660,6 +660,59 @@ export type Database = {
           },
         ]
       }
+      conversation_participants: {
+        Row: {
+          archived_at: string | null
+          conversation_id: string
+          hidden_before: string | null
+          joined_at: string
+          muted_at: string | null
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          conversation_id: string
+          hidden_before?: string | null
+          joined_at?: string
+          muted_at?: string | null
+          user_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          conversation_id?: string
+          hidden_before?: string | null
+          joined_at?: string
+          muted_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_participants_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+        }
+        Relationships: []
+      }
       data_export_jobs: {
         Row: {
           complete: boolean | null
@@ -780,6 +833,7 @@ export type Database = {
       direct_messages: {
         Row: {
           body: string | null
+          conversation_id: string
           created_at: string
           deleted_partner_key: string | null
           id: string
@@ -791,6 +845,7 @@ export type Database = {
         }
         Insert: {
           body?: string | null
+          conversation_id: string
           created_at?: string
           deleted_partner_key?: string | null
           id?: string
@@ -802,6 +857,7 @@ export type Database = {
         }
         Update: {
           body?: string | null
+          conversation_id?: string
           created_at?: string
           deleted_partner_key?: string | null
           id?: string
@@ -812,6 +868,13 @@ export type Database = {
           unsent_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "direct_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "direct_messages_route_id_fkey"
             columns: ["route_id"]
@@ -5071,6 +5134,7 @@ export type Database = {
           notes: string | null
           parent_template_id: string | null
           paused_at: string | null
+          published_from_plan_id: string | null
           race_listing_id: string | null
           rules: Json | null
           source: string
@@ -5099,6 +5163,7 @@ export type Database = {
           notes?: string | null
           parent_template_id?: string | null
           paused_at?: string | null
+          published_from_plan_id?: string | null
           race_listing_id?: string | null
           rules?: Json | null
           source?: string
@@ -5127,6 +5192,7 @@ export type Database = {
           notes?: string | null
           parent_template_id?: string | null
           paused_at?: string | null
+          published_from_plan_id?: string | null
           race_listing_id?: string | null
           rules?: Json | null
           source?: string
@@ -5149,6 +5215,13 @@ export type Database = {
           {
             foreignKeyName: "training_plans_parent_template_id_fkey"
             columns: ["parent_template_id"]
+            isOneToOne: false
+            referencedRelation: "training_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_plans_published_from_plan_id_fkey"
+            columns: ["published_from_plan_id"]
             isOneToOne: false
             referencedRelation: "training_plans"
             referencedColumns: ["id"]
@@ -6502,11 +6575,14 @@ export type Database = {
       dm_threads: {
         Args: never
         Returns: {
+          archived: boolean
+          conversation_id: string
           deleted_partner_key: string
           last_at: string
           last_body: string
           last_from_me: boolean
           last_unsent: boolean
+          muted: boolean
           partner_id: string
           unread: number
         }[]
@@ -6538,6 +6614,7 @@ export type Database = {
       enqueue_event_reminders: { Args: never; Returns: undefined }
       enqueue_export_blob_reap: { Args: never; Returns: undefined }
       enqueue_lifecycle_drip: { Args: never; Returns: number }
+      enqueue_route_photo_orphan_sweep: { Args: never; Returns: undefined }
       enqueue_run_rematch: { Args: { p_run_id: string }; Returns: Json }
       enqueue_safety_overdue_emails: { Args: never; Returns: undefined }
       enqueue_weekly_digests: { Args: never; Returns: number }
@@ -6911,6 +6988,10 @@ export type Database = {
           lat: number
           lng: number
         }[]
+      }
+      hide_conversation: {
+        Args: { p_conversation_id: string }
+        Returns: undefined
       }
       host_can_take_payment: { Args: { p_user_id: string }; Returns: boolean }
       host_earnings_summary: {
@@ -7420,6 +7501,22 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      route_delete_impact: {
+        Args: { p_route_id: string }
+        Returns: {
+          conditions_by_others: number
+          events: number
+          linked_runs: number
+          markers: number
+          photos: number
+          race_listings: number
+          reviews_by_others: number
+          saved_by_others: number
+          segment_efforts_by_others: number
+          segments_by_others: number
+          shares: number
+        }[]
+      }
       route_markers_for_viewer: {
         Args: { p_route_id: string }
         Returns: {
@@ -7441,6 +7538,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      route_photo_orphan_paths: {
+        Args: { p_limit?: number; p_paths?: string[] }
+        Returns: string[]
       }
       routes_intersecting_track: {
         Args: {
@@ -7691,6 +7792,14 @@ export type Database = {
         Args: { p_actor: string; p_club_id: string; p_strava_club_id: number }
         Returns: string
       }
+      set_conversation_archived: {
+        Args: { p_archived: boolean; p_conversation_id: string }
+        Returns: undefined
+      }
+      set_conversation_muted: {
+        Args: { p_conversation_id: string; p_muted: boolean }
+        Returns: undefined
+      }
       set_discoverable_area: {
         Args: { p_label?: string; p_lat: number; p_lng: number }
         Returns: string
@@ -7810,6 +7919,7 @@ export type Database = {
         Args: { p_message_id: string }
         Returns: {
           body: string | null
+          conversation_id: string
           created_at: string
           deleted_partner_key: string | null
           id: string

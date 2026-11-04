@@ -4,6 +4,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart' show ClubRow, UserProfileRow;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +14,7 @@ import '../lib/main.dart' show pendingStartRunWithRoute;
 import '../lib/preferences.dart';
 import '../lib/screens/route_detail_screen.dart';
 import '../lib/social_service.dart' show ClubView;
+import 'pump_until.dart';
 
 cm.Route _route({
   String name = 'River Loop',
@@ -41,6 +43,23 @@ class _ThrowingTagsApi extends ApiClient {
   @override
   Future<void> updateRouteTags(String routeId, List<String> tags) async {
     throw StateError('network down');
+  }
+}
+
+/// A viewer who does not own the route, so the screen asks the server for
+/// the privacy-clipped line. Each call takes the next queued outcome.
+class _ClipApi extends ApiClient {
+  final List<Object> outcomes;
+  int clipCalls = 0;
+  _ClipApi(this.outcomes);
+  @override
+  String? get userId => 'viewer';
+  @override
+  Future<List<cm.Waypoint>> clipRouteForViewer(String routeId) async {
+    final next = outcomes[clipCalls++];
+    if (next is Completer<List<cm.Waypoint>>) return next.future;
+    if (next is List<cm.Waypoint>) return next;
+    throw next;
   }
 }
 
@@ -134,8 +153,10 @@ Future<void> _pump(
   WidgetTester tester,
   cm.Route route, {
   bool isOwner = false,
+  bool useMiles = false,
+  ApiClient? apiClient,
 }) async {
-  SharedPreferences.setMockInitialValues({});
+  SharedPreferences.setMockInitialValues({'use_miles': useMiles});
   final prefs = Preferences();
   await prefs.init();
 
@@ -147,6 +168,7 @@ Future<void> _pump(
         route: route,
         routeStore: LocalRouteStore(),
         preferences: prefs,
+        apiClient: apiClient,
         isOwner: isOwner,
       ),
     ),
@@ -184,9 +206,78 @@ void main() {
   });
 
   group('RouteDetailScreen', () {
-    testWidgets('renders the route name as the app-bar title', (tester) async {
-      await _pump(tester, _route(name: 'River Loop'));
-      expect(find.text('River Loop'), findsOneWidget);
+    testWidgets('a long name is shown in full under the map, and the bar '
+        'repeats it only once that heading scrolls away', (tester) async {
+      tester.view.physicalSize = const Size(360, 780);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      const name = 'Philadelphia Marathon full course, Art Museum to '
+          'Manayunk and back';
+      await _pump(tester, _route(name: name), isOwner: true);
+
+      final inBody = find.descendant(
+          of: find.byType(ListView), matching: find.text(name));
+      final inBar =
+          find.descendant(of: find.byType(AppBar), matching: find.text(name));
+      expect(inBody, findsOneWidget);
+      final heading = tester.renderObject<RenderParagraph>(inBody);
+      expect(heading.didExceedMaxLines, isFalse,
+          reason: 'the body heading wraps rather than truncating');
+      double barOpacity() => tester
+          .widget<AnimatedOpacity>(find.ancestor(
+              of: inBar, matching: find.byType(AnimatedOpacity)))
+          .opacity;
+      expect(barOpacity(), 0,
+          reason: 'no second, truncated copy while the heading is on screen');
+
+      // Scrolled directly: a drag over the map would pan the map instead.
+      tester
+          .state<ScrollableState>(find.descendant(
+              of: find.byType(ListView), matching: find.byType(Scrollable)).first)
+          .position
+          .jumpTo(700);
+      // One frame lays the list out at the new offset and measures the
+      // heading; the next rebuilds the bar.
+      await tester.pump();
+      await tester.pump();
+      expect(barOpacity(), 1,
+          reason: 'the bar names the route once its heading is gone');
+    });
+
+    testWidgets('a route with no line does not headline "0 Waypoints"',
+        (tester) async {
+      await _pump(tester, _route());
+      expect(find.text('Waypoints'), findsNothing);
+    });
+
+    testWidgets('a route with a line counts its waypoints', (tester) async {
+      tester.view.physicalSize = const Size(800, 3000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await _pump(
+          tester,
+          _route(userId: '', waypoints: const [
+            cm.Waypoint(lat: 51.5, lng: -0.12),
+            cm.Waypoint(lat: 51.51, lng: -0.13),
+            cm.Waypoint(lat: 51.52, lng: -0.14),
+          ]));
+      expect(find.text('Waypoints'), findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
+    });
+
+    testWidgets('Start run wears the theme\'s start colour, not success green',
+        (tester) async {
+      await _pump(
+          tester,
+          _route(userId: '', waypoints: const [
+            cm.Waypoint(lat: 51.5, lng: -0.12),
+            cm.Waypoint(lat: 51.51, lng: -0.13),
+          ]));
+      final fab = tester.widget<FloatingActionButton>(
+          find.widgetWithText(FloatingActionButton, 'Start run'));
+      expect(fab.backgroundColor, isNull,
+          reason: 'the FAB theme (Home\'s Start) supplies the colour');
+      expect(fab.foregroundColor, isNull);
     });
 
     testWidgets('delete button is hidden when isOwner is false', (tester) async {
@@ -448,6 +539,71 @@ void main() {
       expect(find.text('Elevation'), findsOneWidget);
     });
 
+    testWidgets('the Elevation stat reads in the unit Distance does',
+        (tester) async {
+      // 45 m is 147.6 ft. The stat used to print the raw metres beside a
+      // distance in miles.
+      await _pump(tester, _route(), useMiles: true);
+      expect(find.text('mi'), findsWidgets);
+      expect(find.text('148'), findsOneWidget);
+      expect(find.text('ft'), findsOneWidget);
+      expect(find.text('m'), findsNothing);
+    });
+
+    testWidgets('the Elevation stat stays in metres for a km runner',
+        (tester) async {
+      await _pump(tester, _route());
+      expect(find.text('45'), findsOneWidget);
+      expect(find.text('m'), findsOneWidget);
+      expect(find.text('ft'), findsNothing);
+    });
+
+    group('map slot without a line to draw', () {
+      const line = [
+        cm.Waypoint(lat: 51.5, lng: -0.1),
+        cm.Waypoint(lat: 51.51, lng: -0.11),
+      ];
+
+      testWidgets('a failed clip says so and retries, never "Waiting for GPS"',
+          (tester) async {
+        final api = _ClipApi([StateError('network down'), line]);
+        await _pump(tester, _route(waypoints: line, userId: 'owner'),
+            apiClient: api);
+        final failed = find.text(
+            "Couldn't load the route line. Check your connection and try again.");
+        await pumpUntil(tester, () => failed.evaluate().isNotEmpty,
+            describe: 'the load-failed placeholder');
+        expect(find.text('Waiting for GPS...'), findsNothing);
+
+        await tester.tap(find.widgetWithText(TextButton, 'Try again'));
+        await pumpUntil(tester, () => failed.evaluate().isEmpty,
+            describe: 'the retried clip to replace the placeholder');
+        expect(api.clipCalls, 2);
+        expect(find.text('Waiting for GPS...'), findsNothing);
+        expect(find.text('Try again'), findsNothing);
+        // The map that mounted queues zero-length tile-fetch timers.
+        await tester.pump(Duration.zero);
+      });
+
+      testWidgets('while the clip is in flight it shows a spinner',
+          (tester) async {
+        final pending = Completer<List<cm.Waypoint>>();
+        final api = _ClipApi([pending]);
+        await _pump(tester, _route(waypoints: line, userId: 'owner'),
+            apiClient: api);
+        expect(find.byType(CircularProgressIndicator), findsWidgets);
+        expect(find.text('Waiting for GPS...'), findsNothing);
+        pending.complete(const []);
+        await pumpUntil(
+            tester,
+            () => find.text('This route has no line to show.')
+                .evaluate()
+                .isNotEmpty,
+            describe: 'the clipped-to-empty placeholder');
+        expect(find.text('Try again'), findsNothing);
+      });
+    });
+
     testWidgets('renders the Reviews header', (tester) async {
       await _pump(tester, _route());
       await tester.drag(find.byType(ListView), const Offset(0, -400));
@@ -519,7 +675,11 @@ void main() {
               'preview doesn\'t load, it says Waiting for GPS".',
         );
         // The route header still renders normally.
-        expect(find.text('Just-built loop'), findsOneWidget);
+        expect(
+            find.descendant(
+                of: find.byType(ListView),
+                matching: find.text('Just-built loop')),
+            findsOneWidget);
       },
     );
   });
@@ -756,7 +916,8 @@ void main() {
         'owner body renders at 320 logical width and the switch titles are '
         'bounded so long localized labels ellipsize instead of striping',
         (tester) async {
-      tester.view.physicalSize = const Size(320, 1200);
+      // Tall enough that the switches still build below the wrapped name.
+      tester.view.physicalSize = const Size(320, 1600);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 

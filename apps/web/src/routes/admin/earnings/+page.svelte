@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount, tick } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
@@ -18,6 +17,7 @@
 	import { formatPrice } from '#lib/format/format_price.ts';
 	import { fromMinorUnits } from '#lib/format/minor_units.ts';
 	import { m as t, currentLocale } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	let isAdmin = $state<boolean | null>(null);
 	let loading = $state(true);
@@ -58,7 +58,7 @@
 			months = summarizeFeeMonths(rows);
 			totals = feeTotalsByCurrency(rows);
 		} catch (e) {
-			loadError = t('admin.earnings.loadFailed', { error: thrownMessage(e) });
+			loadError = t('admin.earnings.loadFailed', { error: errorCopy(e, t, 'admin.earnings.loadFailed') });
 		}
 	}
 
@@ -70,7 +70,7 @@
 		try {
 			hosts = await fetchPlatformFeesByHost(month);
 		} catch (e) {
-			hostsError = t('admin.earnings.hostsFailed', { error: thrownMessage(e) });
+			hostsError = t('admin.earnings.hostsFailed', { error: errorCopy(e, t, 'admin.earnings.hostsFailed') });
 		} finally {
 			hostsLoading = false;
 		}

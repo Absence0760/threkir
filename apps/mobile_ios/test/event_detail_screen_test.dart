@@ -15,8 +15,10 @@ import '../lib/preferences.dart';
 import '../lib/screens/event_detail_screen.dart';
 import '../lib/session_steps.dart';
 import '../lib/social_service.dart';
+import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
 import 'realtime_drain.dart';
+import 'supabase_test_init.dart';
 
 ClubView _club(String? viewerRole) => ClubView(
   row: ClubRow(
@@ -474,10 +476,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 
@@ -499,19 +498,24 @@ void main() {
   setUpAll(_ensureSupabase);
 
   group('EventDetailScreen — initial render', () {
-    realtimeWidgetTest('first frame shows the full-body loader', (
+    realtimeWidgetTest('first frame shows a skeleton of the detail page', (
       tester,
     ) async {
-      // Reason: while _loading is true the screen returns a bare
-      // Scaffold carrying nothing but the loader.
+      // Reason: while _loading is true the screen holds the layout it will
+      // settle into, not a centred figure on an empty page (decisions § 2288).
       await _pump(tester);
-      expect(find.byType(FullBodyLoader), findsOneWidget);
+      expect(find.byType(SectionedDetailSkeleton), findsOneWidget);
       await tester.pump(const Duration(milliseconds: 400));
     });
 
-    realtimeWidgetTest('initial Scaffold has no AppBar yet', (tester) async {
+    realtimeWidgetTest('the loading frame already carries the app bar',
+        (tester) async {
+      // Back is reachable while the fetch is in flight, and the bar does not
+      // pop in when the content lands.
       await _pump(tester);
-      expect(find.byType(AppBar), findsNothing);
+      expect(find.byType(AppBar), findsOneWidget);
+      expect(find.byType(BackButton), findsNothing,
+          reason: 'a pumped root route has nothing to go back to');
     });
   });
 
@@ -1380,7 +1384,7 @@ void main() {
       );
       await pumpUntil(
         tester,
-        () => find.byType(FullBodyLoader).evaluate().isEmpty,
+        () => find.byType(SectionedDetailSkeleton).evaluate().isEmpty,
         describe: 'the event to load',
       );
     }
@@ -1570,7 +1574,7 @@ void main() {
       );
       await pumpUntil(
         tester,
-        () => find.byType(FullBodyLoader).evaluate().isEmpty,
+        () => find.byType(SectionedDetailSkeleton).evaluate().isEmpty,
         describe: 'the event to load',
       );
     }

@@ -29,7 +29,7 @@ double _haversineMetres(LatLng a, LatLng b) =>
 
 /// Walk the polyline and emit a [DistanceMarker] at every kilometre (or
 /// mile when [useMiles] is true) boundary. Mirrors `computeDistanceMarkers`
-/// in `apps/web/src/lib/components/RunMap.svelte`.
+/// in `apps/web/src/lib/runs/distance_markers.ts`.
 ///
 /// When the authoritative [totalDistanceM] is meaningfully greater than
 /// the polyline length (sparse user clicks / seed data), every marker's
@@ -53,8 +53,8 @@ List<DistanceMarker> computeDistanceMarkers(
 
   final realTotal =
       (totalDistanceM != null && totalDistanceM > polylineTotal * 1.1)
-          ? totalDistanceM
-          : polylineTotal;
+      ? totalDistanceM
+      : polylineTotal;
   final scale = polylineTotal > 0 ? polylineTotal / realTotal : 1.0;
 
   double cumulative = 0;
@@ -66,9 +66,11 @@ List<DistanceMarker> computeDistanceMarkers(
         segmentM > 0 &&
         nextMarker <= maxAlongPolyline + 0.5) {
       final t = (nextMarker - cumulative) / segmentM;
-      final lat = coords[i - 1].latitude +
+      final lat =
+          coords[i - 1].latitude +
           (coords[i].latitude - coords[i - 1].latitude) * t;
-      final lng = coords[i - 1].longitude +
+      final lng =
+          coords[i - 1].longitude +
           (coords[i].longitude - coords[i - 1].longitude) * t;
       final realPos = nextMarker / scale;
       final label = (realPos / stepM).round();
@@ -78,6 +80,66 @@ List<DistanceMarker> computeDistanceMarkers(
     cumulative += segmentM;
   }
   return out;
+}
+
+/// Which km / mile badges survive when the map is too zoomed out to show
+/// them all: every 10th first, then every 5th, then the even ones, then the
+/// rest. Lower ranks are placed first. Mirrors `distanceMarkerRank` in
+/// `apps/web/src/lib/runs/distance_markers.ts`.
+int distanceMarkerRank(int label) {
+  if (label % 10 == 0) return 0;
+  if (label % 5 == 0) return 1;
+  if (label % 2 == 0) return 2;
+  return 3;
+}
+
+/// Screen distance, in logical pixels, two km / mile badges must keep: the
+/// 26 px pin plus a hair.
+const double distanceMarkerGapPx = 28;
+
+/// The badges that fit at map [zoom] without touching, placed best rank
+/// first. flutter_map has no collision pass, so this is the phone's
+/// counterpart of the web layer's `symbol-sort-key` + collision: a marathon
+/// zoomed to fit, or both legs of an out-and-back, otherwise stack every
+/// badge on the next. The spacing is measured in Web Mercator world pixels,
+/// which depend on zoom alone, so a pan never changes the answer. Returned
+/// in the input order.
+List<DistanceMarker> thinDistanceMarkers(
+  List<DistanceMarker> markers, {
+  required double zoom,
+  double minGapPx = distanceMarkerGapPx,
+}) {
+  final worldPx = 256 * pow(2, zoom).toDouble();
+  Point<double> project(LatLng p) {
+    final sinLat = sin(p.latitude * pi / 180).clamp(-0.9999, 0.9999);
+    return Point(
+      (p.longitude + 180) / 360 * worldPx,
+      (0.5 - log((1 + sinLat) / (1 - sinLat)) / (4 * pi)) * worldPx,
+    );
+  }
+
+  final order = List<int>.generate(markers.length, (i) => i)
+    ..sort((a, b) {
+      final byRank = distanceMarkerRank(
+        markers[a].label,
+      ).compareTo(distanceMarkerRank(markers[b].label));
+      return byRank != 0
+          ? byRank
+          : markers[a].label.compareTo(markers[b].label);
+    });
+  final placed = <Point<double>>[];
+  final keep = List<bool>.filled(markers.length, false);
+  for (final i in order) {
+    final p = project(markers[i].position);
+    if (placed.every((q) => p.distanceTo(q) >= minGapPx)) {
+      placed.add(p);
+      keep[i] = true;
+    }
+  }
+  return [
+    for (var i = 0; i < markers.length; i++)
+      if (keep[i]) markers[i],
+  ];
 }
 
 /// Screen gap between direction chevrons, in logical pixels — the phone
@@ -126,9 +188,11 @@ List<TrackChevron> computeChevrons(
         segmentM > 0 &&
         nextChevron <= maxAlong) {
       final t = (nextChevron - cumulative) / segmentM;
-      final lat = coords[i - 1].latitude +
+      final lat =
+          coords[i - 1].latitude +
           (coords[i].latitude - coords[i - 1].latitude) * t;
-      final lng = coords[i - 1].longitude +
+      final lng =
+          coords[i - 1].longitude +
           (coords[i].longitude - coords[i - 1].longitude) * t;
       // Bearing in screen-space (lat increasing = up). The chevron
       // glyph points right at angle 0 so we rotate by the screen-space

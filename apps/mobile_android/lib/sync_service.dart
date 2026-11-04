@@ -569,6 +569,12 @@ Future<bool> drainPendingRouteDeletes(
       await routeStore.delete(id);
       await routeStore.clearPendingRemoteDelete(id);
       ok++;
+    } on RouteDeleteRefusedException {
+      // The server refuses this session's delete outright, so a retry can
+      // never succeed: drop it from the queue and keep the local copy.
+      debugPrint('Sync: route delete refused for $id; dropping it from the queue');
+      await routeStore.clearPendingRemoteDelete(id);
+      failed++;
     } catch (e) {
       debugPrint('Sync: retry route delete failed for $id: $e');
       failed++;

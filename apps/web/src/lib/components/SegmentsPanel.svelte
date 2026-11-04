@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount, untrack } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import { formatDuration } from '#lib/format/time.ts';
@@ -19,6 +18,7 @@
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { distanceInPreferred } from '#lib/format/units.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import HeadToHeadDialog from './HeadToHeadDialog.svelte';
 
@@ -89,12 +89,12 @@
 		try {
 			const res = await fetchSegmentsForRouteWithError(routeId);
 			if (res.error) {
-				loadError = res.error;
+				loadError = errorCopy(res.error, t, 'SegmentsPanel: loadError');
 				return;
 			}
 			segments = res.segments;
 		} catch (e) {
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, t, 'SegmentsPanel: loadError');
 		} finally {
 			loading = false;
 		}
@@ -131,14 +131,17 @@
 				clubId: clubOnly ? clubId : null,
 			});
 			leaderboards = new Map(leaderboards).set(segmentId, res.error ? [] : res.entries);
-			leaderboardErrors = new Map(leaderboardErrors).set(segmentId, res.error);
+			leaderboardErrors = new Map(leaderboardErrors).set(
+				segmentId,
+				res.error ? errorCopy(res.error, t, 'SegmentsPanel: leaderboard') : null,
+			);
 		} catch (e) {
 			// A thrown rejection would otherwise leave the board stuck on the
 			// loading spinner forever — surface it as the retryable error state.
 			leaderboards = new Map(leaderboards).set(segmentId, []);
 			leaderboardErrors = new Map(leaderboardErrors).set(
 				segmentId,
-				thrownMessage(e),
+				errorCopy(e, t, 'SegmentsPanel failed'),
 			);
 		}
 	}
@@ -185,7 +188,7 @@
 			showCreate = false;
 			draftName = '';
 		} catch (e) {
-			showToast(thrownMessage(e) || t('segments.createFailed'), 'error');
+			showToast(t('segments.createFailed', { error: errorCopy(e, t, 'segments.createFailed') }), 'error');
 		} finally {
 			creating = false;
 		}
@@ -203,7 +206,7 @@
 			);
 			if (openSegmentId === target.id) openSegmentId = null;
 		} catch (e) {
-			showToast(thrownMessage(e) || t('segments.deleteFailed'), 'error');
+			showToast(t('segments.deleteFailed', { error: errorCopy(e, t, 'segments.deleteFailed') }), 'error');
 		}
 	}
 

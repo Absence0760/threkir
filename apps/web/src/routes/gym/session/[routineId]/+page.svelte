@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -17,6 +16,7 @@
 	import { normaliseExerciseName } from '#lib/gym/gym_prs.ts';
 	import GymSessionRunner from '#lib/components/GymSessionRunner.svelte';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	const routineId = $derived(page.params.routineId ?? '');
 
@@ -33,7 +33,7 @@
 		} catch (e) {
 			// Starting a session against a half-read routine would log sets
 			// against a prescription that isn't the real one.
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, t, 'gym/session/[routineId]: loadError');
 			detail = null;
 			loading = false;
 			return;

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { isEntityId } from '#lib/core/entity_id.ts';
@@ -16,7 +15,7 @@
 	import SessionPlanEditor from '#lib/components/SessionPlanEditor.svelte';
 	import RoutineEditor from '#lib/components/RoutineEditor.svelte';
 	import {
-		fetchMyClubs,
+		fetchMyClubsWithError,
 		fetchClubTemplatesForClubs,
 		clonePlanTemplate,
 		createTrainingPlan,
@@ -32,6 +31,8 @@
 	import { PRIMARY_GOAL_VALUES, planPresetForGoal, type PrimaryGoal } from '#lib/settings/onboarding.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { dbError } from '#lib/core/supabase_error.ts';
 	import type { TrainingPlan } from '#lib/types.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 
@@ -153,6 +154,10 @@
 
 	let templates = $state<TemplateOption[]>([]);
 	let loadingTemplates = $state(true);
+	/// The club templates could not be read. Said out loud with a retry: a
+	/// club's Adopt link (`?from=`) otherwise landed on a page with no picker
+	/// and no reason why.
+	let templatesError = $state(false);
 	let selectedTemplateId = $state('');
 	let startDate = $state(defaultStartDate());
 	let startSnapped = $state(false);
@@ -246,9 +251,12 @@
 		return defaultPlanStartIso(todayISO(), false);
 	}
 
-	onMount(async () => {
+	async function loadTemplates(): Promise<void> {
+		loadingTemplates = true;
+		templatesError = false;
 		try {
-			const clubs = await fetchMyClubs();
+			const { clubs, error } = await fetchMyClubsWithError();
+			if (error) throw dbError(error);
 			const byClub = await fetchClubTemplatesForClubs(clubs.map((c) => c.id));
 			templates = clubs.flatMap((c) =>
 				(byClub.get(c.id) ?? []).map((template) => ({ template, clubName: c.name }))
@@ -262,10 +270,15 @@
 				selectedTemplateId = from;
 			}
 		} catch (e) {
-			console.warn('fetch templates failed', e);
+			console.error('fetch templates failed', e);
+			templatesError = true;
 		} finally {
 			loadingTemplates = false;
 		}
+	}
+
+	onMount(async () => {
+		await loadTemplates();
 		try {
 			gymSuggestions = await fetchGymExerciseNames();
 		} catch (e) {
@@ -322,7 +335,7 @@
 				showToast(m('plansNew.toastCreated'));
 				goto(`/plans/${outcome.value}`);
 			} catch (e) {
-				showToast(m('plansNew.toastCloneFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('plansNew.toastCloneFailed', { error: errorCopy(e, m, 'plansNew.toastCloneFailed') }), 'error');
 			} finally {
 				cloning = false;
 			}
@@ -393,7 +406,7 @@
 				goto(`/plans/${outcome.value.id}`);
 			} catch (e) {
 				showToast(
-					m('plansNew.toastCreateFailed', { error: thrownMessage(e) }),
+					m('plansNew.toastCreateFailed', { error: errorCopy(e, m, 'plansNew.toastCreateFailed') }),
 					'error'
 				);
 			} finally {
@@ -410,7 +423,7 @@
 
 <div class="page">
 	<a href={backHref} class="back-link" onclick={handleBack}>
-		<span class="material-symbols">arrow_back</span>
+		<span class="material-symbols" aria-hidden="true">arrow_back</span>
 		{backLabel}
 	</a>
 
@@ -522,7 +535,15 @@
 		<a class="btn btn-secondary" href="/plans/season">{m('seasonPlanner.entryLink')}</a>
 	</section>
 
-	{#if !loadingTemplates && templates.length > 0}
+	{#if templatesError}
+		<section class="template-picker" data-testid="template-load-error">
+			<h2>{m('plansNew.templateHeading')}</h2>
+			<p class="picker-hint" role="alert">{m('plansNew.templatesLoadFailed')}</p>
+			<button class="btn btn-secondary btn-sm" type="button" onclick={loadTemplates}>
+				{m('plansNew.templatesRetry')}
+			</button>
+		</section>
+	{:else if !loadingTemplates && templates.length > 0}
 		<section class="template-picker">
 			<h2>{m('plansNew.templateHeading')}</h2>
 			<p class="picker-hint" id="template-hint">

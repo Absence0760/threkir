@@ -5,12 +5,15 @@ import 'package:ui_kit/ui_kit.dart' show IdentityAvatar;
 import '../auth_change_aware.dart';
 import '../ble_heart_rate.dart';
 import '../ble_treadmill.dart';
+import '../dm_pending_hides.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_gear_store.dart';
 import '../local_food_store.dart';
 import '../local_gym_store.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
+import '../messages_inbox.dart' show unreadDmBadgeCount;
+import '../monotonic_clock.dart';
 import '../parkrun_barcode_cache.dart';
 import '../preferences.dart';
 import '../settings_sync.dart';
@@ -78,10 +81,28 @@ class _YouScreenState extends State<YouScreen>
 
   int _unreadDms = 0;
 
+  /// The last badge read, kept so a conversation deleted in a thread drops
+  /// out of the count at once rather than on the next read.
+  List<({String conversationId, int unread, bool muted, bool archived})>
+      _dmStates = const [];
+
+  /// When the read [_dmStates] came from started, which decides the deleted
+  /// conversations it still counts ([DmPendingHides.hides]).
+  Duration? _dmStatesReadAt;
+  final DmHideReader _hideReader = DmPendingHides.instance.reader();
+  int _seenHideOutcomes = DmPendingHides.instance.outcomes;
+
+  /// Bumped by every badge read. Reads overlap — a poll or a sub-screen
+  /// return can still be in flight when a committed delete asks for another —
+  /// and only the newest may answer, which is what lets a landed delete's
+  /// marker go once that read is held.
+  int _unreadGen = 0;
+
   @override
   void initState() {
     super.initState();
     ParkrunBarcodeCache.changes.addListener(_refreshBarcode);
+    DmPendingHides.instance.addListener(_onPendingHidesChanged);
     _refreshBarcode();
     _refreshIdentity();
     _refreshUnread();
@@ -90,6 +111,8 @@ class _YouScreenState extends State<YouScreen>
   @override
   void dispose() {
     ParkrunBarcodeCache.changes.removeListener(_refreshBarcode);
+    DmPendingHides.instance.removeListener(_onPendingHidesChanged);
+    _hideReader.close();
     super.dispose();
   }
 
@@ -123,15 +146,45 @@ class _YouScreenState extends State<YouScreen>
   Future<void> _refreshUnread() async {
     final api = widget.apiClient;
     final asked = api?.userId;
+    final gen = ++_unreadGen;
     if (api == null || asked == null) return;
+    final startedAt = monotonicNow();
     try {
-      final count = await api.fetchUnreadDmCount();
-      if (!mounted || api.userId != asked) return;
-      setState(() => _unreadDms = count);
+      final states = await api.fetchDmBadgeStates();
+      if (!mounted || gen != _unreadGen || api.userId != asked) return;
+      setState(() {
+        _dmStates = states;
+        _dmStatesReadAt = startedAt;
+        _hideReader.applied(startedAt);
+        _unreadDms = _countUnread();
+      });
     } catch (e) {
       // L4 — a failed count leaves the badge dark; the inbox still opens.
       debugPrint('YouScreen unread-DM read failed: ${safeErrorLabel(e)}');
     }
+  }
+
+  int _countUnread() {
+    final hides = DmPendingHides.instance;
+    final readAt = _dmStatesReadAt;
+    return unreadDmBadgeCount([
+      for (final s in _dmStates)
+        if (readAt == null || !hides.hides(s.conversationId, readAt))
+          (unread: s.unread, muted: s.muted, archived: s.archived),
+    ]);
+  }
+
+  /// A pending delete is applied to the count already held, and a landed one
+  /// stays out of it until a read started after it is held; Undo or the
+  /// commit is answered by a fresh read, the server being the one that knows
+  /// what happened.
+  void _onPendingHidesChanged() {
+    if (!mounted) return;
+    setState(() => _unreadDms = _countUnread());
+    final outcomes = DmPendingHides.instance.outcomes;
+    if (outcomes == _seenHideOutcomes) return;
+    _seenHideOutcomes = outcomes;
+    _refreshUnread();
   }
 
   void _refreshAfterSubScreen() {
@@ -145,7 +198,10 @@ class _YouScreenState extends State<YouScreen>
       _displayName = null;
       _avatarUrl = null;
       _unreadDms = 0;
+      _dmStates = const [];
+      _dmStatesReadAt = null;
     });
+    _hideReader.reset();
     _refreshBarcode();
     _refreshIdentity();
     _refreshUnread();

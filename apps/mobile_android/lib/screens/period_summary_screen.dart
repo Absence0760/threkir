@@ -12,13 +12,16 @@ import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../local_run_store.dart';
+import '../metrics.dart';
 import '../local_route_store.dart';
 import '../preferences.dart';
 import '../settings_sync.dart';
 import '../share_sheet.dart';
 import '../widgets/capture_png.dart';
 import 'run_detail_screen.dart';
+import '../widgets/activity_heatmap.dart';
 import '../widgets/run_list_tile.dart';
+import '../widgets/this_week_strip.dart';
 import '../widgets/top_banner.dart';
 
 enum PeriodType { week, month, all }
@@ -92,21 +95,36 @@ class PeriodStats {
   final double totalDistanceMetres;
   final int totalDurationSec;
   final double? avgPaceSecPerKm;
+  final double totalVertMetres;
 
   const PeriodStats({
     required this.runCount,
     required this.totalDistanceMetres,
     required this.totalDurationSec,
     required this.avgPaceSecPerKm,
+    this.totalVertMetres = 0,
   });
+}
+
+/// Positive-only elevation gain (metres) of one run, from the canonical
+/// `metadata.elevation_m` key web's `/dashboard` and `lib/recap.dart` read.
+double runVertMetres(Run r) {
+  final raw = r.metadata?['elevation_m'];
+  if (raw is num) {
+    final v = raw.toDouble();
+    return v > 0 ? v : 0;
+  }
+  return 0;
 }
 
 PeriodStats computePeriodStats(List<Run> runs) {
   var totalDistance = 0.0;
   var totalDurationSec = 0;
+  var totalVert = 0.0;
   for (final r in runs) {
     totalDistance += r.distanceMetres;
     totalDurationSec += r.duration.inSeconds;
+    totalVert += runVertMetres(r);
   }
   // Compute avg pace from running/walking/hiking only — mixing in cycling
   // distances and durations produces a nonsensical pace figure.
@@ -126,6 +144,7 @@ PeriodStats computePeriodStats(List<Run> runs) {
     totalDistanceMetres: totalDistance,
     totalDurationSec: totalDurationSec,
     avgPaceSecPerKm: avgPace,
+    totalVertMetres: totalVert,
   );
 }
 
@@ -250,11 +269,23 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
       ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
   }
 
+  bool get _showsCurrentWeek =>
+      _period == PeriodType.week &&
+      periodStart(_period, _anchor, weekStartDay: _weekStartDay) ==
+          periodStart(_period, DateTime.now(), weekStartDay: _weekStartDay);
+
   bool get _isFuture {
     final now = DateTime.now();
     final end = periodEnd(_period, _anchor, weekStartDay: _weekStartDay);
     // elapsed-time: a day of slack on an is-this-period-in-the-future test.
     return end.isAfter(now.add(const Duration(days: 1)));
+  }
+
+  void _showWeek(DateTime anchor) {
+    setState(() {
+      _anchor = anchor;
+      _recompute();
+    });
   }
 
   void _previous() {
@@ -361,6 +392,40 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
           _buildPeriodNav(theme),
           const SizedBox(height: 16),
           _buildStatsCard(theme, unit, stats),
+          // The day-by-day strip Home used to show beside the week lead
+          // (decisions § 2283). It draws the calendar week holding today, so
+          // it shows on that week only.
+          if (_showsCurrentWeek) ...[
+            const SizedBox(height: 16),
+            Card(
+              key: const Key('periodSummaryWeekStrip'),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: ThisWeekStrip(
+                  runs: _periodRuns,
+                  unit: unit,
+                  weekStartDay: _weekStartDay,
+                  now: DateTime.now(),
+                ),
+              ),
+            ),
+          ],
+          // The 20-week heatmap that left Home (decisions § 2284) is this
+          // screen's week picker: a tapped column moves the summary to it.
+          if (_period == PeriodType.week) ...[
+            const SizedBox(height: 16),
+            Card(
+              key: const Key('periodSummaryHeatmap'),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: ActivityHeatmap(
+                  runs: widget.runStore.summaryRuns,
+                  weekStartDay: _weekStartDay,
+                  onWeekTap: _showWeek,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           if (_periodRuns.isEmpty)
             _buildEmptyState()
@@ -495,12 +560,25 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
                 ),
               ],
             ),
-            if (stats.avgPaceSecPerKm != null) ...[
+            if (stats.avgPaceSecPerKm != null || stats.totalVertMetres > 0) ...[
               const SizedBox(height: 16),
-              StatTile.large(
-                label: l10n.periodStatAvgPace,
-                value: UnitFormat.pace(stats.avgPaceSecPerKm, unit),
-                unit: UnitFormat.paceLabel(unit),
+              StatGrid(
+                cells: [
+                  if (stats.avgPaceSecPerKm != null)
+                    StatTile.large(
+                      label: l10n.periodStatAvgPace,
+                      value: UnitFormat.pace(stats.avgPaceSecPerKm, unit),
+                      unit: UnitFormat.paceLabel(unit),
+                    ),
+                  if (stats.totalVertMetres > 0)
+                    StatTile.large(
+                      key: const Key('periodSummaryVert'),
+                      label: metricText(l10n, Metric.vert),
+                      value:
+                          UnitFormat.elevationValue(stats.totalVertMetres, unit),
+                      unit: UnitFormat.elevationLabel(unit),
+                    ),
+                ],
               ),
             ],
           ],

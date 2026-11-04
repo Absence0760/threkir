@@ -18,6 +18,8 @@ import {
 	parseStravaSyncResult,
 	type StravaSyncResult,
 } from './strava_sync_result';
+import { stravaRefusal } from './strava_connect_error';
+import { AppError } from '../core/app_error';
 import {
 	parseStravaClubsResult,
 	stravaClubLinkError,
@@ -110,8 +112,21 @@ export async function completeStravaOAuth(
 	const scope = searchParams.get('scope') ?? '';
 	const state = searchParams.get('state') ?? '';
 	const error = searchParams.get('error');
-	if (error) throw new Error(`Strava denied access: ${error}`);
-	if (!code) throw new Error('Missing authorization code from Strava');
+	// The `error` parameter is whatever the callback URL carried, so it names
+	// the reason and is never shown.
+	if (error) {
+		throw new AppError(
+			error === 'access_denied'
+				? 'settingsIntegrations.stravaErrDenied'
+				: 'settingsIntegrations.stravaErrCodeRejected',
+			{ message: `strava_oauth_error: ${error}` },
+		);
+	}
+	if (!code) {
+		throw new AppError('settingsIntegrations.stravaErrCodeRejected', {
+			message: 'strava_oauth_missing_code',
+		});
+	}
 
 	// OAuth 2.0 §10.12 CSRF check. The state the caller minted before
 	// the redirect-out MUST match what Strava echoes back. A mismatch
@@ -121,11 +136,9 @@ export async function completeStravaOAuth(
 	// code. /audit/strava May 2026 Critical #1.
 	const expected = consumeStravaOAuthState();
 	if (!expected || expected !== state) {
-		throw new Error(
-			'Strava OAuth state mismatch — please retry from Settings. ' +
-				'(If this keeps happening, your browser may be blocking ' +
-				'session storage in this tab.)',
-		);
+		throw new AppError('settingsIntegrations.stravaErrStateMismatch', {
+			message: 'strava_oauth_state_mismatch',
+		});
 	}
 
 	const { data: sessionData } = await supabase.auth.getSession();
@@ -141,10 +154,9 @@ export async function completeStravaOAuth(
 	const { data, error: fnError } = await supabase.functions.invoke('strava-import', {
 		body: { action: 'connect', code, scope, redirect_uri },
 	});
-	// The function's own `{ error: '<code>' }` envelope, not supabase-js's
-	// fixed "Edge Function returned a non-2xx status code" — the card
-	// interpolates this into a slot written to carry a reason.
-	if (fnError) throw new Error(await edgeFunctionErrorMessage(fnError, 'connect_failed'));
+	// The function answers a stable code (`strava-import/connect_errors.ts`);
+	// the card words the ones it knows and never shows the code itself.
+	if (fnError) throw await stravaRefusal(fnError);
 	// Graded, not cast: the function reports whether it walked the whole
 	// lookback window, and a cast would let a body that says nothing about
 	// that render as a finished import. See `strava_sync_result.ts`.
@@ -161,7 +173,7 @@ export async function syncStrava(
 	const { data, error } = await supabase.functions.invoke('strava-import', {
 		body: { action: 'sync', lookbackDays },
 	});
-	if (error) throw new Error(await edgeFunctionErrorMessage(error, 'sync_failed'));
+	if (error) throw await stravaRefusal(error);
 	return parseStravaSyncResult(data);
 }
 

@@ -1,16 +1,17 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/settings_account_screen.dart';
+import '../lib/undo_queue.dart';
 import '../lib/widgets/top_banner.dart' show kTopBannerMaxDuration;
+import '../lib/widgets/undo_bar.dart';
 import 'pump_until.dart';
+import 'supabase_test_init.dart';
 
 // Issue #1064: the delete-account challenge is one fixed localized word for
 // every account. The email is a Hide My Email relay address here — the case
@@ -20,6 +21,7 @@ const _relayEmail = '4554ffzhy7@privaterelay.appleid.com';
 class _DeleteApi extends ApiClient {
   int deleteCalls = 0;
   int signOutCalls = 0;
+  final List<String> calls = [];
 
   @override
   String? get userId => 'u1';
@@ -37,11 +39,13 @@ class _DeleteApi extends ApiClient {
   @override
   Future<void> deleteAccount() async {
     deleteCalls++;
+    calls.add('deleteAccount');
   }
 
   @override
   Future<void> signOut() async {
     signOutCalls++;
+    calls.add('signOut');
   }
 }
 
@@ -51,22 +55,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  // supabase_flutter opens an app_links deep-link stream on init; pumpUntil
-  // turns the real event loop, so the MissingPluginException would land as
-  // an unhandled error without a stub.
-  for (final name in const [
-    'com.llfbandit.app_links/events',
-    'com.llfbandit.app_links/messages',
-  ]) {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-            MethodChannel(name, const StandardMethodCodec()),
-            (call) async => null);
-  }
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 
@@ -155,6 +144,33 @@ void main() {
     );
     expect(api.deleteCalls, 1);
     // Let the "Account deleted" banner's dismiss timer expire.
+    await tester.pump(kTopBannerMaxDuration);
+  });
+
+  // Reason: deleting the account with a delete still held in its undo
+  // window ended the session first, so the held commit fired afterwards
+  // with no session.
+  testWidgets('a delete held in its undo window commits before the account '
+      'is deleted', (tester) async {
+    addTearDown(debugResetUndo);
+    setUndoWindowS(0);
+    final api = _DeleteApi();
+    undoQueue.defer(DeferredDestruction(
+      message: 'Removed',
+      commit: () async => api.calls.add('commit'),
+      restore: () {},
+    ));
+    await _openDialog(tester, api);
+
+    await _type(tester, 'DELETE');
+    await tester.tap(find.descendant(
+        of: find.byType(AlertDialog), matching: find.byType(FilledButton)));
+    await pumpUntil(
+      tester,
+      () => api.signOutCalls == 1,
+      describe: 'deleteAccount + signOut after confirming',
+    );
+    expect(api.calls, ['commit', 'deleteAccount', 'signOut']);
     await tester.pump(kTopBannerMaxDuration);
   });
 

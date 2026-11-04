@@ -22,13 +22,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_route_store.dart';
 import '../lib/screens/social_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
+import 'supabase_test_init.dart';
 
 bool _supabaseReady = false;
 Future<void> _ensureSupabase() async {
@@ -37,10 +37,7 @@ Future<void> _ensureSupabase() async {
   SharedPreferences.setMockInitialValues({});
   // Local fake — never reached by network; FeedScreen's _loadInitial
   // catches the resulting connection failure asynchronously.
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 

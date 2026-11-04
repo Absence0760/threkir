@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { dbError, thrownMessage } from '#lib/core/supabase_error.ts';
+	import { dbError } from '#lib/core/supabase_error.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
 	import { effective, updateUniversal } from '#lib/settings/settings.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { fetchLatestWeightKg, recordWeightKg } from '#lib/core/data.ts';
 	import {
 		kgToDisplay,
@@ -242,7 +243,7 @@
 			showToast(m('prefs.demographicsSavedToast'), 'success');
 			setTimeout(() => (demographicsSaved = false), 2000);
 		} catch (e) {
-			showToast(m('prefs.saveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('prefs.saveFailed', { error: errorCopy(e, m, 'prefs.saveFailed') }), 'error');
 		} finally {
 			savingDemographics = false;
 		}

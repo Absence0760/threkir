@@ -2,13 +2,14 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
+import '../backend_timeout.dart';
 import '../auth_error.dart';
 import '../goal_time.dart';
 import '../hr_prescription_gate.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../plan_move.dart';
 import '../plan_races.dart';
-import '../preferences.dart' show activeDistanceUnit;
+import '../preferences.dart' show UnitFormat, activeDistanceUnit;
 import '../training.dart';
 import '../training_labels.dart';
 import '../training_service.dart';
@@ -125,7 +126,8 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
 
   double get _metresPerUnit => _miles ? 1609.344 : 1000;
   double get _kmPerUnit => _metresPerUnit / 1000;
-  String get _unitLabel => _miles ? 'mi' : 'km';
+  String get _unitLabel =>
+      UnitFormat.distanceLabel(_miles ? DistanceUnit.mi : DistanceUnit.km);
 
   String _snapshot() => [
         _kind.name,
@@ -527,7 +529,7 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
         hr: isRest || !widget.hrPrescription
             ? null
             : (min: hr.min, max: hr.max),
-      );
+      ).timeout(kBackendLoadTimeout);
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       debugPrint('workout edit save error: $e');

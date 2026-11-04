@@ -151,6 +151,29 @@ export function mapHintLine(darkBasemap: boolean): string {
 	return darkBasemap ? '#94A3B8' : '#475569';
 }
 
+/// The opacity the personal heatmap's cells and its track lines rest at:
+/// the heat cloud's ceiling below the crossfade zoom, and the lines' once
+/// past it. Each rung of [mapHeatRamp] and the [mapTrackLine] it crossfades
+/// into is held to the floor COMPOSITED at this value, not at full
+/// strength. The lines used to rest at 0.55, which put a single pass of
+/// the light track rung at 2.198:1 over water and the dark one at 2.997:1.
+export const MAP_HEAT_OPACITY = 0.85;
+
+/// The personal heatmap's density ramp, low to high, for the basemap it is
+/// drawn over. It replaced one fixed blue / green / amber / red set at
+/// 0.45-0.9 alpha that was eyeballed on dark ground: on the light basemap
+/// the amber stop read 1.871:1 even at full strength. The hue order is
+/// kept so the cloud still reads cool-to-hot; each brightness takes the
+/// rung of that hue that clears the floor against every ground of its own
+/// basemap at [MAP_HEAT_OPACITY].
+export function mapHeatRamp(
+	darkBasemap: boolean,
+): readonly [string, string, string, string] {
+	return darkBasemap
+		? ['#60A5FA', '#34D399', '#FBBF24', '#F87171']
+		: ['#1D4ED8', '#065F46', '#92400E', '#991B1B'];
+}
+
 /// The thicker halo marking a featured route's pin. On the light basemap
 /// this lands on `--color-crown`'s value, which is the deliberately dark
 /// gold minted for light grounds (§ 495).

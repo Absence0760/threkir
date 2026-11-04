@@ -131,7 +131,8 @@ test.describe('dashboard all-time drilldown vs the fetch window', () => {
 
 		try {
 			await page.goto('/dashboard');
-			const weekCard = page.getByRole('button', { name: /This Week/ }).first();
+			// The week lead's Week summary is the week drilldown (§ 2283).
+			const weekCard = page.getByTestId('dash-week-lead-open');
 			await expect(weekCard).toBeVisible({ timeout: 15_000 });
 			await weekCard.click();
 

@@ -17,6 +17,23 @@ export interface TerrainSource {
 }
 
 export const TERRAIN_EXAGGERATION = 1.5;
+
+/// A course whose own relief (highest less lowest height) is under this is
+/// drawn with more exaggeration, in inverse proportion, so its hills read
+/// from the chase camera: 1.5x at 100 m, 2x at 75 m.
+export const LOW_RELIEF_M = 100;
+
+/// The bound on that scaling. At 3x a 30 m climb stands like a 90 m one, and
+/// a mountain course never gets past `TERRAIN_EXAGGERATION`.
+export const MAX_TERRAIN_EXAGGERATION = 3;
+
+/// The terrain exaggeration for a course with `reliefM` metres of relief; an
+/// unknown relief (no elevation on the line) keeps the base.
+export function terrainExaggeration(reliefM: number | null): number {
+	if (reliefM == null || !Number.isFinite(reliefM) || reliefM <= 0) return TERRAIN_EXAGGERATION;
+	const scaled = (TERRAIN_EXAGGERATION * LOW_RELIEF_M) / reliefM;
+	return Math.min(MAX_TERRAIN_EXAGGERATION, Math.max(TERRAIN_EXAGGERATION, scaled));
+}
 export const FLYOVER_PITCH = 60;
 
 /// MapTiler's own TileJSON (`/tiles/terrain-rgb-v2/tiles.json`) declares this

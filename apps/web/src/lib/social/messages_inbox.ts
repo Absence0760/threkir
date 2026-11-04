@@ -71,6 +71,39 @@ export function inboxEntries<T extends { lastAt: string }>(
 	return [...dms.slice(0, index), row, ...dms.slice(index)];
 }
 
+/// The conversation state the inbox splits and counts by (dm_threads(),
+/// migration 20271105000010).
+export interface DmThreadState {
+	unread: number;
+	muted: boolean;
+	archived: boolean;
+}
+
+/**
+ * The inbox's conversations and its Archived list, each in the order given. A
+ * conversation is archived only while nothing newer than the archive arrived,
+ * which `dm_threads()` has already decided, so a reply is never filed away.
+ */
+export function partitionArchived<T extends DmThreadState>(
+	threads: readonly T[]
+): { inbox: T[]; archived: T[] } {
+	const inbox: T[] = [];
+	const archived: T[] = [];
+	for (const t of threads) (t.archived ? archived : inbox).push(t);
+	return { inbox, archived };
+}
+
+/// The nav badge: unread messages in conversations the runner has neither
+/// muted nor archived. A muted one is still listed with its own count.
+export function unreadDmBadgeCount(threads: readonly DmThreadState[]): number {
+	let total = 0;
+	for (const t of threads) {
+		if (t.muted || t.archived) continue;
+		total += Math.max(0, t.unread);
+	}
+	return total;
+}
+
 /// How long the Coach row's preview may run, in code points, before it is cut
 /// with an ellipsis.
 export const COACH_PREVIEW_MAX = 140;

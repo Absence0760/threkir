@@ -14,6 +14,7 @@
 <script lang="ts">
 	import { formatDate } from '#lib/format/time.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import type { DayGroup } from '#lib/timeline/day_groups.ts';
 
 	// The compact day-grouped rows shared by the /history timeline and the
@@ -49,14 +50,14 @@
 	<div class="timeline timeline-skel" aria-hidden="true">
 		{#each Array(2) as _, g (g)}
 			<div class="timeline-group">
-				<span class="skel skel-line skel-day"></span>
+				<SkeletonBlock height="0.7rem" width="6rem" />
 				<ul class="timeline-list card-elevated">
 					{#each Array(4) as _, i (i)}
 						<li class="timeline-item skel-item">
-							<span class="skel skel-glyph"></span>
+							<SkeletonBlock height="2.25rem" width="2.25rem" radius="50%" />
 							<span class="skel-rows">
-								<span class="skel skel-line skel-w-50"></span>
-								<span class="skel skel-line skel-w-30"></span>
+								<SkeletonBlock height="0.75rem" width="50%" />
+								<SkeletonBlock height="0.75rem" width="30%" />
 							</span>
 						</li>
 					{/each}
@@ -272,40 +273,10 @@
 		gap: var(--space-md);
 		padding: var(--space-sm) var(--space-md);
 	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		border-radius: var(--radius-sm);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line { height: 0.75rem; }
-	.skel-day { width: 6rem; height: 0.7rem; }
-	.skel-glyph {
-		width: 2.25rem;
-		height: 2.25rem;
-		border-radius: 50%;
-		flex-shrink: 0;
-	}
 	.skel-rows {
 		flex: 1;
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-xs);
-	}
-	.skel-w-30 { width: 30%; }
-	.skel-w-50 { width: 50%; }
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
 	}
 </style>

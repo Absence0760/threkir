@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { searchFoodSources, scalePortion, type FoodSearchResult } from '#lib/nutrition/food_search.ts';
 	import { entryTimestampFor } from '#lib/nutrition/diary_day.ts';
 	import { createFoodEntry } from '#lib/core/data.ts';
 	import { MEAL_SLOTS, type MealSlot } from '#lib/nutrition/nutrition_totals.ts';
 	import { m, currentLocale } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { PUBLIC_USDA_FDC_API_KEY } from '$app/env/public';
 	import { trackDirty } from '#lib/core/form_dirty.ts';
@@ -141,7 +142,7 @@
 			dirty.rebaseline();
 			oncreated();
 		} catch (e) {
-			showToast(m('nutrition.addFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('nutrition.addFailed', { error: errorCopy(e, m, 'nutrition.addFailed') }), 'error');
 			saving = false;
 		}
 	}
@@ -170,7 +171,7 @@
 			dirty.rebaseline();
 			oncreated();
 		} catch (e) {
-			showToast(m('nutrition.addFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('nutrition.addFailed', { error: errorCopy(e, m, 'nutrition.addFailed') }), 'error');
 			saving = false;
 		}
 	}
@@ -265,9 +266,9 @@
 		{#if searching}
 			<div class="results-state" data-testid="searching">
 				{#each Array(4) as _, i (i)}
-					<div class="skel-result" aria-hidden="true"></div>
+					<SkeletonBlock height="3.5rem" radius="var(--radius-md)" />
 				{/each}
-				<span class="visually-hidden">{m('nutrition.searching')}</span>
+				<span class="visually-hidden" role="status">{m('nutrition.searching')}</span>
 			</div>
 		{:else if results.length > 0}
 			<ul class="results" data-testid="food-results">
@@ -512,20 +513,6 @@
 	}
 	.results-state.empty p { margin: 0; }
 	.empty-icon { font-size: 2.25rem; color: var(--color-text-tertiary); opacity: 0.7; }
-	.skel-result {
-		height: 3.5rem;
-		border-radius: var(--radius-md);
-		background: linear-gradient(90deg, var(--color-bg-tertiary) 25%, var(--color-bg-secondary) 50%, var(--color-bg-tertiary) 75%);
-		background-size: 200% 100%;
-		animation: shimmer 1.4s ease-in-out infinite;
-	}
-	@keyframes shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel-result { animation: none; }
-	}
 
 	.manual-section { display: flex; flex-direction: column; gap: var(--space-md); }
 	.manual-toggle {

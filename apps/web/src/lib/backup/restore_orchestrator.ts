@@ -25,6 +25,8 @@ import {
 	RUN_RESTORE_COLUMNS
 } from './restore_columns';
 import { thrownMessage } from '../core/supabase_error';
+import { loggableMessage } from '../util/loggable_message';
+import { isEntityId } from '../core/entity_id';
 
 export interface RestoreProgress {
 	stage: 'reading' | 'profile' | 'tracks' | 'runs' | 'routes' | 'done';
@@ -32,12 +34,44 @@ export interface RestoreProgress {
 	total: number;
 }
 
+/**
+ * One part of the restore that did not land, as data rather than a sentence.
+ *
+ * It used to be `` `run ${origId}: ${thrownMessage(e)}` ``: PostgREST's English
+ * (table and constraint names) in a field a page could render. The account
+ * page shows only the count today, and the mobile twin renders each one
+ * through localized copy (`restore_warning.dart`, decisions § 2320), so the
+ * caught failure rides in `error` for the log and never as text.
+ */
+export type RestoreWarningKind =
+	| 'profile'
+	| 'settings'
+	| 'runUnreadable'
+	| 'routeUnreadable'
+	| 'track'
+	| 'run'
+	| 'route'
+	| 'columnsDropped';
+
+export interface RestoreWarning {
+	kind: RestoreWarningKind;
+	/** The archive's id for the row, when it had one. */
+	itemId?: string;
+	/** The row's zero-based position in its section of the archive. */
+	index?: number;
+	/** The section a `columnsDropped` warning is about, and the names it dropped. */
+	section?: 'profile' | 'runs' | 'routes';
+	columns?: string[];
+	/** The caught failure. For the log only, never rendered as text. */
+	error?: unknown;
+}
+
 export interface RestoreResult {
 	runsImported: number;
 	routesImported: number;
 	tracksUploaded: number;
 	profileRestored: boolean;
-	warnings: string[];
+	warnings: RestoreWarning[];
 	/** The archive's own `complete: false` verdict, carried to the UI. */
 	archiveIncomplete: boolean;
 	/** Section identifiers the archive named as short. May be empty. */
@@ -108,14 +142,38 @@ export interface RestoreBackend {
  * row of a section by construction.
  */
 function noteDroppedColumns(
-	section: string,
+	section: 'profile' | 'runs' | 'routes',
 	dropped: readonly string[],
 	result: RestoreResult
 ): void {
 	if (dropped.length === 0) return;
-	result.warnings.push(
-		`${section}: dropped ${[...dropped].sort().join(', ')} — not columns of this schema`
-	);
+	warn(result, { kind: 'columnsDropped', section, columns: [...dropped].sort() });
+}
+
+/**
+ * What the log records for a warning: nothing the archive could have written.
+ *
+ * Console output becomes a Sentry breadcrumb once the reader consents, and the
+ * archive is a file anyone can hand-edit, so its row ids and its JSON keys are
+ * free text a stranger chose. An id is kept only when it is shaped like one
+ * of our row ids; dropped columns are counted, never named; the caught
+ * failure goes through `loggableMessage`. `kind`, `index` and `section` are
+ * the orchestrator's own values. The warning itself still carries the raw id
+ * and names for the page.
+ */
+export function restoreWarningLogFields(w: RestoreWarning): Record<string, unknown> {
+	return {
+		itemId: w.itemId === undefined ? undefined : isEntityId(w.itemId) ? w.itemId : '<invalid>',
+		index: w.index,
+		section: w.section,
+		columnsDropped: w.columns?.length,
+		error: w.error === undefined ? undefined : loggableMessage(thrownMessage(w.error))
+	};
+}
+
+function warn(result: RestoreResult, w: RestoreWarning): void {
+	console.warn('[restore]', w.kind, restoreWarningLogFields(w));
+	result.warnings.push(w);
 }
 
 /// The archive is a file from disk, so a list entry can be any JSON value. A
@@ -164,14 +222,14 @@ export async function restoreOrchestrate(
 			await backend.upsertProfile(known.row);
 			result.profileRestored = true;
 		} catch (e) {
-			result.warnings.push(`profile: ${thrownMessage(e)}`);
+			warn(result, { kind: 'profile', error: e });
 		}
 	}
 	if (Object.keys(parsed.settingsPrefs).length > 0) {
 		try {
 			await backend.upsertSettings(parsed.settingsPrefs);
 		} catch (e) {
-			result.warnings.push(`settings_prefs: ${thrownMessage(e)}`);
+			warn(result, { kind: 'settings', error: e });
 		}
 	}
 
@@ -189,7 +247,7 @@ export async function restoreOrchestrate(
 		for (const r of runs) {
 			onProgress?.({ stage: 'runs', current: i, total: runs.length });
 			if (!isRowObject(r)) {
-				result.warnings.push(`run #${i + 1}: not a run row — skipped`);
+				warn(result, { kind: 'runUnreadable', index: i });
 				i++;
 				continue;
 			}
@@ -205,7 +263,7 @@ export async function restoreOrchestrate(
 					trackUrl = path;
 					result.tracksUploaded++;
 				} catch (e) {
-					result.warnings.push(`track ${origId}: ${thrownMessage(e)}`);
+					warn(result, { kind: 'track', itemId: origId, error: e });
 				}
 			}
 
@@ -246,7 +304,7 @@ export async function restoreOrchestrate(
 				await backend.upsertRun(known.row);
 				result.runsImported++;
 			} catch (e) {
-				result.warnings.push(`run ${origId}: ${thrownMessage(e)}`);
+				warn(result, { kind: 'run', itemId: origId, error: e });
 			}
 			i++;
 		}
@@ -261,7 +319,7 @@ export async function restoreOrchestrate(
 		for (const r of routes) {
 			onProgress?.({ stage: 'routes', current: i, total: routes.length });
 			if (!isRowObject(r)) {
-				result.warnings.push(`route #${i + 1}: not a route row — skipped`);
+				warn(result, { kind: 'routeUnreadable', index: i });
 				i++;
 				continue;
 			}
@@ -272,7 +330,12 @@ export async function restoreOrchestrate(
 				await backend.upsertRoute(known.row);
 				result.routesImported++;
 			} catch (e) {
-				result.warnings.push(`route ${r.id}: ${thrownMessage(e)}`);
+				warn(result, {
+					kind: 'route',
+					itemId: typeof r.id === 'string' ? r.id : undefined,
+					index: i,
+					error: e
+				});
 			}
 			i++;
 		}

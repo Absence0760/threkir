@@ -44,6 +44,7 @@ import '../widgets/gym_routine_picker.dart';
 import '../widgets/help_button.dart';
 import '../widgets/session_plan_picker.dart';
 import '../widgets/top_banner.dart';
+import '../widgets/loading_skeletons.dart';
 
 /// Host-only attendance marking is offered iff the viewer organises the
 /// event's club AND the event is a `class` (instructor_business.md M6).
@@ -1281,9 +1282,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final l10n = AppLocalizations.of(context);
     if (_loading) {
       return Scaffold(
-        body: FullBodyLoader(
-          kind: ActivityLoaderKind.run,
-          label: l10n.commonLoading,
+        appBar: AppBar(),
+        body: contentColumn(
+          context,
+          SectionedDetailSkeleton(
+            label: l10n.commonLoading,
+            hasAction: true,
+            hasLeading: true,
+          ),
         ),
       );
     }

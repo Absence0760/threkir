@@ -4,7 +4,6 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../lib/ai_disclosure_memo.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -14,6 +13,7 @@ import '../lib/screens/messages_screen.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/ai_tag.dart';
 import 'realtime_drain.dart';
+import 'supabase_test_init.dart';
 
 /// The AI Coach as a conversation in the Messages inbox (decisions § 2227):
 /// placed by the runner's setting, labelled as AI, previewing the newest
@@ -24,6 +24,7 @@ const _me = 'me';
 const _quiet = Duration(hours: 1);
 
 DmThread _thread(String id, DateTime lastAt) => DmThread(
+      conversationId: 'c-$id',
       partnerId: id,
       partnerName: 'Runner $id',
       lastBody: 'last from $id',
@@ -89,10 +90,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 

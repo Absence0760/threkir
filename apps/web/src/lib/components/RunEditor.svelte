@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { audienceSharingEnabled, createManualRun, fetchRoutes } from '#lib/core/data.ts';
 	import { loadSettings, effective } from '#lib/settings/settings.ts';
@@ -8,6 +7,7 @@
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { getUnit } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { ACTIVITY_TYPES } from '#lib/runs/activity_type.ts';
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import type { ActivityType, Route } from '#lib/types.ts';
@@ -132,7 +132,7 @@
 			dirty.rebaseline();
 			oncreated?.({ id });
 		} catch (err) {
-			showToast(m('runEditor.addRunFailed', { error: thrownMessage(err) }), 'error');
+			showToast(m('runEditor.addRunFailed', { error: errorCopy(err, m, 'runEditor.addRunFailed') }), 'error');
 		} finally {
 			submitting = false;
 		}

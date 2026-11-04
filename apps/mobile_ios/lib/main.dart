@@ -631,8 +631,8 @@ void main() async {
           debugPrint('Auto sign-in failed: $e');
         }
       }
-      // Best-effort — the service stores `lastError` for the settings
-      // screen to surface.
+      // Best-effort — a failed load leaves `synced` false and the settings
+      // screen reads that.
       try {
         await settingsSync?.onSignedIn();
       } catch (e) {
@@ -888,51 +888,54 @@ class _RunAppState extends State<RunApp> {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: Listenable.merge([themeModeNotifier, localeNotifier]),
-      builder: (context, _) {
-        return MaterialApp(
-          title: 'Threkir',
-          navigatorKey: appNavigatorKey,
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.light,
-          darkTheme: AppTheme.dark,
-          themeMode: themeModeNotifier.value,
-          locale: localeNotifier.value,
-          supportedLocales: supportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          // `locale` (when the user has picked) or the device's ordered
-          // locale list is negotiated down to one of our six catalogues.
-          localeListResolutionCallback: (locales, supported) =>
-              negotiateLocale(null, locales?.toList() ?? const []),
-          home: widget.preferences.onboarded
-              ? HomeScreen(
-                  apiClient: widget.apiClient,
-                  runStore: widget.runStore,
-                  routeStore: widget.routeStore,
-                  gearStore: widget.gearStore,
-                  gymStore: widget.gymStore,
-                  foodStore: widget.foodStore,
-                  preferences: widget.preferences,
-                  audioCues: widget.audioCues,
-                  social: widget.social,
-                  raceController: widget.raceController,
-                  training: widget.training,
-                  heartRate: widget.heartRate,
-                  treadmill: widget.treadmill,
-                  settingsSync: widget.settingsSync,
-                  syncService: widget.syncService,
-                  recoveredRun: widget.recoveredRun,
-                  recoveryBannerMessage: widget.recoveryBannerMessage,
-                  resumablePartial: widget.resumablePartial,
-                )
-              : OnboardingScreen(
-                  preferences: widget.preferences,
-                  settingsSync: widget.settingsSync,
-                  onDone: () => setState(() {}),
-                ),
-        );
-      },
+    return UndoSessionGuard(
+      api: widget.apiClient,
+      child: ListenableBuilder(
+        listenable: Listenable.merge([themeModeNotifier, localeNotifier]),
+        builder: (context, _) {
+          return MaterialApp(
+            title: 'Threkir',
+            navigatorKey: appNavigatorKey,
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light,
+            darkTheme: AppTheme.dark,
+            themeMode: themeModeNotifier.value,
+            locale: localeNotifier.value,
+            supportedLocales: supportedLocales,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            // `locale` (when the user has picked) or the device's ordered
+            // locale list is negotiated down to one of our six catalogues.
+            localeListResolutionCallback: (locales, supported) =>
+                negotiateLocale(null, locales?.toList() ?? const []),
+            home: widget.preferences.onboarded
+                ? HomeScreen(
+                    apiClient: widget.apiClient,
+                    runStore: widget.runStore,
+                    routeStore: widget.routeStore,
+                    gearStore: widget.gearStore,
+                    gymStore: widget.gymStore,
+                    foodStore: widget.foodStore,
+                    preferences: widget.preferences,
+                    audioCues: widget.audioCues,
+                    social: widget.social,
+                    raceController: widget.raceController,
+                    training: widget.training,
+                    heartRate: widget.heartRate,
+                    treadmill: widget.treadmill,
+                    settingsSync: widget.settingsSync,
+                    syncService: widget.syncService,
+                    recoveredRun: widget.recoveredRun,
+                    recoveryBannerMessage: widget.recoveryBannerMessage,
+                    resumablePartial: widget.resumablePartial,
+                  )
+                : OnboardingScreen(
+                    preferences: widget.preferences,
+                    settingsSync: widget.settingsSync,
+                    onDone: () => setState(() {}),
+                  ),
+          );
+        },
+      ),
     );
   }
 }

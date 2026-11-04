@@ -4,8 +4,8 @@
 	// § 2267). The `head_to_head` read only returns friends every rule admits,
 	// so the picker never offers someone who cannot be compared.
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { fetchHeadToHead } from '#lib/core/data.ts';
 	import { headToHeadName, type HeadToHeadKind, type HeadToHeadRow } from '#lib/social/head_to_head.ts';
 	import { headToHeadPreviewKey, paintHeadToHead } from '#lib/share/head_to_head_canvas.ts';
@@ -99,7 +99,7 @@
 			.catch((e) => {
 				if (seq !== renderSeq) return;
 				console.warn('head-to-head render failed', e);
-				showToast(m('runDetail.imageGenerateFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('runDetail.imageGenerateFailed', { error: errorCopy(e, m, 'runDetail.imageGenerateFailed') }), 'error');
 			})
 			.finally(() => {
 				if (seq === renderSeq) rendering = false;
@@ -125,7 +125,7 @@
 			showToast(m('runDetail.imageSaved'), 'success');
 		} catch (e) {
 			if (!(e instanceof DOMException && e.name === 'AbortError')) {
-				showToast(m('runDetail.imageGenerateFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('runDetail.imageGenerateFailed', { error: errorCopy(e, m, 'runDetail.imageGenerateFailed') }), 'error');
 			}
 		} finally {
 			busy = false;

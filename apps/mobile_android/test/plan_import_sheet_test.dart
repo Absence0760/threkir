@@ -105,12 +105,14 @@ class _Result {
   bool closed = false;
 }
 
-Future<_Result> _open(WidgetTester tester, TrainingService training) async {
+Future<_Result> _open(WidgetTester tester, TrainingService training,
+    {Locale? locale}) async {
   final result = _Result();
   await tester.binding.setSurfaceSize(const Size(400, 900));
   addTearDown(() => tester.binding.setSurfaceSize(null));
   await tester.pumpWidget(
     MaterialApp(
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
@@ -186,9 +188,32 @@ void main() {
       ].join('\n'),
     );
     expect(find.textContaining("Couldn't read that plan"), findsOneWidget);
-    expect(find.textContaining('Bad date'), findsOneWidget);
+    expect(find.textContaining('Couldn\'t read the date "07/05/2026"'),
+        findsOneWidget);
     expect(find.byKey(const Key('planImportPreview')), findsNothing);
     expect(find.byKey(const Key('planImportCreate')), findsNothing);
+  });
+
+  // The reason used to be the parser's English message dropped into the
+  // localized sentence, so a German runner read "… gelesen werden: Bad date".
+  testWidgets('the parse reason reads in the runner\'s language', (
+    tester,
+  ) async {
+    await _open(tester, _Training(), locale: const Locale('de'));
+    await _paste(
+      tester,
+      [
+        '| Week | Date | Type | Distance | Pace | Notes |',
+        '| --- | --- | --- | --- | --- | --- |',
+        '| 1 | 07/05/2026 | easy | 5 km | | |',
+      ].join('\n'),
+    );
+    final de = lookupAppLocalizations(const Locale('de'));
+    expect(
+        find.text(de.planImportParseError(
+            de.planImportErrorBadDate('07/05/2026'))),
+        findsOneWidget);
+    expect(find.textContaining('Bad date'), findsNothing);
   });
 
   testWidgets('editing the text after Load drops the stale preview', (

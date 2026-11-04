@@ -3,10 +3,10 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
-        ActivityLoaderKind,
         AppSemanticColors,
-        FullBodyLoader,
         IdentityAvatar,
+        ListSkeleton,
+        SkeletonBlock,
         StatGrid,
         StatTile;
 
@@ -14,23 +14,12 @@ import '../backend_timeout.dart';
 import '../catalogue_browse.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart';
+import '../route_surface_label.dart';
 import '../widgets/error_state.dart';
 import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/track_preview.dart';
-
-/// Localized name for a stored `surface` token. An unrecognised value is
-/// returned VERBATIM: the CHECK constraint means a stray token can only appear
-/// when this client is older than the database, and a prettified guess is
-/// indistinguishable from a real translation. Mirrors web's
-/// `routeSurfaceLabel`.
-String catalogueSurfaceLabel(AppLocalizations l10n, String surface) =>
-    switch (surface) {
-      'road' => l10n.routesSurfaceRoad,
-      'trail' => l10n.routesSurfaceTrail,
-      'mixed' => l10n.routesSurfaceMixed,
-      _ => surface,
-    };
+import '../widgets/loading_skeletons.dart';
 
 /// Browse list for the curated famous-segment catalogue (decisions §233).
 /// Mobile mirror of web `/segments`: search with accent folding, region and
@@ -128,9 +117,19 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.segmentCatalogueTitle)),
       body: _loading
-          ? FullBodyLoader(
-              kind: ActivityLoaderKind.run,
-              label: l10n.segmentsPanelLoading,
+          ? ListView(
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              children: [
+                const SkeletonBlock(height: 14, radius: 4),
+                const SizedBox(height: 12),
+                const SkeletonBlock(height: 56),
+                const SizedBox(height: 12),
+                ListSkeleton.section(
+                  label: l10n.segmentsPanelLoading,
+                  rows: 6,
+                ),
+              ],
             )
           : _error
               ? ErrorState(
@@ -234,7 +233,7 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
                     for (final s in surfaces)
                       DropdownMenuItem(
                         value: s,
-                        child: Text(catalogueSurfaceLabel(l10n, s)),
+                        child: Text(routeSurfaceLabel(l10n, s)),
                       ),
                   ],
                   onChanged: (v) => setState(() => _surface = v),
@@ -318,7 +317,7 @@ class _CatalogueCard extends StatelessWidget {
                   formatDistanceForPref((segment.distanceM ?? 0).toDouble()),
                   if (elevation != null && elevation > 0)
                     formatElevationForPref(elevation.toDouble()),
-                  catalogueSurfaceLabel(l10n, segment.surface),
+                  routeSurfaceLabel(l10n, segment.surface),
                 ].join(' · '),
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
@@ -435,9 +434,19 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
         title: Text(segment?.name ?? l10n.segmentCatalogueTitle),
       ),
       body: _loading
-          ? FullBodyLoader(
-              kind: ActivityLoaderKind.run,
-              label: l10n.segmentsPanelLoading,
+          ? ListView(
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              children: [
+                const SkeletonStatStrip(cells: 3),
+                const SizedBox(height: 16),
+                const SkeletonBlock(height: 160),
+                const SizedBox(height: 16),
+                ListSkeleton.section(
+                  label: l10n.segmentsPanelLoading,
+                  rows: 5,
+                ),
+              ],
             )
           : _loadFailed
               ? ErrorState(
@@ -515,7 +524,7 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
               ),
             StatTile.medium(
               label: l10n.segmentCatalogueStatSurface,
-              value: catalogueSurfaceLabel(l10n, segment.surface),
+              value: routeSurfaceLabel(l10n, segment.surface),
             ),
           ],
         ),

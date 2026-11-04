@@ -105,7 +105,14 @@ test('restore: a run entry that is not an object is skipped with a warning and t
 	assert.deepEqual(runs.map((r) => r.id), ['a', 'b']);
 	assert.equal(result.runsImported, 2);
 	assert.equal(routes.length, 1, 'a bad run row does not cost the routes section');
-	assert.equal(result.warnings.filter((w) => w.startsWith('run ')).length, 3, result.warnings.join('\n'));
+	assert.deepEqual(
+		result.warnings.map((w) => [w.kind, w.index]),
+		[
+			['runUnreadable', 1],
+			['runUnreadable', 2],
+			['runUnreadable', 3],
+		],
+	);
 });
 
 test('restore: a route entry that is not an object is skipped with a warning', async () => {
@@ -117,5 +124,11 @@ test('restore: a route entry that is not an object is skipped with a warning', a
 	);
 	assert.deepEqual(routes.map((r) => r.id), ['route-1']);
 	assert.equal(result.routesImported, 1);
-	assert.equal(result.warnings.filter((w) => w.startsWith('route ')).length, 2, result.warnings.join('\n'));
+	assert.deepEqual(
+		result.warnings.map((w) => [w.kind, w.index]),
+		[
+			['routeUnreadable', 0],
+			['routeUnreadable', 2],
+		],
+	);
 });

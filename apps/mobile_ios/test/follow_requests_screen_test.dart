@@ -3,10 +3,10 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/follow_requests_screen.dart';
+import 'supabase_test_init.dart';
 
 class _FakeApi extends ApiClient {
   _FakeApi(this.requests, {this.declineThrows = false});
@@ -55,10 +55,7 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     SharedPreferences.setMockInitialValues({});
-    await Supabase.initialize(
-      url: 'http://127.0.0.1:24321',
-      anonKey: 'eyJ.local.test',
-    );
+    await initializeTestSupabase();
   });
 
   testWidgets('approving removes the row and calls the approve RPC',

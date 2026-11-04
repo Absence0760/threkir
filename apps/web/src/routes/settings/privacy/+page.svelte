@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { effective, updateUniversal } from '#lib/settings/settings.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import {
 		setDiscoverableArea,
 		clearDiscoverableArea,
@@ -71,7 +71,7 @@
 			await setProfilePrivate(next);
 		} catch (e) {
 			profilePrivate = !next;
-			showToast(m('prefs.privateProfileFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('prefs.privateProfileFailed', { error: errorCopy(e, m, 'prefs.privateProfileFailed') }), 'error');
 		} finally {
 			profilePrivateSaving = false;
 		}
@@ -95,7 +95,7 @@
 			nearbyAreaInput = '';
 			showToast(m('prefs.nearbyAreaSaved'), 'success');
 		} catch (e) {
-			showToast(m('prefs.nearbyAreaFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('prefs.nearbyAreaFailed', { error: errorCopy(e, m, 'prefs.nearbyAreaFailed') }), 'error');
 		} finally {
 			nearbySavingArea = false;
 		}
@@ -109,7 +109,7 @@
 			nearbyAreaLabel = null;
 			showToast(m('prefs.nearbyAreaCleared'), 'success');
 		} catch (e) {
-			showToast(m('prefs.nearbyAreaFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('prefs.nearbyAreaFailed', { error: errorCopy(e, m, 'prefs.nearbyAreaFailed') }), 'error');
 		} finally {
 			nearbySavingArea = false;
 		}
@@ -135,7 +135,7 @@
 			});
 			privacyZones = next;
 		} catch (e) {
-			showToast(m('prefs.zoneSaveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('prefs.zoneSaveFailed', { error: errorCopy(e, m, 'prefs.zoneSaveFailed') }), 'error');
 		}
 	}
 

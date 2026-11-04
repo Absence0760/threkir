@@ -76,6 +76,15 @@ const badBag: Insertable<'runs'> = {
 	metadata: { when: new Date() },
 };
 
+// --- A trigger-assigned NOT NULL column is left out of the insert shape ---
+
+// `direct_messages_set_conversation` fills `conversation_id`; the generator
+// cannot see the trigger and makes it required, which no send could satisfy.
+const dmSend: Insertable<'direct_messages'> = { sender_id: 'a', recipient_id: 'b', body: 'hi' };
+const dmRowConversation: AppDatabase['public']['Tables']['direct_messages']['Row']['conversation_id'] = 'c';
+// @ts-expect-error the Row still carries it as a non-null string
+const dmRowNullConversation: AppDatabase['public']['Tables']['direct_messages']['Row']['conversation_id'] = null;
+
 // --- A select list has to reach supabase-js as a literal ---
 
 const joined: Join<readonly ['id', 'user_id', 'distance_m'], ', '> =
@@ -90,6 +99,9 @@ void wrongType;
 void runPatch;
 void typoPatch;
 void badBag;
+void dmSend;
+void dmRowConversation;
+void dmRowNullConversation;
 void joined;
 void misjoined;
 

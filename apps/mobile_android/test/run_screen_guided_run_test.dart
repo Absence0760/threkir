@@ -9,7 +9,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wakelock_plus_platform_interface/wakelock_plus_platform_interface.dart';
 
 import '../lib/audio_cues.dart';
@@ -29,6 +28,7 @@ import '../lib/training_service.dart';
 import '../lib/watch_settings.dart';
 import 'pump_until.dart';
 import 'pre_run_dialogs.dart';
+import 'supabase_test_init.dart';
 
 /// Drives the REAL RunScreen through the REAL guided-run affordance and the
 /// REAL recorder tick — not a replica of the screen's wiring beside it
@@ -208,10 +208,7 @@ void main() {
       isOptional: true,
     );
     if (!supabaseReady) {
-      await Supabase.initialize(
-        url: 'http://127.0.0.1:24321',
-        anonKey: 'eyJ.local.test',
-      );
+      await initializeTestSupabase();
       supabaseReady = true;
     }
   });

@@ -1,3 +1,4 @@
+import 'package:core_models/core_models.dart' show DistanceUnit;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/race_plan_prefill.dart';
@@ -110,6 +111,43 @@ void main() {
         recentEffort:
             const RacePlanEffort(distanceM: 5000, durationS: 1500, ageDays: 0.2),
       ).endsWith('5 km in 25:00, today.'),
+      isTrue,
+    );
+  });
+
+  test('describe: a miles runner reads miles and feet', () {
+    expect(
+      racePlanDescribe(
+        race: _richmond,
+        goalTimeS: 13500,
+        recentEffort: const RacePlanEffort(
+            distanceM: 10000, durationS: 2910, ageDays: 12.3),
+        course: const RacePlanCourse(
+            ascentM: 250.4, descentM: 240, surface: ' road '),
+        unit: DistanceUnit.mi,
+      ),
+      'Race: Richmond Marathon on 2026-11-14. Distance: 26.2 mi. Goal time: 3:45:00. '
+      'Recent effort: 6.2 mi in 48:30, 12 days ago. Course: 822 ft ascent, 787 ft descent, road surface.',
+    );
+  });
+
+  test('describe: mile distances round the same on both platforms', () {
+    String at(num distanceM) => racePlanDescribe(
+          race: RacePlanRace(
+              name: 'R', raceDateIso: '2027-04-04', distanceM: distanceM),
+          unit: DistanceUnit.mi,
+        );
+    expect(at(5000), 'Race: R on 2027-04-04. Distance: 3.1 mi.');
+    expect(at(21097.5), 'Race: R on 2027-04-04. Distance: 13.1 mi.');
+    expect(at(50000), 'Race: R on 2027-04-04. Distance: 31.1 mi.');
+    expect(at(160934.4), 'Race: R on 2027-04-04. Distance: 100 mi.');
+    expect(
+      racePlanDescribe(
+        race: const RacePlanRace(name: 'R', raceDateIso: '2027-04-04'),
+        recentEffort: const RacePlanEffort(
+            distanceM: 1609.344, durationS: 400, ageDays: 1),
+        unit: DistanceUnit.mi,
+      ).endsWith('Recent effort: 1 mi in 6:40, 1 day ago.'),
       isTrue,
     );
   });

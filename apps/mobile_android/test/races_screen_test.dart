@@ -146,8 +146,12 @@ RaceListingView _listing(String id, String name,
 /// A race date [days] out from today. The plan action is gated on a live
 /// `racePlanPreset` call, so a fixture pinned to a calendar date would stop
 /// exercising the gate the day it fell into the past.
-String _isoDaysOut(int days) =>
-    toIsoDate(DateTime.now().add(Duration(days: days)));
+// Calendar days, not `Duration(days:)`: a 24 h step lands on the wrong date
+// when the span crosses a DST change, which the screen's own window doesn't.
+String _isoDaysOut(int days) {
+  final now = DateTime.now();
+  return toIsoDate(DateTime(now.year, now.month, now.day + days));
+}
 
 Widget _app(RaceService service,
         {double textScale = 1.0, double bottomInset = 0}) =>

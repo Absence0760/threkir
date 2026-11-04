@@ -10,8 +10,9 @@
 		slotCalorieTrend,
 	} from '#lib/nutrition/meal_detail.ts';
 	import { formatDateShort } from '#lib/format/time.ts';
-	import ActivityLoader from '#lib/components/ActivityLoader.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	let date = $derived(page.params.date as string);
 	let slot = $derived(page.params.slot as MealSlot);
@@ -49,7 +50,7 @@
 		// Surface a real fetch failure as a retry banner — otherwise a 0-kcal slot
 		// is indistinguishable from a genuinely empty meal.
 		const res = await fetchFoodLogWithError(windowStart.toISOString(), end.toISOString());
-		loadError = res.error;
+		loadError = res.error ? errorCopy(res.error, m, 'nutrition slot: loadError') : null;
 		allEntries = res.entries;
 		loading = false;
 	}
@@ -78,7 +79,37 @@
 		</header>
 
 		{#if loading}
-			<div class="act-load"><ActivityLoader kind="fuel" size={76} label={m('nutrition.loading')} /></div>
+			<div aria-hidden="true" data-testid="meal-skeleton">
+				<section class="card-elevated macro-card">
+					<SkeletonBlock height="2.4rem" width="7rem" />
+					<div class="macro-breakdown">
+						{#each Array(3) as _, i (i)}
+							<div class="macro-stat skel-stat">
+								<SkeletonBlock height="1rem" width="3rem" />
+								<SkeletonBlock height="0.75rem" width="3.5rem" />
+							</div>
+						{/each}
+					</div>
+				</section>
+				<section class="card-elevated items-card">
+					<h2><SkeletonBlock height="1.2rem" width="30%" /></h2>
+					<ul class="item-list">
+						{#each Array(3) as _, i (i)}
+							<li>
+								<div class="item-row">
+									<SkeletonBlock height="0.95rem" width="{36 + (i % 3) * 12}%" />
+									<SkeletonBlock height="0.95rem" width="4rem" />
+								</div>
+							</li>
+						{/each}
+					</ul>
+				</section>
+				<section class="card-elevated trend-card">
+					<h2><SkeletonBlock height="1.2rem" width="30%" /></h2>
+					<SkeletonBlock height="8rem" radius="var(--radius-md)" />
+				</section>
+			</div>
+			<p class="visually-hidden" role="status">{m('nutrition.loading')}</p>
 		{:else if loadError}
 			<div class="load-error-banner" role="alert" data-testid="meal-load-error">
 				<span class="material-symbols" aria-hidden="true">error</span>
@@ -147,11 +178,6 @@
 </div>
 
 <style>
-	.act-load {
-		display: flex;
-		justify-content: center;
-		padding: var(--space-2xl) 0;
-	}
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
 		max-width: 48rem;
@@ -206,6 +232,9 @@
 	.macro-stat {
 		display: flex;
 		flex-direction: column;
+	}
+	.skel-stat {
+		gap: 0.3rem;
 	}
 	.macro-stat-val {
 		font-weight: 600;

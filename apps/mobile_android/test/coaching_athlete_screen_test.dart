@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart' show ListSkeleton, TextLane;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
 import '../lib/l10n/date_format.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -26,12 +27,13 @@ class _FakeApi extends ApiClient {
     this.overviewAfterRefusal,
     this.loadError,
     this.mapEnabled = false,
+    this.rereadError,
   });
 
   final List<AthleteRunSummary> runs;
   AthletePlanOverview? overview;
   final List<TrainingPlanRow> plans;
-  final String? assignError;
+  final Object? assignError;
 
   /// Refuse the assignment the way the server does for an overlap (23P01).
   final bool assignOverlap;
@@ -41,6 +43,11 @@ class _FakeApi extends ApiClient {
   DateTime? lastAssignedStart;
   final Object? loadError;
   final bool mapEnabled;
+
+  /// Thrown by every overview read after the first, i.e. the re-read that
+  /// follows an assign.
+  final Object? rereadError;
+  int _overviewReads = 0;
 
   String? lastAssignedPlanId;
   final List<String> clipped = [];
@@ -72,8 +79,10 @@ class _FakeApi extends ApiClient {
   Future<AthletePlanOverview?> fetchAthletePlanOverview(
     String athleteId, {
     required TrainingPlanRow? Function(List<TrainingPlanRow> activePlans) pick,
-  }) async =>
-      overview;
+  }) async {
+    if (_overviewReads++ > 0 && rereadError != null) throw rereadError!;
+    return overview;
+  }
 
   @override
   Future<List<TrainingPlanRow>> fetchMyPlans({int limit = 100}) async => plans;
@@ -91,7 +100,7 @@ class _FakeApi extends ApiClient {
       throw const PlanAssignOverlapException(
           'assign_plan_to_athlete: these dates overlap the athlete\'s active plan');
     }
-    if (assignError != null) throw Exception(assignError);
+    if (assignError != null) throw assignError!;
     lastAssignedPlanId = sourcePlanId;
     return 'new-plan';
   }
@@ -614,12 +623,16 @@ void main() {
     expect(find.text('Walk run'), findsNothing);
   });
 
-  testWidgets('surfaces the assign RPC raise as a banner (no swallow)',
+  testWidgets(
+      'an assign refusal shows localized copy, never the RPC raise text',
       (tester) async {
     final prefs = await _prefs();
     final api = _FakeApi(
       plans: [_plan('p1', 'Base Builder')],
-      assignError: 'athlete already has an active plan',
+      assignError: const PostgrestException(
+        code: 'P0001',
+        message: 'assign_plan_to_athlete: not an active coach of athlete a1',
+      ),
     );
     await _pump(tester, api, prefs);
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
@@ -633,7 +646,66 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.text('athlete already has an active plan'), findsOneWidget);
+    expect(find.text(l10n.coachingAthleteAssignError), findsOneWidget);
+    expect(find.textContaining('assign_plan_to_athlete'), findsNothing);
+  });
+
+  testWidgets(
+      'an assign that fails offline says so, not that the assign was refused',
+      (tester) async {
+    final prefs = await _prefs();
+    final api = _FakeApi(
+      plans: [_sourcePlan()],
+      assignError: const SocketException("Failed host lookup: 'xyz.supabase.co'"),
+    );
+    await _pump(tester, api, prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await pickSourceAndAssign(tester, l10n);
+
+    expect(find.text(l10n.authErrorOffline), findsOneWidget);
+    expect(find.text(l10n.coachingAthleteAssignError), findsNothing);
+  });
+
+  testWidgets('an assign refused for a signed-out caller asks them to sign in',
+      (tester) async {
+    final prefs = await _prefs();
+    final api = _FakeApi(
+      plans: [_sourcePlan()],
+      assignError: const PostgrestException(
+        code: 'P0001',
+        message: 'assign_plan_to_athlete: not authenticated',
+      ),
+    );
+    await _pump(tester, api, prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await pickSourceAndAssign(tester, l10n);
+
+    expect(find.text(l10n.authErrorNotSignedIn), findsOneWidget);
+    expect(find.text(l10n.coachingAthleteAssignError), findsNothing);
+  });
+
+  testWidgets(
+      'a re-read that fails after the plan is assigned still reports the '
+      'assign, and clears the pick so it is not sent twice', (tester) async {
+    final prefs = await _prefs();
+    final api = _FakeApi(
+      plans: [_sourcePlan()],
+      rereadError: const SocketException('Connection reset by peer'),
+    );
+    await _pump(tester, api, prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await pickSourceAndAssign(tester, l10n);
+    await tester.pump();
+
+    expect(api.lastAssignedPlanId, 'src');
+    expect(find.text(l10n.coachingAthleteAssignSuccess('Alice Runner')),
+        findsOneWidget);
+    expect(find.text(l10n.coachingAthleteAssignError), findsNothing);
+    final button = tester.widget<ButtonStyleButton>(find.ancestor(
+        of: find.text(l10n.coachingAthleteAssignButton),
+        matching: find.bySubtype<ButtonStyleButton>()));
+    expect(button.onPressed, isNull,
+        reason: 'the pick is cleared, so the same plan is not assigned again');
   });
 
   testWidgets(

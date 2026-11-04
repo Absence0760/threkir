@@ -1487,7 +1487,7 @@ test('every "answered empty" read that a stranger can hit reports the failure se
 	const publicRun = bodyOf('fetchPublicRun');
 	assert.match(
 		publicRun,
-		/Promise<\{ run: Run \| null; error: string \| null \}>/,
+		/Promise<\{ run: Run \| null; error: Error \| null \}>/,
 		'fetchPublicRun must report the failure alongside the row, like fetchRunById',
 	);
 	assert.match(
@@ -1505,12 +1505,12 @@ test('every "answered empty" read that a stranger can hit reports the failure se
 	const attribution = bodyOf('fetchPublicRunAttribution');
 	assert.match(
 		attribution,
-		/Promise<\{ attribution: PublicRunAttribution \| null; error: string \| null \}>/,
+		/Promise<\{ attribution: PublicRunAttribution \| null; error: Error \| null \}>/,
 		'fetchPublicRunAttribution must report its failure — a caller cannot otherwise tell "not yours" from "unknown"',
 	);
 	assert.match(
 		attribution,
-		/if \(error\) return \{ attribution: null, error: error\.message \};/,
+		/if \(error\) return \{ attribution: null, error: dbError\(error\) \};/,
 		'the public_runs read is the entitlement; its failure is not a non-entitlement',
 	);
 
@@ -1553,7 +1553,7 @@ test('enrichClubs reports a failed membership read instead of asserting non-memb
 	const body = source.slice(start, source.indexOf('\nexport ', start + 1));
 	assert.match(
 		body,
-		/Promise<\{ clubs: ClubWithMeta\[\]; error: string \| null \}>/,
+		/Promise<\{ clubs: ClubWithMeta\[\]; error: Error \| null \}>/,
 		'enrichClubs must return the failure in the same shape its callers already return',
 	);
 	assert.match(
@@ -1851,15 +1851,13 @@ test('no enumerated read, and no row type, names a column the client is not gran
 // field yields `undefined` rather than throwing, so the only assertion that can
 // see the defect is one the compiler makes (§ 1294 / § 1330).
 
-/// The period drilldown projects five of `runs`' twenty-four columns. Each of
+/// The period drilldown projects six of `runs`' twenty-four columns. Each of
 /// these was a field `Run` promised and the query never fetched. The
 /// `@ts-expect-error` is the mutation test: widen the return type back to
 /// `Run[]` and every directive here reports unused, which fails the build.
 export const periodSummaryWithheldReadsDoNotCompile = (r: PeriodSummaryRun) => [
 	// @ts-expect-error — the jsonb bag the drilldown does not read
 	r.metadata,
-	// @ts-expect-error — not in PERIOD_SUMMARY_RUN_COLUMNS
-	r.elevation_gain_m,
 	// @ts-expect-error — not in PERIOD_SUMMARY_RUN_COLUMNS
 	r.activity_type,
 	// @ts-expect-error — not in PERIOD_SUMMARY_RUN_COLUMNS
@@ -1982,7 +1980,7 @@ test('the exercise catalogue read pages, and says so when it fails', () => {
 	// a row (§ 1936).
 	assert.match(body, /walkKeyset\(EXERCISE_ORDER,/, 'an unranged select is capped at db.max-rows with no flag');
 	assert.doesNotMatch(body, /\.range\(/, 'the catalogue must not be walked by offset');
-	assert.match(body, /if \(!walk\.complete\)[\s\S]*?error: `\$\{message\}/, 'a failed read must surface, not return []');
+	assert.match(body, /if \(!walk\.complete\)[\s\S]*?error: dbError\(walk\.error\)/, 'a failed read must surface, not return []');
 	assert.match(
 		body,
 		/dedupeShadowedExercises\(/,
@@ -2382,4 +2380,88 @@ test('reschedulePlanAfterBreak sends the previewed change as one RPC and surface
 	}
 	assert.match(body, /if \(error\) throw dbError\(error\);/);
 	assert.doesNotMatch(body, /\.from\(/, 'the reschedule must not write tables around the RPC');
+});
+
+test('deleteRoute removes the photo files only after the row delete succeeded, and never fails on them', () => {
+	// Reason: removing the files first and then failing the row delete left a
+	// route whose photos 404 forever; and a storage error after the row is gone
+	// must not report the delete as failed, because the route IS deleted and a
+	// retry would only meet "not found". Orphaned files are logged, not thrown.
+	// The photo path read before the delete only feeds that sweep, so a failed
+	// read must cost the sweep and still let the row delete run.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const start = source.indexOf('export async function deleteRoute(');
+	assert.ok(start >= 0, 'Could not locate deleteRoute — rename?');
+	const next = source.indexOf('\nexport ', start + 1);
+	const body = source.slice(start, next > start ? next : undefined);
+
+	const rowDelete = body.search(/\.from\('routes'\)\s*\.delete\(\)/);
+	const rowError = body.indexOf('if (error) throw dbError(error);', rowDelete);
+
+	const photoRead = body.search(/\.from\(TABLES\.route_photos\)\s*\.select\(/);
+	assert.ok(photoRead >= 0 && photoRead < rowDelete, 'deleteRoute must read the photo paths before the row cascade takes them.');
+	const readTry = body.lastIndexOf('try {', photoRead);
+	const readCatch = body.indexOf('} catch (e) {', photoRead);
+	assert.ok(readTry >= 0 && readCatch > photoRead && readCatch < rowDelete, 'the photo path read must sit in its own try/catch that closes before the row delete.');
+	const readCatchBody = body.slice(readCatch, rowDelete);
+	assert.match(readCatchBody, /console\.warn\(/, 'a failed photo path read must be logged.');
+	assert.doesNotMatch(readCatchBody, /\b(throw|return)\b/, 'a failed photo path read must not stop the row delete.');
+	assert.doesNotMatch(body, /throw dbError\(photosError\)/, 'a photo path read error must not be rethrown out of deleteRoute.');
+	const refused = body.indexOf("throw new DbError('route delete refused'");
+	const remove = body.search(/\.storage\.from\(BUCKETS\.route_photos\)\.remove\(/);
+	assert.ok(rowDelete >= 0 && rowError > rowDelete, 'deleteRoute must throw on a failed row delete.');
+	assert.ok(refused > rowError, 'deleteRoute must throw when RLS silently deleted nothing.');
+	assert.ok(remove > refused, 'the storage remove must come after every way the row delete can fail.');
+	assert.equal(
+		body.match(/\.remove\(/g)?.length,
+		1,
+		'deleteRoute must remove the photo files in exactly one place.',
+	);
+
+	const tail = body.slice(remove);
+	const tryAt = body.lastIndexOf('try {', remove);
+	assert.ok(tryAt > refused, 'the storage remove must sit inside its own try, so a thrown error is caught.');
+	assert.match(tail, /catch \(e\) \{\s*removeError = e;\s*\}/, 'a thrown storage error must be captured, not rethrown.');
+	assert.match(tail, /if \(removeError\) \{\s*console\.warn\(/, 'a storage failure must be logged as orphaned files.');
+	assert.doesNotMatch(tail, /\bthrow\b/, 'nothing after the storage remove may throw — the route is already gone.');
+	assert.doesNotMatch(tail, /\breturn\b/, 'deleteRoute resolves void once the row is gone.');
+});
+
+test('a sentence the data layer throws for the reader is an AppError, not English', () => {
+	// Reason: `throw new Error('Image too large (10 MB max)')` reached the page
+	// as English, or as a generic line once `errorCopy` took over the screens.
+	// An `AppError` carries its catalogue key, so the reader gets the specific
+	// sentence in their own language. What is left below either names a
+	// category `errorCopy` already classifies (signed out, not found, owner
+	// only) or reports a malformed server answer no reader can act on.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const thrown = new Set(
+		[...source.matchAll(/throw new Error\((['"`])([^'"`]* [^'"`]*)\1\)/g)].map((m) => m[2]),
+	);
+	const known = new Set([
+		'Not authenticated',
+		'Not signed in',
+		'not signed in',
+		'Source plan not found',
+		'Source session plan not found',
+		'Plan not found.',
+		'Only the plan owner can publish',
+		'No onboarding URL returned',
+		'No checkout URL returned',
+		'clip-public-track returned malformed payload',
+		'route_delete_impact returned no row',
+		'DNF needs a user_id or a bib',
+		'dm_threads failed: ${error.message}',
+		'fetchDmThread failed: ${error.message}',
+	]);
+	assert.deepEqual(
+		[...thrown].filter((t) => !known.has(t)),
+		[],
+		'throw `new AppError(key, { params, message })` (core/app_error.ts) for a sentence the reader should see; `errorCopy` renders its key',
+	);
+	assert.deepEqual(
+		[...known].filter((t) => !thrown.has(t)),
+		[],
+		'these are no longer thrown: take them out of the known list',
+	);
 });

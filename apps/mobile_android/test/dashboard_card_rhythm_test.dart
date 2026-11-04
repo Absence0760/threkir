@@ -26,7 +26,6 @@ import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/dashboard_screen.dart';
 import '../lib/widgets/disclosure_section.dart';
-import '../lib/widgets/this_week_strip.dart';
 
 Run _run(String id, DateTime startedAt) => Run(
       id: id,
@@ -77,12 +76,16 @@ void main() {
         await tester.pump();
         await tester.pump();
 
-        // The self-heading run starts at the "This Week" strip. Everything
-        // above it is a group block (the week lead, goals, the three-abreast
-        // period strip) and keeps its section gap, so the run is anchored on the strip's own card rather than on a fixed
-        // offset that any block added above it would shift.
+        // The self-heading run starts at the streak card. Everything above it
+        // is a group block (the week lead, goals, the period strip) and keeps
+        // its section gap, so the run is anchored on the streak's own card
+        // rather than on a fixed offset that any block added above it would
+        // shift. (It was anchored on the This Week strip until that left Home,
+        // decisions § 2283.)
         final stripCard = find
-            .ancestor(of: find.byType(ThisWeekStrip), matching: find.byType(Card))
+            .ancestor(
+                of: find.byKey(const Key('dashboardStreakRow')),
+                matching: find.byType(Card))
             .first;
         final stripTop = tester
             .getRect(find
@@ -92,8 +95,8 @@ void main() {
         // Cards are measured on the inner Material, since a Card's own render
         // object spans its margin box. Below the strip the cards sit in
         // collapsible trend groups (multi_modal.md § Home, contract v1), each
-        // opening on its own heading. The rhythm holds inside each run of cards — the strip and
-        // the streak card above the first group, then each group's own stack —
+        // opening on its own heading. The rhythm holds inside each run of cards — the streak
+        // card above the first group, then each group's own stack —
         // so the gaps are measured per run, never across a group heading.
         final runs = <Key?, List<Rect>>{};
         for (final c in tester.widgetList<Card>(find.byType(Card))) {

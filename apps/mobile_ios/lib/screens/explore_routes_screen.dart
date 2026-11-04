@@ -10,6 +10,8 @@ import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow, Status
 import '../l10n/gen/app_localizations.dart';
 import '../local_route_store.dart';
 import '../preferences.dart';
+import '../quiet_location.dart';
+import '../route_surface_label.dart';
 import '../auth_error.dart';
 import '../backend_timeout.dart';
 import '../widgets/error_state.dart';
@@ -29,11 +31,16 @@ class ExploreRoutesScreen extends StatefulWidget {
   final LocalRouteStore routeStore;
   final Preferences preferences;
 
+  /// Test seam for the "Near me" fix. Production callers leave it null and
+  /// get [locateForBrowse].
+  final Future<Position> Function()? locateFn;
+
   const ExploreRoutesScreen({
     super.key,
     this.apiClient,
     required this.routeStore,
     required this.preferences,
+    this.locateFn,
   });
 
   @override
@@ -232,12 +239,10 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
     });
 
     try {
-      var perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) {
-        perm = await Geolocator.requestPermission();
-      }
-      if (perm == LocationPermission.denied ||
-          perm == LocationPermission.deniedForever) {
+      final Position pos;
+      try {
+        pos = await (widget.locateFn ?? locateForBrowse)();
+      } on PermissionDeniedException {
         if (mounted) {
           setState(() {
             _error = AppLocalizations.of(context)
@@ -246,14 +251,21 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
           });
         }
         return;
+      } catch (e) {
+        // Caught here, not below: a fix that never arrives is a
+        // TimeoutException too, and the outer catch would call it a
+        // backend timeout.
+        debugPrint('ExploreRoutesScreen._searchNearby locate failed: $e');
+        if (mounted) {
+          final l10n = AppLocalizations.of(context);
+          setState(() {
+            _error = l10n.exploreRoutesNearbyLocationUnavailable(
+                browseLocateErrorText(l10n, e));
+            _loading = false;
+          });
+        }
+        return;
       }
-
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.low,
-          timeLimit: Duration(seconds: 10),
-        ),
-      );
 
       final results = await api.nearbyPublicRoutes(
         lat: pos.latitude,
@@ -774,10 +786,11 @@ class _RouteCard extends StatelessWidget {
                             UnitFormat.distance(route.distanceMetres, unit)),
                         if (route.elevationGainMetres > 0)
                           _tag(Icons.trending_up,
-                              '${route.elevationGainMetres.round()}m'),
+                              UnitFormat.elevation(
+                                  route.elevationGainMetres, unit)),
                         if (route.surface != null)
                           _tag(_surfaceIcon(route.surface),
-                              _surfaceLabel(l10n, route.surface)),
+                              routeSurfaceLabel(l10n, route.surface!)),
                         if (route.runCount > 0)
                           _tag(Icons.directions_run, '${route.runCount}'),
                       ],
@@ -845,17 +858,6 @@ class _RouteCard extends StatelessWidget {
         return Icons.alt_route;
       default:
         return Icons.route;
-    }
-  }
-
-  static String _surfaceLabel(AppLocalizations l10n, String? surface) {
-    switch (surface) {
-      case 'trail':
-        return l10n.exploreRoutesSurfaceTrailShort;
-      case 'mixed':
-        return l10n.exploreRoutesSurfaceMixedShort;
-      default:
-        return l10n.exploreRoutesSurfaceRoadShort;
     }
   }
 }

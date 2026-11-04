@@ -6,14 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
-        ActivityLoaderKind,
         AppSemanticColors,
         ChartCardHeader,
-        ChartPalette,
-        FullBodyLoader,
-        ProgressBar;
+        ProgressBar,
+        SkeletonBlock;
 
 import '../activity_type_labels.dart';
+import '../backend_timeout.dart';
+import '../social_service.dart';
 import '../adaptive_fitness_flag.dart';
 import '../adaptive_width.dart';
 import '../age_grade.dart';
@@ -66,9 +66,10 @@ import '../widgets/nutrition_rings_card.dart';
 import '../widgets/readiness_card.dart';
 import '../widgets/recent_lifts_card.dart';
 import '../widgets/run_list_tile.dart';
-import '../widgets/this_week_strip.dart';
 import '../widgets/goal_editor_sheet.dart';
 import '../widgets/todays_workout_card.dart';
+import '../widgets/upcoming_event_card.dart';
+import '../widgets/runner_menu.dart' show todaysOpenWorkout;
 import '../widgets/plan_nudge_card.dart';
 import '../plan_nudges.dart' show PlanNudge, PlanNudgeKind, workoutOverrunMetres;
 import '../workout_summary.dart' show plannedWorkoutSize;
@@ -84,6 +85,7 @@ import '../recent_5k_suggestion.dart';
 import '../widgets/training_load_chart.dart';
 import 'add_run_screen.dart';
 import 'coach_screen.dart';
+import 'run_screen.dart' show runRecordingActive;
 import 'feed_screen.dart';
 import 'gym_detail_screen.dart';
 import 'gym_screen.dart';
@@ -156,6 +158,17 @@ class DashboardScreen extends StatefulWidget {
   /// dead, as with [onStartRun].
   final VoidCallback? onLogLift;
 
+  /// Loads today's open plan workout onto the recorder, from the Start on
+  /// Home's today's-workout card. The host wires it to the same handoff the
+  /// centre button's long-press menu uses (`pendingStartWorkout`), so the
+  /// recorder's own start screen still runs its permission and first-run
+  /// checks. Null leaves that card without a Start.
+  final ValueChanged<PlanWorkoutRow>? onStartWorkout;
+
+  /// Reads the runner's next club event for the Today block. Null (no social
+  /// layer, as in most tests) leaves the card off.
+  final SocialService? social;
+
   /// Pushes the unsynced runs now, from the pending-sync banner's Retry. The
   /// host wires it to `SyncService` — the one run drain — rather than this
   /// screen pushing runs itself. Null leaves runs counted but not retried.
@@ -177,6 +190,8 @@ class DashboardScreen extends StatefulWidget {
     this.settingsSync,
     this.onStartRun,
     this.onLogLift,
+    this.onStartWorkout,
+    this.social,
     this.onSyncRuns,
     this.loadPerks,
   });
@@ -184,6 +199,8 @@ class DashboardScreen extends StatefulWidget {
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
+
+enum _HomeMenuAction { addRun, importRuns }
 
 /// What the SERVER says about this account's history — the one thing the
 /// runless welcome state is a claim about and local disk cannot answer. A
@@ -258,6 +275,9 @@ class _DashboardScreenState extends State<DashboardScreen>
   /// simply doesn't render (graceful degrade).
   UserProfileRow? _viewerProfile;
 
+  /// The next club event the runner is going to, inside [kHomeEventWindow].
+  EventView? _upcomingEvent;
+
   /// Whether the Coach is live on this deploy. False until the manifest says
   /// so, so an unknown or unreachable manifest hides the coach card, as it
   /// hides the Messages inbox's Coach row (decisions § 2227).
@@ -292,9 +312,11 @@ class _DashboardScreenState extends State<DashboardScreen>
     // reach this keep-alive page without a remount.
     widget.settingsSync?.addListener(_onChange);
     widget.training?.addListener(_refreshPlanOverview);
+    runRecordingActive.addListener(_onChange);
     WidgetsBinding.instance.addObserver(this);
     _refreshPlanOverview();
     _hydrateModalities();
+    _loadUpcomingEvent();
     _loadPersonalRecords();
     _loadViewerProfile();
     _loadRunStreaks();
@@ -388,6 +410,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       await Future.wait([
         _refreshPlanOverview(),
         _hydrateModalities(),
+        _loadUpcomingEvent(),
         _loadPersonalRecords(),
         _loadViewerProfile(),
         _loadRunStreaks(),
@@ -416,6 +439,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       _planOverview = null;
       _nutritionTargets = null;
       _viewerProfile = null;
+      _upcomingEvent = null;
       _allTimeStreaks = null;
       _history = _AccountHistory.unknown;
       _bestEffortCache.clear();
@@ -426,9 +450,26 @@ class _DashboardScreenState extends State<DashboardScreen>
     _loadTrendOpen();
     _refreshPlanOverview();
     _hydrateModalities();
+    _loadUpcomingEvent();
     _loadPersonalRecords();
     _loadViewerProfile();
     _loadRunStreaks();
+  }
+
+  /// The runner's next `going` club event within [kHomeEventWindow], for the
+  /// Today block (decisions § 2285). L4: a failed read leaves the card off and
+  /// the rest of Home as it was.
+  Future<void> _loadUpcomingEvent() async {
+    final social = widget.social;
+    if (social == null) return;
+    try {
+      final evt = await social
+          .fetchNextRsvpedEvent(window: kHomeEventWindow)
+          .timeout(kBackendLoadTimeout);
+      if (mounted) setState(() => _upcomingEvent = evt);
+    } catch (e) {
+      debugPrint('dashboard: upcoming event fetch failed: $e');
+    }
   }
 
   /// Best-effort load of the server PB cache (L4 — a failure just leaves the
@@ -518,6 +559,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     widget.foodStore.removeListener(_onChange);
     widget.settingsSync?.removeListener(_onChange);
     widget.training?.removeListener(_refreshPlanOverview);
+    runRecordingActive.removeListener(_onChange);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -744,7 +786,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   void _openImport() {
-    // From the welcome empty state. Routes into the existing
+    // From the welcome empty state and Home's overflow. Routes into the existing
     // ImportScreen which handles Strava ZIP / Health Connect /
     // GPX-folder paths. The user might not be signed in (apiClient
     // null) — ImportScreen handles that internally by greying out
@@ -818,7 +860,8 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _weekLeadCard(
-      List<Run> runs, List<RunGoal> goals, DistanceUnit unit, DateTime now) {
+      List<Run> runs, List<RunGoal> goals, DistanceUnit unit, DateTime now,
+      {VoidCallback? onStart}) {
     // A finished plan has no sessions left to offer; Home asks to file it
     // instead (FinishPlanCard), so the lead says nothing about the plan.
     final planWorkouts = _planFinished(now) ? null : _leadPlanWorkouts();
@@ -838,12 +881,14 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
     return _DashboardWeekLead(
       key: const Key('dashboardWeekLead'),
+      onOpenWeek: () => _openPeriodSummary(PeriodType.week),
       lead: lead,
       hasPlan: planWorkouts != null,
       unit: unit,
       onOpenSession: _openPlanSession,
-      onAddRun: _openAddRun,
-      onImport: _openImport,
+      onStart: onStart,
+      startActivity:
+          ActivityType.fromName(widget.preferences.defaultActivityType),
     );
   }
 
@@ -1077,7 +1122,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  /// The pinned "Ask your coach" entry shown at the top of Home. Null when
+  /// The "Ask your coach" entry that closes Home's Today block. Null when
   /// signed out, with no training service, or while the Coach is not live on
   /// this deploy, so it never renders a dead tap.
   Widget? _coachEntry() {
@@ -1213,10 +1258,9 @@ class _DashboardScreenState extends State<DashboardScreen>
     final svc = widget.training;
     final p = _planOverview;
     if (svc == null || p == null) return;
-    // Dashboard's role is overview, not start-a-run. Tap routes into
-    // plan_detail so the runner can see the full week + drill into
-    // the workout. The Run tab already has the "start now" dialog
-    // for runners who tap from there.
+    // The card's body is the overview: a tap routes into plan_detail so the
+    // runner can see the full week + drill into the workout. Starting it is
+    // the card's own Start button (decisions § 2282).
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => PlanDetailScreen(
@@ -1401,7 +1445,6 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     final now = DateTime.now();
     _breakNow = _homeBreak(runs, now);
-    final weekStart = weekStartLocal(now, weekStartDay: _weekStartDay);
     final monthStart = DateTime(now.year, now.month, 1);
     // Compute the training-load series ONCE — FitnessCard, ReadinessCard, and
     // the chart all read this same instance instead of each re-running the
@@ -1412,9 +1455,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     // One pass over the runs list collects everything every card needs —
     // week totals, month totals, all-time totals, and the PB candidates.
     // Replaces four separate `.where().fold()` chains. Matters at 10k+ runs.
-    var weekRunCount = 0;
-    var weekDistance = 0.0;
-    var weekVert = 0.0;
     var monthRunCount = 0;
     var monthDistance = 0.0;
     var monthVert = 0.0;
@@ -1430,13 +1470,8 @@ class _DashboardScreenState extends State<DashboardScreen>
     final bestEfforts = <String, Duration>{};
     for (final r in runs) {
       allDistance += r.distanceMetres;
-      final vert = _vertOf(r);
+      final vert = runVertMetres(r);
       allVert += vert;
-      if (!r.startedAt.isBefore(weekStart)) {
-        weekRunCount++;
-        weekDistance += r.distanceMetres;
-        weekVert += vert;
-      }
       if (!r.startedAt.isBefore(monthStart)) {
         monthRunCount++;
         monthDistance += r.distanceMetres;
@@ -1489,7 +1524,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     // dashboard's content can sit flush with the top inset.
     //
     // The Coach glyph is deliberately absent: `_coachEntry()` is a labelled
-    // card 8 dp below it, so the toolbar's leading icon was a second, mute
+    // card on the same screen, so a toolbar icon would be a second, mute
     // route to the same screen — and a tooltip is not a label on a touch
     // device (#666 I8, the ruling that turned the recap glyph into the
     // labelled link under the period cards). The three that remain are
@@ -1517,13 +1552,38 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
           ),
       ],
+      // Logging a run after the fact and importing history are occasional
+      // jobs, so they sit in the overflow rather than on the week lead, where
+      // they took the lead's whole bottom row on every visit (decisions
+      // § 2281). Neither needs a session: both work offline and signed out.
+      PopupMenuButton<_HomeMenuAction>(
+        key: const Key('dashboardMoreMenu'),
+        tooltip: l10n.commonMore,
+        icon: const Icon(Icons.more_vert),
+        onSelected: (a) => switch (a) {
+          _HomeMenuAction.addRun => _openAddRun(),
+          _HomeMenuAction.importRuns => _openImport(),
+        },
+        itemBuilder: (_) => [
+          PopupMenuItem(
+            key: const Key('dashboardMenuAddRun'),
+            value: _HomeMenuAction.addRun,
+            child: Text(l10n.dashboardLeadAddRun),
+          ),
+          PopupMenuItem(
+            key: const Key('dashboardMenuImport'),
+            value: _HomeMenuAction.importRuns,
+            child: Text(l10n.dashboardImportRuns),
+          ),
+        ],
+      ),
     ];
     // Home opened on four glyphs and no title at all — nothing on the screen
     // said which surface it was, and the bottom-nav label is 700 dp away at
     // the other end of the phone. The title is the row's first child so the
     // actions read as belonging to it.
     final actionToolbar = Padding(
-      padding: EdgeInsets.fromLTRB(16, 8, actions.isEmpty ? 16 : 8, 0),
+      padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
       child: Row(
         children: [
           Expanded(
@@ -1537,13 +1597,29 @@ class _DashboardScreenState extends State<DashboardScreen>
     // Active-plan hero + the goals block: both outlive the welcome state,
     // because onboarding can mint a plan and a goal before the first run
     // exists and neither is a derived metric.
-    final todayCard = _planOverview?.todayWorkout != null
+    // Home's primary action (decisions § 2282): one Start, on today's
+    // workout when there is an open one to follow, else on the week lead.
+    // None while a run records, since the centre button is then the way back
+    // to it and a second "Start" would misstate what a tap does.
+    final recording = runRecordingActive.value;
+    final openWorkout = recording || widget.onStartWorkout == null
+        ? null
+        : todaysOpenWorkout(_planOverview?.workouts ?? const [], now);
+    final todayWorkout = _planOverview?.todayWorkout;
+    final startsTodayWorkout =
+        openWorkout != null && openWorkout.id == todayWorkout?.id;
+    final todayCard = todayWorkout != null
         ? TodaysWorkoutCard(
-            workout: _planOverview!.todayWorkout!,
+            workout: todayWorkout,
             onTap: _openTodayWorkout,
+            onStart: startsTodayWorkout
+                ? () => widget.onStartWorkout!(openWorkout)
+                : null,
             overrunMetres: _todayOverrun(runs),
           )
         : null;
+    final leadStart =
+        recording || startsTodayWorkout ? null : widget.onStartRun;
     final missedPrompt = _missedPromptCard(now);
     final nudgeCard = _planNudgeCard(runs, now);
     final heroCards = [
@@ -1576,7 +1652,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     // deliberately not in it — the welcome copy offers "set a goal" as one of
     // its own three actions, and the old `runs.isEmpty && goals.isEmpty` gate
     // had accepting that offer replace the welcome with three zeroed period
-    // cards, a 0-day streak, a blank 20-week heatmap and an empty load chart.
+    // cards, a 0-day streak and an empty load chart.
     // A lifter with 50 sessions and no runs got the same screen telling them
     // to record a run (issue #921).
     final hasLocalHistory =
@@ -1595,11 +1671,12 @@ class _DashboardScreenState extends State<DashboardScreen>
         children: [
           actionToolbar,
           pendingBanner,
-          const SizedBox(height: 48),
-          FullBodyLoader(
-            kind: ActivityLoaderKind.run,
-            label: l10n.commonLoading,
-          ),
+          const SizedBox(height: 8),
+          SkeletonBlock(height: 120, label: l10n.commonLoading),
+          const SizedBox(height: 12),
+          const SkeletonBlock(height: 96),
+          const SizedBox(height: 12),
+          const SkeletonBlock(height: 180),
         ],
       );
     } else if (!hasLocalHistory) {
@@ -1666,18 +1743,31 @@ class _DashboardScreenState extends State<DashboardScreen>
         ],
       );
     } else {
-      // Pinned coach entry — the resolved Coach-prominence decision puts
-      // the AI coach one persistent tap from Home (it has no bottom-nav
-      // slot). Gated on api + training, on the Coach being live, plus
-      // runs.isNotEmpty (#272) so it never dominates a zero-runs first
-      // screen.
+      // The coach entry — the AI coach stays one persistent tap from Home (it
+      // has no bottom-nav slot), closing the Today block rather than opening
+      // it: today's plan and what was logged today are what Home is opened
+      // for (decisions § 139, amended by § 2280). Gated on api + training, on
+      // the Coach being live, plus runs.isNotEmpty (#272) so it never
+      // dominates a zero-runs first screen.
       final coach = runs.isNotEmpty ? _coachEntry() : null;
       // The week lead opens Home for an account with runs (#905 workstream
       // 3). A lifter with no runs reaches this branch too and has no running
       // week to lead with.
-      final weekLeadCard =
-          runs.isNotEmpty ? _weekLeadCard(runs, goals, unit, now) : null;
+      final weekLeadCard = runs.isNotEmpty
+          ? _weekLeadCard(runs, goals, unit, now, onStart: leadStart)
+          : null;
       final raceCard = _nextRaceCard(now) ?? _planDiscoveryCard(now);
+      final social = widget.social;
+      final eventCard = _upcomingEvent == null || social == null
+          ? null
+          : UpcomingEventCard(
+              key: const Key('dashboardUpcomingEvent'),
+              event: _upcomingEvent!,
+              onTap: () async {
+                await openUpcomingEvent(context, social, _upcomingEvent!);
+                _loadUpcomingEvent();
+              },
+            );
       // Active-plan hero: surface the day's structured workout above
       // goals so a plan-runner sees what's next before scrolling. Hidden
       // when no active plan or no workout today.
@@ -1685,30 +1775,25 @@ class _DashboardScreenState extends State<DashboardScreen>
       final latestRun = _latestRun(runs);
       final latestRunSection =
           latestRun == null ? null : _latestRunSection(latestRun, unit);
+      final todayBlocks = _orderTodayBlocks(
+        latestRun: latestRun,
+        latestRunSection: latestRunSection,
+        modalityBody: _todayModalityBody(),
+        now: now,
+      );
       // An empty-goals card earns the slot above the runner's own numbers on
       // a new account, not on visit 200: once there is a run it shrinks to a
       // one-line link under the period stats.
       final goalsSection = goals.isEmpty && runs.isNotEmpty
           ? null
           : _goalsSection(theme, unit, runs, goals, now);
-      // Compact 3-column stat strip — replaced the previous stacked
-      // "This Week" / "This Month" / "All Time" cards (~480 px each +
-      // section headers). Same data, same tap-through into PeriodSummary
-      // for week / month; all-time has no period summary so it isn't
-      // tappable.
+      // Month and all-time stat strip. The week is the week lead's alone
+      // (decisions § 2283): a Week cell here and a This Week strip below were
+      // the second and third copies of one number, so the cell went and the
+      // lead's chevron opens the weekly summary, which now carries the day
+      // strip and the week's climb.
       final periodRow = Row(
         children: [
-          Expanded(
-            child: _PeriodStatCard(
-              label: l10n.dashboardPeriodWeek,
-              distanceMetres: weekDistance,
-              runCount: weekRunCount,
-              vertMetres: weekVert,
-              unit: unit,
-              onTap: () => _openPeriodSummary(PeriodType.week),
-            ),
-          ),
-          const SizedBox(width: 8),
           Expanded(
             child: _PeriodStatCard(
               label: l10n.dashboardPeriodMonth,
@@ -1774,17 +1859,6 @@ class _DashboardScreenState extends State<DashboardScreen>
               : recapButton != null
                   ? Align(alignment: Alignment.centerRight, child: recapButton)
                   : null;
-      final thisWeekCard = Card(
-        child: Padding(
-          padding: _kCardPadding,
-          child: ThisWeekStrip(
-            runs: runs,
-            unit: unit,
-            weekStartDay: _weekStartDay,
-            now: now,
-          ),
-        ),
-      );
       final streakCard = Card(
         child: Padding(
           padding: _kCardPadding,
@@ -1807,18 +1881,6 @@ class _DashboardScreenState extends State<DashboardScreen>
         unit: unit,
         weekStartDay: _weekStartDay,
         now: now,
-      );
-      final heatmapCard = Card(
-        child: Padding(
-          padding: _kCardPadding,
-          child: _RunHeatmap(
-            runs: runs,
-            weeks: 20,
-            weekStartDay: _weekStartDay,
-            onWeekTap: (anchor) =>
-                _openPeriodSummary(PeriodType.week, anchor),
-          ),
-        ),
       );
       final pbCard = hasAnyPb
           ? Card(
@@ -1948,7 +2010,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             ];
       final trendGroups = <Widget>[
         group('volume', l10n.dashboardTrendGroupVolume,
-            l10n.dashboardTrendGroupVolumeHint, [mileageCard, heatmapCard]),
+            l10n.dashboardTrendGroupVolumeHint, [mileageCard]),
         // The load chart always draws (it has its own empty state), so this
         // group always mounts.
         group('fitness', l10n.dashboardTrendGroupFitness,
@@ -1973,8 +2035,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         // the chart cards flow into two vertical columns. Blocks
         // alternate columns; internally self-hiding cards render
         // zero-height so a hidden card never reserves a grid cell.
-        final modalityBody = _todayModalityBody();
-        final leadBlocks = [?workoutCard, ?latestRunSection, ?modalityBody];
+        final leadBlocks = [?workoutCard, ...todayBlocks];
         final leadColumn = leadBlocks.isEmpty
             ? null
             : Column(
@@ -2007,9 +2068,9 @@ class _DashboardScreenState extends State<DashboardScreen>
             children: [
               actionToolbar,
               pendingBanner,
-              if (coach != null) ...[coach, _kSectionGap],
               if (weekLeadCard != null) ...[weekLeadCard, _kSectionGap],
               if (raceCard != null) ...[raceCard, _kSectionGap],
+              if (eventCard != null) ...[eventCard, _kSectionGap],
               if (leadColumn != null && goalsSection != null)
                 Row(
                   key: const Key('dashboardExpandedLeadRow'),
@@ -2023,11 +2084,10 @@ class _DashboardScreenState extends State<DashboardScreen>
               else if (leadColumn ?? goalsSection case final lead?)
                 lead,
               if (leadColumn != null || goalsSection != null) _kSectionGap,
+              if (coach != null) ...[coach, _kSectionGap],
               trendsDivider,
               periodRow,
               if (periodLinks != null) periodLinks,
-              _kSectionGap,
-              thisWeekCard,
               _kSectionGap,
               Row(
                 key: const Key('dashboardExpandedChartColumns'),
@@ -2057,17 +2117,13 @@ class _DashboardScreenState extends State<DashboardScreen>
           children: [
             actionToolbar,
             pendingBanner,
-            if (coach != null) ...[coach, _kSectionGap],
             if (weekLeadCard != null) ...[weekLeadCard, _kSectionGap],
             if (workoutCard != null) ...[workoutCard, _kSectionGap],
             // After today's session, which is the more urgent of the two.
             if (raceCard != null) ...[raceCard, _kSectionGap],
-            if (latestRunSection != null) ...[latestRunSection, _kSectionGap],
-            // Today's logged non-run modalities (gym + nutrition).
-            // Self-hiding: each card only renders when that modality was
-            // logged today, so a pure runner sees nothing new here
-            // (multi_modal.md § Home, anti-clutter checklist).
-            ..._todayModalitySection(),
+            if (eventCard != null) ...[eventCard, _kSectionGap],
+            for (final block in todayBlocks) ...[block, _kSectionGap],
+            if (coach != null) ...[coach, _kSectionGap],
             trendsDivider,
             if (goalsSection != null) ...[goalsSection, _kSectionGap],
             periodRow,
@@ -2077,7 +2133,6 @@ class _DashboardScreenState extends State<DashboardScreen>
             // stack separates by the card grammar (§482's 4dp vertical margin
             // on each side) and _kSectionGap marks only a real block boundary
             // — a group of cards under one heading, or a non-card block.
-            thisWeekCard,
             streakCard,
             ...trendGroups,
           ],
@@ -2146,10 +2201,48 @@ class _DashboardScreenState extends State<DashboardScreen>
     return body;
   }
 
-  List<Widget> _todayModalitySection() {
-    final body = _todayModalityBody();
-    if (body == null) return const [];
-    return [body, _kSectionGap];
+  /// The Today block under the plan cards, in multi_modal.md § Home rule 2's
+  /// order: what was logged today, most recently started first, then the last
+  /// run when it is from an earlier day, so a run from last week never sits
+  /// above the lift and the meals logged this morning.
+  List<Widget> _orderTodayBlocks({
+    required Run? latestRun,
+    required Widget? latestRunSection,
+    required Widget? modalityBody,
+    required DateTime now,
+  }) {
+    final dayStart = DateTime(now.year, now.month, now.day);
+    final runAt = latestRun?.startedAt.toLocal();
+    final runIsToday = runAt != null && !runAt.isBefore(dayStart);
+    if (latestRunSection == null || modalityBody == null) {
+      return [?latestRunSection, ?modalityBody];
+    }
+    if (!runIsToday) return [modalityBody, latestRunSection];
+    final modalityAt = _todayModalityStartedAt();
+    final runFirst = modalityAt == null || !runAt.isBefore(modalityAt);
+    return runFirst
+        ? [latestRunSection, modalityBody]
+        : [modalityBody, latestRunSection];
+  }
+
+  /// When the newest shown lift or meal of today started; null when none
+  /// carries a time.
+  DateTime? _todayModalityStartedAt() {
+    DateTime? latest;
+    void consider(DateTime? at) {
+      final local = at?.toLocal();
+      if (local != null && (latest == null || local.isAfter(latest!))) {
+        latest = local;
+      }
+    }
+
+    if (_gymShown) consider(_todaysLift?.startedAt);
+    if (_nutritionShown) {
+      for (final f in _todaysFood) {
+        consider(f.startedAt);
+      }
+    }
+    return latest;
   }
 
   Widget _goalsSection(
@@ -2203,19 +2296,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     return raw == null || raw == 'run';
   }
 
-  /// Positive-only elevation gain (metres) for the period-stat
-  /// aggregates. Mirrors web's `metadata.elevation_m` read on
-  /// `/dashboard/+page.svelte`. Same canonical key the recap helper
-  /// already uses (`lib/recap.dart#_elevationOf`).
-  static double _vertOf(Run r) {
-    final raw = r.metadata?['elevation_m'];
-    if (raw is num) {
-      final v = raw.toDouble();
-      return v > 0 ? v : 0;
-    }
-    return 0;
-  }
-
   static String _formatDuration(Duration d) {
     final h = d.inHours;
     final m = d.inMinutes % 60;
@@ -2236,17 +2316,23 @@ class _DashboardWeekLead extends StatelessWidget {
   final bool hasPlan;
   final DistanceUnit unit;
   final ValueChanged<LeadPlanWorkout> onOpenSession;
-  final VoidCallback onAddRun;
-  final VoidCallback onImport;
+
+  /// Opens the recorder for [startActivity]; null hides the Start.
+  final VoidCallback? onStart;
+  final ActivityType startActivity;
+
+  /// Opens this week's summary, the day-by-day detail the lead stands for.
+  final VoidCallback onOpenWeek;
 
   const _DashboardWeekLead({
     super.key,
+    required this.onOpenWeek,
     required this.lead,
     required this.hasPlan,
     required this.unit,
     required this.onOpenSession,
-    required this.onAddRun,
-    required this.onImport,
+    required this.onStart,
+    required this.startActivity,
   });
 
   String _whenLabel(AppLocalizations l10n, String iso, int? inDays) {
@@ -2299,7 +2385,15 @@ class _DashboardWeekLead extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ChartCardHeader(title: l10n.dashboardLeadTitle),
+            ChartCardHeader(
+              title: l10n.dashboardLeadTitle,
+              action: IconButton(
+                key: const Key('dashboardWeekLeadOpenWeek'),
+                tooltip: l10n.periodWeeklySummary,
+                icon: const Icon(Icons.chevron_right),
+                onPressed: onOpenWeek,
+              ),
+            ),
             const SizedBox(height: 8),
             if (lead.count == 0)
               Text(
@@ -2368,26 +2462,15 @@ class _DashboardWeekLead extends StatelessWidget {
                   style: theme.textTheme.bodyMedium?.copyWith(color: muted),
                 ),
             ],
-            const SizedBox(height: 16),
-            // A Wrap so the two labels stack in a locale too long to fit both
-            // on one line rather than overflowing.
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                FilledButton.icon(
-                  key: const Key('dashboardWeekLeadAddRun'),
-                  onPressed: onAddRun,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: Text(l10n.dashboardLeadAddRun),
-                ),
-                OutlinedButton(
-                  key: const Key('dashboardWeekLeadImport'),
-                  onPressed: onImport,
-                  child: Text(l10n.dashboardImportRuns),
-                ),
-              ],
-            ),
+            if (onStart != null) ...[
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                key: const Key('dashboardWeekLeadStart'),
+                onPressed: onStart,
+                icon: Icon(startActivity.icon),
+                label: Text(startActivityCaption(l10n, startActivity)),
+              ),
+            ],
           ],
         ),
       ),
@@ -3285,41 +3368,6 @@ class _StreakRow extends StatelessWidget {
   }
 }
 
-/// GitHub-style activity heatmap — a 7×[weeks] grid of squares, intensity
-/// scaled to the day's run count. Rightmost column is the current week;
-/// leftmost is `weeks - 1` weeks ago. Mirrors the web dashboard's
-/// calendar-heatmap component so a runner switching between devices
-/// sees the same shape.
-/// Maps a horizontal tap offset on the run-heatmap grid to the start
-/// date (week anchor) of the column it landed in. Columns are weeks;
-/// the offset is clamped so a tap past either edge resolves to the
-/// first or last visible week rather than off-grid.
-DateTime heatmapWeekAnchor({
-  required double localDx,
-  required double cellSize,
-  required double gap,
-  required int weeks,
-  required DateTime gridStart,
-}) {
-  final col = (localDx / (cellSize + gap)).floor().clamp(0, weeks - 1);
-  // Calendar days — see `_RunHeatmap.build`, where `gridStart` is derived.
-  return DateTime(gridStart.year, gridStart.month, gridStart.day + 7 * col);
-}
-
-/// First day of the heatmap's leftmost column: the start of the week
-/// containing [now] on the runner's [weekStartDay], [weeks] - 1 weeks back.
-/// Each column is then one of the weeks a tap opens in the week summary.
-DateTime heatmapGridStart(DateTime now, int weeks,
-    {required String weekStartDay}) {
-  final weekStart = weekStartLocal(now, weekStartDay: weekStartDay);
-  // Calendar days, not 24-hour blocks: the grid reaches ~5 months back, so a
-  // fixed-Duration step is guaranteed to cross a DST transition and land
-  // `gridStart` at 23:00 the previous day — shifting every column of the
-  // heatmap, and the week a tap resolves to, one day off the calendar.
-  return DateTime(
-      weekStart.year, weekStart.month, weekStart.day - 7 * (weeks - 1));
-}
-
 /// Today | Trends (multi_modal.md § Home, section rhythm): a hairline with a
 /// quiet label riding it, not a shouting header. Web twin: `.trends-divider`.
 class _TrendsDivider extends StatelessWidget {
@@ -3359,137 +3407,6 @@ class _TrendsDivider extends StatelessWidget {
   }
 }
 
-class _RunHeatmap extends StatelessWidget {
-  final List<Run> runs;
-  final int weeks;
-  final String weekStartDay;
-
-  /// Tapping a week column opens that week's summary. Null leaves the
-  /// heatmap a static read-only grid.
-  final void Function(DateTime weekAnchor)? onWeekTap;
-  const _RunHeatmap({
-    required this.runs,
-    required this.weekStartDay,
-    this.weeks = 20,
-    this.onWeekTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final gridStart =
-        heatmapGridStart(now, weeks, weekStartDay: weekStartDay);
-
-    final counts = heatmapDayCounts(runs, gridStart);
-
-    final ramp = ChartPalette.of(context).ramp;
-    // The zero tile is a track, not a level: it carries "no run", and what a
-    // reader needs from it is the calendar position that gives every filled
-    // tile its meaning. A tonal fill cannot do that — surfaceContainerHighest
-    // is 1.164:1 on the light card and 1.316:1 on the dark one, so the grid
-    // frame was invisible and the ramp's own first two steps (1.952 / 2.102:1
-    // as primary at 35 %) were under 1.4.11's floor. The frame is a hairline
-    // in the line token §487 already holds at 3:1, and the levels are the
-    // palette's ramp.
-    final emptyFill = theme.colorScheme.surfaceContainerHighest;
-    final emptyStroke = theme.dividerColor;
-
-    return LayoutBuilder(builder: (context, constraints) {
-      const gap = 2.0;
-      final cellSize = ((constraints.maxWidth - gap * (weeks - 1)) / weeks)
-          .clamp(8.0, 16.0);
-      final gridWidth = cellSize * weeks + gap * (weeks - 1);
-      final gridHeight = cellSize * 7 + gap * 6;
-
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ChartCardHeader(
-            title: l10n.dashboardHeatmapTitle,
-            note: l10n.dashboardSectionLast20Weeks,
-          ),
-          const SizedBox(height: 10),
-          // Single CustomPaint replaces the previous 7×20=140 Container +
-          // Builder + EdgeInsets allocations per dashboard rebuild.
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapUp: onWeekTap == null
-                ? null
-                : (details) => onWeekTap!(heatmapWeekAnchor(
-                      localDx: details.localPosition.dx,
-                      cellSize: cellSize,
-                      gap: gap,
-                      weeks: weeks,
-                      gridStart: gridStart,
-                    )),
-            child: SizedBox(
-              width: gridWidth,
-              height: gridHeight,
-              child: CustomPaint(
-                key: const Key('dashboardHeatmapPainter'),
-                painter: _HeatmapPainter(
-                  counts: counts,
-                  gridStart: gridStart,
-                  today: today,
-                  weeks: weeks,
-                  cellSize: cellSize,
-                  gap: gap,
-                  emptyFill: emptyFill,
-                  emptyStroke: emptyStroke,
-                  ramp: ramp,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Flexible(
-                child: Text(l10n.dashboardHeatmapLess,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant)),
-              ),
-              const SizedBox(width: 6),
-              for (final level in [-1, 0, 1, 2]) ...[
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: level < 0 ? emptyFill : ramp[level],
-                    border: level < 0
-                        ? Border.all(color: emptyStroke)
-                        : null,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-                const SizedBox(width: 3),
-              ],
-              const SizedBox(width: 3),
-              Flexible(
-                child: Text(l10n.dashboardHeatmapMore,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant)),
-              ),
-            ],
-          ),
-          if (onWeekTap != null) ...[
-            const SizedBox(height: 6),
-            Text(l10n.dashboardHeatmapTapHint,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          ],
-        ],
-      );
-    });
-  }
-}
-
 /// The runner's own runs reduced to what the load helpers grade on. One
 /// mapping for both cards: `selfLoad` and `comebackLoad` compare their windows
 /// against each other, and two conversions would let the two windows come from
@@ -3502,102 +3419,3 @@ List<RunForVolume> _runVolumeInputs(List<Run> runs) => [
           activityType: r.metadata?['activity_type'] as String?,
         ),
     ];
-
-/// A calendar day's index, read off the date's fields through UTC. Dividing
-/// the LOCAL midnight's epoch milliseconds by a day instead floors a 23:00 UTC
-/// midnight into the previous day, so where the offset moves between +0 and +1
-/// (London, Lisbon, Dublin) the spring change gave Sunday and Monday one key
-/// and both tiles painted their summed count.
-int _epochDay(DateTime d) =>
-    DateTime.utc(d.year, d.month, d.day).millisecondsSinceEpoch ~/
-    Duration.millisecondsPerDay;
-
-/// Per-epoch-day run counts for the heatmap's visible window. Runs whose local
-/// day is before [gridStart] are skipped — the painter only ever reads keys
-/// inside the `[gridStart, gridStart + weeks*7)` grid, so counting all-time
-/// history (the full `summaryRuns`) on every rebuild was wasted work. A
-/// 3,000-run user spent ~5-15ms/rebuild on the unguarded scan; the window
-/// guard makes it O(visible days).
-@visibleForTesting
-Map<int, int> heatmapDayCounts(List<Run> runs, DateTime gridStart) {
-  final gridStartDay = _epochDay(gridStart);
-  final counts = <int, int>{};
-  for (final r in runs) {
-    final key = _epochDay(r.startedAt.toLocal());
-    if (key < gridStartDay) continue;
-    counts[key] = (counts[key] ?? 0) + 1;
-  }
-  return counts;
-}
-
-class _HeatmapPainter extends CustomPainter {
-  final Map<int, int> counts;
-  final DateTime gridStart;
-  final DateTime today;
-  final int weeks;
-  final double cellSize;
-  final double gap;
-  final Color emptyFill;
-  final Color emptyStroke;
-  final List<Color> ramp;
-
-  _HeatmapPainter({
-    required this.counts,
-    required this.gridStart,
-    required this.today,
-    required this.weeks,
-    required this.cellSize,
-    required this.gap,
-    required this.emptyFill,
-    required this.emptyStroke,
-    required this.ramp,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final radius = const Radius.circular(4);
-    final emptyP = Paint()..color = emptyFill;
-    final framePaint = Paint()
-      ..color = emptyStroke
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    final levelPaints = [for (final c in ramp) Paint()..color = c];
-
-    for (var w = 0; w < weeks; w++) {
-      for (var d = 0; d < 7; d++) {
-        final day =
-            DateTime(gridStart.year, gridStart.month, gridStart.day + w * 7 + d);
-        // Don't paint future days — they're outside the scale and look
-        // weird with an "empty" tile shown.
-        if (day.isAfter(today)) continue;
-        final count = counts[_epochDay(day)] ?? 0;
-        final x = w * (cellSize + gap);
-        final y = d * (cellSize + gap);
-        final rect = RRect.fromRectAndRadius(
-          Rect.fromLTWH(x, y, cellSize, cellSize),
-          radius,
-        );
-        if (count <= 0) {
-          canvas.drawRRect(rect, emptyP);
-          canvas.drawRRect(rect.deflate(0.5), framePaint);
-        } else {
-          canvas.drawRRect(
-            rect,
-            levelPaints[count > levelPaints.length ? levelPaints.length - 1 : count - 1],
-          );
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(_HeatmapPainter old) =>
-      !identical(old.counts, counts) ||
-      old.gridStart != gridStart ||
-      old.today != today ||
-      old.weeks != weeks ||
-      old.cellSize != cellSize ||
-      old.emptyFill != emptyFill ||
-      old.emptyStroke != emptyStroke ||
-      old.ramp.last != ramp.last;
-}

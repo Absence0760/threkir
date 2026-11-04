@@ -147,3 +147,19 @@ need a notarised log of changes prior to a specific date, email
 * **Region**: MapTiler EU + global edge (unchanged); AWS us-east-1 for the keyless rung.
 * **DPA**: MapTiler unchanged. The AWS Open Data bucket is a public request outside our AWS account, so no DPA applies; see [`sub-processors.md`](sub-processors.md).
 * **Opt-out path**: don't accept the cookie banner and don't tap "Load map" in the preview — like every map, it loads nothing before one of the two.
+
+---
+
+## 2026-11-04 — MapTiler / AWS Open Data Terrain Tiles — the 3D course preview reaches logged-out visitors (no new sub-processor, no new data category)
+
+* **What changes**: "Preview in 3D" is also offered on the public route share page `/share/route/[id]` (issue #1282), so a visitor without an account can now cause the elevation-tile requests the 2026-11-02 entry describes. Same providers, same data (requester IP + the tile coordinates of the course on screen).
+* **Gate**: stricter than the signed-in surfaces. The dialog always shows its "Load preview" card on this page, even when the cookie banner was accepted, as the page's 2D map already does; nothing is requested before that tap. The course it draws is the privacy-clipped line the page already shows (`clip_route_for_viewer`), and the page offers no video export.
+* **Activation date**: the release that ships it. No objection window applies (existing sub-processors, existing data category). **CISO / Security Analyst to confirm before release**, since it extends a third-party request to an unauthenticated audience.
+* **Opt-out path**: don't tap "Load preview".
+
+## 2026-11-04 — Anthropic — the route-describe prompt is now listed (no new sub-processor, no new data category)
+
+* **What changes**: the Anthropic row in [`sub-processors.md`](sub-processors.md) listed only the AI Coach payload. "Describe this route" (a Pro feature) has also sent Anthropic a route's name, distance, elevation gain, surface, distance band and shape. It now also sends the viewer's distance unit and the name of their language, so the paragraph comes back in both. The row now lists all of this. The route's coordinates stay on the server; only the shape derived from them is sent.
+* **Gate**: unchanged. The request is refused without the AI disclosure version route-describe requires, and the templated description is the fallback whenever the model is not called.
+* **Activation date**: the release that ships PR #1280. No objection window applies (existing sub-processor, existing feature; unit and language are not personal data on their own). **Security Analyst / CISO to confirm before release** that route-AI disclosure v2 covers the unit and language fields.
+* **Opt-out path**: don't use "Describe this route"; withdraw AI consent in Settings → Account.

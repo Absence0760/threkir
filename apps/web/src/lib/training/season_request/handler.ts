@@ -112,7 +112,9 @@ const SYSTEM_PROMPT =
 	'runner names a well-known race without a date or distance, use its usual ' +
 	'date and distance (Comrades is about 87-90 km, Two Oceans 56 km). Give ' +
 	'distance_km as a number in kilometres ("marathon" = 42.195, "half" = ' +
-	'21.0975, "50 miler" = 80.47, "100 miles" = 160.934). Give the race\'s ' +
+	'21.0975, "50 miler" = 80.47, "100 miles" = 160.934, and any distance in ' +
+	'miles at 1.609344 km per mile), and set distance_unit to "mi" when the ' +
+	'runner gave the distance in miles, "km" otherwise. Give the race\'s ' +
 	'name as the runner wrote it, or a short description such as "10K" when ' +
 	'they give none. Set priority to A, B or C only when the runner says so ' +
 	'or calls a race their main / goal race (A) or a tune-up / training race ' +
@@ -137,6 +139,11 @@ export const EXTRACT_TOOL: Anthropic.Tool = {
 						name: { type: 'string', description: 'The race name, or a short description.' },
 						date: { type: 'string', description: 'Race day as YYYY-MM-DD, resolved against today.' },
 						distance_km: { type: 'number', description: 'Race distance in kilometres.' },
+						distance_unit: {
+							type: 'string',
+							enum: ['km', 'mi'],
+							description: 'The unit the runner wrote this distance in: mi for miles, km otherwise.',
+						},
 						priority: {
 							type: 'string',
 							enum: ['A', 'B', 'C'],

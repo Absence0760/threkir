@@ -26,6 +26,7 @@ import '../workout_summary.dart';
 import '../workout_summary_format.dart';
 import '../workout_prescription.dart';
 import '../workout_target_label.dart';
+import '../widgets/loading_skeletons.dart';
 
 class WorkoutDetailScreen extends StatefulWidget {
   final TrainingService training;
@@ -67,6 +68,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   late bool _loading = widget.initial == null;
   bool _updating = false;
   bool _skipping = false;
+  bool _relinking = false;
+
+  /// One write at a time: Mark done, Skip and Re-link each change the same
+  /// row, and two in flight raced each other's reload.
+  bool get _writing => _updating || _skipping || _relinking;
   _WorkoutLoadError? _error;
 
   @override
@@ -145,6 +151,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   Future<void> _openRelinkPicker(PlanWorkoutRow workout) async {
+    if (_writing) return;
     final l10n = AppLocalizations.of(context);
     final picked = await showDialog<String>(
       context: context,
@@ -153,13 +160,18 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         workout: workout,
       ),
     );
-    if (picked == null || !mounted) return;
+    if (picked == null || !mounted || _writing) return;
+    setState(() => _relinking = true);
     try {
-      await widget.training.markCompleted(widget.workoutId, picked);
+      await widget.training
+          .markCompleted(widget.workoutId, picked)
+          .timeout(kBackendLoadTimeout);
       await _load();
     } catch (e, s) {
       debugPrint('WorkoutDetailScreen._openRelinkPicker re-link failed: $e\n$s');
-      if (mounted) showTopBanner(context, l10n.workoutRelinkError);
+      if (mounted) showTopBanner(context, l10n.workoutRelinkSaveError);
+    } finally {
+      if (mounted) setState(() => _relinking = false);
     }
   }
 
@@ -168,7 +180,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   // with web's ConfirmDialog). Guarded against a double-tap; a failure is
   // surfaced, never swallowed.
   Future<void> _confirmUnlink() async {
-    if (_updating) return;
+    if (_writing) return;
     final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
           context: context,
@@ -199,12 +211,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   // actions): each is put back by the other button on this same panel, as
   // Skip / Un-skip are. Mirrors web's workout-detail page.
   Future<void> _setCompleted({required bool done, String? error}) async {
-    if (_updating) return;
+    if (_writing) return;
     final l10n = AppLocalizations.of(context);
     setState(() => _updating = true);
     try {
       await widget.training
-          .markCompleted(widget.workoutId, null, manual: done);
+          .markCompleted(widget.workoutId, null, manual: done)
+          .timeout(kBackendLoadTimeout);
       await _load();
     } catch (e, s) {
       debugPrint('WorkoutDetailScreen._setCompleted($done) failed: $e\n$s');
@@ -215,11 +228,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   Future<void> _toggleSkip(PlanWorkoutRow w) async {
-    if (_skipping) return;
+    if (_writing) return;
     final l10n = AppLocalizations.of(context);
     setState(() => _skipping = true);
     try {
-      await widget.training.setSkipped(widget.workoutId, w.skippedAt == null);
+      await widget.training
+          .setSkipped(widget.workoutId, w.skippedAt == null)
+          .timeout(kBackendLoadTimeout);
       await _load();
     } catch (e, s) {
       debugPrint('WorkoutDetailScreen._toggleSkip failed: $e\n$s');
@@ -235,9 +250,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     if (_loading) {
       return Scaffold(
         appBar: AppBar(),
-        body: FullBodyLoader(
-          kind: ActivityLoaderKind.run,
+        body: SectionedDetailSkeleton(
           label: l10n.commonLoading,
+          statCells: 3,
+          hasAction: true,
+          rowHeight: 56,
         ),
       );
     }
@@ -563,12 +580,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         actions: [
           if (w.completedRunId != null)
             TextButton(
-              onPressed: () => _openRelinkPicker(w),
+              key: const Key('workoutDetailRelink'),
+              onPressed: _writing ? null : () => _openRelinkPicker(w),
               child: Text(l10n.workoutRelink),
             ),
           TextButton(
             key: const Key('workoutDetailMarkNotDone'),
-            onPressed: _updating
+            onPressed: _writing
                 ? null
                 : w.completedRunId != null
                     ? _confirmUnlink
@@ -591,7 +609,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         label: l10n.workoutSkipped,
         actions: [
           TextButton(
-            onPressed: _skipping ? null : () => _toggleSkip(w),
+            onPressed: _writing ? null : () => _toggleSkip(w),
             child: Text(l10n.workoutUnskip),
           ),
         ],
@@ -617,13 +635,14 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           children: [
             TextButton.icon(
               key: const Key('workoutDetailMarkDone'),
-              onPressed: _updating ? null : () => _setCompleted(done: true),
+              onPressed: _writing ? null : () => _setCompleted(done: true),
               icon: const Icon(Icons.check_circle_outline,
                   size: AppIconSize.standard),
               label: Text(l10n.workoutMarkDone),
             ),
             TextButton.icon(
-              onPressed: _skipping ? null : () => _toggleSkip(w),
+              key: const Key('workoutDetailSkip'),
+              onPressed: _writing ? null : () => _toggleSkip(w),
               icon: const Icon(Icons.skip_next, size: AppIconSize.standard),
               label: Text(l10n.workoutSkip),
             ),
@@ -934,6 +953,12 @@ class _RelinkPickerDialogState extends State<_RelinkPickerDialog> {
   }
 
   Future<void> _fetch() async {
+    if (!_loading) {
+      setState(() {
+        _loading = true;
+        _error = false;
+      });
+    }
     try {
       final c = await widget.training
           .fetchRelinkCandidates(widget.workout)
@@ -969,7 +994,19 @@ class _RelinkPickerDialogState extends State<_RelinkPickerDialog> {
         hasLeading: false,
       );
     } else if (_error) {
-      body = Text(l10n.workoutRelinkError);
+      body = Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.workoutRelinkError),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            key: const Key('workoutRelinkRetry'),
+            onPressed: _fetch,
+            child: Text(l10n.errorStateRetry),
+          ),
+        ],
+      );
     } else if (_candidates.isEmpty) {
       body = Text(l10n.workoutRelinkEmpty);
     } else {

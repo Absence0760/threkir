@@ -1673,12 +1673,12 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         StatTile.small(
           icon: Icons.trending_up,
           label: l10n.runDetailStatElevGain,
-          value: '${_elevationGain.round()}m',
+          value: UnitFormat.elevation(_elevationGain, unit),
         ),
         StatTile.small(
           icon: Icons.trending_down,
           label: l10n.runDetailStatElevLoss,
-          value: '${_elevationLoss.round()}m',
+          value: UnitFormat.elevation(_elevationLoss, unit),
         ),
       ],
       if (_showGradeAdjustedPace)
@@ -2927,13 +2927,10 @@ class _RunDetailScreenState extends State<RunDetailScreen>
             name, simplified.length, _line.length - simplified.length));
   }
 
-  /// Open the share sheet — lets the user share an image of the run card or
-  /// the raw GPX trace. Prompts for explicit consent before flipping
-  /// is_public — a casual user tapping Share might not realise the share
-  /// link exposes their full track (incl. home / work coords) to anyone
-  /// with the URL, and the privacy-zone default is OFF (decisions §33).
-  /// The mobile Run model doesn't surface is_public so we always prompt;
-  /// makeRunPublic is idempotent so a re-share through the dialog is fine.
+  /// Open the share sheet. An image, a sticker or an exported file is the
+  /// owner's own rendering of the run and leaves nothing on the server, so
+  /// the sheet opens without touching the run's visibility; only the sheet's
+  /// Share link action asks who may see the run ([_shareRunLink]).
   Future<void> _shareRun() async {
     if (_sharing) return;
     _sharing = true;
@@ -2947,47 +2944,17 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         return;
       }
       final api = widget.apiClient;
-      if (api != null && api.userId != null) {
-        // With audience sharing on, Share asks who should see the run;
-        // public is one answer of four, never a side effect of the button
-        // (decisions § 1879).
-        if (await api.audienceSharingEnabled()) {
-          if (!mounted) return;
-          final choice = await showAudienceSheet(
-            context,
-            backend: ApiAudienceBackend(api, ShareableKind.run, run.id),
-          );
-          if (!mounted) return;
-          if (choice == AudienceSheetResult.shareLink) {
-            await shareTextFrom(context,
-                text: audienceLinkUrl(ShareableKind.run, run.id),
-                subject: _title);
-            return;
-          }
-          if (choice != AudienceSheetResult.requestPublic) return;
-        }
-        if (!mounted) return;
-        final ok = await _confirmMakePublic(zones);
-        if (!ok) return;
-        try {
-          await api.makeRunPublic(run.id);
-        } catch (e) {
-          debugPrint('makeRunPublic failed: $e');
-          if (!mounted) return;
-          showTopBanner(
-              context, AppLocalizations.of(context).runDetailMakePublicFailed(friendlyError(AppLocalizations.of(context), e)));
-          return;
-        }
-      }
-      if (!mounted) return;
       await showRunShareSheet(
         context,
         run: run,
         preferences: widget.preferences,
         title: _title,
         privacyZones: zones,
-        api: widget.apiClient,
+        api: api,
         records: _runRecords,
+        onShareLink: api != null && api.userId != null
+            ? () => _shareRunLink(api)
+            : null,
       );
     } finally {
       if (mounted) {
@@ -2998,11 +2965,81 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     }
   }
 
+  /// Share the run's web link. A link is the one share that needs a reader
+  /// to be allowed to open the run, so this is where the audience is asked:
+  /// the audience sheet when it is on (decisions § 1879), otherwise the
+  /// make-public confirm, skipped when the run is already public.
+  Future<void> _shareRunLink(ApiClient api) async {
+    if (_sharingLink) return;
+    _sharingLink = true;
+    try {
+      await _shareRunLinkOnce(api);
+    } finally {
+      _sharingLink = false;
+    }
+  }
+
+  bool _sharingLink = false;
+
+  Future<void> _shareRunLinkOnce(ApiClient api) async {
+    final link = audienceLinkUrl(ShareableKind.run, run.id);
+    if (await api.audienceSharingEnabled()) {
+      if (!mounted) return;
+      final choice = await showAudienceSheet(
+        context,
+        backend: ApiAudienceBackend(api, ShareableKind.run, run.id),
+      );
+      if (!mounted) return;
+      if (choice == AudienceSheetResult.shareLink) {
+        await shareTextFrom(context, text: link, subject: _title);
+        return;
+      }
+      if (choice != AudienceSheetResult.requestPublic) return;
+    } else {
+      bool alreadyPublic = false;
+      try {
+        alreadyPublic =
+            (await api.fetchRunRaceGalleryContext(run.id))?.isPublic ?? false;
+      } catch (e) {
+        debugPrint('run visibility fetch failed: $e');
+      }
+      if (!mounted) return;
+      if (alreadyPublic) {
+        await shareTextFrom(context, text: link, subject: _title);
+        return;
+      }
+    }
+    final zones = await _knownPrivacyZones(fromServer: true);
+    if (!mounted) return;
+    if (zones == null) {
+      showTopBanner(
+          context, AppLocalizations.of(context).runDetailShareZonesUnknown);
+      return;
+    }
+    final ok = await _confirmMakePublic(zones);
+    if (!ok) return;
+    try {
+      await api.makeRunPublic(run.id);
+    } catch (e) {
+      debugPrint('makeRunPublic failed: $e');
+      if (!mounted) return;
+      showTopBanner(
+        context,
+        AppLocalizations.of(context).runDetailMakePublicFailed(
+          friendlyError(AppLocalizations.of(context), e),
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
+    await shareTextFrom(context, text: link, subject: _title);
+  }
+
   bool _droppingTrack = false;
 
-  /// Open the file-export sheet without the make-public step [_shareRun] runs
-  /// first: this entry exists so a runner can keep a copy of a trace they are
-  /// about to lose, which is a local file, not a published link.
+  /// Open the file-export sheet straight from the drop-track prompt: this
+  /// entry exists so a runner can keep a copy of a trace they are about to
+  /// lose, which is a local file, not a published link.
   Future<void> _exportBeforeDrop() async {
     // The sheet can also share the image, which withholds the zones, so it
     // opens only once they are known.
@@ -3140,14 +3177,22 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// no zone, whenever the settings bag had not loaded yet. Signed out there
   /// is no account and so no zone. Signed in, the bag is loaded first when
   /// sign-in never loaded it; a failure to load it is null.
-  Future<List<PrivacyZone>?> _knownPrivacyZones() async {
+  ///
+  /// [fromServer] re-reads the bags first and treats a fetch that fell back
+  /// to the cache as unknown: the make-public confirm must see a zone added
+  /// on another device after sign-in.
+  Future<List<PrivacyZone>?> _knownPrivacyZones(
+      {bool fromServer = false}) async {
     final api = widget.apiClient;
     if (api == null || api.userId == null) return const [];
     final sync = widget.settingsSync;
     if (sync == null) return null;
     final SettingsService svc;
     try {
-      svc = sync.service ?? await sync.loadedService();
+      svc = fromServer
+          ? await sync.reloadedService()
+          : sync.service ?? await sync.loadedService();
+      if (fromServer && !svc.isServerHydrated) return null;
     } catch (e) {
       debugPrint('run_detail: privacy zones unknown — $e');
       return null;
@@ -3264,7 +3309,11 @@ class _ElevationProfile {
 
 class _ElevationChartState extends State<_ElevationChart> {
   static const double _chartHeight = 140;
-  static const double _gutter = 40;
+  static const double _minGutter = 40;
+
+  /// Wide enough for the longer of the two gutter labels in the runner's
+  /// unit: "8,848 m" fits the old fixed 40 px, "5,577 ft" does not.
+  double _gutter = _minGutter;
 
   int? _touchIdx;
   int? _lastEmittedIdx;
@@ -3315,11 +3364,25 @@ class _ElevationChartState extends State<_ElevationChart> {
     final labelStyle = theme.textTheme.labelSmall
         ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
     final total = _cum.isEmpty ? 0.0 : _cum.last;
+    final textScaler = MediaQuery.textScalerOf(context);
+    var widest = 0.0;
+    for (final ele in [profile.dataMin, profile.dataMax]) {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: UnitFormat.elevation(ele, widget.unit),
+          style: theme.textTheme.labelSmall,
+        ),
+        textDirection: TextDirection.ltr,
+        textScaler: textScaler,
+      )..layout();
+      if (tp.width > widest) widest = tp.width;
+    }
+    _gutter = math.max(_minGutter, (widest + 8).ceilToDouble());
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(
-          height: 20,
+          height: textScaler.scale(20),
           child: _touchIdx != null ? _buildCrosshairLabel() : null,
         ),
         SizedBox(
@@ -3340,6 +3403,8 @@ class _ElevationChartState extends State<_ElevationChart> {
                 domain: profile.domain,
                 theme: theme,
                 gutter: _gutter,
+                unit: widget.unit,
+                textScaler: textScaler,
                 touchIdx: _touchIdx,
               ),
               size: const Size(double.infinity, _chartHeight),
@@ -3347,9 +3412,9 @@ class _ElevationChartState extends State<_ElevationChart> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.only(left: _gutter, top: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          padding: EdgeInsets.only(left: _gutter, top: 4),
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
             children: [
               Text(UnitFormat.distance(0, widget.unit), style: labelStyle),
               Text(UnitFormat.distance(total, widget.unit), style: labelStyle),
@@ -3431,7 +3496,7 @@ class _ElevationChartState extends State<_ElevationChart> {
           const SizedBox(width: 16),
           if (ele != null)
             Text(
-              '${ele.round()}m',
+              UnitFormat.elevation(ele, widget.unit),
               style: theme.textTheme.bodySmall?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -3517,6 +3582,8 @@ class _ElevationPainter extends CustomPainter {
   final ({double lo, double hi}) domain;
   final ThemeData theme;
   final double gutter;
+  final DistanceUnit unit;
+  final TextScaler textScaler;
   final int? touchIdx;
 
   _ElevationPainter({
@@ -3527,6 +3594,8 @@ class _ElevationPainter extends CustomPainter {
     required this.domain,
     required this.theme,
     required this.gutter,
+    required this.unit,
+    required this.textScaler,
     this.touchIdx,
   });
 
@@ -3549,6 +3618,7 @@ class _ElevationPainter extends CustomPainter {
     final labelHeight = (TextPainter(
       text: TextSpan(text: '0 m', style: labelStyle),
       textDirection: TextDirection.ltr,
+      textScaler: textScaler,
     )..layout())
         .height;
     for (final ele in elevationGutterLabels(
@@ -3567,8 +3637,12 @@ class _ElevationPainter extends CustomPainter {
           ..strokeWidth = 1,
       );
       final tp = TextPainter(
-        text: TextSpan(text: '${ele.round()} m', style: labelStyle),
+        text: TextSpan(
+          text: UnitFormat.elevation(ele, unit),
+          style: labelStyle,
+        ),
         textDirection: TextDirection.ltr,
+        textScaler: textScaler,
       )..layout(maxWidth: gutter - 4);
       tp.paint(canvas, Offset(gutter - 4 - tp.width, y - tp.height / 2));
     }
@@ -3629,6 +3703,9 @@ class _ElevationPainter extends CustomPainter {
   bool shouldRepaint(covariant _ElevationPainter old) =>
       !identical(old.smoothed, smoothed) ||
       old.touchIdx != touchIdx ||
+      old.gutter != gutter ||
+      old.unit != unit ||
+      old.textScaler != textScaler ||
       old.theme != theme;
 }
 
@@ -3818,7 +3895,7 @@ class _SegmentStatsCard extends StatelessWidget {
             '${segment.avgBpm} ${l10n.runUnitBpm}'),
       if (segment.eleGainMetres > 0)
         _stat(theme, l10n.runDetailSegStatGain,
-            '+${segment.eleGainMetres.round()} m'),
+            '+${UnitFormat.elevation(segment.eleGainMetres, unit)}'),
     ];
     return Card(
       child: Padding(

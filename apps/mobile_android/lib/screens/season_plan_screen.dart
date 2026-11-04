@@ -2,6 +2,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 
+import '../auth_error.dart';
 import '../backend_timeout.dart';
 import '../goal_time.dart';
 import '../l10n/date_format.dart';
@@ -38,9 +39,9 @@ class _RaceRow {
     String goal = '',
     this.date,
     required this.priority,
-  })  : name = TextEditingController(text: name),
-        distance = TextEditingController(text: distance),
-        goal = TextEditingController(text: goal);
+  }) : name = TextEditingController(text: name),
+       distance = TextEditingController(text: distance),
+       goal = TextEditingController(text: goal);
 
   void dispose() {
     name.dispose();
@@ -63,7 +64,7 @@ class SeasonPlanScreen extends StatefulWidget {
   /// itself, and the runner's calendar day.
   final Future<bool> Function()? loadAiAvailable;
   final Future<SeasonRequestResult> Function(String request, String todayIso)?
-      requestSeasonRacesFn;
+  requestSeasonRacesFn;
   final String Function()? todayIso;
 
   const SeasonPlanScreen({
@@ -113,16 +114,19 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
   void initState() {
     super.initState();
     _loadAiAvailability();
-    widget.training.fetchPlanCalibration().then((c) {
-      if (!mounted) return;
-      setState(() {
-        _viewerGender = c.gender;
-        _viewerAge = c.age;
-        _viewerExtraRecovery = c.extraRecovery;
-      });
-    }).catchError((Object e) {
-      debugPrint('SeasonPlanScreen: calibration lookup failed: $e');
-    });
+    widget.training
+        .fetchPlanCalibration()
+        .then((c) {
+          if (!mounted) return;
+          setState(() {
+            _viewerGender = c.gender;
+            _viewerAge = c.age;
+            _viewerExtraRecovery = c.extraRecovery;
+          });
+        })
+        .catchError((Object e) {
+          debugPrint('SeasonPlanScreen: calibration lookup failed: $e');
+        });
   }
 
   @override
@@ -145,10 +149,10 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
   }
 
   String _currentKey() => [
-        _daysPerWeek,
-        for (final r in _rows)
-          '${r.key}|${r.name.text}|${r.date}|${r.distance.text}|${r.priority.name}|${r.goal.text}',
-      ].join('\n');
+    _daysPerWeek,
+    for (final r in _rows)
+      '${r.key}|${r.name.text}|${r.date}|${r.distance.text}|${r.priority.name}|${r.goal.text}',
+  ].join('\n');
 
   SeasonBuildResult? get _preview =>
       _built != null && _builtFor == _currentKey() ? _built : null;
@@ -179,11 +183,12 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
 
   void _addRace() {
     setState(() {
-      _rows.add(_RaceRow(
-        key: _nextKey++,
-        priority:
-            _rows.isEmpty ? SeasonRacePriority.a : SeasonRacePriority.b,
-      ));
+      _rows.add(
+        _RaceRow(
+          key: _nextKey++,
+          priority: _rows.isEmpty ? SeasonRacePriority.a : SeasonRacePriority.b,
+        ),
+      );
     });
   }
 
@@ -203,7 +208,9 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
     });
     try {
       final result = await (widget.requestSeasonRacesFn ?? requestSeasonRaces)(
-          text, _today());
+        text,
+        _today(),
+      );
       if (!mounted) return;
       if (result.races.isEmpty) {
         setState(() {
@@ -211,7 +218,8 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
           _aiError = PlanRequestErrorKind.notUnderstood;
           if (_rows.isEmpty) {
             _rows.add(
-                _RaceRow(key: _nextKey++, priority: SeasonRacePriority.a));
+              _RaceRow(key: _nextKey++, priority: SeasonRacePriority.a),
+            );
           }
         });
         return;
@@ -232,8 +240,9 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
       }
       if (!mounted) return;
       setState(() {
-        _aiError =
-            e is PlanRequestError ? e.kind : PlanRequestErrorKind.unavailable;
+        _aiError = e is PlanRequestError
+            ? e.kind
+            : PlanRequestErrorKind.unavailable;
         if (_rows.isEmpty) {
           _rows.add(_RaceRow(key: _nextKey++, priority: SeasonRacePriority.a));
         }
@@ -286,13 +295,15 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
         _rowError = l10n.seasonPlanRowInvalid(i + 1);
         return null;
       }
-      races.add(SeasonRace(
-        name: r.name.text.trim(),
-        date: r.date!,
-        distanceM: distance * _perUnit,
-        priority: r.priority,
-        goalTimeSec: goal,
-      ));
+      races.add(
+        SeasonRace(
+          name: r.name.text.trim(),
+          date: r.date!,
+          distanceM: distance * _perUnit,
+          priority: r.priority,
+          goalTimeSec: goal,
+        ),
+      );
     }
     return races;
   }
@@ -336,22 +347,34 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
     try {
       var firstAction = PlanOverlapAction.refuse;
       if (from == 0) {
-        final active =
-            await widget.training.fetchActivePlans().timeout(kBackendLoadTimeout);
+        final active = await widget.training.fetchActivePlans().timeout(
+          kBackendLoadTimeout,
+        );
         for (var i = 1; i < drafts.length; i++) {
           final hits = overlappingActivePlans(
-              active, drafts[i].startDate, drafts[i].endDate);
+            active,
+            drafts[i].startDate,
+            drafts[i].endDate,
+          );
           if (hits.isNotEmpty) {
             if (mounted) {
-              setState(() => _createError = l10n.seasonPlanBlocked(
-                  drafts[i].name, hits.map((p) => p.name).join(', ')));
+              setState(
+                () => _createError = l10n.seasonPlanBlocked(
+                  drafts[i].name,
+                  hits.map((p) => p.name).join(', '),
+                ),
+              );
             }
             return;
           }
         }
         if (!mounted) return;
-        final action = await confirmPlanOverlap(context, widget.training,
-            startIso: drafts.first.startDate, endIso: drafts.first.endDate);
+        final action = await confirmPlanOverlap(
+          context,
+          widget.training,
+          startIso: drafts.first.startDate,
+          endIso: drafts.first.endDate,
+        );
         if (action == null) return;
         firstAction = action;
       }
@@ -374,7 +397,8 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
         } catch (e) {
           debugPrint('SeasonPlanScreen: create of plan $i failed: $e');
           if (!mounted) return;
-          final error = planOverlapErrorText(context, e) ?? e.toString();
+          final error =
+              planOverlapErrorText(context, e) ?? friendlyError(l10n, e);
           setState(() {
             _failedIndex = i;
             _createError = _created.isEmpty
@@ -399,7 +423,10 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
     } catch (e) {
       debugPrint('SeasonPlanScreen: season create failed: $e');
       if (mounted) {
-        setState(() => _createError = l10n.seasonPlanFailedNone(e.toString()));
+        setState(
+          () =>
+              _createError = l10n.seasonPlanFailedNone(friendlyError(l10n, e)),
+        );
       }
     } finally {
       if (mounted) setState(() => _creating = false);
@@ -436,17 +463,27 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
   }
 
   String _unplacedText(
-          AppLocalizations l10n, SeasonUnplaced u, String Function(String) day) =>
-      switch (u.reason) {
-        SeasonUnplacedReason.beforeFirstPlan =>
-          l10n.seasonPlanUnplacedBefore(u.race.name, day(u.race.date)),
-        SeasonUnplacedReason.betweenPlans =>
-          l10n.seasonPlanUnplacedBetween(u.race.name, day(u.race.date)),
-        SeasonUnplacedReason.afterLastPlan =>
-          l10n.seasonPlanUnplacedAfter(u.race.name, day(u.race.date)),
-        SeasonUnplacedReason.sameDay =>
-          l10n.seasonPlanUnplacedSameDay(u.race.name, day(u.race.date)),
-      };
+    AppLocalizations l10n,
+    SeasonUnplaced u,
+    String Function(String) day,
+  ) => switch (u.reason) {
+    SeasonUnplacedReason.beforeFirstPlan => l10n.seasonPlanUnplacedBefore(
+      u.race.name,
+      day(u.race.date),
+    ),
+    SeasonUnplacedReason.betweenPlans => l10n.seasonPlanUnplacedBetween(
+      u.race.name,
+      day(u.race.date),
+    ),
+    SeasonUnplacedReason.afterLastPlan => l10n.seasonPlanUnplacedAfter(
+      u.race.name,
+      day(u.race.date),
+    ),
+    SeasonUnplacedReason.sameDay => l10n.seasonPlanUnplacedSameDay(
+      u.race.name,
+      day(u.race.date),
+    ),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -464,8 +501,9 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
         children: [
           Text(
             l10n.seasonPlanIntro,
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 16),
           if (_aiAvailable) ...[
@@ -476,8 +514,9 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
           const SizedBox(height: 4),
           Text(
             l10n.seasonPlanRacesHint,
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 8),
           if (_rows.isEmpty)
@@ -512,9 +551,11 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
           ),
           if (_rowError != null) ...[
             const SizedBox(height: 8),
-            Text(_rowError!,
-                key: const Key('season-row-error'),
-                style: TextStyle(color: theme.colorScheme.error)),
+            Text(
+              _rowError!,
+              key: const Key('season-row-error'),
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
           ],
           const SizedBox(height: 12),
           FilledButton(
@@ -544,12 +585,17 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(l10n.seasonPlanDescribeTitle,
-                style: theme.textTheme.titleMedium),
+            Text(
+              l10n.seasonPlanDescribeTitle,
+              style: theme.textTheme.titleMedium,
+            ),
             const SizedBox(height: 4),
-            Text(l10n.seasonPlanDescribeHint,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: cs.onSurfaceVariant)),
+            Text(
+              l10n.seasonPlanDescribeHint,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
+            ),
             const SizedBox(height: 8),
             TextField(
               key: const Key('season-describe'),
@@ -570,9 +616,11 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
               onPressed: (_aiBusy || _describeCtrl.text.trim().isEmpty)
                   ? null
                   : _findRaces,
-              child: Text(_aiBusy
-                  ? l10n.seasonPlanDescribeWorking
-                  : l10n.seasonPlanDescribeButton),
+              child: Text(
+                _aiBusy
+                    ? l10n.seasonPlanDescribeWorking
+                    : l10n.seasonPlanDescribeButton,
+              ),
             ),
             if (error != null) ...[
               const SizedBox(height: 8),
@@ -589,8 +637,10 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_aiErrorText(l10n, error),
-                          style: TextStyle(color: cs.onErrorContainer)),
+                      Text(
+                        _aiErrorText(l10n, error),
+                        style: TextStyle(color: cs.onErrorContainer),
+                      ),
                       if (error == PlanRequestErrorKind.consent)
                         TextButton(
                           onPressed: _reviewAiDisclosure,
@@ -617,11 +667,15 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (_aiFound)
-                        Text(l10n.seasonPlanDescribeFound,
-                            style: TextStyle(color: cs.onSecondaryContainer)),
+                        Text(
+                          l10n.seasonPlanDescribeFound,
+                          style: TextStyle(color: cs.onSecondaryContainer),
+                        ),
                       for (final line in assumptions)
-                        Text('• $line',
-                            style: TextStyle(color: cs.onSecondaryContainer)),
+                        Text(
+                          '• $line',
+                          style: TextStyle(color: cs.onSecondaryContainer),
+                        ),
                     ],
                   ),
                 ),
@@ -633,8 +687,14 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
     );
   }
 
-  Widget _raceCard(ThemeData theme, AppLocalizations l10n, _RaceRow row, int i,
-      String unit, String Function(String) day) {
+  Widget _raceCard(
+    ThemeData theme,
+    AppLocalizations l10n,
+    _RaceRow row,
+    int i,
+    String unit,
+    String Function(String) day,
+  ) {
     return Card(
       key: ValueKey('season-race-${row.key}'),
       margin: const EdgeInsets.only(bottom: 10),
@@ -646,8 +706,10 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
             Row(
               children: [
                 Expanded(
-                  child: Text(l10n.seasonPlanRaceLegend(i + 1),
-                      style: theme.textTheme.titleSmall),
+                  child: Text(
+                    l10n.seasonPlanRaceLegend(i + 1),
+                    style: theme.textTheme.titleSmall,
+                  ),
                 ),
                 IconButton(
                   key: Key('season-remove-$i'),
@@ -670,28 +732,34 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
               leading: const Icon(Icons.event),
               title: Text(l10n.seasonPlanRaceDate),
               subtitle: Text(
-                  row.date == null ? l10n.seasonPlanRaceDatePick : day(row.date!)),
+                row.date == null ? l10n.seasonPlanRaceDatePick : day(row.date!),
+              ),
               onTap: () => _pickDate(row),
             ),
             TextField(
               key: Key('season-distance-$i'),
               controller: row.distance,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: InputDecoration(
-                  labelText: l10n.seasonPlanRaceDistance(unit)),
+                labelText: l10n.seasonPlanRaceDistance(unit),
+              ),
               onChanged: (_) => _changed(),
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<SeasonRacePriority>(
               key: Key('season-priority-$i-${row.priority.name}'),
               initialValue: row.priority,
-              decoration:
-                  InputDecoration(labelText: l10n.seasonPlanRacePriority),
+              decoration: InputDecoration(
+                labelText: l10n.seasonPlanRacePriority,
+              ),
               items: [
                 for (final p in SeasonRacePriority.values)
                   DropdownMenuItem(
-                      value: p, child: Text(_priorityLabel(l10n, p))),
+                    value: p,
+                    child: Text(_priorityLabel(l10n, p)),
+                  ),
               ],
               onChanged: (v) {
                 if (v != null) setState(() => row.priority = v);
@@ -713,8 +781,12 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
     );
   }
 
-  Widget _previewSection(ThemeData theme, AppLocalizations l10n,
-      SeasonBuildResult preview, String Function(String) day) {
+  Widget _previewSection(
+    ThemeData theme,
+    AppLocalizations l10n,
+    SeasonBuildResult preview,
+    String Function(String) day,
+  ) {
     final cs = theme.colorScheme;
     if (!preview.ok) {
       return Semantics(
@@ -732,9 +804,12 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
       children: [
         Text(l10n.seasonPlanPreviewTitle, style: theme.textTheme.titleMedium),
         const SizedBox(height: 4),
-        Text(l10n.seasonPlanPreviewHint(preview.plans.length),
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: cs.onSurfaceVariant)),
+        Text(
+          l10n.seasonPlanPreviewHint(preview.plans.length),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: cs.onSurfaceVariant,
+          ),
+        ),
         const SizedBox(height: 8),
         for (var i = 0; i < preview.plans.length; i++) ...[
           Card(
@@ -744,33 +819,50 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(preview.plans[i].name,
-                      style: theme.textTheme.titleSmall),
-                  Text(l10n.seasonPlanPlanWindow(
+                  Text(
+                    preview.plans[i].name,
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  Text(
+                    l10n.seasonPlanPlanWindow(
                       day(preview.plans[i].startDate),
                       day(preview.plans[i].endDate),
-                      preview.plans[i].weeks)),
-                  Text(l10n.seasonPlanPlanGoal(
+                      preview.plans[i].weeks,
+                    ),
+                  ),
+                  Text(
+                    l10n.seasonPlanPlanGoal(
                       formatDistanceForPref(preview.plans[i].goalDistanceM),
-                      day(preview.plans[i].endDate))),
+                      day(preview.plans[i].endDate),
+                    ),
+                  ),
                   if (preview.plans[i].goalTimeSec != null)
-                    Text(l10n.seasonPlanPlanGoalTime(
-                        formatRaceGoalTimeS(preview.plans[i].goalTimeSec!))),
+                    Text(
+                      l10n.seasonPlanPlanGoalTime(
+                        formatRaceGoalTimeS(preview.plans[i].goalTimeSec!),
+                      ),
+                    ),
                   if (preview.plans[i].races.isNotEmpty) ...[
                     const SizedBox(height: 4),
-                    Text(l10n.seasonPlanPlanRaces,
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(
+                      l10n.seasonPlanPlanRaces,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                     for (final r in preview.plans[i].races)
-                      Text(l10n.seasonPlanPlanRaceLine(
-                        seasonPriorityLetter(r.priority),
-                        r.name,
-                        formatDistanceForPref(r.distanceM),
-                        day(r.date),
-                      )),
+                      Text(
+                        l10n.seasonPlanPlanRaceLine(
+                          seasonPriorityLetter(r.priority),
+                          r.name,
+                          formatDistanceForPref(r.distanceM),
+                          day(r.date),
+                        ),
+                      ),
                   ],
                   if (_created.any((c) => c.index == i))
-                    Text(l10n.seasonPlanPlanCreated,
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(
+                      l10n.seasonPlanPlanCreated,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                 ],
               ),
             ),
@@ -786,8 +878,9 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
                   day(preview.gaps[i].to),
                 ),
                 key: Key('season-gap-$i'),
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: cs.onSurfaceVariant),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
               ),
             ),
         ],
@@ -804,15 +897,22 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(l10n.seasonPlanUnplacedTitle,
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: cs.onSecondaryContainer)),
+                Text(
+                  l10n.seasonPlanUnplacedTitle,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSecondaryContainer,
+                  ),
+                ),
                 for (final u in preview.unplaced)
-                  Text(_unplacedText(l10n, u, day),
-                      style: TextStyle(color: cs.onSecondaryContainer)),
-                Text(l10n.seasonPlanUnplacedHint,
-                    style: TextStyle(color: cs.onSecondaryContainer)),
+                  Text(
+                    _unplacedText(l10n, u, day),
+                    style: TextStyle(color: cs.onSecondaryContainer),
+                  ),
+                Text(
+                  l10n.seasonPlanUnplacedHint,
+                  style: TextStyle(color: cs.onSecondaryContainer),
+                ),
               ],
             ),
           ),
@@ -821,20 +921,24 @@ class _SeasonPlanScreenState extends State<SeasonPlanScreen> {
           const SizedBox(height: 8),
           Semantics(
             liveRegion: true,
-            child: Text(_createError!,
-                key: const Key('season-create-error'),
-                style: TextStyle(color: cs.error)),
+            child: Text(
+              _createError!,
+              key: const Key('season-create-error'),
+              style: TextStyle(color: cs.error),
+            ),
           ),
         ],
         const SizedBox(height: 12),
         FilledButton(
           key: const Key('season-create'),
           onPressed: _creating ? null : () => _create(l10n),
-          child: Text(_creating
-              ? l10n.seasonPlanCreating
-              : _failedIndex != null
-                  ? l10n.seasonPlanRetry
-                  : l10n.seasonPlanCreateButton(preview.plans.length)),
+          child: Text(
+            _creating
+                ? l10n.seasonPlanCreating
+                : _failedIndex != null
+                ? l10n.seasonPlanRetry
+                : l10n.seasonPlanCreateButton(preview.plans.length),
+          ),
         ),
       ],
     );

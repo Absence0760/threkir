@@ -5,6 +5,7 @@ import {
 	planToJson,
 	parsePlanMarkdown,
 	parsePlanJson,
+	PlanParseError,
 	type ExportPlan,
 } from './plan_serialize';
 import { phaseFor, planPhaseFor } from './training';
@@ -404,4 +405,58 @@ test('parsePlanMarkdown refuses a workout dated before the plan\'s own start dat
 	assert.throws(() => parsePlanMarkdown(md('2027-03-08')), /2027-03-07 is before the plan's start date, 2027-03-08/);
 	assert.equal(parsePlanMarkdown(md('2027-03-07')).startDate, '2027-03-07');
 	assert.equal(parsePlanMarkdown(md('2027-03-01')).startDate, '2027-03-01');
+});
+
+// ─────────────────────── refusal codes (localized by the UI) ───────────────────────
+
+function refusal(fn: () => unknown): PlanParseError {
+	try {
+		fn();
+	} catch (e) {
+		assert.ok(e instanceof PlanParseError, `expected a PlanParseError, got ${String(e)}`);
+		return e;
+	}
+	assert.fail('expected the parse to be refused');
+}
+
+test('a refusal carries its code and the cell it could not read', () => {
+	const kind = refusal(() =>
+		parsePlanMarkdown(
+			['| Week | Date | Type | Distance | Pace | Notes |', '| --- | --- | --- | --- | --- | --- |', '| 1 | 2026-07-05 | sprintz | 5 km | | |'].join('\n'),
+		),
+	);
+	assert.equal(kind.code, 'unknownKind');
+	assert.deepEqual(kind.params, { cell: 'sprintz' });
+	const date = refusal(() =>
+		parsePlanMarkdown(
+			['| Week | Date | Type | Distance | Pace | Notes |', '| --- | --- | --- | --- | --- | --- |', '| 1 | 07/05/2026 | easy | 5 km | | |'].join('\n'),
+		),
+	);
+	assert.equal(date.code, 'badDate');
+	assert.deepEqual(date.params, { cell: '07/05/2026' });
+	assert.equal(refusal(() => parsePlanMarkdown('# Just a title')).code, 'noRows');
+});
+
+test('a race field on a non-race row is refused with its date and kind', () => {
+	const e = refusal(() =>
+		parsePlanMarkdown(
+			[
+				'| Week | Date | Type | Distance | Pace | Notes | Race |',
+				'| --- | --- | --- | --- | --- | --- | --- |',
+				'| 1 | 2026-07-05 | easy | 5 km | | | Spring 10K |',
+			].join('\n'),
+		),
+	);
+	assert.equal(e.code, 'raceFieldsOnNonRace');
+	assert.deepEqual(e.params, { date: '2026-07-05', kind: 'easy' });
+});
+
+test('JSON refusals carry their codes, and non-export workouts are refused as such', () => {
+	assert.equal(refusal(() => parsePlanJson('not json {')).code, 'notJson');
+	assert.equal(refusal(() => parsePlanJson('{"name":"x"}')).code, 'noWorkoutsArray');
+	assert.equal(refusal(() => parsePlanJson('{"workouts":[1]}')).code, 'badJsonShape');
+	assert.equal(
+		refusal(() => parsePlanJson('{"workouts":[{"week_index":"1","scheduled_date":"2026-07-05","kind":"easy"}]}')).code,
+		'badJsonShape',
+	);
 });

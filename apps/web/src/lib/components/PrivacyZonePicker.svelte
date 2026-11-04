@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import type * as GeoJSON from 'geojson';
 	import { onMount, onDestroy } from 'svelte';
 	import maplibregl from '#lib/routes/maplibre.ts';
@@ -13,6 +12,7 @@
 	import { watchMapResize } from '#lib/routes/map_resize.ts';
 	import type { PrivacyZone } from '#lib/routes/privacy.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
 
 	interface Props {
@@ -181,7 +181,7 @@
 			geoError =
 				e instanceof GeolocationPositionError
 					? m('privacyZonePicker.geoDenied')
-					: m('privacyZonePicker.geoError', { error: thrownMessage(e) });
+					: m('privacyZonePicker.geoError', { error: errorCopy(e, m, 'privacyZonePicker.geoError') });
 		} finally {
 			geoBusy = false;
 		}

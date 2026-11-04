@@ -4,15 +4,16 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/rendering.dart';
-import 'package:ui_kit/ui_kit.dart' show FullBodyLoader, ListSkeleton, TextLane;
+import 'package:ui_kit/ui_kit.dart' show ListSkeleton, TextLane;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/relink_candidates.dart';
 import '../lib/screens/workout_detail_screen.dart';
 import '../lib/training.dart';
 import '../lib/training_service.dart';
+import '../lib/widgets/loading_skeletons.dart';
+import 'supabase_test_init.dart';
 
 PlanWorkoutRow _completedWorkout({String? completedRunId = 'run-current'}) {
   return PlanWorkoutRow(
@@ -37,6 +38,15 @@ class _FakeTraining extends TrainingService {
   bool markCalled = false;
   bool? lastMarkManual;
 
+  /// Holds the re-link write open until completed, when set.
+  Completer<void>? markGate;
+
+  /// What each candidate read does, in order; the last repeats. An [Object]
+  /// is thrown, null serves [candidates].
+  List<Object?> candidateLoads = const [null];
+  int candidateCalls = 0;
+  Object? markError;
+
   _FakeTraining(this.workout, this.candidates, {this.gateCandidates});
 
   @override
@@ -47,6 +57,10 @@ class _FakeTraining extends TrainingService {
     PlanWorkoutRow workout,
   ) async {
     await gateCandidates?.future;
+    final outcome =
+        candidateLoads[candidateCalls.clamp(0, candidateLoads.length - 1)];
+    candidateCalls++;
+    if (outcome != null) throw outcome;
     return candidates;
   }
 
@@ -56,6 +70,8 @@ class _FakeTraining extends TrainingService {
     markCalled = true;
     lastMarkRunId = runId;
     lastMarkManual = manual;
+    await markGate?.future;
+    if (markError != null) throw markError!;
   }
 }
 
@@ -86,10 +102,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 
@@ -115,7 +128,7 @@ void main() {
       // Reason: while _loading is true the screen returns a bare
       // Scaffold carrying nothing but the loader.
       await _pump(tester);
-      expect(find.byType(FullBodyLoader), findsOneWidget);
+      expect(find.byType(SectionedDetailSkeleton), findsOneWidget);
       await tester.pump(const Duration(milliseconds: 400));
     });
 
@@ -189,6 +202,81 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       expect(skeleton, findsNothing);
       expect(find.byType(ListTile), findsOneWidget);
+    });
+
+    // Re-link had no busy state: a second tap opened the picker again over a
+    // link still in flight, and Unlink stayed live beside it.
+    testWidgets('a re-link in flight holds Re-link and Unlink', (tester) async {
+      final gate = Completer<void>();
+      final training = _FakeTraining(
+        _completedWorkout(),
+        [
+          _cand('run-current', '2026-04-05T07:00:00Z'),
+          _cand('run-other', '2026-04-06T07:00:00Z'),
+        ],
+      )..markGate = gate;
+      await _pumpWith(tester, training);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Re-link'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(ListTile).at(1));
+      await tester.pumpAndSettle();
+      expect(training.lastMarkRunId, 'run-other');
+
+      ButtonStyleButton button(String key) =>
+          tester.widget<ButtonStyleButton>(find.byKey(Key(key)));
+      expect(button('workoutDetailRelink').onPressed, isNull);
+      expect(button('workoutDetailMarkNotDone').onPressed, isNull);
+
+      gate.complete();
+      await tester.pumpAndSettle();
+      expect(button('workoutDetailRelink').onPressed, isNotNull);
+    });
+
+    // A failed candidate read was a dead end: the text said "try again" and
+    // the dialog offered only Cancel.
+    testWidgets('a failed candidate load offers a Retry that loads them',
+        (tester) async {
+      final training = _FakeTraining(
+        _completedWorkout(),
+        [_cand('run-current', '2026-04-05T07:00:00Z')],
+      )..candidateLoads = [Exception('offline'), null];
+      await _pumpWith(tester, training);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Re-link'));
+      await tester.pumpAndSettle();
+      expect(find.text("Couldn't load your runs. Try again."), findsOneWidget);
+      expect(find.byType(ListTile), findsNothing);
+
+      await tester.tap(find.byKey(const Key('workoutRelinkRetry')));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(training.candidateCalls, 2);
+      expect(find.byType(ListTile), findsOneWidget);
+      expect(find.text("Couldn't load your runs. Try again."), findsNothing);
+    });
+
+    // A failed link said the runs had not loaded, which they had.
+    testWidgets('a failed re-link says the link failed, not the load',
+        (tester) async {
+      final training = _FakeTraining(
+        _completedWorkout(),
+        [
+          _cand('run-current', '2026-04-05T07:00:00Z'),
+          _cand('run-other', '2026-04-06T07:00:00Z'),
+        ],
+      )..markError = Exception('refused');
+      await _pumpWith(tester, training);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Re-link'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(ListTile).at(1));
+      await tester.pump();
+      await tester.pump();
+      expect(find.text("Couldn't link that run. Try again."), findsOneWidget);
+      expect(find.text("Couldn't load your runs. Try again."), findsNothing);
+      await tester.pump(const Duration(seconds: 4));
     });
 
     testWidgets('picker shows the empty state when no candidates', (tester) async {

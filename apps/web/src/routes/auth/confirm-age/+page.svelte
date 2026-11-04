@@ -2,7 +2,8 @@
 	import { goto } from '$app/navigation';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
-	import { appErrorMessage, dbError } from '#lib/core/supabase_error.ts';
+	import { dbError } from '#lib/core/supabase_error.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { checkSignUpGates } from '#lib/core/auth_gates.ts';
 	import { defaultUnitForLocale } from '#lib/format/locale_defaults.ts';
@@ -44,7 +45,7 @@
 			await auth.refreshSession();
 			goto('/dashboard');
 		} catch (err) {
-			error = appErrorMessage(err) ?? m('confirmAge.recordConsentError');
+			error = errorCopy(err, m, 'confirmAge.recordConsentError', 'confirmAge.recordConsentError');
 		} finally {
 			loading = false;
 		}

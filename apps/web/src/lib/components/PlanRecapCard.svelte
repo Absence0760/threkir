@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import { fetchPlanRecapSources } from '#lib/core/data.ts';
@@ -35,7 +36,7 @@
 		} catch (e) {
 			// L4: the plan page stands without its recap.
 			console.error('fetchPlanRecapSources failed', { message: thrownMessage(e) });
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, m, 'PlanRecapCard: loadError');
 		}
 	}
 	onMount(load);

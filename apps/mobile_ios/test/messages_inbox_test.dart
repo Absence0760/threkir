@@ -135,4 +135,31 @@ void main() {
     expect(String.fromCharCode(cut.runes.first), '\u{1F3C3}');
     expect(coachInboxPreview('x' * kCoachPreviewMax), 'x' * kCoachPreviewMax);
   });
+
+  test('archived conversations leave the inbox for the Archived list, order kept',
+      () {
+    final threads = [('a', false), ('b', true), ('c', false), ('d', true)];
+    final split = partitionArchived(threads, archived: (t) => t.$2);
+    expect([for (final t in split.inbox) t.$1], ['a', 'c']);
+    expect([for (final t in split.archived) t.$1], ['b', 'd']);
+    final empty = partitionArchived(<(String, bool)>[], archived: (t) => t.$2);
+    expect(empty.inbox, isEmpty);
+    expect(empty.archived, isEmpty);
+  });
+
+  test(
+      'the badge counts unread only in conversations neither muted nor archived',
+      () {
+    expect(
+      unreadDmBadgeCount([
+        (unread: 2, muted: false, archived: false),
+        (unread: 5, muted: true, archived: false),
+        (unread: 3, muted: false, archived: true),
+        (unread: 1, muted: false, archived: false),
+      ]),
+      3,
+    );
+    expect(unreadDmBadgeCount([(unread: -4, muted: false, archived: false)]), 0);
+    expect(unreadDmBadgeCount(const []), 0);
+  });
 }

@@ -222,6 +222,19 @@ class _HomeScreenState extends State<HomeScreen>
   void _syncRunPageShown() =>
       _runPageShown.value = _currentIndex.value == _pageRun;
 
+  /// A kept-alive page holds on to its focused field after the runner moves
+  /// to another page (Android's back hides the keyboard without unfocusing),
+  /// and Flutter hands focus back to it whenever a route above the shell
+  /// pops, which raised the keyboard over a page with no field on it
+  /// (decisions § 2286). Leaving the page is when that focus stops meaning
+  /// anything, so it is dropped then, along with the scope's memory of it.
+  void _dropFocusLeftBehind() {
+    final focused = FocusManager.instance.primaryFocus;
+    final shell = FocusScope.of(context, createDependency: false);
+    if (focused == null || focused == shell) return;
+    if (focused.ancestors.contains(shell)) focused.unfocus();
+  }
+
   /// Everything the centre button's look reads: whether a run is recording,
   /// and whether a tap starts one, which turns on the preferences and on
   /// whether a lift or a meal exists. The button and its caption rebuild on
@@ -253,6 +266,7 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
     _currentIndex.addListener(_syncRunPageShown);
+    _currentIndex.addListener(_dropFocusLeftBehind);
     _rebuildPages();
     pendingStartWorkout.addListener(_onPendingStartWorkout);
     pendingArmGuidedRun.addListener(_onPendingArmGuidedRun);
@@ -835,6 +849,8 @@ class _HomeScreenState extends State<HomeScreen>
           settingsSync: widget.settingsSync,
           onStartRun: () => _performLogAction(LogAction.run),
           onLogLift: () => _performLogAction(LogAction.lift),
+          onStartWorkout: _startTodaysWorkout,
+          social: widget.social,
           onSyncRuns: widget.syncService == null
               ? null
               : () => widget.syncService!.triggerSync('manual'),
@@ -927,6 +943,7 @@ class _HomeScreenState extends State<HomeScreen>
     pendingEntityLink.removeListener(_onPendingEntityLink);
     _pageController.dispose();
     _currentIndex.removeListener(_syncRunPageShown);
+    _currentIndex.removeListener(_dropFocusLeftBehind);
     _currentIndex.dispose();
     _runPageShown.dispose();
     _fitnessTab.dispose();
@@ -1373,6 +1390,13 @@ class _HomeScreenState extends State<HomeScreen>
     // nothing when the flag is null or the user is on the free
     // tier — zero footprint in the common case.
     final expanded = widthClassOf(context) == WidthClass.expanded;
+    // The phone Scaffold resizes for the keyboard so each page's own fields
+    // stay above it, and a docked FAB rides up with the content bottom:
+    // over a page it would cover that page's controls (the recorder's
+    // START). Nothing in the bottom bar is reachable under the keyboard
+    // either, so the docked button goes while it is up and the panel keeps
+    // its own Stop.
+    final keyboardUp = MediaQuery.viewInsetsOf(context).bottom > 0;
     final body = Column(
       children: [
         BillingIssueBanner(apiClient: widget.apiClient),
@@ -1383,7 +1407,7 @@ class _HomeScreenState extends State<HomeScreen>
           // `_goToPage` drives the controller directly, which non-scrollable
           // physics doesn't block. Fail-open: the notifier defaults to false.
           child: RunStopDock(
-            docked: !expanded,
+            docked: !expanded && !keyboardUp,
             child: ValueListenableBuilder<bool>(
               valueListenable: runRecordingActive,
               builder: (context, recording, _) => PageView(
@@ -1461,8 +1485,9 @@ class _HomeScreenState extends State<HomeScreen>
       ));
     }
     return _backGuard(Scaffold(
-      body: DockedFabInset(height: kDockedFabOverhang, child: body),
-      floatingActionButton: _logFab(),
+      body: DockedFabInset(
+          height: keyboardUp ? 0 : kDockedFabOverhang, child: body),
+      floatingActionButton: keyboardUp ? null : _logFab(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: ListenableBuilder(
         listenable: _navInputs,

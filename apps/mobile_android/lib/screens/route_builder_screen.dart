@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart' show DistanceUnit;
-import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -41,7 +41,10 @@ import '../widgets/live_run_map.dart'
         basemapTileLayer,
         basemapVoidColour,
         currentBasemapIsDark,
-        currentTileUrl;
+        currentTileUrl,
+        mapDraftLine,
+        mapOverlapLine,
+        solidMapLine;
 import '../widgets/map_attribution.dart';
 import '../widgets/snap_to_start.dart';
 import '../widgets/top_banner.dart';
@@ -898,35 +901,15 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
     try {
       final pos = widget.locateFn != null
           ? await widget.locateFn!()
-          : await _platformLocate();
+          : await locateForBrowse();
       if (!mounted) return;
       _map.move(LatLng(pos.latitude, pos.longitude), 15);
     } catch (e) {
       debugPrint('route builder location unavailable: $e');
       if (!mounted) return;
       showTopBanner(context,
-          AppLocalizations.of(context).routeBuilderLocationUnavailable(friendlyError(AppLocalizations.of(context), e)));
+          AppLocalizations.of(context).routeBuilderLocationUnavailable(browseLocateErrorText(AppLocalizations.of(context), e)));
     }
-  }
-
-  // Default locate path — kept separate so widget.locateFn can stub
-  // the whole platform-channel call in tests.
-  Future<Position> _platformLocate() async {
-    if (kIsWeb) {
-      throw UnsupportedError('Locate unavailable on web');
-    }
-    // Permission gate matches the recorder's own pattern.
-    final perm = await Geolocator.checkPermission();
-    if (perm == LocationPermission.denied) {
-      final asked = await Geolocator.requestPermission();
-      if (asked == LocationPermission.denied ||
-          asked == LocationPermission.deniedForever) {
-        throw StateError('Location permission denied');
-      }
-    } else if (perm == LocationPermission.deniedForever) {
-      throw StateError('Location permission denied forever');
-    }
-    return Geolocator.getCurrentPosition();
   }
 
   Future<void> _onSearchChanged(String query) async {
@@ -1259,28 +1242,23 @@ class _RouteBuilderScreenState extends State<RouteBuilderScreen> {
                     ),
                   ],
                 ),
-              // Base polyline.
               if (polylineLatLngs.length >= 2)
                 PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: polylineLatLngs,
-                      strokeWidth: 5,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ],
+                  key: const ValueKey('builder-draft-line'),
+                  polylines: solidMapLine(
+                    polylineLatLngs,
+                    mapDraftLine(darkBasemap: darkBasemap),
+                  ),
                 ),
-              // Overlap (out-and-back) over-stroke — purple, matches
-              // the web spec.
               if (overlapLatLngs.isNotEmpty)
                 PolylineLayer(
+                  key: const ValueKey('builder-overlap-line'),
                   polylines: [
                     for (final span in overlapLatLngs)
                       if (span.length >= 2)
-                        Polyline(
-                          points: span,
-                          strokeWidth: 6,
-                          color: const Color(0xCCB084EE),
+                        ...solidMapLine(
+                          span,
+                          mapOverlapLine(darkBasemap: darkBasemap),
                         ),
                   ],
                 ),

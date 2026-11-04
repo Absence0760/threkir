@@ -3,7 +3,7 @@
 	import { afterNavigate } from '$app/navigation';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import PersonalHeatmap from '#lib/components/PersonalHeatmap.svelte';
-	import ActivityLoader from '#lib/components/ActivityLoader.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 
 	let ready = $state(false);
@@ -48,7 +48,10 @@
 	</header>
 
 	{#if !ready}
-		<div class="act-load"><ActivityLoader kind="run" size={76} label={m('shell.loading')} /></div>
+		<div class="map-host" data-testid="heatmap-skeleton">
+			<SkeletonBlock height="100%" radius="var(--radius-md)" />
+		</div>
+		<p class="visually-hidden" role="status">{m('shell.loading')}</p>
 	{:else if !auth.user}
 		<p class="muted">{m('runsHeatmap.signInPrompt')}</p>
 	{:else}
@@ -59,11 +62,6 @@
 </div>
 
 <style>
-	.act-load {
-		display: flex;
-		justify-content: center;
-		padding: var(--space-2xl) 0;
-	}
 	.page {
 		display: flex;
 		flex-direction: column;

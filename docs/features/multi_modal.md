@@ -387,8 +387,8 @@ becomes an **action button**, not a tab.
 > stats instead of sitting above them on every visit. The pending-sync
 > banner counts unsynced runs (retried through `SyncService`) and parked
 > runs as well as lifts and meals. With Gym and Nutrition both hidden the
-> pinned Coach card's subtitle names runs, training and recovery rather than
-> lifts and nutrition; its placement is unchanged. The first-run "Lifting
+> Coach card's subtitle names runs, training and recovery rather than
+> lifts and nutrition. The first-run "Lifting
 > instead?" link is hidden once `show_gym` holds an explicit answer.
 >
 > **Status (web, #905 workstream 3):** an account **with** runs opens on
@@ -401,14 +401,22 @@ becomes an **action button**, not a tab.
 >
 > **Status (mobile, #905 workstream 3):** the same lead now opens mobile Home
 > for an account with runs — `_DashboardWeekLead` in `dashboard_screen.dart`,
-> under the pinned Coach card and above the today's-workout card, fed by the
+> at the top of Home (Coach moved below the Today block, § 2280) and above the today's-workout card, fed by the
 > `week_lead.dart` parity pair so the yardstick order is web's to the letter.
 > Its next-session row opens `WorkoutDetailScreen`, **Add a run** opens the
 > manual `AddRunScreen`, and the import action keeps the welcome state's
 > **Import runs** label, since `ImportScreen` takes more than Strava and
 > Garmin ([decisions § 1800](../architecture/decisions.md)). A lifter with no
 > runs, and the runless welcome state, get no lead.
-> `test/dashboard_week_lead_test.dart`.
+> **Since 2026-11-03 (#1187, [decisions § 2281](../architecture/decisions.md))
+> the mobile lead is compact:** **Add a run** and **Import runs** left it for
+> the overflow (⋮) on Home's toolbar, which offers both on every Home state,
+> the welcome state included, so neither is more than two taps away.
+> **Web matches since the same day:** `DashboardWeekLead.svelte` carries no
+> actions, and both sit in the **Add or import** menu
+> (`DashboardActionsMenu.svelte`) at the top of every loaded `/dashboard`
+> state. `test/dashboard_week_lead_test.dart`,
+> `tests-e2e/dashboard/week-lead.spec.ts`.
 
 Home is a vertical scroll of cards. The order is **driven by what the
 user logs**, not a fixed grid. The ordering algorithm:
@@ -424,6 +432,49 @@ user logs**, not a fixed grid. The ordering algorithm:
    a "start logging" placeholder taking a full card. Empty modalities get
    at most a single slim "＋ Log your first meal" affordance at the very
    bottom, below the fold.
+
+> **Status (mobile, 2026-11-03, #1187):** rule 2 is now how mobile Home
+> orders its Today block, on the phone stack and the tablet lead column
+> alike. Under the plan cards (today's workout, then the next race) come
+> the cards for what was logged today, most recently started first: the
+> last run when it started today, and the lift + nutrition pair, placed by
+> the later of today's lift and today's newest meal. "Touched" is read as
+> the entry's start time, the one timestamp all three carry. The **Last
+> run** card stays on Home when its run is from an earlier day — it answers
+> "did that save?" — but it then follows the pair, so a run from last week
+> no longer sits above the lift and the meals logged this morning. The
+> pair keeps its 2-up layout and its internal order. Web has no last-run
+> card in its Today block (recent runs live in the Recent trend group), so
+> this is a mobile-only arrangement of a mobile-only card, not a parity
+> change. `test/dashboard_today_order_test.dart`.
+>
+> **One this-week view (mobile, 2026-11-03, [decisions § 2283](../architecture/decisions.md)):**
+> mobile Home shows this week once, in the week lead. The Week stat cell
+> and the This Week day strip left Home; the lead's chevron opens the
+> weekly summary, which now draws the day strip for the current week and a
+> climb tile for every period. The period strip keeps Month and All time.
+> **Web matches:** `/dashboard`'s week lead is its one this-week view, its
+> **Week summary** opens the weekly `PeriodSummary`, which draws
+> `ThisWeekStrip` for the current week and a Climb tile (`elevation_gain_m`)
+> for every period; the stat grid keeps Total runs, Longest run and Streak,
+> having lost its This Week, this-week vert and this-week pace cells.
+> `test/dashboard_week_lead_test.dart`, `test/period_summary_screen_test.dart`,
+> `tests-e2e/dashboard/week-lead.spec.ts`, `tests-e2e/dashboard/week-strip.spec.ts`.
+>
+> **Next club event (web + mobile, 2026-11-03, [decisions § 2285](../architecture/decisions.md)):**
+> Home's Today block shows the runner's next `going` club event when it
+> starts within seven days (web was 48 hours; mobile Home had no card), after
+> the next-race card. The Run tab keeps its own 48-hour card.
+> `test/dashboard_upcoming_event_test.dart`,
+> `tests-e2e/dashboard/upcoming-event.spec.ts`.
+>
+> **Start, Coach and the week lead (mobile, 2026-11-03):** Home carries one
+> Start, on today's open plan workout or else on the week lead (§ 2282); the
+> Coach card closes the Today block (§ 2280); the lead is compact, with
+> **Add a run** and **Import runs** in the toolbar overflow (§ 2281; web's
+> are in its **Add or import** menu). The
+> **Last run** card is a deliberate mobile-only card: web's Today block has
+> none.
 
 ```
   Home                                    (today)
@@ -466,7 +517,7 @@ Density rules so it never becomes a wall of cards:
 > Today block: on web it sits above the source filter and the stat grid, on
 > a phone above Goals, and on a tablet above the period row. Below it the
 > trend cards fold in five named groups, in one order on both platforms:
-> **Volume** (mileage, plus consistency on web and the heatmap on mobile),
+> **Volume** (mileage, plus consistency on web; the heatmap left mobile Home for the weekly summary, § 2284),
 > **Fitness and form** (readiness, the fitness snapshot, load ramp /
 > comeback, the training-load chart), **Performance** (race predictor,
 > personal bests), **Effort** (HR-zone intensity, plus the easy/hard balance
@@ -1264,7 +1315,7 @@ Bottom nav becomes `Home · Train · [+] Log · Social · You` (still five slots
 - **`Log` (+)** is unchanged — the capture sheet (Log run / lift / food → keep-alive capture page), long-press = open the fan. Capture stays separate from the Train *review/plan* surfaces (the verb-vs-modality split §63 established).
 - **`Social`** is unchanged (Feed / People / Clubs). **Routes leaves Social** — the mobile Social screen drops any routes entry.
 - **`You`** = profile + Settings + subscription + (future) payout account. `Settings` vacates its own slot; the `keepRunPrimary` toggle and all prefs live under `You → Settings`.
-- **`Coach` is made the face of Home, not a buried card.** The thesis of this doc is that *cross-modal intelligence is the product* — so the nav must not hide it. Rather than spend a scarce sixth slot (and rather than the demoted "scrollable card" the first draft proposed), **Home gains a persistent, pinned `Ask your coach…` entry at the top** (always visible above the card stack, one tap to the Coach) so the intelligence layer is the first thing on the default landing surface. Web keeps its dedicated `/coach` sidebar item (it has room). Coach stays cross-modal advisory, not a modality, so it is not a Train sub-tab. *Considered and rejected:* a dedicated `Coach` bottom-nav slot displacing `Social` — Social now also hosts paid club classes ([club_events.md](club_events.md)), so it earns its slot; the pinned-Home-entry reconciles the thesis without that trade. This is the one reversible call in the redesign — revisit if Coach engagement warrants a full slot.
+- **`Coach` is made the face of Home, not a buried card.** The thesis of this doc is that *cross-modal intelligence is the product* — so the nav must not hide it. Rather than spend a scarce sixth slot (and rather than the demoted "scrollable card" the first draft proposed), **Home gains a persistent, pinned `Ask your coach…` entry at the top** (always visible above the card stack, one tap to the Coach; since [decisions § 2280](../architecture/decisions.md) it closes the Today block instead, under today's workout and what was logged today) so the intelligence layer is the first thing on the default landing surface. Web keeps its dedicated `/coach` sidebar item (it has room). Coach stays cross-modal advisory, not a modality, so it is not a Train sub-tab. *Considered and rejected:* a dedicated `Coach` bottom-nav slot displacing `Social` — Social now also hosts paid club classes ([club_events.md](club_events.md)), so it earns its slot; the pinned-Home-entry reconciles the thesis without that trade. This is the one reversible call in the redesign — revisit if Coach engagement warrants a full slot.
 - **Home** is unchanged — the prioritised, self-hiding card stack ("what's my day").
 - **Expanded widths (≥840dp — tablets / landscape foldables) swap the chrome, not the IA:** the same four destinations + the Log action render as a `NavigationRail` (Log rides the rail's leading slot and fans its speed-dial from the button's own anchor) instead of the `BottomAppBar` + docked centre FAB. Destinations, keep-alive pages, and the Log contract are identical — only the shell changes (`widthClassOf` gate, see [conventions.md § Mobile adaptive width](../architecture/conventions.md#mobile-adaptive-width--widthclass)).
 
@@ -1314,7 +1365,7 @@ Gym P1 and nutrition sequencing keep their own gates (gym repeat-rate, nutrition
 
 1. **Hub naming** — *resolved*: shipped as **Fitness** (covers run + gym + nutrition; "Train" was the working title but doesn't cover food).
 2. **Does `All`/History also keep a Home presence?** — Home is the dashboard; the full timeline moves to `Train → All`. Decide whether Home keeps a short "recent activity" strip or sends users to the hub for history.
-3. **Coach prominence** — *resolved* (above): a pinned `Ask your coach…` entry at the top of Home, not a dedicated slot. Revisit only if engagement data argues for a full slot.
+3. **Coach prominence** — *resolved* (above): an always-present `Ask your coach…` entry on Home, not a dedicated slot; it closes the Today block (decisions § 2280). Revisit only if engagement data argues for a full slot.
 
 ### Appendix — proposed ADR (Routes is a run-modality surface; mobile nav is a Train hub)
 

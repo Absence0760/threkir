@@ -2,13 +2,13 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui_kit/ui_kit.dart' show FullBodyLoader;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/current_week_strip.dart';
 import '../lib/widgets/todays_workout_card.dart';
+import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
 
 // Plan detail answers "where am I in my plan?": week of N, the countdown, a
@@ -114,7 +114,7 @@ Future<void> _pump(WidgetTester tester, DateTime today,
   );
   await pumpUntil(
     tester,
-    () => !tester.any(find.byType(FullBodyLoader)),
+    () => !tester.any(find.byType(SectionedDetailSkeleton)),
     describe: 'the plan fetch to replace the full-body loader',
   );
   await tester.pump();
@@ -192,6 +192,23 @@ void main() {
     expect(find.byKey(const ValueKey('planDetailWeek-0')), findsOneWidget);
   });
 
+  // The row opened and closed without saying so: only the chevron's label
+  // changed, and a screen reader heard no state on the row itself.
+  testWidgets('the earlier-weeks row announces whether it is open',
+      (tester) async {
+    final handle = tester.ensureSemantics();
+    await _pump(tester, DateTime(2026, 3, 18));
+    final row = find.byKey(const Key('planDetailEarlierWeeks'));
+    expect(tester.getSemantics(row),
+        containsSemantics(hasExpandedState: true, isExpanded: false));
+
+    await tester.tap(row);
+    await tester.pump();
+    expect(tester.getSemantics(row),
+        containsSemantics(hasExpandedState: true, isExpanded: true));
+    handle.dispose();
+  });
+
   testWidgets('a past workout left open reads as missed to a screen reader',
       (tester) async {
     await _pump(tester, DateTime(2026, 3, 18));
@@ -203,6 +220,22 @@ void main() {
           (w.properties.label ?? '').endsWith('Tempo, 6.0 km, missed')),
       findsWidgets,
     );
+  });
+
+  // The row's Semantics excludes its InkWell, so open and edit have to be on
+  // the node itself or a screen reader can do neither.
+  testWidgets('a screen reader can open and edit a workout from its row',
+      (tester) async {
+    await _pump(tester, DateTime(2026, 3, 11));
+    final node = tester.widget<Semantics>(find
+        .descendant(
+          of: find.byKey(const ValueKey('planDetailWorkoutRow-e')),
+          matching: find.byWidgetPredicate((w) =>
+              w is Semantics && (w.properties.label ?? '').contains('Easy')),
+        )
+        .first);
+    expect(node.properties.onTap, isNotNull);
+    expect(node.properties.onLongPress, isNotNull);
   });
 
   testWidgets('a paused plan says so in the header', (tester) async {

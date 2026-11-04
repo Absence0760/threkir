@@ -24,7 +24,10 @@ import {
 	assembleEnglish,
 	describeRoute,
 	type RouteDescriptionInput,
+	type RouteDescriptionParts,
 } from '../route_description';
+import { parsePreferredUnit, type PreferredUnit } from '../../types';
+import { DEFAULT_LOCALE, isSupportedLocale, negotiateLocale, type Locale } from '../../i18n/locale';
 import { parseAuthHeader } from '../../coach/limits';
 import type { SupabaseClientFactory } from '../../coach/types';
 import {
@@ -146,6 +149,115 @@ function parseInput(raw: unknown): RouteDescriptionInput | null {
 	};
 }
 
+/**
+ * The unit the caller asked for, or null when the field is absent or not one
+ * of `PreferredUnit`'s members — the handler then falls back to the account's
+ * stored preference rather than trusting a malformed value.
+ */
+export function parseRequestedUnit(raw: unknown): PreferredUnit | null {
+	if (!raw || typeof raw !== 'object') return null;
+	const unit = (raw as Record<string, unknown>).unit;
+	return unit === 'km' || unit === 'mi' ? unit : null;
+}
+
+/** Read `preferred_unit` off the profile row; anything unrecognised is km. */
+function storedUnit(row: unknown): PreferredUnit {
+	const raw = row && typeof row === 'object' ? (row as Record<string, unknown>).preferred_unit : null;
+	return parsePreferredUnit(typeof raw === 'string' ? raw : null);
+}
+
+/**
+ * The UI locale the caller asked for, or null when the field is absent or not
+ * one of the seven canonical tags the clients ship (`SUPPORTED_LOCALES`) — the
+ * handler then falls back to the account's stored language. Exact canonical
+ * tags only: both clients send the identifier they already resolved, so a
+ * `pt` or `fr-CA` here is a malformed caller, not a viewer to negotiate for.
+ */
+export function parseRequestedLocale(raw: unknown): Locale | null {
+	if (!raw || typeof raw !== 'object') return null;
+	const locale = (raw as Record<string, unknown>).locale;
+	return typeof locale === 'string' && isSupportedLocale(locale) ? locale : null;
+}
+
+/**
+ * The account's stored language, `user_settings.prefs.locale` — the universal
+ * key both clients write from the language picker for server-sent copy
+ * (docs/backend/settings.md). Normalised exactly as the email renderer does
+ * (exact tag, then base language, then English). A failed read is an
+ * auxiliary failure: logged, and answered in English rather than refusing
+ * the paragraph.
+ */
+async function storedLocale(
+	supabase: ReturnType<SupabaseClientFactory>,
+	userId: string,
+): Promise<Locale> {
+	try {
+		const res = await supabase
+			.from('user_settings')
+			.select('prefs')
+			.eq('user_id', userId)
+			.maybeSingle();
+		if (res.error) {
+			console.error('[route-describe] stored locale lookup failed', supabaseErrorFields(res.error));
+			return DEFAULT_LOCALE;
+		}
+		const prefs: unknown = res.data?.prefs;
+		const tag =
+			prefs && typeof prefs === 'object' && !Array.isArray(prefs)
+				? (prefs as Record<string, unknown>).locale
+				: null;
+		return negotiateLocale(null, typeof tag === 'string' ? tag : null);
+	} catch (e) {
+		console.error('[route-describe] stored locale lookup threw', { message: thrownMessage(e) });
+		return DEFAULT_LOCALE;
+	}
+}
+
+/**
+ * The English name of each shipped locale's language, as the model is told
+ * it. Portuguese names its variant: the two catalogues differ on a third of
+ * their strings, and a Lisbon reader handed Brazilian prose is the divergence
+ * the separate locale exists to close.
+ */
+export const LANGUAGE_NAME: Record<Locale, string> = {
+	en: 'English',
+	de: 'German',
+	fr: 'French',
+	es: 'Spanish',
+	ja: 'Japanese',
+	'pt-PT': 'European Portuguese (as written in Portugal)',
+	'pt-BR': 'Brazilian Portuguese',
+};
+
+const UNIT_RULE: Record<PreferredUnit, string> = {
+	km: 'Write every distance in kilometres (km) and every climb in metres (m). Never use miles or feet.',
+	mi: 'Write every distance in miles (mi) and every climb in feet (ft). Never use kilometres or metres.',
+};
+
+/**
+ * The user turn: the verified facts, stated in the viewer's unit, and an
+ * instruction that the paragraph keeps to that unit and is written in the
+ * viewer's language. The facts stay English — they are the model's input,
+ * not the reader's text.
+ */
+export function routeDescribeUserMessage(
+	parts: RouteDescriptionParts,
+	name: string,
+	unit: PreferredUnit,
+	locale: Locale,
+): string {
+	return (
+		`Facts about the route:\n${assembleEnglish(parts, name, unit)}\n\n` +
+		`Surface: ${parts.surface ?? 'unspecified'}. ` +
+		`Elevation character: ${parts.elevation}. ` +
+		`Shape: ${parts.shape}.\n\n` +
+		`${UNIT_RULE[unit]}\n\n` +
+		`Write the paragraph in ${LANGUAGE_NAME[locale]}. Keep the route name and any ` +
+		'place names exactly as given; do not translate them.\n\n' +
+		'Write the description paragraph now.'
+	);
+}
+
 const SYSTEM_PROMPT =
 	'You write short, vivid descriptions of running routes for a running app. ' +
 	'You are given the verified facts about one route (distance, surface, ' +
@@ -153,7 +265,9 @@ const SYSTEM_PROMPT =
 	'runner browsing routes would find useful and inviting. Stay strictly ' +
 	'grounded in the facts provided — do not invent landmarks, scenery, ' +
 	'difficulty ratings, or place names that are not in the facts. Do not use ' +
-	'markdown, headings, or bullet points. Return only the paragraph.';
+	'markdown, headings, or bullet points. Write distances and climbing only ' +
+	'in the unit the facts are given in. Write in the language the request ' +
+	'names, even though the facts are given in English. Return only the paragraph.';
 
 /**
  * Enhance a route description with Claude. Always resolves to a
@@ -170,11 +284,9 @@ export async function handleRouteDescribe(
 	const input = parseInput(rawBody);
 	if (!input) return json(400, { error: 'invalid route input' });
 
-	// The templated description is computed up front: it's the response
-	// on every non-200-worthy branch below, and the prose the model is
-	// asked to enhance.
 	const parts = describeRoute(input);
-	const templated = assembleEnglish(parts, input.name);
+	const requestedUnit = parseRequestedUnit(rawBody);
+	const requestedLocale = parseRequestedLocale(rawBody);
 
 	const accessToken = parseAuthHeader(authHeader);
 	if (!accessToken) return json(401, { error: 'not authenticated' });
@@ -205,11 +317,22 @@ export async function handleRouteDescribe(
 	// there is exactly one place the fan-out can be reasoned about. The
 	// templated description still rides along on the 403, so the L1
 	// baseline survives a refusal (layered resilience).
+	let profileRow: unknown = null;
 	const disclosure = await gateAiDisclosure(
-		() => supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle(),
+		async () => {
+			const res = await supabase.rpc('get_my_profile', undefined, { get: true }).maybeSingle();
+			profileRow = res.data;
+			return res;
+		},
 		AI_DISCLOSURE_VERSION_ROUTE_AI,
 		'route-describe',
 	);
+	// A client that sent no unit (or one outside `PreferredUnit`) is answered
+	// in the account's stored unit, km when that is unset. The templated
+	// description in that unit is the response on every branch from here
+	// that does not reach the model.
+	const unit = requestedUnit ?? storedUnit(profileRow);
+	const templated = assembleEnglish(parts, input.name, unit);
 	if (!disclosure.ok) {
 		return json(disclosure.status, {
 			error:
@@ -278,6 +401,11 @@ export async function handleRouteDescribe(
 		spendId = rl.spendId;
 	}
 
+	// Read only on the path that reaches the model: every response before this
+	// one is the server's English template, which both clients replace with
+	// their own localised sentence.
+	const locale = requestedLocale ?? (await storedLocale(supabase, userId));
+
 	async function refundSlot(reason: string): Promise<void> {
 		await refundRouteRateLimitSlot(supabase, userId, ROUTE_DESCRIBE_RATE_BUCKET, spendId, reason);
 	}
@@ -293,15 +421,7 @@ export async function handleRouteDescribe(
 				thinking: { type: 'adaptive' },
 				system: SYSTEM_PROMPT,
 				messages: [
-					{
-						role: 'user',
-						content:
-							`Facts about the route:\n${templated}\n\n` +
-							`Surface: ${parts.surface ?? 'unspecified'}. ` +
-							`Elevation character: ${parts.elevation}. ` +
-							`Shape: ${parts.shape}.\n\n` +
-							'Write the description paragraph now.',
-					},
+					{ role: 'user', content: routeDescribeUserMessage(parts, input.name, unit, locale) },
 				],
 			},
 			{ timeout: ROUTE_DESCRIBE_TIMEOUT_MS },

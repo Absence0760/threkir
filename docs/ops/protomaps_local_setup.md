@@ -106,6 +106,21 @@ Once `bin/protomaps-dev.sh start` succeeds, paste the printed snippets into each
 | `apps/mobile_android` + `apps/mobile_ios` | `TILE_URL_TEMPLATE` | `{z}/{x}/{y}` template with placeholders — typically `http://localhost:8080/styles/basic/{z}/{x}/{y}.png`. |
 | `apps/watch_wear` | `PUBLIC_TILE_URL_TEMPLATE` (BuildConfig — pass `-PPUBLIC_TILE_URL_TEMPLATE=…` to gradle) | same shape as mobile |
 
+### Courses outside the local extract
+
+The extract only covers the bbox it was cut to (a Virginia slice on most dev machines, US-state polygons for the `fetch` sample), so a run or route anywhere else would sit on an empty ground. Two ways around it ([issue #1285](https://github.com/Absence0760/threkir/issues/1285)):
+
+- **Automatic, web, `vite dev` only.** `apps/web/src/lib/routes/dev_basemap_fallback.ts` reads the extract's `bounds` from the TileJSON tileserver-gl publishes for each source of the override style (`/data/v3.json`), so it follows whichever PMTiles file is mounted rather than a hard-coded box. When a map settles (`load` / `moveend`) on a viewport not entirely inside those bounds, it swaps the map to the keyless `osm-fallback-style.json` (the same OSM raster every surface uses without a MapTiler key), carrying the surface's own overlays, terrain and glyphs across; it swaps back when the viewport returns inside. The console logs each swap as `[dev-basemap] …`. `maplibre.ts` imports it dynamically inside an `import.meta.env.DEV` branch, which a build removes, so production bundles do not contain it; `scripts/check_web_dev_only_code.mjs` fails `build-web` if a chunk ever carries its `[dev-basemap]` marker. Installing is idempotent (a hot update re-running `maplibre.ts` replaces the previous wrapper rather than stacking one), and a settle that lands while a coverage check is running triggers one more check when it finishes. A tileserver that publishes no `bounds` is treated as covering everything (no swap). The flyover video export's offscreen map is left on the local style, because a video renders thousands of tiles and OSM's tile policy forbids that ([decisions § 2270](../architecture/decisions.md)); export a course outside the extract with the keyless override below instead. The decision itself is the pure `dev_basemap_coverage.ts`, pinned by `dev_basemap_coverage.test.ts`; the swap glue is pinned against a fake engine by `dev_basemap_fallback.test.ts`.
+- **Keyless public style for the whole session (web).** Point the override at a public style that needs no key, for example OpenFreeMap's `liberty` (OSM data, credited in the style as "OpenFreeMap © OpenMapTiles Data from OpenStreetMap"):
+
+  ```bash
+  # shell env, or apps/web/.env.development.local (NOT .env.local, which ranks below .env.development)
+  PUBLIC_TILE_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
+  ```
+
+  This needs no tileserver at all and covers the planet. The dev env-isolation guard allows it (`PUBLIC_TILE_STYLE_URL` is in `NOT_ISOLATED_URL_VARS`: tiles are read-only), and the dev `<meta>` CSP restricts only scripts and workers. It is a dev override only: production reads MapTiler, and the CloudFront CSP does not list OpenFreeMap.
+- **Mobile and Wear OS** have the same gap and no automatic fallback (`TILE_URL_TEMPLATE` / `PUBLIC_TILE_URL_TEMPLATE` is a raster template, and `flutter_map` has no viewport-coverage hook to swap on). Leave the override and the MapTiler key unset to get the keyless OSM raster everywhere, rather than pointing the template at OSM: with the override set, `basemapCreditsFor` credits Protomaps, which would then be the wrong party.
+
 ### Android-emulator gotcha
 
 The Android emulator's loopback alias for the host machine is `10.0.2.2` — `localhost` from inside the emulator points at the emulator's own VM, not your laptop. If you're running an emulator, swap `localhost` for `10.0.2.2` in the mobile + Wear OS values. The bootstrap script's `env` output makes a note of this.

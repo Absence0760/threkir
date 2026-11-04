@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { hashHue } from '#lib/format/avatar.ts';
 	import {
 		searchPeople,
@@ -18,6 +18,7 @@
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	let query = $state('');
 	let results = $state<PeopleSuggestion[]>([]);
@@ -86,7 +87,7 @@
 			// the user looking at an empty results list with no
 			// feedback. Surface the failure so they know to retry.
 			if (gen === searchGen) {
-				showToast(m('socialPeople.searchFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('socialPeople.searchFailed', { error: errorCopy(e, m, 'socialPeople.searchFailed') }), 'error');
 			}
 		} finally {
 			if (gen === searchGen) searching = false;
@@ -119,7 +120,7 @@
 			}
 		} catch (err) {
 			flipFollow(target.id, wasFollowing);
-			showToast(m('socialPeople.followFailed', { error: thrownMessage(err) }), 'error');
+			showToast(m('socialPeople.followFailed', { error: errorCopy(err, m, 'socialPeople.followFailed') }), 'error');
 		} finally {
 			const next = new Set(rowBusy);
 			next.delete(target.id);
@@ -178,16 +179,16 @@
 			<div class="grid" aria-hidden="true">
 				{#each Array(4) as _, i (i)}
 					<div class="skel-row">
-						<span class="skel skel-avatar"></span>
+						<SkeletonBlock height="2.5rem" width="2.5rem" radius="50%" />
 						<div class="skel-row-body">
-							<span class="skel skel-line skel-w-60"></span>
-							<span class="skel skel-line skel-w-40"></span>
+							<SkeletonBlock height="0.75rem" width="60%" />
+							<SkeletonBlock height="0.75rem" width="40%" />
 						</div>
-						<span class="skel skel-btn"></span>
+						<SkeletonBlock height="1.75rem" width="5.5rem" radius="999px" />
 					</div>
 				{/each}
 			</div>
-			<p class="sr-only" role="status">{m('socialPeople.loadingSuggestions')}</p>
+			<p class="visually-hidden" role="status">{m('socialPeople.loadingSuggestions')}</p>
 		{:else if suggestions.length === 0}
 			<div class="empty-card">
 				<span class="material-symbols empty-icon" aria-hidden="true">groups</span>
@@ -518,50 +519,5 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.4rem;
-	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-avatar {
-		width: 2.5rem;
-		height: 2.5rem;
-		border-radius: 50%;
-		flex-shrink: 0;
-	}
-	.skel-line { height: 0.75rem; }
-	.skel-w-40 { width: 40%; }
-	.skel-w-60 { width: 60%; }
-	.skel-btn {
-		width: 5.5rem;
-		height: 1.75rem;
-		border-radius: 999px;
-	}
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 </style>

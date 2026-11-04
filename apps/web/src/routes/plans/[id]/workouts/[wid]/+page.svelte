@@ -26,6 +26,8 @@
 	import Modal from '#lib/components/Modal.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import type { PlanWorkout } from '#lib/types.ts';
 	import type { WorkoutStructure } from '#lib/training/training.ts';
 	import {
@@ -58,6 +60,9 @@
 	let relinkError = $state(false);
 	let relinkCandidates = $state<RelinkCandidateRun[]>([]);
 	let relinkSaving = $state(false);
+	/// A failed link, as opposed to a failed load: the candidates stay on
+	/// screen so another tap retries.
+	let relinkSaveError = $state<string | null>(null);
 
 	let cameFromPlan = $state(false);
 	afterNavigate(({ from }) => {
@@ -149,6 +154,7 @@
 		if (!workout) return;
 		showRelink = true;
 		relinkError = false;
+		relinkSaveError = null;
 		relinkLoading = true;
 		relinkCandidates = [];
 		try {
@@ -179,13 +185,15 @@
 	async function pickRelink(runId: string) {
 		if (!workout || relinkSaving) return;
 		relinkSaving = true;
+		relinkSaveError = null;
 		try {
 			await markWorkoutCompleted(workout.id, runId);
 			showRelink = false;
 			await load();
 		} catch (e) {
-			console.error('re-link failed', e);
-			relinkError = true;
+			relinkSaveError = t('workoutDetail.relinkSaveFailed', {
+				error: errorCopy(e, t, 'workoutDetail.relinkSaveFailed'),
+			});
 		} finally {
 			relinkSaving = false;
 		}
@@ -259,23 +267,23 @@
 {#if loading}
 	<div class="page" aria-busy="true" aria-label={t('workoutDetail.loadingWorkout')}>
 		<span class="back-skel" aria-hidden="true">
-			<span class="material-symbols">arrow_back</span>
+			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{t('workoutDetail.backToPlan')}
 		</span>
 		<div class="hero skel-hero" aria-hidden="true">
 			<div class="skel-hero-text">
-				<span class="skel skel-line skel-w-20"></span>
-				<span class="skel skel-line skel-w-40"></span>
-				<span class="skel skel-line skel-w-60"></span>
+				<SkeletonBlock height="0.75rem" width="20%" />
+				<SkeletonBlock height="0.75rem" width="40%" />
+				<SkeletonBlock height="0.75rem" width="60%" />
 			</div>
 		</div>
 		<div class="skel-card" aria-hidden="true">
-			<span class="skel skel-line skel-w-20"></span>
-			<span class="skel skel-line skel-w-80"></span>
-			<span class="skel skel-line skel-w-60"></span>
+			<SkeletonBlock height="0.75rem" width="20%" />
+			<SkeletonBlock height="0.75rem" width="80%" />
+			<SkeletonBlock height="0.75rem" width="60%" />
 		</div>
 	</div>
-	<p class="sr-only" role="status">{t('workoutDetail.loadingWorkoutEllipsis')}</p>
+	<p class="visually-hidden" role="status">{t('workoutDetail.loadingWorkoutEllipsis')}</p>
 {:else if loadError}
 	<div class="page">
 		<a class="back" href="/plans/{planId}">
@@ -585,10 +593,18 @@
 	{#if relinkLoading}
 		<p class="relink-status" role="status">{t('workoutDetail.relinkLoading')}</p>
 	{:else if relinkError}
-		<p class="relink-status relink-error" role="alert">{t('workoutDetail.relinkError')}</p>
+		<div class="relink-status relink-error" role="alert">
+			<p>{t('workoutDetail.relinkError')}</p>
+			<button class="btn btn-secondary btn-sm" onclick={openRelink}>
+				{t('workoutDetail.relinkRetry')}
+			</button>
+		</div>
 	{:else if relinkCandidates.length === 0}
 		<p class="relink-status">{t('workoutDetail.relinkEmpty')}</p>
 	{:else}
+		{#if relinkSaveError}
+			<p class="relink-status relink-error" role="alert">{relinkSaveError}</p>
+		{/if}
 		<ul class="relink-list">
 			{#each relinkCandidates as run (run.id)}
 				<li>
@@ -1024,24 +1040,6 @@
 		margin-bottom: var(--space-md);
 		opacity: 0.5;
 	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line { height: 0.75rem; }
-	.skel-w-20 { width: 20%; }
-	.skel-w-40 { width: 40%; }
-	.skel-w-60 { width: 60%; }
-	.skel-w-80 { width: 80%; }
 	.skel-hero {
 		grid-template-columns: minmax(0, 1fr);
 	}
@@ -1060,13 +1058,6 @@
 		flex-direction: column;
 		gap: 0.55rem;
 		margin-bottom: var(--space-md);
-	}
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
 	}
 
 	.sr-only {

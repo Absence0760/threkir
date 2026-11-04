@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { onMount } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';
 	import { getUnit } from '#lib/format/units.svelte.ts';
@@ -18,6 +18,7 @@
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import RouteTrackPreview from './RouteTrackPreview.svelte';
 
@@ -105,7 +106,7 @@
 			searchError = false;
 		} catch (e) {
 			searchError = true;
-			showToast(t('routeExplorer.searchError', { error: thrownMessage(e) }), 'error');
+			showToast(t('routeExplorer.searchError', { error: errorCopy(e, t, 'routeExplorer.searchError') }), 'error');
 		} finally {
 			loading = false;
 		}
@@ -120,7 +121,7 @@
 			routesNext = more.next;
 			hasMore = more.next !== null;
 		} catch (e) {
-			showToast(t('routeExplorer.searchError', { error: thrownMessage(e) }), 'error');
+			showToast(t('routeExplorer.searchError', { error: errorCopy(e, t, 'routeExplorer.searchError') }), 'error');
 		} finally {
 			loading = false;
 		}
@@ -166,7 +167,7 @@
 				showToast(t('routeExplorer.toastSaved', { name: route.name ?? '' }), 'success');
 			}
 		} catch (e) {
-			showToast(t('routeExplorer.toastBookmarkError', { error: thrownMessage(e) }), 'error');
+			showToast(t('routeExplorer.toastBookmarkError', { error: errorCopy(e, t, 'routeExplorer.toastBookmarkError') }), 'error');
 		} finally {
 			const next = new Set(bookmarkBusy);
 			next.delete(route.id);
@@ -205,7 +206,7 @@
 		} catch (e) {
 			locationError = e instanceof GeolocationPositionError
 				? t('routeExplorer.locationDenied')
-				: t('routeExplorer.locationError', { error: thrownMessage(e) });
+				: t('routeExplorer.locationError', { error: errorCopy(e, t, 'routeExplorer.locationError') });
 		}
 		loading = false;
 	}
@@ -446,10 +447,10 @@
 		<div class="route-grid" aria-hidden="true">
 			{#each Array(6) as _, i (i)}
 				<div class="skel-card">
-					<span class="skel skel-thumb"></span>
+					<SkeletonBlock height="8rem" radius="0" />
 					<div class="skel-card-body">
-						<span class="skel skel-line skel-w-60"></span>
-						<span class="skel skel-line skel-w-40"></span>
+						<SkeletonBlock height="0.75rem" width="60%" />
+						<SkeletonBlock height="0.75rem" width="40%" />
 					</div>
 				</div>
 			{/each}
@@ -626,22 +627,8 @@
 		font-size: 1.1rem;
 	}
 
-	/* Skeleton loader — same shimmer language as /routes + /runs.
-	   Card layout mirrors the real route-card so the grid stays at its
-	   true height through the data swap. */
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
+	/* Skeleton (SkeletonBlock). Card layout mirrors the real route-card so
+	   the grid stays at its true height through the data swap. */
 	.skel-card {
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
@@ -649,29 +636,11 @@
 		overflow: hidden;
 		pointer-events: none;
 	}
-	.skel-thumb {
-		display: block;
-		width: 100%;
-		height: 8rem;
-		border-radius: 0;
-	}
 	.skel-card-body {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-sm);
 		padding: var(--space-md) var(--space-lg);
-	}
-	.skel-line {
-		height: 0.75rem;
-	}
-	.skel-w-40 { width: 40%; }
-	.skel-w-60 { width: 60%; }
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
 	}
 	.sr-only {
 		position: absolute;

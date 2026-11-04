@@ -586,4 +586,59 @@ void main() {
     expect(parsePlanMarkdown(md('2027-03-07')).startDate, '2027-03-07');
     expect(parsePlanMarkdown(md('2027-03-01')).startDate, '2027-03-01');
   });
+
+  // ─────────────────────── refusal codes (localized by the UI) ───────────────────────
+
+  PlanParseError refusal(Object? Function() fn) {
+    try {
+      fn();
+    } on PlanParseError catch (e) {
+      return e;
+    }
+    fail('expected the parse to be refused');
+  }
+
+  test('a refusal carries its code and the cell it could not read', () {
+    final kind = refusal(() => parsePlanMarkdown(_table([
+          '| Week | Date | Type | Distance | Pace | Notes |',
+          '| --- | --- | --- | --- | --- | --- |',
+          '| 1 | 2026-07-05 | sprintz | 5 km | | |',
+        ])));
+    expect(kind.code, PlanParseCode.unknownKind);
+    expect(kind.params, {'cell': 'sprintz'});
+    final date = refusal(() => parsePlanMarkdown(_table([
+          '| Week | Date | Type | Distance | Pace | Notes |',
+          '| --- | --- | --- | --- | --- | --- |',
+          '| 1 | 07/05/2026 | easy | 5 km | | |',
+        ])));
+    expect(date.code, PlanParseCode.badDate);
+    expect(date.params, {'cell': '07/05/2026'});
+    expect(refusal(() => parsePlanMarkdown('# Just a title')).code,
+        PlanParseCode.noRows);
+  });
+
+  test('a race field on a non-race row is refused with its date and kind', () {
+    final e = refusal(() => parsePlanMarkdown(_table([
+          '| Week | Date | Type | Distance | Pace | Notes | Race |',
+          '| --- | --- | --- | --- | --- | --- | --- |',
+          '| 1 | 2026-07-05 | easy | 5 km | | | Spring 10K |',
+        ])));
+    expect(e.code, PlanParseCode.raceFieldsOnNonRace);
+    expect(e.params, {'date': '2026-07-05', 'kind': 'easy'});
+  });
+
+  test('JSON refusals carry their codes, and non-export workouts are refused as such',
+      () {
+    expect(refusal(() => parsePlanJson('not json {')).code,
+        PlanParseCode.notJson);
+    expect(refusal(() => parsePlanJson('{"name":"x"}')).code,
+        PlanParseCode.noWorkoutsArray);
+    expect(refusal(() => parsePlanJson('{"workouts":[1]}')).code,
+        PlanParseCode.badJsonShape);
+    expect(
+        refusal(() => parsePlanJson(
+                '{"workouts":[{"week_index":"1","scheduled_date":"2026-07-05","kind":"easy"}]}'))
+            .code,
+        PlanParseCode.badJsonShape);
+  });
 }

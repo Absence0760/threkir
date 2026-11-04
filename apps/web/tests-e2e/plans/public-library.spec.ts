@@ -1,9 +1,12 @@
+import type { Page } from '@playwright/test';
+
 import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B } from '../fixtures/users';
 import { readMaybeRow, readRows } from '../fixtures/db-read';
 import { acceptCookieConsent } from '../fixtures/helpers';
+import { createThrowawayPlan, deleteThrowawayPlan, type ThrowawayPlan } from '../fixtures/throwaway-plan';
 
 /**
  * Public plan library — publish → browse → clone round-trip.
@@ -166,5 +169,165 @@ test.describe('Public plan library — publish → browse → clone', () => {
 		expect(clone.current_5k_seconds).toBeNull();
 
 		await ctxB.close();
+	});
+
+	// Unpublishing deletes the library row, so every shared link to it stops
+	// resolving and a republish mints a new id: it confirms before deleting.
+	test('Unpublish asks first; Cancel keeps the library copy', async ({ browser }) => {
+		const admin = getAdminClient();
+		const ctx = await browser.newContext({ storageState: USER_A.storageStatePath });
+		await acceptCookieConsent(ctx);
+		const page = await ctx.newPage();
+		await page.goto(`/plans/${SOURCE_PLAN_ID}`);
+		const libraryRow = page.locator('.publish-row').filter({ hasText: 'Public plan library' });
+		await expect(libraryRow).toBeVisible({ timeout: 10_000 });
+		await libraryRow.getByRole('button', { name: 'Publish to library' }).click();
+		await expect(libraryRow.getByText('This plan is in the public library.')).toBeVisible({
+			timeout: 10_000
+		});
+
+		const published = () =>
+			readRows(
+				'training_plans by is_public_template+name',
+				admin
+					.from('training_plans')
+					.select('id')
+					.eq('is_public_template', true)
+					.eq('name', PLAN_NAME)
+			);
+
+		await page.getByTestId('plan-unpublish-library').click();
+		const confirm = page.getByTestId('unpublish-confirm-dialog');
+		await expect(confirm).toBeVisible();
+		await expect(confirm).toContainText('Unpublish this plan?');
+		await confirm.getByRole('button', { name: 'Cancel' }).click();
+		await expect(confirm).toBeHidden();
+		expect((await published()).length).toBe(1);
+
+		await page.getByTestId('plan-unpublish-library').click();
+		await confirm.getByRole('button', { name: 'Unpublish' }).click();
+		await expect(libraryRow.getByRole('button', { name: 'Publish to library' })).toBeVisible({
+			timeout: 10_000
+		});
+		expect((await published()).length).toBe(0);
+
+		await ctx.close();
+	});
+});
+
+// The plan page finds its library copy by `published_from_plan_id`, the link
+// the publisher writes, never by name: by name, a rename lost the copy (no
+// Unpublish, and a republish minted a duplicate) and two plans sharing a name
+// both claimed the first copy. Each test runs on an account of its own, so a
+// rename or a second same-named plan never touches the seeded plan.
+test.describe('Public plan library — the copy follows its plan, not its name', () => {
+	test.describe.configure({ timeout: 60_000 });
+
+	let plan: ThrowawayPlan | undefined;
+
+	test.afterEach(async () => {
+		await deleteThrowawayPlan(plan);
+		plan = undefined;
+	});
+
+	function copiesOf(planIds: string[]) {
+		return readRows(
+			'library copies by published_from_plan_id',
+			getAdminClient()
+				.from('training_plans')
+				.select('id, published_from_plan_id')
+				.eq('is_public_template', true)
+				.in('published_from_plan_id', planIds)
+		) as Promise<{ id: string; published_from_plan_id: string }[]>;
+	}
+
+	async function publish(page: Page, planId: string) {
+		await page.goto(`/plans/${planId}`);
+		const row = page.locator('.publish-row').filter({ hasText: 'Public plan library' });
+		await expect(row).toBeVisible({ timeout: 10_000 });
+		await row.getByRole('button', { name: 'Publish to library' }).click();
+		await expect(row.getByText('This plan is in the public library.')).toBeVisible({ timeout: 10_000 });
+		return row;
+	}
+
+	async function unpublish(page: Page) {
+		await page.getByTestId('plan-unpublish-library').click();
+		await page.getByTestId('unpublish-confirm-dialog').getByRole('button', { name: 'Unpublish' }).click();
+	}
+
+	test('a renamed plan still offers Unpublish, and it removes that copy', async ({ browser }) => {
+		plan = await createThrowawayPlan(`Rename ${Date.now().toString(36)}`);
+		const ctx = await browser.newContext({ storageState: plan.user.storageStatePath });
+		await acceptCookieConsent(ctx);
+		const page = await ctx.newPage();
+		try {
+			await publish(page, plan.planId);
+			expect(await copiesOf([plan.planId])).toHaveLength(1);
+
+			const { error } = await getAdminClient()
+				.from('training_plans')
+				.update({ name: `${plan.name} renamed` })
+				.eq('id', plan.planId);
+			if (error) throw new Error(`rename failed: ${error.message}`);
+
+			await page.reload();
+			const row = page.locator('.publish-row').filter({ hasText: 'Public plan library' });
+			await expect(row.getByText('This plan is in the public library.')).toBeVisible({ timeout: 10_000 });
+			await unpublish(page);
+			await expect(row.getByRole('button', { name: 'Publish to library' })).toBeVisible({ timeout: 10_000 });
+			expect(await copiesOf([plan.planId])).toHaveLength(0);
+		} finally {
+			await ctx.close();
+		}
+	});
+
+	test('two plans with one name each keep their own copy', async ({ browser }) => {
+		plan = await createThrowawayPlan(`Twin ${Date.now().toString(36)}`);
+		const admin = getAdminClient();
+		const { data: first, error: readError } = await admin
+			.from('training_plans')
+			.select('goal_event, goal_distance_m, start_date, end_date, days_per_week')
+			.eq('id', plan.planId)
+			.single();
+		if (readError || !first) throw new Error(`plan read failed: ${readError?.message}`);
+		const secondId = crypto.randomUUID();
+		const { error: insertError } = await admin
+			.from('training_plans')
+			.insert({ ...first, id: secondId, user_id: plan.user.id, name: plan.name, status: 'paused' });
+		if (insertError) throw new Error(`second plan seed failed: ${insertError.message}`);
+		const { error: weekError } = await admin
+			.from('plan_weeks')
+			.insert({ plan_id: secondId, week_index: 0, phase: 'build', target_volume_m: 10_000 });
+		if (weekError) throw new Error(`second plan week seed failed: ${weekError.message}`);
+
+		const ctx = await browser.newContext({ storageState: plan.user.storageStatePath });
+		await acceptCookieConsent(ctx);
+		const page = await ctx.newPage();
+		try {
+			await publish(page, plan.planId);
+			// The second plan has its own copy to make: the first one's copy is
+			// not it, however alike their names.
+			await publish(page, secondId);
+
+			const copies = await copiesOf([plan.planId, secondId]);
+			expect(copies).toHaveLength(2);
+			const firstCopy = copies.find((c) => c.published_from_plan_id === plan!.planId);
+			const secondCopy = copies.find((c) => c.published_from_plan_id === secondId);
+			expect(firstCopy).toBeDefined();
+			expect(secondCopy).toBeDefined();
+			expect(firstCopy!.id).not.toBe(secondCopy!.id);
+
+			await page.goto(`/plans/${plan.planId}`);
+			await expect(page.getByTestId('plan-unpublish-library')).toBeVisible({ timeout: 10_000 });
+			await unpublish(page);
+			const row = page.locator('.publish-row').filter({ hasText: 'Public plan library' });
+			await expect(row.getByRole('button', { name: 'Publish to library' })).toBeVisible({ timeout: 10_000 });
+			expect((await copiesOf([plan.planId, secondId])).map((c) => c.id)).toEqual([secondCopy!.id]);
+
+			await page.goto(`/plans/${secondId}`);
+			await expect(page.getByTestId('plan-unpublish-library')).toBeVisible({ timeout: 10_000 });
+		} finally {
+			await ctx.close();
+		}
 	});
 });

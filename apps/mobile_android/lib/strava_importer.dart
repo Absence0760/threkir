@@ -11,6 +11,7 @@ import 'package:uuid/uuid.dart';
 
 import 'embedded_bests.dart';
 import 'import_failures.dart';
+import 'import_refusal.dart';
 import 'imported_run_id.dart';
 
 /// Parse a Strava-formatted activity date string into a [DateTime].
@@ -138,11 +139,14 @@ class StravaImporter {
     final size = await zipFile.length();
     if (size > maxZipBytes) {
       final mb = (size / (1024 * 1024)).round();
-      throw FormatException(
+      throw ImportRefused(
+        ImportRefusalKind.tooLarge,
         'Strava ZIP too large ($mb MB). The 500 MB cap defends '
         'against OOM on the parser. Split into yearly exports from '
         'Strava → Settings → My Account → Download or Delete Your '
         'Account.',
+        sizeMb: mb,
+        limitMb: maxZipBytes ~/ (1024 * 1024),
       );
     }
     final bytes = await zipFile.readAsBytes();
@@ -160,7 +164,7 @@ class StravaImporter {
         .where((f) => f.name.endsWith('activities.csv'))
         .firstOrNull;
     if (csvFile == null) {
-      throw const FormatException(
+      throw const ImportRefused(ImportRefusalKind.notStravaExport,
           'Not a Strava export — no activities.csv found');
     }
 
@@ -179,7 +183,8 @@ class StravaImporter {
     final filenameIdx = header.indexOf('filename');
 
     if (filenameIdx < 0 || dateIdx < 0) {
-      throw const FormatException('Strava CSV missing expected columns');
+      throw const ImportRefused(ImportRefusalKind.stravaColumnsMissing,
+          'Strava CSV missing expected columns');
     }
 
     final byPath = {for (final f in archive.files) f.name: f};

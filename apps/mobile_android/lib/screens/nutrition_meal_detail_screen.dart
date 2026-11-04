@@ -145,9 +145,20 @@ class _NutritionMealDetailScreenState extends State<NutritionMealDetailScreen> {
         ),
       ),
       body: _loading
-          ? FullBodyLoader(
-              kind: ActivityLoaderKind.fuel,
-              label: l10n.commonLoading,
+          ? ListView(
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              children: [
+                const SkeletonBlock(height: 88),
+                const SizedBox(height: 12),
+                ListSkeleton.section(
+                  label: l10n.commonLoading,
+                  hasLeading: false,
+                  rowHeight: 48,
+                ),
+                const SizedBox(height: 12),
+                const SkeletonBlock(height: 160),
+              ],
             )
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),

@@ -11,6 +11,8 @@
  * consent `coach_messages` is not read at all, so the row says what the Coach
  * is and nothing it said.
  */
+import { SvelteMap } from 'svelte/reactivity';
+
 import { coachEnabled } from '#lib/coach/coach_flag.ts';
 import {
 	AI_DISCLOSURE_VERSION_COACH,
@@ -20,12 +22,32 @@ import {
 import {
 	fetchDmThreads,
 	fetchLatestCoachMessage,
+	hideDmConversation,
+	setDmConversationArchived,
+	setDmConversationMuted,
 	type DmThread,
 	type LatestCoachMessage,
 } from '#lib/core/data.ts';
 import { supabase } from '#lib/core/supabase.ts';
+import { deferDestructive } from '#lib/stores/undo.svelte.ts';
+import { dmUnreadStore } from '#lib/stores/dm_unread.svelte.ts';
+import { dmPendingHides } from '#lib/stores/dm_pending_hides.svelte.ts';
 import { effective, loadSettings, updateUniversal } from '#lib/settings/settings.ts';
 import { dmThreadRouteId } from '#lib/social/dm_thread.ts';
+import {
+	confirmedFlagValue,
+	conversationWriteKey,
+	dropRefusedWrite,
+	overlayConversationWrites,
+	restoreHiddenConversation,
+	revertConversationFlag,
+	settledConversationWrites,
+	settledHides,
+	settleLandedWrite,
+	withoutHiddenConversations,
+	type ConversationFlag,
+	type ConversationWrite,
+} from '#lib/social/dm_conversation_writes.ts';
 import {
 	MESSAGES_COACH_ROW_KEY,
 	parseCoachInboxPlacement,
@@ -45,6 +67,8 @@ class MessagesInboxStore {
 	threadsError = $state(false);
 	/// Null while unknown and whenever the Coach is off for this deploy.
 	coach = $state<CoachInboxState | null>(null);
+	/// The inbox is showing its Archived list.
+	showingArchived = $state(false);
 
 	#userId: string | null = null;
 	#polling = false;
@@ -53,6 +77,16 @@ class MessagesInboxStore {
 	/// before that answers with the count from before the mark, and assigning
 	/// it as-is put the badge back on the conversation just opened.
 	#markedReadAt = new Map<string, number>();
+	/// The runner's mute / archive writes a list read may predate
+	/// (dm_conversation_writes.ts), keyed by conversation and flag. Reactive,
+	/// because a conversation the list has not loaded reads its state here.
+	#writes = new SvelteMap<string, ConversationWrite>();
+	/// When each deleted conversation's delete landed (`Infinity` while its
+	/// undo window is open or the commit is in flight). A list read that
+	/// started before the delete landed still lists the conversation, and
+	/// one returning after the window closed put the row back until the next
+	/// poll.
+	#hiddenAt = new Map<string, number>();
 
 	/// Binds the store to the signed-in runner, dropping what another account
 	/// left behind. Returns true when the user changed.
@@ -62,22 +96,39 @@ class MessagesInboxStore {
 		this.threads = [];
 		this.threadsError = false;
 		this.coach = null;
+		this.showingArchived = false;
 		this.#markedReadAt.clear();
+		this.#hiddenAt.clear();
+		dmPendingHides.clear();
+		this.#writes.clear();
 		this.#coachGeneration++;
 		return true;
 	}
 
-	#apply(rows: DmThread[], startedAt: number) {
-		this.threads = rows.map((t) =>
+	/// `userId` is the account the read was made for: one that lands after the
+	/// store was bound to another account is that account's list, not this one's.
+	#apply(rows: DmThread[], startedAt: number, userId: string | null) {
+		if (userId !== this.#userId) return;
+		const visible = overlayConversationWrites(
+			withoutHiddenConversations(rows, this.#hiddenAt, startedAt),
+			this.#writes.values(),
+			startedAt,
+		);
+		for (const id of settledHides(this.#hiddenAt, startedAt)) this.#hiddenAt.delete(id);
+		for (const w of settledConversationWrites(this.#writes.values(), startedAt)) {
+			this.#writes.delete(conversationWriteKey(w.conversationId, w.flag));
+		}
+		this.threads = visible.map((t) =>
 			(this.#markedReadAt.get(dmThreadRouteId(t)) ?? -Infinity) >= startedAt ? { ...t, unread: 0 } : t,
 		);
 	}
 
 	async loadThreads() {
 		this.threadsError = false;
-		const startedAt = Date.now();
+		const userId = this.#userId;
+		const startedAt = performance.now();
 		try {
-			this.#apply(await fetchDmThreads(), startedAt);
+			this.#apply(await fetchDmThreads(), startedAt, userId);
 		} catch {
 			this.threadsError = true;
 		}
@@ -90,9 +141,10 @@ class MessagesInboxStore {
 		if (this.#polling) return;
 		if (this.threadsError) return this.loadThreads();
 		this.#polling = true;
-		const startedAt = Date.now();
+		const userId = this.#userId;
+		const startedAt = performance.now();
 		try {
-			this.#apply(await fetchDmThreads(), startedAt);
+			this.#apply(await fetchDmThreads(), startedAt, userId);
 		} catch (e) {
 			console.warn('messages inbox poll failed', e);
 		} finally {
@@ -104,15 +156,126 @@ class MessagesInboxStore {
 	/// After a send or an unsend. The write already renders in the thread, so
 	/// a failed list read leaves the previews as they were.
 	async refreshThreads() {
+		const userId = this.#userId;
+		const startedAt = performance.now();
 		try {
-			this.threads = await fetchDmThreads();
+			this.#apply(await fetchDmThreads(), startedAt, userId);
 		} catch {
 			// Corrected by the next poll.
 		}
 	}
 
+	#patch(conversationId: string, change: Partial<DmThread>) {
+		this.threads = this.threads.map((t) => (t.conversationId === conversationId ? { ...t, ...change } : t));
+	}
+
+	/// The runner's latest mute / archive write to a conversation, until a list
+	/// read carries it. The open conversation reads this when its row is not in
+	/// the list — a deep link before the inbox loaded, or a list read that
+	/// failed — so the toggle shows what was just written instead of `false`.
+	writtenFlag(conversationId: string, flag: ConversationFlag): boolean | undefined {
+		return this.#writes.get(conversationWriteKey(conversationId, flag))?.value;
+	}
+
+	/// Mutes or unmutes at once: both are one tap back. A refused write puts
+	/// the flag back and rethrows for the caller to report.
+	setMuted(conversationId: string, muted: boolean) {
+		return this.#setFlag(conversationId, 'muted', muted, setDmConversationMuted);
+	}
+
+	/// Archives or unarchives at once; the conversation moves between the
+	/// inbox and the Archived list, where Unarchive is one tap away.
+	setArchived(conversationId: string, archived: boolean) {
+		return this.#setFlag(conversationId, 'archived', archived, setDmConversationArchived);
+	}
+
+	/// The write is held in #writes until a list read carries it, so a poll
+	/// that started before it landed cannot flip the toggle back. A refusal
+	/// reverts that one field on that one row: restoring a snapshot of the
+	/// whole list would also undo whatever a poll brought in meanwhile. A
+	/// refusal that a later write to the same flag superseded reverts nothing.
+	async #setFlag(
+		conversationId: string,
+		flag: ConversationFlag,
+		value: boolean,
+		write: (conversationId: string, value: boolean) => Promise<void>,
+	) {
+		const key = conversationWriteKey(conversationId, flag);
+		const listed = this.threads.find((t) => t.conversationId === conversationId)?.[flag];
+		const pending: ConversationWrite = {
+			conversationId,
+			flag,
+			value,
+			at: Infinity,
+			prior: confirmedFlagValue(this.#writes.get(key), listed),
+		};
+		this.#writes.set(key, pending);
+		this.#patch(conversationId, { [flag]: value });
+		try {
+			await write(conversationId, value);
+		} catch (e) {
+			if (!dropRefusedWrite(this.#writes, pending)) throw e;
+			if (pending.prior !== undefined) {
+				this.threads = revertConversationFlag(this.threads, conversationId, flag, pending.prior);
+			} else {
+				void this.refreshThreads();
+			}
+			throw e;
+		}
+		settleLandedWrite(this.#writes, pending, performance.now());
+		// A row the list did not have is read now, so the conversation joins the
+		// list with the state just written.
+		if (listed === undefined) void this.refreshThreads();
+		void dmUnreadStore.refresh();
+	}
+
+	/// Deletes a conversation for the runner, held behind the undo window
+	/// (conventions.md § Destructive actions): the row leaves the list now and
+	/// the server is told only when the window closes, so Undo cancels a timer.
+	/// `onRestore` lets the open conversation pane come back with the row.
+	hide(conversationId: string, opts: { message: string; onCommitError: (e: unknown) => void; onRestore?: () => void }) {
+		const hidden = this.threads.find((t) => t.conversationId === conversationId);
+		const userId = this.#userId;
+		this.#hiddenAt.set(conversationId, Infinity);
+		dmPendingHides.add(conversationId);
+		this.threads = this.threads.filter((t) => t.conversationId !== conversationId);
+		deferDestructive({
+			message: opts.message,
+			commit: async () => {
+				try {
+					await hideDmConversation(conversationId);
+					if (this.#userId === userId) this.#hiddenAt.set(conversationId, performance.now());
+					// Hidden on the server now: drop it from the held count so the
+					// badge does not count it again before the read below lands.
+					dmUnreadStore.forget(conversationId);
+				} finally {
+					dmPendingHides.delete(conversationId);
+				}
+				void dmUnreadStore.refresh();
+			},
+			// Undo, or a refused commit: the badge dropped the conversation on
+			// the delete and re-reads now, the server being what knows.
+			restore: () => {
+				dmPendingHides.delete(conversationId);
+				if (this.#userId !== userId) return;
+				this.#hiddenAt.delete(conversationId);
+				// The one row comes back at once, as it was at the delete: a
+				// snapshot of the whole list would also undo whatever a poll
+				// brought in during the window. The list read then brings the
+				// row's preview and unread count up to anything that arrived
+				// during the window, which the badge re-read below counts.
+				const restored = restoreHiddenConversation(this.threads, hidden);
+				if (restored) this.threads = restored;
+				void this.refreshThreads();
+				opts.onRestore?.();
+				void dmUnreadStore.refresh();
+			},
+			onCommitError: (e) => opts.onCommitError(e),
+		});
+	}
+
 	markRead(routeId: string) {
-		this.#markedReadAt.set(routeId, Date.now());
+		this.#markedReadAt.set(routeId, performance.now());
 		this.threads = this.threads.map((t) => (dmThreadRouteId(t) === routeId ? { ...t, unread: 0 } : t));
 	}
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appErrorMessage, isPlanOverlapError, thrownMessage } from '#lib/core/supabase_error.ts';
+	import { isPlanOverlapError } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { page } from '$app/state';
@@ -22,6 +22,7 @@
 	import { formatDistance, formatPace } from '#lib/format/units.svelte.ts';
 	import { formatDuration, formatDate } from '#lib/format/time.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import { isWorkoutSkipped } from '#lib/training/training.ts';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
@@ -73,7 +74,7 @@
 			// the link gives us the header + a clean "not on your roster" state.
 			const roster = await fetchMyAthletesWithError();
 			if (roster.error) {
-				loadError = roster.error;
+				loadError = errorCopy(roster.error, m, 'coaching athlete: loadError');
 				loading = false;
 				return;
 			}
@@ -91,7 +92,7 @@
 				coachRunMapEnabled()
 			]);
 			if (planRead.error) {
-				loadError = planRead.error;
+				loadError = errorCopy(planRead.error, m, 'coaching/athletes/[id]: loadError');
 				loading = false;
 				return;
 			}
@@ -103,7 +104,7 @@
 			// A rejected fetch (auth/timeout/RLS) would otherwise leave the
 			// page stuck on its loading spinner forever — surface it with a
 			// retry instead.
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, m, 'coaching/athletes/[id]: loadError');
 		}
 		loading = false;
 	}
@@ -136,7 +137,7 @@
 			assignSelectedId = '';
 			// Reload the overview so the freshly-assigned plan shows immediately.
 			const planRead = await fetchAthletePlanOverview(id);
-			if (planRead.error) loadError = planRead.error;
+			if (planRead.error) loadError = errorCopy(planRead.error, m, 'coaching/athletes/[id]: loadError');
 			else {
 				overview = planRead.overview;
 				assignStartDate = firstStartAfter(blockers, localTodayISO());
@@ -164,7 +165,7 @@
 			} else {
 				// Any other refusal raises a specific message; surface it rather
 				// than a swallowed failure.
-				showToast(appErrorMessage(e) ?? m('coachingAthlete.assignError'), 'error');
+				showToast(errorCopy(e, m, 'coachingAthlete.assignError', 'coachingAthlete.assignError'), 'error');
 			}
 		} finally {
 			assigning = false;

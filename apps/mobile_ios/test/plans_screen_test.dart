@@ -50,11 +50,15 @@ class _FakeTraining extends TrainingService {
     return plans;
   }
 
+  /// Holds the status write open until completed, when set.
+  Completer<void>? updateGate;
+
   @override
   Future<void> updateStatus(String id, String status) async {
     updateCalls++;
     lastUpdateId = id;
     lastUpdateStatus = status;
+    await updateGate?.future;
     if (throwOnUpdate) throw Exception('boom');
   }
 
@@ -230,6 +234,26 @@ void main() {
       await tester.fling(find.text('Richmond Half'), const Offset(0, 400), 1000);
       await tester.pumpAndSettle();
       expect(training.fetchCalls, greaterThan(before));
+    });
+
+    // The list reloads on every TrainingService change, so one blip used to
+    // swap a loaded list for the full error page.
+    testWidgets('a failed refresh keeps the plans on screen under a banner',
+        (tester) async {
+      final training = _FakeTraining([_activePlan()]);
+      await _pumpSignedIn(tester, training);
+      expect(find.text('Richmond Half'), findsOneWidget);
+
+      training.loadError = Exception('boom');
+      await tester.fling(find.text('Richmond Half'), const Offset(0, 400), 1000);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.text('Richmond Half'), findsOneWidget);
+      expect(find.byType(ErrorState), findsNothing);
+      final en = lookupAppLocalizations(const Locale('en'));
+      expect(find.text(en.commonStaleRefreshFailed), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5));
     });
   });
 
@@ -453,6 +477,87 @@ void main() {
 
       expect(training.updateCalls, 1);
       expect(training.lastUpdateStatus, 'abandoned');
+    });
+
+    // The list's Abandon used a FilledButton confirm of its own while plan
+    // detail used confirmDestructive; one action, one confirm.
+    testWidgets('Abandon confirms with the destructive dialog plan detail uses',
+        (tester) async {
+      final training = _FakeTraining([_activePlan()]);
+      await _pumpSignedIn(tester, training);
+      await tester.tap(find.text('Abandon'));
+      await tester.pumpAndSettle();
+
+      final confirm = find.descendant(
+          of: find.byType(AlertDialog), matching: find.text('Abandon'));
+      expect(
+          find.descendant(
+              of: find.byType(AlertDialog), matching: find.byType(FilledButton)),
+          findsNothing);
+      final button = tester.widget<TextButton>(
+          find.ancestor(of: confirm, matching: find.byType(TextButton)));
+      final context = tester.element(confirm);
+      expect(button.style?.foregroundColor?.resolve({}),
+          Theme.of(context).colorScheme.error);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('an abandon in flight holds every card and spins on its own',
+        (tester) async {
+      _tallView(tester);
+      final gate = Completer<void>();
+      final training = _FakeTraining([
+        _activePlan(),
+        _plan('p2', 'Old 10K', 'completed', _days(-90), _days(-30)),
+      ])
+        ..updateGate = gate;
+      await _pumpSignedIn(tester, training);
+
+      await tester.tap(find.text('Abandon'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.descendant(
+          of: find.byType(AlertDialog), matching: find.text('Abandon')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      ButtonStyleButton action(String key) =>
+          tester.widget<ButtonStyleButton>(find.byKey(Key(key)));
+      expect(action('planCardAbandon').onPressed, isNull);
+      expect(action('planCardDelete').onPressed, isNull);
+      expect(
+          find.descendant(
+              of: _card('Richmond Half'),
+              matching: find.byType(CircularProgressIndicator)),
+          findsOneWidget);
+      await tester.tap(find.byKey(const Key('planCardDelete')));
+      await tester.pump();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(training.updateCalls, 1);
+
+      gate.complete();
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+    });
+
+    testWidgets('an abandon the backend never answers gives up and says so',
+        (tester) async {
+      final training = _FakeTraining([_activePlan()])
+        ..updateGate = Completer<void>();
+      await _pumpSignedIn(tester, training);
+
+      await tester.tap(find.text('Abandon'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.descendant(
+          of: find.byType(AlertDialog), matching: find.text('Abandon')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.textContaining("Couldn't update the plan"), findsNothing);
+
+      await tester.pump(const Duration(seconds: 16));
+      expect(find.textContaining("Couldn't update the plan"), findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
     });
 
     testWidgets('a failed abandon surfaces a banner', (tester) async {

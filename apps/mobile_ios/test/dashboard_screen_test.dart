@@ -22,6 +22,7 @@ import '../lib/screens/run_detail_screen.dart';
 import 'pump_until.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/mileage_trend_card.dart';
+import '../lib/widgets/activity_heatmap.dart';
 import '../lib/widgets/run_list_tile.dart';
 import '../lib/widgets/todays_workout_card.dart';
 
@@ -609,7 +610,8 @@ void main() {
           // section cards — pin its all-caps labels to prove the strip
           // mounted.
           expect(find.text('Last run'), findsOneWidget);
-          expect(find.text('WEEK'), findsOneWidget);
+          // The week is the week lead's alone (decisions § 2283).
+          expect(find.text('WEEK'), findsNothing);
           expect(find.text('MONTH'), findsOneWidget);
           expect(find.text('ALL TIME'), findsOneWidget);
         } finally {
@@ -661,7 +663,7 @@ void main() {
             expect(find.descendant(of: link, matching: find.text('Set a goal')),
                 findsOneWidget);
             expect(tester.getTopLeft(link).dy,
-                greaterThan(tester.getBottomLeft(find.text('WEEK')).dy),
+                greaterThan(tester.getBottomLeft(find.text('MONTH')).dy),
                 reason: 'the link sits below the runner\'s own numbers');
           } finally {
             dir.deleteSync(recursive: true);
@@ -687,7 +689,7 @@ void main() {
             expect(find.text('Goals'), findsOneWidget);
             expect(find.byKey(const Key('dashboardAddGoalLink')), findsNothing);
             expect(tester.getTopLeft(find.text('Goals')).dy,
-                lessThan(tester.getTopLeft(find.text('WEEK')).dy));
+                lessThan(tester.getTopLeft(find.text('MONTH')).dy));
           } finally {
             dir.deleteSync(recursive: true);
           }
@@ -839,8 +841,8 @@ void main() {
 
     testWidgets('activity stat strip shows distance + run count per period',
         (tester) async {
-      // Verifies the consolidated 3-column strip (Week / Month / All time)
-      // surfaces both the rounded distance value AND the per-card run
+      // Verifies the Month / All time strip (the week is the week lead's
+      // alone, decisions § 2283) surfaces both the rounded distance value AND the per-card run
       // count copy. Catches a regression where the strip would drop
       // the run-count subtitle.
       await tester.runAsync(() async {
@@ -852,8 +854,7 @@ void main() {
         try {
           final seedStore = LocalRunStore();
           await seedStore.init(overrideDirectory: dir);
-          // A single 5 km run this week → All time / Week / Month
-          // each report "1 run".
+          // A single 5 km run on a fixed past date.
           await seedStore.save(
             _run(id: 'r1', distanceMetres: 5000, duration: const Duration(minutes: 25)),
           );
@@ -877,13 +878,11 @@ void main() {
           await tester.pump();
           await tester.pump();
 
-          // The seeded run dates to 15 Apr 2026 — outside this week +
-          // this month relative to wall-clock now. All Time picks it
-          // up ("1 run"); Week + Month report zero runs. The summed
-          // copy across the three cards is therefore 1×"1 run" +
-          // 2×"0 runs", regardless of when the suite runs.
+          // The seeded run dates to 15 Apr 2026 — outside this month
+          // relative to wall-clock now. All Time picks it up ("1 run");
+          // Month reports zero, regardless of when the suite runs.
           expect(find.text('1 run'), findsOneWidget);
-          expect(find.text('0 runs'), findsNWidgets(2));
+          expect(find.text('0 runs'), findsOneWidget);
         } finally {
           dir.deleteSync(recursive: true);
         }
@@ -1278,10 +1277,14 @@ void main() {
     });
 
     testWidgets(
-        'pins "Ask your coach" at the top once the runner has runs (api + training present)',
+        'shows "Ask your coach" once the runner has runs, closing the Today '
+        'block (api + training present)',
         (tester) async {
       // #272: the coach card only renders once the runner has data — seed a
       // run so the ListView branch (not the welcome empty state) mounts.
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
       await tester.runAsync(() async {
         SharedPreferences.setMockInitialValues({});
         final prefs = Preferences();
@@ -1322,6 +1325,14 @@ void main() {
             ),
             findsOneWidget,
           );
+          // Below what Home is opened for (decisions § 2280), above Trends.
+          double bottomOf(String key) =>
+              tester.getBottomLeft(find.byKey(Key(key))).dy;
+          final coachTop = tester.getTopLeft(find.text('Ask your coach')).dy;
+          expect(coachTop, greaterThan(bottomOf('dashboardWeekLead')));
+          expect(coachTop, greaterThan(bottomOf('dashboardLatestRun')));
+          expect(
+              coachTop, lessThan(tester.getTopLeft(find.text('Trends')).dy));
         } finally {
           dir.deleteSync(recursive: true);
         }
@@ -1722,9 +1733,9 @@ void main() {
             expect(find.text('Goals'), findsOneWidget);
             // The week lead pushes the period strip below the default
             // surface's fold, where the lazy ListView has not built it.
-            await tester.scrollUntilVisible(find.text('WEEK'), 300,
+            await tester.scrollUntilVisible(find.text('MONTH'), 300,
                 scrollable: find.byType(Scrollable).first);
-            expect(find.text('WEEK'), findsOneWidget);
+            expect(find.text('MONTH'), findsOneWidget);
           } finally {
             dir.deleteSync(recursive: true);
           }

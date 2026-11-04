@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { appErrorMessage, dbError, thrownMessage } from '#lib/core/supabase_error.ts';
+	import { dbError, refusalCode } from '#lib/core/supabase_error.ts';
+	import { AppError } from '#lib/core/app_error.ts';
 	import { parseImportCompleteness } from '#lib/integrations/import_completeness.ts';
 	import { normalizeParkrunAthleteNumber } from '#lib/integrations/parkrun_barcode.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
@@ -7,6 +8,8 @@
 	import { goto } from '$app/navigation';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { undoStore } from '#lib/stores/undo.svelte.ts';
+	import { settleBeforeSessionEnds } from '#lib/stores/sign_out.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import DangerZone from '#lib/components/DangerZone.svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
@@ -68,6 +71,7 @@
 		isCloudExportJobActive,
 	} from '#lib/backup/cloud_export_helpers.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import PasswordInput from '#lib/components/PasswordInput.svelte';
 	import DateOfBirthInput from '#lib/components/DateOfBirthInput.svelte';
 	import { isCyclePlansEnabled } from '#lib/training/cycle_plan_flag.ts';
@@ -242,7 +246,9 @@
 		);
 		emailChanging = false;
 		if (error) {
-			emailChangeError = m('settingsAccount.emailChangeFailed', { error: error.message });
+			emailChangeError = m('settingsAccount.emailChangeFailed', {
+				error: errorCopy(error, m, 'settingsAccount.emailChangeFailed'),
+			});
 			return;
 		}
 		pendingOldEmail = current;
@@ -268,7 +274,7 @@
 		parkrunImporting = true;
 		try {
 			const { data: { session } } = await supabase.auth.getSession();
-			if (!session) throw new Error(m('settingsAccount.notSignedIn'));
+			if (!session) throw new AppError('settingsAccount.notSignedIn', { message: m('settingsAccount.notSignedIn') });
 			const url = `${PUBLIC_SUPABASE_URL}/functions/v1/parkrun-import`;
 			const resp = await fetch(url, {
 				method: 'POST',
@@ -304,7 +310,7 @@
 				);
 			}
 		} catch (err) {
-			showToast(m('settingsAccount.parkrunImportFailed', { error: thrownMessage(err) }), 'error');
+			showToast(m('settingsAccount.parkrunImportFailed', { error: errorCopy(err, m, 'settingsAccount.parkrunImportFailed') }), 'error');
 		} finally {
 			parkrunImporting = false;
 		}
@@ -375,7 +381,7 @@
 			profileLoad = 'ready';
 		} catch (e) {
 			console.warn('Profile load failed', e);
-			profileLoadError = thrownMessage(e);
+			profileLoadError = errorCopy(e, m, 'settings/account: profileLoadError');
 			profileLoad = 'failed';
 		}
 	}
@@ -413,7 +419,7 @@
 			aiDisclosure = { version: null, acceptedAt: null };
 			showToast(m('settingsAccount.coachConsentWithdrawn'), 'success');
 		} catch (e) {
-			showToast(m('settingsAccount.saveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('settingsAccount.saveFailed', { error: errorCopy(e, m, 'settingsAccount.saveFailed') }), 'error');
 		} finally {
 			coachConsentWithdrawing = false;
 		}
@@ -441,7 +447,7 @@
 				'success',
 			);
 		} catch (e) {
-			showToast(m('settingsAccount.saveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('settingsAccount.saveFailed', { error: errorCopy(e, m, 'settingsAccount.saveFailed') }), 'error');
 		} finally {
 			aiConsentAccepting = false;
 		}
@@ -467,7 +473,7 @@
 			await refreshPushState();
 			showToast(m('settingsAccount.notificationsEnabled'), 'success');
 		} catch (e) {
-			showToast(m('settingsAccount.notificationsEnableFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('settingsAccount.notificationsEnableFailed', { error: errorCopy(e, m, 'settingsAccount.notificationsEnableFailed') }), 'error');
 		} finally {
 			pushBusy = false;
 		}
@@ -485,7 +491,7 @@
 			// network drop / Service Worker hiccup on disable left the
 			// user looking at a non-changing toggle with no feedback.
 			showToast(
-				m('settingsAccount.notificationsDisableFailed', { error: thrownMessage(e) }),
+				m('settingsAccount.notificationsDisableFailed', { error: errorCopy(e, m, 'settingsAccount.notificationsDisableFailed') }),
 				'error',
 			);
 		} finally {
@@ -520,7 +526,7 @@
 		} catch (err) {
 			showToast(
 				m('settingsAccount.avatarFailed', {
-					error: thrownMessage(err),
+					error: errorCopy(err, m, 'settingsAccount.avatarFailed'),
 				}),
 				'error',
 			);
@@ -545,7 +551,7 @@
 		} catch (err) {
 			showToast(
 				m('settingsAccount.avatarFailed', {
-					error: thrownMessage(err),
+					error: errorCopy(err, m, 'settingsAccount.avatarFailed'),
 				}),
 				'error',
 			);
@@ -569,7 +575,9 @@
 			} else if (error.message.includes('handle_invalid')) {
 				handleError = m('settingsAccount.handleErrorInvalid');
 			} else {
-				handleError = m('settingsAccount.handleErrorGeneric', { error: error.message });
+				handleError = m('settingsAccount.handleErrorGeneric', {
+					error: errorCopy(error, m, 'settingsAccount.handleErrorGeneric'),
+				});
 			}
 			handleSaving = false;
 			return;
@@ -718,7 +726,7 @@
 			try {
 				await updateUniversal(auth.user.id, prefs);
 			} catch (e) {
-				showToast(m('settingsAccount.saveFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('settingsAccount.saveFailed', { error: errorCopy(e, m, 'settingsAccount.saveFailed') }), 'error');
 				saving = false;
 				return;
 			}
@@ -758,7 +766,11 @@
 				},
 				updatePassword: async (password) => {
 					const { error } = await supabase.auth.updateUser({ password });
-					return { error: error?.message ?? null };
+					return {
+						error: error
+							? errorCopy(error, m, 'settingsAccount.passwordUpdateFailed', 'settingsAccount.passwordUpdateFailed')
+							: null,
+					};
 				},
 			},
 		);
@@ -784,7 +796,7 @@
 			redirectTo: `${window.location.origin}/auth/reset`,
 		});
 		resetLinkSending = false;
-		if (error) passwordError = error.message;
+		if (error) passwordError = errorCopy(error, m, 'settingsAccount.resetLinkFailed', 'settingsAccount.resetLinkFailed');
 		else passwordStatus = m('settingsAccount.resetLinkSent');
 	}
 
@@ -797,7 +809,7 @@
 		exporting = true;
 		try {
 			const { runs, error } = await fetchRunsWithError();
-			if (error) throw new Error(error);
+			if (error) throw dbError(error);
 			const header = 'date,distance_m,duration_s,pace_s_per_km,source\n';
 			const rows = runs.map((r) => {
 				const pace = r.distance_m > 0 ? Math.round(r.duration_s / (r.distance_m / 1000)) : 0;
@@ -805,7 +817,7 @@
 			}).join('\n');
 			downloadFile(header + rows, 'runs_export.csv', 'text/csv');
 		} catch (e) {
-			showToast(m('settingsAccount.exportFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('settingsAccount.exportFailed', { error: errorCopy(e, m, 'settingsAccount.exportFailed') }), 'error');
 		} finally { exporting = false; }
 	}
 
@@ -832,7 +844,7 @@
 			const ts = new Date().toISOString().replace(/[:.]/g, '-');
 			downloadFile(JSON.stringify(runs, null, 2), `runs-${ts}.json`, 'application/json');
 		} catch (e) {
-			showToast(m('settingsAccount.exportFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('settingsAccount.exportFailed', { error: errorCopy(e, m, 'settingsAccount.exportFailed') }), 'error');
 		} finally {
 			exportingJson = false;
 		}
@@ -925,7 +937,7 @@
 			// slot used to carry supabase-js's "Edge Function returned a
 			// non-2xx status code" — a sentence about our transport, in
 			// English, in front of a subject asking for their own data.
-			const code = appErrorMessage(e) ?? '';
+			const code = refusalCode(e);
 			const reason =
 				code === 'unauthorized'
 					? m('settingsAccount.exportReasonSignedOut')
@@ -936,7 +948,7 @@
 									e instanceof CloudExportError ? e.retryAfterS : null,
 								),
 							})
-						: m('settingsAccount.exportReasonServer');
+						: errorCopy(e, m, 'settingsAccount.exportFailed', 'settingsAccount.exportReasonServer');
 			showToast(m('settingsAccount.exportFailed', { error: reason }), 'error');
 		}
 	}
@@ -1033,7 +1045,7 @@
 			a.href = url; a.download = `run-app-backup-${ts}.zip`;
 			document.body.appendChild(a); a.click(); a.remove();
 			URL.revokeObjectURL(url);
-		} catch (e) { showToast(m('settingsAccount.backupFailed', { error: thrownMessage(e) }), 'error'); }
+		} catch (e) { showToast(m('settingsAccount.backupFailed', { error: errorCopy(e, m, 'settingsAccount.backupFailed') }), 'error'); }
 		finally { backingUp = false; backupProgress = null; }
 	}
 
@@ -1053,7 +1065,7 @@
 		try {
 			const res = await restoreBackup(file, { onProgress: (p) => (restoreProgress = p) });
 			restoreResult = res;
-		} catch (err) { restoreError = thrownMessage(err); }
+		} catch (err) { restoreError = errorCopy(err, m, 'settings/account: restoreError'); }
 		finally { restoring = false; restoreProgress = null; restoreFileInput.value = ''; }
 	}
 
@@ -1098,7 +1110,7 @@
 			if (error) throw dbError(error);
 			identities = (data?.identities ?? []) as unknown as Identity[];
 		} catch (e) {
-			identityError = m('settingsAccount.identitiesLoadFailed', { error: thrownMessage(e) });
+			identityError = m('settingsAccount.identitiesLoadFailed', { error: errorCopy(e, m, 'settingsAccount.identitiesLoadFailed') });
 		} finally {
 			identitiesLoading = false;
 		}
@@ -1155,7 +1167,7 @@
 			// reach here without redirect, surface a generic failure.
 		} catch (e) {
 			setLinkMarker(null);
-			identityError = m('settingsAccount.linkFailed', { provider: PROVIDER_LABEL[provider], error: thrownMessage(e) });
+			identityError = m('settingsAccount.linkFailed', { provider: PROVIDER_LABEL[provider], error: errorCopy(e, m, 'settingsAccount.linkFailed') });
 			linkingProvider = null;
 		}
 	}
@@ -1198,7 +1210,7 @@
 			showToast(m('settingsAccount.unlinked', { provider: label }));
 			await loadIdentities();
 		} catch (e) {
-			identityError = m('settingsAccount.unlinkFailed', { provider: label, error: thrownMessage(e) });
+			identityError = m('settingsAccount.unlinkFailed', { provider: label, error: errorCopy(e, m, 'settingsAccount.unlinkFailed') });
 		} finally {
 			unlinkingProvider = null;
 		}
@@ -1220,7 +1232,7 @@
 			// Fail closed: the local session is still live because the global
 			// revocation didn't land, so keep the user here with an error to
 			// retry rather than silently pretending they were signed out.
-			showToast(m('settingsAccount.signoutEverywhereFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('settingsAccount.signoutEverywhereFailed', { error: errorCopy(e, m, 'settingsAccount.signoutEverywhereFailed') }), 'error');
 		} finally {
 			signingOutEverywhere = false;
 		}
@@ -1233,8 +1245,12 @@
 		showDeleteAccount = false;
 		deleting = true;
 		try {
+			// A delete still inside its undo window commits while the account
+			// exists; settled afterwards (by the logout below) it would run
+			// against an account that is already gone.
+			await settleBeforeSessionEnds(undoStore.flush);
 			const { data: { session } } = await supabase.auth.getSession();
-			if (!session) throw new Error(m('settingsAccount.notSignedIn'));
+			if (!session) throw new AppError('settingsAccount.notSignedIn', { message: m('settingsAccount.notSignedIn') });
 			const resp = await fetch(
 				`${PUBLIC_SUPABASE_URL}/functions/v1/delete-account`,
 				{
@@ -1252,7 +1268,7 @@
 			await auth.logout();
 			goto('/login');
 		} catch (e) {
-			showToast(m('settingsAccount.deleteFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('settingsAccount.deleteFailed', { error: errorCopy(e, m, 'settingsAccount.deleteFailed') }), 'error');
 		} finally {
 			deleting = false;
 		}

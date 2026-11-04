@@ -1,6 +1,7 @@
 import 'package:core_models/core_models.dart' show PlanWeekRow, PlanWorkoutRow;
 import 'package:flutter/material.dart';
 
+import '../backend_timeout.dart';
 import '../auth_error.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -110,10 +111,12 @@ class _MissedWorkoutPromptCardState extends State<MissedWorkoutPromptCard> {
     final l10n = AppLocalizations.of(context);
     setState(() => _busy = true);
     try {
-      await widget.training.answerMissedWorkouts(
-        planId: widget.planId,
-        workoutIds: [widget.prompt.workoutId],
-      );
+      await widget.training
+          .answerMissedWorkouts(
+            planId: widget.planId,
+            workoutIds: [widget.prompt.workoutId],
+          )
+          .timeout(kBackendLoadTimeout);
     } catch (e) {
       debugPrint('missed-workout answer failed: $e');
       if (mounted) {

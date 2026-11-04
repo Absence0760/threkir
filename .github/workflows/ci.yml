@@ -1329,6 +1329,14 @@ jobs:
             echo "Reproduce with: node --test scripts/check_web_removed_kit_apis.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
+      - name: Unit-test the dev-only-code guard
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
+        run: |
+          if ! node --test scripts/check_web_dev_only_code.test.mjs; then
+            echo "::error::The dev-only-code guard's own unit tests failed, so its verdict on the build below cannot be trusted. The last case also fails when a registered dev-only module no longer carries its marker string."
+            echo "Reproduce with: node --test scripts/check_web_dev_only_code.test.mjs (stdlib only, no install needed)."
+            exit 1
+          fi
       # The phone apps render the in-app help guides, and the web its
       # translated locales, from per-locale JSON copies of the TypeScript
       # guides and translations under apps/web/src/lib/help (docs/features/
@@ -1461,6 +1469,17 @@ jobs:
           if ! node scripts/check_web_removed_kit_apis.mjs; then
             echo "::error::The built web client carries the throwing stub of a SvelteKit module Kit has removed. The build succeeded; the page would throw when that code first runs. The failing line names the chunk."
             echo "Reproduce with: npm run build --workspace=apps/web && node scripts/check_web_removed_kit_apis.mjs"
+            exit 1
+          fi
+      # A `vite dev`-only module (the local-tileserver basemap fallback, issue
+      # #1285) is imported dynamically inside an `import.meta.env.DEV` branch
+      # the build removes. A static import would ship it with the build green.
+      - name: Assert no dev-only module ships to the client
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: |
+          if ! node scripts/check_web_dev_only_code.mjs; then
+            echo "::error::The built web client carries a module meant for vite dev only. The build succeeded; the failing line names the chunk and the module. Import it dynamically inside an import.meta.env.DEV branch."
+            echo "Reproduce with: npm run build --workspace=apps/web && node scripts/check_web_dev_only_code.mjs"
             exit 1
           fi
       - name: Measure + assert the bundle budget

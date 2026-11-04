@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../backend_timeout.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
@@ -56,7 +57,9 @@ class _FinishPlanCardState extends State<FinishPlanCard> {
     final l10n = AppLocalizations.of(context);
     setState(() => _busy = true);
     try {
-      await widget.training.finishPlan(widget.planId);
+      await widget.training
+          .finishPlan(widget.planId)
+          .timeout(kBackendLoadTimeout);
     } catch (e) {
       debugPrint('finish plan failed: $e');
       if (mounted) {

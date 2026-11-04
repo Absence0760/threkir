@@ -4,6 +4,7 @@ import '../backend_timeout.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
+import '../plan_parse_message.dart';
 import '../plan_serialize.dart';
 import '../training.dart';
 import '../training_service.dart';
@@ -68,7 +69,7 @@ class _PlanImportSheetState extends State<PlanImportSheet> {
         _parseError = null;
       } on PlanParseError catch (e) {
         _parsed = null;
-        _parseError = e.message;
+        _parseError = planParseErrorMessage(AppLocalizations.of(context), e);
       }
     });
   }

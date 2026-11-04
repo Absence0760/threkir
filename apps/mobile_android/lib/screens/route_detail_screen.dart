@@ -55,6 +55,7 @@ import '../widgets/route_markers_panel.dart';
 import '../widgets/route_conditions.dart';
 import '../widgets/route_photos.dart';
 import '../widgets/route_share_card.dart';
+import '../widgets/scrolled_away_title.dart';
 import '../widgets/segments_panel.dart';
 import '../widgets/send_route_sheet.dart';
 import '../widgets/sign_in_required_state.dart';
@@ -100,8 +101,8 @@ class RouteDetailScreen extends StatefulWidget {
   /// affordance. Defaults to the real Pro-gated endpoint; tests pass a
   /// stub to exercise the enhance / upgrade / failure paths without a
   /// network or a Supabase session.
-  final Future<AiDescriptionResult> Function(RouteDescriptionInput)?
-      describeAi;
+  final Future<AiDescriptionResult> Function(
+      RouteDescriptionInput, DistanceUnit, String locale)? describeAi;
 
   /// Injectable Pro check. Defaults to `apiClient.isPro()`; tests pass a
   /// fixed value to drive the Pro vs free branch deterministically.
@@ -156,6 +157,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   // refresh it without rebuilding the screen.
   late String? _clubId = widget.route.clubId;
   bool _transferBusy = false;
+  bool _deleteBusy = false;
 
   // Lazy SocialService — production uses the global Supabase client;
   // tests inject a fake via the constructor.
@@ -187,6 +189,12 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   // LiveRunMap's plannedRoute prop.
   List<cm.Waypoint> _displayWaypoints = const [];
 
+  // With no line to draw, LiveRunMap falls back to its live-recording
+  // "Waiting for GPS..." state, which is meaningless on a route page. These
+  // let the map slot say what actually happened instead.
+  bool _lineLoading = true;
+  bool _lineFailed = false;
+
   // Course-marker wiring between RouteMarkersPanel (owns the data) and the
   // LiveRunMap (renders the pins + reports placement / pin taps).
   final GlobalKey<RouteMarkersPanelState> _markersPanelKey = GlobalKey();
@@ -195,6 +203,9 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   // The map is the first list child and the markers panel sits far below the
   // fold, so "tap the map to place" arrived with no map on screen.
   final ScrollController _scrollController = ScrollController();
+
+  late final ScrolledAwayTitleController _nameTitle =
+      ScrolledAwayTitleController(_scrollController);
 
   /// 0.0 = start, 1.0 = finish. Drives the route-preview scrubber:
   /// dragging the slider feeds an interpolated lat/lng to the
@@ -240,6 +251,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   @override
   void dispose() {
     _tilePackStore?.dispose();
+    _nameTitle.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -255,6 +267,14 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     } catch (e) {
       debugPrint('route detail: reveal map for marker placement failed: $e');
     }
+  }
+
+  Future<void> _retryDisplayWaypoints() async {
+    setState(() {
+      _lineLoading = true;
+      _lineFailed = false;
+    });
+    await _resolveDisplayWaypoints();
   }
 
   Future<void> _resolveDisplayWaypoints() async {
@@ -273,29 +293,47 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     // opening a freshly-built route shows "Waiting for GPS..." instead
     // of the polyline — the user's report.
     if (viewerId != null && (viewerId == ownerId || ownerId.isEmpty)) {
-      setState(() => _displayWaypoints = widget.route.waypoints);
+      setState(() {
+        _displayWaypoints = widget.route.waypoints;
+        _lineLoading = false;
+      });
       return;
     }
     // Signed-out viewer looking at a locally-built route — same
     // logic, no cloud row to clip against. Use the row waypoints.
     if (viewerId == null && ownerId.isEmpty) {
-      setState(() => _displayWaypoints = widget.route.waypoints);
+      setState(() {
+        _displayWaypoints = widget.route.waypoints;
+        _lineLoading = false;
+      });
       return;
     }
     // Non-owner (incl. anon api == null): fetch clipped output. The
     // helper fails closed — an RPC error renders an empty map rather
     // than fall through to the unclipped row column.
     if (api == null) {
-      setState(() => _displayWaypoints = const []);
+      setState(() {
+        _displayWaypoints = const [];
+        _lineLoading = false;
+      });
       return;
     }
     try {
       final clipped = await api.clipRouteForViewer(widget.route.id);
       if (!mounted) return;
-      setState(() => _displayWaypoints = clipped);
+      setState(() {
+        _displayWaypoints = clipped;
+        _lineLoading = false;
+      });
     } catch (e) {
       debugPrint('clipRouteForViewer failed for ${widget.route.id}: $e');
-      if (mounted) setState(() => _displayWaypoints = const []);
+      if (mounted) {
+        setState(() {
+          _displayWaypoints = const [];
+          _lineLoading = false;
+          _lineFailed = true;
+        });
+      }
     }
   }
 
@@ -371,6 +409,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     if (_describing) return;
     final l10n = AppLocalizations.of(context);
     final unit = widget.preferences.unit;
+    final locale = routeDescribeLocaleTag(Localizations.localeOf(context));
     setState(() {
       _describing = true;
       _describeFailed = false;
@@ -381,8 +420,9 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     final input = _describeInput();
     final parts = describeRoute(input);
     // L1 baseline: render the localised templated sentence immediately.
+    final localised = _localisedTemplate(parts, input.name, l10n, unit);
     setState(() {
-      _genDescription = _localisedTemplate(parts, input.name, l10n, unit);
+      _genDescription = localised;
       _genSource = 'template';
     });
 
@@ -408,10 +448,12 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
 
     try {
       final ai =
-          await (widget.describeAi ?? requestAiDescription)(input);
+          await (widget.describeAi ?? requestAiDescription)(
+              input, unit, locale);
       if (!mounted) return;
       setState(() {
-        _genDescription = ai.description;
+        _genDescription = shownDescription(localised,
+            description: ai.description, source: ai.source);
         _genSource = ai.source;
         _showUpgradeHint = ai.upgrade;
       });
@@ -443,6 +485,40 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     if (recorded == null || !mounted) return;
     setState(() => _describeConsentRequired = false);
     await _describe();
+  }
+
+  Widget _lineUnavailable(ThemeData theme, AppLocalizations l10n) {
+    if (_lineLoading) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+    }
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _lineFailed ? Icons.cloud_off : Icons.route,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _lineFailed ? l10n.routeDetailLineLoadFailed : l10n.routeDetailLineEmpty,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            if (_lineFailed) ...[
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: _retryDisplayWaypoints,
+                child: Text(l10n.routeDetailLineRetry),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   /// The "Describe this route" surface shown when the route has no
@@ -946,8 +1022,6 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
               // Start silently did nothing from any pusher that didn't — the
               // shared-file import landing, a deep push, etc.
               onPressed: () => pendingStartRunWithRoute.value = route,
-              backgroundColor: semantic.success,
-              foregroundColor: semantic.onSuccess,
               icon: const Icon(Icons.play_arrow),
               label: Text(
                 l10n.routeDetailStartRun,
@@ -956,7 +1030,10 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
             )
           : null,
       appBar: AppBar(
-        title: Text(route.name),
+        title: ScrolledAwayTitle(
+          controller: _nameTitle,
+          child: Text(route.name),
+        ),
         // Six concurrent owner actions left a measured 0dp of a 360dp toolbar
         // for the route's name. Share stays pinned (it is itself a menu, and
         // menus don't nest), one action earns the remaining slot, the rest
@@ -1103,7 +1180,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                   icon: const Icon(Icons.delete_outline),
                   label: l10n.routeDetailDeleteRoute,
                   destructive: true,
-                  onPressed: () => _confirmDelete(context),
+                  onPressed: _deleteBusy ? null : () => _confirmDelete(context),
                 ),
             ],
           ),
@@ -1123,31 +1200,34 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
               _KeepAliveMap(
                 child: SizedBox(
                   height: detailMapHeight(viewport.maxHeight),
-                  child: LiveRunMap(
-                    track: const [],
-                    plannedRoute: _displayWaypoints,
-                    offlinePackRouteId: widget.route.id,
-                    followRunner: false,
-                    courseMarkers: _markerPins,
-                    markerPlacing: _markerPlacing,
-                    onMarkerPlace: (wp) =>
-                        _markersPanelKey.currentState?.placeAt(wp),
-                    onMarkerTap: (id) =>
-                        _markersPanelKey.currentState?.selectMarker(id),
-                    // Only mount the preview-runner pulse while the user
-                    // is actually scrubbing — releasing the thumb fades
-                    // back to the static polyline view so the marker
-                    // doesn't sit at the start indefinitely after a
-                    // single drag.
-                    previewPosition: _scrubbing
-                        ? interpolateAlongRoute(
-                            _displayWaypoints,
-                            _scrubFraction,
-                          )
-                        : null,
-                  ),
+                  child: _displayWaypoints.length < 2
+                      ? _lineUnavailable(theme, l10n)
+                      : LiveRunMap(
+                        track: const [],
+                        plannedRoute: _displayWaypoints,
+                        offlinePackRouteId: widget.route.id,
+                        followRunner: false,
+                        courseMarkers: _markerPins,
+                        markerPlacing: _markerPlacing,
+                        onMarkerPlace: (wp) =>
+                            _markersPanelKey.currentState?.placeAt(wp),
+                        onMarkerTap: (id) =>
+                            _markersPanelKey.currentState?.selectMarker(id),
+                        // Only mount the preview-runner pulse while the user
+                        // is actually scrubbing — releasing the thumb fades
+                        // back to the static polyline view so the marker
+                        // doesn't sit at the start indefinitely after a
+                        // single drag.
+                        previewPosition: _scrubbing
+                            ? interpolateAlongRoute(
+                                _displayWaypoints,
+                                _scrubFraction,
+                              )
+                            : null,
+                      ),
                 ),
               ),
+              ScrolledAwayHeading(controller: _nameTitle, text: route.name),
               // Diagnostic for the "I'm still not seeing the map"
               // user report — when neither `MAPTILER_KEY` nor
               // `TILE_URL_TEMPLATE` is set, the LiveRunMap above renders the
@@ -1181,8 +1261,9 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                     ),
                     StatTile.large(
                       label: l10n.routeDetailStatElevation,
-                      value: '${route.elevationGainMetres.round()}',
-                      unit: 'm',
+                      value: UnitFormat.elevationValue(
+                          route.elevationGainMetres, unit),
+                      unit: UnitFormat.elevationLabel(unit),
                     ),
                     if (_avgRating > 0)
                       StatTile.large(
@@ -1190,10 +1271,10 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                         value: formatFixed(_avgRating, 1, activeLocaleTag),
                         unit: '/ 5',
                       )
-                    else
+                    else if (_displayWaypoints.isNotEmpty)
                       StatTile.large(
                         label: l10n.routeDetailStatWaypoints,
-                        value: '${route.waypoints.length}',
+                        value: '${_displayWaypoints.length}',
                       ),
                   ],
                 ),
@@ -2098,13 +2179,42 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     }
   }
 
+  // Deleting a route cascades its photos, markers and other runners'
+  // reviews, bookmarks and segments, none of which a re-insert could bring
+  // back, so it takes the confirm and no undo (conventions.md § Destructive
+  // actions). [_deleteBusy] spans the impact read, the dialog and the delete,
+  // so a second tap cannot open a second dialog or send a second delete.
   Future<void> _confirmDelete(BuildContext context) async {
+    if (_deleteBusy) return;
+    setState(() => _deleteBusy = true);
+    try {
+      await _runDelete(context);
+    } finally {
+      if (mounted) setState(() => _deleteBusy = false);
+    }
+  }
+
+  Future<void> _runDelete(BuildContext context) async {
+    final api = widget.apiClient;
+    final signedIn = api != null && api.userId != null;
+    RouteDeleteImpact? impact;
+    if (signedIn) {
+      try {
+        impact = await api.fetchRouteDeleteImpact(widget.route.id);
+      } catch (e) {
+        debugPrint('route_delete_impact failed: $e');
+      }
+    }
+    if (!context.mounted) return;
     final l10n = AppLocalizations.of(context);
+    final body = signedIn
+        ? routeDeleteConfirmLines(l10n, impact, isPublic: _isPublic).join(' ')
+        : l10n.routeDetailDeleteBody;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l10n.routeDetailDeleteTitle),
-        content: Text(l10n.routeDetailDeleteBody),
+        content: Text(body),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -2131,10 +2241,13 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     // the error and KEEP the local file so the user can retry once
     // they're back online. Falls back to local-only delete when the
     // ApiClient isn't available (signed-out / no-Supabase build).
-    final api = widget.apiClient;
-    if (api != null && api.userId != null) {
+    if (signedIn) {
       try {
         await api.deleteRoute(widget.route.id);
+      } on RouteDeleteRefusedException {
+        if (!context.mounted) return;
+        showTopBanner(context, AppLocalizations.of(context).routeDetailDeleteNotAllowed);
+        return;
       } catch (e) {
         debugPrint('route detail delete failed: $e');
         if (!context.mounted) return;
@@ -2171,6 +2284,40 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
         return l10n.routeDetailSurfaceRoad;
     }
   }
+}
+
+/// The confirm's body: the irreversibility sentence, then one line per
+/// thing that depends on the route, from `route_delete_impact`. Mirrors web
+/// `routeDeleteImpactLines` — other people's things first, then the owner's
+/// own content, zero counts saying nothing. Null [impact] means the count
+/// failed, which says so rather than implying nothing depends on it.
+List<String> routeDeleteConfirmLines(
+  AppLocalizations l10n,
+  RouteDeleteImpact? impact, {
+  required bool isPublic,
+}) {
+  final lines = <String>[l10n.routeDetailDeleteBody];
+  if (isPublic) lines.add(l10n.routeDetailDeleteImpactPublic);
+  if (impact == null) {
+    lines.add(l10n.routeDetailDeleteImpactUnknown);
+    return lines;
+  }
+  void add(int count, String Function(int) line) {
+    if (count > 0) lines.add(line(count));
+  }
+
+  add(impact.raceListings, l10n.routeDetailDeleteImpactRaceListings);
+  add(impact.events, l10n.routeDetailDeleteImpactEvents);
+  add(impact.savedByOthers, l10n.routeDetailDeleteImpactSaved);
+  add(impact.shares, l10n.routeDetailDeleteImpactShares);
+  add(impact.segmentsByOthers, l10n.routeDetailDeleteImpactSegments);
+  add(impact.segmentEffortsByOthers, l10n.routeDetailDeleteImpactEfforts);
+  add(impact.reviewsByOthers, l10n.routeDetailDeleteImpactReviews);
+  add(impact.conditionsByOthers, l10n.routeDetailDeleteImpactConditions);
+  add(impact.linkedRuns, l10n.routeDetailDeleteImpactRuns);
+  add(impact.photos, l10n.routeDetailDeleteImpactPhotos);
+  add(impact.markers, l10n.routeDetailDeleteImpactMarkers);
+  return lines;
 }
 
 String _routeToKml(cm.Route route) {

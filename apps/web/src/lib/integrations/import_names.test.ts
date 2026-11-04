@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
 import { childName, geoJsonName, parseRouteFile } from './import';
+import { AppError } from '../core/app_error';
 
 type Node = { localName: string; textContent: string | null; children?: Node[] };
 const el = (children: Node[]) => ({ children });
@@ -92,4 +93,22 @@ test('an elevation pair whose climb overflows adds nothing, not Infinity', async
 		})
 	);
 	assert.equal(route.elevation_m, null);
+});
+
+test('a file with nothing to import is refused with a catalogue key, not English', async () => {
+	// Reason: ImportRoute showed these refusals' English text in every locale.
+	// The key renders through errorCopy; the message stays for logs and for
+	// classifyImportFailure, which still reads it.
+	const cases: Array<[File, string, RegExp]> = [
+		[new File(['x'], 'route.bin'), 'importRoute.unsupportedFormat', /Unsupported file format: \.bin/],
+		[geojson({ type: 'FeatureCollection', features: [] }), 'importRoute.noRouteInFile', /no line-based routes/],
+	];
+	for (const [file, key, message] of cases) {
+		await assert.rejects(parseRouteFile(file), (e: unknown) => {
+			assert.ok(e instanceof AppError, file.name);
+			assert.equal(e.key, key);
+			assert.match(e.message, message);
+			return true;
+		});
+	}
 });

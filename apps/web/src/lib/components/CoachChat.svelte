@@ -1006,7 +1006,9 @@
 						· {hasPlan ? t('coachChat.subWithPlan') : t('coachChat.subNoPlan')}
 					</span>
 				</h3>
-				{#if contextSummary}
+				<!-- The plan picker does not wait for the context summary: until
+				     that read lands the runner could not change scope at all. -->
+				{#if contextSummary || (onPlanChange && plans.length > 0)}
 					{@const c = contextSummary}
 					{@const planOptions = [
 						{ value: '', label: t('coachChat.noPlan'), sub: t('coachChat.recentRunsOnly') },
@@ -1028,6 +1030,14 @@
 						value: String(n),
 						label: t('coachChat.lastN', { n }),
 					}))}
+					<!-- My season is only offered once a plan is queued behind the
+					     current one, so with one plan the picker says how to get it. -->
+					{#snippet seasonHint()}
+						<p class="season-hint" data-testid="coach-season-hint">
+							{t('coachChat.seasonHint')}
+							<a href="/races">{t('coachChat.seasonHintAction')}</a>
+						</p>
+					{/snippet}
 					<div class="context-strip" title={t('coachChat.contextStripTitle')}>
 						{#if onPlanChange && plans.length > 0}
 							<ChipDropdown
@@ -1037,14 +1047,15 @@
 								icon="calendar_month"
 								ariaLabel={t('coachChat.planContext')}
 								title={t('coachChat.planContextTitle')}
-								suffix={c.planWeeks ? `· ${c.planWeeks}w` : undefined}
+								suffix={c?.planWeeks ? `· ${c.planWeeks}w` : undefined}
+								footer={seasonPlans.length === 1 ? seasonHint : undefined}
 							/>
-						{:else if c.planReadFailed}
+						{:else if c?.planReadFailed}
 							<span class="chip chip-muted" role="status" data-testid="coach-plan-read-failed">
 								<span class="material-symbols" aria-hidden="true">error</span>
 								{t('coachChat.planReadFailed')}
 							</span>
-						{:else if c.planName}
+						{:else if c?.planName}
 							<span class="chip" title={t('coachChat.planLoaded')}>
 								<span class="material-symbols">calendar_month</span>
 								{c.planName}{#if c.planWeeks}<span class="chip-meta"> · {c.planWeeks}w</span>{/if}
@@ -1055,49 +1066,51 @@
 								{t('coachChat.noPlan')}
 							</span>
 						{/if}
-						{#if c.runCount === 0}
-							<span class="chip chip-muted" title={t('coachChat.noRunsTitle')}>
-								<span class="material-symbols">directions_run</span>
-								{t('coachChat.noRuns')}
-							</span>
-						{:else}
-							<ChipDropdown
-								value={String(runsLimit)}
-								options={runOptions}
-								onChange={(v) => (runsLimit = parseInt(v, 10))}
-								icon="directions_run"
-								ariaLabel={t('coachChat.recentRunsAria')}
-								title={t('coachChat.recentRunsTitle')}
-							/>
-						{/if}
-						{#if c.hrZonesLoaded}
-							<a
-								class="chip chip-link"
-								href="/settings/training#heart-rate-zones"
-								title={t('coachChat.hrZonesLoadedTitle')}
-								aria-label={t('coachChat.hrZonesLoadedTitle')}
-							>
-								<span class="material-symbols" aria-hidden="true">monitor_heart</span>
-							</a>
-						{:else}
-							<a
-								class="chip chip-muted chip-link"
-								href="/settings/training#heart-rate-zones"
-								title={t('coachChat.noHrZonesTitle')}
-								aria-label={t('coachChat.noHrZonesTitle')}
-							>
-								<span class="material-symbols" aria-hidden="true">monitor_heart</span>
-							</a>
-						{/if}
-						{#if c.weeklyGoalMetres}
-							<a
-								class="chip chip-link"
-								href="/settings/training#weekly-distance-goal"
-								title={t('coachChat.weeklyGoalTitle')}
-							>
-								<span class="material-symbols">flag</span>
-								{fmtKm(c.weeklyGoalMetres)}
-							</a>
+						{#if c}
+							{#if c.runCount === 0}
+								<span class="chip chip-muted" title={t('coachChat.noRunsTitle')}>
+									<span class="material-symbols">directions_run</span>
+									{t('coachChat.noRuns')}
+								</span>
+							{:else}
+								<ChipDropdown
+									value={String(runsLimit)}
+									options={runOptions}
+									onChange={(v) => (runsLimit = parseInt(v, 10))}
+									icon="directions_run"
+									ariaLabel={t('coachChat.recentRunsAria')}
+									title={t('coachChat.recentRunsTitle')}
+								/>
+							{/if}
+							{#if c.hrZonesLoaded}
+								<a
+									class="chip chip-link"
+									href="/settings/training#heart-rate-zones"
+									title={t('coachChat.hrZonesLoadedTitle')}
+									aria-label={t('coachChat.hrZonesLoadedTitle')}
+								>
+									<span class="material-symbols" aria-hidden="true">monitor_heart</span>
+								</a>
+							{:else}
+								<a
+									class="chip chip-muted chip-link"
+									href="/settings/training#heart-rate-zones"
+									title={t('coachChat.noHrZonesTitle')}
+									aria-label={t('coachChat.noHrZonesTitle')}
+								>
+									<span class="material-symbols" aria-hidden="true">monitor_heart</span>
+								</a>
+							{/if}
+							{#if c.weeklyGoalMetres}
+								<a
+									class="chip chip-link"
+									href="/settings/training#weekly-distance-goal"
+									title={t('coachChat.weeklyGoalTitle')}
+								>
+									<span class="material-symbols">flag</span>
+									{fmtKm(c.weeklyGoalMetres)}
+								</a>
+							{/if}
 						{/if}
 					</div>
 				{/if}
@@ -1568,6 +1581,8 @@
 	}
 	.chip-link:hover { filter: brightness(1.05); }
 	.chip-link:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+	.season-hint { margin: 0; font-size: 0.72rem; line-height: 1.4; color: var(--color-text-secondary); }
+	.season-hint a { color: var(--color-primary); font-weight: 500; }
 
 	.scroll-wrap {
 		position: relative; flex: 1; min-height: 0;
@@ -1716,11 +1731,13 @@
 	.limit-bar {
 		display: flex; align-items: center; gap: 0.5rem;
 		padding: var(--space-sm) var(--space-md);
-		background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2);
+		/* A spent allowance is a warning, not an error: nothing failed. */
+		background: var(--color-warning-light);
+		border: 1px solid color-mix(in srgb, var(--color-warning) 35%, transparent);
 		border-radius: var(--radius-md); margin: 0 var(--space-sm) var(--space-sm);
 		font-size: 0.82rem; color: var(--color-text-secondary);
 	}
-	.limit-bar .material-symbols { font-size: 1.1rem; color: var(--color-danger-text); }
+	.limit-bar .material-symbols { font-size: 1.1rem; color: var(--color-warning-text); }
 	.archive-banner {
 		display: flex; align-items: center; gap: 0.5rem;
 		padding: 0.5rem 0.8rem; margin: 0 var(--space-sm);

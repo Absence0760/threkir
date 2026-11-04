@@ -6,12 +6,12 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/l10n/gen/app_localizations_en.dart';
 import '../lib/screens/coach_screen.dart';
 import '../lib/training_service.dart';
 import 'realtime_drain.dart';
+import 'supabase_test_init.dart';
 
 final _en = AppLocalizationsEn();
 
@@ -102,10 +102,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 
@@ -131,7 +128,7 @@ Future<_FakeApi> _pump(WidgetTester tester, List<TrainingPlanRow> plans,
 }
 
 Future<void> _pick(WidgetTester tester, String label) async {
-  await tester.tap(find.byType(DropdownButton<String>));
+  await tester.tap(find.byKey(const Key('coach-plan-picker')));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 300));
   await tester.tap(find.text(label).last);
@@ -193,7 +190,7 @@ void main() {
     await tester.pump();
     expect(tester.takeException(), isNull);
     expect(find.text(_en.coachSeasonOption), findsNothing);
-    expect(find.text(_en.coachPlanActive(_marathon.name)), findsOneWidget);
+    expect(find.text(_marathon.name), findsOneWidget);
     expect(api.threadReads.last, _marathon.id);
     await drainRealtimeTimers(tester);
   });
@@ -210,7 +207,7 @@ void main() {
   testWidgets('with nothing queued after the current plan there is no season '
       'option', (tester) async {
     await _pump(tester, [_marathon, _spring]);
-    await tester.tap(find.byType(DropdownButton<String>));
+    await tester.tap(find.byKey(const Key('coach-plan-picker')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text(_en.coachSeasonOption), findsNothing);

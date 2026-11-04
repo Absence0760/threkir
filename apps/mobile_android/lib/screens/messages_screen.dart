@@ -8,10 +8,13 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../ai_disclosure.dart';
 import '../ai_disclosure_memo.dart';
+import '../auth_change_aware.dart';
+import '../dm_pending_hides.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../messages_inbox.dart';
+import '../monotonic_clock.dart';
 import '../pro_sellable.dart';
 import '../settings_sync.dart';
 import '../training_service.dart';
@@ -95,32 +98,73 @@ class MessagesScreen extends StatefulWidget {
 }
 
 class _MessagesScreenState extends State<MessagesScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, AuthChangeAware<MessagesScreen> {
   Timer? _poll;
   bool _loading = true;
   Object? _loadError;
   List<DmThread> _threads = const [];
-  bool _refreshing = false;
+
+  /// When the read [_threads] came from started, which decides the deleted
+  /// conversations it still lists ([DmPendingHides.hides]).
+  Duration? _threadsReadAt;
+  final DmHideReader _hideReader = DmPendingHides.instance.reader();
+
+  /// Bumped when a delete lands or is undone. A list read started before that
+  /// is the wrong answer either way, so it is dropped rather than painted.
+  int _readGen = 0;
+
+  /// The [_readGen] of the poll in flight, null when none is. A poll from an
+  /// older generation does not hold off the read the removal asks for.
+  int? _pollGen;
 
   /// When each conversation was last opened here. A list read that started
   /// before that answers with the count from before the thread marked itself
   /// read, and assigning it as-is put the badge back on the conversation just
   /// left — the race web's `markedReadAt` closes the same way.
-  final Map<String, DateTime> _openedAt = {};
+  final Map<String, Duration> _openedAt = {};
 
   /// Null while unknown and whenever the Coach row is off.
   _CoachRowState? _coach;
   int _coachGeneration = 0;
   bool _placing = false;
 
+  /// The inbox is showing its Archived list.
+  bool _showingArchived = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    DmPendingHides.instance.addListener(_onPendingHidesChanged);
     if (widget.api.userId == null) return;
     _load();
     _loadCoach();
     _poll = Timer.periodic(widget.pollInterval, (_) => _refresh());
+  }
+
+  @override
+  ApiClient? get authApi => widget.api;
+
+  /// Everything held belongs to the account that left. A read still in flight
+  /// for it is dropped when it lands (each read carries the user it was made
+  /// for), and the list is read again for whoever is signed in now.
+  @override
+  void onAuthUserChanged(String? userId) {
+    _readGen++;
+    _coachGeneration++;
+    setState(() {
+      _threads = const [];
+      _threadsReadAt = null;
+      _openedAt.clear();
+      _coach = null;
+      _loadError = null;
+      _showingArchived = false;
+    });
+    _hideReader.reset();
+    if (userId == null) return;
+    _load();
+    _loadCoach();
+    _poll ??= Timer.periodic(widget.pollInterval, (_) => _refresh());
   }
 
   /// Decides the Coach row. Each step fails toward showing less: an
@@ -241,8 +285,33 @@ class _MessagesScreenState extends State<MessagesScreen>
   @override
   void dispose() {
     _poll?.cancel();
+    DmPendingHides.instance.removeListener(_onPendingHidesChanged);
+    _hideReader.close();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  int _seenHideOutcomes = DmPendingHides.instance.outcomes;
+
+  /// A conversation deleted in a thread leaves the list while its undo window
+  /// is open and comes back on Undo. Once the delete lands, the list it holds
+  /// still leaves it out until a read started after that replaces it; the
+  /// read is the server's answer either way. The delete itself needs no read:
+  /// the list already holds the row it leaves out.
+  void _onPendingHidesChanged() {
+    if (!mounted) return;
+    setState(() {});
+    final outcomes = DmPendingHides.instance.outcomes;
+    if (outcomes == _seenHideOutcomes) return;
+    _seenHideOutcomes = outcomes;
+    _readGen++;
+    _refresh();
+  }
+
+  void _hold(List<DmThread> rows, Duration startedAt) {
+    _threads = _applyOpened(rows, startedAt);
+    _threadsReadAt = startedAt;
+    _hideReader.applied(startedAt);
   }
 
   @override
@@ -250,9 +319,9 @@ class _MessagesScreenState extends State<MessagesScreen>
     if (state == AppLifecycleState.resumed) _refresh();
   }
 
-  List<DmThread> _applyOpened(List<DmThread> rows, DateTime startedAt) => [
+  List<DmThread> _applyOpened(List<DmThread> rows, Duration startedAt) => [
         for (final t in rows)
-          (_openedAt[t.threadKey]?.isAfter(startedAt) ?? false)
+          (_openedAt[t.threadKey] ?? Duration.zero) > startedAt
               ? t.copyWith(unread: 0)
               : t,
       ];
@@ -262,16 +331,23 @@ class _MessagesScreenState extends State<MessagesScreen>
       _loading = true;
       _loadError = null;
     });
-    final startedAt = DateTime.now();
+    final gen = _readGen;
+    final userId = widget.api.userId;
+    final startedAt = monotonicNow();
     try {
       final rows = await widget.api.fetchDmThreads();
-      if (!mounted) return;
+      if (!mounted || widget.api.userId != userId) return;
+      if (gen != _readGen) {
+        unawaited(_load());
+        return;
+      }
       setState(() {
-        _threads = _applyOpened(rows, startedAt);
+        _hold(rows, startedAt);
         _loading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || widget.api.userId != userId) return;
+      if (gen != _readGen) return _load();
       setState(() {
         _loadError = e;
         _loading = false;
@@ -281,20 +357,25 @@ class _MessagesScreenState extends State<MessagesScreen>
 
   /// A poll keeps the list it has on a failure: the next tick is the retry.
   Future<void> _refresh() async {
-    if (_loading || _refreshing) return;
+    if (_loading || _pollGen == _readGen) return;
     final lifecycle = WidgetsBinding.instance.lifecycleState;
     if (lifecycle != null && lifecycle != AppLifecycleState.resumed) return;
     if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
+    final userId = widget.api.userId;
+    if (userId == null) return;
     if (_loadError != null) return _load();
-    _refreshing = true;
-    final startedAt = DateTime.now();
+    final gen = _readGen;
+    _pollGen = gen;
+    final startedAt = monotonicNow();
     try {
       final rows = await widget.api.fetchDmThreads();
-      if (mounted) setState(() => _threads = _applyOpened(rows, startedAt));
+      if (mounted && gen == _readGen && widget.api.userId == userId) {
+        setState(() => _hold(rows, startedAt));
+      }
     } catch (e) {
       debugPrint('messages inbox poll failed: $e');
     } finally {
-      _refreshing = false;
+      if (_pollGen == gen) _pollGen = null;
     }
     await _refreshCoachPreview();
   }
@@ -308,6 +389,9 @@ class _MessagesScreenState extends State<MessagesScreen>
                 api: widget.api,
                 deletedPartnerKey: t.deletedPartnerKey!,
                 pollInterval: widget.threadPollInterval,
+                conversationId: t.conversationId,
+                initialMuted: t.muted,
+                initialArchived: t.archived,
               )
             : MessageThreadScreen(
                 api: widget.api,
@@ -315,11 +399,14 @@ class _MessagesScreenState extends State<MessagesScreen>
                 partnerName: t.partnerName,
                 partnerAvatarUrl: t.partnerAvatarUrl,
                 pollInterval: widget.threadPollInterval,
+                conversationId: t.conversationId,
+                initialMuted: t.muted,
+                initialArchived: t.archived,
               ),
       ),
     );
     if (!mounted) return;
-    _openedAt[t.threadKey] = DateTime.now();
+    _openedAt[t.threadKey] = monotonicNow();
     setState(() {
       _threads = [
         for (final x in _threads)
@@ -344,21 +431,35 @@ class _MessagesScreenState extends State<MessagesScreen>
       return ListSkeleton(label: l10n.commonLoading);
     }
     final coach = _coach;
-    final entries = inboxEntries<DmThread>(
-      _threads,
-      coach == null
-          ? null
-          : CoachInboxRow(
-              placement: coach.placement,
-              lastAt: coach.latest?.createdAt,
-            ),
-      lastAt: (t) => t.lastAt,
+    final hides = DmPendingHides.instance;
+    final readAt = _threadsReadAt;
+    // Archived conversations sit in their own list until a newer message
+    // arrives (dm_threads() decides that). The Coach row belongs to the inbox.
+    final split = partitionArchived<DmThread>(
+      [
+        for (final t in _threads)
+          if (readAt == null || !hides.hides(t.conversationId, readAt)) t,
+      ],
+      archived: (t) => t.archived,
     );
+    final showingArchived = _showingArchived && split.archived.isNotEmpty;
+    final entries = showingArchived
+        ? [for (final t in split.archived) DmInboxEntry<DmThread>(t)]
+        : inboxEntries<DmThread>(
+            split.inbox,
+            coach == null
+                ? null
+                : CoachInboxRow(
+                    placement: coach.placement,
+                    lastAt: coach.latest?.createdAt,
+                  ),
+            lastAt: (t) => t.lastAt,
+          );
     final hasCoachRow = entries.any((e) => e is CoachInboxEntry<DmThread>);
     if (_loadError != null && _threads.isEmpty && !hasCoachRow) {
       return ErrorState(message: l10n.messagesLoadError, onRetry: _load);
     }
-    if (entries.isEmpty) {
+    if (entries.isEmpty && split.archived.isEmpty) {
       return EmptyState(
         icon: Icons.chat_bubble_outline,
         title: l10n.messagesEmptyTitle,
@@ -368,7 +469,23 @@ class _MessagesScreenState extends State<MessagesScreen>
     final tag = localeToTag(Localizations.localeOf(context));
     // With the Coach as the only row, the empty-inbox guidance still says how
     // a conversation with a person starts.
-    final footer = _threads.isEmpty
+    final Widget? header = showingArchived
+        ? ListTile(
+            key: const ValueKey('inbox-back-to-inbox'),
+            leading: const Icon(Icons.arrow_back),
+            title: Text(l10n.messagesBackToInbox),
+            onTap: () => setState(() => _showingArchived = false),
+          )
+        : null;
+    final Widget? archivedLink = !showingArchived && split.archived.isNotEmpty
+        ? ListTile(
+            key: const ValueKey('inbox-show-archived'),
+            leading: const Icon(Icons.archive_outlined),
+            title: Text(l10n.messagesArchivedCount(split.archived.length)),
+            onTap: () => setState(() => _showingArchived = true),
+          )
+        : null;
+    final footer = split.inbox.isEmpty && !showingArchived
         ? Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
@@ -387,14 +504,28 @@ class _MessagesScreenState extends State<MessagesScreen>
       },
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: entries.length + (footer == null ? 0 : 1),
+        itemCount: (header == null ? 0 : 1) +
+            entries.length +
+            (footer == null ? 0 : 1) +
+            (archivedLink == null ? 0 : 1),
         separatorBuilder: (_, _) => const Divider(height: 1),
         itemBuilder: (context, i) {
-          if (i == entries.length) return footer!;
-          return switch (entries[i]) {
-            CoachInboxEntry() => _coachRow(l10n, coach!),
-            DmInboxEntry(:final thread) => _row(l10n, thread, tag),
-          };
+          if (header != null) {
+            if (i == 0) return header;
+            i -= 1;
+          }
+          if (i < entries.length) {
+            return switch (entries[i]) {
+              CoachInboxEntry() => _coachRow(l10n, coach!),
+              DmInboxEntry(:final thread) => _row(l10n, thread, tag),
+            };
+          }
+          i -= entries.length;
+          if (footer != null) {
+            if (i == 0) return footer;
+            i -= 1;
+          }
+          return archivedLink!;
         },
       ),
     );
@@ -462,11 +593,31 @@ class _MessagesScreenState extends State<MessagesScreen>
         imageUrl: t.partnerAvatarUrl,
         size: 40,
       ),
-      title: Text(
-        name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: unread ? const TextStyle(fontWeight: FontWeight.w700) : null,
+      title: Row(
+        children: [
+          Flexible(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style:
+                  unread ? const TextStyle(fontWeight: FontWeight.w700) : null,
+            ),
+          ),
+          if (t.muted) ...[
+            const SizedBox(width: 6),
+            Semantics(
+              key: ValueKey('dm-muted-${t.threadKey}'),
+              label: l10n.messagesMutedMark,
+              excludeSemantics: true,
+              child: Icon(
+                Icons.notifications_off_outlined,
+                size: 16,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
       ),
       subtitle: Text(
         t.lastFromMe ? l10n.messagesYouPrefixed(preview) : preview,
@@ -491,8 +642,12 @@ class _MessagesScreenState extends State<MessagesScreen>
               child: StatusPill(
                 key: ValueKey('dm-unread-${t.threadKey}'),
                 label: '${t.unread}',
-                foreground: theme.colorScheme.onPrimary,
-                fill: theme.colorScheme.primary,
+                foreground: t.muted
+                    ? theme.colorScheme.onSecondaryContainer
+                    : theme.colorScheme.onPrimary,
+                fill: t.muted
+                    ? theme.colorScheme.secondaryContainer
+                    : theme.colorScheme.primary,
                 size: StatusPillSize.compact,
               ),
             ),

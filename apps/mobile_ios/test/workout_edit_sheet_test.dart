@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,6 +27,9 @@ class _FakeTraining extends TrainingService {
   })? lastUpdate;
   Object? errorToThrow;
 
+  /// Holds the save open until completed, when set.
+  Completer<void>? gate;
+
   @override
   Future<void> updateWorkout(
     String workoutId, {
@@ -35,6 +41,7 @@ class _FakeTraining extends TrainingService {
     PlanWorkoutRange? rpe,
     PlanWorkoutRange? hr,
   }) async {
+    await gate?.future;
     if (errorToThrow != null) throw errorToThrow!;
     lastUpdate = (
       workoutId: workoutId,
@@ -185,6 +192,21 @@ void main() {
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
       expect(training.lastUpdate, isNull);
+    });
+
+    testWidgets('a save the backend never answers gives up and keeps the sheet',
+        (tester) async {
+      final training = _FakeTraining()..gate = Completer<void>();
+      await _pumpSheet(tester, _workout(), training);
+      await tester.ensureVisible(find.text('Save'));
+      await tester.tap(find.text('Save'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 16));
+      await tester.pump();
+      final en = lookupAppLocalizations(const Locale('en'));
+      expect(find.textContaining(en.workoutEditSaveError('').trim()),
+          findsOneWidget);
+      expect(find.text('Save'), findsOneWidget);
     });
 
     testWidgets('Save calls updateWorkout with the edited values', (tester) async {
@@ -589,5 +611,19 @@ void main() {
             findsWidgets);
       });
     });
+  });
+
+  // Two plan surfaces spelled the unit out themselves; the one label for it is
+  // UnitFormat.distanceLabel, so a change there reaches every field.
+  test('plan editors name the distance unit through UnitFormat', () {
+    for (final path in [
+      'lib/widgets/workout_edit_sheet.dart',
+      'lib/screens/plan_new_screen.dart',
+    ]) {
+      final src = File(path).readAsStringSync();
+      expect(src, contains('UnitFormat.distanceLabel('), reason: path);
+      expect(RegExp(r"\? 'mi' : 'km'|\? 'km' : 'mi'").hasMatch(src), isFalse,
+          reason: '$path spells the unit label itself');
+    }
   });
 }

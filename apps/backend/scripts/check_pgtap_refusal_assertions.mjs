@@ -1808,6 +1808,34 @@ export function stampedThroughRpc(landings, stamped) {
  */
 export const FILTERED_RPC_ARGUMENTS = [
   {
+    file: 'dm_conversations_test.sql',
+    description: 'a participant can mute the conversation',
+    columns: ['conversation_participants.muted_at'],
+    readBack: 'dm_threads reports it muted',
+    reason:
+      'p_muted becomes a timestamp (now(), or the existing stamp) rather than landing as given. ' +
+      'The read-back reads muted_at through dm_threads(), which a server that stopped stamping it ' +
+      'would report false.',
+  },
+  {
+    file: 'dm_conversations_test.sql',
+    description: 'a participant can unmute it',
+    columns: ['conversation_participants.muted_at'],
+    readBack: 'dm_threads reports it unmuted',
+    reason:
+      'p_muted = false clears muted_at rather than storing the boolean; the read-back follows a ' +
+      'mute, so a server that stopped clearing it would still report true.',
+  },
+  {
+    file: 'dm_conversations_test.sql',
+    description: 'a participant can archive the conversation',
+    columns: ['conversation_participants.archived_at'],
+    readBack: 'dm_threads reports it archived',
+    reason:
+      'p_archived becomes the now() stamp dm_threads() compares against the newest message; the ' +
+      'read-back reports false unless that stamp was written.',
+  },
+  {
     file: 'plan_workout_effort_targets_test.sql',
     description: 'the owner duplicates the week',
     columns: ['plan_weeks.week_index'],

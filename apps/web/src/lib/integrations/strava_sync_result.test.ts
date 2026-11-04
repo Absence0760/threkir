@@ -6,7 +6,8 @@ import {
 	STRAVA_LOOKBACK_MAX_DAYS,
 	STRAVA_LOOKBACK_OPTIONS,
 	isStravaLookbackReachable,
-	parseStravaSyncResult
+	parseStravaSyncResult,
+	stravaConnectError
 } from './strava_sync_result';
 
 test('a finished walk is the only shape that reports complete', () => {
@@ -191,4 +192,39 @@ test('the maximum is the bound the Edge Function actually enforces', () => {
 	const bound = src.match(/requested > (\d+)/)?.[1];
 	assert.ok(bound, 'strava-import no longer bounds `lookbackDays` with `requested > <n>`');
 	assert.equal(Number(bound), STRAVA_LOOKBACK_MAX_DAYS);
+});
+
+test('a connect refusal code names the reason the card words, never itself', () => {
+	assert.equal(stravaConnectError('strava_not_configured'), 'not_configured');
+	assert.equal(stravaConnectError('invalid_redirect_uri'), 'not_configured');
+	assert.equal(stravaConnectError('missing_scope'), 'missing_scope');
+	assert.equal(stravaConnectError('strava_token_exchange_failed'), 'code_rejected');
+	assert.equal(stravaConnectError('invalid_code'), 'code_rejected');
+	assert.equal(stravaConnectError('unauthorized'), 'signed_out');
+	assert.equal(stravaConnectError('store_tokens_failed'), 'generic');
+	assert.equal(stravaConnectError('Strava connection is missing the activity:read_all scope.'), 'generic');
+	assert.equal(stravaConnectError(null), 'generic');
+	assert.equal(stravaConnectError(undefined), 'generic');
+});
+
+test('a grant Strava refuses asks the runner to connect again', () => {
+	// `sync` answers `refresh_failed` when Strava rejects the stored refresh
+	// token; retrying cannot help, so it is a reason of its own, not `generic`.
+	assert.equal(stravaConnectError('refresh_failed'), 'reconnect');
+	assert.equal(stravaConnectError('strava_not_connected'), 'generic');
+});
+
+test('every code the connect action answers is either worded or deliberately generic', () => {
+	// The function's list is the contract (`connect_errors.ts`). A code added
+	// there falls to `generic` here until someone decides it deserves words,
+	// and this names the ones that were decided.
+	const src = readFileSync(
+		new URL('../../../../backend/supabase/functions/strava-import/connect_errors.ts', import.meta.url),
+		'utf8',
+	);
+	const list = src.match(/STRAVA_CONNECT_ERROR_CODES = \[([^\]]*)\]/)?.[1];
+	assert.ok(list, 'connect_errors.ts no longer declares STRAVA_CONNECT_ERROR_CODES');
+	const codes = [...list.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+	const generic = codes.filter((c) => stravaConnectError(c) === 'generic').sort();
+	assert.deepEqual(generic, ['invalid_scope', 'store_integration_failed', 'store_tokens_failed']);
 });

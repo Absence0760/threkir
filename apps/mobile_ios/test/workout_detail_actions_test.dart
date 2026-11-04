@@ -8,12 +8,12 @@ import 'dart:io';
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show FullBodyLoader;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/plan_current.dart' show PlanWorkoutStatus;
 import '../lib/screens/workout_detail_screen.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/plan_workout_status_style.dart';
+import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
 
 PlanWorkoutRow _workout({DateTime? skippedAt, bool manual = false}) =>
@@ -39,6 +39,11 @@ class _FakeTraining extends TrainingService {
   final skipCalls = <bool>[];
   final markCalls = <bool>[];
 
+  /// Hold the write open until completed, when set: a write the backend
+  /// never answers, or one still in flight.
+  Completer<void>? skipGate;
+  Completer<void>? markGate;
+
   _FakeTraining(this.workout, {this.loads = const [null]});
 
   @override
@@ -52,6 +57,7 @@ class _FakeTraining extends TrainingService {
   @override
   Future<void> setSkipped(String workoutId, bool skipped) async {
     skipCalls.add(skipped);
+    await skipGate?.future;
     if (skipError != null) throw skipError!;
     workout = _workout(skippedAt: skipped ? DateTime(2026, 4, 5, 9) : null);
   }
@@ -63,6 +69,7 @@ class _FakeTraining extends TrainingService {
     bool manual = false,
   }) async {
     markCalls.add(manual);
+    await markGate?.future;
     if (markError != null) throw markError!;
     workout = _workout(manual: manual);
   }
@@ -102,7 +109,7 @@ Future<Future<Object?>> _open(
   await tester.pump(const Duration(milliseconds: 400));
   await pumpUntil(
     tester,
-    () => !tester.any(find.byType(FullBodyLoader)),
+    () => !tester.any(find.byType(SectionedDetailSkeleton)),
     describe: 'the workout fetch to settle',
   );
   await tester.pump();
@@ -111,6 +118,60 @@ Future<Future<Object?>> _open(
 
 void main() {
   final en = lookupAppLocalizations(const Locale('en'));
+
+  // Mark done and Skip write the same row; with each guarding only itself,
+  // both could be tapped together and their reloads raced.
+  testWidgets('while Mark done is in flight, Skip is held too', (tester) async {
+    final gate = Completer<void>();
+    final training = _FakeTraining(_workout())..markGate = gate;
+    await _open(tester, training, initial: _workout());
+    await tester.tap(find.byKey(const Key('workoutDetailMarkDone')));
+    await tester.pump();
+
+    final skip = tester.widget<ButtonStyleButton>(
+        find.byKey(const Key('workoutDetailSkip')));
+    expect(skip.onPressed, isNull);
+    await tester.tap(find.byKey(const Key('workoutDetailSkip')));
+    await tester.pump();
+    expect(training.skipCalls, isEmpty);
+
+    gate.complete();
+    await pumpUntil(
+      tester,
+      () => tester.any(find.byKey(const Key('workoutDetailMarkNotDone'))),
+      describe: 'the mark to land and the done panel to render',
+    );
+    expect(training.markCalls, [true]);
+  });
+
+  group('writes the backend never answers', () {
+    testWidgets('Mark done gives up, says so and gives the button back',
+        (tester) async {
+      final training = _FakeTraining(_workout())..markGate = Completer<void>();
+      await _open(tester, training, initial: _workout());
+      await tester.tap(find.byKey(const Key('workoutDetailMarkDone')));
+      await tester.pump();
+      expect(markButton(tester).onPressed, isNull);
+
+      await tester.pump(const Duration(seconds: 16));
+      expect(find.text(en.workoutUpdateError), findsOneWidget);
+      expect(markButton(tester).onPressed, isNotNull);
+      await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets('Skip gives up, says so and gives the button back',
+        (tester) async {
+      final training = _FakeTraining(_workout())..skipGate = Completer<void>();
+      await _open(tester, training, initial: _workout());
+      await tester.tap(find.text(en.workoutSkip));
+      await tester.pump();
+
+      await tester.pump(const Duration(seconds: 16));
+      expect(find.text(en.workoutSkipError), findsOneWidget);
+      expect(skipButton(tester, en).onPressed, isNotNull);
+      await tester.pump(const Duration(seconds: 4));
+    });
+  });
 
   group('load failures', () {
     testWidgets('a failed load says so, and retry recovers', (tester) async {
@@ -312,3 +373,16 @@ void main() {
     });
   });
 }
+
+ButtonStyleButton markButton(WidgetTester tester) => tester.widget<ButtonStyleButton>(
+    find.ancestor(
+        of: find.byKey(const Key('workoutDetailMarkDone')),
+        matching: find.bySubtype<ButtonStyleButton>(),
+        matchRoot: true).first);
+
+ButtonStyleButton skipButton(WidgetTester tester, AppLocalizations en) =>
+    tester.widget<ButtonStyleButton>(find
+        .ancestor(
+            of: find.text(en.workoutSkip),
+            matching: find.bySubtype<ButtonStyleButton>())
+        .first);

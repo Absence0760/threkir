@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { formatDuration } from '#lib/format/time.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import {
 		fetchEffortsForRunWithError,
 		computeSegmentEffortsForRun,
@@ -86,13 +86,13 @@
 				fetchGlobalEffortsForRun(runId),
 			]);
 			if (res.error) {
-				loadError = res.error;
+				loadError = errorCopy(res.error, m, 'RunSegmentEfforts: loadError');
 				return;
 			}
 			efforts = res.efforts;
 			globalEfforts = globals;
 		} catch (e) {
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, m, 'RunSegmentEfforts: loadError');
 		} finally {
 			loading = false;
 		}

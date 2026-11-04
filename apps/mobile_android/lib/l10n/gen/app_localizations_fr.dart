@@ -238,6 +238,30 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get importFileUnreadable => 'Ce fichier n\'est pas au format attendu.';
+
+  @override
+  String importRefusedTooLarge(int sizeMb, int limitMb) {
+    return 'Ce fichier fait $sizeMb Mo, au-delà de la limite de $limitMb Mo. Divisez-le en exports plus petits et importez-les un par un.';
+  }
+
+  @override
+  String get importRefusedNotStravaExport =>
+      'Ce n\'est pas un export Strava : il ne contient pas de fichier activities.csv.';
+
+  @override
+  String get importRefusedColumnsMissing =>
+      'Il manque à la liste d\'activités de cet export les colonnes nécessaires.';
+
+  @override
+  String get importRefusedNotBackup =>
+      'Ce n\'est pas une sauvegarde créée par cette application.';
+
+  @override
+  String get importRefusedBackupTooNew =>
+      'Cette sauvegarde a été créée par une version plus récente de l\'application. Mettez l\'application à jour, puis restaurez-la.';
+
+  @override
   String get importStatusRestoringBackup => 'Restauration de la sauvegarde…';
 
   @override
@@ -324,6 +348,73 @@ class AppLocalizationsFr extends AppLocalizations {
   String importErrorsMore(Object count) {
     return '… et $count de plus';
   }
+
+  @override
+  String get importRestoreWarnOffline =>
+      'Restauré hors ligne : les courses sont enregistrées sur cet appareil et seront synchronisées dès que vous vous connecterez. Le profil et les réglages ont été ignorés.';
+
+  @override
+  String get importRestoreWarnArchiveIncomplete =>
+      'Cette sauvegarde indique qu\'elle était incomplète lors de sa création. Rien n\'a été écrasé : restaurez une sauvegarde complète pour combler les manques.';
+
+  @override
+  String importRestoreWarnProfile(String error) {
+    return 'Le profil et les réglages n\'ont pas été restaurés : $error';
+  }
+
+  @override
+  String importRestoreWarnRunNoId(int index) {
+    return 'La course n° $index de la sauvegarde n\'a pas d\'identifiant et a été ignorée.';
+  }
+
+  @override
+  String importRestoreWarnRouteNoId(int index) {
+    return 'L\'itinéraire n° $index de la sauvegarde n\'a pas d\'identifiant et a été ignoré.';
+  }
+
+  @override
+  String importRestoreWarnRunPresent(String id) {
+    return 'La course $id est déjà sur cet appareil et a été ignorée.';
+  }
+
+  @override
+  String importRestoreWarnTrack(String id, String error) {
+    return 'La trace GPS de la course $id n\'a pas été restaurée : $error';
+  }
+
+  @override
+  String importRestoreWarnHeartRate(String id, String error) {
+    return 'Les données de fréquence cardiaque de la course $id n\'ont pas été restaurées : $error';
+  }
+
+  @override
+  String importRestoreWarnRun(String id, String error) {
+    return 'La course $id n\'a pas été restaurée : $error';
+  }
+
+  @override
+  String importRestoreWarnRoute(String id, String error) {
+    return 'L\'itinéraire $id n\'a pas été restauré : $error';
+  }
+
+  @override
+  String importRestoreWarnGym(String error) {
+    return 'Les séances de musculation n\'ont pas été restaurées : $error';
+  }
+
+  @override
+  String importRestoreWarnFood(String error) {
+    return 'Le journal alimentaire n\'a pas été restauré : $error';
+  }
+
+  @override
+  String importRestoreWarnColumnsDropped(String names) {
+    return 'Champs ignorés, inutilisés par cette version de l\'application : $names';
+  }
+
+  @override
+  String get importRestoreWarnRunsSkipped =>
+      'Les courses n\'ont pas été restaurées : le stockage des courses de cet appareil n\'est pas disponible.';
 
   @override
   String importFailuresHeading(int count) {
@@ -3384,6 +3475,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible de synchroniser les itinéraires — hors ligne';
 
   @override
+  String get routesBookmarksLoadFailed =>
+      'Impossible de charger vos itinéraires en signets';
+
+  @override
   String get routesLoadMoreFailed =>
       'Impossible de charger plus d\'itinéraires';
 
@@ -4272,6 +4367,145 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get routeDetailDeleteImpactUnknown =>
+      'Impossible de vérifier ce qui utilise encore cet itinéraire.';
+
+  @override
+  String get routeDetailDeleteNotAllowed =>
+      'Seul le propriétaire de l\'itinéraire peut le supprimer.';
+
+  @override
+  String get routeDetailDeleteImpactPublic =>
+      'Il est public : d\'autres coureurs peuvent le trouver et le suivre.';
+
+  @override
+  String routeDetailDeleteImpactRaceListings(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count courses l’utilisent comme parcours et perdront leur parcours.',
+      one: '$count course l’utilise comme parcours et perdra son parcours.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactEvents(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count événements de club l’utilisent et perdront leur itinéraire.',
+      one: '$count événement de club l’utilise et perdra son itinéraire.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactSaved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count autres coureurs l’ont enregistré.',
+      one: '$count autre coureur l’a enregistré.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactShares(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count personnes avec qui il est partagé perdront l’accès.',
+      one: '$count personne avec qui il est partagé perdra l’accès.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactSegments(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count segments créés dessus par d’autres coureurs seront supprimés.',
+      one: '$count segment créé dessus par d’autres coureurs sera supprimé.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactEfforts(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count efforts d’autres coureurs sur ses segments seront supprimés.',
+      one: '$count effort d’autres coureurs sur ses segments sera supprimé.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactReviews(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count avis d’autres coureurs seront supprimés.',
+      one: '$count avis d’un autre coureur sera supprimé.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactConditions(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count signalements d’état d’autres coureurs seront supprimés.',
+      one: '$count signalement d’état d’un autre coureur sera supprimé.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactRuns(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count sorties qui l’ont suivi gardent leurs statistiques mais perdent le lien.',
+      one:
+          '$count sortie qui l’a suivi garde ses statistiques mais perd le lien.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactPhotos(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Ses $count photos seront supprimées.',
+      one: 'Sa $count photo sera supprimée.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeDetailDeleteImpactMarkers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Ses $count repères seront supprimés.',
+      one: 'Son $count repère sera supprimé.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get routeDetailPreview => 'Aperçu';
 
   @override
@@ -4355,6 +4589,11 @@ class AppLocalizationsFr extends AppLocalizations {
       'Autorisation de localisation requise pour trouver des itinéraires à proximité';
 
   @override
+  String exploreRoutesNearbyLocationUnavailable(String error) {
+    return 'Position indisponible : $error';
+  }
+
+  @override
   String get exploreRoutesNearbyFailed =>
       'Impossible de trouver des itinéraires à proximité. Appuyez sur Réessayer pour recommencer.';
 
@@ -4412,15 +4651,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String exploreRoutesRemoved(String name) {
     return '« $name » retiré de votre bibliothèque';
   }
-
-  @override
-  String get exploreRoutesSurfaceTrailShort => 'Sentier';
-
-  @override
-  String get exploreRoutesSurfaceMixedShort => 'Mixte';
-
-  @override
-  String get exploreRoutesSurfaceRoadShort => 'Route';
 
   @override
   String get exploreRoutesDistanceUnderKm => 'Moins de 5 km';
@@ -6519,6 +6749,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get planDetailUnpublishLibrary => 'Retirer';
 
   @override
+  String get planDetailUnpublishTitle => 'Retirer ce plan ?';
+
+  @override
+  String get planDetailUnpublishBody =>
+      'Il quitte la bibliothèque publique. Toute personne qui ouvre un lien que vous avez partagé ne le trouvera plus, et une nouvelle publication crée un nouveau lien.';
+
+  @override
   String get planDetailUnpublishSuccess =>
       'Retiré de la bibliothèque publique.';
 
@@ -6629,6 +6866,90 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String planImportErrorBadDistance(String cell) {
+    return 'Impossible de lire la distance « $cell ».';
+  }
+
+  @override
+  String planImportErrorBadPace(String cell) {
+    return 'Impossible de lire l\'allure « $cell ». Utilisez m:ss.';
+  }
+
+  @override
+  String planImportErrorDuplicateColumn(String column) {
+    return 'La colonne « $column » apparaît deux fois.';
+  }
+
+  @override
+  String planImportErrorMissingColumn(String column) {
+    return 'Le tableau n\'a pas de colonne « $column ».';
+  }
+
+  @override
+  String planImportErrorRaceNameTooLong(String name, String max) {
+    return 'Le nom de course « $name » dépasse $max caractères.';
+  }
+
+  @override
+  String planImportErrorBadRacePriority(String cell) {
+    return 'Impossible de lire la priorité de course « $cell ». Utilisez A, B ou C.';
+  }
+
+  @override
+  String planImportErrorBadGoalTime(String cell) {
+    return 'Impossible de lire le temps visé « $cell ». Utilisez h:mm:ss.';
+  }
+
+  @override
+  String planImportErrorBadWeek(String cell) {
+    return 'Impossible de lire le numéro de semaine « $cell ».';
+  }
+
+  @override
+  String planImportErrorBadDate(String cell) {
+    return 'Impossible de lire la date « $cell ». Utilisez AAAA-MM-JJ.';
+  }
+
+  @override
+  String planImportErrorUnknownKind(String cell) {
+    return '« $cell » n\'est pas un type de séance connu de l\'application.';
+  }
+
+  @override
+  String planImportErrorRaceFieldsOnNonRace(String date) {
+    return 'Course, priorité et objectif ne s\'appliquent qu\'aux lignes de course, et la séance du $date n\'est pas une course.';
+  }
+
+  @override
+  String get planImportErrorNoRows =>
+      'Aucune ligne de séance trouvée. Collez un tableau avec les colonnes Week, Date et Type.';
+
+  @override
+  String get planImportErrorNoGoalDistance =>
+      'Impossible de déterminer la distance visée par le plan.';
+
+  @override
+  String planImportErrorBeforeStart(String date, String start) {
+    return 'La séance du $date est antérieure à la date de début du plan, le $start.';
+  }
+
+  @override
+  String get planImportErrorNotJson => 'Ce n\'est pas du JSON valide.';
+
+  @override
+  String get planImportErrorNoWorkoutsArray =>
+      'Le JSON n\'a pas de liste « workouts ».';
+
+  @override
+  String get planImportErrorBadJsonShape =>
+      'Les séances du JSON ne sont pas au format d\'export.';
+
+  @override
+  String planImportErrorBadTaperStamp(String value, String date) {
+    return 'Impossible de lire la date d\'affûtage « $value » du $date.';
+  }
+
+  @override
   String planImportPreviewDates(String start, String end) {
     return 'Du $start au $end';
   }
@@ -6701,7 +7022,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get planDetailNotFound => 'Plan introuvable.';
 
   @override
-  String get planDetailLongestLongRun => 'Sortie longue la plus longue';
+  String planDetailLongestLongRun(String distance) {
+    return 'Sortie longue la plus longue : $distance';
+  }
 
   @override
   String get planDetailPublishTooltip => 'Publier comme modèle de club';
@@ -6869,6 +7192,10 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get planDetailReplanOnTrack =>
       'Votre plan est sur la bonne voie — rien à ajuster.';
+
+  @override
+  String get planDetailReplanRunsUnavailable =>
+      'Impossible de charger vos sorties récentes : le plan ne peut pas encore être comparé à celles-ci. Réessayez dans un instant.';
 
   @override
   String planDetailReplanApplied(int n) {
@@ -7188,6 +7515,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible de charger vos courses. Réessayez.';
 
   @override
+  String get workoutRelinkSaveError =>
+      'Impossible d\'associer cette course. Réessayez.';
+
+  @override
   String get workoutRelinkEmpty => 'Aucune course éligible près de cette date.';
 
   @override
@@ -7387,6 +7718,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String coachContextPlanWeeks(String name, int weeks) {
     return '$name · $weeks sem.';
   }
+
+  @override
+  String get coachSeasonHint =>
+      'Une autre course après ce plan ? Appuyez sur « Ajouter à ma saison » sur la course, et « Ma saison » apparaîtra ici.';
+
+  @override
+  String get coachSeasonHintAction => 'Trouver une course';
+
+  @override
+  String get coachPlanPickerTooltip => 'Contexte du plan';
 
   @override
   String get coachContextNoRuns => 'Aucune course';
@@ -8087,6 +8428,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String integrationsStravaConnectFailed(String error) {
     return 'Échec de la connexion à Strava : $error';
   }
+
+  @override
+  String get integrationsStravaErrNotConfigured =>
+      'Strava n\'est pas encore configuré sur ce serveur.';
+
+  @override
+  String get integrationsStravaErrMissingScope =>
+      'Strava n\'a pas partagé toutes vos activités. Reconnectez-vous en laissant toutes les autorisations cochées.';
+
+  @override
+  String get integrationsStravaErrCodeRejected =>
+      'Strava n\'a pas accepté la connexion. Réessayez de vous connecter.';
+
+  @override
+  String get integrationsStravaErrReconnect =>
+      'Strava n\'accepte plus cette connexion. Déconnectez Strava, puis connectez-le à nouveau.';
 
   @override
   String get integrationsStravaConnected => 'Strava connecté.';
@@ -9059,6 +9416,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get prefsTitle => 'Préférences';
 
   @override
+  String get prefsOfflineNotice =>
+      'Hors ligne — vos modifications restent sur cet appareil et seront synchronisées à la reconnexion.';
+
+  @override
   String get prefsUnitMetric => 'km, m';
 
   @override
@@ -9450,9 +9811,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get dashboardFirstRunGymAction => 'Note une séance de musculation';
-
-  @override
-  String get dashboardPeriodWeek => 'Semaine';
 
   @override
   String get dashboardPeriodMonth => 'Mois';
@@ -10819,6 +11177,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get shareCardExport => 'Exporter';
+
+  @override
+  String get shareCardShareLink => 'Partager le lien';
+
+  @override
+  String get shareCardMark => 'Afficher le logo Threkir';
 
   @override
   String get shareCardImage => 'Image';
@@ -13535,6 +13899,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String coachingAthleteAssignOverlap(String name) {
     return 'Ces dates chevauchent l\'un des plans actifs de $name. Choisissez une date de début après sa fin.';
   }
+
+  @override
+  String get coachingAthleteAssignError =>
+      'Impossible d\'attribuer le plan. Veuillez réessayer.';
 
   @override
   String get coachingAthleteComplete => 'terminé';
@@ -17333,6 +17701,52 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get messagesMute => 'Mettre en sourdine';
+
+  @override
+  String get messagesUnmute => 'Réactiver les notifications';
+
+  @override
+  String get messagesArchive => 'Archiver';
+
+  @override
+  String get messagesUnarchive => 'Désarchiver';
+
+  @override
+  String get messagesDeleteConversation => 'Supprimer la conversation';
+
+  @override
+  String get messagesConversationDeleted => 'Conversation supprimée';
+
+  @override
+  String get messagesConversationDeletedNotice =>
+      'Vous avez supprimé cette conversation pour vous. L\'autre personne garde sa copie, et un nouveau message la fera réapparaître.';
+
+  @override
+  String messagesConversationActionFailed(String error) {
+    return 'Impossible de mettre à jour la conversation : $error';
+  }
+
+  @override
+  String messagesArchivedCount(int count) {
+    return 'Archivées ($count)';
+  }
+
+  @override
+  String get messagesBackToInbox => 'Retour à la boîte de réception';
+
+  @override
+  String get messagesMutedMark => 'En sourdine';
+
+  @override
+  String get messagesMutedToast =>
+      'En sourdine. Vous ne serez pas notifié des nouveaux messages ici.';
+
+  @override
+  String get messagesArchivedToast =>
+      'Archivée. Un nouveau message la ramènera dans votre boîte de réception.';
+
+  @override
   String get profileMessage => 'Message';
 
   @override
@@ -19648,4 +20062,31 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get sharesFootnote =>
       'Une inscription est comptée quand quelqu\'un crée un compte depuis un lien que vous avez partagé. Vos propres visites ne sont pas comptées.';
+
+  @override
+  String get routeDetailLineLoadFailed =>
+      'Impossible de charger le tracé de l\'itinéraire. Vérifiez votre connexion et réessayez.';
+
+  @override
+  String get routeDetailLineEmpty =>
+      'Cet itinéraire n\'a aucun tracé à afficher.';
+
+  @override
+  String get routeDetailLineRetry => 'Réessayer';
+
+  @override
+  String get locationErrorPermissionDenied =>
+      'l\'autorisation de localisation est désactivée';
+
+  @override
+  String get locationErrorServicesOff =>
+      'la localisation est désactivée sur cet appareil';
+
+  @override
+  String get locationErrorNoFix =>
+      'pas encore de position, réessayez dans un instant';
+
+  @override
+  String get routesImportNoTrack =>
+      'Échec de l\'import : ce fichier ne contient aucun itinéraire d\'au moins deux points.';
 }

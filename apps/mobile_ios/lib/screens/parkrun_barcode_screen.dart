@@ -2,9 +2,10 @@ import 'dart:async';
 
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ActivityLoaderKind, FullBodyLoader;
+import 'package:ui_kit/ui_kit.dart' show SkeletonBlock;
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../auth_error.dart';
 import '../column_limits.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../parkrun_barcode.dart';
@@ -74,9 +75,12 @@ class _ParkrunBarcodeScreenState extends State<ParkrunBarcodeScreen>
 
   void _keepAwake(bool on) {
     unawaited(
-      (on ? WakelockPlus.enable() : WakelockPlus.disable())
-          .catchError((Object e) {
-        debugPrint('parkrun barcode wakelock ${on ? 'enable' : 'disable'} failed: $e');
+      (on ? WakelockPlus.enable() : WakelockPlus.disable()).catchError((
+        Object e,
+      ) {
+        debugPrint(
+          'parkrun barcode wakelock ${on ? 'enable' : 'disable'} failed: $e',
+        );
       }),
     );
   }
@@ -84,7 +88,11 @@ class _ParkrunBarcodeScreenState extends State<ParkrunBarcodeScreen>
   Future<void> _loadNumber() async {
     final userId = widget.api.userId;
     if (userId == null) {
-      setState(() => _load = const ParkrunBarcodeLoad._(ParkrunBarcodeLoadKind.unavailable));
+      setState(
+        () => _load = const ParkrunBarcodeLoad._(
+          ParkrunBarcodeLoadKind.unavailable,
+        ),
+      );
       return;
     }
     final cached = await widget.cache.read(userId);
@@ -127,7 +135,10 @@ class _ParkrunBarcodeScreenState extends State<ParkrunBarcodeScreen>
     } catch (e) {
       debugPrint('parkrun barcode: save failed: $e');
       if (!mounted) return;
-      showTopBanner(context, l10n.parkrunBarcodeSaveFailed('$e'));
+      showTopBanner(
+        context,
+        l10n.parkrunBarcodeSaveFailed(friendlyError(l10n, e)),
+      );
     }
   }
 
@@ -161,15 +172,23 @@ class _ParkrunBarcodeScreenState extends State<ParkrunBarcodeScreen>
     final Widget content;
     switch (load.kind) {
       case ParkrunBarcodeLoadKind.loading:
-        content = FullBodyLoader(
-          kind: ActivityLoaderKind.run,
-          label: l10n.commonLoading,
+        content = ListView(
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          children: [
+            const SkeletonBlock(height: 20, radius: 4),
+            const SizedBox(height: 24),
+            SkeletonBlock(height: 140, label: l10n.commonLoading),
+          ],
         );
       case ParkrunBarcodeLoadKind.unavailable:
         content = _message(
           text,
           l10n.parkrunBarcodeLoadFailed,
-          FilledButton(onPressed: _retry, child: Text(l10n.parkrunBarcodeRetry)),
+          FilledButton(
+            onPressed: _retry,
+            child: Text(l10n.parkrunBarcodeRetry),
+          ),
         );
       case ParkrunBarcodeLoadKind.none:
         content = _message(
@@ -185,13 +204,20 @@ class _ParkrunBarcodeScreenState extends State<ParkrunBarcodeScreen>
         content = _message(
           text,
           l10n.parkrunBarcodeInvalid,
-          FilledButton(onPressed: _editNumber, child: Text(l10n.parkrunBarcodeEdit)),
+          FilledButton(
+            onPressed: _editNumber,
+            child: Text(l10n.parkrunBarcodeEdit),
+          ),
         );
       case ParkrunBarcodeLoadKind.ready:
         content = ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Text(l10n.parkrunBarcodeHint, style: text.bodyLarge, textAlign: TextAlign.center),
+            Text(
+              l10n.parkrunBarcodeHint,
+              style: text.bodyLarge,
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 24),
             ParkrunBarcodeView(number: load.number!, barHeight: 140),
             if (load.fromCache) ...[
@@ -204,7 +230,11 @@ class _ParkrunBarcodeScreenState extends State<ParkrunBarcodeScreen>
               ),
             ],
             const SizedBox(height: 24),
-            Text(l10n.parkrunBarcodePaperNote, style: text.bodySmall, textAlign: TextAlign.center),
+            Text(
+              l10n.parkrunBarcodePaperNote,
+              style: text.bodySmall,
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 16),
             Center(
               child: TextButton(
@@ -219,18 +249,18 @@ class _ParkrunBarcodeScreenState extends State<ParkrunBarcodeScreen>
   }
 
   Widget _message(TextTheme text, String body, Widget action) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(body, style: text.bodyLarge, textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-              action,
-            ],
-          ),
-        ),
-      );
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(body, style: text.bodyLarge, textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          action,
+        ],
+      ),
+    ),
+  );
 }
 
 enum ParkrunBarcodeLoadKind { loading, unavailable, none, invalid, ready }
@@ -244,7 +274,7 @@ class ParkrunBarcodeLoad {
   const ParkrunBarcodeLoad.loading() : this._(ParkrunBarcodeLoadKind.loading);
 
   const ParkrunBarcodeLoad.cached(String number)
-      : this._(ParkrunBarcodeLoadKind.ready, number: number, fromCache: true);
+    : this._(ParkrunBarcodeLoadKind.ready, number: number, fromCache: true);
 
   factory ParkrunBarcodeLoad.fromServer(String? stored) {
     final number = normalizeParkrunAthleteNumber(stored);
@@ -277,8 +307,9 @@ class _AthleteNumberDialog extends StatefulWidget {
 }
 
 class _AthleteNumberDialogState extends State<_AthleteNumberDialog> {
-  late final TextEditingController _ctrl =
-      TextEditingController(text: widget.initial);
+  late final TextEditingController _ctrl = TextEditingController(
+    text: widget.initial,
+  );
   bool _showError = false;
 
   @override
@@ -319,10 +350,7 @@ class _AthleteNumberDialogState extends State<_AthleteNumberDialog> {
           onPressed: () => Navigator.pop(context),
           child: Text(l10n.integrationsCancel),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: Text(l10n.parkrunBarcodeSave),
-        ),
+        FilledButton(onPressed: _submit, child: Text(l10n.parkrunBarcodeSave)),
       ],
     );
   }

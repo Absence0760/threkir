@@ -1,12 +1,12 @@
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show FullBodyLoader;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/plan_resume.dart';
 import '../lib/training_service.dart';
+import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
 
 const _uid = 'owner-uuid';
@@ -98,9 +98,13 @@ class _FakeTraining extends TrainingService {
 
 class _FakeSocial extends SocialService {
   final List<RecentRunRow> runs;
-  _FakeSocial(this.runs);
+  final Object? error;
+  _FakeSocial(this.runs, {this.error});
   @override
-  Future<List<RecentRunRow>> fetchRecentRuns({int limit = 20}) async => runs;
+  Future<List<RecentRunRow>> fetchRecentRuns({int limit = 20}) async {
+    if (error != null) throw error!;
+    return runs;
+  }
 }
 
 TrainingPlanRow _plan(DateTime start, {String status = 'active'}) =>
@@ -161,7 +165,7 @@ Future<void> _pump(
       ),
     ),
   );
-  await pumpUntil(tester, () => !tester.any(find.byType(FullBodyLoader)),
+  await pumpUntil(tester, () => !tester.any(find.byType(SectionedDetailSkeleton)),
       describe: 'the plan fetch to replace the full-body loader');
   await tester.pump();
 }
@@ -331,7 +335,7 @@ void main() {
           () =>
               training.fetchCount > fetchesBefore &&
               tester.any(find.textContaining("Couldn't update the plan")) &&
-              !tester.any(find.byType(FullBodyLoader)),
+              !tester.any(find.byType(SectionedDetailSkeleton)),
           describe: 'the failed taper to say so and re-fetch the plan');
       expect(find.textContaining("Couldn't update the plan"), findsOneWidget);
       expect(find.byKey(const Key('planDetailRaceTaperPreview')), findsNothing);
@@ -440,12 +444,31 @@ void main() {
           () =>
               training.fetchCount > fetchesBefore &&
               tester.any(find.textContaining("Couldn't update the plan")) &&
-              !tester.any(find.byType(FullBodyLoader)),
+              !tester.any(find.byType(SectionedDetailSkeleton)),
           describe: 'the failed re-plan to say so and re-fetch the plan');
       expect(find.textContaining("Couldn't update the plan"), findsOneWidget);
       expect(find.text('Proposed changes'), findsNothing);
       expect(training.updated, isEmpty);
       await tester.pump(const Duration(seconds: 4));
+    });
+
+    // Runs that never loaded are not "ran nothing": a re-plan built on an
+    // empty list would cut every week ahead as if the runner had stopped.
+    testWidgets('a re-plan waits for the recent runs, and says so',
+        (tester) async {
+      final training = _missedLongPlan();
+      await _pump(tester,
+          training: training,
+          social: _FakeSocial(const [], error: Exception('offline')));
+      for (final option in ['Re-plan remaining weeks', 'Adaptive re-plan']) {
+        await _openAdjust(tester);
+        await _chooseAdjustment(tester, option);
+        expect(find.text('Proposed changes'), findsNothing);
+        expect(find.textContaining("Couldn't load your recent runs"),
+            findsOneWidget);
+        await tester.pump(const Duration(seconds: 4));
+        await tester.pump(const Duration(milliseconds: 400));
+      }
     });
 
     testWidgets('Adaptive re-plan is reachable from the same dialog',

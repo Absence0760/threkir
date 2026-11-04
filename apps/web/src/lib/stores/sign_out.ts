@@ -15,10 +15,51 @@ export interface AuthSignOutClient {
 /// user reaches for when they suspect a token was exfiltrated. Returns the
 /// provider error (or null) rather than throwing so each caller can decide
 /// whether to swallow it (local Sign out) or fail closed (global).
+///
+/// How long a sign-out waits for a pending delete to settle before it signs
+/// out anyway. The commit is a single request; one that has not answered in
+/// this long is a stalled network, and a Sign out that never finishes leaves
+/// the session open on the very device the user is leaving.
+export const SIGN_OUT_SETTLE_TIMEOUT_MS = 5_000;
+
+/// Runs `settlePending` (the undo queue's `flush`) before the session ends,
+/// so a delete still inside its undo window commits as the account that made
+/// it rather than firing later with no session, under whoever signs in next,
+/// or against an account that has just been deleted. Settling is auxiliary to
+/// ending the session: a failure is logged and so is a settle still running
+/// after `SIGN_OUT_SETTLE_TIMEOUT_MS`, and neither stops the caller. The
+/// request already in flight keeps the token it was sent with and may still
+/// land. Never throws. Mobile's `settleBeforeSessionEnds` in `sign_out.dart`.
+export async function settleBeforeSessionEnds(settlePending: () => Promise<void>): Promise<void> {
+	const settled = (async () => {
+		try {
+			await settlePending();
+		} catch (e) {
+			console.error('sign-out: settling a pending delete failed', e);
+		}
+		return true;
+	})();
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const timedOut = new Promise<false>((resolve) => {
+		timer = setTimeout(() => resolve(false), SIGN_OUT_SETTLE_TIMEOUT_MS);
+	});
+	const inTime = await Promise.race([settled, timedOut]);
+	clearTimeout(timer);
+	if (!inTime) {
+		console.warn(
+			`sign-out: a pending delete had not settled after ${SIGN_OUT_SETTLE_TIMEOUT_MS} ms; ending the session anyway`,
+		);
+	}
+}
+
+/// `settlePending` runs first, while the session still exists
+/// (`settleBeforeSessionEnds`); the sign-out runs whatever it did.
 export async function signOutWithScope(
 	client: AuthSignOutClient,
 	scope: SignOutScope,
+	settlePending: () => Promise<void> = async () => {},
 ): Promise<SignOutError | null> {
+	await settleBeforeSessionEnds(settlePending);
 	const { error } = await client.signOut({ scope });
 	return error;
 }

@@ -39,6 +39,7 @@
 		type PlanStartedFrom,
 	} from '#lib/core/data.ts';
 	import { planAuthorCredit } from '#lib/share/share_plan_meta.ts';
+	import { libraryCopyOf } from '#lib/core/plan_copy.ts';
 	import { recoveryWorkoutPatch } from '#lib/training/plan_bulk_ops.ts';
 	import { planShiftImpact } from '#lib/training/plan_shift.ts';
 	import { planRaceDate, raceDateChange, type RaceDateChange, type RaceDateRefusal } from '#lib/training/plan_race_date.ts';
@@ -136,6 +137,8 @@
 	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
 	import { fmtOverrun } from '#lib/format/overrun.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { loadSettings, effective } from '#lib/settings/settings.ts';
 	import type { WeekStart } from '#lib/format/calendar.ts';
 	import type { TrainingPlan, PlanWeek, PlanWorkout, ClubWithMeta } from '#lib/types.ts';
@@ -154,6 +157,10 @@
 	let publishingTo = $state('');
 	let editingPlanMeta = $state(false);
 	let recentRuns = $state<Run[]>([]);
+	/// False until the owner's recent runs have landed. Until then an empty
+	/// list means "unknown", not "ran nothing": the drift flag and the re-plan
+	/// would otherwise judge the week against zero kilometres.
+	let recentRunsLoaded = $state(false);
 	let weekStart = $state<WeekStart>('monday');
 
 	let isOwner = $derived(plan != null && plan.user_id === auth.user?.id);
@@ -391,7 +398,7 @@
 		try {
 			others = await fetchMyActivePlanWindows();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
 			return;
 		}
 		const impact = planShiftImpact(plan, others, shiftDays);
@@ -455,7 +462,7 @@
 			try {
 				others = await fetchMyActivePlanWindows();
 			} catch (e) {
-				showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
 				return;
 			}
 			const blocking = overlappingPlans(
@@ -514,7 +521,7 @@
 			try {
 				others = await fetchMyActivePlanWindows();
 			} catch (e) {
-				showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
 				return;
 			}
 			const blocking = overlappingPlans(
@@ -590,7 +597,7 @@
 		showToast(
 			isPlanOverlapError(e)
 				? m('planDetail.planOverlap')
-				: m('planDetail.bulkFailed', { error: thrownMessage(e) }),
+				: m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }),
 			'error',
 		);
 	}
@@ -671,7 +678,7 @@
 			taperPreview = null;
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
 			await load();
 		} finally {
 			bulkBusy = false;
@@ -866,7 +873,7 @@
 			showToast(m('planDetail.recoveryDone'));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
 			await load();
 		} finally {
 			bulkBusy = false;
@@ -921,7 +928,7 @@
 			showToast(m('planDetail.cycleAdjustDone'));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
 			await load();
 		} finally {
 			bulkBusy = false;
@@ -937,7 +944,7 @@
 			showToast(m('planDetail.pauseDone'));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
 		} finally {
 			bulkBusy = false;
 		}
@@ -959,7 +966,7 @@
 			if (e instanceof ActivePlanExistsError || isPlanOverlapError(e)) {
 				showToast(m('planDetail.resumeBlocked'), 'error');
 			} else {
-				showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
 			}
 		} finally {
 			bulkBusy = false;
@@ -982,7 +989,7 @@
 		try {
 			await updatePlanStatus(plan.id, 'abandoned');
 		} catch (e) {
-			showToast(m('plansPage.actionFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('plansPage.actionFailed', { error: errorCopy(e, m, 'plansPage.actionFailed') }), 'error');
 			return;
 		}
 		abandonOpen = false;
@@ -1043,6 +1050,10 @@
 
 	function proposeReplan(): void {
 		if (!plan || !isOwner || bulkBusy) return;
+		if (!recentRunsLoaded) {
+			showToast(m('planDetail.replanRunsUnavailable'), 'error');
+			return;
+		}
 		makeUpAnswers = null;
 		const input = buildReplanInput();
 		const changes = preferVolumeAnchor(
@@ -1071,6 +1082,10 @@
 
 	function proposeAdaptiveReplan(): void {
 		if (!plan || !isOwner || bulkBusy) return;
+		if (!recentRunsLoaded) {
+			showToast(m('planDetail.replanRunsUnavailable'), 'error');
+			return;
+		}
 		makeUpAnswers = null;
 		const input = buildReplanInput();
 		const r = adaptiveReplanRemaining({
@@ -1152,8 +1167,8 @@
 		} catch (e) {
 			showToast(
 				answers
-					? m('missedPrompt.saveFailed', { error: thrownMessage(e) })
-					: m('planDetail.bulkFailed', { error: thrownMessage(e) }),
+					? m('missedPrompt.saveFailed', { error: errorCopy(e, m, 'missedPrompt.saveFailed') })
+					: m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }),
 				'error'
 			);
 			await load();
@@ -1182,7 +1197,8 @@
 	/// re-anchored to what the runner last ran, through the same preview. It
 	/// proposes only; nothing changes until Apply.
 	async function offerAnchor(): Promise<void> {
-		if (!plan || !isOwner || plan.is_template || plan.status !== 'active') return;
+		if (!plan || !isOwner || !recentRunsLoaded || plan.is_template || plan.status !== 'active')
+			return;
 		const anchor = volumeAnchor(buildReplanInput());
 		if (!anchor) return;
 		taperPreview = null;
@@ -1225,14 +1241,14 @@
 		loadedId = id;
 		try {
 			const res = await fetchPlan(id);
-			loadError = res.error;
+			loadError = res.error ? errorCopy(res.error, m, 'plans/[id]: loadError') : null;
 			plan = res.plan;
 			weeks = res.weeks;
 			workouts = res.workouts;
 		} catch (e) {
 			// A rejected fetch would otherwise leave the page stuck on its
 			// loading skeleton forever — surface it with a retry instead.
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, m, 'plans/[id]: loadError');
 		}
 		loading = false;
 		assigningCoachName = null;
@@ -1283,10 +1299,12 @@
 			// projection (within 21 days) and the current-week adherence
 			// drift flag (any time). 50 covers a heavy week comfortably.
 			try {
-				recentRuns = await fetchRuns({ limit: 50 });
-			} catch (_) {
-				// Best-effort: the adherence/projection extras degrade
-				// gracefully without recent runs — don't fail the page.
+				recentRuns = await fetchRuns({ limit: 50, throwOnError: true });
+				recentRunsLoaded = true;
+			} catch (e) {
+				// Best-effort: the adherence/projection extras stay hidden
+				// without recent runs — don't fail the page.
+				console.warn('plan detail recent runs failed', e);
 			}
 		}
 		await loadLinkedRunDistances();
@@ -1388,11 +1406,8 @@
 			adminClubs = clubs.filter(
 				(c) => c.viewer_role === 'owner' || c.viewer_role === 'admin'
 			);
-			// Has the owner already published a copy of this plan to the
-			// public library? Match on parent_template_id is not set on the
-			// published copy, so detect by name + a published flag fetch.
 			const published = await fetchMyPublishedPlans();
-			publishedTemplate = published.find((t) => t.name === plan?.name) ?? null;
+			publishedTemplate = plan ? libraryCopyOf(published, plan.id) : null;
 		}
 	});
 
@@ -1407,11 +1422,16 @@
 			publishedTemplate = { ...plan, id: newId, is_public_template: true };
 			showToast(m('planDetail.publishLibrarySuccess'));
 		} catch (e) {
-			showToast(m('planDetail.publishLibraryFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planDetail.publishLibraryFailed', { error: errorCopy(e, m, 'planDetail.publishLibraryFailed') }), 'error');
 		} finally {
 			libraryBusy = false;
 		}
 	}
+
+	// Unpublishing deletes the library copy: a later publish mints a new id, so
+	// every shared "Train with me" link to this one stops resolving. Not
+	// reversible, so it confirms first; a failure keeps the dialog open.
+	let unpublishOpen = $state(false);
 
 	async function unpublishFromLibraryAction() {
 		if (!publishedTemplate || libraryBusy) return;
@@ -1419,9 +1439,10 @@
 		try {
 			await unpublishFromLibrary(publishedTemplate.id);
 			publishedTemplate = null;
+			unpublishOpen = false;
 			showToast(m('planDetail.unpublishLibrarySuccess'));
 		} catch (e) {
-			showToast(m('planDetail.unpublishLibraryFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planDetail.unpublishLibraryFailed', { error: errorCopy(e, m, 'planDetail.unpublishLibraryFailed') }), 'error');
 		} finally {
 			libraryBusy = false;
 		}
@@ -1438,7 +1459,7 @@
 			// No reload needed — the source plan stayed put. The new
 			// template lives on the club's Templates tab.
 		} catch (e) {
-			showToast(m('planDetail.publishFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planDetail.publishFailed', { error: errorCopy(e, m, 'planDetail.publishFailed') }), 'error');
 		} finally {
 			publishingBusy = false;
 		}
@@ -1509,7 +1530,7 @@
 					? m('planDetail.restartRaceAheadError')
 					: isPlanRestartBeforeTodayError(e)
 						? m('planDetail.restartBeforeTodayError')
-						: m('planDetail.bulkFailed', { error: thrownMessage(e) }),
+						: m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }),
 				'error'
 			);
 		} finally {
@@ -1687,7 +1708,8 @@
 	/// already ended, so a part-elapsed week is not judged against its full
 	/// seven-day target. Null unless the drift trips the flag.
 	let currentWeekDrift = $derived.by(() => {
-		if (!plan || !isOwner || currentWeek == null || currentWeekIndex == null) return null;
+		if (!plan || !isOwner || !recentRunsLoaded || currentWeek == null || currentWeekIndex == null)
+			return null;
 		const weekStartD = addDays(parseISO(plan.start_date), currentWeekIndex * 7);
 		const weekEndD = addDays(weekStartD, 7);
 		const runs = [];
@@ -1782,17 +1804,20 @@
 
 {#if loading}
 	<div class="page" aria-busy="true" aria-label={m('planDetail.loadingPlan')}>
-		<div class="back-skel skeleton-shimmer"></div>
-		<div class="hero-skel skeleton-shimmer"></div>
-		<div class="today-skel skeleton-shimmer"></div>
-		<div class="week-skel skeleton-shimmer"></div>
-		<div class="week-skel skeleton-shimmer"></div>
-		<div class="week-skel skeleton-shimmer"></div>
+		<div aria-hidden="true">
+			<div class="back-skel"><SkeletonBlock height="1rem" width="8rem" /></div>
+			<div class="hero-skel"><SkeletonBlock height="9rem" radius="var(--radius-lg)" /></div>
+			<div class="today-skel"><SkeletonBlock height="5.5rem" radius="var(--radius-lg)" /></div>
+			{#each Array(3) as _, i (i)}
+				<div class="week-skel"><SkeletonBlock height="6rem" radius="var(--radius-lg)" /></div>
+			{/each}
+		</div>
 	</div>
+	<p class="visually-hidden" role="status">{m('planDetail.loadingPlan')}</p>
 {:else if loadError !== null}
 	<div class="page">
 		<a class="back" href={backHref} onclick={handleBack}>
-			<span class="material-symbols">arrow_back</span>
+			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{backLabel}
 		</a>
 		<div class="error-banner" role="alert">
@@ -1807,7 +1832,7 @@
 {:else if !plan}
 	<div class="page">
 		<a class="back" href={backHref} onclick={handleBack}>
-			<span class="material-symbols">arrow_back</span>
+			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{backLabel}
 		</a>
 		<div class="empty">
@@ -1820,7 +1845,7 @@
 {:else}
 	<div class="page">
 		<a class="back" href={backHref} onclick={handleBack}>
-			<span class="material-symbols">arrow_back</span>
+			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{backLabel}
 		</a>
 
@@ -1836,7 +1861,7 @@
 							aria-label={m('planDetail.editPlanAria')}
 							onclick={() => (editingPlanMeta = true)}
 						>
-							<span class="material-symbols">edit</span>
+							<span class="material-symbols" aria-hidden="true">edit</span>
 							{m('planDetail.editPlan')}
 						</button>
 						<button
@@ -1853,7 +1878,7 @@
 					{#if isOwner && workouts.length > 0}
 						<details class="export-menu" bind:this={exportMenu} ontoggle={onExportToggle}>
 							<summary class="btn btn-outline btn-sm">
-								<span class="material-symbols">ios_share</span>
+								<span class="material-symbols" aria-hidden="true">ios_share</span>
 								{m('planDetail.export')}
 							</summary>
 							<div class="export-actions" role="menu" tabindex="-1" onkeydown={onExportMenuKeydown}>
@@ -1914,13 +1939,13 @@
 						{/if}
 					{:else if plan.parent_template_id}
 						<a class="chip chip-link" href="/plans/{plan.parent_template_id}">
-							<span class="material-symbols">link</span>
+							<span class="material-symbols" aria-hidden="true">link</span>
 							{m('planDetail.clonedFromTemplate')}
 						</a>
 					{/if}
 					{#if plan.is_template && plan.club_id}
 						<span class="chip">
-							<span class="material-symbols">groups</span>
+							<span class="material-symbols" aria-hidden="true">groups</span>
 							{m('planDetail.clubTemplate')}
 						</span>
 					{/if}
@@ -1938,38 +1963,38 @@
 					{#if heroRace}
 						{#if heroRace.distanceM != null}
 							<span>
-								<span class="material-symbols">flag</span>
+								<span class="material-symbols" aria-hidden="true">flag</span>
 								{fmtKm(heroRace.distanceM, 1)}
 							</span>
 						{/if}
 						{#if heroRace.goalTimeSec != null}
 							<span>
-								<span class="material-symbols">timer</span>
+								<span class="material-symbols" aria-hidden="true">timer</span>
 								{fmtHms(heroRace.goalTimeSec)}
 							</span>
 						{/if}
 					{:else}
 						<span>
-							<span class="material-symbols">flag</span>
+							<span class="material-symbols" aria-hidden="true">flag</span>
 							{fmtKm(plan.goal_distance_m, 1)}
 						</span>
 						{#if plan.goal_time_seconds}
 							<span>
-								<span class="material-symbols">timer</span>
+								<span class="material-symbols" aria-hidden="true">timer</span>
 								{fmtHms(plan.goal_time_seconds)}
 							</span>
 						{/if}
 					{/if}
 					{#if plan.vdot}
 						<span>
-							<span class="material-symbols">trending_up</span>
+							<span class="material-symbols" aria-hidden="true">trending_up</span>
 							<MetricLabel metric="vdot" />
 							{Number(plan.vdot).toFixed(1)}
 						</span>
 					{/if}
 					{#if planPosition}
 						<span>
-							<span class="material-symbols">event</span>
+							<span class="material-symbols" aria-hidden="true">event</span>
 							{fmtRaceDate(heroRace?.date ?? plan.end_date)}
 						</span>
 					{/if}
@@ -2135,13 +2160,13 @@
 						class:skipped={isWorkoutSkipped(todayWorkout)}
 					>
 						{#if isWorkoutCompleted(todayWorkout)}
-							<span class="material-symbols">check_circle</span>
+							<span class="material-symbols" aria-hidden="true">check_circle</span>
 						{:else if isWorkoutSkipped(todayWorkout)}
-							<span class="material-symbols">skip_next</span>
+							<span class="material-symbols" aria-hidden="true">skip_next</span>
 						{:else if todayWorkout.kind === 'rest'}
-							<span class="material-symbols">self_improvement</span>
+							<span class="material-symbols" aria-hidden="true">self_improvement</span>
 						{:else}
-							<span class="material-symbols">directions_run</span>
+							<span class="material-symbols" aria-hidden="true">directions_run</span>
 						{/if}
 					</div>
 					<div class="today-body">
@@ -2175,7 +2200,7 @@
 							<p class="today-notes">{todayWorkout.notes}</p>
 						{/if}
 					</div>
-					<span class="material-symbols today-arrow">chevron_right</span>
+					<span class="material-symbols today-arrow" aria-hidden="true">chevron_right</span>
 				</button>
 			</section>
 		{:else if nextWorkout}
@@ -2187,7 +2212,7 @@
 					onclick={() => nextWorkout && openWorkout(nextWorkout)}
 				>
 					<div class="today-icon">
-						<span class="material-symbols">event_upcoming</span>
+						<span class="material-symbols" aria-hidden="true">event_upcoming</span>
 					</div>
 					<div class="today-body">
 						<span class="today-label">{m('planDetail.nextUp')}</span>
@@ -2207,14 +2232,14 @@
 							<span class="today-pattern" data-testid="plan-next-pattern">{patternLabel(nextWorkout)}</span>
 						{/if}
 					</div>
-					<span class="material-symbols today-arrow">chevron_right</span>
+					<span class="material-symbols today-arrow" aria-hidden="true">chevron_right</span>
 				</button>
 			</section>
 		{:else if planPosition?.raceState === 'today'}
 			<section class="today">
 				<div class="today-link today-static">
 					<div class="today-icon">
-						<span class="material-symbols">emoji_events</span>
+						<span class="material-symbols" aria-hidden="true">emoji_events</span>
 					</div>
 					<div class="today-body">
 						<span class="today-label">{m('planDetail.raceDay')}</span>
@@ -2226,7 +2251,7 @@
 			<section class="today">
 				<div class="today-link today-static">
 					<div class="today-icon">
-						<span class="material-symbols">self_improvement</span>
+						<span class="material-symbols" aria-hidden="true">self_improvement</span>
 					</div>
 					<div class="today-body">
 						<span class="today-label">{m('planDetail.today')}</span>
@@ -2271,7 +2296,7 @@
 			<section class="adherence" aria-label={m('planDetail.adherenceAria')}>
 				{#if currentWeekDrift}
 					<p class="adherence-flag drift-{currentWeekDrift.direction}">
-						<span class="material-symbols">monitoring</span>
+						<span class="material-symbols" aria-hidden="true">monitoring</span>
 						{currentWeekDrift.direction === 'over'
 							? m('planDetail.driftOverFlag', {
 									pct: Math.round(currentWeekDrift.driftFraction * 100)
@@ -2284,7 +2309,7 @@
 				{/if}
 				{#if missedLongRun}
 					<p class="adherence-flag missed-{missedLongRun.recommendation}">
-						<span class="material-symbols">event_busy</span>
+						<span class="material-symbols" aria-hidden="true">event_busy</span>
 						{missedLongRun.reason === 'taper'
 							? m('planDetail.missedLongTaper')
 							: missedLongRun.reason === 'recovery_soon'
@@ -2369,7 +2394,7 @@
 					<div class="plan-progress-stats">
 						{#if distanceBanked.plannedMetres > 0 && !restartWalkRun}
 							<div class="stat-chip">
-								<span class="material-symbols">route</span>
+								<span class="material-symbols" aria-hidden="true">route</span>
 								<span class="stat-label"><MetricLabel metric="distanceBanked" /></span>
 								<span class="stat-value">
 									{m('planDetail.distanceBankedValue', {
@@ -2381,7 +2406,7 @@
 						{/if}
 						{#if longestLongRunMetres != null}
 							<div class="stat-chip" title={m('planDetail.longestLongRun')}>
-								<span class="material-symbols">trending_up</span>
+								<span class="material-symbols" aria-hidden="true">trending_up</span>
 								<span class="stat-label">{m('planDetail.longestLongRun')}</span>
 								<span class="stat-value">{fmtKm(longestLongRunMetres)}</span>
 							</div>
@@ -2472,7 +2497,7 @@
 									disabled={bulkBusy}
 									title={m('planDetail.markRecovery')}
 								>
-									<span class="material-symbols">trending_down</span>
+									<span class="material-symbols" aria-hidden="true">trending_down</span>
 									{m('planDetail.markRecovery')}
 								</button>
 							{/if}
@@ -2485,7 +2510,7 @@
 									disabled={bulkBusy}
 									title={m('planDetail.repeatWeekHint')}
 								>
-									<span class="material-symbols">replay</span>
+									<span class="material-symbols" aria-hidden="true">replay</span>
 									{m('planDetail.repeatWeekAction')}
 								</button>
 							{/if}
@@ -2497,7 +2522,7 @@
 									disabled={bulkBusy}
 									title={m('planDetail.duplicateWeek')}
 								>
-									<span class="material-symbols">content_copy</span>
+									<span class="material-symbols" aria-hidden="true">content_copy</span>
 									{m('planDetail.duplicateWeek')}
 								</button>
 							{/if}
@@ -2555,12 +2580,12 @@
 		</DisclosureSection>
 
 		<a class="coach-link" href="/messages/coach?plan={plan.id}">
-			<span class="material-symbols">sports</span>
+			<span class="material-symbols" aria-hidden="true">sports</span>
 			<div class="coach-link-body">
 				<strong>{m('planDetail.coachLinkTitle')}</strong>
 				<span>{m('planDetail.coachLinkSubtitle')}</span>
 			</div>
-			<span class="material-symbols arrow">chevron_right</span>
+			<span class="material-symbols arrow" aria-hidden="true">chevron_right</span>
 		</a>
 
 		{#if !plan.is_template && plan.user_id === auth.user?.id}
@@ -2599,7 +2624,8 @@
 							class="btn btn-outline"
 							type="button"
 							disabled={libraryBusy}
-							onclick={unpublishFromLibraryAction}
+							data-testid="plan-unpublish-library"
+							onclick={() => (unpublishOpen = true)}
 						>
 							{m('planDetail.unpublishLibrary')}
 						</button>
@@ -2969,6 +2995,18 @@
 	cancelLabel={m('planDetail.replanCancel')}
 	onconfirm={runBulkConfirm}
 	oncancel={() => (bulkConfirm = null)}
+/>
+
+<ConfirmDialog
+	open={unpublishOpen}
+	danger
+	data-testid="unpublish-confirm-dialog"
+	title={m('planDetail.unpublishLibraryTitle')}
+	message={m('planDetail.unpublishLibraryMessage')}
+	confirmLabel={m('planDetail.unpublishLibrary')}
+	cancelLabel={m('planDetail.replanCancel')}
+	onconfirm={unpublishFromLibraryAction}
+	oncancel={() => (unpublishOpen = false)}
 />
 
 <ConfirmDialog
@@ -3929,37 +3967,8 @@
 	   so the page rhythm is visible before data lands. */
 	.back-skel,
 	.hero-skel,
-	.today-skel,
-	.week-skel {
-		background: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-lg);
-		animation: plan-skeleton-shimmer 1.6s ease-in-out infinite;
-	}
-	.back-skel {
-		height: 1rem;
-		width: 8rem;
-		margin-bottom: var(--space-md);
-		border-radius: var(--radius-sm);
-	}
-	.hero-skel { height: 9rem; margin-bottom: var(--space-md); }
-	.today-skel { height: 5.5rem; margin-bottom: var(--space-md); }
-	.week-skel { height: 6rem; margin-bottom: var(--space-sm); }
-	@keyframes plan-skeleton-shimmer {
-		0% { background-position: 100% 0; }
-		100% { background-position: -100% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.back-skel,
-		.hero-skel,
-		.today-skel,
-		.week-skel { animation: none; }
-	}
+	.today-skel { margin-bottom: var(--space-md); }
+	.week-skel { margin-bottom: var(--space-sm); }
 
 	.empty {
 		display: flex;

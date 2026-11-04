@@ -1,20 +1,13 @@
-import 'dart:io';
-
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
-import '../lib/local_food_store.dart';
-import '../lib/local_gym_store.dart';
-import '../lib/local_route_store.dart';
-import '../lib/local_run_store.dart';
-import '../lib/preferences.dart';
-import '../lib/screens/dashboard_screen.dart';
+import '../lib/widgets/activity_heatmap.dart';
 
-/// Issue #666 round 10 S7. The activity heatmap was the fifth dashboard chart
+/// Issue #666 round 10 S7. The activity heatmap (on the weekly summary since
+/// decisions § 2284) was the fifth dashboard chart
 /// and the only one with no header at all, and its four-level scale was
 /// `colorScheme.primary` at 35 % / 65 % / 100 % over
 /// `surfaceContainerHighest`. Composited and measured against the card that
@@ -29,8 +22,6 @@ import '../lib/screens/dashboard_screen.dart';
 /// meaning too. The levels now come from `ChartPalette.ramp` (3.897 / 7.228 /
 /// 13.386 light, 3.859 / 7.126 / 13.149 dark) and the frame is a hairline in
 /// the line token §487 already holds at 3:1.
-Directory? _dir;
-
 Run _run(String id, DateTime startedAt) => Run(
       id: id,
       startedAt: startedAt,
@@ -40,42 +31,29 @@ Run _run(String id, DateTime startedAt) => Run(
     );
 
 Future<void> _pump(WidgetTester tester, ThemeData theme) async {
-  SharedPreferences.setMockInitialValues({});
-  final prefs = Preferences();
-  await prefs.init();
-
-  _dir = Directory.systemTemp.createTempSync('dashboard_heatmap_test_');
-  // Store setup is real file I/O, which the fake async clock does not drive.
-  final runStore = LocalRunStore();
-  await tester.runAsync(() async {
-    final seed = LocalRunStore();
-    await seed.init(overrideDirectory: _dir!);
-    // Inside the 20-week window so the run lands on a painted cell.
-    await seed
-        .save(_run('r1', DateTime.now().subtract(const Duration(days: 3))));
-    await runStore.init(overrideDirectory: _dir!);
-  });
-
   await tester.pumpWidget(
     MaterialApp(
       theme: theme,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: DashboardScreen(
-        runStore: runStore,
-        routeStore: LocalRouteStore(),
-        gymStore: LocalGymStore(),
-        foodStore: LocalFoodStore(),
-        preferences: prefs,
+      home: Scaffold(
+        body: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: ActivityHeatmap(
+              // Inside the 20-week window so the run lands on a painted cell.
+              runs: [
+                _run('r1', DateTime.now().subtract(const Duration(days: 3))),
+              ],
+              weekStartDay: 'monday',
+              onWeekTap: (_) {},
+            ),
+          ),
+        ),
       ),
     ),
   );
   await tester.pump();
-  // The dashboard is a lazy ListView and the heatmap sits below the fold.
-  await tester.scrollUntilVisible(
-    find.byKey(const Key('dashboardHeatmapPainter')),
-    300,
-  );
 }
 
 /// Fill colours of the four 10x10 legend swatches, in render order.
@@ -89,12 +67,6 @@ List<Color> _legendSwatches(WidgetTester tester) => tester
     .toList();
 
 void main() {
-  tearDown(() {
-    final d = _dir;
-    if (d != null && d.existsSync()) d.deleteSync(recursive: true);
-    _dir = null;
-  });
-
   // The card's label used to be a titleMedium `_SectionHeader` ABOVE it — a
   // fourth header mechanism on a screen whose other four charts each carry an
   // eyebrow inside the card. The window qualifier moves into the header's note

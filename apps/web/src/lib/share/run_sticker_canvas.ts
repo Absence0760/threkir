@@ -165,12 +165,13 @@ function row(stats: RunShareStat[], valueSize: number, width: number, gap: numbe
 }
 
 /// One layout's stats, route and signature, `stickerContentWidth(layout)`
-/// wide and as tall as it draws, with no ground of its own.
+/// wide and as tall as it draws, with no ground of its own. A null `wordmark`
+/// draws no signature (the runner turned the Threkir mark off).
 export function layoutStickerContent(
 	layout: RunStickerLayout,
 	stats: RunShareStat[],
 	hasRoute: boolean,
-	wordmark: string,
+	wordmark: string | null,
 	measure: MeasureText,
 ): Laid {
 	const width = stickerContentWidth(layout);
@@ -225,7 +226,7 @@ export function layoutStickerContent(
 			break;
 		}
 	}
-	place(brand(width, wordmark, measure));
+	if (wordmark !== null) place(brand(width, wordmark, measure));
 	return { ops, width, height: y };
 }
 
@@ -234,7 +235,7 @@ export function layoutSticker(
 	layout: RunStickerLayout,
 	stats: RunShareStat[],
 	hasRoute: boolean,
-	wordmark: string,
+	wordmark: string | null,
 	measure: MeasureText,
 ): Laid {
 	const content = layoutStickerContent(layout, stats, hasRoute, wordmark, measure);
@@ -289,7 +290,7 @@ export function layoutPhoto(
 	title: string,
 	stats: RunShareStat[],
 	hasRoute: boolean,
-	wordmark: string,
+	wordmark: string | null,
 	measure: MeasureText,
 ): PhotoLaid {
 	const { w, h } = photoCanvasSize(aspect);
@@ -485,7 +486,7 @@ export interface StickerInput {
 	stats: RunShareStat[];
 	/// The clipped share line (`shareCardTrack`), never a raw track.
 	track: TrackPoint[];
-	wordmark: string;
+	wordmark: string | null;
 }
 
 /// The sticker on a transparent ground, cropped to its own content.

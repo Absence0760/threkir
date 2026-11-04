@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { fetchClubBySlug } from '#lib/core/data.ts';
@@ -56,18 +57,18 @@
 			<span class="material-symbols">arrow_back</span>
 			{m('eventNew.backToClub')}
 		</span>
-		<div class="header-skel">
-			<span class="skel skel-line skel-w-20"></span>
-			<span class="skel skel-line skel-w-40"></span>
-			<span class="skel skel-line skel-w-60"></span>
+		<div class="header-skel" aria-hidden="true">
+			<SkeletonBlock height="0.85rem" width="20%" />
+			<SkeletonBlock height="0.85rem" width="40%" />
+			<SkeletonBlock height="0.85rem" width="60%" />
 		</div>
-		<div class="form-skel">
-			<span class="skel skel-block"></span>
-			<span class="skel skel-block tall"></span>
-			<span class="skel skel-block"></span>
+		<div class="form-skel" aria-hidden="true">
+			<SkeletonBlock height="2.4rem" radius="var(--radius-md)" />
+			<SkeletonBlock height="5.5rem" radius="var(--radius-md)" />
+			<SkeletonBlock height="2.4rem" radius="var(--radius-md)" />
 		</div>
 	</div>
-	<p class="sr-only" role="status">{m('shell.loading')}</p>
+	<p class="visually-hidden" role="status">{m('shell.loading')}</p>
 {:else if !club}
 	<div class="page">
 		<div class="empty-card">
@@ -205,43 +206,5 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.6rem;
-	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line { height: 0.85rem; }
-	.skel-block { height: 2.4rem; border-radius: var(--radius-md); }
-	.skel-block.tall { height: 5.5rem; }
-	.skel-w-20 { width: 20%; }
-	.skel-w-40 { width: 40%; }
-	.skel-w-60 { width: 60%; }
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 </style>

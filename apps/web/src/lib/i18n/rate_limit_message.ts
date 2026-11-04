@@ -17,6 +17,7 @@
 
 import type { MessageKey } from './messages';
 import { parseRateLimitError, type RateLimitInfo } from '../util/rate_limit_errors';
+import { AppError } from '../core/app_error';
 
 export type Translate = (key: MessageKey, params?: Record<string, string | number>) => string;
 
@@ -60,6 +61,21 @@ export function rateLimitWait(t: Translate, seconds: number | null): string {
 export function rateLimitMessage(t: Translate, info: RateLimitInfo): string {
 	const key = BUCKET_KEY[info.bucket] ?? 'rateLimit.generic';
 	return t(key, { wait: rateLimitWait(t, info.seconds) });
+}
+
+/// The refusal as an `AppError`, for a data-layer wrapper to throw: a UI
+/// file renders it through `errorCopy`, which reads only an `AppError`'s key,
+/// and a plain `new Error(sentence)` fell through to the generic fallback
+/// there (decisions § 2291). The message is the same sentence, for logs.
+export function rateLimitAppError(
+	t: Translate,
+	err: { code?: string; message?: string } | null | undefined,
+): AppError | null {
+	const info = parseRateLimitError(err);
+	if (info === null) return null;
+	const key = BUCKET_KEY[info.bucket] ?? 'rateLimit.generic';
+	const params = { wait: rateLimitWait(t, info.seconds) };
+	return new AppError(key, { params, message: t(key, params) });
 }
 
 /// Parse-and-render in one call, for the data-layer wrappers that rethrow

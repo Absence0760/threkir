@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import ClubAvatar from '#lib/components/ClubAvatar.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { browseClubsWithError, fetchMyClubsWithError, searchClubsWithError } from '#lib/core/data.ts';
@@ -19,8 +20,8 @@
 	let search = $state('');
 	let browseResults = $state<ClubWithMeta[]>([]);
 	let myClubs = $state<ClubWithMeta[]>([]);
-	let browseError = $state<string | null>(null);
-	let mineError = $state<string | null>(null);
+	let browseError = $state<Error | null>(null);
+	let mineError = $state<Error | null>(null);
 	let browseGen = $state(0);
 	let mineGen = $state(0);
 
@@ -209,18 +210,18 @@
 			{#each Array(6) as _, i (i)}
 				<div class="skel-card">
 					<div class="skel-card-header">
-						<span class="skel skel-avatar"></span>
+						<SkeletonBlock height="2.5rem" width="2.5rem" radius="50%" />
 						<div class="skel-card-title">
-							<span class="skel skel-line skel-w-60"></span>
-							<span class="skel skel-line skel-w-40"></span>
+							<SkeletonBlock height="0.75rem" width="60%" />
+							<SkeletonBlock height="0.75rem" width="40%" />
 						</div>
 					</div>
-					<span class="skel skel-line skel-w-80"></span>
-					<span class="skel skel-line skel-w-60"></span>
+					<SkeletonBlock height="0.75rem" width="80%" />
+					<SkeletonBlock height="0.75rem" width="60%" />
 				</div>
 			{/each}
 		</div>
-		<p class="sr-only" role="status">{m('socialClubs.loadingClubs')}</p>
+		<p class="visually-hidden" role="status">{m('socialClubs.loadingClubs')}</p>
 	{:else if loadError && visible.length > 0}
 		<!-- The clubs read succeeded and only the viewer's own membership did
 		     not, so the list is real; say the roles and Join buttons are
@@ -549,19 +550,6 @@
 	}
 	.empty-actions .material-symbols { font-size: 1.1rem; }
 	.material-symbols { font-family: 'Material Symbols Outlined'; }
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
 	.skel-card {
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
@@ -578,39 +566,11 @@
 		gap: 0.75rem;
 		margin-bottom: 0.2rem;
 	}
-	.skel-avatar {
-		width: 2.5rem;
-		height: 2.5rem;
-		border-radius: 50%;
-		flex-shrink: 0;
-	}
 	.skel-card-title {
 		flex: 1;
 		display: flex;
 		flex-direction: column;
 		gap: 0.4rem;
-	}
-	.skel-line { height: 0.75rem; }
-	.skel-w-40 { width: 40%; }
-	.skel-w-60 { width: 60%; }
-	.skel-w-80 { width: 80%; }
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 	@media (max-width: 50rem) {
 		.toolbar-actions { margin-inline-start: 0; width: 100%; justify-content: flex-end; }

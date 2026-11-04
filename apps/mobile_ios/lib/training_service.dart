@@ -684,7 +684,7 @@ class TrainingService extends ChangeNotifier {
         'p_kind': 'plan',
         'p_id': planId,
         'p_ref': code,
-      });
+      }).timeout(kBackendLoadTimeout);
       return raw == true;
     } catch (e) {
       debugPrint('attribute_share_start failed: $e');
@@ -758,6 +758,7 @@ class TrainingService extends ChangeNotifier {
       'is_public_template': true,
       'club_id': null,
       'parent_template_id': null,
+      'published_from_plan_id': source.id,
     }).select('id').single();
     final newPlanId = templateRow['id'] as String;
 

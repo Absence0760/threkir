@@ -60,7 +60,7 @@ test.describe('/plans — create then back to the list', () => {
 			await page.waitForURL(/\/plans$/, { timeout: 10_000 });
 			// The seed plan's card proves the list loaded before we leave it,
 			// so the snapshot "All plans" restores is a populated one.
-			await expect(page.locator(`a.card[href="/plans/${SEED_PLAN_ID}"]`)).toBeVisible({
+			await expect(page.locator(`.card:has(a.card-link[href="/plans/${SEED_PLAN_ID}"])`)).toBeVisible({
 				timeout: 10_000
 			});
 		});
@@ -91,7 +91,7 @@ test.describe('/plans — create then back to the list', () => {
 			await page.getByRole('link', { name: /All plans/ }).first().click();
 			await page.waitForURL(/\/plans$/, { timeout: 10_000 });
 
-			const card = page.locator(`a.card[href="/plans/${plantedPlanId}"]`);
+			const card = page.locator(`.card:has(a.card-link[href="/plans/${plantedPlanId}"])`);
 			await expect(
 				card,
 				'the plan just created must be in the list "All plans" returns to'
@@ -102,13 +102,13 @@ test.describe('/plans — create then back to the list', () => {
 			// The replaced seed plan is no longer the active one.
 			await expect(
 				page
-					.locator(`a.card[href="/plans/${SEED_PLAN_ID}"]`)
+					.locator(`.card:has(a.card-link[href="/plans/${SEED_PLAN_ID}"])`)
 					.getByRole('button', { name: 'Abandon', exact: true })
 			).toHaveCount(0);
 		});
 
 		await test.step('abandon then delete the new plan from its card', async () => {
-			const card = page.locator(`a.card[href="/plans/${plantedPlanId}"]`);
+			const card = page.locator(`.card:has(a.card-link[href="/plans/${plantedPlanId}"])`);
 			await card.getByRole('button', { name: 'Abandon', exact: true }).click();
 			const abandon = page.locator('.modal', { hasText: 'Abandon plan' });
 			await expect(abandon).toBeVisible({ timeout: 5_000 });

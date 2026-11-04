@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -264,7 +264,7 @@
 			await reload();
 			showToast(m('routeMarker.moved'), 'success');
 		} catch (e) {
-			showToast(m('routeMarker.saveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('routeMarker.saveFailed', { error: errorCopy(e, m, 'routeMarker.saveFailed') }), 'error');
 		}
 	}
 
@@ -490,7 +490,7 @@
 			await reload();
 			closeForm();
 		} catch (e) {
-			showToast(m('routeMarker.saveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('routeMarker.saveFailed', { error: errorCopy(e, m, 'routeMarker.saveFailed') }), 'error');
 		} finally {
 			saving = false;
 		}
@@ -512,7 +512,7 @@
 				markers = before;
 			},
 			onCommitError: (e) =>
-				showToast(m('routeMarker.deleteFailed', { error: thrownMessage(e) }), 'error'),
+				showToast(m('routeMarker.deleteFailed', { error: errorCopy(e, m, 'routeMarker.deleteFailed') }), 'error'),
 		});
 	}
 

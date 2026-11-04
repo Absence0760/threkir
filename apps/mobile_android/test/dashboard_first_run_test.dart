@@ -5,7 +5,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui_kit/ui_kit.dart' show ActivityLoader;
+import 'package:ui_kit/ui_kit.dart' show SkeletonBlock;
 
 import '../lib/goals.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -406,7 +406,7 @@ void main() {
       await _pump(tester, s, api: api);
 
       expect(find.text('Welcome!'), findsNothing);
-      expect(find.byType(ActivityLoader), findsOneWidget);
+      expect(find.byType(SkeletonBlock), findsNWidgets(3));
 
       await pumpUntil(tester, () => api.pbFetches > 0,
           describe: 'the mount-time loaders to finish');

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
@@ -27,7 +26,9 @@
 	import Modal from '#lib/components/Modal.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import GymEditor from '#lib/components/GymEditor.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 
 	let workouts = $state<GymWorkout[]>([]);
@@ -68,7 +69,8 @@
 			// Surface a real load failure as a retry banner rather than the empty
 			// "log your first workout" card — otherwise a transient fetch error reads
 			// as a brand-new lifter whose history vanished.
-			loadError = w.error ?? s.error;
+			const failure = w.error ?? s.error;
+			loadError = failure ? errorCopy(failure, t, 'gym: loadError') : null;
 			workouts = w.workouts;
 			summaries = s.summaries;
 			suggestions = names;
@@ -84,7 +86,7 @@
 			// fetchSessionPlans rethrows rather than returning an error field,
 			// so a rejection used to escape the Promise.all and leave `loading`
 			// true forever — the retry banner below was unreachable.
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, t, 'gym: loadError');
 			catalogueUnavailable = true;
 		} finally {
 			loading = false;
@@ -277,12 +279,12 @@
 		<ul class="workout-list" aria-hidden="true">
 			{#each Array(5) as _, i (i)}
 				<li class="card-elevated skel-row">
-					<span class="skel skel-line skel-w-40"></span>
-					<span class="skel skel-pill"></span>
+					<SkeletonBlock height="0.95rem" width="min(40%, 16rem)" />
+					<SkeletonBlock height="1.6rem" width="9rem" radius="var(--radius-md)" />
 				</li>
 			{/each}
 		</ul>
-		<p class="sr-only" role="status">{t('shell.loading')}</p>
+		<p class="visually-hidden" role="status">{t('shell.loading')}</p>
 	{:else if loadError !== null}
 		<div class="error-banner" role="alert" data-testid="gym-load-error">
 			<span class="material-symbols" aria-hidden="true">error</span>
@@ -605,63 +607,13 @@
 		flex-shrink: 0;
 	}
 
-	/* Skeleton — same shimmer language as /routes + /history. */
+	/* Skeleton row — the blocks are SkeletonBlock. */
 	.skel-row {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: var(--space-lg);
 		padding: var(--space-md) var(--space-lg);
-	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line {
-		height: 0.95rem;
-	}
-	.skel-w-40 {
-		width: 40%;
-		max-width: 16rem;
-	}
-	.skel-pill {
-		width: 9rem;
-		height: 1.6rem;
-		border-radius: var(--radius-md);
-	}
-	@keyframes skel-shimmer {
-		0% {
-			background-position: 200% 0;
-		}
-		100% {
-			background-position: -200% 0;
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel {
-			animation: none;
-		}
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 
 	.error-banner {

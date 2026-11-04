@@ -24,7 +24,13 @@ sign-in alert, enqueued by the `auth.sessions` triggers of migration
 `email_new_device_alerts` — decisions 1894), and `web_push` (the browser Web Push
 delivery channel — sibling of `notification_email` over the same
 notifications rows; encrypted RFC 8291 messages signed with a VAPID key,
-`decisions.md § 133` / migration `20261219_001`), and `distance_recompute`
+`decisions.md § 133` / migration `20261219_001`), and `route_photo_orphan_sweep`
+(erases `route-photos` bytes no `route_photos` row references: queued per
+delete statement by a `route_photos` trigger and nightly as a 24-hour-graced
+backstop, worklist from the service-role `route_photo_orphan_paths` RPC, erase
+through the Storage API; gated on `private.feature_flags`
+`route_photo_orphan_sweep`, absent = off, decisions § 2305), and
+`distance_recompute`
 (owner-requested via the `request_distance_recompute(p_run_id)` RPC: replays
 the stored track of an `app` / `watch` run through the spec-v1.4 GPS distance
 smoother in `internal/gpsdistance/` (post-hoc stop detection when the track
@@ -328,6 +334,8 @@ apps/job_worker/
 │   ├── handler_lifecycle_drip.go # kind='lifecycle_drip' — onboarding/re-engagement/streak nudges; opt-IN email_lifecycle_drip + suppression gate (GATED on SMTP); cohort selection is in SQL, not here
 │   ├── handler_export_blob_reap.go # kind='export_blob_reap' — erases Art 20 export archives past the 7-day window through the Storage API (a storage.objects row delete leaves the bytes, decisions § 1049). NOT yet in dispatch: the CHECK is a migration
 │   ├── handler_export_blob_reap_test.go # 11 tests on the window boundary, unknown-age skip, batching, partial progress, idempotence
+│   ├── handler_route_photo_orphan_sweep.go # kind='route_photo_orphan_sweep' — erases route-photos objects no route_photos row references, worklist from the route_photo_orphan_paths RPC (24 h grace on the backstop, scoped to the deleted paths when the delete trigger queues it), Storage API erase, 20 x 100 per run, counts-only log (migration 20271106000020, decisions § 2305)
+│   ├── handler_route_photo_orphan_sweep_test.go # backstop vs paths scoping, empty-paths guard, per-run bound + resume, migration path cap fits one run (read from the last migration defining each function), not-erased detection, partial progress, no paths in logs, dispatch, RPC body
 │   ├── handler_distance_recompute.go # kind='distance_recompute' — replay the stored track through gpsdistance, CAS-PATCH distance_m + merged metadata; app/watch sources only
 │   ├── handler_distance_recompute_test.go # skip set, repeat keeps distance_recorded_m, CAS re-read, untimed waypoints, permanent vs transient, PostgREST wire shape
 │   ├── supabase_distance_recompute.go # ReadRunForDistanceRecompute / DownloadRecordedTrack (reads the spec-v1 Doppler keys, raw lat/lng only, fingerprints the inflated bytes) / UpdateRunDistance (conditional on track_url + metadata) / UploadSmoothedSidecar

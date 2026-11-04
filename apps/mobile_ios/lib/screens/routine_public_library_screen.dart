@@ -16,6 +16,7 @@ import '../social_service.dart';
 import '../widgets/error_state.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
+import '../widgets/loading_skeletons.dart';
 import 'routine_detail_screen.dart';
 
 /// Public gym-routine library — browse + search routines published as public
@@ -145,9 +146,9 @@ class _RoutinePublicLibraryScreenState
           ),
           Expanded(
             child: _loading
-                ? FullBodyLoader(
-                    kind: ActivityLoaderKind.train,
+                ? ListSkeleton(
                     label: l10n.commonLoading,
+                    hasLeading: false,
                   )
                 : _signedOut
                     ? SignInRequiredState(api: widget.api, onSignedIn: _load)
@@ -387,9 +388,9 @@ class _RoutinePublicPreviewScreenState
                   _adopting ? l10n.gymLibraryAdopting : l10n.gymLibraryAdopt),
             ),
       body: _loading
-          ? FullBodyLoader(
-              kind: ActivityLoaderKind.train,
+          ? SectionedDetailSkeleton(
               label: l10n.commonLoading,
+              rows: 5,
             )
           : ListView(
               padding: EdgeInsets.fromLTRB(

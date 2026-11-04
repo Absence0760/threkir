@@ -63,7 +63,7 @@ export function layoutPrCard(
 	aspect: RunPhotoAspect,
 	text: PrCardText,
 	hasRoute: boolean,
-	wordmark: string,
+	wordmark: string | null,
 	measure: MeasureText,
 ): Laid {
 	const { w, h } = photoCanvasSize(aspect);
@@ -88,7 +88,7 @@ export function layoutPrCard(
 
 	const ops: DrawOp[] = [];
 	const top = PR_CARD_BAND + pad;
-	const brandLaid = brand(w, wordmark, measure);
+	const brandLaid: Laid = wordmark === null ? { ops: [], width: w, height: 0 } : brand(w, wordmark, measure);
 	const brandY = h - bottom - brandLaid.height;
 	const room = brandY - 18 - top;
 	const fits = Math.min(ROUTE, room - linesH - ROUTE_GAP);
@@ -124,7 +124,7 @@ export interface PrCardInput {
 	text: PrCardText;
 	/// The clipped share line (`shareCardTrack`), never a raw track.
 	track: TrackPoint[];
-	wordmark: string;
+	wordmark: string | null;
 }
 
 export function paintPrCard(input: PrCardInput): HTMLCanvasElement {

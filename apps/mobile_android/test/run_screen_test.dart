@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/audio_cues.dart';
 import '../lib/ble_heart_rate.dart';
 import '../lib/ble_treadmill.dart';
@@ -21,6 +20,7 @@ import '../lib/screens/run_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import 'package:run_recorder/run_recorder.dart';
+import 'supabase_test_init.dart';
 
 bool _supabaseReady = false;
 late Directory _runsDir;
@@ -29,10 +29,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 

@@ -467,6 +467,42 @@ abstract class AppLocalizations {
   /// **'CSV import failed: {error}'**
   String importCsvFailed(Object error);
 
+  /// Error detail inside an import-failed status when the chosen file is not in the format the importer expects
+  ///
+  /// In en, this message translates to:
+  /// **'This file isn\'t in the expected format.'**
+  String get importFileUnreadable;
+
+  /// Error detail inside an import-failed status when the chosen file is over the importer's size limit
+  ///
+  /// In en, this message translates to:
+  /// **'This file is {sizeMb} MB, over the {limitMb} MB limit. Split it into smaller exports and import each one.'**
+  String importRefusedTooLarge(int sizeMb, int limitMb);
+
+  /// Error detail inside an import-failed status when the chosen ZIP has no activities.csv, so it is not a Strava account export
+  ///
+  /// In en, this message translates to:
+  /// **'This isn\'t a Strava export: there\'s no activities.csv inside it.'**
+  String get importRefusedNotStravaExport;
+
+  /// Error detail inside an import-failed status when the export's activity list lacks the columns the importer needs
+  ///
+  /// In en, this message translates to:
+  /// **'The activity list in this export is missing the columns it needs.'**
+  String get importRefusedColumnsMissing;
+
+  /// Error detail inside a restore-failed status when the chosen ZIP is not a backup written by this app
+  ///
+  /// In en, this message translates to:
+  /// **'This isn\'t a backup made by this app.'**
+  String get importRefusedNotBackup;
+
+  /// Error detail inside a restore-failed status when the backup was written by a newer app version than this one
+  ///
+  /// In en, this message translates to:
+  /// **'This backup was made by a newer version of the app. Update the app, then restore it.'**
+  String get importRefusedBackupTooNew;
+
   /// Status while restoring from a full-backup ZIP
   ///
   /// In en, this message translates to:
@@ -610,6 +646,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'... and {count} more'**
   String importErrorsMore(Object count);
+
+  /// Backup-restore warning: the restore ran without a session
+  ///
+  /// In en, this message translates to:
+  /// **'Restored offline: runs are saved on this device and will sync once you sign in. Profile and settings were skipped.'**
+  String get importRestoreWarnOffline;
+
+  /// Backup-restore warning: the archive's manifest says it was short of the account
+  ///
+  /// In en, this message translates to:
+  /// **'This backup says it was incomplete when it was made. Nothing was overwritten — restore from a complete backup to fill the gaps.'**
+  String get importRestoreWarnArchiveIncomplete;
+
+  /// Backup-restore warning: the profile or settings failed to save
+  ///
+  /// In en, this message translates to:
+  /// **'Profile and settings weren\'t restored: {error}'**
+  String importRestoreWarnProfile(String error);
+
+  /// Backup-restore warning: a run row had no id. index is 1-based
+  ///
+  /// In en, this message translates to:
+  /// **'Run #{index} in the backup has no ID and was skipped.'**
+  String importRestoreWarnRunNoId(int index);
+
+  /// Backup-restore warning: a route row had no id. index is 1-based
+  ///
+  /// In en, this message translates to:
+  /// **'Route #{index} in the backup has no ID and was skipped.'**
+  String importRestoreWarnRouteNoId(int index);
+
+  /// Backup-restore warning: the run is already on this device
+  ///
+  /// In en, this message translates to:
+  /// **'Run {id} is already on this device and was skipped.'**
+  String importRestoreWarnRunPresent(String id);
+
+  /// Backup-restore warning: a run's GPS track failed to upload
+  ///
+  /// In en, this message translates to:
+  /// **'The GPS track for run {id} wasn\'t restored: {error}'**
+  String importRestoreWarnTrack(String id, String error);
+
+  /// Backup-restore warning: a run's heart-rate data failed to upload
+  ///
+  /// In en, this message translates to:
+  /// **'The heart-rate data for run {id} wasn\'t restored: {error}'**
+  String importRestoreWarnHeartRate(String id, String error);
+
+  /// Backup-restore warning: a run failed to save
+  ///
+  /// In en, this message translates to:
+  /// **'Run {id} wasn\'t restored: {error}'**
+  String importRestoreWarnRun(String id, String error);
+
+  /// Backup-restore warning: a route failed to save
+  ///
+  /// In en, this message translates to:
+  /// **'Route {id} wasn\'t restored: {error}'**
+  String importRestoreWarnRoute(String id, String error);
+
+  /// Backup-restore warning: gym workouts failed to restore
+  ///
+  /// In en, this message translates to:
+  /// **'Gym workouts weren\'t restored: {error}'**
+  String importRestoreWarnGym(String error);
+
+  /// Backup-restore warning: the food log failed to restore
+  ///
+  /// In en, this message translates to:
+  /// **'The food log wasn\'t restored: {error}'**
+  String importRestoreWarnFood(String error);
+
+  /// Backup-restore warning: the archive carried columns this build does not know; names is a comma-separated list of column names
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped fields this version of the app doesn\'t use: {names}'**
+  String importRestoreWarnColumnsDropped(String names);
+
+  /// Backup-restore warning: no run store was available
+  ///
+  /// In en, this message translates to:
+  /// **'Runs weren\'t restored: this device\'s run storage isn\'t available.'**
+  String get importRestoreWarnRunsSkipped;
 
   /// Heading above the import failure report, counting the activities that did not import
   ///
@@ -5663,6 +5783,12 @@ abstract class AppLocalizations {
   /// **'Could not sync routes — working offline'**
   String get routesSyncFailedOffline;
 
+  /// Banner shown on the Routes list when the routes the runner bookmarked from others could not be loaded; their own routes still show
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load your bookmarked routes'**
+  String get routesBookmarksLoadFailed;
+
   /// Banner shown when loading the next page of routes fails
   ///
   /// In en, this message translates to:
@@ -7006,6 +7132,90 @@ abstract class AppLocalizations {
   /// **'Delete failed: {error}'**
   String routeDetailDeleteFailed(String error);
 
+  /// Line in the route delete confirm when the dependents count failed to load
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t check what else uses this route.'**
+  String get routeDetailDeleteImpactUnknown;
+
+  /// Banner when the server refused a route delete because the caller does not own it
+  ///
+  /// In en, this message translates to:
+  /// **'Only the route\'s owner can delete it.'**
+  String get routeDetailDeleteNotAllowed;
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'It is public, so other runners can find and follow it.'**
+  String get routeDetailDeleteImpactPublic;
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} race listing uses it as its course and will lose the course.} other {{count} race listings use it as their course and will lose the course.}}'**
+  String routeDetailDeleteImpactRaceListings(int count);
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} club event uses it and will lose its route.} other {{count} club events use it and will lose their route.}}'**
+  String routeDetailDeleteImpactEvents(int count);
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} other runner has saved it.} other {{count} other runners have saved it.}}'**
+  String routeDetailDeleteImpactSaved(int count);
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} person it is shared with will lose access.} other {{count} people it is shared with will lose access.}}'**
+  String routeDetailDeleteImpactShares(int count);
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} segment other runners made on it will be deleted.} other {{count} segments other runners made on it will be deleted.}}'**
+  String routeDetailDeleteImpactSegments(int count);
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} effort other runners logged on its segments will be deleted.} other {{count} efforts other runners logged on its segments will be deleted.}}'**
+  String routeDetailDeleteImpactEfforts(int count);
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} review by another runner will be deleted.} other {{count} reviews by other runners will be deleted.}}'**
+  String routeDetailDeleteImpactReviews(int count);
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} condition report by another runner will be deleted.} other {{count} condition reports by other runners will be deleted.}}'**
+  String routeDetailDeleteImpactConditions(int count);
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {{count} run that followed it keeps its stats but loses the link.} other {{count} runs that followed it keep their stats but lose the link.}}'**
+  String routeDetailDeleteImpactRuns(int count);
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {Its {count} photo will be deleted.} other {Its {count} photos will be deleted.}}'**
+  String routeDetailDeleteImpactPhotos(int count);
+
+  /// Line in the route delete confirm naming what depends on the route
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {Its {count} marker will be deleted.} other {Its {count} markers will be deleted.}}'**
+  String routeDetailDeleteImpactMarkers(int count);
+
   /// Label on the route-detail preview scrubber
   ///
   /// In en, this message translates to:
@@ -7138,6 +7348,12 @@ abstract class AppLocalizations {
   /// **'Location permission required to find nearby routes'**
   String get exploreRoutesLocationPermissionRequired;
 
+  /// Error state shown when a near-me search cannot get a position; {error} is the lower-case reason (location off, no fix in time)
+  ///
+  /// In en, this message translates to:
+  /// **'Location unavailable: {error}'**
+  String exploreRoutesNearbyLocationUnavailable(String error);
+
   /// Error state shown when a near-me search fails
   ///
   /// In en, this message translates to:
@@ -7239,24 +7455,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Removed \"{name}\" from your library'**
   String exploreRoutesRemoved(String name);
-
-  /// Surface badge label for trail routes on an explore route card
-  ///
-  /// In en, this message translates to:
-  /// **'Trail'**
-  String get exploreRoutesSurfaceTrailShort;
-
-  /// Surface badge label for mixed-surface routes on an explore route card
-  ///
-  /// In en, this message translates to:
-  /// **'Mixed'**
-  String get exploreRoutesSurfaceMixedShort;
-
-  /// Surface badge label for road routes on an explore route card
-  ///
-  /// In en, this message translates to:
-  /// **'Road'**
-  String get exploreRoutesSurfaceRoadShort;
 
   /// Distance-filter label (km) for short routes on the explore screen
   ///
@@ -10636,6 +10834,18 @@ abstract class AppLocalizations {
   /// **'Unpublish'**
   String get planDetailUnpublishLibrary;
 
+  /// Title of the confirm before a plan is removed from the public library
+  ///
+  /// In en, this message translates to:
+  /// **'Unpublish this plan?'**
+  String get planDetailUnpublishTitle;
+
+  /// Body of the confirm before a plan is removed from the public library: the delete breaks shared links
+  ///
+  /// In en, this message translates to:
+  /// **'It leaves the public library. Anyone who opens a link you shared to it will find it gone, and publishing again creates a new link.'**
+  String get planDetailUnpublishBody;
+
   /// Public plan library
   ///
   /// In en, this message translates to:
@@ -10798,11 +11008,119 @@ abstract class AppLocalizations {
   /// **'Load'**
   String get planImportLoad;
 
-  /// Error under the paste box when the pasted plan can't be parsed; detail is the parser's (English) reason, e.g. a bad date on one row
+  /// Error under the paste box when the pasted plan can't be parsed; detail is one of the localized planImportError* reasons, e.g. a bad date on one row
   ///
   /// In en, this message translates to:
   /// **'Couldn\'t read that plan: {detail}'**
   String planImportParseError(String detail);
+
+  /// Plan import parse error (badDistance), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read the distance \"{cell}\".'**
+  String planImportErrorBadDistance(String cell);
+
+  /// Plan import parse error (badPace), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read the pace \"{cell}\". Use m:ss.'**
+  String planImportErrorBadPace(String cell);
+
+  /// Plan import parse error (duplicateColumn), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'The column \"{column}\" appears twice.'**
+  String planImportErrorDuplicateColumn(String column);
+
+  /// Plan import parse error (missingColumn), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'The table has no \"{column}\" column.'**
+  String planImportErrorMissingColumn(String column);
+
+  /// Plan import parse error (raceNameTooLong), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'The race name \"{name}\" is longer than {max} characters.'**
+  String planImportErrorRaceNameTooLong(String name, String max);
+
+  /// Plan import parse error (badRacePriority), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read the race priority \"{cell}\". Use A, B or C.'**
+  String planImportErrorBadRacePriority(String cell);
+
+  /// Plan import parse error (badGoalTime), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read the goal time \"{cell}\". Use h:mm:ss.'**
+  String planImportErrorBadGoalTime(String cell);
+
+  /// Plan import parse error (badWeek), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read the week number \"{cell}\".'**
+  String planImportErrorBadWeek(String cell);
+
+  /// Plan import parse error (badDate), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read the date \"{cell}\". Use YYYY-MM-DD.'**
+  String planImportErrorBadDate(String cell);
+
+  /// Plan import parse error (unknownKind), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'\"{cell}\" isn\'t a workout type this app knows.'**
+  String planImportErrorUnknownKind(String cell);
+
+  /// Plan import parse error (raceFieldsOnNonRace), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'Race, priority and goal apply only to race rows, and the workout on {date} isn\'t a race.'**
+  String planImportErrorRaceFieldsOnNonRace(String date);
+
+  /// Plan import parse error (noRows), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'No workout rows found. Paste a table with Week, Date and Type columns.'**
+  String get planImportErrorNoRows;
+
+  /// Plan import parse error (noGoalDistance), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t work out the plan\'s goal distance.'**
+  String get planImportErrorNoGoalDistance;
+
+  /// Plan import parse error (beforeStart), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'The workout on {date} is before the plan\'s start date, {start}.'**
+  String planImportErrorBeforeStart(String date, String start);
+
+  /// Plan import parse error (notJson), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'This isn\'t valid JSON.'**
+  String get planImportErrorNotJson;
+
+  /// Plan import parse error (noWorkoutsArray), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'The JSON has no workouts list.'**
+  String get planImportErrorNoWorkoutsArray;
+
+  /// Plan import parse error (badJsonShape), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'The JSON\'s workouts aren\'t in the export format.'**
+  String get planImportErrorBadJsonShape;
+
+  /// Plan import parse error (badTaperStamp), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read the taper date \"{value}\" on {date}.'**
+  String planImportErrorBadTaperStamp(String value, String date);
 
   /// Date range of the imported plan in the preview
   ///
@@ -10888,11 +11206,11 @@ abstract class AppLocalizations {
   /// **'Plan not found.'**
   String get planDetailNotFound;
 
-  /// Plan-detail header stat label for the longest completed long run
+  /// Plan-detail header stat for the longest completed long run; the whole line, so each locale places its own colon
   ///
   /// In en, this message translates to:
-  /// **'Longest long run'**
-  String get planDetailLongestLongRun;
+  /// **'Longest long run: {distance}'**
+  String planDetailLongestLongRun(String distance);
 
   /// Publish-as-template AppBar action tooltip
   ///
@@ -11151,6 +11469,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your plan\'s on track — nothing to adjust.'**
   String get planDetailReplanOnTrack;
+
+  /// Banner when a re-plan is asked for before the runner's recent runs have loaded (the read failed or is still in flight)
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your recent runs, so the plan can\'t be checked against them yet. Try again in a moment.'**
+  String get planDetailReplanRunsUnavailable;
 
   /// Plan-detail adherence/replan/duplicate
   ///
@@ -11602,6 +11926,12 @@ abstract class AppLocalizations {
   /// **'Couldn\'t load your runs. Try again.'**
   String get workoutRelinkError;
 
+  /// Banner after re-linking a workout to a different run fails; distinct from workoutRelinkError, which is the picker's failed load
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t link that run. Try again.'**
+  String get workoutRelinkSaveError;
+
   /// Empty state in the re-link picker
   ///
   /// In en, this message translates to:
@@ -11931,6 +12261,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{name} · {weeks}w'**
   String coachContextPlanWeeks(String name, int weeks);
+
+  /// Note at the foot of the Coach plan picker's menu while the runner has one plan and nothing queued after it; names the race page's Add to my season button and the My season picker option (here = this menu)
+  ///
+  /// In en, this message translates to:
+  /// **'Racing again after this plan? Tap Add to my season on the race, and My season shows up here.'**
+  String get coachSeasonHint;
+
+  /// Action under the season note in the Coach plan picker's menu; opens the race calendar
+  ///
+  /// In en, this message translates to:
+  /// **'Find a race'**
+  String get coachSeasonHintAction;
+
+  /// Tooltip / accessible name of the Coach context-strip plan picker
+  ///
+  /// In en, this message translates to:
+  /// **'Plan context'**
+  String get coachPlanPickerTooltip;
 
   /// Context-strip runs chip when there are no runs
   ///
@@ -13016,6 +13364,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Strava connect failed: {error}'**
   String integrationsStravaConnectFailed(String error);
+
+  /// Reason after 'Strava connect failed:' when the server has no Strava credentials or redirect allow-list
+  ///
+  /// In en, this message translates to:
+  /// **'Strava isn\'t set up on this server yet.'**
+  String get integrationsStravaErrNotConfigured;
+
+  /// Reason after 'Strava connect failed:' when the runner unticked the activity permission on Strava
+  ///
+  /// In en, this message translates to:
+  /// **'Strava didn\'t share all your activities. Connect again and leave every permission ticked.'**
+  String get integrationsStravaErrMissingScope;
+
+  /// Reason when Strava refused the authorization code or the sign-in returned none
+  ///
+  /// In en, this message translates to:
+  /// **'Strava didn\'t accept the sign-in. Try connecting again.'**
+  String get integrationsStravaErrCodeRejected;
+
+  /// Reason after 'Strava sync failed:' when Strava no longer accepts the stored connection (revoked grant); only disconnecting and connecting again repairs it
+  ///
+  /// In en, this message translates to:
+  /// **'Strava no longer accepts this connection. Disconnect Strava, then connect it again.'**
+  String get integrationsStravaErrReconnect;
 
   /// Banner shown after Strava connects successfully
   ///
@@ -14512,6 +14884,12 @@ abstract class AppLocalizations {
   /// **'Preferences'**
   String get prefsTitle;
 
+  /// Notice on the Preferences screen when settings are served from the on-device copy because the server could not be reached
+  ///
+  /// In en, this message translates to:
+  /// **'Offline — edits stay on this device and sync when you reconnect.'**
+  String get prefsOfflineNotice;
+
   /// Unit subtitle when kilometres are selected
   ///
   /// In en, this message translates to:
@@ -15213,12 +15591,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Log a gym session'**
   String get dashboardFirstRunGymAction;
-
-  /// Label for the weekly period stat card on the dashboard
-  ///
-  /// In en, this message translates to:
-  /// **'Week'**
-  String get dashboardPeriodWeek;
 
   /// Label for the monthly period stat card on the dashboard
   ///
@@ -17558,6 +17930,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Export'**
   String get shareCardExport;
+
+  /// Button in the run share sheet that shares the run's web link; it asks who may see the run first
+  ///
+  /// In en, this message translates to:
+  /// **'Share link'**
+  String get shareCardShareLink;
+
+  /// Switch in the run share sheet: whether the image carries the Threkir logo. On by default
+  ///
+  /// In en, this message translates to:
+  /// **'Show the Threkir mark'**
+  String get shareCardMark;
 
   /// Button to share the run as an image
   ///
@@ -22051,6 +22435,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Those dates overlap one of {name}\'s active plans. Pick a start date after it ends.'**
   String coachingAthleteAssignOverlap(String name);
+
+  /// Banner when assigning a plan to an athlete fails for any reason other than an overlap
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t assign the plan. Please try again.'**
+  String get coachingAthleteAssignError;
 
   /// Word following the completion percentage, e.g. '40% complete'
   ///
@@ -28352,6 +28742,84 @@ abstract class AppLocalizations {
   /// **'You blocked {name}, so neither of you can message the other.'**
   String messagesBlockedNotice(String name);
 
+  /// Conversation action that mutes it: no notification for new messages, and its unread count leaves the badge
+  ///
+  /// In en, this message translates to:
+  /// **'Mute'**
+  String get messagesMute;
+
+  /// Conversation action that lifts a mute
+  ///
+  /// In en, this message translates to:
+  /// **'Unmute'**
+  String get messagesUnmute;
+
+  /// Conversation action that moves it to the Archived list until a new message arrives
+  ///
+  /// In en, this message translates to:
+  /// **'Archive'**
+  String get messagesArchive;
+
+  /// Conversation action that moves an archived conversation back to the inbox
+  ///
+  /// In en, this message translates to:
+  /// **'Unarchive'**
+  String get messagesUnarchive;
+
+  /// Conversation action that deletes it for the viewer only (the other person keeps theirs); undoable for a few seconds
+  ///
+  /// In en, this message translates to:
+  /// **'Delete conversation'**
+  String get messagesDeleteConversation;
+
+  /// Undo bar message after deleting a conversation for yourself
+  ///
+  /// In en, this message translates to:
+  /// **'Conversation deleted'**
+  String get messagesConversationDeleted;
+
+  /// Shown in the conversation pane once the viewer deleted it for themselves
+  ///
+  /// In en, this message translates to:
+  /// **'You deleted this conversation for yourself. The other person keeps their copy, and a new message brings it back.'**
+  String get messagesConversationDeletedNotice;
+
+  /// Error when muting, archiving or deleting a conversation failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the conversation: {error}'**
+  String messagesConversationActionFailed(String error);
+
+  /// Inbox control that opens the Archived conversations list; count is how many
+  ///
+  /// In en, this message translates to:
+  /// **'Archived ({count})'**
+  String messagesArchivedCount(int count);
+
+  /// Control in the Archived list that returns to the main inbox
+  ///
+  /// In en, this message translates to:
+  /// **'Back to inbox'**
+  String get messagesBackToInbox;
+
+  /// Marker on an inbox row for a muted conversation (read by screen readers)
+  ///
+  /// In en, this message translates to:
+  /// **'Muted'**
+  String get messagesMutedMark;
+
+  /// Confirmation after muting a conversation
+  ///
+  /// In en, this message translates to:
+  /// **'Muted. You won\'t be notified about new messages here.'**
+  String get messagesMutedToast;
+
+  /// Confirmation after archiving a conversation
+  ///
+  /// In en, this message translates to:
+  /// **'Archived. A new message brings it back to your inbox.'**
+  String get messagesArchivedToast;
+
   /// Profile action opening a direct-message conversation with this runner
   ///
   /// In en, this message translates to:
@@ -31822,6 +32290,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign-ups are counted when someone creates an account from a link you shared. Your own visits aren\'t counted.'**
   String get sharesFootnote;
+
+  /// Route detail map placeholder when the route line could not be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the route line. Check your connection and try again.'**
+  String get routeDetailLineLoadFailed;
+
+  /// Route detail map placeholder when the route has fewer than two points to draw
+  ///
+  /// In en, this message translates to:
+  /// **'This route has no line to show.'**
+  String get routeDetailLineEmpty;
+
+  /// Retry button on the route detail map placeholder
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get routeDetailLineRetry;
+
+  /// Reason after "Location unavailable:" when a Locate tap finds location permission refused. Lower-case: it follows a colon.
+  ///
+  /// In en, this message translates to:
+  /// **'location permission is off'**
+  String get locationErrorPermissionDenied;
+
+  /// Reason after "Location unavailable:" when a Locate tap finds the device location switched off. Lower-case: it follows a colon.
+  ///
+  /// In en, this message translates to:
+  /// **'location is turned off on this device'**
+  String get locationErrorServicesOff;
+
+  /// Reason after "Location unavailable:" when a Locate tap gets no position in time. Lower-case: it follows a colon.
+  ///
+  /// In en, this message translates to:
+  /// **'no position yet, try again in a moment'**
+  String get locationErrorNoFix;
+
+  /// Banner when an imported route file parses but holds no line of two or more points (or is not a route file at all).
+  ///
+  /// In en, this message translates to:
+  /// **'Import failed: that file holds no route with at least two points.'**
+  String get routesImportNoTrack;
 }
 
 class _AppLocalizationsDelegate

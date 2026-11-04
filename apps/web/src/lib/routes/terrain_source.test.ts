@@ -8,8 +8,11 @@ import {
 	AWS_TERRAIN_SOURCE,
 	AWS_TERRAIN_TILES_HOST,
 	FLYOVER_PITCH,
+	LOW_RELIEF_M,
+	MAX_TERRAIN_EXAGGERATION,
 	resolveTerrainSource,
 	TERRAIN_EXAGGERATION,
+	terrainExaggeration,
 } from './terrain_source';
 
 test('no key and no override falls back to the keyless AWS terrarium tiles', () => {
@@ -85,4 +88,27 @@ test('a whitespace-only override is treated as absent', () => {
 test('the view constants match the product decision', () => {
 	assert.equal(TERRAIN_EXAGGERATION, 1.5);
 	assert.equal(FLYOVER_PITCH, 60);
+});
+
+test('a course with 100 m of relief or more keeps the base exaggeration, mountains included', () => {
+	assert.equal(LOW_RELIEF_M, 100);
+	assert.equal(terrainExaggeration(100), TERRAIN_EXAGGERATION);
+	assert.equal(terrainExaggeration(450), TERRAIN_EXAGGERATION);
+	assert.equal(terrainExaggeration(2500), TERRAIN_EXAGGERATION);
+});
+
+test('a low-relief course is exaggerated in inverse proportion, up to the bound', () => {
+	assert.equal(terrainExaggeration(75), 2);
+	assert.equal(MAX_TERRAIN_EXAGGERATION, 3);
+	assert.equal(terrainExaggeration(50), 3);
+	// Philadelphia's chart: 6 m by the river to 50 m above the Schuylkill.
+	assert.equal(terrainExaggeration(44), 3);
+	assert.equal(terrainExaggeration(5), 3);
+	assert.equal(terrainExaggeration(0.001), 3);
+});
+
+test('an unknown or degenerate relief keeps the base exaggeration', () => {
+	for (const r of [null, 0, -10, Number.NaN, Number.POSITIVE_INFINITY]) {
+		assert.equal(terrainExaggeration(r), TERRAIN_EXAGGERATION, String(r));
+	}
 });

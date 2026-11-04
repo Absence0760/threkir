@@ -18,7 +18,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 import 'package:wakelock_plus_platform_interface/wakelock_plus_platform_interface.dart';
 
 import '../lib/audio_cues.dart';
@@ -44,6 +43,7 @@ import '../lib/widgets/run_list_tile.dart';
 import 'pump_until.dart';
 import 'store_write_watch.dart';
 import 'pre_run_dialogs.dart';
+import 'supabase_test_init.dart';
 
 class _FakeGeolocatorPlatform extends GeolocatorPlatform {
   StreamController<Position>? _positions;
@@ -209,10 +209,7 @@ void main() {
       isOptional: true,
     );
     if (!supabaseReady) {
-      await Supabase.initialize(
-        url: 'http://127.0.0.1:24321',
-        anonKey: 'eyJ.local.test',
-      );
+      await initializeTestSupabase();
       supabaseReady = true;
     }
   });

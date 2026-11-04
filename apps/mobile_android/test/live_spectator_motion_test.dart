@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/live_spectator_screen.dart';
 import 'realtime_drain.dart';
+import 'supabase_test_init.dart';
 
 /// Drives the stopped-runner readout on `live_spectator_screen.dart`. The
 /// failure this pins is the one the spectator personas care about: a runner
@@ -78,10 +78,7 @@ Future<void> _ensureSupabase() async {
   TestWidgetsFlutterBinding.ensureInitialized();
   dotenv.loadFromString(isOptional: true);
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 

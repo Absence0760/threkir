@@ -115,6 +115,7 @@ Future<void> showRunShareSheet(
   @visibleForTesting RunShareImageSaver? saveImageOverride,
   @visibleForTesting RunShareUrlOpener? openUrlOverride,
   ApiClient? api,
+  Future<void> Function()? onShareLink,
   @visibleForTesting HeadToHeadLoader? headToHeadLoadOverride,
 }) {
   return showModalBottomSheet<void>(
@@ -133,6 +134,7 @@ Future<void> showRunShareSheet(
           ? RunShareStyle.card
           : initialStyle,
       pickPhotoOverride: pickPhotoOverride,
+      onShareLink: onShareLink,
       saveImage: saveImageOverride ?? saveShareImageToGallery,
       openUrl: openUrlOverride ?? _openExternally,
       headToHeadLoad: headToHeadLoadOverride ??
@@ -156,6 +158,7 @@ class _ShareRunSheet extends StatefulWidget {
   final RunShareImageSaver saveImage;
   final RunShareUrlOpener openUrl;
   final HeadToHeadLoader? headToHeadLoad;
+  final Future<void> Function()? onShareLink;
 
   const _ShareRunSheet({
     required this.run,
@@ -168,6 +171,7 @@ class _ShareRunSheet extends StatefulWidget {
     required this.openUrl,
     this.pickPhotoOverride,
     this.headToHeadLoad,
+    this.onShareLink,
   });
 
   @override
@@ -453,6 +457,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
             title: widget.title,
             privacyZones: widget.privacyZones,
             tileReadiness: _tiles,
+            mark: _look.mark,
           ),
         );
       case RunShareStyle.photo:
@@ -794,6 +799,24 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
                     _style != RunShareStyle.video &&
                     _style != RunShareStyle.versus)
                   ..._lookControls(l10n, theme),
+                if (_style != RunShareStyle.video &&
+                    _style != RunShareStyle.versus)
+                  // A Row, not a SwitchListTile: the sheet's tinted
+                  // container would hide a ListTile's ink.
+                  MergeSemantics(
+                    child: Row(
+                      children: [
+                        Expanded(child: Text(l10n.shareCardMark)),
+                        Switch(
+                          key: const ValueKey('share-mark'),
+                          value: _look.mark,
+                          onChanged: _busy
+                              ? null
+                              : (v) => _setLook(_look.copyWith(mark: v)),
+                        ),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: 16),
                 if (_style == RunShareStyle.video)
                   FilledButton.icon(
@@ -826,20 +849,30 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
                     label: Text(l10n.shareCardSave),
                   ),
                 ],
-                Align(
-                  child: PopupMenuButton<String>(
-                    onSelected: _busy ? null : _shareFile,
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'gpx', child: Text('GPX')),
-                      PopupMenuItem(value: 'tcx', child: Text('TCX')),
-                      PopupMenuItem(value: 'fit', child: Text('FIT')),
-                    ],
-                    child: TextButton.icon(
-                      onPressed: _busy ? null : () {},
-                      icon: const Icon(Icons.route),
-                      label: Text(l10n.shareCardExport),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  children: [
+                    if (widget.onShareLink != null)
+                      TextButton.icon(
+                        key: const ValueKey('share-run-link'),
+                        onPressed: _busy ? null : widget.onShareLink,
+                        icon: const Icon(Icons.link),
+                        label: Text(l10n.shareCardShareLink),
+                      ),
+                    PopupMenuButton<String>(
+                      onSelected: _busy ? null : _shareFile,
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'gpx', child: Text('GPX')),
+                        PopupMenuItem(value: 'tcx', child: Text('TCX')),
+                        PopupMenuItem(value: 'fit', child: Text('FIT')),
+                      ],
+                      child: TextButton.icon(
+                        onPressed: _busy ? null : () {},
+                        icon: const Icon(Icons.route),
+                        label: Text(l10n.shareCardExport),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
@@ -890,6 +923,10 @@ class RunShareCard extends StatelessWidget {
   /// basemap instead of sleeping. Null for a plain on-screen render.
   final MapTileReadiness? tileReadiness;
 
+  /// Whether the card's footer carries the Threkir mark; off when the runner
+  /// turned it off in the sheet.
+  final bool mark;
+
   const RunShareCard({
     super.key,
     required this.run,
@@ -897,6 +934,7 @@ class RunShareCard extends StatelessWidget {
     required this.title,
     required this.privacyZones,
     this.tileReadiness,
+    this.mark = true,
   });
 
   /// Tile URL for the share card. Honours the `TILE_URL_TEMPLATE`
@@ -1112,14 +1150,17 @@ class RunShareCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const Expanded(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: ThrekirShareBrand(color: Colors.white, markSize: 16),
-                  ),
-                ),
+              Expanded(
+                child: mark
+                    ? const Align(
+                        alignment: Alignment.centerLeft,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: ThrekirShareBrand(
+                              color: Colors.white, markSize: 16),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
               ),
               const Text(
                 '© MapTiler · OpenStreetMap',

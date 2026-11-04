@@ -280,11 +280,40 @@ test('isoEpochDay refuses rolled-over and malformed dates', () => {
 	assert.equal(isoEpochDay(20270314), null);
 });
 
+test('an ultra heard in tenths of a mile snaps back to the race it names', () => {
+	// The AI plan box says "31.1 mi" for a 50K (decisions § 2292); the model's
+	// kilometres for it are 50.05, which is no race and no wizard preset.
+	for (const [km, m] of [
+		[50.05, 50_000],
+		[50.051, 50_000],
+		[99.94, 100_000],
+		[80.467, 80_467],
+	] as const) {
+		const r = validatePlanInputs({ ultra_distance_km: km, ultra_distance_unit: 'mi' }, TODAY);
+		assert.equal(r.goalEvent, 'custom', String(km));
+		assert.equal(r.goalDistanceM, m, String(km));
+	}
+});
+
+test('an ultra stated in km snaps only within a tenth of a km', () => {
+	// A metric runner's 50.06 km is 60 m off 50 km: inside the mile rounding,
+	// outside the kilometre rounding, so it is kept as stated.
+	for (const unit of ['km', undefined, 'furlongs'] as const) {
+		const r = validatePlanInputs({ ultra_distance_km: 50.06, ultra_distance_unit: unit }, TODAY);
+		assert.equal(r.goalDistanceM, 50_060, String(unit));
+	}
+	// 160.9 km, the km prefill's 100-miler, is 34 m off 100 miles.
+	assert.equal(
+		validatePlanInputs({ ultra_distance_km: 160.9, ultra_distance_unit: 'km' }, TODAY).goalDistanceM,
+		160_934,
+	);
+});
+
 test('an ultra distance in km becomes a custom goal of that many metres', () => {
 	for (const [km, m] of [
 		[56, 56_000],
 		[87.7, 87_700],
-		[160.9, 160_900],
+		[161.2, 161_200],
 		[42.2, 42_200],
 		[400, 400_000],
 	] as const) {

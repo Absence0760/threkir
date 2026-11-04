@@ -10,6 +10,7 @@
 		type PayoutAccountStatus
 	} from '#lib/core/data.ts';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { formatPrice } from '#lib/format/format_price.ts';
 	import { fromMinorUnits } from '#lib/format/minor_units.ts';
 	import {
@@ -86,7 +87,7 @@
 			if (msg === 'stripe_not_configured' || /not[_ ]configured|503/i.test(msg)) {
 				showToast(m('payouts.notConfigured'), 'info');
 			} else {
-				showToast(m('payouts.setupFailed', { error: msg }), 'error');
+				showToast(m('payouts.setupFailed', { error: errorCopy(err, m, 'payouts.setupFailed') }), 'error');
 			}
 			redirecting = false;
 		}

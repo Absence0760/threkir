@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import type * as GeoJSON from 'geojson';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { onMount, onDestroy } from 'svelte';
@@ -43,6 +42,7 @@
 	import { freshnessFor, type Freshness } from '#lib/runs/live_freshness.ts';
 	import { CoalescingRefetcher } from '#lib/runs/live_refetch.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import {
 		finishMethodBadge,
 		groupResultsByCourse,
@@ -187,7 +187,7 @@
 		} catch (e) {
 			// Public spectator page — a rejected fetch would otherwise hang on
 			// "Loading…" forever with no recourse. Surface it with a retry.
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, m, 'live/event/[id]/[instance]: loadError');
 		}
 		loading = false;
 	}

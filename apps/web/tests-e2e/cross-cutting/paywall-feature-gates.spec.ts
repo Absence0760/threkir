@@ -87,6 +87,17 @@ test.describe('paywall — per-feature gates', () => {
 			await expect(page.locator('.limit-bar')).toContainText(/used all 2 messages/i);
 			await expect(page.locator('.limit-bar')).toContainText(/Upgrade to Pro/i);
 			await expect(page.locator('form.composer')).toHaveCount(0);
+			// A spent allowance is a warning, not an error: the bar takes the
+			// warning tint, read from the token so a theme change cannot break it.
+			const tint = await page.locator('.limit-bar').evaluate((el) => {
+				const probe = document.createElement('div');
+				probe.style.background = 'var(--color-warning-light)';
+				document.body.appendChild(probe);
+				const want = getComputedStyle(probe).backgroundColor;
+				probe.remove();
+				return { got: getComputedStyle(el).backgroundColor, want };
+			});
+			expect(tint.got).toBe(tint.want);
 		});
 	});
 

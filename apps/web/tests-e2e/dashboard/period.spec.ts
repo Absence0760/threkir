@@ -5,8 +5,8 @@ import { USER_A } from '../fixtures/users';
 /**
  * /dashboard/period/[type]/[date] — standalone period summary deep link.
  *
- * The dashboard's "This Week" stat tile opens a PeriodSummary modal
- * (covered in dashboard.spec.ts). This standalone route is the
+ * The dashboard week lead's Week summary opens a PeriodSummary modal
+ * (covered in dashboard/page.spec.ts). This standalone route is the
  * deep-linkable version of that modal — used by external links and
  * by users who want a permanent URL for a specific week's summary.
  */

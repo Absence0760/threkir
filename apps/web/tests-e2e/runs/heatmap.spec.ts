@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { insertRun, deleteRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 import { acceptCookieConsent, setStorageOnLoad } from '../fixtures/helpers';
+import { MAP_HEAT_OPACITY, mapHeatRamp } from '../../src/lib/routes/basemap_contrast';
 
 // A short GPS track around Richmond, VA — enough distinct points to form
 // heat cells AND a polyline. The seed runs carry track_url values whose
@@ -60,13 +61,14 @@ test.describe('/runs/heatmap — signed-in seed user', () => {
 
 		// The component downloads the user's tracks then either renders a
 		// legend (data present) or an empty state (no mapped runs). Either
-		// is a pass; what must NOT persist is the loading spinner.
-		await expect(page.getByTestId('personal-heatmap-loading')).toHaveCount(0, {
-			timeout: 20_000
-		});
+		// is a pass. Wait on that terminal state, not on the spinner's
+		// absence: "no spinner" is also true before the component mounts
+		// and while a cold dev server reloads the document, so it can pass
+		// early and leave the real wait on a short budget.
 		const legend = page.getByTestId('personal-heatmap-legend');
 		const empty = page.getByTestId('personal-heatmap-empty');
-		await expect(legend.or(empty)).toBeVisible();
+		await expect(legend.or(empty)).toBeVisible({ timeout: 20_000 });
+		await expect(page.getByTestId('personal-heatmap-loading')).toHaveCount(0);
 	});
 
 	test('crossfades from a heat cloud (zoomed out) to track lines (zoomed in)', async ({
@@ -79,6 +81,16 @@ test.describe('/runs/heatmap — signed-in seed user', () => {
 		});
 		// The seed user owns mapped runs, so data must resolve to the legend.
 		await expect(page.getByTestId('personal-heatmap-legend')).toBeVisible();
+		// The legend marks the DATA resolving, which races the basemap
+		// style: before the style's `load` the component stashes the data
+		// and has added no layers, and `getPaintProperty` on a style that
+		// isn't loaded throws. Wait for the layers the load handler adds.
+		await page.waitForFunction(() => {
+			const map = (
+				window as { __personalHeatmap?: { getLayer(id: string): unknown } }
+			).__personalHeatmap;
+			return !!map?.getLayer('personal-heat-layer') && !!map.getLayer('personal-lines-layer');
+		});
 
 		const state = await page.evaluate(() => {
 			type MiniMap = {
@@ -96,6 +108,7 @@ test.describe('/runs/heatmap — signed-in seed user', () => {
 				hasHeatLayer: !!map.getLayer('personal-heat-layer'),
 				hasLineLayer: !!map.getLayer('personal-lines-layer'),
 				heatOpacity: map.getPaintProperty('personal-heat-layer', 'heatmap-opacity'),
+				heatColor: map.getPaintProperty('personal-heat-layer', 'heatmap-color'),
 				lineOpacity: map.getPaintProperty('personal-lines-layer', 'line-opacity'),
 				lineFeatureCount: Array.isArray(data?.features) ? data!.features!.length : 0
 			};
@@ -115,6 +128,21 @@ test.describe('/runs/heatmap — signed-in seed user', () => {
 		expect((state!.heatOpacity as unknown[])[0]).toBe('interpolate');
 		expect(Array.isArray(state!.lineOpacity)).toBe(true);
 		expect((state!.lineOpacity as unknown[])[0]).toBe('interpolate');
+		// Both halves rest at the opacity their contrast was graded at, and
+		// the cloud paints one basemap's ramp opaque at every stop past its
+		// soft edge, not the old fixed set at 0.45-0.9 alpha.
+		expect((state!.heatOpacity as unknown[]).slice(3)).toEqual([
+			13, MAP_HEAT_OPACITY, 15.5, 0
+		]);
+		expect((state!.lineOpacity as unknown[]).slice(3)).toEqual([
+			13, 0, 15.5, MAP_HEAT_OPACITY
+		]);
+		const stops = (state!.heatColor as unknown[]).slice(5).filter((_, i) => i % 2 === 1);
+		expect([[...mapHeatRamp(false)], [...mapHeatRamp(true)]]).toContainEqual(stops);
+		await expect(page.getByTestId('personal-heatmap-legend-scale')).toHaveCSS(
+			'opacity',
+			String(MAP_HEAT_OPACITY)
+		);
 	});
 
 	test('Heatmap link on the runs page navigates here', async ({ page }) => {

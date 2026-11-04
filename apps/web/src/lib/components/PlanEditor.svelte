@@ -62,8 +62,10 @@
 	import { updateUniversal } from '#lib/settings/settings.ts';
 	import type { HealthUseDobState } from '#lib/core/health_consent.ts';
 	import { fmtKm, fmtPace, getUnit } from '#lib/format/units.svelte.ts';
-	import { paceMinutesSeconds } from '#lib/format/pace_format.ts';
+	import { paceFieldFromSecPerKm, secPerKmFromPaceField } from '#lib/format/pace_format.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { planParseMessage } from '#lib/i18n/plan_parse_message.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
@@ -561,7 +563,8 @@
 			expandedWeek = null;
 			showImport = false;
 		} catch (e) {
-			importError = describeError(e);
+			const reason = planParseMessage(e, t);
+			importError = reason != null ? t('planEditor.importParseFailed', { detail: reason }) : describeError(e);
 		}
 	}
 
@@ -585,30 +588,23 @@
 		'rest',
 	];
 
-	function paceToInput(secPerKm: number | null): string {
-		if (secPerKm == null || secPerKm <= 0) return '';
-		return paceMinutesSeconds(secPerKm);
-	}
-
-	function inputToPace(raw: string): number | null {
-		const trimmed = raw.trim();
-		if (!trimmed) return null;
-		const m = trimmed.match(/^(\d{1,2}):(\d{2})$/);
-		if (!m) return null;
-		return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
-	}
-
+	// The outline's pace is typed in the runner's unit, beside distances in
+	// that unit, and stored per km.
 	function paceInputHandler(weekIdx: number, woIdx: number) {
 		return (e: Event) => {
 			if (!plan) return;
 			const value = (e.currentTarget as HTMLInputElement).value;
-			const sec = inputToPace(value);
-			plan.weeks[weekIdx].workouts[woIdx].target_pace_sec_per_km = sec;
+			plan.weeks[weekIdx].workouts[woIdx].target_pace_sec_per_km = secPerKmFromPaceField(
+				value,
+				distanceUnit,
+			);
 		};
 	}
 
 	function describeError(e: unknown): string {
-		return thrownMessage(e) || t('planEditor.errorCreateFailed');
+		return t('planEditor.errorCreateFailed', {
+			error: errorCopy(e, t, 'planEditor.errorCreateFailed'),
+		});
 	}
 
 	// A brand-new runner ticking the walk-run box is not training for a half
@@ -918,7 +914,6 @@
 			else oncreated?.(outcome.value);
 		} catch (e: unknown) {
 			error = describeError(e);
-			console.error('Plan create failed', e);
 		} finally {
 			busy = false;
 		}
@@ -945,7 +940,7 @@
 			aria-describedby="plan-import-hint"
 		></textarea>
 		{#if importError}
-			<p class="error">{importError}</p>
+			<p class="error" role="alert">{importError}</p>
 		{/if}
 		<button type="button" class="btn btn-secondary" onclick={loadFromText}>
 			{t('planEditor.importLoad')}
@@ -1318,6 +1313,8 @@
 							<button
 								type="button"
 								class="week-row"
+								aria-expanded={expandedWeek === weekIdx}
+								aria-controls="plan-editor-week-{weekIdx}"
 								onclick={() => (expandedWeek = expandedWeek === weekIdx ? null : weekIdx)}
 							>
 								<span class="week-num">#{w.week_index + 1}</span>
@@ -1326,13 +1323,13 @@
 								<span class="week-workouts">
 									{t(sessionCount === 1 ? 'planEditor.nSessionsOne' : 'planEditor.nSessionsMany', { n: sessionCount })}
 								</span>
-								<span class="caret material-symbols">
+								<span class="caret material-symbols" aria-hidden="true">
 									{expandedWeek === weekIdx ? 'expand_less' : 'expand_more'}
 								</span>
 							</button>
 
 							{#if expandedWeek === weekIdx}
-								<div class="week-editor">
+								<div class="week-editor" id="plan-editor-week-{weekIdx}">
 									{#each w.workouts as wo, woIdx (woIdx)}
 										<div class="wo-row">
 											<div class="wo-date">
@@ -1367,13 +1364,13 @@
 												/>
 											</label>
 											<label class="wo-field">
-												<span>{t('planEditor.paceMmSs')}</span>
+												<span>{t('planEditor.paceMmSs', { unit: distanceUnit })}</span>
 												<input
 													type="text"
 													inputmode="numeric"
 													pattern={'[0-9]{1,2}:[0-9]{2}'}
 													placeholder="—"
-													value={paceToInput(wo.target_pace_sec_per_km)}
+													value={paceFieldFromSecPerKm(wo.target_pace_sec_per_km, distanceUnit)}
 													aria-describedby="week-outline-hint"
 													oninput={paceInputHandler(weekIdx, woIdx)}
 													disabled={wo.kind === 'rest'}

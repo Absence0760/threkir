@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import { page } from '$app/state';
 	import { handleTablistKeydown } from '#lib/util/tablist.ts';
 	import Avatar from '#lib/components/Avatar.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { formatDuration, formatRelativeTime, activeFormatLocale } from '#lib/format/time.ts';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { ACTIVITY_TYPE_ICONS } from '#lib/runs/activity_type.ts';
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import { goto } from '$app/navigation';
@@ -143,7 +144,7 @@
 			badges = rows;
 			badgesFor = forUser;
 		} catch (e) {
-			badgesError = thrownMessage(e);
+			badgesError = errorCopy(e, m, 'u/[id]: badgesError');
 		}
 	}
 
@@ -208,7 +209,7 @@
 		try {
 			const p = await fetchPublicProfile(userId);
 			profile = p.profile;
-			loadError = p.error;
+			loadError = p.error ? errorCopy(p.error, m, 'u/[id]: loadError') : null;
 			if (auth.loggedIn && auth.user?.id !== userId) {
 				try {
 					viewerHasBlocked = await isBlockedByViewer(userId);
@@ -219,7 +220,7 @@
 		} catch (e) {
 			// A rejected fetch would otherwise leave the profile stuck on its
 			// loading skeleton forever — surface it with a retry instead.
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, m, 'u/[id]: loadError');
 		} finally {
 			loading = false;
 		}
@@ -231,7 +232,7 @@
 		try {
 			runs = await fetchPublicRunsByUser(userId, 20);
 		} catch (e) {
-			runsError = thrownMessage(e);
+			runsError = errorCopy(e, m, 'u/[id]: runsError');
 		} finally {
 			runsLoading = false;
 		}
@@ -247,7 +248,7 @@
 			followersHasMore = fr.next !== null;
 			hydrateViewerFollows();
 		} catch (e) {
-			followersError = thrownMessage(e);
+			followersError = errorCopy(e, m, 'u/[id]: followersError');
 		} finally {
 			followersLoading = false;
 		}
@@ -263,7 +264,7 @@
 			followingHasMore = fg.next !== null;
 			hydrateViewerFollows();
 		} catch (e) {
-			followingError = thrownMessage(e);
+			followingError = errorCopy(e, m, 'u/[id]: followingError');
 		} finally {
 			followingLoading = false;
 		}
@@ -282,7 +283,7 @@
 			followersHasMore = more.next !== null;
 			hydrateViewerFollows();
 		} catch (e) {
-			showToast(m('profile.loadMoreFollowersError', { error: thrownMessage(e) }), 'error');
+			showToast(m('profile.loadMoreFollowersError', { error: errorCopy(e, m, 'profile.loadMoreFollowersError') }), 'error');
 		} finally {
 			followersLoadingMore = false;
 		}
@@ -301,7 +302,7 @@
 			followingHasMore = more.next !== null;
 			hydrateViewerFollows();
 		} catch (e) {
-			showToast(m('profile.loadMoreError', { error: thrownMessage(e) }), 'error');
+			showToast(m('profile.loadMoreError', { error: errorCopy(e, m, 'profile.loadMoreError') }), 'error');
 		} finally {
 			followingLoadingMore = false;
 		}
@@ -394,7 +395,7 @@
 			feedExhausted = feedEntries.length < 20;
 			feedEngagement = await fetchEngagementSummaries(feedEntries.map((e) => e.id));
 		} catch (e) {
-			showToast(m('profile.loadFeedError', { error: thrownMessage(e) }), 'error');
+			showToast(m('profile.loadFeedError', { error: errorCopy(e, m, 'profile.loadFeedError') }), 'error');
 		} finally {
 			feedLoading = false;
 			feedLoaded = true;
@@ -421,7 +422,7 @@
 			// Without this catch the explicit "load more" scroll
 			// trigger silently swallowed network errors and the user
 			// scrolled forever waiting for entries that never arrived.
-			showToast(m('profile.loadMoreError', { error: thrownMessage(e) }), 'error');
+			showToast(m('profile.loadMoreError', { error: errorCopy(e, m, 'profile.loadMoreError') }), 'error');
 		} finally {
 			feedLoadingMore = false;
 		}
@@ -452,14 +453,13 @@
 				});
 			}
 		} catch (e) {
-			showToast(m('profile.updateKudosError', { error: thrownMessage(e) }), 'error');
+			showToast(m('profile.updateKudosError', { error: errorCopy(e, m, 'profile.updateKudosError') }), 'error');
 		} finally {
 			const next = new Set(kudosBusy);
 			next.delete(runId);
 			kudosBusy = next;
 		}
 	}
-
 
 	// Three states, not two: following, a pending request to a private profile,
 	// or neither. Unfollowing a private profile closes its content again, so
@@ -499,7 +499,7 @@
 				}
 			}
 		} catch (e) {
-			showToast(m('profile.updateFollowError', { error: thrownMessage(e) }), 'error');
+			showToast(m('profile.updateFollowError', { error: errorCopy(e, m, 'profile.updateFollowError') }), 'error');
 		} finally {
 			busy = false;
 		}
@@ -523,7 +523,7 @@
 			};
 			showToast(m('profile.blockedToast', { name: profile.display_name ?? m('profile.thisRunner') }), 'success');
 		} catch (e) {
-			showToast(m('profile.blockError', { error: thrownMessage(e) }), 'error');
+			showToast(m('profile.blockError', { error: errorCopy(e, m, 'profile.blockError') }), 'error');
 		} finally {
 			blockBusy = false;
 		}
@@ -537,7 +537,7 @@
 			viewerHasBlocked = false;
 			showToast(m('profile.unblockedToast', { name: profile.display_name ?? m('profile.thisRunner') }), 'success');
 		} catch (e) {
-			showToast(m('profile.unblockError', { error: thrownMessage(e) }), 'error');
+			showToast(m('profile.unblockError', { error: errorCopy(e, m, 'profile.unblockError') }), 'error');
 		} finally {
 			blockBusy = false;
 		}
@@ -586,7 +586,7 @@
 					? profile.following_count + 1
 					: Math.max(profile.following_count - 1, 0);
 			}
-			showToast(m('profile.updateFollowError', { error: thrownMessage(e) }), 'error');
+			showToast(m('profile.updateFollowError', { error: errorCopy(e, m, 'profile.updateFollowError') }), 'error');
 		} finally {
 			const done = new Set(rowBusy);
 			done.delete(targetId);
@@ -671,12 +671,12 @@
 {/snippet}
 
 {#snippet sectionLoading()}
-	<div class="section-loading" role="status">
-		<span class="sr-only">{m('profile.loadingShort')}</span>
-		<span class="skel skel-line skel-w-60"></span>
-		<span class="skel skel-line skel-w-40"></span>
-		<span class="skel skel-line skel-w-50"></span>
+	<div class="section-loading" aria-hidden="true">
+		<SkeletonBlock height="0.85rem" width="60%" />
+		<SkeletonBlock height="0.85rem" width="40%" />
+		<SkeletonBlock height="0.85rem" width="50%" />
 	</div>
+	<p class="visually-hidden" role="status">{m('profile.loadingShort')}</p>
 {/snippet}
 
 <div class="page">
@@ -687,13 +687,13 @@
 
 	{#if loading}
 		<div class="profile-head skel-head" aria-hidden="true">
-			<span class="skel skel-avatar-xl"></span>
+			<SkeletonBlock height="6rem" width="6rem" radius="50%" />
 			<div class="skel-info">
-				<span class="skel skel-line skel-w-50"></span>
-				<span class="skel skel-line skel-w-40"></span>
+				<SkeletonBlock height="0.85rem" width="50%" />
+				<SkeletonBlock height="0.85rem" width="40%" />
 			</div>
 		</div>
-		<p class="sr-only" role="status">{m('profile.loadingProfile')}</p>
+		<p class="visually-hidden" role="status">{m('profile.loadingProfile')}</p>
 	{:else if loadError !== null}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
@@ -1151,31 +1151,31 @@
 				<div class="feed" aria-hidden="true">
 					{#each Array(6) as _, i (i)}
 						<div class="skel-card">
-							<span class="skel skel-map"></span>
+							<SkeletonBlock height="9rem" radius="0" />
 							<div class="skel-card-body">
 								<div class="skel-card-top">
-									<span class="skel skel-line skel-w-40"></span>
-									<span class="skel skel-pill"></span>
+									<SkeletonBlock height="0.85rem" width="40%" />
+									<SkeletonBlock height="1rem" width="3.5rem" radius="9999px" />
 								</div>
 								<div class="skel-card-stats">
 									<div class="skel-card-stat">
-										<span class="skel skel-line skel-w-60"></span>
-										<span class="skel skel-line skel-w-30"></span>
+										<SkeletonBlock height="0.85rem" width="60%" />
+										<SkeletonBlock height="0.85rem" width="30%" />
 									</div>
 									<div class="skel-card-stat">
-										<span class="skel skel-line skel-w-50"></span>
-										<span class="skel skel-line skel-w-30"></span>
+										<SkeletonBlock height="0.85rem" width="50%" />
+										<SkeletonBlock height="0.85rem" width="30%" />
 									</div>
 									<div class="skel-card-stat">
-										<span class="skel skel-line skel-w-50"></span>
-										<span class="skel skel-line skel-w-30"></span>
+										<SkeletonBlock height="0.85rem" width="50%" />
+										<SkeletonBlock height="0.85rem" width="30%" />
 									</div>
 								</div>
 							</div>
 						</div>
 					{/each}
 				</div>
-				<p class="sr-only" role="status">{m('profile.loadingFeed')}</p>
+				<p class="visually-hidden" role="status">{m('profile.loadingFeed')}</p>
 			{:else if feedEntries.length === 0}
 				<div class="empty-card">
 					{#if !followsAnyone}
@@ -1673,8 +1673,6 @@
 		}
 	}
 
-
-
 	/* Empty-state card — same shape as /clubs, /routes, /runs. Card with
 	   icon (or brand mark) + h3 + explainer + CTA. */
 	.private-runs-note {
@@ -1970,30 +1968,9 @@
 		padding: var(--space-xl);
 	}
 
-	/* Skeletons — same shimmer language as /clubs, /runs, /routes. */
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-
+	/* Skeleton layout; the blocks are SkeletonBlock. */
 	.skel-head {
 		pointer-events: none;
-	}
-
-	.skel-avatar-xl {
-		width: 6rem;
-		height: 6rem;
-		border-radius: 50%;
-		flex-shrink: 0;
 	}
 
 	.skel-info {
@@ -2004,23 +1981,12 @@
 		min-width: 0;
 	}
 
-	.skel-line {
-		height: 0.85rem;
-	}
-
 	.skel-card {
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
 		overflow: hidden;
 		pointer-events: none;
-	}
-
-	.skel-map {
-		display: block;
-		height: 9rem;
-		width: 100%;
-		border-radius: 0;
 	}
 
 	.skel-card-body {
@@ -2037,13 +2003,6 @@
 		gap: 0.5rem;
 	}
 
-	.skel-pill {
-		display: block;
-		height: 1rem;
-		width: 3.5rem;
-		border-radius: 9999px;
-	}
-
 	.skel-card-stats {
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2055,32 +2014,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.35rem;
-	}
-
-	.skel-w-30 { width: 30%; }
-	.skel-w-40 { width: 40%; }
-	.skel-w-50 { width: 50%; }
-	.skel-w-60 { width: 60%; }
-
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 
 	.section-loading {

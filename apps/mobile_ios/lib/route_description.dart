@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import 'package:core_models/core_models.dart' show DistanceUnit, kMetresPerMile;
+
 import 'distance_bands.dart' show bandForDistance;
 import 'run_stats.dart' show haversineMetres;
 
@@ -152,25 +154,52 @@ const _elevationWord = <ElevationProfile, String>{
   ElevationProfile.mountainous: 'mountainous',
 };
 
+const double _metresPerFoot = 0.3048;
+
+/// Gain per mile in feet, from the unrounded totals rather than `gainPerKm`.
+int _feetPerMile(RouteDescriptionParts parts) {
+  if (parts.distanceM <= 0) return 0;
+  return (parts.elevationM / _metresPerFoot / (parts.distanceM / kMetresPerMile))
+      .round();
+}
+
 /// Canonical English assembler. Used to seed the LLM prompt (plain prose
 /// the model enhances) and as the literal fallback string in tests. The
 /// route-detail UI does NOT call this — it builds a localised, unit-aware
-/// sentence from [RouteDescriptionParts]. Distance is rendered in km here
-/// because this string is English-only by contract.
-String assembleEnglish(RouteDescriptionParts parts, String name) {
-  final km = (parts.distanceM / 1000)
-      .toStringAsFixed(parts.distanceM >= 1000 ? 1 : 2);
+/// sentence from [RouteDescriptionParts]. English-only by contract, but in
+/// the viewer's [unit]: a miles runner's prompt states miles and feet, so the
+/// model is never handed kilometres to repeat back to them.
+String assembleEnglish(RouteDescriptionParts parts, String name,
+    [DistanceUnit unit = DistanceUnit.km]) {
+  final mi = unit == DistanceUnit.mi;
+  final perUnitM = mi ? kMetresPerMile : 1000.0;
+  final distance = (parts.distanceM / perUnitM)
+      .toStringAsFixed(parts.distanceM >= perUnitM ? 1 : 2);
   final shape = _shapeWord[parts.shape];
   final surface =
       parts.surface != null ? '${_surfaceWord[parts.surface] ?? parts.surface} ' : '';
   final clauses = <String>[];
-  clauses.add('$name is a $km km $surface${shape} route');
+  clauses.add('$name is a $distance ${unit.name} $surface${shape} route');
   if (parts.elevationM > 0) {
-    clauses.add(
-      'with ${parts.elevationM.round()} m of climbing (${_elevationWord[parts.elevation]}, about ${parts.gainPerKm} m per km)',
-    );
+    final climb = mi
+        ? '${(parts.elevationM / _metresPerFoot).round()} ft of climbing (${_elevationWord[parts.elevation]}, about ${_feetPerMile(parts)} ft per mile)'
+        : '${parts.elevationM.round()} m of climbing (${_elevationWord[parts.elevation]}, about ${parts.gainPerKm} m per km)';
+    clauses.add('with $climb');
   } else {
     clauses.add('with little to no elevation change');
   }
   return '${clauses.join(' ')}.';
 }
+
+/// The text the route-detail screen shows once the enhancement endpoint has
+/// answered. Only a model-written paragraph ([source] `'ai'`) replaces the
+/// viewer's localised template: the server's own fallback is
+/// [assembleEnglish], which is English by contract, so taking it would hand a
+/// non-English viewer an English sentence in place of the one already
+/// rendered in their language.
+String shownDescription(
+  String localised, {
+  required String description,
+  required String source,
+}) =>
+    source == 'ai' ? description : localised;

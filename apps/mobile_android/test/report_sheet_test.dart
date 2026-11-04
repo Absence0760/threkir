@@ -184,6 +184,22 @@ void main() {
       expect(find.text('Report user'), findsOneWidget);
     });
 
+    testWidgets(
+        'any other Postgrest refusal shows the classified copy, not its text',
+        (tester) async {
+      final api = _FakeApiClient()
+        ..errorToThrow = const PostgrestException(
+          message: 'new row violates row-level security policy for "reports"',
+          code: 'P0001',
+        );
+      await _openSheet(tester, api);
+      await tester.tap(find.widgetWithText(FilledButton, 'Submit report'));
+      await tester.pumpAndSettle();
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(find.text(l10n.authErrorGeneric), findsOneWidget);
+      expect(find.textContaining('row-level security'), findsNothing);
+    });
+
     testWidgets('Cancel closes the sheet without an API call',
         (tester) async {
       final api = _FakeApiClient();

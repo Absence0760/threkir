@@ -15,7 +15,8 @@
 	import CookieConsentBanner from '#lib/components/CookieConsentBanner.svelte';
 	import ToastContainer from '#lib/components/ToastContainer.svelte';
 	import UndoBar from '#lib/components/UndoBar.svelte';
-	import { setUndoWindowS } from '#lib/stores/undo.svelte.ts';
+	import { setUndoOwner, setUndoWindowS, undoStore } from '#lib/stores/undo.svelte.ts';
+	import { dmPendingHides } from '#lib/stores/dm_pending_hides.svelte.ts';
 	import NotificationBell from '#lib/components/NotificationBell.svelte';
 	import { notificationStore } from '#lib/stores/notifications.svelte.ts';
 	import { dmUnreadStore, DM_UNREAD_POLL_MS } from '#lib/stores/dm_unread.svelte.ts';
@@ -186,14 +187,38 @@
 		};
 	});
 
+	// A delete still inside its undo window belongs to the account that made
+	// it. Our own Sign out commits it first (signOutWithScope); a session that
+	// ends or changes some other way (another tab) can no longer commit it as
+	// that account, so it is put back rather than run as nobody or as the next
+	// account. A commit already running when that happens is not stopped; if it
+	// fails, the queue sees the owner changed and only logs it. Keyed on the id
+	// alone: a refreshed user object is not a change. The queue is told a
+	// session ended only when it has (`null`); a live session whose profile is
+	// not loaded yet is `undefined`, so the same account's failure still
+	// restores and reports.
+	const undoOwnerId = $derived(auth.user?.id);
+	const undoSessionEnded = $derived(!auth.loading && !auth.loggedIn);
+	$effect(() => {
+		const uid = undoOwnerId;
+		return () => {
+			if (uid) undoStore.undo();
+		};
+	});
+	$effect(() => {
+		setUndoOwner(undoOwnerId ?? (undoSessionEnded ? null : undefined));
+	});
+
 	// Messages badge — the inbox has no Realtime channel, so it is read on
 	// auth-ready, on focus, and every minute while the tab is visible.
 	$effect(() => {
 		const uid = auth.user?.id;
 		if (!browser || !uid) {
 			dmUnreadStore.clear();
+			dmPendingHides.clear();
 			return;
 		}
+		dmUnreadStore.bind(uid);
 		dmUnreadStore.refresh();
 		const onFocus = () => dmUnreadStore.refresh();
 		window.addEventListener('focus', onFocus);

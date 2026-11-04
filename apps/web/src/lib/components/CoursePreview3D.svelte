@@ -26,11 +26,17 @@
 		pointAtDistance,
 		type PathPoint,
 	} from '#lib/routes/flyover_path.ts';
-	import { detectClimbs, elevationStrip, type Climb } from '#lib/routes/course_climbs.ts';
+	import {
+		courseReliefM,
+		detectClimbs,
+		elevationStrip,
+		type Climb,
+		type ClimbSource,
+	} from '#lib/routes/course_climbs.ts';
 	import {
 		FLYOVER_PITCH,
 		resolveTerrainSource,
-		TERRAIN_EXAGGERATION,
+		terrainExaggeration,
 		type TerrainSource,
 	} from '#lib/routes/terrain_source.ts';
 	import { flyoverVideoMaptilerKey } from '#lib/routes/flyover_video_flag.ts';
@@ -43,7 +49,25 @@
 	import { play, seek, tick, type Playback } from './course_preview/playback.ts';
 	import { distanceAtStripOffset, stripGeometry, stripX } from './course_preview/strip_geometry.ts';
 	import { addCourseLayers } from './course_preview/course_layers.ts';
+	import {
+		addCourseTerrain,
+		HILLSHADE_SOURCE_ID,
+		removeCourseTerrain,
+		TERRAIN_SOURCE_ID,
+	} from './course_preview/course_terrain.ts';
 	import { drawFlightFrame, flightCamera } from './course_preview/flight_frame.ts';
+	import {
+		finaleCamera,
+		finaleDurationMs,
+		finalePlan,
+		OVERVIEW_PADDING_PX,
+		OVERVIEW_PITCH,
+		overviewPose,
+		pathBounds,
+		type CameraPose,
+		type FinalePlan,
+	} from './course_preview/overview.ts';
+	import { motion } from '#lib/motion/motion.svelte.ts';
 	import type { VideoEncoderPlan } from '#lib/video/video_encoder.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { DEFAULT_SITE_URL } from '#lib/core/site_url.ts';
@@ -57,6 +81,9 @@
 		/// Elevation noise band for climb detection; a recorded run passes its
 		/// altitude source's `minDeltaM`. Omitted, climbs use the default band.
 		noiseBandM?: number;
+		/// A recorded run's altitude keeps the watch's noise-tolerant climb
+		/// rule; a route or race course is read by the planned rule.
+		climbSource: ClimbSource;
 		/// The line the video export records. It leaves the page, so it must be
 		/// a privacy-clipped source (`shareCardTrack`, `clip-public-track`,
 		/// `clip_route_for_viewer`); null means the clip cannot be made yet and
@@ -65,15 +92,28 @@
 		/// The end card's headline (the run's own distance and time, formatted
 		/// as the page formats them); the drawn line's length otherwise.
 		videoSummary?: string;
+		/// Ask for the per-view "Load preview" tap even when the cookie banner
+		/// was accepted, as `RunMap` does on the anonymous share pages.
+		requireExplicitConsent?: boolean;
 		onclose: () => void;
 	}
 
-	let { open, points, unit, title, climbNames, noiseBandM, videoSource, videoSummary, onclose }: Props =
-		$props();
+	let {
+		open,
+		points,
+		unit,
+		title,
+		climbNames,
+		noiseBandM,
+		climbSource,
+		videoSource,
+		videoSummary,
+		requireExplicitConsent = false,
+		onclose,
+	}: Props = $props();
 
 	const PUBLIC_MAPTILER_KEY = PUBLIC_MAPTILER_KEY_ENV ?? '';
 	const PUBLIC_TERRAIN_URL = PUBLIC_TERRAIN_URL_ENV ?? '';
-	const TERRAIN_SOURCE_ID = 'course-terrain';
 	const FLIGHT_ZOOM = 14;
 	const FLIGHT_VIEW = { pitch: FLYOVER_PITCH, zoom: FLIGHT_ZOOM };
 	const STRIP_SAMPLES = 240;
@@ -85,10 +125,11 @@
 
 	// Same gate as RunMap: tile and terrain hosts log the requester IP, so
 	// nothing is requested before consent is on record or the viewer taps
-	// Load. Re-read on every open so a banner accepted meanwhile counts.
-	let mapConsented = $state(untrack(() => hasAcceptedConsent()));
+	// Load. Re-read on every open so a banner accepted meanwhile counts,
+	// except where the caller asks for the tap regardless.
+	let mapConsented = $state(untrack(() => (requireExplicitConsent ? false : hasAcceptedConsent())));
 	$effect(() => {
-		if (open && hasAcceptedConsent()) mapConsented = true;
+		if (open && !requireExplicitConsent && hasAcceptedConsent()) mapConsented = true;
 	});
 
 	const prefersDark =
@@ -98,7 +139,7 @@
 	const path = $derived(buildFlyoverPath(points));
 	const hasPath = $derived(path.points.length >= 2 && path.totalM > 0);
 	const markers = $derived(hasPath ? distanceMarkers(path, unit) : []);
-	const climbs = $derived(hasPath ? detectClimbs(path, { names: climbNames, noiseBandM }) : []);
+	const climbs = $derived(hasPath ? detectClimbs(path, { source: climbSource, names: climbNames, noiseBandM }) : []);
 	const strip = $derived(hasPath ? elevationStrip(path, STRIP_SAMPLES) : []);
 	const geometry = $derived(stripGeometry(strip, climbs, path.totalM, STRIP_W, STRIP_H));
 	const hasElevation = $derived(geometry.line !== '');
@@ -115,6 +156,10 @@
 	let stopResizeWatch: (() => void) | null = null;
 	let raf = 0;
 	let lastTs: number | null = null;
+	// The ending's own clock: the overview ease and orbit after the finish.
+	let finaleRaf = 0;
+	let finale: { from: CameraPose; to: CameraPose; plan: FinalePlan; startTs: number | null } | null = null;
+	let atOverview = $state(false);
 
 	const here = $derived(hasPath ? pointAtDistance(path, playback.dM) : null);
 
@@ -181,7 +226,8 @@
 			mapFailed = true;
 		});
 		created.on('error', (e) => {
-			if ((e as { sourceId?: string }).sourceId === TERRAIN_SOURCE_ID) dropTerrain();
+			const sourceId = (e as { sourceId?: string }).sourceId;
+			if (sourceId === TERRAIN_SOURCE_ID || sourceId === HILLSHADE_SOURCE_ID) dropTerrain();
 		});
 		created.on('load', () => {
 			addTerrain(created);
@@ -198,6 +244,7 @@
 	function teardown() {
 		cancelVideo();
 		stopLoop();
+		stopFinale();
 		stopResizeWatch?.();
 		stopResizeWatch = null;
 		positionMarker?.remove();
@@ -207,20 +254,7 @@
 	}
 
 	function courseBounds(): [[number, number], [number, number]] {
-		let minLng = Infinity;
-		let minLat = Infinity;
-		let maxLng = -Infinity;
-		let maxLat = -Infinity;
-		for (const p of path.points) {
-			if (p.lng < minLng) minLng = p.lng;
-			if (p.lng > maxLng) maxLng = p.lng;
-			if (p.lat < minLat) minLat = p.lat;
-			if (p.lat > maxLat) maxLat = p.lat;
-		}
-		return [
-			[minLng, minLat],
-			[maxLng, maxLat],
-		];
+		return pathBounds(path);
 	}
 
 	// Terrain is an auxiliary layer: any failure to add it, or a tile error
@@ -232,15 +266,10 @@
 				maptilerKey: PUBLIC_MAPTILER_KEY,
 				override: PUBLIC_TERRAIN_URL,
 			});
-			target.addSource(TERRAIN_SOURCE_ID, {
-				type: 'raster-dem',
-				tiles: source.tiles,
-				encoding: source.encoding,
-				tileSize: source.tileSize,
-				maxzoom: source.maxzoom,
-				attribution: source.attribution,
+			addCourseTerrain(target, source, {
+				exaggeration: terrainExaggeration(courseReliefM(path)),
+				darkBasemap,
 			});
-			target.setTerrain({ source: TERRAIN_SOURCE_ID, exaggeration: TERRAIN_EXAGGERATION });
 		} catch (e) {
 			console.warn('course preview: terrain unavailable', e);
 			dropTerrain();
@@ -250,11 +279,7 @@
 	function dropTerrain() {
 		if (terrainFailed) return;
 		terrainFailed = true;
-		try {
-			map?.setTerrain(null);
-		} catch (e) {
-			console.warn('course preview: could not clear terrain', e);
-		}
+		if (map) removeCourseTerrain(map);
 	}
 
 	function frameCourse(target: maplibregl.Map) {
@@ -296,9 +321,78 @@
 		playback = tick(playback, elapsed, speed, path.totalM);
 		renderPosition(true);
 		if (playback.playing) raf = requestAnimationFrame(frame);
+		else if (playback.dM >= path.totalM) startFinale();
+	}
+
+	// Auxiliary to the flight: a failure here leaves the camera at the finish.
+	function startFinale() {
+		if (!map || !here) return;
+		try {
+			const fit = map.cameraForBounds(courseBounds(), {
+				padding: OVERVIEW_PADDING_PX,
+				bearing: 0,
+				pitch: OVERVIEW_PITCH,
+			});
+			if (!fit?.center || fit.zoom == null) return;
+			const c = maplibregl.LngLat.convert(fit.center);
+			finale = {
+				from: flightCamera(path, path.totalM, FLIGHT_VIEW),
+				to: overviewPose({ center: [c.lng, c.lat], zoom: fit.zoom }),
+				plan: finalePlan(motion.reduced),
+				startTs: null,
+			};
+			finaleRaf = requestAnimationFrame(finaleFrame);
+		} catch (e) {
+			console.warn('course preview: overview unavailable', e);
+			stopFinale();
+		}
+	}
+
+	function finaleFrame(ts: number) {
+		finaleRaf = 0;
+		const f = finale;
+		if (!f || !map) return;
+		f.startTs ??= ts;
+		const t = ts - f.startTs;
+		try {
+			map.jumpTo(finaleCamera(f.from, f.to, t, f.plan));
+			map.redraw();
+		} catch (e) {
+			console.warn('course preview: overview frame failed', e);
+			stopFinale();
+			return;
+		}
+		if (t >= finaleDurationMs(f.plan)) {
+			finale = null;
+			atOverview = true;
+			return;
+		}
+		finaleRaf = requestAnimationFrame(finaleFrame);
+	}
+
+	// A hidden tab or a close mid-ending lands on the ending's last pose
+	// rather than freezing half way out.
+	function settleFinale() {
+		const f = finale;
+		if (!f) return;
+		stopFinale();
+		try {
+			map?.jumpTo(finaleCamera(f.from, f.to, finaleDurationMs(f.plan), f.plan));
+			atOverview = true;
+		} catch (e) {
+			console.warn('course preview: overview frame failed', e);
+		}
+	}
+
+	function stopFinale() {
+		if (finaleRaf) cancelAnimationFrame(finaleRaf);
+		finaleRaf = 0;
+		finale = null;
+		atOverview = false;
 	}
 
 	function startLoop() {
+		stopFinale();
 		if (raf) return;
 		lastTs = null;
 		raf = requestAnimationFrame(frame);
@@ -312,6 +406,7 @@
 
 	function pause() {
 		stopLoop();
+		settleFinale();
 		playback = { ...playback, playing: false };
 	}
 
@@ -326,6 +421,7 @@
 
 	function seekTo(dM: number) {
 		stopLoop();
+		stopFinale();
 		playback = seek(dM, path.totalM);
 		renderPosition();
 	}
@@ -395,7 +491,11 @@
 				video = { step: 'idle' };
 				return;
 			}
-			const vClimbs = detectClimbs(vPath, { names: climbNames, noiseBandM: source.noiseBandM ?? noiseBandM });
+			const vClimbs = detectClimbs(vPath, {
+				source: climbSource,
+				names: climbNames,
+				noiseBandM: source.noiseBandM ?? noiseBandM,
+			});
 			const { renderFlyoverVideo } = await import('./course_preview/flyover_video_export.ts');
 			const blob = await renderFlyoverVideo({
 				path: vPath,
@@ -404,6 +504,7 @@
 				strip: elevationStrip(vPath, STRIP_SAMPLES),
 				maptilerKey: videoKey,
 				terrain: videoTerrain(),
+				exaggeration: terrainExaggeration(courseReliefM(vPath)),
 				text: {
 					title,
 					distanceAt: (dM) => formatDistance(dM),
@@ -466,7 +567,7 @@
 	fullscreen
 	data-testid="course-preview-3d"
 >
-	<div class="preview" data-flyover-mode={mode}>
+	<div class="preview" data-flyover-mode={mode} data-flyover-overview={atOverview ? '' : undefined}>
 		{#if !hasPath}
 			<p class="preview-empty">{m('coursePreview.noTrack')}</p>
 		{:else if !mapConsented}

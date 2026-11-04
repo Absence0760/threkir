@@ -93,7 +93,7 @@ void main() {
     );
   });
 
-  test('any other refusal stays an Exception with the raise text', () async {
+  test('any other refusal stays the PostgrestException', () async {
     fake.status = 400;
     fake.bodyByPath['/rpc/assign_plan_to_athlete'] = {
       'code': 'P0001',
@@ -101,9 +101,8 @@ void main() {
     };
     await expectLater(
       assign(),
-      throwsA(isA<Exception>()
-          .having((e) => e, 'type', isNot(isA<PlanAssignOverlapException>()))
-          .having((e) => '$e', 'text', contains('not an active coach'))),
+      throwsA(isA<PostgrestException>()
+          .having((e) => e.code, 'code', 'P0001')),
     );
   });
 

@@ -1,12 +1,12 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../auth_error.dart';
 import '../geocoding.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../privacy.dart';
@@ -124,8 +124,9 @@ class _PrivacyZonesScreenState extends State<PrivacyZonesScreen> {
       _dirty = false;
       showTopBanner(context, l10n.privacyZonesSaved);
     } catch (e) {
+      debugPrint('[PrivacyZonesScreen] save failed: $e');
       if (!mounted) return;
-      showTopBanner(context, l10n.privacyZonesSaveFailed(e));
+      showTopBanner(context, l10n.privacyZonesSaveFailed(friendlyError(l10n, e)));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -244,7 +245,7 @@ class _PrivacyZonesScreenState extends State<PrivacyZonesScreen> {
     try {
       final pos = widget.locateFn != null
           ? await widget.locateFn!()
-          : await _platformLocate();
+          : await locateForBrowse();
       if (!mounted) return;
       final ll = LatLng(pos.latitude, pos.longitude);
       _centeredOnce = true;
@@ -254,24 +255,10 @@ class _PrivacyZonesScreenState extends State<PrivacyZonesScreen> {
       if (!mounted) return;
       showTopBanner(
         context,
-        AppLocalizations.of(context).privacyZonesLocationUnavailable(e),
+        AppLocalizations.of(context).privacyZonesLocationUnavailable(
+            browseLocateErrorText(AppLocalizations.of(context), e)),
       );
     }
-  }
-
-  Future<Position> _platformLocate() async {
-    if (kIsWeb) throw UnsupportedError('Locate unavailable on web');
-    final perm = await Geolocator.checkPermission();
-    if (perm == LocationPermission.denied) {
-      final asked = await Geolocator.requestPermission();
-      if (asked == LocationPermission.denied ||
-          asked == LocationPermission.deniedForever) {
-        throw StateError('Location permission denied');
-      }
-    } else if (perm == LocationPermission.deniedForever) {
-      throw StateError('Location permission denied forever');
-    }
-    return Geolocator.getCurrentPosition();
   }
 
   // ── Place search ─────────────────────────────────────────────────────

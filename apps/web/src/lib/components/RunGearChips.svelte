@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { fetchRunGear, fetchMyGear, setRunGear, type Gear, type GearWithDistance } from '#lib/core/data.ts';
 	import Modal from '#lib/components/Modal.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	interface Props {
 		runId: string;
@@ -42,7 +42,7 @@
 			assigned = await fetchRunGear(runId);
 			editing = false;
 		} catch (e) {
-			showToast(m('runGearChips.saveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('runGearChips.saveFailed', { error: errorCopy(e, m, 'runGearChips.saveFailed') }), 'error');
 		} finally {
 			saving = false;
 		}

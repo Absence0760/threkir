@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
-	import { appErrorMessage, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { clubRoleLabel, joinPolicyLabel, routeSurfaceLabel, rsvpStatusLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import { onMount, onDestroy } from 'svelte';
 	import { handleTablistKeydown } from '#lib/util/tablist.ts';
@@ -94,7 +95,7 @@
 	let pendingError = $state<string | null>(null);
 	let pendingRetrying = $state(false);
 	let loading = $state(true);
-	let loadError = $state<string | null>(null);
+	let loadError = $state<Error | null>(null);
 	type Tab = 'feed' | 'events' | 'routes' | 'templates' | 'photos' | 'members';
 	const TABS: readonly Tab[] = ['feed', 'events', 'routes', 'templates', 'photos', 'members'];
 	let tab = $state<Tab>('feed');
@@ -254,7 +255,7 @@
 			pendingError = null;
 			return rows;
 		} catch (e) {
-			pendingError = thrownMessage(e);
+			pendingError = errorCopy(e, tr, 'clubs/[slug]: pendingError');
 			return [];
 		}
 	}
@@ -281,7 +282,7 @@
 			membersNext = more.next;
 			membersHasMore = more.next !== null;
 		} catch (e) {
-			showToast(tr('profile.loadMoreError', { error: thrownMessage(e) }), 'error');
+			showToast(tr('profile.loadMoreError', { error: errorCopy(e, tr, 'profile.loadMoreError') }), 'error');
 		} finally {
 			membersLoadingMore = false;
 		}
@@ -296,7 +297,7 @@
 			goto(`/gym/routines/${newId}`);
 		} catch (e) {
 			showToast(
-				tr('clubHome.toastFailed', { error: thrownMessage(e) }),
+				tr('clubHome.toastFailed', { error: errorCopy(e, tr, 'clubHome.toastFailed') }),
 				'error'
 			);
 		} finally {
@@ -312,7 +313,7 @@
 			showToast(tr('clubHome.sessionAdopted'));
 		} catch (e) {
 			showToast(
-				tr('clubHome.toastFailed', { error: thrownMessage(e) }),
+				tr('clubHome.toastFailed', { error: errorCopy(e, tr, 'clubHome.toastFailed') }),
 				'error'
 			);
 		} finally {
@@ -333,7 +334,7 @@
 			showToast(tr('clubHome.toastTemplateRemoved'), 'success');
 			await load();
 		} catch (e) {
-			showToast(tr('clubHome.toastFailed', { error: thrownMessage(e) }), 'error');
+			showToast(tr('clubHome.toastFailed', { error: errorCopy(e, tr, 'clubHome.toastFailed') }), 'error');
 		} finally {
 			unpublishBusyId = null;
 		}
@@ -355,7 +356,7 @@
 			showToast(tr('clubHome.toastRouteTransferred'));
 			await load();
 		} catch (e) {
-			showToast(tr('clubHome.toastRouteTransferFailed', { error: thrownMessage(e) }), 'error');
+			showToast(tr('clubHome.toastRouteTransferFailed', { error: errorCopy(e, tr, 'clubHome.toastRouteTransferFailed') }), 'error');
 		}
 	}
 
@@ -371,7 +372,7 @@
 			showToast(tr('clubHome.toastRouteReturned'));
 			await load();
 		} catch (e) {
-			showToast(tr('clubHome.toastRouteRemoveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(tr('clubHome.toastRouteRemoveFailed', { error: errorCopy(e, tr, 'clubHome.toastRouteRemoveFailed') }), 'error');
 		}
 	}
 
@@ -572,7 +573,7 @@
 			}
 			await load();
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? tr('clubHome.failedToJoin');
+			error = errorCopy(e, tr, 'clubHome.failedToJoin', 'clubHome.failedToJoin');
 		} finally {
 			joinBusy = false;
 		}
@@ -591,7 +592,7 @@
 			await leaveClub(club.id);
 			await load();
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? tr('clubHome.failedToLeave');
+			error = errorCopy(e, tr, 'clubHome.failedToLeave', 'clubHome.failedToLeave');
 		} finally {
 			joinBusy = false;
 		}
@@ -605,7 +606,7 @@
 			await approveMember(club.id, userId);
 			await load();
 		} catch (e: unknown) {
-			showToast(tr('clubHome.toastApproveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(tr('clubHome.toastApproveFailed', { error: errorCopy(e, tr, 'clubHome.toastApproveFailed') }), 'error');
 		} finally {
 			const next = new Set(pendingBusy);
 			next.delete(userId);
@@ -625,7 +626,7 @@
 			await load();
 			showToast(tr('clubHome.toastApprovedAll'));
 		} catch (e: unknown) {
-			showToast(tr('clubHome.toastApproveAllFailed', { error: thrownMessage(e) }), 'error');
+			showToast(tr('clubHome.toastApproveAllFailed', { error: errorCopy(e, tr, 'clubHome.toastApproveAllFailed') }), 'error');
 		} finally {
 			approvingAll = false;
 		}
@@ -640,7 +641,7 @@
 			await rejectMember(club.id, userId);
 			await load();
 		} catch (e: unknown) {
-			showToast(tr('clubHome.toastRejectFailed', { error: thrownMessage(e) }), 'error');
+			showToast(tr('clubHome.toastRejectFailed', { error: errorCopy(e, tr, 'clubHome.toastRejectFailed') }), 'error');
 		} finally {
 			const next = new Set(pendingBusy);
 			next.delete(userId);
@@ -656,7 +657,7 @@
 			await removeMember(club.id, userId);
 			await load();
 		} catch (e) {
-			showToast(tr('clubHome.toastRemoveMemberFailed', { error: thrownMessage(e) }), 'error');
+			showToast(tr('clubHome.toastRemoveMemberFailed', { error: errorCopy(e, tr, 'clubHome.toastRemoveMemberFailed') }), 'error');
 		}
 	}
 
@@ -680,7 +681,7 @@
 			club = { ...club, invite_token: token };
 		} catch (e) {
 			showToast(
-				tr('clubHome.regenerateFailed', { error: thrownMessage(e) }),
+				tr('clubHome.regenerateFailed', { error: errorCopy(e, tr, 'clubHome.regenerateFailed') }),
 				'error'
 			);
 		}
@@ -696,7 +697,7 @@
 			expandedThreads = { ...expandedThreads, [postId]: replies };
 		} catch (e) {
 			showToast(
-				tr('clubHome.repliesLoadFailed', { error: thrownMessage(e) }),
+				tr('clubHome.repliesLoadFailed', { error: errorCopy(e, tr, 'clubHome.repliesLoadFailed') }),
 				'error'
 			);
 		}
@@ -718,7 +719,7 @@
 			// The draft is only cleared once the write lands, so it is still
 			// in the box to send again.
 			showToast(
-				tr('clubHome.replyFailed', { error: thrownMessage(e) }),
+				tr('clubHome.replyFailed', { error: errorCopy(e, tr, 'clubHome.replyFailed') }),
 				'error'
 			);
 		} finally {
@@ -735,7 +736,7 @@
 			draftPost = '';
 			posts = await fetchClubPosts(club.id, 20);
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? tr('clubHome.failedToPost');
+			error = errorCopy(e, tr, 'clubHome.failedToPost', 'clubHome.failedToPost');
 		} finally {
 			postingBusy = false;
 		}
@@ -755,7 +756,7 @@
 			posts = await fetchClubPosts(club.id, 20);
 		} catch (e) {
 			showToast(
-				tr('clubHome.deletePostFailed', { error: thrownMessage(e) }),
+				tr('clubHome.deletePostFailed', { error: errorCopy(e, tr, 'clubHome.deletePostFailed') }),
 				'error'
 			);
 		}
@@ -777,7 +778,7 @@
 				return;
 			}
 			showToast(
-				tr('clubHome.deleteClubFailed', { error: thrownMessage(e) }),
+				tr('clubHome.deleteClubFailed', { error: errorCopy(e, tr, 'clubHome.deleteClubFailed') }),
 				'error'
 			);
 			return;
@@ -833,35 +834,35 @@
 			{tr('clubHome.allClubs')}
 		</span>
 		<div class="hero skel-hero" aria-hidden="true">
-			<span class="skel skel-avatar-lg"></span>
+			<SkeletonBlock height="4.5rem" width="4.5rem" radius="50%" />
 			<div class="skel-hero-text">
-				<span class="skel skel-line skel-w-40"></span>
-				<span class="skel skel-line skel-w-30"></span>
-				<span class="skel skel-line skel-w-80"></span>
+				<SkeletonBlock height="0.75rem" width="40%" />
+				<SkeletonBlock height="0.75rem" width="30%" />
+				<SkeletonBlock height="0.75rem" width="80%" />
 			</div>
 		</div>
 		<div class="tabs-skel" aria-hidden="true">
 			{#each Array(5) as _, i (i)}
-				<span class="skel skel-line skel-tab"></span>
+				<SkeletonBlock height="0.9rem" width="4rem" />
 			{/each}
 		</div>
 		<div class="feed-skel" aria-hidden="true">
 			{#each Array(3) as _, i (i)}
 				<div class="skel-post">
 					<div class="skel-post-head">
-						<span class="skel skel-avatar"></span>
+						<SkeletonBlock height="2.1rem" width="2.1rem" radius="50%" />
 						<div class="skel-post-meta">
-							<span class="skel skel-line skel-w-30"></span>
-							<span class="skel skel-line skel-w-20"></span>
+							<SkeletonBlock height="0.75rem" width="30%" />
+							<SkeletonBlock height="0.75rem" width="20%" />
 						</div>
 					</div>
-					<span class="skel skel-line skel-w-80"></span>
-					<span class="skel skel-line skel-w-60"></span>
+					<SkeletonBlock height="0.75rem" width="80%" />
+					<SkeletonBlock height="0.75rem" width="60%" />
 				</div>
 			{/each}
 		</div>
 	</div>
-	<p class="sr-only" role="status">{tr('clubHome.loadingClub')}</p>
+	<p class="visually-hidden" role="status">{tr('clubHome.loadingClub')}</p>
 {:else if loadError}
 	<div class="not-found" role="alert" data-testid="club-load-error">
 		<h2>{tr('clubHome.loadErrorTitle')}</h2>
@@ -1686,7 +1687,7 @@
 												m.role = newRole;
 											} catch (err) {
 												target.value = m.role;
-												showToast(tr('clubHome.toastRoleChangeFailed', { error: thrownMessage(err) }), 'error');
+												showToast(tr('clubHome.toastRoleChangeFailed', { error: errorCopy(err, tr, 'clubHome.toastRoleChangeFailed') }), 'error');
 											}
 										}}
 									>
@@ -1932,8 +1933,6 @@
 		border-radius: var(--radius-lg);
 		margin-bottom: var(--space-lg);
 	}
-
-
 
 	.hero-logo {
 		display: flex;
@@ -2770,7 +2769,7 @@
 		text-transform: capitalize;
 	}
 
-	/* Skeleton — same shimmer language as /clubs + /routes. The hero / tab
+	/* Skeleton layout for SkeletonBlock. The hero / tab
 	   / feed scaffold lands at the real layout's height so the data swap
 	   doesn't shift the page. */
 	.back-skel {
@@ -2782,26 +2781,8 @@
 		margin-bottom: var(--space-md);
 		opacity: 0.5;
 	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
 	.skel-hero {
 		grid-template-columns: auto 1fr;
-	}
-	.skel-avatar-lg {
-		width: 4.5rem;
-		height: 4.5rem;
-		border-radius: 50%;
 	}
 	.skel-hero-text {
 		display: flex;
@@ -2809,30 +2790,12 @@
 		gap: 0.5rem;
 		justify-content: center;
 	}
-	.skel-avatar {
-		width: 2.1rem;
-		height: 2.1rem;
-		border-radius: 50%;
-		flex-shrink: 0;
-	}
-	.skel-line {
-		height: 0.75rem;
-	}
-	.skel-w-20 { width: 20%; }
-	.skel-w-30 { width: 30%; }
-	.skel-w-40 { width: 40%; }
-	.skel-w-60 { width: 60%; }
-	.skel-w-80 { width: 80%; }
 	.tabs-skel {
 		display: flex;
 		gap: 1.5rem;
 		margin-bottom: var(--space-md);
 		padding-bottom: 0.7rem;
 		border-bottom: 1px solid var(--color-border);
-	}
-	.skel-tab {
-		width: 4rem;
-		height: 0.9rem;
 	}
 	.feed-skel {
 		display: flex;
@@ -2859,25 +2822,6 @@
 		flex-direction: column;
 		gap: 0.35rem;
 		flex: 1;
-	}
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
 	}
 
 	/* <=50rem (small tablet / large phone). Stack hero action column

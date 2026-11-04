@@ -6,15 +6,18 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, ProgressBar;
 
+import '../auth_error.dart';
 import '../backup.dart';
 import '../cross_source_dedup.dart';
 import '../csv_run_importer.dart';
 import '../health_connect_importer.dart';
 import '../import_failures.dart';
+import '../import_refusal.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
 import '../preferences.dart';
+import '../restore_warning.dart';
 import '../settings_sync.dart';
 import '../strava_importer.dart';
 import '../widgets/import_failure_report.dart';
@@ -107,7 +110,7 @@ class _ImportScreenState extends State<ImportScreen> {
   int _total = 0;
   // Warnings from the backup-ZIP restore, which reports whole-archive
   // problems rather than per-activity ones.
-  List<String> _errors = [];
+  List<RestoreWarning> _errors = [];
   ImportFailureLog _failures = newImportFailureLog();
   String _failureProvider = '';
   // How many runs of the last import are on this device and not on the
@@ -196,10 +199,15 @@ class _ImportScreenState extends State<ImportScreen> {
       if (!mounted) return;
       setState(() => _withheldRouteIds = imported.withheldSessionIds);
     } catch (e) {
+      debugPrint('[ImportScreen] health import failed: $e');
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _status = l10n.importHealthFailed(_healthLabel(l10n), e);
+        // Health Connect hands back records, not a file the runner picked, so
+        // a FormatException here is ours: importErrorText would call it an
+        // unreadable file.
+        _status = l10n.importHealthFailed(
+            _healthLabel(l10n), friendlyError(l10n, e));
       });
     }
   }
@@ -243,11 +251,13 @@ class _ImportScreenState extends State<ImportScreen> {
         _status = l10n.importHealthRoutesAdded(backfill.filled);
       });
     } catch (e) {
+      debugPrint('[ImportScreen] health import failed: $e');
       if (!mounted) return;
       setState(() {
         _busy = false;
         _withheldRouteIds = const {};
-        _status = l10n.importHealthFailed(_healthLabel(l10n), e);
+        _status = l10n.importHealthFailed(
+            _healthLabel(l10n), friendlyError(l10n, e));
       });
     }
   }
@@ -499,10 +509,11 @@ class _ImportScreenState extends State<ImportScreen> {
         failures: parsed.failures,
       );
     } catch (e) {
+      debugPrint('[ImportScreen] CSV import failed: $e');
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _status = l10n.importCsvFailed(e);
+        _status = l10n.importCsvFailed(importErrorText(l10n, e));
       });
     }
   }
@@ -542,10 +553,11 @@ class _ImportScreenState extends State<ImportScreen> {
         _errors = res.warnings;
       });
     } catch (e) {
+      debugPrint('[ImportScreen] backup restore failed: $e');
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _status = l10n.importBackupFailed(e);
+        _status = l10n.importBackupFailed(importErrorText(l10n, e));
       });
     }
   }
@@ -580,10 +592,11 @@ class _ImportScreenState extends State<ImportScreen> {
         failures: parsed.failures,
       );
     } catch (e) {
+      debugPrint('[ImportScreen] Strava import failed: $e');
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _status = l10n.importStravaFailed(e);
+        _status = l10n.importStravaFailed(importErrorText(l10n, e));
       });
     }
   }
@@ -908,9 +921,9 @@ class _ImportScreenState extends State<ImportScreen> {
                             fontWeight: FontWeight.w600,
                           )),
                       const SizedBox(height: 4),
-                      ..._errors.take(10).map((e) => Padding(
+                      ..._errors.take(10).map((w) => Padding(
                             padding: const EdgeInsets.symmetric(vertical: 2),
-                            child: Text(e,
+                            child: Text(restoreWarningText(l10n, w),
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.error,
                                 )),

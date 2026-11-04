@@ -15,6 +15,7 @@
 
 import JSZip from 'jszip';
 import type { JsonObject } from '../types';
+import { AppError } from '../core/app_error';
 
 import { BACKUP_FORMAT, BACKUP_VERSION } from './backup_writer';
 
@@ -49,11 +50,15 @@ export async function parseBackupArchive(
 
 	const manifestFile = zip.file('manifest.json');
 	if (!manifestFile) {
-		throw new Error('Not a valid backup — missing manifest.json');
+		throw new AppError('settingsAccount.restoreMissingManifest', {
+			message: 'Not a valid backup — missing manifest.json'
+		});
 	}
 	const rawManifest: unknown = JSON.parse(await manifestFile.async('string'));
 	if (!isPlainObject(rawManifest)) {
-		throw new Error('Not a valid backup — manifest.json is not an object');
+		throw new AppError('settingsAccount.restoreBadManifest', {
+			message: 'Not a valid backup — manifest.json is not an object'
+		});
 	}
 	const manifest = rawManifest as {
 		format?: unknown;
@@ -61,13 +66,18 @@ export async function parseBackupArchive(
 		[k: string]: unknown;
 	};
 	if (manifest.format !== BACKUP_FORMAT) {
-		throw new Error(`Unexpected format: ${String(manifest.format)}`);
+		const format = String(manifest.format).slice(0, 40);
+		throw new AppError('settingsAccount.restoreUnexpectedFormat', {
+			params: { format },
+			message: `Unexpected format: ${format}`
+		});
 	}
 	const version = typeof manifest.version === 'number' ? manifest.version : 0;
 	if (version > BACKUP_VERSION) {
-		throw new Error(
-			`Backup is from a newer version (${version}). Update the app before restoring.`
-		);
+		throw new AppError('settingsAccount.restoreTooNew', {
+			params: { version },
+			message: `Backup is from a newer version (${version}). Update the app before restoring.`
+		});
 	}
 
 	const runs = await readRowList(zip, 'runs.json');
@@ -121,7 +131,10 @@ async function readRowList(zip: JSZip, name: string): Promise<JsonObject[]> {
 	if (!file) return [];
 	const parsed: unknown = JSON.parse(await file.async('string'));
 	if (!Array.isArray(parsed)) {
-		throw new Error(`Not a valid backup — ${name} is not a list`);
+		throw new AppError('settingsAccount.restoreSectionNotList', {
+			params: { name },
+			message: `Not a valid backup — ${name} is not a list`
+		});
 	}
 	return parsed as JsonObject[];
 }

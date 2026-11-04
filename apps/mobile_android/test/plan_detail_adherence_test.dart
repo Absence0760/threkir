@@ -2,11 +2,13 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show FullBodyLoader, TextLane;
+import 'package:ui_kit/ui_kit.dart' show TextLane;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/social_service.dart';
+import '../lib/training.dart' show fmtKm;
 import '../lib/training_service.dart';
+import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
 
 const _uid = 'owner-uuid';
@@ -77,9 +79,13 @@ class _FakeTraining extends TrainingService {
 
 class _FakeSocial extends SocialService {
   final List<RecentRunRow> runs;
-  _FakeSocial(this.runs);
+  final Object? error;
+  _FakeSocial(this.runs, {this.error});
   @override
-  Future<List<RecentRunRow>> fetchRecentRuns({int limit = 20}) async => runs;
+  Future<List<RecentRunRow>> fetchRecentRuns({int limit = 20}) async {
+    if (error != null) throw error!;
+    return runs;
+  }
 }
 
 TrainingPlanRow _plan(DateTime start) => TrainingPlanRow(
@@ -141,7 +147,7 @@ Future<void> _pump(
   );
   // _load's plan fetch is async; the trailing pump lands the setState that
   // _loadRecentRuns — kicked off once the plan is in — resolves into.
-  await pumpUntil(tester, () => !tester.any(find.byType(FullBodyLoader)),
+  await pumpUntil(tester, () => !tester.any(find.byType(SectionedDetailSkeleton)),
       describe: 'the plan fetch to replace the full-body loader');
   await tester.pump();
 }
@@ -170,6 +176,22 @@ void main() {
       expect(find.textContaining('So far this week you'), findsOneWidget);
       expect(find.textContaining('10.0 km'), findsOneWidget);
       expect(find.textContaining('under plan'), findsNothing);
+    });
+
+    // A failed read used to leave the empty list behind, read as "ran
+    // nothing": "0.0 km of the 8.0 km due". Unknown runs flag nothing.
+    testWidgets('flags nothing when the recent runs failed to load',
+        (tester) async {
+      final start = _mondayThisWeek();
+      final training = _FakeTraining(
+        _plan(start),
+        [_week('w0', 0, 'build', 40000)],
+        [_wo('wo0', 'w0', start.add(const Duration(days: 1)), 'easy', 8000)],
+      );
+      await _pump(tester,
+          training: training,
+          social: _FakeSocial(const [], error: Exception('offline')));
+      expect(find.textContaining('So far this week you'), findsNothing);
     });
 
     testWidgets('surfaces make-up advice for a missed long run', (tester) async {
@@ -420,7 +442,12 @@ void main() {
       );
       final social = _FakeSocial(const []);
       await _pump(tester, training: training, social: social);
-      expect(find.textContaining('Longest long run'), findsOneWidget);
+      // One localized line, colon included: the label used to be built as
+      // `'$label: '` beside a second Text, so French lost its space before
+      // the colon and the reading order was fixed in code.
+      final en = lookupAppLocalizations(const Locale('en'));
+      expect(find.text(en.planDetailLongestLongRun(fmtKm(28000))),
+          findsOneWidget);
     });
 
     testWidgets('hides the progress section with no completed long run',

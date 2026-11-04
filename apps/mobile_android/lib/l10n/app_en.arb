@@ -377,6 +377,38 @@
       }
     }
   },
+  "importFileUnreadable": "This file isn't in the expected format.",
+  "@importFileUnreadable": {
+    "description": "Error detail inside an import-failed status when the chosen file is not in the format the importer expects"
+  },
+  "importRefusedTooLarge": "This file is {sizeMb} MB, over the {limitMb} MB limit. Split it into smaller exports and import each one.",
+  "@importRefusedTooLarge": {
+    "description": "Error detail inside an import-failed status when the chosen file is over the importer's size limit",
+    "placeholders": {
+      "sizeMb": {
+        "type": "int"
+      },
+      "limitMb": {
+        "type": "int"
+      }
+    }
+  },
+  "importRefusedNotStravaExport": "This isn't a Strava export: there's no activities.csv inside it.",
+  "@importRefusedNotStravaExport": {
+    "description": "Error detail inside an import-failed status when the chosen ZIP has no activities.csv, so it is not a Strava account export"
+  },
+  "importRefusedColumnsMissing": "The activity list in this export is missing the columns it needs.",
+  "@importRefusedColumnsMissing": {
+    "description": "Error detail inside an import-failed status when the export's activity list lacks the columns the importer needs"
+  },
+  "importRefusedNotBackup": "This isn't a backup made by this app.",
+  "@importRefusedNotBackup": {
+    "description": "Error detail inside a restore-failed status when the chosen ZIP is not a backup written by this app"
+  },
+  "importRefusedBackupTooNew": "This backup was made by a newer version of the app. Update the app, then restore it.",
+  "@importRefusedBackupTooNew": {
+    "description": "Error detail inside a restore-failed status when the backup was written by a newer app version than this one"
+  },
   "importStatusRestoringBackup": "Restoring backup...",
   "@importStatusRestoringBackup": {
     "description": "Status while restoring from a full-backup ZIP"
@@ -503,6 +535,130 @@
         "type": "Object"
       }
     }
+  },
+  "importRestoreWarnOffline": "Restored offline: runs are saved on this device and will sync once you sign in. Profile and settings were skipped.",
+  "@importRestoreWarnOffline": {
+    "description": "Backup-restore warning: the restore ran without a session"
+  },
+  "importRestoreWarnArchiveIncomplete": "This backup says it was incomplete when it was made. Nothing was overwritten — restore from a complete backup to fill the gaps.",
+  "@importRestoreWarnArchiveIncomplete": {
+    "description": "Backup-restore warning: the archive's manifest says it was short of the account"
+  },
+  "importRestoreWarnProfile": "Profile and settings weren't restored: {error}",
+  "@importRestoreWarnProfile": {
+    "description": "Backup-restore warning: the profile or settings failed to save",
+    "placeholders": {
+      "error": {
+        "type": "String",
+        "example": "Something went wrong."
+      }
+    }
+  },
+  "importRestoreWarnRunNoId": "Run #{index} in the backup has no ID and was skipped.",
+  "@importRestoreWarnRunNoId": {
+    "description": "Backup-restore warning: a run row had no id. index is 1-based",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "importRestoreWarnRouteNoId": "Route #{index} in the backup has no ID and was skipped.",
+  "@importRestoreWarnRouteNoId": {
+    "description": "Backup-restore warning: a route row had no id. index is 1-based",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "importRestoreWarnRunPresent": "Run {id} is already on this device and was skipped.",
+  "@importRestoreWarnRunPresent": {
+    "description": "Backup-restore warning: the run is already on this device",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "importRestoreWarnTrack": "The GPS track for run {id} wasn't restored: {error}",
+  "@importRestoreWarnTrack": {
+    "description": "Backup-restore warning: a run's GPS track failed to upload",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "importRestoreWarnHeartRate": "The heart-rate data for run {id} wasn't restored: {error}",
+  "@importRestoreWarnHeartRate": {
+    "description": "Backup-restore warning: a run's heart-rate data failed to upload",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "importRestoreWarnRun": "Run {id} wasn't restored: {error}",
+  "@importRestoreWarnRun": {
+    "description": "Backup-restore warning: a run failed to save",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "importRestoreWarnRoute": "Route {id} wasn't restored: {error}",
+  "@importRestoreWarnRoute": {
+    "description": "Backup-restore warning: a route failed to save",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "importRestoreWarnGym": "Gym workouts weren't restored: {error}",
+  "@importRestoreWarnGym": {
+    "description": "Backup-restore warning: gym workouts failed to restore",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "importRestoreWarnFood": "The food log wasn't restored: {error}",
+  "@importRestoreWarnFood": {
+    "description": "Backup-restore warning: the food log failed to restore",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "importRestoreWarnColumnsDropped": "Skipped fields this version of the app doesn't use: {names}",
+  "@importRestoreWarnColumnsDropped": {
+    "description": "Backup-restore warning: the archive carried columns this build does not know; names is a comma-separated list of column names",
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "importRestoreWarnRunsSkipped": "Runs weren't restored: this device's run storage isn't available.",
+  "@importRestoreWarnRunsSkipped": {
+    "description": "Backup-restore warning: no run store was available"
   },
   "importFailuresHeading": "{count, plural, one{1 activity didn't import} other{{count} activities didn't import}}",
   "@importFailuresHeading": {
@@ -4391,6 +4547,10 @@
   "@routesSyncFailedOffline": {
     "description": "Banner shown when the initial route sync fails and the app falls back to the cached list"
   },
+  "routesBookmarksLoadFailed": "Could not load your bookmarked routes",
+  "@routesBookmarksLoadFailed": {
+    "description": "Banner shown on the Routes list when the routes the runner bookmarked from others could not be loaded; their own routes still show"
+  },
   "routesLoadMoreFailed": "Could not load more routes",
   "@routesLoadMoreFailed": {
     "description": "Banner shown when loading the next page of routes fails"
@@ -5626,6 +5786,117 @@
       }
     }
   },
+  "routeDetailDeleteImpactUnknown": "We couldn't check what else uses this route.",
+  "@routeDetailDeleteImpactUnknown": {
+    "description": "Line in the route delete confirm when the dependents count failed to load"
+  },
+  "routeDetailDeleteNotAllowed": "Only the route's owner can delete it.",
+  "@routeDetailDeleteNotAllowed": {
+    "description": "Banner when the server refused a route delete because the caller does not own it"
+  },
+  "routeDetailDeleteImpactPublic": "It is public, so other runners can find and follow it.",
+  "@routeDetailDeleteImpactPublic": {
+    "description": "Line in the route delete confirm naming what depends on the route"
+  },
+  "routeDetailDeleteImpactRaceListings": "{count, plural, one {{count} race listing uses it as its course and will lose the course.} other {{count} race listings use it as their course and will lose the course.}}",
+  "@routeDetailDeleteImpactRaceListings": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeDetailDeleteImpactEvents": "{count, plural, one {{count} club event uses it and will lose its route.} other {{count} club events use it and will lose their route.}}",
+  "@routeDetailDeleteImpactEvents": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeDetailDeleteImpactSaved": "{count, plural, one {{count} other runner has saved it.} other {{count} other runners have saved it.}}",
+  "@routeDetailDeleteImpactSaved": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeDetailDeleteImpactShares": "{count, plural, one {{count} person it is shared with will lose access.} other {{count} people it is shared with will lose access.}}",
+  "@routeDetailDeleteImpactShares": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeDetailDeleteImpactSegments": "{count, plural, one {{count} segment other runners made on it will be deleted.} other {{count} segments other runners made on it will be deleted.}}",
+  "@routeDetailDeleteImpactSegments": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeDetailDeleteImpactEfforts": "{count, plural, one {{count} effort other runners logged on its segments will be deleted.} other {{count} efforts other runners logged on its segments will be deleted.}}",
+  "@routeDetailDeleteImpactEfforts": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeDetailDeleteImpactReviews": "{count, plural, one {{count} review by another runner will be deleted.} other {{count} reviews by other runners will be deleted.}}",
+  "@routeDetailDeleteImpactReviews": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeDetailDeleteImpactConditions": "{count, plural, one {{count} condition report by another runner will be deleted.} other {{count} condition reports by other runners will be deleted.}}",
+  "@routeDetailDeleteImpactConditions": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeDetailDeleteImpactRuns": "{count, plural, one {{count} run that followed it keeps its stats but loses the link.} other {{count} runs that followed it keep their stats but lose the link.}}",
+  "@routeDetailDeleteImpactRuns": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeDetailDeleteImpactPhotos": "{count, plural, one {Its {count} photo will be deleted.} other {Its {count} photos will be deleted.}}",
+  "@routeDetailDeleteImpactPhotos": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeDetailDeleteImpactMarkers": "{count, plural, one {Its {count} marker will be deleted.} other {Its {count} markers will be deleted.}}",
+  "@routeDetailDeleteImpactMarkers": {
+    "description": "Line in the route delete confirm naming what depends on the route",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "routeDetailPreview": "Preview",
   "@routeDetailPreview": {
     "description": "Label on the route-detail preview scrubber"
@@ -5722,6 +5993,15 @@
   "@exploreRoutesLocationPermissionRequired": {
     "description": "Error state shown when location permission is denied in near-me mode"
   },
+  "exploreRoutesNearbyLocationUnavailable": "Location unavailable: {error}",
+  "@exploreRoutesNearbyLocationUnavailable": {
+    "description": "Error state shown when a near-me search cannot get a position; {error} is the lower-case reason (location off, no fix in time)",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "exploreRoutesNearbyFailed": "Could not find nearby routes. Tap retry to try again.",
   "@exploreRoutesNearbyFailed": {
     "description": "Error state shown when a near-me search fails"
@@ -5799,18 +6079,6 @@
         "type": "String"
       }
     }
-  },
-  "exploreRoutesSurfaceTrailShort": "Trail",
-  "@exploreRoutesSurfaceTrailShort": {
-    "description": "Surface badge label for trail routes on an explore route card"
-  },
-  "exploreRoutesSurfaceMixedShort": "Mixed",
-  "@exploreRoutesSurfaceMixedShort": {
-    "description": "Surface badge label for mixed-surface routes on an explore route card"
-  },
-  "exploreRoutesSurfaceRoadShort": "Road",
-  "@exploreRoutesSurfaceRoadShort": {
-    "description": "Surface badge label for road routes on an explore route card"
   },
   "exploreRoutesDistanceUnderKm": "Under 5 km",
   "@exploreRoutesDistanceUnderKm": {
@@ -8692,6 +8960,14 @@
   "@planDetailUnpublishLibrary": {
     "description": "Public plan library"
   },
+  "planDetailUnpublishTitle": "Unpublish this plan?",
+  "@planDetailUnpublishTitle": {
+    "description": "Title of the confirm before a plan is removed from the public library"
+  },
+  "planDetailUnpublishBody": "It leaves the public library. Anyone who opens a link you shared to it will find it gone, and publishing again creates a new link.",
+  "@planDetailUnpublishBody": {
+    "description": "Body of the confirm before a plan is removed from the public library: the delete breaks shared links"
+  },
   "planDetailUnpublishSuccess": "Removed from the public library.",
   "@planDetailUnpublishSuccess": {
     "description": "Public plan library"
@@ -8865,11 +9141,157 @@
   },
   "planImportParseError": "Couldn't read that plan: {detail}",
   "@planImportParseError": {
-    "description": "Error under the paste box when the pasted plan can't be parsed; detail is the parser's (English) reason, e.g. a bad date on one row",
+    "description": "Error under the paste box when the pasted plan can't be parsed; detail is one of the localized planImportError* reasons, e.g. a bad date on one row",
     "placeholders": {
       "detail": {
         "type": "String",
         "example": "Bad date \"07/05/2026\" — use YYYY-MM-DD."
+      }
+    }
+  },
+  "planImportErrorBadDistance": "Couldn't read the distance \"{cell}\".",
+  "@planImportErrorBadDistance": {
+    "description": "Plan import parse error (badDistance), shown inside planImportParseError",
+    "placeholders": {
+      "cell": {
+        "type": "String"
+      }
+    }
+  },
+  "planImportErrorBadPace": "Couldn't read the pace \"{cell}\". Use m:ss.",
+  "@planImportErrorBadPace": {
+    "description": "Plan import parse error (badPace), shown inside planImportParseError",
+    "placeholders": {
+      "cell": {
+        "type": "String"
+      }
+    }
+  },
+  "planImportErrorDuplicateColumn": "The column \"{column}\" appears twice.",
+  "@planImportErrorDuplicateColumn": {
+    "description": "Plan import parse error (duplicateColumn), shown inside planImportParseError",
+    "placeholders": {
+      "column": {
+        "type": "String"
+      }
+    }
+  },
+  "planImportErrorMissingColumn": "The table has no \"{column}\" column.",
+  "@planImportErrorMissingColumn": {
+    "description": "Plan import parse error (missingColumn), shown inside planImportParseError",
+    "placeholders": {
+      "column": {
+        "type": "String"
+      }
+    }
+  },
+  "planImportErrorRaceNameTooLong": "The race name \"{name}\" is longer than {max} characters.",
+  "@planImportErrorRaceNameTooLong": {
+    "description": "Plan import parse error (raceNameTooLong), shown inside planImportParseError",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "planImportErrorBadRacePriority": "Couldn't read the race priority \"{cell}\". Use A, B or C.",
+  "@planImportErrorBadRacePriority": {
+    "description": "Plan import parse error (badRacePriority), shown inside planImportParseError",
+    "placeholders": {
+      "cell": {
+        "type": "String"
+      }
+    }
+  },
+  "planImportErrorBadGoalTime": "Couldn't read the goal time \"{cell}\". Use h:mm:ss.",
+  "@planImportErrorBadGoalTime": {
+    "description": "Plan import parse error (badGoalTime), shown inside planImportParseError",
+    "placeholders": {
+      "cell": {
+        "type": "String"
+      }
+    }
+  },
+  "planImportErrorBadWeek": "Couldn't read the week number \"{cell}\".",
+  "@planImportErrorBadWeek": {
+    "description": "Plan import parse error (badWeek), shown inside planImportParseError",
+    "placeholders": {
+      "cell": {
+        "type": "String"
+      }
+    }
+  },
+  "planImportErrorBadDate": "Couldn't read the date \"{cell}\". Use YYYY-MM-DD.",
+  "@planImportErrorBadDate": {
+    "description": "Plan import parse error (badDate), shown inside planImportParseError",
+    "placeholders": {
+      "cell": {
+        "type": "String"
+      }
+    }
+  },
+  "planImportErrorUnknownKind": "\"{cell}\" isn't a workout type this app knows.",
+  "@planImportErrorUnknownKind": {
+    "description": "Plan import parse error (unknownKind), shown inside planImportParseError",
+    "placeholders": {
+      "cell": {
+        "type": "String"
+      }
+    }
+  },
+  "planImportErrorRaceFieldsOnNonRace": "Race, priority and goal apply only to race rows, and the workout on {date} isn't a race.",
+  "@planImportErrorRaceFieldsOnNonRace": {
+    "description": "Plan import parse error (raceFieldsOnNonRace), shown inside planImportParseError",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planImportErrorNoRows": "No workout rows found. Paste a table with Week, Date and Type columns.",
+  "@planImportErrorNoRows": {
+    "description": "Plan import parse error (noRows), shown inside planImportParseError"
+  },
+  "planImportErrorNoGoalDistance": "Couldn't work out the plan's goal distance.",
+  "@planImportErrorNoGoalDistance": {
+    "description": "Plan import parse error (noGoalDistance), shown inside planImportParseError"
+  },
+  "planImportErrorBeforeStart": "The workout on {date} is before the plan's start date, {start}.",
+  "@planImportErrorBeforeStart": {
+    "description": "Plan import parse error (beforeStart), shown inside planImportParseError",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "start": {
+        "type": "String"
+      }
+    }
+  },
+  "planImportErrorNotJson": "This isn't valid JSON.",
+  "@planImportErrorNotJson": {
+    "description": "Plan import parse error (notJson), shown inside planImportParseError"
+  },
+  "planImportErrorNoWorkoutsArray": "The JSON has no workouts list.",
+  "@planImportErrorNoWorkoutsArray": {
+    "description": "Plan import parse error (noWorkoutsArray), shown inside planImportParseError"
+  },
+  "planImportErrorBadJsonShape": "The JSON's workouts aren't in the export format.",
+  "@planImportErrorBadJsonShape": {
+    "description": "Plan import parse error (badJsonShape), shown inside planImportParseError"
+  },
+  "planImportErrorBadTaperStamp": "Couldn't read the taper date \"{value}\" on {date}.",
+  "@planImportErrorBadTaperStamp": {
+    "description": "Plan import parse error (badTaperStamp), shown inside planImportParseError",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
       }
     }
   },
@@ -8969,9 +9391,15 @@
   "@planDetailNotFound": {
     "description": "Plan-detail not-found body"
   },
-  "planDetailLongestLongRun": "Longest long run",
+  "planDetailLongestLongRun": "Longest long run: {distance}",
   "@planDetailLongestLongRun": {
-    "description": "Plan-detail header stat label for the longest completed long run"
+    "description": "Plan-detail header stat for the longest completed long run; the whole line, so each locale places its own colon",
+    "placeholders": {
+      "distance": {
+        "type": "String",
+        "example": "28.0 km"
+      }
+    }
   },
   "planDetailPublishTooltip": "Publish as club template",
   "@planDetailPublishTooltip": {
@@ -9185,6 +9613,10 @@
   "planDetailReplanOnTrack": "Your plan's on track — nothing to adjust.",
   "@planDetailReplanOnTrack": {
     "description": "Plan-detail adherence/replan/duplicate"
+  },
+  "planDetailReplanRunsUnavailable": "Couldn't load your recent runs, so the plan can't be checked against them yet. Try again in a moment.",
+  "@planDetailReplanRunsUnavailable": {
+    "description": "Banner when a re-plan is asked for before the runner's recent runs have loaded (the read failed or is still in flight)"
   },
   "planDetailReplanApplied": "{n, plural, one{Adjusted 1 workout} other{Adjusted {n} workouts}}",
   "@planDetailReplanApplied": {
@@ -9632,6 +10064,10 @@
   "@workoutRelinkError": {
     "description": "Error state in the re-link picker"
   },
+  "workoutRelinkSaveError": "Couldn't link that run. Try again.",
+  "@workoutRelinkSaveError": {
+    "description": "Banner after re-linking a workout to a different run fails; distinct from workoutRelinkError, which is the picker's failed load"
+  },
   "workoutRelinkEmpty": "No eligible runs near this date.",
   "@workoutRelinkEmpty": {
     "description": "Empty state in the re-link picker"
@@ -9879,6 +10315,18 @@
         "type": "int"
       }
     }
+  },
+  "coachSeasonHint": "Racing again after this plan? Tap Add to my season on the race, and My season shows up here.",
+  "@coachSeasonHint": {
+    "description": "Note at the foot of the Coach plan picker's menu while the runner has one plan and nothing queued after it; names the race page's Add to my season button and the My season picker option (here = this menu)"
+  },
+  "coachSeasonHintAction": "Find a race",
+  "@coachSeasonHintAction": {
+    "description": "Action under the season note in the Coach plan picker's menu; opens the race calendar"
+  },
+  "coachPlanPickerTooltip": "Plan context",
+  "@coachPlanPickerTooltip": {
+    "description": "Tooltip / accessible name of the Coach context-strip plan picker"
   },
   "coachContextNoRuns": "No runs",
   "@coachContextNoRuns": {
@@ -10806,6 +11254,22 @@
         "type": "String"
       }
     }
+  },
+  "integrationsStravaErrNotConfigured": "Strava isn't set up on this server yet.",
+  "@integrationsStravaErrNotConfigured": {
+    "description": "Reason after 'Strava connect failed:' when the server has no Strava credentials or redirect allow-list"
+  },
+  "integrationsStravaErrMissingScope": "Strava didn't share all your activities. Connect again and leave every permission ticked.",
+  "@integrationsStravaErrMissingScope": {
+    "description": "Reason after 'Strava connect failed:' when the runner unticked the activity permission on Strava"
+  },
+  "integrationsStravaErrCodeRejected": "Strava didn't accept the sign-in. Try connecting again.",
+  "@integrationsStravaErrCodeRejected": {
+    "description": "Reason when Strava refused the authorization code or the sign-in returned none"
+  },
+  "integrationsStravaErrReconnect": "Strava no longer accepts this connection. Disconnect Strava, then connect it again.",
+  "@integrationsStravaErrReconnect": {
+    "description": "Reason after 'Strava sync failed:' when Strava no longer accepts the stored connection (revoked grant); only disconnecting and connecting again repairs it"
   },
   "integrationsStravaConnected": "Strava connected.",
   "@integrationsStravaConnected": {
@@ -12081,6 +12545,10 @@
   "@prefsTitle": {
     "description": "AppBar title for the Settings > Preferences screen"
   },
+  "prefsOfflineNotice": "Offline — edits stay on this device and sync when you reconnect.",
+  "@prefsOfflineNotice": {
+    "description": "Notice on the Preferences screen when settings are served from the on-device copy because the server could not be reached"
+  },
   "prefsUnitMetric": "km, m",
   "@prefsUnitMetric": {
     "description": "Unit subtitle when kilometres are selected"
@@ -12605,10 +13073,6 @@
   "dashboardFirstRunGymAction": "Log a gym session",
   "@dashboardFirstRunGymAction": {
     "description": "Dashboard empty-state button that opens the Gym log"
-  },
-  "dashboardPeriodWeek": "Week",
-  "@dashboardPeriodWeek": {
-    "description": "Label for the weekly period stat card on the dashboard"
   },
   "dashboardPeriodMonth": "Month",
   "@dashboardPeriodMonth": {
@@ -14489,6 +14953,14 @@
   "shareCardExport": "Export",
   "@shareCardExport": {
     "description": "Button to export a run to a file format"
+  },
+  "shareCardShareLink": "Share link",
+  "@shareCardShareLink": {
+    "description": "Button in the run share sheet that shares the run's web link; it asks who may see the run first"
+  },
+  "shareCardMark": "Show the Threkir mark",
+  "@shareCardMark": {
+    "description": "Switch in the run share sheet: whether the image carries the Threkir logo. On by default"
   },
   "shareCardImage": "Image",
   "@shareCardImage": {
@@ -17763,6 +18235,10 @@
         "type": "String"
       }
     }
+  },
+  "coachingAthleteAssignError": "Couldn't assign the plan. Please try again.",
+  "@coachingAthleteAssignError": {
+    "description": "Banner when assigning a plan to an athlete fails for any reason other than an overlap"
   },
   "coachingAthleteComplete": "complete",
   "@coachingAthleteComplete": {
@@ -22541,6 +23017,68 @@
       }
     }
   },
+  "messagesMute": "Mute",
+  "@messagesMute": {
+    "description": "Conversation action that mutes it: no notification for new messages, and its unread count leaves the badge"
+  },
+  "messagesUnmute": "Unmute",
+  "@messagesUnmute": {
+    "description": "Conversation action that lifts a mute"
+  },
+  "messagesArchive": "Archive",
+  "@messagesArchive": {
+    "description": "Conversation action that moves it to the Archived list until a new message arrives"
+  },
+  "messagesUnarchive": "Unarchive",
+  "@messagesUnarchive": {
+    "description": "Conversation action that moves an archived conversation back to the inbox"
+  },
+  "messagesDeleteConversation": "Delete conversation",
+  "@messagesDeleteConversation": {
+    "description": "Conversation action that deletes it for the viewer only (the other person keeps theirs); undoable for a few seconds"
+  },
+  "messagesConversationDeleted": "Conversation deleted",
+  "@messagesConversationDeleted": {
+    "description": "Undo bar message after deleting a conversation for yourself"
+  },
+  "messagesConversationDeletedNotice": "You deleted this conversation for yourself. The other person keeps their copy, and a new message brings it back.",
+  "@messagesConversationDeletedNotice": {
+    "description": "Shown in the conversation pane once the viewer deleted it for themselves"
+  },
+  "messagesConversationActionFailed": "Couldn't update the conversation: {error}",
+  "@messagesConversationActionFailed": {
+    "description": "Error when muting, archiving or deleting a conversation failed",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "messagesArchivedCount": "Archived ({count})",
+  "@messagesArchivedCount": {
+    "description": "Inbox control that opens the Archived conversations list; count is how many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "messagesBackToInbox": "Back to inbox",
+  "@messagesBackToInbox": {
+    "description": "Control in the Archived list that returns to the main inbox"
+  },
+  "messagesMutedMark": "Muted",
+  "@messagesMutedMark": {
+    "description": "Marker on an inbox row for a muted conversation (read by screen readers)"
+  },
+  "messagesMutedToast": "Muted. You won't be notified about new messages here.",
+  "@messagesMutedToast": {
+    "description": "Confirmation after muting a conversation"
+  },
+  "messagesArchivedToast": "Archived. A new message brings it back to your inbox.",
+  "@messagesArchivedToast": {
+    "description": "Confirmation after archiving a conversation"
+  },
   "profileMessage": "Message",
   "@profileMessage": {
     "description": "Profile action opening a direct-message conversation with this runner"
@@ -25665,5 +26203,33 @@
   "sharesFootnote": "Sign-ups are counted when someone creates an account from a link you shared. Your own visits aren't counted.",
   "@sharesFootnote": {
     "description": "Footnote on Your shares explaining what counts as a sign-up"
+  },
+  "routeDetailLineLoadFailed": "Couldn't load the route line. Check your connection and try again.",
+  "@routeDetailLineLoadFailed": {
+    "description": "Route detail map placeholder when the route line could not be loaded"
+  },
+  "routeDetailLineEmpty": "This route has no line to show.",
+  "@routeDetailLineEmpty": {
+    "description": "Route detail map placeholder when the route has fewer than two points to draw"
+  },
+  "routeDetailLineRetry": "Try again",
+  "@routeDetailLineRetry": {
+    "description": "Retry button on the route detail map placeholder"
+  },
+  "locationErrorPermissionDenied": "location permission is off",
+  "@locationErrorPermissionDenied": {
+    "description": "Reason after \"Location unavailable:\" when a Locate tap finds location permission refused. Lower-case: it follows a colon."
+  },
+  "locationErrorServicesOff": "location is turned off on this device",
+  "@locationErrorServicesOff": {
+    "description": "Reason after \"Location unavailable:\" when a Locate tap finds the device location switched off. Lower-case: it follows a colon."
+  },
+  "locationErrorNoFix": "no position yet, try again in a moment",
+  "@locationErrorNoFix": {
+    "description": "Reason after \"Location unavailable:\" when a Locate tap gets no position in time. Lower-case: it follows a colon."
+  },
+  "routesImportNoTrack": "Import failed: that file holds no route with at least two points.",
+  "@routesImportNoTrack": {
+    "description": "Banner when an imported route file parses but holds no line of two or more points (or is not a route file at all)."
   }
 }

@@ -1,24 +1,28 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ActivityLoaderKind, FullBodyLoader;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart'
-    show formatDistanceForPref, formatEffortTime, formatElevationForPref;
+    show
+        activeDistanceUnit,
+        formatDistanceForPref,
+        formatEffortTime,
+        formatElevationForPref;
 import '../pro_sellable.dart' show fetchAiPlanAvailable;
 import '../race_plan_prefill.dart';
 import '../race_plan_preset.dart';
 import '../race_predictor.dart' show predictRaceLadder;
 import '../race_service.dart';
+import '../route_surface_label.dart';
 import '../share_sheet.dart';
 import '../training.dart' show toIsoDate;
 import '../training_service.dart';
 import '../web_base_url.dart';
 import '../widgets/error_state.dart';
 import '../widgets/top_banner.dart';
-import 'global_segments_screen.dart' show catalogueSurfaceLabel;
+import '../widgets/loading_skeletons.dart';
 import 'plan_new_screen.dart';
 import 'races_screen.dart' show showRaceImportSheet;
 
@@ -241,7 +245,12 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(race?.name ?? l.racesTitle)),
       body: _loading
-          ? FullBodyLoader(kind: ActivityLoaderKind.run, label: l.commonLoading)
+          ? SectionedDetailSkeleton(
+              label: l.commonLoading,
+              statCells: 3,
+              hasAction: true,
+              rows: 3,
+            )
           : _loadFailed
               ? ErrorState(message: l.racesDetailLoadFailed, onRetry: _load)
               : race == null
@@ -288,6 +297,7 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
                     ascentM: course.ascentM,
                     surface: course.surface,
                   ),
+            unit: activeDistanceUnit,
           )
         : null;
     final courseParts = <String>[
@@ -297,7 +307,7 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
         if ((course.ascentM ?? 0) > 0)
           l.racesCourseGain(formatElevationForPref(course.ascentM)),
         if ((course.surface ?? '').isNotEmpty)
-          catalogueSurfaceLabel(l, course.surface!),
+          routeSurfaceLabel(l, course.surface!),
       ],
     ];
     final meta = <String>[

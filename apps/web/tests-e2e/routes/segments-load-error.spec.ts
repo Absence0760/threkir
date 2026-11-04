@@ -37,6 +37,7 @@ test.describe('/routes/[id] — SegmentsPanel load failure', () => {
 		const banner = page.locator('.error-banner', { hasText: "Couldn't load your routes." });
 		await expect(banner).toBeVisible({ timeout: 10_000 });
 		await expect(banner.getByRole('button', { name: 'Retry' })).toBeVisible();
+		await expect(banner).not.toContainText('simulated segments failure');
 		// The perpetual "Loading segments…" must have cleared.
 		await expect(page.getByText('Loading segments…')).toHaveCount(0);
 	});

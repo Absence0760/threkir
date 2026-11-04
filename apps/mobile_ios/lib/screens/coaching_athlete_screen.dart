@@ -156,11 +156,20 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
         athleteId: widget.athleteId,
         startDate: _startDate,
       );
-      final overview = await widget.api
-          .fetchAthletePlanOverview(widget.athleteId, pick: _pickPlan);
+      // The plan is assigned from here on. A failed re-read must not read as
+      // a failed assign: a retry would only meet its own plan as an overlap.
+      AthletePlanOverview? overview;
+      var refreshed = false;
+      try {
+        overview = await widget.api
+            .fetchAthletePlanOverview(widget.athleteId, pick: _pickPlan);
+        refreshed = true;
+      } catch (e) {
+        debugPrint('[CoachingAthleteScreen] plan re-read after assign failed: $e');
+      }
       if (!mounted) return;
       setState(() {
-        _overview = overview;
+        if (refreshed) _overview = overview;
         _selectedPlanId = null;
         _startDate = _firstFreeStart();
       });
@@ -203,19 +212,22 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
               ),
       );
     } catch (e) {
-      // Any other refusal: assignPlanToAthlete rethrows the RPC's RAISE text
-      // as an Exception. Surface it rather than swallow — strip the leading
-      // "Exception: " the toString() adds.
+      // Offline, signed out and rate limited each name their own fix. What
+      // is left is a refusal (no longer linked, a plan the coach can't use)
+      // or an unknown failure: the RPC's raise text names the function and
+      // the athlete's id, so it stays in the log and the coach gets the copy.
+      // Web twin: errorCopy(e, m, 'coachingAthlete.assignError').
+      debugPrint('[CoachingAthleteScreen] assign failed: $e');
       if (!mounted) return;
-      showTopBanner(context, _cleanMessage(e));
+      showTopBanner(
+        context,
+        classifyAuthError(e) == AuthErrorKind.generic
+            ? l10n.coachingAthleteAssignError
+            : friendlyError(l10n, e),
+      );
     } finally {
       if (mounted) setState(() => _assigning = false);
     }
-  }
-
-  static String _cleanMessage(Object e) {
-    final s = '$e';
-    return s.startsWith('Exception: ') ? s.substring('Exception: '.length) : s;
   }
 
   Future<void> _pickStartDate() async {

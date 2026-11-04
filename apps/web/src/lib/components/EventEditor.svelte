@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { appErrorMessage, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount, untrack } from 'svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { formatISO } from '#lib/training/training.ts';
@@ -38,6 +37,7 @@
 	import { editorZone, startFieldsFor, startIsoFor } from '#lib/social/event_start_fields.ts';
 	import { formatDistance, getUnit } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import type { Route, RecurrenceFreq, Weekday, EventCategory, RefundPolicy, Event as ClubEvent } from '#lib/types.ts';
 	import type { RouteListItem } from '#lib/routes/route_list_columns.ts';
 
@@ -413,7 +413,7 @@
 		} catch (ce: unknown) {
 			console.error('saveEventCourses failed', ce);
 			failure = m('eventEditor.coursesSaveFailed', {
-				error: thrownMessage(ce)
+				error: errorCopy(ce, m, 'eventEditor.coursesSaveFailed')
 			});
 		}
 		try {
@@ -552,7 +552,7 @@
 					// The event exists; surface the pricing failure without
 					// losing it. The host can re-price from the editor.
 					error = m('eventEditor.pricingFailed', {
-						error: thrownMessage(pe)
+						error: errorCopy(pe, m, 'eventEditor.pricingFailed')
 					});
 					busy = false;
 					return;
@@ -584,7 +584,8 @@
 			dirty.rebaseline();
 			oncreated?.(event);
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? m(existing ? 'eventEditor.updateFailed' : 'eventEditor.createFailed');
+			const key = existing ? 'eventEditor.updateFailed' : 'eventEditor.createFailed';
+			error = errorCopy(e, m, key, key);
 		} finally {
 			busy = false;
 		}

@@ -17,6 +17,7 @@
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import RunTrackPreview from '#lib/components/RunTrackPreview.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import DateRangePicker from '#lib/components/DateRangePicker.svelte';
 	import TimelineDayList, { type TimelineItem } from '#lib/components/TimelineDayList.svelte';
 	import { groupByLocalDay, type DayGroup } from '#lib/timeline/day_groups.ts';
@@ -32,6 +33,7 @@
 	import type { Run, RunSource } from '#lib/types.ts';
 	import { formatElevation } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { ACTIVITY_TYPE_ICONS } from '#lib/runs/activity_type.ts';
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import type { Snapshot } from './$types';
@@ -75,7 +77,7 @@
 
 	const PAGE_SIZE = 50;
 	let loadingMore = $state(false);
-	let moreError = $state<string | null>(null);
+	let moreError = $state<Error | null>(null);
 	let hasMore = $state(false);
 	/// The keyset cursor for the next page (see fetchRunsWithError). Kept
 	/// rather than derived from the last card: a bulk delete removes cards, and
@@ -466,7 +468,7 @@
 		loadError = null;
 		const gen = ++fetchGen;
 		const token = listToken('runs');
-		let res: { runs: Run[]; error: string | null; next: KeysetCursor | null };
+		let res: { runs: Run[]; error: Error | null; next: KeysetCursor | null };
 		if (fetchMode === 'paginated') {
 			res = await fetchRunsWithError({ limit: PAGE_SIZE });
 		} else {
@@ -476,7 +478,7 @@
 		if (res.error) {
 			// Leave any previously-loaded runs in place; surface a retryable
 			// error card instead of the "no runs" empty state.
-			loadError = res.error;
+			loadError = errorCopy(res.error, m, 'runs: loadError');
 			loading = false;
 			return;
 		}
@@ -712,24 +714,24 @@
 		<div class="run-list run-list-skel" aria-hidden="true">
 			{#each Array(8) as _, i (i)}
 				<div class="skel-card">
-					<div class="skel skel-map"></div>
+					<div class="skel-map"><SkeletonBlock height="8rem" radius="0" /></div>
 					<div class="skel-card-body">
 						<div class="skel-card-top">
-							<span class="skel skel-line skel-w-40"></span>
-							<span class="skel skel-pill"></span>
+							<SkeletonBlock height="0.75rem" width="40%" />
+							<SkeletonBlock height="1rem" width="3.5rem" radius="9999px" />
 						</div>
 						<div class="skel-card-stats">
 							<div class="skel-card-stat">
-								<span class="skel skel-line skel-w-60"></span>
-								<span class="skel skel-line skel-w-30"></span>
+								<SkeletonBlock height="0.75rem" width="60%" />
+								<SkeletonBlock height="0.75rem" width="30%" />
 							</div>
 							<div class="skel-card-stat">
-								<span class="skel skel-line skel-w-50"></span>
-								<span class="skel skel-line skel-w-30"></span>
+								<SkeletonBlock height="0.75rem" width="50%" />
+								<SkeletonBlock height="0.75rem" width="30%" />
 							</div>
 							<div class="skel-card-stat">
-								<span class="skel skel-line skel-w-50"></span>
-								<span class="skel skel-line skel-w-30"></span>
+								<SkeletonBlock height="0.75rem" width="50%" />
+								<SkeletonBlock height="0.75rem" width="30%" />
 							</div>
 						</div>
 					</div>
@@ -1733,9 +1735,6 @@
 	/* Mirrors the real card's 8rem map thumbnail so accounts with GPS
 	   tracks don't get a height jump when data swaps in. */
 	.skel-map {
-		width: 100%;
-		height: 8rem;
-		border-radius: 0;
 		border-bottom: 1px solid var(--color-border);
 	}
 	.skel-card-body { padding: var(--space-md) var(--space-lg); }
@@ -1757,39 +1756,6 @@
 		gap: var(--space-xs);
 		flex: 1;
 	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		border-radius: var(--radius-sm);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line {
-		height: 0.75rem;
-	}
-	.skel-pill {
-		width: 3.5rem;
-		height: 1rem;
-		border-radius: 9999px;
-	}
-	.skel-w-30 { width: 30%; }
-	.skel-w-40 { width: 40%; }
-	.skel-w-50 { width: 50%; }
-	.skel-w-60 { width: 60%; }
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
-
 	.sr-only {
 		position: absolute;
 		width: 1px;

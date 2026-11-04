@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -20,6 +19,7 @@
 	import GymRoutineHistory from '#lib/components/GymRoutineHistory.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 
 	let detail = $state<GymRoutineDetail | null>(null);
@@ -47,7 +47,7 @@
 		} catch (e) {
 			// Not-found and could-not-load are different answers; the second
 			// must not tell an author their routine is gone.
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, t, 'gym/routines/[id]: loadError');
 			detail = null;
 			return;
 		} finally {

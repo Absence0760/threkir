@@ -1,28 +1,20 @@
-// Unit tests for the pre-Supabase early-return paths in
-// handleRouteDescribe. Run via
-// `npx tsx --test apps/web/src/lib/routes/route_describe/handler.test.ts`.
-//
-// Like the coach handler, this short-circuits on two branches BEFORE
-// it ever instantiates a Supabase client or calls Anthropic:
-//   - 400 when the body has no numeric distance_m (unparseable input)
-//   - 401 when there's no Authorization header
-// Those are mock-free. The downstream branches (auth.getUser, is_pro
-// RPC, the Anthropic call, the templated fallback on each failure mode)
-// need a real local Supabase + the Pro/free dev accounts and are
-// exercised by the Playwright spec in
-// `tests-e2e/routes/route-describe.spec.ts`.
-
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
 	handleRouteDescribe,
+	LANGUAGE_NAME,
 	MAX_ROUTE_NAME_CHARS,
+	parseRequestedLocale,
+	parseRequestedUnit,
+	routeDescribeUserMessage,
 	ROUTE_DESCRIBE_RATE_BUCKET,
 	ROUTE_DESCRIBE_RATE_MAX,
 	ROUTE_DESCRIBE_RATE_WINDOW_S,
 } from './handler';
 import type { RouteDescribeConfig } from './handler';
+import { describeRoute } from '../route_description';
+import { SUPPORTED_LOCALES } from '../../i18n/locale';
 
 function baseConfig(): RouteDescribeConfig {
 	return {
@@ -219,17 +211,34 @@ test('the dev paywall bypass does not bypass the consent gate', async () => {
 // ─────────────── Rate-limit slot: spent before the model, refunded on failure ───────────────
 
 /// A Pro caller whose throttle hands out ticket `ticket-1`; records every RPC.
-function proClient() {
+/// [profile] is merged into the consenting profile row `get_my_profile` returns;
+/// [settings] is what a `user_settings` read answers.
+function proClient(
+	profile: Record<string, unknown> = {},
+	settings: { data?: unknown; error?: unknown; throws?: boolean } = {},
+) {
 	const calls: Array<{ name: string; args?: unknown }> = [];
+	const settingsReads: Array<{ table: string; column: string; value: unknown }> = [];
 	const factory = () =>
 		({
 			auth: { getUser: async () => ({ data: { user: { id: 'user-1' } }, error: null }) },
+			from: (table: string) => ({
+				select: () => ({
+					eq: (column: string, value: unknown) => ({
+						maybeSingle: async () => {
+							settingsReads.push({ table, column, value });
+							if (settings.throws) throw new Error('socket hang up');
+							return { data: settings.data ?? null, error: settings.error ?? null };
+						},
+					}),
+				}),
+			}),
 			rpc: (name: string, args?: unknown) => {
 				calls.push({ name, args });
 				if (name === 'get_my_profile') {
 					return {
 						maybeSingle: async () => ({
-							data: { ai_disclosure_version: 2, coach_consent_at: ACCEPTED_AT },
+							data: { ai_disclosure_version: 2, coach_consent_at: ACCEPTED_AT, ...profile },
 							error: null,
 						}),
 					};
@@ -243,7 +252,7 @@ function proClient() {
 				return Promise.resolve({ data: true, error: null });
 			},
 		}) as never;
-	return { factory, names: () => calls.map((c) => c.name), calls };
+	return { factory, names: () => calls.map((c) => c.name), calls, settingsReads };
 }
 
 function fakeModel(respond: () => unknown) {
@@ -336,4 +345,180 @@ test('a missing key serves the template without spending a slot', async () => {
 	);
 	assert.equal(r.body.source, 'template');
 	assert.equal(sb.names().includes('spend_rate_limit_slot'), false);
+});
+
+// ─────────────── the viewer's unit (miles runners get miles) ───────────────
+
+const SUMMIT = describeRoute({
+	name: 'Summit Trail',
+	distanceM: 12000,
+	elevationM: 480,
+	surface: 'trail',
+	start: { lat: 51.5, lng: -0.12 },
+	end: { lat: 51.7, lng: 0.0 },
+});
+
+test('the prompt for a km viewer states km and m and requires them', () => {
+	const msg = routeDescribeUserMessage(SUMMIT, 'Summit Trail', 'km', 'en');
+	assert.match(msg, /Summit Trail is a 12\.0 km trail point-to-point route with 480 m of climbing/);
+	assert.match(msg, /Write every distance in kilometres \(km\) and every climb in metres \(m\)\. Never use miles or feet\./);
+	assert.doesNotMatch(msg, /\bmi\b|\bft\b/);
+});
+
+test('the prompt for a miles viewer states mi and ft and requires them', () => {
+	const msg = routeDescribeUserMessage(SUMMIT, 'Summit Trail', 'mi', 'en');
+	assert.match(msg, /Summit Trail is a 7\.5 mi trail point-to-point route with 1575 ft of climbing/);
+	assert.match(msg, /Write every distance in miles \(mi\) and every climb in feet \(ft\)\. Never use kilometres or metres\./);
+	assert.doesNotMatch(msg, /\bkm\b|\d m\b/);
+});
+
+test('parseRequestedUnit admits only the PreferredUnit members', () => {
+	assert.equal(parseRequestedUnit({ unit: 'km' }), 'km');
+	assert.equal(parseRequestedUnit({ unit: 'mi' }), 'mi');
+	for (const unit of ['MI', 'miles', 'm', '', 1, null, undefined, ['mi'], { mi: true }]) {
+		assert.equal(parseRequestedUnit({ unit }), null, `unit ${JSON.stringify(unit)}`);
+	}
+	assert.equal(parseRequestedUnit(null), null);
+});
+
+/// A model fake that records the user turn it was sent.
+function capturingModel() {
+	const prompts: string[] = [];
+	return {
+		create: () => ({
+			messages: {
+				create: async (body: { messages: Array<{ content: unknown }> }) => {
+					prompts.push(String(body.messages[0].content));
+					return { stop_reason: 'end_turn', content: [{ type: 'text', text: 'A loop.' }] } as never;
+				},
+			},
+		}),
+		prompts,
+	};
+}
+
+test('the requested unit reaches the prompt and wins over the stored preference', async () => {
+	const model = capturingModel();
+	await handleRouteDescribe('Bearer x', { ...VALID_BODY, unit: 'mi' }, {
+		...baseConfig(),
+		createClient: proClient({ preferred_unit: 'km' }).factory,
+		createAnthropic: model.create,
+	});
+	assert.equal(model.prompts.length, 1);
+	assert.match(model.prompts[0], /6\.2 mi/);
+	assert.match(model.prompts[0], /Write every distance in miles/);
+});
+
+test('a missing or malformed unit falls back to the stored preference, then km', async () => {
+	for (const [body, stored, expected] of [
+		[VALID_BODY, 'mi', /6\.2 mi/],
+		[{ ...VALID_BODY, unit: 'furlongs' }, 'mi', /6\.2 mi/],
+		[{ ...VALID_BODY, unit: 'furlongs' }, null, /10\.0 km/],
+		[VALID_BODY, 'leagues', /10\.0 km/],
+	] as const) {
+		const model = capturingModel();
+		await handleRouteDescribe('Bearer x', body, {
+			...baseConfig(),
+			createClient: proClient({ preferred_unit: stored }).factory,
+			createAnthropic: model.create,
+		});
+		assert.match(model.prompts[0], expected, `${JSON.stringify(body)} / stored ${stored}`);
+	}
+});
+
+test('the templated fallback is in the viewer unit too', async () => {
+	const r = parse(
+		await handleRouteDescribe('Bearer x', { ...VALID_BODY, unit: 'mi' }, {
+			...baseConfig(),
+			createClient: stubClient({ ai_disclosure_version: 2, coach_consent_at: ACCEPTED_AT }),
+		}),
+	);
+	assert.equal(r.body.source, 'template');
+	assert.equal(r.body.upgrade, true);
+	assert.match(r.body.description ?? '', /^Riverside 10K is a 6\.2 mi /);
+});
+
+// ─────────────── the viewer's language (a French reader gets French) ───────────────
+
+test('the prompt names the viewer language in English and keeps names untranslated', () => {
+	for (const locale of SUPPORTED_LOCALES) {
+		const msg = routeDescribeUserMessage(SUMMIT, 'Summit Trail', 'km', locale);
+		assert.ok(
+			msg.includes(`Write the paragraph in ${LANGUAGE_NAME[locale]}.`),
+			`${locale}: ${msg}`,
+		);
+		assert.match(msg, /Keep the route name and any place names exactly as given; do not translate them\./);
+		// The unit rule from the miles fix survives alongside the language rule.
+		assert.match(msg, /Write every distance in kilometres \(km\)/);
+	}
+	assert.equal(LANGUAGE_NAME['pt-PT'], 'European Portuguese (as written in Portugal)');
+	assert.equal(LANGUAGE_NAME['pt-BR'], 'Brazilian Portuguese');
+});
+
+test('parseRequestedLocale admits only the seven canonical tags the clients ship', () => {
+	for (const locale of SUPPORTED_LOCALES) {
+		assert.equal(parseRequestedLocale({ locale }), locale);
+	}
+	for (const locale of ['pt', 'pt-br', 'PT-PT', 'fr-CA', 'de_DE', 'zh', '', 1, null, undefined, ['fr'], { fr: true }]) {
+		assert.equal(parseRequestedLocale({ locale }), null, `locale ${JSON.stringify(locale)}`);
+	}
+	assert.equal(parseRequestedLocale(null), null);
+});
+
+test('the requested locale reaches the prompt and wins over the stored language, with no settings read', async () => {
+	const model = capturingModel();
+	const sb = proClient({}, { data: { prefs: { locale: 'de' } } });
+	await handleRouteDescribe('Bearer x', { ...VALID_BODY, locale: 'ja' }, {
+		...baseConfig(),
+		createClient: sb.factory,
+		createAnthropic: model.create,
+	});
+	assert.match(model.prompts[0], /Write the paragraph in Japanese\./);
+	assert.deepEqual(sb.settingsReads, []);
+});
+
+test('a missing or malformed locale falls back to the stored language, then English', async () => {
+	for (const [body, settings, expected] of [
+		[VALID_BODY, { data: { prefs: { locale: 'fr' } } }, 'French'],
+		[{ ...VALID_BODY, locale: 'klingon' }, { data: { prefs: { locale: 'pt-BR' } } }, 'Brazilian Portuguese'],
+		// The stored tag is whatever a client wrote, so it is normalised like
+		// the email renderer does: exact, then base language, then English.
+		[VALID_BODY, { data: { prefs: { locale: 'pt' } } }, 'European Portuguese (as written in Portugal)'],
+		[VALID_BODY, { data: { prefs: { locale: 'de-AT' } } }, 'German'],
+		[VALID_BODY, { data: { prefs: { locale: 'zh' } } }, 'English'],
+		[VALID_BODY, { data: { prefs: { locale: 7 } } }, 'English'],
+		[VALID_BODY, { data: { prefs: {} } }, 'English'],
+		[VALID_BODY, { data: null }, 'English'],
+		[VALID_BODY, { error: { message: 'boom', code: 'XX000' } }, 'English'],
+		[VALID_BODY, { throws: true }, 'English'],
+	] as const) {
+		const model = capturingModel();
+		const sb = proClient({}, settings);
+		const r = parse(
+			await quietly(() =>
+				handleRouteDescribe('Bearer x', body, {
+					...baseConfig(),
+					createClient: sb.factory,
+					createAnthropic: model.create,
+				}),
+			),
+		);
+		const label = `${JSON.stringify(body)} / ${JSON.stringify(settings)}`;
+		// A failed lookup is auxiliary: the paragraph is still written.
+		assert.equal(r.body.source, 'ai', label);
+		assert.ok(model.prompts[0].includes(`Write the paragraph in ${expected}.`), label);
+		assert.deepEqual(sb.settingsReads, [{ table: 'user_settings', column: 'user_id', value: 'user-1' }], label);
+	}
+});
+
+test('a caller who never reaches the model costs no settings read', async () => {
+	const sb = proClient();
+	await quietly(() =>
+		handleRouteDescribe('Bearer x', VALID_BODY, {
+			...baseConfig(),
+			anthropicApiKey: undefined,
+			createClient: sb.factory,
+		}),
+	);
+	assert.deepEqual(sb.settingsReads, []);
 });

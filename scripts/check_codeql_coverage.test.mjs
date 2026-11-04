@@ -12,6 +12,7 @@
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
+import { spawnSync } from 'node:child_process';
 import { chmodSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -20,7 +21,9 @@ import {
 	check,
 	countSources,
 	findExpression,
+	GNU_ONLY_FIND_PRIMARIES,
 	globNamesSomething,
+	gnuOnlyPrimaries,
 	jobsDeclaring,
 	parseNarrowing,
 	parseUnbuilt,
@@ -50,7 +53,7 @@ const GO_STEP = `      - name: Build every Go module for CodeQL
         run: |
           MODULES=$(find . -name go.mod \\
             -not -path './node_modules/*' \\
-            -printf '%h\\n' | sort)
+            -exec dirname {} + | sort)
           echo "$MODULES"
 `;
 
@@ -104,7 +107,7 @@ function workflow(opts = {}) {
         run: |
           PROJECTS=$(find . \\( -name settings.gradle -o -name settings.gradle.kts \\) \\
             -not -path './node_modules/*' \\
-            -printf '%h\\n' | sort -u)
+            -exec dirname {} + | sort -u)
           echo "$PROJECTS"
 `;
 	return `name: Security
@@ -157,8 +160,8 @@ test('a build step that names a fixed path instead of walking the tree fails', (
 test('an enumeration that hides a tree the repo holds fails, and names the tree', () => {
 	const root = fixtureRoot(TREES);
 	const hidden = workflow().replace(
-		"-not -path './node_modules/*' \\\n            -printf '%h\\n' | sort -u)",
-		"-not -path './apps/mobile_android/*' \\\n            -printf '%h\\n' | sort -u)",
+		"-not -path './node_modules/*' \\\n            -exec dirname {} + | sort -u)",
+		"-not -path './apps/mobile_android/*' \\\n            -exec dirname {} + | sort -u)",
 	);
 	const { errors } = check({ root, workflowText: hidden });
 	assert.equal(errors.length, 1);
@@ -170,12 +173,12 @@ test('an enumeration that hides a tree the repo holds fails, and names the tree'
 
 // --- the host the enumeration runs on ---------------------------------------
 //
-// The guard RUNS the step's `find`, so a host whose `find` cannot run it used to
-// read as a workflow that enumerates nothing: on macOS `/usr/bin/find` is BSD,
-// rejects `-printf`, and — with no pipefail — `find | sort` exited 0 with an
-// empty answer, reported as every tree going unscanned. These pin the three
-// answers apart: the host cannot run it, the expression is broken, the
-// expression runs and misses trees.
+// The guard RUNS the step's `find`, so a GNU-only primary in it made the guard
+// unrunnable on macOS, whose `/usr/bin/find` is BSD (decisions § 1733). The
+// workflow now uses primaries both finds take and the guard refuses the rest,
+// so these pin both halves: a GNU-only step is named as non-portable before
+// anything runs, and the portable step answers correctly on a find that
+// rejects GNU-only primaries, whichever host the suite runs on.
 
 /**
  * An env whose PATH puts a stand-in `find` ahead of the real one.
@@ -189,40 +192,60 @@ function hostWithFind(body) {
 	return { ...process.env, PATH: `${bin}:${process.env.PATH}` };
 }
 
-/// What BSD find answers to a GNU-only primary, verbatim.
+const REAL_FIND = spawnSync('bash', ['-c', 'command -v find'], { encoding: 'utf-8' }).stdout.trim();
+
+/// A find that answers a GNU-only primary the way BSD find does, verbatim,
+/// and otherwise is the host's real find.
 const BSD_FIND = hostWithFind(
-	'for a in "$@"; do case "$a" in -printf) echo "find: -printf: unknown primary or operator" >&2; exit 1;; esac; done',
+	`for a in "$@"; do case "$a" in ${GNU_ONLY_FIND_PRIMARIES.join('|')}) echo "find: $a: unknown primary or operator" >&2; exit 1;; esac; done\nexec ${REAL_FIND} "$@"`,
 );
 
-test('a host whose find rejects -printf is reported as unsupported, not as drift', () => {
+test('the portable enumeration answers correctly on a find without GNU primaries', () => {
 	const root = fixtureRoot(TREES);
-	const { errors } = check({ root, workflowText: workflow(), env: BSD_FIND });
+	const { errors, ok } = check({ root, workflowText: workflow(), env: BSD_FIND });
+	assert.deepEqual(errors, []);
+	assert.match(ok[0], /enumerates all 2 Go module/);
+	assert.match(ok[1], /enumerates all 2 Gradle project/);
+});
+
+test('a GNU-only primary in the step fails as non-portable, before anything runs', () => {
+	const root = fixtureRoot(TREES);
+	const gnu = workflow().replaceAll('-exec dirname {} +', "-printf '%h\\n'");
+	// A find that fails the test if it is ever reached: the refusal must come
+	// from reading the expression, not from whichever find this host has.
+	const { errors } = check({ root, workflowText: gnu, env: hostWithFind('echo reached >&2; exit 99') });
 	assert.equal(errors.length, 2);
 	for (const e of errors) {
-		assert.match(e, /^UNSUPPORTED HOST, not coverage drift/);
-		assert.match(e, /unknown primary or operator/);
-		assert.match(e, /gnubin/);
-		assert.doesNotMatch(e, /disagrees with the tree|does not name/);
+		assert.match(e, /uses GNU-only `find` `-printf`/);
+		assert.match(e, /-exec dirname \{\} \+/);
+		assert.doesNotMatch(e, /reached|disagrees with the tree/);
 	}
 });
 
-test('a host whose find answers nothing, and exits 0, is unsupported rather than drift', () => {
+test('gnuOnlyPrimaries matches whole primaries, not substrings', () => {
+	assert.deepEqual(gnuOnlyPrimaries("find . -name go.mod -printf '%h'"), ['-printf']);
+	assert.deepEqual(gnuOnlyPrimaries('find . -name a -exec dirname {} +'), []);
+	assert.deepEqual(gnuOnlyPrimaries('find . -name x-printf'), []);
+	assert.deepEqual(gnuOnlyPrimaries('find . -readable -xtype l'), ['-readable', '-xtype']);
+});
+
+test('a find that answers nothing, and exits 0, is drift rather than a pass', () => {
 	const root = fixtureRoot(TREES);
 	const { errors } = check({ root, workflowText: workflow(), env: hostWithFind('exit 0') });
 	assert.equal(errors.length, 2);
-	assert.ok(errors.every((e) => /^UNSUPPORTED HOST/.test(e)));
+	assert.ok(errors.every((e) => /disagrees with the tree/.test(e)));
 });
 
-test('an expression that fails on a capable host is a broken step, not an unsupported host', () => {
+test('an expression that fails is a broken step, not drift', () => {
 	const root = fixtureRoot(TREES);
-	const broken = workflow().replace("-printf '%h\\n' | sort)", "-printf '%h\\n' | sort --no-such-flag)");
+	const broken = workflow().replace('-exec dirname {} + | sort)', '-exec dirname {} + | sort --no-such-flag)');
 	const { errors } = check({ root, workflowText: broken });
 	assert.equal(errors.length, 1);
 	assert.match(errors[0], /Go module enumeration does not run: exit [1-9]/);
-	assert.doesNotMatch(errors[0], /UNSUPPORTED HOST/);
+	assert.doesNotMatch(errors[0], /disagrees with the tree/);
 });
 
-test('an expression that runs cleanly and names nothing is still drift on a capable host', () => {
+test('an expression that runs cleanly and names nothing is still drift', () => {
 	const root = fixtureRoot(TREES);
 	const blind = workflow().replace('-name go.mod', '-name go.nothing');
 	const { errors } = check({ root, workflowText: blind });
@@ -283,12 +306,12 @@ test('findExpression matches balanced parens, not the first escaped one', () => 
 	// hand the shell half an expression.
 	const block = `    steps:
       - run: |
-          P=$(find . \\( -name a -o -name b \\) -printf '%h\\n' | sort)
+          P=$(find . \\( -name a -o -name b \\) -exec dirname {} + | sort)
 `;
 	const expr = findExpression(block);
 	assert.ok(expr);
 	assert.equal(expr.variable, 'P');
-	assert.match(expr.script, /-name b \\\) -printf/);
+	assert.match(expr.script, /-name b \\\) -exec dirname/);
 });
 
 test('runScripts and jobsDeclaring read the shapes the workflow actually uses', () => {

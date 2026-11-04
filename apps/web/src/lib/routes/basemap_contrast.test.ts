@@ -33,6 +33,8 @@ import {
 	mapTrackLine,
 	MAP_ARROW_INK,
 	MAP_ARROW_OUTLINE,
+	MAP_HEAT_OPACITY,
+	mapHeatRamp,
 	mapZoneBoundary,
 } from './basemap_contrast';
 
@@ -309,4 +311,48 @@ test('a direction arrow keeps a 3:1 edge on the track line of either basemap', (
 		const best = Math.max(contrast(MAP_ARROW_INK, line), contrast(MAP_ARROW_OUTLINE, line));
 		assert.ok(best >= MAP_OVERLAY_FLOOR, `${line}: best edge ${best.toFixed(2)}:1`);
 	}
+});
+
+const LIGHT_GROUNDS = [LIGHT_BASEMAP_SAMPLE, LIGHT_BASEMAP_WATER_SAMPLE, OSM_FALLBACK_BACKDROP];
+
+test('every heat rung and the track line it fades into clear the floor at the opacity they rest at', () => {
+	const graded: Array<[string, boolean, string]> = [];
+	for (const dark of [true, false]) {
+		mapHeatRamp(dark).forEach((c, i) => graded.push([`heat rung ${i}`, dark, c]));
+		graded.push(['heat track line', dark, mapTrackLine(dark)]);
+	}
+	assert.equal(graded.length, 10, 'four rungs and a line per basemap');
+	for (const [name, dark, colour] of graded) {
+		for (const ground of dark ? [DARK_BASEMAP_SAMPLE] : LIGHT_GROUNDS) {
+			const ratio = contrast(composite(colour, ground, MAP_HEAT_OPACITY), ground);
+			assert.ok(
+				ratio >= MAP_OVERLAY_FLOOR,
+				`${name} ${colour} at ${MAP_HEAT_OPACITY} on ${ground}: ${ratio.toFixed(3)}:1`,
+			);
+		}
+	}
+});
+
+test('the fixed heat ramp and the 0.55 lines it replaced did not clear the floor', () => {
+	// The old ramp's stops at their own alpha, under the 0.85 layer opacity.
+	const old: Array<[string, number]> = [
+		['#3B82F6', 0.45 * 0.85],
+		['#10B981', 0.6 * 0.85],
+		['#F59E0B', 0.75 * 0.85],
+		['#EF4444', 0.9 * 0.85],
+	];
+	for (const [colour, alpha] of old) {
+		const ratio = contrast(composite(colour, LIGHT_BASEMAP_SAMPLE, alpha), LIGHT_BASEMAP_SAMPLE);
+		assert.ok(ratio < MAP_OVERLAY_FLOOR, `${colour}: ${ratio.toFixed(3)}:1`);
+	}
+	const lightLine = contrast(
+		composite(mapTrackLine(false), LIGHT_BASEMAP_WATER_SAMPLE, 0.55),
+		LIGHT_BASEMAP_WATER_SAMPLE,
+	);
+	const darkLine = contrast(
+		composite(mapTrackLine(true), DARK_BASEMAP_SAMPLE, 0.55),
+		DARK_BASEMAP_SAMPLE,
+	);
+	assert.ok(lightLine < MAP_OVERLAY_FLOOR, `light line was ${lightLine.toFixed(3)}:1`);
+	assert.ok(darkLine < MAP_OVERLAY_FLOOR, `dark line was ${darkLine.toFixed(3)}:1`);
 });

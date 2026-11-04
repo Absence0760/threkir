@@ -8,13 +8,13 @@ import 'package:core_models/core_models.dart' as cm;
 import 'package:archive/archive_io.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../lib/backup.dart';
 import '../lib/local_food_store.dart';
 import '../lib/local_gym_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
+import 'supabase_test_init.dart';
 
 bool _supabaseReady = false;
 
@@ -22,10 +22,7 @@ Future<void> _ensureSupabase() async {
   if (_supabaseReady) return;
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
-  await Supabase.initialize(
-    url: 'http://127.0.0.1:24321',
-    anonKey: 'eyJ.local.test',
-  );
+  await initializeTestSupabase();
   _supabaseReady = true;
 }
 
@@ -444,7 +441,8 @@ void main() {
       final result = await restoreFromBytes(bytes);
 
       expect(result.runsImported, 1);
-      expect(result.warnings.any((w) => w.contains('broken')), isTrue);
+      expect(result.warnings.any((w) =>
+          w.kind == RestoreWarningKind.run && w.itemId == 'broken'), isTrue);
     });
 
     // The id read used to sit OUTSIDE the per-row guard its sibling casts are
@@ -463,7 +461,7 @@ void main() {
       expect(result.runsImported, 2);
       expect(runStore.runs.map((r) => r.id),
           containsAll(<String>['r-before', 'r-after']));
-      expect(result.warnings.any((w) => w.contains('missing id')), isTrue);
+      expect(result.warnings.any((w) => w.kind == RestoreWarningKind.runNoId), isTrue);
     });
 
     test('a run row with a null id is skipped, later rows still land', () async {
@@ -476,7 +474,7 @@ void main() {
 
       expect(result.runsImported, 1);
       expect(runStore.runs.single.id, 'r-after-null');
-      expect(result.warnings.any((w) => w.contains('missing id')), isTrue);
+      expect(result.warnings.any((w) => w.kind == RestoreWarningKind.runNoId), isTrue);
     });
 
     test('a run row with a non-string id is skipped', () async {
@@ -489,7 +487,7 @@ void main() {
 
       expect(result.runsImported, 1);
       expect(runStore.runs.single.id, 'r-after-int');
-      expect(result.warnings.any((w) => w.contains('missing id')), isTrue);
+      expect(result.warnings.any((w) => w.kind == RestoreWarningKind.runNoId), isTrue);
     });
 
     test('an empty-string run id is skipped rather than written', () async {
@@ -502,7 +500,7 @@ void main() {
 
       expect(result.runsImported, 1);
       expect(runStore.runs.single.id, 'r-after-empty');
-      expect(result.warnings.any((w) => w.contains('missing id')), isTrue);
+      expect(result.warnings.any((w) => w.kind == RestoreWarningKind.runNoId), isTrue);
     });
 
     // `DateTime.parse` reads an impossible start as a real one — 2026-13-45
@@ -530,7 +528,8 @@ void main() {
       expect(result.runsImported, 2);
       expect(runStore.runs.map((r) => r.id),
           isNot(contains('r-rolled')));
-      expect(result.warnings.any((w) => w.contains('r-rolled')), isTrue);
+      expect(result.warnings.any((w) =>
+          w.kind == RestoreWarningKind.run && w.itemId == 'r-rolled'), isTrue);
     });
 
     test('an impossible created_at leaves the run readable without one',
@@ -647,7 +646,8 @@ void main() {
       );
 
       expect(result.runsImported, 0);
-      expect(result.warnings.any((w) => w.contains('LocalRunStore')), isTrue);
+      expect(result.warnings
+          .any((w) => w.kind == RestoreWarningKind.runsSkipped), isTrue);
     });
   });
 
@@ -709,8 +709,8 @@ void main() {
       // The offline branch advertises this warning so the user knows
       // why their profile / settings weren't restored.
       expect(
-        result.warnings.any((w) => w.contains('Restoring offline')),
-        isTrue,
+        result.warnings.first.kind,
+        RestoreWarningKind.offline,
       );
     });
 
@@ -1426,7 +1426,8 @@ void main() {
       expect(res.runsImported, 0);
       expect((await runStore.runById('r-1'))!.track, hasLength(3),
           reason: 'the on-device GPS trace is the only copy of what happened');
-      expect(res.warnings.any((w) => w.contains('already present locally')),
+      expect(res.warnings.any((w) =>
+          w.kind == RestoreWarningKind.runPresent && w.itemId == 'r-1'),
           isTrue);
     });
 
@@ -1695,8 +1696,7 @@ void main() {
       expect(res.runsImported, 1, reason: 'a short archive still restores');
       expect(res.archiveIncomplete, isTrue);
       expect(res.archiveIncompleteSections, ['tracks']);
-      expect(res.warnings.first, contains('incomplete'));
-      expect(res.warnings.first, contains('tracks'));
+      expect(res.warnings.first.kind, RestoreWarningKind.archiveIncomplete);
     });
 
     test('a short archive with no section list still discloses', () async {
@@ -1707,7 +1707,7 @@ void main() {
 
       expect(res.archiveIncomplete, isTrue);
       expect(res.archiveIncompleteSections, isEmpty);
-      expect(res.warnings.first, contains('incomplete'));
+      expect(res.warnings.first.kind, RestoreWarningKind.archiveIncomplete);
     });
 
     test('a whole archive claims nothing', () async {
@@ -1717,7 +1717,8 @@ void main() {
       ));
 
       expect(res.archiveIncomplete, isFalse);
-      expect(res.warnings.any((w) => w.contains('incomplete')), isFalse);
+      expect(res.warnings
+          .any((w) => w.kind == RestoreWarningKind.archiveIncomplete), isFalse);
     });
 
     test('an archive from a writer that predates the field claims nothing',
@@ -1731,7 +1732,8 @@ void main() {
       ));
 
       expect(res.archiveIncomplete, isFalse);
-      expect(res.warnings.any((w) => w.contains('incomplete')), isFalse);
+      expect(res.warnings
+          .any((w) => w.kind == RestoreWarningKind.archiveIncomplete), isFalse);
     });
 
     test('the whole-archive round trip carries its own verdict into restore',

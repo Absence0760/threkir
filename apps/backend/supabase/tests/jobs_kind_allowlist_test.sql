@@ -48,7 +48,7 @@
 
 begin;
 
-select plan(22);
+select plan(23);
 
 -- The one list: each row is both an INSERT the CHECK must accept and a
 -- kind the CHECK must admit. The payloads are representative of what the
@@ -90,6 +90,7 @@ insert into job_kind (kind, payload) values
                                               'user_id', gen_random_uuid(),
                                               'format', 'backup')),
   ('export_blob_reap',     '{}'::jsonb),
+  ('route_photo_orphan_sweep', jsonb_build_object('paths', jsonb_build_array('user/route_photo.jpg'))),
   ('distance_recompute',   jsonb_build_object('run_id', gen_random_uuid(),
                                               'user_id', gen_random_uuid())),
   ('security_email',       jsonb_build_object('user_id', gen_random_uuid(),

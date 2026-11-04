@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -14,6 +13,8 @@
 	} from '#lib/util/push.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { ACTIVITY_TYPES } from '#lib/runs/activity_type.ts';
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
@@ -73,7 +74,7 @@
 			await refreshCurrentDeviceRow();
 			showToast(m('settingsDevices.pushEnabledToast'), 'success');
 		} catch (e) {
-			showToast(m('settingsDevices.pushEnableFailedToast', { message: thrownMessage(e) }), 'error');
+			showToast(m('settingsDevices.pushEnableFailedToast', { message: errorCopy(e, m, 'settingsDevices.pushEnableFailedToast') }), 'error');
 		} finally {
 			pushBusy = false;
 		}
@@ -87,7 +88,7 @@
 			await refreshCurrentDeviceRow();
 			showToast(m('settingsDevices.pushDisabledToast'), 'success');
 		} catch (e) {
-			showToast(m('settingsDevices.pushDisableFailedToast', { message: thrownMessage(e) }), 'error');
+			showToast(m('settingsDevices.pushDisableFailedToast', { message: errorCopy(e, m, 'settingsDevices.pushDisableFailedToast') }), 'error');
 		} finally {
 			pushBusy = false;
 		}
@@ -126,7 +127,7 @@
 			.eq('user_id', auth.user.id)
 			.eq('device_id', deviceId);
 		if (error) {
-			showToast(m('settingsDevices.renameFailedToast', { message: error.message }), 'error');
+			showToast(m('settingsDevices.renameFailedToast', { message: errorCopy(error, m, 'settingsDevices.renameFailedToast') }), 'error');
 			return;
 		}
 		devices = devices.map((d) =>
@@ -143,7 +144,7 @@
 			.eq('user_id', auth.user.id)
 			.eq('device_id', deviceId);
 		if (error) {
-			showToast(m('settingsDevices.removeDeviceFailedToast', { message: error.message }), 'error');
+			showToast(m('settingsDevices.removeDeviceFailedToast', { message: errorCopy(error, m, 'settingsDevices.removeDeviceFailedToast') }), 'error');
 			return;
 		}
 		devices = devices.filter((d) => d.device_id !== deviceId);
@@ -255,7 +256,7 @@
 		// since the page loaded.
 		const { data, error } = await mergeOverrides(device, { [key]: null });
 		if (error) {
-			showToast(m('settingsDevices.clearOverrideFailedToast', { message: error.message }), 'error');
+			showToast(m('settingsDevices.clearOverrideFailedToast', { message: errorCopy(error, m, 'settingsDevices.clearOverrideFailedToast') }), 'error');
 			return;
 		}
 		devices = devices.map((d) =>
@@ -397,7 +398,7 @@
 		const { data, error } = await mergeOverrides(device, { [addKey]: value });
 		addBusy = false;
 		if (error) {
-			showToast(m('settingsDevices.addOverrideFailedToast', { message: error.message }), 'error');
+			showToast(m('settingsDevices.addOverrideFailedToast', { message: errorCopy(error, m, 'settingsDevices.addOverrideFailedToast') }), 'error');
 			return;
 		}
 		devices = devices.map((d) =>
@@ -420,15 +421,15 @@
 		<div class="skeleton-stack" aria-hidden="true">
 			{#each Array(3) as _, i (i)}
 				<div class="skel-row">
-					<span class="skel skel-icon"></span>
+					<SkeletonBlock height="1.5rem" width="1.5rem" radius="50%" />
 					<div class="skel-info">
-						<span class="skel skel-line skel-w-40"></span>
-						<span class="skel skel-line skel-w-60"></span>
+						<SkeletonBlock height="0.85rem" width="40%" />
+						<SkeletonBlock height="0.85rem" width="60%" />
 					</div>
 				</div>
 			{/each}
 		</div>
-		<p class="sr-only" role="status">{m('settingsDevices.loadingDevices')}</p>
+		<p class="visually-hidden" role="status">{m('settingsDevices.loadingDevices')}</p>
 	{:else if devices.length === 0}
 		<section class="card empty-card">
 			<span class="material-symbols empty-icon" aria-hidden="true">devices_other</span>
@@ -698,42 +699,7 @@
 		border-radius: var(--radius-lg);
 		pointer-events: none;
 	}
-	.skel-icon { width: 1.5rem; height: 1.5rem; border-radius: 50%; flex-shrink: 0; }
 	.skel-info { flex: 1; display: flex; flex-direction: column; gap: 0.4rem; }
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line { height: 0.85rem; }
-	.skel-w-40 { width: 40%; }
-	.skel-w-60 { width: 60%; }
-	@keyframes skel-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
-	}
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
 	.device-list { display: flex; flex-direction: column; gap: 0.5rem; }
 	.device {
 		display: flex;

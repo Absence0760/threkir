@@ -131,18 +131,17 @@ class _ReportSheetState extends State<_ReportSheet> {
       if (!mounted) return;
       widget.onSuccess();
     } on PostgrestException catch (e) {
+      debugPrint('report submit failed: $e');
       if (!mounted) return;
       if (e.code == '23505') {
         setState(() =>
             _error = AppLocalizations.of(context).reportErrDuplicate);
         return;
       }
-      final friendly = rateLimitErrorMessage(
-        AppLocalizations.of(context),
-        code: e.code,
-        message: e.message,
-      );
-      setState(() => _error = friendly ?? e.message);
+      final l10n = AppLocalizations.of(context);
+      final friendly =
+          rateLimitErrorMessage(l10n, code: e.code, message: e.message);
+      setState(() => _error = friendly ?? friendlyError(l10n, e));
     } catch (e) {
       debugPrint('report submit failed: $e');
       if (mounted) {

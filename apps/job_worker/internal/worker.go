@@ -102,6 +102,12 @@ type Backend interface {
 	// (decisions § 1049 / § 1112).
 	ListStorageObjectsWithMeta(ctx context.Context, bucket, prefix string) ([]StorageObject, error)
 	DeleteStorageObjects(ctx context.Context, bucket string, paths []string) error
+	// Route-photo orphan path — kind='route_photo_orphan_sweep' (migration
+	// 20271106000020). The `route_photo_orphan_paths` RPC returns at most
+	// `limit` route-photos objects no route_photos row references; nil
+	// `paths` is the 24-hour-graced backstop, non-nil restricts it to those
+	// paths. Empty while the server-side gate is off.
+	RoutePhotoOrphanPaths(ctx context.Context, paths []string, limit int) ([]string, error)
 	DownloadClubPhoto(ctx context.Context, path string) (body []byte, contentType string, err error)
 	UploadClubPhoto(ctx context.Context, path string, body []byte, contentType string) error
 	UpdateClubPhotoThumb512Path(ctx context.Context, photoID, path string) error
@@ -529,6 +535,8 @@ func (w *Worker) dispatch(ctx context.Context, job *Job) error {
 		return w.handleDataExport(ctx, job)
 	case "export_blob_reap":
 		return w.handleExportBlobReap(ctx, job)
+	case "route_photo_orphan_sweep":
+		return w.handleRoutePhotoOrphanSweep(ctx, job)
 	case "distance_recompute":
 		return w.handleDistanceRecompute(ctx, job)
 	default:

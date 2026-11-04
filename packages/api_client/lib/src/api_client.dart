@@ -13,6 +13,7 @@ import 'chunk.dart';
 import 'direct_messages.dart';
 import 'effort_rank.dart';
 import 'live_overlay.dart';
+import 'route_delete.dart';
 import 'segments_rank.dart';
 import 'smoothed_sidecar.dart';
 import 'ultrasignup_person.dart';
@@ -1392,43 +1393,87 @@ class ApiClient {
     return _runFromRow(data);
   }
 
-  /// Delete a route from the backend. Mirrors `apps/web/src/lib/core/data.ts:
-  /// deleteRoute`. RLS gates the delete to the owner; foreign-key
-  /// cascades clean up `saved_routes`, `segments`, and `route_reviews`
-  /// rows automatically. Throws on RLS rejection or network failure
-  /// so the caller can surface the error and avoid the
-  /// "deleted-locally-but-cloud-row-persists" silent-divergence bug
-  /// that mobile shipped before this method existed — every refresh
-  /// would re-pull the route the user thought they'd deleted.
+  /// Delete a route the caller owns (or administers through a club). Mirrors
+  /// web `data.ts: deleteRoute`. Every reference is handled by its foreign key
+  /// (decisions § 2293): the route's photos, markers, conditions, reviews,
+  /// shares, bookmarks and segments cascade; runs, events, event courses,
+  /// race listings and DMs keep living with the link nulled.
+  ///
+  /// The photo bytes go after the row: their uploader can read their own
+  /// folder, so the sweep still reaches them once the cascade has taken the
+  /// route_photos rows, and a failed route delete never leaves a standing
+  /// route with its photos gone. Bytes a skipped or failed sweep leaves are
+  /// erased by the server's route-photo orphan sweep (behind its feature flag,
+  /// decisions § 2305), and by account deletion's folder sweep in any case.
+  ///
+  /// RLS filters a refused DELETE rather than raising, so an empty result is
+  /// read back: a route the caller can still see throws
+  /// [RouteDeleteRefusedException]; one they cannot see is already gone and
+  /// the delete is done. Throws on network failure so the caller can surface
+  /// it and keep the local copy for a retry.
   Future<void> deleteRoute(String routeId) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
+    // The path read only feeds the photo sweep, so its failure costs the
+    // sweep and never the delete.
+    final paths = <String>[];
     try {
-      // Sweep route-photo blobs before the row delete. The FK cascade
-      // removes the route_photos rows (so the Storage SELECT join hides
-      // the bytes), but the blobs would otherwise orphan in the bucket —
-      // the same gap deleteRun closes for run photos. Best-effort.
       final photoRows = await _client
           .from(RoutePhotoRow.table)
           .select(
             '${RoutePhotoRow.colStoragePath}, ${RoutePhotoRow.colThumb512Path}',
           )
           .eq(RoutePhotoRow.colRouteId, routeId);
-      final paths = <String>[];
       for (final row in photoRows) {
         final storage = row[RoutePhotoRow.colStoragePath] as String?;
         final thumb = row[RoutePhotoRow.colThumb512Path] as String?;
         if (storage != null && storage.isNotEmpty) paths.add(storage);
         if (thumb != null && thumb.isNotEmpty) paths.add(thumb);
       }
-      if (paths.isNotEmpty) {
-        await _client.storage.from(StorageBuckets.routePhotos).remove(paths);
-      }
     } catch (e) {
-      // Best-effort — the row delete matters more than the file cleanup.
-      debugPrint('deleteRoute: photo cleanup failed: ${safeErrorLabel(e)}');
+      debugPrint('deleteRoute: photo path read failed: ${safeErrorLabel(e)}');
     }
-    await _client.from(RouteRow.table).delete().eq(RouteRow.colId, routeId);
+
+    final deleted = await _client
+        .from(RouteRow.table)
+        .delete()
+        .eq(RouteRow.colId, routeId)
+        .select(RouteRow.colId);
+    if (deleted.isEmpty) {
+      final still = await _client
+          .from(RouteRow.table)
+          .select(RouteRow.colId)
+          .eq(RouteRow.colId, routeId)
+          .maybeSingle();
+      if (still != null) throw RouteDeleteRefusedException(routeId);
+    }
+
+    if (paths.isNotEmpty) {
+      try {
+        await _client.storage.from(StorageBuckets.routePhotos).remove(paths);
+      } catch (e) {
+        debugPrint('deleteRoute: photo cleanup failed: ${safeErrorLabel(e)}');
+      }
+    }
+  }
+
+  /// What deleting [routeId] takes with it or detaches, for the confirm the
+  /// owner reads first. Mirrors web `fetchRouteDeleteImpact`. Counts other
+  /// runners' bookmarks and the race listings using it as a course, which the
+  /// owner's own session cannot read. Throws when the caller may not delete
+  /// the route (42501) or the read fails.
+  Future<RouteDeleteImpact> fetchRouteDeleteImpact(String routeId) async {
+    final data = await _client.rpc(
+      'route_delete_impact',
+      params: {'p_route_id': routeId},
+      get: true,
+    );
+    if (data is List && data.isNotEmpty && data.first is Map) {
+      return RouteDeleteImpact.fromRow(
+        Map<String, dynamic>.from(data.first as Map),
+      );
+    }
+    throw StateError('route_delete_impact returned no row');
   }
 
   /// Course markers for a route, ordered by distance along the line. Reads
@@ -7098,12 +7143,31 @@ class ApiClient {
   /// whether it reached the end of the lookback window, and a caller that
   /// reads only the counts renders a truncated import as a finished one.
   /// See `StravaSyncResult` for why that costs runs rather than a click.
+  ///
+  /// A refusal the screen words (`refresh_failed`: Strava revoked the grant,
+  /// so only connecting again helps) throws [StravaConnectFailure], as
+  /// [completeStravaOAuth] does; any other failure throws as it came.
   Future<StravaSyncResult> syncStrava({int lookbackDays = 90}) async {
-    final res = await _client.functions.invoke(
-      'strava-import',
-      body: {'action': 'sync', 'lookbackDays': lookbackDays},
-    );
+    final res = await _invokeStravaImport(
+        {'action': 'sync', 'lookbackDays': lookbackDays});
     return stravaSyncResultFromResponse(res.data);
+  }
+
+  /// `strava-import` with its coded refusals turned into
+  /// [StravaConnectFailure]. A code `stravaConnectError` has no words for, or
+  /// a body with no code, rethrows the transport's exception so
+  /// `friendlyError` can still say "offline". Mirrors web `stravaRefusal`.
+  Future<FunctionResponse> _invokeStravaImport(Map<String, Object?> body) async {
+    try {
+      return await _client.functions.invoke('strava-import', body: body);
+    } on FunctionException catch (e) {
+      final details = e.details;
+      final errorCode = details is Map ? details['error'] : null;
+      final reason = stravaConnectError(errorCode is String ? errorCode : null);
+      if (reason == StravaConnectError.generic) rethrow;
+      throw StravaConnectFailure(reason,
+          code: errorCode as String, cause: e);
+    }
   }
 
   /// Complete the in-app Strava OAuth exchange. The caller (Settings)
@@ -7117,20 +7181,21 @@ class ApiClient {
   /// in the same graded shape as [syncStrava] — a first import Strava
   /// throttled is partial, and saying "connected, N imported" is what stops
   /// the runner coming back for the rest.
+  ///
+  /// A refusal the function codes (`connect_errors.ts`) and the screen words
+  /// throws [StravaConnectFailure]; any other failure — a dropped connection,
+  /// an unworded refusal — throws as it came, for `friendlyError`.
   Future<StravaSyncResult> completeStravaOAuth({
     required String code,
     required String scope,
     required String redirectUri,
   }) async {
-    final res = await _client.functions.invoke(
-      'strava-import',
-      body: {
-        'action': 'connect',
-        'code': code,
-        'scope': scope,
-        'redirect_uri': redirectUri,
-      },
-    );
+    final res = await _invokeStravaImport({
+      'action': 'connect',
+      'code': code,
+      'scope': scope,
+      'redirect_uri': redirectUri,
+    });
     return stravaSyncResultFromResponse(res.data);
   }
 
@@ -9101,9 +9166,13 @@ class ApiClient {
 
   /// Assign one of the coach's plans to a linked athlete via the
   /// `assign_plan_to_athlete` RPC (migration 20270106_001). An overlap with
-  /// one of the athlete's active plans throws [PlanAssignOverlapException];
-  /// any other refusal throws an Exception carrying the RPC's raise text,
-  /// which the caller surfaces. Returns the new plan id.
+  /// one of the athlete's active plans throws [PlanAssignOverlapException].
+  /// Every other failure reaches the caller untouched for it to classify: a
+  /// refusal (signed out, not an active coach of the athlete, a source plan
+  /// that is missing or not the caller's to use) as the RPC's
+  /// [PostgrestException], whose raise text is log detail, not copy; a
+  /// transport failure as whatever the HTTP client threw. Returns the new
+  /// plan id.
   Future<String> assignPlanToAthlete({
     required String sourcePlanId,
     required String athleteId,
@@ -9122,9 +9191,7 @@ class ApiClient {
       // (migration 20270830000008); typed so the caller can say which dates
       // to pick instead of showing the raw raise text.
       if (e.code == '23P01') throw PlanAssignOverlapException(e.message);
-      // Any other refusal: the RPC's RAISE text verbatim rather than the noisy
-      // PostgrestException.toString(), so the caller can show it directly.
-      throw Exception(e.message);
+      rethrow;
     }
   }
 
@@ -9282,6 +9349,7 @@ class ApiClient {
     return [
       for (final r in rows)
         DmThread(
+          conversationId: r['conversation_id'] as String,
           partnerId: r['partner_id'] as String?,
           deletedPartnerKey: r['deleted_partner_key'] as String?,
           partnerName:
@@ -9293,22 +9361,94 @@ class ApiClient {
           lastAt: parseIsoStrictRequired(r['last_at'], 'last_at'),
           lastFromMe: r['last_from_me'] == true,
           unread: (r['unread'] as num?)?.toInt() ?? 0,
+          muted: r['muted'] == true,
+          archived: r['archived'] == true,
         ),
     ];
   }
 
-  /// Total unread direct messages across every conversation — the badge on
-  /// the You tab's inbox icon. The same `dm_threads()` aggregation as
-  /// [fetchDmThreads], without its partner-name read, since a count needs no
-  /// names. Throws on a failed read; signed out answers 0 without a call.
-  Future<int> fetchUnreadDmCount() async {
-    if (_client.auth.currentUser == null) return 0;
+  /// Each conversation's unread count with the viewer's mute and archive
+  /// state — what the You tab's inbox badge is counted from
+  /// (`unreadDmBadgeCount` in the app, the twin of web's). The same
+  /// `dm_threads()` aggregation as [fetchDmThreads], without its partner-name
+  /// read. Throws on a failed read; signed out answers empty without a call.
+  /// The conversation id lets the badge leave out a conversation whose
+  /// delete is still inside its undo window.
+  Future<
+          List<
+              ({String conversationId, int unread, bool muted, bool archived})>>
+      fetchDmBadgeStates() async {
+    if (_client.auth.currentUser == null) return const [];
     final res = await _client.rpc('dm_threads', params: const {}, get: true);
-    var total = 0;
-    for (final r in (res as List).cast<Map<String, dynamic>>()) {
-      total += (r['unread'] as num?)?.toInt() ?? 0;
-    }
-    return total;
+    return [
+      for (final r in (res as List).cast<Map<String, dynamic>>())
+        (
+          conversationId: r['conversation_id'] as String,
+          unread: (r['unread'] as num?)?.toInt() ?? 0,
+          muted: r['muted'] == true,
+          archived: r['archived'] == true,
+        ),
+    ];
+  }
+
+  /// The viewer's own mute and archive state for one conversation, for a
+  /// thread opened from outside the inbox (a profile, a route). The row is
+  /// owner-read only. Null when the viewer has no row, or signed out. Throws
+  /// on a failed read.
+  Future<({bool muted, DateTime? archivedAt})?> fetchDmConversationState(
+    String conversationId,
+  ) async {
+    final me = _client.auth.currentUser?.id;
+    if (me == null) return null;
+    final row = await _client
+        .from('conversation_participants')
+        .select('muted_at, archived_at')
+        .eq('conversation_id', conversationId)
+        .eq('user_id', me)
+        .maybeSingle();
+    if (row == null) return null;
+    return (
+      muted: row['muted_at'] != null,
+      archivedAt: parseIsoStrictValue(row['archived_at']),
+    );
+  }
+
+  /// Deletes a conversation for the viewer only (migration 20271105000010):
+  /// every message so far leaves their reads, the other participant keeps
+  /// theirs, and a newer message brings it back. The caller holds it behind
+  /// the undo window, since nothing is sent until the window closes. A
+  /// conversation the viewer is not in raises P0002. Mirrors web
+  /// `hideDmConversation`.
+  Future<void> hideDmConversation(String conversationId) async {
+    await _client.rpc(
+      'hide_conversation',
+      params: {'p_conversation_id': conversationId},
+    );
+  }
+
+  /// Mutes or unmutes a conversation for the viewer: a muted one raises no
+  /// message notification and leaves the badge. Mirrors web
+  /// `setDmConversationMuted`.
+  Future<void> setDmConversationMuted(
+    String conversationId, {
+    required bool muted,
+  }) async {
+    await _client.rpc(
+      'set_conversation_muted',
+      params: {'p_conversation_id': conversationId, 'p_muted': muted},
+    );
+  }
+
+  /// Archives or unarchives a conversation for the viewer; it stays archived
+  /// until a newer message arrives. Mirrors web `setDmConversationArchived`.
+  Future<void> setDmConversationArchived(
+    String conversationId, {
+    required bool archived,
+  }) async {
+    await _client.rpc(
+      'set_conversation_archived',
+      params: {'p_conversation_id': conversationId, 'p_archived': archived},
+    );
   }
 
   /// One page of a conversation, oldest message first. A partner thread is

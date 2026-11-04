@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { myActiveChallenges } from '#lib/core/data.ts';
 	import type { ChallengeWithMeta, ChallengeMetric } from '#lib/types.ts';
 	import ChallengeProgressBar from './ChallengeProgressBar.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	const METRIC_ICON: Record<ChallengeMetric, string> = {
 		distance: 'straighten',
@@ -40,7 +40,7 @@
 		try {
 			challenges = await myActiveChallenges();
 		} catch (e) {
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, m, 'ChallengesPanel: loadError');
 		}
 	}
 

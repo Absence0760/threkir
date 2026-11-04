@@ -8,6 +8,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:share_plus_platform_interface/share_plus_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/detail_map_height.dart';
 import '../lib/local_route_store.dart';
@@ -172,6 +173,67 @@ class _AudienceShareApi extends _SlowShareApi {
   Future<List<UserProfileRow>> fetchShareCandidates() async => const [];
 }
 
+/// Signed-in fake for a run that is already public.
+class _PublicRunShareApi extends _SlowShareApi {
+  @override
+  Future<({bool isPublic, String? raceListingId})?> fetchRunRaceGalleryContext(
+    String runId,
+  ) async => (isPublic: true, raceListingId: null);
+}
+
+class _RecordingSharePlatform extends SharePlatform {
+  final List<ShareParams> calls = <ShareParams>[];
+
+  @override
+  Future<ShareResult> share(ShareParams params) async {
+    calls.add(params);
+    return const ShareResult('recorded', ShareResultStatus.success);
+  }
+}
+
+late _RecordingSharePlatform _sharePlatform;
+
+/// The share sheet lays its canvas out at full size; a phone-tall view
+/// keeps it from overflowing the default test surface.
+void _tallView(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1200, 3300);
+  tester.view.devicePixelRatio = 3;
+  addTearDown(tester.view.reset);
+}
+
+Future<void> _openShareSheet(WidgetTester tester) async {
+  await tester.runAsync(() async {
+    await tester.tap(find.widgetWithIcon(IconButton, Icons.share_outlined));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+  });
+  await pumpUntil(
+    tester,
+    () => find.byKey(const ValueKey('share-run-link')).evaluate().isNotEmpty,
+    describe: 'the share sheet opening',
+  );
+  await tester.pump(const Duration(milliseconds: 300));
+}
+
+Future<void> _tapShareLink(WidgetTester tester) async {
+  final link = find.byKey(const ValueKey('share-run-link'));
+  await tester.ensureVisible(link);
+  await tester.pump(const Duration(milliseconds: 300));
+  await tester.runAsync(() async {
+    await tester.tap(link);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+  });
+  await tester.pump(const Duration(milliseconds: 300));
+}
+
+Future<void> _dropTree(WidgetTester tester) async {
+  await tester.runAsync(() async {
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+}
+
 /// Signed-in fake that records makeRunPrivate calls; optionally throws
 /// so the failure banner path can be driven without a backend.
 class _MakePrivateApi extends ApiClient {
@@ -278,10 +340,31 @@ class _DeleteOkApi extends ApiClient {
 /// Returns a seeded universal-bag value for [effective]; everything else
 /// falls through to the caller's fallback. Never touches Supabase.
 class _FakeSettingsService extends SettingsService {
-  _FakeSettingsService(this._values)
+  _FakeSettingsService(this._values,
+      {this.serverValues, this.serverReachable = true})
       : super(deviceId: 'test-device', platform: 'android');
 
   final Map<String, dynamic> _values;
+
+  /// What a server re-read replaces the bags with; null keeps them.
+  final Map<String, dynamic>? serverValues;
+  final bool serverReachable;
+  int loads = 0;
+
+  @override
+  bool get isServerHydrated => serverReachable;
+
+  @override
+  Future<SettingsService> load() async {
+    loads++;
+    final fresh = serverValues;
+    if (serverReachable && fresh != null) {
+      _values
+        ..clear()
+        ..addAll(fresh);
+    }
+    return this;
+  }
 
   @override
   T? effective<T>(String key, {T? fallback}) =>
@@ -299,6 +382,9 @@ class _FakeSettingsSync extends SettingsSyncService {
 
   @override
   SettingsService? get service => _service;
+
+  @override
+  Future<SettingsService> reloadedService() => _service!.load();
 }
 
 Future<void> _pump(WidgetTester tester, Run run,
@@ -307,10 +393,12 @@ Future<void> _pump(WidgetTester tester, Run run,
     ApiClient? apiClient,
     SettingsSyncService? settingsSync,
     bool showRawTrack = false,
+    bool useMiles = false,
     double textScale = 1.0}) async {
   SharedPreferences.setMockInitialValues({
     if (bodyWeightKg != null) 'body_weight_kg': bodyWeightKg,
     if (showRawTrack) 'show_raw_track': true,
+    if (useMiles) 'use_miles': true,
   });
   final prefs = Preferences();
   await prefs.init();
@@ -344,6 +432,14 @@ Future<void> _pump(WidgetTester tester, Run run,
 }
 
 void main() {
+  // SharePlus.instance reads SharePlatform.instance once, on first use, so
+  // the recorder is installed once and emptied per test.
+  setUpAll(() {
+    _sharePlatform = _RecordingSharePlatform();
+    SharePlatform.instance = _sharePlatform;
+  });
+  setUp(() => _sharePlatform.calls.clear());
+
   setUpAll(() {
     dotenv.loadFromString(isOptional: true);
   });
@@ -383,99 +479,171 @@ void main() {
       expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
     });
 
-    testWidgets('share button is in-flight-guarded against a double-tap',
-        (tester) async {
-      final run = _run(title: 'Morning Tempo');
+    // An image, a sticker or an exported file is the owner's own rendering
+    // of the run, so Share opens the sheet without asking who may see the
+    // run; only the sheet's Share link asks (decisions § 2321).
+    testWidgets('Share opens the image sheet without asking about the '
+        "run's audience", (tester) async {
+      _tallView(tester);
       final api = _SlowShareApi();
-      await _pump(tester, run,
-          apiClient: api,
-          settingsSync:
-              _FakeSettingsSync(Preferences(), _FakeSettingsService({})));
+      await _pump(
+        tester,
+        _run(title: 'Morning Tempo'),
+        apiClient: api,
+        settingsSync: _FakeSettingsSync(
+          Preferences(),
+          _FakeSettingsService({}),
+        ),
+      );
 
-      final shareFinder = find.widgetWithIcon(IconButton, Icons.share_outlined);
-      expect(shareFinder, findsOneWidget);
+      await _openShareSheet(tester);
 
-      // Tap Share → confirm the make-public dialog. The store/network
-      // I/O must run inside runAsync so the awaited makeRunPublic
-      // continuation runs in the tap's zone.
+      expect(find.text('Sticker'), findsOneWidget);
+      expect(find.byKey(const ValueKey('share-run-link')), findsOneWidget);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byKey(const ValueKey('audience-sheet')), findsNothing);
+      expect(api.calls, 0, reason: 'nothing may be published');
+
+      final share = tester.widget<IconButton>(
+        find.widgetWithIcon(IconButton, Icons.share_outlined),
+      );
+      expect(
+        share.onPressed,
+        isNull,
+        reason: 'a second tap must not stack a second sheet',
+      );
+      await _dropTree(tester);
+    });
+
+    testWidgets('Share link on a private run confirms, publishes once and '
+        'then shares the link', (tester) async {
+      _tallView(tester);
+      final api = _SlowShareApi();
+      await _pump(
+        tester,
+        _run(title: 'Morning Tempo'),
+        apiClient: api,
+        settingsSync: _FakeSettingsSync(
+          Preferences(),
+          _FakeSettingsService({}),
+        ),
+      );
+      await _openShareSheet(tester);
+
+      await _tapShareLink(tester);
+      final makePublic = find.descendant(
+        of: find.byKey(const ValueKey('share-confirm-dialog')),
+        matching: find.widgetWithText(FilledButton, 'Make public'),
+      );
+      await pumpUntil(
+        tester,
+        () => makePublic.evaluate().isNotEmpty,
+        describe: 'the make-public confirm',
+      );
       await tester.runAsync(() async {
-        await tester.tap(shareFinder);
+        await tester.tap(makePublic);
         await tester.pump();
-        await tester.pump(const Duration(milliseconds: 300));
-        await tester.tap(find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.widgetWithText(FilledButton, 'Make public'),
-        ));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 50));
       });
+      await pumpUntil(
+        tester,
+        () => api.calls == 1,
+        describe: 'makeRunPublic being called',
+      );
 
-      // makeRunPublic is now blocked on the gate → _sharing is true →
-      // the share IconButton is disabled (onPressed == null) so a second
-      // tap can't fire a duplicate makeRunPublic.
-      final disabled = tester.widget<IconButton>(shareFinder);
-      expect(disabled.onPressed, isNull);
-
-      // A second tap while disabled is a no-op — still exactly one call.
+      // makeRunPublic is still blocked on the gate; a second tap on Share
+      // link must not publish again.
       await tester.runAsync(() async {
-        await tester.tap(shareFinder, warnIfMissed: false);
+        await tester.tap(
+          find.byKey(const ValueKey('share-run-link')),
+          warnIfMissed: false,
+        );
         await tester.pump();
       });
       expect(api.calls, 1);
+      expect(_sharePlatform.calls, isEmpty);
 
-      // Release the gate and replace the tree so the share sheet doesn't
-      // open into the small test viewport (its layout overflows there —
-      // unrelated to the guard under test). gate.complete() lets the
-      // awaited makeRunPublic settle cleanly.
-      api.gate.complete();
-      await tester.runAsync(() async {
-        await tester.pumpWidget(const SizedBox.shrink());
-        await tester.pump();
-      });
+      await tester.runAsync(() async => api.gate.complete());
+      await pumpUntil(
+        tester,
+        () => _sharePlatform.calls.isNotEmpty,
+        describe: 'the run link reaching the share sheet',
+      );
+      expect(_sharePlatform.calls.single.text, endsWith('/runs/run-1'));
+      await _dropTree(tester);
+    });
+
+    testWidgets('Share link on a run that is already public shares it without '
+        'the make-public confirm', (tester) async {
+      _tallView(tester);
+      final api = _PublicRunShareApi();
+      await _pump(
+        tester,
+        _run(title: 'Morning Tempo'),
+        apiClient: api,
+        settingsSync: _FakeSettingsSync(
+          Preferences(),
+          _FakeSettingsService({}),
+        ),
+      );
+      await _openShareSheet(tester);
+
+      await _tapShareLink(tester);
+      await pumpUntil(
+        tester,
+        () => _sharePlatform.calls.isNotEmpty,
+        describe: 'the run link reaching the share sheet',
+      );
+
+      expect(find.byKey(const ValueKey('share-confirm-dialog')), findsNothing);
+      expect(api.calls, 0);
+      expect(_sharePlatform.calls.single.text, endsWith('/runs/run-1'));
+      await _dropTree(tester);
     });
 
     testWidgets(
-        'with audience sharing on, Share asks who can see the run before '
-        'anything is made public (decisions § 1879)', (tester) async {
-      final api = _AudienceShareApi();
-      await _pump(tester, _run(title: 'Morning Tempo'),
+      'with audience sharing on, Share link asks who can see the run before '
+      'anything is made public (decisions § 1879)',
+      (tester) async {
+        _tallView(tester);
+        final api = _AudienceShareApi();
+        await _pump(
+          tester,
+          _run(title: 'Morning Tempo'),
           apiClient: api,
-          settingsSync:
-              _FakeSettingsSync(Preferences(), _FakeSettingsService({})));
+          settingsSync: _FakeSettingsSync(
+            Preferences(),
+            _FakeSettingsService({}),
+          ),
+        );
+        await _openShareSheet(tester);
+        expect(find.byKey(const ValueKey('audience-sheet')), findsNothing);
 
-      await tester.runAsync(() async {
-        await tester.tap(find.widgetWithIcon(IconButton, Icons.share_outlined));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 300));
-      });
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(find.byKey(const ValueKey('audience-sheet')), findsOneWidget);
-      expect(find.byType(AlertDialog), findsNothing);
-      expect(api.calls, 0);
+        await _tapShareLink(tester);
+        expect(find.byKey(const ValueKey('audience-sheet')), findsOneWidget);
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(api.calls, 0);
 
-      final public = find.byKey(const ValueKey('audience-level-public'));
-      await tester.ensureVisible(public);
-      await tester.pump(const Duration(milliseconds: 300));
-      await tester.runAsync(() async {
-        await tester.tap(public);
-        await tester.pump();
+        final public = find.byKey(const ValueKey('audience-level-public'));
+        await tester.ensureVisible(public);
         await tester.pump(const Duration(milliseconds: 300));
-      });
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(
-        find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.widgetWithText(FilledButton, 'Make public'),
-        ),
-        findsOneWidget,
-        reason: 'Public goes through the same privacy-zone confirm as before',
-      );
-      expect(api.calls, 0);
-      await tester.runAsync(() async {
-        await tester.pumpWidget(const SizedBox.shrink());
-        await tester.pump();
-      });
-    });
+        await tester.runAsync(() async {
+          await tester.tap(public);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 300));
+        });
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(
+          find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.widgetWithText(FilledButton, 'Make public'),
+          ),
+          findsOneWidget,
+          reason: 'Public goes through the same privacy-zone confirm as before',
+        );
+        expect(api.calls, 0);
+        await _dropTree(tester);
+      },
+    );
 
     // Share fails closed on the privacy zones: an unloaded settings bag is
     // not "no zones". Read as one, it sent the share image out unclipped and
@@ -500,15 +668,80 @@ void main() {
       });
       await tester.pump();
 
+      expect(find.byKey(const ValueKey('share-run-link')), findsNothing);
       expect(find.byKey(const ValueKey('share-confirm-dialog')), findsNothing);
       expect(api.calls, 0, reason: 'nothing may be published');
-      expect(find.textContaining("Couldn't load your privacy zones"),
-          findsOneWidget);
+      expect(
+        find.textContaining("Couldn't load your privacy zones"),
+        findsOneWidget,
+      );
       await tester.pump(const Duration(seconds: 4));
     });
 
-    testWidgets('share loads the privacy zones sign-in never loaded before '
-        'deciding the confirm', (tester) async {
+    testWidgets('Share link re-reads the zones from the server, so a zone '
+        'added after the sheet opened reaches the confirm', (tester) async {
+      _tallView(tester);
+      final track = _straightTrack(1);
+      final api = _SlowShareApi();
+      final service = _FakeSettingsService(
+        <String, dynamic>{},
+        serverValues: {
+          'privacy_zones': [
+            {'lat': track.first.lat, 'lng': track.first.lng, 'radius_m': 200},
+          ],
+        },
+      );
+      await _pump(tester, _run(title: 'Morning Tempo', track: track),
+          apiClient: api,
+          settingsSync: _FakeSettingsSync(Preferences(), service));
+      await _openShareSheet(tester);
+      expect(service.loads, 0, reason: 'opening the sheet needs no re-read');
+
+      await _tapShareLink(tester);
+
+      expect(service.loads, 1);
+      final dialog = find.byKey(const ValueKey('share-confirm-dialog'));
+      expect(
+        find.descendant(
+          of: dialog,
+          matching: find.textContaining('inside one of your privacy zones'),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.descendant(
+        of: dialog,
+        matching: find.widgetWithText(TextButton, 'Cancel'),
+      ));
+      await tester.pump();
+      await _dropTree(tester);
+    });
+
+    testWidgets('Share link publishes nothing when the server cannot confirm '
+        'the zones', (tester) async {
+      _tallView(tester);
+      final api = _SlowShareApi();
+      await _pump(tester, _run(title: 'Morning Tempo'),
+          apiClient: api,
+          settingsSync: _FakeSettingsSync(
+            Preferences(),
+            _FakeSettingsService({}, serverReachable: false),
+          ));
+      await _openShareSheet(tester);
+
+      await _tapShareLink(tester);
+
+      expect(find.byKey(const ValueKey('share-confirm-dialog')), findsNothing);
+      expect(api.calls, 0);
+      expect(_sharePlatform.calls, isEmpty);
+      expect(find.textContaining("Couldn't load your privacy zones"),
+          findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
+      await _dropTree(tester);
+    });
+
+    testWidgets('Share link loads the privacy zones sign-in never loaded '
+        'before deciding the confirm', (tester) async {
+      _tallView(tester);
       final track = _straightTrack(1);
       final api = _SlowShareApi();
       await _pump(
@@ -524,13 +757,8 @@ void main() {
           }),
         ),
       );
-
-      await tester.runAsync(() async {
-        await tester.tap(find.widgetWithIcon(IconButton, Icons.share_outlined));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 300));
-      });
-      await tester.pump();
+      await _openShareSheet(tester);
+      await _tapShareLink(tester);
 
       final dialog = find.byKey(const ValueKey('share-confirm-dialog'));
       expect(dialog, findsOneWidget);
@@ -541,12 +769,16 @@ void main() {
         ),
         findsOneWidget,
       );
-      await tester.tap(find.descendant(
-        of: dialog,
-        matching: find.widgetWithText(TextButton, 'Cancel'),
-      ));
+      await tester.tap(
+        find.descendant(
+          of: dialog,
+          matching: find.widgetWithText(TextButton, 'Cancel'),
+        ),
+      );
       await tester.pump();
       expect(api.calls, 0);
+      expect(_sharePlatform.calls, isEmpty);
+      await _dropTree(tester);
     });
 
     testWidgets('make-private confirms then calls makeRunPrivate',
@@ -1619,6 +1851,76 @@ void main() {
 
       expect(find.text('Elevation'), findsWidgets);
       expect(find.textContaining(RegExp(r'^0(\.0+)? ?(km|mi)$')), findsWidgets);
+    });
+
+    testWidgets('elevation chart side labels grow with the OS text size', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1000, 5000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      // The painter is private; read what it was handed rather than its
+      // pixels, since flutter_test's font makes absolute widths meaningless.
+      dynamic painter() => tester
+          .widgetList<CustomPaint>(find.byType(CustomPaint))
+          .firstWhere(
+            (p) => p.painter.runtimeType.toString() == '_ElevationPainter',
+          )
+          .painter;
+
+      await _pump(tester, _elevationRun());
+      // ignore: avoid_dynamic_calls
+      final normalGutter = painter().gutter as double;
+      await _pump(tester, _elevationRun(), textScale: 2.0);
+      // ignore: avoid_dynamic_calls
+      final largeGutter = painter().gutter as double;
+
+      expect(
+        largeGutter,
+        greaterThan(normalGutter * 1.5),
+        reason: 'the label lane widens with the labels it holds',
+      );
+      // ignore: avoid_dynamic_calls
+      final scaler = painter().textScaler as TextScaler;
+      expect(
+        scaler.scale(10),
+        20,
+        reason: 'the labels are painted at the reader\'s text size',
+      );
+    });
+
+    testWidgets('elevation gain, loss and the crosshair read in feet for a '
+        'mile runner', (tester) async {
+      tester.view.physicalSize = const Size(1000, 5000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await _pump(tester, _elevationRun(), useMiles: true);
+
+      final feet = find.textContaining(RegExp(r'^[\d,]+ ft$'));
+      final metres = find.textContaining(RegExp(r'^[\d,]+ ?m$'));
+      // 12 m of gain is 39.4 ft; the tiles used to print "12m" and "0m".
+      expect(find.text('39 ft'), findsOneWidget);
+      expect(find.text('0 ft'), findsOneWidget);
+      expect(metres, findsNothing);
+
+      final chart = find.byWidgetPredicate(
+        (w) =>
+            w is CustomPaint &&
+            w.painter.runtimeType.toString() == '_ElevationPainter',
+      );
+      expect(chart, findsOneWidget);
+      await tester.ensureVisible(chart);
+      await tester.pump();
+      final gesture = await tester.startGesture(tester.getCenter(chart));
+      // Past the tap recognizer's press deadline, so onTapDown fires while
+      // the pan recognizer is still in the arena.
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(feet, findsNWidgets(3));
+      expect(metres, findsNothing);
+      await gesture.up();
+      await tester.pump();
     });
   });
 

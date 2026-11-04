@@ -100,20 +100,35 @@ class _PlansScreenState extends State<PlansScreen> {
   /// banner instead of letting it vanish silently — the plan still
   /// exists, so a swallowed error would leave the list looking unchanged
   /// with no explanation. On success the list reloads.
-  Future<void> _runPlanAction(Future<void> Function() action) async {
+  /// The plan whose Abandon / Delete is being written. One at a time, and
+  /// every card's action waits for it, so a second tap cannot start a second
+  /// write while the first is still out.
+  String? _actingPlanId;
+
+  Future<void> _runPlanAction(
+      String planId, Future<void> Function() action) async {
+    if (_actingPlanId != null) return;
+    setState(() => _actingPlanId = planId);
     try {
-      await action();
+      await action().timeout(kBackendLoadTimeout);
     } catch (e) {
       debugPrint('plans action failed: $e');
       if (mounted) {
+        setState(() => _actingPlanId = null);
         showTopBanner(context, AppLocalizations.of(context).plansActionFailed(friendlyError(AppLocalizations.of(context), e)));
       }
       return;
     }
+    if (!mounted) return;
+    setState(() => _actingPlanId = null);
     await _load();
   }
 
   Future<void> _load() async {
+    // A list already on screen stays there while it refreshes; a failed
+    // refresh is a banner over it, as on plan detail, not an error page that
+    // takes the plans away. The list reloads on every TrainingService change.
+    final refreshing = _plans.isNotEmpty;
     setState(() {
       _loading = true;
       _error = null;
@@ -126,22 +141,27 @@ class _PlansScreenState extends State<PlansScreen> {
         _plans = p;
         _loading = false;
       });
-    } on TimeoutException catch (e) {
-      debugPrint('PlansScreen._load timed out: $e');
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = _PlansLoadError.timeout;
-        });
-      }
     } catch (e, s) {
       debugPrint('PlansScreen._load failed: $e\n$s');
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = _PlansLoadError.generic;
-        });
+      if (!mounted) return;
+      if (refreshing) {
+        setState(() => _loading = false);
+        final l10n = AppLocalizations.of(context);
+        showTopBanner(
+          context,
+          e is TimeoutException ||
+                  classifyAuthError(e) == AuthErrorKind.offline
+              ? l10n.commonStaleOffline
+              : l10n.commonStaleRefreshFailed,
+        );
+        return;
       }
+      setState(() {
+        _loading = false;
+        _error = e is TimeoutException
+            ? _PlansLoadError.timeout
+            : _PlansLoadError.generic;
+      });
     }
   }
 
@@ -206,21 +226,25 @@ class _PlansScreenState extends State<PlansScreen> {
     if (mounted) await _load();
   }
 
+  /// Same confirm as plan detail's Abandon: it cannot be undone from the UI.
   Future<void> _abandon(TrainingPlanRow p) async {
+    if (_actingPlanId != null) return;
     final l10n = AppLocalizations.of(context);
-    final ok = await _confirm(
+    final ok = await confirmDestructive(
       context,
-      l10n.plansAbandonTitle(p.name),
-      l10n.plansAbandonBody,
+      title: l10n.plansAbandonTitle(p.name),
+      body: l10n.plansAbandonBody,
       confirmLabel: l10n.plansAbandon,
+      cancelLabel: l10n.plansCancel,
     );
-    if (ok) {
+    if (ok && mounted) {
       await _runPlanAction(
-          () => widget.training.updateStatus(p.id, 'abandoned'));
+          p.id, () => widget.training.updateStatus(p.id, 'abandoned'));
     }
   }
 
   Future<void> _delete(TrainingPlanRow p) async {
+    if (_actingPlanId != null) return;
     final l10n = AppLocalizations.of(context);
     final ok = await confirmDestructive(
       context,
@@ -229,8 +253,8 @@ class _PlansScreenState extends State<PlansScreen> {
       confirmLabel: l10n.plansDelete,
       cancelLabel: l10n.plansCancel,
     );
-    if (ok) {
-      await _runPlanAction(() => widget.training.deletePlan(p.id));
+    if (ok && mounted) {
+      await _runPlanAction(p.id, () => widget.training.deletePlan(p.id));
     }
   }
 
@@ -330,6 +354,8 @@ class _PlansScreenState extends State<PlansScreen> {
                   onTap: () => _openPlan(p.id),
                   onAbandon: abandonable ? () => _abandon(p) : null,
                   onDelete: abandonable ? null : () => _delete(p),
+                  actionBusy: _actingPlanId == p.id,
+                  actionsLocked: _actingPlanId != null,
                 );
               },
             ),
@@ -491,30 +517,6 @@ class _Starters extends StatelessWidget {
   }
 }
 
-Future<bool> _confirm(BuildContext context, String title, String body,
-    {required String confirmLabel}) async {
-  final res = await showDialog<bool>(
-    context: context,
-    builder: (ctx) {
-      final l10n = AppLocalizations.of(ctx);
-      return AlertDialog(
-        title: Text(title),
-        content: Text(body),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.plansCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(confirmLabel),
-          ),
-        ],
-      );
-    },
-  );
-  return res == true;
-}
 
 /// One plan on the list: name and status, the goal / target / VDOT it was
 /// built for, its dates and length, and — while it is active — where today
@@ -528,6 +530,12 @@ class PlanListCard extends StatelessWidget {
   final VoidCallback? onAbandon;
   final VoidCallback? onDelete;
 
+  /// This card's own Abandon / Delete is being written.
+  final bool actionBusy;
+
+  /// Some card's action is being written, so this one waits.
+  final bool actionsLocked;
+
   const PlanListCard({
     super.key,
     required this.plan,
@@ -535,6 +543,8 @@ class PlanListCard extends StatelessWidget {
     required this.onTap,
     this.onAbandon,
     this.onDelete,
+    this.actionBusy = false,
+    this.actionsLocked = false,
   }) : assert((onAbandon == null) != (onDelete == null),
             'a plan card carries exactly one action');
 
@@ -685,15 +695,19 @@ class PlanListCard extends StatelessWidget {
             child: Align(
               alignment: AlignmentDirectional.centerEnd,
               child: onAbandon != null
-                  ? TextButton(
-                      onPressed: onAbandon,
-                      child: Text(l10n.plansAbandon),
+                  ? TextButton.icon(
+                      key: const Key('planCardAbandon'),
+                      onPressed: actionsLocked ? null : onAbandon,
+                      icon: _busyIcon(),
+                      label: Text(l10n.plansAbandon),
                     )
-                  : TextButton(
-                      onPressed: onDelete,
+                  : TextButton.icon(
+                      key: const Key('planCardDelete'),
+                      onPressed: actionsLocked ? null : onDelete,
                       style: TextButton.styleFrom(
                           foregroundColor: semantic.danger),
-                      child: Text(l10n.plansDelete),
+                      icon: _busyIcon(),
+                      label: Text(l10n.plansDelete),
                     ),
             ),
           ),
@@ -701,6 +715,14 @@ class PlanListCard extends StatelessWidget {
       ),
     );
   }
+
+  /// A spinner on the button whose write is out, nothing otherwise.
+  Widget? _busyIcon() => actionBusy
+      ? const SizedBox.square(
+          dimension: 14,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        )
+      : null;
 
   Widget _pill(ThemeData theme, AppSemanticColors semantic, String label,
       bool upcoming) {

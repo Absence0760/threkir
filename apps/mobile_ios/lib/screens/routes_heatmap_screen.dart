@@ -10,19 +10,24 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, StatusPill, StatusPillSize;
 
-import '../auth_error.dart';
 import '../distance_bands.dart';
 import '../geocoding.dart';
 import '../heatmap_clustering.dart';
 import '../l10n/gen/app_localizations.dart';
-import '../preferences.dart' show formatDistanceForPref;
+import '../preferences.dart'
+    show formatDistanceForPref, formatElevationForPref;
 import '../quiet_location.dart';
+import '../route_surface_label.dart';
 import '../widgets/live_run_map.dart'
     show
         basemapTileLayer,
         basemapVoidColour,
         currentBasemapIsDark,
-        currentTileUrl;
+        currentTileUrl,
+        mapHoverLine,
+        mapPinnedLine,
+        solidMapLine;
+import '../last_map_view.dart';
 import '../widgets/map_attribution.dart';
 import '../widgets/official_badge.dart';
 import '../widgets/top_banner.dart';
@@ -45,9 +50,11 @@ import 'public_route_screen.dart';
 ///   * AppBar Filters button — lens (popular/friends/featured/hidden
 ///     gems) + multi-select race-distance bands (5K/10K/Half/Marathon/
 ///     Ultra), with an active-filter badge.
-///   * Locate-me FAB — Geolocator current-position fix at zoom 14. The
+///   * Locate-me FAB — a browse fix (`locateForBrowse`) at zoom 14. The
 ///     map also auto-centres on the user's location once on open (until
-///     they pan), rather than sitting at the neutral London default.
+///     they pan). Until a fix lands, and when none does, it opens on the
+///     view it was last left on (`last_map_view.dart`); with neither, it
+///     widens to the route data.
 class RoutesHeatmapScreen extends StatefulWidget {
   final ApiClient api;
 
@@ -139,6 +146,14 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
   /// so the multiple give-up paths don't widen the camera more than once.
   bool _dataFallbackStarted = false;
 
+  /// Where the map was last left, read once on open. The camera opens there
+  /// while a fix is pending and stays there when none arrives.
+  MapView? _savedView;
+
+  /// The camera as of the last map event, saved as the next visit's
+  /// [_savedView] when the screen closes.
+  MapCamera? _lastCamera;
+
   /// Pixel radius for merging pins into a cluster at the current zoom.
   static const double _clusterRadiusPx = 50.0;
 
@@ -188,11 +203,26 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
   @override
   void initState() {
     super.initState();
+    unawaited(_loadSavedView());
     unawaited(_backgroundLocate());
+  }
+
+  /// Read beside the location fix rather than ahead of it, so a slow or
+  /// failing preferences read never holds up centring on the runner.
+  Future<void> _loadSavedView() async {
+    final saved = await loadLastBrowseMapView();
+    if (!mounted || saved == null) return;
+    _savedView = saved;
+    _openOnSavedView();
   }
 
   @override
   void dispose() {
+    final camera = _lastCamera;
+    if (camera != null && (_didInitialFit || _userMovedMap)) {
+      unawaited(
+          saveLastBrowseMapView((center: camera.center, zoom: camera.zoom)));
+    }
     _debounce?.cancel();
     _searchDebounce?.cancel();
     _searchCtl.dispose();
@@ -322,9 +352,10 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                       child: Text(
                         <String>[
                           formatDistanceForPref(p.distanceM),
-                          if (p.surface.isNotEmpty) p.surface,
+                          if (p.surface.isNotEmpty)
+                            routeSurfaceLabel(AppLocalizations.of(ctx), p.surface),
                           if (p.runCount > 0)
-                            '${p.runCount} run${p.runCount == 1 ? '' : 's'}',
+                            AppLocalizations.of(ctx).routeDetailRunCount(p.runCount),
                         ].join(' · '),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -511,7 +542,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
     try {
       final pos = widget.locateFn != null
           ? await widget.locateFn!()
-          : await _platformLocate();
+          : await locateForBrowse();
       if (!mounted) return;
       final ll = LatLng(pos.latitude, pos.longitude);
       _mapController.move(ll, 14);
@@ -522,7 +553,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
       debugPrint('heatmap location unavailable: $e');
       if (!mounted) return;
       showTopBanner(
-          context, AppLocalizations.of(context).heatmapLocationUnavailable(friendlyError(AppLocalizations.of(context), e)));
+          context, AppLocalizations.of(context).heatmapLocationUnavailable(browseLocateErrorText(AppLocalizations.of(context), e)));
     }
   }
 
@@ -581,7 +612,26 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
       return;
     }
     _dataFallbackStarted = true;
-    _mapController.move(const LatLng(30, 0), 2);
+    final saved = _savedView;
+    if (saved != null) {
+      _mapController.move(saved.center, saved.zoom);
+      _didInitialFit = true;
+    } else {
+      _mapController.move(const LatLng(30, 0), 2);
+    }
+    _refresh();
+  }
+
+  /// Moves to [_savedView] while the on-open fix is still pending, so the
+  /// map does not sit on the London default in the meantime, or after the
+  /// locate has already given up and widened to the world.
+  void _openOnSavedView() {
+    final saved = _savedView;
+    if (saved == null || !_mapReady || _userMovedMap || _didInitialFit) {
+      return;
+    }
+    _mapController.move(saved.center, saved.zoom);
+    if (_wantDataFit) _didInitialFit = true;
     _refresh();
   }
 
@@ -619,23 +669,6 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
     _didInitialFit = true;
     _refresh();
     return true;
-  }
-
-  Future<Position> _platformLocate() async {
-    if (kIsWeb) {
-      throw UnsupportedError('Locate unavailable on web');
-    }
-    final perm = await Geolocator.checkPermission();
-    if (perm == LocationPermission.denied) {
-      final asked = await Geolocator.requestPermission();
-      if (asked == LocationPermission.denied ||
-          asked == LocationPermission.deniedForever) {
-        throw StateError('Location permission denied');
-      }
-    } else if (perm == LocationPermission.deniedForever) {
-      throw StateError('Location permission denied forever');
-    }
-    return Geolocator.getCurrentPosition();
   }
 
   Future<void> _onSearchChanged(String query) async {
@@ -731,6 +764,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
               initialZoom: widget.initialZoom ?? 11,
               onMapReady: () {
                 _mapReady = true;
+                _lastCamera = _mapController.camera;
                 // If a fix already arrived, open centred on it. If the
                 // locate already gave up, widen to the data view. Otherwise
                 // load the default view while a fix is still pending.
@@ -739,9 +773,14 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                   _startDataFallback();
                   return;
                 }
+                final saved = _savedView;
+                if (saved != null) {
+                  _mapController.move(saved.center, saved.zoom);
+                }
                 _refresh();
               },
               onPositionChanged: (pos, hasGesture) {
+                _lastCamera = pos;
                 if (hasGesture) {
                   _userMovedMap = true;
                   _scheduleRefresh();
@@ -765,48 +804,28 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                       ),
                   ],
                 ),
-              // Pinned ("kept") route lines — violet, distinct from the
-              // cyan preview, drawn below it and persistent until unpinned.
-              // Cartographic, like the cyan and the casing under both: chosen
-              // against arbitrary basemap tiles, so it is a fixed hex on the
-              // MAP and nowhere else. The chrome that names the same state
-              // takes `colorScheme.primary`, which is measured per brightness.
+              // Pinned ("kept") route lines, distinct from the preview, drawn
+              // below it and persistent until unpinned. Both take web's
+              // basemap-aware rungs (`mapPinnedLine` / `mapHoverLine`) over the
+              // shared casing: the fixed dark-map hexes held under 3:1 on a
+              // light basemap.
               if (_pinnedIds.isNotEmpty)
                 PolylineLayer(
                   key: const ValueKey('heatmap-pinned-routes'),
                   polylines: [
                     for (final id in _pinnedIds)
-                      if (_geomCache[id] != null) ...[
-                        Polyline(
-                          points: _geomCache[id]!,
-                          strokeWidth: 6,
-                          color: const Color(0x731E293B),
-                        ),
-                        Polyline(
-                          points: _geomCache[id]!,
-                          strokeWidth: 3.5,
-                          color: const Color(0xFF8B5CF6),
-                        ),
-                      ],
+                      if (_geomCache[id] != null)
+                        ...solidMapLine(_geomCache[id]!,
+                            mapPinnedLine(darkBasemap: darkBasemap)),
                   ],
                 ),
               // The previewed route's line — hidden until a pin / row is
-              // tapped. Dark casing + cyan body, matching web.
+              // tapped.
               if (_selectedLine != null)
                 PolylineLayer(
                   key: const ValueKey('heatmap-selected-route'),
-                  polylines: [
-                    Polyline(
-                      points: _selectedLine!,
-                      strokeWidth: 7,
-                      color: const Color(0x731E293B),
-                    ),
-                    Polyline(
-                      points: _selectedLine!,
-                      strokeWidth: 4,
-                      color: const Color(0xFF22D3EE),
-                    ),
-                  ],
+                  polylines: solidMapLine(
+                      _selectedLine!, mapHoverLine(darkBasemap: darkBasemap)),
                 ),
               // Halo ring under the selected route's start dot.
               if (_selectedPin != null)
@@ -816,8 +835,9 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                       point: LatLng(_selectedPin!.lat, _selectedPin!.lng),
                       radius: 16,
                       useRadiusInMeter: false,
-                      color: const Color(0x2922D3EE),
-                      borderColor: const Color(0xFF22D3EE),
+                      color: mapHoverLine(darkBasemap: darkBasemap)
+                          .withValues(alpha: 0.16),
+                      borderColor: mapHoverLine(darkBasemap: darkBasemap),
                       borderStrokeWidth: 2,
                     ),
                   ],
@@ -1055,8 +1075,10 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
     final band = bandForDistance(p.distanceM);
     final meta = <String>[
       formatDistanceForPref(p.distanceM),
-      if (p.surface.isNotEmpty) p.surface,
-      if (p.runCount > 0) '${p.runCount} run${p.runCount == 1 ? '' : 's'}',
+      if (p.surface.isNotEmpty)
+        routeSurfaceLabel(AppLocalizations.of(context), p.surface),
+      if (p.runCount > 0)
+        AppLocalizations.of(context).routeDetailRunCount(p.runCount),
     ].join(' · ');
     return ListTile(
       dense: true,
@@ -1110,9 +1132,9 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
     final meta = <String>[
       formatDistanceForPref(p.distanceM),
       if (p.elevationM != null && p.elevationM! > 0)
-        '${p.elevationM!.round()} m',
-      if (p.surface.isNotEmpty) p.surface,
-      if (p.runCount > 0) '${p.runCount} run${p.runCount == 1 ? '' : 's'}',
+        formatElevationForPref(p.elevationM),
+      if (p.surface.isNotEmpty) routeSurfaceLabel(l10n, p.surface),
+      if (p.runCount > 0) l10n.routeDetailRunCount(p.runCount),
     ].join(' · ');
     return Material(
       elevation: 8,

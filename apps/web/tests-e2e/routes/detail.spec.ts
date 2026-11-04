@@ -12,9 +12,7 @@ import { deleteRoute, insertRoute } from '../fixtures/simulate';
  *
  * Operations covered: public toggle, star toggle (with /routes filter
  * round-trip), tag add + remove. The anon /share/route/[id] view is
- * in share/route.spec.ts. Routes have NO UI delete affordance — the
- * only delete path is service-role / SQL — so there's no
- * "delete via UI" test here.
+ * in share/route.spec.ts, and the owner's Delete in routes/delete.spec.ts.
  */
 
 test.describe('/routes/[id]', () => {

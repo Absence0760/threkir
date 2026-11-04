@@ -115,4 +115,53 @@ void main() {
       expect(computeChevrons(track, stepMetres: -10), isEmpty);
     });
   });
+
+  group('distanceMarkerRank', () {
+    test('ranks every 10th, then every 5th, then even, then odd', () {
+      expect([10, 20, 40].map(distanceMarkerRank), [0, 0, 0]);
+      expect([5, 15, 35].map(distanceMarkerRank), [1, 1, 1]);
+      expect([2, 4, 42].map(distanceMarkerRank), [2, 2, 2]);
+      expect([1, 3, 41].map(distanceMarkerRank), [3, 3, 3]);
+    });
+  });
+
+  group('thinDistanceMarkers', () {
+    // A 42 km straight course on the equator: 1 km is ~52 px at zoom 13
+    // and ~3.3 px at zoom 9, so zoom 13 keeps every badge and zoom 9 keeps
+    // only the ones a 28 px (~8.6 km) gap allows, best rank first.
+    final marathon = computeDistanceMarkers(
+      _straight(n: 421, stepM: 100),
+      useMiles: false,
+    );
+
+    test('keeps every badge when they already sit apart', () {
+      final kept = thinDistanceMarkers(marathon, zoom: 13);
+      expect(kept.map((m) => m.label), marathon.map((m) => m.label));
+    });
+
+    test('zoomed out, keeps the tens and drops what would touch them', () {
+      final kept = thinDistanceMarkers(marathon, zoom: 9).map((m) => m.label);
+      expect(kept, containsAll([10, 20, 30, 40]));
+      // 5 sits 5 km (~16 px) from 10, which outranks it.
+      expect(kept, isNot(contains(5)));
+      expect(kept.length, lessThan(10));
+    });
+
+    test('drops the second leg of an out-and-back that lands on the first',
+        () {
+      final out = _straight(n: 31, stepM: 100);
+      final track = [...out, ...out.reversed.skip(1)];
+      final markers = computeDistanceMarkers(track, useMiles: false);
+      final kept = thinDistanceMarkers(markers, zoom: 14).map((m) => m.label);
+      // 1 and 5 sit on the same spot (km 1 out, km 5 back); 5 outranks 1.
+      expect(kept, contains(5));
+      expect(kept, isNot(contains(1)));
+      expect(kept, contains(3));
+    });
+
+    test('returns markers in their input order', () {
+      final kept = thinDistanceMarkers(marathon, zoom: 10).map((m) => m.label);
+      expect(kept.toList(), [...kept]..sort());
+    });
+  });
 }

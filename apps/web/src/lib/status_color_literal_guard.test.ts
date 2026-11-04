@@ -520,11 +520,6 @@ type LiteralRole =
 	| 'svg-art';
 
 const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
-	// Running-shoe / apple loader illustration. No text on it.
-	'lib/components/ActivityLoader.svelte': {
-		'7C5A3A': [1, 'svg-art'], '4FB477': [1, 'svg-art'],
-		FF6B5B: [1, 'svg-art'], FF8C7E: [1, 'svg-art'],
-	},
 	// Help-guide illustration placeholders: never painted. Each is the sentinel
 	// a text-free illustration SVG uses for one theme token, and the renderer
 	// swaps it for that theme's colour before anything is drawn, so no contrast
@@ -699,10 +694,15 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 		F59E0B: [1, 'cartographic'], B45309: [1, 'cartographic'],
 		'22C55E': [1, 'cartographic'], '15803D': [1, 'cartographic'],
 		EF4444: [2, 'cartographic'], B91C1C: [1, 'cartographic'],
-		'991B1B': [1, 'cartographic'],
+		'991B1B': [2, 'cartographic'],
 		'22D3EE': [1, 'cartographic'], '0E7490': [1, 'cartographic'],
 		A78BFA: [1, 'cartographic'], '6D28D9': [1, 'cartographic'],
-		'60A5FA': [1, 'cartographic'], '1D4ED8': [1, 'cartographic'],
+		'60A5FA': [2, 'cartographic'], '1D4ED8': [2, 'cartographic'],
+		// The personal heatmap's density ramp (`mapHeatRamp`), graded at
+		// MAP_HEAT_OPACITY by basemap_contrast.test.ts.
+		'34D399': [1, 'cartographic'], FBBF24: [1, 'cartographic'],
+		F87171: [1, 'cartographic'], '065F46': [1, 'cartographic'],
+		'92400E': [1, 'cartographic'],
 		C084FC: [1, 'cartographic'], '7E22CE': [1, 'cartographic'],
 		F472B6: [1, 'cartographic'], '9D174D': [1, 'cartographic'],
 		'94A3B8': [1, 'cartographic'], '475569': [1, 'cartographic'],

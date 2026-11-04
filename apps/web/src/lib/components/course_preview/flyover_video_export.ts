@@ -12,16 +12,25 @@ import {
 	pointAtDistance,
 	type FlyoverPath,
 } from '#lib/routes/flyover_path.ts';
-import { FLYOVER_PITCH, TERRAIN_EXAGGERATION, type TerrainSource } from '#lib/routes/terrain_source.ts';
+import { FLYOVER_PITCH, type TerrainSource } from '#lib/routes/terrain_source.ts';
 import { basemapIsDarkFromEnv, mapStyleUrlFromEnv } from '#lib/routes/map-style.svelte.ts';
 import { mapAccentColour, mapOverlayOutline } from '#lib/routes/basemap_contrast.ts';
 import { OG_CARD_DARK } from '#lib/share/og_card_palette.ts';
 import { addCourseLayers } from './course_layers.ts';
+import { addCourseTerrain } from './course_terrain.ts';
 import { stripGeometry, stripX } from './strip_geometry.ts';
 import type { VideoEncoderPlan } from '#lib/video/video_encoder.ts';
 import { VIDEO_HEIGHT, VIDEO_WIDTH } from '#lib/video/frame_clock.ts';
 import { createFrameSink, videoAbortError, type FrameSink } from '#lib/video/encode_video.ts';
-import { videoFrame, videoTimeline, type VideoFrame } from './video_timeline.ts';
+import { VIDEO_FINALE, videoFrame, videoTimeline, type VideoFrame } from './video_timeline.ts';
+import {
+	finaleCamera,
+	OVERVIEW_PADDING_PX,
+	OVERVIEW_PITCH,
+	overviewPose,
+	pathBounds,
+	type CameraPose,
+} from './overview.ts';
 import {
 	climbIndexAt,
 	endCardAlpha,
@@ -61,6 +70,8 @@ export interface FlyoverVideoInput {
 	/// (`flyoverVideoMaptilerKey`): empty means the keyless basemap.
 	maptilerKey: string;
 	terrain: TerrainSource | null;
+	/// `terrainExaggeration` of the recorded line's relief, as the dialog uses.
+	exaggeration: number;
 	text: FlyoverVideoText;
 	plan: VideoEncoderPlan;
 	signal: AbortSignal;
@@ -272,6 +283,30 @@ function composeFrame(
 	}
 }
 
+/// The whole-course overview at the video's own size, or null when the map
+/// cannot fit the bounds (the video then holds the finish, as it used to).
+function overviewTarget(map: maplibregl.Map, path: FlyoverPath, layout: VideoOverlayLayout): CameraPose | null {
+	try {
+		// Clear of the title and the counter, strip and credits under the scrims.
+		const fit = map.cameraForBounds(pathBounds(path), {
+			padding: {
+				top: layout.topScrim,
+				bottom: layout.bottomScrim,
+				left: OVERVIEW_PADDING_PX,
+				right: OVERVIEW_PADDING_PX,
+			},
+			bearing: 0,
+			pitch: OVERVIEW_PITCH,
+		});
+		if (!fit?.center || fit.zoom == null) return null;
+		const c = maplibregl.LngLat.convert(fit.center);
+		return overviewPose({ center: [c.lng, c.lat], zoom: fit.zoom });
+	} catch (e) {
+		console.warn('flyover video: overview unavailable', e);
+		return null;
+	}
+}
+
 export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob> {
 	const { path, signal } = input;
 	if (signal.aborted) throw videoAbortError();
@@ -312,8 +347,7 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 		const [mark] = await Promise.all([loadImage('/logo-mark.svg'), waitForLoad(m, signal)]);
 		if (input.terrain) {
 			try {
-				m.addSource('course-terrain', { type: 'raster-dem', ...input.terrain });
-				m.setTerrain({ source: 'course-terrain', exaggeration: TERRAIN_EXAGGERATION });
+				addCourseTerrain(m, input.terrain, { exaggeration: input.exaggeration, darkBasemap });
 			} catch (e) {
 				console.warn('flyover video: terrain unavailable', e);
 			}
@@ -342,6 +376,10 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 			},
 		};
 
+		const finish = cameraAt(path, path.totalM);
+		const from: CameraPose = { center: finish.center, bearing: finish.bearing, pitch: FLYOVER_PITCH, zoom: FLIGHT_ZOOM };
+		const overview = overviewTarget(m, path, layout);
+
 		sink = createFrameSink(input.plan, out, t.fps);
 		const mapCanvas = m.getCanvas();
 		for (let i = 0; i < t.totalFrames; i++) {
@@ -352,6 +390,9 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 				await settle(m, () =>
 					m.jumpTo({ center: pose.center, bearing: pose.bearing, pitch: FLYOVER_PITCH, zoom: FLIGHT_ZOOM }),
 				);
+			} else if (frame.phase === 'overview' && overview) {
+				const cam = finaleCamera(from, overview, frame.tMs, VIDEO_FINALE);
+				await settle(m, () => m.jumpTo(cam));
 			}
 			composeFrame(ctx, scene, mapCanvas, m, frame);
 			await sink.push(out, i);

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
@@ -19,6 +18,8 @@
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { effective, loadSettings, updateUniversal } from '#lib/settings/settings.ts';
 	import { isOffRouteEscalationEnabled } from '#lib/safety/off_route_flag.ts';
 	import { normaliseE164 } from '#lib/safety/e164.ts';
@@ -57,7 +58,8 @@
 		contacts = c.contacts;
 		pending = p.requests;
 		contactOf = co.relationships;
-		loadError = c.error ?? p.error ?? co.error;
+		const failure = c.error ?? p.error ?? co.error;
+		loadError = failure ? errorCopy(failure, m, 'settings/safety: loadError') : null;
 	}
 
 	// Overdue escalation (docs/features/safety.md): a universal pref holding
@@ -88,7 +90,7 @@
 			await updateUniversal(auth.user.id, { safety_off_route_alerts: offRouteAlerts });
 			showToast(m('safety.offRouteSaved'), 'success');
 		} catch (e) {
-			showToast(m('safety.addFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('safety.addFailed', { error: errorCopy(e, m, 'safety.addFailed') }), 'error');
 		}
 	}
 
@@ -100,7 +102,7 @@
 			});
 			showToast(m('safety.overdueSaved'), 'success');
 		} catch (e) {
-			showToast(m('safety.addFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('safety.addFailed', { error: errorCopy(e, m, 'safety.addFailed') }), 'error');
 		}
 	}
 
@@ -126,7 +128,7 @@
 			await reload();
 			showToast(m('safety.addedToast'), 'success');
 		} catch (e) {
-			showToast(m('safety.addFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('safety.addFailed', { error: errorCopy(e, m, 'safety.addFailed') }), 'error');
 		} finally {
 			adding = false;
 		}
@@ -138,7 +140,7 @@
 			await reload();
 			showToast(m('safety.removedToast'), 'info');
 		} catch (e) {
-			showToast(m('safety.removeFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('safety.removeFailed', { error: errorCopy(e, m, 'safety.removeFailed') }), 'error');
 		} finally {
 			confirmingRemove = null;
 		}
@@ -153,7 +155,7 @@
 			await reload();
 			showToast(m('safety.confirmedToast'), 'success');
 		} catch (e) {
-			showToast(m('safety.addFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('safety.addFailed', { error: errorCopy(e, m, 'safety.addFailed') }), 'error');
 		} finally {
 			respondingId = null;
 		}
@@ -167,7 +169,7 @@
 			await reload();
 			showToast(m('safety.declinedToast'), 'info');
 		} catch (e) {
-			showToast(m('safety.addFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('safety.addFailed', { error: errorCopy(e, m, 'safety.addFailed') }), 'error');
 		} finally {
 			respondingId = null;
 		}
@@ -196,7 +198,7 @@
 		} catch (e) {
 			input.checked = !next;
 			showToast(
-				m('safety.contactOfSmsFailed', { error: thrownMessage(e) }),
+				m('safety.contactOfSmsFailed', { error: errorCopy(e, m, 'safety.contactOfSmsFailed') }),
 				'error',
 			);
 		} finally {
@@ -220,7 +222,7 @@
 		} catch (e) {
 			showToast(
 				m('safety.contactOfWithdrawFailed', {
-					error: thrownMessage(e),
+					error: errorCopy(e, m, 'safety.contactOfWithdrawFailed'),
 				}),
 				'error',
 			);
@@ -285,10 +287,10 @@
 
 		{#if loading}
 			<div class="skel-list" aria-hidden="true">
-				<span class="skel skel-row"></span>
-				<span class="skel skel-row"></span>
+				<SkeletonBlock height="3.25rem" radius="var(--radius-md)" />
+				<SkeletonBlock height="3.25rem" radius="var(--radius-md)" />
 			</div>
-			<p class="sr-only" role="status">{m('safety.loading')}</p>
+			<p class="visually-hidden" role="status">{m('safety.loading')}</p>
 		{:else if loadError}
 			<div class="error-banner" role="alert" data-testid="safety-load-error">
 				<span class="material-symbols" aria-hidden="true">error</span>
@@ -712,23 +714,6 @@
 	}
 
 	.skel-list { display: flex; flex-direction: column; gap: var(--space-sm); }
-	.skel {
-		display: block;
-		background: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 25%,
-			var(--color-fill-subtle) 50%,
-			var(--color-bg-tertiary) 75%
-		);
-		background-size: 200% 100%;
-		animation: shimmer 1.4s ease-in-out infinite;
-		border-radius: var(--radius-md);
-	}
-	.skel-row { height: 3.25rem; }
-	@keyframes shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
-	}
 
 	.material-symbols {
 		font-family: 'Material Symbols Outlined', system-ui;
@@ -740,20 +725,7 @@
 	.spin { animation: spin 0.9s linear infinite; }
 	@keyframes spin { to { transform: rotate(360deg); } }
 
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
-
 	@media (prefers-reduced-motion: reduce) {
-		.skel { animation: none; }
 		.spin { animation: none; }
 	}
 </style>

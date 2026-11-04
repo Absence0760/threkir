@@ -282,8 +282,10 @@ class _WatchLiveScreenState extends State<WatchLiveScreen> {
             : _l10n.simWatchResult(result.synced, result.total));
       }
     } catch (e) {
+      debugPrint('[WatchLiveScreen] watch sync failed: $e');
       if (mounted) {
-        setState(() => _syncMessage = _l10n.simWatchSyncFailed('$e'));
+        setState(() => _syncMessage =
+            _l10n.simWatchSyncFailed(friendlyError(_l10n, e)));
       }
     } finally {
       if (wasArmed && mounted) await _arm();

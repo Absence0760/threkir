@@ -222,23 +222,34 @@ test('RouteTrackPreview routes non-owner fetches through clip_route_for_viewer',
 
 test('fetchClippedRouteForViewer fails closed on RPC error', () => {
 	// Reason: same fail-closed rule every privacy-clipping path follows.
-	// Returning the input on RPC
-	// error would defeat the helper. The empty-input early-return is
-	// not relevant here (the helper takes only an id), so we only
-	// assert that the error branch returns [].
+	// An RPC error throws — it never resolves to the unclipped waypoints, and
+	// no longer to `[]` either, which read as "this route has no line" and
+	// left the viewer an empty map with nothing to retry.
 	const source = read('src/lib/core/data.ts');
 	const fnMatch = source.match(
 		/export async function fetchClippedRouteForViewer[\s\S]*?^}/m,
 	);
 	assert.ok(fnMatch, 'Could not locate fetchClippedRouteForViewer body — rename?');
 	const body = fnMatch![0];
-	const errBranch = body.match(/if \(error\) \{[\s\S]*?\}/);
-	assert.ok(errBranch, 'fetchClippedRouteForViewer must have an explicit error branch');
 	assert.match(
-		errBranch![0],
-		/return \[\];/,
-		'fetchClippedRouteForViewer must return [] on RPC failure — see decisions §33.',
+		body,
+		/if \(error\) throw dbError\(error\);/,
+		'fetchClippedRouteForViewer must throw on RPC failure — see decisions §33.',
 	);
+	assert.doesNotMatch(body, /waypoints/, 'the clip helper never touches route.waypoints');
+
+	// The metadata reads that tolerate a lost line mark it unavailable and
+	// draw nothing: `clipped ?? []`, never a fallback to the base row.
+	const tolerant = source.match(/function lineUnavailable[\s\S]*?^}/m);
+	assert.ok(tolerant, 'Could not locate lineUnavailable — rename?');
+	assert.match(tolerant![0], /return null;/);
+	assert.equal(
+		(source.match(/fetchClippedRouteForViewer\(id\)\.catch\(lineUnavailable\)/g) ?? []).length,
+		3,
+	);
+	const uses = source.match(/line_unavailable: [a-z.]*clipped === null/g) ?? [];
+	assert.equal(uses.length, 3, 'fetchRouteById (both branches) and fetchPublicRoute');
+	assert.doesNotMatch(source, /clipped \?\? (owned|route|meta)/);
 });
 
 test('public-runs readers go through the public_runs view', () => {

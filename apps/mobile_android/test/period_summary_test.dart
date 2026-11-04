@@ -123,6 +123,26 @@ void main() {
   // ── computePeriodStats ───────────────────────────────────────────────
 
   group('computePeriodStats', () {
+    test('climb sums each run\'s positive elevation_m and skips the rest', () {
+      Run withElevation(String id, Object? elevation) => Run(
+            id: id,
+            startedAt: DateTime(2026, 4, 14),
+            duration: const Duration(minutes: 30),
+            distanceMetres: 5000,
+            source: RunSource.app,
+            metadata: {'elevation_m': elevation},
+          );
+      final stats = computePeriodStats([
+        withElevation('a', 120),
+        withElevation('b', 35.5),
+        withElevation('c', -40),
+        withElevation('d', 'high'),
+        withElevation('e', null),
+      ]);
+      expect(stats.totalVertMetres, 155.5);
+      expect(computePeriodStats([]).totalVertMetres, 0);
+    });
+
     test('empty list gives zeroes and null pace', () {
       final stats = computePeriodStats([]);
       expect(stats.runCount, 0);

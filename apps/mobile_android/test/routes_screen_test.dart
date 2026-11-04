@@ -8,10 +8,33 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_route_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/routes_screen.dart';
+import 'pump_until.dart';
 
 /// Signed-out fake — non-null so the api-gated Discover entries render,
 /// null userId so no fetch paths fire.
 class _FakeApi extends ApiClient {}
+
+/// Signed in, owns no routes, and cannot load the routes it bookmarked.
+class _BookmarksDownApi extends ApiClient {
+  int bookmarkCalls = 0;
+
+  @override
+  String? get userId => 'u';
+
+  @override
+  Future<cm.KeysetPage<cm.Route>> getRoutes({
+    int limit = 200,
+    List<Object?>? after,
+    bool starredOnly = false,
+  }) async =>
+      const cm.KeysetPage(<cm.Route>[], null);
+
+  @override
+  Future<List<cm.Route>> fetchBookmarkedRoutes({int limit = 200}) async {
+    bookmarkCalls++;
+    throw Exception('saved_routes unreachable');
+  }
+}
 
 List<cm.Route> _makeRoutes(int count) {
   return [
@@ -101,7 +124,7 @@ void main() {
       final prefs = await _makePrefs();
       await _pump(tester, prefs: prefs);
       await tester.pump();
-      expect(find.widgetWithText(ActionChip, 'Public routes'),
+      expect(find.widgetWithText(OutlinedButton, 'Public routes'),
           findsOneWidget);
     });
 
@@ -115,17 +138,17 @@ void main() {
       // labelled buttons — the routes page is the single home of the
       // map/discovery entry points. Both labels carry their qualifier
       // since the siblings sit side by side.
-      expect(find.widgetWithText(ActionChip, 'Routes heatmap'),
+      expect(find.widgetWithText(OutlinedButton, 'Routes heatmap'),
           findsOneWidget);
       expect(
-          find.widgetWithText(ActionChip, 'Run heatmap'), findsOneWidget);
+          find.widgetWithText(OutlinedButton, 'Run heatmap'), findsOneWidget);
 
       await _pump(tester, prefs: prefs);
       await tester.pump();
-      expect(find.widgetWithText(ActionChip, 'Routes heatmap'),
+      expect(find.widgetWithText(OutlinedButton, 'Routes heatmap'),
           findsNothing);
       expect(
-          find.widgetWithText(ActionChip, 'Run heatmap'), findsNothing);
+          find.widgetWithText(OutlinedButton, 'Run heatmap'), findsNothing);
     });
 
     testWidgets('hides the cloud-sync icon when apiClient is null',
@@ -171,6 +194,26 @@ void main() {
         findsOneWidget,
       );
       expect(find.textContaining('Import a GPX'), findsOneWidget);
+    });
+  });
+
+  group('RoutesScreen — bookmarks', () {
+    testWidgets('a failed bookmark load says so instead of vanishing silently',
+        (tester) async {
+      final prefs = await _makePrefs();
+      final api = _BookmarksDownApi();
+      await _pump(tester, prefs: prefs, api: api);
+      await pumpUntil(
+        tester,
+        () => find
+            .text('Could not load your bookmarked routes')
+            .evaluate()
+            .isNotEmpty,
+        describe: 'the bookmarks-failed banner',
+      );
+      expect(api.bookmarkCalls, 1);
+      // Drain the banner's auto-dismiss timer.
+      await tester.pump(const Duration(seconds: 7));
     });
   });
 
@@ -716,9 +759,22 @@ void main() {
 
         final discover = find.descendant(
             of: find.byKey(const ValueKey('routes-discover-strip')),
-            matching: find.byType(ActionChip));
+            matching: find.byType(OutlinedButton));
         expect(discover, findsNWidgets(3));
-        expectInsideScreen(tester, discover, 'Discover chip');
+        expectInsideScreen(tester, discover, 'Discover tile');
+        // One row, not three stacked pills: the field report's strip took
+        // ~180 dp before the first route.
+        final top = tester.getRect(discover.first).top;
+        for (var i = 0; i < 3; i++) {
+          expect(tester.getRect(discover.at(i)).top, top,
+              reason: 'Discover tile #$i shares the first row');
+          expect(tester.getSize(discover.at(i)).height,
+              greaterThanOrEqualTo(kMinInteractiveDimension));
+        }
+        final strip =
+            tester.getRect(find.byKey(const ValueKey('routes-discover-strip')));
+        expect(strip.height, lessThan(3 * kMinInteractiveDimension),
+            reason: 'the strip is one row of tiles, even at ${scale}x');
         expect(
             find.byWidgetPredicate(
                 (w) => w is Semantics && w.properties.label == 'Discover'),
@@ -734,7 +790,12 @@ void main() {
         await _pump(tester, prefs: prefs, api: _FakeApi(), textScale: scale);
         await tester.pump();
         expect(tester.takeException(), isNull, reason: 'no overflow stripe');
-        expectInsideScreen(tester, find.byType(ActionChip), 'Discover chip');
+        expectInsideScreen(
+            tester,
+            find.descendant(
+                of: find.byKey(const ValueKey('routes-discover-strip')),
+                matching: find.byType(OutlinedButton)),
+            'Discover tile');
       });
 
       testWidgets('at ${scale}x every filter chip sits on screen',
@@ -784,12 +845,10 @@ void main() {
         expect(list.pixels, list.maxScrollExtent);
         final last = find.byType(Card).last;
         final lastBottom = tester.getRect(last).bottom;
-        final fabs = find.byType(FloatingActionButton);
-        expect(fabs, findsNWidgets(2));
-        for (var i = 0; i < 2; i++) {
-          expect(lastBottom, lessThanOrEqualTo(tester.getRect(fabs.at(i)).top),
-              reason: 'FAB #$i must not cover the last card');
-        }
+        final fab = find.byType(FloatingActionButton);
+        expect(fab, findsOneWidget);
+        expect(lastBottom, lessThanOrEqualTo(tester.getRect(fab).top),
+            reason: 'the Build FAB must not cover the last card');
         expect(lastBottom, lessThanOrEqualTo(phone.height - navBar));
       });
     }
@@ -825,19 +884,26 @@ void main() {
               'the title width');
     });
 
-    testWidgets('Import is a small FAB beside the extended Build FAB',
+    testWidgets('Build is the one FAB; Import sits in the AppBar',
         (tester) async {
       usePhone(tester);
       final prefs = await _makePrefs();
       await _pump(tester, prefs: prefs, api: _FakeApi(), textScale: 1.3);
       await tester.pump();
-      final import = find.ancestor(
-          of: find.byTooltip('Import'),
-          matching: find.byType(FloatingActionButton));
-      expect(import, findsOneWidget);
-      expect(tester.getSize(import).width, lessThanOrEqualTo(48));
+      expect(find.byType(FloatingActionButton), findsOneWidget,
+          reason: 'a second FAB stacked above Build covered the star and '
+              'title of every card that scrolled under the pair');
       expect(find.widgetWithText(FloatingActionButton, 'Build'),
           findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byType(AppBar), matching: find.byTooltip('Import')),
+          findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byKey(const ValueKey('routes-discover-strip')),
+              matching: find.byIcon(Icons.cloud_download)),
+          findsNothing);
     });
   });
 

@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import {
 	noteIncompleteArchive,
 	restoreOrchestrate,
+	restoreWarningLogFields,
 	type RestoreBackend,
 	type RestoreResult
 } from './restore_orchestrator';
@@ -169,7 +170,9 @@ test('upsertProfile error becomes a warning, settings + runs still process', asy
 	);
 	assert.equal(result.profileRestored, false);
 	assert.ok(
-		result.warnings.some((w) => w.startsWith('profile:') && w.includes('rls denied')),
+		result.warnings.some(
+			(w) => w.kind === 'profile' && (w.error as Error).message.includes('rls denied')
+		),
 		`expected profile warning; got ${JSON.stringify(result.warnings)}`
 	);
 	// Subsequent stages still ran — partial-success contract.
@@ -222,7 +225,7 @@ test('upsertSettings error becomes a warning, runs still process', async () => {
 		backend
 	);
 	assert.ok(
-		result.warnings.some((w) => w.startsWith('settings_prefs:')),
+		result.warnings.some((w) => w.kind === 'settings'),
 		`got warnings: ${JSON.stringify(result.warnings)}`
 	);
 	assert.equal(result.runsImported, 1);
@@ -422,7 +425,7 @@ test('uploadTrack failure becomes a warning, row still upserts (no track_url)', 
 		}
 	);
 	assert.ok(
-		result.warnings.some((w) => w.startsWith('track run-1:')),
+		result.warnings.some((w) => w.kind === 'track' && w.itemId === 'run-1'),
 		`got: ${JSON.stringify(result.warnings)}`
 	);
 	// runsImported still reflects the row landing — we don't sink
@@ -447,7 +450,7 @@ test('upsertRun failure becomes a warning, other rows continue', async () => {
 	);
 	assert.equal(result.runsImported, 2);
 	assert.equal(
-		result.warnings.filter((w) => w.startsWith('run r-bad:')).length,
+		result.warnings.filter((w) => w.kind === 'run' && w.itemId === 'r-bad').length,
 		1
 	);
 });
@@ -641,7 +644,7 @@ test('upsertRoute failure becomes a warning, other routes continue', async () =>
 	);
 	assert.equal(result.routesImported, 2);
 	assert.equal(
-		result.warnings.filter((w) => w.startsWith('route rt-bad:')).length,
+		result.warnings.filter((w) => w.kind === 'route' && w.itemId === 'rt-bad').length,
 		1
 	);
 });
@@ -800,9 +803,9 @@ test('the dropped names are ONE warning per section, not one per row', async () 
 	);
 	assert.equal(result.runsImported, 50);
 	assert.deepEqual(result.warnings, [
-		'profile: dropped favourite_colour — not columns of this schema',
-		'runs: dropped kind, pace_s_per_km — not columns of this schema',
-		'routes: dropped legacy_polyline — not columns of this schema'
+		{ kind: 'columnsDropped', section: 'profile', columns: ['favourite_colour'] },
+		{ kind: 'columnsDropped', section: 'runs', columns: ['kind', 'pace_s_per_km'] },
+		{ kind: 'columnsDropped', section: 'routes', columns: ['legacy_polyline'] }
 	]);
 });
 
@@ -841,6 +844,103 @@ test('a prototype key in the archive is a dropped column, never a column', async
 		'user_id'
 	]);
 	assert.deepEqual(result.warnings, [
-		'runs: dropped constructor, toString — not columns of this schema'
+		{ kind: 'columnsDropped', section: 'runs', columns: ['constructor', 'toString'] }
 	]);
+});
+
+test('a warning carries the caught failure as a value, never as text', async () => {
+	// Reason: `run r-bad: <PostgREST message>` put table and constraint names in
+	// a field a page could render. Every field but `error` is the archive's own
+	// id, a position or a column name; the failure stays an object.
+	const backend = makeFakeBackend();
+	const failure = new Error('new row for relation "runs" violates check constraint "x"');
+	backend.upsertRunSelectiveFailure = () => failure;
+	const result = await restoreOrchestrate(
+		makeParsedBackup({ runs: [{ id: 'r-bad' }, 'not a row' as unknown as JsonObject] }),
+		'uid',
+		backend
+	);
+	assert.deepEqual(result.warnings, [
+		{ kind: 'run', itemId: 'r-bad', error: failure },
+		{ kind: 'runUnreadable', index: 1 }
+	]);
+	for (const w of result.warnings) {
+		for (const [key, value] of Object.entries(w)) {
+			if (key === 'error') continue;
+			assert.ok(!String(value).includes('violates'), `${key} carries the failure text`);
+		}
+	}
+});
+
+/// Every `console.warn` the call makes, with its arguments, and nothing printed.
+async function capturingWarn<T>(fn: () => Promise<T>): Promise<{ value: T; logged: unknown[][] }> {
+	const original = console.warn;
+	const logged: unknown[][] = [];
+	console.warn = (...args: unknown[]) => {
+		logged.push(args);
+	};
+	try {
+		return { value: await fn(), logged };
+	} finally {
+		console.warn = original;
+	}
+}
+
+test('the restore log carries no archive-written text', async () => {
+	// Reason: console output becomes a Sentry breadcrumb once the reader
+	// consents, and the archive is a user-supplied file, so its row ids and its
+	// JSON keys are text a stranger chose. They used to be logged verbatim.
+	const backend = makeFakeBackend();
+	const failure = new Error('invalid input syntax for type uuid: "runner@example.com"');
+	backend.upsertRunSelectiveFailure = () => failure;
+	backend.upsertRouteSelectiveFailure = () => failure;
+	const secretId = 'Jane Doe 07700 900123';
+	const secretKey = 'home_address_42_acacia_avenue';
+	const { value: result, logged } = await capturingWarn(() =>
+		restoreOrchestrate(
+			makeParsedBackup({
+				runs: [{ id: secretId, [secretKey]: 'x' }],
+				routes: [{ id: secretId, name: 'Loop' }],
+				profile: { display_name: 'Tester', [secretKey]: 'x' }
+			}),
+			'uid',
+			backend
+		)
+	);
+	assert.equal(logged.length, result.warnings.length);
+	const text = JSON.stringify(logged);
+	for (const leaked of [secretId, secretKey, 'runner@example.com']) {
+		assert.ok(!text.includes(leaked), `the log carries ${leaked}`);
+	}
+	// The page still gets the raw id and names to show.
+	assert.ok(result.warnings.some((w) => w.itemId === secretId));
+	assert.ok(result.warnings.some((w) => w.columns?.includes(secretKey)));
+});
+
+test('restoreWarningLogFields keeps a uuid id, counts columns and scrubs the failure', () => {
+	const id = '0b6f2d3e-6c1a-4f7e-9a51-2f9b0d2c7e11';
+	assert.deepEqual(
+		restoreWarningLogFields({
+			kind: 'run',
+			itemId: id,
+			error: new Error("Key (email)=(a@b.co) already exists in 'x'")
+		}),
+		{
+			itemId: id,
+			index: undefined,
+			section: undefined,
+			columnsDropped: undefined,
+			error: "Key (…)=(…) already exists in '…'"
+		}
+	);
+	assert.deepEqual(
+		restoreWarningLogFields({ kind: 'columnsDropped', section: 'runs', columns: ['a', 'b', 'c'] }),
+		{ itemId: undefined, index: undefined, section: 'runs', columnsDropped: 3, error: undefined }
+	);
+	assert.equal(restoreWarningLogFields({ kind: 'track', itemId: 'r-1' }).itemId, '<invalid>');
+	assert.equal(
+		restoreWarningLogFields({ kind: 'track', itemId: 7 as unknown as string }).itemId,
+		'<invalid>'
+	);
+	assert.equal(restoreWarningLogFields({ kind: 'routeUnreadable', index: 4 }).index, 4);
 });

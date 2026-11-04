@@ -85,6 +85,12 @@ describe('PR card layout', () => {
 		assert.ok(mark.y + 18 <= laid.height * 0.87 + 0.001);
 	});
 
+	test('with the mark turned off the card draws no signature', () => {
+		const laid = layoutPrCard('story', text, true, null, measure);
+		assert.equal(laid.ops.filter((o) => o.kind === 'mark').length, 0);
+		assert.ok(!texts(laid.ops).some((t) => t.text === 'THREKIR'));
+	});
+
 	test('every ink has a ground', () => {
 		for (const ink of RUN_SHARE_INKS) assert.match(PR_CARD_GROUNDS[ink], /^#[0-9A-F]{6}$/i);
 	});

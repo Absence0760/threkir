@@ -70,6 +70,13 @@ class _FakeSettingsService implements SettingsService {
     deviceWrites.add(changes);
   }
 
+  int loads = 0;
+  @override
+  Future<SettingsService> load() async {
+    loads++;
+    return this;
+  }
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -569,7 +576,6 @@ void main() {
 
       expect(svc.synced, isFalse);
       expect(svc.service, isNull);
-      expect(svc.lastError, isNull);
     });
 
     test('writes load the service on demand when onSignedIn never ran',
@@ -651,6 +657,38 @@ void main() {
         throwsA(isA<Exception>()),
       );
       expect(svc.synced, isFalse);
+    });
+  });
+
+  group('reloadedService', () {
+    // Which zones a run is published under must see a zone added on another
+    // device since sign-in, so this re-reads the server rather than handing
+    // back the bags sign-in loaded.
+    test('loads the service once, then re-reads it on every call', () async {
+      final prefs = await freshPrefs();
+      final fake = _FakeSettingsService();
+      var loaderCalls = 0;
+      final svc = SettingsSyncService(
+        preferences: prefs,
+        serviceLoader: () async {
+          loaderCalls++;
+          return fake;
+        },
+      );
+
+      expect(await svc.reloadedService(), same(fake));
+      expect(await svc.reloadedService(), same(fake));
+      expect(loaderCalls, 1);
+      expect(fake.loads, 2);
+    });
+
+    test('throws with no session to load against', () async {
+      final prefs = await freshPrefs();
+      final svc = SettingsSyncService(
+        preferences: prefs,
+        serviceLoader: () async => throw Exception('Not authenticated'),
+      );
+      expect(svc.reloadedService(), throwsException);
     });
   });
 

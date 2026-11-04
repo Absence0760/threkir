@@ -1,7 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ActivityLoaderKind, FullBodyLoader;
+import 'package:ui_kit/ui_kit.dart' show ListSkeleton, SkeletonBlock;
 
 import '../auth_error.dart';
 import '../column_limits.dart';
@@ -12,6 +12,7 @@ import '../l10n/number_format.dart' show formatFixed;
 import '../preferences.dart' show WeightFormat, activeWeightUnit;
 import '../weigh_in_flag.dart';
 import '../widgets/top_banner.dart';
+import '../widgets/loading_skeletons.dart';
 
 /// Offline aid-station check-in for race-crew volunteers. Pick the checkpoint,
 /// enter/scan a bib (account linkage optional), stamp IN / OUT. Writes flow
@@ -210,9 +211,27 @@ class _CheckpointCheckinScreenState extends State<CheckpointCheckinScreen> {
 
   Widget _buildBody(AppLocalizations l10n, ThemeData theme) {
     if (_loading) {
-      return FullBodyLoader(
-        kind: ActivityLoaderKind.run,
-        label: l10n.commonLoading,
+      return ListView(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        children: [
+          const FractionallySizedBox(
+            alignment: AlignmentDirectional.centerStart,
+            widthFactor: 0.3,
+            child: SkeletonBlock(height: 12, radius: 4),
+          ),
+          const SizedBox(height: 8),
+          const SkeletonBlock(height: 56),
+          const SizedBox(height: 20),
+          const SkeletonBlock(height: 56),
+          const SizedBox(height: 16),
+          const SkeletonStatStrip(cells: 2),
+          const SizedBox(height: 16),
+          ListSkeleton.section(
+            label: l10n.commonLoading,
+            hasLeading: false,
+          ),
+        ],
       );
     }
     if (_loadError != null) {

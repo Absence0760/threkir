@@ -53,7 +53,7 @@ describe('toggleShareStat', () => {
 
 describe('share look json', () => {
 	test('round-trips every field', () => {
-		const l = look({ layout: 'hero', ink: 'brand', aspect: 'post', stats: ['distance', 'heartRate'] });
+		const l = look({ layout: 'hero', ink: 'brand', aspect: 'post', stats: ['distance', 'heartRate'], mark: false });
 		assert.deepEqual(shareLookFromJson(JSON.parse(JSON.stringify(shareLookToJson(l)))), l);
 	});
 
@@ -73,6 +73,13 @@ describe('share look json', () => {
 		for (const junk of [null, 7, 'stack', []]) {
 			assert.deepEqual(shareLookFromJson(junk), look(), String(junk));
 		}
+	});
+
+	test('the mark is on by default and only a stored boolean turns it off', () => {
+		assert.equal(DEFAULT_SHARE_LOOK.mark, true);
+		assert.equal(shareLookFromJson({ layout: 'strip' }).mark, true);
+		assert.equal(shareLookFromJson({ mark: 'no' }).mark, true);
+		assert.equal(shareLookFromJson({ mark: false }).mark, false);
 	});
 
 	test('an empty or absent stat list is the default set', () => {

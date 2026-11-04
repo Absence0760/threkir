@@ -9,11 +9,11 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui_kit/ui_kit.dart' show FullBodyLoader;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
+import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
 
 const _owner = 'owner-uuid';
@@ -113,7 +113,7 @@ Future<void> _pump(WidgetTester tester, _FakeTraining training) async {
   );
   await pumpUntil(
     tester,
-    () => !tester.any(find.byType(FullBodyLoader)),
+    () => !tester.any(find.byType(SectionedDetailSkeleton)),
     describe: 'the plan fetch to settle',
   );
   await tester.pump();
@@ -180,7 +180,7 @@ void main() {
       expect(find.text('Spring Half'), findsWidgets);
       expect(find.text(en.commonStaleRefreshFailed), findsOneWidget);
       expect(find.text(en.planDetailLoadError), findsNothing);
-      expect(find.byType(FullBodyLoader), findsNothing);
+      expect(find.byType(SectionedDetailSkeleton), findsNothing);
       await _drainBanner(tester);
     });
 
@@ -224,19 +224,45 @@ void main() {
     testWidgets('an already-published plan opens on Unpublish, and it unpublishes',
         (tester) async {
       final training = _FakeTraining(published: [
-        _plan.copyWith(id: 'template-9', isPublicTemplate: true),
+        _plan.copyWith(
+            id: 'template-9', isPublicTemplate: true, publishedFromPlanId: 'plan-1'),
       ]);
       await _pump(tester, training);
       expect(find.text(en.planDetailUnpublishLibrary), findsOneWidget);
 
       await tester.tap(find.text(en.planDetailUnpublishLibrary));
-      await tester.pump();
-      await tester.pump();
+      await tester.pumpAndSettle();
+      expect(find.text(en.planDetailUnpublishTitle), findsOneWidget);
+      await _confirmUnpublish(tester);
 
       expect(training.unpublishCalls, ['template-9']);
       expect(find.text(en.planDetailPublishLibrary), findsOneWidget);
       expect(find.text(en.planDetailUnpublishSuccess), findsOneWidget);
       await _drainBanner(tester);
+    });
+
+    testWidgets('a renamed plan still finds its library copy by its link',
+        (tester) async {
+      final training = _FakeTraining(published: [
+        _plan.copyWith(
+            id: 'template-9',
+            name: 'Name it was published under',
+            isPublicTemplate: true,
+            publishedFromPlanId: 'plan-1'),
+      ]);
+      await _pump(tester, training);
+      expect(find.text(en.planDetailUnpublishLibrary), findsOneWidget);
+    });
+
+    testWidgets("another plan's same-named copy is not this plan's to unpublish",
+        (tester) async {
+      final training = _FakeTraining(published: [
+        _plan.copyWith(
+            id: 'template-9', isPublicTemplate: true, publishedFromPlanId: 'plan-2'),
+      ]);
+      await _pump(tester, training);
+      expect(find.text(en.planDetailPublishLibrary), findsOneWidget);
+      expect(find.text(en.planDetailUnpublishLibrary), findsNothing);
     });
 
     testWidgets('a failed publish says so and leaves the toggle where it was',
@@ -257,18 +283,51 @@ void main() {
     testWidgets('a failed unpublish says so and keeps the plan published',
         (tester) async {
       final training = _FakeTraining(published: [
-        _plan.copyWith(id: 'template-9', isPublicTemplate: true),
+        _plan.copyWith(
+            id: 'template-9', isPublicTemplate: true, publishedFromPlanId: 'plan-1'),
       ])
         ..unpublishError = Exception('refused');
       await _pump(tester, training);
 
       await tester.tap(find.text(en.planDetailUnpublishLibrary));
-      await tester.pump();
-      await tester.pump();
+      await tester.pumpAndSettle();
+      await _confirmUnpublish(tester);
 
       expect(find.textContaining('Failed to unpublish'), findsOneWidget);
       expect(find.text(en.planDetailUnpublishLibrary), findsOneWidget);
       await _drainBanner(tester);
     });
+
+    // Unpublishing deletes the library copy and breaks every shared link to
+    // it, so it confirms; Cancel leaves the plan published.
+    testWidgets('Unpublish asks first, and Cancel keeps the plan published',
+        (tester) async {
+      final training = _FakeTraining(published: [
+        _plan.copyWith(
+            id: 'template-9', isPublicTemplate: true, publishedFromPlanId: 'plan-1'),
+      ]);
+      await _pump(tester, training);
+
+      await tester.tap(find.text(en.planDetailUnpublishLibrary));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.text(en.planDetailUnpublishBody), findsOneWidget);
+      await tester.tap(find.descendant(
+          of: find.byType(AlertDialog), matching: find.text(en.plansCancel)));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(training.unpublishCalls, isEmpty);
+      expect(find.text(en.planDetailUnpublishLibrary), findsOneWidget);
+    });
   });
+}
+
+Future<void> _confirmUnpublish(WidgetTester tester) async {
+  await tester.tap(find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.text(lookupAppLocalizations(const Locale('en'))
+          .planDetailUnpublishLibrary)));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
 }

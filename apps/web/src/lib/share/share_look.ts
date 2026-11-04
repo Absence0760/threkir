@@ -1,7 +1,8 @@
 // The look a runner chose for their photo and sticker share images, kept in
 // this browser so the next run shares the same way without choosing again.
 // Twin of `RunShareLook` in apps/mobile_android/lib/share_look.dart: the same
-// layouts, inks, aspects, stat cap, toggle rule and field-by-field restore.
+// layouts, inks, aspects, stat cap, mark switch, toggle rule and field-by-field
+// restore.
 
 import type { RunShareStatKind } from './run_share_stats';
 import { RUN_SHARE_STAT_KINDS } from './run_share_stats';
@@ -27,6 +28,9 @@ export interface RunShareLook {
 	ink: RunShareInk;
 	aspect: RunPhotoAspect;
 	stats: RunShareStatKind[];
+	/// Whether the image carries the Threkir mark. On unless the runner turns
+	/// it off; free on every tier.
+	mark: boolean;
 }
 
 export const DEFAULT_SHARE_STATS: readonly RunShareStatKind[] = ['distance', 'pace', 'time'];
@@ -40,6 +44,7 @@ export const DEFAULT_SHARE_LOOK: Readonly<RunShareLook> = Object.freeze({
 	ink: 'light',
 	aspect: 'story',
 	stats: [...DEFAULT_SHARE_STATS],
+	mark: true,
 });
 
 export function shareLookEquals(a: RunShareLook, b: RunShareLook): boolean {
@@ -47,6 +52,7 @@ export function shareLookEquals(a: RunShareLook, b: RunShareLook): boolean {
 		a.layout === b.layout &&
 		a.ink === b.ink &&
 		a.aspect === b.aspect &&
+		a.mark === b.mark &&
 		a.stats.length === b.stats.length &&
 		a.stats.every((k, i) => b.stats[i] === k)
 	);
@@ -67,7 +73,7 @@ export function toggleShareStat(look: RunShareLook, kind: RunShareStatKind): Run
 }
 
 export function shareLookToJson(look: RunShareLook): Record<string, unknown> {
-	return { layout: look.layout, ink: look.ink, aspect: look.aspect, stats: [...look.stats] };
+	return { layout: look.layout, ink: look.ink, aspect: look.aspect, stats: [...look.stats], mark: look.mark };
 }
 
 function pick<T extends string>(values: readonly T[], name: unknown, fallback: T): T {
@@ -90,6 +96,7 @@ export function shareLookFromJson(json: unknown): RunShareLook {
 		ink: pick(RUN_SHARE_INKS, o.ink, d.ink),
 		aspect: pick(RUN_PHOTO_ASPECTS, o.aspect, d.aspect),
 		stats: stats.length === 0 ? [...DEFAULT_SHARE_STATS] : stats.slice(0, MAX_SHARE_STATS),
+		mark: typeof o.mark === 'boolean' ? o.mark : d.mark,
 	};
 }
 

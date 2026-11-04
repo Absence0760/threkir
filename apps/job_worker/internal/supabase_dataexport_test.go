@@ -886,7 +886,7 @@ func TestStreamExportPersonalDataTables_IncludesAuditCompletenessTables(t *testi
 // appear in the manifest when the subject has rows; coach_athletes
 // must NOT leak the redeemable invite_token credential.
 func TestStreamExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T) {
-	var dmSentQ, dmRecvQ, coachQ, athleteQ, eventResQ string
+	var dmSentQ, dmRecvQ, convQ, coachQ, athleteQ, eventResQ string
 	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		path := r.URL.Path
@@ -898,6 +898,9 @@ func TestStreamExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T
 		case strings.Contains(path, "/rest/v1/direct_messages") && strings.Contains(query, "recipient_id="):
 			dmRecvQ = query
 			_, _ = w.Write([]byte(`[{"id":"dm2","body":"yo"}]`))
+		case strings.Contains(path, "/rest/v1/conversation_participants"):
+			convQ = query
+			_, _ = w.Write([]byte(`[{"conversation_id":"c1","muted_at":null}]`))
 		case strings.Contains(path, "/rest/v1/coach_athletes") && strings.Contains(query, "coach_id="):
 			coachQ = query
 			_, _ = w.Write([]byte(`[{"id":"ca1","status":"active"}]`))
@@ -919,6 +922,7 @@ func TestStreamExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T
 	for _, key := range []string{
 		"direct_messages_sent.json",
 		"direct_messages_received.json",
+		"conversation_settings.json",
 		"coaching_as_coach.json",
 		"coaching_as_athlete.json",
 		"event_results.json",
@@ -937,6 +941,7 @@ func TestStreamExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T
 	}{
 		{"direct_messages (sent)", dmSentQ, "sender_id=eq.user-A"},
 		{"direct_messages (received)", dmRecvQ, "recipient_id=eq.user-A"},
+		{"conversation_participants", convQ, "user_id=eq.user-A"},
 		{"coach_athletes (as coach)", coachQ, "coach_id=eq.user-A"},
 		{"coach_athletes (as athlete)", athleteQ, "athlete_id=eq.user-A"},
 		{"event_results", eventResQ, "user_id=eq.user-A"},

@@ -83,7 +83,6 @@ export const METRICS = {
 	vert: {
 		label: 'metric.vert.label',
 		definition: 'metric.vert.definition',
-		variants: { thisWeek: 'dash.statThisWeekVert' },
 		// Not the `{vert}` placeholder, and not the `'vert'` challenge metric id.
 		term: /\bVert\b|(?<![{'"\w])vert(?![}'"\w])/,
 	},

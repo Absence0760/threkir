@@ -22,10 +22,11 @@
 		fetchPrecedingPlan,
 		fetchRuns,
 	} from '#lib/core/data.ts';
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import { dbError, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { fmtKm } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import type { WorkoutState } from '#lib/training/plan_edit/apply.ts';
 	import type { PlanEditNote, PlanEditOp } from '#lib/training/plan_edit/ops.ts';
@@ -55,7 +56,7 @@
 
 	type Phase = 'idle' | 'loading' | 'ready' | 'applied' | 'discarded' | 'error';
 	let phase = $state<Phase>('idle');
-	let error = $state<{ message: string; consent: boolean } | null>(null);
+	let error = $state<{ text: string; consent: boolean } | null>(null);
 	let notes = $state<PlanEditNote[]>([]);
 	let dropped = $state(0);
 	let noChanges = $state(false);
@@ -78,14 +79,14 @@
 
 	let shown = $derived(edits ? (scope === 'season' && edits.season ? edits.season : edits.plan) : null);
 
-	function errorFor(e: unknown): { message: string; consent: boolean } {
+	function errorFor(e: unknown): { text: string; consent: boolean } {
 		const kind = e instanceof PlanEditError ? e.kind : 'unavailable';
-		if (kind === 'consent') return { message: m('planDetail.aiAdjustErrorConsent'), consent: true };
-		if (kind === 'daily_limit') return { message: m('planDetail.aiAdjustErrorDailyLimit'), consent: false };
+		if (kind === 'consent') return { text: m('planDetail.aiAdjustErrorConsent'), consent: true };
+		if (kind === 'daily_limit') return { text: m('planDetail.aiAdjustErrorDailyLimit'), consent: false };
 		if (kind === 'nothing_to_adjust' || kind === 'not_found') {
-			return { message: m('coachChat.planEditNothing'), consent: false };
+			return { text: m('coachChat.planEditNothing'), consent: false };
 		}
-		return { message: m('coachChat.planEditFailed'), consent: false };
+		return { text: m('coachChat.planEditFailed'), consent: false };
 	}
 
 	async function loadBlocks(): Promise<{
@@ -94,8 +95,8 @@
 		preceding: PlanEditBlock | null;
 	}> {
 		const [primaryRes, mine] = await Promise.all([fetchPlan(planId), fetchMyPlansWithError()]);
-		if (primaryRes.error) throw new Error(primaryRes.error);
-		if (mine.error) throw new Error(mine.error);
+		if (primaryRes.error) throw dbError(primaryRes.error);
+		if (mine.error) throw dbError(mine.error);
 		const plan = primaryRes.plan;
 		if (!plan || plan.status !== 'active' || plan.end_date < today) {
 			throw new PlanEditError('nothing_to_adjust');
@@ -110,7 +111,7 @@
 		]);
 		const following: PlanEditBlock[] = [];
 		for (const r of reads) {
-			if (r.error) throw new Error(r.error);
+			if (r.error) throw dbError(r.error);
 			if (r.plan) following.push(planEditBlock(r.plan, r.weeks, r.workouts));
 		}
 		return {
@@ -213,7 +214,7 @@
 			phase = 'applied';
 			showToast(m('planDetail.aiAdjustApplied'));
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
 		} finally {
 			saving = false;
 		}
@@ -260,7 +261,7 @@
 		<p class="note" role="status" aria-busy="true">{m('coachChat.planEditWorking')}</p>
 	{:else if phase === 'error' && error}
 		<p class="error" role="alert">
-			{error.message}
+			{error.text}
 			{#if error.consent}
 				<a href={AI_CONSENT_HREF}>{m('planDetail.aiAdjustErrorConsentLink')}</a>
 			{/if}

@@ -464,6 +464,23 @@ test('an ultra the model extracts comes back as a custom goal and its distance',
 	assert.match(system, /ultra_distance_km/);
 });
 
+test('the prompt states the 5K and 10K mile equivalences without an "over" to misread', async () => {
+	const { factory } = stubSupabase();
+	const model = stubModel(() => toolMessage({ goal_event: 'distance_5k' }));
+	await handlePlanRequest('Bearer x', VALID, {
+		...baseConfig(),
+		createClient: factory,
+		createAnthropic: model.create,
+	});
+	const system = JSON.stringify(model.seen.body?.system ?? '');
+	assert.match(system, /5 km = 3\.1 mi = distance_5k/);
+	assert.match(system, /10 km = 6\.2 mi = distance_10k/);
+	assert.match(system, /A recent time for a 5K \(5 km or 3\.1 mi\) goes in recent_5k_sec/);
+	// "over 3.1 mi" / "time over 5K" read as "longer than", which would send a
+	// 10K or half time into the 5K field.
+	assert.doesNotMatch(system, /over 3\.1 mi|time over 5K/i);
+});
+
 test('every goal event the tool advertises is one the validator accepts', () => {
 	const props = EXTRACT_TOOL.input_schema.properties as Record<string, { enum?: string[] }>;
 	const advertised = props.goal_event?.enum ?? [];
@@ -483,6 +500,7 @@ test('the tool schema names exactly the fields the validator reads', () => {
 		'race_date',
 		'recent_5k_sec',
 		'ultra_distance_km',
+		'ultra_distance_unit',
 		'weeks',
 	]);
 });

@@ -8,6 +8,7 @@ import 'package:ui_kit/ui_kit.dart' show EmptyState, ListSkeleton;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/plan_library_screen.dart';
 import '../lib/training_service.dart';
+import '../lib/widgets/error_state.dart';
 import '../lib/widgets/sign_in_required_state.dart';
 import '../lib/widgets/official_badge.dart';
 
@@ -233,6 +234,27 @@ void main() {
     t.pending['sub']!.complete([_entry('tmpl-1', 'Sub-4 Marathon')]);
     await tester.pumpAndSettle();
     expect(find.byType(LinearProgressIndicator), findsNothing);
+  });
+
+  // A failed search used to swap the results for the full error page.
+  testWidgets('a failed search keeps the current results under a banner',
+      (tester) async {
+    final t = _GatedTraining();
+    await tester.pumpWidget(_host(t));
+    t.pending['']!.complete([_entry('tmpl-1', 'Sub-4 Marathon')]);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'sub');
+    await tester.pump(const Duration(milliseconds: 350));
+    t.pending['sub']!.completeError(Exception('boom'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Sub-4 Marathon'), findsOneWidget);
+    expect(find.byType(ErrorState), findsNothing);
+    final en = lookupAppLocalizations(const Locale('en'));
+    expect(find.text(en.commonStaleRefreshFailed), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
   });
 
   testWidgets('a slow earlier search cannot overwrite a newer answer',

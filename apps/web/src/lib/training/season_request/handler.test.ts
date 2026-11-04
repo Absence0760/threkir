@@ -383,6 +383,7 @@ test('the tool schema names exactly the fields the validator reads', () => {
 	assert.deepEqual(Object.keys(races.items.properties).sort(), [
 		'date',
 		'distance_km',
+		'distance_unit',
 		'goal_time_sec',
 		'name',
 		'priority',

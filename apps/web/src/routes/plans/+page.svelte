@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { formatDuration } from '#lib/format/time.ts';
@@ -13,6 +12,8 @@
 		createTrainingPlan
 	} from '#lib/core/data.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { formatDistance } from '#lib/format/units.svelte.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
@@ -57,7 +58,7 @@
 		const token = listToken('plans');
 		const result = await fetchMyPlansWithError();
 		plans = result.plans;
-		loadError = result.error;
+		loadError = result.error ? errorCopy(result.error, m, 'plans: loadError') : null;
 		if (!result.error) loadedToken = token;
 		loading = false;
 	}
@@ -245,7 +246,7 @@
 			});
 			goto(`/plans/${plan.id}`);
 		} catch (e) {
-			showToast(m('plansNew.toastCreateFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('plansNew.toastCreateFailed', { error: errorCopy(e, m, 'plansNew.toastCreateFailed') }), 'error');
 			creatingStarterId = null;
 		}
 	}
@@ -274,7 +275,7 @@
 			// Keep the dialog open so the user can retry or cancel — the
 			// plan still exists, so silently closing would be a lie.
 			showToast(
-				m('plansPage.actionFailed', { error: thrownMessage(e) }),
+				m('plansPage.actionFailed', { error: errorCopy(e, m, 'plansPage.actionFailed') }),
 				'error'
 			);
 			return;
@@ -315,7 +316,7 @@
 						aria-pressed={statusFilter === f.value}
 						type="button"
 					>
-						<span class="material-symbols">{f.icon}</span>
+						<span class="material-symbols" aria-hidden="true">{f.icon}</span>
 						<span class="activity-label">{f.label()}</span>
 						{#if counts[f.value] > 0}
 							<span class="count-pill">{counts[f.value]}</span>
@@ -326,17 +327,17 @@
 
 			<div class="toolbar-actions">
 				<a class="add-btn add-btn-outline" href="/plans/library">
-					<span class="material-symbols">public</span>
+					<span class="material-symbols" aria-hidden="true">public</span>
 					{m('plansPage.browseLibrary')}
 				</a>
 				{#if showAiPlan}
 					<a class="add-btn add-btn-outline" href={AI_PLAN_HREF}>
-						<span class="material-symbols">auto_awesome</span>
+						<span class="material-symbols" aria-hidden="true">auto_awesome</span>
 						{m('plansPage.describeWithAi')}
 					</a>
 				{/if}
 				<button class="add-btn" type="button" onclick={() => (showPlanModal = true)}>
-					<span class="material-symbols">add</span>
+					<span class="material-symbols" aria-hidden="true">add</span>
 					{m('plansPage.newPlan')}
 				</button>
 			</div>
@@ -348,20 +349,20 @@
 			{#each Array(4) as _, i (i)}
 				<div class="skel-card">
 					<div class="skel-card-top">
-						<span class="skel skel-line skel-w-50"></span>
-						<span class="skel skel-pill"></span>
+						<SkeletonBlock height="0.75rem" width="50%" />
+						<SkeletonBlock height="1rem" width="4rem" radius="9999px" />
 					</div>
 					<div class="skel-card-meta">
-						<span class="skel skel-line skel-w-30"></span>
-						<span class="skel skel-line skel-w-30"></span>
-						<span class="skel skel-line skel-w-30"></span>
+						{#each Array(3) as _, j (j)}
+							<SkeletonBlock height="0.75rem" width="30%" />
+						{/each}
 					</div>
-					<span class="skel skel-bar"></span>
-					<span class="skel skel-line skel-w-60"></span>
+					<SkeletonBlock height="0.4rem" radius="9999px" />
+					<SkeletonBlock height="0.75rem" width="60%" />
 				</div>
 			{/each}
 		</div>
-		<p class="sr-only" role="status">{m('plansPage.loadingPlans')}</p>
+		<p class="visually-hidden" role="status">{m('plansPage.loadingPlans')}</p>
 	{:else if loadError}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
@@ -379,7 +380,7 @@
 				{m('plansPage.emptyLead')}
 			</p>
 			<button class="btn-primary" type="button" onclick={() => (showPlanModal = true)}>
-				<span class="material-symbols">add</span>
+				<span class="material-symbols" aria-hidden="true">add</span>
 				{m('plansPage.createFirst')}
 			</button>
 			{#if showAiPlan}
@@ -418,17 +419,20 @@
 				{@const isUpcoming = isActive && p.start_date > todayISO()}
 				{@const week = isActive ? currentWeek(p) : null}
 				{@const pct = isActive ? calendarPct(p) : null}
-				<a class="card" class:card-active={isActive} href="/plans/{p.id}">
+				<!-- The card is not itself a link: it holds Abandon / Delete, and a
+				     button inside an <a> is an interactive element nested in another.
+				     The title link stretches over the card instead (.card-link::after). -->
+				<div class="card" class:card-active={isActive}>
 					<div class="card-head">
-						<h3>{p.name}</h3>
+						<h3><a class="card-link" href="/plans/{p.id}">{p.name}</a></h3>
 						{#if isUpcoming}
 							<span class="badge status-upcoming">
-								<span class="material-symbols">event_upcoming</span>
+								<span class="material-symbols" aria-hidden="true">event_upcoming</span>
 								{m('plansPage.statusUpcoming')}
 							</span>
 						{:else}
 							<span class="badge status-{p.status}">
-								<span class="material-symbols">{statusIcon[p.status] ?? 'help'}</span>
+								<span class="material-symbols" aria-hidden="true">{statusIcon[p.status] ?? 'help'}</span>
 								{statusLabel(p.status)}
 							</span>
 						{/if}
@@ -453,11 +457,11 @@
 
 					<div class="meta">
 						<span class="meta-item">
-							<span class="material-symbols">date_range</span>
+							<span class="material-symbols" aria-hidden="true">date_range</span>
 							{formatDateShort(p.start_date)} → {formatDateShort(p.end_date)}
 						</span>
 						<span class="meta-item">
-							<span class="material-symbols">view_week</span>
+							<span class="material-symbols" aria-hidden="true">view_week</span>
 							{planLengthLabel(m, total, p.days_per_week)}
 						</span>
 					</div>
@@ -485,23 +489,17 @@
 							<button
 								class="card-action-btn"
 								type="button"
-								onclick={(e) => {
-									e.preventDefault();
-									abandon(p);
-								}}>{m('plansPage.abandon')}</button
+								onclick={() => abandon(p)}>{m('plansPage.abandon')}</button
 							>
 						{:else}
 							<button
 								class="card-action-btn danger"
 								type="button"
-								onclick={(e) => {
-									e.preventDefault();
-									remove(p);
-								}}>{m('plansPage.delete')}</button
+								onclick={() => remove(p)}>{m('plansPage.delete')}</button
 							>
 						{/if}
 					</div>
-				</a>
+				</div>
 			{/each}
 		</div>
 
@@ -680,6 +678,7 @@
 	}
 
 	.card {
+		position: relative;
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-md);
@@ -698,9 +697,22 @@
 		box-shadow: var(--shadow-md);
 		transform: translateY(-2px);
 	}
-	.card:focus-visible {
+	.card:has(.card-link:focus-visible) {
 		outline: 2px solid var(--color-primary);
 		outline-offset: 2px;
+	}
+	.card-link {
+		color: inherit;
+		text-decoration: none;
+	}
+	.card-link:focus-visible {
+		outline: none;
+	}
+	.card-link::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
 	}
 	.card-active {
 		border-color: var(--color-primary-light);
@@ -832,6 +844,8 @@
 	}
 
 	.card-actions {
+		position: relative;
+		z-index: 1;
 		display: flex;
 		justify-content: flex-end;
 		margin-top: auto;
@@ -977,52 +991,7 @@
 		display: flex;
 		gap: var(--space-md);
 	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		border-radius: var(--radius-sm);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line {
-		height: 0.75rem;
-	}
-	.skel-pill {
-		width: 4rem;
-		height: 1rem;
-		border-radius: 9999px;
-	}
-	.skel-bar {
-		height: 0.4rem;
-		border-radius: 9999px;
-	}
-	.skel-w-30 {
-		width: 30%;
-	}
-	.skel-w-50 {
-		width: 50%;
-	}
-	.skel-w-60 {
-		width: 60%;
-	}
-	@keyframes skel-shimmer {
-		0% {
-			background-position: 200% 0;
-		}
-		100% {
-			background-position: -200% 0;
-		}
-	}
 	@media (prefers-reduced-motion: reduce) {
-		.skel {
-			animation: none;
-		}
 		.card:hover {
 			transform: none;
 		}
@@ -1031,17 +1000,6 @@
 		}
 	}
 
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
 
 	.error-banner {
 		display: flex;

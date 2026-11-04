@@ -129,20 +129,17 @@ test.describe('/dashboard', () => {
 		await expect(page.locator('.goal-card')).toHaveCount(initialCount);
 	});
 
-	test('clicking "This Week" stat tile opens the period summary modal', async ({
+	test('the week lead\'s Week summary opens the period summary modal', async ({
 		page
 	}) => {
-		// The dashboard's "This Week" stat card is a button (rather
-		// than a static tile) so the user can drill into the period.
-		// On click it sets `periodModal = { type: 'week', date: now }`
-		// which mounts the shared <PeriodSummary> inside a Modal with
-		// title "Period summary".
+		// The week drilldown used to be the grid's "This Week" tile; the
+		// tile left Home when the week lead became its one this-week view
+		// (§ 2283), and the lead's Week summary took over the tap-through.
+		// It sets `periodModal = { type: 'week', date: now }`, which mounts
+		// the shared <PeriodSummary> inside a Modal titled "Period summary".
 		await page.goto('/dashboard');
 
-		// The stat card may render with a 0 km value if "this week"
-		// (real wall-clock) doesn't intersect any seeded run — that's
-		// fine, we're testing modal-open, not the contents.
-		const thisWeekCard = page.getByRole('button', { name: /This Week/ }).first();
+		const thisWeekCard = page.getByTestId('dash-week-lead-open');
 		await expect(thisWeekCard).toBeVisible();
 		await thisWeekCard.click();
 
@@ -183,16 +180,17 @@ test.describe('/dashboard', () => {
 		).toBeVisible();
 	});
 
-	test('the four stat cards (This Week / Total Runs / Longest Run / Pace) render', async ({
+	test('the stat grid keeps the all-time cards and none of the this-week ones', async ({
 		page
 	}) => {
 		await page.goto('/dashboard');
-		const labels = page.locator('.stat-label');
-		await expect(labels.filter({ hasText: 'This Week' }).first())
-			.toBeVisible({ timeout: 10_000 });
-		await expect(labels.filter({ hasText: 'Total Runs' }).first()).toBeVisible();
+		const labels = page.locator('.stat-grid .stat-label');
+		await expect(labels.filter({ hasText: 'Total Runs' }).first()).toBeVisible({
+			timeout: 10_000
+		});
 		await expect(labels.filter({ hasText: 'Longest Run' }).first()).toBeVisible();
-		await expect(labels.filter({ hasText: /Pace/ }).first()).toBeVisible();
+		await expect(labels.filter({ hasText: /This Week/i })).toHaveCount(0);
+		await expect(labels.filter({ hasText: /Pace/ })).toHaveCount(0);
 	});
 
 	test('Training intensity card renders (replaces the old Activity heatmap)', async ({
@@ -365,11 +363,9 @@ test.describe('/dashboard', () => {
 		// User feedback: stat-grid was 5 cards but rendering as 4+1
 		// across two rows; the recap-link sat on its own horizontal rail
 		// above the source-filter chips, burning a line for one element.
-		// Fix: stat-grid lays out N-up at >=1100px (N = number of stat
-		// cards, currently 6 after the U4 web vert-on-dashboard
-		// commit `807e11e1` added the "This Week Vert" card), recap-link
-		// rides on the right side of the same row as the .filter-chips
-		// group.
+		// Fix: stat-grid lays out N-up (N = number of stat cards, three
+		// since the this-week cards left with § 2283), recap-link rides on
+		// the right side of the same row as the .filter-chips group.
 		await page.setViewportSize({ width: 1440, height: 900 });
 		await page.goto('/dashboard');
 		await expect(page.locator('.stat-grid .stat-card').first()).toBeVisible({
@@ -392,7 +388,7 @@ test.describe('/dashboard', () => {
 		// (1440px wide). Count is asserted to catch the inverse
 		// regression: a card silently disappearing from the surface.
 		const cards = page.locator('.stat-grid .stat-card');
-		await expect(cards).toHaveCount(6);
+		await expect(cards).toHaveCount(3);
 		const count = await cards.count();
 		const tops: number[] = [];
 		for (let i = 0; i < count; i++) {

@@ -1,11 +1,13 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import { onMount } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';
+	import { formatElevation, getUnit } from '#lib/format/units.svelte.ts';
 	import { toGpx, toKml, downloadFile } from '#lib/routes/gpx.ts';
 	import { toRouteGpxWithMarkers, type RouteGpxMarker } from '#lib/routes/route_gpx.ts';
-	import { fetchRouteById, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, setRoutePublic, setRouteStar, audienceSharingEnabled, fetchShares } from '#lib/core/data.ts';
+	import { fetchClippedRouteForViewer, fetchRouteById, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, setRoutePublic, setRouteStar, audienceSharingEnabled, fetchShares, deleteRoute, fetchRouteDeleteImpact } from '#lib/core/data.ts';
+	import { routeDeleteImpactLines } from '#lib/routes/route_delete_impact.ts';
+	import { goto } from '$app/navigation';
 	import AudienceDialog from '#lib/components/AudienceDialog.svelte';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import { audienceOf, type AudienceColumns } from '#lib/social/run_visibility.ts';
@@ -32,7 +34,11 @@
 	import { distinctTags } from '#lib/routes/route_tags.ts';
 	import { routeElevation } from '#lib/routes/route_elevation.ts';
 	import { buildRouteShareCanonical } from '#lib/share/share_meta.ts';
-	import { describeRoute, localisedTemplate } from '#lib/routes/route_description.ts';
+	import {
+		describeRoute,
+		localisedTemplate,
+		shownDescription,
+	} from '#lib/routes/route_description.ts';
 	import { requestAiDescription } from '#lib/routes/route_describe_client.ts';
 	import { AI_DISCLOSURE_ERROR } from '#lib/core/ai_disclosure.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
@@ -41,7 +47,8 @@
 	// AI-enhancement upsell below it only makes sense when the Coach is live.
 	const coachOn = coachEnabled();
 	import { PUBLIC_SITE_URL } from '$app/env/public';
-	import { m } from '#lib/i18n/store.svelte.ts';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import type { Route } from '#lib/types.ts';
@@ -79,6 +86,7 @@
 	let markerPendingDrag = $state<{ id: string; lat: number; lng: number } | null>(null);
 	let loading = $state(true);
 	let loadFailed = $state(false);
+	let lineRetrying = $state(false);
 	let reviews = $state<any[]>([]);
 	let reviewsError = $state(false);
 	let showReviewForm = $state(false);
@@ -122,6 +130,23 @@
 		}
 	}
 
+	// Only a non-owner read can lose its line: the clipped read failed, so the
+	// route's metadata rendered and the map slot offers this instead of an
+	// empty map. A failed retry leaves the line unavailable — never unclipped.
+	async function retryLine() {
+		if (!route || lineRetrying) return;
+		lineRetrying = true;
+		try {
+			const points = await fetchClippedRouteForViewer(route.id);
+			route = { ...route, waypoints: points, line_unavailable: false };
+			displayWaypoints = points;
+		} catch (e) {
+			console.warn('route line retry failed', e);
+		} finally {
+			lineRetrying = false;
+		}
+	}
+
 	onMount(async () => {
 		// Wait for auth to resolve before fetching the row. Without
 		// this, `isOwner` (a $derived from auth.user) starts false and
@@ -148,7 +173,7 @@
 			showReviewForm = false;
 			reviewComment = '';
 		} catch (e) {
-			showToast(m('routeDetail.reviewSubmitFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('routeDetail.reviewSubmitFailed', { error: errorCopy(e, m, 'routeDetail.reviewSubmitFailed') }), 'error');
 		} finally {
 			reviewSubmitting = false;
 		}
@@ -172,7 +197,7 @@
 				reviews = before;
 			},
 			onCommitError: (e) =>
-				showToast(m('routeDetail.reviewDeleteFailed', { error: thrownMessage(e) }), 'error'),
+				showToast(m('routeDetail.reviewDeleteFailed', { error: errorCopy(e, m, 'routeDetail.reviewDeleteFailed') }), 'error'),
 		});
 	}
 
@@ -232,6 +257,56 @@
 		return `${window.location.origin}/routes/${id}`;
 	}
 	let showReportDialog = $state(false);
+
+	// Deleting a route cascades its photos, markers and other runners' reviews,
+	// bookmarks and segments, none of which a re-insert could bring back, so it
+	// takes the confirm and no undo (conventions.md § Destructive actions). The
+	// confirm is opened only once route_delete_impact has said who else depends
+	// on the route; a failed count still lets the owner delete, and says the
+	// count is missing rather than implying nothing depends on it.
+	let showDeleteConfirm = $state(false);
+	let deleteChecking = $state(false);
+	let deleteMessage = $state('');
+	// Set from the confirm until the page leaves. ConfirmDialog locks its own
+	// buttons only while the dialog is open; once a successful delete closes
+	// it, the page's Delete button would otherwise reopen it for a route that
+	// is already gone while the navigation to /routes is still pending.
+	let deleting = $state(false);
+
+	async function openDeleteConfirm() {
+		if (!route || !isOwner || deleteChecking || deleting) return;
+		deleteChecking = true;
+		const parts = [m('routeDetail.deleteBody')];
+		try {
+			const impact = await fetchRouteDeleteImpact(route.id);
+			for (const line of routeDeleteImpactLines(impact, route.is_public === true)) {
+				parts.push(m(line.key, { count: line.count }));
+			}
+		} catch (e) {
+			console.warn('route_delete_impact failed', e);
+			parts.push(m('routeDetail.deleteImpactUnknown'));
+		} finally {
+			deleteChecking = false;
+		}
+		deleteMessage = parts.join(' ');
+		showDeleteConfirm = true;
+	}
+
+	async function confirmDelete() {
+		if (!route || deleting) return;
+		deleting = true;
+		try {
+			await deleteRoute(route.id);
+		} catch (e) {
+			deleting = false;
+			showDeleteConfirm = false;
+			showToast(m('routeDetail.deleteFailed', { error: errorCopy(e, m, 'routeDetail.deleteFailed') }), 'error');
+			return;
+		}
+		showDeleteConfirm = false;
+		showToast(m('routeDetail.deleted'), 'success');
+		await goto('/routes');
+	}
 	let reportReviewId = $state<string | null>(null);
 
 	// "Describe this route" affordance. The templated description is the
@@ -269,7 +344,9 @@
 	/// Generate a description. Always shows the templated baseline first
 	/// (instant, offline), then — for Pro users — asks the server to
 	/// enhance it. A free user's request returns the templated text with
-	/// `upgrade:true`, which surfaces the Pro upsell. Any hard failure
+	/// `upgrade:true`, which surfaces the Pro upsell; any server template
+	/// is English, so only an AI paragraph (written in the viewer's locale)
+	/// replaces the localised baseline. Any hard failure
 	/// (network / non-200) leaves the templated text in place and shows a
 	/// non-blocking error; the baseline is never lost.
 	async function describe() {
@@ -280,14 +357,15 @@
 		const input = describeInput();
 		const parts = describeRoute(input);
 		// L1 baseline: render the localised templated sentence immediately.
-		genDescription = localisedTemplate(parts, input.name, {
+		const localised = localisedTemplate(parts, input.name, {
 			t: (key, params) => m(key as MessageKey, params),
 			formatDistance,
 		});
+		genDescription = localised;
 		genSource = 'template';
 		try {
-			const ai = await requestAiDescription(input);
-			genDescription = ai.description;
+			const ai = await requestAiDescription(input, getUnit(), currentLocale());
+			genDescription = shownDescription(localised, ai);
 			genSource = ai.source;
 			showUpgradeHint = ai.upgrade;
 		} catch (e) {
@@ -320,7 +398,7 @@
 			route.tags = updated;
 			tagDraft = '';
 		} catch (e) {
-			showToast(m('routeDetail.tagSaveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('routeDetail.tagSaveFailed', { error: errorCopy(e, m, 'routeDetail.tagSaveFailed') }), 'error');
 		} finally {
 			tagsSaving = false;
 		}
@@ -334,7 +412,7 @@
 			await updateRouteTags(route.id, updated);
 			route.tags = updated;
 		} catch (e) {
-			showToast(m('routeDetail.tagRemoveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('routeDetail.tagRemoveFailed', { error: errorCopy(e, m, 'routeDetail.tagRemoveFailed') }), 'error');
 		} finally {
 			tagsSaving = false;
 		}
@@ -351,8 +429,8 @@
 			route.is_starred = !next;
 			showToast(
 				next
-					? m('routeDetail.starFailed', { error: thrownMessage(e) })
-					: m('routeDetail.unstarFailed', { error: thrownMessage(e) }),
+					? m('routeDetail.starFailed', { error: errorCopy(e, m, 'routeDetail.starFailed') })
+					: m('routeDetail.unstarFailed', { error: errorCopy(e, m, 'routeDetail.unstarFailed') }),
 				'error',
 			);
 		}
@@ -482,7 +560,7 @@
 				route = { ...route, is_public: true, followers_only: false };
 				showToast(m('routeDetail.madePublicForLink'), 'info');
 			} catch (e) {
-				showToast(m('routeDetail.makePublicFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('routeDetail.makePublicFailed', { error: errorCopy(e, m, 'routeDetail.makePublicFailed') }), 'error');
 				return;
 			}
 		}
@@ -512,7 +590,7 @@
 		} catch (e) {
 			// Roll back on failure so the UI matches reality.
 			route = { ...route, is_public: !next };
-			showToast(m('routeDetail.visibilityUpdateFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('routeDetail.visibilityUpdateFailed', { error: errorCopy(e, m, 'routeDetail.visibilityUpdateFailed') }), 'error');
 		}
 	}
 
@@ -654,7 +732,7 @@
 						</div>
 						{#if route.elevation_m != null && route.elevation_m > 0}
 							<div class="key-stat">
-								<span class="key-stat-value" data-testid="route-key-gain">{elevation.gain} m</span>
+								<span class="key-stat-value" data-testid="route-key-gain">{formatElevation(route.elevation_m)}</span>
 								<span class="key-stat-label">{m('routeDetail.statElevationGain')}</span>
 							</div>
 						{/if}
@@ -818,6 +896,18 @@
 							disabled={sharing}>{m('routeDetail.sendToFollower')}</button
 						>
 					{/if}
+					{#if isOwner}
+						<button
+							class="btn btn-outline btn-sm"
+							data-testid="route-delete-btn"
+							onclick={openDeleteConfirm}
+							disabled={deleteChecking || deleting}
+							aria-busy={deleteChecking || deleting}
+						>
+							<span class="material-symbols" aria-hidden="true">delete</span>
+							{m('routeDetail.deleteRoute')}
+						</button>
+					{/if}
 					{#if !isOwner && auth.user}
 						<button
 							class="btn btn-outline btn-sm"
@@ -869,7 +959,7 @@
 								<span class="material-symbols">trending_up</span>
 								{m('routeDetail.elevGain')}
 							</span>
-							<span class="elev-value" data-testid="route-elev-gain">{elevation.gain} m</span>
+							<span class="elev-value" data-testid="route-elev-gain">{formatElevation(route.elevation_m)}</span>
 						</div>
 						{#if elevation.loss != null}
 							<div class="elev-tile">
@@ -877,7 +967,7 @@
 									<span class="material-symbols">trending_down</span>
 									{m('routeDetail.elevLoss')}
 								</span>
-								<span class="elev-value">{elevation.loss} m</span>
+								<span class="elev-value">{formatElevation(elevation.loss)}</span>
 							</div>
 						{/if}
 						{#if elevation.profile}
@@ -886,14 +976,14 @@
 									<span class="material-symbols">terrain</span>
 									{m('routeDetail.elevMax')}
 								</span>
-								<span class="elev-value">{elevation.max} m</span>
+								<span class="elev-value">{formatElevation(elevation.max)}</span>
 							</div>
 							<div class="elev-tile">
 								<span class="elev-label">
 									<span class="material-symbols">vertical_align_bottom</span>
 									{m('routeDetail.elevMin')}
 								</span>
-								<span class="elev-value">{elevation.min} m</span>
+								<span class="elev-value">{formatElevation(elevation.min)}</span>
 							</div>
 						{/if}
 					</div>
@@ -1076,6 +1166,19 @@
 						onMarkerClick={(id) => (markerSelectId = id)}
 						onMarkerDrag={(id, ll) => (markerPendingDrag = { id, lat: ll.lat, lng: ll.lng })}
 					/>
+				{:else if route.line_unavailable}
+					<div class="map-placeholder" data-testid="route-line-failed">
+						<span class="material-symbols" aria-hidden="true">cloud_off</span>
+						<p role="status" aria-live="polite">
+							{lineRetrying ? m('routeDetail.lineLoading') : m('routeDetail.lineLoadFailed')}
+						</p>
+						<button
+							type="button"
+							class="btn btn-outline"
+							onclick={retryLine}
+							disabled={lineRetrying}
+						>{m('routeDetail.retry')}</button>
+					</div>
 				{:else}
 					<div class="map-placeholder">
 						<span class="material-symbols">map</span>
@@ -1112,6 +1215,16 @@
 		confirmLabel={m('routeDetail.shareConfirmCta')}
 		onconfirm={confirmShare}
 		oncancel={() => (showShareConfirm = false)}
+	/>
+	<ConfirmDialog
+		open={showDeleteConfirm}
+		data-testid="route-delete-confirm-dialog"
+		title={m('routeDetail.deleteTitle')}
+		message={deleteMessage}
+		confirmLabel={m('routeDetail.deleteRoute')}
+		danger
+		onconfirm={confirmDelete}
+		oncancel={() => (showDeleteConfirm = false)}
 	/>
 	<HeadToHeadDialog
 		open={showHeadToHead}

@@ -6,6 +6,7 @@
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { formatDistance, getUnit } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -250,7 +251,7 @@
 			} else if (outcome.kind === 'failed') {
 				created = outcome.created;
 				failedIndex = outcome.failedIndex;
-				const error = thrownMessage(outcome.error);
+				const error = errorCopy(outcome.error, m, 'SeasonPlanner: error');
 				const remaining = drafts.slice(outcome.failedIndex).map((d) => d.name).join(', ');
 				createError =
 					outcome.created.length === 0
@@ -266,7 +267,7 @@
 			}
 		} catch (e) {
 			console.error('Season create failed', { message: thrownMessage(e) });
-			createError = m('seasonPlanner.failedNone', { error: thrownMessage(e) });
+			createError = m('seasonPlanner.failedNone', { error: errorCopy(e, m, 'seasonPlanner.failedNone') });
 		} finally {
 			creating = false;
 		}

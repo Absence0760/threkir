@@ -15,6 +15,7 @@ export 'src/chunk.dart';
 export 'src/direct_messages.dart';
 export 'src/effort_rank.dart';
 export 'src/live_overlay.dart';
+export 'src/route_delete.dart';
 export 'src/segments_rank.dart';
 export 'src/settings_service.dart';
 export 'src/smoothed_sidecar.dart';

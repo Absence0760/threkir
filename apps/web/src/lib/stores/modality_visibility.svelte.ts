@@ -11,8 +11,8 @@ import { updateUniversal } from '#lib/settings/settings.ts';
 import { fetchModalityHasData } from '#lib/core/data.ts';
 import { showToast } from '#lib/stores/toast.svelte.ts';
 import { m } from '#lib/i18n/store.svelte.ts';
+import { errorCopy } from '#lib/i18n/error_copy.ts';
 import { goto } from '$app/navigation';
-import { thrownMessage } from '../core/supabase_error';
 
 /// Session-wide answer to "is Gym / Nutrition surfaced?", read by the sidebar,
 /// /dashboard, /history and the settings toggles so they all agree. The
@@ -108,7 +108,7 @@ export async function revealModality(modality: Modality): Promise<void> {
 		await updateUniversal(userId, { [MODALITY_VISIBILITY_KEYS[modality]]: true });
 	} catch (e) {
 		state[modality].explicit = previous;
-		showToast(m('prefs.saveFailed', { error: thrownMessage(e) }), 'error');
+		showToast(m('prefs.saveFailed', { error: errorCopy(e, m, 'stores/modality_visibility failed') }), 'error');
 	}
 }
 

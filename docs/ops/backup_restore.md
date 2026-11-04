@@ -268,5 +268,22 @@ migrations — see `personal_data_export_profile_guard_test.go` and
   bare count) and localizes the notice from the two fields instead. Nothing is lost either
   way (restore is additive), but a runner about to wipe a phone on the strength
   of the file needs to know it is not the whole history.
+- **A restore warning is data, not a sentence.** `RestoreResult.warnings` is a
+  list of `RestoreWarning` on both platforms (`restore_warning.dart`,
+  `restore_orchestrator.ts`): a kind, the archive's own row id or position,
+  the dropped column names, and the caught failure in `error`. The failure is
+  logged (`debugPrint` on mobile, `console.warn` on web, both through the
+  `loggable_message` parity pair) and never rendered as text. Both logs become
+  Sentry breadcrumbs once the reader consents, and the archive is a file
+  anyone can edit, so the log line carries nothing the archive wrote: an id
+  only when it is uuid-shaped (else `<invalid>`), a COUNT of dropped columns
+  rather than their names, and the scrubbed failure (`restoreWarningLogFields`
+  on web, `RestoreWarning.toString` on mobile). The mobile import screen shows each warning
+  through `restoreWarningText`, whose only route from `error` to the sentence
+  is `importErrorText`, and web shows the count. Each used to be
+  `'run <id>: <exception>'`, which put PostgREST's English (table and
+  constraint names) on the import screen in every locale.
+  `raw_error_copy_guard_test.dart` pins `RestoreWarning`'s field set and the
+  `warnings` type, so a free-text field cannot come back.
 - A backup contains PII (the user's own data only). It is not encrypted
   at rest — callers should treat the file as sensitive.

@@ -142,9 +142,11 @@ test.describe('owner', () => {
 			.getByRole('button', { name: 'Recalculate', exact: true })
 			.click();
 
-		await expect(
-			page.locator('.toast', { hasText: /Couldn't recalculate distance: worker queue unavailable/ }),
-		).toBeVisible({ timeout: 10_000 });
+		const toast = page.locator('.toast', {
+			hasText: "Couldn't recalculate distance: Something went wrong. Try again.",
+		});
+		await expect(toast).toBeVisible({ timeout: 10_000 });
+		await expect(toast).not.toContainText('worker queue unavailable');
 		await expect(page.getByTestId('recalculate-distance')).toBeVisible();
 	});
 

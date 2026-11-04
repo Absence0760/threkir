@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import type { MetricId } from '#lib/metrics/metric_registry.ts';
 	import { onMount, tick } from 'svelte';
 	import { fmtPace, getUnit, formatPaceNoSuffix } from '#lib/format/units.svelte.ts';
@@ -124,6 +124,7 @@
 	import { supabase } from '#lib/core/supabase.ts';
 	import { METADATA_KEYS } from '#lib/core/schema.ts';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { activityTypeIcon, activityUsesSpeed } from '#lib/runs/activity_type.ts';
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import { buildRunShareCanonical } from '#lib/share/share_meta.ts';
@@ -153,7 +154,7 @@
 	/// privacy-zone-clipped track are fetched by RunShareView.
 	let otherRunOwner = $state<PublicRunAttribution | null>(null);
 	let loading = $state(true);
-	let loadError = $state<string | null>(null);
+	let loadError = $state<Error | null>(null);
 
 	/// Track where the user came from so the in-page back button can
 	/// genuinely go BACK (history.back) — which pops the history entry
@@ -664,7 +665,7 @@
 				editing = false;
 			}
 		} catch (e) {
-			showToast(m('runDetail.saveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('runDetail.saveFailed', { error: errorCopy(e, m, 'runDetail.saveFailed') }), 'error');
 		} finally {
 			savingEdit = false;
 		}
@@ -682,7 +683,7 @@
 			await deleteRun(run.id);
 			goto('/runs');
 		} catch (e) {
-			showToast(m('runDetail.deleteFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('runDetail.deleteFailed', { error: errorCopy(e, m, 'runDetail.deleteFailed') }), 'error');
 		}
 	}
 
@@ -755,7 +756,7 @@
 				await navigator.clipboard.writeText(`${window.location.origin}/runs/${run.id}`);
 				showToast(m('audience.linkCopied'), 'success');
 			} catch (e) {
-				showToast(m('runDetail.shareFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('runDetail.shareFailed', { error: errorCopy(e, m, 'runDetail.shareFailed') }), 'error');
 			}
 			return;
 		}
@@ -807,7 +808,7 @@
 			await navigator.clipboard.writeText(url);
 			showToast(m('runDetail.shareLinkCopied'), 'success');
 		} catch (e) {
-			showToast(m('runDetail.shareFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('runDetail.shareFailed', { error: errorCopy(e, m, 'runDetail.shareFailed') }), 'error');
 		} finally {
 			shareBusy = false;
 		}
@@ -822,7 +823,7 @@
 			run = { ...run, is_public: false } as Run;
 			showToast(m('runDetail.madePrivate'), 'success');
 		} catch (e) {
-			showToast(m('runDetail.makePrivateFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('runDetail.makePrivateFailed', { error: errorCopy(e, m, 'runDetail.makePrivateFailed') }), 'error');
 		} finally {
 			shareBusy = false;
 		}
@@ -858,7 +859,7 @@
 			showToast(m('runDetail.savedAsRoute'), 'success');
 			goto(`/routes/${id}`);
 		} catch (e) {
-			showToast(m('runDetail.saveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('runDetail.saveFailed', { error: errorCopy(e, m, 'runDetail.saveFailed') }), 'error');
 		} finally {
 			savingRoute = false;
 		}
@@ -918,7 +919,12 @@
 	/// The map card as a 1080 px PNG, rasterised from the off-screen
 	/// `.share-card` DOM node by `html-to-image` at its own CSS size, the
 	/// width every share image is exported at (decisions § 2250).
-	async function captureShareCard(): Promise<Blob> {
+	/// Whether the captured card carries the Threkir eyebrow; the editor's
+	/// mark switch sets it before each capture.
+	let shareCardMark = $state(true);
+
+	async function captureShareCard(mark: boolean): Promise<Blob> {
+		shareCardMark = mark;
 		await tick();
 		// Dynamic import keeps the 30 KB lib out of the initial
 		// bundle for users who never open the share editor.
@@ -953,7 +959,7 @@
 			matchInfo = await fetchRunMatchedTrack(run.id);
 			showToast(m('runDetail.reSnapping'), 'success');
 		} catch (e) {
-			const msg = thrownMessage(e);
+			const msg = errorCopy(e, m, 'runs/[id]: msg');
 			showToast(m('runDetail.rematchFailed', { error: msg }), 'error');
 		} finally {
 			rematchBusy = false;
@@ -980,7 +986,7 @@
 					: kind === 'no_track'
 						? m('runDetail.recalculateDistanceNoTrack')
 						: m('runDetail.recalculateDistanceFailed', {
-								error: thrownMessage(e),
+								error: errorCopy(e, m, 'runDetail.recalculateDistanceFailed'),
 							}),
 				'error',
 			);
@@ -1636,21 +1642,23 @@
 
 {#if loading}
 	<div class="run-detail">
-		<div class="loading-grid" aria-busy="true" aria-label={m('runDetail.loadingRun')}>
-			<div class="loading-map skeleton-shimmer"></div>
+		<div class="loading-grid" aria-hidden="true" data-testid="run-detail-skeleton">
+			<div class="loading-map"><SkeletonBlock height="100%" radius="var(--radius-md)" /></div>
 			<div class="loading-stats">
-				<div class="skeleton-shimmer skeleton-title"></div>
-				<div class="skeleton-shimmer skeleton-line"></div>
+				<SkeletonBlock height="1.8rem" width="60%" radius="var(--radius-md)" />
+				<SkeletonBlock height="0.9rem" width="40%" radius="var(--radius-md)" />
 				<div class="loading-key-stats">
-					<div class="skeleton-shimmer skeleton-stat"></div>
-					<div class="skeleton-shimmer skeleton-stat"></div>
-					<div class="skeleton-shimmer skeleton-stat"></div>
-					<div class="skeleton-shimmer skeleton-stat"></div>
+					{#each Array(4) as _, i (i)}
+						<SkeletonBlock height="3.5rem" radius="var(--radius-md)" />
+					{/each}
 				</div>
-				<div class="skeleton-shimmer skeleton-block"></div>
-				<div class="skeleton-shimmer skeleton-block"></div>
+				<div class="loading-blocks">
+					<SkeletonBlock height="8rem" radius="var(--radius-md)" />
+					<SkeletonBlock height="8rem" radius="var(--radius-md)" />
+				</div>
 			</div>
 		</div>
+		<p class="visually-hidden" role="status">{m('runDetail.loadingRun')}</p>
 	</div>
 {:else if otherRunOwner}
 	<!--
@@ -2797,10 +2805,12 @@
 	aria-hidden="true"
 >
 	<div class="share-card-inner">
-		<div class="share-card-eyebrow">
-			<img src="/logo-mark.svg" alt="" class="share-card-mark" />
-			Threkir
-		</div>
+		{#if shareCardMark}
+			<div class="share-card-eyebrow">
+				<img src="/logo-mark.svg" alt="" class="share-card-mark" />
+				Threkir
+			</div>
+		{/if}
 		{#if shareMapUrl}
 			<!-- Real map background so the share card shows WHERE the
 				 run happened, not just the stats numbers. crossorigin=
@@ -2874,25 +2884,11 @@
 		gap: var(--space-md);
 		margin-top: var(--space-sm);
 	}
-	.skeleton-shimmer {
-		background: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		animation: skeleton-shimmer 1.4s ease-in-out infinite;
-		border-radius: var(--radius-md);
-	}
-	.skeleton-title { height: 1.8rem; width: 60%; }
-	.skeleton-line { height: 0.9rem; width: 40%; }
-	.skeleton-stat { height: 3.5rem; }
-	.skeleton-block { height: 8rem; margin-top: var(--space-sm); }
-	.back-link-skeleton { height: 2.5rem; }
-	@keyframes skeleton-shimmer {
-		0% { background-position: 200% 0; }
-		100% { background-position: -200% 0; }
+	.loading-blocks {
+		display: flex;
+		flex-direction: column;
+		gap: calc(var(--space-md) + var(--space-sm));
+		margin-top: var(--space-sm);
 	}
 	@media (max-width: 900px) {
 		.loading-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: 40vh 1fr; }

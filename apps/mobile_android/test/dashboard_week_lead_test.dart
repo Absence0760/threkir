@@ -3,7 +3,7 @@
 // `week_lead.dart` parity pair's own suite; this one pins what the screen does
 // with them: where the card sits, which yardstick line it shows, the
 // next-session half appearing only with an active plan, the unit preference,
-// the two actions, and the card staying off the runless welcome state.
+// the two actions now in Home's overflow, and the card staying off the runless welcome state.
 
 import 'dart:io';
 
@@ -21,7 +21,12 @@ import '../lib/local_run_store.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/add_run_screen.dart';
 import '../lib/screens/dashboard_screen.dart';
+import '../lib/screens/import_screen.dart';
+import '../lib/screens/period_summary_screen.dart';
+import '../lib/screens/run_screen.dart' show runRecordingActive;
 import '../lib/training_service.dart';
+import '../lib/widgets/this_week_strip.dart';
+import '../lib/widgets/todays_workout_card.dart';
 import 'pump_until.dart';
 
 class _FakeTraining extends TrainingService {
@@ -88,6 +93,8 @@ Future<({Preferences prefs, Directory dir})> _mount(
   TrainingService? training,
   bool useMiles = false,
   List<RunGoal> goals = const [],
+  VoidCallback? onStartRun,
+  ValueChanged<PlanWorkoutRow>? onStartWorkout,
   required bool Function() ready,
   required String describe,
 }) async {
@@ -124,6 +131,8 @@ Future<({Preferences prefs, Directory dir})> _mount(
         foodStore: LocalFoodStore(),
         preferences: prefs,
         training: training,
+        onStartRun: onStartRun,
+        onStartWorkout: onStartWorkout,
       ),
     ));
   });
@@ -169,13 +178,16 @@ void main() {
     expect(find.byKey(const Key('dashboardWeekLeadMeter')), findsNothing);
     // No active plan, so no next-session half at all.
     expect(find.text('Next session'), findsNothing);
-    expect(find.byKey(const Key('dashboardWeekLeadAddRun')), findsOneWidget);
+    // Compact: the occasional Add a run / Import moved to Home's overflow
+    // (decisions § 2281).
+    expect(find.descendant(of: _lead, matching: find.text('Add a run')),
+        findsNothing);
     expect(find.descendant(of: _lead, matching: find.text('Import runs')),
-        findsOneWidget);
+        findsNothing);
 
     // It is the first card under the toolbar: above the period strip.
     expect(tester.getBottomLeft(_lead).dy,
-        lessThan(tester.getTopLeft(find.text('WEEK')).dy));
+        lessThan(tester.getTopLeft(find.text('MONTH')).dy));
   });
 
   testWidgets('the distance honours the miles preference', (tester) async {
@@ -272,7 +284,8 @@ void main() {
     expect(find.byKey(const Key('dashboardWeekLeadNext')), findsNothing);
   });
 
-  testWidgets('Add a run opens the manual add-run form', (tester) async {
+  testWidgets('Home\'s overflow offers Add a run, which opens the manual '
+      'add-run form', (tester) async {
     final now = DateTime.now();
     await _mount(
       tester,
@@ -280,12 +293,55 @@ void main() {
       ready: () => _lead.evaluate().isNotEmpty,
       describe: 'the week lead to mount',
     );
-    await tester.tap(find.byKey(const Key('dashboardWeekLeadAddRun')));
+    await tester.tap(find.byKey(const Key('dashboardMoreMenu')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const Key('dashboardMenuImport')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('dashboardMenuAddRun')));
     await pumpUntil(
       tester,
       () => find.byType(AddRunScreen).evaluate().isNotEmpty,
       describe: 'the add-run form to open',
     );
+  });
+
+  testWidgets('Home\'s overflow offers Import runs, which opens the import '
+      'screen, on the welcome state too', (tester) async {
+    await _mount(
+      tester,
+      runs: const [],
+      ready: () => find.text('Welcome!').evaluate().isNotEmpty,
+      describe: 'the welcome state to mount',
+    );
+    await tester.tap(find.byKey(const Key('dashboardMoreMenu')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const Key('dashboardMenuImport')));
+    await pumpUntil(
+      tester,
+      () => find.byType(ImportScreen).evaluate().isNotEmpty,
+      describe: 'the import screen to open',
+    );
+  });
+
+  testWidgets('the lead is Home\'s one this-week view, and its chevron opens '
+      'the weekly summary', (tester) async {
+    await _mount(
+      tester,
+      runs: [_run('r1', DateTime.now(), 5000)],
+      ready: () => _lead.evaluate().isNotEmpty,
+      describe: 'the week lead to mount',
+    );
+    // decisions § 2283: no This Week strip and no Week stat cell on Home.
+    expect(find.byType(ThisWeekStrip), findsNothing);
+    expect(find.text('WEEK'), findsNothing);
+    await tester.tap(find.byKey(const Key('dashboardWeekLeadOpenWeek')));
+    await pumpUntil(
+      tester,
+      () => find.byType(PeriodSummaryScreen).evaluate().isNotEmpty,
+      describe: 'the weekly summary to open',
+    );
+    expect(find.text('Weekly Summary'), findsOneWidget);
   });
 
   testWidgets('the runless first-run state carries no week lead',
@@ -297,5 +353,91 @@ void main() {
       describe: 'the welcome state to mount',
     );
     expect(_lead, findsNothing);
+  });
+
+  group('Home\'s Start (decisions § 2282)', () {
+    final leadStart = find.byKey(const Key('dashboardWeekLeadStart'));
+    final cardStart = find.byKey(const Key('todaysWorkoutStart'));
+
+    testWidgets('without a plan the week lead carries the Start, captioned '
+        'for the default activity, and it opens the recorder', (tester) async {
+      var started = 0;
+      await _mount(
+        tester,
+        runs: [_run('r1', DateTime.now(), 5000)],
+        onStartRun: () => started++,
+        ready: () => leadStart.evaluate().isNotEmpty,
+        describe: 'the lead Start to mount',
+      );
+      expect(find.descendant(of: leadStart, matching: find.text('Start run')),
+          findsOneWidget);
+      await tester.tap(leadStart);
+      expect(started, 1);
+    });
+
+    testWidgets('an open workout today takes the Start, which loads that '
+        'workout, and the lead carries none', (tester) async {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final todays = _workout('wo-today', today, 'easy', distanceM: 6000);
+      PlanWorkoutRow? loaded;
+      await _mount(
+        tester,
+        training: _FakeTraining(_overview([todays], today: todays)),
+        runs: [_run('r1', now, 5000)],
+        onStartRun: () {},
+        onStartWorkout: (w) => loaded = w,
+        ready: () => cardStart.evaluate().isNotEmpty,
+        describe: 'the workout card Start to mount',
+      );
+      expect(leadStart, findsNothing);
+      await tester.tap(cardStart);
+      expect(loaded?.id, 'wo-today');
+    });
+
+    testWidgets('a workout already done today hands the Start back to the '
+        'lead', (tester) async {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final todays =
+          _workout('wo-today', today, 'easy', distanceM: 6000, done: true);
+      await _mount(
+        tester,
+        training: _FakeTraining(_overview([todays], today: todays)),
+        runs: [_run('r1', now, 5000)],
+        onStartRun: () {},
+        onStartWorkout: (_) {},
+        ready: () =>
+            find.byType(TodaysWorkoutCard).evaluate().isNotEmpty &&
+            leadStart.evaluate().isNotEmpty,
+        describe: 'the done workout card and the lead Start to mount',
+      );
+      expect(cardStart, findsNothing);
+    });
+
+    testWidgets('no Start anywhere while a run records', (tester) async {
+      runRecordingActive.value = true;
+      addTearDown(() => runRecordingActive.value = false);
+      await _mount(
+        tester,
+        runs: [_run('r1', DateTime.now(), 5000)],
+        onStartRun: () {},
+        ready: () => _lead.evaluate().isNotEmpty,
+        describe: 'the week lead to mount',
+      );
+      expect(leadStart, findsNothing);
+      expect(cardStart, findsNothing);
+    });
+
+    testWidgets('no Start when the host cannot reach the recorder',
+        (tester) async {
+      await _mount(
+        tester,
+        runs: [_run('r1', DateTime.now(), 5000)],
+        ready: () => _lead.evaluate().isNotEmpty,
+        describe: 'the week lead to mount',
+      );
+      expect(leadStart, findsNothing);
+    });
   });
 }

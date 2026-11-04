@@ -43,10 +43,36 @@ const List<String> _goalEvents = [
   'custom',
 ];
 
-/// A readable reason a pasted plan could not be read, for the UI to show.
+/// Why a pasted plan could not be read. The UI renders [code] + [params]
+/// through the catalogue (`planParseErrorMessage`); [message] is the English
+/// reading, kept for logs and tests. Twin of web's `PlanParseError` in
+/// `training/plan_serialize.ts`, with the same codes and params.
+enum PlanParseCode {
+  badDistance,
+  badPace,
+  duplicateColumn,
+  missingColumn,
+  raceNameTooLong,
+  badRacePriority,
+  badGoalTime,
+  badWeek,
+  badDate,
+  unknownKind,
+  raceFieldsOnNonRace,
+  noRows,
+  noGoalDistance,
+  beforeStart,
+  notJson,
+  noWorkoutsArray,
+  badJsonShape,
+  badTaperStamp,
+}
+
 class PlanParseError implements Exception {
+  final PlanParseCode code;
+  final Map<String, String> params;
   final String message;
-  const PlanParseError(this.message);
+  const PlanParseError(this.code, this.params, this.message);
   @override
   String toString() => message;
 }
@@ -212,10 +238,14 @@ double? _parseDistanceCell(String cell) {
     r'^([\d.]+)\s*(km|mi|m)?$',
     caseSensitive: false,
   ).firstMatch(t);
-  if (m == null) throw PlanParseError('Couldn\'t read distance "$cell".');
+  if (m == null) {
+    throw PlanParseError(PlanParseCode.badDistance, {'cell': cell},
+        'Couldn\'t read distance "$cell".');
+  }
   final value = _jsParseFloat(m.group(1)!);
   if (value == null) {
-    throw PlanParseError('Couldn\'t read distance "$cell".');
+    throw PlanParseError(PlanParseCode.badDistance, {'cell': cell},
+        'Couldn\'t read distance "$cell".');
   }
   final unit = (m.group(2) ?? 'km').toLowerCase();
   if (unit == 'mi') return value * _metresPerMile;
@@ -228,7 +258,8 @@ int? _parsePaceCell(String cell) {
   if (t.isEmpty) return null;
   final m = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(t);
   if (m == null) {
-    throw PlanParseError('Couldn\'t read pace "$cell" — use m:ss.');
+    throw PlanParseError(PlanParseCode.badPace, {'cell': cell},
+        'Couldn\'t read pace "$cell" — use m:ss.');
   }
   return int.parse(m.group(1)!) * 60 + int.parse(m.group(2)!);
 }
@@ -313,13 +344,15 @@ Map<String, int>? _headerColumns(List<String> cells) {
   final map = <String, int>{};
   for (var i = 0; i < names.length; i++) {
     if (map.containsKey(names[i])) {
-      throw PlanParseError('Column "${cells[i]}" appears twice.');
+      throw PlanParseError(PlanParseCode.duplicateColumn,
+          {'column': cells[i]}, 'Column "${cells[i]}" appears twice.');
     }
     map[names[i]!] = i;
   }
   for (final required in const ['week', 'date', 'type']) {
     if (!map.containsKey(required)) {
-      throw PlanParseError('The table has no $required column.');
+      throw PlanParseError(PlanParseCode.missingColumn,
+          {'column': required}, 'The table has no $required column.');
     }
   }
   return map;
@@ -330,6 +363,8 @@ String? _parseRaceName(String cell) {
   if (t.isEmpty) return null;
   if (t.length > _raceNameMax) {
     throw PlanParseError(
+      PlanParseCode.raceNameTooLong,
+      {'name': '${t.substring(0, 40)}…', 'max': '$_raceNameMax'},
       'Race name "${t.substring(0, 40)}…" is longer than '
       '$_raceNameMax characters.',
     );
@@ -341,7 +376,8 @@ String? _parsePriorityCell(String cell) {
   final t = cell.trim().toUpperCase();
   if (t.isEmpty) return null;
   if (!racePriorities.contains(t)) {
-    throw PlanParseError('Bad race priority "$cell" — use A, B or C.');
+    throw PlanParseError(PlanParseCode.badRacePriority, {'cell': cell},
+        'Bad race priority "$cell" — use A, B or C.');
   }
   return t;
 }
@@ -367,7 +403,8 @@ int? _parseGoalCell(String cell) {
     }
   }
   if (sec == null || sec <= 0) {
-    throw PlanParseError('Couldn\'t read goal time "$cell" — use h:mm:ss.');
+    throw PlanParseError(PlanParseCode.badGoalTime, {'cell': cell},
+        'Couldn\'t read goal time "$cell" — use h:mm:ss.');
   }
   return sec;
 }
@@ -462,14 +499,17 @@ ParsedPlan parsePlanMarkdown(String text) {
 
       final weekNum = _jsParseInt(weekCell);
       if (weekNum == null || weekNum < 1) {
-        throw PlanParseError('Bad week number "$weekCell".');
+        throw PlanParseError(PlanParseCode.badWeek, {'cell': weekCell},
+            'Bad week number "$weekCell".');
       }
       if (!_isoDate.hasMatch(dateCell)) {
-        throw PlanParseError('Bad date "$dateCell" — use YYYY-MM-DD.');
+        throw PlanParseError(PlanParseCode.badDate, {'cell': dateCell},
+            'Bad date "$dateCell" — use YYYY-MM-DD.');
       }
       final kind = kindCell.trim().toLowerCase();
       if (!_workoutKinds.contains(kind)) {
-        throw PlanParseError('Unknown workout type "$kindCell".');
+        throw PlanParseError(PlanParseCode.unknownKind, {'cell': kindCell},
+            'Unknown workout type "$kindCell".');
       }
       final raceName = _parseRaceName(cell('race'));
       final racePriority = _parsePriorityCell(cell('priority'));
@@ -479,6 +519,8 @@ ParsedPlan parsePlanMarkdown(String text) {
               racePriority != null ||
               targetDurationSeconds != null)) {
         throw PlanParseError(
+          PlanParseCode.raceFieldsOnNonRace,
+          {'date': dateCell, 'kind': kind},
           'Race, Priority and Goal only apply to race rows '
           '— $dateCell is a $kind workout.',
         );
@@ -502,6 +544,8 @@ ParsedPlan parsePlanMarkdown(String text) {
 
   if (rows.isEmpty) {
     throw const PlanParseError(
+      PlanParseCode.noRows,
+      {},
       'No workout rows found. Expected a | Week | Date | … | table.',
     );
   }
@@ -532,7 +576,8 @@ ParsedPlan parsePlanMarkdown(String text) {
     );
   }
   if (!(resolvedDistance > 0)) {
-    throw const PlanParseError('Could not determine a goal distance.');
+    throw const PlanParseError(PlanParseCode.noGoalDistance, {},
+        'Could not determine a goal distance.');
   }
   final weekIndexes = byWeek.keys.toList()..sort();
   final weeks = [
@@ -571,6 +616,8 @@ ParsedPlan parsePlanMarkdown(String text) {
   // here, readably, rather than as a raw server code on create.
   if (rows.first.scheduledDate.compareTo(start) < 0) {
     throw PlanParseError(
+      PlanParseCode.beforeStart,
+      {'date': rows.first.scheduledDate, 'start': start},
       'The workout on ${rows.first.scheduledDate} is before the plan\'s start '
       'date, $start.',
     );
@@ -607,10 +654,19 @@ ParsedPlan parsePlanJson(String text) {
   try {
     obj = jsonDecode(text);
   } on FormatException {
-    throw const PlanParseError('Not valid JSON.');
+    throw const PlanParseError(PlanParseCode.notJson, {}, 'Not valid JSON.');
   }
   if (obj is! Map<String, dynamic> || obj['workouts'] is! List) {
-    throw const PlanParseError('JSON is missing a workouts array.');
+    throw const PlanParseError(PlanParseCode.noWorkoutsArray, {},
+        'JSON is missing a workouts array.');
+  }
+  for (final w in obj['workouts'] as List) {
+    if (w is! Map<String, dynamic> ||
+        w['week_index'] is! num ||
+        w['scheduled_date'] is! String) {
+      throw const PlanParseError(PlanParseCode.badJsonShape, {},
+          'JSON workouts are not in the export shape.');
+    }
   }
   final String markdown;
   try {
@@ -625,7 +681,8 @@ ParsedPlan parsePlanJson(String text) {
       ],
     );
   } on TypeError {
-    throw const PlanParseError('JSON workouts are not in the export shape.');
+    throw const PlanParseError(PlanParseCode.badJsonShape, {},
+        'JSON workouts are not in the export shape.');
   }
   return _withTaperStamps(parsePlanMarkdown(markdown), [
     for (final w in obj['workouts'] as List) w as Map<String, dynamic>,
@@ -649,6 +706,8 @@ ParsedPlan _withTaperStamps(
     final raw = w['race_taper_applied_at'];
     if (raw != null && (raw is! String || !_taperStamp.hasMatch(raw))) {
       throw PlanParseError(
+          PlanParseCode.badTaperStamp,
+          {'value': '$raw', 'date': '${w['scheduled_date']}'},
           'Couldn\'t read race_taper_applied_at "$raw" on ${w['scheduled_date']}.');
     }
     (queues['${w['scheduled_date']}|${w['kind']}'] ??= []).add(raw as String?);

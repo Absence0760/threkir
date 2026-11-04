@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import {
 		fetchRunPhotosWithError,
@@ -12,6 +11,7 @@
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import { safeImageSrc } from '#lib/util/safe_image_src.ts';
 
@@ -56,7 +56,7 @@
 			photos = photos.map((x) => (x.id === p.id ? { ...x, race_gallery: shared } : x));
 		} catch (e) {
 			input.checked = p.race_gallery;
-			showToast(m('runPhotos.raceGalleryFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('runPhotos.raceGalleryFailed', { error: errorCopy(e, m, 'runPhotos.raceGalleryFailed') }), 'error');
 		} finally {
 			raceBusyId = null;
 		}
@@ -68,12 +68,12 @@
 		try {
 			const res = await fetchRunPhotosWithError(runId);
 			if (res.error) {
-				loadError = res.error;
+				loadError = errorCopy(res.error, m, 'RunPhotos: loadError');
 				return;
 			}
 			photos = res.photos;
 		} catch (e) {
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, m, 'RunPhotos: loadError');
 		} finally {
 			loading = false;
 		}
@@ -105,7 +105,7 @@
 			pendingCaption = '';
 			if (fileInput) fileInput.value = '';
 		} catch (e: any) {
-			showToast(m('runPhotos.uploadFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('runPhotos.uploadFailed', { error: errorCopy(e, m, 'runPhotos.uploadFailed') }), 'error');
 		} finally {
 			uploading = false;
 		}
@@ -126,7 +126,7 @@
 			photos = photos.filter((p) => p.id !== target.id);
 			if (lightbox?.id === target.id) lightbox = null;
 		} catch (e: any) {
-			showToast(m('runPhotos.deleteFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('runPhotos.deleteFailed', { error: errorCopy(e, m, 'runPhotos.deleteFailed') }), 'error');
 		}
 	}
 
@@ -144,7 +144,7 @@
 			await updateRunPhotoCaption(id, next);
 			photos = photos.map((p) => (p.id === id ? { ...p, caption: next } : p));
 		} catch (e: any) {
-			showToast(m('runPhotos.captionUpdateFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('runPhotos.captionUpdateFailed', { error: errorCopy(e, m, 'runPhotos.captionUpdateFailed') }), 'error');
 		}
 	}
 </script>

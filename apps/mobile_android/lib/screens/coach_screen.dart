@@ -12,9 +12,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
         AppSemanticColors,
-        ActivityLoaderKind,
-        FullBodyLoader,
         ListSkeleton,
+        SkeletonBlock,
         reduceMotion,
         syncMotionLoop;
 
@@ -24,6 +23,7 @@ import '../backend_timeout.dart';
 import '../auth_error.dart';
 import '../payload_hash.dart';
 import '../preferences.dart' show activeDistanceUnit;
+import '../race_service.dart';
 import '../pro_sellable.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -42,6 +42,7 @@ import '../widgets/surface_peer_strip.dart';
 import '../widgets/top_banner.dart';
 import 'guided_runs_screen.dart';
 import 'plan_new_screen.dart';
+import 'races_screen.dart';
 
 /// Truncate a coach message to a sidebar-thread title. Strips repeated
 /// whitespace so multi-line user prompts collapse to a single line, then
@@ -191,6 +192,10 @@ Uri? coachPlanAdjustWebUri(String href, String webBase) {
 /// Plan ids are uuids, so it can never be one.
 const kCoachSeasonOption = 'season';
 
+/// The plan-picker entry that opens the race calendar rather than picking a
+/// plan scope. Plan ids are uuids, so it can never be one.
+const kCoachFindRaceOption = 'find-race';
+
 /// The `/api/coach` request body. `plan_scope` says what the Coach reads:
 /// `plan` (the plan [planId], else the current one), `season` ([planId] and
 /// the plans queued after it) or `none` (no plan); `plan_id` is the plan the
@@ -228,6 +233,9 @@ class CoachScreen extends StatefulWidget {
   /// local midnight a season shrinks at.
   final DateTime Function()? now;
 
+  /// Backs the races list the season hint opens. Tests inject a fake.
+  final RaceService? raceService;
+
   const CoachScreen({
     super.key,
     required this.api,
@@ -235,6 +243,7 @@ class CoachScreen extends StatefulWidget {
     this.initialPlanId,
     this.loadAiPlanAvailable,
     this.now,
+    this.raceService,
   });
 
   @override
@@ -1170,9 +1179,22 @@ class _CoachScreenState extends State<CoachScreen> {
     if (!_consentChecked) {
       return Scaffold(
         appBar: AppBar(title: Text(l10n.coachTitle)),
-        body: FullBodyLoader(
-          kind: ActivityLoaderKind.run,
-          label: l10n.commonLoading,
+        body: Column(
+          key: const ValueKey('coach-consent-skeleton'),
+          children: [
+            Expanded(
+              child: ListSkeleton(
+                label: l10n.commonLoading,
+                rows: 4,
+                rowHeight: 72,
+                hasLeading: false,
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: SkeletonBlock(height: 56, radius: 28),
+            ),
+          ],
         ),
       );
     }
@@ -1187,52 +1209,7 @@ class _CoachScreenState extends State<CoachScreen> {
         // route. Force the back arrow and open the archive drawer from an
         // explicit action instead.
         leading: const BackButton(),
-        title: Row(
-          children: [
-            Flexible(
-              child: Text(l10n.coachTitle,
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-            ),
-            if (_plans.length > 1) ...[
-              const SizedBox(width: 12),
-              Flexible(
-                child: DropdownButton<String>(
-                  value: _effectiveScope == 'season'
-                      ? kCoachSeasonOption
-                      : (_planId ?? ''),
-                  isExpanded: true,
-                  underline: const SizedBox.shrink(),
-                  items: [
-                    DropdownMenuItem(
-                      value: '',
-                      child: Text(l10n.coachNoPlanOption),
-                    ),
-                    if (_seasonPlans.length > 1)
-                      DropdownMenuItem(
-                        value: kCoachSeasonOption,
-                        child: Text(
-                          l10n.coachSeasonOption,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ..._plans.map((p) => DropdownMenuItem(
-                          value: p.id,
-                          child: Text(
-                            p.status == 'active'
-                                ? l10n.coachPlanActive(p.name)
-                                : (p.status == 'completed'
-                                    ? l10n.coachPlanDone(p.name)
-                                    : p.name),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        )),
-                  ],
-                  onChanged: _busy ? null : _onPlanChanged,
-                ),
-              ),
-            ],
-          ],
-        ),
+        title: Text(l10n.coachTitle),
         actions: [
           if (_messages.isNotEmpty && _viewingArchiveAt == null)
             IconButton(
@@ -1252,28 +1229,48 @@ class _CoachScreenState extends State<CoachScreen> {
       drawer: _buildArchivesDrawer(theme, l10n),
       body: Column(
         children: [
-          // Guided runs are coach-driven training content, and web reaches
-          // them from a rail on `/coach`. On mobile they were filed under
-          // Settings → Account, where nothing about the surrounding screen
-          // (sign-in, backup, delete account) suggests a workout library
-          // (#666 I7). A labelled peer is the mobile shape of that rail.
-          SurfacePeerStrip(
-            label: l10n.coachTitle,
-            peers: [
-              SurfacePeer(label: l10n.coachTitle),
-              SurfacePeer(
-                label: l10n.guidedRunsTitle,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const GuidedRunsScreen(),
+          // The header scrolls on its own once it would take more than its
+          // share of the screen: at a large text scale the wrapped strip,
+          // hint and banner together outgrow a phone and pushed the composer
+          // off the bottom.
+          ConstrainedBox(
+            constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * 0.4),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Guided runs are coach-driven training content, and web
+                  // reaches them from a rail on `/coach`. On mobile they were
+                  // filed under Settings → Account, where nothing about the
+                  // surrounding screen (sign-in, backup, delete account)
+                  // suggests a workout library (#666 I7). A labelled peer is
+                  // the mobile shape of that rail.
+                  SurfacePeerStrip(
+                    label: l10n.coachTitle,
+                    peers: [
+                      SurfacePeer(label: l10n.coachTitle),
+                      SurfacePeer(
+                        label: l10n.guidedRunsTitle,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const GuidedRunsScreen(),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
+                  // The plan picker does not wait for the context read: until
+                  // that lands the runner could not change scope at all.
+                  if (_ctx != null || _plans.isNotEmpty)
+                    _buildContextStrip(theme, l10n),
+                  if (_viewingArchiveAt != null)
+                    _buildArchiveBanner(theme, l10n),
+                  if (_remaining <= 3) _buildLimitBanner(theme, l10n, cs),
+                ],
               ),
-            ],
+            ),
           ),
-          if (_ctx != null) _buildContextStrip(theme, l10n),
-          if (_viewingArchiveAt != null) _buildArchiveBanner(theme, l10n),
-          if (_remaining <= 3) _buildLimitBanner(theme, l10n, cs),
           Expanded(
             child: _threadLoaded
                 ? _buildScroll(theme, l10n, hasPlan)
@@ -1430,22 +1427,48 @@ class _CoachScreenState extends State<CoachScreen> {
   }
 
   Widget _buildContextStrip(ThemeData theme, AppLocalizations l10n) {
-    final c = _ctx!;
+    final c = _ctx;
     final cs = theme.colorScheme;
     final chips = <Widget>[];
-    final planName = c.season ? l10n.coachSeasonName : c.planName;
-    if (planName != null) {
-      chips.add(_chip(
-        cs,
-        icon: Icons.calendar_month,
-        label: c.planWeeks != null
-            ? l10n.coachContextPlanWeeks(planName, c.planWeeks!)
-            : planName,
-      ));
+    // The picker names what is in force now. A season read before its first
+    // block ended still sits in [c] until the next load, so its weeks are
+    // only shown while the scope still matches.
+    final season = _effectiveScope == 'season';
+    final planName = season
+        ? l10n.coachSeasonName
+        : (c == null || c.season
+            ? _plans.where((p) => p.id == _planId).firstOrNull?.name
+            : c.planName);
+    final weeks = c != null && season == c.season ? c.planWeeks : null;
+    final planLabel = planName == null
+        ? l10n.coachContextNoPlan
+        : (weeks != null
+            ? l10n.coachContextPlanWeeks(planName, weeks)
+            : planName);
+    if (_plans.isNotEmpty) {
+      chips.add(_buildPlanPicker(theme, l10n, planLabel,
+          muted: planName == null));
     } else {
       chips.add(_chip(cs,
-          icon: Icons.calendar_month, label: l10n.coachContextNoPlan, muted: true));
+          icon: Icons.calendar_month, label: planLabel, muted: true));
     }
+    if (c != null) _addContextChips(chips, theme, l10n, c);
+    // Wrapped, not scrolled sideways: a horizontal scroller clipped the runs
+    // window at the right edge on a 360 dp phone, with nothing saying more
+    // of the strip was off screen.
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        runSpacing: 6,
+        children: chips,
+      ),
+    );
+  }
+
+  void _addContextChips(List<Widget> chips, ThemeData theme,
+      AppLocalizations l10n, _ContextSummary c) {
+    final cs = theme.colorScheme;
     chips.add(
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -1503,11 +1526,91 @@ class _CoachScreenState extends State<CoachScreen> {
           icon: Icons.flag_outlined,
           label: l10n.coachContextWeeklyGoal(distance, unit.name)));
     }
+  }
+
+  Widget _buildPlanPicker(ThemeData theme, AppLocalizations l10n, String label,
+      {required bool muted}) {
+    final cs = theme.colorScheme;
+    final color = muted ? cs.onSurfaceVariant : cs.onSurface;
+    final value =
+        _effectiveScope == 'season' ? kCoachSeasonOption : (_planId ?? '');
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(children: chips),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: PopupMenuButton<String>(
+        key: const Key('coach-plan-picker'),
+        enabled: !_busy,
+        tooltip: l10n.coachPlanPickerTooltip,
+        initialValue: value,
+        onSelected: (v) =>
+            v == kCoachFindRaceOption ? _openRaces() : _onPlanChanged(v),
+        itemBuilder: (_) => [
+          PopupMenuItem(value: '', child: Text(l10n.coachNoPlanOption)),
+          if (_seasonPlans.length > 1)
+            PopupMenuItem(
+              value: kCoachSeasonOption,
+              child: Text(l10n.coachSeasonOption),
+            ),
+          for (final p in _plans)
+            PopupMenuItem(
+              value: p.id,
+              child: Text(p.status == 'active'
+                  ? l10n.coachPlanActive(p.name)
+                  : (p.status == 'completed'
+                      ? l10n.coachPlanDone(p.name)
+                      : p.name)),
+            ),
+          // My season is only offered once a plan is queued behind the
+          // current one, so with one plan the menu says how to get it.
+          if (_seasonPlans.length == 1) ...[
+            const PopupMenuDivider(),
+            PopupMenuItem(
+              key: const Key('coach-season-hint-action'),
+              value: kCoachFindRaceOption,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(l10n.coachSeasonHint,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant)),
+                  const SizedBox(height: 4),
+                  Text(l10n.coachSeasonHintAction,
+                      style: theme.textTheme.labelLarge
+                          ?.copyWith(color: cs.primary)),
+                ],
+              ),
+            ),
+          ],
+        ],
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            border: Border.all(color: cs.outlineVariant),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.calendar_month, size: 14, color: color),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(label,
+                    style: theme.textTheme.labelMedium
+                        ?.copyWith(color: color)),
+              ),
+              Icon(Icons.arrow_drop_down, size: 18, color: color),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openRaces() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            RacesScreen(service: widget.raceService ?? RaceService()),
       ),
     );
   }
@@ -1528,11 +1631,13 @@ class _CoachScreenState extends State<CoachScreen> {
           children: [
             Icon(icon, size: 14, color: color),
             const SizedBox(width: 6),
-            Text(label,
-                style: Theme.of(context)
-                    .textTheme
-                    .labelMedium
-                    ?.copyWith(color: color)),
+            Flexible(
+              child: Text(label,
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelMedium
+                      ?.copyWith(color: color)),
+            ),
           ],
         ),
       ),
@@ -1573,13 +1678,20 @@ class _CoachScreenState extends State<CoachScreen> {
     } else {
       text = l10n.coachMessagesLeft(_remaining);
     }
+    // A count of what is left is information, so it sits on the neutral
+    // surface; only an exhausted allowance takes the warning colour.
+    final sem = AppSemanticColors.ofTheme(theme);
+    final background =
+        _limitReached ? sem.warning : cs.surfaceContainerHighest;
+    final foreground = _limitReached ? sem.onWarning : cs.onSurfaceVariant;
     return Container(
+      key: const Key('coach-limit-banner'),
       width: double.infinity,
-      color: cs.tertiaryContainer,
+      color: background,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Text(
         text,
-        style: theme.textTheme.bodySmall?.copyWith(color: cs.onTertiaryContainer),
+        style: theme.textTheme.bodySmall?.copyWith(color: foreground),
       ),
     );
   }

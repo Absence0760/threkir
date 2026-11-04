@@ -85,12 +85,12 @@ test.describe('click-through session journey', () => {
 		await test.step('Plans tab → open the seed plan → All plans', async () => {
 			await surfaceTabs.getByRole('link', { name: /^Plans$/ }).click();
 			await page.waitForURL(/\/plans$/, { timeout: 10_000 });
-			const card = page.locator(`a.card[href="/plans/${SEED_PLAN_ID}"]`);
+			const card = page.locator(`.card:has(a.card-link[href="/plans/${SEED_PLAN_ID}"])`);
 			await expect(card).toBeVisible({ timeout: 10_000 });
 
-			// Click the card's title, not its centre: the card also hosts the
-			// Abandon / Delete buttons, which preventDefault the navigation.
-			await card.getByRole('heading', { level: 3 }).click();
+			// The title is the card's link; the Abandon / Delete buttons sit
+			// beside it rather than inside it.
+			await card.getByRole('link', { name: 'Richmond Half 2026' }).click();
 			await page.waitForURL(new RegExp(`/plans/${SEED_PLAN_ID}$`), { timeout: 10_000 });
 			await expect(
 				page.getByRole('heading', { level: 1, name: /Richmond Half 2026/ })

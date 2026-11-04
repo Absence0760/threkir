@@ -104,7 +104,7 @@ export function pointAtDistance(
  * forwards and once backwards and averaged, so the camera starts turning
  * before the turnaround as much as it finishes after it. The table is a pure
  * function of the path and the smoothing, so a scrubbed, played or exported
- * frame at the same distance gets the same bearing (decisions § 2274).
+ * frame at the same distance gets the same bearing (decisions § 2275).
  * `smoothingM: 0` is the raw segment heading, unsmoothed and unlimited.
  */
 export function cameraAt(

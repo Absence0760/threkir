@@ -35,7 +35,7 @@ export function flightCamera(path: FlyoverPath, dM: number, view: FlightView): F
 /// synchronous redraw the canvas shows the previous frame's camera under it
 /// and the dot sits one frame of travel ahead of its own spot on the course,
 /// by a distance that changes with every frame time — the dot shakes against
-/// the line (decisions § 2273). Outside an animation frame the scheduled
+/// the line (decisions § 2274). Outside an animation frame the scheduled
 /// render lands before the next paint, so a redraw would only add a render.
 export function drawFlightFrame(
 	target: FlightTarget,

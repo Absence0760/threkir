@@ -71,13 +71,26 @@ on:
   workflow_dispatch:
 
 concurrency:
-  # PR pushes cancel the superseded head's analysis (no point analysing a
-  # stale SHA), but every push to main gets its own per-SHA group and is
-  # never cancelled: back-to-back merges would otherwise race the older
-  # commit's analysis into a cancellation and leave that commit without
-  # the completed SAST run Scorecard checks for (code-scanning alert 162).
+  # Every push to main gets its own per-SHA group: back-to-back merges would
+  # otherwise race the older commit's analysis into a cancellation and leave
+  # that commit without the completed SAST run Scorecard checks for
+  # (code-scanning alert 162).
+  #
+  # A PR shares one group per ref, and a run that has STARTED is never
+  # cancelled. It used to be (`cancel-in-progress` on pull_request), and a
+  # CodeQL job killed mid-analysis is not a silent no-op: the init action's
+  # post step sees an analyze that never completed and uploads a "failed run"
+  # SARIF ("unsuccessful execution, exit code: 0") under the leg's category.
+  # One draft-PR session on 2026-11-03 cancelled 36 runs and left 47 such
+  # error analyses on refs/pull/1271/merge, every busy PR since mid-October
+  # carries the same, and they are what the Security tab's "CodeQL is
+  # reporting errors" banner was reading (decisions § 2273).
+  # Without cancel-in-progress GitHub still keeps at most ONE pending run per
+  # group and cancels the older pending one when a newer push arrives; a run
+  # cancelled while pending has started no job, so it uploads nothing. A burst
+  # of pushes therefore costs one extra completed analysis, not one per push.
   group: security-${{ github.ref }}-${{ github.event_name == 'push' && github.sha || github.event_name }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: false
 
 # Workflow-level permission is the least-privilege baseline; each job
 # below requests the additional scopes it actually needs. Per Scorecard
@@ -445,9 +458,18 @@ jobs:
       - name: Build job_worker image
         run: docker build -t job-worker:scan ./apps/job_worker
 
+      # Trivy is installed by our own action, not by trivy-action's
+      # `setup-trivy`, whose single unretried fetch from get.trivy.dev failed
+      # on main on 2026-11-03 and left this category a commit behind with a
+      # configuration error on the Security tab (decisions § 2273). The
+      # action's header has the detail.
+      - uses: ./.github/actions/setup-trivy
+
       - name: Trivy scan
+        id: scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          skip-setup-trivy: true
           image-ref: job-worker:scan
           format: sarif
           output: trivy-job-worker.sarif
@@ -466,7 +488,13 @@ jobs:
 
       - name: Upload Trivy SARIF
         uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
-        if: always()
+        # Only once the scan has written its SARIF. `exit-code: '0'` means the
+        # scan step fails on nothing it finds, only on not running at all, and
+        # uploading after that cannot succeed: it fails again on "Path does not
+        # exist" and reports the miss to code scanning as a configuration
+        # error, which reads as a broken setup rather than the install or
+        # build failure it is. The job is already red on the step that failed.
+        if: ${{ !cancelled() && steps.scan.outcome == 'success' }}
         with:
           sarif_file: trivy-job-worker.sarif
           category: trivy-job-worker
@@ -485,9 +513,13 @@ jobs:
       - name: Build graph_cycle image
         run: docker build -t graph-cycle:scan ./apps/graph_cycle
 
+      - uses: ./.github/actions/setup-trivy
+
       - name: Trivy scan
+        id: scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          skip-setup-trivy: true
           image-ref: graph-cycle:scan
           format: sarif
           output: trivy-graph-cycle.sarif
@@ -497,7 +529,7 @@ jobs:
 
       - name: Upload Trivy SARIF
         uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
-        if: always()
+        if: ${{ !cancelled() && steps.scan.outcome == 'success' }}
         with:
           sarif_file: trivy-graph-cycle.sarif
           # Distinct category — two uploads sharing one category make the

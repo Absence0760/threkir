@@ -217,7 +217,13 @@ test.describe('Settings → Privacy — streamer overlay card', () => {
 		await expect(url).not.toHaveValue(/map=1/);
 		await page.unroute('**/rest/v1/rpc/update_live_overlay_settings');
 
+		// The URL updates before the save lands; reload only once it has, or the
+		// reload can read the row the save has not written yet.
+		const saved = page.waitForResponse(
+			(r) => r.url().includes('/rest/v1/rpc/update_live_overlay_settings') && r.ok(),
+		);
 		await card.getByTestId('streamer-overlay-map').check();
+		await saved;
 		await expect(url).toHaveValue(/map=1/);
 		await page.reload();
 		await expect(card.getByTestId('streamer-overlay-map')).toBeChecked();

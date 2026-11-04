@@ -141,12 +141,12 @@ test.describe('/coaching/accept/[token] — redeem_coach_invite error branches',
 		});
 		test.afterEach(clearLinks);
 
-		test("the coach redeeming their own token sees 'cannot coach yourself'", async ({ page }) => {
+		test("the coach redeeming their own token is told it is their own invite", async ({ page }) => {
 			await page.goto(`/coaching/accept/${TOKEN}`);
 			await expect(page.getByRole('heading', { name: 'Invite problem' })).toBeVisible({
 				timeout: 10_000
 			});
-			await expect(page.getByRole('alert')).toContainText(/cannot coach yourself/i);
+			await expect(page.getByRole('alert')).toContainText(/your own invite/i);
 			await expect(page).toHaveURL(/\/coaching\/accept\//);
 
 			// The invite stays pending + athlete-less — self-redemption did not consume it.
@@ -471,7 +471,7 @@ test.describe('/plans — an assigned plan is the athlete own active plan (USER_
 		await page.goto('/plans');
 		// The plan card links to its detail by name (the athlete owns it, so it
 		// flows through the normal "users own their plans" read).
-		const planCard = page.locator(`a.card[href="/plans/${planId}"]`);
+		const planCard = page.locator(`.card:has(a.card-link[href="/plans/${planId}"])`);
 		await expect(planCard).toBeVisible({ timeout: 10_000 });
 		await expect(planCard).toContainText(PLAN_NAME);
 		// Badged active.
@@ -479,7 +479,7 @@ test.describe('/plans — an assigned plan is the athlete own active plan (USER_
 
 		// The athlete opens their own plan: owner reads weeks + workouts, so the
 		// detail page renders the plan name as its heading (not the not-found card).
-		await planCard.click();
+		await planCard.locator('a.card-link').click();
 		await page.waitForURL(new RegExp(`/plans/${planId}$`), { timeout: 10_000 });
 		await expect(page.getByRole('heading', { level: 1, name: PLAN_NAME })).toBeVisible({
 			timeout: 10_000

@@ -6,6 +6,8 @@ import {
 	DEFAULT_UNDO_WINDOW_S,
 	UNDO_WINDOW_CHOICES_S,
 	type PendingUndo,
+	type UndoOwner,
+	undoOwnerChanged,
 } from './undo_queue.js';
 
 /// Deterministic clock + timer pair. `advance` fires every timer whose
@@ -17,7 +19,7 @@ function harness(windowMs = 8000) {
 	const timers = new Map<number, { at: number; cb: () => void }>();
 	const published: (PendingUndo | null)[] = [];
 	let currentWindowMs = windowMs;
-	let currentOwner: string | null = 'a';
+	let currentOwner: UndoOwner = 'a';
 
 	const queue = createUndoQueue({
 		windowMs: () => currentWindowMs,
@@ -60,7 +62,7 @@ function harness(windowMs = 8000) {
 		setWindowMs: (ms: number) => {
 			currentWindowMs = ms;
 		},
-		setOwner: (id: string | null) => {
+		setOwner: (id: UndoOwner) => {
 			currentOwner = id;
 		},
 		tick: (ms: number) => {
@@ -207,6 +209,49 @@ test('a commit that fails while its account is still signed in still restores an
 	await flushing;
 	assert.equal(restore.count, 1);
 	assert.deepEqual(onCommitError.calls, [[boom]]);
+});
+
+test('a commit that fails while the same account is briefly unknown still restores and reports', async () => {
+	// A -> not-known-yet -> A: the profile is reloading for a live session.
+	// Nothing says another account is signed in, so the list must not keep
+	// claiming a row is gone that the server still holds.
+	const h = harness();
+	const restore = spy();
+	const onCommitError = spy();
+	const held = heldCommit();
+	h.queue.defer({ message: 'Removed', commit: held.commit, restore: restore.fn, onCommitError: onCommitError.fn });
+	const flushing = h.queue.flush();
+	h.setOwner(undefined);
+	const boom = new Error('JWT expired');
+	held.fail(boom);
+	await flushing;
+	assert.equal(restore.count, 1);
+	assert.deepEqual(onCommitError.calls, [[boom]]);
+});
+
+test('a delete queued before the account was known restores for the account that turns up', async () => {
+	const h = harness();
+	h.setOwner(undefined);
+	const restore = spy();
+	const onCommitError = spy();
+	const held = heldCommit();
+	h.queue.defer({ message: 'Removed', commit: held.commit, restore: restore.fn, onCommitError: onCommitError.fn });
+	const flushing = h.queue.flush();
+	h.setOwner('a');
+	held.fail(new Error('boom'));
+	await flushing;
+	assert.equal(restore.count, 1);
+	assert.equal(onCommitError.count, 1);
+});
+
+test('only an ended session or a different known account counts as the owner changing', () => {
+	assert.equal(undoOwnerChanged('a', 'a'), false);
+	assert.equal(undoOwnerChanged('a', undefined), false, 'not known yet is not a sign-out');
+	assert.equal(undoOwnerChanged(undefined, 'a'), false);
+	assert.equal(undoOwnerChanged(undefined, undefined), false);
+	assert.equal(undoOwnerChanged('a', null), true, 'the session ended');
+	assert.equal(undoOwnerChanged(undefined, null), true);
+	assert.equal(undoOwnerChanged('a', 'b'), true, 'another account signed in');
 });
 
 test('the owner is the account signed in when the delete was queued, not when it commits', async () => {

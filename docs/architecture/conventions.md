@@ -1366,9 +1366,12 @@ action can honestly be reversed:
   from the root layout, so it never commits with no session or as the next
   account. A commit already running when the session ends is not stopped; the
   queue records the account each delete was queued under (`setUndoOwner`, set
-  by the root layout) and, if that commit fails once another account (or none)
-  is signed in, only logs it: no `onCommitError` toast to a signed-out reader
-  and no `restore` into the next account's list.
+  by the root layout) and, if that commit fails once the session has ended or
+  another known account is signed in (`undoOwnerChanged`), only logs it: no
+  `onCommitError` toast to a signed-out reader and no `restore` into the next
+  account's list. A live session whose profile is not loaded yet reads as
+  unknown (`undefined`), not as signed out, so the same account's failure
+  still restores and reports.
   Mobile follows the same rules. Settings → Sign out and the age-gate's Sign
   out go through `signOutAfterSettling` (`lib/sign_out.dart`, passed
   `undoQueue.flush`, capped at `kSignOutSettleTimeout`, 5 s); Delete account

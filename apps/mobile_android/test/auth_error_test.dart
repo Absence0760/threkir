@@ -154,6 +154,41 @@ void main() {
       );
     });
 
+    test('a database code is not overridden by a word in its message', () {
+      expect(
+        classifyAuthError(const _FakeAuthException(
+            'duplicate key value violates unique constraint "rate limit buckets_pkey"',
+            code: '23505')),
+        AuthErrorKind.generic,
+      );
+      expect(
+        classifyAuthError(const _FakeAuthException(
+            'relation "invalid credentials" does not exist',
+            code: '42P01')),
+        AuthErrorKind.generic,
+      );
+      expect(
+        classifyAuthError(
+            const _FakeAuthException('connection closed by trigger', code: 'PGRST116')),
+        AuthErrorKind.generic,
+      );
+    });
+
+    test('a bare-raise P0001 is still read by its message', () {
+      expect(
+        classifyAuthError(const _FakeAuthException(
+            'rate limit exceeded for create_club, retry in 30s',
+            code: 'P0001')),
+        AuthErrorKind.rateLimited,
+      );
+      // The RPCs' signed-out guard keeps its meaning under its 42501.
+      expect(
+        classifyAuthError(
+            const _FakeAuthException('not authenticated', code: '42501')),
+        AuthErrorKind.notSignedIn,
+      );
+    });
+
     test('unrecognised error → generic', () {
       expect(classifyAuthError(Exception('boom')), AuthErrorKind.generic);
     });

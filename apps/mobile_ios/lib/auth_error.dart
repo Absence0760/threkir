@@ -29,21 +29,24 @@ enum AuthErrorKind {
 /// `AuthException` carries both) and falls back to matching the
 /// stringified message, so it works for `SocketException`, `http`'s
 /// `ClientException`, and Supabase auth errors without importing them.
+/// A database code is never overridden by a word in its message.
 AuthErrorKind classifyAuthError(Object error) {
   if (error is SocketException) return AuthErrorKind.offline;
 
   final code = _stringProp(error, (e) => e.code)?.toLowerCase();
   final status = _statusCode(error);
   final msg = error.toString().toLowerCase();
+  final readMsg = !_isDatabaseCode(code);
+  bool says(String text) => readMsg && msg.contains(text);
 
-  if (_looksOffline(msg)) return AuthErrorKind.offline;
+  if (readMsg && _looksOffline(msg)) return AuthErrorKind.offline;
 
   if (status == 429 ||
       (code != null && code.contains('rate')) ||
       code == 'over_email_send_rate_limit' ||
       code == 'over_request_rate_limit' ||
-      msg.contains('rate limit') ||
-      msg.contains('too many requests')) {
+      says('rate limit') ||
+      says('too many requests')) {
     return AuthErrorKind.rateLimited;
   }
 
@@ -54,39 +57,42 @@ AuthErrorKind classifyAuthError(Object error) {
   // invalidCredentials branch below also matches invalid_grant, so this
   // specific-message check has to win first — otherwise the user gets a
   // wrong-password message for an unconfirmed account (issue #486).
-  if (code == 'email_not_confirmed' || msg.contains('email not confirmed')) {
+  if (code == 'email_not_confirmed' || says('email not confirmed')) {
     return AuthErrorKind.emailNotConfirmed;
   }
 
   // An emailed magic / confirmation / reset link opened after it expired
   // or a second time. The fix is a fresh link, which no other kind says.
-  if (code == 'otp_expired' || msg.contains('link is invalid or has expired')) {
+  if (code == 'otp_expired' || says('link is invalid or has expired')) {
     return AuthErrorKind.linkExpired;
   }
 
   if (code == 'invalid_credentials' ||
       code == 'invalid_grant' ||
-      msg.contains('invalid login credentials') ||
-      msg.contains('invalid credentials')) {
+      says('invalid login credentials') ||
+      says('invalid credentials')) {
     return AuthErrorKind.invalidCredentials;
   }
 
   if (code == 'user_already_exists' ||
       code == 'email_exists' ||
-      msg.contains('already registered')) {
+      says('already registered')) {
     return AuthErrorKind.emailExists;
   }
 
   if (code == 'weak_password' ||
-      msg.contains('weak password') ||
-      msg.contains('password should be at least') ||
-      msg.contains('password should contain at least')) {
+      says('weak password') ||
+      says('password should be at least') ||
+      says('password should contain at least')) {
     return AuthErrorKind.weakPassword;
   }
 
   // ApiClient guards throw Exception('Not authenticated') when an action
   // needs a session — actionable ("sign in"), so don't collapse to generic.
-  if (msg.contains('not authenticated')) return AuthErrorKind.notSignedIn;
+  // The RPCs raise the same words under 42501 when auth.uid() is null.
+  if ((readMsg || code == '42501') && msg.contains('not authenticated')) {
+    return AuthErrorKind.notSignedIn;
+  }
 
   return AuthErrorKind.generic;
 }
@@ -175,6 +181,15 @@ bool isSignedOutError(Object error) {
   final msg = error.toString().toLowerCase();
   return msg.contains('not signed in') || msg.contains('not authenticated');
 }
+
+/// A SQLSTATE or PostgREST `pgrst…` code (lower-cased), other than the
+/// `p0001` a bare `raise exception` carries: the database named the
+/// failure, so the message is not read for a category its code does not
+/// have. Mirrors `isDatabaseCode` in web's `core/auth_errors.ts`.
+bool _isDatabaseCode(String? code) =>
+    code != null &&
+    code != 'p0001' &&
+    (RegExp(r'^[0-9a-z]{5}$').hasMatch(code) || code.startsWith('pgrst'));
 
 bool _looksOffline(String msg) =>
     msg.contains('failed host lookup') ||

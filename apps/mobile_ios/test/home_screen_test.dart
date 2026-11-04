@@ -29,6 +29,7 @@ import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import '../lib/screens/add_run_screen.dart';
 import '../lib/screens/confirm_age_screen.dart';
+import '../lib/screens/dashboard_screen.dart';
 import '../lib/screens/gym_screen.dart';
 import '../lib/fab_clearance.dart';
 import '../lib/screens/home_screen.dart';
@@ -1131,6 +1132,110 @@ void main() {
           reason: 'the Log button stays available during a run');
       final inset = tester.widget<DockedFabInset>(find.byType(DockedFabInset));
       expect(inset.height, kDockedFabOverhang);
+    });
+
+    // The phone Scaffold resizes for the keyboard, which lifted the docked
+    // button over the recorder's START (decisions § 2279).
+    testWidgets('the docked button steps aside while the keyboard is up',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+
+      tester.view.viewInsets = const FakeViewPadding(bottom: 900);
+      addTearDown(tester.view.reset);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(FloatingActionButton), findsNothing);
+      expect(tester.widget<DockedFabInset>(find.byType(DockedFabInset)).height,
+          0,
+          reason: 'nothing docked, so no page owes it clearance');
+      expect(tester.widget<RunStopDock>(find.byType(RunStopDock)).docked,
+          isFalse,
+          reason: 'with the docked button gone the panel keeps its own Stop');
+
+      tester.view.resetViewInsets();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(tester.widget<RunStopDock>(find.byType(RunStopDock)).docked,
+          isTrue);
+    });
+  });
+
+  // A kept-alive page kept its focused field after the runner left it, and
+  // the pop of any route above the shell (the route picker) handed focus
+  // back to it, raising the keyboard over the Run page (decisions § 2279).
+  group('focus left behind on a page', () {
+    testWidgets('is dropped when the runner moves to another page, so a '
+        'later pop cannot restore it', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final pageContext = tester.element(find.byType(DashboardScreen));
+      final field = FocusNode(debugLabel: 'a field on the Home page');
+      final attachment = field.attach(pageContext);
+      attachment.reparent();
+      addTearDown(() {
+        attachment.detach();
+        field.dispose();
+      });
+      field.requestFocus();
+      await tester.pump();
+      expect(field.hasPrimaryFocus, isTrue);
+
+      await tester.tap(find.text('You'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(field.hasFocus, isFalse,
+          reason: 'the Home page is no longer on screen');
+
+      final shellNavigator = Navigator.of(pageContext);
+      unawaited(shellNavigator.push(MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => const Scaffold(body: TextField()),
+      )));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.showKeyboard(find.byType(TextField));
+      shellNavigator.pop();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(field.hasFocus, isFalse,
+          reason: 'the pop must not restore focus to a page the runner left');
+      expect(FocusManager.instance.primaryFocus,
+          FocusScope.of(pageContext, createDependency: false),
+          reason: 'focus rests on the shell itself, which raises no keyboard');
+      expect(tester.testTextInput.hasAnyClients, isFalse);
+    });
+
+    testWidgets('stays put on the page the runner is still on', (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s);
+      final pageContext = tester.element(find.byType(DashboardScreen));
+      final field = FocusNode(debugLabel: 'a field on the Home page');
+      final attachment = field.attach(pageContext);
+      attachment.reparent();
+      addTearDown(() {
+        attachment.detach();
+        field.dispose();
+      });
+      field.requestFocus();
+      await tester.pump();
+
+      final shellNavigator = Navigator.of(pageContext);
+      unawaited(shellNavigator.push(MaterialPageRoute<void>(
+        builder: (_) => const Scaffold(),
+      )));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      shellNavigator.pop();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(field.hasPrimaryFocus, isTrue,
+          reason: 'returning to the page you were typing on keeps your place');
     });
   });
 

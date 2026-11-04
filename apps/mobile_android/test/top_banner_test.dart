@@ -311,6 +311,40 @@ void main() {
     );
   });
 
+  group('showTopBanner — position', () {
+    testWidgets(
+      'said from the root navigator, the pill sits under the app bar of the '
+      'screen on top',
+      (tester) async {
+        final navigator = GlobalKey<NavigatorState>();
+        await tester.pumpWidget(MaterialApp(
+          navigatorKey: navigator,
+          home: Scaffold(
+            appBar: AppBar(title: const Text('host')),
+            body: const SizedBox.expand(),
+          ),
+        ));
+        navigator.currentState!.push(MaterialPageRoute<void>(
+          builder: (_) => Scaffold(
+            appBar: AppBar(title: const Text('pushed')),
+            body: const SizedBox.expand(),
+          ),
+        ));
+        await tester.pumpAndSettle();
+
+        showTopBanner(navigator.currentContext!, 'late');
+        await tester.pump();
+        final pill = find.byKey(const ValueKey('top_banner:up:late'));
+        expect(tester.getTopLeft(pill).dy,
+            greaterThanOrEqualTo(tester.getBottomLeft(find.byType(AppBar).last).dy));
+        expect(navigator.currentState!.canPop(), isTrue,
+            reason: 'reading the top route must not pop it');
+        hideTopBanner();
+        await tester.pump();
+      },
+    );
+  });
+
   group('hideTopBanner', () {
     testWidgets('programmatic dismiss works alongside the timer / swipe',
         (tester) async {

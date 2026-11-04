@@ -14,7 +14,8 @@ import 'package:flutter/material.dart';
 /// every screen's [Scaffold] body. The pill auto-positions just below
 /// the AppBar when the calling context lives under one (read via
 /// [Scaffold.maybeOf]); on AppBar-less screens it sits at the safe-
-/// area top.
+/// area top. A context above every screen — the root navigator's own —
+/// measures the AppBar of the screen on top instead.
 ///
 /// Single-banner semantics, mirroring SnackBar: a new call coalesces
 /// the existing entry — there is never more than one banner on screen.
@@ -70,8 +71,7 @@ void showTopBanner(
   // is above the screen's Scaffold so the entry's own builder
   // wouldn't see it.
   final mq = MediaQuery.of(context);
-  final scaffold = Scaffold.maybeOf(context);
-  final appBarHeight = scaffold?.appBarMaxHeight ?? 0;
+  final appBarHeight = _appBarHeightFor(context);
   final topInset = mq.padding.top + appBarHeight + 12;
 
   _current?.dismiss();
@@ -109,6 +109,38 @@ void showTopBanner(
 
   tracker = _TopBannerEntry(dismiss: dismiss);
   _current = tracker;
+}
+
+double _appBarHeightFor(BuildContext context) {
+  final scaffold = Scaffold.maybeOf(context);
+  if (scaffold != null) return scaffold.appBarMaxHeight ?? 0;
+  // Inside a route with no Scaffold: an AppBar-less screen.
+  if (ModalRoute.of(context) != null) return 0;
+  // Above every route — a banner said after its screen was popped. Without
+  // this it drew over the title of whatever screen was left showing.
+  // A predicate that holds at once pops nothing: it reads the top route.
+  Route<dynamic>? top;
+  Navigator.maybeOf(context, rootNavigator: true)?.popUntil((route) {
+    top = route;
+    return true;
+  });
+  final route = top;
+  final subtree = route is ModalRoute ? route.subtreeContext : null;
+  if (subtree == null) return 0;
+  var height = 0.0;
+  void visit(Element element) {
+    if (element is StatefulElement) {
+      final state = element.state;
+      if (state is ScaffoldState) {
+        final h = state.appBarMaxHeight ?? 0;
+        if (h > height) height = h;
+      }
+    }
+    element.visitChildElements(visit);
+  }
+
+  subtree.visitChildElements(visit);
+  return height;
 }
 
 /// Dismiss the currently visible banner, if any. Safe to call from

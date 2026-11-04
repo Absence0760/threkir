@@ -15,6 +15,7 @@ import '../lib/rate_limit_message.dart';
 import '../lib/screens/message_thread_screen.dart';
 import '../lib/screens/messages_screen.dart';
 import '../lib/screens/profile_screen.dart';
+import '../lib/undo_queue.dart';
 import '../lib/widgets/dm_route_attachment.dart';
 import '../lib/widgets/error_state.dart';
 import '../lib/widgets/sign_in_required_state.dart';
@@ -1202,7 +1203,7 @@ void main() {
       expect(find.byKey(const ValueKey('message-thread-deleted')), findsNothing);
       expect(find.byKey(const ValueKey('message-composer')), findsOneWidget);
       expect(DmPendingHides.instance.contains('c-1'), isFalse);
-      await tester.pump(const Duration(seconds: 9));
+      await tester.pump(const Duration(seconds: kDefaultUndoWindowS + 1));
       expect(api.hides, isEmpty);
     });
 
@@ -1216,7 +1217,7 @@ void main() {
       await tester.pump();
       expect(api.hides, isEmpty);
 
-      await tester.pump(const Duration(seconds: 9));
+      await tester.pump(const Duration(seconds: kDefaultUndoWindowS + 1));
       await tester.pump();
       expect(api.hides, ['c-1']);
       expect(DmPendingHides.instance.contains('c-1'), isFalse);
@@ -1229,6 +1230,7 @@ void main() {
         ..hideError = StateError('offline');
       await tester.pumpWidget(_app(Builder(
         builder: (context) => Scaffold(
+          appBar: AppBar(title: const Text('Inbox')),
           body: TextButton(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
               builder: (_) => MessageThreadScreen(
@@ -1256,14 +1258,17 @@ void main() {
       expect(find.byType(MessageThreadScreen), findsNothing);
       expect(api.hides, isEmpty);
 
-      await tester.pump(const Duration(seconds: 9));
+      await tester.pump(const Duration(seconds: kDefaultUndoWindowS + 1));
       await tester.pump();
       expect(api.hides, ['c-1']);
       expect(DmPendingHides.instance.contains('c-1'), isFalse);
-      expect(
-          find.textContaining(
-              l10n.messagesConversationActionFailed('').trim()),
-          findsOneWidget);
+      final failed = find.textContaining(
+          l10n.messagesConversationActionFailed('').trim());
+      expect(failed, findsOneWidget);
+      expect(tester.getTopLeft(failed).dy,
+          greaterThanOrEqualTo(tester.getBottomLeft(find.byType(AppBar)).dy),
+          reason: 'the banner sits under the app bar of the screen left '
+              'showing, not over its title');
       await _drainBanner(tester);
     });
 
@@ -1290,6 +1295,42 @@ void main() {
       expect(find.text('Ada'), findsOneWidget);
       expect(api.threadsCalls, reads + 1,
           reason: 'Undo or the commit is the server\'s to answer');
+    });
+
+    testWidgets('a poll that started before a delete was committed does not '
+        'put the conversation back', (tester) async {
+      final api = _FakeApi()
+        ..threads = [_thread('p-1', name: 'Ada'), _thread('p-2', name: 'Grace')];
+      await tester.pumpWidget(_app(MessagesScreen(
+          api: api,
+          pollInterval: const Duration(seconds: 30),
+          threadPollInterval: _quiet)));
+      await tester.pump();
+      DmPendingHides.instance.add('c-p-1');
+      await tester.pump();
+
+      final stale = Completer<List<DmThread>>();
+      api.threadsGate = stale;
+      await tester.pump(const Duration(seconds: 30));
+      final reads = api.threadsCalls;
+
+      api
+        ..threadsGate = null
+        ..threads = [_thread('p-2', name: 'Grace')];
+      DmPendingHides.instance.remove('c-p-1');
+      await tester.pump();
+      await tester.pump();
+      expect(api.threadsCalls, reads + 1,
+          reason: 'the poll in flight must not hold off the read the commit '
+              'asks for');
+      expect(find.text('Ada'), findsNothing);
+
+      stale.complete(
+          [_thread('p-1', name: 'Ada'), _thread('p-2', name: 'Grace')]);
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Ada'), findsNothing);
+      expect(find.text('Grace'), findsOneWidget);
     });
   });
 

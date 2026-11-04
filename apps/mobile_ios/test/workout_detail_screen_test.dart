@@ -38,6 +38,9 @@ class _FakeTraining extends TrainingService {
   bool markCalled = false;
   bool? lastMarkManual;
 
+  /// Holds the re-link write open until completed, when set.
+  Completer<void>? markGate;
+
   _FakeTraining(this.workout, this.candidates, {this.gateCandidates});
 
   @override
@@ -57,6 +60,7 @@ class _FakeTraining extends TrainingService {
     markCalled = true;
     lastMarkRunId = runId;
     lastMarkManual = manual;
+    await markGate?.future;
   }
 }
 
@@ -190,6 +194,36 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       expect(skeleton, findsNothing);
       expect(find.byType(ListTile), findsOneWidget);
+    });
+
+    // Re-link had no busy state: a second tap opened the picker again over a
+    // link still in flight, and Unlink stayed live beside it.
+    testWidgets('a re-link in flight holds Re-link and Unlink', (tester) async {
+      final gate = Completer<void>();
+      final training = _FakeTraining(
+        _completedWorkout(),
+        [
+          _cand('run-current', '2026-04-05T07:00:00Z'),
+          _cand('run-other', '2026-04-06T07:00:00Z'),
+        ],
+      )..markGate = gate;
+      await _pumpWith(tester, training);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Re-link'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(ListTile).at(1));
+      await tester.pumpAndSettle();
+      expect(training.lastMarkRunId, 'run-other');
+
+      ButtonStyleButton button(String key) =>
+          tester.widget<ButtonStyleButton>(find.byKey(Key(key)));
+      expect(button('workoutDetailRelink').onPressed, isNull);
+      expect(button('workoutDetailMarkNotDone').onPressed, isNull);
+
+      gate.complete();
+      await tester.pumpAndSettle();
+      expect(button('workoutDetailRelink').onPressed, isNotNull);
     });
 
     testWidgets('picker shows the empty state when no candidates', (tester) async {

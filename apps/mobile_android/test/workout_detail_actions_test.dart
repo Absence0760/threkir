@@ -119,6 +119,31 @@ Future<Future<Object?>> _open(
 void main() {
   final en = lookupAppLocalizations(const Locale('en'));
 
+  // Mark done and Skip write the same row; with each guarding only itself,
+  // both could be tapped together and their reloads raced.
+  testWidgets('while Mark done is in flight, Skip is held too', (tester) async {
+    final gate = Completer<void>();
+    final training = _FakeTraining(_workout())..markGate = gate;
+    await _open(tester, training, initial: _workout());
+    await tester.tap(find.byKey(const Key('workoutDetailMarkDone')));
+    await tester.pump();
+
+    final skip = tester.widget<ButtonStyleButton>(
+        find.byKey(const Key('workoutDetailSkip')));
+    expect(skip.onPressed, isNull);
+    await tester.tap(find.byKey(const Key('workoutDetailSkip')));
+    await tester.pump();
+    expect(training.skipCalls, isEmpty);
+
+    gate.complete();
+    await pumpUntil(
+      tester,
+      () => tester.any(find.byKey(const Key('workoutDetailMarkNotDone'))),
+      describe: 'the mark to land and the done panel to render',
+    );
+    expect(training.markCalls, [true]);
+  });
+
   group('writes the backend never answers', () {
     testWidgets('Mark done gives up, says so and gives the button back',
         (tester) async {

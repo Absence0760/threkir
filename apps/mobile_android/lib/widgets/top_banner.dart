@@ -70,9 +70,12 @@ void showTopBanner(
   // pill sits below it. Captured at show-time — the Overlay context
   // is above the screen's Scaffold so the entry's own builder
   // wouldn't see it.
+  // A primary Scaffold's appBarMaxHeight already spans the status bar, so
+  // the safe-area top only counts where no app bar does.
   final mq = MediaQuery.of(context);
-  final appBarHeight = _appBarHeightFor(context);
-  final topInset = mq.padding.top + appBarHeight + 12;
+  final appBarBottom = _appBarHeightFor(context);
+  final topInset =
+      (appBarBottom > mq.padding.top ? appBarBottom : mq.padding.top) + 12;
 
   _current?.dismiss();
   _current = null;

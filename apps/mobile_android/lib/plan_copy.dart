@@ -88,3 +88,14 @@ List<Map<String, Object?>> planWorkoutCopyRows(
             'target_rpe_max': w.targetRpeMax,
           },
     ];
+
+/// The owner's public-library copy of [planId], found by the link the
+/// publisher writes on it (`published_from_plan_id`). Never by name: a rename
+/// would lose the copy, and two same-named plans would share one. Twin of
+/// web `libraryCopyOf` in `core/plan_copy.ts`.
+TrainingPlanRow? libraryCopyOf(Iterable<TrainingPlanRow> published, String planId) {
+  for (final t in published) {
+    if (t.publishedFromPlanId == planId) return t;
+  }
+  return null;
+}

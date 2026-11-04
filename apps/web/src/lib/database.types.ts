@@ -5134,6 +5134,7 @@ export type Database = {
           notes: string | null
           parent_template_id: string | null
           paused_at: string | null
+          published_from_plan_id: string | null
           race_listing_id: string | null
           rules: Json | null
           source: string
@@ -5162,6 +5163,7 @@ export type Database = {
           notes?: string | null
           parent_template_id?: string | null
           paused_at?: string | null
+          published_from_plan_id?: string | null
           race_listing_id?: string | null
           rules?: Json | null
           source?: string
@@ -5190,6 +5192,7 @@ export type Database = {
           notes?: string | null
           parent_template_id?: string | null
           paused_at?: string | null
+          published_from_plan_id?: string | null
           race_listing_id?: string | null
           rules?: Json | null
           source?: string
@@ -5212,6 +5215,13 @@ export type Database = {
           {
             foreignKeyName: "training_plans_parent_template_id_fkey"
             columns: ["parent_template_id"]
+            isOneToOne: false
+            referencedRelation: "training_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_plans_published_from_plan_id_fkey"
+            columns: ["published_from_plan_id"]
             isOneToOne: false
             referencedRelation: "training_plans"
             referencedColumns: ["id"]

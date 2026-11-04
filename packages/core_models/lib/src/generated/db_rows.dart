@@ -7244,6 +7244,7 @@ class TrainingPlanRow {
   static const String colPausedAt = 'paused_at';
   static const String colRaceListingId = 'race_listing_id';
   static const String colSourceAuthorId = 'source_author_id';
+  static const String colPublishedFromPlanId = 'published_from_plan_id';
 
   final String id;
   final String userId;
@@ -7271,6 +7272,7 @@ class TrainingPlanRow {
   final DateTime? pausedAt;
   final String? raceListingId;
   final String? sourceAuthorId;
+  final String? publishedFromPlanId;
 
   const TrainingPlanRow({
     required this.id,
@@ -7299,6 +7301,7 @@ class TrainingPlanRow {
     this.pausedAt,
     this.raceListingId,
     this.sourceAuthorId,
+    this.publishedFromPlanId,
   });
 
   factory TrainingPlanRow.fromJson(Map<String, dynamic> json) => TrainingPlanRow(
@@ -7328,6 +7331,7 @@ class TrainingPlanRow {
     pausedAt: parseIsoStrictValue(json['paused_at']),
     raceListingId: json['race_listing_id'] as String?,
     sourceAuthorId: json['source_author_id'] as String?,
+    publishedFromPlanId: json['published_from_plan_id'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -7357,6 +7361,7 @@ class TrainingPlanRow {
     colPausedAt: pausedAt?.toIso8601String(),
     colRaceListingId: raceListingId,
     colSourceAuthorId: sourceAuthorId,
+    colPublishedFromPlanId: publishedFromPlanId,
   };
 
   TrainingPlanRow copyWith({
@@ -7386,6 +7391,7 @@ class TrainingPlanRow {
     DateTime? pausedAt,
     String? raceListingId,
     String? sourceAuthorId,
+    String? publishedFromPlanId,
   }) => TrainingPlanRow(
     id: id ?? this.id,
     userId: userId ?? this.userId,
@@ -7413,6 +7419,7 @@ class TrainingPlanRow {
     pausedAt: pausedAt ?? this.pausedAt,
     raceListingId: raceListingId ?? this.raceListingId,
     sourceAuthorId: sourceAuthorId ?? this.sourceAuthorId,
+    publishedFromPlanId: publishedFromPlanId ?? this.publishedFromPlanId,
   );
 }
 

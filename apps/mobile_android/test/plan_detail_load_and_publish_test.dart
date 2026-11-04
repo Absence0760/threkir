@@ -224,7 +224,8 @@ void main() {
     testWidgets('an already-published plan opens on Unpublish, and it unpublishes',
         (tester) async {
       final training = _FakeTraining(published: [
-        _plan.copyWith(id: 'template-9', isPublicTemplate: true),
+        _plan.copyWith(
+            id: 'template-9', isPublicTemplate: true, publishedFromPlanId: 'plan-1'),
       ]);
       await _pump(tester, training);
       expect(find.text(en.planDetailUnpublishLibrary), findsOneWidget);
@@ -238,6 +239,30 @@ void main() {
       expect(find.text(en.planDetailPublishLibrary), findsOneWidget);
       expect(find.text(en.planDetailUnpublishSuccess), findsOneWidget);
       await _drainBanner(tester);
+    });
+
+    testWidgets('a renamed plan still finds its library copy by its link',
+        (tester) async {
+      final training = _FakeTraining(published: [
+        _plan.copyWith(
+            id: 'template-9',
+            name: 'Name it was published under',
+            isPublicTemplate: true,
+            publishedFromPlanId: 'plan-1'),
+      ]);
+      await _pump(tester, training);
+      expect(find.text(en.planDetailUnpublishLibrary), findsOneWidget);
+    });
+
+    testWidgets("another plan's same-named copy is not this plan's to unpublish",
+        (tester) async {
+      final training = _FakeTraining(published: [
+        _plan.copyWith(
+            id: 'template-9', isPublicTemplate: true, publishedFromPlanId: 'plan-2'),
+      ]);
+      await _pump(tester, training);
+      expect(find.text(en.planDetailPublishLibrary), findsOneWidget);
+      expect(find.text(en.planDetailUnpublishLibrary), findsNothing);
     });
 
     testWidgets('a failed publish says so and leaves the toggle where it was',
@@ -258,7 +283,8 @@ void main() {
     testWidgets('a failed unpublish says so and keeps the plan published',
         (tester) async {
       final training = _FakeTraining(published: [
-        _plan.copyWith(id: 'template-9', isPublicTemplate: true),
+        _plan.copyWith(
+            id: 'template-9', isPublicTemplate: true, publishedFromPlanId: 'plan-1'),
       ])
         ..unpublishError = Exception('refused');
       await _pump(tester, training);
@@ -277,7 +303,8 @@ void main() {
     testWidgets('Unpublish asks first, and Cancel keeps the plan published',
         (tester) async {
       final training = _FakeTraining(published: [
-        _plan.copyWith(id: 'template-9', isPublicTemplate: true),
+        _plan.copyWith(
+            id: 'template-9', isPublicTemplate: true, publishedFromPlanId: 'plan-1'),
       ]);
       await _pump(tester, training);
 

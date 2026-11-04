@@ -39,6 +39,7 @@
 		type PlanStartedFrom,
 	} from '#lib/core/data.ts';
 	import { planAuthorCredit } from '#lib/share/share_plan_meta.ts';
+	import { libraryCopyOf } from '#lib/core/plan_copy.ts';
 	import { recoveryWorkoutPatch } from '#lib/training/plan_bulk_ops.ts';
 	import { planShiftImpact } from '#lib/training/plan_shift.ts';
 	import { planRaceDate, raceDateChange, type RaceDateChange, type RaceDateRefusal } from '#lib/training/plan_race_date.ts';
@@ -1403,11 +1404,8 @@
 			adminClubs = clubs.filter(
 				(c) => c.viewer_role === 'owner' || c.viewer_role === 'admin'
 			);
-			// Has the owner already published a copy of this plan to the
-			// public library? Match on parent_template_id is not set on the
-			// published copy, so detect by name + a published flag fetch.
 			const published = await fetchMyPublishedPlans();
-			publishedTemplate = published.find((t) => t.name === plan?.name) ?? null;
+			publishedTemplate = plan ? libraryCopyOf(published, plan.id) : null;
 		}
 	});
 

@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import {
+	libraryCopyOf,
 	planHeadCopyFields,
 	planWeekCopyRows,
 	planWorkoutCopyRows,
@@ -292,6 +293,7 @@ test('every training_plans column is either copied on publish or excused', () =>
 		['trimmed_at', "publisher-private plan state: when the owner ended the plan early — the published copy was never trimmed"],
 		['paused_at', "publisher-private plan state: when the owner paused it — a template is never paused"],
 		['race_listing_id', "publisher-private: the race the owner built the plan for — the trigger nulls it on every template"],
+		['published_from_plan_id', 'the publish link itself: publishPlanToLibrary writes the source id, so it is no design field'],
 		['source_author_id', 'whose public plan a copy started from; clone_public_plan writes it and a client write is discarded (decisions § 2262)'],
 	]);
 	const copied = planHeadCopyFields(sourcePlan);
@@ -327,4 +329,24 @@ test('both plan publishers shape their rows through this module', () => {
 			`${fn} must not restate the workout column list inline.`,
 		);
 	}
+});
+
+test("a plan's library copy is found by its source link, not its name", () => {
+	type Plan = Parameters<typeof libraryCopyOf>[0][number];
+	const copy = (id: string, name: string, from: string | null) =>
+		({ ...sourcePlan, id, name, is_template: true, is_public_template: true, published_from_plan_id: from }) as unknown as Plan;
+	// The source was renamed after publishing, and a second plan of the
+	// owner's carries the copy's old name.
+	const published = [copy('tmpl-other', 'Autumn marathon', 'plan-2'), copy('tmpl-1', 'Old name', 'plan-1')];
+	assert.equal(libraryCopyOf(published, 'plan-1')?.id, 'tmpl-1');
+	assert.equal(libraryCopyOf(published, 'plan-2')?.id, 'tmpl-other');
+	assert.equal(libraryCopyOf([copy('tmpl-x', 'Autumn marathon', null)], 'plan-1'), null);
+});
+
+test('publishPlanToLibrary links the copy to the plan it came from', () => {
+	const source = readFileSync(resolve('src/lib/core/data.ts'), 'utf-8');
+	const start = source.indexOf('export async function publishPlanToLibrary(');
+	const body = source.slice(start, source.indexOf('\nexport ', start + 1));
+	assert.ok(start > 0 && body.length > 0, 'publishPlanToLibrary not found');
+	assert.match(body, /published_from_plan_id: src\.id/);
 });

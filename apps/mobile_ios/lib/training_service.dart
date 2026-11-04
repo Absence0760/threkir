@@ -758,6 +758,7 @@ class TrainingService extends ChangeNotifier {
       'is_public_template': true,
       'club_id': null,
       'parent_template_id': null,
+      'published_from_plan_id': source.id,
     }).select('id').single();
     final newPlanId = templateRow['id'] as String;
 

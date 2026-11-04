@@ -6009,6 +6009,7 @@ export async function publishPlanToLibrary(sourcePlanId: string): Promise<string
 			is_public_template: true,
 			club_id: null,
 			parent_template_id: null,
+			published_from_plan_id: src.id,
 		})
 		.select('id')
 		.single();

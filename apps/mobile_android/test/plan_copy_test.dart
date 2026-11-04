@@ -204,6 +204,7 @@ void main() {
       'trimmed_at', // the owner's plan state, not the design
       'paused_at', // the owner's plan state: a template is never paused
       'race_listing_id', // the owner's own race: nulled on every template
+      'published_from_plan_id', // the publish link itself, written by publishPlanToLibrary
       'source_author_id', // whose public plan a copy started from; clone_public_plan only (decisions § 2262)
     };
     expect(

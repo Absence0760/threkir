@@ -48,6 +48,7 @@ import '../goal_time.dart' show formatGoalTimeS, formatRaceGoalTimeS;
 import '../training.dart';
 import '../training_labels.dart';
 import '../training_load.dart';
+import '../plan_copy.dart' show libraryCopyOf;
 import '../training_service.dart';
 import '../settings_sync.dart' show activeWeekStartDay;
 import '../preferences.dart' show activePreferences;
@@ -2083,8 +2084,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
           .timeout(kBackendLoadTimeout);
       if (!mounted) return;
       setState(() {
-        _publishedTemplateId =
-            published.where((t) => t.name == plan.name).map((t) => t.id).firstOrNull;
+        _publishedTemplateId = libraryCopyOf(published, plan.id)?.id;
       });
     } catch (_) {
       /* L4 best-effort — leave the toggle in publish state. */

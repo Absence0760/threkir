@@ -24,6 +24,7 @@ const _me = 'me';
 const _quiet = Duration(hours: 1);
 
 DmThread _thread(String id, DateTime lastAt) => DmThread(
+      conversationId: 'c-$id',
       partnerId: id,
       partnerName: 'Runner $id',
       lastBody: 'last from $id',

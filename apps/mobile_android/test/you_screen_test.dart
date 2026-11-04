@@ -47,7 +47,9 @@ class _FakeApi extends ApiClient {
   }
 
   @override
-  Future<int> fetchUnreadDmCount() async => unread;
+  Future<List<({int unread, bool muted, bool archived})>>
+      fetchDmBadgeStates() async =>
+          [(unread: unread, muted: false, archived: false)];
 }
 
 /// Drives auth transitions: mutate [uid]/[email]/[name], then [emit] a tick
@@ -70,7 +72,8 @@ class _SwitchableApi extends ApiClient {
       : UserProfileRow(profilePrivate: false, id: uid!, displayName: name, shadowHidden: false);
 
   @override
-  Future<int> fetchUnreadDmCount() async => 0;
+  Future<List<({int unread, bool muted, bool archived})>>
+      fetchDmBadgeStates() async => const [];
 
   @override
   Stream<String?> get authUserChanges => _controller.stream;

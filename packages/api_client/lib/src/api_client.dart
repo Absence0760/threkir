@@ -9282,6 +9282,7 @@ class ApiClient {
     return [
       for (final r in rows)
         DmThread(
+          conversationId: r['conversation_id'] as String,
           partnerId: r['partner_id'] as String?,
           deletedPartnerKey: r['deleted_partner_key'] as String?,
           partnerName:
@@ -9293,22 +9294,89 @@ class ApiClient {
           lastAt: parseIsoStrictRequired(r['last_at'], 'last_at'),
           lastFromMe: r['last_from_me'] == true,
           unread: (r['unread'] as num?)?.toInt() ?? 0,
+          muted: r['muted'] == true,
+          archived: r['archived'] == true,
         ),
     ];
   }
 
-  /// Total unread direct messages across every conversation — the badge on
-  /// the You tab's inbox icon. The same `dm_threads()` aggregation as
-  /// [fetchDmThreads], without its partner-name read, since a count needs no
-  /// names. Throws on a failed read; signed out answers 0 without a call.
-  Future<int> fetchUnreadDmCount() async {
-    if (_client.auth.currentUser == null) return 0;
+  /// Each conversation's unread count with the viewer's mute and archive
+  /// state — what the You tab's inbox badge is counted from
+  /// (`unreadDmBadgeCount` in the app, the twin of web's). The same
+  /// `dm_threads()` aggregation as [fetchDmThreads], without its partner-name
+  /// read. Throws on a failed read; signed out answers empty without a call.
+  Future<List<({int unread, bool muted, bool archived})>>
+      fetchDmBadgeStates() async {
+    if (_client.auth.currentUser == null) return const [];
     final res = await _client.rpc('dm_threads', params: const {}, get: true);
-    var total = 0;
-    for (final r in (res as List).cast<Map<String, dynamic>>()) {
-      total += (r['unread'] as num?)?.toInt() ?? 0;
-    }
-    return total;
+    return [
+      for (final r in (res as List).cast<Map<String, dynamic>>())
+        (
+          unread: (r['unread'] as num?)?.toInt() ?? 0,
+          muted: r['muted'] == true,
+          archived: r['archived'] == true,
+        ),
+    ];
+  }
+
+  /// The viewer's own mute and archive state for one conversation, for a
+  /// thread opened from outside the inbox (a profile, a route). The row is
+  /// owner-read only. Null when the viewer has no row, or signed out. Throws
+  /// on a failed read.
+  Future<({bool muted, DateTime? archivedAt})?> fetchDmConversationState(
+    String conversationId,
+  ) async {
+    final me = _client.auth.currentUser?.id;
+    if (me == null) return null;
+    final row = await _client
+        .from('conversation_participants')
+        .select('muted_at, archived_at')
+        .eq('conversation_id', conversationId)
+        .eq('user_id', me)
+        .maybeSingle();
+    if (row == null) return null;
+    return (
+      muted: row['muted_at'] != null,
+      archivedAt: parseIsoStrictValue(row['archived_at']),
+    );
+  }
+
+  /// Deletes a conversation for the viewer only (migration 20271105000001):
+  /// every message so far leaves their reads, the other participant keeps
+  /// theirs, and a newer message brings it back. The caller holds it behind
+  /// the undo window, since nothing is sent until the window closes. A
+  /// conversation the viewer is not in raises P0002. Mirrors web
+  /// `hideDmConversation`.
+  Future<void> hideDmConversation(String conversationId) async {
+    await _client.rpc(
+      'hide_conversation',
+      params: {'p_conversation_id': conversationId},
+    );
+  }
+
+  /// Mutes or unmutes a conversation for the viewer: a muted one raises no
+  /// message notification and leaves the badge. Mirrors web
+  /// `setDmConversationMuted`.
+  Future<void> setDmConversationMuted(
+    String conversationId, {
+    required bool muted,
+  }) async {
+    await _client.rpc(
+      'set_conversation_muted',
+      params: {'p_conversation_id': conversationId, 'p_muted': muted},
+    );
+  }
+
+  /// Archives or unarchives a conversation for the viewer; it stays archived
+  /// until a newer message arrives. Mirrors web `setDmConversationArchived`.
+  Future<void> setDmConversationArchived(
+    String conversationId, {
+    required bool archived,
+  }) async {
+    await _client.rpc(
+      'set_conversation_archived',
+      params: {'p_conversation_id': conversationId, 'p_archived': archived},
+    );
   }
 
   /// One page of a conversation, oldest message first. A partner thread is

@@ -23,9 +23,11 @@ class DmDeletedPartnerThread extends DmThreadTarget {
 /// One conversation in the direct-message inbox: the latest message with one
 /// partner plus how many of theirs the viewer has not read. Mirrors web's
 /// `DmThread` (`apps/web/src/lib/core/data.ts`), aggregated server-side by the
-/// `dm_threads()` RPC (migrations 20270117_001, 20271021000003).
+/// `dm_threads()` RPC (migrations 20270117_001, 20271021000003,
+/// 20271105000001).
 class DmThread {
   const DmThread({
+    required this.conversationId,
     required this.partnerId,
     required this.lastBody,
     required this.lastAt,
@@ -35,7 +37,12 @@ class DmThread {
     this.lastUnsent = false,
     this.partnerName,
     this.partnerAvatarUrl,
+    this.muted = false,
+    this.archived = false,
   }) : assert(partnerId != null || deletedPartnerKey != null);
+
+  /// The conversation the mute, archive and delete-for-me actions act on.
+  final String conversationId;
 
   /// Null when the partner deleted their account; [deletedPartnerKey] then
   /// names the conversation.
@@ -51,6 +58,12 @@ class DmThread {
   final bool lastFromMe;
   final int unread;
 
+  /// The viewer muted it: no notification, and left out of the badge.
+  final bool muted;
+
+  /// The viewer archived it and nothing newer has arrived since.
+  final bool archived;
+
   /// Unique per conversation, for keys and the opened-at map.
   String get threadKey => partnerId ?? deletedPartnerKey!;
 
@@ -58,7 +71,8 @@ class DmThread {
       ? DmPartnerThread(partnerId!)
       : DmDeletedPartnerThread(deletedPartnerKey!);
 
-  DmThread copyWith({int? unread}) => DmThread(
+  DmThread copyWith({int? unread, bool? muted, bool? archived}) => DmThread(
+    conversationId: conversationId,
     partnerId: partnerId,
     deletedPartnerKey: deletedPartnerKey,
     partnerName: partnerName,
@@ -68,6 +82,8 @@ class DmThread {
     lastAt: lastAt,
     lastFromMe: lastFromMe,
     unread: unread ?? this.unread,
+    muted: muted ?? this.muted,
+    archived: archived ?? this.archived,
   );
 }
 

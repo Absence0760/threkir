@@ -8,6 +8,7 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../ai_disclosure.dart';
 import '../ai_disclosure_memo.dart';
+import '../dm_pending_hides.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
@@ -113,10 +114,14 @@ class _MessagesScreenState extends State<MessagesScreen>
   int _coachGeneration = 0;
   bool _placing = false;
 
+  /// The inbox is showing its Archived list.
+  bool _showingArchived = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    DmPendingHides.instance.addListener(_onPendingHidesChanged);
     if (widget.api.userId == null) return;
     _load();
     _loadCoach();
@@ -241,8 +246,18 @@ class _MessagesScreenState extends State<MessagesScreen>
   @override
   void dispose() {
     _poll?.cancel();
+    DmPendingHides.instance.removeListener(_onPendingHidesChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  /// A conversation deleted in a thread leaves the list while its undo window
+  /// is open, and comes back on Undo; the list read after the commit is the
+  /// server's answer either way.
+  void _onPendingHidesChanged() {
+    if (!mounted) return;
+    setState(() {});
+    _refresh();
   }
 
   @override
@@ -308,6 +323,9 @@ class _MessagesScreenState extends State<MessagesScreen>
                 api: widget.api,
                 deletedPartnerKey: t.deletedPartnerKey!,
                 pollInterval: widget.threadPollInterval,
+                conversationId: t.conversationId,
+                initialMuted: t.muted,
+                initialArchived: t.archived,
               )
             : MessageThreadScreen(
                 api: widget.api,
@@ -315,6 +333,9 @@ class _MessagesScreenState extends State<MessagesScreen>
                 partnerName: t.partnerName,
                 partnerAvatarUrl: t.partnerAvatarUrl,
                 pollInterval: widget.threadPollInterval,
+                conversationId: t.conversationId,
+                initialMuted: t.muted,
+                initialArchived: t.archived,
               ),
       ),
     );
@@ -344,21 +365,34 @@ class _MessagesScreenState extends State<MessagesScreen>
       return ListSkeleton(label: l10n.commonLoading);
     }
     final coach = _coach;
-    final entries = inboxEntries<DmThread>(
-      _threads,
-      coach == null
-          ? null
-          : CoachInboxRow(
-              placement: coach.placement,
-              lastAt: coach.latest?.createdAt,
-            ),
-      lastAt: (t) => t.lastAt,
+    final hides = DmPendingHides.instance;
+    // Archived conversations sit in their own list until a newer message
+    // arrives (dm_threads() decides that). The Coach row belongs to the inbox.
+    final split = partitionArchived<DmThread>(
+      [
+        for (final t in _threads)
+          if (!hides.contains(t.conversationId)) t,
+      ],
+      archived: (t) => t.archived,
     );
+    final showingArchived = _showingArchived && split.archived.isNotEmpty;
+    final entries = showingArchived
+        ? [for (final t in split.archived) DmInboxEntry<DmThread>(t)]
+        : inboxEntries<DmThread>(
+            split.inbox,
+            coach == null
+                ? null
+                : CoachInboxRow(
+                    placement: coach.placement,
+                    lastAt: coach.latest?.createdAt,
+                  ),
+            lastAt: (t) => t.lastAt,
+          );
     final hasCoachRow = entries.any((e) => e is CoachInboxEntry<DmThread>);
     if (_loadError != null && _threads.isEmpty && !hasCoachRow) {
       return ErrorState(message: l10n.messagesLoadError, onRetry: _load);
     }
-    if (entries.isEmpty) {
+    if (entries.isEmpty && split.archived.isEmpty) {
       return EmptyState(
         icon: Icons.chat_bubble_outline,
         title: l10n.messagesEmptyTitle,
@@ -368,7 +402,23 @@ class _MessagesScreenState extends State<MessagesScreen>
     final tag = localeToTag(Localizations.localeOf(context));
     // With the Coach as the only row, the empty-inbox guidance still says how
     // a conversation with a person starts.
-    final footer = _threads.isEmpty
+    final Widget? header = showingArchived
+        ? ListTile(
+            key: const ValueKey('inbox-back-to-inbox'),
+            leading: const Icon(Icons.arrow_back),
+            title: Text(l10n.messagesBackToInbox),
+            onTap: () => setState(() => _showingArchived = false),
+          )
+        : null;
+    final Widget? archivedLink = !showingArchived && split.archived.isNotEmpty
+        ? ListTile(
+            key: const ValueKey('inbox-show-archived'),
+            leading: const Icon(Icons.archive_outlined),
+            title: Text(l10n.messagesArchivedCount(split.archived.length)),
+            onTap: () => setState(() => _showingArchived = true),
+          )
+        : null;
+    final footer = split.inbox.isEmpty && !showingArchived
         ? Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
@@ -387,14 +437,28 @@ class _MessagesScreenState extends State<MessagesScreen>
       },
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: entries.length + (footer == null ? 0 : 1),
+        itemCount: (header == null ? 0 : 1) +
+            entries.length +
+            (footer == null ? 0 : 1) +
+            (archivedLink == null ? 0 : 1),
         separatorBuilder: (_, _) => const Divider(height: 1),
         itemBuilder: (context, i) {
-          if (i == entries.length) return footer!;
-          return switch (entries[i]) {
-            CoachInboxEntry() => _coachRow(l10n, coach!),
-            DmInboxEntry(:final thread) => _row(l10n, thread, tag),
-          };
+          if (header != null) {
+            if (i == 0) return header;
+            i -= 1;
+          }
+          if (i < entries.length) {
+            return switch (entries[i]) {
+              CoachInboxEntry() => _coachRow(l10n, coach!),
+              DmInboxEntry(:final thread) => _row(l10n, thread, tag),
+            };
+          }
+          i -= entries.length;
+          if (footer != null) {
+            if (i == 0) return footer;
+            i -= 1;
+          }
+          return archivedLink!;
         },
       ),
     );
@@ -462,11 +526,31 @@ class _MessagesScreenState extends State<MessagesScreen>
         imageUrl: t.partnerAvatarUrl,
         size: 40,
       ),
-      title: Text(
-        name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: unread ? const TextStyle(fontWeight: FontWeight.w700) : null,
+      title: Row(
+        children: [
+          Flexible(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style:
+                  unread ? const TextStyle(fontWeight: FontWeight.w700) : null,
+            ),
+          ),
+          if (t.muted) ...[
+            const SizedBox(width: 6),
+            Semantics(
+              key: ValueKey('dm-muted-${t.threadKey}'),
+              label: l10n.messagesMutedMark,
+              excludeSemantics: true,
+              child: Icon(
+                Icons.notifications_off_outlined,
+                size: 16,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
       ),
       subtitle: Text(
         t.lastFromMe ? l10n.messagesYouPrefixed(preview) : preview,
@@ -491,8 +575,12 @@ class _MessagesScreenState extends State<MessagesScreen>
               child: StatusPill(
                 key: ValueKey('dm-unread-${t.threadKey}'),
                 label: '${t.unread}',
-                foreground: theme.colorScheme.onPrimary,
-                fill: theme.colorScheme.primary,
+                foreground: t.muted
+                    ? theme.colorScheme.onSecondaryContainer
+                    : theme.colorScheme.onPrimary,
+                fill: t.muted
+                    ? theme.colorScheme.secondaryContainer
+                    : theme.colorScheme.primary,
                 size: StatusPillSize.compact,
               ),
             ),

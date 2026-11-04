@@ -11,6 +11,7 @@ import '../local_food_store.dart';
 import '../local_gym_store.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
+import '../messages_inbox.dart' show unreadDmBadgeCount;
 import '../parkrun_barcode_cache.dart';
 import '../preferences.dart';
 import '../settings_sync.dart';
@@ -125,7 +126,7 @@ class _YouScreenState extends State<YouScreen>
     final asked = api?.userId;
     if (api == null || asked == null) return;
     try {
-      final count = await api.fetchUnreadDmCount();
+      final count = unreadDmBadgeCount(await api.fetchDmBadgeStates());
       if (!mounted || api.userId != asked) return;
       setState(() => _unreadDms = count);
     } catch (e) {

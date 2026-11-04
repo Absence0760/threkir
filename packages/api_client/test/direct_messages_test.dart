@@ -51,6 +51,7 @@ Map<String, dynamic> _message(
 }) =>
     {
       'id': id,
+      'conversation_id': 'c-1',
       'sender_id': sender,
       'recipient_id': recipient,
       'body': 'Body $id',
@@ -94,6 +95,7 @@ void main() {
       await _signIn(client);
       fake.bodyByPath[_threadsPath] = [
         {
+          'conversation_id': 'c-p-1',
           'partner_id': 'p-1',
           'last_body': 'see you Saturday',
           'last_at': '2026-10-14T09:30:00Z',
@@ -101,6 +103,7 @@ void main() {
           'unread': 0,
         },
         {
+          'conversation_id': 'c-p-2',
           'partner_id': 'p-2',
           'last_body': 'nice run',
           'last_at': '2026-10-13T18:00:00Z',
@@ -124,6 +127,9 @@ void main() {
       expect(threads.map((t) => t.unread), [0, 3]);
       expect(threads.map((t) => t.lastFromMe), [true, false]);
       expect(threads.first.lastAt, DateTime.utc(2026, 10, 14, 9, 30));
+      expect(threads.map((t) => t.conversationId), ['c-p-1', 'c-p-2']);
+      expect(threads.map((t) => t.muted), [false, false]);
+      expect(threads.map((t) => t.archived), [false, false]);
 
       final profileReq = fake.to(_profilesPath).single;
       expect(profileReq.url.queryParameters['select'],
@@ -143,6 +149,7 @@ void main() {
       await _signIn(client);
       fake.bodyByPath[_threadsPath] = [
         {
+          'conversation_id': 'c-p-1',
           'partner_id': 'p-1',
           'last_body': 'hi',
           'last_at': '2026-10-14T09:30:00Z',
@@ -164,6 +171,7 @@ void main() {
       await _signIn(client);
       fake.bodyByPath[_threadsPath] = [
         {
+          'conversation_id': 'c-p-1',
           'partner_id': 'p-1',
           'deleted_partner_key': null,
           'last_body': null,
@@ -173,6 +181,7 @@ void main() {
           'unread': 0,
         },
         {
+          'conversation_id': 'c-deleted',
           'partner_id': null,
           'deleted_partner_key': 'k-1',
           'last_body': 'are you there?',
@@ -212,49 +221,94 @@ void main() {
     });
   });
 
-  group('fetchUnreadDmCount', () {
-    test('sums unread across conversations and reads no names', () async {
+  group('fetchDmBadgeStates', () {
+    test('reads each conversation\'s unread, mute and archive state and no names',
+        () async {
       await _signIn(client);
       fake.bodyByPath[_threadsPath] = [
         {
+          'conversation_id': 'c-1',
           'partner_id': 'p-1',
-          'last_body': 'hi',
           'last_at': '2026-10-14T09:30:00Z',
-          'last_from_me': false,
           'unread': 2,
+          'muted': false,
+          'archived': false,
         },
         {
+          'conversation_id': 'c-2',
           'partner_id': 'p-2',
-          'last_body': 'yo',
           'last_at': '2026-10-13T09:30:00Z',
-          'last_from_me': true,
-          'unread': 0,
+          'unread': 5,
+          'muted': true,
+          'archived': false,
         },
         {
+          'conversation_id': 'c-3',
           'partner_id': 'p-3',
-          'last_body': 'run?',
           'last_at': '2026-10-12T09:30:00Z',
-          'last_from_me': false,
-          'unread': 5,
+          'unread': 1,
+          'muted': false,
+          'archived': true,
         },
       ];
 
-      expect(await api.fetchUnreadDmCount(), 7);
+      expect(await api.fetchDmBadgeStates(), [
+        (unread: 2, muted: false, archived: false),
+        (unread: 5, muted: true, archived: false),
+        (unread: 1, muted: false, archived: true),
+      ]);
       expect(fake.to(_threadsPath).single.method, 'GET');
       expect(fake.to(_profilesPath), isEmpty);
     });
 
-    test('a failed read throws rather than reading as zero', () async {
+    test('a failed read throws rather than reading as nothing unread', () async {
       await _signIn(client);
       fake.statusByPath[_threadsPath] = 500;
       fake.bodyByPath[_threadsPath] = {'message': 'boom'};
 
-      expect(api.fetchUnreadDmCount(), throwsA(isA<PostgrestException>()));
+      expect(api.fetchDmBadgeStates(), throwsA(isA<PostgrestException>()));
     });
 
-    test('signed out answers zero without a wire call', () async {
-      expect(await api.fetchUnreadDmCount(), 0);
+    test('signed out answers empty without a wire call', () async {
+      expect(await api.fetchDmBadgeStates(), isEmpty);
       expect(fake.requests, isEmpty);
+    });
+  });
+
+  group('conversation state', () {
+    test('hideDmConversation calls hide_conversation with the id', () async {
+      await _signIn(client);
+      await api.hideDmConversation('c-9');
+      final req = fake.to('/rest/v1/rpc/hide_conversation').single as http.Request;
+      expect(req.method, 'POST');
+      expect(jsonDecode(req.body), {'p_conversation_id': 'c-9'});
+    });
+
+    test('setDmConversationMuted sends the flag', () async {
+      await _signIn(client);
+      await api.setDmConversationMuted('c-9', muted: true);
+      final req =
+          fake.to('/rest/v1/rpc/set_conversation_muted').single as http.Request;
+      expect(jsonDecode(req.body), {'p_conversation_id': 'c-9', 'p_muted': true});
+    });
+
+    test('setDmConversationArchived sends the flag', () async {
+      await _signIn(client);
+      await api.setDmConversationArchived('c-9', archived: false);
+      final req = fake.to('/rest/v1/rpc/set_conversation_archived').single
+          as http.Request;
+      expect(jsonDecode(req.body),
+          {'p_conversation_id': 'c-9', 'p_archived': false});
+    });
+
+    test('a conversation the viewer is not in surfaces its P0002', () async {
+      await _signIn(client);
+      fake.statusByPath['/rest/v1/rpc/hide_conversation'] = 404;
+      fake.bodyByPath['/rest/v1/rpc/hide_conversation'] = {
+        'code': 'P0002',
+        'message': 'hide_conversation: conversation not found',
+      };
+      expect(api.hideDmConversation('c-x'), throwsA(isA<PostgrestException>()));
     });
   });
 

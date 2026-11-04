@@ -8,6 +8,7 @@ import 'package:flutter/material.dart' hide Route;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
+import '../lib/dm_pending_hides.dart';
 import '../lib/dm_send_error.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/rate_limit_message.dart';
@@ -17,6 +18,7 @@ import '../lib/screens/profile_screen.dart';
 import '../lib/widgets/dm_route_attachment.dart';
 import '../lib/widgets/error_state.dart';
 import '../lib/widgets/sign_in_required_state.dart';
+import '../lib/widgets/undo_bar.dart';
 
 const _me = 'me';
 const _partner = 'p-1';
@@ -32,6 +34,7 @@ DirectMessageRow _msg(
 }) =>
     DirectMessageRow(
       id: id,
+      conversationId: 'c-1',
       senderId: from,
       recipientId: from == _me ? _partner : _me,
       body: body ?? 'body $id',
@@ -43,6 +46,7 @@ DirectMessageRow _msg(
 /// One of a burst, stamped a second apart so the thread order is the index.
 DirectMessageRow _burst(int i, {bool read = false}) => DirectMessageRow(
       id: 'b${i.toString().padLeft(3, '0')}',
+      conversationId: 'c-1',
       senderId: _partner,
       recipientId: _me,
       body: 'burst $i',
@@ -55,14 +59,24 @@ int _order(DirectMessageRow x, DirectMessageRow y) {
   return at != 0 ? at : x.id.compareTo(y.id);
 }
 
-DmThread _thread(String id, {String? name, int unread = 0, bool mine = false}) =>
+DmThread _thread(
+  String id, {
+  String? name,
+  int unread = 0,
+  bool mine = false,
+  bool muted = false,
+  bool archived = false,
+}) =>
     DmThread(
+      conversationId: 'c-$id',
       partnerId: id,
       partnerName: name,
       lastBody: 'last from $id',
       lastAt: DateTime.utc(2026, 10, 14, 8),
       lastFromMe: mine,
       unread: unread,
+      muted: muted,
+      archived: archived,
     );
 
 class _FakeApi extends ApiClient {
@@ -130,6 +144,7 @@ class _FakeApi extends ApiClient {
     final m = [...newest, ...?server].firstWhere((m) => m.id == messageId);
     return DirectMessageRow(
       id: m.id,
+      conversationId: m.conversationId,
       senderId: m.senderId,
       recipientId: m.recipientId,
       createdAt: m.createdAt,
@@ -284,6 +299,39 @@ class _FakeApi extends ApiClient {
 
   @override
   Future<void> markAllNotificationsRead() async {}
+
+  final List<(String, bool)> mutes = [];
+  final List<(String, bool)> archives = [];
+  final List<String> hides = [];
+  Object? conversationError;
+  ({bool muted, DateTime? archivedAt})? conversationState;
+  final List<String> stateReads = [];
+
+  @override
+  Future<void> setDmConversationMuted(String conversationId,
+      {required bool muted}) async {
+    mutes.add((conversationId, muted));
+    if (conversationError != null) throw conversationError!;
+  }
+
+  @override
+  Future<void> setDmConversationArchived(String conversationId,
+      {required bool archived}) async {
+    archives.add((conversationId, archived));
+    if (conversationError != null) throw conversationError!;
+  }
+
+  @override
+  Future<void> hideDmConversation(String conversationId) async {
+    hides.add(conversationId);
+  }
+
+  @override
+  Future<({bool muted, DateTime? archivedAt})?> fetchDmConversationState(
+      String conversationId) async {
+    stateReads.add(conversationId);
+    return conversationState;
+  }
 }
 
 late AppLocalizations l10n;
@@ -819,6 +867,7 @@ void main() {
         ..newest = [
           DirectMessageRow(
             id: 'm1',
+            conversationId: 'c-1',
             senderId: _partner,
             recipientId: _me,
             createdAt: DateTime.utc(2026, 10, 14, 8),
@@ -840,6 +889,7 @@ void main() {
       final api = _FakeApi()
         ..threads = [
           DmThread(
+            conversationId: 'c-k-1',
             partnerId: null,
             deletedPartnerKey: 'k-1',
             lastBody: 'still here?',
@@ -848,6 +898,7 @@ void main() {
             unread: 0,
           ),
           DmThread(
+            conversationId: 'c-p-2',
             partnerId: 'p-2',
             partnerName: 'Grace',
             lastBody: null,
@@ -888,9 +939,15 @@ void main() {
       expect(find.text(l10n.messagesDeletedAccountClosed), findsOneWidget);
       expect(find.byTooltip(l10n.messagesViewProfile), findsNothing);
       expect(api.markReadCalls, 0);
-      expect(find.byKey(const ValueKey('message-thread-more')), findsNothing,
-          reason: 'there is no one to block in a deleted partner\'s thread');
       expect(api.blockChecks, isEmpty);
+      // The viewer can still archive or delete it, but there is no one to
+      // block or mute.
+      await tester.tap(find.byKey(const ValueKey('message-thread-more')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('message-thread-block')), findsNothing);
+      expect(find.byKey(const ValueKey('message-thread-mute')), findsNothing);
+      expect(find.byKey(const ValueKey('message-thread-archive')), findsOneWidget);
+      expect(find.byKey(const ValueKey('message-thread-delete')), findsOneWidget);
     });
   });
 
@@ -1021,6 +1078,165 @@ void main() {
       expect(find.byKey(const ValueKey('message-composer')), findsOneWidget);
       expect(find.textContaining('Could not block'), findsOneWidget);
       await _drainBanner(tester);
+    });
+  });
+
+  group('mute, archive and delete the conversation', () {
+    tearDown(() {
+      debugResetUndo();
+      DmPendingHides.instance.debugClear();
+    });
+
+    Future<void> openMenu(WidgetTester tester) async {
+      await tester.tap(find.byKey(const ValueKey('message-thread-more')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the inbox files archived conversations under Archived and '
+        'marks a muted one', (tester) async {
+      final api = _FakeApi()
+        ..threads = [
+          _thread('p-1', name: 'Ada', unread: 2, muted: true),
+          _thread('p-2', name: 'Grace', archived: true),
+        ];
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+
+      expect(find.text('Ada'), findsOneWidget);
+      expect(find.text('Grace'), findsNothing);
+      expect(find.byKey(const ValueKey('dm-muted-p-1')), findsOneWidget);
+      expect(
+          find.bySemanticsLabel(
+              RegExp(RegExp.escape(l10n.messagesMutedMark))),
+          findsOneWidget);
+      expect(find.text(l10n.messagesArchivedCount(1)), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('inbox-show-archived')));
+      await tester.pump();
+      expect(find.text('Grace'), findsOneWidget);
+      expect(find.text('Ada'), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('inbox-back-to-inbox')));
+      await tester.pump();
+      expect(find.text('Ada'), findsOneWidget);
+      expect(find.text('Grace'), findsNothing);
+      semantics.dispose();
+    });
+
+    testWidgets('Mute and Archive write the viewer\'s state and flip in the menu',
+        (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1')];
+      await _pumpThread(tester, api);
+      expect(api.stateReads, ['c-1']);
+
+      await openMenu(tester);
+      await tester.tap(find.text(l10n.messagesMute));
+      await tester.pump();
+      expect(api.mutes, [('c-1', true)]);
+      expect(find.text(l10n.messagesMutedToast), findsOneWidget);
+      await _drainBanner(tester);
+
+      await openMenu(tester);
+      expect(find.text(l10n.messagesUnmute), findsOneWidget);
+      await tester.tap(find.text(l10n.messagesArchive));
+      await tester.pump();
+      expect(api.archives, [('c-1', true)]);
+      expect(find.text(l10n.messagesArchivedToast), findsOneWidget);
+      await _drainBanner(tester);
+
+      await openMenu(tester);
+      expect(find.text(l10n.messagesUnarchive), findsOneWidget);
+      await tester.tap(find.text(l10n.messagesUnmute));
+      await tester.pump();
+      expect(api.mutes.last, ('c-1', false));
+    });
+
+    testWidgets('a thread opened outside the inbox reads its muted state',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [_msg('m1')]
+        ..conversationState = (muted: true, archivedAt: null);
+      await _pumpThread(tester, api);
+
+      await openMenu(tester);
+      expect(find.text(l10n.messagesUnmute), findsOneWidget);
+      expect(find.text(l10n.messagesArchive), findsOneWidget);
+    });
+
+    testWidgets('a failed mute says so and leaves the state as it was',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [_msg('m1')]
+        ..conversationError = StateError('offline');
+      await _pumpThread(tester, api);
+
+      await openMenu(tester);
+      await tester.tap(find.text(l10n.messagesMute));
+      await tester.pump();
+      expect(find.textContaining(l10n.messagesConversationActionFailed('').trim()),
+          findsOneWidget);
+      await _drainBanner(tester);
+      await openMenu(tester);
+      expect(find.text(l10n.messagesMute), findsOneWidget);
+    });
+
+    testWidgets('Delete takes no confirm, and Undo never calls the server',
+        (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1')];
+      await _pumpThread(tester, api);
+
+      await openMenu(tester);
+      await tester.tap(find.text(l10n.messagesDeleteConversation));
+      await tester.pump();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byKey(const ValueKey('message-thread-deleted')), findsOneWidget);
+      expect(find.byKey(const ValueKey('message-composer')), findsNothing);
+      expect(DmPendingHides.instance.contains('c-1'), isTrue);
+
+      await tester.tap(find.text('Undo'));
+      await tester.pump();
+      expect(find.byKey(const ValueKey('message-thread-deleted')), findsNothing);
+      expect(find.byKey(const ValueKey('message-composer')), findsOneWidget);
+      expect(DmPendingHides.instance.contains('c-1'), isFalse);
+      await tester.pump(const Duration(seconds: 9));
+      expect(api.hides, isEmpty);
+    });
+
+    testWidgets('a Delete left to run hides the conversation on the server',
+        (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1')];
+      await _pumpThread(tester, api);
+
+      await openMenu(tester);
+      await tester.tap(find.text(l10n.messagesDeleteConversation));
+      await tester.pump();
+      expect(api.hides, isEmpty);
+
+      await tester.pump(const Duration(seconds: 9));
+      await tester.pump();
+      expect(api.hides, ['c-1']);
+      expect(DmPendingHides.instance.contains('c-1'), isFalse);
+    });
+
+    testWidgets('the inbox leaves out a conversation whose delete is pending',
+        (tester) async {
+      final api = _FakeApi()
+        ..threads = [_thread('p-1', name: 'Ada'), _thread('p-2', name: 'Grace')];
+      await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+      expect(find.text('Ada'), findsOneWidget);
+
+      DmPendingHides.instance.add('c-p-1');
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Ada'), findsNothing);
+      expect(find.text('Grace'), findsOneWidget);
+
+      DmPendingHides.instance.remove('c-p-1');
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Ada'), findsOneWidget);
     });
   });
 

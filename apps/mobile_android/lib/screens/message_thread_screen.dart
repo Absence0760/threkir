@@ -9,15 +9,18 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../auth_error.dart';
 import '../dm_attachment.dart';
+import '../dm_pending_hides.dart';
 import '../dm_send_error.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
+import '../undo_queue.dart';
 import '../widgets/dm_route_attachment.dart';
 import '../widgets/error_state.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
+import '../widgets/undo_bar.dart';
 import 'profile_screen.dart';
 
 /// `direct_messages.body` is capped at `length(btrim(body)) <= 4000` by its
@@ -46,6 +49,9 @@ const Duration kMessageThreadPollInterval = Duration(seconds: 10);
 ///
 /// The overflow menu blocks or unblocks the partner, the same toggle the
 /// profile carries (decisions § 1952): Block is confirmed, Unblock is not.
+/// It also mutes, archives and deletes the conversation for the viewer
+/// (migration 20271105000001). Delete is held behind the undo bar and tells
+/// the server only when the window closes, so it is not confirmed.
 /// While the viewer's block stands the composer gives way to a notice, since
 /// the INSERT policy refuses a send either way across a block.
 class MessageThreadScreen extends StatefulWidget {
@@ -57,6 +63,9 @@ class MessageThreadScreen extends StatefulWidget {
     this.partnerAvatarUrl,
     this.pollInterval = kMessageThreadPollInterval,
     this.onOpenRoute,
+    this.conversationId,
+    this.initialMuted,
+    this.initialArchived,
   }) : deletedPartnerKey = null;
 
   const MessageThreadScreen.deletedPartner({
@@ -65,6 +74,9 @@ class MessageThreadScreen extends StatefulWidget {
     required String this.deletedPartnerKey,
     this.pollInterval = kMessageThreadPollInterval,
     this.onOpenRoute,
+    this.conversationId,
+    this.initialMuted,
+    this.initialArchived,
   })  : partnerId = null,
         partnerName = null,
         partnerAvatarUrl = null;
@@ -78,6 +90,13 @@ class MessageThreadScreen extends StatefulWidget {
   final String? partnerAvatarUrl;
   final Duration pollInterval;
   final void Function(BuildContext context, String routeId)? onOpenRoute;
+
+  /// The conversation and the viewer's state for it, when the inbox opened
+  /// the thread. Opened from elsewhere, the id comes from the messages and the
+  /// state is read once they load.
+  final String? conversationId;
+  final bool? initialMuted;
+  final bool? initialArchived;
 
   @override
   State<MessageThreadScreen> createState() => _MessageThreadScreenState();
@@ -120,6 +139,14 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
   /// before it cannot undo what the viewer just did.
   int _blockVersion = 0;
 
+  String? _conversationId;
+  bool _muted = false;
+  bool _archived = false;
+  bool _conversationBusy = false;
+
+  /// The viewer deleted the conversation for themselves; the undo bar is up.
+  bool _deleted = false;
+
   /// Bumped whenever the list is written from something newer than a poll's
   /// read (a send, an unsend), so a poll already in flight is dropped rather
   /// than putting an unsent message's text back.
@@ -133,6 +160,9 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
   void initState() {
     super.initState();
     _partnerName = widget.partnerName;
+    _conversationId = widget.conversationId;
+    _muted = widget.initialMuted ?? false;
+    _archived = widget.initialArchived ?? false;
     WidgetsBinding.instance.addObserver(this);
     _composer.addListener(_onComposerChanged);
     if (widget.api.userId == null) return;
@@ -266,6 +296,9 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
         _messages = page.messages;
         _hasMore = page.hasMore;
         _loading = false;
+        if (_messages.isNotEmpty) {
+          _conversationId ??= _messages.last.conversationId;
+        }
       });
     } catch (e) {
       if (!mounted) return;
@@ -275,7 +308,124 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
       });
       return;
     }
+    if (widget.initialMuted == null) _loadConversationState();
     await _markReadIfUnread();
+  }
+
+  /// A thread opened from outside the inbox reads the viewer's mute and
+  /// archive state. A failure leaves both off; the menu still works.
+  Future<void> _loadConversationState() async {
+    final id = _conversationId;
+    if (id == null) return;
+    try {
+      final state = await widget.api.fetchDmConversationState(id);
+      if (!mounted || state == null || _conversationBusy) return;
+      final newest = _messages.isEmpty ? null : _messages.last.createdAt;
+      final archivedAt = state.archivedAt;
+      setState(() {
+        _muted = state.muted;
+        _archived = archivedAt != null &&
+            (newest == null || !archivedAt.isBefore(newest));
+      });
+    } catch (e) {
+      debugPrint(
+          'message thread conversation state read failed: ${safeErrorLabel(e)}');
+    }
+  }
+
+  Future<void> _toggleMuted() async {
+    final id = _conversationId;
+    if (id == null || _conversationBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final next = !_muted;
+    setState(() => _conversationBusy = true);
+    try {
+      await widget.api.setDmConversationMuted(id, muted: next);
+      if (!mounted) return;
+      setState(() => _muted = next);
+      if (next) showTopBanner(context, l10n.messagesMutedToast);
+    } catch (e) {
+      debugPrint('message thread mute failed: ${safeErrorLabel(e)}');
+      if (mounted) {
+        showTopBanner(context,
+            l10n.messagesConversationActionFailed(friendlyError(l10n, e)));
+      }
+    } finally {
+      if (mounted) setState(() => _conversationBusy = false);
+    }
+  }
+
+  Future<void> _toggleArchived() async {
+    final id = _conversationId;
+    if (id == null || _conversationBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final next = !_archived;
+    setState(() => _conversationBusy = true);
+    try {
+      await widget.api.setDmConversationArchived(id, archived: next);
+      if (!mounted) return;
+      setState(() => _archived = next);
+      if (next) showTopBanner(context, l10n.messagesArchivedToast);
+    } catch (e) {
+      debugPrint('message thread archive failed: ${safeErrorLabel(e)}');
+      if (mounted) {
+        showTopBanner(context,
+            l10n.messagesConversationActionFailed(friendlyError(l10n, e)));
+      }
+    } finally {
+      if (mounted) setState(() => _conversationBusy = false);
+    }
+  }
+
+  /// Delete-for-me is honestly undoable — nothing reaches the server until
+  /// the window closes — so it takes the undo bar and no confirm
+  /// (conventions.md § Destructive actions). The inbox under this screen
+  /// leaves the conversation out until then ([DmPendingHides]).
+  void _deleteConversation() {
+    final id = _conversationId;
+    if (id == null || _deleted) return;
+    final l10n = AppLocalizations.of(context);
+    final api = widget.api;
+    final hides = DmPendingHides.instance;
+    hides.add(id);
+    setState(() => _deleted = true);
+    deferDestructive(
+      context,
+      DeferredDestruction(
+        message: l10n.messagesConversationDeleted,
+        commit: () async {
+          try {
+            await api.hideDmConversation(id);
+          } finally {
+            hides.remove(id);
+          }
+        },
+        restore: () {
+          hides.remove(id);
+          if (!mounted) return;
+          setState(() => _deleted = false);
+        },
+        onCommitError: (e) {
+          debugPrint('message thread delete failed: ${safeErrorLabel(e)}');
+          if (!mounted) return;
+          showTopBanner(context,
+              l10n.messagesConversationActionFailed(friendlyError(l10n, e)));
+        },
+      ),
+    );
+  }
+
+  void _onMenu(String action) {
+    switch (action) {
+      case 'mute':
+        _toggleMuted();
+      case 'archive':
+        _toggleArchived();
+      case 'delete':
+        _deleteConversation();
+      case 'block':
+        _toggleBlock();
+    }
   }
 
   /// Re-read the newest page and merge it in by id. Skipped while the first
@@ -562,27 +712,69 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
               icon: const Icon(Icons.person_outline),
               onPressed: _openProfile,
             ),
-          if (signedIn && widget.partnerId != null)
+          if (signedIn &&
+              !_deleted &&
+              (widget.partnerId != null || _conversationId != null))
             PopupMenuButton<String>(
               key: const ValueKey('message-thread-more'),
               tooltip: l10n.commonMore,
-              onSelected: (_) => _toggleBlock(),
+              onSelected: _onMenu,
               itemBuilder: (context) => [
-                PopupMenuItem(
-                  key: const ValueKey('message-thread-block'),
-                  value: 'block',
-                  enabled: !_blockBusy,
-                  child: ListTile(
-                    leading: Icon(
-                      Icons.block,
-                      color: Theme.of(context).colorScheme.error,
+                if (_conversationId != null && widget.partnerId != null)
+                  PopupMenuItem(
+                    key: const ValueKey('message-thread-mute'),
+                    value: 'mute',
+                    enabled: !_conversationBusy,
+                    child: ListTile(
+                      leading: Icon(_muted
+                          ? Icons.notifications_outlined
+                          : Icons.notifications_off_outlined),
+                      title: Text(
+                          _muted ? l10n.messagesUnmute : l10n.messagesMute),
+                      contentPadding: EdgeInsets.zero,
                     ),
-                    title: Text(
-                      _blocked ? l10n.messagesUnblock : l10n.messagesBlock,
-                    ),
-                    contentPadding: EdgeInsets.zero,
                   ),
-                ),
+                if (_conversationId != null)
+                  PopupMenuItem(
+                    key: const ValueKey('message-thread-archive'),
+                    value: 'archive',
+                    enabled: !_conversationBusy,
+                    child: ListTile(
+                      leading: Icon(_archived
+                          ? Icons.unarchive_outlined
+                          : Icons.archive_outlined),
+                      title: Text(_archived
+                          ? l10n.messagesUnarchive
+                          : l10n.messagesArchive),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                if (_conversationId != null)
+                  PopupMenuItem(
+                    key: const ValueKey('message-thread-delete'),
+                    value: 'delete',
+                    child: ListTile(
+                      leading: const Icon(Icons.delete_outline),
+                      title: Text(l10n.messagesDeleteConversation),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                if (widget.partnerId != null)
+                  PopupMenuItem(
+                    key: const ValueKey('message-thread-block'),
+                    value: 'block',
+                    enabled: !_blockBusy,
+                    child: ListTile(
+                      leading: Icon(
+                        Icons.block,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      title: Text(
+                        _blocked ? l10n.messagesUnblock : l10n.messagesBlock,
+                      ),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
               ],
             ),
         ],
@@ -591,8 +783,17 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
           ? SignInRequiredState(api: widget.api)
           : Column(
               children: [
-                Expanded(child: _body(l10n)),
-                if (_loadError == null && !_loading)
+                Expanded(
+                  child: _deleted
+                      ? EmptyState(
+                          key: const ValueKey('message-thread-deleted'),
+                          icon: Icons.delete_outline,
+                          title: l10n.messagesConversationDeleted,
+                          body: l10n.messagesConversationDeletedNotice,
+                        )
+                      : _body(l10n),
+                ),
+                if (_loadError == null && !_loading && !_deleted)
                   widget.partnerId == null
                       ? _closedBar(l10n.messagesDeletedAccountClosed)
                       : _blocked

@@ -215,9 +215,12 @@ comment on function public.enqueue_route_photo_orphan_sweep() is
 -- at commit, and it is rolled back with the block whose insert it records.
 --
 -- The enqueue is auxiliary to the delete it rides on (conventions.md §
--- Layered resilience): any error in it is caught, reported as a warning that
+-- Layered resilience): an error in it is caught, reported as a warning that
 -- names no path or user, and the delete commits. The bytes are then left to
--- the nightly backstop, which finds every unreferenced object anyway.
+-- the nightly backstop, which finds every unreferenced object anyway. A
+-- class 40 error (serialization failure, deadlock) is the exception: the
+-- whole transaction is meant to be retried, and committing the delete without
+-- its enqueue would turn a retry that succeeds into a night's delay.
 --
 -- The payload holds `{owner}/{photo}` paths, the same identifiers
 -- route_photo_process payloads already carry, and `purge-stale-jobs` drops
@@ -290,8 +293,11 @@ begin
 
       v_paths := v_paths[v_take + 1:];
     end loop;
-  exception when others then
-    raise warning 'route_photo_orphan_sweep: prompt enqueue failed (%), the nightly backstop will erase these objects', sqlstate;
+  exception
+    when transaction_rollback then
+      raise;
+    when others then
+      raise warning 'route_photo_orphan_sweep: prompt enqueue failed (%), the nightly backstop will erase these objects', sqlstate;
   end;
   return null;
 end;

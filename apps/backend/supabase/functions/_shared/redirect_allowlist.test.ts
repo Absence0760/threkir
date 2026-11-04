@@ -173,7 +173,11 @@ Deno.test('strava-import still fails closed on an unset allowlist', () => {
   const empty = STRAVA_SRC.indexOf('allowed.length === 0');
   const gate = STRAVA_SRC.indexOf('isExactRedirectAllowed(redirectUri, allowed)');
   assert(empty !== -1, 'the empty-allowlist 503 branch is gone — a missed `supabase secrets set` would allow any redirect');
-  assert(STRAVA_SRC.includes("error: 'strava_not_configured'"), '503 strava_not_configured must be the empty-allowlist answer');
+  // `connectRefusal` builds the `{ error: code }` body (strava-import/connect_errors.ts).
+  assert(
+    STRAVA_SRC.includes("connectRefusal('strava_not_configured', 503)"),
+    '503 strava_not_configured must be the empty-allowlist answer',
+  );
   assert(empty < gate, 'the empty-allowlist check must precede the comparison');
 });
 

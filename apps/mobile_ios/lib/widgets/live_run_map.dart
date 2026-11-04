@@ -311,6 +311,40 @@ Color mapOverlayOutline({required bool darkBasemap}) =>
 Color mapTrackLine({required bool darkBasemap}) =>
     darkBasemap ? const Color(0xFFF08A5D) : const Color(0xFFA33D1A);
 
+/// A planned course drawn under a live recording, so the coral track laid
+/// over it reads as the distance done and this line as the way ahead. Web's
+/// `mapHintLine` rungs: 6.7:1 on the dark land sample, 6.6:1 on the light
+/// one and 4.8:1 over light water.
+Color mapCourseGuideLine({required bool darkBasemap}) =>
+    darkBasemap ? const Color(0xFF94A3B8) : const Color(0xFF475569);
+
+/// Dark casing under every solid map line, wider than the line so a 1.5 px
+/// edge shows either side and holds it apart from the raster's road
+/// strokes, which are baked into the tile and cannot be drawn under it.
+const Color mapLineCasing = Color(0x8C0B0A14);
+const double mapLineCasingWidth = 8;
+const double mapLineWidth = 5;
+
+/// [points] as one opaque line over its casing, round-capped and
+/// round-joined so a hairpin does not spike.
+@visibleForTesting
+List<Polyline> solidMapLine(List<LatLng> points, Color color) => [
+      Polyline(
+        points: points,
+        strokeWidth: mapLineCasingWidth,
+        color: mapLineCasing,
+        strokeCap: StrokeCap.round,
+        strokeJoin: StrokeJoin.round,
+      ),
+      Polyline(
+        points: points,
+        strokeWidth: mapLineWidth,
+        color: color,
+        strokeCap: StrokeCap.round,
+        strokeJoin: StrokeJoin.round,
+      ),
+    ];
+
 /// Amber accent for the map's transient overlays — the selected-segment
 /// highlight, the coarse last-seen ring, and the elevation-chart hover dot.
 ///
@@ -833,27 +867,10 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
     final pace = widget.colourByPace
         ? _paceGradientFor(widget.track, rendered)
         : const <Polyline>[];
+    final solid = solidMapLine(rendered, mapTrackLine(darkBasemap: darkBasemap));
     return [
-      PolylineLayer(
-        polylines: [
-          Polyline(
-            points: rendered,
-            strokeWidth: 8,
-            color: const Color(0xFF0B0A14).withValues(alpha: 0.55),
-          ),
-        ],
-      ),
-      PolylineLayer(
-        polylines: pace.isNotEmpty
-            ? pace
-            : [
-                Polyline(
-                  points: rendered,
-                  strokeWidth: 5,
-                  color: mapTrackLine(darkBasemap: darkBasemap),
-                ),
-              ],
-      ),
+      PolylineLayer(polylines: [solid.first]),
+      PolylineLayer(polylines: pace.isNotEmpty ? pace : [solid.last]),
     ];
   }
 
@@ -1164,16 +1181,18 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
               maxZoom: 22,
             ),
 
-            // Planned route (underneath) — dashed-looking with lighter color
+            // On a detail surface the route is the subject and takes the
+            // track's coral; under a live recording it is the guide the
+            // coral track is laid over.
             if (plannedLatLngs.length >= 2)
               PolylineLayer(
-                polylines: [
-                  Polyline(
-                    points: plannedLatLngs,
-                    strokeWidth: 6,
-                    color: const Color(0x80A78BFA), // Translucent violet
-                  ),
-                ],
+                key: const ValueKey('planned-route'),
+                polylines: solidMapLine(
+                  plannedLatLngs,
+                  widget.followRunner
+                      ? mapCourseGuideLine(darkBasemap: darkBasemap)
+                      : mapTrackLine(darkBasemap: darkBasemap),
+                ),
               ),
 
             // Recorded track — Nike-Run-Club-style glowing line.

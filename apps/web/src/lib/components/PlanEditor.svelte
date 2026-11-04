@@ -64,6 +64,7 @@
 	import { fmtKm, fmtPace, getUnit } from '#lib/format/units.svelte.ts';
 	import { paceFieldFromSecPerKm, secPerKmFromPaceField } from '#lib/format/pace_format.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
@@ -599,7 +600,9 @@
 	}
 
 	function describeError(e: unknown): string {
-		return thrownMessage(e) || t('planEditor.errorCreateFailed');
+		return t('planEditor.errorCreateFailed', {
+			error: errorCopy(e, t, 'planEditor.errorCreateFailed'),
+		});
 	}
 
 	// A brand-new runner ticking the walk-run box is not training for a half
@@ -909,7 +912,6 @@
 			else oncreated?.(outcome.value);
 		} catch (e: unknown) {
 			error = describeError(e);
-			console.error('Plan create failed', e);
 		} finally {
 			busy = false;
 		}

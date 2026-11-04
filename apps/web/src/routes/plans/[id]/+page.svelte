@@ -137,6 +137,7 @@
 	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
 	import { fmtOverrun } from '#lib/format/overrun.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { loadSettings, effective } from '#lib/settings/settings.ts';
 	import type { WeekStart } from '#lib/format/calendar.ts';
 	import type { TrainingPlan, PlanWeek, PlanWorkout, ClubWithMeta } from '#lib/types.ts';
@@ -396,7 +397,7 @@
 		try {
 			others = await fetchMyActivePlanWindows();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
 			return;
 		}
 		const impact = planShiftImpact(plan, others, shiftDays);
@@ -460,7 +461,7 @@
 			try {
 				others = await fetchMyActivePlanWindows();
 			} catch (e) {
-				showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
 				return;
 			}
 			const blocking = overlappingPlans(
@@ -519,7 +520,7 @@
 			try {
 				others = await fetchMyActivePlanWindows();
 			} catch (e) {
-				showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
 				return;
 			}
 			const blocking = overlappingPlans(
@@ -595,7 +596,7 @@
 		showToast(
 			isPlanOverlapError(e)
 				? m('planDetail.planOverlap')
-				: m('planDetail.bulkFailed', { error: thrownMessage(e) }),
+				: m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }),
 			'error',
 		);
 	}
@@ -676,7 +677,7 @@
 			taperPreview = null;
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
 			await load();
 		} finally {
 			bulkBusy = false;
@@ -871,7 +872,7 @@
 			showToast(m('planDetail.recoveryDone'));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
 			await load();
 		} finally {
 			bulkBusy = false;
@@ -926,7 +927,7 @@
 			showToast(m('planDetail.cycleAdjustDone'));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
 			await load();
 		} finally {
 			bulkBusy = false;
@@ -942,7 +943,7 @@
 			showToast(m('planDetail.pauseDone'));
 			await load();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
 		} finally {
 			bulkBusy = false;
 		}
@@ -964,7 +965,7 @@
 			if (e instanceof ActivePlanExistsError || isPlanOverlapError(e)) {
 				showToast(m('planDetail.resumeBlocked'), 'error');
 			} else {
-				showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
 			}
 		} finally {
 			bulkBusy = false;
@@ -987,7 +988,7 @@
 		try {
 			await updatePlanStatus(plan.id, 'abandoned');
 		} catch (e) {
-			showToast(m('plansPage.actionFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('plansPage.actionFailed', { error: errorCopy(e, m, 'plansPage.actionFailed') }), 'error');
 			return;
 		}
 		abandonOpen = false;
@@ -1165,8 +1166,8 @@
 		} catch (e) {
 			showToast(
 				answers
-					? m('missedPrompt.saveFailed', { error: thrownMessage(e) })
-					: m('planDetail.bulkFailed', { error: thrownMessage(e) }),
+					? m('missedPrompt.saveFailed', { error: errorCopy(e, m, 'missedPrompt.saveFailed') })
+					: m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }),
 				'error'
 			);
 			await load();
@@ -1420,7 +1421,7 @@
 			publishedTemplate = { ...plan, id: newId, is_public_template: true };
 			showToast(m('planDetail.publishLibrarySuccess'));
 		} catch (e) {
-			showToast(m('planDetail.publishLibraryFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planDetail.publishLibraryFailed', { error: errorCopy(e, m, 'planDetail.publishLibraryFailed') }), 'error');
 		} finally {
 			libraryBusy = false;
 		}
@@ -1440,7 +1441,7 @@
 			unpublishOpen = false;
 			showToast(m('planDetail.unpublishLibrarySuccess'));
 		} catch (e) {
-			showToast(m('planDetail.unpublishLibraryFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planDetail.unpublishLibraryFailed', { error: errorCopy(e, m, 'planDetail.unpublishLibraryFailed') }), 'error');
 		} finally {
 			libraryBusy = false;
 		}
@@ -1457,7 +1458,7 @@
 			// No reload needed — the source plan stayed put. The new
 			// template lives on the club's Templates tab.
 		} catch (e) {
-			showToast(m('planDetail.publishFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planDetail.publishFailed', { error: errorCopy(e, m, 'planDetail.publishFailed') }), 'error');
 		} finally {
 			publishingBusy = false;
 		}
@@ -1528,7 +1529,7 @@
 					? m('planDetail.restartRaceAheadError')
 					: isPlanRestartBeforeTodayError(e)
 						? m('planDetail.restartBeforeTodayError')
-						: m('planDetail.bulkFailed', { error: thrownMessage(e) }),
+						: m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }),
 				'error'
 			);
 		} finally {

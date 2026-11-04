@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { isEntityId } from '#lib/core/entity_id.ts';
@@ -32,6 +31,7 @@
 	import { PRIMARY_GOAL_VALUES, planPresetForGoal, type PrimaryGoal } from '#lib/settings/onboarding.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import type { TrainingPlan } from '#lib/types.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 
@@ -322,7 +322,7 @@
 				showToast(m('plansNew.toastCreated'));
 				goto(`/plans/${outcome.value}`);
 			} catch (e) {
-				showToast(m('plansNew.toastCloneFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('plansNew.toastCloneFailed', { error: errorCopy(e, m, 'plansNew.toastCloneFailed') }), 'error');
 			} finally {
 				cloning = false;
 			}
@@ -393,7 +393,7 @@
 				goto(`/plans/${outcome.value.id}`);
 			} catch (e) {
 				showToast(
-					m('plansNew.toastCreateFailed', { error: thrownMessage(e) }),
+					m('plansNew.toastCreateFailed', { error: errorCopy(e, m, 'plansNew.toastCreateFailed') }),
 					'error'
 				);
 			} finally {

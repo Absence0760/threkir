@@ -15,6 +15,7 @@
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { fmtKm } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import {
 		applyPlanEditOps,
@@ -191,7 +192,7 @@
 			result = null;
 			await onapplied();
 		} catch (e) {
-			showToast(m('planDetail.bulkFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planDetail.bulkFailed', { error: errorCopy(e, m, 'planDetail.bulkFailed') }), 'error');
 		} finally {
 			saving = false;
 		}

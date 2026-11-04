@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { reschedulePlanAfterBreak } from '#lib/core/data.ts';
 	import { PLAN_BREAK_DISMISSED_KEY } from '#lib/core/plan_break_context.ts';
 	import type { BreakContext } from '#lib/training/plan_break_state.ts';
-	import { isPlanOverlapError, thrownMessage } from '#lib/core/supabase_error.ts';
+	import { isPlanOverlapError } from '#lib/core/supabase_error.ts';
 	import { formatDate } from '#lib/format/time.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -91,7 +92,7 @@
 			showToast(
 				isPlanOverlapError(e)
 					? m('planDetail.planOverlap')
-					: m('planBreak.failed', { error: thrownMessage(e) }),
+					: m('planBreak.failed', { error: errorCopy(e, m, 'planBreak.failed') }),
 				'error'
 			);
 		} finally {
@@ -107,7 +108,7 @@
 			await updateUniversal(uid, { [PLAN_BREAK_DISMISSED_KEY]: answer });
 			onanswered(answer);
 		} catch (e) {
-			showToast(m('planBreak.dismissFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planBreak.dismissFailed', { error: errorCopy(e, m, 'planBreak.dismissFailed') }), 'error');
 		} finally {
 			busy = false;
 		}

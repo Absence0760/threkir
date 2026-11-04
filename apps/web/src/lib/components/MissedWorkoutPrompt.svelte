@@ -46,6 +46,7 @@
 
 <script lang="ts">
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { answerMissedWorkouts } from '#lib/core/data.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
@@ -126,7 +127,7 @@
 			answered = new Set([...answered, p.workoutId]);
 			showToast(m('missedPrompt.letGoDone'));
 		} catch (e) {
-			showToast(m('missedPrompt.saveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('missedPrompt.saveFailed', { error: errorCopy(e, m, 'missedPrompt.saveFailed') }), 'error');
 		} finally {
 			busy = false;
 		}

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { formatDuration } from '#lib/format/time.ts';
@@ -13,6 +12,7 @@
 		createTrainingPlan
 	} from '#lib/core/data.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { formatDistance } from '#lib/format/units.svelte.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
@@ -245,7 +245,7 @@
 			});
 			goto(`/plans/${plan.id}`);
 		} catch (e) {
-			showToast(m('plansNew.toastCreateFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('plansNew.toastCreateFailed', { error: errorCopy(e, m, 'plansNew.toastCreateFailed') }), 'error');
 			creatingStarterId = null;
 		}
 	}
@@ -274,7 +274,7 @@
 			// Keep the dialog open so the user can retry or cancel — the
 			// plan still exists, so silently closing would be a lie.
 			showToast(
-				m('plansPage.actionFailed', { error: thrownMessage(e) }),
+				m('plansPage.actionFailed', { error: errorCopy(e, m, 'plansPage.actionFailed') }),
 				'error'
 			);
 			return;

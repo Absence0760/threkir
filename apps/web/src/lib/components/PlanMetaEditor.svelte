@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { untrack } from 'svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { RACE_GOAL_MAX_HOURS } from '#lib/training/plan_races.ts';
@@ -9,6 +8,7 @@
 	import { vdotFromRace } from '#lib/training/training.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import type { PlanWorkout, TrainingPlan } from '#lib/types.ts';
 
 	interface Props {
@@ -97,7 +97,7 @@
 			);
 			onSaved();
 		} catch (e: any) {
-			error = m('planMeta.saveFailed', { error: thrownMessage(e) });
+			error = m('planMeta.saveFailed', { error: errorCopy(e, m, 'planMeta.saveFailed') });
 		} finally {
 			saving = false;
 		}

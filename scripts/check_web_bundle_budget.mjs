@@ -257,6 +257,13 @@
 // overlay +8, PR cards +2, share-link attribution and its Settings page +6.
 // Route-level code again, no dependency added; the largest code chunk is
 // still 288 KB. Same 6 KB of cover (decisions § 2265).
+// Raised to 2465 for the ad hoc rounds in PR #1280, measured in CI at 2459 KB
+// (547 files) on the branch's first ready-for-review run, against the 2444 the
+// last ceiling was set from. Route-level code again: route delete impact, the
+// course-climbs and route-describe panels, DM conversations, the share-image
+// mark switch and distance-marker thinning. No web dependency changed and the
+// largest code chunk is 289 KB, as on main. Same 6 KB of cover (decisions
+// § 2335).
 // MAX_LARGEST_CHUNK_KB stays 350, unchanged: 245 KB * the 33% headroom that
 // number was always justified by is 326, so the existing figure still states
 // the rule. What changed is the population it measures, not the ceiling.
@@ -291,7 +298,7 @@ export const CLIENT_MANIFEST = join(
 );
 export const LOCALES_DIR = join(WEB_DIR, 'src', 'lib', 'i18n', 'locales');
 
-export const MAX_CODE_KB = 2450;
+export const MAX_CODE_KB = 2465;
 export const MAX_CORE_CATALOGUE_KB = 13;
 export const MAX_AREA_CATALOGUE_KB = 14;
 export const MAX_LARGEST_CHUNK_KB = 350;

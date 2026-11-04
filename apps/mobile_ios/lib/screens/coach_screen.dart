@@ -12,9 +12,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
         AppSemanticColors,
-        ActivityLoaderKind,
-        FullBodyLoader,
         ListSkeleton,
+        SkeletonBlock,
         reduceMotion,
         syncMotionLoop;
 
@@ -1176,9 +1175,22 @@ class _CoachScreenState extends State<CoachScreen> {
     if (!_consentChecked) {
       return Scaffold(
         appBar: AppBar(title: Text(l10n.coachTitle)),
-        body: FullBodyLoader(
-          kind: ActivityLoaderKind.run,
-          label: l10n.commonLoading,
+        body: Column(
+          key: const ValueKey('coach-consent-skeleton'),
+          children: [
+            Expanded(
+              child: ListSkeleton(
+                label: l10n.commonLoading,
+                rows: 4,
+                rowHeight: 72,
+                hasLeading: false,
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: SkeletonBlock(height: 56, radius: 28),
+            ),
+          ],
         ),
       );
     }

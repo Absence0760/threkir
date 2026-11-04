@@ -813,9 +813,11 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
 
   Widget _body(AppLocalizations l10n) {
     if (_loading) {
-      return FullBodyLoader(
-        kind: ActivityLoaderKind.run,
+      return ListSkeleton(
         label: l10n.commonLoading,
+        rows: 6,
+        rowHeight: 52,
+        hasLeading: false,
       );
     }
     if (_loadError != null) {

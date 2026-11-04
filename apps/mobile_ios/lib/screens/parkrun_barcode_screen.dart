@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ActivityLoaderKind, FullBodyLoader;
+import 'package:ui_kit/ui_kit.dart' show SkeletonBlock;
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../column_limits.dart';
@@ -161,9 +161,14 @@ class _ParkrunBarcodeScreenState extends State<ParkrunBarcodeScreen>
     final Widget content;
     switch (load.kind) {
       case ParkrunBarcodeLoadKind.loading:
-        content = FullBodyLoader(
-          kind: ActivityLoaderKind.run,
-          label: l10n.commonLoading,
+        content = ListView(
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          children: [
+            const SkeletonBlock(height: 20, radius: 4),
+            const SizedBox(height: 24),
+            SkeletonBlock(height: 140, label: l10n.commonLoading),
+          ],
         );
       case ParkrunBarcodeLoadKind.unavailable:
         content = _message(

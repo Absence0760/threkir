@@ -6,11 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
-        ActivityLoaderKind,
         AppSemanticColors,
         ChartCardHeader,
-        FullBodyLoader,
-        ProgressBar;
+        ProgressBar,
+        SkeletonBlock;
 
 import '../activity_type_labels.dart';
 import '../backend_timeout.dart';
@@ -1672,11 +1671,12 @@ class _DashboardScreenState extends State<DashboardScreen>
         children: [
           actionToolbar,
           pendingBanner,
-          const SizedBox(height: 48),
-          FullBodyLoader(
-            kind: ActivityLoaderKind.run,
-            label: l10n.commonLoading,
-          ),
+          const SizedBox(height: 8),
+          SkeletonBlock(height: 120, label: l10n.commonLoading),
+          const SizedBox(height: 12),
+          const SkeletonBlock(height: 96),
+          const SizedBox(height: 12),
+          const SkeletonBlock(height: 180),
         ],
       );
     } else if (!hasLocalHistory) {

@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:ui_kit/ui_kit.dart' show FullBodyLoader, ListSkeleton;
+import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
 import '../lib/ai_disclosure.dart';
 import '../lib/ai_disclosure_memo.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -372,7 +372,7 @@ void main() {
         'coach_consent_at': '2026-01-01T00:00:00Z',
       });
       await _pump(tester, api: api);
-      expect(find.byType(FullBodyLoader), findsNothing);
+      expect(find.byKey(const ValueKey('coach-consent-skeleton')), findsNothing);
       expect(find.text("Before you use Threkir's AI features"), findsNothing);
       expect(find.byType(ListSkeleton), findsOneWidget,
           reason: 'the chat surface is up, waiting on its thread');
@@ -388,7 +388,7 @@ void main() {
         'coach_consent_at': '2026-01-01T00:00:00Z',
       });
       await _pump(tester, api: first);
-      expect(find.byType(FullBodyLoader), findsOneWidget);
+      expect(find.byKey(const ValueKey('coach-consent-skeleton')), findsOneWidget);
       first.release.complete();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
@@ -400,7 +400,7 @@ void main() {
 
       final second = _SlowConsentApi();
       await _pump(tester, api: second);
-      expect(find.byType(FullBodyLoader), findsNothing);
+      expect(find.byKey(const ValueKey('coach-consent-skeleton')), findsNothing);
       expect(find.text("Before you use Threkir's AI features"), findsNothing);
       second.release.complete();
       await tester.pump();
@@ -411,7 +411,7 @@ void main() {
         (tester) async {
       final api = _SlowConsentApi();
       await _pump(tester, api: api);
-      expect(find.byType(FullBodyLoader), findsOneWidget);
+      expect(find.byKey(const ValueKey('coach-consent-skeleton')), findsOneWidget);
       api.release.complete();
       await tester.pump();
       await _drain(tester);
@@ -422,7 +422,7 @@ void main() {
       AiDisclosureMemo.remember('another-user', granted);
       final api = _SlowConsentApi();
       await _pump(tester, api: api);
-      expect(find.byType(FullBodyLoader), findsOneWidget);
+      expect(find.byKey(const ValueKey('coach-consent-skeleton')), findsOneWidget);
       api.release.complete();
       await tester.pump();
       await _drain(tester);

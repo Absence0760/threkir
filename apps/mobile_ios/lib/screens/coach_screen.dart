@@ -1606,17 +1606,13 @@ class _CoachScreenState extends State<CoachScreen> {
     );
   }
 
-  Future<void> _openRaces() async {
-    try {
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) =>
-              RacesScreen(service: widget.raceService ?? RaceService()),
-        ),
-      );
-    } catch (e) {
-      debugPrint('coach_screen: opening races failed: $e');
-    }
+  void _openRaces() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            RacesScreen(service: widget.raceService ?? RaceService()),
+      ),
+    );
   }
 
   Widget _chip(ColorScheme cs,

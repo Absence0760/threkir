@@ -127,7 +127,11 @@ insert into write_lockdown_registry (role, tbl, verb, col, reason) values
   ('authenticated', 'direct_messages', 'INSERT', 'created_at',          'defaults to now(); a client-set value backdates a message into a thread'),
   ('authenticated', 'direct_messages', 'INSERT', 'read_at',             'a message is not read when it is sent; a pre-read send hides it from the unread badge'),
   ('authenticated', 'direct_messages', 'INSERT', 'unsent_at',           'a message is not unsent when it is sent; unsending is the RPC'),
-  ('authenticated', 'direct_messages', 'INSERT', 'deleted_partner_key', 'exists only once the recipient has deleted their account');
+  ('authenticated', 'direct_messages', 'INSERT', 'deleted_partner_key', 'exists only once the recipient has deleted their account'),
+  -- 20271105000001 (issue #1216): the direct_messages_set_conversation trigger
+  -- assigns the pair's conversation on insert.
+  ('authenticated', 'direct_messages', 'UPDATE', 'conversation_id',     'moving a message into another conversation re-delivers it to that conversation''s participants'),
+  ('authenticated', 'direct_messages', 'INSERT', 'conversation_id',     'set by the direct_messages_set_conversation trigger; a client-chosen one would post into a conversation the sender is not in');
 
 -- Columns a client may set once, at row creation, and never change. Each needs
 -- a reason why write-once is safe — this is the register assertion (5) reads.

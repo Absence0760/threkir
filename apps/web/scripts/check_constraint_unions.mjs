@@ -122,6 +122,11 @@ export const PAIRS = [
 		note: 'server-side quota bookkeeping; the two values are written by SQL and never named by a client.',
 	},
 	{
+		tableColumn: 'conversations.kind',
+		clients: [],
+		note: 'only direct exists (migration 20271105000001); written by the direct_messages_set_conversation trigger and never named by a client.',
+	},
+	{
 		tableColumn: 'challenges.activity_type',
 		clients: [
 			{ file: TS_TYPES, decl: 'ActivityType', shape: 'union' },

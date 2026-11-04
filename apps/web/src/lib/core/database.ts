@@ -2,7 +2,7 @@
 ///
 /// `database.types.ts` is generated and committed, and CI's `gen:types:check`
 /// compares it byte-for-byte with a fresh generator run — so it cannot be
-/// hand-corrected. This module states the one correction the generator's
+/// hand-corrected. This module states the corrections the generator's
 /// output needs, once, and both clients take it.
 ///
 /// `supabase gen types` emits every function parameter as its bare postgres
@@ -56,9 +56,27 @@ type WithComputedFields<Tables> = {
 		: Tables[T];
 };
 
+/// The third correction: NOT NULL columns a BEFORE INSERT trigger fills in.
+///
+/// The generator makes a NOT NULL column with no SQL default required on
+/// `Insert`, because it cannot see a trigger. `direct_messages.conversation_id`
+/// (migration 20271105000001) is assigned by `direct_messages_set_conversation`
+/// and carries no client INSERT grant, so a send that named it would be refused;
+/// the insert shape has to leave it out.
+type TriggerAssigned = { direct_messages: 'conversation_id' };
+type WithTriggerAssigned<Tables> = {
+	[T in keyof Tables]: T extends keyof TriggerAssigned
+		? Tables[T] extends { Insert: infer I }
+			? Omit<Tables[T], 'Insert'> & {
+					Insert: Omit<I, TriggerAssigned[T]> & Partial<Pick<I, TriggerAssigned[T] & keyof I>>;
+				}
+			: Tables[T]
+		: Tables[T];
+};
+
 export type AppDatabase = Omit<Database, 'public'> & {
 	public: Omit<Database['public'], 'Functions' | 'Tables'> & {
-		Tables: WithComputedFields<Database['public']['Tables']>;
+		Tables: WithComputedFields<WithTriggerAssigned<Database['public']['Tables']>>;
 		Functions: WithNullableArgs<Database['public']['Functions']>;
 	};
 };
@@ -72,7 +90,7 @@ export type AppDatabase = Omit<Database, 'public'> & {
 /// query will actually send, which is the whole reason the client carries the
 /// generated schema at all.
 export type Insertable<T extends keyof Database['public']['Tables']> =
-	Database['public']['Tables'][T]['Insert'];
+	AppDatabase['public']['Tables'][T]['Insert'];
 export type Updatable<T extends keyof Database['public']['Tables']> =
 	Database['public']['Tables'][T]['Update'];
 

@@ -13,6 +13,7 @@
 import JSZip from 'jszip';
 import type { TrackPoint } from '../types';
 import { haversineMetres } from '../runs/run_stats';
+import { AppError } from '../core/app_error';
 
 export interface ImportedRoute {
 	name: string;
@@ -53,7 +54,9 @@ export async function parseRouteFile(file: File): Promise<ImportedRoute[]> {
 		return parseTcx(text);
 	}
 
-	throw new Error(`Unsupported file format: .${ext}. Use GPX, KML, KMZ, GeoJSON, or TCX.`);
+	throw new AppError('importRoute.unsupportedFormat', {
+		message: `Unsupported file format: .${ext}. Use GPX, KML, KMZ, GeoJSON, or TCX.`,
+	});
 }
 
 // --- TCX ---
@@ -112,7 +115,7 @@ function parseTcx(xml: string): ImportedRoute[] {
 	}
 
 	if (routes.length === 0) {
-		throw new Error('TCX file contains no track points');
+		throw new AppError('importRoute.noRouteInFile', { message: 'TCX file contains no track points' });
 	}
 
 	return routes;
@@ -156,7 +159,7 @@ function parseGpx(xml: string): ImportedRoute[] {
 	}
 
 	if (routes.length === 0) {
-		throw new Error('GPX file contains no track, route, or waypoints');
+		throw new AppError('importRoute.noRouteInFile', { message: 'GPX file contains no track, route, or waypoints' });
 	}
 
 	return routes;
@@ -281,7 +284,7 @@ function parseKml(xml: string): ImportedRoute[] {
 	}
 
 	if (routes.length === 0) {
-		throw new Error('KML file contains no line-based routes');
+		throw new AppError('importRoute.noRouteInFile', { message: 'KML file contains no line-based routes' });
 	}
 
 	return routes;
@@ -313,7 +316,7 @@ async function parseKmz(file: File): Promise<ImportedRoute[]> {
 	// Find the .kml file inside the archive
 	const kmlFile = Object.keys(zip.files).find((name) => name.endsWith('.kml'));
 	if (!kmlFile) {
-		throw new Error('KMZ archive does not contain a .kml file');
+		throw new AppError('importRoute.kmzNoKml', { message: 'KMZ archive does not contain a .kml file' });
 	}
 
 	const kmlText = await zip.files[kmlFile].async('text');
@@ -326,7 +329,7 @@ function parseGeoJson(text: string): ImportedRoute[] {
 	const geo = JSON.parse(text);
 	const routes: ImportedRoute[] = [];
 	if (!geo || typeof geo !== 'object') {
-		throw new Error('GeoJSON file contains no line-based routes');
+		throw new AppError('importRoute.noRouteInFile', { message: 'GeoJSON file contains no line-based routes' });
 	}
 	const defaultName = geoJsonName(geo.properties?.name, geoJsonName(geo.name, DEFAULT_ROUTE_NAME));
 
@@ -385,7 +388,7 @@ function parseGeoJson(text: string): ImportedRoute[] {
 	}
 
 	if (routes.length === 0) {
-		throw new Error('GeoJSON file contains no line-based routes');
+		throw new AppError('importRoute.noRouteInFile', { message: 'GeoJSON file contains no line-based routes' });
 	}
 
 	return routes;

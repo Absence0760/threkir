@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { activeFormatLocale } from '#lib/format/time.ts';
-	import { appErrorMessage } from '#lib/core/supabase_error.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { startVisiblePoll } from '#lib/core/visible_poll.ts';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
@@ -380,7 +379,7 @@
 			// refresh must not claim "send failed".
 			await messagesInbox.refreshThreads();
 		} catch (e) {
-			sendError = appErrorMessage(e) ?? tr('messages.sendFailed');
+			sendError = errorCopy(e, tr, 'messages.sendFailed', 'messages.sendFailed');
 		} finally {
 			sending = false;
 		}
@@ -396,7 +395,7 @@
 			localWrites++;
 			if (id === activeId) messages = mergeDmMessages(messages, [updated]);
 		} catch (e) {
-			actionError = appErrorMessage(e) ?? tr('messages.unsendFailed');
+			actionError = errorCopy(e, tr, 'messages.unsendFailed', 'messages.unsendFailed');
 		} finally {
 			unsendTarget = null;
 		}

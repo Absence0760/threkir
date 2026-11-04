@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { createClub, updateClub } from '#lib/core/data.ts';
-	import { appErrorMessage } from '#lib/core/supabase_error.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { geocodePlace } from '#lib/routes/geocoding.ts';
 	import type { Club, JoinPolicy } from '#lib/types.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -117,7 +117,7 @@
 			dirty.rebaseline();
 			oncreated?.(club);
 		} catch (e: unknown) {
-			showToast(appErrorMessage(e) ?? m('clubEditor.createFailed'), 'error');
+			showToast(errorCopy(e, m, 'clubEditor.createFailed', 'clubEditor.createFailed'), 'error');
 		} finally {
 			busy = false;
 		}

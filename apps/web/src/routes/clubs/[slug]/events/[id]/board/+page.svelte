@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { appErrorMessage, thrownMessage } from '#lib/core/supabase_error.ts';
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { page } from '$app/state';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -160,7 +161,7 @@
 			showToast(m('checkpoint.statusDnf'), 'success');
 			await load();
 		} catch (e) {
-			showToast(appErrorMessage(e) ?? m('checkpoint.markDnfFailed'), 'error');
+			showToast(errorCopy(e, m, 'checkpoint.markDnfFailed', 'checkpoint.markDnfFailed'), 'error');
 		} finally {
 			busy = null;
 		}
@@ -220,7 +221,7 @@
 			showToast(m('checkpoint.weighInSaved'), 'success');
 			await load();
 		} catch (e) {
-			showToast(appErrorMessage(e) ?? m('checkpoint.weighInFailed'), 'error');
+			showToast(errorCopy(e, m, 'checkpoint.weighInFailed', 'checkpoint.weighInFailed'), 'error');
 		} finally {
 			busy = null;
 		}

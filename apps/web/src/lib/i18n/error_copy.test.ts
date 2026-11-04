@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { errorCopy, errorCopyKey, loggableMessage, LOGGED_MESSAGE_MAX_CHARS } from './error_copy';
 import { DbError, PlanOverlapError } from '../core/supabase_error';
+import { AppError } from '../core/app_error';
 import { interpolate } from './interpolate';
 import { SUPPORTED_LOCALES } from './locale';
 import { CATALOGUE_LOADERS } from './catalogues';
@@ -179,6 +180,57 @@ test('a fallback key replaces only the generic line', async () => {
 	}
 });
 
+test('an AppError renders its own key and params, and its message stays in the log', async () => {
+	// Reason: `appErrorMessage(e) ?? m('copy')` showed an app-raised Error's
+	// text as it was, so a specific failure could only be specific in English.
+	// An AppError carries the catalogue key instead.
+	const { en, t } = await english();
+	const log = quiet();
+	try {
+		const err = new AppError('errorCopy.imageTooLarge', {
+			params: { mb: 10 },
+			message: 'Image too large (10 MB max)',
+		});
+		assert.equal(errorCopyKey(err), 'errorCopy.imageTooLarge');
+		const copy = errorCopy(err, t, 'photo upload failed', 'clubEvent.photoUploadFailed');
+		assert.equal(copy, interpolate(en['errorCopy.imageTooLarge'], { mb: 10 }));
+		assert.match(copy, /10 MB/);
+		assert.doesNotMatch(copy, /max\)/);
+		assert.match(JSON.stringify(log.logged), /Image too large/);
+		assert.equal(new AppError('importRoute.kmzNoKml').message, 'importRoute.kmzNoKml');
+	} finally {
+		log.restore();
+	}
+});
+
+test('an app-raised sentence or a fetch failure never reaches the copy as text', async () => {
+	// Reason: the follow-up this closes — `appErrorMessage(e) ?? m(...)` showed
+	// "TypeError: Failed to fetch" and the data layer's English to the reader.
+	const { en, t } = await english();
+	const log = quiet();
+	try {
+		const fallback = 'reportDialog.errorSubmitFailed' as const;
+		assert.equal(
+			errorCopy(new Error('You already have a pending report against this content.'), t, 'ctx', fallback),
+			en[fallback],
+		);
+		assert.equal(errorCopy(new Error('event_full'), t, 'ctx', fallback), en[fallback]);
+		assert.equal(errorCopy(new TypeError('Failed to fetch'), t, 'ctx', fallback), en['errorCopy.offline']);
+		assert.equal(errorCopy(new TypeError('Load failed'), t, 'ctx', fallback), en['errorCopy.offline']);
+		const relay = Object.assign(new Error('Failed to send a request to the Edge Function'), {
+			name: 'FunctionsFetchError',
+		});
+		assert.equal(errorCopyKey(relay), 'errorCopy.offline');
+		// A bug in our own code is not a network failure.
+		assert.equal(
+			errorCopy(new TypeError("Cannot read properties of undefined (reading 'id')"), t, 'ctx', fallback),
+			en[fallback],
+		);
+	} finally {
+		log.restore();
+	}
+});
+
 test('every errorCopy key is translated in every locale', async () => {
 	const keys = [
 		'errorCopy.offline',
@@ -193,6 +245,12 @@ test('every errorCopy key is translated in every locale', async () => {
 		'errorCopy.weakPassword',
 		'errorCopy.emailTaken',
 		'errorCopy.generic',
+		'errorCopy.imageTooLarge',
+		'errorCopy.imageType',
+		'importRoute.unsupportedFormat',
+		'importRoute.noRouteInFile',
+		'importRoute.kmzNoKml',
+		'reportDialog.errorAlreadyPending',
 	];
 	const { en } = await english();
 	for (const locale of SUPPORTED_LOCALES) {

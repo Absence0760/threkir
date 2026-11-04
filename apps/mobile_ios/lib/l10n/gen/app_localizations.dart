@@ -10813,7 +10813,7 @@ abstract class AppLocalizations {
   /// Public plan library
   ///
   /// In en, this message translates to:
-  /// **'Share a copy of this plan so anyone can clone it. Your fitness numbers are not shared.'**
+  /// **'Share this plan\'s weeks and sessions under your name for anyone to start. Your dates, paces, goal time and notes are left out.'**
   String get planDetailPublishLibraryHint;
 
   /// Public plan library
@@ -28783,6 +28783,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You deleted this conversation for yourself. The other person keeps their copy, and a new message brings it back.'**
   String get messagesConversationDeletedNotice;
+
+  /// Shown in the conversation pane once the viewer deleted a deleted account's conversation: no new message can arrive, and the daily purge erases what nobody can see
+  ///
+  /// In en, this message translates to:
+  /// **'You deleted this conversation. The other account no longer exists, so nothing brings it back, and the messages are erased within a day.'**
+  String get messagesConversationDeletedNoticeDeletedAccount;
 
   /// Error when muting, archiving or deleting a conversation failed
   ///

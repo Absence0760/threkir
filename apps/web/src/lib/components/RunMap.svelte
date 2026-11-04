@@ -103,14 +103,12 @@
 		/// Twin of the `previewPosition` prop on Flutter's
 		/// `LiveRunMap`. Null = no marker.
 		previewLngLat?: [number, number] | null;
-		/// When `true`, the component will NOT instantiate maplibregl
-		/// until the user explicitly accepts loading the map. Anonymous
-		/// public pages (/share/run/[id], /share/route/[id]) pass true
-		/// per audit/cookie-consent (2026-05-25): MapTiler logs the
-		/// requester IP per tile fetch, so we cannot auto-initialise
-		/// before the visitor has consented. Authenticated surfaces
-		/// leave this false — those callers reach the component via a
-		/// signed-in session where consent is implicit.
+		/// When `true`, the map waits for this view's "Load map" tap even
+		/// if the cookie banner was accepted. The public share pages
+		/// (/share/run/[id], /share/route/[id]) pass it: the banner covers
+		/// error reporting only, and MapTiler logs the requester IP on
+		/// every tile fetch (decisions § 2298 amendment). Other callers
+		/// leave it false and auto-load once the banner was accepted.
 		requireExplicitConsent?: boolean;
 		/// Course markers (aid stations, cutoffs, …) to paint along the
 		/// route line as coloured pins with a label. Each carries its own
@@ -162,13 +160,12 @@
 	}: Props = $props();
 
 	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
-	// Drives the placeholder ↔ map swap. MapTiler logs the requester IP
-	// per tile fetch, so we never auto-instantiate maplibregl before the
-	// user has accepted the cookie banner — on authenticated surfaces too
-	// (audit/gdpr May 2026 High: "implicit consent" for signed-in users
-	// is not a lawful basis under ePrivacy Art 5(3)). Anon callers
-	// (`requireExplicitConsent`) always start gated; authed callers start
-	// gated unless consent is already on record this session.
+	// Drives the placeholder ↔ map swap, and is decided once, here, so the
+	// container is in the DOM by the time onMount reads it. MapTiler logs
+	// the requester IP per tile fetch, so nothing loads before the banner
+	// was accepted (audit/gdpr May 2026 High) or, for
+	// `requireExplicitConsent`, before this view's tap. The only later
+	// flip is `loadMapNow`, which waits for the container to mount.
 	let mapConsented = $state(untrack(() => (requireExplicitConsent ? false : hasAcceptedConsent())));
 
 	const prefersDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -786,10 +783,6 @@
 	}
 
 	onMount(() => {
-		// Honour the global banner choice on every surface: if the user
-		// has already accepted the cookie banner, auto-init the map
-		// (consent is on record) and skip the per-view "Load map" tap.
-		if (hasAcceptedConsent()) mapConsented = true;
 		snapshotTrack();
 
 		if (!mapConsented) return; // Wait for the user to tap "Load map".

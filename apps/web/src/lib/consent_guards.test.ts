@@ -348,6 +348,29 @@ test('MapTiler tile fetches on anon public pages are gated on consent', () => {
 		/if \(!mapConsented\) return;/,
 		'RunMap.onMount must short-circuit when consent is pending — no maplibregl.Map() until the user opts in.',
 	);
+	// The consent state is decided once, at init, from requireExplicitConsent
+	// and the banner. A later "banner accepted" flip inside onMount is what
+	// blanked the share-page map: it bypassed requireExplicitConsent, hid the
+	// "Load map" card, and called initMap before the container had mounted.
+	// The tap is the only later flip, and it waits a microtask for the DOM.
+	const runMapCode = stripComments(runMapSrc);
+	assert.match(
+		runMapCode,
+		/mapConsented\s*=\s*\$state\(untrack\(\(\)\s*=>\s*\(requireExplicitConsent \? false : hasAcceptedConsent\(\)\)\)\)/,
+		'RunMap must start unconsented when requireExplicitConsent is set, and otherwise from the banner.',
+	);
+	assert.equal(
+		(runMapCode.match(/hasAcceptedConsent\(\)/g) ?? []).length,
+		1,
+		'RunMap must read the banner only in the mapConsented initialiser, where requireExplicitConsent wins.',
+	);
+	const flips = [...runMapCode.matchAll(/mapConsented\s*=\s*true/g)];
+	assert.equal(flips.length, 1, 'RunMap must flip mapConsented only from the Load map tap.');
+	assert.match(
+		runMapCode,
+		/function loadMapNow\(\) \{\s*mapConsented = true;\s*queueMicrotask\(initMap\);/,
+		'loadMapNow must defer initMap until the map container has mounted.',
+	);
 
 	// The two share surfaces must pass the consent-required prop.
 	const routeShareSrc = read('src/routes/share/route/[id]/+page.svelte');

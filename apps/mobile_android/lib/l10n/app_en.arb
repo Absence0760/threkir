@@ -8939,7 +8939,7 @@
   "@planDetailPublishLibrary": {
     "description": "Public plan library"
   },
-  "planDetailPublishLibraryHint": "Share a copy of this plan so anyone can clone it. Your fitness numbers are not shared.",
+  "planDetailPublishLibraryHint": "Share this plan's weeks and sessions under your name for anyone to start. Your dates, paces, goal time and notes are left out.",
   "@planDetailPublishLibraryHint": {
     "description": "Public plan library"
   },
@@ -23044,6 +23044,10 @@
   "messagesConversationDeletedNotice": "You deleted this conversation for yourself. The other person keeps their copy, and a new message brings it back.",
   "@messagesConversationDeletedNotice": {
     "description": "Shown in the conversation pane once the viewer deleted it for themselves"
+  },
+  "messagesConversationDeletedNoticeDeletedAccount": "You deleted this conversation. The other account no longer exists, so nothing brings it back, and the messages are erased within a day.",
+  "@messagesConversationDeletedNoticeDeletedAccount": {
+    "description": "Shown in the conversation pane once the viewer deleted a deleted account's conversation: no new message can arrive, and the daily purge erases what nobody can see"
   },
   "messagesConversationActionFailed": "Couldn't update the conversation: {error}",
   "@messagesConversationActionFailed": {

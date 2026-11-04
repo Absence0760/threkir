@@ -6338,7 +6338,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get planDetailPublishLibraryHint =>
-      'このプランのコピーを共有して、誰でもクローンできるようにします。フィットネス数値は共有されません。';
+      'このプランの週とセッションをあなたの名前で共有し、誰でも始められるようにします。日付、ペース、目標タイム、メモは共有されません。';
 
   @override
   String get planDetailPublishLibrarySuccess =>
@@ -16853,6 +16853,10 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get messagesConversationDeletedNotice =>
       'この会話を自分の画面から削除しました。相手側には残り、新しいメッセージが届くと再び表示されます。';
+
+  @override
+  String get messagesConversationDeletedNoticeDeletedAccount =>
+      'この会話を削除しました。相手のアカウントはすでに存在しないため、会話が再び表示されることはなく、メッセージは1日以内に消去されます。';
 
   @override
   String messagesConversationActionFailed(String error) {

@@ -6721,7 +6721,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planDetailPublishLibraryHint =>
-      'Partilhe uma cópia deste plano para que qualquer pessoa possa cloná-lo. Os seus dados de condicionamento não são partilhados.';
+      'Partilhe as semanas e sessões deste plano com o seu nome para que qualquer pessoa o possa começar. As suas datas, ritmos, tempo-alvo e notas não são partilhados.';
 
   @override
   String get planDetailPublishLibrarySuccess =>
@@ -17685,6 +17685,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Eliminou esta conversa para si. A outra pessoa mantém a cópia dela, e uma nova mensagem fá-la voltar.';
 
   @override
+  String get messagesConversationDeletedNoticeDeletedAccount =>
+      'Eliminou esta conversa. A outra conta já não existe, por isso nada a fará voltar, e as mensagens são apagadas no prazo de um dia.';
+
+  @override
   String messagesConversationActionFailed(String error) {
     return 'Não foi possível atualizar a conversa: $error';
   }
@@ -26767,7 +26771,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planDetailPublishLibraryHint =>
-      'Compartilhe uma cópia deste plano para que qualquer pessoa possa cloná-lo. Seus dados de condicionamento não são compartilhados.';
+      'Compartilhe as semanas e sessões deste plano com o seu nome para que qualquer pessoa possa começá-lo. Suas datas, ritmos, tempo-alvo e notas não são compartilhados.';
 
   @override
   String get planDetailPublishLibrarySuccess =>
@@ -37718,6 +37722,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get messagesConversationDeletedNotice =>
       'Você excluiu esta conversa para você. A outra pessoa mantém a cópia dela, e uma nova mensagem faz a conversa voltar.';
+
+  @override
+  String get messagesConversationDeletedNoticeDeletedAccount =>
+      'Você excluiu esta conversa. A outra conta não existe mais, então nada fará a conversa voltar, e as mensagens são apagadas em até um dia.';
 
   @override
   String messagesConversationActionFailed(String error) {

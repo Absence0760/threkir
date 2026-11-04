@@ -26,7 +26,7 @@ Future<void> _pump(
   WidgetTester tester, {
   Future<bool> Function()? checkPro,
   Future<AiDescriptionResult> Function(
-          RouteDescriptionInput, cm.DistanceUnit, String)?
+          RouteDescriptionInput, cm.DistanceUnit, String, String)?
       describeAi,
   bool useMiles = false,
   Locale? locale,
@@ -82,7 +82,7 @@ void main() {
       await _pump(
         tester,
         checkPro: () async => false,
-        describeAi: (_, __, ___) async {
+        describeAi: (_, __, ___, ____) async {
           aiCalled = true;
           return const AiDescriptionResult(
               description: 'AI', source: 'ai', upgrade: false);
@@ -107,7 +107,7 @@ void main() {
       await _pump(
         tester,
         checkPro: () async => true,
-        describeAi: (_, __, ___) async => const AiDescriptionResult(
+        describeAi: (_, __, ___, ____) async => const AiDescriptionResult(
           description: 'A gorgeous riverside trail loop with a steady climb.',
           source: 'ai',
           upgrade: false,
@@ -133,7 +133,7 @@ void main() {
         tester,
         locale: const Locale('fr'),
         checkPro: () async => true,
-        describeAi: (_, __, ___) async => const AiDescriptionResult(
+        describeAi: (_, __, ___, ____) async => const AiDescriptionResult(
           description: 'River Loop is a 5.0 km trail point-to-point route.',
           source: 'template',
           upgrade: false,
@@ -161,7 +161,7 @@ void main() {
           tester,
           checkPro: () async => true,
           useMiles: unit == cm.DistanceUnit.mi,
-          describeAi: (_, u, __) async {
+          describeAi: (_, u, __, ___) async {
             sent.add(u);
             return const AiDescriptionResult(
                 description: 'A loop.', source: 'ai', upgrade: false);
@@ -185,7 +185,7 @@ void main() {
           tester,
           locale: shown,
           checkPro: () async => true,
-          describeAi: (_, __, locale) async {
+          describeAi: (_, __, locale, ___) async {
             sent.add(locale);
             return const AiDescriptionResult(
                 description: 'A loop.', source: 'ai', upgrade: false);
@@ -206,7 +206,7 @@ void main() {
       await _pump(
         tester,
         checkPro: () async => true,
-        describeAi: (_, __, ___) async => throw StateError('boom'),
+        describeAi: (_, __, ___, ____) async => throw StateError('boom'),
       );
       await _tapDescribe(tester);
 
@@ -227,7 +227,7 @@ void main() {
       await _pump(
         tester,
         checkPro: () async => true,
-        describeAi: (_, __, ___) async => throw StateError(kAiDisclosureError),
+        describeAi: (_, __, ___, ____) async => throw StateError(kAiDisclosureError),
       );
       await _tapDescribe(tester);
 
@@ -260,15 +260,38 @@ void main() {
   test('the request body carries the unit the server writes the paragraph in',
       () {
     const input = RouteDescriptionInput(name: 'River Loop', distanceM: 5000);
-    expect(routeDescribeBody(input, cm.DistanceUnit.mi, 'en')['unit'], 'mi');
-    expect(routeDescribeBody(input, cm.DistanceUnit.km, 'en')['unit'], 'km');
+    expect(routeDescribeBody(input, cm.DistanceUnit.mi, 'en', 'r1')['unit'], 'mi');
+    expect(routeDescribeBody(input, cm.DistanceUnit.km, 'en', 'r1')['unit'], 'km');
   });
 
   test('the request body carries the locale the server writes the paragraph in',
       () {
     const input = RouteDescriptionInput(name: 'River Loop', distanceM: 5000);
-    expect(routeDescribeBody(input, cm.DistanceUnit.km, 'pt-BR')['locale'],
+    expect(routeDescribeBody(input, cm.DistanceUnit.km, 'pt-BR', 'r1')['locale'],
         'pt-BR');
+  });
+
+  test('the request body carries the route id the server scopes the name by',
+      () {
+    const input = RouteDescriptionInput(name: 'River Loop', distanceM: 5000);
+    expect(
+        routeDescribeBody(input, cm.DistanceUnit.km, 'en', 'r1')['route_id'],
+        'r1');
+  });
+
+  testWidgets("hands the route's id to the AI call", (tester) async {
+    final sent = <String>[];
+    await _pump(
+      tester,
+      checkPro: () async => true,
+      describeAi: (_, __, ___, routeId) async {
+        sent.add(routeId);
+        return const AiDescriptionResult(
+            description: 'A loop.', source: 'ai', upgrade: false);
+      },
+    );
+    await _tapDescribe(tester);
+    expect(sent, ['r1']);
   });
 
   test('the locale tag is the canonical identifier web sends', () {

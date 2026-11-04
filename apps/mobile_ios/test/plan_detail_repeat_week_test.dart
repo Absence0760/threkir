@@ -84,9 +84,6 @@ class _FakeTraining extends TrainingService {
   }
 
   @override
-  Future<List<TrainingPlanRow>> fetchMyPublishedPlans() async => const [];
-
-  @override
   Future<List<TrainingPlanRow>> fetchActivePlans() async =>
       [_plan(race: race), ...others];
 

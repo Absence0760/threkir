@@ -6735,7 +6735,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planDetailPublishLibraryHint =>
-      'Teile eine Kopie dieses Plans, damit ihn jeder klonen kann. Deine Fitnesswerte werden nicht geteilt.';
+      'Teile die Wochen und Einheiten dieses Plans unter deinem Namen, damit jeder ihn starten kann. Deine Termine, dein Tempo, deine Zielzeit und deine Notizen werden nicht geteilt.';
 
   @override
   String get planDetailPublishLibrarySuccess =>
@@ -17701,6 +17701,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get messagesConversationDeletedNotice =>
       'Du hast diese Unterhaltung für dich gelöscht. Die andere Person behält ihre Kopie, und eine neue Nachricht holt sie zurück.';
+
+  @override
+  String get messagesConversationDeletedNoticeDeletedAccount =>
+      'Du hast diese Unterhaltung gelöscht. Das andere Konto existiert nicht mehr, daher kann sie nicht wieder erscheinen, und die Nachrichten werden innerhalb eines Tages endgültig gelöscht.';
 
   @override
   String messagesConversationActionFailed(String error) {

@@ -6655,7 +6655,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planDetailPublishLibraryHint =>
-      'Share a copy of this plan so anyone can clone it. Your fitness numbers are not shared.';
+      'Share this plan\'s weeks and sessions under your name for anyone to start. Your dates, paces, goal time and notes are left out.';
 
   @override
   String get planDetailPublishLibrarySuccess =>
@@ -17503,6 +17503,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get messagesConversationDeletedNotice =>
       'You deleted this conversation for yourself. The other person keeps their copy, and a new message brings it back.';
+
+  @override
+  String get messagesConversationDeletedNoticeDeletedAccount =>
+      'You deleted this conversation. The other account no longer exists, so nothing brings it back, and the messages are erased within a day.';
 
   @override
   String messagesConversationActionFailed(String error) {

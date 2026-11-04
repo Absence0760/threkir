@@ -1,4 +1,4 @@
--- Pins 20270915000005 (decisions § 2096) and 20270917000003 (§ 2107): flipping a plan to a (public)
+-- Pins 20270915000005 (decisions § 2096) and 20270917000003 (§ 2107): flipping a plan to a
 -- template nulls its workouts' bpm targets, and a week carrying one cannot
 -- move into a template plan. RPE targets are not Art 9 and survive the flip.
 begin;
@@ -28,10 +28,13 @@ insert into plan_workouts (id, week_id, scheduled_date, kind, target_distance_m,
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"2096aaaa-0000-0000-0000-0000000000a1","role":"authenticated"}';
 
+-- A client may not flip a plan PUBLIC any more (publish_plan_to_library is the
+-- only door, decisions § 2340), so the owner's flip here is to a private
+-- template, which the bpm strip covers the same way.
 select lives_ok(
-  $$ update training_plans set is_template = true, is_public_template = true, status = 'completed'
+  $$ update training_plans set is_template = true, status = 'completed'
      where id = '2096bbbb-0000-0000-0000-0000000000a1' $$,
-  'the owner may still publish the plan row itself');
+  'the owner may still turn the plan row into a template');
 select is(
   (select target_hr_max_bpm from plan_workouts where id = '2096dddd-0000-0000-0000-0000000000a1'),
   null::smallint,

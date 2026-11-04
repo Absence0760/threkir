@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { NOT_PROVIDED, OPERATOR, OPERATOR_FACTS_COMPLETE } from '#lib/legal/operator.ts';
 
-	const lastUpdated = '2026-10-22';
+	const lastUpdated = '2026-11-04';
 </script>
 
 <svelte:head>
@@ -67,9 +67,10 @@
 			optional gender and date of birth (used for tiered leaderboards and age-graded results).
 		</li>
 		<li>
-			<strong>Settings</strong>: your app preferences, including your preferred language (for
-			emails) and your device's time zone (so a coach you link with sees the same "today" for your
-			training plan as you do).
+			<strong>Settings</strong>: your app preferences, including your preferred language (the
+			language of the emails, push notifications and training-plan calendar feed we send you, and
+			of an AI route description when your device does not tell us its language) and your device's
+			time zone (so a coach you link with sees the same "today" for your training plan as you do).
 		</li>
 		<li>
 			<strong>Activity</strong>: GPS tracks, distance, duration, pace, elevation, heart rate
@@ -110,6 +111,12 @@
 			<strong>AI Coach</strong>: every chat message you send. We pass each prompt to our AI
 			provider together with a summary of your recent training to generate a useful response.
 		</li>
+		<li data-testid="ai-assistants-data">
+			<strong>AI assistants</strong> (only when you use them): the text you type into the route
+			assistant, the plan assistant (including the season planner), or plan edits, plus the facts
+			each one needs, all listed in section 5. Nothing you type there is kept by us beyond the
+			settings, race list, or plan changes you choose to save.
+		</li>
 		<li>
 			<strong>Meal photos</strong> (Pro, only if you use the plate-photo logger): the photo of a
 			meal you choose, sent to our AI provider once to estimate the food on the plate. We strip
@@ -141,6 +148,17 @@
 		estimating calories from your body weight. We never use it for advertising, marketing, or
 		data mining, we never sell it, and we never disclose it to advertisers or data brokers.
 	</p>
+	<p data-testid="logged-out-visitors">
+		<strong>Visitors without an account</strong>: if you open a shared run, route, or other share
+		page without signing in, we collect no account data about you. Our hosting providers (AWS and
+		Supabase) receive your IP address and browser details (such as the user agent) with each page
+		request, as any website does. On a shared run or route, the map (and, on a shared route, the 3D
+		course preview) stays a placeholder until you tap "Load map" or "Load preview"; only then does your browser send
+		your IP address, browser details, and the map area on screen to MapTiler (see section 5). The
+		tap covers that one view: the next time you open a share page, it asks again. Error monitoring
+		in your browser stays off unless you accept the cookie banner, which on share pages covers
+		nothing else.
+	</p>
 
 	<h2>3. Why we process it (lawful basis)</h2>
 	<table>
@@ -151,6 +169,9 @@
 			<tr><td>Provide the core service (record runs, sync across devices, social features)</td><td>Contract — Art 6(1)(b) GDPR</td></tr>
 			<tr><td>Heart rate, health imports, body metrics, nutrition and food logs, checkpoint medical weigh-ins</td><td>Explicit consent for special-category data — Art 9(2)(a) GDPR</td></tr>
 			<tr><td>AI Coach</td><td>Consent — Art 6(1)(a) GDPR</td></tr>
+			<tr><td>AI route assistant, AI plan assistant (including the season planner), and AI plan edits</td><td>Consent — Art 6(1)(a) GDPR, given by accepting the AI disclosure that names each feature</td></tr>
+			<tr><td>Serving a share page to a visitor without an account, and keeping it secure (request logs)</td><td>Legitimate interest — Art 6(1)(f) GDPR</td></tr>
+			<tr><td>Loading map tiles and the 3D course preview on a share page for a visitor without an account</td><td>Consent — Art 6(1)(a) GDPR, given by the "Load map" or "Load preview" tap for that view</td></tr>
 			<tr><td>Paid event registration, fundraising donations, Pro subscription billing</td><td>Contract — Art 6(1)(b) GDPR</td></tr>
 			<tr><td>Marketing email (only if opted in)</td><td>Consent</td></tr>
 			<tr><td>Error monitoring, abuse prevention, moderation of reported content, and keeping evidence of reported abuse for user safety and to establish or defend legal claims</td><td>Legitimate interest — Art 6(1)(f) GDPR</td></tr>
@@ -165,9 +186,11 @@
 	<h2>4. Automated decision-making</h2>
 	<p>
 		We do not make decisions about you that produce legal or similarly significant effects based
-		solely on automated processing (Art 22 GDPR). The AI Coach and the training-plan generator
-		produce suggestions only — nothing they output changes your access to the service, your
-		pricing, or your account standing, and you are free to ignore them.
+		solely on automated processing (Art 22 GDPR). The AI Coach, the AI assistants, and the
+		training-plan generator produce suggestions only — nothing they output changes your access to
+		the service, your pricing, or your account standing, and you are free to ignore them. The plan
+		assistant only fills in fields you review, and plan edits change nothing until you approve
+		them.
 	</p>
 
 	<h2 id="sub-processors">5. Who we share with (sub-processors)</h2>
@@ -213,10 +236,49 @@
 			with its location and camera metadata already removed, and returns estimated food entries.
 			The same no-training and 30-day retention terms apply; Threkir keeps no copy of the photo.
 		</li>
+		<li data-testid="ai-assistants-sub-processor">
+			<strong>Anthropic</strong> — AI assistants, only when you use one and have accepted the AI
+			disclosure that names it. No account identifier, email, or name is sent with any of them. The
+			same no-training and 30-day retention terms apply. Each sends only:
+			<ul>
+				<li>
+					<strong>Route assistant, request</strong>: the route you describe in your own words and,
+					if you picked a start point, its place label (never its coordinates). It returns route
+					settings; the route itself is drawn by our own routing engines.
+				</li>
+				<li>
+					<strong>Route assistant, description</strong> (Pro): the route's distance, total climb and
+					climb per kilometre or mile, surface, and shape (loop, out-and-back, or point-to-point,
+					worked out on our servers from the start and end points, which are not sent), plus your
+					distance unit and language. The route's name is included only when the route is yours or
+					is public.
+				</li>
+				<li>
+					<strong>Plan assistant</strong>: the plan you describe in your own words (for example your
+					goal race, target and recent times, and training days) and today's date. It returns the
+					plan-builder fields, which you review before a plan is built.
+				</li>
+				<li>
+					<strong>Season planner</strong> (part of the plan assistant): the season you describe in
+					your own words (races, dates, target times) and today's date. It returns a race list you
+					confirm.
+				</li>
+				<li>
+					<strong>Plan edits</strong>: the change you ask for, today's date, and the weeks of your
+					active plan that are not yet over. For each week: its number, phase, dates, and planned
+					distance. For each workout: its date, type, target distance or duration, and whether it is
+					done, skipped, or past. Not the plan's name, notes, paces, or goal time. It returns
+					proposed changes you approve before anything is saved.
+				</li>
+			</ul>
+		</li>
 		<li>
 			<strong>MapTiler</strong> (EU, with global edge caching) — map tiles. Receives the map
-			viewport and your IP address on each tile request; loads only after you accept the cookie
-			banner.
+			viewport, your IP address, and your browser details on each tile request. Signed in, maps load
+			once you accept the cookie banner or tap "Load map". On a share page (a shared run or route),
+			the map and the 3D course preview ask on every view: nothing loads until you tap "Load map" or
+			"Load preview", whatever you chose on the cookie banner, which covers only error monitoring
+			there.
 		</li>
 		<li>
 			<strong>Open-Meteo</strong> (EU) — elevation lookup when you build or view a route. Receives
@@ -321,10 +383,10 @@
 		<li><strong>Live spectator pings</strong>: 48 hours (both our database and, when enabled, the Upstash cache).</li>
 		<li><strong>Race spectator pings</strong> (organised-event live results): 48 hours.</li>
 		<li><strong>Checkpoint medical weigh-in fields</strong> (weight, medical hold/note): scrubbed 90 days after they were recorded; the in/out split times are race results and are kept.</li>
-		<li><strong>Direct messages</strong>: 2 years from sending. Deleting your account deletes the messages you sent at once; the messages the other person sent you stay in their copy of the conversation, with your account shown as deleted, until the 2-year limit. Unsending a message removes its text for both of you. If the other person deletes their account, the messages they sent you are deleted with it; report a message first if you want a copy kept for moderators.</li>
+		<li><strong>Direct messages</strong>: 2 years from sending. Deleting your account deletes the messages you sent at once; the messages the other person sent you stay in their copy of the conversation, with your account shown as deleted, until the 2-year limit. Unsending a message removes its text for both of you. If the other person deletes their account, the messages they sent you are deleted with it; report a message first if you want a copy kept for moderators. "Delete conversation" hides the conversation from you and erases nothing at that moment: anyone still in the conversation keeps their copy, the messages stay in your data export, and a report's copy is untouched. Once no participant can still see a message (both of you have deleted the conversation, or the other account is gone and you have deleted it), our daily clean-up erases it.</li>
 		<li><strong>Reports you file, and reports about your content</strong>: kept while a moderator reviews them, then deleted 6 months after the report is closed with no action, or 12 months after action was taken. A report we need for a legal claim, or that a court or authority has asked us to preserve, is kept until that need ends. A reported direct message is copied into the report when it is filed, so the copy survives the message being unsent, the sender deleting their account, and the 2-year limit on messages. If you delete your account, reports you filed are kept for the same period with your name removed, so the evidence is not lost.</li>
 		<li><strong>Coach chat history</strong>: 18 months from the message timestamp.</li>
-		<li><strong>AI-provider copies of coach prompts</strong>: deleted by the provider within 30 days of processing (Anthropic API default retention); never used for model training.</li>
+		<li><strong>AI-provider copies of coach prompts and AI-assistant requests</strong>: deleted by the provider within 30 days of processing (Anthropic API default retention); never used for model training.</li>
 		<li><strong>Coach usage counters</strong> (per-day message counts): 7 days.</li>
 		<li><strong>Notifications</strong>: 90 days from creation.</li>
 		<li><strong>Push tokens (FCM / APNs)</strong>: 60 days of inactivity.</li>

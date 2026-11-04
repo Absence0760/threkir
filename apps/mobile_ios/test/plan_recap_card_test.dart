@@ -114,9 +114,6 @@ class _Training extends TrainingService {
       );
 
   @override
-  Future<List<TrainingPlanRow>> fetchMyPublishedPlans() async => const [];
-
-  @override
   Future<bool> isActiveCoachOf(String athleteId) async => false;
 }
 

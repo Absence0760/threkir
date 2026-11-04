@@ -250,22 +250,21 @@ class MessagesInboxStore {
 			// Undo, or a refused commit: the badge dropped the conversation on
 			// the delete and re-reads now, the server being what knows.
 			restore: () => {
-				if (this.#userId === userId) this.#hiddenAt.delete(conversationId);
 				dmPendingHides.delete(conversationId);
-				// The one row comes back: a snapshot of the whole list would also
-				// undo whatever a poll brought in during the window.
+				if (this.#userId !== userId) return;
+				this.#hiddenAt.delete(conversationId);
+				// The one row comes back at once, as it was at the delete: a
+				// snapshot of the whole list would also undo whatever a poll
+				// brought in during the window. The list read then brings the
+				// row's preview and unread count up to anything that arrived
+				// during the window, which the badge re-read below counts.
 				const restored = restoreHiddenConversation(this.threads, hidden);
 				if (restored) this.threads = restored;
-				else void this.refreshThreads();
+				void this.refreshThreads();
 				opts.onRestore?.();
 				void dmUnreadStore.refresh();
 			},
-			// restore() has already put the row back; the list read brings in
-			// anything that arrived during the window.
-			onCommitError: (e) => {
-				opts.onCommitError(e);
-				void this.refreshThreads();
-			},
+			onCommitError: (e) => opts.onCommitError(e),
 		});
 	}
 

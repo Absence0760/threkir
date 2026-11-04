@@ -116,7 +116,11 @@ test('the inbox store restores one hidden row on undo, never a snapshot of the l
 	const src = readFileSync(new URL('../stores/messages_inbox.svelte.ts', import.meta.url), 'utf8');
 	const hide = src.slice(src.indexOf('\thide(conversationId'), src.indexOf('\tmarkRead('));
 	assert.match(hide, /restoreHiddenConversation\(this\.threads, hidden\)/);
-	assert.match(hide, /else void this\.refreshThreads\(\)/);
+	// Undo re-reads the list every time, so a message that arrived during the
+	// window updates the restored row's preview and unread count.
+	const restore = hide.slice(hide.indexOf('restore:'), hide.lastIndexOf('onCommitError:'));
+	assert.match(restore, /if \(restored\) this\.threads = restored;\s*void this\.refreshThreads\(\);/);
+	assert.match(restore, /if \(this\.#userId !== userId\) return;/);
 	assert.doesNotMatch(hide, /this\.threads = before/);
 	assert.doesNotMatch(hide, /const before = this\.threads/);
 });

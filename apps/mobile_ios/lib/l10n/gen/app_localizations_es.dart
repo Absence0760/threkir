@@ -7388,6 +7388,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get coachSeasonHintAction => 'Buscar una carrera';
 
   @override
+  String get coachPlanPickerTooltip => 'Contexto del plan';
+
+  @override
   String get coachContextNoRuns => 'Sin carreras';
 
   @override

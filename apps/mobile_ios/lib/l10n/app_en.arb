@@ -9900,6 +9900,10 @@
   "@coachSeasonHintAction": {
     "description": "Button beside the Coach season hint; opens the race calendar"
   },
+  "coachPlanPickerTooltip": "Plan context",
+  "@coachPlanPickerTooltip": {
+    "description": "Tooltip / accessible name of the Coach context-strip plan picker"
+  },
   "coachContextNoRuns": "No runs",
   "@coachContextNoRuns": {
     "description": "Context-strip runs chip when there are no runs"

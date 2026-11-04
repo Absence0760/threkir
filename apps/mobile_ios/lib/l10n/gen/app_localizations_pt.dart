@@ -7393,6 +7393,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get coachSeasonHintAction => 'Encontrar uma corrida';
 
   @override
+  String get coachPlanPickerTooltip => 'Contexto do plano';
+
+  @override
   String get coachContextNoRuns => 'Sem corridas';
 
   @override
@@ -27084,6 +27087,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get coachSeasonHintAction => 'Encontrar uma corrida';
+
+  @override
+  String get coachPlanPickerTooltip => 'Contexto do plano';
 
   @override
   String get coachContextNoRuns => 'Sem corridas';

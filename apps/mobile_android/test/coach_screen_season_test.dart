@@ -131,7 +131,7 @@ Future<_FakeApi> _pump(WidgetTester tester, List<TrainingPlanRow> plans,
 }
 
 Future<void> _pick(WidgetTester tester, String label) async {
-  await tester.tap(find.byType(DropdownButton<String>));
+  await tester.tap(find.byKey(const Key('coach-plan-picker')));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 300));
   await tester.tap(find.text(label).last);
@@ -193,7 +193,7 @@ void main() {
     await tester.pump();
     expect(tester.takeException(), isNull);
     expect(find.text(_en.coachSeasonOption), findsNothing);
-    expect(find.text(_en.coachPlanActive(_marathon.name)), findsOneWidget);
+    expect(find.text(_marathon.name), findsOneWidget);
     expect(api.threadReads.last, _marathon.id);
     await drainRealtimeTimers(tester);
   });
@@ -210,7 +210,7 @@ void main() {
   testWidgets('with nothing queued after the current plan there is no season '
       'option', (tester) async {
     await _pump(tester, [_marathon, _spring]);
-    await tester.tap(find.byType(DropdownButton<String>));
+    await tester.tap(find.byKey(const Key('coach-plan-picker')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text(_en.coachSeasonOption), findsNothing);

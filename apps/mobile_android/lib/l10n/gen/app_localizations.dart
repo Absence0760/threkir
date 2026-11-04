@@ -11962,6 +11962,12 @@ abstract class AppLocalizations {
   /// **'Find a race'**
   String get coachSeasonHintAction;
 
+  /// Tooltip / accessible name of the Coach context-strip plan picker
+  ///
+  /// In en, this message translates to:
+  /// **'Plan context'**
+  String get coachPlanPickerTooltip;
+
   /// Context-strip runs chip when there are no runs
   ///
   /// In en, this message translates to:

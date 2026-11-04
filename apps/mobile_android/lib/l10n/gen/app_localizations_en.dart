@@ -7321,6 +7321,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get coachSeasonHintAction => 'Find a race';
 
   @override
+  String get coachPlanPickerTooltip => 'Plan context';
+
+  @override
   String get coachContextNoRuns => 'No runs';
 
   @override

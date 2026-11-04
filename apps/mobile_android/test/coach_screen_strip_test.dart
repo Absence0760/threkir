@@ -4,6 +4,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -183,6 +184,12 @@ void main() {
         (tester) async {
       await _pump(tester, [_ultra, _richmond]);
       expect(find.text(_en.coachSeasonHint), findsNothing);
+      await tester.tap(find.byKey(const Key('coach-plan-picker')));
+      await pumpUntil(
+        tester,
+        () => find.text(_en.coachSeasonOption).evaluate().isNotEmpty,
+        describe: 'the My season option in the opened picker',
+      );
       await drainRealtimeTimers(tester);
     });
   });
@@ -229,5 +236,33 @@ void main() {
         await drainRealtimeTimers(tester);
       });
     }
+  });
+
+  group('the plan picker', () {
+    testWidgets('names the plan once, in full, with its weeks', (tester) async {
+      await _pump(tester, [_richmond, _ultra]);
+      final label = _en.coachContextPlanWeeks(_richmondName, 5);
+      expect(find.text(label), findsOneWidget);
+      expect(find.textContaining(_richmondName), findsOneWidget);
+      final paragraph = tester.renderObject<RenderParagraph>(find.text(label));
+      expect(paragraph.didExceedMaxLines, isFalse);
+      expect(find.byKey(const Key('coach-plan-picker')), findsOneWidget);
+      await drainRealtimeTimers(tester);
+    });
+
+    testWidgets('a long plan name wraps instead of being cut off at 2x text',
+        (tester) async {
+      const longName = 'Richmond Marathon 2026 build into the autumn season';
+      await _pump(tester, [_plan('p-long', longName, -14, 20), _ultra],
+          textScale: 2.0);
+      expect(tester.takeException(), isNull);
+      final label = _en.coachContextPlanWeeks(longName, 5);
+      final paragraph = tester.renderObject<RenderParagraph>(find.text(label));
+      expect(paragraph.didExceedMaxLines, isFalse);
+      final width =
+          tester.view.physicalSize.width / tester.view.devicePixelRatio;
+      expect(tester.getRect(find.text(label)).right, lessThanOrEqualTo(width));
+      await drainRealtimeTimers(tester);
+    });
   });
 }

@@ -2012,6 +2012,7 @@
   "coachArchiveDeleteBody": "Diese archivierte Unterhaltung wird endgültig gelöscht.",
   "coachContextNoPlan": "Kein Plan",
   "coachContextPlanWeeks": "{name} · {weeks} Wo.",
+  "coachPlanPickerTooltip": "Plan-Kontext",
   "coachSeasonHint": "Noch ein Rennen nach diesem Plan? Tippe beim Rennen auf „Zu meiner Saison hinzufügen“, dann erscheint hier „Meine Saison“.",
   "coachSeasonHintAction": "Rennen finden",
   "coachContextNoRuns": "Keine Läufe",

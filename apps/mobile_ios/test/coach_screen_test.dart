@@ -307,13 +307,12 @@ void main() {
     });
 
     testWidgets(
-      'does not render the plan-switcher dropdown when there is at most one plan',
+      'does not render the plan picker when the runner has no plans',
       (tester) async {
-        // Reason: the title-row dropdown only mounts when _plans has
-        // more than one entry — in tests there's no Supabase data so
-        // the list stays empty and the dropdown stays hidden.
+        // In tests there's no Supabase data, so the plan list stays empty
+        // and there is nothing to pick between.
         await _pump(tester);
-        expect(find.byType(DropdownButton<String>), findsNothing);
+        expect(find.byKey(const Key('coach-plan-picker')), findsNothing);
         await _drain(tester);
       },
     );

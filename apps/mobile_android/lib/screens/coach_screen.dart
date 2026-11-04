@@ -1193,52 +1193,7 @@ class _CoachScreenState extends State<CoachScreen> {
         // route. Force the back arrow and open the archive drawer from an
         // explicit action instead.
         leading: const BackButton(),
-        title: Row(
-          children: [
-            Flexible(
-              child: Text(l10n.coachTitle,
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-            ),
-            if (_plans.length > 1) ...[
-              const SizedBox(width: 12),
-              Flexible(
-                child: DropdownButton<String>(
-                  value: _effectiveScope == 'season'
-                      ? kCoachSeasonOption
-                      : (_planId ?? ''),
-                  isExpanded: true,
-                  underline: const SizedBox.shrink(),
-                  items: [
-                    DropdownMenuItem(
-                      value: '',
-                      child: Text(l10n.coachNoPlanOption),
-                    ),
-                    if (_seasonPlans.length > 1)
-                      DropdownMenuItem(
-                        value: kCoachSeasonOption,
-                        child: Text(
-                          l10n.coachSeasonOption,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ..._plans.map((p) => DropdownMenuItem(
-                          value: p.id,
-                          child: Text(
-                            p.status == 'active'
-                                ? l10n.coachPlanActive(p.name)
-                                : (p.status == 'completed'
-                                    ? l10n.coachPlanDone(p.name)
-                                    : p.name),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        )),
-                  ],
-                  onChanged: _busy ? null : _onPlanChanged,
-                ),
-              ),
-            ],
-          ],
-        ),
+        title: Text(l10n.coachTitle),
         actions: [
           if (_messages.isNotEmpty && _viewingArchiveAt == null)
             IconButton(
@@ -1458,18 +1413,27 @@ class _CoachScreenState extends State<CoachScreen> {
     final c = _ctx!;
     final cs = theme.colorScheme;
     final chips = <Widget>[];
-    final planName = c.season ? l10n.coachSeasonName : c.planName;
-    if (planName != null) {
-      chips.add(_chip(
-        cs,
-        icon: Icons.calendar_month,
-        label: c.planWeeks != null
-            ? l10n.coachContextPlanWeeks(planName, c.planWeeks!)
-            : planName,
-      ));
+    // The picker names what is in force now. A season read before its first
+    // block ended still sits in [c] until the next load, so its weeks are
+    // only shown while the scope still matches.
+    final season = _effectiveScope == 'season';
+    final planName = season
+        ? l10n.coachSeasonName
+        : (c.season
+            ? _plans.where((p) => p.id == _planId).firstOrNull?.name
+            : c.planName);
+    final weeks = season == c.season ? c.planWeeks : null;
+    final planLabel = planName == null
+        ? l10n.coachContextNoPlan
+        : (weeks != null
+            ? l10n.coachContextPlanWeeks(planName, weeks)
+            : planName);
+    if (_plans.isNotEmpty) {
+      chips.add(_buildPlanPicker(theme, l10n, planLabel,
+          muted: planName == null));
     } else {
       chips.add(_chip(cs,
-          icon: Icons.calendar_month, label: l10n.coachContextNoPlan, muted: true));
+          icon: Icons.calendar_month, label: planLabel, muted: true));
     }
     chips.add(
       Padding(
@@ -1541,6 +1505,64 @@ class _CoachScreenState extends State<CoachScreen> {
     );
   }
 
+  Widget _buildPlanPicker(ThemeData theme, AppLocalizations l10n, String label,
+      {required bool muted}) {
+    final cs = theme.colorScheme;
+    final color = muted ? cs.onSurfaceVariant : cs.onSurface;
+    final value =
+        _effectiveScope == 'season' ? kCoachSeasonOption : (_planId ?? '');
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: PopupMenuButton<String>(
+        key: const Key('coach-plan-picker'),
+        enabled: !_busy,
+        tooltip: l10n.coachPlanPickerTooltip,
+        initialValue: value,
+        onSelected: _onPlanChanged,
+        itemBuilder: (_) => [
+          PopupMenuItem(value: '', child: Text(l10n.coachNoPlanOption)),
+          if (_seasonPlans.length > 1)
+            PopupMenuItem(
+              value: kCoachSeasonOption,
+              child: Text(l10n.coachSeasonOption),
+            ),
+          for (final p in _plans)
+            PopupMenuItem(
+              value: p.id,
+              child: Text(p.status == 'active'
+                  ? l10n.coachPlanActive(p.name)
+                  : (p.status == 'completed'
+                      ? l10n.coachPlanDone(p.name)
+                      : p.name)),
+            ),
+        ],
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            border: Border.all(color: cs.outlineVariant),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.calendar_month, size: 14, color: color),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(label,
+                    style: theme.textTheme.labelMedium
+                        ?.copyWith(color: color)),
+              ),
+              Icon(Icons.arrow_drop_down, size: 18, color: color),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Shown while the runner has one plan and nothing queued after it: My
+  /// season only appears once a second plan is chained, and nothing else
+  /// on this screen says so.
   Widget _buildSeasonHint(ThemeData theme, AppLocalizations l10n) {
     final cs = theme.colorScheme;
     return Padding(

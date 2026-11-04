@@ -6989,6 +6989,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get coachSeasonHintAction => 'レースを探す';
 
   @override
+  String get coachPlanPickerTooltip => 'プランのコンテキスト';
+
+  @override
   String get coachContextNoRuns => 'ランなし';
 
   @override

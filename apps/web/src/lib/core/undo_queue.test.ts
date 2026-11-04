@@ -17,6 +17,7 @@ function harness(windowMs = 8000) {
 	const timers = new Map<number, { at: number; cb: () => void }>();
 	const published: (PendingUndo | null)[] = [];
 	let currentWindowMs = windowMs;
+	let currentOwner: string | null = 'a';
 
 	const queue = createUndoQueue({
 		windowMs: () => currentWindowMs,
@@ -30,6 +31,7 @@ function harness(windowMs = 8000) {
 		},
 		now: () => clock,
 		onChange: (pending) => published.push(pending),
+		owner: () => currentOwner,
 	});
 
 	async function advance(ms: number) {
@@ -57,6 +59,9 @@ function harness(windowMs = 8000) {
 		armedTimers: () => timers.size,
 		setWindowMs: (ms: number) => {
 			currentWindowMs = ms;
+		},
+		setOwner: (id: string | null) => {
+			currentOwner = id;
 		},
 		tick: (ms: number) => {
 			clock += ms;
@@ -127,6 +132,95 @@ test('a failed commit restores the caller state and reports the error', async ()
 	await h.advance(8000);
 	assert.equal(restore.count, 1);
 	assert.deepEqual(onCommitError.calls, [[boom]]);
+});
+
+// Reason: a commit already running when another tab ended the session
+// failed with no session, and the queue toasted "couldn't delete" to the
+// signed-out reader and restored the row into whatever list was showing.
+function heldCommit() {
+	let fail!: (e: unknown) => void;
+	let succeed!: () => void;
+	const running = new Promise<void>((resolve, reject) => {
+		fail = reject;
+		succeed = resolve;
+	});
+	return { commit: () => running, fail, succeed };
+}
+
+async function settle() {
+	for (let i = 0; i < 5; i++) await Promise.resolve();
+}
+
+test('a commit that fails after its account signed out is logged, not toasted or restored', async () => {
+	const h = harness();
+	const restore = spy();
+	const onCommitError = spy();
+	const held = heldCommit();
+	h.queue.defer({ message: 'Removed', commit: held.commit, restore: restore.fn, onCommitError: onCommitError.fn });
+	const flushing = h.queue.flush();
+	h.setOwner(null);
+	const logged: unknown[][] = [];
+	const error = console.error;
+	console.error = (...args: unknown[]) => logged.push(args);
+	try {
+		const boom = new Error('no session');
+		held.fail(boom);
+		await flushing;
+		assert.equal(restore.count, 0);
+		assert.equal(onCommitError.count, 0);
+		assert.equal(logged.length, 1);
+		assert.equal(logged[0][1], boom);
+	} finally {
+		console.error = error;
+	}
+});
+
+test('a commit that fails after another account signed in leaves that account alone', async () => {
+	const h = harness();
+	const restore = spy();
+	const onCommitError = spy();
+	const held = heldCommit();
+	h.queue.defer({ message: 'Removed', commit: held.commit, restore: restore.fn, onCommitError: onCommitError.fn });
+	await h.advance(8000);
+	h.setOwner('b');
+	const error = console.error;
+	console.error = () => {};
+	try {
+		held.fail(new Error('JWT expired'));
+		await settle();
+	} finally {
+		console.error = error;
+	}
+	assert.equal(restore.count, 0);
+	assert.equal(onCommitError.count, 0);
+});
+
+test('a commit that fails while its account is still signed in still restores and reports', async () => {
+	const h = harness();
+	const restore = spy();
+	const onCommitError = spy();
+	const held = heldCommit();
+	h.queue.defer({ message: 'Removed', commit: held.commit, restore: restore.fn, onCommitError: onCommitError.fn });
+	const flushing = h.queue.flush();
+	const boom = new Error('23503');
+	held.fail(boom);
+	await flushing;
+	assert.equal(restore.count, 1);
+	assert.deepEqual(onCommitError.calls, [[boom]]);
+});
+
+test('the owner is the account signed in when the delete was queued, not when it commits', async () => {
+	const h = harness();
+	h.setOwner('b');
+	const restore = spy();
+	const onCommitError = spy();
+	const held = heldCommit();
+	h.queue.defer({ message: 'Removed', commit: held.commit, restore: restore.fn, onCommitError: onCommitError.fn });
+	const flushing = h.queue.flush();
+	held.fail(new Error('boom'));
+	await flushing;
+	assert.equal(restore.count, 1);
+	assert.equal(onCommitError.count, 1);
 });
 
 // ---------------------------------------------------------------------------

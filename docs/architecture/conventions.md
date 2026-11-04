@@ -1356,7 +1356,11 @@ action can honestly be reversed:
   still land), and a
   session that ends or changes some other way (another tab) runs Undo instead,
   from the root layout, so it never commits with no session or as the next
-  account.
+  account. A commit already running when the session ends is not stopped; the
+  queue records the account each delete was queued under (`setUndoOwner`, set
+  by the root layout) and, if that commit fails once another account (or none)
+  is signed in, only logs it: no `onCommitError` toast to a signed-out reader
+  and no `restore` into the next account's list.
 - **Not undoable** → keep the `ConfirmDialog`. Use it when the delete cascades
   something the actor could not reconstruct, or when the row is an authored
   reusable artefact rather than a line of data (a routine, a saved meal, a

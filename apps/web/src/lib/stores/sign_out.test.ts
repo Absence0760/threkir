@@ -169,10 +169,16 @@ test('a session that ends or changes outside our Sign out puts a pending delete 
 	assert.match(layout, /const undoOwnerId = \$derived\(auth\.user\?\.id\);/);
 	assert.match(
 		layout,
-		/\$effect\(\(\) => \{\s*const uid = undoOwnerId;\s*return \(\) => \{\s*if \(uid\) undoStore\.undo\(\);\s*\};\s*\}\);/,
+		/\$effect\(\(\) => \{\s*const uid = undoOwnerId;\s*setUndoOwner\(uid \?\? null\);\s*return \(\) => \{\s*if \(uid\) undoStore\.undo\(\);\s*\};\s*\}\);/,
 	);
 });
 
 test('signing out drops the conversation deletes held for the unread badge', () => {
 	assert.match(layout, /if \(!browser \|\| !uid\) \{\s*dmUnreadStore\.clear\(\);\s*dmPendingHides\.clear\(\);/);
+});
+
+test('the undo queue is told who is signed in, so a commit failing after a sign-out is not toasted', () => {
+	const undo = readFileSync(resolve(here, './undo.svelte.ts'), 'utf8');
+	assert.match(undo, /owner: \(\) => ownerId,/);
+	assert.match(undo, /export function setUndoOwner\(userId: string \| null\): void \{\s*ownerId = userId;/);
 });

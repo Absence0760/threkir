@@ -20,7 +20,11 @@
  * done) while `commit` is held. Undo cancels the pending commit and
  * calls `restore`; the server was never touched. A commit that later
  * fails also calls `restore`, so a list never claims a row is gone
- * while the server still holds it.
+ * while the server still holds it — unless the account that queued it
+ * is no longer the one signed in (another tab ended the session while
+ * the commit was in flight). That failure is logged and nothing else:
+ * no toast to a signed-out reader, and no restore into what is now
+ * another account's list.
  *
  * One slot, deliberately: a second destruction commits the first
  * immediately rather than stacking bars whose ordering the user would
@@ -79,6 +83,9 @@ export interface UndoQueueDeps {
 	clearTimer: (handle: TimerHandle) => void;
 	now: () => number;
 	onChange: (pending: PendingUndo | null) => void;
+	/// The signed-in account, read when a destruction is queued and again
+	/// when its commit fails. Absent, every destruction has one owner.
+	owner?: () => string | null;
 }
 
 export interface UndoQueue {
@@ -93,9 +100,11 @@ export interface UndoQueue {
 }
 
 export function createUndoQueue(deps: UndoQueueDeps): UndoQueue {
+	const owner = deps.owner ?? (() => null);
 	let nextId = 1;
 	let current: {
 		id: number;
+		owner: string | null;
 		destruction: DeferredDestruction;
 		windowMs: number;
 		remainingMs: number;
@@ -133,22 +142,27 @@ export function createUndoQueue(deps: UndoQueueDeps): UndoQueue {
 
 	/// Detaches the pending entry so a concurrent flush/undo/defer can't
 	/// act on it twice. Returns null when there was nothing pending.
-	function take(): DeferredDestruction | null {
+	function take(): { destruction: DeferredDestruction; owner: string | null } | null {
 		const c = current;
 		if (c === null || c.settled) return null;
 		c.settled = true;
 		disarm();
 		current = null;
 		publish();
-		return c.destruction;
+		return { destruction: c.destruction, owner: c.owner };
 	}
 
 	async function flush(): Promise<void> {
-		const destruction = take();
-		if (destruction === null) return;
+		const taken = take();
+		if (taken === null) return;
+		const { destruction } = taken;
 		try {
 			await destruction.commit();
 		} catch (error) {
+			if (owner() !== taken.owner) {
+				console.error('undo: a held delete failed after the account that made it signed out', error);
+				return;
+			}
 			destruction.restore();
 			destruction.onCommitError?.(error);
 		}
@@ -159,6 +173,7 @@ export function createUndoQueue(deps: UndoQueueDeps): UndoQueue {
 		const windowMs = Math.max(0, deps.windowMs());
 		current = {
 			id: nextId++,
+			owner: owner(),
 			destruction,
 			windowMs,
 			remainingMs: windowMs,
@@ -172,9 +187,9 @@ export function createUndoQueue(deps: UndoQueueDeps): UndoQueue {
 	}
 
 	function undo(): void {
-		const destruction = take();
-		if (destruction === null) return;
-		destruction.restore();
+		const taken = take();
+		if (taken === null) return;
+		taken.destruction.restore();
 	}
 
 	function pause(): void {

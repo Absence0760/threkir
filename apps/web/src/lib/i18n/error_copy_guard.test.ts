@@ -75,10 +75,6 @@ const ALLOWED: Record<string, { hits: number; reason: string }> = {
 		hits: 1,
 		reason: 'classifier: an organiser-only refusal turns the board into its access-denied state',
 	},
-	'src/routes/settings/integrations/+page.svelte': {
-		hits: 1,
-		reason: 'classifier: a sync refused with `strava_not_configured` gets its own sentence; the rest go through errorCopy',
-	},
 	'src/routes/settings/payouts/+page.svelte': {
 		hits: 1,
 		reason: 'classifier: `stripe_not_configured` is an info toast; the rest go through errorCopy',

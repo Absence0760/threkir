@@ -158,6 +158,7 @@ import {
 	type RunSource,
 } from '../types';
 import type { RaceImportLeg } from '../integrations/race_import_providers';
+import { stravaRefusal } from '../integrations/strava_connect_error';
 import {
 	parseUltraSignUpCandidates,
 	ultraSignUpLinkFromRow,
@@ -2698,9 +2699,9 @@ export async function disconnectIntegration(provider: string): Promise<void> {
 			body: { action: 'disconnect' },
 		});
 		// The caller renders this into "Couldn't disconnect: {error}", a slot
-		// written for a reason — so it gets the function's own code, not
-		// supabase-js's fixed non-2xx sentence (decisions § 904).
-		if (fnError) throw new Error(await edgeFunctionErrorMessage(fnError, 'disconnect_failed'));
+		// written for a reason: a refusal the card words becomes its sentence,
+		// and no code reaches it (decisions § 904, § 2316).
+		if (fnError) throw await stravaRefusal(fnError);
 		return;
 	}
 

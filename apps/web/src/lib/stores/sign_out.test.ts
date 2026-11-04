@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import {
 	SIGN_OUT_SETTLE_TIMEOUT_MS,
+	settleBeforeSessionEnds,
 	signOutWithScope,
 	type AuthSignOutClient,
 	type SignOutScope,
@@ -131,6 +132,47 @@ test('a pending delete that settles quickly signs out at once, with no cap left 
 	}
 });
 
+test('settleBeforeSessionEnds never throws and gives up at the cap', async () => {
+	const error = console.error;
+	console.error = () => {};
+	try {
+		await settleBeforeSessionEnds(async () => {
+			throw new Error('commit failed');
+		});
+	} finally {
+		console.error = error;
+	}
+	mock.timers.enable({ apis: ['setTimeout'] });
+	const warn = console.warn;
+	console.warn = () => {};
+	try {
+		let done = false;
+		const settling = settleBeforeSessionEnds(() => new Promise<void>(() => {})).then(() => {
+			done = true;
+		});
+		await Promise.resolve();
+		mock.timers.tick(SIGN_OUT_SETTLE_TIMEOUT_MS);
+		await settling;
+		assert.equal(done, true);
+	} finally {
+		console.warn = warn;
+		mock.timers.reset();
+	}
+});
+
+// Reason: Delete account called the Edge Function first and settled the held
+// delete only in the logout that followed, so the held commit ran against an
+// account that no longer existed. Mobile settles first too (sign_out.dart).
+test('Delete account settles a held delete before it deletes the account', () => {
+	const page = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../routes/settings/account/+page.svelte'), 'utf8');
+	const body = page.slice(page.indexOf('async function handleDeleteAccount('));
+	const settle = body.indexOf('await settleBeforeSessionEnds(undoStore.flush);');
+	const remove = body.indexOf('/functions/v1/delete-account');
+	assert.ok(settle > 0, 'handleDeleteAccount must settle the undo queue');
+	assert.ok(remove > 0);
+	assert.ok(settle < remove, 'the settle must run before the account is deleted');
+});
+
 // Source-level guard for the store wiring — auth.svelte.ts uses Svelte $state
 // runes (and imports the runes-laden units signal), so it can't execute under
 // raw tsx. These assertions pin that the two affordances stay distinct: the
@@ -169,7 +211,15 @@ test('a session that ends or changes outside our Sign out puts a pending delete 
 	assert.match(layout, /const undoOwnerId = \$derived\(auth\.user\?\.id\);/);
 	assert.match(
 		layout,
-		/\$effect\(\(\) => \{\s*const uid = undoOwnerId;\s*setUndoOwner\(uid \?\? null\);\s*return \(\) => \{\s*if \(uid\) undoStore\.undo\(\);\s*\};\s*\}\);/,
+		/\$effect\(\(\) => \{\s*const uid = undoOwnerId;\s*return \(\) => \{\s*if \(uid\) undoStore\.undo\(\);\s*\};\s*\}\);/,
+	);
+});
+
+test('the undo queue hears a session ended only when it has, not while a profile loads', () => {
+	assert.match(layout, /const undoSessionEnded = \$derived\(!auth\.loading && !auth\.loggedIn\);/);
+	assert.match(
+		layout,
+		/\$effect\(\(\) => \{\s*setUndoOwner\(undoOwnerId \?\? \(undoSessionEnded \? null : undefined\)\);\s*\}\);/,
 	);
 });
 
@@ -180,5 +230,5 @@ test('signing out drops the conversation deletes held for the unread badge', () 
 test('the undo queue is told who is signed in, so a commit failing after a sign-out is not toasted', () => {
 	const undo = readFileSync(resolve(here, './undo.svelte.ts'), 'utf8');
 	assert.match(undo, /owner: \(\) => ownerId,/);
-	assert.match(undo, /export function setUndoOwner\(userId: string \| null\): void \{\s*ownerId = userId;/);
+	assert.match(undo, /export function setUndoOwner\(userId: UndoOwner\): void \{\s*ownerId = userId;/);
 });

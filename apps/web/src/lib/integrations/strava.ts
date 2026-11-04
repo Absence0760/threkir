@@ -18,7 +18,7 @@ import {
 	parseStravaSyncResult,
 	type StravaSyncResult,
 } from './strava_sync_result';
-import { stravaConnectAppError } from './strava_connect_error';
+import { stravaRefusal } from './strava_connect_error';
 import { AppError } from '../core/app_error';
 import {
 	parseStravaClubsResult,
@@ -155,10 +155,8 @@ export async function completeStravaOAuth(
 		body: { action: 'connect', code, scope, redirect_uri },
 	});
 	// The function answers a stable code (`strava-import/connect_errors.ts`);
-	// the card words the ones it knows and never shows the code itself. Any
-	// other failure is rethrown as it came, so `errorCopy` still tells a
-	// dropped connection (`FunctionsFetchError`) from a refusal.
-	if (fnError) throw stravaConnectAppError(await edgeFunctionErrorCode(fnError)) ?? fnError;
+	// the card words the ones it knows and never shows the code itself.
+	if (fnError) throw await stravaRefusal(fnError);
 	// Graded, not cast: the function reports whether it walked the whole
 	// lookback window, and a cast would let a body that says nothing about
 	// that render as a finished import. See `strava_sync_result.ts`.
@@ -175,7 +173,7 @@ export async function syncStrava(
 	const { data, error } = await supabase.functions.invoke('strava-import', {
 		body: { action: 'sync', lookbackDays },
 	});
-	if (error) throw new Error(await edgeFunctionErrorMessage(error, 'sync_failed'));
+	if (error) throw await stravaRefusal(error);
 	return parseStravaSyncResult(data);
 }
 

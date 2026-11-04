@@ -95,6 +95,18 @@ void main() {
       );
     });
 
+    test(
+      'an Edge Function limiter code rethrown as the message → rateLimited',
+      () {
+        // `_shared/rate_limit.ts` answers 429 with `rate_limit_exceeded`; a
+        // caller that rethrows `Exception(code)` keeps the code, not the status.
+        expect(
+          classifyAuthError(Exception('rate_limit_exceeded')),
+          AuthErrorKind.rateLimited,
+        );
+      },
+    );
+
     test('user_already_exists code → emailExists', () {
       expect(
         classifyAuthError(

@@ -70,21 +70,23 @@ test.describe('/settings/integrations — Strava sync refusals', () => {
 		const toast = page.locator('.toast').first();
 		await expect(toast).toBeVisible({ timeout: 10_000 });
 		await expect(toast).toContainText(/not configured/i);
+		await expect(page.locator('.toast')).not.toContainText('strava_not_configured');
 		await expect(page.locator('.toast')).not.toContainText(/non-2xx|Edge Function/);
 	});
 
-	test('a revoked connection reports the refusal code, not the invoke internals', async ({
+	test('a revoked connection shows catalogue copy, not its code or the invoke internals', async ({
 		page,
 		mockRoute
 	}) => {
 		// `refresh_failed` is what the function returns when Strava rejects
-		// the stored refresh token — the runner has to reconnect, and a
-		// sentence that cannot distinguish that from an outage cannot say so.
+		// the stored refresh token. The code is logged, never shown: a machine
+		// code is not a sentence a runner can act on.
 		await syncWith(mockRoute, page, 502, { error: 'refresh_failed' });
 
 		const toast = page.locator('.toast').first();
 		await expect(toast).toBeVisible({ timeout: 10_000 });
-		await expect(toast).toContainText('refresh_failed');
+		await expect(toast).toContainText('Strava sync failed');
+		await expect(page.locator('.toast')).not.toContainText('refresh_failed');
 		await expect(page.locator('.toast')).not.toContainText(/non-2xx|Edge Function/);
 	});
 
@@ -101,7 +103,7 @@ test.describe('/settings/integrations — Strava sync refusals', () => {
 		await expect(page.locator('.toast')).not.toContainText(/non-2xx|Edge Function/);
 	});
 
-	test('a refused disconnect says what refused it, not that it was non-2xx', async ({ page }) => {
+	test('a refused disconnect says what refused it in catalogue copy, not its code', async ({ page }) => {
 		// Disconnect goes through the same function on purpose — it revokes at
 		// Strava's end and wipes the vault rows rather than doing a bare DELETE
 		// — so it inherits the same envelope, into the same reason-shaped slot
@@ -123,7 +125,8 @@ test.describe('/settings/integrations — Strava sync refusals', () => {
 
 		const toast = page.locator('.toast').first();
 		await expect(toast).toBeVisible({ timeout: 10_000 });
-		await expect(toast).toContainText('strava_not_configured');
+		await expect(toast).toContainText(/not configured/i);
+		await expect(page.locator('.toast')).not.toContainText('strava_not_configured');
 		await expect(page.locator('.toast')).not.toContainText(/non-2xx|Edge Function/);
 		// The card must still say connected: the refusal left the row alone.
 		await expect(card).toHaveClass(/connected/);

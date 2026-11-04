@@ -81,6 +81,10 @@ export function errorCopyKey(e: unknown): MessageKey {
 		code === 'over_email_send_rate_limit' ||
 		code === 'over_sms_send_rate_limit' ||
 		says('rate limit') ||
+		// The Edge Functions' shared limiter (`_shared/rate_limit.ts`) answers
+		// 429 with this code; a rethrown `new Error(code)` keeps only the code.
+		code === 'rate_limit_exceeded' ||
+		says('rate_limit_exceeded') ||
 		says('for security purposes, you can only request this')
 	) {
 		return 'errorCopy.tooManyRequests';

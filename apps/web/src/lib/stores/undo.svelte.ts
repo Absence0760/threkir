@@ -4,6 +4,7 @@ import {
 	DEFAULT_UNDO_WINDOW_S,
 	type DeferredDestruction,
 	type PendingUndo,
+	type UndoOwner,
 } from '#lib/core/undo_queue.ts';
 
 /// Reactive shell around the deferred-commit undo queue. The contract,
@@ -13,7 +14,7 @@ import {
 
 let pending = $state<PendingUndo | null>(null);
 let windowS = $state(DEFAULT_UNDO_WINDOW_S);
-let ownerId: string | null = null;
+let ownerId: UndoOwner = undefined;
 
 const queue = createUndoQueue({
 	windowMs: () => windowS * 1000,
@@ -26,9 +27,11 @@ const queue = createUndoQueue({
 	owner: () => ownerId,
 });
 
-/// The signed-in account, set by the root layout. A held delete whose
-/// commit fails after it changed is logged, not toasted or restored.
-export function setUndoOwner(userId: string | null): void {
+/// The signed-in account, set by the root layout: its id, `null` once the
+/// session has ended, `undefined` while a live session's profile is still
+/// loading. A held delete whose commit fails after it provably changed is
+/// logged, not toasted or restored (`undoOwnerChanged`).
+export function setUndoOwner(userId: UndoOwner): void {
 	ownerId = userId;
 }
 

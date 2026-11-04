@@ -5646,8 +5646,6 @@ void main() {
       // status change that keeps its history; the second dialog is the
       // race-ahead refusal, whose only action is dismissal.
       'screens/plan_detail_screen.dart::l10n.planDetailRestartTitle': 2,
-      // Abandon: a status change, not a deletion.
-      'screens/plans_screen.dart::title': 1,
       // Visibility toggles and a share that only widens visibility.
       'screens/route_detail_screen.dart::l10n.routeDetailShareConfirmTitle': 1,
       'screens/run_detail_screen.dart::l10n.runDetailMakePrivateTitle': 1,

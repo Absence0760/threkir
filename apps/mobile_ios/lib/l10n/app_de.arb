@@ -1822,7 +1822,7 @@
   "planLibraryPreviewWeekRuns": "{count, plural, one{{count} Lauf} other{{count} Läufe}}",
   "planDetailPublishLibraryLabel": "Öffentliche Planbibliothek",
   "planDetailPublishLibrary": "In Bibliothek veröffentlichen",
-  "planDetailPublishLibraryHint": "Teile eine Kopie dieses Plans, damit ihn jeder klonen kann. Deine Fitnesswerte werden nicht geteilt.",
+  "planDetailPublishLibraryHint": "Teile die Wochen und Einheiten dieses Plans unter deinem Namen, damit jeder ihn starten kann. Deine Termine, dein Tempo, deine Zielzeit und deine Notizen werden nicht geteilt.",
   "planDetailPublishLibrarySuccess": "Plan in der öffentlichen Bibliothek veröffentlicht. Dein persönlicher Plan bleibt unverändert.",
   "planDetailPublishLibraryFailed": "Veröffentlichen fehlgeschlagen: {error}",
   "planDetailUnpublishLibrary": "Zurückziehen",

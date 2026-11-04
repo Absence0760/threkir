@@ -895,7 +895,7 @@ export const messages = {
 	"planDetail.shareSectionTitle": "Compartir y publicar",
 	"planDetail.publishLibraryLabel": "Biblioteca pública de planes",
 	"planDetail.publishLibrary": "Publicar en la biblioteca",
-	"planDetail.publishLibraryHint": "Comparte una copia de este plan para que cualquiera pueda clonarlo. Tus datos de forma física no se comparten.",
+	"planDetail.publishLibraryHint": "Comparte las semanas y sesiones de este plan con tu nombre para que cualquiera pueda empezarlo. Tus fechas, ritmos, tiempo objetivo y notas no se comparten.",
 	"planDetail.publishLibrarySuccess": "Plan publicado en la biblioteca pública. Tu plan personal no cambia.",
 	"planDetail.publishLibraryFailed": "Error al publicar: {error}",
 	"planDetail.unpublishLibrary": "Retirar",

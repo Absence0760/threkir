@@ -6338,7 +6338,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get planDetailPublishLibraryHint =>
-      'このプランのコピーを共有して、誰でもクローンできるようにします。フィットネス数値は共有されません。';
+      'このプランの週とセッションをあなたの名前で共有し、誰でも始められるようにします。日付、ペース、目標タイム、メモは共有されません。';
 
   @override
   String get planDetailPublishLibrarySuccess =>

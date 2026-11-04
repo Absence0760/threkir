@@ -6721,7 +6721,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planDetailPublishLibraryHint =>
-      'Partilhe uma cópia deste plano para que qualquer pessoa possa cloná-lo. Os seus dados de condicionamento não são partilhados.';
+      'Partilhe as semanas e sessões deste plano com o seu nome para que qualquer pessoa o possa começar. As suas datas, ritmos, tempo-alvo e notas não são partilhados.';
 
   @override
   String get planDetailPublishLibrarySuccess =>
@@ -26771,7 +26771,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planDetailPublishLibraryHint =>
-      'Compartilhe uma cópia deste plano para que qualquer pessoa possa cloná-lo. Seus dados de condicionamento não são compartilhados.';
+      'Compartilhe as semanas e sessões deste plano com o seu nome para que qualquer pessoa possa começá-lo. Suas datas, ritmos, tempo-alvo e notas não são compartilhados.';
 
   @override
   String get planDetailPublishLibrarySuccess =>

@@ -890,7 +890,7 @@ export const messages = {
 	"planDetail.shareSectionTitle": "共有と公開",
 	"planDetail.publishLibraryLabel": "公開プランライブラリ",
 	"planDetail.publishLibrary": "ライブラリに公開",
-	"planDetail.publishLibraryHint": "このプランのコピーを共有して、誰でもクローンできるようにします。フィットネス数値は共有されません。",
+	"planDetail.publishLibraryHint": "このプランの週とセッションをあなたの名前で共有し、誰でも始められるようにします。日付、ペース、目標タイム、メモは共有されません。",
 	"planDetail.publishLibrarySuccess": "プランを公開ライブラリに公開しました。あなた個人のプランは変わりません。",
 	"planDetail.publishLibraryFailed": "公開に失敗しました: {error}",
 	"planDetail.unpublishLibrary": "公開を取り消す",

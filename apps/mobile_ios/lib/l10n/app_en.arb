@@ -8939,7 +8939,7 @@
   "@planDetailPublishLibrary": {
     "description": "Public plan library"
   },
-  "planDetailPublishLibraryHint": "Share a copy of this plan so anyone can clone it. Your fitness numbers are not shared.",
+  "planDetailPublishLibraryHint": "Share this plan's weeks and sessions under your name for anyone to start. Your dates, paces, goal time and notes are left out.",
   "@planDetailPublishLibraryHint": {
     "description": "Public plan library"
   },

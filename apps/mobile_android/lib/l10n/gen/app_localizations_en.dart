@@ -6655,7 +6655,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planDetailPublishLibraryHint =>
-      'Share a copy of this plan so anyone can clone it. Your fitness numbers are not shared.';
+      'Share this plan\'s weeks and sessions under your name for anyone to start. Your dates, paces, goal time and notes are left out.';
 
   @override
   String get planDetailPublishLibrarySuccess =>

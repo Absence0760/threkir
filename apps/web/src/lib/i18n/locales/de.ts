@@ -895,7 +895,7 @@ export const messages = {
 	"planDetail.shareSectionTitle": "Teilen & veröffentlichen",
 	"planDetail.publishLibraryLabel": "Öffentliche Planbibliothek",
 	"planDetail.publishLibrary": "In Bibliothek veröffentlichen",
-	"planDetail.publishLibraryHint": "Teile eine Kopie dieses Plans, damit ihn jeder klonen kann. Deine Fitnesswerte werden nicht geteilt.",
+	"planDetail.publishLibraryHint": "Teile die Wochen und Einheiten dieses Plans unter deinem Namen, damit jeder ihn starten kann. Deine Termine, dein Tempo, deine Zielzeit und deine Notizen werden nicht geteilt.",
 	"planDetail.publishLibrarySuccess": "Plan in der öffentlichen Bibliothek veröffentlicht. Dein persönlicher Plan bleibt unverändert.",
 	"planDetail.publishLibraryFailed": "Veröffentlichen fehlgeschlagen: {error}",
 	"planDetail.unpublishLibrary": "Zurückziehen",

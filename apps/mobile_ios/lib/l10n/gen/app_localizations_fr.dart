@@ -6734,7 +6734,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planDetailPublishLibraryHint =>
-      'Partagez une copie de ce plan pour que chacun puisse le cloner. Vos données de forme ne sont pas partagées.';
+      'Partagez les semaines et les séances de ce plan sous votre nom pour que chacun puisse le commencer. Vos dates, allures, temps visé et notes ne sont pas partagés.';
 
   @override
   String get planDetailPublishLibrarySuccess =>

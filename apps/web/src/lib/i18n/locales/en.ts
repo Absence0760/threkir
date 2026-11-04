@@ -908,7 +908,7 @@ export const en = {
 	"planDetail.shareSectionTitle": "Share & publish",
 	"planDetail.publishLibraryLabel": "Public plan library",
 	"planDetail.publishLibrary": "Publish to library",
-	"planDetail.publishLibraryHint": "Share a copy of this plan so anyone can clone it. Your fitness numbers are not shared.",
+	"planDetail.publishLibraryHint": "Share this plan's weeks and sessions under your name for anyone to start. Your dates, paces, goal time and notes are left out.",
 	"planDetail.publishLibrarySuccess": "Plan published to the public library. Your personal plan is unchanged.",
 	"planDetail.publishLibraryFailed": "Failed to publish: {error}",
 	"planDetail.unpublishLibrary": "Unpublish",

@@ -32,6 +32,36 @@ export interface ConversationWrite {
 	value: boolean;
 	/// When the server accepted it, in ms; `Infinity` while it is in flight.
 	at: number;
+	/// What the server held before this write, as far as the client knows;
+	/// a refusal puts this back. Undefined when the list never held the row.
+	/// Updated in place when an earlier write to the same flag lands while
+	/// this one is in flight.
+	prior?: boolean;
+}
+
+/// What the server holds for a flag before a new write to it: the value of
+/// the last write that landed, or, while one is still in flight, what that
+/// one would put back. The list itself shows the in-flight value, so reading
+/// the prior off it made a second refused write restore the first one's.
+export function confirmedFlagValue(
+	previous: ConversationWrite | undefined,
+	listed: boolean | undefined,
+): boolean | undefined {
+	if (!previous) return listed;
+	return previous.at === Infinity ? previous.prior : previous.value;
+}
+
+/// Records that `landed` was accepted at `at`. A later write to the same flag
+/// still in flight now reverts to this value if it is refused.
+export function settleLandedWrite(
+	writes: Map<string, ConversationWrite>,
+	landed: ConversationWrite,
+	at: number,
+): void {
+	const key = conversationWriteKey(landed.conversationId, landed.flag);
+	const latest = writes.get(key);
+	if (latest === landed) writes.set(key, { ...landed, at });
+	else if (latest && latest.at === Infinity) latest.prior = landed.value;
 }
 
 export function conversationWriteKey(conversationId: string, flag: ConversationFlag): string {

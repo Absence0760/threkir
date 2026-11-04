@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
+	confirmedFlagValue,
 	conversationWriteKey,
 	dropRefusedWrite,
 	overlayConversationWrites,
@@ -10,6 +11,7 @@ import {
 	revertConversationFlag,
 	settledConversationWrites,
 	settledHides,
+	settleLandedWrite,
 	withoutHiddenConversations,
 	type ConversationWrite,
 } from './dm_conversation_writes.ts';
@@ -282,4 +284,89 @@ test('the badge applies only its newest read, so a read from before a delete can
 	const inbox = readFileSync(new URL('../stores/messages_inbox.svelte.ts', import.meta.url), 'utf8');
 	const commit = inbox.slice(inbox.indexOf('commit: async'), inbox.indexOf('restore:'));
 	assert.match(commit, /dmUnreadStore\.forget\(conversationId\);[\s\S]*dmPendingHides\.delete\(conversationId\);[\s\S]*void dmUnreadStore\.refresh\(\);/);
+});
+
+/// #setFlag's bookkeeping in messages_inbox.svelte.ts, driven write by write.
+function flagHarness(serverMuted: boolean) {
+	const writes = new Map<string, ConversationWrite>();
+	let threads = [row('a', 'x', serverMuted)];
+	return {
+		writes,
+		get muted() {
+			return threads[0].muted;
+		},
+		start(value: boolean): ConversationWrite {
+			const key = conversationWriteKey('a', 'muted');
+			const w: ConversationWrite = {
+				conversationId: 'a',
+				flag: 'muted',
+				value,
+				at: Infinity,
+				prior: confirmedFlagValue(writes.get(key), threads[0].muted),
+			};
+			writes.set(key, w);
+			threads = revertConversationFlag(threads, 'a', 'muted', value);
+			return w;
+		},
+		refuse(w: ConversationWrite) {
+			if (dropRefusedWrite(writes, w) && w.prior !== undefined) {
+				threads = revertConversationFlag(threads, 'a', 'muted', w.prior);
+			}
+		},
+		land(w: ConversationWrite, at: number) {
+			settleLandedWrite(writes, w, at);
+		},
+	};
+}
+
+test('two refused writes to one flag put back what the server held, not the first write', () => {
+	const inbox = flagHarness(false);
+	const mute = inbox.start(true);
+	const unmute = inbox.start(false);
+	assert.equal(unmute.prior, false);
+	inbox.refuse(mute);
+	assert.equal(inbox.muted, false);
+	inbox.refuse(unmute);
+	assert.equal(inbox.muted, false);
+	assert.equal(inbox.writes.size, 0);
+});
+
+test('two refused writes in the other order still end on the server value', () => {
+	const inbox = flagHarness(false);
+	const mute = inbox.start(true);
+	const unmute = inbox.start(false);
+	inbox.refuse(unmute);
+	assert.equal(inbox.muted, false);
+	inbox.refuse(mute);
+	assert.equal(inbox.muted, false);
+});
+
+test('an earlier write that lands becomes what a later refused write reverts to', () => {
+	const inbox = flagHarness(false);
+	const mute = inbox.start(true);
+	const unmute = inbox.start(false);
+	inbox.land(mute, 1_000);
+	assert.equal(unmute.prior, true);
+	assert.equal(inbox.writes.get(conversationWriteKey('a', 'muted')), unmute);
+	inbox.refuse(unmute);
+	assert.equal(inbox.muted, true);
+});
+
+test('a write after one that landed reverts to the landed value', () => {
+	const inbox = flagHarness(false);
+	const mute = inbox.start(true);
+	inbox.land(mute, 1_000);
+	assert.equal(inbox.writes.get(conversationWriteKey('a', 'muted'))?.at, 1_000);
+	const unmute = inbox.start(false);
+	assert.equal(unmute.prior, true);
+	inbox.refuse(unmute);
+	assert.equal(inbox.muted, true);
+});
+
+test('the inbox store reverts to the confirmed value, never one read off the optimistic list', () => {
+	const src = readFileSync(new URL('../stores/messages_inbox.svelte.ts', import.meta.url), 'utf8');
+	const body = src.slice(src.indexOf('async #setFlag('), src.indexOf('/// Deletes a conversation for the runner'));
+	assert.match(body, /prior: confirmedFlagValue\(this\.#writes\.get\(key\), listed\)/);
+	assert.match(body, /revertConversationFlag\(this\.threads, conversationId, flag, pending\.prior\)/);
+	assert.match(body, /settleLandedWrite\(this\.#writes, pending, Date\.now\(\)\)/);
 });

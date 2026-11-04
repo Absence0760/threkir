@@ -35,6 +35,7 @@ import { dmPendingHides } from '#lib/stores/dm_pending_hides.svelte.ts';
 import { effective, loadSettings, updateUniversal } from '#lib/settings/settings.ts';
 import { dmThreadRouteId } from '#lib/social/dm_thread.ts';
 import {
+	confirmedFlagValue,
 	conversationWriteKey,
 	dropRefusedWrite,
 	overlayConversationWrites,
@@ -42,6 +43,7 @@ import {
 	revertConversationFlag,
 	settledConversationWrites,
 	settledHides,
+	settleLandedWrite,
 	withoutHiddenConversations,
 	type ConversationFlag,
 	type ConversationWrite,
@@ -193,25 +195,31 @@ class MessagesInboxStore {
 		write: (conversationId: string, value: boolean) => Promise<void>,
 	) {
 		const key = conversationWriteKey(conversationId, flag);
-		const prior = this.threads.find((t) => t.conversationId === conversationId)?.[flag];
-		const pending: ConversationWrite = { conversationId, flag, value, at: Infinity };
+		const listed = this.threads.find((t) => t.conversationId === conversationId)?.[flag];
+		const pending: ConversationWrite = {
+			conversationId,
+			flag,
+			value,
+			at: Infinity,
+			prior: confirmedFlagValue(this.#writes.get(key), listed),
+		};
 		this.#writes.set(key, pending);
 		this.#patch(conversationId, { [flag]: value });
 		try {
 			await write(conversationId, value);
 		} catch (e) {
 			if (!dropRefusedWrite(this.#writes, pending)) throw e;
-			if (prior !== undefined) {
-				this.threads = revertConversationFlag(this.threads, conversationId, flag, prior);
+			if (pending.prior !== undefined) {
+				this.threads = revertConversationFlag(this.threads, conversationId, flag, pending.prior);
 			} else {
 				void this.refreshThreads();
 			}
 			throw e;
 		}
-		if (this.#writes.get(key) === pending) this.#writes.set(key, { ...pending, at: Date.now() });
+		settleLandedWrite(this.#writes, pending, Date.now());
 		// A row the list did not have is read now, so the conversation joins the
 		// list with the state just written.
-		if (prior === undefined) void this.refreshThreads();
+		if (listed === undefined) void this.refreshThreads();
 		void dmUnreadStore.refresh();
 	}
 

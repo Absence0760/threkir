@@ -1,11 +1,11 @@
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show FullBodyLoader;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
+import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
 
 // The plan_workouts update policies admit the owner and an athlete's active
@@ -103,7 +103,7 @@ Future<void> _pump(WidgetTester tester, _GateTraining training,
   );
   await pumpUntil(
     tester,
-    () => !tester.any(find.byType(FullBodyLoader)),
+    () => !tester.any(find.byType(SectionedDetailSkeleton)),
     describe: 'the plan fetch to replace the full-body loader',
   );
   await tester.pump();

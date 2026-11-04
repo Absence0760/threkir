@@ -2,11 +2,12 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show FullBodyLoader, TextLane;
+import 'package:ui_kit/ui_kit.dart' show TextLane;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
+import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
 
 const _uid = 'owner-uuid';
@@ -145,7 +146,7 @@ Future<void> _pump(
   );
   // _load's plan fetch is async; the trailing pump lands the setState that
   // _loadRecentRuns — kicked off once the plan is in — resolves into.
-  await pumpUntil(tester, () => !tester.any(find.byType(FullBodyLoader)),
+  await pumpUntil(tester, () => !tester.any(find.byType(SectionedDetailSkeleton)),
       describe: 'the plan fetch to replace the full-body loader');
   await tester.pump();
 }

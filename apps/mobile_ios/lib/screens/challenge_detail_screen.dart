@@ -13,6 +13,7 @@ import '../widgets/error_state.dart';
 import '../widgets/official_badge.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
+import '../widgets/loading_skeletons.dart';
 
 class ChallengeDetailScreen extends StatefulWidget {
   final SocialService social;
@@ -171,9 +172,12 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
         ],
       ),
       body: !_loaded
-          ? FullBodyLoader(
-              kind: ActivityLoaderKind.run,
+          ? SectionedDetailSkeleton(
               label: l10n.commonLoading,
+              statCells: 2,
+              hasAction: true,
+              rows: 5,
+              hasLeading: true,
             )
           : _loadError
               ? ErrorState(message: l10n.challengesLoadFailed, onRetry: _load)

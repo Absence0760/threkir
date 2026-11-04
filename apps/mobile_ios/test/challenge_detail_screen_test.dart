@@ -4,11 +4,12 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show FullBodyLoader, TextLane;
+import 'package:ui_kit/ui_kit.dart' show TextLane;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/challenge_detail_screen.dart';
 import '../lib/social_service.dart';
+import '../lib/widgets/loading_skeletons.dart';
 
 /// Never resolves the challenge fetch, so the loading frame is observable.
 class _HangingSocial extends SocialService {
@@ -128,7 +129,7 @@ void main() {
     await tester.pumpWidget(_app(_HangingSocial()));
     await tester.pump();
 
-    expect(find.byType(FullBodyLoader), findsOneWidget);
+    expect(find.byType(SectionedDetailSkeleton), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
     await tester.pump(const Duration(milliseconds: 400));
   });

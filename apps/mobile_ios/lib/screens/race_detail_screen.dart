@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show ActivityLoaderKind, FullBodyLoader;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/gen/app_localizations.dart';
@@ -19,6 +18,7 @@ import '../training_service.dart';
 import '../web_base_url.dart';
 import '../widgets/error_state.dart';
 import '../widgets/top_banner.dart';
+import '../widgets/loading_skeletons.dart';
 import 'plan_new_screen.dart';
 import 'races_screen.dart' show showRaceImportSheet;
 
@@ -241,7 +241,12 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(race?.name ?? l.racesTitle)),
       body: _loading
-          ? FullBodyLoader(kind: ActivityLoaderKind.run, label: l.commonLoading)
+          ? SectionedDetailSkeleton(
+              label: l.commonLoading,
+              statCells: 3,
+              hasAction: true,
+              rows: 3,
+            )
           : _loadFailed
               ? ErrorState(message: l.racesDetailLoadFailed, onRetry: _load)
               : race == null

@@ -45,6 +45,7 @@ import 'public_route_screen.dart';
 import 'route_builder_screen.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
+import '../widgets/loading_skeletons.dart';
 
 class ClubDetailScreen extends StatefulWidget {
   final SocialService social;
@@ -478,8 +479,8 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
   Widget build(BuildContext context) {
     if (_loading) {
       return Scaffold(
-        body: FullBodyLoader(
-          kind: ActivityLoaderKind.run,
+        appBar: AppBar(),
+        body: TabbedDetailSkeleton(
           label: AppLocalizations.of(context).commonLoading,
         ),
       );

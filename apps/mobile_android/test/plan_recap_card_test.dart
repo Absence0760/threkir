@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui_kit/ui_kit.dart' show FullBodyLoader;
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/plan_recap.dart';
@@ -11,6 +10,7 @@ import '../lib/screens/plan_detail_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/plan_recap_card.dart';
+import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
 
 // The end-of-plan recap on mobile plan detail (issue #1186): a completed plan
@@ -252,7 +252,7 @@ void main() {
     ));
     await pumpUntil(
       tester,
-      () => !tester.any(find.byType(FullBodyLoader)),
+      () => !tester.any(find.byType(SectionedDetailSkeleton)),
       describe: 'the plan fetch to replace the full-body loader',
     );
     await tester.pump();

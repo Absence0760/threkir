@@ -4,7 +4,7 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/rendering.dart';
-import 'package:ui_kit/ui_kit.dart' show FullBodyLoader, ListSkeleton, TextLane;
+import 'package:ui_kit/ui_kit.dart' show ListSkeleton, TextLane;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -13,6 +13,7 @@ import '../lib/relink_candidates.dart';
 import '../lib/screens/workout_detail_screen.dart';
 import '../lib/training.dart';
 import '../lib/training_service.dart';
+import '../lib/widgets/loading_skeletons.dart';
 
 PlanWorkoutRow _completedWorkout({String? completedRunId = 'run-current'}) {
   return PlanWorkoutRow(
@@ -115,7 +116,7 @@ void main() {
       // Reason: while _loading is true the screen returns a bare
       // Scaffold carrying nothing but the loader.
       await _pump(tester);
-      expect(find.byType(FullBodyLoader), findsOneWidget);
+      expect(find.byType(SectionedDetailSkeleton), findsOneWidget);
       await tester.pump(const Duration(milliseconds: 400));
     });
 

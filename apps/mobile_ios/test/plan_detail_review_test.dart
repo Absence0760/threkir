@@ -3,13 +3,13 @@ import 'dart:io';
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show FullBodyLoader;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_run_store.dart';
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
+import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
 
 /// Home's plan card lands on the plan with `openReview` (decisions § 2125):
@@ -151,7 +151,7 @@ Future<void> _pump(
       runStore: runStore,
     ),
   ));
-  await pumpUntil(tester, () => !tester.any(find.byType(FullBodyLoader)),
+  await pumpUntil(tester, () => !tester.any(find.byType(SectionedDetailSkeleton)),
       describe: 'the plan fetch to replace the full-body loader');
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 400));

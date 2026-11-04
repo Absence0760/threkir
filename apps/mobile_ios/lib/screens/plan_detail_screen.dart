@@ -76,6 +76,7 @@ import '../widgets/plan_races_list.dart';
 import '../widgets/todays_workout_card.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/workout_edit_sheet.dart';
+import '../widgets/loading_skeletons.dart';
 import 'workout_detail_screen.dart';
 
 /// Wider than kContentMaxWidth — the week grid and calendar read better with
@@ -2150,9 +2151,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     final l10n = AppLocalizations.of(context);
     if (_loading) {
       return Scaffold(
-        body: FullBodyLoader(
-          kind: ActivityLoaderKind.run,
+        appBar: AppBar(),
+        body: SectionedDetailSkeleton(
           label: l10n.commonLoading,
+          statCells: 3,
+          rows: 5,
+          rowHeight: 72,
         ),
       );
     }

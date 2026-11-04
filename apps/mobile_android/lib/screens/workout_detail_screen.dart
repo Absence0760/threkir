@@ -26,6 +26,7 @@ import '../workout_summary.dart';
 import '../workout_summary_format.dart';
 import '../workout_prescription.dart';
 import '../workout_target_label.dart';
+import '../widgets/loading_skeletons.dart';
 
 class WorkoutDetailScreen extends StatefulWidget {
   final TrainingService training;
@@ -235,9 +236,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     if (_loading) {
       return Scaffold(
         appBar: AppBar(),
-        body: FullBodyLoader(
-          kind: ActivityLoaderKind.run,
+        body: SectionedDetailSkeleton(
           label: l10n.commonLoading,
+          statCells: 3,
+          hasAction: true,
+          rowHeight: 56,
         ),
       );
     }

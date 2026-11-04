@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
@@ -610,5 +611,19 @@ void main() {
             findsWidgets);
       });
     });
+  });
+
+  // Two plan surfaces spelled the unit out themselves; the one label for it is
+  // UnitFormat.distanceLabel, so a change there reaches every field.
+  test('plan editors name the distance unit through UnitFormat', () {
+    for (final path in [
+      'lib/widgets/workout_edit_sheet.dart',
+      'lib/screens/plan_new_screen.dart',
+    ]) {
+      final src = File(path).readAsStringSync();
+      expect(src, contains('UnitFormat.distanceLabel('), reason: path);
+      expect(RegExp(r"\? 'mi' : 'km'|\? 'km' : 'mi'").hasMatch(src), isFalse,
+          reason: '$path spells the unit label itself');
+    }
   });
 }

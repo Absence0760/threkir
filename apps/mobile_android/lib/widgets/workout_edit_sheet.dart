@@ -9,7 +9,7 @@ import '../hr_prescription_gate.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../plan_move.dart';
 import '../plan_races.dart';
-import '../preferences.dart' show activeDistanceUnit;
+import '../preferences.dart' show UnitFormat, activeDistanceUnit;
 import '../training.dart';
 import '../training_labels.dart';
 import '../training_service.dart';
@@ -126,7 +126,8 @@ class _WorkoutEditSheetState extends State<_WorkoutEditSheet> {
 
   double get _metresPerUnit => _miles ? 1609.344 : 1000;
   double get _kmPerUnit => _metresPerUnit / 1000;
-  String get _unitLabel => _miles ? 'mi' : 'km';
+  String get _unitLabel =>
+      UnitFormat.distanceLabel(_miles ? DistanceUnit.mi : DistanceUnit.km);
 
   String _snapshot() => [
         _kind.name,

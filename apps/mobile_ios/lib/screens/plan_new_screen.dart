@@ -7,7 +7,7 @@ import 'package:ui_kit/ui_kit.dart';
 import '../column_limits.dart';
 import '../comeback.dart';
 import '../health_consent.dart' show HealthUseDobState;
-import '../preferences.dart' show activeDistanceUnit;
+import '../preferences.dart' show UnitFormat, activeDistanceUnit;
 import '../backend_timeout.dart';
 import '../auth_error.dart';
 import '../l10n/date_format.dart';
@@ -1149,7 +1149,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                       ),
                       decoration: InputDecoration(
                         labelText: l10n.planNewUltraDistance(
-                          activeDistanceUnit == DistanceUnit.mi ? 'mi' : 'km',
+                          UnitFormat.distanceLabel(activeDistanceUnit),
                         ),
                         helperText: l10n.planNewUltraDistanceHint,
                         helperMaxLines: 4,

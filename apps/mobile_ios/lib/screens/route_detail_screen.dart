@@ -1181,8 +1181,9 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                     ),
                     StatTile.large(
                       label: l10n.routeDetailStatElevation,
-                      value: '${route.elevationGainMetres.round()}',
-                      unit: 'm',
+                      value: UnitFormat.elevationValue(
+                          route.elevationGainMetres, unit),
+                      unit: UnitFormat.elevationLabel(unit),
                     ),
                     if (_avgRating > 0)
                       StatTile.large(

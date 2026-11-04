@@ -134,8 +134,9 @@ Future<void> _pump(
   WidgetTester tester,
   cm.Route route, {
   bool isOwner = false,
+  bool useMiles = false,
 }) async {
-  SharedPreferences.setMockInitialValues({});
+  SharedPreferences.setMockInitialValues({'use_miles': useMiles});
   final prefs = Preferences();
   await prefs.init();
 
@@ -446,6 +447,25 @@ void main() {
       await _pump(tester, _route());
       expect(find.text('Distance'), findsOneWidget);
       expect(find.text('Elevation'), findsOneWidget);
+    });
+
+    testWidgets('the Elevation stat reads in the unit Distance does',
+        (tester) async {
+      // 45 m is 147.6 ft. The stat used to print the raw metres beside a
+      // distance in miles.
+      await _pump(tester, _route(), useMiles: true);
+      expect(find.text('mi'), findsWidgets);
+      expect(find.text('148'), findsOneWidget);
+      expect(find.text('ft'), findsOneWidget);
+      expect(find.text('m'), findsNothing);
+    });
+
+    testWidgets('the Elevation stat stays in metres for a km runner',
+        (tester) async {
+      await _pump(tester, _route());
+      expect(find.text('45'), findsOneWidget);
+      expect(find.text('m'), findsOneWidget);
+      expect(find.text('ft'), findsNothing);
     });
 
     testWidgets('renders the Reviews header', (tester) async {

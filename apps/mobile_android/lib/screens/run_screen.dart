@@ -7001,7 +7001,7 @@ class _RoutePreviewCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '${route.elevationGainMetres.round()} m',
+                        formatElevationForPref(route.elevationGainMetres),
                         style: theme.textTheme.bodySmall,
                       ),
                     ],

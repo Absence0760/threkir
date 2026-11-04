@@ -1734,7 +1734,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
               title: Text(r.name),
               subtitle: Text(
                 '${formatDistanceForPref(r.distanceMetres)}'
-                '  •  ${r.elevationGainMetres.round()}m gain',
+                '  •  ${formatElevationForPref(r.elevationGainMetres)} ↑',
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.push(

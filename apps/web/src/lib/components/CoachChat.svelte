@@ -1006,7 +1006,9 @@
 						· {hasPlan ? t('coachChat.subWithPlan') : t('coachChat.subNoPlan')}
 					</span>
 				</h3>
-				{#if contextSummary}
+				<!-- The plan picker does not wait for the context summary: until
+				     that read lands the runner could not change scope at all. -->
+				{#if contextSummary || (onPlanChange && plans.length > 0)}
 					{@const c = contextSummary}
 					{@const planOptions = [
 						{ value: '', label: t('coachChat.noPlan'), sub: t('coachChat.recentRunsOnly') },
@@ -1045,15 +1047,15 @@
 								icon="calendar_month"
 								ariaLabel={t('coachChat.planContext')}
 								title={t('coachChat.planContextTitle')}
-								suffix={c.planWeeks ? `· ${c.planWeeks}w` : undefined}
+								suffix={c?.planWeeks ? `· ${c.planWeeks}w` : undefined}
 								footer={seasonPlans.length === 1 ? seasonHint : undefined}
 							/>
-						{:else if c.planReadFailed}
+						{:else if c?.planReadFailed}
 							<span class="chip chip-muted" role="status" data-testid="coach-plan-read-failed">
 								<span class="material-symbols" aria-hidden="true">error</span>
 								{t('coachChat.planReadFailed')}
 							</span>
-						{:else if c.planName}
+						{:else if c?.planName}
 							<span class="chip" title={t('coachChat.planLoaded')}>
 								<span class="material-symbols">calendar_month</span>
 								{c.planName}{#if c.planWeeks}<span class="chip-meta"> · {c.planWeeks}w</span>{/if}
@@ -1064,49 +1066,51 @@
 								{t('coachChat.noPlan')}
 							</span>
 						{/if}
-						{#if c.runCount === 0}
-							<span class="chip chip-muted" title={t('coachChat.noRunsTitle')}>
-								<span class="material-symbols">directions_run</span>
-								{t('coachChat.noRuns')}
-							</span>
-						{:else}
-							<ChipDropdown
-								value={String(runsLimit)}
-								options={runOptions}
-								onChange={(v) => (runsLimit = parseInt(v, 10))}
-								icon="directions_run"
-								ariaLabel={t('coachChat.recentRunsAria')}
-								title={t('coachChat.recentRunsTitle')}
-							/>
-						{/if}
-						{#if c.hrZonesLoaded}
-							<a
-								class="chip chip-link"
-								href="/settings/training#heart-rate-zones"
-								title={t('coachChat.hrZonesLoadedTitle')}
-								aria-label={t('coachChat.hrZonesLoadedTitle')}
-							>
-								<span class="material-symbols" aria-hidden="true">monitor_heart</span>
-							</a>
-						{:else}
-							<a
-								class="chip chip-muted chip-link"
-								href="/settings/training#heart-rate-zones"
-								title={t('coachChat.noHrZonesTitle')}
-								aria-label={t('coachChat.noHrZonesTitle')}
-							>
-								<span class="material-symbols" aria-hidden="true">monitor_heart</span>
-							</a>
-						{/if}
-						{#if c.weeklyGoalMetres}
-							<a
-								class="chip chip-link"
-								href="/settings/training#weekly-distance-goal"
-								title={t('coachChat.weeklyGoalTitle')}
-							>
-								<span class="material-symbols">flag</span>
-								{fmtKm(c.weeklyGoalMetres)}
-							</a>
+						{#if c}
+							{#if c.runCount === 0}
+								<span class="chip chip-muted" title={t('coachChat.noRunsTitle')}>
+									<span class="material-symbols">directions_run</span>
+									{t('coachChat.noRuns')}
+								</span>
+							{:else}
+								<ChipDropdown
+									value={String(runsLimit)}
+									options={runOptions}
+									onChange={(v) => (runsLimit = parseInt(v, 10))}
+									icon="directions_run"
+									ariaLabel={t('coachChat.recentRunsAria')}
+									title={t('coachChat.recentRunsTitle')}
+								/>
+							{/if}
+							{#if c.hrZonesLoaded}
+								<a
+									class="chip chip-link"
+									href="/settings/training#heart-rate-zones"
+									title={t('coachChat.hrZonesLoadedTitle')}
+									aria-label={t('coachChat.hrZonesLoadedTitle')}
+								>
+									<span class="material-symbols" aria-hidden="true">monitor_heart</span>
+								</a>
+							{:else}
+								<a
+									class="chip chip-muted chip-link"
+									href="/settings/training#heart-rate-zones"
+									title={t('coachChat.noHrZonesTitle')}
+									aria-label={t('coachChat.noHrZonesTitle')}
+								>
+									<span class="material-symbols" aria-hidden="true">monitor_heart</span>
+								</a>
+							{/if}
+							{#if c.weeklyGoalMetres}
+								<a
+									class="chip chip-link"
+									href="/settings/training#weekly-distance-goal"
+									title={t('coachChat.weeklyGoalTitle')}
+								>
+									<span class="material-symbols">flag</span>
+									{fmtKm(c.weeklyGoalMetres)}
+								</a>
+							{/if}
 						{/if}
 					</div>
 				{/if}

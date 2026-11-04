@@ -1260,7 +1260,10 @@ class _CoachScreenState extends State<CoachScreen> {
                       ),
                     ],
                   ),
-                  if (_ctx != null) _buildContextStrip(theme, l10n),
+                  // The plan picker does not wait for the context read: until
+                  // that lands the runner could not change scope at all.
+                  if (_ctx != null || _plans.isNotEmpty)
+                    _buildContextStrip(theme, l10n),
                   if (_viewingArchiveAt != null)
                     _buildArchiveBanner(theme, l10n),
                   if (_remaining <= 3) _buildLimitBanner(theme, l10n, cs),
@@ -1424,7 +1427,7 @@ class _CoachScreenState extends State<CoachScreen> {
   }
 
   Widget _buildContextStrip(ThemeData theme, AppLocalizations l10n) {
-    final c = _ctx!;
+    final c = _ctx;
     final cs = theme.colorScheme;
     final chips = <Widget>[];
     // The picker names what is in force now. A season read before its first
@@ -1433,10 +1436,10 @@ class _CoachScreenState extends State<CoachScreen> {
     final season = _effectiveScope == 'season';
     final planName = season
         ? l10n.coachSeasonName
-        : (c.season
+        : (c == null || c.season
             ? _plans.where((p) => p.id == _planId).firstOrNull?.name
             : c.planName);
-    final weeks = season == c.season ? c.planWeeks : null;
+    final weeks = c != null && season == c.season ? c.planWeeks : null;
     final planLabel = planName == null
         ? l10n.coachContextNoPlan
         : (weeks != null
@@ -1449,6 +1452,23 @@ class _CoachScreenState extends State<CoachScreen> {
       chips.add(_chip(cs,
           icon: Icons.calendar_month, label: planLabel, muted: true));
     }
+    if (c != null) _addContextChips(chips, theme, l10n, c);
+    // Wrapped, not scrolled sideways: a horizontal scroller clipped the runs
+    // window at the right edge on a 360 dp phone, with nothing saying more
+    // of the strip was off screen.
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        runSpacing: 6,
+        children: chips,
+      ),
+    );
+  }
+
+  void _addContextChips(List<Widget> chips, ThemeData theme,
+      AppLocalizations l10n, _ContextSummary c) {
+    final cs = theme.colorScheme;
     chips.add(
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -1506,17 +1526,6 @@ class _CoachScreenState extends State<CoachScreen> {
           icon: Icons.flag_outlined,
           label: l10n.coachContextWeeklyGoal(distance, unit.name)));
     }
-    // Wrapped, not scrolled sideways: a horizontal scroller clipped the runs
-    // window at the right edge on a 360 dp phone, with nothing saying more
-    // of the strip was off screen.
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      child: Wrap(
-        crossAxisAlignment: WrapCrossAlignment.center,
-        runSpacing: 6,
-        children: chips,
-      ),
-    );
   }
 
   Widget _buildPlanPicker(ThemeData theme, AppLocalizations l10n, String label,

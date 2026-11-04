@@ -121,6 +121,36 @@ test.describe('/routes/[id] delete — owner', () => {
 		expect(await routeExists(routeId)).toBe(true);
 	});
 
+	test('a double click on the confirm deletes once, with one toast and one navigation', async ({
+		page,
+		mockRoute,
+	}) => {
+		let deletes = 0;
+		let release = () => {};
+		const held = new Promise<void>((resolve) => (release = resolve));
+		await mockRoute(page, '**/rest/v1/routes?*', async (route) => {
+			if (route.request().method() !== 'DELETE') return route.fallback();
+			deletes++;
+			await held;
+			return route.fallback();
+		});
+		await page.goto(`/routes/${routeId}`);
+		await expect(page.getByRole('heading', { name: routeName, level: 1 })).toBeVisible({ timeout: 10_000 });
+
+		await page.getByTestId('route-delete-btn').click();
+		const dialog = page.getByTestId('route-delete-confirm-dialog');
+		const confirm = dialog.getByRole('button', { name: 'Delete route' });
+		await confirm.dblclick();
+		await expect(confirm).toBeDisabled();
+		await page.keyboard.press('Enter');
+		release();
+
+		await expect(page).toHaveURL(/\/routes$/, { timeout: 10_000 });
+		await expect(page.locator('.toast').filter({ hasText: 'Route deleted' })).toHaveCount(1);
+		await expect.poll(() => routeExists(routeId)).toBe(false);
+		expect(deletes).toBe(1);
+	});
+
 	test('a failed impact count still opens the confirm, and says the count is missing', async ({ page, mockRoute }) => {
 		await mockRoute(page, '**/rest/v1/rpc/route_delete_impact*', (route) =>
 			route.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"injected"}' }),

@@ -3,9 +3,11 @@
 -- the owner's own session so every ON DELETE action and every trigger it
 -- reaches runs under the claims a real client sends.
 --
+--   0.     A temp table named routes does not shadow the real one inside the
+--          SECURITY DEFINER body (search_path ends in pg_temp).
 --   1-3.   route_delete_impact: refused to a stranger, refused for a missing
 --          route, and the owner reads every count, "others" excluding their
---          own rows.
+--          own rows and linked_runs excluding another runner's private run.
 --   4-5.   A stranger who can see the route deletes nothing.
 --   6.     The owner's delete removes the route.
 --   7-14.  The route's own content cascades: photos, markers, conditions,
@@ -17,11 +19,12 @@
 --          has taken the route_photos row, so the client sweep can remove
 --          them; another user still cannot read them.
 --   23-24. A club admin may delete a club route uploaded by someone else, and
---          reads its impact.
+--          reads its impact, counting the uploader's public run on it but not
+--          their private one.
 --   25.    anon cannot call route_delete_impact.
 
 begin;
-select plan(25);
+select plan(26);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -41,12 +44,18 @@ values
    '[{"lat":51.5,"lng":-0.1},{"lat":51.51,"lng":-0.11}]'::jsonb, 5000, false,
    'd1286000-0000-0000-0000-0000000000c1');
 
-insert into runs (id, user_id, route_id, started_at, distance_m, duration_s, source, metadata)
+insert into runs (id, user_id, route_id, started_at, distance_m, duration_s, source, metadata, is_public)
 values
   ('d1286000-0000-0000-0000-0000000000d1', 'd1286000-0000-0000-0000-0000000000a1',
-   'd1286000-0000-0000-0000-0000000000b1', now() - interval '2 days', 5000, 1500, 'app', '{"activity_type":"run"}'),
+   'd1286000-0000-0000-0000-0000000000b1', now() - interval '2 days', 5000, 1500, 'app', '{"activity_type":"run"}', false),
   ('d1286000-0000-0000-0000-0000000000d2', 'd1286000-0000-0000-0000-0000000000a2',
-   'd1286000-0000-0000-0000-0000000000b1', now() - interval '1 day', 5000, 1600, 'app', '{"activity_type":"run"}');
+   'd1286000-0000-0000-0000-0000000000b1', now() - interval '1 day', 5000, 1600, 'app', '{"activity_type":"run"}', false),
+  ('d1286000-0000-0000-0000-0000000000d3', 'd1286000-0000-0000-0000-0000000000a2',
+   'd1286000-0000-0000-0000-0000000000b1', now() - interval '3 days', 5000, 1700, 'app', '{"activity_type":"run"}', true),
+  ('d1286000-0000-0000-0000-0000000000d4', 'd1286000-0000-0000-0000-0000000000a1',
+   'd1286000-0000-0000-0000-0000000000b2', now() - interval '4 days', 5000, 1500, 'app', '{"activity_type":"run"}', false),
+  ('d1286000-0000-0000-0000-0000000000d5', 'd1286000-0000-0000-0000-0000000000a1',
+   'd1286000-0000-0000-0000-0000000000b2', now() - interval '5 days', 5000, 1500, 'app', '{"activity_type":"run"}', true);
 
 insert into saved_routes (user_id, route_id)
 values ('d1286000-0000-0000-0000-0000000000a1', 'd1286000-0000-0000-0000-0000000000b1'),
@@ -104,8 +113,26 @@ values ('d1286000-0000-0000-0000-00000000aaa1', 'runsignup', 'rd-1286', 'Old Imp
         'd1286000-0000-0000-0000-0000000000b1');
 reset role;
 
--- ── 1-3: route_delete_impact ───────────────────────────────────────────────
 set local role authenticated;
+-- ── 0: pg_temp cannot shadow routes ───────────────────────────────────────
+-- Unqualified relation names search pg_temp FIRST unless search_path names it.
+-- With `set search_path = public` a caller's temp table claiming the route
+-- would pass the ownership gate. It runs first: a plan the session has
+-- already cached for the function keeps the relation it resolved, so the
+-- shadow only bites on the first call, which is when an attacker makes it.
+set local "request.jwt.claims" = '{"sub":"d1286000-0000-0000-0000-0000000000a2","role":"authenticated"}';
+create temp table routes (id uuid, user_id uuid, club_id uuid);
+insert into pg_temp.routes values
+  ('d1286000-0000-0000-0000-0000000000b1', 'd1286000-0000-0000-0000-0000000000a2', null);
+
+select throws_ok(
+  $$ select * from route_delete_impact('d1286000-0000-0000-0000-0000000000b1') $$,
+  '42501', 'not allowed to delete this route',
+  'a temp table named routes does not let a stranger pass the ownership gate');
+
+drop table pg_temp.routes;
+
+-- ── 1-3: route_delete_impact ───────────────────────────────────────────────
 set local "request.jwt.claims" = '{"sub":"d1286000-0000-0000-0000-0000000000a2","role":"authenticated"}';
 
 select throws_ok(
@@ -125,7 +152,9 @@ select results_eq(
             segment_efforts_by_others, shares, race_listings, events, linked_runs, photos, markers
      from route_delete_impact('d1286000-0000-0000-0000-0000000000b1') $$,
   $$ values (1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 1) $$,
-  'the owner reads every count, "others" leaving out their own bookmark, review and segment');
+  'the owner reads every count, "others" leaving out their own bookmark, review and segment, '
+  'and linked_runs leaving out another runner''s private run');
+
 
 -- ── 4-5: a stranger's delete ───────────────────────────────────────────────
 set local "request.jwt.claims" = '{"sub":"d1286000-0000-0000-0000-0000000000a2","role":"authenticated"}';
@@ -209,8 +238,9 @@ set local "request.jwt.claims" = '{"sub":"d1286000-0000-0000-0000-0000000000a3",
 
 select results_eq(
   $$ select linked_runs, photos from route_delete_impact('d1286000-0000-0000-0000-0000000000b2') $$,
-  $$ values (0, 0) $$,
-  'a club admin reads the impact of a club route someone else uploaded');
+  $$ values (1, 0) $$,
+  'a club admin reads the impact of a club route someone else uploaded, '
+  'counting the uploader''s public run on it and not their private one');
 
 delete from routes where id = 'd1286000-0000-0000-0000-0000000000b2';
 reset role;

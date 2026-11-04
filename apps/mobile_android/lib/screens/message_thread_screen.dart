@@ -387,6 +387,10 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     final l10n = AppLocalizations.of(context);
     final api = widget.api;
     final hides = DmPendingHides.instance;
+    // The thread is usually popped before the window closes, and a failed
+    // commit then puts the conversation back in the inbox under it; the
+    // root navigator outlives this screen, so the failure is said there.
+    final bannerContext = Navigator.of(context, rootNavigator: true).context;
     hides.add(id);
     setState(() => _deleted = true);
     deferDestructive(
@@ -407,8 +411,8 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
         },
         onCommitError: (e) {
           debugPrint('message thread delete failed: ${safeErrorLabel(e)}');
-          if (!mounted) return;
-          showTopBanner(context,
+          if (!bannerContext.mounted) return;
+          showTopBanner(bannerContext,
               l10n.messagesConversationActionFailed(friendlyError(l10n, e)));
         },
       ),

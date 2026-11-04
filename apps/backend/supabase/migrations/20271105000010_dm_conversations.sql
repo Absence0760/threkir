@@ -215,50 +215,82 @@ create trigger direct_messages_set_conversation
   execute function direct_messages_set_conversation();
 
 -- ─── backfill ───────────────────────────────────────────────────────────
+--
+-- Set-based: one mapping row per conversation to create (a live pair, or a
+-- remaining sender plus a deleted partner's key), then one UPDATE joining
+-- every unassigned message to its row on equality keys, so the table is read
+-- a fixed number of times however many pairs it holds. A live pair's key is
+-- (least, greatest) of the two ids; a deleted partner's is (sender,
+-- deleted_partner_key) and its conversation has the sender alone.
+--
+-- It is a function so the pgtap suite runs this exact body against
+-- pre-trigger-shaped rows (dm_conversations_test.sql), and it refuses to
+-- return while any message is left unassigned: 20271105000011 validates the
+-- not-null CHECK, and a straggler must fail this migration, not strand that
+-- one half-applied. Nothing calls it after this migration.
 
-do $$
+create or replace function private.backfill_direct_message_conversations()
+returns integer
+language plpgsql
+set search_path = public, pg_temp
+as $$
 declare
-  r record;
-  v_id uuid;
+  v_created integer;
+  v_left bigint;
 begin
-  for r in
-    select least(sender_id, recipient_id) as a,
-           greatest(sender_id, recipient_id) as b,
-           min(created_at) as first_at
-      from direct_messages
-     where recipient_id is not null
-       and conversation_id is null
-     group by 1, 2
-  loop
-    insert into conversations (kind, created_at) values ('direct', r.first_at) returning id into v_id;
-    insert into conversation_participants (conversation_id, user_id, joined_at)
-      values (v_id, r.a, r.first_at), (v_id, r.b, r.first_at);
-    update direct_messages
-       set conversation_id = v_id
-     where least(sender_id, recipient_id) = r.a
-       and greatest(sender_id, recipient_id) = r.b
-       and conversation_id is null;
-  end loop;
+  create temporary table dm_conversation_backfill on commit drop as
+  select gen_random_uuid() as conversation_id, live, k1, k2, first_at
+    from (
+      select true as live,
+             least(sender_id, recipient_id) as k1,
+             greatest(sender_id, recipient_id) as k2,
+             min(created_at) as first_at
+        from direct_messages
+       where recipient_id is not null
+         and conversation_id is null
+       group by 2, 3
+      union all
+      select false, sender_id, deleted_partner_key, min(created_at)
+        from direct_messages
+       where recipient_id is null
+         and conversation_id is null
+       group by 2, 3
+    ) pairs;
 
-  -- A deleted partner's conversation keeps only the remaining sender.
-  for r in
-    select sender_id, deleted_partner_key, min(created_at) as first_at
-      from direct_messages
-     where recipient_id is null
-       and conversation_id is null
-     group by 1, 2
-  loop
-    insert into conversations (kind, created_at) values ('direct', r.first_at) returning id into v_id;
-    insert into conversation_participants (conversation_id, user_id, joined_at)
-      values (v_id, r.sender_id, r.first_at);
-    update direct_messages
-       set conversation_id = v_id
-     where sender_id = r.sender_id
-       and deleted_partner_key = r.deleted_partner_key
-       and conversation_id is null;
-  end loop;
+  insert into conversations (id, kind, created_at)
+  select conversation_id, 'direct', first_at from dm_conversation_backfill;
+  get diagnostics v_created = row_count;
+
+  insert into conversation_participants (conversation_id, user_id, joined_at)
+  select conversation_id, k1, first_at from dm_conversation_backfill
+  union all
+  select conversation_id, k2, first_at from dm_conversation_backfill where live;
+
+  update direct_messages m
+     set conversation_id = b.conversation_id
+    from dm_conversation_backfill b
+   where m.conversation_id is null
+     and b.live = (m.recipient_id is not null)
+     and b.k1 = case when m.recipient_id is null then m.sender_id
+                     else least(m.sender_id, m.recipient_id) end
+     and b.k2 = case when m.recipient_id is null then m.deleted_partner_key
+                     else greatest(m.sender_id, m.recipient_id) end;
+
+  drop table dm_conversation_backfill;
+
+  select count(*) into v_left from direct_messages where conversation_id is null;
+  if v_left > 0 then
+    raise exception 'backfill_direct_message_conversations: % message(s) left without a conversation', v_left
+      using errcode = '23502';
+  end if;
+
+  return v_created;
 end;
 $$;
+
+revoke execute on function private.backfill_direct_message_conversations() from public, anon, authenticated;
+
+select private.backfill_direct_message_conversations();
 
 -- ─── delete-for-me in the read path ────────────────────────────────────
 --
@@ -406,7 +438,7 @@ create or replace function notify_direct_message()
 returns trigger
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   v_hidden_before timestamptz;
@@ -534,7 +566,7 @@ create or replace function private.purge_stale_direct_messages()
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   v_deleted bigint;

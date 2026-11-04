@@ -135,6 +135,35 @@ test.describe('/coach season picker', () => {
 		await expect(popover.getByRole('option', { name: /My season/ })).toHaveCount(0);
 	});
 
+	test('the plan picker is usable while the context summary is still loading', async ({ page, mockRoute }) => {
+		await rewritePlans(page, mockRoute, true);
+		// Hold the summary's run count so the strip's own chips never arrive.
+		let release!: () => void;
+		const held = new Promise<void>((resolve) => (release = resolve));
+		await mockRoute(
+			page,
+			(url) => url.pathname.endsWith('/rest/v1/runs') && url.searchParams.get('select') === 'id',
+			async (route: Route) => {
+				if (route.request().method() !== 'HEAD') return route.fallback();
+				await held;
+				await route.fallback();
+			},
+		);
+		try {
+			await page.goto('/coach?plan=none');
+			const planTrigger = page.getByRole('button', { name: 'Plan context' });
+			await expect(planTrigger).toContainText('No plan', { timeout: 10_000 });
+			await expect(page.getByRole('button', { name: 'Recent runs to include' })).toHaveCount(0);
+			await planTrigger.click();
+			const popover = page.locator('[role="listbox"]');
+			await popover.getByRole('option', { name: /My season/ }).click();
+			await expect(page).toHaveURL(/[?&]plan=season\b/);
+			await expect(planTrigger).toContainText('My season');
+		} finally {
+			release();
+		}
+	});
+
 	test('with one plan, the picker menu says how to get My season and links to the races', async ({
 		page,
 		mockRoute,

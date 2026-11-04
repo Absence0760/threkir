@@ -11,6 +11,8 @@
  * consent `coach_messages` is not read at all, so the row says what the Coach
  * is and nothing it said.
  */
+import { SvelteMap } from 'svelte/reactivity';
+
 import { coachEnabled } from '#lib/coach/coach_flag.ts';
 import {
 	AI_DISCLOSURE_VERSION_COACH,
@@ -31,6 +33,14 @@ import { deferDestructive } from '#lib/stores/undo.svelte.ts';
 import { dmUnreadStore } from '#lib/stores/dm_unread.svelte.ts';
 import { effective, loadSettings, updateUniversal } from '#lib/settings/settings.ts';
 import { dmThreadRouteId } from '#lib/social/dm_thread.ts';
+import {
+	conversationWriteKey,
+	overlayConversationWrites,
+	revertConversationFlag,
+	settledConversationWrites,
+	type ConversationFlag,
+	type ConversationWrite,
+} from '#lib/social/dm_conversation_writes.ts';
 import {
 	MESSAGES_COACH_ROW_KEY,
 	parseCoachInboxPlacement,
@@ -64,6 +74,10 @@ class MessagesInboxStore {
 	/// server has not been told yet, so every list read until the commit still
 	/// returns them; they stay out of the list until then.
 	#pendingHidden = new Set<string>();
+	/// The runner's mute / archive writes a list read may predate
+	/// (dm_conversation_writes.ts), keyed by conversation and flag. Reactive,
+	/// because a conversation the list has not loaded reads its state here.
+	#writes = new SvelteMap<string, ConversationWrite>();
 
 	/// Binds the store to the signed-in runner, dropping what another account
 	/// left behind. Returns true when the user changed.
@@ -76,16 +90,23 @@ class MessagesInboxStore {
 		this.showingArchived = false;
 		this.#markedReadAt.clear();
 		this.#pendingHidden.clear();
+		this.#writes.clear();
 		this.#coachGeneration++;
 		return true;
 	}
 
 	#apply(rows: DmThread[], startedAt: number) {
-		this.threads = rows
-			.filter((t) => !this.#pendingHidden.has(t.conversationId))
-			.map((t) =>
-				(this.#markedReadAt.get(dmThreadRouteId(t)) ?? -Infinity) >= startedAt ? { ...t, unread: 0 } : t,
-			);
+		const visible = overlayConversationWrites(
+			rows.filter((t) => !this.#pendingHidden.has(t.conversationId)),
+			this.#writes.values(),
+			startedAt,
+		);
+		for (const w of settledConversationWrites(this.#writes.values(), startedAt)) {
+			this.#writes.delete(conversationWriteKey(w.conversationId, w.flag));
+		}
+		this.threads = visible.map((t) =>
+			(this.#markedReadAt.get(dmThreadRouteId(t)) ?? -Infinity) >= startedAt ? { ...t, unread: 0 } : t,
+		);
 	}
 
 	async loadThreads() {
@@ -119,9 +140,9 @@ class MessagesInboxStore {
 	/// After a send or an unsend. The write already renders in the thread, so
 	/// a failed list read leaves the previews as they were.
 	async refreshThreads() {
+		const startedAt = Date.now();
 		try {
-			const rows = await fetchDmThreads();
-			this.threads = rows.filter((t) => !this.#pendingHidden.has(t.conversationId));
+			this.#apply(await fetchDmThreads(), startedAt);
 		} catch {
 			// Corrected by the next poll.
 		}
@@ -131,31 +152,56 @@ class MessagesInboxStore {
 		this.threads = this.threads.map((t) => (t.conversationId === conversationId ? { ...t, ...change } : t));
 	}
 
+	/// The runner's latest mute / archive write to a conversation, until a list
+	/// read carries it. The open conversation reads this when its row is not in
+	/// the list — a deep link before the inbox loaded, or a list read that
+	/// failed — so the toggle shows what was just written instead of `false`.
+	writtenFlag(conversationId: string, flag: ConversationFlag): boolean | undefined {
+		return this.#writes.get(conversationWriteKey(conversationId, flag))?.value;
+	}
+
 	/// Mutes or unmutes at once: both are one tap back. A refused write puts
-	/// the row back and rethrows for the caller to report.
-	async setMuted(conversationId: string, muted: boolean) {
-		const before = this.threads;
-		this.#patch(conversationId, { muted });
-		try {
-			await setDmConversationMuted(conversationId, muted);
-		} catch (e) {
-			this.threads = before;
-			throw e;
-		}
-		void dmUnreadStore.refresh();
+	/// the flag back and rethrows for the caller to report.
+	setMuted(conversationId: string, muted: boolean) {
+		return this.#setFlag(conversationId, 'muted', muted, setDmConversationMuted);
 	}
 
 	/// Archives or unarchives at once; the conversation moves between the
 	/// inbox and the Archived list, where Unarchive is one tap away.
-	async setArchived(conversationId: string, archived: boolean) {
-		const before = this.threads;
-		this.#patch(conversationId, { archived });
+	setArchived(conversationId: string, archived: boolean) {
+		return this.#setFlag(conversationId, 'archived', archived, setDmConversationArchived);
+	}
+
+	/// The write is held in #writes until a list read carries it, so a poll
+	/// that started before it landed cannot flip the toggle back. A refusal
+	/// reverts that one field on that one row: restoring a snapshot of the
+	/// whole list would also undo whatever a poll brought in meanwhile.
+	async #setFlag(
+		conversationId: string,
+		flag: ConversationFlag,
+		value: boolean,
+		write: (conversationId: string, value: boolean) => Promise<void>,
+	) {
+		const key = conversationWriteKey(conversationId, flag);
+		const prior = this.threads.find((t) => t.conversationId === conversationId)?.[flag];
+		const pending: ConversationWrite = { conversationId, flag, value, at: Infinity };
+		this.#writes.set(key, pending);
+		this.#patch(conversationId, { [flag]: value });
 		try {
-			await setDmConversationArchived(conversationId, archived);
+			await write(conversationId, value);
 		} catch (e) {
-			this.threads = before;
+			if (this.#writes.get(key) === pending) this.#writes.delete(key);
+			if (prior !== undefined) {
+				this.threads = revertConversationFlag(this.threads, conversationId, flag, prior);
+			} else {
+				void this.refreshThreads();
+			}
 			throw e;
 		}
+		if (this.#writes.get(key) === pending) this.#writes.set(key, { ...pending, at: Date.now() });
+		// A row the list did not have is read now, so the conversation joins the
+		// list with the state just written.
+		if (prior === undefined) void this.refreshThreads();
 		void dmUnreadStore.refresh();
 	}
 

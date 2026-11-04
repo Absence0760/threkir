@@ -2,6 +2,8 @@
 // settings chips), the season hint in the plan picker's menu and the
 // daily-allowance banner.
 // Pumped on a 360 dp phone, the narrow end of what the app supports.
+import 'dart:async';
+
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
@@ -25,7 +27,11 @@ final _en = AppLocalizationsEn();
 
 class _FakeApi extends ApiClient {
   final int usage;
-  _FakeApi({this.usage = 0});
+
+  /// Overrides the context read's run count; a future that never completes
+  /// holds the context strip's own chips back.
+  final Future<int> Function()? runCount;
+  _FakeApi({this.usage = 0, this.runCount});
 
   @override
   String? get userId => 'u1';
@@ -44,7 +50,8 @@ class _FakeApi extends ApiClient {
   Future<List<DateTime>> listCoachArchives({String? planId}) async => const [];
 
   @override
-  Future<int> countRunsForUser(String userId, {int limit = 100}) async => 5;
+  Future<int> countRunsForUser(String userId, {int limit = 100}) =>
+      runCount?.call() ?? Future.value(5);
 
   @override
   Future<Map<String, dynamic>?> fetchUserSettingsPrefs(String userId) async =>
@@ -260,6 +267,47 @@ void main() {
       final paragraph = tester.renderObject<RenderParagraph>(find.text(label));
       expect(paragraph.didExceedMaxLines, isFalse);
       expect(find.byKey(const Key('coach-plan-picker')), findsOneWidget);
+      await drainRealtimeTimers(tester);
+    });
+
+    testWidgets(
+        'is usable before the context read lands, so the scope can still '
+        'be changed', (tester) async {
+      final held = Completer<int>();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: CoachScreen(
+            api: _FakeApi(runCount: () => held.future),
+            training: _Training([_richmond, _ultra]),
+            loadAiPlanAvailable: () async => false,
+            raceService: _Races(),
+          ),
+        ),
+      );
+      final picker = find.byKey(const Key('coach-plan-picker'));
+      await pumpUntil(
+        tester,
+        () => picker.evaluate().isNotEmpty,
+        describe: 'the plan picker while the context read is outstanding',
+      );
+      expect(find.byType(DropdownButton<int>), findsNothing);
+      expect(find.text(_richmondName), findsOneWidget);
+      await tester.tap(picker);
+      await pumpUntil(
+        tester,
+        () => find.text(_en.coachSeasonOption).evaluate().isNotEmpty,
+        describe: 'the My season option in the opened picker',
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text(_en.coachSeasonOption));
+      await pumpUntil(
+        tester,
+        () => find.text(_en.coachSeasonName).evaluate().isNotEmpty,
+        describe: 'the picker naming My season',
+      );
+      held.complete(5);
       await drainRealtimeTimers(tester);
     });
 

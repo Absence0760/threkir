@@ -10804,11 +10804,119 @@ abstract class AppLocalizations {
   /// **'Load'**
   String get planImportLoad;
 
-  /// Error under the paste box when the pasted plan can't be parsed; detail is the parser's (English) reason, e.g. a bad date on one row
+  /// Error under the paste box when the pasted plan can't be parsed; detail is one of the localized planImportError* reasons, e.g. a bad date on one row
   ///
   /// In en, this message translates to:
   /// **'Couldn\'t read that plan: {detail}'**
   String planImportParseError(String detail);
+
+  /// Plan import parse error (badDistance), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read the distance \"{cell}\".'**
+  String planImportErrorBadDistance(String cell);
+
+  /// Plan import parse error (badPace), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read the pace \"{cell}\". Use m:ss.'**
+  String planImportErrorBadPace(String cell);
+
+  /// Plan import parse error (duplicateColumn), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'The column \"{column}\" appears twice.'**
+  String planImportErrorDuplicateColumn(String column);
+
+  /// Plan import parse error (missingColumn), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'The table has no \"{column}\" column.'**
+  String planImportErrorMissingColumn(String column);
+
+  /// Plan import parse error (raceNameTooLong), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'The race name \"{name}\" is longer than {max} characters.'**
+  String planImportErrorRaceNameTooLong(String name, String max);
+
+  /// Plan import parse error (badRacePriority), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read the race priority \"{cell}\". Use A, B or C.'**
+  String planImportErrorBadRacePriority(String cell);
+
+  /// Plan import parse error (badGoalTime), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read the goal time \"{cell}\". Use h:mm:ss.'**
+  String planImportErrorBadGoalTime(String cell);
+
+  /// Plan import parse error (badWeek), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read the week number \"{cell}\".'**
+  String planImportErrorBadWeek(String cell);
+
+  /// Plan import parse error (badDate), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read the date \"{cell}\". Use YYYY-MM-DD.'**
+  String planImportErrorBadDate(String cell);
+
+  /// Plan import parse error (unknownKind), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'\"{cell}\" isn\'t a workout type this app knows.'**
+  String planImportErrorUnknownKind(String cell);
+
+  /// Plan import parse error (raceFieldsOnNonRace), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'Race, priority and goal apply only to race rows, and the workout on {date} isn\'t a race.'**
+  String planImportErrorRaceFieldsOnNonRace(String date);
+
+  /// Plan import parse error (noRows), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'No workout rows found. Paste a table with Week, Date and Type columns.'**
+  String get planImportErrorNoRows;
+
+  /// Plan import parse error (noGoalDistance), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t work out the plan\'s goal distance.'**
+  String get planImportErrorNoGoalDistance;
+
+  /// Plan import parse error (beforeStart), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'The workout on {date} is before the plan\'s start date, {start}.'**
+  String planImportErrorBeforeStart(String date, String start);
+
+  /// Plan import parse error (notJson), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'This isn\'t valid JSON.'**
+  String get planImportErrorNotJson;
+
+  /// Plan import parse error (noWorkoutsArray), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'The JSON has no workouts list.'**
+  String get planImportErrorNoWorkoutsArray;
+
+  /// Plan import parse error (badJsonShape), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'The JSON\'s workouts aren\'t in the export format.'**
+  String get planImportErrorBadJsonShape;
+
+  /// Plan import parse error (badTaperStamp), shown inside planImportParseError
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read the taper date \"{value}\" on {date}.'**
+  String planImportErrorBadTaperStamp(String value, String date);
 
   /// Date range of the imported plan in the preview
   ///

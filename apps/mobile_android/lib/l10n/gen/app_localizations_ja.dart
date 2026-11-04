@@ -6259,6 +6259,87 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String planImportErrorBadDistance(String cell) {
+    return '距離「$cell」を読み取れませんでした。';
+  }
+
+  @override
+  String planImportErrorBadPace(String cell) {
+    return 'ペース「$cell」を読み取れませんでした。m:ss の形式で入力してください。';
+  }
+
+  @override
+  String planImportErrorDuplicateColumn(String column) {
+    return '列「$column」が2回出てきます。';
+  }
+
+  @override
+  String planImportErrorMissingColumn(String column) {
+    return '表に「$column」列がありません。';
+  }
+
+  @override
+  String planImportErrorRaceNameTooLong(String name, String max) {
+    return 'レース名「$name」が$max文字を超えています。';
+  }
+
+  @override
+  String planImportErrorBadRacePriority(String cell) {
+    return 'レースの優先度「$cell」を読み取れませんでした。A、B、C のいずれかを使ってください。';
+  }
+
+  @override
+  String planImportErrorBadGoalTime(String cell) {
+    return '目標タイム「$cell」を読み取れませんでした。h:mm:ss の形式で入力してください。';
+  }
+
+  @override
+  String planImportErrorBadWeek(String cell) {
+    return '週番号「$cell」を読み取れませんでした。';
+  }
+
+  @override
+  String planImportErrorBadDate(String cell) {
+    return '日付「$cell」を読み取れませんでした。YYYY-MM-DD の形式で入力してください。';
+  }
+
+  @override
+  String planImportErrorUnknownKind(String cell) {
+    return '「$cell」はこのアプリが認識できるワークアウトの種類ではありません。';
+  }
+
+  @override
+  String planImportErrorRaceFieldsOnNonRace(String date) {
+    return 'レース名・優先度・目標はレースの行にだけ指定できます。$date のワークアウトはレースではありません。';
+  }
+
+  @override
+  String get planImportErrorNoRows =>
+      'ワークアウトの行が見つかりません。Week、Date、Type の列がある表を貼り付けてください。';
+
+  @override
+  String get planImportErrorNoGoalDistance => 'プランの目標距離を判断できませんでした。';
+
+  @override
+  String planImportErrorBeforeStart(String date, String start) {
+    return '$date のワークアウトがプランの開始日（$start）より前です。';
+  }
+
+  @override
+  String get planImportErrorNotJson => '有効な JSON ではありません。';
+
+  @override
+  String get planImportErrorNoWorkoutsArray => 'JSON に workouts のリストがありません。';
+
+  @override
+  String get planImportErrorBadJsonShape => 'JSON のワークアウトがエクスポート形式になっていません。';
+
+  @override
+  String planImportErrorBadTaperStamp(String value, String date) {
+    return '$date のテーパー日時「$value」を読み取れませんでした。';
+  }
+
+  @override
   String planImportPreviewDates(String start, String end) {
     return '$start〜$end';
   }

@@ -65,6 +65,7 @@
 	import { paceFieldFromSecPerKm, secPerKmFromPaceField } from '#lib/format/pace_format.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { planParseMessage } from '#lib/i18n/plan_parse_message.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
@@ -562,7 +563,8 @@
 			expandedWeek = null;
 			showImport = false;
 		} catch (e) {
-			importError = describeError(e);
+			const reason = planParseMessage(e, t);
+			importError = reason != null ? t('planEditor.importParseFailed', { detail: reason }) : describeError(e);
 		}
 	}
 
@@ -938,7 +940,7 @@
 			aria-describedby="plan-import-hint"
 		></textarea>
 		{#if importError}
-			<p class="error">{importError}</p>
+			<p class="error" role="alert">{importError}</p>
 		{/if}
 		<button type="button" class="btn btn-secondary" onclick={loadFromText}>
 			{t('planEditor.importLoad')}

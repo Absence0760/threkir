@@ -6559,6 +6559,89 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String planImportErrorBadDistance(String cell) {
+    return 'Couldn\'t read the distance \"$cell\".';
+  }
+
+  @override
+  String planImportErrorBadPace(String cell) {
+    return 'Couldn\'t read the pace \"$cell\". Use m:ss.';
+  }
+
+  @override
+  String planImportErrorDuplicateColumn(String column) {
+    return 'The column \"$column\" appears twice.';
+  }
+
+  @override
+  String planImportErrorMissingColumn(String column) {
+    return 'The table has no \"$column\" column.';
+  }
+
+  @override
+  String planImportErrorRaceNameTooLong(String name, String max) {
+    return 'The race name \"$name\" is longer than $max characters.';
+  }
+
+  @override
+  String planImportErrorBadRacePriority(String cell) {
+    return 'Couldn\'t read the race priority \"$cell\". Use A, B or C.';
+  }
+
+  @override
+  String planImportErrorBadGoalTime(String cell) {
+    return 'Couldn\'t read the goal time \"$cell\". Use h:mm:ss.';
+  }
+
+  @override
+  String planImportErrorBadWeek(String cell) {
+    return 'Couldn\'t read the week number \"$cell\".';
+  }
+
+  @override
+  String planImportErrorBadDate(String cell) {
+    return 'Couldn\'t read the date \"$cell\". Use YYYY-MM-DD.';
+  }
+
+  @override
+  String planImportErrorUnknownKind(String cell) {
+    return '\"$cell\" isn\'t a workout type this app knows.';
+  }
+
+  @override
+  String planImportErrorRaceFieldsOnNonRace(String date) {
+    return 'Race, priority and goal apply only to race rows, and the workout on $date isn\'t a race.';
+  }
+
+  @override
+  String get planImportErrorNoRows =>
+      'No workout rows found. Paste a table with Week, Date and Type columns.';
+
+  @override
+  String get planImportErrorNoGoalDistance =>
+      'Couldn\'t work out the plan\'s goal distance.';
+
+  @override
+  String planImportErrorBeforeStart(String date, String start) {
+    return 'The workout on $date is before the plan\'s start date, $start.';
+  }
+
+  @override
+  String get planImportErrorNotJson => 'This isn\'t valid JSON.';
+
+  @override
+  String get planImportErrorNoWorkoutsArray => 'The JSON has no workouts list.';
+
+  @override
+  String get planImportErrorBadJsonShape =>
+      'The JSON\'s workouts aren\'t in the export format.';
+
+  @override
+  String planImportErrorBadTaperStamp(String value, String date) {
+    return 'Couldn\'t read the taper date \"$value\" on $date.';
+  }
+
+  @override
   String planImportPreviewDates(String start, String end) {
     return '$start to $end';
   }

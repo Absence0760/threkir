@@ -171,15 +171,49 @@ export function planToJson(plan: ExportPlan): string {
 	return JSON.stringify(plan, null, 2);
 }
 
-class PlanParseError extends Error {}
+/// Why a pasted plan could not be read. The UI renders `code` + `params`
+/// through the catalogue (`plan_parse_message.ts`); `message` is the English
+/// reading, kept for logs and tests. Dart twin: `PlanParseError` in
+/// `plan_serialize.dart`, with the same codes and params.
+export type PlanParseCode =
+	| 'badDistance'
+	| 'badPace'
+	| 'duplicateColumn'
+	| 'missingColumn'
+	| 'raceNameTooLong'
+	| 'badRacePriority'
+	| 'badGoalTime'
+	| 'badWeek'
+	| 'badDate'
+	| 'unknownKind'
+	| 'raceFieldsOnNonRace'
+	| 'noRows'
+	| 'noGoalDistance'
+	| 'beforeStart'
+	| 'notJson'
+	| 'noWorkoutsArray'
+	| 'badJsonShape'
+	| 'badTaperStamp';
+
+export class PlanParseError extends Error {
+	readonly code: PlanParseCode;
+	readonly params: Readonly<Record<string, string>>;
+
+	constructor(code: PlanParseCode, params: Record<string, string>, message: string) {
+		super(message);
+		this.name = 'PlanParseError';
+		this.code = code;
+		this.params = params;
+	}
+}
 
 function parseDistanceCell(cell: string): number | null {
 	const t = cell.trim();
 	if (!t) return null;
 	const m = t.match(/^([\d.]+)\s*(km|mi|m)?$/i);
-	if (!m) throw new PlanParseError(`Couldn't read distance "${cell}".`);
+	if (!m) throw new PlanParseError('badDistance', { cell }, `Couldn't read distance "${cell}".`);
 	const num = parseFloat(m[1]);
-	if (Number.isNaN(num)) throw new PlanParseError(`Couldn't read distance "${cell}".`);
+	if (Number.isNaN(num)) throw new PlanParseError('badDistance', { cell }, `Couldn't read distance "${cell}".`);
 	const unit = (m[2] ?? 'km').toLowerCase();
 	if (unit === 'mi') return num * METRES_PER_MILE;
 	if (unit === 'm') return num;
@@ -190,7 +224,7 @@ function parsePaceCell(cell: string): number | null {
 	const t = cell.trim();
 	if (!t) return null;
 	const m = t.match(/^(\d{1,2}):(\d{2})$/);
-	if (!m) throw new PlanParseError(`Couldn't read pace "${cell}" — use m:ss.`);
+	if (!m) throw new PlanParseError('badPace', { cell }, `Couldn't read pace "${cell}" — use m:ss.`);
 	return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
 }
 
@@ -256,11 +290,15 @@ function headerColumns(cells: string[]): Map<Column, number> | null {
 	if (names.every((n, i) => n === LEGACY_COLUMNS[i])) return null;
 	const map = new Map<Column, number>();
 	names.forEach((n, i) => {
-		if (map.has(n)) throw new PlanParseError(`Column "${cells[i]}" appears twice.`);
+		if (map.has(n)) {
+			throw new PlanParseError('duplicateColumn', { column: cells[i] }, `Column "${cells[i]}" appears twice.`);
+		}
 		map.set(n, i);
 	});
 	for (const required of ['week', 'date', 'type'] as const) {
-		if (!map.has(required)) throw new PlanParseError(`The table has no ${required} column.`);
+		if (!map.has(required)) {
+			throw new PlanParseError('missingColumn', { column: required }, `The table has no ${required} column.`);
+		}
 	}
 	return map;
 }
@@ -269,7 +307,11 @@ function parseRaceName(cell: string): string | null {
 	const t = cell.trim();
 	if (!t) return null;
 	if (t.length > RACE_NAME_MAX) {
-		throw new PlanParseError(`Race name "${t.slice(0, 40)}…" is longer than ${RACE_NAME_MAX} characters.`);
+		throw new PlanParseError(
+			'raceNameTooLong',
+			{ name: `${t.slice(0, 40)}…`, max: String(RACE_NAME_MAX) },
+			`Race name "${t.slice(0, 40)}…" is longer than ${RACE_NAME_MAX} characters.`,
+		);
 	}
 	return t;
 }
@@ -278,7 +320,7 @@ function parsePriorityCell(cell: string): RacePriority | null {
 	const t = cell.trim().toUpperCase();
 	if (!t) return null;
 	if (!(RACE_PRIORITIES as readonly string[]).includes(t)) {
-		throw new PlanParseError(`Bad race priority "${cell}" — use A, B or C.`);
+		throw new PlanParseError('badRacePriority', { cell }, `Bad race priority "${cell}" — use A, B or C.`);
 	}
 	return t as RacePriority;
 }
@@ -299,7 +341,9 @@ function parseGoalCell(cell: string): number | null {
 			sec = total;
 		}
 	}
-	if (sec == null || sec <= 0) throw new PlanParseError(`Couldn't read goal time "${cell}" — use h:mm:ss.`);
+	if (sec == null || sec <= 0) {
+		throw new PlanParseError('badGoalTime', { cell }, `Couldn't read goal time "${cell}" — use h:mm:ss.`);
+	}
 	return sec;
 }
 
@@ -373,14 +417,14 @@ export function parsePlanMarkdown(text: string): ParsedPlan {
 				: cells;
 			const weekNum = parseInt(weekCell, 10);
 			if (Number.isNaN(weekNum) || weekNum < 1) {
-				throw new PlanParseError(`Bad week number "${weekCell}".`);
+				throw new PlanParseError('badWeek', { cell: weekCell }, `Bad week number "${weekCell}".`);
 			}
 			if (!ISO_DATE.test(dateCell)) {
-				throw new PlanParseError(`Bad date "${dateCell}" — use YYYY-MM-DD.`);
+				throw new PlanParseError('badDate', { cell: dateCell }, `Bad date "${dateCell}" — use YYYY-MM-DD.`);
 			}
 			const kind = kindCell.trim().toLowerCase() as WorkoutKind;
 			if (!WORKOUT_KINDS.includes(kind)) {
-				throw new PlanParseError(`Unknown workout type "${kindCell}".`);
+				throw new PlanParseError('unknownKind', { cell: kindCell }, `Unknown workout type "${kindCell}".`);
 			}
 			const race_name = parseRaceName(cell('race'));
 			const race_priority = parsePriorityCell(cell('priority'));
@@ -390,6 +434,8 @@ export function parsePlanMarkdown(text: string): ParsedPlan {
 				(race_name != null || race_priority != null || target_duration_seconds != null)
 			) {
 				throw new PlanParseError(
+					'raceFieldsOnNonRace',
+					{ date: dateCell, kind },
 					`Race, Priority and Goal only apply to race rows — ${dateCell} is a ${kind} workout.`,
 				);
 			}
@@ -408,7 +454,7 @@ export function parsePlanMarkdown(text: string): ParsedPlan {
 	}
 
 	if (rows.length === 0) {
-		throw new PlanParseError('No workout rows found. Expected a | Week | Date | … | table.');
+		throw new PlanParseError('noRows', {}, 'No workout rows found. Expected a | Week | Date | … | table.');
 	}
 
 	rows.sort((a, b) => (a.scheduled_date < b.scheduled_date ? -1 : a.scheduled_date > b.scheduled_date ? 1 : 0));
@@ -438,7 +484,7 @@ export function parsePlanMarkdown(text: string): ParsedPlan {
 		resolvedDistance = Math.max(0, ...rows.map((r) => r.target_distance_m ?? 0));
 	}
 	if (!(resolvedDistance > 0)) {
-		throw new PlanParseError('Could not determine a goal distance.');
+		throw new PlanParseError('noGoalDistance', {}, 'Could not determine a goal distance.');
 	}
 
 	const weeks = [...byWeek.keys()]
@@ -474,6 +520,8 @@ export function parsePlanMarkdown(text: string): ParsedPlan {
 	// here, readably, rather than as a raw server code on create.
 	if (rows[0].scheduled_date < start) {
 		throw new PlanParseError(
+			'beforeStart',
+			{ date: rows[0].scheduled_date, start },
 			`The workout on ${rows[0].scheduled_date} is before the plan's start date, ${start}.`,
 		);
 	}
@@ -503,15 +551,30 @@ export function parsePlanJson(text: string): ParsedPlan {
 	try {
 		obj = JSON.parse(text);
 	} catch {
-		throw new PlanParseError('Not valid JSON.');
+		throw new PlanParseError('notJson', {}, 'Not valid JSON.');
 	}
 	const p = obj as Partial<ExportPlan>;
 	if (!p || !Array.isArray(p.workouts)) {
-		throw new PlanParseError('JSON is missing a workouts array.');
+		throw new PlanParseError('noWorkoutsArray', {}, 'JSON is missing a workouts array.');
 	}
 	// Re-route through the Markdown builder so JSON + Markdown share one
 	// reconstruction path (phase recompute, volume summing, validation).
 	const workouts = p.workouts as ExportWorkout[];
+	// A workouts array whose entries are not export-shaped objects would
+	// otherwise surface as a TypeError from the exporter, which the UI cannot
+	// say in the runner's language.
+	if (
+		workouts.some(
+			(w) =>
+				w == null ||
+				typeof w !== 'object' ||
+				Array.isArray(w) ||
+				typeof w.week_index !== 'number' ||
+				typeof w.scheduled_date !== 'string',
+		)
+	) {
+		throw new PlanParseError('badJsonShape', {}, 'JSON workouts are not in the export shape.');
+	}
 	const parsed = parsePlanMarkdown(
 		planToMarkdown({
 			name: p.name ?? 'Imported plan',
@@ -540,7 +603,11 @@ function withTaperStamps(parsed: ParsedPlan, workouts: ExportWorkout[]): ParsedP
 	for (const w of ordered) {
 		const raw = w.race_taper_applied_at ?? null;
 		if (raw != null && (typeof raw !== 'string' || !TAPER_STAMP.test(raw))) {
-			throw new PlanParseError(`Couldn't read race_taper_applied_at "${String(raw)}" on ${w.scheduled_date}.`);
+			throw new PlanParseError(
+				'badTaperStamp',
+				{ value: String(raw), date: w.scheduled_date },
+				`Couldn't read race_taper_applied_at "${String(raw)}" on ${w.scheduled_date}.`,
+			);
 		}
 		const key = `${w.scheduled_date}|${w.kind}`;
 		queues.set(key, [...(queues.get(key) ?? []), raw]);

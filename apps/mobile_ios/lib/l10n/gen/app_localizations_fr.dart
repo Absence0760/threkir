@@ -6636,6 +6636,90 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String planImportErrorBadDistance(String cell) {
+    return 'Impossible de lire la distance « $cell ».';
+  }
+
+  @override
+  String planImportErrorBadPace(String cell) {
+    return 'Impossible de lire l\'allure « $cell ». Utilisez m:ss.';
+  }
+
+  @override
+  String planImportErrorDuplicateColumn(String column) {
+    return 'La colonne « $column » apparaît deux fois.';
+  }
+
+  @override
+  String planImportErrorMissingColumn(String column) {
+    return 'Le tableau n\'a pas de colonne « $column ».';
+  }
+
+  @override
+  String planImportErrorRaceNameTooLong(String name, String max) {
+    return 'Le nom de course « $name » dépasse $max caractères.';
+  }
+
+  @override
+  String planImportErrorBadRacePriority(String cell) {
+    return 'Impossible de lire la priorité de course « $cell ». Utilisez A, B ou C.';
+  }
+
+  @override
+  String planImportErrorBadGoalTime(String cell) {
+    return 'Impossible de lire le temps visé « $cell ». Utilisez h:mm:ss.';
+  }
+
+  @override
+  String planImportErrorBadWeek(String cell) {
+    return 'Impossible de lire le numéro de semaine « $cell ».';
+  }
+
+  @override
+  String planImportErrorBadDate(String cell) {
+    return 'Impossible de lire la date « $cell ». Utilisez AAAA-MM-JJ.';
+  }
+
+  @override
+  String planImportErrorUnknownKind(String cell) {
+    return '« $cell » n\'est pas un type de séance connu de l\'application.';
+  }
+
+  @override
+  String planImportErrorRaceFieldsOnNonRace(String date) {
+    return 'Course, priorité et objectif ne s\'appliquent qu\'aux lignes de course, et la séance du $date n\'est pas une course.';
+  }
+
+  @override
+  String get planImportErrorNoRows =>
+      'Aucune ligne de séance trouvée. Collez un tableau avec les colonnes Week, Date et Type.';
+
+  @override
+  String get planImportErrorNoGoalDistance =>
+      'Impossible de déterminer la distance visée par le plan.';
+
+  @override
+  String planImportErrorBeforeStart(String date, String start) {
+    return 'La séance du $date est antérieure à la date de début du plan, le $start.';
+  }
+
+  @override
+  String get planImportErrorNotJson => 'Ce n\'est pas du JSON valide.';
+
+  @override
+  String get planImportErrorNoWorkoutsArray =>
+      'Le JSON n\'a pas de liste « workouts ».';
+
+  @override
+  String get planImportErrorBadJsonShape =>
+      'Les séances du JSON ne sont pas au format d\'export.';
+
+  @override
+  String planImportErrorBadTaperStamp(String value, String date) {
+    return 'Impossible de lire la date d\'affûtage « $value » du $date.';
+  }
+
+  @override
   String planImportPreviewDates(String start, String end) {
     return 'Du $start au $end';
   }

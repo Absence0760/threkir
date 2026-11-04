@@ -29,22 +29,28 @@
 --   14-15. anon and authenticated cannot call the worklist.
 --   16.    Two routes deleted in one statement (two cascaded firings) and a
 --          photo deleted in another statement are one job at commit.
---   17-20. 2,500 paths cascaded from 25 routes, one statement each, are
---          three jobs (1000, 1000, 500), every path once; the jobs table
---          took three inserts and no update, so no payload was rewritten
---          per firing; and the buffer is empty after the flush.
+--   17-20. 1,500 paths cascaded from 15 of 25 routes, one statement each, are
+--          two jobs (1000, 500), every path once; the jobs table took two
+--          inserts and no update, so no payload was rewritten per firing;
+--          and the buffer is empty after the flush.
 --   21.    A delete rolled back to a savepoint leaves nothing to flush.
 --   22-23. With the enqueue made to fail, the photo delete still commits and
 --          queues nothing.
 --   24-25. A queued paths job another transaction committed, with this
 --          transaction's timestamps, is left as it was: the paths go to a
 --          job of their own.
---   26-27. A serialization failure or a deadlock inside the enqueue is not
+--   26-29. The buffer cap: 2,500 single-photo deletes in one transaction
+--          (2,500 statements) commit, and queue the first 2,000 paths as two
+--          jobs, leaving the rest to the backstop; the count is reset by the
+--          flush; and one statement of 2,500 photos, the shape of an account
+--          deletion, is queued whole, because the cap is checked before a
+--          statement appends.
+--   30-31. A serialization failure or a deadlock inside the enqueue is not
 --          swallowed: it aborts the commit so the caller retries the whole
 --          transaction.
 
 begin;
-select plan(27);
+select plan(31);
 
 create function pg_temp.commit_sweep() returns void language plpgsql as $f$
 begin
@@ -256,14 +262,14 @@ select results_eq(
                "d2293000-0000-0000-0000-0000000000a1/c12.jpg"]'::jsonb) $$,
   'two cascaded firings and a later statement are one job at commit, paths sorted');
 
--- ── 17-20: ceil(paths / 1000) jobs, each written once ──────────────────────
+-- ── 17-20: ceil(paths / 1000) jobs, each written once (under the cap) ──────────────────────
 delete from public.jobs where kind = 'route_photo_orphan_sweep' and payload ? 'paths';
 
 insert into route_photos (route_id, owner_id, storage_path)
 select ('d2293000-0000-0000-0000-0000000000' || to_char(15 + (n - 1) / 100, 'FM00'))::uuid,
        'd2293000-0000-0000-0000-0000000000a1',
        'd2293000-0000-0000-0000-0000000000a1/bulk-' || n || '.jpg'
-  from generate_series(1, 2500) n;
+  from generate_series(1, 1500) n;
 
 create temporary table jobs_writes_before as
   select n_tup_ins, n_tup_upd from pg_stat_xact_user_tables
@@ -282,22 +288,22 @@ select pg_temp.commit_sweep();
 select results_eq(
   $$ select jsonb_array_length(payload -> 'paths') from public.jobs
       where kind = 'route_photo_orphan_sweep' and payload ? 'paths' order by id $$,
-  $$ values (1000), (1000), (500) $$,
-  '2,500 paths cascaded from 25 routes are three jobs of at most 1000');
+  $$ values (1000), (500) $$,
+  '1,500 paths cascaded from 15 routes are two jobs of at most 1000');
 
 select results_eq(
   $$ select count(*)::int, count(distinct p)::int from public.jobs j,
             jsonb_array_elements_text(j.payload -> 'paths') p
       where j.kind = 'route_photo_orphan_sweep' $$,
-  $$ values (2500, 2500) $$,
+  $$ values (1500, 1500) $$,
   'every cascaded path is queued exactly once');
 
 select results_eq(
   $$ select s.n_tup_ins - b.n_tup_ins, s.n_tup_upd - b.n_tup_upd
        from pg_stat_xact_user_tables s, jobs_writes_before b
       where s.schemaname = 'public' and s.relname = 'jobs' $$,
-  $$ values (3::bigint, 0::bigint) $$,
-  'the 25 firings wrote three job rows and rewrote none');
+  $$ values (2::bigint, 0::bigint) $$,
+  'the 25 statements wrote two job rows and rewrote none');
 
 select is(
   current_setting('threkir.route_photo_orphan_sweep_paths', true),
@@ -377,7 +383,59 @@ select is(
   '{"paths":["d2293000-0000-0000-0000-0000000000a1/own.jpg"]}'::jsonb,
   'the path goes to a job of its own');
 
--- ── 26-27: class 40 errors propagate ───────────────────────────────────────
+-- ── 26-29: the buffer is capped per transaction, never per statement ──────
+delete from public.jobs where kind = 'route_photo_orphan_sweep' and payload ? 'paths';
+
+insert into route_photos (route_id, owner_id, storage_path)
+select 'd2293000-0000-0000-0000-000000000012', 'd2293000-0000-0000-0000-0000000000a1',
+       'd2293000-0000-0000-0000-0000000000a1/cap-' || to_char(n, 'FM0000') || '.jpg'
+  from generate_series(1, 2500) n;
+
+select lives_ok(
+  $$ do $d$
+     declare n int;
+     begin
+       for n in 1..2500 loop
+         delete from route_photos
+          where storage_path = 'd2293000-0000-0000-0000-0000000000a1/cap-' || to_char(n, 'FM0000') || '.jpg';
+       end loop;
+     end;
+     $d$;
+     select pg_temp.commit_sweep() $$,
+  '2,500 single-photo delete statements in one transaction commit past the cap');
+
+select results_eq(
+  $$ select (select count(*)::int from route_photos where storage_path like '%/cap-%'),
+            (select count(*)::int from public.jobs
+              where kind = 'route_photo_orphan_sweep' and payload ? 'paths'),
+            (select count(*)::int from public.jobs j, jsonb_array_elements_text(j.payload -> 'paths') p
+              where j.kind = 'route_photo_orphan_sweep' and p <= 'd2293000-0000-0000-0000-0000000000a1/cap-2000.jpg'),
+            (select count(*)::int from public.jobs j, jsonb_array_elements_text(j.payload -> 'paths') p
+              where j.kind = 'route_photo_orphan_sweep') $$,
+  $$ values (0, 2, 2000, 2000) $$,
+  'every row is gone, and the first 2,000 paths are two jobs; the rest wait for the backstop');
+
+select is(
+  current_setting('threkir.route_photo_orphan_sweep_count', true),
+  '',
+  'the flush resets the count, so the next transaction starts under the cap');
+
+delete from public.jobs where kind = 'route_photo_orphan_sweep' and payload ? 'paths';
+
+insert into route_photos (route_id, owner_id, storage_path)
+select 'd2293000-0000-0000-0000-000000000012', 'd2293000-0000-0000-0000-0000000000a1',
+       'd2293000-0000-0000-0000-0000000000a1/whole-' || n || '.jpg'
+  from generate_series(1, 2500) n;
+delete from route_photos where storage_path like 'd2293000-0000-0000-0000-0000000000a1/whole-%';
+select pg_temp.commit_sweep();
+
+select results_eq(
+  $$ select jsonb_array_length(payload -> 'paths') from public.jobs
+      where kind = 'route_photo_orphan_sweep' and payload ? 'paths' order by id $$,
+  $$ values (1000), (1000), (500) $$,
+  'one statement of 2,500 photos is queued whole: the cap never cuts a statement short');
+
+-- ── 30-31: class 40 errors propagate ───────────────────────────────────────
 create function pg_temp.raise_class_40() returns trigger language plpgsql as $f$
 begin
   if new.kind = 'route_photo_orphan_sweep' then

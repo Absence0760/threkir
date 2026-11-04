@@ -1430,6 +1430,7 @@ const exportPageSize = 1000
 var orderByTable = map[string]string{
 	schema.TableChallengeParticipants:    "challenge_id,user_id",
 	schema.TableClubMembers:              "club_id,user_id",
+	schema.TableConversationParticipants: "conversation_id,user_id",
 	schema.TableEventAttendees:           "event_id,user_id,instance_start",
 	schema.TableEventExceptions:          "event_id,instance_start",
 	schema.TableEventPricing:             "event_id,instance_start",
@@ -2419,6 +2420,13 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		{
 			name: "direct_messages_received.json", table: schema.TableDirectMessages,
 			filter: "recipient_id=eq." + uid, sel: "*",
+		},
+		// conversation_participants — the subject's own view of each
+		// conversation (joined, deleted-for-me, muted, archived; migration
+		// 20271105000001). Only their own row.
+		{
+			name: "conversation_settings.json", table: schema.TableConversationParticipants,
+			filter: "user_id=eq." + uid, sel: "conversation_id,joined_at,hidden_before,muted_at,archived_at",
 		},
 		// coach_athletes — the subject's coaching relationships, as coach
 		// and as athlete. `invite_token` is a redeemable credential

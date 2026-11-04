@@ -20,6 +20,7 @@ export interface BackupTableSpec {
 const ORDER_BY_TABLE: Record<string, string> = {
 	challenge_participants: 'challenge_id,user_id',
 	club_members: 'club_id,user_id',
+	conversation_participants: 'conversation_id,user_id',
 	event_attendees: 'event_id,user_id,instance_start',
 	event_exceptions: 'event_id,instance_start',
 	event_pricing: 'event_id,instance_start',
@@ -247,6 +248,16 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			table: 'direct_messages',
 			filter: `recipient_id=eq.${uid}`,
 			select: '*',
+		},
+		// conversation_participants — the subject's own view of each
+		// conversation: when they joined, and whether they deleted it for
+		// themselves, muted it or archived it (migration 20271105000001). Only
+		// their own row: the other participant's state is theirs.
+		{
+			entry: 'conversation_settings.json',
+			table: 'conversation_participants',
+			filter: uidEq,
+			select: 'conversation_id,joined_at,hidden_before,muted_at,archived_at',
 		},
 		// coach_athletes — coaching relationships as coach + as athlete.
 		// `invite_token` is a redeemable credential; the narrow select

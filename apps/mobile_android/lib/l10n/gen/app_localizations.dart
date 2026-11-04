@@ -31870,6 +31870,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'no position yet, try again in a moment'**
   String get locationErrorNoFix;
+
+  /// Banner when an imported route file parses but holds no line of two or more points (or is not a route file at all).
+  ///
+  /// In en, this message translates to:
+  /// **'Import failed: that file holds no route with at least two points.'**
+  String get routesImportNoTrack;
 }
 
 class _AppLocalizationsDelegate

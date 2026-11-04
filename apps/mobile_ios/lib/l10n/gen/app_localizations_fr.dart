@@ -19679,4 +19679,8 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get locationErrorNoFix =>
       'pas encore de position, réessayez dans un instant';
+
+  @override
+  String get routesImportNoTrack =>
+      'Échec de l\'import : ce fichier ne contient aucun itinéraire d\'au moins deux points.';
 }

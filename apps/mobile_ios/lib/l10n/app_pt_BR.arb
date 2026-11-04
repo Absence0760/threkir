@@ -5494,5 +5494,6 @@
   "routeDetailLineRetry": "Tentar novamente",
   "locationErrorPermissionDenied": "a permissão de localização está desativada",
   "locationErrorServicesOff": "a localização está desativada neste aparelho",
-  "locationErrorNoFix": "ainda sem posição, tente novamente em instantes"
+  "locationErrorNoFix": "ainda sem posição, tente novamente em instantes",
+  "routesImportNoTrack": "Falha na importação: esse arquivo não tem nenhuma rota com pelo menos dois pontos."
 }

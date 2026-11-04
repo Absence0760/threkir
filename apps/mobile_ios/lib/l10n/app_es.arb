@@ -5494,5 +5494,6 @@
   "routeDetailLineRetry": "Reintentar",
   "locationErrorPermissionDenied": "el permiso de ubicación está desactivado",
   "locationErrorServicesOff": "la ubicación está desactivada en este dispositivo",
-  "locationErrorNoFix": "aún no hay posición, inténtalo de nuevo en un momento"
+  "locationErrorNoFix": "aún no hay posición, inténtalo de nuevo en un momento",
+  "routesImportNoTrack": "Error al importar: ese archivo no contiene ninguna ruta con al menos dos puntos."
 }

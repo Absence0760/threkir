@@ -695,13 +695,15 @@ class RoutesScreenState extends State<RoutesScreen> {
   }
 
   Future<void> _pickAndImport() async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: kRouteImportPickerExtensions,
-    );
-    if (result == null || result.files.isEmpty) return;
-
     try {
+      // Inside the try: the picker throws a PlatformException when the OS
+      // refuses it (no document provider, one already open), and outside it
+      // that reached the zone as an unhandled error with nothing shown.
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: kRouteImportPickerExtensions,
+      );
+      if (result == null || result.files.isEmpty) return;
       // path can be null when the picker hands back a content URI it
       // couldn't resolve to a real file (Drive / OneDrive document
       // providers do this). readAsString may also throw on permission
@@ -729,8 +731,8 @@ class RoutesScreenState extends State<RoutesScreen> {
           routes.where((r) => r.waypoints.length >= 2).toList(growable: false);
       if (usable.isEmpty) {
         if (mounted) {
-          showTopBanner(context,
-              AppLocalizations.of(context).routesImportFailedLocalOnly);
+          showTopBanner(
+              context, AppLocalizations.of(context).routesImportNoTrack);
         }
         return;
       }

@@ -19655,4 +19655,8 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get locationErrorNoFix =>
       'noch keine Position, versuche es gleich noch einmal';
+
+  @override
+  String get routesImportNoTrack =>
+      'Import fehlgeschlagen: Die Datei enthält keine Route mit mindestens zwei Punkten.';
 }

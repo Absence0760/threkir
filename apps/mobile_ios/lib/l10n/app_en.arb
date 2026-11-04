@@ -25697,5 +25697,9 @@
   "locationErrorNoFix": "no position yet, try again in a moment",
   "@locationErrorNoFix": {
     "description": "Reason after \"Location unavailable:\" when a Locate tap gets no position in time. Lower-case: it follows a colon."
+  },
+  "routesImportNoTrack": "Import failed: that file holds no route with at least two points.",
+  "@routesImportNoTrack": {
+    "description": "Banner when an imported route file parses but holds no line of two or more points (or is not a route file at all)."
   }
 }

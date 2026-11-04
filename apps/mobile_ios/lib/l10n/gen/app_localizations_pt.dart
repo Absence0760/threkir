@@ -19638,6 +19638,10 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get locationErrorNoFix =>
       'ainda sem posição, tente novamente daqui a pouco';
+
+  @override
+  String get routesImportNoTrack =>
+      'Falha na importação: esse ficheiro não tem nenhuma rota com pelo menos dois pontos.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -39260,4 +39264,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get locationErrorNoFix =>
       'ainda sem posição, tente novamente em instantes';
+
+  @override
+  String get routesImportNoTrack =>
+      'Falha na importação: esse arquivo não tem nenhuma rota com pelo menos dois pontos.';
 }

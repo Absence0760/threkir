@@ -19436,4 +19436,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get locationErrorNoFix => 'no position yet, try again in a moment';
+
+  @override
+  String get routesImportNoTrack =>
+      'Import failed: that file holds no route with at least two points.';
 }

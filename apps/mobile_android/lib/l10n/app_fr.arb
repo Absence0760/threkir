@@ -5494,5 +5494,6 @@
   "routeDetailLineRetry": "Réessayer",
   "locationErrorPermissionDenied": "l'autorisation de localisation est désactivée",
   "locationErrorServicesOff": "la localisation est désactivée sur cet appareil",
-  "locationErrorNoFix": "pas encore de position, réessayez dans un instant"
+  "locationErrorNoFix": "pas encore de position, réessayez dans un instant",
+  "routesImportNoTrack": "Échec de l'import : ce fichier ne contient aucun itinéraire d'au moins deux points."
 }

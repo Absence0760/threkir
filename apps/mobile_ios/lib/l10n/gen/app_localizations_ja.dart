@@ -18707,4 +18707,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get locationErrorNoFix => 'まだ位置を取得できません。少し待ってからもう一度お試しください';
+
+  @override
+  String get routesImportNoTrack => 'インポートに失敗しました: このファイルには 2 点以上のルートがありません。';
 }

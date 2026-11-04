@@ -5494,5 +5494,6 @@
   "routeDetailLineRetry": "Erneut versuchen",
   "locationErrorPermissionDenied": "die Standortberechtigung ist deaktiviert",
   "locationErrorServicesOff": "die Standortermittlung ist auf diesem Gerät ausgeschaltet",
-  "locationErrorNoFix": "noch keine Position, versuche es gleich noch einmal"
+  "locationErrorNoFix": "noch keine Position, versuche es gleich noch einmal",
+  "routesImportNoTrack": "Import fehlgeschlagen: Die Datei enthält keine Route mit mindestens zwei Punkten."
 }

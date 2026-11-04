@@ -6792,7 +6792,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get planDetailNotFound => 'Plan introuvable.';
 
   @override
-  String get planDetailLongestLongRun => 'Sortie longue la plus longue';
+  String planDetailLongestLongRun(String distance) {
+    return 'Sortie longue la plus longue : $distance';
+  }
 
   @override
   String get planDetailPublishTooltip => 'Publier comme modèle de club';

@@ -1854,7 +1854,7 @@
   "planDetailTimeoutError": "Zeitüberschreitung der Verbindung. Prüfe dein Netzwerk und versuche es erneut.",
   "planDetailLoadError": "Dieser Plan konnte nicht geladen werden. Tippe auf Wiederholen.",
   "planDetailNotFound": "Plan nicht gefunden.",
-  "planDetailLongestLongRun": "Längster langer Lauf",
+  "planDetailLongestLongRun": "Längster langer Lauf: {distance}",
   "planDetailPublishTooltip": "Als Vereinsvorlage veröffentlichen",
   "planDetailRacesTitle": "Wettkämpfe in diesem Plan",
   "planDetailRacePriority": "Priorität {priority}",

@@ -11002,11 +11002,11 @@ abstract class AppLocalizations {
   /// **'Plan not found.'**
   String get planDetailNotFound;
 
-  /// Plan-detail header stat label for the longest completed long run
+  /// Plan-detail header stat for the longest completed long run; the whole line, so each locale places its own colon
   ///
   /// In en, this message translates to:
-  /// **'Longest long run'**
-  String get planDetailLongestLongRun;
+  /// **'Longest long run: {distance}'**
+  String planDetailLongestLongRun(String distance);
 
   /// Publish-as-template AppBar action tooltip
   ///

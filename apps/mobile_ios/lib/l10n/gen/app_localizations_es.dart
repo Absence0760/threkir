@@ -6775,7 +6775,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get planDetailNotFound => 'Plan no encontrado.';
 
   @override
-  String get planDetailLongestLongRun => 'Tirada larga más larga';
+  String planDetailLongestLongRun(String distance) {
+    return 'Tirada larga más larga: $distance';
+  }
 
   @override
   String get planDetailPublishTooltip => 'Publicar como plantilla del club';

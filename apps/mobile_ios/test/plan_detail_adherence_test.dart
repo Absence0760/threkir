@@ -6,6 +6,7 @@ import 'package:ui_kit/ui_kit.dart' show TextLane;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/social_service.dart';
+import '../lib/training.dart' show fmtKm;
 import '../lib/training_service.dart';
 import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
@@ -441,7 +442,12 @@ void main() {
       );
       final social = _FakeSocial(const []);
       await _pump(tester, training: training, social: social);
-      expect(find.textContaining('Longest long run'), findsOneWidget);
+      // One localized line, colon included: the label used to be built as
+      // `'$label: '` beside a second Text, so French lost its space before
+      // the colon and the reading order was fixed in code.
+      final en = lookupAppLocalizations(const Locale('en'));
+      expect(find.text(en.planDetailLongestLongRun(fmtKm(28000))),
+          findsOneWidget);
     });
 
     testWidgets('hides the progress section with no completed long run',

@@ -9124,9 +9124,15 @@
   "@planDetailNotFound": {
     "description": "Plan-detail not-found body"
   },
-  "planDetailLongestLongRun": "Longest long run",
+  "planDetailLongestLongRun": "Longest long run: {distance}",
   "@planDetailLongestLongRun": {
-    "description": "Plan-detail header stat label for the longest completed long run"
+    "description": "Plan-detail header stat for the longest completed long run; the whole line, so each locale places its own colon",
+    "placeholders": {
+      "distance": {
+        "type": "String",
+        "example": "28.0 km"
+      }
+    }
   },
   "planDetailPublishTooltip": "Publish as club template",
   "@planDetailPublishTooltip": {

@@ -1854,7 +1854,7 @@
   "planDetailTimeoutError": "Tempo de conexão esgotado. Verifique sua rede e tente novamente.",
   "planDetailLoadError": "Não foi possível carregar este plano. Toque em tentar novamente.",
   "planDetailNotFound": "Plano não encontrado.",
-  "planDetailLongestLongRun": "Longão mais longo",
+  "planDetailLongestLongRun": "Longão mais longo: {distance}",
   "planDetailPublishTooltip": "Publicar como modelo do clube",
   "planDetailRacesTitle": "Provas deste plano",
   "planDetailRacePriority": "Prioridade {priority}",

@@ -6406,7 +6406,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planDetailNotFound => 'プランが見つかりません。';
 
   @override
-  String get planDetailLongestLongRun => '最長のロング走';
+  String planDetailLongestLongRun(String distance) {
+    return '最長のロング走：$distance';
+  }
 
   @override
   String get planDetailPublishTooltip => 'クラブテンプレートとして公開';

@@ -2827,15 +2827,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                       size: 18, color: theme.colorScheme.primary),
                   const SizedBox(width: 8),
                   Flexible(
-                    child: Text('${l10n.planDetailLongestLongRun}: ',
-                        overflow: TextOverflow.ellipsis,
+                    child: Text(l10n.planDetailLongestLongRun(fmtKm(longest)),
+                        key: const Key('planDetailLongestLongRun'),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         )),
                   ),
-                  Text(fmtKm(longest),
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(fontWeight: FontWeight.w600)),
                 ],
               ),
             ],

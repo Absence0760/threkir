@@ -1854,7 +1854,7 @@
   "planDetailTimeoutError": "Se agotó el tiempo de conexión. Comprueba tu red e inténtalo de nuevo.",
   "planDetailLoadError": "No se pudo cargar este plan. Toca Reintentar.",
   "planDetailNotFound": "Plan no encontrado.",
-  "planDetailLongestLongRun": "Tirada larga más larga",
+  "planDetailLongestLongRun": "Tirada larga más larga: {distance}",
   "planDetailPublishTooltip": "Publicar como plantilla del club",
   "planDetailRacesTitle": "Carreras de este plan",
   "planDetailRacePriority": "Prioridad {priority}",

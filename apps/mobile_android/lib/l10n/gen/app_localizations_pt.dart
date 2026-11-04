@@ -6779,7 +6779,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get planDetailNotFound => 'Plano não encontrado.';
 
   @override
-  String get planDetailLongestLongRun => 'Corrida longa mais longa';
+  String planDetailLongestLongRun(String distance) {
+    return 'Corrida longa mais longa: $distance';
+  }
 
   @override
   String get planDetailPublishTooltip => 'Publicar como modelo do clube';
@@ -26564,7 +26566,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get planDetailNotFound => 'Plano não encontrado.';
 
   @override
-  String get planDetailLongestLongRun => 'Longão mais longo';
+  String planDetailLongestLongRun(String distance) {
+    return 'Longão mais longo: $distance';
+  }
 
   @override
   String get planDetailPublishTooltip => 'Publicar como modelo do clube';

@@ -1854,7 +1854,7 @@
   "planDetailTimeoutError": "Délai de connexion dépassé. Vérifiez votre réseau et réessayez.",
   "planDetailLoadError": "Impossible de charger ce plan. Appuyez sur Réessayer.",
   "planDetailNotFound": "Plan introuvable.",
-  "planDetailLongestLongRun": "Sortie longue la plus longue",
+  "planDetailLongestLongRun": "Sortie longue la plus longue : {distance}",
   "planDetailPublishTooltip": "Publier comme modèle de club",
   "planDetailRacesTitle": "Courses de ce plan",
   "planDetailRacePriority": "Priorité {priority}",

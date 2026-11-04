@@ -207,6 +207,8 @@ export const messages = {
 	"coachChat.recentRunsOnly": "最近のランのみ",
 	"coachChat.mySeason": "マイシーズン",
 	"coachChat.mySeasonSub": "現在のプランとその後に続くプラン",
+	"coachChat.seasonHint": "このプランの後にもレースがありますか？レースで「シーズンに追加」を選ぶと、ここに「マイシーズン」が表示されます。",
+	"coachChat.seasonHintAction": "レースを探す",
 	"coachChat.activePlan": "アクティブなプラン",
 	"coachChat.completed": "完了",
 	"coachChat.lastN": "直近{n}件",

@@ -225,6 +225,8 @@ export const en = {
 	"coachChat.recentRunsOnly": "recent runs only",
 	"coachChat.mySeason": "My season",
 	"coachChat.mySeasonSub": "current plan and the plans queued after it",
+	"coachChat.seasonHint": "Racing again after this plan? Choose Add to my season on the race, and My season shows up here.",
+	"coachChat.seasonHintAction": "Find a race",
 	"coachChat.activePlan": "Active plan",
 	"coachChat.completed": "Completed",
 	"coachChat.lastN": "Last {n}",

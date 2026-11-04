@@ -1100,6 +1100,14 @@
 							</a>
 						{/if}
 					</div>
+					<!-- My season is only offered once a plan is queued behind the
+					     current one, so a runner with one plan is told how to get it. -->
+					{#if onPlanChange && seasonPlans.length === 1}
+						<p class="season-hint" data-testid="coach-season-hint">
+							{t('coachChat.seasonHint')}
+							<a href="/races">{t('coachChat.seasonHintAction')}</a>
+						</p>
+					{/if}
 				{/if}
 			</div>
 		</header>
@@ -1568,6 +1576,8 @@
 	}
 	.chip-link:hover { filter: brightness(1.05); }
 	.chip-link:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+	.season-hint { margin: 0.3rem 0 0; font-size: 0.72rem; color: var(--color-text-secondary); }
+	.season-hint a { color: var(--color-primary); font-weight: 500; }
 
 	.scroll-wrap {
 		position: relative; flex: 1; min-height: 0;

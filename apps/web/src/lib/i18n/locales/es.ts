@@ -212,6 +212,8 @@ export const messages = {
 	"coachChat.recentRunsOnly": "solo carreras recientes",
 	"coachChat.mySeason": "Mi temporada",
 	"coachChat.mySeasonSub": "plan actual y los planes en cola después",
+	"coachChat.seasonHint": "¿Otra carrera después de este plan? Elige «Añadir a mi temporada» en la carrera y «Mi temporada» aparecerá aquí.",
+	"coachChat.seasonHintAction": "Buscar una carrera",
 	"coachChat.activePlan": "Plan activo",
 	"coachChat.completed": "Completado",
 	"coachChat.lastN": "Últimas {n}",

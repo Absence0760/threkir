@@ -144,9 +144,15 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # Same install as security.yml's image scans, for the same reason: see
+      # the header of .github/actions/setup-trivy/action.yml.
+      - uses: ./.github/actions/setup-trivy
+
       - name: Trivy config scan
+        id: scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          skip-setup-trivy: true
           # `scan-type: config` runs the IaC ruleset across HCL / yaml
           # / json (so it picks up the workflows too, harmlessly).
           # Trivy bundles tfsec-derived checks so we get the same
@@ -165,7 +171,9 @@ jobs:
 
       - name: Upload Trivy IaC SARIF
         uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
-        if: always()
+        # Only once the scan has written its SARIF; security.yml's image scans
+        # carry the reason.
+        if: ${{ !cancelled() && steps.scan.outcome == 'success' }}
         with:
           sarif_file: trivy-iac.sarif
           category: trivy-iac

@@ -89,7 +89,7 @@
 		try {
 			const res = await fetchSegmentsForRouteWithError(routeId);
 			if (res.error) {
-				loadError = res.error;
+				loadError = errorCopy(res.error, t, 'SegmentsPanel: loadError');
 				return;
 			}
 			segments = res.segments;
@@ -131,7 +131,10 @@
 				clubId: clubOnly ? clubId : null,
 			});
 			leaderboards = new Map(leaderboards).set(segmentId, res.error ? [] : res.entries);
-			leaderboardErrors = new Map(leaderboardErrors).set(segmentId, res.error);
+			leaderboardErrors = new Map(leaderboardErrors).set(
+				segmentId,
+				res.error ? errorCopy(res.error, t, 'SegmentsPanel: leaderboard') : null,
+			);
 		} catch (e) {
 			// A thrown rejection would otherwise leave the board stuck on the
 			// loading spinner forever — surface it as the retryable error state.

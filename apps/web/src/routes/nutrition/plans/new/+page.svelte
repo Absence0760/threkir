@@ -5,6 +5,7 @@
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { dbError } from '#lib/core/supabase_error.ts';
 	import type { NutritionPlan } from '#lib/types.ts';
 	import MealPlanEditor from '#lib/components/MealPlanEditor.svelte';
 
@@ -12,7 +13,7 @@
 		if (follow) {
 			try {
 				const current = await fetchMyNutritionAssignmentsWithError();
-				if (current.error !== null) throw new Error(current.error);
+				if (current.error !== null) throw dbError(current.error);
 				await followNutritionPlan(plan.id, isoDateOf(new Date()), current.assignments);
 				showToast(m('nutrition.plan.followed', { name: plan.title }), 'success');
 			} catch (e) {

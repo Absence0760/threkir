@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appErrorMessage, isPlanOverlapError } from '#lib/core/supabase_error.ts';
+	import { isPlanOverlapError } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { page } from '$app/state';
@@ -74,7 +74,7 @@
 			// the link gives us the header + a clean "not on your roster" state.
 			const roster = await fetchMyAthletesWithError();
 			if (roster.error) {
-				loadError = roster.error;
+				loadError = errorCopy(roster.error, m, 'coaching athlete: loadError');
 				loading = false;
 				return;
 			}
@@ -165,7 +165,7 @@
 			} else {
 				// Any other refusal raises a specific message; surface it rather
 				// than a swallowed failure.
-				showToast(appErrorMessage(e) ?? m('coachingAthlete.assignError'), 'error');
+				showToast(errorCopy(e, m, 'coachingAthlete.assignError', 'coachingAthlete.assignError'), 'error');
 			}
 		} finally {
 			assigning = false;

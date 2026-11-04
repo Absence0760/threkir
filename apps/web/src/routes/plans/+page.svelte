@@ -58,7 +58,7 @@
 		const token = listToken('plans');
 		const result = await fetchMyPlansWithError();
 		plans = result.plans;
-		loadError = result.error;
+		loadError = result.error ? errorCopy(result.error, m, 'plans: loadError') : null;
 		if (!result.error) loadedToken = token;
 		loading = false;
 	}

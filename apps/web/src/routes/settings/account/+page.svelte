@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { appErrorMessage, dbError } from '#lib/core/supabase_error.ts';
+	import { dbError, refusalCode } from '#lib/core/supabase_error.ts';
 	import { parseImportCompleteness } from '#lib/integrations/import_completeness.ts';
 	import { normalizeParkrunAthleteNumber } from '#lib/integrations/parkrun_barcode.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
@@ -806,7 +806,7 @@
 		exporting = true;
 		try {
 			const { runs, error } = await fetchRunsWithError();
-			if (error) throw new Error(error);
+			if (error) throw dbError(error);
 			const header = 'date,distance_m,duration_s,pace_s_per_km,source\n';
 			const rows = runs.map((r) => {
 				const pace = r.distance_m > 0 ? Math.round(r.duration_s / (r.distance_m / 1000)) : 0;
@@ -934,7 +934,7 @@
 			// slot used to carry supabase-js's "Edge Function returned a
 			// non-2xx status code" — a sentence about our transport, in
 			// English, in front of a subject asking for their own data.
-			const code = appErrorMessage(e) ?? '';
+			const code = refusalCode(e);
 			const reason =
 				code === 'unauthorized'
 					? m('settingsAccount.exportReasonSignedOut')
@@ -945,7 +945,7 @@
 									e instanceof CloudExportError ? e.retryAfterS : null,
 								),
 							})
-						: m('settingsAccount.exportReasonServer');
+						: errorCopy(e, m, 'settingsAccount.exportFailed', 'settingsAccount.exportReasonServer');
 			showToast(m('settingsAccount.exportFailed', { error: reason }), 'error');
 		}
 	}

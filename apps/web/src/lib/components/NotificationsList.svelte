@@ -33,7 +33,7 @@
 		try {
 			const res = await fetchNotificationsWithError(100);
 			if (res.error) {
-				loadError = res.error;
+				loadError = errorCopy(res.error, m, 'NotificationsList: loadError');
 				return;
 			}
 			items = res.notifications;

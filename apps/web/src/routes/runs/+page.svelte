@@ -33,6 +33,7 @@
 	import type { Run, RunSource } from '#lib/types.ts';
 	import { formatElevation } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { ACTIVITY_TYPE_ICONS } from '#lib/runs/activity_type.ts';
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import type { Snapshot } from './$types';
@@ -76,7 +77,7 @@
 
 	const PAGE_SIZE = 50;
 	let loadingMore = $state(false);
-	let moreError = $state<string | null>(null);
+	let moreError = $state<Error | null>(null);
 	let hasMore = $state(false);
 	/// The keyset cursor for the next page (see fetchRunsWithError). Kept
 	/// rather than derived from the last card: a bulk delete removes cards, and
@@ -467,7 +468,7 @@
 		loadError = null;
 		const gen = ++fetchGen;
 		const token = listToken('runs');
-		let res: { runs: Run[]; error: string | null; next: KeysetCursor | null };
+		let res: { runs: Run[]; error: Error | null; next: KeysetCursor | null };
 		if (fetchMode === 'paginated') {
 			res = await fetchRunsWithError({ limit: PAGE_SIZE });
 		} else {
@@ -477,7 +478,7 @@
 		if (res.error) {
 			// Leave any previously-loaded runs in place; surface a retryable
 			// error card instead of the "no runs" empty state.
-			loadError = res.error;
+			loadError = errorCopy(res.error, m, 'runs: loadError');
 			loading = false;
 			return;
 		}

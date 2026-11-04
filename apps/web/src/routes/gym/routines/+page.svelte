@@ -5,6 +5,7 @@
 	import { formatDate } from '#lib/format/time.ts';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	let routines = $state<GymRoutineSummary[]>([]);
 	let loading = $state(true);
@@ -15,7 +16,7 @@
 		loadError = null;
 		const result = await fetchGymRoutinesWithError(100);
 		routines = result.routines;
-		loadError = result.error;
+		loadError = result.error ? errorCopy(result.error, t, 'gym routines: loadError') : null;
 		loading = false;
 	}
 

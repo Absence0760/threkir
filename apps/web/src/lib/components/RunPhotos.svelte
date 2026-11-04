@@ -68,7 +68,7 @@
 		try {
 			const res = await fetchRunPhotosWithError(runId);
 			if (res.error) {
-				loadError = res.error;
+				loadError = errorCopy(res.error, m, 'RunPhotos: loadError');
 				return;
 			}
 			photos = res.photos;

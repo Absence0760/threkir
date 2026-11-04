@@ -5,6 +5,7 @@
 	import { formatDate } from '#lib/format/time.ts';
 	import { formatWeight } from '#lib/format/units.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 
@@ -16,7 +17,7 @@
 		loading = true;
 		const res = await fetchExerciseRecordsWithError();
 		records = res.records;
-		loadError = res.error;
+		loadError = res.error ? errorCopy(res.error, t, 'gym records: loadError') : null;
 		loading = false;
 	}
 

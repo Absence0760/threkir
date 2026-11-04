@@ -29,7 +29,8 @@ const (
 	RoutePhotoOrphanBatchSize = 100
 	// RoutePhotoOrphanMaxBatches bounds one run. A backlog larger than
 	// batches x size is finished by the next night's backstop, so one job
-	// cannot hold a worker for an unbounded time.
+	// cannot hold a worker for an unbounded time. The delete trigger's
+	// paths-per-job cap must fit inside it (MigrationCapFitsOneRun).
 	RoutePhotoOrphanMaxBatches = 20
 )
 

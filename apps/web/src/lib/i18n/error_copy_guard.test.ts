@@ -26,7 +26,22 @@ import { stripComments, stripSvelteComments } from '../core/strip_comments';
  *   2. `<caught>.message`, where `<caught>` is one of the names a catch or a
  *      Supabase result's error is bound to here, unless it is only compared
  *      (`=== X`, `.includes(…)`, `.startsWith(…)`, `/re/.test(…)`);
- *   3. `String(<caught>)` and `${<caught>}`.
+ *   3. `String(<caught>)` and `${<caught>}`;
+ *   4. any call to `appErrorMessage(…)`. `appErrorMessage(e) ?? m('copy')`
+ *      showed any `Error` the app raised as it was: an English sentence from
+ *      the data layer, a machine code, the browser's `TypeError: Failed to
+ *      fetch`. A specific sentence is thrown as an `AppError` carrying its
+ *      catalogue key, which `errorCopy` renders; a refusal code is compared
+ *      through `refusalCode(e)`;
+ *   5. the shapes of 2 and 3 on a reader result's `.error` (`res.error.message`,
+ *      `String(res.error)`, `${res.error}`), and `{res.error}` in markup.
+ *
+ * The data layer gets one check of its own: a reader in `core/data.ts` hands
+ * back the failure, never its text. `{ rows, error: string }` put PostgREST's
+ * English (or an English fallback) in front of the reader through a field
+ * this scan could not tell from copy; `{ rows, error: Error | null }` makes the
+ * screen call `errorCopy(res.error, m, key)`, and svelte-check refuses a
+ * screen that assigns it to a string.
  *
  * Invocation:
  *   npx tsx --test src/lib/i18n/error_copy_guard.test.ts
@@ -43,6 +58,10 @@ const ALLOWED: Record<string, { hits: number; reason: string }> = {
 	'src/lib/components/DonationFeed.svelte': {
 		hits: 2,
 		reason: "`e.message` is the donor's own note on a donation row (`e` is the loop entry), not an error",
+	},
+	'src/lib/components/settings/PrefsPage.svelte': {
+		hits: 1,
+		reason: '`page.error` is already `errorCopy` output, set in settings/prefs_page.svelte.ts',
 	},
 	'src/lib/components/RaceImportDialog.svelte': {
 		hits: 1,
@@ -67,6 +86,69 @@ const ALLOWED: Record<string, { hits: number; reason: string }> = {
 };
 
 const CAUGHT = '(?:e|err|error|ex|caught|failure|upErr|uploadErr|saveErr|loadErr)';
+/// A reader result's failure: `res.error`, `planRes?.error`.
+const RESULT_ERROR = '[\\w$]+\\??\\.error';
+
+const DATA_LAYER = 'src/lib/core/data.ts';
+
+/// Readers in `core/data.ts` that still return error text, not yet moved
+/// with their screens onto `error: Error | null`. The set is exact: a reader
+/// that moves has to leave it, and a new one cannot join it.
+const TEXT_READERS = new Set([
+	'fetchClubBySlug',
+	'fetchEventPhotos',
+	'fetchExerciseCatalogue',
+	'fetchMySafetyContacts',
+	'fetchPendingSafetyRequests',
+	'fetchPlan',
+	'fetchPublicGymRoutineLibrary',
+	'fetchPublicPlanLibrary',
+	'fetchPublicProfile',
+	'fetchPublicRun',
+	'fetchPublicRunAttribution',
+	'fetchRunById',
+	'fetchRunsForDashboard',
+	'fetchSafetyContactOf',
+	'fetchSharedRun',
+	'fetchViewableRun',
+	'fetchWorkout',
+	'type PlanOverviewRead',
+]);
+
+/// Offset of the `{` that opens the object type around `at`, or -1.
+function enclosingBrace(src: string, at: number): number {
+	let depth = 0;
+	for (let i = at - 1; i >= 0; i--) {
+		if (src[i] === '}') depth++;
+		else if (src[i] === '{' && depth-- === 0) return i;
+	}
+	return -1;
+}
+
+/// Every function in a data-layer source whose declared return type carries
+/// an `error` typed as text, by name. A cast or a parameter shape
+/// (`body as { error?: string }`) is not a return type and is not counted.
+export function readersReturningErrorText(src: string): string[] {
+	const fns = [...src.matchAll(/\bfunction\s+([\w$]+)\s*[<(]/g)].map((m) => ({
+		at: m.index!,
+		name: m[1],
+	}));
+	const names = new Set<string>();
+	for (const m of src.matchAll(/\berror\??\s*:\s*string\b/g)) {
+		const open = enclosingBrace(src, m.index!);
+		if (open < 0) continue;
+		const lead = src.slice(Math.max(0, open - 60), open);
+		const alias = /\btype\s+([\w$]+)\s*=\s*$/.exec(lead);
+		if (alias) {
+			names.add(`type ${alias[1]}`);
+			continue;
+		}
+		if (!/(?:Promise<|\)\s*:)\s*$/.test(lead)) continue;
+		const owner = fns.filter((f) => f.at < m.index!).pop();
+		names.add(owner ? owner.name : '<module scope>');
+	}
+	return [...names].sort();
+}
 
 function uiFiles(dir: string, out: string[] = []): string[] {
 	for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -115,7 +197,7 @@ export function findRawErrorText(src: string): string[] {
 		if (!exempt(at)) hits.push(`${lineOf(at)}: ${text}`);
 	};
 
-	for (const m of src.matchAll(/\bthrownMessage\s*\(/g)) push(m.index!, m[0]);
+	for (const m of src.matchAll(/\b(?:thrownMessage|appErrorMessage)\s*\(/g)) push(m.index!, m[0]);
 
 	const message = new RegExp(`(?<![\\w$.])${CAUGHT}\\??\\.message\\b`, 'g');
 	for (const m of src.matchAll(message)) {
@@ -130,6 +212,22 @@ export function findRawErrorText(src: string): string[] {
 
 	const stringified = new RegExp(`\\bString\\(\\s*${CAUGHT}\\s*\\)|\\$\\{\\s*${CAUGHT}\\s*\\}`, 'g');
 	for (const m of src.matchAll(stringified)) push(m.index!, m[0]);
+
+	const resultMessage = new RegExp(`(?<![\\w$.])${RESULT_ERROR}\\??\\.message\\b`, 'g');
+	for (const m of src.matchAll(resultMessage)) {
+		const before = src.slice(Math.max(0, m.index! - 12), m.index!);
+		const after = src.slice(m.index! + m[0].length, m.index! + m[0].length + 16);
+		if (/^\s*(?:===|!==|==|!=)/.test(after)) continue;
+		if (/^\??\.(?:includes|startsWith|endsWith|match|search)\s*\(/.test(after)) continue;
+		if (/(?:===|!==|==|!=)\s*$/.test(before)) continue;
+		if (/\.test\(\s*$/.test(before)) continue;
+		push(m.index!, m[0]);
+	}
+	const resultText = new RegExp(
+		`\\bString\\(\\s*${RESULT_ERROR}\\s*\\)|\\$?\\{\\s*(?<![\\w$.])${RESULT_ERROR}\\s*\\}`,
+		'g',
+	);
+	for (const m of src.matchAll(resultText)) push(m.index!, m[0]);
 
 	return hits;
 }
@@ -148,10 +246,30 @@ test('no UI file shows a thrown error\'s own text', () => {
 		found,
 		[],
 		'show a failure as `errorCopy(e, m, key)` (i18n/error_copy.ts), framed by the action\'s own ' +
-			'sentence: `m(key, { error: errorCopy(e, m, key) })`. It maps offline, timeout, signed ' +
+			'sentence: `m(key, { error: errorCopy(e, m, key) })`, or as `errorCopy(e, m, context, ' +
+			'fallbackKey)` where the surface has a line of its own. It maps offline, timeout, signed ' +
 			'out, permission, not found, a refused value and a rate limit to catalogue copy and logs ' +
-			'the raw text. A raw message is English inside a localized page and can name a table or ' +
+			'the raw text. Compare a refusal code with `refusalCode(e)`; throw a failure that needs ' +
+			'its own sentence as `new AppError(key)` (core/app_error.ts). A raw message is English ' +
+			'inside a localized page and can name a table or ' +
 			'constraint. Log the raw text with `console.error(…)` if you need it.',
+	);
+});
+
+test('no data-layer reader returns error text', () => {
+	const src = stripComments(readFileSync(resolve(webRoot, DATA_LAYER), 'utf-8'));
+	const found = readersReturningErrorText(src);
+	assert.deepEqual(
+		found.filter((name) => !TEXT_READERS.has(name)),
+		[],
+		`a reader in ${DATA_LAYER} returns its failure as text. Return the caught value, put ` +
+			'through `dbError` (`{ rows, error: Error | null }`), and let the screen render it with ' +
+			'`errorCopy(res.error, m, key)`: text here is English the scan above cannot see.',
+	);
+	assert.deepEqual(
+		[...TEXT_READERS].filter((name) => !found.includes(name)),
+		[],
+		'these readers no longer return error text: take them out of TEXT_READERS',
 	);
 });
 
@@ -166,6 +284,22 @@ test('every allowlisted file still exists and still needs its exemption', () => 
 	}
 });
 
+test('the data-layer scan names a reader that declares its error as text', () => {
+	const src = [
+		'export async function a(): Promise<{ rows: X[]; error: string | null }> {}',
+		'export async function b(): Promise<{',
+		'\trows: X[];',
+		'\terror: string | null;',
+		'}> {}',
+		'export async function c(): Promise<{ rows: X[]; error: Error | null }> {}',
+		'async function d(): Promise<{ error?: string }> {}',
+		'function e(): { ok: boolean; error: string } {}',
+		"function f(body: unknown) { return (body as { error?: string }).error === 'x'; }",
+		'export type G = { rows: X[]; error: string | null };',
+	].join('\n');
+	assert.deepEqual(readersReturningErrorText(src), ['a', 'b', 'd', 'e', 'type G']);
+});
+
 test('the scanner bites on every raw shape and passes the safe ones', () => {
 	const bites = [
 		"showToast(m('x.failed', { error: thrownMessage(e) }), 'error');",
@@ -176,6 +310,13 @@ test('the scanner bites on every raw shape and passes the safe ones', () => {
 		'passwordError = err?.message;',
 		'status = String(e);',
 		'banner = `Failed: ${err}`;',
+		'loadError = res.error.message;',
+		'detail = planRes?.error?.message ?? null;',
+		'detail = String(res.error);',
+		'banner = `Failed: ${result.error}`;',
+		'<span class="error-detail">{res.error}</span>',
+		"error = appErrorMessage(e) ?? m('clubJoin.invalidOrExpired');",
+		"const code = appErrorMessage(e) ?? '';",
 	];
 	for (const src of bites) assert.ok(findRawErrorText(src).length > 0, `must flag: ${src}`);
 	const passes = [
@@ -187,6 +328,11 @@ test('the scanner bites on every raw shape and passes the safe ones', () => {
 		"if (error.message.includes('handle_taken')) handleError = m('h.taken');",
 		'if (/42501|permission/i.test(e.message)) denied = true;',
 		'const label = route.message;',
+		"loadError = errorCopy(res.error, m, 'runs: loadError');",
+		'if (res.error) throw dbError(res.error);',
+		"if (res.error?.message === 'x') return;",
+		"error = errorCopy(e, m, 'clubJoin.invalidOrExpired', 'clubJoin.invalidOrExpired');",
+		"const code = refusalCode(e);",
 	];
 	for (const src of passes) assert.deepEqual(findRawErrorText(src), [], `must pass: ${src}`);
 });

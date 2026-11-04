@@ -32,6 +32,7 @@
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import { dbError } from '#lib/core/supabase_error.ts';
 	import type { TrainingPlan } from '#lib/types.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 
@@ -255,7 +256,7 @@
 		templatesError = false;
 		try {
 			const { clubs, error } = await fetchMyClubsWithError();
-			if (error) throw new Error(error);
+			if (error) throw dbError(error);
 			const byClub = await fetchClubTemplatesForClubs(clubs.map((c) => c.id));
 			templates = clubs.flatMap((c) =>
 				(byClub.get(c.id) ?? []).map((template) => ({ template, clubName: c.name }))

@@ -20,8 +20,8 @@
 	let search = $state('');
 	let browseResults = $state<ClubWithMeta[]>([]);
 	let myClubs = $state<ClubWithMeta[]>([]);
-	let browseError = $state<string | null>(null);
-	let mineError = $state<string | null>(null);
+	let browseError = $state<Error | null>(null);
+	let mineError = $state<Error | null>(null);
 	let browseGen = $state(0);
 	let mineGen = $state(0);
 

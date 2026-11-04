@@ -69,7 +69,8 @@
 			// Surface a real load failure as a retry banner rather than the empty
 			// "log your first workout" card — otherwise a transient fetch error reads
 			// as a brand-new lifter whose history vanished.
-			loadError = w.error ?? s.error;
+			const failure = w.error ?? s.error;
+			loadError = failure ? errorCopy(failure, t, 'gym: loadError') : null;
 			workouts = w.workouts;
 			summaries = s.summaries;
 			suggestions = names;

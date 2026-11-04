@@ -8,6 +8,7 @@
 	import { formatWeight } from '#lib/format/units.svelte.ts';
 	import { smartBack } from '#lib/util/smart_back.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 
@@ -28,7 +29,7 @@
 		}
 		const res = await fetchExerciseSetHistoryWithError(name);
 		progress = res.error ? null : exerciseProgress(res.sets, name);
-		loadError = res.error;
+		loadError = res.error ? errorCopy(res.error, t, 'gym exercise: loadError') : null;
 		loading = false;
 	}
 

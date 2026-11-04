@@ -13,6 +13,7 @@ import {
 
 let pending = $state<PendingUndo | null>(null);
 let windowS = $state(DEFAULT_UNDO_WINDOW_S);
+let ownerId: string | null = null;
 
 const queue = createUndoQueue({
 	windowMs: () => windowS * 1000,
@@ -22,7 +23,14 @@ const queue = createUndoQueue({
 	onChange: (next) => {
 		pending = next;
 	},
+	owner: () => ownerId,
 });
+
+/// The signed-in account, set by the root layout. A held delete whose
+/// commit fails after it changed is logged, not toasted or restored.
+export function setUndoOwner(userId: string | null): void {
+	ownerId = userId;
+}
 
 /// Hydrated from the `undo_window_s` pref by the root layout and by
 /// `/settings/display` on change. Read at defer time, so changing it

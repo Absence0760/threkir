@@ -5,7 +5,7 @@
 		updateNutritionPlan,
 		type NutritionPlanInput,
 	} from '#lib/core/data.ts';
-	import { appErrorMessage } from '#lib/core/supabase_error.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { lengthLimit, valueLimit, withinValueLimit } from '#lib/core/column_limits.ts';
 	import { trackDirty } from '#lib/core/form_dirty.ts';
 	import { floatOrNull } from '#lib/gym/numeric_input.ts';
@@ -113,7 +113,7 @@
 			onsaved(saved, !initial && follow);
 		} catch (e) {
 			console.error('meal plan save failed', e);
-			error = appErrorMessage(e) ?? m('nutrition.plan.saveFailed');
+			error = errorCopy(e, m, 'nutrition.plan.saveFailed', 'nutrition.plan.saveFailed');
 		} finally {
 			saving = false;
 		}

@@ -1553,7 +1553,7 @@ test('enrichClubs reports a failed membership read instead of asserting non-memb
 	const body = source.slice(start, source.indexOf('\nexport ', start + 1));
 	assert.match(
 		body,
-		/Promise<\{ clubs: ClubWithMeta\[\]; error: string \| null \}>/,
+		/Promise<\{ clubs: ClubWithMeta\[\]; error: Error \| null \}>/,
 		'enrichClubs must return the failure in the same shape its callers already return',
 	);
 	assert.match(
@@ -1589,7 +1589,7 @@ test('enrichClubs reports a failed membership read instead of asserting non-memb
 		// The argument is written whitespace-and-expression-tolerantly: what the
 		// guard is about is the error being destructured and returned, not how
 		// the single row is spelled on the way in (it is normalised now).
-		/const \{ clubs: enrichedClubs, error: rolesError \} = await enrichClubs\(\[[^\]]*\]\);\s*\n\s*if \(rolesError\) return \{ club: null, error: rolesError \};/,
+		/const \{ clubs: enrichedClubs, error: rolesError \} = await enrichClubs\(\[[^\]]*\]\);\s*\n\s*if \(rolesError\) return \{ club: null, error: thrownMessage\(rolesError\) \};/,
 		'fetchClubBySlug must surface a membership-read failure rather than returning the club with no role',
 	);
 });
@@ -2425,4 +2425,43 @@ test('deleteRoute removes the photo files only after the row delete succeeded, a
 	assert.match(tail, /if \(removeError\) \{\s*console\.warn\(/, 'a storage failure must be logged as orphaned files.');
 	assert.doesNotMatch(tail, /\bthrow\b/, 'nothing after the storage remove may throw — the route is already gone.');
 	assert.doesNotMatch(tail, /\breturn\b/, 'deleteRoute resolves void once the row is gone.');
+});
+
+test('a sentence the data layer throws for the reader is an AppError, not English', () => {
+	// Reason: `throw new Error('Image too large (10 MB max)')` reached the page
+	// as English, or as a generic line once `errorCopy` took over the screens.
+	// An `AppError` carries its catalogue key, so the reader gets the specific
+	// sentence in their own language. What is left below either names a
+	// category `errorCopy` already classifies (signed out, not found, owner
+	// only) or reports a malformed server answer no reader can act on.
+	const source = stripComments(read('src/lib/core/data.ts'));
+	const thrown = new Set(
+		[...source.matchAll(/throw new Error\((['"`])([^'"`]* [^'"`]*)\1\)/g)].map((m) => m[2]),
+	);
+	const known = new Set([
+		'Not authenticated',
+		'Not signed in',
+		'not signed in',
+		'Source plan not found',
+		'Source session plan not found',
+		'Plan not found.',
+		'Only the plan owner can publish',
+		'No onboarding URL returned',
+		'No checkout URL returned',
+		'clip-public-track returned malformed payload',
+		'route_delete_impact returned no row',
+		'DNF needs a user_id or a bib',
+		'dm_threads failed: ${error.message}',
+		'fetchDmThread failed: ${error.message}',
+	]);
+	assert.deepEqual(
+		[...thrown].filter((t) => !known.has(t)),
+		[],
+		'throw `new AppError(key, { params, message })` (core/app_error.ts) for a sentence the reader should see; `errorCopy` renders its key',
+	);
+	assert.deepEqual(
+		[...known].filter((t) => !thrown.has(t)),
+		[],
+		'these are no longer thrown: take them out of the known list',
+	);
 });

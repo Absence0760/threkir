@@ -21,8 +21,10 @@ import { stripComments, stripSvelteComments } from './core/strip_comments';
  * `e instanceof Error ? e.message : m('copy')` no longer falls back to the
  * surface's copy on a database failure — it prints "invalid invite token
  * (P0001)" where the page said "This invite link is invalid or expired". That
- * shape is banned too: `appErrorMessage(e) ?? m('copy')` keeps the old split,
- * `thrownMessage(e) || 'x'` is for where the detail is the point.
+ * shape is banned too. A UI file renders the failure with `errorCopy(e, m,
+ * context, fallbackKey)` and compares a refusal through `refusalCode(e)`
+ * (`i18n/error_copy_guard.test.ts` bans `appErrorMessage` there);
+ * `thrownMessage` is for logs and the data layer.
  *
  * What is banned, after comments are stripped:
  *   1. `x instanceof Error ? x.message : <anything>` anywhere;
@@ -166,8 +168,8 @@ test('the scanner bites on every banned shape and passes the helper', () => {
 	for (const src of bites) assert.ok(findHandFormatters(src).length > 0, `must flag: ${src}`);
 	const passes = [
 		'try { a() } catch (e) { x = thrownMessage(e); }',
-		'try { a() } catch (e) { x = appErrorMessage(e) ?? m("fallback"); }',
-		'try { a() } catch (e) { const code = appErrorMessage(e) ?? ""; }',
+		'try { a() } catch (e) { x = errorCopy(e, m, "k", "fallback"); }',
+		'try { a() } catch (e) { const code = refusalCode(e); }',
 		'try { a() } catch (e) { console.warn("failed", e); }',
 		'try { a() } catch (e) { if (e instanceof Error && e.message === REFUSAL) return; }',
 		'try { a() } catch (e) { x = thrownMessage(e) || "{"; } const s = String(e);',

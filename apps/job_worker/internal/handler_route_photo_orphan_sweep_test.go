@@ -10,6 +10,10 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -238,5 +242,42 @@ func TestSupabaseClient_RoutePhotoOrphanPathsBody(t *testing.T) {
 	ps, _ := bodies[1]["p_paths"].([]any)
 	if len(ps) != 1 || ps[0] != "u1/b.jpg" {
 		t.Fatalf("scoped body p_paths = %#v", bodies[1]["p_paths"])
+	}
+}
+
+// The delete trigger caps a paths job at the migration's v_cap, and one run
+// of this handler erases at most RoutePhotoOrphanMaxBatches x
+// RoutePhotoOrphanBatchSize objects. A cap above that budget would leave the
+// tail of every full job to the nightly backstop while the job reports
+// success. The worklist clamp is the other half: a clamp below the batch size
+// returns a short page, which this handler reads as "nothing left".
+func TestRoutePhotoOrphanSweep_MigrationCapFitsOneRun(t *testing.T) {
+	src, err := os.ReadFile(filepath.Join("..", "..", "backend", "supabase", "migrations",
+		"20271106000020_route_photo_orphan_sweep.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	only := func(re *regexp.Regexp, what string) int {
+		t.Helper()
+		m := re.FindAllSubmatch(src, -1)
+		if len(m) != 1 {
+			t.Fatalf("found %d %s in the migration, want exactly 1", len(m), what)
+		}
+		n, err := strconv.Atoi(string(m[0][1]))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	pathCap := only(regexp.MustCompile(`v_cap\s+constant\s+integer\s*:=\s*(\d+)\s*;`), "v_cap declarations")
+	clamp := only(regexp.MustCompile(`least\(greatest\(coalesce\(p_limit,\s*\d+\),\s*1\),\s*(\d+)\)`), "p_limit clamps")
+
+	if budget := RoutePhotoOrphanMaxBatches * RoutePhotoOrphanBatchSize; pathCap > budget {
+		t.Fatalf("the delete trigger queues up to %d paths a job, but one run erases at most %d x %d = %d",
+			pathCap, RoutePhotoOrphanMaxBatches, RoutePhotoOrphanBatchSize, budget)
+	}
+	if clamp < RoutePhotoOrphanBatchSize {
+		t.Fatalf("route_photo_orphan_paths clamps p_limit to %d, below the handler's batch of %d",
+			clamp, RoutePhotoOrphanBatchSize)
 	}
 }

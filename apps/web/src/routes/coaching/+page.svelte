@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { activeFormatLocale } from '#lib/format/time.ts';
-	import { appErrorMessage } from '#lib/core/supabase_error.ts';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
@@ -30,6 +29,7 @@
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 
 	let hrPrescription = $state(false);
@@ -75,8 +75,8 @@
 		pending = p;
 		coaches = c;
 		roster = rosterResult.rows;
-		rosterError = rosterResult.error;
-		loadError = athletesResult.error;
+		rosterError = rosterResult.error ? errorCopy(rosterResult.error, m, 'coaching: rosterError') : null;
+		loadError = athletesResult.error ? errorCopy(athletesResult.error, m, 'coaching: loadError') : null;
 		loading = false;
 	}
 
@@ -145,7 +145,7 @@
 			await copyLink(token);
 			pending = await fetchPendingCoachInvites();
 		} catch (e: unknown) {
-			showToast(appErrorMessage(e) ?? m('coaching.createInviteFailed'), 'error');
+			showToast(errorCopy(e, m, 'coaching.createInviteFailed', 'coaching.createInviteFailed'), 'error');
 		} finally {
 			minting = false;
 		}
@@ -203,11 +203,11 @@
 		} catch (e: unknown) {
 			const fallback =
 				a.kind === 'revoke'
-					? m('coaching.revokeInviteFailed')
+					? 'coaching.revokeInviteFailed'
 					: a.kind === 'remove'
-						? m('coaching.removeAthleteFailed')
-						: m('coaching.endLinkFailed');
-			showToast(appErrorMessage(e) ?? fallback, 'error');
+						? 'coaching.removeAthleteFailed'
+						: 'coaching.endLinkFailed';
+			showToast(errorCopy(e, m, fallback, fallback), 'error');
 		} finally {
 			acting = false;
 		}

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { appErrorMessage } from '#lib/core/supabase_error.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { tick } from 'svelte';
 	import { smartBack } from '#lib/util/smart_back.ts';
 	import { nudgeLatLng, waypointKeyAction } from '#lib/routes/waypoint_keyboard.ts';
@@ -701,7 +701,7 @@
 			// Surface the failure IN the save modal (persistent, in-context)
 			// and keep it open with the user's work intact — a transient toast
 			// would vanish and read as a half-navigated dead end.
-			saveError = appErrorMessage(err) ?? m('routeNew.saveFailedError');
+			saveError = errorCopy(err, m, 'routeNew.saveFailedError', 'routeNew.saveFailedError');
 		} finally {
 			saving = false;
 		}

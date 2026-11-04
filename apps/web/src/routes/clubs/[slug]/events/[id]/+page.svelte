@@ -13,7 +13,7 @@
 	import { afterNavigate, goto } from '$app/navigation';
 	import { buildEventShareCanonical } from '#lib/share/share_event_meta.ts';
 	import { supabase } from '#lib/core/supabase.ts';
-	import { appErrorMessage } from '#lib/core/supabase_error.ts';
+	import { refusalCode } from '#lib/core/supabase_error.ts';
 	import type { RealtimeChannel } from '@supabase/supabase-js';
 	import {
 		fetchEventById,
@@ -538,7 +538,7 @@
 			showRoutineAttach = false;
 			showToast(m('clubEvent.gymRoutineSaved'), 'success');
 		} catch (e) {
-			showToast(appErrorMessage(e) ?? m('clubEvent.gymRoutineSaveFailed'), 'error');
+			showToast(errorCopy(e, m, 'clubEvent.gymRoutineSaveFailed', 'clubEvent.gymRoutineSaveFailed'), 'error');
 		}
 	}
 
@@ -547,7 +547,7 @@
 			myPlans = await fetchSessionPlans();
 		} catch (e) {
 			// Without this the modal simply never opened, with no message.
-			showToast(appErrorMessage(e) ?? m('session.loadFailed'), 'error');
+			showToast(errorCopy(e, m, 'session.loadFailed', 'session.loadFailed'), 'error');
 			return;
 		}
 		attachChoice = event?.session_plan_id ?? '';
@@ -567,7 +567,7 @@
 			showAttach = false;
 			showToast(m('session.attached'), 'success');
 		} catch (e) {
-			showToast(appErrorMessage(e) ?? m('session.saveFailed'), 'error');
+			showToast(errorCopy(e, m, 'session.saveFailed', 'session.saveFailed'), 'error');
 		}
 	}
 
@@ -852,7 +852,7 @@
 			showToast(m('clubEvent.claimSubmitted'), 'success');
 			await reloadInstance();
 		} catch (err) {
-			showToast(appErrorMessage(err) ?? m('clubEvent.claimSubmitFailed'), 'error');
+			showToast(errorCopy(err, m, 'clubEvent.claimSubmitFailed', 'clubEvent.claimSubmitFailed'), 'error');
 		} finally {
 			resultActionBusy = null;
 		}
@@ -866,7 +866,7 @@
 			showToast(approve ? m('clubEvent.claimApproved') : m('clubEvent.claimRejected'), 'success');
 			await reloadInstance();
 		} catch (err) {
-			showToast(appErrorMessage(err) ?? m('clubEvent.claimUpdateFailed'), 'error');
+			showToast(errorCopy(err, m, 'clubEvent.claimUpdateFailed', 'clubEvent.claimUpdateFailed'), 'error');
 		} finally {
 			resultActionBusy = null;
 		}
@@ -954,7 +954,7 @@
 			await reloadEventPhotos();
 		} catch (err) {
 			showToast(
-				appErrorMessage(err) ?? m('clubEvent.photoUploadFailed'),
+				errorCopy(err, m, 'clubEvent.photoUploadFailed', 'clubEvent.photoUploadFailed'),
 				'error'
 			);
 		} finally {
@@ -1066,7 +1066,7 @@
 			raceSession = await armRace(event.id, activeInstance, autoApproveOnArm);
 			broadcastRaceStateChanged();
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? m('clubEvent.armFailed');
+			error = errorCopy(e, m, 'clubEvent.armFailed', 'clubEvent.armFailed');
 		} finally {
 			raceBusy = false;
 		}
@@ -1079,7 +1079,7 @@
 			raceSession = await startRace(event.id, activeInstance);
 			broadcastRaceStateChanged();
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? m('clubEvent.startFailed');
+			error = errorCopy(e, m, 'clubEvent.startFailed', 'clubEvent.startFailed');
 		} finally {
 			raceBusy = false;
 		}
@@ -1102,7 +1102,7 @@
 			// Ending files the host DNFs server-side; show them.
 			if (status === 'finished') await reloadInstance();
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? m('clubEvent.endFailed');
+			error = errorCopy(e, m, 'clubEvent.endFailed', 'clubEvent.endFailed');
 		} finally {
 			raceBusy = false;
 		}
@@ -1115,7 +1115,7 @@
 			await approveEventResult(event.id, activeInstance, userId, approve);
 			await reloadInstance();
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? m('clubEvent.approvalFailed');
+			error = errorCopy(e, m, 'clubEvent.approvalFailed', 'clubEvent.approvalFailed');
 		} finally {
 			resultActionBusy = null;
 		}
@@ -1131,7 +1131,7 @@
 			await approveEventResultById(resultId, approve);
 			await reloadInstance();
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? m('clubEvent.approvalFailed');
+			error = errorCopy(e, m, 'clubEvent.approvalFailed', 'clubEvent.approvalFailed');
 		} finally {
 			resultActionBusy = null;
 		}
@@ -1181,7 +1181,7 @@
 			showResultPicker = false;
 			await reloadInstance();
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? m('clubEvent.submitFailed');
+			error = errorCopy(e, m, 'clubEvent.submitFailed', 'clubEvent.submitFailed');
 		} finally {
 			submitting = false;
 		}
@@ -1208,7 +1208,7 @@
 			// propagate uncaught. Pre-fix, a network drop on DNF / DNS
 			// left the picker open with no feedback and the user
 			// guessing whether their non-finish was recorded.
-			error = appErrorMessage(e) ?? m('clubEvent.resultSubmitFailed');
+			error = errorCopy(e, m, 'clubEvent.resultSubmitFailed', 'clubEvent.resultSubmitFailed');
 		} finally {
 			submitting = false;
 		}
@@ -1239,7 +1239,7 @@
 			editingResult = null;
 			await reloadInstance();
 		} catch (e: unknown) {
-			editError = appErrorMessage(e) ?? m('clubEvent.editResultFailed');
+			editError = errorCopy(e, m, 'clubEvent.editResultFailed', 'clubEvent.editResultFailed');
 		} finally {
 			editBusy = false;
 		}
@@ -1262,7 +1262,7 @@
 			showRemoveResultConfirm = false;
 			await reloadInstance();
 		} catch (e) {
-			error = appErrorMessage(e) ?? m('clubEvent.resultRemoveFailed');
+			error = errorCopy(e, m, 'clubEvent.resultRemoveFailed', 'clubEvent.resultRemoveFailed');
 		} finally {
 			submitting = false;
 		}
@@ -1682,7 +1682,7 @@
 			}
 			await load();
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? m('clubEvent.rsvpFailed');
+			error = errorCopy(e, m, 'clubEvent.rsvpFailed', 'clubEvent.rsvpFailed');
 		} finally {
 			busy = false;
 		}
@@ -1707,7 +1707,7 @@
 			await rsvpEvent(event.id, viewerRsvpForActive, activeInstance, id);
 			showToast(m('clubEvent.courseChanged'), 'success');
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? m('clubEvent.rsvpFailed');
+			error = errorCopy(e, m, 'clubEvent.rsvpFailed', 'clubEvent.rsvpFailed');
 		} finally {
 			busy = false;
 		}
@@ -1728,7 +1728,7 @@
 			await markAttendance(event.id, userId, activeInstance, next);
 			attendees = attendees.map((a) => (a.user_id === userId ? { ...a, attendance: next } : a));
 		} catch (e: unknown) {
-			showToast(appErrorMessage(e) ?? m('clubEvent.attendanceFailed'), 'error');
+			showToast(errorCopy(e, m, 'clubEvent.attendanceFailed', 'clubEvent.attendanceFailed'), 'error');
 		} finally {
 			markingAttendance = null;
 		}
@@ -1749,7 +1749,7 @@
 			// the two the page also renders for itself when it can see them
 			// coming, a session the schedule no longer holds (decisions § 1921),
 			// plus the host-capability ones, which no retry fixes.
-			const code = appErrorMessage(e) ?? '';
+			const code = refusalCode(e);
 			const key =
 				code === 'event_full'
 					? 'clubEvent.registerSoldOut'
@@ -1762,8 +1762,11 @@
 								  code === 'event_not_priced' ||
 								  code === 'stripe_not_configured'
 								? 'clubEvent.registerHostUnavailable'
-								: 'clubEvent.registerFailed';
-			showToast(m(key), 'error');
+								: null;
+			showToast(
+				key ? m(key) : errorCopy(e, m, 'clubEvent.registerFailed', 'clubEvent.registerFailed'),
+				'error'
+			);
 			registering = false;
 		}
 	}
@@ -1784,7 +1787,7 @@
 			showToast(m('clubEvent.waitlistJoined'), 'success');
 			await load();
 		} catch (e: unknown) {
-			showToast(appErrorMessage(e) ?? m('clubEvent.rsvpFailed'), 'error');
+			showToast(errorCopy(e, m, 'clubEvent.rsvpFailed', 'clubEvent.rsvpFailed'), 'error');
 		} finally {
 			waitlistBusy = false;
 		}
@@ -1798,7 +1801,7 @@
 			showLeaveWaitlist = false;
 			await load();
 		} catch (e: unknown) {
-			showToast(appErrorMessage(e) ?? m('clubEvent.rsvpFailed'), 'error');
+			showToast(errorCopy(e, m, 'clubEvent.rsvpFailed', 'clubEvent.rsvpFailed'), 'error');
 		} finally {
 			waitlistBusy = false;
 		}
@@ -1846,7 +1849,7 @@
 			);
 			await load();
 		} catch (e: unknown) {
-			const code = appErrorMessage(e) ?? '';
+			const code = refusalCode(e);
 			const key =
 				code === 'policy_no_refund'
 					? 'clubEvent.cancelPolicyNoRefund'
@@ -1854,8 +1857,13 @@
 						? 'clubEvent.cancelNoOrder'
 						: code === 'stripe_refund_failed'
 							? 'clubEvent.cancelRefundFailed'
-							: 'clubEvent.cancelRegistrationFailed';
-			showToast(m(key), 'error');
+							: null;
+			showToast(
+				key
+					? m(key)
+					: errorCopy(e, m, 'clubEvent.cancelRegistrationFailed', 'clubEvent.cancelRegistrationFailed'),
+				'error'
+			);
 		} finally {
 			cancellingRegistration = false;
 		}
@@ -1951,7 +1959,7 @@
 		e: unknown,
 		scope: 'occurrence' | 'event' | 'series' = event?.recurrence_freq ? 'occurrence' : 'event'
 	): string {
-		const code = appErrorMessage(e) ?? '';
+		const code = refusalCode(e);
 		if (code === 'stripe_not_configured') {
 			return m(
 				scope === 'series'
@@ -1962,14 +1970,13 @@
 			);
 		}
 		if (code === 'not_event_organiser') return m('clubEvent.occurrenceCancelNotOrganiser');
-		console.error('occurrence cancel failed:', e);
-		return m(
+		const key =
 			scope === 'series'
 				? 'clubEvent.cancelSeriesFailed'
 				: scope === 'event'
 					? 'clubEvent.cancelEventFailed'
-					: 'clubEvent.cancelOccurrenceFailed'
-		);
+					: 'clubEvent.cancelOccurrenceFailed';
+		return errorCopy(e, m, key, key);
 	}
 
 	async function confirmCancelSeries() {
@@ -1996,7 +2003,7 @@
 			await reinstateEventInstance(event.id, instanceIso);
 			await load();
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? m('clubEvent.reinstateOccurrenceFailed');
+			error = errorCopy(e, m, 'clubEvent.reinstateOccurrenceFailed', 'clubEvent.reinstateOccurrenceFailed');
 		} finally {
 			busy = false;
 		}
@@ -2016,7 +2023,7 @@
 			draftPost = '';
 			await reloadInstance();
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? m('clubEvent.postUpdateFailed');
+			error = errorCopy(e, m, 'clubEvent.postUpdateFailed', 'clubEvent.postUpdateFailed');
 		} finally {
 			busy = false;
 		}

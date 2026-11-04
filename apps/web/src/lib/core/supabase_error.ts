@@ -116,14 +116,25 @@ export function dbError(e: unknown): Error {
 }
 
 /// The message of an `Error` the app raised on purpose, or null for a database
-/// failure or a value that is not an `Error`. For a surface whose fallback is
-/// its own localised copy (`appErrorMessage(e) ?? m('x.saveFailed')`): before
-/// the data layer threw `DbError`, a failed query arrived as a plain object and
-/// fell through `e instanceof Error ? e.message : m(…)` to that copy, so this
-/// keeps "invalid invite token (P0001)" from replacing "This invite link is
-/// invalid or expired". Use `thrownMessage` where the detail is the point.
+/// failure or a value that is not an `Error`. Data layer only: a function that
+/// rethrows an Edge Function's refusal reads it here. A UI file renders a
+/// caught value with `errorCopy(e, m, context, fallbackKey)` and compares a
+/// refusal with `refusalCode(e)`; `appErrorMessage(e) ?? m('copy')` showed the
+/// reader any app-raised text as it was, English sentences and the browser's
+/// `Failed to fetch` included, and `error_copy_guard.test.ts` bans it there.
 export function appErrorMessage(e: unknown): string | null {
 	return e instanceof Error && (!(e instanceof DbError) || e instanceof PlanOverlapError) ? e.message : null;
+}
+
+/// The machine code an app-raised refusal carries as its message
+/// (`event_full`, `stripe_not_configured`, `fundraiser_closed`), or '' for
+/// anything else: a database failure, a sentence, a `TypeError` from a fetch.
+/// For a UI file that maps a refusal to its own copy and sends every other
+/// failure to `errorCopy`. A code is lower snake_case, so a sentence or
+/// `Failed to fetch` can never be mistaken for one.
+export function refusalCode(e: unknown): string {
+	if (!(e instanceof Error) || e instanceof DbError) return '';
+	return /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/.test(e.message) ? e.message : '';
 }
 
 /// The user-facing detail of a thrown value. The data layer throws `DbError`

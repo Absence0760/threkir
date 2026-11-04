@@ -1,6 +1,6 @@
 import { haversineMetres } from '../runs/run_stats';
 import { bandForDistance } from './distance_bands';
-import type { RouteSurface } from '../types';
+import type { PreferredUnit, RouteSurface } from '../types';
 
 /**
  * Templated route describer — turns a route's stored stats into a short,
@@ -211,28 +211,42 @@ export function localisedTemplate(
 	return `${sentence} ${t('routeDetail.descFlat')}`;
 }
 
+const METRES_PER_MILE = 1609.344;
+const METRES_PER_FOOT = 0.3048;
+
+/** Gain per mile in feet, from the unrounded totals rather than `gainPerKm`. */
+function feetPerMile(parts: RouteDescriptionParts): number {
+	if (parts.distanceM <= 0) return 0;
+	return Math.round(parts.elevationM / METRES_PER_FOOT / (parts.distanceM / METRES_PER_MILE));
+}
+
 /**
  * Canonical English assembler. Used to seed the LLM prompt (plain prose
  * the model enhances) and as the literal fallback string in tests and on
  * the server's degraded path. The route-detail UI does NOT call this —
  * it builds a localised, unit-aware sentence via `localisedTemplate` so
  * non-English viewers and mi-preference viewers get correct output.
- * Distance is rendered in km here because this string is English-only by
- * contract.
+ * English-only by contract, but in the viewer's [unit]: a miles runner's
+ * prompt states miles and feet, so the model is never handed kilometres to
+ * repeat back to them.
  */
 export function assembleEnglish(
 	parts: RouteDescriptionParts,
 	name: string,
+	unit: PreferredUnit = 'km',
 ): string {
-	const km = (parts.distanceM / 1000).toFixed(parts.distanceM >= 1000 ? 1 : 2);
+	const perUnitM = unit === 'mi' ? METRES_PER_MILE : 1000;
+	const distance = (parts.distanceM / perUnitM).toFixed(parts.distanceM >= perUnitM ? 1 : 2);
 	const shape = SHAPE_WORD[parts.shape];
 	const surface = parts.surface ? `${SURFACE_WORD[parts.surface]} ` : '';
 	const clauses: string[] = [];
-	clauses.push(`${name} is a ${km} km ${surface}${shape} route`);
+	clauses.push(`${name} is a ${distance} ${unit} ${surface}${shape} route`);
 	if (parts.elevationM > 0) {
-		clauses.push(
-			`with ${Math.round(parts.elevationM)} m of climbing (${ELEVATION_WORD[parts.elevation]}, about ${parts.gainPerKm} m per km)`,
-		);
+		const climb =
+			unit === 'mi'
+				? `${Math.round(parts.elevationM / METRES_PER_FOOT)} ft of climbing (${ELEVATION_WORD[parts.elevation]}, about ${feetPerMile(parts)} ft per mile)`
+				: `${Math.round(parts.elevationM)} m of climbing (${ELEVATION_WORD[parts.elevation]}, about ${parts.gainPerKm} m per km)`;
+		clauses.push(`with ${climb}`);
 	} else {
 		clauses.push('with little to no elevation change');
 	}

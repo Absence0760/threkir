@@ -1028,6 +1028,14 @@
 						value: String(n),
 						label: t('coachChat.lastN', { n }),
 					}))}
+					<!-- My season is only offered once a plan is queued behind the
+					     current one, so with one plan the picker says how to get it. -->
+					{#snippet seasonHint()}
+						<p class="season-hint" data-testid="coach-season-hint">
+							{t('coachChat.seasonHint')}
+							<a href="/races">{t('coachChat.seasonHintAction')}</a>
+						</p>
+					{/snippet}
 					<div class="context-strip" title={t('coachChat.contextStripTitle')}>
 						{#if onPlanChange && plans.length > 0}
 							<ChipDropdown
@@ -1038,6 +1046,7 @@
 								ariaLabel={t('coachChat.planContext')}
 								title={t('coachChat.planContextTitle')}
 								suffix={c.planWeeks ? `· ${c.planWeeks}w` : undefined}
+								footer={seasonPlans.length === 1 ? seasonHint : undefined}
 							/>
 						{:else if c.planReadFailed}
 							<span class="chip chip-muted" role="status" data-testid="coach-plan-read-failed">
@@ -1100,14 +1109,6 @@
 							</a>
 						{/if}
 					</div>
-					<!-- My season is only offered once a plan is queued behind the
-					     current one, so a runner with one plan is told how to get it. -->
-					{#if onPlanChange && seasonPlans.length === 1}
-						<p class="season-hint" data-testid="coach-season-hint">
-							{t('coachChat.seasonHint')}
-							<a href="/races">{t('coachChat.seasonHintAction')}</a>
-						</p>
-					{/if}
 				{/if}
 			</div>
 		</header>
@@ -1576,7 +1577,7 @@
 	}
 	.chip-link:hover { filter: brightness(1.05); }
 	.chip-link:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-	.season-hint { margin: 0.3rem 0 0; font-size: 0.72rem; color: var(--color-text-secondary); }
+	.season-hint { margin: 0; font-size: 0.72rem; line-height: 1.4; color: var(--color-text-secondary); }
 	.season-hint a { color: var(--color-primary); font-weight: 500; }
 
 	.scroll-wrap {

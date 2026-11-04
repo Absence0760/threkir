@@ -11,7 +11,8 @@ import { USER_A } from '../fixtures/users';
  * the plan picker offers the season beside "No plan" and the single plans; the
  * choice survives a reload as `?plan=season`, the thread stays under the
  * current plan, and every request says which scope the runner picked. With one
- * plan, a hint under the strip says how to get My season and links to /races.
+ * plan, the picker's menu (never the chat itself) says how to get My season and
+ * links to /races.
  *
  * The plan list read is rewritten in flight so the shared seed plan is never
  * mutated: Richmond Half 2026 is given a window around today and a second
@@ -91,12 +92,12 @@ test.describe('/coach season picker', () => {
 		await page.goto('/coach?plan=none');
 		const planTrigger = page.getByRole('button', { name: 'Plan context' });
 		await expect(planTrigger).toContainText('No plan', { timeout: 10_000 });
-		// With a plan queued, My season is in the picker, so the hint pointing to it is not.
-		await expect(page.getByTestId('coach-season-hint')).toHaveCount(0);
 
 		await planTrigger.click();
 		const popover = page.locator('[role="listbox"]');
 		await expect(popover).toBeVisible({ timeout: 5_000 });
+		// With a plan queued, My season is in the picker, so the hint pointing to it is not.
+		await expect(page.getByTestId('coach-season-hint')).toHaveCount(0);
 		const season = popover.getByRole('option', { name: /My season/ });
 		await expect(season).toContainText('current plan and the plans queued after it');
 		await season.click();
@@ -134,11 +135,21 @@ test.describe('/coach season picker', () => {
 		await expect(popover.getByRole('option', { name: /My season/ })).toHaveCount(0);
 	});
 
-	test('with one plan, a hint says how to get My season and links to the races', async ({ page, mockRoute }) => {
+	test('with one plan, the picker menu says how to get My season and links to the races', async ({
+		page,
+		mockRoute,
+	}) => {
 		await rewritePlans(page, mockRoute, false);
 		await page.goto('/coach');
+		const planTrigger = page.getByRole('button', { name: 'Plan context' });
+		await expect(planTrigger).toBeVisible({ timeout: 10_000 });
 		const hint = page.getByTestId('coach-season-hint');
-		await expect(hint).toContainText('Add to my season', { timeout: 10_000 });
+		// Not a standing line in the chat: only the open picker carries it.
+		await expect(hint).toHaveCount(0);
+		await planTrigger.click();
+		await expect(hint).toContainText('Add to my season', { timeout: 5_000 });
+		// A note under the choices, not one of them.
+		await expect(page.locator('[role="listbox"]').getByTestId('coach-season-hint')).toHaveCount(0);
 		await hint.getByRole('link', { name: 'Find a race' }).click();
 		await expect(page).toHaveURL(/\/races$/);
 	});

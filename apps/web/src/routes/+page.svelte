@@ -2,13 +2,14 @@
 	import { browser } from '$app/env';
 	import { goto } from '$app/navigation';
 	import { auth } from '#lib/stores/auth.svelte.ts';
-	import { m } from '#lib/i18n/store.svelte.ts';
+	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
 	import SeoHead from '#lib/components/SeoHead.svelte';
 	import PublicHeader from '#lib/components/PublicHeader.svelte';
 	import PublicFooter from '#lib/components/PublicFooter.svelte';
 	import ProductPreview from '#lib/components/marketing/ProductPreview.svelte';
 	import TrackPreview from '#lib/components/TrackPreview.svelte';
 	import MapBackdrop from '#lib/components/marketing/MapBackdrop.svelte';
+	import { isLive, PLATFORMS, platformsNote, platformStatusLabelKey, platformStoreHref } from '#lib/marketing/platforms.ts';
 	import { DEMO_DISTANCE_LABEL, DEMO_HR_ZONES, DEMO_SPLITS, DEMO_TRACK } from '#lib/marketing/demo_preview.ts';
 	import { reveal, seen, spotlight, tilt } from '#lib/motion/actions.ts';
 	import { buildOrganizationJsonLd, buildWebSiteJsonLd } from '#lib/share/site_meta.ts';
@@ -39,9 +40,9 @@
 	// is the right fallback: no mid-word break is invented.
 	const headlineWords = $derived(m('landing.heroHeadline').split(' '));
 
-	// Every step here is a surface that ships on the web today. The watch
-	// and phone clients are real but unreleased, so they are described in
-	// the platforms strip below rather than sold as a feature.
+	// Every step here is a surface that ships on the web today. Which phone
+	// and watch clients are released is the platforms strip's job, read from
+	// the registry in #lib/marketing/platforms.ts.
 	const integrations = ['Strava', 'Garmin', 'HealthKit', 'parkrun'];
 
 	// Two weeks of a generated plan: the shape of the week grid on /plans,
@@ -60,13 +61,7 @@
 		return 20 + ((splitPeak - seconds) / (splitPeak - splitFloor || 1)) * 80;
 	}
 
-	const platforms = $derived([
-		{ name: 'Web', live: true },
-		{ name: 'Android', live: false },
-		{ name: 'iOS', live: false },
-		{ name: 'Wear OS', live: false },
-		{ name: 'Apple Watch', live: false },
-	]);
+	const platformNote = $derived(platformsNote(PLATFORMS, currentLocale(), m));
 </script>
 
 <SeoHead
@@ -245,20 +240,27 @@
 	</div>
 
 	<ul class="platforms" use:reveal={{ items: '.platform' }}>
-		{#each platforms as platform (platform.name)}
-			<li class="platform" class:pending={!platform.live}>
-				{#if platform.live}<span class="live-dot" aria-hidden="true"></span>{/if}
-				<span class="platform-name">{platform.name}</span>
-				<span class="platform-status">
-					{platform.live
-						? m('landing.platformLive')
-						: m('landing.platformInTesting')}
-				</span>
+		{#each PLATFORMS as platform (platform.name)}
+			{@const href = platformStoreHref(platform)}
+			<li class="platform" class:pending={!isLive(platform)}>
+				{#if isLive(platform)}<span class="live-dot" aria-hidden="true"></span>{/if}
+				{#if href}
+					<!-- The name rides inside the link so its accessible name is "iOS Live", not a bare "Live". -->
+					<a class="platform-link" {href}>
+						<span class="platform-name">{platform.name}</span>
+						<span class="platform-status">{m(platformStatusLabelKey(platform))}</span>
+					</a>
+				{:else}
+					<span class="platform-name">{platform.name}</span>
+					<span class="platform-status">{m(platformStatusLabelKey(platform))}</span>
+				{/if}
 			</li>
 		{/each}
 	</ul>
 
-	<p class="platforms-note">{m('landing.platformsNote')}</p>
+	{#if platformNote}
+		<p class="platforms-note">{platformNote}</p>
+	{/if}
 </section>
 
 <section class="closing-cta" use:seen>
@@ -1206,6 +1208,19 @@
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--color-success-text);
+	}
+
+	.platform-link {
+		display: flex;
+		align-items: center;
+		gap: var(--space-sm);
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.platform-link .platform-status {
+		text-decoration: underline;
+		text-underline-offset: 0.2em;
 	}
 
 	.platform.pending .platform-status {

@@ -20,6 +20,14 @@ paragraph that replaces the baseline, with an AI-attribution line. Gating is
 
 - **Server**: the endpoint enforces `is_pro()` and degrades to the templated
   text on every failure (`decisions.md § 151`).
+- **Unit**: both clients send the viewer's `unit` (`km` / `mi`). The handler
+  admits only `PreferredUnit`'s two members (`parseRequestedUnit`); a missing
+  or malformed value falls back to the account's stored `preferred_unit`, then
+  km. The facts in the prompt are stated in that unit (`assembleEnglish(parts,
+  name, unit)`, miles and feet for a miles runner) and the user turn tells the
+  model to keep every distance and climb in it (`routeDescribeUserMessage`), so
+  a miles runner is never handed a paragraph in kilometres. The templated
+  fallback the endpoint returns is in the same unit.
 - **Web**: `localisedTemplate` (`apps/web/src/lib/routes/route_description.ts`)
   + `route_describe_client.ts` on `/routes/[id]`.
 - **Mobile**: the `describeRoute` twin helper

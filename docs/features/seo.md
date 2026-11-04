@@ -392,6 +392,27 @@ control's height, so it appears without moving the page. Nothing about the
 visitor reaches the `<head>`. In-app links do not point here in the first
 place — they go to the in-app view (decisions § 2152).
 
+### The route share page's 3D course preview (issue #1282)
+
+`/share/route/[id]` offers "Preview in 3D" to any visitor, logged out
+included: it is the hook a "fly this course" post links to. It is a
+client-side addition only. The button renders inside the body that
+`fetchRouteById` fills after `onMount`, and the dialog with the 3D engine is
+imported on the first click, so the `share-route` Lambda's head (title,
+`og:*`, canonical, JSON-LD) and the unfurl image are unchanged, and a failure
+to load the dialog, a missing WebGL2 or a terrain error leaves the 2D map and
+elevation profile as they were (the dialog falls back to a flat map or says
+the map failed). Three guards, pinned by `consent_guards.test.ts`:
+
+- **Clipped line.** The preview flies the page's own `waypoints`, which for a
+  non-owner are the `clip_route_for_viewer` output; there is no second read.
+- **Consent.** `requireExplicitConsent` on `CoursePreviewButton`, like the
+  page's `RunMap`: the dialog's "Load preview" card shows even after the
+  cookie banner was accepted, and no basemap or terrain tile is requested
+  before the tap.
+- **No video export.** The viewer can be the route's owner, whose read is
+  unclipped, so the share page passes no `videoSource`.
+
 ## Shared marketing/brand pieces
 
 - **`#lib/components/SeoHead.svelte`** — reusable `<svelte:head>` (title,

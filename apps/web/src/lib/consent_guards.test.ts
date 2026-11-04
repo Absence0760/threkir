@@ -364,6 +364,61 @@ test('MapTiler tile fetches on anon public pages are gated on consent', () => {
 	);
 });
 
+test('the 3D course preview on /share/route/[id] asks for its own consent tap and flies the clipped line', () => {
+	// Reason: issue #1282 opened the 3D preview to logged-out visitors. Its
+	// dialog fetches basemap AND terrain tiles (MapTiler, or the AWS Open Data
+	// bucket on a keyless build), both of which log the requester IP, so on the
+	// anonymous share page it takes the same per-view tap as the page's 2D map,
+	// even after the cookie banner was accepted. The line it flies is the
+	// page's own `waypoints`, which fetchRouteById filled from
+	// clip_route_for_viewer for a non-owner — never a second, unclipped read.
+	const routeShareSrc = stripComments(read('src/routes/share/route/[id]/+page.svelte'));
+	assert.match(
+		routeShareSrc,
+		/<CoursePreviewButton[^>]*requireExplicitConsent[^>]*\/>/,
+		'/share/route/[id] must pass requireExplicitConsent to CoursePreviewButton.',
+	);
+	assert.match(
+		routeShareSrc,
+		/<CoursePreviewButton[^>]*points=\{previewPoints\}/,
+		'/share/route/[id] must fly previewPoints.',
+	);
+	assert.match(
+		routeShareSrc,
+		/previewPoints\s*=\s*\$derived\(routePathPoints\(waypoints\)\)/,
+		'previewPoints must come from the waypoints fetchRouteById returned (the clipped line for a non-owner).',
+	);
+	assert.match(
+		routeShareSrc,
+		/waypoints\s*=\s*\(r\.waypoints[^)]*\)/,
+		'the share page waypoints must be the fetchRouteById result.',
+	);
+	assert.doesNotMatch(
+		routeShareSrc,
+		/<CoursePreviewButton[^>]*videoSource/,
+		'/share/route/[id] must not offer the video export: an owner viewing it holds the unclipped line.',
+	);
+
+	const buttonSrc = stripComments(read('src/lib/components/CoursePreviewButton.svelte'));
+	assert.match(
+		buttonSrc,
+		/<CoursePreview3D[\s\S]*?\{requireExplicitConsent\}[\s\S]*?\/>/,
+		'CoursePreviewButton must forward requireExplicitConsent to the dialog.',
+	);
+
+	const dialogSrc = stripComments(read('src/lib/components/CoursePreview3D.svelte'));
+	assert.match(
+		dialogSrc,
+		/mapConsented\s*=\s*\$state\(untrack\(\(\)\s*=>\s*\(requireExplicitConsent \? false : hasAcceptedConsent\(\)\)\)\)/,
+		'CoursePreview3D must start unconsented when requireExplicitConsent is set.',
+	);
+	assert.match(
+		dialogSrc,
+		/if \(open && !requireExplicitConsent && hasAcceptedConsent\(\)\) mapConsented = true/,
+		'An accepted banner must not skip the tap when requireExplicitConsent is set.',
+	);
+});
+
 test('Coach handler gates the Anthropic fan-out behind the versioned AI disclosure', () => {
 	// Reason: audit/gdpr (2026-05-25), re-scoped by issue #734. Coach
 	// forwards health-adjacent data to Anthropic (US sub-processor). Art

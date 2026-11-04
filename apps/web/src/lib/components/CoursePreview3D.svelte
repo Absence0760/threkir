@@ -92,6 +92,9 @@
 		/// The end card's headline (the run's own distance and time, formatted
 		/// as the page formats them); the drawn line's length otherwise.
 		videoSummary?: string;
+		/// Ask for the per-view "Load preview" tap even when the cookie banner
+		/// was accepted, as `RunMap` does on the anonymous share pages.
+		requireExplicitConsent?: boolean;
 		onclose: () => void;
 	}
 
@@ -105,6 +108,7 @@
 		climbSource,
 		videoSource,
 		videoSummary,
+		requireExplicitConsent = false,
 		onclose,
 	}: Props = $props();
 
@@ -121,10 +125,11 @@
 
 	// Same gate as RunMap: tile and terrain hosts log the requester IP, so
 	// nothing is requested before consent is on record or the viewer taps
-	// Load. Re-read on every open so a banner accepted meanwhile counts.
-	let mapConsented = $state(untrack(() => hasAcceptedConsent()));
+	// Load. Re-read on every open so a banner accepted meanwhile counts,
+	// except where the caller asks for the tap regardless.
+	let mapConsented = $state(untrack(() => (requireExplicitConsent ? false : hasAcceptedConsent())));
 	$effect(() => {
-		if (open && hasAcceptedConsent()) mapConsented = true;
+		if (open && !requireExplicitConsent && hasAcceptedConsent()) mapConsented = true;
 	});
 
 	const prefersDark =

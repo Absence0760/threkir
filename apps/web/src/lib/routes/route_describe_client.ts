@@ -15,6 +15,7 @@ import { supabase } from '../core/supabase';
 import { AI_DISCLOSURE_ERROR } from '../core/ai_disclosure';
 import { payloadSha256Hex } from '../util/payload_hash';
 import type { RouteDescriptionInput } from './route_description';
+import type { PreferredUnit } from '../types';
 
 export interface AiDescriptionResult {
 	description: string;
@@ -24,8 +25,11 @@ export interface AiDescriptionResult {
 	upgrade: boolean;
 }
 
-/** Map the route's stored fields into the endpoint's request body. */
-function toBody(input: RouteDescriptionInput): Record<string, unknown> {
+/**
+ * Map the route's stored fields into the endpoint's request body. `unit` is
+ * the viewer's, so the paragraph comes back in the unit they read.
+ */
+function toBody(input: RouteDescriptionInput, unit: PreferredUnit): Record<string, unknown> {
 	return {
 		name: input.name,
 		distance_m: input.distanceM,
@@ -33,6 +37,7 @@ function toBody(input: RouteDescriptionInput): Record<string, unknown> {
 		surface: input.surface,
 		start: input.start ?? null,
 		end: input.end ?? null,
+		unit,
 	};
 }
 
@@ -43,8 +48,9 @@ function toBody(input: RouteDescriptionInput): Record<string, unknown> {
  */
 export async function requestAiDescription(
 	input: RouteDescriptionInput,
+	unit: PreferredUnit,
 ): Promise<AiDescriptionResult> {
-	const body = JSON.stringify(toBody(input));
+	const body = JSON.stringify(toBody(input, unit));
 	// CloudFront's Lambda OAC can't hash the body itself — the client
 	// supplies the sigv4 payload hash or the Function URL 403s (#590).
 	const bodyHash = await payloadSha256Hex(body);

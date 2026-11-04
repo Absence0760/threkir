@@ -193,14 +193,17 @@ test.describe('/ (landing)', () => {
 	test('the platforms strip states testing status without four vapour cards', async ({
 		page,
 	}) => {
+		// The statuses come from #lib/marketing/platforms.ts; this pins that
+		// the strip and its note render that registry, not a second copy.
 		await page.goto('/');
 		const pills = page.locator('section#apps li.platform');
 		await expect(pills).toHaveCount(5);
-		// Web is the only one a visitor can actually use today.
-		await expect(pills.filter({ hasText: 'Web' }).first()).not.toHaveClass(/pending/);
-		await expect(page.locator('section#apps li.platform.pending')).toHaveCount(4);
-		await expect(page.locator('section#apps .platforms-note')).toContainText(
-			/not in the app stores yet/i
+		for (const name of ['Web', 'iOS', 'Apple Watch']) {
+			await expect(pills.filter({ hasText: name }).first()).not.toHaveClass(/pending/);
+		}
+		await expect(page.locator('section#apps li.platform.pending')).toHaveCount(2);
+		await expect(page.locator('section#apps .platforms-note')).toHaveText(
+			/^Android and Wear OS are in internal testing/
 		);
 	});
 

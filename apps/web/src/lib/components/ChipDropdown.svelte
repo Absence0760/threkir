@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy, tick } from 'svelte';
+	import { onMount, onDestroy, tick, type Snippet } from 'svelte';
 
 	interface Option {
 		value: string;
@@ -24,6 +24,9 @@
 		/// (e.g. `chip-muted` when the picker is showing the empty
 		/// option).
 		triggerClass?: string;
+		/// Rendered under the options, outside the listbox, for a note or a
+		/// link that is not itself a choice.
+		footer?: Snippet;
 	}
 	let {
 		value,
@@ -34,7 +37,8 @@
 		suffix,
 		ariaLabel,
 		title,
-		triggerClass = ''
+		triggerClass = '',
+		footer
 	}: Props = $props();
 
 	let open = $state(false);
@@ -143,23 +147,28 @@
 	</button>
 
 	{#if open}
-		<div bind:this={panel} class="popover" role="listbox">
-			{#each options as o, i (o.value)}
-				<button
-					type="button"
-					class="opt"
-					class:selected={o.value === value}
-					class:active={i === activeIndex}
-					role="option"
-					aria-selected={o.value === value}
-					tabindex={-1}
-					onclick={() => pick(o.value)}
-					onmouseenter={() => (activeIndex = i)}
-				>
-					<span class="opt-label">{o.label}</span>
-					{#if o.sub}<span class="opt-sub">{o.sub}</span>{/if}
-				</button>
-			{/each}
+		<div bind:this={panel} class="popover">
+			<div class="options" role="listbox" aria-label={ariaLabel}>
+				{#each options as o, i (o.value)}
+					<button
+						type="button"
+						class="opt"
+						class:selected={o.value === value}
+						class:active={i === activeIndex}
+						role="option"
+						aria-selected={o.value === value}
+						tabindex={-1}
+						onclick={() => pick(o.value)}
+						onmouseenter={() => (activeIndex = i)}
+					>
+						<span class="opt-label">{o.label}</span>
+						{#if o.sub}<span class="opt-sub">{o.sub}</span>{/if}
+					</button>
+				{/each}
+			</div>
+			{#if footer}
+				<div class="footer">{@render footer()}</div>
+			{/if}
 		</div>
 	{/if}
 </div>
@@ -216,11 +225,18 @@
 		border-radius: var(--radius-md);
 		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
 		padding: 0.25rem;
+		max-height: 16rem;
+		overflow-y: auto;
+	}
+	.options {
 		display: flex;
 		flex-direction: column;
 		gap: 0.05rem;
-		max-height: 16rem;
-		overflow-y: auto;
+	}
+	.footer {
+		border-top: 1px solid var(--color-border);
+		margin-top: 0.25rem;
+		padding: 0.45rem 0.55rem 0.3rem;
 	}
 	.opt {
 		display: flex;

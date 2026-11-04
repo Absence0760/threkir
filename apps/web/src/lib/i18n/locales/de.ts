@@ -7090,7 +7090,7 @@ export const messages = {
 	"coursePreview.mapFailed": "Die Karte konnte auf diesem Gerät nicht gestartet werden.",
 	"coursePreview.noTrack": "Diese Strecke hat keinen Verlauf für eine Vorschau.",
 	"coursePreview.consentTitle": "3D-Vorschau laden?",
-	"coursePreview.consentBody": "Die Vorschau lädt Karten- und Geländekacheln von Drittanbietern, die deine IP-Adresse erhalten. Siehe unseren ",
+	"coursePreview.consentBody": "Die Vorschau lädt Karten- und Geländekacheln von MapTiler, unserem Kartenanbieter, der deine IP-Adresse erhält. Siehe unseren ",
 	"coursePreview.consentLink": "Cookie-Hinweis",
 	"coursePreview.consentSuffix": ".",
 	"coursePreview.loadMap": "Vorschau laden",

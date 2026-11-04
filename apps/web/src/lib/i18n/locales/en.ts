@@ -7122,7 +7122,7 @@ export const en = {
 	"coursePreview.mapFailed": "The map couldn't start on this device.",
 	"coursePreview.noTrack": "This course has no track to preview.",
 	"coursePreview.consentTitle": "Load the 3D preview?",
-	"coursePreview.consentBody": "The preview loads map and terrain tiles from third-party providers, which receive your IP address. See our ",
+	"coursePreview.consentBody": "The preview loads map and terrain tiles from MapTiler, our map provider, which receives your IP address. See our ",
 	"coursePreview.consentLink": "cookie notice",
 	"coursePreview.consentSuffix": ".",
 	"coursePreview.loadMap": "Load preview",

@@ -7090,7 +7090,7 @@ export const messages = {
 	"coursePreview.mapFailed": "El mapa no pudo iniciarse en este dispositivo.",
 	"coursePreview.noTrack": "Este recorrido no tiene trazado que previsualizar.",
 	"coursePreview.consentTitle": "¿Cargar la vista previa en 3D?",
-	"coursePreview.consentBody": "La vista previa carga mosaicos de mapa y de terreno de proveedores externos, que reciben tu dirección IP. Consulta nuestro ",
+	"coursePreview.consentBody": "La vista previa carga mosaicos de mapa y de terreno de MapTiler, nuestro proveedor de mapas, que recibe tu dirección IP. Consulta nuestro ",
 	"coursePreview.consentLink": "aviso de cookies",
 	"coursePreview.consentSuffix": ".",
 	"coursePreview.loadMap": "Cargar vista previa",

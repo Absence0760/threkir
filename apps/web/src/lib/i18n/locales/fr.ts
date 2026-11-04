@@ -7090,7 +7090,7 @@ export const messages = {
 	"coursePreview.mapFailed": "La carte n'a pas pu démarrer sur cet appareil.",
 	"coursePreview.noTrack": "Ce parcours n'a pas de tracé à prévisualiser.",
 	"coursePreview.consentTitle": "Charger l'aperçu 3D ?",
-	"coursePreview.consentBody": "L'aperçu charge des tuiles de carte et de relief depuis des fournisseurs tiers, qui reçoivent votre adresse IP. Consultez notre ",
+	"coursePreview.consentBody": "L'aperçu charge des tuiles de carte et de relief depuis MapTiler, notre fournisseur de cartes, qui reçoit votre adresse IP. Consultez notre ",
 	"coursePreview.consentLink": "avis sur les cookies",
 	"coursePreview.consentSuffix": ".",
 	"coursePreview.loadMap": "Charger l'aperçu",

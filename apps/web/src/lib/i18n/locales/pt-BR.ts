@@ -7089,7 +7089,7 @@ export const messages = {
 	"coursePreview.mapFailed": "Não foi possível iniciar o mapa neste dispositivo.",
 	"coursePreview.noTrack": "Este percurso não tem trajeto para visualizar.",
 	"coursePreview.consentTitle": "Carregar a prévia 3D?",
-	"coursePreview.consentBody": "A prévia carrega blocos de mapa e de relevo de provedores terceiros, que recebem seu endereço IP. Veja nosso ",
+	"coursePreview.consentBody": "A prévia carrega blocos de mapa e de relevo da MapTiler, nosso provedor de mapas, que recebe seu endereço IP. Veja nosso ",
 	"coursePreview.consentLink": "aviso de cookies",
 	"coursePreview.consentSuffix": ".",
 	"coursePreview.loadMap": "Carregar prévia",

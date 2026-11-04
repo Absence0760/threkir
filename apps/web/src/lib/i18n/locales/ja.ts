@@ -7085,7 +7085,7 @@ export const messages = {
 	"coursePreview.mapFailed": "このデバイスでは地図を起動できませんでした。",
 	"coursePreview.noTrack": "このコースにはプレビューできる軌跡がありません。",
 	"coursePreview.consentTitle": "3Dプレビューを読み込みますか？",
-	"coursePreview.consentBody": "プレビューでは地図と地形のタイルを外部のプロバイダーから読み込みます。プロバイダーにはあなたのIPアドレスが送信されます。詳しくは",
+	"coursePreview.consentBody": "プレビューでは地図と地形のタイルを地図プロバイダーのMapTilerから読み込みます。MapTilerにはあなたのIPアドレスが送信されます。詳しくは",
 	"coursePreview.consentLink": "クッキー通知",
 	"coursePreview.consentSuffix": "をご覧ください。",
 	"coursePreview.loadMap": "プレビューを読み込む",

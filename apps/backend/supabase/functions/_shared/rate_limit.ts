@@ -21,13 +21,35 @@
 /// `export-data` heavy zips, OAuth code exchange. Fail-closed returns
 /// 503 with a `Retry-After: 60` so the client can back off and retry.
 
-// The client type comes from `./database.ts`, which is where this tree's one
-// supabase-js type import now lives — at `?target=deno`, because the specifier
-// enters the worker's module graph even when the import is type-only and the
-// default esm.sh build's `node:` imports are fetched from the network at boot
-// (decisions § 699). `offline_worker_boot_guard.test.ts` walks the probe path
-// and pins it.
-import type { DbClient } from './database.ts';
+// The client is typed structurally, by the one method these helpers call,
+// rather than as `DbClient`. This module is on `clip-public-track`'s graph,
+// whose worker every stack-using CI job's setup probes and which must boot
+// without registry.npmjs.org (decisions § 699). `DbClient` comes from
+// `npm:@supabase/supabase-js`, and even a type-only `npm:` import makes the
+// runtime fetch the package before the worker boots (decisions § 2341). So the
+// probe function builds its clients from esm.sh's `?target=deno` build and
+// every other function from npm, and both have to fit here. The RPC names,
+// arguments and result rows still come from the generated schema, so a
+// renamed parameter is a compile error in either.
+// `offline_worker_boot_guard.test.ts` walks the probe path and pins it.
+import type { Database } from './database_types.ts';
+
+type RpcSpec<N extends keyof Database['public']['Functions']> = Database['public']['Functions'][N];
+type RpcResult<N extends keyof Database['public']['Functions']> = PromiseLike<{
+  data: RpcSpec<N>['Returns'] | null;
+  error: unknown;
+}>;
+
+/// The slice of a Supabase client the rate-limit helpers use. Any client
+/// built with `createClient<Database>` satisfies it, whichever build of
+/// supabase-js it came from.
+export interface RateLimitClient {
+  rpc(fn: 'check_rate_limit', args: RpcSpec<'check_rate_limit'>['Args']): RpcResult<'check_rate_limit'>;
+  rpc(
+    fn: 'check_rate_limit_tiered',
+    args: RpcSpec<'check_rate_limit_tiered'>['Args'],
+  ): RpcResult<'check_rate_limit_tiered'>;
+}
 
 export interface RateLimitOpts {
   /// When the rate-limit RPC itself errors, return 503 instead of
@@ -74,7 +96,7 @@ function rpcErrorResponse(bucket: string, error: unknown, failClosed: boolean): 
 }
 
 export async function checkRateLimit(
-  supabase: DbClient,
+  supabase: RateLimitClient,
   userId: string,
   bucket: string,
   max: number,
@@ -202,7 +224,7 @@ export async function ipBucketKey(req: Request): Promise<string> {
 /// (including missing-profile rows) gets the free ceiling — the
 /// conservative default if the RevenueCat sync drifts.
 export async function checkRateLimitTiered(
-  supabase: DbClient,
+  supabase: RateLimitClient,
   userId: string,
   bucket: string,
   freeMax: number,

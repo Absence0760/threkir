@@ -12,7 +12,7 @@
 // and stores nothing. Clients treat every failure as non-fatal; sign-in has
 // already succeeded by the time they call.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.110.0';
 import type { Database } from '../_shared/database.ts';
 import { checkRateLimit } from '../_shared/rate_limit.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';

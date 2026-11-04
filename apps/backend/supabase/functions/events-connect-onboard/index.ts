@@ -24,7 +24,7 @@ import Stripe, {
   type AssertNoUnknownParamKeys,
   type UnknownParamKeys,
 } from '../_shared/stripe.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.110.0';
 import type { Database } from '../_shared/database.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { checkRateLimit } from '../_shared/rate_limit.ts';

@@ -1,11 +1,17 @@
-// `?target=deno` is load-bearing, not cosmetic: every stack-using CI job's
-// setup probes THIS function's 405 to prove the edge runtime really serves,
-// and esm.sh's default (denonext) build imports `node:buffer` / `node:process`,
-// which makes the runtime resolve `@types/node` from registry.npmjs.org before
-// a worker can boot. When that fetch fails the worker never starts, the probe
-// hangs to its timeout, and the job dies before one test runs (decisions § 699).
+// This is the one function that still loads supabase-js from esm.sh, and
+// `?target=deno` is load-bearing, not cosmetic. Every stack-using CI job's
+// setup probes THIS function's 405 to prove the edge runtime really serves, so
+// its worker has to boot without reaching registry.npmjs.org. esm.sh's default
+// (denonext) build imports `node:buffer` / `node:process`, whose types the
+// runtime resolves from npm before a worker can boot (decisions § 699); the
+// `npm:@supabase/supabase-js` specifier every other function uses is fetched
+// from npm outright, measured to fail the same way with npm unreachable, type-
+// only imports included (decisions § 2341). So nothing on this module's graph
+// may import from `npm:` either, which is why the row types come from
+// `database_types.ts` rather than `database.ts`.
+// `_shared/offline_worker_boot_guard.test.ts` walks the graph and pins both.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0?target=deno';
-import type { Database } from '../_shared/database.ts';
+import type { Database } from '../_shared/database_types.ts';
 import { checkRateLimit, ipBucketKey } from '../_shared/rate_limit.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';

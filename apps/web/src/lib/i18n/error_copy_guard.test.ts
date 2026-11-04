@@ -71,18 +71,6 @@ const ALLOWED: Record<string, { hits: number; reason: string }> = {
 		hits: 1,
 		reason: 'classifier: compares the text with the race-import refusal codes; every branch shows catalogue copy',
 	},
-	'src/routes/coaching/+page.svelte': {
-		hits: 2,
-		reason: 'appErrorMessage: converted with core/data.ts by the data-layer lane; delete this entry then',
-	},
-	'src/routes/coaching/athletes/[id]/+page.svelte': {
-		hits: 1,
-		reason: 'appErrorMessage: converted with core/data.ts by the data-layer lane; delete this entry then',
-	},
-	'src/routes/settings/account/+page.svelte': {
-		hits: 1,
-		reason: 'appErrorMessage: converted with core/data.ts by the data-layer lane; delete this entry then',
-	},
 	'src/routes/clubs/[slug]/events/[id]/board/+page.svelte': {
 		hits: 1,
 		reason: 'classifier: an organiser-only refusal turns the board into its access-denied state',
@@ -341,7 +329,7 @@ test('the scanner bites on every raw shape and passes the safe ones', () => {
 		'if (/42501|permission/i.test(e.message)) denied = true;',
 		'const label = route.message;',
 		"loadError = errorCopy(res.error, m, 'runs: loadError');",
-		'if (res.error) throw res.error;',
+		'if (res.error) throw dbError(res.error);',
 		"if (res.error?.message === 'x') return;",
 		"error = errorCopy(e, m, 'clubJoin.invalidOrExpired', 'clubJoin.invalidOrExpired');",
 		"const code = refusalCode(e);",

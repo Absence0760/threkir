@@ -3,7 +3,8 @@
  */
 import { supabase } from './supabase';
 import { edgeFunctionErrorCode, edgeFunctionErrorMessage } from './edge_function_error';
-import { appErrorMessage, DbError, dbError, isDuplicateKeyError, supabaseErrorFields, thrownMessage } from './supabase_error';
+import { DbError, dbError, isDuplicateKeyError, supabaseErrorFields, thrownMessage } from './supabase_error';
+import { AppError } from './app_error';
 import { singleEmbed, fitnessSnapshotDue, publicRouteListFill } from './data_normalise';
 import { TABLES, BUCKETS, METADATA_KEYS } from './schema';
 import type { Database, Json } from '../database.types';
@@ -1591,7 +1592,7 @@ export async function saveRunAsRoute(
 	elevationMinDeltaM?: number,
 ): Promise<{ id: string }> {
 	const { summarizeRouteFromTrack } = await import('../routes/route_simplify');
-	if (track.length < 2) throw new Error('Not enough GPS points to save a route');
+	if (track.length < 2) throw new AppError('runDetail.saveAsRouteTooFewPoints', { message: 'Not enough GPS points to save a route' });
 	const { waypoints, distance_m, elevation_m } = summarizeRouteFromTrack(
 		track,
 		10,
@@ -2511,7 +2512,7 @@ export async function deleteRoute(id: string): Promise<void> {
 			.from(TABLES.route_photos)
 			.select('storage_path, thumb_512_path')
 			.eq('route_id', id);
-		if (photosError) throw photosError;
+		if (photosError) throw dbError(photosError);
 		paths = (photos ?? [])
 			.flatMap((p) => [p.storage_path, p.thumb_512_path])
 			.filter((p): p is string => !!p);
@@ -3764,11 +3765,11 @@ const clubLogoPathsFor = (clubId: string): string[] =>
 /// `uploadAvatar`: EXIF stripped client-side (the bucket is public with no
 /// strip worker), remove-then-insert at a stable path, `?v=` cache-bust.
 export async function uploadClubLogo(clubId: string, file: File): Promise<string> {
-	if (file.size > AVATAR_MAX_BYTES) throw new Error('Image too large (2 MB max)');
+	if (file.size > AVATAR_MAX_BYTES) throw new AppError('errorCopy.imageTooLarge', { params: { mb: 2 }, message: 'Image too large (2 MB max)' });
 	const clean = await stripExifFromFile(file);
-	if (!clean) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	if (!clean) throw new AppError('errorCopy.imageType', { message: 'Unsupported image type — JPEG, PNG, or WebP only' });
 	const ext = AVATAR_MIME_TO_EXT[clean.type];
-	if (!ext) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	if (!ext) throw new AppError('errorCopy.imageType', { message: 'Unsupported image type — JPEG, PNG, or WebP only' });
 	const storagePath = `clubs/${clubId}/logo.${ext}`;
 
 	await supabase.storage.from(BUCKETS.avatars).remove(clubLogoPathsFor(clubId));
@@ -4554,7 +4555,7 @@ export async function startConnectOnboarding(): Promise<{ url: string }> {
 		// caller's not-configured branch could never match on it and every
 		// keyless build reported a red failure carrying that internal string.
 		const code = await edgeFunctionErrorCode(error);
-		throw new Error(code ?? (appErrorMessage(error) ?? 'onboard_failed'));
+		throw code ? new Error(code) : dbError(error);
 	}
 	const url = (data as { url?: string } | null)?.url;
 	if (!url) throw new Error('No onboarding URL returned');
@@ -4629,7 +4630,7 @@ export async function startEventCheckout(
 		// sentence in front of the buyer for sold-out, sales-closed and a
 		// host who cannot take money alike. Same unwrap as cancelEventOrder.
 		const code = await edgeFunctionErrorCode(error);
-		throw new Error(code ?? (appErrorMessage(error) ?? 'checkout_failed'));
+		throw code ? new Error(code) : dbError(error);
 	}
 	// `checkout_url`, matching what the Edge Function actually returns and the
 	// `startDonationCheckout` sibling below. Reading `url` here meant this
@@ -4707,7 +4708,7 @@ export async function cancelEventOrder(
 		// Re-throw an Error whose message is the EF's machine `error` code so
 		// the caller can map it to a localized string.
 		const code = await edgeFunctionErrorCode(error);
-		throw new Error(code ?? (appErrorMessage(error) ?? 'cancel_failed'));
+		throw code ? new Error(code) : dbError(error);
 	}
 	const action = (data as { action?: string } | null)?.action;
 	if (!action) throw new Error('cancel_failed');
@@ -4779,7 +4780,7 @@ export async function cancelPaidEventInstance(
 	});
 	if (error) {
 		const code = await edgeFunctionErrorCode(error);
-		throw new Error(code ?? (appErrorMessage(error) ?? 'cancel_failed'));
+		throw code ? new Error(code) : dbError(error);
 	}
 	const refunds = parseOccurrenceRefundSummary((data as { refunds?: unknown } | null)?.refunds);
 	if (!refunds) throw new Error('cancel_failed');
@@ -4802,7 +4803,7 @@ export async function cancelEventSeries(
 	});
 	if (error) {
 		const code = await edgeFunctionErrorCode(error);
-		throw new Error(code ?? (appErrorMessage(error) ?? 'cancel_failed'));
+		throw code ? new Error(code) : dbError(error);
 	}
 	const body = data as { refunds?: unknown; cancelled_occurrences?: unknown } | null;
 	const refunds = parseOccurrenceRefundSummary(body?.refunds);
@@ -6470,27 +6471,30 @@ export async function createTrainingPlan(input: {
 	// hasn't loaded.
 	const { data: { session } } = await supabase.auth.getSession();
 	const userId = session?.user?.id;
-	if (!userId) throw new Error('Please sign in to create a plan.');
+	if (!userId) throw new AppError('errorCopy.signedOut', { message: 'Please sign in to create a plan.' });
 
 	// Pre-flight validation — the RPC enforces the same rules, but a
 	// readable message here beats a raw 22023 / 23xxx code.
-	if (!input.name.trim()) throw new Error('Name is required.');
-	if (!(input.goalDistanceM > 0)) throw new Error('Goal distance must be positive.');
+	if (!input.name.trim()) throw new AppError('planMeta.nameRequired', { message: 'Name is required.' });
+	if (!(input.goalDistanceM > 0)) throw new AppError('plansNew.goalDistancePositive', { message: 'Goal distance must be positive.' });
 	// Imported here, not at the top: a static import pulls the whole plan
 	// generator into this module's chunk, which nearly every route loads.
 	const { minDaysPerWeek } = await import('../training/training');
 	const minDays = minDaysPerWeek(input.generated.weeks);
 	if (input.daysPerWeek < minDays || input.daysPerWeek > 7) {
-		throw new Error(`Days per week must be between ${minDays} and 7.`);
+		throw new AppError('plansNew.daysPerWeekRange', {
+			params: { min: minDays },
+			message: `Days per week must be between ${minDays} and 7.`,
+		});
 	}
 	if (input.goalTimeSec != null && input.goalTimeSec <= 0) {
-		throw new Error('Goal time must be positive.');
+		throw new AppError('plansNew.goalTimePositive', { message: 'Goal time must be positive.' });
 	}
 	if (input.recent5kSec != null && input.recent5kSec <= 0) {
-		throw new Error('Recent 5K time must be positive.');
+		throw new AppError('plansNew.recent5kPositive', { message: 'Recent 5K time must be positive.' });
 	}
 	if (!input.generated.weeks.length) {
-		throw new Error('Generated plan has no weeks.');
+		throw new AppError('plansNew.noWeeks', { message: 'Generated plan has no weeks.' });
 	}
 	// Defence in depth for the null-kind bug we fixed in training.ts —
 	// if some future change lets a kindless workout escape the generator,
@@ -7249,7 +7253,7 @@ export async function followUser(targetUserId: string): Promise<FollowOutcome> {
 	const { data: sessionData } = await supabase.auth.getSession();
 	const userId = sessionData.session?.user?.id;
 	if (!userId) throw new Error('Not signed in');
-	if (userId === targetUserId) throw new Error("Can't follow yourself");
+	if (userId === targetUserId) throw new AppError('profile.cannotFollowSelf', { message: "Can't follow yourself" });
 	const { data, error } = await supabase.rpc('request_follow', { p_target: targetUserId });
 	if (error) throw dbError(error);
 	return data === 'requested' ? 'requested' : 'following';
@@ -7356,7 +7360,7 @@ export async function blockUser(targetUserId: string, reason?: string): Promise<
 	const { data: sessionData } = await supabase.auth.getSession();
 	const userId = sessionData.session?.user?.id;
 	if (!userId) throw new Error('Not signed in');
-	if (userId === targetUserId) throw new Error("Can't block yourself");
+	if (userId === targetUserId) throw new AppError('profile.cannotBlockSelf', { message: "Can't block yourself" });
 	const { error } = await supabase.rpc('block_user', {
 		p_target: targetUserId,
 		p_reason: reason ?? null,
@@ -8768,7 +8772,7 @@ export async function addRunPhoto(input: {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not signed in');
 
-	if (input.file.size > PHOTO_MAX_BYTES) throw new Error('Image too large (10 MB max)');
+	if (input.file.size > PHOTO_MAX_BYTES) throw new AppError('errorCopy.imageTooLarge', { params: { mb: 10 }, message: 'Image too large (10 MB max)' });
 
 	// Strip EXIF/XMP (incl. GPS) client-side before upload so a geotagged
 	// original never sits readable in the bucket ahead of the server worker's
@@ -8776,9 +8780,9 @@ export async function addRunPhoto(input: {
 	// The strip sniffs the bytes and refuses a format it cannot clean, so the
 	// accepted set is decided here, not by the browser-supplied File.type.
 	const file = await stripExifFromFile(input.file);
-	if (!file) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	if (!file) throw new AppError('errorCopy.imageType', { message: 'Unsupported image type — JPEG, PNG, or WebP only' });
 	const ext = PHOTO_MIME_TO_EXT[file.type];
-	if (!ext) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	if (!ext) throw new AppError('errorCopy.imageType', { message: 'Unsupported image type — JPEG, PNG, or WebP only' });
 
 	const photoId = crypto.randomUUID();
 	const storagePath = `${userId}/${photoId}.${ext}`;
@@ -8893,12 +8897,12 @@ const avatarPathsFor = (userId: string): string[] =>
 export async function uploadAvatar(file: File): Promise<string> {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not signed in');
-	if (file.size > AVATAR_MAX_BYTES) throw new Error('Image too large (2 MB max)');
+	if (file.size > AVATAR_MAX_BYTES) throw new AppError('errorCopy.imageTooLarge', { params: { mb: 2 }, message: 'Image too large (2 MB max)' });
 
 	const clean = await stripExifFromFile(file);
-	if (!clean) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	if (!clean) throw new AppError('errorCopy.imageType', { message: 'Unsupported image type — JPEG, PNG, or WebP only' });
 	const ext = AVATAR_MIME_TO_EXT[clean.type];
-	if (!ext) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	if (!ext) throw new AppError('errorCopy.imageType', { message: 'Unsupported image type — JPEG, PNG, or WebP only' });
 	const storagePath = `${userId}/avatar.${ext}`;
 
 	// Clear any existing avatar (this ext and the others) so the upload is a
@@ -9037,12 +9041,12 @@ export async function addRoutePhoto(input: {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not signed in');
 
-	if (input.file.size > PHOTO_MAX_BYTES) throw new Error('Image too large (10 MB max)');
+	if (input.file.size > PHOTO_MAX_BYTES) throw new AppError('errorCopy.imageTooLarge', { params: { mb: 10 }, message: 'Image too large (10 MB max)' });
 
 	const file = await stripExifFromFile(input.file);
-	if (!file) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	if (!file) throw new AppError('errorCopy.imageType', { message: 'Unsupported image type — JPEG, PNG, or WebP only' });
 	const ext = PHOTO_MIME_TO_EXT[file.type];
-	if (!ext) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	if (!ext) throw new AppError('errorCopy.imageType', { message: 'Unsupported image type — JPEG, PNG, or WebP only' });
 
 	const photoId = crypto.randomUUID();
 	const storagePath = `${userId}/${photoId}.${ext}`;
@@ -9202,12 +9206,12 @@ export async function addClubPhoto(input: {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not signed in');
 
-	if (input.file.size > PHOTO_MAX_BYTES) throw new Error('Image too large (10 MB max)');
+	if (input.file.size > PHOTO_MAX_BYTES) throw new AppError('errorCopy.imageTooLarge', { params: { mb: 10 }, message: 'Image too large (10 MB max)' });
 
 	const file = await stripExifFromFile(input.file);
-	if (!file) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	if (!file) throw new AppError('errorCopy.imageType', { message: 'Unsupported image type — JPEG, PNG, or WebP only' });
 	const ext = PHOTO_MIME_TO_EXT[file.type];
-	if (!ext) throw new Error('Unsupported image type — JPEG, PNG, or WebP only');
+	if (!ext) throw new AppError('errorCopy.imageType', { message: 'Unsupported image type — JPEG, PNG, or WebP only' });
 
 	const photoId = crypto.randomUUID();
 	const storagePath = `${userId}/${photoId}.${ext}`;
@@ -11026,7 +11030,9 @@ export async function submitReport(input: {
 		// SQLSTATE / hint exactly as raised in the migration; we
 		// don't lean on the raw text because that string can change.
 		if (isDuplicateKeyError(error)) {
-			throw new Error('You already have a pending report against this content.');
+			throw new AppError('reportDialog.errorAlreadyPending', {
+				message: 'You already have a pending report against this content.',
+			});
 		}
 		// The `create_report` bucket goes through the same
 		// enforce_create_rate_limit trigger as create_club + create_route,
@@ -11259,7 +11265,7 @@ export async function sendDm(
 	const me = auth.user?.id;
 	if (!me) throw new Error('Not signed in');
 	const trimmed = body.trim();
-	if (!trimmed) throw new Error('Message is empty');
+	if (!trimmed) throw new AppError('messages.emptyBody', { message: 'Message is empty' });
 	const { data, error } = await supabase
 		.from(TABLES.direct_messages)
 		.insert({
@@ -14276,7 +14282,7 @@ export async function createEventCheckpoint(params: {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');
 	const name = params.name.trim();
-	if (!name) throw new Error('Checkpoint name is required');
+	if (!name) throw new AppError('checkpoint.nameRequired', { message: 'Checkpoint name is required' });
 	const { data, error } = await supabase
 		.from(TABLES.event_checkpoints)
 		.insert({
@@ -15141,7 +15147,7 @@ export async function startDonationCheckout(
 		// cannot tell "this is over" from "try again in a minute" — so they
 		// retry a checkout that can never open.
 		const code = await edgeFunctionErrorCode(error);
-		throw new Error(code ?? (appErrorMessage(error) ?? 'donation_failed'));
+		throw code ? new Error(code) : dbError(error);
 	}
 	const url = (data as { checkout_url?: string } | null)?.checkout_url;
 	if (!url) throw new Error('No checkout URL returned');

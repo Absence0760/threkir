@@ -5,11 +5,11 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:ui_kit/ui_kit.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/live_broadcast.dart';
 import '../lib/screens/live_spectator_screen.dart';
 import '../lib/screens/public_run_screen.dart';
+import '../lib/widgets/loading_skeletons.dart';
 
 /// Test seam: returns a canned public run + author profile so `_load`
 /// resolves without a backend. Track fetches are stubbed to empty so
@@ -128,7 +128,7 @@ void main() {
       await _pump(tester);
       // Single pump only — the post-fetch frame swaps in either
       // ErrorState or the run body once Supabase resolves.
-      expect(find.byType(ActivityLoader), findsOneWidget);
+      expect(find.byType(MapDetailSkeleton), findsOneWidget);
     });
   });
 

@@ -3,9 +3,7 @@ import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
-        ActivityLoaderKind,
         AppSemanticColors,
-        FullBodyLoader,
         StatGrid,
         StatTile;
 
@@ -22,6 +20,7 @@ import '../widgets/route_photos.dart';
 import '../widgets/segments_panel.dart';
 import '../widgets/shared_with_you_chip.dart';
 import '../widgets/top_banner.dart';
+import '../widgets/loading_skeletons.dart';
 
 /// Build the route a public / shared route starts a run against — carrying
 /// the CLIPPED display waypoints the viewer is allowed to see, never the
@@ -229,10 +228,7 @@ class _PublicRouteScreenState extends State<PublicRouteScreen> {
             )
           : null,
       body: _loading
-          ? FullBodyLoader(
-              kind: ActivityLoaderKind.run,
-              label: l10n.commonLoading,
-            )
+          ? MapDetailSkeleton(label: l10n.commonLoading)
           : _loadError != null
               ? ErrorState(
                   message: l10n.publicRouteLoadError, onRetry: _load)

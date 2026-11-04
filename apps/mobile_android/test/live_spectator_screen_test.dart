@@ -3,7 +3,7 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show FullBodyLoader;
+import 'package:ui_kit/ui_kit.dart' show SkeletonBlock;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -137,7 +137,7 @@ void main() {
       // construction (e.g. lazy hydration) would silently strip the
       // loader and surface ErrorState immediately.
       await _pump(tester);
-      expect(find.byType(FullBodyLoader), findsOneWidget);
+      expect(find.byType(SkeletonBlock), findsNWidgets(4));
       expect(find.byType(CircularProgressIndicator), findsNothing);
       await tester.pump(const Duration(milliseconds: 400));
     });

@@ -2,12 +2,12 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ui_kit/ui_kit.dart' show FullBodyLoader;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/preferences.dart';
 import '../lib/screens/public_route_screen.dart';
+import '../lib/widgets/loading_skeletons.dart';
 
 bool _supabaseReady = false;
 
@@ -80,7 +80,7 @@ void main() {
 
     testWidgets('first frame shows the full-body loader', (tester) async {
       await _pump(tester);
-      expect(find.byType(FullBodyLoader), findsOneWidget);
+      expect(find.byType(MapDetailSkeleton), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsNothing);
       await tester.pump(const Duration(milliseconds: 400));
     });

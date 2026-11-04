@@ -7,10 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
-        ActivityLoaderKind,
         AppSemanticColors,
-        FullBodyLoader,
+        ListSkeleton,
         ProgressBar,
+        SkeletonBlock,
         StatusPill;
 
 import '../l10n/gen/app_localizations.dart';
@@ -24,6 +24,7 @@ import '../widgets/cutoff_card.dart';
 import '../widgets/error_state.dart';
 import '../widgets/help_button.dart';
 import '../widgets/live_run_map.dart';
+import '../widgets/loading_skeletons.dart';
 import 'public_run_screen.dart';
 
 /// Live spectator screen — mirrors the web `/live/[run_id]` page.
@@ -478,9 +479,27 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
         ],
       ),
       body: _loading
-          ? FullBodyLoader(
-              kind: ActivityLoaderKind.run,
-              label: l10n.commonLoading,
+          ? Column(
+              children: [
+                const Expanded(
+                  child: SkeletonBlock(height: double.infinity, radius: 0),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SkeletonStatStrip(cells: 3),
+                      ListSkeleton.section(
+                        label: l10n.commonLoading,
+                        rows: 1,
+                        hasLeading: false,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             )
           : _loadError != null
               ? ErrorState(

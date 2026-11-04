@@ -3,10 +3,10 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
-        ActivityLoaderKind,
         AppSemanticColors,
-        FullBodyLoader,
         IdentityAvatar,
+        ListSkeleton,
+        SkeletonBlock,
         StatGrid,
         StatTile;
 
@@ -19,6 +19,7 @@ import '../widgets/error_state.dart';
 import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/track_preview.dart';
+import '../widgets/loading_skeletons.dart';
 
 /// Browse list for the curated famous-segment catalogue (decisions §233).
 /// Mobile mirror of web `/segments`: search with accent folding, region and
@@ -116,9 +117,19 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.segmentCatalogueTitle)),
       body: _loading
-          ? FullBodyLoader(
-              kind: ActivityLoaderKind.run,
-              label: l10n.segmentsPanelLoading,
+          ? ListView(
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              children: [
+                const SkeletonBlock(height: 14, radius: 4),
+                const SizedBox(height: 12),
+                const SkeletonBlock(height: 56),
+                const SizedBox(height: 12),
+                ListSkeleton.section(
+                  label: l10n.segmentsPanelLoading,
+                  rows: 6,
+                ),
+              ],
             )
           : _error
               ? ErrorState(
@@ -423,9 +434,19 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
         title: Text(segment?.name ?? l10n.segmentCatalogueTitle),
       ),
       body: _loading
-          ? FullBodyLoader(
-              kind: ActivityLoaderKind.run,
-              label: l10n.segmentsPanelLoading,
+          ? ListView(
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              children: [
+                const SkeletonStatStrip(cells: 3),
+                const SizedBox(height: 16),
+                const SkeletonBlock(height: 160),
+                const SizedBox(height: 16),
+                ListSkeleton.section(
+                  label: l10n.segmentsPanelLoading,
+                  rows: 5,
+                ),
+              ],
             )
           : _loadFailed
               ? ErrorState(

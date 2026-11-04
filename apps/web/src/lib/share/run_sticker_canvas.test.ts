@@ -59,6 +59,16 @@ describe('sticker', () => {
 		}
 	});
 
+	test('with the mark turned off no layout draws a signature', () => {
+		for (const layout of RUN_STICKER_LAYOUTS) {
+			const signed = layoutStickerContent(layout, three, false, 'Threkir', measure);
+			const bare = layoutStickerContent(layout, three, false, null, measure);
+			assert.equal(of(bare.ops, 'mark').length, 0, layout);
+			assert.ok(!texts(bare.ops).some((t) => t.text === 'THREKIR'), layout);
+			assert.ok(bare.height < signed.height, layout);
+		}
+	});
+
 	test('the route is drawn only when there is a clipped line to draw', () => {
 		assert.equal(of(layoutStickerContent('stack', three, false, 'T', measure).ops, 'route').length, 0);
 		assert.equal(of(layoutStickerContent('stack', three, true, 'T', measure).ops, 'route')[0].size, 150);

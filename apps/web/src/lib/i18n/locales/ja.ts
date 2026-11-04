@@ -1545,6 +1545,7 @@ export const messages = {
 	"runShare.aspectPost": "投稿 4:5",
 	"runShare.stats": "表示する数値",
 	"runShare.statsHint": "最大{max}個まで。",
+	"runShare.mark": "Threkirのロゴを表示",
 	"runShare.statDistance": "距離",
 	"runShare.statPace": "ペース",
 	"runShare.statSpeed": "速度",

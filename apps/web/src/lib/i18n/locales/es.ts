@@ -1550,6 +1550,7 @@ export const messages = {
 	"runShare.aspectPost": "Publicación 4:5",
 	"runShare.stats": "Datos",
 	"runShare.statsHint": "Hasta {max}.",
+	"runShare.mark": "Mostrar el logo de Threkir",
 	"runShare.statDistance": "Distancia",
 	"runShare.statPace": "Ritmo",
 	"runShare.statSpeed": "Velocidad",

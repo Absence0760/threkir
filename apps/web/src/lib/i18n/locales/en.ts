@@ -1563,6 +1563,7 @@ export const en = {
 	"runShare.aspectPost": "Post 4:5",
 	"runShare.stats": "Stats",
 	"runShare.statsHint": "Up to {max}.",
+	"runShare.mark": "Show the Threkir mark",
 	"runShare.statDistance": "Distance",
 	"runShare.statPace": "Pace",
 	"runShare.statSpeed": "Speed",

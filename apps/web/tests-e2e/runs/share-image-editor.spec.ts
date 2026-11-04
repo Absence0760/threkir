@@ -146,6 +146,27 @@ test.describe('run share-image editor', () => {
 		await expect(again.getByTestId('share-stat-heartRate')).toHaveAttribute('aria-pressed', 'true');
 	});
 
+	test('turning the Threkir mark off drops the signature from the sticker, and stays off', async ({
+		page,
+	}) => {
+		const dialog = await openEditor(page, runId);
+		await dialog.getByTestId('share-style-sticker').click();
+		const mark = dialog.getByTestId('share-mark');
+		await expect(mark).toBeChecked();
+		await expect(dialog.getByTestId('share-image-download')).toBeEnabled({ timeout: 15_000 });
+		const signed = await readPng(await download(page));
+
+		await mark.uncheck();
+		await expect(dialog.getByTestId('share-image-download')).toBeEnabled({ timeout: 15_000 });
+		const bare = await readPng(await download(page));
+		// Cropped to its content, the sticker loses the signature's height.
+		expect(bare.height).toBeLessThan(signed.height);
+
+		await page.reload();
+		const again = await openEditor(page, runId);
+		await expect(again.getByTestId('share-mark')).not.toBeChecked();
+	});
+
 	test('a photo exports at the chosen aspect and carries none of the original EXIF', async ({
 		page,
 	}) => {

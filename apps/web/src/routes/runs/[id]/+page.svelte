@@ -919,7 +919,12 @@
 	/// The map card as a 1080 px PNG, rasterised from the off-screen
 	/// `.share-card` DOM node by `html-to-image` at its own CSS size, the
 	/// width every share image is exported at (decisions § 2250).
-	async function captureShareCard(): Promise<Blob> {
+	/// Whether the captured card carries the Threkir eyebrow; the editor's
+	/// mark switch sets it before each capture.
+	let shareCardMark = $state(true);
+
+	async function captureShareCard(mark: boolean): Promise<Blob> {
+		shareCardMark = mark;
 		await tick();
 		// Dynamic import keeps the 30 KB lib out of the initial
 		// bundle for users who never open the share editor.
@@ -2800,10 +2805,12 @@
 	aria-hidden="true"
 >
 	<div class="share-card-inner">
-		<div class="share-card-eyebrow">
-			<img src="/logo-mark.svg" alt="" class="share-card-mark" />
-			Threkir
-		</div>
+		{#if shareCardMark}
+			<div class="share-card-eyebrow">
+				<img src="/logo-mark.svg" alt="" class="share-card-mark" />
+				Threkir
+			</div>
+		{/if}
 		{#if shareMapUrl}
 			<!-- Real map background so the share card shows WHERE the
 				 run happened, not just the stats numbers. crossorigin=

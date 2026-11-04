@@ -4,6 +4,7 @@ import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart' show ClubRow, UserProfileRow;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -205,9 +206,78 @@ void main() {
   });
 
   group('RouteDetailScreen', () {
-    testWidgets('renders the route name as the app-bar title', (tester) async {
-      await _pump(tester, _route(name: 'River Loop'));
-      expect(find.text('River Loop'), findsOneWidget);
+    testWidgets('a long name is shown in full under the map, and the bar '
+        'repeats it only once that heading scrolls away', (tester) async {
+      tester.view.physicalSize = const Size(360, 780);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      const name = 'Philadelphia Marathon full course, Art Museum to '
+          'Manayunk and back';
+      await _pump(tester, _route(name: name), isOwner: true);
+
+      final inBody = find.descendant(
+          of: find.byType(ListView), matching: find.text(name));
+      final inBar =
+          find.descendant(of: find.byType(AppBar), matching: find.text(name));
+      expect(inBody, findsOneWidget);
+      final heading = tester.renderObject<RenderParagraph>(inBody);
+      expect(heading.didExceedMaxLines, isFalse,
+          reason: 'the body heading wraps rather than truncating');
+      double barOpacity() => tester
+          .widget<AnimatedOpacity>(find.ancestor(
+              of: inBar, matching: find.byType(AnimatedOpacity)))
+          .opacity;
+      expect(barOpacity(), 0,
+          reason: 'no second, truncated copy while the heading is on screen');
+
+      // Scrolled directly: a drag over the map would pan the map instead.
+      tester
+          .state<ScrollableState>(find.descendant(
+              of: find.byType(ListView), matching: find.byType(Scrollable)).first)
+          .position
+          .jumpTo(700);
+      // One frame lays the list out at the new offset and measures the
+      // heading; the next rebuilds the bar.
+      await tester.pump();
+      await tester.pump();
+      expect(barOpacity(), 1,
+          reason: 'the bar names the route once its heading is gone');
+    });
+
+    testWidgets('a route with no line does not headline "0 Waypoints"',
+        (tester) async {
+      await _pump(tester, _route());
+      expect(find.text('Waypoints'), findsNothing);
+    });
+
+    testWidgets('a route with a line counts its waypoints', (tester) async {
+      tester.view.physicalSize = const Size(800, 3000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await _pump(
+          tester,
+          _route(userId: '', waypoints: const [
+            cm.Waypoint(lat: 51.5, lng: -0.12),
+            cm.Waypoint(lat: 51.51, lng: -0.13),
+            cm.Waypoint(lat: 51.52, lng: -0.14),
+          ]));
+      expect(find.text('Waypoints'), findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
+    });
+
+    testWidgets('Start run wears the theme\'s start colour, not success green',
+        (tester) async {
+      await _pump(
+          tester,
+          _route(userId: '', waypoints: const [
+            cm.Waypoint(lat: 51.5, lng: -0.12),
+            cm.Waypoint(lat: 51.51, lng: -0.13),
+          ]));
+      final fab = tester.widget<FloatingActionButton>(
+          find.widgetWithText(FloatingActionButton, 'Start run'));
+      expect(fab.backgroundColor, isNull,
+          reason: 'the FAB theme (Home\'s Start) supplies the colour');
+      expect(fab.foregroundColor, isNull);
     });
 
     testWidgets('delete button is hidden when isOwner is false', (tester) async {
@@ -605,7 +675,11 @@ void main() {
               'preview doesn\'t load, it says Waiting for GPS".',
         );
         // The route header still renders normally.
-        expect(find.text('Just-built loop'), findsOneWidget);
+        expect(
+            find.descendant(
+                of: find.byType(ListView),
+                matching: find.text('Just-built loop')),
+            findsOneWidget);
       },
     );
   });
@@ -842,7 +916,8 @@ void main() {
         'owner body renders at 320 logical width and the switch titles are '
         'bounded so long localized labels ellipsize instead of striping',
         (tester) async {
-      tester.view.physicalSize = const Size(320, 1200);
+      // Tall enough that the switches still build below the wrapped name.
+      tester.view.physicalSize = const Size(320, 1600);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 

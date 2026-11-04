@@ -125,13 +125,9 @@ test.describe('/clubs/join/[token] — error branch (signed-in, bad token)', () 
 			page.getByRole('heading', { level: 1, name: 'Invite problem' })
 		).toBeVisible({ timeout: 10_000 });
 		await expect(page.locator('.kicker', { hasText: 'Hmm' })).toBeVisible();
-		// The catch block surfaces either the RPC error message
-		// ("invalid invite token") or a generic fallback ("This invite is
-		// invalid or expired.") depending on whether the client wraps the
-		// PostgrestError as an Error instance. Accept both.
-		await expect(page.locator('.error')).toContainText(
-			/invalid invite token|invalid or expired/i
-		);
+		// The page's own sentence, never the RPC's "invalid invite token".
+		await expect(page.locator('.error')).toContainText(/invalid or expired/i);
+		await expect(page.locator('.error')).not.toContainText(/invalid invite token/i);
 		await expect(
 			page.getByText(/may have been rotated|share a fresh one/i)
 		).toBeVisible();

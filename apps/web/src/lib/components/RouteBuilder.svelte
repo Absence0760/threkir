@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { appErrorMessage } from '#lib/core/supabase_error.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import maplibregl from '#lib/routes/maplibre.ts';
 	import 'maplibre-gl/dist/maplibre-gl.css';
 	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV, PUBLIC_TILE_STYLE_URL } from '$app/env/public';
@@ -1006,7 +1006,7 @@
 				// Suppress here and let the caller emit its own.
 				if (!opts.suppressSoftWarnings) {
 					onerror(
-						appErrorMessage(err) ?? t('routeBuilder.routingFailed'),
+						errorCopy(err, t, 'routeBuilder.routingFailed', 'routeBuilder.routingFailed'),
 						'error',
 					);
 				}
@@ -1346,7 +1346,7 @@
 		} catch (err) {
 			if (version === routeVersion) {
 				console.error('Drawing match failed:', err);
-				onerror(appErrorMessage(err) ?? t('routeBuilder.drawUnavailable'), 'error');
+				onerror(errorCopy(err, t, 'routeBuilder.drawUnavailable', 'routeBuilder.drawUnavailable'), 'error');
 			}
 		} finally {
 			if (version === routeVersion) isRouting = false;

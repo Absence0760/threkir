@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { appErrorMessage } from '#lib/core/supabase_error.ts';
 	import { onMount, untrack } from 'svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { formatISO } from '#lib/training/training.ts';
@@ -585,7 +584,8 @@
 			dirty.rebaseline();
 			oncreated?.(event);
 		} catch (e: unknown) {
-			error = appErrorMessage(e) ?? m(existing ? 'eventEditor.updateFailed' : 'eventEditor.createFailed');
+			const key = existing ? 'eventEditor.updateFailed' : 'eventEditor.createFailed';
+			error = errorCopy(e, m, key, key);
 		} finally {
 			busy = false;
 		}

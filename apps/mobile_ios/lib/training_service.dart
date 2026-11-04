@@ -728,67 +728,20 @@ class TrainingService extends ChangeNotifier {
     return PlanStartedFrom.fromJson(data);
   }
 
-  /// Publish one of the viewer's plans to the public library: copy the
-  /// plan + every week + workout into a new `is_public_template = true`
-  /// sibling, leaving the original untouched (mirrors
-  /// publishPlanAsTemplate, in the public direction). Publisher fitness
-  /// data is stripped. Returns the new template id. Mirrors web
+  /// Publish one of the viewer's plans to the public library. The copy is
+  /// made server-side by `publish_plan_to_library`, in one transaction that
+  /// also links it from the source's `library_copy_id`: it keeps the plan's
+  /// design and drops the publisher's dates, paces, goal time and notes
+  /// (decisions § 2337). Publishing an already-published plan returns its
+  /// existing copy. Returns the copy's id. Mirrors web
   /// `core/data.ts:publishPlanToLibrary`.
   Future<String> publishPlanToLibrary({required String planId}) async {
-    final uid = _uid;
-    if (uid == null) throw Exception('Not authenticated');
-
-    final src = await fetchPlan(planId);
-    final source = src.plan;
-    if (source == null) {
-      throw Exception('Source plan not found');
-    }
-    if (source.userId != uid) {
-      throw Exception('Only the plan owner can publish');
-    }
-
-    final templateRow = await _c.from('training_plans').insert({
-      ...planHeadCopyFields(source),
-      'user_id': uid,
-      'vdot': null,
-      'current_5k_seconds': null,
-      'status': 'completed',
-      'notes': null,
-      'is_template': true,
-      'is_public_template': true,
-      'club_id': null,
-      'parent_template_id': null,
-      'published_from_plan_id': source.id,
-    }).select('id').single();
-    final newPlanId = templateRow['id'] as String;
-
-    if (src.weeks.isEmpty) {
-      notifyListeners();
-      return newPlanId;
-    }
-
-    final weekRes = await _c
-        .from('plan_weeks')
-        .insert(planWeekCopyRows(src.weeks, newPlanId))
-        .select('id, week_index');
-
-    final byIdx = <int, String>{};
-    for (final r in weekRes as List) {
-      final m = r as Map<String, dynamic>;
-      byIdx[m['week_index'] as int] = m['id'] as String;
-    }
-    final oldToNew = <String, String>{};
-    for (final w in src.weeks) {
-      final newId = byIdx[w.weekIndex];
-      if (newId != null) oldToNew[w.id] = newId;
-    }
-
-    final workoutPayload = planWorkoutCopyRows(src.workouts, oldToNew);
-    if (workoutPayload.isNotEmpty) {
-      await _c.from('plan_workouts').insert(workoutPayload);
-    }
+    final id = await _c.rpc(
+      'publish_plan_to_library',
+      params: {'p_plan_id': planId},
+    );
     notifyListeners();
-    return newPlanId;
+    return id as String;
   }
 
   /// Unpublish a public-library template the viewer owns — deletes the
@@ -800,23 +753,6 @@ class TrainingService extends ChangeNotifier {
         .eq('id', templateId)
         .eq('is_public_template', true);
     notifyListeners();
-  }
-
-  /// The viewer's own published public-library plans (so plan detail can
-  /// show whether a plan is already published and offer Unpublish).
-  Future<List<TrainingPlanRow>> fetchMyPublishedPlans() async {
-    final uid = _uid;
-    if (uid == null) return const [];
-    final rows = await _c
-        .from('training_plans')
-        .select()
-        .eq('is_public_template', true)
-        .eq('user_id', uid)
-        .order('created_at', ascending: false);
-    return (rows as List)
-        .cast<Map<String, dynamic>>()
-        .map(TrainingPlanRow.fromJson)
-        .toList();
   }
 
   /// Duplicate a plan week — insert a copy right after [weekIndex], pushing

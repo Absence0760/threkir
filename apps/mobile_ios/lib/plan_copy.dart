@@ -1,11 +1,12 @@
-/// The field sets the two plan publishers copy off a source plan onto the
-/// template they insert. One definition, two callers.
+/// The field sets `TrainingService.publishPlanAsTemplate` (club) copies off a
+/// source plan onto the template it inserts.
 ///
-/// `TrainingService.publishPlanToLibrary` (public library) and
-/// `publishPlanAsTemplate` (club) each built their rows inline and had both
-/// fallen behind the schema: every published workout lost its
-/// `target_pace_end_sec_per_km`, `pace_zone` and `race_taper_applied_at`, and
-/// the library head lost `source` and `rules`. Web twin:
+/// The publishers built their rows inline and had fallen behind the schema:
+/// every published workout lost its `target_pace_end_sec_per_km`, `pace_zone`
+/// and `race_taper_applied_at`, and the library head lost `source` and
+/// `rules`. A library copy is now made server-side by
+/// `publish_plan_to_library`, which keeps the design and none of the
+/// publisher's data (decisions § 2337). Web twin:
 /// `apps/web/src/lib/core/plan_copy.ts` — keep the field lists alike.
 ///
 /// Pure and Supabase-free so `test/plan_copy_test.dart` can hold the lists
@@ -88,14 +89,3 @@ List<Map<String, Object?>> planWorkoutCopyRows(
             'target_rpe_max': w.targetRpeMax,
           },
     ];
-
-/// The owner's public-library copy of [planId], found by the link the
-/// publisher writes on it (`published_from_plan_id`). Never by name: a rename
-/// would lose the copy, and two same-named plans would share one. Twin of
-/// web `libraryCopyOf` in `core/plan_copy.ts`.
-TrainingPlanRow? libraryCopyOf(Iterable<TrainingPlanRow> published, String planId) {
-  for (final t in published) {
-    if (t.publishedFromPlanId == planId) return t;
-  }
-  return null;
-}

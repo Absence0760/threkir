@@ -84,9 +84,6 @@ class _FakeTraining extends TrainingService {
   }
 
   @override
-  Future<List<TrainingPlanRow>> fetchMyPublishedPlans() async => const [];
-
-  @override
   Future<String> restartPlan(String planId, String startIso) async {
     restartCalls.add((planId, startIso));
     final e = restartError;

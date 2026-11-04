@@ -1,19 +1,18 @@
-/// The field sets the two plan publishers copy off a source plan onto the
-/// template they insert. One definition, two callers.
+/// The field sets `publishPlanAsTemplate` (club) copies off a source plan onto
+/// the template it inserts.
 ///
-/// `publishPlanToLibrary` (public library) and `publishPlanAsTemplate` (club)
-/// each carried a hand-maintained copy of the same three lists, and the
-/// library half had fallen four fields behind: every published workout lost
-/// its `target_pace_end_sec_per_km` progression target and its `pace_zone`
-/// label, and the head lost `source` and `rules`, so a cloner got a plan whose
-/// zone chips were gone and whose adaptive re-plan had no rules to read.
-/// Two lists that must agree is the bug; one list that both spread is the fix.
+/// The public-library publisher used these too, and fell four fields behind
+/// while it did: every published workout lost its `target_pace_end_sec_per_km`
+/// and `pace_zone`, and the head lost `source` and `rules`. A library copy is
+/// now made server-side by `publish_plan_to_library`, which keeps the design
+/// and none of the publisher's data (decisions § 2337); a club template is
+/// shared with the club's members and keeps the full prescription.
 ///
 /// Pure and Supabase-free so `plan_copy.test.ts` can assert the shape against
 /// the generated schema without a live stack.
 ///
-/// Dart twin `apps/mobile_android/lib/plan_copy.dart`, which the mobile
-/// publishers share the same way — keep the field lists alike.
+/// Dart twin `apps/mobile_android/lib/plan_copy.dart` — keep the field lists
+/// alike.
 
 import type { PlanWeek, PlanWorkout, TrainingPlan } from '../types';
 
@@ -129,14 +128,4 @@ export function planWorkoutCopyRows(
 		});
 	}
 	return rows;
-}
-
-/// The owner's public-library copy of `planId`, found by the link the
-/// publisher writes on it (`published_from_plan_id`). Never by name: a rename
-/// would lose the copy, and two same-named plans would share one.
-export function libraryCopyOf(
-	published: readonly TrainingPlan[],
-	planId: string,
-): TrainingPlan | null {
-	return published.find((t) => t.published_from_plan_id === planId) ?? null;
 }

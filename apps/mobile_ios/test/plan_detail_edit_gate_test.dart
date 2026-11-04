@@ -68,9 +68,6 @@ class _GateTraining extends TrainingService {
   );
 
   @override
-  Future<List<TrainingPlanRow>> fetchMyPublishedPlans() async => const [];
-
-  @override
   Future<bool> isActiveCoachOf(String athleteId) async {
     coachLookups.add(athleteId);
     return coaches;

@@ -74,9 +74,6 @@ class _FakeTraining extends TrainingService {
   }
 
   @override
-  Future<List<TrainingPlanRow>> fetchMyPublishedPlans() async => const [];
-
-  @override
   Future<String?> fetchDisplayName(String userId) async =>
       userId == 'coach-1' ? 'Carla' : null;
 

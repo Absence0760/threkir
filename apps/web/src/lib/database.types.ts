@@ -5130,11 +5130,11 @@ export type Database = {
           id: string
           is_public_template: boolean
           is_template: boolean
+          library_copy_id: string | null
           name: string
           notes: string | null
           parent_template_id: string | null
           paused_at: string | null
-          published_from_plan_id: string | null
           race_listing_id: string | null
           rules: Json | null
           source: string
@@ -5159,11 +5159,11 @@ export type Database = {
           id?: string
           is_public_template?: boolean
           is_template?: boolean
+          library_copy_id?: string | null
           name: string
           notes?: string | null
           parent_template_id?: string | null
           paused_at?: string | null
-          published_from_plan_id?: string | null
           race_listing_id?: string | null
           rules?: Json | null
           source?: string
@@ -5188,11 +5188,11 @@ export type Database = {
           id?: string
           is_public_template?: boolean
           is_template?: boolean
+          library_copy_id?: string | null
           name?: string
           notes?: string | null
           parent_template_id?: string | null
           paused_at?: string | null
-          published_from_plan_id?: string | null
           race_listing_id?: string | null
           rules?: Json | null
           source?: string
@@ -5213,15 +5213,15 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "training_plans_parent_template_id_fkey"
-            columns: ["parent_template_id"]
+            foreignKeyName: "training_plans_library_copy_id_fkey"
+            columns: ["library_copy_id"]
             isOneToOne: false
             referencedRelation: "training_plans"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "training_plans_published_from_plan_id_fkey"
-            columns: ["published_from_plan_id"]
+            foreignKeyName: "training_plans_parent_template_id_fkey"
+            columns: ["parent_template_id"]
             isOneToOne: false
             referencedRelation: "training_plans"
             referencedColumns: ["id"]
@@ -7347,6 +7347,7 @@ export type Database = {
         Args: { p_club_id: string; p_routine_id: string }
         Returns: string
       }
+      publish_plan_to_library: { Args: { p_plan_id: string }; Returns: string }
       race_listing_photos: {
         Args: { p_limit?: number; p_listing_id: string }
         Returns: {

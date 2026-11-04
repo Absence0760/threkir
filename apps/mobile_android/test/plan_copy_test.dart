@@ -204,7 +204,7 @@ void main() {
       'trimmed_at', // the owner's plan state, not the design
       'paused_at', // the owner's plan state: a template is never paused
       'race_listing_id', // the owner's own race: nulled on every template
-      'published_from_plan_id', // the publish link itself, written by publishPlanToLibrary
+      'library_copy_id', // the source's link to its library copy; publish_plan_to_library only, never on a template (decisions § 2337)
       'source_author_id', // whose public plan a copy started from; clone_public_plan only (decisions § 2262)
     };
     expect(
@@ -212,20 +212,35 @@ void main() {
         isEmpty);
   });
 
-  test('both plan publishers shape their rows through plan_copy.dart', () {
+  test('the club publisher shapes its rows through plan_copy.dart', () {
     final source = File('lib/training_service.dart').readAsStringSync();
-    for (final fn in ['publishPlanToLibrary', 'publishPlanAsTemplate']) {
-      final start = source.indexOf('Future<String> $fn(');
-      expect(start, greaterThan(0), reason: '$fn not found — rename it here too');
-      final end = source.indexOf('\n  Future<', start + 1);
-      final body = source.substring(start, end);
-      for (final helper in [
-        'planHeadCopyFields(',
-        'planWeekCopyRows(',
-        'planWorkoutCopyRows(',
-      ]) {
-        expect(body.contains(helper), isTrue, reason: '$fn must use $helper');
-      }
+    final start = source.indexOf('Future<String> publishPlanAsTemplate(');
+    expect(start, greaterThan(0),
+        reason: 'publishPlanAsTemplate not found — rename it here too');
+    final end = source.indexOf('\n  Future<', start + 1);
+    final body = source.substring(start, end);
+    for (final helper in [
+      'planHeadCopyFields(',
+      'planWeekCopyRows(',
+      'planWorkoutCopyRows(',
+    ]) {
+      expect(body.contains(helper), isTrue,
+          reason: 'publishPlanAsTemplate must use $helper');
     }
+  });
+
+  // A library copy loses the publisher's dates, paces, goal time and notes,
+  // and only the server can move its dates (decisions § 2337); the database
+  // refuses a client-built copy.
+  test('a library publish goes through the redacting RPC, never a client-built copy', () {
+    final source = File('lib/training_service.dart').readAsStringSync();
+    final start = source.indexOf('Future<String> publishPlanToLibrary(');
+    expect(start, greaterThan(0),
+        reason: 'publishPlanToLibrary not found — rename it here too');
+    final end = source.indexOf('\n  Future<', start + 1);
+    final body = source.substring(start, end);
+    expect(body, contains("_c.rpc(\n      'publish_plan_to_library'"));
+    expect(body.contains('.insert('), isFalse);
+    expect(body.contains('planWorkoutCopyRows('), isFalse);
   });
 }

@@ -50,8 +50,9 @@ begin
            (v_athlete, 'Pace Athlete', 'km', 'free')
     on conflict (id) do nothing;
 
-  -- A public template owned by the coach, carrying a progression workout:
-  -- a pace RANGE (300 -> 270) inside a named zone.
+  -- A template owned by the coach, carrying a progression workout: a pace
+  -- RANGE (300 -> 270) inside a named zone. It is made public only before the
+  -- clone_public_plan block: a public-library copy holds no paces (§ 2337).
   insert into training_plans (
     id, user_id, name, goal_event, goal_distance_m,
     start_date, end_date, days_per_week, status, is_template
@@ -63,8 +64,7 @@ begin
   -- assertion at the bottom of this file is that it does not survive. See the
   -- comment there for why it is asserted at the template and not at the clone.
   update training_plans
-     set is_public_template = true,
-         source = 'imported',
+     set source = 'imported',
          rules = '["80% easy", "sleep 8h"]'::jsonb,
          vdot = 50,
          current_5k_seconds = 1200
@@ -180,7 +180,11 @@ select is((select rules from _assigned_head), '["80% easy", "sleep 8h"]'::jsonb,
 -- ── clone_public_plan (the public-library path) ───────────────────────────
 -- The path 20270517_001 did not name. A runner adopting a plan out of the
 -- public library went through this one, and it flattened the progression the
--- other two were fixed to carry.
+-- other two were fixed to carry. Since 20271107000001 a public template is a
+-- redacted copy with no absolute pace (decisions § 2337), so this path now
+-- pins the zone carried and the paces absent.
+reset role;
+update training_plans set is_public_template = true where name = 'Pace template' and is_template;
 set local "request.jwt.claims" = '{"sub":"99999999-9999-9999-9999-9999ace00001","role":"authenticated"}';
 set local role = 'authenticated';
 
@@ -201,10 +205,10 @@ end $$;
 
 select is((select count(*)::int from _public), 1,
   'clone_public_plan copies the workout');
-select is((select target_pace_sec_per_km from _public), 300,
-  'clone_public_plan carries the pace range start');
-select is((select target_pace_end_sec_per_km from _public), 270,
-  'clone_public_plan carries target_pace_end_sec_per_km');
+select is((select target_pace_sec_per_km from _public), null::int,
+  'clone_public_plan carries no pace: the library copy holds none');
+select is((select target_pace_end_sec_per_km from _public), null::int,
+  'clone_public_plan carries no pace range end either');
 select is((select pace_zone from _public), 'T',
   'clone_public_plan carries pace_zone');
 select is((select source from _public_head), 'imported',

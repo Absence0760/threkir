@@ -38,7 +38,7 @@ final _plan = TrainingPlanRow(
 class _FakeTraining extends TrainingService {
   /// What each `fetchPlan` call does, in order; the last one repeats.
   final List<Object?> loads;
-  List<TrainingPlanRow> published;
+  String? libraryCopyId;
   Object? publishError;
   Object? unpublishError;
   int fetchCalls = 0;
@@ -47,7 +47,7 @@ class _FakeTraining extends TrainingService {
 
   _FakeTraining({
     this.loads = const [null],
-    this.published = const [],
+    this.libraryCopyId,
   });
 
   @override
@@ -63,16 +63,13 @@ class _FakeTraining extends TrainingService {
     fetchCalls++;
     if (outcome != null) throw outcome;
     return (
-      plan: _plan,
+      plan: _plan.copyWith(libraryCopyId: libraryCopyId),
       weeks: const [
         PlanWeekRow(id: 'w1', planId: 'plan-1', weekIndex: 0, phase: 'base'),
       ],
       workouts: <PlanWorkoutRow>[],
     );
   }
-
-  @override
-  Future<List<TrainingPlanRow>> fetchMyPublishedPlans() async => published;
 
   @override
   Future<String> publishPlanToLibrary({required String planId}) async {
@@ -223,10 +220,7 @@ void main() {
 
     testWidgets('an already-published plan opens on Unpublish, and it unpublishes',
         (tester) async {
-      final training = _FakeTraining(published: [
-        _plan.copyWith(
-            id: 'template-9', isPublicTemplate: true, publishedFromPlanId: 'plan-1'),
-      ]);
+      final training = _FakeTraining(libraryCopyId: 'template-9');
       await _pump(tester, training);
       expect(find.text(en.planDetailUnpublishLibrary), findsOneWidget);
 
@@ -241,26 +235,11 @@ void main() {
       await _drainBanner(tester);
     });
 
-    testWidgets('a renamed plan still finds its library copy by its link',
+    // The link lives on this plan (library_copy_id, decisions § 2337): a
+    // rename cannot lose it and another plan's copy cannot claim it.
+    testWidgets('the toggle follows the plan\'s own library link',
         (tester) async {
-      final training = _FakeTraining(published: [
-        _plan.copyWith(
-            id: 'template-9',
-            name: 'Name it was published under',
-            isPublicTemplate: true,
-            publishedFromPlanId: 'plan-1'),
-      ]);
-      await _pump(tester, training);
-      expect(find.text(en.planDetailUnpublishLibrary), findsOneWidget);
-    });
-
-    testWidgets("another plan's same-named copy is not this plan's to unpublish",
-        (tester) async {
-      final training = _FakeTraining(published: [
-        _plan.copyWith(
-            id: 'template-9', isPublicTemplate: true, publishedFromPlanId: 'plan-2'),
-      ]);
-      await _pump(tester, training);
+      await _pump(tester, _FakeTraining());
       expect(find.text(en.planDetailPublishLibrary), findsOneWidget);
       expect(find.text(en.planDetailUnpublishLibrary), findsNothing);
     });
@@ -282,10 +261,7 @@ void main() {
 
     testWidgets('a failed unpublish says so and keeps the plan published',
         (tester) async {
-      final training = _FakeTraining(published: [
-        _plan.copyWith(
-            id: 'template-9', isPublicTemplate: true, publishedFromPlanId: 'plan-1'),
-      ])
+      final training = _FakeTraining(libraryCopyId: 'template-9')
         ..unpublishError = Exception('refused');
       await _pump(tester, training);
 
@@ -302,10 +278,7 @@ void main() {
     // it, so it confirms; Cancel leaves the plan published.
     testWidgets('Unpublish asks first, and Cancel keeps the plan published',
         (tester) async {
-      final training = _FakeTraining(published: [
-        _plan.copyWith(
-            id: 'template-9', isPublicTemplate: true, publishedFromPlanId: 'plan-1'),
-      ]);
+      final training = _FakeTraining(libraryCopyId: 'template-9');
       await _pump(tester, training);
 
       await tester.tap(find.text(en.planDetailUnpublishLibrary));

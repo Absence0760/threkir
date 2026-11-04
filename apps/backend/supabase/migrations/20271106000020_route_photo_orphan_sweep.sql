@@ -223,7 +223,8 @@ comment on function public.enqueue_route_photo_orphan_sweep() is
 --
 -- 1000 paths is the most one job may carry: the worker erases at most
 -- RoutePhotoOrphanMaxBatches x RoutePhotoOrphanBatchSize objects a run
--- (handler_route_photo_orphan_sweep.go).
+-- (handler_route_photo_orphan_sweep.go), and
+-- TestRoutePhotoOrphanSweep_MigrationCapFitsOneRun fails when the two diverge.
 --
 -- The enqueue is auxiliary to the delete it rides on (conventions.md §
 -- Layered resilience): an error in either trigger is caught, reported as a

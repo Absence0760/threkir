@@ -1,5 +1,5 @@
 // The route assistant's location hint is a place label, never a position
-// (`coachPage.consentBulletRoutes`: "never your precise coordinates"). The
+// (the route consent bullet promises "never your precise coordinates"). The
 // route builder labels a typed or map-picked start with the point itself, to
 // four decimals, so that label must not be forwarded as the hint. The client
 // drops it and the handler refuses it again, so an older client cannot send

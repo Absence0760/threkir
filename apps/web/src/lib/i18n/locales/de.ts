@@ -1091,7 +1091,6 @@ export const messages = {
 	"routeDetail.deleteBody": "Damit wird die Route endgültig gelöscht. Das lässt sich nicht rückgängig machen.",
 	"routeDetail.deleted": "Route gelöscht",
 	"routeDetail.deleteImpactUnknown": "Wir konnten nicht prüfen, was diese Route sonst noch verwendet.",
-	"routeDetail.deleteNotAllowed": "Nur wem die Route gehört, kann sie löschen.",
 	"routeDetail.deleteFailed": "Route konnte nicht gelöscht werden: {error}",
 	"routeDetail.deleteImpact.public": "Sie ist öffentlich, andere Läufer können sie also finden und ihr folgen.",
 	"routeDetail.deleteImpact.raceListings": "{count, plural, one {# Rennen nutzt sie als Strecke und verliert die Strecke.} other {# Rennen nutzen sie als Strecke und verlieren die Strecke.}}",

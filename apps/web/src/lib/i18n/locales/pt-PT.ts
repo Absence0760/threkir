@@ -1090,7 +1090,6 @@ export const messages = {
 	"routeDetail.deleteBody": "A rota será eliminada de vez. Não é possível anular.",
 	"routeDetail.deleted": "Rota eliminada",
 	"routeDetail.deleteImpactUnknown": "Não conseguimos verificar o que mais usa esta rota.",
-	"routeDetail.deleteNotAllowed": "Só o dono da rota a pode eliminar.",
 	"routeDetail.deleteFailed": "Não foi possível eliminar a rota: {error}",
 	"routeDetail.deleteImpact.public": "É pública, por isso outros corredores podem encontrá-la e segui-la.",
 	"routeDetail.deleteImpact.raceListings": "{count, plural, one {# prova usa-a como percurso e vai perder o percurso.} other {# provas usam-na como percurso e vão perder o percurso.}}",

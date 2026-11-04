@@ -289,7 +289,7 @@
 			await deleteRoute(route.id);
 		} catch (e) {
 			showDeleteConfirm = false;
-			showToast(m('routeDetail.deleteFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('routeDetail.deleteFailed', { error: errorCopy(e, m, 'routeDetail.deleteFailed') }), 'error');
 			return;
 		}
 		showDeleteConfirm = false;

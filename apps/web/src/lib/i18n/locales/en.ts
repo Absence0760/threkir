@@ -1104,7 +1104,6 @@ export const en = {
 	"routeDetail.deleteBody": "This deletes the route for good. It cannot be undone.",
 	"routeDetail.deleted": "Route deleted",
 	"routeDetail.deleteImpactUnknown": "We couldn't check what else uses this route.",
-	"routeDetail.deleteNotAllowed": "Only the route's owner can delete it.",
 	"routeDetail.deleteFailed": "Could not delete the route: {error}",
 	"routeDetail.deleteImpact.public": "It is public, so other runners can find and follow it.",
 	"routeDetail.deleteImpact.raceListings": "{count, plural, one {# race listing uses it as its course and will lose the course.} other {# race listings use it as their course and will lose the course.}}",

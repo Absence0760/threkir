@@ -3,7 +3,7 @@
  */
 import { supabase } from './supabase';
 import { edgeFunctionErrorCode, edgeFunctionErrorMessage } from './edge_function_error';
-import { appErrorMessage, dbError, isDuplicateKeyError, supabaseErrorFields, thrownMessage } from './supabase_error';
+import { appErrorMessage, DbError, dbError, isDuplicateKeyError, supabaseErrorFields, thrownMessage } from './supabase_error';
 import { singleEmbed, fitnessSnapshotDue, publicRouteListFill } from './data_normalise';
 import { TABLES, BUCKETS, METADATA_KEYS } from './schema';
 import type { Database, Json } from '../database.types';
@@ -2487,7 +2487,7 @@ export async function saveRoute(route: {
 }
 
 /// Delete a route its caller owns (or administers through a club). Every
-/// reference to it is handled by its foreign key (decisions § 2292): the
+/// reference to it is handled by its foreign key (decisions § 2293): the
 /// route's own photos, markers, conditions, reviews, shares, bookmarks and
 /// segments cascade, and runs, events, event courses, race listings and DMs
 /// keep living with the link nulled.
@@ -2500,8 +2500,9 @@ export async function saveRoute(route: {
 /// account deletion's folder sweep removes.
 ///
 /// RLS filters a refused DELETE rather than raising, so an empty result is
-/// read back: a route the caller can still see was refused, one they cannot
-/// is already gone (another tab, another device) and the delete is done.
+/// read back: a route the caller can still see was refused (thrown as the
+/// 42501 RLS would have raised), one they cannot is already gone (another
+/// tab, another device) and the delete is done.
 export async function deleteRoute(id: string): Promise<void> {
 	const { data: photos, error: photosError } = await supabase
 		.from(TABLES.route_photos)
@@ -2526,7 +2527,7 @@ export async function deleteRoute(id: string): Promise<void> {
 			.eq('id', id)
 			.maybeSingle();
 		if (readError) throw dbError(readError);
-		if (still) throw new Error(m('routeDetail.deleteNotAllowed'));
+		if (still) throw new DbError('route delete refused', '42501');
 	}
 
 	if (paths.length > 0) {

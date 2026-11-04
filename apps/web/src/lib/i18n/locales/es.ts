@@ -1091,7 +1091,6 @@ export const messages = {
 	"routeDetail.deleteBody": "La ruta se eliminará para siempre. No se puede deshacer.",
 	"routeDetail.deleted": "Ruta eliminada",
 	"routeDetail.deleteImpactUnknown": "No pudimos comprobar qué más usa esta ruta.",
-	"routeDetail.deleteNotAllowed": "Solo quien creó la ruta puede eliminarla.",
 	"routeDetail.deleteFailed": "No se pudo eliminar la ruta: {error}",
 	"routeDetail.deleteImpact.public": "Es pública, así que otros corredores pueden encontrarla y seguirla.",
 	"routeDetail.deleteImpact.raceListings": "{count, plural, one {# carrera la usa como recorrido y perderá el recorrido.} other {# carreras la usan como recorrido y perderán el recorrido.}}",

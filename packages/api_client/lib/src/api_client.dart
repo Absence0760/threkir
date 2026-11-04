@@ -1395,7 +1395,7 @@ class ApiClient {
 
   /// Delete a route the caller owns (or administers through a club). Mirrors
   /// web `data.ts: deleteRoute`. Every reference is handled by its foreign key
-  /// (decisions § 2292): the route's photos, markers, conditions, reviews,
+  /// (decisions § 2293): the route's photos, markers, conditions, reviews,
   /// shares, bookmarks and segments cascade; runs, events, event courses,
   /// race listings and DMs keep living with the link nulled.
   ///

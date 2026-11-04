@@ -1091,7 +1091,6 @@ export const messages = {
 	"routeDetail.deleteBody": "L'itinéraire sera supprimé définitivement. Cette action est irréversible.",
 	"routeDetail.deleted": "Itinéraire supprimé",
 	"routeDetail.deleteImpactUnknown": "Impossible de vérifier ce qui utilise encore cet itinéraire.",
-	"routeDetail.deleteNotAllowed": "Seul le propriétaire de l'itinéraire peut le supprimer.",
 	"routeDetail.deleteFailed": "Impossible de supprimer l'itinéraire : {error}",
 	"routeDetail.deleteImpact.public": "Il est public : d'autres coureurs peuvent le trouver et le suivre.",
 	"routeDetail.deleteImpact.raceListings": "{count, plural, one {# course l’utilise comme parcours et perdra son parcours.} other {# courses l’utilisent comme parcours et perdront leur parcours.}}",

@@ -1,5 +1,5 @@
 -- Pins what deleting a route does to everything that references it (issue
--- #1286, migration 20271106000001, decisions § 2292), with the delete run as
+-- #1286, migration 20271106000001, decisions § 2293), with the delete run as
 -- the owner's own session so every ON DELETE action and every trigger it
 -- reaches runs under the claims a real client sends.
 --

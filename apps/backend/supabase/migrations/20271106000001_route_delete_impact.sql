@@ -1,4 +1,4 @@
--- Deleting a route (issue #1286; decisions § 2292).
+-- Deleting a route (issue #1286; decisions § 2293).
 --
 -- Every foreign key that references routes(id) already carries the outcome a
 -- route delete should have, so none moves here:

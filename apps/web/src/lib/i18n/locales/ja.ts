@@ -1086,7 +1086,6 @@ export const messages = {
 	"routeDetail.deleteBody": "ルートは完全に削除され、元に戻せません。",
 	"routeDetail.deleted": "ルートを削除しました",
 	"routeDetail.deleteImpactUnknown": "このルートを使っている項目を確認できませんでした。",
-	"routeDetail.deleteNotAllowed": "ルートを削除できるのは所有者だけです。",
 	"routeDetail.deleteFailed": "ルートを削除できませんでした: {error}",
 	"routeDetail.deleteImpact.public": "このルートは公開されており、他のランナーが見つけて利用できます。",
 	"routeDetail.deleteImpact.raceListings": "{count, plural, other {#件のレースがコースとして使用しており、コースが外れます。}}",

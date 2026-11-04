@@ -12,6 +12,7 @@
 	import { formatDateShort } from '#lib/format/time.ts';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	let date = $derived(page.params.date as string);
 	let slot = $derived(page.params.slot as MealSlot);
@@ -49,7 +50,7 @@
 		// Surface a real fetch failure as a retry banner — otherwise a 0-kcal slot
 		// is indistinguishable from a genuinely empty meal.
 		const res = await fetchFoodLogWithError(windowStart.toISOString(), end.toISOString());
-		loadError = res.error;
+		loadError = res.error ? errorCopy(res.error, m, 'nutrition slot: loadError') : null;
 		allEntries = res.entries;
 		loading = false;
 	}

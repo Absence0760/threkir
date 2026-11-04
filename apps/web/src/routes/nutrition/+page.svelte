@@ -265,7 +265,7 @@
 			const dayFood = await fetchFoodLogWithError(dayWindow.startIso, dayWindow.endIso);
 			if (!current()) return;
 			if (dayFood.error) {
-				loadError = dayFood.error;
+				loadError = errorCopy(dayFood.error, m, 'nutrition: day food');
 				loading = false;
 				return;
 			}
@@ -326,7 +326,7 @@
 			if (!current()) return;
 			const planError = planRes.error ?? assignRes.error;
 			if (planError !== null) {
-				loadError = planError;
+				loadError = errorCopy(planError, m, 'nutrition: plans');
 				loading = false;
 				return;
 			}
@@ -348,7 +348,7 @@
 			const week = await fetchFoodLogWithError(trendWindow.startIso, trendWindow.endIso);
 			if (!current()) return;
 			if (week.error) {
-				loadError = week.error;
+				loadError = errorCopy(week.error, m, 'nutrition: week trend');
 				loading = false;
 				return;
 			}

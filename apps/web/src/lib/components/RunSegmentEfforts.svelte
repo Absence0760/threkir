@@ -86,7 +86,7 @@
 				fetchGlobalEffortsForRun(runId),
 			]);
 			if (res.error) {
-				loadError = res.error;
+				loadError = errorCopy(res.error, m, 'RunSegmentEfforts: loadError');
 				return;
 			}
 			efforts = res.efforts;

@@ -60,7 +60,7 @@
 		try {
 			const res = await fetchRouteConditionsWithError(routeId);
 			if (res.error) {
-				loadError = res.error;
+				loadError = errorCopy(res.error, m, 'RouteConditions: loadError');
 				return;
 			}
 			conditions = res.conditions;

@@ -49,7 +49,7 @@
 		try {
 			const res = await fetchClubPhotosWithError(clubId);
 			if (res.error) {
-				loadError = res.error;
+				loadError = errorCopy(res.error, m, 'ClubPhotos: loadError');
 				return;
 			}
 			photos = res.photos;

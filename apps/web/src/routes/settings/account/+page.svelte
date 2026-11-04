@@ -806,7 +806,7 @@
 		exporting = true;
 		try {
 			const { runs, error } = await fetchRunsWithError();
-			if (error) throw new Error(error);
+			if (error) throw error;
 			const header = 'date,distance_m,duration_s,pace_s_per_km,source\n';
 			const rows = runs.map((r) => {
 				const pace = r.distance_m > 0 ? Math.round(r.duration_s / (r.distance_m / 1000)) : 0;

@@ -1553,7 +1553,7 @@ test('enrichClubs reports a failed membership read instead of asserting non-memb
 	const body = source.slice(start, source.indexOf('\nexport ', start + 1));
 	assert.match(
 		body,
-		/Promise<\{ clubs: ClubWithMeta\[\]; error: string \| null \}>/,
+		/Promise<\{ clubs: ClubWithMeta\[\]; error: Error \| null \}>/,
 		'enrichClubs must return the failure in the same shape its callers already return',
 	);
 	assert.match(
@@ -1589,7 +1589,7 @@ test('enrichClubs reports a failed membership read instead of asserting non-memb
 		// The argument is written whitespace-and-expression-tolerantly: what the
 		// guard is about is the error being destructured and returned, not how
 		// the single row is spelled on the way in (it is normalised now).
-		/const \{ clubs: enrichedClubs, error: rolesError \} = await enrichClubs\(\[[^\]]*\]\);\s*\n\s*if \(rolesError\) return \{ club: null, error: rolesError \};/,
+		/const \{ clubs: enrichedClubs, error: rolesError \} = await enrichClubs\(\[[^\]]*\]\);\s*\n\s*if \(rolesError\) return \{ club: null, error: thrownMessage\(rolesError\) \};/,
 		'fetchClubBySlug must surface a membership-read failure rather than returning the club with no role',
 	);
 });

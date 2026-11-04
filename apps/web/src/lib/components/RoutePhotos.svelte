@@ -41,7 +41,7 @@
 		try {
 			const res = await fetchRoutePhotosWithError(routeId);
 			if (res.error) {
-				loadError = res.error;
+				loadError = errorCopy(res.error, m, 'RoutePhotos: loadError');
 				return;
 			}
 			photos = res.photos;

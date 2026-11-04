@@ -161,7 +161,7 @@
 		fetchActivitiesWithError(200)
 			.then((res) => {
 				if (gen !== fetchGen) return;
-				if (res.error) loadError = res.error;
+				if (res.error) loadError = errorCopy(res.error, m, 'history: loadError');
 				else {
 					activityFeed = res.activities;
 					loadedToken = token;

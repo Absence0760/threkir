@@ -96,7 +96,7 @@
 	}> {
 		const [primaryRes, mine] = await Promise.all([fetchPlan(planId), fetchMyPlansWithError()]);
 		if (primaryRes.error) throw new Error(primaryRes.error);
-		if (mine.error) throw new Error(mine.error);
+		if (mine.error) throw mine.error;
 		const plan = primaryRes.plan;
 		if (!plan || plan.status !== 'active' || plan.end_date < today) {
 			throw new PlanEditError('nothing_to_adjust');

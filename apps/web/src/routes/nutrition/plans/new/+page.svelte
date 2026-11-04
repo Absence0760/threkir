@@ -12,7 +12,7 @@
 		if (follow) {
 			try {
 				const current = await fetchMyNutritionAssignmentsWithError();
-				if (current.error !== null) throw new Error(current.error);
+				if (current.error !== null) throw current.error;
 				await followNutritionPlan(plan.id, isoDateOf(new Date()), current.assignments);
 				showToast(m('nutrition.plan.followed', { name: plan.title }), 'success');
 			} catch (e) {

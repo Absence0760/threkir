@@ -74,7 +74,7 @@
 		const result = await fetchRoutesWithError();
 		if (gen !== fetchGen) return;
 		routes = result.routes;
-		fetchError = result.error;
+		fetchError = result.error ? errorCopy(result.error, m, 'routes: fetchError') : null;
 		if (!result.error) loadedToken = token;
 		loading = false;
 	}

@@ -83,8 +83,9 @@
 				fetchKudosForRunWithError(runId),
 				fetchRunCommentsWithError(runId),
 			]);
-			if (k.error || c.error) {
-				loadError = k.error ?? c.error;
+			const failure = k.error ?? c.error;
+			if (failure) {
+				loadError = errorCopy(failure, t, 'RunSocial: loadError');
 				return;
 			}
 			kudos = k.kudos;

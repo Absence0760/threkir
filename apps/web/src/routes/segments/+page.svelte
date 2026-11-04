@@ -44,7 +44,7 @@
 		try {
 			const res = await fetchGlobalSegmentsWithError();
 			if (res.error) {
-				loadError = res.error;
+				loadError = errorCopy(res.error, m, 'segments: loadError');
 				return;
 			}
 			segments = res.segments;

@@ -52,7 +52,7 @@
 			]);
 			const error = planRes.error ?? assignRes.error;
 			if (error !== null) {
-				loadError = error;
+				loadError = errorCopy(error, m, 'nutrition/plans/[id]: loadError');
 				plan = null;
 				return;
 			}

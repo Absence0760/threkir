@@ -74,7 +74,7 @@
 			// the link gives us the header + a clean "not on your roster" state.
 			const roster = await fetchMyAthletesWithError();
 			if (roster.error) {
-				loadError = roster.error;
+				loadError = errorCopy(roster.error, m, 'coaching athlete: loadError');
 				loading = false;
 				return;
 			}

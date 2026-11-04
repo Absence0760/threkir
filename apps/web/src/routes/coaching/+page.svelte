@@ -30,6 +30,7 @@
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 
 	let hrPrescription = $state(false);
@@ -75,8 +76,8 @@
 		pending = p;
 		coaches = c;
 		roster = rosterResult.rows;
-		rosterError = rosterResult.error;
-		loadError = athletesResult.error;
+		rosterError = rosterResult.error ? errorCopy(rosterResult.error, m, 'coaching: rosterError') : null;
+		loadError = athletesResult.error ? errorCopy(athletesResult.error, m, 'coaching: loadError') : null;
 		loading = false;
 	}
 

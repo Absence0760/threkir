@@ -255,7 +255,7 @@
 		templatesError = false;
 		try {
 			const { clubs, error } = await fetchMyClubsWithError();
-			if (error) throw new Error(error);
+			if (error) throw error;
 			const byClub = await fetchClubTemplatesForClubs(clubs.map((c) => c.id));
 			templates = clubs.flatMap((c) =>
 				(byClub.get(c.id) ?? []).map((template) => ({ template, clubName: c.name }))

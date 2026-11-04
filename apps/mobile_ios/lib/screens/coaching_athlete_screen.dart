@@ -156,11 +156,20 @@ class _CoachingAthleteScreenState extends State<CoachingAthleteScreen> {
         athleteId: widget.athleteId,
         startDate: _startDate,
       );
-      final overview = await widget.api
-          .fetchAthletePlanOverview(widget.athleteId, pick: _pickPlan);
+      // The plan is assigned from here on. A failed re-read must not read as
+      // a failed assign: a retry would only meet its own plan as an overlap.
+      AthletePlanOverview? overview;
+      var refreshed = false;
+      try {
+        overview = await widget.api
+            .fetchAthletePlanOverview(widget.athleteId, pick: _pickPlan);
+        refreshed = true;
+      } catch (e) {
+        debugPrint('[CoachingAthleteScreen] plan re-read after assign failed: $e');
+      }
       if (!mounted) return;
       setState(() {
-        _overview = overview;
+        if (refreshed) _overview = overview;
         _selectedPlanId = null;
         _startDate = _firstFreeStart();
       });

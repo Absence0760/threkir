@@ -27,6 +27,7 @@ class _FakeApi extends ApiClient {
     this.overviewAfterRefusal,
     this.loadError,
     this.mapEnabled = false,
+    this.rereadError,
   });
 
   final List<AthleteRunSummary> runs;
@@ -42,6 +43,11 @@ class _FakeApi extends ApiClient {
   DateTime? lastAssignedStart;
   final Object? loadError;
   final bool mapEnabled;
+
+  /// Thrown by every overview read after the first, i.e. the re-read that
+  /// follows an assign.
+  final Object? rereadError;
+  int _overviewReads = 0;
 
   String? lastAssignedPlanId;
   final List<String> clipped = [];
@@ -73,8 +79,10 @@ class _FakeApi extends ApiClient {
   Future<AthletePlanOverview?> fetchAthletePlanOverview(
     String athleteId, {
     required TrainingPlanRow? Function(List<TrainingPlanRow> activePlans) pick,
-  }) async =>
-      overview;
+  }) async {
+    if (_overviewReads++ > 0 && rereadError != null) throw rereadError!;
+    return overview;
+  }
 
   @override
   Future<List<TrainingPlanRow>> fetchMyPlans({int limit = 100}) async => plans;
@@ -640,6 +648,30 @@ void main() {
 
     expect(find.text(l10n.coachingAthleteAssignError), findsOneWidget);
     expect(find.textContaining('assign_plan_to_athlete'), findsNothing);
+  });
+
+  testWidgets(
+      'a re-read that fails after the plan is assigned still reports the '
+      'assign, and clears the pick so it is not sent twice', (tester) async {
+    final prefs = await _prefs();
+    final api = _FakeApi(
+      plans: [_sourcePlan()],
+      rereadError: const SocketException('Connection reset by peer'),
+    );
+    await _pump(tester, api, prefs);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await pickSourceAndAssign(tester, l10n);
+    await tester.pump();
+
+    expect(api.lastAssignedPlanId, 'src');
+    expect(find.text(l10n.coachingAthleteAssignSuccess('Alice Runner')),
+        findsOneWidget);
+    expect(find.text(l10n.coachingAthleteAssignError), findsNothing);
+    final button = tester.widget<ButtonStyleButton>(find.ancestor(
+        of: find.text(l10n.coachingAthleteAssignButton),
+        matching: find.bySubtype<ButtonStyleButton>()));
+    expect(button.onPressed, isNull,
+        reason: 'the pick is cleared, so the same plan is not assigned again');
   });
 
   testWidgets(

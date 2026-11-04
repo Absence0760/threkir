@@ -201,6 +201,7 @@ class _YouScreenState extends State<YouScreen>
       _dmStates = const [];
       _dmStatesReadAt = null;
     });
+    _hideReader.reset();
     _refreshBarcode();
     _refreshIdentity();
     _refreshUnread();

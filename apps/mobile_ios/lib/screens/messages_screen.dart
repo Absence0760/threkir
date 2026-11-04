@@ -160,6 +160,7 @@ class _MessagesScreenState extends State<MessagesScreen>
       _loadError = null;
       _showingArchived = false;
     });
+    _hideReader.reset();
     if (userId == null) return;
     _load();
     _loadCoach();

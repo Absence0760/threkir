@@ -1377,6 +1377,31 @@ void main() {
           reason: 'no read the list holds can list it any more');
     });
 
+    testWidgets('signing out lets go of a landed delete the list was keeping',
+        (tester) async {
+      final api = _FakeApi()
+        ..threads = [_thread('p-1', name: 'Ada'), _thread('p-2', name: 'Grace')];
+      await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+      DmPendingHides.instance.add('c-p-1');
+      await tester.pump();
+
+      final fresh = Completer<List<DmThread>>();
+      addTearDown(() {
+        if (!fresh.isCompleted) fresh.complete(const []);
+      });
+      api.threadsGate = fresh;
+      DmPendingHides.instance.landed('c-p-1');
+      await tester.pump();
+      expect(DmPendingHides.instance.debugHasMarker('c-p-1'), isTrue,
+          reason: 'the list held started before the delete landed');
+
+      api.signedIn = false;
+      api._authChanges.add(null);
+      await tester.pump();
+      expect(DmPendingHides.instance.debugHasMarker('c-p-1'), isFalse);
+    });
+
     testWidgets('Undo brings the row back at once, before the re-read answers',
         (tester) async {
       final api = _FakeApi()

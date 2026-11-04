@@ -419,6 +419,32 @@ void main() {
     expect(DmPendingHides.instance.debugHasMarker('c-1'), isFalse);
   });
 
+  testWidgets('signing out lets go of a landed delete the badge was keeping',
+      (tester) async {
+    addTearDown(DmPendingHides.instance.debugClear);
+    final api = _SwitchableApi();
+    await pump(tester, api: api);
+    await tester.pump();
+
+    final pending = Completer<
+        List<({String conversationId, int unread, bool muted, bool archived})>>();
+    addTearDown(() {
+      if (!pending.isCompleted) pending.complete(const []);
+    });
+    api.badgeGate = pending;
+    DmPendingHides.instance.add('c-1');
+    DmPendingHides.instance.landed('c-1');
+    await tester.pump();
+    expect(DmPendingHides.instance.debugHasMarker('c-1'), isTrue,
+        reason: 'the count held was read before the delete landed');
+
+    api.uid = null;
+    api.email = null;
+    api.emit();
+    await tester.pump();
+    expect(DmPendingHides.instance.debugHasMarker('c-1'), isFalse);
+  });
+
   testWidgets('no badge with nothing unread', (tester) async {
     await pump(tester, api: _FakeApi(unread: 0));
     await tester.pump();

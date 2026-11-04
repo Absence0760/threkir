@@ -104,6 +104,13 @@ class DmHideReader {
     _owner._prune();
   }
 
+  /// The list was emptied (the account changed): it holds no read, so no
+  /// marker is kept for it.
+  void reset() {
+    _heldSince = null;
+    _owner._prune();
+  }
+
   void close() {
     _owner._readers.remove(this);
     _owner._prune();

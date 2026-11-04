@@ -20,7 +20,6 @@
 	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
 	import {
 		buildFlyoverPath,
-		cameraAt,
 		DEFAULT_FLYOVER_SPEED_MPS,
 		distanceMarkers,
 		FLYOVER_SPEEDS,
@@ -44,6 +43,7 @@
 	import { play, seek, tick, type Playback } from './course_preview/playback.ts';
 	import { distanceAtStripOffset, stripGeometry, stripX } from './course_preview/strip_geometry.ts';
 	import { addCourseLayers } from './course_preview/course_layers.ts';
+	import { drawFlightFrame, flightCamera } from './course_preview/flight_frame.ts';
 	import type { VideoEncoderPlan } from '#lib/video/video_encoder.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { DEFAULT_SITE_URL } from '#lib/core/site_url.ts';
@@ -75,6 +75,7 @@
 	const PUBLIC_TERRAIN_URL = PUBLIC_TERRAIN_URL_ENV ?? '';
 	const TERRAIN_SOURCE_ID = 'course-terrain';
 	const FLIGHT_ZOOM = 14;
+	const FLIGHT_VIEW = { pitch: FLYOVER_PITCH, zoom: FLIGHT_ZOOM };
 	const STRIP_SAMPLES = 240;
 	const STRIP_W = 1000;
 	const STRIP_H = 64;
@@ -266,21 +267,26 @@
 	}
 
 	function applyCamera(target: maplibregl.Map, dM: number) {
-		const pose = cameraAt(path, dM);
-		target.jumpTo({ center: pose.center, bearing: pose.bearing, pitch: FLYOVER_PITCH, zoom: FLIGHT_ZOOM });
+		target.jumpTo(flightCamera(path, dM, FLIGHT_VIEW));
 	}
 
-	function renderPosition() {
+	function renderPosition(inAnimationFrame = false) {
 		if (!map || !here) return;
 		const at: [number, number] = [here.lng, here.lat];
 		if (!positionMarker) {
 			const el = document.createElement('div');
 			el.className = 'course-preview-position';
-			positionMarker = new maplibregl.Marker({ element: el }).setLngLat(at).addTo(map);
+			// MapLibre otherwise rounds the dot to whole pixels after every
+			// jump, flipping it a pixel either way when the centre is a half pixel.
+			positionMarker = new maplibregl.Marker({ element: el, subpixelPositioning: true })
+				.setLngLat(at)
+				.addTo(map);
+		}
+		if (mode === 'flight') {
+			drawFlightFrame(map, positionMarker, path, playback.dM, FLIGHT_VIEW, inAnimationFrame);
 		} else {
 			positionMarker.setLngLat(at);
 		}
-		if (mode === 'flight') applyCamera(map, playback.dM);
 	}
 
 	function frame(ts: number) {
@@ -289,7 +295,7 @@
 		const elapsed = lastTs == null ? 0 : Math.min(ts - lastTs, MAX_FRAME_MS);
 		lastTs = ts;
 		playback = tick(playback, elapsed, speed, path.totalM);
-		renderPosition();
+		renderPosition(true);
 		if (playback.playing) raf = requestAnimationFrame(frame);
 	}
 

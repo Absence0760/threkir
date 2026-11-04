@@ -1487,7 +1487,7 @@ test('every "answered empty" read that a stranger can hit reports the failure se
 	const publicRun = bodyOf('fetchPublicRun');
 	assert.match(
 		publicRun,
-		/Promise<\{ run: Run \| null; error: string \| null \}>/,
+		/Promise<\{ run: Run \| null; error: Error \| null \}>/,
 		'fetchPublicRun must report the failure alongside the row, like fetchRunById',
 	);
 	assert.match(
@@ -1505,12 +1505,12 @@ test('every "answered empty" read that a stranger can hit reports the failure se
 	const attribution = bodyOf('fetchPublicRunAttribution');
 	assert.match(
 		attribution,
-		/Promise<\{ attribution: PublicRunAttribution \| null; error: string \| null \}>/,
+		/Promise<\{ attribution: PublicRunAttribution \| null; error: Error \| null \}>/,
 		'fetchPublicRunAttribution must report its failure — a caller cannot otherwise tell "not yours" from "unknown"',
 	);
 	assert.match(
 		attribution,
-		/if \(error\) return \{ attribution: null, error: error\.message \};/,
+		/if \(error\) return \{ attribution: null, error: dbError\(error\) \};/,
 		'the public_runs read is the entitlement; its failure is not a non-entitlement',
 	);
 
@@ -1589,7 +1589,7 @@ test('enrichClubs reports a failed membership read instead of asserting non-memb
 		// The argument is written whitespace-and-expression-tolerantly: what the
 		// guard is about is the error being destructured and returned, not how
 		// the single row is spelled on the way in (it is normalised now).
-		/const \{ clubs: enrichedClubs, error: rolesError \} = await enrichClubs\(\[[^\]]*\]\);\s*\n\s*if \(rolesError\) return \{ club: null, error: thrownMessage\(rolesError\) \};/,
+		/const \{ clubs: enrichedClubs, error: rolesError \} = await enrichClubs\(\[[^\]]*\]\);\s*\n\s*if \(rolesError\) return \{ club: null, error: rolesError \};/,
 		'fetchClubBySlug must surface a membership-read failure rather than returning the club with no role',
 	);
 });
@@ -1980,7 +1980,7 @@ test('the exercise catalogue read pages, and says so when it fails', () => {
 	// a row (§ 1936).
 	assert.match(body, /walkKeyset\(EXERCISE_ORDER,/, 'an unranged select is capped at db.max-rows with no flag');
 	assert.doesNotMatch(body, /\.range\(/, 'the catalogue must not be walked by offset');
-	assert.match(body, /if \(!walk\.complete\)[\s\S]*?error: `\$\{message\}/, 'a failed read must surface, not return []');
+	assert.match(body, /if \(!walk\.complete\)[\s\S]*?error: dbError\(walk\.error\)/, 'a failed read must surface, not return []');
 	assert.match(
 		body,
 		/dedupeShadowedExercises\(/,

@@ -95,7 +95,7 @@
 		preceding: PlanEditBlock | null;
 	}> {
 		const [primaryRes, mine] = await Promise.all([fetchPlan(planId), fetchMyPlansWithError()]);
-		if (primaryRes.error) throw new Error(primaryRes.error);
+		if (primaryRes.error) throw dbError(primaryRes.error);
 		if (mine.error) throw dbError(mine.error);
 		const plan = primaryRes.plan;
 		if (!plan || plan.status !== 'active' || plan.end_date < today) {
@@ -111,7 +111,7 @@
 		]);
 		const following: PlanEditBlock[] = [];
 		for (const r of reads) {
-			if (r.error) throw new Error(r.error);
+			if (r.error) throw dbError(r.error);
 			if (r.plan) following.push(planEditBlock(r.plan, r.weeks, r.workouts));
 		}
 		return {

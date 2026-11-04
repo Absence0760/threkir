@@ -74,7 +74,7 @@
 		notFound = false;
 		const res = await fetchPlan(planId);
 		if (res.error) {
-			loadError = res.error;
+			loadError = errorCopy(res.error, m, 'plans/library/[id]: loadError');
 			loading = false;
 			return;
 		}

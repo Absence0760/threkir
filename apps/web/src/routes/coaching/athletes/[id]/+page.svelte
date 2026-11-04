@@ -92,7 +92,7 @@
 				coachRunMapEnabled()
 			]);
 			if (planRead.error) {
-				loadError = planRead.error;
+				loadError = errorCopy(planRead.error, m, 'coaching/athletes/[id]: loadError');
 				loading = false;
 				return;
 			}
@@ -137,7 +137,7 @@
 			assignSelectedId = '';
 			// Reload the overview so the freshly-assigned plan shows immediately.
 			const planRead = await fetchAthletePlanOverview(id);
-			if (planRead.error) loadError = planRead.error;
+			if (planRead.error) loadError = errorCopy(planRead.error, m, 'coaching/athletes/[id]: loadError');
 			else {
 				overview = planRead.overview;
 				assignStartDate = firstStartAfter(blockers, localTodayISO());

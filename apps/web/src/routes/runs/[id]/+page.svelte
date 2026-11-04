@@ -154,7 +154,7 @@
 	/// privacy-zone-clipped track are fetched by RunShareView.
 	let otherRunOwner = $state<PublicRunAttribution | null>(null);
 	let loading = $state(true);
-	let loadError = $state<string | null>(null);
+	let loadError = $state<Error | null>(null);
 
 	/// Track where the user came from so the in-page back button can
 	/// genuinely go BACK (history.back) — which pops the history entry

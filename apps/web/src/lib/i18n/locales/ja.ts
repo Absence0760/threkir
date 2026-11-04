@@ -1182,6 +1182,8 @@ export const messages = {
 	"routeDetail.noReviews": "まだレビューはありません",
 	"routeDetail.reviewsLoadFailed": "レビューを読み込めませんでした。更新してみてください。",
 	"routeDetail.noWaypointData": "ウェイポイントのデータがありません",
+	"routeDetail.lineLoadFailed": "ルートの線を読み込めませんでした。接続を確認して再試行してください。",
+	"routeDetail.lineLoading": "ルートの線を読み込み中…",
 	"routeNew.routeBuilder": "ルートビルダー",
 	"routeNew.paceMinutesLabel": "ペース（分）",
 	"routeNew.paceSecondsLabel": "ペース（秒）",

@@ -6,7 +6,7 @@
 	import { formatElevation } from '#lib/format/units.svelte.ts';
 	import { toGpx, toKml, downloadFile } from '#lib/routes/gpx.ts';
 	import { toRouteGpxWithMarkers, type RouteGpxMarker } from '#lib/routes/route_gpx.ts';
-	import { fetchRouteById, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, setRoutePublic, setRouteStar, audienceSharingEnabled, fetchShares } from '#lib/core/data.ts';
+	import { fetchClippedRouteForViewer, fetchRouteById, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, setRoutePublic, setRouteStar, audienceSharingEnabled, fetchShares } from '#lib/core/data.ts';
 	import AudienceDialog from '#lib/components/AudienceDialog.svelte';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import { audienceOf, type AudienceColumns } from '#lib/social/run_visibility.ts';
@@ -80,6 +80,7 @@
 	let markerPendingDrag = $state<{ id: string; lat: number; lng: number } | null>(null);
 	let loading = $state(true);
 	let loadFailed = $state(false);
+	let lineRetrying = $state(false);
 	let reviews = $state<any[]>([]);
 	let reviewsError = $state(false);
 	let showReviewForm = $state(false);
@@ -120,6 +121,23 @@
 			} catch (_) {
 				reviewsError = true;
 			}
+		}
+	}
+
+	// Only a non-owner read can lose its line: the clipped read failed, so the
+	// route's metadata rendered and the map slot offers this instead of an
+	// empty map. A failed retry leaves the line unavailable — never unclipped.
+	async function retryLine() {
+		if (!route || lineRetrying) return;
+		lineRetrying = true;
+		try {
+			const points = await fetchClippedRouteForViewer(route.id);
+			route = { ...route, waypoints: points, line_unavailable: false };
+			displayWaypoints = points;
+		} catch (e) {
+			console.warn('route line retry failed', e);
+		} finally {
+			lineRetrying = false;
 		}
 	}
 
@@ -1077,6 +1095,19 @@
 						onMarkerClick={(id) => (markerSelectId = id)}
 						onMarkerDrag={(id, ll) => (markerPendingDrag = { id, lat: ll.lat, lng: ll.lng })}
 					/>
+				{:else if route.line_unavailable}
+					<div class="map-placeholder" data-testid="route-line-failed">
+						<span class="material-symbols" aria-hidden="true">cloud_off</span>
+						<p role="status" aria-live="polite">
+							{lineRetrying ? m('routeDetail.lineLoading') : m('routeDetail.lineLoadFailed')}
+						</p>
+						<button
+							type="button"
+							class="btn btn-outline"
+							onclick={retryLine}
+							disabled={lineRetrying}
+						>{m('routeDetail.retry')}</button>
+					</div>
 				{:else}
 					<div class="map-placeholder">
 						<span class="material-symbols">map</span>

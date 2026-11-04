@@ -116,9 +116,9 @@ export function dmRouteCardFrom(route: {
 }
 
 /// A card with fewer than two usable points has no line to draw. The trace
-/// failing is not the route failing — `fetchClippedRouteForViewer` fails
-/// closed to `[]` — so the card still renders its name and distance and only
-/// the thumbnail falls back to a placeholder.
+/// failing is not the route failing — the clipped read fails closed to no
+/// points — so the card still renders its name and distance and only the
+/// thumbnail falls back to a placeholder.
 export function dmRouteCardHasTrace(card: DmRouteCard): boolean {
 	return card.waypoints.length > 1;
 }

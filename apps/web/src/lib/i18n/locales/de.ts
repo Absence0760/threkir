@@ -1187,6 +1187,8 @@ export const messages = {
 	"routeDetail.noReviews": "Noch keine Bewertungen",
 	"routeDetail.reviewsLoadFailed": "Bewertungen konnten nicht geladen werden. Bitte aktualisieren.",
 	"routeDetail.noWaypointData": "Keine Wegpunktdaten verfügbar",
+	"routeDetail.lineLoadFailed": "Die Streckenlinie konnte nicht geladen werden. Überprüfe deine Verbindung und versuche es erneut.",
+	"routeDetail.lineLoading": "Streckenlinie wird geladen …",
 	"routeNew.routeBuilder": "Routen-Builder",
 	"routeNew.paceMinutesLabel": "Pace-Minuten",
 	"routeNew.paceSecondsLabel": "Pace-Sekunden",

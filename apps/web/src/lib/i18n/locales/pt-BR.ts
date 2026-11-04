@@ -1186,6 +1186,8 @@ export const messages = {
 	"routeDetail.noReviews": "Ainda não há avaliações",
 	"routeDetail.reviewsLoadFailed": "Não foi possível carregar as avaliações. Tente atualizar.",
 	"routeDetail.noWaypointData": "Nenhum dado de waypoint disponível",
+	"routeDetail.lineLoadFailed": "Não foi possível carregar a linha da rota. Verifique sua conexão e tente novamente.",
+	"routeDetail.lineLoading": "Carregando a linha da rota…",
 	"routeNew.routeBuilder": "Criador de rotas",
 	"routeNew.paceMinutesLabel": "Minutos de ritmo",
 	"routeNew.paceSecondsLabel": "Segundos de ritmo",

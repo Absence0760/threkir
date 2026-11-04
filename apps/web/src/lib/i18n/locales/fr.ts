@@ -1187,6 +1187,8 @@ export const messages = {
 	"routeDetail.noReviews": "Pas encore d'avis",
 	"routeDetail.reviewsLoadFailed": "Impossible de charger les avis. Essayez d'actualiser.",
 	"routeDetail.noWaypointData": "Aucune donnée de point de passage disponible",
+	"routeDetail.lineLoadFailed": "Impossible de charger le tracé de l’itinéraire. Vérifiez votre connexion et réessayez.",
+	"routeDetail.lineLoading": "Chargement du tracé de l’itinéraire…",
 	"routeNew.routeBuilder": "Créateur d'itinéraire",
 	"routeNew.paceMinutesLabel": "Minutes d'allure",
 	"routeNew.paceSecondsLabel": "Secondes d'allure",

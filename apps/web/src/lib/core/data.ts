@@ -928,6 +928,12 @@ export async function fetchClippedTrackForRun(runId: string) {
 /// Use on every non-owner route render site — the bare `route.waypoints`
 /// from a `routes` row is the unclipped polyline and must not reach
 /// the renderer when the viewer != owner. Decisions §33.
+///
+/// An RPC failure THROWS rather than resolving to `[]`: an empty array is a
+/// real answer (the clip left nothing), and a failure that looked like one
+/// told the viewer the route had no line instead of offering a retry. It
+/// still fails closed — nothing here, and nothing a caller may do with the
+/// error, falls back to the unclipped `route.waypoints`.
 export async function fetchClippedRouteForViewer(
 	routeId: string,
 ): Promise<Array<{ lat: number; lng: number }>> {
@@ -936,16 +942,17 @@ export async function fetchClippedRouteForViewer(
 		{ p_route_id: routeId },
 		{ get: true },
 	);
-	if (error) {
-		// Fail closed — returning the unclipped waypoints on RPC error
-		// would defeat the helper's purpose. Render an empty polyline
-		// rather than leak — the same fail-closed rule every privacy-zone
-		// clipping path follows.
-		console.warn('clip_route_for_viewer failed; failing closed (empty route)', error);
-		return [];
-	}
+	if (error) throw dbError(error);
 	if (!Array.isArray(data)) return [];
 	return data as Array<{ lat: number; lng: number }>;
+}
+
+/// The `.catch` for a [fetchClippedRouteForViewer] read that must still
+/// return the route's metadata when its line cannot be read: null, so the
+/// caller marks the line unavailable rather than empty.
+function lineUnavailable(e: unknown): null {
+	console.warn('clip_route_for_viewer failed; failing closed (no line)', e);
+	return null;
 }
 
 export type RouteMatchCandidate = {
@@ -2369,8 +2376,14 @@ export async function fetchRouteById(id: string): Promise<Route | null> {
 			// Never hand back the unclipped polyline / `geom` / `start_point`;
 			// route the waypoints through the same server-side privacy clip the
 			// non-owner branch below uses and drop the raw geometry columns.
-			const clipped = await fetchClippedRouteForViewer(id);
-			return { ...owned, geom: null, start_point: null, waypoints: clipped };
+			const clipped = await fetchClippedRouteForViewer(id).catch(lineUnavailable);
+			return {
+				...owned,
+				geom: null,
+				start_point: null,
+				waypoints: clipped ?? [],
+				line_unavailable: clipped === null,
+			};
 		}
 		return owned;
 	}
@@ -2393,7 +2406,7 @@ export async function fetchRouteById(id: string): Promise<Route | null> {
 			if (shared.error) throw dbError(shared.error);
 			return shared.data;
 		},
-		() => fetchClippedRouteForViewer(id),
+		() => fetchClippedRouteForViewer(id).catch(lineUnavailable),
 	);
 	if (!assembled) return null;
 
@@ -2402,7 +2415,8 @@ export async function fetchRouteById(id: string): Promise<Route | null> {
 	// these keys still get a defined shape (empty arrays / nulls).
 	return {
 		...assembled.meta,
-		waypoints: assembled.clipped,
+		waypoints: assembled.clipped ?? [],
+		line_unavailable: assembled.clipped === null,
 		is_starred: false,
 	} as Route;
 }
@@ -2416,12 +2430,13 @@ export async function fetchPublicRoute(id: string): Promise<Route | null> {
 	const assembled = await assemblePublicRoute(
 		async () =>
 			(await supabase.from('public_routes').select('*').eq('id', id).maybeSingle()).data,
-		() => fetchClippedRouteForViewer(id),
+		() => fetchClippedRouteForViewer(id).catch(lineUnavailable),
 	);
 	if (!assembled) return null;
 	return {
 		...assembled.meta,
-		waypoints: assembled.clipped,
+		waypoints: assembled.clipped ?? [],
+		line_unavailable: assembled.clipped === null,
 		is_starred: false,
 	} as Route;
 }

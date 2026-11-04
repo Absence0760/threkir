@@ -1200,6 +1200,8 @@ export const en = {
 	"routeDetail.noReviews": "No reviews yet",
 	"routeDetail.reviewsLoadFailed": "Couldn't load reviews. Try refreshing.",
 	"routeDetail.noWaypointData": "No waypoint data available",
+	"routeDetail.lineLoadFailed": "Couldn’t load the route line. Check your connection and try again.",
+	"routeDetail.lineLoading": "Loading the route line…",
 	"routeNew.routeBuilder": "Route Builder",
 	"routeNew.paceMinutesLabel": "Pace minutes",
 	"routeNew.paceSecondsLabel": "Pace seconds",

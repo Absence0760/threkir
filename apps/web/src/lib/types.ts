@@ -147,6 +147,10 @@ export type OfficialFlag = { is_official?: boolean | null };
 export type Route = Omit<RouteRow, 'waypoints' | 'surface' | 'shadow_hidden'> & OfficialFlag & {
 	waypoints: TrackPoint[];
 	surface: RouteSurface | null;
+	/// Client-only, never a column: a non-owner read whose privacy-clipped
+	/// line could not be fetched. `waypoints` is then `[]` because the read
+	/// failed closed, not because the route has no line.
+	line_unavailable?: boolean;
 };
 
 export type Integration = Omit<IntegrationRow, 'provider'> & {

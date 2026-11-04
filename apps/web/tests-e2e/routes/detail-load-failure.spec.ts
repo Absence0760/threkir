@@ -67,10 +67,13 @@ test.describe('/routes/[id] — a failed read is not a missing route', () => {
 test.describe('/routes/[id] — a failed privacy-clipped line', () => {
 	test.use({ storageState: USER_B.storageStatePath });
 
-	test('says the line failed, draws no map, and a retry brings the line', async ({ page }) => {
+	test('says the line failed, draws no map, and a retry brings the line', async ({
+		page,
+		mockRoute,
+	}) => {
 		let failClip = true;
 		let clipCalls = 0;
-		await page.route('**/rest/v1/rpc/clip_route_for_viewer*', async (route) => {
+		await mockRoute(page, '**/rest/v1/rpc/clip_route_for_viewer*', async (route) => {
 			clipCalls++;
 			if (failClip) {
 				await route.fulfill({

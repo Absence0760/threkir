@@ -10,7 +10,10 @@
  * until a read started after it landed carries it, and a refused write puts
  * back the one field it changed. A deleted conversation brought back by Undo
  * (or a refused delete) is likewise put back as one row, not as the list from
- * before the delete.
+ * before the delete. A delete is held the same way: a read that started
+ * before the server hid the conversation still lists it, so the row is left
+ * out of every such read until one started after the delete landed is
+ * applied.
  *
  * Web only: the mobile store keeps its own (apps/mobile_android).
  */
@@ -110,4 +113,22 @@ export function restoreHiddenConversation<T extends { conversationId: string; la
 	const out = [...rows];
 	out.splice(i === -1 ? out.length : i, 0, hidden);
 	return out;
+}
+
+/// The rows a list read returned, without the conversations deleted since that
+/// read started. `hiddenAt` maps a conversation to when its delete landed, in
+/// ms, or `Infinity` while its undo window is open or the delete is in flight.
+export function withoutHiddenConversations<T extends { conversationId: string }>(
+	rows: readonly T[],
+	hiddenAt: ReadonlyMap<string, number>,
+	readStartedAt: number,
+): T[] {
+	if (hiddenAt.size === 0) return [...rows];
+	return rows.filter((r) => (hiddenAt.get(r.conversationId) ?? -Infinity) < readStartedAt);
+}
+
+/// The deletes a read started at `readStartedAt` already carries; their
+/// markers can be forgotten once that read is applied.
+export function settledHides(hiddenAt: ReadonlyMap<string, number>, readStartedAt: number): string[] {
+	return [...hiddenAt].filter(([, at]) => at < readStartedAt).map(([id]) => id);
 }

@@ -41,6 +41,8 @@ import {
 	restoreHiddenConversation,
 	revertConversationFlag,
 	settledConversationWrites,
+	settledHides,
+	withoutHiddenConversations,
 	type ConversationFlag,
 	type ConversationWrite,
 } from '#lib/social/dm_conversation_writes.ts';
@@ -77,6 +79,12 @@ class MessagesInboxStore {
 	/// (dm_conversation_writes.ts), keyed by conversation and flag. Reactive,
 	/// because a conversation the list has not loaded reads its state here.
 	#writes = new SvelteMap<string, ConversationWrite>();
+	/// When each deleted conversation's delete landed (`Infinity` while its
+	/// undo window is open or the commit is in flight). A list read that
+	/// started before the delete landed still lists the conversation, and
+	/// one returning after the window closed put the row back until the next
+	/// poll.
+	#hiddenAt = new Map<string, number>();
 
 	/// Binds the store to the signed-in runner, dropping what another account
 	/// left behind. Returns true when the user changed.
@@ -88,6 +96,7 @@ class MessagesInboxStore {
 		this.coach = null;
 		this.showingArchived = false;
 		this.#markedReadAt.clear();
+		this.#hiddenAt.clear();
 		dmPendingHides.clear();
 		this.#writes.clear();
 		this.#coachGeneration++;
@@ -96,10 +105,11 @@ class MessagesInboxStore {
 
 	#apply(rows: DmThread[], startedAt: number) {
 		const visible = overlayConversationWrites(
-			rows.filter((t) => !dmPendingHides.has(t.conversationId)),
+			withoutHiddenConversations(rows, this.#hiddenAt, startedAt),
 			this.#writes.values(),
 			startedAt,
 		);
+		for (const id of settledHides(this.#hiddenAt, startedAt)) this.#hiddenAt.delete(id);
 		for (const w of settledConversationWrites(this.#writes.values(), startedAt)) {
 			this.#writes.delete(conversationWriteKey(w.conversationId, w.flag));
 		}
@@ -211,6 +221,8 @@ class MessagesInboxStore {
 	/// `onRestore` lets the open conversation pane come back with the row.
 	hide(conversationId: string, opts: { message: string; onCommitError: (e: unknown) => void; onRestore?: () => void }) {
 		const hidden = this.threads.find((t) => t.conversationId === conversationId);
+		const userId = this.#userId;
+		this.#hiddenAt.set(conversationId, Infinity);
 		dmPendingHides.add(conversationId);
 		this.threads = this.threads.filter((t) => t.conversationId !== conversationId);
 		deferDestructive({
@@ -218,6 +230,7 @@ class MessagesInboxStore {
 			commit: async () => {
 				try {
 					await hideDmConversation(conversationId);
+					if (this.#userId === userId) this.#hiddenAt.set(conversationId, Date.now());
 					// Hidden on the server now: drop it from the held count so the
 					// badge does not count it again before the read below lands.
 					dmUnreadStore.forget(conversationId);
@@ -229,6 +242,7 @@ class MessagesInboxStore {
 			// Undo, or a refused commit: the badge dropped the conversation on
 			// the delete and re-reads now, the server being what knows.
 			restore: () => {
+				if (this.#userId === userId) this.#hiddenAt.delete(conversationId);
 				dmPendingHides.delete(conversationId);
 				// The one row comes back: a snapshot of the whole list would also
 				// undo whatever a poll brought in during the window.

@@ -9,6 +9,7 @@
 	import { smartBack } from '#lib/util/smart_back.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 
 	const back = smartBack();
 	const name = $derived(page.url.searchParams.get('name') ?? '');
@@ -94,15 +95,15 @@
 
 	{#if loading}
 		<div class="skel-head" aria-hidden="true">
-			<span class="skel skel-line skel-w-50"></span>
-			<span class="skel skel-line skel-w-30"></span>
+			<SkeletonBlock height="1.4rem" width="50%" />
+			<SkeletonBlock height="0.95rem" width="30%" />
 		</div>
 		<ul class="session-list" aria-hidden="true">
 			{#each Array(4) as _, i (i)}
-				<li class="skel-row"><span class="skel skel-line"></span></li>
+				<li class="skel-row"><SkeletonBlock height="0.95rem" /></li>
 			{/each}
 		</ul>
-		<p class="sr-only" role="status">{t('shell.loading')}</p>
+		<p class="visually-hidden" role="status">{t('shell.loading')}</p>
 	{:else if loadError}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
@@ -364,52 +365,7 @@
 		border-radius: var(--radius-lg);
 		background: var(--color-surface);
 	}
-	.skel {
-		display: block;
-		height: 0.95rem;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-w-30 {
-		width: 30%;
-	}
-	.skel-w-50 {
-		width: 50%;
-		height: 1.4rem;
-	}
-	@keyframes skel-shimmer {
-		0% {
-			background-position: 200% 0;
-		}
-		100% {
-			background-position: -200% 0;
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel {
-			animation: none;
-		}
-	}
 
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
 	.error-banner {
 		display: flex;
 		align-items: center;

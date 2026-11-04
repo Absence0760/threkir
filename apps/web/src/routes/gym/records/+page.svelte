@@ -6,6 +6,7 @@
 	import { formatWeight } from '#lib/format/units.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 
 	let records = $state<ExerciseRecord[]>([]);
 	let loading = $state(true);
@@ -55,13 +56,13 @@
 		<ul class="record-grid" aria-hidden="true">
 			{#each Array(6) as _, i (i)}
 				<li class="skel-card">
-					<span class="skel skel-line skel-w-50"></span>
-					<span class="skel skel-line skel-w-70"></span>
-					<span class="skel skel-line skel-w-40"></span>
+					<SkeletonBlock height="0.95rem" width="50%" />
+					<SkeletonBlock height="0.95rem" width="70%" />
+					<SkeletonBlock height="0.95rem" width="40%" />
 				</li>
 			{/each}
 		</ul>
-		<p class="sr-only" role="status">{t('shell.loading')}</p>
+		<p class="visually-hidden" role="status">{t('shell.loading')}</p>
 	{:else if loadError}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
@@ -248,7 +249,7 @@
 		margin-top: var(--space-xs);
 	}
 
-	/* Skeleton — same shimmer language as the gym list. */
+	/* Skeleton card — the blocks are SkeletonBlock. */
 	.skel-card {
 		display: flex;
 		flex-direction: column;
@@ -258,54 +259,7 @@
 		border-radius: var(--radius-lg);
 		background: var(--color-surface);
 	}
-	.skel {
-		display: block;
-		height: 0.95rem;
-		background: var(--color-bg-tertiary);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-sm);
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-w-40 {
-		width: 40%;
-	}
-	.skel-w-50 {
-		width: 50%;
-	}
-	.skel-w-70 {
-		width: 70%;
-	}
-	@keyframes skel-shimmer {
-		0% {
-			background-position: 200% 0;
-		}
-		100% {
-			background-position: -200% 0;
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.skel {
-			animation: none;
-		}
-	}
 
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
 	.error-banner {
 		display: flex;
 		align-items: center;

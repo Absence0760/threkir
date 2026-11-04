@@ -2512,10 +2512,16 @@ export async function deleteRoute(id: string): Promise<void> {
 			.from(TABLES.route_photos)
 			.select('storage_path, thumb_512_path')
 			.eq('route_id', id);
-		if (photosError) throw dbError(photosError);
-		paths = (photos ?? [])
-			.flatMap((p) => [p.storage_path, p.thumb_512_path])
-			.filter((p): p is string => !!p);
+		if (photosError) {
+			console.warn('deleteRoute: photo path read failed, skipping the photo sweep', {
+				route_id: id,
+				...supabaseErrorFields(photosError),
+			});
+		} else {
+			paths = (photos ?? [])
+				.flatMap((p) => [p.storage_path, p.thumb_512_path])
+				.filter((p): p is string => !!p);
+		}
 	} catch (e) {
 		console.warn('deleteRoute: photo path read failed, skipping the photo sweep', { route_id: id, error: e });
 	}

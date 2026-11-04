@@ -340,10 +340,31 @@ class _DeleteOkApi extends ApiClient {
 /// Returns a seeded universal-bag value for [effective]; everything else
 /// falls through to the caller's fallback. Never touches Supabase.
 class _FakeSettingsService extends SettingsService {
-  _FakeSettingsService(this._values)
+  _FakeSettingsService(this._values,
+      {this.serverValues, this.serverReachable = true})
       : super(deviceId: 'test-device', platform: 'android');
 
   final Map<String, dynamic> _values;
+
+  /// What a server re-read replaces the bags with; null keeps them.
+  final Map<String, dynamic>? serverValues;
+  final bool serverReachable;
+  int loads = 0;
+
+  @override
+  bool get isServerHydrated => serverReachable;
+
+  @override
+  Future<SettingsService> load() async {
+    loads++;
+    final fresh = serverValues;
+    if (serverReachable && fresh != null) {
+      _values
+        ..clear()
+        ..addAll(fresh);
+    }
+    return this;
+  }
 
   @override
   T? effective<T>(String key, {T? fallback}) =>
@@ -361,6 +382,9 @@ class _FakeSettingsSync extends SettingsSyncService {
 
   @override
   SettingsService? get service => _service;
+
+  @override
+  Future<SettingsService> reloadedService() => _service!.load();
 }
 
 Future<void> _pump(WidgetTester tester, Run run,
@@ -507,17 +531,24 @@ void main() {
       await _openShareSheet(tester);
 
       await _tapShareLink(tester);
+      final makePublic = find.descendant(
+        of: find.byKey(const ValueKey('share-confirm-dialog')),
+        matching: find.widgetWithText(FilledButton, 'Make public'),
+      );
+      await pumpUntil(
+        tester,
+        () => makePublic.evaluate().isNotEmpty,
+        describe: 'the make-public confirm',
+      );
       await tester.runAsync(() async {
-        await tester.tap(
-          find.descendant(
-            of: find.byType(AlertDialog),
-            matching: find.widgetWithText(FilledButton, 'Make public'),
-          ),
-        );
+        await tester.tap(makePublic);
         await tester.pump();
-        await tester.pump(const Duration(milliseconds: 50));
       });
-      expect(api.calls, 1);
+      await pumpUntil(
+        tester,
+        () => api.calls == 1,
+        describe: 'makeRunPublic being called',
+      );
 
       // makeRunPublic is still blocked on the gate; a second tap on Share
       // link must not publish again.
@@ -649,6 +680,67 @@ void main() {
         findsOneWidget,
       );
       await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets('Share link re-reads the zones from the server, so a zone '
+        'added after the sheet opened reaches the confirm', (tester) async {
+      _tallView(tester);
+      final track = _straightTrack(1);
+      final api = _SlowShareApi();
+      final service = _FakeSettingsService(
+        <String, dynamic>{},
+        serverValues: {
+          'privacy_zones': [
+            {'lat': track.first.lat, 'lng': track.first.lng, 'radius_m': 200},
+          ],
+        },
+      );
+      await _pump(tester, _run(title: 'Morning Tempo', track: track),
+          apiClient: api,
+          settingsSync: _FakeSettingsSync(Preferences(), service));
+      await _openShareSheet(tester);
+      expect(service.loads, 0, reason: 'opening the sheet needs no re-read');
+
+      await _tapShareLink(tester);
+
+      expect(service.loads, 1);
+      final dialog = find.byKey(const ValueKey('share-confirm-dialog'));
+      expect(
+        find.descendant(
+          of: dialog,
+          matching: find.textContaining('inside one of your privacy zones'),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.descendant(
+        of: dialog,
+        matching: find.widgetWithText(TextButton, 'Cancel'),
+      ));
+      await tester.pump();
+      await _dropTree(tester);
+    });
+
+    testWidgets('Share link publishes nothing when the server cannot confirm '
+        'the zones', (tester) async {
+      _tallView(tester);
+      final api = _SlowShareApi();
+      await _pump(tester, _run(title: 'Morning Tempo'),
+          apiClient: api,
+          settingsSync: _FakeSettingsSync(
+            Preferences(),
+            _FakeSettingsService({}, serverReachable: false),
+          ));
+      await _openShareSheet(tester);
+
+      await _tapShareLink(tester);
+
+      expect(find.byKey(const ValueKey('share-confirm-dialog')), findsNothing);
+      expect(api.calls, 0);
+      expect(_sharePlatform.calls, isEmpty);
+      expect(find.textContaining("Couldn't load your privacy zones"),
+          findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
+      await _dropTree(tester);
     });
 
     testWidgets('Share link loads the privacy zones sign-in never loaded '

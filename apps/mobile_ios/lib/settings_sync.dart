@@ -174,6 +174,14 @@ class SettingsSyncService extends ChangeNotifier {
   /// session or the bags cannot be loaded at all.
   Future<SettingsService> loadedService() => _ensureService();
 
+  /// [loadedService] re-read from the server, for a decision that must see
+  /// a change made on another device since sign-in — which zones a run is
+  /// about to be published under. Not overlaid onto [Preferences]: the
+  /// caller reads one key. Callers check [SettingsService.isServerHydrated],
+  /// because a failed fetch still returns the cached bags.
+  Future<SettingsService> reloadedService() async =>
+      (await _ensureService()).load();
+
   /// Push the user's current distance-unit choice to the universal bag.
   /// Call from the settings-screen toggle handler. Throws when there is no
   /// session to write against — the local pref has already been saved by

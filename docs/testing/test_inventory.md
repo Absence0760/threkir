@@ -271,7 +271,7 @@ Comprehensive coverage for `StravaImporter.importFromZip`. Complements the small
 
 **Metadata + compression (3 tests):** `imported_from`/`strava_activity_type`/`title`/`activity_type`/`imported_at` populate, blank activity name falls back to "Strava import", `.gpx.gz` is decompressed before parsing.
 
-### `apps/mobile_android/test/settings_sync_test.dart` — 48 tests
+### `apps/mobile_android/test/settings_sync_test.dart` — 50 tests
 
 Covers the universal-bag and device-bag overlay logic on `SettingsSyncService` via two new `@visibleForTesting` delegates (`debugApplyUniversal`, `debugApplyDevice`). The applied-bag flow is the substantive logic — `pushX` / `updateX` are passthroughs to `SettingsService` which needs Supabase to test. Uses a real `Preferences` instance backed by `SharedPreferences.setMockInitialValues({})`.
 
@@ -282,6 +282,8 @@ Covers the universal-bag and device-bag overlay logic on `SettingsSyncService` v
 **Apple Watch zone mirror (3 tests, #950):** sign-in derives the wrist's `hr_zone_cutoffs` ladder from the bag (a `max_hr_bpm` of 200 → `[120, 140, 160, 180, 200]`) and pushes it; an edit through `updateUniversal` reaches the wrist without a relaunch, with no signal an explicit EMPTY ladder rather than the legacy 190 one, and a cleared `hr_zones` clearing it again; and a service that cannot answer `effective` does not fail the bag write it follows (L4).
 
 **Initial state (2 tests):** `synced` is false and `service` is null before `onSignedIn`, every `pushX` / `updateX` is a no-op while settings is null (so a UI handler can safely call them before sign-in).
+
+**Server re-read (2 tests):** `reloadedService` loads the service once and then re-reads it from the server on every call (the make-public confirm's privacy zones must see a zone added on another device), and throws with no session.
 
 **Sign-out account reset (3 tests):** issue #231 — bag-mirrored `Preferences` reset to defaults, the prior user's cached bags dropped when the id is known, idempotent with no cache / no prior id.
 

@@ -2953,7 +2953,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         api: api,
         records: _runRecords,
         onShareLink: api != null && api.userId != null
-            ? () => _shareRunLink(api, zones)
+            ? () => _shareRunLink(api)
             : null,
       );
     } finally {
@@ -2969,11 +2969,11 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// to be allowed to open the run, so this is where the audience is asked:
   /// the audience sheet when it is on (decisions § 1879), otherwise the
   /// make-public confirm, skipped when the run is already public.
-  Future<void> _shareRunLink(ApiClient api, List<PrivacyZone> zones) async {
+  Future<void> _shareRunLink(ApiClient api) async {
     if (_sharingLink) return;
     _sharingLink = true;
     try {
-      await _shareRunLinkOnce(api, zones);
+      await _shareRunLinkOnce(api);
     } finally {
       _sharingLink = false;
     }
@@ -2981,7 +2981,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
 
   bool _sharingLink = false;
 
-  Future<void> _shareRunLinkOnce(ApiClient api, List<PrivacyZone> zones) async {
+  Future<void> _shareRunLinkOnce(ApiClient api) async {
     final link = audienceLinkUrl(ShareableKind.run, run.id);
     if (await api.audienceSharingEnabled()) {
       if (!mounted) return;
@@ -3008,6 +3008,13 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         await shareTextFrom(context, text: link, subject: _title);
         return;
       }
+    }
+    final zones = await _knownPrivacyZones(fromServer: true);
+    if (!mounted) return;
+    if (zones == null) {
+      showTopBanner(
+          context, AppLocalizations.of(context).runDetailShareZonesUnknown);
+      return;
     }
     final ok = await _confirmMakePublic(zones);
     if (!ok) return;
@@ -3170,14 +3177,22 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// no zone, whenever the settings bag had not loaded yet. Signed out there
   /// is no account and so no zone. Signed in, the bag is loaded first when
   /// sign-in never loaded it; a failure to load it is null.
-  Future<List<PrivacyZone>?> _knownPrivacyZones() async {
+  ///
+  /// [fromServer] re-reads the bags first and treats a fetch that fell back
+  /// to the cache as unknown: the make-public confirm must see a zone added
+  /// on another device after sign-in.
+  Future<List<PrivacyZone>?> _knownPrivacyZones(
+      {bool fromServer = false}) async {
     final api = widget.apiClient;
     if (api == null || api.userId == null) return const [];
     final sync = widget.settingsSync;
     if (sync == null) return null;
     final SettingsService svc;
     try {
-      svc = sync.service ?? await sync.loadedService();
+      svc = fromServer
+          ? await sync.reloadedService()
+          : sync.service ?? await sync.loadedService();
+      if (fromServer && !svc.isServerHydrated) return null;
     } catch (e) {
       debugPrint('run_detail: privacy zones unknown — $e');
       return null;

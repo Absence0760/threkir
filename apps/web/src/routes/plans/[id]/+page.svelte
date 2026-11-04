@@ -138,6 +138,7 @@
 	import { fmtOverrun } from '#lib/format/overrun.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { loadSettings, effective } from '#lib/settings/settings.ts';
 	import type { WeekStart } from '#lib/format/calendar.ts';
 	import type { TrainingPlan, PlanWeek, PlanWorkout, ClubWithMeta } from '#lib/types.ts';
@@ -1803,13 +1804,16 @@
 
 {#if loading}
 	<div class="page" aria-busy="true" aria-label={m('planDetail.loadingPlan')}>
-		<div class="back-skel skeleton-shimmer"></div>
-		<div class="hero-skel skeleton-shimmer"></div>
-		<div class="today-skel skeleton-shimmer"></div>
-		<div class="week-skel skeleton-shimmer"></div>
-		<div class="week-skel skeleton-shimmer"></div>
-		<div class="week-skel skeleton-shimmer"></div>
+		<div aria-hidden="true">
+			<div class="back-skel"><SkeletonBlock height="1rem" width="8rem" /></div>
+			<div class="hero-skel"><SkeletonBlock height="9rem" radius="var(--radius-lg)" /></div>
+			<div class="today-skel"><SkeletonBlock height="5.5rem" radius="var(--radius-lg)" /></div>
+			{#each Array(3) as _, i (i)}
+				<div class="week-skel"><SkeletonBlock height="6rem" radius="var(--radius-lg)" /></div>
+			{/each}
+		</div>
 	</div>
+	<p class="visually-hidden" role="status">{m('planDetail.loadingPlan')}</p>
 {:else if loadError !== null}
 	<div class="page">
 		<a class="back" href={backHref} onclick={handleBack}>
@@ -3963,37 +3967,8 @@
 	   so the page rhythm is visible before data lands. */
 	.back-skel,
 	.hero-skel,
-	.today-skel,
-	.week-skel {
-		background: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		border-radius: var(--radius-lg);
-		animation: plan-skeleton-shimmer 1.6s ease-in-out infinite;
-	}
-	.back-skel {
-		height: 1rem;
-		width: 8rem;
-		margin-bottom: var(--space-md);
-		border-radius: var(--radius-sm);
-	}
-	.hero-skel { height: 9rem; margin-bottom: var(--space-md); }
-	.today-skel { height: 5.5rem; margin-bottom: var(--space-md); }
-	.week-skel { height: 6rem; margin-bottom: var(--space-sm); }
-	@keyframes plan-skeleton-shimmer {
-		0% { background-position: 100% 0; }
-		100% { background-position: -100% 0; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.back-skel,
-		.hero-skel,
-		.today-skel,
-		.week-skel { animation: none; }
-	}
+	.today-skel { margin-bottom: var(--space-md); }
+	.week-skel { margin-bottom: var(--space-sm); }
 
 	.empty {
 		display: flex;

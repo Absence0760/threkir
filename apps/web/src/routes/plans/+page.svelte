@@ -13,6 +13,7 @@
 	} from '#lib/core/data.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
+	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { formatDistance } from '#lib/format/units.svelte.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
@@ -348,20 +349,20 @@
 			{#each Array(4) as _, i (i)}
 				<div class="skel-card">
 					<div class="skel-card-top">
-						<span class="skel skel-line skel-w-50"></span>
-						<span class="skel skel-pill"></span>
+						<SkeletonBlock height="0.75rem" width="50%" />
+						<SkeletonBlock height="1rem" width="4rem" radius="9999px" />
 					</div>
 					<div class="skel-card-meta">
-						<span class="skel skel-line skel-w-30"></span>
-						<span class="skel skel-line skel-w-30"></span>
-						<span class="skel skel-line skel-w-30"></span>
+						{#each Array(3) as _, j (j)}
+							<SkeletonBlock height="0.75rem" width="30%" />
+						{/each}
 					</div>
-					<span class="skel skel-bar"></span>
-					<span class="skel skel-line skel-w-60"></span>
+					<SkeletonBlock height="0.4rem" radius="9999px" />
+					<SkeletonBlock height="0.75rem" width="60%" />
 				</div>
 			{/each}
 		</div>
-		<p class="sr-only" role="status">{m('plansPage.loadingPlans')}</p>
+		<p class="visually-hidden" role="status">{m('plansPage.loadingPlans')}</p>
 	{:else if loadError}
 		<div class="error-banner" role="alert">
 			<span class="material-symbols" aria-hidden="true">error</span>
@@ -990,52 +991,7 @@
 		display: flex;
 		gap: var(--space-md);
 	}
-	.skel {
-		display: block;
-		background: var(--color-bg-tertiary);
-		border-radius: var(--radius-sm);
-		background-image: linear-gradient(
-			90deg,
-			var(--color-bg-tertiary) 0%,
-			var(--color-bg-secondary) 50%,
-			var(--color-bg-tertiary) 100%
-		);
-		background-size: 200% 100%;
-		animation: skel-shimmer 1.4s ease-in-out infinite;
-	}
-	.skel-line {
-		height: 0.75rem;
-	}
-	.skel-pill {
-		width: 4rem;
-		height: 1rem;
-		border-radius: 9999px;
-	}
-	.skel-bar {
-		height: 0.4rem;
-		border-radius: 9999px;
-	}
-	.skel-w-30 {
-		width: 30%;
-	}
-	.skel-w-50 {
-		width: 50%;
-	}
-	.skel-w-60 {
-		width: 60%;
-	}
-	@keyframes skel-shimmer {
-		0% {
-			background-position: 200% 0;
-		}
-		100% {
-			background-position: -200% 0;
-		}
-	}
 	@media (prefers-reduced-motion: reduce) {
-		.skel {
-			animation: none;
-		}
 		.card:hover {
 			transform: none;
 		}
@@ -1044,17 +1000,6 @@
 		}
 	}
 
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
 
 	.error-banner {
 		display: flex;

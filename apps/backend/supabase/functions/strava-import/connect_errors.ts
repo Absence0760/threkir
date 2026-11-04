@@ -21,6 +21,20 @@ export const STRAVA_CONNECT_ERROR_CODES = [
 
 export type StravaConnectErrorCode = (typeof STRAVA_CONNECT_ERROR_CODES)[number];
 
+// The sentence the missing-scope refusal used to be, carried beside its code
+// for mobile builds that predate the code. Those builds show a failed connect
+// as the transport's exception text, which prints the decoded body, so this
+// field is what keeps the sentence in front of them; current clients read
+// `error` only and never render `message`. Web builds of the same age read
+// `error` only, so they gain nothing from it and lose nothing without it.
+// Remove it (and its test) once the minimum supported mobile build includes
+// commit 497c1b42e, the one that words `missing_scope` from the catalogue.
+export const LEGACY_CONNECT_MESSAGES: Partial<Record<StravaConnectErrorCode, string>> = {
+	missing_scope:
+		'Strava connection is missing the activity:read_all scope. Please reconnect and accept all permissions.',
+};
+
 export function connectRefusal(code: StravaConnectErrorCode, status: number): Response {
-	return Response.json({ error: code }, { status });
+	const message = LEGACY_CONNECT_MESSAGES[code];
+	return Response.json(message ? { error: code, message } : { error: code }, { status });
 }

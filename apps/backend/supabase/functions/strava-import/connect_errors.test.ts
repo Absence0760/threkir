@@ -6,7 +6,7 @@
 /// could not tell it apart from any other failure.
 
 import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
-import { STRAVA_CONNECT_ERROR_CODES, connectRefusal } from './connect_errors.ts';
+import { LEGACY_CONNECT_MESSAGES, STRAVA_CONNECT_ERROR_CODES, connectRefusal } from './connect_errors.ts';
 
 const SRC = await Deno.readTextFile(new URL('./index.ts', import.meta.url));
 
@@ -24,10 +24,29 @@ function connectPath(): string {
 }
 
 Deno.test('a connect refusal is a JSON code with its status', async () => {
-	const res = connectRefusal('missing_scope', 400);
+	const res = connectRefusal('invalid_code', 400);
 	assertEquals(res.status, 400);
 	assertEquals(res.headers.get('content-type'), 'application/json');
-	assertEquals(await res.json(), { error: 'missing_scope' });
+	assertEquals(await res.json(), { error: 'invalid_code' });
+});
+
+// Mobile builds before 497c1b42e print a failed connect's decoded body, so the
+// missing-scope refusal keeps the sentence they used to receive as text/plain.
+// Delete this test with LEGACY_CONNECT_MESSAGES once the minimum supported
+// mobile build includes 497c1b42e.
+Deno.test('the missing-scope refusal still carries the sentence old mobile builds show', async () => {
+	const res = connectRefusal('missing_scope', 400);
+	assertEquals(res.status, 400);
+	assertEquals(await res.json(), {
+		error: 'missing_scope',
+		message:
+			'Strava connection is missing the activity:read_all scope. Please reconnect and accept all permissions.',
+	});
+	assertEquals(
+		Object.keys(LEGACY_CONNECT_MESSAGES),
+		['missing_scope'],
+		'only the refusal that used to be a sentence has one; a new code is words-free from the start',
+	);
 });
 
 Deno.test('every code is lower snake case, and none repeats', () => {

@@ -165,7 +165,15 @@ export const EXTRACT_TOOL: Anthropic.Tool = {
 const REQUEST_OPEN = '<runner_description>';
 const REQUEST_CLOSE = '</runner_description>';
 
-function userTurn(requestText: string, today: string): string {
+/// Every value the user turn interpolates is a field of its argument, which is
+/// how `ai_prompt_disclosures.test.ts` reads what this prompt sends.
+export function seasonRequestUserTurn({
+	requestText,
+	today,
+}: {
+	requestText: string;
+	today: string;
+}): string {
 	const body = requestText.split(REQUEST_OPEN).join('').split(REQUEST_CLOSE).join('');
 	return (
 		`Today is ${today}.\n\n` +
@@ -255,7 +263,7 @@ export async function handleSeasonRequest(
 				system: SYSTEM_PROMPT,
 				tools: [EXTRACT_TOOL],
 				tool_choice: { type: 'tool', name: EXTRACT_TOOL.name },
-				messages: [{ role: 'user', content: userTurn(input.requestText, today) }],
+				messages: [{ role: 'user', content: seasonRequestUserTurn({ requestText: input.requestText, today }) }],
 			},
 			{ timeout: SEASON_REQUEST_TIMEOUT_MS },
 		);
